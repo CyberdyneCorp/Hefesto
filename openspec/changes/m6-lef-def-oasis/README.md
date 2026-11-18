@@ -13,4 +13,4 @@ M6 LEF/DEF and OASIS (`lef-tech-section`, `lef-read`, `lef-write`, `def-read`, `
 - the 143 LEFDEF and 51 OASIS golden cases;
 - the M6 exit check.
 
-The 99 open questions that blocked M6 were approved on 2026-11-13 (`docs/decisions/m6-decision-table.md`). This plan is a draft for review. The user must answer its Open Questions 1–6 and the pending Q-LEFDEF-114 before the workstreams they name start.
+The 99 open questions that blocked M6 were approved on 2026-11-13 (`docs/decisions/m6-decision-table.md`). The plan's Open Questions 1–6 and Q-LEFDEF-114 were decided by the user on 2026-11-18, each as recommended (Open Question 3 with its fallback (b)).

@@ -6,15 +6,16 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-17, `docs/decisions/open-questions/LEFDEF.md` has 102 entries and `OASIS.md` has 34, 136 in all:
+As of 2026-11-18, `docs/decisions/open-questions/LEFDEF.md` has 102 entries and `OASIS.md` has 34, 136 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
 | Approved 2026-11-13 (the M6 round) | 99: 65 Q-LEFDEF, 34 Q-OASIS | "Decision table" below |
 | Resolved earlier (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-4, D-5 and D-14) | 36 Q-LEFDEF | "Entries resolved before the M6 round" |
-| Pending: no `Resolution:` line | 1: Q-LEFDEF-114 | "Pending" |
+| Approved 2026-11-18 | 1: Q-LEFDEF-114 (compat) | "Decided 2026-11-18" |
+| Pending: no `Resolution:` line | 0 | |
 
-`check_milestone_readiness.py --milestone M6` reports ready, because no M6 spec cites Q-LEFDEF-114. The M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) raises six further planning questions. They are proposed, not decided, and are listed under "Planning questions raised by the M6 plan".
+Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
@@ -32,6 +33,8 @@ These three involve scope or product trade-offs that the standing rule does not 
    Q-OASIS-1, 2, 3, 4, 5, 6, 7, 8, 9, 11 and 66 are drafted from KLayout and gdstk source and close without P39, because a reader has to accept what those tools write anyway. The remaining risk is a detail where KLayout and gdstk both differ from the standard and a commercial reader follows the standard (validation coverage and Q-OASIS-6's PROPERTY association, where the spec now follows KLayout rather than the P39 clause, are the most exposed). Golden cases OASIS-012, OASIS-030 and OASIS-061 with commercial files catch that, but only if such files are obtained.
    - (a) **Recommended; chosen 2026-11-13.** Keep the drafts as they are, relying on KLayout and gdstk parity plus the commercial-file goldens (OASIS-012, OASIS-030, OASIS-061) as release gates
    - (b) Buy SEMI P39 and check the drafts against it before M6 starts; any difference becomes a spec correction
+
+   **Reopened 2026-11-18.** The user named no source of commercial OASIS files (planning question 3, decided (b)), so OASIS-012, OASIS-030 and OASIS-061 carry an approved deviation for the missing commercial input and are not M6 release gates. Option (b), buy SEMI P39, is open again and not decided. Q-OASIS-2's signature rule and `Resolution:` line stand, with the amendment recorded in the entry.
 2. **Q-OASIS-35: GDS output of read-only OASIS cells**
    A cell read from OASIS with `readonly` holds only representational content (the layers `cifinput` maps). Generating GDS from it drops every unmapped vendor layer, which is the data loss the read-only flag exists to prevent. Transcoding avoids that but adds a GDS-side requirement and its tests to M6.
    - (a) **Recommended; chosen 2026-11-13.** Transcode OASIS to GDS in M6: add a gds-write requirement that decodes the cell from its OASIS file and writes GDS elements, failing with an error on elements GDS cannot express
@@ -48,7 +51,7 @@ These three involve scope or product trade-offs that the standing rule does not 
 - **Shared generators.** Several OFF paths reuse one piece of code: the DEF generated-via generator also builds LEF via-rule vias (Q-LEFDEF-7) and the DEF VIAS ORIGIN/OFFSET/PATTERN properties (Q-LEFDEF-62); lef-read's polygon decomposition also paints DEF pin and route polygons (Q-LEFDEF-66, Q-LEFDEF-70). Build each once.
 - **Q-LEFDEF-1 (tier-1 part).** With a 1:1 grid and no `lef read` that sets WIDTH, Magic's `def read` paints no regular-net wire at all. The both-modes fix (DRC default width) changes every such DEF import relative to Magic; the golden cases for DEF read on PDK techs must be captured with LEF loaded first, or record the deviation.
 - **Q-OASIS-35 (judgement item 2, option a chosen).** Transcoding OASIS read-only cells to GDS adds a gds-write requirement ('Read-only OASIS vendor cells') and its golden cases (layer 32767 written, 32768 an error) to M6.
-- **Q-OASIS-2 (judgement item 1, option a chosen).** P39 is not bought, so goldens OASIS-012, OASIS-030 and OASIS-061 need commercial OASIS files; obtaining them is part of M6, since they are release gates.
+- **Q-OASIS-2 (judgement item 1, option a chosen, reopened 2026-11-18).** P39 is not bought, so goldens OASIS-012, OASIS-030 and OASIS-061 were to need commercial OASIS files as release gates. No source was named, so on 2026-11-18 they became approved deviations (planning question 3) and option (b), buying P39, was reopened.
 
 ## Decision table
 
@@ -251,28 +254,38 @@ These were resolved before the M6 round by the standing decisions named in each 
 
 Counts: 20 fix, 6 n/a (D-5 documentation mismatches), 5 platform, 4 compat, 1 replicate; 36 in all.
 
-## Pending
+## Decided 2026-11-18
 
-**Q-LEFDEF-114: Pin layer error message arguments swapped.** `def write` prints `No LEF layer corresponding to layer %s of pin "%s".` with the label text where the layer name belongs, and the layer name where the pin name belongs (lef/defWrite.c:2432-2434, verified 2026-11-17 in the Magic checkout at 9c83a9a6; `lef/` is unchanged since fc5daa9e). The entry has `Kind: bug`, `Options: replicate | fix` and `Recommendation: fix (informative message)`, but no `Status:` or `Resolution:` line. No spec cites it, so M6 readiness is unaffected. Golden case LEFDEF-316 ("label on unmapped layer") captures the message.
+**Q-LEFDEF-114: Pin layer error message arguments swapped.** `def write` prints `No LEF layer corresponding to layer %s of pin "%s".` with the label text where the layer name belongs, and the layer name where the pin name belongs (lef/defWrite.c:2432-2434, verified 2026-11-17 in the Magic checkout at 9c83a9a6; `lef/` is unchanged since fc5daa9e). No spec cites it. Golden case LEFDEF-316 ("label on unmapped layer") captures the message. The options were (a) compat, (b) fix in both modes (the entry's original recommendation; LEFDEF-316 would need a deviation) and (c) replicate. **Approved by the user 2026-11-18 as recommended, option (a).**
 
-- (a) **Recommended: compat.** With `magic-compat` ON, print Magic's swapped text, so LEFDEF-316 compares without a deviation. With it OFF, print the layer, then the pin. This follows the standing rule (the quirk loses no data) and the treatment of other message-only quirks such as Q-LEFDEF-20 and 107.
-- (b) fix: the corrected text in both modes, as the entry's own recommendation says. LEFDEF-316 then needs an approved deviation for its stderr.
-- (c) replicate: Magic's text in both modes.
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-114 | Pin layer error message arguments swapped | **compat** | ON prints Magic's swapped text, so LEFDEF-316 needs no deviation; OFF prints the layer name, then the pin name (was: fix) |
 
-Until the user decides, DEFW writes Magic's text (m6-lef-def-oasis design D9).
+This follows the standing rule (the quirk loses no data) and the treatment of the other message-only quirks Q-LEFDEF-20 and 107. The entry has `Status:` and `Resolution:` lines, and m6-lef-def-oasis design D9 lists it with the compat branch points.
 
 ## Planning questions raised by the M6 plan
 
-These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. Each is **proposed** and none is decided.
+These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. **All six were decided by the user on 2026-11-18, each as recommended**; for question 3 the recommendation was conditional, and its fallback (b) applies because the user named no source.
 
-| # | Question | Recommended option (proposed) |
-|---|---|---|
-| 1 | `def write` reads its nets from `.ext` files (EFReadFile), which is M7 | pull forward the `.ext` read-and-flatten subset, built to the M7 specs; cases take Magic-written `.ext` inputs |
-| 2 | LEF antenna areas and DEF blockage filtering read the extraction style, which is M7 | pull forward the device, antenna tie-down, substrate and active-type parts of the extract section |
-| 3 | Commercial OASIS files for the release gates OASIS-012, 030 and 061 (Q-OASIS-2 (a)) | the user supplies or names a source; otherwise an approved deviation and Q-OASIS-2 reopened |
-| 4 | Performance gate for LEF/DEF/OASIS (no spec target) | callgrind benches gated at their own baseline + 2 %, with the comparisons informational |
-| 5 | Desktop scope | OASIS recognised on open, progress and cancel; no new menu items |
-| 6 | Real-PDK LEF/DEF coverage | LEF data sets, one `LEFDEF-RT-<lib>` case per standard-cell library, LEFDEF-240 on an OpenROAD-style DEF |
+| # | Question | Decision (2026-11-18) | Where it lands |
+|---|---|---|---|
+| 1 | `def write` reads its nets from `.ext` files (EFReadFile), which is M7 | (a) pull forward the `.ext` read-and-flatten subset, built to the M7 specs; the cases take Magic-written `.ext` inputs | design D10, EXTSUB (tasks 9.1, 9.2), GOLDEN task 1.6; `def-write` Purpose; roadmap M6 and M7 |
+| 2 | LEF antenna areas and DEF blockage filtering read the extraction style, which is M7 | (a) pull forward the device, antenna tie-down, substrate and active-type parts of the `extract-tech-section` reader | design D10, EXTSUB (task 9.3) in `extract/tech/`, shared with M10's subset; `lef-write` and `def-write`; roadmap M6 and M7 |
+| 3 | Commercial OASIS files for the release gates OASIS-012, 030 and 061 (Q-OASIS-2 (a)) | (b) no source named: the three cases carry an approved deviation naming the missing commercial input, and Q-OASIS-2 is reopened (option (b): buy SEMI P39) | `OASIS.md` Q-OASIS-2; design D19, task 15.6; `oasis-format`; roadmap M6 exit criteria |
+| 4 | Performance gate for LEF/DEF/OASIS (no spec target) | (a) callgrind benches gated at their own baseline + 2 %, with the Magic and GDS comparisons informational; no spec change | design D22, PERF (section 16) |
+| 5 | Desktop scope | (a) OASIS recognised on open through the picker and drag and drop, plus progress and cancel; no new menu items | design D16, SHELL (section 14) |
+| 6 | Real-PDK LEF/DEF coverage | (a) LEF data sets for the three PDKs, one `LEFDEF-RT-<lib>` case per standard-cell library, LEFDEF-240 on an OpenROAD-style DEF | PDK (tasks 1.2, 1.4), GOLDEN (task 15.5) |
+
+Counts: 6 decided (5 as option (a), 1 as the fallback (b)), 0 pending.
+
+### Spec and roadmap changes from the 2026-11-18 decisions
+
+No requirement changes. Prose only:
+- **def-write** Purpose: DEF write needs only a subset of `ext-flattening-read`, `-hierarchy` and `-names` and the style's active types (`extract-tech-section`). Those subsets are built with DEF write, and the net cases take Magic-written `.ext` inputs until M7.
+- **lef-write** related capabilities: `extract-tech-section`, of which LEF write reads only the device, antenna tie-down and substrate types (the sets G, D and W).
+- **oasis-format** "Validation" and "CTRAPEZOID" notes: OASIS-012, 030 and 061 run with gdstk and KLayout files and carry an approved deviation for the missing commercial input; the purchase of P39 is reopened.
+- **docs/roadmap.md**: M6 gains a "Pulled forward from M7" deliverable and the deviation in its exit criteria; M7 notes the subsets M6 builds.
 
 ## Notable changes to the entries' original recommendations
 

@@ -900,10 +900,13 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 
 ### Q-LEFDEF-114: Pin layer error message arguments swapped
 - Kind: bug
+- Status: approved (recommendation redrafted 2026-11-17 as compat, approved by the user 2026-11-18)
 - Magic behavior: `No LEF layer corresponding to layer %s of pin "%s".` is printed with the label text and the layer name swapped.
 - Evidence: lef/defWrite.c:2432-2435
-- Options: replicate | fix
-- Recommendation: fix (informative message).
+- Verified 2026-11-17: lef/defWrite.c:2432-2434 passes the label text for the first `%s` and the layer name for the second, in the Magic checkout at 9c83a9a6 (`lef/` is unchanged since fc5daa9e). Golden case LEFDEF-316 ("label on unmapped layer") captures the message.
+- Options: replicate | fix | compat
+- Recommendation: compat (corrected 2026-11-17, was fix (informative message)). The quirk is message-only and loses no data, so the standing rule applies, as for Q-LEFDEF-20 and 107: with `magic-compat` ON print Magic's swapped text, so LEFDEF-316 compares without a deviation; with it OFF print the layer name, then the pin name.
+- Resolution: compat — with `magic-compat` ON `def write` prints Magic's text of `No LEF layer corresponding to layer %s of pin "%s".`, with the label text in the layer slot and the layer name in the pin slot; with it OFF it prints the layer name, then the pin name. LEFDEF-316 needs no deviation. Approved 2026-11-18.
 
 ### Q-LEFDEF-115: `(null)` layer names in VIAS
 - Kind: bug

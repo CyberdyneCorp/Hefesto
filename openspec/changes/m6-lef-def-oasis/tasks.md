@@ -3,27 +3,29 @@
 How this plan runs:
 - **M6 starts once the M5 branch (PR #65) has merged.** M6 edits M5 code only as design D17 lists.
 - Each task ends with how it is verified.
-- Section 1 lands first: the user's answers, the reference data, the reference tools and the `.ext` probe. Workstreams 3–16 run after the scaffold, in the dependency order of design D2, and edit only what D2 assigns to them. Shared-file needs are reported as open items.
+- Section 1 lands first: the reference data, the reference tools and the `.ext` probe (the user's answers were recorded on 2026-11-18, task 1.1). Workstreams 3–16 run after the scaffold, in the dependency order of design D2, and edit only what D2 assigns to them. Shared-file needs are reported as open items.
 - Golden case inputs are authored by GOLDEN from the owning workstream's requirements (design D19). `expected/` is captured in CI.
 - Unit tests carry `[cap:<capability>][req:<exact requirement heading>]`. Requirements with a magic-compat dependence get one test per mode.
 - The last task of each capability workstream also runs `scripts/check_requirement_coverage.py --capability <cap>` and verifies that every requirement of its capability is covered, or listed as deferred with a reason.
-- Every approved decision cited below is in `docs/decisions/m6-decision-table.md`. That table also lists Q-LEFDEF-114 as pending.
-- The design's Open Questions 1–6 are **proposed, not decided**. The tasks below are written for the recommended option (a) of each, and tasks that depend on an answer say so.
+- Every approved decision cited below is in `docs/decisions/m6-decision-table.md`, including Q-LEFDEF-114 (compat, approved 2026-11-18).
+- The design's Open Questions 1–6 were **decided by the user on 2026-11-18**: option (a) for 1, 2, 4, 5 and 6, and (b) for 3 (no source of commercial OASIS files). The tasks below follow those answers.
 
 ## 1. Answers, reference data and reference tools (first)
 
-- [ ] 1.1 (INTEGRATION) Record the user's answers to design Open Questions 1–6 and to Q-LEFDEF-114 (decision table "Pending"):
+- [x] 1.1 (INTEGRATION) Record the user's answers to design Open Questions 1–6 and to Q-LEFDEF-114 (decision table "Pending"):
   - in the design's Open Questions;
   - in the decision table;
   - for Q-LEFDEF-114, as `Status:`/`Resolution:` lines in `docs/decisions/open-questions/LEFDEF.md`.
 
   If Open Question 1, 2 or 4 is answered with an option that amends a spec or the roadmap's M6 exit criteria, make that edit and adjust D2, D10 and sections 8, 9 and 16. Verify that `openspec validate --all --strict` and `python3 scripts/check_milestone_readiness.py --milestone M6` pass and that `docs/specs-index.md` is regenerated without diff.
+
+  Done 2026-11-18: all six answered as recommended (Open Question 3 with its fallback (b)) and Q-LEFDEF-114 approved as compat. Spec and roadmap edits: `def-write` and `lef-write` name the pulled-forward `.ext` and extraction-style subsets; `oasis-format` records the OASIS-012/030/061 deviation; the roadmap's M6 deliverables and exit criteria and its M7 entry name the pull-forward and the deviation. Q-OASIS-2's judgement item is reopened with option (b) (buy SEMI P39). Design D1, D2, D4, D9, D10, D16, D19, D22 and the risks follow the answers. Readiness for M6 and M7 and `openspec validate --all --strict` pass, and `docs/specs-index.md` regenerates without diff.
 - [ ] 1.2 (PDK) Verify the release data:
   - list `libs.ref/<lib>/{lef,techlef}` of every library in the pinned ciel releases (sky130A and gf180mcuD at `5740c4a8…`, ihp-sg13g2 at `5e6d592e…`);
   - install the tech LEF and the standard-cell LEF into a scratch root, recording download size, kept size, peak disk and file names;
-  - record whether any library ships an OASIS file and which tool wrote it (from the START/property records), for Open Question 3.
+  - record whether any library ships an OASIS file and which tool wrote it (from the START/property records). Open Question 3 was decided (b), so a commercial-written file found here is a new input for OASIS-012/030/061 (task 15.6), not a precondition.
 
-  Record the facts in design D2 (PDK row) and Open Questions 3 and 6. Verify that the documented commands reproduce them.
+  Record the facts in design D2 (PDK row) and D19 ("Commercial OASIS files"). Verify that the documented commands reproduce them.
 - [ ] 1.3 (GOLDEN) Pin KLayout and gdstk in the capture image (design D18):
   - decide the install source from facts: a Debian package at the image's APT snapshot, otherwise KLayout's upstream `.deb` for Debian 13 with a SHA-256; and a gdstk wheel pinned by version and hash;
   - add `[tools.klayout]` and `[tools.gdstk]` to `tools/golden/pins.toml` and the ARGs to `tools/golden/container/Containerfile`;
@@ -33,13 +35,13 @@ How this plan runs:
   Record the versions, the source and the image size increase in design D18. Verify a CI image build whose log prints `klayout -v` and the gdstk version, and that `test_pins.py` passes.
 - [ ] 1.4 (PDK) Add `sky130-lef`, `gf180mcu-lef` and `ihp-lef` to `scripts/fetch_pdk.py` (Open Question 6 (a)): pins, `-only` subsets, tree digests, cache keys and `--print-digest`. Add their paths to `tests/unit/common/reference_data.hpp` (nullopt when missing, so tests skip), with tests in `scripts/tests/test_fetch_pdk.py`. Restore and fetch them only in the jobs that use them. Verify that a fresh install matches the digests, a second run is a verified no-op, and the `ci.yml` legs fetch only the sets their golden cases replay.
 - [ ] 1.5 (PDK) Update `docs/building.md` "Reference data for tests" with the LEF sets, and "Golden capture" with the reference tools. Verify that the documented commands run as written.
-- [ ] 1.6 (GOLDEN) Add the `.ext` probe (Open Question 1 (a)). A capture mode `mode=ext-inputs` of `golden-capture.yml` runs Magic's `extract all` on the layout of each DEF-write net case (LEFDEF-317..328, 330..334, and the PDK DEF cases). `tools/golden/authoring/lefdef_cases.py --sync-ext` copies the `.ext` files into each case's `input/` and into `tests/data/extflat/<case>/`, with the probe script committed. Verify that a dispatch run produces the `.ext` files, that they are committed with their script, and that every file ends with Magic's last record and has no `error` line.
+- [ ] 1.6 (GOLDEN) Add the `.ext` probe (Open Question 1, decided (a)). A capture mode `mode=ext-inputs` of `golden-capture.yml` runs Magic's `extract all` on the layout of each DEF-write net case (LEFDEF-317..328, 330..334, and the PDK DEF cases). `tools/golden/authoring/lefdef_cases.py --sync-ext` copies the `.ext` files into each case's `input/` and into `tests/data/extflat/<case>/`, with the probe script committed. Verify that a dispatch run produces the `.ext` files, that they are committed with their script, and that every file ends with Magic's last record and has no `error` line.
 - [ ] 1.7 (INTEGRATION, with GOLDEN) Add the dispatch mode `oasis-validate` to `golden-capture.yml` (design D18). It builds Hefesto, writes the OASIS-05x outputs, the strict-mode files and the 419-byte file, and runs KLayout (`strm2gds`, `strmxor`, `strmcmp`, the reader with `expect_strict_mode`) and gdstk (`oas_validate`, read). The verdicts are a job summary and an artifact. Verify with a dispatch run on the scaffold that the tools run and report, with Hefesto's OASIS steps skipped until they exist.
 
 ## 2. Scaffold
 
 - [x] 2.1 Create the change `m6-lef-def-oasis` (README, proposal, design, tasks, `skip_specs: true`). Verify that `openspec validate m6-lef-def-oasis --strict` and `openspec validate --all --strict` pass.
-- [ ] 2.2 Add the areas `lef` (`lex`, `tech`, `via`, `read`, `write`, `command`), `def` (`read`, `write`) and `oasis` (`codec`, `read`, `write`, `command`), plus `extflat` and `extract/style` if Open Questions 1 and 2 are answered (a). Each subdirectory gets its `sources.cmake` and `codes.inc`, plus the INTEGRATION-owned assemblers. Add the test directories and `docs/diagnostics/codes/{lef,def,oasis}.md`, one section per owning workstream (design D1). Verify that the build passes and the test "each area's code table matches its document and prefix" covers the new areas.
+- [ ] 2.2 Add the areas `lef` (`lex`, `tech`, `via`, `read`, `write`, `command`), `def` (`read`, `write`) and `oasis` (`codec`, `read`, `write`, `command`), plus `extflat` and `extract/tech` (Open Questions 1 and 2, decided (a); `extract/tech` may already exist from M10's subset). Each subdirectory gets its `sources.cmake` and `codes.inc`, plus the INTEGRATION-owned assemblers. Add the test directories and `docs/diagnostics/codes/{lef,def,oasis}.md`, one section per owning workstream (design D1). Verify that the build passes and the test "each area's code table matches its document and prefix" covers the new areas.
 - [ ] 2.3 Write the documented public headers of design "Area contracts" with stubs, and add `CORE-NOTIMPL-006`. Register `lef` and `def` through one dispatcher with Magic's option lookup (design D3, D14), and `oasis` with its full option table. Unimplemented options fail with `CORE-NOTIMPL-006`. Add the `def` and `oasis` help lines to `ui/magic_help.cpp`. Verify that the headers compile standalone with `-Werror` in `macos-debug`, and that a `[m6-scaffold]` test lists every `lef`, `def` and `oasis` option and Magic's invalid-option message.
 - [ ] 2.4 Split `gds::GdsSettings` (design D15):
   - `stream::StreamReadSettings` gets the 11 shared read fields;
@@ -51,7 +53,7 @@ How this plan runs:
   - `lef::LefSession` in `EditorState`;
   - `Lexer`, `MessageCounter`, `LayerTable`, `ViaGenerator`, `paint_polygon`;
   - `oasis::Decoder`, `Encoder`, `ModalState`, `Repetition`, `Element`;
-  - `extflat::read_flat` and `extract::StyleView` (if answered (a));
+  - `extflat::read_flat` and `extract::StyleView` (Open Questions 1 and 2 (a));
   - the read and write entry points.
 
   Verify that the CLI, shell and core tests pass unchanged.
@@ -132,7 +134,7 @@ How this plan runs:
   - the header lines;
   - pin enumeration (Q-LEFDEF-50) and pin headers (Q-LEFDEF-36 per mode);
   - power and ground pins (Q-LEFDEF-44 project setting);
-  - antenna areas (`extract::StyleView`, Open Question 2).
+  - antenna areas and the well set (`extract::StyleView`, EXTSUB task 9.3, Open Question 2 (a)).
 
   Verify the `[req:…]` tests, including the LEFDEF-118/119 antenna values.
 - [ ] 6.5 Implement:
@@ -180,8 +182,8 @@ How this plan runs:
 
 - [ ] 8.1 Implement the command, argument validation (Q-LEFDEF-104 fix), `def writeall` refusal, output file naming (Q-LEFDEF-90 platform: in-memory net buffers, rename on success), preconditions (Q-LEFDEF-110 per mode), and output scale and number formatting. Verify their `[cap:def-write]` tests.
 - [ ] 8.2 Implement the file grammar and section order, DIEAREA, the magic-to-LEF layer map, VIAS (Q-LEFDEF-91 per mode, through LEFVIA), component orientation and COMPONENTS (Q-LEFDEF-93, 94 per mode). Verify their tests.
-- [ ] 8.3 Implement PINS (Q-LEFDEF-103 per mode). The unmapped-layer message follows the answer to Q-LEFDEF-114 (task 1.1). Verify the `[req:PINS section]` tests.
-- [ ] 8.4 Implement, from `extflat::read_flat` (Open Question 1 (a); with option (b) these requirements carry the M7 deferral):
+- [ ] 8.3 Implement PINS (Q-LEFDEF-103 per mode). The unmapped-layer message is compat (Q-LEFDEF-114): Magic's swapped text with magic-compat ON, the layer name then the pin name with it OFF. Verify the `[req:PINS section]` tests, one per mode for Q-LEFDEF-103 and 114, and that LEFDEF-316 compares with no deviation.
+- [ ] 8.4 Implement, from `extflat::read_flat` (EXTSUB, Open Question 1 (a)):
   - net classification (Q-LEFDEF-102 project setting) and DEF net naming;
   - record headers and connections;
   - geometry discovery (`connect::search_flat`, Q-LEFDEF-108 tile order, Q-LEFDEF-112 per mode);
@@ -190,14 +192,16 @@ How this plan runs:
 
   Verify their tests against the `.ext` files of task 1.6.
 - [ ] 8.5 Implement NONDEFAULTRULES (Q-LEFDEF-98, 99 per mode; Q-LEFDEF-100 fix), BLOCKAGES (Q-LEFDEF-101 fix; active types from `extract::StyleView`), table enumeration order, and session state after writing. Verify their tests, including LEFDEF-334's hash rebuild.
-- [ ] 8.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `def/write/`. Verify that `check_requirement_coverage.py --capability def-write` reports 24 of 24, or lists the M7-deferred requirements under Open Question 1 (b).
+- [ ] 8.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `def/write/`. Verify that `check_requirement_coverage.py --capability def-write` reports 24 of 24 (nothing is deferred to M7).
 
-## 9. EXTSUB: netlist read and extraction-style subsets (Open Questions 1 and 2)
+## 9. EXTSUB: netlist read and extraction-style subsets (Open Questions 1 and 2, decided (a))
 
-- [ ] 9.1 (if Open Question 1 (a)) Port the `.ext` reader subset: EFReadFile over the `extract-file-format` grammar (read side), and the node, connection, merge and kill records of EFbuild.c (no device parameters). Verify `[cap:ext-flattening-read]` tests over the task 1.6 files and malformed inputs. List the requirements covered in this task's note, since they stay M7's in the coverage report.
-- [ ] 9.2 (if Open Question 1 (a)) Port EFFlatBuild with `EF_FLATNODES | EF_NOFLATSUBCKT` (unscaled, resistance unused), EFVisitNodes order, and the name preference of `ext-flattening-names`. Verify `[cap:ext-flattening-hierarchy]` and `[cap:ext-flattening-names]` tests, and that the visit order matches Magic's on the task 1.6 cases (a probe line in each case).
-- [ ] 9.3 (if Open Question 2 (a)) Implement `extract::StyleView` from the `extract` raw section: style selection, device classes per type, antenna tie-down, substrate and active types. Verify `[cap:extract-tech-section]` tests on the three PDK tech files and the no-style case (Q-LEFDEF-40: empty sets).
-- [ ] 9.4 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `extflat/` and `extract/style/`.
+Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layout (design D10). The requirements stay M7's in the coverage report; each task notes which it covers. EXTSUB starts after the scaffold, with LEFTECH. LEFW's antenna areas wait for 9.3, and DEFW's net work (8.4) and BLOCKAGES (8.5) for 9.2 and 9.3.
+
+- [ ] 9.1 Port the `.ext` reader subset: EFReadFile over the `extract-file-format` grammar (read side), and the node, connection, merge and kill records of EFbuild.c (no device parameters). Verify `[cap:ext-flattening-read]` tests over the task 1.6 files and malformed inputs. List the requirements covered in this task's note, since they stay M7's in the coverage report.
+- [ ] 9.2 Port EFFlatBuild with `EF_FLATNODES | EF_NOFLATSUBCKT` (unscaled, resistance unused), EFVisitNodes order, and the name preference of `ext-flattening-names`. Verify `[cap:ext-flattening-hierarchy]` and `[cap:ext-flattening-names]` tests, and that the visit order matches Magic's on the task 1.6 cases (a probe line in each case).
+- [ ] 9.3 Write the style selection, `device` (class and types), `antenna` tie-down, `substrate` and active-type parts of the `extract-tech-section` reader in `extract/tech/`, sharing its files with M10's subset if that landed first (design D10), and `extract::StyleView` over them. Every other keyword is skipped silently. Verify `[cap:extract-tech-section]` tests on the three PDK tech files with no new diagnostics, and the no-style case (Q-LEFDEF-40: empty sets).
+- [ ] 9.4 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `extflat/` and `extract/tech/`.
 
 ## 10. OASFMT: oasis-format
 
@@ -253,11 +257,11 @@ How this plan runs:
 - [ ] 13.2 Implement format recognition on open (`sniff_format` after gzip, in `app/`) and scripting access with query results. Verify the `[req:Format recognition on open]` and `[req:Scripting access]` tests, including `chip.gds` holding OASIS.
 - [ ] 13.3 Verify that `check_requirement_coverage.py --capability oasis-command` reports 2 of 2, and every native requirement covered.
 
-## 14. SHELL: desktop (Open Question 5)
+## 14. SHELL: desktop (Open Question 5, decided (a))
 
 - [ ] 14.1 Route the desktop File > Open picker and drag and drop through the generic open, so OASIS is recognised by content. Verify a shell test that opens an OASIS file named `.gds`.
 - [ ] 14.2 Run LEF, DEF and OASIS reads and writes through the M5 progress and cancel hosts. Verify shell tests for progress and for a cancelled OASIS write leaving no file. Record the items in `docs/design/m6-ui-conformance.md`.
-- [ ] 14.3 (only if Open Question 5 is answered (b)) Add the LEF/DEF/OASIS menu items after DESIGN's board is approved. Verify against the board.
+- [ ] 14.3 Verify that the desktop adds no LEF, DEF or OASIS menu item or board (Open Question 5 (a)), and that `docs/design/m6-ui-conformance.md` says so.
 
 ## 15. GOLDEN: LEFDEF and OASIS cases
 
@@ -265,19 +269,19 @@ How this plan runs:
 - [ ] 15.2 Add `authoring/oasgen.py` (a clean-room OASIS writer from `oasis-format`, with tests) and `goldenlib/oasis.py` (a clean-room decoder, with tests against the 419-byte file). Author the 51 OASIS rows. OASIS-020/021 take `strm2oas` of the sky130 standard-cell GDS as captured input. Rewrite OASIS-091 to Q-OASIS-90 (a) in `tests/golden/OASIS/CASES.md` and in its case. Verify capture and `--not-authored` as in 15.1.
 - [ ] 15.3 Add the comparators `oasis-records`, `stream-geometry`, `lef-text` and `def-text` (design D19), with tests in `tools/golden/tests/`. Verify that `stream-geometry` finds a one-unit shift on one layer and accepts a reordered, re-fractured equivalent.
 - [ ] 15.4 Author MASK-OS-016 with `lef write` of a contact cell. Drop `def, lef` from UI-G-005's deviation. Add a startup case that loads a `.lef` from the command line. Verify the replay.
-- [ ] 15.5 (Open Question 6 (a)) Add one `LEFDEF-RT-<lib>` case per standard-cell library (tech LEF and cell LEF read, then `lef writeall`), and LEFDEF-240 on a small OpenROAD-style sky130 DEF. Verify their capture, and that `ci.yml`'s golden legs replay them with `--require-inputs`.
-- [ ] 15.6 (Open Question 3) Add the commercial OASIS inputs for OASIS-012, 030 and 061 as the user's answer allows: committed files, or a fetched set with a digest. Verify the capture, or record the approved deviation.
-- [ ] 15.7 Record deviations only with an approved decision: Q-LEFDEF-1 (DEF-read width), 73 and 83, and Q-LEFDEF-114 if it is decided fix. Verify that `m6_cases.py --exit-check` lists every deferral with its decision or target milestone.
+- [ ] 15.5 (Open Question 6, decided (a)) Add one `LEFDEF-RT-<lib>` case per standard-cell library (tech LEF and cell LEF read, then `lef writeall`), and LEFDEF-240 on a small OpenROAD-style sky130 DEF. Verify their capture, and that `ci.yml`'s golden legs replay them with `--require-inputs`.
+- [ ] 15.6 (Open Question 3, decided (b)) Author OASIS-012, 030 and 061 with their gdstk- and KLayout-written inputs and readers only. Record each case's approved deviation (Q-OASIS-2, amended 2026-11-18: the commercial writer's or reader's input is missing) in its case notes and its `tests/golden/OASIS/CASES.md` row, not in `deviations.toml`, since the cases pass (design D19). Verify their capture, and that `m6_cases.py --exit-check` lists the three deviations with Q-OASIS-2.
+- [ ] 15.7 Record deviations only with an approved decision: Q-LEFDEF-1 (DEF-read width), 73 and 83. Q-LEFDEF-114 is compat and needs none. Verify that `m6_cases.py --exit-check` lists every deferral with its decision or target milestone.
 
-## 16. PERF: benches (Open Question 4)
+## 16. PERF: benches (Open Question 4, decided (a))
 
 - [ ] 16.1 Add `bench/lefdef/` (`lef read` of `sky130_fd_sc_hd.lef`, `def read` of a placed-and-routed sky130 block, `lef writeall` of the library) and `bench/oasis/` (`oasis read`/`oasis write` of the `gds-bench` workloads), measuring callgrind instructions for Hefesto, and for Magic on the LEF/DEF workloads. Verify that a dispatch run reports the counts.
-- [ ] 16.2 Add the `lefdef-bench` and `oasis-bench` jobs to `perf.yml`, with the path filters `src/core/{include/hefesto,src}/{lef,def,oasis}/**` and `bench/{lefdef,oasis}/**`. Record the baselines and gate at baseline + 2 % (option (a)). Verify that `gds-bench` and `drc-profile` still pass.
+- [ ] 16.2 Add the `lefdef-bench` and `oasis-bench` jobs to `perf.yml`, with the path filters `src/core/{include/hefesto,src}/{lef,def,oasis}/**` and `bench/{lefdef,oasis}/**`. Record the baselines and gate each workload at its own baseline + 2 %. The Magic (LEF/DEF) and GDS-path (OASIS) comparisons are reported for information only. Verify that `gds-bench` and `drc-profile` still pass.
 
 ## 17. INTEGRATION
 
 - [ ] 17.1 Apply the shared-file open items of workstreams 1–16: CMake, the `EditorState` and `MaskSession` members, the shared gds-read helpers and `stamp(s)` (design D17), CLI options, presets, the `golden-capture.yml` and `perf.yml` jobs, and the layout-undo spec line for Q-LEFDEF-22. Verify that every macOS preset configures, builds and tests with `-DHEFESTO_WARNINGS_AS_ERRORS=ON`.
-- [ ] 17.2 Add the fuzz targets `fuzz_lef_reader`, `fuzz_def_reader`, `fuzz_lef_section`, `fuzz_oasis_reader` (plain and gzip, with the content hash and in-memory OASIS and GDS writes) and `fuzz_ext_reader` (Open Question 1 (a)), with seeds and resource caps (design D21). Wire them into the fuzz job. Verify that the seed replays pass on every leg and the 60 s job runs each target without a crash.
+- [ ] 17.2 Add the fuzz targets `fuzz_lef_reader`, `fuzz_def_reader`, `fuzz_lef_section`, `fuzz_oasis_reader` (plain and gzip, with the content hash and in-memory OASIS and GDS writes) and `fuzz_ext_reader` (EXTSUB), with seeds and resource caps (design D21). Wire them into the fuzz job. Verify that the seed replays pass on every leg and the 60 s job runs each target without a crash.
 - [ ] 17.3 Review the new readers for malformed input (design D23, M6-S1..S9) and write the findings in `docs/contributing/security.md`. Draft each cap that changes behaviour as a proposed decision for the user, and never approve it here. Verify that each finding is fixed with a regression test or recorded as an accepted limit.
 - [ ] 17.4 Add `--require-area LEFDEF --require-area OASIS` to the determinism job once the expected outputs exist. Verify that the job is identical on every leg.
 - [ ] 17.5 Verify that no `CORE-NOTIMPL-006` use or stub remains, retire the code in the table ("Retired in M6, never reused"), and verify that the diagnostics tests pass.
@@ -289,14 +293,14 @@ How this plan runs:
   Record the run ID and tool versions here and in OASIS-013's notes. Verify the recorded run.
 - [ ] 17.7 Verify the M6 exit criteria end to end:
   - unit, property and fuzz tests are green in CI on every leg;
-  - every authored LEFDEF and OASIS golden case (plus MASK-OS-016 and, with Open Question 6 (a), the `LEFDEF-RT-*` cases) passes or carries an approved deviation; `python3 tools/golden/authoring/m6_cases.py --exit-check` exits 0 (no entry still deferred to M6);
+  - every authored LEFDEF and OASIS golden case (plus MASK-OS-016, the `LEFDEF-RT-*` cases and the DEF-write net cases on Magic-written `.ext` inputs) passes or carries an approved deviation (OASIS-012/030/061: Q-OASIS-2, missing commercial input); `python3 tools/golden/authoring/m6_cases.py --exit-check` exits 0 (no entry still deferred to M6);
   - `oasis-validate` at the same head reports no KLayout `strmxor` difference and no strict-mode warning for the OASIS-051/057/060/061/062 outputs;
   - the 419-byte file is confirmed (task 17.6);
   - the determinism job covers LEFDEF and OASIS;
-  - `check_requirement_coverage.py --milestone M6` covers the 146 exact and behavioural requirements (or every requirement an answered Open Question defers is listed with its milestone), and every native requirement of the OASIS capabilities has a tagged test;
-  - `check_milestone_readiness.py --milestone M7` reports the next milestone's state;
+  - `check_requirement_coverage.py --milestone M6` covers the 146 exact and behavioural requirements, and every native requirement of the OASIS capabilities has a tagged test;
+  - `check_milestone_readiness.py --milestone M7` reports the next milestone's state, and the EXTSUB requirements covered in M6 are listed in section 9's notes for M7;
   - `openspec validate --all --strict` passes;
-  - `perf.yml` is green (`gds-bench`, `drc-profile`, `golden-slow`, `gds-roundtrip`, and the M6 benches under Open Question 4);
+  - `perf.yml` is green (`gds-bench`, `drc-profile`, `golden-slow`, `gds-roundtrip`, and `lefdef-bench` and `oasis-bench` within baseline + 2 %);
   - every result above is from a run at the head being declared done.
 - [ ] 17.8 Update:
   - README.md;

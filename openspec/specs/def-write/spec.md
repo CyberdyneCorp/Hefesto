@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. Reading and flattening the extracted netlist belong to capabilities `ext-flattening-read` and `ext-flattening-hierarchy`.
+Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. Reading and flattening the extracted netlist belong to capabilities `ext-flattening-read`, `ext-flattening-hierarchy` and `ext-flattening-names`, and the electrically active types used by BLOCKAGES come from the current extraction style (`extract-tech-section`). DEF write needs only a subset of each: the `.ext` read, the flattening of nodes with subcircuits kept, the node visit order and the node-name preference, and the style's active types. Those subsets are built with DEF write, ahead of the rest of those capabilities (docs/roadmap.md, M6). Until Hefesto extracts (M7), the `.ext` inputs of its net golden cases are written by Magic.
 
 Terms used throughout:
 

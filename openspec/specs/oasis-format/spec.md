@@ -387,7 +387,7 @@ Compatibility: native
 
 On read, Hefesto SHALL verify the signature when the scheme is 1 or 2. A mismatch SHALL be reported as "OASIS validation failed (expected <hex>, computed <hex>)". The read result is still used, because geometry was decoded independently. A file compressed with gzip is validated over its decompressed bytes.
 
-The coverage and the byte order follow gdstk (library.cpp oas_validate) and were not checked against the SEMI P39 text (Q-OASIS-2, resolution: fix). Golden cases OASIS-012, OASIS-030 and OASIS-061, with files from commercial writers and readers, are release gates for every rule that rests on KLayout and gdstk parity (Q-OASIS-2, resolution: fix; the SEMI P39 text was not bought).
+The coverage and the byte order follow gdstk (library.cpp oas_validate) and were not checked against the SEMI P39 text (Q-OASIS-2, resolution: fix). Golden cases OASIS-012, OASIS-030 and OASIS-061 check every rule that rests on KLayout and gdstk parity with gdstk- and KLayout-written files. No commercial writer's or reader's files were available, so each carries an approved deviation naming the missing commercial input, and the purchase of the SEMI P39 text is reopened (Q-OASIS-2, resolution: fix, amended 2026-11-18).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -716,7 +716,7 @@ Rules:
 3. A type above 25 SHALL be reported ("invalid CTRAPEZOID type"), and the element is dropped.
 4. Degenerate vertex sets follow the TRAPEZOID rule.
 
-This table matches KLayout (dbOASISReader.cc ctraps_table) and gdstk (library.cpp CTRAPEZOID) for all 26 types (Q-OASIS-4, resolution: fix). Golden case OASIS-030 (all 26 types, from a commercial writer) is the release check.
+This table matches KLayout (dbOASISReader.cc ctraps_table) and gdstk (library.cpp CTRAPEZOID) for all 26 types (Q-OASIS-4, resolution: fix). Golden case OASIS-030 (all 26 types) is the check; its commercial-writer input is missing and recorded as an approved deviation (Q-OASIS-2).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 

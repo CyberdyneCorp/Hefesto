@@ -9,6 +9,7 @@ Related capabilities, referenced by name and not repeated here:
 - `lef-tech-section`: the tech-file `lef` section. It maps magic types to LEF layer names and classes (route, cut/contact, masterslice, overlap, bound, ignore, obstruction), and sets the canonical names and default route/via parameters.
 - `lef-read`: reading LEF, the `lef read` and `lef datestamp` options, and how LEF reading creates or updates layer parameters and cell properties.
 - `def-write`: DEF output. It shares the magic-type to LEF-layer lookup defined in this spec.
+- `extract-tech-section`: the current extraction style. LEF write reads only its device classes and types, antenna tie-down types and substrate types (the sets G, D and W of "Macro source geometry and layer masks"). That part of the extract reader is built with LEF write, ahead of the rest of the capability (docs/roadmap.md, M6).
 
 Conventions used throughout:
 

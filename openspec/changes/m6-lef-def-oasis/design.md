@@ -46,7 +46,7 @@ What M5 and earlier milestones leave for M6 (from the code at origin/main f03da5
   - The `.mag` instance-id renaming is the rule Q-LEFDEF-83 reuses.
 - **Commands.** Neither `lef` nor `def` nor `oasis` is registered. `ui/magic_help.cpp:129` already carries Magic's `lef` help line. UI-G-005's deviation (`tests/golden/deviations.toml:137`) lists `def` and `lef` as M6 commands. The startup paths already issue `lef read`/`def read` for `.lef`/`.def` arguments (`app/startup.cpp:72-77`) and for PDK startup files (`script/pdk/startup.cpp:207-211`), and today both fail as unknown commands.
 - **Settings.** The project setting "global nets and power names" (`app/settings_layers.cpp`, `app/project_file.cpp`) holds the `vdd`, `gnd` and `globalNets` values that Q-LEFDEF-44 and Q-LEFDEF-102 use.
-- **Extraction.** Nothing exists: extraction, `.ext` files and EFRead are M7. `def write` reads its nets from `.ext` files (`def-write` "Preconditions and diagnostics", defWrite.c:251-293, `EFReadFile`/`EFFlatBuild`). LEF write's antenna areas and well set, and DEF write's blockage filter, read the current extraction style (lef-write "Macro source geometry and layer masks", ExtTech.c:514-562; defWrite.c:816, 2538). Open Questions 1 and 2.
+- **Extraction.** Nothing exists: extraction, `.ext` files and EFRead are M7. `def write` reads its nets from `.ext` files (`def-write` "Preconditions and diagnostics", defWrite.c:251-293, `EFReadFile`/`EFFlatBuild`). LEF write's antenna areas and well set, and DEF write's blockage filter, read the current extraction style (lef-write "Macro source geometry and layer masks", ExtTech.c:514-562; defWrite.c:816, 2538). Open Questions 1 and 2, decided (a) on 2026-11-18, pull both subsets forward into M6 (D10, EXTSUB).
 - **Golden.**
   - `tests/golden/LEFDEF/CASES.md` has 143 rows: 001–023 (tech section, LEF read), 100–142 (LEF write), 200–240 (DEF read) and 300–335 (DEF write).
   - `tests/golden/OASIS/CASES.md` has 51 rows: 001–015 (format), 020–037 (read), 050–064 (write) and 090–092 (command).
@@ -78,9 +78,9 @@ M6 runs in four steps:
 - Every compat decision has one branch point, testable in both modes.
 
 **Non-Goals:**
-- Extraction (M7). The netlist read that `def write` needs is Open Question 1, and the extraction-style subset is Open Question 2. Neither brings `extract` itself into M6.
+- Extraction (M7). M6 pulls forward only the `.ext` read-and-flatten subset that `def write` needs and the extraction-style parts that LEF and DEF write read (Open Questions 1 and 2, decided (a)). Neither brings `extract` itself into M6.
 - Rewriting M1–M5 code that meets its spec. M6 changes earlier code only where an M6 requirement or decision needs it (D17).
-- A private OASIS label-presentation property (Q-OASIS-32: none in M6), gzip-wrapped OASIS output (Q-OASIS-91), and buying SEMI P39 (Q-OASIS-2 (a)).
+- A private OASIS label-presentation property (Q-OASIS-32: none in M6), gzip-wrapped OASIS output (Q-OASIS-91), and buying SEMI P39 (Q-OASIS-2's judgement item, reopened on 2026-11-18 with option (b) and not yet decided; if the user buys it, checking the drafts against it is separate work).
 
 ## Decisions
 
@@ -100,10 +100,10 @@ M6 runs in four steps:
 | OASIS reader, vendor views, content hash | `src/core/include/hefesto/oasis/read/` | `src/core/src/oasis/read/` | `tests/unit/oasis/read/` | `hefesto::oasis` |
 | OASIS writer, repetition detection, transcoders | `src/core/include/hefesto/oasis/write/` | `src/core/src/oasis/write/` | `tests/unit/oasis/write/` | `hefesto::oasis` |
 | `oasis` command, settings, format recognition | `src/core/include/hefesto/oasis/command/` | `src/core/src/oasis/command/` | `tests/unit/oasis/command/` | `hefesto::oasis` |
-| `.ext` netlist read and flattening subset (Open Question 1 (a)) | `src/core/include/hefesto/extflat/` | `src/core/src/extflat/` | `tests/unit/extflat/` | `hefesto::extflat` |
-| extraction-style subset (Open Question 2 (a)) | `src/core/include/hefesto/extract/style/` | `src/core/src/extract/style/` | `tests/unit/extract/style/` | `hefesto::extract` |
+| `.ext` netlist read and flattening subset (Open Question 1, decided (a)) | `src/core/include/hefesto/extflat/` | `src/core/src/extflat/` | `tests/unit/extflat/` | `hefesto::extflat` |
+| extraction-style subset of the `extract-tech-section` reader, and `StyleView` (Open Question 2, decided (a)) | `src/core/include/hefesto/extract/tech/` | `src/core/src/extract/tech/` | `tests/unit/extract/tech/` | `hefesto::extract` |
 
-`src/core/CMakeLists.txt` adds `lef def oasis` (and `extflat extract` if Open Questions 1 and 2 are answered (a)) to `HEFESTO_CORE_AREAS`. Each area uses per-subdirectory `sources.cmake` and `codes.inc` fragments, which the INTEGRATION-owned `<area>/{sources.cmake,codes.cpp}` assembles, as `mask/`, `gds/` and `cif/` do.
+`src/core/CMakeLists.txt` adds `lef def oasis extflat extract` to `HEFESTO_CORE_AREAS` (`extflat` and `extract` for Open Questions 1 and 2, decided (a); if M10's `extract/tech/` subset landed first, `extract` is already there). Each area uses per-subdirectory `sources.cmake` and `codes.inc` fragments, which the INTEGRATION-owned `<area>/{sources.cmake,codes.cpp}` assembles, as `mask/`, `gds/` and `cif/` do.
 
 Diagnostic prefixes:
 
@@ -121,21 +121,21 @@ None of these codes reads like a golden case ID (LEFDEF-001, OASIS-001).
 
 | Workstream (tasks.md section) | Capabilities | Owns (may edit) |
 |---|---|---|
-| PDK | none (reference data for LEFDEF-240 and the library LEF cases, Open Question 6) | `scripts/fetch_pdk.py`, `scripts/tests/test_fetch_pdk.py`, `tests/unit/common/reference_data.hpp` (LEF paths), the reference-data steps of `.github/workflows/{ci,golden-capture}.yml`, `docs/building.md` "Reference data for tests" |
+| PDK | none (reference data for LEFDEF-240 and the library LEF cases, Open Question 6, decided (a)) | `scripts/fetch_pdk.py`, `scripts/tests/test_fetch_pdk.py`, `tests/unit/common/reference_data.hpp` (LEF paths), the reference-data steps of `.github/workflows/{ci,golden-capture}.yml`, `docs/building.md` "Reference data for tests" |
 | LEFTECH | `lef-tech-section` | `src/core/{include/hefesto,src}/lef/tech/`, `tests/unit/lef/tech/`, `tests/data/lef/tech/`, `lef.md` (TECH section); the `lef` section hook in `tech/loader.cpp` and the rescale hook in `tech/scale_layout.cpp` |
 | LEFVIA | `lef-read` "LEF VIA and VIARULE definitions", "Via redefinition", "Cut growing", "Generated via geometry"; `def-read` "Rectangle-based DEF vias", "Generated DEF vias", "Via redefinition"; `def-write` "Contact region identification", "Generated via definitions" | `src/core/{include/hefesto,src}/lef/via/`, `tests/unit/lef/via/`, `lef.md` (VIA section) |
 | LEFR | `lef-read` (other requirements); the shared tokenizer and message reporting; `lef read`, `lef datestamp`, `lef help` | `src/core/{include/hefesto,src}/lef/{lex,read}/`, `tests/unit/lef/{lex,read}/`, `tests/data/lef/read/`, `lef.md` (LEX, READ sections); the fixed-stamp use in `cell/timestamps.cpp` |
 | LEFW | `lef-write`; `lef write`, `lef writeall`, `lef nocheck` | `src/core/{include/hefesto,src}/lef/write/`, `tests/unit/lef/write/`, `tests/data/lef/write/`, `lef.md` (WRITE section) |
 | DEFR | `def-read`; `def read`, `def datestamp` | `src/core/{include/hefesto,src}/def/read/`, `tests/unit/def/read/`, `tests/data/def/read/`, `def.md` (READ section) |
 | DEFW | `def-write`; `def write` | `src/core/{include/hefesto,src}/def/write/`, `tests/unit/def/write/`, `tests/data/def/write/`, `def.md` (WRITE section) |
-| EXTSUB | the `.ext` read and flatten subset (Open Question 1) and the extraction-style subset (Open Question 2), built to the M7 specs `ext-flattening-read`, `ext-flattening-hierarchy`, `ext-flattening-names` and `extract-tech-section` | `src/core/{include/hefesto,src}/{extflat,extract/style}/`, `tests/unit/{extflat,extract/style}/`, `tests/data/extflat/`, `extflat.md`, `extract.md` |
+| EXTSUB | the `.ext` read and flatten subset (Open Question 1 (a)) and the extraction-style subset (Open Question 2 (a)), pulled forward from M7 and built to the M7 specs `ext-flattening-read`, `ext-flattening-hierarchy`, `ext-flattening-names` and `extract-tech-section` | `src/core/{include/hefesto,src}/{extflat,extract/tech}/`, `tests/unit/{extflat,extract/tech}/`, `tests/data/extflat/`, `extflat.md`, `extract.md`; the `extract` raw-section hand-off in `tech/loader.cpp` (shared with M10's TECH subset: whichever lands first adds it, the other extends it) |
 | OASFMT | `oasis-format` | `src/core/{include/hefesto,src}/oasis/codec/`, `tests/unit/oasis/codec/`, `tests/data/oasis/codec/` (hand-assembled byte files and the 419-byte reference file), `oasis.md` (CODEC section) |
 | OASR | `oasis-read` | `src/core/{include/hefesto,src}/oasis/read/`, `tests/unit/oasis/read/`, `tests/data/oasis/read/`, `oasis.md` (READ section); the `OASIS_FILE` read-only rule in `db/property.cpp` and the vendor-stamp hook in `cell/timestamps.cpp` (D17) |
 | OASW | `oasis-write`; `gds-write` "Read-only OASIS vendor cells" (Q-OASIS-35) | `src/core/{include/hefesto,src}/oasis/write/`, `tests/unit/oasis/write/`, `tests/data/oasis/write/`, `oasis.md` (WRITE section); `src/core/src/gds/write/vendor_oasis.cpp` (new) and its call in `gds/write/vendor.cpp`, `gds.md` (its codes) (D17) |
 | OASCMD | `oasis-command` | `src/core/{include/hefesto,src}/oasis/command/`, `tests/unit/oasis/command/`, `oasis.md` (CMD section); the format recognition in `app/` open paths (D15) |
-| SHELL | `oasis-command` "Format recognition on open" on the desktop; progress and cancel of LEF/DEF/OASIS reads and writes (Open Question 5) | `src/shell/desktop/src/` (M6 entries), `src/core/src/gui/prompts.*` (new prompt kinds, if any), `tests/unit/shell/` (M6 tests), `docs/design/m6-ui-conformance.md` |
+| SHELL | `oasis-command` "Format recognition on open" on the desktop; progress and cancel of LEF/DEF/OASIS reads and writes (Open Question 5, decided (a): no menu items) | `src/shell/desktop/src/` (M6 entries), `src/core/src/gui/prompts.*` (new prompt kinds, if any), `tests/unit/shell/` (M6 tests), `docs/design/m6-ui-conformance.md` |
 | GOLDEN | the LEFDEF and OASIS cases, MASK-OS-016, the reference tools in the capture image | `tests/golden/{LEFDEF,OASIS}/`, `tests/golden/MASK/cases/MASK-OS-016/`, `tests/data/extflat/` probes (task 1.6; EXTSUB only reads them), `tools/golden/` (`authoring/{lefdef_cases,oasis_cases,m6_cases,oasgen}.py`, `goldenlib/oasis.py`, the new comparators and masks), `tools/golden/container/Containerfile` and `tools/golden/pins.toml` (KLayout, gdstk; D18) |
-| PERF | Open Question 4 | `bench/{lefdef,oasis}/`, the `lefdef-bench` and `oasis-bench` jobs of `perf.yml`, `docs/design/m6-ui-conformance.md` "Performance" |
+| PERF | none (the D22 benches, Open Question 4, decided (a)) | `bench/{lefdef,oasis}/`, the `lefdef-bench` and `oasis-bench` jobs of `perf.yml`, `docs/design/m6-ui-conformance.md` "Performance" |
 | INTEGRATION | none | everything shared: root and `src/core/CMakeLists.txt`, the `<area>/{sources.cmake,codes.cpp}` assemblers, the shared headers of D4, `mask/session.hpp`, `gds/command/settings.hpp` (the Q-OASIS-90 split, D15), `editor/`, `cmd/`, `diag/`, `src/cli/`, `CMakePresets.json`, `cmake/`, `tests/unit/CMakeLists.txt`, `tests/fuzz/`, `.github/` (other steps), `scripts/` (other files), `README.md`, `CHANGELOG.md`, `docs/roadmap.md`, `docs/building.md` (other sections), `docs/contributing/`, `docs/decisions/`, `docs/diagnostics/codes.md`, `openspec/specs/` (open items), this change's artifacts |
 
 Rules (unchanged from M1–M5 D2):
@@ -144,15 +144,15 @@ Rules (unchanged from M1–M5 D2):
 - Only the integration step commits and pushes, to `origin m6-lef-def-oasis` (or the branch its prompt names).
 
 Dependencies:
-- PDK and GOLDEN's reference-tool step (section 1) land first. LEFDEF-240, the library LEF cases (Open Question 6) and every KLayout cross-check need them.
-- GOLDEN's `.ext` probe (task 1.6) lands with section 1 when Open Question 1 is answered (a), because EXTSUB's read tests and DEFW's net cases use the `.ext` files that Magic writes.
+- PDK and GOLDEN's reference-tool step (section 1) land first. LEFDEF-240, the `LEFDEF-RT-<lib>` cases (Open Question 6 (a)) and every KLayout cross-check need them.
+- GOLDEN's `.ext` probe (task 1.6) lands with section 1 (Open Question 1 (a)), because EXTSUB's read tests and DEFW's net cases use the `.ext` files that Magic writes.
 - The scaffold (section 2) publishes the interfaces of D4 with stubs.
 - LEFTECH, LEFR's tokenizer, OASFMT and EXTSUB start at once.
 - LEFVIA needs LEFTECH's tables.
 - LEFR needs LEFTECH and LEFVIA.
 - DEFR needs LEFR's tokenizer, LEFTECH and LEFVIA. It can start with RECT-only vias.
-- LEFW needs LEFTECH, plus EXTSUB's style for the antenna areas only (Open Question 2).
-- DEFW needs LEFTECH and LEFVIA, plus EXTSUB's netlist for NETS, SPECIALNETS and BLOCKAGES (Open Question 1).
+- LEFW needs LEFTECH, plus EXTSUB's style for the antenna areas and the well set only (Open Question 2 (a)).
+- DEFW needs LEFTECH and LEFVIA, plus EXTSUB's netlist for NETS, SPECIALNETS and the net-based BLOCKAGES (Open Question 1 (a)), and EXTSUB's style for the active types of BLOCKAGES (Open Question 2 (a)).
 - OASR needs OASFMT's decoder. OASW needs OASFMT's encoder.
 - OASCMD's settings split comes first in the scaffold (D15). Its command options follow OASR and OASW.
 - SHELL needs the commands.
@@ -216,9 +216,9 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
   - the DEF-write side, which identifies contact regions and names generated vias (Q-LEFDEF-105, 106, 107, 111, 115).
 - `lef::paint_polygon(CellDef&, TileType, std::span<const Point>, ...)` (`lef/via/polygon.hpp`): `db::decompose_polygon` plus port-label creation, shared by LEF POLYGON (Q-LEFDEF-23), DEF pin polygons (Q-LEFDEF-66 OFF) and DEF route polygons (Q-LEFDEF-70 OFF) (LEFVIA).
 
-**Netlist and extraction style (Open Questions 1 and 2)**
+**Netlist and extraction style (Open Questions 1 and 2, decided (a))**
 - `extflat::Netlist read_flat(const cell::LookupContext&, std::string_view root, const ReadOptions&)` (`extflat/read.hpp`): EFReadFile, then EFFlatBuild with `EF_FLATNODES | EF_NOFLATSUBCKT`, unscaled, with resistance unused. It returns the flat nodes with their hierarchical names (name preference of `ext-flattening-names`), their layer and location, and the `.ext` timestamps (Q-LEFDEF-110 OFF). It also offers `visit_nodes` in EFVisitNodes order (EXTSUB).
-- `extract::StyleView` (`extract/style/style.hpp`): the current extraction style's device classes per type, antenna tie-down types, substrate types and active types, read from the `extract` raw section. Its two queries, `gate_types()` and `diff_types()`, return `std::nullopt` when there is no style (Q-LEFDEF-40: empty) (EXTSUB).
+- `extract::StyleView` (`extract/tech/style_view.hpp`): the current extraction style's device classes per type, antenna tie-down types, substrate types and active types, a view over the tables of the one `extract-tech-section` reader (D10). Its two queries, `gate_types()` and `diff_types()`, return `std::nullopt` when there is no style (Q-LEFDEF-40: empty) (EXTSUB).
 
 **OASIS**
 - `oasis::Decoder` (`oasis/codec/decoder.hpp`): the record reader over a `gds::ByteSource`. It covers:
@@ -293,7 +293,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
   2. build the type sets R, H, W, P, G, D;
   3. find the pin nets (`connect::search_flat` from each port label);
   4. enumerate the pins in port-index order;
-  5. take the antenna areas (G and D from `extract::StyleView`, Open Question 2);
+  5. take the antenna areas (G and D from `extract::StyleView`, Open Question 2 (a));
   6. emit the geometry tile by tile in Magic's tile order (Q-LEFDEF-39), with the contact cut records.
 
   `-hide`, `-pinonly`, `-toplayer` and `-nomaster` are separate passes over the flat copy.
@@ -350,7 +350,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 
 ### D9. DEF write (DEFW, LEFVIA, EXTSUB; `def-write`)
 
-- **Writer.** defWrite.c (3,224 lines) is ported in Magic's section order. The VIAS, COMPONENTS (`UseIndex::enumerate_all` order), PINS, NONDEFAULTRULES, DIEAREA and the non-net BLOCKAGES come from the layout and the LEF tables. NETS, SPECIALNETS and the net-based BLOCKAGES come from `extflat::read_flat` (Open Question 1). The net geometry is found by `connect::search_flat` from each node's location, in Magic's maximal-horizontal-strip tile order (Q-LEFDEF-108).
+- **Writer.** defWrite.c (3,224 lines) is ported in Magic's section order. The VIAS, COMPONENTS (`UseIndex::enumerate_all` order), PINS, NONDEFAULTRULES, DIEAREA and the non-net BLOCKAGES come from the layout and the LEF tables. NETS, SPECIALNETS and the net-based BLOCKAGES come from `extflat::read_flat` (Open Question 1 (a)). The net geometry is found by `connect::search_flat` from each node's location, in Magic's maximal-horizontal-strip tile order (Q-LEFDEF-108).
 - **Files.** NETS and SPECIALNETS are buffered in memory instead of Magic's `_part.def` file, with the same bytes (Q-LEFDEF-90, platform). The final file is written to a temporary file and renamed, as the M5 writers do.
 - **Compat branch points:**
 
@@ -369,12 +369,15 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
   | Q-LEFDEF-110 | no staleness check | `.ext` timestamp warning |
   | Q-LEFDEF-111 | contact chain bounding box | exact rectangles |
   | Q-LEFDEF-112 | duplicates for connected seeds | each tile once per net |
+  | Q-LEFDEF-114 | Magic's swapped text of `No LEF layer corresponding to layer %s of pin "%s".` (label text, then layer) | layer name, then pin name |
 
-  Fixes: Q-LEFDEF-100, 101, 104, 106, 113, 115. Replicated: Q-LEFDEF-97 (line breaks). Platform: Q-LEFDEF-102 (special-net names from the project setting, plus the trailing-`!` rule). Pending: Q-LEFDEF-114 (swapped arguments of the unmapped pin layer message; see Resolved Questions). DEFW writes Magic's text until it is decided.
+  Fixes: Q-LEFDEF-100, 101, 104, 106, 113, 115. Replicated: Q-LEFDEF-97 (line breaks). Platform: Q-LEFDEF-102 (special-net names from the project setting, plus the trailing-`!` rule).
 
 ### D10. The `.ext` netlist and extraction-style subsets (EXTSUB; Open Questions 1 and 2)
 
-If Open Question 1 is answered (a), EXTSUB ports the part of extflat that `def write` calls:
+Open Questions 1 and 2 were decided (a) on 2026-11-18, so both subsets are M6 work, owned by EXTSUB.
+
+EXTSUB ports the part of extflat that `def write` calls:
 - EFReadFile with the `.ext` grammar of `extract-file-format` (read side only);
 - EFFlatBuild with `EF_FLATNODES | EF_NOFLATSUBCKT`;
 - EFVisitNodes;
@@ -384,13 +387,13 @@ That is part of five files: EFread.c, EFbuild.c (nodes, connections, merges and 
 
 It is built to the M7 specs, in M7's area layout, so M7 extends it rather than replacing it. Its tests carry `[cap:ext-flattening-read]` and the other M7 tags. Those requirements stay M7's in `check_requirement_coverage.py --milestone M7`, and the M6 tasks list which of them EXTSUB covers.
 
-If Open Question 2 is answered (a), EXTSUB also reads, from the `extract` raw section, what `StyleView` needs:
+EXTSUB also writes the parts of the `extract-tech-section` reader that `StyleView` needs, in that capability's home `extract/tech/` and with its requirement tags:
 - style selection;
 - `device` lines (class and types only);
 - `antenna` tie-down types (`exts_antennaTieTypes`);
 - `substrate` and the active types.
 
-Nothing else is parsed: no capacitance, resistance or device parameters. M7's `extract-tech-section` work replaces the reader behind the same view.
+Every other keyword is accepted and skipped silently, as M10's subset does (m10-3d-view design D5): no capacitance, resistance or device parameters. There is one extract reader. M10's TECH subset (style, scale, units, plane order, heights) and this one share its files and style selection: whichever lands first writes the style framework, and the other adds its keywords. M7 replaces the remaining skips with its parsers in the same files, and `StyleView` keeps its interface. Those requirements stay M7's in `check_requirement_coverage.py --milestone M7`, as for the netlist subset.
 
 ### D11. OASIS codec (OASFMT; `oasis-format`)
 
@@ -468,12 +471,12 @@ Nothing else is parsed: no capacitance, resistance or device parameters. M7's `e
 
 ### D16. Desktop (SHELL)
 
-The scope is Open Question 5. Recommended (a):
+The scope is Open Question 5, decided (a) on 2026-11-18:
 - format recognition on open, through the existing File > Open picker and drag and drop;
 - LEF/DEF/OASIS reads and writes with the M5 progress and cancel hosts (`MaskSession::read_host`, `write_host`, `emit_host`);
 - no new menu item and no new board: Magic's wrapper has no LEF, DEF or OASIS item (wrapper.tcl:1235-1239), and the console reaches all three commands.
 
-If the user chooses menu items instead, DESIGN draws them first, following the M2–M5 rule, and `docs/design/m6-ui-conformance.md` records them.
+No menu item is added, so DESIGN draws no board for M6. `docs/design/m6-ui-conformance.md` records the open path and the progress and cancel hosts.
 
 ### D17. Ownership of the M1–M5 changes M6 makes
 
@@ -524,10 +527,11 @@ If the user chooses menu items instead, DESIGN draws them first, following the M
 - **Deviations.** These need an approved decision:
   - the both-modes fixes that change Magic-comparable output: Q-LEFDEF-1 (DEF-read default width), Q-LEFDEF-73 (undefined reference, failed RECT parse) and Q-LEFDEF-83 (renamed duplicate instance);
   - the fixes whose output has no Magic counterpart: none, because OASIS references are not Magic's;
-  - Q-LEFDEF-114, if it is decided fix.
+  - Q-LEFDEF-114 needs none: it is compat, and the capture's magic-compat ON prints Magic's text (LEFDEF-316);
+  - OASIS-012, OASIS-030 and OASIS-061: an approved deviation under Q-OASIS-2 (amended 2026-11-18) naming the missing commercial-tool input (below).
 
   The capture runs with magic-compat ON, and the OFF behaviours are unit-tested.
-- **Commercial OASIS files.** OASIS-012, OASIS-030 and OASIS-061 are release gates (Q-OASIS-2 (a)). Their commercial inputs are Open Question 3.
+- **Commercial OASIS files (Open Question 3, decided (b)).** The user named no source of commercial OASIS files, so OASIS-012, OASIS-030 and OASIS-061 are authored and captured with their gdstk- and KLayout-written inputs and readers only. Each carries an approved deviation naming the missing commercial writer's or reader's input, under Q-OASIS-2 as amended 2026-11-18. The cases still pass, so the deviation is not a `tests/golden/deviations.toml` entry (that file lists cases whose outputs differ): it is recorded in each case's notes and in its row of `tests/golden/OASIS/CASES.md`, and `m6_cases.py --exit-check` lists it with its decision. Q-OASIS-2's judgement item is reopened with option (b), buy SEMI P39. If commercial files or P39 arrive later, GOLDEN adds them without a plan change.
 
 ### D20. The 419-byte OASIS reference file (OASFMT, GOLDEN; exit criterion)
 
@@ -553,18 +557,18 @@ The run ID and tool versions are recorded in tasks.md and in OASIS-013's case no
 | `fuzz_oasis_reader` | raw bytes; a flag byte selects plain or gzip-wrapped | the decoder, CBLOCK, validation, the full read into a scratch session, the content hash, the read-only path, then an in-memory `oasis write` and `gds write` |
 | `fuzz_ext_reader` | `.ext` text (Open Question 1 (a)) | the read and flatten subset |
 
-- Seeds come from the case inputs, `oasgen.py` output, the PDK LEF files (Open Question 6) and the 419-byte file.
+- Seeds come from the case inputs, `oasgen.py` output, the PDK LEF files (Open Question 6 (a)) and the 419-byte file.
 - Each target has resource caps so that timeouts are real hangs: token and line lengths, DEF declared counts (never pre-allocated from the file), generated-via ROWCOL, OASIS repetition counts, point counts, `circlepoints`, the name-table size, CBLOCK inflation and placement depth. Caps that change behaviour relative to Magic or the spec become proposed decisions, as M5's Q-MASK-416 did (task 17.3).
 - The 60 s CI run and the seed replay on every leg follow M3–M5.
 - **Determinism.** The determinism job gains `--require-area LEFDEF --require-area OASIS` once those expected outputs exist. Pinned-value tests run on every leg for these float paths: LEF/DEF float32 printing, the LEF and DEF unit conversion, the CIRCLE vertices for r = 1000 and N = 64 (Q-OASIS-31 scenario), and the OASIS real types.
 
 ### D22. Performance (PERF)
 
-`hefesto-performance` sets no target for LEF, DEF or OASIS, so M6 adds no requirement. Open Question 4 proposes:
+`hefesto-performance` sets no target for LEF, DEF or OASIS, so M6 adds no requirement. Open Question 4 was decided (a) on 2026-11-18, with no spec change:
 - `lefdef-bench`: `lef read` of `sky130_fd_sc_hd.lef`, `def read` of a placed-and-routed sky130 block, and `lef writeall` of the standard-cell library;
 - `oasis-bench`: `oasis read` and `oasis write` of the M5 `gds-bench` workloads, against Hefesto's own `gds read`/`gds write` of the same layouts.
 
-Both measure callgrind instructions on the x86_64 runner, as `gds-bench` does. With option (a), each workload is gated at its recorded baseline + 2 %, and the comparison with Magic (LEF/DEF) or with the GDS path (OASIS) is reported for information. `gds-bench` and `drc-profile` must still pass, because D15 touches the GDS settings and D17 the stamps.
+Both measure callgrind instructions on the x86_64 runner, as `gds-bench` does. Each workload is gated at its recorded baseline + 2 %, and the comparison with Magic (LEF/DEF) or with the GDS path (OASIS) is reported for information. `gds-bench` and `drc-profile` must still pass, because D15 touches the GDS settings and D17 the stamps.
 
 ### D23. Security review (INTEGRATION; `docs/contributing/security.md`)
 
@@ -586,7 +590,7 @@ Each finding is fixed with a regression test or recorded as an accepted limit. A
 | Item (source) | M6 home |
 |---|---|
 | MASK-OS-016 (contact cut size through LEF write; m5 task 13.4) | LEFW + GOLDEN |
-| MASK-GW-032/034 and MASK-GR-009, built from `.mag` abstract cells in M5: one case each with a real `lef read` abstract | GOLDEN (optional, Open Question 6) |
+| MASK-GW-032/034 and MASK-GR-009, built from `.mag` abstract cells in M5: one case each with a real `lef read` abstract | GOLDEN (optional, with the Open Question 6 (a) LEF sets) |
 | `lef read`/`def read` from the command line and PDK startup (`app/startup.cpp`, `script/pdk/startup.cpp`) | LEFR, DEFR (work once the commands exist; GOLDEN adds a startup case) |
 | UI-G-005 deviation `def, lef` | GOLDEN |
 | `oasis-read`/`oasis-write` decisions shared with M5 (Q-MASK-204, 207, 209, 211, 216, 114) | OASR, OASW |
@@ -621,7 +625,7 @@ The headers are the contract, and each one is documented. The key types and func
 ### DEFW: `hefesto/def/write/`
 - `write(EditorState&, db::CellDef&, const platform::Path&, const DefWriteOptions&) -> CommandResult`
 
-### EXTSUB: `hefesto/extflat/`, `hefesto/extract/style/`
+### EXTSUB: `hefesto/extflat/`, `hefesto/extract/tech/`
 - `read_flat(...) -> diag::Outcome<Netlist>`, `Netlist::visit_nodes(visitor)`
 - `StyleView::from_section(...)`, `gate_types()`, `diff_types()`, `active_types()`, `substrate_types()`
 
@@ -643,13 +647,13 @@ The headers are the contract, and each one is documented. The key types and func
 
 ## Risks / Trade-offs
 
-- **R1. The M7 dependency of DEF write and of the antenna areas.** Without a netlist reader, `def write` has no nets, and without an extraction style, LEF antenna lines are missing. → Open Questions 1 and 2. EXTSUB is built to the M7 specs in M7's layout, and the `.ext` inputs come from Magic, so no Hefesto extraction is assumed.
+- **R1. The M7 dependency of DEF write and of the antenna areas.** Without a netlist reader, `def write` has no nets, and without an extraction style, LEF antenna lines are missing. → Open Questions 1 and 2, decided (a). EXTSUB is built to the M7 specs in M7's layout, and the `.ext` inputs come from Magic, so no Hefesto extraction is assumed.
 - **R2. Float32 formatting of LEF/DEF numbers.** `-0.000`, half-grid rounding and the `%.10g` outputs are where byte identity breaks first. → Port `lefPrint` literally, add pinned-value tests per leg, and use the LEFDEF-102/105 cases.
 - **R3. Hash-order dependence.** LEF write PROPERTYDEFINITIONS, the layer record after a via, VIAS and BLOCKAGES order (Q-LEFDEF-30, 82, 92, 116, LEFDEF-334). → `util::MagicHashTable`, already validated against Magic's hash in M1–M5. LEFDEF-334 forces a table rebuild.
-- **R4. OASIS spec fidelity without P39.** The codec rests on KLayout and gdstk parity (Q-OASIS-2 (a)). → The KLayout and gdstk cross-checks, the strict-mode round trips, and the commercial-file goldens as release gates (Open Question 3).
+- **R4. OASIS spec fidelity without P39.** The codec rests on KLayout and gdstk parity (Q-OASIS-2 (a)). → The KLayout and gdstk cross-checks, the strict-mode round trips and the gdstk and KLayout inputs of OASIS-012, 030 and 061. No commercial files were available (Open Question 3, decided (b)): those cases carry an approved deviation, and buying P39 is reopened (Q-OASIS-2 (b)). The residual risk, a detail where KLayout and gdstk both differ from P39, is accepted for M6.
 - **R5. GDS equivalence drift.** OASIS read and write must track gds-read and gds-write exactly. → Reuse `ReadEngine`, `prepare_write`, the naming, labels and merge code. The `stream-geometry` comparator runs against Magic's GDS. OASIS-064 is a round trip.
 - **R6. Settings split regression (D15).** → Behaviour-preserving refactor first, and the whole M5 suite unchanged before OASCMD starts.
-- **R7. Port size.** About 13,000 lines of Magic C in `lef/`, plus part of extflat's 6,693 lines in EFread/EFbuild/EFflat/EFname/EFvisit (Open Question 1), and a new OASIS codec of comparable size. → Shared tokenizer, tables and generators, a dispatch table per section and per record, one helper per compat branch, flagged exceptions of at most 25.
+- **R7. Port size.** About 13,000 lines of Magic C in `lef/`, plus part of extflat's 6,693 lines in EFread/EFbuild/EFflat/EFname/EFvisit (Open Question 1 (a)), and a new OASIS codec of comparable size. → Shared tokenizer, tables and generators, a dispatch table per section and per record, one helper per compat branch, flagged exceptions of at most 25.
 - **R8. Malformed input.** LEF, DEF, OASIS and `.ext` are attacker-controlled. → D21 caps, D23 review, fuzz targets.
 - **R9. Reference-tool drift.** A KLayout or gdstk upgrade can change a verdict. → Exact pins with digests (D18), and versions recorded with each `oasis-validate` run.
 
@@ -660,35 +664,48 @@ User data does not change: `.mag` files are read and written as before.
 - With `gds readonly`, `flatten` and the other shared read settings, `oasis read` now follows the `gds` values (Q-OASIS-90 (a)). CHANGELOG records it, and `oasis-command` already states it.
 - `gds write` of a hierarchy holding read-only OASIS cells transcodes them (Q-OASIS-35 (a)). Before M6 such cells could not exist.
 - `CORE-NOTIMPL-006` exists only during M6.
-- The CI reference data gains the LEF cache keys (Open Question 6), and the capture image gains KLayout and gdstk (D18).
+- The CI reference data gains the LEF cache keys (Open Question 6 (a)), and the capture image gains KLayout and gdstk (D18).
 
 ## Open Questions
 
-These are scope and product decisions. Each is **proposed and not decided**. Options are listed with the recommended one first.
+These are scope and product decisions. **All six were decided by the user on 2026-11-18, each as recommended**: option (a) for 1, 2, 4, 5 and 6, and for 3 the fallback (b), because the user named no source of commercial OASIS files. Options are listed with the recommended one first. The decisions are in `docs/decisions/m6-decision-table.md`, "Planning questions raised by the M6 plan".
 
 1. **The nets of `def write` need the `.ext` netlist, which is M7.** `def-write` "Preconditions and diagnostics" reads `<cell>.ext` with EFReadFile/EFFlatBuild. NETS, SPECIALNETS, net classification, naming, connections, geometry discovery, wire segments, route assembly and the net-based BLOCKAGES depend on it: about 9 of the 25 requirements, and 17 golden rows (LEFDEF-317..328 and 330..334).
    - (a) *Recommended:* pull forward the read-and-flatten subset of `ext-flattening-read`, `-hierarchy` and `-names` (D10, EXTSUB), built to the M7 specs in M7's area layout. The cases take Magic-written `.ext` files as inputs (D19, task 1.6). M7 extends this code.
    - (b) M6 writes DEF without nets (the "no .ext" path). The net requirements and cases are deferred to M7 with `deferred = "M7"` deviations, and the M6 exit criterion "the LEFDEF golden cases pass" is amended to exclude them.
    - (c) Move `def-write` as a whole to M7.
+
+   **Decided 2026-11-18: (a).** EXTSUB builds the subset (D10, tasks section 9), GOLDEN's task 1.6 captures Magic's `.ext` files, and the `def-write` spec and the roadmap's M6 and M7 entries name the pulled-forward subset.
 2. **LEF antenna areas and DEF blockage filtering read the extraction style, which is M7.** The gate set G, the diffusion set D and the well set W of `lef-write`, and the active types of `def-write` BLOCKAGES (defWrite.c:816, 2538), come from ExtCurStyle. With no style, Q-LEFDEF-40 makes G and D empty, so PDK LEF would lack ANTENNAGATEAREA and ANTENNADIFFAREA.
    - (a) *Recommended:* pull forward the device-class, antenna tie-down, substrate and active-type parts of `extract-tech-section` (D10, EXTSUB), behind `extract::StyleView`, which M7 re-sources.
    - (b) Treat the style as absent until M7. LEFDEF-118/119 and every PDK LEF write case get `deferred = "M7"`, and the exit criterion is amended.
+
+   **Decided 2026-11-18: (a).** EXTSUB writes these parts of the one extract reader in `extract/tech/` (D10, task 9.3); the `lef-write` and `def-write` specs and the roadmap name them.
 3. **Commercial OASIS files for the release gates OASIS-012, OASIS-030 and OASIS-061** (Q-OASIS-2 (a)). The decision table says obtaining them is part of M6. Nothing in the workspace has them, and no PDK in the pinned releases ships OASIS from a commercial writer (to be confirmed in task 1.2).
    - (a) *Recommended:* the user supplies, or names a source for, two or three small OASIS files written by a commercial tool (validation signature, CTRAPEZOIDs, strict mode). They are committed if their licence allows it, or fetched with a digest as a cached data set otherwise.
    - (b) If none can be obtained before the M6 exit, the three cases carry an approved deviation naming the missing input, and Q-OASIS-2 is reopened (option (b): buy P39).
+
+   **Decided 2026-11-18: (b).** The user named no source. OASIS-012, 030 and 061 carry the approved deviation (D19, task 15.6), Q-OASIS-2's judgement item is reopened with option (b) (`docs/decisions/open-questions/OASIS.md`), and the `oasis-format` spec and the roadmap's M6 exit criteria say so.
 4. **Performance gate for LEF/DEF/OASIS.** `hefesto-performance` names none.
    - (a) *Recommended:* the D22 benches, each workload gated at its recorded callgrind baseline + 2 %. The comparison with Magic (LEF/DEF) or with Hefesto's GDS path (OASIS) is informational. No spec change.
    - (b) Record only, no gate.
    - (c) Add a spec target, "no slower than Magic" for LEF/DEF and "no slower than the GDS path" for OASIS, as a hard gate (amends `hefesto-performance`).
+
+   **Decided 2026-11-18: (a).** No spec change (D22, tasks section 16).
 5. **Desktop scope for M6.**
    - (a) *Recommended:* format recognition on open (required by `oasis-command`) through the existing picker and drag and drop, and progress and cancel for the new reads and writes (D16). No new menu items or boards. LEF/DEF/OASIS are reachable from the console.
    - (b) Also add "Read LEF", "Read DEF", "Read OASIS" and "Write OASIS" items next to the GDS ones (native, not in Magic's wrapper). DESIGN draws them first.
+
+   **Decided 2026-11-18: (a).** No new menu items (D16, tasks section 14).
 6. **Real-PDK LEF/DEF coverage.** The CASES.md rows are synthetic, except LEFDEF-240.
    - (a) *Recommended:* add LEF data sets (`sky130-lef`, `gf180mcu-lef`, `ihp-lef`: the tech LEF and the standard-cell LEF of each pinned release, verified by size and digest in task 1.2). Add one `LEFDEF-RT-<lib>` case per standard-cell library: `lef read` of the tech and cell LEF, then `lef writeall`, compared with Magic on every CI leg. Add LEFDEF-240 on a small OpenROAD-style sky130 DEF.
    - (b) Only the CASES.md rows, with LEFDEF-240 on a hand-written DEF.
+
+   **Decided 2026-11-18: (a).** PDK adds the LEF sets (tasks 1.2, 1.4), GOLDEN the `LEFDEF-RT-<lib>` cases and LEFDEF-240 (task 15.5).
 
 ## Resolved Questions
 
 - **The 99 open questions that blocked M6** were approved as drafted on 2026-11-13, with the three judgement items decided as option (a) (Q-OASIS-2, Q-OASIS-35, Q-OASIS-90). `docs/decisions/m6-decision-table.md` holds the table, the counts, the evidence corrections and the spec changes. The specs were aligned in "Align the M6 specs with the approved decisions", and `check_milestone_readiness.py --milestone M6` reports ready. This design cites each decision where it shapes the code (D5–D13, D15).
 - **36 LEFDEF entries resolved earlier** (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-4, D-5 and D-14) are cited in D5–D9. The decision table lists them in its section "Entries resolved before the M6 round".
-- **Pending: Q-LEFDEF-114** (the arguments of `No LEF layer corresponding to layer %s of pin "%s".` are swapped, defWrite.c:2432-2435). It has no `Resolution:` line. No spec cites it, so readiness is unaffected, but LEFDEF-316 captures that message. The decision table records it as pending, with the recommendation for the user. DEFW writes Magic's text until it is decided.
+- **Q-LEFDEF-114** (the arguments of `No LEF layer corresponding to layer %s of pin "%s".` are swapped, defWrite.c:2432-2435) was approved by the user on 2026-11-18 as compat: magic-compat ON prints Magic's swapped text, so LEFDEF-316 needs no deviation, and OFF prints the corrected text (D9). Every one of the 136 LEFDEF and OASIS entries now has a `Resolution:` line.
+- **Open Questions 1–6** were decided by the user on 2026-11-18 as recommended (see "Open Questions"). Q-OASIS-2's judgement item (buy SEMI P39) is reopened by Open Question 3 (b); its signature `Resolution:` stays, so readiness is unaffected.
