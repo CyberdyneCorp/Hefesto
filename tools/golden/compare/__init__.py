@@ -31,6 +31,12 @@ output's masks. The outputs match when the canonical forms are identical.
     (every gzip member) *before* the masks, then compared byte for byte. The gzip
     header and deflate choices are informative (Q-MASK-223, m5-mask-gds-cif D12).
     Data that is not gzip is compared as ``<not gzip>`` followed by its bytes.
+``spice-canonical``
+    A SPICE netlist compared electrically, never by bytes (m8-schematic design D10, Q-SCHEM-15, the flat
+    netlist of SCHEM-NL-21): both sides are parsed into devices with subcircuits expanded, and they match
+    when a bijection of the non-global nodes maps one device set onto the other (same names compared
+    case-insensitively, kinds, models and parameter values). A pairwise comparator: the verdict comes
+    from ``spice_canonical.compare``, not from equal canonical bytes. See spice_canonical.py.
 
 A *display view* only renders a difference readably; pass or fail is still decided by
 the comparator. An output selects one with ``display = "<view>"`` in case.toml:
@@ -52,7 +58,7 @@ from typing import Callable
 
 from goldenlib.gds import dump as gds_dump
 
-from . import drc_console, ext_cap, mag_backup, magic_console, polygon_set
+from . import drc_console, ext_cap, mag_backup, magic_console, polygon_set, spice_canonical
 from .masks import apply_masks
 
 
@@ -72,6 +78,13 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "drc-console": drc_console.canonicalize,
     "polygon-set": polygon_set.canonicalize,
     "gzip": lambda data: data,
+    "spice-canonical": spice_canonical.canonical_text,
+}
+
+# Comparators whose verdict needs both sides at once (a node bijection); they return the first difference.
+PAIRWISE: dict[str, Callable[[bytes, bytes], str | None]] = {
+    "spice-canonical": lambda exp, act: spice_canonical.compare(exp.decode("utf-8", errors="replace"),
+                                                                act.decode("utf-8", errors="replace")),
 }
 
 # Applied before the masks (the masks address fields of the decompressed stream).
@@ -111,6 +124,9 @@ def compare_bytes(expected: bytes, actual: bytes, comparator: str, masks=(), dis
         raise ValueError(f"unknown display view '{display}'")
     exp_masked = normalized(expected, comparator, masks)
     act_masked = normalized(actual, comparator, masks)
+    if comparator in PAIRWISE:
+        difference = PAIRWISE[comparator](exp_masked, act_masked)
+        return Result(True) if difference is None else Result(False, difference)
     exp, act = canonical(exp_masked), canonical(act_masked)
     if exp == act:
         return Result(True)

@@ -26,6 +26,7 @@ from pathlib import Path
 
 from . import magic_hash_model
 from .case import Case, run_timeout, substitute_env
+from .external import ExternalUnavailable, xschem_set_tree
 from .pins import tool_pin
 
 ENVIRONMENT = {"TZ": "UTC", "LC_ALL": "C"}
@@ -55,6 +56,12 @@ XVFB_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24"]
 # "Fontconfig error: No writable cache directories", which Hefesto has no reason to print.
 DISPLAY_ENVIRONMENT = {"XDG_CACHE_HOME": "/tmp/.cache"}
 CONTAINER_WORK = "/work"
+# SCHEM captures (m8-schematic design D16): the xschem data sets a case names are mounted read-only as
+# /pdk/<variant>, the layout of an open_pdks install, so each PDK's xschemrc finds its tree through PDK_ROOT.
+CONTAINER_PDK_ROOT = "/pdk"
+# xschem keeps its user configuration under $HOME/.xschem, and the container user has no writable home;
+# the gf180mcu and IHP xschemrc files read PWD.
+XSCHEM_ENVIRONMENT = {"HOME": "/tmp", "PWD": CONTAINER_WORK}
 # Magic's CAD_ROOT in the image: its install prefix (Containerfile PREFIX=/opt/ref) + /lib.
 CONTAINER_CAD_ROOT = "/opt/ref/lib"
 
@@ -116,20 +123,43 @@ class ContainerRunner:
         info = json.loads(proc.stdout)
         return {"image": self.image, "image_id": info.get("Id"), "image_repo_digests": info.get("RepoDigests", [])}
 
+    @staticmethod
+    def xschem_mounts(case: Case) -> tuple[list[str], dict[str, str]]:
+        """The read-only ``-v`` flags and environment of a case's ``[reference] xschem_sets``: each set's
+        PDK directory at ``/pdk/<variant>``, ``PDK_ROOT=/pdk`` and, for a single set, ``PDK=<variant>``."""
+        if case.tool != "xschem":
+            return [], {}
+        flags, variants = [], []
+        for name in case.reference.get("xschem_sets", []):
+            try:
+                tree, variant = xschem_set_tree(name)
+            except ExternalUnavailable as error:
+                raise RunnerError(f"{case.id}: {error}") from error
+            flags += ["-v", f"{tree}:{CONTAINER_PDK_ROOT}/{variant}:ro"]
+            variants.append(variant)
+        env = dict(XSCHEM_ENVIRONMENT)
+        if variants:
+            env["PDK_ROOT"] = CONTAINER_PDK_ROOT
+        if len(variants) == 1:
+            env["PDK"] = variants[0]
+        return flags, env
+
     def argv(self, case: Case, work: Path) -> list[str]:
         """``docker run`` command line. The tool runs as the host user that owns the work
         directory: as root, Magic marks every input cell not owned by root and not group- or
         world-writable as read-only (database/DBio.c file_is_not_writeable), which the
         replay (run as the owner) never sees."""
         display_env = DISPLAY_ENVIRONMENT if case.reference.get("display") else {}
-        env = {**ENVIRONMENT, **display_env, **substitute_env(case.env, CONTAINER_WORK)}
+        mounts, xschem_env = self.xschem_mounts(case)
+        env = {**ENVIRONMENT, **display_env, **xschem_env, **substitute_env(case.env, CONTAINER_WORK)}
         env_flags = [flag for key, value in env.items() for flag in ("-e", f"{key}={value}")]
         user = ["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []
         # xvfb-run waits for Xvfb's SIGUSR1 and reaps it: as PID 1 of the container it never
         # returns (measured: the GUI cases hung until killed), so display cases get an init.
         init = ["--init"] if case.reference.get("display") else []
         return [self.engine, "run", "--rm", "-i", *init, "--network=none", *user, *env_flags,
-                "-v", f"{work}:{CONTAINER_WORK}", "-w", CONTAINER_WORK, self.image, *default_argv(case)]
+                "-v", f"{work}:{CONTAINER_WORK}", *mounts, "-w", CONTAINER_WORK, self.image,
+                *default_argv(case)]
 
     def run(self, case: Case, work: Path) -> RunResult:
         facts = self._image_facts()

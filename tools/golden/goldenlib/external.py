@@ -69,6 +69,7 @@ PDK_SETS = (
     "sky130", "gf180mcu", "ihp",
     "sky130-gds", "gf180mcu-gds", "ihp-gds",
     "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc",
+    "sky130-xschem", "gf180mcu-xschem", "ihp-xschem",
 )
 
 
@@ -132,6 +133,17 @@ def pdk_set_root(pdk_set: str) -> Path:
     The set root is ``<pdk-root>`` for the tech/.mag sets and ``<pdk-root>/<pdk_dir>`` for the GDS sets.
     """
     return _fetch_pdk_module().DATA_SETS[pdk_set].version_dir(pdk_root())
+
+
+def xschem_set_tree(pdk_set: str) -> tuple[Path, str]:
+    """``(<version dir>/<variant>, <variant>)`` of an xschem data set (m8-schematic design D17), e.g. the
+    local ``.../sky130/versions/<pin>/sky130A`` and ``sky130A``: the PDK directory a SCHEM capture mounts
+    read-only as ``/pdk/<variant>`` (design D16). ExternalUnavailable when the set is not installed."""
+    data_set = _fetch_pdk_module().DATA_SETS[pdk_set]
+    tree = data_set.version_dir(pdk_root()) / data_set.variant
+    if not (tree / "libs.tech" / "xschem").is_dir():
+        raise ExternalUnavailable(f"{tree}/libs.tech/xschem not found (run scripts/fetch_pdk.py {pdk_set})")
+    return tree, data_set.variant
 
 
 def _resolve_pdk(ext: External) -> Path:

@@ -37,7 +37,7 @@ import tempfile
 from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes
-from goldenlib.case import STREAM_SOURCES, Case, CaseError, load_case
+from goldenlib.case import RUN_SOURCES, Case, CaseError, load_case, run_output
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
@@ -56,8 +56,8 @@ def captured_at() -> str:
 def collect_outputs(case: Case, work: Path, result: RunResult) -> dict[str, bytes]:
     outputs = {}
     for out in case.outputs:
-        if out.source in STREAM_SOURCES:
-            outputs[out.name] = getattr(result, out.source)
+        if out.source in RUN_SOURCES:
+            outputs[out.name] = run_output(out.source, result.stdout, result.stderr, result.returncode)
             continue
         data = read_output(work, out.source)
         if data is None:

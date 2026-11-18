@@ -54,9 +54,10 @@ from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes, normalized
 from goldenlib import deviations
-from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, run_timeout, substitute_env
+from goldenlib.case import (RUN_SOURCES, Case, CaseError, discover, load_case, run_output, run_timeout,
+                            substitute_env)
 from goldenlib.derived import read_output
-from goldenlib.external import ExternalUnavailable, cad_root, stage
+from goldenlib.external import ExternalUnavailable, cad_root, stage, xschem_set_tree
 from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -96,11 +97,30 @@ def hefesto_argv(cli: Path, case: Case, work: Path, args: list[str] | None = Non
     return [str(cli), *(arg.format(**subst) for arg in args)]
 
 
+def stage_xschem_sets(case: Case, work: Path) -> dict[str, str]:
+    """The replay side of ``[reference] xschem_sets`` (m8-schematic design D16): each set's PDK directory
+    linked as ``<work>/pdk/<variant>`` (the capture mounts it read-only as ``/pdk/<variant>``), and the
+    environment ``PDK_ROOT=<work>/pdk`` (plus ``PDK`` for a single set). ExternalUnavailable when a set
+    is not installed."""
+    variants = []
+    for name in case.reference.get("xschem_sets", []):
+        tree, variant = xschem_set_tree(name)
+        link = work / "pdk" / variant
+        link.parent.mkdir(exist_ok=True)
+        if not link.is_symlink():
+            link.symlink_to(tree, target_is_directory=True)
+        variants.append(variant)
+    if not variants:
+        return {}
+    return {"PDK_ROOT": str(work / "pdk"), **({"PDK": variants[0]} if len(variants) == 1 else {})}
+
+
 def run_hefesto(cli: Path, case: Case, work: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
     """hefesto-cli in ``work`` (its input/ already staged) with the case's arguments, or ``args``
     (gds_rt_report.py's second pass); the case's ``[hefesto] timeout_s`` bounds the run."""
     # Hermetic: Magic's system files come only from the case's magic-sys inputs.
-    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **substitute_env(case.env, str(work))}
+    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **stage_xschem_sets(case, work),
+           **substitute_env(case.env, str(work))}
     stdin = (work / case.hefesto["stdin"]).read_bytes() if "stdin" in case.hefesto else b""
     return subprocess.run(hefesto_argv(cli, case, work, args), capture_output=True, cwd=work, env=env,
                           timeout=run_timeout(case.hefesto, TIMEOUT_S), check=False, input=stdin)
@@ -113,7 +133,7 @@ def execute(cli: Path, case: Case, work: Path) -> Execution:
     proc = run_hefesto(cli, case, work)
     files = {}
     for out in case.outputs:
-        if out.source not in STREAM_SOURCES:
+        if out.source not in RUN_SOURCES:
             data = read_output(work, out.source)
             if data is not None:
                 files[out.source] = with_container_work(data, work)
@@ -137,8 +157,8 @@ def with_container_work(data: bytes, work: Path) -> bytes:
 
 
 def actual_output(execution: Execution, source: str) -> bytes | None:
-    if source in STREAM_SOURCES:
-        return getattr(execution, source)
+    if source in RUN_SOURCES:
+        return run_output(source, execution.stdout, execution.stderr, execution.returncode)
     return execution.files.get(source)
 
 
