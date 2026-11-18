@@ -44,7 +44,7 @@ constexpr std::array<std::string_view, 10> kKeywords = {"obstruction", "layer", 
 
 constexpr db::Coord kDefaultWidth = 3;    // DEFAULT_WIDTH (lefInt.h)
 constexpr db::Coord kDefaultSpacing = 4;  // DEFAULT_SPACING
-constexpr db::Rect kNullArea{0, 0, -1, -1};      // GeoNullRect
+constexpr db::Rect kNullArea{0, 0, 0, 0};        // GeoNullRect (utils/geometry.c)
 constexpr db::Rect kSentinelArea{-1, -1, -1, -1};  // "to be filled"
 
 // Adds the `lef` section to every diagnostic located on one of its lines,

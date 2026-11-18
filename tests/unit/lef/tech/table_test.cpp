@@ -51,6 +51,17 @@ TEST_CASE("negative contact coordinates floor", SCALE_REQ) {
   CHECK(r.contact_area == db::Rect{-2, -2, 1, 1});
 }
 
+TEST_CASE("regression: a cut-flavor area is GeoNullRect and scales to itself", SCALE_REQ) {
+  // It was (0, 0, -1, -1), which scaled by 2 became (0, 0, -2, -2); Magic's
+  // GeoNullRect is (0, 0, 0, 0) (utils/geometry.c), so it stays put.
+  auto b = build("cut m2c via1");
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});
+  b.table.scale(2, 1);
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});
+  b.table.scale(1, 3);
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});
+}
+
 TEST_CASE("a record shared by aliases is scaled once", SCALE_REQ) {
   auto b = build("routing m5 metal5 M5 MET5 m5");
   b.table.scale(2, 1);
@@ -94,7 +105,7 @@ TEST_CASE("the ON fill replaces only exact sentinels, the spacing into the width
   CHECK(b.table.find("metal5")->width == 3);
   CHECK(b.table.find("metal5")->spacing == 4);
   CHECK(b.table.find("cont1")->contact_area == db::Rect{-pc, -pc, pc, pc});
-  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, -1, -1});
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});
 }
 
 TEST_CASE("the OFF fill gives every unset value its own default", FILL_REQ) {
@@ -103,7 +114,7 @@ TEST_CASE("the OFF fill gives every unset value its own default", FILL_REQ) {
   CHECK(b.table.find("metal1")->width == 3);
   CHECK(b.table.find("metal1")->spacing == 4);
   CHECK(b.table.find("cont1")->contact_area == db::Rect{-2, -2, 2, 2});
-  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, -1, -1});
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});
 }
 
 TEST_CASE("regression: an obstruction-only record is filled with 0", FILL_REQ) {

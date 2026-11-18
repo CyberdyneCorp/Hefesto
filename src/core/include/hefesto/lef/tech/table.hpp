@@ -68,7 +68,7 @@ enum class RouteDirection : std::uint8_t { unset, horizontal, vertical };
 /// - with magic-compat OFF an unfilled value is std::nullopt (the unset
 ///   flag). Scaling keeps it unset and fill_defaults replaces it.
 /// A `cut`-flavor record's contact area is Magic's null rectangle
-/// (0, 0, -1, -1).
+/// (0, 0, 0, 0), GeoNullRect; scaling keeps it (0, 0, 0, 0).
 struct LayerRecord {
   LayerClass layer_class = LayerClass::ignore;
   tech::TileType type = 0;              // the normal magic type (0 = none)

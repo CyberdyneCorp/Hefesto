@@ -10,6 +10,7 @@
 // Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <string>
 #include <vector>
@@ -147,6 +148,35 @@ TEST_CASE("a three-rectangle DEF via has the contact as its primary type",
 
 TEST_CASE("a name that is no layer of the LEF table shares no record", "[cap:lef-read][req:Via redefinition]") {
   CHECK(shared_names(LayerTable{}, "via1") == 0);
+}
+
+TEST_CASE("via areas scale like DBScalePoint; the extra list only with magic-compat OFF",
+          "[cap:lef-tech-section][req:Scaling the LEF table]") {
+  const bool compat = GENERATE(true, false);
+  ViaTable vias;
+  ViaDefinition via;
+  via.area = db::Rect{-3, -3, 3, 3};
+  via.shapes.push_back(ViaShape{1, db::Rect{-5, -1, 5, 1}});
+  vias.insert("V", via);
+  scale_via_areas(vias, 1, 2, compat);
+  const ViaDefinition& v = *vias.find("V")->value;
+  CHECK(v.area == db::Rect{-2, -2, 1, 1});  // floor
+  CHECK(v.shapes.front().area == (compat ? db::Rect{-5, -1, 5, 1} : db::Rect{-3, -1, 2, 0}));
+  scale_via_areas(vias, 0, 2, compat);  // not a grid factor: unchanged
+  CHECK(vias.find("V")->value->area == db::Rect{-2, -2, 1, 1});
+}
+
+TEST_CASE("LEF-VIA messages carry Magic's dialect, not the reader's",
+          "[cap:lef-read][req:Cut growing]") {
+  // LefGrowVia reports with LEF_WARNING even inside `def read`; the DEF
+  // VIAS messages use DEF_WARNING / DEF_ERROR.
+  CHECK(via_message_dialect("LEF-VIA-001") == Dialect::lef);
+  CHECK(via_message_dialect("LEF-VIA-003") == Dialect::lef);
+  CHECK(via_message_dialect("LEF-VIA-004") == Dialect::lef);
+  CHECK(via_message_dialect("LEF-VIA-002") == Dialect::def);
+  CHECK(via_message_dialect("LEF-VIA-005") == Dialect::def);
+  CHECK(via_message_dialect("LEF-VIA-006") == Dialect::def);
+  CHECK_FALSE(via_message_dialect("LEF-VIA-008").has_value());
 }
 
 }  // namespace

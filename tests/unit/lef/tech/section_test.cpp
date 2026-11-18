@@ -164,7 +164,7 @@ TEST_CASE("normal and obstruction types of new records", CLASS_REQ) {
   const auto b = build("layer m2c via1\nobstruction m1 OBS_M1\nrouting m2c via2\nignore NWELL");
   CHECK(b.table.find("via1")->type == b.type("m2c"));
   CHECK(b.table.find("via1")->obstruction_type == tech::kSpace);
-  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, -1, -1});  // cut flavor
+  CHECK(b.table.find("via1")->contact_area == db::Rect{0, 0, 0, 0});  // cut flavor
   const lef::LayerRecord& obs = *b.table.find("OBS_M1");
   CHECK(obs.layer_class == LayerClass::route);
   CHECK(obs.type == tech::kSpace);
@@ -308,7 +308,7 @@ TEST_CASE("a routing layer with DRC rules is left to the fill, per mode", ROUTE_
 TEST_CASE("a cut-flavor entry has a null contact area", CONTACT_REQ) {
   const auto b = build("cut m2c via1");
   const lef::LayerRecord& r = *b.table.find("via1");
-  CHECK(r.contact_area == db::Rect{0, 0, -1, -1});
+  CHECK(r.contact_area == db::Rect{0, 0, 0, 0});
   CHECK(r.contact_area->is_null());
   CHECK(r.obstruction_types.empty());
 }

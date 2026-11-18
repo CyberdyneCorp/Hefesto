@@ -17,6 +17,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/lef/via/cut.hpp"
+#include "hefesto/tech/commands.hpp"
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::lef {
@@ -105,6 +106,46 @@ void add_via_rect(ViaDefinition& via, std::optional<tech::TileType> layer, const
     via.area = cut;
   }
   via.shapes.insert(via.shapes.begin(), extra);
+}
+
+namespace {
+
+// DBScalePoint on both corners (DBScaleValue floors; infinities kept).
+db::Rect scale_rect_floor(const db::Rect& r, std::int32_t n, std::int32_t d) noexcept {
+  return db::Rect{tech::scale_coord(r.x0, n, d), tech::scale_coord(r.y0, n, d), tech::scale_coord(r.x1, n, d),
+                  tech::scale_coord(r.y1, n, d)};
+}
+
+}  // namespace
+
+std::optional<Dialect> via_message_dialect(std::string_view code) noexcept {
+  if (code == "LEF-VIA-001" || code == "LEF-VIA-003" || code == "LEF-VIA-004") {
+    return Dialect::lef;
+  }
+  if (code == "LEF-VIA-002" || code == "LEF-VIA-005" || code == "LEF-VIA-006") {
+    return Dialect::def;
+  }
+  return std::nullopt;
+}
+
+void scale_via_areas(ViaTable& vias, std::int32_t n, std::int32_t d, bool magic_compat) {
+  if (n <= 0 || d <= 0) {
+    return;
+  }
+  for (const std::string& name : vias.keys()) {
+    auto* entry = vias.find(name);
+    if (entry == nullptr || !entry->value || entry->value->ref_count == 0) {
+      continue;
+    }
+    ViaDefinition& via = *entry->value;
+    via.area = scale_rect_floor(via.area, n, d);
+    if (magic_compat) {
+      continue;  // Magic leaves the lr list unscaled
+    }
+    for (ViaShape& shape : via.shapes) {
+      shape.area = scale_rect_floor(shape.area, n, d);
+    }
+  }
 }
 
 }  // namespace hefesto::lef

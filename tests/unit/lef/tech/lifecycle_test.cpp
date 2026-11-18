@@ -53,7 +53,7 @@ TEST_CASE("1:1 grid keeps the sentinels with magic-compat ON", FILL_REQ) {
   CHECK(s.record("metal5").width == 3);
   CHECK(s.record("metal5").spacing == 4);
   CHECK(s.record("cont1").contact_area == db::Rect{-1, -1, -1, -1});
-  CHECK(s.record("via1").contact_area == db::Rect{0, 0, -1, -1});
+  CHECK(s.record("via1").contact_area == db::Rect{0, 0, 0, 0});
 }
 
 TEST_CASE("1:1 grid fills every default with magic-compat OFF", FILL_REQ) {
@@ -143,6 +143,26 @@ TEST_CASE("scalegrid 1 2 rescales the table and never refills (LEFDEF-004)", SCA
   REQUIRE(s.run("scalegrid 2 1").ok());
   CHECK(s.record("metal5").width == 3);
   CHECK(s.record("metal1").width == (compat ? some(-1) : some(3)));
+}
+
+TEST_CASE("regression: scalegrid scales the LEF/DEF via areas (LefTechScale)", SCALE_REQ) {
+  // scale_layout scaled only the layer table, so via definitions read from
+  // LEF or DEF kept their areas across a grid change.
+  const bool compat = GENERATE(true, false);
+  Session s(compat);
+  load_at(s, 1, 1);
+  lef::ViaDefinition via;
+  via.area = db::Rect{-3, -3, 3, 3};
+  via.shapes.push_back(lef::ViaShape{s.type("m1"), db::Rect{-5, -5, 5, 5}});
+  s.editor.lefdef.vias.insert("M1M2_PR", via);
+  lef::ViaDefinition temporary = via;
+  temporary.ref_count = 0;  // a DEF write's temporary via is not scaled
+  s.editor.lefdef.vias.insert("TMP", temporary);
+  REQUIRE(s.run("scalegrid 1 2").ok());
+  const lef::ViaDefinition& scaled = *s.editor.lefdef.vias.find("M1M2_PR")->value;
+  CHECK(scaled.area == db::Rect{-6, -6, 6, 6});
+  CHECK(scaled.shapes.front().area == (compat ? db::Rect{-5, -5, 5, 5} : db::Rect{-10, -10, 10, 10}));
+  CHECK(s.editor.lefdef.vias.find("TMP")->value->area == db::Rect{-3, -3, 3, 3});
 }
 
 TEST_CASE("the OFF refill after scalegrid fills what a reader left unset", SCALE_REQ) {

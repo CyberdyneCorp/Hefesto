@@ -154,7 +154,7 @@ Compatibility: exact
 
 ### Requirement: Default contact area
 
-A new VIA-class entry created with the "cut" flavor SHALL have an empty (null) contact area. A new VIA-class entry created with the "contact" flavor (keywords `contact` and `obstruction` on a contact type) SHALL have the sentinel contact area (-1, -1, -1, -1). Contact areas are stored in half internal units (one stored unit = 0.5 internal unit), centered on the origin. A contact area is "null" when xbot ≥ xtop or ybot ≥ ytop; the sentinel area is therefore null. The meaning of a non-null contact area for reading is defined in capability `lef-read`.
+A new VIA-class entry created with the "cut" flavor SHALL have an empty (null) contact area, (0, 0, 0, 0) (Magic's GeoNullRect), which scaling leaves at (0, 0, 0, 0). A new VIA-class entry created with the "contact" flavor (keywords `contact` and `obstruction` on a contact type) SHALL have the sentinel contact area (-1, -1, -1, -1). Contact areas are stored in half internal units (one stored unit = 0.5 internal unit), centered on the origin. A contact area is "null" when xbot ≥ xtop or ybot ≥ ytop; the sentinel area is therefore null. The meaning of a non-null contact area for reading is defined in capability `lef-read`.
 Compatibility: exact
 
 (Magic ref: lef/lefTech.c:333-349, lef/lefInt.h:55-64)
@@ -208,7 +208,7 @@ Compatibility: exact
 ### Requirement: Scaling the LEF table
 
 Whenever magic's internal grid is rescaled by a factor m/k (on tech load with a non-1:1 grid, on an explicit grid rescale, and when the database is rescaled to read a file written at a finer grid), every entry SHALL be scaled exactly once (entries shared by several names are scaled once):
-- VIA class: each contact-area coordinate v becomes floor(v·m / k), with floor rounding toward negative infinity for negative products.
+- VIA class: each contact-area coordinate v becomes floor(v·m / k), with floor rounding toward negative infinity for negative products. This includes the via definitions added by LEF and DEF reads, but not the temporary vias of a DEF write (reference count 0). The extra rectangles of a via definition are left unscaled with `magic-compat` ON, as in Magic, and are scaled the same way with it OFF.
 - ROUTE class: width, spacing and pitch each become trunc(trunc(v·m) / k), using C integer division (truncation toward zero).
 - Other classes are unchanged.
 Compatibility: exact
@@ -224,6 +224,11 @@ Compatibility: exact
 - **GIVEN** a VIA entry with contact area (-3, -3, 3, 3)
 - **WHEN** the grid is rescaled by 1/2
 - **THEN** the area becomes (-2, -2, 1, 1)
+
+#### Scenario: LEF via definitions are scaled
+- **GIVEN** a via definition read from LEF with contact area (-3, -3, 3, 3) and one extra rectangle (-5, -5, 5, 5)
+- **WHEN** `scalegrid 1 2` runs
+- **THEN** the contact area becomes (-6, -6, 6, 6), and the extra rectangle stays (-5, -5, 5, 5) with `magic-compat` ON and becomes (-10, -10, 10, 10) with it OFF
 
 ### Requirement: LEF table lifecycle
 

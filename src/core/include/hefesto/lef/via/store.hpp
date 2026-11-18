@@ -66,4 +66,12 @@ enum class ViaSection : std::uint8_t {
 void add_via_rect(ViaDefinition& via, std::optional<tech::TileType> layer, const db::Rect& rect,
                   const ViaContext& context);
 
+/// LefTechScale on the via records (lef/lefTech.c:415-461): every
+/// definition with a reference count of 1 or more (not a DEF write's
+/// temporary via) has its contact area scaled by n/d, flooring like
+/// DBScalePoint. With magic-compat ON the extra rectangles are left
+/// unscaled, as in Magic; with it OFF they are scaled too. A factor that
+/// is not strictly positive changes nothing.
+void scale_via_areas(ViaTable& vias, std::int32_t n, std::int32_t d, bool magic_compat);
+
 }  // namespace hefesto::lef
