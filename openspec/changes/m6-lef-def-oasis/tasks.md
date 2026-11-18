@@ -75,16 +75,40 @@ How this plan runs:
 
 ## 3. LEFTECH: lef-tech-section
 
-- [ ] 3.1 Port lefTech.c into `LayerTable::from_section`:
+- [x] 3.1 Port lefTech.c into `LayerTable::from_section`:
   - the keyword grammar, magic type resolution and class mapping;
   - aliases and canonical names;
   - the tech-load messages ("Unknown LEF section keyword: %s.  Line ignored." and the others).
 
   Use `util::MagicHashTable` with the signed-byte hash (Q-LEFDEF-82, 92, 116). Verify the `[cap:lef-tech-section]` tests for "Lef section line grammar", "Magic type resolution in lef lines", "Keyword to LEF class mapping" and "LEF name aliasing and canonical names", and a hash-order test against the M1 hash model.
-- [ ] 3.2 Implement the defaults and their fill with explicit unset flags: route width and spacing from `drc::default_width`/`default_spacing`, contact areas, and the fill after grid scaling (Q-LEFDEF-1, 2 per mode; Q-LEFDEF-5 fix). Verify the `[req:Default routing parameters]`, `[req:Default contact area]` and `[req:Filling defaults after grid scaling]` tests, with one test per mode for 1:1, 3:2, 2:1 and shrinking grids.
-- [ ] 3.3 Implement `scale(n, d)` (truncating route values, flooring contact areas, no refill) and the table lifecycle: rebuild at tech load, kept across reads, and the hooks in `tech/loader.cpp` and `tech/scale_layout.cpp`. Verify the `[req:Scaling the LEF table]`, `[req:LEF table lifecycle]` and `[req:Use of entry classes by readers and writers]` tests, and that `scalegrid 1 2` gives the LEFDEF-004 values.
-- [ ] 3.4 Load the sky130A, gf180mcuD and ihp-sg13g2 `lef` sections at the M4 pins without new diagnostics. Verify a unit test per PDK that compares the record count and the canonical names with the PDK tech file.
-- [ ] 3.5 Keep every function's cognitive complexity at most 15 (flag the irreducible ones). Verify with the cognitive-complexity tooling on `lef/tech/`, and that `check_requirement_coverage.py --capability lef-tech-section` reports 10 of 10.
+
+  As landed:
+  - The parser is `src/lef/tech/section.cpp`, with the codes LEF-TECH-001..008.
+  - `from_section` gained an overload that takes the lambda-grid DRC rules and the compat setting. The 3-argument scaffold form reads with no rules and magic-compat ON.
+  - `LayerRecord` gained `obstruction_type` (Magic's obsType).
+  - `magic_to_lef(type)` keeps its signature: the table stores the technology's contact types.
+  - `add`, `find_mutable` and `release` were added for LEFR, LEFVIA and DEFW.
+  - More than two types: magic-compat ON copies Magic, whose loop stops at the second type. OFF reports `Too many types`.
+  - Two undefined-behaviour paths are fixed in both modes: an `ignore` line naming a mapped name, and the type name read at index -1. The spec is updated.
+- [x] 3.2 Implement the defaults and their fill with explicit unset flags: route width and spacing from `drc::default_width`/`default_spacing`, contact areas, and the fill after grid scaling (Q-LEFDEF-1, 2 per mode; Q-LEFDEF-5 fix). Verify the `[req:Default routing parameters]`, `[req:Default contact area]` and `[req:Filling defaults after grid scaling]` tests, with one test per mode for 1:1, 3:2, 2:1 and shrinking grids.
+
+  As landed:
+  - With magic-compat ON a record holds Magic's numeric sentinels; with it OFF an unset value is `std::nullopt` (documented in the header; the spec is updated).
+  - An obstruction-only record fills with 0 in both modes, where Magic reads out of bounds.
+  - Creating the Q-LEFDEF-5 LEF LAYER records is LEFR's work, through `add`.
+- [x] 3.3 Implement `scale(n, d)` (truncating route values, flooring contact areas, no refill) and the table lifecycle: rebuild at tech load, kept across reads, and the hooks in `tech/loader.cpp` and `tech/scale_layout.cpp`. Verify the `[req:Scaling the LEF table]`, `[req:LEF table lifecycle]` and `[req:Use of entry classes by readers and writers]` tests, and that `scalegrid 1 2` gives the LEFDEF-004 values.
+
+  As landed:
+  - The hooks are in `lef/tech/lifecycle.{hpp,cpp}`: `read_layer_section`, `install_layer_table` and `refill_layer_table`.
+  - They are called from `tech/commands.cpp`, where the session installs a technology (`load_session_technology`, `install_technology`), rather than from `tech/loader.cpp`, and from `tech/scale_layout.cpp`.
+  - The magic-compat OFF refill after `scalegrid` runs after the DRC rescale.
+  - The LEFDEF-004 values come from Magic's arithmetic, computed by hand. Comparing them with Magic's capture is GOLDEN's work.
+- [x] 3.4 Load the sky130A, gf180mcuD and ihp-sg13g2 `lef` sections at the M4 pins without new diagnostics. Verify a unit test per PDK that compares the record count and the canonical names with the PDK tech file.
+
+  As landed: `tests/unit/lef/tech/pdk_test.cpp` checks 50, 58 and 14 LEF names in 14, 11 and 14 records. Each test skips when its data set is missing.
+- [x] 3.5 Keep every function's cognitive complexity at most 15 (flag the irreducible ones). Verify with the cognitive-complexity tooling on `lef/tech/`, and that `check_requirement_coverage.py --capability lef-tech-section` reports 10 of 10.
+
+  As landed: the highest score is 9 (`new_record`), and coverage is 10 of 10.
 
 ## 4. LEFVIA: via geometry, shared by LEF and DEF
 

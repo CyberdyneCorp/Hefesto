@@ -1,0 +1,51 @@
+# base.tech -- test technology of the lef/tech unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes active, metal1, metal2,
+# metal5 and obstruct; pc and m2c are contacts; obsm1, obsm2 and obsv1 are
+# obstruction types numbered after the routing types. The drc, lef and
+# extract sections are appended by each test (fixture.hpp).
+tech
+    format 35
+    leftest
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+    metal5,m5
+    obstruct,ob
+end
+
+types
+    active    ndiffusion,ndiff
+    active    polysilicon,poly
+    active    polycontact,pc
+    metal1    metal1,m1
+    metal1    m2contact,m2c
+    metal2    metal2,m2
+    metal5    metal5,m5
+    obstruct  obsm1
+    obstruct  obsm2
+    obstruct  obsv1
+end
+
+contact
+    pc   poly metal1
+    m2c  metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+end
+
+cifoutput
+end
+
+cifinput
+end

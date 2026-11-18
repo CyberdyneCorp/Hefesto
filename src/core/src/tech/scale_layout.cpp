@@ -183,6 +183,9 @@ db::Coord scale_coord(db::Coord v, std::int64_t n, std::int64_t d) noexcept {
 }
 
 bool scale_layout(editor::EditorState& editor, std::int64_t n, std::int64_t d) {
+  // LefTechScale, which every DBScaleEverything call site runs with the same
+  // factor (lef-tech-section "Scaling the LEF table"); it never refills.
+  editor.lefdef.layers.scale(static_cast<std::int32_t>(n), static_cast<std::int32_t>(d));
   bool inexact = false;
   editor.cells.for_each([&](db::CellDef& def) { inexact = scale_cell(def, *editor.technology, n, d) || inexact; });
   if (editor.box) {
