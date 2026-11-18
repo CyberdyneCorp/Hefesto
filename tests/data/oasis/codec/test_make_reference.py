@@ -32,9 +32,9 @@ class ListingTest(unittest.TestCase):
         self.assertEqual(data[181:414], bytes(233))
 
     def test_committed_file_and_digest_match_the_listing(self) -> None:
-        data = (HERE / "reference.oas").read_bytes()
+        data = (HERE / "reference_419.oas").read_bytes()
         self.assertEqual(data, make_reference.build(make_reference.SPEC))
-        digest = (HERE / "reference.oas.sha256").read_text(encoding="ascii").split()[0]
+        digest = (HERE / "reference_419.oas.sha256").read_text(encoding="ascii").split()[0]
         self.assertEqual(digest, hashlib.sha256(data).hexdigest())
         self.assertEqual(make_reference.main(["--check"]), 0)
 
@@ -58,7 +58,7 @@ class ListingTest(unittest.TestCase):
             out = Path(tmp)
             self.assertEqual(make_reference.main(["--out", str(out)]), 0)
             self.assertEqual(make_reference.main(["--check", "--out", str(out)]), 0)
-            (out / "reference.oas").write_bytes(b"stale")
+            (out / "reference_419.oas").write_bytes(b"stale")
             self.assertEqual(make_reference.main(["--check", "--out", str(out)]), 1)
 
 

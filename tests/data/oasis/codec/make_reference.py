@@ -9,8 +9,8 @@ openspec/specs/oasis-format/spec.md is the single source: every row gives its
 offset and bytes, quoted text stands for its ASCII bytes and ``+ N x HH`` for N
 copies of byte HH. The script checks that each row starts at its listed offset,
 that the file is 419 bytes, that the END record is its last 256 bytes and that
-the listed CRC32 is the CRC32 of bytes 0..414, then writes ``reference.oas``
-and ``reference.oas.sha256`` next to itself.
+the listed CRC32 is the CRC32 of bytes 0..414, then writes ``reference_419.oas``
+and ``reference_419.oas.sha256`` next to itself.
 
 Usage:
     make_reference.py [--check] [--spec PATH] [--out DIR]
@@ -28,7 +28,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SPEC = HERE.parents[3] / "openspec" / "specs" / "oasis-format" / "spec.md"
-NAME = "reference.oas"
+NAME = "reference_419.oas"
 LENGTH = 419
 END_LENGTH = 256
 HEADING = "### Requirement: Complete annotated example"

@@ -5,10 +5,10 @@
 The scenarios of oasis-format, fed as the byte listings of the spec inside files framed by
 authoring/oasgen.py, then a writer-to-decoder round trip of every repetition and point-list type.
 
-The 419-byte reference file ``tests/data/oasis/codec/reference_419.oas`` (OASFMT) was not
-committed when this decoder landed, so the reference tests decode ``oasgen.reference_419()``,
-which test_oasgen.py checks byte for byte against the spec listing; ``CommittedReferenceTest``
-decodes the committed file as soon as it exists (and is skipped until then).
+The reference tests decode ``oasgen.reference_419()``, which test_oasgen.py checks byte for
+byte against the spec listing; ``CommittedReferenceTest`` decodes the committed 419-byte file
+``tests/data/oasis/codec/reference_419.oas`` (OASFMT, written by Hefesto's own
+make_reference.py) and requires it to equal the clean-room writer's bytes.
 [cap:hefesto-testing-strategy][req:Golden compatibility suite]
 """
 from __future__ import annotations

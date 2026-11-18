@@ -270,11 +270,11 @@ TEST_CASE("the encoder writes the 419-byte reference file", "[cap:oasis-format][
   REQUIRE(encoder.begin_cell("top").ok());
   REQUIRE(encoder.element(rectangle(49, 0, pt(0, 0), pt(400, 200))).ok());
   REQUIRE(encoder.finish().ok());
-  CHECK(sink.bytes() == oasis_test::decode_file("reference.oas"));
+  CHECK(sink.bytes() == oasis_test::decode_file("reference_419.oas"));
 }
 
 TEST_CASE("re-encoding the decoded reference file gives it back", "[cap:oasis-format][req:Complete annotated example]") {
-  const std::vector<std::byte> bytes = oasis_test::decode_file("reference.oas");
+  const std::vector<std::byte> bytes = oasis_test::decode_file("reference_419.oas");
   const Decoded d = oasis_test::decode(bytes);
   REQUIRE_FALSE(d.error);
   gds::MemorySink sink;

@@ -59,6 +59,8 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -v
       - name: Unit tests of the GDS bench scripts
         run: python3 -m unittest discover -s bench/gds/tests -v
+      - name: Unit tests of the OASIS reference-file script
+        run: python3 -m unittest discover -s tests/data/oasis/codec -v
       - name: SPDX Apache-2.0 headers on first-party files
         run: python3 scripts/check_license_headers.py
       - name: Every pinned dependency is in THIRD_PARTY_NOTICES.md

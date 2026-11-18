@@ -256,7 +256,7 @@ TEST_CASE("the writer's padding rule", "[cap:oasis-format][req:END record and pa
 }
 
 TEST_CASE("the CRC32 of the reference file", "[cap:oasis-format][req:Validation signature]") {
-  gds::MemorySource source{oasis_test::decode_file("reference.oas")};
+  gds::MemorySource source{oasis_test::decode_file("reference_419.oas")};
   auto result = oasis::validate(source);
   REQUIRE(result.ok());
   CHECK(result.value().scheme == oasis::ValidationScheme::crc32);
@@ -813,7 +813,7 @@ TEST_CASE("a PAD is transparent for PROPERTY attachment", "[cap:oasis-format][re
 }
 
 TEST_CASE("the reference file decodes", "[cap:oasis-format][req:Complete annotated example]") {
-  const std::vector<std::byte> bytes = oasis_test::decode_file("reference.oas");
+  const std::vector<std::byte> bytes = oasis_test::decode_file("reference_419.oas");
   CHECK(bytes.size() == 419);
   const auto d = oasis_test::decode(bytes);
   REQUIRE_FALSE(d.error);
