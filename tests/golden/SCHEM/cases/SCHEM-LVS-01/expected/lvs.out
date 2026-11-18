@@ -1,0 +1,80 @@
+
+Circuit 1 cell sky130_fd_pr__nfet_01v8 and Circuit 2 cell sky130_fd_pr__nfet_01v8 are black boxes.
+Warning: Equate pins:  cell sky130_fd_pr__nfet_01v8 is a placeholder, treated as a black box.
+Warning: Equate pins:  cell sky130_fd_pr__nfet_01v8 is a placeholder, treated as a black box.
+
+Subcircuit pins:
+Circuit 1: sky130_fd_pr__nfet_01v8         |Circuit 2: sky130_fd_pr__nfet_01v8         
+-------------------------------------------|-------------------------------------------
+1                                          |1                                          
+2                                          |2                                          
+3                                          |3                                          
+4                                          |4                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes sky130_fd_pr__nfet_01v8 and sky130_fd_pr__nfet_01v8 are equivalent.
+
+Removing zero-valued device vsrc from cell not (1) makes a better match
+Removing zero-valued device vsrc from cell not (1) makes a better match
+Making another compare attempt.
+
+Subcircuit summary:
+Circuit 1: sky130_fd_sc_hd__inv_1          |Circuit 2: not                             
+-------------------------------------------|-------------------------------------------
+sky130_fd_pr__nfet_01v8 (1)                |sky130_fd_pr__nfet_01v8 (1)                
+sky130_fd_pr__pfet_01v8_hvt (1)            |(no matching element)                      
+(no matching element)                      |sky130_fd_pr__pfet_01v8 (1)                
+Number of devices: 2                       |Number of devices: 2                       
+Number of nets: 6 **Mismatch**             |Number of nets: 4 **Mismatch**             
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: sky130_fd_sc_hd__inv_1          |Circuit 2: not                             
+
+---------------------------------------------------------------------------------------
+Net: A                                     |Net: a                                     
+  sky130_fd_pr__nfet_01v8/2 = 1            |  sky130_fd_pr__nfet_01v8/2 = 1            
+  sky130_fd_pr__pfet_01v8_hvt/2 = 1        |  sky130_fd_pr__pfet_01v8/2 = 1            
+                                           |                                           
+Net: VNB                                   |Net: VSSPIN                                
+  sky130_fd_pr__nfet_01v8/4 = 1            |  sky130_fd_pr__nfet_01v8/3 = 1            
+                                           |  sky130_fd_pr__nfet_01v8/4 = 1            
+                                           |                                           
+Net: VGND                                  |Net: VCCPIN                                
+  sky130_fd_pr__nfet_01v8/3 = 1            |  sky130_fd_pr__pfet_01v8/3 = 1            
+                                           |  sky130_fd_pr__pfet_01v8/4 = 1            
+                                           |                                           
+Net: Y                                     |Net: y                                     
+  sky130_fd_pr__nfet_01v8/1 = 1            |  sky130_fd_pr__nfet_01v8/1 = 1            
+  sky130_fd_pr__pfet_01v8_hvt/1 = 1        |  sky130_fd_pr__pfet_01v8/1 = 1            
+                                           |                                           
+Net: VPWR                                  |(no matching net)                          
+  sky130_fd_pr__pfet_01v8_hvt/3 = 1        |                                           
+                                           |                                           
+Net: VPB                                   |(no matching net)                          
+  sky130_fd_pr__pfet_01v8_hvt/4 = 1        |                                           
+---------------------------------------------------------------------------------------
+DEVICE mismatches: Class fragments follow (with node fanout counts):
+Circuit 1: sky130_fd_sc_hd__inv_1          |Circuit 2: not                             
+
+---------------------------------------------------------------------------------------
+Instance: sky130_fd_pr__pfet_01v8_hvt:1    |Instance: sky130_fd_pr__pfet_01v8:M2       
+  1 = 2                                    |  1 = 2                                    
+  2 = 2                                    |  2 = 2                                    
+  3 = 1                                    |  3 = 2                                    
+  4 = 1                                    |  4 = 2                                    
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: sky130_fd_sc_hd__inv_1          |Circuit 2: not                             
+-------------------------------------------|-------------------------------------------
+Y                                          |a **Mismatch**                             
+A                                          |VSSPIN **Mismatch**                        
+VGND                                       |VCCPIN **Mismatch**                        
+VNB                                        |y **Mismatch**                             
+Cell pin lists are equivalent.
+Device classes sky130_fd_sc_hd__inv_1 and not are equivalent.
+
+Final result: Netlists do not match.
+Port matching may fail to disambiguate symmetries.

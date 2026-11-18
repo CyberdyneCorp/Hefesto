@@ -1,0 +1,11 @@
+** sch_path: /work/input/nl11.sch
+**.subckt nl11
+R1 A net6 1
+R2 T net7 2
+R3 net2 net8 3
+R4 net3 net9 4
+R5 net10 net11 5
+R6 net4 net12 6
+R7 net4 net13 7
+**.ends
+.end

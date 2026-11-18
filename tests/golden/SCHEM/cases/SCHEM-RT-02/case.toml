@@ -31,6 +31,12 @@ comparator = "bytes"
 masks = []
 
 [[outputs]]
+name = "changed.txt"
+source = "out/changed.txt"
+comparator = "bytes"
+masks = []
+
+[[outputs]]
 name = "first.digest"
 source = "derived:digest:out/first/**/*"
 comparator = "bytes"

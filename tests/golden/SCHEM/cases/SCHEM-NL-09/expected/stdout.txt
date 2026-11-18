@@ -1,0 +1,6 @@
+== test_nfet_03v3
+
+== test_nfet_03v3: exit 10
+== test_cap_mim_1f0fF
+
+== test_cap_mim_1f0fF: exit 0

@@ -1,5 +1,6 @@
 # SCHEM-RT-02: load and save every .sch and .sym of the three PDK xschem trees; save the saved file
-# again and list the files whose second save differs from the first (design D16: listed, not failed).
+# again and list the files whose second save differs from the first (design D16: listed, not failed),
+# and, in changed.txt, the files whose first save differs from the PDK file.
 proc walk {dir} {
   set out {}
   foreach f [lsort [glob -nocomplain -directory $dir -types f *.sch *.sym]] { lappend out $f }
@@ -14,6 +15,7 @@ set roots {
   /pdk/ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem
 }
 set differs [open /work/out/differs.txt w]
+set changed [open /work/out/changed.txt w]
 set count 0
 foreach root $roots {
   set tag [string map {/pdk/ {} / _} $root]
@@ -36,10 +38,12 @@ foreach root $roots {
     }
     if {![file exists $first] || ![file exists $second]} {
       puts $differs "missing $tag/$rel"
-    } elseif {[slurp $first] ne [slurp $second]} {
-      puts $differs "differs $tag/$rel"
+    } else {
+      if {[slurp $first] ne [slurp $second]} { puts $differs "differs $tag/$rel" }
+      if {[slurp $f] ne [slurp $first]} { puts $changed "changed $tag/$rel" }
     }
   }
 }
 puts $differs "files $count"
 close $differs
+close $changed

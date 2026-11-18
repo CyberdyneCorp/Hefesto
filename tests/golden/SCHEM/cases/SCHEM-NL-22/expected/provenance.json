@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "case": "SCHEM-NL-22",
+  "area": "SCHEM",
+  "tool": "xschem",
+  "tool_repo": "https://github.com/StefanSchippers/xschem",
+  "tool_version": null,
+  "tool_commit": "4142e6d6f1eb5cd0e271bb183f14202af374ce27",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:654a9cdfea67af319691be72488f9f1e76621f4f773c37af876f381b80f8d274",
+  "image_repo_digests": [],
+  "command": [
+    "xschem",
+    "-q",
+    "-x",
+    "-r",
+    "--rcfile",
+    "/work/input/xschemrc",
+    "--script",
+    "/work/input/case.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-18T04:41:26Z",
+  "outputs": {
+    "exitcode.txt": "917df3320d778ddbaa5c5c7742bc4046bf803c36ed2b050f30844ed206783469",
+    "nl11-saved.sch": "2bbd73d1aa8dbf3ee127ddb26c21ea44a687d5dd9c9ff7987d221c4b650f3977",
+    "stderr.txt": "c1bbea29e566f8e84777114652c48fcbbbfa39bd6499502012dcc429ebfd473d",
+    "stdout.txt": "2c8f3e685eebeb47db98e77561f788d4835681ea003ce92984e3e2ba83b582b7"
+  }
+}
