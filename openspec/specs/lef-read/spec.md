@@ -37,7 +37,7 @@ Compatibility: exact
 ### Requirement: END statement matching
 
 After an `END` keyword, the reader SHALL check what follows:
-- When a section name N is expected, the next token SHALL match N case-insensitively for the section to be closed. If it is instead another `END` (or `ENDEXT`), that counts as "END END", which callers that require a match treat as closed. Any other token means the END does not match.
+- When a section name N is expected, the next token SHALL match N case-insensitively for the section to be closed. If it is instead another `END`, that counts as "END END", which callers that require a match treat as closed. An `ENDEXT` there is an ordinary mismatch (LefParseEndStatement returns -1 only for `END`). Any other token means the END does not match.
 - When no name is expected (PORT, OBS and a skipped PORT or OBS), the END SHALL be closed only if it is the last token on its line.
 Skipping a named section SHALL consume tokens until a matching `END N`. For the extension section `BEGINEXT`, the first `ENDEXT` token ends it. If the input ends first, the error `Section <N> has no END record!` is reported.
 Compatibility: exact
@@ -176,6 +176,8 @@ A `LAYER <name>` section SHALL be handled as follows:
 | other | message `Unknown keyword ...`, skipped to `;` |
 | `END name` | ends the section; a mismatch reports `Layer END statement missing.` and continues |
 
+Malformed values are fixed in both modes (crash or undefined behaviour in Magic): a non-numeric value leaves the field or rule unchanged (Magic reads an uninitialised float), a value outside the `int` range is ignored, a `RECT` in the LAYER section of a ROUTE entry is dropped (Magic writes it through the route/via union of the entry), the reclassification error names `BOUND` where Magic prints `(null)` for the old class, and a section keyword at the end of the input ends the read.
+
 Compatibility: exact
 
 (Magic ref: lef/lefRead.c:2722-2944, 3093-3148)
@@ -301,7 +303,7 @@ Compatibility: exact
 
 ### Requirement: LEF NONDEFAULTRULE section
 
-A `NONDEFAULTRULE <name>` section SHALL create a named non-default rule set in the non-default rule table (shared with `def-read` and `def-write`). If `<name>` already exists, report the warning `Nondefault rule "<name>" was already defined.`, use the name `<name>_0`, and report `Renaming this rule "<name>_0"`. Magic never tries an index above 0. See Q-LEFDEF-9. The body SHALL be processed as follows. The rule list is built by prepending, so the last rule read comes first.
+A `NONDEFAULTRULE <name>` section SHALL create a named non-default rule set in the non-default rule table (shared with `def-read` and `def-write`). If `<name>` already exists, report the warning `Nondefault rule "<name>" was already defined.`, try `<name>_0`, `<name>_1`, `<name>_2`, ... and use the first name not in the table, and report `Renaming this rule "<name>_<i>"` once, with the name kept. Magic never tries an index above 0; this is fixed in both modes. See Q-LEFDEF-9. The body SHALL be processed as follows. The rule list is built by prepending, so the last rule read comes first.
 
 | statement | effect |
 |---|---|

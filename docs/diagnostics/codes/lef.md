@@ -121,6 +121,9 @@ fails when the two disagree.
 | `LEF-LEX-001` | info | Message cap notice: `LEF Read:  Further errors will not be reported.` (or DEF; or warnings, messages) after 100 messages of one kind. |
 | `LEF-LEX-002` | info | Read totals: `LEF Read: encountered <k> errors total.` (or DEF; or warnings) at the end of a read. |
 | `LEF-LEX-003` | error | END matching: `Bad file read while looking for END statement` or `Section <N> has no END record!`. |
+| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END. |
+| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE renamed. |
+| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer. |
 | `LEF-TECH-001` | error | Unknown or ambiguous keyword in the tech lef section; the line is ignored. |
 | `LEF-TECH-002` | error | A lef section line names no LEF layer; the line is ignored. |
 | `LEF-TECH-003` | error | A lef section line names no magic user type; the line is ignored. |
@@ -140,7 +143,4 @@ fails when the two disagree.
 | `LEF-VIA-009` | warning | DEF write: a via's cut is wider than its area. |
 | `LEF-VIA-010` | warning | DEF write: a via's cut height check (inverted in Magic) fired. |
 | `LEF-VIA-011` | warning | DEF write: a via layer has no LEF name; its RECT is skipped. |
-| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END. |
-| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE renamed. |
-| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer. |
 <!-- END DIAGNOSTIC CODES -->
