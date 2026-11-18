@@ -3,7 +3,9 @@
 #
 # Sources of gds/write (the GDS writer, verbatim copy and full dump),
 # included by src/core/src/gds/sources.cmake.
-# Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2), except
+# vendor_oasis.{hpp,cpp}: OASW (openspec/changes/m6-lef-def-oasis/design.md
+# D2, D17). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/dump.cpp
@@ -20,4 +22,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/subtree.cpp
   ${CMAKE_CURRENT_LIST_DIR}/tiles.cpp
   ${CMAKE_CURRENT_LIST_DIR}/vendor.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/vendor_oasis.cpp
   ${CMAKE_CURRENT_LIST_DIR}/write.cpp)
