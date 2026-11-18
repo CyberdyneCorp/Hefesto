@@ -74,11 +74,20 @@ using CellReader = std::function<void(db::CellDef&)>;
 [[nodiscard]] std::optional<InstanceRef> find_instance(db::CellDef& root, std::string_view path,
                                                        const CellReader& read = {});
 
+/// The instances of the selection cell `sel` in SelEnumCells' order: its
+/// DBCellSrArea over the whole plane (the use index order) with
+/// `magic_compat`, the selection order without it.
+[[nodiscard]] std::vector<const db::CellUse*> selection_uses(const db::CellDef& sel, bool magic_compat);
+
 /// SelEnumCells: for each instance in the selection, the instance of the
-/// layout below the selection root it stands for (same child, identifier,
-/// array and transform to the root), in selection order. Selected
-/// instances with no layout counterpart are skipped.
-[[nodiscard]] std::vector<InstanceRef> selected_instances(editor::EditorState& editor);
+/// layout below the selection root it stands for (same child, array and
+/// transform to the root), found by selEnumCFunc2's searches of the use
+/// indexes (db::find_selected_use; `read` reads unavailable children met on
+/// the way). The selected instances are taken in the selection cell's use
+/// index order with `magic_compat`, in selection order without it. Selected
+/// instances with no layout counterpart, and the root itself, are skipped.
+[[nodiscard]] std::vector<InstanceRef> selected_instances(editor::EditorState& editor, bool magic_compat,
+                                                          const CellReader& read = {});
 
 /// cmdEditEnumFunc: among `candidates`, the first whose area overlaps
 /// `point_area` (root coordinates), narrowed to the array element there;

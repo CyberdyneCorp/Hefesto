@@ -34,12 +34,20 @@ class Shard:
     libraries: tuple[str, ...]
     timeout: int       # timeout-minutes of the shard's job
 
+    @property
+    def timeout_raw(self) -> int:
+        """timeout-minutes with golden-capture.yml's `keep-raw`, which also replays the shard with Hefesto:
+        the timeout's Magic part (all but FIXED_MINUTES) once more, within GitHub's 360-minute job limit."""
+        return min(MAX_MINUTES, self.timeout + max(self.timeout - FIXED_MINUTES, 0))
+
 
 # Timeouts: the job's fixed part (hefesto-cli build, data restore or fetch, image build; about 35 minutes
 # on a cold cache, sky130-gds alone fetches in about 13 minutes) plus twice Magic's read+write time of the
 # shard's files, rounded up. Magic's times are those of golden-capture run 43440833955 (task 1.1,
 # scripts/d19/): sky130 about 15 s, sky130-io 92 s, sky130-sram 972 s, gf180mcu 353 s, gf180mcu-io 142 s,
 # ihp 1.4 s, ihp-io 75 s and ihp-sram 4901 s (RM_IHPSG13_1P_8192x32_c4 alone 2118 s).
+FIXED_MINUTES = 35   # the job's fixed part of a timeout (see above)
+MAX_MINUTES = 360    # GitHub's limit for a hosted job
 SHARDS = (
     Shard("sky130", "sky130", "sky130-gds",
           ("sky130_fd_pr", "sky130_fd_sc_hd", "sky130_fd_sc_hdll", "sky130_fd_sc_hs", "sky130_fd_sc_hvl",
@@ -82,7 +90,7 @@ def matrix(cases: list[str]) -> dict:
     used = {shard_of(case).name for case in cases if is_rt(case)}
     # `gds_out` is the set's output-name stem of `fetch_pdk.py --cache-info` (sky130_gds_key, sky130_gds_path).
     include = [{"shard": s.name, "tech": s.tech, "gds": s.gds, "gds_out": s.gds.replace("-", "_"),
-                "timeout": s.timeout} for s in SHARDS if s.name in used]
+                "timeout": s.timeout, "timeout_raw": s.timeout_raw} for s in SHARDS if s.name in used]
     return {"include": include}
 
 

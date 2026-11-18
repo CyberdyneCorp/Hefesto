@@ -95,6 +95,13 @@ python3 gds_rt_report.py --hefesto-cli ../../build/macos-debug/src/cli/hefesto-c
   ../../tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd
 ```
 
+A MASK-RT difference is bisected from the raw outputs, which expected/ does not keep (only the digest and the summary). `capture.py` and `replay.py` take `--keep-raw DIR` (`goldenlib/rawkeep.py`): each run's `stdout.txt`, `stderr.txt` and every file it wrote outside `input/` go to `DIR/<case-id>/`, a GDS file gzipped (`files/out.gds.gz`). A file over 256 MiB as stored, or one that would take the files kept under `DIR` past 2 GiB, is not kept; `skipped.txt` names it. `--feedback-probe` also inserts `catch {feedback save out.feedback.tcl}` before the work copy's last `quit -noprompt`, so the run leaves its feedback list (the CIF errors with cell, layer and area, e.g. "parent and child disagree on CIF"); `feedback save` prints nothing, so a `--verify` run still compares. `--probe-tcl FILE` runs FILE's Tcl at the same place (after the feedback save), e.g. a `save` of the cells under suspicion so that the two tools' reads can be compared as .mag files, or a `cif see` and `feedback save` of one layer; its output reaches the streams. Both probes change the run, so `capture.py` accepts them only with `--verify`. `raw_diff.py MAGIC_DIR HEFESTO_DIR` (which reads `out.gds` or `out.gds.gz`) prints the first position where the structure order differs, each structure's first differing element in write order, the order-insensitive differences of `gds_rt_report.py` and the feedback entries only one side has, grouped by cell, layer and message. In CI, dispatch `golden-capture.yml` with `keep-raw` (and `feedback-probe`, `probe-tcl`) on: each `capture-gds-rt` shard uploads `golden-raw-gds-rt-<shard>` (the shard then runs under its `timeout_raw`, `scripts/gds_rt_shards.py`, and only the verify step runs the probes) with `magic/<case-id>/`, `hefesto/<case-id>/` (hefesto-cli built in the job) and `<case-id>.diff.txt`:
+
+```sh
+gh workflow run golden-capture.yml --ref <branch> -f mode=verify -f keep-raw=true -f feedback-probe=true \
+  -f cases="tests/golden/MASK/cases/MASK-RT-sky130_fd_io-f01"
+```
+
 Hand-built GDS inputs (bad headers, damaged records, every PATHTYPE, AREFs, properties, odd TEXT) come from `authoring/gdsgen.py`, a record writer with its decoder in `goldenlib/gds.py` (`tests/test_gdsgen.py`). Inputs under 64 KB are committed as binary. Until a case is captured and its workstream lands, `deviations.toml` lists it as `deferred = "M5"` in the block `m5_cases.py --deviations` generates; a workstream whose implementation makes cases replay adds them to `REPLAYED` in `m5_cases.py` and re-runs `--deviations`.
 
 ## Building the reference image (CI, not developer machines)

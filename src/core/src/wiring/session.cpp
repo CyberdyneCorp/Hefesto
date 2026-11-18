@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "hefesto/cmd/all_commands.hpp"
+#include "hefesto/connect/tree.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
@@ -44,22 +45,24 @@ namespace {
 struct View {
   db::CellDef* root = nullptr;
   const view::LayoutWindow* window = nullptr;
+  bool magic_compat = true;
 };
 
 using DefVisitor = std::function<void(const db::CellDef& def, const db::Transform& to_root)>;
 
 // The root definition, then every expanded instance element whose bounding
-// box overlaps `area` (DBTreeSrTiles' traversal).
+// box overlaps `area` (DBTreeSrTiles' traversal: each cell's uses are found
+// by an area search of its use index, which bins it as Magic's does).
 void for_each_def(const View& v, const db::Rect& area, const DefVisitor& visit) {
-  visit(*v.root, db::kIdentity);
-  db::walk_hierarchy(*v.root, [&](const db::CellUse& use, const db::Transform& to_root, int) {
-    if (use.def == nullptr || (v.window != nullptr && !v.window->is_expanded(use)) ||
-        !db::overlap(db::apply(to_root, use.def->bbox()), area)) {
-      return false;
-    }
-    visit(*use.def, to_root);
-    return true;
-  });
+  connect::Descend descend;
+  if (v.window != nullptr) {
+    descend = [w = v.window](const db::CellUse& use) { return w->is_expanded(use); };
+  }
+  (void)connect::search_tree_defs(*v.root, area, descend, v.magic_compat,
+                                  [&](const db::CellDef& def, const db::Transform& to_root, const std::string&) {
+                                    visit(def, to_root);
+                                    return true;
+                                  });
 }
 
 // DBSeeTypesAll: the types of the paint under `area`.
@@ -90,7 +93,7 @@ void copy_area(const WireSession& s, const View& v, const db::Rect& area, const 
 // `area` (every instance expanded).
 std::optional<db::Rect> split_chunk(const View& v, const db::Rect& area, const tech::TypeMask& types) {
   std::optional<db::Rect> found;
-  for_each_def(View{v.root, nullptr}, area, [&](const db::CellDef& def, const db::Transform& to_root) {
+  for_each_def(View{v.root, nullptr, v.magic_compat}, area, [&](const db::CellDef& def, const db::Transform& to_root) {
     const db::Rect local = db::apply(db::invert(to_root), area);
     for (tech::PlaneId p = tech::kFirstUserPlane; p < def.plane_count() && !found; ++p) {
       def.plane(p).enumerate(local, types, [&](const db::TileView& t) {
@@ -354,6 +357,7 @@ cmd::CommandResult pick_type_at(const WireSession& s, std::optional<db::Point> r
     v = View{c->window->root(), c->window};
     area = c->area;
   }
+  v.magic_compat = s.magic_compat;
   if (v.root == nullptr) {
     return fail(codes::kNoMaterial,
                 "Can't use cursor to select wiring material unless\n    cursor is in a layout window.");
@@ -407,7 +411,7 @@ cmd::CommandResult add_leg(const WireSession& s, std::optional<db::Point> root_p
   }
   finish_paint(s, edit_area, tech::TypeMask::of(*w.type));
   clear_selection(s);
-  const View v{s.edit_root(), nullptr};
+  const View v{s.edit_root(), nullptr, s.magic_compat};
   const db::Rect chunk = select_chunk(s, v, leg->area, *w.type).value_or(leg->area);
   s.ed->box = leg_tip_box(*leg, chunk, w.width);
   s.ed->box_root = s.edit_root();
@@ -476,7 +480,7 @@ cmd::CommandResult add_contact(const WireSession& s, std::optional<tech::TileTyp
   }
   finish_paint(s, plan->changed, layers);
   clear_selection(s);
-  const View v{s.edit_root(), nullptr};
+  const View v{s.edit_root(), nullptr, s.magic_compat};
   for (const ContactPaint& p : plan->select) {
     select_area(s, v, p.area, tech::TypeMask::of(p.type));
   }

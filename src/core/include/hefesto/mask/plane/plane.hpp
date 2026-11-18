@@ -54,9 +54,11 @@ class MaskPlane {
   [[nodiscard]] diag::Status erase(const db::Rect& area);
   /// Unions the triangle of `area` on side `right_side` of `diagonal`
   /// (DBNMPaintPlane with CIFPaintTable). `magic_compat` false rounds both
-  /// diagonals half up (Q-MODEL-3).
+  /// diagonals half up (Q-MODEL-3). `budget`, when given, bounds the pieces
+  /// the paint descends into (db::Plane::paint_triangle); otherwise the
+  /// paint has a fresh db::NMBudget.
   [[nodiscard]] diag::Status paint_triangle(const db::Rect& area, db::Diagonal diagonal, bool right_side,
-                                            bool magic_compat = true);
+                                            bool magic_compat = true, db::NMBudget* budget = nullptr);
   /// Removes that triangle (DBNMPaintPlane with CIFEraseTable).
   [[nodiscard]] diag::Status erase_triangle(const db::Rect& area, db::Diagonal diagonal, bool right_side,
                                             bool magic_compat = true);

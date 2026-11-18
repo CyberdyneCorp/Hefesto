@@ -9,6 +9,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -18,6 +20,7 @@
 #include "hefesto/db/polygon.hpp"
 #include "hefesto/mask/input/engine.hpp"
 #include "hefesto/hints/hints.hpp"
+#include "hefesto/pdk/sha256.hpp"
 #include "input_fixture.hpp"
 
 namespace mask = hefesto::mask;
@@ -540,8 +543,9 @@ TEST_CASE("a read triangle is merged with the split tiles around it", "[cap:mask
   const hefesto::db::TriangleSide side{hefesto::db::Diagonal::ne_sw, true};
   mask::MaskPlane merged;
   REQUIRE(merged.paint({10, 0, 20, 10}).ok());
-  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{0, 0, 10, 10}, side}, true);
-  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{10, 10, 20, 20}, side}, true);
+  mask::ReadTriangleBudget budget;
+  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{0, 0, 10, 10}, side}, true, budget);
+  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{10, 10, 20, 20}, side}, true, budget);
   const auto tiles = merged.solid_tiles();
   REQUIRE(tiles.size() == 1);
   CHECK(tiles[0].split);
@@ -552,4 +556,126 @@ TEST_CASE("a read triangle is merged with the split tiles around it", "[cap:mask
   (void)plain.paint_triangle({0, 0, 10, 10}, side.diagonal, side.right_side, true);
   (void)plain.paint_triangle({10, 10, 20, 20}, side.diagonal, side.right_side, true);
   CHECK(plain.solid_tiles().size() == 3);
+}
+
+// Regression (MASK-RT-gf180mcu_fd_io-f02, Q-MODEL-37): a read
+// triangle beside a nearly parallel diagonal a few units off, as a 45-degree
+// path over a boundary with almost the same edge leaves it (POWER_RAIL_COR_1's
+// PPLUS). DBNMPaintPlane0 descends into a chain of small pieces along the two
+// diagonals, more than the 512 of a database paint; past them a piece was
+// filled as a rectangle and the read plane's tiling, and from it the
+// psubdiff the read painted, was no longer Magic's. The ops and Magic's
+// resulting plane are in tests/data/mask/input/gf180_pplus_chain.txt.
+TEST_CASE("a read plane of nearly parallel 45-degree edges is tiled as Magic tiles it",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  using hefesto::db::Diagonal;
+  using hefesto::db::Rect;
+  std::ifstream in(std::filesystem::path{HEFESTO_TEST_DATA_DIR} / "gf180_pplus_chain.txt");
+  REQUIRE(in.good());
+  mask::MaskPlane plane;
+  mask::ReadTriangleBudget budget;
+  std::size_t want_tiles = 0;
+  std::string want_digest;
+  std::string word;
+  while (in >> word) {
+    if (word == "#") {
+      std::getline(in, word);
+      continue;
+    }
+    if (word == "tiles") {
+      in >> want_tiles >> want_digest;
+      continue;
+    }
+    Rect r;
+    in >> r.x0 >> r.y0 >> r.x1 >> r.y1;
+    if (word == "rect") {
+      REQUIRE(plane.paint(r).ok());
+      continue;
+    }
+    int dir = 0;
+    int side = 0;
+    in >> dir >> side;
+    const hefesto::db::TriangleSide tri{dir != 0 ? Diagonal::nw_se : Diagonal::ne_sw, side != 0};
+    budget.add_polygon(std::size_t{1});  // the reader's grant for the triangle
+    mask::paint_read_triangle(plane, hefesto::db::PolygonPiece{r, tri}, true, budget);
+  }
+  REQUIRE(want_tiles > 0);
+  const auto tiles = plane.solid_tiles();
+  hefesto::pdk::Sha256 digest;
+  for (const hefesto::db::TileView& t : tiles) {
+    const bool dir = t.split && t.diagonal == Diagonal::nw_se;
+    digest.update(std::to_string(t.area.x0) + " " + std::to_string(t.area.y0) + " " + std::to_string(t.area.x1) + " " +
+                  std::to_string(t.area.y1) + " " + (t.split ? "1 " : "0 ") + (dir ? "1 " : "0 ") +
+                  (t.split && t.right_side ? "1" : "0") + "\n");
+  }
+  CHECK(tiles.size() == want_tiles);
+  CHECK(digest.finish_hex() == want_digest);
+  CHECK(mask::ReadTriangleBudget::kPool - budget.pool > hefesto::db::NMBudget::kPieces);
+}
+
+TEST_CASE("the read triangle budget grows with the triangles of every polygon read",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  using Budget = mask::ReadTriangleBudget;
+  Budget budget;
+  CHECK(budget.pool == Budget::kPool);
+  budget.add_polygon(std::size_t{0});
+  CHECK(budget.pool == Budget::kPool);
+  budget.add_polygon(std::size_t{3});
+  CHECK(budget.pool == Budget::kPool + 3 * Budget::kPerTriangle);
+  // A polygon with very many triangles grows the pool by kPolygonGrant only.
+  budget.add_polygon(std::size_t{1} << 40);
+  CHECK(budget.pool == Budget::kPool + 3 * Budget::kPerTriangle + Budget::kPolygonGrant);
+  const auto tri = hefesto::db::decompose_read_polygon(std::vector<hefesto::db::Point>{{0, 0}, {10, 10}, {10, 0}});
+  Budget one;
+  one.add_polygon(tri);
+  CHECK(one.pool == Budget::kPool + Budget::kPerTriangle);
+}
+
+namespace {
+
+/// The solid tiles of `plane` as comparable tuples.
+std::vector<std::tuple<db::Rect, bool, bool, bool>> tiling(const mask::MaskPlane& plane) {
+  std::vector<std::tuple<db::Rect, bool, bool, bool>> out;
+  for (const db::TileView& t : plane.solid_tiles()) {
+    out.emplace_back(t.area, t.split, t.split && t.diagonal == db::Diagonal::nw_se, t.split && t.right_side);
+  }
+  return out;
+}
+
+/// A comb of 400 one-unit teeth left of x = 1: the space right of it is cut
+/// into about 800 strips, so a triangle over that space descends into more
+/// pieces than a database paint's 512.
+mask::MaskPlane comb() {
+  mask::MaskPlane plane;
+  for (db::Coord i = 0; i < 400; ++i) {
+    REQUIRE(plane.paint(db::Rect{0, 2 * i, 1, 2 * i + 1}).ok());
+  }
+  return plane;
+}
+
+}  // namespace
+
+// Regression (round 7 review of Q-MODEL-37): a read-unit rescale
+// (dbScalePlane) and a flatten copy (gdsCopyPaintFunc) repaint a read
+// plane's split tiles; they used a database paint's budget of 512 pieces,
+// so a triangle beside many tiles was cut short and filled as a rectangle
+// where Magic's unbounded DBNMPaintPlane tiles it exactly.
+TEST_CASE("a rescale or flatten copy repaints read-plane triangles with the read's budget",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  const db::Rect area{1, 0, 1001, 800};
+  mask::MaskPlane exact = comb();
+  db::NMBudget unbounded{std::size_t{1} << 20};
+  (void)exact.paint_triangle(area, db::Diagonal::ne_sw, false, true, &unbounded);
+  REQUIRE(db::NMBudget::kPieces < (std::size_t{1} << 20) - unbounded.pieces);  // past a database paint
+  REQUIRE((std::size_t{1} << 20) - unbounded.pieces <= mask::ReadTriangleBudget::kPieces);
+
+  mask::MaskPlane database = comb();
+  (void)database.paint_triangle(area, db::Diagonal::ne_sw, false, true);
+  CHECK(tiling(database) != tiling(exact));  // the 512-piece repaint differs
+
+  mask::MaskPlane repainted = comb();
+  mask::ReadTriangleBudget budget;
+  mask::repaint_read_triangle(repainted, area, db::Diagonal::ne_sw, false, true, budget);
+  CHECK(tiling(repainted) == tiling(exact));
+  CHECK(budget.pool > mask::ReadTriangleBudget::kPool);  // the repaint's grant was added first
 }

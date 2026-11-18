@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// mask-output-operators: close (Q-MASK-2), maxrect, orthogonal, not-square
-// (Q-MASK-7), the interaction filters (Q-MASK-21), net (Q-MASK-22), tagged
+// mask-output-operators: close (Q-MASK-2), maxrect (Q-MASK-420), orthogonal, not-square
+// (Q-MASK-7), the interaction filters (Q-MASK-21, Q-MASK-417), net (Q-MASK-22), tagged
 // (Q-MASK-6), bbox (Q-MASK-23), boundary and mask-hints.
+
+#include <array>
 
 #include "hefesto/db/label.hpp"
 #include "hefesto/db/property.hpp"
@@ -81,6 +83,46 @@ TEST_CASE("maxrect of an L-shape", CAP "[req:maxrect]") {
   CHECK(f.apply({{5, 5, 8, 9}}, {op(OpKind::maxrect)}) == Rects{{5, 5, 8, 9}});
 }
 
+// Regression (Q-MASK-420): cifRectBoundingBox clears a region's marks by
+// marking its start tile CIF_IGNORE and pushing it with PUSHTILEONLY, which
+// pushes only unprocessed tiles, so the earlier regions' other tiles stay
+// CIF_PROCESSED. FindMaxRectangle2 matches every tile carrying the start
+// tile's mark (utils/maxrect.c:50, :107-108), so a later non-simple region's
+// largest rectangle can lie on them (cif/CIFgen.c:2650-2700).
+TEST_CASE("maxrect of a later region over an earlier region's tiles (Q-MASK-420)", CAP "[req:maxrect]") {
+  // Region A (first in enumeration order: its bump is the topmost tile and
+  // its start tile) is a 60 x 70 block under a bump; region B, a cup around
+  // A's lower part, is non-simple and its own largest rectangle is its
+  // 100 x 15 bar.
+  const Rects a{{40, 90, 50, 95}, {20, 20, 80, 90}};
+  const Rects b{{0, 0, 100, 15}, {0, 15, 10, 60}, {90, 15, 100, 60}};
+  Rects cur = a;
+  cur.insert(cur.end(), b.begin(), b.end());
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    OpsFixture f;
+    f.compat(on);
+    const Rects out = f.apply(cur, {op(OpKind::maxrect)});
+    if (on) {
+      // A's block keeps its processed mark: B's largest rectangle is
+      // [20,80]x[20,60] inside it, and B's own bar is not painted.
+      CHECK(out == Rects{{20, 20, 80, 90}});
+    } else {
+      CHECK(out == strips({{0, 0, 100, 15}, {20, 20, 80, 90}}));
+    }
+    // External maxrect paints each bounding box in both modes.
+    CHECK(f.apply(cur, {with_option(op(OpKind::maxrect))}) == strips({{20, 20, 80, 95}, {0, 0, 100, 60}}));
+  }
+}
+
+TEST_CASE("Q-MASK-420 helper", CAP "[req:maxrect]") {
+  compat::CompatSettings on;
+  compat::CompatSettings off;
+  off.magic_compat = false;
+  CHECK(q_mask_420_clears_start_only(on));
+  CHECK_FALSE(q_mask_420_clears_start_only(off));
+}
+
 TEST_CASE("orthogonal removes or fills triangles", CAP "[req:orthogonal]") {
   OpsFixture f;
   f.paint(f.m1, Rect{0, 0, 10, 10});
@@ -114,38 +156,69 @@ TEST_CASE("triangle kept with magic-compat OFF (Q-MASK-7)", CAP "[req:not-square
   }
 }
 
-TEST_CASE("touching counts only for interacting",
-          CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {
-  OpsFixture f;
-  const std::size_t m = f.mask_layer({{10, 0, 20, 10}});
-  const Rects cur{{0, 0, 10, 10}, {50, 0, 60, 10}};
+namespace {
+
+/// The four interaction forms over mask layer `m`: overlapping,
+/// nonoverlapping, interacting, noninteracting.
+std::array<LayerOp, 4> interaction_forms(std::size_t m) {
   LayerOp overlapping = with_layers(op(OpKind::interacting), {m});
+  LayerOp nonoverlapping = overlapping;
+  nonoverlapping.interact.inverted = true;
   LayerOp interacting = overlapping;
   interacting.interact.touching = true;
   LayerOp noninteracting = interacting;
   noninteracting.interact.inverted = true;
-  LayerOp nonoverlapping = overlapping;
-  nonoverlapping.interact.inverted = true;
+  return {overlapping, nonoverlapping, interacting, noninteracting};
+}
+
+}  // namespace
+
+TEST_CASE("touching counts only for interacting with magic-compat OFF (Q-MASK-417)",
+          CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {
+  OpsFixture f;
+  f.compat(false);
+  const std::size_t m = f.mask_layer({{10, 0, 20, 10}});
+  const Rects cur{{0, 0, 10, 10}, {50, 0, 60, 10}};
+  const auto [overlapping, nonoverlapping, interacting, noninteracting] = interaction_forms(m);
   CHECK(f.apply(cur, {overlapping}).empty());
   CHECK(f.apply(cur, {interacting}) == Rects{{0, 0, 10, 10}});
   CHECK(f.apply(cur, {noninteracting}) == Rects{{50, 0, 60, 10}});
   CHECK(f.apply(cur, {nonoverlapping}) == strips(cur));
 }
 
+TEST_CASE("regression: every interaction form gives an empty layer with magic-compat ON (Q-MASK-417)",
+          CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {
+  // Magic's cifInteractingRegions never paints (cif/CIFgen.c:4928-4929):
+  // touching, overlapping and distant regions all vanish, in all four forms.
+  OpsFixture f;
+  const std::size_t m = f.mask_layer({{10, 0, 20, 10}, {35, 0, 45, 10}});
+  const Rects cur{{0, 0, 10, 10}, {30, 0, 40, 10}, {50, 0, 60, 10}};
+  for (const LayerOp& form : interaction_forms(m)) {
+    CHECK(f.apply(cur, {form}).empty());
+  }
+  // A database-type layer list behaves the same.
+  f.paint(f.poly, Rect{0, 0, 5, 5});
+  CHECK(f.apply(cur, {with_types(op(OpKind::interacting), {f.poly})}).empty());
+}
+
+TEST_CASE("Q-MASK-417 helper", CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {
+  compat::CompatSettings on;
+  compat::CompatSettings off;
+  off.magic_compat = false;
+  CHECK_FALSE(q_mask_417_filters(on));
+  CHECK(q_mask_417_filters(off));
+}
+
 TEST_CASE("database test at negative coordinates (Q-MASK-21)",
           CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {
-  for (const bool on : {true, false}) {
-    OpsFixture f;
-    f.compat(on);
-    f.scale(10);
-    f.paint(f.poly, Rect{-3, 0, -2, 1});
-    const Rects out = f.apply({{-25, 0, -15, 10}}, {with_types(op(OpKind::interacting), {f.poly})});
-    if (on) {
-      CHECK(out.empty());  // r converts to [-2,-1]x[0,1]
-    } else {
-      CHECK(out == Rects{{-25, 0, -15, 10}});  // r converts to [-3,-1]x[0,1]
-    }
-  }
+  // With magic-compat ON the operator gives an empty layer anyway (Q-MASK-417);
+  // the truncating conversion is checked through the helper below.
+  OpsFixture f;
+  f.compat(false);
+  f.scale(10);
+  f.paint(f.poly, Rect{-3, 0, -2, 1});
+  const Rects out = f.apply({{-25, 0, -15, 10}}, {with_types(op(OpKind::interacting), {f.poly})});
+  CHECK(out == Rects{{-25, 0, -15, 10}});  // r converts to [-3,-1]x[0,1]
 }
 
 TEST_CASE("Q-MASK-21 helper", CAP "[req:overlapping, nonoverlapping, interacting, noninteracting]") {

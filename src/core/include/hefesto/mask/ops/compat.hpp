@@ -92,6 +92,11 @@ struct CloseThreshold {
 [[nodiscard]] db::Rect q_mask_21_to_internal(const db::Rect& r, std::int32_t scale,
                                              const compat::CompatSettings& c) noexcept;
 
+/// Q-MASK-417 ((non)interacting, (non)overlapping): ON gives Magic's empty
+/// layer (cifInteractingRegions never paints, cif/CIFgen.c:4928-4929); OFF
+/// keeps or discards each region as specified.
+[[nodiscard]] constexpr bool q_mask_417_filters(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }
+
 /// Q-MASK-27 (squares grid-limit step): the new upper edge when the first
 /// cut origin `origin` is δ = `delta` > 0 off the grid. ON is sign-blind
 /// (`upper - 2δ`); OFF moves the edge the other way for a negative origin.
@@ -105,6 +110,24 @@ struct CloseThreshold {
 /// Q-MASK-228 (bridge-lim passes 1 and 2): ON enumerates the plane it
 /// paints; OFF enumerates a snapshot.
 [[nodiscard]] constexpr bool q_mask_228_snapshot(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }
+
+/// Q-MASK-418 (squares, squares-grid and slots region pass): after a
+/// region's cuts, ON clears only the region's start tile, as Magic's
+/// clearing walk does (it never gets past the start tile), so later regions
+/// still accept squares lying on earlier regions; OFF clears every tile of
+/// the region.
+[[nodiscard]] constexpr bool q_mask_418_clears_start_only(const compat::CompatSettings& c) noexcept {
+  return c.magic_compat;
+}
+
+/// Q-MASK-420 (`maxrect` region pass): after a region's rectangle, ON
+/// clears only the region's start tile, as cifRectBoundingBox's clearing
+/// walk does, so a later non-simple internal region counts the earlier
+/// regions' other tiles as its own when it looks for its largest rectangle;
+/// OFF clears every tile of the region.
+[[nodiscard]] constexpr bool q_mask_420_clears_start_only(const compat::CompatSettings& c) noexcept {
+  return c.magic_compat;
+}
 
 /// Q-MASK-229 (bridge-lim limit erasure): ON erases whole limiting tiles,
 /// unscaled; OFF only their part inside the bridge, in mask units.

@@ -81,7 +81,7 @@ Compatibility: behavioral
 `edit [INSTPATH]` SHALL change the edit cell to a cell instance without changing the window's top cell:
 
 - With INSTPATH (a hierarchical instance path from the window's top cell, for example `x1/x2`), that instance SHALL become the edit instance. If it is not found, the command SHALL report `Usage: edit` and `Maybe you want the "load" command` and change nothing.
-- Without arguments: among the selected cell instances, the first whose area overlaps the pointer area SHALL be chosen. If none overlaps, the last selected instance is used. If no instance is selected, the command SHALL report "No cell selected to edit." and change nothing.
+- Without arguments: among the selected cell instances, the first whose area overlaps the pointer area SHALL be chosen. If none overlaps, the last one is used. The selected instances are taken in SelEnumCells' order: with `magic-compat` ON the use index order of the selection cell (newest first until a search bins it, so the first selected instance is the last), with it OFF the selection order (the last selected instance is the last). Each is matched to the layout instance it stands for by Magic's search at its lower-left corner, through array elements and unexpanded instances, by definition, transform and array; with `magic-compat` OFF the instance id must match too, so of two coincident instances of one cell the selected one is found (Magic takes the first its search finds). The search descends at most 1024 levels in both modes (a crafted hierarchy deeper than that is not searched below it). If no instance is selected, the command SHALL report "No cell selected to edit." and change nothing.
 - If the chosen cell is not yet read, it SHALL be read. If it is read-only, the command SHALL report "File FILE is not writeable. Edit not set." and keep the old edit cell.
 - The edit-to-root transform SHALL become the instance's transform to the root. The edit change is recorded for undo. Without arguments, the command is logged as `edit USEID`.
 
@@ -191,6 +191,8 @@ Expansion state is kept per instance per window. `expand [selection|surround|ove
 
 A last argument that is a prefix of `toggle` SHALL toggle instead of set. `expand toggle` alone toggles under `overlap`. `unexpand [selection|surround|overlap|all]` SHALL unexpand; its default is `surround`. Unknown options print help. Except for `selection`, the box SHALL be in the current window ("The box isn't in the same window as the cursor.").
 
+The rules above are the magic-compat OFF behaviour. With it OFF an expanded array is searched under every element the box overlaps, in that element's coordinates, and each instance is acted on at most once per command (a toggle is not undone by an instance that lies under the box in two elements or below two instances of its parent's cell). With `magic-compat` ON the box modes follow Magic's DBExpandAll and dbExpandFunc (Q-MASK-419, resolution: compat): the search goes on into every instance it finds, expanded or not (an unavailable cell is read first), so instances are acted on at every depth under the box, also below instances that stay unexpanded; each array is tested on its first element overlapping the box only, in that element's coordinates, and not at all when the box falls between elements; `surround` acts on an instance unless its cell's bounding box surrounds the box without the box surrounding it, so a box over part of an instance acts on it; and `expand all toggle` expands instead of toggling. In both modes each cell's instances are found by an area search of its use index (gds-write "Structure ordering"), and the search descends at most 1024 levels: below that depth no instance is changed and the command reports `expand: the hierarchy is deeper than 1024 levels; instances below that depth were not changed.` (`unexpand: ...` for `unexpand`, VIEW-EXPAND-003). Magic has no bound; only a crafted hierarchy is that deep.
+
 If reading newly expanded cells changes the internal-unit ratio (a cell saved at a finer scale), the box and windows SHALL be rescaled, `expand: rescaled by D` is printed, and expansion repeats until stable. Expansion changes display only. It is not recorded as a cell modification.
 
 Compatibility: behavioral
@@ -201,6 +203,24 @@ Compatibility: behavioral
 - **GIVEN** two unexpanded instances, one overlapping the box and one outside it
 - **WHEN** `expand` is run
 - **THEN** only the overlapping instance SHALL be expanded
+
+#### Scenario: Unexpand below an unexpanded instance with magic-compat ON
+- **GIVEN** `magic-compat` ON, an unexpanded instance `m` whose expanded child instance `l` lies inside the box, and the box not inside `m`'s bounding box
+- **WHEN** `unexpand` is run
+- **THEN** `l` SHALL be unexpanded
+- **AND** with `magic-compat` OFF `l` SHALL stay expanded
+
+#### Scenario: Expand under a second array element with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, an expanded 2-element array instance whose cell holds unexpanded instances, and the box over one of them in the second element only
+- **WHEN** `expand` is run
+- **THEN** that instance SHALL be expanded
+- **AND** the cell's other instances, which the box covers in no element, SHALL stay unexpanded
+
+#### Scenario: Unexpand surround over part of an instance with magic-compat ON
+- **GIVEN** `magic-compat` ON and an expanded instance whose bounding box the box overlaps without surrounding it or lying inside it
+- **WHEN** `unexpand` is run
+- **THEN** the instance SHALL be unexpanded
+- **AND** with `magic-compat` OFF it SHALL stay expanded
 
 ### Requirement: Flatten command
 

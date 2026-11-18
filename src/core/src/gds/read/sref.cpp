@@ -101,14 +101,15 @@ const mask::MaskPlane* source_plane(const PlaneSet* mine, const std::vector<mask
   return engine != nullptr && layer < engine->size() ? (*engine)[layer] : nullptr;
 }
 
-void copy_tiles(const mask::MaskPlane& from, mask::MaskPlane& to, const db::Transform& t, bool magic_compat) {
+void copy_tiles(const mask::MaskPlane& from, mask::MaskPlane& to, const db::Transform& t, bool magic_compat,
+                mask::ReadTriangleBudget& budget) {
   for (const db::TileView& tile : from.solid_tiles()) {
     const db::Point p0 = db::apply(t, db::Point{tile.area.x0, tile.area.y0});
     const db::Point p1 = db::apply(t, db::Point{tile.area.x1, tile.area.y1});
     const db::Rect area = db::canonical(db::Rect{p0.x, p0.y, p1.x, p1.y});
     if (tile.split) {
       const db::TriangleSide side = db::transform_triangle(t, tile.diagonal, tile.right_side);
-      (void)to.paint_triangle(area, side.diagonal, side.right_side, magic_compat);
+      mask::repaint_read_triangle(to, area, side.diagonal, side.right_side, magic_compat, budget);
     } else {
       (void)to.paint(area);
     }
@@ -119,7 +120,8 @@ using FlattenLayer = std::pair<const mask::MaskPlane*, mask::MaskPlane*>;  // fl
 
 /// gdsCopyPaintFunc over every element of a cols x rows flatten copy.
 void paint_copies(const std::vector<FlattenLayer>& layers, std::int64_t cols, std::int64_t rows,
-                  const db::ArrayInfo& array, const db::Transform& trans, bool magic_compat) {
+                  const db::ArrayInfo& array, const db::Transform& trans, bool magic_compat,
+                  mask::ReadTriangleBudget& budget) {
   for (const auto& [source, to] : layers) {
     for (std::int64_t x = 0; x < cols; ++x) {
       for (std::int64_t y = 0; y < rows; ++y) {
@@ -127,7 +129,7 @@ void paint_copies(const std::vector<FlattenLayer>& layers, std::int64_t cols, st
         // coordinates, so the use's transform applies after it.
         const db::Transform t =
             db::compose(trans, db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)));
-        copy_tiles(*source, *to, t, magic_compat);
+        copy_tiles(*source, *to, t, magic_compat, budget);
       }
     }
   }
@@ -614,7 +616,7 @@ void Reader::copy_flattened(const Reference& ref, const db::Transform& trans, co
   }
   flatten_paints_ += cols * rows * tiles;
   state(*ref.def).flattened = true;
-  paint_copies(layers, cols, rows, array, trans, compat_.magic_compat);
+  paint_copies(layers, cols, rows, array, trans, compat_.magic_compat, engine_->triangle_budget());
 }
 
 bool Reader::place_reference(const Reference& ref, bool unscaled, std::int64_t& made) {
