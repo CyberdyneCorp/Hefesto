@@ -9,5 +9,12 @@
 # except codes.cpp (INTEGRATION). Add new files here.
 
 target_sources(hefesto_core PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/build.cpp
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/read.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/graph.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/hier_name.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/model.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/read.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/reader.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/text.cpp)
