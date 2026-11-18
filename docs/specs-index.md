@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3364 scenarios, 889 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3365 scenarios, 889 open questions.
 
 ## Hefesto product (native)
 
@@ -119,7 +119,7 @@ Open questions: [102](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 68 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
-| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 52 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 53 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 20 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
 | [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 72 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |

@@ -164,7 +164,7 @@ class LayerTable {
   tech::TypeMask contact_types_;  // DBIsContact of the section's technology
 };
 
-/// One shape of a via definition.
+/// One shape of a via definition (half internal units in a ViaDefinition).
 struct ViaShape {
   tech::TileType type = 0;
   db::Rect area;
@@ -172,10 +172,19 @@ struct ViaShape {
   friend bool operator==(const ViaShape&, const ViaShape&) = default;
 };
 
-/// A VIA definition from LEF, DEF or a generated via. LEFVIA extends it.
+/// A VIA definition from LEF, DEF or a generated via: Magic's lefLayer of
+/// class VIA (lef-read "LEF VIA and VIARULE definitions"). Areas are in
+/// half internal units (Magic doubles via geometry so that a via centre may
+/// fall between grid points). Built by lef/via/store.hpp (LEFVIA).
 struct ViaDefinition {
-  std::vector<ViaShape> shapes;
-  bool generated = false;  // from VIARULE parameters or a DEF write
+  LayerClass layer_class = LayerClass::cut;  // Magic's CLASS_VIA
+  std::optional<tech::TileType> type;        // the normal type; nullopt = none (Magic's -1)
+  std::optional<tech::TileType> obstruction_type;
+  db::Rect area;                 // the contact area; (0,0,0,0) = not set yet (GeoNullRect)
+  std::vector<ViaShape> shapes;  // the extra rectangles, list head first
+  std::string canonical_name;
+  bool generated = false;       // from VIARULE parameters or a DEF write
+  std::uint32_t ref_count = 1;  // refCnt: 0 marks a DEF write's temporary via
 
   friend bool operator==(const ViaDefinition&, const ViaDefinition&) = default;
 };
