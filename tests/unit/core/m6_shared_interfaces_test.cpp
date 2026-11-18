@@ -125,15 +125,20 @@ TEST_CASE("the gds-only settings stay in GdsSettings", "[m6-scaffold]") {
 
 // --- tasks.md 2.5: shared interfaces outside the lef/def/oasis areas --------
 
-TEST_CASE("extflat::read_flat is a stub", "[m6-scaffold]") {
+// EXTSUB landed read_flat and StyleView (their [cap:ext-flattening-*] and
+// [cap:extract-tech-section] tests are in tests/unit/extflat and
+// tests/unit/extract/tech); these keep the scaffold's interface checks.
+TEST_CASE("extflat::read_flat reports a missing root and Netlist visits its nodes", "[m6-scaffold]") {
   Session s;
   diag::CollectingSink sink;
   hefesto::cell::LookupContext ctx{s.services.view().files, s.state.search_paths, s.state.path_variables, sink};
   const auto netlist = extflat::read_flat(ctx, "top", extflat::ReadOptions{});
   REQUIRE_FALSE(netlist.ok());
-  CHECK(netlist.error().code == "CORE-NOTIMPL-006");
+  CHECK(netlist.error().code == "EXTFLAT-READ-001");
 
-  const extflat::Netlist built{{{"top/a", "metal1", {1, 2}, false}, {"GND!", "pwell", {0, 0}, true}}, {{"top", 42}}};
+  const extflat::Netlist built{
+      {{"top/a", "metal1", {1, 2}, false, false, false, {}, {}}, {"GND!", "pwell", {0, 0}, true, false, false, {}, {}}},
+      {{"top", 42}}};
   std::vector<std::string> names;
   built.visit_nodes([&names](const extflat::FlatNode& node) { names.push_back(node.name); });
   CHECK(names == std::vector<std::string>{"top/a", "GND!"});
@@ -143,7 +148,9 @@ TEST_CASE("extflat::read_flat is a stub", "[m6-scaffold]") {
 TEST_CASE("extract::StyleView answers nullopt without a style", "[m6-scaffold]") {
   diag::CollectingSink sink;
   const tech::Technology technology;
-  const extract::StyleView none = extract::StyleView::from_section(tech::RawSection{"extract", {}}, technology, sink);
+  // An empty extract section has Magic's "default" style.
+  CHECK(extract::StyleView::from_section(tech::RawSection{"extract", {}}, technology, sink).has_style());
+  const extract::StyleView none;
   CHECK_FALSE(none.has_style());
   CHECK_FALSE(none.gate_types().has_value());
   CHECK_FALSE(none.diff_types().has_value());
