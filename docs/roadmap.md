@@ -218,10 +218,11 @@ Depends on `mask-hints`, which is completed in M3.
 **Deliverables**
 - **LEF/DEF:** abstract views, and DEF import and export for place-and-route flows.
 - **OASIS:** read and write, equivalent to the GDS path, and validated with KLayout (`strm2oas`, `strmxor`).
+- **Pulled forward from M7:** the `.ext` read-and-flatten subset that `def write` calls, built to `ext-flattening-read`, `ext-flattening-hierarchy` and `ext-flattening-names` (the DEF-write net cases take Magic-written `.ext` files as inputs), and the device, antenna tie-down, substrate and active-type parts of the `extract-tech-section` reader that `lef write` and `def write` read. Both are built in M7's area layout with M7's tags, and M7 extends them (`openspec/changes/m6-lef-def-oasis` Open Questions 1 and 2, user decision 2026-11-18). Extraction itself stays in M7.
 
 **Exit criteria**
 - The common exit criteria.
-- The LEFDEF and OASIS golden cases pass.
+- The LEFDEF and OASIS golden cases pass. OASIS-012, OASIS-030 and OASIS-061 run without commercial-tool inputs, under an approved deviation (Q-OASIS-2, user decision 2026-11-18).
 - The 419-byte OASIS reference file is confirmed by a third-party reader.
 
 ## M7 — Extraction and netlisting
@@ -234,6 +235,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **R-C extraction:** full R-C extraction with extresist.
 - **Antenna:** antenna checks.
 - **Extract tech section:** `extract-tech-section` starts from the subset that M10's 3D view writes first, in that capability's home with its tags (style, scale, units, `planeorder`, `noplaneordering`, `height`; `openspec/changes/m10-3d-view` design D5, Open Question 4, user decision 2026-11-13). M7 extends it; there is one extract reader.
+- **Pulled forward to M6:** M6 builds the `.ext` read-and-flatten subset (`ext-flattening-read`, `-hierarchy`, `-names`) that `def write` calls, and the device, antenna tie-down, substrate and active-type parts of the `extract-tech-section` reader, in this milestone's area layout and with its tags (`openspec/changes/m6-lef-def-oasis` design D10, user decision 2026-11-18). M7 extends that code rather than replacing it; those requirements stay M7's in the coverage report.
 
 **Exit criteria**
 - The common exit criteria.
