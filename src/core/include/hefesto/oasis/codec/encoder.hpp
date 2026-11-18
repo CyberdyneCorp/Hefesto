@@ -48,11 +48,12 @@ class Encoder {
   /// The name tables, the END record and its signature.
   [[nodiscard]] diag::Status finish();
 
+  [[nodiscard]] gds::ByteSink& sink() const noexcept { return *sink_; }
   [[nodiscard]] const ModalState& modal() const noexcept { return modal_; }
   [[nodiscard]] const EncoderOptions& options() const noexcept { return options_; }
 
  private:
-  [[maybe_unused]] gds::ByteSink* sink_;  // written by OASFMT's implementation
+  gds::ByteSink* sink_;
   EncoderOptions options_;
   ModalState modal_;
 };

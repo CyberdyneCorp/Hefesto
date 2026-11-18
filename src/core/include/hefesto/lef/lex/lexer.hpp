@@ -52,12 +52,15 @@ class Lexer {
   /// The current line (1-based; 0 before the first token).
   [[nodiscard]] std::uint32_t line() const noexcept { return line_; }
 
+  /// The tokenized input.
+  [[nodiscard]] gds::ByteSource& source() const noexcept { return *source_; }
+
   /// LefEstimate: the fraction of the input consumed, in [0, 1], for
   /// progress reports (Q-LEFDEF-88). SCAFFOLD: returns 0.
   [[nodiscard]] double estimate() const noexcept;
 
  private:
-  [[maybe_unused]] gds::ByteSource* source_;  // read by LEFR's implementation
+  gds::ByteSource* source_;
   std::uint32_t line_ = 0;
 };
 

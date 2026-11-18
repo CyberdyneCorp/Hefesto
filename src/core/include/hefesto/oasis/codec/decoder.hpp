@@ -107,12 +107,13 @@ class Decoder {
   /// CORE-NOTIMPL-006 until OASFMT lands it.
   [[nodiscard]] diag::Outcome<std::optional<Record>> next();
 
+  [[nodiscard]] gds::ByteSource& source() const noexcept { return *source_; }
   [[nodiscard]] const ModalState& modal() const noexcept { return modal_; }
   [[nodiscard]] const NameTables& names() const noexcept { return names_; }
   [[nodiscard]] const DecoderOptions& options() const noexcept { return options_; }
 
  private:
-  [[maybe_unused]] gds::ByteSource* source_;  // read by OASFMT's implementation
+  gds::ByteSource* source_;
   DecoderOptions options_;
   ModalState modal_;
   NameTables names_;

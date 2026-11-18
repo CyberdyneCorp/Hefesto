@@ -221,6 +221,7 @@ TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   const std::vector<std::byte> bytes(4, std::byte{0});
   gds::MemorySource source{bytes};
   lef::Lexer lexer{source};
+  CHECK(&lexer.source() == &source);
   check_stub(lexer.next());
   CHECK(lexer.line() == 0);
   CHECK(lexer.estimate() == 0.0);
@@ -237,12 +238,14 @@ TEST_CASE("the OASIS codec interfaces are stubs", "[m6-scaffold]") {
   const std::vector<std::byte> bytes(4, std::byte{0});
   gds::MemorySource source{bytes};
   oasis::Decoder decoder{source};
+  CHECK(&decoder.source() == &source);
   check_stub(decoder.next());
   CHECK(decoder.modal() == oasis::ModalState{});
   CHECK(decoder.names().cellnames.empty());
 
   gds::MemorySink sink;
   oasis::Encoder encoder{sink};
+  CHECK(&encoder.sink() == &sink);
   check_stub(encoder.begin());
   check_stub(encoder.begin_cell("top"));
   check_stub(encoder.element(oasis::Element{}));

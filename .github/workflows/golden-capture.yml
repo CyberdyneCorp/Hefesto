@@ -692,7 +692,7 @@ jobs:
       - name: Plan the probe runs
         shell: bash
         run: |
-          read -ra cases <<< "$CASES"
+          read -ra cases <<< "${CASES:-}"  # CASES comes from the workflow env
           python3 tools/golden/authoring/lefdef_cases.py --ext-plan ext-plan.json "${cases[@]}"
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
@@ -740,7 +740,7 @@ jobs:
       - name: Write Hefesto's OASIS files
         shell: bash
         run: |
-          read -ra cases <<< "$CASES"
+          read -ra cases <<< "${CASES:-}"  # CASES comes from the workflow env
           python3 tools/golden/oasis_validate.py produce --hefesto-cli build/linux-release/src/cli/hefesto-cli \
             --out oasis-validate "${cases[@]}"
       # The image size is recorded in m6-lef-def-oasis design D18 (task 1.3).
