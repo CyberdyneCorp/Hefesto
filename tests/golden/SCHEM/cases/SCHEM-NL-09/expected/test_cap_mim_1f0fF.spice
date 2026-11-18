@@ -1,0 +1,28 @@
+** sch_path: /pdk/gf180mcuD/libs.tech/xschem/tests/test_cap_mim_1f0fF.sch
+**.subckt test_cap_mim_1f0fF
+XC1 P GND cap_mim_1f0fF c_width=10e-6 c_length=10e-6
+V1 IN GND pwl 0 0 200n 3.3
+R2 P IN 100k
+**** begin user architecture code
+
+.include /pdk/gf180mcuD/libs.tech/ngspice/design.ngspice
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice typical
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice cap_mim
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice res_typical
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice moscap_typical
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice mimcap_typical
+* .lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice res_statistical
+
+
+
+.control
+save all
+tran 0.1n 200n
+write test_cap_mim_1f0fF.raw
+.endc
+
+
+**** end user architecture code
+**.ends
+.GLOBAL GND
+.end

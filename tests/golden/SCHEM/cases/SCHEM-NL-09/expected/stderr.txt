@@ -1,0 +1,21 @@
+== test_nfet_03v3
+Created /tmp/.xschem dir with template xschemrc
+Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
+Sourcing /opt/ref/share/xschem/xschemrc init file
+Sourcing /work/input/xschemrc init file
+pdk installation: using /pdk
+180MCU_MODELS: /pdk/gf180mcuD/libs.tech/ngspice
+setup_tcp_bespice: success : listening to TCP port: 2022
+-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+Error: undriven node: B
+Warning: open net: D
+Error: undriven node: G
+Warning: open net: S
+-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+== test_cap_mim_1f0fF
+Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
+Sourcing /opt/ref/share/xschem/xschemrc init file
+Sourcing /work/input/xschemrc init file
+pdk installation: using /pdk
+180MCU_MODELS: /pdk/gf180mcuD/libs.tech/ngspice
+setup_tcp_bespice: success : listening to TCP port: 2022

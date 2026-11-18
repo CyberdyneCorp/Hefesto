@@ -1,0 +1,4 @@
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/adder_16bit.sch
+schematic netlist out/adder_16bit.spice
+schematic close -discard

@@ -2,11 +2,11 @@
 
 These entries cover the capabilities `schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration` and `schematic-command`. Product decision: `docs/decisions/product.md#P-12`.
 
-The reference is xschem, not Magic: `StefanSchippers/xschem` @ `4142e6d6f1eb5cd0e271bb183f14202af374ce27` (version `3.4.8RC`, file format `1.3`). "Evidence" paths are relative to the xschem `src/` directory. PDK reference data: `xschem_sky130` @ `2bfd7d65`, `IHP-Open-PDK` @ `5e6d592e` (`ihp-sg13g2/libs.tech/xschem`), `gf180mcu_fd_pr` @ `aacc04cc` (`cells/xschem`), `open_pdks` @ `c6df28c1`. These trees were cloned read-only; nothing was built or run, so every expected netlist text in the specs is derived from the code and must be confirmed by the golden cases in `tests/golden/SCHEM/CASES.md`.
+The reference is xschem, not Magic: `StefanSchippers/xschem` @ `4142e6d6f1eb5cd0e271bb183f14202af374ce27` (version `3.4.8RC`, file format `1.3`). "Evidence" paths are relative to the xschem `src/` directory. PDK reference data: `xschem_sky130` @ `2bfd7d65`, `IHP-Open-PDK` @ `5e6d592e` (`ihp-sg13g2/libs.tech/xschem`), `gf180mcu_fd_pr` @ `aacc04cc` (`cells/xschem`), `open_pdks` @ `c6df28c1`. The gf180 data was re-pinned on 2026-11-17 to `gf180mcu_fd_pr` @ `5e4be872`, the tree the ciel release of M5 installs as `gf180mcuD/libs.tech/xschem` (design D17 of `openspec/changes/m8-schematic`); the gf180 conventions cited in the specs hold in both trees. These trees were cloned read-only; nothing was built or run, so every expected netlist text in the specs is derived from the code and must be confirmed by the golden cases in `tests/golden/SCHEM/CASES.md`.
 
 xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they carry the GPL header). The PDK symbol libraries are Apache-2.0. Hefesto is implemented clean-room from the specs.
 
-**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`.
+**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18").
 
 **Compatibility setting (D-21, approved 2026-11-13).** Entries in this file that record `Resolution: compat` are governed by the `xschem-compat` setting (default ON) of capability `hefesto-magic-compat-mode`, not by `magic-compat`.
 
@@ -135,6 +135,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate | fix (rename the second, e.g. `inv_1`) | replicate and warn
 - Recommendation: compat. With `xschem-compat` ON, write one `.subckt` per cell name, from the first symbol found, as xschem does. With it OFF, a later subcircuit whose cell name was already written gets a unique name (`inv_1`, `inv_2`, ...), and its instance lines use it. Both modes warn. (corrected 2026-11-13, was replicate and warn)
 - Resolution: compat — with `xschem-compat` ON one `.subckt` is written per cell name, from the first symbol found; with it OFF a later subcircuit whose cell name was already written gets a unique name (`<cell>_1`, `<cell>_2`, ...) that its instance lines use; both modes warn. The exact ON text is fixed by golden case SCHEM-NL-16. Approved 2026-11-13.
+- Verified 2026-11-18 (golden case SCHEM-NL-16, capture run 44239093096, task 3.6 of `openspec/changes/m8-schematic`): with `libA/inv.sym` and `libB/inv.sym` both used, xschem writes `x1 A B inv` and `x2 A B inv` and one definition, `* expanding   symbol:  libA/inv.sym # of pins=2`, `** sym_path: .../libA/inv.sym`, `** sch_path: .../libA/inv.sch`, `.subckt inv A Y`, the body of `libA/inv.sch`, `.ends`; it prints no warning. The ON text is recorded in `schematic-netlisting` "Subcircuit definitions", scenario "Same cell name from two libraries". The `Resolution:` is unchanged.
 
 ### Q-SCHEM-15: Flat netlist text
 - Kind: ambiguity
@@ -148,7 +149,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-16: Shorts at top level are not always reported
 - Kind: quirk
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: the short report is suppressed while the netlist counter is 0, i.e. during the first connectivity pass of the top level; top-level shorts appear only from the second pass after the hierarchy has been netlisted, and not at all in `-nohier` runs.
+- xschem behavior: a short at the top level is not reported when the top level's connectivity is first computed; it is reported only when the top level is processed again after the hierarchy below it has been netlisted, and not at all in `-nohier` runs. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: netlist.c:908-927, spice_netlist.c:556-560
 - Options: replicate | fix (always report)
 - Recommendation: fix: always report shorts; the netlist text is unaffected.
@@ -166,7 +167,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-18: awk dialect differences in xschem's post-processing
 - Kind: platform
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: `spice.awk` relies on gawk's `IGNORECASE` for `.param` detection and the `value=` renames. With mawk (Debian/Ubuntu default) or BWK awk (macOS) these matches are case-sensitive, so the same schematic can give different netlists on different hosts.
+- xschem behavior: xschem post-processes its netlist with the system `awk`. Under gawk the `.param` detection and the `value=` renames match case-insensitively; with mawk (Debian/Ubuntu default) or BWK awk (macOS) they are case-sensitive, so the same schematic can give different netlists on different hosts. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: spice.awk:101-140, spice.awk:238-262
 - Options: follow gawk (case-insensitive) | follow mawk (case-sensitive)
 - Recommendation: gawk semantics (spec); golden references must be generated with gawk installed as `awk`.
@@ -184,7 +185,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-20: Line breaker state
 - Kind: quirk
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: the quote state of `break.awk` (toggled by `{`, `}` and `'`, with no nesting) persists across lines, so one unbalanced quote disables breaking for later lines; after a break the column counter is reset without counting the field just written.
+- xschem behavior: when wrapping long lines, a quote opened by `{`, `}` or `'` (no nesting) stays open across lines, so one unbalanced quote stops later lines from wrapping; after a wrap, the field written after the `+` does not count toward the new line's length. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: break.awk:26-75
 - Options: replicate | fix
 - Recommendation: replicate (it only affects layout of long lines), covered by golden case SCHEM-NL-12.
@@ -192,12 +193,15 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 
 ### Q-SCHEM-21: Multi-line templates break `.subckt` lines
 - Kind: bug
-- Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
+- Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13; OFF-mode amendment drafted 2026-11-17, approved by the user 2026-11-18)
 - xschem behavior: the template is copied onto the `.subckt` header with its separators, so a template written on several lines (`template="name=x1` LF `W=1"`) puts parameters on new lines without `+`, which SPICE reads as garbage.
 - Evidence: token.c:576-668, spice_netlist.c:715-728
 - Options: replicate | fix (replace LFs by spaces)
 - Recommendation: compat. With `xschem-compat` ON, copy the template's LFs onto the `.subckt` header as xschem does. With it OFF, replace each LF by a space, so the header is valid SPICE. Both modes warn. The inventory checks whether any PDK subcircuit symbol has a multi-line template. (corrected 2026-11-13, was replicate and warn)
-- Resolution: compat — with `xschem-compat` ON the template's LFs are copied onto the `.subckt` header; with it OFF each LF becomes a space; both modes warn. The PDK inventory reports any subcircuit symbol with a multi-line template. The exact ON text is fixed by the golden captures. Approved 2026-11-13.
+- Resolution: compat — with `xschem-compat` ON the template's LFs are copied onto the `.subckt` header; with it OFF each LF becomes a space, except an LF followed by optional blanks and `+`, which is kept so a SPICE continuation line stays one; both modes warn. The PDK inventory reports any subcircuit symbol with a multi-line template. The exact ON text is fixed by the golden captures. Approved 2026-11-13; OFF rule amended (the `+` exception) and approved by the user 2026-11-18 (`schematic-netlisting` "Subcircuit definitions", scenario "Template continuation lines, xschem-compat OFF"). ON is unchanged.
+- Verified 2026-11-17 (inventory, task 2.5 of `openspec/changes/m8-schematic`): three PDK subcircuit symbols have a multi-line `template`, all in sky130 (`tests/data/schem/inventory.json`, `multiline_templates`); gf180mcu and IHP have none. So the two modes differ on PDK data. `sky130_tests/passgate.sym` (used by `passgate.sch`'s testbenches, `bandgap.sch`, `gain_stage.sch`, `tb_bandgap_opamp.sch`) continues its template on a line without `+` (`... VSSBPIN=VSS` LF `modeln=nfet_01v8 modelp=pfet_01v8 m=1`), the case this entry describes; SCHEM-NL-03 captures its ON text, so no Hefesto-authored case is needed for it. `sky130_tests/not.sym` and `lvtnot.sym` (used by `test_inv.sch`, `logic_ngspice.sch`, `test_ff.sch` and others) continue theirs with SPICE `+` continuation lines (`name=x1 m=1` LF `+ W_N=1 ...` LF `+ VCCPIN=VCC VSSPIN=VSS`): with `xschem-compat` ON the header stays valid SPICE, while the OFF rule as written (each LF becomes a space) would put bare `+` words inside the header line. Raised to the user as a proposed amendment of the OFF rule (keep an LF that is followed by optional blanks and `+`); approved by the user 2026-11-18 and folded into the `Resolution:` above.
+- Proposed amendment (status: proposed, drafted 2026-11-17, not approved): with `xschem-compat` OFF, an LF of the template that is followed by optional spaces or tabs and a `+` is kept, since it already starts a SPICE continuation line; every other LF becomes a space. ON is unchanged, and both modes still warn. Effect on PDK data: `not.sym` and `lvtnot.sym` headers are the same in both modes; `passgate.sym` differs as before.
+- Verified 2026-11-18 (golden case SCHEM-NL-03, capture run 44239093096, task 3.6): the ON text of `passgate.sym` in `gain_stage.sch` is the header line `.subckt passgate Z A GP GN VCCBPIN VSSBPIN  W_N=1 L_N=0.2 W_P=1 L_P=0.2` followed by an empty line: the text after the template's LF is its own line, and the netlist post-processing empties it (the `extra` keys `modeln`/`modelp` removed, then the trailing ` m=1`, then the trailing spaces). xschem prints no warning. Recorded in `schematic-netlisting` "Subcircuit definitions", scenario "Multi-line template, xschem-compat ON". The ON text is unaffected by the amendment of 2026-11-18; the `+` form of `not.sym`/`lvtnot.sym` is not captured as a header (no case netlists them hierarchically yet).
 
 ### Q-SCHEM-22: Trailing `m=1` removed everywhere
 - Kind: quirk
@@ -207,6 +211,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate | fix (device lines only)
 - Recommendation: compat. With `xschem-compat` ON, remove a trailing ` m=1` from every line, as xschem does. With it OFF, remove it only from device lines (outside user-code blocks, first field not starting with `*` or `.`), keeping comments, `.param` and `.control` text unchanged. On device lines `m=1` is the default, so removing it changes nothing. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `xschem-compat` ON a trailing ` m=1` is removed from every line; with it OFF only from device lines, so comments, `.param` and `.control` text keep it. The exact texts are fixed by the golden captures. Approved 2026-11-13.
+- Verified 2026-11-18 (golden case SCHEM-NL-01, capture run 44239093096, task 3.6): with ON, the user-code line `.param m=1` of a `code_shown.sym` instance is written `.param`, and the device lines `R1 VIN VOUT 1k` and `C1 VOUT 0 1n` lose their `m=1`. Recorded in `schematic-netlisting` "Element line post-processing", scenario "Trailing m=1 in a testbench, xschem-compat ON". The `Resolution:` is unchanged.
 
 ### Q-SCHEM-23: [platform] xschemrc evaluation on iPadOS
 - Kind: platform
@@ -252,6 +257,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate after golden capture | always error
 - Recommendation: capture with golden case SCHEM-NL-14, then replicate and warn.
 - Resolution: replicate — a `subcircuit` symbol whose schematic is missing gets its header lines and an empty body, and a warning, as `schematic-netlisting` says; the exact text is fixed by golden case SCHEM-NL-14. Approved 2026-11-13.
+- Verified 2026-11-18 (golden case SCHEM-NL-14, capture run 44239093096, task 3.6): for `missing.sym` with no `missing.sch`, xschem writes `* expanding   symbol:  missing.sym # of pins=2`, `** sym_path: .../missing.sym`, `** sch_path: .../missing.sch`, `.subckt missing A B`, `.ends` and an empty line, prints `load_schematic(): unable to open file: .../missing.sch, ...` on stderr and exits 0. The same case confirms `spice_sym_def` (its text and a LF, nothing else), `spice_stop` (header and `.ends`, no body) and `default_schematic=ignore` (no definition, instance line kept). Recorded in `schematic-netlisting` "Schematic resolution". The `Resolution:` is unchanged. Not captured: with `spice_sym_def=".include x.spice"` xschem also tries to open `x.spice` (stdout `has_included_subcircuit: error opening file ...`); what it does with that file when it exists is not observed.
 
 ### Q-SCHEM-28: Instance-based schematic variants
 - Kind: ambiguity
@@ -261,6 +267,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate after golden capture
 - Recommendation: golden case SCHEM-NL-15 decides the exact names.
 - Resolution: replicate — each distinct instance `schematic=` value produces one extra subcircuit, named after that schematic's cell name; the exact naming is fixed by golden case SCHEM-NL-15. Approved 2026-11-13.
+- Verified 2026-11-18 (golden cases SCHEM-NL-15 and SCHEM-NL-03, capture run 44239093096, task 3.6): for `x2` of `amp.sym` with `schematic=amp_fast.sch`, xschem writes the instance line `x2 A B amp_fast` and, after the `amp` definition, `* expanding   symbol:  amp_fast.sym # of pins=2`, `** sym_path: .../amp.sym` (the original symbol), `** sch_path: .../amp_fast.sch`, `.subckt amp_fast IN OUT` and the body of `amp_fast.sch`. In sky130 `gain_stage.sch`, `x6` of `sky130_tests/passgate.sym` has `schematic=passgate_1` and no such file exists: xschem writes `passgate_1` on the instance line and a definition `passgate_1.sym` whose `** sch_path:` is `passgate.sch`, whose body takes `x6`'s `modelp=pfet_01v8_lvt`, and it still writes the plain `passgate` definition. Recorded in `schematic-netlisting` "Schematic resolution". The `Resolution:` is unchanged. Not captured: whether the fallback to the symbol's own schematic comes from the missing file or from the value having no extension.
 
 ### Q-SCHEM-29: Netlisting rewrites wire `lab` attributes
 - Kind: quirk
@@ -270,3 +277,13 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate (spec) | keep computed names out of the file
 - Recommendation: replicate for round-trip identity with xschem-saved files, but do not mark the document modified.
 - Resolution: replicate — netlisting writes the computed `lab` values into wires and labels, which the next save writes, without marking the document modified, in both modes. The xschem manual documents the behaviour, and PDK files saved by xschem already carry these values. Approved 2026-11-13.
+
+### Q-SCHEM-30: Relative references follow xschem's start folder
+- Kind: platform
+- Status: approved (recommendation drafted 2026-11-18 from golden case SCHEM-PR-05, approved by the user 2026-11-18)
+- xschem behavior: symbol references starting with `./` or `../`, and the element `.` of `XSCHEM_LIBRARY_PATH`, are resolved against the folder xschem was started in, not against the folder of the schematic that contains the instance. In SCHEM-PR-05 (started in `/work`, loading `/work/input/sub/top.sch`) `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as `Symbol not found` although `/work/input/x.sym` exists. The same schematic therefore resolves differently depending on where xschem is started.
+- Evidence: golden case SCHEM-PR-05 (`tests/golden/SCHEM/cases/SCHEM-PR-05/expected/stdout.txt`, `stderr.txt`), capture run 44239093096; black-box observation only.
+- Options: replicate (resolve against the process working folder; on iPadOS there is none, so a substitute folder would be needed) | fix (resolve against the folder of the containing schematic, as `schematic-symbols-and-libraries` "Symbol references" step 5 says today) | compat (replicate with `xschem-compat` ON, using the folder Hefesto was started in on desktop and the document's folder on iPadOS; fix with OFF)
+- Recommendation: fix in both modes: resolve `./`, `../` and `.` against the folder of the containing schematic, and warn when a `./` or `../` reference is resolved, since xschem may resolve it elsewhere. A document then opens the same way on every platform and from every start folder, and xschem started in the schematic's folder, the usual case, gives the same result. SCHEM-PR-05 gets a recorded deviation for its `./` and `../` lines.
+- Spec effect: `schematic-symbols-and-libraries` "Symbol references" (step 5 and the "Working folder" paragraph, scenario "Relative reference resolved against the schematic folder") and "Library search path" (the `.` element, scenario "Dot element is the schematic folder"); golden deviation for SCHEM-PR-05 in `tests/golden/deviations.toml` (`stdout.txt`, `stderr.txt`).
+- Resolution: fix — in both modes of `xschem-compat`, `./` and `../` references and the search-path element `.` are resolved against the folder of the schematic that contains the instance, never against the folder Hefesto was started in; each reference resolved that way reports, once, the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. SCHEM-PR-05 has an approved deviation for its `./` and `../` lines. Approved by the user 2026-11-18.

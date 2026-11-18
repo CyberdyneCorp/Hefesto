@@ -1,0 +1,26 @@
+** sch_path: /work/input/nl14.sch
+**.subckt nl14
+x1 N1 N2 missing
+x2 N1 N2 withdef
+x3 N1 N2 stopped
+x4 N1 N2 ignored
+**.ends
+
+* expanding   symbol:  missing.sym # of pins=2
+** sym_path: /work/input/missing.sym
+** sch_path: /work/input/missing.sch
+.subckt missing A B
+.ends
+
+
+* expanding   symbol:  withdef.sym # of pins=2
+** sym_path: /work/input/withdef.sym
+.include x.spice
+
+* expanding   symbol:  stopped.sym # of pins=2
+** sym_path: /work/input/stopped.sym
+** sch_path: /work/input/stopped.sch
+.subckt stopped A B
+.ends
+
+.end

@@ -1,0 +1,8 @@
+schematic pdk gf180mcuD
+schematic open pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+schematic netlist out/test_nfet_03v3.spice
+schematic close -discard
+schematic pdk gf180mcuD
+schematic open pdk/gf180mcuD/libs.tech/xschem/tests/test_cap_mim_1f0fF.sch
+schematic netlist out/test_cap_mim_1f0fF.spice
+schematic close -discard

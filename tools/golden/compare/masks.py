@@ -65,6 +65,16 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     the directory order of the file system the reference image was built on,
     so each run of such lines is sorted by name and its indexes become
     ``<i>``.
+``schem-paths``
+    The absolute paths of a SCHEM netlist's ``** sch_path:`` and ``** sym_path:`` comment lines
+    (openspec/changes/m8-schematic design D16, Q-SCHEM-13: they name files on the netlisting host). A path
+    inside a PDK tree (``.../<pdk>/libs.tech/...`` or ``.../<pdk>/libs.ref/...`` with ``<pdk>`` one of
+    ``sky130A``, ``gf180mcuD``, ``ihp-sg13g2``) becomes ``$PDK_ROOT/<pdk>/...``; a path under the work
+    directory ``/work/`` becomes relative to it; the rest of the line is kept.
+``schem-version``
+    The ``version=<v>`` value of a ``v {xschem version=<v> ...}`` record (the first record of a ``.sch`` or
+    ``.sym`` file, Q-SCHEM-1): the value becomes ``<masked>``. For a file written by another xschem version
+    compared with a resave; ``file_version`` and the header text are compared.
 ``regex:<pattern>``
     Every match of the Python bytes regex ``<pattern>`` is replaced with
     ``<masked>``. For one-off fields; prefer adding a named mask when a field
@@ -220,6 +230,33 @@ def mask_magic_tech_menu_order(data: bytes) -> bytes:
     return b"\n".join(out[:-1])
 
 
+# Q-SCHEM-13: sch_path/sym_path comment lines carry host paths.
+_SCHEM_PATH_LINE = re.compile(rb"^(\*\* s(?:ch|ym)_path: )(\S[^\n]*?)(\r?)$", re.MULTILINE)
+_SCHEM_PDK_PATH = re.compile(rb"^.*?/((?:sky130A|gf180mcuD|ihp-sg13g2)/libs\.(?:tech|ref)/.*)$")
+_SCHEM_WORK = b"/work/"
+
+
+def _schem_relative(path: bytes) -> bytes:
+    pdk = _SCHEM_PDK_PATH.match(path)
+    if pdk:
+        return b"$PDK_ROOT/" + pdk.group(1)
+    if path.startswith(_SCHEM_WORK):
+        return path[len(_SCHEM_WORK):]
+    return path
+
+
+def mask_schem_paths(data: bytes) -> bytes:
+    return _SCHEM_PATH_LINE.sub(lambda m: m.group(1) + _schem_relative(m.group(2)) + m.group(3), data)
+
+
+# Q-SCHEM-1: the writer's version string in the version record.
+_SCHEM_VERSION = re.compile(rb"^(v \{xschem version=)[^\s}]+", re.MULTILINE)
+
+
+def mask_schem_version(data: bytes) -> bytes:
+    return _SCHEM_VERSION.sub(rb"\1<masked>", data)
+
+
 def _regex_mask(pattern: str) -> Mask:
     compiled = re.compile(pattern.encode())
     return lambda data: compiled.sub(b"<masked>", data)
@@ -238,6 +275,8 @@ _NAMED: dict[str, Mask] = {
     "magic-crash-file": mask_magic_crash_file,
     "magic-crash-line": mask_magic_crash_line,
     "magic-tech-menu-order": mask_magic_tech_menu_order,
+    "schem-paths": mask_schem_paths,
+    "schem-version": mask_schem_version,
 }
 
 

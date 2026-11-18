@@ -1,0 +1,63 @@
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
+**.subckt test_short_option NET_A NET_C
+*.iopin NET_A
+*.iopin NET_C
+* short x2 : NET_A <--> NET_A
+* short x5 : #net1 <--> #net1
+* short x1 : NET_E <--> NET_E
+x10 NET_E NET_B NET_E VCC VSS lvnand WidthN=1 LenN=0.15 WidthP=1 LenP=0.15
+x12 net1 net1 VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+x3 NET_A NET_A VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+x6 NET_E net1 VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+x7 NET_B NET_A VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+x4 net2 NET_B VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+x8 NET_F net2 VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
+Vopt1 NET_D net1 0
+.save i(vopt1)
+Vopt2 NET_C net1 0
+.save i(vopt2)
+**.ends
+
+* expanding   symbol:  sky130_tests/lvnand.sym # of pins=3
+** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/lvnand.sym
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/lvnand.sch
+.subckt lvnand A B Y VCCPIN VSSPIN  WidthN=1 LenN=0.15 WidthP=1 LenP=0.15
+*.ipin A
+*.ipin B
+*.opin Y
+XM1 Y B S VSSPIN sky130_fd_pr__nfet_01v8 L=LenN W=WidthN nf=1 ad='int((1 + 1)/2) * WidthN / 1 * 0.29' as='int((1 + 2)/2) * WidthN / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (WidthN / 1 + 0.29)' ps='2*int((1 + 2)/2) * (WidthN / 1 + 0.29)' nrd='0.29 / WidthN ' nrs='0.29 / WidthN ' sa=0
++ sb=0 sd=0 mult=1
+XM2 Y A VCCPIN VCCPIN sky130_fd_pr__pfet_01v8 L=LenP W=WidthP nf=1 ad='int((1 + 1)/2) * WidthP / 1 * 0.29' as='int((1 + 2)/2) * WidthP / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (WidthP / 1 + 0.29)' ps='2*int((1 + 2)/2) * (WidthP / 1 + 0.29)' nrd='0.29 / WidthP ' nrs='0.29 / WidthP ' sa=0
++ sb=0 sd=0 mult=1
+XM3 Y B VCCPIN VCCPIN sky130_fd_pr__pfet_01v8 L=LenP W=WidthP nf=1 ad='int((1 + 1)/2) * WidthP / 1 * 0.29' as='int((1 + 2)/2) * WidthP / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (WidthP / 1 + 0.29)' ps='2*int((1 + 2)/2) * (WidthP / 1 + 0.29)' nrd='0.29 / WidthP ' nrs='0.29 / WidthP ' sa=0
++ sb=0 sd=0 mult=1
+XM4 S A VSSPIN VSSPIN sky130_fd_pr__nfet_01v8 L=LenN W=WidthN nf=1 ad='int((1 + 1)/2) * WidthN / 1 * 0.29' as='int((1 + 2)/2) * WidthN / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (WidthN / 1 + 0.29)' ps='2*int((1 + 2)/2) * (WidthN / 1 + 0.29)' nrd='0.29 / WidthN ' nrs='0.29 / WidthN ' sa=0
++ sb=0 sd=0 mult=1
+.ends
+
+
+* expanding   symbol:  sky130_tests/not.sym # of pins=2
+** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/not.sym
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/not.sch
+.subckt not y a VCCPIN VSSPIN     W_N=1 L_N=0.15 W_P=2 L_P=0.15
+*.opin y
+*.ipin a
+XM1 DN a VSSPIN VSSPIN sky130_fd_pr__nfet_01v8 L=L_N W=W_N nf=1 ad='int((1 + 1)/2) * W_N / 1 * 0.29' as='int((1 + 2)/2) * W_N / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (W_N / 1 + 0.29)' ps='2*int((1 + 2)/2) * (W_N / 1 + 0.29)' nrd='0.29 / W_N ' nrs='0.29 / W_N ' sa=0 sb=0 sd=0
++ mult=1
+XM2 DP a VCCPIN VCCPIN sky130_fd_pr__pfet_01v8 L=L_P W=W_P nf=1 ad='int((1 + 1)/2) * W_P / 1 * 0.29' as='int((1 + 2)/2) * W_P / 1 * 0.29'
++ pd='2*int((1 + 1)/2) * (W_P / 1 + 0.29)' ps='2*int((1 + 2)/2) * (W_P / 1 + 0.29)' nrd='0.29 / W_P ' nrs='0.29 / W_P ' sa=0 sb=0 sd=0
++ mult=1
+Vmeas DP y 0
+.save i(vmeas)
+Vmeas1 y DN 0
+.save i(vmeas1)
+.save v(dp)
+.save v(dn)
+.ends
+
+.end

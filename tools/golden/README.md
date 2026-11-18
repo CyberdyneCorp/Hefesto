@@ -104,6 +104,23 @@ gh workflow run golden-capture.yml --ref <branch> -f mode=verify -f keep-raw=tru
 
 Hand-built GDS inputs (bad headers, damaged records, every PATHTYPE, AREFs, properties, odd TEXT) come from `authoring/gdsgen.py`, a record writer with its decoder in `goldenlib/gds.py` (`tests/test_gdsgen.py`). Inputs under 64 KB are committed as binary. Until a case is captured and its workstream lands, `deviations.toml` lists it as `deferred = "M5"` in the block `m5_cases.py --deviations` generates; a workstream whose implementation makes cases replay adds them to `REPLAYED` in `m5_cases.py` and re-runs `--deviations`.
 
+## M8: the SCHEM cases (xschem)
+
+`authoring/schem_cases.py` writes the 41 cases of `tests/golden/SCHEM/CASES.md` (m8-schematic tasks 3.2 and 3.3, design D16), captured from xschem 3.4.8RC in the pinned image. The image installs `gawk` and makes it `awk`; its build fails when `awk --version` is not GNU Awk (task 3.1, Q-SCHEM-18), and `golden-capture.yml` logs the version.
+
+- **Clean room (J-1, design D2).** Inputs are PDK files or Hefesto-authored files written from the `schematic-*` specs; each `case.toml` names its `provenance` (`"hefesto"` or `"pdk:<set>:<path>"`), which `scripts/check_cleanroom.py` checks. xschem's system symbols (`res.sym`, `lab_pin.sym`, ...) are referenced by name and come from the image; no file of xschem's distribution is committed.
+- **PDK data.** `[reference] xschem_sets` names the xschem data sets of `scripts/fetch_pdk.py` a case reads. The container runner mounts each one read-only at `/pdk/<variant>` with `PDK_ROOT=/pdk` (and `PDK=<variant>` for a single set), so PDK files are read in place and each PDK's own `xschemrc` finds its tree. `replay.py` links the same sets as `<work>/pdk/<variant>`. A missing set fails a capture and skips a replay.
+- **rc fragment.** `harness/schem/xschemrc` is copied into every case as `input/xschemrc` and passed with `--rcfile`: it sources the PDK's `xschemrc` (or uses xschem's system symbol folder), appends the case's input folder to the library path, sources `input/case.xschemrc` when present, sets the netlist folder to `<work>/out` and turns `xschem_execute_scripts` on, so `tcleval` values are evaluated.
+- **Drivers.** Netlist cases run `input/run.sh`: one fresh `xschem -n -s` per netlist, its exit status printed after it. Tcl cases run `xschem --script input/case.tcl`. Every case captures its files, stdout, stderr and the exit status (output source `exitcode`), with `allow_nonzero_exit` (a netlist with a short exits 10).
+- **Comparison.** Netlists and streams use the `schem-paths` mask (Q-SCHEM-13); `schem-version` masks the writer version of a version record (Q-SCHEM-1). The flat netlist of SCHEM-NL-21 is compared by `spice-canonical` (`compare/spice_canonical.py`, design D10): devices with subcircuits expanded, matched through a node bijection, names compared case-insensitively.
+- **Replay.** Hefesto runs `input/hefesto.hef` (the `schematic` command) or `input/case.tcl` (the `xschem` compatibility command); `deviations.toml` defers every SCHEM case to M8 until its workstream replays it (`schem_cases.REPLAYED`, then `--deviations`).
+
+```sh
+python3 authoring/schem_cases.py               # write the cases (never expected/)
+python3 authoring/schem_cases.py --deviations  # rewrite the SCHEM block of deviations.toml
+python3 authoring/schem_cases.py --dispatch    # the golden-capture.yml capture command
+```
+
 ## Building the reference image (CI, not developer machines)
 
 ```sh

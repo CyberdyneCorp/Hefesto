@@ -224,6 +224,26 @@ python3 scripts/fetch_pdk.py sky130-gds gf180mcu-gds ihp-gds --cli build/macos-d
 python3 scripts/fetch_pdk.py --print-digest sky130-gds
 ```
 
+### xschem data sets (M8)
+
+The schematic work of M8 (the SCHEM golden captures, the inventory `scripts/schem_inventory.py`, the PDK round-trip and netlist tests) uses the xschem trees of the same three releases (design D17 of `openspec/changes/m8-schematic`). They come in three more data sets, fetched only when named:
+
+| Set | Trees | Downloaded | Kept |
+|---|---|---|---|
+| `sky130-xschem` | `sky130A/libs.tech/xschem` (`xschem_sky130` @ `2bfd7d65`, as installed by open_pdks) and `sky130A/libs.tech/netgen` (the netgen setup file of SCHEM-LVS-01) | 20 MB (`common` 6.6 MB, `sky130_fd_pr` 13.9 MB) | 6.3 MB, 955 files |
+| `gf180mcu-xschem` | `gf180mcuD/libs.tech/xschem` (`gf180mcu_fd_pr` @ `5e4be872` `cells/xschem`, as installed) | 170 MB (`common`) | 0.5 MB, 269 files |
+| `ihp-xschem` | `ihp-sg13g2/libs.tech/xschem` and `ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem` (IHP-Open-PDK @ `5e6d592e`) | 441 MB (`common` 434 MB, `sg13g2_stdcell` 6.4 MB) | 3.2 MB, 362 files |
+
+- **Root.** The sets install under their own PDK root, `.cache/pdks/xschem/` (`.cache/pdks/xschem/ciel/<family>/versions/<pin>/`), for the reason given for the GDS sets. Each `pdk install` names one library because the command needs one; only the subset is kept (the `-lib` of `ihp-xschem` is `sg13g2_stdcell`, whose archive holds the standard-cell symbols).
+- **Cache keys.** `pdk-sky130-xschem-5740c4a81c42-8a3b28a791383eb5`, `pdk-gf180mcu-xschem-5740c4a81c42-e70989764fe362e8`, `pdk-ihp-xschem-5e6d592e4002-a38b0850a131fbe4` (`--cache-info`: `sky130_xschem_key`, `sky130_xschem_path`, ...).
+- **Inventory.** `scripts/schem_inventory.py` reads only these sets and writes `tests/data/schem/inventory.json` (design D18): the `devices/` symbols, Tcl commands and `$::` variables, `xschem` subcommands and multi-line subcircuit templates each PDK uses. After a pin change, rerun it and commit the result; the `schem-inventory` job of `ci.yml` runs `--check` on the cached sets and fails on any difference.
+- **Tests.** `tests/unit/common/reference_data.hpp` gives the paths (`pinned_xschem(pdk)` for `libs.tech/xschem`, `pinned_xschem(kIhpSg13g2, kIhpStdcellXschemSymbols)` for IHP's standard-cell symbols); a test whose set is missing skips.
+
+```sh
+python3 scripts/fetch_pdk.py sky130-xschem gf180mcu-xschem ihp-xschem --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py --print-digest ihp-xschem
+```
+
 Run some steps only by naming them; every step is a no-op once its data is present and verified:
 
 ```sh
@@ -233,7 +253,7 @@ python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an insta
 python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
 ```
 
-The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets and the three xschem sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`, the xschem sets into `DIR/xschem`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 

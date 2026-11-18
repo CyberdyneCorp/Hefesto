@@ -1,0 +1,2 @@
+# SCHEM-PR-05: a search path with a missing folder, an alias and '.'.
+set XSCHEM_LIBRARY_PATH "/work/input/libA:/work/input/missing:/work/input/libB | lib:.:${XSCHEM_SHAREDIR}/xschem_library"

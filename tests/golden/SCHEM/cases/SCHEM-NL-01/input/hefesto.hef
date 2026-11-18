@@ -1,0 +1,3 @@
+schematic open input/SC_Test.sch
+schematic netlist out/SC_Test.spice
+schematic close -discard

@@ -1,0 +1,3 @@
+== test_generators
+
+== test_generators: exit 0
