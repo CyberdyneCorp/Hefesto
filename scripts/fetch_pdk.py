@@ -40,8 +40,9 @@ PDK root ``<root>/gds/`` (``<root>/gds/ciel/<family>/versions/<pin>/``). Each ho
 xschem data sets (openspec/changes/m8-schematic design D17), same pins, under their own PDK root
 ``<root>/xschem/``:
 
-``sky130-xschem``    sky130A/libs.tech/xschem (xschem_sky130 2bfd7d65 as installed by open_pdks)
-                     20 MB downloaded (common 6.6 MB, sky130_fd_pr 13.9 MB), 6.2 MB kept, 953 files
+``sky130-xschem``    sky130A/libs.tech/xschem (xschem_sky130 2bfd7d65 as installed by open_pdks) and
+                     sky130A/libs.tech/netgen (the netgen setup file of SCHEM-LVS-01)
+                     20 MB downloaded (common 6.6 MB, sky130_fd_pr 13.9 MB), 6.3 MB kept, 955 files
 ``gf180mcu-xschem``  gf180mcuD/libs.tech/xschem (gf180mcu_fd_pr 5e4be872 cells/xschem as installed)
                      170 MB downloaded (common), 0.5 MB kept, 269 files
 ``ihp-xschem``       ihp-sg13g2/libs.tech/xschem and ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem
@@ -199,8 +200,9 @@ def xschem_set(name: str, tech: DataSet, library: str, subset: tuple[str, ...], 
 # @ 2bfd7d65, gf180mcuD holds gf180mcu_fd_pr @ 5e4be872 cells/xschem, ihp-sg13g2 holds IHP-Open-PDK
 # @ 5e6d592e; libs.ref/sg13g2_stdcell/sym/xschem is in the sg13g2_stdcell archive.
 DATA_SETS.update({
-    "sky130-xschem": xschem_set("sky130-xschem", DATA_SETS["sky130"], "sky130_fd_pr", ("sky130A/libs.tech/xschem",),
-                                "51219df24d4b69c463a08fd8f7254075c09ab871e07c3d90b63b454cf3c0b1ad"),
+    "sky130-xschem": xschem_set("sky130-xschem", DATA_SETS["sky130"], "sky130_fd_pr",
+                                ("sky130A/libs.tech/xschem", "sky130A/libs.tech/netgen"),
+                                "8a3b28a791383eb5c6f546acb3a6fd42e91ebb954fa986257e7851d2447a78d8"),
     "gf180mcu-xschem": xschem_set("gf180mcu-xschem", DATA_SETS["gf180mcu"], "gf180mcu_fd_pr",
                                   ("gf180mcuD/libs.tech/xschem",), "e70989764fe362e8dc1d59824768c7dbc988eeab11c7ac714a3e6f118e69bad6"),
     "ihp-xschem": xschem_set("ihp-xschem", DATA_SETS["ihp"], "sg13g2_stdcell",

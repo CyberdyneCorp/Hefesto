@@ -214,7 +214,8 @@ class XschemDataSets(unittest.TestCase):
                 self.assertEqual(len(data.install_commands()), 1)
 
     def test_subsets_are_the_xschem_trees_of_design_d17(self):
-        self.assertEqual(fetch.DATA_SETS["sky130-xschem"].subset, ("sky130A/libs.tech/xschem",))
+        self.assertEqual(fetch.DATA_SETS["sky130-xschem"].subset,
+                         ("sky130A/libs.tech/xschem", "sky130A/libs.tech/netgen"))
         self.assertEqual(fetch.DATA_SETS["gf180mcu-xschem"].subset, ("gf180mcuD/libs.tech/xschem",))
         self.assertEqual(fetch.DATA_SETS["ihp-xschem"].subset,
                          ("ihp-sg13g2/libs.tech/xschem", "ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem"))
@@ -223,7 +224,7 @@ class XschemDataSets(unittest.TestCase):
 
     def test_pinned_digests_of_task_2_1(self):
         self.assertEqual({name: fetch.DATA_SETS[name].tree_sha256 for name in self.XSCHEM_SETS}, {
-            "sky130-xschem": "51219df24d4b69c463a08fd8f7254075c09ab871e07c3d90b63b454cf3c0b1ad",
+            "sky130-xschem": "8a3b28a791383eb5c6f546acb3a6fd42e91ebb954fa986257e7851d2447a78d8",
             "gf180mcu-xschem": "e70989764fe362e8dc1d59824768c7dbc988eeab11c7ac714a3e6f118e69bad6",
             "ihp-xschem": "a38b0850a131fbe4f169b7332541da0012281765419523d7fad255af6a36498b"})
 

@@ -10,8 +10,8 @@ area = "SCHEM"
 capability = "schematic-simulation-integration"
 requirements = ["Schematic to layout cross-probing", "Schematic-driven LVS command"]
 tool = "xschem"
-description = "sky130 inverter: sky130_fd_sc_hd__inv_1 extracted by Magic against the xschem LVS netlist of not.sch, compared by netgen."
-provenance = "pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_tests/not.sch"
+description = "sky130 inverter: sky130_fd_sc_hd__inv_1 extracted by Magic against the xschem LVS netlist of the Hefesto-drawn inv_1.sch (the same circuit), compared by netgen with the PDK's setup file."
+provenance = ["hefesto", "pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_fd_pr/nfet_01v8.sym", "pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_fd_pr/pfet_01v8_hvt.sym", "pdk:sky130-xschem:sky130A/libs.tech/netgen/sky130A_setup.tcl"]
 
 [reference]
 argv = ["sh", "/work/input/run.sh"]
@@ -52,14 +52,20 @@ source = "pdk"
 path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag"
 to = "sky130_fd_sc_hd__inv_1.mag"
 
+[[external]]
+source = "pdk"
+set = "sky130-xschem"
+path = "sky130A/libs.tech/netgen/sky130A_setup.tcl"
+to = "sky130A_setup.tcl"
+
 [[outputs]]
-name = "not.spice"
-source = "out/not.spice"
+name = "inv_1.spice"
+source = "out/inv_1.spice"
 comparator = "bytes"
 masks = ["schem-paths"]
 
 [[outputs]]
-name = "inv_1.spice"
+name = "layout.spice"
 source = "out/sky130_fd_sc_hd__inv_1.spice"
 comparator = "bytes"
 masks = []

@@ -645,7 +645,7 @@ reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem com
 
 [SCHEM-LVS-01]
 deferred = "M8"
-outputs = ["not.spice", "inv_1.spice", "lvs.out", "stdout.txt", "stderr.txt", "exitcode.txt"]
+outputs = ["inv_1.spice", "layout.spice", "lvs.out", "stdout.txt", "stderr.txt", "exitcode.txt"]
 reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
 
 [SCHEM-CMD-01]

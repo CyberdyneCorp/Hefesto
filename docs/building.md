@@ -230,12 +230,12 @@ The schematic work of M8 (the SCHEM golden captures, the inventory `scripts/sche
 
 | Set | Trees | Downloaded | Kept |
 |---|---|---|---|
-| `sky130-xschem` | `sky130A/libs.tech/xschem` (`xschem_sky130` @ `2bfd7d65`, as installed by open_pdks) | 20 MB (`common` 6.6 MB, `sky130_fd_pr` 13.9 MB) | 6.2 MB, 953 files |
+| `sky130-xschem` | `sky130A/libs.tech/xschem` (`xschem_sky130` @ `2bfd7d65`, as installed by open_pdks) and `sky130A/libs.tech/netgen` (the netgen setup file of SCHEM-LVS-01) | 20 MB (`common` 6.6 MB, `sky130_fd_pr` 13.9 MB) | 6.3 MB, 955 files |
 | `gf180mcu-xschem` | `gf180mcuD/libs.tech/xschem` (`gf180mcu_fd_pr` @ `5e4be872` `cells/xschem`, as installed) | 170 MB (`common`) | 0.5 MB, 269 files |
 | `ihp-xschem` | `ihp-sg13g2/libs.tech/xschem` and `ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem` (IHP-Open-PDK @ `5e6d592e`) | 441 MB (`common` 434 MB, `sg13g2_stdcell` 6.4 MB) | 3.2 MB, 362 files |
 
 - **Root.** The sets install under their own PDK root, `.cache/pdks/xschem/` (`.cache/pdks/xschem/ciel/<family>/versions/<pin>/`), for the reason given for the GDS sets. Each `pdk install` names one library because the command needs one; only the subset is kept (the `-lib` of `ihp-xschem` is `sg13g2_stdcell`, whose archive holds the standard-cell symbols).
-- **Cache keys.** `pdk-sky130-xschem-5740c4a81c42-51219df24d4b69c4`, `pdk-gf180mcu-xschem-5740c4a81c42-e70989764fe362e8`, `pdk-ihp-xschem-5e6d592e4002-a38b0850a131fbe4` (`--cache-info`: `sky130_xschem_key`, `sky130_xschem_path`, ...).
+- **Cache keys.** `pdk-sky130-xschem-5740c4a81c42-8a3b28a791383eb5`, `pdk-gf180mcu-xschem-5740c4a81c42-e70989764fe362e8`, `pdk-ihp-xschem-5e6d592e4002-a38b0850a131fbe4` (`--cache-info`: `sky130_xschem_key`, `sky130_xschem_path`, ...).
 - **Inventory.** `scripts/schem_inventory.py` reads only these sets and writes `tests/data/schem/inventory.json` (design D18): the `devices/` symbols, Tcl commands and `$::` variables, `xschem` subcommands and multi-line subcircuit templates each PDK uses. After a pin change, rerun it and commit the result; the `schem-inventory` job of `ci.yml` runs `--check` on the cached sets and fails on any difference.
 - **Tests.** `tests/unit/common/reference_data.hpp` gives the paths (`pinned_xschem(pdk)` for `libs.tech/xschem`, `pinned_xschem(kIhpSg13g2, kIhpStdcellXschemSymbols)` for IHP's standard-cell symbols); a test whose set is missing skips.
 
