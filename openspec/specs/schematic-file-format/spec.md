@@ -382,7 +382,7 @@ Lookup of key `k` SHALL return the first attribute whose key equals `k` exactly 
 
 Setting key `k` to value `v` SHALL follow these rules:
 1. If `v` contains `;`, LF, space or tab, is not already enclosed in `"`, and `k` is not `name`, `v` SHALL be written as `"v"`.
-2. If `k` exists, the value of its first occurrence SHALL be replaced. An attribute without `=` SHALL become `k=v` followed by one space.
+2. If `k` exists, the value of its first occurrence SHALL be replaced. An attribute without `=` that is followed by a separator SHALL become the key, that separator, `=v` and one space, before the next attribute (golden case SCHEM-PR-01: setting `k` to `5` in `k name=x1` gives `k =5 name=x1`).
 3. If `k` does not exist and the string is empty, the result SHALL be `k=v`.
 4. If `k` does not exist and the string ends in a space or LF, `k=v` SHALL be appended. Otherwise LF followed by `k=v` SHALL be appended.
 5. Setting an empty value SHALL remove the first occurrence of `k`, together with its `=`, its value and one following space or LF.
@@ -410,6 +410,16 @@ Compatibility: exact
 - **GIVEN** the property string `name=x1 value=1`
 - **WHEN** key `value` is set to `.lib a b`
 - **THEN** the string SHALL become `name=x1 value=".lib a b"`
+
+#### Scenario: Setting a key written without equals
+- **GIVEN** the property string `k name=x1`
+- **WHEN** key `k` is set to `5`
+- **THEN** the string SHALL become `k =5 name=x1` (golden case SCHEM-PR-01)
+
+#### Scenario: Removing a key
+- **GIVEN** the property string `name=x1 value=1 m=2`
+- **WHEN** key `value` is set to the empty value
+- **THEN** the string SHALL become `name=x1 m=2` (golden case SCHEM-PR-01)
 
 ### Requirement: Boolean values
 Wherever this specification says an attribute is "true" or "false", the comparison SHALL work as follows:
@@ -523,7 +533,7 @@ Compatibility: exact
 
 ### Requirement: Malformed input
 Hefesto SHALL read a malformed file as far as possible and SHALL report each problem without aborting:
-- a record with missing numeric fields SHALL be skipped and the rest of its line discarded, with the warning `missing fields for <KIND> object` (KIND is `LINE`, `xRECT`, `ARC`, `POLYGON`, `TEXT`, `WIRE` or `INSTANCE`)
+- a record with a missing or non-numeric numeric field SHALL be skipped, with the warning `missing fields for <KIND> object` (KIND is `LINE`, `xRECT`, `ARC`, `POLYGON`, `TEXT`, `WIRE` or `INSTANCE`). Because the separators between fields include LF (Requirement "Record grammar"), the fields are looked for across line ends: reading stops at the first character that cannot start the expected number, and the characters from there up to and including the next LF SHALL be discarded. A record cut short at the end of a line therefore also loses the line that follows it (golden case SCHEM-RT-06)
 - an invalid layer SHALL be handled as in Requirement "Layers"
 - a missing closing brace SHALL be handled as in Requirement "Brace strings"
 - the exact message texts are informative
@@ -535,9 +545,14 @@ Compatibility: exact
 (xschem ref: save.c:3283-3584)
 
 #### Scenario: Truncated wire
-- **GIVEN** the line `N 0 0 10` followed by the line `N 0 10 20 10 {}`
+- **GIVEN** the line `N 0 0 10`, followed by the lines `N 0 10 20 10 {}` and `N 0 0 10 0 {}`
 - **WHEN** the file is read
-- **THEN** the first record SHALL be skipped with a warning and only the wire (0,10)-(20,10) SHALL be loaded
+- **THEN** the first record SHALL be skipped with a warning, its fields are looked for on the second line, which stops the read at `N` and is discarded, and only the wire (0,0)-(10,0) SHALL be loaded (golden case SCHEM-RT-06)
+
+#### Scenario: Unterminated property at the end of the file
+- **GIVEN** a file whose last line is `N 0 0 10 0 {lab=A` with no closing brace
+- **WHEN** the file is read and saved
+- **THEN** the wire (0,0)-(10,0) SHALL be loaded with no property, the missing-brace warning SHALL be reported, and the saved file SHALL contain `N 0 0 10 0 {}` (golden case SCHEM-RT-06)
 
 ### Requirement: Safe saving
 Saving SHALL write the complete file to a temporary file in the destination folder and then atomically replace the destination, through the platform file services of capability `hefesto-files-and-pdks`. A failed write SHALL leave the previous file intact and report the error. Hefesto SHALL detect when the file on disk changed since it was loaded and SHALL ask before overwriting it.

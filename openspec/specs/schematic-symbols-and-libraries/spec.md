@@ -221,9 +221,19 @@ Compatibility: exact
 (xschem ref: token.c:4675-4795, token.c:5299-5560)
 
 #### Scenario: Resistor label
-- **GIVEN** a symbol text `@name=@value` and an instance `name=R7 value=4.7k`
+- **GIVEN** a symbol text `@name=@value` and an instance `name=R7 value=4.7k` of `res.sym`
 - **WHEN** the instance is drawn
-- **THEN** the text SHALL read `R7=4.7k`
+- **THEN** the text SHALL read `4.7k`: the first token is `@name=` (it ends only before the next `@`), which is not a defined key and is empty, and Hefesto SHALL report the Q-SCHEM-26 warning naming `name=` and the defined prefix `name` (golden case SCHEM-PR-04)
+
+#### Scenario: Resistor label written with a separator
+- **GIVEN** a symbol text `@name @value` and the same instance
+- **WHEN** the instance is drawn
+- **THEN** the text SHALL read `R7 4.7k`
+
+#### Scenario: Token values from xschem translate
+- **GIVEN** golden case SCHEM-PR-04: instances `R7` (`value=4.7k`) and `M1` (`W=2 L=1 value=2`) of `res.sym`, whose pins are `P` and `M`
+- **WHEN** the texts are substituted for them
+- **THEN** `@W/@L` on `M1` SHALL give `1`, `@W @L` SHALL give `2 1`, and on `R7` `%undef` SHALL give `undef`, `@undef` the empty text, `@symname` `res`, `@symname_ext` `res.sym`, `@#0:pinnumber` `1` and `@#1:name` `M`
 
 #### Scenario: Escaped at sign
 - **GIVEN** a symbol text `a\@b @name` and an instance named `X1`
@@ -286,7 +296,9 @@ A symbol reference in a `C` record SHALL be resolved to a file as follows:
 7. Otherwise, each folder of the search path is tried in order, and the first `<folder>/<reference>` that exists is used.
 8. If none exists, `<folder of the containing schematic>/<reference>` is used.
 
-When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. References read from a file SHALL be written back unchanged.
+When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. A folder that has an alias SHALL be written in the alias form (golden case SCHEM-PR-05: with the element `/work/input/libB | lib`, `/work/input/libB/x.sym` is written `lib/x.sym`). References read from a file SHALL be written back unchanged.
+
+**Working folder (proposed, Q-SCHEM-30).** xschem resolves the `./` and `../` references of step 5, and the search-path element `.` of Requirement "Library search path", against the folder xschem was started in, not against the folder of the schematic (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists). Steps 5 and the `.` element above keep the schematic's folder until Q-SCHEM-30 is decided; the open-question entry records the options.
 
 Compatibility: exact
 
