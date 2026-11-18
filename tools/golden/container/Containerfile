@@ -23,6 +23,8 @@
 # wrapper (`magic -d X11 -noconsole`) under Xvfb: xvfb-run (package xvfb), xauth
 # and the core X fonts Tk needs. case.toml `[reference] display = "xvfb"`
 # selects it (goldenlib/refrunners.py); nothing else uses a display.
+# KLayout runs in batch mode (`klayout -b`, QT_QPA_PLATFORM=offscreen) and gdstk from
+# $HEFESTO_GDSTK_PYTHON (m6-lef-def-oasis design D18).
 
 ARG BASE_IMAGE=docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 FROM ${BASE_IMAGE}
@@ -38,11 +40,20 @@ ARG NGSPICE_COMMIT=7aa4716494c01ac1d3120211316e898539a6cb4c
 ARG XSCHEM_REPO=https://github.com/StefanSchippers/xschem
 ARG XSCHEM_COMMIT=4142e6d6f1eb5cd0e271bb183f14202af374ce27
 ARG WITH_XSCHEM=1
+ARG KLAYOUT_DEB_VERSION=0.30.0-1+b1
+ARG KLAYOUT_DEB_SHA256=421e473f7a1e0e4aa6b20dd1ca69b494c21e38308c38ad9259a7476cf4c3f272
+ARG GDSTK_VERSION=1.0.2
+ARG GDSTK_WHEEL_URL=https://files.pythonhosted.org/packages/cp313/g/gdstk/gdstk-1.0.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+ARG GDSTK_WHEEL_SHA256=0429cc3eab8931415a040eec19875f3636453263603885ba881587c77837b41b
 
+# QT_QPA_PLATFORM: KLayout runs in batch mode (-b) with no display; HEFESTO_GDSTK_PYTHON is the
+# interpreter of the gdstk virtual environment below.
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
     LC_ALL=C \
     PREFIX=/opt/ref \
+    QT_QPA_PLATFORM=offscreen \
+    HEFESTO_GDSTK_PYTHON=/opt/ref/py/bin/python3 \
     PATH=/opt/ref/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -112,6 +123,30 @@ RUN set -eux; \
       cd /opt/src/xschem; ./configure --prefix="${PREFIX}"; make -j"$(nproc)"; make install; \
     fi
 
+# KLayout and gdstk, reference tools of the OASIS cases (m6-lef-def-oasis design D18). They run
+# as separate programs (oasis-validate, the OASIS captures); Hefesto never links or calls them.
+# KLayout is the Debian package of the APT snapshot, its .deb checked against the SHA-256 of the
+# snapshot's Packages index. gdstk is a PyPI wheel checked by SHA-256 and installed, without
+# dependencies, into a virtual environment that sees the snapshot's python3-numpy.
+RUN set -eux; \
+    apt-get -o Acquire::Check-Valid-Until=false update; \
+    cd /tmp; \
+    apt-get download "klayout=${KLAYOUT_DEB_VERSION}"; \
+    deb="$(ls /tmp/klayout_*_amd64.deb)"; \
+    echo "${KLAYOUT_DEB_SHA256}  ${deb}" | sha256sum -c -; \
+    apt-get install -y --no-install-recommends "${deb}" python3-venv python3-numpy; \
+    rm -f "${deb}"; rm -rf /var/lib/apt/lists/*; \
+    wheel="/tmp/$(basename "${GDSTK_WHEEL_URL}")"; \
+    python3 -c 'import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])' \
+        "${GDSTK_WHEEL_URL}" "${wheel}"; \
+    echo "${GDSTK_WHEEL_SHA256}  ${wheel}" | sha256sum -c -; \
+    python3 -m venv --system-site-packages "${PREFIX}/py"; \
+    "${PREFIX}/py/bin/pip" install --no-deps --no-index --no-cache-dir "${wheel}"; \
+    rm -f "${wheel}"; \
+    klayout -v; \
+    "${PREFIX}/py/bin/python3" -c 'import importlib.metadata as m, gdstk; print("gdstk", m.version("gdstk"))'; \
+    test "$("${PREFIX}/py/bin/python3" -c 'import importlib.metadata as m; print(m.version("gdstk"))')" = "${GDSTK_VERSION}"
+
 # magic-hash-harness: Magic's own utils/hash.c (unmodified, from the checkout
 # above) behind tools/golden/harness/magic_hash/driver.c.
 COPY harness/magic_hash /opt/src/magic-hash-harness
@@ -122,12 +157,14 @@ RUN set -eux; \
        /opt/src/magic-hash-harness/driver.c /opt/src/magic/utils/hash.c
 
 LABEL org.opencontainers.image.title="hefesto-golden" \
-      org.opencontainers.image.description="Pinned headless Magic/netgen/ngspice/xschem for Hefesto golden capture" \
+      org.opencontainers.image.description="Pinned headless Magic/netgen/ngspice/xschem/KLayout/gdstk for Hefesto golden capture" \
       org.opencontainers.image.licenses="Apache-2.0" \
       io.hefesto.magic.commit="${MAGIC_COMMIT}" \
       io.hefesto.netgen.commit="${NETGEN_COMMIT}" \
       io.hefesto.ngspice.commit="${NGSPICE_COMMIT}" \
       io.hefesto.xschem.commit="${XSCHEM_COMMIT}" \
+      io.hefesto.klayout.deb="${KLAYOUT_DEB_VERSION}" \
+      io.hefesto.gdstk.version="${GDSTK_VERSION}" \
       io.hefesto.apt.snapshot="${APT_SNAPSHOT}"
 
 WORKDIR /work

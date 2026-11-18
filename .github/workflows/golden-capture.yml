@@ -19,7 +19,8 @@
 #   schedule        verify only.
 #   workflow_dispatch  input `mode`: verify, capture or both (default both); input
 #                   `cases` limits either step to the given case directories. Mode
-#                   d19-timing runs only the d19-magic-timing job below.
+#                   d19-timing runs only the d19-magic-timing job below; modes ext-inputs
+#                   and oasis-validate run only their own jobs (m6-lef-def-oasis, below).
 #
 # The MASK-RT-* library round trips (openspec/changes/m5-mask-gds-cif design D19) need the
 # large library GDS data sets and Magic's time on big libraries, so they never run in the
@@ -46,9 +47,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "verify (captured cases), capture (cases without expected/), both, or d19-timing (m5 task 1.1 Magic timing only)"
+        description: "verify (captured cases), capture (cases without expected/), both, d19-timing (m5 task 1.1), ext-inputs or oasis-validate (m6 tasks 1.6, 1.7)"
         type: choice
-        options: [both, verify, capture, d19-timing]
+        options: [both, verify, capture, d19-timing, ext-inputs, oasis-validate]
         default: both
       cases:
         description: "Space-separated case directories (e.g. tests/golden/TECH/cases/TECH-G01); empty = all"
@@ -116,7 +117,7 @@ jobs:
         id: plan
         shell: bash
         run: |
-          if [ "$MODE" = "d19-timing" ]; then
+          if [ "$MODE" = "d19-timing" ] || [ "$MODE" = "ext-inputs" ] || [ "$MODE" = "oasis-validate" ]; then
             { echo "regular=0"; echo "rt_any=false"; echo 'rt_matrix={"include":[]}'; echo 'rt_sets={"include":[]}'; } \
               >> "$GITHUB_OUTPUT"
             exit 0
@@ -671,3 +672,97 @@ jobs:
         with:
           name: d19-${{ matrix.set }}
           path: d19/
+
+  # Task 1.6 of m6-lef-def-oasis (Open Question 1 (a), design D19): Magic writes the .ext files the DEF-write net
+  # cases read (Hefesto cannot extract before M7). tools/golden/authoring/lefdef_cases.py --ext-plan lists the
+  # targets: every authored DEF-write net case (LEFDEF-317..328, 330..334; `cases` limits them) and the smoke
+  # layout tests/data/extflat/smoke/. tools/golden/ext_inputs.py runs harness/ext_probe/ext_probe.tcl
+  # (`extract all`) on each in the pinned image and checks every .ext file (complete records, no error line).
+  # The artifact ext-inputs is synced with `lefdef_cases.py --sync-ext <dir>` and committed.
+  ext-inputs:
+    name: .ext probe (Magic extract all)
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'ext-inputs'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Plan the probe runs
+        shell: bash
+        run: |
+          read -ra cases <<< "$CASES"
+          python3 tools/golden/authoring/lefdef_cases.py --ext-plan ext-plan.json "${cases[@]}"
+      - name: Build reference-tool image
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+      - name: Run the probe
+        shell: bash
+        run: |
+          status=0
+          python3 tools/golden/ext_inputs.py --plan ext-plan.json --out ext-inputs --image hefesto-golden:ci \
+            || status=$?
+          cat ext-inputs/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ext-inputs
+          path: ext-inputs/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # Task 1.7 of m6-lef-def-oasis (design D18, D20): KLayout and gdstk check Hefesto's OASIS files. `produce`
+  # runs hefesto-cli on the OASIS-05x/061 cases (the writes, the strict-mode files, the 419-byte file) and
+  # skips, with the reason, every case or command that does not exist yet; `check` runs in the image: the
+  # reference-tool smoke files, then KLayout (read with expect_strict_mode, strm2gds, strmxor, strmcmp) and
+  # gdstk (read_oas, oas_validate) on every file. Verdicts: the job summary and the artifact oasis-validate.
+  oasis-validate:
+    name: OASIS validation (KLayout, gdstk)
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'oasis-validate'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build hefesto-cli
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
+          python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+      # A failed case fails the job, but the tools still run and report (the steps below).
+      - name: Write Hefesto's OASIS files
+        shell: bash
+        run: |
+          read -ra cases <<< "$CASES"
+          python3 tools/golden/oasis_validate.py produce --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --out oasis-validate "${cases[@]}"
+      # The image size is recorded in m6-lef-def-oasis design D18 (task 1.3).
+      - name: Build reference-tool image
+        if: ${{ !cancelled() }}
+        run: |
+          docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+          echo "::notice::hefesto-golden:ci is $(docker image inspect --format '{{.Size}}' hefesto-golden:ci) bytes"
+      - name: Check with KLayout and gdstk
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          status=0
+          docker run --rm --network=none -v "$PWD:/work" -w /work --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e TZ=UTC -e LC_ALL=C hefesto-golden:ci \
+            python3 tools/golden/oasis_validate.py check --dir oasis-validate || status=$?
+          cat oasis-validate/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oasis-validate
+          path: oasis-validate/
+          if-no-files-found: ignore
+          retention-days: 30
