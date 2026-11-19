@@ -146,6 +146,43 @@ TEST_CASE("a three-rectangle DEF via has the contact as its primary type",
   CHECK(via->shapes == extras);
 }
 
+// Regression: every RECT was inserted at the head of the extra list, so a
+// via with 10^5 RECTs (a few MB of hostile LEF or DEF) cost the square of
+// that. The builder appends and orders once; the list matches
+// add_via_rect's, including a contact promoted midway and rectangles a
+// later commit adds.
+TEST_CASE("the via rectangle builder gives add_via_rect's list at linear cost",
+          "[cap:def-read][req:Rectangle-based DEF vias]") {
+  Context c{test::via_tech()};
+  const auto rect_at = [](int i) { return db::Rect{-i - 1, -i - 1, i + 1, i + 1}; };
+  const auto type_at = [&c](int i) { return i == 7 ? c.type("m2contact") : c.type(i % 2 == 0 ? "metal1" : "metal2"); };
+  ViaDefinition one_by_one;
+  ViaDefinition built;
+  ViaRectBuilder builder{built};
+  for (int i = 0; i < 20; ++i) {
+    add_via_rect(one_by_one, type_at(i), rect_at(i), c.via());
+    builder.add(type_at(i), rect_at(i), c.via());
+    if (i == 11) {
+      builder.commit();  // a commit midway orders only what came before
+    }
+  }
+  builder.commit();
+  builder.commit();  // a second commit changes nothing
+  CHECK(built == one_by_one);
+
+  ViaDefinition large;
+  ViaRectBuilder many{large};
+  constexpr int kRects = 200'000;
+  for (int i = 0; i < kRects; ++i) {
+    many.add(c.type("metal1"), rect_at(i), c.via());
+  }
+  many.commit();
+  REQUIRE(large.shapes.size() == kRects - 1);
+  CHECK(large.area == rect_at(0));
+  CHECK(large.shapes.front().area == rect_at(kRects - 1));  // the last RECT heads the list
+  CHECK(large.shapes.back().area == rect_at(1));
+}
+
 TEST_CASE("a name that is no layer of the LEF table shares no record", "[cap:lef-read][req:Via redefinition]") {
   CHECK(shared_names(LayerTable{}, "via1") == 0);
 }

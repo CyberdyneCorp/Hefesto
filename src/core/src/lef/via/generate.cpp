@@ -96,52 +96,51 @@ std::optional<db::Rect> cut_rect(std::int64_t x, std::int64_t y, db::Coord sx, d
   return db::Rect{*x0, *y0, *x1, *y1};
 }
 
-/// The pattern of the cut array: every cut, or (magic-compat OFF) the
-/// PATTERN's cuts.
-std::vector<std::vector<bool>> present_cuts(const GeneratedViaParams& p, const ViaContext& context) {
-  const auto rows = static_cast<std::size_t>(std::max(p.rows, 0));
-  const auto columns = static_cast<std::size_t>(std::max(p.columns, 0));
-  std::vector<std::vector<bool>> all(rows, std::vector<bool>(columns, true));
+/// The PATTERN of the cut array (magic-compat OFF); nullopt: every cut.
+std::optional<CutPattern> pattern_of(const GeneratedViaParams& p, const ViaContext& context) {
   if (context.compat.magic_compat || p.pattern.empty()) {
-    return all;
+    return std::nullopt;
   }
-  if (auto parsed = cut_pattern(p.pattern, p.rows, p.columns)) {
-    return *std::move(parsed);
+  auto parsed = cut_pattern(p.pattern, p.rows, p.columns);
+  if (!parsed) {
+    context.sink.emit(diag::make("LEF-VIA-008", "Cannot parse via PATTERN \"" + p.pattern + "\"; every cut is kept."));
   }
-  context.sink.emit(diag::make("LEF-VIA-008", "Cannot parse via PATTERN \"" + p.pattern + "\"; every cut is kept."));
-  return all;
+  return parsed;
 }
 
-/// The cuts, prepended to `out` in Magic's order (column-major, each grown).
+/// The cuts, prepended to `out` in Magic's order (column-major, each
+/// prepended, so the last cut is first; each grown). Collected in order
+/// and reversed once: prepending each would cost the square of the count.
 void add_cuts(const GeneratedViaParams& p, const ViaContext& context, std::vector<ViaShape>& out) {
   if (!p.layers.cut) {
     return;
   }
-  const tech::TileType cut = *p.layers.cut;
-  const tech::TileType named = context.compat.magic_compat && p.layers.top ? *p.layers.top : cut;
-  const auto present = present_cuts(p, context);
+  const auto pattern = pattern_of(p, context);  // its message comes first, as before
   const float half = p.scale / 2;
-  const std::int64_t wc = std::int64_t{p.cut_size.x} * p.columns + std::int64_t{p.cut_spacing.x} * (p.columns - 1);
-  const std::int64_t hc = std::int64_t{p.cut_size.y} * p.rows + std::int64_t{p.cut_spacing.y} * (p.rows - 1);
   const auto sx = round_div(p.cut_size.x, half);
   const auto sy = round_div(p.cut_size.y, half);
   if (!sx || !sy) {
     return;  // a cut size that does not fit: no cuts
   }
-  std::int64_t x = -wc / 2;  // C division truncates toward zero
+  const tech::TileType cut = *p.layers.cut;
+  const tech::TileType named = context.compat.magic_compat && p.layers.top ? *p.layers.top : cut;
+  const std::int64_t step_x = std::int64_t{p.cut_size.x} + p.cut_spacing.x;
+  const std::int64_t step_y = std::int64_t{p.cut_size.y} + p.cut_spacing.y;
+  // C division truncates toward zero, as Magic's -wc / 2.
+  const std::int64_t x0 = -(std::int64_t{p.cut_size.x} * p.columns + std::int64_t{p.cut_spacing.x} * (p.columns - 1)) / 2;
+  const std::int64_t y0 = -(std::int64_t{p.cut_size.y} * p.rows + std::int64_t{p.cut_spacing.y} * (p.rows - 1)) / 2;
+  std::vector<ViaShape> cuts;
   for (std::int32_t i = 0; i < p.columns; ++i) {
-    std::int64_t y = -hc / 2;
     for (std::int32_t j = 0; j < p.rows; ++j) {
-      const auto rect = present[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]
-                            ? cut_rect(x, y, *sx, *sy, half)
-                            : std::nullopt;
-      if (rect) {
-        out.insert(out.begin(), ViaShape{cut, grow_cut(*rect, cut, named, context)});
+      if (pattern && !pattern->at(j, i)) {
+        continue;
       }
-      y += std::int64_t{p.cut_size.y} + p.cut_spacing.y;
+      if (const auto rect = cut_rect(x0 + i * step_x, y0 + j * step_y, *sx, *sy, half)) {
+        cuts.push_back(ViaShape{cut, grow_cut(*rect, cut, named, context)});
+      }
     }
-    x += std::int64_t{p.cut_size.x} + p.cut_spacing.x;
   }
+  out.insert(out.begin(), cuts.rbegin(), cuts.rend());
 }
 
 /// ORIGIN and OFFSET (magic-compat OFF, DEF 5.8): the top rectangle and the

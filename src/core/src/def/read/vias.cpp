@@ -83,6 +83,7 @@ class ViaDefinitionReader {
         property(r_.take());
       }
     }
+    rects_.commit();  // the file ended inside the definition
   }
 
  private:
@@ -111,7 +112,7 @@ class ViaDefinitionReader {
     bool semicolon = false;
     const auto area = r_.read_rect(layer.has_value(), r_.oscale() / 2.0F, semicolon);
     if (area) {
-      lef::add_via_rect(via_, layer, *area, r_.via_context());
+      rects_.add(layer, *area, r_.via_context());
     }
   }
 
@@ -190,13 +191,14 @@ class ViaDefinitionReader {
       return;
     }
     for (const db::Rect& rect : lef::polygon_rects(*points)) {
-      lef::add_via_rect(via_, layer, rect, r_.via_context());
+      rects_.add(layer, rect, r_.via_context());
     }
   }
 
   // The terminating `;`: the generated geometry (LefGenViaGeometry), then
   // ORIGIN on the whole via (magic-compat OFF).
   void finish() {
+    rects_.commit();
     if (generated_) {
       lef::ViaParamSet given = params_;
       given.scale = r_.oscale();
@@ -216,6 +218,7 @@ class ViaDefinitionReader {
 
   Reader& r_;
   lef::ViaDefinition& via_;
+  lef::ViaRectBuilder rects_{via_};  // committed before anything reads via_.shapes
   std::string name_;
   lef::ViaParamSet& params_;
   bool& generated_;

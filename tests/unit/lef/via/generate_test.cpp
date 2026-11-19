@@ -11,7 +11,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdint>
 #include <limits>
+#include <optional>
+#include <string_view>
 #include <string>
 #include <vector>
 
@@ -30,6 +33,23 @@ ViaLayers m1_m2(Context& c) {
 
 /// The DEF scenario "1x2 generated via": CUTSIZE 100 100, CUTSPACING 100
 /// 100, ENCLOSURE 50 20 20 50, ROWCOL 1 2, oscale 1.
+using Rows = std::vector<std::vector<bool>>;
+
+/// The pattern as rows of bits, or nullopt when it does not parse.
+std::optional<Rows> expanded(std::string_view text, std::int32_t rows, std::int32_t columns) {
+  const auto pattern = cut_pattern(text, rows, columns);
+  if (!pattern) {
+    return std::nullopt;
+  }
+  Rows out(static_cast<std::size_t>(rows), std::vector<bool>(static_cast<std::size_t>(columns)));
+  for (std::int32_t r = 0; r < rows; ++r) {
+    for (std::int32_t col = 0; col < columns; ++col) {
+      out[static_cast<std::size_t>(r)][static_cast<std::size_t>(col)] = pattern->at(r, col);
+    }
+  }
+  return out;
+}
+
 GeneratedViaParams def_vg(Context& c) {
   GeneratedViaParams p;
   p.layers = m1_m2(c);
@@ -220,11 +240,12 @@ TEST_CASE("PATTERN removes cuts with magic-compat OFF only", "[cap:def-read][req
 }
 
 TEST_CASE("cut patterns parse DEF 5.8 row groups", "[cap:def-read][req:Generated DEF vias]") {
-  using Rows = std::vector<std::vector<bool>>;
-  CHECK(cut_pattern("1_F", 1, 4) == Rows{{true, true, true, true}});
-  CHECK(cut_pattern("1_A_1_5", 2, 4) == Rows{{true, false, true, false}, {false, true, false, true}});
-  CHECK(cut_pattern("2_R2F", 2, 6) == Rows{std::vector<bool>(6, true), std::vector<bool>(6, true)});
-  CHECK(cut_pattern("1_c", 1, 2) == Rows{{true, true}});
+  CHECK(expanded("1_F", 1, 4) == Rows{{true, true, true, true}});
+  CHECK(expanded("1_A_1_5", 2, 4) == Rows{{true, false, true, false}, {false, true, false, true}});
+  CHECK(expanded("2_R2F", 2, 6) == Rows{std::vector<bool>(6, true), std::vector<bool>(6, true)});
+  CHECK(expanded("1_c", 1, 2) == Rows{{true, true}});
+  CHECK(expanded("1_8R2F1", 1, 16) ==
+        Rows{{true, false, false, false, true, true, true, true, true, true, true, true, false, false, false, true}});
   CHECK_FALSE(cut_pattern("1_F", 2, 4).has_value());    // too few rows
   CHECK_FALSE(cut_pattern("1_F", 1, 5).has_value());    // too few columns
   CHECK_FALSE(cut_pattern("1_FF", 1, 4).has_value());   // too many digits
@@ -232,6 +253,46 @@ TEST_CASE("cut patterns parse DEF 5.8 row groups", "[cap:def-read][req:Generated
   CHECK_FALSE(cut_pattern("1", 1, 4).has_value());
   CHECK_FALSE(cut_pattern("0_F", 1, 4).has_value());
   CHECK_FALSE(cut_pattern("1_R999999999F", 1, 4).has_value());
+}
+
+// Regression: a hostile PATTERN's repeats expanded every row and column
+// (2^31 rows x 2^31 columns of bits); the parse now keeps the text's runs.
+TEST_CASE("a cut pattern's size follows its text, not its rows and columns",
+          "[cap:def-read][req:Generated DEF vias]") {
+  constexpr std::int32_t kMax = std::numeric_limits<std::int32_t>::max();
+  const auto pattern = cut_pattern("2147483646_R536870911F_1_R536870911A", kMax, kMax - 3);
+  REQUIRE(pattern.has_value());
+  REQUIRE(pattern->groups.size() == 2);
+  CHECK(pattern->at(0, 0));
+  CHECK(pattern->at(kMax - 2, kMax - 4));
+  CHECK(pattern->at(kMax - 1, kMax - 7));        // A = 1010: column 4k is set,
+  CHECK_FALSE(pattern->at(kMax - 1, kMax - 6));  // 4k + 1 is not
+}
+
+// Regression: each cut was inserted at the vector's head, so the cost grew
+// with the square of the count (a hostile ROWCOL stalled the read). The
+// cuts are now collected and reversed once; the list is unchanged.
+TEST_CASE("a large cut array keeps Magic's list order", "[cap:def-read][req:Generated DEF vias]") {
+  for (const bool compat : {true, false}) {
+    Context c{test::via_tech(), compat};
+    GeneratedViaParams p = def_vg(c);
+    p.cut_size = {2, 2};
+    p.cut_spacing = {2, 2};
+    p.bottom_enclosure = {0, 0};
+    p.top_enclosure = {0, 0};
+    p.rows = 300;
+    p.columns = 300;
+    const ViaGeometry g = ViaGenerator::generated(p, c.via());
+    REQUIRE(g.shapes.size() == 300 * 300 + 1);
+    // Column-major generation, each cut prepended: the head is the last
+    // cut (top right), the cut before the bottom enclosure the first.
+    CHECK(g.shapes.front().area.x0 > 0);
+    CHECK(g.shapes.front().area.y0 > 0);
+    CHECK(g.shapes[g.shapes.size() - 2].area.x0 < 0);
+    CHECK(g.shapes[g.shapes.size() - 2].area.y0 < 0);
+    CHECK(g.shapes[1].area.x0 == g.shapes.front().area.x0);  // same column, the row below
+    CHECK(g.shapes[1].area.y0 < g.shapes.front().area.y0);
+  }
 }
 
 TEST_CASE("a layer that did not resolve gives no shapes", "[cap:def-read][req:Generated DEF vias]") {

@@ -92,7 +92,7 @@ void Reader::via_definition(const std::string& name) {
 // --- ViaBody ----------------------------------------------------------------------------
 
 void ViaBody::add(const LayerState& layer, const db::Rect& rect) {
-  add_via_rect(via_, layer.type, rect, reader_.via_context());
+  rects_.add(layer.type, rect, reader_.via_context());
 }
 
 void ViaBody::rect(const LayerState& layer, bool ignored) {
@@ -302,6 +302,7 @@ bool ViaBody::parameter(std::string_view keyword) {
 }
 
 void ViaBody::finish() {
+  rects_.commit();
   if (!has_rule_ || reader_.magic_compat()) {
     return;
   }

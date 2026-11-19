@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "hefesto/lef/via/generate.hpp"
+#include "hefesto/lef/via/store.hpp"
 #include "lef/read/reader.hpp"
 
 namespace hefesto::lef::detail {
@@ -62,6 +63,7 @@ class ViaBody {
 
   Reader& reader_;
   ViaDefinition& via_;
+  ViaRectBuilder rects_{via_};  // committed in finish()
   std::string name_;
   bool parameters_;
   bool has_rule_ = false;

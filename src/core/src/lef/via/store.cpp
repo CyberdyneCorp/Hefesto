@@ -12,6 +12,8 @@
 
 #include "hefesto/lef/via/store.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <string>
 #include <utility>
 
@@ -85,27 +87,41 @@ ViaDefinition* begin_via(ViaTable& vias, const LayerTable& layers, std::string_v
   return &*vias.insert(key, emptied(LayerClass::cut, key)).value;
 }
 
-void add_via_rect(ViaDefinition& via, std::optional<tech::TileType> layer, const db::Rect& rect,
-                  const ViaContext& context) {
+void ViaRectBuilder::add(std::optional<tech::TileType> layer, const db::Rect& rect, const ViaContext& context) {
   if (!layer) {
     return;  // no geometry for unknown layers
   }
-  const tech::TileType named = context.compat.magic_compat && via.type ? *via.type : *layer;
+  const tech::TileType named = context.compat.magic_compat && via_.type ? *via_.type : *layer;
   const db::Rect cut = grow_cut(rect, *layer, named, context);
-  if (via.area == db::Rect{}) {
-    via.area = cut;
-    via.type = layer;
+  if (via_.area == db::Rect{}) {
+    via_.area = cut;
+    via_.type = layer;
     return;
   }
   ViaShape extra{*layer, cut};
-  const bool promote = context.tech.is_contact(*layer) && !(via.type && context.tech.is_contact(*via.type));
-  if (promote && via.type) {
+  const bool promote = context.tech.is_contact(*layer) && !(via_.type && context.tech.is_contact(*via_.type));
+  if (promote && via_.type) {
     // The primary record becomes the contact; the old primary moves to the list.
-    extra = ViaShape{*via.type, via.area};
-    via.type = layer;
-    via.area = cut;
+    extra = ViaShape{*via_.type, via_.area};
+    via_.type = layer;
+    via_.area = cut;
   }
-  via.shapes.insert(via.shapes.begin(), extra);
+  via_.shapes.push_back(extra);
+}
+
+void ViaRectBuilder::commit() {
+  auto& shapes = via_.shapes;
+  const auto first = shapes.begin() + static_cast<std::ptrdiff_t>(std::min(first_, shapes.size()));
+  std::reverse(first, shapes.end());
+  std::rotate(shapes.begin(), first, shapes.end());
+  first_ = shapes.size();
+}
+
+void add_via_rect(ViaDefinition& via, std::optional<tech::TileType> layer, const db::Rect& rect,
+                  const ViaContext& context) {
+  ViaRectBuilder builder{via};
+  builder.add(layer, rect, context);
+  builder.commit();
 }
 
 namespace {

@@ -7,10 +7,12 @@
 //
 // Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
 
+#include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <string_view>
 #include <vector>
 
@@ -48,12 +50,6 @@ std::optional<int> hex_digit(char c) {
   return std::isdigit(static_cast<unsigned char>(c)) != 0 ? c - '0' : std::toupper(static_cast<unsigned char>(c)) - 'A' + 10;
 }
 
-void push_bits(int digit, std::vector<bool>& bits) {
-  for (int bit = 3; bit >= 0; --bit) {
-    bits.push_back(((digit >> bit) & 1) != 0);
-  }
-}
-
 /// The repeat count at `i`: 1, or k for an `R<k>` prefix, after which `i`
 /// is at the repeated digit; nullopt when the prefix is malformed or ends
 /// the row.
@@ -73,10 +69,12 @@ std::optional<std::int32_t> repeat_at(std::string_view row, std::size_t& i) {
   return k;
 }
 
-/// The bits of one row definition: hex digits, `R<k><digit>` repeating;
-/// nullopt past `max_bits` (a row is at most the columns rounded up to 4).
-std::optional<std::vector<bool>> row_bits(std::string_view row, std::size_t max_bits) {
-  std::vector<bool> bits;
+/// One row definition: hex digits, `R<k><digit>` repeating, as runs of
+/// digits (no expansion, so a long repeat costs nothing); nullopt past
+/// `max_bits` (a row is at most the columns rounded up to 4).
+std::optional<std::vector<CutPattern::Run>> row_runs(std::string_view row, std::uint64_t max_bits) {
+  std::vector<CutPattern::Run> runs;
+  std::uint64_t bits = 0;
   std::size_t i = 0;
   while (i < row.size()) {
     const auto repeat = repeat_at(row, i);
@@ -84,37 +82,53 @@ std::optional<std::vector<bool>> row_bits(std::string_view row, std::size_t max_
       return std::nullopt;
     }
     const auto digit = hex_digit(row[i]);
-    if (!digit || bits.size() + 4 * static_cast<std::size_t>(*repeat) > max_bits) {
+    if (!digit || bits + 4 * static_cast<std::uint64_t>(*repeat) > max_bits) {
       return std::nullopt;
     }
-    for (std::int32_t r = 0; r < *repeat; ++r) {
-      push_bits(*digit, bits);
-    }
+    bits += 4 * static_cast<std::uint64_t>(*repeat);
+    runs.push_back(CutPattern::Run{bits, static_cast<std::uint8_t>(*digit)});
     ++i;
   }
-  return bits;
+  return runs;
 }
 
 }  // namespace
 
-std::optional<std::vector<std::vector<bool>>> cut_pattern(std::string_view pattern, std::int32_t rows,
-                                                          std::int32_t columns) {
+bool CutPattern::at(std::int32_t row, std::int32_t column) const {
+  const auto r = static_cast<std::uint64_t>(row);
+  const auto c = static_cast<std::uint64_t>(column);
+  const auto group = std::upper_bound(groups.begin(), groups.end(), r,
+                                      [](std::uint64_t v, const Group& g) { return v < g.end_row; });
+  if (group == groups.end()) {
+    return false;
+  }
+  const auto run = std::upper_bound(group->runs.begin(), group->runs.end(), c,
+                                    [](std::uint64_t v, const Run& one) { return v < one.end_bit; });
+  if (run == group->runs.end()) {
+    return false;
+  }
+  const std::uint64_t bit = c % 4;  // every run starts on a digit boundary
+  return ((run->digit >> (3 - bit)) & 1U) != 0;
+}
+
+std::optional<CutPattern> cut_pattern(std::string_view pattern, std::int32_t rows, std::int32_t columns) {
   const std::vector<std::string_view> parts = split(pattern, '_');
   if (parts.size() % 2 != 0 || rows < 0 || columns < 0) {
     return std::nullopt;
   }
-  std::vector<std::vector<bool>> present;
+  CutPattern present;
+  std::uint64_t covered = 0;
   for (std::size_t g = 0; g < parts.size(); g += 2) {
     const auto n = count_of(parts[g]);
-    auto bits = row_bits(parts[g + 1], static_cast<std::size_t>(columns) + 3);
-    if (!n || !bits || bits->size() < static_cast<std::size_t>(columns) ||
-        present.size() + static_cast<std::size_t>(*n) > static_cast<std::size_t>(rows)) {
+    auto runs = row_runs(parts[g + 1], static_cast<std::uint64_t>(columns) + 3);
+    if (!n || !runs || (runs->empty() ? 0 : runs->back().end_bit) < static_cast<std::uint64_t>(columns) ||
+        covered + static_cast<std::uint64_t>(*n) > static_cast<std::uint64_t>(rows)) {
       return std::nullopt;
     }
-    bits->resize(static_cast<std::size_t>(columns));
-    present.insert(present.end(), static_cast<std::size_t>(*n), *bits);
+    covered += static_cast<std::uint64_t>(*n);
+    present.groups.push_back(CutPattern::Group{covered, *std::move(runs)});
   }
-  if (present.size() != static_cast<std::size_t>(rows)) {
+  if (covered != static_cast<std::uint64_t>(rows)) {
     return std::nullopt;
   }
   return present;
