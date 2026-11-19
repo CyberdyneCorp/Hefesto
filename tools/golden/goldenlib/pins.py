@@ -23,4 +23,10 @@ def tool_pin(pins: dict, tool: str) -> dict:
     """Pin of the tool that produces a case's reference output."""
     if tool == "magic-hash-harness":
         tool = pins["harness"]["magic_hash"]["tool"]
+    if tool == "oasis-spec":
+        return dict(SPEC_PIN)
     return pins["tools"][tool]
+
+
+# The oasis-spec "tool" is the spec text itself (m6-lef-def-oasis design D19): no pinned program.
+SPEC_PIN = {"repo": "openspec/specs (oasis-format, oasis-write)", "version": None, "commit": None}

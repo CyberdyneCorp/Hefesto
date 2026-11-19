@@ -258,8 +258,9 @@ def _oasis_cell(source: oasis.Cell) -> _Cell:
         for dx, dy in text.repetition:
             cell.texts.append((text.layer, text.texttype, (text.position[0] + dx, text.position[1] + dy), text.string))
     for p in source.placements:
+        mag = p.mag if math.isfinite(p.mag) and p.mag > 0 else 1.0  # oasis-read: treated as 1
         for dx, dy in p.repetition:
-            matrix = placement_matrix(p.position[0] + dx, p.position[1] + dy, p.mag, p.angle, p.flip)
+            matrix = placement_matrix(p.position[0] + dx, p.position[1] + dy, mag, p.angle, p.flip)
             cell.refs.append((p.cell, matrix))
     return cell
 

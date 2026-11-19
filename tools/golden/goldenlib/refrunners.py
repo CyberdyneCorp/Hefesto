@@ -12,6 +12,10 @@ returns the streams plus the facts that go into provenance.json.
                or takes them from --magic-src, and compiles them with the host cc.
 ``model``      magic-hash-harness only: goldenlib/magic_hash_model.py, a transcription
                of the requirement text. Output is marked reference_captured=false.
+
+Tool ``oasis-spec`` (m6-lef-def-oasis design D19) runs under every runner: it only copies the
+spec-listing bytes of ``input/spec/`` into the work directory (``cp`` in the image, a host copy
+under ``local`` and ``model``).
 """
 from __future__ import annotations
 
@@ -64,6 +68,11 @@ CONTAINER_PDK_ROOT = "/pdk"
 XSCHEM_ENVIRONMENT = {"HOME": "/tmp", "PWD": CONTAINER_WORK}
 # Magic's CAD_ROOT in the image: its install prefix (Containerfile PREFIX=/opt/ref) + /lib.
 CONTAINER_CAD_ROOT = "/opt/ref/lib"
+# Tool oasis-spec (m6-lef-def-oasis design D19, "Hefesto self-golden"): the reference outputs are
+# byte files fixed by the spec listings, which authoring/oasgen.py assembles into the case's
+# input/spec/ (checked by tools/golden/tests/test_oasis_cases.py); the run copies them into the work
+# directory, where every output is collected as usual.
+SPEC_COPY_ARGV = ("cp", "-R", "input/spec/.", ".")
 
 
 def default_argv(case: Case) -> list[str]:
@@ -87,6 +96,7 @@ def _tool_argv(case: Case) -> list[str]:
         "ngspice": ["ngspice", "-b", script],
         "xschem": ["xschem", "-q", "-x", "--no_x", "--script", script],
         "magic-hash-harness": ["magic-hash-harness"],
+        "oasis-spec": list(SPEC_COPY_ARGV),
     }
     return table[case.tool]
 
@@ -208,8 +218,10 @@ class LocalHarnessRunner:
         return exe, argv
 
     def run(self, case: Case, work: Path) -> RunResult:
+        if case.tool == "oasis-spec":
+            return run_spec_copy(work)
         if case.tool != "magic-hash-harness":
-            raise RunnerError(f"{case.id}: the local runner supports only magic-hash-harness")
+            raise RunnerError(f"{case.id}: the local runner supports only magic-hash-harness and oasis-spec")
         commit = tool_pin(self.pins, case.tool)["commit"]
         build = work / ".harness-build"
         build.mkdir()
@@ -223,12 +235,23 @@ class LocalHarnessRunner:
         return RunResult(proc.stdout, proc.stderr, proc.returncode, ["magic-hash-harness"], facts)
 
 
+def run_spec_copy(work: Path) -> RunResult:
+    """Tool oasis-spec on the host: copy ``input/spec/`` into the work directory (SPEC_COPY_ARGV)."""
+    source = work / "input" / "spec"
+    if not source.is_dir():
+        return RunResult(b"", b"input/spec: no such directory\n", 1, list(SPEC_COPY_ARGV))
+    shutil.copytree(source, work, dirs_exist_ok=True)
+    return RunResult(b"", b"", 0, list(SPEC_COPY_ARGV), {"model": "tools/golden/authoring/oasgen.py"})
+
+
 class ModelRunner:
     name = "model"
 
     def run(self, case: Case, work: Path) -> RunResult:
+        if case.tool == "oasis-spec":
+            return run_spec_copy(work)
         if case.tool != "magic-hash-harness":
-            raise RunnerError(f"{case.id}: the model runner supports only magic-hash-harness")
+            raise RunnerError(f"{case.id}: the model runner supports only magic-hash-harness and oasis-spec")
         stdout = magic_hash_model.run_script(harness_stdin(case, work))
         facts = {"model": "tools/golden/goldenlib/magic_hash_model.py"}
         return RunResult(stdout, b"", 0, ["magic_hash_model.run_script"], facts)

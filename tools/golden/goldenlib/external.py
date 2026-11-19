@@ -8,7 +8,7 @@ the pinned Magic sources (``tests/data/tech/generate_scmos.cmake``). A case that
 needs such a file declares it in ``case.toml``::
 
     [[external]]
-    source = "pdk"                                   # pdk | scmos | magic-sys | magic-tcl
+    source = "pdk"                                   # pdk | scmos | magic-sys | magic-tcl | golden
     set = "sky130"                                   # pdk only: sky130 (default) | gf180mcu | ihp
     path = "sky130A/libs.tech/magic/sky130A.tech"    # pdk: path in the pinned version
     to = "sky130A.tech"                              # path in the work copy of input/
@@ -39,6 +39,9 @@ names a directory is copied whole.
 ``magic-tcl`` ``<magic>/<path>`` of the pinned Magic checkout, e.g. ``tcltk/strip_reflibs.tcl``:
            a script Magic installs in ``$CAD_ROOT/magic/tcl`` (the auxiliary scripts a case
            sources from ``$CAD_ROOT``), staged in ``<work>/cadroot/magic/tcl``.
+``golden`` ``tests/golden/<path>``: a committed file several cases share, e.g.
+           ``OASIS/captured/OASIS-020/sky130_fd_sc_hd.oas`` (a captured input written by KLayout,
+           m6-lef-def-oasis design D19), staged instead of copied into each case's ``input/``.
 """
 from __future__ import annotations
 
@@ -51,7 +54,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-SOURCES = ("pdk", "scmos", "magic-sys", "magic-tcl")
+SOURCES = ("pdk", "scmos", "magic-sys", "magic-tcl", "golden")
+GOLDEN_ROOT = REPO / "tests" / "golden"
 MAGIC_SOURCES = ("magic-sys", "magic-tcl")
 CAD_ROOT_DIR = "cadroot"
 SYS_SUBDIR = Path("magic") / "sys"
@@ -91,7 +95,7 @@ def parse_external(raw: dict, index: int) -> External:
         raise ValueError(f"{where}: source must be one of {', '.join(SOURCES)}")
     if not _is_relative_inside(to):
         raise ValueError(f"{where}: 'to' must be a relative path inside the work copy of input/")
-    if source in ("pdk", *MAGIC_SOURCES) and (not isinstance(path, str) or not path or ".." in Path(path).parts
+    if source in ("pdk", "golden", *MAGIC_SOURCES) and (not isinstance(path, str) or not path or ".." in Path(path).parts
                                            or Path(path).is_absolute()):
         raise ValueError(f"{where}: a {source} input needs a relative 'path' inside the pinned version")
     pdk_set = raw.get("set", "sky130")
@@ -200,7 +204,16 @@ def resolve(ext: External) -> Path:
         return _resolve_pdk(ext)
     if ext.source in MAGIC_SOURCES:
         return _resolve_magic_sys(ext)
+    if ext.source == "golden":
+        return _resolve_golden(ext)
     return _resolve_scmos()
+
+
+def _resolve_golden(ext: External) -> Path:
+    path = GOLDEN_ROOT / ext.path
+    if not path.is_file():
+        raise ExternalUnavailable(f"{path} not found (a captured input not synced yet)")
+    return path
 
 
 def cad_root(work: Path) -> Path:

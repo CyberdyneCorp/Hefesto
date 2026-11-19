@@ -15,7 +15,9 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     area = "CORE"                    # must equal the <AREA> directory
     capability = "hefesto-output-determinism"
     requirements = ["Magic string hash table"]
-    tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness
+    tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness | oasis-spec
+                                     # (oasis-spec: the expected bytes are the spec listings that
+                                     # authoring/oasgen.py assembles into input/spec/; the run copies them)
     description = "..."
     slow = true                      # optional: CTest label golden-slow instead of golden
     gds_rt = true                    # optional: CTest label golden-gds-rt; replay.py skips the case
@@ -66,7 +68,7 @@ from .derived import is_derived
 from .derived import parse as parse_derived
 from .external import External, parse_external
 
-REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
+REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness", "oasis-spec")
 STREAM_SOURCES = ("stdout", "stderr")
 EXIT_SOURCE = "exitcode"  # the tool's exit status as one decimal line (the SCHEM cases, m8-schematic D16)
 RUN_SOURCES = (*STREAM_SOURCES, EXIT_SOURCE)
