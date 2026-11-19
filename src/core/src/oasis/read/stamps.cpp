@@ -81,8 +81,7 @@ class KeepingSource final : public gds::ByteSource {
     const std::uint64_t end = base_ + kept_.size();
     from = std::clamp(from, base_, end);
     to = std::clamp(to, from, end);
-    return std::span<const std::byte>{kept_}.subspan(static_cast<std::size_t>(from - base_),
-                                                     static_cast<std::size_t>(to - from));
+    return std::span<const std::byte>{kept_}.subspan(from - base_, to - from);
   }
 
   /// The bytes before `offset` are no longer needed.
