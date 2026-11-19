@@ -88,8 +88,8 @@ How this plan runs:
   - `LayerRecord` gained `obstruction_type` (Magic's obsType).
   - `magic_to_lef(type)` keeps its signature: the table stores the technology's contact types.
   - `add`, `find_mutable` and `release` were added for LEFR, LEFVIA and DEFW.
-  - More than two types: magic-compat ON copies Magic, whose loop stops at the second type. OFF reports `Too many types`.
-  - Two undefined-behaviour paths are fixed in both modes: an `ignore` line naming a mapped name, and the type name read at index -1. The spec is updated.
+  - More than two types: magic-compat ON copies Magic, whose loop stops at the second type. OFF reports `Too many types` (Q-LEFDEF-25, compat, approved 2026-11-19).
+  - Two undefined-behaviour paths are fixed in both modes: an `ignore` line naming a mapped name, and the type name read at index -1 (Q-LEFDEF-26, fix, approved 2026-11-19). The spec is updated.
 - [x] 3.2 Implement the defaults and their fill with explicit unset flags: route width and spacing from `drc::default_width`/`default_spacing`, contact areas, and the fill after grid scaling (Q-LEFDEF-1, 2 per mode; Q-LEFDEF-5 fix). Verify the `[req:Default routing parameters]`, `[req:Default contact area]` and `[req:Filling defaults after grid scaling]` tests, with one test per mode for 1:1, 3:2, 2:1 and shrinking grids.
 
   As landed:
@@ -118,7 +118,7 @@ How this plan runs:
   - Open (DEFW, decision needed): Magic keeps layers and vias in one LefInfo hash table; Hefesto splits `LayerTable` and `ViaTable`, so the def-write "Table enumeration order" (VIAS order with magic-compat ON, growth after 96 entries) can differ from Magic. Either a combined-order enumeration or a decision.
   - Open (LEFVIA): the DEF 5.8 PATTERN reading (Q-LEFDEF-62 OFF; `cut_pattern`) is unchecked against the LEF/DEF reference or a third-party reader.
 - [x] 4.2 Implement cut growing to `mask::OutputStyle::contact_size` (the output style, Q-LEFDEF-17) with Magic's warnings. Verify the `[req:Cut growing]` tests and LEFDEF-011's warning text in a unit test.
-  - Done (`m6-r2-lefvia`): `grow_cut(cut, type, named_type, ViaContext)` over `OutputStyle::contact_cut`, `LEF-VIA-003/004`. With magic-compat ON the first warning names the entry's normal type, as Magic prints it (lef-read "Cut growing" updated). `tests/unit/lef/via/cut_test.cpp`.
+  - Done (`m6-r2-lefvia`): `grow_cut(cut, type, named_type, ViaContext)` over `OutputStyle::contact_cut`, `LEF-VIA-003/004`. With magic-compat ON the first warning names the entry's normal type, as Magic prints it, and OFF the cut's type (Q-LEFDEF-27, compat, approved 2026-11-19; lef-read "Cut growing" updated). `tests/unit/lef/via/cut_test.cpp`.
 - [ ] 4.3 Implement `ViaGenerator::generated`: CUTSIZE, LAYERS (with the layer-order warning), CUTSPACING, ENCLOSURE and ROWCOL. Omitted parameters take the VIARULE values or 0 (Q-LEFDEF-61 fix). ORIGIN, OFFSET and PATTERN apply with magic-compat OFF only (Q-LEFDEF-62), as do via-rule vias (Q-LEFDEF-7 OFF). Verify the `[req:Generated via geometry]` and `[req:Generated DEF vias]` tests, one per mode for Q-LEFDEF-7 and 62.
   - Partly landed (`m6-r2-lefvia`): `ViaGenerator::generated(params, ViaContext)`, `order_layers`, `complete_params` (Q-LEFDEF-61, `LEF-VIA-007`), `apply_generated` and `cut_pattern` in `lef/via/generate.hpp`; `GeneratedViaParams` holds resolved layer types and the input scale. ORIGIN, OFFSET and PATTERN are tested per mode (`tests/unit/lef/via/generate_test.cpp`). Open: the Q-LEFDEF-7 per-mode test needs LEFR's reader.
 - [x] 4.4 Implement `paint_polygon` over `db::decompose_polygon`, with port labels from the single decomposition (Q-LEFDEF-23). Verify that LEF POLYGON, DEF pin POLYGON (Q-LEFDEF-66 OFF) and DEF route POLYGON (Q-LEFDEF-70 OFF) give identical tiles for the same vertices.

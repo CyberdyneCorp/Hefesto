@@ -214,6 +214,33 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Recommendation: Use the search path on Linux and macOS and the sandbox picker on iPadOS. The read semantics do not change.
 - Resolution: platform — LEF and DEF files are found through the cell search path on Linux and macOS and through the document picker or granted folders on iPadOS; read semantics do not change (X-4, hefesto-files-and-pdks, 2026-11-07).
 
+### Q-LEFDEF-25: More than two magic types on a tech `lef` line
+- Kind: quirk
+- Status: approved (raised by the M6 round-2 LEFTECH implementation, approved 2026-11-19)
+- Magic behavior: LefTechLine's type-counting loop breaks at the second type it finds, so the count never exceeds 2 and `Too many types in LEF layer definition.` is never printed. An `obstruction` line naming three or more types keeps the first two (primary and secondary via-obstruction type); any other line is rejected with `Can only define multiple types for via obstruction layers.`.
+- Evidence: lef/lefTech.c:252-279
+- Options: replicate | fix (report `Too many types`) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. The quirk only changes which tech-load message is printed and which line is kept; the spec's intent (and Magic's own unreachable branch) is the `Too many types` error.
+- Resolution: compat — with `magic-compat` ON an `obstruction` line keeps the first two types and any other line gets `Can only define multiple types for via obstruction layers.`, as Magic does; with it OFF the line is rejected with `Too many types in LEF layer definition.` (LEF-TECH-005). Approved 2026-11-19.
+
+### Q-LEFDEF-26: `ignore` line naming an already-mapped LEF name
+- Kind: bug
+- Status: approved (raised by the M6 round-2 LEFTECH implementation, approved 2026-11-19)
+- Magic behavior: for a LEF name already bound to a non-IGNORE entry, an `ignore` line reads LefTechLine's uninitialized `isObstruction` and `mtype` to decide whether to complete the entry. When the `already used` error is printed for an entry with no normal type, Magic indexes its type-name table with -1.
+- Evidence: lef/lefTech.c:386-399
+- Options: fix (report `already used`, keep the name; name the obstruction type, or type 0, instead of index -1)
+- Recommendation: fix in both modes (X-2 tier 1: undefined behaviour, no Magic output to match).
+- Resolution: fix — in both modes an `ignore` line naming a LEF name already bound to a non-IGNORE entry reports `LEF name <name> already used for magic type <type>` (LEF-TECH-008) and leaves the name unchanged; where Magic would print type index -1, the message names the entry's obstruction type, or type 0 (space) when it has none. Approved 2026-11-19.
+
+### Q-LEFDEF-27: Type named in the cut-growing warning
+- Kind: quirk
+- Status: approved (raised by the M6 round-2 LEFVIA implementation, approved 2026-11-19)
+- Magic behavior: `Cut size for magic type "%s" (%d x %d) does not match LEF/DEF` prints the via entry's current normal type, not the type of the cut being grown: for a VIA whose metal RECT comes first it names the metal, for a generated via the top layer. When the entry has no type yet, Magic indexes its type-name table out of bounds.
+- Evidence: lef/lefRead.c:2508-2511
+- Options: replicate | fix (name the cut's type) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. Message-only, so the standing rule applies (as Q-LEFDEF-20, 107 and 114); the out-of-bounds read is replaced by the cut's type in both modes.
+- Resolution: compat — with `magic-compat` ON the warning names the via entry's normal type at that moment, as Magic prints it, and the cut's type where Magic reads out of bounds (entry with no type yet); with it OFF it names the cut's type. Approved 2026-11-19.
+
 ### Q-LEFDEF-30: LEF write order depends on hash-table iteration
 - Kind: ambiguity
 - Magic behavior: Several parts of the output follow the order of Magic's string hash tables, which depends on the hash function and the bucket count. These are the order of `-tech` LAYER blocks, of PROPERTYDEFINITIONS keys and of SITE blocks. The winner when several layer records map the same magic type follows the same order.

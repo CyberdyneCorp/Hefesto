@@ -6,13 +6,14 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-18, `docs/decisions/open-questions/LEFDEF.md` has 102 entries and `OASIS.md` has 34, 136 in all. Every one has a `Resolution:` line:
+As of 2026-11-19, `docs/decisions/open-questions/LEFDEF.md` has 105 entries and `OASIS.md` has 34, 139 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
 | Approved 2026-11-13 (the M6 round) | 99: 65 Q-LEFDEF, 34 Q-OASIS | "Decision table" below |
 | Resolved earlier (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-4, D-5 and D-14) | 36 Q-LEFDEF | "Entries resolved before the M6 round" |
 | Approved 2026-11-18 | 1: Q-LEFDEF-114 (compat) | "Decided 2026-11-18" |
+| Approved 2026-11-19 | 3: Q-LEFDEF-25 (compat), 26 (fix), 27 (compat) | "Decided 2026-11-19" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -263,6 +264,16 @@ Counts: 20 fix, 6 n/a (D-5 documentation mismatches), 5 platform, 4 compat, 1 re
 | Q-LEFDEF-114 | Pin layer error message arguments swapped | **compat** | ON prints Magic's swapped text, so LEFDEF-316 needs no deviation; OFF prints the layer name, then the pin name (was: fix) |
 
 This follows the standing rule (the quirk loses no data) and the treatment of the other message-only quirks Q-LEFDEF-20 and 107. The entry has `Status:` and `Resolution:` lines, and m6-lef-def-oasis design D9 lists it with the compat branch points.
+
+## Decided 2026-11-19
+
+Three Magic behaviours with no Q-row, found by the round-2 LEFTECH and LEFVIA implementations and implemented under the standing rule, were **approved by the user on 2026-11-19**. Each entry has `Status:` and `Resolution:` lines; the lef-tech-section and lef-read specs cite them.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-25 | More than two magic types on a tech `lef` line | **compat** | ON: an `obstruction` line keeps the first two types, other lines get `Can only define multiple types...`; OFF: `Too many types` (LEF-TECH-005) |
+| Q-LEFDEF-26 | `ignore` line naming an already-mapped LEF name | **fix** | both modes: `already used` reported, name kept; the -1 type index becomes the obstruction type, or type 0 |
+| Q-LEFDEF-27 | Type named in the cut-growing warning | **compat** | ON: the via entry's normal type, as Magic prints it (the cut's type where Magic reads out of bounds); OFF: the cut's type |
 
 ## Planning questions raised by the M6 plan
 
