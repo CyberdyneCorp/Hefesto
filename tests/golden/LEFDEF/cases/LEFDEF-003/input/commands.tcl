@@ -12,6 +12,8 @@ probe {snap internal}
 probe {load top}
 probe {box 0 0 10 10}
 probe {paint metal1}
+probe {box 0 0 10 10}
+probe {paint boundary}
 probe {lef write grid2 -tech}
 probe {def read input/nowidth}
 probe {writeall force}

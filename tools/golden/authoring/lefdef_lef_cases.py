@@ -85,8 +85,13 @@ def write_case(cid: str, cell: str, cell_text: str, body: list[str], outputs: li
 
 
 def trivial_top() -> list[str]:
-    """A small metal1 shape in a new cell ``top``, the cell a ``lef write -tech`` writes."""
-    return ["load top", *common.paint("metal1", 0, 0, 10, 10)]
+    """A small metal1 shape in a new cell ``top``, the cell a ``lef write -tech`` writes.
+
+    The boundary layer is painted over it: these techs declare a ``bound`` LEF layer, and with that layer
+    unpainted Magic writes ORIGIN and SIZE from uninitialized data (Q-LEFDEF-53), different in every run
+    (round-3 capture verification, golden-capture run 44515678560).
+    """
+    return ["load top", *common.paint("metal1", 0, 0, 10, 10), *common.paint("boundary", 0, 0, 10, 10)]
 
 
 # --- tech section: LEFDEF-001..004 -------------------------------------------------------------
@@ -533,7 +538,8 @@ def lef_write_specs() -> list[tclcase.TclCase]:
         write_case("LEFDEF-105", "odd", ODD, ["lef write"], ["odd.lef"], technology=tech(cifoutput=HALF_NM_STYLE)),
         write_case("LEFDEF-106", "inv", mag(INV_METAL + INV_LABELS, props={"FIXED_BBOX": "-10 -10 110 210"}),
                    ["lef write"], ["inv.lef"]),
-        write_case("LEFDEF-107", "bound", BOUND, ["lef write"], ["bound.lef"]),
+        write_case("LEFDEF-107", "bound", BOUND, ["lef write"], ["bound.lef"],
+                   technology=tech(lef=ld.LEF_BASE + ld.LEF_BOUND)),
         write_case("LEFDEF-108", "inv", mag(INV_METAL + INV_LABELS, props={
             "LEFclass": "CORE TIEHIGH", "LEFsymmetry": "X Y R90", "LEFsite": "unit"}), ["lef write"], ["inv.lef"]),
         write_case("LEFDEF-109", "inv", mag(INV_METAL + INV_LABELS, props={"LEFsite": "unit"}),

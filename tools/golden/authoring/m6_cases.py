@@ -203,42 +203,7 @@ BLOCKERS: dict[str, str] = {
 }
 BLOCKER_PREFIX = "M6 exit blocker, "
 # Authored cases that replay against Magic's captured output (no deferral any more).
-REPLAYED: set[str] = {
-    "LEFDEF-005",
-    "LEFDEF-006",
-    "LEFDEF-007",
-    "LEFDEF-008",
-    "LEFDEF-012",
-    "LEFDEF-013",
-    "LEFDEF-014",
-    "LEFDEF-015",
-    "LEFDEF-016",
-    "LEFDEF-017",
-    "LEFDEF-018",
-    "LEFDEF-019",
-    "LEFDEF-023",
-    "LEFDEF-106",
-    "LEFDEF-107",
-    "LEFDEF-110",
-    "LEFDEF-141",
-    "LEFDEF-142",
-    "LEFDEF-200",
-    "LEFDEF-201",
-    "LEFDEF-202",
-    "LEFDEF-210",
-    "LEFDEF-211",
-    "LEFDEF-212",
-    "LEFDEF-213",
-    "LEFDEF-214",
-    "LEFDEF-219",
-    "LEFDEF-224",
-    "LEFDEF-227",
-    "LEFDEF-230",
-    "LEFDEF-236",
-    "LEFDEF-237",
-    "LEFDEF-238",
-    "LEFDEF-239",
-}
+REPLAYED: set[str] = set()
 
 
 def written_specs() -> list[tclcase.TclCase]:

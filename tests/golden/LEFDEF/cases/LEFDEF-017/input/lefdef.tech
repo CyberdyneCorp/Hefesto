@@ -124,7 +124,6 @@ lef
     obstruction obsm1 metal1
     obstruction obsm2 metal2
     obstruction obsv1,metal1 via1
-    bound boundary BOUNDARY
 end
 
 extract

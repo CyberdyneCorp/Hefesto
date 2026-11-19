@@ -12,6 +12,8 @@ probe {snap internal}
 probe {load top}
 probe {box 0 0 10 10}
 probe {paint metal1}
+probe {box 0 0 10 10}
+probe {paint boundary}
 probe {lef read input/layers.lef}
 probe {lef write -tech}
 } scriptError]} {

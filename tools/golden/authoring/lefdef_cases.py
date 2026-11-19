@@ -396,8 +396,10 @@ LEF_BASE = """\
     obstruction obsm1 metal1
     obstruction obsm2 metal2
     obstruction obsv1 via1
-    bound boundary BOUNDARY
 """
+# The `bound` line only for cases that paint the boundary layer: with it declared and unpainted, Magic's
+# lef write takes ORIGIN and SIZE from uninitialized data (Q-LEFDEF-53), different in every run.
+LEF_BOUND = "    bound boundary BOUNDARY\n"
 
 EXTRACT_BASE = """\
     style {name}

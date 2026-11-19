@@ -658,6 +658,26 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.lef"]
 reason = "M6 exit blocker, LEFTECH; LEFW/GOLDEN: lefdef.tech declares a boundary layer the cell never paints, so Magic writes its unpainted-boundary ORIGIN and SIZE (Q-LEFDEF-53, fix in both modes); paint the boundary in the case or record the approved Q-LEFDEF-53 deviation"
 
+[LEFDEF-005]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-006]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-007]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-008]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-009]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.lef"]
@@ -673,6 +693,46 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, LEFR and LEFVIA; DEFR/GOLDEN: Magic paints no wire where the route width is not positive and Hefesto paints the DRC default width (Q-LEFDEF-1, fixed in both modes); record the approved Q-LEFDEF-1 deviation (task 15.7) or give the case a LEF WIDTH"
 
+[LEFDEF-012]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-013]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-014]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-015]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-016]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-017]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-018]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-019]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-020]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -687,6 +747,11 @@ reason = "M6 exit blocker, LEFR; LEFR: for a missing file Magic reports the last
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt"]
 reason = "M6 exit blocker, LEFR; LEFR: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; no Q-row (user decision)"
+
+[LEFDEF-023]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-100]
 deferred = "M6"
@@ -718,6 +783,16 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "odd.lef"]
 reason = "M6 exit blocker, LEFW; LEFW/GOLDEN: lefdef.tech declares a boundary layer the cell never paints, so Magic writes its unpainted-boundary ORIGIN and SIZE (Q-LEFDEF-53, fix in both modes); paint the boundary in the case or record the approved Q-LEFDEF-53 deviation"
 
+[LEFDEF-106]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "inv.lef"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-107]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "bound.lef"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-108]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "inv.lef"]
@@ -727,6 +802,11 @@ reason = "M6 exit blocker, LEFW; LEFW/GOLDEN: lefdef.tech declares a boundary la
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "inv.lef"]
 reason = "M6 exit blocker, LEFW; LEFW/GOLDEN: lefdef.tech declares a boundary layer the cell never paints, so Magic writes its unpainted-boundary ORIGIN and SIZE (Q-LEFDEF-53, fix in both modes); paint the boundary in the case or record the approved Q-LEFDEF-53 deviation"
+
+[LEFDEF-110]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "inv.lef"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-111]
 deferred = "M6"
@@ -878,6 +958,31 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "w1.lef", "w2.lef", "w3.lef"]
 reason = "M6 exit blocker, LEFW; LEFW/GOLDEN: lefdef.tech declares a boundary layer the cell never paints, so Magic writes its unpainted-boundary ORIGIN and SIZE (Q-LEFDEF-53, fix in both modes); paint the boundary in the case or record the approved Q-LEFDEF-53 deviation"
 
+[LEFDEF-141]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-142]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-200]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-201]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-202]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-203]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -913,6 +1018,31 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR and LEFVIA; DEFR/GOLDEN: Magic paints no wire where the route width is not positive and Hefesto paints the DRC default width (Q-LEFDEF-1, fixed in both modes); record the approved Q-LEFDEF-1 deviation (task 15.7) or give the case a LEF WIDTH"
 
+[LEFDEF-210]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-211]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-212]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-213]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-214]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-215]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -932,6 +1062,11 @@ reason = "M6 exit blocker, DEFR; DEFR/GOLDEN: Magic writes the DEF pin labels as
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR/GOLDEN: Magic writes the DEF pin labels as flabel FreeSans (default fonts loaded at startup), Hefesto as rlabel; to investigate (font inputs of the case, DEFR's label rule)"
+
+[LEFDEF-219]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-220]
 deferred = "M6"
@@ -953,6 +1088,11 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR/GOLDEN: Magic paints no wire where the route width is not positive and Hefesto paints the DRC default width (Q-LEFDEF-1, fixed in both modes); record the approved Q-LEFDEF-1 deviation (task 15.7) or give the case a LEF WIDTH"
 
+[LEFDEF-224]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-225]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -963,6 +1103,11 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR: special-net geometry differs from Magic's capture; to investigate"
 
+[LEFDEF-227]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
 [LEFDEF-228]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -972,6 +1117,11 @@ reason = "M6 exit blocker, DEFR; DEFR: special-net geometry differs from Magic's
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR/GOLDEN: Magic paints no wire where the route width is not positive and Hefesto paints the DRC default width (Q-LEFDEF-1, fixed in both modes); record the approved Q-LEFDEF-1 deviation (task 15.7) or give the case a LEF WIDTH"
+
+[LEFDEF-230]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-231]
 deferred = "M6"
@@ -997,6 +1147,26 @@ reason = "M6 exit blocker, DEFR; DEFR: special-net geometry differs from Magic's
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR/GOLDEN: Magic paints no wire where the route width is not positive and Hefesto paints the DRC default width (Q-LEFDEF-1, fixed in both modes); record the approved Q-LEFDEF-1 deviation (task 15.7) or give the case a LEF WIDTH"
+
+[LEFDEF-236]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-237]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-238]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+
+[LEFDEF-239]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-300]
 deferred = "M6"
