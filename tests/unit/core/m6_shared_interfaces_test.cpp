@@ -207,9 +207,9 @@ TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-sca
   check_stub(lef::write_all(state, cell, "a.lef", lef::LefWriteOptions{}), "lef writeall");
   check_stub(def::read(state, "a.def", def::DefReadOptions{}), "def read");
   check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
-  check_stub(oasis::read(state, "a.oas", oasis::OasisReadOptions{}), "oasis read");
   check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
-  // lef::paint_polygon is implemented (LEFVIA): tests/unit/lef/via/.
+  // lef::paint_polygon is implemented (LEFVIA): tests/unit/lef/via/;
+  // oasis::read (OASR): tests/unit/oasis/read/.
 }
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {

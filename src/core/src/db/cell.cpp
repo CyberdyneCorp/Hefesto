@@ -64,8 +64,8 @@ void set_property(CellDef& def, std::string_view name, std::optional<PropertyVal
   if (name == "FIXED_BBOX") {
     def.flags().fixed_bbox = value.has_value();
   }
-  if (name == "GDS_FILE") {
-    def.flags().vendor_gds = value.has_value();
+  if (name == "GDS_FILE" || name == "OASIS_FILE") {
+    def.flags().vendor_gds = value.has_value();  // OASIS_FILE as GDS_FILE (oasis-read "Read-only OASIS vendor views")
   }
   if (value) {
     def.properties().put(name, std::move(*value));
@@ -138,7 +138,7 @@ diag::Status CellLibrary::rename(CellDef& def, std::string_view new_name, bool f
     if (!force) {
       return diag::make(codes::kCellVendor, "Error:  Attempt to rename read-only cell \"" + def.name() + "\"");
     }
-    for (const char* reserved : {"GDS_FILE", "GDS_START", "GDS_END"}) {
+    for (const char* reserved : {"GDS_FILE", "GDS_START", "GDS_END", "OASIS_FILE", "OASIS_CELL"}) {
       set_property(def, reserved, std::nullopt);
     }
   }
