@@ -296,6 +296,14 @@ release notices.
   spends at most 100000 lines in `repeat` passes; past that the load
   warns (TECH-REPEAT-003) and reads the rest of the file once. Real PDK
   files repeat about a hundred lines (Q-TECH-33, approved).
+- **Grow distances past the plane are refused in `cifinput` styles.** A
+  `grow`, `grow-grid` or `shrink` distance above 1073741818 is an error
+  (`Grow/shrink distance must be at most 1073741818.`) and the statement
+  is dropped, as in `cifoutput` styles; a read's grid subdivisions and
+  rescales keep input distances within that bound, and the grow, shrink
+  and grow-min operators compute their edges in 64 bits, so a GDS or CIF
+  read no longer overflows growing a layer (Q-MASK-36, approved; Magic
+  overflows there).
 
 ### Security
 
