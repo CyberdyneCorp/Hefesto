@@ -42,18 +42,19 @@ CommandResult print_options(cmd::CommandContext& ctx, const std::string& command
   return CommandResult::success();
 }
 
-// A command of the layout client run from this one (DBWloadWindow through
-// `load`), its messages passed on.
-void run_nested(cmd::CommandContext& ctx, std::vector<std::string> words) {
-  const cmd::CommandLookup found = ctx.registry().resolve(words.front(), cmd::kLayoutClient);
-  if (found.status != cmd::LookupStatus::found) {
-    return;
-  }
-  const cmd::Invocation invocation{found.spec->name, {words.begin() + 1, words.end()}, cmd::Origin::script, {}};
-  const CommandResult result = found.spec->handler(ctx, invocation);
-  for (const diag::Diagnostic& d : result.diagnostics) {
+// DefRead's DBWloadWindow(w, design, DBW_LOAD_IGNORE_TECH): the design
+// cell into the window, by name and not through the `load` command's
+// argument parser (a hostile `DESIGN -nowindow ;` is a cell name, not an
+// option).
+void load_design(cmd::CommandContext& ctx, cell::detail::IoSession& session, const std::string& design) {
+  cell::ReadOptions options;
+  options.ignore_tech = true;
+  session.ed.windows.set_cell_reader(&cell::detail::read_for_expansion);
+  const CommandResult loaded = cell::detail::load_into_window(session, design, options);
+  for (const diag::Diagnostic& d : loaded.diagnostics) {
     ctx.emit(d);
   }
+  session.process_mismatches();
 }
 
 // The read through the session's progress host (the desktop pumps frames
@@ -67,6 +68,16 @@ CommandResult hosted_read(editor::EditorState& editor, const platform::Path& pat
     options.progress = p;
     return read(editor, path, options);
   });
+}
+
+// The file name the missing-file message gives: `name` with `.def` added
+// when its last component has no extension, as find_def_file looks it up
+// (a dot in a directory name, as in `./top` or `dir.v1/top`, is no
+// extension).
+std::string tried_name(const std::string& name) {
+  const std::size_t slash = name.find_last_of('/');
+  const std::size_t base = slash == std::string::npos ? 0 : slash + 1;
+  return name.find('.', base) == std::string::npos ? name + ".def" : name;
 }
 
 }  // namespace
@@ -110,9 +121,8 @@ CommandResult read_command(cmd::CommandContext& ctx, const cmd::Invocation& invo
   cell::LookupContext lookup{ctx.services().files, ed.search_paths, ed.path_variables, ctx.sink()};
   const auto found = find_def_file(lookup, name);
   if (!found) {
-    const std::string tried = name.find('.') == std::string::npos ? name + ".def" : name;
-    return CommandResult::failure(
-        diag::make(detail::kCannotOpen, "Cannot open input file " + tried + " (No such file or directory)."));
+    return CommandResult::failure(diag::make(
+        detail::kCannotOpen, "Cannot open input file " + tried_name(name) + " (No such file or directory)."));
   }
   auto session = std::make_shared<cell::detail::IoSession>(ctx, ed);
   options.read_master = [session](db::CellDef& def) {
@@ -136,7 +146,7 @@ CommandResult read_command(cmd::CommandContext& ctx, const cmd::Invocation& invo
       ctx.emit(d);
     }
     result.diagnostics.clear();
-    run_nested(ctx, {"load", *design});
+    load_design(ctx, *session, *design);
   }
   // CmdLef sets no Tcl result for `def read`.
   result.value = cmd::Value{};

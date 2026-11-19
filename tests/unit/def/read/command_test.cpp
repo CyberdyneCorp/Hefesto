@@ -106,6 +106,23 @@ TEST_CASE("the design is loaded into the only window", "[cap:def-read][req:Comma
   CHECK(s.editor.windows.current()->root() == &s.cell("top"));
 }
 
+// Regression: the design was loaded through the `load` command's argument
+// parser, so a design name starting with `-` was taken as a `load` option
+// (`-nowindow` loaded nothing into the window). Magic calls DBWloadWindow
+// with the name.
+TEST_CASE("a design name that looks like an option is loaded by name", "[cap:def-read][req:Command context]") {
+  Session s;
+  REQUIRE(s.run("load scratch").ok());
+  db::CellDef* scratch = s.editor.cells.find("scratch");
+  REQUIRE(scratch != nullptr);
+  REQUIRE(s.editor.windows.open(scratch, hefesto::view::ScreenRect{0, 0, 499, 499}).ok());
+  s.file("/d/top.def", "DESIGN -nowindow ;\nDIEAREA ( 0 0 ) ( 10 10 ) ;\nEND DESIGN\n");
+  REQUIRE(s.run("defr read /d/top").ok());
+  db::CellDef* design = s.editor.cells.find("-nowindow");
+  REQUIRE(design != nullptr);
+  CHECK(s.editor.windows.current()->root() == design);
+}
+
 TEST_CASE("the read reports progress through the host and can be cancelled", "[cap:def-read][req:Command context]") {
   Session s;
   s.file("/d/top.def", "DESIGN top ;\nDIEAREA ( 0 0 ) ( 10 10 ) ;\nEND DESIGN\n");
@@ -151,6 +168,21 @@ TEST_CASE("no extension", "[cap:def-read][req:DEF file lookup]") {
   REQUIRE(!result.diagnostics.empty());
   CHECK(result.diagnostics.front().text == "Cannot open input file /d/chip.def (No such file or directory).");
   CHECK(s.editor.cells.find("bare") == nullptr);
+}
+
+// Regression: the message looked for a dot anywhere in the path, so a dot in
+// a directory name made it give the typed name, not the `.def` file looked up.
+TEST_CASE("a dot in a directory name is no extension", "[cap:def-read][req:DEF file lookup]") {
+  Session s;
+  for (const std::string name : {"./top", "/d/dir.v1/top"}) {
+    const auto result = s.run("defr read " + name);
+    REQUIRE_FALSE(result.ok());
+    REQUIRE(!result.diagnostics.empty());
+    CHECK(result.diagnostics.front().text == "Cannot open input file " + name + ".def (No such file or directory).");
+  }
+  s.file("/d/dir.v1/top.def", "DESIGN dotted ;\nEND DESIGN\n");
+  REQUIRE(s.run("defr read /d/dir.v1/top").ok());
+  CHECK(s.editor.cells.find("dotted") != nullptr);
 }
 
 TEST_CASE("a .def name and the messages of the read", "[cap:def-read][req:DEF file lookup]") {
