@@ -1,0 +1,255 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 19 18:03:59 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+0 {}
+Reading LEF data from file input/lef/sg13g2_tech.lef.
+This action cannot be undone.
+LEF read, Line 79 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 80 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 81 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 87 (Message): Unknown keyword "MINIMUMCUT" in LEF file; ignoring.
+LEF read, Line 91 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 92 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 121 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 122 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 123 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 129 (Message): Unknown keyword "MINIMUMCUT" in LEF file; ignoring.
+LEF read, Line 134 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 135 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 162 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 163 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 164 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 170 (Message): Unknown keyword "MINIMUMCUT" in LEF file; ignoring.
+LEF read, Line 175 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 176 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 204 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 205 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 206 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 212 (Message): Unknown keyword "MINIMUMCUT" in LEF file; ignoring.
+LEF read, Line 217 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 218 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 245 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 246 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 247 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 253 (Message): Unknown keyword "MINIMUMCUT" in LEF file; ignoring.
+LEF read, Line 258 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 259 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 285 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 286 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 287 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 292 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 293 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read, Line 319 (Message): Unknown keyword "MAXIMUMDENSITY" in LEF file; ignoring.
+LEF read, Line 320 (Message): Unknown keyword "DENSITYCHECKSTEP" in LEF file; ignoring.
+LEF read, Line 321 (Message): Unknown keyword "DENSITYCHECKWINDOW" in LEF file; ignoring.
+LEF read, Line 330 (Message): Unknown keyword "ANTENNACUMAREARATIO" in LEF file; ignoring.
+LEF read, Line 331 (Message): Unknown keyword "ANTENNACUMDIFFAREARATIO" in LEF file; ignoring.
+LEF read: Processed 1200 lines.
+0 {}
+Reading LEF data from file input/lef/sg13g2_stdcell.lef.
+This action cannot be undone.
+LEF read, Line 6473 (Message): Unknown keyword "ANTENNAMAXCUTCAR" in LEF file; ignoring.
+LEF read: Processed 7927 lines.
+0 {}
+lefdef-rt cells 85
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+0 {}
+0 {}
+Generating LEF output lefdef_rt.mag for hierarchy rooted at cell lefdef_rt:
+Diagnostic:  Write LEF header for cell lefdef_rt
+Diagnostic:  Writing LEF output for cell sg13g2_and2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a22oi_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a221oi_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a21oi_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a21oi_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a21o_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_a21o_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell CoreSite
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_buf_16
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dfrbp_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dfrbp_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dfrbpq_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dfrbpq_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlhr_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlhq_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_buf_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_and2_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_and3_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_and3_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_and4_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_and4_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_buf_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_decap_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_antennanp
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_buf_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_buf_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_decap_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_ebufn_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_einvn_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_inv_16
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_einvn_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_ebufn_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dllrq_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dllr_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlhrq_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlygate4sd1_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlygate4sd2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_dlygate4sd3_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_ebufn_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_einvn_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_fill_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_fill_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_fill_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_fill_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_inv_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_inv_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_mux4_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_mux2_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_lgcp_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_inv_4
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_inv_8
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_mux2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand2_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand2b_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand3b_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand4_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor2_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor2b_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor3_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand2b_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nand3_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor2b_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor3_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sdfbbp_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sdfrbp_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sdfrbp_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sdfrbpq_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sdfrbpq_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_slgcp_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor4_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_nor4_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or2_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or3_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or3_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or4_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or4_2
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_xnor2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_xor2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_o21ai_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_or2_1
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_sighold
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_tiehi
+Diagnostic:  Scale value is 0.005000
+Diagnostic:  Writing LEF output for cell sg13g2_tielo
+Diagnostic:  Scale value is 0.005000
+0 {}
+lefdef-rt written 1

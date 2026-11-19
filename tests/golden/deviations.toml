@@ -1010,17 +1010,17 @@ reason = "M6 exit blocker, DEFR and LEFVIA; DEFR/GOLDEN: Magic writes the DEF pi
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper's failed read set its file to lefdef_rt.mag, the name lef writeall then writes; the script now clears the selection and renames the file)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
 
 [LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper's failed read set its file to lefdef_rt.mag, the name lef writeall then writes; the script now clears the selection and renames the file)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
 
 [LEFDEF-RT-sg13g2_stdcell]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper's failed read set its file to lefdef_rt.mag, the name lef writeall then writes; the script now clears the selection and renames the file)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
 
 [OASIS-001]
 deferred = "M6"

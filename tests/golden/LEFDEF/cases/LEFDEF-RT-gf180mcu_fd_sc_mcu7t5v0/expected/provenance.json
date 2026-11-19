@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0",
+  "area": "LEFDEF",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:5ec002618cfc45423d86eff360ae1477961190c19bd3da1e0d35910941db4e67",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-rcfile",
+    "input/pdk/gf180mcuD/libs.tech/magic/gf180mcuD.magicrc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-19T18:02:18Z",
+  "outputs": {
+    "lefdef_rt.lef.sha256": "59d6a7f66fc19f5e86872ea9e6ac7ec5268034d51a1ad01f368a8be1197d3a6c",
+    "lefdef_rt.lef.summary.txt": "d763d5aac5982b4143dba4891c9608d2b43e27abc4e92800cc865f43d9ded42c",
+    "stderr.txt": "a15e001594b291597fa6b879ac8171ea1a04751f08d6aa1ce83a48a6a9cf6ae5",
+    "stdout.txt": "26e0bdc9a6ea0e8e3ca96d53f003572cc4fb83a5ec9b6a91b64e16ed5aaebf59"
+  }
+}
