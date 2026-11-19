@@ -1368,4 +1368,369 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
 reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
 
+[OASIS-001]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-002]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-003]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-004]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-005]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-006]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-007]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-008]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-009]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-010]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-011]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-013]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-014]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-015]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-030]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-022]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-023]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-024]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-025]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-026]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-027]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-028]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-029]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-031]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-032]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-033]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-034]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-035]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-036]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-037]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-050]
+deferred = "M6"
+outputs = ["out.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-single]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-mergeno]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-mergeyes]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-triangles]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-labels]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-ports]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-labellayer]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-arrays]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-uses]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-library]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-051-arraysyes]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-single]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-mergeno]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-mergeyes]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-triangles]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-labels]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-ports]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-labellayer]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-arrays]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-uses]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-library]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-052-arraysyes]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt", "out.oas.elements.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-053]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-054]
+deferred = "M6"
+outputs = ["out.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-055-names]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-055-labels]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-056]
+deferred = "M6"
+outputs = ["c0.oas", "c0.oas.hierarchy.txt", "c9.oas", "c9.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-057]
+deferred = "M6"
+outputs = ["strict.oas", "nonstrict.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-058]
+deferred = "M6"
+outputs = ["none.oas", "crc32.oas", "checksum.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-059]
+deferred = "M6"
+outputs = ["ang.oas", "nolayers.oas", "nocalma.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-060]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-061]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-062]
+deferred = "M6"
+outputs = ["out.oas", "out.oas.hierarchy.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-063]
+deferred = "M6"
+outputs = ["report.txt", "out2.oas"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-single]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-mergeyes]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-triangles]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-ports]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-arrays]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-064-uses]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-090]
+deferred = "M6"
+outputs = ["report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASCMD makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-091]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASCMD makes it replay (m6-lef-def-oasis task 15.2)"
+
 # --- END M6 deferrals ---

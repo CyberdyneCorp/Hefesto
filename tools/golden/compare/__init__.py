@@ -48,6 +48,17 @@ output's masks. The outputs match when the canonical forms are identical.
     A GDSII or OASIS stream (either format on either side) compared as flat per-layer merged
     geometry: Manhattan areas in the canonical form of ``polygon-set``, other polygons as a
     canonical polygon list, then texts (m6-lef-def-oasis design D19). See stream_geometry.py.
+``stream-hierarchy``
+    A GDSII or OASIS stream compared cell by cell without flattening: cell names, each cell's
+    own geometry (as ``stream-geometry`` canonicalizes it) and texts, and one line per placed
+    instance (AREFs and PLACEMENT repetitions expanded) with its transform and its reference
+    properties (PROPATTR/PROPVALUE, ``S_GDS_PROPERTY``) (m6-lef-def-oasis design D19, the OASIS
+    write cases). See stream_hierarchy.py.
+``stream-elements``
+    A GDSII or OASIS stream compared as each cell's element sequence in record order: rectangles,
+    polygons from their first vertex, paths, texts and placements (arrays as their sorted
+    displacements) with their properties; an OASIS shape repetition shows as such (m6-lef-def-oasis
+    design D19, OASIS-052: ``repetitions no`` keeps gds-write's element order). See stream_elements.py.
 ``lef-text``, ``def-text``
     LEF and DEF files, and the console of LEF/DEF commands: plain text after removing the
     informative progress lines (``Diagnostic:`` lines, ``(This can take a while!)``,
@@ -79,7 +90,7 @@ from goldenlib.gds import dump as gds_dump
 from goldenlib.oasis import dump as oasis_dump
 
 from . import (drc_console, ext_cap, lefdef_text, mag_backup, magic_console, polygon_set, spice_canonical,
-               stream_geometry)
+               stream_elements, stream_geometry, stream_hierarchy)
 from .masks import apply_masks
 
 
@@ -102,6 +113,8 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "spice-canonical": spice_canonical.canonical_text,
     "oasis-records": lambda data: oasis_dump(data).encode("utf-8"),
     "stream-geometry": stream_geometry.canonicalize,
+    "stream-hierarchy": stream_hierarchy.canonicalize,
+    "stream-elements": stream_elements.canonicalize,
     "lef-text": lefdef_text.canonicalize,
     "def-text": lefdef_text.canonicalize,
 }

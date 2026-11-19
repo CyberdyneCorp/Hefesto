@@ -73,7 +73,7 @@ class PointList:
     def polygon(self) -> tuple[Point, ...]:
         """P0..Pn, plus the synthesized closing vertex of types 0 and 1 (POLYGON closure)."""
         vertices = ((0, 0), *self.points)
-        if self.type not in (0, 1):
+        if self.type not in (0, 1) or not self.points:
             return vertices
         last_horizontal = (len(self.points) - 1 + self.type) % 2 == 0
         px, py = self.points[-1]
@@ -218,8 +218,10 @@ class Cursor:
 
     def point_list(self) -> PointList:
         ptype, count = self.uint32(), self.uint()
-        if ptype > 5 or count == 0:
+        if ptype > 5:
             raise OasisError("invalid point list")
+        if count == 0:  # oasis-format "Point lists": reported, and the element is dropped
+            return PointList(ptype, ())
         if count > MAX_EXPANSION:
             raise OasisError("point list too long")
         if ptype in (0, 1):
@@ -652,15 +654,20 @@ class Placement:
     flip: bool = False
     repetition: tuple[Point, ...] = ((0, 0),)
     properties: list[Property] = field(default_factory=list)
+    pattern: Repetition | None = None  # the repetition as written (type 0 resolved), None without one
 
 
 @dataclass
 class Cell:
+    """A cell: its shapes, texts and placements by kind, and all of them in record order
+    (``elements``, which the GDS equivalent of authoring/oasequiv.py follows)."""
+
     name: object
     shapes: list[Shape] = field(default_factory=list)
     texts: list[Text] = field(default_factory=list)
     placements: list[Placement] = field(default_factory=list)
     properties: list[Property] = field(default_factory=list)
+    elements: list[object] = field(default_factory=list)
 
 
 @dataclass
@@ -718,13 +725,18 @@ class _Modal(dict):
         return self[name]
 
     def repetition(self, fields: dict) -> tuple[Point, ...]:
+        pattern = self.pattern(fields)
+        return ((0, 0),) if pattern is None else pattern.displacements
+
+    def pattern(self, fields: dict) -> Repetition | None:
+        """The element's repetition with type 0 resolved to the modal one, or None."""
         rep = fields.get("repetition")
         if rep is None:
-            return ((0, 0),)
+            return None
         if rep.type == 0:
-            return self.need("repetition").displacements
+            return self.need("repetition")
         self["repetition"] = rep
-        return rep.displacements
+        return rep
 
 
 def _dedupe(points: list[Point]) -> tuple[Point, ...]:
@@ -854,12 +866,14 @@ class _Builder:
         x, y = m.coord(f, "x", "placement-x"), m.coord(f, "y", "placement-y")
         mag = f.get("mag", 1.0)
         angle = f.get("angle", float(f.get("rotation", 0)))
-        reps = m.repetition(f)
+        pattern = m.pattern(f)
         if not (math.isfinite(mag) and mag > 0):
+            # oasis-read "Placement transforms": reported and treated as 1 (the raw value is kept).
             self.lib.warnings.append("invalid magnification")
-            return
-        element = Placement(ref, (x, y), mag, angle, bool(f["flip"]), reps)
+        reps = ((0, 0),) if pattern is None else pattern.displacements
+        element = Placement(ref, (x, y), mag, angle, bool(f["flip"]), reps, pattern=pattern)
         cell.placements.append(element)
+        cell.elements.append(element)
         self.target = element
 
     def text(self, rec: Record) -> None:
@@ -869,6 +883,7 @@ class _Builder:
         x, y = m.coord(f, "x", "text-x"), m.coord(f, "y", "text-y")
         element = Text(string, layer, texttype, (x, y), m.repetition(f))
         cell.texts.append(element)
+        cell.elements.append(element)
         self.target = element
 
     def _geometry(self, rec: Record) -> tuple[int, int, int, int]:
@@ -877,8 +892,15 @@ class _Builder:
         return layer, datatype, m.coord(f, "x", "geometry-x"), m.coord(f, "y", "geometry-y")
 
     def _add_shape(self, rec: Record, shape: Shape) -> None:
-        self._in_cell(rec).shapes.append(shape)
+        cell = self._in_cell(rec)
+        cell.shapes.append(shape)
+        cell.elements.append(shape)
         self.target = shape
+
+    def _drop(self, rec: Record, warning: str) -> None:
+        """A dropped element: ``warning`` is reported and later PROPERTY records go to the cell."""
+        self.lib.warnings.append(warning)
+        self.target = self._in_cell(rec)
 
     def _outline(self, rec: Record, kind: str, vertices: list[Point], position: tuple) -> None:
         layer, datatype, x, y = position
@@ -907,6 +929,9 @@ class _Builder:
     def polygon(self, rec: Record) -> None:
         position = self._geometry(rec)
         points = self.modal.take(rec.fields, "points", "polygon-point-list")
+        if not points.points:
+            self._drop(rec, "invalid point list")
+            return
         if points.type in (0, 1) and len(points.points) % 2:
             self.lib.warnings.append("type 0/1 point list with odd count")
         self._outline(rec, "polygon", list(points.polygon()), position)
@@ -920,6 +945,9 @@ class _Builder:
                _extension(scheme & 3, end, halfwidth, m, "path-end-extension"))
         points = m.take(f, "points", "path-point-list")
         reps = m.repetition(f)
+        if not points.points:
+            self._drop(rec, "invalid point list")
+            return
         line = tuple((x + px, y + py) for px, py in ((0, 0), *points.points))
         self._add_shape(rec, Shape("path", layer, datatype, line, halfwidth, ext, repetition=reps))
 

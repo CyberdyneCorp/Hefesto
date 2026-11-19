@@ -6,8 +6,9 @@
 The LEFDEF specs live in ``lefdef_lef_cases.py`` (LEFDEF-001..023, 100..142), ``lefdef_def_cases.py``
 (LEFDEF-200..239, 300..335) and ``lefdef_pdk_cases.py`` (LEFDEF-240 and the library round trips
 ``LEFDEF-RT-<lib>`` of task 15.5), on the framework of ``lefdef_cases.py``. The OASIS specs live in
-``oasis_cases.py`` (task 15.2), which this driver picks up once it exists. Each module's
-``NOT_AUTHORED`` lists the rows it leaves out, with the reason and the target milestone.
+``oasis_cases.py`` (tasks 15.2, 15.6). Each LEFDEF module's ``NOT_AUTHORED`` lists the rows it leaves
+out, with the reason and the target milestone; ``oasis_cases.not_authored()`` does the same for the
+OASIS rows (a row there may name a group of cases, e.g. OASIS-051 is OASIS-051-<layout>).
 
     python3 tools/golden/authoring/m6_cases.py                # write every case
     python3 tools/golden/authoring/m6_cases.py --list         # print the case ids
@@ -21,7 +22,7 @@ Never touches expected/. Until a case is captured and its workstream replays it,
 lists it as ``deferred = "M6"`` (the block between ``BEGIN`` and ``END``, every case this driver
 writes), with the owning workstream in the reason, so the replay stays green (goldenlib/deviations.py:
 an uncaptured case may carry only a deferred entry). A workstream whose implementation makes a case
-replay adds its ID to ``REPLAYED`` and re-runs ``--deviations``; an approved fix deviation (Q-LEFDEF-1,
+replay adds its ID to ``REPLAYED`` and re-runs ``--deviations`` (one block for LEFDEF and OASIS); an approved fix deviation (Q-LEFDEF-1,
 73, 83; task 15.7) goes in the hand-written part of the file.
 
 The DEF-write net cases read Magic's ``.ext`` files (task 1.6): before their capture, golden-capture.yml
@@ -30,13 +31,12 @@ mode ``ext-inputs`` runs and ``lefdef_cases.py --sync-ext`` commits the files in
 ``--exit-check`` lists every entry of ``deviations.toml`` deferred to M6, the open questions an M6
 capability cites without a ``Resolution:`` line (scripts/check_milestone_readiness.py --milestone M6),
 and the approved deviations the case modules record outside ``deviations.toml`` (``APPROVED_DEVIATIONS``:
-cases that pass with a recorded decision, e.g. Q-OASIS-2, task 15.6). It fails while a deferral or an
-open decision is left. Moving a row to a later milestone is a user decision.
+cases that pass with a recorded decision, e.g. Q-OASIS-2, task 15.6) and the rows not written yet. It
+fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision.
 """
 from __future__ import annotations
 
 import argparse
-import importlib
 import importlib.util
 import sys
 from pathlib import Path
@@ -49,11 +49,12 @@ import lefdef_cases  # noqa: E402
 import lefdef_def_cases  # noqa: E402
 import lefdef_lef_cases  # noqa: E402
 import lefdef_pdk_cases  # noqa: E402
+import oasis_cases  # noqa: E402
 import tclcase  # noqa: E402
 from goldenlib import deviations  # noqa: E402
 
 LEFDEF_MODULES = (lefdef_lef_cases, lefdef_def_cases, lefdef_pdk_cases)
-OPTIONAL_MODULES = ("oasis_cases",)  # task 15.2: picked up once the module exists
+MODULES = (*LEFDEF_MODULES, oasis_cases)
 DEVIATIONS = casegen.GOLDEN / "deviations.toml"
 READINESS = casegen.REPO / "scripts" / "check_milestone_readiness.py"
 MILESTONE = "M6"
@@ -67,7 +68,7 @@ VIA_REQUIREMENTS = {"LEF VIA and VIARULE definitions", "Via redefinition", "Cut 
                     "Rectangle-based DEF vias", "Generated DEF vias", "Contact region identification",
                     "Generated via definitions"}
 REASON = ("authored before its capture in golden-capture.yml and before {owner} makes it replay "
-          "(m6-lef-def-oasis task 15.1)")
+          "(m6-lef-def-oasis task {task})")
 EXT_NOTE = "; its .ext inputs come from golden-capture.yml mode ext-inputs and lefdef_cases.py --sync-ext (task 1.6)"
 # Captured cases that still differ from Magic: owner and cause (the M6 exit blockers).
 BLOCKERS: dict[str, str] = {
@@ -77,18 +78,9 @@ BLOCKER_PREFIX = "M6 exit blocker, "
 REPLAYED: set[str] = set()
 
 
-def modules() -> list:
-    """The case modules: the LEFDEF ones and every optional module that exists."""
-    found = list(LEFDEF_MODULES)
-    for name in OPTIONAL_MODULES:
-        if importlib.util.find_spec(name) is not None:
-            found.append(importlib.import_module(name))
-    return found
-
-
 def written_specs() -> list[tclcase.TclCase]:
     """Every case this driver writes."""
-    specs = [s for module in modules() for s in module.specs()]
+    specs = [s for module in MODULES for s in module.specs()]
     ids = [s.id for s in specs]
     duplicates = sorted({i for i in ids if ids.count(i) > 1})
     if duplicates:
@@ -98,36 +90,35 @@ def written_specs() -> list[tclcase.TclCase]:
 
 def not_authored() -> dict[str, str]:
     rows: dict[str, str] = {}
-    for module in modules():
+    for module in LEFDEF_MODULES:
         rows.update(getattr(module, "NOT_AUTHORED", {}))
+    rows.update(oasis_cases.not_authored())
     return rows
 
 
 def approved_deviations() -> dict[str, str]:
     """``<id>: <decision and reason>`` of the passing cases with an approved deviation (D19)."""
     rows: dict[str, str] = {}
-    for module in modules():
+    for module in LEFDEF_MODULES:
         rows.update(getattr(module, "APPROVED_DEVIATIONS", {}))
+    rows.update(dict(line.split(": ", 1) for line in oasis_cases.deviation_lines()))
     return rows
 
 
 def inventory() -> list[str]:
-    """The LEFDEF row IDs of CASES.md, plus the OASIS rows once oasis_cases.py lists them (``inventory``)."""
-    ids = list(lefdef_cases.rows())
-    for module in modules():
-        ids += list(getattr(module, "inventory", list)())
-    return ids
+    """The LEFDEF row IDs of CASES.md (``oasis_cases.not_authored()`` covers the OASIS rows itself)."""
+    return list(lefdef_cases.rows())
 
 
 def missing_rows() -> list[str]:
-    """Inventory rows neither authored nor listed in NOT_AUTHORED (empty once task 15.1 is done)."""
+    """LEFDEF inventory rows neither authored nor listed in NOT_AUTHORED (empty once task 15.1 is done)."""
     done = {s.id for s in written_specs()} | set(not_authored())
     return [i for i in inventory() if i not in done]
 
 
 def output_names(spec: tclcase.TclCase) -> list[str]:
-    files = [spec.output_names.get(o, o.replace("/", "__")) for o in spec.outputs]
-    return ["stdout.txt", "stderr.txt", *files]
+    streams = ["stdout.txt", "stderr.txt"] if spec.streams else []
+    return [*streams, *(spec.output_names.get(o, o.replace("/", "__")) for o in spec.outputs)]
 
 
 def owner(spec: tclcase.TclCase) -> str:
@@ -139,7 +130,8 @@ def deferral_reason(spec: tclcase.TclCase) -> str:
     if spec.id in BLOCKERS:
         return BLOCKER_PREFIX + BLOCKERS[spec.id]
     ext = EXT_NOTE if spec.id in lefdef_cases.DEF_NET_CASES else ""
-    return REASON.format(owner=owner(spec)) + ext
+    task = "15.2" if spec.area == "OASIS" else "15.1"
+    return REASON.format(owner=owner(spec), task=task) + ext
 
 
 def deviation_block() -> str:
@@ -228,9 +220,11 @@ def exit_check() -> int:
     print("\n".join(blockers) if blockers else "no deferral targets M6")
     decisions = unresolved_decisions()
     print("\n".join(decisions) if decisions else "every decision M6 cites is resolved")
+    unwritten = [f"{row}: not written, {why}" for row, why in not_authored().items()] + missing_rows()
+    print("\n".join(unwritten) if unwritten else "every row is written")
     for cid, why in approved_deviations().items():
         print(f"{cid}: approved deviation, {why}")
-    return 1 if blockers or decisions else 0
+    return 1 if blockers or decisions or unwritten else 0
 
 
 def main(argv: list[str]) -> int:

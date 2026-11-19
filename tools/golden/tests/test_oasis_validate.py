@@ -10,6 +10,7 @@ the verdict rules (with the negative controls) and the report are tested.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import tempfile
 import unittest
@@ -61,7 +62,8 @@ class ProduceTest(unittest.TestCase):
         self.cases, self.out = root / "OASIS" / "cases", root / "out"
         self.cases.mkdir(parents=True)
         self.patches = [mock.patch.object(ov, "CASES", self.cases),
-                        mock.patch.object(ov, "REFERENCE_419", root / "missing.oas")]
+                        mock.patch.object(ov, "REFERENCE_419", root / "missing.oas"),
+                        mock.patch.object(ov.oasis_captured_cases, "plan", return_value=[])]
         for patch in self.patches:
             patch.start()
 
@@ -77,10 +79,46 @@ class ProduceTest(unittest.TestCase):
     def statuses(self, manifest: dict) -> dict:
         return {s["step"]: s["status"] for s in manifest["steps"]}
 
-    def test_cases_are_050_to_059_and_061(self):
+    def test_rows_are_050_to_063(self):
         self.assertEqual(ov.VALIDATED_CASES[0], "OASIS-050")
-        self.assertEqual(ov.VALIDATED_CASES[-2:], ("OASIS-059", "OASIS-061"))
-        self.assertEqual(len(ov.VALIDATED_CASES), 11)
+        self.assertEqual(ov.VALIDATED_CASES[-1], "OASIS-063")
+        self.assertEqual(len(ov.VALIDATED_CASES), 14)
+
+    def test_layout_cases_of_a_row_are_produced(self):
+        make_case(self.cases, "OASIS-051-arrays")
+        make_case(self.cases, "OASIS-051-uses")
+        manifest = self.produce(lambda *a: execution({"out.oas": b"%SEMI-OASIS\r\n"}))
+        statuses = self.statuses(manifest)
+        self.assertEqual((statuses["OASIS-051-arrays"], statuses["OASIS-051-uses"]), ("produced", "produced"))
+        self.assertNotIn("OASIS-051", statuses)
+
+    def test_output_checks_and_magic_reference(self):
+        case_dir = make_case(self.cases, "OASIS-061")
+        (case_dir / "expected").mkdir()
+        (case_dir / "expected" / "out.oas").write_bytes(b"\x00\x06\x00\x02")  # Magic's GDS bytes
+        manifest = self.produce(lambda *a: execution({"out.oas": b"%SEMI-OASIS\r\n"}))
+        [item] = manifest["entries"]
+        self.assertIn({"tool": "klayout", "op": "read", "expect_strict": 1}, item["checks"])
+        self.assertIn({"tool": "klayout", "op": "xor", "against": "files/OASIS-061/out.oas.magic.gds"}, item["checks"])
+        self.assertTrue((self.out / "files" / "OASIS-061" / "out.oas.magic.gds").is_file())
+
+    def test_input_checks_copy_the_files_they_name(self):
+        case_dir = make_case(self.cases, "OASIS-030")
+        (case_dir / "input" / "trap.oas").write_bytes(b"F")
+        (case_dir / "input" / "trap.gds").write_bytes(b"G")
+        manifest = self.produce()
+        self.assertEqual(self.statuses(manifest)["inputs OASIS-030"], "copied")
+        [item] = [e for e in manifest["entries"] if e["origin"] == "input"]
+        self.assertEqual(item["file"], "inputs/OASIS-030/trap.oas")
+        self.assertIn({"tool": "klayout", "op": "xor", "against": "inputs/OASIS-030/trap.gds"}, item["checks"])
+
+    def test_captured_requests_are_planned(self):
+        plan = [{"case": "OASIS-012", "tool": "gdstk", "op": "make-validation-set", "outputs": ["a.oas"],
+                 "source": None, "options": {}}]
+        with mock.patch.object(ov.oasis_captured_cases, "plan", return_value=plan):
+            manifest = self.produce()
+        self.assertEqual(self.statuses(manifest)["captured OASIS-012"], "planned")
+        self.assertEqual(manifest["captured"], plan)
 
     def test_scaffold_skips_everything(self):
         manifest = self.produce()
@@ -152,9 +190,12 @@ class FakeTools:
                          "smoke_gdstk_crc32_corrupt.oas"):
                 (folder / name).write_bytes(b"x")
             return {"ok": True}, []
-        if op == "strm2oas":
+        if op in ("strm2oas", "strm2gds") and "out" in request:
             Path(request["out"]).write_bytes(b"x")
             return {"ok": True}, []
+        if op == "make-validation-set":
+            Path(request["dir"], "crc32.oas").write_bytes(b"x")
+            return {"ok": True, "files": ["crc32.oas"]}, []
         if op == "read" and tool == "klayout" and request.get("expect_strict") == 0 \
                 and "nonstrict" not in request["file"]:
             return {"ok": True, "cells": 2}, ["Warning: CELLNAME offset table has unexpected strict mode"]
@@ -219,6 +260,24 @@ class CheckTest(unittest.TestCase):
             status, detail = ov.judge_size({"expect": 419}, path)
         self.assertEqual(status, "fail")
         self.assertIn("418 bytes", detail)
+
+    def test_captured_inputs_are_written(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(ov, "klayout_cli_version", return_value=None):
+            out = Path(tmp)
+            (out / "captured-src").mkdir()
+            (out / "captured-src" / "lib.gds").write_bytes(b"G")
+            captured = [{"case": "OASIS-012", "tool": "gdstk", "op": "make-validation-set", "outputs": ["crc32.oas"]},
+                        {"case": "OASIS-020", "tool": "klayout", "op": "strm2oas-roundtrip",
+                         "outputs": ["lib.oas", "lib.gds.gz"], "options": {"strict": True},
+                         "source_file": "captured-src/lib.gds"}]
+            (out / "manifest.json").write_text(json.dumps({"steps": [], "entries": [], "captured": captured}))
+            self.assertEqual(ov.check(out, FakeTools()), 0)
+            self.assertTrue((out / "captured" / "OASIS-012" / "crc32.oas").is_file())
+            self.assertEqual(gzip.decompress((out / "captured" / "OASIS-020" / "lib.gds.gz").read_bytes()), b"x")
+            self.assertFalse((out / "captured" / "OASIS-020" / "roundtrip.gds").exists())
+            report = json.loads((out / "verdicts.json").read_text())
+            self.assertIn({"step": "captured OASIS-020", "status": "produced",
+                           "detail": "lib.oas 1 bytes, lib.gds.gz 21 bytes"}, report["steps"])
 
     def test_failed_produce_step_fails_the_check(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(ov, "klayout_cli_version", return_value="KLayout 0.30.0"):
