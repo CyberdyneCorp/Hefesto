@@ -179,6 +179,7 @@ Other rules:
 - With `magic-compat` ON each further `UNITS` statement multiplies again, as in Magic. With it OFF a further `UNITS` statement SHALL report a warning and replace the previous value (Q-LEFDEF-79, resolution: compat).
 - If no `UNITS` statement precedes a geometric construct, DEF numbers are interpreted as microns.
 - DEF reading SHALL NOT change the internal grid or rescale the database. Values that are not integral in internal units are rounded, never trimmed or grid-scaled.
+- A value whose conversion does not fit an internal coordinate (including every value after a `UNITS` of 0 with `magic-compat` ON) SHALL be treated as one that does not parse, and geometry beyond the plane SHALL be clipped to it, in both `magic-compat` settings (X-2 tier 1: Magic's float-to-int cast is undefined there).
 - Point coordinates, rectangle corners, wire widths, placement origins and non-default-rule widths and spacings use `round(v / oscale)`.
 - Route centerline points and extensions use doubled units, `round(2·v / oscale)`.
 - Via rectangle coordinates are stored in doubled units, `round(v / (oscale/2))`.
@@ -242,7 +243,7 @@ Compatibility: exact
 - Points MAY be written with or without parentheses.
 - Setting the property SHALL mark the cell as having a fixed bounding box (see capability `layout-properties`).
 - With `magic-compat` ON any further points (a polygonal die) SHALL be skipped up to `;`. With it OFF every point up to `;` is read.
-- A malformed point SHALL report the error "Bad port geometry: RECT requires 4 values.". See Q-LEFDEF-68 for Magic's subsequent crash.
+- A malformed point SHALL report the error "Bad port geometry: RECT requires 4 values.", and the statement SHALL be skipped without setting `FIXED_BBOX` (Q-LEFDEF-68, resolution: fix, both `magic-compat` settings; Magic dereferences a NULL rectangle). The same holds for a malformed pin `LAYER` rectangle, which skips the pin statement, and a malformed blockage `RECT`, which skips the blockage statement.
 
 (Magic ref: lef/defRead.c:2637-2650, lef/lefRead.c:868-931, database/DBprop.c:89-95)
 
@@ -596,9 +597,9 @@ USE mapping: each value maps to the same-named port use.
 
 With `magic-compat` ON (the default) the DIRECTION and USE values persist from one pin to the next until changed, as in Magic, so a pin without DIRECTION inherits the previous pin's direction. With it OFF both SHALL be reset to DEFAULT at each `- <pin>` (Q-LEFDEF-64, resolution: compat).
 
-In annotation mode, every existing label in the design cell whose rectangle equals `R` exactly and whose text equals the pin name SHALL be erased before the new label is added.
+In annotation mode, every existing label in the design cell whose rectangle equals `R` exactly and whose text equals the pin name SHALL be erased before the new label is added. With `magic-compat` ON (the default) this happens only when the rectangles are painted by the pin's placement statement, as in Magic; rectangles painted when a `LAYER` follows a waiting placement keep the old labels. With it OFF the labels are erased for every painted rectangle.
 
-If the pin layer is unknown, the label is non-sticky and its rectangle is degenerate at `(0,0)`. See Q-LEFDEF-67. If the type has no default width rule and the rectangle has non-zero height, Magic loops forever. See Q-LEFDEF-89.
+If the pin layer is unknown, the system SHALL report the `lef-read` layer errors and "No layer defined for RECT." and SHALL skip the rectangle: nothing is painted or labelled for it, and a placement that follows waits for a layer (Q-LEFDEF-67, resolution: fix, both `magic-compat` settings; Magic paints and labels an invalid type). If the type has no default width rule, `s` SHALL start at the (post-swap) height, so the size is `8·height` (Q-LEFDEF-89, resolution: fix; Magic loops forever). A placement that does not parse changes nothing (Magic goes on with the previous, or an uninitialised, transform).
 
 (Magic ref: lef/defRead.c:1555-1590, lef/defRead.c:1640-1729, database/DBlabel.c:135-219, database/DBlabel.c:431-461, drc/DRCtech.c:4620-4665)
 
@@ -916,7 +917,7 @@ ndr_prop = "+" , ( "HARDSPACING"
                  | ( "MINCUTS" | "PROPERTY" ) , token , token ) ;
 ```
 
-- `LAYER`, `VIA` and `VIARULE` each create a rule entry for the named layer record (width 0, spacing 0). Looking up an unknown name SHALL create an empty table entry for that name; see Q-LEFDEF-75.
+- `LAYER`, `VIA` and `VIARULE` each create a rule entry for the named layer or via record (width 0, spacing 0). The name SHALL be looked up without adding an entry to the LEF/DEF tables; a name with no record SHALL be reported with the warning "Unknown layer "<name>" in NONDEFAULTRULE definition.", and its rule entry names no record, so its values report "No layer for non-default width." (or spacing, extension) and are not stored. The flag that tells whether a LAYER is open starts cleared for every rule (Q-LEFDEF-75, resolution: fix, both `magic-compat` settings; Magic inserts the name into its table and reads an uninitialised flag).
 - `WIDTH v` sets `rule.width = round(v/oscale)` (full width, internal units).
 - `SPACING v` sets `rule.spacing = round(v/oscale)`.
 - `WIREEXT v` SHALL report the warning "Non-default extension at via not implemented." and store `round(2v/oscale)`. The stored value is not used when painting.
@@ -943,7 +944,7 @@ blk       = "-" , { "LAYER" , layername | "RECT" , point , point | other_token }
 - `LAYER <name>` SHALL resolve the name as an obstruction layer (`lef-read` layer lookup with the obstruction flag): the obstruction type if one is defined, otherwise the layer's own type. Layers of class `ignore` resolve to no type, silently.
 - Each `RECT` SHALL be painted immediately on the current layer at the rectangle `round(v/oscale)`.
 - Every other token, including `+`, `COMPONENT`, `SPACING`, `PUSHDOWN`, `PLACEMENT` and `POLYGON`, SHALL report the message "Unknown blockage property "<tok>" in BLOCKAGES definition; ignoring." and is skipped.
-- A placement blockage (no LAYER) paints its RECT on whatever layer was current from a previous blockage in this section. See Q-LEFDEF-76.
+- The layer of a blockage is the one its own statement names. A `RECT` of a statement without `LAYER` (a placement blockage) SHALL NOT be painted; it is reported with the warning "Blockage without a layer (a placement blockage) is not painted." (Q-LEFDEF-76, resolution: fix, both `magic-compat` settings; Magic paints it on the layer of a previous blockage, or an uninitialised one). A `RECT` on a layer that did not resolve reports "No layer defined for RECT." and is not painted.
 - With *noblockage* or annotation mode, the section SHALL be skipped.
 - The final message is "  Processed N blockage." for N ≤ 1, otherwise "  Processed N blockages.".
 

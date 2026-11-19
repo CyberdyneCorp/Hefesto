@@ -201,22 +201,26 @@ How this plan runs:
 
 ## 7. DEFR: def-read
 
-- [ ] 7.1 Implement the `def read` command, its context (headless, Q-LEFDEF-86; edits blocked, Q-LEFDEF-88), file lookup, tokenization with DEF keyword tables, and the top-level grammar (Q-LEFDEF-84 per mode). Verify the `[cap:def-read]` tests for "def read command", "Command context", "DEF file lookup", "Tokenization and keyword matching" and "Top-level DEF grammar and section dispatch".
-- [ ] 7.2 Implement unit scaling (Q-LEFDEF-79 per mode), design cell selection (Q-LEFDEF-78 per mode) and the die area (Q-LEFDEF-77 per mode; Q-LEFDEF-68 fix). Verify their tests with LEFDEF-200..203's values.
-- [ ] 7.3 Implement the VIAS section through `ViaGenerator` (Q-LEFDEF-60, 62 per mode), and COMPONENTS:
+- [x] 7.1 Implement the `def read` command, its context (headless, Q-LEFDEF-86; edits blocked, Q-LEFDEF-88), file lookup, tokenization with DEF keyword tables, and the top-level grammar (Q-LEFDEF-84 per mode). Verify the `[cap:def-read]` tests for "def read command", "Command context", "DEF file lookup", "Tokenization and keyword matching" and "Top-level DEF grammar and section dispatch".
+  - As landed (round 3, `m6-r3-defr`): `def/read/command.hpp` (`parse_read_arguments`, `read_command`: Magic's prefixes, the `def` options without a file name, the read through `mask::MaskSession::read_host` with cancellation, the load into the only window) and `find_def_file` in `def/read/read.hpp`; `DefReadOptions` gained `read_master` and `progress`, and `def::read` an overload over a `gds::ByteSource`. The reader (`src/def/read/`) uses LEFR's `Lexer`, `MessageCounter` and statement helpers with DEF's own keyword tables and a push-back token source. Open (INTEGRATION): the shared dispatcher still answers `def read` with `CORE-NOTIMPL-006`; it must call `def::read_command` before its window check (Q-LEFDEF-86). The tests reach it as a `defr` command.
+- [x] 7.2 Implement unit scaling (Q-LEFDEF-79 per mode), design cell selection (Q-LEFDEF-78 per mode) and the die area (Q-LEFDEF-77 per mode; Q-LEFDEF-68 fix). Verify their tests with LEFDEF-200..203's values.
+  - As landed: LEFDEF-200..203's values are pinned in `tests/unit/def/read/grammar_test.cpp`. A value that does not fit an internal coordinate (or any value after `UNITS ... 0` with magic-compat ON) is treated as unparsed and paint is clipped to the plane (X-2 tier 1); def-read "Unit scaling" says so.
+- [x] 7.3 Implement the VIAS section through `ViaGenerator` (Q-LEFDEF-60, 62 per mode), and COMPONENTS:
   - the placement transform;
   - unplaced components (Q-LEFDEF-85);
   - duplicate names renamed with the `.mag` rule (Q-LEFDEF-83);
   - masters loaded from `.mag`.
 
   Verify their `[req:…]` tests.
-- [ ] 7.4 Implement PINS:
+  - As landed: `vias.cpp` (lef::begin_via, add_via_rect, order_layers, complete_params, ViaGenerator; ORIGIN applies to the whole via with magic-compat OFF) and `components.cpp`. Includes the def-read tests LEFVIA left open (generated vias per mode, swapped LAYERS through the parser, the VIAS ORIGIN message per mode, a DEF via overriding a LEF via, with the LEF via built through lef::begin_via while LEFR's VIA section is a stub). Open: a `+ VIARULE` name cannot supply parameters yet (no LEF VIARULE GENERATE values are stored; LEFVIA 4.1/LEFR), so omitted values are 0 with LEF-VIA-007.
+- [x] 7.4 Implement PINS:
   - grammar, geometry placement and port labels;
   - Q-LEFDEF-64, 65, 66 per mode;
   - Q-LEFDEF-67, 89 fixed.
 
   Verify their tests, including LEFDEF-219's label sizes.
-- [ ] 7.5 Implement NETS and SPECIALNETS:
+  - As landed: `pins.cpp`; LEFDEF-219's label sizes in `pins_test.cpp`. Annotation erases matching labels only on the placement path with magic-compat ON (as Magic), on every painted rectangle with it OFF (def-read "Pin port labels"); pin POLYGON (OFF) labels the rectangles of lef::paint_polygon_rects.
+- [x] 7.5 Implement NETS and SPECIALNETS:
   - grammar (Q-LEFDEF-69, 74 per mode);
   - layer resolution and width selection (the Q-LEFDEF-1 width fix in both modes);
   - wire segments;
@@ -226,8 +230,11 @@ How this plan runs:
   - annotation mode (Q-LEFDEF-81 per mode).
 
   Verify each `[req:…]` test, one per mode.
-- [ ] 7.6 Implement NONDEFAULTRULES (Q-LEFDEF-75 fix), BLOCKAGES (Q-LEFDEF-76 fix), section count checks, diagnostics with error limits, read completion, and one undo transaction (Q-LEFDEF-22). Verify their tests.
-- [ ] 7.7 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `def/read/`. Verify that `check_requirement_coverage.py --capability def-read` reports 27 of 27.
+  - As landed: `nets.cpp` (Q-LEFDEF-74 OFF reads the net statement ahead for its rule, then replays it) and `routes.cpp`; route POLYGON (OFF) paints the same tiles as lef::paint_polygon (test). The terminal lookup of annotation uses cell::find_instance and the child's labels (CmdFindNetProc's label path).
+- [x] 7.6 Implement NONDEFAULTRULES (Q-LEFDEF-75 fix), BLOCKAGES (Q-LEFDEF-76 fix), section count checks, diagnostics with error limits, read completion, and one undo transaction (Q-LEFDEF-22). Verify their tests.
+  - As landed: `rules.cpp`, `read.cpp` and `undo.cpp`. A read into an existing cell is recorded as edits plus a FIXED_BBOX event; a read that creates its design cell suspends recording and records one event that deletes the cell on undo (as `cellname delete`) and makes it again with its contents on redo. The LEF/DEF via and rule tables the read fills are not undone. Codes `DEF-READ-001..008` (`docs/diagnostics/codes/def.md`).
+- [x] 7.7 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `def/read/`. Verify that `check_requirement_coverage.py --capability def-read` reports 27 of 27.
+  - As landed: clang-tidy cognitive complexity on `def/read/`, worst 14 (`top_statement`, `forget`); `check_requirement_coverage.py --capability def-read` reports 27 of 27 (30 of 30 with every class).
 
 ## 8. DEFW: def-write
 
