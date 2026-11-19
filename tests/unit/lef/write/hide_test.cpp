@@ -76,6 +76,23 @@ TEST_CASE("lef write -hide makes the pin the chunk holding the label", "[cap:lef
   CHECK(block(text, "  OBS", "  END") == "  OBS\n      LAYER met1 ;\n        RECT 0.330 0.200 0.800 0.400 ;\n  END\n");
 }
 
+// Regression: the chunk search grows its window by its own width on each
+// side it fills; once the window was wider than about 2^30 (here 40 * 3^16
+// = 1721868840, still inside the usable plane), the next growth overflowed
+// int (undefined behaviour, as in Magic). It now saturates, leaves the
+// plane and stops with the last window, in both modes.
+TEST_CASE("lef write -hide over material out to the plane's edge stops at the plane",
+          "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
+  for (const bool on : {true, false}) {
+    Session s(on);
+    db::CellDef& c = s.cell("c");
+    s.paint(c, "metal1", db::Rect{-1'000'000'000, -1'000'000'000, 1'000'000'000, 1'000'000'000});
+    s.label(c, Port{"A", "metal1", db::Rect{0, 0, 20, 20}, 0});
+    const std::string text = s.macro(c, hide(0));
+    CHECK(pin(text) == "  PIN A\n" + port_of({"-8609343.000 -8609343.000 8609343.000 8609343.000"}) + "  END A\n");
+  }
+}
+
 TEST_CASE("lef write -hide -pinonly p limits the chunk pin only with magic-compat OFF",
           "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
   for (const bool on : {true, false}) {

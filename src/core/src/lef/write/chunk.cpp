@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <utility>
 
@@ -102,15 +103,22 @@ void find_chunk(ChunkSearch& s, const db::Rect& search, int level) {
   split_search(s, search, *wrong, level);
 }
 
-// Grows the search window past the sides the best rectangle touches.
+// Grows the search window past the sides the best rectangle touches. Magic
+// computes in int, which overflows once the window is wider than about
+// 2^30 and touches a side; here the sum is 64-bit and saturates, so the
+// window leaves the usable plane and the search stops there.
 db::Rect grow_window(const db::Rect& w, const db::Rect& best) {
-  const db::Coord width = w.x1 - w.x0;
-  const db::Coord height = w.y1 - w.y0;
+  const auto clamp = [](std::int64_t v) {
+    return static_cast<db::Coord>(
+        std::clamp<std::int64_t>(v, std::numeric_limits<db::Coord>::min(), std::numeric_limits<db::Coord>::max()));
+  };
+  const std::int64_t width = std::int64_t{w.x1} - w.x0;
+  const std::int64_t height = std::int64_t{w.y1} - w.y0;
   db::Rect n = w;
-  n.x0 = best.x0 == w.x0 ? w.x0 - width : best.x0 - 1;
-  n.y0 = best.y0 == w.y0 ? w.y0 - height : best.y0 - 1;
-  n.x1 = best.x1 == w.x1 ? w.x1 + width : best.x1 + 1;
-  n.y1 = best.y1 == w.y1 ? w.y1 + height : best.y1 + 1;
+  n.x0 = clamp(best.x0 == w.x0 ? w.x0 - width : std::int64_t{best.x0} - 1);
+  n.y0 = clamp(best.y0 == w.y0 ? w.y0 - height : std::int64_t{best.y0} - 1);
+  n.x1 = clamp(best.x1 == w.x1 ? w.x1 + width : std::int64_t{best.x1} + 1);
+  n.y1 = clamp(best.y1 == w.y1 ? w.y1 + height : std::int64_t{best.y1} + 1);
   return n;
 }
 
