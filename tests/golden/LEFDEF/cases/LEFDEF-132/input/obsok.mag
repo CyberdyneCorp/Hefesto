@@ -1,0 +1,12 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 20 20
+rect 40 40 80 80
+<< labels >>
+rlabel metal1 0 0 20 20 0 A
+port 1 nsew
+<< properties >>
+string OBS_BBOX 10 10 90 190
+<< end >>

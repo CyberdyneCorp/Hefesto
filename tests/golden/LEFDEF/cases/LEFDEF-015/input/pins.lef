@@ -1,0 +1,86 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+MACRO pins
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  PIN I
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+      POLYGON 0 0.2 0.2 0.2 0.2 0.4 0.1 0.4 ;
+    END
+  END I
+  PIN O
+    DIRECTION OUTPUT ;
+    USE ANALOG ;
+    SHAPE RING ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+  END O
+  PIN T
+    DIRECTION OUTPUT TRISTATE ;
+    USE CLOCK ;
+    SHAPE FEEDTHRU ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+  END T
+  PIN B
+    DIRECTION INOUT ;
+    USE POWER ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+  END B
+  PIN F
+    DIRECTION FEEDTHRU ;
+    USE GROUND ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+  END F
+  PIN S
+    USE SCAN ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+  END S
+  PIN late
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+    DIRECTION OUTPUT ;
+  END late
+  PIN two
+    DIRECTION INPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.1 0.1 ;
+        RECT 0.2 0 0.3 0.1 ;
+    END
+    PORT
+      LAYER metal2 ;
+        RECT 0.5 0.5 0.6 0.6 ;
+    END
+  END two
+END pins
+END LIBRARY

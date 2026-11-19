@@ -1,0 +1,16 @@
+magic
+tech lefdef
+timestamp 100
+use child  c_N
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 25 10
+use child  c_S
+timestamp 100
+transform -1 0 200 0 -1 50
+box 0 0 25 10
+use child  c_FN
+timestamp 100
+transform -1 0 300 0 1 0
+box 0 0 25 10
+<< end >>

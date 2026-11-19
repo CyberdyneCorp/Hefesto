@@ -1,0 +1,15 @@
+# a comment line
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+MACRO tok # a trailing comment
+  CLASS CORE ;
+  PROPERTY note "a quoted # value ; with END tok inside" ;
+  SIZE 1.0 BY 2.0;
+  OBS
+      LAYER metal1 ;
+      RECT 0.1 0.1 0.2 0.2 ;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    RECT 0.3 0.3 0.4 0.4 ;
+      RECT 0.5 0.5 0.6 0.6;
+  END
+END tok
+END LIBRARY

@@ -1,0 +1,8 @@
+magic
+tech lefdef
+timestamp 100
+use child  c_R
+timestamp 100
+transform 0 -1 100 1 0 0
+box 0 0 20 10
+<< end >>

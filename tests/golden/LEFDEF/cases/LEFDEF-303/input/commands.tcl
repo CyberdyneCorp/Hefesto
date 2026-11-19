@@ -1,0 +1,19 @@
+# LEFDEF-303: cell `top`; `def write out -units 2000` and `def write r.txt`. Captures: file names, UNITS line, coordinates.
+proc probe {script} {
+    set code [catch {uplevel #0 $script} result]
+    puts [list $code $result]
+    flush stdout
+}
+addpath input
+if {[catch {
+probe {drc off}
+probe {tech load input/lefdef.tech -noprompt}
+probe {snap internal}
+probe {load top}
+probe {def write out -units 2000}
+probe {def write r.txt}
+} scriptError]} {
+    puts [list script-error $scriptError]
+    flush stdout
+}
+quit -noprompt

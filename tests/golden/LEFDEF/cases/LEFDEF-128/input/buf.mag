@@ -1,0 +1,19 @@
+magic
+tech lefdef
+timestamp 100
+use inv  inv_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 100 200
+use inv  inv_1
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 100 200
+<< metal1 >>
+rect 90 85 110 95
+<< labels >>
+rlabel metal1 10 80 30 100 0 A
+port 1 nsew
+rlabel metal1 170 80 190 100 0 Y
+port 2 nsew
+<< end >>

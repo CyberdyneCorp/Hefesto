@@ -1,0 +1,27 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+VIA M1M2
+  LAYER metal1 ;
+    RECT -0.04 -0.04 0.04 0.04 ;
+  LAYER via1 ;
+    RECT -0.02 -0.02 0.02 0.02 ;
+  LAYER metal2 ;
+    RECT -0.04 -0.04 0.04 0.04 ;
+END M1M2
+MACRO obsx
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  OBS
+      LAYER nosuch ;
+        RECT 0 0 0.1 0.1 ;
+      LAYER metal1 ;
+        WIDTH 0.04 ;
+        PATH 0 0.5 0.5 0.5 ;
+        RECT 0.6 0.6 0.7 0.7 ;
+        POLYGON 0 1 0.2 1 0.2 1.2 0 ;
+      VIA 0.5 1.5 M1M2 ;
+  END
+END obsx
+END LIBRARY
