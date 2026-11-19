@@ -1,0 +1,8 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 100 8
+<< labels >>
+rlabel metal1 0 0 100 8 0 w8
+<< end >>

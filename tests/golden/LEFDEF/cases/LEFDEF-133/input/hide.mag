@@ -1,0 +1,15 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 20 20
+rect 40 40 80 80
+rect 0 180 100 200
+<< metal2 >>
+rect 30 100 90 160
+<< labels >>
+rlabel metal1 0 0 20 20 0 A
+port 1 nsew signal input
+rlabel metal1 0 180 100 200 0 VDD
+port 2 nsew power bidirectional
+<< end >>

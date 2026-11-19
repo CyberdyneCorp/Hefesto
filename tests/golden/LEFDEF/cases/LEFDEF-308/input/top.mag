@@ -1,0 +1,11 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 40 0 100 4
+rect 104 0 160 4
+<< via1 >>
+rect 100 0 104 4
+<< metal2 >>
+rect 100 0 104 30
+<< end >>

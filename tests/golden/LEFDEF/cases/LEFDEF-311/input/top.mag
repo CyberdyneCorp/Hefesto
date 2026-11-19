@@ -1,0 +1,36 @@
+magic
+tech lefdef
+timestamp 100
+use inv  inv_N
+timestamp 100
+transform 1 0 200 0 1 300
+box 0 0 100 200
+use inv  inv_S
+timestamp 100
+transform -1 0 500 0 -1 300
+box 0 0 100 200
+use inv  inv_W
+timestamp 100
+transform 0 -1 800 1 0 300
+box 0 0 100 200
+use inv  inv_E
+timestamp 100
+transform 0 1 1100 -1 0 300
+box 0 0 100 200
+use inv  inv_FN
+timestamp 100
+transform -1 0 1400 0 1 300
+box 0 0 100 200
+use inv  inv_FS
+timestamp 100
+transform 1 0 1700 0 -1 300
+box 0 0 100 200
+use inv  inv_FW
+timestamp 100
+transform 0 1 2000 1 0 300
+box 0 0 100 200
+use inv  inv_FE
+timestamp 100
+transform 0 -1 2300 -1 0 300
+box 0 0 100 200
+<< end >>

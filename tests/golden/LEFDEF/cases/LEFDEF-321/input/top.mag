@@ -1,0 +1,13 @@
+magic
+tech lefdef
+timestamp 100
+use leaf  u
+array 0 19 30 0 0 0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< metal1 >>
+rect 0 10 580 14
+<< labels >>
+rlabel metal1 0 10 580 14 0 bus
+<< end >>

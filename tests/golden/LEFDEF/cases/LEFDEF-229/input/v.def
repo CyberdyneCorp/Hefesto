@@ -1,0 +1,13 @@
+VERSION 5.7 ;
+DIVIDERCHAR "/" ;
+BUSBITCHARS "[]" ;
+DESIGN v ;
+UNITS DISTANCE MICRONS 1000 ;
+DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+VIAS 1 ;
+- V12 + RECT metal1 ( -40 -40 ) ( 40 40 ) + RECT via1 ( -20 -20 ) ( 20 20 ) + RECT metal2 ( -40 -40 ) ( 40 40 ) ;
+END VIAS
+NETS 1 ;
+- n1 + ROUTED metal1 ( 0 500 ) MASK 2 ( 1000 500 ) V12 N NEW metal2 ( 1000 500 ) ( 1000 3000 ) ;
+END NETS
+END DESIGN

@@ -1,0 +1,15 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+MACRO half
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0.0025 0.0075 0.0125 0.0225 ;
+        RECT -0.0125 -0.0075 -0.0025 0.0025 ;
+      LAYER metal2 ;
+        RECT -0.0225 0.0175 0.0325 0.0475 ;
+  END
+END half
+END LIBRARY

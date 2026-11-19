@@ -1,0 +1,8 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 20 200
+<< properties >>
+string FIXED_BBOX 0 0 20 200
+<< end >>

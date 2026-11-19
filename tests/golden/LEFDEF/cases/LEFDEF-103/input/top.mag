@@ -1,0 +1,10 @@
+magic
+tech lefdef
+timestamp 100
+<< metal2 >>
+rect 0 0 300 10
+use inv  inv_0
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 100 200
+<< end >>

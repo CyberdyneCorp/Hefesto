@@ -1,0 +1,10 @@
+magic
+tech lefdef
+timestamp 100
+<< metal2 >>
+rect 0 0 5 5
+use c  c_0
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 10 10
+<< end >>

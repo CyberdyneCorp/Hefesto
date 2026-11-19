@@ -1,0 +1,13 @@
+magic
+tech lefdef
+timestamp 100
+<< polysilicon >>
+rect 0 0 10 10
+<< metal1 >>
+rect 20 0 30 10
+<< labels >>
+rlabel polysilicon 0 0 10 10 0 P
+port 1 nsew
+rlabel metal1 20 0 30 10 0 M
+port 2 nsew
+<< end >>
