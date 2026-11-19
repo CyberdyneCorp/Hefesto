@@ -1,0 +1,8 @@
+magic
+tech oastest
+timestamp 100
+use vend  v0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 100 100
+<< end >>
