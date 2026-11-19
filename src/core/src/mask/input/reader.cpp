@@ -22,7 +22,9 @@
 // does not fall back to the type alias table (Magic would set layout type
 // bits in a CIF layer mask); `labels` on an `ignore`d layer does not read
 // the plane of type -1; a `scalefactor` above db::kPlaneMax is refused
-// (Q-MASK-34; Magic's atoi and grid subdivision overflow on it).
+// (Q-MASK-34; Magic's atoi and grid subdivision overflow on it), and so is
+// a `grow`, `grow-grid` or `shrink` distance (Q-MASK-36; Magic's grow
+// arithmetic overflows on it).
 //
 // Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
 
@@ -585,6 +587,10 @@ void Reader::op_line(const Tokens& t) {
     op.distance = c_atoi(t[1]);
     if (op.distance <= 0) {
       messages_.error("Grow/shrink distance must be greater than zero.");
+      return;
+    }
+    if (op.distance > db::kPlaneMax) {
+      messages_.error("Grow/shrink distance must be at most " + std::to_string(db::kPlaneMax) + ".");
       return;
     }
   }
