@@ -9,6 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
+#include <string_view>
+
 #include "def_fixture.hpp"
 #include "hefesto/db/property.hpp"
 
@@ -25,8 +28,8 @@ std::string blockages(std::string_view body, int count = 1) {
          "\nEND BLOCKAGES\nEND DESIGN\n";
 }
 
-const lef::NonDefaultRule& rule(Session& s, const std::string& name) {
-  const auto* entry = s.editor.lefdef.rules.find(name);
+const lef::NonDefaultRule& rule(Session& s, std::string_view name) {  // by value: GCC 14 -Wdangling-reference
+  const auto* entry = s.editor.lefdef.rules.find(std::string{name});
   INFO("rule " << name);
   REQUIRE(entry != nullptr);
   REQUIRE(entry->value.has_value());

@@ -12,14 +12,17 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
+#include <string_view>
+
 #include "def_fixture.hpp"
 #include "hefesto/lef/via/store.hpp"
 
 namespace def_read_test {
 namespace {
 
-const lef::ViaDefinition& via(Session& s, const std::string& name) {
-  const auto* entry = s.editor.lefdef.vias.find(name);
+const lef::ViaDefinition& via(Session& s, std::string_view name) {  // by value: GCC 14 -Wdangling-reference
+  const auto* entry = s.editor.lefdef.vias.find(std::string{name});
   INFO("via " << name);
   REQUIRE(entry != nullptr);
   REQUIRE(entry->value.has_value());
