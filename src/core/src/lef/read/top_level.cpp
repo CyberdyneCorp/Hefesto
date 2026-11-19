@@ -2,8 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // LefRead's top-level loop (lefRead.c:2956-3196; capability lef-read
-// "Supported LEF file structure"), the reader's message helpers, and the
-// stubs of the sections that later tasks implement.
+// "Supported LEF file structure") and the reader's message helpers.
 //
 // Where Magic dereferences a missing token at the end of the input (a
 // section keyword as the last token), the read stops instead (X-2 tier 1).
@@ -176,29 +175,6 @@ bool Reader::end_statement() {
   }
   end_library_ = true;
   return false;
-}
-
-// --- stubs of later tasks --------------------------------------------------------------
-
-// VIA and VIARULE sections (LefRead's LEF_SECTION_VIA / VIARULE case:
-// creation, the VIARULE skip of a known via, and redefinition through
-// LefRedefined, Q-LEFDEF-8). STUB until LEFVIA lands tasks.md 4.1: the
-// section is skipped to its END.
-void Reader::via_section(const std::string& name, bool /*viarule*/) {
-  skip_section(truncate_name(name));
-}
-
-// A VIA defined inside a NONDEFAULTRULE whose name is new: Magic reads it
-// with LefReadLayerSection into a new VIA entry. STUB until LEFVIA lands
-// tasks.md 4.1: the body is skipped to its END, and no entry is created.
-void Reader::via_definition(const std::string& name) {
-  skip_section(name);
-}
-
-// MACRO and SITE sections (LefReadMacro). STUB until LEFR lands tasks.md
-// 5.4 and 5.5: the section is skipped to its END.
-void Reader::macro_section(const std::string& name) {
-  skip_section(truncate_name(name));
 }
 
 }  // namespace detail

@@ -179,7 +179,7 @@ struct LefRun {
     gds::MemorySource source{bytes(text)};
     lef::Lexer lexer{source};
     const lef::MessageTarget messages{counter, sink, lexer};
-    lef::StreamTarget target{layers, vias, rules};
+    lef::StreamTarget target{layers, vias, rules, nullptr, nullptr};
     return lef::read_stream(lexer, messages, options, target);
   }
 
@@ -204,7 +204,7 @@ struct LefRun {
   lef::RuleTable rules;
   lef::MessageCounter counter;
   diag::CollectingSink sink;
-  lef::StreamOptions options{*technology(), 0.01F, {}};
+  lef::StreamOptions options{*technology(), 0.01F, {}, nullptr, {}};
 };
 
 using Strings = std::vector<std::string>;

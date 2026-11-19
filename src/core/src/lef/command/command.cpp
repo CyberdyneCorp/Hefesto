@@ -7,7 +7,7 @@
 // of every option but `help`, the help listing, `def writeall`'s refusal and
 // the "only for LEF" answers of `def datestamp` and `def nocheck`. Every
 // other option fails with CORE-NOTIMPL-006 until its workstream lands it:
-// `lef read`, `lef datestamp` (LEFR), `lef write`, `lef writeall`, `lef
+// `lef write`, `lef writeall`, `lef
 // nocheck` (LEFW), `def read` (DEFR), `def write` (DEFW). Each workstream
 // adds its argument parser in its own area and calls it from dispatch().
 //
@@ -28,6 +28,7 @@
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "lef/read/args.hpp"
 
 namespace hefesto::lef {
 
@@ -148,6 +149,13 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   }
   if (!is_lef && is_def_only_answer(option)) {
     return def_only_answer(s, option);
+  }
+  const HelpPrinter print_help = [&] { return help(s, invocation.name, is_lef); };
+  if (is_lef && option == kRead) {
+    return read_option(s, invocation, print_help);
+  }
+  if (is_lef && option == kDateStamp) {
+    return datestamp_option(s, invocation, print_help);
   }
   return cmd::not_implemented((is_lef ? "lef " : "def ") + option_name(option));
 }

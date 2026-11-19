@@ -7,10 +7,10 @@
 // lef::read (lef/read/read.hpp) opens the file, prints the read's
 // messages and totals and calls read_stream.
 //
-// Not implemented yet (they skip their section to its `END <name>`):
-// - VIA and VIARULE sections, and a new VIA inside a NONDEFAULTRULE: LEFVIA
-//   (tasks.md 4.1);
-// - MACRO and SITE sections: LEFR (tasks.md 5.4, 5.5).
+// VIA and VIARULE sections define vias in the target's via table through
+// LEFVIA's store (lef/via/store.hpp); MACRO and SITE sections make or
+// annotate cells through the target's MacroHost, and are skipped to their
+// END when it has none.
 //
 // Owner: LEFR (design D2).
 
@@ -21,10 +21,15 @@
 #include "hefesto/compat/compat_settings.hpp"
 #include "hefesto/lef/lex/statements.hpp"
 #include "hefesto/lef/read/layers.hpp"
+#include "hefesto/lef/read/macro.hpp"
 #include "hefesto/lef/tech/table.hpp"
 
 namespace hefesto::tech {
 class Technology;
+}
+
+namespace hefesto::mask {
+class OutputStyle;
 }
 
 namespace hefesto::lef {
@@ -34,6 +39,11 @@ struct StreamTarget {
   LayerAccess& layers;
   ViaTable& vias;
   RuleTable& rules;
+  /// The table `layers` views, for via redefinition (LefRedefined counts
+  /// the names of a layer record); nullptr: an empty table.
+  const LayerTable* layer_table = nullptr;
+  /// The cells of MACRO and SITE sections; nullptr skips those sections.
+  MacroHost* macros = nullptr;
 };
 
 /// What a LEF read depends on.
@@ -41,6 +51,9 @@ struct StreamOptions {
   const tech::Technology& tech;
   float scale = 1.0F;  // lef_scale of the current output style
   compat::CompatSettings compat;
+  /// The current output style (cut growing, Q-LEFDEF-17); nullptr: none.
+  const mask::OutputStyle* style = nullptr;
+  MacroOptions macros;
 };
 
 /// What a LEF read reports back.

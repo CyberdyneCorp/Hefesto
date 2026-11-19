@@ -12,10 +12,13 @@
 //   last wins); OFF, the first unqualified SPACING, else the smallest.
 // - A value that is not a number leaves the field unchanged (Magic stores
 //   an uninitialised float; X-2 tier 1).
-// - A RECT is read for its messages and dropped: Magic adds it to the
+// - LAYER and RECT statements are via geometry (via_section.cpp) when the
+//   body belongs to a via definition: a VIA or VIARULE section, or a LAYER
+//   section that names a via. In the LAYER section of a tech `lef` layer a
+//   RECT is read for its messages and dropped: Magic adds it to the
 //   entry's via geometry through the union shared with the route values
-//   (LefAddViaGeometry). The VIA-class case is LEFVIA's via geometry
-//   (tasks.md 4.1); for a ROUTE entry it overwrites the route values.
+//   (LefAddViaGeometry), which for a ROUTE entry overwrites the route
+//   values.
 //
 // Owner: LEFR (design D2).
 
@@ -24,6 +27,7 @@
 #include "hefesto/lef/read/geometry.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "lef/read/reader.hpp"
+#include "lef/read/via_body.hpp"
 
 namespace hefesto::lef::detail {
 
@@ -136,8 +140,8 @@ bool ignored_key(Key key) noexcept {
 /// The body of one LAYER section.
 class LayerBody {
  public:
-  LayerBody(Reader& reader, std::string_view key, std::string end_name, LayerEntry entry)
-      : reader_(reader), key_(key), end_name_(std::move(end_name)), entry_(std::move(entry)) {}
+  LayerBody(Reader& reader, std::string_view key, std::string end_name, LayerEntry entry, ViaBody* via)
+      : reader_(reader), key_(key), end_name_(std::move(end_name)), entry_(std::move(entry)), via_(via) {}
 
   void run() {
     while (const auto keyword = reader_.token()) {
@@ -166,8 +170,10 @@ class LayerBody {
   std::string_view key_;  // the table name (the full token)
   std::string end_name_;  // the name END must match (127 characters)
   LayerEntry entry_;
+  ViaBody* via_;  // the via geometry target; nullptr for a layer
   RouteUpdate update_;
   LayerState layer_;  // the current layer of LAYER statements (curlayer)
+  bool ignored_layer_ = false;  // the current layer is an IGNORE entry
   // Q-LEFDEF-6 OFF: the first unqualified SPACING and the smallest one.
   std::optional<db::Coord> first_plain_spacing_;
   std::optional<db::Coord> smallest_spacing_;
@@ -175,6 +181,9 @@ class LayerBody {
 
 // One statement; false at the section's END.
 bool LayerBody::statement(const Token& keyword) {
+  if (via_ != nullptr && via_->extension(keyword.text, layer_)) {
+    return true;
+  }
   const auto index = lookup_full(keyword.text, kKeys);
   if (!index) {
     reader_.info("Unknown keyword \"" + keyword.text + "\" in LEF file; ignoring.");
@@ -305,13 +314,19 @@ void LayerBody::current_density(bool alternating) {
 void LayerBody::layer_statement() {
   if (const auto name = reader_.token()) {
     resolve_layer(name->text, LayerLookup::normal, layer_, reader_.layer_context());
+    const auto entry = layer_.type ? std::nullopt : reader_.target().layers.find(name->text);
+    ignored_layer_ = entry && entry->layer_class == LayerClass::ignore;
   }
   reader_.skip_statement();
 }
 
-// RECT: read in half units for its messages, then dropped (see the file
-// comment).
+// RECT: via geometry, or read in half units for its messages and dropped
+// (see the file comment).
 void LayerBody::rect_statement() {
+  if (via_ != nullptr) {
+    via_->rect(layer_, ignored_layer_);
+    return;
+  }
   (void)read_rect(reader_.lexer(), reader_.messages(), layer_.type.has_value(), reader_.options().scale / 2.0F);
   reader_.skip_statement();
 }
@@ -325,6 +340,9 @@ void LayerBody::finish() {
   }
   if (route() && !update_.empty()) {
     reader_.target().layers.update_route(key_, update_);
+  }
+  if (via_ != nullptr) {
+    via_->finish();
   }
 }
 
@@ -357,8 +375,19 @@ void Reader::layer_section() {
     skip_section(end_name);
     return;
   }
-  LayerBody body{*this, name->text, end_name, entry.value_or(LayerEntry{LayerClass::route, 0, 0, 0, std::nullopt})};
-  body.run();
+  layer_body(name->text, end_name, entry.value_or(LayerEntry{LayerClass::route, 0, 0, 0, std::nullopt}),
+             nullptr);
+}
+
+void Reader::layer_body(std::string_view key, const std::string& end_name, const LayerEntry& entry, ViaBody* via) {
+  auto* named_via = via == nullptr ? target_.vias.find(std::string{key}) : nullptr;
+  if (named_via != nullptr && named_via->value) {
+    // The LAYER section of a via definition: its RECTs are via geometry.
+    ViaBody body{*this, *named_via->value, std::string{key}, false};
+    LayerBody{*this, key, end_name, entry, &body}.run();
+    return;
+  }
+  LayerBody{*this, key, end_name, entry, via}.run();
 }
 
 }  // namespace hefesto::lef::detail

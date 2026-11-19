@@ -182,11 +182,11 @@ TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m
   CHECK(no_window.diagnostics.front().text == "Point to a window first");
   s.state.command_point = cmd::PointerState{};
 
-  for (const auto* name : {"read", "write", "writeall", "nocheck", "datestamp"}) {
+  // `lef read` and `lef datestamp` are LEFR's (tests/unit/lef/read/).
+  for (const auto* name : {"write", "writeall", "nocheck"}) {
     check_not_implemented(s.run("lef " + std::string{name}), "lef " + std::string{name});
   }
   check_not_implemented(s.run("lef writea -notop"), "lef writeall");  // unique prefix
-  check_not_implemented(s.run("lef read cells -import"), "lef read");
   check_not_implemented(s.run("def read top.def -labels"), "def read");
   check_not_implemented(s.run("def write"), "def write");
 }

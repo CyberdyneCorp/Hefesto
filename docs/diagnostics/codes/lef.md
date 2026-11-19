@@ -88,9 +88,13 @@ The texts are Magic's message bodies; the LEF and DEF readers add the
 
 Codes of the LEF reader, abstract views and annotation (`src/core/src/lef/read/`; capability lef-read; design D6). Owner: LEFR.
 
-- `LEF-READ-001`: LEF read errors in Magic's LefError form: `Don't know how to parse layer "<name>"` with `Try adding this name to the LEF techfile section`, `Bad Layer statement`, `Layer <name> maps to a magic contact layer; must be defined in lef section of techfile`, `Layer <name> is only defined for obstructions!`, `Attempt to reclassify layer <name> from <old> to <new>` (Magic prints `(null)` for an old class of BOUND; Hefesto names it), `Layer END statement missing.`, `END statement out of context.`, `No layer defined for RECT.` and `Bad port geometry: RECT requires 4 values.`.
-- `LEF-READ-002`: LEF read warnings: `Unknown layer type "<t>" in LEF file; ignoring.`, `Nondefault rule "<name>" was already defined.` and `Renaming this rule "<name>_<i>"` (Q-LEFDEF-9: the first free index, printed once).
-- `LEF-READ-003`: LEF read messages: `Unknown keyword "<t>" in LEF file; ignoring.`, `Unknown keyword "<t>" in NONDEFAULTRULES definition; ignoring.`, the NONDEFAULTRULE value messages (`WIDTH specified without layer.`, `No rule for non-default <width|spacing|extension>.`, `No layer for non-default <...>.`, `Layer value specified without layer.`). `SPACING specified without layer.` and `WIREEXT specified without layer.` carry the `DEF` prefix, as in Magic.
+- `LEF-READ-001`: LEF read errors in Magic's LefError form: `Don't know how to parse layer "<name>"` with `Try adding this name to the LEF techfile section`, `Bad Layer statement`, `Layer <name> maps to a magic contact layer; must be defined in lef section of techfile`, `Layer <name> is only defined for obstructions!`, `Attempt to reclassify layer <name> from <old> to <new>` (Magic prints `(null)` for an old class of BOUND; Hefesto names it), `Layer END statement missing.`, `END statement out of context.`, `No layer defined for RECT.`, `Bad port geometry: RECT requires 4 values.`, `Bad X value in polygon.`, `Bad Y value in polygon.`, `Missing Y value in polygon point!`, `Bad macro SIZE; requires values X BY Y.`, `Bad macro ORIGIN; requires 2 values.`, `Bad origin in macro FOREIGN; requires 0 or 2 values.`, `Improper DIRECTION statement`, `Improper USE statement`, `Improper SHAPE statement`, `Pin END statement missing.`, `Geometry (PORT or OBS) END statement missing.` and `Macro END statement missing.`. With magic-compat OFF only (Hefesto's): `Bad RECT ITERATE: requires DO <nx> BY <ny> STEP <dx> <dy>.` and `Bad ROWCOL: requires two counts whose product is at most 65536.` in a VIA (Q-LEFDEF-7), and `Bad X value in path.` and its kin for a PATH (Q-LEFDEF-15).
+- `LEF-READ-002`: LEF read warnings: `Unknown layer type "<t>" in LEF file; ignoring.`, `Nondefault rule "<name>" was already defined.` and `Renaming this rule "<name>_<i>"` (Q-LEFDEF-9: the first free index, printed once), `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_<k>"` and `   Macro does not define size:  computing from geometry` (three leading spaces, as Magic prints it).
+- `LEF-READ-003`: LEF read messages: `Unknown keyword "<t>" in LEF file; ignoring.`, `Unknown keyword "<t>" in NONDEFAULTRULES definition; ignoring.`, the NONDEFAULTRULE value messages (`WIDTH specified without layer.`, `No rule for non-default <width|spacing|extension>.`, `No layer for non-default <...>.`, `Layer value specified without layer.`). `SPACING specified without layer.` and `WIREEXT specified without layer.` carry the `DEF` prefix, as in Magic. With magic-compat OFF only: `Unknown via "<name>" in LEF geometry; ignoring.` for a PORT or OBS `VIA` naming no via (Q-LEFDEF-15).
+- `LEF-READ-004`, `LEF-READ-005`: `Reading LEF data from file <path>.` before the read and `LEF read: Processed <n> lines.` after it (lef-read "lef read side effects"); the `LEF-LEX-002` totals follow. Magic's `This action cannot be undone.` is not printed: the read is one undo step (Q-LEFDEF-22).
+- `LEF-READ-006`: `Cannot open input file <path> (<reason>).` when no candidate of the file lookup opens (Q-LEFDEF-24); `<path>` is the last name tried, ending in `.lef`. Nothing is read.
+
+The messages of the via code that the reader runs (`LEF-VIA-*`) keep their own codes and get the reader's `LEF read, Line <n>` context.
 
 ## WRITE
 
@@ -121,9 +125,12 @@ fails when the two disagree.
 | `LEF-LEX-001` | info | Message cap notice: `LEF Read:  Further errors will not be reported.` (or DEF; or warnings, messages) after 100 messages of one kind. |
 | `LEF-LEX-002` | info | Read totals: `LEF Read: encountered <k> errors total.` (or DEF; or warnings) at the end of a read. |
 | `LEF-LEX-003` | error | END matching: `Bad file read while looking for END statement` or `Section <N> has no END record!`. |
-| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END. |
-| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE renamed. |
-| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer. |
+| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END, malformed RECT, POLYGON, SIZE, ORIGIN or FOREIGN, improper DIRECTION, USE or SHAPE. |
+| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE or macro renamed, macro without SIZE. |
+| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer, unknown via in macro geometry. |
+| `LEF-READ-004` | info | lef read: `Reading LEF data from file <path>.` before the file is read. |
+| `LEF-READ-005` | info | lef read: `LEF read: Processed <n> lines.` after the file is read. |
+| `LEF-READ-006` | error | lef read: `Cannot open input file <path> (<reason>).`; nothing is read. |
 | `LEF-TECH-001` | error | Unknown or ambiguous keyword in the tech lef section; the line is ignored. |
 | `LEF-TECH-002` | error | A lef section line names no LEF layer; the line is ignored. |
 | `LEF-TECH-003` | error | A lef section line names no magic user type; the line is ignored. |

@@ -67,9 +67,10 @@ TEST_CASE("END out of context", "[cap:lef-read][req:Supported LEF file structure
   CHECK_FALSE(run.layers.at("metal2").route.width);
 }
 
-TEST_CASE("MACRO, SITE, VIA and VIARULE sections are skipped for now", "[cap:lef-read][req:Supported LEF file structure]") {
-  // Stubs until tasks.md 4.1 (LEFVIA) and 5.4 (MACRO, SITE): each section
-  // is skipped to its END, and reading continues after it.
+TEST_CASE("each section is read to its END and reading continues after it",
+          "[cap:lef-read][req:Supported LEF file structure]") {
+  // Without a macro host (lef::StreamTarget::macros), MACRO and SITE are
+  // skipped to their END; VIA and VIARULE define vias.
   LefRun run;
   define_scenario_layers(run.layers);
   run.read(
@@ -79,7 +80,7 @@ TEST_CASE("MACRO, SITE, VIA and VIARULE sections are skipped for now", "[cap:lef
       "MACRO INV CLASS CORE ; PIN A PORT LAYER metal1 ; RECT 0 0 1 1 ; END END A END INV\n"
       "LAYER metal1 WIDTH 0.5 ; END metal1\n");
   CHECK(run.texts().empty());
-  CHECK(run.vias.size() == 0);
+  CHECK(run.vias.size() == 2);
   CHECK(run.layers.at("metal1").route.width == 50);
 }
 

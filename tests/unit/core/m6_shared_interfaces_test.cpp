@@ -202,7 +202,7 @@ TEST_CASE("EditorState holds the LEF/DEF session and MaskSession the oasis setti
 TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-scaffold]") {
   editor::EditorState state;
   hefesto::db::CellDef cell{"top", 1};
-  check_stub(lef::read(state, "a.lef", lef::LefReadOptions{}), "lef read");
+  // lef::read is implemented (LEFR): tests/unit/lef/read/.
   check_stub(lef::write(state, cell, "a.lef", lef::LefWriteOptions{}), "lef write");
   check_stub(lef::write_all(state, cell, "a.lef", lef::LefWriteOptions{}), "lef writeall");
   check_stub(def::read(state, "a.def", def::DefReadOptions{}), "def read");
