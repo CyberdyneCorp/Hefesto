@@ -56,7 +56,9 @@ end
 ### Requirement: Magic type resolution in lef lines
 
 For non-`ignore` lines, the second field SHALL be resolved to a set of user tile types using the tech type-name expression rules. Let T be the set of resolved types ordered by ascending type number. The line SHALL be rejected when |T| = 0 (error `Bad magic layer type "<name>" in LEF layer definition.`), when |T| = 2 and the keyword is not `obstruction` (error `Can only define multiple types for via obstruction layers.`), or when |T| > 2 (error `Too many types in LEF layer definition.`). The first type of T SHALL be the primary type; for an `obstruction` line with |T| = 2 the second type SHALL be the secondary via-obstruction type; otherwise the secondary type is "none".
-Compatibility: exact
+
+With `magic-compat` ON, |T| > 2 is treated as Magic treats it: Magic's counting loop stops at the second type, so the `Too many types` error is never printed. An `obstruction` line keeps the first two types of T, and any other line is rejected with `Can only define multiple types for via obstruction layers.`. With `magic-compat` OFF the line is rejected with `Too many types in LEF layer definition.` as stated above.
+Compatibility: exact (|T| > 2: compat)
 
 (Magic ref: lef/lefTech.c:247-279)
 
@@ -115,6 +117,8 @@ All LEF names on one line that are not yet in the table SHALL be bound to one sh
 - else if the line is not an `obstruction` line and the existing entry has no normal type, its normal type SHALL become P;
 - otherwise the error `LEF name <name> already used for magic type <type>` SHALL be reported and the name is left unchanged.
 A name already bound to an IGNORE entry SHALL be silently left unchanged. Existing entries SHALL never change class through a later line.
+
+In both modes, an `ignore` line that names a LEF name already bound to a non-IGNORE entry SHALL report the `already used` error and leave the name unchanged. (Magic reads LefTechLine's uninitialized `isObstruction` and `mtype` there.) When the entry has no normal type, the error SHALL name its obstruction type. (Magic indexes its type-name table with -1 there.)
 Compatibility: exact
 
 (Magic ref: lef/lefTech.c:292-401)
@@ -150,7 +154,7 @@ Compatibility: exact
 
 ### Requirement: Default contact area
 
-A new VIA-class entry created with the "cut" flavor SHALL have an empty (null) contact area. A new VIA-class entry created with the "contact" flavor (keywords `contact` and `obstruction` on a contact type) SHALL have the sentinel contact area (-1, -1, -1, -1). Contact areas are stored in half internal units (one stored unit = 0.5 internal unit), centered on the origin. A contact area is "null" when xbot ≥ xtop or ybot ≥ ytop; the sentinel area is therefore null. The meaning of a non-null contact area for reading is defined in capability `lef-read`.
+A new VIA-class entry created with the "cut" flavor SHALL have an empty (null) contact area, (0, 0, 0, 0) (Magic's GeoNullRect), which scaling leaves at (0, 0, 0, 0). A new VIA-class entry created with the "contact" flavor (keywords `contact` and `obstruction` on a contact type) SHALL have the sentinel contact area (-1, -1, -1, -1). Contact areas are stored in half internal units (one stored unit = 0.5 internal unit), centered on the origin. A contact area is "null" when xbot ≥ xtop or ybot ≥ ytop; the sentinel area is therefore null. The meaning of a non-null contact area for reading is defined in capability `lef-read`.
 Compatibility: exact
 
 (Magic ref: lef/lefTech.c:333-349, lef/lefInt.h:55-64)
@@ -161,7 +165,9 @@ Compatibility: exact
 
 ### Requirement: Filling defaults after grid scaling
 
-Route width and spacing and the contact area of a contact-flavor VIA entry SHALL be filled from the DRC defaults according to the `magic-compat` setting (Q-LEFDEF-1, resolution: compat; Q-LEFDEF-2, resolution: compat). Hefesto keeps an "unset" flag on these values instead of a numeric sentinel; the sentinel values below describe what Magic stores and are reproduced with `magic-compat` ON.
+Route width and spacing and the contact area of a contact-flavor VIA entry SHALL be filled from the DRC defaults according to the `magic-compat` setting (Q-LEFDEF-1, resolution: compat; Q-LEFDEF-2, resolution: compat). With `magic-compat` ON these values hold Magic's numeric sentinels, described below. With it OFF an unfilled value carries an "unset" flag instead of a number, and scaling keeps it unset.
+
+In both modes, the default of an entry with no normal type (an obstruction-only entry) SHALL be 0. Magic calls DRCGetDefaultLayerWidth(-1), which prints an error and returns 0, and DRCGetDefaultLayerSpacing(-1, -1), which reads outside its rule table.
 
 With `magic-compat` ON (the default), as in Magic: when the technology is loaded with an internal grid that is not 1:1 with lambda (internal units per lambda = n/d with (n, d) ≠ (1, 1)), after the LEF table has been scaled by n/d (see "Scaling the LEF table") the system SHALL fill sentinels as follows, for every entry:
 - VIA class: if all four contact-area coordinates equal exactly -1, the area SHALL become (-w, -w, w, w) where w is the default DRC width of the entry's normal type (now in internal units); the stored area is in half units, so the contact square has side w internal units.
@@ -202,7 +208,7 @@ Compatibility: exact
 ### Requirement: Scaling the LEF table
 
 Whenever magic's internal grid is rescaled by a factor m/k (on tech load with a non-1:1 grid, on an explicit grid rescale, and when the database is rescaled to read a file written at a finer grid), every entry SHALL be scaled exactly once (entries shared by several names are scaled once):
-- VIA class: each contact-area coordinate v becomes floor(v·m / k), with floor rounding toward negative infinity for negative products.
+- VIA class: each contact-area coordinate v becomes floor(v·m / k), with floor rounding toward negative infinity for negative products. This includes the via definitions added by LEF and DEF reads, but not the temporary vias of a DEF write (reference count 0). The extra rectangles of a via definition are left unscaled with `magic-compat` ON, as in Magic, and are scaled the same way with it OFF.
 - ROUTE class: width, spacing and pitch each become trunc(trunc(v·m) / k), using C integer division (truncation toward zero).
 - Other classes are unchanged.
 Compatibility: exact
@@ -218,6 +224,11 @@ Compatibility: exact
 - **GIVEN** a VIA entry with contact area (-3, -3, 3, 3)
 - **WHEN** the grid is rescaled by 1/2
 - **THEN** the area becomes (-2, -2, 1, 1)
+
+#### Scenario: LEF via definitions are scaled
+- **GIVEN** a via definition read from LEF with contact area (-3, -3, 3, 3) and one extra rectangle (-5, -5, 5, 5)
+- **WHEN** `scalegrid 1 2` runs
+- **THEN** the contact area becomes (-6, -6, 6, 6), and the extra rectangle stays (-5, -5, 5, 5) with `magic-compat` ON and becomes (-10, -10, 10, 10) with it OFF
 
 ### Requirement: LEF table lifecycle
 

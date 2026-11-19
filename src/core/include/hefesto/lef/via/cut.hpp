@@ -3,30 +3,35 @@
 //
 // Cut growing (capability lef-read "Cut growing";
 // openspec/changes/m6-lef-def-oasis/design.md D6, Q-LEFDEF-17): a LEF or DEF
-// via cut smaller than the contact size of the current output style
-// (mask::OutputStyle::contact_size, CIFGetContactSize) is grown about its
-// centre to that size, with Magic's warnings, so the via paints as one
-// contact of the layout type.
+// via cut on a contact type is resized about its centre to the contact size
+// of the current output style (mask::OutputStyle::contact_cut,
+// CIFGetContactSize), with Magic's warnings when its size differs from the
+// style's cut size, so the via paints as one contact of the layout type.
+// The input style plays no part (LefGrowVia, lef/lefRead.c:2473-2523).
 //
-// Owner: INTEGRATION (this header, created by the M6 scaffold); LEFVIA fills
-// in the implementation in src/core/src/lef/via/ (design D2).
+// Owner: LEFVIA (design D2).
 
 #pragma once
 
 #include "hefesto/db/geometry.hpp"
-
-namespace hefesto::mask {
-class OutputStyle;
-}
+#include "hefesto/lef/via/context.hpp"
+#include "hefesto/tech/types.hpp"
 
 namespace hefesto::lef {
 
-// The LEF layer table's record (lef/tech/table.hpp, scaffold task 2.5).
-struct LayerRecord;
-
-/// `cut`, grown to the contact size `style` gives for `record`'s magic type;
-/// `cut` itself when the style has no size for it or the cut is not smaller.
-/// SCAFFOLD: returns `cut` until LEFVIA lands it.
-[[nodiscard]] db::Rect grow_cut(const db::Rect& cut, const LayerRecord& record, const mask::OutputStyle& style);
+/// `cut` (half internal units) on `type`, grown to the output style's
+/// contact size: C = ceil(2(size + 2 border)/F) and E = ceil(2 size/F) half
+/// units; when both are positive the result is the C x C square at the
+/// truncated centre of `cut`, with the warnings LEF-VIA-003/004 when `cut`
+/// is not E x E. `cut` itself when `type` is not a contact, no style is
+/// current or the style generates no cut for `type`.
+///
+/// `named_type` is the type the first warning names: with magic-compat ON
+/// the via entry's normal type at that moment, as Magic prints
+/// DBTypeLongNameTbl[lefl->type] (`type` when the entry has none yet, where
+/// Magic reads before its table); with magic-compat OFF the caller passes
+/// `type`, the contact that is grown.
+[[nodiscard]] db::Rect grow_cut(const db::Rect& cut, tech::TileType type, tech::TileType named_type,
+                                const ViaContext& context);
 
 }  // namespace hefesto::lef

@@ -9,3 +9,5 @@
 // and describe the codes in its STYLE section.
 //
 // Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+HEFESTO_EXTRACT_CODE("EXTRACT-STYLE-001", error, "A `style` or `device` line of the selected extraction style is malformed (Magic's `Malformed line for keyword ...` text); the line has no effect.")
+HEFESTO_EXTRACT_CODE("EXTRACT-STYLE-002", error, "A `device` line names an unknown device class (`Illegal device.  Legal devices are:`); the line has no effect.")

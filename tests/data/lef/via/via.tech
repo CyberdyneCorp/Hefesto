@@ -1,0 +1,54 @@
+# via.tech -- test technology of the lef/via unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes active, metal1, metal2 and
+# metal3; m2contact (metal1-metal2) and m3contact (metal2-metal3) are
+# contacts, stackable; ndiff is not a contact. The tests build their output
+# styles in code and append their own drc section (via_fixture.hpp).
+tech
+    format 35
+    viatest
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+    metal3,m3
+end
+
+types
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    metal1  m2contact,v1
+    metal2  metal2,m2
+    metal2  m3contact,v2
+    metal3  metal3,m3
+end
+
+contact
+    m2contact metal1 metal2
+    m3contact metal2 metal3
+    stackable
+end
+
+styles
+    styletype mos
+    metal1 1
+end
+
+compose
+end
+
+connect
+    metal1,m2contact metal1,m2contact
+    metal2,m2contact,m3contact metal2,m2contact,m3contact
+    metal3,m3contact metal3,m3contact
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+extract
+end

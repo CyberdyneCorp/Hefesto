@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3364 scenarios, 889 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3369 scenarios, 889 open questions.
 
 ## Hefesto product (native)
 
@@ -119,9 +119,9 @@ Open questions: [102](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 68 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
-| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 52 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 53 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
-| [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 20 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
+| [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
 | [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 72 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
 
 ## Circuit extraction (EXTRACT)
@@ -148,7 +148,7 @@ Open questions: [48](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 14 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
-| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 23 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
+| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 26 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 11 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 27 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 9 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |

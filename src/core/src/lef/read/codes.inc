@@ -9,3 +9,7 @@
 // and describe the codes in its READ section.
 //
 // Owner: LEFR (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+
+HEFESTO_LEF_CODE("LEF-READ-001", error, "LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END.")
+HEFESTO_LEF_CODE("LEF-READ-002", warning, "LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE renamed.")
+HEFESTO_LEF_CODE("LEF-READ-003", info, "LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer.")

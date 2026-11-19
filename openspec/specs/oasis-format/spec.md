@@ -211,7 +211,7 @@ The writer SHALL encode a g-delta in form 1 when the vector is axis-parallel or 
 - **THEN** the encoding is the single byte `7C`: form 1, direction SW (6), magnitude 7, so `(7 << 4) | (6 << 1) = 124`
 
 ### Requirement: Point lists
-A point list SHALL be encoded as an unsigned type `t` (0–5), an unsigned count `n ≥ 1`, and `n` deltas. It describes vertices relative to an implicit first vertex `P0 = (0, 0)`. The element's (x, y) position is added to every vertex. A count of 0 or a type above 5 SHALL be reported as "invalid point list", and the element is dropped.
+A point list SHALL be encoded as an unsigned type `t` (0–5), an unsigned count `n ≥ 1`, and `n` deltas. It describes vertices relative to an implicit first vertex `P0 = (0, 0)`. The element's (x, y) position is added to every vertex. A count of 0 or a type above 5 SHALL be reported as "invalid point list". A count of 0 drops the element. A type above 5 stops decoding, since the record's length cannot be known.
 
 Compatibility: native
 
@@ -273,6 +273,7 @@ Rules:
 3. The order of the displacement list is significant for `oasis-read` (it determines element order).
 4. A modal `repetition` is set by every element record that carries a repetition of type 1–11. Type 0 reuses it.
 5. A `grid` of 0 in types 5, 7 and 11 SHALL be reported as "zero repetition grid", and decoding stops.
+6. A step outside the signed 32-bit range, or a farthest displacement that does not fit in 64 bits, SHALL be reported as "coordinate overflow", and the element is dropped.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -305,7 +306,7 @@ Compatibility: native
 | 3 | `a` | `a .. a` |
 | 4 | `a`, `b` | `a .. b` |
 
-A type above 4 SHALL be reported as "invalid interval type", and decoding stops. An interval with `a > b` SHALL be treated as empty, with a warning.
+A type above 4 SHALL be reported as "invalid interval type", and decoding stops. A bound above 2^32−1 SHALL be reported as "integer overflow", and decoding stops. An interval with `a > b` SHALL be treated as empty, with a warning.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -529,7 +530,7 @@ Bits:
 
 Transform: a point `p` of the placed cell maps to `translate(x, y) ∘ magnify(mag) ∘ rotate(angle) ∘ flip(p)`, where `flip(px, py) = (px, −py)`. Flipping happens first and translation last. Rotation is counterclockwise. This is the same convention as GDS STRANS reflection followed by ANGLE.
 
-A magnification of 0 or less, or a non-finite value, SHALL be reported ("invalid magnification"), and the element is dropped. Angles may be any real. `oasis-read` specifies how non-quarter-turn angles and magnifications are mapped.
+A magnification of 0 or less, or a non-finite value, SHALL be reported ("invalid magnification"), and the element is dropped. Angles may be any finite real; a non-finite angle drops the element in the same way. `oasis-read` specifies how non-quarter-turn angles and magnifications are mapped.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 

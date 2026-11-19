@@ -295,9 +295,9 @@ The VIAS and NETS writers SHALL identify one contact region per group of contact
 
 1. Consider a tile of contact type `T` on plane `p`. If `T` is a stacked contact type, replace it with its first residue contact type (in type-number order) whose home plane is `p`. If no residue has home plane `p`, ignore the tile. If `T` is not stacked and `p` is not its home plane, ignore the tile.
 2. If any tile directly adjacent along the tile's left edge, or along its bottom edge, has type `T` (or is a stacked type whose residues include `T`), ignore this tile. Only the bottom-most, left-most tile of a region is processed.
-3. Otherwise, the region SHALL be the tile's rectangle. Grow it by including tiles stacked directly above, walking upward from the top-left neighbour, while each tile is `T` or a stacked type containing `T`. Then grow it by including tiles directly to the right, walking rightward from the right-top neighbour, under the same rule.
+3. Otherwise, the region SHALL be the tile's rectangle. Grow it by the bounding box of the tiles reached walking upward through the top-right neighbours (Magic's RT stitch: the tile above the top edge at its right end, then the tile above that one at its right end, ...), while each tile's bottom side is `T` or a stacked type containing `T`. Then grow it by the tiles reached walking rightward from the tile through the right-top neighbours (the TR stitch: the tile right of the right edge at its top end, ...), under the same rule on each tile's left side.
 
-With `magic-compat` ON (the default) this bounding box SHALL be the contact rectangle `C = (xl, yl, xh, yh)`, as in Magic. The rule assumes rectangular contacts: for an L-shaped contact area the bounding box overshoots, so the written via covers area with no contact. With it OFF, the region SHALL instead be split into rectangles that lie wholly inside the contact area: the maximal horizontal strips of the region, merged vertically only when their x extents are equal. Each rectangle is a contact rectangle `C` of its own, so a rectangular contact still gives one via, as in Magic (Q-LEFDEF-111, resolution: compat).
+With `magic-compat` ON (the default) this bounding box SHALL be the contact rectangle `C = (xl, yl, xh, yh)`, as in Magic. The rule assumes rectangular contacts: for an L-shaped contact area the bounding box overshoots when the walk reaches the arm, so the written via covers area with no contact, and an arm the walk misses is written as no via at all. With it OFF, the region SHALL instead be split into rectangles that lie wholly inside the contact area: the maximal horizontal strips of the region, merged vertically only when their x extents are equal. Each rectangle is a contact rectangle `C` of its own, so a rectangular contact still gives one via, as in Magic (Q-LEFDEF-111, resolution: compat).
 
 Compatibility: exact
 
@@ -310,8 +310,14 @@ Compatibility: exact
 
 #### Scenario: L-shaped contact
 
-- **GIVEN** via1 paint covering (10,10)-(36,20) and (10,20)-(20,36), an L shape
+- **GIVEN** via1 paint covering (10,10)-(36,20) and (26,20)-(36,36), an L shape with its arm on the right
 - **THEN** with `magic-compat` ON one contact rectangle (10,10)-(36,36) SHALL be used
+- **AND** with `magic-compat` OFF two contact rectangles (10,10)-(36,20) and (26,20)-(36,36) SHALL be used
+
+#### Scenario: L-shaped contact with its arm on the left
+
+- **GIVEN** via1 paint covering (10,10)-(36,20) and (10,20)-(20,36)
+- **THEN** with `magic-compat` ON the one contact rectangle (10,10)-(36,20) SHALL be used: the top-right neighbour of the lower tile is space, and the arm is skipped because its bottom neighbour is via1
 - **AND** with `magic-compat` OFF two contact rectangles (10,10)-(36,20) and (10,20)-(20,36) SHALL be used
 
 ### Requirement: Generated via definitions
@@ -360,7 +366,7 @@ With `magic-compat` ON (the default), as in Magic, this filter selects the gener
 
 For each record of magic type `T`:
 
-1. For each residue type `r` of `T`, in type-number order, write `+ RECT <lefname(r)> ( x1 y1 ) ( x2 y2 )`. The rectangle is the record's residue rectangle for `r` if there is one, otherwise the area `A`. Each coordinate is the float `f32(v)·s/2` (multiply first, then divide in binary32). A residue with no LEF name SHALL print the name as `(null)` (see Q-LEFDEF-115).
+1. For each residue type `r` of `T`, in type-number order, write `+ RECT <lefname(r)> ( x1 y1 ) ( x2 y2 )`. The rectangle is the record's residue rectangle for `r` if there is one, otherwise the area `A`. Each coordinate is the float `f32(v)·s/2` (multiply first, then divide in binary32). A residue with no LEF name SHALL be skipped with the warning `No LEF layer corresponding to magic type "<r>" of via "<name>"; RECT skipped.`, where Magic prints the name as `(null)` (Q-LEFDEF-115, resolution: fix); the cut rectangles of a `T` with no LEF name are skipped the same way.
 2. **Cuts.** If the CIF/GDS output style defines a squares, squares-grid or slots operator for `T`, with cut size `z`, spacing `p` and border `b` in CIF units, compute integers using C truncation toward zero. Here `c = f32(10·S/E)`, the CIF units per internal unit.
    - `z' = trunc( trunc(f32(z)·s) / c )`, and the same for `p'` and `b'`. Each step is done in binary32 and truncated to an integer.
    - `X1 = trunc(trunc(f32(A.x1)·s)/2)`, and the same for `Y1`, `X2` and `Y2` (integer division by 2 after truncating the product).

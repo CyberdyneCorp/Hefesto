@@ -37,7 +37,7 @@ Compatibility: exact
 ### Requirement: END statement matching
 
 After an `END` keyword, the reader SHALL check what follows:
-- When a section name N is expected, the next token SHALL match N case-insensitively for the section to be closed. If it is instead another `END` (or `ENDEXT`), that counts as "END END", which callers that require a match treat as closed. Any other token means the END does not match.
+- When a section name N is expected, the next token SHALL match N case-insensitively for the section to be closed. If it is instead another `END`, that counts as "END END", which callers that require a match treat as closed. An `ENDEXT` there is an ordinary mismatch (LefParseEndStatement returns -1 only for `END`). Any other token means the END does not match.
 - When no name is expected (PORT, OBS and a skipped PORT or OBS), the END SHALL be closed only if it is the last token on its line.
 Skipping a named section SHALL consume tokens until a matching `END N`. For the extension section `BEGINEXT`, the first `ENDEXT` token ends it. If the input ends first, the error `Section <N> has no END record!` is reported.
 Compatibility: exact
@@ -176,6 +176,8 @@ A `LAYER <name>` section SHALL be handled as follows:
 | other | message `Unknown keyword ...`, skipped to `;` |
 | `END name` | ends the section; a mismatch reports `Layer END statement missing.` and continues |
 
+Malformed values are fixed in both modes (crash or undefined behaviour in Magic): a non-numeric value leaves the field or rule unchanged (Magic reads an uninitialised float), a value outside the `int` range is ignored, a `RECT` in the LAYER section of a ROUTE entry is dropped (Magic writes it through the route/via union of the entry), the reclassification error names `BOUND` where Magic prints `(null)` for the old class, and a section keyword at the end of the input ends the read.
+
 Compatibility: exact
 
 (Magic ref: lef/lefRead.c:2722-2944, 3093-3148)
@@ -270,7 +272,8 @@ Compatibility: exact
 
 When via geometry on a contact type t is added from LEF or DEF (via-definition RECTs and generated via cuts), and an output style is current, the cut rectangle (in half units) SHALL be resized as follows. Use the first output-style layer, in style order, that generates t through squares or slots. That is, a layer whose leading operations are OR operations with no mask-layer operands, one of which includes t, and which is followed by OR or AND-NOT operations and then a squares, squares-grid or slots operation. Let size and border be that operation's cut size and border (slots: short size and short border), in output-style units, and let F be the style's scale factor in output-style units per internal unit. Then
 - C = ceil(2·(size + 2·border) / F) and E = ceil(2·size / F), both in half units.
-- If C > 0 and E > 0: when the rectangle's width or height is not E, report the warnings `Cut size for magic type "<t>" (<E> x <E>) does not match LEF/DEF` and `Via cut size (<w> x <h>).  Magic layer cut size will be used!`. Then replace the rectangle by xbot = trunc((xbot+xtop)/2) − ⌊C/2⌋, ybot = trunc((ybot+ytop)/2) − ⌊C/2⌋, xtop = xbot + C, ytop = ybot + C, where trunc is integer division toward zero.
+- If C > 0 and E > 0: when the rectangle's width or height is not E, report the warnings `Cut size for magic type "<n>" (<E> x <E>) does not match LEF/DEF` and `Via cut size (<w> x <h>).  Magic layer cut size will be used!`. With `magic-compat` ON `<n>` is the via entry's normal type at that moment, as Magic prints it (for a VIA whose met1 RECT comes first, met1's type; for a generated via, the top layer; `t` when the entry has no type yet, where Magic reads before its type-name table); with it OFF `<n>` is `t`. Both warnings are LEF messages ("LEF read, Line N") even during `def read`, as Magic reports them. Then replace the rectangle by xbot = trunc((xbot+xtop)/2) − ⌊C/2⌋, ybot = trunc((ybot+ytop)/2) − ⌊C/2⌋, xtop = xbot + C, ytop = ybot + C, where trunc is integer division toward zero.
+- The sums above are computed without overflow and the grown corners saturate at the coordinate range (Magic's int sums overflow near ±2^31; fixed in both modes).
 - Otherwise, or when t is not a contact type or no output style is current, the rectangle SHALL be unchanged. The input style plays no part in this. See Q-LEFDEF-17.
 Compatibility: exact
 
@@ -289,6 +292,7 @@ The via-rule parameters used by `def read` SHALL be converted to a via entry wit
 2. With bx, by in place of tx, ty, compute the bottom rectangle the same way and prepend it to the extra list with the bottom layer type.
 3. Let Wc = cx·C + sx·(C−1), Hc = cy·R + sy·(R−1), x0 = trunc(−Wc/2), y0 = trunc(−Hc/2) (integer division toward zero). For column i = 0..C−1 (outer loop) and row j = 0..R−1 (inner loop), with x = x0 + i·(cx+sx) and y = y0 + j·(cy+sy): build the cut rectangle (round(x/h), round(y/h), round(x/h) + round(cx/h), round(y/h) + round(cy/h)), apply cut growing ("Cut growing"), and prepend it to the extra list with the cut layer type.
 The resulting extra list, from the head, SHALL be the last cut generated, ..., the first cut, then the bottom rectangle. Origin, offset and pattern parameters are applied by `def read` and are not part of this algorithm.
+Values that do not fit an internal coordinate, where Magic's int conversion or int arithmetic is undefined, SHALL be handled the same way in both `magic-compat` modes: when the contact area or the bottom rectangle does not fit, the entry gets no geometry (only its normal type); when the cut size does not fit, no cuts are generated; a cut whose corners do not fit is dropped; and an origin or offset shift saturates at the coordinate range.
 Compatibility: exact
 
 (Magic ref: lef/lefRead.c:2545-2626)
@@ -301,7 +305,7 @@ Compatibility: exact
 
 ### Requirement: LEF NONDEFAULTRULE section
 
-A `NONDEFAULTRULE <name>` section SHALL create a named non-default rule set in the non-default rule table (shared with `def-read` and `def-write`). If `<name>` already exists, report the warning `Nondefault rule "<name>" was already defined.`, use the name `<name>_0`, and report `Renaming this rule "<name>_0"`. Magic never tries an index above 0. See Q-LEFDEF-9. The body SHALL be processed as follows. The rule list is built by prepending, so the last rule read comes first.
+A `NONDEFAULTRULE <name>` section SHALL create a named non-default rule set in the non-default rule table (shared with `def-read` and `def-write`). If `<name>` already exists, report the warning `Nondefault rule "<name>" was already defined.`, try `<name>_0`, `<name>_1`, `<name>_2`, ... and use the first name not in the table, and report `Renaming this rule "<name>_<i>"` once, with the name kept. Magic never tries an index above 0; this is fixed in both modes. See Q-LEFDEF-9. The body SHALL be processed as follows. The rule list is built by prepending, so the last rule read comes first.
 
 | statement | effect |
 |---|---|

@@ -25,6 +25,7 @@
 #include <limits>
 
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/lef/tech/lifecycle.hpp"
 #include "hefesto/tech/commands.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "mask/input/engine_state.hpp"
@@ -77,6 +78,7 @@ void ReadEngine::subdivide_grid(std::int64_t den) {
   }
   drc::rescale_rules(editor_, 1, d32);
   (void)tech::scale_layout(editor_, den, 1);
+  lef::refill_layer_table(editor_, compat_);
   editor_.grid = tech::reduce(tech::GridScale{editor_.grid.internal * den, editor_.grid.lambda});
   state_->evaluation_valid = false;
 }

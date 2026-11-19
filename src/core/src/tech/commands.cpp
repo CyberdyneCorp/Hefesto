@@ -30,6 +30,7 @@
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/lef/tech/lifecycle.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/loader.hpp"
@@ -464,6 +465,8 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     ed.grid = reduce(GridScale{ed.grid.internal * b, ed.grid.lambda * a});
     // CmdScalegrid's DRCTechScale(a, b): rules, halo and step size (Q-DRC-1).
     drc::rescale_rules(ed, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b));
+    // scale_layout ran LefTechScale; magic-compat OFF refills from the rescaled rules.
+    lef::refill_layer_table(ed, ed.drc.compat_settings());
     const mask::RescaleStep step = mask::rescale_output_styles(
         ed.mask.output_styles, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b), ed.drc.compat_settings());
     for (const diag::Diagnostic& d : step.messages) {
@@ -547,18 +550,20 @@ namespace {
 
 /// The steps after a successful load that make `tech` the session's
 /// technology: "Post-load adjustments" (grid), "Effect on existing layout",
-/// the locked types, the DRC rules, the wiring section's report, the plane
-/// count of every cell and the display styles.
+/// the locked types, the DRC rules, the LEF layer table, the wiring
+/// section's report, the plane count of every cell and the display styles.
 void install_technology(editor::EditorState& editor, platform::FileSystem& files,
                         std::shared_ptr<const Technology> tech, drc::LoadedRules rules,
-                        mask::OutputStyleSet output_styles, mask::InputStyleSet input_styles, bool magic_compat,
-                        diag::DiagnosticSink& sink) {
+                        mask::OutputStyleSet output_styles, mask::InputStyleSet input_styles,
+                        lef::LayerTable lef_layers, bool magic_compat, diag::DiagnosticSink& sink) {
   const std::size_t old_planes = editor.technology->plane_count();
   const std::size_t new_planes = tech->plane_count();
   editor.grid = apply_post_load(*tech, editor.grid, sink);
   check_existing_layout(editor, old_planes, new_planes, sink);
   set_technology(editor, std::move(tech));
   drc::install_rules(editor, std::move(rules));
+  // TechLoad's post-load LefTechScale and LefTechSetDefaults (lef-tech-section).
+  lef::install_layer_table(editor, std::move(lef_layers), editor.drc.compat_settings());
   // TechLoad's post-load CIFTechOutputScale(DBLambda[0], DBLambda[1]).
   editor.mask.output_styles = std::move(output_styles);
   if (editor.grid.lambda != editor.grid.internal) {
@@ -652,12 +657,15 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink, editor.drc.compat_settings());
   mask::InputStyleSet input_styles = mask::read_input_styles(*tech.value(), editor.drc.compat_settings(), sink);
   drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
+  // The lef section follows the drc section and reads its defaults (LefTechLine).
+  lef::LayerTable lef_layers =
+      lef::read_layer_section(*tech.value(), rules.rules.get(), editor.drc.compat_settings(), sink);
   const FailedSections failed{output_styles.section_failed, input_styles.section_failed, !rules.ok()};
   if (failed.any()) {
     return section_failure(path.value().string(), failed, sink);
   }
   install_technology(editor, services.files, std::move(tech.value()), std::move(rules), std::move(output_styles),
-                     std::move(input_styles), options.magic_compat, sink);
+                     std::move(input_styles), std::move(lef_layers), options.magic_compat, sink);
   return diag::Done{};
 }
 
@@ -675,7 +683,7 @@ diag::Status load_builtin_technology(editor::EditorState& editor, platform::Plat
   mask::OutputStyleSet output_styles = mask::read_output_styles(*minimum, quiet);
   mask::InputStyleSet input_styles = mask::read_input_styles(*minimum, editor.drc.compat_settings(), quiet);
   install_technology(editor, services.files, std::move(minimum), std::move(rules), std::move(output_styles),
-                     std::move(input_styles), options.magic_compat, sink);
+                     std::move(input_styles), lef::LayerTable{}, options.magic_compat, sink);
   return diag::Done{};
 }
 

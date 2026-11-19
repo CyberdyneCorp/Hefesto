@@ -38,12 +38,31 @@ output's masks. The outputs match when the canonical forms are identical.
     case-insensitively, kinds, models and parameter values). A pairwise comparator: the verdict comes
     from ``spice_canonical.compare``, not from equal canonical bytes. See spice_canonical.py.
 
+``oasis-records``
+    OASIS files compared as their decoded records (goldenlib/oasis.py ``dump``: one line per
+    record with its fields as written, CBLOCK contents decompressed and indented, then the
+    validation signature, warnings and any decoding error), so a CBLOCK's compressed bytes are
+    compared through its decoded content and sizes (m6-lef-def-oasis design D19). Also a
+    display view.
+``stream-geometry``
+    A GDSII or OASIS stream (either format on either side) compared as flat per-layer merged
+    geometry: Manhattan areas in the canonical form of ``polygon-set``, other polygons as a
+    canonical polygon list, then texts (m6-lef-def-oasis design D19). See stream_geometry.py.
+``lef-text``, ``def-text``
+    LEF and DEF files, and the console of LEF/DEF commands: plain text after removing the
+    informative progress lines (``Diagnostic:`` lines, ``(This can take a while!)``,
+    LefEstimate percentages) and Magic's leading startup preamble (m6-lef-def-oasis design
+    D19). See lefdef_text.py.
+
 A *display view* only renders a difference readably; pass or fail is still decided by
 the comparator. An output selects one with ``display = "<view>"`` in case.toml:
 
 ``gds-records``
     GDSII streams decoded one record per line (goldenlib/gds.py ``dump``), after the
     masks, so the first differing record is named instead of a byte offset.
+``oasis-records``
+    OASIS files decoded one record per line (goldenlib/oasis.py ``dump``), for outputs
+    compared with ``bytes`` (the self-golden byte files of design D19).
 
 To add a format canonicalizer: put it in its own module with its rules in the
 module docstring (the spec requires each canonicalizer to be specified next
@@ -57,8 +76,10 @@ from dataclasses import dataclass
 from typing import Callable
 
 from goldenlib.gds import dump as gds_dump
+from goldenlib.oasis import dump as oasis_dump
 
-from . import drc_console, ext_cap, mag_backup, magic_console, polygon_set, spice_canonical
+from . import (drc_console, ext_cap, lefdef_text, mag_backup, magic_console, polygon_set, spice_canonical,
+               stream_geometry)
 from .masks import apply_masks
 
 
@@ -79,6 +100,10 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "polygon-set": polygon_set.canonicalize,
     "gzip": lambda data: data,
     "spice-canonical": spice_canonical.canonical_text,
+    "oasis-records": lambda data: oasis_dump(data).encode("utf-8"),
+    "stream-geometry": stream_geometry.canonicalize,
+    "lef-text": lefdef_text.canonicalize,
+    "def-text": lefdef_text.canonicalize,
 }
 
 # Comparators whose verdict needs both sides at once (a node bijection); they return the first difference.
@@ -92,6 +117,7 @@ DECODERS: dict[str, Callable[[bytes], bytes]] = {"gzip": gunzip}
 
 DISPLAYS: dict[str, Callable[[bytes], bytes]] = {
     "gds-records": lambda data: gds_dump(data).encode("utf-8"),
+    "oasis-records": lambda data: oasis_dump(data).encode("utf-8"),
 }
 
 

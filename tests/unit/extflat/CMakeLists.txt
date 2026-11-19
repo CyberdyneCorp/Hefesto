@@ -7,3 +7,9 @@
 # (data: tests/data/extflat, which also holds GOLDEN's `.ext` probes).
 
 hefesto_add_area_tests(extflat)
+
+# The unit tests of the tokenizer and the name rules reach the private
+# headers of src/core/src/extflat/ (namespace hefesto::extflat::detail).
+if(TARGET hefesto_extflat_tests)
+  target_include_directories(hefesto_extflat_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src/extflat")
+endif()

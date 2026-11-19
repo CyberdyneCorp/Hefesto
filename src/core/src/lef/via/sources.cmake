@@ -8,4 +8,10 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/cut.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/generate.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/generate.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/naming.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/pattern.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/polygon.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/rects.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/regions.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/store.cpp)

@@ -11,7 +11,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <array>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -125,15 +124,20 @@ TEST_CASE("the gds-only settings stay in GdsSettings", "[m6-scaffold]") {
 
 // --- tasks.md 2.5: shared interfaces outside the lef/def/oasis areas --------
 
-TEST_CASE("extflat::read_flat is a stub", "[m6-scaffold]") {
+// EXTSUB landed read_flat and StyleView (their [cap:ext-flattening-*] and
+// [cap:extract-tech-section] tests are in tests/unit/extflat and
+// tests/unit/extract/tech); these keep the scaffold's interface checks.
+TEST_CASE("extflat::read_flat reports a missing root and Netlist visits its nodes", "[m6-scaffold]") {
   Session s;
   diag::CollectingSink sink;
   hefesto::cell::LookupContext ctx{s.services.view().files, s.state.search_paths, s.state.path_variables, sink};
   const auto netlist = extflat::read_flat(ctx, "top", extflat::ReadOptions{});
   REQUIRE_FALSE(netlist.ok());
-  CHECK(netlist.error().code == "CORE-NOTIMPL-006");
+  CHECK(netlist.error().code == "EXTFLAT-READ-001");
 
-  const extflat::Netlist built{{{"top/a", "metal1", {1, 2}, false}, {"GND!", "pwell", {0, 0}, true}}, {{"top", 42}}};
+  const extflat::Netlist built{
+      {{"top/a", "metal1", {1, 2}, false, false, false, {}, {}}, {"GND!", "pwell", {0, 0}, true, false, false, {}, {}}},
+      {{"top", 42}}};
   std::vector<std::string> names;
   built.visit_nodes([&names](const extflat::FlatNode& node) { names.push_back(node.name); });
   CHECK(names == std::vector<std::string>{"top/a", "GND!"});
@@ -143,7 +147,9 @@ TEST_CASE("extflat::read_flat is a stub", "[m6-scaffold]") {
 TEST_CASE("extract::StyleView answers nullopt without a style", "[m6-scaffold]") {
   diag::CollectingSink sink;
   const tech::Technology technology;
-  const extract::StyleView none = extract::StyleView::from_section(tech::RawSection{"extract", {}}, technology, sink);
+  // An empty extract section has Magic's "default" style.
+  CHECK(extract::StyleView::from_section(tech::RawSection{"extract", {}}, technology, sink).has_style());
+  const extract::StyleView none;
   CHECK_FALSE(none.has_style());
   CHECK_FALSE(none.gate_types().has_value());
   CHECK_FALSE(none.diff_types().has_value());
@@ -203,8 +209,7 @@ TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-sca
   check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
   check_stub(oasis::read(state, "a.oas", oasis::OasisReadOptions{}), "oasis read");
   check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
-  const std::array<hefesto::db::Point, 3> triangle{hefesto::db::Point{0, 0}, {10, 0}, {0, 10}};
-  check_stub(lef::paint_polygon(cell, 1, triangle));
+  // lef::paint_polygon is implemented (LEFVIA): tests/unit/lef/via/.
 }
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
@@ -222,8 +227,10 @@ TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   gds::MemorySource source{bytes};
   lef::Lexer lexer{source};
   CHECK(&lexer.source() == &source);
-  check_stub(lexer.next());
-  CHECK(lexer.line() == 0);
+  // Implemented by LEFR (tests/unit/lef/lex/): four NULs are one empty line.
+  const auto none = lexer.next();
+  CHECK((none.ok() && !none.value()));
+  CHECK(lexer.line() == 1);
   CHECK(lexer.estimate() == 0.0);
 
   lef::MessageCounter counter;
@@ -234,22 +241,20 @@ TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   CHECK(counter.warnings() == 2);
 }
 
-TEST_CASE("the OASIS codec interfaces are stubs", "[m6-scaffold]") {
+TEST_CASE("the OASIS codec interfaces keep their scaffold shape", "[m6-scaffold]") {
+  // The codec is implemented (OASFMT); its behaviour is tested in
+  // tests/unit/oasis/codec/. Only the interface shape is checked here.
   const std::vector<std::byte> bytes(4, std::byte{0});
   gds::MemorySource source{bytes};
   oasis::Decoder decoder{source};
   CHECK(&decoder.source() == &source);
-  check_stub(decoder.next());
+  CHECK_FALSE(decoder.next().ok());  // not an OASIS file
   CHECK(decoder.modal() == oasis::ModalState{});
   CHECK(decoder.names().cellnames.empty());
 
   gds::MemorySink sink;
   oasis::Encoder encoder{sink};
   CHECK(&encoder.sink() == &sink);
-  check_stub(encoder.begin());
-  check_stub(encoder.begin_cell("top"));
-  check_stub(encoder.element(oasis::Element{}));
-  check_stub(encoder.finish());
   CHECK(encoder.options().compress == 6);
 
   CHECK(oasis::expand(oasis::Repetition{}) == std::vector<oasis::Point64>{oasis::Point64{}});
