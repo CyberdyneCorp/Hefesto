@@ -53,7 +53,7 @@ struct Files {
 };
 
 struct Session {
-  hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
+  hefesto::platform::PortableServices services;
   hefesto::settings::ProjectSettings project;
   cmd::ScriptSession script{project};
   cmd::CommandRegistry registry;
@@ -61,7 +61,9 @@ struct Session {
   cmd::Dispatcher dispatcher{registry, services.view(), project, script};
   diag::CollectingSink printed;
 
-  Session() {
+  /// On the local disk (the scratch directories) unless `in_memory`.
+  explicit Session(bool in_memory = false)
+      : services{hefesto::platform::PortableOptions{{}, {}, in_memory, true}} {
     REQUIRE(cmd::register_all_commands(registry));
     dispatcher.set_editor(&state);
     dispatcher.add_sink(printed);
@@ -173,6 +175,18 @@ TEST_CASE("a gzip-compressed LEF is read", "[cap:lef-read][req:lef read side eff
   REQUIRE(sink.value()->finish().ok());
   Session s;
   REQUIRE(s.run("lef read " + files.path("cells")).ok());
+  CHECK(s.state.cells.find("INV") != nullptr);
+}
+
+TEST_CASE("regression: lef read reads through the session's file system", "[cap:lef-read][req:lef read side effects]") {
+  // `lef read` opened the local disk whatever the session's file system was
+  // (the Tcl sandbox's granted roots, the iPadOS document model); it now
+  // reads through it, as `gds read`, `def read` and `lef write` do.
+  Session s{true};
+  REQUIRE(s.services.view().files.write_atomic("/mem/cells.lef", kCells).ok());
+  const auto result = s.run("lef read /mem/cells");
+  REQUIRE(result.ok());
+  CHECK(texts_of(result).front() == "Reading LEF data from file /mem/cells.lef.");
   CHECK(s.state.cells.find("INV") != nullptr);
 }
 

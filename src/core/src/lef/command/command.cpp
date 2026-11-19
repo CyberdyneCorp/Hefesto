@@ -4,9 +4,10 @@
 // The `lef` and `def` commands, scaffold version
 // (openspec/changes/m6-lef-def-oasis/design.md D3, D14): Magic's two option
 // tables, the lookup of both commands in the `lef` table, the window check
-// of every option but `help`, the help listing, `def writeall`'s refusal and
-// the "only for LEF" answers of `def datestamp` and `def nocheck`. Every
-// other option fails with CORE-NOTIMPL-006 until its workstream lands it:
+// of every option but `help` and `def read` (Q-LEFDEF-86), the help
+// listing, `def writeall`'s refusal and the "only for LEF" answers of `def
+// datestamp` and `def nocheck`. Every other option fails with
+// CORE-NOTIMPL-006 until its workstream lands it:
 // `def write` (DEFW). `lef read` and `lef datestamp` call LEFR's parsers
 // (lef/read/args.hpp); `lef write`, `lef writeall` and `lef nocheck` call
 // LEFW's (lef/write/args.hpp); `def read` calls DEFR's (def/read/command.hpp).
@@ -28,6 +29,7 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/stubs.hpp"
+#include "hefesto/def/read/command.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "lef/read/args.hpp"
 #include "lef/write/args.hpp"
@@ -159,6 +161,10 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   const std::size_t option = find_option(s, invocation);
   if (option == kHelp) {
     return help(s, invocation.name, is_lef);
+  }
+  // DEFR's `def read` needs no window (Q-LEFDEF-86, def/read/command.hpp).
+  if (!is_lef && option == kRead) {
+    return def::read_command(ctx, invocation);
   }
   // LEFW's options find their own target cell (lef/write/args.cpp).
   if (const std::optional<WriteCommand> which = write_command(option); is_lef && which) {

@@ -4,7 +4,8 @@
 // `lef read` and `lef datestamp` (lef/read/args.hpp; lef/lefCmd.c:223-269,
 // 446-482). `lef datestamp <int>` saturates a value outside the int range
 // (Magic's atoi is undefined there), and -1, Magic's "default" sentinel,
-// clears the stamp as in Magic.
+// clears the stamp as in Magic. `lef read` reads through the session's
+// file system.
 //
 // Owner: LEFR (design D2, D14).
 
@@ -47,6 +48,11 @@ cmd::CommandResult read_option(const cu::Session& s, const cmd::Invocation& invo
     }
   }
   options.typed_name = args[1];
+  // The session's file system (the sandbox's granted roots, the iPadOS
+  // document model), as `gds read`, `def read` and `lef write` use.
+  if (s.ctx != nullptr) {
+    options.files = &s.ctx->services().files;
+  }
   return read(*s.editor, args[1], options);
 }
 

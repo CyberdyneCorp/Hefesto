@@ -66,7 +66,7 @@ TEST_CASE("the macro table is cleared after each read", "[cap:lef-read][req:MACR
   CHECK(run.host.created == Strings{"A", "B", "B_1"});
 }
 
-TEST_CASE("-annotate with an unknown macro", "[cap:lef-read][req:MACRO and SITE cell creation]") {
+TEST_CASE("lef read -annotate with an unknown macro", "[cap:lef-read][req:MACRO and SITE cell creation]") {
   const std::string text = "MACRO NAND2\n  SIZE 1 BY 1 ;\nEND NAND2\n";
   SECTION("magic-compat ON: the cell is created") {
     MacroRun run{true};
@@ -85,7 +85,7 @@ TEST_CASE("-annotate with an unknown macro", "[cap:lef-read][req:MACRO and SITE 
   }
 }
 
-TEST_CASE("-annotate skips a duplicate with no cell as Magic does", "[cap:lef-read][req:MACRO and SITE cell creation]") {
+TEST_CASE("lef read -annotate skips a duplicate with no cell as Magic does", "[cap:lef-read][req:MACRO and SITE cell creation]") {
   // Magic skips the duplicate to `END MACRO` (LefSkipSection(f, "MACRO")):
   // the rest of the file is not read.
   MacroRun run{true};

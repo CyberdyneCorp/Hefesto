@@ -38,7 +38,7 @@ std::string port_of(std::initializer_list<std::string_view> rects) {
   return out + "    END\n";
 }
 
-TEST_CASE("-pinonly keeps the label area as the pin", "[cap:lef-write][req:Pin-only pin geometry]") {
+TEST_CASE("lef write -pinonly keeps the label area as the pin", "[cap:lef-write][req:Pin-only pin geometry]") {
   Session s;
   db::CellDef& c = s.cell("c");
   fix_boundary(s, c);
@@ -51,7 +51,7 @@ TEST_CASE("-pinonly keeps the label area as the pin", "[cap:lef-write][req:Pin-o
         "  END\n");
 }
 
-TEST_CASE("-pinonly d keeps the net within d of the boundary", "[cap:lef-write][req:Pin-only pin geometry]") {
+TEST_CASE("lef write -pinonly d keeps the net within d of the boundary", "[cap:lef-write][req:Pin-only pin geometry]") {
   Session s;
   db::CellDef& c = s.cell("c");
   fix_boundary(s, c);
@@ -64,7 +64,7 @@ TEST_CASE("-pinonly d keeps the net within d of the boundary", "[cap:lef-write][
         "  END\n");
 }
 
-TEST_CASE("-hide makes the pin the chunk holding the label", "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
+TEST_CASE("lef write -hide makes the pin the chunk holding the label", "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
   s.paint(c, "metal1", db::Rect{10, 20, 30, 180});
@@ -76,7 +76,7 @@ TEST_CASE("-hide makes the pin the chunk holding the label", "[cap:lef-write][re
   CHECK(block(text, "  OBS", "  END") == "  OBS\n      LAYER met1 ;\n        RECT 0.330 0.200 0.800 0.400 ;\n  END\n");
 }
 
-TEST_CASE("-hide -pinonly p limits the chunk pin only with magic-compat OFF",
+TEST_CASE("lef write -hide -pinonly p limits the chunk pin only with magic-compat OFF",
           "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
   for (const bool on : {true, false}) {
     Session s(on);
@@ -92,7 +92,7 @@ TEST_CASE("-hide -pinonly p limits the chunk pin only with magic-compat OFF",
   }
 }
 
-TEST_CASE("-hide -pinonly 0 makes the label the pin", "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
+TEST_CASE("lef write -hide -pinonly 0 makes the label the pin", "[cap:lef-write][req:Hidden-detail pin geometry with zero setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
   s.paint(c, "metal1", db::Rect{10, 20, 30, 180});
@@ -100,7 +100,7 @@ TEST_CASE("-hide -pinonly 0 makes the label the pin", "[cap:lef-write][req:Hidde
   CHECK(pin(s.macro(c, hide(0, 0))) == "  PIN A\n" + port_of({"0.100 0.500 0.300 0.600"}) + "  END A\n");
 }
 
-TEST_CASE("-hide d makes the pin the net within d of the boundary",
+TEST_CASE("lef write -hide d makes the pin the net within d of the boundary",
           "[cap:lef-write][req:Hidden-detail pin geometry with positive setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
@@ -110,7 +110,7 @@ TEST_CASE("-hide d makes the pin the net within d of the boundary",
   CHECK(pin(s.macro(c, hide(10))) == "  PIN A\n" + port_of({"0.400 0.000 0.600 0.100"}) + "  END A\n");
 }
 
-TEST_CASE("-pinonly smaller than the setback limits the pin only with magic-compat OFF",
+TEST_CASE("lef write -pinonly smaller than the setback limits the pin only with magic-compat OFF",
           "[cap:lef-write][req:Hidden-detail pin geometry with positive setback]") {
   for (const bool on : {true, false}) {
     Session s(on);
@@ -139,7 +139,7 @@ TEST_CASE("a setback over half the boundary hides nothing and is reported", "[ca
   CHECK(s.macro(c, hide(-5)) == plain);  // a negative distance disables hiding
 }
 
-TEST_CASE("-toplayer writes only the net's top plane", "[cap:lef-write][req:Top-layer pins]") {
+TEST_CASE("lef write -toplayer writes only the net's top plane", "[cap:lef-write][req:Top-layer pins]") {
   Session s;
   db::CellDef& c = s.cell("c");
   s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
@@ -167,7 +167,7 @@ db::CellDef& cover_cell(Session& s) {
   return c;
 }
 
-TEST_CASE("-hide covers each hidden layer and cuts the pins out", "[cap:lef-write][req:Obstructions with zero setback]") {
+TEST_CASE("lef write -hide covers each hidden layer and cuts the pins out", "[cap:lef-write][req:Obstructions with zero setback]") {
   Session s;
   db::CellDef& c = cover_cell(s);
   const std::string text = s.macro(c, hide(0));
@@ -190,7 +190,7 @@ TEST_CASE("OBS_BBOX enlarges the cover, and a malformed one is reported",
         std::vector<std::string>{"Improper values for obstruction bounding box OBS_BBOX property"});
 }
 
-TEST_CASE("-hide d keeps the periphery's detail", "[cap:lef-write][req:Obstructions with positive setback]") {
+TEST_CASE("lef write -hide d keeps the periphery's detail", "[cap:lef-write][req:Obstructions with positive setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
   fix_boundary(s, c);
@@ -216,7 +216,7 @@ TEST_CASE("a tile crossing a setback strip is copied whole only with magic-compa
   }
 }
 
-TEST_CASE("-hide d writes the strips' contacts as cuts", "[cap:lef-write][req:Obstructions with positive setback]") {
+TEST_CASE("lef write -hide d writes the strips' contacts as cuts", "[cap:lef-write][req:Obstructions with positive setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
   fix_boundary(s, c);

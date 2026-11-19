@@ -84,7 +84,7 @@ TEST_CASE("a cell that is not the edit root is written without the header",
   CHECK(text.find("VERSION") == std::string::npos);
 }
 
-TEST_CASE("-tech writes the UNITS block after the fixed lines", "[cap:lef-write][req:Library header]") {
+TEST_CASE("lef write -tech writes the UNITS block after the fixed lines", "[cap:lef-write][req:Library header]") {
   Session s;
   db::CellDef& inv = annotated_inv(s);
   LefWriteOptions o;

@@ -35,7 +35,7 @@ TEST_CASE("subcell paint is flattened into the macro", "[cap:lef-write][req:Macr
   CHECK(block(text, "  OBS", "  END") == "  OBS\n      LAYER met1 ;\n        RECT 0.200 0.000 0.300 0.100 ;\n  END\n");
 }
 
-TEST_CASE("-nomaster drops masterslice geometry unless a port sits on it",
+TEST_CASE("lef write -nomaster drops masterslice geometry unless a port sits on it",
           "[cap:lef-write][req:Macro source geometry and layer masks]") {
   Session s;
   db::CellDef& inv = s.cell("inv");

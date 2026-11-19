@@ -185,6 +185,18 @@ Before you register a new engine command, Tcl command or `magic::` procedure:
    If the change touches the filesystem layer, also run `fuzz_tcl_sandbox` (linux-fuzz) for 60 s.
 8. **Review.** A change under `src/core/src/script/tcl/`, `script/pdk/trust.*`, `script/pdk/consent.*` or `app/startup.cpp` `sandbox_policy` needs a reviewer to check it against this page. Update this page when the model changes.
 
+## LEF, DEF and OASIS input (M6, in progress)
+
+The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the same rule: every file is hostile input (design D23 of `openspec/changes/m6-lef-def-oasis/`). The review itself is task 17.3; this section collects the bounds the workstreams have put in place so far. Caps that change behaviour where Magic does not crash are proposals until the user decides them (D21), and are listed as such.
+
+| ID | Concern | State | Where |
+|---|---|---|---|
+| M6-S2 | LEF `RECT ITERATE` counts (nx·ny) and LEF via `ROWCOL` (rows·cols) | Proposed cap, not decided: at most 65536 repeats; above it the statement is rejected with an error. Only magic-compat OFF reads these statements (Q-LEFDEF-7), so Magic's behaviour is unchanged. | `lef/read/via_body.hpp` `kMaxViaRepeat` |
+| M6-S2 | LEF coordinates that overflow once the macro offset is added | Fixed in both modes: the coordinate is dropped. | `lef/read/` |
+| M6-S2 | DEF `VIAS ... + ROWCOL` rows·columns | Open, proposal not implemented: a hostile `+ ROWCOL 100000 100000` makes the shared generator build 10^10 cuts (Magic runs out of memory). Proposed: refuse a generated via above 1,000,000 cuts with an error and no geometry. | `lef/via/generate.cpp` |
+| M6-S2 | DEF values whose float-to-int conversion overflows | Fixed in both modes: treated as unparsed, paint clipped to the plane. | `def/read/` |
+| M6-S3 | OASIS read transcode | Proposed caps, not decided: 2 GiB for the in-memory GDS-equivalent stream and 2^28 element instances per read (OASIS-READ-007); more than 8191 points per element dropped (OASIS-READ-006); names and strings over 65530 bytes cut; layer, datatype and attribute numbers above 32767 written as 32767. | `oasis/read/internal.hpp` |
+
 ## Layout input: GDS, CIF and the mask sections (M5 review, 2026-11-15)
 
 GDS and CIF files come from foundries, IP vendors and other tools, so their readers treat every byte as hostile (hefesto-security "Untrusted input handling", design R9 of `openspec/changes/m5-mask-gds-cif/design.md`). The `cifoutput` and `cifinput` technology sections come with a PDK and get the same parser hardening, but a PDK is trusted to describe sensible operators (see "Accepted limits" below). The review covered `src/core/src/gds/` (stream, read, write), `src/core/src/cif/` (read, write) and `src/core/src/mask/` (style and input readers, generation), task 15.3.

@@ -83,6 +83,8 @@ Compatibility: native
 - The step covers everything the read changes: created cells, paint, uses, labels (including labels converted or erased by annotation) and the properties it sets (for example `FIXED_BBOX`), so one `undo` returns the session to its state before the read and `redo` re-applies it.
 - Magic disables undo for the whole read and prints "This action cannot be undone."; Hefesto SHALL NOT print that message. File content and the read result are the same as Magic's, so the setting does not affect the step.
 - The read's undo step is recorded even though property changes are otherwise not recorded with `magic-compat` ON (requirement "Non-recorded operations").
+- The session's LEF/DEF via and non-default-rule tables that a read fills are not part of the step, as Magic's LefInfo and LefNonDefaultRules tables are not; `undo` leaves them as the read left them.
+- `redo` after `undo` recreates a cell the read created as a new definition. Undo and redo of later steps that edited that cell are then skipped, as for a deleted cell.
 
 (Magic ref: lef/lefRead.c:3018-3019, lef/lefRead.c:3203, lef/defRead.c:2550-2551, lef/defRead.c:2760)
 

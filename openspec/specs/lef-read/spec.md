@@ -342,7 +342,7 @@ Compatibility: exact
 ### Requirement: MACRO and SITE cell creation
 
 Each `MACRO <name>` and each `SITE <name>` section SHALL be read with the same macro-reading procedure. For each section:
-1. If `<name>` was already read as a MACRO or SITE in this same file, find the smallest k ≥ 1 such that `<name>_k` was not read in this file, and use `<name>_k` as the cell name. Report the warning `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_k"`. If no cell `<name>_k` exists and annotation was requested (`-annotate`), skip the section.
+1. If a cell named `<name>` was created by a MACRO or SITE section of this file, find the smallest k ≥ 1 such that no cell `<name>_k` was created by this file, and use `<name>_k` as the cell name. Report the warning `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_k"`. Only cells the read created count: a section that annotated an existing cell registers nothing, so an existing cell named twice is annotated twice, with no rename, as in Magic. If no cell `<name>_k` exists and annotation was requested (`-annotate`), skip the section. With `magic-compat` ON the skip reads to an `END MACRO` statement, as Magic's `LefSkipSection(f, "MACRO")` does; a macro ends with `END <name>`, so the rest of the file is normally not read. With it OFF the section is skipped to its own `END <name>` (with OFF, `-annotate` never creates the first cell, so this case does not arise from one file).
 2. If a cell with the (possibly renamed) name exists in the database, the macro SHALL be read in annotation mode ("Annotation of existing cells"). Otherwise a new empty, available cell SHALL be created and read in creation mode. Annotation is chosen only because the cell already exists. What `-annotate` does to a macro with no existing cell depends on the `magic-compat` setting (Q-LEFDEF-11, resolution: compat). With it ON (the default), as in Magic, `-annotate` does not by itself stop new cells from being created for macros that are not duplicates. With it OFF, as documented, with `-annotate` a macro whose (possibly renamed) cell does not exist SHALL be skipped and no cell created.
 3. If a fixed LEF datestamp is set (see "lef datestamp"), the cell's timestamp SHALL be set to it and marked as fixed.
 
@@ -415,6 +415,7 @@ point      = [ "(" ] , num , num , [ ")" ] ;
 - `CLASS`, `SYMMETRY`: each statement replaces the property.
 - `SITE`: each statement replaces `LEFsite`.
 - An empty `CLASS ;` or `SYMMETRY ;` has undefined content in Magic. See Q-LEFDEF-19.
+- `SITE`, `SOURCE` or `PROPERTY` with a missing value (`SITE ;`): with `magic-compat` ON, as in Magic, the `;` is taken as the value and the statement then skips to the next `;`, swallowing the next statement. With it OFF nothing is set and the next statement is read normally.
 - `PIN` sections are numbered with a pin ordinal that starts at 1 for each macro and increases by one for every PIN section, including pins that produce no labels.
 Compatibility: exact
 
@@ -498,8 +499,8 @@ coord4    = [ "(" ] , num , num , [ ")" ] , [ "(" ] , num , num , [ ")" ] ;
 - `POLYGON`: read x,y pairs until `;`. Each vertex converts to round(v/s) plus the offset. A bad number reports `Bad X value in polygon.` or `Bad Y value in polygon.` and skips the statement; a missing Y reports `Missing Y value in polygon point!`. In each case the vertices read so far are used. The polygon SHALL be painted with the current layer, on every plane that layer occupies, by the polygon-to-rectangle decomposition used for CIF polygon input, applied to the vertex list in reverse file order. In OBS it is also painted with the secondary obstruction type. If the current layer is none, Magic's behavior is undefined. See Q-LEFDEF-18.
 - `WIDTH`, `PATH` and `VIA` depend on the `magic-compat` setting (Q-LEFDEF-15, resolution: compat). With it ON (the default) they SHALL be ignored, as in Magic, so path-based and via-instance pin or obstruction geometry produces no paint and no port label. With it OFF:
   - `WIDTH w ;` SHALL set the current path width to w converted by s (half-unit rounding as for RECT); it starts at 0 for each PORT or OBS body.
-  - `PATH x1 y1 x2 y2 ... ;` SHALL paint each segment on the current layer as a rectangle w wide, centred on the segment and extended by w/2 beyond both ends, with the offset added; with the current layer none it is skipped.
-  - `VIA x y name ;` SHALL place the named LEF via definition's contact area and extra rectangles, each with its own type, centred at (x, y) converted by s plus the offset. An unknown via name reports a message and is skipped.
+  - `PATH x1 y1 x2 y2 ... ;` SHALL paint each Manhattan segment on the current layer as a rectangle w wide, centred on the segment and extended by w/2 beyond both ends, with the offset added; a diagonal segment is skipped, and with the current layer none the statement is skipped.
+  - `VIA x y name ;` SHALL place the named LEF via definition's contact area and extra rectangles, each with its own type, centred at (x, y) converted by s plus the offset. An unknown via name reports an info message and is skipped.
   - In PORT, each painted rectangle SHALL also become port geometry, exactly as a RECT does ("Port labels in creation mode"), and in annotation mode it goes through the same coverage check.
 Compatibility: exact
 
@@ -649,7 +650,7 @@ Compatibility: behavioral
 `lef datestamp` SHALL query or set the timestamp given to cells created or annotated by later LEF reads:
 - `lef datestamp` with no value SHALL report the current setting. Magic reports the integer value, or `default` when no fixed stamp is set; outside Tcl it prints `Macros will contain a header creation date stamp of <v>.` or `Macros will contain a default header creation date stamp.`.
 - `lef datestamp default` (exact, case-sensitive) SHALL clear the fixed stamp.
-- `lef datestamp <int>`, where the argument is a valid integer, SHALL set the fixed stamp to that value. Every macro or site cell read afterwards SHALL get that timestamp and be marked as having a fixed timestamp.
+- `lef datestamp <int>`, where the argument is a valid integer, SHALL set the fixed stamp to that value. Every macro or site cell read afterwards SHALL get that timestamp and be marked as having a fixed timestamp. The value -1 means "default" (no fixed stamp), as in Magic, whose `lefTimestamp` uses -1 for it; a value outside the int range saturates to the nearest int.
 - Any other value SHALL report `Unrecognizable date stamp "<v>".` followed by the help text; more than one value SHALL print the help text. In both cases the setting is unchanged.
 - `def datestamp` is rejected as specified in capability `def-write` (Requirement "def command argument validation").
 The setting SHALL persist for the session and starts as "default".

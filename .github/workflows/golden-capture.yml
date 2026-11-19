@@ -92,9 +92,9 @@ env:
   FEEDBACK_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.feedback-probe && 'true' || 'false' }}
   PROBE_TCL: ${{ github.event_name == 'workflow_dispatch' && inputs.probe-tcl || '' }}
   # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
-  # 1.4). "true" makes `capture` restore them, fetch the missing ones and save them. Off until a case reads
-  # them (the LEFDEF-RT-<lib> cases and LEFDEF-240 of task 15.5, as `[[external]] set` inputs).
-  FETCH_LEF_SETS: "false"
+  # 1.4). "true" makes `capture` restore them, fetch the missing ones and save them. On since the M6 round 3:
+  # the LEFDEF-RT-<lib> cases and LEFDEF-240 of task 15.5 read them as `[[external]] set` inputs.
+  FETCH_LEF_SETS: "true"
 
 jobs:
   # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
@@ -779,6 +779,21 @@ jobs:
           python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
           cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
           cmake --build --preset linux-release --target hefesto-cli
+      # produce copies sky130_fd_sc_hd.gds of the sky130-gds-sc set into the artifact for the captured
+      # inputs of OASIS-020/021 (KLayout strm2oas, strm2gds); same cache entry as ci.yml and capture.
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130-gds-sc
+        id: sky130_gds_sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+          key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+      - name: Fetch or verify sky130-gds-sc
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130-gds-sc --cli build/linux-release/src/cli/hefesto-cli
       # A failed case fails the job, but the tools still run and report (the steps below).
       - name: Write Hefesto's OASIS files
         shell: bash

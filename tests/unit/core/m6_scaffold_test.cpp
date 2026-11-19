@@ -182,7 +182,11 @@ TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m
 
   // lef read/datestamp (LEFR) and lef write/writeall/nocheck (LEFW) are
   // implemented: tests/unit/lef/read/ and tests/unit/lef/write/.
-  check_not_implemented(s.run("def read top.def -labels"), "def read");
+  // def read is DEFR's (tests/unit/def/read/): the dispatcher hands it over,
+  // so a missing file reports DEF-READ-005, not CORE-NOTIMPL-006.
+  const auto def_read = s.run("def read top.def -labels");
+  REQUIRE_FALSE(def_read.ok());
+  CHECK(def_read.diagnostics.front().code == "DEF-READ-005");
   check_not_implemented(s.run("def write"), "def write");
 }
 

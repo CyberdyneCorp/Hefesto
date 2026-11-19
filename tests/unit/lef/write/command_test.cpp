@@ -113,7 +113,7 @@ TEST_CASE("def write options are ignored with a note", "[cap:lef-write][req:lef 
   CHECK(w.s.exists("top.lef"));
 }
 
-TEST_CASE("-hide and -pinonly take a following number as their distance", "[cap:lef-write][req:Distance option values]") {
+TEST_CASE("lef write -hide and -pinonly take a following number as their distance", "[cap:lef-write][req:Distance option values]") {
   Shown w;
   w.top->flags().fixed_bbox = true;
   w.s.property(*w.top, "FIXED_BBOX", db::DimensionList{{0, 0, 100, 200}});
