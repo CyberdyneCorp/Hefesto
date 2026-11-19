@@ -21,8 +21,6 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/lef/command/command.hpp"
-#include "hefesto/lef/write/macro.hpp"
-#include "hefesto/lef/write/number.hpp"
 #include "hefesto/oasis/codec/cblock.hpp"
 #include "hefesto/oasis/codec/validate.hpp"
 #include "hefesto/oasis/command/command.hpp"
@@ -182,11 +180,8 @@ TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m
   CHECK(no_window.diagnostics.front().text == "Point to a window first");
   s.state.command_point = cmd::PointerState{};
 
-  // `lef read` and `lef datestamp` are LEFR's (tests/unit/lef/read/).
-  for (const auto* name : {"write", "writeall", "nocheck"}) {
-    check_not_implemented(s.run("lef " + std::string{name}), "lef " + std::string{name});
-  }
-  check_not_implemented(s.run("lef writea -notop"), "lef writeall");  // unique prefix
+  // lef read/datestamp (LEFR) and lef write/writeall/nocheck (LEFW) are
+  // implemented: tests/unit/lef/read/ and tests/unit/lef/write/.
   check_not_implemented(s.run("def read top.def -labels"), "def read");
   check_not_implemented(s.run("def write"), "def write");
 }
@@ -284,14 +279,6 @@ TEST_CASE("the M6 area-contract stubs answer their documented values", "[m6-scaf
   REQUIRE(groups.size() == 2);
   CHECK(groups[1] == oasis::RepetitionGroup{db::Point{10, 0}, {}});
 
-  CHECK(lef::format_distance(0.5F, lef::LefUnits{}).empty());
-  editor::EditorState state;
-  db::CellDef cell{"top", 1};
-  lef::MacroBuilder builder{state, cell};
-  check_not_implemented(builder.flatten());
-  check_not_implemented(builder.type_sets());
-  check_not_implemented(builder.pins());
-  check_not_implemented(builder.antenna());
-  std::string out;
-  check_not_implemented(builder.geometry(out));
+  // lef::format_distance and lef::MacroBuilder are implemented (LEFW):
+  // tests/unit/lef/write/.
 }

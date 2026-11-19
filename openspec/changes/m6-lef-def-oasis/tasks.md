@@ -166,7 +166,7 @@ How this plan runs:
 
 ## 6. LEFW: lef-write and the lef write commands
 
-- [ ] 6.1 Implement the command surface:
+- [x] 6.1 Implement the command surface:
   - `lef write` and its argument grammar;
   - distance option values;
   - `writeall` scope and order (Q-LEFDEF-41 through `UseIndex::enumerate_all`);
@@ -175,8 +175,10 @@ How this plan runs:
   - help.
 
   Verify the `[req:Command dispatch and target cell]`, `[req:lef write argument grammar]`, `[req:Distance option values]`, `[req:lef writeall arguments and scope]`, `[req:writeall macro order]`, `[req:Output file naming]`, `[req:lef nocheck net list]` and `[req:Help text]` tests.
-- [ ] 6.2 Implement the output scale and database units (Q-LEFDEF-34 per mode) and the float32 `lefPrint` formatting (Q-LEFDEF-45). Verify the `[req:Output scale and LEF database units]` and `[req:Distance number formatting]` tests, with pinned values for `-0.000`, half-grid rounding and LEFDEF-102/105's units.
-- [ ] 6.3 Implement:
+  As landed: `lef/write/args.{hpp,cpp}` (private), called from the dispatcher for `lef write|writeall|nocheck` before its window check; the target is the selected cell, the window root, the box cell, or (a script with a command point) the edit root. `LefWriteOptions` gained `loader` (writeall subtree, `gds::command_subtree_loader`) and `progress` (interrupt). With magic-compat ON a typed name that cannot be opened is retried as `<cell>.lef`, as lefFileOpen does (OFF: only for the cell file path; spec updated, no Q-row). Messages LEF-WRITE-001..011.
+- [x] 6.2 Implement the output scale and database units (Q-LEFDEF-34 per mode) and the float32 `lefPrint` formatting (Q-LEFDEF-45). Verify the `[req:Output scale and LEF database units]` and `[req:Distance number formatting]` tests, with pinned values for `-0.000`, half-grid rounding and LEFDEF-102/105's units.
+  As landed: `number.hpp` adds `output_scale`, `database_units` and `format_real`; `LefUnits` defaults to Magic's 1000. The session units change only after a successful header write.
+- [x] 6.3 Implement:
   - the file grammar and single-cell layout;
   - the library header (PROPERTYDEFINITIONS in hash order, Q-LEFDEF-30);
   - SITE blocks (Q-LEFDEF-33 per mode);
@@ -184,7 +186,8 @@ How this plan runs:
   - the magic-to-LEF name.
 
   Verify each `[req:…]` test, one per mode.
-- [ ] 6.4 Implement:
+  As landed: `header.cpp`. With magic-compat ON the PROPERTYDEFINITIONS keys follow lefGetProperties' parse (empty key after a run of spaces) and writeall reads keys and sites from Magic's last 100-entry stack block only; `-tech` writes via records of a LEF/DEF read with ON (Magic's via-cell test never fires) and skips them OFF (spec updated, no Q-rows).
+- [x] 6.4 Implement:
   - macro source geometry and the layer masks (type sets R, H, W, P, G, D; Q-LEFDEF-40);
   - the boundary (Q-LEFDEF-53);
   - the header lines;
@@ -193,7 +196,8 @@ How this plan runs:
   - antenna areas and the well set (`extract::StyleView`, EXTSUB task 9.3, Open Question 2 (a)).
 
   Verify the `[req:…]` tests, including the LEFDEF-118/119 antenna values.
-- [ ] 6.5 Implement:
+  As landed: `macro.cpp`, `pins.cpp`. `MacroBuilder` reshaped (`MacroContext`, `MacroOptions`, pimpl); the StyleView is read per write with `StyleView::from_technology` (no session hand-off yet). Port indices are visited from the labels present (no 0..max loop); antenna areas are 64-bit.
+- [x] 6.5 Implement:
   - default, pin-only, hidden-detail (zero and positive setback, Q-LEFDEF-37, 51 per mode), degenerate-setback and top-layer pin geometry;
   - geometry record emission in tile order (Q-LEFDEF-39 per mode);
   - contact cut records (Q-LEFDEF-52);
@@ -201,8 +205,11 @@ How this plan runs:
   - obstructions without hiding, with zero setback and with positive setback (Q-LEFDEF-38 per mode, Q-LEFDEF-47).
 
   Verify each `[req:…]` test, one per mode for every compat decision.
-- [ ] 6.6 Implement the macro PROPERTY lines, names written verbatim with the warning (Q-LEFDEF-35), the write side effects and the progress messages. Verify their `[req:…]` tests.
-- [ ] 6.7 Keep every function's cognitive complexity at most 15, or at most 25 with a flag for the hide passes, and verify it with the tooling on `lef/write/`. Verify that `check_requirement_coverage.py --capability lef-write` reports 37 of 37.
+  As landed: `geometry.cpp`, `chunk.cpp`, `obstruction.cpp`. A cut round with the PIN header still pending writes nothing with magic-compat ON (Magic's search stops), the header and the cuts with OFF (spec updated, no Q-row). Magic's tile-mark reuse in the yank planes is not emulated (cuts are written once per block by type and rectangle).
+- [x] 6.6 Implement the macro PROPERTY lines, names written verbatim with the warning (Q-LEFDEF-35), the write side effects and the progress messages. Verify their `[req:…]` tests.
+  As landed: a failed open leaves the session unchanged (units, selection); the selection is cleared after a macro is written.
+- [x] 6.7 Keep every function's cognitive complexity at most 15, or at most 25 with a flag for the hide passes, and verify it with the tooling on `lef/write/`. Verify that `check_requirement_coverage.py --capability lef-write` reports 37 of 37.
+  As landed: clang-tidy cognitive complexity over `lef/write/`: 99 functions, worst 12 (`parse_write_all`); the hide passes needed no 25 allowance. `check_requirement_coverage.py --capability lef-write`: 37 of 37. 81 test cases in `tests/unit/lef/write/`.
 
 ## 7. DEFR: def-read
 
