@@ -14,6 +14,12 @@
 // its PLACEMENTs name, consecutive duplicates removed (a PLACEMENT that
 // reuses the modal cell names the previous one's, a duplicate).
 //
+// The pass streams: the file is not held in memory, nor the decompressed
+// stream. Raw bytes are kept only from the last record reached to what the
+// decoder has read ahead, one CBLOCK's data at a time, and each cell's hash
+// runs as its bytes go by (a hostile file of many small CBLOCKs, each
+// inflating 256 times, used to be held whole).
+//
 // The stamp procedure is gds-read's calmaStructStamp (memoized, cycles
 // cut, each child stamp folded as 4 big-endian bytes, the final mix and
 // mask). It mirrors gds/read/stamps.cpp until INTEGRATION shares that one
@@ -25,7 +31,7 @@
 
 #include <algorithm>
 #include <array>
-#include <map>
+#include <functional>
 #include <unordered_map>
 
 #include "hefesto/gds/stream/io.hpp"
@@ -50,115 +56,119 @@ std::uint64_t fnv(std::uint64_t h, std::span<const std::byte> bytes) {
   return h;
 }
 
-/// A ByteSource over bytes held elsewhere.
-class SpanSource final : public gds::ByteSource {
+/// The source the decoder reads through, keeping the bytes it has read
+/// from the last position the stamp pass still needs.
+class KeepingSource final : public gds::ByteSource {
  public:
-  explicit SpanSource(std::span<const std::byte> bytes) : bytes_(bytes) {}
+  explicit KeepingSource(gds::ByteSource& inner) : inner_(inner), base_(inner.position()) {}
+
   diag::Outcome<std::size_t> read(std::span<std::byte> out) override {
-    const std::size_t n = std::min(out.size(), bytes_.size() - offset_);
-    std::copy_n(bytes_.begin() + static_cast<std::ptrdiff_t>(offset_), n, out.begin());
-    offset_ += n;
-    return n;
+    auto got = inner_.read(out);
+    if (got.ok()) {
+      kept_.insert(kept_.end(), out.begin(), out.begin() + static_cast<std::ptrdiff_t>(got.value()));
+    }
+    return got;
   }
-  [[nodiscard]] std::uint64_t position() const noexcept override { return offset_; }
+  [[nodiscard]] std::uint64_t position() const noexcept override { return inner_.position(); }
   diag::Status seek(std::uint64_t offset) override {
-    offset_ = static_cast<std::size_t>(std::min<std::uint64_t>(offset, bytes_.size()));
-    return diag::Done{};
+    kept_.clear();
+    base_ = offset;
+    return inner_.seek(offset);
+  }
+
+  /// The kept bytes of [from, to) (the part that is kept).
+  [[nodiscard]] std::span<const std::byte> bytes(std::uint64_t from, std::uint64_t to) const {
+    const std::uint64_t end = base_ + kept_.size();
+    from = std::clamp(from, base_, end);
+    to = std::clamp(to, from, end);
+    return std::span<const std::byte>{kept_}.subspan(static_cast<std::size_t>(from - base_),
+                                                     static_cast<std::size_t>(to - from));
+  }
+
+  /// The bytes before `offset` are no longer needed.
+  void drop_before(std::uint64_t offset) {
+    const auto n = static_cast<std::size_t>(std::min<std::uint64_t>(offset - std::min(offset, base_), kept_.size()));
+    if (n >= kCompactAt && 2 * n >= kept_.size()) {
+      kept_.erase(kept_.begin(), kept_.begin() + static_cast<std::ptrdiff_t>(n));
+      base_ += n;
+    }
   }
 
  private:
-  std::span<const std::byte> bytes_;
-  std::size_t offset_ = 0;
+  static constexpr std::size_t kCompactAt = 1U << 16U;
+
+  gds::ByteSource& inner_;
+  std::vector<std::byte> kept_;
+  std::uint64_t base_;  // the stream offset of kept_[0]
 };
 
-std::vector<std::byte> read_all(gds::ByteSource& source) {
-  std::vector<std::byte> out;
-  std::array<std::byte, 65536> buffer{};
-  if (!source.seek(0).ok()) {
-    return out;
-  }
-  for (;;) {
-    const auto got = source.read(buffer);
-    if (!got.ok() || got.value() == 0) {
-      return out;
-    }
-    out.insert(out.end(), buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(got.value()));
-  }
-}
+using ByteFeed = std::function<void(std::span<const std::byte>)>;
 
-/// One decoded record: its id, its start in the decompressed stream and,
-/// for a PLACEMENT, the cell it names.
-struct Mark {
-  RecordId id = RecordId::pad;
-  std::uint64_t start = 0;
-  std::optional<NameRef> child;
-  std::optional<NameRef> cell;  // CELL records
-};
-
-/// The file's records and its decompressed stream.
-class Stream {
+/// The decompressed record stream (each CBLOCK replaced by its inflated
+/// data), produced in order: `start` feeds every byte before a record and
+/// returns the record's position in it.
+class LogicalStream {
  public:
-  explicit Stream(std::span<const std::byte> raw) : raw_(raw) {}
+  LogicalStream(KeepingSource& raw, ByteFeed feed) : raw_(raw), feed_(std::move(feed)) {}
 
-  void take(const Record& r) {
-    Mark m{r.id, start_of(r), std::nullopt, std::nullopt};
+  std::uint64_t start(const Record& r) {
+    if (r.in_cblock) {
+      feed_block(static_cast<std::size_t>(std::min<std::uint64_t>(r.cblock_position, block_.size())));
+      return block_start_ + r.cblock_position;
+    }
+    feed_block(block_.size());
+    block_.clear();
+    block_fed_ = 0;
+    feed(raw_.bytes(raw_pos_, r.offset));
+    raw_pos_ = std::max(raw_pos_, r.offset);
+    raw_.drop_before(raw_pos_);
     if (r.id == RecordId::cblock) {
       inflate(r);
-      m.start = cblocks_[r.offset];  // where its data starts
-    } else if (r.id == RecordId::cell_by_reference || r.id == RecordId::cell_by_name) {
-      m.cell = NameRef{r.name, r.reference};
-    } else if (r.element && r.element->kind == ElementKind::placement) {
-      m.child = NameRef{r.element->name, r.element->reference};
     }
-    marks_.push_back(std::move(m));
-  }
-
-  /// Appends the bytes after the last CBLOCK.
-  void finish() { logical_.insert(logical_.end(), raw_.begin() + static_cast<std::ptrdiff_t>(cursor_), raw_.end()); }
-
-  [[nodiscard]] const std::vector<Mark>& marks() const noexcept { return marks_; }
-  [[nodiscard]] std::span<const std::byte> bytes(std::uint64_t from, std::uint64_t to) const {
-    to = std::min<std::uint64_t>(to, logical_.size());
-    from = std::min(from, to);
-    return std::span<const std::byte>{logical_}.subspan(from, to - from);
+    return pos_;
   }
 
  private:
-  [[nodiscard]] std::uint64_t start_of(const Record& r) const {
-    if (r.in_cblock) {
-      const auto found = cblocks_.find(r.offset);
-      return found != cblocks_.end() ? found->second + r.cblock_position : logical_.size();
-    }
-    return logical_.size() + (r.offset - std::min<std::uint64_t>(r.offset, cursor_));
+  void feed(std::span<const std::byte> bytes) {
+    pos_ += bytes.size();
+    feed_(bytes);
   }
 
-  /// The CBLOCK at r.offset replaced by its data (the decoder has checked
-  /// its header and sizes).
+  void feed_block(std::size_t to) {
+    if (to > block_fed_) {
+      feed(std::span<const std::byte>{block_}.subspan(block_fed_, to - block_fed_));
+      block_fed_ = to;
+    }
+  }
+
+  /// The CBLOCK at r.offset: its data becomes the current block (the
+  /// decoder has checked its header and sizes, and has read it all).
   void inflate(const Record& r) {
-    logical_.insert(logical_.end(), raw_.begin() + static_cast<std::ptrdiff_t>(cursor_),
-                    raw_.begin() + static_cast<std::ptrdiff_t>(r.offset));
-    ByteCursor c{raw_, static_cast<std::size_t>(r.offset)};
+    const std::span<const std::byte> raw = raw_.bytes(r.offset, raw_.position());
+    ByteCursor c{raw, 0};
     (void)read_unsigned(c);  // record id 34
     (void)read_unsigned(c);  // compression type 0
     const auto uncompressed = read_unsigned(c);
     const auto compressed = read_unsigned(c);
-    cblocks_[r.offset] = logical_.size();
-    if (!uncompressed.ok() || !compressed.ok() || compressed.value() > raw_.size() - c.offset) {
-      cursor_ = raw_.size();
+    block_start_ = pos_;
+    if (!uncompressed.ok() || !compressed.ok() || compressed.value() > raw.size() - c.offset) {
+      raw_pos_ = raw_.position();
       return;
     }
-    auto data = inflate_cblock(raw_.subspan(c.offset, compressed.value()), uncompressed.value(), uncompressed.value());
+    auto data = inflate_cblock(raw.subspan(c.offset, compressed.value()), uncompressed.value(), uncompressed.value());
     if (data.ok()) {
-      logical_.insert(logical_.end(), data.value().begin(), data.value().end());
+      block_ = std::move(data).value();
     }
-    cursor_ = c.offset + compressed.value();
+    raw_pos_ = r.offset + c.offset + compressed.value();
   }
 
-  std::span<const std::byte> raw_;
-  std::vector<std::byte> logical_;
-  std::uint64_t cursor_ = 0;                      // raw bytes before it are in logical_
-  std::map<std::uint64_t, std::uint64_t> cblocks_;  // CBLOCK file offset -> start of its data in logical_
-  std::vector<Mark> marks_;
+  KeepingSource& raw_;
+  ByteFeed feed_;
+  std::uint64_t raw_pos_ = 0;  // the raw bytes before it have been fed (or replaced by a block)
+  std::uint64_t pos_ = 0;      // the bytes fed so far
+  std::vector<std::byte> block_;
+  std::uint64_t block_start_ = 0;
+  std::size_t block_fed_ = 0;
 };
 
 bool ends_cell(RecordId id) {
@@ -166,6 +176,75 @@ bool ends_cell(RecordId id) {
          id == RecordId::xname_implicit || id == RecordId::xname ||
          (id >= RecordId::cellname_implicit && id <= RecordId::layername_text);
 }
+
+bool same(const NameRef& a, const NameRef& b) {
+  return a.name == b.name && a.reference == b.reference;
+}
+
+/// A cell whose name is still a reference (CELLNAME records may come last).
+struct CellRecord {
+  NameRef name;
+  std::uint64_t start = 0;
+  std::uint64_t end = 0;
+  std::uint64_t hash = kFnvOffset;
+  std::vector<NameRef> children;
+};
+
+/// Follows the records and the bytes between them, hashing the open cell's
+/// content as it goes.
+class CellHasher {
+ public:
+  void bytes(std::span<const std::byte> b) {
+    if (open_ && hashing_) {
+      running_ = fnv(running_, b);
+    }
+  }
+
+  void record(const Record& r, std::uint64_t at) {
+    if (open_) {
+      reach(at);
+    }
+    if (open_ && ends_cell(r.id)) {
+      cells_.push_back(*std::move(open_));
+      open_.reset();
+    }
+    if (r.id == RecordId::cell_by_reference || r.id == RecordId::cell_by_name) {
+      open_ = CellRecord{NameRef{r.name, r.reference}, at, at, kFnvOffset, {}};
+      hashing_ = false;
+    } else if (open_ && r.element && r.element->kind == ElementKind::placement) {
+      add_child(NameRef{r.element->name, r.element->reference});
+    }
+    after_content_ = r.id != RecordId::pad && r.id != RecordId::cblock && !ends_cell(r.id);
+  }
+
+  [[nodiscard]] std::vector<CellRecord>& cells() noexcept { return cells_; }
+
+ private:
+  /// A record starts at `at`: the cell's bytes start at the first record
+  /// after CELL and end where the record after a content record starts.
+  void reach(std::uint64_t at) {
+    if (!hashing_) {
+      hashing_ = true;
+      running_ = kFnvOffset;
+      open_->end = at;
+    } else if (after_content_) {
+      open_->hash = running_;
+      open_->end = at;
+    }
+  }
+
+  void add_child(NameRef child) {
+    if (open_->children.empty() || !same(open_->children.back(), child)) {
+      open_->children.push_back(std::move(child));
+    }
+  }
+
+  std::optional<CellRecord> open_;
+  bool hashing_ = false;
+  bool after_content_ = false;
+  std::uint64_t running_ = kFnvOffset;
+  std::vector<CellRecord> cells_;
+};
 
 // --- calmaStructStamp (gds/read/stamps.cpp) ------------------------------------
 
@@ -260,59 +339,47 @@ void stamp(Table& t, std::size_t root) {
 
 // --- the cells ---------------------------------------------------------------------
 
-/// The entry of the cell whose CELL record is marks[i]; nullopt when the
-/// stream ends inside it.
-std::optional<Entry> cell_entry(const Stream& stream, const NameTables& names, std::size_t i) {
-  const std::vector<Mark>& marks = stream.marks();
+/// The stamp entry of `c`, its names resolved; consecutive children that
+/// resolve to the same name are one.
+Entry entry_of(CellRecord& c, const NameTables& names) {
   Entry e;
-  e.name = read_detail::cell_name(names, *marks[i].cell);
-  e.start = marks[i].start;
-  const std::uint64_t from = i + 1 < marks.size() ? marks[i + 1].start : marks[i].start;
-  std::uint64_t to = from;
-  for (std::size_t j = i + 1; j < marks.size(); ++j) {
-    const Mark& m = marks[j];
-    if (ends_cell(m.id)) {
-      e.end = to;
-      e.hash = fnv(kFnvOffset, stream.bytes(from, to));
-      return e;
-    }
-    if (m.id != RecordId::pad && m.id != RecordId::cblock && j + 1 < marks.size()) {
-      to = marks[j + 1].start;
-    }
-    if (m.child) {
-      std::string child = read_detail::cell_name(names, *m.child);
-      if (e.children.empty() || e.children.back() != child) {
-        e.children.push_back(std::move(child));
-      }
+  e.name = read_detail::cell_name(names, c.name);
+  e.start = c.start;
+  e.end = c.end;
+  e.hash = c.hash;
+  for (const NameRef& ref : c.children) {
+    std::string child = read_detail::cell_name(names, ref);
+    if (e.children.empty() || e.children.back() != child) {
+      e.children.push_back(std::move(child));
     }
   }
-  return std::nullopt;
+  c.children = {};
+  return e;
 }
 
 }  // namespace
 
 gds::StampTable content_stamps(gds::ByteSource& source) {
-  const std::vector<std::byte> raw = read_all(source);
-  SpanSource input{raw};
+  if (!source.seek(0).ok()) {
+    return {};
+  }
+  KeepingSource input{source};
   Decoder decoder(input);
-  Stream stream{raw};
+  CellHasher cells;
+  LogicalStream stream{input, [&cells](std::span<const std::byte> b) { cells.bytes(b); }};
   for (;;) {
     auto record = decoder.next();
     if (!record.ok() || !record.value()) {
       break;
     }
-    stream.take(*record.value());
+    const Record& r = *record.value();
+    cells.record(r, stream.start(r));
   }
-  stream.finish();
   Table table;
-  for (std::size_t i = 0; i < stream.marks().size(); ++i) {
-    if (!stream.marks()[i].cell) {
-      continue;
-    }
-    if (auto entry = cell_entry(stream, decoder.names(), i)) {
-      table.by_name.try_emplace(entry->name, table.entries.size());
-      table.entries.push_back(std::move(*entry));
-    }
+  for (CellRecord& c : cells.cells()) {
+    Entry e = entry_of(c, decoder.names());
+    table.by_name.try_emplace(e.name, table.entries.size());
+    table.entries.push_back(std::move(e));
   }
   gds::StampTable out;
   out.reserve(table.entries.size());

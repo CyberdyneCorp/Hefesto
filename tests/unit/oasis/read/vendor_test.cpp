@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <string>
 
 #include "hefesto/db/property.hpp"
 #include "hefesto/gds/read/vendor.hpp"
@@ -175,6 +176,38 @@ TEST_CASE("content-hash timestamps for read-only OASIS cells",
     CHECK(one.cell("top").timestamp() == stamp_named(a, "top"));
     CHECK(two.cell("leaf").timestamp() == one.cell("leaf").timestamp());
     CHECK(two.cell("top").timestamp() == one.cell("top").timestamp());
+  }
+  SECTION("a large file of many CBLOCKs streams through the stamp pass") {
+    // Regression: the pass held the whole file and its inflated stream (and
+    // a record list); it now keeps only the bytes since the last record and
+    // one CBLOCK's data. Half a MB of records crosses its compaction point.
+    const auto many = [](std::int32_t compress) {
+      Oas f(false, compress, 1000.0);
+      for (int c = 0; c < 200; ++c) {
+        f.cell("c" + std::to_string(c));
+        for (std::int64_t x = 0; x < 300; ++x) {
+          f.add(rect(static_cast<std::uint32_t>(1 + (x % 7)), 0, x * 300 + c, x % 13, 100 + c, 100 + x));
+        }
+        if (c > 0) {
+          f.add(place("c" + std::to_string(c - 1), c, 0));
+        }
+      }
+      return f.bytes();
+    };
+    const Bytes plain = many(0);
+    const Bytes packed = many(6);
+    REQUIRE(plain.size() > (std::size_t{1} << 18));  // several compactions (at 64 KiB)
+    const auto a = stamps_of(plain);
+    const auto b = stamps_of(packed);
+    REQUIRE(a.size() == 200);
+    REQUIRE(b.size() == 200);
+    for (std::size_t i = 0; i < a.size(); ++i) {
+      CHECK(a[i].name == b[i].name);
+      CHECK(a[i].start == b[i].start);
+      CHECK(a[i].end == b[i].end);
+      CHECK(a[i].stamp == b[i].stamp);
+    }
+    CHECK(stamp_named(a, "c199") != stamp_named(a, "c198"));
   }
   SECTION("a child's content changes its parent's stamp, not the other way round") {
     const auto a = stamps_of(library(0, 100));
