@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "case": "OASIS-012",
+  "tool": "gdstk",
+  "op": "make-validation-set",
+  "source": null,
+  "options": {},
+  "versions": {
+    "klayout": "KLayout 0.30.0",
+    "gdstk": "1.0.2"
+  },
+  "sha256": {
+    "crc32.gds": "bd377b9f956b65980f7b39934b5332f308ab5e4b2f4f9d199afd3f9c17fafd77",
+    "crc32.oas": "8042433a576f9ba56d5e1ba6eba62e86d6a5eca8f1c676bcaa1eae8feb705a3c",
+    "checksum32.gds": "4c1cb65055e2e6d16d7b6ba9d3f8e7bfcd486589b2bfc888bf26d57e05763ca4",
+    "checksum32.oas": "c5b03810e4db79cfdadbc986f867e8c1780fddee1cdfe19057b76bb801353534",
+    "crc32_bad.gds": "b154dd90a6a26def0827f30c4b27ce33ae348709a8ff2ca399cd2de30f1cfbad",
+    "crc32_bad.oas": "eeaecd51ac7eccae1c0fe70b83f14ce65a05657f4bfbcb66e6ca8f8b3657b40d",
+    "checksum32_bad.gds": "d5d36d3b61116411ba331c490a20c499055ecd4bc57ea2595fcb43b7cc31b3de",
+    "checksum32_bad.oas": "0882d93ca8354597991b07c4b3942d4c0d2892d64e98773e2f69c51de92abbb3"
+  }
+}

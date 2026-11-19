@@ -1733,4 +1733,39 @@ deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
 reason = "authored before its capture in golden-capture.yml and before OASCMD makes it replay (m6-lef-def-oasis task 15.2)"
 
+[OASIS-012]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASFMT makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-020]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-021-ordering]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-021-flatten]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-021-flatglob]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-021-noduplicates]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
+[OASIS-021-unique]
+deferred = "M6"
+outputs = ["cells.sha256", "report.txt"]
+reason = "authored before its capture in golden-capture.yml and before OASR makes it replay (m6-lef-def-oasis task 15.2)"
+
 # --- END M6 deferrals ---

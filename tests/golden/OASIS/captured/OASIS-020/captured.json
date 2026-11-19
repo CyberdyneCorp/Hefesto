@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "case": "OASIS-020",
+  "tool": "klayout",
+  "op": "strm2oas-roundtrip",
+  "source": {
+    "set": "sky130-gds-sc",
+    "path": "sky130A/libs.ref/sky130_fd_sc_hd/gds/sky130_fd_sc_hd.gds"
+  },
+  "options": {
+    "strict": true
+  },
+  "versions": {
+    "klayout": "KLayout 0.30.0",
+    "gdstk": "1.0.2"
+  },
+  "sha256": {
+    "sky130_fd_sc_hd.oas": "b6feafd45a0b9c7534051f9495a64b8ecafd7d608e4c93e118ea7fdc833cc7c7",
+    "sky130_fd_sc_hd.gds.gz": "bd40732a4af3e8bec8f59f4e1d5e389ad4765b3f2ca634d840cd9d7f2f46e853"
+  }
+}
