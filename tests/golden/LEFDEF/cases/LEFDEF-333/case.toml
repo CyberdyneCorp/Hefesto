@@ -14,6 +14,7 @@ capability = "def-write"
 requirements = ["BLOCKAGES section"]
 tool = "magic"
 description = "floating unlabeled metal1 net (not port/special). Captures: BLOCKAGES or crash."
+capture_blocked = "GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"
 
 [reference]
 script = "input/commands.tcl"

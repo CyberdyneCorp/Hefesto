@@ -14,6 +14,7 @@ capability = "oasis-read"
 requirements = ["Post-order reading and flattening options", "Read option set"]
 tool = "magic"
 description = "The sky130 standard-cell library read with unique (OASIS-020's inputs)."
+capture_blocked = "GOLDEN: Magic's output differs between captures (cells.sha256 of sky130_fd_sc_hd__macro_sparecell_1, golden-capture run 44515678560), so it is left uncaptured; to investigate"
 
 [reference]
 script = "input/commands.tcl"

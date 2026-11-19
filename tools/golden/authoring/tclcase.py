@@ -99,6 +99,7 @@ class TclCase:
     streams: bool = True                               # compare stdout and stderr
     output_sources: dict[str, str] = field(default_factory=dict)  # output key -> its source (default: the key)
     tool: str = "magic"                                # the reference tool (oasis-spec: SPEC_ARGV)
+    capture_blocked: str = ""                          # why Magic cannot capture it yet (goldenlib/case.py)
 
     @property
     def area(self) -> str:
@@ -179,7 +180,8 @@ def case_toml(case: TclCase) -> str:
              "schema = 1", f"id = {_toml_str(case.id)}", f"area = {_toml_str(case.area)}",
              f"capability = {_toml_str(case.capability)}", f"requirements = {_toml_list(case.requirements)}",
              f"tool = {_toml_str(case.tool)}", f"description = {_toml_str(case.description)}",
-             *(["gds_rt = true"] if case.gds_rt else []), "",
+             *(["gds_rt = true"] if case.gds_rt else []),
+             *([f"capture_blocked = {_toml_str(case.capture_blocked)}"] if case.capture_blocked else []), "",
              "[reference]", 'script = "input/commands.tcl"', f"argv = {_toml_list(reference_argv(case))}",
              *(['display = "xvfb"'] if case.gui else []), *(STDIN if case.stdin else []),
              *(["allow_nonzero_exit = true"] if case.timeout or case.allow_nonzero_exit else []),

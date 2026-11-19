@@ -6,9 +6,9 @@
 (``sky130-lef``, ``gf180mcu-lef``, ``ihp-lef``; design D2 "PDK row: task 1.2 facts"): in a fresh
 session with the PDK's rc file and ``random seed 1``, ``lef read`` of the library's tech LEF and
 cell LEF, a wrapper cell that places every cell the reads created (sorted by name, each at the
-origin), then ``lef writeall -notop`` of the wrapper. The written LEF is too large to commit, so
-``expected/`` keeps its SHA-256 and a per-macro summary (goldenlib/derived.py ``digest`` and
-``lef-summary``).
+origin), then ``select clear`` and ``lef writeall -notop`` of the wrapper. The written LEF is too
+large to commit, so ``expected/`` keeps its SHA-256 and a per-macro summary (goldenlib/derived.py
+``digest`` and ``lef-summary``).
 
 LEFDEF-240 (tests/golden/LEFDEF/CASES.md): a small OpenROAD-style sky130 DEF (an inverter chain
 with a tap and a fill cell, pins, power rails and routed nets) read after the sky130_fd_sc_hd tech
@@ -81,7 +81,9 @@ def rt_body(lib: Library) -> str:
         "foreach cell $rt_new {",
         "    if {[catch {getcell $cell} err]} {puts [list lefdef-rt getcell-error $cell $err]}",
         "}",
-        tclcase.p("lef writeall -notop"),
+        # getcell selects the instance it places, and lef writeall writes the selected cell's
+        # hierarchy when there is a selection (lefCmd.c CmdGetSelectedCell): clear it first.
+        tclcase.p("select clear", "lef writeall -notop"),
     ])
 
 

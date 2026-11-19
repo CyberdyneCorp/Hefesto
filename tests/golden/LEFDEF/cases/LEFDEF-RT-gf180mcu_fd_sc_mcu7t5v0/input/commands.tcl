@@ -22,6 +22,7 @@ probe {box 0 0 0 0}
 foreach cell $rt_new {
     if {[catch {getcell $cell} err]} {puts [list lefdef-rt getcell-error $cell $err]}
 }
+probe {select clear}
 probe {lef writeall -notop}
 } scriptError]} {
     puts [list script-error $scriptError]

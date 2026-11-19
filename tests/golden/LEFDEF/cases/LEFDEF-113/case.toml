@@ -14,6 +14,7 @@ capability = "lef-write"
 requirements = ["Technology layers"]
 tool = "magic"
 description = "Tech with ~10 lef-section records incl. aliases, obstruction-only, bound, ignore, masterslice, overlap; `lef write -tech`. Captures: LAYER block order and contents."
+capture_blocked = "GOLDEN: the case's own lef section declares a bound layer the cell never paints, so Magic writes ORIGIN and SIZE from uninitialized data, different in every run (Q-LEFDEF-53); paint the boundary"
 
 [reference]
 script = "input/commands.tcl"

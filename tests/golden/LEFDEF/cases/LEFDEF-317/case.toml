@@ -14,6 +14,7 @@ capability = "def-write"
 requirements = ["Net classification"]
 tool = "magic"
 description = "top cell with vdd! (no port), A (port), labeled internal clkint, unlabeled net; extracted. Captures: SPECIALNETS / NETS membership and counts."
+capture_blocked = "GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"
 
 [reference]
 script = "input/commands.tcl"

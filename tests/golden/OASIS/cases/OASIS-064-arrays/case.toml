@@ -14,6 +14,7 @@ capability = "oasis-write"
 requirements = ["GDS-consistent content"]
 tool = "magic"
 description = "Round trip of layout arrays: oasis write then oasis read (Magic: gds write, gds read); the cells read back."
+capture_blocked = "GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input"
 
 [reference]
 script = "input/commands.tcl"

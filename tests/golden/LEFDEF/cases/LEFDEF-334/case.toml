@@ -14,6 +14,7 @@ capability = "def-write"
 requirements = ["Table enumeration order"]
 tool = "magic"
 description = "tech with 40+ lef layers forcing hash rebuild; several vias. Captures: order of VIAS and BLOCKAGES records."
+capture_blocked = "GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"
 
 [reference]
 script = "input/commands.tcl"

@@ -14,6 +14,7 @@ capability = "def-write"
 requirements = ["DEF net naming"]
 tool = "magic"
 description = "nets named net-1, a_n5#, x1/sig*b. Captures: DEF net names."
+capture_blocked = "GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"
 
 [reference]
 script = "input/commands.tcl"

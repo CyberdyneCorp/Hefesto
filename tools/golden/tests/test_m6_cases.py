@@ -191,6 +191,22 @@ class ExitCheckTest(unittest.TestCase):
         expected = sorted(cid for cid, d in known.items() if d.deferred == "M6")
         self.assertEqual([line.split(":", 1)[0] for line in m6_cases.exit_blockers()], expected)
 
+    def test_capture_blocked_cases_are_uncaptured_listed_blockers(self):
+        blockers = {line.split(":", 1)[0]: line for line in m6_cases.exit_blockers()}
+        by_id = {s.id: s for s in SPECS}
+        for cid in m6_cases.CAPTURE_BLOCKED:
+            with self.subTest(case=cid):
+                case = load_case(m6_cases.case_dir(by_id[cid]), COMPARATORS)
+                self.assertEqual(case.capture_blocked, m6_cases.BLOCKERS[cid])
+                self.assertFalse(case.is_captured)
+                self.assertIn(m6_cases.CAPTURE_BLOCKED_NOTE, blockers[cid])
+        others = [s.id for s in SPECS if s.capture_blocked and s.id not in m6_cases.CAPTURE_BLOCKED]
+        self.assertEqual(others, [])
+
+    def test_round_trip_clears_the_selection_before_writeall(self):
+        spec = next(s for s in LEFDEF if s.id in lefdef_pdk_cases.RT_CASES)
+        self.assertEqual(probes(spec)[-2:], ["select clear", "lef writeall -notop"])
+
 
 class LefSummaryTest(unittest.TestCase):
     """goldenlib/derived.py ``lef-summary``: the per-macro view of a LEFDEF-RT output."""

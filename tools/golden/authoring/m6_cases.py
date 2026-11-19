@@ -37,6 +37,7 @@ fails while a deferral, an open decision or an unwritten row is left. Moving a r
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import importlib.util
 import sys
 from pathlib import Path
@@ -84,9 +85,7 @@ BLOCKER_REASONS = {
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
     "MAGIC_FPE": ("GOLDEN: Magic exits with SIGFPE (status 136) in this case, so it has no capture; the case input needs a change, or Magic's crash becomes a Q-row"),
     "MAGIC_SEGV": ("GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"),
-    "RT": ("GOLDEN: the capture script's wrapper cell is not the window root (Magic: 'Cell lefdef_rt couldn't be read'), so lef writeall writes another file and lefdef_rt.lef is missing; fix lefdef_pdk_cases.py"),
-    "OAS064": ("GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input"),
-    "UNSTABLE": ("GOLDEN: Magic's output differs between captures (cells.sha256 of sky130_fd_sc_hd__macro_sparecell_1, golden-capture run 44515678560), so it is left uncaptured; to investigate"),
+    "RT": ("LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, so lef writeall wrote that cell's file; the script now clears the selection first)"),
 }
 BLOCKERS: dict[str, str] = {
     "LEFDEF-003": BLOCKER_REASONS["MAGIC_FPE"],
@@ -147,11 +146,17 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RT"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RT"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RT"],
-    "OASIS-021-unique": BLOCKER_REASONS["UNSTABLE"],
-    "OASIS-064-arrays": BLOCKER_REASONS["OAS064"],
-    "OASIS-064-uses": BLOCKER_REASONS["OAS064"],
+    **oasis_cases.CAPTURE_BLOCKED,
 }
 BLOCKER_PREFIX = "M6 exit blocker, "
+# The blockers Magic cannot capture yet (it crashes, its output differs between runs, it writes no
+# output): their case.toml carries the reason as ``capture_blocked``, so capture.py skips them and
+# golden-capture.yml stays green; they stay deferred to M6, so --exit-check lists them. The OASIS ones
+# are oasis_cases.CAPTURE_BLOCKED (that module writes the OASIS cases too).
+LEFDEF_CAPTURE_BLOCKED = ("LEFDEF-003", "LEFDEF-113", "LEFDEF-317", "LEFDEF-318", "LEFDEF-320", "LEFDEF-330",
+                          "LEFDEF-333", "LEFDEF-334")
+CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
+CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
@@ -248,8 +253,9 @@ REPLAYED: set[str] = {
 
 
 def written_specs() -> list[tclcase.TclCase]:
-    """Every case this driver writes."""
-    specs = [s for module in MODULES for s in module.specs()]
+    """Every case this driver writes; a CAPTURE_BLOCKED case carries its blocker as capture_blocked."""
+    specs = [dataclasses.replace(s, capture_blocked=BLOCKERS[s.id]) if s.id in LEFDEF_CAPTURE_BLOCKED else s
+             for module in MODULES for s in module.specs()]
     ids = [s.id for s in specs]
     duplicates = sorted({i for i in ids if ids.count(i) > 1})
     if duplicates:
@@ -297,7 +303,8 @@ def owner(spec: tclcase.TclCase) -> str:
 
 def deferral_reason(spec: tclcase.TclCase) -> str:
     if spec.id in BLOCKERS:
-        return f"{BLOCKER_PREFIX}{owner(spec)}; {BLOCKERS[spec.id]}"
+        note = CAPTURE_BLOCKED_NOTE if spec.id in CAPTURE_BLOCKED else ""
+        return f"{BLOCKER_PREFIX}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
     ext = EXT_NOTE if spec.id in lefdef_cases.DEF_NET_CASES else ""
     task = "15.2" if spec.area == "OASIS" else "15.1"
     return REASON.format(owner=owner(spec), task=task) + ext

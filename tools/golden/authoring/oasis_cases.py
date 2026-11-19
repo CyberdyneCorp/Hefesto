@@ -44,6 +44,7 @@ them, and ``--sync-captured DIR`` copies the artifact's ``captured/<case>/`` fil
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import re
 import sys
@@ -71,9 +72,20 @@ DEVIATIONS = {
     "OASIS-061": "Q-OASIS-2 (amended 2026-11-18): no commercial OASIS reader; KLayout and gdstk readers only",
 }
 
+# Cases Magic cannot capture yet (m6_cases.py lists them as M6 exit blockers): their case.toml carries
+# the reason as ``capture_blocked`` (goldenlib/case.py), so capture.py skips them.
+CAPTURE_BLOCKED = {
+    "OASIS-021-unique": "GOLDEN: Magic's output differs between captures (cells.sha256 of "
+                        "sky130_fd_sc_hd__macro_sparecell_1, golden-capture run 44515678560), so it is left "
+                        "uncaptured; to investigate",
+    "OASIS-064-arrays": "GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input",
+    "OASIS-064-uses": "GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input",
+}
+
 
 def specs() -> list[tclcase.TclCase]:
-    cases = [case for family in FAMILIES for case in family.specs()]
+    cases = [dataclasses.replace(case, capture_blocked=CAPTURE_BLOCKED[case.id]) if case.id in CAPTURE_BLOCKED
+             else case for family in FAMILIES for case in family.specs()]
     ids = [c.id for c in cases]
     duplicates = sorted({i for i in ids if ids.count(i) > 1})
     if duplicates:
