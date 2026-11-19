@@ -201,6 +201,21 @@ TEST_CASE("def writeall, datestamp and nocheck answer as in Magic", "[m6-scaffol
   CHECK(s.take_printed() == "The \"nocheck\" option is only for LEF writes.\n");
 }
 
+// Regression: these three printed "Point to a window first" with no window
+// (the window check came first); def-read "Command context" (Q-LEFDEF-86,
+// platform) needs none for subcommands without a target cell.
+TEST_CASE("def writeall, datestamp and nocheck answer with no window",
+          "[m6-scaffold][cap:def-read][req:Command context]") {
+  Session s;
+  REQUIRE_FALSE(s.state.command_point.has_value());
+  REQUIRE(s.run("def writeall").ok());
+  CHECK(s.take_printed() == "Sorry, can't write hierarchical DEF at this time.\nTry \"def write\"\n");
+  REQUIRE(s.run("def datestamp 5").ok());
+  CHECK(s.take_printed() == "The \"datestamp\" option is only for LEF reads.\n");
+  REQUIRE(s.run("def nocheck vdd").ok());
+  CHECK(s.take_printed() == "The \"nocheck\" option is only for LEF writes.\n");
+}
+
 // --- tasks.md 2.3: the oasis command (design D15) -----------------------------
 
 TEST_CASE("oasis has the full option table of oasis-command", "[m6-scaffold]") {

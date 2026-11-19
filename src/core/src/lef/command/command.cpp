@@ -170,11 +170,13 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   if (const std::optional<WriteCommand> which = write_command(option); is_lef && which) {
     return run_write_command(ctx, invocation, *which);
   }
-  if (!has_window(s)) {
-    return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
-  }
+  // The `def` options that only print an answer need no target cell either
+  // (Q-LEFDEF-86, platform).
   if (!is_lef && is_def_only_answer(option)) {
     return def_only_answer(s, option);
+  }
+  if (!has_window(s)) {
+    return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
   const HelpPrinter print_help = [&] { return help(s, invocation.name, is_lef); };
   if (is_lef && option == kRead) {
