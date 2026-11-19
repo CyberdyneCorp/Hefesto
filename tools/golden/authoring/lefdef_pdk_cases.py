@@ -6,8 +6,8 @@
 (``sky130-lef``, ``gf180mcu-lef``, ``ihp-lef``; design D2 "PDK row: task 1.2 facts"): in a fresh
 session with the PDK's rc file and ``random seed 1``, ``lef read`` of the library's tech LEF and
 cell LEF, a wrapper cell that places every cell the reads created (sorted by name, each at the
-origin), then ``select clear`` and ``lef writeall -notop`` of the wrapper (loaded as
-``./lefdef_rt``, so its LEF is written in the work directory). The written LEF is too
+origin), then ``select clear`` and ``lef writeall -notop`` of the wrapper (Magic writes it
+as ``lefdef_rt.mag``, the file name its failed read gave the new cell; the script renames it). The written LEF is too
 large to commit, so ``expected/`` keeps its SHA-256 and a per-macro summary (goldenlib/derived.py
 ``digest`` and ``lef-summary``).
 
@@ -78,17 +78,19 @@ def rt_body(lib: Library) -> str:
         "    if {[lsearch -exact $rt_before $cell] < 0} {lappend rt_new $cell}",
         "}",
         "puts [list lefdef-rt cells [llength $rt_new]]",
-        # A new cell has no file, so lef writeall would open <name>.lef through the cell search
-        # path (lefFileOpen, PaOpen: the first writable path entry, which the PDK rc decides);
-        # loading ./<name> gives it the file ./<name>, so the LEF lands in the work directory.
-        tclcase.p(f"load ./{WRAPPER}", "box 0 0 0 0"),
+        tclcase.p(f"load {WRAPPER}", "box 0 0 0 0"),
         "foreach cell $rt_new {",
         "    if {[catch {getcell $cell} err]} {puts [list lefdef-rt getcell-error $cell $err]}",
         "}",
         # getcell selects the instance it places, and lef writeall writes the selected cell's
         # hierarchy when there is a selection (lefCmd.c CmdGetSelectedCell): clear it first.
         tclcase.p("select clear", "lef writeall -notop"),
+        # The wrapper has no file, so its failed read sets its file to <name>.mag (DBio.c
+        # dbReadOpen), and lefFileOpen opens that name as it is: Magic writes the LEF as
+        # lefdef_rt.mag. Rename it to the compared name.
+        f"if {{[file exists {WRAPPER}.mag]}} {{file rename -force {WRAPPER}.mag {OUT}}}",
         f"puts [list lefdef-rt written [file exists {OUT}]]",
+        f"if {{![file exists {OUT}]}} {{puts [list lefdef-rt path [path search]]}}",
     ])
 
 
