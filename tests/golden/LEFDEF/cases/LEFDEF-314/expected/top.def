@@ -1,0 +1,48 @@
+VERSION 5.7 ;
+   NAMESCASESENSITIVE ON ;
+   DIVIDERCHAR "/" ;
+   BUSBITCHARS "()" ;
+   DESIGN top ;
+   TECHNOLOGY lefdef ;
+   UNITS DISTANCE MICRONS 1000 ;
+   DIEAREA ( 0 0 ) ( 3700 500 ) ;
+
+VIAS 0 ;
+END VIAS
+
+COMPONENTS 8 ;
+   - rev[0] leaf
+      + PLACED ( 3600 0 ) N ;
+   - rev[1] leaf
+      + PLACED ( 3400 0 ) N ;
+   - rev[2] leaf
+      + PLACED ( 3200 0 ) N ;
+   - rev[3] leaf
+      + PLACED ( 3000 0 ) N ;
+   - col[0] leaf
+      + PLACED ( 2000 0 ) N ;
+   - col[1] leaf
+      + PLACED ( 2000 200 ) N ;
+   - col[2] leaf
+      + PLACED ( 2000 400 ) N ;
+   - row[0] leaf
+      + PLACED ( 1000 0 ) N ;
+   - row[1] leaf
+      + PLACED ( 1200 0 ) N ;
+   - row[2] leaf
+      + PLACED ( 1400 0 ) N ;
+   - a22[0,0] leaf
+      + PLACED ( 0 0 ) N ;
+   - a22[0,1] leaf
+      + PLACED ( 200 0 ) N ;
+   - a22[1,0] leaf
+      + PLACED ( 0 200 ) N ;
+   - a22[1,1] leaf
+      + PLACED ( 200 200 ) N ;
+END COMPONENTS
+
+PINS 0 ;
+END PINS
+
+END DESIGN
+

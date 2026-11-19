@@ -1,0 +1,18 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO poly
+  CLASS BLOCK ;
+  FOREIGN poly ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.300 BY 0.100 ;
+  PIN M
+    PORT
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+    END
+  END M
+END poly
+END LIBRARY
+

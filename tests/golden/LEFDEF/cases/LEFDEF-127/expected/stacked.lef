@@ -1,0 +1,24 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO stacked
+  CLASS BLOCK ;
+  FOREIGN stacked ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.100 BY 0.100 ;
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END A
+  OBS
+      LAYER metal2 ;
+        RECT 0.040 0.000 0.080 0.040 ;
+      LAYER metal3 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+  END
+END stacked
+END LIBRARY
+

@@ -1,0 +1,46 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 19 13:05:46 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor ptransistor obsm1 obsm2 obsv1 boundary 
+0 {}
+0 {}
+Cell stacked read from path input
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.000,  0.000), ( 0.100,  0.100)  0.010     
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.040 x 0.040   ( 0.040,  0.000), ( 0.080,  0.040)  0.002     
+lambda:        4 x 4       (     4,  0    ), (     8,  4    )  16        
+0 {}
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.000,  0.000), ( 0.100,  0.100)  0.010     
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+0 {}
+0 {}
+Generating LEF output stacked.lef for cell stacked:
+Diagnostic:  Write LEF header for cell stacked
+Diagnostic:  Writing LEF output for cell stacked
+Diagnostic:  Scale value is 0.010000
+0 {}

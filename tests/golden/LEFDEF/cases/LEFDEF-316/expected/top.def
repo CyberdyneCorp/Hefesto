@@ -1,0 +1,26 @@
+VERSION 5.7 ;
+   NAMESCASESENSITIVE ON ;
+   DIVIDERCHAR "/" ;
+   BUSBITCHARS "()" ;
+   DESIGN top ;
+   TECHNOLOGY lefdef ;
+   UNITS DISTANCE MICRONS 1000 ;
+   DIEAREA ( 0 0 ) ( 600 200 ) ;
+
+VIAS 0 ;
+END VIAS
+
+COMPONENTS 0 ;
+END COMPONENTS
+
+PINS 2 ;
+   - pt + NET pt
+     + PORT
+        + LAYER metal1 ( 0 0 ) ( 0 0 )        + PLACED ( 100 100 ) N ;
+   - pp + NET pp
+     + PORT
+        + PLACED ( 500 100 ) N ;
+END PINS
+
+END DESIGN
+

@@ -1,0 +1,23 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO obsok
+  CLASS BLOCK ;
+  FOREIGN obsok ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.800 BY 0.800 ;
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.200 0.200 ;
+    END
+  END A
+  OBS
+      LAYER metal1 ;
+        RECT 0.100 0.230 0.800 0.800 ;
+        RECT 0.230 0.100 0.800 0.230 ;
+  END
+END obsok
+END LIBRARY
+

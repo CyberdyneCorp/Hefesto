@@ -1,0 +1,9 @@
+file w.mag
+magic
+tech lefdef
+timestamp 1795093988
+<< metal1 >>
+rect 0 290 100 310
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

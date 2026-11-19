@@ -1,0 +1,19 @@
+file smallcut.mag
+magic
+tech lefdef
+timestamp 1795093970
+<< metal1 >>
+rect 197 101 203 103
+rect 197 98 198 101
+rect 201 98 203 101
+rect 197 97 203 98
+<< via1 >>
+rect 198 98 201 101
+<< metal2 >>
+rect 197 101 203 103
+rect 197 98 198 101
+rect 201 98 203 101
+rect 197 97 203 98
+<< properties >>
+string FIXED_BBOX 0 0 2000 2000
+<< end >>

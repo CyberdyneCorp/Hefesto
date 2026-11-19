@@ -1,0 +1,11 @@
+file w.mag
+magic
+tech lefdef
+timestamp 1795093990
+<< labels >>
+rlabel space 49 0 49 0 0 n1
+rlabel space 199 49 199 49 0 n1
+rlabel space 49 299 49 299 0 n2
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

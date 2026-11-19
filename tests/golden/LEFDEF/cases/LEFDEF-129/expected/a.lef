@@ -1,0 +1,29 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO strip
+  CLASS BLOCK ;
+  FOREIGN strip ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 2.000 BY 1.400 ;
+  PIN S
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END S
+  PIN V
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 1.300 0.100 1.400 ;
+    END
+  END V
+  OBS
+      LAYER metal1 ;
+        RECT 0.000 0.400 0.100 1.300 ;
+        RECT 0.100 0.000 2.000 0.100 ;
+  END
+END strip
+END LIBRARY
+

@@ -1,0 +1,24 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO stack
+  CLASS BLOCK ;
+  FOREIGN stack ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.800 BY 0.100 ;
+  PIN A
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.400 0.100 ;
+      LAYER via1 ;
+        RECT 0.300 0.000 0.400 0.100 ;
+      LAYER metal2 ;
+        RECT 0.300 0.000 0.800 0.100 ;
+    END
+  END A
+END stack
+END LIBRARY
+

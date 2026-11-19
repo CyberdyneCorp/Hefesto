@@ -1,0 +1,67 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO pins
+  CLASS BLOCK ;
+  FOREIGN pins ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 1.300 BY 0.100 ;
+  PIN I
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END I
+  PIN O
+    DIRECTION OUTPUT ;
+    USE ANALOG ;
+    SHAPE RING ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+    END
+  END O
+  PIN T
+    DIRECTION OUTPUT TRISTATE ;
+    USE CLOCK ;
+    SHAPE FEEDTHRU ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.400 0.000 0.500 0.100 ;
+    END
+  END T
+  PIN B
+    DIRECTION INOUT ;
+    USE POWER ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.600 0.000 0.700 0.100 ;
+    END
+  END B
+  PIN F
+    DIRECTION FEEDTHRU ;
+    USE GROUND ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.800 0.000 0.900 0.100 ;
+    END
+  END F
+  PIN D
+    PORT
+      LAYER metal1 ;
+        RECT 1.000 0.000 1.100 0.100 ;
+    END
+  END D
+  PIN N
+    PORT
+      LAYER metal1 ;
+        RECT 1.200 0.000 1.300 0.100 ;
+    END
+  END N
+END pins
+END LIBRARY
+
