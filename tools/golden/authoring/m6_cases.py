@@ -85,7 +85,7 @@ BLOCKER_REASONS = {
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
     "MAGIC_FPE": ("GOLDEN: Magic exits with SIGFPE (status 136) in this case, so it has no capture; the case input needs a change, or Magic's crash becomes a Q-row"),
     "MAGIC_SEGV": ("GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"),
-    "RT": ("LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, so lef writeall wrote that cell's file; the script now clears the selection first)"),
+    "RT": ("LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper had no file, so lef writeall opened lefdef_rt.lef through the cell search path; the script now clears the selection and loads ./lefdef_rt)"),
 }
 BLOCKERS: dict[str, str] = {
     "LEFDEF-003": BLOCKER_REASONS["MAGIC_FPE"],

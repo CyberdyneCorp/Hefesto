@@ -1010,17 +1010,17 @@ reason = "M6 exit blocker, DEFR and LEFVIA; DEFR/GOLDEN: Magic writes the DEF pi
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, so lef writeall wrote that cell's file; the script now clears the selection first)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper had no file, so lef writeall opened lefdef_rt.lef through the cell search path; the script now clears the selection and loads ./lefdef_rt)"
 
 [LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, so lef writeall wrote that cell's file; the script now clears the selection first)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper had no file, so lef writeall opened lefdef_rt.lef through the cell search path; the script now clears the selection and loads ./lefdef_rt)"
 
 [LEFDEF-RT-sg13g2_stdcell]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, so lef writeall wrote that cell's file; the script now clears the selection first)"
+reason = "M6 exit blocker, LEFW; LEFW: the library round trip is not compared with Magic's capture yet (the round-3 captures lacked lefdef_rt.lef: the last getcell left its instance selected, and the new wrapper had no file, so lef writeall opened lefdef_rt.lef through the cell search path; the script now clears the selection and loads ./lefdef_rt)"
 
 [OASIS-001]
 deferred = "M6"

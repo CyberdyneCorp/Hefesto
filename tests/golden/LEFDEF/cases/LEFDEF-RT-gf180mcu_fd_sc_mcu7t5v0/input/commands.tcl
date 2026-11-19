@@ -17,13 +17,14 @@ foreach cell [lsort [cellname list allcells]] {
     if {[lsearch -exact $rt_before $cell] < 0} {lappend rt_new $cell}
 }
 puts [list lefdef-rt cells [llength $rt_new]]
-probe {load lefdef_rt}
+probe {load ./lefdef_rt}
 probe {box 0 0 0 0}
 foreach cell $rt_new {
     if {[catch {getcell $cell} err]} {puts [list lefdef-rt getcell-error $cell $err]}
 }
 probe {select clear}
 probe {lef writeall -notop}
+puts [list lefdef-rt written [file exists lefdef_rt.lef]]
 } scriptError]} {
     puts [list script-error $scriptError]
     flush stdout
