@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "case": "OASIS-062",
+  "area": "OASIS",
+  "tool": "oasis-spec",
+  "tool_repo": "openspec/specs (oasis-format, oasis-write)",
+  "tool_version": null,
+  "tool_commit": null,
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:70b4d3d626c20c3189ffa5f5283b5fbda221347a2736484d20bff74be9d9226f",
+  "image_repo_digests": [],
+  "command": [
+    "cp",
+    "-R",
+    "input/spec/.",
+    "."
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-19T10:23:57Z",
+  "outputs": {
+    "out.oas": "06e30270dc1890e5606f774e3fb9cf966e5e4dcc4d5ae28d38da9db405b6983a",
+    "out.oas.hierarchy.txt": "06e30270dc1890e5606f774e3fb9cf966e5e4dcc4d5ae28d38da9db405b6983a"
+  }
+}

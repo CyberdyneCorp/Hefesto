@@ -1,0 +1,4 @@
+0 chip
+0 solo
+0 solo
+0 {anchor chip leaf1 pad solo ta tb}

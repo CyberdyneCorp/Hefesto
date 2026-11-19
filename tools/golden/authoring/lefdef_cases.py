@@ -701,7 +701,7 @@ def case(cid: str, body: list[str], *, files: dict[str, str | bytes] | None = No
         script_lines(cmds), files=files, outputs=outs, output_masks={o: k[1] for o, k in kinds.items()},
         output_names={CELLS: "cells.txt"} if CELLS in outs else {},
         output_comparators={o: k[0] for o, k in kinds.items() if k[0] != "bytes"},
-        stream_comparator="lef-text", stream_masks=["completed-percent"], driver=DRIVER,
+        stream_comparator="lef-text", stream_masks=["completed-percent", "magic-undo-note"], driver=DRIVER,
         notes=["LEFDEF case (m6-lef-def-oasis design D19): fresh session, drc off, one write unless a history note "
                "names the steps.",
                *history_note(cmds, history), *(notes or [])], **extra)

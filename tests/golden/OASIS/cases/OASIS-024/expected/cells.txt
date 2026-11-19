@@ -1,0 +1,37 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084841
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file z.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file zero.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 60 75
+<< metal2 >>
+rect 0 70 5 75
+rect 0 50 5 55
+rect 10 50 15 55
+use z  z_0
+array 0 1 0 0 1 20
+timestamp 1795084841
+transform 1 0 50 0 1 0
+box 0 0 10 10
+use z  z_1
+array 0 2 0 0 0 0
+timestamp 1795084841
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

@@ -1,0 +1,12 @@
+file top.mag
+magic
+tech oastest
+timestamp 1795084853
+<< checkpaint >>
+rect 0 0 40 10
+<< metal1 >>
+rect 0 0 40 10
+<< labels >>
+rlabel metal1 21 1 21 1 4 p2
+rlabel metal1 35 5 35 5 4 plain
+<< end >>

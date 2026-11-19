@@ -51,13 +51,13 @@ to = "lef/sg13g2_stdcell.lef"
 name = "stdout.txt"
 source = "stdout"
 comparator = "lef-text"
-masks = ["magic-stamp-note", "completed-percent", "magic-tech-sections"]
+masks = ["magic-stamp-note", "completed-percent", "magic-undo-note", "magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "lef-text"
-masks = ["magic-stamp-note", "completed-percent", "magic-tech-sections"]
+masks = ["magic-stamp-note", "completed-percent", "magic-undo-note", "magic-tech-sections"]
 
 [[outputs]]
 name = "lefdef_rt.lef.sha256"

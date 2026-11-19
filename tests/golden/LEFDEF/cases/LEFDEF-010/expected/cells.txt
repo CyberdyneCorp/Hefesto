@@ -1,0 +1,19 @@
+file vias.mag
+magic
+tech lefdef
+timestamp 1795084807
+<< metal1 >>
+rect 294 101 306 106
+rect 294 98 298 101
+rect 301 98 306 101
+rect 294 94 306 98
+<< via1 >>
+rect 298 98 301 101
+<< metal2 >>
+rect 294 101 306 106
+rect 294 98 298 101
+rect 301 98 306 101
+rect 294 94 306 98
+<< properties >>
+string FIXED_BBOX 0 0 2000 2000
+<< end >>

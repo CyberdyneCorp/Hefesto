@@ -1,0 +1,43 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO a
+  CLASS BLOCK ;
+  FOREIGN a ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.000 BY 0.000 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+      LAYER metal2 ;
+        RECT 0.000 0.000 0.050 0.050 ;
+  END
+END a
+MACRO b
+  CLASS BLOCK ;
+  FOREIGN b ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.000 BY 0.000 ;
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END A
+END b
+MACRO top
+  CLASS BLOCK ;
+  FOREIGN top ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.000 BY 0.000 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+        RECT 1.000 0.000 1.100 0.100 ;
+      LAYER metal2 ;
+        RECT 0.000 0.000 0.050 0.050 ;
+  END
+END top
+END LIBRARY
+

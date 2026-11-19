@@ -1,0 +1,7 @@
+file t.mag
+magic
+tech lefdef
+timestamp 1795084821
+<< properties >>
+string FIXED_BBOX 124 -124 200 200
+<< end >>

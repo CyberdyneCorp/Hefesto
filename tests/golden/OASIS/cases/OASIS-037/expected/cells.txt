@@ -1,0 +1,52 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084844
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file look0.mag
+magic
+tech oastest
+timestamp 1795084844
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file look1.mag
+magic
+tech oastest
+timestamp 1795084844
+<< checkpaint >>
+rect 0 0 2 1
+<< metal1 >>
+rect 0 0 2 1
+<< end >>
+file look2.mag
+magic
+tech oastest
+timestamp 1795084844
+<< checkpaint >>
+rect 0 0 3 1
+<< metal1 >>
+rect 0 0 3 1
+<< end >>
+file look3.mag
+magic
+tech oastest
+timestamp 1795084844
+<< checkpaint >>
+rect 0 0 4 1
+<< metal1 >>
+rect 0 0 4 1
+<< end >>
+file look4.mag
+magic
+tech oastest
+timestamp 1795084844
+<< checkpaint >>
+rect 0 0 5 1
+<< metal1 >>
+rect 0 0 5 1
+<< end >>

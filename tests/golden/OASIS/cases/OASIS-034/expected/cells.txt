@@ -1,0 +1,63 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084843
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file chip.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file leaf1.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+<< metal1 >>
+rect 0 0 5 5
+<< end >>
+file pad.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+<< metal2 >>
+rect 0 0 5 5
+<< end >>
+file solo.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+use leaf1  leaf1_0
+timestamp 1795084843
+transform 1 0 0 0 1 0
+box 0 0 5 5
+<< end >>
+file ta.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+<< metal1 >>
+rect 0 0 5 5
+<< end >>
+file tb.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+<< metal2 >>
+rect 0 0 5 5
+<< end >>

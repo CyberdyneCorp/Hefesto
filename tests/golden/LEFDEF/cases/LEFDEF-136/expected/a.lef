@@ -1,0 +1,26 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO tl
+  CLASS BLOCK ;
+  FOREIGN tl ;
+  ORIGIN 0.000 -327.640 ;
+  SIZE 0.000 BY -0.740 ;
+  PIN A
+    PORT
+      LAYER metal2 ;
+        RECT 0.400 0.100 0.900 0.200 ;
+    END
+  END A
+  OBS
+      LAYER NWELL ;
+        RECT 0.000 0.000 1.000 1.000 ;
+      LAYER metal1 ;
+        RECT 0.100 0.100 0.500 0.200 ;
+      LAYER via1 ;
+        RECT 0.400 0.100 0.500 0.200 ;
+  END
+END tl
+END LIBRARY
+

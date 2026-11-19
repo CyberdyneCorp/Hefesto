@@ -1,0 +1,30 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO names
+  CLASS BLOCK ;
+  FOREIGN names ;
+  ORIGIN 0.000 -327.660 ;
+  SIZE 0.000 BY -1.600 ;
+  PIN a#1
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END a#1
+  PIN x[3]
+    PORT
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+    END
+  END x[3]
+  PIN n 1
+    PORT
+      LAYER metal1 ;
+        RECT 0.400 0.000 0.500 0.100 ;
+    END
+  END n 1
+END names
+END LIBRARY
+

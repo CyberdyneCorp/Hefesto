@@ -1,0 +1,92 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084841
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file c.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 40 40
+<< metal1 >>
+rect 0 0 40 40
+<< end >>
+file c_mag0p5.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 20 20
+<< metal1 >>
+rect 0 0 20 20
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file c_mag0p75.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 30 30
+<< metal1 >>
+rect 0 0 30 30
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file c_mag1p5.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 60 60
+<< metal1 >>
+rect 0 0 60 60
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file m.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 60 20
+<< metal2 >>
+rect 0 0 20 20
+use c_mag0p5  c_mag0p5_0
+timestamp 1795084841
+transform 1 0 40 0 1 0
+box 0 0 20 20
+<< end >>
+file m_mag1p5.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 90 30
+<< metal2 >>
+rect 0 0 30 30
+use c_mag0p75  c_mag0p75_0
+timestamp 1795084841
+transform 1 0 60 0 1 0
+box 0 0 30 30
+<< properties >>
+string GDS_MAG_SOURCE m
+<< end >>
+file magtop.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 90 160
+use c_mag1p5  c_mag1p5_0
+timestamp 1795084841
+transform 1 0 0 0 1 100
+box 0 0 60 60
+use m_mag1p5  m_mag1p5_0
+timestamp 1795084841
+transform 1 0 0 0 1 0
+box 0 0 90 30
+<< end >>

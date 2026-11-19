@@ -1,0 +1,11 @@
+file top.mag
+magic
+tech oastest
+timestamp 1795084852
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 4
+<< metal2 >>
+rect 0 6 10 10
+<< end >>

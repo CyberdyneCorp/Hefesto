@@ -1,0 +1,34 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084838
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file soff0.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file soff1.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file su7.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>

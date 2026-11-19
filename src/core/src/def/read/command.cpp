@@ -120,8 +120,16 @@ CommandResult read_command(cmd::CommandContext& ctx, const cmd::Invocation& invo
     read_options.ignore_tech = true;  // DBCellRead(def, TRUE, TRUE, NULL)
     return cell::read_cell(session->io, def, read_options).ok() && def.flags().available;
   };
+  // The read's first line is printed before the COMPONENTS masters are read
+  // from disk, whose messages go straight to the console (DefRead prints it
+  // before parsing); def::read's copy of it is dropped below.
+  const std::string reading = "Reading DEF data from file " + found->path.string() + ".";
+  ctx.emit(diag::make(detail::kReport, reading));
   CommandResult result = hosted_read(ed, found->path, options);
   session->process_mismatches();
+  if (!result.diagnostics.empty() && result.diagnostics.front().text == reading) {
+    result.diagnostics.erase(result.diagnostics.begin());
+  }
   const std::string* design = std::get_if<std::string>(&result.value.data());
   if (result.ok() && design != nullptr && !design->empty() && ed.windows.size() == 1) {
     for (const diag::Diagnostic& d : result.diagnostics) {
@@ -130,6 +138,8 @@ CommandResult read_command(cmd::CommandContext& ctx, const cmd::Invocation& invo
     result.diagnostics.clear();
     run_nested(ctx, {"load", *design});
   }
+  // CmdLef sets no Tcl result for `def read`.
+  result.value = cmd::Value{};
   return result;
 }
 

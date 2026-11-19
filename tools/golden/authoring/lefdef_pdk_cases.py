@@ -92,7 +92,7 @@ def rt_case(lib: Library) -> tclcase.TclCase:
         f"{Path(lib.cell_lef).name}, a wrapper placing every cell read, lef writeall -notop.",
         rt_body(lib), outputs=[DIGEST, SUMMARY], output_names=dict(OUTPUT_NAMES), pdk=lib.variant,
         external=[lib.external(lib.tech_lef), lib.external(lib.cell_lef)], stream_comparator="lef-text",
-        stream_masks=["completed-percent"], driver=ld.DRIVER,
+        stream_masks=["completed-percent", "magic-undo-note"], driver=ld.DRIVER,
         notes=["LEFDEF-RT case (m6-lef-def-oasis task 15.5): fresh session with the PDK's rc and random seed 1.",
                f"{OUT} is compared through its SHA-256 and per-macro summary (goldenlib/derived.py).",
                f"Needs the {lib.lef_set} set: golden-capture.yml FETCH_LEF_SETS must be \"true\"."])

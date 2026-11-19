@@ -1,0 +1,19 @@
+file v.mag
+magic
+tech lefdef
+timestamp 1795084822
+<< metal1 >>
+rect 96 51 104 54
+rect 96 48 98 51
+rect 101 48 104 51
+rect 96 46 104 48
+<< via1 >>
+rect 98 48 101 51
+<< metal2 >>
+rect 96 51 104 54
+rect 96 48 98 51
+rect 101 48 104 51
+rect 96 46 104 48
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

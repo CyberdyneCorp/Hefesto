@@ -1,0 +1,36 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO order
+  CLASS BLOCK ;
+  FOREIGN order ;
+  ORIGIN 0.000 -327.650 ;
+  SIZE 0.000 BY -0.350 ;
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.200 0.000 0.300 0.100 ;
+    END
+  END A
+  PIN Y
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.100 0.100 ;
+    END
+  END Y
+  PIN VDD
+    PORT
+      LAYER metal1 ;
+        RECT 0.400 0.000 0.500 0.100 ;
+    END
+  END VDD
+  PIN OUT
+    PORT
+      LAYER metal1 ;
+        RECT 0.600 0.000 0.700 0.100 ;
+    END
+  END OUT
+END order
+END LIBRARY
+

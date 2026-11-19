@@ -1,0 +1,1 @@
+0 {(UNNAMED) anchor st_cell st_pname st_pstr st_text}

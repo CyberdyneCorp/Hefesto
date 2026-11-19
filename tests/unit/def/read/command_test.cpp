@@ -10,7 +10,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <string>
+#include <vector>
 
 #include "def_fixture.hpp"
 #include "hefesto/mask/gen/progress.hpp"
@@ -49,13 +52,37 @@ TEST_CASE("without a file name the options are printed", "[cap:def-read][req:def
   CHECK(printed.front().text.ends_with("    defr help                   \tprint this help information"));
 }
 
-TEST_CASE("the command returns the design cell and passes its options", "[cap:def-read][req:def read command]") {
+TEST_CASE("the command passes its options and sets no result", "[cap:def-read][req:def read command]") {
+  // Regression (round-3 golden capture, LEFDEF-211): Magic's CmdLef sets no
+  // Tcl result for `def read`; the command returned the design cell's name.
   Session s;
   s.file("/d/top.def", "DESIGN top ;\nNETS 1 ;\n- n1 + ROUTED met1 ( 0 0 ) ( 100 0 ) ;\nEND NETS\nEND DESIGN\n");
   const auto result = s.run("defr read /d/top -labels");
   REQUIRE(result.ok());
-  CHECK(result.value == cmd::Value{"top"});
+  CHECK(result.value == cmd::Value{});
   CHECK(s.label("top", "n1") != nullptr);
+}
+
+TEST_CASE("regression: the read's first line comes before the masters' messages",
+          "[cap:def-read][req:def read command]") {
+  // LEFDEF-211/214 (round-3 capture): Magic prints "Reading DEF data from
+  // file ..." before "Cell blk read from path ..." of a COMPONENTS master
+  // read from disk; Hefesto printed it after, with the read's other lines.
+  Session s;
+  s.file("/d/blk.mag", "magic\ntech def\ntimestamp 0\n<< end >>\n");
+  s.file("/d/top.def", "DESIGN top ;\nCOMPONENTS 1 ;\n- u1 blk + PLACED ( 0 0 ) N ;\nEND COMPONENTS\nEND DESIGN\n");
+  s.editor.search_paths.path = {"/d"};
+  REQUIRE(s.run("defr read /d/top").ok());
+  std::vector<std::string> texts;
+  for (const auto& d : s.printed.take()) {
+    texts.push_back(d.text);
+  }
+  const auto reading = std::find(texts.begin(), texts.end(), "Reading DEF data from file /d/top.def.");
+  const auto master = std::find_if(texts.begin(), texts.end(),
+                                   [](const std::string& t) { return t.starts_with("Cell blk read from path"); });
+  REQUIRE(reading != texts.end());
+  REQUIRE(master != texts.end());
+  CHECK(reading < master);
 }
 
 // --- Command context (Q-LEFDEF-86, 88) ----------------------------------------------

@@ -1,0 +1,109 @@
+file #5.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file #9.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084838
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file dup.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file exp_a.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file exp_top.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 5 0 6 1
+use exp_a  exp_a_0
+timestamp 1795084838
+transform 1 0 5 0 1 0
+box 0 0 1 1
+<< end >>
+file fwd_a.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file fwd_top.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 1 1
+use fwd_a  fwd_a_0
+timestamp 1795084838
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>
+file imp_a.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file imp_top.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+use imp_a  imp_a_0
+timestamp 1795084838
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>
+file undef_top.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 6 1
+use #5  #5_0
+timestamp 1795084838
+transform 1 0 5 0 1 0
+box 0 0 1 1
+use #9  #9_0
+timestamp 0
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>

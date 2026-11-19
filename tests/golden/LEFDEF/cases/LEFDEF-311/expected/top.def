@@ -1,0 +1,36 @@
+VERSION 5.7 ;
+   NAMESCASESENSITIVE ON ;
+   DIVIDERCHAR "/" ;
+   BUSBITCHARS "()" ;
+   DESIGN top ;
+   TECHNOLOGY lefdef ;
+   UNITS DISTANCE MICRONS 1000 ;
+   DIEAREA ( 2000 1000 ) ( 23000 5000 ) ;
+
+VIAS 0 ;
+END VIAS
+
+COMPONENTS 8 ;
+   - inv_FE inv
+      + PLACED ( 21000 2000 ) FE ;
+   - inv_FW inv
+      + PLACED ( 20000 3000 ) FW ;
+   - inv_FS inv
+      + PLACED ( 17000 1000 ) FS ;
+   - inv_FN inv
+      + PLACED ( 13000 3000 ) FN ;
+   - inv_E inv
+      + PLACED ( 11000 2000 ) E ;
+   - inv_W inv
+      + PLACED ( 6000 3000 ) W ;
+   - inv_S inv
+      + PLACED ( 4000 1000 ) S ;
+   - inv_N inv
+      + PLACED ( 2000 3000 ) N ;
+END COMPONENTS
+
+PINS 0 ;
+END PINS
+
+END DESIGN
+

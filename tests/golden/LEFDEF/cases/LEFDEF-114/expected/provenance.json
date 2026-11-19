@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "LEFDEF-114",
+  "area": "LEFDEF",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:70b4d3d626c20c3189ffa5f5283b5fbda221347a2736484d20bff74be9d9226f",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-19T10:23:57Z",
+  "outputs": {
+    "inv.lef": "bd0017c9f29d6511a12ea01b2200e1019cddc5094ca00d60c8b95791925c327c",
+    "stderr.txt": "84c127395d20ab8a4ad86818fdf116bfe66860dc33f0f28a3740b25556d31ba5",
+    "stdout.txt": "6fa54521eec64136f61c8367870bf9f094368298c0ff9827aeb48137ad3a745f"
+  }
+}

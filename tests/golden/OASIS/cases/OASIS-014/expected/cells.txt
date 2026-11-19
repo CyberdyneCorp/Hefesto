@@ -1,0 +1,45 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084840
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file st_cell.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file st_pname.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file st_pstr.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file st_text.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< labels >>
+rlabel metal1 0 0 0 0 4 A
+<< end >>

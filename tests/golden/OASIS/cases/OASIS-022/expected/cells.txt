@@ -1,0 +1,30 @@
+file anchor.mag
+magic
+tech oastest
+magscale 1 20
+timestamp 1795084840
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file lim.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 10 30
+<< metal1 >>
+rect 0 20 10 30
+rect 0 0 10 10
+<< end >>
+file odd.mag
+magic
+tech oastest
+magscale 1 20
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 461 460
+<< metal1 >>
+rect 31 400 251 460
+rect 0 0 200 200
+tri 400 0 461 81 se
+<< end >>

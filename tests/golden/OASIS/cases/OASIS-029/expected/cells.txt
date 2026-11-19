@@ -1,0 +1,36 @@
+file anchor.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084842
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file polys.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084842
+<< checkpaint >>
+rect 0 0 1100 200
+<< metal1 >>
+rect 0 100 100 200
+tri 767 101 780 120 se
+tri 780 102 784 120 sw
+rect 780 101 784 102
+rect 0 0 300 100
+tri 370 70 400 100 se
+rect 400 70 440 100
+tri 440 70 470 100 sw
+rect 370 30 470 70
+tri 720 30 767 100 se
+rect 767 30 784 101
+rect 1000 100 1100 200
+tri 784 30 800 100 sw
+tri 370 0 400 30 ne
+rect 400 0 440 30
+tri 440 0 470 30 nw
+rect 700 0 720 30
+tri 720 6 800 30 nw
+rect 900 0 1000 100
+<< end >>

@@ -1,0 +1,131 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084962
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file checksum32_bad_leaf.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 10 5
+<< metal1 >>
+rect 0 0 10 5
+<< labels >>
+flabel metal1 1 1 1 1 0 FreeSans 80 0 0 0 A
+<< end >>
+file checksum32_bad_top.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 80 30
+<< metal2 >>
+rect 5 25 10 30
+rect 0 20 10 25
+rect 0 0 10 10
+use checksum32_bad_leaf  checksum32_bad_leaf_0
+array 0 1 20 0 1 10
+timestamp 1795084125
+transform 1 0 50 0 1 0
+box 0 0 10 5
+use checksum32_bad_leaf  checksum32_bad_leaf_1
+timestamp 1795084125
+transform 1 0 20 0 1 0
+box 0 0 10 5
+<< end >>
+file checksum32_leaf.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 10 5
+<< metal1 >>
+rect 0 0 10 5
+<< labels >>
+flabel metal1 1 1 1 1 0 FreeSans 80 0 0 0 A
+<< end >>
+file checksum32_top.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 80 30
+<< metal2 >>
+rect 5 25 10 30
+rect 0 20 10 25
+rect 0 0 10 10
+use checksum32_leaf  checksum32_leaf_0
+array 0 1 20 0 1 10
+timestamp 1795084125
+transform 1 0 50 0 1 0
+box 0 0 10 5
+use checksum32_leaf  checksum32_leaf_1
+timestamp 1795084125
+transform 1 0 20 0 1 0
+box 0 0 10 5
+<< end >>
+file crc32_bad_leaf.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 10 5
+<< metal1 >>
+rect 0 0 10 5
+<< labels >>
+flabel metal1 1 1 1 1 0 FreeSans 80 0 0 0 A
+<< end >>
+file crc32_bad_top.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 80 30
+<< metal2 >>
+rect 5 25 10 30
+rect 0 20 10 25
+rect 0 0 10 10
+use crc32_bad_leaf  crc32_bad_leaf_0
+array 0 1 20 0 1 10
+timestamp 1795084125
+transform 1 0 50 0 1 0
+box 0 0 10 5
+use crc32_bad_leaf  crc32_bad_leaf_1
+timestamp 1795084125
+transform 1 0 20 0 1 0
+box 0 0 10 5
+<< end >>
+file crc32_leaf.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 10 5
+<< metal1 >>
+rect 0 0 10 5
+<< labels >>
+flabel metal1 1 1 1 1 0 FreeSans 80 0 0 0 A
+<< end >>
+file crc32_top.mag
+magic
+tech oastest
+timestamp 1795084125
+<< checkpaint >>
+rect 0 0 80 30
+<< metal2 >>
+rect 5 25 10 30
+rect 0 20 10 25
+rect 0 0 10 10
+use crc32_leaf  crc32_leaf_0
+array 0 1 20 0 1 10
+timestamp 1795084125
+transform 1 0 50 0 1 0
+box 0 0 10 5
+use crc32_leaf  crc32_leaf_1
+timestamp 1795084125
+transform 1 0 20 0 1 0
+box 0 0 10 5
+<< end >>

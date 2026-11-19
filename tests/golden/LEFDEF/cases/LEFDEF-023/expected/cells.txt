@@ -1,0 +1,11 @@
+file argcell.mag
+magic
+tech lefdef
+timestamp 12345
+<< obsm1 >>
+rect 0 0 50 50
+<< properties >>
+string FIXED_BBOX 0 0 100 200
+string LEFclass CORE
+string LEFview TRUE
+<< end >>

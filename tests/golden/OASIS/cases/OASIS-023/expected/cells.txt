@@ -1,0 +1,297 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084840
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file c.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 5
+<< metal2 >>
+rect 0 0 2 10
+<< end >>
+file preps.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 -10 1400 1260
+use c  c_0
+timestamp 1795084840
+transform 1 0 1020 0 1 1220
+box 0 0 10 10
+use c  c_1
+timestamp 1795084840
+transform 1 0 1010 0 1 1210
+box 0 0 10 10
+use c  c_2
+timestamp 1795084840
+transform 1 0 1000 0 1 1200
+box 0 0 10 10
+use c  c_3
+timestamp 1795084840
+transform 1 0 830 0 1 1230
+box 0 0 10 10
+use c  c_4
+timestamp 1795084840
+transform 1 0 800 0 1 1220
+box 0 0 10 10
+use c  c_5
+timestamp 1795084840
+transform 1 0 830 0 1 1210
+box 0 0 10 10
+use c  c_6
+timestamp 1795084840
+transform 1 0 800 0 1 1200
+box 0 0 10 10
+use c  c_7
+timestamp 1795084840
+transform 1 0 630 0 1 1230
+box 0 0 10 10
+use c  c_8
+timestamp 1795084840
+transform 1 0 600 0 1 1200
+box 0 0 10 10
+use c  c_9
+timestamp 1795084840
+transform 1 0 430 0 1 1230
+box 0 0 10 10
+use c  c_10
+timestamp 1795084840
+transform 1 0 430 0 1 1210
+box 0 0 10 10
+use c  c_11
+timestamp 1795084840
+transform 1 0 400 0 1 1200
+box 0 0 10 10
+use c  c_12
+timestamp 1795084840
+transform 1 0 200 0 1 1250
+box 0 0 10 10
+use c  c_13
+timestamp 1795084840
+transform 1 0 200 0 1 1220
+box 0 0 10 10
+use c  c_14
+timestamp 1795084840
+transform 1 0 200 0 1 1200
+box 0 0 10 10
+use c  c_15
+timestamp 1795084840
+transform 1 0 80 0 1 1200
+box 0 0 10 10
+use c  c_16
+timestamp 1795084840
+transform 1 0 30 0 1 1200
+box 0 0 10 10
+use c  c_17
+timestamp 1795084840
+transform 1 0 0 0 1 1200
+box 0 0 10 10
+use c  c_18
+array 0 2 -20 0 0 0
+timestamp 1795084840
+transform 0 -1 1400 -1 0 800
+box 0 0 10 10
+use c  c_19
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform -1 0 1200 0 1 800
+box 0 0 10 10
+use c  c_20
+array 0 2 20 0 0 0
+timestamp 1795084840
+transform 0 1 1000 1 0 800
+box 0 0 10 10
+use c  c_21
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 1 0 800 0 -1 800
+box 0 0 10 10
+use c  c_22
+array 0 2 -20 0 0 0
+timestamp 1795084840
+transform 0 1 600 -1 0 800
+box 0 0 10 10
+use c  c_23
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform -1 0 400 0 -1 800
+box 0 0 10 10
+use c  c_24
+array 0 2 20 0 0 0
+timestamp 1795084840
+transform 0 -1 200 1 0 800
+box 0 0 10 10
+use c  c_25
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 1 0 0 0 1 800
+box 0 0 10 10
+use c  c_26
+array 0 1 0 0 1 0
+timestamp 1795084840
+transform 0 -1 1400 -1 0 600
+box 0 0 10 10
+use c  c_27
+array 0 1 -30 0 1 20
+timestamp 1795084840
+transform -1 0 1200 0 1 600
+box 0 0 10 10
+use c  c_28
+array 0 1 0 0 1 0
+timestamp 1795084840
+transform 0 1 1000 1 0 600
+box 0 0 10 10
+use c  c_29
+array 0 1 30 0 1 -20
+timestamp 1795084840
+transform 1 0 800 0 -1 600
+box 0 0 10 10
+use c  c_30
+array 0 1 0 0 1 0
+timestamp 1795084840
+transform 0 1 600 -1 0 600
+box 0 0 10 10
+use c  c_31
+array 0 1 -30 0 1 -20
+timestamp 1795084840
+transform -1 0 400 0 -1 600
+box 0 0 10 10
+use c  c_32
+array 0 1 0 0 1 0
+timestamp 1795084840
+transform 0 -1 200 1 0 600
+box 0 0 10 10
+use c  c_33
+array 0 1 30 0 1 20
+timestamp 1795084840
+transform 1 0 0 0 1 600
+box 0 0 10 10
+use c  c_34
+array 0 0 0 0 2 0
+timestamp 1795084840
+transform 0 -1 1400 -1 0 400
+box 0 0 10 10
+use c  c_35
+array 0 0 0 0 2 20
+timestamp 1795084840
+transform -1 0 1200 0 1 400
+box 0 0 10 10
+use c  c_36
+array 0 0 0 0 2 0
+timestamp 1795084840
+transform 0 1 1000 1 0 400
+box 0 0 10 10
+use c  c_37
+array 0 0 0 0 2 -20
+timestamp 1795084840
+transform 1 0 800 0 -1 400
+box 0 0 10 10
+use c  c_38
+array 0 0 0 0 2 0
+timestamp 1795084840
+transform 0 1 600 -1 0 400
+box 0 0 10 10
+use c  c_39
+array 0 0 0 0 2 -20
+timestamp 1795084840
+transform -1 0 400 0 -1 400
+box 0 0 10 10
+use c  c_40
+array 0 0 0 0 2 0
+timestamp 1795084840
+transform 0 -1 200 1 0 400
+box 0 0 10 10
+use c  c_41
+array 0 0 0 0 2 20
+timestamp 1795084840
+transform 1 0 0 0 1 400
+box 0 0 10 10
+use c  c_42
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 0 -1 1400 -1 0 200
+box 0 0 10 10
+use c  c_43
+array 0 2 -30 0 0 0
+timestamp 1795084840
+transform -1 0 1200 0 1 200
+box 0 0 10 10
+use c  c_44
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 0 1 1000 1 0 200
+box 0 0 10 10
+use c  c_45
+array 0 2 30 0 0 0
+timestamp 1795084840
+transform 1 0 800 0 -1 200
+box 0 0 10 10
+use c  c_46
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 0 1 600 -1 0 200
+box 0 0 10 10
+use c  c_47
+array 0 2 -30 0 0 0
+timestamp 1795084840
+transform -1 0 400 0 -1 200
+box 0 0 10 10
+use c  c_48
+array 0 2 0 0 0 0
+timestamp 1795084840
+transform 0 -1 200 1 0 200
+box 0 0 10 10
+use c  c_49
+array 0 2 30 0 0 0
+timestamp 1795084840
+transform 1 0 0 0 1 200
+box 0 0 10 10
+use c  c_50
+array 0 1 0 0 2 0
+timestamp 1795084840
+transform 0 -1 1400 -1 0 0
+box 0 0 10 10
+use c  c_51
+array 0 1 -30 0 2 20
+timestamp 1795084840
+transform -1 0 1200 0 1 0
+box 0 0 10 10
+use c  c_52
+array 0 1 0 0 2 0
+timestamp 1795084840
+transform 0 1 1000 1 0 0
+box 0 0 10 10
+use c  c_53
+array 0 1 30 0 2 -20
+timestamp 1795084840
+transform 1 0 800 0 -1 0
+box 0 0 10 10
+use c  c_54
+array 0 1 0 0 2 0
+timestamp 1795084840
+transform 0 1 600 -1 0 0
+box 0 0 10 10
+use c  c_55
+array 0 1 -30 0 2 -20
+timestamp 1795084840
+transform -1 0 400 0 -1 0
+box 0 0 10 10
+use c  c_56
+array 0 1 0 0 2 0
+timestamp 1795084840
+transform 0 -1 200 1 0 0
+box 0 0 10 10
+use c  c_57
+array 0 1 30 0 2 20
+timestamp 1795084840
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

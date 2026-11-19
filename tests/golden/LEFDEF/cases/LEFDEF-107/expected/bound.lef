@@ -1,0 +1,20 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO bound
+  CLASS BLOCK ;
+  FOREIGN bound ;
+  ORIGIN -0.200 -0.200 ;
+  SIZE 1.000 BY 2.000 ;
+  PIN A
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.300 0.300 0.500 0.500 ;
+    END
+  END A
+END bound
+END LIBRARY
+
