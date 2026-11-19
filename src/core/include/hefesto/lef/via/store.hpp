@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -65,6 +66,25 @@ enum class ViaSection : std::uint8_t {
 /// is not.
 void add_via_rect(ViaDefinition& via, std::optional<tech::TileType> layer, const db::Rect& rect,
                   const ViaContext& context);
+
+/// add_via_rect for a whole via body at constant cost per rectangle (a
+/// hostile file can give 10^5 or more RECTs; prepending each one to the
+/// vector would cost the square of that). `add` appends the extras in read
+/// order; `commit` reverses them once and moves them to the head of the
+/// extra list, which gives exactly add_via_rect's list. Readers call
+/// `commit` before anything else reads or prepends to `via.shapes`; it may
+/// be called again, ordering only what was added since.
+class ViaRectBuilder {
+ public:
+  explicit ViaRectBuilder(ViaDefinition& via) noexcept : via_(via), first_(via.shapes.size()) {}
+
+  void add(std::optional<tech::TileType> layer, const db::Rect& rect, const ViaContext& context);
+  void commit();
+
+ private:
+  ViaDefinition& via_;
+  std::size_t first_;  // the first extra appended since the last commit
+};
 
 /// LefTechScale on the via records (lef/lefTech.c:415-461): every
 /// definition with a reference count of 1 or more (not a DEF write's

@@ -41,9 +41,9 @@ env:
   HEFESTO_SKIP_NETWORK_TESTS: "1"
   # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
   # 1.4): the tech LEF and standard-cell LEF of each PDK. "true" makes reference-data look them up, fetch the
-  # missing ones and save them, and the build legs restore and verify them. Off until a test reads them
-  # (the LEF PDK unit tests of tasks 3.4/5.7 and the LEFDEF-RT-<lib> golden cases of task 15.5).
-  FETCH_LEF_SETS: "false"
+  # missing ones and save them, and the build legs restore and verify them. On since the M6 round 3: the
+  # LEF PDK unit tests of tasks 3.4/5.7 and the LEFDEF-RT-<lib> and LEFDEF-240 golden cases of task 15.5 read them.
+  FETCH_LEF_SETS: "true"
 
 jobs:
   lint:
@@ -711,11 +711,13 @@ jobs:
           # Writes golden-out/<AREA>/<case-id>/<output>; exits non-zero when a case fails.
           # The summary stays outside golden-out/: it holds host paths, which differ per leg.
           # The three standard-cell MASK-RT round trips (m5-mask-gds-cif design D19) read the *-gds-sc sets
-          # restored above, so a missing input fails instead of skipping (--require-inputs; a missing case
-          # directory is a usage error).
+          # and the LEFDEF-RT round trips and LEFDEF-240 (m6-lef-def-oasis task 15.5) the *-lef sets restored
+          # above, so a missing input fails instead of skipping (--require-inputs; a missing case directory
+          # is a usage error).
           python3 tools/golden/replay.py --hefesto-cli "build/${{ matrix.preset }}/src/cli/hefesto-cli" \
             --json golden-summary.json --output-dir golden-out \
-            --require-inputs MASK-RT-sky130_fd_sc_hd,MASK-RT-gf180mcu_fd_sc_mcu7t5v0,MASK-RT-sg13g2_stdcell
+            --require-inputs MASK-RT-sky130_fd_sc_hd,MASK-RT-gf180mcu_fd_sc_mcu7t5v0,MASK-RT-sg13g2_stdcell \
+            --require-inputs LEFDEF-RT-sky130_fd_sc_hd,LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0,LEFDEF-RT-sg13g2_stdcell,LEFDEF-240
 
       - uses: actions/upload-artifact@v4
         if: always()

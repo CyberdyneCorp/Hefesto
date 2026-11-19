@@ -3,14 +3,17 @@
 //
 // LEF geometry statements shared by the LEF reader's sections (capability
 // lef-read "LEF unit conversion", "PORT and OBS geometry"; design D6):
-// LefReadRect. LAYER sections read it today; PORT, OBS and VIA geometry
-// (tasks.md 4.1, 5.4) use it too.
+// LefReadRect, LefReadLefPoint and LefReadPolygon, used by the LAYER, VIA,
+// PORT and OBS bodies.
 //
 // Owner: LEFR (design D2).
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
+#include <string_view>
+#include <vector>
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/lef/lex/statements.hpp"
@@ -27,5 +30,30 @@ namespace hefesto::lef {
 /// - a corner that does not fit an internal coordinate answers nullopt
 ///   without a message (Magic's int cast is undefined there).
 std::optional<db::Rect> read_rect(Lexer& lexer, const MessageTarget& messages, bool layer_known, float scale);
+
+/// read_rect whose first token was already read (`first`; nullopt: the
+/// input ended), for a RECT whose first token was checked for MASK or
+/// ITERATE.
+std::optional<db::Rect> read_rect(Lexer& lexer, const MessageTarget& messages, bool layer_known, float scale,
+                                  std::optional<Token> first);
+
+/// LefReadLefPoint's answer.
+enum class PointRead : std::uint8_t {
+  point,    // 0: a point was read
+  none,     // -1: the next token was `;` (consumed) or the input ended
+  invalid,  // 1: a value was not a number or `)` was missing
+};
+
+/// LefReadLefPoint: `x y` or `( x y )`, as two binary32 values.
+PointRead read_point(Lexer& lexer, float& x, float& y);
+
+/// LefReadPolygon: `x y` pairs up to `;`, each converted to round(v /
+/// scale) plus `offset`. A bad value reports "Bad X value in <what>." or
+/// "Bad Y value in <what>." and skips the statement; a missing y reports
+/// "Missing Y value in <what> point!" (LEF-READ-001). The points read
+/// before an error are kept; a point that does not fit an internal
+/// coordinate is dropped (Magic's int conversion is undefined there).
+std::vector<db::Point> read_points(Lexer& lexer, const MessageTarget& messages, float scale, db::Point offset,
+                                   std::string_view what = "polygon");
 
 }  // namespace hefesto::lef

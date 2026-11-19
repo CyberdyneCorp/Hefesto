@@ -1,0 +1,36 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084854
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file ftop.mag
+magic
+tech oastest
+timestamp 1795084854
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 3 3
+<< metal2 >>
+rect 0 0 10 10
+<< end >>
+file ro.mag
+magic
+tech oastest
+timestamp 1757017646
+<< checkpaint >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 164
+string GDS_FILE input/vend.gds
+string GDS_START 96
+<< end >>
+file small.mag
+magic
+tech oastest
+timestamp 1795084854
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>

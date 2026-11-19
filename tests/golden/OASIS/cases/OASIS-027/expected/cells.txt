@@ -1,0 +1,36 @@
+file anchor.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084841
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file paths.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084841
+<< checkpaint >>
+rect -30 -11 1005 510
+<< metal1 >>
+rect -10 490 230 510
+rect 0 390 200 410
+rect -30 290 270 310
+rect -10 190 200 210
+rect -10 90 210 110
+rect 0 -10 200 10
+<< metal2 >>
+tri 545 67 589 111 se
+tri 589 89 611 111 sw
+tri 589 67 611 89 nw
+rect 895 95 1005 105
+tri 501 23 545 67 se
+tri 545 23 589 67 nw
+tri 489 11 501 23 se
+rect 501 11 511 23
+tri 489 -11 511 11 ne
+tri 511 -11 545 23 nw
+rect 895 5 905 95
+rect 795 -5 905 5
+<< end >>

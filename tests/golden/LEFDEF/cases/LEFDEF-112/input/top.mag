@@ -1,0 +1,16 @@
+magic
+tech lefdef
+timestamp 100
+use c1  c1_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 100 200
+use c2  c2_0
+timestamp 100
+transform 1 0 200 0 1 0
+box 0 0 100 200
+use c3  c3_0
+timestamp 100
+transform 1 0 400 0 1 0
+box 0 0 100 200
+<< end >>

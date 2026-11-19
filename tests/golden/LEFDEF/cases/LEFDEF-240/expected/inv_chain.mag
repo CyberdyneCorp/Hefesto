@@ -1,0 +1,99 @@
+magic
+tech sky130A
+magscale 1 2
+timestamp 1795084835
+<< locali >>
+rect 243 763 277 863
+rect 243 215 421 249
+rect 519 215 697 249
+rect 795 215 857 249
+<< viali >>
+rect 243 863 277 897
+rect 111 763 145 797
+rect 111 215 145 249
+rect 857 215 891 249
+<< metal1 >>
+rect 0 1040 1012 1136
+rect 231 897 289 903
+rect 231 863 243 897
+rect 277 894 289 897
+rect 842 894 848 906
+rect 277 866 848 894
+rect 277 863 289 866
+rect 231 857 289 863
+rect 842 854 848 866
+rect 900 854 906 906
+rect 99 797 157 803
+rect 99 763 111 797
+rect 145 794 157 797
+rect 145 766 888 794
+rect 145 763 157 766
+rect 99 757 157 763
+rect 860 592 888 766
+rect 0 496 1012 592
+rect 14 206 20 258
+rect 72 246 78 258
+rect 860 255 888 496
+rect 99 249 157 255
+rect 99 246 111 249
+rect 72 218 111 246
+rect 72 206 78 218
+rect 99 215 111 218
+rect 145 215 157 249
+rect 99 209 157 215
+rect 845 249 903 255
+rect 845 215 857 249
+rect 891 215 903 249
+rect 845 209 903 215
+rect 0 -48 1012 48
+<< via1 >>
+rect 848 854 900 906
+rect 20 206 72 258
+<< metal2 >>
+rect 18 880 74 1040
+rect 846 910 902 1040
+rect 844 906 904 910
+rect 32 262 60 880
+rect 844 854 848 906
+rect 900 854 904 906
+rect 844 850 904 854
+rect 16 258 76 262
+rect 16 206 20 258
+rect 72 206 76 258
+rect 16 202 76 206
+use sky130_fd_sc_hd__inv_1  _1_
+timestamp 100
+transform 1 0 92 0 1 0
+box -38 -48 314 592
+use sky130_fd_sc_hd__inv_1  _2_
+timestamp 100
+transform 1 0 368 0 1 0
+box -38 -48 314 592
+use sky130_fd_sc_hd__inv_1  _3_
+timestamp 100
+transform 1 0 644 0 1 0
+box -38 -48 314 592
+use sky130_fd_sc_hd__inv_1  _4_
+timestamp 100
+transform 1 0 92 0 -1 1088
+box -38 -48 314 592
+use sky130_fd_sc_hd__fill_1  FILL_0
+timestamp 100
+transform 1 0 920 0 1 0
+box -38 -48 130 592
+use sky130_fd_sc_hd__tapvpwrvgnd_1  TAP_0
+timestamp 100
+transform 1 0 0 0 1 0
+box -38 -48 130 592
+<< labels >>
+flabel metal2 s 18 880 74 1040 0 FreeSans 224 90 0 0 in
+port 0 nsew signal input
+flabel metal2 s 846 880 902 1040 0 FreeSans 224 90 0 0 out
+port 1 nsew signal output
+flabel metal1 s 0 496 96 592 0 FreeSans 448 0 0 0 VPWR
+port 2 nsew power bidirectional
+flabel metal1 s 0 -48 96 48 0 FreeSans 448 0 0 0 VGND
+port 3 nsew ground bidirectional
+<< properties >>
+string FIXED_BBOX 0 0 1012 1088
+<< end >>

@@ -1,0 +1,89 @@
+# write.tech -- test technology of the lef/write unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes well, active, metal1 and
+# metal2; pc (poly-metal1) and m2c (metal1-metal2) are contacts; nfet is the
+# gate of the extraction style's MOSFET and ndiff its tie-down type; obsm1
+# and obsm2 are obstruction types; bnd is a `bound` layer; m1pin is a second
+# metal1-plane type (a route only when a test maps it). The output style
+# `lef` has 1 internal unit = 0.01 um; `nm5` is in nanometers with grid
+# limit 5, `ang` in angstroms. The lef section is completed by each test
+# (write_fixture.hpp appends its lines).
+tech
+    format 35
+    lefwrite
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+    obstruct,ob
+end
+
+types
+    well      nwell,nw
+    well      pwell,pw
+    well      prboundary,bnd
+    active    ndiffusion,ndiff
+    active    polysilicon,poly
+    active    ntransistor,nfet
+    active    polycontact,pc
+    metal1    metal1,m1
+    metal1    m1pin
+    metal1    m2contact,m2c
+    metal2    metal2,m2
+    obstruct  obsm1
+    obstruct  obsm2
+end
+
+contact
+    pc   poly metal1
+    m2c  metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    poly,nfet,pc,ndiff poly,nfet,pc,ndiff
+    metal1,m1pin,pc,m2c metal1,m1pin,pc,m2c
+    metal2,m2c metal2,m2c
+end
+
+cifoutput
+style lef
+    scalefactor 1
+    layer M1 metal1
+        calma 49 0
+style nm5
+    scalefactor 5 nanometers
+    gridlimit 5
+    layer M1 metal1
+        calma 49 0
+style ang
+    scalefactor 5 angstroms
+    units angstroms
+    layer M1 metal1
+        calma 49 0
+end
+
+cifinput
+end
+
+drc
+    width m1 3 "m1 width < 3"
+    spacing m1 m1 3 touching_ok "m1 spacing < 3"
+    width m2 4 "m2 width < 4"
+    spacing m2 m2 4 touching_ok "m2 spacing < 4"
+end
+
+extract
+    style lefw
+    device mosfet nmos nfet ndiff pwell VSUB
+    tiedown ndiff
+    substrate pwell well
+end

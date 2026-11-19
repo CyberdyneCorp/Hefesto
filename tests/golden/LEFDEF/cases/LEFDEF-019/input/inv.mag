@@ -1,0 +1,19 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 10 80 30 100
+rect 70 80 90 100
+rect 40 40 60 60
+rect 40 120 60 140
+rect 0 185 100 200
+rect 0 0 20 20
+<< labels >>
+rlabel metal1 10 80 30 100 0 A
+rlabel metal1 80 90 80 90 0 Y
+rlabel metal1 40 40 60 60 0 B
+port 1 nsew signal input
+rlabel metal1 40 120 60 140 0 B
+rlabel metal1 0 0 20 20 0 D[3]
+rlabel metal1 0 185 100 200 0 vdd
+<< end >>

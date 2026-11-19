@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case": "OASIS-032",
+  "area": "OASIS",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:70b4d3d626c20c3189ffa5f5283b5fbda221347a2736484d20bff74be9d9226f",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-19T10:23:57Z",
+  "outputs": {
+    "cells.txt": "79285c434eff8cee6b17f3cabaedda51def334d50e5142636d471248861cd1a9",
+    "report.txt": "118586e46eace7696d9da43bb52c2a7d0ec9b5be20b9c2bdd833bd0f176bd04d"
+  }
+}

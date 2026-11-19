@@ -20,6 +20,11 @@ Selection (applied to the CASE_DIR list before anything runs):
     --only-missing     keep the cases that do not (golden-capture.yml capture mode)
 A selection that leaves no case is not an error (exit 0, a note is printed).
 
+A case whose case.toml sets ``capture_blocked = "<reason>"`` (the reference tool crashes on it, its
+output differs between runs, an input is missing) is skipped with its reason and is not a failure;
+its milestone driver lists it as an exit blocker. Such a case must not have expected/: a captured
+case is verified like any other, so the flag is an error there.
+
 Raw outputs (goldenlib/rawkeep.py), for bisecting a difference; nothing in expected/ changes:
     --keep-raw DIR     copy each run's streams and written files to DIR/<case-id>/
     --feedback-probe   with --keep-raw: the run also saves its feedback list (out.feedback.tcl)
@@ -147,6 +152,8 @@ def make_runner(args: argparse.Namespace, pins: dict):
 
 def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
     case = load_case(case_dir, COMPARATORS)
+    if case.capture_blocked:
+        return skip_blocked(case, case_dir)
     if args.check:
         print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool})")
         return True
@@ -160,6 +167,14 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
         return not problems
     write_expected(case, provenance(case, pins, runner.name, result, outputs), outputs)
     print(f"{case.id}: captured {len(outputs)} output(s) with the {runner.name} runner")
+    return True
+
+
+def skip_blocked(case: Case, case_dir: Path) -> bool:
+    """Report a capture_blocked case as skipped; an error when it has expected/ all the same."""
+    if is_captured(case_dir):
+        raise CaseError(f"{case.id}: capture_blocked is set but expected/ exists; drop the flag")
+    print(f"{case.id}: skipped, capture blocked: {case.capture_blocked}")
     return True
 
 

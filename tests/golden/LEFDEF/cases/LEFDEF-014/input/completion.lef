@@ -1,0 +1,35 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+SITE unit
+  CLASS CORE ;
+  SYMMETRY Y ;
+  SIZE 0.46 BY 2.72 ;
+END unit
+MACRO nosize
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0.1 0.1 0.5 0.9 ;
+  END
+END nosize
+MACRO twice
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0 0 0.2 0.2 ;
+  END
+END twice
+MACRO twice
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  OBS
+      LAYER metal2 ;
+        RECT 0 0 0.4 0.4 ;
+  END
+END twice
+END LIBRARY

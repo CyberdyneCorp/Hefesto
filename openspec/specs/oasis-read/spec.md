@@ -167,7 +167,7 @@ Compatibility: exact
 Rules:
 1. OASIS layer and datatype numbers are unsigned 32-bit values. A value above 255 can only match a `*` wildcard, because `calma` statements accept 0..255. GDS numbers above 255 behave the same in gds-read (Q-OASIS-39, resolution: replicate).
 2. LAYERNAME records SHALL NOT affect the mapping, which uses numbers only, as `cifinput` does for GDS (Q-OASIS-38, resolution: replicate). They are kept only for re-encoding read-only cells (capability `oasis-write`).
-3. The unknown-layer message kinds are: "Unknown layer/datatype in boundary" for POLYGON, TRAPEZOID, CTRAPEZOID and CIRCLE; "... in box" for RECTANGLE; "... in path" for PATH; "Label on unknown layer/datatype" for TEXT. Each is reported once per (kind, pair) per cell, as in gds-read (calmaLayerError), for any number, including numbers above 255. No report is made in read-only cells (see "Read-only OASIS vendor views"), whose unmapped layers are expected (Q-OASIS-39).
+3. The unknown-layer message kinds are: "Unknown layer/datatype in boundary" for POLYGON, TRAPEZOID, CTRAPEZOID and CIRCLE; "... in box" for RECTANGLE; "... in path" for PATH; "Label on unknown layer/datatype" for TEXT. Each pair is reported once per cell, whatever the kind, as in gds-read (calmaLayerError keys its table by layer, datatype and cell only), so the first kind seen for a pair is the one printed, for any number, including numbers above 255. No report is made in read-only cells (see "Read-only OASIS vendor views"), whose unmapped layers are expected (Q-OASIS-39).
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: cif/CIFrdtech.c:184-232, calma/CalmaRdpt.c:1251-1276)
 

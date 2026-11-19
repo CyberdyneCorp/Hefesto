@@ -47,8 +47,10 @@ struct OasisReadOptions {
   std::uint64_t source_bytes = 0;
 };
 
-/// Reads `path` into the editor's cell library. SCAFFOLD: fails with
-/// CORE-NOTIMPL-006 ("not implemented yet: oasis read") until OASR lands it.
+/// Reads `path` (gzip-wrapped or not) into the editor's cell library. The
+/// result's value is the top cell to load into the window, if any
+/// (oasis-read "Top cell selection"); `files` may be an in-memory file
+/// system.
 [[nodiscard]] cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
                                       const OasisReadOptions& options, const mask::Progress* progress = nullptr);
 

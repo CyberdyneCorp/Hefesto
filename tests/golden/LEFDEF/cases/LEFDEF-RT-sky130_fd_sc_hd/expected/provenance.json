@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "LEFDEF-RT-sky130_fd_sc_hd",
+  "area": "LEFDEF",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:5ec002618cfc45423d86eff360ae1477961190c19bd3da1e0d35910941db4e67",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-rcfile",
+    "input/pdk/sky130A/libs.tech/magic/sky130A.magicrc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-19T18:02:18Z",
+  "outputs": {
+    "lefdef_rt.lef.sha256": "ecf19b3921895f55bdf0764dedc94774a321bb00240bf72bfe6990912c72a481",
+    "lefdef_rt.lef.summary.txt": "154ece1b58d18c8343a5a57d15c9a2a0826008be712a405e6df27a76016fe996",
+    "stderr.txt": "a15e001594b291597fa6b879ac8171ea1a04751f08d6aa1ce83a48a6a9cf6ae5",
+    "stdout.txt": "b318e2fbe6a67e7af45ab1125b1f6ae7eb9b42d8c0c1bc1baf098354c9a78ee4"
+  }
+}

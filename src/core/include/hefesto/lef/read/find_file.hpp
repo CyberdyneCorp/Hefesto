@@ -9,10 +9,17 @@
 //
 // Owner: INTEGRATION (this header, created by the M6 scaffold); LEFR fills
 // in the implementation in src/core/src/lef/read/ (design D2).
+//
+// The tries, in order (lefFileOpen): a name whose last component has an
+// extension other than `.lef` as given, then with that extension replaced
+// by `.lef`; a name ending in `.lef` as given; a name with no extension with
+// `.lef` appended. Each searches the current directory, the cell search
+// path and the library path; a `.gz` file of the same name is found too.
 
 #pragma once
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "hefesto/cell/search_path.hpp"
@@ -20,7 +27,10 @@
 namespace hefesto::lef {
 
 /// The LEF file `lef read <name>` opens; nullopt when no candidate opens.
-/// SCAFFOLD: returns nullopt until LEFR lands it.
 [[nodiscard]] std::optional<cell::FoundFile> find_lef_file(cell::LookupContext& ctx, std::string_view name);
+
+/// The last name find_lef_file tries: `name` ending in `.lef` (the name
+/// "Cannot open input file" reports).
+[[nodiscard]] std::string lef_candidate(std::string_view name);
 
 }  // namespace hefesto::lef

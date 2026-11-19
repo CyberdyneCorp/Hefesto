@@ -1,0 +1,32 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO pwr
+  CLASS BLOCK ;
+  FOREIGN pwr ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 1.000 BY 2.000 ;
+  PIN vccd1
+    USE POWER ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 1.900 1.000 2.000 ;
+    END
+  END vccd1
+  PIN vssd1
+    USE GROUND ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 1.000 0.100 ;
+    END
+  END vssd1
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.400 0.900 0.600 1.100 ;
+    END
+  END A
+END pwr
+END LIBRARY
+

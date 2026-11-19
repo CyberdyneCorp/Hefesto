@@ -104,6 +104,38 @@ class CaptureTest(unittest.TestCase):
     def test_verify_mode_with_model(self):
         self.assertEqual(quiet(capture.main, ["--runner", "model", "--verify", str(CASE)]), 0)
 
+    def blocked_copy(self, tmp: str, reason: str = "Magic crashes (SIGSEGV)") -> Path:
+        copy = Path(tmp) / "CORE" / "cases" / "CORE-HASH-01"
+        shutil.copytree(CASE, copy)
+        text = (copy / "case.toml").read_text(encoding="utf-8")
+        (copy / "case.toml").write_text(text.replace('tool = "magic-hash-harness"',
+                                                     f'tool = "magic-hash-harness"\ncapture_blocked = "{reason}"'),
+                                        encoding="utf-8")
+        return copy
+
+    def test_capture_blocked_case_is_skipped_with_its_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = self.blocked_copy(tmp)
+            shutil.rmtree(copy / "expected")
+            self.assertEqual(load_case(copy).capture_blocked, "Magic crashes (SIGSEGV)")
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                status = capture.main(["--runner", "model", "--only-missing", str(copy)])
+            self.assertEqual(status, 0)
+            self.assertIn("CORE-HASH-01: skipped, capture blocked: Magic crashes (SIGSEGV)", out.getvalue())
+            self.assertFalse((copy / "expected").exists())
+
+    def test_capture_blocked_with_expected_is_an_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = self.blocked_copy(tmp)
+            self.assertEqual(quiet(capture.main, ["--runner", "model", "--verify", str(copy)]), 1)
+
+    def test_capture_blocked_needs_a_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = self.blocked_copy(tmp, reason=" ")
+            with self.assertRaises(CaseError):
+                load_case(copy)
+
 
 class ReplayTest(unittest.TestCase):
     def run_replay(self, mode: str, *extra: str) -> tuple[int, dict]:

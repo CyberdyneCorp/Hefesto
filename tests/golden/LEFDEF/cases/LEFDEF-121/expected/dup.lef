@@ -1,0 +1,28 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO dup
+  CLASS BLOCK ;
+  FOREIGN dup ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 1.000 BY 2.000 ;
+  PIN VDD
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 1.000 0.100 ;
+    END
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 1.900 1.000 2.000 ;
+    END
+  END VDD
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.400 0.900 0.600 1.100 ;
+    END
+  END A
+END dup
+END LIBRARY
+

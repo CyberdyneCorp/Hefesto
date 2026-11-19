@@ -202,14 +202,12 @@ TEST_CASE("EditorState holds the LEF/DEF session and MaskSession the oasis setti
 TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-scaffold]") {
   editor::EditorState state;
   hefesto::db::CellDef cell{"top", 1};
-  check_stub(lef::read(state, "a.lef", lef::LefReadOptions{}), "lef read");
-  check_stub(lef::write(state, cell, "a.lef", lef::LefWriteOptions{}), "lef write");
-  check_stub(lef::write_all(state, cell, "a.lef", lef::LefWriteOptions{}), "lef writeall");
-  check_stub(def::read(state, "a.def", def::DefReadOptions{}), "def read");
   check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
-  check_stub(oasis::read(state, "a.oas", oasis::OasisReadOptions{}), "oasis read");
   check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
-  // lef::paint_polygon is implemented (LEFVIA): tests/unit/lef/via/.
+  // Implemented: lef::read (LEFR, tests/unit/lef/read/), lef::write and
+  // lef::write_all (LEFW, tests/unit/lef/write/), lef::paint_polygon (LEFVIA,
+  // tests/unit/lef/via/), def::read (DEFR, tests/unit/def/read/), oasis::read
+  // (OASR, tests/unit/oasis/read/).
 }
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {

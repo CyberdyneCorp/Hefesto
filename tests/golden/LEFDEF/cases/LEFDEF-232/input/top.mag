@@ -1,0 +1,14 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 50 200 53
+use leaf  u1
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use leaf  u2
+timestamp 100
+transform 1 0 190 0 1 0
+box 0 0 10 10
+<< end >>

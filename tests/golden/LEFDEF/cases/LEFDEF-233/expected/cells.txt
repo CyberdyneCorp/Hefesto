@@ -1,0 +1,17 @@
+file blk1.mag
+magic
+tech lefdef
+timestamp 1795093991
+<< obsm1 >>
+rect 200 200 300 300
+rect 10 10 90 90
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>
+file blk2.mag
+magic
+tech lefdef
+timestamp 1795093991
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

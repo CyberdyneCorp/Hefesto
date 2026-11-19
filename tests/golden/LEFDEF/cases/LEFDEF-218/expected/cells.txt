@@ -1,0 +1,19 @@
+file twolayer.mag
+magic
+tech lefdef
+timestamp 1795093987
+<< metal1 >>
+rect 95 95 105 105
+rect 295 95 305 105
+<< metal2 >>
+rect 290 90 310 110
+<< labels >>
+flabel metal1 s 95 95 105 105 0 FreeSans 48 0 0 0 P
+port 0 nsew
+flabel metal1 s 295 95 305 105 0 FreeSans 48 0 0 0 Q
+port 1 nsew
+flabel metal2 s 290 90 310 110 0 FreeSans 128 0 0 0 Q
+port 1 nsew
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

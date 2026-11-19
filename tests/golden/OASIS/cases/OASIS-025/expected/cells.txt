@@ -1,0 +1,40 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084841
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file c.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file iprops.mag
+magic
+tech oastest
+timestamp 1795084841
+<< checkpaint >>
+rect 0 0 70 60
+use c  c_0
+timestamp 1795084841
+transform 1 0 30 0 1 50
+box 0 0 10 10
+use c  kept
+timestamp 1795084841
+transform 1 0 60 0 1 50
+box 0 0 10 10
+use c  named98
+timestamp 1795084841
+transform 1 0 0 0 1 50
+box 0 0 10 10
+use c  x_y
+array 1 2 20 0 0 0
+timestamp 1795084841
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

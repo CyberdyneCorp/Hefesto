@@ -1,0 +1,22 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO obsbad
+  CLASS BLOCK ;
+  FOREIGN obsbad ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 0.800 BY 0.800 ;
+  PIN A
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.000 0.200 0.200 ;
+    END
+  END A
+  OBS
+      LAYER metal1 ;
+        RECT 0.400 0.400 0.800 0.800 ;
+  END
+END obsbad
+END LIBRARY
+

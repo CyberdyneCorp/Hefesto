@@ -1,0 +1,27 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+rect 20 0 30 10
+rect 40 0 50 10
+rect 60 0 70 10
+rect 80 0 90 10
+rect 100 0 110 10
+rect 120 0 130 10
+<< labels >>
+rlabel metal1 0 0 10 10 0 I
+port 1 nsew signal input abutment
+rlabel metal1 20 0 30 10 0 O
+port 2 nsew analog output ring
+rlabel metal1 40 0 50 10 0 T
+port 3 nsew clock tristate feedthrough
+rlabel metal1 60 0 70 10 0 B
+port 4 nsew power bidirectional
+rlabel metal1 80 0 90 10 0 F
+port 5 nsew ground feedthrough
+rlabel metal1 100 0 110 10 0 D
+port 6 nsew default default
+rlabel metal1 120 0 130 10 0 N
+port 7 nsew
+<< end >>

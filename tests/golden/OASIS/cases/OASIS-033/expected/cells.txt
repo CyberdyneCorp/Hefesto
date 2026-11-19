@@ -1,0 +1,72 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084843
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file va.mag
+magic
+tech oastest
+timestamp 432657812
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< metal2 >>
+rect 0 0 5 5
+<< properties >>
+string GDS_END 228
+string GDS_FILE input/plain.gds
+string GDS_START 96
+<< end >>
+file vt.mag
+magic
+tech oastest
+timestamp 409017534
+<< checkpaint >>
+rect 0 0 30 10
+<< metal1 >>
+rect 20 0 30 10
+rect 40 0 50 10
+use va  va_0
+timestamp 432657812
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< properties >>
+string GDS_END 356
+string GDS_FILE input/plain.gds
+string GDS_START 262
+<< end >>
+file wa.mag
+magic
+tech oastest
+timestamp 432657812
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< metal2 >>
+rect 0 0 5 5
+<< properties >>
+string GDS_END 228
+string GDS_FILE input/packed.gds
+string GDS_START 96
+<< end >>
+file wt.mag
+magic
+tech oastest
+timestamp 983828424
+<< checkpaint >>
+rect 0 0 30 10
+<< metal1 >>
+rect 20 0 30 10
+use wa  wa_0
+timestamp 432657812
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< properties >>
+string GDS_END 356
+string GDS_FILE input/packed.gds
+string GDS_START 262
+<< end >>

@@ -1,0 +1,24 @@
+magic
+tech lefdef
+timestamp 100
+<< ndiffusion >>
+rect 0 20 10 40
+rect 14 20 30 40
+<< ntransistor >>
+rect 10 20 14 40
+<< polysilicon >>
+rect 10 40 14 60
+rect 10 10 14 20
+<< polycontact >>
+rect 8 60 16 68
+<< ndcontact >>
+rect 18 24 26 32
+<< metal1 >>
+rect 8 68 16 80
+rect 18 32 26 50
+<< labels >>
+rlabel metal1 8 72 16 80 0 A
+port 1 nsew signal input
+rlabel metal1 18 44 26 50 0 Y
+port 2 nsew signal output
+<< end >>

@@ -1,0 +1,17 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 10 80 30 100
+rect 70 80 90 100
+rect 40 40 60 140
+rect 0 185 100 200
+rect 0 0 100 15
+<< labels >>
+rlabel metal1 10 80 30 100 0 A
+port 0 nsew signal input
+rlabel metal1 70 80 90 100 0 Y
+port 1 nsew signal output
+<< properties >>
+string LEFsite unit
+<< end >>

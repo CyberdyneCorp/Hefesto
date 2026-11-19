@@ -1,0 +1,24 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO neg
+  CLASS BLOCK ;
+  FOREIGN neg ;
+  ORIGIN 0.200 0.100 ;
+  SIZE 0.600 BY 0.400 ;
+  PIN A
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER metal1 ;
+        RECT -0.200 -0.100 0.000 0.100 ;
+    END
+  END A
+  OBS
+      LAYER metal1 ;
+        RECT 0.100 0.200 0.400 0.300 ;
+  END
+END neg
+END LIBRARY
+

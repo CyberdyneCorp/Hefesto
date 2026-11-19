@@ -1,0 +1,17 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 50 3
+rect 47 3 50 50
+rect 0 100 40 103
+rect 60 100 100 103
+rect 0 200 50 203
+rect 47 203 50 250
+rect 47 247 100 250
+<< labels >>
+rlabel metal1 0 0 50 3 0 nl
+rlabel metal1 0 100 40 103 0 nd
+rlabel metal1 60 100 100 103 0 nd
+rlabel metal1 0 200 50 203 0 ng
+<< end >>

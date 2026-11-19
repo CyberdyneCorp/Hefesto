@@ -1,0 +1,20 @@
+magic
+tech oastest
+timestamp 100
+use vp  p0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 20 2
+use vb  b0
+timestamp 100
+transform 1 0 0 0 1 10
+box 0 0 3 3
+use vn  n0
+timestamp 100
+transform 1 0 10 0 1 10
+box 0 0 5 5
+use va  a0
+timestamp 100
+transform 1 0 20 0 1 10
+box 0 0 13 13
+<< end >>

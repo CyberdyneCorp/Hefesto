@@ -1,0 +1,55 @@
+VERSION 5.7 ;
+BUSBITCHARS "<>" ;
+DIVIDERCHAR "/" ;
+MACRO inv
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  PIN A
+    DIRECTION INPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.1 0.8 0.3 1 ;
+    END
+  END A
+  PIN Y
+    DIRECTION OUTPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.7 0.8 0.9 1 ;
+    END
+  END Y
+  PIN B
+    DIRECTION INPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.4 0.4 0.6 0.6 ;
+    END
+  END B
+  PIN D<3>
+    DIRECTION INPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 0.2 0.2 ;
+    END
+  END D<3>
+  PIN VDD
+    USE POWER ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 1.85 1 2 ;
+    END
+  END VDD
+  PIN Z
+    DIRECTION OUTPUT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.5 1.5 0.6 1.6 ;
+    END
+  END Z
+  OBS
+      LAYER metal1 ;
+        RECT 0.4 1.2 0.6 1.4 ;
+  END
+END inv
+END LIBRARY

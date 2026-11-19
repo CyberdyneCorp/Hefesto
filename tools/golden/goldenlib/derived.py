@@ -39,6 +39,14 @@ a line ``file <relative path>`` followed by the decoded summary of goldenlib/gds
 ``summary`` (library name and creation date, one line per structure with its record count),
 so a differing digest can be located.
 
+    derived:lef-summary:<glob>
+
+is for LEF outputs too large to commit (the library round trips LEFDEF-RT-*, m6-lef-def-oasis
+task 15.5, compared through ``digest``): a line ``file <relative path>``, then one line
+``<part> <name> <lines> <sha256/16>`` per part of the file: ``head`` (the text before the first
+MACRO), each ``macro`` (from its ``MACRO`` line through its ``END <name>`` line) and ``text`` (the
+lines between two macros or after the last), so a differing digest can be located to a macro.
+
 A source that matches no file yields no output (the case then fails as if a plain file
 were missing).
 """
@@ -52,7 +60,7 @@ from pathlib import Path
 from . import gds
 
 PREFIX = "derived:"
-_REDUCERS = ("mag-drc-sections", "digest", "files", "gds-digest", "gds-summary")
+_REDUCERS = ("mag-drc-sections", "digest", "files", "gds-digest", "gds-summary", "lef-summary")
 _GZIP_MAGIC = b"\x1f\x8b"
 _DRC_SECTIONS = (b"checkpaint", b"error_p", b"error_s", b"error_ps")
 _SECTION = re.compile(rb"^<< (\S+) >>\r?$")
@@ -116,8 +124,36 @@ def _gds_summary_entry(name: bytes, data: bytes) -> bytes:
     return b"file " + name + b"\n" + gds.summary(canonical_gds(data)).encode("latin-1")
 
 
+_MACRO = re.compile(rb"^MACRO\s+(\S+)")
+
+
+def lef_parts(data: bytes) -> list[tuple[bytes, bytes, list[bytes]]]:
+    """(part, name, lines) of a LEF file: ``head``, each ``macro`` and ``text`` (see the module doc)."""
+    parts: list[tuple[bytes, bytes, list[bytes]]] = [(b"head", b"-", [])]
+    macro_end = None
+    for line in data.split(b"\n"):
+        match = _MACRO.match(line) if macro_end is None else None
+        if match:
+            parts.append((b"macro", match.group(1), []))
+            macro_end = b"END " + match.group(1)
+        elif macro_end is None and parts[-1][0] == b"macro":
+            parts.append((b"text", b"-", []))
+        parts[-1][2].append(line)
+        if macro_end is not None and line.strip() == macro_end:
+            macro_end = None
+    return parts
+
+
+def _lef_summary_entry(name: bytes, data: bytes) -> bytes:
+    lines = [b"file " + name]
+    for part, part_name, text in lef_parts(data):
+        digest = hashlib.sha256(b"\n".join(text)).hexdigest()[:16].encode()
+        lines.append(b" ".join((part, part_name, str(len(text)).encode(), digest)))
+    return b"\n".join(lines) + b"\n"
+
+
 _ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry, "files": _file_entry,
-          "gds-digest": _gds_digest_entry, "gds-summary": _gds_summary_entry}
+          "gds-digest": _gds_digest_entry, "gds-summary": _gds_summary_entry, "lef-summary": _lef_summary_entry}
 
 
 def build(work: Path, source: str) -> bytes | None:

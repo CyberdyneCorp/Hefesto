@@ -1,0 +1,54 @@
+file anchor.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084837
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file pl.mag
+magic
+tech oastest
+magscale 1 10
+timestamp 1795084837
+<< checkpaint >>
+rect 0 0 1310 570
+<< metal1 >>
+rect 100 100 200 200
+rect 100 40 400 100
+tri 540 40 600 100 se
+rect 0 0 40 30
+rect 100 0 440 40
+tri 500 0 540 40 se
+rect 540 0 600 40
+tri 700 0 770 70 se
+tri 770 0 800 70 sw
+rect 900 0 1000 100
+rect 1120 0 1140 30
+rect 1300 0 1310 10
+<< metal2 >>
+rect 95 505 105 550
+rect 0 495 105 505
+rect 195 545 300 555
+tri 643 550 648 555 se
+rect 648 550 700 555
+rect 195 500 205 545
+rect 495 505 505 550
+tri 633 540 643 550 se
+rect 643 545 700 550
+rect 643 540 648 545
+tri 648 540 652 545 nw
+tri 618 525 633 540 se
+tri 633 525 648 540 nw
+tri 603 510 618 525 se
+tri 618 510 633 525 nw
+rect 400 495 505 505
+tri 596 504 603 510 se
+rect 603 504 604 510
+tri 596 496 604 504 ne
+tri 604 496 618 510 nw
+rect 895 505 905 570
+rect 1045 505 1055 550
+rect 800 495 905 505
+rect 1000 495 1055 505
+<< end >>

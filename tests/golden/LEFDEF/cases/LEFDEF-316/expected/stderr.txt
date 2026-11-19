@@ -1,0 +1,6 @@
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+No LEF layer corresponding to layer pp of pin "polysilicon".
+Warning:  Circuit has no .ext file;  no nets written.
+Run extract on this circuit if you want nets in the output.

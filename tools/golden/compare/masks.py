@@ -53,6 +53,12 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     Console line ``Created database crash recovery file /tmp/MAG<pid>.<XXXXXX>``
     (Magic's crash backups, database/DBio.c via mkstemp): the process id and
     the random suffix become ``<masked>``.
+``magic-undo-note``
+    The whole console line ``This action cannot be undone.`` that Magic prints at
+    the start of ``lef read`` and ``def read`` (lef/lefRead.c:3018, lef/defRead.c:2550).
+    Hefesto makes each read one undoable step and never prints it (Q-LEFDEF-22,
+    platform; layout-undo "Undoable LEF and DEF reads"). Every line equal to it is
+    removed.
 ``magic-crash-line``
     The whole ``Created database crash recovery file ...`` console line. Magic
     writes its crash backup from a timer, so during a long run (the MASK-RT
@@ -212,6 +218,14 @@ def mask_magic_crash_line(data: bytes) -> bytes:
     return _CRASH_LINE.sub(b"", data)
 
 
+# Magic disables undo for LEF and DEF reads; Hefesto records them (Q-LEFDEF-22).
+_UNDO_NOTE = re.compile(rb"^This action cannot be undone\.\r?\n", re.MULTILINE)
+
+
+def mask_magic_undo_note(data: bytes) -> bytes:
+    return _UNDO_NOTE.sub(b"", data)
+
+
 # The technology manager lists Magic's example technologies in directory order.
 _TECH_MENU_LINE = re.compile(rb"^\d+ (\S+) \{magic::tech load \1 ;  magic::techmanager update\}\r?$")
 
@@ -274,6 +288,7 @@ _NAMED: dict[str, Mask] = {
     "magic-stamp-note": mask_magic_stamp_note,
     "magic-crash-file": mask_magic_crash_file,
     "magic-crash-line": mask_magic_crash_line,
+    "magic-undo-note": mask_magic_undo_note,
     "magic-tech-menu-order": mask_magic_tech_menu_order,
     "schem-paths": mask_schem_paths,
     "schem-version": mask_schem_version,

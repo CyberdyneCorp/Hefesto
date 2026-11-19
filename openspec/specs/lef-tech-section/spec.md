@@ -57,7 +57,7 @@ end
 
 For non-`ignore` lines, the second field SHALL be resolved to a set of user tile types using the tech type-name expression rules. Let T be the set of resolved types ordered by ascending type number. The line SHALL be rejected when |T| = 0 (error `Bad magic layer type "<name>" in LEF layer definition.`), when |T| = 2 and the keyword is not `obstruction` (error `Can only define multiple types for via obstruction layers.`), or when |T| > 2 (error `Too many types in LEF layer definition.`). The first type of T SHALL be the primary type; for an `obstruction` line with |T| = 2 the second type SHALL be the secondary via-obstruction type; otherwise the secondary type is "none".
 
-With `magic-compat` ON, |T| > 2 is treated as Magic treats it: Magic's counting loop stops at the second type, so the `Too many types` error is never printed. An `obstruction` line keeps the first two types of T, and any other line is rejected with `Can only define multiple types for via obstruction layers.`. With `magic-compat` OFF the line is rejected with `Too many types in LEF layer definition.` as stated above.
+With `magic-compat` ON, |T| > 2 is treated as Magic treats it: Magic's counting loop stops at the second type, so the `Too many types` error is never printed. An `obstruction` line keeps the first two types of T, and any other line is rejected with `Can only define multiple types for via obstruction layers.`. With `magic-compat` OFF the line is rejected with `Too many types in LEF layer definition.` as stated above (Q-LEFDEF-25, resolution: compat).
 Compatibility: exact (|T| > 2: compat)
 
 (Magic ref: lef/lefTech.c:247-279)
@@ -118,7 +118,7 @@ All LEF names on one line that are not yet in the table SHALL be bound to one sh
 - otherwise the error `LEF name <name> already used for magic type <type>` SHALL be reported and the name is left unchanged.
 A name already bound to an IGNORE entry SHALL be silently left unchanged. Existing entries SHALL never change class through a later line.
 
-In both modes, an `ignore` line that names a LEF name already bound to a non-IGNORE entry SHALL report the `already used` error and leave the name unchanged. (Magic reads LefTechLine's uninitialized `isObstruction` and `mtype` there.) When the entry has no normal type, the error SHALL name its obstruction type. (Magic indexes its type-name table with -1 there.)
+In both modes, an `ignore` line that names a LEF name already bound to a non-IGNORE entry SHALL report the `already used` error and leave the name unchanged. (Magic reads LefTechLine's uninitialized `isObstruction` and `mtype` there.) When the entry has no normal type, the error SHALL name its obstruction type, or type 0 (space) when it has none. (Magic indexes its type-name table with -1 there.) See Q-LEFDEF-26 (resolution: fix).
 Compatibility: exact
 
 (Magic ref: lef/lefTech.c:292-401)

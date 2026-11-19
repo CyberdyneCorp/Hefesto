@@ -121,13 +121,30 @@ class ViaGenerator {
 /// generated. Rectangles read before stay in the extra list.
 void apply_generated(ViaDefinition& via, const ViaGeometry& geometry);
 
+/// A parsed DEF 5.8 cut pattern, kept as the runs the text gives (its size
+/// follows the text, not rows x columns, which a hostile ROWCOL makes huge).
+struct CutPattern {
+  struct Run {
+    std::uint64_t end_bit;  // the run covers the bits up to here (from the previous run's end)
+    std::uint8_t digit;     // the repeated hex digit, most significant bit leftmost
+    friend bool operator==(const Run&, const Run&) = default;
+  };
+  struct Group {
+    std::uint64_t end_row;  // the group covers the rows up to here (from the previous group's end)
+    std::vector<Run> runs;
+    friend bool operator==(const Group&, const Group&) = default;
+  };
+  std::vector<Group> groups;  // the first group is the bottom row
+
+  /// Whether the cut at `row` (0 bottom), `column` (0 left) is present.
+  [[nodiscard]] bool at(std::int32_t row, std::int32_t column) const;
+};
+
 /// A DEF 5.8 cut pattern for `rows` x `columns` cuts: `<n>_<hex>` row
 /// groups joined by `_`, each giving n rows; a row's hex digits give 4
 /// columns each, the most significant bit first (leftmost), `R<k><digit>`
-/// repeating a digit k times; the first group is the bottom row. present[row]
-/// [column] (row 0 bottom, column 0 left); nullopt when the text does not
-/// parse or does not cover every row.
-[[nodiscard]] std::optional<std::vector<std::vector<bool>>> cut_pattern(std::string_view pattern, std::int32_t rows,
-                                                                        std::int32_t columns);
+/// repeating a digit k times; the first group is the bottom row. nullopt
+/// when the text does not parse or does not cover every row.
+[[nodiscard]] std::optional<CutPattern> cut_pattern(std::string_view pattern, std::int32_t rows, std::int32_t columns);
 
 }  // namespace hefesto::lef

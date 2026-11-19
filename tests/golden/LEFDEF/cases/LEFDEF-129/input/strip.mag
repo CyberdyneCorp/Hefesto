@@ -1,0 +1,12 @@
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 0 200 10
+rect 0 40 10 140
+<< labels >>
+rlabel metal1 0 0 10 10 0 S
+port 1 nsew
+rlabel metal1 0 130 10 140 0 V
+port 2 nsew
+<< end >>

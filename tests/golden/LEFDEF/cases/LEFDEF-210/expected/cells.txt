@@ -1,0 +1,76 @@
+file core.mag
+magic
+tech lefdef
+timestamp 100
+<< properties >>
+string FIXED_BBOX 0 0 20 200
+string LEFclass CORE
+string LEFsymmetry Y
+string LEFview TRUE
+<< end >>
+file inv.mag
+magic
+tech lefdef
+timestamp 100
+<< metal1 >>
+rect 0 185 100 200
+rect 10 80 30 100
+rect 70 80 90 100
+rect 0 0 100 15
+<< obsm1 >>
+rect 40 40 60 140
+<< labels >>
+rlabel metal1 s 10 80 30 100 6 A
+port 1 nsew signal input
+rlabel metal1 s 70 80 90 100 6 Y
+port 2 nsew signal output
+rlabel metal1 s 0 185 100 200 6 VDD
+port 3 nsew power bidirectional abutment
+rlabel metal1 s 0 0 100 15 6 VSS
+port 4 nsew ground bidirectional abutment
+<< properties >>
+string FIXED_BBOX 0 0 100 200
+string LEFclass CORE
+string LEFsite core
+string LEFsymmetry X Y
+string LEFview TRUE
+<< end >>
+file place.mag
+magic
+tech lefdef
+timestamp 1795093985
+use inv  uE
+timestamp 100
+transform 0 1 100 -1 0 300
+box 0 0 100 200
+use inv  uFE
+timestamp 100
+transform 0 -1 300 -1 0 300
+box 0 0 100 200
+use inv  uFN
+timestamp 100
+transform -1 0 200 0 1 200
+box 0 0 100 200
+use inv  uFS
+timestamp 100
+transform 1 0 100 0 -1 400
+box 0 0 100 200
+use inv  uFW
+timestamp 100
+transform 0 1 100 1 0 200
+box 0 0 100 200
+use inv  uN
+timestamp 100
+transform 1 0 100 0 1 200
+box 0 0 100 200
+use inv  uS
+timestamp 100
+transform -1 0 200 0 -1 400
+box 0 0 100 200
+use inv  uW
+timestamp 100
+transform 0 -1 300 1 0 200
+box 0 0 100 200
+<< properties >>
+string FIXED_BBOX 0 0 1000 1000
+<< end >>

@@ -59,7 +59,15 @@ The decoder (`oasis::Decoder`) returns an error that stops decoding from `next()
 
 Codes of the OASIS reader, read-only vendor views and content-hash timestamps (`src/core/src/oasis/read/`; capability oasis-read; design D12). Owner: OASR.
 
-No codes yet.
+`oasis read` turns every OASIS element instance into its GDS-equivalent element and reads the result with the GDS reader, so most read messages are `GDS-READ-*` codes (codes/gds.md) with the same text as for `gds read`. Their byte position is the position of the OASIS record in the decompressed stream, or `<CBLOCK offset>+<offset inside its data>` for a record inside a CBLOCK. The decoder's own messages are `OASIS-CODEC-*` codes.
+
+- `OASIS-READ-001`: "Nothing in "cifinput" section of tech file." The technology has no input style; nothing is read.
+- `OASIS-READ-002`: "Cannot open <path> to read OASIS input.", followed by the file system's error.
+- `OASIS-READ-003`: a fatal decoding error (an `OASIS-CODEC-*` text, such as "unexpected end of file"), prefixed with the cell and byte position. The cells complete before it are read; when there is none, nothing is read.
+- `OASIS-READ-004`: "coordinate overflow; element instance dropped": a coordinate, path width or extension, or a placement or array point of an element instance is outside 32 bits. Reported once per element.
+- `OASIS-READ-005`: "XGEOMETRY not supported: skipping." (or XELEMENT), once per kind and cell; "XNAME not supported: skipping." once per file.
+- `OASIS-READ-006`: an element that does not fit its GDS-equivalent record: a polygon, trapezoid, circle or path with more than 8191 points is dropped; a text string or cell name above 65530 bytes is cut.
+- `OASIS-READ-007`: a resource cap of the read (design D21): more than 2^28 element instances and uses, or a GDS-equivalent stream over 2 GiB. The rest of the file is not read.
 
 ## WRITE
 
@@ -115,4 +123,11 @@ fails when the two disagree.
 | `OASIS-CODEC-026` | error | The encoder cannot write a value: out of range, not representable in the requested form, unresolved, or a call out of order. |
 | `OASIS-CODEC-027` | error | CBLOCK compression failed (zlib) or the compression level is not 1 to 9. |
 | `OASIS-CODEC-028` | error | Invalid PROPERTY value type (above 15); decoding stops. |
+| `OASIS-READ-001` | error | No cifinput style: nothing in the "cifinput" section of the technology file; nothing is read. |
+| `OASIS-READ-002` | error | The OASIS file cannot be opened or read. |
+| `OASIS-READ-003` | error | Decoding stopped (a fatal oasis-format error); only the cells complete before it are read. |
+| `OASIS-READ-004` | error | Coordinate overflow: an element instance has a coordinate, width or displacement outside 32 bits; it is dropped. |
+| `OASIS-READ-005` | warning | XNAME, XELEMENT or XGEOMETRY not supported: the record is skipped (reported once per kind and cell). |
+| `OASIS-READ-006` | error | An element does not fit its GDS-equivalent record (a polygon or path above 8191 points, a string above 65530 bytes); it is dropped or cut. |
+| `OASIS-READ-007` | error | A read resource cap was reached (the size of the GDS-equivalent stream); the rest of the file is not read. |
 <!-- END DIAGNOSTIC CODES -->

@@ -1,0 +1,150 @@
+tech
+    format 35
+    lefdef
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+    metal3,m3
+    metal5,m5
+    obstruct,ob
+    bnd,bd
+end
+
+types
+    well      nwell,nw
+    active    ndiffusion,ndiff
+    active    pdiffusion,pdiff
+    active    polysilicon,poly
+    active    ntransistor,nfet
+    active    ptransistor,pfet
+    active    polycontact,pc
+    active    ndcontact,ndc
+    active    pdcontact,pdc
+    metal1    metal1,m1
+    metal1    via1,v1
+    metal2    metal2,m2
+    metal2    via2,v2
+    metal3    metal3,m3
+    metal5    metal5,m5
+    obstruct  obsm1
+    obstruct  obsm2
+    obstruct  obsv1
+    bnd       boundary
+end
+
+contact
+    pc    poly   metal1
+    ndc   ndiff  metal1
+    pdc   pdiff  metal1
+    via1  metal1 metal2
+    via2  metal2 metal3
+end
+
+styles
+    styletype mos
+end
+
+compose
+    compose nfet poly ndiff
+    compose pfet poly pdiff
+end
+
+connect
+    ndiff ndc
+    pdiff pdc
+    poly pc
+    metal1 pc,ndc,pdc,via1
+    metal2 via1,via2
+    metal3 via2
+end
+
+cifoutput
+style lefdef
+    scalefactor 10 nanometers
+    layer M1 metal1,pc,ndc,pdc,via1
+        labels metal1
+        calma 68 20
+    layer M2 metal2,via1,via2
+        labels metal2
+        calma 69 20
+    layer M3 metal3,via2
+        labels metal3
+        calma 70 20
+    layer M5 metal5
+        labels metal5
+        calma 72 20
+    layer POLY poly,pc,nfet,pfet
+        labels poly
+        calma 66 20
+    layer DIFF ndiff,pdiff,ndc,pdc,nfet,pfet
+        calma 65 20
+    layer NWELL nwell
+        calma 64 20
+    layer CONT pc,ndc,pdc
+        squares 5 20 20
+        calma 66 44
+    layer VIA1 via1
+        squares 5 20 20
+        calma 68 44
+    layer VIA2 via2
+        squares 5 20 20
+        calma 69 44
+end
+
+cifinput
+end
+
+drc
+    width metal1 3 "metal1 width < 3"
+    spacing metal1 metal1 3 touching_ok "metal1 spacing < 3"
+    width metal2 4 "metal2 width < 4"
+    spacing metal2 metal2 4 touching_ok "metal2 spacing < 4"
+    width metal3 5 "metal3 width < 5"
+    spacing metal3 metal3 5 touching_ok "metal3 spacing < 5"
+    width poly 2 "poly width < 2"
+    width pc,ndc,pdc 4 "contact width < 4"
+    width via1 4 "via1 width < 4"
+    width via2 4 "via2 width < 4"
+end
+
+lef
+    masterslice nwell NWELL nwell
+    routing metal1 metal1 met1 M1
+    routing metal2 metal2 met2 M2
+    routing metal3 metal3 met3 M3
+    routing metal5 metal5 met5 M5
+    cut pc cont mcon
+    cut via1 via1 via V1
+    cut via2 via2 V2
+    obstruction obsm1 metal1
+    obstruction obsm2 metal2
+    obstruction obsv1 via1
+end
+
+extract
+    style lefdef
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    planeorder metal3 4
+    planeorder metal5 5
+    planeorder obstruct 6
+    planeorder bnd 7
+    resist ndiff,pdiff,ndc/a,pdc/a 1000
+    resist poly,pc/a 500
+    resist metal1,pc/m1,ndc/m1,pdc/m1,via1/m1 100
+    resist metal2,via1/m2,via2/m2 50
+    resist metal3,via2/m3 30
+    resist metal5 20
+    areacap metal1 10
+    areacap metal2 8
+    areacap metal3 6
+end

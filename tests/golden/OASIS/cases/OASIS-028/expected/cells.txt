@@ -1,0 +1,35 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084842
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file newname.mag
+magic
+tech oastest
+timestamp 1795084842
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file texts.mag
+magic
+tech oastest
+timestamp 1795084842
+<< checkpaint >>
+rect 0 0 100 20
+<< metal1 >>
+rect 0 0 100 20
+<< labels >>
+rlabel metal1 s 0 0 5 5 4 A
+port 1 nsew
+rlabel metal1 s 10 0 15 5 4 B
+port 2 nsew
+rlabel metal1 s 30 5 30 5 4 plain
+rlabel metal1 40 5 40 5 4 m1
+rlabel metal1 50 5 50 5 4 lost
+rlabel metal1 s 70 5 70 5 4 rep
+rlabel metal1 s 80 5 80 5 4 rep
+<< end >>

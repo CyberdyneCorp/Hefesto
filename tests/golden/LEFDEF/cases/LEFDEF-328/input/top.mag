@@ -1,0 +1,11 @@
+magic
+tech lefdef
+timestamp 100
+use pad  pad_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 20 20
+<< labels >>
+rlabel metal1 5 5 15 15 0 P
+port 1 nsew
+<< end >>

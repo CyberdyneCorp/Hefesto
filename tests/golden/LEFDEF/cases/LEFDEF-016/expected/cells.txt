@@ -1,0 +1,15 @@
+file cport.mag
+magic
+tech lefdef
+magscale 2 1
+timestamp 100
+<< polycontact >>
+rect 4 4 6 6
+<< labels >>
+rlabel polycontact s 4 4 6 6 6 A
+port 1 nsew default input
+<< properties >>
+string FIXED_BBOX 0 0 50 100
+string LEFclass CORE
+string LEFview TRUE
+<< end >>

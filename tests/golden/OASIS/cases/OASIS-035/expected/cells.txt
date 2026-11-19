@@ -1,0 +1,36 @@
+file #4.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+<< metal1 >>
+rect 0 0 5 5
+<< end >>
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084843
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file nr_top.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 5 5
+use #4  #4_0
+timestamp 1795084843
+transform 1 0 0 0 1 0
+box 0 0 5 5
+<< end >>
+file t1.mag
+magic
+tech oastest
+timestamp 1795084843
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>

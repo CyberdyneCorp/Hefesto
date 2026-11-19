@@ -4,12 +4,13 @@
 // The `lef` and `def` commands, scaffold version
 // (openspec/changes/m6-lef-def-oasis/design.md D3, D14): Magic's two option
 // tables, the lookup of both commands in the `lef` table, the window check
-// of every option but `help`, the help listing, `def writeall`'s refusal and
-// the "only for LEF" answers of `def datestamp` and `def nocheck`. Every
-// other option fails with CORE-NOTIMPL-006 until its workstream lands it:
-// `lef read`, `lef datestamp` (LEFR), `lef write`, `lef writeall`, `lef
-// nocheck` (LEFW), `def read` (DEFR), `def write` (DEFW). Each workstream
-// adds its argument parser in its own area and calls it from dispatch().
+// of every option but `help` and `def read` (Q-LEFDEF-86), the help
+// listing, `def writeall`'s refusal and the "only for LEF" answers of `def
+// datestamp` and `def nocheck`. Every other option fails with
+// CORE-NOTIMPL-006 until its workstream lands it:
+// `def write` (DEFW). `lef read` and `lef datestamp` call LEFR's parsers
+// (lef/read/args.hpp); `lef write`, `lef writeall` and `lef nocheck` call
+// LEFW's (lef/write/args.hpp); `def read` calls DEFR's (def/read/command.hpp).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) lef/lefCmd.c CmdLef (the option
 // tables, the lookup, the window check, the `def` refusals and the help),
@@ -21,13 +22,17 @@
 #include "hefesto/lef/command/command.hpp"
 
 #include <array>
+#include <optional>
 #include <string>
 
 #include "db/command_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/stubs.hpp"
+#include "hefesto/def/read/command.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "lef/read/args.hpp"
+#include "lef/write/args.hpp"
 
 namespace hefesto::lef {
 
@@ -127,6 +132,20 @@ CommandResult def_only_answer(const cu::Session& s, std::size_t option) {
   return CommandResult::success();
 }
 
+// The options LEFW parses (`lef` only).
+std::optional<WriteCommand> write_command(std::size_t option) {
+  switch (option) {
+    case kWrite:
+      return WriteCommand::write;
+    case kWriteAll:
+      return WriteCommand::write_all;
+    case kNoCheck:
+      return WriteCommand::nocheck;
+    default:
+      return std::nullopt;
+  }
+}
+
 bool is_def_only_answer(std::size_t option) {
   return option == kWriteAll || option == kDateStamp || option == kNoCheck;
 }
@@ -143,11 +162,28 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   if (option == kHelp) {
     return help(s, invocation.name, is_lef);
   }
+  // DEFR's `def read` needs no window (Q-LEFDEF-86, def/read/command.hpp).
+  if (!is_lef && option == kRead) {
+    return def::read_command(ctx, invocation);
+  }
+  // LEFW's options find their own target cell (lef/write/args.cpp).
+  if (const std::optional<WriteCommand> which = write_command(option); is_lef && which) {
+    return run_write_command(ctx, invocation, *which);
+  }
+  // The `def` options that only print an answer need no target cell either
+  // (Q-LEFDEF-86, platform).
+  if (!is_lef && is_def_only_answer(option)) {
+    return def_only_answer(s, option);
+  }
   if (!has_window(s)) {
     return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
-  if (!is_lef && is_def_only_answer(option)) {
-    return def_only_answer(s, option);
+  const HelpPrinter print_help = [&] { return help(s, invocation.name, is_lef); };
+  if (is_lef && option == kRead) {
+    return read_option(s, invocation, print_help);
+  }
+  if (is_lef && option == kDateStamp) {
+    return datestamp_option(s, invocation, print_help);
   }
   return cmd::not_implemented((is_lef ? "lef " : "def ") + option_name(option));
 }

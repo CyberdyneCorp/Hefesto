@@ -1,0 +1,79 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084838
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file bad.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file e255.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file e257.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file trail.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file val0.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file val1.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file val2.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file val3.mag
+magic
+tech oastest
+timestamp 1795084838
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>

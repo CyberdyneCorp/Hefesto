@@ -1,0 +1,12 @@
+magic
+tech lefdef
+timestamp 100
+use a  a_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 30 10
+use b  b_0
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 10 10
+<< end >>

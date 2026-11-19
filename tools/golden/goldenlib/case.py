@@ -15,11 +15,16 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     area = "CORE"                    # must equal the <AREA> directory
     capability = "hefesto-output-determinism"
     requirements = ["Magic string hash table"]
-    tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness
+    tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness | oasis-spec
+                                     # (oasis-spec: the expected bytes are the spec listings that
+                                     # authoring/oasgen.py assembles into input/spec/; the run copies them)
     description = "..."
     slow = true                      # optional: CTest label golden-slow instead of golden
     gds_rt = true                    # optional: CTest label golden-gds-rt; replay.py skips the case
                                      # unless --include-gds-rt (m5-mask-gds-cif D19, the MASK-RT cases)
+    capture_blocked = "..."          # optional: why the reference tool cannot capture the case yet
+                                     # (it crashes, its output is unstable, an input is missing);
+                                     # capture.py skips the case while it has no expected/
 
     [reference]                      # how capture.py runs the reference tool
     script = "input/commands.tcl"    # fed to the tool (path relative to the case)
@@ -66,7 +71,7 @@ from .derived import is_derived
 from .derived import parse as parse_derived
 from .external import External, parse_external
 
-REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
+REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness", "oasis-spec")
 STREAM_SOURCES = ("stdout", "stderr")
 EXIT_SOURCE = "exitcode"  # the tool's exit status as one decimal line (the SCHEM cases, m8-schematic D16)
 RUN_SOURCES = (*STREAM_SOURCES, EXIT_SOURCE)
@@ -111,6 +116,7 @@ class Case:
     env: dict = field(default_factory=dict)
     slow: bool = False
     gds_rt: bool = False
+    capture_blocked: str = ""  # why capture.py cannot capture the case yet (empty: it can)
 
     @property
     def label(self) -> str:
@@ -206,6 +212,13 @@ def _flag(data: dict, key: str, where: str) -> bool:
     return value
 
 
+def _reason(data: dict, key: str, where: str) -> str:
+    value = data.get(key, "")
+    if not isinstance(value, str) or (key in data and not value.strip()):
+        raise CaseError(f"{where}: '{key}' must be a non-empty string (the reason)")
+    return value
+
+
 def load_case(root: Path, known_comparators=None) -> Case:
     """Load and validate ``root/case.toml``; raise CaseError when malformed."""
     root = Path(root).resolve()
@@ -237,6 +250,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
         env=_parse_env(data, where),
         slow=_flag(data, "slow", where),
         gds_rt=_flag(data, "gds_rt", where),
+        capture_blocked=_reason(data, "capture_blocked", where),
     )
     display = case.reference.get("display")
     if display is not None and display not in DISPLAYS:

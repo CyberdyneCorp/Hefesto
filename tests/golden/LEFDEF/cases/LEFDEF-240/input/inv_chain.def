@@ -1,0 +1,61 @@
+VERSION 5.7 ;
+DIVIDERCHAR "/" ;
+BUSBITCHARS "[]" ;
+# OpenROAD-style test design (m6-lef-def-oasis task 15.5)
+DESIGN inv_chain ;
+UNITS DISTANCE MICRONS 1000 ;
+DIEAREA ( 0 0 ) ( 5060 5440 ) ;
+ROW ROW_0 unithd 0 0 N DO 20 BY 1 STEP 460 0 ;
+ROW ROW_1 unithd 0 2720 FS DO 20 BY 1 STEP 460 0 ;
+TRACKS X 230 DO 20 STEP 460 LAYER li1 ;
+TRACKS Y 170 DO 16 STEP 340 LAYER li1 ;
+VIAS 2 ;
+- VIA_L1M1 + RECT li1 ( -85 -85 ) ( 85 85 ) + RECT mcon ( -85 -85 ) ( 85 85 )
+    + RECT met1 ( -145 -115 ) ( 145 115 ) ;
+- VIA_M1M2 + RECT met1 ( -160 -130 ) ( 160 130 ) + RECT via ( -75 -75 ) ( 75 75 )
+    + RECT met2 ( -150 -150 ) ( 150 150 ) ;
+END VIAS
+COMPONENTS 6 ;
+- TAP_0 sky130_fd_sc_hd__tapvpwrvgnd_1 + PLACED ( 0 0 ) N ;
+- _1_ sky130_fd_sc_hd__inv_1 + PLACED ( 460 0 ) N ;
+- _2_ sky130_fd_sc_hd__inv_1 + PLACED ( 1840 0 ) N ;
+- _3_ sky130_fd_sc_hd__inv_1 + PLACED ( 3220 0 ) N ;
+- _4_ sky130_fd_sc_hd__inv_1 + FIXED ( 460 2720 ) FS ;
+- FILL_0 sky130_fd_sc_hd__fill_1 + PLACED ( 4600 0 ) N ;
+END COMPONENTS
+PINS 4 ;
+- in + NET in + DIRECTION INPUT + USE SIGNAL
+  + PORT + LAYER met2 ( -140 -400 ) ( 140 400 )
+  + PLACED ( 230 4800 ) N ;
+- out + NET out + DIRECTION OUTPUT + USE SIGNAL
+  + PORT + LAYER met2 ( -140 -400 ) ( 140 400 )
+  + PLACED ( 4370 4800 ) N ;
+- VPWR + NET VPWR + SPECIAL + DIRECTION INOUT + USE POWER
+  + PORT + LAYER met1 ( -240 -240 ) ( 240 240 ) + FIXED ( 240 2720 ) N ;
+- VGND + NET VGND + SPECIAL + DIRECTION INOUT + USE GROUND
+  + PORT + LAYER met1 ( -240 -240 ) ( 240 240 ) + FIXED ( 240 0 ) N ;
+END PINS
+SPECIALNETS 2 ;
+- VPWR ( PIN VPWR ) ( * VPWR ) ( * VPB ) + USE POWER
+  + ROUTED met1 480 + SHAPE FOLLOWPIN ( 0 2720 ) ( 5060 2720 ) ;
+- VGND ( PIN VGND ) ( * VGND ) ( * VNB ) + USE GROUND
+  + ROUTED met1 480 + SHAPE FOLLOWPIN ( 0 0 ) ( 5060 0 )
+    NEW met1 480 + SHAPE FOLLOWPIN ( 0 5440 ) ( 5060 5440 ) ;
+END SPECIALNETS
+NETS 5 ;
+- in ( PIN in ) ( _1_ A ) + USE SIGNAL
+  + ROUTED met2 ( 230 4800 ) ( 230 1160 ) VIA_M1M2
+    NEW met1 ( 230 1160 ) ( 640 1160 ) VIA_L1M1 ;
+- n1 ( _1_ Y ) ( _2_ A ) + USE SIGNAL
+  + ROUTED li1 ( 1300 1160 ) ( 2020 1160 ) ;
+- n2 ( _2_ Y ) ( _3_ A ) + USE SIGNAL
+  + ROUTED li1 ( 2680 1160 ) ( 3400 1160 ) ;
+- n3 ( _3_ Y ) ( _4_ A ) + USE SIGNAL
+  + ROUTED li1 ( 4060 1160 ) ( 4370 1160 ) VIA_L1M1
+    NEW met1 ( 4370 1160 ) ( 4370 3900 ) ( 640 3900 ) VIA_L1M1 ;
+- out ( _4_ Y ) ( PIN out ) + USE SIGNAL
+  + ROUTED li1 ( 1300 3900 ) ( 1300 4400 ) VIA_L1M1
+    NEW met1 ( 1300 4400 ) ( 4370 4400 ) VIA_M1M2
+    NEW met2 ( 4370 4400 ) ( 4370 4800 ) ;
+END NETS
+END DESIGN

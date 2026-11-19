@@ -21,8 +21,6 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/lef/command/command.hpp"
-#include "hefesto/lef/write/macro.hpp"
-#include "hefesto/lef/write/number.hpp"
 #include "hefesto/oasis/codec/cblock.hpp"
 #include "hefesto/oasis/codec/validate.hpp"
 #include "hefesto/oasis/command/command.hpp"
@@ -182,18 +180,34 @@ TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m
   CHECK(no_window.diagnostics.front().text == "Point to a window first");
   s.state.command_point = cmd::PointerState{};
 
-  for (const auto* name : {"read", "write", "writeall", "nocheck", "datestamp"}) {
-    check_not_implemented(s.run("lef " + std::string{name}), "lef " + std::string{name});
-  }
-  check_not_implemented(s.run("lef writea -notop"), "lef writeall");  // unique prefix
-  check_not_implemented(s.run("lef read cells -import"), "lef read");
-  check_not_implemented(s.run("def read top.def -labels"), "def read");
+  // lef read/datestamp (LEFR) and lef write/writeall/nocheck (LEFW) are
+  // implemented: tests/unit/lef/read/ and tests/unit/lef/write/.
+  // def read is DEFR's (tests/unit/def/read/): the dispatcher hands it over,
+  // so a missing file reports DEF-READ-005, not CORE-NOTIMPL-006.
+  const auto def_read = s.run("def read top.def -labels");
+  REQUIRE_FALSE(def_read.ok());
+  CHECK(def_read.diagnostics.front().code == "DEF-READ-005");
   check_not_implemented(s.run("def write"), "def write");
 }
 
 TEST_CASE("def writeall, datestamp and nocheck answer as in Magic", "[m6-scaffold]") {
   Session s;
   s.state.command_point = cmd::PointerState{};
+  REQUIRE(s.run("def writeall").ok());
+  CHECK(s.take_printed() == "Sorry, can't write hierarchical DEF at this time.\nTry \"def write\"\n");
+  REQUIRE(s.run("def datestamp 5").ok());
+  CHECK(s.take_printed() == "The \"datestamp\" option is only for LEF reads.\n");
+  REQUIRE(s.run("def nocheck vdd").ok());
+  CHECK(s.take_printed() == "The \"nocheck\" option is only for LEF writes.\n");
+}
+
+// Regression: these three printed "Point to a window first" with no window
+// (the window check came first); def-read "Command context" (Q-LEFDEF-86,
+// platform) needs none for subcommands without a target cell.
+TEST_CASE("def writeall, datestamp and nocheck answer with no window",
+          "[m6-scaffold][cap:def-read][req:Command context]") {
+  Session s;
+  REQUIRE_FALSE(s.state.command_point.has_value());
   REQUIRE(s.run("def writeall").ok());
   CHECK(s.take_printed() == "Sorry, can't write hierarchical DEF at this time.\nTry \"def write\"\n");
   REQUIRE(s.run("def datestamp 5").ok());
@@ -284,14 +298,6 @@ TEST_CASE("the M6 area-contract stubs answer their documented values", "[m6-scaf
   REQUIRE(groups.size() == 2);
   CHECK(groups[1] == oasis::RepetitionGroup{db::Point{10, 0}, {}});
 
-  CHECK(lef::format_distance(0.5F, lef::LefUnits{}).empty());
-  editor::EditorState state;
-  db::CellDef cell{"top", 1};
-  lef::MacroBuilder builder{state, cell};
-  check_not_implemented(builder.flatten());
-  check_not_implemented(builder.type_sets());
-  check_not_implemented(builder.pins());
-  check_not_implemented(builder.antenna());
-  std::string out;
-  check_not_implemented(builder.geometry(out));
+  // lef::format_distance and lef::MacroBuilder are implemented (LEFW):
+  // tests/unit/lef/write/.
 }

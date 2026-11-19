@@ -23,6 +23,7 @@ REPO = GOLDEN.parents[1]
 sys.path.insert(0, str(GOLDEN / "authoring"))
 
 import oasgen  # noqa: E402
+from compare import stream_geometry  # noqa: E402
 from goldenlib import oasis  # noqa: E402
 
 REFERENCE_419 = REPO / "tests" / "data" / "oasis" / "codec" / "reference_419.oas"
@@ -140,7 +141,16 @@ class PointListsTest(unittest.TestCase):
 
     def test_invalid_point_list(self):
         with self.assertRaisesRegex(oasis.OasisError, "invalid point list"):
-            cursor("0400").point_list()
+            cursor("0601").point_list()
+
+    def test_empty_point_list_drops_the_element(self):
+        """Regression: a count of 0 drops the element and decoding goes on (it used to stop)."""
+        self.assertEqual(cursor("0400").point_list().points, ())
+        empty = oasgen.polygon(49, 0, oasgen.point_list(4, []), 0, 0)
+        lib = oasis.decode(oasgen.oasis_file([oasgen.cell("A") + empty + oasgen.rectangle(49, 0, 1, 1, 0, 0)]))
+        self.assertIsNone(lib.error)
+        self.assertEqual([s.kind for s in lib.cells["A"].shapes], ["rectangle"])
+        self.assertIn("invalid point list", lib.warnings)
 
 
 class RepetitionsTest(unittest.TestCase):
@@ -275,6 +285,19 @@ class ElementsTest(unittest.TestCase):
     def test_magnified_placement(self):
         placement = self.cell_of("12c40100 02".replace(" ", "")).placements[0]
         self.assertEqual((placement.cell, placement.mag), ("B", 2.0))
+
+    def test_non_positive_magnification_is_kept_and_reported(self):
+        """Regression: a placement with magnification -1 was dropped; oasis-read treats it as 1, so the
+        decoder keeps it (with a warning) and stream-geometry places it unmagnified."""
+        lib = oasis.decode(framed("0e0141", "12c401" + oasgen.real_form(1, 1).hex(), "030141", "030142",
+                                  "0501" + b"x".hex()))
+        self.assertEqual(only_cell(lib).placements[0].mag, -1.0)
+        self.assertIn("invalid magnification", lib.warnings)
+        child = oasgen.cell("c") + oasgen.rectangle(49, 0, 10, 10, 0, 0)
+        negative = oasgen.oasis_file([child, oasgen.cell("t") + oasgen.uint(18) + bytes([0xB4]) + oasgen.nstring("c")
+                                      + oasgen.real_form(1, 1) + oasgen.sint(100) + oasgen.sint(0)])
+        plain = oasgen.oasis_file([child, oasgen.cell("t") + oasgen.placement("c", 100, 0)])
+        self.assertEqual(stream_geometry.geometry_text(negative), stream_geometry.geometry_text(plain))
 
     def test_text_by_refnum(self):
         text = self.cell_of("137b003100e807d00f").texts[0]

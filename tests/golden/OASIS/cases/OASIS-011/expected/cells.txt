@@ -1,0 +1,65 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084839
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file cbody.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 2 2
+<< metal1 >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 2 2
+<< end >>
+file cn_ok.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file cs_ok.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file csplit.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 2 2
+<< metal1 >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 2 2
+<< end >>
+file ct_ok.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file ctable.mag
+magic
+tech oastest
+timestamp 1795084839
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>

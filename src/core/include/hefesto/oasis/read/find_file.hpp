@@ -19,7 +19,7 @@
 namespace hefesto::oasis {
 
 /// The OASIS file `oasis read <name>` opens; nullopt when no candidate
-/// opens. SCAFFOLD: returns nullopt until OASR lands it.
+/// opens. The candidates are `name` + `.oas`, `.oas.gz`, `.oasis`, `""`.
 [[nodiscard]] std::optional<cell::FoundFile> find_oasis_file(cell::LookupContext& ctx, std::string_view name);
 
 }  // namespace hefesto::oasis

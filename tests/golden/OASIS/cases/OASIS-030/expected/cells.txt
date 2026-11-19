@@ -1,0 +1,97 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795084840
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file traps.mag
+magic
+tech oastest
+timestamp 1795084840
+<< checkpaint >>
+rect 0 0 460 340
+<< metal1 >>
+rect 0 240 40 260
+rect 60 240 100 280
+tri 240 240 260 260 sw
+tri 320 240 340 260 se
+tri 0 180 40 220 se
+tri 60 180 100 220 ne
+rect 240 200 260 240
+tri 260 220 280 240 sw
+tri 260 200 280 220 nw
+tri 300 220 320 240 se
+tri 300 200 320 220 ne
+rect 320 200 340 240
+tri 120 180 140 200 se
+tri 140 180 160 200 sw
+tri 180 180 200 200 ne
+tri 200 180 220 200 nw
+tri 240 180 260 200 nw
+tri 320 180 340 200 ne
+rect 0 120 40 160
+rect 20 100 40 120
+tri 60 140 80 160 sw
+tri 140 140 160 160 se
+rect 60 120 100 140
+tri 120 120 140 140 se
+tri 140 120 160 140 nw
+tri 180 140 200 160 sw
+tri 240 140 260 160 sw
+rect 300 140 320 160
+tri 320 140 340 160 nw
+tri 180 120 200 140 ne
+tri 200 120 220 140 sw
+rect 240 120 260 140
+tri 260 120 280 140 sw
+tri 300 120 320 140 nw
+tri 60 100 80 120 nw
+tri 120 100 140 120 nw
+tri 200 100 220 120 ne
+rect 240 80 280 100
+tri 300 80 320 100 sw
+tri 0 60 20 80 se
+tri 20 60 40 80 nw
+tri 60 60 80 80 ne
+tri 80 60 100 80 sw
+tri 120 60 140 80 sw
+rect 200 60 220 80
+tri 240 60 260 80 nw
+rect 300 60 340 80
+rect 140 40 160 60
+tri 180 40 200 60 nw
+rect 0 0 20 20
+tri 20 0 40 20 sw
+rect 60 0 80 20
+tri 80 0 100 20 nw
+tri 120 0 140 20 se
+rect 140 0 160 20
+tri 180 0 200 20 ne
+rect 200 0 220 20
+tri 240 0 260 20 se
+tri 260 0 280 20 sw
+tri 300 0 320 20 ne
+tri 320 0 340 20 nw
+<< metal2 >>
+tri 0 300 10 340 se
+rect 10 300 35 340
+tri 35 300 40 340 nw
+tri 60 300 65 340 ne
+rect 65 300 90 340
+tri 90 300 100 340 nw
+tri 120 300 130 340 se
+rect 130 300 160 340
+rect 180 300 210 340
+tri 210 300 220 340 sw
+tri 240 335 280 340 sw
+rect 240 305 280 335
+tri 240 300 280 305 ne
+tri 300 335 340 340 se
+rect 300 305 340 335
+tri 300 300 340 305 nw
+rect 360 310 400 340
+tri 360 300 400 310 ne
+tri 420 330 460 340 sw
+rect 420 300 460 330
+<< end >>

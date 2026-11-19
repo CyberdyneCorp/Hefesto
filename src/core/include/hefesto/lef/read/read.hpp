@@ -26,15 +26,20 @@ namespace hefesto::lef {
 
 /// The options of one `lef read`.
 struct LefReadOptions {
-  bool import = false;     // -import: take macro cells from their .mag files
+  bool import = false;     // -import: accepted, no effect (Q-LEFDEF-16, D-5)
   bool annotate = false;   // -annotate: annotate existing cells, create none
   std::string typed_name;  // the name the user typed, for messages
   /// The file system the file is opened on; null means the local one.
   platform::FileSystem* files = nullptr;
 };
 
-/// Reads the LEF file `path`. SCAFFOLD: fails with CORE-NOTIMPL-006 ("not
-/// implemented yet: lef read") until LEFR lands it.
+/// Reads the LEF file named `path` (found by find_lef_file): the LAYER, VIA,
+/// VIARULE and NONDEFAULTRULE sections into the session's LEF tables, and
+/// each MACRO and SITE section into a new or annotated cell. The read is
+/// one undo step (Q-LEFDEF-22). The result carries the read's messages
+/// ("Reading LEF data from file ...", the reader's LefError lines,
+/// "LEF read: Processed <n> lines." and the totals); it fails only when
+/// no file opens.
 [[nodiscard]] cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
                                       const LefReadOptions& options);
 

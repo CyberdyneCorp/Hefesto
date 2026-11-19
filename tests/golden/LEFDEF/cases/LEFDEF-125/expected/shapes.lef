@@ -1,0 +1,33 @@
+VERSION 5.7 ;
+  NOWIREEXTENSIONATPIN ON ;
+  DIVIDERCHAR "/" ;
+  BUSBITCHARS "[]" ;
+MACRO shapes
+  CLASS BLOCK ;
+  FOREIGN shapes ;
+  ORIGIN 0.000 0.000 ;
+  SIZE 1.500 BY 1.600 ;
+  PIN L
+    PORT
+      LAYER metal1 ;
+        RECT 0.000 0.100 0.100 0.400 ;
+        RECT 0.000 0.000 0.600 0.100 ;
+    END
+  END L
+  PIN C
+    PORT
+      LAYER metal1 ;
+        RECT 1.000 0.500 1.500 0.600 ;
+        RECT 1.000 0.000 1.100 0.500 ;
+        RECT 1.200 0.000 1.300 0.500 ;
+        RECT 1.400 0.000 1.500 0.500 ;
+    END
+  END C
+  OBS
+      LAYER metal1 ;
+        RECT 0.700 1.100 0.800 1.600 ;
+        RECT 0.000 1.000 0.800 1.100 ;
+  END
+END shapes
+END LIBRARY
+

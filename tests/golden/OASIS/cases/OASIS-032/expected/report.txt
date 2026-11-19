@@ -1,0 +1,4 @@
+0 {$PDK_ROOT/lib/cells.oas}
+0 sc_inv
+0 {}
+0 {(UNNAMED) anchor sc_inv}

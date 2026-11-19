@@ -88,15 +88,29 @@ The texts are Magic's message bodies; the LEF and DEF readers add the
 
 Codes of the LEF reader, abstract views and annotation (`src/core/src/lef/read/`; capability lef-read; design D6). Owner: LEFR.
 
-- `LEF-READ-001`: LEF read errors in Magic's LefError form: `Don't know how to parse layer "<name>"` with `Try adding this name to the LEF techfile section`, `Bad Layer statement`, `Layer <name> maps to a magic contact layer; must be defined in lef section of techfile`, `Layer <name> is only defined for obstructions!`, `Attempt to reclassify layer <name> from <old> to <new>` (Magic prints `(null)` for an old class of BOUND; Hefesto names it), `Layer END statement missing.`, `END statement out of context.`, `No layer defined for RECT.` and `Bad port geometry: RECT requires 4 values.`.
-- `LEF-READ-002`: LEF read warnings: `Unknown layer type "<t>" in LEF file; ignoring.`, `Nondefault rule "<name>" was already defined.` and `Renaming this rule "<name>_<i>"` (Q-LEFDEF-9: the first free index, printed once).
-- `LEF-READ-003`: LEF read messages: `Unknown keyword "<t>" in LEF file; ignoring.`, `Unknown keyword "<t>" in NONDEFAULTRULES definition; ignoring.`, the NONDEFAULTRULE value messages (`WIDTH specified without layer.`, `No rule for non-default <width|spacing|extension>.`, `No layer for non-default <...>.`, `Layer value specified without layer.`). `SPACING specified without layer.` and `WIREEXT specified without layer.` carry the `DEF` prefix, as in Magic.
+- `LEF-READ-001`: LEF read errors in Magic's LefError form: `Don't know how to parse layer "<name>"` with `Try adding this name to the LEF techfile section`, `Bad Layer statement`, `Layer <name> maps to a magic contact layer; must be defined in lef section of techfile`, `Layer <name> is only defined for obstructions!`, `Attempt to reclassify layer <name> from <old> to <new>` (Magic prints `(null)` for an old class of BOUND; Hefesto names it), `Layer END statement missing.`, `END statement out of context.`, `No layer defined for RECT.`, `Bad port geometry: RECT requires 4 values.`, `Bad X value in polygon.`, `Bad Y value in polygon.`, `Missing Y value in polygon point!`, `Bad macro SIZE; requires values X BY Y.`, `Bad macro ORIGIN; requires 2 values.`, `Bad origin in macro FOREIGN; requires 0 or 2 values.`, `Improper DIRECTION statement`, `Improper USE statement`, `Improper SHAPE statement`, `Pin END statement missing.`, `Geometry (PORT or OBS) END statement missing.` and `Macro END statement missing.`. With magic-compat OFF only (Hefesto's): `Bad RECT ITERATE: requires DO <nx> BY <ny> STEP <dx> <dy>.` and `Bad ROWCOL: requires two counts whose product is at most 65536.` in a VIA (Q-LEFDEF-7), and `Bad X value in path.` and its kin for a PATH (Q-LEFDEF-15).
+- `LEF-READ-002`: LEF read warnings: `Unknown layer type "<t>" in LEF file; ignoring.`, `Nondefault rule "<name>" was already defined.` and `Renaming this rule "<name>_<i>"` (Q-LEFDEF-9: the first free index, printed once), `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_<k>"` and `   Macro does not define size:  computing from geometry` (three leading spaces, as Magic prints it).
+- `LEF-READ-003`: LEF read messages: `Unknown keyword "<t>" in LEF file; ignoring.`, `Unknown keyword "<t>" in NONDEFAULTRULES definition; ignoring.`, the NONDEFAULTRULE value messages (`WIDTH specified without layer.`, `No rule for non-default <width|spacing|extension>.`, `No layer for non-default <...>.`, `Layer value specified without layer.`). `SPACING specified without layer.` and `WIREEXT specified without layer.` carry the `DEF` prefix, as in Magic. With magic-compat OFF only: `Unknown via "<name>" in LEF geometry; ignoring.` for a PORT or OBS `VIA` naming no via (Q-LEFDEF-15).
+- `LEF-READ-004`, `LEF-READ-005`: `Reading LEF data from file <path>.` before the read and `LEF read: Processed <n> lines.` after it (lef-read "lef read side effects"); the `LEF-LEX-002` totals follow. Magic's `This action cannot be undone.` is not printed: the read is one undo step (Q-LEFDEF-22).
+- `LEF-READ-006`: `Cannot open input file <path> (<reason>).` when no candidate of the file lookup opens (Q-LEFDEF-24); `<path>` is the last name tried, ending in `.lef`. Nothing is read.
+
+The messages of the via code that the reader runs (`LEF-VIA-*`) keep their own codes and get the reader's `LEF read, Line <n>` context.
 
 ## WRITE
 
-Codes of the LEF writer (`src/core/src/lef/write/`; capability lef-write; design D7). Owner: LEFW.
+Codes of the LEF writer and of the `lef write`, `lef writeall` and `lef nocheck` options (`src/core/src/lef/write/`; capability lef-write; design D7, D14). Owner: LEFW.
 
-No codes yet.
+- `LEF-WRITE-001`: the progress lines Magic prints, in its order: `Generating LEF output <file> for cell <name>:` (or `for hierarchy rooted at cell <name>:` for `lef writeall`), `Diagnostic:  Write LEF header for cell <name>`, then per macro `Diagnostic:  Writing LEF output for cell <name>` and `Diagnostic:  Scale value is <oscale %f>`.
+- `LEF-WRITE-002`: `Cannot open output file <name> (<reason>).` after every name of lef-write "Output file naming" failed. Nothing is written and the session is unchanged (the LEF units, the selection).
+- `LEF-WRITE-003`: `lef writeall` could not read a cell of the subtree: `Could not read entire subtree of the cell.` and `Failed on cell <name>.`; nothing is written.
+- `LEF-WRITE-004`: `Index <i> is used for ports "<first>" and "<other>"`, once per later label of the index with another text; one PIN is written (Q-LEFDEF-50).
+- `LEF-WRITE-005` (Hefesto only): `Port "<name>" (index <i>) has no geometry on a LEF layer; no PIN is written (Q-LEFDEF-46)`. Magic drops the PIN silently.
+- `LEF-WRITE-006` (Hefesto only): `Macro "<name>": the -hide setback <d> is more than half the <w> x <h> boundary; nothing is hidden (Q-LEFDEF-47)`.
+- `LEF-WRITE-007`: `Improper values for obstruction bounding box OBS_BBOX property` (Magic prints it without a line end); the property is ignored.
+- `LEF-WRITE-008` (Hefesto only): a macro, pin or layer name holding a space, `;`, `#` or newline, written verbatim (Q-LEFDEF-35).
+- `LEF-WRITE-009`: `No cell selected` (`lef write`, `lef writeall`).
+- `LEF-WRITE-010`: `The "<option>" option is only for def write` for `-allspec`, `-units` and `-anal` under `lef write`.
+- `LEF-WRITE-011` (Hefesto only): no technology is loaded, so there is nothing to write.
 
 ## CMD
 
@@ -121,9 +135,12 @@ fails when the two disagree.
 | `LEF-LEX-001` | info | Message cap notice: `LEF Read:  Further errors will not be reported.` (or DEF; or warnings, messages) after 100 messages of one kind. |
 | `LEF-LEX-002` | info | Read totals: `LEF Read: encountered <k> errors total.` (or DEF; or warnings) at the end of a read. |
 | `LEF-LEX-003` | error | END matching: `Bad file read while looking for END statement` or `Section <N> has no END record!`. |
-| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END. |
-| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE renamed. |
-| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer. |
+| `LEF-READ-001` | error | LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END, malformed RECT, POLYGON, SIZE, ORIGIN or FOREIGN, improper DIRECTION, USE or SHAPE. |
+| `LEF-READ-002` | warning | LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE or macro renamed, macro without SIZE. |
+| `LEF-READ-003` | info | LEF read message (Magic's LefError text): unknown keyword ignored, NONDEFAULTRULE value without a rule or layer, unknown via in macro geometry. |
+| `LEF-READ-004` | info | lef read: `Reading LEF data from file <path>.` before the file is read. |
+| `LEF-READ-005` | info | lef read: `LEF read: Processed <n> lines.` after the file is read. |
+| `LEF-READ-006` | error | lef read: `Cannot open input file <path> (<reason>).`; nothing is read. |
 | `LEF-TECH-001` | error | Unknown or ambiguous keyword in the tech lef section; the line is ignored. |
 | `LEF-TECH-002` | error | A lef section line names no LEF layer; the line is ignored. |
 | `LEF-TECH-003` | error | A lef section line names no magic user type; the line is ignored. |
@@ -143,4 +160,15 @@ fails when the two disagree.
 | `LEF-VIA-009` | warning | DEF write: a via's cut is wider than its area. |
 | `LEF-VIA-010` | warning | DEF write: a via's cut height check (inverted in Magic) fired. |
 | `LEF-VIA-011` | warning | DEF write: a via layer has no LEF name; its RECT is skipped. |
+| `LEF-WRITE-001` | info | LEF write progress: `Generating LEF output <file> for cell <name>:` and the `Diagnostic:` lines. |
+| `LEF-WRITE-002` | error | LEF write: the output file cannot be opened; nothing is written. |
+| `LEF-WRITE-003` | error | lef writeall: a cell of the subtree cannot be read; nothing is written. |
+| `LEF-WRITE-004` | warning | LEF write: one port index is used by labels with different texts; one PIN is written. |
+| `LEF-WRITE-005` | warning | LEF write: a port has no geometry on a LEF layer; no PIN is written (Q-LEFDEF-46). |
+| `LEF-WRITE-006` | warning | LEF write: the -hide setback is more than half the macro boundary; nothing is hidden (Q-LEFDEF-47). |
+| `LEF-WRITE-007` | error | LEF write: OBS_BBOX is not four integers; it is ignored. |
+| `LEF-WRITE-008` | warning | LEF write: a written name contains a space, `;`, `#` or newline; it is written verbatim (Q-LEFDEF-35). |
+| `LEF-WRITE-009` | error | lef write, lef writeall: no cell is selected. |
+| `LEF-WRITE-010` | info | lef write: a def write option is ignored. |
+| `LEF-WRITE-011` | error | LEF write: no technology is loaded; nothing is written. |
 <!-- END DIAGNOSTIC CODES -->

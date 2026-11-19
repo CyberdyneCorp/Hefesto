@@ -147,6 +147,15 @@ class MaskTest(unittest.TestCase):
         self.assertEqual(apply_masks(first, ["magic-crash-file"]),
                          b"0 2\nCreated database crash recovery file /tmp/MAG<masked>\n0 1\n")
 
+    def test_magic_undo_note(self):
+        # Q-LEFDEF-22: Magic prints the note at every lef/def read; Hefesto never does.
+        magic = b"Reading DEF data from file a.def.\nThis action cannot be undone.\nDEF read: done\n"
+        hefesto = b"Reading DEF data from file a.def.\nDEF read: done\n"
+        self.assertFalse(compare_bytes(magic, hefesto, "bytes", []).equal)
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["magic-undo-note"]).equal)
+        self.assertEqual(apply_masks(b"x This action cannot be undone.\n", ["magic-undo-note"]),
+                         b"x This action cannot be undone.\n")
+
     def test_magic_crash_line(self):
         # Regression (golden-capture run 43764851411, MASK-RT-gf180mcu_ocd_io): Magic's
         # timed crash backup printed its line between different messages in each capture.

@@ -16,6 +16,7 @@
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/gds/read/vendor.hpp"
+#include "hefesto/oasis/read/vendor.hpp"
 
 namespace hefesto::cell {
 
@@ -190,11 +191,15 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
 void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
                        LookupContext& lookup) {
   gds::VendorStamper stamper{lookup};
-  const VendorStampFn stamp = [&stamper](const db::CellDef& def) { return stamper.stamp(def); };
+  oasis::VendorStamper oasis_stamper{lookup};  // OASIS_FILE cells (oasis-read "Content-hash timestamps ...")
+  const VendorStampFn stamp = [&stamper, &oasis_stamper](const db::CellDef& def) {
+    return oasis::is_oasis_vendor(def) ? oasis_stamper.stamp(def) : stamper.stamp(def);
+  };
   for (db::CellDef* def : cells) {
     update_timestamps(library, def, now, stamp);
   }
   stamper.flush();
+  oasis_stamper.flush();
 }
 
 void set_explicit_timestamp(db::CellDef& def, std::int64_t value, bool magic_compat) {

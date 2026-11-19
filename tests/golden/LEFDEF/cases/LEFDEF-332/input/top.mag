@@ -1,0 +1,10 @@
+magic
+tech lefdef
+timestamp 100
+<< obsm1 >>
+rect 0 0 50 50
+<< metal1 >>
+rect 60 0 100 3
+<< labels >>
+rlabel metal1 60 0 100 3 0 n
+<< end >>

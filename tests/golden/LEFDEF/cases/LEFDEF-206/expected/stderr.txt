@@ -1,0 +1,15 @@
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!
+LEF read, Line 9 (Warning): Cut size for magic type "metal2" (4 x 4) does not match LEF/DEF
+LEF read, Line 9 (Warning): Via cut size (8 x 8).  Magic layer cut size will be used!

@@ -1,0 +1,17 @@
+input/lefdef.tech: line 128: section lef:
+	Unknown LEF section keyword: rout.  Line ignored.
+input/lefdef.tech: line 129: section lef:
+	No LEF layer names present!
+input/lefdef.tech: line 131: section lef:
+	LEF name metal1 already used for magic type metal1
+input/lefdef.tech: line 132: section lef:
+	Attempt to define cut type via2 as routing.
+input/lefdef.tech: line 133: section lef:
+	Attempt to define non-cut type metal5 as a cut.
+input/lefdef.tech: line 134: section lef:
+	Attempt to define cut type via1 as masterslice.
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell top couldn't be read
+No such file or directory
