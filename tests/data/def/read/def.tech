@@ -1,0 +1,40 @@
+# def.tech -- test technology of the def/read unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes active, metal1, metal2 and
+# obstruct; m2c is the contact between metal1 and metal2; obsm1 is the
+# obstruction type of met1. The cifoutput, cifinput, drc, lef and extract
+# sections are appended by each test (def_fixture.hpp).
+tech
+    format 35
+    deftest
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+    obstruct,ob
+end
+
+types
+    active    polysilicon,poly
+    metal1    metal1,m1
+    metal1    m2contact,m2c
+    metal2    metal2,m2
+    obstruct  obsm1
+end
+
+contact
+    m2c  metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    metal1,m2c metal1,m2c
+    metal2,m2c metal2,m2c
+end
