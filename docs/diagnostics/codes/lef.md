@@ -94,9 +94,19 @@ Codes of the LEF reader, abstract views and annotation (`src/core/src/lef/read/`
 
 ## WRITE
 
-Codes of the LEF writer (`src/core/src/lef/write/`; capability lef-write; design D7). Owner: LEFW.
+Codes of the LEF writer and of the `lef write`, `lef writeall` and `lef nocheck` options (`src/core/src/lef/write/`; capability lef-write; design D7, D14). Owner: LEFW.
 
-No codes yet.
+- `LEF-WRITE-001`: the progress lines Magic prints, in its order: `Generating LEF output <file> for cell <name>:` (or `for hierarchy rooted at cell <name>:` for `lef writeall`), `Diagnostic:  Write LEF header for cell <name>`, then per macro `Diagnostic:  Writing LEF output for cell <name>` and `Diagnostic:  Scale value is <oscale %f>`.
+- `LEF-WRITE-002`: `Cannot open output file <name> (<reason>).` after every name of lef-write "Output file naming" failed. Nothing is written and the session is unchanged (the LEF units, the selection).
+- `LEF-WRITE-003`: `lef writeall` could not read a cell of the subtree: `Could not read entire subtree of the cell.` and `Failed on cell <name>.`; nothing is written.
+- `LEF-WRITE-004`: `Index <i> is used for ports "<first>" and "<other>"`, once per later label of the index with another text; one PIN is written (Q-LEFDEF-50).
+- `LEF-WRITE-005` (Hefesto only): `Port "<name>" (index <i>) has no geometry on a LEF layer; no PIN is written (Q-LEFDEF-46)`. Magic drops the PIN silently.
+- `LEF-WRITE-006` (Hefesto only): `Macro "<name>": the -hide setback <d> is more than half the <w> x <h> boundary; nothing is hidden (Q-LEFDEF-47)`.
+- `LEF-WRITE-007`: `Improper values for obstruction bounding box OBS_BBOX property` (Magic prints it without a line end); the property is ignored.
+- `LEF-WRITE-008` (Hefesto only): a macro, pin or layer name holding a space, `;`, `#` or newline, written verbatim (Q-LEFDEF-35).
+- `LEF-WRITE-009`: `No cell selected` (`lef write`, `lef writeall`).
+- `LEF-WRITE-010`: `The "<option>" option is only for def write` for `-allspec`, `-units` and `-anal` under `lef write`.
+- `LEF-WRITE-011` (Hefesto only): no technology is loaded, so there is nothing to write.
 
 ## CMD
 
@@ -143,4 +153,15 @@ fails when the two disagree.
 | `LEF-VIA-009` | warning | DEF write: a via's cut is wider than its area. |
 | `LEF-VIA-010` | warning | DEF write: a via's cut height check (inverted in Magic) fired. |
 | `LEF-VIA-011` | warning | DEF write: a via layer has no LEF name; its RECT is skipped. |
+| `LEF-WRITE-001` | info | LEF write progress: `Generating LEF output <file> for cell <name>:` and the `Diagnostic:` lines. |
+| `LEF-WRITE-002` | error | LEF write: the output file cannot be opened; nothing is written. |
+| `LEF-WRITE-003` | error | lef writeall: a cell of the subtree cannot be read; nothing is written. |
+| `LEF-WRITE-004` | warning | LEF write: one port index is used by labels with different texts; one PIN is written. |
+| `LEF-WRITE-005` | warning | LEF write: a port has no geometry on a LEF layer; no PIN is written (Q-LEFDEF-46). |
+| `LEF-WRITE-006` | warning | LEF write: the -hide setback is more than half the macro boundary; nothing is hidden (Q-LEFDEF-47). |
+| `LEF-WRITE-007` | error | LEF write: OBS_BBOX is not four integers; it is ignored. |
+| `LEF-WRITE-008` | warning | LEF write: a written name contains a space, `;`, `#` or newline; it is written verbatim (Q-LEFDEF-35). |
+| `LEF-WRITE-009` | error | lef write, lef writeall: no cell is selected. |
+| `LEF-WRITE-010` | info | lef write: a def write option is ignored. |
+| `LEF-WRITE-011` | error | LEF write: no technology is loaded; nothing is written. |
 <!-- END DIAGNOSTIC CODES -->
