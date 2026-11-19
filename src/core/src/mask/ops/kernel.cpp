@@ -76,6 +76,10 @@ db::Coord clamp_coord(std::int64_t v) noexcept {
   return static_cast<db::Coord>(std::clamp<std::int64_t>(v, db::kMinusInfinity, db::kInfinity));
 }
 
+db::Coord clamp_plane(std::int64_t v) noexcept {
+  return static_cast<db::Coord>(std::clamp<std::int64_t>(v, db::kPlaneMin, db::kPlaneMax));
+}
+
 db::Rect scale_rect(const db::Rect& r, std::int32_t s) noexcept {
   if (s == 1) {
     return r;
@@ -208,18 +212,18 @@ bool search_op_tiles2(const OpArgs& args, const OperatorContext& ctx, const db::
   return false;
 }
 
-void set_box_grid(db::Rect& r, std::int32_t limit) noexcept {
+void set_box_grid(WideRect& r, std::int64_t limit) noexcept {
   if (limit <= 1) {
     return;
   }
-  const auto low = [limit](db::Coord& v) {
-    const std::int32_t delta = std::abs(v) % limit;
+  const auto low = [limit](std::int64_t& v) {
+    const std::int64_t delta = std::abs(v) % limit;
     if (delta > 0) {
       v = v < 0 ? v + delta - limit : v - delta;
     }
   };
-  const auto high = [limit](db::Coord& v) {
-    const std::int32_t delta = std::abs(v) % limit;
+  const auto high = [limit](std::int64_t& v) {
+    const std::int64_t delta = std::abs(v) % limit;
     if (delta > 0) {
       v = v < 0 ? v + delta : v - delta + limit;
     }
@@ -230,9 +234,9 @@ void set_box_grid(db::Rect& r, std::int32_t limit) noexcept {
   high(r.y1);
 }
 
-std::int32_t set_value_grid(std::int32_t v, std::int32_t limit) noexcept {
+std::int64_t set_value_grid(std::int64_t v, std::int64_t limit) noexcept {
   if (limit > 1) {
-    const std::int32_t delta = v % limit;
+    const std::int64_t delta = v % limit;
     if (delta > 0) {
       v += limit - delta;
     }
@@ -240,14 +244,14 @@ std::int32_t set_value_grid(std::int32_t v, std::int32_t limit) noexcept {
   return v;
 }
 
-void set_min_box_grid(db::Rect& r, std::int32_t width, std::int32_t limit) noexcept {
+void set_min_box_grid(WideRect& r, std::int64_t width, std::int64_t limit) noexcept {
   if (r.x1 - r.x0 < width) {
-    const std::int32_t total = r.x1 + r.x0;
+    const std::int64_t total = r.x1 + r.x0;
     r.x0 = (total - width) / 2;
     r.x1 = (total + width) / 2;
   }
   if (r.y1 - r.y0 < width) {
-    const std::int32_t total = r.y1 + r.y0;
+    const std::int64_t total = r.y1 + r.y0;
     r.y0 = (total - width) / 2;
     r.y1 = (total + width) / 2;
   }

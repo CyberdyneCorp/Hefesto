@@ -101,6 +101,14 @@ class Marks {
 // --- Scaling -----------------------------------------------------------------
 
 [[nodiscard]] db::Coord clamp_coord(std::int64_t v) noexcept;
+/// `v` kept on the usable plane [db::kPlaneMin, db::kPlaneMax]: the grow
+/// family computes its edges in 64 bits and stores them through this
+/// (Q-MASK-36; Magic's int arithmetic overflows past the plane).
+[[nodiscard]] db::Coord clamp_plane(std::int64_t v) noexcept;
+/// `v + by`, computed in 64 bits and kept on the usable plane.
+[[nodiscard]] inline db::Coord offset(db::Coord v, std::int64_t by) noexcept {
+  return clamp_plane(std::int64_t{v} + by);
+}
 /// Every coordinate times `s` (cifPaintFunc's scaling of a layout tile).
 [[nodiscard]] db::Rect scale_rect(const db::Rect& r, std::int32_t s) noexcept;
 /// Times `s`, but sides at the plane's edge stay (cifGrowFunc's "watch out
@@ -176,10 +184,25 @@ bool search_op_tiles2(const OpArgs& args, const OperatorContext& ctx, const db::
                       const MaskPlane* current, FoundVisitor visit);
 
 // --- Grid limit (SetBoxGrid, SetValueGrid, SetMinBoxGrid) --------------------
+// Computed in 64 bits (Q-MASK-36): the grid limit is not bounded, and the
+// grow-min box can pass the plane's edge before it is painted. The caller
+// keeps the result on the plane when it paints it (to_plane).
 
-void set_box_grid(db::Rect& r, std::int32_t limit) noexcept;
-[[nodiscard]] std::int32_t set_value_grid(std::int32_t v, std::int32_t limit) noexcept;
-void set_min_box_grid(db::Rect& r, std::int32_t width, std::int32_t limit) noexcept;
+/// A rectangle in 64-bit coordinates, which may lie past the usable plane.
+struct WideRect {
+  std::int64_t x0 = 0;
+  std::int64_t y0 = 0;
+  std::int64_t x1 = 0;
+  std::int64_t y1 = 0;
+};
+[[nodiscard]] inline WideRect widen(const db::Rect& r) noexcept { return WideRect{r.x0, r.y0, r.x1, r.y1}; }
+[[nodiscard]] inline db::Rect to_plane(const WideRect& r) noexcept {
+  return db::Rect{clamp_plane(r.x0), clamp_plane(r.y0), clamp_plane(r.x1), clamp_plane(r.y1)};
+}
+
+void set_box_grid(WideRect& r, std::int64_t limit) noexcept;
+[[nodiscard]] std::int64_t set_value_grid(std::int64_t v, std::int64_t limit) noexcept;
+void set_min_box_grid(WideRect& r, std::int64_t width, std::int64_t limit) noexcept;
 
 // --- Errors (CIFError) -------------------------------------------------------
 

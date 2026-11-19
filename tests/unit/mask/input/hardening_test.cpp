@@ -98,15 +98,17 @@ TEST_CASE("random cifinput sections read without failing", "[cap:mask-input-styl
 }
 
 TEST_CASE("saturating scale arithmetic", "[cap:mask-input-styles][req:Scale normalization]") {
-  const auto r = mask::test::read("style a\nscalefactor 2147483647 angstroms\nlayer m1 A\ngrow 2147483647\n"
+  const auto r = mask::test::read("style a\nscalefactor 2147483647 angstroms\nlayer m1 A\ngrow 1073741818\n"
                                   "gridlimit 2147483647");
   mask::InputStyle s = r.style();
+  REQUIRE(s.rules.at(0).ops.size() == 2);
   (void)s.technology_scale(kIntMax, kIntMax, true);
   CHECK(s.scale_factor <= kIntMax);
   CHECK(s.multiplier <= kIntMax);
+  CHECK(s.rules[0].ops[1].distance <= db::kPlaneMax);  // Q-MASK-36: distances stay on the plane
   s.read_rescale(kIntMax, 1);
   CHECK(s.scale_factor <= kIntMax);
-  CHECK(s.rules[0].ops[1].distance <= kIntMax);
+  CHECK(s.rules[0].ops[1].distance <= db::kPlaneMax);
   CHECK(s.limit_scale(kIntMax, kIntMax));  // beyond any int grid: refused
 }
 
@@ -181,4 +183,30 @@ TEST_CASE("a grid subdivision near the plane limit keeps the layout in the plane
     }
   });
   CHECK(top.value()->bbox().x1 == db::kPlaneMax);  // 3 * 536870909 clamped
+}
+
+// Fuzz regression (fuzz_cifinput_section under UBSan, Q-MASK-36): the read's
+// grid subdivisions multiplied a `grow 10` distance up to INT32_MAX, and the
+// grow kernel overflowed adding it to a tile edge (`1700 + 2147483647`).
+// Rescaled distances now stay within the usable plane and the grown edges
+// are computed in 64 bits, in both magic-compat modes.
+TEST_CASE("a grow distance rescaled by grid subdivisions stays on the plane (Q-MASK-36)",
+          "[cap:mask-input-styles][req:Scale normalization]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Session s("style a\nscalefactor 1073741818\nlayer m1 A\ngrow 10\nlayer m2 A\nshrink 10", on);
+    auto e = s.engine();
+    REQUIRE(e.begin_cell("a").ok());
+    REQUIRE(e.paint(0, db::Rect{0, 0, 7, 3}).ok());  // off the grid: the read subdivides
+    REQUIRE(e.paint(0, db::Rect{1700, 0, 1710, 10}).ok());
+    REQUIRE(e.end_cell().ok());
+    e.rescale(kIntMax, 1);
+    for (const auto& rule : e.style().rules) {
+      for (const auto& op : rule.ops) {
+        CHECK(op.distance <= db::kPlaneMax);
+      }
+    }
+    REQUIRE(e.finish().ok());
+    s.editor.cells.for_each([](db::CellDef& def) { CHECK(in_plane(def.bbox())); });
+  }
 }

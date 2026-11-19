@@ -15,7 +15,8 @@
 // THIRD_PARTY_NOTICES.md).
 //
 // Deviations: products saturate at Magic's 32-bit int instead of
-// overflowing (X-2 tier 1); an exact name wins over prefix matches in
+// overflowing, and rescaled operator distances at the usable plane
+// (X-2 tier 1, Q-MASK-36); an exact name wins over prefix matches in
 // selection (Q-MASK-303, fix).
 //
 // Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
@@ -26,6 +27,7 @@
 #include <cstdlib>
 #include <limits>
 
+#include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "mask/input/reader.hpp"
 #include "mask/style/text.hpp"
@@ -44,7 +46,11 @@ std::int64_t sat_mul(std::int64_t a, std::int64_t b) noexcept {
   return std::clamp<std::int64_t>(p, -kIntMax, kIntMax);
 }
 
-std::int32_t sat_mul32(std::int32_t a, std::int64_t b) noexcept { return static_cast<std::int32_t>(sat_mul(a, b)); }
+/// An operator distance times b, kept within the usable plane: the grow
+/// operators add it to plane coordinates (Q-MASK-36, as Q-MASK-30 on output).
+std::int32_t scale_distance(std::int32_t a, std::int64_t b) noexcept {
+  return static_cast<std::int32_t>(std::clamp<std::int64_t>(std::int64_t{a} * b, -db::kPlaneMax, db::kPlaneMax));
+}
 
 const tech::RawSection* last_section(const tech::Technology& technology) {
   const tech::RawSection* found = nullptr;
@@ -138,7 +144,7 @@ InputScaleStep InputStyle::technology_scale(std::int64_t n, std::int64_t d, bool
   for (InputRule& rule : rules) {
     for (LayerOp& op : rule.ops) {
       if (op.distance != 0) {
-        op.distance = sat_mul32(op.distance, d);
+        op.distance = scale_distance(op.distance, d);
         lmult = style_text::gcf(lmult, style_text::gcf(std::abs(op.distance), multiplier));
       }
     }
@@ -174,7 +180,7 @@ void InputStyle::read_rescale(std::int64_t n, std::int64_t d) {
     multiplier = sat_mul(multiplier, n);
     for (InputRule& rule : rules) {
       for (LayerOp& op : rule.ops) {
-        op.distance = sat_mul32(op.distance, n);
+        op.distance = scale_distance(op.distance, n);
       }
     }
   }

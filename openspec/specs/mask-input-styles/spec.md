@@ -75,7 +75,7 @@ style  lambda=1.0(gen)            # first style: the default input style
 end
 ```
 
-The `labels`, `copyup` and operator statements apply to the most recent `layer`/`templayer` statement; if none has been seen in the current style the statement is an error and is ignored. `grow`, `grow-grid` and `shrink` require exactly one integer argument greater than zero (parsed with C `atoi` semantics: leading digits only); a value `<= 0` is an error and the statement is ignored. `boundary` and `not-square` ignore any extra fields. An unrecognized first word is an error and the statement is ignored.
+The `labels`, `copyup` and operator statements apply to the most recent `layer`/`templayer` statement; if none has been seen in the current style the statement is an error and is ignored. `grow`, `grow-grid` and `shrink` require exactly one integer argument greater than zero (parsed with C `atoi` semantics: leading digits only); a value `<= 0` is an error and the statement is ignored. A value above 1073741818 (the usable plane, db::kPlaneMax) is the error `Grow/shrink distance must be at most 1073741818.` and the statement is ignored, in both `magic-compat` settings (Q-MASK-36, resolution: fix; a fixed deviation, X-2 tier 1: Magic reads the value with atoi, undefined past INT_MAX, and its grow arithmetic overflows on such a distance, so it has no output to match). The cifoutput twin is Q-MASK-30. `boundary` and `not-square` ignore any extra fields. An unrecognized first word is an error and the statement is ignored.
 
 (Magic ref: cif/CIFrdtech.c:473-1060)
 
@@ -89,6 +89,12 @@ The `labels`, `copyup` and operator statements apply to the most recent `layer`/
 - **GIVEN** `layer m1 CMF` followed by `grow 0`
 - **WHEN** the technology file is loaded
 - **THEN** the `grow 0` statement is rejected with "Grow/shrink distance must be greater than zero."
+- **AND** layer `m1` is generated from `CMF` alone
+
+#### Scenario: Grow distance past the usable plane is rejected
+- **GIVEN** `layer m1 CMF` followed by `grow 2147483647` (or `grow-grid` or `shrink` with any value above 1073741818)
+- **WHEN** the technology file is loaded, with `magic-compat` ON or OFF
+- **THEN** the statement is rejected with "Grow/shrink distance must be at most 1073741818."
 - **AND** layer `m1` is generated from `CMF` alone
 
 ### Requirement: Input style declaration and default style
@@ -217,7 +223,9 @@ Hefesto SHALL, after a style has been loaded, normalize its scale with the proce
 3. If not `reduceFully`: `g := d` if `g mod d == 0`, otherwise `g := 1`.
 4. If `g > 1`: `S := S/g`, `M := M/g`, every nonzero `D := D/g`.
 
-The normalization changes the physical meaning of no value, except when step 4 truncates. Hefesto copies the truncating arithmetic in both `magic-compat` settings; with `magic-compat` OFF it also issues a Hefesto-only warning (`MASK-INPUT-009`) when a division truncated `S` or a distance, at load and after every rescale (Q-MASK-31, resolution: replicate with an OFF warning; the cifoutput twin is Q-MASK-29). None of the reference PDK input styles truncates.
+In steps 1 and 4, and when a read rescales the style, a distance whose product would pass 1073741818 (the usable plane) is clamped to it, in both `magic-compat` settings (Q-MASK-36, resolution: fix; Magic multiplies in int and overflows): the read's grid subdivisions can otherwise carry a `grow 10` distance to 2^31 − 1, which the grow operators add to plane coordinates.
+
+The normalization changes the physical meaning of no value, except when step 4 truncates or a distance is clamped. Hefesto copies the truncating arithmetic in both `magic-compat` settings; with `magic-compat` OFF it also issues a Hefesto-only warning (`MASK-INPUT-009`) when a division truncated `S` or a distance, at load and after every rescale (Q-MASK-31, resolution: replicate with an OFF warning; the cifoutput twin is Q-MASK-29). None of the reference PDK input styles truncates.
 
 Compatibility: exact
 

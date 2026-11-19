@@ -4,6 +4,9 @@
 // mask-output-operators: grow and shrink (square and Euclidean), grow-grid
 // (Q-MASK-1 in both modes) and grow-min (Q-MASK-15).
 
+#include <cstdint>
+#include <limits>
+
 #include "ops_fixture.hpp"
 
 using namespace hefesto;
@@ -15,6 +18,29 @@ using namespace hefesto::mask::test;
 namespace {
 
 bool solid_at(const MaskPlane& p, db::Coord x, db::Coord y) { return p.plane().type_at(db::Point{x, y}) == kMaskSolid; }
+
+// Q-MASK-36: a distance at or past the plane's size. The styles refuse a
+// distance above db::kPlaneMax and keep rescaled ones within it; INT32_MAX is
+// what an input distance reached before (fuzz_cifinput_section), so the
+// kernels must stay defined for it too.
+constexpr std::int32_t kIntMax = std::numeric_limits<std::int32_t>::max();
+const Rect kWholePlane{db::kPlaneMin, db::kPlaneMin, db::kPlaneMax, db::kPlaneMax};
+
+/// The strips of tile {1700, 0, 1710, 10} grown by `d` (painting keeps the
+/// plane's edge).
+Rects grown_tile(std::int32_t d) {
+  return strips({d == db::kPlaneMax ? Rect{1700 - db::kPlaneMax, db::kPlaneMin, db::kPlaneMax, db::kPlaneMax}
+                                    : kWholePlane});
+}
+
+bool in_plane(const Rects& rects) {
+  for (const Rect& r : rects) {
+    if (r.x0 < db::kPlaneMin || r.y0 < db::kPlaneMin || r.x1 > db::kPlaneMax || r.y1 > db::kPlaneMax) {
+      return false;
+    }
+  }
+  return true;
+}
 
 }  // namespace
 
@@ -130,4 +156,69 @@ TEST_CASE("grow-min extends a short stub away from the solid below", CAP "[req:g
   CHECK(solid_at(check, 7, 13));  // widened to [7,17]
   CHECK(solid_at(check, 16, 13));
   CHECK_FALSE(solid_at(check, 17, 13));
+}
+
+// Regression (Q-MASK-36, fuzz_cifinput_section under UBSan): `1700 +
+// 2147483647` in grow_tile_square. The grown edges are computed in 64 bits
+// and kept on the usable plane, in both magic-compat modes.
+TEST_CASE("grow and shrink by a distance past the plane stay on the plane",
+          CAP "[req:grow and shrink (default, square metric)]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    OpsFixture f;
+    f.compat(on);
+    for (const std::int32_t d : {db::kPlaneMax, kIntMax}) {
+      CHECK(f.apply({{1700, 0, 1710, 10}}, {op(OpKind::grow, {d})}) == grown_tile(d));
+      CHECK(f.apply({{1700, 0, 1710, 10}}, {op(OpKind::shrink, {d})}).empty());
+    }
+  }
+}
+
+TEST_CASE("a split tile grown by a distance past the plane stays on the plane",
+          CAP "[req:grow and shrink (default, square metric)]") {
+  for (const std::uint32_t options : {0U, 0x08U}) {  // square, then grow-euclidean
+    INFO("options " << options);
+    OpsFixture f;
+    f.style.options = options;
+    REQUIRE(db::paint_triangle(*f.cell, *f.tech, Rect{0, 0, 10, 10}, db::Diagonal::nw_se, false, f.m1).ok());
+    for (const std::int32_t d : {db::kPlaneMax, kIntMax}) {
+      MaskPlane& p = f.eval({with_types(op(OpKind::op_or), {f.m1}), op(OpKind::grow, {d})});
+      CHECK(in_plane(p.solid_rects()));
+      CHECK(solid_at(p, 5, db::kPlaneMin + 1));  // the bottom leg grows to the plane's edge
+    }
+  }
+}
+
+TEST_CASE("Euclidean grow by a distance past the plane stays on the plane", CAP "[req:Euclidean grow and shrink]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    OpsFixture f;
+    f.compat(on);
+    f.style.options = 0x08;
+    f.style.grid_limit = kIntMax;  // the grid limit is not bounded either
+    for (const std::int32_t d : {db::kPlaneMax, kIntMax}) {
+      CHECK(f.apply({{1700, 0, 1710, 10}}, {op(OpKind::grow, {d})}) == grown_tile(d));
+      CHECK(f.apply({{1700, 0, 1710, 10}}, {op(OpKind::shrink, {d})}).empty());
+    }
+  }
+}
+
+TEST_CASE("grow-min near the plane's edge stays on the plane", CAP "[req:grow-min]") {
+  // A box near the plane's edge widened to a minimum near the plane's size
+  // passes the plane's edge before it is painted, and with a grid limit near
+  // INT32_MAX SetBoxGrid's edge + limit passed INT32_MAX. The box is computed
+  // in 64 bits and kept on the plane only when painted.
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    OpsFixture f;
+    f.compat(on);
+    const Rect narrow{db::kPlaneMax - 12, 0, db::kPlaneMax - 8, 100};
+    // Widened by (g - 4) / 2 = 536870907 on each side to [536870899,
+    // 1610612717], as in Magic's int, and painted up to the plane's edge;
+    // heightened by (g - 100) / 2 = 536870859 on each side.
+    CHECK(f.apply({narrow}, {op(OpKind::grow_min, {db::kPlaneMax})}) ==
+          strips({{536870899, -536870859, db::kPlaneMax, 536870959}}));
+    f.style.grid_limit = kIntMax;
+    CHECK(in_plane(f.apply({narrow}, {op(OpKind::grow_min, {db::kPlaneMax})})));
+  }
 }

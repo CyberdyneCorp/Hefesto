@@ -45,6 +45,27 @@ TEST_CASE("a zero grow distance is rejected", "[cap:mask-input-styles][req:Cifin
   CHECK(r.style().rules[0].simple);
 }
 
+// Regression (Q-MASK-36, fuzz_cifinput_section under UBSan): a grow
+// distance near INT_MAX overflowed the grow kernel's edge arithmetic.
+TEST_CASE("a grow, grow-grid or shrink distance past the usable plane is rejected",
+          "[cap:mask-input-styles][req:Cifinput section grammar]") {
+  for (const bool on : {true, false}) {
+    for (const char* kind : {"grow", "grow-grid", "shrink"}) {
+      for (const char* value : {"1073741819", "2147483647", "14444444444444"}) {
+        INFO(kind << " " << value << " magic-compat " << on);
+        const auto r = read(std::string{"style a\nscalefactor 100\nlayer m1 CMF\n"} + kind + " " + value, on);
+        CHECK(r.has("Grow/shrink distance must be at most 1073741818."));
+        REQUIRE(r.style().rules.size() == 1);
+        CHECK(kinds(r.style(), 0) == std::vector{mask::OpKind::op_or});
+      }
+    }
+    const auto largest = read("style a\nscalefactor 1\nlayer m1 CMF\ngrow 1073741818", on);
+    CHECK_FALSE(largest.has("Grow/shrink distance must be at most 1073741818."));
+    REQUIRE(largest.style().rules.at(0).ops.size() == 2);
+    CHECK(largest.style().rules[0].ops[1].distance == 1073741818);
+  }
+}
+
 TEST_CASE("statement errors of the cifinput grammar", "[cap:mask-input-styles][req:Cifinput section grammar]") {
   const auto r = read(
       "style a\nscalefactor 100\nlayer m1 CMF\nfoo CMF\nand\ngrow\nshrink 3 4\nmask-hints\ntagged\n"

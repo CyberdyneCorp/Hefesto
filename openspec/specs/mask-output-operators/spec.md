@@ -98,6 +98,8 @@ Per-tile definition (equivalent to the above and to be used for non-Manhattan ti
 
 The result is computed on the whole plane (no clipping until the end of the pipeline).
 
+Every grown edge (`x - d`, `x + d`, and the translated triangle's) SHALL be computed in 64-bit arithmetic, here and in the Euclidean construction, the grow part of `bloat-or` included; a rectangle's edge SHALL be kept on the usable plane (±1073741818) and a translated triangle's within the 32-bit range, so that the paint clips the triangle at the plane's edge as before. This holds in both magic-compat modes (Q-MASK-36, resolution: fix; a fixed deviation, X-2 tier 1): Magic adds the distance to the scaled tile in int, which overflows for a distance near the plane's size. The styles keep every distance at most 1073741818 (mask-output-styles "Operator statement arguments", mask-input-styles "Cifinput section grammar"), and an edge past the plane is painted only up to the plane's edge, so the result is Magic's wherever Magic's arithmetic does not overflow.
+
 (Magic ref: cif/CIFgen.c:793-912, cif/CIFgen.c:5151-5205)
 
 #### Scenario: Grow merges, shrink keeps the bridge
@@ -229,6 +231,8 @@ minBoxGrid(A, g):
   snapOutward(A)
 snapOutward(A): if gridLimit > 1, move x1,y1 down and x2,y2 up to multiples of gridLimit
 ```
+
+The rectangles `A` and `B`, `minBoxGrid` and `snapOutward` SHALL be computed in 64-bit arithmetic, and a rectangle SHALL be kept on the usable plane (±1073741818) only when it is painted, in both magic-compat modes (Q-MASK-36, resolution: fix): Magic computes them in int, and `s + g` overflows for a box near the plane's edge with `g` near the plane's size, as does `snapOutward` with a grid limit near 2^31 − 1. Where Magic's arithmetic does not overflow the painted area is Magic's.
 
 The per-tile result depends on the canonical decomposition. The algorithm is replicated exactly in both `magic-compat` settings (Q-MASK-15, resolution: replicate): h is evaluated exactly as Magic writes it, `(int) sqrt((double)(g*g) - 0.25 * (double)((g+W)*(g+W)) + 0.5)`: `g*g` and `(g+W)*(g+W)` are 32-bit `int` products, the subtraction and addition are IEEE double operations in that order, the square root is the double `sqrt`, and the `(int)` conversion truncates. The style loader warns when grow-min is used on a layer whose DRC rules are not `rect_only`.
 

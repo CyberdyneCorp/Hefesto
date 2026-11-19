@@ -11,12 +11,19 @@
 // 1985, 1990 Regents of the University of California (see
 // THIRD_PARTY_NOTICES.md).
 //
+// Deviation (docs/decisions/cross-cutting.md X-2 tier 1, Q-MASK-36): every
+// grown edge is computed in 64 bits; a rectangle edge is kept on the usable
+// plane (detail::offset) and a moved triangle's edge within int (shifted),
+// so the paint clips the triangle as before. Magic adds the distance to the
+// scaled tile in int, which overflows for a distance near the plane's size.
+//
 // Owner: OPS.
 
 #include "mask/ops/grow.hpp"
 
 #include <algorithm>
 #include <array>
+#include <limits>
 
 namespace hefesto::mask {
 
@@ -46,30 +53,27 @@ struct Painter {
   }
 };
 
+/// `v + by` saturated to int: an edge of a moved triangle. Unlike a
+/// rectangle, a triangle cannot be cut at the plane's edge by moving one
+/// side, so it keeps its shape (the paint clips it) wherever Magic's int
+/// does not overflow.
+db::Coord shifted(db::Coord v, std::int64_t by) noexcept {
+  return static_cast<db::Coord>(std::clamp<std::int64_t>(std::int64_t{v} + by, std::numeric_limits<db::Coord>::min(),
+                                                         std::numeric_limits<db::Coord>::max()));
+}
+
 /// TT_SIDE >> 1 == TT_DIRECTION: the triangle's horizontal leg is on top.
 bool leg_on_top(const db::TileView& t) noexcept { return t.right_side == direction(t); }
 
 void grow_split_square(const Painter& p, const db::TileView& t, const db::Rect& a, db::Coord d) {
-  db::Rect r;
-  r.y0 = a.y0 - d;
-  r.y1 = a.y1 + d;
-  if (t.right_side) {
-    r.x0 = a.x1 - d;
-    r.x1 = a.x1 + d;
-  } else {
-    r.x0 = a.x0 - d;
-    r.x1 = a.x0 + d;
-  }
-  p.rect(r);
-  r.x0 = a.x0 - d;
-  r.x1 = a.x1 + d;
+  const db::Coord side = t.right_side ? a.x1 : a.x0;
+  p.rect(db::Rect{offset(side, -d), offset(a.y0, -d), offset(side, d), offset(a.y1, d)});
   const bool top = leg_on_top(t);
-  r.y0 = top ? a.y1 - d : a.y0 - d;
-  r.y1 = top ? a.y1 + d : a.y0 + d;
-  p.rect(r);
-  const db::Coord sx = t.right_side ? -d : d;
-  const db::Coord sy = top ? -d : d;
-  p.shape(t, db::Rect{a.x0 + sx, a.y0 + sy, a.x1 + sx, a.y1 + sy});
+  const db::Coord leg = top ? a.y1 : a.y0;
+  p.rect(db::Rect{offset(a.x0, -d), offset(leg, -d), offset(a.x1, d), offset(leg, d)});
+  const std::int64_t sx = t.right_side ? -std::int64_t{d} : d;
+  const std::int64_t sy = top ? -std::int64_t{d} : d;
+  p.shape(t, db::Rect{shifted(a.x0, sx), shifted(a.y0, sy), shifted(a.x1, sx), shifted(a.y1, sy)});
 }
 
 }  // namespace
@@ -83,16 +87,16 @@ void grow_tile_square(MaskPlane& into, const db::TileView& t, db::Coord d, bool 
   }
   db::Rect r = a;
   if (r.x0 > db::kPlaneMin) {
-    r.x0 -= d;
+    r.x0 = offset(r.x0, -d);
   }
   if (r.y0 > db::kPlaneMin) {
-    r.y0 -= d;
+    r.y0 = offset(r.y0, -d);
   }
   if (r.x1 < db::kPlaneMax) {
-    r.x1 += d;
+    r.x1 = offset(r.x1, d);
   }
   if (r.y1 < db::kPlaneMax) {
-    r.y1 += d;
+    r.y1 = offset(r.y1, d);
   }
   p.rect(r);
 }
@@ -141,37 +145,37 @@ tech::TileType grow_split_euclidean(const Painter& p, const db::TileView& t, con
   clear(dirs, leg_on_top(t) ? kSouth : kNorth);
   const EuclideanOffsets off =
       euclidean_offsets(d, static_cast<std::int32_t>(a.width()), static_cast<std::int32_t>(a.height()));
-  const db::Coord gx = set_value_grid(off.dx, limit);
-  const db::Coord gy = set_value_grid(off.dy, limit);
+  const std::int64_t gx = set_value_grid(off.dx, limit);
+  const std::int64_t gy = set_value_grid(off.dy, limit);
   const bool east = (dirs & kEast) != 0;
   const bool west = (dirs & kWest) != 0;
   const bool south = (dirs & kSouth) != 0;
   const bool north = (dirs & kNorth) != 0;
   db::Rect r = a;
   if (!east) {
-    r.x1 = r.x0 + gx;
+    r.x1 = offset(r.x0, gx);
   }
   if (!west) {
-    r.x0 = r.x1 - gx;
+    r.x0 = offset(r.x1, -gx);
   }
-  r.y0 = south ? r.y0 : r.y0 - d;
-  r.y1 = north ? r.y1 : r.y1 + d;
+  r.y0 = south ? r.y0 : offset(r.y0, -d);
+  r.y1 = north ? r.y1 : offset(r.y1, d);
   p.rect(r);
   r = a;
-  r.x1 = east ? r.x1 : r.x1 + d;
-  r.x0 = west ? r.x0 : r.x0 - d;
+  r.x1 = east ? r.x1 : offset(r.x1, d);
+  r.x0 = west ? r.x0 : offset(r.x0, -d);
   if (!south) {
-    r.y0 = r.y1 - gy;
+    r.y0 = offset(r.y1, -gy);
   }
   if (!north) {
-    r.y1 = r.y0 + gy;
+    r.y1 = offset(r.y0, gy);
   }
   p.rect(r);
   r = a;
-  r.y1 = north ? r.y1 - gy : r.y1 + d;
-  r.y0 = south ? r.y0 + gy : r.y0 - d;
-  r.x1 = east ? r.x1 - gx : r.x1 + d;
-  r.x0 = west ? r.x0 + gx : r.x0 - d;
+  r.y1 = shifted(r.y1, north ? -gy : d);
+  r.y0 = shifted(r.y0, south ? gy : -d);
+  r.x1 = shifted(r.x1, east ? -gx : d);
+  r.x0 = shifted(r.x0, west ? gx : -d);
   p.shape(t, r);
   return east ? t.right_type : t.left_type;
 }
@@ -218,13 +222,13 @@ struct StripSpec {
 db::Rect strip_base(const db::Rect& a, db::Coord d, std::uint8_t side) {
   switch (side) {
     case kNorth:
-      return db::Rect{a.x0, a.y1, a.x1, a.y1 + d};
+      return db::Rect{a.x0, a.y1, a.x1, offset(a.y1, d)};
     case kEast:
-      return db::Rect{a.x1, a.y0, a.x1 + d, a.y1};
+      return db::Rect{a.x1, a.y0, offset(a.x1, d), a.y1};
     case kSouth:
-      return db::Rect{a.x0, a.y0 - d, a.x1, a.y0};
+      return db::Rect{a.x0, offset(a.y0, -d), a.x1, a.y0};
     default:
-      return db::Rect{a.x0 - d, a.y0, a.x0, a.y1};
+      return db::Rect{offset(a.x0, -d), a.y0, a.x0, a.y1};
   }
 }
 
@@ -247,8 +251,8 @@ void edge_strips(const Painter& p, const db::Rect& a, db::Coord d, std::uint8_t 
     const bool vertical = s.side == kEast || s.side == kWest;
     db::Coord& hi = vertical ? r.y1 : r.x1;
     db::Coord& lo = vertical ? r.y0 : r.x0;
-    hi += extends(s.high_dir, s.high_stops) ? d : 0;
-    lo -= extends(s.low_dir, s.low_stops) ? d : 0;
+    hi = offset(hi, extends(s.high_dir, s.high_stops) ? d : 0);
+    lo = offset(lo, extends(s.low_dir, s.low_stops) ? -d : 0);
     p.rect(r);
   }
 }
@@ -305,34 +309,35 @@ bool side_matches(const std::vector<db::TileView>& n, tech::TileType own, bool b
   });
 }
 
-/// The first rectangle of grow-min: the tile widened (and heightened) to g.
+/// The first rectangle of grow-min: the tile widened (and heightened) to g,
+/// in 64 bits until it is painted (Q-MASK-36).
 db::Rect grow_min_rect(const db::TileView& t, std::int32_t g, const std::vector<db::TileView>& below,
                        const std::vector<db::TileView>& above, std::int32_t limit) {
-  db::Rect a = t.area;
-  const auto width = static_cast<std::int32_t>(a.width());
+  detail::WideRect a = detail::widen(t.area);
+  const std::int64_t width = a.x1 - a.x0;
   if (width >= g) {
-    return a;
+    return t.area;
   }
-  const std::int32_t loc = (g - width) / 2;
+  const std::int64_t loc = (g - width) / 2;
   a.x0 -= loc;
   a.x1 += loc;
-  const auto height = static_cast<std::int32_t>(a.height());
+  const std::int64_t height = a.y1 - a.y0;
   if (height >= g) {
-    return a;
+    return detail::to_plane(a);
   }
   const bool free_bot = !side_matches(below, detail::bottom_type(t), true);
   const bool free_top = !side_matches(above, detail::top_type(t), false);
   if (free_top && !free_bot) {
-    a.y0 -= grow_min_height(g, width);
+    a.y0 -= grow_min_height(g, static_cast<std::int32_t>(width));
   } else if (!free_top && free_bot) {
-    a.y1 += grow_min_height(g, width);
+    a.y1 += grow_min_height(g, static_cast<std::int32_t>(width));
   } else {
-    const std::int32_t k = (g - height) / 2;
+    const std::int64_t k = (g - height) / 2;
     a.y0 -= k;
     a.y1 += k;
   }
   detail::set_min_box_grid(a, g, limit);
-  return a;
+  return detail::to_plane(a);
 }
 
 /// The x-range shared by bottom neighbour `p` and top neighbour `q` within
@@ -360,13 +365,13 @@ void grow_min_columns(MaskPlane& into, const db::TileView& t, std::int32_t g, co
       if (!span) {
         continue;
       }
-      const db::Rect a{span->first, t.area.y0, span->second, t.area.y1};
-      const auto width = static_cast<std::int32_t>(a.width());
-      const auto height = static_cast<std::int32_t>(a.height());
+      const detail::WideRect a{span->first, t.area.y0, span->second, t.area.y1};
+      const std::int64_t width = a.x1 - a.x0;
+      const std::int64_t height = a.y1 - a.y0;
       if (width >= g && height >= g) {
         continue;
       }
-      db::Rect b = a;
+      detail::WideRect b = a;
       if (width < g) {
         b.x0 = a.x0 - (g - width) / 2;
         b.x1 = a.x1 + (g - width) / 2;
@@ -376,7 +381,7 @@ void grow_min_columns(MaskPlane& into, const db::TileView& t, std::int32_t g, co
         b.y1 = a.y1 + (g - height) / 2;
       }
       detail::set_min_box_grid(b, g, limit);
-      detail::paint(into, b);
+      detail::paint(into, detail::to_plane(b));
     }
   }
 }
