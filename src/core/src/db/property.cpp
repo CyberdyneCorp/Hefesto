@@ -212,7 +212,7 @@ PropertyValue coerce_reserved_property(std::string_view name, const PropertyValu
   if (name == "GDS_START" || name == "GDS_BEGIN" || name == "GDS_END") {
     return coerce_double(value, text);
   }
-  if (name == "GDS_FILE") {
+  if (name == "GDS_FILE" || name == "OASIS_FILE" || name == "OASIS_CELL") {
     return text;
   }
   if (starts_with(name, "MASKHINTS_")) {

@@ -7,8 +7,8 @@
 // each cell's decompressed bytes (CBLOCKs inflated), then gds-read's
 // memoized stamp(s) procedure, so a read-only OASIS cell gets a timestamp
 // that changes only when its content does. The table has the gds::StampTable
-// layout keyed by the cell record's offset in the decompressed stream, so
-// gds::lookup_stamp and gds::assign_content_stamps serve both formats.
+// layout (start: the CELL record's offset in the decompressed stream); a
+// cell's stamp is looked up by name (oasis::lookup_stamp, vendor.hpp).
 //
 // Owner: INTEGRATION (this header, created by the M6 scaffold); OASR fills
 // in the implementation in src/core/src/oasis/read/ (design D2).
@@ -24,8 +24,8 @@ class ByteSource;
 namespace hefesto::oasis {
 
 /// The content stamps of every CELL record of the OASIS stream `source`,
-/// read from its start. SCAFFOLD: returns an empty table until OASR lands
-/// it.
+/// read from its start (empty when it is not OASIS). A cell the stream
+/// ends inside has no entry.
 [[nodiscard]] gds::StampTable content_stamps(gds::ByteSource& source);
 
 }  // namespace hefesto::oasis
