@@ -9,6 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
+#include <string_view>
+
 #include "hefesto/lef/via/generate.hpp"
 #include "hefesto/lef/via/polygon.hpp"
 #include "read_fixture.hpp"
@@ -25,8 +28,10 @@ void define_via_layers(FakeLayers& layers) {
   layers.define({"pwell"}, lef::LayerEntry{lef::LayerClass::ignore, 0, 0, 0, std::nullopt});
 }
 
-const lef::ViaDefinition& via(const LefRun& run, const std::string& name) {
-  const auto* entry = run.vias.find(name);
+// `name` by value: GCC 14's -Wdangling-reference flags a returned reference
+// when a reference parameter binds a temporary string.
+const lef::ViaDefinition& via(const LefRun& run, std::string_view name) {
+  const auto* entry = run.vias.find(std::string{name});
   REQUIRE(entry != nullptr);
   REQUIRE(entry->value.has_value());
   return *entry->value;

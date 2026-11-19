@@ -282,18 +282,25 @@ std::optional<db::Rect> Reader::die_rect_all_points() {
   std::optional<db::Rect> box;
   bool bad = false;
   std::size_t points = 0;
+  // Out-parameter form: GCC 11 flags `*opt` after a conditional optional as
+  // maybe-uninitialized (-Werror).
+  const auto scaled_into = [this](const std::optional<float>& v, db::Coord& out) {
+    const std::optional<db::Coord> s = v ? scaled(*v) : std::nullopt;
+    out = s.value_or(0);
+    return s.has_value();
+  };
   for (std::string token = take(); !token.starts_with(';') && !ended(); token = take()) {
     const bool paren = token == "(";
     const auto x = lef::parse_number(paren ? take() : token);
     const auto y = lef::parse_number(take());
-    const auto sx = x ? scaled(*x) : std::nullopt;
-    const auto sy = y ? scaled(*y) : std::nullopt;
-    if (!sx || !sy || (paren && take() != ")")) {
+    db::Coord px = 0;
+    db::Coord py = 0;
+    if (!scaled_into(x, px) || !scaled_into(y, py) || (paren && take() != ")")) {
       bad = true;
       continue;
     }
     ++points;
-    const db::Rect p{*sx, *sy, *sx, *sy};
+    const db::Rect p{px, py, px, py};
     box = box ? db::Rect{std::min(box->x0, p.x0), std::min(box->y0, p.y0), std::max(box->x1, p.x1),
                          std::max(box->y1, p.y1)}
               : p;
