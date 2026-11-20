@@ -16,6 +16,8 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
+#include <string>
 
 #include "hefesto/drc/rules/query.hpp"
 #include "hefesto/tech/commands.hpp"
@@ -183,6 +185,26 @@ LayerRecord& LayerTable::add(std::string_view lef_name, LayerRecord record) {
 
 void LayerTable::release(std::string_view lef_name) {
   (void)names_.clear_value(std::string{lef_name});
+}
+
+void LayerTable::redefine_alias(std::string_view lef_name) {
+  const std::string key{lef_name};
+  const auto* entry = names_.find(key);
+  if (entry == nullptr || !entry->value) {
+    return;
+  }
+  const std::size_t index = *entry->value;
+  std::optional<std::string> alias;
+  names_.for_each([&](const auto& other) {
+    if (!alias && other.value == index && other.key != key) {
+      alias = other.key;
+    }
+  });
+  (void)names_.clear_value(key);
+  LayerRecord& record = records_[index];
+  if (record.canonical_name == key && alias) {
+    record.canonical_name = *alias;
+  }
 }
 
 const LayerRecord* LayerTable::magic_to_lef(tech::TileType type) const {

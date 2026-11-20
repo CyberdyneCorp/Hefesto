@@ -58,7 +58,10 @@ db::Rect obs_bbox(const MacroState& m) {
   if (dims == nullptr || dims->values.size() != 4) {
     diag::Diagnostic d =
         diag::make("LEF-WRITE-007", "Improper values for obstruction bounding box OBS_BBOX property");
-    d.no_newline = true;  // Magic's TxError has no line end here
+    // Magic's TxError has no line end here, so the next message joins it
+    // on its line (LEFDEF-132); Hefesto ends the line with magic-compat OFF
+    // (Q-LEFDEF-134, compat).
+    d.no_newline = m.ctx.magic_compat;
     m.messages->push_back(std::move(d));
     return db::Rect{};
   }

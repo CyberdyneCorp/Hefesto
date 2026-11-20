@@ -40,8 +40,9 @@ struct StreamTarget {
   ViaTable& vias;
   RuleTable& rules;
   /// The table `layers` views, for via redefinition (LefRedefined counts
-  /// the names of a layer record); nullptr: an empty table.
-  const LayerTable* layer_table = nullptr;
+  /// the names of a layer record and moves a shared record's canonical
+  /// name, Q-LEFDEF-8); nullptr: an empty table.
+  LayerTable* layer_table = nullptr;
   /// The cells of MACRO and SITE sections; nullptr skips those sections.
   MacroHost* macros = nullptr;
 };

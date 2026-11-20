@@ -49,8 +49,10 @@ enum class ViaSection : std::uint8_t {
 ///   keeps its class. When the name is one of several aliases of a layer
 ///   record, only `name` gets a new record, of class VIA (Q-LEFDEF-8 fix;
 ///   Magic leaves its class uninitialised); the layer's other names keep
-///   the layer record.
-[[nodiscard]] ViaDefinition* begin_via(ViaTable& vias, const LayerTable& layers, std::string_view name,
+///   the layer record, and `name` leaves `layers`
+///   (LayerTable::redefine_alias: the record's canonical name moves to one
+///   of its other names when it was `name`).
+[[nodiscard]] ViaDefinition* begin_via(ViaTable& vias, LayerTable& layers, std::string_view name,
                                        ViaSection section, const ViaContext& context);
 
 /// The number of LEF names of `layers` that share `name`'s record (0 when

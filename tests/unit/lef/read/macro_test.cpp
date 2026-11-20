@@ -86,16 +86,41 @@ TEST_CASE("lef read -annotate with an unknown macro", "[cap:lef-read][req:MACRO 
 }
 
 TEST_CASE("lef read -annotate skips a duplicate with no cell as Magic does", "[cap:lef-read][req:MACRO and SITE cell creation]") {
-  // Magic skips the duplicate to `END MACRO` (LefSkipSection(f, "MACRO")):
-  // the rest of the file is not read.
-  MacroRun run{true};
-  run.macros.annotate = true;
-  run.read("MACRO A\n  SIZE 1 BY 1 ;\nEND A\nMACRO A\nEND A\nMACRO B\n  SIZE 1 BY 1 ;\nEND B\n");
-  const auto texts = run.texts();
-  CHECK(has_text(texts, "LEF read, Line 4 (Warning): Cell \"A\" was already defined in this file.  "
-                        "Renaming this cell \"A_1\""));
-  CHECK(has_text(texts, "LEF read, Line 8 (Error): Section MACRO has no END record!"));
-  CHECK(run.host.created == Strings{"A"});
+  // Q-LEFDEF-119 (compat).
+  const std::string text = "MACRO A\n  SIZE 1 BY 1 ;\nEND A\nMACRO A\nEND A\nMACRO B\n  SIZE 1 BY 1 ;\nEND B\n";
+  SECTION("magic-compat ON: skipped to END MACRO, the rest of the file is not read") {
+    // Magic skips the duplicate to `END MACRO` (LefSkipSection(f, "MACRO")).
+    MacroRun run{true};
+    run.macros.annotate = true;
+    run.read(text);
+    const auto texts = run.texts();
+    CHECK(has_text(texts, "LEF read, Line 4 (Warning): Cell \"A\" was already defined in this file.  "
+                          "Renaming this cell \"A_1\""));
+    CHECK(has_text(texts, "LEF read, Line 8 (Error): Section MACRO has no END record!"));
+    CHECK(run.host.created == Strings{"A"});
+  }
+  SECTION("magic-compat OFF: -annotate creates no cell, so no duplicate arises; each macro is skipped to its END") {
+    MacroRun run{false};
+    run.macros.annotate = true;
+    run.read(text);
+    CHECK(run.texts().empty());
+    CHECK(run.host.created.empty());
+  }
+}
+
+TEST_CASE("only cells the read created count as duplicates", "[cap:lef-read][req:MACRO and SITE cell creation]") {
+  // Q-LEFDEF-121 (replicate): an existing cell named twice is annotated
+  // twice, with no rename, in both modes.
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    MacroRun run{on};
+    run.existing("OLD");
+    run.read("MACRO OLD\n  SIZE 1 BY 1 ;\nEND OLD\nMACRO OLD\n  SIZE 2 BY 2 ;\nEND OLD\n");
+    CHECK(run.texts().empty());
+    CHECK(run.host.annotated == Strings{"OLD", "OLD"});
+    CHECK(run.host.created.empty());
+    CHECK(run.host.cells.find("OLD_1") == nullptr);
+  }
 }
 
 TEST_CASE("a fixed LEF datestamp is given to every macro", "[cap:lef-read][req:MACRO and SITE cell creation]") {

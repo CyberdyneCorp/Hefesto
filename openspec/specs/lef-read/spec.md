@@ -217,6 +217,8 @@ With it OFF:
 - A VIA whose body has `VIARULE`, `CUTSIZE`, `LAYERS`, `CUTSPACING`, `ENCLOSURE` and `ROWCOL` (and optionally `ORIGIN`, `OFFSET`, `PATTERN`) SHALL be given geometry by "Generated via geometry", the generator `def read` uses, with ORIGIN, OFFSET and PATTERN applied as `def read` applies them with `magic-compat` OFF (capability `def-read`, Requirement "Generated DEF vias").
 - `RECT MASK n x1 y1 x2 y2 ;` SHALL be read as `RECT x1 y1 x2 y2 ;`; the mask number is ignored.
 - `RECT ITERATE x1 y1 x2 y2 DO nx BY ny STEP dx dy ;` SHALL add the rectangle at each of the nx × ny offsets (i·dx, j·dy).
+- A `RECT ITERATE` whose nx × ny, or a `ROWCOL` whose rows × columns, is above 65536 SHALL be rejected with the error `Bad RECT ITERATE: requires DO <nx> BY <ny> STEP <dx> <dy>.` or `Bad ROWCOL: requires two counts whose product is at most 65536.` and add nothing (resource cap, Q-LEFDEF-118, resolution: fix, user decision of 2026-11-19; Magic reads neither statement, so the cap applies with `magic-compat` OFF only).
+- A `VIARULE <name> GENERATE` section, in both `magic-compat` settings, SHALL also keep its generation parameters on the via entry it defines (Q-LEFDEF-61, resolution: fix; Magic keeps none): the first two routing layers named by `LAYER` (bottom, then top) and the contact layer named by `LAYER` (cut), when all three are named; the size of the cut layer's `RECT` (as read, in half internal units, in microns); the cut layer's `SPACING x BY y` minus that size (the DEF CUTSPACING, edge to edge); and `ENCLOSURE a b` of the bottom and of the top routing layer as (a, b). Reading these statements changes nothing else: they are read to their `;` as Magic reads them. A VIARULE section whose name already exists is skipped as above and keeps nothing. A generated via that names the rule (a LEF VIA with `VIARULE` here, a DEF VIAS `+ VIARULE`, capability `def-read`) takes from it, converted to its own units, each value it omits, with the warning of "Generated DEF vias".
 - `POLYGON pts ;` SHALL be decomposed into rectangles as in "PORT and OBS geometry" and each rectangle added to the via as if read by RECT.
 Compatibility: exact
 
@@ -258,8 +260,8 @@ END M1M2_PR
 
 ### Requirement: Via redefinition
 
-When an existing via name is redefined, the following SHALL apply. If no other table name shares the entry, the entry SHALL be reused: its extra rectangles are discarded, its normal and obstruction types become none, and its contact area becomes (0,0,0,0). Its class is kept. If other names share the entry, a new entry SHALL be created for the redefined name only, with no types and contact area (0,0,0,0). If the shared entry's canonical name was the redefined name, its canonical name SHALL be changed to another name in the table. Magic picks the first name in hash order that differs from the redefined name, even if that name belongs to an unrelated entry, and it leaves the new entry's class uninitialized. See Q-LEFDEF-8.
-Compatibility: exact
+When an existing via name is redefined, the following SHALL apply. If no other table name shares the entry, the entry SHALL be reused: its extra rectangles are discarded, its normal and obstruction types become none, and its contact area becomes (0,0,0,0). Its class is kept. If other names share the entry, a new entry SHALL be created for the redefined name only, with no types and contact area (0,0,0,0). The redefined name SHALL then name only the new entry: the shared entry keeps its other names. If the shared entry's canonical name was the redefined name, its canonical name SHALL be changed to the first other name of the same entry in hash order. The new entry's class SHALL be VIA. Both hold in both `magic-compat` settings (Q-LEFDEF-8, resolution: fix): Magic picks the first name of the whole table that differs from the redefined name, even if that name belongs to an unrelated entry, and leaves the new entry's class uninitialized.
+Compatibility: behavioral
 
 (Magic ref: lef/lefRead.c:611-680)
 
@@ -342,7 +344,7 @@ Compatibility: exact
 ### Requirement: MACRO and SITE cell creation
 
 Each `MACRO <name>` and each `SITE <name>` section SHALL be read with the same macro-reading procedure. For each section:
-1. If a cell named `<name>` was created by a MACRO or SITE section of this file, find the smallest k ≥ 1 such that no cell `<name>_k` was created by this file, and use `<name>_k` as the cell name. Report the warning `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_k"`. Only cells the read created count: a section that annotated an existing cell registers nothing, so an existing cell named twice is annotated twice, with no rename, as in Magic. If no cell `<name>_k` exists and annotation was requested (`-annotate`), skip the section. With `magic-compat` ON the skip reads to an `END MACRO` statement, as Magic's `LefSkipSection(f, "MACRO")` does; a macro ends with `END <name>`, so the rest of the file is normally not read. With it OFF the section is skipped to its own `END <name>` (with OFF, `-annotate` never creates the first cell, so this case does not arise from one file).
+1. If a cell named `<name>` was created by a MACRO or SITE section of this file, find the smallest k ≥ 1 such that no cell `<name>_k` was created by this file, and use `<name>_k` as the cell name. Report the warning `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_k"`. Only cells the read created count: a section that annotated an existing cell registers nothing, so an existing cell named twice is annotated twice, with no rename, as in Magic, in both `magic-compat` settings (Q-LEFDEF-121, resolution: replicate). If no cell `<name>_k` exists and annotation was requested (`-annotate`), skip the section (Q-LEFDEF-119, resolution: compat). With `magic-compat` ON the skip reads to an `END MACRO` statement, as Magic's `LefSkipSection(f, "MACRO")` does; a macro ends with `END <name>`, so the rest of the file is normally not read. With it OFF the section is skipped to its own `END <name>` (with OFF, `-annotate` never creates the first cell, so this case does not arise from one file).
 2. If a cell with the (possibly renamed) name exists in the database, the macro SHALL be read in annotation mode ("Annotation of existing cells"). Otherwise a new empty, available cell SHALL be created and read in creation mode. Annotation is chosen only because the cell already exists. What `-annotate` does to a macro with no existing cell depends on the `magic-compat` setting (Q-LEFDEF-11, resolution: compat). With it ON (the default), as in Magic, `-annotate` does not by itself stop new cells from being created for macros that are not duplicates. With it OFF, as documented, with `-annotate` a macro whose (possibly renamed) cell does not exist SHALL be skipped and no cell created.
 3. If a fixed LEF datestamp is set (see "lef datestamp"), the cell's timestamp SHALL be set to it and marked as fixed.
 
@@ -415,7 +417,7 @@ point      = [ "(" ] , num , num , [ ")" ] ;
 - `CLASS`, `SYMMETRY`: each statement replaces the property.
 - `SITE`: each statement replaces `LEFsite`.
 - An empty `CLASS ;` or `SYMMETRY ;` has undefined content in Magic. See Q-LEFDEF-19.
-- `SITE`, `SOURCE` or `PROPERTY` with a missing value (`SITE ;`): with `magic-compat` ON, as in Magic, the `;` is taken as the value and the statement then skips to the next `;`, swallowing the next statement. With it OFF nothing is set and the next statement is read normally.
+- `SITE`, `SOURCE` or `PROPERTY` with a missing value (`SITE ;`): with `magic-compat` ON, as in Magic, the `;` is taken as the value and the statement then skips to the next `;`, swallowing the next statement. With it OFF nothing is set and the next statement is read normally (Q-LEFDEF-120, resolution: compat).
 - `PIN` sections are numbered with a pin ordinal that starts at 1 for each macro and increases by one for every PIN section, including pins that produce no labels.
 Compatibility: exact
 
@@ -500,7 +502,7 @@ coord4    = [ "(" ] , num , num , [ ")" ] , [ "(" ] , num , num , [ ")" ] ;
 - `WIDTH`, `PATH` and `VIA` depend on the `magic-compat` setting (Q-LEFDEF-15, resolution: compat). With it ON (the default) they SHALL be ignored, as in Magic, so path-based and via-instance pin or obstruction geometry produces no paint and no port label. With it OFF:
   - `WIDTH w ;` SHALL set the current path width to w converted by s (half-unit rounding as for RECT); it starts at 0 for each PORT or OBS body.
   - `PATH x1 y1 x2 y2 ... ;` SHALL paint each Manhattan segment on the current layer as a rectangle w wide, centred on the segment and extended by w/2 beyond both ends, with the offset added; a diagonal segment is skipped, and with the current layer none the statement is skipped.
-  - `VIA x y name ;` SHALL place the named LEF via definition's contact area and extra rectangles, each with its own type, centred at (x, y) converted by s plus the offset. An unknown via name reports an info message and is skipped.
+  - `VIA x y name ;` SHALL place the named LEF via definition's contact area and extra rectangles, each with its own type, centred at (x, y) converted by s plus the offset. An unknown via name reports an info message and is skipped. The Manhattan-only PATH and the info message are the OFF behaviour approved as Q-LEFDEF-123 (2026-11-19).
   - In PORT, each painted rectangle SHALL also become port geometry, exactly as a RECT does ("Port labels in creation mode"), and in annotation mode it goes through the same coverage check.
 Compatibility: exact
 
@@ -606,7 +608,7 @@ Compatibility: exact
 2. If the last path component has an extension other than `.lef`, the name with that extension removed and `.lef` appended.
 3. If the last path component already ends in `.lef`, the name as given.
 4. If the last path component has no extension, the name with `.lef` appended.
-Each attempt SHALL search the current directory and the cell search path. See Q-LEFDEF-24. If the file cannot be opened, the error `Cannot open input file <path> (<reason>).` SHALL be reported and nothing is read.
+Each attempt SHALL search the current directory and the cell search path. See Q-LEFDEF-24. If the file cannot be opened, the error `Cannot open input file <path> (<reason>).` SHALL be reported and nothing is read. When no candidate is found, `<path>` is the name the last attempt tried, built from the typed name (`missing` gives `missing.lef`), in both `magic-compat` settings; Magic reports the last search-path candidate it tried instead (for example `/usr/lib/magic/tutorial/missing.lef`), which depends on the installation (Q-LEFDEF-133, resolution: fix; golden cases LEFDEF-021 and LEFDEF-022 record the deviation).
 Compatibility: behavioral
 
 (Magic ref: lef/lefRead.c:3003-3024, 3186-3196, lef/lefWrite.c:150-235)
@@ -650,7 +652,7 @@ Compatibility: behavioral
 `lef datestamp` SHALL query or set the timestamp given to cells created or annotated by later LEF reads:
 - `lef datestamp` with no value SHALL report the current setting. Magic reports the integer value, or `default` when no fixed stamp is set; outside Tcl it prints `Macros will contain a header creation date stamp of <v>.` or `Macros will contain a default header creation date stamp.`.
 - `lef datestamp default` (exact, case-sensitive) SHALL clear the fixed stamp.
-- `lef datestamp <int>`, where the argument is a valid integer, SHALL set the fixed stamp to that value. Every macro or site cell read afterwards SHALL get that timestamp and be marked as having a fixed timestamp. The value -1 means "default" (no fixed stamp), as in Magic, whose `lefTimestamp` uses -1 for it; a value outside the int range saturates to the nearest int.
+- `lef datestamp <int>`, where the argument is a valid integer, SHALL set the fixed stamp to that value. Every macro or site cell read afterwards SHALL get that timestamp and be marked as having a fixed timestamp. The value -1 means "default" (no fixed stamp), as in Magic, whose `lefTimestamp` uses -1 for it, in both `magic-compat` settings (Q-LEFDEF-122, resolution: replicate); a value outside the int range saturates to the nearest int.
 - Any other value SHALL report `Unrecognizable date stamp "<v>".` followed by the help text; more than one value SHALL print the help text. In both cases the setting is unchanged.
 - `def datestamp` is rejected as specified in capability `def-write` (Requirement "def command argument validation").
 The setting SHALL persist for the session and starts as "default".

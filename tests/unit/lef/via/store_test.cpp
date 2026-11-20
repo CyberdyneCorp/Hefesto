@@ -34,7 +34,7 @@ TEST_CASE("a contact rectangle becomes the via's primary record",
           "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  const LayerTable layers;
+  LayerTable layers;
   ViaDefinition* via = begin_via(vias, layers, "M1M2_PR", ViaSection::lef_via, c.via());
   REQUIRE(via != nullptr);
   CHECK(via->layer_class == LayerClass::cut);
@@ -54,7 +54,7 @@ TEST_CASE("a VIARULE after a VIA of the same name is skipped",
           "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  const LayerTable layers;
+  LayerTable layers;
   read_m1m2(*begin_via(vias, layers, "V12", ViaSection::lef_via, c.via()), c);
   const ViaDefinition before = *vias.find("V12")->value;
   CHECK(begin_via(vias, layers, "V12", ViaSection::lef_viarule, c.via()) == nullptr);
@@ -68,7 +68,7 @@ TEST_CASE("a rectangle on a layer that did not resolve adds no geometry",
           "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  ViaDefinition* via = begin_via(vias, LayerTable{}, "V", ViaSection::lef_via, c.via());
+  ViaDefinition* via = begin_via(vias, test::no_layers(), "V", ViaSection::lef_via, c.via());
   add_via_rect(*via, std::nullopt, db::Rect{0, 0, 2, 2}, c.via());
   CHECK(via->area == db::Rect{});
   CHECK(via->shapes.empty());
@@ -79,7 +79,7 @@ TEST_CASE("a later contact rectangle is not swapped in over a contact primary",
           "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  ViaDefinition* via = begin_via(vias, LayerTable{}, "V", ViaSection::lef_via, c.via());
+  ViaDefinition* via = begin_via(vias, test::no_layers(), "V", ViaSection::lef_via, c.via());
   add_via_rect(*via, c.type("m2contact"), db::Rect{-2, -2, 2, 2}, c.via());
   add_via_rect(*via, c.type("m3contact"), db::Rect{-4, -4, 4, 4}, c.via());
   CHECK(via->type == c.type("m2contact"));
@@ -90,7 +90,7 @@ TEST_CASE("reading the same technology LEF twice redefines the via with the same
           "[cap:lef-read][req:Via redefinition]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  const LayerTable layers;
+  LayerTable layers;
   read_m1m2(*begin_via(vias, layers, "V12", ViaSection::lef_via, c.via()), c);
   const ViaDefinition first = *vias.find("V12")->value;
   ViaDefinition* again = begin_via(vias, layers, "V12", ViaSection::lef_via, c.via());
@@ -107,10 +107,10 @@ TEST_CASE("reading the same technology LEF twice redefines the via with the same
 TEST_CASE("redefinition keeps the record's class", "[cap:lef-read][req:Via redefinition]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  ViaDefinition* via = begin_via(vias, LayerTable{}, "V", ViaSection::lef_via, c.via());
+  ViaDefinition* via = begin_via(vias, test::no_layers(), "V", ViaSection::lef_via, c.via());
   via->layer_class = LayerClass::route;
   via->generated = true;
-  ViaDefinition* again = begin_via(vias, LayerTable{}, "V", ViaSection::lef_via, c.via());
+  ViaDefinition* again = begin_via(vias, test::no_layers(), "V", ViaSection::lef_via, c.via());
   CHECK(again->layer_class == LayerClass::route);
   CHECK(again->canonical_name == "V");
   CHECK_FALSE(again->generated);
@@ -119,7 +119,7 @@ TEST_CASE("redefinition keeps the record's class", "[cap:lef-read][req:Via redef
 TEST_CASE("a DEF via overrides a LEF via of the same name", "[cap:def-read][req:Via redefinition]") {
   Context c{test::via_tech()};
   ViaTable vias;
-  const LayerTable layers;
+  LayerTable layers;
   read_m1m2(*begin_via(vias, layers, "V12", ViaSection::lef_via, c.via()), c);
   ViaDefinition* def_via = begin_via(vias, layers, "V12", ViaSection::def_via, c.via());
   REQUIRE(def_via != nullptr);
@@ -135,7 +135,7 @@ TEST_CASE("a three-rectangle DEF via has the contact as its primary type",
   // oscale = 1: doubled units are twice the DEF values.
   Context c{test::via_tech()};
   ViaTable vias;
-  ViaDefinition* via = begin_via(vias, LayerTable{}, "V12", ViaSection::def_via, c.via());
+  ViaDefinition* via = begin_via(vias, test::no_layers(), "V12", ViaSection::def_via, c.via());
   add_via_rect(*via, c.type("metal1"), db::Rect{-200, -200, 200, 200}, c.via());
   add_via_rect(*via, c.type("m2contact"), db::Rect{-100, -100, 100, 100}, c.via());
   add_via_rect(*via, c.type("metal2"), db::Rect{-240, -160, 240, 160}, c.via());

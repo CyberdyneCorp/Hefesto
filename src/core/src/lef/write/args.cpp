@@ -219,6 +219,7 @@ CommandResult lef_write(cmd::CommandContext& ctx, const cu::Session& s, const cm
     return no_cell();
   }
   p.options.files = &ctx.services().files;
+  p.options.loader = gds::command_subtree_loader(ctx, *s.editor);
   p.options.typed_name = p.name.value_or(std::string{});
   const std::string name = p.name.value_or(target->name());
   return write(*s.editor, *target, name, p.options);

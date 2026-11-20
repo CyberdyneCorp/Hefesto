@@ -411,6 +411,36 @@ TEST_CASE("annotate a net through a terminal", "[cap:def-read][req:Net annotatio
   }
 }
 
+TEST_CASE("regression: annotation reads an unread subcell to find its terminal",
+          "[cap:def-read][req:Net annotation mode]") {
+  // The terminal lookup read the child's labels without reading the child
+  // (`load top` leaves subcells unread until they are needed), so the
+  // terminal of LEFDEF-232's u1 was never found. Magic's CmdFindNetProc
+  // reads it (DBTreeFindUse, "Cell leaf read from path ...").
+  for (const bool compat : {true, false}) {
+    Annotated a{compat, true};
+    db::CellDef& child = a.s.cell("child");
+    child.labels().clear();
+    child.flags().available = false;
+    std::vector<std::string> asked;
+    a.s.options.read_master = [&](db::CellDef& def) {
+      asked.push_back(def.name());
+      db::Label y;
+      y.text = "Y";
+      y.type = a.s.type("metal1");
+      y.rect = db::Rect{10, 10, 20, 20};
+      def.flags().available = true;
+      return db::put_label(def, y).ok();
+    };
+    REQUIRE(a.s.read(kAnnotated).ok());
+    CHECK(asked == std::vector<std::string>{"child"});
+    const db::Label* l = a.s.label("top", "n1");
+    REQUIRE(l != nullptr);
+    CHECK(l->rect == db::Rect{50, 15, 50, 15});
+    CHECK_FALSE(a.s.said("did not land on any existing net geometry."));
+  }
+}
+
 TEST_CASE("annotation when the edit cell is not the design cell (Q-LEFDEF-81)",
           "[cap:def-read][req:Net annotation mode]") {
   SECTION("ON: the terminal is not found") {
