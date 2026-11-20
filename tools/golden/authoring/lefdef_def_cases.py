@@ -34,6 +34,11 @@ def nets(*records: str, keyword: str = "NETS") -> str:
     return def_section(keyword, len(records), *records)
 
 
+# Magic's default outline fonts, loaded at Magic's startup: DEF pin labels are font-0 flabels
+# (DBPutFontLabel), so a case that writes pin labels needs them as magic-sys inputs for hefesto-cli.
+DEFAULT_FONTS = ["FreeSans", "FreeSerif", "FreeMono"]
+
+
 def read_def(cid: str, design: str, text: str, *, lef_text: str | None = None, cmd: str | None = None,
              body: list[str] | None = None, files: dict | None = None, **kw) -> tclcase.TclCase:
     """A DEF read case: optional LEF read, ``def read input/<design>``, every cell saved."""
@@ -165,11 +170,11 @@ def def_read_specs() -> list[tclcase.TclCase]:
             "COMPONENTS", 1, "- u1 nosuchcell + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL)),
         read_def("LEFDEF-214", "place", def_file("place", def_section(
             "COMPONENTS", 1, "- u1 FOO + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL), files={"FOO.mag": BLK}),
-        read_def("LEFDEF-215", "pinorder", PIN_ORDER_DEF),
-        read_def("LEFDEF-216", "multiport", MULTI_PORT_DEF),
-        read_def("LEFDEF-217", "inherit", INHERIT_DEF),
-        read_def("LEFDEF-218", "twolayer", TWO_LAYER_DEF),
-        read_def("LEFDEF-219", "labelsize", LABEL_SIZE_DEF, fonts=["FreeSans", "FreeSerif", "FreeMono"],
+        read_def("LEFDEF-215", "pinorder", PIN_ORDER_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-216", "multiport", MULTI_PORT_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-217", "inherit", INHERIT_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-218", "twolayer", TWO_LAYER_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-219", "labelsize", LABEL_SIZE_DEF, fonts=DEFAULT_FONTS,
                  notes=["Magic's default outline fonts are loaded (magic-sys inputs for hefesto-cli). The no-font "
                         "variant of the row cannot be set up from a script: Magic's startup always loads them."]),
         read_def("LEFDEF-220", "w", def_file("w", nets("- n1 + ROUTED metal1 ( 0 0 ) ( 1000 0 ) ;",
@@ -212,11 +217,11 @@ def def_read_specs() -> list[tclcase.TclCase]:
             "- n1 + ROUTED metal1 ( 0 0 ) ( 1000 0 ) + ROUTED metal2 ( 2000 0 ) ( 2000 1000 ) ;",
             "- n2 + ROUTED metal1 ( 0 3000 ) ( 1000 3000 ) ;"), diearea=DIE_SMALL), cmd="def read input/w -labels"),
         read_def("LEFDEF-232", "top", ANNOTATE_DEF, files={"top.mag": ANNOTATE_TOP, "leaf.mag": LEAF},
-                 cmd="def read input/top -annotate", start=["load top"]),
+                 cmd="def read input/top -annotate", start=["load top"], fonts=DEFAULT_FONTS),
         read_def("LEFDEF-233", "blk1", def_file("blk1", BLOCKAGE_SECTION, diearea=DIE_SMALL),
                  files={"blk2.def": def_file("blk2", BLOCKAGE_SECTION, diearea=DIE_SMALL)},
                  body=["def read input/blk1", "def read input/blk2 -noblockage", SAVE_ALL]),
-        read_def("LEFDEF-234", "counts", COUNT_DEF, lef_text=MACROS),
+        read_def("LEFDEF-234", "counts", COUNT_DEF, lef_text=MACROS, fonts=DEFAULT_FONTS),
         read_def("LEFDEF-235", "others", OTHER_SECTIONS_DEF),
         read_def("LEFDEF-236", "a", "VERSION 5.7 ;\nDIEAREA ( 0 0 ) ( 1000 1000 ) ;\nDESIGN da ;\n"
                                     "UNITS DISTANCE MICRONS 1000 ;\nEND DESIGN\n",
