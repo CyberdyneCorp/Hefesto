@@ -109,9 +109,6 @@ BLOCKER_REASONS = {
     "STARTUP": ("LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, "
                 "'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in "
                 "hefesto-cli's startup path"),
-    "TECHARGS": ("GOLDEN: the first capture's lefdef.tech had a 46-word `ignore` line, past Magic's 30-word limit "
-                 "(techGetTokens writes past argv[], a garbage keyword message); re-authored as three lines, to be "
-                 "recaptured"),
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
@@ -121,7 +118,6 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-128": BLOCKER_REASONS["LEFW"],
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
     "LEFDEF-328": BLOCKER_REASONS["DEFPAD"],
-    "LEFDEF-334": BLOCKER_REASONS["TECHARGS"],
     "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
@@ -158,6 +154,7 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-334",
     "LEFDEF-003",
     "LEFDEF-113",
     "OASIS-064-arrays",

@@ -807,11 +807,6 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
 reason = "M6 exit blocker, DEFW; DEFW: Hefesto does not read the unread master cell 'pad' before writing (Magic prints 'Cell pad read from path input' and finds the label's metal1), so it reports a floating label and prints the Tcl result line; to fix in DEFW"
 
-[LEFDEF-334]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN: the first capture's lefdef.tech had a 46-word `ignore` line, past Magic's 30-word limit (techGetTokens writes past argv[], a garbage keyword message); re-authored as three lines, to be recaptured"
-
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
