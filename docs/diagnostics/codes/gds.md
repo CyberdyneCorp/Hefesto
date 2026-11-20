@@ -80,6 +80,10 @@ Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`;
 - `GDS-WRITE-049`: Errors of a full dump: a read error in the vendor file ("Error while reading cell "<name>" (byte position <n>): ..."), "Structure <name> defined redundantly in GDS", "Error:  Unreferenced cell <name> prefix is unrecorded!" and, at the end of the write, "Error:  Cell <name> is not defined in the output file!".
 - `GDS-WRITE-050`: With magic-compat ON, a cell appended at the end of the write for a forward reference no dump defined is written under its own name, as in Magic, so the SNAME written for it (the prefixed name) dangles (Q-MASK-214). With it OFF the cell is written under the recorded name and nothing is reported. Native only.
 - `GDS-WRITE-051`: All 936 library prefixes of a write are taken; the next full dump is written without a prefix (Magic loops forever).
+- `GDS-WRITE-052`: "Calma output error:  cell <cell> has an element on layer <l>/<d>, which GDS cannot hold (above 32767); the cell cannot be written." (or "a polygon of <n> XY points with the closing point, above GDS's 8191", or "a path of <n> points"): an element of a read-only OASIS cell that GDS cannot hold (Q-OASIS-35). Nothing of the cell is written, and the cell and its parents fail. Owner: OASW (`vendor_oasis.cpp`).
+- `GDS-WRITE-053`: a read-only OASIS cell has XELEMENT or XGEOMETRY records; GDS has no counterpart and they are not written. Once per cell. Native only.
+- `GDS-WRITE-054`: the OASIS file of a read-only OASIS cell cannot be decoded, or its unit does not give 1 nm (1 Angstrom with `units angstroms`) per database unit; the cell is generated from its layout. A file or cell that cannot be found is `GDS-WRITE-041` ("Can't find OASIS file ...").
+- `GDS-WRITE-055`: a read-only OASIS cell's repetitions expand to more than 2^28 element instances (a proposed resource cap, as oasis-read's, design D21); the cell and its parents fail.
 
 ## CMD
 
@@ -153,4 +157,8 @@ fails when the two disagree.
 | `GDS-WRITE-049` | error | A full dump met a malformed record, a redundant structure, an unrecorded prefix or an undefined cell. |
 | `GDS-WRITE-050` | warning | A structure appended for an undefined vendor reference keeps its own name, so the SNAME dangles (Q-MASK-214). |
 | `GDS-WRITE-051` | error | Every two-character library prefix is taken; a full dump is written without a prefix. |
+| `GDS-WRITE-052` | error | An element of a read-only OASIS cell cannot be held by GDS (layer or datatype above 32767, more than 8191 XY points); the cell and its parents fail (Q-OASIS-35). |
+| `GDS-WRITE-053` | warning | A read-only OASIS cell has XELEMENT or XGEOMETRY records, which are not written to GDS (once per cell). |
+| `GDS-WRITE-054` | error | The OASIS file of a read-only OASIS cell cannot be decoded or has another unit than the output style; the cell is generated from its layout. |
+| `GDS-WRITE-055` | error | A read-only OASIS cell expands to more element instances than the write's cap; the cell and its parents fail. |
 <!-- END DIAGNOSTIC CODES -->

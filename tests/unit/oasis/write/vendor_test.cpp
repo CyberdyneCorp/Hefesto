@@ -455,6 +455,40 @@ TEST_CASE("a polygon above the XY limit fails the cell", "[cap:gds-write][req:Re
   CHECK(named);
 }
 
+TEST_CASE("a vendor OASIS coordinate outside I4 fails the cell without overflow",
+          "[cap:gds-write][req:Read-only OASIS vendor cells]") {
+  OasFixture f;
+  OasLibrary lib;
+  oasis::Repetition r;
+  r.type = 9;
+  r.columns = 4;
+  r.column_step = {std::int64_t{1} << 30, std::int64_t{1} << 30};
+  oasis::Element p;
+  p.kind = oasis::ElementKind::placement;
+  p.name = "leaf";
+  p.position = {std::int64_t{1} << 40, 0};
+  p.repetition = r;
+  lib.cell("leaf").add(rectangle(1, 0, 0, 0, 1, 1));
+  lib.cell("far").add(rectangle(1, 0, std::int64_t{1} << 56, 0, 10, 10));
+  lib.cell("arr").add(p);
+  store(f, "/lib.oas", lib.bytes());
+  db::CellDef& leaf = f.cell("leaf");
+  read_only_oasis(leaf, "/lib.oas", "leaf");
+  for (const std::string name : {"far", "arr"}) {
+    db::CellDef& v = f.cell(name);
+    read_only_oasis(v, "/lib.oas", name);
+    if (name == "arr") {
+      f.place(v, leaf);
+    }
+    db::CellDef& top = f.cell("top_" + name);
+    f.place(top, v);
+    (void)f.write(top);
+    INFO(name);
+    CHECK_FALSE(f.last.ok());
+    CHECK(has(f.last, "GDS-WRITE-004"));
+  }
+}
+
 TEST_CASE("an OASIS file that is missing follows the unopenable-file rules",
           "[cap:gds-write][req:Read-only OASIS vendor cells]") {
   OasFixture f;

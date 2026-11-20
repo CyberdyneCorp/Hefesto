@@ -17,7 +17,9 @@
 // - The traversal is recursive, as Magic's, with the depth limit of
 //   kMaxSubtreeDepth (GDS-WRITE-014).
 // - Read-only cells with content are copied by vendor.cpp (verbatim copy)
-//   and dump.cpp (full dump); the forward references no dump defined are
+//   and dump.cpp (full dump), read-only OASIS cells (OASIS_FILE) are
+//   transcoded by vendor_oasis.cpp (OASW, Q-OASIS-35, design D17); the
+//   forward references no dump defined are
 //   appended at the end of the write in the order they were recorded
 //   (Magic: calmaUndefHash order), with Q-MASK-214's naming.
 // Owner: GDSW.

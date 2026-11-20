@@ -45,15 +45,17 @@ const std::string* string_property(const db::CellDef& def, std::string_view name
   return value != nullptr ? std::get_if<std::string>(value) : nullptr;
 }
 
+// Sums saturate: a saturated value is far outside I4, so the XY range
+// check (GDS-WRITE-004) rejects it instead of the arithmetic overflowing.
 Point64 plus(Point64 a, Point64 b) {
-  return {a.x + b.x, a.y + b.y};
+  return {saturating_add(a.x, b.x), saturating_add(a.y, b.y)};
 }
 
 std::vector<OutputPoint> output_points(Point64 origin, std::span<const Point64> relative, bool close) {
   std::vector<OutputPoint> out;
   out.reserve(relative.size() + 1);
   for (const Point64& p : relative) {
-    out.push_back(OutputPoint{origin.x + p.x, origin.y + p.y});
+    out.push_back(OutputPoint{saturating_add(origin.x, p.x), saturating_add(origin.y, p.y)});
   }
   if (close && !out.empty()) {
     out.push_back(out.front());
@@ -208,7 +210,7 @@ class CellTranscoder {
     const bool half = hw > 0 && e.start_extension == hw && e.end_extension == hw;
     const std::int32_t type = flush ? 0 : (half ? 2 : 4);
     const mask::GdsLayer layer{static_cast<std::int32_t>(e.layer), static_cast<std::int32_t>(e.datatype)};
-    diag::Outcome<std::int32_t> width = out_.checked_i4(2 * hw);
+    diag::Outcome<std::int32_t> width = out_.checked_i4(saturating_mul(2, hw));
     diag::Outcome<std::int32_t> begin = out_.checked_i4(e.start_extension);
     diag::Outcome<std::int32_t> end = out_.checked_i4(e.end_extension);
     for (const auto* v : {&width, &begin, &end}) {
@@ -314,10 +316,12 @@ class CellTranscoder {
     const oasis::Repetition& r = *e.repetition;
     const auto na = static_cast<std::int64_t>(r.columns);
     const auto nb = static_cast<std::int64_t>(r.rows);
-    const std::array<OutputPoint, 3> xy{
-        OutputPoint{e.position.x, e.position.y},
-        OutputPoint{e.position.x + na * r.column_step.x, e.position.y + na * r.column_step.y},
-        OutputPoint{e.position.x + nb * r.row_step.x, e.position.y + nb * r.row_step.y}};
+    const auto corner = [&e](std::int64_t n, Point64 step) {
+      return OutputPoint{saturating_add(e.position.x, saturating_mul(n, step.x)),
+                         saturating_add(e.position.y, saturating_mul(n, step.y))};
+    };
+    const std::array<OutputPoint, 3> xy{OutputPoint{e.position.x, e.position.y}, corner(na, r.column_step),
+                                        corner(nb, r.row_step)};
     for (const OutputPoint& p : xy) {
       if (!out_.checked_i4(p.x).ok() || !out_.checked_i4(p.y).ok()) {
         return out_.xy(xy);  // the GDS-WRITE-004 error
