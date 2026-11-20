@@ -217,6 +217,42 @@ TEST_CASE("a read-only GDS cell in a write is transcoded without repetition dete
   CHECK(e[2].kind == oasis::ElementKind::path);
 }
 
+TEST_CASE("a full dump is transcoded structure by structure with gds-write's prefixes",
+          "[cap:oasis-write][req:Read-only GDS vendor cells]") {
+  for (const bool on : {true, false}) {
+    OasFixture f(on);
+    f.settings.compress = 0;
+    GdsLibrary lib;
+    (void)lib.begin("via_x");
+    lib.boundary(3, 0, {0, 0, 10, 0, 10, 10, 0, 10, 0, 0});
+    (void)lib.end();
+    (void)lib.begin("pad");
+    lib.empty(gds::RecordType::sref);
+    lib.str(gds::RecordType::sname, "via_x");
+    lib.i4(gds::RecordType::xy, {0, 0});
+    lib.empty(gds::RecordType::endel);
+    (void)lib.end();
+    store(f, "/lib.gds", lib.bytes());
+    db::CellDef& pad = f.cell("pad");
+    pad.properties().put("LEFview", std::string{"TRUE"});
+    pad.properties().put("GDS_FILE", std::string{"/lib.gds"});
+    pad.properties().put("GDS_START", std::string{"0"});
+    db::CellDef& top = f.cell("top");
+    f.place(top, pad);
+    const hefesto::util::LibcRandom before = f.ed.mask.random;
+    const std::vector<std::string> gds_names = structure_names(decode(f.write(top)));
+    f.ed.mask.random = before;  // the same Q-MASK-211 draws for the OASIS write
+    const Decoded d = decode_oasis(f.write_oas(top));
+    INFO("magic-compat " << on);
+    REQUIRE(f.last.ok());
+    CHECK(d.cells() == gds_names);
+    CHECK(d.cells().size() == 3);
+    const std::vector<oasis::Element> placed = d.elements(d.cells().at(1));
+    REQUIRE(placed.size() == 1);
+    CHECK(placed[0].name == d.cells().at(0));  // the prefixed via_x
+  }
+}
+
 TEST_CASE("a read-only GDS cell of another unit is generated from its layout in OASIS output",
           "[cap:oasis-write][req:Read-only GDS vendor cells]") {
   OasFixture f;
