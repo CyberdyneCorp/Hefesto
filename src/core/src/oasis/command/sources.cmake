@@ -8,4 +8,7 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/command.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/format.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/format.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/options.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/read_command.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/write_command.cpp)
