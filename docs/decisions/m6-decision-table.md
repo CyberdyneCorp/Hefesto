@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-19, `docs/decisions/open-questions/LEFDEF.md` has 105 entries and `OASIS.md` has 34, 139 in all. Every one has a `Resolution:` line:
+As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 34, 157 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -14,6 +14,7 @@ As of 2026-11-19, `docs/decisions/open-questions/LEFDEF.md` has 105 entries and 
 | Resolved earlier (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-4, D-5 and D-14) | 36 Q-LEFDEF | "Entries resolved before the M6 round" |
 | Approved 2026-11-18 | 1: Q-LEFDEF-114 (compat) | "Decided 2026-11-18" |
 | Approved 2026-11-19 | 3: Q-LEFDEF-25 (compat), 26 (fix), 27 (compat) | "Decided 2026-11-19" |
+| Approved 2026-11-19 (user decisions D1, D2, D4; recorded in round 4) | 18: Q-LEFDEF-117..134 | "Decided 2026-11-19: input caps and implemented behaviours" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -274,6 +275,31 @@ Three Magic behaviours with no Q-row, found by the round-2 LEFTECH and LEFVIA im
 | Q-LEFDEF-25 | More than two magic types on a tech `lef` line | **compat** | ON: an `obstruction` line keeps the first two types, other lines get `Can only define multiple types...`; OFF: `Too many types` (LEF-TECH-005) |
 | Q-LEFDEF-26 | `ignore` line naming an already-mapped LEF name | **fix** | both modes: `already used` reported, name kept; the -1 type index becomes the obstruction type, or type 0 |
 | Q-LEFDEF-27 | Type named in the cut-growing warning | **compat** | ON: the via entry's normal type, as Magic prints it (the cut's type where Magic reads out of bounds); OFF: the cut's type |
+
+## Decided 2026-11-19: input caps and implemented behaviours
+
+The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the behaviours the M6 rounds 1-3 implemented under the standing rule with no Q-row (D2), and two golden-capture questions (D4). They are recorded as Q-LEFDEF-117..134 (round 4), each with `Status:` and `Resolution:` lines; the lef-read, lef-write and def-read specs cite them, and `docs/contributing/security.md` lists the caps under M6-S2. The OASIS caps of D1 get Q-OASIS rows separately.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-117 | DEF generated via with an unbounded ROWCOL (D1) | **fix** | both modes: above 1,000,000 cuts the via is not generated (DEF-READ-007) |
+| Q-LEFDEF-118 | LEF RECT ITERATE and via ROWCOL counts (D1) | **fix** | OFF only (Magic reads neither): above 65536 repeats the statement is rejected with an error |
+| Q-LEFDEF-119 | `-annotate` duplicate macro with no renamed cell | **compat** | ON: skipped to `END MACRO`, as Magic; OFF: skipped to its own `END <name>` |
+| Q-LEFDEF-120 | `SITE ;`, `SOURCE ;`, `PROPERTY ;` | **compat** | ON: `;` is the value and the next statement is swallowed; OFF: nothing set |
+| Q-LEFDEF-121 | Only cells the read created count as duplicates | **replicate** | both modes |
+| Q-LEFDEF-122 | `lef datestamp -1` | **replicate** | both modes: -1 means `default` |
+| Q-LEFDEF-123 | OFF PATH and VIA details (Q-LEFDEF-15 OFF) | **other** | OFF: PATH paints Manhattan segments only; an unknown VIA name is an info message |
+| Q-LEFDEF-124 | Cut round with the PIN header pending | **compat** | ON: the round writes nothing; OFF: header and cuts |
+| Q-LEFDEF-125 | lefGetProperties key parse | **compat** | ON: Magic's parse (a run of spaces declares an empty key); OFF: the keys of the PROPERTY lines |
+| Q-LEFDEF-126 | `lef writeall` header data of more than 100 cells | **compat** | ON: Magic's last 100-entry stack block; OFF: every cell |
+| Q-LEFDEF-127 | `lef write -tech` and LEF/DEF via records | **compat** | ON: written, as Magic; OFF: skipped |
+| Q-LEFDEF-128 | `lef write` retry of a typed file name | **compat** | ON: retried as `<cell>.lef`; OFF: the write fails |
+| Q-LEFDEF-129 | DEF pin labels erased in annotation mode | **compat** | ON: only on the PLACED/FIXED/COVER path; OFF: for every painted rectangle |
+| Q-LEFDEF-130 | Undefined values in DEF read | **fix** | both modes: treated as unparsed, clipped to the plane, DEF-READ-007/008 |
+| Q-LEFDEF-131 | Default route width of a via record | **replicate** | both modes: the via's contact-area lower-left x (Magic's union) |
+| Q-LEFDEF-132 | gzip-compressed DEF files | **fix** | both modes: read decompressed |
+| Q-LEFDEF-133 | File named in `lef read`'s missing-file error (D4) | **fix** | both modes: the candidate built from the typed name; LEFDEF-021/022 record the deviation |
+| Q-LEFDEF-134 | Malformed OBS_BBOX messages on one line (D4, LEFDEF-132) | **compat** | ON: no line end, as Magic; OFF: each line ended |
 
 ## Planning questions raised by the M6 plan
 

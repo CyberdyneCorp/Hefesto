@@ -143,12 +143,21 @@ TEST_CASE("an unusual extension that does not open falls back to .lef", "[cap:le
 }
 
 TEST_CASE("a file that cannot be opened is reported", "[cap:lef-read][req:lef read side effects]") {
-  Files files{"missing"};
-  Session s;
-  const auto result = s.run("lef read " + files.path("none"));
-  REQUIRE_FALSE(result.ok());
-  CHECK(texts_of(result) ==
-        Strings{"Cannot open input file " + files.path("none.lef") + " (No such file or directory)."});
+  // Q-LEFDEF-133 (fix, both modes): the name tried from the typed name,
+  // where Magic names the last search-path candidate (LEFDEF-021/022).
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Files files{"missing"};
+    Session s;
+    s.project.compat.magic_compat = on;
+    s.state.search_paths.path.push_back(files.path("elsewhere"));
+    const auto result = s.run("lef read " + files.path("none"));
+    REQUIRE_FALSE(result.ok());
+    CHECK(texts_of(result) ==
+          Strings{"Cannot open input file " + files.path("none.lef") + " (No such file or directory)."});
+    const auto relative = s.run("lef read none");
+    CHECK(texts_of(relative) == Strings{"Cannot open input file none.lef (No such file or directory)."});
+  }
 }
 
 TEST_CASE("the read prints the totals and the search path finds the file", "[cap:lef-read][req:lef read side effects]") {
@@ -268,9 +277,21 @@ TEST_CASE("Invalid stamp", "[cap:lef-read][req:lef datestamp]") {
   REQUIRE_FALSE(printed.empty());
   CHECK(printed[0].starts_with("The \"lef\" options are:"));
   CHECK(s.state.lefdef.datestamp == 5);
-  // -1 is Magic's "default".
+  // -1 is Magic's "default" (Q-LEFDEF-122, replicate).
   REQUIRE(s.run("lef datestamp -1").ok());
   CHECK_FALSE(s.state.lefdef.datestamp.has_value());
+}
+
+TEST_CASE("lef datestamp -1 restores the default in both modes", "[cap:lef-read][req:lef datestamp]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s;
+    s.project.compat.magic_compat = on;
+    REQUIRE(s.run("lef datestamp 7").ok());
+    CHECK(s.state.lefdef.datestamp == 7);
+    REQUIRE(s.run("lef datestamp -1").ok());
+    CHECK_FALSE(s.state.lefdef.datestamp.has_value());
+  }
 }
 
 // --- undo ----------------------------------------------------------------------------
