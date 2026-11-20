@@ -92,7 +92,7 @@ Roles, not names; agent sessions are listed by role.
 | Spec | Second paraphrase reviewer | *to be assigned* (task 1.2) |
 | Spec | SPEC workstream (tasks 3.6, 4.1–4.3) and spec-issue answers | spec-team sessions, assigned per task |
 | Implementation | One session per workstream (SCAFFOLD, COMPAT, FORMAT, SYMLIB, DEVLIB, NETLIST, EDIT, CMD, SIMINT, GOLDEN inputs, DESIGN, SHELL) | implementation-team sessions, each started with the instruction block above |
-| Outside both | Clean-room process reviewer (task 1.1) | *to be assigned* |
+| Outside both | Clean-room process reviewer (task 1.1) | the maintainer (has not read xschem's source, writes no schematic code), signed 2026-11-20 |
 | Outside both | Security reviewer (task 12.1) | *to be assigned* |
 | Outside both | Legal counsel (M13) | *to be assigned* |
 
@@ -113,4 +113,4 @@ For the reviewer outside both teams: each rule of Requirement "Two-team clean-ro
 | Interface data extracted by the spec side only, graphics drawn independently | spec rule 3; implementation rule 7 |
 | Counsel review before Desktop 1.0, not blocking M8 | "Checks", last row; roster |
 
-Reviewer sign-off: *pending* (a reviewer outside both teams confirms each row, with the date).
+Reviewer sign-off: the maintainer, outside both teams, confirmed each row on 2026-11-20. One gap found in row "No source references followed": implementation rule 3 forbids an `xschem ref:` trace in code or tests, but `check_cleanroom.py` checked only `src/`; extending the check to `tests/` was handed to the spec team (task 1.3 follow-up).
