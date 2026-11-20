@@ -101,8 +101,6 @@ BLOCKER_REASONS = {
     "OASSTD": ("OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to "
                "investigate"),
     "OASREAD": ("OASR: the read differs from Magic's GDS read of the equivalent file; to investigate"),
-    "OASNAME": ("OASW: a cell name Magic's GDS keeps (a_b) is written as XXXXX<n> (oasis-write 'Cell names'); to "
-                "investigate"),
     "MASKOS": ("GOLDEN/LEFW: Magic exits with SIGSEGV (status 139) on this script in golden-capture run 44743146734 "
                "(lef read of VIA V1 with grown cuts, then lef write cont -tech); the crash point is not found yet, so "
                "the case cannot be captured"),
@@ -130,7 +128,6 @@ BLOCKERS: dict[str, str] = {
     "OASIS-023": BLOCKER_REASONS["OASREAD"],
     "OASIS-032": BLOCKER_REASONS["OASREAD"],
     "OASIS-033": BLOCKER_REASONS["OASREAD"],
-    "OASIS-055-names": BLOCKER_REASONS["OASNAME"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -154,6 +151,7 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "OASIS-055-names",
     "LEFDEF-334",
     "LEFDEF-003",
     "LEFDEF-113",
