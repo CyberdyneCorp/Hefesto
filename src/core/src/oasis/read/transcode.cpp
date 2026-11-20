@@ -138,7 +138,9 @@ Transcoded Transcoder::run(gds::ByteSource& source) {
 void Transcoder::library_begin() {
   gds_.int2(RecordType::header, std::array<std::int16_t, 1>{600});
   gds_.int2(RecordType::bgnlib, kDate);
-  gds_.string(RecordType::libname, options_.top_cell.size() <= kMaxString ? options_.top_cell : std::string{});
+  // Cut as the top cell's STRNAME is (begin_cell reports it), so the
+  // library cell rule still finds it.
+  gds_.string(RecordType::libname, std::string_view{options_.top_cell}.substr(0, kMaxString));
   const double unit = index_.unit > 0.0 ? index_.unit : 1.0;
   gds_.real8(RecordType::units, std::array<double, 2>{1.0 / unit, 1.0e-6 / unit});
 }
@@ -256,13 +258,14 @@ bool Transcoder::room() {
   if (capped_) {
     return false;
   }
-  if (gds_.size() <= kMaxStreamBytes && ++instances_ <= kMaxInstances) {
+  const ReadLimits& limits = options_.limits;
+  if (gds_.size() <= limits.stream_bytes && ++instances_ <= limits.instances) {
     return true;
   }
   capped_ = true;
-  error("OASIS-READ-007", "the file has more than " + std::to_string(kMaxInstances) +
+  error("OASIS-READ-007", "the file has more than " + std::to_string(limits.instances) +
                               " element instances, or a GDS-equivalent stream over " +
-                              std::to_string(kMaxStreamBytes) + " bytes; the rest of the file is not read");
+                              std::to_string(limits.stream_bytes) + " bytes; the rest of the file is not read");
   return false;
 }
 

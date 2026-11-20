@@ -58,6 +58,10 @@ target_sources(hefesto_shell_tests PRIVATE
 target_sources(hefesto_shell_tests PRIVATE
   m5_gds_menu_test.cpp
   m5_mask_job_test.cpp)
+# M6 open paths and the LEF/DEF/OASIS jobs through the M5 hosts
+# (openspec/changes/m6-lef-def-oasis tasks 14.1-14.3, SHELL).
+target_sources(hefesto_shell_tests PRIVATE
+  m6_open_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")

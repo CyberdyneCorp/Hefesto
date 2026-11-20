@@ -430,9 +430,9 @@ Every other keyword is accepted and skipped silently, as M10's subset does (m10-
 
 ### D12. OASIS read (OASR; `oasis-read`)
 
-- **Engine.** OASR is a `mask::ReadSink` driver, like the GDS reader. Records become `begin_cell`, `paint`, `label`, `call`, `property` and `end_cell` calls on `mask::ReadEngine`, so scaling, mid-read rescale, cifinput layer mapping (by number only, Q-OASIS-38, 39), boundary, mask-hints and labels behave exactly as in gds-read.
-- **Two passes.** Pass 1 indexes the cells and name tables, resolving forward references (`#<n>` for an unnamed refnum, Q-OASIS-34). Pass 2 reads the cells in post-order when `ordering` is on, and in file order otherwise.
-- **GDS equivalence.** Every rule that oasis-read inherits from gds-read calls the M5 helper rather than copying it:
+- **Engine (confirmed by the user, D3(a) of 2026-11-19; as landed in round 3).** OASR is not a `mask::ReadSink` driver. It transcodes every OASIS element instance into its GDS-equivalent element (oasis-read's mapping) in an in-memory GDSII stream, and reads that stream with the public `gds::read(EditorState&, ByteSource&, ...)`. Scaling, mid-read rescale, cifinput layer mapping (by number only, Q-OASIS-38, 39), boundary, mask-hints, labels, post-order reading, flattening, magnified copies and the read-only view are therefore the M5 reader's own code. The cost is that one read holds the whole GDS-equivalent stream in memory, bounded by the approved caps of oasis-read "Input limits" (`oasis::ReadLimits`: 2 GiB and 2^28 instances; names cut at 65530 bytes, numbers above 32767 read as 32767, polygons over 8191 points fractured; D1 of 2026-11-19, M6-S3).
+- **Two passes.** Pass 1 indexes the cells and name tables, resolving forward references (`#<n>` for an unnamed refnum, Q-OASIS-34). Pass 2 writes the GDS-equivalent stream in file order; gds-read then reads it in post-order when `ordering` is on, and in file order otherwise.
+- **GDS equivalence.** Every rule that oasis-read inherits from gds-read is gds-read's own code, reached through the stream, never copied (the shared-header move below is not needed):
   - quarter-turn rounding (Q-OASIS-12);
   - timestamp 0 for an unknown date (Q-OASIS-30);
   - the duplicate-use rule for coincident placements (Q-OASIS-10);
@@ -440,7 +440,6 @@ Every other keyword is accepted and skipped silently, as M10's subset does (m10-
   - negative path extensions (Q-OASIS-33 following Q-MASK-114);
   - the instance properties 61/99/98.
 
-  Where a helper is private to `gds/read/`, OASR raises an open item, and INTEGRATION moves it to a shared header.
 - **Shapes.** RECTANGLE, POLYGON, PATH, TRAPEZOID, CTRAPEZOID and CIRCLE (an inscribed `circlepoints`-gon with the D3 trig, Q-OASIS-31) become `ReadShape` polygons. Non-Manhattan shapes go through `db::decompose_polygon`, as GDS BOUNDARY does.
 - **Vendor views.** With `readonly`, OASR sets `OASIS_FILE` and `OASIS_CELL` and applies the units check (`gds::readonly_units_error`). The content-hash stamps hash the decompressed cell bytes with FNV-1a 64, then apply gds-read's memoized `stamp(s)` procedure. That procedure becomes a shared function of `gds/read/stamps.cpp`, and INTEGRATION moves it (D17).
 - **Extensions.** XNAME, XELEMENT and XGEOMETRY are kept for transcoding and skipped for the layout, with the warnings of Q-OASIS-40.

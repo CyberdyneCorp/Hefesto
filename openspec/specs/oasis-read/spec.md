@@ -308,7 +308,7 @@ Compatibility: exact
 
 Specifically:
 - record 17: angle = `AA × 90`, magnification 1;
-- record 18: angle = the decoded real (0 if absent), magnification = the decoded real (1 if absent). The angle goes through gds-read truncation and normalization, so a non-quarter-turn angle is rounded to a quarter turn with the "Non-Manhattan angle" error (Q-OASIS-12, resolution: replicate). Representing arbitrary angles, for example as a flattened rotated copy, is a possible later extension. A magnification `d <= 0` is reported and treated as 1, and `d != 1` produces a magnified copy `<name>_mag<text>`.
+- record 18: angle = the decoded real (0 if absent), magnification = the decoded real (1 if absent). The angle goes through gds-read truncation and normalization, so a non-quarter-turn angle is rounded to a quarter turn with the "Non-Manhattan angle" error (Q-OASIS-12, resolution: replicate). Representing arbitrary angles, for example as a flattened rotated copy, is a possible later extension. A magnification `d <= 0` drops the placement with a warning (oasis-format "invalid magnification", OASIS-CODEC-029), in both modes (user decision D3(b) of 2026-11-19), and `d != 1` produces a magnified copy `<name>_mag<text>`.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdio.c:81-193, calma/CalmaRdcl.c:1195-1240, calma/CalmaRdcl.c:826-1058, calma/CalmaRdcl.c:1352-1380)
 
@@ -321,6 +321,11 @@ Specifically:
 - **GIVEN** cell `C` with a rectangle `[0,10]×[0,10]` and a record 18 placement of `C` with magnification 1.5 at (0,0)
 - **WHEN** read
 - **THEN** cell `C_mag1p5` exists with the box `[0,15]×[0,15]` and the property `GDS_MAG_SOURCE = C`, and the use refers to `C_mag1p5`
+
+#### Scenario: Non-positive magnification
+- **GIVEN** a record 18 placement of `C` with magnification -1, followed by a record 17 placement of `C` at (50, 0)
+- **WHEN** read, with magic-compat ON or OFF
+- **THEN** the warning "invalid magnification" is reported, the first placement is dropped, and the cell has one use of `C`, at (50, 0)
 
 #### Scenario: Non-quarter-turn angle
 - **GIVEN** a record 18 placement with angle 30 and magnification 1
@@ -533,6 +538,38 @@ Each OASIS read error is prefixed `Error while reading cell "<cell>" (byte posit
 - **GIVEN** `oasis warning limit` and a file producing 150 errors
 - **WHEN** read
 - **THEN** 99 error messages and the limit notice are printed
+
+### Requirement: Input limits
+The reader SHALL bound what one read takes, because an OASIS file is untrusted input and each element instance becomes a GDS-equivalent element in an in-memory GDS stream (D1 of the user decisions of 2026-11-19, security review M6-S3). Each limit is reported, and applies in both modes:
+
+Compatibility: native
+
+1. The GDS-equivalent stream of one read holds at most 2 GiB, and one read writes at most 2^28 element instances and uses, counting dropped ones. When either is reached, "the file has more than 268435456 element instances, or a GDS-equivalent stream over 2147483648 bytes; the rest of the file is not read" is reported, and the cells and elements written before it are read.
+2. A cell name, placed cell name, TEXT string or `S_GDS_PROPERTY` value longer than 65530 bytes (a GDS string record) is cut to its first 65530 bytes, with a message naming the length. The top cell is found under its cut name.
+3. A layer, datatype, textlayer, texttype or `S_GDS_PROPERTY` attribute number outside the GDS range (above 32767, or for an attribute below -32768) is read as 32767, with a message once per element. 32767 matches only a `*` wildcard (rule 1 of "Layer and datatype mapping").
+4. A POLYGON (or any outline) with more than 8191 points, the closing one included, is fractured into polygons of at most 8191 points whose union is the outline: it is cut in two by an axis-parallel line through the median vertex coordinate, along the axis whose cut leaves the smaller larger half, and each half is cut again until it fits, with a message giving the number of pieces. A cut point on an edge that is not axis-parallel is rounded half away from zero to the grid, the same point in both pieces. An outline that cuts do not shrink (its vertices on two lines in each axis), or one wider or taller than 2^32, is reported and dropped. A PATH with more than 8191 points is reported and dropped.
+
+(Hefesto decision: docs/decisions/product.md#P-6)
+
+#### Scenario: Instance cap
+- **GIVEN** a cell whose RECTANGLE repeats 2^28 + 1 times
+- **WHEN** read
+- **THEN** the cap message is reported and 2^28 instances are read
+
+#### Scenario: Long cell name
+- **GIVEN** a single cell whose name is 70000 bytes long
+- **WHEN** read
+- **THEN** "cell name of 70000 bytes cut to 65530" is reported, and the cell named by the first 65530 bytes is created and loaded
+
+#### Scenario: Large layer number
+- **GIVEN** a RECTANGLE on layer 40000, datatype 7
+- **WHEN** read
+- **THEN** "a number above 32767 is read as 32767" is reported, and the rectangle is read on 32767/7
+
+#### Scenario: Large Manhattan polygon
+- **GIVEN** a Manhattan POLYGON of 8403 points
+- **WHEN** read
+- **THEN** it is fractured, and the paint read equals that of its rectangles read one by one
 
 ### Requirement: GDS-equivalence cross-check
 For every OASIS file `F` whose content has a GDS equivalent (no CIRCLE, no XGEOMETRY, no magnification or angle outside what GDS expresses, and all values in GDS ranges), reading `F` with `oasis read` SHALL produce the same cells, paint, labels, ports, uses, arrays, instance identifiers and properties as reading the GDS file `G` with `gds read`, with the same style and equivalent option values. Here `G` is obtained by converting each OASIS element instance to its GDS-equivalent element as defined in this capability. Cell timestamps are excluded from the comparison.

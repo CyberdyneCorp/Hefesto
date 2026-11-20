@@ -187,7 +187,7 @@ TEST_CASE("POLYGON, TRAPEZOID and CTRAPEZOID elements",
     const auto [oas, gds] = both(f, g);
     CHECK(oas == gds);
   }
-  SECTION("a polygon over 8191 points is reported and dropped") {
+  SECTION("a polygon over 8191 points is fractured (D1 of 2026-11-19; see also limits_test.cpp)") {
     std::vector<oasis::Point64> rest;
     for (std::int64_t i = 1; i <= 4200; ++i) {
       rest.push_back({2 * i - 1, i % 2 == 1 ? 10 : 0});
@@ -199,8 +199,11 @@ TEST_CASE("POLYGON, TRAPEZOID and CTRAPEZOID elements",
     f.cell("c").add(polygon(68, 20, 0, 0, rest)).add(rect(68, 20, 0, 100, 10, 10));
     OasSession s;
     (void)s.read_oasis(f.bytes());
-    CHECK(s.said("points (a GDS-equivalent element holds 8191); dropped"));
-    CHECK(s.painted("c", "metal1") == std::vector<db::Rect>{{0, 100, 10, 110}});
+    CHECK(s.said("polygon with 8404 points fractured into"));
+    CHECK_FALSE(s.said("dropped"));
+    // The band under the teeth is painted whole, and so is the rectangle.
+    CHECK(s.extent("c", "metal1") == db::Rect{0, -5, 8400, 110});
+    CHECK(s.area("c", "metal1") >= 8400.0 * 5 + 100);
   }
 }
 

@@ -14,5 +14,7 @@ HEFESTO_OASIS_CODE("OASIS-READ-002", error, "The OASIS file cannot be opened or 
 HEFESTO_OASIS_CODE("OASIS-READ-003", error, "Decoding stopped (a fatal oasis-format error); only the cells complete before it are read.")
 HEFESTO_OASIS_CODE("OASIS-READ-004", error, "Coordinate overflow: an element instance has a coordinate, width or displacement outside 32 bits; it is dropped.")
 HEFESTO_OASIS_CODE("OASIS-READ-005", warning, "XNAME, XELEMENT or XGEOMETRY not supported: the record is skipped (reported once per kind and cell).")
-HEFESTO_OASIS_CODE("OASIS-READ-006", error, "An element does not fit its GDS-equivalent record (a polygon or path above 8191 points, a string above 65530 bytes); it is dropped or cut.")
+HEFESTO_OASIS_CODE("OASIS-READ-006", error, "An element does not fit its GDS-equivalent record (a path above 8191 points, a polygon that cannot be fractured, a string above 65530 bytes); it is dropped or cut.")
 HEFESTO_OASIS_CODE("OASIS-READ-007", error, "A read resource cap was reached (the size of the GDS-equivalent stream); the rest of the file is not read.")
+HEFESTO_OASIS_CODE("OASIS-READ-008", warning, "A polygon above 8191 points is fractured into polygons that fit a GDS-equivalent BOUNDARY.")
+HEFESTO_OASIS_CODE("OASIS-READ-009", warning, "A layer, datatype or S_GDS_PROPERTY attribute number outside the GDS range is read as 32767.")

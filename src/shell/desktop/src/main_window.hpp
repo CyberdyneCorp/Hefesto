@@ -334,6 +334,9 @@ class MainWindow {
   void update_status_accessibility();
   [[nodiscard]] std::size_t diagnostic_columns() const;
   void open_file();
+  /// Opens files by content (File > Open, drag and drop; M6 D16): each
+  /// runs as a typed `oasis read`, `gds read` or `load` line.
+  void open_paths(const std::vector<std::string>& paths);
   void toggle_pdk_manager();
   void toggle_console();
   void apply_theme(ThemeMode mode);

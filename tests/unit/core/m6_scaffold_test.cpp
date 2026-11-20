@@ -236,32 +236,8 @@ TEST_CASE("oasis has the full option table of oasis-command", "[m6-scaffold]") {
   }
 }
 
-TEST_CASE("oasis options answer CORE-NOTIMPL-006; an unknown one is an argument error", "[m6-scaffold]") {
-  Session s;
-  // `read`, `write` and a bare `oasis` check for a window first, as for gds.
-  const auto no_window = s.run("oasis");
-  REQUIRE_FALSE(no_window.ok());
-  CHECK(no_window.diagnostics.front().code == kNoWindow);
-  check_not_implemented(s.run("oasis compress"), "oasis compress");  // no window needed
-  s.state.command_point = cmd::PointerState{};
-
-  check_not_implemented(s.run("oasis"), "oasis write");
-  for (const std::string_view entry : oasis::oasis_options()) {
-    const std::string name = option_name(entry);
-    if (name != "help") {
-      check_not_implemented(s.run("oasis " + name), "oasis " + name);
-    }
-  }
-  check_not_implemented(s.run("oasis nodup t"), "oasis noduplicates");  // unique prefix
-  check_not_implemented(s.run("oasis rep no"), "oasis repetitions");
-
-  for (const auto* line : {"oasis bogus", "oasis la yes"}) {  // unknown; ambiguous (labels, layernames)
-    INFO(line);
-    const auto bad = s.run(line);
-    REQUIRE_FALSE(bad.ok());
-    CHECK(bad.diagnostics.front().code == diag::codes::kCmdUsage);
-  }
-}
+// The oasis options (OASCMD, tasks.md 13.1) are tested by
+// tests/unit/oasis/command/command_test.cpp.
 
 TEST_CASE("OasisSettings has the defaults of oasis-command", "[m6-scaffold]") {
   const oasis::OasisSettings settings;
