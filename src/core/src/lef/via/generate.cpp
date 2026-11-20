@@ -12,6 +12,7 @@
 #include "hefesto/lef/via/generate.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -165,13 +166,36 @@ void warn_omitted(std::string_view via, std::string_view parameter, bool from_ru
 }
 
 template <typename T>
-T completed(const std::optional<T>& given, const T* rule_value, std::string_view via, std::string_view parameter,
-            const ViaContext& context) {
+T completed(const std::optional<T>& given, const std::optional<T>* rule_value, std::string_view via,
+            std::string_view parameter, const ViaContext& context) {
   if (given) {
     return *given;
   }
-  warn_omitted(via, parameter, rule_value != nullptr, context);
-  return rule_value != nullptr ? *rule_value : T{};
+  const bool from_rule = rule_value != nullptr && rule_value->has_value();
+  warn_omitted(via, parameter, from_rule, context);
+  return from_rule ? **rule_value : T{};
+}
+
+/// v micron/10000 in input units, half away from zero; nullopt when it
+/// does not fit.
+std::optional<db::Coord> converted(db::Coord v, double units_per_micron) {
+  const double scaled = std::round(static_cast<double>(v) * units_per_micron / 10000.0);
+  if (!(scaled >= std::numeric_limits<db::Coord>::min() && scaled <= std::numeric_limits<db::Coord>::max())) {
+    return std::nullopt;
+  }
+  return static_cast<db::Coord>(scaled);
+}
+
+std::optional<db::Point> converted(const std::optional<db::Point>& p, double units_per_micron) {
+  if (!p) {
+    return std::nullopt;
+  }
+  const auto x = converted(p->x, units_per_micron);
+  const auto y = converted(p->y, units_per_micron);
+  if (!x || !y) {
+    return std::nullopt;
+  }
+  return db::Point{*x, *y};
 }
 
 }  // namespace
@@ -190,7 +214,28 @@ void order_layers(ViaLayers& layers, const ViaContext& context) {
   }
 }
 
-GeneratedViaParams complete_params(const ViaParamSet& given, const GeneratedViaParams* rule, std::string_view via_name,
+ViaParamSet rule_params(const ViaRuleGenerate& rule, double units_per_micron) {
+  ViaParamSet p;
+  if (!(units_per_micron > 0.0)) {
+    return p;
+  }
+  p.layers = rule.layers;
+  p.cut_size = converted(rule.cut_size, units_per_micron);
+  p.cut_spacing = converted(rule.cut_spacing, units_per_micron);
+  p.bottom_enclosure = converted(rule.bottom_enclosure, units_per_micron);
+  p.top_enclosure = converted(rule.top_enclosure, units_per_micron);
+  return p;
+}
+
+const ViaRuleGenerate* find_via_rule(const ViaTable& vias, std::string_view rule_name) {
+  const auto* entry = vias.find(std::string{rule_name});
+  if (entry == nullptr || !entry->value || !entry->value->rule) {
+    return nullptr;
+  }
+  return &*entry->value->rule;
+}
+
+GeneratedViaParams complete_params(const ViaParamSet& given, const ViaParamSet* rule, std::string_view via_name,
                                    const ViaContext& context) {
   GeneratedViaParams p;
   p.layers = completed(given.layers, rule ? &rule->layers : nullptr, via_name, "LAYERS", context);
@@ -202,9 +247,10 @@ GeneratedViaParams complete_params(const ViaParamSet& given, const GeneratedViaP
     p.bottom_enclosure = *given.bottom_enclosure;
     p.top_enclosure = *given.top_enclosure;
   } else {
-    warn_omitted(via_name, "ENCLOSURE", rule != nullptr, context);
-    p.bottom_enclosure = rule != nullptr ? rule->bottom_enclosure : db::Point{};
-    p.top_enclosure = rule != nullptr ? rule->top_enclosure : db::Point{};
+    const bool from_rule = rule != nullptr && (rule->bottom_enclosure || rule->top_enclosure);
+    warn_omitted(via_name, "ENCLOSURE", from_rule, context);
+    p.bottom_enclosure = rule != nullptr ? rule->bottom_enclosure.value_or(db::Point{}) : db::Point{};
+    p.top_enclosure = rule != nullptr ? rule->top_enclosure.value_or(db::Point{}) : db::Point{};
   }
   p.rows = given.rows;
   p.columns = given.columns;

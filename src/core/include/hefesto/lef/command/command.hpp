@@ -8,8 +8,7 @@
 // nocheck` and `def datestamp` are found; the `def` table (cmdDefOption,
 // with its split `read` entry) is used only by `def help`. `def writeall` is
 // refused with Magic's message. Each other option calls its workstream's
-// entry point; until that lands it fails with CORE-NOTIMPL-006 ("not
-// implemented yet: lef <option>" or "def <option>"). Called by
+// entry point. Called by
 // cmd::register_all_commands.
 //
 // Owner: INTEGRATION (this header and the dispatcher in

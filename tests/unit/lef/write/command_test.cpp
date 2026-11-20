@@ -323,6 +323,31 @@ TEST_CASE("writeall stops when a cell of the subtree cannot be read", "[cap:lef-
   CHECK_FALSE(lib.s.exists("lib.lef"));
 }
 
+TEST_CASE("regression: lef write reads the subcells it flattens", "[cap:lef-write][req:Macro source geometry and layer masks]") {
+  // `load buf` leaves the subcells unread; lef write flattened them as
+  // empty (LEFDEF-128). Magic's DBCellCopyAllPaint reads them first.
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    db::CellDef& top = s.cell("top");
+    db::CellDef& leaf = s.cell("leaf");
+    s.paint(leaf, "metal2", db::Rect{0, 0, 10, 10});  // gives the use its box
+    s.place(top, leaf);
+    leaf.flags().available = false;
+    std::vector<std::string> asked;
+    LefWriteOptions o;
+    o.loader.read = [&](db::CellDef& def) {
+      asked.push_back(def.name());
+      def.flags().available = true;
+      s.paint(def, "metal1", db::Rect{0, 0, 10, 10});
+      return true;
+    };
+    const std::string text = s.macro(top, o);
+    CHECK(asked == std::vector<std::string>{"leaf"});
+    CHECK(text.find("LAYER met1 ;") != std::string::npos);
+  }
+}
+
 TEST_CASE("lef nocheck keeps a list of nets", "[cap:lef-write][req:lef nocheck net list]") {
   Shown w;
   const auto empty = w.s.run("lef nocheck");

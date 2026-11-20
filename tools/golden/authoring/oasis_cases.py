@@ -78,9 +78,10 @@ CAPTURE_BLOCKED = {
     "OASIS-021-unique": "GOLDEN: Magic's output differs between captures (cells.sha256 of "
                         "sky130_fd_sc_hd__macro_sparecell_1, golden-capture run 44515678560), so it is left "
                         "uncaptured; to investigate",
-    "OASIS-064-arrays": "GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input",
-    "OASIS-064-uses": "GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input",
 }
+# OASIS-064-arrays/uses were blocked in round 3 ("Magic wrote no .mag file"): their cells are loaded from
+# input/ and saved back there, outside the top-level glob; round 4 widened their glob (oasis_write_cases.py
+# RT_INPUT_CELLS).
 
 
 def specs() -> list[tclcase.TclCase]:

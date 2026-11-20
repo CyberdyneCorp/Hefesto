@@ -9,7 +9,8 @@
 // - Q-LEFDEF-60: with magic-compat ON the generated flag lasts for the
 //   section and the parameters keep their last value; with it OFF both
 //   reset at each via.
-// - Q-LEFDEF-61 (fix): a parameter never given takes the VIARULE value or 0
+// - Q-LEFDEF-61 (fix): a parameter never given takes the value of the LEF
+//   VIARULE GENERATE that `+ VIARULE` names (lef::find_via_rule), or 0,
 //   with a warning (lef::complete_params).
 // - Q-LEFDEF-62: ORIGIN, OFFSET, PATTERN, POLYGON and MASK are unknown
 //   properties with magic-compat ON, and DEF 5.8 properties with it OFF.
@@ -53,6 +54,12 @@ constexpr std::array<std::string_view, 12> kProperties{
 };
 
 constexpr std::size_t kMagicProperties = kOrigin;
+
+// The most cuts one generated via may have (ROWCOL rows x columns; user
+// decision D1 of 2026-11-19, Q-LEFDEF-117, security.md M6-S2): above it the
+// via is refused in both modes, where Magic allocates every cut and runs
+// out of memory on a hostile `+ ROWCOL 100000 100000`.
+constexpr std::int64_t kMaxGeneratedCuts = 1'000'000;
 
 constexpr std::array<std::string_view, 2> kStatementKeys{"-", "END"};
 
@@ -199,11 +206,17 @@ class ViaDefinitionReader {
   // ORIGIN on the whole via (magic-compat OFF).
   void finish() {
     rects_.commit();
-    if (generated_) {
+    if (generated_ && too_many_cuts()) {
+      r_.fix_error("Via \"" + name_ + "\": ROWCOL " + std::to_string(params_.rows) + " " +
+                   std::to_string(params_.columns) + " gives more than " + std::to_string(kMaxGeneratedCuts) +
+                   " cuts; the via is not generated.");
+    } else if (generated_) {
       lef::ViaParamSet given = params_;
       given.scale = r_.oscale();
       given.origin = db::Point{};
-      const lef::GeneratedViaParams complete = lef::complete_params(given, nullptr, name_, r_.via_context());
+      const auto rule = rule_values();
+      const lef::GeneratedViaParams complete =
+          lef::complete_params(given, rule ? &*rule : nullptr, name_, r_.via_context());
       lef::apply_generated(via_, lef::ViaGenerator::generated(complete, r_.via_context()));
     }
     if (origin_ != db::Point{}) {
@@ -216,13 +229,28 @@ class ViaDefinitionReader {
     }
   }
 
+  [[nodiscard]] bool too_many_cuts() const {
+    return params_.rows > 0 && params_.columns > 0 &&
+           std::int64_t{params_.rows} * std::int64_t{params_.columns} > kMaxGeneratedCuts;
+  }
+
+  // The LEF VIARULE GENERATE that `+ VIARULE` names, in this file's DEF
+  // units (Q-LEFDEF-61 fix); nullopt: none named, or none known.
+  [[nodiscard]] std::optional<lef::ViaParamSet> rule_values() const {
+    const lef::ViaRuleGenerate* rule = rule_.empty() ? nullptr : lef::find_via_rule(r_.context().vias, rule_);
+    if (rule == nullptr) {
+      return std::nullopt;
+    }
+    return lef::rule_params(*rule, r_.def_units_per_micron());
+  }
+
   Reader& r_;
   lef::ViaDefinition& via_;
   lef::ViaRectBuilder rects_{via_};  // committed before anything reads via_.shapes
   std::string name_;
   lef::ViaParamSet& params_;
   bool& generated_;
-  std::string rule_;  // VIARULE: no LEF VIARULE parameters are stored yet (LEFVIA 4.1)
+  std::string rule_;  // + VIARULE <name>
   db::Point origin_;
 };
 

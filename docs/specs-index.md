@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3370 scenarios, 893 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3377 scenarios, 919 open questions.
 
 ## Hefesto product (native)
 
@@ -56,7 +56,7 @@ Open questions: [47](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 52 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
+| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 53 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
 | [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 16 | 24 | Defines the safety rules around reading and writing cell files: |
 | [`cell-library-resolution`](../openspec/specs/cell-library-resolution/spec.md) | 15 | 26 | Defines how Hefesto maps a cell name, or an instance's recorded path, to a cell file. It covers: |
 | [`cell-timestamps`](../openspec/specs/cell-timestamps/spec.md) | 8 | 11 | Defines the timestamp carried by every cell definition and by every instance record in a parent. The hierarchical design-rule checker uses these timestamps to detect children that … |
@@ -103,23 +103,23 @@ Open questions: [160](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 
 ## OASIS (OASIS)
 
-Open questions: [34](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
+Open questions: [42](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`oasis-command`](../openspec/specs/oasis-command/spec.md) | 7 | 14 | Defines the `oasis` command: Hefesto's command-level API for reading and writing OASIS files. Its options mirror the Magic `gds` (`calma`) command, so that scripts written for GDS … |
 | [`oasis-format`](../openspec/specs/oasis-format/spec.md) | 30 | 58 | Defines the OASIS (SEMI P39, version 1.0) byte-level format as Hefesto reads and writes it: the magic bytes, the START and END records, the primitive encodings (unsigned and signed… |
-| [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 25 | 44 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
+| [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 26 | 49 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
 | [`oasis-write`](../openspec/specs/oasis-write/spec.md) | 25 | 37 | Defines how Hefesto serializes a layout hierarchy to an OASIS file (the `oasis write` operation, capability `oasis-command`). Magic has no OASIS writer. The governing rule is **GDS… |
 
 ## LEF / DEF (LEFDEF)
 
-Open questions: [105](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
+Open questions: [123](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 68 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
-| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 53 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 54 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
 | [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 72 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |

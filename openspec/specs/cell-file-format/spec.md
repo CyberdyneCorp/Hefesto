@@ -524,7 +524,7 @@ Compatibility: exact
 
 **`string` values with reserved keys.**
 - `GDS_FILE`: stored as a string, and the cell is marked as a vendor (read-only GDS) cell (see capability `gds-read`).
-- `FIXED_BBOX` or `OBS_BBOX`: four integers are parsed and scaled and stored as a 4-element dimension. `FIXED_BBOX` additionally marks the cell's bounding box as fixed. If parsing fails, Magic prints `Cannot read bounding box values in <key> property` and stores the value as a string.
+- `FIXED_BBOX` or `OBS_BBOX`: four integers are parsed and scaled and stored as a 4-element dimension. `FIXED_BBOX` additionally marks the cell's bounding box as fixed. If parsing fails, Magic prints `Cannot read bounding box values in <key> property` and stores the value as a string. Magic prints that message with no line end, so the next message continues on the same line: with `magic-compat` ON Hefesto SHALL print it without a line end, for both keys; with it OFF Hefesto SHALL end the line (see Q-LEFDEF-134).
 - Keys starting with `MASKHINTS_`: the value is parsed as groups of four scaled integers. Each group (x1 y1 x2 y2) is painted as a rectangle into a hint plane. A non-integer token prints `Mask-hint "<rest>" has non-integer values!` and drops the property. A count not divisible by four prints `Mask-hint property number of values is not divisible by four.  Truncated.`
 - Keys starting with `GDS_START`, `GDS_BEGIN` or `GDS_END`: one 64-bit integer, stored as a double-type property. On failure Magic prints `Cannot read file offset value in <key> property` and stores the value as a string.
 
@@ -538,6 +538,10 @@ Compatibility: exact
 - **GIVEN** a read scale of n/d = 2/1
 - **WHEN** `string FIXED_BBOX 0 0 10 20` is read
 - **THEN** the cell SHALL have dimension property FIXED_BBOX = (0,0,20,40) and a fixed bounding box
+
+#### Scenario: Malformed bounding box message
+- **WHEN** `string OBS_BBOX 1 2 3` (or `string FIXED_BBOX 1 2 3`) is read
+- **THEN** Hefesto SHALL print `Cannot read bounding box values in <key> property`, without a line end with `magic-compat` ON and with one with it OFF, and SHALL store the value as a string property
 
 #### Scenario: Typed dimension property
 - **WHEN** `dimension PITCH 5 7` is read at scale 1/1

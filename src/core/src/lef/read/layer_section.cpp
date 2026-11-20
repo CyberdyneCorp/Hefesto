@@ -181,7 +181,7 @@ class LayerBody {
 
 // One statement; false at the section's END.
 bool LayerBody::statement(const Token& keyword) {
-  if (via_ != nullptr && via_->extension(keyword.text, layer_)) {
+  if (via_ != nullptr && (via_->extension(keyword.text, layer_) || via_->rule_statement(keyword.text))) {
     return true;
   }
   const auto index = lookup_full(keyword.text, kKeys);
@@ -316,6 +316,9 @@ void LayerBody::layer_statement() {
     resolve_layer(name->text, LayerLookup::normal, layer_, reader_.layer_context());
     const auto entry = layer_.type ? std::nullopt : reader_.target().layers.find(name->text);
     ignored_layer_ = entry && entry->layer_class == LayerClass::ignore;
+    if (via_ != nullptr) {
+      via_->rule_layer(layer_);
+    }
   }
   reader_.skip_statement();
 }
@@ -383,7 +386,7 @@ void Reader::layer_body(std::string_view key, const std::string& end_name, const
   auto* named_via = via == nullptr ? target_.vias.find(std::string{key}) : nullptr;
   if (named_via != nullptr && named_via->value) {
     // The LAYER section of a via definition: its RECTs are via geometry.
-    ViaBody body{*this, *named_via->value, std::string{key}, false};
+    ViaBody body{*this, *named_via->value, std::string{key}, ViaBodyKind::layer};
     LayerBody{*this, key, end_name, entry, &body}.run();
     return;
   }

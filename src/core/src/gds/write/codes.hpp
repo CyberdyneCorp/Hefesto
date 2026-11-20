@@ -40,5 +40,9 @@ inline constexpr std::string_view kDumpForward = "GDS-WRITE-048";
 inline constexpr std::string_view kDumpError = "GDS-WRITE-049";
 inline constexpr std::string_view kDumpDangling = "GDS-WRITE-050";
 inline constexpr std::string_view kDumpPrefix = "GDS-WRITE-051";
+inline constexpr std::string_view kOasisElement = "GDS-WRITE-052";
+inline constexpr std::string_view kOasisExtensions = "GDS-WRITE-053";
+inline constexpr std::string_view kOasisSource = "GDS-WRITE-054";
+inline constexpr std::string_view kOasisCap = "GDS-WRITE-055";
 
 }  // namespace hefesto::gds::codes

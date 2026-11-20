@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The `oasis` command, scaffold version
-// (openspec/changes/m6-lef-def-oasis/design.md D3, D15): the full option
-// table of oasis-command, the unique-prefix lookup, the window check of
-// `read`, `write` and a bare `oasis` (as for `gds`) and `oasis help`; every
-// other option fails with CORE-NOTIMPL-006 until OASCMD ports it (tasks.md
-// section 13). The help text is informative (oasis-command "Command name and
-// forms").
+// The `oasis` command (capability oasis-command "Command name and forms",
+// "Option syntax"; openspec/changes/m6-lef-def-oasis/design.md D3, D15):
+// the option table, the unique-prefix lookup (an unknown or ambiguous
+// option is an error and nothing changes), the window check of `read`,
+// `write` and a bare `oasis` (as for `gds`), `oasis help`, and the
+// dispatch to the read and write forms (read_command.cpp,
+// write_command.cpp), the read settings shared with `gds` and the `oasis`
+// settings (options.cpp). The help text is informative.
 //
 // Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
 
@@ -15,22 +16,19 @@
 
 #include <array>
 #include <string>
+#include <utility>
 
-#include "db/command_util.hpp"
-#include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "options.hpp"
 
 namespace hefesto::oasis {
 
 namespace {
 
-namespace cu = db::cmdutil;
 using cmd::CommandResult;
-
-constexpr std::string_view kNoWindow = "VIEW-WINDOW-003";
+using namespace command_detail;  // NOLINT(google-build-using-namespace): the command's internal helpers
 
 // `help`, the `gds` options in cmdCalmaOption's order, then the OASIS-only
 // options (oasis-command "Options shared with the gds command", "OASIS-only
@@ -72,12 +70,8 @@ constexpr std::array<std::string_view, 34> kOptions{
     "circlepoints [value]\tvertices of a CIRCLE on read, 8 to 4096",
 };
 
-enum Option : std::size_t { kHelp = 0, kRead = 19, kWrite = 24 };
-
-std::string option_name(std::size_t option) {
-  const std::string_view entry = kOptions.at(option);
-  return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
-}
+static_assert(kOptions[kCirclePoints].starts_with("circlepoints"), "the option indices follow the table");
+static_assert(kOptions[kWrite].starts_with("write"), "the option indices follow the table");
 
 CommandResult help(const cu::Session& s) {
   std::string text = "OASIS commands have the form \":oasis option\", where option is one of:\n";
@@ -111,10 +105,20 @@ CommandResult oasis_command(cmd::CommandContext& ctx, const cmd::Invocation& inv
   if (needs_window && s.editor->windows.size() == 0 && !s.editor->command_point) {
     return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
-  if (option == kHelp) {
-    return help(s);
+  switch (option) {
+    case kHelp:
+      return help(s);
+    case kRead:
+      return read_option(ctx, s, invocation);
+    case kWrite:
+      return write_option(ctx, s, invocation);
+    default:
+      break;
   }
-  return cmd::not_implemented("oasis " + option_name(option));
+  if (auto shared = shared_option(s, option, invocation)) {
+    return std::move(*shared);
+  }
+  return settings_option(ctx, option, invocation, s.editor->mask.oasis).value_or(CommandResult::success());
 }
 
 }  // namespace

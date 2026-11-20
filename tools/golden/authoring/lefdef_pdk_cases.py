@@ -181,6 +181,7 @@ def chain_case() -> tclcase.TclCase:
         files={"inv_chain.def": CHAIN_DEF}, outputs=["inv_chain.mag"], start=[], datestamp=True,
         requirements=list(ALL_DEF_READ), pdk=SKY130.variant,
         external=[SKY130.external(SKY130.tech_lef), SKY130.external(SKY130.cell_lef)],
+        fonts=["FreeSans", "FreeSerif", "FreeMono"],
         notes=["PDK case (task 15.5): the PDK's rc and random seed 1; the sky130-lef set "
                "(golden-capture.yml FETCH_LEF_SETS must be \"true\")."])
 

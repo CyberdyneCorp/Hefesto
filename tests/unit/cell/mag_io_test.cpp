@@ -23,6 +23,32 @@ namespace cell = hefesto::cell;
 namespace db = hefesto::db;
 using cell::test::CellIo;
 
+TEST_CASE("a malformed bounding-box property message has no line end with magic-compat ON only",
+          "[cap:cell-file-format][req:Properties section records]") {
+  // Q-LEFDEF-134 (compat): Magic's TxError in DBio.c:3345 has no newline,
+  // for FIXED_BBOX and OBS_BBOX alike, so this message and LEF write's
+  // OBS_BBOX error share a line (LEFDEF-132).
+  for (const std::string key : {"OBS_BBOX", "FIXED_BBOX"}) {
+    for (const bool on : {true, false}) {
+      INFO(key << ", magic-compat " << (on ? "ON" : "OFF"));
+      CellIo io;
+      io.ctx.magic_compat = on;
+      const std::string text = "magic\ntech tiny\ntimestamp 1\n<< properties >>\nstring " + key +
+                               " 1 2 3\n<< end >>\n";
+      (void)io.read("c", text);
+      bool found = false;
+      for (const auto& d : io.sink.snapshot()) {
+        if (d.code == cell::codes::kRecordValue) {
+          found = true;
+          CHECK(d.text == "Cannot read bounding box values in " + key + " property");
+          CHECK(d.no_newline == on);
+        }
+      }
+      CHECK(found);
+    }
+  }
+}
+
 TEST_CASE("a minimal file reads and writes back unchanged",
           "[cap:cell-file-format][req:Overall file grammar][req:Header parsing]") {
   CellIo io;

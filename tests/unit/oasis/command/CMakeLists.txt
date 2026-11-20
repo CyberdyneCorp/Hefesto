@@ -5,4 +5,5 @@
 # D1/D2). Every *_test.cpp here is compiled into hefesto_oasis_command_tests;
 # extra libraries or definitions go below.
 
-hefesto_add_area_tests(oasis_command DATA_DIR oasis/command)
+# The fixture reuses the oasis/read session and its test technology.
+hefesto_add_area_tests(oasis_command DATA_DIR oasis/read)

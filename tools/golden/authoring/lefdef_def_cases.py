@@ -34,6 +34,11 @@ def nets(*records: str, keyword: str = "NETS") -> str:
     return def_section(keyword, len(records), *records)
 
 
+# Magic's default outline fonts, loaded at Magic's startup: DEF pin labels are font-0 flabels
+# (DBPutFontLabel), so a case that writes pin labels needs them as magic-sys inputs for hefesto-cli.
+DEFAULT_FONTS = ["FreeSans", "FreeSerif", "FreeMono"]
+
+
 def read_def(cid: str, design: str, text: str, *, lef_text: str | None = None, cmd: str | None = None,
              body: list[str] | None = None, files: dict | None = None, **kw) -> tclcase.TclCase:
     """A DEF read case: optional LEF read, ``def read input/<design>``, every cell saved."""
@@ -165,11 +170,11 @@ def def_read_specs() -> list[tclcase.TclCase]:
             "COMPONENTS", 1, "- u1 nosuchcell + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL)),
         read_def("LEFDEF-214", "place", def_file("place", def_section(
             "COMPONENTS", 1, "- u1 FOO + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL), files={"FOO.mag": BLK}),
-        read_def("LEFDEF-215", "pinorder", PIN_ORDER_DEF),
-        read_def("LEFDEF-216", "multiport", MULTI_PORT_DEF),
-        read_def("LEFDEF-217", "inherit", INHERIT_DEF),
-        read_def("LEFDEF-218", "twolayer", TWO_LAYER_DEF),
-        read_def("LEFDEF-219", "labelsize", LABEL_SIZE_DEF, fonts=["FreeSans", "FreeSerif", "FreeMono"],
+        read_def("LEFDEF-215", "pinorder", PIN_ORDER_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-216", "multiport", MULTI_PORT_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-217", "inherit", INHERIT_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-218", "twolayer", TWO_LAYER_DEF, fonts=DEFAULT_FONTS),
+        read_def("LEFDEF-219", "labelsize", LABEL_SIZE_DEF, fonts=DEFAULT_FONTS,
                  notes=["Magic's default outline fonts are loaded (magic-sys inputs for hefesto-cli). The no-font "
                         "variant of the row cannot be set up from a script: Magic's startup always loads them."]),
         read_def("LEFDEF-220", "w", def_file("w", nets("- n1 + ROUTED metal1 ( 0 0 ) ( 1000 0 ) ;",
@@ -212,11 +217,11 @@ def def_read_specs() -> list[tclcase.TclCase]:
             "- n1 + ROUTED metal1 ( 0 0 ) ( 1000 0 ) + ROUTED metal2 ( 2000 0 ) ( 2000 1000 ) ;",
             "- n2 + ROUTED metal1 ( 0 3000 ) ( 1000 3000 ) ;"), diearea=DIE_SMALL), cmd="def read input/w -labels"),
         read_def("LEFDEF-232", "top", ANNOTATE_DEF, files={"top.mag": ANNOTATE_TOP, "leaf.mag": LEAF},
-                 cmd="def read input/top -annotate", start=["load top"]),
+                 cmd="def read input/top -annotate", start=["load top"], fonts=DEFAULT_FONTS),
         read_def("LEFDEF-233", "blk1", def_file("blk1", BLOCKAGE_SECTION, diearea=DIE_SMALL),
                  files={"blk2.def": def_file("blk2", BLOCKAGE_SECTION, diearea=DIE_SMALL)},
                  body=["def read input/blk1", "def read input/blk2 -noblockage", SAVE_ALL]),
-        read_def("LEFDEF-234", "counts", COUNT_DEF, lef_text=MACROS),
+        read_def("LEFDEF-234", "counts", COUNT_DEF, lef_text=MACROS, fonts=DEFAULT_FONTS),
         read_def("LEFDEF-235", "others", OTHER_SECTIONS_DEF),
         read_def("LEFDEF-236", "a", "VERSION 5.7 ;\nDIEAREA ( 0 0 ) ( 1000 1000 ) ;\nDESIGN da ;\n"
                                     "UNITS DISTANCE MICRONS 1000 ;\nEND DESIGN\n",
@@ -280,9 +285,22 @@ POINT_PINS = mag(rects("metal1", (0, 0, 20, 20)) + rects("polysilicon", (40, 0, 
                  + labels(port_label("metal1", (10, 10, 10, 10), "pt", 1), port_label("polysilicon", (40, 0, 60, 20), "pp", 2)))
 
 
+# Magic's def write crashes (SIGSEGV) on any top-level net that is neither special nor a port: the
+# blockage collector is called with mismatched arguments (Q-LEFDEF-101, fixed in Hefesto in both modes).
+# A top-level net is special unless it is a port or its name ends in '#' (an unlabeled net, or a label
+# ending in '#'); a name with '/' is hierarchical and never special. So the captured layouts label every
+# net or make it a port, and the crashing inputs stay in tests/golden/LEFDEF/magic-crash/ (decision D4).
+BLOCKAGE_CRASH = "SIGSEGV in def write: {what}, a net neither special nor a port (Q-LEFDEF-101)"
+
+
+def crash_note(cid: str, what: str) -> list[str]:
+    return [ld.MAGIC_CRASH_NOTE.format(id=cid, what=BLOCKAGE_CRASH.format(what=what))]
+
+
 def nets_top() -> str:
-    """LEFDEF-317/318: a global rail (no port), a port, a labeled internal net, an unlabeled net."""
-    return mag(rects("metal1", (0, 190, 200, 200), (0, 100, 60, 110), (100, 100, 160, 110), (0, 50, 60, 60))
+    """LEFDEF-317/318: a global rail (no port), a port, a labeled internal net. The unlabeled net of the
+    first input (Magic crash, Q-LEFDEF-101) is left out."""
+    return mag(rects("metal1", (0, 190, 200, 200), (0, 100, 60, 110), (100, 100, 160, 110))
                + labels(plain_label("metal1", (0, 190, 200, 200), "vdd!"),
                         port_label("metal1", (0, 100, 60, 110), "A", 1, "signal input"),
                         plain_label("metal1", (100, 100, 160, 110), "clkint")))
@@ -291,9 +309,11 @@ def nets_top() -> str:
 GLOBALS_TOP = mag(rects("metal1", (0, 0, 200, 10), (0, 190, 200, 200), (50, 90, 150, 100))
                   + labels(plain_label("metal1", (0, 0, 200, 10), "gnd"), plain_label("metal1", (0, 190, 200, 200), "vpwr"),
                            port_label("metal1", (50, 90, 150, 100), "A", 1)))
+# net-1 is special; a_n5# (a trailing '#') and x1/sig*b (hierarchical) are ports, so they are regular nets.
 NAMES_TOP = mag(rects("metal1", (0, 0, 60, 3), (0, 20, 60, 23), (0, 40, 60, 43))
-                + labels(plain_label("metal1", (0, 0, 60, 3), "net-1"), plain_label("metal1", (0, 20, 60, 23), "a_n5#"),
-                         plain_label("metal1", (0, 40, 60, 43), "x1/sig*b")))
+                + labels(plain_label("metal1", (0, 0, 60, 3), "net-1"),
+                         port_label("metal1", (0, 20, 60, 23), "a_n5#", 1),
+                         port_label("metal1", (0, 40, 60, 43), "x1/sig*b", 2)))
 FANOUT_TOP = mag(use("leaf", "u", 0, 0, (10, 10), array=(0, 19, 30, 0, 0, 0)) + rects("metal1", (0, 10, 580, 14))
                  + labels(plain_label("metal1", (0, 10, 580, 14), "bus")))
 
@@ -318,12 +338,20 @@ WIDE_C1 = mag(rects("metal1", (0, 100, 100, 108)) + use("c2", "c2_0", 0, 0, (100
               + labels(plain_label("metal1", (0, 100, 100, 108), "w")))
 OBS_TOP = mag(rects("obsm1", (0, 0, 50, 50)) + rects("metal1", (60, 0, 100, 3))
               + labels(plain_label("metal1", (60, 0, 100, 3), "n")))
-MANY_NAMES_LEF = ld.LEF_BASE + "    ignore " + " ".join(f"L{i:02d}" for i in range(45)) + "\n"
+# Three `ignore` lines of 15 names: Magic's TechLoad keeps at most 30 words of a line (MAXARGS,
+# utils/tech.c:120) and techGetTokens writes past argv[] on a longer one (round-4 capture: a garbage
+# "Unknown LEF section keyword" message), so no line may hold more than 30 words.
+MANY_NAMES_LEF = ld.LEF_BASE + "".join(
+    "    ignore " + " ".join(f"L{i:02d}" for i in range(k, k + 15)) + "\n" for k in (0, 15, 30))
 HASH_TOP = mag(rects("metal1", (0, 0, 30, 4), (0, 20, 30, 24), (0, 40, 30, 44)) + rects("via1", (30, 0, 34, 4), (30, 20, 34, 24))
                + rects("metal2", (34, 0, 60, 4), (34, 20, 60, 24), (34, 40, 60, 44)) + rects("via2", (60, 40, 64, 44))
                + rects("metal3", (64, 40, 90, 45)) + rects("obsm1", (100, 0, 120, 20)) + rects("obsm2", (100, 40, 120, 60))
                + labels(plain_label("metal1", (0, 0, 30, 4), "a"), plain_label("metal1", (0, 20, 30, 24), "b"),
-                        plain_label("metal1", (0, 40, 30, 44), "c")))
+                        plain_label("metal1", (0, 40, 30, 44), "c"), plain_label("metal2", (34, 40, 60, 44), "d")))
+# LEFDEF-333: a floating labeled metal1 net (special) and obstruction paint on the route and via layers,
+# so BLOCKAGES comes from the non-electrical obstruction pass (net blockages crash Magic, Q-LEFDEF-101).
+FLOATING_OBS = mag(rects("metal1", (0, 0, 50, 3)) + rects("obsm1", (0, 20, 30, 40)) + rects("obsm2", (40, 20, 70, 40))
+                   + rects("obsv1", (80, 20, 90, 30)) + labels(plain_label("metal1", (0, 0, 50, 3), "f")))
 
 
 def def_write_specs() -> list[tclcase.TclCase]:
@@ -359,10 +387,13 @@ def def_write_specs() -> list[tclcase.TclCase]:
                   notes=["The reset, scan and tie-off port uses exist only through a DEF read (Magic's .mag and port "
                          "commands do not set them), so the cell is the DEF design cell."]),
         write_def("LEFDEF-316", "top", POINT_PINS, ["def write"], technology=tech(lef=lc.NO_POLY_LEF)),
-        write_def("LEFDEF-317", "top", nets_top(), ["def write"]),
-        write_def("LEFDEF-318", "top", nets_top(), ["def write -allspecial"]),
+        write_def("LEFDEF-317", "top", nets_top(), ["def write"],
+                  notes=crash_note("LEFDEF-317", "the unlabeled net m1_0_50#")),
+        write_def("LEFDEF-318", "top", nets_top(), ["def write -allspecial"],
+                  notes=crash_note("LEFDEF-318", "the unlabeled net m1_0_50#")),
         write_def("LEFDEF-319", "top", GLOBALS_TOP, ["set globals(gnd) 1", "set VDD vpwr", "def write"]),
-        write_def("LEFDEF-320", "top", NAMES_TOP, ["def write"]),
+        write_def("LEFDEF-320", "top", NAMES_TOP, ["def write"],
+                  notes=crash_note("LEFDEF-320", "the labels a_n5# and x1/sig*b were plain labels")),
         write_def("LEFDEF-321", "top", FANOUT_TOP, ["def write"], files={"leaf.mag": LEAF}),
         write_def("LEFDEF-322", "top", wire("metal1", (0, 0, 100, 3), "n1"), ["def write"]),
         write_def("LEFDEF-323", "top", wire("metal1", (0, 0, 200, 10), "vdd!"), ["def write"]),
@@ -376,13 +407,16 @@ def def_write_specs() -> list[tclcase.TclCase]:
         write_def("LEFDEF-330", "top", mag(rects("metal1", (0, 0, 100, 3)) + rects("metal2", (0, 20, 100, 32))
                                            + rects("metal3", (0, 50, 100, 55))
                                            + labels(plain_label("metal2", (0, 20, 100, 32), "wide"),
-                                                    plain_label("metal1", (0, 0, 100, 3), "n1"))),
-                  ["def write -anal"]),
+                                                    plain_label("metal1", (0, 0, 100, 3), "n1"),
+                                                    plain_label("metal3", (0, 50, 100, 55), "n3"))),
+                  ["def write -anal"], notes=crash_note("LEFDEF-330", "the unlabeled metal3 net m3_0_50#")),
         write_def("LEFDEF-331", "c1", WIDE_C1, ["def write", "load c2", "def write"], ["c1.def", "c2.def"],
                   files={"c2.mag": WIDE_C2}),
         write_def("LEFDEF-332", "top", OBS_TOP, ["def write"]),
-        write_def("LEFDEF-333", "top", mag(rects("metal1", (0, 0, 50, 3))), ["def write"]),
-        write_def("LEFDEF-334", "top", HASH_TOP, ["def write"], technology=tech(lef=MANY_NAMES_LEF)),
+        write_def("LEFDEF-333", "top", FLOATING_OBS, ["def write"],
+                  notes=crash_note("LEFDEF-333", "the floating unlabeled metal1 net m1_0_0#")),
+        write_def("LEFDEF-334", "top", HASH_TOP, ["def write"], technology=tech(lef=MANY_NAMES_LEF),
+                  notes=crash_note("LEFDEF-334", "the unlabeled metal2 net m2_34_40#")),
         write_def("LEFDEF-335", "(UNNAMED)", None, ["def write", "lsort [glob -nocomplain *.def]"], [], start=[]),
     ]
 

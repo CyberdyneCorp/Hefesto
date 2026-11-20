@@ -53,6 +53,14 @@ std::optional<std::int16_t> attribute(const PropertyValue& v) {
   return std::nullopt;
 }
 
+/// Whether `v` is the integer `n`.
+bool is_attribute(const PropertyValue& v, std::int64_t n) {
+  if (v.kind == PropertyValue::Kind::unsigned_integer) {
+    return v.unsigned_value == static_cast<std::uint64_t>(n);
+  }
+  return v.kind == PropertyValue::Kind::signed_integer && v.signed_value == n;
+}
+
 /// A point P0 + n * v, or nullopt outside 32 bits.
 std::optional<std::array<std::int32_t, 2>> step(Point64 p0, std::uint64_t n, Point64 v) {
   std::int64_t dx = 0;
@@ -108,7 +116,13 @@ void Transcoder::placement_properties(const Property& p) {
   if (!attr || !value) {
     return;
   }
+  if (*attr == kMaxGdsInt2 && !is_attribute(p.values[0], kMaxGdsInt2)) {
+    error("OASIS-READ-009", "S_GDS_PROPERTY attribute outside -32768 to " + std::to_string(kMaxGdsInt2) +
+                                " is read as " + std::to_string(kMaxGdsInt2));
+  }
   if (value->size() > kMaxString) {
+    error("OASIS-READ-006", "S_GDS_PROPERTY value of " + std::to_string(value->size()) + " bytes cut to " +
+                                std::to_string(kMaxString));
     value->resize(kMaxString);
   }
   pending_->properties.emplace_back(*attr, std::move(*value));

@@ -9,6 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <array>
+
 #include "hefesto/db/property.hpp"
 #include "hefesto/db/transform.hpp"
 #include "oasis_read_fixture.hpp"
@@ -54,6 +57,36 @@ TEST_CASE("placement transforms", "[cap:oasis-read][req:Placement transforms]") 
     REQUIRE(source != nullptr);
     CHECK(*source == "C");
     CHECK(only_use(s, "top").def->name() == "C_mag1p5");
+  }
+  SECTION("regression: a magnification of 0 or less drops the placement with a warning (D3(b) of 2026-11-19)") {
+    for (const std::byte m : {std::byte{0x01}, std::byte{0x00}}) {  // real type 1 (-3) and type 0 with value 0
+      for (const bool magic_compat : {true, false}) {
+        Oas f;
+        unit_cell(f, "A");
+        f.cell("top").add(place("A", 0, 0, 0.0, false, 3.0)).add(place("A", 50, 0));
+        Bytes bytes = f.bytes();
+        // Name "A" then the real 3 (type 0, value 3): make it -3 or 0.
+        const std::array<std::byte, 4> real3{std::byte{0x01}, std::byte{'A'}, std::byte{0x00}, std::byte{0x03}};
+        const auto at = std::search(bytes.begin(), bytes.end(), real3.begin(), real3.end());
+        REQUIRE(at != bytes.end());
+        *(at + 2) = m;
+        if (m == std::byte{0x00}) {
+          *(at + 3) = std::byte{0x00};
+        }
+        OasSession s(kStyle, magic_compat);
+        (void)s.read_oasis(bytes);
+        INFO("type " << static_cast<int>(m) << ", magic-compat " << magic_compat);
+        CHECK(s.said("invalid magnification (0 or less) in a PLACEMENT; the placement is dropped"));
+        const auto warning = std::find_if(s.last.diagnostics.begin(), s.last.diagnostics.end(),
+                                          [](const auto& d) { return d.code == "OASIS-CODEC-029"; });
+        REQUIRE(warning != s.last.diagnostics.end());
+        CHECK(warning->severity == diag::Severity::warning);
+        // Only the second placement is read; no magnified copy is made.
+        const auto& use = only_use(s, "top");
+        CHECK(use.def->name() == "A");
+        CHECK(db::apply(use.transform, db::Point{0, 0}) == db::Point{50, 0});
+      }
+    }
   }
   SECTION("a non-quarter-turn angle is rounded with the gds-read error") {
     OasSession s;

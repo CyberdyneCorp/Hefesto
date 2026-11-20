@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 
@@ -156,6 +157,36 @@ TEST_CASE("RECT ITERATE in a via definition", "[cap:lef-read][req:LEF VIA and VI
   }
 }
 
+TEST_CASE("regression: RECT ITERATE and ROWCOL above 65536 repeats are rejected (Q-LEFDEF-118)",
+          "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
+  // The cap of user decision D1 (2026-11-19): magic-compat OFF only, where
+  // the statements are read at all; ON they stay Magic's bad RECT / unknown
+  // keyword.
+  const std::string iterate = "VIA V1\n  LAYER via ;\n  RECT ITERATE 0 0 1 1 DO 257 BY 256 STEP 1 1 ;\nEND V1\n";
+  const std::string rowcol =
+      "VIA V2\n  VIARULE R ;\n  CUTSIZE 0.02 0.02 ;\n  LAYERS met1 via met2 ;\n  ROWCOL 65537 1 ;\nEND V2\n";
+  SECTION("magic-compat OFF: rejected with an error, nothing added") {
+    LefRun run{false, 0.005F};
+    define_via_layers(run.layers);
+    run.read(iterate + rowcol);
+    const auto texts = run.texts();
+    CHECK(std::find(texts.begin(), texts.end(),
+                    "LEF read, Line 3 (Error): Bad RECT ITERATE: requires DO <nx> BY <ny> STEP <dx> <dy>.") !=
+          texts.end());
+    CHECK(std::find(texts.begin(), texts.end(),
+                    "LEF read, Line 9 (Error): Bad ROWCOL: requires two counts whose product is at most 65536.") !=
+          texts.end());
+    CHECK(via(run, "V1").area == db::Rect{});
+    CHECK(via(run, "V2").shapes.size() == 2U);  // ROWCOL stays 1 x 1: one cut and the bottom
+  }
+  SECTION("magic-compat ON: Magic's handling, no cap involved") {
+    LefRun run{true, 0.005F};
+    define_via_layers(run.layers);
+    run.read(iterate);
+    CHECK(run.texts() == Strings{"LEF read, Line 3 (Error): Bad port geometry: RECT requires 4 values."});
+  }
+}
+
 TEST_CASE("VIA POLYGON per mode", "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
   // An L: two rectangles in the decomposition.
   const std::string text =
@@ -236,6 +267,53 @@ TEST_CASE("via-rule vias per mode", "[cap:lef-read][req:LEF VIA and VIARULE defi
     CHECK(texts[1].find("ENCLOSURE") != std::string::npos);
     CHECK(via(run, "V12").type == type_of("metal2"));
   }
+}
+
+TEST_CASE("a via-rule via takes the values it omits from the VIARULE GENERATE it names",
+          "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
+  // Q-LEFDEF-61 (fix): the VIARULE GENERATE's parameters are kept (both
+  // modes); a VIA naming it (magic-compat OFF, Q-LEFDEF-7) is completed
+  // from them. s = 0.005: cut 0.02 (RECT -0.01 .. 0.01), pitch 0.03
+  // (spacing 0.01), enclosures 0.005 and 0.01, as "via-rule vias per mode".
+  const std::string rule =
+      "VIARULE M1M2 GENERATE\n  LAYER met1 ;\n  ENCLOSURE 0.005 0.005 ;\n  LAYER met2 ;\n  ENCLOSURE 0.01 0.01 ;\n"
+      "  LAYER via ;\n  RECT -0.01 -0.01 0.01 0.01 ;\n  SPACING 0.03 BY 0.03 ;\nEND M1M2\n";
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    LefRun run{on, 0.005F};
+    define_via_layers(run.layers);
+    run.read(rule);
+    CHECK(run.texts().empty());
+    const auto& kept = via(run, "M1M2").rule;
+    REQUIRE(kept.has_value());
+    CHECK(kept->layers == lef::ViaLayers{type_of("metal1"), type_of("m2c"), type_of("metal2")});
+    CHECK(kept->cut_size == db::Point{200, 200});
+    CHECK(kept->cut_spacing == db::Point{100, 100});
+    CHECK(kept->bottom_enclosure == db::Point{50, 50});
+    CHECK(kept->top_enclosure == db::Point{100, 100});
+  }
+  LefRun run{false, 0.005F};
+  define_via_layers(run.layers);
+  run.read(rule + "VIA V12\n  VIARULE M1M2 ;\n  ROWCOL 1 2 ;\nEND V12\n");
+  const auto texts = run.texts();
+  REQUIRE(texts.size() == 4);  // LAYERS, CUTSIZE, CUTSPACING, ENCLOSURE: from the rule
+  CHECK(texts[0].ends_with("Via \"V12\": LAYERS not given; using the VIARULE value."));
+  CHECK(via(run, "V12").area == db::Rect{-14, -8, 14, 8});  // as "via-rule vias per mode"
+  CHECK(via(run, "V12").generated);
+}
+
+TEST_CASE("a VIARULE that is not GENERATE-complete keeps what it gives",
+          "[cap:lef-read][req:LEF VIA and VIARULE definitions]") {
+  LefRun run{true, 0.005F};
+  define_via_layers(run.layers);
+  run.read("VIARULE R GENERATE\n  LAYER via ;\n  RECT -0.01 -0.01 0.01 0.01 ;\nEND R\n");
+  const auto& kept = via(run, "R").rule;
+  REQUIRE(kept.has_value());
+  CHECK_FALSE(kept->layers.has_value());  // one layer named: no LAYERS
+  CHECK(kept->cut_size == db::Point{200, 200});
+  CHECK_FALSE(kept->cut_spacing.has_value());
+  CHECK_FALSE(kept->bottom_enclosure.has_value());
+  CHECK_FALSE(via(run, "R").generated);
 }
 
 TEST_CASE("Reading the same technology LEF twice", "[cap:lef-read][req:Via redefinition]") {

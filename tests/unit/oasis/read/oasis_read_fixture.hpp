@@ -188,7 +188,8 @@ inline oasis::Property gds_property(std::uint64_t attribute, std::string value) 
 
 /// A gds-read session that also reads OASIS from an in-memory file system.
 struct OasSession : Session {
-  explicit OasSession(std::string_view cifinput = kStyle, bool magic_compat = true) : Session(cifinput, magic_compat) {
+  explicit OasSession(std::string_view cifinput = kStyle, bool magic_compat = true, std::string_view cifoutput = {})
+      : Session(cifinput, magic_compat, cifoutput) {
     REQUIRE(fs.create_directories("/data").ok());
     oasis_options.files = &fs;
     oasis_options.oasis_file = "/data/test.oas";

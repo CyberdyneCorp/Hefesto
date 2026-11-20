@@ -1,6 +1,6 @@
 # Open questions: LEFDEF (LEF/DEF input and output)
 
-Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambiguous or platform-specific. The specs describe Magic's actual behavior and point to these IDs. ID ranges: 1-29 tech section and LEF read, 30-59 LEF write, 60-89 DEF read, 90-119 DEF write. Gaps in the numbering are intentional.
+Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambiguous or platform-specific. The specs describe Magic's actual behavior and point to these IDs. ID ranges: 1-29 tech section and LEF read, 30-59 LEF write, 60-89 DEF read, 90-116 DEF write; from 117 on, rows approved on 2026-11-19 for input caps and for behaviours found while implementing M6, in any area, numbered in order of approval. Gaps in the numbering are intentional.
 
 ### Q-LEFDEF-1: Route width and spacing defaults are effectively never filled
 - Kind: bug
@@ -950,3 +950,165 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: signed | unsigned
 - Recommendation: signed, which matches Magic on x86-64 Linux and on macOS.
 - Resolution: compat — the string hash adds key bytes as signed values on every platform, matching Magic on x86-64 Linux and macOS (X-1 as amended by D-1, 2026-11-07).
+
+### Q-LEFDEF-117: DEF generated via with an unbounded ROWCOL
+- Kind: bug
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: `+ ROWCOL r c` in a DEF VIAS definition is not bounded. LefGenViaGeometry allocates one rectangle per cut, so a hostile `+ ROWCOL 100000 100000` allocates 10^10 cuts and Magic runs out of memory.
+- Evidence: lef/defRead.c:2120-2133, lef/lefRead.c:2545-2626
+- Options: fix (refuse a generated via above a cut cap)
+- Recommendation: fix in both modes with a cap of 1,000,000 cuts (security.md M6-S2).
+- Resolution: fix — in both modes a generated via whose rows × columns is above 1,000,000 is not generated: `Via "<via>": ROWCOL <r> <c> gives more than 1000000 cuts; the via is not generated.` (DEF-READ-007), and the via keeps only the rectangles read before. Approved 2026-11-19.
+
+### Q-LEFDEF-118: LEF RECT ITERATE and via ROWCOL counts
+- Kind: platform
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: Magic reads neither `RECT ITERATE` nor a LEF via's `ROWCOL` (Q-LEFDEF-7 ON: they fail or are skipped). Hefesto reads them with `magic-compat` OFF, where an unbounded count would let a hostile file allocate any number of rectangles.
+- Evidence: lef/lefRead.c:867-936, 2742-2777
+- Options: fix (cap the repeat count)
+- Recommendation: cap both at 65536 repeats, magic-compat OFF only (security.md M6-S2).
+- Resolution: fix — with `magic-compat` OFF a `RECT ITERATE` whose nx × ny, or a via `ROWCOL` whose rows × columns, is above 65536 is rejected with `Bad RECT ITERATE: requires DO <nx> BY <ny> STEP <dx> <dy>.` or `Bad ROWCOL: requires two counts whose product is at most 65536.` and adds nothing; with it ON Magic's behaviour (Q-LEFDEF-7) is unchanged. Approved 2026-11-19.
+
+### Q-LEFDEF-119: `lef read -annotate` duplicate macro with no renamed cell
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFR workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: a MACRO whose name was already created by this file, read with `-annotate` when no `<name>_k` cell exists, is skipped with `LefSkipSection(f, "MACRO")`, which looks for `END MACRO`; a macro ends with `END <name>`, so the rest of the file is normally not read and `Section MACRO has no END record!` is reported.
+- Evidence: lef/lefRead.c:2120-2140
+- Options: replicate | compat (replicate with `magic-compat` ON, skip to the macro's own `END <name>` with it OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the duplicate is skipped to `END MACRO`, as Magic does; with it OFF the section is skipped to its own `END <name>` (with OFF, `-annotate` creates no cell, so the case does not arise from one file). Approved 2026-11-19.
+
+### Q-LEFDEF-120: `SITE ;`, `SOURCE ;` and `PROPERTY ;` in a MACRO
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFR workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: a SITE, SOURCE or PROPERTY statement with no value takes the `;` as its value and then skips to the next `;`, which swallows the next statement.
+- Evidence: lef/lefRead.c:2250-2280
+- Options: replicate | compat (replicate ON; set nothing and read the next statement OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the `;` is the value and the next statement is swallowed, as in Magic; with it OFF nothing is set and the next statement is read normally. Approved 2026-11-19.
+
+### Q-LEFDEF-121: Only cells created by the read count as duplicates
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFR workstream, approved 2026-11-19)
+- Magic behavior: the per-file macro table gets an entry only when the read creates a cell; a MACRO that annotates an existing cell registers nothing, so an existing cell named twice in one file is annotated twice, with no rename.
+- Evidence: lef/lefRead.c:2136-2155 (HashSetValue on creation only)
+- Options: replicate | fix (count annotated cells too)
+- Recommendation: replicate: the rule is consistent and loses nothing.
+- Resolution: replicate — in both modes only cells the read created count as duplicates. Approved 2026-11-19.
+
+### Q-LEFDEF-122: `lef datestamp -1`
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFR workstream, approved 2026-11-19)
+- Magic behavior: `lefTimestamp` uses -1 for "no fixed stamp", so `lef datestamp -1` restores the default.
+- Evidence: lef/lefRead.c:2081, 2160-2162; lef/lefCmd.c (LEF_DATESTAMP)
+- Options: replicate | fix (accept -1 as a stamp)
+- Recommendation: replicate.
+- Resolution: replicate — in both modes `lef datestamp -1` means `default`. Approved 2026-11-19.
+
+### Q-LEFDEF-123: PATH and VIA in PORT and OBS with magic-compat OFF
+- Kind: other
+- Status: approved (implemented by the M6 round-3 LEFR workstream for the Q-LEFDEF-15 OFF behaviour, approved 2026-11-19)
+- Magic behavior: `WIDTH`, `PATH` and `VIA` are ignored (Q-LEFDEF-15 ON). The OFF behaviour has two choices Q-LEFDEF-15 did not fix: diagonal PATH segments, and a `VIA` naming no known via.
+- Evidence: lef/lefRead.c:1226-1240
+- Options: paint only Manhattan PATH segments, report an unknown via | decompose diagonal segments, fail the statement
+- Recommendation: Manhattan segments only (a diagonal one is skipped) and an info message for an unknown via name.
+- Resolution: other — with `magic-compat` OFF a PATH paints only its Manhattan segments (a diagonal segment is skipped), and a VIA naming no known via reports an info message and is skipped. Approved 2026-11-19.
+
+### Q-LEFDEF-124: Cut round of a pin whose PIN header is still pending
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFW workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: when a pin's PIN header has not been written at a cut round (no routing record of the pin came before), lefWriteGeometry returns 1 to ask for the header, but the contact round does not loop on it, so the search stops at the first cut and nothing is written in that round.
+- Evidence: lef/lefWrite.c:853-860, 1716-1729
+- Options: replicate | compat (replicate ON; write the header and the cuts OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the round writes nothing, as in Magic; with it OFF the header is written and the cuts follow. Approved 2026-11-19.
+
+### Q-LEFDEF-125: PROPERTYDEFINITIONS key parse (lefGetProperties)
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFW workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: lefGetProperties collects a key before checking its value (a key whose value is missing or an unterminated quote is still declared) and skips one character after a value, so a run of two or more spaces before the next key declares an empty key.
+- Evidence: lef/lefWrite.c:2130-2200
+- Options: replicate | compat (replicate ON; the keys of the PROPERTY lines written OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the keys follow lefGetProperties' parse, empty key included; with it OFF they are the keys of the pairs written as PROPERTY lines. Approved 2026-11-19.
+
+### Q-LEFDEF-126: `lef writeall` header data of more than 100 cells
+- Kind: bug
+- Status: approved (implemented by the M6 round-3 LEFW workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: `StackEnum` over the write stack stops at the top of its newest 100-entry block, so with more than 100 cells only the last `n mod 100` (or 100) cells give PROPERTYDEFINITIONS keys and SITE names.
+- Evidence: lef/lefWrite.c:2273-2277; utils/stack.c (StackEnum)
+- Options: replicate | compat (replicate ON; every cell OFF)
+- Recommendation: compat (data-losing but output-shaping; tier 2).
+- Resolution: compat — with `magic-compat` ON only the cells of Magic's last 100-entry block are read; with it OFF every cell of the write set is read. Approved 2026-11-19.
+
+### Q-LEFDEF-127: `lef write -tech` and the via records of LEF/DEF reads
+- Kind: bug
+- Status: approved (implemented by the M6 round-3 LEFW workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: `-tech` is meant to skip via records that hold a fixed via geometry cell (vias created by LEF/DEF reading), but Magic never sets that cell, so it writes those records as LAYER blocks too.
+- Evidence: lef/lefWrite.c:400-420
+- Options: replicate | compat (replicate ON; skip the session's via records OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the via records of LEF/DEF reads are written, as in Magic; with it OFF a record whose LEF name is a via of the session's via table is skipped. Approved 2026-11-19.
+
+### Q-LEFDEF-128: `lef write` retry of a typed file name
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 LEFW workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: lefFileOpen retries with `<cell>.lef` whenever the name is not the cell's own name, so a typed name that cannot be opened writes `<cell>.lef` instead.
+- Evidence: lef/lefWrite.c:150-235
+- Options: replicate | compat (replicate ON; fail OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON a typed name that cannot be opened is retried as `<cell>.lef`; with it OFF the retry is made only for a name derived from the cell's file path, and a typed name that cannot be opened fails the write. Approved 2026-11-19.
+
+### Q-LEFDEF-129: DEF pin labels erased in annotation mode
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 DEFR workstream under the standing rule, approved 2026-11-19)
+- Magic behavior: with `-annotate`, existing labels matching a pin's rectangle and name are erased only when the placement statement (`+ PLACED`, `+ FIXED`, `+ COVER`) paints the rectangles; rectangles painted when a `LAYER` follows a waiting placement keep the old labels.
+- Evidence: lef/defRead.c:1683-1740
+- Options: replicate | compat (replicate ON; erase for every painted rectangle OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the labels are erased only on the placement path; with it OFF for every painted rectangle. Approved 2026-11-19.
+
+### Q-LEFDEF-130: Undefined values in DEF read
+- Kind: bug
+- Status: approved (implemented by the M6 round-3 DEFR workstream, approved 2026-11-19)
+- Magic behavior: several DEF statements read values Magic leaves uninitialised or converts with undefined behaviour: a float-to-int cast that does not fit (coordinates after `UNITS ... 0`, huge values), a RECT with no reference point, a pin with no placement, and similar cases the def-read spec lists.
+- Evidence: lef/defRead.c (DefReadLocation, DefAddRoutes, DefReadPins; see the def-read spec citations)
+- Options: fix
+- Recommendation: fix in both modes (X-2 tier 1).
+- Resolution: fix — in both modes each such value is treated as one that does not parse (geometry beyond the plane is clipped to it), with DEF-READ-007/008 where Magic reads an undefined value, as the def-read spec states case by case. Approved 2026-11-19.
+
+### Q-LEFDEF-131: Default route width of a via record
+- Kind: quirk
+- Status: approved (implemented by the M6 round-3 DEFR workstream, approved 2026-11-19)
+- Magic behavior: when a route layer token names a via record, DefAddRoutes reads `lefl->info.route.width`, which shares its storage with `info.via.area.r_xbot`, so the default width is the via's contact-area lower-left x in half units.
+- Evidence: lef/defRead.c:198, 215, 366, 390, 520; lef/lefInt.h (lefLayer union)
+- Options: replicate | fix
+- Recommendation: replicate: the value is defined (the union holds an int), and a non-positive one is already replaced by the Q-LEFDEF-1 fix.
+- Resolution: replicate — in both modes a via record's default route width is its contact area's lower-left x; a non-positive value takes the DRC default width (Q-LEFDEF-1). Approved 2026-11-19.
+
+### Q-LEFDEF-132: gzip-compressed DEF files
+- Kind: platform
+- Status: approved (implemented by the M6 round-3 DEFR workstream, approved 2026-11-19)
+- Magic behavior: `def read` opens the file with PaOpen and reads a gzip file's compressed bytes as DEF text.
+- Evidence: lef/defRead.c:2519, lef/lefWrite.c:150-235 (lefFileOpen, PaOpen)
+- Options: replicate | fix (decompress)
+- Recommendation: fix, as gds read does, with the gzip inflate cap (M5-S1).
+- Resolution: fix — in both modes a gzip-compressed DEF file (by its content) is read decompressed. Approved 2026-11-19.
+
+### Q-LEFDEF-133: File named in `lef read`'s missing-file error
+- Kind: platform
+- Status: approved (user decision D4, approved 2026-11-19)
+- Magic behavior: when no candidate opens, `Cannot open input file <path> (No such file or directory).` names the last search-path candidate Magic tried (for example `/opt/ref/lib/magic/tutorial/missing.lef` in the capture image), which depends on the installation.
+- Evidence: lef/lefWrite.c:150-235 (lefFileOpen), lef/lefRead.c:3003-3024; golden cases LEFDEF-021, LEFDEF-022
+- Options: replicate | fix (name the candidate built from the typed name)
+- Recommendation: fix, with a recorded golden deviation.
+- Resolution: fix — in both modes the message names the candidate built from the typed name (`missing` gives `missing.lef`); LEFDEF-021 and LEFDEF-022 record the deviation. Approved 2026-11-19.
+
+### Q-LEFDEF-134: Malformed OBS_BBOX and FIXED_BBOX messages on one line
+- Kind: quirk
+- Status: approved (user decision D4, approved 2026-11-19)
+- Magic behavior: `Cannot read bounding box values in <key> property` (`.mag` read; the same branch serves FIXED_BBOX and OBS_BBOX, so both keys are covered) and `Improper values for obstruction bounding box OBS_BBOX property` (`lef write -hide`) are printed with TxError and no line end, so they share one line (LEFDEF-132).
+- Evidence: database/DBio.c:3345-3346, lef/lefWrite.c:1862-1863
+- Options: replicate | compat (replicate ON; end each line OFF)
+- Recommendation: compat (message-only).
+- Resolution: compat — with `magic-compat` ON both messages have no line end, as Magic prints them (the `.mag` read message for FIXED_BBOX as well as OBS_BBOX); with it OFF each line is ended. Approved 2026-11-19. Specs: cell-file-format "Properties section records", lef-write.

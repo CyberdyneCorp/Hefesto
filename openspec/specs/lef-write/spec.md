@@ -195,7 +195,7 @@ The output path SHALL be derived from a base name. For `lef write`, the base nam
 2. If the extension is exactly `.lef`, open the name as given.
 3. If there is another extension, first try to open the name exactly as given. If that fails, strip the extension and append `.lef`.
 4. If there is no extension, append `.lef`.
-5. If opening still fails and the base name came from the cell's file path, retry with the cell name plus `.lef`. Magic also retries with the cell name plus `.lef` when a typed file name fails (lefFileOpen retries whenever the name is not the cell's own name); Hefesto does so with `magic-compat` ON only, and with it OFF a typed name that cannot be opened fails the write (standing compat rule; no Q-row).
+5. If opening still fails and the base name came from the cell's file path, retry with the cell name plus `.lef`. Magic also retries with the cell name plus `.lef` when a typed file name fails (lefFileOpen retries whenever the name is not the cell's own name); Hefesto does so with `magic-compat` ON only, and with it OFF a typed name that cannot be opened fails the write (Q-LEFDEF-128, resolution: compat).
 
 The base name taken from the cell's file path never keeps a `.mag` suffix (Magic's `cd_file` never holds one), so a LEF never replaces the layout file.
 
@@ -480,9 +480,9 @@ Property keys SHALL be collected from the `LEFproperties` string of every cell i
 3. Pairs are separated by one or more spaces.
 4. Collection stops at a key with no value.
 
-With `magic-compat` ON the keys are collected exactly as Magic's lefGetProperties does it: a key is collected before its value is checked (so a key whose value is missing or an unterminated quote is still declared), and after a value only one character is skipped, so a run of two or more spaces before the next key declares an empty key (`  MACRO  STRING ;`). With it OFF the keys are those of the pairs written as PROPERTY lines (Requirement "Macro PROPERTY lines") (standing compat rule; no Q-row).
+With `magic-compat` ON the keys are collected exactly as Magic's lefGetProperties does it: a key is collected before its value is checked (so a key whose value is missing or an unterminated quote is still declared), and after a value only one character is skipped, so a run of two or more spaces before the next key declares an empty key (`  MACRO  STRING ;`). With it OFF the keys are those of the pairs written as PROPERTY lines (Requirement "Macro PROPERTY lines") (Q-LEFDEF-125, resolution: compat).
 
-For `lef writeall`, Magic collects the keys and the SITE names from the cells of its last stack block only (StackEnum stops at the stack top of the newest 100-entry block): with more than 100 cells in the write set, only the last `n mod 100` collected cells (the last 100 when `n` is a multiple of 100) are read. Hefesto does so with `magic-compat` ON; with it OFF every cell of the write set is read (standing compat rule; no Q-row).
+For `lef writeall`, Magic collects the keys and the SITE names from the cells of its last stack block only (StackEnum stops at the stack top of the newest 100-entry block): with more than 100 cells in the write set, only the last `n mod 100` collected cells (the last 100 when `n` is a multiple of 100) are read. Hefesto does so with `magic-compat` ON; with it OFF every cell of the write set is read (Q-LEFDEF-126, resolution: compat).
 
 All property types are declared as `STRING`. The order of keys SHALL be the iteration order of the collection's Magic string hash table (capability `hefesto-output-determinism`, requirement "Magic string hash table"), reproduced exactly under decision X-1; see Q-LEFDEF-30.
 
@@ -536,7 +536,7 @@ Under `-tech`, the system SHALL write one LAYER block for each layer record of t
 
 - records with no magic type (obstruction-only and `ignore` records);
 - records of class bound;
-- via records that hold a fixed via geometry cell (vias created by LEF/DEF reading). Magic never sets that cell, so it writes those via records too; Hefesto skips a record whose LEF name is a via of the session's via table only with `magic-compat` OFF (standing compat rule; no Q-row).
+- via records that hold a fixed via geometry cell (vias created by LEF/DEF reading). Magic never sets that cell, so it writes those via records too; Hefesto skips a record whose LEF name is a via of the session's via table only with `magic-compat` OFF (Q-LEFDEF-127, resolution: compat).
 
 The remaining records SHALL be written as follows:
 
@@ -981,7 +981,7 @@ After the routing round on plane `p`, the system SHALL write the cut round:
 1. Each selected non-split contact tile whose contact type has its home plane on `p` and has a LEF name is copied into the scratch plane. For a stacked contact type, the component contact whose home plane is `p` is copied instead.
 2. Contact tiles of the scratch plane SHALL then be written as RECT (with LAYER changes) under the contact's LEF cut-layer name.
 
-Routing tiles left over from the routing round SHALL NOT be written again. When a pin's PIN header has not been written yet at a cut round (no routing record of the pin came before, for example a cut on a lower plane than the pin's routing layers), Magic's search stops at the first cut and writes nothing in that round. Hefesto does so with `magic-compat` ON; with it OFF the header is written and the cuts follow (standing compat rule; no Q-row). Each record covers the whole magic contact area, not individual cut squares, in both modes (Q-LEFDEF-52, resolution: replicate), as Magic intends.
+Routing tiles left over from the routing round SHALL NOT be written again. When a pin's PIN header has not been written yet at a cut round (no routing record of the pin came before, for example a cut on a lower plane than the pin's routing layers), Magic's search stops at the first cut and writes nothing in that round. Hefesto does so with `magic-compat` ON; with it OFF the header is written and the cuts follow (Q-LEFDEF-124, resolution: compat). Each record covers the whole magic contact area, not individual cut squares, in both modes (Q-LEFDEF-52, resolution: replicate), as Magic intends.
 
 Compatibility: exact
 
@@ -1060,6 +1060,7 @@ Compatibility: exact
 - **GIVEN** an `OBS_BBOX` property that is not four integers
 - **WHEN** the user runs `lef write -hide`
 - **THEN** the error `Improper values for obstruction bounding box OBS_BBOX property` SHALL be printed and the property ignored
+- **AND** with `magic-compat` ON the message has no line end, as Magic's TxError prints it, so the next message continues its line (after a `.mag` read that could not parse the property, `Cannot read bounding box values in OBS_BBOX property` and this message share one line, LEFDEF-132); with it OFF the line is ended (Q-LEFDEF-134, resolution: compat)
 
 ### Requirement: Obstructions with positive setback
 

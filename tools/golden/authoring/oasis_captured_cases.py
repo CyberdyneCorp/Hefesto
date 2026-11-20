@@ -5,7 +5,8 @@
 * OASIS-012 (task 15.6, Q-OASIS-2 as amended 2026-11-18): gdstk writes four small libraries, each
   as GDS and as OASIS with a CRC32 or CHECKSUM32 signature; two of the OASIS copies then get one
   END padding byte changed (``*_bad``), so only their signature fails. Hefesto reads each OASIS
-  file, Magic the GDS file gdstk wrote for the same library.
+  file, Magic the GDS equivalent of that file (``oasequiv``; gdstk's own GDS has the TEXT
+  presentation OASIS cannot carry).
 * OASIS-020/021 (task 15.2): KLayout converts the sky130 standard-cell library GDS
   (``sky130-gds-sc``) to OASIS (``strm2oas``, strict mode) and that OASIS file back to GDS
   (``strm2gds``, gzip-compressed): Hefesto reads the OASIS file, Magic the converted GDS, which
@@ -96,17 +97,23 @@ Q_OASIS_2 = ("Approved deviation (Q-OASIS-2, amended 2026-11-18; design D19): no
              "passes.")
 
 
+# gdstk's GDS TEXT carries a PRESENTATION record (font 0, centred), which an OASIS TEXT cannot hold, so
+# Magic read it as a FreeSans flabel and Hefesto's read of the OASIS file as an rlabel. Magic reads the
+# oasequiv GDS equivalent of each OASIS file instead, as in every other read case (design D19).
+GDS_NOTE = ("Magic reads the GDS equivalent of each gdstk OASIS file (authoring/oasequiv.py), not gdstk's own GDS, "
+            "whose TEXT has a PRESENTATION record (font 0) that OASIS cannot carry (oasis-read \"TEXT elements\").")
+
+
 def oasis_012():
     files = captured_files("OASIS-012")
     if files is None:
         return None
     oasis = {name: files[f"{name}.oas"].read_bytes() for name in VALIDATION_LIBRARIES}
-    gds = {name: files[f"{name}.gds"].read_bytes() for name in VALIDATION_LIBRARIES}
     return read_case("OASIS-012", "oasis-format", ["Validation signature"],
                      "gdstk-written files with CRC32 and CHECKSUM32 signatures, and copies with one END padding "
                      "byte changed: every file's cells are read (a bad signature is a warning only).",
-                     Read(oasis, gds=gds), notes=[Q_OASIS_2, "Inputs captured by oasis-validate "
-                                                  "(tests/golden/OASIS/captured/OASIS-012/captured.json)."])
+                     Read(oasis), notes=[Q_OASIS_2, "Inputs captured by oasis-validate "
+                                         "(tests/golden/OASIS/captured/OASIS-012/captured.json).", GDS_NOTE])
 
 
 LIBRARY_EXTERNALS = [{"source": "golden", "path": f"OASIS/captured/OASIS-020/{LIBRARY}.oas", "to": f"{LIBRARY}.oas"},

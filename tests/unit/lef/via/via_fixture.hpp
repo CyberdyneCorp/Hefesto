@@ -24,6 +24,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/rules/cif_catalog.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/lef/tech/table.hpp"
 #include "hefesto/lef/via/context.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -88,6 +89,13 @@ inline mask::OutputStyle squares_style(tech::TileType contact, std::int32_t fact
   layer.ops = {orop, squares};
   style.layers.push_back(layer);
   return style;
+}
+
+/// An empty layer table for begin_via (a fresh one at each call).
+inline LayerTable& no_layers() {
+  static LayerTable table;
+  table = LayerTable{};
+  return table;
 }
 
 inline compat::CompatSettings compat_mode(bool magic_compat) {

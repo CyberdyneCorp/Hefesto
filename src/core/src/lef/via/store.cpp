@@ -46,8 +46,8 @@ ViaDefinition emptied(LayerClass layer_class, std::string canonical_name) {
 /// The redefinition of a tech `lef` layer name (LefRedefined on a layer
 /// entry). One name: the entry is reused with its class. Several: `name`
 /// alone gets a new entry, of class VIA (Q-LEFDEF-8 fix).
-ViaDefinition redefined_layer(const LayerTable& layers, const LayerRecord& record, std::string_view name) {
-  if (shared_names(layers, name) <= 1) {
+ViaDefinition redefined_layer(const LayerRecord& record, std::string_view name, bool shared) {
+  if (!shared) {
     return emptied(record.layer_class, record.canonical_name.empty() ? std::string{name} : record.canonical_name);
   }
   return emptied(LayerClass::cut, std::string{name});
@@ -65,7 +65,7 @@ std::size_t shared_names(const LayerTable& layers, std::string_view name) {
   return count;
 }
 
-ViaDefinition* begin_via(ViaTable& vias, const LayerTable& layers, std::string_view name, ViaSection section,
+ViaDefinition* begin_via(ViaTable& vias, LayerTable& layers, std::string_view name, ViaSection section,
                          const ViaContext& context) {
   const std::string key{name};
   if (auto* entry = vias.find(key); entry != nullptr && entry->value) {
@@ -82,7 +82,12 @@ ViaDefinition* begin_via(ViaTable& vias, const LayerTable& layers, std::string_v
       return nullptr;
     }
     report_redefined(name, section, context);
-    return &*vias.insert(key, redefined_layer(layers, *record, name)).value;
+    const bool shared = shared_names(layers, name) > 1;
+    ViaDefinition via = redefined_layer(*record, name, shared);
+    if (shared) {
+      layers.redefine_alias(name);  // Q-LEFDEF-8: `name` now names the via alone
+    }
+    return &*vias.insert(key, std::move(via)).value;
   }
   return &*vias.insert(key, emptied(LayerClass::cut, key)).value;
 }

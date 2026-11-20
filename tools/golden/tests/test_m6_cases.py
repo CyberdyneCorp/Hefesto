@@ -17,6 +17,7 @@ REPO = GOLDEN.parents[1]
 sys.path.insert(0, str(GOLDEN / "authoring"))
 
 import lefdef_cases  # noqa: E402
+import lefdef_lef_cases  # noqa: E402
 import lefdef_pdk_cases  # noqa: E402
 import m6_cases  # noqa: E402
 import tclcase  # noqa: E402
@@ -45,7 +46,9 @@ class InventoryTest(unittest.TestCase):
         ids = {s.id for s in LEFDEF}
         self.assertEqual(len(lefdef_pdk_cases.RT_CASES), 3)
         self.assertTrue(set(lefdef_pdk_cases.RT_CASES) | {"LEFDEF-240"} <= ids)
-        self.assertEqual(len(LEFDEF), 146)
+        # 143 rows, the three round trips and the startup case of task 15.4.
+        self.assertEqual(len(LEFDEF), 147)
+        self.assertIn(lefdef_lef_cases.STARTUP_CASE, ids)
 
 
 class SpecTest(unittest.TestCase):
@@ -172,7 +175,42 @@ class WrittenCaseTest(unittest.TestCase):
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-001"]), "LEFTECH")
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-010"]), "LEFR and LEFVIA")
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-317"]), "DEFW")
-        self.assertTrue(m6_cases.deferral_reason(by_id["LEFDEF-317"]).startswith(m6_cases.BLOCKER_PREFIX + "DEFW; "))
+        self.assertTrue(m6_cases.deferral_reason(by_id["LEFDEF-232"]).startswith(m6_cases.BLOCKER_PREFIX + "DEFR; "))
+
+
+class MagicCrashTest(unittest.TestCase):
+    """Decision D4 (2026-11-19): the inputs Magic crashed on are re-authored, the originals kept."""
+
+    REAUTHORED = ("LEFDEF-003", "LEFDEF-317", "LEFDEF-318", "LEFDEF-320", "LEFDEF-330", "LEFDEF-333", "LEFDEF-334")
+    NODE = re.compile(r'^node "([^"]+)"', re.MULTILINE)
+    PORT = re.compile(r'^port "([^"]+)"', re.MULTILINE)
+
+    def test_originals_are_kept_and_noted(self):
+        by_id = {s.id: s for s in LEFDEF}
+        for cid in self.REAUTHORED:
+            with self.subTest(case=cid):
+                self.assertTrue((lefdef_cases.MAGIC_CRASH / cid / "commands.tcl").is_file())
+                self.assertIn(f"magic-crash/{cid}/", "\n".join(by_id[cid].notes))
+                self.assertEqual(by_id[cid].capture_blocked, "")
+
+    def test_def_write_nets_are_special_or_ports(self):
+        """Magic's def write crashes on a top-level net that is neither special nor a port (Q-LEFDEF-101):
+        a name ending in '#' or a hierarchical name that is not a port."""
+        targets, _ = lefdef_cases.ext_targets()
+        for target in targets[1:]:
+            text = (target.input_dir / f"{target.root}.ext").read_text(encoding="utf-8")
+            ports = set(self.PORT.findall(text))
+            for name in self.NODE.findall(text):
+                with self.subTest(case=target.id, node=name):
+                    self.assertTrue(name in ports or not (name.endswith("#") or "/" in name))
+
+    def test_minimum_grid_gives_a_positive_scale(self):
+        """LEFDEF-003: Magic sets 1 lambda = scalefactor / gridlimit internal units (integer division) and
+        divides by it; the style's scale factor is in centimicrons and has no expander to reduce."""
+        style = lefdef_lef_cases.GRID_STYLE
+        scale = int(re.search(r"scalefactor (\d+)\s*$", style, re.MULTILINE).group(1))
+        limit = int(re.search(r"gridlimit (\d+)", style).group(1))
+        self.assertEqual(scale // limit, 2)
 
 
 class ExitCheckTest(unittest.TestCase):

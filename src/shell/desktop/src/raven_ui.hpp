@@ -681,6 +681,11 @@ class Window {
   /// The user asked to close the window (title bar): `callback` runs and the
   /// window stays open (the owner destroys it).
   void on_close_request(std::function<void()> callback);
+  /// Files dropped on the window from another application (the file
+  /// manager) where no widget takes the drop: `callback(paths)` when the
+  /// drop happens. A drag of text, or one inside the application, is not
+  /// taken (M6 design D16: drag and drop of a layout file).
+  void on_files_dropped(std::function<void(std::vector<std::string>)> callback);
   /// Shows a prompt dialog (title, wrapped text, one button per answer, the
   /// primary one focused). `wait`: runs it modally and returns the clicked
   /// button's answer + 1, or 0 when dismissed (Escape); otherwise opens it
@@ -694,6 +699,8 @@ class Window {
   std::unique_ptr<KeyHook> key_hook_;
   struct CloseHook;
   std::unique_ptr<CloseHook> close_hook_;
+  struct FileDropHook;
+  std::unique_ptr<FileDropHook> file_drop_hook_;
 };
 
 // --- M4 (openspec/changes/m4-scripting/design.md D13) -------------------------------

@@ -32,6 +32,7 @@
 #include "hefesto/gds/read/vendor.hpp"
 #include "hefesto/gds/stream/values.hpp"
 #include "vendor.hpp"
+#include "vendor_oasis.hpp"
 
 namespace hefesto::gds::detail {
 
@@ -499,7 +500,7 @@ std::optional<VendorFile> open_vendor_gds(VendorIo& io, const db::CellDef& def, 
 
 CopyResult copy_vendor_structure(VendorIo& io, const db::CellDef& def, ByteSource& source) {
   const CopySpan span = copy_span(def);
-  if (!sane(io, def, source, span)) {
+  if (oasis_units_refused(io, def, source) || !sane(io, def, source, span)) {
     return CopyResult::fallback;
   }
   ElementWriter out(io.records, io.context(def), &io.sink);

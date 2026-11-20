@@ -791,6 +791,6 @@ def specs() -> list[tclcase.TclCase]:
 
 # Rows of CASES.md this module leaves out, with the reason and the target milestone.
 NOT_AUTHORED = {
-    "MASK-OS-016": "deferred to M6: the contact cut size is observable only through def write (M6) or "
-                   "extraction (M7), task 13.4",
+    "MASK-OS-016": "authored in M6 by m6_cases.py (lefdef_lef_cases.contact_case: the contact cut size "
+                   "through lef read and lef write -tech, m6-lef-def-oasis task 15.4), task 13.4",
 }

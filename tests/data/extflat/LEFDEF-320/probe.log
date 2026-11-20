@@ -1,5 +1,5 @@
 
-Magic 8.3 revision 694 - Compiled on Thu Nov 19 10:17:56 UTC 2026.
+Magic 8.3 revision 694 - Compiled on Fri Nov 20 13:12:43 UTC 2026.
 Starting magic under Tcl interpreter
 Using the terminal as the console.
 WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
@@ -22,5 +22,5 @@ Extracting top into ext/top.ext:
 Processing top
 extprobe: extract all 0 {}
 extprobe: feedback 0
-extprobe: wrote top.ext 272
+extprobe: wrote top.ext 333
 extprobe: done

@@ -1,4 +1,4 @@
-# LEFDEF-333: floating unlabeled metal1 net (not port/special). Captures: BLOCKAGES or crash.
+# LEFDEF-333: floating labeled metal1 net (special); obsm1, obsm2 and obsv1 obstruction paint. Captures: SPECIALNETS; BLOCKAGES per route and via bucket.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

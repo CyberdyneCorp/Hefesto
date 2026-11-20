@@ -32,8 +32,7 @@ inline constexpr std::string_view kOasisMagic = "%SEMI-OASIS\r\n";
 
 /// The format of the stream `source` (already gzip-inflated by
 /// gds::open_source), read from its current position; the position is
-/// left unspecified. SCAFFOLD: returns FileFormat::unknown until OASCMD
-/// lands it.
+/// left unspecified.
 [[nodiscard]] FileFormat sniff_format(gds::ByteSource& source);
 
 }  // namespace hefesto::oasis

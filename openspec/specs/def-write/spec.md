@@ -47,7 +47,7 @@ The command SHALL validate its arguments as follows:
 
 1. A non-option argument SHALL be accepted only in position 2 (the first argument after `write`). Any other position, or an unrecognized option beginning with `-`, SHALL print the `def` help and write nothing.
 2. Let `c` = (number of arguments, including `def` and `write`) − (number of options) − (number of option values consumed). If `c` is neither 2 nor 3, the help SHALL be printed and nothing written.
-3. `-units` SHALL consume the next argument. If that argument is not an integer, the message `The "-units" option requires an argument.` SHALL be printed and the units SHALL stay unchanged. The value SHALL NOT be range-checked. See Q-LEFDEF-104.
+3. `-units` SHALL consume the next argument. If that argument is not an integer (StrIsInt: an optional sign and digits only, in the `int` range), or there is no next argument, the message `The "-units" option requires an argument.` SHALL be printed and the units SHALL stay unchanged. A value of 0 or less SHALL fail the command with `The "-units" value must be a positive integer; got <n>.` and write nothing. Magic reads past the end of the argument list when `-units` is the last word and does not range-check the value (Q-LEFDEF-104, resolution: fix).
 4. The LEF-only write options `-tech`, `-hide`, `-pinonly`, `-toplayer` and `-nomaster` SHALL each print `The "<opt>" option is only for lef write` and SHALL otherwise be ignored. `-hide` and `-pinonly` SHALL NOT consume a numeric argument under `def`, so a number after one of them is a positional argument and triggers rule 1.
 5. The subcommand SHALL be matched against the shared list `read`, `write`, `writeall`, `nocheck`, `datestamp`, `help`, accepting unique prefixes. `def nocheck` SHALL print `The "nocheck" option is only for LEF writes.`. `def datestamp` SHALL print `The "datestamp" option is only for LEF reads.`. Neither SHALL do anything else.
 6. `def` with no subcommand, or with an unknown subcommand (which first reports `"<x>" isn't a valid def option.`), SHALL print one help line per entry of the DEF help table, each prefixed `    def `.
@@ -82,6 +82,9 @@ The output file name SHALL be derived from the name `N` given on the command lin
 1. Let `B` be the part of `N` after its last `/`. If `B` contains a `.` and the text from the last `.` is not `.def`, the system SHALL first try to open `N` exactly as given. If that succeeds, `N` SHALL be used unchanged. Otherwise, the extension SHALL be stripped and `.def` appended.
 2. If `B` ends in `.def`, `N` SHALL be used as given.
 3. If `B` has no `.`, `.def` SHALL be appended.
+4. With `magic-compat` ON (the default), when the name of rules 1-3 cannot be opened and `N` is not the cell's name, `<cellname>.def` SHALL be tried, as Magic's lefFileOpen does for a write with a cell (the rule `lef write` follows for `.lef`). With it OFF no other name is tried.
+
+If no name can be opened, `Generating DEF output <last name tried> for cell <c>:` and `Cannot open output file <name> (<reason>).` SHALL be the only messages, nothing SHALL be written and the session SHALL be unchanged: no generated via key and no non-default rule is added, as in Magic, which opens the file before anything else.
 
 Paths are resolved relative to the current working directory. On iPadOS they are resolved relative to the document container (see Q-LEFDEF-90).
 
@@ -356,7 +359,7 @@ Compatibility: exact
 
 ### Requirement: VIAS section content
 
-`VIAS <count> ;` SHALL be followed by one `via_def` for each layer-table record that meets all of these conditions, in table enumeration order:
+`VIAS <count> ;` SHALL be followed by one `via_def` for each layer-table record that meets all of these conditions, in table enumeration order. With `magic-compat` ON no record is written when the count is 0 (Magic calls defWriteVias only for a count above 0), so a read via with underscores is written only by a write that also creates a via:
 
 - the record is live;
 - its class is via;
@@ -489,7 +492,7 @@ The count SHALL be the number of labels in the target cell that are ports (label
 2. If the port class is not default: `     + DIRECTION ` followed by `INPUT` (input), `OUTPUT` (output), `INOUT` (tristate or bidirectional) or `FEEDTHRU` (feedthrough), then a newline. For the undefined class encodings 0x60 and 0x70, with `magic-compat` ON (the default) the keyword is empty, as in Magic; with it OFF no DIRECTION line is written.
 3. If the port use is not default: `     + USE ` followed by `SIGNAL`, `ANALOG`, `POWER`, `GROUND` or `CLOCK`, then a newline. For reset, scan and tieoff, with `magic-compat` ON the keyword is empty, as in Magic; with it OFF it is `RESET`, `SCAN` or `TIEOFF`, which are valid DEF 5.8 PINS uses and which `def read` accepts.
 4. `     + PORT` and a newline.
-5. If `L` has a LEF name: `        + LAYER <name> ( −w′ −h′ ) ( w′ h′ )`, with no newline when `magic-compat` is ON (so `+ PLACED` follows on the same line, as in Magic) and with a newline when it is OFF. Here `w′ = f32(s·f32(w))/2.0` and `h′` likewise, with `w = xh − xl` and `h = yh − yl`. The negative corner uses `f32(s·f32(−w))/2.0`. If `L` has no LEF name, an error is reported instead (informative) and nothing is written.
+5. If `L` has a LEF name: `        + LAYER <name> ( −w′ −h′ ) ( w′ h′ )`, with no newline when `magic-compat` is ON (so `+ PLACED` follows on the same line, as in Magic) and with a newline when it is OFF. Here `w′ = f32(s·f32(w))/2.0` and `h′` likewise, with `w = xh − xl` and `h = yh − yl`. The negative corner uses `f32(s·f32(−w))/2.0`. If `L` has no LEF name, an error is reported instead (see Q-LEFDEF-114 below) and nothing is written.
 6. `        + PLACED ( cx cy ) N ;` and a newline, where `cx = f32(s·f32(xl+xh))/2.0` and `cy` likewise.
 
 Rules 2, 3 and 5 follow the `magic-compat` setting (Q-LEFDEF-103, resolution: compat).
@@ -545,6 +548,8 @@ When the netlist is available, every flattened node SHALL be classified, skippin
    - It is **special** if the name is an entry of `globalNets`, or equals the `vdd` or `gnd` field, of the project setting "global nets and power names" (capability `hefesto-settings`).
    - It is **special** if it is neither special nor a port, and its name does not end in `#`.
 2. A node is a **port** node if any cell in the hierarchy declares it as a port (port flags are merged when nodes are flattened together).
+
+For the second bullet Magic prints `Node <n> is defined in the "globals" array`, `Node <n> matches VDD variable definition!` and `Node <n> matches GND variable definition!` (informative), once per matching rule.
 
 In Magic, the second bullet of rule 1 comes from the Tcl array `globals` and the variables `$VDD` and `$GND`, and the second and third bullets apply only in builds with Tcl. Hefesto SHALL apply all three bullets as in the Tcl build, taking the second from the project setting, which a startup script seeds from those variables. The first bullet, the trailing-`!` rule, is kept as an explicit additional rule because Magic applies it in every build (Q-LEFDEF-102, decided by D-14).
 
@@ -612,8 +617,8 @@ Compatibility: exact
 
 For each net, the routing geometry SHALL be found as follows:
 
-1. For each location seed of the node (one 1×1 rectangle and layer per node record of the top-level netlist, including duplicate-name records at other locations), in seed-list order, skipping seeds at the substrate sentinel coordinate (≤ −(2^31−1)+2): run a connectivity search in the target cell's own paint (not subcells). Start at the seed rectangle, accept as a start any type that connects to the seed layer, follow connectivity through all planes, and call the segment writer on every tile reached, in traversal order.
-2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
+1. For each location seed of the node (one 1×1 rectangle and layer per node record of the top-level netlist, including duplicate-name records at other locations), in seed-list order, skipping seeds at the substrate sentinel coordinate (x or y ≤ MINFINITY + 2, where MINFINITY = −(2^30 − 4)), and seeds whose layer is not a type of the technology (Magic indexes its connect table with −1 there; Hefesto skips the seed with a Hefesto-only warning): run a connectivity search in the target cell's own paint (not subcells). Start at the seed rectangle, accept as a start any type that connects to the seed layer, follow connectivity through all planes, and call the segment writer on every tile reached, in traversal order.
+2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). The search first reads every unread subcell its area reaches, as Magic's DBTreeSrUniqueTiles does through DBCellRead, printing `Cell <name> read from path <dir>` among the write's messages (after `(This can take a while!)`); a node found in the cell's own paint reads no subcell. If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
 3. After the last seed, if a segment is pending and it is not a via, write its end coordinate with the pending orientation. Then write ` ;` and a newline, and reset the column to 0.
 
 The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). With `magic-compat` ON (the default), as in Magic, every seed starts a fresh search, so seeds whose components are connected in the top cell produce repeated geometry. With it OFF, tiles already passed to the segment writer for this net SHALL NOT be passed again, so a seed whose region an earlier search covered adds nothing (Q-LEFDEF-112, resolution: compat).
@@ -627,6 +632,12 @@ Compatibility: exact
 - **GIVEN** a regular net with two node records whose seeds both lie on the same top-level metal1 tile
 - **THEN** with `magic-compat` ON the tile's segment SHALL be written twice, once per seed
 - **AND** with `magic-compat` OFF it SHALL be written once
+
+#### Scenario: Port label on an unread subcell's paint
+
+- **GIVEN** a top cell whose port label lies only on the metal1 of a subcell `pad` that is not read yet, and its `.ext` files
+- **WHEN** `def write` runs
+- **THEN** `pad` SHALL be read, with `Cell pad read from path <dir>` after `(This can take a while!)`, and no floating-label warning SHALL be reported (LEFDEF-328)
 
 #### Scenario: Net with no top-level paint
 
@@ -708,7 +719,7 @@ The segment writer SHALL keep state across the tiles of one net: the previous ti
    - b. **Otherwise, start a new record.**
      - If there is a previous tile: if it was not a via, write(px, py, previous orient). Then write `\n      NEW ` and set the column to 10.
      - If there is no previous tile: write `\n      + ROUTED ` and set the column to 15.
-     - If the current tile is a via: let `R` = the LEF name of `rtype` (or of `r2type` if `rtype` is none), looked up among route and masterslice layers and then via records. Apply the line-break rule with `len(R)+1` and write `R `. If a rule is selected, write `TAPERRULE <rule> `. In special mode, write the width (below). Then write(x1, y1, CENTER), apply the line-break rule with `len(vianame)+2`, and write ` <vianame> `.
+     - If the current tile is a via: let `R` = the LEF name of `rtype` (or of `r2type` if `rtype` is none), looked up among route and masterslice layers and then via records. Apply the line-break rule with `len(R)+1` and write `R `. When `R` has no LEF name Magic takes the length of a null string and crashes; Hefesto writes no layer name and reports a Hefesto-only warning. If a rule is selected, write `TAPERRULE <rule> `. In special mode, write the width (below). Then write(x1, y1, CENTER), apply the line-break rule with `len(vianame)+2`, and write ` <vianame> `.
      - If the current tile is a wire: apply the line-break rule with `len(lefname)+1` and write `<lefname> `. Write the optional `TAPERRULE <rule> ` and, in special mode, the width. Then write(x1, y1, CENTER).
 2. Else (`same` and same type):
    - If orient = previous orient and `px ≠ x1` and `py ≠ c` (dogleg): write(px, py, prev orient), then write(x1, y1, orient). With `magic-compat` ON (the default) `c = x2`, as in Magic (lef/defWrite.c:1534); with it OFF `c = y1`, the evident intent (Q-LEFDEF-96, resolution: compat).
@@ -772,6 +783,8 @@ With `-anal`, before the rule's own layers, write `\n     + LAYER <canon> WIDTH 
 
 Magic dereferences cleared table slots here (Q-LEFDEF-100). Hefesto SHALL skip cleared slots.
 
+A rule entry that names no LEF layer or via record (a LEF- or DEF-read rule whose layer was unknown) makes Magic dereference a null record, in the entry lines and under `-anal`. Hefesto SHALL write the entry's name as read, take it as matching no route layer under `-anal`, and report a Hefesto-only warning.
+
 Compatibility: exact
 
 (Magic ref: lef/defWrite.c:3063-3135)
@@ -808,7 +821,7 @@ Buckets are lists, so their output order is the reverse of the order in which re
 
 If at least one bucket is non-empty, write `BLOCKAGES <number of non-empty buckets> ;`. Then, for each non-empty bucket in bucket order, write `   - LAYER <name>` followed by `\n      RECT ( x1 y1 ) ( x2 y2 )` per rectangle, with each coordinate `f32(v)·s` (product rounded to binary32), and then ` ;\n`. Finally write `END BLOCKAGES\n\n`.
 
-In Magic, pass 1 passes its arguments to the per-tile collector in the wrong order (undefined behaviour, typically a crash, whenever such a node has geometry; Q-LEFDEF-101). Hefesto SHALL implement the behaviour described here.
+In Magic, pass 1 passes its arguments to the per-tile collector in the wrong order: DBSrConnect calls it with (tile, dinfo, plane, data) and it is declared (tile, plane, data), so it reads its data from the plane number and crashes (SIGSEGV) on the first tile of any node that is neither special nor a port, whenever the layer table has a route or via record (Q-LEFDEF-101). Hefesto SHALL implement the behaviour described here, in both `magic-compat` settings, and SHALL report a Hefesto-only warning naming the first such net, so that the console says the input crashes Magic.
 
 Compatibility: exact
 

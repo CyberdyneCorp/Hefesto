@@ -35,6 +35,7 @@
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/mask/input/warnings.hpp"
 #include "hefesto/oasis/codec/decoder.hpp"
+#include "hefesto/oasis/read/limits.hpp"
 #include "hefesto/oasis/read/read.hpp"
 
 namespace hefesto::gds {
@@ -47,18 +48,10 @@ class InputStyle;
 
 namespace hefesto::oasis::read_detail {
 
-/// Resource cap (design D21): the GDS-equivalent stream of one read. A file
-/// whose element instances need more is read up to the cap (OASIS-READ-007).
-/// Proposed, not decided (tasks.md 17.3): Magic reads no OASIS.
-inline constexpr std::uint64_t kMaxStreamBytes = std::uint64_t{1} << 31;
-/// Resource cap (design D21): element instances and uses of one read,
-/// including dropped ones, so a huge repetition of instances that are all
-/// dropped still ends. Proposed, not decided, as kMaxStreamBytes.
-inline constexpr std::uint64_t kMaxInstances = std::uint64_t{1} << 28;
-
-/// GDS record limits that bound a GDS-equivalent element.
+/// GDS record limits that bound a GDS-equivalent element (oasis-read
+/// "Input limits"). The stream and instance caps are oasis::ReadLimits.
 inline constexpr std::size_t kMaxRecordPayload = 0xffff - 4;            // 65531 bytes
-inline constexpr std::size_t kMaxPoints = kMaxRecordPayload / 8;        // 8191 XY points
+inline constexpr std::size_t kMaxPoints = kMaxRecordPayload / 8;        // 8191 XY points, the closing one included
 inline constexpr std::size_t kMaxString = kMaxRecordPayload & ~std::size_t{1};  // 65530, padded even
 inline constexpr std::int64_t kMaxGdsInt2 = 32767;
 
@@ -171,6 +164,7 @@ struct TranscodeOptions {
   /// part in pin-shape association ("RECTANGLE elements").
   const mask::InputStyle* style = nullptr;
   std::string top_cell;  // the LIBNAME, so gds-read's library cell rule loads it
+  ReadLimits limits;     // the stream and instance caps (OASIS-READ-007)
 };
 
 /// Writes the GDS-equivalent stream of the cells of `index`, decoding

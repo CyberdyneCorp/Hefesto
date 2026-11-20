@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
@@ -209,7 +210,10 @@ CommandResult warning_option(const cu::Session& s, const cmd::Invocation& invoca
   if (const auto index = lookup_index(invocation.args[1], kWarnOptions)) {
     option = *index;
   } else {
-    cu::warn(s, "\"" + invocation.args[1] + "\" isn't a valid gds warning option.");
+    // Magic's text names gds for `gds` and `calma`; `oasis` shares the
+    // option (Q-OASIS-90) and names itself.
+    const std::string_view command = invocation.name == "oasis" ? "oasis" : "gds";
+    cu::warn(s, "\"" + invocation.args[1] + "\" isn't a valid " + std::string{command} + " warning option.");
   }
   if (option == kWarnHelp) {
     cu::warn(s, "Valid options are: default, align, limit, redirect, and none.");

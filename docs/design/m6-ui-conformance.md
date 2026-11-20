@@ -15,33 +15,34 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 ## How this was checked
 
-Not checked yet: the scaffold seeded the rows (round 1). The core functions are `CORE-NOTIMPL-006` stubs (`oasis::read`, `oasis::write`, `lef::read`, `lef::write`, `def::read`, `def::write`), so every row is **todo** or, for the rows that need a stub, **blocked**.
+Round 4 (SHELL, tasks 14.1-14.3) built the open path and the host wiring and tested them below the toolkit: `tests/unit/shell/m6_open_test.cpp` (desktop builds) and `tests/unit/oasis/command/open_test.cpp` (every build). No capture of the product app was taken in round 4 (no desktop build on that host), so no row is **done** yet; each row says what its capture must show.
 
-Missing from every board: nothing expected. The open paths are the M4 picker and drag and drop, and the progress of a read or write reuses the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
+Missing from every board: nothing. The open paths are the M1 Open button and the window itself as a drop target (no new control), and the progress of a read or write reuses the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
 
 ## Menu bar (M4-Menu-Bar)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged | todo: task 14.3 verifies that the bar gains no item and that no board is added |
+| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged; no board added | partial: test "the desktop adds no LEF, DEF or OASIS menu item" checks the bar's menus and that no item runs `lef`, `def` or `oasis`; the capture is pending |
 
 ## Format recognition on open (`oasis-command` "Format recognition on open", D15)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| File ▸ Open (the native picker) of an OASIS file runs `oasis read` with the current settings, whatever the extension | the generic open path in `app/` sniffs the first 13 bytes, after gzip, for `%SEMI-OASIS\r\n` (`oasis::sniff_format`, OASCMD) | todo: tasks 13.x (OASCMD) and 14.1 (SHELL) |
-| Drag and drop of an OASIS file onto the window | the same open path | todo: task 14.1 |
-| A file that is not OASIS opens as before (`.mag`, GDS) | the same open path | todo: task 14.1 |
+| File ▸ Open (the native picker, the top bar's Open button) of an OASIS file runs `oasis read` with the current settings, whatever the extension | the picker offers every file (`kOpenFilterPatterns` `*`); `shell::plan_open` asks `app::open_command`, which sniffs the first 13 bytes after gzip (`oasis::sniff_format`), and the main window runs the line as a typed command (echoed, logged, through the read host) | partial: test "the desktop opens an OASIS file named .gds as OASIS"; capture pending. The Open button's tooltip now says "Open a layout file: a Magic cell, GDS or OASIS (by content)" |
+| Drag and drop of an OASIS file onto the window | `ui::Window::on_files_dropped` (Raven's window drop callback, where no widget takes the drop), then the same open path for each file | partial: built against Raven's `Rwindow_set_drop_callback`; the drop is not injected in a test (`Rwindow_inject_drop` needs a window); capture pending |
+| A file that is not OASIS opens as before (`.mag` with `load`, GDS with `gds read`) | the same open path | partial: tests in `open_test.cpp` ("GDS and Magic cells keep their commands"); a file of no known format is reported (OASIS-CMD-005) in the Diagnostics panel and the other dropped files still open |
 
 ## Progress and cancel (M5 hosts: `MaskSession::read_host`, `write_host`, `emit_host`)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| A long `oasis read` shows the console's running header and, after 2 s, the canvas Interrupt card | `MaskSession::read_host` with `oasis::read`'s `mask::Progress` reports | blocked: `oasis::read` is a stub (OASR); task 14.2 |
-| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | `write_host` and `emit_host`, as `gds write` (D4: the M5 three-phase write) | blocked: `oasis::write` and `oasis::emit` are stubs (OASW); task 14.2 |
-| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | blocked: task 14.2 |
-| `lef read` and `def read` report LefEstimate progress (Q-LEFDEF-88) and can be interrupted | `read_host` with the LEF/DEF readers' reports | blocked: LEFR and DEFR stubs; task 14.2 |
-| `lef write` and `def write` run under the write host | `write_host` (single-phase, exclusive lock) | blocked: LEFW and DEFW stubs; task 14.2 |
+| A long `oasis read` shows the console's running header and, after 2 s, the canvas Interrupt card | the `oasis read` command runs `oasis::read` through `MaskSession::read_host`, with its `mask::Progress` reports (as `gds read`) | partial: test "oasis read runs through the desktop's read host"; capture pending |
+| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | blocked: `oasis::write` is still the scaffold stub until OASW (task 12.1) lands |
+| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | blocked: test "a cancelled OASIS write leaves no output file" passes against the stub; its end-to-end check needs OASW |
+| `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: capture pending |
+| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | todo: LEFR adds `LefReadOptions::progress` (LefEstimate and the interrupt check) |
+| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | done; a `DefWriteOptions::progress` is a later improvement |
 
 ## Performance (PERF)
 

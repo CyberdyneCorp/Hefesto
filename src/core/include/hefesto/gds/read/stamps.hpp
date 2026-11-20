@@ -47,6 +47,28 @@ using StampTable = std::vector<StructureStamp>;
 /// ends the table as the end of the stream does.
 [[nodiscard]] StampTable content_stamps(ByteSource& source);
 
+/// The FNV-1a 64 offset basis that a structure's content hash starts from,
+/// and one step of the hash over `bytes` (calmaFNVHash).
+inline constexpr std::uint64_t kStampHashOffset = 14695981039346656037ULL;
+[[nodiscard]] std::uint64_t stamp_hash(std::uint64_t hash, std::span<const std::byte> bytes) noexcept;
+
+/// One structure before stamping: the hash of its content bytes and the
+/// names of the structures it references, in reference order (shared with
+/// oasis-read's content-hash stamps, design D17).
+struct StampEntry {
+  std::string name;
+  std::uint64_t start = 0;
+  std::uint64_t end = 0;
+  std::uint64_t hash = kStampHashOffset;
+  std::vector<std::string> children;
+};
+
+/// calmaStructStamp over `entries` (file order; the first definition of a
+/// name wins): each entry's stamp folds its hash with its children's
+/// stamps (4 big-endian bytes each, memoized, a reference loop cut), in
+/// file order.
+[[nodiscard]] StampTable stamp_entries(std::vector<StampEntry> entries);
+
 /// calmaStampLookup: the stamp of the structure whose GDS_START is
 /// `start`, or 0 when none starts there.
 [[nodiscard]] std::uint32_t lookup_stamp(const StampTable& table, std::uint64_t start);

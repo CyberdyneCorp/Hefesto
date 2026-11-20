@@ -530,7 +530,7 @@ Bits:
 
 Transform: a point `p` of the placed cell maps to `translate(x, y) ∘ magnify(mag) ∘ rotate(angle) ∘ flip(p)`, where `flip(px, py) = (px, −py)`. Flipping happens first and translation last. Rotation is counterclockwise. This is the same convention as GDS STRANS reflection followed by ANGLE.
 
-A magnification of 0 or less, or a non-finite value, SHALL be reported ("invalid magnification"), and the element is dropped. Angles may be any finite real; a non-finite angle drops the element in the same way. `oasis-read` specifies how non-quarter-turn angles and magnifications are mapped.
+A magnification of 0 or less, or a non-finite value, SHALL be reported ("invalid magnification"), and the element is dropped (a magnification of 0 or less is a warning, OASIS-CODEC-029; Q-OASIS-13, resolution: fix). Angles may be any finite real; a non-finite angle drops the element in the same way. `oasis-read` specifies how non-quarter-turn angles and magnifications are mapped.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 

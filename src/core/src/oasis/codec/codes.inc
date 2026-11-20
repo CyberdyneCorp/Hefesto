@@ -30,7 +30,7 @@ HEFESTO_OASIS_CODE("OASIS-CODEC-017", warning, "Duplicate cell name in CELLNAME 
 HEFESTO_OASIS_CODE("OASIS-CODEC-018", error, "Undefined reference number once the whole file has been read.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-019", error, "A cell is defined twice (two CELL records for one name).")
 HEFESTO_OASIS_CODE("OASIS-CODEC-020", error, "A record relies on an undefined modal variable; decoding stops.")
-HEFESTO_OASIS_CODE("OASIS-CODEC-021", error, "Invalid element (magnification or angle, polygon or path vertex count, CTRAPEZOID type); the element is dropped.")
+HEFESTO_OASIS_CODE("OASIS-CODEC-021", error, "Invalid element (non-finite magnification or angle, polygon or path vertex count, CTRAPEZOID type); the element is dropped.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-022", warning, "Irregular record: TEXT info bit 7, RECTANGLE with S and H, odd type 0/1 polygon count, or a degenerate trapezoid (dropped).")
 HEFESTO_OASIS_CODE("OASIS-CODEC-023", error, "CBLOCK error: unsupported compression type, size mismatch, damaged data, inflate cap, or a START, END or CBLOCK record inside; decoding stops.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-024", warning, "Strict mode violation; the decoded content is unchanged.")
@@ -38,3 +38,4 @@ HEFESTO_OASIS_CODE("OASIS-CODEC-025", warning, "Unknown standard property; it is
 HEFESTO_OASIS_CODE("OASIS-CODEC-026", error, "The encoder cannot write a value: out of range, not representable in the requested form, unresolved, or a call out of order.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-027", error, "CBLOCK compression failed (zlib) or the compression level is not 1 to 9.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-028", error, "Invalid PROPERTY value type (above 15); decoding stops.")
+HEFESTO_OASIS_CODE("OASIS-CODEC-029", warning, "PLACEMENT with a magnification of 0 or less; the placement is dropped.")

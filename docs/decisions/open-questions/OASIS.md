@@ -125,6 +125,15 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Recommendation: replicate, in both modes, the gds-read angle handling for record 18 placements: truncate, normalise, round to a quarter turn and report the error. Magic's database has only Manhattan transforms, so Magic defines no corrected output and the change is never silent. The GDS-equivalence rule then gives identical results for the same placement in GDS and in OASIS. Representing arbitrary angles as a flattened rotated copy would be a new feature, not a fix. Record it as a possible later extension, to be considered if real mask data needs it.
 - Resolution: replicate gds-read's angle handling in both modes — a record 18 angle is truncated, normalised and rounded to a quarter turn, with the 'Non-Manhattan angle' error. Arbitrary angles (flattened rotated copies) are a possible later extension. Approved 2026-11-13.
 
+### Q-OASIS-13: PLACEMENT with a magnification of 0 or less
+- Kind: ambiguity
+- Status: approved (user decision D3(b), approved 2026-11-19)
+- Magic behavior: n/a. GDS has no placement record with a non-positive MAG that gds-read accepts as a use; a record 18 PLACEMENT may carry any real. KLayout rejects a magnification of 0 or less; the round-3 golden decoder (`tools/golden/goldenlib/oasis.py`) kept the placement.
+- Evidence: oasis-format "Records and modal variables" (PLACEMENT), oasis-read "Placement transforms"; golden cases OASIS-001, OASIS-009
+- Options: drop with a warning | keep (as the round-3 golden decoder did) | fail the read
+- Recommendation: drop with a warning in both modes; change the golden decoder to match the codec.
+- Resolution: fix — in both modes a PLACEMENT whose magnification is 0 or less is dropped with the warning "invalid magnification" (OASIS-CODEC-029); `goldenlib/oasis.py` drops it too, and OASIS-001 and OASIS-009 were regenerated. Approved 2026-11-19 (D3(b)).
+
 ### Q-OASIS-30: Cell timestamps without dates in OASIS
 - Kind: platform
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
@@ -217,6 +226,72 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Options: keep | copy XNAME tables too (refnum collisions between sources must then be handled)
 - Recommendation: fix (no Magic output). In both modes, keep the spec: XELEMENT and XGEOMETRY are ignored on read and copied unchanged when read-only cells are re-encoded, and XNAME records are not copied. Copying XNAME tables would need renumbering refnums inside opaque payloads when several sources are combined, which cannot be done safely. Add a warning when a copied cell carries XELEMENT or XGEOMETRY records and its source file had XNAME records, because the payload may then refer to names that are not written.
 - Resolution: fix in both modes — XELEMENT and XGEOMETRY are ignored on read and copied unchanged when read-only cells are re-encoded, XNAME records are not copied, and the write warns when a copied cell carries XELEMENT or XGEOMETRY records and its source file had XNAME records. Approved 2026-11-13.
+
+### Q-OASIS-41: Stream size and instance count of one read
+- Kind: ambiguity
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: n/a. gds-read reads a GDS file of any size through its record reader; the OASIS reader first builds a GDS-equivalent stream in memory (design D12, confirmed by D3(a)), and an OASIS repetition can expand to any number of element instances, so a small hostile file can make the stream any size.
+- Evidence: oasis-read "Input limits" rule 1; docs/contributing/security.md M6-S3
+- Options: cap (2 GiB stream, 2^28 instances) | no cap
+- Recommendation: cap in both modes.
+- Resolution: fix — in both modes one read builds at most 2 GiB of GDS-equivalent stream and at most 2^28 element instances and uses; past either the rest of the file is not read (OASIS-READ-007). Approved 2026-11-19 (D1).
+
+### Q-OASIS-42: Names and strings longer than a GDS string record
+- Kind: ambiguity
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: n/a. A GDS string record holds at most 65530 bytes; OASIS names and strings are unbounded.
+- Evidence: oasis-read "Input limits" rule 2; security.md M6-S3
+- Options: cut to 65530 bytes | drop the element | fail the read
+- Recommendation: cut, with a message.
+- Resolution: fix — in both modes a cell name, placed cell name, TEXT string or `S_GDS_PROPERTY` value over 65530 bytes is cut to its first 65530 bytes, with a message (OASIS-READ-006); the top cell is found under its cut name. Approved 2026-11-19 (D1).
+
+### Q-OASIS-43: Layer, datatype and attribute numbers outside the GDS range
+- Kind: ambiguity
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: n/a. GDS layer, datatype and attribute numbers are 16-bit; OASIS numbers are unbounded.
+- Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
+- Options: read as 32767 | drop the element | wrap
+- Recommendation: read as 32767, with a message once per element.
+- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (proposed).
+
+### Q-OASIS-44: Polygons with more than 8191 points
+- Kind: ambiguity
+- Status: approved (user decision D1, approved 2026-11-19)
+- Magic behavior: n/a. A GDS BOUNDARY holds at most 8191 points (the gds-read limit); an OASIS POLYGON is unbounded.
+- Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
+- Options: fracture | drop | fail the read
+- Recommendation: fracture into polygons of at most 8191 points.
+- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46 (proposed), and a path over 8191 points is Q-OASIS-47 (proposed).
+
+### Q-OASIS-45: An attribute number below -32768
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a. A GDS PROPATTR is 16-bit; an OASIS `S_GDS_PROPERTY` attribute is a signed integer of any size. D1 approved reading a number above 32767 as 32767 (Q-OASIS-43) and says nothing about a negative one.
+- Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
+- As implemented (round 4, OASCMD): an attribute below -32768 is read as 32767, with the once-per-element message of OASIS-READ-009. That flips the sign.
+- Options: read as -32768 (clamp to the nearest GDS value) | drop the property | keep reading it as 32767
+- Recommendation: read as -32768, with the OASIS-READ-009 message (the nearest representable value, the same rule as above 32767).
+- Resolution: open — needs a user decision.
+
+### Q-OASIS-46: An outline the fracture cuts cannot shrink, or wider or taller than 2^32
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a (Magic has no OASIS reader).
+- Evidence: oasis-read "Input limits" rule 4; security.md M6-S3; `oasis/read/fracture.cpp`
+- As implemented (round 4, OASCMD): a polygon over 8191 points whose vertices lie on two lines in each axis (the median cuts do not shrink it), or whose width or height is above 2^32, is reported and dropped (OASIS-READ-006). D1 approved fracturing polygons over 8191 points (Q-OASIS-44), not dropping any.
+- Options: drop with a message | fail the read
+- Recommendation: drop with a message (the GDS reader cannot hold the outline, and failing the whole read for one element is harsher than gds-read's own handling of a bad element).
+- Resolution: open — needs a user decision.
+
+### Q-OASIS-47: A PATH with more than 8191 points
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a. A GDS PATH holds at most 8191 points; an OASIS PATH is unbounded.
+- Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
+- As implemented (round 4, OASCMD): the path is reported and dropped. D1 approved fracturing polygons only (Q-OASIS-44).
+- Options: drop with a message | split into paths of at most 8191 points that share their end points | fail the read
+- Recommendation: drop with a message (splitting changes the path ends' extensions at the joints).
+- Resolution: open — needs a user decision.
 
 ### Q-OASIS-60: Character mapping applied to OASIS strings
 - Kind: ambiguity

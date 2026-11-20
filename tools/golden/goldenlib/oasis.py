@@ -868,8 +868,10 @@ class _Builder:
         angle = f.get("angle", float(f.get("rotation", 0)))
         pattern = m.pattern(f)
         if not (math.isfinite(mag) and mag > 0):
-            # oasis-read "Placement transforms": reported and treated as 1 (the raw value is kept).
-            self.lib.warnings.append("invalid magnification")
+            # oasis-format/oasis-read "Placement transforms" (D3(b) of the user decisions of 2026-11-19):
+            # reported and dropped, as Hefesto's codec does (OASIS-CODEC-029); the modal variables stay set.
+            self._drop(rec, "invalid magnification")
+            return
         reps = ((0, 0),) if pattern is None else pattern.displacements
         element = Placement(ref, (x, y), mag, angle, bool(f["flip"]), reps, pattern=pattern)
         cell.placements.append(element)

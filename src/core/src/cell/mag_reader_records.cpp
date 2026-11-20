@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <optional>
+#include <utility>
 
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/labels.hpp"
@@ -456,7 +457,11 @@ void store_bbox(ReadState& st, const std::string& key, const std::string& value)
   Scan s{value};
   std::int32_t v[4] = {};
   if (!(s.integer(v[0]) && s.integer(v[1]) && s.integer(v[2]) && s.integer(v[3]))) {
-    st.emit(codes::kRecordValue, "Cannot read bounding box values in " + key + " property");
+    // Magic's TxError has no line end here (database/DBio.c:3345), so two
+    // malformed values print on one line (Q-LEFDEF-134, compat).
+    diag::Diagnostic d = diag::make(codes::kRecordValue, "Cannot read bounding box values in " + key + " property");
+    d.no_newline = st.ctx.magic_compat;
+    st.ctx.sink.emit(std::move(d));
     put(st, key, value);
     return;
   }

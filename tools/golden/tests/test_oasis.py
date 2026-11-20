@@ -286,18 +286,18 @@ class ElementsTest(unittest.TestCase):
         placement = self.cell_of("12c40100 02".replace(" ", "")).placements[0]
         self.assertEqual((placement.cell, placement.mag), ("B", 2.0))
 
-    def test_non_positive_magnification_is_kept_and_reported(self):
-        """Regression: a placement with magnification -1 was dropped; oasis-read treats it as 1, so the
-        decoder keeps it (with a warning) and stream-geometry places it unmagnified."""
-        lib = oasis.decode(framed("0e0141", "12c401" + oasgen.real_form(1, 1).hex(), "030141", "030142",
-                                  "0501" + b"x".hex()))
-        self.assertEqual(only_cell(lib).placements[0].mag, -1.0)
-        self.assertIn("invalid magnification", lib.warnings)
-        child = oasgen.cell("c") + oasgen.rectangle(49, 0, 10, 10, 0, 0)
-        negative = oasgen.oasis_file([child, oasgen.cell("t") + oasgen.uint(18) + bytes([0xB4]) + oasgen.nstring("c")
-                                      + oasgen.real_form(1, 1) + oasgen.sint(100) + oasgen.sint(0)])
-        plain = oasgen.oasis_file([child, oasgen.cell("t") + oasgen.placement("c", 100, 0)])
-        self.assertEqual(stream_geometry.geometry_text(negative), stream_geometry.geometry_text(plain))
+    def test_non_positive_magnification_is_dropped_and_reported(self):
+        """Regression (D3(b) of the user decisions of 2026-11-19): a placement with magnification -1 or 0 is
+        dropped with a warning, as Hefesto's codec does, so stream-geometry places nothing."""
+        for real in (oasgen.real_form(1, 1), oasgen.real_form(0, 0)):
+            lib = oasis.decode(framed("0e0141", "12c401" + real.hex(), "030141", "030142", "0501" + b"x".hex()))
+            self.assertEqual(only_cell(lib).placements, [])
+            self.assertIn("invalid magnification", lib.warnings)
+            child = oasgen.cell("c") + oasgen.rectangle(49, 0, 10, 10, 0, 0)
+            dropped = oasgen.oasis_file([child, oasgen.cell("t") + oasgen.uint(18) + bytes([0xB4])
+                                         + oasgen.nstring("c") + real + oasgen.sint(100) + oasgen.sint(0)])
+            empty = oasgen.oasis_file([child, oasgen.cell("t")])
+            self.assertEqual(stream_geometry.geometry_text(dropped), stream_geometry.geometry_text(empty))
 
     def test_text_by_refnum(self):
         text = self.cell_of("137b003100e807d00f").texts[0]

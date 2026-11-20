@@ -25,6 +25,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extract/tech/style_view.hpp"
+#include "hefesto/gds/write/subtree.hpp"
 #include "hefesto/lef/write/macro.hpp"
 #include "lef/write/library.hpp"
 
@@ -264,6 +265,12 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& cell, const p
                          const LefWriteOptions& options) {
   if (editor.technology == nullptr) {
     return no_technology();
+  }
+  // DBCellCopyAllPaint(CU_DESCEND_ALL) over the cell's bounding box reads
+  // the subcells it reaches that are not read yet (DBTreeSrTiles); a cell
+  // that cannot be read contributes nothing, as in Magic.
+  if (options.loader.read) {
+    (void)gds::load_area(cell, cell.bbox(), options.loader, false, editor.drc.compat_settings());
   }
   WriteRun run(editor, options);
   const bool is_root = &cell == edit_root(editor);

@@ -55,8 +55,14 @@ struct Xy {
 
 /// A layer, datatype or attribute number as a GDS INT2: numbers above
 /// 32767 become 32767, which matches only a `*` wildcard, as any number
-/// above 255 does (Q-OASIS-39).
+/// above 255 does (Q-OASIS-39; reported as OASIS-READ-009).
 [[nodiscard]] std::int16_t int2_number(std::uint64_t value) noexcept;
+
+/// The pieces of the closed outline `ring` (no closing vertex), each of at
+/// most `max_vertices` vertices, whose union is the polygon (fracture.cpp);
+/// nullopt when it cannot be cut.
+[[nodiscard]] std::optional<std::vector<std::vector<Point64>>> fracture(std::span<const Point64> ring,
+                                                                       std::size_t max_vertices);
 
 class Transcoder {
  public:
@@ -83,12 +89,17 @@ class Transcoder {
   void unsupported(std::string_view kind);
   void property(const Record& r);
   void error(std::string_view code, std::string text);
-  /// Whether another instance fits under kMaxStreamBytes (reported once).
+  /// Whether another instance fits under the ReadLimits caps (reported once).
   bool room();
 
   // --- geometry and TEXT (transcode_shapes.cpp) ---
   void shape(const Element& e);
   void boundary(const Element& e, std::span<const Point64> outline, Point64 base);
+  /// The outlines of the BOUNDARYs of `e`: `rel`, or its pieces when it has
+  /// more vertices than a BOUNDARY holds (empty: reported and dropped).
+  [[nodiscard]] std::vector<std::vector<Point64>> boundaries(std::vector<Point64> rel);
+  /// "number above 32767" once per element (OASIS-READ-009).
+  void check_numbers(std::string_view what, std::uint64_t layer, std::uint64_t datatype);
   void path(const Element& e, Point64 base);
   void text(const Element& e, Point64 base);
   /// The position of instance `i` of `e`; nullopt (reported) past 64 bits.
