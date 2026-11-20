@@ -38,7 +38,7 @@ Every implementation session, human or agent, follows these rules. Agent session
 
 1. **Work in a worktree of this repository.** Its only xschem material is the specs. Do not clone, download, unpack or open xschem's repository or an archive of it, and do not browse its code online.
 2. **Stay out of the capture image's source tree.** The golden capture image builds xschem from source in `/opt/src/xschem`. Never open that directory, and never run the image interactively to look inside it. Its outputs come back through CI (`golden-capture.yml`) as `expected/` files, which you may read.
-3. **Do not follow source references.** `Evidence:` lines in `SCHEM.md` and `(xschem ref: ...)` traces in the specs exist for traceability. Do not open the files they name, and do not search for them. Do not copy a trace into code or tests (`scripts/check_cleanroom.py` rejects one under `src/`).
+3. **Do not follow source references.** `Evidence:` lines in `SCHEM.md` and `(xschem ref: ...)` traces in the specs exist for traceability. Do not open the files they name, and do not search for them. Do not copy a trace into code or tests (`scripts/check_cleanroom.py` rejects one under `src/` or `tests/`).
 4. **The public manual is allowed.** xschem's manual pages (`xschem_man/*.html`, published on the xschem web site) are public documentation. You may read them, as you may run the xschem binary as a black box in the capture runner (through CI).
 5. **When the spec does not say, ask.** Raise a spec issue (below). Do not fill a gap by guessing at xschem's code, by asking someone what the code does, or by reading code that quotes it.
 6. **Golden inputs are yours or the PDK's.** Inputs under `tests/golden/SCHEM/` are written from the specs, or taken from the Apache-2.0 PDK data sets of `scripts/fetch_pdk.py`. Each `case.toml` names its `provenance` (`"hefesto"`, or `"pdk:<set>:<path>"`). Never commit a file from xschem's distribution (`xschem_library`, its `tests` or `examples`). Three IHP PDK files carry xschem's GPL header and must not be committed either: `sg13g2_pr/inductor.sym`, `sg13g2_pr/inductor3.sym` and `sg13g2_tests_xyce/portsource.sym` (found 2026-11-17).
@@ -75,7 +75,7 @@ The spec team answers within one working day (design R1) by changing the spec in
 
 | Check | Where |
 |---|---|
-| No committed file carries xschem's GPL header; every `tests/golden/SCHEM/` case declares a `provenance` that is Hefesto or a PDK data set; no `xschem ref:` trace under `src/` | `scripts/check_cleanroom.py`, run by `.github/workflows/openspec-validate.yml` |
+| No committed file carries xschem's GPL header; every `tests/golden/SCHEM/` case declares a `provenance` that is Hefesto or a PDK data set; no `xschem ref:` trace under `src/` or `tests/` (captured `expected/` output and Markdown documents excepted) | `scripts/check_cleanroom.py`, run by `.github/workflows/openspec-validate.yml` |
 | The author of schematic code confirms they have not read xschem's source | checkbox in [the pull-request template](../../.github/pull_request_template.md) |
 | The reviewer confirms the author is not on the spec team, and that golden inputs are Hefesto-authored or PDK data | reviewer items in the same template |
 | Spec text describes behaviour | the paraphrase review, before G1 and for every later spec change |

@@ -88,6 +88,21 @@ class Fixtures(unittest.TestCase):
                          ["src/core/src/schem/net/post.cpp:2: source trace in implementation code; "
                           "work from the spec text only"])
 
+    def test_trace_under_tests_fails(self):
+        write(self.root, "tests/core/schem/test_post.cpp", "int h();\n" + TRACE)
+        self.assertEqual(cc.check(self.root),
+                         ["tests/core/schem/test_post.cpp:2: source trace in implementation code; "
+                          "work from the spec text only"])
+
+    def test_trace_in_golden_case_input_fails(self):
+        write(self.root, "tests/golden/SCHEM/cases/SCHEM-RT-03/input/a.sch", "v {}\n" + TRACE)
+        self.assertEqual(len(cc.check(self.root)), 1)
+
+    def test_trace_in_captured_output_or_test_doc_is_allowed(self):
+        write(self.root, "tests/golden/SCHEM/cases/SCHEM-RT-03/expected/stdout.txt", TRACE)
+        write(self.root, "tests/golden/SCHEM/CASES.md", TRACE)
+        self.assertEqual(cc.check(self.root), [])
+
     def test_binary_and_large_files_are_skipped(self):
         write(self.root, "tests/data/big.bin", "x")
         (self.root / "tests/data/big.bin").write_bytes(b"\0" + PART_OF.encode())
