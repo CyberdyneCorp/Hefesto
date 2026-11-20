@@ -14,6 +14,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -133,6 +134,9 @@ struct Context {
   const extract::StyleView& extract_style;
   const LayerMap& map;
   std::vector<diag::Diagnostic>& messages;
+  /// Reads the unread subcells `area` reaches (DefWriteOptions::read_area
+  /// bound to the cell and the write's messages); empty: none is read.
+  std::function<void(const db::Rect& area)> read_area;
 
   void say(std::string_view code, std::string text) const;
   void say_native(std::string_view code, std::string text) const;

@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 
@@ -24,6 +25,11 @@
 
 namespace hefesto::db {
 class CellDef;
+struct Rect;
+}
+
+namespace hefesto::diag {
+class DiagnosticSink;
 }
 
 namespace hefesto::editor {
@@ -40,6 +46,14 @@ struct DefWriteOptions {
   std::string typed_name;             // the name the user typed
   /// The file system the output is written on; null means the local one.
   platform::FileSystem* files = nullptr;
+  /// Reads the unread cells of `cell`'s subtree that `area` (in `cell`'s
+  /// coordinates) reaches: the hierarchy search for a node with nothing at
+  /// its location (DBTreeSrUniqueTiles) reads the subcells it descends
+  /// into, as Magic does (DBCellRead; LEFDEF-328). Its messages go to
+  /// `sink`, so they print in the write's order. The command sets it from
+  /// gds::command_subtree_loader. Empty: nothing is read, and an unread
+  /// subcell's paint is not found.
+  std::function<void(db::CellDef& cell, const db::Rect& area, diag::DiagnosticSink& sink)> read_area;
 };
 
 /// DefWriteCell: writes `cell` as a DEF file named after `path` (the typed

@@ -618,7 +618,7 @@ Compatibility: exact
 For each net, the routing geometry SHALL be found as follows:
 
 1. For each location seed of the node (one 1×1 rectangle and layer per node record of the top-level netlist, including duplicate-name records at other locations), in seed-list order, skipping seeds at the substrate sentinel coordinate (x or y ≤ MINFINITY + 2, where MINFINITY = −(2^30 − 4)), and seeds whose layer is not a type of the technology (Magic indexes its connect table with −1 there; Hefesto skips the seed with a Hefesto-only warning): run a connectivity search in the target cell's own paint (not subcells). Start at the seed rectangle, accept as a start any type that connects to the seed layer, follow connectivity through all planes, and call the segment writer on every tile reached, in traversal order.
-2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
+2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). The search first reads every unread subcell its area reaches, as Magic's DBTreeSrUniqueTiles does through DBCellRead, printing `Cell <name> read from path <dir>` among the write's messages (after `(This can take a while!)`); a node found in the cell's own paint reads no subcell. If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
 3. After the last seed, if a segment is pending and it is not a via, write its end coordinate with the pending orientation. Then write ` ;` and a newline, and reset the column to 0.
 
 The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). With `magic-compat` ON (the default), as in Magic, every seed starts a fresh search, so seeds whose components are connected in the top cell produce repeated geometry. With it OFF, tiles already passed to the segment writer for this net SHALL NOT be passed again, so a seed whose region an earlier search covered adds nothing (Q-LEFDEF-112, resolution: compat).
@@ -632,6 +632,12 @@ Compatibility: exact
 - **GIVEN** a regular net with two node records whose seeds both lie on the same top-level metal1 tile
 - **THEN** with `magic-compat` ON the tile's segment SHALL be written twice, once per seed
 - **AND** with `magic-compat` OFF it SHALL be written once
+
+#### Scenario: Port label on an unread subcell's paint
+
+- **GIVEN** a top cell whose port label lies only on the metal1 of a subcell `pad` that is not read yet, and its `.ext` files
+- **WHEN** `def write` runs
+- **THEN** `pad` SHALL be read, with `Cell pad read from path <dir>` after `(This can take a while!)`, and no floating-label warning SHALL be reported (LEFDEF-328)
 
 #### Scenario: Net with no top-level paint
 

@@ -11,7 +11,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
+#include <vector>
 
 #include "hefesto/app/settings_layers.hpp"
 #include "write_fixture.hpp"
@@ -64,7 +66,9 @@ TEST_CASE("net classification: global, port and labeled nets", "[cap:def-write][
   CHECK(section(text, "BLOCKAGES")
             .starts_with("BLOCKAGES 1 ;\n   - LAYER metal1\n      RECT ( 0 500 ) ( 600 600 ) ;\n"));
 
-  const std::string all = write_with(s, top, ext, def::DefWriteOptions{std::nullopt, false, true, {}, nullptr});
+  def::DefWriteOptions all_special;
+  all_special.all_special = true;
+  const std::string all = write_with(s, top, ext, all_special);
   CHECK(section(all, "SPECIALNETS").starts_with("SPECIALNETS 3 ;\n"));
   CHECK(all.find("\nNETS ") == std::string::npos);
 }
@@ -204,6 +208,75 @@ TEST_CASE("a net with no paint at its location", "[cap:def-write][req:Net geomet
   s.paint(top, "metal1", db::Rect{100, 100, 110, 110});
   const std::string text = write_with(s, top, port("A", 1, db::Rect{0, 0, 1, 1}) + node("A", 0, 0));
   CHECK(section(text, "NETS") == "NETS 1 ;\n   - A ( PIN A ) ;\nEND NETS\n\n");
+}
+
+// Regression (LEFDEF-328): when nothing is at a node's location in the
+// cell, Magic's hierarchy search (DBTreeSrUniqueTiles) reads the unread
+// subcell it reaches ("Cell pad read from path input" after "Finding all
+// nets"), so the label on the subcell's paint is not floating. `def write`
+// read no subcell and warned that the label was floating.
+TEST_CASE("def write's hierarchy search reads the unread subcells it reaches",
+          "[cap:def-write][req:Net geometry discovery]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    s.file("/t/pad.mag", "magic\ntech lefdef\ntimestamp 100\n<< metal1 >>\nrect 0 0 20 20\n<< end >>\n");
+    s.file("/t/top.mag",
+           "magic\ntech lefdef\ntimestamp 100\nuse pad  pad_0\ntimestamp 100\ntransform 1 0 0 0 1 0\n"
+           "box 0 0 20 20\n<< labels >>\nrlabel metal1 5 5 15 15 0 P\nport 1 nsew\n<< end >>\n");
+    s.file("/t/pad.ext", std::string{kExtHeader} + "node \"m1_0_0#\" 0 0 0 0 m1 0 0 0 0 0 0 0 0 0 0 0 0\n");
+    s.file("/t/top.ext", std::string{kExtHeader} +
+                             "use pad pad_0 1 0 0 0 1 0\nport \"P\" 1 5 5 15 15 m1\n"
+                             "node \"P\" 0 0 5 5 m1 0 0 0 0 0 0 0 0 0 0 0 0\n");
+    REQUIRE(s.run("load top").ok());
+    s.editor.edit_root = s.editor.cells.find("top");
+    REQUIRE(s.editor.edit_root != nullptr);
+    db::CellDef* pad = s.editor.cells.find("pad");
+    REQUIRE(pad != nullptr);
+    REQUIRE_FALSE(pad->flags().available);
+    s.messages.clear();
+    const auto written = s.run("def write");
+    for (const auto& d : s.messages) {
+      UNSCOPED_INFO(d.code << ": " << d.text);
+    }
+    REQUIRE(written.ok());
+    CHECK(pad->flags().available);
+    CHECK(section(s.read("top.def"), "NETS") == "NETS 1 ;\n   - P ( PIN P ) ;\nEND NETS\n\n");
+    std::vector<std::string> lines;
+    for (const auto& d : s.messages) {
+      lines.push_back(d.text);
+      CHECK(d.text.find("floating label") == std::string::npos);
+    }
+    const auto at = [&](std::string_view text) {
+      return std::find_if(lines.begin(), lines.end(), [&](const std::string& l) { return l.starts_with(text); });
+    };
+    REQUIRE(at("Cell pad read from") != lines.end());
+    CHECK(at("(This can take a while!)") < at("Cell pad read from"));
+    CHECK(at("Generating DEF output") < at("Diagnostic:  Finding all nets"));
+  }
+}
+
+// LEFDEF-321: a node found in the cell itself needs no hierarchy search,
+// so Magic reads no subcell and prints no "Cell ... read" line.
+TEST_CASE("def write reads no subcell when the cell's own paint holds the node",
+          "[cap:def-write][req:Net geometry discovery]") {
+  Session s;
+  s.file("/t/pad.mag", "magic\ntech lefdef\ntimestamp 100\n<< metal1 >>\nrect 0 0 20 20\n<< end >>\n");
+  s.file("/t/pad.ext", std::string{kExtHeader} + "node \"m1_0_0#\" 0 0 0 0 m1 0 0 0 0 0 0 0 0 0 0 0 0\n");
+  s.file("/t/top.mag",
+         "magic\ntech lefdef\ntimestamp 100\n<< metal1 >>\nrect 100 0 130 3\nuse pad  pad_0\ntimestamp 100\n"
+         "transform 1 0 0 0 1 0\nbox 0 0 20 20\n<< labels >>\nrlabel metal1 100 0 130 3 0 P\nport 1 nsew\n<< end >>\n");
+  s.file("/t/top.ext", std::string{kExtHeader} +
+                           "use pad pad_0 1 0 0 0 1 0\nport \"P\" 1 100 0 130 3 m1\n"
+                           "node \"P\" 0 0 100 0 m1 0 0 0 0 0 0 0 0 0 0 0 0\n");
+  REQUIRE(s.run("load top").ok());
+  s.editor.edit_root = s.editor.cells.find("top");
+  db::CellDef* pad = s.editor.cells.find("pad");
+  REQUIRE(pad != nullptr);
+  REQUIRE(s.run("def write").ok());
+  CHECK_FALSE(pad->flags().available);
+  CHECK_FALSE(std::any_of(s.messages.begin(), s.messages.end(),
+                          [](const diag::Diagnostic& d) { return d.text.starts_with("Cell pad read"); }));
 }
 
 TEST_CASE("connections to subcell pins wrap at column 70", "[cap:def-write][req:Net record header and connections]") {

@@ -22,6 +22,7 @@
 #include "hefesto/def/write/command.hpp"
 #include "hefesto/def/write/write.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/gds/write/subtree.hpp"
 #include "hefesto/lef/command/command.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/view/window.hpp"
@@ -192,6 +193,14 @@ CommandResult write_command(cmd::CommandContext& ctx, const cmd::Invocation& inv
   }
   p.options.files = &ctx.services().files;
   p.options.typed_name = p.name.value_or(std::string{});
+  // The net search reads the subcells it reaches (LEFDEF-328); the reads
+  // print into the write's messages, through a context on its sink.
+  p.options.read_area = [&ctx, editor = s.editor](db::CellDef& cell, const db::Rect& area,
+                                                  diag::DiagnosticSink& sink) {
+    cmd::CommandContext nested(ctx.services(), ctx.project(), ctx.session(), sink, ctx.registry(), ctx.editor());
+    (void)gds::load_area(cell, area, gds::command_subtree_loader(nested, *editor), false,
+                         editor->drc.compat_settings());
+  };
   const std::string name = p.name.value_or((*target)->name());
   // Through the session's write host (the desktop shows a card and pumps
   // frames, design D16); def::write reports no progress and the file is

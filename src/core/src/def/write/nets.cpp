@@ -96,6 +96,9 @@ void search(const Context& c, RouteWriter& writer, const db::Rect& area, const t
 /// `area` in the cell or its subcells (a contact only on its home plane),
 /// in root coordinates.
 std::optional<db::Rect> port_tile(const Context& c, const db::Rect& area, const tech::TypeMask& types) {
+  if (c.read_area) {
+    c.read_area(area);  // the search reads the subcells it reaches (DBCellRead)
+  }
   std::optional<db::Rect> found;
   (void)connect::search_tree_tiles(c.cell, area, types, {}, c.compat, [&](const connect::TreeTile& t) {
     if (c.tech.is_contact(t.tile.type) && c.tech.home_plane(t.tile.type) != t.plane) {

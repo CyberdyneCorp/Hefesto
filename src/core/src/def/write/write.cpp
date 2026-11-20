@@ -106,7 +106,7 @@ namespace {
 /// One write: the session state it reads and the messages it prints.
 class WriteRun {
  public:
-  WriteRun(editor::EditorState& editor, const db::CellDef& cell, const DefWriteOptions& options)
+  WriteRun(editor::EditorState& editor, db::CellDef& cell, const DefWriteOptions& options)
       : editor_(editor),
         tech_(*editor.technology),
         cell_(cell),
@@ -121,7 +121,11 @@ class WriteRun {
         rules_(compat_.magic_compat ? editor.lefdef.rules : lef::RuleTable{}),
         sink_(messages_),
         c_{tech_, cell_, scale_, compat_.magic_compat, editor.drc.rules.get(), style_, extract_style_, map_,
-           messages_} {}
+           messages_, {}} {
+    if (options.read_area) {
+      c_.read_area = [this](const db::Rect& area) { options_.read_area(cell_, area, sink_); };
+    }
+  }
 
   cmd::CommandResult run(const platform::Path& path) {
     std::string text;
@@ -282,7 +286,7 @@ class WriteRun {
 
   editor::EditorState& editor_;
   const tech::Technology& tech_;
-  const db::CellDef& cell_;
+  db::CellDef& cell_;
   const DefWriteOptions& options_;
   compat::CompatSettings compat_;
   std::int32_t units_;
