@@ -841,11 +841,6 @@ deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
 reason = "M6 exit blocker, OASR; OASR: report.txt line 2: '[cellname timestamp vt] == [cellname timestamp wt]' is 1 in Hefesto, 0 in Magic. Magic's GDS content stamp hashes the structure bytes, so the parent renamed in packed.gds (its SREF names wa, not va) gets another stamp; OASR's content stamp of the parent is the same in both files. Suspected rule: oasis-read 'Content-hash timestamps for read-only OASIS cells' (whether a child's name is part of its parent's stamp)"
 
-[OASIS-012]
-deferred = "M6"
-outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASFMT; OASR/GOLDEN: cells.txt line 17: Magic read gdstk's GDS, whose TEXT has a PRESENTATION record (font 0), as a FreeSans flabel; Hefesto reads the OASIS TEXT, which has no presentation, as an rlabel (oasis-read 'TEXT elements'). Round 4 review: the case now gives Magic the oasequiv GDS equivalent (no PRESENTATION); waiting for its recapture"
-
 [OASIS-020]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]

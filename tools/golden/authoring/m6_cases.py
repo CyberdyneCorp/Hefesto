@@ -93,10 +93,6 @@ BLOCKER_REASONS = {
                "its LEF output lefdef_rt.mag (the file name its failed read gave the new wrapper; no Q-row) and the "
                "macro bodies differ (e.g. sky130_fd_sc_hd__a2111oi_4: 240 lines in Magic, 286 in Hefesto); the "
                "gf180mcu LEF matches except the stdout name line. Replayed locally against hefesto-cli in round 4"),
-    "OASFONT": ("OASR/GOLDEN: cells.txt line 17: Magic read gdstk's GDS, whose TEXT has a PRESENTATION record (font 0), "
-                "as a FreeSans flabel; Hefesto reads the OASIS TEXT, which has no presentation, as an rlabel (oasis-read "
-                "'TEXT elements'). Round 4 review: the case now gives Magic the oasequiv GDS equivalent (no "
-                "PRESENTATION); waiting for its recapture"),
     "OASSTD": ("OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it "
                "matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> "
                "datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has "
@@ -139,7 +135,6 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
-    "OASIS-012": BLOCKER_REASONS["OASFONT"],
     "OASIS-020": BLOCKER_REASONS["OASSTD"],
     "OASIS-021-flatglob": BLOCKER_REASONS["OASSTD"],
     "OASIS-021-flatten": BLOCKER_REASONS["OASSTD"],
@@ -171,6 +166,7 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "OASIS-012",
     "LEFDEF-328",
     "OASIS-055-names",
     "LEFDEF-334",
