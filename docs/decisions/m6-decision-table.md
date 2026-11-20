@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 34, 157 in all. Every one has a `Resolution:` line:
+As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 39, 162 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -15,6 +15,7 @@ As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and 
 | Approved 2026-11-18 | 1: Q-LEFDEF-114 (compat) | "Decided 2026-11-18" |
 | Approved 2026-11-19 | 3: Q-LEFDEF-25 (compat), 26 (fix), 27 (compat) | "Decided 2026-11-19" |
 | Approved 2026-11-19 (user decisions D1, D2, D4; recorded in round 4) | 18: Q-LEFDEF-117..134 | "Decided 2026-11-19: input caps and implemented behaviours" |
+| Approved 2026-11-19 (user decisions D1, D3(b); recorded in round 4) | 5: Q-OASIS-13, 41..44 | "Decided 2026-11-19: OASIS read caps and magnification" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -278,7 +279,7 @@ Three Magic behaviours with no Q-row, found by the round-2 LEFTECH and LEFVIA im
 
 ## Decided 2026-11-19: input caps and implemented behaviours
 
-The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the behaviours the M6 rounds 1-3 implemented under the standing rule with no Q-row (D2), and two golden-capture questions (D4). They are recorded as Q-LEFDEF-117..134 (round 4), each with `Status:` and `Resolution:` lines; the lef-read, lef-write and def-read specs cite them, and `docs/contributing/security.md` lists the caps under M6-S2. The OASIS caps of D1 get Q-OASIS rows separately.
+The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the behaviours the M6 rounds 1-3 implemented under the standing rule with no Q-row (D2), and two golden-capture questions (D4). They are recorded as Q-LEFDEF-117..134 (round 4), each with `Status:` and `Resolution:` lines; the lef-read, lef-write and def-read specs cite them, and `docs/contributing/security.md` lists the caps under M6-S2. The OASIS caps of D1 are Q-OASIS-41..44 (next section).
 
 | ID | Question | Kind | Resolution |
 |---|---|---|---|
@@ -300,6 +301,18 @@ The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the beh
 | Q-LEFDEF-132 | gzip-compressed DEF files | **fix** | both modes: read decompressed |
 | Q-LEFDEF-133 | File named in `lef read`'s missing-file error (D4) | **fix** | both modes: the candidate built from the typed name; LEFDEF-021/022 record the deviation |
 | Q-LEFDEF-134 | Malformed OBS_BBOX messages on one line (D4, LEFDEF-132) | **compat** | ON: no line end, as Magic; OFF: each line ended |
+
+## Decided 2026-11-19: OASIS read caps and magnification
+
+The OASIS read caps of the user's decision D1 and the PLACEMENT magnification rule of D3(b), approved 2026-11-19 and implemented in round 4 (OASCMD), are recorded as Q-OASIS-13 and Q-OASIS-41..44. The oasis-read spec ("Input limits", "Placement transforms") and oasis-format cite them, and `docs/contributing/security.md` lists the caps under M6-S3. D3(a), the in-memory GDS stream reusing the GDS reader, confirms design D12 and needs no row.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-OASIS-13 | PLACEMENT with a magnification of 0 or less (D3(b)) | **fix** | both modes: dropped with "invalid magnification" (OASIS-CODEC-029); the golden decoder matches |
+| Q-OASIS-41 | Stream size and instance count of one read (D1) | **fix** | both modes: 2 GiB stream and 2^28 instances; past either the rest is not read (OASIS-READ-007) |
+| Q-OASIS-42 | Names and strings longer than a GDS string record (D1) | **fix** | both modes: cut to 65530 bytes with a message (OASIS-READ-006) |
+| Q-OASIS-43 | Layer, datatype and attribute numbers outside the GDS range (D1) | **fix** | both modes: read as 32767 with a message (OASIS-READ-009) |
+| Q-OASIS-44 | Polygons with more than 8191 points (D1) | **fix** | both modes: fractured into polygons of at most 8191 points (OASIS-READ-008) |
 
 ## Planning questions raised by the M6 plan
 

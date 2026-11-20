@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3370 scenarios, 893 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3375 scenarios, 916 open questions.
 
 ## Hefesto product (native)
 
@@ -103,18 +103,18 @@ Open questions: [160](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 
 ## OASIS (OASIS)
 
-Open questions: [34](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
+Open questions: [39](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`oasis-command`](../openspec/specs/oasis-command/spec.md) | 7 | 14 | Defines the `oasis` command: Hefesto's command-level API for reading and writing OASIS files. Its options mirror the Magic `gds` (`calma`) command, so that scripts written for GDS … |
 | [`oasis-format`](../openspec/specs/oasis-format/spec.md) | 30 | 58 | Defines the OASIS (SEMI P39, version 1.0) byte-level format as Hefesto reads and writes it: the magic bytes, the START and END records, the primitive encodings (unsigned and signed… |
-| [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 25 | 44 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
+| [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 26 | 49 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
 | [`oasis-write`](../openspec/specs/oasis-write/spec.md) | 25 | 37 | Defines how Hefesto serializes a layout hierarchy to an OASIS file (the `oasis write` operation, capability `oasis-command`). Magic has no OASIS writer. The governing rule is **GDS… |
 
 ## LEF / DEF (LEFDEF)
 
-Open questions: [105](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
+Open questions: [123](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|

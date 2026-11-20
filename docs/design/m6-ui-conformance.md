@@ -41,8 +41,8 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
 | A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | blocked: `oasis::write` is still the scaffold stub until OASW (task 12.1) lands |
 | A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | blocked: test "a cancelled OASIS write leaves no output file" passes against the stub; its end-to-end check needs OASW |
 | `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: capture pending |
-| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | not yet: `lef read` (LEFR, `lef/read/args.cpp`) calls `lef::read` inline | todo: open item for LEFR (run it through `read_host`) |
-| `lef write`, `lef writeall` and `def write` run under the write host | not yet: LEFW's `lef/write/args.cpp` calls `lef::write`/`write_all` inline; `def write` is DEFW's (round 4) | todo: open items for LEFW and DEFW (run them through `write_host`, passing the host's `Progress` to `LefWriteOptions::progress`) |
+| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | todo: LEFR adds `LefReadOptions::progress` (LefEstimate and the interrupt check) |
+| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | done; a `DefWriteOptions::progress` is a later improvement |
 
 ## Performance (PERF)
 
