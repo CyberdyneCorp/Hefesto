@@ -811,11 +811,6 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"
 
-[LEFDEF-328]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; DEFW: Hefesto does not read the unread master cell 'pad' before writing (Magic prints 'Cell pad read from path input' and finds the label's metal1), so it reports a floating label and prints the Tcl result line; to fix in DEFW"
-
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
@@ -834,47 +829,47 @@ reason = "M6 exit blocker, LEFW; LEFW: the library round trip differs from Magic
 [OASIS-023]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the read differs from Magic's GDS read of the equivalent file; to investigate"
+reason = "M6 exit blocker, OASR; OASR: cells.txt, cell preps: the arrays of uses c_19, c_21, c_23 and c_25 (repetition type 3 under the orientations without a 90-degree turn) and c_26..c_33 (type 1 under the turned ones) differ: Magic's read of the equivalent AREF gives 'array 0 2 0 0 0 0' (all copies at one place), Hefesto's 'array 0 0 0 0 2 20', and the checkpaint grows to 1460. hefesto-cli's gds read of the case's preps.gds matches Magic, so the difference is in OASR's transcode of placement repetitions into AREFs (oasis-read 'Placement repetitions', D12), not in the GDS reader"
 
 [OASIS-032]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the read differs from Magic's GDS read of the equivalent file; to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: report.txt line 1: OASIS_FILE of sc_inv is the absolute path, not '$PDK_ROOT/lib/cells.oas'. The case sets PDK_ROOT in the environment only; OASR's substitution (gds::gds_file_value, Magic's DBPathSubstitute) reads the Tcl variables PDK_PATH, PDKPATH, PDK_ROOT and PDKROOT. Suspected rule: oasis-read 'Read-only OASIS vendor views' does not say where PDK_ROOT comes from; either the case sets the Tcl variable or the reader also reads the environment (a decision)"
 
 [OASIS-033]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the read differs from Magic's GDS read of the equivalent file; to investigate"
+reason = "M6 exit blocker, OASR; OASR: report.txt line 2: '[cellname timestamp vt] == [cellname timestamp wt]' is 1 in Hefesto, 0 in Magic. Magic's GDS content stamp hashes the structure bytes, so the parent renamed in packed.gds (its SREF names wa, not va) gets another stamp; OASR's content stamp of the parent is the same in both files. Suspected rule: oasis-read 'Content-hash timestamps for read-only OASIS cells' (whether a child's name is part of its parent's stamp)"
 
 [OASIS-012]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASFMT; OASR/GOLDEN: Magic reads the label as a FreeSans flabel (default fonts loaded at startup), Hefesto as an rlabel; the case needs the magic-sys font inputs"
+reason = "M6 exit blocker, OASFMT; OASR/GOLDEN: cells.txt line 17: Magic read gdstk's GDS, whose TEXT has a PRESENTATION record (font 0), as a FreeSans flabel; Hefesto reads the OASIS TEXT, which has no presentation, as an rlabel (oasis-read 'TEXT elements'). Round 4 review: the case now gives Magic the oasequiv GDS equivalent (no PRESENTATION); waiting for its recapture"
 
 [OASIS-020]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"
 
 [OASIS-021-ordering]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"
 
 [OASIS-021-flatten]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"
 
 [OASIS-021-flatglob]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"
 
 [OASIS-021-noduplicates]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; OASR: the cells read from the strm2oas sky130 library differ from Magic's GDS read (cells.sha256); to investigate"
+reason = "M6 exit blocker, OASR; OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"
 
 [OASIS-021-unique]
 deferred = "M6"

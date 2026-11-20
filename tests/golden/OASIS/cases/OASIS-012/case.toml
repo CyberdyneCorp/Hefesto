@@ -8,6 +8,7 @@
 # Magic GDS cross-check (design D19): Magic reads <stem>.gds, the GDS equivalent of <stem>.oas (authoring/oasequiv.py); Hefesto reads <stem>.oas (input/hefesto.tcl). Saved cells and report.txt are compared; the console is not (two different commands, informative wording).
 # Approved deviation (Q-OASIS-2, amended 2026-11-18; design D19): no commercial OASIS writer's files are available, so the case reads gdstk-written files only. Not a deviations.toml entry: the case passes.
 # Inputs captured by oasis-validate (tests/golden/OASIS/captured/OASIS-012/captured.json).
+# Magic reads the GDS equivalent of each gdstk OASIS file (authoring/oasequiv.py), not gdstk's own GDS, whose TEXT has a PRESENTATION record (font 0) that OASIS cannot carry (oasis-read "TEXT elements").
 
 schema = 1
 id = "OASIS-012"
