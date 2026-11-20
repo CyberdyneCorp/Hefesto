@@ -10,7 +10,8 @@
 //
 // Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Ranges:
 // 001-019 the writer core, 020-039 the merged-polygon and label emitters,
-// 040 on verbatim copy, full dump, addendum and abstract views.
+// 040 on verbatim copy, full dump, addendum and abstract views, 052 on
+// read-only OASIS cells (OASW, gds/write/vendor_oasis.cpp).
 
 HEFESTO_GDS_CODE("GDS-WRITE-001", info, "GDS write progress: `Generating output for cell <name>` for each cell the write reaches.")
 HEFESTO_GDS_CODE("GDS-WRITE-002", error, "No CIF/GDS output style set: nothing is written and no file is opened (Q-MASK-219).")
@@ -39,3 +40,7 @@ HEFESTO_GDS_CODE("GDS-WRITE-048", warning, "`Diagnostic:  <name> is a forward re
 HEFESTO_GDS_CODE("GDS-WRITE-049", error, "A full dump met a malformed record, a redundant structure, an unrecorded prefix or an undefined cell.")
 HEFESTO_GDS_CODE("GDS-WRITE-050", warning, "A structure appended for an undefined vendor reference keeps its own name, so the SNAME dangles (Q-MASK-214).")
 HEFESTO_GDS_CODE("GDS-WRITE-051", error, "Every two-character library prefix is taken; a full dump is written without a prefix.")
+HEFESTO_GDS_CODE("GDS-WRITE-052", error, "An element of a read-only OASIS cell cannot be held by GDS (layer or datatype above 32767, more than 8191 XY points); the cell and its parents fail (Q-OASIS-35).")
+HEFESTO_GDS_CODE("GDS-WRITE-053", warning, "A read-only OASIS cell has XELEMENT or XGEOMETRY records, which are not written to GDS (once per cell).")
+HEFESTO_GDS_CODE("GDS-WRITE-054", error, "The OASIS file of a read-only OASIS cell cannot be decoded or has another unit than the output style; the cell is generated from its layout.")
+HEFESTO_GDS_CODE("GDS-WRITE-055", error, "A read-only OASIS cell expands to more element instances than the write's cap; the cell and its parents fail.")

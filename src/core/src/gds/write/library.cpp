@@ -32,6 +32,7 @@
 #include "hefesto/gds/write/labels.hpp"
 #include "hefesto/gds/write/polygons.hpp"
 #include "vendor.hpp"
+#include "vendor_oasis.hpp"
 #include "writer.hpp"
 
 namespace hefesto::gds::detail {
@@ -55,7 +56,8 @@ bool vendor_polygon_cell(const db::CellDef& def) {
   if (parents.empty() || parents.front()->parent == nullptr) {
     return false;
   }
-  return parents.front()->parent->properties().find("GDS_FILE") != nullptr;
+  const db::CellDef& parent = *parents.front()->parent;
+  return parent.properties().find("GDS_FILE") != nullptr || oasis_vendor_cell(parent);
 }
 
 }  // namespace
@@ -251,6 +253,25 @@ LibraryWriter::VendorVisit LibraryWriter::vendor_structure(const db::CellDef& de
   }
 }
 
+// A read-only OASIS cell (gds-write "Read-only OASIS vendor cells",
+// vendor_oasis.cpp); nullopt when it is generated from its layout.
+std::optional<LibraryWriter::Visit> LibraryWriter::oasis_vendor_structure(const db::CellDef& def) {
+  vendor_->now = now();
+  const OasisVendorResult result = transcode_oasis_cell(*vendor_, def);
+  if (!vendor_->error.ok()) {
+    error_ = vendor_->error;
+  }
+  switch (result) {
+    case OasisVendorResult::written:
+    case OasisVendorResult::skipped:
+      return Visit::done;
+    case OasisVendorResult::failed:
+      return Visit::failed;
+    default:
+      return std::nullopt;
+  }
+}
+
 // The structures of the forward references no dump defined (CalmaWrite's
 // calmaUndefHash pass, Q-MASK-214).
 bool LibraryWriter::append_undefined() {
@@ -309,7 +330,8 @@ LibraryWriter::Visit LibraryWriter::process(db::CellDef& def, bool library, cons
     return Visit::failed;
   }
   const mask::HierarchyOptions options = mask::hierarchy_options(def, inherited, true, prepared_.compat);
-  if (kind.traverses_children() && process_children(def, options, depth, kind.copied()) == Visit::failed) {
+  const bool vendor = kind.copied() || oasis_vendor_cell(def);
+  if (kind.traverses_children() && process_children(def, options, depth, vendor) == Visit::failed) {
     return Visit::failed;
   }
   return emit(def, kind, options, library);
@@ -325,6 +347,11 @@ LibraryWriter::Visit LibraryWriter::emit(const db::CellDef& def, const CellKind&
       return visit == VendorVisit::done ? Visit::done : Visit::failed;
     }
     read_only = false;  // a failed sanity check: generated from the layout
+  } else if (oasis_vendor_cell(def)) {
+    const std::optional<Visit> visit = oasis_vendor_structure(def);
+    if (visit) {
+      return *visit;
+    }
   } else {
     print("   Generating output for cell " + def.name());
   }
