@@ -42,5 +42,5 @@ HEFESTO_GDS_CODE("GDS-WRITE-050", warning, "A structure appended for an undefine
 HEFESTO_GDS_CODE("GDS-WRITE-051", error, "Every two-character library prefix is taken; a full dump is written without a prefix.")
 HEFESTO_GDS_CODE("GDS-WRITE-052", error, "An element of a read-only OASIS cell cannot be held by GDS (layer or datatype above 32767, more than 8191 XY points); the cell and its parents fail (Q-OASIS-35).")
 HEFESTO_GDS_CODE("GDS-WRITE-053", warning, "A read-only OASIS cell has XELEMENT or XGEOMETRY records, which are not written to GDS (once per cell).")
-HEFESTO_GDS_CODE("GDS-WRITE-054", error, "The OASIS file of a read-only OASIS cell cannot be decoded or has another unit than the output style; the cell is generated from its layout.")
+HEFESTO_GDS_CODE("GDS-WRITE-054", error, "A read-only cell's vendor file cannot be decoded, or its unit is not the output unit (OASIS files; GDS files under an OASIS write); the cell is generated from its layout.")
 HEFESTO_GDS_CODE("GDS-WRITE-055", error, "A read-only OASIS cell expands to more element instances than the write's cap; the cell and its parents fail.")

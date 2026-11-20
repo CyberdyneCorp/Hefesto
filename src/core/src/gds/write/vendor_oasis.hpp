@@ -38,6 +38,13 @@ enum class OasisVendorResult : std::uint8_t {
   failed,    // the cell fails (its parents fail too)
 };
 
+/// Under an OASIS write only (oasis-write "Read-only GDS vendor cells" rule
+/// 3): whether the vendor GDS file `source` of read-only cell `def` has
+/// UNITS (meters per database unit) that do not round to the output unit
+/// (1e-9, or 1e-10 for `units angstroms`); the error is reported and the
+/// copy falls back to generating the cell. False under a GDS write.
+[[nodiscard]] bool oasis_units_refused(VendorIo& io, const db::CellDef& def, ByteSource& source);
+
 /// Transcodes read-only OASIS cell `def` into the GDS stream of `io`.
 [[nodiscard]] OasisVendorResult transcode_oasis_cell(VendorIo& io, const db::CellDef& def);
 

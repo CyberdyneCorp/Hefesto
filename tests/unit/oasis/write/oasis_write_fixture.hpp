@@ -159,11 +159,11 @@ struct OasFixture : Fixture {
 /// A GDS library built record by record (vendor files).
 class GdsLibrary {
  public:
-  GdsLibrary() : writer_(sink_) {
+  explicit GdsLibrary(double meters_per_unit = 1e-9) : writer_(sink_) {
     i2(gds::RecordType::header, {600});
     i2(gds::RecordType::bgnlib, std::vector<std::int16_t>(12, 1));
     str(gds::RecordType::libname, "vendor");
-    const std::array<double, 2> u{0.001, 1e-9};
+    const std::array<double, 2> u{0.001, meters_per_unit};
     REQUIRE(writer_.write_real8(gds::RecordType::units, u).ok());
   }
   void i2(gds::RecordType t, const std::vector<std::int16_t>& v) { REQUIRE(writer_.write_int2(t, v).ok()); }

@@ -39,6 +39,7 @@ using oasis::Point64;
 constexpr std::uint64_t kMaxGdsNumber = 32767;
 constexpr std::size_t kMaxXyPoints = 8191;
 constexpr std::uint64_t kMaxInstances = std::uint64_t{1} << 28;
+constexpr int kUnitsSearch = 16;  // UNITS is the fourth record of a library
 
 const std::string* string_property(const db::CellDef& def, std::string_view name) {
   const db::PropertyValue* value = def.properties().find(std::string{name});
@@ -433,7 +434,41 @@ double output_unit(const VendorIo& io) {
   return io.prepared.style->has_option(mask::style_option::angstroms) ? 10000.0 : 1000.0;
 }
 
+// The meters per database unit of a GDS library: the second UNITS value.
+std::optional<double> library_units(ByteSource& source) {
+  if (!source.seek(0).ok()) {
+    return std::nullopt;
+  }
+  RecordReader reader(source);
+  for (int i = 0; i < kUnitsSearch; ++i) {
+    diag::Outcome<std::optional<Record>> next = reader.next();
+    if (!next.ok() || !next.value()) {
+      return std::nullopt;
+    }
+    if (static_cast<RecordType>(next.value()->type) == RecordType::units) {
+      return r8_at(next.value()->data, 1);
+    }
+  }
+  return std::nullopt;
+}
+
 }  // namespace
+
+bool oasis_units_refused(VendorIo& io, const db::CellDef& def, ByteSource& source) {
+  if (oasis::VendorCells::active() == nullptr) {
+    return false;
+  }
+  const double unit = output_unit(io) == 10000.0 ? 1e-10 : 1e-9;
+  const std::optional<double> mpd = library_units(source);
+  if (mpd && std::fabs(*mpd / unit - 1.0) < 1e-6) {
+    return false;
+  }
+  io.report(codes::kOasisSource, "Calma output error:  the vendor GDS file of read-only cell " + def.name() +
+                                     " does not have the output unit of " + (unit == 1e-9 ? "1 nm" : "1 angstrom") +
+                                     " per database unit, which OASIS output keeps; the cell is generated from its "
+                                     "layout.");
+  return true;
+}
 
 bool oasis_vendor_cell(const db::CellDef& def) {
   return oasis::is_oasis_vendor_cell(def);

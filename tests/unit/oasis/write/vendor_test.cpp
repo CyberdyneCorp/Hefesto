@@ -217,6 +217,30 @@ TEST_CASE("a read-only GDS cell in a write is transcoded without repetition dete
   CHECK(e[2].kind == oasis::ElementKind::path);
 }
 
+TEST_CASE("a read-only GDS cell of another unit is generated from its layout in OASIS output",
+          "[cap:oasis-write][req:Read-only GDS vendor cells]") {
+  OasFixture f;
+  f.settings.compress = 0;
+  GdsLibrary lib(1e-8);
+  (void)lib.begin("sc_inv");
+  const std::uint64_t start = lib.start();
+  lib.boundary(68, 20, {0, 0, 100, 0, 100, 100, 0, 100, 0, 0});
+  const std::uint64_t end = lib.end();
+  store(f, "/lib.gds", lib.bytes());
+  db::CellDef& inv = f.cell("sc_inv");
+  f.paint(inv, f.m1, db::Rect{0, 0, 1, 1});
+  read_only_gds(inv, "/lib.gds", start, end);
+  db::CellDef& top = f.cell("top");
+  f.place(top, inv);
+  const Decoded d = decode_oasis(f.write_oas(top));
+  CHECK(has(f.last, "GDS-WRITE-054"));
+  const std::vector<oasis::Element> e = d.elements("sc_inv");
+  REQUIRE(e.size() == 1);
+  CHECK(e[0].layer == 49);  // the layout, not the vendor 68/20
+  (void)f.write(top);  // gds write copies it verbatim, whatever its units
+  CHECK_FALSE(has(f.last, "GDS-WRITE-054"));
+}
+
 TEST_CASE("a read-only OASIS cell is re-encoded with its circles and repetitions",
           "[cap:oasis-write][req:Read-only OASIS vendor cells]") {
   OasFixture f;
