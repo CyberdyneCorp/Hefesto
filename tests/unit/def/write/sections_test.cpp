@@ -44,7 +44,7 @@ TEST_CASE("the default write is named after the cell, with 1000 units",
   Session s;
   db::CellDef& top = s.cell("top");
   s.paint(top, "metal1", db::Rect{0, 0, 100, 50});
-  REQUIRE(s.run("defw write").ok());
+  REQUIRE(s.run("def write").ok());
   REQUIRE(s.exists("top.def"));
   const std::string text = s.read("top.def");
   CHECK(text.find("   UNITS DISTANCE MICRONS 1000 ;\n") != std::string::npos);
@@ -52,11 +52,11 @@ TEST_CASE("the default write is named after the cell, with 1000 units",
   CHECK(s.said("Generating DEF output top.def for cell top:"));
 }
 
-TEST_CASE("-units scales every coordinate", "[cap:def-write][req:def write command]") {
+TEST_CASE("def write -units scales every coordinate", "[cap:def-write][req:def write command]") {
   Session s;
   db::CellDef& top = s.cell("top");
   s.paint(top, "metal1", db::Rect{0, 0, 100, 50});
-  REQUIRE(s.run("defw write out -units 2000").ok());
+  REQUIRE(s.run("def write out -units 2000").ok());
   const std::string text = s.read("out.def");
   CHECK(text.find("   UNITS DISTANCE MICRONS 2000 ;\n") != std::string::npos);
   CHECK(text.find("   DIEAREA ( 0 0 ) ( 2000 1000 ) ;\n") != std::string::npos);

@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The `lef` and `def` commands, scaffold version
-// (openspec/changes/m6-lef-def-oasis/design.md D3, D14): Magic's two option
-// tables, the lookup of both commands in the `lef` table, the window check
-// of every option but `help` and `def read` (Q-LEFDEF-86), the help
-// listing, `def writeall`'s refusal and the "only for LEF" answers of `def
-// datestamp` and `def nocheck`. Every other option fails with
-// CORE-NOTIMPL-006 until its workstream lands it:
-// `def write` (DEFW). `lef read` and `lef datestamp` call LEFR's parsers
-// (lef/read/args.hpp); `lef write`, `lef writeall` and `lef nocheck` call
-// LEFW's (lef/write/args.hpp); `def read` calls DEFR's (def/read/command.hpp).
+// The `lef` and `def` commands (openspec/changes/m6-lef-def-oasis/design.md
+// D3, D14): Magic's two option tables, the lookup of both commands in the
+// `lef` table, the window check of every option but `help`, `def read` and
+// `def write` (Q-LEFDEF-86), the help listing, `def writeall`'s refusal and
+// the "only for LEF" answers of `def datestamp` and `def nocheck`. `lef
+// read` and `lef datestamp` call LEFR's parsers (lef/read/args.hpp); `lef
+// write`, `lef writeall` and `lef nocheck` call LEFW's (lef/write/args.hpp);
+// `def read` calls DEFR's (def/read/command.hpp) and `def write` DEFW's
+// (def/write/command.hpp). No option answers CORE-NOTIMPL-006 any more; the
+// last line of lef_def_command is unreachable and kept until the code is
+// retired at M6 exit (tasks.md 17.5).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) lef/lefCmd.c CmdLef (the option
 // tables, the lookup, the window check, the `def` refusals and the help),
@@ -30,6 +31,7 @@
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/stubs.hpp"
 #include "hefesto/def/read/command.hpp"
+#include "hefesto/def/write/command.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "lef/read/args.hpp"
 #include "lef/write/args.hpp"
@@ -165,6 +167,11 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   // DEFR's `def read` needs no window (Q-LEFDEF-86, def/read/command.hpp).
   if (!is_lef && option == kRead) {
     return def::read_command(ctx, invocation);
+  }
+  // DEFW's `def write` finds its own target cell and prints Magic's
+  // "Point to a window first" itself (def/write/command.hpp).
+  if (!is_lef && option == kWrite) {
+    return def::write_command(ctx, invocation);
   }
   // LEFW's options find their own target cell (lef/write/args.cpp).
   if (const std::optional<WriteCommand> which = write_command(option); is_lef && which) {

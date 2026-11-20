@@ -26,6 +26,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/lef/command/command.hpp"
 #include "hefesto/lef/write/write.hpp"
+#include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/view/window.hpp"
 
 namespace hefesto::lef {
@@ -209,6 +210,20 @@ CommandResult no_cell() {
   return CommandResult::failure(diag::make("LEF-WRITE-009", "No cell selected"));
 }
 
+// The write through the session's write host (the desktop shows a card,
+// pumps frames and may cancel, design D16); without one it runs inline.
+template <typename Run>
+CommandResult hosted_write(const cu::Session& s, const std::string& label, LefWriteOptions& options, const Run& run) {
+  const mask::ProgressHost& host = s.editor->mask.write_host;
+  if (!host) {
+    return run();
+  }
+  return host(label, [&options, &run](const mask::Progress* progress) {
+    options.progress = progress;
+    return run();
+  });
+}
+
 CommandResult lef_write(cmd::CommandContext& ctx, const cu::Session& s, const cmd::Invocation& inv,
                         db::CellDef* target) {
   Parsed p;
@@ -222,7 +237,7 @@ CommandResult lef_write(cmd::CommandContext& ctx, const cu::Session& s, const cm
   p.options.loader = gds::command_subtree_loader(ctx, *s.editor);
   p.options.typed_name = p.name.value_or(std::string{});
   const std::string name = p.name.value_or(target->name());
-  return write(*s.editor, *target, name, p.options);
+  return hosted_write(s, name, p.options, [&] { return write(*s.editor, *target, name, p.options); });
 }
 
 CommandResult lef_write_all(cmd::CommandContext& ctx, const cu::Session& s, const cmd::Invocation& inv,
@@ -236,7 +251,8 @@ CommandResult lef_write_all(cmd::CommandContext& ctx, const cu::Session& s, cons
   }
   p.options.files = &ctx.services().files;
   p.options.loader = gds::command_subtree_loader(ctx, *s.editor);
-  return write_all(*s.editor, *target, platform::Path{}, p.options);
+  return hosted_write(s, target->name(), p.options,
+                      [&] { return write_all(*s.editor, *target, platform::Path{}, p.options); });
 }
 
 // LEF_NOCHECK: the list (Tcl result `none` when empty), or the names

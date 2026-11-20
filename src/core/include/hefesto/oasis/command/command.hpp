@@ -7,9 +7,7 @@
 // "Options shared with the gds command" and "OASIS-only options". A bare
 // `oasis` writes the root cell of the current window. `oasis` has no alias.
 // Options match by unique prefix, as for `gds`; an unknown or ambiguous
-// option is an argument error (oasis-command "Option syntax"). Until OASCMD,
-// OASR and OASW land them, every option except `help` fails with
-// CORE-NOTIMPL-006 ("not implemented yet: oasis <option>"). Called by
+// option is an argument error (oasis-command "Option syntax"). Called by
 // cmd::register_all_commands.
 //
 // Owner: INTEGRATION (this header, created by the M6 scaffold); OASCMD owns

@@ -43,7 +43,8 @@ struct CommandSession : OasSession {
   db::CellDef* top = nullptr;
   std::vector<std::string> hosted_writes;  // the labels the stub write host received
 
-  explicit CommandSession(bool magic_compat = true) : OasSession(kStyle, magic_compat) {
+  explicit CommandSession(bool magic_compat = true, std::string_view cifoutput = {})
+      : OasSession(kStyle, magic_compat, cifoutput) {
     project.compat.magic_compat = magic_compat;
     REQUIRE(cmd::register_all_commands(registry));
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);

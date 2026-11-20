@@ -57,7 +57,7 @@ TEST_CASE("LEFDEF-333's floating metal1 net is written as a blockage",
           "[cap:def-write][req:BLOCKAGES section][magic-crash]") {
   for (const bool on : {true, false}) {
     INFO("magic-compat " << (on ? "ON" : "OFF"));
-    const CaseRun r = run_case("LEFDEF-333", "defw write", on);
+    const CaseRun r = run_case("LEFDEF-333", "def write", on);
     CHECK(r.crash_note);
     CHECK(r.def ==
           "VERSION 5.7 ;\n"
@@ -82,7 +82,7 @@ TEST_CASE("LEFDEF-333's floating metal1 net is written as a blockage",
 
 TEST_CASE("LEFDEF-317 and 318: the unlabeled net is a blockage, the others are nets",
           "[cap:def-write][req:Net classification][magic-crash]") {
-  const CaseRun r = run_case("LEFDEF-317", "defw write", true);
+  const CaseRun r = run_case("LEFDEF-317", "def write", true);
   CHECK(r.crash_note);
   CHECK(section(r.def, "SPECIALNETS").starts_with("SPECIALNETS 2 ;\n"));
   CHECK(r.def.find("   - vdd!\n      + ROUTED metal1 100  ( 0 1950 ) ( 2000 * ) ;\n") != std::string::npos);
@@ -97,7 +97,7 @@ TEST_CASE("LEFDEF-317 and 318: the unlabeled net is a blockage, the others are n
   CHECK(section(r.def, "BLOCKAGES") ==
         "BLOCKAGES 1 ;\n   - LAYER metal1\n      RECT ( 0 500 ) ( 600 600 ) ;\nEND BLOCKAGES\n\n");
 
-  const CaseRun all = run_case("LEFDEF-318", "defw write -allspecial", true);
+  const CaseRun all = run_case("LEFDEF-318", "def write -allspecial", true);
   CHECK(all.crash_note);
   CHECK(section(all.def, "SPECIALNETS").starts_with("SPECIALNETS 3 ;\n"));
   CHECK(all.def.find("   - A ( PIN A )\n      + ROUTED metal1 100  ( 0 1050 ) ( 600 * ) ;\n") != std::string::npos);
@@ -107,7 +107,7 @@ TEST_CASE("LEFDEF-317 and 318: the unlabeled net is a blockage, the others are n
 
 TEST_CASE("LEFDEF-320: the hierarchical and internal names are blockages",
           "[cap:def-write][req:DEF net naming][magic-crash]") {
-  const CaseRun r = run_case("LEFDEF-320", "defw write", true);
+  const CaseRun r = run_case("LEFDEF-320", "def write", true);
   CHECK(r.crash_note);
   CHECK(r.def.find("   - net_1\n") != std::string::npos);
   CHECK(r.def.find("a_n5") == std::string::npos);
@@ -118,7 +118,7 @@ TEST_CASE("LEFDEF-320: the hierarchical and internal names are blockages",
 }
 
 TEST_CASE("LEFDEF-330: -anal with a floating metal3 net", "[cap:def-write][req:NONDEFAULTRULES section][magic-crash]") {
-  const CaseRun r = run_case("LEFDEF-330", "defw write -anal", true);
+  const CaseRun r = run_case("LEFDEF-330", "def write -anal", true);
   CHECK(r.crash_note);
   // `wide` and `n1` are labeled non-port nets, so SPECIALNETS (no rule).
   CHECK(section(r.def, "SPECIALNETS").starts_with("SPECIALNETS 2 ;\n"));
@@ -131,7 +131,7 @@ TEST_CASE("LEFDEF-334: vias, obstructions and a floating metal2 net",
           "[cap:def-write][req:Table enumeration order][magic-crash]") {
   for (const bool on : {true, false}) {
     INFO("magic-compat " << (on ? "ON" : "OFF"));
-    const CaseRun r = run_case("LEFDEF-334", "defw write", on);
+    const CaseRun r = run_case("LEFDEF-334", "def write", on);
     CHECK(r.crash_note);
     CHECK(section(r.def, "VIAS").starts_with("VIAS 2 ;\n"));
     CHECK(r.def.find("   - via1_40_40\n") != std::string::npos);

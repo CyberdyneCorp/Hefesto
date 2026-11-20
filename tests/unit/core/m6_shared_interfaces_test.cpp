@@ -38,6 +38,7 @@
 #include "hefesto/oasis/codec/encoder.hpp"
 #include "hefesto/oasis/codec/modal.hpp"
 #include "hefesto/oasis/read/read.hpp"
+#include "hefesto/oasis/write/write.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/line.hpp"

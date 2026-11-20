@@ -6,8 +6,8 @@
 // golden family's tech: `scalefactor 10 nanometers`, so s = 10 at the
 // default units; metal1..metal3 route widths 3, 4 and 5 from the DRC
 // rules; via1/via2 cut squares 5 20 20; obsm1/obsm2/obsv1 obstructions),
-// a `defw` command calling def::write_command (the shared `lef`/`def`
-// dispatcher calls it once INTEGRATION wires it), cells built in memory
+// `def write` through the shared `lef`/`def` dispatcher (which hands it to
+// def::write_command), cells built in memory
 // and `.ext` files under /t.
 //
 // Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
@@ -35,7 +35,6 @@
 #include "hefesto/db/label.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/property.hpp"
-#include "hefesto/def/write/command.hpp"
 #include "hefesto/def/write/write.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -58,11 +57,6 @@ inline std::string data_file(const std::string& relative) {
   std::ostringstream out;
   out << in.rdbuf();
   return out.str();
-}
-
-/// `def write` through def::write_command.
-inline cmd::CommandResult defw_handler(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
-  return def::write_command(ctx, invocation);
 }
 
 /// A label to add to a cell.
@@ -88,10 +82,6 @@ struct Session {
   explicit Session(bool magic_compat = true, const std::string& tech_text = data_file("lefdef.tech")) {
     project.compat.magic_compat = magic_compat;
     REQUIRE(cmd::register_all_commands(registry));
-    REQUIRE(!registry
-                 .add(cmd::CommandSpec{"defw", "defw write ...", "def write (DEFW tests)", defw_handler},
-                      cmd::kLayoutClient)
-                 .has_value());
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
     dispatcher->add_sink(printed);

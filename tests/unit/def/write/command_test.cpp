@@ -48,17 +48,17 @@ TEST_CASE("a file name only right after write; a misplaced number prints the hel
           "[cap:def-write][req:def command argument validation]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write -hide 5").ok());
+  REQUIRE(s.run("def write -hide 5").ok());
   CHECK(s.said("The \"-hide\" option is only for lef write"));
   CHECK(std::any_of(s.messages.begin(), s.messages.end(),
-                    [](const diag::Diagnostic& d) { return d.text.starts_with("The \"defw\" options are:\n"); }));
+                    [](const diag::Diagnostic& d) { return d.text.starts_with("The \"def\" options are:\n"); }));
   CHECK_FALSE(s.exists("top.def"));
 }
 
 TEST_CASE("the lef write options are noted and ignored", "[cap:def-write][req:def command argument validation]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write -tech -pinonly -toplayer -nomaster").ok());
+  REQUIRE(s.run("def write -tech -pinonly -toplayer -nomaster").ok());
   for (const char* opt : {"-tech", "-pinonly", "-toplayer", "-nomaster"}) {
     CHECK(s.said("The \"" + std::string{opt} + "\" option is only for lef write"));
   }
@@ -78,50 +78,50 @@ TEST_CASE("an unknown option prints the help and writes nothing",
           "[cap:def-write][req:def command argument validation]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write -bogus").ok());
+  REQUIRE(s.run("def write -bogus").ok());
   CHECK_FALSE(s.exists("top.def"));
-  REQUIRE(s.run("defw write a b").ok());
+  REQUIRE(s.run("def write a b").ok());
   CHECK_FALSE(s.exists("a.def"));
 }
 
-TEST_CASE("-allspecXYZ is -allspecial; -alls is not", "[cap:def-write][req:def write command]") {
+TEST_CASE("def write -allspecXYZ is -allspecial; -alls is not", "[cap:def-write][req:def write command]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write x -allspecialXYZ").ok());
+  REQUIRE(s.run("def write x -allspecialXYZ").ok());
   CHECK(s.exists("x.def"));
-  REQUIRE(s.run("defw write y -alls").ok());
+  REQUIRE(s.run("def write y -alls").ok());
   CHECK_FALSE(s.exists("y.def"));
 }
 
-TEST_CASE("-units: a value that is not an integer leaves 1000",
+TEST_CASE("def write -units: a value that is not an integer leaves 1000",
           "[cap:def-write][req:def command argument validation]") {
   Session s;
   db::CellDef& top = s.cell("top");
   s.paint(top, "metal1", db::Rect{0, 0, 10, 10});
-  REQUIRE(s.run("defw write -units abc").ok());
+  REQUIRE(s.run("def write -units abc").ok());
   CHECK(s.said("The \"-units\" option requires an argument."));
   CHECK(s.read("top.def").find("UNITS DISTANCE MICRONS 1000 ;") != std::string::npos);
 }
 
 // Regression (Q-LEFDEF-104 fix): Magic reads the argument past the end of
 // the list when -units is the last word (StrIsInt(NULL)).
-TEST_CASE("-units with no value is reported, and the count sends it to the help",
+TEST_CASE("def write -units with no value is reported, and the count sends it to the help",
           "[cap:def-write][req:def command argument validation]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write -units").ok());
+  REQUIRE(s.run("def write -units").ok());
   CHECK(s.said("The \"-units\" option requires an argument."));
   CHECK_FALSE(s.exists("top.def"));
 }
 
 // Regression (Q-LEFDEF-104 fix): a value <= 0 made every coordinate 0 or
 // negative.
-TEST_CASE("-units of 0 or less is refused", "[cap:def-write][req:def command argument validation]") {
+TEST_CASE("def write -units of 0 or less is refused", "[cap:def-write][req:def command argument validation]") {
   Session s;
   s.cell("top");
   for (const char* value : {"0", "-5"}) {
     INFO(value);
-    const auto result = s.run(std::string{"defw write -units "} + value);
+    const auto result = s.run(std::string{"def write -units "} + value);
     REQUIRE_FALSE(result.ok());
     CHECK(result.diagnostics.back().code == "DEF-WRITE-011");
     CHECK_FALSE(s.exists("top.def"));
@@ -131,11 +131,11 @@ TEST_CASE("-units of 0 or less is refused", "[cap:def-write][req:def command arg
 TEST_CASE("output file naming", "[cap:def-write][req:Output file naming]") {
   Session s;
   s.cell("top");
-  REQUIRE(s.run("defw write result.txt").ok());
+  REQUIRE(s.run("def write result.txt").ok());
   CHECK(s.exists("result.txt"));
-  REQUIRE(s.run("defw write chip").ok());
+  REQUIRE(s.run("def write chip").ok());
   CHECK(s.exists("chip.def"));
-  REQUIRE(s.run("defw write /t/out.def").ok());
+  REQUIRE(s.run("def write /t/out.def").ok());
   CHECK(s.exists("/t/out.def"));
   CHECK_FALSE(s.exists("/t/out.def.def"));
 }

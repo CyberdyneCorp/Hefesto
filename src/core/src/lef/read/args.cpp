@@ -15,6 +15,8 @@
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/lef/read/read.hpp"
+#include "hefesto/mask/gen/progress.hpp"
+#include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::lef {
 
@@ -53,7 +55,15 @@ cmd::CommandResult read_option(const cu::Session& s, const cmd::Invocation& invo
   if (s.ctx != nullptr) {
     options.files = &s.ctx->services().files;
   }
-  return read(*s.editor, args[1], options);
+  // Through the session's read host (the desktop shows a card and pumps
+  // frames, design D16); lef::read reports no progress. Without a host it
+  // runs inline.
+  const mask::ProgressHost& host = s.editor->mask.read_host;
+  if (!host) {
+    return read(*s.editor, args[1], options);
+  }
+  return host(platform::Path{args[1]}.filename().string(),
+              [&](const mask::Progress*) { return read(*s.editor, args[1], options); });
 }
 
 cmd::CommandResult datestamp_option(const cu::Session& s, const cmd::Invocation& invocation, const HelpPrinter& help) {

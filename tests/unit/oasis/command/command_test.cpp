@@ -198,6 +198,14 @@ TEST_CASE("oasis options shared with the gds command", "[cap:oasis-command][req:
     CHECK(s.editor.mask.warnings.level == hefesto::mask::WarningLevel::limit);
     CHECK_FALSE(s.editor.mask.rescale_allowed);
   }
+  SECTION("an invalid warning option names the oasis command") {
+    // Regression: the shared warning parser printed "gds" for `oasis` too.
+    CommandSession s;
+    REQUIRE(s.run("oasis warning loud").ok());
+    const std::string printed = s.take_printed();
+    CHECK(printed.find("\"loud\" isn't a valid oasis warning option.") != std::string::npos);
+    CHECK(printed.find("valid gds warning") == std::string::npos);
+  }
   SECTION("contacts yes is accepted and does nothing") {
     CommandSession s;
     REQUIRE(s.run("oasis contacts yes").ok());

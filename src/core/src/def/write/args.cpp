@@ -23,6 +23,7 @@
 #include "hefesto/def/write/write.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/lef/command/command.hpp"
+#include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/view/window.hpp"
 
 namespace hefesto::def {
@@ -191,7 +192,15 @@ CommandResult write_command(cmd::CommandContext& ctx, const cmd::Invocation& inv
   }
   p.options.files = &ctx.services().files;
   p.options.typed_name = p.name.value_or(std::string{});
-  return write(*s.editor, **target, p.name.value_or((*target)->name()), p.options);
+  const std::string name = p.name.value_or((*target)->name());
+  // Through the session's write host (the desktop shows a card and pumps
+  // frames, design D16); def::write reports no progress and the file is
+  // written only once it is complete. Without a host it runs inline.
+  const mask::ProgressHost& host = s.editor->mask.write_host;
+  if (!host) {
+    return write(*s.editor, **target, name, p.options);
+  }
+  return host(name, [&](const mask::Progress*) { return write(*s.editor, **target, name, p.options); });
 }
 
 }  // namespace hefesto::def

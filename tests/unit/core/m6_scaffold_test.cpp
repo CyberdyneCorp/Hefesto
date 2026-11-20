@@ -87,20 +87,6 @@ std::vector<std::string> option_names(std::span<const std::string_view> table) {
   return names;
 }
 
-void check_not_implemented(const cmd::CommandResult& result, const std::string& what) {
-  INFO(what);
-  REQUIRE_FALSE(result.ok());
-  REQUIRE_FALSE(result.diagnostics.empty());
-  CHECK(result.diagnostics.front().code == kNotImplemented);
-  CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
-}
-
-template <typename T>
-void check_not_implemented(const diag::Outcome<T>& outcome) {
-  REQUIRE_FALSE(outcome.ok());
-  CHECK(outcome.error().code == kNotImplemented);
-}
-
 }  // namespace
 
 // --- tasks.md 2.2/2.3: code areas and CORE-NOTIMPL-006 ----------------------
@@ -171,7 +157,7 @@ TEST_CASE("an invalid lef or def option prints Magic's message and the help", "[
   CHECK(s.take_printed().starts_with("\"wr\" isn't a valid lef option."));
 }
 
-TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m6-scaffold]") {
+TEST_CASE("lef and def options need a window, then reach their implementations", "[m6-scaffold]") {
   Session s;
   const auto no_window = s.run("lef read cells");
   REQUIRE_FALSE(no_window.ok());
@@ -186,7 +172,10 @@ TEST_CASE("lef and def options need a window, then answer CORE-NOTIMPL-006", "[m
   const auto def_read = s.run("def read top.def -labels");
   REQUIRE_FALSE(def_read.ok());
   CHECK(def_read.diagnostics.front().code == "DEF-READ-005");
-  check_not_implemented(s.run("def write"), "def write");
+  // def write is DEFW's (tests/unit/def/write/): the dispatcher hands it
+  // over, so it no longer answers CORE-NOTIMPL-006.
+  const auto def_write = s.run("def write");
+  CHECK((def_write.diagnostics.empty() || def_write.diagnostics.front().code != kNotImplemented));
 }
 
 TEST_CASE("def writeall, datestamp and nocheck answer as in Magic", "[m6-scaffold]") {

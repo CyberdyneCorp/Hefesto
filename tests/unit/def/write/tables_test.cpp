@@ -152,7 +152,7 @@ TEST_CASE("a multi-layer rule read from LEF, per mode (Q-LEFDEF-98)", "[cap:def-
   }
 }
 
-TEST_CASE("-anal lists the route layers a rule leaves out", "[cap:def-write][req:NONDEFAULTRULES section]") {
+TEST_CASE("def write -anal lists the route layers a rule leaves out", "[cap:def-write][req:NONDEFAULTRULES section]") {
   Session s;
   def::DefWriteOptions o;
   o.anal = true;
@@ -178,7 +178,7 @@ TEST_CASE("-anal lists the route layers a rule leaves out", "[cap:def-write][req
 
 // Regression (Q-LEFDEF-100): -anal dereferences the slots an earlier write
 // emptied.
-TEST_CASE("-anal after a write that emptied via slots", "[cap:def-write][req:NONDEFAULTRULES section]") {
+TEST_CASE("def write -anal after a write that emptied via slots", "[cap:def-write][req:NONDEFAULTRULES section]") {
   Session s;
   db::CellDef& first = s.cell("first");
   s.paint(first, "via1", db::Rect{10, 10, 36, 36});
