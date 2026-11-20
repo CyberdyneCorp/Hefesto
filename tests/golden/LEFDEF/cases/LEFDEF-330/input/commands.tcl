@@ -1,4 +1,4 @@
-# LEFDEF-330: -anal with metal1..metal3 and one generated rule. Captures: NONDEFAULTRULES lines.
+# LEFDEF-330: -anal with labeled nets on metal1..metal3 and one generated rule. Captures: NONDEFAULTRULES lines.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

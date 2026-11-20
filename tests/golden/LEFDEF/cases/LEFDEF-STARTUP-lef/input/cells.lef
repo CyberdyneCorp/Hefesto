@@ -1,0 +1,50 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+MACRO inv
+  CLASS CORE ;
+  FOREIGN inv 0 0 ;
+  SYMMETRY X Y ;
+  SITE core ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  PIN A
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.1 0.8 0.3 1 ;
+    END
+  END A
+  PIN Y
+    DIRECTION OUTPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER metal1 ;
+        RECT 0.7 0.8 0.9 1 ;
+    END
+  END Y
+  PIN VDD
+    DIRECTION INOUT ;
+    USE POWER ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 1.85 1 2 ;
+    END
+  END VDD
+  PIN VSS
+    DIRECTION INOUT ;
+    USE GROUND ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER metal1 ;
+        RECT 0 0 1 0.15 ;
+    END
+  END VSS
+  OBS
+      LAYER metal1 ;
+        RECT 0.4 0.4 0.6 1.4 ;
+  END
+END inv
+END LIBRARY

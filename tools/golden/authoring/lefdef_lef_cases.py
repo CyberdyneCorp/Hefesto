@@ -10,6 +10,7 @@ cell from ``input/`` and compare the LEF file with ``lef-text``.
 """
 from __future__ import annotations
 
+import dataclasses
 import sys
 from pathlib import Path
 
@@ -17,9 +18,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import common  # noqa: E402
 import lefdef_cases as ld  # noqa: E402
+import mask_cases  # noqa: E402
 import tclcase  # noqa: E402
-from lefdef_cases import (CELLS, RAW, SAVE_ALL, case, labels, lef, lef_layer, lef_macro, lef_obs,  # noqa: E402
-                          lef_pin, mag, plain_label, port_label, rects, tech, use)
+from lefdef_cases import (CELLS, MAGIC_CRASH_NOTE, RAW, SAVE_ALL, case, labels, lef, lef_layer,  # noqa: E402
+                          lef_macro, lef_obs, lef_pin, mag, plain_label, port_label, rects, tech, use)
 
 # Cases that read before any cell is loaded.
 NO_CELL: list[str] = []
@@ -55,6 +57,8 @@ INV_METAL = rects("metal1", (10, 80, 30, 100), (70, 80, 90, 100), (40, 40, 60, 1
 INV_LABELS = labels(port_label("metal1", (10, 80, 30, 100), "A", 0, "signal input"),
                     port_label("metal1", (70, 80, 90, 100), "Y", 1, "signal output"))
 INV = mag(INV_METAL + INV_LABELS)
+# The inverter with its boundary painted, for a technology with a ``bound`` LEF record (Q-LEFDEF-53).
+INV_BOUNDED = mag(INV_METAL + rects("boundary", (0, 0, 100, 200)) + INV_LABELS)
 INV_RAILS = labels(port_label("metal1", (10, 80, 30, 100), "A", 1, "signal input"),
                    port_label("metal1", (70, 80, 90, 100), "Y", 2, "signal output"),
                    port_label("metal1", (0, 185, 100, 200), "VDD", 3, "power bidirectional"),
@@ -119,11 +123,15 @@ LEF_EVERY_KEYWORD = """\
 """
 OVERLAP_TYPE = "    bnd       overlapmark\n"
 
-# A 2:1 internal grid (set-minimum-grid: lambda 20 nm, grid limit 10 nm), and the plain style
-# under which ``tech lambda 1 2`` before the load gives a shrinking (1:2) grid.
+# A 2:1 internal grid (set-minimum-grid: Magic sets 1 lambda = scalefactor / gridlimit = 20 / 10
+# internal units), and the plain style under which ``tech lambda 1 2`` before the load gives a
+# shrinking (1:2) grid. The scale factor is in centimicrons: with ``scalefactor 20 nanometers`` the
+# style's final reduction leaves a scale factor of 2, Magic computes 2 / 10 = 0 internal units per
+# lambda and divides by zero rescaling the tables (SIGFPE; the original input is kept in
+# tests/golden/LEFDEF/magic-crash/LEFDEF-003/ for Hefesto's own tests).
 GRID_STYLE = """\
 style lefdef
-    scalefactor 20 nanometers
+    scalefactor 20
     gridlimit 10
     options set-minimum-grid
     layer M1 metal1,via1
@@ -159,7 +167,12 @@ def tech_section_specs() -> list[tclcase.TclCase]:
                                                             "shrink.tech": tech(cifoutput=PLAIN_STYLE)},
              start=trivial_top(), outputs=["grid2.lef", "shrink.lef", CELLS],
              history="a 2:1-grid technology (lef write -tech, a DEF net with no width, writeall), then a "
-                     "shrinking grid (tech lambda 1 2, the plain technology reloaded, lef write -tech)"),
+                     "shrinking grid (tech lambda 1 2, the plain technology reloaded, lef write -tech)",
+             notes=[MAGIC_CRASH_NOTE.format(
+                 id="LEFDEF-003", what="SIGFPE: its minimum-grid style was scalefactor 20 nanometers with "
+                                       "gridlimit 10, so Magic computed 0 internal units per lambda and divided by "
+                                       "zero in the table rescale (utils/tech.c:808-823, cif/CIFtech.c "
+                                       "CIFTechOutputScale); the style now uses scalefactor 20 (centimicrons)")]),
         case("LEFDEF-004", ["scalegrid 1 2", "lef write -tech"], start=trivial_top(), outputs=["top.lef"]),
     ]
 
@@ -553,8 +566,11 @@ def lef_write_specs() -> list[tclcase.TclCase]:
         write_case("LEFDEF-112", "top", children_top([("c1", 0), ("c2", 200), ("c3", 400)]), ["lef writeall"],
                    [WRITEALL_OUT], files={"c1.mag": prop_cell("CDL c1 MASK 1"), "c2.mag": prop_cell("ZED 2 CDL c2"),
                                        "c3.mag": prop_cell("ALPHA 3")}),
-        write_case("LEFDEF-113", "inv", INV, ["lef write -tech"], ["inv.lef"],
-                   technology=tech(lef=EVERY_RECORD_LEF, types=OVERLAP_TYPE)),
+        write_case("LEFDEF-113", "inv", INV_BOUNDED, ["lef write -tech"], ["inv.lef"],
+                   technology=tech(lef=EVERY_RECORD_LEF, types=OVERLAP_TYPE),
+                   notes=["The cell paints its boundary: with the bound record declared and no boundary paint, "
+                          "Magic writes ORIGIN and SIZE from uninitialized data (Q-LEFDEF-53), different in "
+                          "every run (round-3 capture verification)."]),
         write_case("LEFDEF-114", "inv", INV, ["lef read input/layers.lef", "lef write -tech"], ["inv.lef"],
                    files={"layers.lef": TECH_LAYER_LEF}),
         write_case("LEFDEF-115", "obs",
@@ -616,5 +632,54 @@ def lef_write_specs() -> list[tclcase.TclCase]:
     ]
 
 
+# --- startup: a .lef file named on the command line (task 15.4) -----------------------------------
+
+STARTUP_CASE = "LEFDEF-STARTUP-lef"
+
+
+def startup_case() -> tclcase.TclCase:
+    """Magic reads a ``.lef`` file named on the command line after its startup files and technology
+    (app-startup "Command-line file arguments"; utils/main.c:418-426, 1203-1206). A ``.tcl`` argument
+    would run before the file (Magic processes the files in reverse order, Q-UI-25) and would end the
+    file arguments, so the commands come on standard input, which Magic reads after startup."""
+    body = tclcase.p("drc off", "cellname list allcells", SAVE_ALL)
+    return tclcase.TclCase(
+        STARTUP_CASE, "app-startup", ["Command-line file arguments"],
+        "magic -T input/lefdef input/cells.lef, commands on standard input: the LEF macros read at startup "
+        "(the cells listed and saved).", body,
+        files={"lefdef.tech": tech(), "cells.lef": lef(INV_MACRO)}, outputs=[CELLS],
+        output_names={CELLS: "cells.txt"}, output_comparators={}, stream_comparator="lef-text",
+        stream_masks=["completed-percent", "magic-undo-note"], magic_args=["-T", "input/lefdef", "input/cells.lef"],
+        stdin=True, driver=ld.DRIVER,
+        notes=["Startup case (m6-lef-def-oasis task 15.4): the LEF read runs before any command, so its datestamp "
+               "cannot be pinned; the saved cells are compared with their timestamp masked."])
+
+
+# --- MASK-OS-016: the contact cut size through LEF (task 15.4; m5 task 13.4) -----------------------
+
+# The MASK test technology with a lef section: via1 is a contact whose output layer CVA is
+# ``squares 10 20 20`` (border 10, size 20, separation 20 centimicrons at scalefactor 10).
+CONTACT_LEF_SECTION = "lef\n    routing metal1 metal1\n    routing metal2 metal2\n    cut via1 via1 V1\nend\n\n"
+
+
+def contact_case() -> tclcase.TclCase:
+    """MASK-OS-016: the contact cut size (size + 2 border = 40, edge 20 centimicrons) is what a LEF read
+    grows a via cut to (lefRead.c LefGrowVia: the two warnings print the edge and the LEF cut, in half
+    lambda), and ``lef write -tech`` of a contact cell writes that via (decision D2: its VIA records)."""
+    technology = mask_cases.tech().replace("drc\n", CONTACT_LEF_SECTION + "drc\n", 1)
+    spec = mask_cases.case(
+        "MASK-OS-016", ["Contact cut size query"],
+        "Contact type via1 with squares 10 20 20; lef read of a VIA whose via1 cut (0.1 um) differs from the "
+        "contact's (cut-size warnings, the cut grown to the contact size), then lef write -tech of a via1 "
+        "contact cell.",
+        ["lef read input/v.lef", *mask_cases.paint("via1", 0, 0, 4, 4), "lef write cont -tech"],
+        files={"v.lef": lef(via_lef("V1", 0.2, 0.05, 0.2, default=True))}, technology=technology,
+        start=["load cont"], outputs=["cont.lef"],
+        notes=["Authored in M6 (m6-lef-def-oasis task 15.4) by m6_cases.py: the contact cut size is "
+               "observable through LEF."])
+    return dataclasses.replace(spec, driver=ld.DRIVER, output_comparators={"cont.lef": "lef-text"},
+                               stream_comparator="lef-text", stream_masks=["completed-percent", "magic-undo-note"])
+
+
 def specs() -> list[tclcase.TclCase]:
-    return tech_section_specs() + lef_read_specs() + lef_write_specs()
+    return tech_section_specs() + lef_read_specs() + lef_write_specs() + [startup_case(), contact_case()]

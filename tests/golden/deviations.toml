@@ -735,22 +735,22 @@ reason = "a placement blockage (no LAYER) is reported and not painted (Q-LEFDEF-
 [LEFDEF-003]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "grid2.lef", "shrink.lef", "cells.txt"]
-reason = "M6 exit blocker, LEFTECH; GOLDEN: Magic exits with SIGFPE (status 136) in this case, so it has no capture; the case input needs a change, or Magic's crash becomes a Q-row; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "authored before its capture in golden-capture.yml and before LEFTECH makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-021]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt"]
-reason = "M6 exit blocker, LEFR; LEFR: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; no Q-row (user decision)"
+reason = "M6 exit blocker, LEFR; LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"
 
 [LEFDEF-022]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt"]
-reason = "M6 exit blocker, LEFR; LEFR: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; no Q-row (user decision)"
+reason = "M6 exit blocker, LEFR; LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"
 
 [LEFDEF-113]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "inv.lef"]
-reason = "M6 exit blocker, LEFW; GOLDEN: the case's own lef section declares a bound layer the cell never paints, so Magic writes ORIGIN and SIZE from uninitialized data, different in every run (Q-LEFDEF-53); paint the boundary; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.1)"
 
 [LEFDEF-118]
 deferred = "M6"
@@ -776,6 +776,16 @@ reason = "M6 exit blocker, LEFW; LEFW: macro output differs from Magic's capture
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "obsok.lef", "obsbad.lef"]
 reason = "M6 exit blocker, LEFW; LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"
+
+[LEFDEF-STARTUP-lef]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "authored before its capture in golden-capture.yml and before LEFR makes it replay (m6-lef-def-oasis task 15.4)"
+
+[MASK-OS-016]
+deferred = "M6"
+outputs = ["stdout.txt", "stderr.txt", "cont.lef"]
+reason = "authored before its capture in golden-capture.yml and before LEFW makes it replay (m6-lef-def-oasis task 15.4)"
 
 [LEFDEF-215]
 deferred = "M6"
@@ -910,12 +920,12 @@ reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NO
 [LEFDEF-317]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-318]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-319]
 deferred = "M6"
@@ -925,7 +935,7 @@ reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NO
 [LEFDEF-320]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-321]
 deferred = "M6"
@@ -975,7 +985,7 @@ reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NO
 [LEFDEF-330]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-331]
 deferred = "M6"
@@ -990,12 +1000,12 @@ reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NO
 [LEFDEF-333]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-334]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "M6 exit blocker, DEFW; GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row); Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "M6 exit blocker, DEFW; DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"
 
 [LEFDEF-335]
 deferred = "M6"
@@ -1010,17 +1020,17 @@ reason = "M6 exit blocker, DEFR and LEFVIA; DEFR/GOLDEN: Magic writes the DEF pi
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
+reason = "M6 exit blocker, LEFW; LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"
 
 [LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
+reason = "M6 exit blocker, LEFW; LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"
 
 [LEFDEF-RT-sg13g2_stdcell]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
-reason = "M6 exit blocker, LEFW; LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"
+reason = "M6 exit blocker, LEFW; LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"
 
 [OASIS-001]
 deferred = "M6"
@@ -1370,12 +1380,12 @@ reason = "authored before its capture in golden-capture.yml and before OASW make
 [OASIS-064-arrays]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASW; GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
 
 [OASIS-064-uses]
 deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASW; GOLDEN: Magic wrote no .mag file in the round trip, so it has no capture; fix the case input; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+reason = "authored before its capture in golden-capture.yml and before OASW makes it replay (m6-lef-def-oasis task 15.2)"
 
 [OASIS-090]
 deferred = "M6"

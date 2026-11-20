@@ -7,6 +7,8 @@ rect 70 80 90 100
 rect 40 40 60 140
 rect 0 185 100 200
 rect 0 0 100 15
+<< boundary >>
+rect 0 0 100 200
 << labels >>
 rlabel metal1 10 80 30 100 0 A
 port 0 nsew signal input
