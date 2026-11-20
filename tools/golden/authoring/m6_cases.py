@@ -103,8 +103,15 @@ BLOCKER_REASONS = {
     "OASREAD": ("OASR: the read differs from Magic's GDS read of the equivalent file; to investigate"),
     "OASNAME": ("OASW: a cell name Magic's GDS keeps (a_b) is written as XXXXX<n> (oasis-write 'Cell names'); to "
                 "investigate"),
-    "OASMAG": ("GOLDEN: the case's GDS input changed with decision D3(b) (Q-OASIS-13: a placement with "
-               "magnification <= 0 is dropped); its expected/ needs a recapture"),
+    "MASKOS": ("GOLDEN/LEFW: Magic exits with SIGSEGV (status 139) on this script in golden-capture run 44743146734 "
+               "(lef read of VIA V1 with grown cuts, then lef write cont -tech); the crash point is not found yet, so "
+               "the case cannot be captured"),
+    "STARTUP": ("LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, "
+                "'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in "
+                "hefesto-cli's startup path"),
+    "TECHARGS": ("GOLDEN: the first capture's lefdef.tech had a 46-word `ignore` line, past Magic's 30-word limit "
+                 "(techGetTokens writes past argv[], a garbage keyword message); re-authored as three lines, to be "
+                 "recaptured"),
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
@@ -113,18 +120,11 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-127": BLOCKER_REASONS["PINLAYER"],
     "LEFDEF-128": BLOCKER_REASONS["LEFW"],
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
-    "LEFDEF-317": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-318": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-320": BLOCKER_REASONS["DEFW"],
     "LEFDEF-328": BLOCKER_REASONS["DEFPAD"],
-    "LEFDEF-330": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-333": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-334": BLOCKER_REASONS["DEFW"],
+    "LEFDEF-334": BLOCKER_REASONS["TECHARGS"],
     "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
-    "OASIS-001": BLOCKER_REASONS["OASMAG"],
-    "OASIS-009": BLOCKER_REASONS["OASMAG"],
     "OASIS-012": BLOCKER_REASONS["OASFONT"],
     "OASIS-020": BLOCKER_REASONS["OASSTD"],
     "OASIS-021-flatglob": BLOCKER_REASONS["OASSTD"],
@@ -135,6 +135,8 @@ BLOCKERS: dict[str, str] = {
     "OASIS-032": BLOCKER_REASONS["OASREAD"],
     "OASIS-033": BLOCKER_REASONS["OASREAD"],
     "OASIS-055-names": BLOCKER_REASONS["OASNAME"],
+    "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
+    "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
 }
 BLOCKER_PREFIX = "M6 exit blocker, "
@@ -147,13 +149,26 @@ TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # (Magic's SIGFPE in LEFDEF-003, SIGSEGV in def write of LEFDEF-317/318/320/330/333/334, the unpainted
 # bound layer of LEFDEF-113) were re-authored in round 4 (decision D4): the crashing inputs are in
 # tests/golden/LEFDEF/magic-crash/ (lefdef_cases.MAGIC_CRASH) for Hefesto's own tests.
-LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ()
+# Round 4: MASK-OS-016's Magic run exits 139 (SIGSEGV) in golden-capture run 44743146734 (lef read of a
+# VIA whose cut is grown, then lef write -tech); the cause is not found yet.
+LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ("MASK-OS-016",)
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-003",
+    "LEFDEF-113",
+    "OASIS-064-arrays",
+    "OASIS-064-uses",
+    "OASIS-001",
+    "OASIS-009",
+    "LEFDEF-317",
+    "LEFDEF-318",
+    "LEFDEF-320",
+    "LEFDEF-330",
+    "LEFDEF-333",
     "LEFDEF-234",
     "LEFDEF-215",
     "LEFDEF-216",

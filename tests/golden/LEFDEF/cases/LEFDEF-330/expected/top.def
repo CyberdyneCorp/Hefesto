@@ -1,0 +1,29 @@
+VERSION 5.7 ;
+   NAMESCASESENSITIVE ON ;
+   DIVIDERCHAR "/" ;
+   BUSBITCHARS "()" ;
+   DESIGN top ;
+   TECHNOLOGY lefdef ;
+   UNITS DISTANCE MICRONS 1000 ;
+   DIEAREA ( 0 0 ) ( 1000 550 ) ;
+
+VIAS 0 ;
+END VIAS
+
+COMPONENTS 0 ;
+END COMPONENTS
+
+PINS 0 ;
+END PINS
+
+SPECIALNETS 3 ;
+   - n3
+      + ROUTED metal3 50  ( 0 525 ) ( 1000 * ) ;
+   - wide
+      + ROUTED metal2 120  ( 0 260 ) ( 1000 * ) ;
+   - n1
+      + ROUTED metal1 30  ( 0 15 ) ( 1000 * ) ;
+END SPECIALNETS
+
+END DESIGN
+

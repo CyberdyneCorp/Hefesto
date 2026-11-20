@@ -338,7 +338,11 @@ WIDE_C1 = mag(rects("metal1", (0, 100, 100, 108)) + use("c2", "c2_0", 0, 0, (100
               + labels(plain_label("metal1", (0, 100, 100, 108), "w")))
 OBS_TOP = mag(rects("obsm1", (0, 0, 50, 50)) + rects("metal1", (60, 0, 100, 3))
               + labels(plain_label("metal1", (60, 0, 100, 3), "n")))
-MANY_NAMES_LEF = ld.LEF_BASE + "    ignore " + " ".join(f"L{i:02d}" for i in range(45)) + "\n"
+# Three `ignore` lines of 15 names: Magic's TechLoad keeps at most 30 words of a line (MAXARGS,
+# utils/tech.c:120) and techGetTokens writes past argv[] on a longer one (round-4 capture: a garbage
+# "Unknown LEF section keyword" message), so no line may hold more than 30 words.
+MANY_NAMES_LEF = ld.LEF_BASE + "".join(
+    "    ignore " + " ".join(f"L{i:02d}" for i in range(k, k + 15)) + "\n" for k in (0, 15, 30))
 HASH_TOP = mag(rects("metal1", (0, 0, 30, 4), (0, 20, 30, 24), (0, 40, 30, 44)) + rects("via1", (30, 0, 34, 4), (30, 20, 34, 24))
                + rects("metal2", (34, 0, 60, 4), (34, 20, 60, 24), (34, 40, 60, 44)) + rects("via2", (60, 40, 64, 44))
                + rects("metal3", (64, 40, 90, 45)) + rects("obsm1", (100, 0, 120, 20)) + rects("obsm2", (100, 40, 120, 60))

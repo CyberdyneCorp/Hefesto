@@ -1,0 +1,42 @@
+VERSION 5.7 ;
+   NAMESCASESENSITIVE ON ;
+   DIVIDERCHAR "/" ;
+   BUSBITCHARS "()" ;
+   DESIGN top ;
+   TECHNOLOGY lefdef ;
+   UNITS DISTANCE MICRONS 1000 ;
+   DIEAREA ( 0 1000 ) ( 2000 2000 ) ;
+
+VIAS 0 ;
+END VIAS
+
+COMPONENTS 0 ;
+END COMPONENTS
+
+PINS 1 ;
+   - A + NET A
+     + DIRECTION INPUT
+     + USE SIGNAL
+     + PORT
+        + LAYER metal1 ( -300 -50 ) ( 300 50 )        + PLACED ( 300 1050 ) N ;
+END PINS
+
+NONDEFAULTRULES 1 ;
+  - metal1_width_100
+     + LAYER metal1 WIDTH 100 ;
+END NONDEFAULTRULES
+
+SPECIALNETS 2 ;
+   - clkint
+      + ROUTED metal1 100  ( 1000 1050 ) ( 1600 * ) ;
+   - vdd!
+      + ROUTED metal1 100  ( 0 1950 ) ( 2000 * ) ;
+END SPECIALNETS
+
+NETS 1 ;
+   - A ( PIN A )
+      + ROUTED metal1 TAPERRULE metal1_width_100  ( 50 1050 ) ( 550 * ) ;
+END NETS
+
+END DESIGN
+
