@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <string>
+#include <string_view>
+
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/gds/write/write.hpp"
 #include "hefesto/mask/gen/progress.hpp"
@@ -51,8 +54,20 @@ struct OasisWriteOptions {
 [[nodiscard]] gds::GdsWriteOptions to_gds_write_options(const OasisSettings& settings,
                                                         const stream::StreamReadSettings& stream_read);
 
-/// Writes `root` and its subtree to `path`. SCAFFOLD: fails with
-/// CORE-NOTIMPL-006 ("not implemented yet: oasis write") until OASW lands it.
+/// "Write command and output file naming": the file written for the name
+/// `name` (the typed file, or the bare command's root cell name): `name`,
+/// with `.oas` appended when it contains no `.` anywhere.
+[[nodiscard]] std::string output_file_name(std::string_view name);
+
+/// The name a bare `oasis` writes: the root cell's name after its last `/`
+/// (output_file_name then appends `.oas`).
+[[nodiscard]] std::string default_output_name(const db::CellDef& root);
+
+/// Writes `root` and its subtree to `path` (`options.prepare` is handed to
+/// gds::prepare_write unchanged; `progress`'s cancel flag also stops its
+/// subtree loading). A failed prepare phase creates no file; a cancelled
+/// emit leaves no file; any other failure still leaves a decodable file
+/// with the cells written ("Write result and error propagation").
 [[nodiscard]] cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                                        const OasisWriteOptions& options, const mask::Progress* progress = nullptr);
 

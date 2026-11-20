@@ -73,7 +73,20 @@ Codes of the OASIS reader, read-only vendor views and content-hash timestamps (`
 
 Codes of the OASIS writer, repetition detection and the transcoders (`src/core/src/oasis/write/`; capability oasis-write; design D13). The codes of transcoding read-only OASIS cells into GDS are `GDS-WRITE-*` codes (codes/gds.md). Owner: OASW.
 
-No codes yet.
+`oasis write` translates the element stream that `gds write` produces for the same layout, so every message of the prepare phase, the generation, the labels, the references and the vendor copies is the `GDS-WRITE-*` code `gds write` reports, with the same text.
+
+- `OASIS-WRITE-001`: "Cannot open <path> to write OASIS output": the temporary file next to the target cannot be written or renamed onto it. The target is untouched.
+- `OASIS-WRITE-002`: "<n> font label(s) written to OASIS without font, size, rotation or justification": once per write when at least one label with a font was written (OASIS TEXT has no presentation, Q-OASIS-32). Native only.
+- `OASIS-WRITE-003`: "cell name "<name>" is already used in this OASIS file; the cell is written as "XXXXX<n>"" (Q-OASIS-61). A name that is empty or holds a byte outside 0x21-0x7E (a space under the permissive table) also becomes XXXXX<n>, without the message; `n` is the name's position in order of first need. Native only.
+- `OASIS-WRITE-004`: "cell <cell> has a path of odd width <w> on <layer>/<datatype>; paths with odd width cannot be written to OASIS files": a read-only GDS cell's PATH whose width is odd (Q-OASIS-63). The path is not written and the write fails; the rest of the file is written.
+- `OASIS-WRITE-005`: an element of a read-only GDS cell that OASIS gets changed or not at all: a BOUNDARY with fewer than 3 distinct vertices, a PATH with fewer than 2 points, a negative PATH width (written as its magnitude), a PATH type other than 0, 1, 2 and 4 (written with flush ends), an SREF, AREF, TEXT or BOX without points, and NODE elements (once per cell). Native only.
+- `OASIS-WRITE-006`: "read-only cell <cell> carries XELEMENT or XGEOMETRY records whose payloads may refer to XNAME records of its source file, which are not written" (Q-OASIS-40). Native only.
+- `OASIS-WRITE-007`: a read-only OASIS cell cannot be copied from its source file: the file cannot be decoded, or its unit is not the output unit (1000, or 10000 for `units angstroms`). The cell is generated from its layout. A file or cell that cannot be found follows gds-write's rule for an unopenable vendor file (`GDS-WRITE-041`).
+- `OASIS-WRITE-008`: an output layer with a negative datatype gets no LAYERNAME record.
+- `OASIS-WRITE-009`: "an element of cell <cell> cannot be written to OASIS: <reason>": the encoder refused an element (a value outside its ranges). The element is not written and the write fails.
+- `OASIS-WRITE-010`: an AREF of a read-only GDS cell whose steps are not whole multiples (a type 10 repetition) with more than 2^24 instances; it is not written and the write fails (a proposed resource cap, design D21).
+- `OASIS-WRITE-011`: "OASIS write cancelled."; no output file is left.
+- `OASIS-WRITE-012`: the GDS element stream being translated is malformed (a read-only GDS cell's bytes end inside an element). The cells before it are written.
 
 ## CMD
 
@@ -130,4 +143,16 @@ fails when the two disagree.
 | `OASIS-READ-005` | warning | XNAME, XELEMENT or XGEOMETRY not supported: the record is skipped (reported once per kind and cell). |
 | `OASIS-READ-006` | error | An element does not fit its GDS-equivalent record (a polygon or path above 8191 points, a string above 65530 bytes); it is dropped or cut. |
 | `OASIS-READ-007` | error | A read resource cap was reached (the size of the GDS-equivalent stream); the rest of the file is not read. |
+| `OASIS-WRITE-001` | error | The OASIS output file cannot be created or written; nothing is written. |
+| `OASIS-WRITE-002` | warning | Font labels were written as OASIS TEXT without font, size, rotation or justification (once per write, with the count; Q-OASIS-32). |
+| `OASIS-WRITE-003` | warning | A cell name is already used in the OASIS file; the later cell is written as XXXXX<n> (Q-OASIS-61). |
+| `OASIS-WRITE-004` | error | A path of odd width in a read-only GDS cell cannot be written to OASIS; the write fails (Q-OASIS-63). |
+| `OASIS-WRITE-005` | warning | An element of a read-only cell is dropped or changed for OASIS (degenerate boundary, single-point path, negative width, unknown path type, NODE). |
+| `OASIS-WRITE-006` | warning | A read-only OASIS cell carries XELEMENT or XGEOMETRY records whose payloads may refer to XNAMEs that are not written (Q-OASIS-40). |
+| `OASIS-WRITE-007` | error | A read-only OASIS cell cannot be copied from its source file (undecodable file, different unit); it is generated from its layout. |
+| `OASIS-WRITE-008` | error | An output layer with a negative datatype gets no LAYERNAME record. |
+| `OASIS-WRITE-009` | error | An element cannot be encoded in OASIS (a value out of range); it is not written and the write fails. |
+| `OASIS-WRITE-010` | error | A read-only GDS array has inexact steps and more instances than an explicit repetition may list; it is not written and the write fails. |
+| `OASIS-WRITE-011` | error | The OASIS write was cancelled; no output file is left. |
+| `OASIS-WRITE-012` | error | The GDS element stream being translated is malformed or truncated; the cells before it are written. |
 <!-- END DIAGNOSTIC CODES -->

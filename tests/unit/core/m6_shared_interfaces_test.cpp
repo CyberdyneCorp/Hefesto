@@ -19,7 +19,6 @@
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/def/read/read.hpp"
-#include "hefesto/def/write/write.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extflat/read.hpp"
@@ -39,7 +38,6 @@
 #include "hefesto/oasis/codec/encoder.hpp"
 #include "hefesto/oasis/codec/modal.hpp"
 #include "hefesto/oasis/read/read.hpp"
-#include "hefesto/oasis/write/write.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/line.hpp"
@@ -170,24 +168,6 @@ TEST_CASE("extract::StyleView answers nullopt without a style", "[m6-scaffold]")
 
 // --- tasks.md 2.5: the session state and the LEF/DEF and OASIS interfaces ---
 
-namespace {
-
-void check_stub(const cmd::CommandResult& result, std::string_view what) {
-  INFO(what);
-  REQUIRE_FALSE(result.ok());
-  REQUIRE_FALSE(result.diagnostics.empty());
-  CHECK(result.diagnostics.front().code == "CORE-NOTIMPL-006");
-  CHECK(result.diagnostics.front().text == "not implemented yet: " + std::string{what});
-}
-
-template <typename T>
-void check_stub(const diag::Outcome<T>& outcome) {
-  REQUIRE_FALSE(outcome.ok());
-  CHECK(outcome.error().code == "CORE-NOTIMPL-006");
-}
-
-}  // namespace
-
 TEST_CASE("EditorState holds the LEF/DEF session and MaskSession the oasis settings", "[m6-scaffold]") {
   const editor::EditorState state;
   CHECK(state.lefdef.layers.size() == 0);
@@ -199,15 +179,12 @@ TEST_CASE("EditorState holds the LEF/DEF session and MaskSession the oasis setti
   CHECK(state.mask.oasis == oasis::OasisSettings{});
 }
 
-TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-scaffold]") {
-  editor::EditorState state;
-  hefesto::db::CellDef cell{"top", 1};
-  check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
-  // Implemented: lef::read (LEFR, tests/unit/lef/read/), lef::write and
-  // lef::write_all (LEFW, tests/unit/lef/write/), lef::paint_polygon (LEFVIA,
-  // tests/unit/lef/via/), def::read (DEFR, tests/unit/def/read/), def::write
-  // (DEFW, tests/unit/def/write/), oasis::read (OASR, tests/unit/oasis/read/).
-}
+// The LEF/DEF and OASIS entry points are all implemented: lef::read (LEFR,
+// tests/unit/lef/read/), lef::write and lef::write_all (LEFW,
+// tests/unit/lef/write/), lef::paint_polygon (LEFVIA, tests/unit/lef/via/),
+// def::read (DEFR, tests/unit/def/read/), def::write (DEFW,
+// tests/unit/def/write/), oasis::read (OASR, tests/unit/oasis/read/) and
+// oasis::write (OASW, tests/unit/oasis/write/).
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   diag::CollectingSink sink;

@@ -342,13 +342,19 @@ Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layo
 - [x] 11.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `oasis/read/`. Verify that `check_requirement_coverage.py --capability oasis-read` reports 15 of 15, and every native requirement covered.
 
   As landed (round 3): clang-tidy `readability-function-cognitive-complexity` over the compile database reports a maximum of 15 (`Transcoder::shape`). Coverage reports 15 of 15, native 9 of 9 (25 of 25 over all classes).
-- [ ] 11.7 Replace the copy of calmaStructStamp in `oasis/read/stamps.cpp` with gds-read's shared `stamp(s)` (design D17: `gds::stamp_entries` in `gds/read/stamps.hpp`), once gds-read exposes it. Verify the `[req:Content-hash timestamps for read-only OASIS cells]` tests unchanged. (Split from 11.4 in the round-3 review.)
-- [ ] 11.8 Re-point `equivalence_test.cpp` at `oasis::write` once OASW lands (12.x), so the OASIS side is Hefesto's own writer, not OASFMT's `Encoder`. Verify the `[req:GDS-equivalence cross-check]` test. (Split from 11.5 in the round-3 review.)
+- [x] 11.7 Replace the copy of calmaStructStamp in `oasis/read/stamps.cpp` with gds-read's shared `stamp(s)` (design D17: `gds::stamp_entries` in `gds/read/stamps.hpp`), once gds-read exposes it. Verify the `[req:Content-hash timestamps for read-only OASIS cells]` tests unchanged. (Split from 11.4 in the round-3 review.)
+
+  As landed (round 4, OASW): gds-read did not expose it, so the shared header was added as an assigned edit (design D17): `gds::StampEntry`, `gds::stamp_entries` and `gds::stamp_hash` in `gds/read/stamps.hpp`, implemented in `gds/read/stamps.cpp` over its own calmaStructStamp port. `oasis/read/stamps.cpp` builds `StampEntry`s and calls it; its copy of the procedure and of the FNV-1a hash is gone. The `[req:Content-hash timestamps for read-only OASIS cells]` and gds-read tests pass unchanged.
+- [x] 11.8 Re-point `equivalence_test.cpp` at `oasis::write` once OASW lands (12.x), so the OASIS side is Hefesto's own writer, not OASFMT's `Encoder`. Verify the `[req:GDS-equivalence cross-check]` test. (Split from 11.5 in the round-3 review.)
+
+  As landed (round 4, OASW): a second case of `equivalence_test.cpp` reads each seeded layout (24 seeds, both magic-compat modes, strict and non-strict, compress 0 and 6, repetitions on and off), writes the read cells with `gds::write` and `oasis::write`, reads each file into a fresh session and compares every cell's `.mag` text. The Encoder-based case stays: it covers list repetitions, which oasis-write never writes. `OasSession` takes an optional cifoutput section.
 
 ## 12. OASW: oasis-write and the GDS transcoder
 
-- [ ] 12.1 Implement the write command and file naming, the option settings, and the three-phase write over `gds::prepare_write`, `emit` and `gds::finish_write` (design D4). Verify the `[req:Write command and output file naming]` and `[req:Write option settings]` tests, and that a cancelled write leaves no file.
-- [ ] 12.2 Implement:
+- [x] 12.1 Implement the write command and file naming, the option settings, and the three-phase write over `gds::prepare_write`, `emit` and `gds::finish_write` (design D4). Verify the `[req:Write command and output file naming]` and `[req:Write option settings]` tests, and that a cancelled write leaves no file.
+
+  As landed (round 4): `oasis::write` runs `gds::prepare_write` (with the progress's cancel and tick), `oasis::emit` (on `MaskSession::emit_host` when set) and `gds::finish_write`. A failed prepare phase creates no file (native: gds-write's empty file for GDS-WRITE-003 is Magic's). `oasis::emit` runs `gds::emit_write` on a copy of the PreparedWrite whose file system captures the GDS element stream in memory and passes every other access (vendor files) through, then translates the stream; the OASIS bytes go to a temporary file renamed onto the target, and a cancelled write leaves none (OASIS-WRITE-011). `output_file_name` (`.oas` appended when the name has no `.` anywhere) and `default_output_name` are in `oasis/write/write.hpp` for OASCMD's `oasis write`. Tests: `tests/unit/oasis/write/write_test.cpp`.
+- [x] 12.2 Implement:
   - GDS-consistent content, file layout and units;
   - refnums and name tables (strict and non-strict);
   - cell names (Q-OASIS-61) and string mapping (Q-OASIS-60);
@@ -358,11 +364,23 @@ Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layo
   - placements, array placements and reference properties (Q-OASIS-69).
 
   Verify each `[req:…]` test.
-- [ ] 12.3 Implement shape repetition detection (Q-OASIS-67), CBLOCK compression (Q-OASIS-64 pinned parameters), strict and non-strict modes, standard properties (Q-OASIS-66), layer names, END and validation (Q-OASIS-65), and determinism. Verify their tests and byte equality across every CI leg.
-- [ ] 12.4 Implement the read-only GDS cell transcoder (Q-OASIS-63: odd width is an error, round ends become CIRCLEs) and the read-only OASIS cell re-encoder (Q-OASIS-40), with write result and error propagation and the full-dump prefix (Q-OASIS-68). Verify their tests.
-- [ ] 12.5 Implement `gds/write/vendor_oasis.cpp` (Q-OASIS-35): transcode read-only OASIS cells into GDS elements. Layer or datatype above 32767, or a polygon above 8191 points, is an error. Verify the `[cap:gds-write][req:Read-only OASIS vendor cells]` tests, with layer 32767 written and 32768 failing, and that every M5 `gds-write` test passes unchanged.
-- [ ] 12.6 Verify the `[req:Complete annotated example]` test: `oasis write` of the reference cell gives the 419 bytes of task 10.5.
-- [ ] 12.7 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `oasis/write/`. Verify that `check_requirement_coverage.py --capability oasis-write` reports 9 of 9, and every native requirement covered.
+
+  As landed (round 4): `src/core/src/oasis/write/` reads the stream (`gds_elements.cpp`), names cells (`names.cpp`), translates elements (`translate.cpp`) and drives the file (`library.cpp`), all through `oasis::Encoder`. What the stream does not carry is inferred: a structure is gds-write's own when its STRNAME is a non-vendor cell's encoded name (or XXXXX<n>), every other one is vendor content; in an own structure the BOUNDARYs before the first non-`labellayer` TEXT are mask geometry and a run of equal layer/datatype is one mask layer. Known differences from the spec text (open items): two adjacent written style layers on the same GDS layer/datatype are grouped as one mask layer; the OASIS-only XXXXX<n> of "Cell names" numbers names by first need, not by cell id; a label whose text has even length and ends in a control character loses that character's `_`.
+- [x] 12.3 Implement shape repetition detection (Q-OASIS-67), CBLOCK compression (Q-OASIS-64 pinned parameters), strict and non-strict modes, standard properties (Q-OASIS-66), layer names, END and validation (Q-OASIS-65), and determinism. Verify their tests and byte equality across every CI leg.
+
+  As landed (round 4): repetition detection is the spec algorithm (`repetitions.cpp`; public `detect_repetitions(span<const Point64>)` now returns `RepetitionGroup{origin, optional<Repetition>}`, the scaffold's point-group form replaced); CBLOCKs, strict and non-strict tables, standard properties, LAYERNAMEs and END come from the OASFMT Encoder with the session's `oasis` settings and unit 1000 (10000 for `units angstroms`). Determinism and the compress 0/9 equivalence are unit tests (`repetitions_test.cpp`); byte equality across CI legs is OASIS-056's (GOLDEN).
+- [x] 12.4 Implement the read-only GDS cell transcoder (Q-OASIS-63: odd width is an error, round ends become CIRCLEs) and the read-only OASIS cell re-encoder (Q-OASIS-40), with write result and error propagation and the full-dump prefix (Q-OASIS-68). Verify their tests.
+
+  As landed (round 4): vendor GDS structures in the stream (verbatim copies and full dumps, with gds-write's Q-MASK-211/216 names and prefixes, Q-OASIS-68) are translated element by element with the vendor rules; `transcode_gds_cell` applies them to one structure. Under an OASIS write only, `copy_vendor_structure` refuses a vendor GDS file whose UNITS do not round to the output unit (GDS-WRITE-054, rule 3) and the cell is generated. Read-only OASIS cells: `oasis::VendorCells` (public `oasis/write/vendor_cells.hpp`) is active on the emit thread, so gds-write checks each one (file, cell, unit) and writes an empty placeholder structure, which the translation re-encodes from the decoded source records (`reencode_oasis_cell` for one cell). A PLACEMENT is re-encoded as record 17 when its magnification is 1 and its angle a quarter turn, whatever its source record (open item). Tests: `vendor_test.cpp`.
+- [x] 12.5 Implement `gds/write/vendor_oasis.cpp` (Q-OASIS-35): transcode read-only OASIS cells into GDS elements. Layer or datatype above 32767, or a polygon above 8191 points, is an error. Verify the `[cap:gds-write][req:Read-only OASIS vendor cells]` tests, with layer 32767 written and 32768 failing, and that every M5 `gds-write` test passes unchanged.
+
+  As landed (round 4): `gds/write/vendor_oasis.cpp` decodes the cell (`oasis::decode_vendor_library`) and builds its structure in memory, so a failing cell writes nothing (GDS-WRITE-052..055). Its call is in `LibraryWriter::emit` (`library.cpp`, where generation would start, since a read-only OASIS cell has no GDS_FILE), with `process` passing it the magnified-copy rule for its children and `vendor_polygon_cell` covering OASIS_FILE parents. Expansion is capped at 2^28 element instances per cell (proposed, as oasis-read's). Every M5 gds-write test passes.
+- [x] 12.6 Verify the `[req:Complete annotated example]` test: `oasis write` of the reference cell gives the 419 bytes of task 10.5.
+
+  As landed (round 4): `write_test.cpp` writes the reference cell in both magic-compat modes and compares it with `tests/data/oasis/codec/reference_419.oas`.
+- [x] 12.7 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `oasis/write/`. Verify that `check_requirement_coverage.py --capability oasis-write` reports 9 of 9, and every native requirement covered.
+
+  As landed (round 4): the cognitive-complexity tooling (clang-tidy over the compile database) reports a maximum of 12 in `oasis/write/` and `gds/write/vendor_oasis.cpp`. Coverage: oasis-write 9 of 9, native 16 of 16; gds-write 27 of 27.
 
 ## 13. OASCMD: oasis-command
 

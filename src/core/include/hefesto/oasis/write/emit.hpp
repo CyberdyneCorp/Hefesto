@@ -25,9 +25,10 @@
 
 namespace hefesto::oasis {
 
-/// Generates and writes the OASIS file `path` for `prepared`. SCAFFOLD:
-/// fails with CORE-NOTIMPL-006 ("not implemented yet: oasis write") until
-/// OASW lands it.
+/// Generates and writes the OASIS file `path` for `prepared`: gds-write's
+/// element stream for `prepared` (gds::emit_write on a copy whose file
+/// system captures the stream in memory), translated by the rules of
+/// capability oasis-write with the `settings` of the write.
 [[nodiscard]] cmd::CommandResult emit(const gds::PreparedWrite& prepared, const OasisSettings& settings,
                                       const platform::Path& path, const mask::Progress* progress = nullptr);
 

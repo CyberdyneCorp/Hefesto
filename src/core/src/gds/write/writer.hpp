@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -112,6 +113,7 @@ class LibraryWriter {
   [[nodiscard]] Visit emit(const db::CellDef& def, const CellKind& kind, const mask::HierarchyOptions& options,
                            bool library);
   [[nodiscard]] VendorVisit vendor_structure(const db::CellDef& def, const CellKind& kind);
+  [[nodiscard]] std::optional<Visit> oasis_vendor_structure(const db::CellDef& def);
   [[nodiscard]] VendorVisit full_dump(const db::CellDef& def, ByteSource& source, const std::string& file);
   [[nodiscard]] db::CellDef& magnified_source(db::CellDef& def);
   [[nodiscard]] bool append_undefined();

@@ -8,4 +8,11 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/emit.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/gds_elements.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/library.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/names.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/repetitions.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/transcode.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/translate.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/vendor_cells.cpp
   ${CMAKE_CURRENT_LIST_DIR}/write.cpp)

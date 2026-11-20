@@ -22,18 +22,17 @@
 //
 // The stamp procedure is gds-read's calmaStructStamp (memoized, cycles
 // cut, each child stamp folded as 4 big-endian bytes, the final mix and
-// mask). It mirrors gds/read/stamps.cpp until INTEGRATION shares that one
-// (design D17, an OASR open item); the two must stay identical.
+// mask), shared through gds::stamp_entries (gds/read/stamps.hpp, design
+// D17), and the hash is gds::stamp_hash.
 //
 // Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/oasis/read/stamps.hpp"
 
 #include <algorithm>
-#include <array>
 #include <functional>
-#include <unordered_map>
 
+#include "hefesto/gds/read/stamps.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/oasis/codec/cblock.hpp"
 #include "hefesto/oasis/codec/primitives.hpp"
@@ -45,15 +44,10 @@ namespace {
 
 using read_detail::NameRef;
 
-constexpr std::uint64_t kFnvOffset = 14695981039346656037ULL;
-constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
+constexpr std::uint64_t kFnvOffset = gds::kStampHashOffset;
 
 std::uint64_t fnv(std::uint64_t h, std::span<const std::byte> bytes) {
-  for (const std::byte b : bytes) {
-    h ^= std::to_integer<std::uint64_t>(b);
-    h *= kFnvPrime;
-  }
-  return h;
+  return gds::stamp_hash(h, bytes);
 }
 
 /// The source the decoder reads through, keeping the bytes it has read
@@ -245,103 +239,12 @@ class CellHasher {
   std::vector<CellRecord> cells_;
 };
 
-// --- calmaStructStamp (gds/read/stamps.cpp) ------------------------------------
-
-enum class State : std::uint8_t { not_started, in_progress, done };
-
-struct Entry {
-  std::string name;
-  std::uint64_t start = 0;
-  std::uint64_t end = 0;
-  std::uint64_t hash = kFnvOffset;
-  std::vector<std::string> children;
-  std::uint32_t stamp = 0;
-  State state = State::not_started;
-};
-
-struct Table {
-  std::vector<Entry> entries;
-  std::unordered_map<std::string, std::size_t> by_name;  // first definition wins
-};
-
-std::uint32_t fold(std::uint64_t h) {
-  h ^= (h >> 31U) ^ (h >> 62U);
-  const auto stamp = static_cast<std::uint32_t>(h & 0x7fffffffU);
-  return stamp == 0 ? 1 : stamp;
-}
-
-void finish(Entry& e, std::uint64_t h) {
-  e.stamp = fold(h);
-  e.state = State::done;
-}
-
-struct Frame {
-  std::size_t entry;
-  std::size_t next_child = 0;
-  std::uint64_t hash;
-};
-
-std::optional<std::uint32_t> enter(Table& t, std::size_t index, std::vector<Frame>& stack) {
-  Entry& e = t.entries[index];
-  if (e.state == State::done) {
-    return e.stamp;
-  }
-  if (e.state == State::in_progress) {
-    finish(e, e.hash);  // a reference loop is not followed
-    return e.stamp;
-  }
-  e.state = State::in_progress;
-  stack.push_back(Frame{index, 0, e.hash});
-  return std::nullopt;
-}
-
-std::uint64_t mix_stamp(std::uint64_t h, std::uint32_t stamp) {
-  const std::array<std::byte, 4> bytes{static_cast<std::byte>((stamp >> 24U) & 0xffU),
-                                       static_cast<std::byte>((stamp >> 16U) & 0xffU),
-                                       static_cast<std::byte>((stamp >> 8U) & 0xffU),
-                                       static_cast<std::byte>(stamp & 0xffU)};
-  return fnv(h, bytes);
-}
-
-std::optional<std::size_t> next_child(const Table& t, Frame& frame) {
-  const Entry& e = t.entries[frame.entry];
-  while (frame.next_child < e.children.size()) {
-    const auto found = t.by_name.find(e.children[frame.next_child++]);
-    if (found != t.by_name.end()) {
-      return found->second;
-    }
-  }
-  return std::nullopt;
-}
-
-void stamp(Table& t, std::size_t root) {
-  std::vector<Frame> stack;
-  if (enter(t, root, stack)) {
-    return;
-  }
-  while (!stack.empty()) {
-    const auto child = next_child(t, stack.back());
-    if (!child) {
-      const Frame done = stack.back();
-      stack.pop_back();
-      finish(t.entries[done.entry], done.hash);
-      if (!stack.empty()) {
-        stack.back().hash = mix_stamp(stack.back().hash, t.entries[done.entry].stamp);
-      }
-      continue;
-    }
-    if (const auto value = enter(t, *child, stack)) {
-      stack.back().hash = mix_stamp(stack.back().hash, *value);
-    }
-  }
-}
-
 // --- the cells ---------------------------------------------------------------------
 
 /// The stamp entry of `c`, its names resolved; consecutive children that
 /// resolve to the same name are one.
-Entry entry_of(CellRecord& c, const NameTables& names) {
-  Entry e;
+gds::StampEntry entry_of(CellRecord& c, const NameTables& names) {
+  gds::StampEntry e;
   e.name = read_detail::cell_name(names, c.name);
   e.start = c.start;
   e.end = c.end;
@@ -374,20 +277,12 @@ gds::StampTable content_stamps(gds::ByteSource& source) {
     const Record& r = *record.value();
     cells.record(r, stream.start(r));
   }
-  Table table;
+  std::vector<gds::StampEntry> entries;
+  entries.reserve(cells.cells().size());
   for (CellRecord& c : cells.cells()) {
-    Entry e = entry_of(c, decoder.names());
-    table.by_name.try_emplace(e.name, table.entries.size());
-    table.entries.push_back(std::move(e));
+    entries.push_back(entry_of(c, decoder.names()));
   }
-  gds::StampTable out;
-  out.reserve(table.entries.size());
-  for (std::size_t i = 0; i < table.entries.size(); ++i) {
-    stamp(table, i);
-    const Entry& e = table.entries[i];
-    out.push_back(gds::StructureStamp{e.name, e.start, e.end, e.stamp});
-  }
-  return out;
+  return gds::stamp_entries(std::move(entries));
 }
 
 }  // namespace hefesto::oasis

@@ -27,7 +27,6 @@
 #include "hefesto/oasis/command/format.hpp"
 #include "hefesto/oasis/command/settings.hpp"
 #include "hefesto/oasis/read/stamps.hpp"
-#include "hefesto/oasis/write/repetitions.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/ui/line.hpp"
 
@@ -292,11 +291,7 @@ TEST_CASE("the M6 area-contract stubs answer their documented values", "[m6-scaf
   // validate, inflate_cblock and deflate_cblock are implemented (OASFMT,
   // tests/unit/oasis/codec/).
   CHECK(oasis::ValidationResult{}.ok());
-
-  const std::array<db::Point, 2> points{db::Point{0, 0}, db::Point{10, 0}};
-  const auto groups = oasis::detect_repetitions(points);
-  REQUIRE(groups.size() == 2);
-  CHECK(groups[1] == oasis::RepetitionGroup{db::Point{10, 0}, {}});
+  // detect_repetitions is implemented (OASW, tests/unit/oasis/write/).
 
   // lef::format_distance and lef::MacroBuilder are implemented (LEFW):
   // tests/unit/lef/write/.
