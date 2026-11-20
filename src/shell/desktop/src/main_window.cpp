@@ -13,6 +13,7 @@
 #include "hefesto/display/styles.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/render/scene.hpp"
+#include "hefesto/shell/open_files.hpp"
 #include "hefesto/ui/tools.hpp"
 
 namespace hefesto::shell {
@@ -22,16 +23,6 @@ namespace {
 constexpr float kBarPadX = 14.0F;  // the mockup's 14 px bar padding
 constexpr float kGap = 16.0F;      // the top bar's 16 px gap
 constexpr std::string_view kConsoleToggleName = "Console and diagnostics";
-
-std::string quoted(const std::string& path) {
-  if (path.find_first_of(" \t\"\\{}[]$;") == std::string::npos) return path;
-  std::string out = "\"";
-  for (const char c : path) {
-    if (c == '"' || c == '\\' || c == '$' || c == '[' || c == ']') out += '\\';
-    out += c;
-  }
-  return out + "\"";
-}
 
 /// `$CAD_ROOT/magic/sys` (Magic's system library path for the display
 /// styles) and the technology file's directory.
@@ -126,6 +117,8 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   build_m4b();
   window_.install_key_hook([this](int key, std::uint8_t modifiers) { return on_shortcut(key, modifiers); });
   build_drop_band();  // CARRY: over root_, the window's content (after the key hook: the drop)
+  // M6 (D16): a layout file dropped from the file manager opens by content.
+  window_.on_files_dropped([this](std::vector<std::string> paths) { open_paths(paths); });
   window_.set_content(window_root_);
   register_view_commands();
 
@@ -292,8 +285,8 @@ void MainWindow::build_top_bar() {
     row.add_centered(*widget);
     painted_.push_back(std::move(widget));
   }
-  add_top_button(row, "Open", "open", paint::ButtonStyle::secondary, "Open a .mag cell file (load)",
-                 [this] { open_file(); });
+  add_top_button(row, "Open", "open", paint::ButtonStyle::secondary,
+                 "Open a layout file: a Magic cell, GDS or OASIS (by content)", [this] { open_file(); });
   add_top_button(row, "PDKs", "pdk", paint::ButtonStyle::secondary, "PDK manager: install, enable and pin PDKs",
                  [this] { toggle_pdk_manager(); });
   for (const DeferredControl& c : deferred_actions()) {
@@ -711,8 +704,15 @@ void MainWindow::append_console(const std::string& command, const std::string& r
 }
 
 void MainWindow::open_file() {
-  const auto path = window_.open_file_dialog("Open a cell", "Magic cells (*.mag)", "*.mag");
-  if (path) run_line("load " + quoted(*path));
+  // M6 (D15, D16): any file; its content decides how it is read.
+  const auto path = window_.open_file_dialog("Open a layout", kOpenFilterName, kOpenFilterPatterns);
+  if (path) open_paths(std::vector<std::string>{*path});
+}
+
+void MainWindow::open_paths(const std::vector<std::string>& paths) {
+  const OpenPlan plan = plan_open(ctx_.core.files(), paths);
+  for (const diag::Diagnostic& problem : plan.problems) ctx_.core.dispatcher().report(problem);
+  for (const std::string& line : plan.lines) run_line(line);
 }
 
 void MainWindow::toggle_pdk_manager() {

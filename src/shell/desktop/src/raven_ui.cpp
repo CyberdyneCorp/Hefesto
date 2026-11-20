@@ -1277,6 +1277,29 @@ void Window::on_close_request(std::function<void()> callback) {
   if (id_ != kNoWidget) Rwindow_set_close_callback(id_, &CloseHook::on_close, close_hook_.get());
 }
 
+struct Window::FileDropHook {
+  std::function<void(std::vector<std::string>)> callback;
+  static int on_drop(Rid /*window*/, const RDropEvent* e, void* self) {
+    auto* hook = static_cast<FileDropHook*>(self);
+    if (!hook->callback || e->drag_type != nullptr) return kFalse;  // a drag inside the application
+    if (e->phase != R_DROP_DROPPED) return kTrue;  // the files are known only when dropped
+    if (e->paths == nullptr || e->path_count <= 0) return kFalse;  // text, not files
+    std::vector<std::string> paths;
+    paths.reserve(static_cast<std::size_t>(e->path_count));
+    for (int i = 0; i < e->path_count; ++i) {
+      if (e->paths[i] != nullptr) paths.emplace_back(e->paths[i]);
+    }
+    hook->callback(std::move(paths));
+    return kTrue;
+  }
+};
+
+void Window::on_files_dropped(std::function<void(std::vector<std::string>)> callback) {
+  if (!file_drop_hook_) file_drop_hook_ = std::make_unique<FileDropHook>();
+  file_drop_hook_->callback = std::move(callback);
+  if (id_ != kNoWidget) Rwindow_set_drop_callback(id_, &FileDropHook::on_drop, file_drop_hook_.get());
+}
+
 Window::Window(std::string_view title, int width, int height)
     : id_(Rwindow_create(str(title).c_str(), width, height, R_WINDOW_DEFAULT)) {}
 
@@ -1289,6 +1312,7 @@ void Window::destroy() {
   if (id_ != kNoWidget && valid()) {
     Rwindow_set_event_hook(id_, nullptr, nullptr);
     if (close_hook_) Rwindow_set_close_callback(id_, nullptr, nullptr);
+    if (file_drop_hook_) Rwindow_set_drop_callback(id_, nullptr, nullptr);
     Rwindow_destroy(id_);
   }
   id_ = kNoWidget;

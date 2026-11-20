@@ -85,6 +85,11 @@ target_sources(hefesto_shell_desktop PRIVATE
 target_sources(hefesto_shell_desktop PRIVATE
   src/mask_job_host.cpp)
 
+# M6 (openspec/changes/m6-lef-def-oasis tasks 14.1-14.3, SHELL): File > Open
+# and drag and drop through the generic open path (format by content).
+target_sources(hefesto_shell_desktop PRIVATE
+  src/open_files.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root

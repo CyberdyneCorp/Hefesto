@@ -357,16 +357,21 @@ Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layo
 
 ## 13. OASCMD: oasis-command
 
-- [ ] 13.1 Implement the command name and forms, option syntax, the options shared with `gds` (through `stream_read`) and the OASIS-only options. Verify the `[cap:oasis-command]` tests, including "`gds readonly true` then `oasis read` marks the read cells read-only" (Q-OASIS-90).
+- [x] 13.1 Implement the command name and forms, option syntax, the options shared with `gds` (through `stream_read`) and the OASIS-only options. Verify the `[cap:oasis-command]` tests, including "`gds readonly true` then `oasis read` marks the read cells read-only" (Q-OASIS-90).
   - Round-3 note (OASR): the `oasis read` command calls `find_oasis_file`, creates an empty edit cell when none exists (as gds `read_option` does), computes `options.oasis_file` as `gds_file_property` does, and loads `result.value` (the top cell) into the window.
-- [ ] 13.2 Implement format recognition on open (`sniff_format` after gzip, in `app/`) and scripting access with query results. Verify the `[req:Format recognition on open]` and `[req:Scripting access]` tests, including `chip.gds` holding OASIS.
-- [ ] 13.3 Verify that `check_requirement_coverage.py --capability oasis-command` reports 2 of 2, and every native requirement covered.
+  - As landed (round 4): `oasis/command/{command,options,read_command,write_command}.cpp`. The shared read options go to the `gds` command's `read_settings_option` (one setting, Q-OASIS-90), their GDS-CMD-001 errors renumbered OASIS-CMD-001; the others are `MaskSession::oasis`. `read` and `write` run through `read_host`/`write_host`; `write` names `<name>.oas` (no `.`) and calls `oasis::write` (still OASW's stub). Codes OASIS-CMD-001..005. Tests `tests/unit/oasis/command/command_test.cpp` (a stub write host checks naming and routing).
+- [x] 13.2 Implement format recognition on open (`sniff_format` after gzip, in `app/`) and scripting access with query results. Verify the `[req:Format recognition on open]` and `[req:Scripting access]` tests, including `chip.gds` holding OASIS.
+  - As landed (round 4): `oasis::sniff_format` (OASIS magic, GDS HEADER, `magic` line) and `app::open_command` (`hefesto/app/open_file.hpp`: the command words and a Tcl-quoted line; OASIS-CMD-005 for an unknown format). Tests `tests/unit/oasis/command/open_test.cpp`, including the Tcl binding.
+- [x] 13.3 Verify that `check_requirement_coverage.py --capability oasis-command` reports 2 of 2, and every native requirement covered.
 
 ## 14. SHELL: desktop (Open Question 5, decided (a))
 
 - [ ] 14.1 Route the desktop File > Open picker and drag and drop through the generic open, so OASIS is recognised by content. Verify a shell test that opens an OASIS file named `.gds`.
+  - Round-4 note (SHELL): built (`shell::plan_open`, `MainWindow::open_paths`, `ui::Window::on_files_dropped` over `Rwindow_set_drop_callback`; the picker offers `*`) with `tests/unit/shell/m6_open_test.cpp`; open: the desktop build and the shell tests were not run (no Vulkan SDK on the round-4 host; syntax-checked only) and no capture was taken.
 - [ ] 14.2 Run LEF, DEF and OASIS reads and writes through the M5 progress and cancel hosts. Verify shell tests for progress and for a cancelled OASIS write leaving no file. Record the items in `docs/design/m6-ui-conformance.md`.
+  - Round-4 note (SHELL): `oasis read`/`write` and `def read` use the hosts; recorded in `m6-ui-conformance.md`. Open: `lef read` (LEFR), `lef write|writeall` (LEFW) and `def write` (DEFW) still run inline (open items); the cancelled-write test passes against OASW's stub and needs OASW for its end-to-end check.
 - [ ] 14.3 Verify that the desktop adds no LEF, DEF or OASIS menu item or board (Open Question 5 (a)), and that `docs/design/m6-ui-conformance.md` says so.
+  - Round-4 note (SHELL): test "the desktop adds no LEF, DEF or OASIS menu item" and the conformance row added; open: the desktop test run and the capture.
 
 ## 15. GOLDEN: LEFDEF and OASIS cases
 
