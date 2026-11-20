@@ -175,10 +175,10 @@ class GdsLibrary {
     REQUIRE(writer_.write_real8(t, a).ok());
   }
 
-  /// BGNSTR, STRNAME; returns GDS_START (the offset after STRNAME).
+  /// BGNSTR, STRNAME; returns the BGNSTR offset (start() is GDS_START).
   std::uint64_t begin(std::string_view name) {
-    i2(gds::RecordType::bgnstr, {99, 2, 3, 4, 5, 6, 99, 2, 3, 4, 5, 6});
     const std::uint64_t at = position();
+    i2(gds::RecordType::bgnstr, {99, 2, 3, 4, 5, 6, 99, 2, 3, 4, 5, 6});
     str(gds::RecordType::strname, name);
     start_ = position();
     return at;

@@ -203,11 +203,11 @@ TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-sca
   editor::EditorState state;
   hefesto::db::CellDef cell{"top", 1};
   check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
-  check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
   // Implemented: lef::read (LEFR, tests/unit/lef/read/), lef::write and
   // lef::write_all (LEFW, tests/unit/lef/write/), lef::paint_polygon (LEFVIA,
   // tests/unit/lef/via/), def::read (DEFR, tests/unit/def/read/), oasis::read
-  // (OASR, tests/unit/oasis/read/).
+  // (OASR, tests/unit/oasis/read/), oasis::write (OASW,
+  // tests/unit/oasis/write/).
 }
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {

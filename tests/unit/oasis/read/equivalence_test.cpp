@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The GDS-equivalence cross-check as a unit property test (tasks.md 11.5):
-// for seeded random layouts L, L is written as GDS and as OASIS, each is
-// read into a fresh session (gds::read, oasis::read), and the .mag text of
-// every cell is compared, timestamp lines excluded.
-//
-// The OASIS half of task 11.5 is `oasis write` (OASW, a later round); until
-// it lands, the OASIS file is written by the codec's Encoder from the same
-// layout description as the GDS file (the GdsFile builder), with each
-// construct written the way oasis-write writes it: rectangles as
-// RECTANGLE, Magic arrays as grid repetitions, separate uses as list
-// repetitions, instance names as S_GDS_PROPERTY. INTEGRATION re-points the
-// OASIS side at oasis::write when OASW lands (tasks.md 11.5 open item).
-// Owner: OASR.
+// The GDS-equivalence cross-check as a unit property test (tasks.md 11.5,
+// 11.8): for seeded random layouts L,
+// - L is read from GDS (gds::read) and from an OASIS file the codec's
+//   Encoder writes from the same description (each construct as
+//   oasis-write writes it, plus list repetitions, which oasis-write never
+//   writes), and the .mag text of every cell is compared, timestamp lines
+//   excluded;
+// - the cells read from L are written by Hefesto as GDS (gds::write) and
+//   as OASIS (oasis::write), each file is read into a fresh session, and
+//   the .mag texts are compared.
+// Owner: OASR (the oasis::write half: OASW, task 11.8).
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <random>
+
+#include "hefesto/gds/write/write.hpp"
+#include "hefesto/oasis/write/write.hpp"
 
 #include "oasis_read_fixture.hpp"
 
@@ -28,6 +29,27 @@ namespace {
 /// The layer pairs of the random shapes: mapped (metal1, the metal1 pin
 /// and label pairs, metal2, poly) and one unmapped pair.
 constexpr std::array<std::pair<int, int>, 6> kPairs{{{68, 20}, {68, 16}, {68, 5}, {69, 20}, {66, 20}, {99, 0}}};
+
+/// The output style of the write-back half: the read style's layers.
+constexpr std::string_view kOutput =
+    "style out\n"
+    "scalefactor 1\n"
+    "layer M1 m1\n"
+    "labels m1\n"
+    "calma 68 20\n"
+    "layer M2 m2\n"
+    "labels m2\n"
+    "calma 69 20\n"
+    "layer PO poly\n"
+    "labels poly\n"
+    "calma 66 20\n";
+
+/// The bytes of file `path` of `s`.
+Bytes file_bytes(OasSession& s, const std::string& path) {
+  const std::string text = s.fs.read(path).value();
+  const auto* first = reinterpret_cast<const std::byte*>(text.data());
+  return Bytes(first, first + text.size());
+}
 
 std::uint64_t u(int v) {
   return static_cast<std::uint64_t>(v);
@@ -253,6 +275,46 @@ TEST_CASE("GDS-equivalence cross-check", "[cap:oasis-read][req:GDS-equivalence c
         CHECK(actual[i].second == expected[i].second);
       }
       CHECK(from_oasis.last.value.to_string() == from_gds.last.value.to_string());
+    }
+  }
+}
+
+TEST_CASE("GDS-equivalence cross-check of Hefesto's GDS and OASIS writes",
+          "[cap:oasis-read][req:GDS-equivalence cross-check]") {
+  for (std::uint32_t seed = 1; seed <= 24; ++seed) {
+    for (const bool magic_compat : {true, false}) {
+      Layout layout(seed, seed % 2 == 0, 0);
+      layout.build();
+      OasSession source(kStyle, magic_compat, kOutput);
+      (void)source.read(layout.gds());
+      db::CellDef* root = source.editor.cells.find("c0");
+      REQUIRE(root != nullptr);
+      oasis::OasisWriteOptions o;
+      o.settings.strict = seed % 2 == 0;
+      o.settings.compress = seed % 3 == 0 ? 6 : 0;
+      o.settings.repetitions = seed % 4 != 0;
+      o.prepare = oasis::to_gds_write_options(o.settings, {});
+      o.prepare.files = &source.fs;
+      o.prepare.time_zone = "UTC0";
+      const gds::GdsWriteOptions g = o.prepare;
+      INFO("seed " << seed << " magic-compat " << magic_compat);
+      REQUIRE(gds::write(source.editor, *root, "/data/back.gds", g).ok());
+      REQUIRE(oasis::write(source.editor, *root, "/data/back.oas", o).ok());
+
+      OasSession from_gds(kStyle, magic_compat);
+      gds::MemorySource gds_bytes{file_bytes(source, "/data/back.gds")};
+      from_gds.last = gds::read(from_gds.editor, gds_bytes, from_gds.options);
+      OasSession from_oasis(kStyle, magic_compat);
+      (void)from_oasis.read_oasis(file_bytes(source, "/data/back.oas"));
+      const auto expected = all_mags(from_gds);
+      const auto actual = all_mags(from_oasis);
+      REQUIRE(actual.size() == expected.size());
+      REQUIRE(expected.size() >= 2);
+      for (std::size_t i = 0; i < expected.size(); ++i) {
+        INFO("cell " << expected[i].first);
+        CHECK(actual[i].first == expected[i].first);
+        CHECK(actual[i].second == expected[i].second);
+      }
     }
   }
 }
