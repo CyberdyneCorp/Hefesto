@@ -1104,11 +1104,11 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Recommendation: fix, with a recorded golden deviation.
 - Resolution: fix — in both modes the message names the candidate built from the typed name (`missing` gives `missing.lef`); LEFDEF-021 and LEFDEF-022 record the deviation. Approved 2026-11-19.
 
-### Q-LEFDEF-134: Malformed OBS_BBOX messages on one line
+### Q-LEFDEF-134: Malformed OBS_BBOX and FIXED_BBOX messages on one line
 - Kind: quirk
 - Status: approved (user decision D4, approved 2026-11-19)
-- Magic behavior: `Cannot read bounding box values in OBS_BBOX property` (`.mag` read) and `Improper values for obstruction bounding box OBS_BBOX property` (`lef write -hide`) are printed with TxError and no line end, so they share one line (LEFDEF-132).
+- Magic behavior: `Cannot read bounding box values in <key> property` (`.mag` read; the same branch serves FIXED_BBOX and OBS_BBOX, so both keys are covered) and `Improper values for obstruction bounding box OBS_BBOX property` (`lef write -hide`) are printed with TxError and no line end, so they share one line (LEFDEF-132).
 - Evidence: database/DBio.c:3345-3346, lef/lefWrite.c:1862-1863
 - Options: replicate | compat (replicate ON; end each line OFF)
 - Recommendation: compat (message-only).
-- Resolution: compat — with `magic-compat` ON both messages have no line end, as Magic prints them; with it OFF each line is ended. Approved 2026-11-19.
+- Resolution: compat — with `magic-compat` ON both messages have no line end, as Magic prints them (the `.mag` read message for FIXED_BBOX as well as OBS_BBOX); with it OFF each line is ended. Approved 2026-11-19. Specs: cell-file-format "Properties section records", lef-write.
