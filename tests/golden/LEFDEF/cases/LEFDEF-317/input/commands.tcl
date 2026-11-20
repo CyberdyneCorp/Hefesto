@@ -1,4 +1,4 @@
-# LEFDEF-317: top cell with vdd! (no port), A (port), labeled internal clkint, unlabeled net; extracted. Captures: SPECIALNETS / NETS membership and counts.
+# LEFDEF-317: top cell with vdd! (no port), A (port), labeled internal clkint; extracted. Captures: SPECIALNETS / NETS membership and counts.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

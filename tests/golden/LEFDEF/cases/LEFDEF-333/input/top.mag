@@ -3,4 +3,12 @@ tech lefdef
 timestamp 100
 << metal1 >>
 rect 0 0 50 3
+<< obsm1 >>
+rect 0 20 30 40
+<< obsm2 >>
+rect 40 20 70 40
+<< obsv1 >>
+rect 80 20 90 30
+<< labels >>
+rlabel metal1 0 0 50 3 0 f
 << end >>

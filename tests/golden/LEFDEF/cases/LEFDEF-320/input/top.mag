@@ -8,5 +8,7 @@ rect 0 40 60 43
 << labels >>
 rlabel metal1 0 0 60 3 0 net-1
 rlabel metal1 0 20 60 23 0 a_n5#
+port 1 nsew
 rlabel metal1 0 40 60 43 0 x1/sig*b
+port 2 nsew
 << end >>

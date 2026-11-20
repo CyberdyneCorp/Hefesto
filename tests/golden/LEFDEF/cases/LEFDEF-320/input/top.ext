@@ -4,6 +4,8 @@ tech lefdef
 style lefdef
 scale 1000 1000 1
 resistclasses 1000 500 100 50 30 20
+port "a_n5#" 1 0 20 60 23 m1
+port "x1/sig*b" 2 0 40 60 43 m1
 node "net-1" 2 1.8 0 0 m1 0 0 0 0 180 126 0 0 0 0 0 0
 node "a_n5#" 2 1.8 0 20 m1 0 0 0 0 180 126 0 0 0 0 0 0
 node "x1/sig*b" 2 1.8 0 40 m1 0 0 0 0 180 126 0 0 0 0 0 0

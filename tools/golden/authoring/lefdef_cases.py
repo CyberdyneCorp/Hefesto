@@ -288,6 +288,11 @@ SAVE_ALL = "writeall force"
 DATESTAMP = "lef datestamp 100"
 WRITES = ("lef write", "lef writeall", "def write", "writeall", "save")
 RAW = "#raw "  # a body line written as is (Tcl control flow), not under probe
+# Cases re-authored because Magic crashed on their first input (m6 decision D4, 2026-11-19): the
+# original input stays in MAGIC_CRASH/<id>/ for Hefesto's own crash tests (both modes fixed).
+MAGIC_CRASH = casegen.GOLDEN / "LEFDEF" / "magic-crash"
+MAGIC_CRASH_NOTE = ("Re-authored (decision D4, 2026-11-19): Magic crashed on the first input ({what}); that "
+                    "input is kept in tests/golden/LEFDEF/magic-crash/{id}/ for Hefesto-only tests.")
 
 
 @dataclass(frozen=True)

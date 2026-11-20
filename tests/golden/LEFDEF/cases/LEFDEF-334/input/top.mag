@@ -24,4 +24,5 @@ rect 100 40 120 60
 rlabel metal1 0 0 30 4 0 a
 rlabel metal1 0 20 30 24 0 b
 rlabel metal1 0 40 30 44 0 c
+rlabel metal2 34 40 60 44 0 d
 << end >>

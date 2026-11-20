@@ -1,4 +1,4 @@
-# LEFDEF-320: nets named net-1, a_n5#, x1/sig*b. Captures: DEF net names.
+# LEFDEF-320: nets named net-1 (label), a_n5# and x1/sig*b (ports). Captures: DEF net names.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

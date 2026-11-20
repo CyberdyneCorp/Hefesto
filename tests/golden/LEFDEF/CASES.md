@@ -6,7 +6,7 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 |---|---|---|---|---|
 | LEFDEF-001 | lef-tech-section | tech with lef section using every keyword (layer on contact/non-contact, route, routing, cut, contact, obstruction with 2 types, masterslice, overlap, bound, ignore), plus bad lines (ambiguous `rout`, missing names, 3 types, duplicate name) | tech-load error messages; `lef write -tech` output of a trivial cell to observe the classes and canonical names | Lef section line grammar; Magic type resolution; Keyword to LEF class mapping; LEF name aliasing |
 | LEFDEF-002 | lef-tech-section | 1:1-grid tech with DRC width/spacing for m1 and none for m5; `lef write -tech` | WIDTH/SPACING lines for m1 (expected absent) and m5 (3/4 in µm) | Default routing parameters; Filling defaults after grid scaling |
-| LEFDEF-003 | lef-tech-section | same tech with cifoutput `gridlimit` forcing a 2:1 internal grid; and a variant with a shrinking grid | tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width | Filling defaults after grid scaling; Scaling the LEF table |
+| LEFDEF-003 | lef-tech-section | same tech with cifoutput `gridlimit` forcing a 2:1 internal grid (`scalefactor 20`, `gridlimit 10`, `set-minimum-grid`); and a variant with a shrinking grid | tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width | Filling defaults after grid scaling; Scaling the LEF table |
 | LEFDEF-004 | lef-tech-section | after LEFDEF-002, run `scalegrid 1 2` then `lef write -tech` | scaled WIDTH/SPACING/PITCH values | Scaling the LEF table |
 | LEFDEF-005 | lef-read | LEF with comments, quoted PROPERTY value, `;` glued to a number, a line longer than 2048 characters | resulting cell properties (.mag) and error messages | LEF/DEF tokenizer |
 | LEFDEF-006 | lef-read | LEF producing more than 100 errors (unknown layers) | stdout/stderr transcript (cap notice and totals) | LEF/DEF message reporting |
@@ -40,7 +40,7 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 | LEFDEF-110 | lef-write | Site cell with FIXED_BBOX flag, root cell with different FIXED_BBOX | SITE SIZE value | SITE blocks (Q-LEFDEF-33) |
 | LEFDEF-111 | lef-write | Cell with LEFproperties `CDL "inv x" MASK 1` and `A 1 B` variants | PROPERTYDEFINITIONS and PROPERTY lines | Library header; Macro PROPERTY lines |
 | LEFDEF-112 | lef-write | writeall on a top with 3 children having different LEFproperties keys | PROPERTYDEFINITIONS key order | Library header (Q-LEFDEF-30) |
-| LEFDEF-113 | lef-write | Tech with ~10 lef-section records incl. aliases, obstruction-only, bound, ignore, masterslice, overlap; `lef write -tech` | LAYER block order and contents | Technology layers (Q-LEFDEF-30/31/32) |
+| LEFDEF-113 | lef-write | Tech with ~10 lef-section records incl. aliases, obstruction-only, bound, ignore, masterslice, overlap; cell with its boundary painted; `lef write -tech` | LAYER block order and contents | Technology layers (Q-LEFDEF-30/31/32) |
 | LEFDEF-114 | lef-write | `lef read` of a tech LEF setting PITCH/WIDTH/SPACING/DIRECTION, then `lef write -tech` | LAYER ROUTING lines | Technology layers |
 | LEFDEF-115 | lef-write | Tech with route and obstruction types sharing a LEF name; cell with obstruction-type paint | LAYER name used for obstruction type | Magic type to LEF layer name |
 | LEFDEF-116 | lef-write | Pins with every direction/use/shape value incl. reset/scan/tieoff | PIN header lines | Pin header records (Q-LEFDEF-36) |
@@ -128,10 +128,10 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 | LEFDEF-314 | def-write | 2x2 array, 1x3 row array, 3x1 column array, reversed array 3:0 | component names, order, count | COMPONENTS section (Q-LEFDEF-94) |
 | LEFDEF-315 | def-write | port labels with every class/use combination incl. default, reset, tieoff | PINS section | PINS section (Q-LEFDEF-103) |
 | LEFDEF-316 | def-write | point port label and label on unmapped layer | PINS LAYER fragment / error | PINS section |
-| LEFDEF-317 | def-write | top cell with vdd! (no port), A (port), labeled internal clkint, unlabeled net; extracted | SPECIALNETS / NETS membership and counts | Net classification |
+| LEFDEF-317 | def-write | top cell with vdd! (no port), A (port), labeled internal clkint; extracted | SPECIALNETS / NETS membership and counts | Net classification |
 | LEFDEF-318 | def-write | same as 317 with `-allspecial` | SPECIALNETS contents; no NETS | Net classification |
 | LEFDEF-319 | def-write | Tcl `set globals(gnd) 1`, `set VDD vpwr` | special classification | Net classification (Q-LEFDEF-102) |
-| LEFDEF-320 | def-write | nets named net-1, a_n5#, x1/sig*b | DEF net names | DEF net naming |
+| LEFDEF-320 | def-write | nets named net-1 (label), a_n5# and x1/sig*b (ports) | DEF net names | DEF net naming |
 | LEFDEF-321 | def-write | net connecting to 20 subcell pins | connection list and line breaks | Net record header and connections |
 | LEFDEF-322 | def-write | regular net single metal1 wire width 3 (odd) | ROUTED line | Wire segment derivation (Q-LEFDEF-95) |
 | LEFDEF-323 | def-write | special net metal1 200x10 | ROUTED line with width | Wire segment derivation |
@@ -141,11 +141,11 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 | LEFDEF-327 | def-write | long special net with many segments | line breaking at column 70 | Route record assembly |
 | LEFDEF-328 | def-write | net whose port label sits on subcell paint only | fallback search, ROUTED output | Net geometry discovery |
 | LEFDEF-329 | def-write | no .ext present | warning text; sections present | Preconditions and diagnostics |
-| LEFDEF-330 | def-write | -anal with metal1..metal3 and one generated rule | NONDEFAULTRULES lines | NONDEFAULTRULES section |
+| LEFDEF-330 | def-write | -anal with labeled nets on metal1..metal3 and one generated rule | NONDEFAULTRULES lines | NONDEFAULTRULES section |
 | LEFDEF-331 | def-write | write cell with wide wire, then write second cell without | second file still has rule | Session state after writing (Q-LEFDEF-99) |
 | LEFDEF-332 | def-write | obsm1 obstruction paint (non-electrical) | BLOCKAGES section | BLOCKAGES section |
-| LEFDEF-333 | def-write | floating unlabeled metal1 net (not port/special) | BLOCKAGES or crash | BLOCKAGES section (Q-LEFDEF-101) |
-| LEFDEF-334 | def-write | tech with 40+ lef layers forcing hash rebuild; several vias | order of VIAS and BLOCKAGES records | Table enumeration order |
+| LEFDEF-333 | def-write | floating labeled metal1 net (special); obsm1, obsm2 and obsv1 obstruction paint | SPECIALNETS; BLOCKAGES per route and via bucket | BLOCKAGES section (Q-LEFDEF-101) |
+| LEFDEF-334 | def-write | tech with 40+ lef layers forcing hash rebuild; several vias; every net labeled | order of VIAS and BLOCKAGES records | Table enumeration order |
 | LEFDEF-335 | def-write | cell named (UNNAMED) | error, no file | Preconditions and diagnostics |
 
 ## Authoring notes (task 15.1)
@@ -156,6 +156,10 @@ The cases are generated by `tools/golden/authoring/m6_cases.py` (framework `lefd
 - LEFDEF-116 and LEFDEF-315 take the reset, scan and tie-off port uses from a DEF read: Magic's `.mag` format and port commands cannot set them.
 - LEFDEF-219 runs with Magic's default outline fonts loaded; the no-font variant cannot be set up from a script, since Magic's startup always loads them.
 - The DEF-write net cases (LEFDEF-317..328, 330..334) read Magic's `.ext` files of their layout, synced into `input/` by golden-capture.yml mode `ext-inputs` and `lefdef_cases.py --sync-ext` (task 1.6) before their capture.
+- Re-authored in round 4 because Magic crashed on the first input (decision D4, 2026-11-19); the first inputs are kept in `magic-crash/<id>/` for Hefesto-only tests (both modes fixed):
+  - LEFDEF-003 exited with SIGFPE: its minimum-grid style was `scalefactor 20 nanometers` with `gridlimit 10`. The style's final reduction leaves a scale factor of 2, so Magic set 2 / 10 = 0 internal units per lambda and divided by zero rescaling the tables (utils/tech.c:808-823, `CIFTechOutputScale`). The style is now `scalefactor 20` (centimicrons), which gives the intended 2:1 grid.
+  - LEFDEF-317, 318, 320, 330, 333 and 334 exited with SIGSEGV in `def write`: each had a top-level net that is neither special nor a port (an unlabeled net, a label ending in `#`, or a hierarchical label such as `x1/sig*b`), and Magic's blockage collector is called with mismatched arguments for such a net (Q-LEFDEF-101). Every net is now labeled or a port; LEFDEF-333 takes its BLOCKAGES from obstruction paint instead (the net-blockage pass is covered by the Hefesto-only tests).
+- LEFDEF-113 paints the cell's boundary: with a `bound` record declared and no boundary paint, Magic writes ORIGIN and SIZE from uninitialized data (Q-LEFDEF-53).
 
 ## Library round trips (task 15.5, Open Question 6 (a))
 
@@ -166,3 +170,15 @@ One case per standard-cell library of the LEF sets (`scripts/fetch_pdk.py`). Eac
 | LEFDEF-RT-sky130_fd_sc_hd | lef-write | sky130A; `techlef/sky130_fd_sc_hd__nom.tlef`, `lef/sky130_fd_sc_hd.lef` | digest and summary of the written LEF | LEF file grammar; Library header; Macro header lines; Pin enumeration and ordering; PORT blocks; Geometry record emission; writeall macro order |
 | LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0 | lef-write | gf180mcuD; `techlef/gf180mcu_fd_sc_mcu7t5v0__nom.tlef`, `lef/gf180mcu_fd_sc_mcu7t5v0.lef` | digest and summary of the written LEF | as above |
 | LEFDEF-RT-sg13g2_stdcell | lef-write | ihp-sg13g2; `lef/sg13g2_tech.lef`, `lef/sg13g2_stdcell.lef` | digest and summary of the written LEF | as above |
+
+These round trips are deferred until a hefesto-cli build replays them with the PDK and LEF sets (`replay.py --require-inputs` with the three IDs); the deferral reason in `tests/golden/deviations.toml` names the step.
+
+## Startup (task 15.4)
+
+A `.lef` file named on Magic's command line is read after the startup files and the technology (app-startup "Command-line file arguments"). A `.tcl` argument would run before it (Magic processes the file arguments in reverse order, Q-UI-25) and would end the file arguments, so the case feeds its commands on standard input, which Magic reads after startup. The LEF read runs before any command, so its datestamp cannot be pinned: the saved cells are compared with their timestamp masked.
+
+| ID | capability | input description (tech, layout, commands) | what to capture | requirement(s) covered |
+|---|---|---|---|---|
+| LEFDEF-STARTUP-lef | app-startup | `magic -dnull -noconsole -norc -T input/lefdef input/cells.lef`, commands on standard input: `cellname list allcells`, `writeall force` | console; the saved cells | Command-line file arguments |
+
+MASK-OS-016 (`tests/golden/MASK/CASES.md`, m5 task 13.4) is written by the same driver (`lefdef_lef_cases.py` `contact_case`): a `lef read` of a VIA whose via1 cut differs from the contact's grows the cut to the contact size (size + 2 border of the `squares` operation, with the two cut-size warnings), and `lef write -tech` of a via1 contact cell writes that via.

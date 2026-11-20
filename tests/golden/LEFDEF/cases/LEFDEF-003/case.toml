@@ -7,6 +7,7 @@
 # Magic and hefesto-cli both run input/commands.tcl (authoring/tclcase.py).
 # LEFDEF case (m6-lef-def-oasis design D19): fresh session, drc off, one write unless a history note names the steps.
 # History case (design D19): a 2:1-grid technology (lef write -tech, a DEF net with no width, writeall), then a shrinking grid (tech lambda 1 2, the plain technology reloaded, lef write -tech).
+# Re-authored (decision D4, 2026-11-19): Magic crashed on the first input (SIGFPE: its minimum-grid style was scalefactor 20 nanometers with gridlimit 10, so Magic computed 0 internal units per lambda and divided by zero in the table rescale (utils/tech.c:808-823, cif/CIFtech.c CIFTechOutputScale); the style now uses scalefactor 20 (centimicrons)); that input is kept in tests/golden/LEFDEF/magic-crash/LEFDEF-003/ for Hefesto-only tests.
 
 schema = 1
 id = "LEFDEF-003"
@@ -14,8 +15,7 @@ area = "LEFDEF"
 capability = "lef-tech-section"
 requirements = ["Filling defaults after grid scaling", "Scaling the LEF table"]
 tool = "magic"
-description = "same tech with cifoutput `gridlimit` forcing a 2:1 internal grid; and a variant with a shrinking grid. Captures: tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width."
-capture_blocked = "GOLDEN: Magic exits with SIGFPE (status 136) in this case, so it has no capture; the case input needs a change, or Magic's crash becomes a Q-row"
+description = "same tech with cifoutput `gridlimit` forcing a 2:1 internal grid (`scalefactor 20`, `gridlimit 10`, `set-minimum-grid`); and a variant with a shrinking grid. Captures: tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width."
 
 [reference]
 script = "input/commands.tcl"

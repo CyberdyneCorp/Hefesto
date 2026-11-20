@@ -64,7 +64,7 @@ end
 
 cifoutput
 style lefdef
-    scalefactor 20 nanometers
+    scalefactor 20
     gridlimit 10
     options set-minimum-grid
     layer M1 metal1,via1

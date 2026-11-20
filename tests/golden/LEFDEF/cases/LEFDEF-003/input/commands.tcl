@@ -1,4 +1,4 @@
-# LEFDEF-003: same tech with cifoutput `gridlimit` forcing a 2:1 internal grid; and a variant with a shrinking grid. Captures: tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width.
+# LEFDEF-003: same tech with cifoutput `gridlimit` forcing a 2:1 internal grid (`scalefactor 20`, `gridlimit 10`, `set-minimum-grid`); and a variant with a shrinking grid. Captures: tech-load output and `lef write -tech` WIDTH lines; DEF read default wire width of a net with no width.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

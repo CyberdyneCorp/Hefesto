@@ -64,7 +64,7 @@ END = "# --- END M6 deferrals ---"
 # The workstream that makes a case replay (design D2), by capability; LEFVIA owns the via requirements.
 OWNERS = {"lef-tech-section": "LEFTECH", "lef-read": "LEFR", "lef-write": "LEFW", "def-read": "DEFR",
           "def-write": "DEFW", "oasis-format": "OASFMT", "oasis-read": "OASR", "oasis-write": "OASW",
-          "oasis-command": "OASCMD"}
+          "oasis-command": "OASCMD", "app-startup": "LEFR", "mask-output-styles": "LEFW"}
 VIA_REQUIREMENTS = {"LEF VIA and VIARULE definitions", "Via redefinition", "Cut growing", "Generated via geometry",
                     "Rectangle-based DEF vias", "Generated DEF vias", "Contact region identification",
                     "Generated via definitions"}
@@ -75,23 +75,18 @@ EXT_NOTE = "; its .ext inputs come from golden-capture.yml mode ext-inputs and l
 # runs 44505329096 and 44528401098): the M6 exit blockers.
 BLOCKER_REASONS = {
     "DEFW": ("DEFW: def write is not implemented yet (CORE-NOTIMPL-006)"),
-    "Q53": ("GOLDEN: the case's own lef section declares a bound layer the cell never paints, so Magic writes ORIGIN and SIZE from uninitialized data, different in every run (Q-LEFDEF-53); paint the boundary"),
     "FONT": ("DEFR/GOLDEN: Magic writes the DEF pin labels as flabel FreeSans (default fonts loaded at startup), Hefesto as rlabel; to investigate (font inputs of the case, DEFR's label rule)"),
-    "PATH": ("LEFR: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; no Q-row (user decision)"),
+    "PATH": ("LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"),
     "SPECIAL": ("DEFR: special-net geometry differs from Magic's capture; to investigate"),
     "MASTER": ("DEFR: COMPONENTS master read and pin-label landing differ from Magic's capture; to investigate"),
     "PINLAYER": ("LEFW: the layer written for a pin's contact geometry differs (Magic: the routing layer, Hefesto: the cut layer); to investigate"),
     "LEFW": ("LEFW: macro output differs from Magic's capture; to investigate"),
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
-    "MAGIC_FPE": ("GOLDEN: Magic exits with SIGFPE (status 136) in this case, so it has no capture; the case input needs a change, or Magic's crash becomes a Q-row"),
-    "MAGIC_SEGV": ("GOLDEN/DEFW: Magic crashes (SIGSEGV, status 139) in def write on this case's .ext input, so it has no capture; to investigate (input or a Magic crash for a Q-row)"),
-    "RT": ("LEFW: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and is not yet compared with Hefesto's lef writeall"),
+    "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
-    "LEFDEF-003": BLOCKER_REASONS["MAGIC_FPE"],
     "LEFDEF-021": BLOCKER_REASONS["PATH"],
     "LEFDEF-022": BLOCKER_REASONS["PATH"],
-    "LEFDEF-113": BLOCKER_REASONS["Q53"],
     "LEFDEF-118": BLOCKER_REASONS["PINLAYER"],
     "LEFDEF-119": BLOCKER_REASONS["PINLAYER"],
     "LEFDEF-127": BLOCKER_REASONS["PINLAYER"],
@@ -124,10 +119,10 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-314": BLOCKER_REASONS["DEFW"],
     "LEFDEF-315": BLOCKER_REASONS["DEFW"],
     "LEFDEF-316": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-317": BLOCKER_REASONS["MAGIC_SEGV"],
-    "LEFDEF-318": BLOCKER_REASONS["MAGIC_SEGV"],
+    "LEFDEF-317": BLOCKER_REASONS["DEFW"],
+    "LEFDEF-318": BLOCKER_REASONS["DEFW"],
     "LEFDEF-319": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-320": BLOCKER_REASONS["MAGIC_SEGV"],
+    "LEFDEF-320": BLOCKER_REASONS["DEFW"],
     "LEFDEF-321": BLOCKER_REASONS["DEFW"],
     "LEFDEF-322": BLOCKER_REASONS["DEFW"],
     "LEFDEF-323": BLOCKER_REASONS["DEFW"],
@@ -137,11 +132,11 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-327": BLOCKER_REASONS["DEFW"],
     "LEFDEF-328": BLOCKER_REASONS["DEFW"],
     "LEFDEF-329": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-330": BLOCKER_REASONS["MAGIC_SEGV"],
+    "LEFDEF-330": BLOCKER_REASONS["DEFW"],
     "LEFDEF-331": BLOCKER_REASONS["DEFW"],
     "LEFDEF-332": BLOCKER_REASONS["DEFW"],
-    "LEFDEF-333": BLOCKER_REASONS["MAGIC_SEGV"],
-    "LEFDEF-334": BLOCKER_REASONS["MAGIC_SEGV"],
+    "LEFDEF-333": BLOCKER_REASONS["DEFW"],
+    "LEFDEF-334": BLOCKER_REASONS["DEFW"],
     "LEFDEF-335": BLOCKER_REASONS["DEFW"],
     "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RT"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RT"],
@@ -149,12 +144,16 @@ BLOCKERS: dict[str, str] = {
     **oasis_cases.CAPTURE_BLOCKED,
 }
 BLOCKER_PREFIX = "M6 exit blocker, "
+# Task 15.4's cases: MASK-OS-016 (the contact cut size through LEF) and the startup case.
+TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # The blockers Magic cannot capture yet (it crashes, its output differs between runs, it writes no
 # output): their case.toml carries the reason as ``capture_blocked``, so capture.py skips them and
 # golden-capture.yml stays green; they stay deferred to M6, so --exit-check lists them. The OASIS ones
-# are oasis_cases.CAPTURE_BLOCKED (that module writes the OASIS cases too).
-LEFDEF_CAPTURE_BLOCKED = ("LEFDEF-003", "LEFDEF-113", "LEFDEF-317", "LEFDEF-318", "LEFDEF-320", "LEFDEF-330",
-                          "LEFDEF-333", "LEFDEF-334")
+# are oasis_cases.CAPTURE_BLOCKED (that module writes the OASIS cases too). The LEFDEF ones of round 3
+# (Magic's SIGFPE in LEFDEF-003, SIGSEGV in def write of LEFDEF-317/318/320/330/333/334, the unpainted
+# bound layer of LEFDEF-113) were re-authored in round 4 (decision D4): the crashing inputs are in
+# tests/golden/LEFDEF/magic-crash/ (lefdef_cases.MAGIC_CRASH) for Hefesto's own tests.
+LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ()
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
@@ -306,7 +305,7 @@ def deferral_reason(spec: tclcase.TclCase) -> str:
         note = CAPTURE_BLOCKED_NOTE if spec.id in CAPTURE_BLOCKED else ""
         return f"{BLOCKER_PREFIX}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
     ext = EXT_NOTE if spec.id in lefdef_cases.DEF_NET_CASES else ""
-    task = "15.2" if spec.area == "OASIS" else "15.1"
+    task = TASK_154.get(spec.id) or ("15.2" if spec.area == "OASIS" else "15.1")
     return REASON.format(owner=owner(spec), task=task) + ext
 
 

@@ -1,4 +1,4 @@
-# LEFDEF-113: Tech with ~10 lef-section records incl. aliases, obstruction-only, bound, ignore, masterslice, overlap; `lef write -tech`. Captures: LAYER block order and contents.
+# LEFDEF-113: Tech with ~10 lef-section records incl. aliases, obstruction-only, bound, ignore, masterslice, overlap; cell with its boundary painted; `lef write -tech`. Captures: LAYER block order and contents.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

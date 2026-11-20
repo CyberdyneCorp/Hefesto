@@ -295,6 +295,11 @@ def oasis_061():
 
 
 RT_LAYOUTS = ("single", "mergeyes", "triangles", "ports", "arrays", "uses")
+# The saved cells of a round trip. A layout built in the session is saved in the work directory; the
+# cells of a layout loaded from input/ (arrays, uses) are saved back to the file they were read from,
+# input/<cell>.mag, so their glob takes every directory (round 3 found no top-level .mag for them).
+RT_CELLS = "derived:files:*.mag"
+RT_INPUT_CELLS = "derived:files:**/*.mag"
 
 
 def oasis_064() -> list:
@@ -305,14 +310,15 @@ def oasis_064() -> list:
                 Line("gds write rt.oas", "oasis write rt.oas"), Line("gds read rt.oas", "oasis read rt.oas"),
                 rep("lsort [cellname list allcells]"), both("writeall force")]
         files = {f"{TECH}.tech": technology(spec.get("cifoutput", OUT_STYLE)), **spec.get("files", {})}
+        cells = RT_INPUT_CELLS if spec.get("files") else RT_CELLS
         out.append(_case(f"OASIS-064-{name}", "oasis-write", ["GDS-consistent content"],
                          f"Round trip of layout {name}: oasis write then oasis read (Magic: gds write, gds read); "
-                         "the cells read back.", body, files, ["derived:files:*.mag", REPORT],
+                         "the cells read back.", body, files, [cells, REPORT],
                          ["Magic GDS cross-check of the round trip: the cells read back from Hefesto's OASIS file "
                           "against those Magic reads back from its GDS file (cells already in memory follow the "
                           "same gds-read rule in both)."],
-                         output_names={"derived:files:*.mag": "cells.txt"},
-                         output_masks={"derived:files:*.mag": ["mag-timestamp"]}))
+                         output_names={cells: "cells.txt"},
+                         output_masks={cells: ["mag-timestamp"]}))
     return out
 
 
