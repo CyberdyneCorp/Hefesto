@@ -40,7 +40,7 @@ CommandResult write_oasis(cmd::CommandContext& ctx, const cu::Session& s, db::Ce
   options.prepare.loader = gds::command_subtree_loader(ctx, editor);
   options.prepare.files = &ctx.services().files;
   options.prepare.time_zone = editor.mask.time_zone;
-  const platform::Path path{output_file_name(name)};
+  const platform::Path path{oasis::output_file_name(name)};
   const mask::ProgressHost& host = editor.mask.write_host;
   if (!host) {
     return write(editor, root, path, options);
@@ -58,22 +58,12 @@ CommandResult write_option(cmd::CommandContext& ctx, const cu::Session& s, const
     return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
   if (invocation.args.empty()) {
-    const std::string& cell = root->name();
-    const std::size_t slash = cell.rfind('/');
-    return write_oasis(ctx, s, *root, slash == std::string::npos ? cell : cell.substr(slash + 1));
+    return write_oasis(ctx, s, *root, oasis::default_output_name(*root));
   }
   if (invocation.args.size() != 2) {
     return wrong_args(invocation);
   }
   return write_oasis(ctx, s, *root, invocation.args[1]);
-}
-
-std::string output_file_name(std::string_view name) {
-  std::string file{name};
-  if (name.find('.') == std::string_view::npos) {
-    file += ".oas";
-  }
-  return file;
 }
 
 }  // namespace hefesto::oasis::command_detail

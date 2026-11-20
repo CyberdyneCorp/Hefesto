@@ -89,11 +89,6 @@ enum Option : std::size_t {
 [[nodiscard]] cmd::CommandResult write_option(cmd::CommandContext& ctx, const cu::Session& s,
                                               const cmd::Invocation& invocation);
 
-/// The output file of `oasis write <name>` (oasis-write "Write command and
-/// output file naming" rule 3): `name`, with `.oas` appended when it holds
-/// no `.` anywhere.
-[[nodiscard]] std::string output_file_name(std::string_view name);
-
 /// A command of the layout client run from this one (`load`), its messages
 /// passed on.
 cmd::CommandResult run_nested(cmd::CommandContext& ctx, std::vector<std::string> words);
