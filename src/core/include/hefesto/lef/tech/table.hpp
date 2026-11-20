@@ -135,6 +135,16 @@ class LayerTable {
   /// find and enumerate then treat it as absent.
   void release(std::string_view lef_name);
 
+  /// LefRedefined on one alias of a shared record (Q-LEFDEF-8 fix): the
+  /// via redefinition takes `lef_name` away from its layer record, which
+  /// the other names keep. `lef_name` is released (find and enumerate treat
+  /// it as absent; its hash slot stays) and, when the record's canonical
+  /// name was `lef_name`, the record takes the first other name bound to
+  /// it in hash order (Magic takes the first name of the whole table,
+  /// which may belong to an unrelated entry). Nothing happens when
+  /// `lef_name` has no record.
+  void redefine_alias(std::string_view lef_name);
+
   /// defGetType(type, ..., TRUE): the first record in enumeration order
   /// whose class is cut for a contact type (route or masterslice otherwise)
   /// and whose normal or obstruction type is `type` (Q-LEFDEF-92 order);
@@ -172,6 +182,38 @@ struct ViaShape {
   friend bool operator==(const ViaShape&, const ViaShape&) = default;
 };
 
+/// LAYERS of a generated via: the bottom, cut and top layers, as the
+/// reader resolved them (lef-read "LEF layer name resolution"); nullopt =
+/// did not resolve.
+struct ViaLayers {
+  std::optional<tech::TileType> bottom;
+  std::optional<tech::TileType> cut;
+  std::optional<tech::TileType> top;
+
+  friend bool operator==(const ViaLayers&, const ViaLayers&) = default;
+};
+
+/// The parameters of a LEF `VIARULE <name> GENERATE` section, kept so that
+/// a generated via naming the rule takes the values it omits (def-read
+/// "Generated DEF vias", Q-LEFDEF-61 fix; Magic keeps none). Distances are
+/// in 1/10000 micron; nullopt: the rule did not give the value.
+/// - layers: the first two routing layers in LAYER order (bottom, top) and
+///   the contact layer (cut), when all three were named;
+/// - cut_size: the size of the cut layer's RECT;
+/// - cut_spacing: the cut layer's SPACING x BY y (centre to centre) minus
+///   the cut size, the DEF CUTSPACING (edge to edge);
+/// - bottom_enclosure, top_enclosure: `ENCLOSURE a b` of the bottom and top
+///   routing layers as (a, b).
+struct ViaRuleGenerate {
+  std::optional<ViaLayers> layers;
+  std::optional<db::Point> cut_size;
+  std::optional<db::Point> cut_spacing;
+  std::optional<db::Point> bottom_enclosure;
+  std::optional<db::Point> top_enclosure;
+
+  friend bool operator==(const ViaRuleGenerate&, const ViaRuleGenerate&) = default;
+};
+
 /// A VIA definition from LEF, DEF or a generated via: Magic's lefLayer of
 /// class VIA (lef-read "LEF VIA and VIARULE definitions"). Areas are in
 /// half internal units (Magic doubles via geometry so that a via centre may
@@ -185,6 +227,9 @@ struct ViaDefinition {
   std::string canonical_name;
   bool generated = false;       // from VIARULE parameters or a DEF write
   std::uint32_t ref_count = 1;  // refCnt: 0 marks a DEF write's temporary via
+  /// A LEF VIARULE GENERATE section's parameters (nullopt for every other
+  /// definition).
+  std::optional<ViaRuleGenerate> rule;
 
   friend bool operator==(const ViaDefinition&, const ViaDefinition&) = default;
 };

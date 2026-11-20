@@ -159,7 +159,7 @@ TEST_CASE("generated geometry replaces the primary record and keeps earlier rect
   // via gets the geometry of the last parameters (the reader calls this).
   Context c{test::via_tech()};
   ViaTable vias;
-  ViaDefinition* vr = begin_via(vias, LayerTable{}, "VR", ViaSection::def_via, c.via());
+  ViaDefinition* vr = begin_via(vias, test::no_layers(), "VR", ViaSection::def_via, c.via());
   add_via_rect(*vr, c.type("metal1"), db::Rect{-20, -20, 20, 20}, c.via());
   add_via_rect(*vr, c.type("metal3"), db::Rect{-30, -30, 30, 30}, c.via());
   const ViaGeometry g = ViaGenerator::generated(def_vg(c), c.via());
@@ -192,13 +192,55 @@ TEST_CASE("omitted generation parameters take the VIARULE values or 0 with a war
   CHECK(diagnostics[0].native_only);
 
   const GeneratedViaParams rule = def_vg(c);
-  const GeneratedViaParams from_rule = complete_params(given, &rule, "VG", c.via());
+  ViaParamSet rule_set;
+  rule_set.layers = rule.layers;
+  rule_set.cut_size = rule.cut_size;
+  rule_set.cut_spacing = rule.cut_spacing;
+  rule_set.bottom_enclosure = rule.bottom_enclosure;
+  rule_set.top_enclosure = rule.top_enclosure;
+  const GeneratedViaParams from_rule = complete_params(given, &rule_set, "VG", c.via());
   CHECK(from_rule.cut_spacing == db::Point{100, 100});
   CHECK(from_rule.bottom_enclosure == db::Point{50, 20});
   CHECK(from_rule.top_enclosure == db::Point{20, 50});
   CHECK(c.texts() == std::vector<std::string>{"Via \"VG\": CUTSPACING not given; using the VIARULE value.",
                                               "Via \"VG\": ENCLOSURE not given; using the VIARULE value."});
   CHECK(ViaGenerator::generated(from_rule, c.via()) == ViaGenerator::generated(rule, c.via()));
+}
+
+TEST_CASE("a VIARULE that does not give a parameter leaves it 0 with the warning",
+          "[cap:def-read][req:Generated DEF vias]") {
+  Context c{test::via_tech()};
+  ViaParamSet given;
+  given.layers = m1_m2(c);
+  given.cut_size = db::Point{100, 100};
+  ViaParamSet rule;  // a VIARULE GENERATE with only a cut spacing
+  rule.cut_spacing = db::Point{60, 70};
+  const GeneratedViaParams p = complete_params(given, &rule, "VG", c.via());
+  CHECK(p.cut_spacing == db::Point{60, 70});
+  CHECK(p.bottom_enclosure == db::Point{0, 0});
+  CHECK(p.top_enclosure == db::Point{0, 0});
+  CHECK(c.texts() == std::vector<std::string>{"Via \"VG\": CUTSPACING not given; using the VIARULE value.",
+                                              "Via \"VG\": ENCLOSURE not given; using 0."});
+}
+
+TEST_CASE("VIARULE GENERATE values convert to the input units of the via",
+          "[cap:def-read][req:Generated DEF vias]") {
+  ViaRuleGenerate rule;
+  rule.cut_size = db::Point{1700, 1700};      // 0.17 um
+  rule.cut_spacing = db::Point{1900, 1900};   // 0.19 um
+  rule.bottom_enclosure = db::Point{0, 0};
+  rule.top_enclosure = db::Point{600, 300};
+  rule.layers = ViaLayers{1, 2, 3};
+  const ViaParamSet def = rule_params(rule, 1000.0);  // UNITS DISTANCE MICRONS 1000
+  CHECK(def.cut_size == db::Point{170, 170});
+  CHECK(def.cut_spacing == db::Point{190, 190});
+  CHECK(def.top_enclosure == db::Point{60, 30});
+  CHECK(def.layers == rule.layers);
+  CHECK(rule_params(rule, 10000.0).cut_size == db::Point{1700, 1700});  // LEF generator units
+  CHECK(rule_params(rule, 3.0).cut_size == db::Point{1, 1});            // 0.51 rounds to 1
+  CHECK_FALSE(rule_params(rule, 0.0).cut_size.has_value());
+  rule.cut_size = db::Point{2000000000, 1};
+  CHECK_FALSE(rule_params(rule, 100000.0).cut_size.has_value());  // does not fit
 }
 
 TEST_CASE("ORIGIN and OFFSET apply with magic-compat OFF only", "[cap:def-read][req:Generated DEF vias]") {

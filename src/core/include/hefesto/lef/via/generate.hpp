@@ -28,16 +28,6 @@
 
 namespace hefesto::lef {
 
-/// LAYERS: the bottom, cut and top layers, as the reader resolved them
-/// (lef-read "LEF layer name resolution"); nullopt = did not resolve.
-struct ViaLayers {
-  std::optional<tech::TileType> bottom;
-  std::optional<tech::TileType> cut;
-  std::optional<tech::TileType> top;
-
-  friend bool operator==(const ViaLayers&, const ViaLayers&) = default;
-};
-
 /// The LAYERS order check, run where LAYERS is read (defRead.c:2045-2083):
 /// when the middle layer is not a contact, the warning "Improper layer order
 /// for VIARULE." (LEF-VIA-005); then the cut is swapped with the top layer
@@ -83,14 +73,27 @@ struct ViaParamSet {
   std::string pattern;
 };
 
+/// The values a LEF VIARULE GENERATE gave (ViaDefinition::rule, in
+/// 1/10000 micron) in input units of `units_per_micron` per micron (DEF:
+/// the UNITS DISTANCE MICRONS value; LEF: 10000), rounded half away from
+/// zero. A value that does not fit an int32, or a non-positive
+/// `units_per_micron`, is left out (nullopt). ROWCOL stays 1 x 1.
+[[nodiscard]] ViaParamSet rule_params(const ViaRuleGenerate& rule, double units_per_micron);
+
+/// The VIARULE GENERATE parameters stored under `rule_name`, or nullptr
+/// when the name has no via record or its record is not a VIARULE
+/// GENERATE (Magic stores none: Q-LEFDEF-61 fix).
+[[nodiscard]] const ViaRuleGenerate* find_via_rule(const ViaTable& vias, std::string_view rule_name);
+
 /// Completes `given` (Q-LEFDEF-61 fix, both modes): each omitted LAYERS,
 /// CUTSIZE, CUTSPACING or ENCLOSURE takes the value of `rule` (the LEF
-/// VIARULE the definition names, when known), otherwise 0 (no layers), with
-/// the warning LEF-VIA-007 naming the via and the parameter (Hefesto-only:
-/// Magic reads an uninitialised value). With magic-compat ON the DEF reader
-/// keeps a parameter's last value within the read and passes it as given;
-/// only one never set in the read is omitted here.
-[[nodiscard]] GeneratedViaParams complete_params(const ViaParamSet& given, const GeneratedViaParams* rule,
+/// VIARULE the definition names, through rule_params, when known and when
+/// it gives that value), otherwise 0 (no layers), with the warning
+/// LEF-VIA-007 naming the via and the parameter (Hefesto-only: Magic reads
+/// an uninitialised value). With magic-compat ON the DEF reader keeps a
+/// parameter's last value within the read and passes it as given; only one
+/// never set in the read is omitted here.
+[[nodiscard]] GeneratedViaParams complete_params(const ViaParamSet& given, const ViaParamSet* rule,
                                                  std::string_view via_name, const ViaContext& context);
 
 /// The geometry of a generated via, in half internal units about its

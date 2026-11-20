@@ -56,7 +56,7 @@ TEST_CASE("cut growing warns with Magic's text when the cut size differs (LEFDEF
     // magic contact (8 x 8).
     Context c{technology, compat, &style};
     ViaTable vias;
-    ViaDefinition* entry = begin_via(vias, LayerTable{}, "VIA12", ViaSection::lef_via, c.via());
+    ViaDefinition* entry = begin_via(vias, test::no_layers(), "VIA12", ViaSection::lef_via, c.via());
     add_via_rect(*entry, c.type("metal1"), db::Rect{-10, -10, 10, 10}, c.via());
     add_via_rect(*entry, via, db::Rect{-3, -3, 3, 3}, c.via());
     // magic-compat ON names the entry's normal type at that moment, as

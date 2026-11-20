@@ -14,6 +14,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,12 +31,17 @@ namespace hefesto::lef::detail {
 /// reads neither).
 inline constexpr std::int64_t kMaxViaRepeat = 65536;
 
+/// Which section a via body belongs to.
+enum class ViaBodyKind : std::uint8_t {
+  via,      // VIA <name>: may give VIARULE parameters (magic-compat OFF)
+  viarule,  // VIARULE <name>: its GENERATE parameters are stored (Q-LEFDEF-61)
+  layer,    // the LAYER section of a via definition
+};
+
 class ViaBody {
  public:
-  /// `parameters`: a VIA section, whose body may give VIARULE parameters
-  /// (not a VIARULE section, nor a LAYER section).
-  ViaBody(Reader& reader, ViaDefinition& via, std::string name, bool parameters)
-      : reader_(reader), via_(via), name_(std::move(name)), parameters_(parameters) {}
+  ViaBody(Reader& reader, ViaDefinition& via, std::string name, ViaBodyKind kind)
+      : reader_(reader), via_(via), name_(std::move(name)), kind_(kind) {}
 
   /// RECT x1 y1 x2 y2 (half internal units), with RECT MASK and RECT
   /// ITERATE when magic-compat is OFF. `ignored`: the current layer is an
@@ -48,8 +54,17 @@ class ViaBody {
   /// `keyword` was one of them and its statement has been read.
   bool extension(std::string_view keyword, const LayerState& layer);
 
+  /// In a VIARULE section, both modes: LAYER names the layer the next
+  /// statements are about (after LayerBody resolved it), and ENCLOSURE and
+  /// SPACING give the GENERATE parameters (read to their `;`, as Magic's
+  /// LefEndStatement, so nothing else changes). True when `keyword` was
+  /// ENCLOSURE or SPACING and its statement has been read.
+  void rule_layer(const LayerState& layer);
+  bool rule_statement(std::string_view keyword);
+
   /// The end of the body: a VIA that named a VIARULE gets the generated
-  /// geometry (magic-compat OFF).
+  /// geometry (magic-compat OFF); a VIARULE stores its GENERATE parameters
+  /// in the definition (ViaDefinition::rule).
   void finish();
 
  private:
@@ -60,14 +75,30 @@ class ViaBody {
   std::vector<std::string> arguments();
   void layers_statement(const std::vector<std::string>& args);
   void rowcol_statement(const std::vector<std::string>& args);
+  void rule_cut(const LayerState& layer, const db::Rect& rect);
+  [[nodiscard]] ViaRuleGenerate rule_values() const;
+  [[nodiscard]] std::optional<ViaParamSet> named_rule() const;
+
+  /// A routing layer of a VIARULE GENERATE, in LAYER order.
+  struct RuleLayer {
+    std::optional<tech::TileType> type;
+    std::optional<db::Point> enclosure;
+  };
 
   Reader& reader_;
   ViaDefinition& via_;
   ViaRectBuilder rects_{via_};  // committed in finish()
   std::string name_;
-  bool parameters_;
+  ViaBodyKind kind_;
+  std::string rule_name_;  // a VIA's VIARULE <name> (magic-compat OFF)
   bool has_rule_ = false;
   ViaParamSet params_;
+  // A VIARULE section's GENERATE values, in 1/10000 micron.
+  std::vector<RuleLayer> rule_layers_;
+  std::optional<tech::TileType> rule_cut_;
+  bool on_cut_ = false;  // the current LAYER is the contact
+  std::optional<db::Point> rule_cut_size_;
+  std::optional<db::Point> rule_pitch_;
 };
 
 }  // namespace hefesto::lef::detail

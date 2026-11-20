@@ -189,6 +189,11 @@ class Reader {
 
   // --- units and geometry (geometry.cpp) ---
   [[nodiscard]] float oscale() const noexcept { return oscale_; }
+  /// DEF units per micron (oscale / s0: the UNITS value, or 1 before one);
+  /// 0 when s0 is not positive.
+  [[nodiscard]] double def_units_per_micron() const noexcept {
+    return s0_ > 0.0F ? static_cast<double>(oscale_) / static_cast<double>(s0_) : 0.0;
+  }
   /// round(v / oscale); nullopt when it does not fit (Magic's int cast is
   /// undefined there).
   [[nodiscard]] std::optional<db::Coord> scaled(float value) const noexcept;

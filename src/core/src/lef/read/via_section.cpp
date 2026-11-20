@@ -19,6 +19,7 @@
 //
 // Owner: LEFR (design D2).
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -30,6 +31,7 @@
 #include "hefesto/lef/read/units.hpp"
 #include "hefesto/lef/via/polygon.hpp"
 #include "hefesto/lef/via/store.hpp"
+#include "hefesto/tech/technology.hpp"
 #include "lef/read/via_body.hpp"
 
 namespace hefesto::lef::detail {
@@ -56,36 +58,33 @@ enum class Param : std::uint8_t {
 constexpr std::array<std::string_view, 9> kParams{"VIARULE", "CUTSIZE", "LAYERS",  "CUTSPACING", "ENCLOSURE",
                                                    "ROWCOL",  "ORIGIN",  "OFFSET", "PATTERN"};
 
-const LayerTable& empty_table() {
-  static const LayerTable table;
-  return table;
-}
-
 }  // namespace
 
 // VIA <name> / VIARULE <name>: a new name gets a new definition; a known
 // one is redefined (VIA) or the section is skipped (VIARULE).
 void Reader::via_section(const std::string& name, bool viarule) {
   const std::string end_name = truncate_name(name);
-  const LayerTable& table = target_.layer_table != nullptr ? *target_.layer_table : empty_table();
+  LayerTable none;
+  LayerTable& table = target_.layer_table != nullptr ? *target_.layer_table : none;
   ViaDefinition* via =
       begin_via(target_.vias, table, name, viarule ? ViaSection::lef_viarule : ViaSection::lef_via, via_context());
   if (via == nullptr) {
     skip_section(end_name);
     return;
   }
-  ViaBody body{*this, *via, name, !viarule};
+  ViaBody body{*this, *via, name, viarule ? ViaBodyKind::viarule : ViaBodyKind::via};
   layer_body(name, end_name, LayerEntry{via->layer_class, 0, 0, 0, std::nullopt}, &body);
 }
 
 // VIA <name> inside a NONDEFAULTRULE, for a name with no entry.
 void Reader::via_definition(const std::string& name) {
-  ViaDefinition* via = begin_via(target_.vias, empty_table(), name, ViaSection::lef_via, via_context());
+  LayerTable none;  // a name with no entry: no layer to redefine
+  ViaDefinition* via = begin_via(target_.vias, none, name, ViaSection::lef_via, via_context());
   if (via == nullptr) {
     skip_section(name);
     return;
   }
-  ViaBody body{*this, *via, name, true};
+  ViaBody body{*this, *via, name, ViaBodyKind::via};
   layer_body(name, name, LayerEntry{LayerClass::cut, 0, 0, 0, std::nullopt}, &body);
 }
 
@@ -114,6 +113,7 @@ void ViaBody::rect(const LayerState& layer, bool ignored) {
     if (repeated) {
       iterate(layer, *read);
     } else {
+      rule_cut(layer, *read);
       add(layer, *read);
     }
   }
@@ -182,7 +182,7 @@ bool ViaBody::extension(std::string_view keyword, const LayerState& layer) {
     polygon(layer);
     return true;
   }
-  return parameters_ && parameter(keyword);
+  return kind_ == ViaBodyKind::via && parameter(keyword);
 }
 
 namespace {
@@ -269,7 +269,8 @@ bool ViaBody::parameter(std::string_view keyword) {
   const std::vector<std::string> args = arguments();
   switch (static_cast<Param>(*index)) {
     case Param::viarule:
-      has_rule_ = true;  // a LEF VIARULE keeps no values: omitted ones are 0 (Q-LEFDEF-61)
+      has_rule_ = true;
+      rule_name_ = args.empty() ? std::string{} : args.front();
       break;
     case Param::cutsize:
       params_.cut_size = point_at(args, 0);
@@ -301,14 +302,91 @@ bool ViaBody::parameter(std::string_view keyword) {
   return true;
 }
 
+// --- VIARULE GENERATE parameters (Q-LEFDEF-61) -----------------------------------------
+
+void ViaBody::rule_layer(const LayerState& layer) {
+  if (kind_ != ViaBodyKind::viarule) {
+    return;
+  }
+  on_cut_ = layer.type && reader_.options().tech.is_contact(*layer.type);
+  if (on_cut_) {
+    rule_cut_ = layer.type;
+  } else {
+    rule_layers_.push_back(RuleLayer{layer.type, std::nullopt});
+  }
+}
+
+bool ViaBody::rule_statement(std::string_view keyword) {
+  static constexpr std::array<std::string_view, 2> kRuleKeys{"ENCLOSURE", "SPACING"};
+  const auto index = kind_ == ViaBodyKind::viarule ? lookup_full(keyword, kRuleKeys) : std::nullopt;
+  if (!index) {
+    return false;
+  }
+  const std::vector<std::string> args = arguments();
+  if (*index == 0U && !on_cut_ && !rule_layers_.empty()) {
+    rule_layers_.back().enclosure = point_at(args, 0);
+  } else if (*index == 1U && on_cut_ && args.size() >= 3 && keyword_is(args[1], "BY")) {
+    const auto x = generator_units(args[0]);
+    const auto y = generator_units(args[2]);
+    rule_pitch_ = x && y ? std::optional<db::Point>{db::Point{*x, *y}} : std::nullopt;
+  }
+  return true;
+}
+
+// The cut RECT of a VIARULE: its size, read in half internal units, in
+// 1/10000 micron.
+void ViaBody::rule_cut(const LayerState& layer, const db::Rect& rect) {
+  if (kind_ != ViaBodyKind::viarule || !layer.type || !reader_.options().tech.is_contact(*layer.type)) {
+    return;
+  }
+  const double half_microns = static_cast<double>(reader_.options().scale) / 2.0 * static_cast<double>(kUnitsPerMicron);
+  const auto size = [&](std::int64_t half_units) {
+    return static_cast<db::Coord>(
+        std::clamp(std::round(static_cast<double>(half_units) * half_microns), -2147483648.0, 2147483647.0));
+  };
+  rule_cut_size_ = db::Point{size(std::int64_t{rect.x1} - rect.x0), size(std::int64_t{rect.y1} - rect.y0)};
+}
+
+ViaRuleGenerate ViaBody::rule_values() const {
+  ViaRuleGenerate rule;
+  if (rule_cut_ && rule_layers_.size() >= 2) {
+    rule.layers = ViaLayers{rule_layers_[0].type, rule_cut_, rule_layers_[1].type};
+  }
+  rule.cut_size = rule_cut_size_;
+  if (rule_cut_size_ && rule_pitch_) {
+    rule.cut_spacing = db::Point{rule_pitch_->x - rule_cut_size_->x, rule_pitch_->y - rule_cut_size_->y};
+  }
+  if (!rule_layers_.empty()) {
+    rule.bottom_enclosure = rule_layers_[0].enclosure;
+  }
+  if (rule_layers_.size() >= 2) {
+    rule.top_enclosure = rule_layers_[1].enclosure;
+  }
+  return rule;
+}
+
+// The VIARULE GENERATE a VIA names, in generator units; nullopt: unknown.
+std::optional<ViaParamSet> ViaBody::named_rule() const {
+  const ViaRuleGenerate* rule = find_via_rule(reader_.target().vias, rule_name_);
+  if (rule == nullptr) {
+    return std::nullopt;
+  }
+  return rule_params(*rule, static_cast<double>(kUnitsPerMicron));
+}
+
 void ViaBody::finish() {
   rects_.commit();
+  if (kind_ == ViaBodyKind::viarule) {
+    via_.rule = rule_values();
+    return;
+  }
   if (!has_rule_ || reader_.magic_compat()) {
     return;
   }
   ViaContext context = reader_.via_context();
   params_.scale = reader_.options().scale * kUnitsPerMicron;
-  const GeneratedViaParams params = complete_params(params_, nullptr, name_, context);
+  const auto rule = named_rule();
+  const GeneratedViaParams params = complete_params(params_, rule ? &*rule : nullptr, name_, context);
   apply_generated(via_, ViaGenerator::generated(params, context));
 }
 
