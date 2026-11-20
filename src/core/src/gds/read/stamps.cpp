@@ -13,6 +13,7 @@
 // each at least four bytes of input. calmaStructStamp's recursion is an
 // explicit stack, so a deep or cyclic hierarchy cannot exhaust the call
 // stack; the visiting order, and so every stamp, is the recursive one.
+// stamp_entries shares that procedure with oasis-read (design D17).
 // Owner: GDSR.
 
 #include "hefesto/gds/read/stamps.hpp"
@@ -29,7 +30,7 @@ namespace hefesto::gds {
 
 namespace {
 
-constexpr std::uint64_t kFnvOffset = 14695981039346656037ULL;
+constexpr std::uint64_t kFnvOffset = kStampHashOffset;
 constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
 constexpr std::size_t kHeader = 4;
 constexpr std::uint8_t kEndlib = 0x04;
@@ -39,11 +40,7 @@ constexpr std::uint8_t kEndstr = 0x07;
 constexpr std::uint8_t kSname = 0x12;
 
 std::uint64_t fnv(std::uint64_t h, std::span<const std::byte> bytes) {
-  for (const std::byte b : bytes) {
-    h ^= std::to_integer<std::uint64_t>(b);
-    h *= kFnvPrime;
-  }
-  return h;
+  return stamp_hash(h, bytes);
 }
 
 /// The name of a payload as Magic's C string: up to the first NUL.
@@ -283,6 +280,30 @@ StampTable stamps_of(Table& table) {
 }
 
 }  // namespace
+
+std::uint64_t stamp_hash(std::uint64_t hash, std::span<const std::byte> bytes) noexcept {
+  for (const std::byte b : bytes) {
+    hash ^= std::to_integer<std::uint64_t>(b);
+    hash *= kFnvPrime;
+  }
+  return hash;
+}
+
+StampTable stamp_entries(std::vector<StampEntry> entries) {
+  Table table;
+  table.entries.reserve(entries.size());
+  for (StampEntry& e : entries) {
+    table.by_name.try_emplace(e.name, table.entries.size());
+    Entry entry;
+    entry.name = std::move(e.name);
+    entry.start = e.start;
+    entry.end = e.end;
+    entry.hash = e.hash;
+    entry.children = std::move(e.children);
+    table.entries.push_back(std::move(entry));
+  }
+  return stamps_of(table);
+}
 
 StampTable content_stamps(std::span<const std::byte> bytes) {
   SpanRecords records{bytes};
