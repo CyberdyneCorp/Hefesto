@@ -3,8 +3,10 @@
 The first inputs of the LEFDEF cases that were re-authored because Magic 8.3.694 crashed on them, so
 they had no capture (m6-lef-def-oasis decision D4, 2026-11-19). Each directory holds the case's
 `input/` as it was in round 3 (`commands.tcl` runs from the case directory: `input/` paths). They are
-not golden cases: Hefesto's own unit tests use them to check that both `magic-compat` modes no longer
-crash (DEFW and the LEFDEF workstreams). See `../CASES.md`, "Authoring notes", for each cause.
+not golden cases: Hefesto's own unit tests read them from here to check that both `magic-compat` modes
+no longer crash (`tests/unit/lef/tech/minimum_grid_test.cpp` reads `LEFDEF-003/lefdef.tech`;
+`tests/unit/def/write/magic_crash_test.cpp` reads the `lefdef.tech`, `top.mag` and `top.ext` of the
+others). This is the only copy. See `../CASES.md`, "Authoring notes", for each cause.
 
 | Directory | Magic | Cause |
 |---|---|---|

@@ -2,7 +2,8 @@
 // Copyright 2026 The Hefesto Authors
 //
 // lef-tech-section: golden case LEFDEF-003's technology, Hefesto-only
-// (user decision D4 of 2026-11-19). Its cifoutput style has `scalefactor 20
+// (user decision D4 of 2026-11-19; the first input, kept in
+// tests/golden/LEFDEF/magic-crash/LEFDEF-003/). Its cifoutput style has `scalefactor 20
 // nanometers`, `gridlimit 10` and `set-minimum-grid`. Magic normalises the
 // scale factor to 2 centimicrons (CIFTechFinal -> CIFTechOutputScale(1, 1)
 // divides scale factor and expander 10 by their common factor), then sets
@@ -33,7 +34,8 @@ TEST_CASE("regression: a minimum grid below one internal unit per lambda loads a
     INFO("magic-compat " << (on ? "ON" : "OFF"));
     Session s(on);
     s.file("/t/grid.tech",
-           lef::test::read_text(std::filesystem::path{HEFESTO_TEST_DATA_DIR} / "minimum_grid.tech"));
+           lef::test::read_text(std::filesystem::path{HEFESTO_SOURCE_DIR} /
+                                       "tests/golden/LEFDEF/magic-crash/LEFDEF-003/lefdef.tech"));
     REQUIRE(s.run("tech load /t/grid.tech -noprompt").ok());
     CHECK(s.editor.grid == tech::GridScale{1, 1});
     for (const auto& d : s.messages) {

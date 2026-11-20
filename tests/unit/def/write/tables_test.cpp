@@ -204,6 +204,63 @@ TEST_CASE("a rule entry with no LEF record is written by name", "[cap:def-write]
   CHECK(s.message("DEF-WRITE-012") != nullptr);
 }
 
+// Regression: a via whose route residue has no LEF name made Magic take
+// strlen(NULL) of the layer name. ndc gets a cut record here, and its
+// first residue ndiff has none, so the record that starts on it has no
+// route layer.
+TEST_CASE("a via whose route residue has no LEF name writes no layer name, in both modes",
+          "[cap:def-write][req:Route record assembly]") {
+  std::string tech_text = data_file("lefdef.tech");
+  const std::string pc = "    cut pc cont mcon\n";
+  const std::size_t at = tech_text.find(pc);
+  REQUIRE(at != std::string::npos);
+  tech_text.insert(at + pc.size(), "    cut ndc ndcont\n");
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on, tech_text);
+    s.set_widths();
+    db::CellDef& top = s.cell("top");
+    s.paint(top, "ndc", db::Rect{0, 0, 6, 6});
+    s.file("/t/top.ext", std::string{kExtHeader} +
+                             "port \"A\" 1 0 0 6 6 ndc\nnode \"A\" 1 6 0 0 ndc 0 0 0 0 0 0 0 0 0 0 0 0\n");
+    REQUIRE(s.write(top, "").ok());
+    CHECK(section(s.read("top.def"), "NETS") ==
+          "NETS 1 ;\n   - A ( PIN A )\n      + ROUTED  ( 30 30 ) ndcont_60_60  ;\nEND NETS\n\n");
+    const diag::Diagnostic* note = s.message("DEF-WRITE-012");
+    REQUIRE(note != nullptr);
+    CHECK(note->native_only);
+    CHECK(note->text.starts_with("No LEF route layer for magic type \"ndiffusion\" of a via"));
+  }
+}
+
+// Regression: a `.ext` node layer that is not a type of the technology made
+// Magic index DBConnectTbl[-1], for a net's geometry and for the blockage
+// pass.
+TEST_CASE("a .ext node layer the technology lacks writes no geometry, in both modes",
+          "[cap:def-write][req:Net geometry discovery][req:BLOCKAGES section]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    s.set_widths();
+    db::CellDef& top = s.cell("top");
+    s.paint(top, "metal1", db::Rect{0, 0, 100, 3});
+    s.paint(top, "metal2", db::Rect{0, 20, 100, 24});
+    s.file("/t/top.ext", std::string{kExtHeader} +
+                             "port \"A\" 1 0 0 100 3 m1\n"
+                             "node \"A\" 1 6 0 0 nosuch 0 0 0 0 0 0 0 0 0 0 0 0\n"
+                             "node \"m2_0_20#\" 1 6 0 20 nosuch 0 0 0 0 0 0 0 0 0 0 0 0\n");
+    REQUIRE(s.write(top, "").ok());
+    const std::string text = s.read("top.def");
+    CHECK(section(text, "NETS") == "NETS 1 ;\n   - A ( PIN A ) ;\nEND NETS\n\n");
+    CHECK(text.find("BLOCKAGES") == std::string::npos);
+    const diag::Diagnostic* note = s.message("DEF-WRITE-012");
+    REQUIRE(note != nullptr);
+    CHECK(note->native_only);
+    CHECK(note->text == "Node A has layer \"nosuch\", which is not a type of this technology; its geometry is not "
+                        "written.");
+  }
+}
+
 /// The keys of the layer table, then `vias`, in Magic's LefInfo order.
 std::vector<std::string> info_keys(Session& s, const std::vector<std::string>& vias) {
   hefesto::util::MagicHashTable<int> info(32);
