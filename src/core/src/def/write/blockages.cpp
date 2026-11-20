@@ -180,7 +180,7 @@ void write_blockages(const Context& c, const std::vector<InfoEntry>& order, cons
   obstruction_geometry(c, b);
   std::size_t nonempty = 0;
   for (const Bucket& bucket : b.buckets()) {
-    nonempty += bucket.rects.empty() ? 0 : 1;
+    nonempty += bucket.rects.empty() ? 0U : 1U;
   }
   if (nonempty == 0) {
     return;

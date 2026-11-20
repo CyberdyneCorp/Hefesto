@@ -31,7 +31,7 @@ namespace hefesto::oasis::read_detail {
 namespace {
 
 using Ring = std::vector<Point64>;
-using Wide = __int128;
+__extension__ typedef __int128 Wide;  // NOLINT(modernize-use-using): __extension__ needs the typedef form
 
 constexpr int kMaxDepth = 64;
 constexpr std::int64_t kMaxSpan = std::int64_t{1} << 32;

@@ -31,7 +31,7 @@ std::string pins(std::string_view body) {
 std::size_t labels_named(Session& s, std::string_view text) {
   std::size_t n = 0;
   for (const db::Label& l : s.cell("top").labels()) {
-    n += l.text == text ? 1 : 0;
+    n += l.text == text ? 1U : 0U;
   }
   return n;
 }

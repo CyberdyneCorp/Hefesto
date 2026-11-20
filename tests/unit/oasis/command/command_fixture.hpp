@@ -65,11 +65,11 @@ struct CommandSession : OasSession {
   }
 
   cmd::CommandResult run(std::string_view line) {
-    cmd::CommandResult last = cmd::CommandResult::success();
+    cmd::CommandResult result = cmd::CommandResult::success();
     for (auto& r : hefesto::ui::run_command_line(*dispatcher, line, cmd::Origin::script)) {
-      last = std::move(r);
+      result = std::move(r);
     }
-    return last;
+    return result;
   }
 
   /// The result value of `line` as a string; the command must succeed.

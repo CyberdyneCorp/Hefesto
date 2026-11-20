@@ -76,7 +76,7 @@ class StructureWriter {
       phase_ = Phase::mask;
     } else {
       phase_ = Phase::labels;
-      result_.font_labels += e.presentation ? 1 : 0;
+      result_.font_labels += e.presentation ? 1U : 0U;
     }
     write(translate(e, translate_));
   }
