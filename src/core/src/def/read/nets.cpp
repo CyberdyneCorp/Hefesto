@@ -215,7 +215,8 @@ void Reader::nets(std::int32_t total, bool special) {
               "  Processed " + std::to_string(processed) + (special ? " special" : "") + " nets total.", "nets");
 }
 
-// CmdFindNetProc on `component/pin`, then the first tile connecting to its
+// CmdFindNetProc on `component/pin` (unread cells on the path are read),
+// then the first tile connecting to its
 // type over its area in the design cell (Q-LEFDEF-81).
 bool Reader::annotate_terminal(const std::string& component, const std::string& pin, const std::string& net) {
   db::CellDef* lookup_cell = magic_compat() ? context_.edit_cell : design_;
@@ -224,7 +225,14 @@ bool Reader::annotate_terminal(const std::string& component, const std::string& 
   }
   const db::Label* found = nullptr;
   db::Transform to_root;
-  const auto instance = cell::find_instance(*lookup_cell, component);
+  // DBTreeFindUse reads each cell it meets that is not read yet (Magic
+  // prints "Cell <c> read from path ..." here): a terminal of a subcell
+  // that `load` left unread is found through its labels.
+  cell::CellReader read;
+  if (context_.options.read_master) {
+    read = [this](db::CellDef& def) { (void)context_.options.read_master(def); };
+  }
+  const auto instance = cell::find_instance(*lookup_cell, component, read);
   const db::CellDef* where = instance ? instance->use->def : lookup_cell;
   const std::string leaf = instance ? pin : component + "/" + pin;
   if (instance) {

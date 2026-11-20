@@ -207,6 +207,27 @@ TEST_CASE("OBS_BBOX enlarges the cover, and a malformed one is reported",
         std::vector<std::string>{"Improper values for obstruction bounding box OBS_BBOX property"});
 }
 
+TEST_CASE("a malformed OBS_BBOX message has no line end with magic-compat ON only",
+          "[cap:lef-write][req:Obstructions with zero setback]") {
+  // Q-LEFDEF-134 (compat): Magic's TxError has no newline, so its message
+  // and the next one print on one line (LEFDEF-132).
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    db::CellDef& c = cover_cell(s);
+    s.property(c, "OBS_BBOX", std::string{"1 2 3"});
+    (void)s.macro(c, hide(0));
+    bool found = false;
+    for (const auto& d : s.messages) {
+      if (d.code == "LEF-WRITE-007") {
+        found = true;
+        CHECK(d.no_newline == on);
+      }
+    }
+    CHECK(found);
+  }
+}
+
 TEST_CASE("lef write -hide d keeps the periphery's detail", "[cap:lef-write][req:Obstructions with positive setback]") {
   Session s;
   db::CellDef& c = s.cell("c");
