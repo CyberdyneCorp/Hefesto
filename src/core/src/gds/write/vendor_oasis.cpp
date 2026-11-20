@@ -200,18 +200,15 @@ class CellTranscoder {
     return out_.boundary(layer, output_points(at, outline, true));
   }
 
-  diag::Status path(const Element& e, Point64 at) {
-    std::vector<Point64> centre{Point64{}};
-    centre.insert(centre.end(), e.points.begin(), e.points.end());
-    if (centre.size() > kMaxXyPoints) {
-      return cell_error("has a path of " + std::to_string(centre.size()) + " points, above GDS's 8191");
-    }
-    const std::int64_t hw = e.half_width;
-    const bool flush = e.start_extension == 0 && e.end_extension == 0;
-    const bool half = hw > 0 && e.start_extension == hw && e.end_extension == hw;
-    const std::int32_t type = flush ? 0 : (half ? 2 : 4);
-    const mask::GdsLayer layer{static_cast<std::int32_t>(e.layer), static_cast<std::int32_t>(e.datatype)};
-    diag::Outcome<std::int32_t> width = out_.checked_i4(saturating_mul(2, hw));
+  /// A PATH's WIDTH, BGNEXTN and ENDEXTN, each checked to fit an I4.
+  struct PathValues {
+    std::int32_t width = 0;
+    std::int32_t begin = 0;
+    std::int32_t end = 0;
+  };
+
+  diag::Outcome<PathValues> checked_path_values(const Element& e) const {
+    diag::Outcome<std::int32_t> width = out_.checked_i4(saturating_mul(2, e.half_width));
     diag::Outcome<std::int32_t> begin = out_.checked_i4(e.start_extension);
     diag::Outcome<std::int32_t> end = out_.checked_i4(e.end_extension);
     for (const auto* v : {&width, &begin, &end}) {
@@ -219,7 +216,11 @@ class CellTranscoder {
         return v->error();
       }
     }
-    const std::vector<OutputPoint> xy = output_points(at, centre, false);
+    return PathValues{width.value(), begin.value(), end.value()};
+  }
+
+  // Every coordinate of `xy` fits an I4 (GDS-WRITE-004).
+  diag::Status checked_points(std::span<const OutputPoint> xy) const {
     for (const OutputPoint& p : xy) {
       if (diag::Outcome<std::int32_t> x = out_.checked_i4(p.x); !x.ok()) {
         return x.error();
@@ -228,14 +229,42 @@ class CellTranscoder {
         return y.error();
       }
     }
+    return diag::Done{};
+  }
+
+  diag::Status path(const Element& e, Point64 at) {
+    std::vector<Point64> centre{Point64{}};
+    centre.insert(centre.end(), e.points.begin(), e.points.end());
+    if (centre.size() > kMaxXyPoints) {
+      return cell_error("has a path of " + std::to_string(centre.size()) + " points, above GDS's 8191");
+    }
+    diag::Outcome<PathValues> values = checked_path_values(e);
+    if (!values.ok()) {
+      return values.error();
+    }
+    const std::vector<OutputPoint> xy = output_points(at, centre, false);
+    if (diag::Status checked = checked_points(xy); !checked.ok()) {
+      return checked;
+    }
+    return write_path(e, values.value(), xy);
+  }
+
+  // The PATH element: PATHTYPE 0 (flush ends), 2 (half-width ends) or 4
+  // (explicit BGNEXTN and ENDEXTN).
+  diag::Status write_path(const Element& e, const PathValues& v, std::span<const OutputPoint> xy) {
+    const std::int64_t hw = e.half_width;
+    const bool flush = e.start_extension == 0 && e.end_extension == 0;
+    const bool half = hw > 0 && e.start_extension == hw && e.end_extension == hw;
+    const std::int32_t type = flush ? 0 : (half ? 2 : 4);
+    const mask::GdsLayer layer{static_cast<std::int32_t>(e.layer), static_cast<std::int32_t>(e.datatype)};
     RecordWriter& records = out_.records();
     diag::Status s = out_.empty(RecordType::path);
     s = s.ok() ? out_.layer_records(RecordType::datatype, layer) : s;
     s = s.ok() ? out_.int2(RecordType::pathtype, type) : s;
-    s = s.ok() ? records.write_int4(RecordType::width, std::array<std::int32_t, 1>{width.value()}) : s;
+    s = s.ok() ? records.write_int4(RecordType::width, std::array<std::int32_t, 1>{v.width}) : s;
     if (type == 4) {
-      s = s.ok() ? records.write_int4(RecordType::bgnextn, std::array<std::int32_t, 1>{begin.value()}) : s;
-      s = s.ok() ? records.write_int4(RecordType::endextn, std::array<std::int32_t, 1>{end.value()}) : s;
+      s = s.ok() ? records.write_int4(RecordType::bgnextn, std::array<std::int32_t, 1>{v.begin}) : s;
+      s = s.ok() ? records.write_int4(RecordType::endextn, std::array<std::int32_t, 1>{v.end}) : s;
     }
     s = s.ok() ? out_.xy(xy) : s;
     return s.ok() ? out_.empty(RecordType::endel) : s;
