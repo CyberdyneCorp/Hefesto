@@ -89,7 +89,7 @@ Roles, not names; agent sessions are listed by role.
 |---|---|---|
 | Spec | Spec authors | the sessions that wrote the six `schematic-*` specs and `SCHEM.md` (2026-11-06 to 2026-11-13) |
 | Spec | M8 gate work | the spec-team session of tasks 1.1–1.5 and 2.1–2.5 (branch `m8-gates`, 2026-11-17) |
-| Spec | Second paraphrase reviewer | *to be assigned* (task 1.2) |
+| Spec | Second paraphrase reviewer | second spec-team agent session (branch `m8-paraphrase-review-2`, 2026-11-20), assigned by the maintainer |
 | Spec | SPEC workstream (tasks 3.6, 4.1–4.3) and spec-issue answers | spec-team sessions, assigned per task |
 | Implementation | One session per workstream (SCAFFOLD, COMPAT, FORMAT, SYMLIB, DEVLIB, NETLIST, EDIT, CMD, SIMINT, GOLDEN inputs, DESIGN, SHELL) | implementation-team sessions, each started with the instruction block above |
 | Outside both | Clean-room process reviewer (task 1.1) | *to be assigned* |
