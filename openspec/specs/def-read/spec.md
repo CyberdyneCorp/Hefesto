@@ -179,7 +179,7 @@ Other rules:
 - With `magic-compat` ON each further `UNITS` statement multiplies again, as in Magic. With it OFF a further `UNITS` statement SHALL report a warning and replace the previous value (Q-LEFDEF-79, resolution: compat).
 - If no `UNITS` statement precedes a geometric construct, DEF numbers are interpreted as microns.
 - DEF reading SHALL NOT change the internal grid or rescale the database. Values that are not integral in internal units are rounded, never trimmed or grid-scaled.
-- A value whose conversion does not fit an internal coordinate (including every value after a `UNITS` of 0 with `magic-compat` ON) SHALL be treated as one that does not parse, and geometry beyond the plane SHALL be clipped to it, in both `magic-compat` settings (X-2 tier 1: Magic's float-to-int cast is undefined there).
+- A value whose conversion does not fit an internal coordinate (including every value after a `UNITS` of 0 with `magic-compat` ON) SHALL be treated as one that does not parse, and geometry beyond the plane SHALL be clipped to it, in both `magic-compat` settings (X-2 tier 1: Magic's float-to-int cast is undefined there; Q-LEFDEF-130, resolution: fix, which also covers the other undefined values this spec fixes case by case).
 - Point coordinates, rectangle corners, wire widths, placement origins and non-default-rule widths and spacings use `round(v / oscale)`.
 - Route centerline points and extensions use doubled units, `round(2·v / oscale)`.
 - Via rectangle coordinates are stored in doubled units, `round(v / (oscale/2))`.

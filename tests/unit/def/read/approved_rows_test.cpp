@@ -7,6 +7,8 @@
 //   placement path (ON) / on every painted rectangle (OFF);
 // - Q-LEFDEF-131: a route layer naming a via record takes the via's
 //   contact-area lower-left x as its default width (Magic's union);
+// - Q-LEFDEF-130: values Magic converts with undefined behaviour are
+//   treated as unparsed and geometry is clipped to the plane;
 // - Q-LEFDEF-132: a gzip-compressed DEF file is decompressed.
 //
 // Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
@@ -71,6 +73,22 @@ TEST_CASE("a route on a via record takes the via's lower-left x as its default w
     REQUIRE(s.read(text).ok());
     CHECK(s.covers("top", "metal1", db::Rect{-10, 90, 210, 110}));
     CHECK_FALSE(s.covers("top", "metal1", db::Rect{-11, 90, -10, 110}));
+  }
+}
+
+TEST_CASE("values that do not fit an internal coordinate are unparsed in both modes (Q-LEFDEF-130)",
+          "[cap:def-read][req:Unit scaling]") {
+  const std::string text =
+      "DESIGN top ;\nNETS 2 ;\n- a + ROUTED met1 ( 0 0 ) ( 1e30 0 ) ;\n"
+      "- b + ROUTED met1 ( 0 100 ) ( 2000000000 100 ) ;\nEND NETS\nEND DESIGN\n";
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    REQUIRE(s.read(text).ok());
+    for (const db::Rect& r : s.painted("top", "metal1")) {
+      CHECK(r.x0 >= db::kPlaneMin);
+      CHECK(r.x1 <= db::kPlaneMax);
+    }
   }
 }
 
