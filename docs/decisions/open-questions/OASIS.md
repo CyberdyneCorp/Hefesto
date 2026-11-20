@@ -252,7 +252,7 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
 - Options: read as 32767 | drop the element | wrap
 - Recommendation: read as 32767, with a message once per element.
-- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 (an attribute also below -32768) is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1).
+- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (proposed).
 
 ### Q-OASIS-44: Polygons with more than 8191 points
 - Kind: ambiguity
@@ -261,7 +261,37 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
 - Options: fracture | drop | fail the read
 - Recommendation: fracture into polygons of at most 8191 points.
-- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008); an outline the cuts cannot shrink, or one wider or taller than 2^32, is dropped (OASIS-READ-006). A path over 8191 points is still dropped. Approved 2026-11-19 (D1).
+- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46 (proposed), and a path over 8191 points is Q-OASIS-47 (proposed).
+
+### Q-OASIS-45: An attribute number below -32768
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a. A GDS PROPATTR is 16-bit; an OASIS `S_GDS_PROPERTY` attribute is a signed integer of any size. D1 approved reading a number above 32767 as 32767 (Q-OASIS-43) and says nothing about a negative one.
+- Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
+- As implemented (round 4, OASCMD): an attribute below -32768 is read as 32767, with the once-per-element message of OASIS-READ-009. That flips the sign.
+- Options: read as -32768 (clamp to the nearest GDS value) | drop the property | keep reading it as 32767
+- Recommendation: read as -32768, with the OASIS-READ-009 message (the nearest representable value, the same rule as above 32767).
+- Resolution: open — needs a user decision.
+
+### Q-OASIS-46: An outline the fracture cuts cannot shrink, or wider or taller than 2^32
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a (Magic has no OASIS reader).
+- Evidence: oasis-read "Input limits" rule 4; security.md M6-S3; `oasis/read/fracture.cpp`
+- As implemented (round 4, OASCMD): a polygon over 8191 points whose vertices lie on two lines in each axis (the median cuts do not shrink it), or whose width or height is above 2^32, is reported and dropped (OASIS-READ-006). D1 approved fracturing polygons over 8191 points (Q-OASIS-44), not dropping any.
+- Options: drop with a message | fail the read
+- Recommendation: drop with a message (the GDS reader cannot hold the outline, and failing the whole read for one element is harsher than gds-read's own handling of a bad element).
+- Resolution: open — needs a user decision.
+
+### Q-OASIS-47: A PATH with more than 8191 points
+- Kind: ambiguity
+- Status: proposed (round 4, 2026-11-20; not approved)
+- Magic behavior: n/a. A GDS PATH holds at most 8191 points; an OASIS PATH is unbounded.
+- Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
+- As implemented (round 4, OASCMD): the path is reported and dropped. D1 approved fracturing polygons only (Q-OASIS-44).
+- Options: drop with a message | split into paths of at most 8191 points that share their end points | fail the read
+- Recommendation: drop with a message (splitting changes the path ends' extensions at the joints).
+- Resolution: open — needs a user decision.
 
 ### Q-OASIS-60: Character mapping applied to OASIS strings
 - Kind: ambiguity

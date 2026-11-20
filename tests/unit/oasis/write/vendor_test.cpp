@@ -191,6 +191,27 @@ TEST_CASE("triangles, degenerate boundaries, boxes, nodes and inexact arrays",
   CHECK(sink_has(t.sink, "OASIS-WRITE-005", "NODE"));
 }
 
+// Proposed cap, not approved (security.md M6-S3, OASIS-WRITE-010): an
+// inexact AREF lists every instance in a type 10 repetition, so a 32767 x
+// 32767 COLROW would allocate about 17 GB. Above 2^24 instances the array
+// is not written and the transcode fails.
+TEST_CASE("an inexact AREF above 2^24 instances fails the transcode (proposed cap)",
+          "[cap:oasis-write][req:Read-only GDS vendor cells]") {
+  GdsLibrary lib;
+  const std::uint64_t at = lib.begin("v");
+  lib.empty(gds::RecordType::aref);
+  lib.str(gds::RecordType::sname, "child");
+  lib.i2(gds::RecordType::colrow, {4097, 4096});  // 16781312 = 2^24 + 4096 instances
+  lib.i4(gds::RecordType::xy, {0, 0, 10000, 0, 0, 10000});  // steps of 10000/4097 and 10000/4096
+  lib.empty(gds::RecordType::endel);
+  (void)lib.end();
+  Transcoded t;
+  transcode(lib, at, "v", t);
+  CHECK_FALSE(t.status.ok());
+  CHECK(sink_has(t.sink, "OASIS-WRITE-010", "an AREF of 4097 x 4096 in cell v has inexact steps"));
+  CHECK(t.decoded.elements("v").empty());
+}
+
 TEST_CASE("a read-only GDS cell in a write is transcoded without repetition detection",
           "[cap:oasis-write][req:Read-only GDS vendor cells]") {
   OasFixture f;
@@ -464,6 +485,45 @@ TEST_CASE("a regular placement repetition becomes an AREF", "[cap:gds-write][req
     if (rec.record() == gds::RecordType::xy) {
       CHECK(rec.i4() == std::vector<std::int32_t>{0, 0, 300, 0, 0, 400});
     }
+  }
+}
+
+// Proposed cap, not approved (security.md M6-S3, GDS-WRITE-055): the
+// element instances a read-only OASIS cell expands to in GDS output are
+// bounded by the oasis-read cap of 2^28 (Q-OASIS-41). The count is checked
+// before any instance is written.
+TEST_CASE("a vendor OASIS cell above 2^28 element instances fails the cell (proposed cap)",
+          "[cap:gds-write][req:Read-only OASIS vendor cells]") {
+  for (const std::uint64_t rows : {std::uint64_t{1} << 14, (std::uint64_t{1} << 14) + 1}) {
+    INFO("rows " << rows);
+    OasFixture f;
+    OasLibrary lib;
+    oasis::Element big = rectangle(1, 0, 0, 0, 1, 1);
+    oasis::Repetition r;
+    r.type = 1;
+    r.columns = std::uint64_t{1} << 14;
+    r.rows = rows;
+    r.column_step = {2, 0};
+    r.row_step = {0, 2};
+    big.repetition = r;
+    // 2^14 rows: 2^28 instances, and the rectangle before it makes the
+    // running count 2^28 + 1. 2^14 + 1 rows: the element alone passes it.
+    // Either fails before an instance is expanded.
+    lib.cell("vendor").add(rectangle(1, 0, 0, 0, 1, 1)).add(big);
+    store(f, "/lib.oas", lib.bytes());
+    db::CellDef& v = f.cell("vendor");
+    read_only_oasis(v, "/lib.oas", "vendor");
+    db::CellDef& top = f.cell("top");
+    f.place(top, v);
+    const std::string gds_bytes = f.write(top);
+    CHECK_FALSE(f.last.ok());
+    bool named = false;
+    for (const auto& d : f.last.diagnostics) {
+      named = named || (d.code == "GDS-WRITE-055" && d.text.find("vendor expands to more than 268435456") !=
+                                                         std::string::npos);
+    }
+    CHECK(named);
+    CHECK(structure_names(decode(gds_bytes)).empty());
   }
 }
 

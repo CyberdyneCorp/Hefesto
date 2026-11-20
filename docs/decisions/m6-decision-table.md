@@ -300,7 +300,7 @@ The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the beh
 | Q-LEFDEF-131 | Default route width of a via record | **replicate** | both modes: the via's contact-area lower-left x (Magic's union) |
 | Q-LEFDEF-132 | gzip-compressed DEF files | **fix** | both modes: read decompressed |
 | Q-LEFDEF-133 | File named in `lef read`'s missing-file error (D4) | **fix** | both modes: the candidate built from the typed name; LEFDEF-021/022 record the deviation |
-| Q-LEFDEF-134 | Malformed OBS_BBOX messages on one line (D4, LEFDEF-132) | **compat** | ON: no line end, as Magic; OFF: each line ended |
+| Q-LEFDEF-134 | Malformed OBS_BBOX and FIXED_BBOX messages on one line (D4, LEFDEF-132) | **compat** | ON: no line end, as Magic; OFF: each line ended |
 
 ## Decided 2026-11-19: OASIS read caps and magnification
 
@@ -311,8 +311,16 @@ The OASIS read caps of the user's decision D1 and the PLACEMENT magnification ru
 | Q-OASIS-13 | PLACEMENT with a magnification of 0 or less (D3(b)) | **fix** | both modes: dropped with "invalid magnification" (OASIS-CODEC-029); the golden decoder matches |
 | Q-OASIS-41 | Stream size and instance count of one read (D1) | **fix** | both modes: 2 GiB stream and 2^28 instances; past either the rest is not read (OASIS-READ-007) |
 | Q-OASIS-42 | Names and strings longer than a GDS string record (D1) | **fix** | both modes: cut to 65530 bytes with a message (OASIS-READ-006) |
-| Q-OASIS-43 | Layer, datatype and attribute numbers outside the GDS range (D1) | **fix** | both modes: read as 32767 with a message (OASIS-READ-009) |
+| Q-OASIS-43 | Layer, datatype and attribute numbers outside the GDS range (D1) | **fix** | both modes: a number above 32767 read as 32767 with a message (OASIS-READ-009) |
 | Q-OASIS-44 | Polygons with more than 8191 points (D1) | **fix** | both modes: fractured into polygons of at most 8191 points (OASIS-READ-008) |
+
+Proposed in round 4, not approved (the parts of the implemented read limits that D1 did not cover; each needs a user decision):
+
+| ID | Question | Kind | As implemented |
+|---|---|---|---|
+| Q-OASIS-45 | An attribute number below -32768 | proposed | read as 32767 (recommended: -32768) |
+| Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 | proposed | dropped with a message (OASIS-READ-006) |
+| Q-OASIS-47 | A PATH with more than 8191 points | proposed | dropped with a message |
 
 ## Planning questions raised by the M6 plan
 
