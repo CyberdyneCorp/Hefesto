@@ -21,7 +21,9 @@ namespace {
 
 oasis::FileFormat sniff(std::string_view text) {
   std::vector<std::byte> bytes(text.size());
-  std::memcpy(bytes.data(), text.data(), text.size());
+  if (!text.empty()) {  // memcpy from an empty vector's null data() is UB
+    std::memcpy(bytes.data(), text.data(), text.size());
+  }
   hefesto::gds::MemorySource source{std::move(bytes)};
   return oasis::sniff_format(source);
 }
