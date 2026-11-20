@@ -25,6 +25,7 @@
 #include "hefesto/gds/read/read.hpp"
 #include "hefesto/gds/read/vendor.hpp"
 #include "hefesto/gds/stream/io.hpp"
+#include "hefesto/oasis/read/limits.hpp"
 #include "hefesto/oasis/read/stamps.hpp"
 #include "hefesto/oasis/read/vendor.hpp"
 #include "internal.hpp"
@@ -150,6 +151,11 @@ bool report_index(const FileIndex& index, ReadMessages& messages) {
 
 cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path, const OasisReadOptions& options,
                         const mask::Progress* progress) {
+  return read(editor, path, options, ReadLimits{}, progress);
+}
+
+cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path, const OasisReadOptions& options,
+                        const ReadLimits& limits, const mask::Progress* progress) {
   if (editor.mask.input_styles.current_style() == nullptr || editor.technology == nullptr) {
     return failed({diag::make("OASIS-READ-001", "Nothing in \"cifinput\" section of tech file.")});
   }
@@ -168,7 +174,8 @@ cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
   }
   const std::optional<std::string> top = read_detail::top_cell(index);
   const read_detail::TranscodeOptions transcode_options{options.settings.circlepoints,
-                                                        editor.mask.input_styles.current_style(), top.value_or("")};
+                                                        editor.mask.input_styles.current_style(), top.value_or(""),
+                                                        limits};
   Transcoded t = read_detail::transcode(*source.value(), index, transcode_options, messages);
   OasisReadOptions effective = options;
   effective.files = &fs;

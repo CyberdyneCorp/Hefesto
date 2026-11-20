@@ -139,8 +139,11 @@ void Decoder::Impl::placement() {
   if (record.id == RecordId::placement_transform) {
     e.magnification = has(info, 0x04) ? detail::read_real(in) : 1.0;
     e.angle = has(info, 0x02) ? detail::read_real(in) : 0.0;
-    if (!(e.magnification > 0.0) || !std::isfinite(e.magnification) || !std::isfinite(e.angle)) {
+    if (!std::isfinite(e.magnification) || !std::isfinite(e.angle)) {
       drop.set("OASIS-CODEC-021", "invalid magnification or angle in a PLACEMENT");
+    } else if (e.magnification <= 0.0) {
+      // D3(b) of the user decisions of 2026-11-19: dropped with a warning.
+      drop.set("OASIS-CODEC-029", "invalid magnification (0 or less) in a PLACEMENT; the placement is dropped");
     }
   } else {
     e.angle = 90.0 * ((info >> 1U) & 3U);

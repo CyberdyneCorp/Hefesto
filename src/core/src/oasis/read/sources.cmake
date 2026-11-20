@@ -8,6 +8,7 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/circle.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/fracture.cpp
   ${CMAKE_CURRENT_LIST_DIR}/index.cpp
   ${CMAKE_CURRENT_LIST_DIR}/messages.cpp
   ${CMAKE_CURRENT_LIST_DIR}/read.cpp

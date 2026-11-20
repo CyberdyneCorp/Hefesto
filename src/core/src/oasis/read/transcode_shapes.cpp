@@ -72,16 +72,19 @@ std::vector<Point64> Transcoder::shape_outline(const Element& e) {
 }
 
 void Transcoder::shape(const Element& e) {
-  const std::vector<Point64> rel = shape_outline(e);
-  if (is_boundary(e.kind) && rel.empty()) {
-    return;  // a radius of 0, or an outline the decoder rejected
-  }
-  const std::size_t vertices = e.kind == ElementKind::path ? e.points.size() + 1 : rel.size() + 1;
-  if (e.kind != ElementKind::text && vertices > kMaxPoints) {
-    error("OASIS-READ-006", "element with " + std::to_string(vertices) + " points (a GDS-equivalent element holds " +
-                                std::to_string(kMaxPoints) + "); dropped");
+  std::vector<std::vector<Point64>> outlines;
+  if (is_boundary(e.kind)) {
+    outlines = boundaries(shape_outline(e));
+    if (outlines.empty()) {
+      return;  // a radius of 0, an outline the decoder rejected, or reported
+    }
+  } else if (e.kind == ElementKind::path && e.points.size() + 1 > kMaxPoints) {
+    error("OASIS-READ-006", "path with " + std::to_string(e.points.size() + 1) +
+                                " points (a GDS-equivalent element holds " + std::to_string(kMaxPoints) +
+                                "); dropped");
     return;
   }
+  check_numbers(e.kind == ElementKind::text ? "text" : "element", e.layer, e.datatype);
   const std::uint64_t count = e.repetition ? instance_count(*e.repetition) : 1;
   overflow_reported_ = false;
   if (e.kind == ElementKind::text) {
@@ -99,9 +102,40 @@ void Transcoder::shape(const Element& e) {
       text(e, *base);
     } else if (e.kind == ElementKind::path) {
       path(e, *base);
-    } else {
-      boundary(e, rel, *base);
     }
+    for (const std::vector<Point64>& outline : outlines) {
+      boundary(e, outline, *base);
+    }
+  }
+}
+
+std::vector<std::vector<Point64>> Transcoder::boundaries(std::vector<Point64> rel) {
+  if (rel.empty()) {
+    return {};
+  }
+  const std::size_t vertices = rel.size() + 1;  // with the closing one
+  if (vertices <= kMaxPoints) {
+    return {std::move(rel)};
+  }
+  auto pieces = fracture(rel, kMaxPoints - 1);
+  if (!pieces || pieces->empty()) {
+    error("OASIS-READ-006", "polygon with " + std::to_string(vertices) +
+                                " points cannot be fractured into GDS-equivalent elements of " +
+                                std::to_string(kMaxPoints) + " points; dropped");
+    return {};
+  }
+  error("OASIS-READ-008", "polygon with " + std::to_string(vertices) + " points fractured into " +
+                              std::to_string(pieces->size()) + " polygons (a GDS-equivalent element holds " +
+                              std::to_string(kMaxPoints) + ")");
+  return std::move(*pieces);
+}
+
+void Transcoder::check_numbers(std::string_view what, std::uint64_t layer, std::uint64_t datatype) {
+  const auto limit = static_cast<std::uint64_t>(kMaxGdsInt2);
+  if (layer > limit || datatype > limit) {
+    error("OASIS-READ-009", std::string{what} + " on layer " + std::to_string(layer) + ", datatype " +
+                                std::to_string(datatype) + ": a number above " + std::to_string(limit) +
+                                " is read as " + std::to_string(limit));
   }
 }
 

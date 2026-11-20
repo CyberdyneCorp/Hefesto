@@ -415,10 +415,16 @@ TEST_CASE("PLACEMENT 18: magnification and angle", "[cap:oasis-format][req:PLACE
   CHECK(angled.magnification == 0.5);
   CHECK(angled.angle == 45.0);
   CHECK(only_element(oasis_test::decode(cell_file("12 82 01 41 00 C2 03"))).angle == 450.0);
-  const auto negative = oasis_test::decode(cell_file("12 84 01 41 01 01"));
-  REQUIRE_FALSE(negative.error);
-  CHECK(negative.elements().empty());
-  CHECK(negative.has("OASIS-CODEC-021"));
+  // D3(b) of the user decisions of 2026-11-19: a magnification of 0 or
+  // less drops the placement with a warning.
+  for (const char* m : {"01 01", "00 00"}) {  // -1, 0
+    const auto negative = oasis_test::decode(cell_file(std::string{"12 84 01 41 "} + m));
+    REQUIRE_FALSE(negative.error);
+    CHECK(negative.elements().empty());
+    CHECK(negative.has("OASIS-CODEC-029"));
+    CHECK_FALSE(negative.has("OASIS-CODEC-021"));
+    CHECK(diag::make("OASIS-CODEC-029", "").severity == diag::Severity::warning);
+  }
   CHECK(oasis_test::decode(cell_file("11 00")).error->text == "modal variable placement-cell undefined");
 }
 
