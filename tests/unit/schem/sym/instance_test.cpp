@@ -28,10 +28,6 @@ constexpr const char* kFloaters = "[cap:schematic-symbols-and-libraries][req:Flo
 constexpr const char* kTypes = "[cap:schematic-symbols-and-libraries][req:Symbol types]";
 constexpr const char* kProperty = "[cap:schematic-symbols-and-libraries][req:Symbol property]";
 
-bool format_ready() {
-  return schem::get_token("a=1", "a") == std::optional<std::string>{"1"};
-}
-
 schem::Symbol symbol_with(std::string k) {
   schem::Symbol symbol;
   symbol.document.kind = schem::FileKind::symbol;
@@ -94,7 +90,6 @@ TEST_CASE("properties without a name stay unchanged", kNames) {
 }
 
 TEST_CASE("the names of a document are recorded", kNames) {
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   schem::Document document;
   document.instances.push_back({"res.sym", {0, 0}, 0, 0, "name=R1 value=1k"});
   document.instances.push_back({"res.sym", {0, 40}, 0, 0, "name=R2 value=1k"});
@@ -103,7 +98,6 @@ TEST_CASE("the names of a document are recorded", kNames) {
 }
 
 TEST_CASE("Instance value wins over template", kTemplates) {
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   const schem::Symbol res = symbol_with("type=resistor format=\"@name @pinlist @value m=@m\" template=\"name=R1 value=1k m=1\"");
   CHECK(schem::symbol_template(res) == "name=R1 value=1k m=1");
   CHECK(schem::instance_attribute("name=R5 value=2k", res, "value") == std::optional<std::string>{"2k"});
@@ -113,7 +107,6 @@ TEST_CASE("Instance value wins over template", kTemplates) {
 }
 
 TEST_CASE("a new instance takes the template with a unique name", kTemplates) {
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   const schem::Symbol res = symbol_with("type=resistor template=\"name=R1 value=1k m=1\"");
   schem::InstanceNamer names;
   CHECK(schem::new_instance_properties(res, names) == "name=R1 value=1k m=1");
@@ -125,7 +118,6 @@ TEST_CASE("Floater shows instance width: the owner", kFloaters) {
   CHECK(schem::resolve_without_owner("100%"));
   CHECK(schem::resolve_without_owner("tcleval([pwd])"));
   CHECK_FALSE(schem::resolve_without_owner("plain text"));
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   schem::Document document;
   document.instances.push_back({"nmos.sym", {0, 0}, 0, 0, "name=M1 W=2"});
   const schem::TextRecord by_name{"W=@W", {0, 0}, 0, 0, 0.4, 0.4, "name=M1"};
@@ -169,7 +161,6 @@ TEST_CASE("the symbol property is the K record and keeps every key", kProperty) 
       "type=nmos lvs_format=\"@spiceprefix@name @pinlist sky130_fd_pr__@model L=@L W=@W nf=@nf m=@mult\" "
       "template=\"name=M1 model=nfet_01v8 spiceprefix=X\" vendor_key=7");
   CHECK(nfet.property() == nfet.document.globals.k);
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   CHECK(schem::symbol_type(nfet) == "nmos");
   CHECK(schem::get_token(nfet.property(), "lvs_format") ==
         std::optional<std::string>{"@spiceprefix@name @pinlist sky130_fd_pr__@model L=@L W=@W nf=@nf m=@mult"});

@@ -129,9 +129,9 @@ const Symbol& SymbolCache::load(const platform::Path& file, const std::string& r
   }
   const bool schematic = is_schematic_file(file);
   auto bytes = context.fs.read(file);
-  auto document = bytes.ok() ? read_document(bytes.value(), ReadOptions{schematic ? FileKind::schematic : FileKind::symbol,
-                                                                         context.xschem_compat, context.warnings})
-                             : diag::Outcome<Document>{bytes.error()};
+  const ReadOptions options{schematic ? FileKind::schematic : FileKind::symbol, context.xschem_compat, context.warnings,
+                            file.generic_string()};
+  auto document = bytes.ok() ? read_document(bytes.value(), options) : diag::Outcome<Document>{bytes.error()};
   if (!document.ok()) {
     warn_once(context, "read|" + file.generic_string(),
               diag::make("SCHEM-LIB-004", "Symbol " + reference + " could not be read from " + file.generic_string() +

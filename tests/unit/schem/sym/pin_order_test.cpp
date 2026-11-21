@@ -38,12 +38,6 @@ std::vector<std::string> names_in_order(const schem::Symbol& symbol, diag::Diagn
   return names;
 }
 
-// FORMAT's property reader (schematic-file-format "Property strings") is a
-// scaffold stub until FORMAT lands; checks that read attributes skip until then.
-bool format_ready() {
-  return schem::get_token("a=1", "a") == std::optional<std::string>{"1"};
-}
-
 }  // namespace
 
 TEST_CASE("Sorted by sim_pinnumber", kPinOrder) {
@@ -111,7 +105,6 @@ TEST_CASE("pins are the layer-5 boxes in file order", kPins) {
   CHECK(symbol.pins[1].box == document.boxes[2]);
   CHECK(symbol.reference == "m.sym");
   CHECK(symbol.file == "/lib/m.sym");
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   CHECK(symbol.pins[0].name == "G");
   CHECK(symbol.pins[0].direction == "in");
   CHECK(symbol.pins[0].sim_pinnumber == std::optional<std::string>{"2"});

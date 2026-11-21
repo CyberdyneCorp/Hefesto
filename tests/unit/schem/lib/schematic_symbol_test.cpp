@@ -28,11 +28,6 @@ namespace {
 
 constexpr const char* kSchematicSymbol = "[cap:schematic-symbols-and-libraries][req:Schematic used as symbol]";
 
-bool format_ready() {
-  return schem::get_token("a=1", "a") == std::optional<std::string>{"1"} &&
-         schem::read_document("v {xschem version=3.4.8RC file_version=1.3}\n", {}).ok();
-}
-
 schem::Symbol port_symbol(const char* type) {
   schem::Symbol symbol;
   symbol.document.kind = schem::FileKind::symbol;
@@ -117,13 +112,11 @@ TEST_CASE("pins come from the port instances at their positions", kSchematicSymb
   CHECK(symbol.pins[0].box.p1 == schem::Point{97.5, 197.5});
   CHECK(symbol.pins[0].box.p2 == schem::Point{102.5, 202.5});
   CHECK(symbol.pins[1].box.p1 == schem::Point{297.5, 197.5});
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   CHECK(symbol.pins[0].name == "A");
   CHECK(symbol.pins[1].name == "Y");
 }
 
 TEST_CASE("floaters and symbol_ignore objects are dropped", kSchematicSymbol) {
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   const Library library;
   const schem::Symbol symbol =
       schem::schematic_symbol("inv.sch", "/lib/inv.sch", inverter(), library.resolver(), nullptr);
@@ -132,7 +125,6 @@ TEST_CASE("floaters and symbol_ignore objects are dropped", kSchematicSymbol) {
 }
 
 TEST_CASE("a .sym next to the schematic orders the generated pins", kSchematicSymbol) {
-  if (!format_ready()) SKIP("FORMAT's property reader is not implemented yet");
   const Library library;
   schem::Symbol sibling;
   sibling.pins.resize(2);
@@ -146,7 +138,6 @@ TEST_CASE("a .sym next to the schematic orders the generated pins", kSchematicSy
 }
 
 TEST_CASE("Recursion limit", kSchematicSymbol) {
-  if (!format_ready()) SKIP("FORMAT's reader is not implemented yet");
   platform::MemoryFileSystem fs;
   REQUIRE(fs.write_atomic("/w/a.sch",
                           "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\n"

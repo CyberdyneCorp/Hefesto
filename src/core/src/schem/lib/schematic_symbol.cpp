@@ -26,18 +26,6 @@ namespace {
 constexpr int kWireLayer = 1;
 constexpr int kNestedPinLayer = 7;
 
-// "Boolean values" of schematic-file-format: digits are true when non-zero;
-// true/on/yes in any ASCII case.
-bool is_true(std::string_view value) {
-  if (!value.empty() && std::all_of(value.begin(), value.end(), [](char c) { return c >= '0' && c <= '9'; })) {
-    return value.find_first_not_of('0') != std::string_view::npos;
-  }
-  std::string lower(value);
-  std::transform(lower.begin(), lower.end(), lower.begin(),
-                 [](char c) { return c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c; });
-  return lower == "true" || lower == "on" || lower == "yes";
-}
-
 bool ignored(const std::string& props) {
   const auto value = get_token(props, "symbol_ignore");
   return value.has_value() && is_true(*value);

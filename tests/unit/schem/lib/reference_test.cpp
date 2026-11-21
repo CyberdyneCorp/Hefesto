@@ -47,12 +47,6 @@ std::vector<diag::Diagnostic> with_code(const std::vector<diag::Diagnostic>& all
   return out;
 }
 
-// FORMAT's reader is a scaffold stub until FORMAT lands: a found symbol
-// file then reads as SCHEM-LIB-004 and gives the placeholder.
-bool format_ready() {
-  return schem::read_document("v {xschem version=3.4.8RC file_version=1.3}\n", {}).ok();
-}
-
 // SCHEM-PR-05: /work/input with libA, libB (alias lib), sub/top.sch and the
 // xschem system library at /opt/ref/share/xschem/xschem_library.
 struct Pr05 {
@@ -273,19 +267,19 @@ TEST_CASE("Missing PDK symbol", kMissing) {
   CHECK(resolved.file == "/pdk/xschem/sky130_fd_pr/nfet_01v8.sym");
   const schem::Symbol& found = cache.resolve({"sky130_fd_pr/nfet_01v8.sym"}, top, {path, fs, &sink});
   CHECK(with_code(sink.take(), "SCHEM-LIB-003").empty());
-  if (!format_ready()) SKIP("FORMAT's reader is not implemented yet");
   CHECK_FALSE(found.placeholder);
   CHECK(found.file == "/pdk/xschem/sky130_fd_pr/nfet_01v8.sym");
 }
 
 TEST_CASE("an unreadable symbol file gives the placeholder once with SCHEM-LIB-004", kMissing) {
   platform::MemoryFileSystem fs;
-  touch(fs, "/lib/broken.sym", "this is not a symbol");
+  // FORMAT's reader never fails ("Malformed input"), so the file is made
+  // unreadable instead: /lib/broken.sym exists as a directory.
+  touch(fs, "/lib/broken.sym/inside", "");
   const schem::SearchPath path{{"/lib"}};
   schem::Document top;
   diag::CollectingSink sink;
   schem::SymbolCache cache;
-  if (format_ready()) SKIP("depends on how FORMAT's reader treats garbage; covered by the stub until FORMAT lands");
   CHECK(cache.resolve({"broken.sym"}, top, {path, fs, &sink}).placeholder);
   CHECK(cache.resolve({"broken.sym"}, top, {path, fs, &sink}).placeholder);
   const auto read = with_code(sink.take(), "SCHEM-LIB-004");
