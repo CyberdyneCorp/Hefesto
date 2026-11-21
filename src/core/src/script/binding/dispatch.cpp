@@ -22,6 +22,7 @@
 #include "hefesto/ui/magic_help.hpp"
 #include "hefesto/ui/state.hpp"
 #include "hefesto/view/window.hpp"
+#include "hefesto/view3d/client/commands.hpp"
 
 namespace hefesto::script::detail {
 
@@ -140,6 +141,80 @@ void report_lookup_failure(const Binding& b, const cmd::CommandLookup& found, co
   }
 }
 
+// While a command sent to the 3D window runs, the dispatcher looks only in
+// the `wind3d` table (Magic's W3Dcreate clears WIND_COMMANDS).
+class Wind3dScope {
+ public:
+  explicit Wind3dScope(cmd::Dispatcher& dispatcher)
+      : dispatcher_(dispatcher), client_(dispatcher.client()), window_commands_(dispatcher.window_commands()) {
+    dispatcher_.set_client(std::string{view3d::kWind3dClient});
+    dispatcher_.set_window_commands(false);
+  }
+  ~Wind3dScope() {
+    dispatcher_.set_client(client_);
+    dispatcher_.set_window_commands(window_commands_);
+  }
+  Wind3dScope(const Wind3dScope&) = delete;
+  Wind3dScope& operator=(const Wind3dScope&) = delete;
+
+ private:
+  cmd::Dispatcher& dispatcher_;
+  std::string client_;
+  bool window_commands_;
+};
+
+// Magic's wrapper tag magic::scrollupdate (wrapper.tcl:905-924, on `view`,
+// `scroll` and `zoom`) starts and ends with `*bypass logcommands suspend`
+// and `resume`; *bypass sends them to the command's window, and the 3D
+// window takes no window commands, so Magic prints WindSendCommand's
+// "Unknown command:" for each. The widget model keeps scrollupdate a no-op,
+// so with magic-compat ON the binding prints what those two calls print in
+// Magic (standing rule; OFF prints nothing, as the wrapper intends).
+void report_scrollupdate_bypass(const Binding& b, std::string_view word) {
+  const editor::EditorState* editor = b.editor();
+  if (editor == nullptr || !b.magic_compat()) {
+    return;
+  }
+  const std::optional<std::string> script = editor->script.tags.get(tag_key(word));
+  if (!script || !script->starts_with("magic::scrollupdate")) {
+    return;
+  }
+  for (const char* step : {"suspend", "resume"}) {
+    for (const diag::Diagnostic& d : view3d::unknown_command_messages({"logcommands", step})) {
+      b.dispatcher.report(d);
+    }
+  }
+}
+
+// `.magic3d <cmd>` (view-3d "3D view commands", design D9): the word is
+// looked up in the 3D window's own table, with abbreviations; a word that
+// names none of its commands gets WindSendCommand's "Unknown command:" and
+// the echo of the command.
+cmd::CommandResult dispatch_wind3d(const Binding& b, const std::string& path, const cmd::Invocation& call) {
+  const std::string& word = call.args.front();
+  const std::vector<std::string> args(call.args.begin() + 1, call.args.end());
+  const cmd::CommandLookup found =
+      b.registry.resolve(word, view3d::kWind3dClient, false, cmd::NameLookup::abbreviated);
+  cmd::Value value;
+  if (found.status == cmd::LookupStatus::ambiguous) {
+    b.dispatcher.report(diag::make(ui::codes::kAmbiguous, "That command abbreviation is ambiguous."));
+  } else if (found.status != cmd::LookupStatus::found || found.client != view3d::kWind3dClient) {
+    for (const diag::Diagnostic& d : view3d::unknown_command_messages(call.args)) {
+      b.dispatcher.report(d);
+    }
+  } else {
+    const Wind3dScope scope{b.dispatcher};
+    cmd::CommandResult result =
+        execute(b, cmd::Invocation{found.spec->name, args, command_origin(b, call), call.source});
+    if (!result.ok() && !is_dispatch_failure(result) && (result.raises || b.dispatcher.session().strict)) {
+      return tcl_error(error_message(result));
+    }
+    value = std::move(result.value);
+    report_scrollupdate_bypass(b, word);
+  }
+  return run_tag(b, word, args, path, cmd::CommandResult::success(std::move(value)));
+}
+
 }  // namespace
 
 bool Binding::magic_compat() const {
@@ -184,8 +259,17 @@ cmd::CommandResult dispatch_procedure(const Binding& b, const std::string& name,
 }
 
 cmd::CommandResult dispatch_window(const Binding& b, const std::string& path, const cmd::Invocation& call) {
+  const editor::EditorState* editor = b.editor();
+  if (editor != nullptr && view3d::is_closed_path(*editor, path)) {
+    // Magic deletes a closed 3D window's command (GrTOGLDelete); calling it
+    // is no use-after-free here.
+    return tcl_error(cmd::invalid_command_name(path));
+  }
   if (call.args.empty()) {
     return cmd::CommandResult::success();
+  }
+  if (editor != nullptr && view3d::is_open_path(*editor, path)) {
+    return dispatch_wind3d(b, path, call);
   }
   const std::string& word = call.args.front();
   const std::vector<std::string> args(call.args.begin() + 1, call.args.end());

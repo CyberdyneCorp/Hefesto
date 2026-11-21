@@ -6,4 +6,7 @@
 # Owner: WIND3D (openspec/changes/m10-3d-view/design.md D2/D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/client.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/client.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/render.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/scene.cpp)

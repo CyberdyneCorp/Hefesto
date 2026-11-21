@@ -227,7 +227,8 @@ TEST_CASE("send runs a command in another client's table", "[cap:ui-command-disp
   CHECK(s.run("send col color 3").value.to_string() == "color 3");
   CHECK_FALSE(s.run("color 3").ok());  // not in the layout or global tables
   CHECK(UiSession::first_error(s.run("send *window help")).starts_with("UI-CLIENT-001:"));
-  CHECK(UiSession::first_error(s.run("send wind3d zoom")).starts_with("UI-CLIENT-002:"));
+  // wind3d arrived in M10: no longer an unavailable module (its commands: tests/unit/view3d/client).
+  CHECK_FALSE(UiSession::first_error(s.run("send wind3d zoom")).starts_with("UI-CLIENT-002:"));
   const auto usage = s.run("send");
   CHECK(UiSession::first_error(usage).starts_with("UI-USAGE-001: Usage: send type command\nValid window types are:"));
   // help sent to a client lists that client's table.

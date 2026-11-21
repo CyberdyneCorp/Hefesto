@@ -49,9 +49,9 @@ struct MacroRequest {
 };
 
 // The table named by the first word, if it names a client or a tool.
-// A client of an optional module Hefesto does not have (`wind3d`,
-// `netlist`) is not registered, as in a Magic build without the module, so
-// its name is no table: `macro wind3d L "level up"` silently does nothing.
+// A client of an optional module Hefesto does not have yet (`netlist`)
+// is not registered, as in a Magic build without the module, so
+// its name is no table: `macro netlist ...` silently does nothing.
 std::optional<std::string> named_table(const editor::EditorState& editor, const std::string& word) {
   if (const ClientInfo* client = find_client_exact(word); client != nullptr && client_available(*client)) {
     return client->id == ClientId::layout ? macro_table_for(editor, "layout") : word;

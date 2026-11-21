@@ -32,7 +32,7 @@ struct ClientInfo {
   /// Names starting with `*` are never listed nor opened by users.
   bool hidden = false;
   /// An optional module: reports unavailability until its milestone
-  /// (`netlist` M12, `wind3d` M10).
+  /// (`netlist` M12; `wind3d` arrived in M10).
   bool optional_module = false;
 };
 
@@ -52,7 +52,7 @@ struct ClientInfo {
 [[nodiscard]] std::string window_types_listing();
 
 /// True for clients whose module is part of this build (every built-in
-/// client except the optional modules `netlist` and `wind3d`).
+/// client except the optional module `netlist`).
 [[nodiscard]] bool client_available(const ClientInfo& client) noexcept;
 
 }  // namespace hefesto::ui
