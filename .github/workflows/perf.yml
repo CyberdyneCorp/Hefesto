@@ -43,10 +43,27 @@
 #                uses): replay.py --include-gds-rt with every case's input required, then
 #                Hefesto's non-gating, order-insensitive equivalence report of a second read and
 #                write (bench/gds/gds_equivalence.py) in the job summary.
+#   lefdef-bench The LEF/DEF instruction gate (openspec/changes/m6-lef-def-oasis design D22, Open
+#                Question 4 decided (a), task 16.2): a GCC 14 Release build of hefesto-cli and Magic
+#                8.3.694 (reference image) run the base and op scripts of bench/lefdef/lefdef_bench.py
+#                (`lef read` of sky130_fd_sc_hd.lef, `def read` of the generated 5000-cell placed-and-
+#                routed block, `lef writeall -notop` of the library) under callgrind;
+#                bench/lefdef/baseline_gate.py fails when Hefesto's instructions of a workload (op minus
+#                base) exceed its baseline in bench/lefdef/baseline.json + 2 %. Magic's count and the
+#                wall time are information; the timing step fails when the two tools' cell counts
+#                differ or a write is empty. Results: the job summary and the artifact "lefdef-bench".
+#   oasis-bench  The OASIS instruction gate (design D22, task 16.2): the same build runs the oasis and
+#                gds scripts of bench/oasis/oasis_bench.py (the gds-bench workloads: read the library,
+#                write the all-cells block with merging off and on) under callgrind; baseline_gate.py
+#                gates each oasis workload at bench/oasis/baseline.json + 2 % and reports the GDS path's
+#                count for information. Results: the job summary and the artifact "oasis-bench".
+#                Until a baseline is recorded, a workload is reported as "no baseline" and passes;
+#                docs/design/m6-ui-conformance.md "Performance" has the recording procedure.
 #
 # `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
-# only when a DRC path changed and the GDS jobs only when a GDS, mask, CIF or use-index path
-# changed; on main, the schedule and workflow_dispatch every job runs.
+# only when a DRC path changed, the GDS jobs only when a GDS, mask, CIF or use-index path
+# changed, lefdef-bench only when a LEF or DEF path changed and oasis-bench only when an OASIS
+# path changed; on main, the schedule and workflow_dispatch every job runs.
 
 name: Performance
 
@@ -76,6 +93,14 @@ on:
       - tools/golden/replay.py
       - tools/golden/compare/**
       - tools/golden/goldenlib/**
+      - src/core/include/hefesto/lef/**
+      - src/core/src/lef/**
+      - src/core/include/hefesto/def/**
+      - src/core/src/def/**
+      - src/core/include/hefesto/oasis/**
+      - src/core/src/oasis/**
+      - bench/lefdef/**
+      - bench/oasis/**
       - .github/workflows/perf.yml
   pull_request:
     paths:
@@ -100,6 +125,14 @@ on:
       - tools/golden/replay.py
       - tools/golden/compare/**
       - tools/golden/goldenlib/**
+      - src/core/include/hefesto/lef/**
+      - src/core/src/lef/**
+      - src/core/include/hefesto/def/**
+      - src/core/src/def/**
+      - src/core/include/hefesto/oasis/**
+      - src/core/src/oasis/**
+      - bench/lefdef/**
+      - bench/oasis/**
       - .github/workflows/perf.yml
   schedule:
     - cron: "41 3 * * 2"
@@ -126,6 +159,8 @@ jobs:
     outputs:
       drc: ${{ steps.select.outputs.drc }}
       gds: ${{ steps.select.outputs.gds }}
+      lefdef: ${{ steps.select.outputs.lefdef }}
+      oasis: ${{ steps.select.outputs.oasis }}
       rt_any: ${{ steps.rt.outputs.rt_any }}
       rt_matrix: ${{ steps.rt.outputs.rt_matrix }}
     steps:
@@ -144,12 +179,14 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$EVENT" != "pull_request" ]; then
-            { echo "drc=true"; echo "gds=true"; } >> "$GITHUB_OUTPUT"
+            { echo "drc=true"; echo "gds=true"; echo "lefdef=true"; echo "oasis=true"; } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed.txt
           drc=false
           gds=false
+          lefdef=false
+          oasis=false
           while IFS= read -r path; do
             case "$path" in
               src/core/include/hefesto/drc/*|src/core/src/drc/*|src/core/src/db/*|src/core/include/hefesto/db/*|\
@@ -163,12 +200,24 @@ jobs:
               tools/golden/replay.py|tools/golden/compare/*|tools/golden/goldenlib/*)
                 gds=true ;;
             esac
+            # m6-lef-def-oasis task 16.2; the benches also load bench/drc/drc_bench.py (and the OASIS one
+            # bench/gds/gds_bench.py and the shared gate in bench/lefdef/).
             case "$path" in
-              tools/golden/container/*|.github/workflows/perf.yml) drc=true; gds=true ;;
+              src/core/include/hefesto/lef/*|src/core/src/lef/*|src/core/include/hefesto/def/*|src/core/src/def/*|\
+              bench/lefdef/*|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
+                lefdef=true ;;
+            esac
+            case "$path" in
+              src/core/include/hefesto/oasis/*|src/core/src/oasis/*|bench/oasis/*|bench/lefdef/baseline_gate.py|\
+              bench/gds/gds_bench.py|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
+                oasis=true ;;
+            esac
+            case "$path" in
+              tools/golden/container/*|.github/workflows/perf.yml) drc=true; gds=true; lefdef=true; oasis=true ;;
             esac
           done < changed.txt
-          { echo "drc=$drc"; echo "gds=$gds"; } >> "$GITHUB_OUTPUT"
-          echo "::notice::DRC jobs: $drc; GDS jobs: $gds"
+          { echo "drc=$drc"; echo "gds=$gds"; echo "lefdef=$lefdef"; echo "oasis=$oasis"; } >> "$GITHUB_OUTPUT"
+          echo "::notice::DRC jobs: $drc; GDS jobs: $gds; lefdef-bench: $lefdef; oasis-bench: $oasis"
       - name: Shards of the MASK-RT cases
         id: rt
         shell: bash
@@ -844,3 +893,330 @@ jobs:
           path: gds-roundtrip
           if-no-files-found: ignore
           retention-days: 30
+
+  # m6-lef-def-oasis design D22, tasks 16.1 and 16.2 (Open Question 4 decided (a)): each LEF/DEF workload is gated
+  # at its own callgrind baseline (bench/lefdef/baseline.json) + 2 %; Magic's count and the wall time are information.
+  lefdef-bench:
+    name: LEF/DEF instruction gate and timing vs Magic (callgrind)
+    needs: plan
+    if: needs.plan.outputs.lefdef == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers and valgrind
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+
+      - name: Unit tests of the bench scripts
+        run: python3 -m unittest discover -s bench/lefdef/tests -v
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      # The keys ci.yml's reference-data job saves sky130-lef under (task 16.2, Round 1 note).
+      - name: Restore sky130-lef
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+
+      # ci.yml's reference-data job saves both sets; a miss here fetches without saving.
+      - name: Fetch or verify sky130 and sky130-lef
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 sky130-lef --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Scripts of the three workloads
+        run: |
+          python3 bench/lefdef/lefdef_bench.py --emit profile
+          mkdir -p lefdef-bench
+          {
+            echo "## LEF/DEF performance"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, base and op scripts (Hefesto GCC build)
+        shell: bash
+        run: |
+          cd profile
+          pids=()
+          for workload in lef-read def-read lef-writeall; do
+            for kind in base op; do
+              valgrind --tool=callgrind --callgrind-out-file="../lefdef-bench/callgrind.hefesto.$workload.$kind" \
+                ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole \
+                "$workload-hefesto-$kind.tcl" > "../lefdef-bench/hefesto.$workload.$kind.log" 2>&1 &
+              pids+=("$!")
+            done
+          done
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
+
+      - name: callgrind, base and op scripts (Magic, for information)
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd profile
+          # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
+          docker run --rm -v "$PWD:/work" -v "$PWD/../lefdef-bench:/out" -w /work hefesto-golden:ci bash -c '
+              status=0
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1 || status=1
+              for workload in lef-read def-read lef-writeall; do
+                for kind in base op; do
+                  dir="/tmp/cg.$workload.$kind"
+                  mkdir -p "$dir"
+                  valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="$dir/out.%p" \
+                    magic -dnull -noconsole "$workload-magic-$kind.tcl" > "/out/magic.$workload.$kind.log" 2>&1 || status=1
+                  cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.$workload.$kind" || status=1
+                done
+              done
+              chmod -R a+rwX /out
+              exit $status'
+
+      - name: Instructions by function (information)
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd lefdef-bench
+          for workload in lef-read def-read lef-writeall; do
+            python3 ../bench/drc/callgrind_pass_diff.py "callgrind.hefesto.$workload.base" \
+              "callgrind.hefesto.$workload.op" --top 30 > "functions-hefesto-$workload.txt"
+          done
+
+      - name: Instruction gate (each workload's baseline + 2 %)
+        shell: bash
+        run: |
+          status=0
+          python3 bench/lefdef/baseline_gate.py lefdef-bench --baseline bench/lefdef/baseline.json \
+            --tool hefesto --reference magic --workload lef-read --workload def-read --workload lef-writeall \
+            | tee lefdef-bench/gate.txt || status=$?
+          {
+            echo "## LEF/DEF instruction gate (op minus base, callgrind)"
+            echo
+            cat lefdef-bench/gate.txt
+            for f in lefdef-bench/functions-*.txt; do
+              [ -s "$f" ] || continue
+              echo
+              echo "<details><summary>$(basename "$f" .txt)</summary>"
+              echo
+              echo '```'
+              head -32 "$f"
+              echo '```'
+              echo "</details>"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Wall time against Magic (same runner, information)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
+        run: |
+          status=0
+          python3 bench/lefdef/lefdef_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --magic-image hefesto-golden:ci --repeat 3 --json lefdef-bench/lefdef-bench.json \
+            --outputs lefdef-bench/outputs | tee lefdef-bench/timing.txt || status=$?
+          {
+            echo
+            echo "## LEF/DEF wall time, op minus base (information)"
+            echo '```'
+            cat lefdef-bench/timing.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lefdef-bench
+          path: lefdef-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # m6-lef-def-oasis design D22, tasks 16.1 and 16.2: each OASIS workload is gated at its own callgrind baseline
+  # (bench/oasis/baseline.json) + 2 %; Hefesto's GDS path over the same layouts is information (Magic has no OASIS).
+  oasis-bench:
+    name: OASIS instruction gate and timing vs the GDS path (callgrind)
+    needs: plan
+    if: needs.plan.outputs.oasis == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers and valgrind
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+
+      - name: Unit tests of the bench scripts
+        run: python3 -m unittest discover -s bench/lefdef/tests -v
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Restore sky130-gds-sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+          key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+      # Magic's outline fonts (graphics/*.pt3), staged as gds-bench stages them.
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify sky130 and sky130-gds-sc
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 sky130-gds-sc --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Scripts of the three workloads (and the OASIS library)
+        run: |
+          python3 bench/oasis/oasis_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli --emit profile
+          mkdir -p oasis-bench
+          ls -l profile/sky130_fd_sc_hd.gds profile/sky130_fd_sc_hd.oas
+          {
+            echo "## OASIS performance"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, base and op scripts (OASIS, then the GDS path)
+        shell: bash
+        run: |
+          cd profile
+          # Magic's outline fonts, staged by oasis_bench.py --emit.
+          export CAD_ROOT="$PWD/cadroot"
+          status=0
+          # One format at a time: six callgrind processes, as gds-bench runs.
+          for format in oasis gds; do
+            pids=()
+            for workload in read write write-merge; do
+              for kind in base op; do
+                valgrind --tool=callgrind --callgrind-out-file="../oasis-bench/callgrind.$format.$workload.$kind" \
+                  ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole \
+                  "$workload-$format-$kind.tcl" > "../oasis-bench/$format.$workload.$kind.log" 2>&1 &
+                pids+=("$!")
+              done
+            done
+            for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          done
+          exit "$status"
+
+      - name: Instructions by function (information)
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd oasis-bench
+          for workload in read write write-merge; do
+            python3 ../bench/drc/callgrind_pass_diff.py "callgrind.oasis.$workload.base" \
+              "callgrind.oasis.$workload.op" --top 30 > "functions-oasis-$workload.txt"
+          done
+
+      - name: Instruction gate (each workload's baseline + 2 %)
+        shell: bash
+        run: |
+          status=0
+          python3 bench/lefdef/baseline_gate.py oasis-bench --baseline bench/oasis/baseline.json \
+            --tool oasis --reference gds --workload read --workload write --workload write-merge \
+            | tee oasis-bench/gate.txt || status=$?
+          {
+            echo "## OASIS instruction gate (op minus base, callgrind)"
+            echo
+            cat oasis-bench/gate.txt
+            for f in oasis-bench/functions-*.txt; do
+              [ -s "$f" ] || continue
+              echo
+              echo "<details><summary>$(basename "$f" .txt)</summary>"
+              echo
+              echo '```'
+              head -32 "$f"
+              echo '```'
+              echo "</details>"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Wall time against the GDS path (same runner, information)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
+        run: |
+          status=0
+          python3 bench/oasis/oasis_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --repeat 3 --json oasis-bench/oasis-bench.json | tee oasis-bench/timing.txt || status=$?
+          {
+            echo
+            echo "## OASIS wall time, op minus base (information)"
+            echo '```'
+            cat oasis-bench/timing.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oasis-bench
+          path: oasis-bench
+          if-no-files-found: ignore
+          retention-days: 90
