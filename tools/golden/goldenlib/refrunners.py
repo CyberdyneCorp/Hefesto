@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import magic_hash_model
-from .case import Case, run_timeout, substitute_env
+from .case import Case, image_variant, run_timeout, substitute_env
 from .external import ExternalUnavailable, xschem_set_tree
 from .pins import tool_pin
 
@@ -59,6 +59,10 @@ XVFB_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24"]
 # user has no home (HOME=/), so without this every GUI case's stderr started with
 # "Fontconfig error: No writable cache directories", which Hefesto has no reason to print.
 DISPLAY_ENVIRONMENT = {"XDG_CACHE_HOME": "/tmp/.cache"}
+# The magic-gl image variant (m10-3d-view design D13): Magic's OpenGL display needs GLX on the virtual
+# server; Mesa renders with llvmpipe, in software (Xvfb has no DRI), whatever the host has.
+XVFB_GL_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 +extension GLX"]
+GL_ENVIRONMENT = {"LIBGL_ALWAYS_SOFTWARE": "1", "GALLIUM_DRIVER": "llvmpipe"}
 CONTAINER_WORK = "/work"
 # SCHEM captures (m8-schematic design D16): the xschem data sets a case names are mounted read-only as
 # /pdk/<variant>, the layout of an open_pdks install, so each PDK's xschemrc finds its tree through PDK_ROOT.
@@ -78,7 +82,9 @@ SPEC_COPY_ARGV = ("cp", "-R", "input/spec/.", ".")
 def default_argv(case: Case) -> list[str]:
     """Command line of the reference tool, relative to the work directory."""
     ref = case.reference
-    prefix = XVFB_PREFIX if ref.get("display") == "xvfb" else []
+    prefix = []
+    if ref.get("display") == "xvfb":
+        prefix = XVFB_GL_PREFIX if image_variant(case) == "magic-gl" else XVFB_PREFIX
     return prefix + _tool_argv(case)
 
 
@@ -160,6 +166,8 @@ class ContainerRunner:
         world-writable as read-only (database/DBio.c file_is_not_writeable), which the
         replay (run as the owner) never sees."""
         display_env = DISPLAY_ENVIRONMENT if case.reference.get("display") else {}
+        if image_variant(case) == "magic-gl":
+            display_env = {**display_env, **GL_ENVIRONMENT}
         mounts, xschem_env = self.xschem_mounts(case)
         env = {**ENVIRONMENT, **display_env, **xschem_env, **substitute_env(case.env, CONTAINER_WORK)}
         env_flags = [flag for key, value in env.items() for flag in ("-e", f"{key}={value}")]
