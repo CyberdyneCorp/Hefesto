@@ -127,7 +127,11 @@ std::string Dispatcher::target_client() const {
   // point on a window's chrome (its frame, caption or scroll bars) sends the
   // command to the `*window` client (windSend.c: rc = windClient); a command
   // point in a color window (`setpoint x y ID`) sends it to the `color`
-  // client; otherwise the front end's client applies.
+  // client; otherwise the front end's client applies. A window that takes
+  // no window commands (the 3D window) keeps its own client.
+  if (!window_commands_) {
+    return client_;
+  }
   if (chrome_point_) {
     return std::string{kWindowClient};
   }
@@ -216,7 +220,8 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
   const db::Point saved_pixel = editor_ != nullptr ? ui::state(*editor_).pointer_pixel : db::Point{};
   const bool defaulted = place_default_point();
   const std::string client = target_client();
-  const CommandLookup found = registry_.resolve(invocation.name, client, true, name_lookup(invocation.origin));
+  const CommandLookup found =
+      registry_.resolve(invocation.name, client, window_commands_, name_lookup(invocation.origin));
   if (found.status == LookupStatus::found || registry_.find(strip_namespace(invocation.name)) != nullptr) {
     print_command(invocation);
   }

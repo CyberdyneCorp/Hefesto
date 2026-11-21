@@ -17,6 +17,7 @@
 #include "hefesto/cell/commands.hpp"
 #include "hefesto/view/color_window.hpp"
 #include "hefesto/view/diag_codes.hpp"
+#include "hefesto/view3d/client/commands.hpp"
 #include "view/command_util.hpp"
 
 namespace hefesto::view::detail {
@@ -92,7 +93,9 @@ CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
 
 /// Magic's window clients in WindPrintClientList order (each WindAddClient
 /// prepends; the hidden "*window" client was added first). `netlist` is
-/// netlist-window (M12) and stays unavailable.
+/// netlist-window (M12) and stays unavailable. The 3D window client
+/// (`wind3d`, view3d::kWind3dClient) is matched apart and not listed: the
+/// golden reference is a Magic built without 3D support, whose list this is.
 constexpr std::array<std::string_view, 4> kClients = {"netlist", "color", "layout", "*window"};
 constexpr std::size_t kColorClient = 1;
 constexpr std::size_t kLayoutClient = 2;
@@ -156,6 +159,25 @@ CommandResult open_color(CommandContext& ctx, editor::EditorState& ed, const Scr
   return CommandResult::success();
 }
 
+/// WindGetClient's unique prefix of `wind3d` (no other client starts with
+/// `w`).
+bool names_wind3d(std::string_view word) {
+  return !word.empty() && view3d::kWind3dClient.starts_with(word);
+}
+
+/// `specialopen [frame] wind3d [cell [path]]` (W3Dcreate; view-3d "Opening
+/// the 3D window"): the frame is ignored, the window is 500 x 500.
+CommandResult open_wind3d(CommandContext& ctx, const std::vector<std::string>& args) {
+  view3d::OpenRequest request;
+  if (!args.empty()) {
+    request.cell = args[0];
+  }
+  if (args.size() > 1) {
+    request.toolkit_path = args[1];
+  }
+  return view3d::open_wind3d(ctx, request);
+}
+
 CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
@@ -167,6 +189,9 @@ CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
     return specialopen_usage(ctx);
   }
   const std::size_t first = coords ? 4 : 0;
+  if (names_wind3d(a[first])) {
+    return open_wind3d(ctx, std::vector<std::string>(a.begin() + static_cast<std::ptrdiff_t>(first) + 1, a.end()));
+  }
   const auto client = find_client(a[first]);
   if (!client || a[first].starts_with('*')) {
     return specialopen_usage(ctx);
@@ -197,6 +222,10 @@ CommandResult closewindow_cmd(CommandContext& ctx, const Invocation& inv) {
     return failure(e.error());
   }
   editor::EditorState& ed = *e.value();
+  if (!inv.args.empty() && view3d::is_open_path(ed, inv.args[0])) {
+    static_cast<void>(view3d::close_wind3d(ed));  // windCloseCmd finds the 3D window by its name too
+    return CommandResult::success();
+  }
   LayoutWindow* w = inv.args.empty() ? ed.windows.current() : window_named(ed, inv.args[0]);
   if (w == nullptr) {
     return inv.args.empty() ? fail(codes::kNoWindow, "Point to a window first")
@@ -373,7 +402,7 @@ CommandResult crosshair_cmd(CommandContext& ctx, const Invocation& inv) {
 bool register_window_ops(cmd::CommandRegistry& registry) {
   bool ok = add(registry, "openwindow", "openwindow [cell] [name]", "Opens a layout window.", openwindow_cmd);
   ok = add(registry, "specialopen", "specialopen [leftx bottomy rightx topy] type [args]",
-           "Opens a window of the given type (layout before M2).", specialopen_cmd) &&
+           "Opens a window of the given type (layout, color or wind3d).", specialopen_cmd) &&
        ok;
   ok = add(registry, "closewindow", "closewindow [name]", "Closes a layout window.", closewindow_cmd) && ok;
   ok = add(registry, "windownames", "windownames [all|type]", "Lists window ids and names.", windownames_cmd) && ok;
