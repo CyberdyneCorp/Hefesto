@@ -1,0 +1,22 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "a" 0 1 0 0 metal1 0 0 0 0 0 0
+node "b#" 0 1 0 10 metal1 0 0 0 0 0 0
+node "bb" 0 1 10 0 metal1 0 0 0 0 0 0
+node "x/y" 0 1 10 10 metal1 0 0 0 0 0 0
+node "0" 0 1 20 0 metal1 0 0 0 0 0 0
+node "VSS" 0 1 20 10 metal1 0 0 0 0 0 0
+node "a2" 0 1 30 0 metal1 0 0 0 0 0 0
+node "b2" 0 1 30 10 metal1 0 0 0 0 0 0
+equiv "a" "b#"
+equiv "bb" "x/y"
+equiv "0" "VSS"
+equiv "a2" "b2"
+device mosfet nfet 0 0 2 4 2 4 "GND!" "a" 8 0 "a" 4 0 "a" 4 0
+device mosfet nfet 20 0 22 4 2 4 "GND!" "bb" 8 0 "bb" 4 0 "bb" 4 0
+device mosfet nfet 40 0 42 4 2 4 "GND!" "0" 8 0 "0" 4 0 "0" 4 0
+device mosfet nfet 60 0 62 4 2 4 "GND!" "a2" 8 0 "a2" 4 0 "a2" 4 0

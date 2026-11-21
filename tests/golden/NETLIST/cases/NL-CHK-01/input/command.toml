@@ -1,0 +1,21 @@
+# NL-CHK-01: external-command case (m7-extraction design D15, task 2.3). The role extcheck is Magic's
+# standalone extcheck on capture and hefesto-extcheck on replay; each run's stdout, stderr and exit
+# status are captured as <name>.stdout, <name>.stderr and <name>.exit.
+role = "extcheck"
+files = ["top.ext", "inv.ext"]
+
+[[run]]
+name = "default"
+args = ["-p", "input", "top"]
+
+[[run]]
+name = "thresholds"
+args = ["-p", "input", "-c", "0", "-r", "0", "top"]
+
+[[run]]
+name = "nocaps"
+args = ["-p", "input", "-C", "-r", "0", "top"]
+
+[[run]]
+name = "usage"
+args = []

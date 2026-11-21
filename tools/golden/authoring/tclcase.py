@@ -105,10 +105,12 @@ class TclCase:
     capture_blocked: str = ""                          # why Magic cannot capture it yet (goldenlib/case.py)
     collect: tuple = ()                                # [[collect]] entries (goldenlib/collect.py Collect;
                                                        # the M7 set: authoring/m7_capture.py M7_COLLECT)
+    golden_area: str = ""                              # the tests/golden/<AREA> directory when the ID prefix
+                                                       # is not it (M7: EX-* in EXTRACT, NL-* in NETLIST)
 
     @property
     def area(self) -> str:
-        return self.id.split("-")[0]
+        return self.golden_area or self.id.split("-")[0]
 
 
 HEFESTO_SCRIPT = "hefesto.tcl"

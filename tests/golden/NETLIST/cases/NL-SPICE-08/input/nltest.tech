@@ -1,0 +1,78 @@
+# nltest.tech -- the minimal technology of the NETLIST golden cases whose inputs are
+# hand-written .ext files (tests/golden/NETLIST/CASES.md; m7-extraction design D21, task 2.5).
+#
+# ext2spice and ext2sim read the device types, their source/drain/substrate resistance
+# classes and the default substrate names from the current extract style (ExtGetDevInfo,
+# ext2spice.c:932, ext2sim.c:647). Every .ext input says `tech nltest` and `style nltest`,
+# so the style matches (EFread.c:529-600) and area/perimeter values are written. Resistance
+# classes: 0 diffusion (1000), 1 poly (5000), 2 metal1 (100): node records carry three
+# area/perimeter pairs. tools/golden/authoring/netlist_cases.py replaces the device lines
+# when a row needs other default substrate names (NL-SPICE-08, NL-SPICE-14).
+tech
+    format 35
+    nltest
+end
+
+planes
+    well
+    active
+    metal1
+    metal2
+end
+
+types
+    well    pwell,pw
+    well    nwell,nw
+    active  ndiff,nd
+    active  pdiff,pd
+    active  nfet
+    active  pfet
+    active  poly,p
+    active  rpoly
+    active  npn
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal2  mimcap
+end
+
+contact
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    poly    nfet,pfet
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style nltest
+    cscale 1
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    resist ndiff,pdiff 1000
+    resist poly 5000
+    resist metal1 100
+    areacap metal2 1
+    device mosfet nfet nfet ndiff pwell,space VSUBS!
+    device mosfet pfet pfet pdiff nwell VDD!
+    device resistor rppd rpoly poly None errsub
+end

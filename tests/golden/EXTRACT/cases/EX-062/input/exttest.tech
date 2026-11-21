@@ -1,0 +1,109 @@
+# exttest.tech -- the synthetic technology of the EXTRACT golden cases
+# (tests/golden/EXTRACT/CASES.md; openspec/changes/m7-extraction design D21, task 2.6).
+#
+# tools/golden/authoring/extract_cases.py copies this file into every EX case as
+# input/exttest.tech and replaces the body of the extract section's single style with
+# the case's own rule lines (the base lines below stay unless a case gives a whole
+# section). Planes, types and connectivity are those of the CASES.md header, plus the
+# types a row needs: ndc (n-diffusion contact) and ndiffh (asymmetric drain, EX-027),
+# thkox (identifier layer, EX-038, on its own plane so it never displaces the well).
+# Planes have no short alias, so generated node names read `metal1_<x>_<y>#`. The connect
+# section links poly to the gate types (the device terminal scenarios of extract-devices).
+# A type that the case's rules never mention and that connects to no other type is
+# non-electrical (ExtTech.c:3588-3620), so each case mentions the types it paints. The
+# cifoutput style gives `units microns` a known scale (EX-058): scalefactor 50
+# centimicrons, so one lambda is 0.5 micron (dscale 0.5, not the trivial 1.0).
+tech
+    format 35
+    exttest
+end
+
+planes
+    well
+    active
+    metal1
+    metal2
+    metal3
+    mimcap
+    oxide
+end
+
+types
+    well    pwell,pw
+    well    nwell,nw
+    well    dnwell,dnw
+    active  ndiff,nd
+    active  pdiff,pd
+    active  psd
+    active  ndiffh
+    active  nfet
+    active  pfet
+    active  poly,p
+    active  rpoly
+    active  ndc
+    active  m1c
+    metal1  metal1,m1
+    metal1  via
+    metal2  metal2,m2
+    metal3  metal3,m3
+    mimcap  mimcap
+    oxide   thkox
+end
+
+contact
+    ndc  ndiff  metal1
+    m1c  poly   metal1
+    via  metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    pwell   psd
+    ndiff   ndiffh,ndc
+    ndiffh  ndc
+    poly    m1c,nfet,pfet
+    metal1  m1c,ndc,via
+    metal2  via
+end
+
+cifoutput
+style lambda
+    scalefactor 50
+    layer M1 metal1,m1c,ndc,via
+        calma 1 0
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style exttest
+    cscale 1
+    rscale 1
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    planeorder metal3 4
+    planeorder mimcap 5
+    planeorder oxide 6
+    are metal1 30
+    perimc metal1 space 20 extra
+    cscale abc
+    resist metal1 1.5
+    resist poly 2.0
+    resist rpoly abc
+    bogus 1
+end
