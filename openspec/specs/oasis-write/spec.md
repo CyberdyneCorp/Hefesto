@@ -236,6 +236,8 @@ Compatibility: native
 - the TEXT string (C = 0 when the modal `text-string` is the same string);
 - the repetition: when an element's repetition equals the modal `repetition` (same type and parameters), repetition type 0 is written.
 
+XGEOMETRY records (re-encoded vendor content only) are the exception: they SHALL be written in full form, with layer, datatype, x and y always explicit and a repetition never written as type 0, whatever the modal state (Q-OASIS-50, resolution: fix; gdstk 1.0.2 skips an XGEOMETRY without honouring modal omission and crashes on the omitted form). The modal variables are still updated, so the records that follow are encoded as before.
+
 PROPERTY records SHALL always be written in full: C = 1, N = 1 in strict mode, V = 0, and an explicit value count. They never rely on modal property state.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
@@ -244,6 +246,11 @@ PROPERTY records SHALL always be written in full: C = 1, N = 1 in strict mode, V
 - **GIVEN** a cell whose first element is the RECTANGLE 49/0 `[0,400]×[0,200]`, followed by the RECTANGLE 49/0 `[1000,1400]×[0,200]`
 - **WHEN** they are written
 - **THEN** the second record is `14 10 D0 0F`: W, H, Y, layer and datatype are omitted, and only X = 1000 is written
+
+#### Scenario: XGEOMETRY in full form
+- **GIVEN** a re-encoded vendor cell whose RECTANGLE 9/0 at `(0, 0)` is followed by an XGEOMETRY on 9/0 at `(0, 0)`
+- **WHEN** they are written
+- **THEN** the XGEOMETRY's info byte is `1B` (X, Y, datatype and layer present) and its layer, datatype, x and y are written
 
 ### Requirement: Text translation
 A GDS TEXT on `Lt/Dt` at point `(x, y)` with string `s` SHALL be translated to a TEXT record with textlayer `Lt`, texttype `Dt`, position `(x, y)` and string `s` (TEXTSTRING refnum in strict mode, inline a-string otherwise). PRESENTATION, STRANS, MAG and ANGLE have no OASIS counterpart and are dropped. Label font, size, rotation and justification are therefore not represented, and no private property carries them (Q-OASIS-32, resolution: other). When at least one font label is written, the system SHALL report one warning per write giving the number of font labels written without presentation.
@@ -490,8 +497,10 @@ Compatibility: native
 Rules:
 1. Element order is the order in the GDS data. No shape repetition detection is applied.
 2. SNAME strings follow gds-write (Q-MASK-216): with `magic-compat` ON they are used as cell names without re-mapping, with gds-write's warning when a child's current output name differs; with it OFF each SNAME is replaced by the referenced child's current output name. An SNAME that is not a legal n-string is mapped as in "Cell names".
-3. Coordinates are copied unchanged. If the vendor file's UNITS (meters per DB unit) do not round to the output unit (1e-9, or 1e-10 for ångström styles), the transcoding is refused with an error, and the cell is generated from its layout.
+3. Coordinates are copied unchanged. If the vendor file's UNITS (meters per DB unit) do not round to the output unit (1e-9, or 1e-10 for ångström styles), the transcoding is refused with an error (GDS-WRITE-054), and the cell is generated from its layout (Q-OASIS-51, resolution: fix).
 4. Full-dump libraries (gds-write "Full dump of a vendor library") are transcoded structure by structure with the same naming and prefix rules.
+5. A negative PROPATTR is written as the `S_GDS_PROPERTY` attribute's unsigned value of its 16 bits, so -1 is 65535 (Q-OASIS-52, resolution: fix).
+6. An AREF with inexact steps whose type 10 repetition would list more than 2^24 displacements is not written, and the write fails with an error naming the array and the cell (OASIS-WRITE-010; Q-OASIS-53, resolution: fix; docs/contributing/security.md M6-S3).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 

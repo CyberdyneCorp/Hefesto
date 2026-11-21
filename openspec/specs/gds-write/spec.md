@@ -880,7 +880,9 @@ Each OASIS element, after its repetition is resolved, SHALL be written as follow
 | `S_GDS_PROPERTY` on a PLACEMENT | PROPATTR/PROPVALUE on the SREF or AREF, in PROPERTY order; on every SREF when the placement is expanded. Other properties are not written |
 | XELEMENT, XGEOMETRY | not written, with one warning per cell (GDS has no counterpart) |
 
-Repetitions: a PLACEMENT whose repetition `oasis-read` "Placement repetitions" reads as one Magic array (its rules 1 and 2) SHALL be written as one AREF with COLROW `(na, nb)` and the points `P0` = the placement position, `P1 = P0 + na·a` and `P2 = P0 + nb·b`, when both counts are at most 32767. Every other repetition, of a placement or of a shape, is expanded into one element per displacement, in displacement order.
+Repetitions: a PLACEMENT whose repetition `oasis-read` "Placement repetitions" reads as one Magic array (its rules 1 and 2) SHALL be written as one AREF, when both counts are at most 32767, with `P0` = the placement position. Under rule 1 the AREF has COLROW `(na, nb)`, `P1 = P0 + na·a` and `P2 = P0 + nb·b`; under rule 2 (and not rule 1) it has COLROW `(nb, na)`, `P1 = P0 + nb·b` and `P2 = P0 + na·a`, because gds-read takes the columns along the child's x axis, so the AREF reads back as the array oasis-read makes of the placement. Every other repetition, of a placement or of a shape, is expanded into one element per displacement, in displacement order.
+
+A cell whose elements expand, after their repetitions are resolved, to more than 2^28 element instances SHALL fail before any instance is written, with its parents (GDS-WRITE-055; Q-OASIS-54, resolution: fix; docs/contributing/security.md M6-S3).
 
 An element that GDS cannot hold SHALL make the write fail rather than be written altered. This is the case for a layer, datatype, textlayer or texttype above 32767 (GDS LAYER, DATATYPE and TEXTTYPE are signed I2 values), for a BOUNDARY or PATH with more than 8191 XY points including any closing point (the XY record limit), and for a coordinate outside the signed 32-bit (I4) range. An error naming the cell and the element (layer/datatype, or the point count) is reported, nothing of the cell's structure is written, and the cell fails, so its parents fail too (Requirement "Structure ordering").
 
@@ -897,6 +899,11 @@ Compatibility: native
 - **GIVEN** a read-only OASIS cell with a PLACEMENT of `A` at (0,0), no rotation, repetition type 1 with `nx = 3`, `ny = 2`, `sx = 100`, `sy = 200`
 - **WHEN** it is transcoded to GDS
 - **THEN** the output is one AREF with COLROW (3, 2) and XY (0,0), (300,0), (0,400)
+
+#### Scenario: Rotated placement repetition swaps columns and rows
+- **GIVEN** the same placement with rotation 90 and `nx = 2` (`sx = 400`), `ny = 3` (`sy = 100`): `oasis-read` rule 2
+- **WHEN** it is transcoded to GDS
+- **THEN** the output is one AREF with COLROW (3, 2) and XY (0,0), (0,300), (800,0), which gds-read reads as x 0..2, xsep 100, y 0..1, ysep −400
 
 #### Scenario: Largest GDS layer number
 - **GIVEN** a read-only OASIS cell whose source holds a RECTANGLE on layer 32767, datatype 0

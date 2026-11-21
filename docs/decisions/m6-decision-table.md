@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 39, 162 in all. Every one has a `Resolution:` line:
+As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 46, 169 in all (before the LEFDEF rows of the 2026-11-20 decisions). Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -16,6 +16,7 @@ As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and 
 | Approved 2026-11-19 | 3: Q-LEFDEF-25 (compat), 26 (fix), 27 (compat) | "Decided 2026-11-19" |
 | Approved 2026-11-19 (user decisions D1, D2, D4; recorded in round 4) | 18: Q-LEFDEF-117..134 | "Decided 2026-11-19: input caps and implemented behaviours" |
 | Approved 2026-11-19 (user decisions D1, D3(b); recorded in round 4) | 5: Q-OASIS-13, 41..44 | "Decided 2026-11-19: OASIS read caps and magnification" |
+| Approved 2026-11-20 (user decisions E2, E3, E4; recorded in round 5) | 10: Q-OASIS-45..54 (45..47 were proposed in round 4) | "Decided 2026-11-20: OASIS rows" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -314,13 +315,22 @@ The OASIS read caps of the user's decision D1 and the PLACEMENT magnification ru
 | Q-OASIS-43 | Layer, datatype and attribute numbers outside the GDS range (D1) | **fix** | both modes: a number above 32767 read as 32767 with a message (OASIS-READ-009) |
 | Q-OASIS-44 | Polygons with more than 8191 points (D1) | **fix** | both modes: fractured into polygons of at most 8191 points (OASIS-READ-008) |
 
-Proposed in round 4, not approved (the parts of the implemented read limits that D1 did not cover; each needs a user decision):
+## Decided 2026-11-20: OASIS rows (user decisions E2, E3, E4)
 
-| ID | Question | Kind | As implemented |
+The user's decisions of 2026-11-20 approved the three read-limit rows proposed in round 4 as proposed (E2), the OASIS behaviours round 4 implemented with no row (E2), two write caps (E3) and the OASIS golden findings (E4). They are recorded as Q-OASIS-45..54 (round 5, OASIS + GOLDEN), each with `Status: approved 2026-11-20` and a `Resolution:` line; oasis-read, oasis-write and gds-write cite them, and `docs/contributing/security.md` lists the caps under M6-S3. E4's golden-only items need no row: OASIS-055-names gets a validator skip (Magic's reference GDS has two structures named `a_b`, Q-OASIS-61), and OASIS-020/021 are re-authored with the integer datestamp 1700000000 (and Magic now reads the GDS equivalent of the strm2oas file, `authoring/oasequiv.py`).
+
+| ID | Question | Kind | Resolution |
 |---|---|---|---|
-| Q-OASIS-45 | An attribute number below -32768 | proposed | read as 32767 (recommended: -32768) |
-| Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 | proposed | dropped with a message (OASIS-READ-006) |
-| Q-OASIS-47 | A PATH with more than 8191 points | proposed | dropped with a message |
+| Q-OASIS-45 | An attribute number below -32768 (E2) | **fix** | both modes: read as -32768 with the OASIS-READ-009 message (round 5 changed it from 32767) |
+| Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 (E2) | **fix** | both modes: dropped with a message (OASIS-READ-006) |
+| Q-OASIS-47 | A PATH with more than 8191 points (E2) | **fix** | both modes: dropped with a message |
+| Q-OASIS-48 | Where the PDK variables of OASIS_FILE come from (E4, OASIS-032) | **compat** | the Tcl global variables only, as Magic's DBPathSubstitute, in both modes (the GDS_FILE substitution; OFF has no separate rule) |
+| Q-OASIS-49 | Child names in the content stamp of a read-only OASIS cell (E4, OASIS-033) | **compat** | ON: the children's names are folded into the hash, as Magic's GDS stamp; OFF: content only |
+| Q-OASIS-50 | XGEOMETRY in full form (E4, OASIS-062) | **fix** | both modes: layer, datatype, x, y explicit, no type-0 repetition (gdstk 1.0.2 reads it) |
+| Q-OASIS-51 | An OASIS write of a vendor GDS cell with other units (E2, GDS-WRITE-054) | **fix** | both modes: generated from its layout with GDS-WRITE-054 (as implemented) |
+| Q-OASIS-52 | A negative vendor PROPATTR in OASIS output (E2) | **fix** | both modes: the unsigned 16-bit value (-1 as 65535) (as implemented) |
+| Q-OASIS-53 | An inexact vendor AREF in OASIS output (E3) | **fix** | both modes: above 2^24 displacements the write fails (OASIS-WRITE-010) |
+| Q-OASIS-54 | Element instances of a vendor OASIS cell in GDS output (E3) | **fix** | both modes: above 2^28 the cell and its parents fail (GDS-WRITE-055) |
 
 ## Planning questions raised by the M6 plan
 
