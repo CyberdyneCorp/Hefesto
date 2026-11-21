@@ -87,13 +87,6 @@ TEST_CASE("the MESH, INSPECT, EXPORT and OVERLAY stubs answer empty results", "[
   CHECK(view3d::overlay::color_of({}, 1.0, 0.0, 2.0) == view3d::overlay::Rgb{0, 0, 0});
 }
 
-TEST_CASE("the CAMERA stubs answer the zero view", "[m10-scaffold]") {
-  CHECK(view3d::default_view(hefesto::db::Rect{0, 0, 100, 50}, view3d::Mode::layout_layer, 1.0F) ==
-        view3d::ViewState{});
-  CHECK(view3d::preset(view3d::Preset::isometric) == view3d::Angles{});
-  CHECK(view3d::matrix(view3d::ViewState{}, 500, 500, {})[0] == 1.0F);
-}
-
 TEST_CASE("the WIND3D stubs keep today's answer", "[m10-scaffold]") {
   // WIND3D: opening still answers UI-CLIENT-002; no command registered.
   hefesto::editor::EditorState state;
