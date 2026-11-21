@@ -1,4 +1,4 @@
-# OASIS-020: The sky130 standard-cell library read by Hefesto from KLayout's strm2oas, by Magic from the KLayout strm2gds of that file, with default options.
+# OASIS-020: The sky130 standard-cell library read by Hefesto from KLayout's strm2oas, by Magic from the GDS equivalent of that file, with default options.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]
@@ -19,7 +19,7 @@ proc specrep {value} {
     close $f
 }
 probe {drc off}
-probe {gds datestamp 1}
+probe {gds datestamp 1700000000}
 probe {gds read input/sky130_fd_sc_hd.gds.gz}
 rep {llength [cellname list allcells]}
 probe {writeall force}
