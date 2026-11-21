@@ -65,7 +65,8 @@ How this plan runs:
 
 ## 7. DESIGN: the 3D inspection board (P1)
 
-- [ ] 7.1 Update `docs/design/mockups/View3D.dc.html` where the plan changes it (design D12): parity controls (level, mask/layout mode), the J1 option, the perspective toggle, P2/P3 parts disabled with their phase, the "Open in separate window" item. Verify that the board and `hefesto-design-system` "3D inspection" agree, and record the review in `docs/design/m10-3d-ui-conformance.md`.
+- [x] 7.1 Update `docs/design/mockups/View3D.dc.html` where the plan changes it (design D12): parity controls (level, mask/layout mode), the J1 option, the perspective toggle, P2/P3 parts disabled with their phase, the "Open in separate window" item. Verify that the board and `hefesto-design-system` "3D inspection" agree, and record the review in `docs/design/m10-3d-ui-conformance.md`.
+  As landed (round 2): the board has the view toolbar (mask/layout mode, Level stepper, Cut box, mesh status), "Span connected layers" (off by default), the Orthographic/Perspective control, P2/P3 parts disabled with their phase chips, the tab menu with "Open in separate window" and layer-row hide/isolate/transparency buttons; the review is in `docs/design/m10-3d-ui-conformance.md` "Board review". `docs/images/ui/view3d.png` and the README caption are re-rendered by INTEGRATION.
 
 ## 8. WIND3D: window and commands (P1)
 
@@ -112,6 +113,7 @@ How this plan runs:
 ## 13. PERF (P1, P2)
 
 - [ ] 13.1 (P1) Add `bench/view3d/` (synthetic 1M-rectangle region and the reference layouts) and the `perf.yml` `view3d-bench` job: build time and memory gated, frame time recorded (design D17). Verify a CI run with the numbers.
+  As landed (round 2): `bench/view3d/` (`hefesto-bench-view3d`, option `HEFESTO_BUILD_VIEW3D_BENCH`; workloads synthetic, array, block), `view3d_gate.py` with its unit tests and `gates.json`, and the `perf.yml` `view3d-bench` job. Local Release numbers (synthetic: 1.12 s median, 155.5 B/rect, D6 memory target missed) are in the conformance doc "Performance". Left open: the CI run with the numbers (dispatch by INTEGRATION) and gates for array and block from that run.
 - [ ] 13.2 (P1) Measure frame rate on the M3 Pro development machine and on the `hefesto-performance` reference hardware when available; record the results with the Raven confirmation checks. Verify that ≥ 30 fps at 1M rectangles is met on the M3 Pro (the P1 exit gate, design D19); the other D6 numbers (60 fps on the M1, first chunks within 200 ms) and the reference-hardware runs are recorded, a miss being an open item.
 - [ ] 13.3 (P2) Re-run 13.1 and 13.2 in mask-layer mode. Verify the recorded numbers.
 
