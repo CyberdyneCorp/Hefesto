@@ -292,12 +292,13 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-74: 3D window size fixed at 500 x 500
 - Kind: bug
-- Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
+- Status: approved 2026-11-21 (recommendation drafted 2026-11-13, approved 2026-11-13; aspect rule for tall windows amended and approved 2026-11-21)
 - Magic behavior: The aspect correction and viewport use the initial 500×500 size even after the window is resized.
 - Evidence: graphics/W3Dmain.c:1496-1497, graphics/W3Dmain.c:532-533, graphics/W3Dmain.c:955-958 (corrected 2026-11-13: Confirmed: initial size :1496-1497, the aspect glScalef and glViewport :532-533, the refresh area :955-958. Also: Tk_GeometryRequest 500×500 (:1566), TOGLEventProc handles StructureNotify (:1579), and graphics/grTOGL1.c:851-876 (ConfigureNotify calls WindReframe on the MagWindow but never updates `crec->width`/`height`). `render3d` packs the window with `-expand true -fill both` (tcltk/wrapper.tcl:1613), so a resize is routine; after one, drawing and refresh stay in the lower-left 500×500 area and the aspect stays 1.)
 - Options: fix (use actual size)
 - Recommendation: fix, in both modes (X-2 tier 3; a fixed viewport is meaningless in Raven or Metal hosts and on iPadOS). Hefesto uses the drawable's current size for the viewport and the refresh area, with A = H_w / W_w from that size. The initial size request stays 500 × 500. (corrected 2026-11-13, was fix; scope made explicit)
-- Resolution: fix, in both modes (X-2 tier 3) — the viewport, the refresh area and the aspect A = H_w / W_w use the drawable's current size; the initial size request stays 500 × 500. Approved 2026-11-13.
+- Amendment (found by CAMERA in M10 round 1, approved by the user 2026-11-21): Magic's A = diag(H_w/W_w, 1, 1) is right for W_w ≥ H_w only; for a window taller than wide it leaves the x extent at 1/1.1 of the height, so the plan view overflows the width. As built (view3d/camera), A = diag(H_w/W_w, 1, 1) when W_w ≥ H_w, else diag(1, W_w/H_w, 1): units stay 1:1 and the limiting dimension is fitted (about 91 % of it in the default view). No command returns A, and Magic's own window is square (500 × 500) until it is resized, which is the case this entry fixes.
+- Resolution: fix, in both modes (X-2 tier 3) — the viewport, the refresh area and the aspect use the drawable's current size W_w × H_w: A = diag(H_w/W_w, 1, 1) when W_w ≥ H_w, else diag(1, W_w/H_w, 1); the initial size request stays 500 × 500. Approved 2026-11-13; the aspect rule for tall windows (the second case) amended and approved 2026-11-21 (resolution changed by the user 2026-11-21, was "the aspect A = H_w / W_w").
 
 ### Q-MISC-75: 3D view depends on OpenGL, Tk and GLX
 - Kind: platform
@@ -334,6 +335,38 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Options: replicate | compat (replicate ON; remember the applied f OFF)
 - Recommendation: compat (standing rule; the drift is visible in command outputs, so ON copies it). With magic-compat ON, `cif` rescales by the current output style's f, as Magic. With it OFF, the window records the f it applied when it entered mask-layer mode and divides by that same f when it leaves, and a change of output style while in mask-layer mode rescales the view from f_old to f_new so the picture keeps its size.
 - Resolution: compat (X-2 tier 2) — with `magic-compat` ON `cif` and `defaults` rescale by the current output style's scalefactor, as Magic does, so `view`, `scroll` and `zoom` drift after `cif ostyle` changes the style; with it OFF the window records the f it applied on entering mask-layer mode and divides by that f on leaving it, and a change of output style while in mask-layer mode rescales the view from f_old to f_new. Approved 2026-11-13.
+
+### Q-MISC-79: 3D view draws a split tile with its left type's height, also when the left half is space
+- Kind: quirk
+- Status: approved 2026-11-21 (found by MESH in M10 round 1, PR #77 review; decided by the user 2026-11-21)
+- Magic behavior: w3dRenderVolume takes h and t from ExtGetZAxis, which reads the tile's left type only (`TiGetLeftType`, "Ignore non-Manhattan for now"), and draws whichever triangle is being painted with them. When the left half of a split tile is space and the right half is, say, metal1, the metal1 triangle gets space's h = t = 0: it is drawn flat at z = 0 with no side faces (W3Dmain.c:288, `ztop == zbot`), below the rest of the metal1 layer. When both halves are material, the right triangle is drawn at the left type's height.
+- Evidence: graphics/W3Dmain.c:383-412 (w3dRenderVolume, ExtGetZAxis at :396, no sides when ztop == zbot at :288), extract/ExtTech.c:584-602 (ExtGetZAxis uses TiGetLeftType)
+- Options: replicate | compat (replicate ON; each triangle's own type OFF)
+- Recommendation: compat (standing rule; the picture is consistent, and the view-3d requirement "Layer height and thickness for the layout-layer view" states the left-type rule as Magic's). With magic-compat ON, both triangles of a split tile take the left type's h and t, as Magic; a split tile whose left half is space draws its right triangle flat at z = 0 with no side faces. With it OFF, each triangle takes the h and t of its own type, which decide its height, thickness and side faces.
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON a split tile's triangles are drawn with the h and t of its left type, as Magic does (a left half of space gives a flat triangle at z = 0 with no side faces); with it OFF each triangle uses the h and t of its own type for its height, thickness and side faces. No command returns the heights. Approved 2026-11-21.
+
+### Q-MISC-80: `.magic3d closewindow` keeps the Tk window, so the 3D window cannot be reopened
+- Kind: bug
+- Status: approved 2026-11-21 (found by CAMERA/WIND3D planning in M10 round 1; decided by the user 2026-11-21)
+- Magic behavior: W3Ddelete frees the client record and clears `w3dWindow`, but leaves the Tk window alive (`Tk_DestroyWindow` is commented out) and does not delete the `.magic3d` Tcl command made by MakeWindowCommand. A later `specialopen wind3d` on the default path calls Tk_CreateWindowFromPath for `.magic3d`, which fails because the path exists, so Magic reports "Could not create a new Tk window" and opens nothing. Meanwhile `.magic3d <cmd>` reaches the freed client record (a use-after-free).
+- Evidence: graphics/W3Dmain.c:1617-1631 (W3Ddelete), :1548-1551 (Tk_CreateWindowFromPath of `.magic3d`), :1584 (MakeWindowCommand), :1595-1596 (the refusal)
+- Options: replicate | compat (refuse ON; reopen OFF) | fix
+- Recommendation: compat for reopening (the refusal is an observable command result, so ON copies it); the use-after-free is fixed in both modes (standing rule: crashes and undefined behaviour are fixed in both modes). With magic-compat ON, after `.magic3d closewindow`, `specialopen wind3d` on the default path reports "Could not create a new Tk window" and opens nothing, and `.magic3d <cmd>` no longer reaches a freed window: it is refused and changes nothing (Magic has no defined output there to match; WIND3D chooses the message and lists it in `docs/diagnostics/codes/view3d.md`). With it OFF, closing removes the toolkit path and its command, and `specialopen wind3d` opens a new window.
+- Resolution: compat (X-2 tier 2) for reopening, fix (X-2 tier 1) for the use-after-free in both modes — with `magic-compat` ON a `specialopen wind3d` on the default toolkit path after `.magic3d closewindow` reports "Could not create a new Tk window" and opens no window, as Magic does; with it OFF closing releases `.magic3d` and a later `specialopen wind3d` opens a new window. In both modes `.magic3d <cmd>` after the close never touches the closed window. Approved 2026-11-21.
+
+### Round-2 decisions without a Q row (approved 2026-11-21)
+
+Native or Hefesto-side questions from M10 round 1 that no Magic quirk entry covers; recorded here with the entries they touch. Each is listed in `docs/decisions/m10-3d-decision-table.md` "Round 2 decisions".
+
+- **J2: bad `render` style reported when the 3D stack is built.**
+  - Status: approved 2026-11-21 (proposed in m10-3d-view tasks.md 3.4, integration note (a)).
+  - Resolution: Hefesto resolves the `render` statement's `<style>` when the 3D view builds its layer stack, because the display styles load after the cifoutput section, and reports "Error:  Bad render style for CIF layer." then (`VIEW3D-STACK-002`); the statement is ignored, as in Magic. Two differences from Magic are accepted in both modes: a line whose style is bad still gets the "Syntax: ..." and "Unknown layer name." checks at load (Magic checks the style first and reports only the bad style), and the bad-style error is reported on every stack build instead of once per technology load. No stored value differs (view-3d "Render statement in the cifoutput section").
+- **J4: `noplaneordering` skips the extract defaults and the micron conversion.**
+  - Status: approved 2026-11-21 (m10-3d-view tasks.md 3.4, integration note (c)).
+  - Resolution: replicate, in both modes, no Q row — with `noplaneordering` Magic's extTechFinalStyle returns before the plane-order check, the defaults and the `units microns` conversion (extract/ExtTech.c:3801-3802), so a type without a `height` line keeps h = t = 0 (drawn flat) and `units microns` heights stay unconverted. Hefesto copies this with magic-compat ON and OFF (view-3d "Layer height and thickness for the layout-layer view").
+- **J6: empty extents, abutting cells and clip-edge faces.**
+  - Status: approved 2026-11-21 (round-1 as-landed behaviour of CAMERA and MESH, confirmed by the user).
+  - Resolution: in both modes — the default view fits the non-empty dimension of the cell's bounding box when the other is empty, and an empty cell as 1 × 1 (Magic divides by zero; view-3d "Default view"); pieces of one layer that abut across cells get no inner side faces (Magic draws each cell's tile outlines, which no command returns; the D13 geometry comparison reduces both to the same boundary); faces cut by the clip area (the cut box, or the window area grown by 1) are closed, as Magic does for any clip area (W3Dmain.c:360-378) (view-3d "Rendered geometry").
 
 ## Scope
 
