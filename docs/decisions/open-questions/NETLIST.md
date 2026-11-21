@@ -445,3 +445,30 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Recommendation: other: omit. Hefesto does not provide sim2simp in either mode. Magic itself neither builds nor installs it, so there is no Magic-provided tool to match. Its function, merging parallel MOSFETs in .sim output, is covered by `ext2sim merge conservative|aggressive`. The informative description in netlist-sim may stay as a record.
 - Resolution: other — Hefesto does not provide sim2simp in either mode; Magic does not build it, and `ext2sim merge` covers its function. Approved 2026-11-13.
 
+### Q-NETLIST-49: `ext2sim run` becomes the cell name
+- Kind: bug
+- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Magic behavior: ext2sim's option table has a `[run] [options]` entry, but the command never matches `run` against it: the first word that is not an option is taken as the cell name, so `ext2sim run` looks for a cell called `run`. Same table shape as `ext2spice` (Q-NETLIST-13).
+- Evidence: ext2sim/ext2sim.c (CmdExtToSim option table and argument loop); Q-NETLIST-13; netlist-sim
+- As implemented (round R1, scaffold): the standing compat rule: magic-compat ON copies Magic; OFF makes `run` a keyword, prints `Ambiguous option: <w>` for an ambiguous prefix and still treats an unknown word as the cell name.
+- Options: compat (as implemented, mirrors Q-NETLIST-13) | replicate | fix
+- Recommendation: compat.
+- Resolution: open — needs a user decision.
+
+### Q-NETLIST-50: Standalone extcheck dereferences an unset extraction style on a `scale` line
+- Kind: bug
+- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Magic behavior: the standalone `extcheck` never loads a technology, so `ExtCurStyle` is NULL; EFReadFile's `scale` record compares against `ExtCurStyle->exts_unitsPerLambda` and crashes on any `.ext` file that has a `scale` line (every file Magic writes). At fc5daa9e the standalone program also does not link (golden image manifest, m7-extraction design R7).
+- Evidence: extflat/EFread.c:255-262; extcheck/extcheck.c; tools/golden/container/build_extcheck.sh
+- Options: fix (both modes: `hefesto-extcheck` reads the scale with the reader's own unit, never crashes) | replicate (not allowed: crash)
+- Recommendation: fix, with a regression test in SIM's extcheck tests.
+- Resolution: open — needs a user decision.
+
+### Q-NETLIST-51: A `device vsource` record reads an uninitialised token count
+- Kind: bug
+- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Magic behavior: EFReadFile sets the expected token count `ac` for every device class except `vsource`, so a `device vsource ...` record reads `ac` uninitialised (left from an earlier record or garbage): undefined behaviour.
+- Evidence: extflat/EFread.c:305-345
+- Options: fix (both modes: parse `vsource` with the subcircuit-like token rule, `ac = 7`) | reject the record with "Unknown device class"
+- Recommendation: fix with `ac = 7`, regression test in EXTFLAT. Golden inputs avoid the record (the V line is covered through `short voltage`, NL-FLAT-06, NL-HIER-06).
+- Resolution: open — needs a user decision.

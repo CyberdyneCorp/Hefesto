@@ -185,6 +185,18 @@ Applied 2026-11-21, after the approval:
 
 The entry is in `docs/decisions/open-questions/EXTRACT.md` with `Status: approved (recommendation drafted 2026-11-20 in the M7 plan, approved 2026-11-21)` and a `Resolution: fix` line. Under X-2 tier 1 the decision is a both-modes fix: the truncated `.ext` keeps a valid timestamp, and the truncated `.res.ext` is newer than its `.ext`, so the loss is silent and every netlist read from them is wrong.
 
+## Entries proposed in round R1 (not approved)
+
+Raised by the R1 workstreams for Magic behaviours no row covers. Each branch implements the standing rule (compat for option-word parsing, a both-modes fix for crashes and undefined behaviour); each needs a user decision.
+
+| ID | Question | Kind | Recommendation |
+|---|---|---|---|
+| Q-NETLIST-49 | `ext2sim run` becomes the cell name | **compat** (proposed) | as Q-NETLIST-13 |
+| Q-MISC-91 | `antennacheck run` becomes the cell name | **compat** (proposed) | as Q-NETLIST-13; antenna-check text to say the prefix match is OFF-only |
+| Q-EXTRACT-28 | `extract list`/`listall` with nothing after it crashes | **fix** (proposed) | both modes: the wrong-number-of-arguments message |
+| Q-NETLIST-50 | Standalone extcheck dereferences a NULL `ExtCurStyle` on a `scale` line | **fix** (proposed) | both modes: hefesto-extcheck never crashes; regression test |
+| Q-NETLIST-51 | `device vsource` reads an uninitialised token count | **fix** (proposed) | both modes: parse with `ac = 7`; regression test |
+
 ## Notable changes to the entries' original recommendations
 
 - **Q-EXTRACT-1**: replicate → compat.
