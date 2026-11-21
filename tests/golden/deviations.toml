@@ -808,12 +808,12 @@ reason = "authored before its capture in golden-capture.yml and before DEFW make
 
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
+outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt", "lefdef_rt.probe.lef"]
 reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"
 
 [LEFDEF-RT-sg13g2_stdcell]
 deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt"]
+outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt", "lefdef_rt.probe.lef"]
 reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"
 
 [OASIS-023]
