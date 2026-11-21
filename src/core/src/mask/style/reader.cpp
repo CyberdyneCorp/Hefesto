@@ -15,14 +15,19 @@
 //
 // Deviations (docs/decisions/cross-cutting.md X-2 tier 1): a `grid`
 // statement without a value reports "Unable to parse grid limit value."
-// instead of reading a NULL argument; `render` checks only its argument
-// count (3-D display attributes are not kept; capability text:
-// "informative for Hefesto"); a `scalefactor` above db::kPlaneMax is
-// refused (Q-MASK-35; Magic's atoi and mask generation overflow on it).
+// instead of reading a NULL argument; a `scalefactor` above db::kPlaneMax
+// is refused (Q-MASK-35; Magic's atoi and mask generation overflow on it).
+// `render` keeps its attributes on the named layers (mask::RenderAttrs,
+// M10 TECH task 3.3) with the style reference unresolved: the display
+// styles load after this section, so the 3D view resolves it and reports
+// "Error:  Bad render style for CIF layer." then (view-3d "Render statement
+// in the cifoutput section"; the stored values are Magic's).
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2); render_line:
+// M10 TECH (openspec/changes/m10-3d-view/design.md D5, D18).
 
 #include <algorithm>
+#include <cstdlib>
 #include <utility>
 
 #include "hefesto/db/geometry.hpp"
@@ -335,12 +340,37 @@ void Reader::min_width_line(const Tokens& t) {
   style_.options |= style_option::grow_slivers;
 }
 
+// StrIsNumeric: strtod reads a number at the start of `text`.
+bool str_is_numeric(const std::string& text) {
+  char* end = nullptr;
+  (void)std::strtod(text.c_str(), &end);
+  return end != text.c_str();
+}
+
+// `render` (CIFtech.c:992-1036): kept on every layer of the name; the
+// style reference is resolved by the 3D view (RenderAttrs).
 void Reader::render_line(const Tokens& t) {
   if (t.size() != 5) {
     wrong_args(t[0]);
     return;
   }
   current_layer_.reset();  // not in a layer definition any more
+  if (!str_is_numeric(t[3]) || !str_is_numeric(t[4])) {
+    messages_.error("Syntax: render <layer> <style> <height> <thick>");
+    return;
+  }
+  const RenderAttrs attrs{t[2], static_cast<float>(std::atof(t[3].c_str())),
+                          static_cast<float>(std::atof(t[4].c_str()))};
+  bool matched = false;
+  for (OutputLayer& layer : style_.layers) {
+    if (layer.name == t[1]) {
+      layer.render.push_back(attrs);
+      matched = true;
+    }
+  }
+  if (!matched) {
+    messages_.error("Unknown layer name.");
+  }
 }
 
 void Reader::options_line(const Tokens& t) {

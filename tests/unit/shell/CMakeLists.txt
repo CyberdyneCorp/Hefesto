@@ -103,6 +103,16 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
       PASS_REGULAR_EXPRESSION "panel inspector 1156 [0-9]+ 284 [0-9][0-9][0-9]"
       TIMEOUT 120)
+    # M10 renderer spike (m10-3d-view task 5.1): the 3D offscreen target, drawn
+    # on Raven's device, shown in a viewport in texture mode, then resized;
+    # the window's pixels are checked after each step (exit 1 on a mismatch).
+    add_test(NAME "hefesto: 3D offscreen frame shown through viewport texture mode (${_system})"
+             COMMAND hefesto-render3d-spike --capture "${CMAKE_CURRENT_BINARY_DIR}/render3d-spike-${_system}"
+                     --expect-window-system ${_system})
+    set_tests_properties("hefesto: 3D offscreen frame shown through viewport texture mode (${_system})" PROPERTIES
+      LABELS "desktop-window;desktop-window-${_system}"
+      ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
+      TIMEOUT 120)
   endforeach()
 endif()
 

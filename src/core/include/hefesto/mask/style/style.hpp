@@ -139,6 +139,24 @@ struct GdsLayer {
   friend bool operator==(const GdsLayer&, const GdsLayer&) = default;
 };
 
+/// One accepted `render <layer> <style> <height> <thick>` statement
+/// (view-3d "Render statement in the cifoutput section"; CIFLayer's
+/// cl_renderStyle, cl_height, cl_thick). Height and thickness are stored
+/// as given (`float` of atof, no unit conversion; Q-MISC-72). `style` is
+/// the reference as written (a style number or a long name): the display
+/// style table is loaded after the cifoutput section (Q-TECH-24, headless
+/// sessions have none), so view3d::build_mask_stack resolves it, and a
+/// statement whose style does not resolve is ignored there as Magic
+/// ignores it at load ("Error:  Bad render style for CIF layer.").
+/// Owner: M10 TECH (openspec/changes/m10-3d-view/design.md D5, task 3.3).
+struct RenderAttrs {
+  std::string style;
+  float height = 0.0F;
+  float thickness = 0.0F;
+
+  friend bool operator==(const RenderAttrs&, const RenderAttrs&) = default;
+};
+
 /// One output layer (CIFLayer).
 struct OutputLayer {
   std::string name;
@@ -149,6 +167,10 @@ struct OutputLayer {
   std::int32_t min_width = 0;        // min-width
   tech::TypeMask label_types;        // the types of this layer's `labels` statements
   bool label_port_only = false;      // every `labels` statement of the layer was `port`
+  /// The `render` statements naming this layer, in order; empty: the
+  /// pale-highlight style with h = t = 0. The last one whose style
+  /// resolves applies (view3d::build_mask_stack).
+  std::vector<RenderAttrs> render;
 
   /// True when the layer is written to GDS: a calma layer number in 0..255
   /// and not a temporary layer.

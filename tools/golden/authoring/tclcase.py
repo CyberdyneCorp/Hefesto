@@ -8,7 +8,8 @@ runs Magic's own command line (``--magic``), so a :class:`TclCase` has one
 ``input/commands.tcl`` that Magic and hefesto-cli both run as the script argument:
 
 * ``magic -dnull -noconsole -norc [-rcfile <rc>] input/commands.tcl`` (GUI cases:
-  ``-d X11`` under Xvfb, ``[reference] display = "xvfb"``);
+  ``-d X11`` under Xvfb, ``[reference] display = "xvfb"``; 3D cases, ``gl``: ``-d OGL`` under
+  Xvfb in the ``magic-gl`` image, ``[reference] image = "magic-gl"``, m10-3d-view design D13);
 * ``hefesto-cli --no-log --diagnostics=magic [--trust-pdk <pdk>] --magic <the same
   Magic options> input/commands.tcl``, from the same work directory, so ``info script``
   and every relative path print the same;
@@ -59,6 +60,7 @@ RC_FILE = "input/pdk/{v}/libs.tech/magic/{v}.magicrc"
 TIMEOUT_PREFIX = ["timeout", "-s", "KILL"]  # coreutils in the capture image
 TECH_EXTERNALS = {"scmos": {"source": "scmos", "to": "scmos.tech"}}
 STDIN = ['stdin = "input/commands.tcl"']
+GL_IMAGE = ['image = "magic-gl"']  # goldenlib/case.py IMAGE_VARIANTS (m10-3d-view design D13)
 
 
 @dataclass
@@ -81,6 +83,7 @@ class TclCase:
     pdk_cells: list[str] = field(default_factory=list)  # libs.ref paths under the variant
     rc: bool = True                                    # PDK cases: start with the PDK rc file
     gui: bool = False                                  # Tk wrapper under Xvfb
+    gl: bool = False                                   # Tk wrapper on OpenGL (-d OGL) in the magic-gl image
     timeout: int | None = None                         # seconds; the case is killed (Q-SCRIPT-3)
     run_timeout: int | None = None                     # seconds per run ([reference]/[hefesto] timeout_s)
     magic_args: list[str] = field(default_factory=list)  # extra Magic options before the script
@@ -110,7 +113,7 @@ HEFESTO_SCRIPT = "hefesto.tcl"
 
 
 def magic_options(case: TclCase, script_name: str = "commands.tcl") -> list[str]:
-    display = ["-d", "X11"] if case.gui else ["-dnull"]
+    display = ["-d", "OGL"] if case.gl else ["-d", "X11"] if case.gui else ["-dnull"]
     rc = ["-rcfile", RC_FILE.format(v=case.pdk)] if case.pdk and case.rc else ["-norc"]
     script = [] if case.stdin else [f"input/{script_name}"]
     return [*display, "-noconsole", *rc, *case.magic_args, *script, *case.script_args]
@@ -183,7 +186,8 @@ def case_toml(case: TclCase) -> str:
              *(["gds_rt = true"] if case.gds_rt else []),
              *([f"capture_blocked = {_toml_str(case.capture_blocked)}"] if case.capture_blocked else []), "",
              "[reference]", 'script = "input/commands.tcl"', f"argv = {_toml_list(reference_argv(case))}",
-             *(['display = "xvfb"'] if case.gui else []), *(STDIN if case.stdin else []),
+             *(['display = "xvfb"'] if case.gui or case.gl else []), *(GL_IMAGE if case.gl else []),
+             *(STDIN if case.stdin else []),
              *(["allow_nonzero_exit = true"] if case.timeout or case.allow_nonzero_exit else []),
              *run_timeout_line(case), "",
              "[hefesto]", f"args = {_toml_list(hefesto_args(case))}", "requires_commands = []",

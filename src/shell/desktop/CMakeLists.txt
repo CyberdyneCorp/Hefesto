@@ -117,6 +117,14 @@ add_executable(hefesto
 target_link_libraries(hefesto PRIVATE hefesto::shell_desktop)
 hefesto_set_warnings(hefesto)
 
+# M10 renderer spike (openspec/changes/m10-3d-view task 5.1, RENDER3D): the
+# 3D offscreen target shown through a Raven viewport in texture mode, with a
+# pixel check; registered as a window smoke test in tests/unit/shell.
+add_executable(hefesto-render3d-spike
+  src/render3d_spike.cpp)
+target_link_libraries(hefesto-render3d-spike PRIVATE hefesto::shell_desktop)
+hefesto_set_warnings(hefesto-render3d-spike)
+
 # Ship the bundled fonts (OFL-1.1, with their license texts) and icons next
 # to the app: <build>/src/shell/desktop/assets/.
 add_custom_command(TARGET hefesto POST_BUILD

@@ -31,6 +31,9 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     tech = "input/min.tech"          # optional (magic: passed with -T)
     argv = ["magic", "-dnull", ...]  # optional; overrides the tool's default argv
     display = "xvfb"                 # optional: run under a virtual X server (GUI cases, Tk)
+    image = "magic-gl"               # optional: the image variant to run in (pins.toml image_variants;
+                                     # magic-gl: Magic with OpenGL, the MISC-3D-* cases of m10-3d-view
+                                     # D13; needs tool magic and display "xvfb")
     stdin = "input/commands.tcl"     # optional: the tool's standard input (path relative to the case)
     timeout_s = 3600                 # optional: seconds before the run is abandoned (default 600)
     xschem_sets = ["sky130-xschem"]  # optional (tool xschem): xschem data sets of scripts/fetch_pdk.py,
@@ -177,6 +180,7 @@ def _check_paths(case: Case) -> None:
 
 ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 DISPLAYS = ("xvfb",)
+IMAGE_VARIANTS = ("magic-gl",)  # pins.toml [image_variants]
 
 
 def _parse_env(data: dict, where: str) -> dict:
@@ -256,6 +260,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
     if display is not None and display not in DISPLAYS:
         raise CaseError(f"{where}: reference.display must be one of {', '.join(DISPLAYS)}")
     _check_xschem_sets(case, where)
+    _check_image(case, where)
     if case.id != root.name:
         raise CaseError(f"{where}: id '{case.id}' does not match directory '{root.name}'")
     if root.parent.name != "cases" or root.parent.parent.name != case.area:
@@ -275,6 +280,21 @@ def _check_xschem_sets(case: Case, where: str) -> None:
         raise CaseError(f"{where}: reference.xschem_sets must list distinct sets of {', '.join(XSCHEM_SETS)}")
     if sets and case.tool != "xschem":
         raise CaseError(f"{where}: reference.xschem_sets applies to tool xschem only")
+
+
+def _check_image(case: Case, where: str) -> None:
+    image = case.reference.get("image")
+    if image is None:
+        return
+    if image not in IMAGE_VARIANTS:
+        raise CaseError(f"{where}: reference.image must be one of {', '.join(IMAGE_VARIANTS)}")
+    if case.tool != "magic" or case.reference.get("display") != "xvfb":
+        raise CaseError(f"{where}: reference.image {image} needs tool magic and display \"xvfb\"")
+
+
+def image_variant(case: Case) -> str | None:
+    """The image variant a case runs in (``[reference] image``), or None for the default image."""
+    return case.reference.get("image")
 
 
 MAX_TIMEOUT_S = 6 * 3600  # the longest capture shard (golden-capture.yml) is 200 minutes
