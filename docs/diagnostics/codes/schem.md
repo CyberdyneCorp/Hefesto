@@ -58,6 +58,11 @@ Owner: SYMLIB.
   that share it keep their file order (a stable sort); the warning names the
   symbol, the value and how many pins share it. Given in both modes of
   `xschem-compat` (Q-SCHEM-5, `Resolution: fix`), once per duplicated value.
+- `SCHEM-SYM-002` (warning): `Token <token> is not defined, but <prefix> is:
+  a token ends only before a blank, @ or %`. A displayed-text token (for
+  example `@name=` in `@name=@value`) is undefined while its longest
+  identifier prefix names a defined key or a predefined token; the token
+  gives the empty text (Q-SCHEM-26, `Resolution: replicate`).
 - `SCHEM-LIB-001` (warning): `Relative symbol reference <reference> resolved
   against the schematic folder <folder>; xschem resolves it against its
   start folder`. A `./` or `../` reference, or a reference found through the
@@ -75,9 +80,10 @@ Owner: SYMLIB.
   parsed (the reader's error follows); the instance shows the placeholder.
   Once per file.
 - `SCHEM-LIB-005` (warning): `Symbol recursively instantiating symbol: max
-  depth reached, skipping`. A schematic used as a symbol nests 40 levels
-  deep, or places itself directly or through other schematics; the nested
-  instance is skipped. Once per file.
+  depth reached, skipping`. An instance inside a schematic used as a symbol
+  would open level 40 (a schematic that places itself nests until then; no
+  cycle is detected, as in xschem); the rest of the symbol is not read at
+  any level, and what was read before is kept. Once per file.
 - `SCHEM-LIB-006` (warning): an `xschemrc` raised a Tcl error (a sandbox
   denial included); what it set before the error is kept, the rest of the
   file is not run. The search path is built from what was set.
@@ -87,6 +93,23 @@ Owner: SYMLIB.
   `Resolution: platform`).
 - `SCHEM-LIB-008` (info): a line an `xschemrc` printed with `puts`; rc files
   never write to Hefesto's standard streams.
+- `SCHEM-LIB-009` (warning): `Symbol <reference>: more than 1000000 records
+  when flattened; the rest is not loaded`. A schematic used as a symbol
+  would hold more than 1,000,000 records over all levels; the records added
+  so far are kept and reading stops, in both modes (input limit approved
+  2026-11-21, Q-SCHEM-32). Once per file.
+- `SCHEM-LIB-010` (warning): `xschemrc <file>: evaluation stopped after 10 s`.
+  The `xschemrc` files of one document ran for 10 s in total; the stop is
+  handled like a Tcl error in `<file>` (earlier settings kept, later ones
+  and later files lost), in both modes (input limit approved 2026-11-21,
+  Q-SCHEM-32).
+- `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
+  (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
+  `write_data` was refused outside the sandbox's granted folders; the
+  enclosing value gives `?` LF.
+- `SCHEM-TCL-002` (info): a launcher's `tclcommand` did not run because the
+  user did not confirm it for this document (Q-SCHEM-25); the next Ctrl+click
+  asks again.
 
 ## NETLIST
 
@@ -164,10 +187,12 @@ fails when the two disagree.
 | `SCHEM-LIB-002` | warning | An `http://` or `https://` symbol reference is not fetched; the instance is shown as a missing symbol (Q-SCHEM-9). |
 | `SCHEM-LIB-003` | warning | Symbol not found: the reference resolves to no file; the instance is shown as a missing symbol. |
 | `SCHEM-LIB-004` | warning | A symbol file exists but could not be read or parsed; the instance is shown as a missing symbol. |
-| `SCHEM-LIB-005` | warning | Symbol recursively instantiating symbol: a schematic used as a symbol nests too deep or places itself; the nested instance is skipped. |
+| `SCHEM-LIB-005` | warning | Symbol recursively instantiating symbol: an instance inside a schematic used as a symbol would open level 40; the rest of the symbol is not read. |
 | `SCHEM-LIB-006` | warning | An `xschemrc` file raised a Tcl error; the settings it would have made after the error are lost. |
 | `SCHEM-LIB-007` | info | `xschem_execute_scripts` in an `xschemrc` is ignored: `tcleval` values always run in the sandbox and launchers are confirmed (Q-SCHEM-25). |
 | `SCHEM-LIB-008` | info | A line an `xschemrc` file printed with `puts`. |
+| `SCHEM-LIB-009` | warning | A schematic used as a symbol holds more than 1,000,000 records when flattened; the rest is not loaded (Q-SCHEM-32). |
+| `SCHEM-LIB-010` | warning | Evaluating the `xschemrc` files of a document stopped at the 10 s limit; later settings are lost (Q-SCHEM-32). |
 | `SCHEM-NET-001` | error | Two differently named nets are shorted (`Error: <tag> shorted: <a> - <b>`); the first name is kept and the netlist is still written. |
 | `SCHEM-NET-002` | warning | A net, pin or instance name is not valid bus notation (`syntax error in <string>`); it is used unchanged with unknown width. |
 | `SCHEM-NET-003` | warning | A pin has no net and is written as `__UNCONNECTED_PIN__<k>`. |
@@ -175,4 +200,7 @@ fails when the two disagree.
 | `SCHEM-NET-005` | warning | A format token is undefined while a shorter identifier prefix of it is defined, for example `@W/` and `W` (Q-SCHEM-26). |
 | `SCHEM-NET-006` | warning | A bus expansion or `expr` nesting exceeds a netlisting size limit; the text is used unchanged. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
+| `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
+| `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |
+| `SCHEM-TCL-002` | info | A launcher's `tclcommand` did not run: the user did not confirm it for this document. |
 <!-- END DIAGNOSTIC CODES -->

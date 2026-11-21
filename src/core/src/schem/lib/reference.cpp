@@ -43,8 +43,13 @@ std::string join(const std::vector<std::string_view>& parts) {
   return out;
 }
 
+// The folder a search-path directory names: a relative one (`.`, `lib`,
+// `../lib`) is under the containing schematic's folder (Q-SCHEM-30,
+// proposed Q-SCHEM-38), never the folder Hefesto was started in.
 platform::Path folder_of(const platform::Path& directory, const platform::Path& document_folder) {
-  return directory == platform::Path{std::string{kDocumentFolderElement}} ? document_folder : directory;
+  if (directory.is_absolute()) return directory;
+  if (directory == platform::Path{std::string{kDocumentFolderElement}}) return document_folder;
+  return (document_folder / directory).lexically_normal();
 }
 
 platform::Path joined(const platform::Path& folder, std::string_view reference) {
@@ -68,12 +73,13 @@ std::optional<ResolvedReference> by_alias(std::string_view reference, const Sear
 std::optional<ResolvedReference> by_search_path(std::string_view reference, const platform::Path& document_folder,
                                                 const SearchPath& search_path, platform::FileSystem& fs) {
   for (const platform::Path& directory : search_path.directories()) {
-    const bool dot = directory == platform::Path{std::string{kDocumentFolderElement}};
-    const platform::Path folder = folder_of(directory, document_folder);
-    const platform::Path file = joined(folder, reference);
+    const bool relative = !directory.is_absolute();
+    // An unsaved document has no folder for relative elements to name.
+    if (relative && document_folder.empty()) continue;
+    const platform::Path file = joined(folder_of(directory, document_folder), reference);
     if (!fs.exists(file)) continue;
-    return dot ? ResolvedReference{file, ResolvedVia::document_folder, folder}
-               : ResolvedReference{file, ResolvedVia::search_path, {}};
+    return relative ? ResolvedReference{file, ResolvedVia::document_folder, document_folder}
+                    : ResolvedReference{file, ResolvedVia::search_path, {}};
   }
   return std::nullopt;
 }
@@ -131,6 +137,7 @@ std::string shortest_reference(const platform::Path& file, const platform::Path&
                                const SearchPath& search_path) {
   const platform::Path normal = file.lexically_normal();
   for (const platform::Path& directory : search_path.directories()) {
+    if (!directory.is_absolute() && document_folder.empty()) continue;
     const platform::Path folder = folder_of(directory, document_folder).lexically_normal();
     if (folder.empty() || !is_prefix(folder, normal)) continue;
     const std::string relative = normal.lexically_relative(folder).generic_string();
