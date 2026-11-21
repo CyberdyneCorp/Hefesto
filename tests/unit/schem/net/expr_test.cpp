@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -187,4 +188,19 @@ TEST_CASE("expr: hostile nesting fails without exhausting the stack",
   CHECK(count_code(run(minus), net_codes::kSizeLimit) == 1);
   std::string within = "expr(" + std::string(50, '(') + "1" + std::string(50, ')') + ")";
   CHECK(run(within).text == "1");
+}
+
+// Regression: every marker scanned to the end of the text for its `)`, so
+// markers with none took quadratic time and hung netlisting.
+TEST_CASE("expr: many unclosed markers are stripped in linear time",
+          "[cap:schematic-netlisting][req:expr evaluation]") {
+  std::string open;
+  for (int i = 0; i < 100000; ++i) open += "expr(";
+  const auto start = std::chrono::steady_clock::now();
+  const auto r = run(open + "1");
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(r.text == "1");
+  CHECK(elapsed < std::chrono::seconds{5});  // quadratic: about 10^10 steps
+  CHECK(run("expr(expr(2) expr(").text == "2 ");
+  CHECK(run("a expr((1) b").text == "a (1) b");
 }
