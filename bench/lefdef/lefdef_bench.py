@@ -95,8 +95,12 @@ foreach cell [lsort [cellname list allcells]] {{
 }}
 select clear
 """
-COUNT_LINE = "puts \"cells [llength [cellname list allcells]]\"\n"
+# The names too, so that a count mismatch names the cells (round 5: def-read gave 441 cells in Hefesto, 440 in
+# Magic, with no way to tell which).
+COUNT_LINE = ("puts \"cells [llength [cellname list allcells]]\"\n"
+              "puts \"cellnames [lsort [cellname list allcells]]\"\n")
 COUNT = re.compile(r"^cells (\d+)\s*$", re.MULTILINE)
+NAMES = re.compile(r"^cellnames (.*)$", re.MULTILINE)
 QUIT = "quit -noprompt\n"
 
 
@@ -114,6 +118,7 @@ class Timing:
     base_s: list[float] = field(default_factory=list)
     op_s: list[float] = field(default_factory=list)
     count: str = ""
+    names: list[str] = field(default_factory=list)
     output_size: int = 0
     output_digest: str = ""
 
@@ -175,6 +180,11 @@ def cell_count(stdout: str) -> str:
     return counts[-1] if counts else ""
 
 
+def cell_names(stdout: str) -> list[str]:
+    found = NAMES.findall(stdout)
+    return found[-1].split() if found else []
+
+
 def record_output(timing: Timing, work: Path, keep: Path | None) -> None:
     """Size and digest of the writeall output (whichever name it got), then removes it."""
     for name in OUTPUTS:
@@ -199,6 +209,7 @@ def measure(tool: str, workload: Workload, args: argparse.Namespace, work: Path)
         elapsed, stdout = DRC_BENCH.run_once(DRC_BENCH.tool_argv(tool, args, work, op), work)
         timing.op_s.append(elapsed)
         timing.count = cell_count(stdout)
+        timing.names = cell_names(stdout)
         if workload.writes:
             timing.output_size, timing.output_digest = 0, ""
             record_output(timing, work, keep)
@@ -209,14 +220,17 @@ def result_row(timing: Timing, workload: Workload) -> dict:
     runs: dict = {"base_s": [round(t, 3) for t in timing.base_s], "op_s": [round(t, 3) for t in timing.op_s]}
     if workload.writes:
         runs.update(output_size=timing.output_size, output_sha256=timing.output_digest)
-    return {"s": round(timing.op_cost_s, 3), "count": timing.count, "runs": runs}
+    return {"s": round(timing.op_cost_s, 3), "count": timing.count, "names": timing.names, "runs": runs}
 
 
 def row_failures(name: str, row: dict, tools: list[str]) -> list[str]:
     failures = [f"{name}: {tool} wrote no output" for tool in tools
                 if "output_size" in row[f"{tool}_runs"] and not row[f"{tool}_runs"]["output_size"]]
     if len(tools) == 2 and row["hefesto_count"] != row["magic_count"]:
-        failures.append(f"{name}: cell count {row['hefesto_count']} (Hefesto) vs {row['magic_count']} (Magic)")
+        only = {tool: sorted(set(row.get(f"{tool}_names", [])) - set(row.get(f"{other}_names", [])))
+                for tool, other in (("hefesto", "magic"), ("magic", "hefesto"))}
+        failures.append(f"{name}: cell count {row['hefesto_count']} (Hefesto) vs {row['magic_count']} (Magic); "
+                        f"only in Hefesto {only['hefesto']}, only in Magic {only['magic']}")
     return failures
 
 

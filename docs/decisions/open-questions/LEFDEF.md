@@ -737,6 +737,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: replicate | fix (prefer cut-layer records, i.e. records without via geometry)
 - Recommendation: fix. Prefer true cut layers.
 - Resolution: compat — the magic-to-LEF map is name-keyed, so the first via-class record in Magic's string hash order wins, reproduced exactly; a VIA definition such as `M1M2_PR` can win over the cut layer (X-1 as amended by D-1, 2026-11-07).
+- Implementation note (round-5 integration): `lef write` built its map from the layer records only until round 5, so a VIA definition never won there (LEFDEF-RT-sky130_fd_sc_hd wrote `LAYER via4` where Magic writes `LAYER M4M5_PR_C`, and sg13g2 `Via1` for `Via1_XY_s`); it now walks the shared key order (Q-LEFDEF-135) with the VIA definitions, as `def write` does. Regression test "a VIA definition earlier in the key order names the cut type it holds" (`tests/unit/lef/write/tech_test.cpp`).
 
 ### Q-LEFDEF-93: COMPONENTS placement subtracts the untransformed bbox origin; arrays do not
 - Kind: quirk
