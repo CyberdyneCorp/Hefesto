@@ -209,11 +209,15 @@ The M8 readers (`src/core/src/schem/`) treat every `.sch`, `.sym` and `xschemrc`
 
 | Concern | State | Where |
 |---|---|---|
-| `.sch`/`.sym` reader: nesting of embedded symbol blocks | Fixed by design: blocks are read on an explicit frame stack, no recursion; the reader is linear in the input, no cap. | `schem/file/reader.cpp` |
+| `.sch`/`.sym` reader: nesting of embedded symbol blocks | Fixed by design: blocks are read on an explicit frame stack, no recursion; the reader is linear in the input. An open block costs a few machine words (discarded blocks share one scratch document), about 12 bytes per input byte for a file made only of `[` lines. **Proposed, not approved**: a maximum nesting depth of embedded blocks (for example 64; tied to spec issue F4). | `schem/file/reader.cpp` |
 | Schematic used as a symbol that places itself | Fixed in both modes: cycle detection plus a depth of 40 (SCHEM-LIB-005). | `schem/lib/symbol_cache.cpp` |
 | Schematic used as a symbol: flattened size | **Open, proposed, not approved**: 40 distinct schematics that each place the next one twice expand to about 2^40 records. Proposed cap: 1,000,000 graphic records per flattened symbol. | `schem/lib/schematic_symbol.cpp` |
 | `xschemrc` evaluation time | **Open, proposed, not approved**: `while 1 {}` in an rc file hangs the opening of a schematic. Proposed: a time or command limit (for example 10 s) for xschemrc evaluation. | `schem/lib/xschemrc.cpp` |
 | Bus notation: expansion size and parenthesis depth | **Proposed, not approved** (coded as named constants): at most `schem::kMaxBusBits` = 2^20 names per expansion and a depth of 256; larger input keeps the name unchanged (SCHEM-NET-006). Checked integer arithmetic for the indices. | `schem/net/bus.cpp` |
+| Bus notation: leading repeat counts | Fixed in both modes: a run of `n*` prefixes is read in a loop, not by recursion (a 1 MB `1*1*...a` overflowed the stack). | `schem/net/bus.cpp` |
+| Bus notation: expanded text size | **Open, proposed, not approved**: `kMaxBusBits` counts names, not bytes, so a 64 KB name with `[1048575:0]` asks for about 64 GB. Proposed: a cap of about 64 MB of expanded text per name (`too_large`, SCHEM-NET-006). | `schem/net/bus.cpp` |
+| `expr` markers | Fixed in both modes: matching `)` positions are computed in one pass, so markers with no `)` cost linear, not quadratic, time. | `schem/net/expr_text.cpp` |
+| Connectivity and pin ordering | Fixed: wires that are neither vertical nor horizontal find their probes by binary search on x; generated pins are ordered like the sibling `.sym` through buckets by name (both were quadratic). | `schem/net/connectivity.cpp`, `schem/lib/schematic_symbol.cpp` |
 | `expr` nesting | **Proposed, not approved**: `schem::kMaxExprDepth` = 200 levels; deeper input fails like a syntax error (SCHEM-NET-006). | `schem/net/expr.cpp` |
 
 ### Fuzz targets
