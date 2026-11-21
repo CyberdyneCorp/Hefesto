@@ -45,7 +45,7 @@ How the target is judged:
   - GDS read and GDS write: each workload SHALL take at most Magic's instruction count, measured on the same runner. Once Hefesto's count for a workload is recorded as its baseline, the workload SHALL take at most that baseline + 2 %.
   - Full-hierarchy DRC: one pass of the reference block SHALL take at most the recorded baseline + 2 %. The baseline is 12.14 billion instructions, the M3 count, so the limit is 12.38 billion. Magic's count is reported for information.
   - The wall time of both tools on the same runner is reported for information. It does not gate.
-- **Extraction and SPICE generation: wall time.** Single-threaded wall time on the same machine SHALL be no worse than Magic's.
+- **Extraction and SPICE generation: instruction counts.** Each reference workload, counting the operation alone as above, SHALL take at most Magic's callgrind instruction count on the same x86_64 runner. Once Hefesto's count for a workload is recorded as its baseline, the workload SHALL take at most that baseline + 2 %. Wall time is reported for information. The workloads are `extract all` of the reference all-cells block of `sky130_fd_sc_hd`, `ext2spice` flat with `lvs`, `ext2spice hierarchy on`, and `ext2sim` on the same block (m7-extraction design D23; user decision 2026-11-21, m7-extraction design Open Question 5 (a)).
 
 Multithreaded runs SHOULD be faster. CI SHALL track these benchmarks.
 
@@ -65,8 +65,15 @@ Compatibility: native
 - **THEN** Hefesto's instruction count SHALL be at most B + 2 %, whatever Magic's count is
 
 #### Scenario: Extraction benchmark
-- **WHEN** `extract all` is run on the reference standard-cell block in Hefesto and in Magic on the same machine
-- **THEN** Hefesto's single-threaded time SHALL be less than or equal to Magic's
+- **GIVEN** the reference all-cells block of `sky130_fd_sc_hd` with no recorded Hefesto baseline for the workload
+- **WHEN** `extract all` of the block is run under callgrind in Hefesto and in Magic, single-threaded, on the same x86_64 runner
+- **THEN** Hefesto's instruction count for the extraction SHALL be less than or equal to Magic's
+- **AND** the wall times of both tools SHALL be reported without gating
+
+#### Scenario: SPICE generation benchmark after the baseline is recorded
+- **GIVEN** a recorded Hefesto baseline of B instructions for `ext2spice hierarchy on` of the reference block
+- **WHEN** the workload is run under callgrind on the x86_64 runner
+- **THEN** Hefesto's instruction count SHALL be at most B + 2 %, whatever Magic's count is
 
 ### Requirement: Memory bound on iPad
 On iPadOS, Hefesto SHALL open the reference full-chip layout as a read-only view without exceeding 3 GB resident memory. When the system warns of memory pressure, Hefesto SHALL release GPU caches and 3D meshes before failing.

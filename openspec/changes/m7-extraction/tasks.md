@@ -1,7 +1,7 @@
 # Tasks
 
 How this plan runs:
-- **Section 1 comes first.** The user decides design Open Questions 1–9 and Q-EXTRACT-27. The tasks below follow the recommended answers. A different answer changes the design sections named in "Decisions this design depends on" and the tasks that cite them.
+- **Section 1 comes first.** The user decided design Open Questions 1–9 and Q-EXTRACT-27 on 2026-11-21, each with its recommended option ((a) for the nine questions, fix for Q-EXTRACT-27). The tasks below follow those answers.
 - The rounds are those of design D1: R0 (section 1), R1 (sections 2 and 3: GOLDEN's NETLIST and flat-EX capture, the scaffold), R2 to R4 (the workstreams, in D3's dependency order), R5 (GOLDEN's PDK cases, PERF) and R6 (INTEGRATION's exit tasks).
 - Each task ends with how it is verified.
 - Workstreams edit only what design D3 assigns them. Shared-file needs are reported as open items.
@@ -13,11 +13,13 @@ How this plan runs:
 
 ## 1. Decisions (R0)
 
-- [ ] 1.1 (INTEGRATION) Record the user's answers to design Open Questions 1–9:
+- [x] 1.1 (INTEGRATION) Record the user's answers to design Open Questions 1–9:
   - in the design's "Open Questions";
   - in the decision table's "Planning questions raised by the M7 plan".
 
   Record Q-EXTRACT-27 as `Status:`/`Resolution:` lines in `docs/decisions/open-questions/EXTRACT.md`. If Open Question 5 is answered (a), edit `hefesto-performance` "Batch throughput relative to Magic" to the text of design D23. If Q-EXTRACT-27 is answered fix, edit `extract-commands` "Incremental extraction" and "Output path and file location", and `extresist-output` "Overlay file grammar and order" (each `.ext`, `.res.ext`, `.res.lump` and `.fh` file written completely or not at all, with a cancelled-run scenario each). Adjust D1–D25 and these tasks for any answer other than the recommended one. Verify that `openspec validate --all --strict` and `python3 scripts/check_milestone_readiness.py --milestone M7` pass, and that `python3 scripts/gen_specs_index.py` leaves no diff after the commit.
+
+  Done 2026-11-21: all ten approved as recommended, (a) for Open Questions 1–9 and fix for Q-EXTRACT-27; the design's Open Questions and the decision table record them, and Q-EXTRACT-27 has `Status: approved` and `Resolution: fix` lines. Spec edits: `hefesto-performance` "Batch throughput relative to Magic" judges extraction and SPICE generation by callgrind instruction counts (D23's text and workloads; scenarios "Extraction benchmark" and "SPICE generation benchmark after the baseline is recorded"), and P-24 in `docs/decisions/product.md` is extended to match; `extract-commands` "Incremental extraction" and "Output path and file location" and `extresist-output` "Overlay file grammar and order" state the write-completely-or-not-at-all rule and cite Q-EXTRACT-27, with a cancelled-run scenario each. No D section or task needed a change beyond dropping the "proposed" wording. `openspec validate --all --strict` passes, readiness for M7 reports ready (57 cited entries, Q-EXTRACT-27 included), and `docs/specs-index.md` is regenerated.
 
 ## 2. Reference data and capture (R1)
 

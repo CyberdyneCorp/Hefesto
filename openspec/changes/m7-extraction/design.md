@@ -85,7 +85,7 @@ M7 runs in seven rounds (D1). The netlisters are built against Magic-written `.e
 
 | Round | Starts when | Delivers | Exit |
 |---|---|---|---|
-| R0 DECIDE | now | the user's answers to Open Questions 1–9 and Q-EXTRACT-27; the spec edits they imply (Open Question 5, Q-EXTRACT-27) | every proposed row has a `Resolution:`; `check_milestone_readiness.py --milestone M7` ready; `openspec validate --all --strict` |
+| R0 DECIDE (done 2026-11-21) | now | the user's answers to Open Questions 1–9 and Q-EXTRACT-27 (all approved 2026-11-21 as recommended); the spec edits they imply (Open Question 5, Q-EXTRACT-27) | every row has a `Resolution:`; `check_milestone_readiness.py --milestone M7` ready; `openspec validate --all --strict` |
 | R1 SCAFFOLD | R0 | areas, headers and stubs (D2, D5); command stubs; the plane client slot and stitch header (D6); the M7 tech-load and `scalegrid` hook (D7); `extcheck` in the capture image; the capture modes, the external-command case mode and the comparators; the 44 NETLIST cases with hand-written inputs authored and captured; the 53 flat EX cases (D21) authored and captured | the build passes with `-Werror` on every preset; `[m7-scaffold]` tests list every option; NETLIST and flat-EX expected outputs committed |
 | R2 CORE | R1 merged | EXTTECH (handlers in new files, called from the existing keyword switch; Open Question 2), EXTNODE, EXTDEV, EXTCAP on single cells; **in parallel** EXTFLAT, SPICE and SIM against the captured NETLIST cases | the unit tests pinned to the captured flat-EX values pass (no EX case replays yet: replay needs the `extract` driver of R3); NL-FLAT, NL-SPICE and NL-SIM replay once EXTTECH's resist and device parsing (tasks 4.3, 4.5) is wired, which does not wait for M10 (D3) |
 | R3 HIER | R2 merged | EXTHIER, EXTCMD, ANTENNA, the subcell parts of EXTDEV (task 7.7); the dispatch-table refactor (task 4.1) if M10's TECH has merged; NL-HIER, NL-CHK | every EX case (the flat ones included) and every MISC-ANT case replays, except those that need extresist |
@@ -93,7 +93,7 @@ M7 runs in seven rounds (D1). The netlisters are built against Magic-written `.e
 | R5 GOLDEN | R4 merged | the PDK cases (Open Question 4), the deferred SCRIPT cases, the catalogue audit; PERF benches and gates (Open Question 5) | D21 counts all pass; the benches meet their gate |
 | R6 EXIT | R5 | fuzz, security review, determinism areas, coverage, `CORE-NOTIMPL` retirement, exit check | D25's exit list; `m7_cases.py --exit-check` clean |
 
-M7's start does not wait for M6's exit work (benches, fuzz, the security review; m6 tasks 16 and 17). Those tasks do not edit `extflat/` or `extract/tech/`, except `fuzz_ext_reader` (17.2) and the `ReadLimits` proposals (17.3). M7 extends that target once it lands, and inherits the decided caps. M7 does not wait for M10 P1 either (Open Question 2, recommended (a)). The user asked on 2026-11-20 that M7 run alongside the 3D work to gain time, and D3 orders the work so that only the dispatch-table refactor of `style_reader.cpp` (task 4.1) waits for M10's TECH merge. Nothing on the R2 exit waits for it.
+M7's start does not wait for M6's exit work (benches, fuzz, the security review; m6 tasks 16 and 17). Those tasks do not edit `extflat/` or `extract/tech/`, except `fuzz_ext_reader` (17.2) and the `ReadLimits` proposals (17.3). M7 extends that target once it lands, and inherits the decided caps. M7 does not wait for M10 P1 either (Open Question 2, decided (a) on 2026-11-21). The user asked on 2026-11-20 that M7 run alongside the 3D work to gain time, and D3 orders the work so that only the dispatch-table refactor of `style_reader.cpp` (task 4.1) waits for M10's TECH merge. Nothing on the R2 exit waits for it.
 
 ### D2. Layout of the M7 code
 
@@ -250,7 +250,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 ### D6. Reusing the tile database and connectivity (Open Question 1)
 
 Magic's extractor walks each cell's own planes. It keeps a region pointer in every tile's `ti_client`, and resets the pointers after each pass (ExtRegion.c:142-209 ExtFindRegions, :533 ExtResetTiles). Hefesto reuses `db::Plane` as it is (the tile order of Q-EXTRACT-5 is already exact, X-1) and adds only what is missing:
-- **Client slot (recommended, Open Question 1 (a)).** `detail::Tile` gains one pointer-sized `client` field, the field Magic's `Tile` has (tiles/tile.h:65-78), initialised to `kClientDefault`. `Plane::client`, `set_client` and `reset_clients` reach it through `TileView::tile`. It is not part of the plane's value: `clone()`, `operator==`, undo and the `.mag` writer ignore it.
+- **Client slot (Open Question 1, decided (a)).** `detail::Tile` gains one pointer-sized `client` field, the field Magic's `Tile` has (tiles/tile.h:65-78), initialised to `kClientDefault`. `Plane::client`, `set_client` and `reset_clients` reach it through `TileView::tile`. It is not part of the plane's value: `clone()`, `operator==`, undo and the `.mag` writer ignore it.
 - **Ownership of the slot.** A run takes the cell's planes under the shared lock and owns their client fields for the run. The fields are run-scoped scratch: they are written only by the thread that holds the extraction run, and every pass resets them before it ends, as Magic does. A debug check verifies that the slots are all `kClientDefault` when the run releases the lock. Two extraction runs never overlap, because each holds the run token of `ExtractSession`. DRC, rendering and connectivity never read the slot.
 - **Stitch edits.** extresist fractures a scratch copy of the net (ResFract.c:64-251) with TiSplitX and TiJoinY1. `db::StitchEditor` exposes `detail::TilePlane::split_x` and `join_y` on a plane that no cell owns (a yank buffer). The restricted header keeps every other caller on the paint API, which preserves the maximal-strip invariant.
 - **Connectivity.** antennacheck and extresist yank nets with `connect::search_hierarchical` into scratch cells (DBTreeCopyConnect), and the extractor's interaction yanks use `db::flatten_to_new` and the `UseIndex` order (ExtYank.c). `connect/` keeps its area-keyed visited set. Changing it to the client slot is a performance follow-up, not M7 scope.
@@ -315,7 +315,7 @@ Magic's extractor walks each cell's own planes. It keeps a region pointer in eve
 
 - **Options.** Every `extract` form and option with Magic's matching, defaults and warning set: `all`, `cell`, `parents`, `showparents`, `do`/`no`, `warn`, `style`, `halo`, `step`, `path`, `unique`, `length`, `help`. Cell properties that affect extraction (`noextract`, `LEFview`/abstract, `device`) are honoured.
 - **Incremental extraction.** A cell is skipped when its `.ext` header timestamp equals `cd_timestamp` (ExtMain.c:968-990). Parents of re-extracted cells are re-extracted. Output paths follow Q-EXTRACT-11: Magic's behaviour on desktop hosts, the project folder on sandboxed hosts.
-- **Atomic output (Q-EXTRACT-27, proposed; recommended fix).** Magic opens `<cell>.ext` for writing, writes the header first and stops writing on interrupt (ExtCell.c:99-116, 515-531). The truncated file keeps a valid `timestamp` line, so the next `extract` treats it as current (ExtMain.c:295-296, 984-986), and the netlisters read a partial netlist. extresist has the same flaw: it stops at the next node on interrupt (ResRex.c:1395) and leaves a truncated `.res.ext` (and `.res.lump`, `.fh`) that is newer than the `.ext`, so D18's `rc` staleness rule trusts it and `ext2spice extresist on` reads it silently. One mechanism, `extract::AtomicOutput` in `extract/file/` (EXTNODE; RESCMD uses it), covers all four files:
+- **Atomic output (Q-EXTRACT-27, fix, approved 2026-11-21).** Magic opens `<cell>.ext` for writing, writes the header first and stops writing on interrupt (ExtCell.c:99-116, 515-531). The truncated file keeps a valid `timestamp` line, so the next `extract` treats it as current (ExtMain.c:295-296, 984-986), and the netlisters read a partial netlist. extresist has the same flaw: it stops at the next node on interrupt (ResRex.c:1395) and leaves a truncated `.res.ext` (and `.res.lump`, `.fh`) that is newer than the `.ext`, so D18's `rc` staleness rule trusts it and `ext2spice extresist on` reads it silently. One mechanism, `extract::AtomicOutput` in `extract/file/` (EXTNODE; RESCMD uses it), covers all four files:
   - the target path is resolved first exactly as ExtFileOpen does (ExtCell.c:153 on: `ExtLocalPath`, then the directory of `cd_file`, then the retry with the path stripped), and the temporary file is created in the directory of that resolved path;
   - when the target is a symbolic link, Magic writes through it. Hefesto resolves the link and renames over the link's target, so the link survives as it does in Magic;
   - if no temporary file can be created in that directory (a writable file in a read-only directory), Hefesto writes in place as Magic does;
@@ -479,7 +479,7 @@ With Open Question 7 (a):
 
 ### D23. Performance (PERF; Open Questions 5 and 8)
 
-`hefesto-performance` requires extraction and SPICE generation to be no slower than Magic in single-threaded wall time on the same machine. Open Question 5 (a) proposes measuring them as DRC and GDS are measured. The proposed requirement text:
+`hefesto-performance` required extraction and SPICE generation to be no slower than Magic in single-threaded wall time on the same machine. Open Question 5, decided (a) on 2026-11-21, measures them as DRC and GDS are measured. The requirement text, applied to `hefesto-performance` "Batch throughput relative to Magic" (with P-24 extended to match):
 
 > **Extraction and SPICE generation: instruction counts.** Each reference workload SHALL take at most Magic's callgrind instruction count on the same x86_64 runner. Once Hefesto's count for a workload is recorded as its baseline, the workload SHALL take at most that baseline + 2 %. Wall time is reported for information.
 
@@ -599,7 +599,7 @@ The headers are the contract, and each one is documented. The key types and func
 - **R6. extresist's direct stitch surgery.** ResFracture breaks the maximal-strip invariant on purpose. → Only on scratch planes, through a restricted header (D6). Debug builds check that no cell plane is passed.
 - **R7. `extcheck` absent from Magic's default build.** → GOLDEN builds it in the image (D15). If it no longer builds at the pin, NL-CHK-01 is hand-derived from the source and marked so, with an approved deviation.
 - **R8. Malformed input.** → D22 caps, D24 review, fuzz targets.
-- **R9. Decisions changing later.** The plan assumes the recommended answers to Open Questions 1–9. → The table "Decisions this design depends on" names the D sections each answer shapes.
+- **R9. Decisions changing later.** The plan follows the answers to Open Questions 1–9 approved on 2026-11-21 (each the recommended one). → The table "Decisions this design depends on" names the D sections each answer shapes.
 
 ## Migration Plan
 
@@ -613,7 +613,7 @@ User data does not change: `.mag` files are read and written as before.
 
 ## Open Questions
 
-These shape or block the work. **All nine are proposed and wait for the user's decision.** Options are listed with the recommended one first. The decision table holds the same rows ("Planning questions raised by the M7 plan"), and the behaviour question Q-EXTRACT-27 is a proposed entry in `docs/decisions/open-questions/EXTRACT.md` (D12).
+These shape or block the work. **All nine were approved by the user on 2026-11-21, each with its recommended option (a).** Options are listed with the recommended one first. The decision table holds the same rows ("Planning questions raised by the M7 plan"), and the behaviour question Q-EXTRACT-27, approved the same day as a fix in both modes, is in `docs/decisions/open-questions/EXTRACT.md` (D12).
 
 1. **Where the extractor keeps its per-tile state.** Magic's extractor stores a region pointer in `ti_client` on every tile it visits and resets it after each pass (ExtRegion.c:71-88, 142-209, 533; about 40 uses in `extract/`). extresist uses it on about 60 lines and calls TiSplitX and TiJoinY1 on its fracture plane (ResFract.c:436-488). Hefesto's `detail::Tile` has no client field, and `split_x`/`join_y` are private.
    - (a) *Recommended:* add one pointer-sized `client` field to `detail::Tile` (Magic's `Tile` has it, tiles/tile.h:73), reached through `Plane::client`, `set_client` and `reset_clients`. Add the restricted header `db/plane_stitch.hpp` for split and join on scratch planes (D6). One field per tile; O(1) access, as in Magic. This is the only way to stay within the "no slower than Magic" target with a literal port.
@@ -621,6 +621,9 @@ These shape or block the work. **All nine are proposed and wait for the user's d
    - (c) An extractor-private copy of the tile module with a client field, used for yank buffers and cell planes copied in. The tile code would exist twice, and the copy would cost a pass over every cell.
 
    *Why (a):* it matches the port one to one, keeps Q-EXTRACT-5's order free (no copy), and its cost (one field) is measured by the existing benches before R2.
+
+   **Decided 2026-11-21: (a).** The per-tile `client` field and the restricted `db/plane_stitch.hpp` land in R1 (D6); their cost is measured by `drc-profile`, `gds-bench` and the iPad memory check before R2.
+
 2. **Starting M7 while M10's 3D P1 extends `extract/tech/`.** The user asked on 2026-11-20 that M7 run with the 3D work to gain time. M10's TECH (tasks 3.1, 3.2) is writing the style framework and `scale`/`units`/`planeorder`/`height` in the same reader.
    - (a) *Recommended:* start M7 now. EXTTECH writes its handlers in new files (D7) and wires each one with a one-line `case` in the existing switch of `StyleReader::apply`; the dispatch-table refactor (task 4.1) waits for TECH's merge. M7 adds its own tech-load and `scalegrid` hook on the editor side (M10 added none: its `HeightView` reads `Technology::raw_sections()`). The other M7 workstreams build on the scaffold's `ExtStyle` and `StyleBuilder`, not on parsed tech files. M10's `HeightView` becomes a view of `ExtStyle`, with `rescaled` derived from `extract.current`.
    - What this means for the R2 exit: SPICE and SIM need EXTTECH's resist and device parsing (tasks 4.3, 4.5) for ExtGetDevInfo (D3). Under (a) those handlers are wired through the existing switch, so the NL-SPICE and NL-SIM replays do not wait for M10; until they land, `StyleBuilder` fixtures stand in for the netlisters' unit tests.
@@ -628,37 +631,60 @@ These shape or block the work. **All nine are proposed and wait for the user's d
    - (c) Hand `extract/tech/` to M7 now and have M10's TECH consume M7's reader. That stops in-flight M10 work.
 
    *Why (a):* it gains the most time. The only overlap with TECH while it is open is additive `case` lines in one switch, and the one refactor of TECH's pass runs after TECH has merged.
+
+   **Decided 2026-11-21: (a).** M7 starts alongside M10's 3D P1. EXTTECH wires its handlers through the existing switch, the dispatch-table refactor (task 4.1) waits for TECH's merge, and M7 owns the editor-side tech-load and `scalegrid` hook (D3, D7).
+
 3. **Bit-identical `atan` for the fringe-halo model.** The fringe fractions are `0.6366 · atan(mult · d)` (ExtCouple.c:718-737, 1298, 1492-1508, 1874-1875). The model is on by default for tech format 34 and above, and sky130A, gf180mcuD and ihp-sg13g2 are format 35, so it runs on every PDK cell. `.ext` values must match Magic's (glibc on Linux x86_64) byte for byte after `%lg`, on Linux x86_64, Linux aarch64 and macOS arm64 (`hefesto-output-determinism`). The platform `atan` functions are not guaranteed to agree to the last bit.
    - (a) *Recommended:* a correctly rounded binary64 `atan`, either vendored from CORE-MATH (MIT; a licence check and a `THIRD_PARTY_NOTICES.md` entry) or written in-house from IEEE basic operations as M6 did for the OASIS CIRCLE sine and cosine (Q-OASIS-31). glibc dropped `atan`'s correctly rounded slow paths years ago, so a correctly rounded result can differ from Magic's glibc in the last ULP. The check therefore runs on what the cases compare: the capture image records its glibc version (`ldd --version` in the image manifest), and a probe compares the final `%lg` text that Magic's formula prints (`0.6366 · atan(mult · d)` through the full cap computation) with Hefesto's, on every argument the EX and PDK cases produce. A last-ULP difference that `%lg`'s six significant digits hide is harmless. Any text difference that remains is handled by the fallback, decided now: a pinned exception table (argument → glibc's double, generated on the capture image and committed with the glibc version) that `fringe_fraction` consults first, so the output stays byte-identical on every platform. If the table would exceed 1,000 entries, the affected cells are instead recorded as an approved deviation under this question and checked with `ext-cap` at `%lg` with one unit of tolerance in the last digit.
    - (b) The platform `atan`, accepting rare last-digit differences in `%lg` output on non-glibc platforms, with a per-case tolerance where they appear. This breaks the byte-identity rule.
    - (c) Port glibc's `atan`. It is LGPL, which `hefesto-licensing` does not allow in the core.
+
+   **Decided 2026-11-21: (a), with the fallback as written.** A correctly rounded `atan` (vendored from CORE-MATH after the licence check, or written in-house), checked against Magic on the final `%lg` text; any remaining difference goes to the pinned exception table, or, above 1,000 entries, to an approved deviation for the affected cells (D4, D9, D22).
+
 4. **Scope of the PDK standard-cell golden cases (the exit criterion).** The roadmap requires `.ext` and SPICE to match Magic's after canonicalization "on the PDK standard cells", without naming cells.
    - (a) *Recommended:* every cell of one standard-cell library per PDK. `sky130_fd_sc_hd` (446 `.mag` cells) and `gf180mcu_fd_sc_mcu7t5v0` (229) come from the existing `.mag` sets, and `sg13g2_stdcell` (84) from the existing `ihp-gds-sc` set (the standard-cell library alone, not the 456 MB `ihp-gds`) via `gds read`. That gives `EXTRACT-PDK-<lib>` (`.ext` per cell) and `NETLIST-PDK-<lib>` (`ext2spice lvs` flat, `ext2spice hierarchy on` in ngspice format, and `ext2sim`): 6 cases on 759 cells. No new data set is needed. Size: about 10–15 MB of uncompressed expected text against 46 MB in `tests/golden` today, with a 15 MB budget (D21).
    - (b) A sample of about 20 cells per library (inverters, NAND/NOR, flops, a mux, a tap, a fill), which captures faster but leaves most device shapes untested.
    - (c) sky130 only.
 
    *Why (a):* Magic extracts a standard cell in milliseconds, so the full libraries cost little capture time. They cover the device variants, the substrate and well handling and the fringe-halo model of three different tech files.
+
+   **Decided 2026-11-21: (a).** All 759 cells of the three libraries in 6 cases, within the 15 MB budget for uncompressed expected text (D21, D25).
+
 5. **How the extraction and SPICE performance target is judged.** The spec asks for single-threaded wall time no worse than Magic's (`hefesto-performance` "Batch throughput relative to Magic"). The same requirement already moved DRC and GDS to callgrind instruction counts, because the wall-clock ratio moves by about 0.1× between runs.
    - (a) *Recommended:* amend the requirement so that extraction and SPICE generation are judged like GDS: at most Magic's instruction count on the x86_64 runner, then the recorded baseline + 2 %, with wall time informational (D23 has the text). Workloads: `extract all`, flat and hierarchical `ext2spice`, and `ext2sim` on the `gds-bench` block. `extresist-bench` is gated at its own baseline + 2 %.
    - (b) Keep the wall-time rule as written, measured by repeated runs on one dedicated runner, with Magic run in the same job.
    - (c) Gate on both.
+
+   **Decided 2026-11-21: (a).** `hefesto-performance` "Batch throughput relative to Magic" now judges extraction and SPICE generation by callgrind instruction counts, at most Magic's count and then baseline + 2 %, with the D23 text and workloads; P-24 (`docs/decisions/product.md`) is extended to match.
+
 6. **How users run `extcheck`.** `netlist-extcheck` defines a standalone checker with an exit status. Magic builds it only on request (Makefile.in:128-130).
    - (a) *Recommended:* a small executable `hefesto-extcheck` in `src/cli/extcheck/`, installed next to `hefesto-cli` on desktop hosts, calling `netlist::extcheck::run`. It is not shipped on iPadOS, where no process runs it.
    - (b) A mode of the existing CLI, `hefesto-cli --extcheck <args>`. It needs one binary fewer, but scripts that call `extcheck` need a wrapper.
    - (c) Only an `extcheck` console command. That does not meet "Invocation" (exit status 1 on a usage error).
+
+   **Decided 2026-11-21: (a).** A standalone `hefesto-extcheck` in `src/cli/extcheck/`, packaged next to `hefesto-cli` on desktop hosts (D2, D15).
+
 7. **Desktop scope for M7.**
    - (a) *Recommended:* enable the top bar's "Extract" button (disabled since M1 with an M7 tooltip) to run `extract all` on the active window's root, with the existing progress panel and cancel. Netlisting, extresist and antenna checks stay console commands. No new boards.
    - (b) Also add a netlist dialog (format, hierarchy, output file) and an "Extraction" menu. DESIGN draws them first.
    - (c) Leave the button disabled: everything from the console.
+
+   **Decided 2026-11-21: (a).** The existing "Extract" button is enabled, with progress and cancel; no new boards (D19).
+
 8. **Threading.** `hefesto-performance` says multithreaded runs SHOULD be faster, and `hefesto-architecture` requires results equal to single-threaded runs.
    - (a) *Recommended:* single-threaded extraction in M7, with no globals in `ExtractContext` (D5), so that independent cells of the bottom-up stack can be extracted in parallel later without an interface change.
    - (b) Parallel per-cell extraction in M7: cells whose children are done run on a pool, and files and console output are ordered as in a serial run.
    - (c) Parallelism inside a cell, by step squares.
 
    *Why (a):* the port is large, the gate is single-threaded, and Magic's per-cell order fixes the console output and the incremental decisions.
+
+   **Decided 2026-11-21: (a).** Single-threaded in M7, with no globals in `ExtractContext` (D5, D23).
+
 9. **The DEF-write net cases once Hefesto extracts.** LEFDEF-317..328 and 330..334 take Magic-written `.ext` inputs (m6 Open Question 1 (a)).
    - (a) *Recommended:* keep those inputs, so the cases go on testing `def write` alone. Add one end-to-end case, LEFDEF-336, that runs `extract all` then `def write` on LEFDEF-317's layout.
    - (b) Switch the 17 cases to run `extract all` first. Each case then tests two features, and an extractor regression shows up as 17 DEF failures.
+
+   **Decided 2026-11-21: (a).** The DEF-write cases keep their Magic-written `.ext` inputs, and LEFDEF-336 is added as the end-to-end case (D21, D25).
 
 ## Resolved Questions
 
@@ -666,6 +692,7 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 - **Entries resolved earlier** (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-3, D-5 and D-14): Q-EXTRACT-5, 7, 8, 9, 13, 14, 15 and Q-NETLIST-1, 2, 3, 11, 14, 21, 22, 26, 27, 33, 36, 42, 45, 47. They are cited in D8–D16, D21 and D22.
 - **M6's pull-forward** of the `.ext` subset and the style subset (m6 Open Questions 1 and 2, decided (a) on 2026-11-18) is the starting point of EXTFLAT and EXTTECH.
 - **M10's extract subset** (m10 Open Question 4, decided (a) on 2026-11-13): there is one extract reader, and M7 extends it (D7).
+- **This plan's Open Questions 1–9 and Q-EXTRACT-27** were approved by the user on 2026-11-21, each with its recommended option: (a) for the nine questions, fix in both modes for Q-EXTRACT-27. The spec edits they imply (`hefesto-performance`, `extract-commands`, `extresist-output`) are applied, and `docs/decisions/m7-decision-table.md` records them.
 
 ## Decisions this design depends on
 
@@ -679,7 +706,7 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 | Q-EXTRACT-2, 8, 9, 13, 15, 16 | replicate / fix / platform | D7, D10 |
 | Q-EXTRACT-26 | replicate | D11 |
 | Q-EXTRACT-11, 12 | platform / replicate | D12 |
-| Q-EXTRACT-27 (proposed; covers `.ext`, `.res.ext`, `.res.lump`, `.fh`) | fix recommended | D12, D16, D18, D21, D24 |
+| Q-EXTRACT-27 (approved 2026-11-21; covers `.ext`, `.res.ext`, `.res.lump`, `.fh`) | fix | D12, D16, D18, D21, D24 |
 | Q-NETLIST-8, 9, 10, 12, 16, 30, 42 | compat / replicate / fix | D13 |
 | Q-NETLIST-1, 4, 5, 6, 7, 13, 19, 20, 31, 32, 34, 35, 37, 41 | fix / compat | D14, D21 |
 | Q-NETLIST-14, 15, 17, 18, 36, 48 | fix / compat / n/a / other | D15 |
@@ -690,13 +717,13 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 | Q-NETLIST-11, 33 (D-14) | platform | D5, D10, D13 |
 | m6 Open Questions 1, 2 | (a) | Context, D7, D13 |
 | m10 Open Question 4 | (a) | D7 |
-| Open Question 1 (proposed) | (a) recommended | D5, D6, D16, D20, D23 |
-| Open Question 2 (proposed) | (a) recommended | D1, D3, D5, D7, D20 |
-| Open Question 3 (proposed) | (a) recommended | D4, D9, D22 |
-| Open Question 4 (proposed) | (a) recommended | D21, D25 |
-| Open Question 5 (proposed) | (a) recommended | D23 |
-| Open Question 6 (proposed) | (a) recommended | D2, D15 |
-| Open Question 7 (proposed) | (a) recommended | D19 |
-| Open Question 8 (proposed) | (a) recommended | D5, D23 |
-| Open Question 9 (proposed) | (a) recommended | D21, D25 |
+| Open Question 1 (decided 2026-11-21) | (a) | D5, D6, D16, D20, D23 |
+| Open Question 2 (decided 2026-11-21) | (a) | D1, D3, D5, D7, D20 |
+| Open Question 3 (decided 2026-11-21) | (a) | D4, D9, D22 |
+| Open Question 4 (decided 2026-11-21) | (a) | D21, D25 |
+| Open Question 5 (decided 2026-11-21) | (a) | D23 |
+| Open Question 6 (decided 2026-11-21) | (a) | D2, D15 |
+| Open Question 7 (decided 2026-11-21) | (a) | D19 |
+| Open Question 8 (decided 2026-11-21) | (a) | D5, D23 |
+| Open Question 9 (decided 2026-11-21) | (a) | D21, D25 |
 | m10 scaffold as landed (`HeightView`, no loader hand-off; 73d4d195) | landed | Context, D5, D7, D20 |

@@ -19,7 +19,7 @@ Its exit criteria are:
 - the EXTRACT and NETLIST golden cases pass;
 - `.ext` and SPICE output match Magic's after canonicalization on the PDK standard cells.
 
-The 56 open questions that blocked M7 (19 Q-EXTRACT, 4 Q-MISC, 33 Q-NETLIST) were approved as drafted on 2026-11-13, with the three judgement items decided as option (a) (`docs/decisions/m7-decision-table.md`), and `scripts/check_milestone_readiness.py --milestone M7` reports ready. This plan raises nine planning questions and one behaviour question (Q-EXTRACT-27). All ten are proposed, not decided (design "Open Questions").
+The 56 open questions that blocked M7 (19 Q-EXTRACT, 4 Q-MISC, 33 Q-NETLIST) were approved as drafted on 2026-11-13, with the three judgement items decided as option (a) (`docs/decisions/m7-decision-table.md`), and `scripts/check_milestone_readiness.py --milestone M7` reports ready. This plan raises nine planning questions and one behaviour question (Q-EXTRACT-27). All ten were approved by the user on 2026-11-21, each with its recommended option (design "Open Questions").
 
 ## What Changes
 
@@ -34,7 +34,7 @@ The 56 open questions that blocked M7 (19 Q-EXTRACT, 4 Q-MISC, 33 Q-NETLIST) wer
 - **Capacitance and lumped resistance (EXTCAP).** Area, perimeter, overlap with shielding, sidewall, legacy and fringe-halo sideoverlap, corner fringe, substrate coupling, and per-class lumped resistance. Every compat split is a single branch point (Q-EXTRACT-1, 17, 18, 24). The fringe-halo `atan` gives the same bits on every platform (Open Question 3).
 - **Devices and substrate (EXTDEV).** Device regions, terminals, dimensions of non-rectangular gates, resistors, capacitors and diodes, model selection by parameter range, parameters, the `device` cell property, isolated substrate regions and substrate nodes.
 - **Hierarchy (EXTHIER).** Bottom-up order, interaction halos and step squares, pass-1 connections, name unification, merges, hierarchical coupling, hard-way names, arrays and sticky labels.
-- **Commands (EXTCMD).** `extract` with every option, incremental extraction, `extract unique`, output paths, path length, progress and cancel. A cancelled run leaves no truncated `.ext` file, and a cancelled `extresist` no truncated `.res.ext`, `.res.lump` or `.fh` (Q-EXTRACT-27, proposed).
+- **Commands (EXTCMD).** `extract` with every option, incremental extraction, `extract unique`, output paths, path length, progress and cancel. A cancelled run leaves no truncated `.ext` file, and a cancelled `extresist` no truncated `.res.ext`, `.res.lump` or `.fh` (Q-EXTRACT-27, fix, approved 2026-11-21).
 - **Flattening (EXTFLAT).** M6's reader and flattener gain device parameters, coupling and resistor flattening, lumped node resistance, device L/W, one-level flattening for hierarchical output, the `.res.ext` overlay, the common netlister arguments and SPICE and sim name conversion.
 - **Netlisters (SPICE, SIM).** `ext2spice` (spice2, spice3, hspice, ngspice, cdl; flat and hierarchical; parallel merging; `lvs`), `ext2sim` (`.sim`, `.al`, `.nodes`) and the standalone `extcheck` (Open Question 6).
 - **R-C extraction (RESNET, RESCMD).** extresist's net collection, tile fracturing, breakpoints, tile and contact resistors, reductions, Elmore pruning and simplification; the command, the input model, the two cutoffs, `.res.ext`, `.res.lump`, FastHenry and geometry output.
@@ -67,8 +67,8 @@ None.
 
 None as drafted. M7 implements the existing requirements of the 21 capabilities of docs/roadmap.md ("M7"): 207 requirements, 204 of them exact or behavioural and 3 informative only ("Progress and summary messages", "Annotated example", "Deprecated sim2simp filter").
 
-Every open question these specs cite is resolved, and the specs are aligned, so the change sets `skip_specs: true`, as M0–M6 did. Two of the proposed answers would change spec text once decided:
-- Open Question 5 (a): `hefesto-performance` "Batch throughput relative to Magic" measures extraction and SPICE generation by callgrind instruction counts, as it already does for GDS. The proposed text is in design D23.
+Every open question these specs cite is resolved, and the specs are aligned, so the change sets `skip_specs: true`, as M0–M6 did. Two of the answers approved on 2026-11-21 change spec text, and those edits are applied:
+- Open Question 5 (a): `hefesto-performance` "Batch throughput relative to Magic" measures extraction and SPICE generation by callgrind instruction counts, as it already does for GDS. The text is that of design D23, and P-24 (`docs/decisions/product.md`) is extended to match.
 - Q-EXTRACT-27 (fix): `extract-commands` "Incremental extraction" and "Output path and file location" say that a run writes each `.ext` file completely or not at all.
 
 INTEGRATION makes these edits in this change's branch after the decisions. A workstream that finds another requirement that must change raises an open item, as before.
