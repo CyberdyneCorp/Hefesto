@@ -92,6 +92,9 @@ struct ElementContext {
   std::vector<ElementPin> pins;
   std::size_t index = 0;    // instance index in its schematic (@index)
   std::string symref;       // symbol reference as written (@symref)
+  /// `@symname` in place of the one derived from `symref`: the subcircuit
+  /// name of a schematic variant (Q-SCHEM-28) or a renamed cell (Q-SCHEM-14).
+  std::optional<std::string> symname;
   std::string schname;      // current schematic file name with extension
   std::string topschname;   // @topschname text
   TclContext tcl;           // `path` and `sch_basename` for tcleval

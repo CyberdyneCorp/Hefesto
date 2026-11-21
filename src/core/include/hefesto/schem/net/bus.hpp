@@ -10,17 +10,26 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "hefesto/diag/diagnostic.hpp"
+
 namespace hefesto::schem {
 
-/// Most single names one expansion may produce. Larger expansions are
-/// treated like a syntax error (the string is used unchanged with unknown
-/// width) and flagged by `too_large`. Proposed limit, pending approval.
+/// Input limits of "Bus and vector notation" (Q-SCHEM-32, approved
+/// 2026-11-21; both modes of `xschem-compat`). An expansion past one of them
+/// is used unchanged with unknown width, like a syntax error, flagged by
+/// `too_large` and reported as SCHEM-NET-006 (bus_diagnostic()).
+/// Most single names one expansion may produce.
 inline constexpr std::size_t kMaxBusBits = std::size_t{1} << 20;
+/// Most bytes of expanded text, commas included, one expansion may produce.
+inline constexpr std::size_t kMaxBusBytes = std::size_t{64} << 20;
+/// Deepest parenthesis nesting of one name.
+inline constexpr int kMaxBusParenDepth = 256;
 
 struct BusExpansion {
   /// The single names in order; the input itself after an error.
@@ -29,7 +38,8 @@ struct BusExpansion {
   bool width_known = true;
   /// The input is not valid bus notation ("syntax error in <string>").
   bool syntax_error = false;
-  /// The expansion would exceed kMaxBusBits.
+  /// The expansion would exceed kMaxBusBits, kMaxBusBytes or
+  /// kMaxBusParenDepth.
   bool too_large = false;
 
   /// The width, which is 1 when the width is unknown.
@@ -38,6 +48,11 @@ struct BusExpansion {
 
 /// Expands `name` by the grammar of "Bus and vector notation".
 [[nodiscard]] BusExpansion parse_bus(std::string_view name);
+
+/// The warning `parse_bus(name)` gives: SCHEM-NET-002 `syntax error in
+/// <name>` or SCHEM-NET-006 `bus expansion of <name> exceeds a limit (...);
+/// used unchanged` (the name cut to 80 bytes and `...`); nullopt otherwise.
+[[nodiscard]] std::optional<diag::Diagnostic> bus_diagnostic(const BusExpansion& bus, std::string_view name);
 
 /// The bit names of a net or instance name in bus notation, in order; a
 /// plain name, or one with a syntax error, gives itself.

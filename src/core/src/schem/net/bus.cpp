@@ -9,10 +9,11 @@
 //   factor = { int "*" } ( "(" list ")" | item )
 //   item   = name [ "[" index "]" [ trailer ] ]
 //
-// with "*" binding tighter than ",". Spaces and tabs between tokens are
-// skipped. A name is a run of characters other than `,*()[]`, space and tab.
-// Every step checks kMaxBusBits before it allocates, and integer arithmetic
-// is checked, so hostile names cannot overflow or exhaust memory.
+// with "*" binding tighter than ",". Blanks (space, tab, LF) between tokens
+// are skipped; blanks between name characters belong to the name. Every step
+// checks kMaxBusBits and kMaxBusBytes before it allocates, parentheses nest
+// at most kMaxBusParenDepth deep, and integer arithmetic is checked, so
+// hostile names cannot overflow or exhaust memory (Q-SCHEM-32).
 //
 // Owner: NETLIST.
 
@@ -22,37 +23,49 @@
 #include <cstdint>
 #include <optional>
 
+#include "hefesto/schem/net/codes.hpp"
+
 namespace hefesto::schem {
 
 namespace {
 
-using Bits = std::vector<std::string>;
+/// The names of one expansion and the bytes of their text: the names'
+/// lengths plus one comma (or the end) per name.
+struct Bits {
+  std::vector<std::string> names;
+  std::uint64_t bytes = 0;
 
-/// Deepest `(` nesting accepted; deeper input is treated as too large.
-constexpr int kMaxParenDepth = 256;
+  void push_back(std::string name) {
+    bytes += name.size() + 1;
+    names.push_back(std::move(name));
+  }
+  [[nodiscard]] std::size_t size() const noexcept { return names.size(); }
+};
 
 bool is_space(char c) noexcept {
-  return c == ' ' || c == '\t';
+  return c == ' ' || c == '\t' || c == '\n';
 }
 
 bool is_digit(char c) noexcept {
   return c >= '0' && c <= '9';
 }
 
+bool is_letter_or_digit(char c) noexcept {
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || is_digit(c);
+}
+
+/// Letters, digits, `_ % $ ~ " + # ! / \ < > ? . :` and `-`.
 bool is_name_char(char c) noexcept {
-  switch (c) {
-    case ',':
-    case '*':
-    case '(':
-    case ')':
-    case '[':
-    case ']':
-    case ' ':
-    case '\t':
-      return false;
-    default:
-      return true;
+  if (is_letter_or_digit(c)) {
+    return true;
   }
+  static constexpr std::string_view kOthers = "_%$~\"+#!/\\<>?.:-";
+  return kOthers.find(c) != std::string_view::npos;
+}
+
+/// A trailer character: a name character, a blank, `(`, `)` or `*`.
+bool is_trailer_char(char c) noexcept {
+  return is_name_char(c) || is_space(c) || c == '(' || c == ')' || c == '*';
 }
 
 bool needs_parsing(std::string_view name) noexcept {
@@ -123,10 +136,11 @@ class Parser {
         break;
       }
       auto more = term(depth);
-      if (!more || !fits(out->size() + more->size())) {
+      if (!more || !fits(out->size() + more->size(), out->bytes + more->bytes)) {
         return std::nullopt;
       }
-      out->insert(out->end(), more->begin(), more->end());
+      out->names.insert(out->names.end(), more->names.begin(), more->names.end());
+      out->bytes += more->bytes;
     }
     return out;
   }
@@ -148,7 +162,7 @@ class Parser {
         return std::nullopt;
       }
       times = saturating_product(times, *n);
-      if (!fits_product(out->size(), times)) {
+      if (!fits_product(*out, times)) {
         return std::nullopt;
       }
     }
@@ -156,10 +170,11 @@ class Parser {
       return out;
     }
     Bits each;
-    each.reserve(out->size() * times);
-    for (const auto& bit : *out) {
-      each.insert(each.end(), times, bit);
+    each.names.reserve(out->size() * times);
+    for (const auto& bit : out->names) {
+      each.names.insert(each.names.end(), times, bit);
     }
+    each.bytes = out->bytes * times;
     return each;
   }
 
@@ -177,14 +192,15 @@ class Parser {
     if (times == 1 || !inner) {
       return inner;
     }
-    if (!fits_product(inner->size(), times)) {
+    if (!fits_product(*inner, times)) {
       return std::nullopt;
     }
     Bits out;
-    out.reserve(inner->size() * times);
+    out.names.reserve(inner->size() * times);
     for (std::uint64_t i = 0; i < times; ++i) {
-      out.insert(out.end(), inner->begin(), inner->end());
+      out.names.insert(out.names.end(), inner->names.begin(), inner->names.end());
     }
+    out.bytes = inner->bytes * times;
     return out;
   }
 
@@ -201,7 +217,7 @@ class Parser {
   }
 
   std::optional<Bits> group(int depth) {
-    if (depth > kMaxParenDepth) {
+    if (depth > kMaxBusParenDepth) {
       fail(Failure::too_large);
       return std::nullopt;
     }
@@ -235,18 +251,40 @@ class Parser {
 
   std::optional<Bits> item() {
     const std::size_t start = pos_;
-    while (pos_ < text_.size() && is_name_char(text_[pos_])) {
-      ++pos_;
-    }
+    take_name();
     const std::string_view name = text_.substr(start, pos_ - start);
     if (pos_ >= text_.size() || text_[pos_] != '[') {
       if (name.empty()) {
         fail(Failure::syntax);
         return std::nullopt;
       }
-      return Bits{std::string{name}};
+      return one(std::string{name});
     }
     return indexed(start, name);
+  }
+
+  static Bits one(std::string name) {
+    Bits bits;
+    bits.push_back(std::move(name));
+    return bits;
+  }
+
+  /// A run of name characters, with the blanks between them; a `-` starts a
+  /// name only when more name characters follow it.
+  void take_name() {
+    if (pos_ < text_.size() && text_[pos_] == '-' && (pos_ + 1 >= text_.size() || !is_name_char(text_[pos_ + 1]))) {
+      return;
+    }
+    while (pos_ < text_.size() && is_name_char(text_[pos_])) {
+      ++pos_;
+      std::size_t next = pos_;
+      while (next < text_.size() && is_space(text_[next])) {
+        ++next;
+      }
+      if (next > pos_ && next < text_.size() && is_name_char(text_[next])) {
+        pos_ = next;
+      }
+    }
   }
 
   std::optional<Bits> indexed(std::size_t start, std::string_view name) {
@@ -260,18 +298,27 @@ class Parser {
     const std::string_view trailer = take_trailer();
     if (!starts_numeric(index)) {
       literal_index_ = true;
-      return Bits{std::string{text_.substr(start, pos_ - start)}};
+      return one(std::string{text_.substr(start, pos_ - start)});
     }
     return expand_index(name, index, trailer);
   }
 
+  /// Characters right after `]` other than `*`, `,` and `)` start a
+  /// trailer: a run of name characters, blanks, `(`, `)` and `*`. Blanks at
+  /// its end are blanks between tokens and are not part of it.
   std::string_view take_trailer() {
     const std::size_t start = pos_;
-    while (pos_ < text_.size() && text_[pos_] != ',' && text_[pos_] != '*' && text_[pos_] != '(' &&
-           text_[pos_] != ')' && !is_space(text_[pos_])) {
+    if (pos_ >= text_.size() || text_[pos_] == '*' || text_[pos_] == ',' || text_[pos_] == ')') {
+      return {};
+    }
+    while (pos_ < text_.size() && is_trailer_char(text_[pos_])) {
       ++pos_;
     }
-    return text_.substr(start, pos_ - start);
+    std::size_t end = pos_;
+    while (end > start && is_space(text_[end - 1])) {
+      --end;
+    }
+    return text_.substr(start, end - start);
   }
 
   static bool starts_numeric(std::string_view index) noexcept {
@@ -310,8 +357,8 @@ class Parser {
       fail(Failure::syntax);
       return false;
     }
-    if (range->count > kMaxBusBits || range->repeat > kMaxBusBits ||
-        !fits_product(range->count, range->repeat) || !fits(out.size() + range->count * range->repeat)) {
+    if (range->count > kMaxBusBits || range->repeat > kMaxBusBits || range->repeat > kMaxBusBits / range->count ||
+        !fits(out.size() + range->count * range->repeat, out.bytes)) {
       fail(Failure::too_large);
       return false;
     }
@@ -323,6 +370,9 @@ class Parser {
           return false;
         }
         out.push_back(bit_name(name, *value, bracketless, trailer));
+        if (!fits(out.size(), out.bytes)) {
+          return false;
+        }
       }
     }
     return true;
@@ -432,20 +482,22 @@ class Parser {
     return n;
   }
 
-  bool fits(std::uint64_t size) {
-    if (size > kMaxBusBits) {
+  /// `size` names whose text, commas included, takes `bytes` - 1 bytes.
+  bool fits(std::uint64_t size, std::uint64_t bytes) {
+    if (size > kMaxBusBits || bytes > kMaxBusBytes + 1) {
       fail(Failure::too_large);
       return false;
     }
     return true;
   }
 
-  bool fits_product(std::uint64_t a, std::uint64_t b) {
-    if (b != 0 && a > kMaxBusBits / b) {
+  /// `bits` repeated `times` times.
+  bool fits_product(const Bits& bits, std::uint64_t times) {
+    if (times != 0 && (bits.size() > kMaxBusBits / times || bits.bytes > (kMaxBusBytes + 1) / times)) {
       fail(Failure::too_large);
       return false;
     }
-    return fits(a * b);
+    return fits(bits.size() * times, bits.bytes * times);
   }
 
   void skip_space() noexcept {
@@ -491,9 +543,23 @@ BusExpansion parse_bus(std::string_view name) {
     out.too_large = parser.failure() == Failure::too_large;
     return out;
   }
-  out.bits = std::move(*bits);
+  out.bits = std::move(bits->names);
   out.width_known = !parser.literal_index();
   return out;
+}
+
+std::optional<diag::Diagnostic> bus_diagnostic(const BusExpansion& bus, std::string_view name) {
+  if (bus.syntax_error) {
+    return diag::make(net_codes::kBusSyntax, "syntax error in " + std::string{name});
+  }
+  if (!bus.too_large) {
+    return std::nullopt;
+  }
+  const std::string shown = name.size() > 80 ? std::string{name.substr(0, 80)} + "..." : std::string{name};
+  return diag::make(net_codes::kSizeLimit, "bus expansion of " + shown + " exceeds a limit (" +
+                                               std::to_string(kMaxBusBits) + " names, " +
+                                               std::to_string(kMaxBusBytes) + " bytes or " +
+                                               std::to_string(kMaxBusParenDepth) + " nested parentheses); used unchanged");
 }
 
 std::vector<std::string> expand_bus(std::string_view name) {

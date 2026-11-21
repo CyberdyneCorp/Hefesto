@@ -127,10 +127,9 @@ std::optional<std::string> resolve_parameter(const ElementContext& context, std:
   if (!defined) {
     return std::nullopt;
   }
-  // 1. The instance, then the template ("Templates and instance attributes");
-  //    an unresolved token is kept as text.
-  std::string value = get_from(context.instance, key, ValueForm::decoded)
-                          .value_or(get_from(context.templ, key, ValueForm::decoded).value_or("@" + std::string{key}));
+  // 1. The instance property string only; an unresolved token is kept as
+  //    text. The template comes in step 2, after the parent instance.
+  std::string value = get_from(context.instance, key, ValueForm::decoded).value_or("@" + std::string{key});
   // 2. The instance, the parent instance, the symbol template.
   if (has_sigil(value)) {
     const std::array<const PropertySource*, 3> sources{context.instance, context.parent_instance, context.templ};

@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -85,7 +86,7 @@ TEST_CASE("format substitution: tokens, escapes and separators",
   CHECK(with_format("@symname @symname_ext @symref") == "res res.sym res.sym\n");
   CHECK(with_format("@@P @@M") == "?1 A  ?1 B \n");
   CHECK(with_format("@@P/@@M") == "?1 B \n");  // `/` does not end a token: pin `P/` is unknown
-  CHECK(with_format("@#1 @#1:net_name @#5:name") == "?1 B  B --UNDEF--\n");
+  CHECK(with_format("@#1 @#1:net_name @#5:name @#1:foo") == "?1 B  B  --UNDEF--\n");
   CHECK(with_format("@#M") == "?1 B \n");
   CHECK(with_format("@index") == "0\n");
   CHECK(with_format("") == "\n");
@@ -290,4 +291,39 @@ TEST_CASE("format substitution: pin attributes and slots", "[cap:schematic-netli
   auto c = resistor(instance, "A", "B");
   c.pins[0].attributes = &pin_attrs;
   CHECK(build(c).text == "5 bit P\n");
+}
+
+TEST_CASE("Token start and lone markers", "[cap:schematic-netlisting][req:Format string substitution]") {
+  CHECK(with_format("a @ b c@") == "a  c\n");
+}
+
+TEST_CASE("Out-of-range pin number", "[cap:schematic-netlisting][req:Format string substitution]") {
+  const schem::PropertyMap instance{{"name", "R1"}, {"format", "@name X@#5 Y@#5:name Z@#1:foo"}};
+  const auto t = build(resistor(instance, "A", "B"));
+  CHECK(t.text == "R1 X Y Z--UNDEF--\n");
+  CHECK(t.diagnostics.empty());
+}
+
+TEST_CASE("Template default found in step 2", "[cap:schematic-netlisting][req:Hierarchical parameters]") {
+  const schem::PropertyMap symbol{{"type", "resistor"}, {"format", "@name @pinlist @value"}};
+  const schem::PropertyMap templ{{"name", "R1"}, {"value", "1k"}};
+  const schem::PropertyMap instance{{"name", "R1"}};
+  schem::ElementContext c = resistor(instance, "A", "B");
+  c.symbol = &symbol;
+  c.templ = &templ;
+  CHECK(schem::resolve_parameter(c, "value") == std::optional<std::string>{"1k"});
+  CHECK(build(c).text == "R1 ?1 A ?1 B  1k\n");
+}
+
+TEST_CASE("hierarchical parameters: the parent instance comes before the template in step 2",
+          "[cap:schematic-netlisting][req:Hierarchical parameters]") {
+  // Step 1 reads the instance only, so a key the parent instance defines
+  // wins over the symbol template's default.
+  const schem::PropertyMap instance{{"name", "R1"}, {"value", "@v"}};
+  const schem::PropertyMap parent{{"v", "5k"}};
+  const schem::PropertyMap templ{{"name", "R1"}, {"value", "1k"}, {"v", "2k"}};
+  schem::ElementContext c = resistor(instance, "A", "B");
+  c.templ = &templ;
+  c.parent_instance = &parent;
+  CHECK(schem::resolve_parameter(c, "value") == std::optional<std::string>{"5k"});
 }

@@ -110,11 +110,33 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   exponent sign (Q-SCHEM-12); reported in both modes.
 - `SCHEM-NET-005` (warning): `token '<token>' is undefined while '<prefix>'
   is defined`, the Q-SCHEM-26 prefix warning (for example `@W/` and `W`).
-- `SCHEM-NET-006` (warning): a bus expansion larger than
-  `schem::kMaxBusBits` (2^20 names) or an `expr` nested deeper than
-  `schem::kMaxExprDepth` (200); the name is used unchanged, or the
-  expression fails like a syntax error. Both limits are proposed and wait
-  for approval.
+- `SCHEM-NET-006` (warning): a netlisting input limit (Q-SCHEM-32, approved
+  2026-11-21, both modes): `bus expansion of <string> exceeds a limit (1048576
+  names, 67108864 bytes or 256 nested parentheses); used unchanged`
+  (`schem::kMaxBusBits`, `kMaxBusBytes`, `kMaxBusParenDepth`; the string cut
+  to 80 bytes and `...`), `expr nested deeper than 200 levels; text copied
+  without evaluation` (`schem::kMaxExprDepth`), or a vector element whose
+  lines would pass `kMaxBusBytes`, written unexpanded.
+- `SCHEM-NET-007` (warning): top-level ports share a `sim_pinnumber`; the
+  stable sort keeps their instance order (Q-SCHEM-5).
+- `SCHEM-NET-008` (error): the pins of a symbol and the ports of its
+  schematic differ in names or directions (`ipin` in, `opin` out, `iopin`
+  inout); the netlist is written and the run fails.
+- `SCHEM-NET-009` (warning): two subcircuit symbols from different files
+  have one cell name; xschem-compat ON writes the first only, OFF writes the
+  later one as `<cell>_<k>` (Q-SCHEM-14).
+- `SCHEM-NET-010` (warning): a template key occurs in `extra` only inside a
+  word (Q-SCHEM-19).
+- `SCHEM-NET-011` (warning): a subcircuit template spans several lines
+  (Q-SCHEM-21).
+- `SCHEM-NET-012` (warning): `load_schematic(): unable to open file:
+  <path>`, a subcircuit schematic that does not exist; its definition has an
+  empty body and the run does not fail (Q-SCHEM-27).
+- `SCHEM-NET-013` (warning): `instance: <index> (<symbol>): no name attribute
+  set`.
+- `SCHEM-NET-014` (warning): `Symbol: <symbol>: no type attribute set`.
+- `SCHEM-NET-015` (warning): every pin of an instance is unconnected.
+- `SCHEM-NET-016` (warning): two identical instances of one symbol overlap.
 
 ## EDIT
 
@@ -173,6 +195,16 @@ fails when the two disagree.
 | `SCHEM-NET-003` | warning | A pin has no net and is written as `__UNCONNECTED_PIN__<k>`. |
 | `SCHEM-NET-004` | warning | An `expr` number contains a `-` that xschem-compat ON and OFF read differently (Q-SCHEM-12). |
 | `SCHEM-NET-005` | warning | A format token is undefined while a shorter identifier prefix of it is defined, for example `@W/` and `W` (Q-SCHEM-26). |
-| `SCHEM-NET-006` | warning | A bus expansion or `expr` nesting exceeds a netlisting size limit; the text is used unchanged. |
+| `SCHEM-NET-006` | warning | A bus expansion, `expr` nesting or vector element exceeds a netlisting size limit; the text is used unchanged. |
+| `SCHEM-NET-007` | warning | Top-level ports share a `sim_pinnumber`; they keep their instance order (Q-SCHEM-5). |
+| `SCHEM-NET-008` | error | The pins of a symbol and the ports of its schematic differ; the netlist is written and the run fails. |
+| `SCHEM-NET-009` | warning | Two subcircuit symbols have one cell name; xschem-compat ON writes the first only, OFF renames the later one (Q-SCHEM-14). |
+| `SCHEM-NET-010` | warning | A template key occurs in `extra` only inside a word (Q-SCHEM-19). |
+| `SCHEM-NET-011` | warning | A subcircuit template spans several lines (Q-SCHEM-21). |
+| `SCHEM-NET-012` | warning | The schematic of a subcircuit does not exist; its definition has an empty body (Q-SCHEM-27). |
+| `SCHEM-NET-013` | warning | An instance has no `name` attribute and its template has none either. |
+| `SCHEM-NET-014` | warning | A symbol has no `type` attribute. |
+| `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
+| `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 <!-- END DIAGNOSTIC CODES -->
