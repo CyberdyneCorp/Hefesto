@@ -28,10 +28,8 @@
 
 namespace hefesto::schem {
 
-/// "Orientation transform" of capability schematic-file-format: the
-/// schematic point of the symbol-local point `local` for an instance at
-/// `origin` with rotation `rotation` (0..3, taken modulo 4) and flip `flip`.
-[[nodiscard]] Point transform_point(Point origin, int rotation, int flip, Point local) noexcept;
+// Pin positions use the "Orientation transform" of FORMAT,
+// hefesto/schem/file/transform.hpp.
 
 /// The connection point of a pin box: its centre.
 [[nodiscard]] Point pin_point(const BoxRecord& box) noexcept;

@@ -13,8 +13,8 @@
 
 namespace hefesto::schem {
 
-/// An instance placement: origin, rotation (taken modulo 4) and flip (any
-/// non-zero value flips). The flip is applied before the rotation; each
+/// An instance placement: origin, rotation (taken modulo 4) and flip (1
+/// flips, any other value does not). The flip is applied before the rotation; each
 /// rotation step turns the symbol 90 degrees clockwise on screen.
 struct Placement {
   Point origin;
@@ -22,7 +22,9 @@ struct Placement {
   int flip = 0;
 };
 
-/// The schematic point of the symbol-local point `local`.
+/// The schematic point of the symbol-local point `local`. The one
+/// implementation of the transform: symbol graphics (SYMLIB) and pin
+/// positions (NETLIST) use it too, so they always agree.
 [[nodiscard]] Point transform_point(const Placement& placement, Point local) noexcept;
 
 /// A text's rotation and flip after placement.

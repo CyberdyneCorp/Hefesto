@@ -18,8 +18,10 @@ int quarter_turns(int rotation) noexcept {
   return ((rotation % 4) + 4) % 4;
 }
 
+// "Orientation transform": x' = -x if f = 1, else x. Other flip values
+// (spec issue F5) are therefore not flipped.
 bool flipped(int flip) noexcept {
-  return flip != 0;
+  return flip == 1;
 }
 
 }  // namespace
@@ -50,7 +52,7 @@ TextOrientation transform_text(const Placement& placement, int rotation, int fli
   const bool f = flipped(placement.flip);
   const int own = quarter_turns(rotation);
   const int turn = (f && own % 2 == 1) ? r + 2 : r;
-  return {quarter_turns(own + turn), (flipped(flip) != f) ? 1 : 0};
+  return {quarter_turns(own + turn), flip ^ placement.flip};
 }
 
 double transform_arc_start(const Placement& placement, double start, double sweep) noexcept {

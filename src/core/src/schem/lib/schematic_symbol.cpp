@@ -10,12 +10,15 @@
 #include "hefesto/schem/lib/schematic_symbol.hpp"
 
 #include <algorithm>
-#include <cmath>
+#include <deque>
 #include <iterator>
+#include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "hefesto/schem/file/properties.hpp"
+#include "hefesto/schem/file/transform.hpp"
 #include "hefesto/schem/sym/instance.hpp"
 #include "hefesto/schem/sym/types.hpp"
 
@@ -36,21 +39,12 @@ void copy_kept(const std::vector<Record>& from, std::vector<Record>& to) {
   std::copy_if(from.begin(), from.end(), std::back_inserter(to), [](const Record& r) { return !ignored(r.props); });
 }
 
-// The placement of one instance: "Orientation transform".
-struct Placement {
-  Point origin;
-  int rotation = 0;
-  int flip = 0;
+// The graphics of one placed instance, through the "Orientation transform"
+// of capability schematic-file-format (hefesto/schem/file/transform.hpp).
+struct Placer {
+  Placement at;
 
-  [[nodiscard]] Point apply(Point local) const {
-    const double x = flip == 1 ? -local.x : local.x;
-    switch (rotation & 3) {
-      case 1: return {origin.x - local.y, origin.y + x};
-      case 2: return {origin.x - x, origin.y - local.y};
-      case 3: return {origin.x + local.y, origin.y - x};
-      default: return {origin.x + x, origin.y + local.y};
-    }
-  }
+  [[nodiscard]] Point apply(Point local) const { return transform_point(at, local); }
 
   [[nodiscard]] LineRecord line(const LineRecord& line) const {
     return {line.layer, apply(line.p1), apply(line.p2), line.props};
@@ -66,11 +60,7 @@ struct Placement {
   [[nodiscard]] ArcRecord arc(const ArcRecord& arc) const {
     ArcRecord out = arc;
     out.centre = apply(arc.centre);
-    const double r = rotation & 3;
-    double start = flip == 0 ? std::fmod(arc.start_angle + 270.0 * r, 360.0)
-                             : std::fmod(270.0 * r + 180.0 - arc.sweep_angle - arc.start_angle, 360.0);
-    if (start < 0) start += 360.0;
-    out.start_angle = start;
+    out.start_angle = transform_arc_start(at, arc.start_angle, arc.sweep_angle);
     return out;
   }
 
@@ -83,10 +73,9 @@ struct Placement {
   [[nodiscard]] TextRecord text(const TextRecord& text) const {
     TextRecord out = text;
     out.origin = apply(text.origin);
-    const int r = rotation & 3;
-    const int step = (flip == 1 && (text.rotation & 1) == 1) ? r + 2 : r;
-    out.rotation = (text.rotation + step) & 3;
-    out.flip = text.flip ^ (flip & 1);
+    const TextOrientation orientation = transform_text(at, text.rotation, text.flip);
+    out.rotation = orientation.rotation;
+    out.flip = orientation.flip;
     return out;
   }
 };
@@ -130,7 +119,7 @@ class Builder {
     const Symbol& symbol = nested_(instance);
     const std::string type = symbol_type(symbol);
     if (ignored_in_schematic_symbol(type)) return;
-    const Placement at{instance.origin, instance.rotation, instance.flip};
+    const Placer at{{instance.origin, instance.rotation, instance.flip}};
     const Document& graphics = symbol.document;
     for (const LineRecord& line : graphics.lines) out_.lines.push_back(at.line(line));
     for (const BoxRecord& box : graphics.boxes) out_.boxes.push_back(at.box(box));
@@ -140,7 +129,7 @@ class Builder {
     if (is_port_type(type)) add_pin(instance, symbol, type, at);
   }
 
-  void add_pin(const InstanceRecord& instance, const Symbol& symbol, const std::string& type, const Placement& at) {
+  void add_pin(const InstanceRecord& instance, const Symbol& symbol, const std::string& type, const Placer& at) {
     Pin pin;
     pin.name = instance_attribute(instance.props, symbol, "lab").value_or("");
     pin.direction = std::string{port_direction(type)};
@@ -160,18 +149,22 @@ class Builder {
   std::vector<Pin> pins_;
 };
 
+// For each name of order_from in its pin order, the first generated pin of
+// that name not yet taken; then the rest in their order. The generated pins
+// are bucketed by name, so the cost is O(n log n), not O(n^2).
 std::vector<Pin> ordered_like(std::vector<Pin> pins, const Symbol& order_from) {
+  std::map<std::string, std::deque<std::size_t>> by_name;  // copies: pins move out below
+  for (std::size_t i = 0; i < pins.size(); ++i) by_name[pins[i].name].push_back(i);
   std::vector<Pin> ordered;
   ordered.reserve(pins.size());
   std::vector<bool> taken(pins.size(), false);
   for (const PinIndex index : pin_order(order_from)) {
-    const std::string& name = order_from.pins[index].name;
-    for (std::size_t i = 0; i < pins.size(); ++i) {
-      if (taken[i] || pins[i].name != name) continue;
-      taken[i] = true;
-      ordered.push_back(std::move(pins[i]));
-      break;
-    }
+    const auto bucket = by_name.find(order_from.pins[index].name);
+    if (bucket == by_name.end() || bucket->second.empty()) continue;
+    const std::size_t i = bucket->second.front();
+    bucket->second.pop_front();
+    taken[i] = true;
+    ordered.push_back(std::move(pins[i]));
   }
   for (std::size_t i = 0; i < pins.size(); ++i) {
     if (!taken[i]) ordered.push_back(std::move(pins[i]));

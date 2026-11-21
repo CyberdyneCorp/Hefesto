@@ -13,12 +13,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "hefesto/schem/file/transform.hpp"
 #include "hefesto/schem/net/codes.hpp"
 #include "hefesto/schem/net/connectivity.hpp"
 
@@ -400,11 +402,11 @@ TEST_CASE("global nets: a wide global bus is collected in linear time", "[cap:sc
 }
 
 TEST_CASE("connectivity: orientation transform of pin points", "[cap:schematic-netlisting][req:Connection geometry]") {
-  CHECK(schem::transform_point({100, 200}, 1, 0, {-20, 0}) == Point{100, 180});
-  CHECK(schem::transform_point({100, 200}, 0, 1, {-20, 0}) == Point{120, 200});
-  CHECK(schem::transform_point({0, 0}, 2, 0, {3, 4}) == Point{-3, -4});
-  CHECK(schem::transform_point({0, 0}, 3, 0, {3, 4}) == Point{4, -3});
-  CHECK(schem::transform_point({0, 0}, 7, 1, {3, 4}) == Point{4, 3});  // rotation modulo 4
+  CHECK(schem::transform_point({{100, 200}, 1, 0}, {-20, 0}) == Point{100, 180});
+  CHECK(schem::transform_point({{100, 200}, 0, 1}, {-20, 0}) == Point{120, 200});
+  CHECK(schem::transform_point({{0, 0}, 2, 0}, {3, 4}) == Point{-3, -4});
+  CHECK(schem::transform_point({{0, 0}, 3, 0}, {3, 4}) == Point{4, -3});
+  CHECK(schem::transform_point({{0, 0}, 7, 1}, {3, 4}) == Point{4, 3});  // rotation modulo 4
   schem::BoxRecord box;
   box.p1 = {-22.5, -2.5};
   box.p2 = {-17.5, 2.5};
@@ -421,11 +423,35 @@ TEST_CASE("connectivity: many wires at one point and long chains stay bounded",
     s.wires.push_back(wire(0, 10, 0, 11 + i));  // overlapping wires from (0,10)
   }
   for (int i = 0; i < 200; ++i) {
-    s.wires.push_back(wire(-100, -100 - i, -99, -99 + i));  // diagonal wires, tested against every probe
+    s.wires.push_back(wire(-100, -100 - i, -99, -99 + i));  // diagonal wires, all in one x range
   }
   s.instances = {label("a", {0, 0}, "CHAIN"), label("s", {0, 10}, "STAR")};
   const auto n = schem::name_nets(s);
   CHECK(n.wire_nets[19999] == "CHAIN");
   CHECK(n.wire_nets[20999] == "STAR");
   CHECK(n.wire_nets.back() == "#net200");  // the diagonals only cross: 200 nets
+}
+
+// Regression: each wire that is neither vertical nor horizontal was tested
+// against every probe, O(wires x probes); 100k diagonal wires took about
+// 2 x 10^10 touch tests. Probes are now found by binary search on x.
+TEST_CASE("connection geometry: many diagonal wires join in near-linear time",
+          "[cap:schematic-netlisting][req:Connection geometry]") {
+  schem::SchematicNets s;
+  constexpr int kWires = 100000;
+  for (int i = 0; i < kWires; ++i) {
+    const double x = 10.0 * i;
+    s.wires.push_back(wire(x, 0, x + 5, 5));
+  }
+  s.wires.push_back(wire(5, 5, 7, 9));          // starts on the end of wire 0
+  s.instances = {label("l1", {2, 2}, "MID")};  // inside wire 0
+  const auto start = std::chrono::steady_clock::now();
+  const auto n = schem::name_nets(s);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(elapsed < std::chrono::seconds{10});
+  REQUIRE(n.wire_nets.size() == kWires + 1);
+  CHECK(n.wire_nets[0] == "MID");
+  CHECK(n.wire_nets[kWires] == "MID");
+  CHECK(n.wire_nets[1] != "MID");
+  CHECK(n.wire_nets[1] != n.wire_nets[2]);
 }
