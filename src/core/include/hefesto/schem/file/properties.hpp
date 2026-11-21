@@ -17,8 +17,8 @@
 
 namespace hefesto::schem {
 
-/// One attribute as stored: `raw_value` keeps quotes and backslashes.
-/// `has_value` is false for an attribute written without `=`.
+/// One attribute as stored: `key` and `raw_value` keep quotes and
+/// backslashes. `has_value` is false for an attribute written without `=`.
 struct Property {
   std::string key;
   std::string raw_value;
@@ -39,14 +39,27 @@ enum class ValueForm : std::uint8_t {
 /// Splits a property string into its attributes.
 [[nodiscard]] PropertyList parse_properties(std::string_view props);
 
-/// The value of the first attribute named `key`; nullopt when there is none.
-/// An attribute without `=` gives the empty string.
+/// The value of the first attribute named `key` (exact, case-sensitive);
+/// nullopt when there is none. An attribute without `=` gives the empty
+/// string. The value is never passed to Tcl: a caller that wants
+/// `tcleval(...)` evaluated hands the decoded value to schem::TclBridge.
 [[nodiscard]] std::optional<std::string> get_token(std::string_view props, std::string_view key,
                                                    ValueForm form = ValueForm::decoded);
 
-/// `props` with `key` set to `value` by xschem's update rules, or removed
-/// when `value` is nullopt.
+/// `raw` (a stored value) with every unescaped `"` and `\` removed and each
+/// escaped character kept literally: the decoded form of "Property strings".
+[[nodiscard]] std::string decode_value(std::string_view raw);
+
+/// `props` with `key` set to `value` by xschem's update rules ("Property
+/// strings", setting rules 1-5). nullopt and the empty value both remove the
+/// first occurrence of `key`.
 [[nodiscard]] std::string set_token(std::string_view props, std::string_view key,
                                     std::optional<std::string_view> value);
+
+/// "Boolean values": a value of decimal digits only is true when non-zero and
+/// false when zero; `true`, `on`, `yes` / `false`, `off`, `no` (ASCII case
+/// insensitive) are true / false; any other value is neither.
+[[nodiscard]] bool is_true(std::string_view value) noexcept;
+[[nodiscard]] bool is_false(std::string_view value) noexcept;
 
 }  // namespace hefesto::schem
