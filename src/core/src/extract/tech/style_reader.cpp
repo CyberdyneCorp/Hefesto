@@ -3,7 +3,9 @@
 //
 // The extraction-style subset of the `extract` section reader (see
 // style_reader.hpp).
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10).
+// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10); the
+// height subset (`lambda`, `units`, `planeorder`, `noplaneordering`,
+// `height`, finish_heights): TECH (openspec/changes/m10-3d-view/design.md D5).
 
 #include "style_reader.hpp"
 
@@ -11,6 +13,8 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <string>
+#include <utility>
 
 namespace hefesto::extract::detail {
 
@@ -18,6 +22,10 @@ namespace {
 
 constexpr std::string_view kMalformed = "EXTRACT-STYLE-001";
 constexpr std::string_view kIllegalDevice = "EXTRACT-STYLE-002";
+constexpr std::string_view kBadHeight = "EXTRACT-STYLE-003";
+constexpr std::string_view kBadUnits = "EXTRACT-STYLE-004";
+constexpr std::string_view kBadPlaneOrder = "EXTRACT-STYLE-005";
+constexpr std::string_view kPlaneOrderFallback = "EXTRACT-STYLE-006";
 
 enum class Key : std::uint8_t {
   areacap, connect, contact, cscale, defaultareacap, defaultoverlap, defaultperimeter, defaultsideoverlap,
@@ -175,21 +183,36 @@ using Tokens = std::vector<std::string>;
 // ExtTechLine for one style.
 class StyleReader {
  public:
-  StyleReader(const tech::Technology& tech, diag::DiagnosticSink& sink, std::optional<std::string_view> target)
-      : tech_(tech), sink_(sink), target_(target) {
+  StyleReader(const tech::Technology& tech, diag::DiagnosticSink& sink, const ReadOptions& options)
+      : tech_(tech), sink_(sink), target_(options.style), report_(options.report),
+        dscale_(options.microns_per_lambda) {
     types_.active = all_but_space_and_drc();
+    heights_.plane_order.assign(tech.plane_count(), kNoPlaneOrder);
   }
 
   void line(const tech::RawLine& line);
-  [[nodiscard]] std::optional<StyleTypes> finish();
+  [[nodiscard]] std::optional<StyleTables> finish();
 
  private:
+  // exts_planeOrderStatus.
+  enum class Order : std::uint8_t { needed, seen, not_needed };
+
+  void height(const Tokens& t);
+  void units(const Tokens& t);
+  void plane_order(const Tokens& t);
+  void no_plane_order();
+  void finish_heights();
+  void mark_height_sources();
+  void check_plane_order();
+  void default_heights();
+  void convert_heights();
   [[nodiscard]] static tech::TypeMask all_but_space_and_drc();
   void style_line(const Tokens& t);
   void first_style(const Tokens& t);
   void wanted_style(const Tokens& t);
   void variants(const Tokens& t);
   void apply(const Keyword& kw, const Tokens& t);
+  [[nodiscard]] bool noisy(Key key) const noexcept;
   void mention_first(Key key, const Tokens& t);
   void mention_rest(Key key, const Tokens& t);
   void mention_defaults(Key key, const Tokens& t);
@@ -201,18 +224,23 @@ class StyleReader {
   [[nodiscard]] tech::TypeMask parse(std::string_view text, bool report);
   void mention(const Tokens& t, std::size_t index);
   void malformed(const Keyword& kw);
-  void report(std::string_view code, std::string text);
+  void report(std::string_view code, std::string text, Subset subset = Subset::types);
 
   const tech::Technology& tech_;
   diag::DiagnosticSink& sink_;
   std::optional<std::string_view> target_;
+  Subset report_;
+  float dscale_;
   const tech::RawLine* where_ = nullptr;
   Status status_ = Status::not_loaded;
   bool started_ = false;  // ExtCurStyle != NULL
   bool seen_plane_order_ = false;
+  Order order_ = Order::needed;
   tech::TypeMask mentioned_;  // allExtractTypes
   tech::TypeMask types1_;     // the first switch's types1
+  tech::TypeMask height_lines_;  // types a valid `height` line set
   StyleTypes types_;
+  StyleHeights heights_;
 };
 
 tech::TypeMask StyleReader::all_but_space_and_drc() {
@@ -223,7 +251,10 @@ tech::TypeMask StyleReader::all_but_space_and_drc() {
   return mask;
 }
 
-void StyleReader::report(std::string_view code, std::string text) {
+void StyleReader::report(std::string_view code, std::string text, Subset subset) {
+  if (subset != report_) {
+    return;
+  }
   diag::Location where;
   if (where_ != nullptr && !where_->file.empty()) {
     where = diag::SourceLocation{where_->file, where_->line};
@@ -342,6 +373,15 @@ void StyleReader::variants(const Tokens& t) {
   status_ = Status::suspended;
 }
 
+// Whether this pass reports a bad first type list of `key`
+// (DBTechNoisyNameMask): each view reports the keywords of its subset.
+bool StyleReader::noisy(Key key) const noexcept {
+  if (key == Key::height) {
+    return report_ == Subset::heights;
+  }
+  return report_ == Subset::types && (key == Key::fet || key == Key::tiedown || key == Key::substrate);
+}
+
 // The first switch of ExtTechLine: the types of the first argument.
 void StyleReader::mention_first(Key key, const Tokens& t) {
   switch (key) {
@@ -361,11 +401,11 @@ void StyleReader::mention_first(Key key, const Tokens& t) {
     case Key::sidewall:
     case Key::sideoverlap:
     case Key::substrate:
-      types1_ = parse(t[1], key == Key::fet || key == Key::tiedown || key == Key::substrate);
+      types1_ = parse(t[1], noisy(key));
       mentioned_ |= types1_;
       break;
     case Key::device:
-      types1_ = parse(t[3], true);
+      types1_ = parse(t[3], report_ == Subset::types);
       mentioned_ |= types1_;
       break;
     default:
@@ -446,10 +486,173 @@ void StyleReader::apply(const Keyword& kw, const Tokens& t) {
       resist(t);
       break;
     case Key::planeorder:
-      seen_plane_order_ = true;
+      plane_order(t);
+      break;
+    case Key::noplaneordering:
+      no_plane_order();
+      break;
+    case Key::height:
+      height(t);
+      break;
+    case Key::units:
+      units(t);
+      break;
+    case Key::lambda:
+      heights_.units_per_lambda = static_cast<float>(std::atof(t[1].c_str()));
       break;
     default:
       break;
+  }
+}
+
+// HEIGHT (ExtTech.c:2967-2989): numeric height and thickness for every
+// real type of the first argument.
+void StyleReader::height(const Tokens& t) {
+  if (!str_is_numeric(t[2])) {
+    report(kBadHeight, "Layer height " + t[2] + " must be numeric", Subset::heights);
+    return;
+  }
+  if (!str_is_numeric(t[3])) {
+    report(kBadHeight, "Layer thickness " + t[3] + " must be numeric", Subset::heights);
+    return;
+  }
+  const auto h = static_cast<float>(std::strtod(t[2].c_str(), nullptr));
+  const auto th = static_cast<float>(std::strtod(t[3].c_str(), nullptr));
+  for (tech::TileType ty = tech::kFirstUserType; ty < tech_.type_count(); ++ty) {
+    if (types1_.test(ty)) {
+      heights_.heights[ty].height = h;
+      heights_.heights[ty].thickness = th;
+      height_lines_.set(ty);
+    }
+  }
+}
+
+// UNITS (ExtTech.c:3110-3117): doConvert.
+void StyleReader::units(const Tokens& t) {
+  if (t[1] == "microns" || t[1] == "um") {
+    heights_.units_microns = true;
+  } else if (t[1] != "lambda") {
+    report(kBadUnits, "Units must be microns or lambda.  Using the default value (lambda).", Subset::heights);
+  }
+}
+
+// PLANEORDER (ExtTech.c:3503-3520): still applied after `noplaneordering`.
+void StyleReader::plane_order(const Tokens& t) {
+  if (order_ == Order::not_needed) {
+    report(kBadPlaneOrder, "\"planeorder\" specified after \"noplaneordering\".", Subset::heights);
+  }
+  order_ = Order::seen;
+  seen_plane_order_ = true;
+  const tech::Lookup<tech::PlaneId> plane = tech_.find_plane(t[1]);
+  const std::int32_t pos = std::atoi(t[2].c_str());
+  const auto tech_planes = static_cast<std::int32_t>(tech_.plane_count() - tech::kFirstUserPlane);
+  if (!plane.ok()) {
+    report(kBadPlaneOrder, "Unknown planeorder plane " + t[1], Subset::heights);
+  } else if (pos < 0 || pos >= tech_planes) {
+    report(kBadPlaneOrder, "Planeorder index must be [0.." + std::to_string(tech_planes - 1) + "]",
+           Subset::heights);
+  } else {
+    heights_.plane_order[*plane.id] = pos;
+  }
+}
+
+// NOPLANEORDER (ExtTech.c:3496-3502).
+void StyleReader::no_plane_order() {
+  if (order_ == Order::seen) {
+    report(kBadPlaneOrder, "\"noplaneordering\" specified after \"planeorder\".", Subset::heights);
+  } else {
+    order_ = Order::not_needed;
+  }
+}
+
+// extTechFinalStyle's plane-order check, defaults and micron conversion of
+// heights (ExtTech.c:3801-3966). With `noplaneordering` Magic returns
+// before all three (ExtTech.c:3801-3802): a type without a `height` line
+// keeps h = t = 0 and `units microns` values stay unconverted.
+void StyleReader::finish_heights() {
+  heights_.style = types_.style;
+  heights_.plane_ordering = order_ != Order::not_needed;
+  if (order_ == Order::not_needed) {
+    mark_height_sources();
+    return;
+  }
+  check_plane_order();
+  default_heights();
+  if (heights_.units_microns) {
+    convert_heights();
+  }
+}
+
+// The orders of the technology planes must be a permutation of 0..k;
+// otherwise the warning and every plane's declaration order.
+void StyleReader::check_plane_order() {
+  const std::size_t first = tech::kFirstUserPlane;
+  const std::size_t end = tech_.plane_count();
+  std::vector<int> uses(end, 0);
+  for (std::size_t p = first; p < end; ++p) {
+    const std::int64_t pn = std::int64_t{heights_.plane_order[p]} + static_cast<std::int64_t>(first);
+    if (pn >= static_cast<std::int64_t>(first) && pn < static_cast<std::int64_t>(end)) {
+      ++uses[static_cast<std::size_t>(pn)];
+    }
+  }
+  std::string conflicting;
+  std::string missing;
+  for (std::size_t p = first; p < end; ++p) {
+    const std::string entry = " " + std::string{tech_.plane_name(static_cast<tech::PlaneId>(p))} + ",";
+    conflicting += uses[p] > 1 ? entry : std::string{};
+    missing += uses[p] < 1 ? entry : std::string{};
+  }
+  if (conflicting.empty() && missing.empty()) {
+    return;
+  }
+  std::string text = "Warning: Extraction Style " + heights_.style + "\n";
+  if (!conflicting.empty()) {
+    text += "  Conflicting planeorder for plane(s):\n   " + conflicting + "\n";
+  }
+  if (!missing.empty()) {
+    text += "  Missing planeorder for plane(s):\n   " + missing + "\n";
+  }
+  text += "  Magic will use the default planeorder for this style:\n   ";
+  for (std::size_t p = first; p < end; ++p) {
+    heights_.plane_order[p] = static_cast<std::int32_t>(p - first);
+    text += " " + std::string{tech_.plane_name(static_cast<tech::PlaneId>(p))} + "=" + std::to_string(p - first) + ",";
+  }
+  report(kPlaneOrderFallback, std::move(text), Subset::heights);
+}
+
+// A type's values come from its `height` line only when that line left
+// neither h nor t at 0 (zinit would have replaced it).
+void StyleReader::mark_height_sources() {
+  for (tech::TileType ty = tech::kFirstUserType; ty < tech_.type_count(); ++ty) {
+    TypeHeight& th = heights_.heights[ty];
+    const bool defaulted = th.height == 0.0F || th.thickness == 0.0F;
+    th.source = height_lines_.test(ty) && !defaulted ? HeightSource::height_line : HeightSource::defaulted;
+  }
+}
+
+// zinit: t = 0.05 and h = 0.1 * order where the value is 0.
+void StyleReader::default_heights() {
+  mark_height_sources();
+  for (tech::TileType ty = tech::kFirstUserType; ty < tech_.type_count(); ++ty) {
+    TypeHeight& th = heights_.heights[ty];
+    if (th.thickness == 0.0F) {
+      th.thickness = 0.05F;
+    }
+    if (th.height == 0.0F) {
+      const std::optional<tech::PlaneId> plane = tech_.home_plane(ty);
+      const std::int32_t order = plane && *plane < heights_.plane_order.size() ? heights_.plane_order[*plane]
+                                                                                : kNoPlaneOrder;
+      th.height = static_cast<float>(0.1 * order);
+    }
+  }
+}
+
+// doConvert: h and t are in microns; divide by dscale (ExtTech.c:3963-3965).
+void StyleReader::convert_heights() {
+  heights_.distance_scale = dscale_;
+  for (TypeHeight& th : heights_.heights) {
+    th.thickness /= dscale_;
+    th.height /= dscale_;
   }
 }
 
@@ -597,7 +800,7 @@ void StyleReader::device_mentions(Dev dev, Tokens t) {
   }
 }
 
-std::optional<StyleTypes> StyleReader::finish() {
+std::optional<StyleTables> StyleReader::finish() {
   if (!started_) {
     if (target_ && *target_ != "default") {
       return std::nullopt;
@@ -628,7 +831,8 @@ std::optional<StyleTypes> StyleReader::finish() {
     real.set(t);
   }
   types_.gate &= real;
-  return types_;
+  finish_heights();
+  return StyleTables{std::move(types_), std::move(heights_)};
 }
 
 }  // namespace
@@ -659,20 +863,31 @@ std::vector<std::string> declared_styles(const tech::RawSection& section) {
   return names;
 }
 
-std::optional<StyleTypes> read_style(const tech::RawSection& section, const tech::Technology& tech,
-                                     diag::DiagnosticSink& sink, const std::optional<std::string_view>& style) {
-  if (style) {
+std::optional<StyleTables> read_style_tables(const tech::RawSection& section, const tech::Technology& tech,
+                                             diag::DiagnosticSink& sink, const ReadOptions& options) {
+  if (options.style) {
     const auto names = declared_styles(section);
-    const bool declared = std::find(names.begin(), names.end(), *style) != names.end();
-    if (!declared && !(names.empty() && *style == "default")) {
+    const bool declared = std::find(names.begin(), names.end(), *options.style) != names.end();
+    if (!declared && !(names.empty() && *options.style == "default")) {
       return std::nullopt;
     }
   }
-  StyleReader reader{tech, sink, style};
+  StyleReader reader{tech, sink, options};
   for (const tech::RawLine& line : section.lines) {
     reader.line(line);
   }
   return reader.finish();
+}
+
+std::optional<StyleTypes> read_style(const tech::RawSection& section, const tech::Technology& tech,
+                                     diag::DiagnosticSink& sink, const std::optional<std::string_view>& style) {
+  ReadOptions options;
+  options.style = style;
+  std::optional<StyleTables> tables = read_style_tables(section, tech, sink, options);
+  if (!tables) {
+    return std::nullopt;
+  }
+  return std::move(tables->types);
 }
 
 }  // namespace hefesto::extract::detail

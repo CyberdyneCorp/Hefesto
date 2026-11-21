@@ -46,6 +46,7 @@ document, so parallel work never edits the same table
 | extflat | EXTFLAT | `src/core/src/extflat/codes.cpp` (fragment `extflat/codes.inc`) | [codes/extflat.md](codes/extflat.md) |
 | extract | EXTRACT | `src/core/src/extract/codes.cpp` (fragments `extract/<sub>/codes.inc`) | [codes/extract.md](codes/extract.md) |
 | schem | SCHEM | `src/core/src/schem/codes.cpp` (fragments `schem/<sub>/codes.inc`) | [codes/schem.md](codes/schem.md) |
+| view3d | VIEW3D | `src/core/src/view3d/codes.cpp` (fragments `view3d/<sub>/codes.inc`) | [codes/view3d.md](codes/view3d.md) |
 
 Regenerate the core table with:
 

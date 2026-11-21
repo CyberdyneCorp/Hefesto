@@ -10,16 +10,26 @@
 // section as ExtTechLine does for one style and keeps the type sets that
 // StyleView exposes.
 //
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10).
+// M10 TECH extends the same pass with the 3D height subset that HeightView
+// exposes ("Units, lambda, cscale and rscale" (`units`, `lambda`), "Plane
+// ordering", "Layer height and thickness defaults", "Micron conversion" of
+// heights; openspec/changes/m10-3d-view/design.md D5): one reader, two
+// views. Each view reports only the messages of its own subset, so reading
+// both never reports a line twice.
+//
+// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10); the
+// height subset: TECH (openspec/changes/m10-3d-view/design.md D3).
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/extract/tech/height_view.hpp"
 #include "hefesto/extract/tech/style_view.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -35,5 +45,27 @@ namespace hefesto::extract::detail {
 [[nodiscard]] std::optional<StyleTypes> read_style(const tech::RawSection& section, const tech::Technology& tech,
                                                    diag::DiagnosticSink& sink,
                                                    const std::optional<std::string_view>& style);
+
+/// Which view's messages a pass reports.
+enum class Subset : std::uint8_t { types, heights };
+
+struct ReadOptions {
+  std::optional<std::string_view> style;  // nullopt: the first declared style
+  Subset report = Subset::types;
+  /// dscale of "Micron conversion": µm per lambda of the current cifoutput
+  /// style at the unscaled grid (1.0 without one).
+  float microns_per_lambda = 1.0F;
+};
+
+/// Both tables of one style, from one pass.
+struct StyleTables {
+  StyleTypes types;
+  StyleHeights heights;
+};
+
+/// The pass behind read_style and HeightView; nullopt as read_style.
+[[nodiscard]] std::optional<StyleTables> read_style_tables(const tech::RawSection& section,
+                                                           const tech::Technology& tech, diag::DiagnosticSink& sink,
+                                                           const ReadOptions& options);
 
 }  // namespace hefesto::extract::detail

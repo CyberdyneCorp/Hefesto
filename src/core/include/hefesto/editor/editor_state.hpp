@@ -47,6 +47,7 @@
 #include "hefesto/view/highlights.hpp"
 #include "hefesto/view/tile_overlay.hpp"
 #include "hefesto/view/window.hpp"
+#include "hefesto/view3d/client/session.hpp"
 #include "hefesto/wiring/wiring.hpp"
 
 namespace hefesto::cell {
@@ -223,6 +224,13 @@ struct EditorState {
   // symbol cache, the library search path and the active PDK's `xschemrc`
   // result. Independent of the layout database.
   schem::Session schem;
+
+  // ---- M10 (openspec/changes/m10-3d-view/design.md D4) ----
+
+  // WIND3D / CAMERA / MESH / INSPECT: the 3D session (view3d/client/
+  // session.hpp; each member's owner is named there): the at-most-one 3D
+  // window with its mode, view state, cut box, visibility sets and mesh.
+  view3d::Session view3d;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed

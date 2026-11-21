@@ -12,6 +12,8 @@ add_library(hefesto_render_vk STATIC
   src/canvas_index.cpp
   src/headless.cpp
   src/layout_scene.cpp
+  src/mesh3d_spike.cpp
+  src/mesh3d_target.cpp
   src/polygon_fill.cpp
   src/renderer.cpp
   src/scene.cpp
@@ -28,7 +30,7 @@ target_link_libraries(hefesto_render_vk
     Vulkan::Vulkan)
 hefesto_set_warnings(hefesto_render_vk)
 
-# The SPIR-V of the shaders is committed (src/generated/rect_spv.hpp), so a
+# The SPIR-V of the shaders is committed (src/generated/*_spv.hpp), so a
 # shader compiler is never needed to build. After editing shaders/*.vert|frag,
 # rebuild the header with:  cmake --build <dir> --target hefesto_render_shaders
 find_program(HEFESTO_GLSLANG glslangValidator)
@@ -38,6 +40,6 @@ if(HEFESTO_GLSLANG AND Python3_FOUND)
     COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/shaders/compile_shaders.py"
             --glslang "${HEFESTO_GLSLANG}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    COMMENT "Compiling canvas shaders to src/generated/rect_spv.hpp"
+    COMMENT "Compiling the renderer shaders to src/generated/*_spv.hpp"
     VERBATIM)
 endif()

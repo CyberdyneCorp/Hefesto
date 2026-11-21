@@ -11,7 +11,7 @@ directory, run the pinned reference tool there (TZ=UTC, LC_ALL=C), and write
 every declared output plus provenance.json into the case's expected/.
 
 Usage:
-    capture.py [--runner container|local|model] [--image REF] CASE_DIR...
+    capture.py [--runner container|local|model] [--image REF] [--gl-image REF] CASE_DIR...
     capture.py --check CASE_DIR...      validate only, run nothing
     capture.py --verify CASE_DIR...     run the tool, compare with expected/, write nothing
 
@@ -32,6 +32,9 @@ Raw outputs (goldenlib/rawkeep.py), for bisecting a difference; nothing in expec
 
 Runners are described in goldenlib/refrunners.py. The default image is
 $HEFESTO_GOLDEN_IMAGE, else "hefesto-golden:local" (see README.md).
+A case whose case.toml sets ``[reference] image = "magic-gl"`` (the MISC-3D-* cases of
+m10-3d-view design D13) runs in the image of --gl-image ($HEFESTO_GOLDEN_GL_IMAGE), the
+Containerfile built with WITH_OPENGL=1; without it the case is skipped with a note, not failed.
 Exit status: 0 ok, 1 a case failed (or differs under --verify), 2 usage error.
 """
 from __future__ import annotations
@@ -47,7 +50,7 @@ import tempfile
 from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes
-from goldenlib.case import RUN_SOURCES, Case, CaseError, load_case, run_output
+from goldenlib.case import RUN_SOURCES, Case, CaseError, image_variant, load_case, run_output
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
@@ -142,12 +145,20 @@ def verify_expected(case: Case, outputs: dict[str, bytes]) -> list[str]:
     return problems
 
 
-def make_runner(args: argparse.Namespace, pins: dict):
+def case_image(case: Case, args: argparse.Namespace) -> str | None:
+    """The container image of ``case``: --gl-image for the magic-gl variant (None when not given),
+    else --image."""
+    if image_variant(case) == "magic-gl":
+        return args.gl_image or None
+    return args.image
+
+
+def make_runner(args: argparse.Namespace, pins: dict, image: str | None = None):
     if args.runner == "local":
         return LocalHarnessRunner(pins, args.magic_src)
     if args.runner == "model":
         return ModelRunner()
-    return ContainerRunner(args.image, args.engine)
+    return ContainerRunner(image or args.image, args.engine)
 
 
 def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
@@ -155,9 +166,15 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
     if case.capture_blocked:
         return skip_blocked(case, case_dir)
     if args.check:
-        print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool})")
+        variant = image_variant(case)
+        suffix = f", image {variant}" if variant else ""
+        print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool}{suffix})")
         return True
-    runner = make_runner(args, pins)
+    image = case_image(case, args)
+    if image is None:
+        print(f"{case.id}: skipped, needs the {image_variant(case)} image (--gl-image or $HEFESTO_GOLDEN_GL_IMAGE)")
+        return True
+    runner = make_runner(args, pins, image)
     result, outputs = run_reference(case, runner, getattr(args, "raw", None))
     if args.verify:
         problems = verify_expected(case, outputs)
@@ -196,6 +213,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("cases", nargs="+", type=Path, help="case directories")
     parser.add_argument("--runner", choices=("container", "local", "model"), default="container")
     parser.add_argument("--image", default=os.environ.get("HEFESTO_GOLDEN_IMAGE", DEFAULT_IMAGE))
+    parser.add_argument("--gl-image", default=os.environ.get("HEFESTO_GOLDEN_GL_IMAGE", ""),
+                        help="image of the magic-gl variant (cases with [reference] image = \"magic-gl\")")
     parser.add_argument("--engine", default="docker", help="container engine (docker or podman)")
     parser.add_argument("--magic-src", type=Path, help="local Magic checkout for --runner local")
     mode = parser.add_mutually_exclusive_group()

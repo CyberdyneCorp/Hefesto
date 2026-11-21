@@ -389,6 +389,10 @@ HeadlessCanvas::~HeadlessCanvas() = default;
 CanvasRenderer& HeadlessCanvas::renderer() noexcept {
   return *impl_->renderer;
 }
+VulkanDevice HeadlessCanvas::vulkan_device() const noexcept {
+  return VulkanDevice{vk::to_opaque(impl_->instance), vk::to_opaque(impl_->physical), vk::to_opaque(impl_->device),
+                      vk::to_opaque(impl_->queue), impl_->family};
+}
 int HeadlessCanvas::width() const noexcept {
   return impl_->width;
 }

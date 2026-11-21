@@ -1,0 +1,8 @@
+magic
+tech v3d
+timestamp 0
+<< metal1 >>
+rect 0 0 100 50
+<< metal2 >>
+rect 20 10 60 40
+<< end >>
