@@ -135,8 +135,17 @@ rect 20 10 60 40
 DISPLAY_FILES = ("scmos/mos.OpenGL.dstyle", "scmos/mos.OpenGL.std.cmap", "graphics/color.glyphs")
 DISPLAY_EXTERNALS = [{"source": "magic-sys", "path": path, "to": path.rsplit("/", 1)[1]} for path in DISPLAY_FILES]
 
-PRELUDE = lines("tech load input/v3d -noprompt", "load c3d", "box 0 0 100 50")
-W3D = ".magic3d"  # the default toolkit path of the 3D window
+# The window is opened the way Magic's own wrapper does (magic::render3d, tcltk/wrapper.tcl): a mapped
+# toplevel and the explicit Tk path .render.magic. With the default path .magic3d (an unmapped
+# toplevel), the magic-gl captures crashed Magic at random (exit 139) in about half of the runs.
+PRELUDE = lines("tech load input/v3d -noprompt", "load c3d", "box 0 0 100 50", "toplevel .render",
+                "tkwait visibility .render")
+W3D = ".render.magic"  # the toolkit path of the 3D window
+
+
+def open3d(cell: str = "{}") -> str:
+    """specialopen wind3d into the wrapper's path; `{}` takes the cell from the box, as render3d does."""
+    return f"specialopen wind3d {cell} {W3D}"
 
 
 def w3d(*commands: str) -> str:
@@ -157,26 +166,25 @@ def case(cid: str, requirements: list[str], description: str, body: str) -> TclC
 def specs() -> list[TclCase]:
     return [
         case("MISC-3D-01", ["Render statement in the cifoutput section", "3D view commands"],
-             "render MET1 metal1 1.376 0.36 in the output style; specialopen wind3d; .magic3d render of MET1, "
+             "render MET1 metal1 1.376 0.36 in the output style; specialopen wind3d; render of MET1, "
              "of MET2 (no render statement) and of an unknown layer",
-             lines(p("specialopen wind3d"), w3d("render MET1", "render MET2", "render NOSUCH"))),
+             lines(p(open3d()), w3d("render MET1", "render MET2", "render NOSUCH"))),
         case("MISC-3D-02", ["Default view", "3D view commands"],
              "cell (0,0)-(100,50); view, scroll and zoom in mask-layer mode (as opened), after cif (layout-layer "
              "mode), after defaults, after cif back and after defaults in mask-layer mode",
-             lines(p("specialopen wind3d c3d"), camera(), w3d("cif"), camera(), w3d("defaults"), camera(),
+             lines(p(open3d("c3d")), camera(), w3d("cif"), camera(), w3d("defaults"), camera(),
                    w3d("cif"), camera(), w3d("defaults"), camera())),
         case("MISC-3D-03", ["3D view commands"],
              "view 0 10 0 rel twice; a bad fourth word; scroll 0.25 0 0 rel in both modes; zoom 0 1 and "
              "zoom -1 1 rejected",
-             lines(p("specialopen wind3d c3d"), w3d("view 0 10 0 rel", "view 0 10 0 rel", "view",
+             lines(p(open3d("c3d")), w3d("view 0 10 0 rel", "view 0 10 0 rel", "view",
                                                     "view 1 2 3 sideways", "view", "scroll 0.25 0 0 rel", "scroll",
                                                     "zoom 0 1", "zoom -1 1", "zoom", "cif", "scroll",
                                                     "scroll 0.25 0 0 rel", "scroll"))),
         case("MISC-3D-04", ["Opening the 3D window"],
              "specialopen wind3d nosuchcell with no 3D window; open c3d; a second specialopen wind3d, with and "
              "without a cell name; the open window still answers",
-             lines(p("specialopen wind3d nosuchcell", "specialopen wind3d c3d", "specialopen wind3d",
-                     "specialopen wind3d nosuchcell"), w3d("view", "level"))),
+             lines(p(open3d("nosuchcell"), open3d("c3d"), open3d(), open3d("nosuchcell")), w3d("view", "level"))),
     ]
 
 

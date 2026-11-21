@@ -70,12 +70,18 @@ class M10CaseSpecTest(unittest.TestCase):
         self.assertIn("    scalefactor 10 nanometers\n", m10_cases.V3D_TECH)
         self.assertIn("<< metal1 >>\nrect 0 0 100 50\n", m10_cases.C3D_MAG)
 
-    def test_window_commands_use_the_default_toolkit_path(self):
+    def test_window_is_opened_like_the_render3d_wrapper(self):
+        """A mapped toplevel and the explicit path .render.magic (the default .magic3d path crashed
+        Magic at random in the magic-gl captures)."""
         for spec in SPECS:
             with self.subTest(case=spec.id):
-                self.assertIn("probe {specialopen wind3d", spec.body)
+                self.assertIn("toplevel .render\ntkwait visibility .render\n", spec.body)
+                opens = [line for line in spec.body.splitlines() if line.startswith("probe {specialopen wind3d")]
+                self.assertTrue(opens)
+                for line in opens:
+                    self.assertTrue(line.endswith(" .render.magic}"), line)
                 for line in spec.body.splitlines():
-                    if line.startswith("probe {.") and not line.startswith("probe {.magic3d "):
+                    if line.startswith("probe {.") and not line.startswith("probe {.render.magic "):
                         self.fail(line)
 
 

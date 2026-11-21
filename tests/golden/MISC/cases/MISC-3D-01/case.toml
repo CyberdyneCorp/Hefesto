@@ -13,7 +13,7 @@ area = "MISC"
 capability = "view-3d"
 requirements = ["Render statement in the cifoutput section", "3D view commands"]
 tool = "magic"
-description = "render MET1 metal1 1.376 0.36 in the output style; specialopen wind3d; .magic3d render of MET1, of MET2 (no render statement) and of an unknown layer"
+description = "render MET1 metal1 1.376 0.36 in the output style; specialopen wind3d; render of MET1, of MET2 (no render statement) and of an unknown layer"
 
 [reference]
 script = "input/commands.tcl"

@@ -9,26 +9,28 @@ if {[catch {
 tech load input/v3d -noprompt
 load c3d
 box 0 0 100 50
-probe {specialopen wind3d c3d}
-probe {.magic3d view}
-probe {.magic3d scroll}
-probe {.magic3d zoom}
-probe {.magic3d cif}
-probe {.magic3d view}
-probe {.magic3d scroll}
-probe {.magic3d zoom}
-probe {.magic3d defaults}
-probe {.magic3d view}
-probe {.magic3d scroll}
-probe {.magic3d zoom}
-probe {.magic3d cif}
-probe {.magic3d view}
-probe {.magic3d scroll}
-probe {.magic3d zoom}
-probe {.magic3d defaults}
-probe {.magic3d view}
-probe {.magic3d scroll}
-probe {.magic3d zoom}
+toplevel .render
+tkwait visibility .render
+probe {specialopen wind3d c3d .render.magic}
+probe {.render.magic view}
+probe {.render.magic scroll}
+probe {.render.magic zoom}
+probe {.render.magic cif}
+probe {.render.magic view}
+probe {.render.magic scroll}
+probe {.render.magic zoom}
+probe {.render.magic defaults}
+probe {.render.magic view}
+probe {.render.magic scroll}
+probe {.render.magic zoom}
+probe {.render.magic cif}
+probe {.render.magic view}
+probe {.render.magic scroll}
+probe {.render.magic zoom}
+probe {.render.magic defaults}
+probe {.render.magic view}
+probe {.render.magic scroll}
+probe {.render.magic zoom}
 } scriptError]} {
     puts [list script-error $scriptError]
     flush stdout

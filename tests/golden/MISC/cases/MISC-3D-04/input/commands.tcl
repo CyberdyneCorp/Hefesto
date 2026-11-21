@@ -9,12 +9,14 @@ if {[catch {
 tech load input/v3d -noprompt
 load c3d
 box 0 0 100 50
-probe {specialopen wind3d nosuchcell}
-probe {specialopen wind3d c3d}
-probe {specialopen wind3d}
-probe {specialopen wind3d nosuchcell}
-probe {.magic3d view}
-probe {.magic3d level}
+toplevel .render
+tkwait visibility .render
+probe {specialopen wind3d nosuchcell .render.magic}
+probe {specialopen wind3d c3d .render.magic}
+probe {specialopen wind3d {} .render.magic}
+probe {specialopen wind3d nosuchcell .render.magic}
+probe {.render.magic view}
+probe {.render.magic level}
 } scriptError]} {
     puts [list script-error $scriptError]
     flush stdout
