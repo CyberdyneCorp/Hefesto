@@ -254,6 +254,74 @@ Hefesto SHALL run this in the embedded, sandboxed Tcl interpreter of capability 
 
 The set of procedures and variables SHALL be exactly the one that an inventory script finds in the three pinned PDK trees (every `tcleval(` value, every `[`-command and every `$::` variable). The inventory SHALL be kept as a test that fails when a PDK bump adds a procedure or variable that Hefesto does not provide. Each procedure's semantics SHALL be specified from the public xschem manual and from expected values computed for the PDK symbols, never from xschem's Tcl code (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"; Q-SCHEM-8, `Resolution: other`).
 
+**Where the inventoried names come from.** The names of `tests/data/schem/inventory.json` (`tcleval_commands`, `tcleval_variables`, `rc_commands`, `rc_variables`) fall into four groups, and only the first needs semantics here:
+1. Procedures that xschem provides, specified in the table below: `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `sim_is_ngspice`, `sim_is_xyce`, `tabulate`, `ngspice::get_node`, `ngspice::get_current`, `ngspice::get_voltage`, `abs_sym_path`, `textwindow`, `write_data`. `ngspice::get_current` and `ngspice::get_voltage` are not in the inventory: the sky130 example schematics call them in the `node` attribute of `ngspice_get_expr.sym` instances, which only the symbol's displayed text evaluates (the known gap of task 2.3 of `openspec/changes/m8-schematic`). `ev0` and `from_eng` are used by none of the pinned trees (the sky130 generator `sky130_tests/res.tcl` defines its own `from_eng`) and are provided because Q-SCHEM-8 names them.
+2. Procedures that the PDK defines in its own `xschemrc` or in the Tcl files it sources (the inventory's `pdk_procs`: for example `display_fet_params`, `sky130_display_fet_params`, `display_bip_params`, `cap_cmomi_C`, `symtype`, `hierarchy_config`). They SHALL run as the PDK wrote them, in the sandbox; their results follow from the procedures they call.
+3. Tcl and Tk built-in commands (`append`, `expr`, `foreach`, `format`, `if`, `return`, `set`, `subst`, `string`, `file`, `menu`, `toplevel`, ...), with Tcl 8.6 semantics as the sandbox of capability `hefesto-scripting` provides them. Tk commands in an `xschemrc` only build PDK menus and dialogs (capability `hefesto-scripting` decides how they are served; they never change a netlist).
+4. The `xschem` command, whose subcommands capability `schematic-command` specifies (Requirement "xschem compatibility command").
+
+The variables are set by the active PDK's `xschemrc`, read as data (Requirement "xschemrc as data"). Their expected values are in the table "Expected values of the inventoried variables".
+
+**Procedures that xschem provides**
+
+Numbers below are printed as Tcl `format` prints them (C `printf` conventions: `%.<N>g` gives at most N significant digits, drops trailing zeros and uses the exponent form `1e-06` when the exponent is below −4 or at least N). An expression is in Tcl `expr` syntax and is evaluated in the global scope.
+
+| Procedure | Behaviour | Source | Compatibility |
+|---|---|---|---|
+| `ev <arg> ...` | The arguments joined with single spaces are evaluated as an expression. On success the result is the value printed with `%.<N>g`; an integer result prints as the integer. If the expression has an error or does not evaluate, the result is the argument text unchanged. N is not documented publicly; it SHALL be pinned by capture (open item of task 4.3); every pinned PDK use gives the same text for any N from 4 to 7 (table "Expected values of the PDK uses"). | Manual, "XSCHEM TCL PROCEDURES": "evaluate 'expr'. if 'expr' has errors or does not evaluate return 'expr' as is" | behavioral |
+| `ev7 <arg> ...` | As `ev`, with N = 7. | Captured: SCHEM-NL-07 `dc_res_temp.spice` line `XR4 ... R=262.8473` (the IHP `ptap1` format, exact value 262.84733397704105) | exact |
+| `ev0 <arg> ...` | As `ev`, with the number format pinned by the same capture. No pinned PDK uses it. | Q-SCHEM-8 | informative until captured |
+| `to_eng <number>` | The number in engineering form with the SPICE scale suffixes (for example `131u` for `131e-6`). In the pinned PDKs every argument is a simulation result (operating-point annotation, Monte Carlo statistics, plots), so the exact digits, the suffix set and the result for an empty or non-numeric argument SHALL be pinned with the simulation-result captures of M9 (SCHEM-SIM-02, deferred). | Manual, "tutorial_ngspice_backannotation": "wrap the whole expression inside a [to_eng ... ] to have the value displayed in engineering form", "131u for 131e-6" | behavioral |
+| `from_eng <text>` | The inverse of `to_eng`: a number optionally followed by a scale suffix, read case-insensitively (`a` 1e-18, `f` 1e-15, `p` 1e-12, `n` 1e-9, `u` 1e-6, `m` 1e-3, `k` 1e3, `meg` 1e6, `g` 1e9, `t` 1e12; any other text after the number scales by 1), returns the plain number. | The Apache-2.0 definition of the same name in the pinned sky130 tree (`sky130_tests/res.tcl`); manual lists the name only | informative |
+| `sim_is_ngspice`, `sim_is_xyce` | 1 when the selected SPICE simulator is ngspice (respectively Xyce), otherwise 0; no arguments. Hefesto's simulator is the embedded ngspice (capability `schematic-simulation-integration`; changes to xschem's `sim(spice,...)` variables are ignored), so `sim_is_ngspice` SHALL return 1 and `sim_is_xyce` SHALL return 0. | Manual lists the names; the sky130 `test_multisim.sch` text: "Helper procedures sim_is_xyce and sim_is_ngspice" select per-simulator code | behavioral |
+| `tabulate <text> <separator>` | Lays out `text`, whose rows are separated by LF and whose columns by `separator`, as an aligned text table. The pinned PDKs call it only on simulation results (sky130 `test_customplot.sch`, after `xschem raw switch`), so its exact layout SHALL be pinned with the M9 captures; before results are loaded the enclosing text fails, which gives `?` LF (step 5 above). | sky130 `test_customplot.sch` | informative until captured |
+| `ngspice::get_node <expr>` | The value of the ngspice expression `expr` (a node voltage, `i(...)` current or device parameter such as `@m.xm1.msky130_fd_pr__nfet_01v8[gm]`) at the loaded operating point, as a plain number. | Manual, "@spice_get_node": the same lookup as the `@spice_get_node` token | behavioral |
+| `ngspice::get_current <name>` | The current of the voltage source or device `name` at the loaded operating point. | sky130 `n_diffamp.sch`, `test_analog.sch` | behavioral |
+| `ngspice::get_voltage <net>` | The voltage of net `net` at the loaded operating point. | sky130 `n_diffamp.sch` | behavioral |
+| `abs_sym_path <ref>` | The absolute path of the file that symbol reference `ref` resolves to (Requirement "Symbol references"). | Manual, "XSCHEM TCL PROCEDURES": "given a symbol reference 'sym' return its absolute path" | exact |
+| `textwindow <text>`, `write_data <text> <file>` | Used only by PDK menu procedures. `textwindow` shows `text` in a read-only text window; `write_data` writes `text` to `file`, inside the sandbox's granted folders only (capability `hefesto-scripting`). | Manual lists the names | informative |
+
+The three `ngspice::` procedures read simulation results, which are M9's (capability `schematic-simulation-integration`, Requirement "Operating-point annotation"). Before results are loaded they SHALL return the empty string, as the `@spice_get_*` tokens show nothing; SCHEM-SIM-02 (deferred to M9) pins this against xschem.
+
+**Expected values of the PDK uses**
+
+Every inventoried use of an xschem procedure in a `tcleval(` value, with the template defaults of its symbol (instance attributes, when an example schematic sets them, change only the inputs). Uses whose inputs are simulation results have no value in M8 and are listed with their M8 result.
+
+| PDK | Where | Use | Inputs | Expected text |
+|---|---|---|---|---|
+| ihp | `sg13g2_pr/ptap1.sym`, `ntap1.sym` `format` | `R=[ev7 { 1.0 / ( 1.0 / ( 9.8e-10 / ( @w * @l ) ) + 1.0 / ( 9.8e-4 / ( 2.0 * ( @w + @l ) ) ) )}]` | w=0.78e-6 l=0.78e-6 | `R=262.8473` (captured, SCHEM-NL-07) |
+| ihp | `ptap1.sym`, `ntap1.sym` `lvs_format` | `A=[ev7 { @w * @l } ] P=[ev7 { 2 * ( @w + @l ) } ]` | w=0.78e-6 l=0.78e-6 | `A=6.084e-13 P=3.12e-06` |
+| ihp | `sg13g2_pr/pnpMPA.sym` `format` and `lvs_format` | `a=[ev7 { @w * @l }] p=[ev7 { ( @w + @l ) * 2 }] m=[ev { @m }]` | w=0.7e-6 l=2.0e-6 m=1 | `a=1.4e-12 p=5.4e-06 m=1` |
+| ihp | `sg13g2_pr/schottky_nbl1.sym` `lvs_format` | `m=[ev { @Nx * @Ny } ]` | Nx=1 Ny=1 | `m=1` |
+| ihp | `sg13g2_pr/npn13G2v.sym`, `npn13G2v_5t.sym`, `npn13G2l.sym` `lvs_format` | `le=[ev { @El * 1.0e-6 } ]` | El=1.0 | `le=1e-06` |
+| ihp | `sg13g2_pr/npn13G2l_5t.sym` `lvs_format` | `le=[ev { @El * 1.0e-6 } ]` | El=2.5 | `le=2.5e-06` |
+| ihp | `sg13g2_pr/cap_cmim.sym` displayed text | `C=[ev {@m * (@w * @l * 1.5e-3 + 2*( @w + @l ) * 40e-12)}]` | m=1 w=7.0e-6 l=7.0e-6 | `C=7.462e-14` |
+| ihp | `sg13g2_pr/cap_rfcmim.sym` displayed text | as `cap_cmim.sym` | m=1 w=10.0e-6 l=10.0e-6 | `C=1.516e-13` |
+| ihp | `sg13g2_pr/cap_cmomf.sym` displayed text | `C=[ev {@m * ( ((@mmin == 1) ? 0.372 : 0.305) + max(0, @mmax - @mmin ) * 0.305 ) * ( @l * 1e6 ) * ( @w * 1e6 ) * 1e-15}]` | m=1 w=5e-6 l=5e-6 mmin=1 mmax=5 | `C=3.98e-14` |
+| ihp | `sg13g2_pr/cap_cmomi.sym` displayed text | `C=[cap_cmomi_C @m @l @w @mmin @mmax @feed ]` (PDK procedure, `sg13g2_pr/cap_cmomi.tcl`) | m=1 l=5e-6 w=5e-6 mmin=1 mmax=5 feed=double | `C=2.616e-14` |
+| ihp | `libs.ref/sg13g2_stdcell/sym/xschem/*.sym` `type` and `schematic` | `tcleval([symtype])`, `tcleval([hierarchy_config @symname])` (PDK procedures) | `stdcell_sym_type` and `stdcell_view` as set by the `xschemrc`; cell `sg13g2_inv_1` | `subcircuit`; `<R>/ihp-sg13g2/libs.ref/sg13g2_stdcell/sch/xschem/sg13g2_inv_1.sch` |
+| sky130 | `sky130_tests/test_multisim.sch`, `test_inv.sch` code blocks | `[if [sim_is_ngspice] {return {...}}]`, `[if [sim_is_xyce] {...}]` | embedded ngspice | the ngspice block is emitted, the Xyce block is not |
+| sky130 | `simulator_commands.sym`, `simulator_commands_shown.sym` instances (system library) | `sim_is_<simulator>` | simulator=ngspice | LF LF value LF; simulator=xyce gives LF |
+| sky130 | `sky130_tests/test_customplot.sch` displayed text | `tabulate`, `to_eng`, `xschem raw ...` | no results loaded | `?` LF |
+| sky130 | `sky130_tests/n_diffamp.sch`, `test_analog.sch` `ngspice_get_expr.sym` instances | `[ngspice::get_current v3]`, `[to_eng [ngspice::get_current {...}] * [ngspice::get_voltage s] ]W` | no results loaded | M9 (SCHEM-SIM-02) |
+| gf180mcu | `gf180mcu_fd_pr/*fet*.sym` displayed texts | `gm=[to_eng [ngspice::get_node [subst -nocommand {...}]]]`, `id=...` | no results loaded | M9 (SCHEM-SIM-02) |
+| gf180mcu, ihp, sky130 | `annotate_fet_params.sym`, `annotate_bip_params.sym` displayed texts | PDK procedures (group 2) that call `xschem raw value` and `to_eng` | no results loaded | M9 (SCHEM-SIM-02) |
+
+**Expected values of the inventoried variables**
+
+With the PDK store root `<R>` (capability `hefesto-files-and-pdks`) passed as `PDK_ROOT` and no `PDK` override (golden captures use `<R>` = `/pdk`):
+
+| PDK | Variable | Expected value | Used by |
+|---|---|---|---|
+| sky130 | `SKYWATER_MODELS` | `<R>/sky130A/libs.tech/combined` | `sky130_fd_pr/corner.sym` (`tcleval(.lib $::SKYWATER_MODELS/sky130.lib.spice @corner )`, scenario "sky130 corner include"), example code blocks |
+| sky130 | `SKYWATER_STDCELLS` | `<R>/sky130A/libs.ref/sky130_fd_sc_hd/spice` | `sky130_tests/LACG.sch` and other code blocks |
+| ihp | `PDK_ROOT` | `<R>` | the PDK's `hierarchy_config` procedure |
+| ihp | `PDK` | `ihp-sg13g2` | as above |
+| ihp | `MODELS_NGSPICE`, `SG13G2_MODELS` | `<R>/ihp-sg13g2/libs.tech/ngspice/models` | testbench code blocks (`.lib $::MODELS_NGSPICE/cornerRES.lib ...`) |
+| ihp | `MODELS_XYCE`, `SG13G2_MODELS_XYCE` | `<R>/ihp-sg13g2/libs.tech/xyce/models` | Xyce testbenches, `start_page.sch` |
+| ihp | `stdcell_view` | `subcircuit` | the PDK's `hierarchy_config` procedure |
+| ihp | `stdcell_sym_type` | `subcircuit` | the PDK's `symtype` procedure (standard-cell `type=tcleval([symtype])`) |
+
 Compatibility: behavioral
 
 (xschem ref: token.c:59-81, xschem.tcl:7224-7298, xschem.tcl:677-698)
@@ -267,6 +335,16 @@ Compatibility: behavioral
 - **GIVEN** an IHP resistor format containing `A=[ev7 \{ @w * @l \} ]` inside `tcleval(...)`, with w=2e-6 and l=5e-6
 - **WHEN** it is netlisted
 - **THEN** the area SHALL be printed as `A=1e-11`, which is Tcl `format %.7g` of the product
+
+#### Scenario: IHP ptap1 resistance
+- **GIVEN** IHP `sg13g2_tests/dc_res_temp.sch` with the IHP `xschemrc`, whose `ptap1` instance `R4` has w=0.78e-6 l=0.78e-6
+- **WHEN** it is netlisted
+- **THEN** the element line SHALL be `XR4 GND sub! ptap1 R=262.8473 w=0.78e-6 l=0.78e-6` (golden case SCHEM-NL-07)
+
+#### Scenario: Simulator selection in a code block
+- **GIVEN** a `code_shown.sym` instance with `format="tcleval( @value )"` and value `[if [sim_is_xyce] {return {X}} else {return {N}}]`
+- **WHEN** it is netlisted
+- **THEN** the text SHALL contain `N`, because the embedded simulator is ngspice
 
 ### Requirement: Script execution permission
 xschem guards `tcleval` and `tclcommand` with a user setting whose values are `ask`, true or false. Hefesto SHALL instead run `tcleval` attribute values always, inside the sandbox of capability `hefesto-scripting`, because the sandbox removes process execution, sockets and file access outside granted folders. Launcher `tclcommand` scripts SHALL run only after the user confirms them once per document, and SHALL run in the same sandbox. The xschem `xschem_execute_scripts` variable in an `xschemrc` SHALL be read and ignored, and the log SHALL say that it was ignored. This permission model SHALL be signed off by a security review against capability `hefesto-security` (Requirement "Schematic script permission model") before M8 exits (Q-SCHEM-25, `Resolution: platform`).
@@ -368,28 +446,274 @@ Compatibility: behavioral
 ### Requirement: System library
 Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference: the list SHALL be generated by an inventory script over the pinned Apache-2.0 PDK trees and kept as a test that fails when a PDK bump references a symbol that the library lacks (Q-SCHEM-10, `Resolution: other`).
 
-Clean-room provenance (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"): the interface of each symbol (file name, pin names, pin order, pin positions and the netlisting properties) has no public source other than xschem's GPL `devices/*.sym` files. It SHALL be extracted from them by the spec side only and recorded as a table in this spec, of which the table below is the part written so far; implementers SHALL take it from this spec, and SHALL draw the graphics independently. The table is covered by the one counsel review that `hefesto-licensing` requires before Desktop 1.0.
+Clean-room provenance (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"): the interface of each symbol (file name, pin names, pin order, pin positions and the netlisting properties) has no public source other than xschem's GPL `devices/*.sym` files. It SHALL be extracted from them by the spec side only and recorded in the four interface tables below; implementers SHALL take it from this spec, and SHALL draw the graphics independently. The tables are covered by the one counsel review that `hefesto-licensing` requires before Desktop 1.0.
 
-Netlisting-relevant properties of the core symbols SHALL be:
+The interface tables SHALL be read as follows:
+- **Rows.** The tables hold one symbol for every entry of the `devices` lists of `tests/data/schem/inventory.json` (the inventory of design D18 of `openspec/changes/m8-schematic`), and `netlist_options.sym`, which no PDK references but golden case SCHEM-NL-17 places (Q-SCHEM-31, proposed). Column "Referenced by" names the PDKs whose inventory lists the symbol.
+- **Values.** Every value in the property and note tables is written as a JSON string literal (RFC 8259: `\n` is LF, `\"` a quote, `\\` a backslash, ``` a backtick, `|` a vertical bar). A property value is the **decoded value** of that key (capability `schematic-file-format`, Requirement "Property strings"): the value a lookup returns, after the brace-string escapes of the `K` record are resolved and with the unescaped quotes and backslashes of the property string removed. A library file SHALL hold each listed key with a text whose decoded value is exactly the listed value, and SHALL hold no other key that changes SPICE netlisting or display.
+- **Keys not listed.** Keys that only other netlisters or tools read are not part of the interface and are left out: `spectre_format`, `spectre_device_model`, `verilog_format`, `vhdl_format`, `tedax_format`, `verilog_ignore`, `vhdl_ignore`, `tedax_ignore`, `function0`, `function1` (SPICE is the only M8 netlister, Q-SCHEM-4). A library file MAY hold them.
+- **Pins.** Pins are listed in pin order: index 0 is the first `B` record on layer 5 of the file, and `@pinlist` and `@#<n>:` tokens follow this order. No listed symbol sets `sim_pinnumber`. "Box" is the pin rectangle `x1 y1 x2 y2` in symbol coordinates (y down, Requirement "Coordinate system" of capability `schematic-file-format`), corners sorted. "Other pin properties" lists the pin's attributes besides `name` and `dir`, in file order, or `-` when there are none. Two pins of `short.sym` share the name `A`.
+- **Bounding box.** `x1 y1 x2 y2` of the symbol's lines, rectangles (pins included), polygon points and arcs (the swept part of each arc only), texts excluded. It is informative: Hefesto's graphics SHOULD keep within it so that placement and selection match xschem; it does not change netlists.
+- **Notes.** A note states behaviour that a property value alone does not show. Where a note replaces a property value (the `format` of `simulator_commands.sym` and `simulator_commands_shown.sym`), the library file SHALL hold a value with the behaviour the note states, and the property table does not list that key.
 
-| Symbol | type | format | template |
-|---|---|---|---|
-| `ipin.sym` | `ipin` | `*.ipin @lab` | `name=p1 lab=xxx` |
-| `opin.sym` | `opin` | `*.opin @lab` | `name=p1 lab=xxx` |
-| `iopin.sym` | `iopin` | `*.iopin @lab` | `name=p1 lab=xxx` |
-| `lab_pin.sym`, `lab_wire.sym` | `label` | `*.alias @lab` | `name=p1 sig_type=std_logic lab=xxx` |
-| `gnd.sym` | `label`, `global=ground` | `*.alias @lab` | `name=l1 lab=0` |
-| `vdd.sym` | `label`, `global=true` | `*.alias @lab` | `name=l1 lab=VDD` |
-| `code.sym`, `code_shown.sym` | `netlist_commands` | LF `@value` LF | `name=s1 only_toplevel=false value=blabla` |
-| `res.sym` | `resistor` | `@name @pinlist @value m=@m` | `name=R1 value=1k ... m=1` |
-| `capa.sym` | `capacitor` | `@name @pinlist @value m=@m` | `name=C1 m=1 value=1p ...` |
-| `vsource.sym` | `vsource` | `@name @pinlist @value@savecurrent` | `name=V1 value=3 savecurrent=false` |
-| `ammeter.sym` | `ammeter` | `@name @pinlist 0 @savecurrent` | `name=Vmeas savecurrent=true spice_ignore=0` |
-| `spice_probe.sym` | `probe` | `.save @attrs v( @@p )` | `name=p1 attrs=""` |
-| `noconn.sym` | `noconn` | `* noconn @#0:net_name` | `name=l1` |
-| `launcher.sym` | `launcher`, `spice_ignore=true` | `** @descr : @url` | `name=h1 descr=... url=...` |
-| `title.sym` | `logo`, `spice_ignore=true` | none | `name=l1 author="..."` |
-| `netlist_options.sym` | `netlist_options` | none | `bus_replacement_char="[]" lvs_netlist=false spiceprefix=true hiersep=.` |
+**Interface table: symbols**
+
+| Symbol | Referenced by | Bounding box |
+|---|---|---|
+| `ammeter.sym` | gf180mcu ihp sky130 | `-7.5 -32.5 7.5 32.5` |
+| `architecture.sym` | sky130 | `0 -10 355 -10` |
+| `bsource.sym` | sky130 | `-20 -32.5 15 32.5` |
+| `bus_tap.sym` | sky130 | `-0.625 -10.625 10.625 0.625` |
+| `capa-2.sym` | ihp | `-10 -32.5 10 32.5` |
+| `capa.sym` | ihp sky130 | `-10 -32.5 10 32.5` |
+| `cccs.sym` | sky130 | `-20 -32.5 20 32.5` |
+| `code.sym` | sky130 | `10 0 110 110` |
+| `code_shown.sym` | gf180mcu ihp sky130 | `0 -10 70 10` |
+| `gnd.sym` | gf180mcu ihp sky130 | `-5 -2.5 5 17.5` |
+| `ind.sym` | ihp sky130 | `-7.5 -32.5 10 32.5` |
+| `intuitive_interface_cheatsheet.sym` | ihp sky130 | `-260 -60 280 30` |
+| `iopin.sym` | sky130 | `-1.25 -5 17.5 5` |
+| `ipin.sym` | sky130 | `-17.5 -5 1.25 5` |
+| `isource.sym` | ihp sky130 | `-15 -32.5 15 32.5` |
+| `lab_pin.sym` | gf180mcu ihp sky130 | `-1.25 -1.25 1.25 1.25` |
+| `lab_show.sym` | sky130 | `-20 -10 1.25 1.25` |
+| `lab_wire.sym` | ihp sky130 | `-1.25 -1.25 1.25 1.25` |
+| `launcher.sym` | gf180mcu ihp sky130 | `-60 -12.5 0 12.5` |
+| `netlist_options.sym` | - | `0 -10 355 -10` |
+| `ngspice_get_expr.sym` | sky130 | `-1.875 -1.875 1.875 1.875` |
+| `ngspice_get_value.sym` | sky130 | `-1.875 -1.875 1.875 1.875` |
+| `ngspice_probe.sym` | sky130 | `-0.46875 -5 5 0.46875` |
+| `njfet.sym` | sky130 | `-22.5 -32.5 22.5 32.5` |
+| `noconn.sym` | ihp sky130 | `-3.75 -1.25 1.25 1.25` |
+| `opin.sym` | sky130 | `-1.25 -5 17.5 5` |
+| `parax_cap.sym` | ihp sky130 | `-5 -12.5 5 15` |
+| `pjfet.sym` | sky130 | `-22.5 -32.5 22.5 32.5` |
+| `res.sym` | gf180mcu ihp sky130 | `-7.5 -32.5 7.5 32.5` |
+| `short.sym` | sky130 | `-2.5 -32.5 2.5 32.5` |
+| `simulator_commands.sym` | sky130 | `10 0 110 110` |
+| `simulator_commands_shown.sym` | ihp sky130 | `0 -10 70 10` |
+| `spice_probe.sym` | sky130 | `-0.46875 -27.5 28.75 0.46875` |
+| `spice_probe_vdiff.sym` | sky130 | `-2.5 -21.25 2.5 21.25` |
+| `sqwsource.sym` | sky130 | `-15 -32.5 15 32.5` |
+| `switch_ngspice.sym` | sky130 | `-42.5 -32.5 2.5 32.5` |
+| `title-3.sym` | ihp | `0 -1770 2500 30` |
+| `title.sym` | gf180mcu ihp sky130 | `-160 -30 1020 30` |
+| `vcvs.sym` | sky130 | `-42.5 -32.5 20 32.5` |
+| `vdd.sym` | gf180mcu sky130 | `-10 -20 10 2.5` |
+| `verilog_preprocessor.sym` | sky130 | `0 -10 70 10` |
+| `vsource.sym` | gf180mcu ihp sky130 | `-15 -32.5 15 32.5` |
+| `vsource_arith.sym` | sky130 | `-20 -32.5 15 32.5` |
+
+**Interface table: properties**
+
+| Symbol | Key | Value |
+|---|---|---|
+| `ammeter.sym` | `type` | `"ammeter"` |
+| `ammeter.sym` | `format` | `"@name @pinlist 0 @savecurrent"` |
+| `ammeter.sym` | `template` | `"name=Vmeas savecurrent=true spice_ignore=0"` |
+| `architecture.sym` | `type` | `"architecture"` |
+| `architecture.sym` | `spice_ignore` | `"true"` |
+| `architecture.sym` | `template` | `"name=a1 code=ARCHITECTURE"` |
+| `bsource.sym` | `type` | `"source"` |
+| `bsource.sym` | `format` | `"@name @pinlist @VAR = @FUNC m=@m"` |
+| `bsource.sym` | `template` | `"name=B1 VAR=I FUNC=\"'pwl(V(plus,minus),0,0, 1,10m, 2, 100m)'\" m=1"` |
+| `bus_tap.sym` | `type` | `"bus_tap"` |
+| `bus_tap.sym` | `template` | `"name=l1 lab=[0]"` |
+| `bus_tap.sym` | `format` | `"* tap: @#1:net_name --> @#0:net_name"` |
+| `capa-2.sym` | `type` | `"polarized_capacitor"` |
+| `capa-2.sym` | `format` | `"@name @pinlist @value m=@m"` |
+| `capa-2.sym` | `template` | `"name=C1\nm=1\nvalue=1p\nfootprint=1206\ndevice=polarized_capacitor"` |
+| `capa.sym` | `type` | `"capacitor"` |
+| `capa.sym` | `format` | `"@name @pinlist @value m=@m"` |
+| `capa.sym` | `template` | `"name=C1\nm=1\nvalue=1p\nfootprint=1206\ndevice=\"ceramic capacitor\""` |
+| `cccs.sym` | `type` | `"cccs"` |
+| `cccs.sym` | `format` | `"@name @pinlist @vnam @value"` |
+| `cccs.sym` | `template` | `"name=F1 vnam=v1 value=1"` |
+| `code.sym` | `type` | `"netlist_commands"` |
+| `code.sym` | `template` | `"name=s1 only_toplevel=false value=blabla"` |
+| `code.sym` | `format` | `"\n@value\n"` |
+| `code_shown.sym` | `type` | `"netlist_commands"` |
+| `code_shown.sym` | `template` | `"name=s1 only_toplevel=false value=blabla"` |
+| `code_shown.sym` | `format` | `"\n@value\n"` |
+| `gnd.sym` | `type` | `"label"` |
+| `gnd.sym` | `global` | `"ground"` |
+| `gnd.sym` | `format` | `"*.alias @lab"` |
+| `gnd.sym` | `template` | `"name=l1 lab=0"` |
+| `ind.sym` | `type` | `"inductor"` |
+| `ind.sym` | `format` | `"@name @pinlist @value m=@m"` |
+| `ind.sym` | `template` | `"name=L1\nm=1\nvalue=1n\nfootprint=1206\ndevice=inductor"` |
+| `intuitive_interface_cheatsheet.sym` | `type` | `"subcircuit"` |
+| `intuitive_interface_cheatsheet.sym` | `format` | `"@name @pinlist @symname"` |
+| `intuitive_interface_cheatsheet.sym` | `template` | `"name=x1"` |
+| `iopin.sym` | `type` | `"iopin"` |
+| `iopin.sym` | `format` | `"*.iopin @lab"` |
+| `iopin.sym` | `template` | `"name=p1 lab=xxx"` |
+| `ipin.sym` | `type` | `"ipin"` |
+| `ipin.sym` | `format` | `"*.ipin @lab"` |
+| `ipin.sym` | `template` | `"name=p1 lab=xxx"` |
+| `isource.sym` | `type` | `"isource"` |
+| `isource.sym` | `format` | `"@name @pinlist @value"` |
+| `isource.sym` | `template` | `"name=I0 value=1m"` |
+| `lab_pin.sym` | `type` | `"label"` |
+| `lab_pin.sym` | `format` | `"*.alias @lab"` |
+| `lab_pin.sym` | `template` | `"name=p1 sig_type=std_logic lab=xxx"` |
+| `lab_show.sym` | `type` | `"show_label"` |
+| `lab_show.sym` | `template` | `"name=l1"` |
+| `lab_show.sym` | `highlight` | `"true"` |
+| `lab_wire.sym` | `type` | `"label"` |
+| `lab_wire.sym` | `format` | `"*.alias @lab"` |
+| `lab_wire.sym` | `template` | `"name=p1 sig_type=std_logic lab=xxx"` |
+| `launcher.sym` | `type` | `"launcher"` |
+| `launcher.sym` | `format` | `"** @descr : @url"` |
+| `launcher.sym` | `spice_ignore` | `"true"` |
+| `launcher.sym` | `template` | `"name=h1\ndescr=google \nurl=www.google.com"` |
+| `netlist_options.sym` | `type` | `"netlist_options"` |
+| `netlist_options.sym` | `template` | `"\nbus_replacement_char=[]\nlvs_netlist=false\nspiceprefix=true\nhiersep=.\n"` |
+| `ngspice_get_expr.sym` | `type` | `"probe"` |
+| `ngspice_get_expr.sym` | `spice_ignore` | `"false"` |
+| `ngspice_get_expr.sym` | `template` | `"name=r1 node=xxx\ndescr=\"I=\""` |
+| `ngspice_get_value.sym` | `type` | `"probe"` |
+| `ngspice_get_value.sym` | `spice_ignore` | `"false"` |
+| `ngspice_get_value.sym` | `template` | `"name=r1 node=xxx\ndescr=\"I=\""` |
+| `ngspice_probe.sym` | `type` | `"probe"` |
+| `ngspice_probe.sym` | `spice_ignore` | `"false"` |
+| `ngspice_probe.sym` | `template` | `"name=r1"` |
+| `njfet.sym` | `type` | `"njfet"` |
+| `njfet.sym` | `format` | `"@spiceprefix@name @pinlist @model area=@area @extra m=@m"` |
+| `njfet.sym` | `template` | `"name=J1 model=njfet area=1 m=1"` |
+| `noconn.sym` | `type` | `"noconn"` |
+| `noconn.sym` | `format` | `"* noconn @#0:net_name"` |
+| `noconn.sym` | `template` | `"name=l1"` |
+| `opin.sym` | `type` | `"opin"` |
+| `opin.sym` | `format` | `"*.opin @lab"` |
+| `opin.sym` | `template` | `"name=p1 lab=xxx"` |
+| `parax_cap.sym` | `type` | `"parax_cap"` |
+| `parax_cap.sym` | `format` | `"@name @pinlist @gnd @value m=@m"` |
+| `parax_cap.sym` | `template` | `"name=C1 gnd=0 value=4f m=1"` |
+| `pjfet.sym` | `type` | `"pjfet"` |
+| `pjfet.sym` | `format` | `"@spiceprefix@name @pinlist @model area=@area @extra m=@m"` |
+| `pjfet.sym` | `template` | `"name=J1 model=pjfet area=1 m=1"` |
+| `res.sym` | `type` | `"resistor"` |
+| `res.sym` | `format` | `"@name @pinlist @value m=@m"` |
+| `res.sym` | `template` | `"name=R1\nvalue=1k\nfootprint=1206\ndevice=resistor\nm=1"` |
+| `short.sym` | `type` | `"short"` |
+| `short.sym` | `template` | `"name=x1 value=0.1"` |
+| `short.sym` | `format` | `"* short @name : @#0:net_name <--> @#1:net_name"` |
+| `short.sym` | `highlight` | `"true"` |
+| `simulator_commands.sym` | `type` | `"netlist_commands"` |
+| `simulator_commands.sym` | `template` | `"name=COMMANDS\nsimulator=ngspice\nonly_toplevel=false \nvalue=\"\n* ngspice commands\n\""` |
+| `simulator_commands_shown.sym` | `type` | `"netlist_commands"` |
+| `simulator_commands_shown.sym` | `template` | `"name=COMMANDS\nsimulator=ngspice\nonly_toplevel=false \nvalue=\"\n* ngspice commands\n\""` |
+| `spice_probe.sym` | `type` | `"probe"` |
+| `spice_probe.sym` | `spice_ignore` | `"false"` |
+| `spice_probe.sym` | `format` | `".save @attrs v( @@p )"` |
+| `spice_probe.sym` | `template` | `"name=p1 attrs=\"\""` |
+| `spice_probe_vdiff.sym` | `type` | `"probe"` |
+| `spice_probe_vdiff.sym` | `format` | `".save v(@@p\\) v(@@m\\)"` |
+| `spice_probe_vdiff.sym` | `template` | `"name=p1"` |
+| `sqwsource.sym` | `type` | `"vsource"` |
+| `sqwsource.sym` | `format` | `"@name @pinlist \\\npulse 0 @vhi \\\n'0.495/ @freq ' \\\n'0.01/@freq ' \\\n'0.01/@freq ' \\\n'0.49/@freq ' \\\n'1/@freq '"` |
+| `sqwsource.sym` | `template` | `"name=V1 vhi=3 freq=1e6"` |
+| `switch_ngspice.sym` | `type` | `"switch"` |
+| `switch_ngspice.sym` | `format` | `"@name @@P @@M @@CP @@CM @model"` |
+| `switch_ngspice.sym` | `template` | `"name=S1 model=SW1\ndevice_model=\".MODEL SW1 SW \n+ VT=0.9 VH=0.01\n+ RON=0.01 ROFF=10G \""` |
+| `title-3.sym` | `type` | `"logo"` |
+| `title-3.sym` | `template` | `"name=l1 author=\"Stefan Schippers\" rev=1.0 lock=false"` |
+| `title-3.sym` | `spice_ignore` | `"true"` |
+| `title.sym` | `type` | `"logo"` |
+| `title.sym` | `template` | `"name=l1 author=\"Stefan Schippers\""` |
+| `title.sym` | `spice_ignore` | `"true"` |
+| `vcvs.sym` | `type` | `"vcvs"` |
+| `vcvs.sym` | `format` | `"@name @pinlist @value"` |
+| `vcvs.sym` | `template` | `"name=E1 value=3"` |
+| `vdd.sym` | `type` | `"label"` |
+| `vdd.sym` | `global` | `"true"` |
+| `vdd.sym` | `format` | `"*.alias @lab"` |
+| `vdd.sym` | `template` | `"name=l1 lab=VDD"` |
+| `verilog_preprocessor.sym` | `type` | `"verilog_preprocessor"` |
+| `verilog_preprocessor.sym` | `spice_ignore` | `"true"` |
+| `verilog_preprocessor.sym` | `template` | `"name=s1  string=\"`include \\\"file\\\"\""` |
+| `vsource.sym` | `type` | `"vsource"` |
+| `vsource.sym` | `format` | `"@name @pinlist @value@savecurrent"` |
+| `vsource.sym` | `template` | `"name=V1 value=3 savecurrent=false"` |
+| `vsource_arith.sym` | `type` | `"vsource"` |
+| `vsource_arith.sym` | `format` | `"@name @pinlist VOL=' @VOL '"` |
+| `vsource_arith.sym` | `template` | `"name=E1 VOL=cos(V(IN))"` |
+
+**Interface table: pins**
+
+| Symbol | Pin | Name | dir | Box | Other pin properties |
+|---|---|---|---|---|---|
+| `ammeter.sym` | 0 | `plus` | `inout` | `-2.5 -32.5 2.5 -27.5` | `propag=1` |
+| `ammeter.sym` | 1 | `minus` | `inout` | `-2.5 27.5 2.5 32.5` | `propag=0` |
+| `bsource.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `bsource.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `bus_tap.sym` | 0 | `tap` | `inout` | `9.375 -10.625 10.625 -9.375` | - |
+| `bus_tap.sym` | 1 | `bus` | `inout` | `-0.625 -0.625 0.625 0.625` | - |
+| `capa-2.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | `propag=1 pinnumber=1` |
+| `capa-2.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | `propag=0 pinnumber=2` |
+| `capa.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | `pinnumber=1` |
+| `capa.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | `pinnumber=2` |
+| `cccs.sym` | 0 | `p` | `in` | `-2.5 -32.5 2.5 -27.5` | - |
+| `cccs.sym` | 1 | `m` | `in` | `-2.5 27.5 2.5 32.5` | - |
+| `gnd.sym` | 0 | `p` | `inout` | `-2.5 -2.5 2.5 2.5` | `goto=0` |
+| `ind.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | `propag=1 pinnumber=1` |
+| `ind.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | `propag=0 pinnumber=2` |
+| `iopin.sym` | 0 | `p` | `inout` | `-1.25 -1.25 1.25 1.25` | - |
+| `ipin.sym` | 0 | `p` | `out` | `-1.25 -1.25 1.25 1.25` | - |
+| `isource.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `isource.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `lab_pin.sym` | 0 | `p` | `in` | `-1.25 -1.25 1.25 1.25` | - |
+| `lab_show.sym` | 0 | `p` | `none` | `-1.25 -1.25 1.25 1.25` | - |
+| `lab_wire.sym` | 0 | `p` | `in` | `-1.25 -1.25 1.25 1.25` | - |
+| `ngspice_probe.sym` | 0 | `p` | `xxx` | `-0.46875 -0.46875 0.46875 0.46875` | - |
+| `njfet.sym` | 0 | `d` | `inout` | `17.5 -32.5 22.5 -27.5` | - |
+| `njfet.sym` | 1 | `g` | `in` | `-22.5 -2.5 -17.5 2.5` | - |
+| `njfet.sym` | 2 | `s` | `inout` | `17.5 27.5 22.5 32.5` | - |
+| `noconn.sym` | 0 | `p` | `inout` | `-1.25 -1.25 1.25 1.25` | - |
+| `opin.sym` | 0 | `p` | `in` | `-1.25 -1.25 1.25 1.25` | - |
+| `parax_cap.sym` | 0 | `p` | `in` | `-2.5 -12.5 2.5 -7.5` | - |
+| `pjfet.sym` | 0 | `s` | `inout` | `17.5 27.5 22.5 32.5` | - |
+| `pjfet.sym` | 1 | `g` | `in` | `-22.5 -2.5 -17.5 2.5` | - |
+| `pjfet.sym` | 2 | `d` | `inout` | `17.5 -32.5 22.5 -27.5` | - |
+| `res.sym` | 0 | `P` | `inout` | `-2.5 -32.5 2.5 -27.5` | `propag=1 pinnumber=1 goto=1` |
+| `res.sym` | 1 | `M` | `inout` | `-2.5 27.5 2.5 32.5` | `propag=0 pinnumber=2 goto=0` |
+| `short.sym` | 0 | `A` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `short.sym` | 1 | `A` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `spice_probe.sym` | 0 | `p` | `xxx` | `-0.46875 -0.46875 0.46875 0.46875` | - |
+| `spice_probe_vdiff.sym` | 0 | `p` | `in` | `-1.25 -21.25 1.25 -18.75` | - |
+| `spice_probe_vdiff.sym` | 1 | `m` | `in` | `-1.25 18.75 1.25 21.25` | - |
+| `sqwsource.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `sqwsource.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `switch_ngspice.sym` | 0 | `CP` | `in` | `-42.5 -2.5 -37.5 2.5` | - |
+| `switch_ngspice.sym` | 1 | `P` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `switch_ngspice.sym` | 2 | `M` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `switch_ngspice.sym` | 3 | `CM` | `in` | `-42.5 17.5 -37.5 22.5` | - |
+| `vcvs.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `vcvs.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `vcvs.sym` | 2 | `cp` | `in` | `-42.5 -22.5 -37.5 -17.5` | - |
+| `vcvs.sym` | 3 | `cm` | `in` | `-42.5 17.5 -37.5 22.5` | - |
+| `vdd.sym` | 0 | `p` | `inout` | `-2.5 -2.5 2.5 2.5` | `verilog_type=wire goto=0` |
+| `vsource.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `vsource.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+| `vsource_arith.sym` | 0 | `p` | `inout` | `-2.5 -32.5 2.5 -27.5` | - |
+| `vsource_arith.sym` | 1 | `m` | `inout` | `-2.5 27.5 2.5 32.5` | - |
+
+Symbols with no row in the pin table have no pins: `architecture.sym`, `code.sym`, `code_shown.sym`, `intuitive_interface_cheatsheet.sym`, `launcher.sym`, `netlist_options.sym`, `ngspice_get_expr.sym`, `ngspice_get_value.sym`, `simulator_commands.sym`, `simulator_commands_shown.sym`, `title-3.sym`, `title.sym`, `verilog_preprocessor.sym`.
+
+**Interface table: notes**
+
+| Symbol | Note |
+|---|---|
+| `simulator_commands.sym` | `"format: a tcleval value (Requirement \"tcleval values\") whose netlist text is LF, LF, the instance's value, LF when the Tcl command sim_is_<simulator> (simulator: the instance's simulator attribute) runs without error and returns true, and a single LF when it returns false or fails. The value is placed in a Tcl braced word, so its braces must balance and a backslash-LF in it becomes one space."` |
+| `simulator_commands_shown.sym` | `"format: as simulator_commands.sym. The symbol also shows the instance's value as text."` |
+| `code_shown.sym` | `"Shows the instance's value as text; code.sym does not."` |
+| `ngspice_get_expr.sym` | `"Shows the instance's descr, LF, and the result of the instance's node evaluated as a tcleval value (the PDKs put [ngspice::get_current ...] or [to_eng ...] expressions in node). Emits nothing in netlists (no format)."` |
+| `ngspice_get_value.sym` | `"Shows @spice_get_node with the instance's node, and the instance's descr (capability schematic-simulation-integration). Emits nothing in netlists (no format)."` |
+| `ngspice_probe.sym` | `"Shows @spice_get_voltage of the net at its pin. Emits nothing in netlists (no format)."` |
+| `lab_show.sym` | `"Shows the name of the net at its pin (@#0:net_name). Emits nothing in netlists (no format)."` |
+| `intuitive_interface_cheatsheet.sym` | `"A help panel whose content is text (graphics, not described); it has no pins and no schematic."` |
+| `netlist_options.sym` | `"Not in the inventory: golden case SCHEM-NL-17 places it (Q-SCHEM-31, proposed). Its keys are applied as Requirement \"Netlist options\" of capability schematic-netlisting says."` |
 
 Compatibility: behavioral
 
