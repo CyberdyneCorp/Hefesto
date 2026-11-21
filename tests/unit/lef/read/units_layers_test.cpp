@@ -118,8 +118,8 @@ TEST_CASE("a key with no record resolves to nothing in a LefReadLayer lookup wit
     r.layers.reserve("poly");
     r.layer("poly", lef::LayerLookup::normal, lef::LayerSource::read_layer);
     CHECK((r.state.type == std::nullopt) == on);
-    CHECK((r.texts() == Strings{"Don't know how to parse layer \"poly\"",
-                                "Try adding this name to the LEF techfile section"}) == on);
+    CHECK((r.texts() == Strings{"LEF read, Line 0 (Error): Don't know how to parse layer \"poly\"",
+                                "LEF read, Line 0 (Error): Try adding this name to the LEF techfile section"}) == on);
     // PORT and OBS geometry: treated as absent in both modes (Q-LEFDEF-4).
     r.layer("poly", lef::LayerLookup::obstruction);
     CHECK(r.state.type == type_of("poly"));
