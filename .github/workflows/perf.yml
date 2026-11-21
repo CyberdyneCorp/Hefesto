@@ -201,15 +201,21 @@ jobs:
                 gds=true ;;
             esac
             # m6-lef-def-oasis task 16.2; the benches also load bench/drc/drc_bench.py (and the OASIS one
-            # bench/gds/gds_bench.py and the shared gate in bench/lefdef/).
+            # bench/gds/gds_bench.py and the shared gate in bench/lefdef/). Also the code the benchmarked commands
+            # run through: cell/ (the window load after def read, Q-LEFDEF-141), db/, tech/ and gds/stream/
+            # (file opening, gzip); OASIS read and write go through gds/{read,write,stream}/ (design D12).
             case "$path" in
               src/core/include/hefesto/lef/*|src/core/src/lef/*|src/core/include/hefesto/def/*|src/core/src/def/*|\
-              bench/lefdef/*|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
+              src/core/include/hefesto/cell/*|src/core/src/cell/*|src/core/include/hefesto/db/*|src/core/src/db/*|\
+              src/core/include/hefesto/tech/*|src/core/src/tech/*|src/core/include/hefesto/gds/stream/*|\
+              src/core/src/gds/stream/*|bench/lefdef/*|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
                 lefdef=true ;;
             esac
             case "$path" in
-              src/core/include/hefesto/oasis/*|src/core/src/oasis/*|bench/oasis/*|bench/lefdef/baseline_gate.py|\
-              bench/gds/gds_bench.py|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
+              src/core/include/hefesto/oasis/*|src/core/src/oasis/*|src/core/include/hefesto/gds/read/*|\
+              src/core/src/gds/read/*|src/core/include/hefesto/gds/write/*|src/core/src/gds/write/*|\
+              src/core/include/hefesto/gds/stream/*|src/core/src/gds/stream/*|bench/oasis/*|\
+              bench/lefdef/baseline_gate.py|bench/gds/gds_bench.py|bench/drc/drc_bench.py|scripts/fetch_pdk.py)
                 oasis=true ;;
             esac
             case "$path" in

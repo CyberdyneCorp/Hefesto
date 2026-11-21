@@ -792,7 +792,7 @@ With `-anal`, before the rule's own layers, write `\n     + LAYER <canon> WIDTH 
 
 Magic dereferences cleared table slots here (Q-LEFDEF-100). Hefesto SHALL skip cleared slots.
 
-A rule entry that names no LEF layer or via record (a LEF- or DEF-read rule whose layer was unknown) makes Magic dereference a null record, in the entry lines and under `-anal`. Hefesto SHALL write the entry's name as read, take it as matching no route layer under `-anal`, and report a Hefesto-only warning.
+A rule entry that names no LEF layer or via record (a LEF- or DEF-read rule whose layer was unknown) makes Magic dereference a null record, in the entry lines and under `-anal`. Hefesto SHALL write the entry's name as read, take it as matching no route layer under `-anal`, and report a Hefesto-only warning. Such an entry is reached only with `magic-compat` ON, since with it OFF the rules of LEF/DEF reads are not written (Q-LEFDEF-99).
 
 Compatibility: exact
 

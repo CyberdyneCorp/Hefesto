@@ -169,6 +169,8 @@ const LayerRecord* LayerTable::find(std::string_view lef_name) const {
   return entry != nullptr && entry->value ? &records_[*entry->value] : nullptr;
 }
 
+bool LayerTable::has_key(std::string_view lef_name) const { return names_.find(std::string{lef_name}) != nullptr; }
+
 LayerRecord* LayerTable::find_mutable(std::string_view lef_name) {
   auto* entry = names_.find(std::string{lef_name});
   return entry != nullptr && entry->value ? &records_[*entry->value] : nullptr;

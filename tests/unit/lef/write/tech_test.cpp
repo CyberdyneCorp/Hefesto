@@ -87,6 +87,34 @@ TEST_CASE("a via record of a LEF read is a LAYER block only with magic-compat ON
   }
 }
 
+// Regression: only layer-table records were written, so a via a LEF or DEF
+// read made (a via-table record whose key has no layer record) never gave
+// a LAYER block, although in Magic it is a LefInfo record like any other
+// and is written with magic-compat ON (Q-LEFDEF-127; found with
+// MASK-OS-016's first input, tests/unit/lef/read/magic_crash_test.cpp).
+TEST_CASE("a via of a LEF read with no layer record is a LAYER block only with magic-compat ON",
+          "[cap:lef-write][req:Technology layers]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Session s(on);
+    ViaDefinition via;
+    via.type = s.type("m2c");
+    via.area = db::Rect{-10, -10, 10, 10};
+    via.canonical_name = "VX1";
+    s.editor.lefdef.layers.note_key("VX1");
+    (void)s.editor.lefdef.vias.insert("VX1", via);
+    ViaDefinition untyped;  // no geometry read: Magic's type -1, skipped
+    untyped.canonical_name = "VX2";
+    s.editor.lefdef.layers.note_key("VX2");
+    (void)s.editor.lefdef.vias.insert("VX2", untyped);
+    const std::string text = tech_output(s);
+    // CUT AREA is 4x the area in half units (Q-LEFDEF-32): 20 * 20 * oscale^2.
+    CHECK((text.find("LAYER VX1\n  TYPE CUT ;\n  CUT AREA ") != std::string::npos) == on);
+    CHECK((text.find("END VX1\n\n") != std::string::npos) == on);
+    CHECK(text.find("LAYER VX2") == std::string::npos);
+  }
+}
+
 TEST_CASE("without -tech no LAYER block is written", "[cap:lef-write][req:Technology layers]") {
   Session s;
   db::CellDef& inv = s.cell("inv");

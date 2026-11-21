@@ -57,6 +57,10 @@ class SessionLayers final : public LayerAccess {
   /// (LayerTable::note_key; a name already there is unchanged).
   void reserve(std::string_view name) override;
 
+  /// A key of the layer table's shared key order with no layer and no via
+  /// record.
+  [[nodiscard]] bool keyed_without_entry(std::string_view name) const override;
+
  private:
   LayerTable& layers_;
   const ViaTable& vias_;

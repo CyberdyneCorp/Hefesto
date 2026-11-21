@@ -1050,6 +1050,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: replicate | compat (replicate ON; skip the session's via records OFF)
 - Recommendation: compat.
 - Resolution: compat — with `magic-compat` ON the via records of LEF/DEF reads are written, as in Magic; with it OFF a record whose LEF name is a via of the session's via table is skipped. Approved 2026-11-19.
+- Round-5 review fix: the writer enumerated only the layer records, so with `magic-compat` ON a via of a LEF or DEF read (held in the via table, its key in the shared key order with no layer record) was never written. It now is, at its key's place (`lef/write/header.cpp`). Regression tests "a via of a LEF read with no layer record is a LAYER block only with magic-compat ON" (`tests/unit/lef/write/tech_test.cpp`) and MASK-OS-016's first input (`tests/unit/lef/read/magic_crash_test.cpp`).
 
 ### Q-LEFDEF-128: `lef write` retry of a typed file name
 - Kind: quirk
@@ -1087,9 +1088,9 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Recommendation: replicate: the value is defined (the union holds an int), and a non-positive one is already replaced by the Q-LEFDEF-1 fix.
 - Resolution: replicate — in both modes a via record's default route width is its contact area's lower-left x; a non-positive value takes the DRC default width (Q-LEFDEF-1). Approved 2026-11-19.
 
-### Q-LEFDEF-132: gzip-compressed DEF files
+### Q-LEFDEF-132: gzip-compressed DEF and LEF files
 - Kind: platform
-- Status: approved (implemented by the M6 round-3 DEFR workstream, approved 2026-11-19)
+- Status: approved (implemented by the M6 round-3 DEFR workstream, approved 2026-11-19); the extension to `lef read` approved 2026-11-20 (user decision E2)
 - Magic behavior: `def read` opens the file with PaOpen and reads a gzip file's compressed bytes as DEF text.
 - Evidence: lef/defRead.c:2519, lef/lefWrite.c:150-235 (lefFileOpen, PaOpen)
 - Options: replicate | fix (decompress)
@@ -1168,12 +1169,12 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:3143, 3166 (rule entries), 1434-1515 (via residue names), 778 and 2626 (node layer)
 - Options: fix
 - Recommendation: fix in both modes (X-2 tier 1).
-- Resolution: fix — in both modes the rule entry is written by name, the via record has no route layer name, and the node's geometry is not searched, each with the Hefesto-only DEF-WRITE-012 warning. Approved 2026-11-20. Spec: def-write "NONDEFAULTRULES section", "Route record assembly", "Net geometry discovery".
+- Resolution: fix — the rule entry is written by name with magic-compat ON, the only mode in which `def write` writes the rules of LEF/DEF reads (Q-LEFDEF-99: with it OFF such a rule is not written, so the entry is never reached); in both modes the via record has no route layer name and the node's geometry is not searched. Each fix prints the Hefesto-only DEF-WRITE-012 warning where it applies (the rule entry's only with ON). Approved 2026-11-20. Spec: def-write "NONDEFAULTRULES section", "Route record assembly", "Net geometry discovery".
 
 ### Q-LEFDEF-141: A DEF read's progress estimate ends the NULL driver's display suspension
 - Kind: quirk
 - Status: implemented under the standing rule in the round-5 integration (no user decision yet; reported for confirmation)
-- Magic behavior: LefEstimate sets GrDisplayStatus to DISPLAY_IN_PROGRESS on its first call (an item of a section with a declared count above 0) and to DISPLAY_IDLE on the last item, overwriting the DISPLAY_SUSPEND the NULL driver set, and nothing sets it back. DefRead's DBWloadWindow, and every later window load, then deletes an untouched "(UNNAMED)" root, which batch Magic otherwise keeps. Found with lefdef-bench: after `def read` of the generated block Magic lists 440 cells and Hefesto 441, the extra one "(UNNAMED)" (perf run 44868150477).
+- Magic behavior: LefEstimate sets GrDisplayStatus to DISPLAY_IN_PROGRESS on its first call (an item of a section with a declared count other than 0, negative counts included: it returns early only for `!total`) and to DISPLAY_IDLE on the last item, overwriting the DISPLAY_SUSPEND the NULL driver set, and nothing sets it back. DefRead's DBWloadWindow, and every later window load, then deletes an untouched "(UNNAMED)" root, which batch Magic otherwise keeps. Found with lefdef-bench: after `def read` of the generated block Magic lists 440 cells and Hefesto 441, the extra one "(UNNAMED)" (perf run 44868150477).
 - Evidence: lef/lefRead.c:87-131 (LefEstimate), lef/defRead.c:1124, 1566, 1829, 1958, 2240 (callers), graphics/grNull.c:380, dbwind/DBWprocs.c:321-331, 608-617
 - Options: replicate | compat (replicate ON; keep "(UNNAMED)" in a batch session OFF) | fix
 - Recommendation: compat (the standing rule).
@@ -1187,3 +1188,13 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: cap (refuse the cut array above a bound) | no cap
 - Recommendation: cap at 1,000,000 cuts in both modes, the bound of the DEF read ROWCOL cap (Q-LEFDEF-117).
 - Resolution: fix — in both modes a VIAS record whose cut array has nx and ny positive and nx · ny above 1,000,000 gets no cut array: `Via "<via>": cut array of <nx> x <ny> gives more than 1000000 cuts; one cut the size of the via area is written.` (LEF-VIA-012, error) is printed and the record gets the single cut rectangle Magic writes when the style has no cut operator (def-write "VIAS section content" step 3). The out-of-range conversions saturate and the count, position and extent arithmetic is done in 64 bits, in both modes. Approved 2026-11-20 (E3); the fallback rectangle is the implementation's choice (numbered 150 to stay clear of the E2 rows recorded by the other round-5 workstreams).
+
+### Q-LEFDEF-151: A LefReadLayer lookup of a table key with no record
+- Kind: quirk
+- Status: implemented under the standing rule in the round-5 review (no user decision yet; reported for confirmation)
+- Magic behavior: LefInfo keeps names with no record (a name a LEF or DEF NONDEFAULTRULE looked up, a generated via `def write` removed). LefReadLayers finds such a key with HashLookOnly and does not fall back to the magic type names (lefRead.c:715-756). Called with result pointers (MACRO PORT and OBS geometry) it then dereferences the missing record and crashes (Q-LEFDEF-4: fixed by treating the key as absent). Called through LefReadLayer, with no result pointers (LEF VIA and LAYER section geometry, lefRead.c:2900; DEF geometry, defRead.c:1630, 1846, 2020, 2045-2047), it does not crash: the layer resolves to no type, the two "Don't know how to parse layer" errors are printed, and the geometry is dropped.
+- Evidence: lef/lefRead.c:697-756, 784-789, 2900; lef/defRead.c:1630, 1846, 2020, 2045-2047
+- Hefesto (before): every lookup treated such a key as absent and took the magic type, so the geometry was painted.
+- Options: replicate | compat (replicate ON; treat as absent OFF, as Q-LEFDEF-4)
+- Recommendation: compat (the standing rule).
+- Resolution: compat — with `magic-compat` ON a LefReadLayer lookup (`lef::LayerSource::read_layer`: LEF VIA and LAYER section geometry, DEF geometry) of a key with no layer or via record resolves to no type, with the unknown-layer errors; with it OFF the key is treated as absent and the magic-name fallback applies. PORT and OBS geometry keep Q-LEFDEF-4's fix in both modes. Spec: lef-read "LEF layer name resolution". Regression tests "a key with no record resolves to nothing in a LefReadLayer lookup with magic-compat ON" (`tests/unit/lef/read/units_layers_test.cpp`), "a VIA LAYER that names a rule's unknown layer gets no type with magic-compat ON" (`nondefault_rule_test.cpp`), "a BLOCKAGES layer named by an unknown rule layer gets no type with magic-compat ON" (`tests/unit/def/read/rules_test.cpp`). Not covered: a LEF `LAYER` section for such a key with none of TYPE, WIDTH, SPACING, PITCH, DIRECTION or a RECT is read and discarded by Magic (lefRead.c:3138-3146 with a null record); Hefesto creates the layer (Q-LEFDEF-4); every other such section crashes Magic. DEF route legs keep their own handling (`def::Reader::named_without_record`, via-table keys only).

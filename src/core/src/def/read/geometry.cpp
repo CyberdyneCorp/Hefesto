@@ -61,6 +61,9 @@ class TableLayers final : public lef::LayerAccess {
   void add_route(std::string_view /*name*/, tech::TileType /*type*/) override {}
   void update_route(std::string_view /*name*/, const lef::RouteUpdate& /*update*/) override {}
   void reserve(std::string_view /*name*/) override {}
+  [[nodiscard]] bool keyed_without_entry(std::string_view name) const override {
+    return reader_.keyed_without_record(name);
+  }
 
  private:
   static lef::LayerEntry from_record(const lef::LayerRecord& record) {
@@ -242,8 +245,10 @@ void Reader::progress() const {
   }
 }
 
+// LefEstimate returns only for a count of 0 (`if (!total) return;`), so a
+// negative declared count ends the display suspension too (Q-LEFDEF-141).
 void Reader::estimate(std::int32_t total) {
-  estimated_ = estimated_ || total > 0;
+  estimated_ = estimated_ || total != 0;
   progress();
 }
 
@@ -345,8 +350,10 @@ std::optional<tech::TileType> Reader::read_layer(bool obstruction) {
   const TableLayers layers{*this};
   lef::LayerState state;
   const lef::LayerContext layer_context{layers, context_.tech, context_.compat, lef_messages_};
+  // LefReadLayer: a key with no record resolves to nothing with
+  // magic-compat ON (Q-LEFDEF-151).
   lef::resolve_layer(*token, obstruction ? lef::LayerLookup::obstruction : lef::LayerLookup::normal, state,
-                     layer_context);
+                     layer_context, lef::LayerSource::read_layer);
   return state.type;
 }
 
@@ -356,6 +363,10 @@ LefEntry Reader::lookup(std::string_view name) const {
     return LefEntry{nullptr, via->value ? &*via->value : nullptr};
   }
   return LefEntry{context_.layers.find(name), nullptr};
+}
+
+bool Reader::keyed_without_record(std::string_view name) const {
+  return lookup(name).empty() && (named_without_record(name) || context_.layers.has_key(name));
 }
 
 bool Reader::named_without_record(std::string_view name) const {

@@ -217,6 +217,9 @@ class Reader {
   [[nodiscard]] LefEntry lookup(std::string_view name) const;
   /// HashLookOnly found the name with no record (a released via name).
   [[nodiscard]] bool named_without_record(std::string_view name) const;
+  /// A key of Magic's LefInfo (the layer table's key order or the via
+  /// table) with no layer or via record.
+  [[nodiscard]] bool keyed_without_record(std::string_view name) const;
   /// LefHelper_DBTechNameType_LefLower: the magic type named by `name` in
   /// lower case.
   [[nodiscard]] std::optional<tech::TileType> lower_type(std::string_view name) const;

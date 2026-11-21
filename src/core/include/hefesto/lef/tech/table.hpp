@@ -129,6 +129,10 @@ class LayerTable {
   [[nodiscard]] const LayerRecord* find(std::string_view lef_name) const;
   /// The same, writable (for the LEF and DEF readers).
   [[nodiscard]] LayerRecord* find_mutable(std::string_view lef_name);
+  /// HashLookOnly(&LefInfo, name) != NULL: `lef_name` is a key of the shared
+  /// key order, with or without a record (a released name, a noted via or
+  /// rule name included).
+  [[nodiscard]] bool has_key(std::string_view lef_name) const;
 
   /// Binds `lef_name` to a new record, whose canonical name defaults to
   /// `lef_name`; a name already bound moves to the new record. For the

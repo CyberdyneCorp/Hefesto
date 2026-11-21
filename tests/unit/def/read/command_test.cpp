@@ -134,6 +134,24 @@ TEST_CASE("a counted DEF section makes the design load delete an untouched (UNNA
   CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
 }
 
+// Regression: only a positive declared count set the display status, but
+// LefEstimate returns early only for a count of 0 and the count is a plain
+// %d scan, so `NETS -1 ;` ends the NULL driver's suspension too (Q-LEFDEF-141).
+TEST_CASE("a negative DEF section count makes the design load delete an untouched (UNNAMED) with magic-compat ON",
+          "[cap:def-read][req:Command context]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Session s(on);
+    auto unnamed = s.editor.cells.create("(UNNAMED)", s.editor.technology->plane_count());
+    REQUIRE(unnamed);
+    REQUIRE(s.editor.windows.open(unnamed.value(), hefesto::view::ScreenRect{0, 0, 499, 499}).ok());
+    s.file("/d/top.def", "DESIGN top ;\nNETS -1 ;\n- n1 + ROUTED met1 ( 0 0 ) ( 100 0 ) ;\nEND NETS\nEND DESIGN\n");
+    REQUIRE(s.run("defr read /d/top").ok());
+    CHECK((s.editor.cells.find("(UNNAMED)") == nullptr) == on);
+    CHECK(s.editor.display_status_active == on);
+  }
+}
+
 // Regression: the design was loaded through the `load` command's argument
 // parser, so a design name starting with `-` was taken as a `load` option
 // (`-nowindow` loaded nothing into the window). Magic calls DBWloadWindow

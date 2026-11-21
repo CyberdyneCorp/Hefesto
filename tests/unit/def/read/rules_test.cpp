@@ -89,6 +89,23 @@ TEST_CASE("an unknown rule layer is reported and not added (Q-LEFDEF-75)",
   }
 }
 
+// Regression: a geometry LAYER that names the key an unknown rule layer
+// left (no record) fell back to the magic type. Magic's LefReadLayer finds
+// the key in LefInfo, gets no record and resolves no type, so the blockage
+// is not painted (Q-LEFDEF-151, compat: OFF treats the key as absent).
+TEST_CASE("a BLOCKAGES layer named by an unknown rule layer gets no type with magic-compat ON",
+          "[cap:lef-read][req:LEF layer name resolution]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s{compat};
+    REQUIRE(s.read(rules("- R + LAYER poly WIDTH 10 ;") + "BLOCKAGES 1 ;\n- LAYER poly RECT ( 0 0 ) ( 500 500 ) ;\n"
+                                                           "END BLOCKAGES\nEND DESIGN\n")
+                .ok());
+    CHECK(s.said("Don't know how to parse layer \"poly\"") == compat);
+    CHECK(s.painted("top", "poly").empty() == compat);
+  }
+}
+
 TEST_CASE("a rule read again replaces the earlier one", "[cap:def-read][req:NONDEFAULTRULES section]") {
   Session s;
   REQUIRE(s.read(rules("- W + LAYER met1 WIDTH 280 ;\n- W + LAYER met2 WIDTH 300 ;", 2) + "END DESIGN\n").ok());

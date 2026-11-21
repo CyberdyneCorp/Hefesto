@@ -350,9 +350,11 @@ void Encoder::Impl::xelement(std::vector<std::byte>& out, const Element& e) {
 }
 
 /// XGEOMETRY is written in full form: layer, datatype, x, y and a repetition
-/// are always explicit, never left to the modal variables (E4, OASIS-062:
-/// gdstk 1.0.2 skips XGEOMETRY without honouring modal omission and
-/// crashes). The modal state is still updated, as the decoder updates it.
+/// are always explicit, never left to the modal variables (E4, Q-OASIS-50;
+/// the form matches OASIS-062's vendor file). It does not by itself make
+/// gdstk 1.0.2 read the file: gdstk stops at the first XGEOMETRY and never
+/// reads END, so cells named through the CELLNAME table keep no name. The
+/// modal state is still updated, as the decoder updates it.
 void Encoder::Impl::xgeometry(std::vector<std::byte>& out, const Element& e) {
   modal.layer.reset();
   modal.datatype.reset();

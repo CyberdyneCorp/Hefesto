@@ -12,6 +12,11 @@
 //          annotate the cells the first read created)
 //   bit 4  the input is read a second time without -annotate (duplicate
 //          macros, via and rule redefinition)
+//   bit 5  the first `lef write` has -tech (the technology section, with
+//          the via records the reads made, Q-LEFDEF-127)
+// After the reads, `lef write` and `def write` of the cells no other cell
+// uses (at most two) run into memory: the writers' caps (Q-LEFDEF-150) and
+// crash fixes (Q-LEFDEF-140) are fuzzed with the reads' tables.
 // The rest is the LEF text, read with `lef read` semantics into a scratch
 // session with the fixed technology tests/fuzz/data/lefdef_fuzz.tech.
 //
@@ -37,6 +42,7 @@ constexpr std::uint8_t kGzip = 0x02;
 constexpr std::uint8_t kFixedFirst = 0x04;
 constexpr std::uint8_t kAnnotateAgain = 0x08;
 constexpr std::uint8_t kReadAgain = 0x10;
+constexpr std::uint8_t kTechWrite = 0x20;
 constexpr const char* kInputPath = "/in.lef";
 
 }  // namespace
@@ -57,5 +63,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   if ((mode & kReadAgain) != 0) {
     session.read_lef(kInputPath, false);
   }
+  session.write_lef((mode & kTechWrite) != 0);
+  session.write_def(false);
   return 0;
 }

@@ -15,6 +15,10 @@
 //          duplicate components)
 //   bit 6  the fixed LEF library is not read first (no macros, vias or
 //          rules: every COMPONENTS master and via is unknown)
+//   bit 7  `def write -anal -allspecial` and `lef write -tech`
+// After the reads, `def write` and `lef write` of the cells no other cell
+// uses (at most two) run into memory, so the writers' caps (Q-LEFDEF-150)
+// and crash fixes (Q-LEFDEF-140) are fuzzed with the reads' tables.
 // The rest is the DEF text, read after the fixed library
 // tests/fuzz/data/lefdef_fuzz.lef into a scratch session with the fixed
 // technology tests/fuzz/data/lefdef_fuzz.tech.
@@ -43,6 +47,7 @@ constexpr std::uint8_t kNoBlockage = 0x08;
 constexpr std::uint8_t kAnnotateAgain = 0x10;
 constexpr std::uint8_t kReadAgain = 0x20;
 constexpr std::uint8_t kNoLibrary = 0x40;
+constexpr std::uint8_t kWriteAll = 0x80;
 constexpr const char* kInputPath = "/in.def";
 
 }  // namespace
@@ -68,5 +73,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   if ((mode & kReadAgain) != 0) {
     session.read_def(kInputPath, options);
   }
+  session.write_def((mode & kWriteAll) != 0);
+  session.write_lef((mode & kWriteAll) != 0);
   return 0;
 }

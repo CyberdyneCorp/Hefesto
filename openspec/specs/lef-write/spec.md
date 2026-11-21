@@ -536,7 +536,7 @@ Under `-tech`, the system SHALL write one LAYER block for each layer record of t
 
 - records with no magic type (obstruction-only and `ignore` records);
 - records of class bound;
-- via records that hold a fixed via geometry cell (vias created by LEF/DEF reading). Magic never sets that cell, so it writes those via records too; Hefesto skips a record whose LEF name is a via of the session's via table only with `magic-compat` OFF (Q-LEFDEF-127, resolution: compat).
+- via records that hold a fixed via geometry cell (vias created by LEF/DEF reading). Magic never sets that cell, so it writes those via records too; Hefesto skips a record whose LEF name is a via of the session's via table only with `magic-compat` OFF (Q-LEFDEF-127, resolution: compat). A via of a LEF or DEF read is in Magic a record of the same table, so with `magic-compat` ON a key of the layer table's key order that has no layer record but names a via of the session's via table is written too, at its place in that order, as a record of the via's class with its normal type (none: skipped) and its contact area as the cut; a DEF write's temporary via (reference count 0) is not.
 
 The remaining records SHALL be written as follows:
 

@@ -236,7 +236,7 @@ Compatibility: native
 - the TEXT string (C = 0 when the modal `text-string` is the same string);
 - the repetition: when an element's repetition equals the modal `repetition` (same type and parameters), repetition type 0 is written.
 
-XGEOMETRY records (re-encoded vendor content only) are the exception: they SHALL be written in full form, with layer, datatype, x and y always explicit and a repetition never written as type 0, whatever the modal state (Q-OASIS-50, resolution: fix; gdstk 1.0.2 skips an XGEOMETRY without honouring modal omission and crashes on the omitted form). The modal variables are still updated, so the records that follow are encoded as before.
+XGEOMETRY records (re-encoded vendor content only) are the exception: they SHALL be written in full form, with layer, datatype, x and y always explicit and a repetition never written as type 0, whatever the modal state (Q-OASIS-50, resolution: fix; the form matches the vendor file's). The full form does not make gdstk 1.0.2 read the file: its `read_oas` stops at the first unsupported record, which an XGEOMETRY is, so it never reads the END record and the cells named through the CELLNAME table keep no name (oasis-validate run 44860998162; open for the user). The modal variables are still updated, so the records that follow are encoded as before.
 
 PROPERTY records SHALL always be written in full: C = 1, N = 1 in strict mode, V = 0, and an explicit value count. They never rely on modal property state.
 

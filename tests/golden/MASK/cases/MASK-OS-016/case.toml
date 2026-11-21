@@ -7,7 +7,8 @@
 # Magic and hefesto-cli both run input/commands.tcl (authoring/tclcase.py).
 # MASK case (m5-mask-gds-cif design D18): fresh session, drc off, gds datestamp 0.
 # Authored in M6 (m6-lef-def-oasis task 15.4) by m6_cases.py: the contact cut size is observable through LEF.
-# Round 5: the LEF VIA is VX1; named V1, as the tech section's cut alias, it made Magic redefine the shared cut record with uninitialised fields (LefRedefined) and exit with SIGSEGV.
+# Round 5: the LEF VIA is VX1; named V1, as the tech section's cut alias, it made Magic redefine the shared cut record (LefRedefined) and Magic exited with SIGSEGV. VX1 still crashes Magic (golden-capture run 44860968058), so the redefinition is not shown to be the cause.
+# The round-4 input (VIA V1) is kept in tests/golden/MASK/magic-crash/MASK-OS-016/ for Hefesto-only tests (tests/unit/lef/read/magic_crash_test.cpp).
 
 schema = 1
 id = "MASK-OS-016"

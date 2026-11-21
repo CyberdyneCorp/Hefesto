@@ -63,6 +63,10 @@ std::optional<LayerEntry> SessionLayers::find(std::string_view name) const {
   return std::nullopt;
 }
 
+bool SessionLayers::keyed_without_entry(std::string_view name) const {
+  return layers_.has_key(name) && !find(name);
+}
+
 void SessionLayers::add_route(std::string_view name, tech::TileType type) {
   const db::Coord width = rules_ != nullptr ? drc::default_width(*rules_, tech_, type) : 0;
   const db::Coord spacing = rules_ != nullptr ? drc::default_spacing(*rules_, tech_, type, type) : 0;
