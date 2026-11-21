@@ -383,6 +383,22 @@ TEST_CASE("global nets: bits, ground 0 and first-seen order", "[cap:schematic-ne
   CHECK(n.globals == Names{"VDD[1]", "VDD[0]", "VSS"});
 }
 
+// Regression (fuzz_schem_bus timeout, CI run 44871606049): a global label
+// with a wide bus searched the global list once per bit, O(n^2); 92032 bits
+// took over 10 s. First-seen order and de-duplication are unchanged.
+TEST_CASE("global nets: a wide global bus is collected in linear time", "[cap:schematic-netlisting][req:Global nets]") {
+  schem::SchematicNets s;
+  auto wide = label("l1", {0, 0}, "G[199999:0]");
+  wide.global = true;
+  auto again = label("l2", {100, 0}, "G[5]");
+  again.global = true;
+  s.instances = {wide, again};
+  const auto n = schem::name_nets(s);
+  REQUIRE(n.globals.size() == 200000);
+  CHECK(n.globals.front() == "G[199999]");
+  CHECK(n.globals.back() == "G[0]");
+}
+
 TEST_CASE("connectivity: orientation transform of pin points", "[cap:schematic-netlisting][req:Connection geometry]") {
   CHECK(schem::transform_point({100, 200}, 1, 0, {-20, 0}) == Point{100, 180});
   CHECK(schem::transform_point({100, 200}, 0, 1, {-20, 0}) == Point{120, 200});

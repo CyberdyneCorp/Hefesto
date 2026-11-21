@@ -22,6 +22,7 @@
 #include <cmath>
 #include <numeric>
 #include <set>
+#include <unordered_set>
 #include <utility>
 
 #include "hefesto/schem/net/bus.hpp"
@@ -436,11 +437,12 @@ class Namer {
     }
   }
 
-  static void add_globals(const std::string& net, NetNaming& out) {
+  // First-seen order; the set keeps a wide global bus linear, not quadratic.
+  void add_globals(const std::string& net, NetNaming& out) {
     const std::string_view name = is_automatic(net) ? std::string_view{net}.substr(1) : std::string_view{net};
-    for (const std::string& bit : expand_bus(name)) {
-      if (bit != "0" && std::find(out.globals.begin(), out.globals.end(), bit) == out.globals.end()) {
-        out.globals.push_back(bit);
+    for (std::string& bit : expand_bus(name)) {
+      if (bit != "0" && globals_seen_.insert(bit).second) {
+        out.globals.push_back(std::move(bit));
       }
     }
   }
@@ -451,6 +453,7 @@ class Namer {
   std::map<std::size_t, std::vector<Tap>> taps_by_bus_;
   std::map<std::size_t, Component> components_;
   std::set<std::string> in_use_;
+  std::unordered_set<std::string> globals_seen_;
   std::vector<NetShort> shorts_;
   unsigned long long automatic_ = 0;
 };
