@@ -1062,8 +1062,11 @@ struct Viewport::Callbacks {
 Viewport::Viewport(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
 
 // The owner destroys the window first (Window::destroy), which stops the
-// draw callback; the widget handle is then already gone.
-Viewport::~Viewport() = default;
+// draw callback; the widget handle is then already gone. Rtexture_destroy
+// returns once Raven no longer samples a texture-mode image.
+Viewport::~Viewport() {
+  if (texture_ != kNoWidget) Rtexture_destroy(texture_);
+}
 
 std::unique_ptr<Viewport> Viewport::create() {
   std::unique_ptr<Viewport> vp(new Viewport(Rwidget_create(R_WIDGET_VIEWPORT)));
@@ -1095,6 +1098,29 @@ void Viewport::set_realtime(bool realtime) {
 
 void Viewport::invalidate() {
   Rwidget_invalidate(id_);
+}
+
+void Viewport::show_vulkan_image(std::uint64_t image_view, int width, int height) {
+  if (image_view == 0) {
+    Rviewport_set_texture(id_, kNoWidget);
+    if (texture_ != kNoWidget) Rtexture_destroy(texture_);
+    texture_ = kNoWidget;
+    return;
+  }
+  if (texture_ == kNoWidget) {
+    texture_ = Rvulkan_texture_create_from_image_view(image_view, 0, width, height);
+    Rviewport_set_texture(id_, texture_);
+  } else {
+    Rvulkan_texture_set_image_view(texture_, image_view, 0, width, height);
+  }
+  Rwidget_invalidate(id_);
+}
+
+std::pair<int, int> Viewport::pixel_size() const {
+  int width = 0;
+  int height = 0;
+  Rviewport_get_pixel_size(id_, &width, &height);
+  return {width, height};
 }
 
 void Viewport::set_cursor(CursorShape shape) {
@@ -1593,6 +1619,23 @@ void Window::inject_input(const InputStep& step) {
 void Window::inject_left_press(float x, float y) {
   Rwindow_inject_mouse_move(id_, x, y);
   Rwindow_inject_mouse_button(id_, R_MOUSE_LEFT, kTrue);
+}
+
+std::vector<std::uint8_t> Window::capture_rgba(int& width, int& height) const {
+  width = 0;
+  height = 0;
+  std::uint8_t* pixels = Rwindow_capture(id_, &width, &height);
+  if (pixels == nullptr) {
+    return {};
+  }
+  const auto bytes = static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U;
+  std::vector<std::uint8_t> out(pixels, pixels + bytes);
+  Rpixels_free(pixels);
+  return out;
+}
+
+void Window::set_size(int width, int height) {
+  Rwindow_set_size(id_, width, height);
 }
 
 bool Window::capture_ppm(const std::string& path) const {

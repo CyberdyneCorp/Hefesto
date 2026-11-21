@@ -575,11 +575,20 @@ class Viewport : public Widget {
   void invalidate();
   /// The pointer shape over the canvas (cursor glyphs, input_router.hpp).
   void set_cursor(CursorShape shape);
+  /// Texture mode (the 3D view, m10-3d-view design D8): shows the raw
+  /// VkImageView `image_view` (a UNORM view of an sRGB-encoded image in
+  /// SHADER_READ_ONLY_OPTIMAL, on Raven's device) instead of the draw
+  /// callback's output. A later call re-points the texture and returns once
+  /// Raven no longer samples the previous view; 0 shows nothing.
+  void show_vulkan_image(std::uint64_t image_view, int width, int height);
+  /// The viewport's size in pixels after the last layout.
+  [[nodiscard]] std::pair<int, int> pixel_size() const;
 
  private:
   explicit Viewport(WidgetId id);
   struct Callbacks;
   std::unique_ptr<Callbacks> callbacks_;
+  WidgetId texture_ = kNoWidget;  // the wrapped image of show_vulkan_image
 };
 
 struct FrameStats {
@@ -643,6 +652,11 @@ class Window {
   [[nodiscard]] FrameStats frame_stats() const;
   /// Saves the last rendered frame as a binary PPM; false on failure.
   bool capture_ppm(const std::string& path) const;
+  /// The last rendered frame as RGBA8 rows (framebuffer pixels); empty on
+  /// failure.
+  [[nodiscard]] std::vector<std::uint8_t> capture_rgba(int& width, int& height) const;
+  /// Resizes the window (logical pixels).
+  void set_size(int width, int height);
   /// Tests and scripted captures: a trackpad pinch at window point (x, y)
   /// (logical pixels) as the system would send it, `factor` spread over
   /// `steps` updates between a begin and an end.
