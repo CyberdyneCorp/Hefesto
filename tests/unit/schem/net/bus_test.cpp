@@ -126,3 +126,19 @@ TEST_CASE("bus notation: hostile sizes are refused without allocating them",
   deep += ",b";
   CHECK(schem::parse_bus(deep).too_large);
 }
+
+// Regression: each leading `n*` recursed once, so a long run of them in a
+// hostile name overflowed the stack. They are now read in a loop.
+TEST_CASE("bus notation: a long run of leading repeat counts does not recurse",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  std::string many;
+  for (int i = 0; i < 300000; ++i) many += "1*";
+  many += "a";
+  CHECK(schem::parse_bus(many).bits == Bits{"a"});
+  CHECK(joined("2*3*a") == "a,a,a,a,a,a");
+  CHECK(joined("2 * 2*(a,b)") == "a,b,a,b,a,b,a,b");
+  CHECK(schem::parse_bus("1024*1024*a").width() == schem::kMaxBusBits);
+  CHECK(schem::parse_bus("1024*1025*a").too_large);
+  CHECK(schem::parse_bus("1048576*1048576*1048576*a").too_large);
+  CHECK(schem::parse_bus("2*3*(a").syntax_error);
+}

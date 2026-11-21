@@ -6,7 +6,7 @@
 //
 //   list   = term { "," term }
 //   term   = factor { "*" int }           each element repeated n times
-//   factor = int "*" factor | "(" list ")" | item
+//   factor = { int "*" } ( "(" list ")" | item )
 //   item   = name [ "[" index "]" [ trailer ] ]
 //
 // with "*" binding tighter than ",". Spaces and tabs between tokens are
@@ -152,24 +152,43 @@ class Parser {
     return out;
   }
 
+  /// `n1 * n2 * ... factor` repeats the factor n1 * n2 * ... times. The
+  /// prefixes are read in a loop, not by recursion, so a long run of them
+  /// cannot exhaust the stack.
   std::optional<Bits> factor(int depth) {
     skip_space();
-    if (const auto n = leading_repeat()) {
-      auto inner = factor(depth);
-      if (!inner || !fits_product(inner->size(), *n)) {
-        return std::nullopt;
-      }
-      Bits out;
-      out.reserve(inner->size() * *n);
-      for (std::uint64_t i = 0; i < *n; ++i) {
-        out.insert(out.end(), inner->begin(), inner->end());
-      }
-      return out;
+    std::uint64_t times = 1;
+    bool repeated = false;
+    while (const auto n = leading_repeat()) {
+      times = saturating_product(times, *n);
+      repeated = true;
+      skip_space();
     }
+    auto inner = primary(depth);
+    if (!repeated || !inner) {
+      return inner;
+    }
+    if (!fits_product(inner->size(), times)) {
+      return std::nullopt;
+    }
+    Bits out;
+    out.reserve(inner->size() * times);
+    for (std::uint64_t i = 0; i < times; ++i) {
+      out.insert(out.end(), inner->begin(), inner->end());
+    }
+    return out;
+  }
+
+  std::optional<Bits> primary(int depth) {
     if (accept('(')) {
       return group(depth + 1);
     }
     return item();
+  }
+
+  /// a * b, or kMaxBusBits + 1 when that is larger (both are at least 1).
+  static std::uint64_t saturating_product(std::uint64_t a, std::uint64_t b) noexcept {
+    return a > kMaxBusBits / b ? kMaxBusBits + 1 : a * b;
   }
 
   std::optional<Bits> group(int depth) {
