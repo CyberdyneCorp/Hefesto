@@ -173,12 +173,12 @@ RUN set -eux; \
 # configure silently drops OpenGL when the GL headers are missing, so the build checks that -DOGL
 # reached defs.mak, that Xvfb offers GLX on llvmpipe, and that a 3D window opens and answers `view`.
 ARG WITH_OPENGL=0
-COPY container/magic_gl_smoke.tcl /opt/src/magic_gl_smoke.tcl
+COPY container/magic_gl_smoke.tcl container/magic_gl_default_path.tcl /opt/src/
 RUN set -eux; \
     if [ "${WITH_OPENGL}" = "1" ]; then \
       apt-get -o Acquire::Check-Valid-Until=false update; \
       apt-get install -y --no-install-recommends \
-          libgl-dev libglu1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils; \
+          libgl-dev libglu1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils gdb; \
       rm -rf /var/lib/apt/lists/*; \
       fetch_commit /opt/src/magic-gl "${MAGIC_REPO}" "${MAGIC_COMMIT}"; \
       cd /opt/src/magic-gl; \
@@ -193,6 +193,9 @@ RUN set -eux; \
       timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" \
           "${PREFIX}/bin/magic" -d OGL -noconsole -norc /opt/src/magic_gl_smoke.tcl | tee /tmp/smoke.txt; \
       grep -qx 'magic-gl-smoke 0 {0.0 10.0 0.0}' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
+      timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" \
+          gdb -q -batch -ex run -ex bt --args "${PREFIX}/lib/magic/tcl/magicexec" -- -d OGL -noconsole -norc \
+          /opt/src/magic_gl_default_path.tcl || true; \
     fi
 
 LABEL org.opencontainers.image.title="hefesto-golden" \
