@@ -71,15 +71,46 @@ std::optional<tech::TileType> cut_type_on(const tech::Technology& tech, tech::Ti
   return std::nullopt;
 }
 
+// defGetType's test of one LefInfo entry: the class of the type (cut for a
+// contact, route or masterslice otherwise), then its normal or obstruction
+// type.
+bool name_maps(const tech::Technology& tech, tech::TileType type, const LayerRecord* record,
+               const ViaDefinition* via) {
+  const LayerClass cls = via != nullptr ? via->layer_class : record->layer_class;
+  const bool contact = tech.is_contact(type);
+  const bool class_ok =
+      contact ? cls == LayerClass::cut : (cls == LayerClass::route || cls == LayerClass::masterslice);
+  if (!class_ok) {
+    return false;
+  }
+  if (via != nullptr) {
+    return via->type == type || via->obstruction_type == type;
+  }
+  return (record->type != tech::kSpace && record->type == type) ||
+         (record->obstruction_type != tech::kSpace && record->obstruction_type == type);
+}
+
 }  // namespace
 
-// defMakeInverseLayerMap(LAYER_MAP_VIAS): defGetType for every type.
-NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers) {
+// defMakeInverseLayerMap(LAYER_MAP_VIAS): defGetType for every type, over
+// LefInfo's enumeration (the shared key order, where a VIA definition
+// shadows a layer of the same name).
+NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers, const ViaTable* vias) {
   NameMap map{};
   const std::size_t end = std::min(tech.type_count(), tech::kMaxTileTypes);
-  for (std::size_t t = tech::kFirstUserType; t < end; ++t) {
-    map.at(t) = layers.magic_to_lef(static_cast<tech::TileType>(t));
-  }
+  layers.enumerate_keys([&](std::string_view key, const LayerRecord* record) {
+    const auto* via = vias != nullptr ? vias->find(std::string{key}) : nullptr;
+    const ViaDefinition* definition = via != nullptr && via->value ? &*via->value : nullptr;
+    if (definition == nullptr && record == nullptr) {
+      return;
+    }
+    for (std::size_t t = tech::kFirstUserType; t < end; ++t) {
+      const auto type = static_cast<tech::TileType>(t);
+      if (map.at(t) == nullptr && name_maps(tech, type, record, definition)) {
+        map.at(t) = definition != nullptr ? &definition->canonical_name : &record->canonical_name;
+      }
+    }
+  });
   return map;
 }
 
@@ -235,9 +266,9 @@ bool RecordWriter::record(const db::TileView& t) {
     out_ += block_ == Block::port ? "    PORT\n" : "  OBS\n";
   }
   ++writes_;
-  const LayerRecord* named = names_.at(t.type);
+  const std::string* named = names_.at(t.type);
   if (t.type != last_type_ && named != nullptr) {
-    out_ += std::string{kIn2} + "LAYER " + named->canonical_name + " ;\n";
+    out_ += std::string{kIn2} + "LAYER " + *named + " ;\n";
     last_type_ = t.type;
   }
   shape(t);

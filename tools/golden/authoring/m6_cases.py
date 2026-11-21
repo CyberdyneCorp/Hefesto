@@ -85,10 +85,6 @@ BLOCKER_REASONS = {
     "MASTER": ("DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line "
                "comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the "
                "zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"),
-    "RTNAME": ("LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line "
-               "count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console "
-               "match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and "
-               "per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"),
     "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
                "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
                "44860968058. The crash point is not found; the case is capture_blocked until it is"),
@@ -100,8 +96,6 @@ BLOCKER_REASONS = {
 BLOCKERS: dict[str, str] = {
     "LEFDEF-128": BLOCKER_REASONS["LEFW"],
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
-    "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
-    "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -127,6 +121,8 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-RT-sky130_fd_sc_hd",
+    "LEFDEF-RT-sg13g2_stdcell",
     "LEFDEF-241",
     "LEFDEF-334",
     "OASIS-020",

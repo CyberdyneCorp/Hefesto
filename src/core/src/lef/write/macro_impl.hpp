@@ -44,11 +44,13 @@ inline constexpr std::string_view kIn1 = "    ";
 inline constexpr std::string_view kIn2 = "      ";
 inline constexpr std::string_view kIn3 = "        ";
 
-/// defMakeInverseLayerMap(LAYER_MAP_VIAS): the LEF record of each type, or
-/// nullptr when the type has no LEF name.
-using NameMap = std::array<const LayerRecord*, tech::kMaxTileTypes>;
+/// defMakeInverseLayerMap(LAYER_MAP_VIAS): the LEF name (lefName) of each
+/// type, or nullptr when the type has no LEF name. The first layer or VIA
+/// record of the type's class in the shared key order wins, so a VIA
+/// definition can name a cut type (defGetType; Q-LEFDEF-92, Q-LEFDEF-135).
+using NameMap = std::array<const std::string*, tech::kMaxTileTypes>;
 
-[[nodiscard]] NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers);
+[[nodiscard]] NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers, const ViaTable* vias);
 
 /// DBAllButSpaceAndDRCBits.
 [[nodiscard]] tech::TypeMask all_but_space_and_drc();

@@ -35,6 +35,7 @@
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/lef/tech/table.hpp"
 #include "hefesto/lef/write/number.hpp"
 #include "hefesto/tech/types.hpp"
 
@@ -74,6 +75,9 @@ struct TypeSets {
 struct MacroContext {
   const tech::Technology* tech = nullptr;
   const LayerTable* layers = nullptr;
+  /// The VIA definitions: a via name in the shared key order can name a cut
+  /// type (Q-LEFDEF-92); nullptr: layer records only.
+  const ViaTable* vias = nullptr;
   const drc::RuleSet* rules = nullptr;         // the DRC style (wide and default spacing); nullptr: none
   const extract::StyleView* style = nullptr;   // the extraction style; nullptr: none
   float oscale = 1.0F;                         // CIFGetOutputScale(1000)

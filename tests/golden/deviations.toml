@@ -801,16 +801,6 @@ deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"
 
-[LEFDEF-RT-sky130_fd_sc_hd]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt", "lefdef_rt.probe.lef"]
-reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"
-
-[LEFDEF-RT-sg13g2_stdcell]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt", "lefdef_rt.probe.lef"]
-reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"
-
 [OASIS-021-unique]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]

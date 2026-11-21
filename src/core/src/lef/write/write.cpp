@@ -103,6 +103,7 @@ class WriteRun {
     MacroContext ctx;
     ctx.tech = editor_.technology.get();
     ctx.layers = &editor_.lefdef.layers;
+    ctx.vias = &editor_.lefdef.vias;
     ctx.rules = editor_.drc.rules.get();
     ctx.style = &style_;
     ctx.oscale = output_scale(output_style(editor_));
