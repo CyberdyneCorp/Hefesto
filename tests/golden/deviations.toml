@@ -895,4 +895,65 @@ deferred = "M10"
 outputs = ["stdout.txt", "stderr.txt"]
 reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
 
+[MISC-3D-05]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-06]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-07]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-08]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-09]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-10]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-11]
+decisions = ["Q-MISC-73"]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt", "exit.txt"]
+reason = "with no output style the window opens in layout-layer mode, cif keeps it and render reports 'No CIF output style set!', where Magic dereferences the missing style when the window opens (Set3DDefaults) and crashes; captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-12]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
+
+[MISC-3D-13]
+deferred = "M10"
+outputs = ["gl-faces.txt"]
+reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli has no wind3d client and does not write the HEFESTO_GL_CAPTURE log yet: WIND3D drops this deferral when its client writes the log (tasks 8.1-8.4, 12.4)"
+
+[MISC-3D-14]
+deferred = "M10"
+outputs = ["gl-faces.txt"]
+reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli has no wind3d client and does not write the HEFESTO_GL_CAPTURE log yet: WIND3D drops this deferral when its client writes the log (tasks 8.1-8.4, 12.4)"
+
+[MISC-3D-15]
+deferred = "M10"
+outputs = ["gl-faces.txt"]
+reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli has no wind3d client and does not write the HEFESTO_GL_CAPTURE log yet: WIND3D drops this deferral when its client writes the log (tasks 8.1-8.4, 12.4)"
+
+[MISC-3D-16]
+deferred = "M10"
+outputs = ["gl-faces.txt"]
+reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli has no wind3d client and does not write the HEFESTO_GL_CAPTURE log yet: WIND3D drops this deferral when its client writes the log (tasks 8.1-8.4, 12.4)"
+
 # --- END M10 deferrals ---
