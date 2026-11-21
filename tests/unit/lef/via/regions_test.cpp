@@ -301,6 +301,48 @@ TEST_CASE("a residue with no LEF name is skipped with a warning",
         "No LEF layer corresponding to magic type \"metal2\" of via \"via1_260_260\"; RECT skipped.");
 }
 
+TEST_CASE("security fix M6-S2: a cut array above 1,000,000 cuts is written as one cut",
+          "[cap:def-write][req:VIAS section content]") {
+  // Q-LEFDEF-150 (E3, approved 2026-11-20), both modes: half 34034 gives
+  // X2 − X1 = 340340, so nx = ny = (340340 + 170 − 100) / 340 = 1001.
+  for (const bool compat : {true, false}) {
+    Layout l{compat};
+    const mask::OutputStyle style = cut_style(l);
+    const auto rects = via_rects(via_record(l, 34034), "big", &style, l.context());
+    REQUIRE(rects.size() == 3);
+    CHECK(rects.back() == ViaRect{"via1", -170170, -170170, 170170, 170170});
+    const auto diagnostics = l.sink.take();
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics.front().code == "LEF-VIA-012");
+    CHECK(diagnostics.front().severity == diag::Severity::error);
+    CHECK(diagnostics.front().text ==
+          "Via \"big\": cut array of 1001 x 1001 gives more than 1000000 cuts; one cut the size of the via area "
+          "is written.");
+  }
+}
+
+TEST_CASE("a cut array of exactly 1,000,000 cuts is written in full", "[cap:def-write][req:VIAS section content]") {
+  // half 33994: (339940 + 70) / 340 = 1000 cuts per axis.
+  Layout l;
+  const mask::OutputStyle style = cut_style(l);
+  const auto rects = via_rects(via_record(l, 33994), "v", &style, l.context());
+  CHECK(rects.size() == 2 + 1'000'000);
+  CHECK(l.sink.take().empty());
+}
+
+TEST_CASE("regression: a DEF scale beyond the int range saturates the cut arithmetic",
+          "[cap:def-write][req:VIAS section content]") {
+  // Magic's float-to-int conversions are undefined here; Hefesto saturates
+  // them in both modes, so the cut array stays small and defined.
+  for (const bool compat : {true, false}) {
+    Layout l{compat};
+    const mask::OutputStyle style = cut_style(l);
+    const auto rects = via_rects(via_record(l, 1 << 28), "v", &style, l.context(1e30F));
+    CHECK(rects.size() >= 3);
+    CHECK(rects.size() < 100);
+  }
+}
+
 TEST_CASE("a residue's surround rectangle replaces the area", "[cap:def-write][req:VIAS section content]") {
   Layout l;
   ViaDefinition via = via_record(l, 26);
