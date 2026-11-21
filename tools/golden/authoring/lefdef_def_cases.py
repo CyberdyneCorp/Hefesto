@@ -170,6 +170,15 @@ def def_read_specs() -> list[tclcase.TclCase]:
             "COMPONENTS", 1, "- u1 nosuchcell + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL)),
         read_def("LEFDEF-214", "place", def_file("place", def_section(
             "COMPONENTS", 1, "- u1 FOO + PLACED ( 1000 1000 ) N ;"), diearea=DIE_SMALL), files={"FOO.mag": BLK}),
+        # Q-LEFDEF-83 (fix, both modes; E2 of 2026-11-20): Magic places the second u1 with the duplicate
+        # id, Hefesto renames it (cell-file-format's instance-id rule); the approved deviation is recorded
+        # once the case is captured.
+        read_def("LEFDEF-241", "place", def_file("place", def_section(
+            "COMPONENTS", 2, "- u1 inv + PLACED ( 1000 1000 ) N ;", "- u1 inv + PLACED ( 3000 1000 ) N ;"),
+            diearea=DIE_SMALL), lef_text=MACROS,
+            notes=["Q-LEFDEF-83 (fix, both modes): Magic keeps the duplicate instance id u1 on the second use; "
+                   "Hefesto places it and renames it with the cell-file-format rule. The approved deviation "
+                   "(stdout.txt, stderr.txt, cells.txt) is recorded in deviations.toml after the capture."]),
         read_def("LEFDEF-215", "pinorder", PIN_ORDER_DEF, fonts=DEFAULT_FONTS),
         read_def("LEFDEF-216", "multiport", MULTI_PORT_DEF, fonts=DEFAULT_FONTS),
         read_def("LEFDEF-217", "inherit", INHERIT_DEF, fonts=DEFAULT_FONTS),
@@ -233,11 +242,6 @@ def def_read_specs() -> list[tclcase.TclCase]:
                  files={"t.txt": def_file("t2", diearea=(0, 0, 2000, 2000))},
                  body=["def read t", "def read t.def", "def read t.txt", "cellname list allcells"], outputs=[]),
         read_def("LEFDEF-239", "errs", many_error_nets(), outputs=[], body=["def read input/errs"]),
-        # Q-LEFDEF-83 (fix, approved 2026-11-13; case added 2026-11-20, decision E2): Magic places the second
-        # u1 with the same id, Hefesto renames it (an approved deviation once captured).
-        read_def("LEFDEF-241", "dup", def_file("dup", def_section(
-            "COMPONENTS", 2, "- u1 inv + PLACED ( 1000 2000 ) N ;", "- u1 inv + PLACED ( 3000 2000 ) N ;"),
-            diearea=DIE_SMALL), lef_text=MACROS),
     ]
     return out
 

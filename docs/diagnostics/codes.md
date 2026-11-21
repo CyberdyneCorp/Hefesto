@@ -89,7 +89,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CORE-NOTIMPL-003` | error | Retired in M3, never reused. Was: not implemented yet (a `drc` option or M3 function stubbed by the M3 scaffold before its workstream landed it). |
 | `CORE-NOTIMPL-004` | error | Retired in M4, never reused. Was: not implemented yet (an M4 command or function registered by the M4 scaffold before its workstream landed it). |
 | `CORE-NOTIMPL-005` | error | Retired in M5, never reused. Was: an M5 command option or function declared by the M5 scaffold before its workstream landed it. |
-| `CORE-NOTIMPL-006` | error | Not implemented yet: an M6 command option or function declared by the M6 scaffold before its workstream landed it (retired at M6 exit). |
+| `CORE-NOTIMPL-006` | error | Retired in M6, never reused. Was: an M6 command option or function declared by the M6 scaffold before its workstream landed it. |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

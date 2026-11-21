@@ -16,9 +16,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/oasis/write/codes.inc` | `OASIS-WRITE-*` | OASW |
 | `src/core/src/oasis/command/codes.inc` | `OASIS-CMD-*` | OASCMD |
 
-While M6 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-006`
-([../codes.md](../codes.md)).
+Every option and function the M6 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-006` is retired ([../codes.md](../codes.md)).
 
 ## CODEC
 
@@ -87,7 +86,7 @@ Codes of the OASIS writer, repetition detection and the transcoders (`src/core/s
 - `OASIS-WRITE-007`: a read-only OASIS cell cannot be copied from its source file: the file cannot be decoded, or its unit is not the output unit (1000, or 10000 for `units angstroms`). The cell is generated from its layout. A file or cell that cannot be found follows gds-write's rule for an unopenable vendor file (`GDS-WRITE-041`).
 - `OASIS-WRITE-008`: an output layer with a negative datatype gets no LAYERNAME record.
 - `OASIS-WRITE-009`: "an element of cell <cell> cannot be written to OASIS: <reason>": the encoder refused an element (a value outside its ranges). The element is not written and the write fails.
-- `OASIS-WRITE-010`: an AREF of a read-only GDS cell whose steps are not whole multiples (a type 10 repetition) with more than 2^24 instances; it is not written and the write fails (Q-OASIS-70, approved 2026-11-20; security.md M6-S3).
+- `OASIS-WRITE-010`: an AREF of a read-only GDS cell whose steps are not whole multiples (a type 10 repetition) with more than 2^24 instances; it is not written and the write fails (Q-OASIS-53, approved 2026-11-20; security.md M6-S3).
 - `OASIS-WRITE-011`: "OASIS write cancelled."; no output file is left.
 - `OASIS-WRITE-012`: the GDS element stream being translated is malformed (a read-only GDS cell's bytes end inside an element). The cells before it are written.
 

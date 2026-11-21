@@ -446,7 +446,7 @@ void update_save_stamps(CellIoContext& ctx, db::CellDef* only, std::int64_t now)
 void update_save_stamps(CellIoContext& ctx, std::span<db::CellDef* const> cells, std::int64_t now) {
   diag::NullSink quiet;
   LookupContext lookup{ctx.fs, ctx.paths, ctx.vars, quiet};
-  update_timestamps(ctx.library, cells, now, lookup);
+  update_timestamps(ctx.library, cells, now, lookup, ctx.magic_compat);
 }
 
 diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view path) {

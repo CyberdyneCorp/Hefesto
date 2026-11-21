@@ -74,7 +74,7 @@ const gds::StampTable* VendorStamper::table_for(const platform::Path& path) {
   if (inserted) {
     auto source = gds::open_source(ctx_.fs, path);
     if (source.ok()) {
-      it->second = oasis::content_stamps(*source.value());
+      it->second = oasis::content_stamps(*source.value(), magic_compat_);
     }
   }
   return it->second ? &*it->second : nullptr;

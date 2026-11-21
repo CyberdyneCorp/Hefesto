@@ -8,7 +8,7 @@ Owner: SHELL (seeded by the M6 scaffold, task 2.6; completed in tasks 14.1–14.
 
 - **done**: seen in a capture and matching the board within the noted tolerance.
 - **partial**: built, with a gap recorded.
-- **blocked**: built in the shell, but the core function it needs is not available yet (a `CORE-NOTIMPL-006` stub during M6).
+- **blocked**: built in the shell, but the core function it needs is not available yet (a `CORE-NOTIMPL-006` stub during M6; the code is retired at M6 exit).
 - **todo**: not built yet.
 
 Nothing is claimed from code reading alone: a row is **done** only after a capture of the product app (`hefesto ... --capture`) was compared with its board, as in M1–M5.

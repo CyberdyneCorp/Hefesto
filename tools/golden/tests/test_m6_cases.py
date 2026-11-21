@@ -36,6 +36,7 @@ def probes(spec: tclcase.TclCase) -> list[str]:
 
 class InventoryTest(unittest.TestCase):
     def test_inventory_has_144_rows(self):
+        # 143 planned rows and LEFDEF-241 (Q-LEFDEF-83, added by the user decision E2 of 2026-11-20).
         self.assertEqual(len(lefdef_cases.rows()), 144)
 
     def test_every_row_is_authored(self):

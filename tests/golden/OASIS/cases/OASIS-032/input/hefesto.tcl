@@ -21,6 +21,7 @@ probe {drc off}
 probe {tech load input/oastest -noprompt}
 probe {snap internal}
 probe {oasis datestamp 1}
+set PDK_ROOT $env(PDK_ROOT)
 probe {oasis readonly yes}
 probe {oasis read $env(PDK_ROOT)/lib/cells}
 rep {cellname property sc_inv OASIS_FILE}
