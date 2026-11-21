@@ -62,6 +62,12 @@ Codes of the mesh model and its builders (design D6). Owner: MESH.
 Codes of the view state, camera, presets and gestures (design D7). Owner:
 CAMERA.
 
+The camera has no codes: its operations cannot fail. Inputs Magic would
+divide by (an empty cell bounding box, a zero or negative scalefactor, a
+non-positive zoom factor, a zero-size drawable) leave the view unchanged or
+fall back to a finite value instead; the commands that take such values
+report their own usage errors (WIND3D).
+
 ## CLIENT
 
 Codes of the `wind3d` client and its commands (design D9). Owner: WIND3D.

@@ -6,4 +6,5 @@
 # Owner: CAMERA (openspec/changes/m10-3d-view/design.md D2/D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/camera.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/camera.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/input.cpp)
