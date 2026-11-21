@@ -52,11 +52,9 @@ TEST_CASE("EditorState carries a 3D session with no window", "[m10-scaffold]") {
   CHECK(window.mesh == nullptr);
 }
 
-TEST_CASE("the M10 area-contract stubs answer their documented values", "[m10-scaffold]") {
+TEST_CASE("the TECH stubs answer no extraction style and empty stacks", "[m10-scaffold]") {
   diag::NullSink sink;
   const hefesto::tech::Technology tech;
-
-  // TECH: no extraction style; empty stacks of the right mode.
   const auto heights = extract::HeightView::from_technology(tech, sink);
   CHECK_FALSE(heights.has_style());
   CHECK_FALSE(heights.height(1).has_value());
@@ -68,22 +66,35 @@ TEST_CASE("the M10 area-contract stubs answer their documented values", "[m10-sc
   CHECK_FALSE(layout.physical_height_um(0).has_value());
   const hefesto::mask::OutputStyle ostyle;
   CHECK(view3d::build_mask_stack(ostyle, false).mode() == view3d::Mode::mask_layer);
+}
 
-  // MESH: an empty model over the clip area.
+TEST_CASE("the MESH, INSPECT, EXPORT and OVERLAY stubs answer empty results", "[m10-scaffold]") {
+  diag::NullSink sink;
+  const hefesto::mask::OutputStyle ostyle;
+  const auto stack = view3d::build_mask_stack(ostyle, true);
   view3d::BuildContext ctx;
   const view3d::ClipArea clip{hefesto::db::Rect{0, 0, 10, 10}, true, 0};
   const hefesto::mask::LayerPlanes planes;
-  const auto mesh = view3d::build_from_planes(view3d::build_mask_stack(ostyle, true), planes, clip, ctx);
+  const auto mesh = view3d::build_from_planes(stack, planes, clip, ctx);
   REQUIRE(mesh.has_value());
   CHECK(mesh->empty());
   CHECK(mesh->region == clip.area);
+  CHECK_FALSE(view3d::resolve(*mesh, 1).has_value());
+  CHECK(view3d::section(*mesh, stack, view3d::Segment{}).intervals.empty());
+  hefesto::gds::MemorySink out;
+  CHECK(view3d::write_stl(*mesh, stack, {}, out, sink).ok());
+  CHECK(out.position() == 0);
+  CHECK(view3d::overlay::color_of({}, 1.0, 0.0, 2.0) == view3d::overlay::Rgb{0, 0, 0});
+}
 
-  // CAMERA: Magic-shaped zero view, identity matrix, top-down presets.
+TEST_CASE("the CAMERA stubs answer the zero view", "[m10-scaffold]") {
   CHECK(view3d::default_view(hefesto::db::Rect{0, 0, 100, 50}, view3d::Mode::layout_layer, 1.0F) ==
         view3d::ViewState{});
   CHECK(view3d::preset(view3d::Preset::isometric) == view3d::Angles{});
   CHECK(view3d::matrix(view3d::ViewState{}, 500, 500, {})[0] == 1.0F);
+}
 
+TEST_CASE("the WIND3D stubs keep today's answer", "[m10-scaffold]") {
   // WIND3D: opening still answers UI-CLIENT-002; no command registered.
   hefesto::editor::EditorState state;
   const auto opened = view3d::open_wind3d(state, view3d::OpenRequest{});
@@ -92,12 +103,4 @@ TEST_CASE("the M10 area-contract stubs answer their documented values", "[m10-sc
   hefesto::cmd::CommandRegistry registry;
   CHECK(view3d::register_wind3d_commands(registry));
   CHECK(registry.find("cutbox", view3d::kWind3dClient) == nullptr);
-
-  // INSPECT, EXPORT, OVERLAY.
-  CHECK_FALSE(view3d::resolve(*mesh, 1).has_value());
-  CHECK(view3d::section(*mesh, layout, view3d::Segment{}).intervals.empty());
-  hefesto::gds::MemorySink out;
-  CHECK(view3d::write_stl(*mesh, layout, {}, out, sink).ok());
-  CHECK(out.position() == 0);
-  CHECK(view3d::overlay::color_of({}, 1.0, 0.0, 2.0) == view3d::overlay::Rgb{0, 0, 0});
 }
