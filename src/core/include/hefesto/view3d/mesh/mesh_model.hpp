@@ -11,7 +11,12 @@
 // per-chunk triangle buffer. Coordinates are float32 relative to the
 // chunk's double origin (R5: sub-unit precision on a 2^31-unit chip); z is
 // not stored: the shader applies z_top = -h * s_z, z_bot = z_top - t * s_z
-// from the layer's LayerStack entry, so `zoom` in z never rebuilds.
+// from the layer's LayerStack entry, so `zoom` in z never rebuilds. A
+// split tile is the exception: Magic draws both its triangles with the h
+// and t of the source tile's left type (ExtGetZAxis), whatever layer
+// draws them, so its triangles carry their own h and t (still unscaled
+// by s_z), and so do its side faces, flagged own_height, when that left
+// type is not the layer's own type.
 // Instances are emitted in a fixed order (layer order, then Morton chunk
 // order, then the plane's tile order), so two builds are byte-equal.
 //
@@ -46,6 +51,7 @@ namespace side_flag {
 inline constexpr std::uint8_t outward_left = 0x01;  // the outward normal is to the left of (x0,y0)->(x1,y1)
 inline constexpr std::uint8_t clip_edge = 0x02;     // a closed face on the clip (cut box) boundary
 inline constexpr std::uint8_t diagonal = 0x04;      // the diagonal face of a split tile
+inline constexpr std::uint8_t own_height = 0x08;    // a split tile's face drawn with its left type's h and t (height/thickness)
 }  // namespace side_flag
 
 /// A side face: one boundary segment, chunk-relative.
@@ -56,15 +62,20 @@ struct SideInstance {
   float y1 = 0.0F;
   LayerId layer = 0;
   std::uint8_t flags = 0;  // side_flag bits
+  float height = 0.0F;     // with side_flag::own_height: the h and t it is drawn with
+  float thickness = 0.0F;
 
   friend bool operator==(const SideInstance&, const SideInstance&) = default;
 };
 
-/// A split-tile triangle (top and bottom face), chunk-relative.
+/// A split-tile triangle (top and bottom face), chunk-relative, drawn in
+/// its layer's style with its own h and t (the source left type's).
 struct Triangle {
   float x[3] = {0.0F, 0.0F, 0.0F};
   float y[3] = {0.0F, 0.0F, 0.0F};
   LayerId layer = 0;
+  float height = 0.0F;
+  float thickness = 0.0F;
 
   friend bool operator==(const Triangle&, const Triangle&) = default;
 };

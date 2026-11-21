@@ -123,13 +123,98 @@ TEST_CASE("a split tile renders as a triangle with a diagonal side face", "[cap:
   }
 }
 
+TEST_CASE("a split tile's right triangle takes its left type's height: flat over space",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  // Regression (PR #77 review): the right triangle took its own layer's h
+  // and t. Magic draws it with the left type's (ExtGetZAxis), here space:
+  // h = t = 0, so a top face and no side faces.
+  const auto t = view3d::test::build_tech();
+  db::CellDef root("root", t.tech->plane_count());
+  REQUIRE(db::paint_triangle(root, *t.tech, Rect{0, 0, 10, 10}, db::Diagonal::ne_sw, true, t.metal1).ok());
+  db::recompute_bbox(root);
+  const auto stack = view3d::test::stack_of({view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F)});
+  const auto mesh = view3d::test::build(stack, root, Rect{-1, -1, 11, 11}, false);
+  REQUIRE(mesh.has_value());
+  CHECK(view3d::test::face_area(*mesh, 0) == 50.0);
+  CHECK(view3d::test::sides_of(*mesh, 0).empty());
+  for (const view3d::Chunk& c : mesh->chunks) {
+    for (const view3d::Triangle& tri : c.triangles) {
+      CHECK(tri.height == 0.0F);
+      CHECK(tri.thickness == 0.0F);
+    }
+  }
+}
+
+TEST_CASE("both triangles of a split tile use the left type's h and t, and its thickness decides the side faces",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  // Regression (PR #77 review): side faces were decided per layer.
+  const auto t = view3d::test::build_tech();
+  const auto build_split = [&](float ndiff_t, float poly_t) {
+    db::CellDef root("root", t.tech->plane_count());
+    view3d::test::paint(root, t, Rect{0, 0, 10, 10}, t.ndiff);
+    REQUIRE(db::paint_triangle(root, *t.tech, Rect{0, 0, 10, 10}, db::Diagonal::ne_sw, true, t.poly).ok());
+    db::recompute_bbox(root);
+    std::vector<view3d::DrawHeight> heights(hefesto::tech::kMaxTileTypes);
+    heights[t.ndiff] = view3d::DrawHeight{0.3F, ndiff_t};
+    heights[t.poly] = view3d::DrawHeight{0.1F, poly_t};
+    const view3d::LayerStack stack{{view3d::test::layer("ndiff", t.ndiff, 0.3F, ndiff_t),
+                                    view3d::test::layer("poly", t.poly, 0.1F, poly_t)},
+                                   std::move(heights), true, 0.01};
+    auto mesh = view3d::test::build(stack, root, Rect{-1, -1, 11, 11}, false);
+    REQUIRE(mesh.has_value());
+    return *mesh;
+  };
+  const auto poly_triangles = [](const view3d::MeshModel& m) {
+    std::vector<view3d::Triangle> out;
+    for (const view3d::Chunk& c : m.chunks) {
+      for (const view3d::Triangle& tri : c.triangles) {
+        if (tri.layer == 1) {
+          out.push_back(tri);
+        }
+      }
+    }
+    return out;
+  };
+  SECTION("left type of zero thickness: the poly triangle sits at ndiff's height with no side faces") {
+    const view3d::MeshModel m = build_split(0.0F, 0.2F);
+    const auto tris = poly_triangles(m);
+    REQUIRE_FALSE(tris.empty());
+    for (const view3d::Triangle& tri : tris) {
+      CHECK(tri.height == 0.3F);
+      CHECK(tri.thickness == 0.0F);
+    }
+    CHECK(view3d::test::sides_of(m, 1).empty());
+  }
+  SECTION("poly of zero thickness: the poly triangle still gets side faces, with ndiff's h and t") {
+    const view3d::MeshModel m = build_split(0.25F, 0.0F);
+    for (const view3d::Triangle& tri : poly_triangles(m)) {
+      CHECK(tri.height == 0.3F);
+      CHECK(tri.thickness == 0.25F);
+    }
+    const auto sides = view3d::test::sides_of(m, 1);
+    REQUIRE_FALSE(sides.empty());
+    for (const view3d::Chunk& c : m.chunks) {
+      for (const view3d::SideInstance& side : c.sides) {
+        if (side.layer == 1) {
+          CHECK((side.flags & view3d::side_flag::own_height) != 0);
+          CHECK(side.height == 0.3F);
+          CHECK(side.thickness == 0.25F);
+        }
+      }
+    }
+    CHECK(view3d::test::open_edge(m, 1).empty());
+  }
+}
+
 TEST_CASE("split tiles of a transformed subcell keep their area and stay closed",
           "[cap:view-3d][req:Rendered geometry]") {
   const auto t = view3d::test::build_tech();
   db::CellLibrary lib;
   db::CellDef& root = *lib.create("root", t.tech->plane_count()).value();
   db::CellDef& child = *lib.create("child", t.tech->plane_count()).value();
-  REQUIRE(db::paint_triangle(child, *t.tech, Rect{0, 0, 20, 10}, db::Diagonal::nw_se, true, t.metal1).ok());
+  // The left triangle, so the tile's left type (whose h and t both
+  // triangles take) is metal1 itself.
+  REQUIRE(db::paint_triangle(child, *t.tech, Rect{0, 0, 20, 10}, db::Diagonal::nw_se, false, t.metal1).ok());
   view3d::test::paint(child, t, Rect{0, 10, 20, 14}, t.metal1);
   for (std::size_t o = 0; o < kOrientations.size(); ++o) {
     const auto& m = kOrientations[o];

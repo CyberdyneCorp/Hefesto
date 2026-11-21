@@ -45,12 +45,31 @@ inline constexpr int kMaxChunkDepth = 16;
   return db::Rect{std::max(a.x0, b.x0), std::max(a.y0, b.y0), std::min(a.x1, b.x1), std::min(a.y1, b.y1)};
 }
 
+/// One split tile as painted into a flat plane (root coordinates), with the
+/// left type of the source tile: Magic draws both triangles of a split
+/// tile with that type's h and t (w3dRenderVolume, ExtGetZAxis), which the
+/// flat plane, holding one type, no longer knows.
+struct SplitSource {
+  db::Rect area;
+  db::Diagonal diagonal = db::Diagonal::nw_se;
+  bool right_side = false;
+  tech::TileType z_type = tech::kSpace;
+
+  friend bool operator==(const SplitSource&, const SplitSource&) = default;
+};
+
 /// The flattened geometry of one tile type: only `type` and space, in root
 /// coordinates. Manhattan tiles are clipped to the clip area; split tiles
 /// are kept whole and clipped when their faces are emitted.
 struct FlatType {
   tech::TileType type = tech::kSpace;
   db::Plane plane;
+  std::vector<SplitSource> splits;  // sorted by (area, diagonal, side) after the flatten
+
+  /// The type whose h and t the split tile `t` of `plane` is drawn with:
+  /// the source left type of the painted split tile that holds it (equal,
+  /// or containing it when later paint cut it), else `type`.
+  [[nodiscard]] tech::TileType z_type_of(const db::TileView& t) const;
 };
 
 struct FlatLayout {
@@ -83,9 +102,11 @@ struct ChunkCell {
 
 /// Appends the faces of one layer inside `chunk.area` to `chunk`: a
 /// rectangle per tile piece, triangles for split tiles and, unless the
-/// layer has zero thickness (`sides` false), side faces on every boundary
-/// segment against another type and closed faces on the clip edge.
-void emit_layer(const FlatType& flat, LayerId layer, bool sides, const db::Rect& clip, Chunk& chunk);
+/// piece has zero thickness, side faces on every boundary segment against
+/// another type and closed faces on the clip edge. A Manhattan piece takes
+/// the layer's draw height; a split tile the h and t of its source left
+/// type (FlatType::z_type_of), stored on its triangles and side faces.
+void emit_layer(const FlatType& flat, LayerId layer, const LayerStack& stack, const db::Rect& clip, Chunk& chunk);
 
 /// build_from_layout with a chosen chunk size (the tests use small ones).
 [[nodiscard]] std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell,

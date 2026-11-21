@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <bit>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -47,7 +48,8 @@ bool same(const view3d::RectInstance& a, const view3d::RectInstance& b) {
 
 bool same(const view3d::SideInstance& a, const view3d::SideInstance& b) {
   return bits(a.x0) == bits(b.x0) && bits(a.y0) == bits(b.y0) && bits(a.x1) == bits(b.x1) &&
-         bits(a.y1) == bits(b.y1) && a.layer == b.layer && a.flags == b.flags;
+         bits(a.y1) == bits(b.y1) && a.layer == b.layer && a.flags == b.flags && bits(a.height) == bits(b.height) &&
+         bits(a.thickness) == bits(b.thickness);
 }
 
 bool same(const view3d::Triangle& a, const view3d::Triangle& b) {
@@ -56,7 +58,7 @@ bool same(const view3d::Triangle& a, const view3d::Triangle& b) {
       return false;
     }
   }
-  return a.layer == b.layer;
+  return a.layer == b.layer && bits(a.height) == bits(b.height) && bits(a.thickness) == bits(b.thickness);
 }
 
 template <typename T>
@@ -134,7 +136,9 @@ TEST_CASE("a chunked build has the same geometry as a single chunk and stays clo
   const auto t = view3d::test::build_tech();
   db::CellDef root("root", t.tech->plane_count());
   paint_grid(root, t, false);
-  REQUIRE(db::paint_triangle(root, *t.tech, Rect{0, 100, 160, 140}, db::Diagonal::ne_sw, true, t.ndiff).ok());
+  // The left triangle: its left type is ndiff itself, so it has side faces
+  // (a right triangle over space would be drawn flat, as in Magic).
+  REQUIRE(db::paint_triangle(root, *t.tech, Rect{0, 100, 160, 140}, db::Diagonal::ne_sw, false, t.ndiff).ok());
   db::recompute_bbox(root);
   const auto stack = grid_stack(t);
   const view3d::ClipArea clip{Rect{-1, -1, 161, 161}, false, 0};
@@ -155,7 +159,8 @@ TEST_CASE("a chunked build has the same geometry as a single chunk and stays clo
   for (view3d::LayerId l = 0; l < 2; ++l) {
     INFO("layer " << l);
     CHECK(view3d::test::face_area(*chunked, l) == view3d::test::face_area(*single, l));
-    CHECK(view3d::test::side_length(*chunked, l) == view3d::test::side_length(*single, l));
+    // Diagonal pieces have irrational lengths: the sums differ in order.
+    CHECK(std::abs(view3d::test::side_length(*chunked, l) - view3d::test::side_length(*single, l)) < 1e-9);
     CHECK(view3d::test::open_edge(*chunked, l).empty());
   }
   for (const view3d::Chunk& c : chunked->chunks) {
