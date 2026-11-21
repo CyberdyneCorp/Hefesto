@@ -3,9 +3,9 @@
 //
 // The DEF writer's private interfaces (capability def-write;
 // openspec/changes/m6-lef-def-oasis/design.md D9): the session state one
-// write reads (Context), Magic's single LefInfo table rebuilt from the
-// split LayerTable and ViaTable (InfoEntry, info_order; "Table enumeration
-// order"), the magic-to-LEF layer map (LayerMap, defMakeInverseLayerMap),
+// write reads (Context), Magic's single LefInfo table from the layer
+// table's shared key order and the via records (InfoEntry, info_order;
+// "Table enumeration order", Q-LEFDEF-135), the magic-to-LEF layer map (LayerMap, defMakeInverseLayerMap),
 // the sections the writer assembles, and the net classification shared by
 // the nets and the blockages.
 //
@@ -69,8 +69,9 @@ inline constexpr std::string_view kMagicCrash = "DEF-WRITE-012";    // Hefesto-o
 }
 
 /// One key of Magic's LefInfo table, which holds the layers and the vias in
-/// one hash table. Hefesto keeps them in LayerTable and ViaTable; info_order
-/// rebuilds the combined key order.
+/// one hash table. Hefesto keeps their records in LayerTable and ViaTable
+/// and their keys in the layer table's shared key order; info_order pairs
+/// each key with its record.
 struct InfoEntry {
   std::string key;
   const lef::LayerRecord* layer = nullptr;
@@ -86,15 +87,15 @@ struct InfoEntry {
   [[nodiscard]] const std::string& canonical_name() const noexcept;
 };
 
-/// LefInfo in Magic's enumeration order: the layer-table keys inserted
-/// first, then the via-table keys (cleared via slots included, as Magic
-/// keeps their keys), each table's keys in their own insertion order within
-/// a bucket. Exact whenever every layer name was inserted before every via
-/// name and the combined table holds at most 96 keys (no growth); otherwise
-/// the cross-bucket insertion order is not recorded and the result is the
-/// closest order consistent with both tables. A via named like a layer
-/// shadows it in place (def-read). The pointers are valid until either
-/// table next changes.
+/// LefInfo in Magic's enumeration order: the shared key order of `layers`
+/// (LayerTable::enumerate_keys), which holds the tech-section names, the
+/// layers the readers add and every via name the readers and DEF write
+/// note, in their one insertion history, growth included (Q-LEFDEF-135).
+/// Keys with no record (cleared via slots, released and reserved names)
+/// are listed with no record, as Magic keeps them. A via named like a
+/// layer shadows it in place (def-read). A via the key order does not hold
+/// is not listed: every session path notes its via names. The pointers are
+/// valid until either table next changes.
 [[nodiscard]] std::vector<InfoEntry> info_order(const lef::LayerTable& layers, const lef::ViaTable& vias);
 
 /// One entry of the magic-to-LEF layer map (LefMapping).

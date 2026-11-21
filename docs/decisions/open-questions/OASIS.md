@@ -252,7 +252,7 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
 - Options: read as 32767 | drop the element | wrap
 - Recommendation: read as 32767, with a message once per element.
-- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (proposed).
+- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (approved 2026-11-20).
 
 ### Q-OASIS-44: Polygons with more than 8191 points
 - Kind: ambiguity
@@ -261,37 +261,97 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
 - Options: fracture | drop | fail the read
 - Recommendation: fracture into polygons of at most 8191 points.
-- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46 (proposed), and a path over 8191 points is Q-OASIS-47 (proposed).
+- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46, and a path over 8191 points is Q-OASIS-47 (both approved 2026-11-20).
 
 ### Q-OASIS-45: An attribute number below -32768
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2, as proposed)
 - Magic behavior: n/a. A GDS PROPATTR is 16-bit; an OASIS `S_GDS_PROPERTY` attribute is a signed integer of any size. D1 approved reading a number above 32767 as 32767 (Q-OASIS-43) and says nothing about a negative one.
 - Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
 - As implemented (round 4, OASCMD): an attribute below -32768 is read as 32767, with the once-per-element message of OASIS-READ-009. That flips the sign.
 - Options: read as -32768 (clamp to the nearest GDS value) | drop the property | keep reading it as 32767
 - Recommendation: read as -32768, with the OASIS-READ-009 message (the nearest representable value, the same rule as above 32767).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes an `S_GDS_PROPERTY` attribute below -32768 is read as -32768, with the once-per-element OASIS-READ-009 message (round 5; regression test in `tests/unit/oasis/read/limits_test.cpp`). Approved 2026-11-20 (E2).
 
 ### Q-OASIS-46: An outline the fracture cuts cannot shrink, or wider or taller than 2^32
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2, as proposed)
 - Magic behavior: n/a (Magic has no OASIS reader).
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3; `oasis/read/fracture.cpp`
 - As implemented (round 4, OASCMD): a polygon over 8191 points whose vertices lie on two lines in each axis (the median cuts do not shrink it), or whose width or height is above 2^32, is reported and dropped (OASIS-READ-006). D1 approved fracturing polygons over 8191 points (Q-OASIS-44), not dropping any.
 - Options: drop with a message | fail the read
 - Recommendation: drop with a message (the GDS reader cannot hold the outline, and failing the whole read for one element is harsher than gds-read's own handling of a bad element).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes such an outline is reported and dropped (OASIS-READ-006), as implemented in round 4. Approved 2026-11-20 (E2).
 
 ### Q-OASIS-47: A PATH with more than 8191 points
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2, as proposed)
 - Magic behavior: n/a. A GDS PATH holds at most 8191 points; an OASIS PATH is unbounded.
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
 - As implemented (round 4, OASCMD): the path is reported and dropped. D1 approved fracturing polygons only (Q-OASIS-44).
 - Options: drop with a message | split into paths of at most 8191 points that share their end points | fail the read
 - Recommendation: drop with a message (splitting changes the path ends' extensions at the joints).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes the path is reported and dropped, as implemented in round 4. Approved 2026-11-20 (E2).
+
+### Q-OASIS-48: Where the PDK variables of OASIS_FILE come from
+- Kind: quirk
+- Status: approved 2026-11-20 (user decision E4, OASIS-032)
+- Magic behavior: DBPathSubstitute (database/DBio.c:6060-6085) replaces a leading `PDK_PATH`, `PDKPATH`, `PDK_ROOT` or `PDKROOT` by the variable name only when the Tcl global variable is set (`Tcl_GetVar(..., TCL_GLOBAL_ONLY)`); an environment variable alone substitutes nothing. GDS_FILE uses it; OASIS_FILE follows GDS_FILE.
+- Evidence: oasis-read "Read-only OASIS vendor views"; golden OASIS-032 (its first input set PDK_ROOT in the environment only, so Hefesto kept the absolute path where the spec line expected `$PDK_ROOT`)
+- Options: Tcl variable only (Magic) | also the environment
+- Recommendation: compat (follow Magic).
+- Resolution: compat — the PDK variables are the Tcl global variables only, as in Magic, in both modes: Hefesto already substitutes from the Tcl variables (`gds::gds_file_value`), the same function as GDS_FILE, so OFF has no separate behaviour. OASIS-032 now copies `$env(PDK_ROOT)` into the Tcl variable in both scripts. Regression test "OASIS_FILE substitutes the Tcl variable PDK_ROOT, not the environment's" (`tests/unit/oasis/read/vendor_test.cpp`). Approved 2026-11-20 (E4).
+
+### Q-OASIS-49: Child names in the content stamp of a read-only OASIS cell
+- Kind: quirk
+- Status: approved 2026-11-20 (user decision E4, OASIS-033)
+- Magic behavior: n/a for OASIS. Magic's GDS content stamp (calmaStructStamp) hashes a structure's bytes, which hold each child's name in its SREF/AREF SNAME, so renaming a child changes its parent's stamp. An OASIS PLACEMENT may name its child by refnum, so the OASIS stamp of round 3 did not change with the child's name.
+- Evidence: oasis-read "Content-hash timestamps for read-only OASIS cells"; golden OASIS-033 (`[cellname timestamp vt] == [cellname timestamp wt]`: 0 in Magic, 1 in Hefesto)
+- Options: compat (ON: names part of the stamp, as Magic's rule; OFF: content only) | names in both modes | content only
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the names of the cells a cell places (in reference order, consecutive repeats once) are folded into its hash after its bytes, so a renamed child changes its parent's stamp, as Magic's GDS stamp does; with it OFF the stamp depends on content only. The read and every restamp (`oasis::VendorStamper`, `cell::update_timestamps`) use the session's mode. Regression test "a renamed child changes its parent's stamp with magic-compat ON only" (`tests/unit/oasis/read/vendor_test.cpp`). Approved 2026-11-20 (E4).
+
+### Q-OASIS-50: XGEOMETRY in full form
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E4, OASIS-062)
+- Magic behavior: n/a (Magic has no OASIS).
+- Evidence: oasis-write "Modal field omission"; oasis-validate dispatch 44751830760: gdstk 1.0.2 `read_oas` crashes (SIGSEGV) on Hefesto's OASIS-062 output after "Record type XGEOMETRY ignored", where the re-encoded XGEOMETRY omitted its datatype and x (info 09); the vendor file spells them out (info 1B) and reads.
+- Options: write XGEOMETRY in full form | record a gdstk limitation
+- Recommendation: full form.
+- Resolution: fix — in both modes an XGEOMETRY is written with layer, datatype, x and y explicit and a repetition never as type 0, whatever the modal state; the modal variables are still updated (`oasis/codec/encoder_elements.cpp`). Regression test "XGEOMETRY is written in full form" (`tests/unit/oasis/codec/encoder_test.cpp`); oasis-validate's OASIS-062 gdstk read is the third-party check. Approved 2026-11-20 (E4).
+- Finding (round-5 integration, oasis-validate run 44860998162): the full form did not stop the crash. Hefesto's OASIS-062 XGEOMETRY is now byte-identical to the vendor file's, and gdstk 1.0.2 still exits with SIGSEGV. gdstk's `read_oas` loop (`src/library.cpp` v1.0.2, `while (*error_code == NoError ...)`) stops at the first unsupported record, which an XGEOMETRY is (`ErrorCode::UnsupportedRecord`), so the END record, which resolves CELL-by-refnum names from the CELLNAME table, is never read. The vendor file names its cells in the CELL records, so it reads (without the records after the XGEOMETRY); Hefesto writes CELL refnums with the CELLNAME table at the end, so its cells keep a null name and gdstk crashes. No XGEOMETRY encoding avoids this. Proposed (user decision needed): record it as a gdstk 1.0.2 limitation and give OASIS-062's gdstk read a validator skip, as OASIS-055-names has; the full form stays (it is valid and matches the vendor file).
+
+### Q-OASIS-51: An OASIS write of a vendor GDS cell with other units
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E2, as implemented)
+- Magic behavior: n/a. gds-write copies a vendor GDS structure verbatim whatever its file's UNITS (Magic's sanity checks look at the structure, not the units).
+- Evidence: oasis-write "Read-only GDS vendor cells" rule 3; gds-write code GDS-WRITE-054
+- As implemented (round 4, OASW): under an OASIS write only, a vendor GDS file whose UNITS do not round to the output unit is not transcoded; GDS-WRITE-054 is reported and the cell is generated from its layout.
+- Resolution: fix — in both modes, under an OASIS write, such a cell is generated from its layout with GDS-WRITE-054 (OASIS coordinates are in the output unit, so copying them would rescale the cell); a GDS write still copies it. Test "a read-only GDS cell of another unit is generated from its layout in OASIS output" (`tests/unit/oasis/write/vendor_test.cpp`). Approved 2026-11-20 (E2).
+
+### Q-OASIS-52: A negative PROPATTR of a vendor GDS cell in OASIS output
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E2, as implemented)
+- Magic behavior: n/a. A GDS PROPATTR is a signed 16-bit integer; the `S_GDS_PROPERTY` attribute oasis-write writes is an unsigned integer (oasis-write "Reference properties").
+- Evidence: `oasis/write/translate.cpp` (`gds_property`)
+- As implemented (round 4, OASW): the attribute is written as the unsigned value of the 16 bits (-1 as 65535).
+- Resolution: fix — in both modes a negative vendor PROPATTR is written as its unsigned 16-bit value. Regression test "a negative vendor PROPATTR is written as an unsigned 16-bit attribute" (`tests/unit/oasis/write/vendor_test.cpp`). Approved 2026-11-20 (E2).
+
+### Q-OASIS-53: An inexact vendor AREF in OASIS output (cap)
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E3)
+- Magic behavior: n/a (Magic has no OASIS).
+- Evidence: oasis-write "Read-only GDS vendor cells"; docs/contributing/security.md M6-S3
+- Options: cap the explicit displacements at 2^24 (the write fails above it) | no cap (a 32767 x 32767 COLROW allocates about 17 GB)
+- Resolution: fix — in both modes an AREF with inexact steps that would list more than 2^24 displacements (repetition type 10) is not written and the write fails: `Error: an AREF of <cols> x <rows> in cell <c> has inexact steps and too many instances to list.` (OASIS-WRITE-010). Regression test "an inexact AREF above 2^24 instances fails the transcode (approved cap)" (`tests/unit/oasis/write/vendor_test.cpp`). Approved 2026-11-20 (E3).
+
+### Q-OASIS-54: Element instances of a vendor OASIS cell in GDS output (cap)
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E3)
+- Magic behavior: n/a (Magic has no OASIS).
+- Evidence: gds-write "Read-only OASIS vendor cells"; docs/contributing/security.md M6-S3
+- Options: cap at 2^28 element instances per cell (as oasis-read, Q-OASIS-41) | no cap
+- Resolution: fix — in both modes a read-only OASIS cell that expands to more than 2^28 element instances fails, with its parents: `Calma output error:  cell <c> expands to more than 268435456 element instances; the cell cannot be written.` (GDS-WRITE-055); the instances are counted before any is written. Regression test "a vendor OASIS cell above 2^28 element instances fails the cell (approved cap)" (`tests/unit/oasis/write/vendor_test.cpp`). Approved 2026-11-20 (E3).
 
 ### Q-OASIS-60: Character mapping applied to OASIS strings
 - Kind: ambiguity

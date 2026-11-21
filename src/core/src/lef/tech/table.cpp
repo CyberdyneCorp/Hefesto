@@ -187,6 +187,10 @@ void LayerTable::release(std::string_view lef_name) {
   (void)names_.clear_value(std::string{lef_name});
 }
 
+void LayerTable::note_key(std::string_view lef_name) {
+  (void)names_.find_or_insert(std::string{lef_name});
+}
+
 void LayerTable::redefine_alias(std::string_view lef_name) {
   const std::string key{lef_name};
   const auto* entry = names_.find(key);
@@ -227,6 +231,10 @@ void LayerTable::enumerate(const Visitor& visit) const {
       visit(entry.key, records_[*entry.value]);
     }
   });
+}
+
+void LayerTable::enumerate_keys(const KeyVisitor& visit) const {
+  names_.for_each([&](const auto& entry) { visit(entry.key, entry.value ? &records_[*entry.value] : nullptr); });
 }
 
 }  // namespace hefesto::lef

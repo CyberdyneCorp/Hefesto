@@ -206,7 +206,7 @@ diag::Status MacroBuilder::write(std::string& out, std::vector<diag::Diagnostic>
   if (!m.sets_ready) {
     type_sets();
   }
-  m.names = wd::make_name_map(m.tech(), *m.ctx.layers);
+  m.names = wd::make_name_map(m.tech(), *m.ctx.layers, m.ctx.vias);
   wd::warn_name(m, "Macro", m.cell.name());
   m.boundary = macro_boundary(m);
   check_setback(m);

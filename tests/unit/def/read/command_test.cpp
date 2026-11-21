@@ -106,6 +106,34 @@ TEST_CASE("the design is loaded into the only window", "[cap:def-read][req:Comma
   CHECK(s.editor.windows.current()->root() == &s.cell("top"));
 }
 
+// Regression (found with lefdef-bench, perf run 44868150477): Magic's
+// LefEstimate sets GrDisplayStatus on the first counted section item, which
+// takes the NULL driver's DISPLAY_SUSPEND away for good, so DefRead's
+// DBWloadWindow deletes an untouched "(UNNAMED)" root; Hefesto kept it.
+// Compat (Q-LEFDEF-141): magic-compat OFF keeps it, as a batch session does.
+TEST_CASE("a counted DEF section makes the design load delete an untouched (UNNAMED) with magic-compat ON",
+          "[cap:def-read][req:Command context]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Session s(on);
+    auto unnamed = s.editor.cells.create("(UNNAMED)", s.editor.technology->plane_count());
+    REQUIRE(unnamed);
+    REQUIRE(s.editor.windows.open(unnamed.value(), hefesto::view::ScreenRect{0, 0, 499, 499}).ok());
+    s.file("/d/top.def", "DESIGN top ;\nNETS 1 ;\n- n1 + ROUTED met1 ( 0 0 ) ( 100 0 ) ;\nEND NETS\nEND DESIGN\n");
+    REQUIRE(s.run("defr read /d/top").ok());
+    CHECK((s.editor.cells.find("(UNNAMED)") == nullptr) == on);
+    CHECK(s.editor.display_status_active == on);
+  }
+  // No counted item (as LefEstimate's `if (!total) return`): kept in both modes.
+  Session s;
+  auto unnamed = s.editor.cells.create("(UNNAMED)", s.editor.technology->plane_count());
+  REQUIRE(unnamed);
+  REQUIRE(s.editor.windows.open(unnamed.value(), hefesto::view::ScreenRect{0, 0, 499, 499}).ok());
+  s.file("/d/top.def", "DESIGN top ;\nDIEAREA ( 0 0 ) ( 10 10 ) ;\nNETS 0 ;\nEND NETS\nEND DESIGN\n");
+  REQUIRE(s.run("defr read /d/top").ok());
+  CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
+}
+
 // Regression: the design was loaded through the `load` command's argument
 // parser, so a design name starting with `-` was taken as a `load` option
 // (`-nowindow` loaded nothing into the window). Magic calls DBWloadWindow

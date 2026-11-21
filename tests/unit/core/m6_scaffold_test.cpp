@@ -4,9 +4,9 @@
 // M6 scaffold (openspec/changes/m6-lef-def-oasis tasks.md 2.2, 2.3): the
 // lef, def, oasis, extflat and extract code areas exist; `lef` and `def`
 // share one dispatcher with Magic's option lookup and help, and `oasis` is
-// registered with its full option table; every option not implemented yet
-// fails with CORE-NOTIMPL-006; the area-contract stubs answer their
-// documented neutral values. Owners replace these [m6-scaffold] tests with
+// registered with its full option table; the area-contract stubs answer
+// their documented neutral values. Task 17.5: every option is implemented and
+// CORE-NOTIMPL-006 is retired (kept in the table, never reused). Owners replace these [m6-scaffold] tests with
 // [cap:][req:] ones as the stubs go away.
 
 #include <catch2/catch_test_macros.hpp>
@@ -91,11 +91,12 @@ std::vector<std::string> option_names(std::span<const std::string_view> table) {
 
 // --- tasks.md 2.2/2.3: code areas and CORE-NOTIMPL-006 ----------------------
 
-TEST_CASE("CORE-NOTIMPL-006 and the M6 code areas are declared", "[m6-scaffold]") {
+// Task 17.5: the stub code is retired at the M6 exit (kept, never reused).
+TEST_CASE("CORE-NOTIMPL-006 is retired and the M6 code areas are declared", "[m6-scaffold]") {
   const auto code = diag::find_code(kNotImplemented);
   REQUIRE(code.has_value());
   CHECK(code->severity == diag::Severity::error);
-  CHECK(diag::codes::kCoreNotImplemented == kNotImplemented);
+  CHECK(code->summary.starts_with("Retired in M6, never reused."));
   const std::array<std::pair<std::string_view, std::string_view>, 5> areas{{
       {"lef", "LEF"},
       {"def", "DEF"},

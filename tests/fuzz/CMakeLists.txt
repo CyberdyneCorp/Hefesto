@@ -39,6 +39,11 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_cif_reader       # CIF files read then written (cif-format-io)
   fuzz_cifoutput_section  # the technology `cifoutput` section (mask-output-styles, mask-output-operators)
   fuzz_cifinput_section   # the technology `cifinput` section (mask-input-styles)
+  fuzz_lef_reader       # LEF files, plain and gzip (lef-read; m6 design D21)
+  fuzz_def_reader       # DEF files after a fixed LEF library, plain and gzip (def-read)
+  fuzz_lef_section      # the technology `lef` section (lef-tech-section)
+  fuzz_oasis_reader     # OASIS files, plain and gzip, read then written as OASIS and GDS (oasis-format, oasis-read, oasis-write)
+  fuzz_ext_reader       # `.ext` netlists read and flattened (EXTSUB, m6 Open Question 1 (a))
 )
 
 if(HEFESTO_BUILD_FUZZ)
@@ -94,9 +99,9 @@ if(TARGET fuzz_drc_section)
     HEFESTO_SCMOS_TECH="${CMAKE_BINARY_DIR}/tests/unit/tech/magic-tech/scmos.tech")
 endif()
 
-# The cifoutput and cifinput section targets also read the pinned PDK
+# The cifoutput, cifinput and lef section targets also read the pinned PDK
 # technologies (tests/unit/common/reference_data.hpp) as bases.
-foreach(target IN ITEMS fuzz_cifoutput_section fuzz_cifinput_section)
+foreach(target IN ITEMS fuzz_cifoutput_section fuzz_cifinput_section fuzz_lef_section)
   if(TARGET ${target})
     target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
   endif()

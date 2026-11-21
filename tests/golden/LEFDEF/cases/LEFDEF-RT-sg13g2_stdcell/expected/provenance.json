@@ -9,7 +9,7 @@
   "runner": "container",
   "reference_captured": true,
   "image": "hefesto-golden:ci",
-  "image_id": "sha256:5ec002618cfc45423d86eff360ae1477961190c19bd3da1e0d35910941db4e67",
+  "image_id": "sha256:5537ddbebecd4cd7d06abaa37ed996810fd007d3ea112f3d55720241c65a9d8f",
   "image_repo_digests": [],
   "command": [
     "magic",
@@ -23,11 +23,12 @@
     "TZ": "UTC",
     "LC_ALL": "C"
   },
-  "captured_at": "2026-11-19T18:02:18Z",
+  "captured_at": "2026-11-21T04:05:15Z",
   "outputs": {
     "lefdef_rt.lef.sha256": "4c9514d6d06f491fd4dc5053d697e675c1990f66d1c643146857c86b465e880d",
     "lefdef_rt.lef.summary.txt": "5aaeaa2113acf7ca295df06c5a8b7d964d6960a736ca0ba4597c2449b6402888",
+    "lefdef_rt.probe.lef": "371c8246c1e2f5f5887ab1ba5d043e8e7cc0cb7e5cb36f0e51df6a04053980e5",
     "stderr.txt": "a15e001594b291597fa6b879ac8171ea1a04751f08d6aa1ce83a48a6a9cf6ae5",
-    "stdout.txt": "883b9abc525ad456c8edf4d71fad077117951b509daa6f8acb103d7444e4bd09"
+    "stdout.txt": "820eefffc72cde8d1dcc488cbd19032d7ce61cdd8439f93ec667fe286aab7287"
   }
 }

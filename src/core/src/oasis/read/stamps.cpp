@@ -20,6 +20,12 @@
 // runs as its bytes go by (a hostile file of many small CBLOCKs, each
 // inflating 256 times, used to be held whole).
 //
+// With magic-compat ON the names of the children are folded into the hash
+// after the cell's bytes (Q-OASIS-49, compat): in Magic's GDS stamp a
+// parent's bytes hold each child's name (SREF SNAME), so renaming a child
+// changes its parent's stamp; an OASIS PLACEMENT may name the child by
+// refnum only. With it OFF a stamp depends on content, not on names.
+//
 // The stamp procedure is gds-read's calmaStructStamp (memoized, cycles
 // cut, each child stamp folded as 4 big-endian bytes, the final mix and
 // mask), shared through gds::stamp_entries (gds/read/stamps.hpp, design
@@ -242,8 +248,9 @@ class CellHasher {
 // --- the cells ---------------------------------------------------------------------
 
 /// The stamp entry of `c`, its names resolved; consecutive children that
-/// resolve to the same name are one.
-gds::StampEntry entry_of(CellRecord& c, const NameTables& names) {
+/// resolve to the same name are one. With `child_names` each child's name
+/// is folded into the hash after the cell's bytes, in reference order.
+gds::StampEntry entry_of(CellRecord& c, const NameTables& names, bool child_names) {
   gds::StampEntry e;
   e.name = read_detail::cell_name(names, c.name);
   e.start = c.start;
@@ -255,13 +262,18 @@ gds::StampEntry entry_of(CellRecord& c, const NameTables& names) {
       e.children.push_back(std::move(child));
     }
   }
+  if (child_names) {
+    for (const std::string& child : e.children) {
+      e.hash = fnv(e.hash, std::as_bytes(std::span{child.data(), child.size()}));
+    }
+  }
   c.children = {};
   return e;
 }
 
 }  // namespace
 
-gds::StampTable content_stamps(gds::ByteSource& source) {
+gds::StampTable content_stamps(gds::ByteSource& source, bool child_names) {
   if (!source.seek(0).ok()) {
     return {};
   }
@@ -280,7 +292,7 @@ gds::StampTable content_stamps(gds::ByteSource& source) {
   std::vector<gds::StampEntry> entries;
   entries.reserve(cells.cells().size());
   for (CellRecord& c : cells.cells()) {
-    entries.push_back(entry_of(c, decoder.names()));
+    entries.push_back(entry_of(c, decoder.names(), child_names));
   }
   return gds::stamp_entries(std::move(entries));
 }

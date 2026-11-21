@@ -410,7 +410,7 @@ void PinWriter::emit(std::size_t i, db::CellDef& sel, std::int64_t gate, std::in
     yank_routing(y, sel.plane(plane), plane, db::whole_plane(), yank->plane(plane));
     w.write_plane(m_.tech(), yank->plane(plane), m_.sets.route, db::whole_plane(), Round::routing);
     erase_from(y, sel.plane(plane), plane, m_.flat->plane(plane));
-    yank_contacts(y, sel.plane(plane), plane, db::whole_plane(), yank->plane(plane));
+    yank_contacts(y, sel.plane(plane), plane, db::whole_plane(), yank->plane(plane), w.marks());
     w.write_plane(m_.tech(), yank->plane(plane), m_.sets.route, db::whole_plane(), Round::cut);
   }
   mark_covered(i, *yank, sel);

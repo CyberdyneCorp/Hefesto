@@ -7,6 +7,7 @@
 # Magic runs input/commands.tcl, hefesto-cli input/hefesto.tcl (authoring/tclcase.py).
 # Magic GDS cross-check (design D19): Magic reads <stem>.gds, the GDS equivalent of <stem>.oas (authoring/oasequiv.py); Hefesto reads <stem>.oas (input/hefesto.tcl). Saved cells and report.txt are compared; the console is not (two different commands, informative wording).
 # The GDS_* and OASIS_* property lines are masked in the saved cells; report.txt holds the OASIS values the spec fixes.
+# PDK_ROOT is set as a Tcl global from the environment: Magic and Hefesto substitute the Tcl variable only (Q-OASIS-48).
 
 schema = 1
 id = "OASIS-032"

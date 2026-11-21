@@ -48,6 +48,8 @@ Magic requires a target window or box context before any non-help `def` subcomma
 
 In the Tcl build, Magic restricts the event loop while the read runs, so that key and button events are not processed, and prints progress through a periodic timer (about every 5 seconds: "  Processed N of M <items> (P%).  Est. time remaining: Ts"). Hefesto SHALL run the read as a task that blocks edits to the target document until it finishes, and SHALL report progress through the platform progress service, with optional cancellation (Q-LEFDEF-88, resolution: platform). The scripting console SHALL keep the text form of the progress message. Timing and the progress medium are not part of compatibility, and file output is the same in both `magic-compat` settings.
 
+The progress estimate has one lasting side effect in Magic: its first call for an item of a section with a declared count above 0 (COMPONENTS, PINS, NETS, SPECIALNETS, VIAS, BLOCKAGES) sets the display status, so with the NULL graphics driver the status no longer reads as suspended for the rest of the session. The window load after the read then deletes an untouched "(UNNAMED)" root, as every later window load does. With `magic-compat` ON Hefesto SHALL reproduce this: after such a read the session behaves as with a running display for that deletion. With `magic-compat` OFF a batch session keeps "(UNNAMED)" (Q-LEFDEF-141, resolution: compat).
+
 (Magic ref: lef/lefCmd.c:200-219, lef/defRead.c:2537-2547, lef/lefRead.c:87-140)
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-4)

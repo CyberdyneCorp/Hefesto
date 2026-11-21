@@ -115,6 +115,13 @@ struct EditorState {
   /// cell over an untouched "(UNNAMED)" deletes it, as Magic does while its
   /// display runs (Magic ref: dbwind/DBWprocs.c:321-331,608-617).
   bool display_running = false;
+  /// With the NULL driver, Magic's GrDisplayStatus left DISPLAY_SUSPEND:
+  /// a DEF read's LefEstimate sets it to DISPLAY_IN_PROGRESS on the first
+  /// counted section item and to DISPLAY_IDLE on the last one, and nothing
+  /// restores it, so later window loads delete an untouched "(UNNAMED)" as
+  /// with a running display (magic-compat ON only; Q-LEFDEF-141).
+  /// (Magic ref: lef/lefRead.c:87-131, dbwind/DBWprocs.c:321-331)
+  bool display_status_active = false;
 
   // PDK / app: layered settings (the project's typed compat settings stay
   // in settings::ProjectSettings, reachable through CommandContext::project()).

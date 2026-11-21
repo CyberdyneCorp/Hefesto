@@ -92,13 +92,16 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
 /// CalmaVendorStamp). Each GDS file is scanned at most once, and the scan
 /// cache is dropped at the end of the pass (CalmaVendorStampFlush). This is
 /// the form the save paths use (DBUpdateStamps before a write).
-void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup);
+/// `magic_compat` selects the OASIS_FILE stamp rule (oasis::content_stamps,
+/// Q-OASIS-49), so a restamp matches the stamp the read assigned.
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup,
+                       bool magic_compat = true);
 
 /// DBUpdateStamps(def) for each of `cells` in order, sharing one scan cache
 /// (`writeall` with cell names): each GDS file is scanned at most once for
 /// the whole list.
 void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
-                       LookupContext& lookup);
+                       LookupContext& lookup, bool magic_compat = true);
 
 /// `cellname timestamp`: assigns `value`; clears the pending mark when the
 /// value differs; with `magic_compat` false also sets the fixed-stamp

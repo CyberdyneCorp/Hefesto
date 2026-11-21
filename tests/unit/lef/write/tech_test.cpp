@@ -107,7 +107,7 @@ TEST_CASE("an obstruction type is written under its route layer's name",
 
 TEST_CASE("a contact is written under the name of its first cut record in table order",
           "[cap:lef-write][req:Magic type to LEF layer name]") {
-  Session s;
+  Session s(false);  // a lone contact's cut is dropped with magic-compat ON (Q-LEFDEF-136)
   LayerRecord via;
   via.layer_class = LayerClass::cut;
   via.type = s.type("m2c");
@@ -124,6 +124,39 @@ TEST_CASE("a contact is written under the name of its first cut record in table 
   db::CellDef& poly = s.cell("polyonly");
   s.paint(poly, "poly", db::Rect{0, 0, 10, 10});
   CHECK(s.macro(poly).find("RECT") == std::string::npos);
+}
+
+// Regression (found with LEFDEF-RT-sky130_fd_sc_hd and -sg13g2_stdcell in
+// round 5): defGetType enumerates all of LefInfo, so a VIA definition read
+// from LEF, a ViaTable entry with no layer record, names a cut type when its
+// key comes first (Magic wrote `LAYER M4M5_PR_C ;` for via4); lef write
+// looked at the layer records only.
+TEST_CASE("a VIA definition earlier in the key order names the cut type it holds",
+          "[cap:lef-write][req:Magic type to LEF layer name]") {
+  bool via_won = false;
+  for (const std::string name : {"M1M2_PR", "M1M2_PR_C", "V12", "VIA12", "M1M2", "Via1_XY_s"}) {
+    INFO(name);
+    Session s(false);  // a lone contact's cut is dropped with magic-compat ON (Q-LEFDEF-136)
+    ViaDefinition via;
+    via.type = s.type("m2c");
+    via.area = db::Rect{-10, -10, 10, 10};
+    via.canonical_name = name;
+    s.editor.lefdef.layers.note_key(name);  // as begin_via does (Q-LEFDEF-135)
+    s.editor.lefdef.vias.insert(name, via);
+    std::string first;
+    s.editor.lefdef.layers.enumerate_keys([&](std::string_view key, const LayerRecord* record) {
+      const bool cut = record != nullptr && record->layer_class == LayerClass::cut && record->type == s.type("m2c");
+      if (first.empty() && (key == name || cut)) {
+        first = key == name ? name : record->canonical_name;
+      }
+    });
+    via_won = via_won || first == name;
+    db::CellDef& inv = s.cell("inv");
+    s.paint(inv, "m2c", db::Rect{0, 0, 10, 10});
+    CHECK(s.macro(inv).find("      LAYER " + first + " ;\n        RECT 0.000 0.000 0.100 0.100 ;\n") !=
+          std::string::npos);
+  }
+  CHECK(via_won);  // at least one name precedes the cut layer's key
 }
 
 }  // namespace

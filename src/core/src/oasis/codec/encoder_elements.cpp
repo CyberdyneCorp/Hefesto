@@ -349,7 +349,18 @@ void Encoder::Impl::xelement(std::vector<std::byte>& out, const Element& e) {
   write_string(out, e.payload);
 }
 
+/// XGEOMETRY is written in full form: layer, datatype, x, y and a repetition
+/// are always explicit, never left to the modal variables (E4, OASIS-062:
+/// gdstk 1.0.2 skips XGEOMETRY without honouring modal omission and
+/// crashes). The modal state is still updated, as the decoder updates it.
 void Encoder::Impl::xgeometry(std::vector<std::byte>& out, const Element& e) {
+  modal.layer.reset();
+  modal.datatype.reset();
+  modal.geometry_x.reset();
+  modal.geometry_y.reset();
+  if (e.repetition && e.repetition->type != 0) {
+    modal.repetition.reset();
+  }
   std::vector<std::byte> fields;
   write_unsigned(fields, e.attribute);
   std::uint8_t info = layer_bits(fields, e);

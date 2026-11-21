@@ -19,7 +19,7 @@ proc specrep {value} {
     close $f
 }
 probe {drc off}
-probe {oasis datestamp 1}
+probe {oasis datestamp 1700000000}
 probe {oasis read input/sky130_fd_sc_hd.oas}
 probe {oasis unique yes}
 probe {oasis read input/sky130_fd_sc_hd.oas}

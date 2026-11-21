@@ -1,0 +1,11 @@
+VERSION 5.7 ;
+DIVIDERCHAR "/" ;
+BUSBITCHARS "[]" ;
+DESIGN labelsize ;
+UNITS DISTANCE MICRONS 1000 ;
+DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+PINS 2 ;
+- tall + NET tall + LAYER metal1 ( -70 -500 ) ( 70 500 ) + PLACED ( 1000 2000 ) N ;
+- square + NET square + LAYER metal1 ( -300 -300 ) ( 300 300 ) + PLACED ( 4000 2000 ) N ;
+END PINS
+END DESIGN

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3377 scenarios, 919 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3381 scenarios, 934 open questions.
 
 ## Hefesto product (native)
 
@@ -95,7 +95,7 @@ Open questions: [160](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 |---|---|---|---|
 | [`cif-format-io`](../openspec/specs/cif-format-io/spec.md) | 30 | 51 | Defines the Caltech Intermediate Form (CIF) as read and written by Hefesto in a Magic-compatible way: the lexical rules and grammar accepted on input, how symbols, calls, transform… |
 | [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 91 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
-| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 77 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
+| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 78 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 48 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
 | [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 49 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 50 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
@@ -103,26 +103,26 @@ Open questions: [160](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 
 ## OASIS (OASIS)
 
-Open questions: [42](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
+Open questions: [49](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`oasis-command`](../openspec/specs/oasis-command/spec.md) | 7 | 14 | Defines the `oasis` command: Hefesto's command-level API for reading and writing OASIS files. Its options mirror the Magic `gds` (`calma`) command, so that scripts written for GDS … |
 | [`oasis-format`](../openspec/specs/oasis-format/spec.md) | 30 | 58 | Defines the OASIS (SEMI P39, version 1.0) byte-level format as Hefesto reads and writes it: the magic bytes, the START and END records, the primitive encodings (unsigned and signed… |
 | [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 26 | 49 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
-| [`oasis-write`](../openspec/specs/oasis-write/spec.md) | 25 | 37 | Defines how Hefesto serializes a layout hierarchy to an OASIS file (the `oasis write` operation, capability `oasis-command`). Magic has no OASIS writer. The governing rule is **GDS… |
+| [`oasis-write`](../openspec/specs/oasis-write/spec.md) | 25 | 38 | Defines how Hefesto serializes a layout hierarchy to an OASIS file (the `oasis write` operation, capability `oasis-command`). Magic has no OASIS writer. The governing rule is **GDS… |
 
 ## LEF / DEF (LEFDEF)
 
-Open questions: [123](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
+Open questions: [131](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 68 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
-| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 54 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 55 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
-| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 72 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
+| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 73 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
 
 ## Circuit extraction (EXTRACT)
 

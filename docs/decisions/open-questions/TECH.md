@@ -217,6 +217,9 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Options: fix (treat 0 as 1, as the grid-limit check does)
 - Recommendation: fix.
 - Resolution: fix — division by zero; a grid limit of 0 is treated as 1, as the grid-limit check does (X-2 tier 1, 2026-11-07).
+- Amended 2026-11-20 (user decision E2, LEFDEF-003): the same step divides the style's final scale factor by the grid limit in integers, so a quotient below 1 (`scalefactor 20 nanometers` with `gridlimit 10` leaves 2 / 10 = 0) gives 0 internal units per lambda and Magic divides by zero rescaling the tables (SIGFPE; utils/tech.c:808-823, `CIFTechOutputScale`).
+- Status: amendment approved 2026-11-20
+- Resolution (amendment): fix — in both modes a quotient below 1 is read as 1, so the grid stays 1:1 (`tech/loader.cpp` `apply_post_load`; test `tests/unit/lef/tech/minimum_grid_test.cpp` over `tests/golden/LEFDEF/magic-crash/LEFDEF-003/`, both modes). Approved 2026-11-20.
 
 ### Q-TECH-28: Host mechanisms for finding and loading technologies
 - Kind: platform

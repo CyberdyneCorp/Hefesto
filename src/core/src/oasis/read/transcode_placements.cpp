@@ -39,26 +39,26 @@ bool is_grid(std::uint8_t type) {
   return type == 1 || type == 2 || type == 3 || type == 8 || type == 9;
 }
 
-/// The attribute number of an S_GDS_PROPERTY as a GDS INT2: a number
-/// outside INT2 becomes 32767, an attribute gds-read does not know, as the
-/// original number is.
+/// The attribute number of an S_GDS_PROPERTY as a GDS INT2: a number above
+/// 32767 becomes 32767 (Q-OASIS-43) and one below -32768 becomes -32768
+/// (Q-OASIS-45), the nearest INT2 value; neither is an attribute gds-read
+/// knows, as the original number is not.
 std::optional<std::int16_t> attribute(const PropertyValue& v) {
   if (v.kind == PropertyValue::Kind::unsigned_integer) {
     return int2_number(v.unsigned_value);
   }
   if (v.kind == PropertyValue::Kind::signed_integer) {
-    const bool fits = v.signed_value >= std::numeric_limits<std::int16_t>::min() && v.signed_value <= kMaxGdsInt2;
-    return static_cast<std::int16_t>(fits ? v.signed_value : kMaxGdsInt2);
+    return static_cast<std::int16_t>(std::clamp<std::int64_t>(v.signed_value, kMinGdsInt2, kMaxGdsInt2));
   }
   return std::nullopt;
 }
 
-/// Whether `v` is the integer `n`.
-bool is_attribute(const PropertyValue& v, std::int64_t n) {
+/// Whether `v` is an integer outside INT2 (read as the nearest INT2 value).
+bool outside_int2(const PropertyValue& v) {
   if (v.kind == PropertyValue::Kind::unsigned_integer) {
-    return v.unsigned_value == static_cast<std::uint64_t>(n);
+    return v.unsigned_value > static_cast<std::uint64_t>(kMaxGdsInt2);
   }
-  return v.kind == PropertyValue::Kind::signed_integer && v.signed_value == n;
+  return v.kind == PropertyValue::Kind::signed_integer && (v.signed_value < kMinGdsInt2 || v.signed_value > kMaxGdsInt2);
 }
 
 /// A point P0 + n * v, or nullopt outside 32 bits.
@@ -116,9 +116,9 @@ void Transcoder::placement_properties(const Property& p) {
   if (!attr || !value) {
     return;
   }
-  if (*attr == kMaxGdsInt2 && !is_attribute(p.values[0], kMaxGdsInt2)) {
+  if (outside_int2(p.values[0])) {
     error("OASIS-READ-009", "S_GDS_PROPERTY attribute outside -32768 to " + std::to_string(kMaxGdsInt2) +
-                                " is read as " + std::to_string(kMaxGdsInt2));
+                                " is read as " + std::to_string(*attr));
   }
   if (value->size() > kMaxString) {
     error("OASIS-READ-006", "S_GDS_PROPERTY value of " + std::to_string(value->size()) + " bytes cut to " +

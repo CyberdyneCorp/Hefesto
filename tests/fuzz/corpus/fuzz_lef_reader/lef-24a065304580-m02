@@ -1,0 +1,16 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+MACRO cport
+  CLASS CORE ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  PIN A
+    DIRECTION INPUT ;
+    PORT
+      LAYER cont1 ;
+        RECT 0.1 0.1 0.12 0.12 ;
+    END
+  END A
+END cport
+END LIBRARY

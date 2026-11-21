@@ -197,7 +197,7 @@ The output path SHALL be derived from a base name. For `lef write`, the base nam
 4. If there is no extension, append `.lef`.
 5. If opening still fails and the base name came from the cell's file path, retry with the cell name plus `.lef`. Magic also retries with the cell name plus `.lef` when a typed file name fails (lefFileOpen retries whenever the name is not the cell's own name); Hefesto does so with `magic-compat` ON only, and with it OFF a typed name that cannot be opened fails the write (Q-LEFDEF-128, resolution: compat).
 
-The base name taken from the cell's file path never keeps a `.mag` suffix (Magic's `cd_file` never holds one), so a LEF never replaces the layout file.
+The base name taken from the cell's file path never keeps a `.mag` suffix, so a LEF never replaces the layout file, with one exception in Magic: a cell whose read failed has the file name `<name>.mag` (DBio.c), which `lef writeall` opens as given (rule 3), so Magic writes the LEF into `<name>.mag`. Hefesto does so with `magic-compat` ON; with it OFF the suffix is dropped and the file is `<name>.lef` (Q-LEFDEF-138, resolution: compat).
 
 A failure to open SHALL print `Cannot open output file <name> (<reason>).` and write nothing. On iPadOS, the file SHALL be created inside the app's document container (platform mechanism; see Q-LEFDEF-43).
 
@@ -981,7 +981,7 @@ After the routing round on plane `p`, the system SHALL write the cut round:
 1. Each selected non-split contact tile whose contact type has its home plane on `p` and has a LEF name is copied into the scratch plane. For a stacked contact type, the component contact whose home plane is `p` is copied instead.
 2. Contact tiles of the scratch plane SHALL then be written as RECT (with LAYER changes) under the contact's LEF cut-layer name.
 
-Routing tiles left over from the routing round SHALL NOT be written again. When a pin's PIN header has not been written yet at a cut round (no routing record of the pin came before, for example a cut on a lower plane than the pin's routing layers), Magic's search stops at the first cut and writes nothing in that round. Hefesto does so with `magic-compat` ON; with it OFF the header is written and the cuts follow (Q-LEFDEF-124, resolution: compat). Each record covers the whole magic contact area, not individual cut squares, in both modes (Q-LEFDEF-52, resolution: replicate), as Magic intends.
+Routing tiles left over from the routing round SHALL NOT be written again. Magic marks every scratch-plane tile it visits and skips marked tiles; painting a contact whose area starts at the lower-left corner of a routing tile already written changes that tile in place (no bottom or left clip), so it keeps its mark and Magic writes no cut record for it (for example a via whose metal is exactly the via's area). Hefesto does so with `magic-compat` ON, tracking the marks by tile identity; with it OFF every cut is written once per PORT or OBS block (Q-LEFDEF-136, resolution: compat). When a pin's PIN header has not been written yet at a cut round (no routing record of the pin came before, for example a cut on a lower plane than the pin's routing layers), Magic's search stops at the first cut and writes nothing in that round. Hefesto does so with `magic-compat` ON; with it OFF the header is written and the cuts follow (Q-LEFDEF-124, resolution: compat). Each record covers the whole magic contact area, not individual cut squares, in both modes (Q-LEFDEF-52, resolution: replicate), as Magic intends.
 
 Compatibility: exact
 
@@ -990,7 +990,13 @@ Compatibility: exact
 #### Scenario: Via in a pin
 - **GIVEN** a pin containing m1/m2 contact type `via1`, area (0,0)-(20,20), whose cut LEF name is `via1`, on a metal1 strip (0,0)-(20,100), with `oscale = 0.01`
 - **WHEN** it is written
-- **THEN** on the via's home plane, after the metal RECTs, the PORT SHALL contain `      LAYER via1 ;` and `        RECT 0.000 0.000 0.200 0.200 ;`
+- **THEN** with `magic-compat` OFF, on the via's home plane, after the metal RECTs, the PORT SHALL contain `      LAYER via1 ;` and `        RECT 0.000 0.000 0.200 0.200 ;`
+- **AND** with `magic-compat` ON (the default) the via shares the lower-left corner of the metal1 tile written in the routing round, so, as in Magic, no via1 record is written (Q-LEFDEF-136)
+
+#### Scenario: Via inside its metal
+- **GIVEN** the same pin with the via at (0,40)-(20,60)
+- **WHEN** it is written
+- **THEN** in both `magic-compat` settings the PORT SHALL contain `      LAYER via1 ;` and `        RECT 0.000 0.400 0.200 0.600 ;` (the paint clips the metal tile below the via, so the via's tile is a new one)
 
 ### Requirement: PORT blocks
 

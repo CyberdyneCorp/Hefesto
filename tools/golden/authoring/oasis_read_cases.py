@@ -178,7 +178,10 @@ def oasis_032():
     vendor = ofile(o.cellname("sc_inv"), ocell(0, rect(M1, 0, 0, 1000, 2000), rect((60, 0), 0, 0, 100, 100)))
     coarse = ofile(ocell("sc_coarse", rect(M1, 0, 0, 100, 100)), unit=100)
     inputs = Read({"pdk/lib/cells": vendor, "coarse": coarse})
-    steps = [opt("readonly yes"), Line("gds read $env(PDK_ROOT)/lib/cells", "oasis read $env(PDK_ROOT)/lib/cells"),
+    # The PDK variables are Tcl globals (Magic's DBPathSubstitute; Q-OASIS-48): the environment
+    # variable alone substitutes nothing, so both scripts copy it into the Tcl variable.
+    steps = [both("#raw set PDK_ROOT $env(PDK_ROOT)"), opt("readonly yes"),
+             Line("gds read $env(PDK_ROOT)/lib/cells", "oasis read $env(PDK_ROOT)/lib/cells"),
              spec_line("cellname property sc_inv OASIS_FILE", "$PDK_ROOT/lib/cells.oas"),
              spec_line("cellname property sc_inv OASIS_CELL", "sc_inv"), rep("cellname writeable sc_inv"),
              read("coarse")]
@@ -187,7 +190,9 @@ def oasis_032():
                      "read-only, unmapped layer quiet); a unit-100 file refused in read-only mode.", inputs, steps,
                      env=dict(PDK_ENV), masks=[VENDOR_PROPS],
                      notes=["The GDS_* and OASIS_* property lines are masked in the saved cells; report.txt holds the "
-                            "OASIS values the spec fixes."])
+                            "OASIS values the spec fixes.",
+                            "PDK_ROOT is set as a Tcl global from the environment: Magic and Hefesto substitute the Tcl "
+                            "variable only (Q-OASIS-48)."])
 
 
 # The vendor-file properties each format sets on a read-only cell (masked: GDS_FILE/GDS_START/GDS_END

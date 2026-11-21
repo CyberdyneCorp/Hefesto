@@ -72,6 +72,8 @@ TEST_CASE("rule values without a layer, WIREEXT and DIAGWIDTH", "[cap:def-read][
   CHECK(r.layers[1].extension == 10);  // doubled units
 }
 
+// The name takes a key with no record in the shared key order, as Magic's
+// HashFind does (Q-LEFDEF-135).
 TEST_CASE("an unknown rule layer is reported and not added (Q-LEFDEF-75)",
           "[cap:def-read][req:NONDEFAULTRULES section]") {
   for (const bool compat : {true, false}) {
@@ -80,7 +82,8 @@ TEST_CASE("an unknown rule layer is reported and not added (Q-LEFDEF-75)",
     REQUIRE(s.read(rules("- R + LAYER met9 WIDTH 10 ;") + "END DESIGN\n").ok());
     CHECK(s.said("Unknown layer \"met9\" in NONDEFAULTRULE definition."));
     CHECK(s.said("No layer for non-default width."));
-    CHECK(s.editor.lefdef.layers.size() == names);
+    CHECK(s.editor.lefdef.layers.size() == names + 1);
+    CHECK(s.editor.lefdef.layers.find("met9") == nullptr);
     CHECK(s.editor.lefdef.vias.find("met9") == nullptr);
     CHECK(rule(s, "R").layers.front().target == lef::RuleTarget::none);
   }

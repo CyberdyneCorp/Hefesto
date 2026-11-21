@@ -82,7 +82,7 @@ The output file name SHALL be derived from the name `N` given on the command lin
 1. Let `B` be the part of `N` after its last `/`. If `B` contains a `.` and the text from the last `.` is not `.def`, the system SHALL first try to open `N` exactly as given. If that succeeds, `N` SHALL be used unchanged. Otherwise, the extension SHALL be stripped and `.def` appended.
 2. If `B` ends in `.def`, `N` SHALL be used as given.
 3. If `B` has no `.`, `.def` SHALL be appended.
-4. With `magic-compat` ON (the default), when the name of rules 1-3 cannot be opened and `N` is not the cell's name, `<cellname>.def` SHALL be tried, as Magic's lefFileOpen does for a write with a cell (the rule `lef write` follows for `.lef`). With it OFF no other name is tried.
+4. With `magic-compat` ON (the default), when the name of rules 1-3 cannot be opened and `N` is not the cell's name, `<cellname>.def` SHALL be tried, as Magic's lefFileOpen does for a write with a cell (the rule `lef write` follows for `.lef`). With it OFF no other name is tried (Q-LEFDEF-137, resolution: compat).
 
 If no name can be opened, `Generating DEF output <last name tried> for cell <c>:` and `Cannot open output file <name> (<reason>).` SHALL be the only messages, nothing SHALL be written and the session SHALL be unchanged: no generated via key and no non-default rule is added, as in Magic, which opens the file before anything else.
 
@@ -379,6 +379,8 @@ For each record of magic type `T`:
    - Otherwise: `left = trunc((X1 + X2 + p' − nx·pitch)/2)`.
    - Compute `ny` and `bottom` the same way from `Y1` and `Y2`. The y warning fires when `bottom >= Y1` with `magic-compat` ON (the default), as in Magic, and when `bottom < Y1`, the same test as for x, with it OFF (Q-LEFDEF-107, resolution: compat). Only the message differs; the DEF bytes are the same.
    - Write `nx·ny` cuts row by row from the bottom, left to right within each row: `+ RECT <lefname(T)> ( l b ) ( l+z' b+z' )`, starting at (`left`, `bottom`) and stepping by `pitch`. Values are integers printed with %g10.
+   - When `nx` and `ny` are both positive and `nx·ny` is above 1,000,000, no cut array is written: the error `Via "<name>": cut array of <nx> x <ny> gives more than 1000000 cuts; one cut the size of the via area is written.` (LEF-VIA-012) is printed and the record gets the single cut of step 3 instead, in both modes (Q-LEFDEF-150, resolution: fix, approved 2026-11-20). Magic writes every cut, so a hostile LEF VIA could make the output billions of lines.
+   - The truncations above that fall outside the int range (undefined in Magic) saturate to the nearest int, and the counts, positions and extents are computed without overflow, in both modes.
 3. If no cut operator exists, write one cut rectangle `+ RECT <lefname(T)>` equal to `A·s/2`.
 
 Each RECT SHALL start on a new line with 6 spaces. The record SHALL end with ` ;` and a newline.
@@ -405,6 +407,13 @@ Compatibility: exact
 - **GIVEN** a via area of 80×80 DEF units (X1 = −400, X2 = 400) and z' = 170, p' = 170, b' = 50
 - **THEN** nx = trunc((800+170−100)/340) = 2 and left = trunc((0+170−680)/2) = −255
 - **AND** the cuts SHALL be at x ranges (−255,−85) and (85,255) and the same y ranges: four RECT lines, bottom row first
+
+#### Scenario: Cut array above 1,000,000 cuts
+
+- **GIVEN** via `big` with area (−34034,−34034,34034,34034) half-units at s = 10 (X2 − X1 = 340340) and z' = 170, p' = 170, b' = 50
+- **THEN** nx = ny = trunc((340340+170−100)/340) = 1001, and 1001·1001 is above 1,000,000
+- **AND** the error `Via "big": cut array of 1001 x 1001 gives more than 1000000 cuts; one cut the size of the via area is written.` SHALL be printed, in both modes
+- **AND** the record SHALL be its two residue RECTs and `+ RECT via1 ( -170170 -170170 ) ( 170170 170170 )`
 
 ### Requirement: Component orientation
 
@@ -841,6 +850,7 @@ Compatibility: exact
 
 Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be the iteration order of a Magic string hash table as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes (see Q-LEFDEF-116). Under decision X-1 these orders depend only on names and insertion history, and the output SHALL be byte-identical to Magic's. This capability adds:
 
+- **One table for layers and vias.** As Magic's LefInfo, the layer table holds the keys of the layers and of the vias in one insertion history: the tech `lef` section's names, the layers and vias the LEF and DEF readers add, the names a NONDEFAULTRULE looks up (a key with no record when the name is unknown), and the vias a `def write` generates. Every enumeration of the layer table (the magic-to-LEF map, VIAS, the `-anal` lines, BLOCKAGES) SHALL follow that one history, including the table's growth when the 97th key is inserted, in both `magic-compat` settings (Q-LEFDEF-135, resolution: replicate). A write that cannot open its file adds no key.
 - **Size.** The layer table and the rule table each request 32 buckets.
 - **Removal.** Removing a generated via clears its value but keeps the key and its position, so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
 

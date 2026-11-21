@@ -129,7 +129,12 @@ class GdsEquivalentTest(unittest.TestCase):
                  + o.placement("A", 0, 0, rep=o.repetition(4, 1, 5, 7))]
         found = self.elements(o.oasis_file(cells))
         colrow = [v for n, v in found if n == "COLROW"]
-        self.assertEqual(colrow, [(3, 2), (2, 3)])
+        # The rotated array is the spec's "Rotated array" (rule 2): columns and rows swap, so gds-read
+        # (calma/CalmaRdcl.c:1476-1500, columns along T^-1 of P1 - P0) gives x 0..2, xsep 100, y 0..1,
+        # ysep -400. Regression (OASIS-023): the AREF kept (2, 3) and Magic read it with spacing 0.
+        self.assertEqual(colrow, [(3, 2), (3, 2)])
+        xys = [v for n, v in found if n == "XY" and len(v) == 6]
+        self.assertEqual(xys[1], (0, 0, 0, 300, 800, 0))
         self.assertEqual(sum(1 for n, _ in found if n == "SNAME"), 2 + 3)
 
     def test_shape_repetition_order_and_overflow(self):

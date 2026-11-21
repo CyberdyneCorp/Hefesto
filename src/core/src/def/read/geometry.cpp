@@ -242,6 +242,11 @@ void Reader::progress() const {
   }
 }
 
+void Reader::estimate(std::int32_t total) {
+  estimated_ = estimated_ || total > 0;
+  progress();
+}
+
 bool Reader::cancelled() const noexcept {
   return context_.options.progress != nullptr && context_.options.progress->cancelled();
 }

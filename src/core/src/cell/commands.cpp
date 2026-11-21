@@ -83,7 +83,7 @@ diag::Status adopt_startup_root(IoSession& s) {
 // graphics Magic keeps it, so batch runs list it after a load.
 // (Magic ref: dbwind/DBWprocs.c:321-331,608-617)
 db::CellDef* disposable_unnamed(const IoSession& s) {
-  if (!s.ed.display_running || s.ed.windows.display_suspended()) {
+  if (!(s.ed.display_running || s.ed.display_status_active) || s.ed.windows.display_suspended()) {
     return nullptr;
   }
   const view::LayoutWindow* w = s.ed.windows.current();
