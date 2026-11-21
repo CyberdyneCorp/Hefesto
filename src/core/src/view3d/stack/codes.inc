@@ -9,3 +9,5 @@
 // and describe the codes in its STACK section.
 //
 // Owner: TECH (openspec/changes/m10-3d-view/design.md D2/D3).
+HEFESTO_VIEW3D_CODE("VIEW3D-STACK-001", warning, "Mask layers of the output style have no `render` height, so they have no physical height and are left out of µm-based output (names the layers; Q-MISC-72).")
+HEFESTO_VIEW3D_CODE("VIEW3D-STACK-002", error, "A `render` statement's style is neither a display style number nor a long name (Magic's `Error:  Bad render style for CIF layer.`); the statement is ignored.")
