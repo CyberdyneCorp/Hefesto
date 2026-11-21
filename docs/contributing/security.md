@@ -203,6 +203,23 @@ The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the sa
 | M6-S3 | gds write of a read-only OASIS cell: element instances after expansion | **Proposed, not approved** (round 4, OASW): above 2^28 element instances per cell the cell fails (GDS-WRITE-055), mirroring the approved oasis-read cap (Q-OASIS-41). Needs a user decision and a Q-row. Regression test "a vendor OASIS cell above 2^28 element instances fails the cell (proposed cap)" (`tests/unit/oasis/write/vendor_test.cpp`). | `gds/write/vendor_oasis.cpp` |
 | M6-S2 | DEF write: a LEF VIA's cut array (`via_rects`) | **Open, no cap**: `def write` writes nx·ny RECT lines for a via whose area holds tiny cut squares, so a hostile LEF VIA can make the output billions of lines (Magic does the same and does not crash). A cap would change behaviour where Magic does not crash, so it is a user decision (next to the DEF ROWCOL cap of Q-LEFDEF-117). | `lef/via/` `via_rects` |
 
+## Schematic input (M8, in progress)
+
+The M8 readers (`src/core/src/schem/`) treat every `.sch`, `.sym` and `xschemrc` file as hostile input (design D19 of `openspec/changes/m8-schematic/`). The review itself comes later in M8; this section collects what round 1 put in place. Caps that change behaviour are proposals until the user decides them.
+
+| Concern | State | Where |
+|---|---|---|
+| `.sch`/`.sym` reader: nesting of embedded symbol blocks | Fixed by design: blocks are read on an explicit frame stack, no recursion; the reader is linear in the input, no cap. | `schem/file/reader.cpp` |
+| Schematic used as a symbol that places itself | Fixed in both modes: cycle detection plus a depth of 40 (SCHEM-LIB-005). | `schem/lib/symbol_cache.cpp` |
+| Schematic used as a symbol: flattened size | **Open, proposed, not approved**: 40 distinct schematics that each place the next one twice expand to about 2^40 records. Proposed cap: 1,000,000 graphic records per flattened symbol. | `schem/lib/schematic_symbol.cpp` |
+| `xschemrc` evaluation time | **Open, proposed, not approved**: `while 1 {}` in an rc file hangs the opening of a schematic. Proposed: a time or command limit (for example 10 s) for xschemrc evaluation. | `schem/lib/xschemrc.cpp` |
+| Bus notation: expansion size and parenthesis depth | **Proposed, not approved** (coded as named constants): at most `schem::kMaxBusBits` = 2^20 names per expansion and a depth of 256; larger input keeps the name unchanged (SCHEM-NET-006). Checked integer arithmetic for the indices. | `schem/net/bus.cpp` |
+| `expr` nesting | **Proposed, not approved**: `schem::kMaxExprDepth` = 200 levels; deeper input fails like a syntax error (SCHEM-NET-006). | `schem/net/expr.cpp` |
+
+### Fuzz targets
+
+`fuzz_sch_reader` (`.sch`/`.sym` read then written), `fuzz_schem_props` (property and brace strings), `fuzz_schem_bus` (bus notation and net naming) and `fuzz_schem_expr` (`expr` and format substitution) live in `tests/fuzz/` with seed corpora under `tests/fuzz/corpus/`. CI runs each for 60 s (`fuzz` job) and replays the seeds on every leg (`fuzz-seeds.*`).
+
 ## Layout input: GDS, CIF and the mask sections (M5 review, 2026-11-15)
 
 GDS and CIF files come from foundries, IP vendors and other tools, so their readers treat every byte as hostile (hefesto-security "Untrusted input handling", design R9 of `openspec/changes/m5-mask-gds-cif/design.md`). The `cifoutput` and `cifinput` technology sections come with a PDK and get the same parser hardening, but a PDK is trusted to describe sensible operators (see "Accepted limits" below). The review covered `src/core/src/gds/` (stream, read, write), `src/core/src/cif/` (read, write) and `src/core/src/mask/` (style and input readers, generation), task 15.3.

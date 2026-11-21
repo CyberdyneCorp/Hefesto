@@ -114,6 +114,21 @@ class RequirementCoverageTest(unittest.TestCase):
             ("cap-b", "Beta merge", "a_test.cpp:4"),
         ])
 
+    def test_tags_shared_through_a_constexpr_string_are_found(self):
+        text = ('constexpr const char* kAlpha = "[cap:cap-a][req:Alpha order]";\n'
+                'constexpr std::string_view kBeta = "[cap:cap-b]" "[req:Beta merge]";\n'
+                'TEST_CASE("one", kAlpha) {}\n'
+                'TEST_CASE("two", kBeta) {}\n'
+                'TEST_CASE("kAlphaX", "[fast]") {}\n')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "a_test.cpp", text)
+            refs = coverage.scan_cpp_file(root / "a_test.cpp", root)
+        self.assertEqual([(r.capability, r.requirement, r.source) for r in refs], [
+            ("cap-a", "Alpha order", "a_test.cpp:3"),
+            ("cap-b", "Beta merge", "a_test.cpp:4"),
+        ])
+
     def test_catch2_and_golden_manifests_cover_requirements(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
