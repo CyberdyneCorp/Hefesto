@@ -38,8 +38,10 @@ q(x)     = '"' , x , '"' ;
   - The substrate is the renamed substrate node if any, else the default substrate name, else `None`.
   - The drain is written only if the device has more than one source/drain terminal.
   - An empty attribute is written as `0`.
+
+Each `.res.ext`, `.res.lump` and `.fh` file SHALL be written completely or not at all, in both `magic-compat` settings (Q-EXTRACT-27, resolution: fix), by the mechanism of `extract-commands` "Output path and file location": a temporary name in the directory of the resolved target, renamed over the target (a symbolic link's target when the target is a link) after the last record; on cancel or error the temporary file is removed and the previous file, if any, is left unchanged; if no temporary file can be created there, the file is written in place, as Magic does. Magic stops at the next net on interrupt and leaves a truncated `.res.ext` that is newer than the `.ext`, so `simulation-netlist-preparation` (mode `rc`) and `ext2spice extresist on` would trust it. An uninterrupted run SHALL give the same bytes as Magic.
 Compatibility: exact
-(Magic ref: resis/ResRex.c:1385-1415, resis/ResPrint.c:49-335, resis/ResPrint.c:109-185, resis/ResRex.c:2093-2240, extflat/EFbuild.c:1082-1110, extflat/EFbuild.c:1160-1167)
+(Magic ref: resis/ResRex.c:1395, resis/ResRex.c:1385-1415, resis/ResPrint.c:49-335, resis/ResPrint.c:109-185, resis/ResRex.c:2093-2240, extflat/EFbuild.c:1082-1110, extflat/EFbuild.c:1160-1167)
 
 #### Scenario: Simple overlay
 - **GIVEN** resistScale 1 and capScale 1, a net `a` split into the terminal node `a.t0` at (0,0) with 1000 aF and the internal node `a.n0` at (50,0) with 500 aF, joined by 2000 mΩ, with no port named `a`
@@ -60,6 +62,11 @@ Compatibility: exact
 - **GIVEN** the same device and overlay
 - **WHEN** the `.res.ext` file is written and read back with `magic-compat` OFF
 - **THEN** the device record carries `L W` and the two terminals in the extractor's layout, and the netlisted resistor connects `a.t0`
+
+#### Scenario: Cancelled extresist keeps the previous overlay
+- **GIVEN** a cell `top` with an existing `top.res.ext` and `top.res.lump`, and `extresist lumped on`
+- **WHEN** `extresist all` is cancelled after its first net is written
+- **THEN** `top.res.ext` and `top.res.lump` are byte-identical to the files before the run, and no temporary file remains
 
 ### Requirement: Naming of network nodes
 Let net′ be the net name with one trailing `!` or `#` removed. Nodes SHALL be named as follows:
