@@ -164,6 +164,19 @@ RUN set -eux; \
        -o "${PREFIX}/bin/magic-hash-harness" \
        /opt/src/magic-hash-harness/driver.c /opt/src/magic/utils/hash.c
 
+# Magic's standalone extcheck (openspec/changes/m7-extraction design D15, task 2.2), same commit as
+# `magic`: first from the Tcl build's tree, else from a Tcl-free configure; installed as
+# ${PREFIX}/bin/extcheck only when it links and prints the usage text with exit status 1. If neither
+# links at the pin (design R7) the image is still built and the manifest records why.
+COPY container/build_extcheck.sh /opt/src/
+RUN bash /opt/src/build_extcheck.sh /opt/src/magic "${MAGIC_REPO}" "${MAGIC_COMMIT}" "${PREFIX}"
+
+# The image manifest (/opt/ref/share/hefesto-golden/manifest.json): the glibc version (Open Question 3
+# of m7-extraction), the Magic commit and the extcheck build. goldenlib/refrunners.py records it in
+# every provenance.json.
+COPY container/write_manifest.sh /opt/src/
+RUN bash /opt/src/write_manifest.sh "${MAGIC_COMMIT}" "${PREFIX}"
+
 # The magic-gl variant (openspec/changes/m10-3d-view design D13, Open Question 3 (a)): the same Magic
 # commit built again with OpenGL, against Mesa (llvmpipe through GLX), for the MISC-3D-* cases only;
 # they run `magic -d OGL -noconsole` under xvfb-run with the GLX extension (goldenlib/refrunners.py).
