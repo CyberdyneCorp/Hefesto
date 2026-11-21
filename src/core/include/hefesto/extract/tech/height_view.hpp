@@ -11,7 +11,9 @@
 // reader: its pass also parses `lambda`, `units`, `planeorder`,
 // `noplaneordering` and `height`, runs the end-of-style plane-order check
 // with its warning, applies the defaults (t = 0.05, h = 0.1 * order) and
-// divides h and t by dscale with `units microns` (ExtTech.c:3796-3966).
+// divides h and t by dscale with `units microns` (ExtTech.c:3796-3966);
+// after `noplaneordering` none of the three runs, as in Magic
+// (ExtTech.c:3801-3802).
 // Every other keyword stays skipped silently, so a full PDK extract section
 // loads with no diagnostic M7's reader would not also give. M7 re-sources
 // the view from its full reader; the interface stays.
@@ -57,7 +59,8 @@ namespace hefesto::extract {
 /// Where a type's height and thickness come from.
 enum class HeightSource : std::uint8_t {
   /// No `height` line, or one whose height or thickness was 0 and was
-  /// replaced by the default (h = 0.1 * plane order, t = 0.05).
+  /// replaced by the default (h = 0.1 * plane order, t = 0.05); after
+  /// `noplaneordering` no default applies and the value stays 0.
   defaulted,
   height_line,  // both values from the style's `height` line
 };

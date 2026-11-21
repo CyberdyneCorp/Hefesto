@@ -202,6 +202,7 @@ class StyleReader {
   void plane_order(const Tokens& t);
   void no_plane_order();
   void finish_heights();
+  void mark_height_sources();
   void check_plane_order();
   void default_heights();
   void convert_heights();
@@ -565,13 +566,17 @@ void StyleReader::no_plane_order() {
 }
 
 // extTechFinalStyle's plane-order check, defaults and micron conversion of
-// heights (ExtTech.c:3801-3966).
+// heights (ExtTech.c:3801-3966). With `noplaneordering` Magic returns
+// before all three (ExtTech.c:3801-3802): a type without a `height` line
+// keeps h = t = 0 and `units microns` values stay unconverted.
 void StyleReader::finish_heights() {
   heights_.style = types_.style;
   heights_.plane_ordering = order_ != Order::not_needed;
-  if (order_ != Order::not_needed) {
-    check_plane_order();
+  if (order_ == Order::not_needed) {
+    mark_height_sources();
+    return;
   }
+  check_plane_order();
   default_heights();
   if (heights_.units_microns) {
     convert_heights();
@@ -615,12 +620,21 @@ void StyleReader::check_plane_order() {
   report(kPlaneOrderFallback, std::move(text), Subset::heights);
 }
 
-// zinit: t = 0.05 and h = 0.1 * order where the value is 0. With
-// `noplaneordering` an unordered plane keeps -1, so h = -0.1 (as Magic).
-void StyleReader::default_heights() {
+// A type's values come from its `height` line only when that line left
+// neither h nor t at 0 (zinit would have replaced it).
+void StyleReader::mark_height_sources() {
   for (tech::TileType ty = tech::kFirstUserType; ty < tech_.type_count(); ++ty) {
     TypeHeight& th = heights_.heights[ty];
     const bool defaulted = th.height == 0.0F || th.thickness == 0.0F;
+    th.source = height_lines_.test(ty) && !defaulted ? HeightSource::height_line : HeightSource::defaulted;
+  }
+}
+
+// zinit: t = 0.05 and h = 0.1 * order where the value is 0.
+void StyleReader::default_heights() {
+  mark_height_sources();
+  for (tech::TileType ty = tech::kFirstUserType; ty < tech_.type_count(); ++ty) {
+    TypeHeight& th = heights_.heights[ty];
     if (th.thickness == 0.0F) {
       th.thickness = 0.05F;
     }
@@ -630,7 +644,6 @@ void StyleReader::default_heights() {
                                                                                 : kNoPlaneOrder;
       th.height = static_cast<float>(0.1 * order);
     }
-    th.source = height_lines_.test(ty) && !defaulted ? HeightSource::height_line : HeightSource::defaulted;
   }
 }
 

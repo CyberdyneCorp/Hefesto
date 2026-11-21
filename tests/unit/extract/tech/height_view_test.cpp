@@ -214,8 +214,11 @@ TEST_CASE("planeorder errors: unknown plane, index out of range, the order with 
   CHECK(height(v2, *t2, "metal3").height == static_cast<float>(0.1 * 4));
 }
 
-TEST_CASE("noplaneordering skips the check: an unordered plane keeps -1, so h = -0.1 as in Magic",
+TEST_CASE("noplaneordering skips the check, the defaults and the conversion: a type without height keeps 0",
           "[cap:extract-tech-section][req:Plane ordering]") {
+  // Regression (PR #77 review): extTechFinalStyle returns before zinit and
+  // doConvert with noPlaneOrder (ExtTech.c:3801-3802), so metal2 keeps
+  // h = t = 0, not h = -0.1 and t = 0.05.
   const auto t = load(" style s\n noplaneordering\n planeorder metal1 2\n");
   // The planeorder after noplaneordering re-enables the check, so test the
   // plain form too.
@@ -224,9 +227,27 @@ TEST_CASE("noplaneordering skips the check: an unordered plane keeps -1, so h = 
   CHECK(v.messages.empty());
   CHECK_FALSE(v.view.style()->plane_ordering);
   CHECK(v.view.style()->plane_order[plane_of(*plain, "metal2")] == extract::kNoPlaneOrder);
-  CHECK(height(v, *plain, "metal2").height == static_cast<float>(0.1 * -1));
+  CHECK(height(v, *plain, "metal2").height == 0.0F);
+  CHECK(height(v, *plain, "metal2").thickness == 0.0F);
+  CHECK(height(v, *plain, "metal2").source == extract::HeightSource::defaulted);
   CHECK(height(v, *plain, "metal1").height == 1.0F);
+  CHECK(height(v, *plain, "metal1").thickness == 0.5F);
+  CHECK(height(v, *plain, "metal1").source == extract::HeightSource::height_line);
   CHECK(view(*t).messages.size() == 2);  // the order error and the fallback warning
+}
+
+TEST_CASE("noplaneordering with units microns leaves the height values in microns",
+          "[cap:extract-tech-section][req:Plane ordering]") {
+  // Regression (PR #77 review): the micron conversion is skipped too.
+  const auto t = load(" style s\n units microns\n noplaneordering\n height metal1 1.0 0.5\n");
+  const Viewed v = view(*t, std::nullopt, 0.005F);
+  CHECK(v.messages.empty());
+  CHECK(v.view.style()->units_microns);
+  CHECK(v.view.style()->distance_scale == 1.0F);
+  CHECK(height(v, *t, "metal1").height == 1.0F);
+  CHECK(height(v, *t, "metal1").thickness == 0.5F);
+  CHECK(height(v, *t, "metal2").height == 0.0F);
+  CHECK(height(v, *t, "metal2").thickness == 0.0F);
 }
 
 TEST_CASE("units microns divides h and t by dscale; lambda and other units",

@@ -1,6 +1,0 @@
-"c3d" has a zero timestamp; it should be written out
-    to establish a correct timestamp.
-Cells cannot be created in the 3D window.
-Only one 3D window allowed.
-Only one 3D window allowed.
-Unknown command:Unknown command:
