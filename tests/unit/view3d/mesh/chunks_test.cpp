@@ -7,7 +7,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <vector>
@@ -20,77 +19,9 @@ namespace view3d = hefesto::view3d;
 namespace detail = hefesto::view3d::detail;
 using db::Rect;
 
-namespace {
-
-// A 16 x 16 grid of separate metal1 squares with an ndiff strip under it.
-void paint_grid(db::CellDef& def, const view3d::test::MeshTech& t, bool reverse) {
-  for (int k = 0; k < 256; ++k) {
-    const int i = reverse ? 255 - k : k;
-    const db::Coord x = (i % 16) * 10;
-    const db::Coord y = (i / 16) * 10;
-    view3d::test::paint(def, t, Rect{x, y, x + 6, y + 6}, t.metal1);
-  }
-  view3d::test::paint(def, t, Rect{0, 0, 160, 3}, t.ndiff);
-}
-
-view3d::LayerStack grid_stack(const view3d::test::MeshTech& t) {
-  return view3d::test::stack_of(
-      {view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F), view3d::test::layer("ndiff", t.ndiff, 0.0F, 0.1F)});
-}
-
-// The bytes of every field (padding excluded): floats compared bit for bit.
-std::uint32_t bits(float f) { return std::bit_cast<std::uint32_t>(f); }
-
-bool same(const view3d::RectInstance& a, const view3d::RectInstance& b) {
-  return bits(a.x0) == bits(b.x0) && bits(a.y0) == bits(b.y0) && bits(a.x1) == bits(b.x1) &&
-         bits(a.y1) == bits(b.y1) && a.layer == b.layer;
-}
-
-bool same(const view3d::SideInstance& a, const view3d::SideInstance& b) {
-  return bits(a.x0) == bits(b.x0) && bits(a.y0) == bits(b.y0) && bits(a.x1) == bits(b.x1) &&
-         bits(a.y1) == bits(b.y1) && a.layer == b.layer && a.flags == b.flags && bits(a.height) == bits(b.height) &&
-         bits(a.thickness) == bits(b.thickness);
-}
-
-bool same(const view3d::Triangle& a, const view3d::Triangle& b) {
-  for (int i = 0; i < 3; ++i) {
-    if (bits(a.x[i]) != bits(b.x[i]) || bits(a.y[i]) != bits(b.y[i])) {
-      return false;
-    }
-  }
-  return a.layer == b.layer && bits(a.height) == bits(b.height) && bits(a.thickness) == bits(b.thickness);
-}
-
-template <typename T>
-bool bytes_equal(const std::vector<T>& a, const std::vector<T>& b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    if (!same(a[i], b[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool models_byte_equal(const view3d::MeshModel& a, const view3d::MeshModel& b) {
-  if (a.chunks.size() != b.chunks.size() || !(a.region == b.region) || a.version != b.version) {
-    return false;
-  }
-  for (std::size_t i = 0; i < a.chunks.size(); ++i) {
-    const view3d::Chunk& x = a.chunks[i];
-    const view3d::Chunk& y = b.chunks[i];
-    if (x.id != y.id || x.version != y.version || x.origin_x != y.origin_x || x.origin_y != y.origin_y ||
-        !(x.area == y.area) || !bytes_equal(x.rects, y.rects) || !bytes_equal(x.sides, y.sides) ||
-        !bytes_equal(x.triangles, y.triangles)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace
+using view3d::test::grid_stack;
+using view3d::test::models_byte_equal;
+using view3d::test::paint_grid;
 
 TEST_CASE("Morton codes interleave x in the even bits",
           "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {

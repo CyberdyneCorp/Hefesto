@@ -17,6 +17,12 @@
 // draws them, so its triangles carry their own h and t (still unscaled
 // by s_z), and so do its side faces, flagged own_height, when that left
 // type is not the layer's own type.
+// The h and t of every other instance are those of its layer in this
+// mesh, MeshModel::layer_heights: the stack's draw_height, except a
+// contact spanned by the J1 option "Span connected layers".
+// With magic-compat OFF a split tile is drawn with its own type's h and t
+// (J3, 2026-11-21), so only magic-compat ON produces own_height faces and
+// triangles whose h and t differ from their layer's.
 // Instances are emitted in a fixed order (layer order, then Morton chunk
 // order, then the plane's tile order), so two builds are byte-equal.
 //
@@ -32,6 +38,7 @@
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/view3d/mode.hpp"
+#include "hefesto/view3d/stack/layer_stack.hpp"
 
 namespace hefesto::view3d {
 
@@ -97,6 +104,11 @@ struct MeshModel {
   db::Rect region;            // the clipped region the mesh covers (root coordinates)
   std::uint64_t version = 0;  // of the whole model
   std::vector<Chunk> chunks;  // in Morton order
+  /// Per LayerId: the h and t the layer's rectangles and plain side faces
+  /// are drawn with (the stack's draw_height, or the spanned values of a
+  /// contact under the J1 option). The renderer, picking and export read
+  /// these, not the stack.
+  std::vector<DrawHeight> layer_heights;
 
   [[nodiscard]] bool empty() const noexcept { return chunks.empty(); }
 };

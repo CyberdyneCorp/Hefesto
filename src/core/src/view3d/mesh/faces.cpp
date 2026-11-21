@@ -14,12 +14,17 @@
 // - closed faces on the clip-area edge (Magic's "edges cut by the clipping
 //   area", W3Dmain.c:357-374), flagged clip_edge;
 // - no side faces at all for a zero-thickness piece (W3Dmain.c:287).
-// A split tile is drawn with the h and t of its source tile's left type
-// on both triangles (w3dRenderVolume calls ExtGetZAxis, which reads
-// TiGetLeftType; view-3d "the left-side type is used"): its triangles
-// carry those values, its side faces too when the left type is another
-// type (side_flag::own_height), and whether it has side faces follows
-// that thickness, not the layer's.
+// With magic-compat ON a split tile is drawn with the h and t of its
+// source tile's left type on both triangles (w3dRenderVolume calls
+// ExtGetZAxis, which reads TiGetLeftType; view-3d "the left-side type is
+// used"): its triangles carry those values, its side faces too when the
+// left type is another type (side_flag::own_height), and whether it has
+// side faces follows that thickness, not the layer's. A right triangle
+// over space is therefore flat and has no side faces, as in Magic. With
+// it OFF each triangle takes its own layer's h and t and side faces (J3,
+// user decision 2026-11-21).
+// Layer heights come from the build's HeightTable (the stack's, or a
+// contact spanned by the J1 option).
 // A boundary segment on the clip edge is emitted once, as a clip-edge face.
 // Segments are stored with increasing coordinates; the outward_left flag
 // gives the outward normal.
@@ -155,10 +160,10 @@ constexpr std::array<db::Side, 4> kSides = {db::Side::left, db::Side::right, db:
 
 class Emitter {
  public:
-  Emitter(const FlatType& flat, LayerId layer, const LayerStack& stack, const db::Rect& clip, Chunk& chunk)
-      : flat_(flat), layer_(layer), stack_(stack), clip_(clip), chunk_(chunk) {
+  Emitter(const FlatType& flat, LayerId layer, const HeightTable& heights, const db::Rect& clip, Chunk& chunk)
+      : flat_(flat), layer_(layer), heights_(heights), clip_(clip), chunk_(chunk) {
     // Zero thickness: top faces only (W3Dmain.c:287).
-    sides_ = stack.draw_height(layer).thickness != 0.0F;
+    sides_ = heights.layer(layer).thickness != 0.0F;
   }
 
   void tile(const db::TileView& t) {
@@ -190,8 +195,10 @@ class Emitter {
     if (poly.size() < 3) {
       return;
     }
-    const tech::TileType z_type = flat_.z_type_of(t);
-    const DrawHeight z = z_type == flat_.type ? stack_.draw_height(layer_) : type_height(z_type);
+    // J3: magic-compat ON takes the source left type's h and t; OFF the
+    // triangle's own type's.
+    const tech::TileType z_type = heights_.stack().magic_compat() ? flat_.z_type_of(t) : flat_.type;
+    const DrawHeight z = z_type == flat_.type ? heights_.layer(layer_) : heights_.type(z_type);
     for (std::size_t i = 1; i + 1 < poly.size(); ++i) {
       chunk_.triangles.push_back(Triangle{{fx(poly[0].x), fx(poly[i].x), fx(poly[i + 1].x)},
                                           {fy(poly[0].y), fy(poly[i].y), fy(poly[i + 1].y)},
@@ -210,13 +217,6 @@ class Emitter {
     }
     polygon_edges(poly);
     split_z_.reset();
-  }
-
-  // The h and t a tile of `type` is drawn with (h = t = 0 for space).
-  [[nodiscard]] DrawHeight type_height(tech::TileType type) const {
-    db::TileView other;
-    other.type = type;
-    return stack_.tile_height(other);
   }
 
   // The runs of side `s` of `t` whose neighbour has another type, inside
@@ -357,7 +357,7 @@ class Emitter {
 
   const FlatType& flat_;
   LayerId layer_;
-  const LayerStack& stack_;
+  const HeightTable& heights_;
   bool sides_ = false;
   std::optional<DrawHeight> split_z_;  // a split tile drawn with another type's h and t, while its sides are emitted
   db::Rect clip_;
@@ -367,8 +367,8 @@ class Emitter {
 
 }  // namespace
 
-void emit_layer(const FlatType& flat, LayerId layer, const LayerStack& stack, const db::Rect& clip, Chunk& chunk) {
-  Emitter emitter(flat, layer, stack, clip, chunk);
+void emit_layer(const FlatType& flat, LayerId layer, const HeightTable& heights, const db::Rect& clip, Chunk& chunk) {
+  Emitter emitter(flat, layer, heights, clip, chunk);
   flat.plane.enumerate(chunk.area, tech::TypeMask::of(flat.type), [&](const db::TileView& t) {
     emitter.tile(t);
     return true;
