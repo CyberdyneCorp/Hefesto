@@ -6,5 +6,10 @@
 # Owner: FORMAT (openspec/changes/m8-schematic/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/read_write.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/properties.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/lexer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/numbers.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/properties.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/reader.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/save.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/transform.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/writer.cpp)

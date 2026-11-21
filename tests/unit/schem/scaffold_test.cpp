@@ -20,7 +20,6 @@
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/cmd/commands.hpp"
 #include "hefesto/schem/edit/operations.hpp"
-#include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/file/read_write.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
 #include "hefesto/schem/net/bus.hpp"
@@ -82,16 +81,6 @@ TEST_CASE("a new document and the netlist options have their documented defaults
   CHECK_FALSE(options.uppercase_subckt);
   CHECK(options.hiersep == ".");
   CHECK_FALSE(options.portable_paths);
-}
-
-TEST_CASE("the FORMAT stubs answer their documented values", "[m8-scaffold]") {
-  const auto read = schem::read_document("v {xschem version=3.4.8RC file_version=1.3}\n", {});
-  REQUIRE_FALSE(read.ok());
-  CHECK(read.error().code == kNotImplemented);
-  CHECK(schem::write_document(schem::Document{}).empty());
-  CHECK(schem::parse_properties("name=R1 value=1k").empty());
-  CHECK_FALSE(schem::get_token("name=R1", "name").has_value());
-  CHECK(schem::set_token("name=R1", "value", "1k") == "name=R1");
 }
 
 TEST_CASE("the SYMLIB stubs answer their documented values", "[m8-scaffold]") {

@@ -144,10 +144,20 @@ struct Document {
   std::vector<EmbeddedSymbol> embedded;
   /// Set by editing operations, cleared by a save; netlisting never sets it.
   bool modified = false;
+  /// SHA-256 (hex) of the bytes last read from or written to `path`, empty
+  /// when there are none; save_document compares it with the file on disk
+  /// ("Safe saving").
+  std::string disk_digest;
 };
 
 /// A symbol definition read from a `[` ... `]` block. `reference` is the
-/// symbol reference of the instance it followed.
+/// symbol reference of the instance it followed. Blocks nested inside a
+/// block are listed in the outermost document, so `symbol.embedded` is
+/// always empty. write_document emits the block of the first entry whose
+/// `reference` matches, after the first instance of that reference that has
+/// `embed=true` ("Embedded symbols"). The block holds only lines, boxes,
+/// arcs, texts and polygons; wires of `symbol` (a schematic used as a
+/// symbol) are written as `L 1` records after its other layer-1 lines.
 struct EmbeddedSymbol {
   std::string reference;
   Document symbol;
