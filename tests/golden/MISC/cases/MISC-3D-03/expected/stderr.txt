@@ -1,0 +1,6 @@
+"c3d" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Usage: view angle_x angle_y angle_z absolute|relative
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Error: zoom values/factors must be positive and nonzero
+Unknown command:Unknown command:Error: zoom values/factors must be positive and nonzero
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:

@@ -74,6 +74,19 @@ class PinsTest(unittest.TestCase):
         self.assertEqual(self.args["GDSTK_WHEEL_URL"], pin["url"])
         self.assertEqual(self.args["GDSTK_WHEEL_SHA256"], pin["sha256"])
 
+    def test_image_variants_are_build_args_of_the_containerfile(self):
+        """magic-gl (m10-3d-view design D13): a build argument whose default (0) is the plain image."""
+        variants = self.pins["image_variants"]
+        self.assertEqual(sorted(variants), ["magic-gl"])
+        for name, variant in variants.items():
+            with self.subTest(variant=name):
+                for arg in variant["build_args"]:
+                    self.assertEqual(self.args[arg], "0", arg)
+        self.assertEqual(variants["magic-gl"]["build_args"], {"WITH_OPENGL": "1"})
+        text = CONTAINERFILE.read_text(encoding="utf-8")
+        self.assertIn("--with-opengl --with-cairo=no", text)
+        self.assertIn("container/magic_gl_smoke.tcl", text)
+
     def test_every_tool_has_a_repo_and_version_for_provenance(self):
         for tool, pin in self.pins["tools"].items():
             with self.subTest(tool=tool):

@@ -26,6 +26,7 @@
 #include "hefesto/ui/commands.hpp"
 #include "hefesto/undo/commands.hpp"
 #include "hefesto/view/commands.hpp"
+#include "hefesto/view3d/client/commands.hpp"
 #include "hefesto/wiring/commands.hpp"
 
 namespace hefesto::cmd {
@@ -64,6 +65,8 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   // M6 (openspec/changes/m6-lef-def-oasis/design.md D3, D14, D15).
   ok = lef::register_lef_def_commands(registry) && ok;
   ok = oasis::register_oasis_command(registry) && ok;
+  // M10 (openspec/changes/m10-3d-view/design.md D9): the wind3d client.
+  ok = view3d::register_wind3d_commands(registry) && ok;
   return ok;
 }
 

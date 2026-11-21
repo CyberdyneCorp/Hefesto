@@ -92,3 +92,12 @@ files = [
   { path = "utils/hash.h", sha256 = "1b90da0dea68791ed2685f0f9b5deab0d281b0a2aec6f610a21391e7c87de794" },
   { path = "utils/malloc.h", sha256 = "8929ce3c573cdf81a5f4490d40960a131a25311e914b21ef56e68a14450bd09f" },
 ]
+
+# Image variants: the same Containerfile and pins built with other build arguments; the default image
+# sets none of them. magic-gl (openspec/changes/m10-3d-view design D13, Open Question 3 (a)) builds the
+# pinned Magic commit again with OpenGL against Mesa (llvmpipe through GLX, the APT snapshot's packages)
+# for the cases whose case.toml sets `[reference] image = "magic-gl"` (the MISC-3D-* cases only).
+# capture.py runs those cases in the image given by --gl-image ($HEFESTO_GOLDEN_GL_IMAGE).
+[image_variants.magic-gl]
+build_args = { WITH_OPENGL = "1" }
+display_type = "OGL"

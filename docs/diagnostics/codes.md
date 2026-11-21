@@ -44,6 +44,7 @@ document, so parallel work never edits the same table
 | oasis | OASIS | `src/core/src/oasis/codes.cpp` (fragments `oasis/<sub>/codes.inc`) | [codes/oasis.md](codes/oasis.md) |
 | extflat | EXTFLAT | `src/core/src/extflat/codes.cpp` (fragment `extflat/codes.inc`) | [codes/extflat.md](codes/extflat.md) |
 | extract | EXTRACT | `src/core/src/extract/codes.cpp` (fragments `extract/<sub>/codes.inc`) | [codes/extract.md](codes/extract.md) |
+| view3d | VIEW3D | `src/core/src/view3d/codes.cpp` (fragments `view3d/<sub>/codes.inc`) | [codes/view3d.md](codes/view3d.md) |
 
 Regenerate the core table with:
 

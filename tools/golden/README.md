@@ -173,10 +173,27 @@ python3 authoring/schem_cases.py --deviations  # rewrite the SCHEM block of devi
 python3 authoring/schem_cases.py --dispatch    # the golden-capture.yml capture command
 ```
 
+## M10: the 3D-view cases and the `magic-gl` image (MISC-3D-*)
+
+Magic's 3D window (`specialopen wind3d`) exists only in a Magic built with OpenGL and running on the OpenGL display (`-d OGL`); the default image's Magic has neither. Under m10-3d-view design D13 (Open Question 3, decided (a)), the `MISC-3D-*` cases run in the **`magic-gl` image variant**. This is the same Containerfile and the same pins built with `--build-arg WITH_OPENGL=1`. Its last step installs Mesa from the APT snapshot (`libgl-dev`, `libglu1-mesa-dev`, `libgl1-mesa-dri`, `libglx-mesa0`, `mesa-utils`), then builds the pinned Magic commit again with `--with-opengl --with-cairo=no` and installs it over the plain build. That build fails in four cases: `-DOGL`/`-DTHREE_D` are missing from `defs.mak` (configure drops OpenGL silently when the headers are missing), `glxinfo -B` under Xvfb does not report llvmpipe, `container/magic_gl_smoke.tcl` cannot open a 3D window the way Magic's wrapper does (`toplevel .render`, then `specialopen wind3d <cell> .render.magic`, as `magic::render3d`), or a rotation in it does not answer `.render.magic view`. The `WITH_OPENGL` ARG is declared after every other step, so the two images share every layer before it. `pins.toml` lists the variant under `[image_variants.magic-gl]`, and `tests/test_pins.py` checks that its build argument defaults to the plain image.
+
+A case selects the variant with `[reference] image = "magic-gl"`, which `goldenlib/case.py` accepts only for tool `magic` with `display = "xvfb"`. `capture.py` runs such a case in the image named by `--gl-image` (`$HEFESTO_GOLDEN_GL_IMAGE`). Without that option it prints `skipped, needs the magic-gl image` and does not fail, so a run that builds only the default image stays green. The container runner wraps the run in `xvfb-run -s "-screen 0 1280x1024x24 +extension GLX"` and sets `LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe`.
+
+`authoring/m10_cases.py` writes MISC-3D-01..04 (`TclCase(gl=True)`: Magic's Tk wrapper on `-d OGL -noconsole -norc`, and hefesto-cli with the same options). Each case gets the technology `input/v3d.tech` (`render MET1 metal1 1.376 0.36` in an output style of scalefactor 10), the 100 x 50 cell `input/c3d.mag`, and the OpenGL display-style, colour-map and glyph files as `magic-sys` inputs for the replay's CAD_ROOT. They compare stdout and stderr only (command results and error texts); the geometry comparison of D13 is the GL shim of task 12.4. `deviations.toml` defers them to M10 until WIND3D's client replays them (`m10_cases.REPLAYED`, then `--deviations`).
+
+```sh
+docker build -f tools/golden/container/Containerfile --build-arg WITH_OPENGL=1 -t hefesto-golden-gl:local tools/golden
+python3 capture.py --gl-image hefesto-golden-gl:local ../../tests/golden/MISC/cases/MISC-3D-01
+python3 authoring/m10_cases.py                # write the cases (never expected/)
+python3 authoring/m10_cases.py --deviations   # rewrite the M10 block of deviations.toml
+python3 authoring/m10_cases.py --dispatch     # the golden-capture.yml capture command
+```
+
 ## Building the reference image (CI, not developer machines)
 
 ```sh
 docker build -f tools/golden/container/Containerfile -t hefesto-golden:local tools/golden
+docker build -f tools/golden/container/Containerfile --build-arg WITH_OPENGL=1 -t hefesto-golden-gl:local tools/golden  # magic-gl (M10)
 ```
 
 The image is reproducible in four ways:
