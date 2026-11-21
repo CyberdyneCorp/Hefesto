@@ -41,8 +41,9 @@ TEST_CASE("project file text is deterministic, sorted JSON", "[cap:hefesto-setti
         "  \"globalNets\": {\n    \"globalNets\": [\n      \"VGND\",\n      \"VPWR\"\n    ],\n    \"vdd\": \"VPWR\"\n  },\n"
         "  \"pdk\": {\n    \"family\": \"sky130\",\n    \"libraries\": [\n      \"sky130_fd_sc_hd\"\n    ],\n"
         "    \"variant\": \"sky130A\",\n    \"version\": \"0fe599b2afb6708d281543108caf8310912f54af\"\n  },\n"
-        "  \"settings\": {\n    \"magic-compat\": false,\n    \"netgen-compat\": true,\n    \"script-strict\": true,\n"
-        "    \"snap\": \"lambda\",\n    \"units\": \"microns\"\n  },\n"
+        "  \"settings\": {\n    \"magic-compat\": false,\n    \"netgen-compat\": true,\n"
+        "    \"portable-netlist-paths\": false,\n    \"script-strict\": true,\n"
+        "    \"snap\": \"lambda\",\n    \"units\": \"microns\",\n    \"xschem-compat\": true\n  },\n"
         "  \"version\": 1,\n"
         "  \"windowLayout\": {\n    \"panels\": [\n      \"layers\"\n    ]\n  }\n"
         "}\n");

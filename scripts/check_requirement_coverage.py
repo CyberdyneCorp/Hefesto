@@ -200,18 +200,25 @@ def restrict_capabilities(selected: set[str] | None, named: list[str], specs_dir
 
 STRING_MACRO = re.compile(r'^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)[ \t]+((?:"(?:[^"\\\n]|\\.)*"[ \t]*)+)$',
                           re.MULTILINE)
+# `constexpr const char* NAME = "...";` (or `char const*`, `std::string_view`, `auto`) at namespace scope.
+STRING_CONSTANT = re.compile(r'^[ \t]*(?:static[ \t]+)?(?:inline[ \t]+)?constexpr[ \t]+'
+                             r'(?:const[ \t]+char[ \t]*\*|char[ \t]+const[ \t]*\*|std::string_view|auto)[ \t]*'
+                             r'([A-Za-z_]\w*)[ \t]*=[ \t]*((?:"(?:[^"\\\n]|\\.)*"[ \t]*)+);[ \t]*$', re.MULTILINE)
 
 
 def expand_string_macros(text: str) -> str:
-    """Replace uses of file-local `#define NAME "..."` macros by their literals.
+    """Replace uses of file-local `#define NAME "..."` macros and `constexpr`
+    string constants by their literals.
 
     Tests often share one tag string per requirement, e.g.
-    `#define HASH_TAGS "[cap:x][req:y]"` then `TEST_CASE("name", HASH_TAGS)`.
-    Literals hold no newline, so line numbers are unchanged."""
-    macros = {m.group(1): m.group(2).strip() for m in STRING_MACRO.finditer(text)}
+    `#define HASH_TAGS "[cap:x][req:y]"` (or `constexpr const char* kTags = "...";`)
+    then `TEST_CASE("name", HASH_TAGS)`. Literals hold no newline, so line
+    numbers are unchanged."""
+    found = [*STRING_MACRO.finditer(text), *STRING_CONSTANT.finditer(text)]
+    macros = {m.group(1): m.group(2).strip() for m in found}
     if not macros:
         return text
-    definitions = {m.span() for m in STRING_MACRO.finditer(text)}
+    definitions = {m.span() for m in found}
     use = re.compile(r"\b(" + "|".join(map(re.escape, macros)) + r")\b")
     pieces: list[str] = []
     pos = 0

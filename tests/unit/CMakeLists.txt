@@ -30,6 +30,8 @@
 #   lef/ def/ oasis/ extract/  INTEGRATION (M6 shared tests); each
 #            subdirectory is owned by its workstream; extflat/ EXTSUB
 #            (openspec/changes/m6-lef-def-oasis design.md D1/D2)   (always)
+#   schem/   SCAFFOLD (M8 shared tests); each subdirectory is owned by its
+#            workstream (openspec/changes/m8-schematic design.md D3)   (always)
 #   view3d/  SCAFFOLD (M10 shared tests); each subdirectory is owned by its
 #            workstream (openspec/changes/m10-3d-view design.md D2/D3)   (always)
 #   render/  VIEWER                         (desktop builds, if present)
@@ -91,7 +93,7 @@ function(hefesto_add_area_tests area)
 endfunction()
 
 foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints
-                      script pcell tools gui mask gds cif lef def oasis extflat extract view3d)
+                      script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d)
   add_subdirectory(${_area})
 endforeach()
 

@@ -44,6 +44,10 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_lef_section      # the technology `lef` section (lef-tech-section)
   fuzz_oasis_reader     # OASIS files, plain and gzip, read then written as OASIS and GDS (oasis-format, oasis-read, oasis-write)
   fuzz_ext_reader       # `.ext` netlists read and flattened (EXTSUB, m6 Open Question 1 (a))
+  fuzz_sch_reader       # .sch/.sym files read then written (schematic-file-format; m8 design D19)
+  fuzz_schem_props      # property strings and brace strings (schematic-file-format; m8 design D19)
+  fuzz_schem_bus        # bus and vector notation, net naming (schematic-netlisting; m8 design D19)
+  fuzz_schem_expr       # expr evaluation and format substitution (schematic-netlisting; m8 design D19)
 )
 
 if(HEFESTO_BUILD_FUZZ)

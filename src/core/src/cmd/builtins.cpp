@@ -229,7 +229,8 @@ bool register_builtins(CommandRegistry& registry) {
        "every exit check runs first and may cancel the quit.",
        quit},
       {"setting", std::string{kSettingSynopsis},
-       "Lists the project settings (magic-compat, netgen-compat, script-strict), reads one, or changes one. "
+       "Lists the project settings (magic-compat, netgen-compat, xschem-compat, portable-netlist-paths, "
+       "script-strict), reads one, or changes one. "
        "Each setting is independent of the others.",
        setting},
       {"hefesto::strict", "hefesto::strict ?on|off?",
