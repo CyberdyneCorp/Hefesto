@@ -67,20 +67,6 @@ bool is_generator(std::string_view reference) noexcept {
   return !reference.empty() && reference.back() == ')' && reference.find('(') != std::string_view::npos;
 }
 
-/// ASCII case-insensitive equality with a lower-case `word`.
-bool equals_ignoring_case(std::string_view value, std::string_view word) noexcept {
-  if (value.size() != word.size()) {
-    return false;
-  }
-  for (std::size_t i = 0; i < word.size(); ++i) {
-    const char c = value[i] >= 'A' && value[i] <= 'Z' ? static_cast<char>(value[i] - 'A' + 'a') : value[i];
-    if (c != word[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 bool is_symname_separator(char c) noexcept {
   return c == ' ' || c == '.' || c == '(' || c == ')' || c == ',';
 }
@@ -100,13 +86,10 @@ std::optional<std::string> PropertyMap::get(std::string_view key, ValueForm /*fo
 }
 
 std::optional<bool> boolean_value(std::string_view value) noexcept {
-  if (!value.empty() && value.find_first_not_of("0123456789") == std::string_view::npos) {
-    return value.find_first_not_of('0') != std::string_view::npos;
-  }
-  if (equals_ignoring_case(value, "true") || equals_ignoring_case(value, "on") || equals_ignoring_case(value, "yes")) {
+  if (is_true(value)) {
     return true;
   }
-  if (equals_ignoring_case(value, "false") || equals_ignoring_case(value, "off") || equals_ignoring_case(value, "no")) {
+  if (is_false(value)) {
     return false;
   }
   return std::nullopt;
