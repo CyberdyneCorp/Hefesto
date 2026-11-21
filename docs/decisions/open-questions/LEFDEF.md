@@ -1112,3 +1112,12 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: replicate | compat (replicate ON; end each line OFF)
 - Recommendation: compat (message-only).
 - Resolution: compat — with `magic-compat` ON both messages have no line end, as Magic prints them (the `.mag` read message for FIXED_BBOX as well as OBS_BBOX); with it OFF each line is ended. Approved 2026-11-19. Specs: cell-file-format "Properties section records", lef-write.
+
+### Q-LEFDEF-150: DEF write of a LEF VIA whose cut array is unbounded
+- Kind: bug
+- Status: approved 2026-11-20 (user decision E3)
+- Magic behavior: defWriteVias writes one `+ RECT` line per cut of the output style's cut array over the via area, nx · ny of them, with no bound. A hostile LEF VIA (a huge area over a tiny `squares` cut) makes `def write` print billions of lines; Magic does not crash, it writes for hours. Its float-to-int conversions of `area · s` and of the cut sizes are undefined in C for values outside the int range.
+- Evidence: lef/defWrite.c:2099-2256, cif/CIFtech.c:2327-2382; docs/contributing/security.md M6-S2
+- Options: cap (refuse the cut array above a bound) | no cap
+- Recommendation: cap at 1,000,000 cuts in both modes, the bound of the DEF read ROWCOL cap (Q-LEFDEF-117).
+- Resolution: fix — in both modes a VIAS record whose cut array has nx and ny positive and nx · ny above 1,000,000 gets no cut array: `Via "<via>": cut array of <nx> x <ny> gives more than 1000000 cuts; one cut the size of the via area is written.` (LEF-VIA-012, error) is printed and the record gets the single cut rectangle Magic writes when the style has no cut operator (def-write "VIAS section content" step 3). The out-of-range conversions saturate and the count, position and extent arithmetic is done in 64 bits, in both modes. Approved 2026-11-20 (E3); the fallback rectangle is the implementation's choice (numbered 150 to stay clear of the E2 rows recorded by the other round-5 workstreams).

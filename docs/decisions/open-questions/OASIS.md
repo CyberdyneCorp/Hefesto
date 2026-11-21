@@ -390,6 +390,24 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Recommendation: other (a Hefesto format choice). Keep the b-string in both modes. Every reader we know accepts any string type here, a b-string can hold any byte a GDS PROPVALUE holds, and the value bytes are the same either way. Golden OASIS-061 (a third-party strict reader) checks that no reader rejects it. If it does, switch to KLayout's narrowest-type rule.
 - Resolution: other (Hefesto format choice) — S_GDS_PROPERTY values are written as b-strings in both modes; if golden OASIS-061's third-party strict reader rejects them, switch to KLayout's narrowest-type rule. Approved 2026-11-13.
 
+### Q-OASIS-70: Inexact AREF of a read-only GDS cell in an OASIS write
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E3)
+- Magic behavior: n/a (Magic has no OASIS). An AREF whose steps are not whole multiples of the column and row counts is written as a type 10 repetition that lists every displacement (oasis-write "Read-only GDS vendor cells"), so a 32767 x 32767 COLROW allocates about 17 GB.
+- Evidence: oasis-write "Read-only GDS vendor cells" AREF row; security.md M6-S3; `oasis/write/translate.cpp` (`kMaxExplicitOffsets`)
+- Options: cap the listed displacements | no cap
+- Recommendation: cap at 2^24 instances, with an error, in both modes.
+- Resolution: fix — in both modes such an AREF with more than 2^24 instances is not written: `Error: an AREF of <cols> x <rows> in cell <c> has inexact steps and too many instances to list.` (OASIS-WRITE-010) and the write fails. Approved 2026-11-20 (E3).
+
+### Q-OASIS-71: Element instances of a read-only OASIS cell in a GDS write
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E3)
+- Magic behavior: n/a. gds write transcodes a read-only OASIS vendor cell and expands every repetition that is not one Magic array into one element per displacement (gds-write "Read-only OASIS vendor cells"), so a small OASIS cell can expand to any number of GDS elements.
+- Evidence: gds-write "Read-only OASIS vendor cells"; security.md M6-S3; `gds/write/vendor_oasis.cpp`
+- Options: cap the instances per cell, as oasis-read's cap (Q-OASIS-41) | no cap
+- Recommendation: cap at 2^28 element instances per cell, counted before any is written, in both modes.
+- Resolution: fix — in both modes a cell that expands to more than 2^28 element instances fails: `Calma output error:  cell <c> expands to more than 268435456 element instances; the cell cannot be written.` (GDS-WRITE-055), and its parents fail as for the other vendor-cell errors. Approved 2026-11-20 (E3).
+
 ### Q-OASIS-90: Shared or independent settings for gds and oasis
 - Kind: ambiguity
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
