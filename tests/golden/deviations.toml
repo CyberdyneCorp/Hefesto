@@ -896,3 +896,9 @@ outputs = ["stdout.txt", "stderr.txt"]
 reason = "captured in the magic-gl image (m10-3d-view design D13); hefesto-cli has no wind3d client yet (specialopen wind3d answers UI-CLIENT-002): WIND3D drops this deferral when its client replays the case (m10-3d-view tasks 8.1-8.4, 12.2)"
 
 # --- END M10 deferrals ---
+
+# M7 capture smoke cases (tools/golden/authoring/m7_smoke_cases.py, m7-extraction task 2.3).
+[NETLIST-SMOKE-01]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "smoke case of the M7 capture modes: extract all, ext2spice, ext2sim and extresist arrive with M7 (EXTCMD's driver, SPICE, SIM, RESCMD); drop this deferral when the case replays"

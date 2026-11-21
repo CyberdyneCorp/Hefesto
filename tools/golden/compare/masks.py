@@ -81,6 +81,26 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     The ``version=<v>`` value of a ``v {xschem version=<v> ...}`` record (the first record of a ``.sch`` or
     ``.sym`` file, Q-SCHEM-1): the value becomes ``<masked>``. For a file written by another xschem version
     compared with a resave; ``file_version`` and the header text are compared.
+``ext-times``
+    The CPU-time values of Magic's extraction statistics (``*extract time``, extract/ExtTimes.c:
+    the per-cell ``Tpaint, Tcell`` and ``Thier, Tincr`` lines and the three ``fets/sec rects/sec``
+    lines, ExtTimes.c:542-551, and the ``fets/sec``, ``rects/sec`` and ``tot incr time`` rows of the
+    summary, ExtTimes.c:247-253 and 934-943). The numbers (or ``<none>``) of those lines, with the
+    ``%8.2f`` padding that varies with them, become ``<t>`` fields separated by one blank; the
+    labels, the device and rectangle counts and the area percentages, which do not depend on time,
+    are kept. ``magic-console`` applies it to every console stream
+    (m7-extraction design D21); list it as well where an output is saved for the cross-platform
+    check (replay.py --output-dir applies masks, not comparators).
+``extcheck-memory``
+    The text after ``Memory used: `` on the first line ``extcheck`` prints (extcheck/extcheck.c:100,
+    RunStats of the host's allocator): it becomes ``<masked>``. capability netlist-extcheck
+    "Counts and report format" calls the line informative.
+``prog-name``
+    The program name an external program's usage line starts with (m7-extraction design D15, the
+    external-command mode): a leading ``extcheck`` or ``hefesto-extcheck``, with or without a
+    directory, followed by ``:``, a blank or the end of the line, becomes ``<prog>``, so the two
+    programs' names never differ. Magic's own usage text (extflat/EFargs.c:158-165) does not start
+    with the name, so on it the mask changes nothing.
 ``regex:<pattern>``
     Every match of the Python bytes regex ``<pattern>`` is replaced with
     ``<masked>``. For one-off fields; prefer adding a named mask when a field
@@ -271,6 +291,44 @@ def mask_schem_version(data: bytes) -> bytes:
     return _SCHEM_VERSION.sub(rb"\1<masked>", data)
 
 
+# extract/ExtTimes.c: the time-dependent statistics lines. A field is a number or "<none>".
+_TIME_FIELD = rb"(?:-?\d+(?:\.\d+)?|nan|-?inf|<none>)"
+_EXT_TIMES_CELL = re.compile(
+    rb"^( *)" + _TIME_FIELD + rb"( +)" + _TIME_FIELD
+    + rb"( (?:Tpaint, Tcell|Thier, Tincr|\((?:paint|hier|flat)\) *fets/sec rects/sec))(\r?)$", re.MULTILINE)
+_EXT_TIMES_SUMMARY = re.compile(
+    rb"^((?:fets/sec (?:paint|hier |flat )|rects/sec (?:paint|hier |flat )|tot incr time  ))"
+    rb"((?: +" + _TIME_FIELD + rb"){4})(\r?)$", re.MULTILINE)
+
+
+def _mask_cell_times(match: re.Match) -> bytes:
+    return b"<t> <t>" + match.group(3) + match.group(4)  # the %8.2f padding varies with the value
+
+
+def _mask_summary_times(match: re.Match) -> bytes:
+    return match.group(1) + b" <t> <t> <t> <t>" + match.group(3)
+
+
+def mask_ext_times(data: bytes) -> bytes:
+    return _EXT_TIMES_SUMMARY.sub(_mask_summary_times, _EXT_TIMES_CELL.sub(_mask_cell_times, data))
+
+
+# extcheck/extcheck.c:100: printf("Memory used: %s\n", RunStats(RS_MEM, ...)).
+_EXTCHECK_MEMORY = re.compile(rb"^(Memory used: )[^\r\n]*", re.MULTILINE)
+
+
+def mask_extcheck_memory(data: bytes) -> bytes:
+    return _EXTCHECK_MEMORY.sub(rb"\1<masked>", data)
+
+
+# The external-command roles' programs (goldenlib/external_command.py ROLES).
+_PROG_NAME = re.compile(rb"^(?:\S*/)?(?:hefesto-)?extcheck(?=[:\s]|$)", re.MULTILINE)
+
+
+def mask_prog_name(data: bytes) -> bytes:
+    return _PROG_NAME.sub(b"<prog>", data)
+
+
 def _regex_mask(pattern: str) -> Mask:
     compiled = re.compile(pattern.encode())
     return lambda data: compiled.sub(b"<masked>", data)
@@ -292,6 +350,9 @@ _NAMED: dict[str, Mask] = {
     "magic-tech-menu-order": mask_magic_tech_menu_order,
     "schem-paths": mask_schem_paths,
     "schem-version": mask_schem_version,
+    "ext-times": mask_ext_times,
+    "extcheck-memory": mask_extcheck_memory,
+    "prog-name": mask_prog_name,
 }
 
 
