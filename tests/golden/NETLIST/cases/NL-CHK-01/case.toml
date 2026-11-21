@@ -11,27 +11,23 @@ id = "NL-CHK-01"
 area = "NETLIST"
 capability = "netlist-extcheck"
 requirements = ["Counts and report format", "Invocation"]
-tool = "extcheck"
+tool = "magic"
 description = "two inverters (x1, x2) each with a vdd! node, not connected, plus a coupling and a resistor; extcheck with default thresholds, with -c 0 -r 0, with -C -r 0, and with no arguments (usage, exit status 1)"
 
 [reference]
-command = "input/command.toml"
-
-[hefesto]
-command = "input/command.toml"
-requires_commands = []
+mode = "external-command"
 
 [[outputs]]
 name = "default.stdout"
 source = "default.stdout"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "default.stderr"
 source = "default.stderr"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "default.exit"
@@ -42,14 +38,14 @@ masks = []
 [[outputs]]
 name = "thresholds.stdout"
 source = "thresholds.stdout"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "thresholds.stderr"
 source = "thresholds.stderr"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "thresholds.exit"
@@ -60,14 +56,14 @@ masks = []
 [[outputs]]
 name = "nocaps.stdout"
 source = "nocaps.stdout"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "nocaps.stderr"
 source = "nocaps.stderr"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "nocaps.exit"
@@ -78,14 +74,14 @@ masks = []
 [[outputs]]
 name = "usage.stdout"
 source = "usage.stdout"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "usage.stderr"
 source = "usage.stderr"
-comparator = "extcheck-console"
-masks = []
+comparator = "bytes"
+masks = ["prog-name", "extcheck-memory"]
 
 [[outputs]]
 name = "usage.exit"

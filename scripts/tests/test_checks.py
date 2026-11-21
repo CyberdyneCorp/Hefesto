@@ -179,6 +179,17 @@ class RequirementCoverageTest(unittest.TestCase):
             self.assertIn(("cap-b", "Beta merge"), uncovered)
             self.assertNotIn(("cap-b", "Alpha order"), uncovered)
 
+    def test_golden_smoke_case_covers_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            write(root, "tests/golden/NETLIST/cases/NETLIST-SMOKE-02/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Beta merge"]\n')
+            code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json"])
+            self.assertEqual(code, 0)
+            uncovered = {(u["capability"], u["requirement"]) for u in json.loads(text)["uncovered"]}
+            self.assertIn(("cap-b", "Beta merge"), uncovered)
+
     def test_milestone_filter_and_fail_under(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

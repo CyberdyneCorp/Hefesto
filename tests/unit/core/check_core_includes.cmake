@@ -17,12 +17,25 @@ set(_forbidden
   "Foundation/" "CoreGraphics/" "QuartzCore/" "X11/" "xcb/" "wayland-" "windows.h" "SDL" "GLFW/"
   "Qt" "gtk/" "spawn.h" "unistd.h" "sys/wait.h" "sys/types.h" "process.h" "boost/process")
 
+# Restricted headers (m7-extraction design D6): hefesto/db/plane_stitch.hpp, the stitch editor that
+# breaks the canonical tile decomposition, only from the db, extract and extresist areas
+# (scripts/check_core_includes.py RESTRICTED).
+set(_stitch_header "hefesto/db/plane_stitch.hpp")
+set(_stitch_areas db extract extresist)
+
 file(GLOB_RECURSE _sources "${CORE_DIR}/*.hpp" "${CORE_DIR}/*.cpp" "${CORE_DIR}/*.h" "${CORE_DIR}/*.in")
 set(_violations "")
 foreach(_file IN LISTS _sources)
   file(STRINGS "${_file}" _includes REGEX "^[ \t]*#[ \t]*include[ \t]*[<\"]")
   foreach(_line IN LISTS _includes)
     string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*[<\"]([^>\"]*)[>\"].*$" "\\1" _header "${_line}")
+    if(_header STREQUAL _stitch_header)
+      file(RELATIVE_PATH _rel "${CORE_DIR}" "${_file}")
+      string(REGEX REPLACE "^(src|include/hefesto)/([^/]+)/.*$" "\\2" _area "${_rel}")
+      if(_area STREQUAL _rel OR NOT _area IN_LIST _stitch_areas)
+        list(APPEND _violations "${_file}: #include <${_header}> (only db/, extract/, extresist/)")
+      endif()
+    endif()
     foreach(_pattern IN LISTS _forbidden)
       string(FIND "${_header}" "${_pattern}" _pos)
       if(_pos EQUAL 0 OR (_pattern STREQUAL "raven" AND NOT _pos EQUAL -1))

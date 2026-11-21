@@ -26,13 +26,11 @@ import netlist_cases  # noqa: E402
 import tclcase  # noqa: E402
 from compare import COMPARATORS  # noqa: E402
 from goldenlib import deviations  # noqa: E402
-from goldenlib.case import REFERENCE_TOOLS, load_case  # noqa: E402
+from goldenlib import external_command  # noqa: E402
+from goldenlib.case import load_case  # noqa: E402
 
 CASES = m7_cases.tcl_cases()
 FAKE = Path(__file__).resolve().parent / "fake_magic_m7.tcl"
-# The comparators of design D21 that the GOLDEN infra task 2.4 adds (spice-cap, sim-cap) and the console
-# comparator of the external-command mode (task 2.3); until they land, validation accepts their names.
-PENDING_COMPARATORS = ("spice-cap", "sim-cap", netlist_cases.CHK_STREAM_COMPARATOR)
 READER_RECORDS = frozenset(("timestamp", "version", "tech", "style", "scale", "resistclasses", "parameters", "use",
                             "abstract", "port", "node", "substrate", "attr", "equiv", "cap", "fet", "device",
                             "primitive", "merge", "connect", "distance", "killnode", "resist", "subcap", "rnode"))
@@ -44,7 +42,7 @@ def spec_headings(capability: str) -> set[str]:
 
 
 def known_comparators() -> set[str]:
-    return set(COMPARATORS) | set(PENDING_COMPARATORS)
+    return set(COMPARATORS)
 
 
 class CatalogueTest(unittest.TestCase):
@@ -146,7 +144,8 @@ class CaseSpecTest(unittest.TestCase):
         self.assertEqual(data["role"], "extcheck")
         self.assertEqual([r["name"] for r in data["run"]], ["default", "thresholds", "nocaps", "usage"])
         self.assertEqual(data["run"][-1]["args"], [])  # the usage error: exit status 1
-        self.assertEqual(set(data["files"]), {"top.ext", "inv.ext"})
+        self.assertEqual(set(data["reads"]), {"input/top.ext", "input/inv.ext"})
+        self.assertEqual(data["cwd"], ".")
 
 
 class WrittenCaseTest(unittest.TestCase):
@@ -163,10 +162,10 @@ class WrittenCaseTest(unittest.TestCase):
                 with self.subTest(case=case.id):
                     load_case(m7_cases.case_dir(case.id), COMPARATORS)
 
-    def test_extcheck_case_validates_once_its_tool_exists(self):
-        if "extcheck" not in REFERENCE_TOOLS:
-            self.skipTest("the external-command case mode (task 2.3) has not landed")
-        load_case(m7_cases.case_dir(netlist_cases.CHK_ID), known_comparators())
+    def test_extcheck_case_validates(self):
+        case = load_case(m7_cases.case_dir(netlist_cases.CHK_ID), known_comparators())
+        self.assertEqual([r.name for r in case.command.runs], ["default", "thresholds", "nocaps", "usage"])
+        self.assertEqual([o.name for o in case.outputs], external_command.run_outputs(case.command))
 
     def test_committed_cases_match_the_generator(self):
         for case in CASES:

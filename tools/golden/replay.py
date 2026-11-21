@@ -153,8 +153,12 @@ def run_external(program: Path, case: Case, work: Path) -> subprocess.CompletedP
     command = case.command
     cwd = work if command.cwd == "." else work / command.cwd
     env = {**os.environ, **ENVIRONMENT, **substitute_env(case.env, str(work))}
+    timeout = run_timeout(case.hefesto, TIMEOUT_S)
+    if command.runs:  # [[run]] tables: each writes <name>.stdout/.stderr/.exit in work
+        external_command.replay_runs(program, command, work, env, timeout)
+        return subprocess.CompletedProcess([str(program)], 0, b"", b"")
     return subprocess.run([str(program), *command.args], capture_output=True, cwd=cwd, env=env,
-                          timeout=run_timeout(case.hefesto, TIMEOUT_S), check=False)
+                          timeout=timeout, check=False)
 
 
 def run_case_program(cli: Path, case: Case, work: Path, extcheck: Path | None) -> subprocess.CompletedProcess:

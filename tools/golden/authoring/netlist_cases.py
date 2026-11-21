@@ -602,10 +602,10 @@ def sim_specs() -> list[NlSpec]:
     ]
 
 
-# NL-CHK-01: the external-command case mode of design D15 (task 2.3, GOLDEN infra). input/command.toml
-# names the program by its role; the harness maps the role to Magic's standalone `extcheck` on
-# capture and to `hefesto-extcheck` on replay, runs each [[run]] from the work directory and
-# captures its stdout, stderr and exit status. The usage line's program name is masked as <prog>.
+# NL-CHK-01: the external-command case mode of design D15 (task 2.3, goldenlib/external_command.py).
+# input/command.toml names the program by its role; the harness maps the role to Magic's standalone
+# `extcheck` on capture and to `hefesto-extcheck` on replay, runs each [[run]] from the work directory
+# (cwd ".") and writes its stdout, stderr and exit status as <name>.stdout, <name>.stderr, <name>.exit.
 CHK_INV = ext('port "in" 0 -2 4 -1 5 poly', 'port "out" 1 4 4 5 5 metal1',
               nd("in", 0.4, -2, 4, "poly", ((0, 0), (24, 20), (0, 0))), nd("out", 5, 4, 4, "metal1", ((40, 26), (0, 0), (40, 28))),
               nd("vdd!", 1.2, 0, 20, "metal1", ((40, 26), (0, 0), (80, 48))), nd("gnd!", 2.4, 0, -10),
@@ -615,15 +615,17 @@ CHK_INV = ext('port "in" 0 -2 4 -1 5 poly', 'port "out" 1 4 4 5 5 metal1',
 CHK_TOP = ext(use("inv", "x1"), use("inv", "x2", 50), nd("a", 1, 0, 50), 'merge "x1/out" "x2/in" 0')
 CHK_RUNS = (("default", ["-p", "input", "top"]), ("thresholds", ["-p", "input", "-c", "0", "-r", "0", "top"]),
             ("nocaps", ["-p", "input", "-C", "-r", "0", "top"]), ("usage", []))
+CHK_READS = ["input/top.ext", "input/inv.ext"]
 
 
 def command_toml() -> str:
-    runs = "".join(f'\n[[run]]\nname = "{name}"\nargs = [{", ".join(chr(34) + a + chr(34) for a in args)}]\n'
-                   for name, args in CHK_RUNS)
-    return ("# NL-CHK-01: external-command case (m7-extraction design D15, task 2.3). The role extcheck is Magic's\n"
+    from casegen import HEADER, _toml_list
+    runs = "".join(f'\n[[run]]\nname = "{name}"\nargs = {_toml_list(args)}\n' for name, args in CHK_RUNS)
+    return (HEADER + "#\n"
+            "# NL-CHK-01: external-command case (m7-extraction design D15, task 2.3). The role extcheck is Magic's\n"
             "# standalone extcheck on capture and hefesto-extcheck on replay; each run's stdout, stderr and exit\n"
-            "# status are captured as <name>.stdout, <name>.stderr and <name>.exit.\n"
-            'role = "extcheck"\nfiles = ["top.ext", "inv.ext"]\n' + runs)
+            "# status are captured as <name>.stdout, <name>.stderr and <name>.exit.\n\n"
+            f'schema = 1\nrole = "extcheck"\ncwd = "."\nreads = {_toml_list(CHK_READS)}\n' + runs)
 
 
 def extcheck_outputs() -> list[str]:
@@ -634,9 +636,11 @@ CHK_ID = "NL-CHK-01"
 CHK_REQUIREMENTS = ["Counts and report format", "Invocation"]
 CHK_DESCRIPTION = ("two inverters (x1, x2) each with a vdd! node, not connected, plus a coupling and a resistor; extcheck "
                    "with default thresholds, with -c 0 -r 0, with -C -r 0, and with no arguments (usage, exit status 1)")
-# The comparator of the console streams (task 2.3): magic-console's rules plus the usage line's leading
-# program name masked as <prog> on both sides and the informative "Memory used:" line masked.
-CHK_STREAM_COMPARATOR = "extcheck-console"
+# The console streams (task 2.3): bytes with the masks of the external-command mode (as NETLIST-SMOKE-02),
+# the usage line's leading program name as <prog> (prog-name) and the informative "Memory used:"
+# value (extcheck-memory), compare/masks.py.
+CHK_STREAM_COMPARATOR = "bytes"
+CHK_STREAM_MASKS = ["prog-name", "extcheck-memory"]
 
 
 def extcheck_case_toml() -> str:
@@ -646,13 +650,13 @@ def extcheck_case_toml() -> str:
             "# task 2.3): input/command.toml names the role extcheck (Magic's standalone extcheck on capture,",
             "# hefesto-extcheck on replay); each run writes <run>.stdout, <run>.stderr and <run>.exit in the work dir.", "",
             "schema = 1", f'id = "{CHK_ID}"', 'area = "NETLIST"', 'capability = "netlist-extcheck"',
-            f"requirements = {_toml_list(CHK_REQUIREMENTS)}", 'tool = "extcheck"',
-            f"description = {_toml_str(CHK_DESCRIPTION)}", "", "[reference]", 'command = "input/command.toml"', "",
-            "[hefesto]", 'command = "input/command.toml"', "requires_commands = []"]
+            f"requirements = {_toml_list(CHK_REQUIREMENTS)}", 'tool = "magic"',
+            f"description = {_toml_str(CHK_DESCRIPTION)}", "", "[reference]", 'mode = "external-command"']
     text = "\n".join(head) + "\n"
     for name in extcheck_outputs():
-        kind = name.rsplit(".", 1)[1]
-        text += _output_block(name, name, "bytes" if kind == "exit" else CHK_STREAM_COMPARATOR, [])
+        stream = not name.endswith(".exit")
+        text += _output_block(name, name, CHK_STREAM_COMPARATOR if stream else "bytes",
+                              CHK_STREAM_MASKS if stream else [])
     return text
 
 

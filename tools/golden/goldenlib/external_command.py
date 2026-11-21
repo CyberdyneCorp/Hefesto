@@ -13,6 +13,17 @@ run in ``input/command.toml``::
     reads = ["inv.ext"]          # the files of input/ it reads (each must exist)
     cwd = "input"                # optional: run directory, relative to the work directory
 
+A case that runs the program several times (NL-CHK-01: default thresholds, ``-c 0 -r 0``, ``-C -r 0``
+and the usage error) lists ``[[run]]`` tables instead of ``args``::
+
+    [[run]]
+    name = "default"             # [A-Za-z0-9_-]+, unique in the case
+    args = ["-p", "input", "top"]
+
+Each run starts in ``cwd`` and writes ``<name>.stdout``, ``<name>.stderr`` and ``<name>.exit`` (the
+exit status as one decimal line) in the work directory; the case lists those files as plain path
+outputs. The runs are independent: a non-zero status of one does not stop the next.
+
 The role is mapped to a program per side: ``extcheck`` runs Magic's ``extcheck`` (built in the
 capture image, container/build_extcheck.sh) on capture and ``hefesto-extcheck`` on replay. Both runs
 get ``TZ=UTC`` and ``LC_ALL=C``. stdout, stderr and the exit status are captured as the usual run
@@ -26,6 +37,9 @@ marker ``MISSING_MARKER`` on stderr, and capture.py reports an error instead of 
 """
 from __future__ import annotations
 
+import re
+import shlex
+import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -45,12 +59,22 @@ ROLES: dict[str, Role] = {"extcheck": Role("extcheck", "hefesto-extcheck")}
 MISSING_STATUS = 127
 MISSING_MARKER = "hefesto-golden: reference program not in the image:"
 # sh -c GUARD <prog> <args...>: $0 is the program; exec keeps its argv[0] as given.
-GUARD = (f'command -v "$0" >/dev/null 2>&1 || {{ echo "{MISSING_MARKER} $0" >&2; exit {MISSING_STATUS}; }}; '
-         'exec "$0" "$@"')
+GUARD_CHECK = f'command -v "$0" >/dev/null 2>&1 || {{ echo "{MISSING_MARKER} $0" >&2; exit {MISSING_STATUS}; }}'
+GUARD = f'{GUARD_CHECK}; exec "$0" "$@"'
 
 
 class CommandError(ValueError):
     """input/command.toml is malformed."""
+
+
+RUN_NAME = re.compile(r"[A-Za-z0-9_-]+")
+RUN_OUTPUTS = ("stdout", "stderr", "exit")  # <name>.<kind> per [[run]]
+
+
+@dataclass(frozen=True)
+class Run:
+    name: str
+    args: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -59,6 +83,7 @@ class Command:
     args: tuple[str, ...]
     reads: tuple[str, ...]
     cwd: str = "input"
+    runs: tuple[Run, ...] = ()  # [[run]] tables; empty: one run with ``args``
 
     @property
     def program(self) -> Role:
@@ -83,6 +108,27 @@ def _relative(path: str, where: str, key: str) -> str:
     return path
 
 
+def _runs(data: dict, where: str) -> tuple[Run, ...]:
+    raw = data.get("run", [])
+    if not isinstance(raw, list) or not all(isinstance(r, dict) for r in raw):
+        raise CommandError(f"{where}: 'run' must be an array of tables")
+    if raw and "args" in data:
+        raise CommandError(f"{where}: give either 'args' or [[run]] tables, not both")
+    runs = tuple(Run(r.get("name", ""), _strings(r, "args", where)) for r in raw)
+    names = [run.name for run in runs]
+    for name in names:
+        if not isinstance(name, str) or not RUN_NAME.fullmatch(name):
+            raise CommandError(f"{where}: run name {name!r} must match {RUN_NAME.pattern}")
+    if len(set(names)) != len(names):
+        raise CommandError(f"{where}: run names must be unique")
+    return runs
+
+
+def run_outputs(command: Command) -> list[str]:
+    """The work-directory files the [[run]] tables write, in order."""
+    return [f"{run.name}.{kind}" for run in command.runs for kind in RUN_OUTPUTS]
+
+
 def load(case_root: Path) -> Command:
     """The validated ``input/command.toml`` of a case directory."""
     path = Path(case_root) / COMMAND_FILE
@@ -101,17 +147,49 @@ def load(case_root: Path) -> Command:
     for read in reads:
         if not (base / read).is_file():
             raise CommandError(f"{where}: reads '{read}' is not in {cwd}/")
-    return Command(role, _strings(data, "args", where), reads, cwd)
+    return Command(role, _strings(data, "args", where), reads, cwd, _runs(data, where))
+
+
+def _to_work(command: Command) -> str:
+    """The work directory relative to the run directory ``cwd`` (``""`` or ``../``...)."""
+    depth = len([p for p in PurePosixPath(command.cwd).parts if p != "."])
+    return "../" * depth
+
+
+def multi_run_script(command: Command) -> str:
+    """The shell text (after GUARD's check) that runs every [[run]] and writes its three files."""
+    work = _to_work(command)
+    lines = []
+    for run in command.runs:
+        out = shlex.quote(f"{work}{run.name}")
+        args = "".join(f" {shlex.quote(a)}" for a in run.args)
+        lines.append(f'"$0"{args} >{out}.stdout 2>{out}.stderr; echo $? >{out}.exit')
+    return "\n".join(lines)
 
 
 def capture_argv(command: Command) -> list[str]:
     """The reference command line inside the image, through the missing-program guard."""
+    if command.runs:
+        return ["sh", "-c", f"{GUARD_CHECK}\n{multi_run_script(command)}", command.program.capture]
     return ["sh", "-c", GUARD, command.program.capture, *command.args]
 
 
 def recorded_argv(command: Command) -> list[str]:
-    """The command line provenance.json records (without the guard)."""
+    """The command line provenance.json records (without the guard); one ``;``-joined line per run."""
+    if command.runs:
+        return [part for run in command.runs for part in (";", command.program.capture, *run.args)][1:]
     return [command.program.capture, *command.args]
+
+
+def replay_runs(program: Path, command: Command, work: Path, env: dict, timeout: float) -> None:
+    """Hefesto's program once per [[run]], from ``cwd`` in ``work``, writing each run's three files."""
+    cwd = work if command.cwd == "." else work / command.cwd
+    for run in command.runs:
+        proc = subprocess.run([str(program), *run.args], capture_output=True, cwd=cwd, env=env,
+                              timeout=timeout, check=False)
+        (work / f"{run.name}.stdout").write_bytes(proc.stdout)
+        (work / f"{run.name}.stderr").write_bytes(proc.stderr)
+        (work / f"{run.name}.exit").write_text(f"{proc.returncode}\n", encoding="ascii")
 
 
 def is_missing(returncode: int, stderr: bytes) -> bool:

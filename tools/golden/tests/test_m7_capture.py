@@ -283,6 +283,62 @@ class ExternalCommandTest(unittest.TestCase):
             self.assertEqual(failed.status, "fail")
             self.assertIn("exitcode.txt", [o.name for o in failed.outputs if o.status == "fail"])
 
+    def multi_run_case(self, tmp: Path, case_id: str = "NL-T-40") -> Path:
+        outputs = "".join(f'\n[[outputs]]\nname = "{n}.{k}"\nsource = "{n}.{k}"\ncomparator = "bytes"\n'
+                          for n in ("default", "usage") for k in external_command.RUN_OUTPUTS)
+        command = ('schema = 1\nrole = "extcheck"\ncwd = "."\nreads = ["input/top.ext"]\n'
+                   '\n[[run]]\nname = "default"\nargs = ["-p", "input", "top"]\n'
+                   '\n[[run]]\nname = "usage"\nargs = []\n')
+        toml = CASE_HEAD + '\n[reference]\nmode = "external-command"\n' + outputs
+        return write_case(tmp, case_id, toml, {"command.toml": command, "top.ext": "timestamp 0\n"})
+
+    def test_run_tables_run_the_program_once_each(self):
+        """NL-CHK-01's shape: several [[run]] tables, each writing <name>.stdout/.stderr/.exit."""
+        with tempfile.TemporaryDirectory() as tmp:
+            case = load_case(self.multi_run_case(Path(tmp)))
+            argv = ContainerRunner("img").argv(case, Path(tmp))
+        self.assertEqual([r.name for r in case.command.runs], ["default", "usage"])
+        self.assertEqual(argv[argv.index("-w") + 1], "/work")
+        script = argv[-2]
+        self.assertTrue(script.startswith(external_command.GUARD_CHECK))
+        self.assertIn('"$0" -p input top >default.stdout 2>default.stderr; echo $? >default.exit', script)
+        self.assertIn('"$0" >usage.stdout 2>usage.stderr; echo $? >usage.exit', script)
+        self.assertEqual(argv[-1], "extcheck")
+
+    def test_run_tables_in_a_subdirectory_write_to_the_work_directory(self):
+        command = external_command.Command("extcheck", (), (), "input",
+                                           (external_command.Run("a", ("x y",)),))
+        self.assertEqual(external_command.multi_run_script(command),
+                         "\"$0\" 'x y' >../a.stdout 2>../a.stderr; echo $? >../a.exit")
+
+    def test_bad_run_tables_are_rejected(self):
+        bad = ['schema = 1\nrole = "extcheck"\nargs = []\n[[run]]\nname = "a"\n',
+               'schema = 1\nrole = "extcheck"\n[[run]]\nname = "a b"\n',
+               'schema = 1\nrole = "extcheck"\n[[run]]\nname = "a"\n[[run]]\nname = "a"\n']
+        with tempfile.TemporaryDirectory() as tmp:
+            for i, text in enumerate(bad):
+                case_dir = self.external_case(Path(tmp), f"NL-T-5{i}")
+                (case_dir / "input" / "command.toml").write_text(text, encoding="utf-8")
+                with self.subTest(text=text), self.assertRaises(CaseError):
+                    load_case(case_dir)
+
+    def test_replay_runs_each_run_table(self):
+        usage = "Standard arguments: [-R]\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            case_dir = self.multi_run_case(tmp / "golden")
+            capture.write_expected(load_case(case_dir), {"reference_captured": True}, {
+                "default.stdout": b"top ok\n", "default.stderr": b"", "default.exit": b"0\n",
+                "usage.stdout": b"", "usage.stderr": usage.encode(), "usage.exit": b"1\n"})
+            bindir = tmp / "bin"
+            bindir.mkdir()
+            cli = script_file(bindir, "hefesto-cli", "raise SystemExit(3)\n")
+            script_file(bindir, "hefesto-extcheck",
+                        "import sys\nif len(sys.argv) == 1:\n"
+                        f"    sys.stderr.write({usage!r})\n    sys.exit(1)\nprint('top ok')\n")
+            report = replay.run_one(cli, case_dir)
+        self.assertEqual(report.status, "pass", report)
+
     def test_replay_skips_while_hefesto_extcheck_is_not_built(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
