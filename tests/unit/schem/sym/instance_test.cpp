@@ -131,6 +131,24 @@ TEST_CASE("Floater shows instance width: the owner", kFloaters) {
   CHECK(schem::floater_owner(document, "M2") == nullptr);
 }
 
+TEST_CASE("floater owners match exactly or by index", kFloaters) {
+  schem::Document document;
+  document.instances.push_back({"res.sym", {0, 0}, 0, 0, "name=R1 value=1k"});
+  document.instances.push_back({"res.sym", {0, 0}, 0, 0, "name=R2 value=2k"});
+  document.instances.push_back({"res.sym", {0, 0}, 0, 0, "name=true"});
+  CHECK(schem::floater_owner(document, "r1") == nullptr);  // case-sensitive, unlike "Instance names"
+  CHECK(schem::floater_owner(document, "R1") == &document.instances[0]);
+  CHECK(schem::floater_owner(document, "1") == &document.instances[1]);
+  CHECK(schem::floater_owner(document, "0001") == &document.instances[1]);
+  CHECK(schem::floater_owner(document, "3") == nullptr);
+  CHECK(schem::floater_owner(document, "99999999999999999999999999") == nullptr);
+  CHECK(schem::floater_owner(document, "") == nullptr);
+  // A true `floater` value is the text `true`, not an index.
+  const schem::TextRecord by_true{"x", {0, 0}, 0, 0, 0.4, 0.4, "floater=1"};
+  CHECK(schem::floater_info(by_true).owner == "true");
+  CHECK(schem::floater_owner(document, schem::floater_info(by_true).owner) == &document.instances[2]);
+}
+
 TEST_CASE("Descend only into hierarchical types", kTypes) {
   CHECK_FALSE(schem::can_descend("nmos"));
   CHECK(schem::can_descend("subcircuit"));

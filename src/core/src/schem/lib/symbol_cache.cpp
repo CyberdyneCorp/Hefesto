@@ -3,13 +3,14 @@
 //
 // The symbol cache (capability schematic-symbols-and-libraries "Symbol
 // references", "Missing symbols", "Schematic used as symbol", "Symbol cache
-// and reload"; Q-SCHEM-9, Q-SCHEM-30).
+// and reload"; Q-SCHEM-9, Q-SCHEM-30, Q-SCHEM-32).
 //
 // Misses are not cached, so a later change of the search path re-resolves a
 // missing symbol; each warning is given once per reference (or file) until
-// clear(). A schematic that places itself, directly or through other
-// schematics, stops at the first repetition with the max-depth warning
-// rather than nesting 40 copies of itself.
+// clear(). A schematic used as a symbol is flattened by schematic_symbol():
+// the schematics it places are read once per load and opened in place, and
+// the `.sym` files they place come from this cache. There is no cycle check:
+// a schematic that places itself nests until kMaxSymbolDepth, as in xschem.
 //
 // Owner: SYMLIB.
 
@@ -21,7 +22,6 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/schem/file/read_write.hpp"
 #include "hefesto/schem/lib/reference.hpp"
-#include "hefesto/schem/lib/schematic_symbol.hpp"
 
 namespace hefesto::schem {
 
@@ -36,21 +36,6 @@ std::string relative_warning(const std::string& reference, const platform::Path&
          folder.generic_string() + "; xschem resolves it against its start folder";
 }
 
-// Removes `file` from `loading` when the load ends, however it ends.
-class LoadingGuard {
- public:
-  LoadingGuard(std::set<platform::Path>& loading, platform::Path file) : loading_(loading), file_(std::move(file)) {
-    loading_.insert(file_);
-  }
-  ~LoadingGuard() { loading_.erase(file_); }
-  LoadingGuard(const LoadingGuard&) = delete;
-  LoadingGuard& operator=(const LoadingGuard&) = delete;
-
- private:
-  std::set<platform::Path>& loading_;
-  platform::Path file_;
-};
-
 // Whether a cached embedded symbol was built from `block`: a document's
 // path does not identify a block (unsaved documents share the empty path,
 // and a block can be edited), so the records are compared.
@@ -62,6 +47,31 @@ bool same_block(const Document& cached, const Document& block) {
 }
 
 }  // namespace
+
+// The nested resolver of one schematic-as-symbol load: embedded blocks and
+// `.sym` files from the cache, nested schematics read once and kept until
+// the load ends (their Document addresses key the flattener's memo).
+class SymbolCache::SchematicLoad {
+ public:
+  SchematicLoad(SymbolCache& cache, const ResolveContext& context) : cache_(cache), context_(context) {}
+
+  NestedTarget operator()(const InstanceRecord& instance, const Document& from) {
+    const Reference reference{instance.symbol};
+    if (const Symbol* inline_symbol = cache_.embedded(reference, from)) return {nullptr, inline_symbol};
+    const platform::Path file = cache_.locate(reference, from, context_);
+    if (file.empty()) return {nullptr, &cache_.placeholder_};
+    if (!is_schematic_file(file)) return {nullptr, &cache_.load(file, instance.symbol, context_)};
+    if (const auto it = schematics_.find(file); it != schematics_.end()) return {&it->second, nullptr};
+    auto document = cache_.read(file, instance.symbol, context_);
+    if (!document) return {nullptr, &cache_.placeholder_};
+    return {&schematics_.emplace(file, std::move(*document)).first->second, nullptr};
+  }
+
+ private:
+  SymbolCache& cache_;
+  const ResolveContext& context_;
+  std::map<platform::Path, Document> schematics_;  // map nodes keep addresses
+};
 
 SymbolCache::SymbolCache() {
   placeholder_.placeholder = true;
@@ -82,7 +92,9 @@ void SymbolCache::forget(const platform::Path& file) {
 }
 
 const Symbol& SymbolCache::resolve(const Reference& reference, const Document& from, const ResolveContext& context) {
-  return resolve_at(reference, from, context, 0);
+  if (const Symbol* inline_symbol = embedded(reference, from)) return *inline_symbol;
+  const platform::Path file = locate(reference, from, context);
+  return file.empty() ? placeholder_ : load(file, reference.text, context);
 }
 
 void SymbolCache::warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic) {
@@ -104,20 +116,18 @@ const Symbol* SymbolCache::embedded(const Reference& reference, const Document& 
   return &embedded_.emplace(std::move(key), std::move(symbol))->second;
 }
 
-const Symbol& SymbolCache::resolve_at(const Reference& reference, const Document& from, const ResolveContext& context,
-                                      int depth) {
-  if (const Symbol* inline_symbol = embedded(reference, from)) return *inline_symbol;
+platform::Path SymbolCache::locate(const Reference& reference, const Document& from, const ResolveContext& context) {
   const std::string& text = reference.text;
   const ResolvedReference resolved =
       resolve_reference(text, from.path.parent_path(), context.search_path, context.fs);
   switch (resolved.via) {
     case ResolvedVia::none:
-      return placeholder_;
+      return {};
     case ResolvedVia::web:
       warn_once(context, "web|" + text,
                 diag::make("SCHEM-LIB-002", "Web symbol reference " + text +
                                                 " is not fetched; the instance is shown as a missing symbol"));
-      return placeholder_;
+      return {};
     case ResolvedVia::relative:
     case ResolvedVia::document_folder:
       warn_once(context, "relative|" + text + "|" + resolved.folder.generic_string(),
@@ -128,42 +138,54 @@ const Symbol& SymbolCache::resolve_at(const Reference& reference, const Document
   }
   if (!context.fs.exists(resolved.file)) {
     warn_once(context, "missing|" + text, diag::make("SCHEM-LIB-003", "Symbol not found: " + text));
-    return placeholder_;
+    return {};
   }
-  return load(resolved.file, text, context, depth);
+  return resolved.file;
 }
 
-const Symbol& SymbolCache::load(const platform::Path& file, const std::string& reference, const ResolveContext& context,
-                                int depth) {
-  if (const auto it = symbols_.find(file); it != symbols_.end()) return it->second;
-  if (depth >= kMaxSymbolDepth || loading_.count(file) != 0) {
-    warn_once(context, "depth|" + file.generic_string(),
-              diag::make("SCHEM-LIB-005", "Symbol recursively instantiating symbol: max depth reached, skipping"));
-    return placeholder_;
-  }
-  const bool schematic = is_schematic_file(file);
+std::optional<Document> SymbolCache::read(const platform::Path& file, const std::string& reference,
+                                          const ResolveContext& context) {
   auto bytes = context.fs.read(file);
-  const ReadOptions options{schematic ? FileKind::schematic : FileKind::symbol, context.xschem_compat, context.warnings,
-                            file.generic_string()};
+  const ReadOptions options{is_schematic_file(file) ? FileKind::schematic : FileKind::symbol, context.xschem_compat,
+                            context.warnings, file.generic_string()};
   auto document = bytes.ok() ? read_document(bytes.value(), options) : diag::Outcome<Document>{bytes.error()};
   if (!document.ok()) {
     warn_once(context, "read|" + file.generic_string(),
               diag::make("SCHEM-LIB-004", "Symbol " + reference + " could not be read from " + file.generic_string() +
                                               ": " + document.error().text));
-    return placeholder_;
+    return std::nullopt;
   }
   document.value().path = file;
-  if (!schematic) return symbols_.emplace(file, make_symbol(reference, file, std::move(document.value()))).first->second;
+  return std::move(document.value());
+}
 
-  const LoadingGuard guard(loading_, file);
-  const Document& sch = document.value();
-  const NestedSymbol nested = [&](const InstanceRecord& instance) -> const Symbol& {
-    return resolve_at(Reference{instance.symbol}, sch, context, depth + 1);
-  };
+const Symbol& SymbolCache::load(const platform::Path& file, const std::string& reference,
+                                const ResolveContext& context) {
+  if (const auto it = symbols_.find(file); it != symbols_.end()) return it->second;
+  auto document = read(file, reference, context);
+  if (!document) return placeholder_;
+  if (is_schematic_file(file)) return load_schematic(file, reference, std::move(*document), context);
+  return symbols_.emplace(file, make_symbol(reference, file, std::move(*document))).first->second;
+}
+
+const Symbol& SymbolCache::load_schematic(const platform::Path& file, const std::string& reference, Document document,
+                                          const ResolveContext& context) {
   platform::Path sibling = file;
   sibling.replace_extension(".sym");
-  const Symbol* order_from = context.fs.exists(sibling) ? &load(sibling, reference, context, depth + 1) : nullptr;
-  Symbol symbol = schematic_symbol(reference, file, sch, nested, order_from);
+  const Symbol* order_from = context.fs.exists(sibling) ? &load(sibling, reference, context) : nullptr;
+  SchematicLoad nested(*this, context);
+  FlattenReport report;
+  Symbol symbol = schematic_symbol(reference, file, document, std::ref(nested), order_from, &report);
+  if (report.depth_reached) {
+    warn_once(context, "depth|" + file.generic_string(),
+              diag::make("SCHEM-LIB-005", "Symbol recursively instantiating symbol: max depth reached, skipping"));
+  }
+  if (report.size_reached) {
+    warn_once(context, "size|" + file.generic_string(),
+              diag::make("SCHEM-LIB-009", "Symbol " + reference + ": more than " +
+                                              std::to_string(kMaxFlattenedRecords) +
+                                              " records when flattened; the rest is not loaded"));
+  }
   return symbols_.insert_or_assign(file, std::move(symbol)).first->second;
 }
 
