@@ -51,9 +51,42 @@ Codes of the symbol model and pin order (`schem/sym/`), symbol references,
 the library search path, `xschemrc` as data and the symbol cache
 (`schem/lib/`), and `tcleval` values with the script permission model
 (`schem/tcl/`) (capability schematic-symbols-and-libraries; design D7).
-Owner: SYMLIB. Task 7.2 adds the warning `SCHEM-LIB-001` of Q-SCHEM-30.
+Owner: SYMLIB.
 
-No codes yet.
+- `SCHEM-SYM-001` (warning): every pin of a symbol has `sim_pinnumber`, so
+  the pins are sorted by it, and two or more pins share one value. The pins
+  that share it keep their file order (a stable sort); the warning names the
+  symbol, the value and how many pins share it. Given in both modes of
+  `xschem-compat` (Q-SCHEM-5, `Resolution: fix`), once per duplicated value.
+- `SCHEM-LIB-001` (warning): `Relative symbol reference <reference> resolved
+  against the schematic folder <folder>; xschem resolves it against its
+  start folder`. A `./` or `../` reference, or a reference found through the
+  `.` element of the search path, was resolved against the folder of the
+  schematic that contains the instance, in both modes (Q-SCHEM-30,
+  `Resolution: fix`). Once per reference and folder.
+- `SCHEM-LIB-002` (warning): an `http://` or `https://` reference is kept as
+  written and never fetched; the instance shows the missing-symbol
+  placeholder (Q-SCHEM-9, `Resolution: platform`). Once per reference.
+- `SCHEM-LIB-003` (warning): `Symbol not found: <reference>`. The instance
+  shows the placeholder, keeps its reference and properties and netlists as
+  nothing; a later change of the search path re-resolves it. Once per
+  reference.
+- `SCHEM-LIB-004` (warning): the symbol file exists but could not be read or
+  parsed (the reader's error follows); the instance shows the placeholder.
+  Once per file.
+- `SCHEM-LIB-005` (warning): `Symbol recursively instantiating symbol: max
+  depth reached, skipping`. A schematic used as a symbol nests 40 levels
+  deep, or places itself directly or through other schematics; the nested
+  instance is skipped. Once per file.
+- `SCHEM-LIB-006` (warning): an `xschemrc` raised a Tcl error (a sandbox
+  denial included); what it set before the error is kept, the rest of the
+  file is not run. The search path is built from what was set.
+- `SCHEM-LIB-007` (info): an `xschemrc` set `xschem_execute_scripts`; the
+  value is read and ignored, because `tcleval` values always run in the
+  sandbox and launcher scripts are confirmed once per document (Q-SCHEM-25,
+  `Resolution: platform`).
+- `SCHEM-LIB-008` (info): a line an `xschemrc` printed with `puts`; rc files
+  never write to Hefesto's standard streams.
 
 ## NETLIST
 
@@ -107,4 +140,13 @@ fails when the two disagree.
 | `SCHEM-FILE-004` | warning | An embedded symbol block does not follow an instance and is skipped. |
 | `SCHEM-FILE-005` | warning | The file ends inside an embedded symbol block; the block is kept. |
 | `SCHEM-FILE-006` | error | The file changed on disk since it was loaded; it is not overwritten. |
+| `SCHEM-LIB-001` | warning | A `./` or `../` reference, or one found through the `.` search-path element, was resolved against the schematic folder, where xschem uses its start folder (Q-SCHEM-30). |
+| `SCHEM-LIB-002` | warning | An `http://` or `https://` symbol reference is not fetched; the instance is shown as a missing symbol (Q-SCHEM-9). |
+| `SCHEM-LIB-003` | warning | Symbol not found: the reference resolves to no file; the instance is shown as a missing symbol. |
+| `SCHEM-LIB-004` | warning | A symbol file exists but could not be read or parsed; the instance is shown as a missing symbol. |
+| `SCHEM-LIB-005` | warning | Symbol recursively instantiating symbol: a schematic used as a symbol nests too deep or places itself; the nested instance is skipped. |
+| `SCHEM-LIB-006` | warning | An `xschemrc` file raised a Tcl error; the settings it would have made after the error are lost. |
+| `SCHEM-LIB-007` | info | `xschem_execute_scripts` in an `xschemrc` is ignored: `tcleval` values always run in the sandbox and launchers are confirmed (Q-SCHEM-25). |
+| `SCHEM-LIB-008` | info | A line an `xschemrc` file printed with `puts`. |
+| `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 <!-- END DIAGNOSTIC CODES -->

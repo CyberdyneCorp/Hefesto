@@ -84,21 +84,9 @@ TEST_CASE("a new document and the netlist options have their documented defaults
 }
 
 TEST_CASE("the SYMLIB stubs answer their documented values", "[m8-scaffold]") {
-  schem::Symbol symbol;
-  symbol.pins.resize(3);
-  CHECK(schem::pin_order(symbol) == std::vector<schem::PinIndex>{0, 1, 2});
-
-  hefesto::platform::MemoryFileSystem fs;
-  schem::Session session;
-  const schem::ResolveContext context{session.search_path, fs};
-  const schem::Symbol& resolved = session.symbols.resolve({"res.sym"}, schem::Document{}, context);
-  CHECK(resolved.placeholder);
-  CHECK(&resolved == &session.symbols.placeholder());
-
-  const auto rc = schem::SearchPath::from_xschemrc(fs, schem::XschemrcInput{"/pdk/xschemrc", {}, "/work"});
-  CHECK(rc.search_path.directories().empty());
-  CHECK(is_not_implemented(rc.diagnostics));
-
+  // pin_order, SymbolCache::resolve and SearchPath::from_xschemrc are
+  // implemented (tasks 7.1-7.3); their tests are in tests/unit/schem/sym and
+  // tests/unit/schem/lib.
   const schem::TclBridge bridge;
   CHECK(bridge.evaluate("tcleval(1)", {}) == "?\n");
 }

@@ -6,4 +6,6 @@
 # Owner: SYMLIB (openspec/changes/m8-schematic/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/symbol.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/instance.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/symbol.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/types.cpp)
