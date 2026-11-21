@@ -61,8 +61,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 27>& areas() noexcept {
-  static const std::array<CodeArea, 27> table = {
+const std::array<CodeArea, 28>& areas() noexcept {
+  static const std::array<CodeArea, 28> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -94,6 +94,8 @@ const std::array<CodeArea, 27>& areas() noexcept {
       CodeArea{"oasis", "OASIS", "docs/diagnostics/codes/oasis.md", area_codes::oasis()},
       CodeArea{"extflat", "EXTFLAT", "docs/diagnostics/codes/extflat.md", area_codes::extflat()},
       CodeArea{"extract", "EXTRACT", "docs/diagnostics/codes/extract.md", area_codes::extract()},
+      // M10 area (openspec/changes/m10-3d-view/design.md D2).
+      CodeArea{"view3d", "VIEW3D", "docs/diagnostics/codes/view3d.md", area_codes::view3d()},
   };
   return table;
 }
