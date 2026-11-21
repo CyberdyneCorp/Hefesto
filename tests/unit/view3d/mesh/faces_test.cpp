@@ -206,7 +206,7 @@ TEST_CASE("both triangles of a split tile use the left type's h and t, and its t
   }
 }
 
-// J3 (user decision 2026-11-21): a split tile whose left half is space.
+// Q-MISC-79 (J3): a split tile whose left half is space.
 // magic-compat ON keeps Magic (the left type's h and t: flat, no side
 // faces); OFF draws each triangle with its own type's h, t and side faces.
 namespace {

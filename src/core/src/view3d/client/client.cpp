@@ -225,7 +225,7 @@ cmd::CommandResult open_wind3d(cmd::CommandContext& ctx, const OpenRequest& requ
   }
   const bool compat = detail::magic_compat(ctx);
   if (compat && session.closed_paths.contains(request.toolkit_path)) {
-    // User decision J5 (2026-11-21): magic-compat ON keeps Magic's refusal.
+    // Q-MISC-80: magic-compat ON keeps Magic's refusal.
     return detail::fail(kCannotOpen, "Could not create a new Tk window");
   }
   WindowState window;

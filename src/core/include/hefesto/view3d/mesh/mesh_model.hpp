@@ -21,7 +21,7 @@
 // mesh, MeshModel::layer_heights: the stack's draw_height, except a
 // contact spanned by the J1 option "Span connected layers".
 // With magic-compat OFF a split tile is drawn with its own type's h and t
-// (J3, 2026-11-21), so only magic-compat ON produces own_height faces and
+// (Q-MISC-79), so only magic-compat ON produces own_height faces and
 // triangles whose h and t differ from their layer's.
 // Instances are emitted in a fixed order (layer order, then Morton chunk
 // order, then the plane's tile order), so two builds are byte-equal.

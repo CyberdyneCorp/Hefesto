@@ -18,7 +18,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
-**Round 2 decisions, approved 2026-11-21.** Round 1 (PR #77) left six items for the user; the user decided them on 2026-11-21 (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Both new entries have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` still lists no 3D entry.
+**Round 2 decisions, recommended 2026-11-21, pending user confirmation.** Round 1 (PR #77) left six items for the user; they are recorded with recommendations on 2026-11-21 and await the user's confirmation (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Both new entries have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` still lists no 3D entry.
 
 ## Judgement items
 
@@ -65,7 +65,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-77 | no depth test | **fix** | depth-buffered rendering in both modes; multi-style types drawn once per style with a less-or-equal test, last style wins |
 | Q-MISC-78 | `cif` rescales by the current style's scalefactor | **compat** | ON: current f, as Magic; OFF: the f applied on entering mask-layer mode, and a style change rescales from f_old to f_new |
 
-### New entries of round 2 (approved 2026-11-21; cited by view-3d after approval)
+### New entries of round 2 (recommended 2026-11-21, pending user confirmation; cited by view-3d)
 
 | ID | Question | Kind | Decision |
 |---|---|---|---|
@@ -122,17 +122,17 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 - **J1** ((a), approved), "Mesh generation from layout": "Contact and via cuts SHALL be drawn with their technology height and thickness; a view option SHALL draw them as vertical solids spanning the layers they connect."
 - **J2** ((a), approved), "3D export": "Exported geometry SHALL equal the displayed model's geometry in physical microns, without the view's z exaggeration, unless a z scale is requested; the scale is recorded in the file."
 
-## Round 2 decisions (approved 2026-11-21)
+## Round 2 decisions (recommended 2026-11-21, pending user confirmation)
 
-Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). The user decided all six on 2026-11-21. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: approved 2026-11-21` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there.
+Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). All six are recorded with recommendations on 2026-11-21 and await the user's confirmation. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: recommended 2026-11-21, pending user confirmation` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there.
 
-| Item | Question | Decision (2026-11-21) | Where recorded |
+| Item | Question | Recommendation (2026-11-21, pending confirmation) | Where recorded |
 |---|---|---|---|
 | J1 | Q-MISC-74 aspect for a window taller than wide | confirmed as built: A = diag(H/W, 1, 1) when W ≥ H, else diag(1, W/H, 1), both modes | Q-MISC-74 (amendment; resolution changed) |
 | J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |
 | J3 | split tile whose left half is space | compat: ON keeps Magic (left type: flat, no side faces); OFF uses the triangle's own type for height, thickness and side faces | Q-MISC-79 (new) |
 | J4 | `noplaneordering` skips the defaults and the micron conversion | replicate, both modes; no Q row | MISC.md, without a Q row |
-| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule) | Q-MISC-80 (new) |
+| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disputed: Magic's GrTOGLDelete may delete the path, so it may reopen (MISC-3D-12 decides) | Q-MISC-80 (new) |
 | J6 | empty cell extent, abutting cells, clip-edge faces | confirmed, both modes: an empty dimension is left out of the fit (1 × 1 when both are empty); pieces abutting across cells get no inner side faces; faces on the clip area are closed | MISC.md, without a Q row |
 
 ### Spec changes of round 2 (applied with the decisions)

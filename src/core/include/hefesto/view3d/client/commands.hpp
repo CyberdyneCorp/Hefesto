@@ -3,7 +3,7 @@
 //
 // The `wind3d` client: opening the window and its command table (view-3d
 // "Opening the 3D window", "3D view commands"; openspec/changes/m10-3d-view/
-// design.md D9; Q-MISC-71, 73, 76, 78; user decision J5 of 2026-11-21).
+// design.md D9; Q-MISC-71, 73, 76, 78; Q-MISC-80).
 //
 // open_wind3d follows "Opening the 3D window": the one-window rule ("Only
 // one 3D window allowed."), cell resolution and its errors, level 1, and

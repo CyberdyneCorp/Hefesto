@@ -163,7 +163,7 @@ struct ChunkCell {
 /// the layer's height (HeightTable::layer). A split tile, with
 /// magic-compat ON, the h and t of its source left type
 /// (FlatType::z_type_of), stored on its triangles and side faces; with it
-/// OFF its own layer's (J3, 2026-11-21).
+/// OFF its own layer's (Q-MISC-79).
 void emit_layer(const FlatType& flat, LayerId layer, const HeightTable& heights, const db::Rect& clip, Chunk& chunk);
 
 /// build_from_layout with a chosen chunk size (the tests use small ones).

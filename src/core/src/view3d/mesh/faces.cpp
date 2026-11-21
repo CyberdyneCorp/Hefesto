@@ -21,8 +21,8 @@
 // left type is another type (side_flag::own_height), and whether it has
 // side faces follows that thickness, not the layer's. A right triangle
 // over space is therefore flat and has no side faces, as in Magic. With
-// it OFF each triangle takes its own layer's h and t and side faces (J3,
-// user decision 2026-11-21).
+// it OFF each triangle takes its own layer's h and t and side faces
+// (Q-MISC-79).
 // Layer heights come from the build's HeightTable (the stack's, or a
 // contact spanned by the J1 option).
 // A boundary segment on the clip edge is emitted once, as a clip-edge face.

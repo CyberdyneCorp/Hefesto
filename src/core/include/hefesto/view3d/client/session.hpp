@@ -137,7 +137,7 @@ struct Session {
   // Magic's deleted command does (the use-after-free of `.magic3d` after
   // `closewindow` is fixed in both modes); with magic-compat ON a new
   // window on one of them is refused with "Could not create a new Tk
-  // window" (user decision J5, 2026-11-21).
+  // window" (Q-MISC-80).
   std::set<std::string> closed_paths;
   // WIND3D: the `render name height thick [style]` values, per mask layer
   // index of the output style `render_key` names.

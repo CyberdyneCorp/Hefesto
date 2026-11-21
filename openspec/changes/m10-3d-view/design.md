@@ -346,7 +346,7 @@ TECH (tasks.md 3.1–3.4, branch `m10-r1-tech`) filled in the scaffold's stubs. 
 - **Incremental rebuild.** `rebuild_chunks` rebuilds the chunks meeting a dirty rectangle grown by 1, from a flatten of those chunk areas and the dirty areas, each grown by 1; it adds quadtree leaves only where paint fell outside every chunk (`plan_new_chunks`), drops chunks left empty, and gives rebuilt chunks and the model `previous.version + 1`. Untouched chunks are copied unchanged, so their tile decomposition can differ from a fresh build's while the geometry is the same. Chunks are never re-split after the first build. A renderer drops uploaded chunks whose id is no longer in the model.
 - **Progressive order.** Chunks reach `on_chunk` nearest `BuildContext::centre` first (the clip centre by default); the model keeps Morton order, so it is byte-equal whatever the centre.
 - **J1 "Span connected layers".** `BuildContext::span_connected_layers` with `BuildContext::technology`: a contact is drawn from its lowest residue's h + t to its highest residue's h (`detail::spanned_height`); without a gap it keeps its own values. `MeshModel::layer_heights` (per `LayerId`) holds the h and t every rectangle and plain side face is drawn with; RENDER3D, INSPECT and EXPORT read it instead of `LayerStack::draw_height`.
-- **J3 (2026-11-21).** With magic-compat OFF a split-tile triangle takes its own layer's h, t and side faces, and no `own_height` faces are produced; ON keeps the source left type's values.
+- **J3 (Q-MISC-79).** With magic-compat OFF a split-tile triangle takes its own layer's h, t and side faces, and no `own_height` faces are produced; ON keeps the source left type's values.
 
 ## As-landed: Mesh3dRenderer (RENDER3D, tasks 5.3, 5.4)
 

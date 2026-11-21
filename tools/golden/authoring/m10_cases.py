@@ -23,7 +23,7 @@ Task 12.3 adds MISC-3D-05..12: ``cutbox``, ``level``, ``render``, ``see``/``defa
 trip with ``scalefactor 30 nanometers`` (f = 3 after the GCF reduction, so ``1.0/(float)3`` drifts), a
 ``cif ostyle`` change in mask-layer mode (Q-MISC-78, ON), the technology without an output style
 (Q-MISC-73: Magic dereferences the missing style when the window opens; a documented deviation) and
-``closewindow`` followed by a second ``specialopen`` (J5 of 2026-11-21: ON copies Magic). Task 12.4 adds
+``closewindow`` followed by a second ``specialopen`` (J5, Q-MISC-80: ON copies Magic). Task 12.4 adds
 the geometry cases MISC-3D-13..16 (flat cell, split tiles, abutting subcells with a contact type in two
 display styles, cut box) on ``input/g3d.tech``: Magic runs with the polygon-recording shim
 (``[reference] gl_capture = true``, tools/golden/gl_capture/gl_capture.c), the window is switched to

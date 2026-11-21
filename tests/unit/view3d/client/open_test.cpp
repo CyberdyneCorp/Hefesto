@@ -3,7 +3,7 @@
 //
 // Opening and closing the 3D window (view-3d "Opening the 3D window",
 // "Platform mechanism of the 3D view"; m10-3d-view tasks 8.1, 8.4; Q-MISC-73,
-// 76; user decision J5 of 2026-11-21). Owner: WIND3D.
+// 76; Q-MISC-80). Owner: WIND3D.
 
 #include <catch2/catch_test_macros.hpp>
 
