@@ -102,6 +102,9 @@ BLOCKER_REASONS = {
                "(oasis-read 'Placement repetitions') with columns and rows unswapped, which Magic's AREF read "
                "(columns along the child's x axis) took as spacing 0; the new preps.gds swaps them as OASR's "
                "transcode does, and hefesto-cli's gds read of it matches its oasis read"),
+    "OAS032": ("GOLDEN: re-authored in round 5, recapture pending: both scripts now copy $env(PDK_ROOT) into the Tcl "
+               "variable, which Magic and Hefesto substitute (Q-OASIS-48); hefesto-cli matched the previous capture, "
+               "so it goes into REPLAYED once recaptured"),
     "MASKOS": ("GOLDEN: re-authored in round 5, recapture pending: the LEF VIA is VX1, not V1 (the tech section's cut "
                "alias; Magic's LefRedefined left the redefined record's lefClass and obsType uninitialised and "
                "Magic exited with SIGSEGV in golden-capture run 44743146734)"),
@@ -125,6 +128,7 @@ BLOCKERS: dict[str, str] = {
     "OASIS-021-noduplicates": BLOCKER_REASONS["OASSTD"],
     "OASIS-021-ordering": BLOCKER_REASONS["OASSTD"],
     "OASIS-023": BLOCKER_REASONS["OAS023"],
+    "OASIS-032": BLOCKER_REASONS["OAS032"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -148,7 +152,6 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
-    "OASIS-032",
     "OASIS-033",
     "OASIS-012",
     "LEFDEF-328",

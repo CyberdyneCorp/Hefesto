@@ -836,6 +836,11 @@ deferred = "M6"
 outputs = ["cells.txt", "report.txt"]
 reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5, recapture pending: authoring/oasequiv.py wrote a rule-2 array (oasis-read 'Placement repetitions') with columns and rows unswapped, which Magic's AREF read (columns along the child's x axis) took as spacing 0; the new preps.gds swaps them as OASR's transcode does, and hefesto-cli's gds read of it matches its oasis read"
 
+[OASIS-032]
+deferred = "M6"
+outputs = ["cells.txt", "report.txt"]
+reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5, recapture pending: both scripts now copy $env(PDK_ROOT) into the Tcl variable, which Magic and Hefesto substitute (Q-OASIS-48); hefesto-cli matched the previous capture, so it goes into REPLAYED once recaptured"
+
 [OASIS-020]
 deferred = "M6"
 outputs = ["cells.sha256", "report.txt"]
