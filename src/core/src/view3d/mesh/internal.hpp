@@ -10,6 +10,10 @@
 //                their Morton ids
 //   faces.cpp    top/bottom rectangles, split-tile triangles, side faces
 //                on boundary and clip-edge segments, emitted per chunk
+//   heights.cpp  the h and t each layer is drawn with (J1 "Span connected
+//                layers", task 6.5)
+//   mesh.cpp     full builds, incremental rebuilds and progressive order
+//   worker.cpp   the background worker (MeshWorker)
 //
 // Owner: MESH (design D3).
 
@@ -18,7 +22,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "hefesto/db/cell.hpp"
@@ -83,6 +89,47 @@ struct FlatLayout {
 [[nodiscard]] bool flatten_layout(const LayerStack& stack, const db::CellDef& cell, const db::Rect& clip,
                                   const mask::Progress& progress, FlatLayout& out);
 
+/// The same over several areas (an incremental rebuild), each searched
+/// and clipped on its own into the same planes. False as soon as `stop`
+/// answers true during a search.
+[[nodiscard]] bool flatten_layout(const LayerStack& stack, const db::CellDef& cell, std::span<const db::Rect> areas,
+                                  const std::function<bool()>& stop, FlatLayout& out);
+
+/// flatten_layout under `ctx.lock` held shared when it is set: waits while
+/// a writer waits and restarts the flatten when one arrives during it.
+/// False only when the build was cancelled.
+[[nodiscard]] bool flatten_snapshot(const LayerStack& stack, const db::CellDef& cell, std::span<const db::Rect> areas,
+                                    const BuildContext& ctx, FlatLayout& out);
+
+/// The h and t each layer and tile type is drawn with in one build: the
+/// stack's, except the contact types spanned by the J1 option (task 6.5).
+class HeightTable {
+ public:
+  HeightTable(const LayerStack& stack, const BuildContext& ctx);
+
+  [[nodiscard]] const LayerStack& stack() const noexcept { return *stack_; }
+  /// The h and t of layer `layer` (h = t = 0 out of range).
+  [[nodiscard]] DrawHeight layer(LayerId layer) const;
+  /// The h and t of a tile of `type` (the left type of a split tile).
+  [[nodiscard]] DrawHeight type(tech::TileType type) const;
+  /// Per LayerId, for MeshModel::layer_heights.
+  [[nodiscard]] const std::vector<DrawHeight>& layers() const noexcept { return layers_; }
+
+ private:
+  const LayerStack* stack_;
+  std::vector<DrawHeight> layers_;
+  std::vector<std::optional<DrawHeight>> spanned_;  // per tile type; empty without the option
+};
+
+/// J1 "Span connected layers": the h and t that draw `contact` from the
+/// top of its lowest residue to the bottom of its highest, residues from
+/// `tech` (the full residue set of a stacked type) and their h and t from
+/// `stack`. Nullopt when `contact` is not a contact, or its residues give
+/// no gap (fewer than two, or the upper one starts at or below the lower
+/// one's top): it keeps its technology h and t.
+[[nodiscard]] std::optional<DrawHeight> spanned_height(const LayerStack& stack, const tech::Technology& tech,
+                                                       tech::TileType contact);
+
 /// One chunk of the plan: its area (inside the clip area) and Morton id.
 struct ChunkCell {
   db::Rect area;
@@ -97,6 +144,15 @@ struct ChunkCell {
 [[nodiscard]] std::vector<ChunkCell> plan_chunks(const FlatLayout& flat, const db::Rect& clip,
                                                  std::size_t max_tiles = kMaxChunkTiles);
 
+/// The leaves to add to an existing plan over `clip` (an incremental
+/// rebuild): the same quadtree, visiting only nodes that meet a `changed`
+/// rectangle and hold no `existing` chunk area; a node inside an existing
+/// chunk is skipped (that chunk is rebuilt), a node holding some is split.
+/// In Morton order.
+[[nodiscard]] std::vector<ChunkCell> plan_new_chunks(const FlatLayout& flat, const db::Rect& clip,
+                                                     std::span<const db::Rect> existing,
+                                                     std::span<const db::Rect> changed, std::size_t max_tiles);
+
 /// The Morton code of (x, y), 16 bits each (x in the even bits).
 [[nodiscard]] std::uint32_t morton(std::uint32_t x, std::uint32_t y) noexcept;
 
@@ -104,12 +160,19 @@ struct ChunkCell {
 /// rectangle per tile piece, triangles for split tiles and, unless the
 /// piece has zero thickness, side faces on every boundary segment against
 /// another type and closed faces on the clip edge. A Manhattan piece takes
-/// the layer's draw height; a split tile the h and t of its source left
-/// type (FlatType::z_type_of), stored on its triangles and side faces.
-void emit_layer(const FlatType& flat, LayerId layer, const LayerStack& stack, const db::Rect& clip, Chunk& chunk);
+/// the layer's height (HeightTable::layer). A split tile, with
+/// magic-compat ON, the h and t of its source left type
+/// (FlatType::z_type_of), stored on its triangles and side faces; with it
+/// OFF its own layer's (J3, 2026-11-21).
+void emit_layer(const FlatType& flat, LayerId layer, const HeightTable& heights, const db::Rect& clip, Chunk& chunk);
 
 /// build_from_layout with a chosen chunk size (the tests use small ones).
 [[nodiscard]] std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell,
                                                     const ClipArea& clip, BuildContext& ctx, std::size_t max_tiles);
+
+/// rebuild_chunks with a chosen chunk size for the new chunks.
+[[nodiscard]] std::optional<MeshModel> rebuild_layout(const MeshModel& previous, const LayerStack& stack,
+                                                      const db::CellDef& cell, std::span<const db::Rect> dirty,
+                                                      BuildContext& ctx, std::size_t max_tiles);
 
 }  // namespace hefesto::view3d::detail

@@ -10,6 +10,10 @@
 // the deepest level, and listed in that (Z) order, so the plan depends only
 // on the geometry.
 //
+// An incremental rebuild keeps the chunks it has and adds leaves of the
+// same quadtree only where changed paint fell outside every chunk
+// (plan_new_chunks); chunks are never re-split after the first build.
+//
 // Owner: MESH (design D3).
 
 #include <algorithm>
@@ -34,11 +38,61 @@ class Planner {
   Planner(const FlatLayout& flat, const db::Rect& clip, std::size_t max_tiles)
       : flat_(flat), clip_(clip), max_tiles_(max_tiles) {}
 
+  /// An incremental plan: only nodes meeting `changed` and holding no
+  /// `existing` chunk area become leaves.
+  void restrict_to(std::span<const db::Rect> existing, std::span<const db::Rect> changed) {
+    existing_ = existing;
+    changed_ = changed;
+    incremental_ = true;
+  }
+
   void visit(const Node& node) {
     const db::Rect area = area_of(node);
     if (area.is_null()) {
       return;
     }
+    if (incremental_) {
+      const Overlap overlap = overlap_of(area);
+      if (overlap == Overlap::skip) {
+        return;
+      }
+      if (overlap == Overlap::holds_existing) {
+        if (node.depth < kMaxChunkDepth && node.side > 1) {
+          split(node);
+        }
+        return;
+      }
+    }
+    leaf_or_split(node, area);
+  }
+
+  [[nodiscard]] std::vector<ChunkCell> take() { return std::move(out_); }
+
+ private:
+  enum class Overlap : std::uint8_t { skip, holds_existing, free };
+
+  // How a node of an incremental plan relates to the existing chunks:
+  // skipped when it meets no changed rectangle or lies inside a chunk (that
+  // chunk is rebuilt as it is), split when it holds chunks, else free.
+  [[nodiscard]] Overlap overlap_of(const db::Rect& area) const {
+    const auto meets = [&area](const db::Rect& r) { return !intersect(area, r).is_null(); };
+    if (std::none_of(changed_.begin(), changed_.end(), meets)) {
+      return Overlap::skip;
+    }
+    bool holds = false;
+    for (const db::Rect& chunk : existing_) {
+      if (!meets(chunk)) {
+        continue;
+      }
+      if (intersect(area, chunk) == area) {
+        return Overlap::skip;
+      }
+      holds = true;
+    }
+    return holds ? Overlap::holds_existing : Overlap::free;
+  }
+
+  void leaf_or_split(const Node& node, const db::Rect& area) {
     const std::size_t tiles = count_tiles(area, max_tiles_ + 1);
     if (tiles == 0) {
       return;
@@ -52,9 +106,6 @@ class Planner {
     out_.push_back(ChunkCell{area, morton(node.ix << shift, node.iy << shift)});
   }
 
-  [[nodiscard]] std::vector<ChunkCell> take() { return std::move(out_); }
-
- private:
   // Children in Z order: lower-left, lower-right, upper-left, upper-right.
   void split(const Node& node) {
     const std::int64_t half = node.side / 2;
@@ -94,8 +145,19 @@ class Planner {
   const FlatLayout& flat_;
   db::Rect clip_;
   std::size_t max_tiles_;
+  std::span<const db::Rect> existing_;
+  std::span<const db::Rect> changed_;
+  bool incremental_ = false;
   std::vector<ChunkCell> out_;
 };
+
+std::int64_t root_side(const db::Rect& clip) {
+  std::int64_t side = 1;
+  while (side < std::max(clip.width(), clip.height())) {
+    side *= 2;
+  }
+  return side;
+}
 
 std::uint32_t spread(std::uint32_t v) noexcept {
   v &= 0xFFFFU;
@@ -116,12 +178,19 @@ std::vector<ChunkCell> plan_chunks(const FlatLayout& flat, const db::Rect& clip,
   if (clip.is_null()) {
     return {};
   }
-  std::int64_t side = 1;
-  while (side < std::max(clip.width(), clip.height())) {
-    side *= 2;
+  Planner planner(flat, clip, std::max<std::size_t>(max_tiles, 1));
+  planner.visit(Node{clip.x0, clip.y0, root_side(clip), 0, 0, 0});
+  return planner.take();
+}
+
+std::vector<ChunkCell> plan_new_chunks(const FlatLayout& flat, const db::Rect& clip, std::span<const db::Rect> existing,
+                                       std::span<const db::Rect> changed, std::size_t max_tiles) {
+  if (clip.is_null() || changed.empty()) {
+    return {};
   }
   Planner planner(flat, clip, std::max<std::size_t>(max_tiles, 1));
-  planner.visit(Node{clip.x0, clip.y0, side, 0, 0, 0});
+  planner.restrict_to(existing, changed);
+  planner.visit(Node{clip.x0, clip.y0, root_side(clip), 0, 0, 0});
   return planner.take();
 }
 
