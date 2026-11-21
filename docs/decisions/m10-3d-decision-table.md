@@ -18,6 +18,8 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
+**Round 2 decisions, approved 2026-11-21.** Round 1 (PR #77) left six items for the user; the user decided them on 2026-11-21 (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Both new entries have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` still lists no 3D entry.
+
 ## Judgement items
 
 **Decided 2026-11-13: the user chose option (a) for J1, J2 and design Open Questions 3 and 4.** The options are kept for the record.
@@ -46,7 +48,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-70 | subcell tiles clipped in the wrong coordinate system | **fix** | clip in root coordinates after the instance transform, in both modes; the entry's "only with a cut box" is corrected |
 | Q-MISC-71 | one visibility mask for two layer namespaces | **fix** | separate per-mode sets; `defaults` resets both; the mask set resets when the output style changes |
 | Q-MISC-72 | units of `render` heights versus extract heights | **compat** | ON: render h/t as stored (Magic); OFF: µm converted by the output style's scale; `render name` and `zoom` unchanged; extensions always µm |
-| Q-MISC-74 | window size fixed at 500 × 500 | **fix** | viewport, refresh area and aspect from the current size; initial request stays 500 × 500 |
+| Q-MISC-74 | window size fixed at 500 × 500 | **fix** | viewport, refresh area and aspect from the current size; initial request stays 500 × 500; aspect for tall windows diag(1, W/H, 1) (amended 2026-11-21) |
 
 ### Cited and resolved
 
@@ -63,13 +65,20 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-77 | no depth test | **fix** | depth-buffered rendering in both modes; multi-style types drawn once per style with a less-or-equal test, last style wins |
 | Q-MISC-78 | `cif` rescales by the current style's scalefactor | **compat** | ON: current f, as Magic; OFF: the f applied on entering mask-layer mode, and a style change rescales from f_old to f_new |
 
+### New entries of round 2 (approved 2026-11-21; cited by view-3d after approval)
+
+| ID | Question | Kind | Decision |
+|---|---|---|---|
+| Q-MISC-79 | split tile drawn with its left type's h and t, also when the left half is space | **compat** | ON: left type for both triangles, as Magic (a left half of space gives a flat triangle, no side faces); OFF: each triangle's own type for height, thickness and side faces |
+| Q-MISC-80 | `.magic3d closewindow` keeps the Tk window and command | **compat** + **fix** | ON: `specialopen wind3d` then reports "Could not create a new Tk window", as Magic; OFF: it opens a new window; the use-after-free of `.magic3d` after the close is fixed in both modes |
+
 ## Counts
 
 | Kind | Rows |
 |---|---|
 | fix | 5 (Q-MISC-70, 71, 74, 76, 77) |
-| compat | 2 (Q-MISC-72, 78) |
-| fix, amendment of a resolved entry | 1 (Q-MISC-73) |
+| compat | 4 (Q-MISC-72, 78, 79, 80; Q-MISC-80 also fixes a use-after-free in both modes) |
+| fix, amendment of a resolved entry | 2 (Q-MISC-73; Q-MISC-74 aspect, 2026-11-21) |
 | platform, no change | 1 (Q-MISC-75) |
 
 Q-MISC-70, 71, 72 and 74 have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` lists no 3D blocker.
@@ -112,3 +121,29 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 - **Q-MISC-72**, "3D export" and "Interactive 3D inspection" (cross-sections): add "heights are in µm regardless of magic-compat; mask layers without a `render` height are reported, not given one".
 - **J1** ((a), approved), "Mesh generation from layout": "Contact and via cuts SHALL be drawn with their technology height and thickness; a view option SHALL draw them as vertical solids spanning the layers they connect."
 - **J2** ((a), approved), "3D export": "Exported geometry SHALL equal the displayed model's geometry in physical microns, without the view's z exaggeration, unless a z scale is requested; the scale is recorded in the file."
+
+## Round 2 decisions (approved 2026-11-21)
+
+Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). The user decided all six on 2026-11-21. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: approved 2026-11-21` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there.
+
+| Item | Question | Decision (2026-11-21) | Where recorded |
+|---|---|---|---|
+| J1 | Q-MISC-74 aspect for a window taller than wide | confirmed as built: A = diag(H/W, 1, 1) when W ≥ H, else diag(1, W/H, 1), both modes | Q-MISC-74 (amendment; resolution changed) |
+| J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |
+| J3 | split tile whose left half is space | compat: ON keeps Magic (left type: flat, no side faces); OFF uses the triangle's own type for height, thickness and side faces | Q-MISC-79 (new) |
+| J4 | `noplaneordering` skips the defaults and the micron conversion | replicate, both modes; no Q row | MISC.md, without a Q row |
+| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule) | Q-MISC-80 (new) |
+| J6 | empty cell extent, abutting cells, clip-edge faces | confirmed, both modes: an empty dimension is left out of the fit (1 × 1 when both are empty); pieces abutting across cells get no inner side faces; faces on the clip area are closed | MISC.md, without a Q row |
+
+### Spec changes of round 2 (applied with the decisions)
+
+`openspec/specs/view-3d/spec.md`:
+
+- **J1 / Q-MISC-74**, "Viewing transform and shading": A = diag(H_w/W_w, 1, 1) when W_w ≥ H_w, else diag(1, W_w/H_w, 1); new scenario "Tall window" (100 × 100 cell at 500 × 800: A = diag(1, 0.625, 1), about 91 % of the width and 57 % of the height).
+- **J2**, "Render statement in the cifoutput section": the style is resolved and its error reported when the 3D view builds its layer stack; the two accepted differences; new scenario "Bad style reported when the layer stack is built".
+- **J3 / Q-MISC-79**, "Layer height and thickness for the layout-layer view": the split-tile rule per mode; new scenario "Split tile whose left half is space".
+- **J4**, same requirement: no defaults and no conversion with `noplaneordering`, both modes; new scenario "No defaults with noplaneordering".
+- **J5 / Q-MISC-80**, "Opening the 3D window": the reopening rule per mode and the use-after-free fix; new scenario "Reopening after closewindow".
+- **J6**, "Default view": the empty-extent fit and the scenario "Empty cell"; "Rendered geometry": side faces on each layer's flattened boundary, none between pieces abutting across cells, faces on the clip area (cut box or window area) closed; new scenario "Abutting cells leave no inner faces".
+
+`openspec/specs/hefesto-3d-visualization/spec.md` needs no change: its export and cross-sections take the displayed geometry, which these rules define.
