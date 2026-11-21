@@ -357,16 +357,44 @@ FrameRecording VulkanOffscreenTarget::Impl::begin_frame(const std::array<float, 
   return FrameRecording{cmd, pass, b.width, b.height};
 }
 
-void VulkanOffscreenTarget::Impl::end_frame() {
+void VulkanOffscreenTarget::Impl::end_frame(const std::function<void(VkCommandBuffer)>& after) {
   if (!recording) {
     throw std::logic_error("VulkanOffscreenTarget: end_frame without begin_frame");
   }
   recording = false;
   vkCmdEndRenderPass(cmd);
+  if (after) {
+    after(cmd);
+  }
   submit_and_wait();
   buffers[static_cast<std::size_t>(back)].drawn = true;
   back = 1 - back;
   ++frames;
+}
+
+std::uint32_t VulkanOffscreenTarget::Impl::read_pick(int x, int y) {
+  const TargetBuffer& b = shown_buffer();
+  if (!b.drawn || x < 0 || y < 0 || x >= b.width || y >= b.height) {
+    return 0;
+  }
+  vk::Buffer host = vk::create_buffer(physical, device, sizeof(std::uint32_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  std::uint32_t id = 0;
+  try {
+    run_once([&](VkCommandBuffer c) {
+      VkBufferImageCopy region{};
+      region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+      region.imageOffset = {x, y, 0};
+      region.imageExtent = {1, 1, 1};
+      vkCmdCopyImageToBuffer(c, b.pick.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, host.buffer, 1, &region);
+    });
+    id = read_mapped<std::uint32_t>(device, host, 0, 1).front();
+  } catch (...) {
+    vk::destroy_buffer(device, host);
+    throw;
+  }
+  vk::destroy_buffer(device, host);
+  return id;
 }
 
 // --- VulkanOffscreenTarget -------------------------------------------------------
@@ -395,6 +423,10 @@ ShownImage VulkanOffscreenTarget::shown() const noexcept {
     return {};
   }
   return ShownImage{reinterpret_cast<std::uint64_t>(b.shown_view), b.width, b.height};  // NOLINT
+}
+
+std::uint32_t VulkanOffscreenTarget::read_pick(int x, int y) {
+  return impl_->read_pick(x, y);
 }
 
 std::uint64_t VulkanOffscreenTarget::frame_count() const noexcept {

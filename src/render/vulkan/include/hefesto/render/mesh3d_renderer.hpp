@@ -18,7 +18,9 @@
 // 50); MSAA 4x at level >= 1. Redraws on demand only.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3, interface only); RENDER3D
-// implements it in src/render/vulkan/src/mesh3d_*.cpp (design D3, section 5).
+// implements it in src/render/vulkan/src/mesh3d_*.cpp (design D3, section 5):
+// render::VulkanMesh3dRenderer (mesh3d_vulkan_renderer.hpp), with the pick
+// ids of mesh3d_pick.hpp and the colors and lighting of mesh3d_shading.hpp.
 
 #pragma once
 
@@ -26,6 +28,7 @@
 #include <memory>
 #include <vector>
 
+#include "hefesto/display/styles.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
 #include "hefesto/view3d/mesh/mesh_model.hpp"
 #include "hefesto/view3d/pick/pick.hpp"
@@ -51,10 +54,16 @@ class OffscreenTarget {
 };
 
 /// Everything a frame needs besides the view state and the mesh.
+/// Layers past the end of `hidden` are visible, past the end of `alpha`
+/// opaque. A layer with alpha < 1 is drawn in the transparency pass (after
+/// the opaque layers, depth-tested without depth writes, chunks back to
+/// front) and writes no pick id, so a click picks what is behind it; alpha
+/// <= 0 hides the layer.
 struct DrawParams {
   view3d::ProjectionParams projection;
-  int level = 1;                                 // `level`: MSAA at level >= 1
-  const view3d::LayerStack* stack = nullptr;     // h, t per layer (shader z)
+  int level = 1;                                 // `level`: MSAA 4x at level >= 1
+  const view3d::LayerStack* stack = nullptr;     // h, t per layer (shader z); its magic_compat picks the lighting
+  const display::StyleSet* styles = nullptr;     // layer colors and the background (mesh3d_shading.hpp)
   std::vector<bool> hidden;                      // per stack layer
   std::vector<float> alpha;                      // per stack layer; empty = opaque (transparency pass)
   const view3d::HighlightSet* highlight = nullptr;  // drawn highlighted, the rest dimmed
@@ -72,8 +81,9 @@ class Mesh3dRenderer {
   virtual void upload(const view3d::MeshModel& mesh) = 0;
   /// Draws the uploaded mesh into `target`.
   virtual void draw(const view3d::ViewState& view, const DrawParams& params, OffscreenTarget& target) = 0;
-  /// The pick id at pixel (x, y) of the last frame (view3d::kNoPick for
-  /// the background).
+  /// The pick id at pixel (x, y) of the last frame, x from the left and y
+  /// from the top (view3d::kNoPick for the background, outside the frame or
+  /// before the first frame).
   [[nodiscard]] virtual view3d::PickId read_pick(int x, int y) = 0;
 };
 

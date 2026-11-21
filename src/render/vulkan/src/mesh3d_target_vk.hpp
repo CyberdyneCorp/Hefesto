@@ -13,6 +13,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 
 #include "hefesto/render/mesh3d_target.hpp"
 
@@ -81,13 +82,20 @@ struct VulkanOffscreenTarget::Impl {
   /// begins the command buffer and the render pass, and clears color to
   /// `clear` (linear RGBA), depth to 1 and pick ids to 0.
   FrameRecording begin_frame(const std::array<float, 4>& clear);
-  /// Ends the render pass, submits under the queue lock, waits for the GPU
-  /// and makes the drawn buffer the shown one.
-  void end_frame();
+  /// Ends the render pass, records `after(cmd)` (further passes of the same
+  /// frame into the back buffer, e.g. the renderer's multisampled color
+  /// pass), submits under the queue lock, waits for the GPU and makes the
+  /// drawn buffer the shown one.
+  void end_frame(const std::function<void(VkCommandBuffer)>& after = {});
+  /// The pick id at pixel (x, y) (y from the top) of the shown buffer; 0
+  /// outside it or before the first frame.
+  std::uint32_t read_pick(int x, int y);
 
   [[nodiscard]] const TargetBuffer& shown_buffer() const noexcept {
     return buffers[static_cast<std::size_t>(1 - back)];
   }
+  /// The buffer the frame being recorded draws into.
+  [[nodiscard]] const TargetBuffer& back_buffer() const noexcept { return buffers[static_cast<std::size_t>(back)]; }
   /// Records `record(cmd)` into a one-time command buffer, submits it under
   /// the queue lock and waits.
   template <typename Fn>
