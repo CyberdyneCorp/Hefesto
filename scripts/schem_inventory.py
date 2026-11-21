@@ -11,7 +11,9 @@ ihp-xschem; Apache-2.0 PDK data) and writes tests/data/schem/inventory.json. Per
                             found in the PDK's own library directories (xschem searches ``devices`` first)
 ``unresolved``              references with a directory part that resolve nowhere in the PDK
 ``generators``              Tcl generator scripts referenced as ``<script>.tcl(<arguments>)`` (Q-SCHEM-11)
-``tcleval_commands``        Tcl commands called inside ``tcleval(`` values and ``@tcleval(`` tokens
+``tcleval_commands``        Tcl commands called inside ``tcleval(`` values and ``@tcleval(`` tokens, and in
+                            the attributes that a system-library symbol's own text evaluates as Tcl
+                            (``DEVICE_TCL_ATTRIBUTES``: the ``node`` of ``ngspice_get_expr.sym``)
 ``tcleval_variables``       ``$::`` variables read there
 ``rc_commands``             Tcl commands of the ``xschemrc`` files and of the PDK files they ``source``
 ``rc_variables``            ``$::`` variables read there
@@ -440,6 +442,21 @@ def scan_attributes(props: str, inv: PdkInventory) -> None:
 
 TOKEN = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)")
 
+# System-library symbols whose displayed text evaluates an instance attribute as a tcleval value. Their
+# texts are xschem's, not PDK data, so the scan cannot find these bodies; the attributes come from the
+# notes table of schematic-symbols-and-libraries "System library" (ngspice_get_expr.sym: "the result of
+# the instance's node evaluated as a tcleval value").
+DEVICE_TCL_ATTRIBUTES = {"ngspice_get_expr.sym": ("node",)}
+
+
+def device_name(reference: str, variant_dir: Path, trees: PdkTrees) -> str | None:
+    """The system-library file a reference names, as ``scan_reference`` counts it, or None."""
+    if reference.startswith("devices/"):
+        return with_suffix(reference.removeprefix("devices/"))
+    if "/" in reference or "(" in reference or resolve(reference, variant_dir, trees) is not None:
+        return None
+    return with_suffix(reference)
+
 
 def first_values(props: str) -> dict[str, str]:
     """Attribute lookup: the first occurrence of a key wins."""
@@ -490,6 +507,8 @@ class SchematicScanner:
         tokens, defaults = self.symbol_tcl.get(resolve(reference, self.variant_dir, self.trees), (set(), {}))
         for name in sorted(tokens | tcl_tokens(attrs)):
             scan_tcl_text(attrs.get(name, defaults.get(name, "")), self.inv)
+        for name in DEVICE_TCL_ATTRIBUTES.get(device_name(reference, self.variant_dir, self.trees) or "", ()):
+            scan_tcl_text(attrs.get(name, ""), self.inv)
 
 
 def rc_files(variant_dir: Path, subset_dirs: list[Path]) -> list[Path]:
