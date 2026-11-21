@@ -22,7 +22,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   namespace schem = hefesto::schem;
   const auto [mode, text] = hefesto::fuzz::split_mode(hefesto::fuzz::as_text(data, size));
   const bool compat = (mode & 1U) != 0;
-  const int precision = static_cast<int>(mode >> 1U) - 8;  // includes negative and large values
+  const int precision = (mode >> 1U) - 8;  // mode promotes to int; includes negative and large values
 
   (void)schem::substitute_expr(text, schem::ExprOptions{compat, precision});
   (void)schem::evaluate_expr(text, compat);

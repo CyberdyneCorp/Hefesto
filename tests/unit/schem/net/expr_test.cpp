@@ -27,7 +27,7 @@ schem::ExprText run(std::string_view text, bool compat = true) {
 std::size_t count_code(const schem::ExprText& r, std::string_view code) {
   std::size_t n = 0;
   for (const auto& d : r.warnings) {
-    n += d.code == code ? 1 : 0;
+    if (d.code == code) ++n;
   }
   return n;
 }

@@ -45,7 +45,7 @@ schem::ElementText build(const schem::ElementContext& c, const schem::ElementOpt
 std::size_t count_code(const schem::ElementText& t, std::string_view code) {
   std::size_t n = 0;
   for (const auto& d : t.diagnostics) {
-    n += d.code == code ? 1 : 0;
+    if (d.code == code) ++n;
   }
   return n;
 }
