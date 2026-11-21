@@ -7,7 +7,10 @@
 //   masterslice, overlap, bound, ignore and obstruction entries, aliases
 //   and canonical names), keyed by LEF name in a util::MagicHashTable so
 //   that enumeration follows Magic's hash order; the aliases of a layer
-//   share one record. Built at tech load
+//   share one record. Its key table is Magic's LefInfo key order: the
+//   readers and DEF write note every via name in it too (note_key), so one
+//   insertion history covers the layers and the vias (Q-LEFDEF-135).
+//   Built at tech load
 //   (from_section), completed from the DRC rules (fill_defaults,
 //   Q-LEFDEF-1, 2) and rescaled by `scalegrid` (scale); the session hooks
 //   are in lef/tech/lifecycle.hpp;
@@ -135,6 +138,13 @@ class LayerTable {
   /// find and enumerate then treat it as absent.
   void release(std::string_view lef_name);
 
+  /// HashFind(&LefInfo, name) with no record set: inserts `lef_name` as a
+  /// key with no record when it is absent, so it takes its place in the
+  /// shared key order (a VIA definition's name, a NONDEFAULTRULE name that
+  /// names nothing); a key already present keeps its place and record
+  /// (def-write "Table enumeration order", Q-LEFDEF-135).
+  void note_key(std::string_view lef_name);
+
   /// LefRedefined on one alias of a shared record (Q-LEFDEF-8 fix): the
   /// via redefinition takes `lef_name` away from its layer record, which
   /// the other names keep. `lef_name` is released (find and enumerate treat
@@ -155,6 +165,12 @@ class LayerTable {
   /// Visits every LEF name in Magic's hash order, with its record (aliases
   /// visit the same record).
   void enumerate(const Visitor& visit) const;
+
+  using KeyVisitor = std::function<void(std::string_view key, const LayerRecord* record)>;
+  /// Visits every key of the shared key order (Magic's LefInfo), records or
+  /// not: a released name, a noted via name and a reserved name visit
+  /// nullptr.
+  void enumerate_keys(const KeyVisitor& visit) const;
 
   /// The number of LEF names (aliases included).
   [[nodiscard]] std::size_t size() const noexcept { return names_.size(); }

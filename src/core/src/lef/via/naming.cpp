@@ -148,7 +148,7 @@ std::optional<std::string> via_name(const db::CellDef& cell, const ContactRegion
   return std::move(via->name);
 }
 
-DefVias register_vias(const db::CellDef& cell, ViaTable& vias, const LayerTable& layers,
+DefVias register_vias(const db::CellDef& cell, ViaTable& vias, LayerTable& layers,
                       const DefViaContext& context) {
   DefVias out;
   for (const ContactRegion& region : contact_regions(cell, context.tech, context.compat)) {
@@ -156,6 +156,7 @@ DefVias register_vias(const db::CellDef& cell, ViaTable& vias, const LayerTable&
     if (!via) {
       continue;
     }
+    layers.note_key(via->name);  // HashFind(&LefInfo, vname) (Q-LEFDEF-135)
     const auto* known = vias.find(via->name);
     if ((known == nullptr || !known->value) && layers.find(via->name) == nullptr) {
       vias.insert(via->name, via->record);

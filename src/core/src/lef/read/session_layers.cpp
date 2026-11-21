@@ -97,11 +97,7 @@ void SessionLayers::update_route(std::string_view name, const RouteUpdate& updat
 }
 
 void SessionLayers::reserve(std::string_view name) {
-  if (layers_.find(name) != nullptr || !reserved_.emplace(name).second) {
-    return;
-  }
-  (void)layers_.add(name, LayerRecord{});
-  layers_.release(name);
+  layers_.note_key(name);
 }
 
 }  // namespace hefesto::lef
