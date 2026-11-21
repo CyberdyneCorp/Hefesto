@@ -22,15 +22,15 @@ What exists for M7 to build on (origin/main 0c5f29fb, 2026-11-20):
 - **Requirement coverage.** `check_requirement_coverage.py --milestone M7` reports 28 of 204 exact and behavioural requirements covered, all by EXTSUB's tests. Of those:
   - **covered fully (18):**
     - `ext-flattening-read` (8): "Locating and recursively reading .ext files", "Line tokenization", "Keyword recognition", "Scale record", "Node and substrate records", "Equivalence, merge and kill records", "Use, port, cap, resist, attr and connect records" (read side), and "Technology, style, version and resistance classes";
-    - `ext-flattening-hierarchy` (5): "Container iteration order", "Flat node construction", "Node merge semantics", "Kills", "Global name merging";
+    - `ext-flattening-hierarchy` (5): "Container iteration order", "Flat node construction", "Node merge semantics", "Kills", "Global name merging". "Flat node construction" is tagged, but M6 ported only the standard-cell path (efFlatNodesStdCell); the efFlatNodes path the netlisters and antennacheck use is not there, so D13 and task 10.2 reopen it;
     - `ext-flattening-names` (5): "Hierarchical name structure", "Component hash", "Instance and array element names", "Name preference order", "Global and ground detection".
   - **covered in part (10):**
     - `ext-flattening-read` "Device records" (node side only) and "Parameters records" (messages only);
     - `ext-flattening-hierarchy` "Visit orders for output" (nodes only);
     - `extract-tech-section` (7): "Extract section line grammar and keyword matching", "Extraction styles and variants", "Style defaults", "Substrate declaration", "Device declaration parsing" (class and types), "Non-electrical types", "Antenna keywords parse-level reference" (`tiedown`).
 
-  M6's open task 9.2 note (the visit-order comparison with Magic's probe lines) moves to EXTFLAT if M6 has not closed it.
-- **M10 3D P1 (in flight).** TECH (m10 tasks 3.1, 3.2) adds `style` and variants, `scale`, `units`, `planeorder`, `noplaneordering`, `height`, the end-of-style plane-order check, the defaults and the micron conversion and grid rescale of h and t to the same `extract/tech/` reader, plus the `extract` raw-line hand-off in `tech/loader.cpp`. M10's contract names `ExtractStyleSubset` and `parse_extract_subset`. When it lands it touches five more `extract-tech-section` requirements, in part: "Units, lambda, cscale and rscale", "Plane ordering", "Layer height and thickness defaults", "Micron conversion", "Scaling to internal units". M10 P3 (overlays) waits for M7.
+  Task 10.0 lists these 18 as regression-guarded. M6's open task 9.2 note (the visit-order comparison with Magic's probe lines) moves to EXTFLAT if M6 has not closed it.
+- **M10 3D P1 (in flight).** M10's scaffold (`m10-r1-scaffold`, 73d4d195) landed `hefesto::extract::HeightView` (`extract/tech/height_view.hpp`: `from_section`, `from_technology`, `rescaled(n, d)`, `StyleHeights`) beside `StyleView`, over M6's `detail::read_style`. There is no `ExtractStyleSubset` and no `parse_extract_subset`. Its "As-landed scaffold contracts" note says there is no loader hand-off: the view reads `Technology::raw_sections()`, which already keeps the raw `extract` section. TECH (m10 tasks 3.1, 3.2) is now extending `read_style`'s pass in `style_reader.cpp` with `style` and variants, `scale`, `units`, `planeorder`, `noplaneordering`, `height`, the end-of-style plane-order check, the defaults and the micron conversion and grid rescale of h and t. When it lands it touches five more `extract-tech-section` requirements, in part: "Units, lambda, cscale and rscale", "Plane ordering", "Layer height and thickness defaults", "Micron conversion", "Scaling to internal units". So no tech-load or `scalegrid` hook exists for an extraction style, and M7 must add one (D7, D20). M10 P3 (overlays) waits for M7.
 - **Database.**
   - `db::Plane` (`db/plane.hpp`) is a faithful port of Magic's corner-stitched plane, with the maximal-horizontal-strip decomposition and Magic's enumeration order (X-1). Q-EXTRACT-5 relies on it.
   - It exposes `enumerate`, `enumerate_triangle`, `tile_at` and `neighbors`, and `TileView::tile`, an opaque handle to the private tile.
@@ -55,7 +55,8 @@ What exists for M7 to build on (origin/main 0c5f29fb, 2026-11-20):
   - Magic's default build makes only `magic` (Makefile.in:10, 128-130), so the capture image has no `extcheck` for NL-CHK-01.
 - **Data.**
   - The PDK sets hold `sky130_fd_sc_hd/mag` (446 cells) and `gf180mcu_fd_sc_mcu7t5v0/mag` (229 cells).
-  - IHP ships no `.mag` standard cells. `sg13g2_stdcell` (84 cells) is in the `ihp-gds` set (M5).
+  - IHP ships no `.mag` standard cells. `sg13g2_stdcell` (84 cells) is in the `ihp-gds-sc` set (the standard-cell library alone; `scripts/fetch_pdk.py`), so the 456 MB `ihp-gds` set is not needed.
+  - `tests/golden` holds about 46 MB today.
 - **Performance.** `hefesto-performance` "Batch throughput relative to Magic" requires single-threaded extraction and SPICE generation to take no more wall time than Magic, on the reference standard-cell block. DRC and GDS are judged by callgrind instruction counts (Open Question 5).
 - **Size of the port.** Magic's `extract/` has 25,628 lines, `extflat/` 9,441 (EXTSUB ported part of 6,693), `ext2spice/` 7,437, `ext2sim/` 2,151, `resis/` 12,922 and `extcheck/` 192: about 58,000 lines, roughly twice M6's.
 
@@ -85,14 +86,14 @@ M7 runs in seven rounds (D1). The netlisters are built against Magic-written `.e
 | Round | Starts when | Delivers | Exit |
 |---|---|---|---|
 | R0 DECIDE | now | the user's answers to Open Questions 1–9 and Q-EXTRACT-27; the spec edits they imply (Open Question 5, Q-EXTRACT-27) | every proposed row has a `Resolution:`; `check_milestone_readiness.py --milestone M7` ready; `openspec validate --all --strict` |
-| R1 SCAFFOLD | R0 | areas, headers and stubs (D2, D5); command stubs; the plane client slot and stitch header (D6); `extcheck` in the capture image; the capture modes and comparators; the NETLIST cases authored and captured; the first EX cases authored | the build passes with `-Werror` on every preset; `[m7-scaffold]` tests list every option; NETLIST expected outputs committed |
-| R2 CORE | R1 merged | EXTTECH (parsers in new files; wiring per Open Question 2), EXTNODE, EXTDEV, EXTCAP on single cells; **in parallel** EXTFLAT, SPICE and SIM against the captured NETLIST cases | the flat EX cases (no subcells) replay; NL-FLAT, NL-SPICE and NL-SIM replay |
-| R3 HIER | R2 merged | EXTHIER, EXTCMD, ANTENNA; NL-HIER, NL-CHK | every EX and MISC-ANT case replays, except those that need extresist |
+| R1 SCAFFOLD | R0 | areas, headers and stubs (D2, D5); command stubs; the plane client slot and stitch header (D6); the M7 tech-load and `scalegrid` hook (D7); `extcheck` in the capture image; the capture modes, the external-command case mode and the comparators; the 44 NETLIST cases with hand-written inputs authored and captured; the 53 flat EX cases (D21) authored and captured | the build passes with `-Werror` on every preset; `[m7-scaffold]` tests list every option; NETLIST and flat-EX expected outputs committed |
+| R2 CORE | R1 merged | EXTTECH (handlers in new files, called from the existing keyword switch; Open Question 2), EXTNODE, EXTDEV, EXTCAP on single cells; **in parallel** EXTFLAT, SPICE and SIM against the captured NETLIST cases | the unit tests pinned to the captured flat-EX values pass (no EX case replays yet: replay needs the `extract` driver of R3); NL-FLAT, NL-SPICE and NL-SIM replay once EXTTECH's resist and device parsing (tasks 4.3, 4.5) is wired, which does not wait for M10 (D3) |
+| R3 HIER | R2 merged | EXTHIER, EXTCMD, ANTENNA, the subcell parts of EXTDEV (task 7.7); the dispatch-table refactor (task 4.1) if M10's TECH has merged; NL-HIER, NL-CHK | every EX case (the flat ones included) and every MISC-ANT case replays, except those that need extresist |
 | R4 RESIST | R3 merged (EXTNODE's regions and EXTFLAT's overlay read needed) | RESNET, RESCMD; SHELL | NL-RES and NL-RESNET replay |
 | R5 GOLDEN | R4 merged | the PDK cases (Open Question 4), the deferred SCRIPT cases, the catalogue audit; PERF benches and gates (Open Question 5) | D21 counts all pass; the benches meet their gate |
 | R6 EXIT | R5 | fuzz, security review, determinism areas, coverage, `CORE-NOTIMPL` retirement, exit check | D25's exit list; `m7_cases.py --exit-check` clean |
 
-M7's start does not wait for M6's exit work (benches, fuzz, the security review; m6 tasks 16 and 17). Those tasks do not edit `extflat/` or `extract/tech/`, except `fuzz_ext_reader` (17.2) and the `ReadLimits` proposals (17.3). M7 extends that target once it lands, and inherits the decided caps. M7 does not wait for M10 P1 either (Open Question 2, recommended (a)). The user asked on 2026-11-20 that M7 run alongside the 3D work to gain time, and D3 orders the work so that only EXTTECH's wiring into the shared reader files waits for M10's TECH merge.
+M7's start does not wait for M6's exit work (benches, fuzz, the security review; m6 tasks 16 and 17). Those tasks do not edit `extflat/` or `extract/tech/`, except `fuzz_ext_reader` (17.2) and the `ReadLimits` proposals (17.3). M7 extends that target once it lands, and inherits the decided caps. M7 does not wait for M10 P1 either (Open Question 2, recommended (a)). The user asked on 2026-11-20 that M7 run alongside the 3D work to gain time, and D3 orders the work so that only the dispatch-table refactor of `style_reader.cpp` (task 4.1) waits for M10's TECH merge. Nothing on the R2 exit waits for it.
 
 ### D2. Layout of the M7 code
 
@@ -137,7 +138,7 @@ None of these codes reads like a golden case ID (EX-001, NL-SPICE-01, MISC-ANT-0
 | Workstream (tasks.md section) | Capabilities (requirements) | Owns (may edit) |
 |---|---|---|
 | PDK | none (reference data; Open Question 4) | `scripts/fetch_pdk.py` (if a set changes), `tests/unit/common/reference_data.hpp` (standard-cell paths), `docs/building.md` "Reference data for tests" |
-| EXTTECH | `extract-tech-section` (22) | `src/core/{include/hefesto,src}/extract/tech/`, `tests/unit/extract/tech/`, `tests/data/extract/tech/`, `extract.md` (STYLE section); the `extract` style hook in `tech/loader.cpp`/`tech/commands.cpp` and `tech/scale_layout.cpp`, shared with M10's TECH (Open Question 2) |
+| EXTTECH | `extract-tech-section` (22) | `src/core/{include/hefesto,src}/extract/tech/`, `tests/unit/extract/tech/`, `tests/data/extract/tech/`, `extract.md` (STYLE section); `extract/tech/height_view.cpp` once M10's TECH has merged (re-sourcing only, D7); the style builder that the editor-side tech-load and `scalegrid` hook calls (the hook itself is INTEGRATION's, D20) |
 | EXTNODE | `extract-nodes-and-labels` (10), `extract-file-format` (7) | `extract/{node,file}/`, their tests, `tests/data/extract/node/`, `extract.md` (NODE, FILE sections) |
 | EXTCAP | `extract-capacitance` (13), `extract-resistance-lumped` (5) | `extract/cap/`, its tests, `extract.md` (CAP section), `src/core/src/util/cr_atan.*` if Open Question 3 is answered (a) |
 | EXTDEV | `extract-devices` (19), `extract-substrate` (8) | `extract/device/`, its tests, `extract.md` (DEV section) |
@@ -163,14 +164,15 @@ Rules (unchanged from M1–M6 D2):
 
 Dependencies:
 - The scaffold (R1) publishes D5's interfaces with stubs, the `ExtStyle` data model with a test builder (`extract::testing::StyleBuilder`), and the plane client slot. Every extractor workstream starts from these, not from a parsed tech file.
-- EXTTECH starts at once, in new files (Open Question 2 (a)). It wires its parsers into the shared reader files after M10's TECH merges, or at once if TECH has merged by then.
-- EXTNODE needs the client slot (D6). EXTCAP and EXTDEV need EXTNODE's regions and writer. They start on the scaffold's stubs and integrate in R2.
-- EXTHIER needs EXTNODE, EXTCAP and EXTDEV on single cells. EXTCMD needs EXTHIER's `extract_cell` for the run driver; its option parsing and incremental logic start in R2.
+- EXTTECH starts at once, in new handler files (Open Question 2 (a)). Before M10's TECH merges it calls them from the existing switch of `StyleReader::apply` in `style_reader.cpp` (one `case` line per keyword); the dispatch-table refactor (task 4.1) runs only after TECH has merged (D7).
+- EXTNODE needs the client slot (D6). EXTCAP and EXTDEV need EXTNODE's regions and writer. They start on the scaffold's stubs and integrate in R2. EXTDEV's subcell parts ("Subcell device priority", "Subcell substrate connections") need EXTHIER and move to R3 (task 7.7).
+- EXTHIER needs EXTNODE, EXTCAP and EXTDEV on single cells. EXTCMD needs EXTHIER's `extract_cell` for the run driver; its option parsing and incremental logic start in R2. EX cases replay only through that driver, so they replay from R3; in R2 the extractor workstreams verify with unit tests pinned to the captured EX values.
 - EXTFLAT starts at once, on M6's code and the captured NETLIST inputs. SPICE and SIM need EXTFLAT's visitors (device, cap, resist and hierarchical) and start on its stubs.
+- **SPICE and SIM need EXTTECH 4.3 and 4.5 wired.** ext2spice and ext2sim call ExtGetDevInfo (ext2spice.c:932, ext2sim.c:647; ExtTech.c:312-466) on the current extract style for the device-type order, the source, drain and substrate resistance classes and the default substrate names (with `$` substitution). Those values feed the `EFDevTypes` indices, `as`/`ad`/`ps`/`pd` and the substrate terminals. They read them through `ExtStyle::device_info()` (D5) from `extract.current`, which the tech-load hook (D7) fills. Until EXTTECH's resist and device handlers are wired, the netlister unit tests use `StyleBuilder` fixtures; the NL-SPICE and NL-SIM replays need the wired handlers, which do not wait for M10 because they are called from the existing switch.
 - ANTENNA needs EXTTECH's antenna rules, EXTFLAT's device visits and `connect::search_hierarchical`.
 - RESNET needs EXTNODE's regions, the stitch header (D6) and `connect`. RESCMD needs EXTFLAT's tokenizer (its own record handling, ResReadExt) and RESNET.
 - SHELL needs EXTCMD's run driver with progress.
-- GOLDEN authors inputs from R1. The NETLIST cases are captured in R1; the EX and MISC-ANT cases as they are authored; the PDK cases in R5.
+- GOLDEN authors inputs from R1. The 44 NETLIST cases with hand-written inputs and the 53 flat EX cases (D21) are captured in R1, so that R2's unit tests can pin the captured values; the other EX cases and the MISC-ANT, NL-RES and NL-RESNET cases as they are authored; the PDK cases in R5.
 - PERF builds the benches once EXTCMD and SPICE land (R5).
 
 ### D4. Build and stub contract
@@ -182,7 +184,7 @@ Dependencies:
   - `sqrt` is IEEE-exact. `atan` (ExtCouple.c:718-737, 1298, 1492-1508, 1874-1875) is Open Question 3.
   - D22 lists the pinned-value tests.
 - **Stubs.** The scaffold registers `extract` and `ext`, `ext2spice` and `exttospice`, `ext2sim` and `exttosim`, `extresist` and `antennacheck`, each with its spec's full option table. Options are matched as `extract-commands` "Command syntax and option matching" and `netlist-spice-options` "Command options" define (Q-NETLIST-13, Q-NETLIST-41 per mode).
-  - Each option that is not implemented yet fails with the next free core code, `CORE-NOTIMPL-007` unless M8 or M10 has taken it first ("not implemented yet: <command> <option>"). Completion, help, scripts and golden inputs therefore see the final names.
+  - Each option that is not implemented yet fails with the next free core code ("not implemented yet: <command> <option>"). `CORE-NOTIMPL-007` is taken by the M8 scaffold (`m8-r1-scaffold`, `docs/diagnostics/codes/schem.md:26`), so this is `CORE-NOTIMPL-008` unless another milestone takes it first; the rule is "next free". Completion, help, scripts and golden inputs therefore see the final names.
   - INTEGRATION retires the code at M7 exit.
 - **Scaffold tests** carry `[m7-scaffold]` and no `[cap:][req:]` tags. Owners replace them.
 
@@ -218,7 +220,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
   - other types: the non-electrical and active types;
   - antenna: per-type antenna rules (calculation model, surface or sidewall, ratios, `tiedown` types).
 
-  It also provides `StyleView`'s four queries, and the h, t and plane-order accessors M10's `LayerStack` reads. `extract::StyleTable load_styles(const tech::RawSection&, const tech::Technology&, diag::DiagnosticSink&, const compat::CompatSettings&)`, `ExtStyle::rescale(n, d, compat)` (ExtTechScale) and `micron_convert(const mask::OutputStyle*)` (ExtTechFinal, with the cifoutput scale) are its builders (EXTTECH). `StyleView` and M10's `ExtractStyleSubset` keep their interfaces as views over it.
+  It also provides `StyleView`'s four queries, the h, t and plane-order accessors M10's `HeightView` and `LayerStack` read, and `device_info() -> std::span<const DeviceInfo>`, ExtGetDevInfo's table (per device in ExtGetDevInfo's index order: model name, device tile type, source and drain resistance classes, substrate resistance class, default substrate node name after `$` substitution), which SPICE, SIM and ANTENNA read. `extract::StyleTable load_styles(const tech::RawSection&, const tech::Technology&, diag::DiagnosticSink&, const compat::CompatSettings&)`, `ExtStyle::rescale(n, d, compat)` (ExtTechScale) and `micron_convert(const mask::OutputStyle*)` (ExtTechFinal, with the cifoutput scale) are its builders (EXTTECH). `StyleView` and M10's `HeightView` keep their interfaces as views over it. `HeightView::rescaled(n, d)` is re-sourced to return the heights of the `ExtStyle` that `extract.current` holds after `ExtStyle::rescale`, so there is one grid-rescale path, not two (D7).
 
 **Database access (Open Question 1)**
 - `db::Plane::client(const TileView&) -> std::uintptr_t`, `set_client(const TileView&, std::uintptr_t)` and `reset_clients(const Rect&, std::uintptr_t)` (ExtResetTiles), with `db::kClientDefault`, Magic's CLIENTDEFAULT (INTEGRATION, MODEL review).
@@ -255,17 +257,20 @@ Magic's extractor walks each cell's own planes. It keeps a region pointer in eve
 
 ### D7. The extraction style (EXTTECH; `extract-tech-section`; Open Question 2)
 
-- **One reader.** EXTTECH completes the reader M6 and M10 started, in its home `extract/tech/` with its tags. The keyword table (`kKeywords`, `style_reader.cpp:38`) becomes a dispatch table of `{keyword, min, max, usage, handler}`. Each handler group lives in its own source file:
+- **One reader.** EXTTECH completes the reader M6 and M10 started (`detail::read_style` in `style_reader.cpp`), in its home `extract/tech/` with its tags. Each handler group lives in its own source file:
   - `cap_rules.cpp`: areacap, perimc, overlap, sidewall, sideoverlap, the defaults, fringeshieldhalo;
   - `resist_rules.cpp`: resist, contact;
   - `device_rules.cpp`: device and fet, with parameters and ranges;
   - `antenna_rules.cpp`: antenna, model, tiedown;
   - `conversion.cpp`: micron conversion and rescale.
 
-  M10's TECH keeps the style framework and its keywords (`style`, `variants`, `scale`, `units`, `planeorder`, `noplaneordering`, `height`). Adding rows to the dispatch table is the only edit both sides make to the same file.
-- **Parallel start (Open Question 2 (a)).** EXTTECH writes and unit-tests its handlers in R2 against a section fixture, through a scaffold hook that runs one handler on one line. Once M10's TECH has merged, it moves the remaining keywords from "accepted silently" to their handlers and wires the table. Whichever of EXTTECH and TECH merges second rebases the table. M10's `ExtractStyleSubset` becomes an alias of, or a view over, `ExtStyle`, and `LayerStack` does not change.
-- **Load and rescale.** The style table is built at tech load (one hook in the tech loader, shared with M10's hand-off). `extract style <name>` parses the named style (ExtLoadStyle). Micron conversion runs with the current cifoutput scale (ExtTechFinal, ExtTech.c:3962-3966; Q-EXTRACT-3 per mode). `scalegrid` and finer-grid reads rescale the current style and the session overrides (ExtTechScale, ExtTech.c:4046-4093; Q-EXTRACT-19, Q-EXTRACT-25).
-- **Decisions applied.** Q-EXTRACT-1 (shield direction by plane index ON, plane order OFF), Q-EXTRACT-2 (diode OTHER is terminal and substrate types), Q-EXTRACT-3 (gscap scaling per mode), Q-EXTRACT-19 (step and halo truncation ON, rounding OFF), Q-EXTRACT-21 (limits /1000 ON, milli-units OFF), and Q-MISC-3 (an antenna line without a calculation type stores "none" in both modes).
+  M10's TECH keeps the style framework and its keywords (`style`, `variants`, `scale`, `units`, `planeorder`, `noplaneordering`, `height`).
+- **Parallel start (Open Question 2 (a)).** M10's TECH is editing the pass of `read_style` and its keyword switch now, so EXTTECH does not restructure that file while TECH is open:
+  - *Before TECH merges:* EXTTECH writes and unit-tests its handlers in the new files above, against section fixtures. It wires each one with one `case` line in the existing switch of `StyleReader::apply`, which dispatches on the keys of `kKeywords` (`style_reader.cpp:38`), moving the keyword from "accepted silently" to its handler. These are additive one-line edits; whichever of EXTTECH and TECH merges second rebases them.
+  - *After TECH merges:* task 4.1 turns `kKeywords` into a dispatch table of `{keyword, min, max, usage, handler}` and removes the switch. This refactor touches the pass TECH wrote, so it never runs while TECH is open.
+  - M10's `HeightView` becomes a view over `ExtStyle` (task 4.7), and `LayerStack` and `build_layout_stack` do not change.
+- **Load and rescale.** No hook exists today: M6's `StyleView` and M10's `HeightView` re-read `Technology::raw_sections()` on each call, and the tech loader hands nothing off. M7 adds the hook on the editor side, so that `tech/` does not learn about `EditorState`: after a technology loads into the session, and after `scalegrid` and finer-grid reads, the editor calls EXTTECH's builder (`load_styles`, then `select`, `micron_convert` and `rescale`) and stores the result in `extract.styles` and `extract.current` (D5, D20). `extract style <name>` parses the named style (ExtLoadStyle). Micron conversion runs with the current cifoutput scale (ExtTechFinal, ExtTech.c:3962-3966; Q-EXTRACT-3 per mode). `scalegrid` and finer-grid reads rescale the current style and the session overrides (ExtTechScale, ExtTech.c:4046-4093; Q-EXTRACT-19, Q-EXTRACT-25). `HeightView::rescaled` is re-sourced from that result, so h and t have one rescale path.
+- **Decisions applied.** Q-EXTRACT-1 (shield direction by plane index ON, plane order OFF), Q-EXTRACT-2 (diode OTHER is terminal and substrate types), Q-EXTRACT-3 (gscap scaling per mode), Q-EXTRACT-19 (step and halo truncation ON, rounding OFF), Q-EXTRACT-21 (limits /1000 ON, milli-units OFF), and three antenna fixes that apply in both modes (X-2 tier 1): Q-MISC-2 (the antenna model flags start empty for every style and on reload), Q-MISC-3 (an antenna line without a calculation type stores "none"), and Q-MISC-5 (an `antenna` line with a calculation type and a single ratio reports an error and is ignored). Each has a regression test (task 4.5).
 - **No new diagnostics on PDKs.** sky130A, gf180mcuD and ihp-sg13g2 load with exactly the messages Magic prints (the extract-section lines of the TECH golden cases and a load test per PDK).
 
 ### D8. Nodes, labels and the `.ext` writer (EXTNODE; `extract-nodes-and-labels`, `extract-file-format`)
@@ -283,18 +288,18 @@ Magic's extractor walks each cell's own planes. It keeps a region pointer in eve
 
 ### D9. Capacitance and lumped resistance (EXTCAP; Open Question 3)
 
-- **Substrate and overlap.** Area and perimeter caps, then overlap coupling with shield masks in plane order (ExtBasic.c, ExtCouple.c).
+- **Substrate and overlap.** Area and perimeter caps, with the diagonal-edge perimeter correction of split tiles (`(int)sqrt(w² + h²)`, ExtPerim.c:105-117), then overlap coupling with shield masks in plane order (ExtBasic.c, ExtCouple.c).
 - **Sidewall.** Edge enumeration, nearest-neighbour shadowing and the coupling value, with the single-precision denominator (Q-EXTRACT-20, replicate).
 - **Sideoverlap.** The legacy model (Q-EXTRACT-18 per mode) and the fringe-halo model (Q-EXTRACT-17 per mode). The fringe fractions are `0.6366 · atan(mult · d)` (ExtCouple.c:718-737, 1298, 1492-1508, 1874-1875). The fringe-halo model is on by default for tech format 34 and above ("Fringe model default chosen from tech format"), and the three PDK tech files are format 35, so it runs on every PDK cell. The `atan` must give Magic's bits on every platform (Open Question 3).
 - **Corners and substrate coupling.** Corner fringe to substrate and corner coupling (Q-EXTRACT-24 per mode), coupling to the substrate node, and coupling record output (Q-EXTRACT-7).
-- **Lumped resistance.** Per-class area and perimeter, the formula (ExtPerim.c's `sqrt` correction), rounding, the record values and the class header. The shorted-ports warning follows Q-EXTRACT-22 per mode.
+- **Lumped resistance.** Per-class area and perimeter, the L/W formula (`S = sqrt(P² − 16A)`, ExtBasic.c:585-645, the `sqrt` at :641), rounding, the record values and the class header. The shorted-ports warning follows Q-EXTRACT-22 per mode.
 - **One branch per decision.** Each compat split is a named function in `cap/compat_branches.cpp` taking the compat setting, with a unit test per mode.
 
 ### D10. Devices and substrate (EXTDEV)
 
 - **Devices.** Device regions and subcell priority, then terminal discovery on and off the device plane, with terminal area, perimeter and sharing.
   - Record selection by identifier layers and substrate variants, and model selection by parameter ranges (Q-EXTRACT-21 per mode). Missing terminals copy or reject as Magic does.
-  - MOSFET-family length and width from boundary lists, with the effective length and width of non-rectangular gates (ExtBasic.c:601-641, the `sqrt` estimate).
+  - MOSFET-family length and width from boundary lists, with the effective length and width of non-rectangular gates (extComputeEffectiveLW, ExtBasic.c:1259-1579; its only `sqrt` is the diagonal-segment width at :1535). Two other dimension estimates use `sqrt` and get their own pinned values: the width of a terminal-indexed `w<n>` parameter (ExtBasic.c:1916-1920) and the equivalent-square fallback of capacitors when extComputeCapLW fails (:2948, :3206).
   - Resistors and capacitors, with the zero-size capacitor written once (Q-EXTRACT-8, fix). Diodes compute L and W before range matching (Q-EXTRACT-13, fix).
   - Parameter values, with `r` written as 0 for zero width or area (Q-EXTRACT-15, fix); terminal output and ordering, `parameters` records, and the `device` cell property passed through in written order (Q-EXTRACT-16).
 - **Substrate.** The backward-compatible mode, isolated substrate regions, global substrate node discovery and naming (`$SUB` from the project setting, Q-EXTRACT-9), the `substrate` record, device substrate terminals, subcell substrate connections, and substrate coupling relocation.
@@ -310,7 +315,13 @@ Magic's extractor walks each cell's own planes. It keeps a region pointer in eve
 
 - **Options.** Every `extract` form and option with Magic's matching, defaults and warning set: `all`, `cell`, `parents`, `showparents`, `do`/`no`, `warn`, `style`, `halo`, `step`, `path`, `unique`, `length`, `help`. Cell properties that affect extraction (`noextract`, `LEFview`/abstract, `device`) are honoured.
 - **Incremental extraction.** A cell is skipped when its `.ext` header timestamp equals `cd_timestamp` (ExtMain.c:968-990). Parents of re-extracted cells are re-extracted. Output paths follow Q-EXTRACT-11: Magic's behaviour on desktop hosts, the project folder on sandboxed hosts.
-- **Atomic output (Q-EXTRACT-27, proposed; recommended fix).** Magic opens `<cell>.ext` for writing, writes the header first and stops writing on interrupt (ExtCell.c:99-116, 515-531). The truncated file keeps a valid `timestamp` line, so the next `extract` treats it as current (ExtMain.c:295-296, 984-986), and the netlisters read a partial netlist. Hefesto writes each file to a temporary name in the same directory and renames it when the cell is complete. A cancelled run keeps the previous file. Uninterrupted runs give the same bytes as Magic.
+- **Atomic output (Q-EXTRACT-27, proposed; recommended fix).** Magic opens `<cell>.ext` for writing, writes the header first and stops writing on interrupt (ExtCell.c:99-116, 515-531). The truncated file keeps a valid `timestamp` line, so the next `extract` treats it as current (ExtMain.c:295-296, 984-986), and the netlisters read a partial netlist. extresist has the same flaw: it stops at the next node on interrupt (ResRex.c:1395) and leaves a truncated `.res.ext` (and `.res.lump`, `.fh`) that is newer than the `.ext`, so D18's `rc` staleness rule trusts it and `ext2spice extresist on` reads it silently. One mechanism, `extract::AtomicOutput` in `extract/file/` (EXTNODE; RESCMD uses it), covers all four files:
+  - the target path is resolved first exactly as ExtFileOpen does (ExtCell.c:153 on: `ExtLocalPath`, then the directory of `cd_file`, then the retry with the path stripped), and the temporary file is created in the directory of that resolved path;
+  - when the target is a symbolic link, Magic writes through it. Hefesto resolves the link and renames over the link's target, so the link survives as it does in Magic;
+  - if no temporary file can be created in that directory (a writable file in a read-only directory), Hefesto writes in place as Magic does;
+  - the rename happens after the cell's (or net file's) last record; on cancel or error the temporary file is removed and the previous file is unchanged.
+
+  Uninterrupted runs give the same bytes, names and console output as Magic.
 - **Path length.** The flood of ExtLength.c, ported exactly (Q-EXTRACT-12), so `distance` records are byte-identical.
 - **Locking (three phases, as M5's `gds write`).**
   - *Prepare*, under the exclusive lock: load unread subcells, compute the bottom-up stack and the incremental set, and apply the temporary unique labels.
@@ -322,7 +333,8 @@ Magic's extractor walks each cell's own planes. It keeps a region pointer in eve
 
 ### D13. Flattening (EXTFLAT)
 
-EXTFLAT extends M6's code; nothing is rewritten. It adds:
+EXTFLAT extends M6's code; nothing is rewritten. M6 ported only the standard-cell node path, efFlatNodesStdCell (`EF_NOFLATSUBCKT`; `extflat/flatten.cpp:143`), which is all DEF write uses. ext2spice and ext2sim flatten with `EF_FLATNODES` and no `EF_NOFLATSUBCKT` (ext2spice.c:1066, 1312; ext2sim.c:674, 806), and antennacheck adds `EF_WARNABSTRACT` (EFantenna.c:234). They all go through efFlatNodes (EFflat.c:141-150, 320-345). So M6's "Flat node construction" coverage is only partial and is reopened here. EXTFLAT adds:
+- **efFlatNodes.** The non-standard-cell path: recursion through every use, subcircuits included; `FLATNODE_DOWARN` with the spec's flat-mode warning for names that do not resolve; `FLATNODE_NOABSTRACT` with "Error:  Cell <name> was extracted as an abstract view."; and `FLATNODE_HIER`/`FLATNODE_CHILD`, which stop child capacitance from being counted twice. `flatten(…, FlatFlags)` picks the path as EFFlatBuild does; `read_flat` keeps `EF_FLATNODES | EF_NOFLATSUBCKT`, so DEF write is unchanged.
 - **Read side.** The full device records (every class of NL-FLAT-04, parameters and attributes), `parameters` records with scale and offset (Q-NETLIST-8 per mode, reversed order per Q-NETLIST-9), the `resist` value offset (Q-NETLIST-12 per mode), and the `.res.ext` overlay ("Resistance-extraction overlay").
 - **Flattening.** Coupling capacitance and resistor flattening with the thresholds, lumped node resistance, device length and width, the device, cap and resistor visit orders, and one-level flattening for the hierarchical netlister (EFhier.c).
 - **Common arguments.** EFArgs (`-c -C -r -R -p -s -S -t -T -v -o`), shared by ext2spice, ext2sim, extcheck and antennacheck. `-o` applies to one run (Q-NETLIST-42, fix).
@@ -343,7 +355,8 @@ EXTFLAT extends M6's code; nothing is rewritten. It adds:
   - Decisions per mode: Q-NETLIST-15 (`C <name>0` ON, `C <name> GND` OFF), Q-NETLIST-16, Q-NETLIST-17 and Q-NETLIST-18. Q-NETLIST-14 is fixed in both modes.
   - The BJT L/W `sqrt` follows ext2sim.c:1233.
   - sim2simp is documented as not provided (Q-NETLIST-48).
-- **extcheck.** The library part is `netlist::extcheck::run(args, out, err) -> int`, which returns the exit status and prints the counts in Magic's format with the defaults of Q-NETLIST-36. Open Question 6 decides how users run it. GOLDEN builds Magic's `extcheck` in the capture image (`make -C extcheck` after the main build, at the same pin; its Makefile.in links only `extflat` and `utils`).
+- **extcheck.** The library part is `netlist::extcheck::run(args, out, err) -> int`, which returns the exit status and prints the counts in Magic's format with the defaults of Q-NETLIST-36. Open Question 6 decides how users run it. GOLDEN builds Magic's `extcheck` in the capture image (`make -C extcheck` after the main build, at the same pin). Its Makefile links `extflat/libextflat.o` and `utils/libutils.a` only, but in a Tcl build `libextflat.o` contains EFantenna.c, which references `ExtCurStyle` (EFantenna.c:184, 440-466) and Tcl symbols, so the link may fail. Task 2.2 tries the Tcl build's objects first, then a separate non-Tcl configure of the same pin for `extcheck` alone; if neither links, design R7 applies.
+- **The NL-CHK-01 case.** It runs a standalone program, not `commands.tcl`. The harness gains an external-command case mode (task 2.3): `input/command.toml` names the program by its role (`extcheck`), its arguments and the files it reads; the harness maps the role to `extcheck` when capturing and `hefesto-extcheck` when replaying, and captures stdout, stderr and the exit status. The usage text prints the program name (`argv[0]`); the comparator replaces the leading program name of the usage line with `<prog>` on both sides, and everything else is compared byte for byte.
 
 ### D16. extresist (RESNET, RESCMD)
 
@@ -361,12 +374,14 @@ EXTFLAT extends M6's code; nothing is rewritten. It adds:
   - The first cutoff, the second cutoff after extraction, and the lumped file.
   - The `.res.ext` overlay grammar and order (Q-NETLIST-39 per mode), node naming, FastHenry output (Q-NETLIST-40 per mode; Q-NETLIST-27 and Q-NETLIST-21 fixed) and the geometry centerlines.
   - `ext2spice extresist on` and `ext2sim extresist on` consume the overlay through EXTFLAT ("Consumption by netlisters").
+  - `.res.ext`, `.res.lump` and `.fh` are written through `extract::AtomicOutput` (Q-EXTRACT-27 as extended, D12), so a cancelled extresist run leaves the previous files and no truncated file that D18's `rc` staleness rule would trust.
+- **Equal-value and high-fanout networks.** Q-NETLIST-45 (triangle search in resistor-list order for nodes with 10 or more resistors) and Q-NETLIST-26 (stable sort in simplification) change which triangle is reduced or which equal resistor is folded first. That changes the network's topology and values, not only the order of records, and Magic's own result can differ between runs and platforms. No comparator can absorb that, so the golden inputs that exercise them are re-authored to have one outcome (D21, task 17.3).
 
 ### D17. Antenna check (ANTENNA)
 
 `antennacheck` follows EFantenna.c:
 - it requires a plane order (EFantenna.c:184-189), reads and flattens with `EF_FLATNODES | EF_WARNABSTRACT`, and builds the device-type table from the style (:227-252);
-- it visits each gate net once and yanks it with `connect::search_hierarchical`, cumulatively and per plane;
+- it visits each gate net once and yanks it with `connect::search_hierarchical`, cumulatively and per plane. Plane-order indices with no plane are skipped instead of reusing the previous or an uninitialised check plane (Q-MISC-6, fix in both modes, X-2 tier 1; a regression test in task 15.3);
 - it measures surface and sidewall areas, counts contact cuts (Q-MISC-4 per mode, with the no-rule and zero-pitch guards in both), applies the connectivity restriction (Q-MISC-7 per mode) and the cumulative model (Q-MISC-1 per mode);
 - it reports violations as feedback with Magic's text, and prints progress every 100 gates.
 
@@ -374,7 +389,7 @@ EXTFLAT extends M6's code; nothing is rewritten. It adds:
 
 ### D18. How M9 and M10 consume the output
 
-- **LVS** (`lvs-command` "Layout netlist from extraction"): `extract::ensure_extracted` brings the hierarchy up to date as `extract all` would, then `netlist::spice::render` with the `lvs` preset produces the layout netlist in memory. M9 never parses Hefesto's console output, and M7's golden cases fix the text it reads.
+- **LVS** (`lvs-command` "Layout netlist from extraction"): `extract::ensure_extracted` brings the hierarchy up to date as `extract` (incremental, ExtIncremental with extDefListFuncIncremental, ExtMain.c:284-299, 918-945) does, re-extracting only stale or missing cells and their parents. It does not behave like `extract all`, which ignores timestamps (ExtAll with extDefListFunc, ExtMain.c:360-384). Then `netlist::spice::render` with the `lvs` preset produces the layout netlist in memory. M9 never parses Hefesto's console output, and M7's golden cases fix the text it reads.
 - **Simulation** (`simulation-netlist-preparation`): the source `layout <cell>` calls `ensure_extracted` (stale or missing `.ext` re-extracted, "Stale extraction refreshed"), then `render` with the simulation settings as a value, which leaves the user's `ext2spice` settings untouched. Mode `rc` calls `extresist::run` for cells whose `.res.ext` is missing or older than the `.ext`, then renders with `extresist on`.
 - **The `.ext` files** stay the interchange format: `lvs-netlist-input` reads `.ext` as netgen does, and Magic's own tools read Hefesto's files (the EX goldens compare them byte for byte after `ext-cap`).
 - **M10 P3 overlays** read node capacitances and couplings through `extflat::flatten` with `EF_FLATCAPS`, and resistance networks from `.res.ext` through the overlay reader (m10 task 15.3). No 3D-specific API is added in M7.
@@ -393,8 +408,11 @@ With Open Question 7 (a):
 |---|---|---|
 | tile client slot; restricted stitch header | `db/plane.hpp`, `src/db/tile_plane.{hpp,cpp}`, new `db/plane_stitch.hpp` | INTEGRATION (MODEL review; D6) |
 | `EditorState::extract`, `netlist`, `extresist` | `editor/state.hpp` and the session headers | INTEGRATION (D5) |
-| extract style built at tech load, rescaled on grid change | `tech/loader.cpp` or `tech/commands.cpp` (the hook M10's TECH adds), `tech/scale_layout.cpp` | EXTTECH, coordinated with M10 TECH |
+| extract style built when a technology loads into the session, rescaled on `scalegrid` and finer-grid reads (a new hook; none exists, and M10 added none) | the editor-side tech-load and grid-change paths (`editor/`, next to where `EditorState::technology` is replaced and where `scalegrid` rescales), calling EXTTECH's builder; `tech/` is not changed | INTEGRATION places the call (R1, stubbed); EXTTECH fills the builder (task 4.6) |
 | `StyleView` re-sourced from `ExtStyle` | `extract/tech/style_view.{hpp,cpp}` | EXTTECH |
+| `HeightView` re-sourced from `ExtStyle`; `rescaled` derived from `extract.current` | `extract/tech/height_view.{hpp,cpp}` (M10's file) | EXTTECH, after M10's TECH merges; M10's `build_layout_stack` tests must pass unchanged |
+| `lef write` and `def write` use the selected extract style (Magic's writers read `ExtCurStyle`, lefWrite.c:1268, defWrite.c:816, 2538), not the default one that `StyleView::from_technology` returns | `lef/write/write.cpp:79`, `def/write/write.cpp:118`: build the view from `EditorState::extract.current` (passed in by the `lef write` and `def write` commands) | EXTTECH (with LEFW's and DEFW's files as open items); a test selects a non-default style before `lef write` and `def write` |
+| install rule and packaging of `hefesto-extcheck` (desktop hosts only) | `src/cli/extcheck/CMakeLists.txt`, the root install rules, the desktop packaging scripts | SIM writes the target; INTEGRATION the install and packaging |
 | `lef write` antenna areas through `antenna::RuleView` | `lef/write/macro.cpp` | ANTENNA (LEFW's file; the LEFDEF antenna cases must still pass) |
 | `read_flat` kept as a wrapper of `read` + `flatten` | `extflat/read.hpp` | EXTFLAT (DEFW's call unchanged) |
 | command registrations; UI-G-005 deviation and help | `cmd/`, `ui/magic_help.cpp`, `tests/golden/deviations.toml` | INTEGRATION, GOLDEN |
@@ -411,14 +429,17 @@ With Open Question 7 (a):
   | NETLIST NL-FLAT, NL-SPICE, NL-HIER, NL-SIM, NL-CHK | 44 | hand-written `.ext` files and a minimal tech | `.spice`, `.sim`, `.al`, `.nodes`, Tcl results, stdout |
   | NETLIST NL-RES, NL-RESNET | 23 | layouts (extracted in the case) or hand-written `.ext`/`.res.ext` | `.res.ext`, `.res.lump`, `.fh`, stdout |
   | MISC-ANT-01..09 | 9 | synthetic tech with antenna rules | feedback count, debug output, LEF (MISC-ANT-09) |
-  | `EXTRACT-PDK-<lib>` (Open Question 4 (a)) | 3 | every cell of `sky130_fd_sc_hd` (446), `gf180mcu_fd_sc_mcu7t5v0` (229), `sg13g2_stdcell` (84, read from the `ihp-gds` set) | one `.ext` per cell |
+  | `EXTRACT-PDK-<lib>` (Open Question 4 (a)) | 3 | every cell of `sky130_fd_sc_hd` (446), `gf180mcu_fd_sc_mcu7t5v0` (229), `sg13g2_stdcell` (84, read from the `ihp-gds-sc` set) | one `.ext` per cell |
   | `NETLIST-PDK-<lib>` (Open Question 4 (a)) | 3 | the `.ext` files of the matching EXTRACT-PDK case | `ext2spice lvs` (flat) and `ext2spice hierarchy on format ngspice` per cell, `ext2sim` of the whole library |
   | SCRIPT-API-16, SCRIPT-API-20 | 2 | existing cases | their deferred outputs |
+  | LEFDEF-336 (Open Question 9 (a)) | 1 | LEFDEF-317's layout: `extract all`, then `def write` | the DEF file |
 
-  The total is 154 cases. GOLDEN also audits the catalogues against the 204 exact and behavioural requirements. Each requirement whose behaviour Magic shows gets a case or a pinned unit test. Missing rows are added as EX-071 on and NL-<family>-<n+1> (task 17.2).
+  The total is 155 cases. GOLDEN also audits the catalogues against the 204 exact and behavioural requirements. Each requirement whose behaviour Magic shows gets a case or a pinned unit test. Missing rows are added as EX-071 on and NL-<family>-<n+1> (task 17.2).
+- **The flat EX subset (captured in R1, task 2.6).** The 53 EX rows whose layout has no subcell and that need no command driver beyond `extract all` on one cell: EX-001..042, EX-044..046, EX-048 and EX-057..063. The other 17 (EX-043, EX-047, EX-049..056, EX-064..070) need hierarchy or the command options and are authored and captured from R2 on (task 17.1). All EX cases replay from R3, through EXTCMD's driver.
+- **Size budget.** The PDK cases add 759 × (one `.ext`, two SPICE files) plus one `.sim` per library. A standard cell's `.ext` is a few kB and each netlist about 1 kB, so the estimate is 10–15 MB, against about 46 MB in `tests/golden` today. `expected/` is committed uncompressed, so diffs stay reviewable. The budget is 15 MB for the six PDK cases; if a capture exceeds it, GOLDEN raises an open item (a smaller cell set, or gzip-compressed expected files with a decompressing comparator) before committing.
 - **Authoring.**
   - `tools/golden/authoring/{extract_cases,netlist_cases,antenna_cases,ext_pdk_cases}.py` build the cases, and `m7_cases.py` drives them (`--list`, `--not-authored`, `--exit-check`).
-  - Cases are `input/commands.tcl` files that both Magic and `hefesto-cli --magic` run, with `exttest.tech` committed once under `tools/golden/authoring/`.
+  - Cases are `input/commands.tcl` files that both Magic and `hefesto-cli --magic` run, with `exttest.tech` committed once under `tools/golden/authoring/`. NL-CHK-01 is the exception: it uses the external-command case mode of D15 (`input/command.toml`, the program mapped from `extcheck` to `hefesto-extcheck`, stdout, stderr and exit status captured, the usage line's program name masked).
   - The PDK cases run with `--trust-pdk` and the PDK's default extract style.
 - **Session-state pinning.** D18 of M5 applies: a fresh session per case (Q-NETLIST-16 and Q-NETLIST-46 depend on it), `drc off`, `TZ=UTC`, `LC_ALL=C`, and `random seed 1` for PDK cases.
 - **Capture.** `golden-capture.yml` gains the outputs above, collected by name pattern (`*.ext`, `*.spice`, `*.sim`, `*.al`, `*.nodes`, `*.res.ext`, `*.res.lump`, `*.fh`). The image builds Magic's `extcheck` (D15). The NETLIST cases need no Hefesto extraction, so they are captured in R1, and SPICE and SIM develop against them from the first day.
@@ -426,13 +447,13 @@ With Open Question 7 (a):
   - `ext-cap` (exists): `.ext` files with canonical `cap` records, every other line byte for byte (Q-EXTRACT-7).
   - `spice-cap` (new): flat coupling-capacitor lines, the `C` lines whose two nodes are both non-ground, are compared as a multiset. Terminals are swapped so the smaller name comes first, and the device index is masked. Every other line, the order of device and node lines included, is compared byte for byte (Q-NETLIST-1).
   - `sim-cap` (new): the same rule for `.sim` coupling lines.
-  - `res-ext` (new): the resistor records within one net of a `.res.ext` are compared in canonical order (by terminal names, then value), since Q-NETLIST-26 and Q-NETLIST-45 fixed Magic's unstable or address-keyed orders. Node, device and attribute records are compared byte for byte.
+  - `res-ext` (new): the resistor records within one net of a `.res.ext` are compared in canonical order (by terminal names, then value), which absorbs a different record order for the same network. It does not absorb Q-NETLIST-45 or Q-NETLIST-26: those change which triangle is reduced or which equal resistor is folded first, so the network's topology and values differ, and Magic's capture may differ between runs (D16). The cases that exercise them, NL-RESNET-14 (≥ 10 equal-value sub-tolerance resistors) and NL-RESNET-15 (a high-fanout node inside a triangle, run twice), are re-authored so that the outcome is unique: one triangle per high-fanout node and distinct resistor values, so neither the search order nor the sort order can change the result. If a requirement can only be shown on an ambiguous input, the case is recorded as a deviation under the decision and checked for electrical equivalence (the same resistance between every pair of ports, within 1e-9 relative) instead of text. Node, device and attribute records are compared byte for byte.
   - `magic-console` (exists) for stdout, with the timing lines of ExtTimes masked.
   - PDK cases: `ext-cap` on every `.ext`, `spice-cap` on every netlist. A cell that differs fails the case and is named in the report.
 - **DEF write cases (Open Question 9 (a)).** LEFDEF-317..328 and 330..334 keep their Magic-written `.ext` inputs. One new end-to-end case, LEFDEF-336, runs `extract all` then `def write` on LEFDEF-317's layout, so Hefesto's extractor feeds Hefesto's DEF writer once.
 - **Deviations.** These need an approved decision:
-  - the both-modes fixes whose output Magic can produce in a case: Q-EXTRACT-6 (EX-024's layout labels after the run), Q-EXTRACT-8, Q-EXTRACT-13, Q-EXTRACT-15, Q-NETLIST-6, Q-NETLIST-14, Q-NETLIST-23, Q-NETLIST-42, Q-NETLIST-47 and Q-MISC-3. Each case that exercises one records it in `deviations.toml` with the decision;
-  - Q-NETLIST-21 and Q-NETLIST-27 change outputs only where Magic reads uninitialised memory, so the cases avoid those inputs (NL-RES-07 sets the frequency);
+  - the both-modes fixes whose output Magic can produce in a case: Q-EXTRACT-6 (EX-024's layout labels after the run), Q-EXTRACT-8, Q-EXTRACT-13, Q-EXTRACT-15, Q-NETLIST-6, Q-NETLIST-23 and Q-NETLIST-42. Each case that exercises one records it in `deviations.toml` with the decision;
+  - Q-NETLIST-14 (ext2sim's unterminated merge table), Q-NETLIST-21 and Q-NETLIST-27 (uninitialised memory), Q-NETLIST-47 (null dereferences in the final pass), Q-MISC-2 and Q-MISC-3 (uninitialised antenna model flags and calculation type), Q-MISC-5 (a read past the arguments) and Q-MISC-6 (an uninitialised check plane) change outputs only where Magic has undefined behaviour or crashes, so the cases avoid those inputs (NL-RES-07 sets the frequency), and the guards are unit-tested;
   - Q-EXTRACT-27 changes nothing Magic-comparable (no case interrupts a run).
 
   The capture runs with magic-compat ON, and the OFF behaviours are unit-tested.
@@ -454,7 +475,7 @@ With Open Question 7 (a):
 - **Determinism.**
   - Tile-derived order comes from `db::Plane` (Q-EXTRACT-5), name-keyed order from `util::MagicHashTable` (Q-EXTRACT-7 `merge`, Q-NETLIST-2), and address-keyed order from the canonical order (Q-EXTRACT-7 `cap`, Q-NETLIST-1, Q-NETLIST-45). Sorts are stable (Q-NETLIST-26).
   - The determinism job gains `--require-area EXTRACT --require-area NETLIST` once the expected outputs exist.
-  - Pinned-value tests run on every leg for: `esSIvalue` and the `%lg`/`%g` outputs, the fringe fractions (Open Question 3), the float32 sidewall denominator, the lumped-resistance `sqrt` correction, the non-rectangular gate estimate, the Elmore delays and the delta-star arms.
+  - Pinned-value tests run on every leg for: `esSIvalue` and the `%lg`/`%g` outputs, the fringe fractions (Open Question 3), the float32 sidewall denominator, the lumped-resistance L/W `sqrt` (ExtBasic.c:641), the diagonal perimeter correction (ExtPerim.c:117), the non-rectangular gate estimate (ExtBasic.c:1535), the `w<n>` terminal width (:1919) and the capacitor equivalent square (:2948, :3206), the Elmore delays and the delta-star arms.
 
 ### D23. Performance (PERF; Open Questions 5 and 8)
 
@@ -464,7 +485,7 @@ With Open Question 7 (a):
 
 Workloads:
 - `extract-bench`: `extract all` of the reference all-cells block of `sky130_fd_sc_hd` (the `gds-bench` block), `ext2spice` flat with `lvs`, `ext2spice hierarchy on`, and `ext2sim`. Hefesto and Magic both run under callgrind.
-- `extresist-bench`: `extresist all` on a routed sky130 block. Gated at its own baseline + 2 %, with the Magic count reported (extresist has no spec target).
+- `extresist-bench`: `extresist all` on the placed-and-routed sky130 block of m6 task 16.1 (`bench/lefdef/`, read with `def read`, then `extract all`). Gated at its own baseline + 2 %, with the Magic count reported (extresist has no spec target). If M6 16.1 has not landed when PERF starts, PERF commits that block first, as an open item to M6's PERF.
 
 Both jobs run on the x86_64 runner with path filters on the M7 areas. `drc-profile` and `gds-bench` must still pass, since D6 adds a field to every tile. Open Question 8 (a) keeps M7 single-threaded: `ExtractContext` holds no globals, so per-cell parallelism can be added later without an interface change.
 
@@ -495,7 +516,7 @@ Each finding is fixed with a regression test or recorded as an accepted limit. A
 
 Exit list (R6):
 - every capability's `check_requirement_coverage.py --capability <cap>` reports 100 % of exact and behavioural requirements tagged, and the three informative ones are documented;
-- `m7_cases.py --exit-check` reports the 154 cases passing, or deviating with an approved decision;
+- `m7_cases.py --exit-check` reports the 155 cases (LEFDEF-336 included) passing, or deviating with an approved decision;
 - the determinism job requires EXTRACT and NETLIST and is identical on every leg;
 - every fuzz target replays its seeds on every leg and runs 60 s without a crash;
 - the security findings are fixed or accepted, with every cap decided;
@@ -511,7 +532,8 @@ The headers are the contract, and each one is documented. The key types and func
 - `ExtStyle` (D5 data model), `DevicePattern`, `CapRules` (`area`, `perimeter`, `overlap`, `sidewall`, `sideoverlap`), `ResistClass`, `AntennaRule`, `SubstrateDecl`
 - `StyleTable load_styles(const tech::RawSection&, const tech::Technology&, diag::DiagnosticSink&, const compat::CompatSettings&)`, `StyleTable::names()`, `StyleTable::select(name) -> std::shared_ptr<const ExtStyle>`
 - `ExtStyle::rescale(int n, int d, const compat::CompatSettings&) const -> ExtStyle`, `micron_convert(const mask::OutputStyle*) const -> ExtStyle`
-- `StyleView` (unchanged interface), M10's `ExtractStyleSubset` view
+- `StyleView` (unchanged interface), M10's `HeightView` (unchanged interface; `rescaled` derived from `extract.current`)
+- `ExtStyle::device_info() -> std::span<const DeviceInfo>` (ExtGetDevInfo; read by SPICE, SIM and ANTENNA)
 - `testing::StyleBuilder` (scaffold test helper)
 
 ### EXTNODE: `hefesto/extract/node/`, `hefesto/extract/file/`
@@ -519,6 +541,7 @@ The headers are the contract, and each one is documented. The key types and func
 - `node_name(const NodeRegion&, const compat::CompatSettings&) -> std::string`, `generated_name(...)`
 - `UniqueRenamer` (`apply(db::CellDef&, UniqueMode)`, `revert()`)
 - `ExtWriter` (`header`, `node`, `attr`, `equiv`, `port`, `substrate`, `device`, `parameters`, `cap`, `resist`, `use`, `merge`, `killnode`, `distance`, `finish`), `format_value(double) -> std::string`
+- `AtomicOutput` (`open(const cell::LookupContext&, const db::CellDef&, std::string_view suffix)`, resolving the path as ExtFileOpen does; `commit()`; `abandon()`), used by EXTCMD for `.ext` and by RESCMD for `.res.ext`, `.res.lump` and `.fh` (Q-EXTRACT-27)
 
 ### EXTCAP: `hefesto/extract/cap/`
 - `substrate_caps(const NodeRegionList&, const ExtStyle&, ...)`, `overlap_caps(...)`, `sidewall_caps(...)`, `sideoverlap_caps(..., FringeModel)`, `corner_caps(...)`, `CouplingTable` (address-free, name-keyed at output)
@@ -569,7 +592,7 @@ The headers are the contract, and each one is documented. The key types and func
 ## Risks / Trade-offs
 
 - **R1. Port size.** About 58,000 lines of Magic C, twice M6. → Seven rounds, with the netlisters in parallel with the extractor on Magic-written inputs. One dispatch table per reader. One helper per compat branch, and flagged exceptions of at most 25.
-- **R2. Parallel work with M10 on `extract/tech/`.** → Open Question 2 (a): the handler files are separate, and only the dispatch table is shared. M10's subset becomes a view over `ExtStyle`, so `LayerStack` is untouched.
+- **R2. Parallel work with M10 on `extract/tech/`.** → Open Question 2 (a): the handler files are separate; while TECH is open EXTTECH adds only one-line `case` entries to `StyleReader::apply`, and the dispatch-table refactor waits for TECH's merge. The tech-load hook is M7's own, on the editor side. M10's `HeightView` becomes a view over `ExtStyle`, so `LayerStack` is untouched.
 - **R3. Memory and speed of the tile client slot.** One more field on every tile of every plane, on desktop and on iPad (`hefesto-performance` "Memory bound on iPad"). → Same layout as Magic's `Tile`. `drc-profile`, `gds-bench` and the iPad memory check run before R2 starts. The fallback, Open Question 1 (b), is kept as an option.
 - **R4. Floating-point identity.** `atan` in the fringe-halo model, `%lg` output, float32 sidewalls. → Open Question 3, `-ffp-contract=off` and pinned values per leg. The PDK cases exercise the fringe-halo model on 759 cells.
 - **R5. Hash and address order.** `merge` order (hash), `cap` and coupling order (address). → `MagicHashTable`, already validated against Magic's hash, and the `ext-cap`, `spice-cap`, `sim-cap` and `res-ext` canonicalizers, each documented in its module.
@@ -585,7 +608,7 @@ User data does not change: `.mag` files are read and written as before.
 - `.ext` files written by Hefesto are read by Magic and netgen, as the goldens check.
 - Scripts that call `extract`, `ext2spice`, `ext2sim`, `extresist` or `antennacheck` now run instead of failing as unknown commands.
 - `lef write` takes its antenna rules from the shared view. The output is unchanged, as the LEFDEF antenna cases check.
-- `CORE-NOTIMPL-007` (or the code the scaffold takes) exists only during M7.
+- `CORE-NOTIMPL-008` (or the next free code when the scaffold lands) exists only during M7.
 - CI gains the `extcheck` build in the capture image and the `extract-bench` and `extresist-bench` jobs.
 
 ## Open Questions
@@ -599,17 +622,18 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 
    *Why (a):* it matches the port one to one, keeps Q-EXTRACT-5's order free (no copy), and its cost (one field) is measured by the existing benches before R2.
 2. **Starting M7 while M10's 3D P1 extends `extract/tech/`.** The user asked on 2026-11-20 that M7 run with the 3D work to gain time. M10's TECH (tasks 3.1, 3.2) is writing the style framework and `scale`/`units`/`planeorder`/`height` in the same reader.
-   - (a) *Recommended:* start M7 now. EXTTECH writes its handlers in new files (D7) and tests them through a scaffold hook. It wires them into the shared dispatch table after TECH merges, or at once if TECH has merged. The other M7 workstreams build on the scaffold's `ExtStyle` and `StyleBuilder`, not on parsed tech files. M10's `ExtractStyleSubset` becomes a view of `ExtStyle`.
+   - (a) *Recommended:* start M7 now. EXTTECH writes its handlers in new files (D7) and wires each one with a one-line `case` in the existing switch of `StyleReader::apply`; the dispatch-table refactor (task 4.1) waits for TECH's merge. M7 adds its own tech-load and `scalegrid` hook on the editor side (M10 added none: its `HeightView` reads `Technology::raw_sections()`). The other M7 workstreams build on the scaffold's `ExtStyle` and `StyleBuilder`, not on parsed tech files. M10's `HeightView` becomes a view of `ExtStyle`, with `rescaled` derived from `extract.current`.
+   - What this means for the R2 exit: SPICE and SIM need EXTTECH's resist and device parsing (tasks 4.3, 4.5) for ExtGetDevInfo (D3). Under (a) those handlers are wired through the existing switch, so the NL-SPICE and NL-SIM replays do not wait for M10; until they land, `StyleBuilder` fixtures stand in for the netlisters' unit tests.
    - (b) Start M7 now except EXTTECH, which waits for TECH's merge. This is safer for M10, but EXTTECH's 22 requirements move to R3, and EXTCAP's and EXTDEV's PDK tests wait with it.
    - (c) Hand `extract/tech/` to M7 now and have M10's TECH consume M7's reader. That stops in-flight M10 work.
 
-   *Why (a):* it gains the most time and limits the conflict to adding rows to one table.
+   *Why (a):* it gains the most time. The only overlap with TECH while it is open is additive `case` lines in one switch, and the one refactor of TECH's pass runs after TECH has merged.
 3. **Bit-identical `atan` for the fringe-halo model.** The fringe fractions are `0.6366 · atan(mult · d)` (ExtCouple.c:718-737, 1298, 1492-1508, 1874-1875). The model is on by default for tech format 34 and above, and sky130A, gf180mcuD and ihp-sg13g2 are format 35, so it runs on every PDK cell. `.ext` values must match Magic's (glibc on Linux x86_64) byte for byte after `%lg`, on Linux x86_64, Linux aarch64 and macOS arm64 (`hefesto-output-determinism`). The platform `atan` functions are not guaranteed to agree to the last bit.
-   - (a) *Recommended:* a correctly rounded binary64 `atan`, either vendored from CORE-MATH (MIT; a licence check and a `THIRD_PARTY_NOTICES.md` entry) or written in-house from IEEE basic operations as M6 did for the OASIS CIRCLE sine and cosine (Q-OASIS-31). A pinned-value test on the capture image compares it with glibc's `atan` on every argument the EX and PDK cases produce, and any difference is reported before R5.
+   - (a) *Recommended:* a correctly rounded binary64 `atan`, either vendored from CORE-MATH (MIT; a licence check and a `THIRD_PARTY_NOTICES.md` entry) or written in-house from IEEE basic operations as M6 did for the OASIS CIRCLE sine and cosine (Q-OASIS-31). glibc dropped `atan`'s correctly rounded slow paths years ago, so a correctly rounded result can differ from Magic's glibc in the last ULP. The check therefore runs on what the cases compare: the capture image records its glibc version (`ldd --version` in the image manifest), and a probe compares the final `%lg` text that Magic's formula prints (`0.6366 · atan(mult · d)` through the full cap computation) with Hefesto's, on every argument the EX and PDK cases produce. A last-ULP difference that `%lg`'s six significant digits hide is harmless. Any text difference that remains is handled by the fallback, decided now: a pinned exception table (argument → glibc's double, generated on the capture image and committed with the glibc version) that `fringe_fraction` consults first, so the output stays byte-identical on every platform. If the table would exceed 1,000 entries, the affected cells are instead recorded as an approved deviation under this question and checked with `ext-cap` at `%lg` with one unit of tolerance in the last digit.
    - (b) The platform `atan`, accepting rare last-digit differences in `%lg` output on non-glibc platforms, with a per-case tolerance where they appear. This breaks the byte-identity rule.
    - (c) Port glibc's `atan`. It is LGPL, which `hefesto-licensing` does not allow in the core.
 4. **Scope of the PDK standard-cell golden cases (the exit criterion).** The roadmap requires `.ext` and SPICE to match Magic's after canonicalization "on the PDK standard cells", without naming cells.
-   - (a) *Recommended:* every cell of one standard-cell library per PDK. `sky130_fd_sc_hd` (446 `.mag` cells) and `gf180mcu_fd_sc_mcu7t5v0` (229) come from the existing `.mag` sets, and `sg13g2_stdcell` (84) from the `ihp-gds` set via `gds read`. That gives `EXTRACT-PDK-<lib>` (`.ext` per cell) and `NETLIST-PDK-<lib>` (`ext2spice lvs` flat, `ext2spice hierarchy on` in ngspice format, and `ext2sim`): 6 cases on 759 cells. No new data set is needed.
+   - (a) *Recommended:* every cell of one standard-cell library per PDK. `sky130_fd_sc_hd` (446 `.mag` cells) and `gf180mcu_fd_sc_mcu7t5v0` (229) come from the existing `.mag` sets, and `sg13g2_stdcell` (84) from the existing `ihp-gds-sc` set (the standard-cell library alone, not the 456 MB `ihp-gds`) via `gds read`. That gives `EXTRACT-PDK-<lib>` (`.ext` per cell) and `NETLIST-PDK-<lib>` (`ext2spice lvs` flat, `ext2spice hierarchy on` in ngspice format, and `ext2sim`): 6 cases on 759 cells. No new data set is needed. Size: about 10–15 MB of uncompressed expected text against 46 MB in `tests/golden` today, with a 15 MB budget (D21).
    - (b) A sample of about 20 cells per library (inverters, NAND/NOR, flops, a mux, a tap, a fill), which captures faster but leaves most device shapes untested.
    - (c) sky130 only.
 
@@ -655,17 +679,19 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 | Q-EXTRACT-2, 8, 9, 13, 15, 16 | replicate / fix / platform | D7, D10 |
 | Q-EXTRACT-26 | replicate | D11 |
 | Q-EXTRACT-11, 12 | platform / replicate | D12 |
-| Q-EXTRACT-27 (proposed) | fix recommended | D12, D21, D24 |
+| Q-EXTRACT-27 (proposed; covers `.ext`, `.res.ext`, `.res.lump`, `.fh`) | fix recommended | D12, D16, D18, D21, D24 |
 | Q-NETLIST-8, 9, 10, 12, 16, 30, 42 | compat / replicate / fix | D13 |
 | Q-NETLIST-1, 4, 5, 6, 7, 13, 19, 20, 31, 32, 34, 35, 37, 41 | fix / compat | D14, D21 |
 | Q-NETLIST-14, 15, 17, 18, 36, 48 | fix / compat / n/a / other | D15 |
 | Q-NETLIST-21, 23, 24, 25, 26, 27, 28, 29, 39, 40, 43, 44, 45, 46, 47 | fix / replicate / compat | D16, D21 |
 | Q-MISC-1, 3, 4, 7 | compat / fix | D7, D17 |
+| Q-MISC-2, 5 (X-2 tier 1) | fix (both modes) | D7, D21 |
+| Q-MISC-6 (X-2 tier 1) | fix (both modes) | D17, D21 |
 | Q-NETLIST-11, 33 (D-14) | platform | D5, D10, D13 |
 | m6 Open Questions 1, 2 | (a) | Context, D7, D13 |
 | m10 Open Question 4 | (a) | D7 |
 | Open Question 1 (proposed) | (a) recommended | D5, D6, D16, D20, D23 |
-| Open Question 2 (proposed) | (a) recommended | D1, D3, D7 |
+| Open Question 2 (proposed) | (a) recommended | D1, D3, D5, D7, D20 |
 | Open Question 3 (proposed) | (a) recommended | D4, D9, D22 |
 | Open Question 4 (proposed) | (a) recommended | D21, D25 |
 | Open Question 5 (proposed) | (a) recommended | D23 |
@@ -673,3 +699,4 @@ These shape or block the work. **All nine are proposed and wait for the user's d
 | Open Question 7 (proposed) | (a) recommended | D19 |
 | Open Question 8 (proposed) | (a) recommended | D5, D23 |
 | Open Question 9 (proposed) | (a) recommended | D21, D25 |
+| m10 scaffold as landed (`HeightView`, no loader hand-off; 73d4d195) | landed | Context, D5, D7, D20 |

@@ -34,7 +34,7 @@ The 56 open questions that blocked M7 (19 Q-EXTRACT, 4 Q-MISC, 33 Q-NETLIST) wer
 - **Capacitance and lumped resistance (EXTCAP).** Area, perimeter, overlap with shielding, sidewall, legacy and fringe-halo sideoverlap, corner fringe, substrate coupling, and per-class lumped resistance. Every compat split is a single branch point (Q-EXTRACT-1, 17, 18, 24). The fringe-halo `atan` gives the same bits on every platform (Open Question 3).
 - **Devices and substrate (EXTDEV).** Device regions, terminals, dimensions of non-rectangular gates, resistors, capacitors and diodes, model selection by parameter range, parameters, the `device` cell property, isolated substrate regions and substrate nodes.
 - **Hierarchy (EXTHIER).** Bottom-up order, interaction halos and step squares, pass-1 connections, name unification, merges, hierarchical coupling, hard-way names, arrays and sticky labels.
-- **Commands (EXTCMD).** `extract` with every option, incremental extraction, `extract unique`, output paths, path length, progress and cancel. A cancelled run leaves no truncated `.ext` file (Q-EXTRACT-27, proposed).
+- **Commands (EXTCMD).** `extract` with every option, incremental extraction, `extract unique`, output paths, path length, progress and cancel. A cancelled run leaves no truncated `.ext` file, and a cancelled `extresist` no truncated `.res.ext`, `.res.lump` or `.fh` (Q-EXTRACT-27, proposed).
 - **Flattening (EXTFLAT).** M6's reader and flattener gain device parameters, coupling and resistor flattening, lumped node resistance, device L/W, one-level flattening for hierarchical output, the `.res.ext` overlay, the common netlister arguments and SPICE and sim name conversion.
 - **Netlisters (SPICE, SIM).** `ext2spice` (spice2, spice3, hspice, ngspice, cdl; flat and hierarchical; parallel merging; `lvs`), `ext2sim` (`.sim`, `.al`, `.nodes`) and the standalone `extcheck` (Open Question 6).
 - **R-C extraction (RESNET, RESCMD).** extresist's net collection, tile fracturing, breakpoints, tile and contact resistors, reductions, Elmore pruning and simplification; the command, the input model, the two cutoffs, `.res.ext`, `.res.lump`, FastHenry and geometry output.
@@ -88,21 +88,24 @@ INTEGRATION makes these edits in this change's branch after the decisions. A wor
 - **Shared changes:**
   - `db::Plane` gains the tile client slot and the restricted stitch-edit header (Open Question 1).
   - `EditorState` gains `extract`, `netlist` and `extresist`.
-  - `tech/loader.cpp` and `tech/scale_layout.cpp` build and rescale the extraction style (one hook, shared with M10's TECH).
+  - A new editor-side hook builds the extraction style when a technology loads into the session and rescales it on `scalegrid` and finer-grid reads. No such hook exists (M10's `HeightView` reads `Technology::raw_sections()`), and `tech/` is not changed.
+  - `StyleView` (M6) and `HeightView` (M10) are re-sourced from `ExtStyle`; `HeightView::rescaled` follows the session's style, so there is one rescale path. `lef write` and `def write` use the selected extract style instead of the default one, as Magic's writers do.
   - `lef write` reads antenna rules from `antenna::RuleView` instead of its own StyleView query.
   - The command registry gains `extract` (`ext`), `ext2spice` (`exttospice`), `ext2sim` (`exttosim`), `extresist` and `antennacheck`, and `ui/magic_help.cpp`'s UI-G-005 deviation drops them (design D20).
 - **Dependencies:** none new in the product, unless Open Question 3 is answered by vendoring a correctly rounded `atan` (MIT). The capture image builds Magic's `extcheck` from the pinned source.
-- **Data:** none new for sky130 and gf180mcu (the `.mag` standard-cell sets exist). `sg13g2_stdcell` comes from the `ihp-gds` set (Open Question 4 (a)).
+- **Data:** none new for sky130 and gf180mcu (the `.mag` standard-cell sets exist). `sg13g2_stdcell` comes from the existing `ihp-gds-sc` set (Open Question 4 (a)).
 - **Golden cases:**
   - EXTRACT: 70 rows in `tests/golden/EXTRACT/CASES.md`.
   - NETLIST: 67 rows in `tests/golden/NETLIST/CASES.md`.
   - MISC: the 9 MISC-ANT rows.
   - PDK: `EXTRACT-PDK-<lib>` and `NETLIST-PDK-<lib>` for the three standard-cell libraries (Open Question 4 (a)).
   - SCRIPT-API-16 and SCRIPT-API-20 leave their `deferred = "M7"` entries.
+  - LEFDEF-336, one end-to-end `extract all` then `def write` case (Open Question 9 (a)).
+  - 155 cases in all (design D21).
   - Deviations only for the both-modes fixes whose output Magic can produce (design D21).
 - **Docs:**
   - `docs/diagnostics/codes/{extract,extflat,netlist,extresist,antenna}.md`;
   - `docs/contributing/` (areas, fuzz targets, golden modules, the security review);
   - `docs/design/m7-ui-conformance.md`;
-  - `docs/building.md` (the `extcheck` build in the image, the `ihp-gds` use);
+  - `docs/building.md` (the `extcheck` build in the image, the `ihp-gds-sc` use);
   - the roadmap status and CHANGELOG.
