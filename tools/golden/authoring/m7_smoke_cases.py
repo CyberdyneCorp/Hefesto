@@ -65,6 +65,7 @@ def extcheck_smoke() -> ExternalCase:
         description=("capture smoke (m7-extraction tasks 2.2, 2.3): extcheck with no arguments prints the usage "
                      "text and exits with status 1"),
         role="extcheck", driver=DRIVER,
+        capture_blocked="Magic's standalone extcheck does not link at fc5daa9e (image manifest, golden-capture run 44961580186: build=unavailable, tcl-tree and tcl-free link failures); hand-derived under design R7",
         notes=["Smoke case of the external-command mode (authoring/m7_smoke_cases.py), not a NETLIST/CASES.md row."])
 
 

@@ -639,6 +639,8 @@ CHK_DESCRIPTION = ("two inverters (x1, x2) each with a vdd! node, not connected,
 # The console streams (task 2.3): bytes with the masks of the external-command mode (as NETLIST-SMOKE-02),
 # the usage line's leading program name as <prog> (prog-name) and the informative "Memory used:"
 # value (extcheck-memory), compare/masks.py.
+# Task 2.2: the image cannot build Magic's extcheck, so NL-CHK-01 is hand-derived (design R7).
+CHK_CAPTURE_BLOCKED = "Magic's standalone extcheck does not link at fc5daa9e (image manifest, golden-capture run 44961580186: build=unavailable, tcl-tree and tcl-free link failures); hand-derived under design R7"
 CHK_STREAM_COMPARATOR = "bytes"
 CHK_STREAM_MASKS = ["prog-name", "extcheck-memory"]
 
@@ -651,7 +653,7 @@ def extcheck_case_toml() -> str:
             "# hefesto-extcheck on replay); each run writes <run>.stdout, <run>.stderr and <run>.exit in the work dir.", "",
             "schema = 1", f'id = "{CHK_ID}"', 'area = "NETLIST"', 'capability = "netlist-extcheck"',
             f"requirements = {_toml_list(CHK_REQUIREMENTS)}", 'tool = "magic"',
-            f"description = {_toml_str(CHK_DESCRIPTION)}", "", "[reference]", 'mode = "external-command"']
+            f"description = {_toml_str(CHK_DESCRIPTION)}", f"capture_blocked = {_toml_str(CHK_CAPTURE_BLOCKED)}", "", "[reference]", 'mode = "external-command"']
     text = "\n".join(head) + "\n"
     for name in extcheck_outputs():
         stream = not name.endswith(".exit")

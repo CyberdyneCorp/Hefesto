@@ -13,6 +13,7 @@ capability = "netlist-extcheck"
 requirements = ["Counts and report format", "Invocation"]
 tool = "magic"
 description = "two inverters (x1, x2) each with a vdd! node, not connected, plus a coupling and a resistor; extcheck with default thresholds, with -c 0 -r 0, with -C -r 0, and with no arguments (usage, exit status 1)"
+capture_blocked = "Magic's standalone extcheck does not link at fc5daa9e (image manifest, golden-capture run 44961580186: build=unavailable, tcl-tree and tcl-free link failures); hand-derived under design R7"
 
 [reference]
 mode = "external-command"
