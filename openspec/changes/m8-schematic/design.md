@@ -244,3 +244,49 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-5, -16 | fix | D7, D9 |
 | Q-SCHEM-8 | other (inventory, public-doc semantics) | D7, D18 |
 | Q-SCHEM-9, -13, -24 | platform | D5, D7, D15 |
+
+## As-landed scaffold contracts
+
+The scaffold (tasks.md 5.1–5.3, branch `m8-r1-scaffold`) landed the area, headers and stubs below. The headers are the contract; this section records where they are, who fills them in, and where they differ from "Area contracts", D4 and D5. Include paths are under `src/core/include/hefesto/`, sources under `src/core/src/`. Everything is in namespace `hefesto::schem` (one namespace for the area; the names do not collide).
+
+### Files and owners
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `schem/{sources.cmake,codes.cpp}` | area sources; the code table assembled from `schem/<sub>/codes.inc` (topics `SCHEM-FILE`, `-SYM`, `-LIB`, `-TCL`, `-NET`, `-EDIT`, `-CMD`, `-SIM`) | SCAFFOLD |
+| `schem/<sub>/{sources.cmake,codes.inc}` for `file sym lib tcl net edit cmd sim` | one source list and code fragment per subdirectory (no codes yet) | the D3 owner |
+| `schem/not_implemented.hpp`, `src/schem/not_implemented.cpp` | `not_implemented(what) -> diag::Diagnostic` (`CORE-NOTIMPL-007`, constant `diag::codes::kSchemNotImplemented`) | SCAFFOLD (removed at M8 exit) |
+| `schem/session.hpp` | `DocumentId`, `OpenDocument {id, document}`, `Session {documents, next_id, symbols, search_path, xschemrc}`; `EditorState::schem` | SCAFFOLD (members: EDIT `documents`/`next_id`, SYMLIB the rest) |
+| `schem/file/document.hpp` | `FileKind`, `kLayerCount`, `Point`, `LineRecord` (= `BoxRecord`), `ArcRecord`, `PolygonRecord`, `TextRecord`, `WireRecord`, `InstanceRecord`, `GlobalProperties {k,g,v,s,f,e}`, `Document`, `EmbeddedSymbol {reference, symbol}` | FORMAT |
+| `schem/file/read_write.hpp`, `src/schem/file/read_write.cpp` | `kWriterVersion` (`3.4.8RC`), `ReadOptions {kind, xschem_compat, warnings}`, `read_document`, `write_document` | FORMAT |
+| `schem/file/properties.hpp`, `src/schem/file/properties.cpp` | `Property {key, raw_value, has_value}`, `PropertyList`, `ValueForm {decoded, raw}`, `parse_properties`, `get_token`, `set_token` | FORMAT |
+| `schem/sym/symbol.hpp`, `src/schem/sym/symbol.cpp` | `PinIndex`, `Pin {name, direction, box}`, `Symbol {reference, file, document, pins, embedded, placeholder}`, `pin_order` | SYMLIB |
+| `schem/lib/search_path.hpp`, `src/schem/lib/search_path.cpp` | `SearchPath` (`directories`, static `from_xschemrc`), `XschemrcInput {rc_file, env, document_folder}`, `XschemrcResult {search_path, variables, diagnostics}` | SYMLIB |
+| `schem/lib/symbol_cache.hpp`, `src/schem/lib/symbol_cache.cpp` | `Reference {text}`, `ResolveContext {search_path, fs, warnings}`, `SymbolCache` (`resolve`, `placeholder`, `clear`, `size`) | SYMLIB |
+| `schem/tcl/tcl_bridge.hpp`, `src/schem/tcl/tcl_bridge.cpp` | `kTclFailure` (`?` LF), `TclContext {path, sch_basename, instname, symname}`, `TclBridge(script::Interpreter*)::evaluate` | SYMLIB |
+| `schem/net/{netlist,expr,bus}.hpp`, `src/schem/net/{netlist,expr,bus}.cpp` | `Hierarchy`, `NetlistOptions` (the eight options of "Netlist options" with their defaults, plus `portable_paths`), `ComputedLabel {schematic, instance, lab}`, `NetlistResult {text, diagnostics, failed, labels}`, `netlist`; `evaluate_expr`; `expand_bus` | NETLIST |
+| `schem/edit/{hier_path,operations}.hpp`, `src/schem/edit/operations.cpp` | `HierPath {elements}`; `EditOperation {option, handler}`, `edit_operations` | EDIT |
+| `schem/cmd/commands.hpp`, `src/schem/cmd/commands.cpp` | `register_schematic_command(cmd::CommandRegistry&)`, `register_xschem_command(script::Interpreter&, Session&)` | CMD |
+| `schem/sim/deck.hpp`, `src/schem/sim/deck.cpp` | `Deck {text, diagnostics}`, `build_deck`, `vector_name` | SIMINT |
+| `compat/compat_settings.hpp` | `CompatSettings::xschem_compat` (default true), `xschem_compat_netlist_line` | COMPAT |
+| `settings/project_settings.hpp` | `kXschemCompat`, `kPortableNetlistPaths`, `ProjectSettings::portable_netlist_paths` (default false); `setting_names()` is magic-compat, netgen-compat, xschem-compat, portable-netlist-paths, script-strict | COMPAT |
+| `tests/unit/schem/` and `tests/unit/schem/<sub>/` | `hefesto_schem_tests` (shared) and one executable per subdirectory once it has a `*_test.cpp` (data: `tests/data/schem/<sub>`) | SCAFFOLD; the D3 owners |
+| `tests/unit/schem/scaffold_test.cpp` | the `[m8-scaffold]` tests of the stubs' documented values | SCAFFOLD; owners replace them with `[cap:][req:]` tests |
+| `tests/unit/schem/compat_isolation_test.cpp` | "xschem-compat off leaves layout output unchanged" (GDS before and after `setting set xschem-compat off`) | COMPAT |
+| `docs/diagnostics/codes/schem.md` | one section per workstream with codes (FORMAT, SYMLIB, NETLIST, EDIT, CMD, SIMINT) and the generated table | SCAFFOLD (sections: their workstreams) |
+
+### Stub values
+
+`read_document` and `build_deck` fail with `CORE-NOTIMPL-007`; `netlist` returns `failed` with that diagnostic and an empty text; `SearchPath::from_xschemrc` returns an empty result with that diagnostic; `write_document` returns an empty text; `parse_properties` finds nothing, `get_token` returns nullopt and `set_token` returns its input; `pin_order` returns file order; `SymbolCache::resolve` always returns the placeholder; `TclBridge::evaluate` returns `kTclFailure`; `evaluate_expr` returns the expression unchanged; `expand_bus` returns the name itself; `edit_operations` is empty; `vector_name` returns the net unchanged; the `schematic` and `xschem` commands answer `CORE-NOTIMPL-007`. Neither command is registered: CMD wires `schematic` into `cmd::register_all_commands` and `xschem` into the project interpreter when it implements them.
+
+### Differences from "Area contracts", D4 and D5
+
+- **Document.** D4's "records in file order" is one list per record kind, each in read/creation order (the writer regroups by layer, "Canonical write order"); embedded `[` ... `]` blocks are `Document::embedded`. `Document` gains `path` (empty when unsaved), because relative references resolve against the containing schematic's folder (Q-SCHEM-30) and `SymbolCache::resolve` receives only the document. Coordinates are plain `double`: D6's "numeric fields keep their source text" is not in the model, since "Numeric fields" writes every value with `%.16g` (scenario "Re-formatting a hand-edited coordinate"); FORMAT may add source text if a golden case needs it.
+- **read_document** reports the warnings of "Malformed input" through `ReadOptions::warnings` (a `diag::DiagnosticSink*`), since `diag::Outcome<Document>` carries only the failure.
+- **SymbolCache::resolve** takes a third argument, `ResolveContext` (search path, file system, warning sink), since the cache holds no reference to them. `SearchPath::from_xschemrc(platform::FileSystem&, const XschemrcInput&)` returns `XschemrcResult`; how it obtains its fresh sandboxed interpreter (D7) is SYMLIB's choice.
+- **TclBridge** is constructed over a `script::Interpreter*` (not owned; nullptr fails every evaluation).
+- **vector_name** takes the `Session` as well (`vector_name(const Session&, const HierPath&, net)`): step 2 of "Simulator vector names" resolves port nets through the parent schematics. `HierPath` is in `schem/edit/hier_path.hpp` (EDIT owns "Hierarchy path").
+- **EDIT and CMD.** There is no `cmd::Command` class in the core; commands are `cmd::CommandSpec` handlers. EDIT's operations are therefore `EditOperation {option, cmd::Handler}` entries that CMD's `schematic` dispatcher looks up; a handler reaches the session through `CommandContext::editor()->schem`. The Tcl interpreter type is `script::Interpreter` (from `script::create_project_interpreter`), not `script::TclInterpreter`.
+- **NetlistOptions** carries the project setting `portable-netlist-paths` as `portable_paths`, so `netlist` needs no `ProjectSettings`.
+- **D5.** `xschem_compat_netlist_line` returns the empty string when `xschem-compat` is ON (no line). The settings' JSON keeps `setting_names()` order in the settings store; `hefesto.project` writes its settings object with sorted keys, as before.
+- **Edits outside the area.** `src/core/CMakeLists.txt` (`HEFESTO_CORE_AREAS`), `tests/unit/CMakeLists.txt` (area list), `diag/codes.cpp`, `diag/codes.hpp` and `src/diag/area_codes.hpp` (the `schem` area, `CORE-NOTIMPL-007`), `docs/diagnostics/codes.md`, `editor/editor_state.hpp` (`schem`), `compat/` and `settings/` (D5), and, because the setting list grew: `app/settings_layers.cpp` and `app/project_file.cpp` (now loop over `setting_names()` instead of naming three settings), the `setting` help text in `cmd/builtins.cpp`, and the expected texts of `tests/unit/core/cmd_test.cpp`, `tests/unit/core/settings_test.cpp` and `tests/unit/app/project_file_test.cpp`.

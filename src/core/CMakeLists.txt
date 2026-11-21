@@ -76,8 +76,11 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       INTEGRATION (dispatcher), def/read DEFR, def/write DEFW, oasis/codec
 #       OASFMT, oasis/read OASR, oasis/write OASW, oasis/command OASCMD,
 #       extract/tech EXTSUB)   extflat/ EXTSUB
+#   M8 (openspec/changes/m8-schematic/design.md D3): schem/ SCAFFOLD (shared
+#       files; file/ FORMAT, sym/ lib/ tcl/ SYMLIB, net/ NETLIST, edit/ EDIT,
+#       cmd/ CMD, sim/ SIMINT, each with its own sources.cmake)
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
-                       script pcell tools gui mask gds cif lef def oasis extflat extract)
+                       script pcell tools gui mask gds cif lef def oasis extflat extract schem)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

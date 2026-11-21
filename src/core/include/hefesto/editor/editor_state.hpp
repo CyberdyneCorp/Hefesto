@@ -8,7 +8,8 @@
 // (openspec/changes/m1-core-viewer/design.md D2/D4;
 // openspec/changes/m2-interactive-editing/design.md D2/D4 for the M2
 // members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members;
-// openspec/changes/m4-scripting/design.md D4 for the M4 member).
+// openspec/changes/m4-scripting/design.md D4 for the M4 member;
+// openspec/changes/m8-schematic/design.md D4 for the M8 member).
 // Areas request new members through their open items instead of editing it.
 
 #pragma once
@@ -31,6 +32,7 @@
 #include "hefesto/drc/session.hpp"
 #include "hefesto/lef/session.hpp"
 #include "hefesto/mask/session.hpp"
+#include "hefesto/schem/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/select/selection.hpp"
@@ -213,6 +215,14 @@ struct EditorState {
   // table, the VIA and NONDEFAULTRULE tables, `lef datestamp`, `lef
   // nocheck` and the sticky LEF units.
   lef::LefSession lefdef;
+
+  // ---- M8 (openspec/changes/m8-schematic/design.md D4) ----
+
+  // EDIT / SYMLIB: the schematic session (schem/session.hpp; each member's
+  // owner is named there): the open schematic and symbol documents, the
+  // symbol cache, the library search path and the active PDK's `xschemrc`
+  // result. Independent of the layout database.
+  schem::Session schem;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed
