@@ -393,8 +393,8 @@ class Parser {
     }
     std::uint64_t n = 0;
     const auto [end, ec] = std::from_chars(text_.data() + start, text_.data() + pos_, n);
-    if (start == pos_ || ec == std::errc::invalid_argument) {
-      fail(Failure::syntax);
+    if (start == pos_ || ec == std::errc::invalid_argument || (ec == std::errc{} && n == 0)) {
+      fail(Failure::syntax);  // a count of 0 would leave no name at all
       return std::nullopt;
     }
     if (ec == std::errc::result_out_of_range || n > kMaxBusBits) {

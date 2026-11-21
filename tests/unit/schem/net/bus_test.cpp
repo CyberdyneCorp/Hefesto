@@ -88,6 +88,23 @@ TEST_CASE("bus notation: a syntax error keeps the string with unknown width",
   }
 }
 
+// Regression (fuzz_schem_bus, CI run 44867374318): a repetition count of 0
+// expanded to no name at all, breaking "an expansion always gives at least
+// the input back". A count is at least 1; 0 is a syntax error, like a step
+// or rep of 0 in an index.
+TEST_CASE("bus notation: a repetition count of 0 is a syntax error",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  for (const char* bad : {"a*0", "0*a", "(a,b)*0", "2*a*0", "3*(a,_,d)*0", "x,(a)*00"}) {
+    INFO(bad);
+    const auto bus = schem::parse_bus(bad);
+    CHECK(bus.syntax_error);
+    CHECK(bus.bits == Bits{bad});
+    CHECK_FALSE(bus.width_known);
+  }
+  CHECK(joined("a*1") == "a");
+  CHECK(joined("1*(a,b)") == "a,b");
+}
+
 TEST_CASE("bus notation: hostile sizes are refused without allocating them",
           "[cap:schematic-netlisting][req:Bus and vector notation]") {
   for (const char* big : {"A[0:9223372036854775807]", "A[-9223372036854775807:9223372036854775807]",
