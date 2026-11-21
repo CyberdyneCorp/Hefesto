@@ -9,3 +9,4 @@
 // and describe the codes in its SYMLIB section.
 //
 // Owner: SYMLIB (openspec/changes/m8-schematic/design.md D3).
+HEFESTO_SCHEM_CODE("SCHEM-SYM-001", warning, "Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5).")
