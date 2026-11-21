@@ -763,6 +763,11 @@ decisions = ["Q-LEFDEF-1"]
 outputs = ["cells.txt"]
 reason = "a route with no positive width paints the layer's default width (Q-LEFDEF-1, fixed in both modes); Magic paints no wire there, so its nowidth.mag also has no magscale line"
 
+[LEFDEF-241]
+decisions = ["Q-LEFDEF-83"]
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "a second COMPONENT named u1 is placed and renamed inv_0 with the duplicate-id warning and its count line (Q-LEFDEF-83, fixed in both modes); Magic keeps the duplicate instance id u1"
+
 # --- end LEFDEF ---
 
 # --- OASIS (approved fixes, m6-lef-def-oasis task 15.7) ---
@@ -789,22 +794,12 @@ reason = "M6 exit blocker, LEFR; LEFR: the startup .lef is read, but the console
 [MASK-OS-016]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cont.lef"]
-reason = "M6 exit blocker, LEFW; GOLDEN: re-authored in round 5, recapture pending: the LEF VIA is VX1, not V1 (the tech section's cut alias; Magic's LefRedefined left the redefined record's lefClass and obsType uninitialised and Magic exited with SIGSEGV in golden-capture run 44743146734)"
-
-[LEFDEF-241]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "authored before its capture in golden-capture.yml and before DEFR makes it replay (m6-lef-def-oasis task 15.1)"
+reason = "M6 exit blocker, LEFW; GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run 44860968058. The crash point is not found; the case is capture_blocked until it is; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 
 [LEFDEF-232]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "M6 exit blocker, DEFR; DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"
-
-[LEFDEF-334]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "top.def"]
-reason = "authored before its capture in golden-capture.yml and before DEFW makes it replay (m6-lef-def-oasis task 15.1); its .ext inputs come from golden-capture.yml mode ext-inputs and lefdef_cases.py --sync-ext (task 1.6)"
 
 [LEFDEF-RT-sky130_fd_sc_hd]
 deferred = "M6"
@@ -815,41 +810,6 @@ reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky1
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "lefdef_rt.lef.sha256", "lefdef_rt.lef.summary.txt", "lefdef_rt.probe.lef"]
 reason = "M6 exit blocker, LEFW; LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"
-
-[OASIS-023]
-deferred = "M6"
-outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5, recapture pending: authoring/oasequiv.py wrote a rule-2 array (oasis-read 'Placement repetitions') with columns and rows unswapped, which Magic's AREF read (columns along the child's x axis) took as spacing 0; the new preps.gds swaps them as OASR's transcode does, and hefesto-cli's gds read of it matches its oasis read"
-
-[OASIS-032]
-deferred = "M6"
-outputs = ["cells.txt", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5, recapture pending: both scripts now copy $env(PDK_ROOT) into the Tcl variable, which Magic and Hefesto substitute (Q-OASIS-48); hefesto-cli matched the previous capture, so it goes into REPLAYED once recaptured"
-
-[OASIS-020]
-deferred = "M6"
-outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, which made Magic's port label single where oasis-read reads one TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp 1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"
-
-[OASIS-021-ordering]
-deferred = "M6"
-outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, which made Magic's port label single where oasis-read reads one TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp 1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"
-
-[OASIS-021-flatten]
-deferred = "M6"
-outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, which made Magic's port label single where oasis-read reads one TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp 1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"
-
-[OASIS-021-flatglob]
-deferred = "M6"
-outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, which made Magic's port label single where oasis-read reads one TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp 1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"
-
-[OASIS-021-noduplicates]
-deferred = "M6"
-outputs = ["cells.sha256", "report.txt"]
-reason = "M6 exit blocker, OASR; GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, which made Magic's port label single where oasis-read reads one TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp 1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"
 
 [OASIS-021-unique]
 deferred = "M6"

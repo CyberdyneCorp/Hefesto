@@ -1,0 +1,20 @@
+file anchor.mag
+magic
+tech oastest
+timestamp 1795232276
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file sc_inv.mag
+magic
+tech oastest
+timestamp 52060362
+<< checkpaint >>
+rect 0 0 10 20
+<< metal1 >>
+rect 0 0 10 20
+<< properties >>
+string GDS_END 232
+string GDS_FILE $PDK_ROOT/lib/cells.gds
+string GDS_START 100
+<< end >>

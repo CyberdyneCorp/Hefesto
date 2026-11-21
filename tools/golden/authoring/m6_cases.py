@@ -89,21 +89,9 @@ BLOCKER_REASONS = {
                "count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console "
                "match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and "
                "per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"),
-    "OASSTD": ("GOLDEN: re-authored in round 5 (E4, 2026-11-20), recapture pending: Magic now reads the GDS equivalent "
-               "of the strm2oas file (authoring/oasequiv.py; KLayout's strm2gds writes the coincident copies of a "
-               "zero-displacement repetition once, which made Magic's port label single where oasis-read reads one "
-               "TEXT per displacement: the 45 cells with an extra zero-area label), and both sides use datestamp "
-               "1700000000. hefesto-cli's gds read of the equivalent matches its oasis read cell for cell"),
-    "OAS023": ("GOLDEN: re-authored in round 5, recapture pending: authoring/oasequiv.py wrote a rule-2 array "
-               "(oasis-read 'Placement repetitions') with columns and rows unswapped, which Magic's AREF read "
-               "(columns along the child's x axis) took as spacing 0; the new preps.gds swaps them as OASR's "
-               "transcode does, and hefesto-cli's gds read of it matches its oasis read"),
-    "OAS032": ("GOLDEN: re-authored in round 5, recapture pending: both scripts now copy $env(PDK_ROOT) into the Tcl "
-               "variable, which Magic and Hefesto substitute (Q-OASIS-48); hefesto-cli matched the previous capture, "
-               "so it goes into REPLAYED once recaptured"),
-    "MASKOS": ("GOLDEN: re-authored in round 5, recapture pending: the LEF VIA is VX1, not V1 (the tech section's cut "
-               "alias; Magic's LefRedefined left the redefined record's lefClass and obsType uninitialised and "
-               "Magic exited with SIGSEGV in golden-capture run 44743146734)"),
+    "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
+               "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
+               "44860968058. The crash point is not found; the case is capture_blocked until it is"),
     "STARTUP": ("LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, "
                 "'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in "
                 "hefesto-cli's startup path"),
@@ -114,13 +102,6 @@ BLOCKERS: dict[str, str] = {
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
-    "OASIS-020": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-flatglob": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-flatten": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-noduplicates": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-ordering": BLOCKER_REASONS["OASSTD"],
-    "OASIS-023": BLOCKER_REASONS["OAS023"],
-    "OASIS-032": BLOCKER_REASONS["OAS032"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -137,13 +118,24 @@ TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # tests/golden/LEFDEF/magic-crash/ (lefdef_cases.MAGIC_CRASH) for Hefesto's own tests.
 # Round 4: MASK-OS-016's Magic run exited 139 (SIGSEGV) in golden-capture run 44743146734; round 5 found
 # the cause (its LEF VIA was named as the tech section's cut alias, LefRedefined) and re-authored it.
-LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ()
+# Round 5: the re-authored MASK-OS-016 still exited 139 in golden-capture run 44860968058, so it is
+# capture_blocked again.
+LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ("MASK-OS-016",)
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-241",
+    "LEFDEF-334",
+    "OASIS-020",
+    "OASIS-021-flatglob",
+    "OASIS-021-flatten",
+    "OASIS-021-noduplicates",
+    "OASIS-021-ordering",
+    "OASIS-023",
+    "OASIS-032",
     "LEFDEF-118",
     "LEFDEF-119",
     "LEFDEF-127",

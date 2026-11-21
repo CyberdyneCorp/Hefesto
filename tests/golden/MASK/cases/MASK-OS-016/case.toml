@@ -16,6 +16,7 @@ capability = "mask-output-styles"
 requirements = ["Contact cut size query"]
 tool = "magic"
 description = "Contact type via1 with squares 10 20 20; lef read of a VIA whose via1 cut (0.1 um) differs from the contact's (cut-size warnings, the cut grown to the contact size), then lef write -tech of a via1 contact cell."
+capture_blocked = "GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run 44860968058. The crash point is not found; the case is capture_blocked until it is"
 
 [reference]
 script = "input/commands.tcl"

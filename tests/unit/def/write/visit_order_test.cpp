@@ -77,8 +77,7 @@ std::string write_case(const std::string& id, const std::string& command, bool m
 TEST_CASE("the nets are visited in Magic's EFVisitNodes order on every DEF-write net case",
           "[cap:ext-flattening-hierarchy][req:Visit orders for output]") {
   // LEFDEF-319 sets Tcl globals and LEFDEF-331 writes two cells; the golden
-  // replay covers them. LEFDEF-334 waits for its recapture (round 5: more
-  // `ignore` names so that the table grows, Q-LEFDEF-135).
+  // replay covers them.
   const std::vector<std::pair<std::string, std::string>> cases = {
       {"LEFDEF-317", "def write"}, {"LEFDEF-318", "def write -allspecial"},
       {"LEFDEF-320", "def write"}, {"LEFDEF-321", "def write"},
@@ -87,6 +86,7 @@ TEST_CASE("the nets are visited in Magic's EFVisitNodes order on every DEF-write
       {"LEFDEF-326", "def write"}, {"LEFDEF-327", "def write"},
       {"LEFDEF-328", "def write"}, {"LEFDEF-330", "def write -anal"},
       {"LEFDEF-332", "def write"}, {"LEFDEF-333", "def write"},
+      {"LEFDEF-334", "def write"},
   };
   for (const auto& [id, command] : cases) {
     const std::vector<std::string> magic = net_records(slurp(case_dir(id) / "expected/top.def"));
