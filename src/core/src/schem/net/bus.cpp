@@ -131,25 +131,36 @@ class Parser {
     return out;
   }
 
+  /// `factor * n1 * n2 ...` repeats each element n1 * n2 * ... times. The
+  /// counts are multiplied first and the elements copied once, so a long
+  /// run of `*1` costs no copy per count; the size check after each count
+  /// fails at the same count as copying step by step would.
   std::optional<Bits> term(int depth) {
     auto out = factor(depth);
+    std::uint64_t times = 1;
     while (out) {
       skip_space();
       if (!accept('*')) {
         break;
       }
       const auto n = count();
-      if (!n || !fits_product(out->size(), *n)) {
+      if (!n) {
         return std::nullopt;
       }
-      Bits each;
-      each.reserve(out->size() * *n);
-      for (const auto& bit : *out) {
-        each.insert(each.end(), *n, bit);
+      times = saturating_product(times, *n);
+      if (!fits_product(out->size(), times)) {
+        return std::nullopt;
       }
-      out = std::move(each);
     }
-    return out;
+    if (!out || times == 1) {
+      return out;
+    }
+    Bits each;
+    each.reserve(out->size() * times);
+    for (const auto& bit : *out) {
+      each.insert(each.end(), times, bit);
+    }
+    return each;
   }
 
   /// `n1 * n2 * ... factor` repeats the factor n1 * n2 * ... times. The
@@ -158,14 +169,12 @@ class Parser {
   std::optional<Bits> factor(int depth) {
     skip_space();
     std::uint64_t times = 1;
-    bool repeated = false;
     while (const auto n = leading_repeat()) {
       times = saturating_product(times, *n);
-      repeated = true;
       skip_space();
     }
     auto inner = primary(depth);
-    if (!repeated || !inner) {
+    if (times == 1 || !inner) {
       return inner;
     }
     if (!fits_product(inner->size(), times)) {

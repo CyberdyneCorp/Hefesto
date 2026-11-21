@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -141,4 +142,25 @@ TEST_CASE("bus notation: a long run of leading repeat counts does not recurse",
   CHECK(schem::parse_bus("1024*1025*a").too_large);
   CHECK(schem::parse_bus("1048576*1048576*1048576*a").too_large);
   CHECK(schem::parse_bus("2*3*(a").syntax_error);
+}
+
+// Regression (fuzz_schem_bus timeout, CI run 44914816466): each trailing
+// `*n` copied the whole expansion, so a wide bus followed by hundreds of
+// `*1` made about 7 x 10^7 string copies. The counts are now multiplied
+// first and the elements copied once.
+TEST_CASE("bus notation: trailing repeat counts copy the expansion once",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  std::string many = "X[92031:0]";
+  for (int i = 0; i < 2000; ++i) many += "*1";
+  const auto start = std::chrono::steady_clock::now();
+  const auto bus = schem::parse_bus(many);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(bus.width() == 92032);
+  CHECK(elapsed < std::chrono::seconds{5});
+  CHECK(joined("(a,b)*2*3") == "a,a,a,a,a,a,b,b,b,b,b,b");
+  CHECK(schem::parse_bus("a*1024*1024").width() == schem::kMaxBusBits);
+  const auto big = schem::parse_bus("a*1048576*2*0");
+  CHECK(big.too_large);  // fails at the count that overflows, before the 0
+  CHECK_FALSE(big.syntax_error);
+  CHECK(schem::parse_bus("a*2*0").syntax_error);
 }
