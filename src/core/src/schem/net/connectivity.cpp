@@ -84,7 +84,7 @@ using Lines = std::map<double, Line>;
 /// Joins every probe with every non-ignored wire it touches. Vertical and
 /// horizontal wires are matched with the probes on their line by binary
 /// search, so the cost is O((n + k) log n) for k touches; other wires are
-/// tested against every probe.
+/// tested against the probes within their x range, found the same way.
 class TouchJoiner {
  public:
   TouchJoiner(const std::vector<NetWire>& wires, const std::vector<Probe>& probes, UnionFind& uf)
@@ -95,6 +95,12 @@ class TouchJoiner {
         by_y_[probe.at.y].emplace_back(probe.at.x, probe.node);
       }
     }
+    for (std::size_t i = 0; i < probes.size(); ++i) {
+      if (!has_nan(probes[i].at)) {
+        by_probe_x_.emplace_back(probes[i].at.x, i);
+      }
+    }
+    std::sort(by_probe_x_.begin(), by_probe_x_.end());
     for (auto* lines : {&by_x_, &by_y_}) {
       for (auto& [key, line] : *lines) {
         std::sort(line.begin(), line.end());
@@ -131,9 +137,16 @@ class TouchJoiner {
     }
   }
 
+  /// A wire that is neither vertical nor horizontal can only touch probes
+  /// whose x lies within its x range: those are found by binary search.
   void join_any(std::size_t w) {
-    for (const Probe& probe : probes_) {
-      if (touches(probe.at, wires_[w].p1, wires_[w].p2)) {
+    const NetWire& wire = wires_[w];
+    const double lo = std::min(wire.p1.x, wire.p2.x);
+    const double hi = std::max(wire.p1.x, wire.p2.x);
+    const auto first = std::lower_bound(by_probe_x_.begin(), by_probe_x_.end(), std::pair{lo, std::size_t{0}});
+    for (auto p = first; p != by_probe_x_.end() && p->first <= hi; ++p) {
+      const Probe& probe = probes_[p->second];
+      if (touches(probe.at, wire.p1, wire.p2)) {
         uf_.unite(w, probe.node);
       }
     }
@@ -144,6 +157,7 @@ class TouchJoiner {
   UnionFind& uf_;
   Lines by_x_;
   Lines by_y_;
+  std::vector<std::pair<double, std::size_t>> by_probe_x_;  // (x, probe index), sorted
 };
 
 struct Tap {
@@ -459,17 +473,6 @@ class Namer {
 };
 
 }  // namespace
-
-Point transform_point(Point origin, int rotation, int flip, Point local) noexcept {
-  const double x = flip == 1 ? -local.x : local.x;
-  const double y = local.y;
-  switch (((rotation % 4) + 4) % 4) {
-    case 1: return {origin.x - y, origin.y + x};
-    case 2: return {origin.x - x, origin.y - y};
-    case 3: return {origin.x + y, origin.y - x};
-    default: return {origin.x + x, origin.y + y};
-  }
-}
 
 Point pin_point(const BoxRecord& box) noexcept {
   return {(box.p1.x + box.p2.x) / 2.0, (box.p1.y + box.p2.y) / 2.0};
