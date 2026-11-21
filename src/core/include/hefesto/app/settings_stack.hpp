@@ -5,7 +5,7 @@
 // resolution", decision X-4): built-in defaults < PDK startup data < user
 // preferences < project < command line / session. Each effective value
 // reports the layer that supplied it. The M0 project settings
-// (settings::ProjectSettings: magic-compat, netgen-compat, script-strict)
+// (settings::ProjectSettings: settings::setting_names())
 // are the project layer's typed core and stay the source of truth for them.
 //
 // Owner: PDK (openspec/changes/m1-core-viewer/design.md, D2).
