@@ -41,7 +41,10 @@ struct ReadOptions {
 /// `options.warnings` as "Malformed input" says; reading never fails, so the
 /// Outcome always holds a document. `Document::path` is left empty (the
 /// caller knows where the bytes came from). Work and memory are linear in
-/// the input; nested embedded blocks are read without recursion.
+/// the input; nested embedded blocks are read without recursion, and each
+/// open `[` block costs a few machine words of reader state (about 12 bytes
+/// of memory per input byte for a file made only of `[` lines), not a copy
+/// of a document. Warnings are at most a few per input line.
 [[nodiscard]] diag::Outcome<Document> read_document(std::string_view bytes, const ReadOptions& options);
 
 /// The file text of `document` in canonical write order, LF line ends

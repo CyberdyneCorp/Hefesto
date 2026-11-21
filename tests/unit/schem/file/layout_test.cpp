@@ -118,6 +118,28 @@ TEST_CASE("blocks nested in blocks are listed in the outer document", "[cap:sche
   CHECK(r.warnings.empty());
 }
 
+// Regression: every open block held a whole Document, so a file made of
+// `[` lines (2 bytes each) cost about 250 bytes of memory per input byte.
+// Discarded blocks now share one scratch document and a frame is a few
+// words; the result is unchanged.
+TEST_CASE("deeply nested stray blocks are read with little state per block",
+          "[cap:schematic-file-format][req:Embedded symbols]") {
+  std::string text = "N 0 0 1 1 {}\n";
+  for (int i = 0; i < 100000; ++i) text += "[\n";
+  const auto r = read_text(text);
+  CHECK(r.doc.wires.size() == 1);
+  CHECK(r.doc.embedded.empty());
+  CHECK(r.warnings.size() == 200000);  // each `[` is stray and unclosed
+  // A real block inside a discarded one still gets its own entry (the
+  // behaviour before this change; nested blocks are open in spec issue F4).
+  const auto nested = read_text("[\nC {a.sym} 0 0 0 0 {}\n[\nK {type=a}\n]\nN 5 5 6 6 {}\n]\nN 2 2 3 3 {}\n");
+  REQUIRE(nested.doc.embedded.size() == 1);
+  CHECK(nested.doc.embedded[0].reference == "a.sym");
+  CHECK(nested.doc.embedded[0].symbol.globals.k == "type=a");
+  CHECK(nested.doc.wires.size() == 1);
+  CHECK(nested.doc.instances.empty());
+}
+
 TEST_CASE("an instance with embed=true and no definition is written alone",
           "[cap:schematic-file-format][req:Embedded symbols]") {
   schem::Document doc;

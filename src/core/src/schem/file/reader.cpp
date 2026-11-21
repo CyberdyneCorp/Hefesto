@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <limits>
 #include <optional>
 #include <set>
 #include <string>
@@ -28,14 +29,24 @@ namespace {
 
 using file_detail::Lexer;
 
-// One document being filled: the file itself, or an embedded block.
+// Where the records of a frame go: the file's document, a scratch document
+// shared by every discarded block, or (any other value) the block's entry
+// in the file's `embedded` list.
+constexpr std::size_t kFileTarget = std::numeric_limits<std::size_t>::max();
+constexpr std::size_t kDiscardTarget = kFileTarget - 1;
+
+// Indices into Reader::versions_: unset ("Leading instance record",
+// Q-SCHEM-3) and "1.0".
+constexpr std::size_t kVersionUnset = 0;
+constexpr std::size_t kVersion10 = 1;
+
+// The reading state of one document being filled: the file itself, an
+// embedded block or a discarded block. The records go to the document
+// `target` names, so a frame costs a few words however deeply `[` blocks
+// nest in hostile input.
 struct Frame {
-  Document doc;
-  // The block's entry in the outermost document's `embedded` list; nullopt
-  // for the file itself and for a discarded block.
-  std::optional<std::size_t> slot;
-  // nullopt while the version is unset ("Leading instance record", Q-SCHEM-3).
-  std::optional<std::string> version;
+  std::size_t target = kFileTarget;
+  std::size_t version = kVersionUnset;
   bool first_record = true;
   bool k_read = false;
   bool last_was_instance = false;
@@ -44,11 +55,8 @@ struct Frame {
 // The Q-SCHEM-3 branch point ("Version record and header text"): with
 // xschem-compat ON the version is unset until the first record ends; OFF,
 // a file with no `v` record is version 1.0 from its first record.
-std::optional<std::string> initial_version(bool xschem_compat) {
-  if (xschem_compat) {
-    return std::nullopt;
-  }
-  return std::string{"1.0"};
+std::size_t initial_version(bool xschem_compat) {
+  return xschem_compat ? kVersionUnset : kVersion10;
 }
 
 void order_endpoints(Point& p1, Point& p2) noexcept {
@@ -104,7 +112,8 @@ class Reader {
   Reader(std::string_view bytes, const ReadOptions& options) : lex_(bytes), options_(options) {}
 
   Document run() {
-    frames_.push_back(new_frame(options_.kind));
+    result_.kind = options_.kind;
+    frames_.push_back(new_frame(kFileTarget));
     while (true) {
       lex_.skip_whitespace();
       if (lex_.at_end()) {
@@ -117,18 +126,32 @@ class Reader {
       close_block();
     }
     finish(frames_.front());
-    return std::move(frames_.front().doc);
+    return std::move(result_);
   }
 
  private:
-  [[nodiscard]] Frame new_frame(FileKind kind) const {
+  [[nodiscard]] Frame new_frame(std::size_t target) const {
     Frame frame;
-    frame.doc.kind = kind;
+    frame.target = target;
     frame.version = initial_version(options_.xschem_compat);
     return frame;
   }
 
   Frame& frame() { return frames_.back(); }
+
+  Document& doc_of(const Frame& frame) {
+    switch (frame.target) {
+      case kFileTarget:
+        return result_;
+      case kDiscardTarget:
+        return scratch_;
+      default:
+        return result_.embedded[frame.target].symbol;
+    }
+  }
+
+  // The document the current record goes to.
+  Document& doc() { return doc_of(frames_.back()); }
 
   void read_record() {
     const char tag = lex_.take();
@@ -144,8 +167,8 @@ class Reader {
   static void end_record(Frame& frame) {
     if (frame.first_record) {
       frame.first_record = false;
-      if (!frame.version) {
-        frame.version = "1.0";
+      if (frame.version == kVersionUnset) {
+        frame.version = kVersion10;
       }
     }
   }
@@ -241,12 +264,17 @@ class Reader {
   void read_version() {
     const std::string v = brace();
     auto version = get_token(v, "file_version");
-    frame().version = (version && !version->empty()) ? std::move(*version) : std::string{"1.0"};
-    frame().doc.header_text = header_text(v);
+    if (version && !version->empty() && *version != "1.0") {
+      frame().version = versions_.size();
+      versions_.push_back(std::move(*version));
+    } else {
+      frame().version = kVersion10;
+    }
+    doc().header_text = header_text(v);
   }
 
   void read_global(char tag) {
-    GlobalProperties& globals = frame().doc.globals;
+    GlobalProperties& globals = doc().globals;
     std::string value = brace();
     switch (tag) {
       case 'K':
@@ -285,10 +313,10 @@ class Reader {
     LineRecord record{*layer, {v[0], v[1]}, {v[2], v[3]}, brace()};
     if (tag == 'L') {
       order_endpoints(record.p1, record.p2);
-      frame().doc.lines.push_back(std::move(record));
+      doc().lines.push_back(std::move(record));
     } else {
       order_corners(record.p1, record.p2);
-      frame().doc.boxes.push_back(std::move(record));
+      doc().boxes.push_back(std::move(record));
     }
   }
 
@@ -302,7 +330,7 @@ class Reader {
       missing("ARC");
       return;
     }
-    frame().doc.arcs.push_back(ArcRecord{*layer, {v[0], v[1]}, v[2], v[3], v[4], brace()});
+    doc().arcs.push_back(ArcRecord{*layer, {v[0], v[1]}, v[2], v[3], v[4], brace()});
   }
 
   void read_polygon() {
@@ -325,7 +353,7 @@ class Reader {
       record.points.push_back({xy[0], xy[1]});
     }
     record.props = brace();
-    frame().doc.polygons.push_back(std::move(record));
+    doc().polygons.push_back(std::move(record));
   }
 
   void read_text() {
@@ -347,7 +375,7 @@ class Reader {
     record.x_scale = scale[0];
     record.y_scale = scale[1];
     record.props = brace();
-    frame().doc.texts.push_back(std::move(record));
+    doc().texts.push_back(std::move(record));
   }
 
   void read_wire() {
@@ -358,7 +386,7 @@ class Reader {
     }
     WireRecord record{{v[0], v[1]}, {v[2], v[3]}, brace()};
     order_endpoints(record.p1, record.p2);
-    frame().doc.wires.push_back(std::move(record));
+    doc().wires.push_back(std::move(record));
   }
 
   void read_instance() {
@@ -375,29 +403,36 @@ class Reader {
     record.rotation = *rotation;
     record.flip = *flip;
     record.props = brace();
-    const auto& version = frame().version;
-    if (version && *version == "1.0") {
+    if (frame().version == kVersion10) {
       record.symbol = with_sym_extension(std::move(record.symbol));
     }
-    frame().doc.instances.push_back(std::move(record));
+    doc().instances.push_back(std::move(record));
     frame().last_was_instance = true;
   }
 
   void open_block(bool after_instance) {
-    Frame block = new_frame(FileKind::symbol);
     if (!after_instance) {
       warn(file_codes::kStrayEmbeddedBlock, "embedded symbol block [ without a preceding instance, skipped");
-      frames_.push_back(std::move(block));
+      push_discarded_block();
       return;
     }
-    InstanceRecord& instance = frame().doc.instances.back();
+    InstanceRecord& instance = doc().instances.back();
     instance.props = set_token(instance.props, "embed", "true");
-    if (references_.insert(instance.symbol).second) {
-      auto& embedded = frames_.front().doc.embedded;
-      block.slot = embedded.size();
-      embedded.push_back(EmbeddedSymbol{instance.symbol, {}});
+    if (!references_.insert(instance.symbol).second) {
+      push_discarded_block();
+      return;
     }
-    frames_.push_back(std::move(block));
+    // Copied first: `instance` may live in `embedded`, which push_back moves.
+    std::string reference = instance.symbol;
+    auto& embedded = result_.embedded;
+    embedded.push_back(EmbeddedSymbol{std::move(reference), {}});
+    embedded.back().symbol.kind = FileKind::symbol;
+    frames_.push_back(new_frame(embedded.size() - 1));
+  }
+
+  void push_discarded_block() {
+    ++discarded_blocks_;
+    frames_.push_back(new_frame(kDiscardTarget));
   }
 
   // A `]` ends the innermost block; outside any block it is an unknown record.
@@ -410,19 +445,19 @@ class Reader {
   }
 
   void close_block() {
-    Frame block = std::move(frames_.back());
+    const Frame block = frames_.back();
     frames_.pop_back();
     finish(block);
-    if (block.slot) {
-      frames_.front().doc.embedded[*block.slot].symbol = std::move(block.doc);
+    if (block.target == kDiscardTarget && --discarded_blocks_ == 0) {
+      scratch_ = Document{};  // nothing reads a discarded block
     }
   }
 
   // "Global property records": a `.sym` with no `K` record whose `G` has a
   // non-empty `type` uses `G` as its symbol property.
-  static void finish(Frame& frame) {
-    Document& doc = frame.doc;
-    doc.file_version = frame.version.value_or("1.0");
+  void finish(const Frame& frame) {
+    Document& doc = doc_of(frame);
+    doc.file_version = frame.version == kVersionUnset ? "1.0" : versions_[frame.version];
     if (doc.kind != FileKind::symbol || frame.k_read) {
       return;
     }
@@ -444,6 +479,10 @@ class Reader {
 
   Lexer lex_;
   const ReadOptions& options_;
+  Document result_;
+  Document scratch_;  // the records of discarded blocks
+  std::size_t discarded_blocks_ = 0;
+  std::vector<std::string> versions_{"", "1.0"};  // see kVersionUnset, kVersion10
   std::vector<Frame> frames_;
   std::set<std::string> references_;
 };
