@@ -21,14 +21,21 @@ Compatibility: behavioral (operations); informative (message text)
 ### Requirement: Incremental extraction
 
 `extract` with no option SHALL extract the root cell's tree incrementally: the root cell MUST be named (`Please name the cell before extracting.` otherwise); all cell timestamps SHALL first be brought up to date; then each cell in bottom-up order (see `extract-hierarchy`) SHALL be re-extracted only if its `.ext` file cannot be opened for reading, its first line is not `timestamp <N>`, or N differs from the cell's timestamp. Cells not re-extracted SHALL still have their isolated substrate regions prepared (see `extract-substrate`) so that parents are extracted correctly.
+
+A `.ext` file SHALL be written completely or not at all, in both `magic-compat` settings (Q-EXTRACT-27, resolution: fix; see "Output path and file location"). A run that is cancelled or fails while a cell is extracted SHALL leave that cell's previous `.ext` file, if any, unchanged, so the timestamp check above never accepts a truncated file. Magic writes the header first and leaves the truncated file behind, which the next `extract` treats as current.
 Compatibility: behavioral
 
-(Magic ref: extract/ExtMain.c:879-920, extract/ExtMain.c:931-960, extract/ExtCell.c:89-95)
+(Magic ref: extract/ExtMain.c:879-920, extract/ExtMain.c:931-960, extract/ExtCell.c:89-95, extract/ExtCell.c:99-116, extract/ExtCell.c:515-531, extract/ExtMain.c:295-296)
 
 #### Scenario: Unchanged child skipped
 - **GIVEN** a parent and a child, both previously extracted, and an edit only in the parent
 - **WHEN** `extract` runs
 - **THEN** only the parent's `.ext` file is rewritten
+
+#### Scenario: Cancelled run keeps the previous file
+- **GIVEN** a cell `top` with a current `top.ext` and an edit in `top`
+- **WHEN** `extract` is cancelled while `top` is being extracted
+- **THEN** `top.ext` is byte-identical to the file before the run, no temporary file remains, and the next `extract` re-extracts `top` because its timestamp differs
 
 ### Requirement: Extract all, cell, parents and showparents
 
@@ -120,9 +127,11 @@ Compatibility: behavioral
 `extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
 
 On desktop hosts (macOS, Linux) this SHALL be exactly Magic's behaviour. On iPadOS and any other sandboxed host (X-4) the current directory SHALL be the project folder, the session working directory granted to the sandbox; relative paths resolve against it, directories SHALL be created through the file-coordination service with no POSIX mode, and a path outside the granted roots SHALL fail as unwritable, with the same `Cannot open output file` outcome. Messages are Magic's text on every host (Q-EXTRACT-11, resolution: platform).
+
+The file SHALL be written completely or not at all, in both `magic-compat` settings (Q-EXTRACT-27, resolution: fix). After the target path is resolved as above, the writer SHALL write the file under a temporary name in the directory of that path and rename it over the target only after the cell's last record. When the target is a symbolic link, the link SHALL be resolved and its target replaced, so the link survives, as when Magic writes through it. On cancel or error the temporary file SHALL be removed and the previous file, if any, left unchanged. If no temporary file can be created in that directory, the writer SHALL write the target in place, as Magic does. On sandboxed hosts the temporary file and the rename go through the file-coordination service. An uninterrupted run SHALL give the same bytes, file names and console output as Magic.
 Compatibility: behavioral
 
-(Magic ref: extract/ExtCell.c:152-250, extract/ExtTech.c:705-730)
+(Magic ref: extract/ExtCell.c:99-116, extract/ExtCell.c:152-250, extract/ExtTech.c:705-730)
 
 #### Scenario: Path directory created
 - **GIVEN** `extract path ext/` and no `ext/` directory
@@ -133,6 +142,11 @@ Compatibility: behavioral
 - **GIVEN** a sandboxed host and `extract path /tmp/ext` outside the granted roots
 - **WHEN** a cell `top` is extracted
 - **THEN** the fallback `top.ext` in the project folder is written if it can be opened, and otherwise `Cannot open output file` is reported and the cell is skipped
+
+#### Scenario: Cancelled extraction leaves no truncated file
+- **GIVEN** `extract path ext/` and an existing `ext/top.ext`
+- **WHEN** `extract all` is cancelled after the header of `top` is written
+- **THEN** `ext/top.ext` is unchanged and no temporary file is left in `ext/`
 
 ### Requirement: Unique command and temporary unique option
 

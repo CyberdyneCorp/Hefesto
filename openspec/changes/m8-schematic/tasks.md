@@ -39,6 +39,7 @@ How this plan runs:
 - [ ] 4.1 For every symbol in the inventory's `devices/` list, extract its interface (file name, pin names, order, positions, directions, `type`, `format`, `lvs_format`, `template`, `global` and other netlisting properties, bounding box) into `schematic-symbols-and-libraries` "System library" (design D8). Graphics are not described. Verify that every inventoried symbol has a row and `openspec validate --all --strict` passes.
 - [ ] 4.2 Generate `tests/data/schem/devices_interface.json` from that table with a script, and add a test that the JSON and the spec agree. Verify the test.
 - [ ] 4.3 Specify the semantics of every inventoried Tcl procedure and variable (`ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `ngspice::*`, the `xschem` subset) in "tcleval values" from the public xschem manual and expected values computed for each PDK use, with a table of inputs and outputs per procedure (Q-SCHEM-8). Verify that each PDK use in the inventory has an expected value.
+- **Open spec item (2026-11-20, from the second paraphrase review of task 1.2; not verified):** a check in xschem's netlister appears to make `@pinlist` skip its pin-by-pin output when the symbol's subcircuit comes from an included file (`spice_sym_def`), and `schematic-netlisting` "Format string substitution" does not describe that case. The spec team confirms the behaviour (a golden capture or the source) and, if it holds, specifies it with a scenario; spec behaviour is unchanged until then.
 
 ## 5. SCAFFOLD and COMPAT (implementation team; after G1)
 
