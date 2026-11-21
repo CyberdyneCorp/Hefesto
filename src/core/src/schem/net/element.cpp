@@ -150,7 +150,7 @@ class ElementBuilder {
       return pin ? pin_entry(*pin) : std::string{};
     }
     if (!pin) {
-      return std::string{kUndefined};
+      return std::string{};  // no such pin: nothing ("Format string substitution")
     }
     return pin_attribute(*pin, spec.substr(colon + 1));
   }
@@ -202,7 +202,7 @@ class ElementBuilder {
       return expanded(name_);
     }
     if (key == "symname") {
-      return symbol_name(ctx_.symref);
+      return ctx_.symname ? *ctx_.symname : symbol_name(ctx_.symref);
     }
     if (key == "symname_ext") {
       const std::size_t slash = ctx_.symref.rfind('/');
@@ -286,11 +286,8 @@ class ElementBuilder {
   /// `name` bus-expanded with the bus replacement characters.
   std::string expanded(std::string_view name) {
     const BusExpansion bus = parse_bus(name);
-    if (bus.syntax_error) {
-      out_.diagnostics.push_back(diag::make(net_codes::kBusSyntax, "syntax error in " + std::string{name}));
-    } else if (bus.too_large) {
-      out_.diagnostics.push_back(
-          diag::make(net_codes::kSizeLimit, "bus expansion of " + std::string{name} + " is too large"));
+    if (auto warning = bus_diagnostic(bus, name)) {
+      out_.diagnostics.push_back(std::move(*warning));
     }
     return replace_bus_chars(join_bits(bus.bits, ","), opts_.bus_replacement);
   }

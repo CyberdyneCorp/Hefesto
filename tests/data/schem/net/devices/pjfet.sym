@@ -1,0 +1,14 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=pjfet
+format="@spiceprefix@name @pinlist @model area=@area @extra m=@m"
+template="name=J1 model=pjfet area=1 m=1"}
+V {}
+S {}
+E {}
+B 5 17.5 27.5 22.5 32.5 {name=s dir=inout}
+B 5 -22.5 -2.5 -17.5 2.5 {name=g dir=in}
+B 5 17.5 -32.5 22.5 -27.5 {name=d dir=inout}

@@ -36,10 +36,6 @@ namespace {
 
 constexpr std::string_view kNotImplemented = "CORE-NOTIMPL-007";
 
-bool is_not_implemented(const std::vector<diag::Diagnostic>& diagnostics) {
-  return diagnostics.size() == 1 && diagnostics.front().code == kNotImplemented;
-}
-
 }  // namespace
 
 TEST_CASE("CORE-NOTIMPL-007 and the schem code area are declared", "[m8-scaffold]") {
@@ -91,13 +87,13 @@ TEST_CASE("the SYMLIB stubs answer their documented values", "[m8-scaffold]") {
   CHECK(bridge.evaluate("tcleval(1)", {}) == "?\n");
 }
 
-TEST_CASE("the NETLIST stubs answer their documented values", "[m8-scaffold]") {
+TEST_CASE("the NETLIST entry point netlists an empty document", "[m8-scaffold]") {
+  // netlist() is implemented (tasks 8.3-8.5); its tests are in
+  // tests/unit/schem/net/.
   const schem::Session session;
   const auto result = schem::netlist(session, schem::Document{}, {}, {});
-  CHECK(result.failed);
-  CHECK(result.text.empty());
-  CHECK(is_not_implemented(result.diagnostics));
-  // evaluate_expr and expand_bus are implemented: tests/unit/schem/net/.
+  CHECK_FALSE(result.failed);
+  CHECK(result.text == "** sch_path:\n**.subckt untitled\n**.ends\n.end\n");
 }
 
 TEST_CASE("the EDIT, CMD and SIMINT stubs answer their documented values", "[m8-scaffold]") {
