@@ -243,8 +243,8 @@ reason = "cellname list top sorts inv before inv2 (the total natural order, a pr
 
 [SCRIPT-API-16]
 deferred = "M7"
-outputs = ["stdout.txt", "top.ext", "top2.ext"]
-reason = "the case reads $SUB through extract all, and the extractor arrives with extraction (the extraction-side scenarios of \"Script variables read by the engine\" are M7's)"
+outputs = ["stdout.txt", "stderr.txt", "top.ext", "top2.ext"]
+reason = "the case reads $SUB through extract all, and the extractor arrives with extraction; until then the M7 scaffold's extract answers CORE-NOTIMPL-008 on stderr (the extraction-side scenarios of \"Script variables read by the engine\" are M7's)"
 
 [SCRIPT-AUX-02]
 decisions = ["Q-SCRIPT-30"]
