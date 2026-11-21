@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/schem/cmd/commands.hpp"
 #include "hefesto/script/tcl/tcl_interpreter.hpp"
 
 namespace hefesto::script {
@@ -22,6 +23,9 @@ Interpreter& open_project_interpreter(editor::EditorState& editor, SandboxPolicy
   close_project_interpreter(editor);
   editor.script.sandbox = std::move(policy);
   editor.script.interp = create_project_interpreter(editor, editor.script.sandbox);
+  // M8 (openspec/changes/m8-schematic/design.md D12): the `xschem` Tcl
+  // compatibility command over the project's schematic session.
+  schem::register_xschem_command(*editor.script.interp, editor.schem);
   return *editor.script.interp;
 }
 
