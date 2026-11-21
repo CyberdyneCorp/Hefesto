@@ -4,7 +4,7 @@
 """Write the generated M6 golden cases (LEF/DEF and OASIS; m6-lef-def-oasis design D19, task 15.1).
 
 The LEFDEF specs live in ``lefdef_lef_cases.py`` (LEFDEF-001..023, 100..142), ``lefdef_def_cases.py``
-(LEFDEF-200..239, 300..335) and ``lefdef_pdk_cases.py`` (LEFDEF-240 and the library round trips
+(LEFDEF-200..239, 241, 300..335) and ``lefdef_pdk_cases.py`` (LEFDEF-240 and the library round trips
 ``LEFDEF-RT-<lib>`` of task 15.5), on the framework of ``lefdef_cases.py``. The OASIS specs live in
 ``oasis_cases.py`` (tasks 15.2, 15.6). Each LEFDEF module's ``NOT_AUTHORED`` lists the rows it leaves
 out, with the reason and the target milestone; ``oasis_cases.not_authored()`` does the same for the
@@ -79,20 +79,16 @@ BLOCKER_REASONS = {
     "PATH": ("LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"),
     "SPECIAL": ("DEFR: special-net geometry differs from Magic's capture; to investigate"),
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
-    "PINLAYER": ("LEFW: Magic writes no cut record when the contact's area is, unchanged, a yank-plane tile already "
-                 "written in the routing round (lefWriteGeometry skips tiles whose client mark is set, lef/lefWrite.c:"
-                 "822-830; the contact round keeps the marks, 1716-1729); Hefesto writes it. Proposed compat "
-                 "(round 4, LEFDEF), waiting for the user's decision"),
     "LEFW": ("LEFW: buf.lef matches since round 4 (lef write reads the subcells it flattens); left: Hefesto prints "
              "'Cell inv read from path ...' before 'Generating LEF output', Magic after it (the cell-read messages are "
              "not in the writer's message buffer)"),
     "MASTER": ("DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line "
                "comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the "
                "zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"),
-    "RTNAME": ("LEFW: the library round trip differs from Magic's capture (golden-capture run 44583527997): Magic names "
-               "its LEF output lefdef_rt.mag (the file name its failed read gave the new wrapper; no Q-row) and the "
-               "macro bodies differ (e.g. sky130_fd_sc_hd__a2111oi_4: 240 lines in Magic, 286 in Hefesto); the "
-               "gf180mcu LEF matches except the stdout name line. Replayed locally against hefesto-cli in round 4"),
+    "RTNAME": ("LEFW: one macro differs in the round trip (sky130_fd_sc_hd__probe_p_8; sg13g2_sdfbbp_1), same line "
+               "count, Hefesto's text 5 bytes shorter; every other macro, the output name (Q-LEFDEF-138) and the console "
+               "match since round 5 (Q-LEFDEF-136, 138; gf180mcu matches fully). The capture keeps only the digest and "
+               "per-macro summary, so the differing line is not known: GOLDEN to capture these two macros' text"),
     "OASSTD": ("OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it "
                "matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> "
                "datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has "
@@ -127,12 +123,8 @@ BLOCKER_REASONS = {
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
-    "LEFDEF-118": BLOCKER_REASONS["PINLAYER"],
-    "LEFDEF-119": BLOCKER_REASONS["PINLAYER"],
-    "LEFDEF-127": BLOCKER_REASONS["PINLAYER"],
     "LEFDEF-128": BLOCKER_REASONS["LEFW"],
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
-    "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
     "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
     "OASIS-020": BLOCKER_REASONS["OASSTD"],
@@ -166,10 +158,13 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-118",
+    "LEFDEF-119",
+    "LEFDEF-127",
+    "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0",
     "OASIS-012",
     "LEFDEF-328",
     "OASIS-055-names",
-    "LEFDEF-334",
     "LEFDEF-003",
     "LEFDEF-113",
     "OASIS-064-arrays",

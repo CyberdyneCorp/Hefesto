@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""The LEFDEF rows of DEF read and DEF write (tests/golden/LEFDEF/CASES.md LEFDEF-200..239 and
+"""The LEFDEF rows of DEF read and DEF write (tests/golden/LEFDEF/CASES.md LEFDEF-200..239, 241 and
 LEFDEF-300..335; m6-lef-def-oasis design D19, task 15.1). LEFDEF-240 is in ``lefdef_pdk_cases.py``.
 
 The framework is ``lefdef_cases.py``; the driver is ``m6_cases.py``. A DEF read case reads its DEF
@@ -60,7 +60,7 @@ def pin(name: str, *parts: str) -> str:
     return f"- {name} + NET {name} " + " ".join(parts) + " ;"
 
 
-# --- DEF read: LEFDEF-200..239 ---------------------------------------------------------------------
+# --- DEF read: LEFDEF-200..239, 241 -----------------------------------------------------------------
 
 def generated_via(name: str, rowcol: str = "1 2", layers: str = "metal1 via1 metal2") -> str:
     return (f"- {name} + VIARULE M1M2gen + CUTSIZE 40 40 + LAYERS {layers} + CUTSPACING 40 40\n"
@@ -233,6 +233,11 @@ def def_read_specs() -> list[tclcase.TclCase]:
                  files={"t.txt": def_file("t2", diearea=(0, 0, 2000, 2000))},
                  body=["def read t", "def read t.def", "def read t.txt", "cellname list allcells"], outputs=[]),
         read_def("LEFDEF-239", "errs", many_error_nets(), outputs=[], body=["def read input/errs"]),
+        # Q-LEFDEF-83 (fix, approved 2026-11-13; case added 2026-11-20, decision E2): Magic places the second
+        # u1 with the same id, Hefesto renames it (an approved deviation once captured).
+        read_def("LEFDEF-241", "dup", def_file("dup", def_section(
+            "COMPONENTS", 2, "- u1 inv + PLACED ( 1000 2000 ) N ;", "- u1 inv + PLACED ( 3000 2000 ) N ;"),
+            diearea=DIE_SMALL), lef_text=MACROS),
     ]
     return out
 
@@ -338,11 +343,16 @@ WIDE_C1 = mag(rects("metal1", (0, 100, 100, 108)) + use("c2", "c2_0", 0, 0, (100
               + labels(plain_label("metal1", (0, 100, 100, 108), "w")))
 OBS_TOP = mag(rects("obsm1", (0, 0, 50, 50)) + rects("metal1", (60, 0, 100, 3))
               + labels(plain_label("metal1", (60, 0, 100, 3), "n")))
-# Three `ignore` lines of 15 names: Magic's TechLoad keeps at most 30 words of a line (MAXARGS,
+# `ignore` lines of at most 15 names: Magic's TechLoad keeps at most 30 words of a line (MAXARGS,
 # utils/tech.c:120) and techGetTokens writes past argv[] on a longer one (round-4 capture: a garbage
-# "Unknown LEF section keyword" message), so no line may hold more than 30 words.
+# "Unknown LEF section keyword" message; Q-LEFDEF-139), so no line may hold more than 30 words.
+# 72 names (L00..L71) give LefInfo 95 keys after the tech load (23 of the base section); the write's
+# two generated vias are the 96th and 97th, so the table grows (to 128 buckets) between them
+# (Q-LEFDEF-135, round 5).
+MANY_NAMES = 72
 MANY_NAMES_LEF = ld.LEF_BASE + "".join(
-    "    ignore " + " ".join(f"L{i:02d}" for i in range(k, k + 15)) + "\n" for k in (0, 15, 30))
+    "    ignore " + " ".join(f"L{i:02d}" for i in range(k, min(k + 15, MANY_NAMES))) + "\n"
+    for k in range(0, MANY_NAMES, 15))
 HASH_TOP = mag(rects("metal1", (0, 0, 30, 4), (0, 20, 30, 24), (0, 40, 30, 44)) + rects("via1", (30, 0, 34, 4), (30, 20, 34, 24))
                + rects("metal2", (34, 0, 60, 4), (34, 20, 60, 24), (34, 40, 60, 44)) + rects("via2", (60, 40, 64, 44))
                + rects("metal3", (64, 40, 90, 45)) + rects("obsm1", (100, 0, 120, 20)) + rects("obsm2", (100, 40, 120, 60))
