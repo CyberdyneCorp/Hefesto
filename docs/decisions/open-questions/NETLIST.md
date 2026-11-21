@@ -472,3 +472,12 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: fix (both modes: parse `vsource` with the subcircuit-like token rule, `ac = 7`) | reject the record with "Unknown device class"
 - Recommendation: fix with `ac = 7`, regression test in EXTFLAT. Golden inputs avoid the record (the V line is covered through `short voltage`, NL-FLAT-06, NL-HIER-06).
 - Resolution: open — needs a user decision.
+
+### Q-NETLIST-52: ext2sim writes to and closes a freed `.al`/`.nodes` stream after `alias off` or `labels off`
+- Kind: bug
+- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Magic behavior: CmdExtToSim closes `esAliasF` and `esLabF` at the end of a run without setting them to NULL (ext2sim/ext2sim.c:704-706). The next run opens them only when the option is on (:591, :604), so after `ext2sim alias off` (or `labels off`) the stale pointer survives: simnodeVisit writes alias/label lines through it (:1681-1702, use after free) and the run fcloses it again. glibc aborts with `free(): double free detected in tcache 2` (golden-capture run 44961645329, NL-SIM-01: an `alias on` run, then `alias off`, `labels on` and another run; Magic exited 139). The standalone path (:834-835) has the same pattern.
+- Evidence: ext2sim/ext2sim.c:591-606, :704-706, :834-835, :1681-1702; netlist-sim
+- Options: fix (both modes: a run writes `.al`/`.nodes` only when its option is on and never touches a previous run's stream) | replicate (not allowed: crash)
+- Recommendation: fix, with a SIM regression test running `alias on`, a run, `alias off`, a run. NL-SIM-01 keeps `alias on` for its labels run so Magic can be captured.
+- Resolution: open — needs a user decision.

@@ -572,7 +572,10 @@ def sim_specs() -> list[NlSpec]:
     for name in ("MIT", "LBL", "SU"):
         fmts.opts(f"ext2sim format {name}").run("ext2sim", "inv", tag=name.lower())
     fmts.opts("ext2sim format MIT", "ext2sim alias on").run("ext2sim", "inv", tag="alias", exts=("sim", "al"))
-    fmts.opts("ext2sim alias off", "ext2sim labels on").run("ext2sim", "inv", tag="labels", exts=("sim", "nodes"))
+    # alias stays on for the labels run: Magic fcloses the .al/.nodes file without clearing esAliasF/esLabF
+    # (ext2sim.c:705-706), so a run after one whose alias or labels option was turned off fcloses it again
+    # (double free, golden-capture run 44961645329; proposed Q-NETLIST-52).
+    fmts.opts("ext2sim labels on").run("ext2sim", "inv", tag="labels", exts=("sim", "al", "nodes"))
     devs = ext(nd("b", 1, 0, 0), nd("e", 1, 0, 10), nd("c", 1, 0, 20, "ndiff", ((40, 26), (0, 0), (0, 0))),
                nd("ra", 1, 0, 30), nd("rb", 1, 0, 40), nd("ct", 1, 0, 50), nd("cb", 1, 0, 60), nd("k", 1, 0, 70),
                'device bjt npn 0 0 4 4 4 4 "c" "b" 16 0 "e" 16 0 "c" 16 0',
@@ -586,7 +589,7 @@ def sim_specs() -> list[NlSpec]:
     resext = "\n".join(["scale 1000 1000 5", 'rnode "out.n0" 0 2 10 4 0', 'resist "out" "out.n0" 12.3']) + "\n"
     return [
         nl("NL-SIM-01", SIM, ["File structure and order", "Device lines", "Parasitic and node records"],
-           "inverter in MIT, LBL and SU; alias on (inv.al); labels on (inv.nodes)", {"inv.ext": INV}, fmts),
+           "inverter in MIT, LBL and SU; alias on (inv.al); then labels on with alias still on (inv.nodes)", {"inv.ext": INV}, fmts),
         nl("NL-SIM-02", SIM, ["Device lines"], "bjt, diode, devres, devcap and subckt devices: the device lines",
            {"top.ext": devs}, Script().run("ext2sim", "top")),
         nl("NL-SIM-03", SIM, ["Transistor attributes"],

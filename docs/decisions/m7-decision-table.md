@@ -196,6 +196,7 @@ Raised by the R1 workstreams for Magic behaviours no row covers. Each branch imp
 | Q-EXTRACT-28 | `extract list`/`listall` with nothing after it crashes | **fix** (proposed) | both modes: the wrong-number-of-arguments message |
 | Q-NETLIST-50 | Standalone extcheck dereferences a NULL `ExtCurStyle` on a `scale` line | **fix** (proposed) | both modes: hefesto-extcheck never crashes; regression test |
 | Q-NETLIST-51 | `device vsource` reads an uninitialised token count | **fix** (proposed) | both modes: parse with `ac = 7`; regression test |
+| Q-NETLIST-52 | ext2sim reuses a closed `.al`/`.nodes` stream after `alias off`/`labels off` (double free) | **fix** (proposed) | both modes: never touch a previous run's stream; regression test |
 
 ## Notable changes to the entries' original recommendations
 

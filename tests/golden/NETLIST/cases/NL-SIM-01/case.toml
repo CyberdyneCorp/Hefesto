@@ -13,7 +13,7 @@ area = "NETLIST"
 capability = "netlist-sim"
 requirements = ["File structure and order", "Device lines", "Parasitic and node records"]
 tool = "magic"
-description = "inverter in MIT, LBL and SU; alias on (inv.al); labels on (inv.nodes)"
+description = "inverter in MIT, LBL and SU; alias on (inv.al); then labels on with alias still on (inv.nodes)"
 
 [reference]
 script = "input/commands.tcl"
@@ -69,6 +69,12 @@ masks = []
 name = "inv.labels.sim"
 source = "inv.labels.sim"
 comparator = "sim-cap"
+masks = []
+
+[[outputs]]
+name = "inv.labels.al"
+source = "inv.labels.al"
+comparator = "bytes"
 masks = []
 
 [[outputs]]

@@ -1,4 +1,4 @@
-# NL-SIM-01: inverter in MIT, LBL and SU; alias on (inv.al); labels on (inv.nodes)
+# NL-SIM-01: inverter in MIT, LBL and SU; alias on (inv.al); then labels on with alias still on (inv.nodes)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]
@@ -22,10 +22,10 @@ probe {ext2sim alias on}
 probe {ext2sim inv}
 file rename -force inv.sim inv.alias.sim
 file rename -force inv.al inv.alias.al
-probe {ext2sim alias off}
 probe {ext2sim labels on}
 probe {ext2sim inv}
 file rename -force inv.sim inv.labels.sim
+file rename -force inv.al inv.labels.al
 file rename -force inv.nodes inv.labels.nodes
 } scriptError]} {
     puts [list script-error $scriptError]

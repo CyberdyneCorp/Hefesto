@@ -1297,7 +1297,7 @@ reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-
 
 [NL-SIM-01]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "inv.mit.sim", "inv.lbl.sim", "inv.su.sim", "inv.alias.sim", "inv.alias.al", "inv.labels.sim", "inv.labels.nodes"]
+outputs = ["stdout.txt", "stderr.txt", "inv.mit.sim", "inv.lbl.sim", "inv.su.sim", "inv.alias.sim", "inv.alias.al", "inv.labels.sim", "inv.labels.al", "inv.labels.nodes"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SIM-02]
