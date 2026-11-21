@@ -189,7 +189,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: break.awk:26-75
 - Options: replicate | fix
 - Recommendation: replicate (it only affects layout of long lines), covered by golden case SCHEM-NL-12.
-- Resolution: replicate — the line breaker carries the quote state across lines and resets the column counter as xschem does, in both modes; only where long lines wrap changes. Golden case SCHEM-NL-12. Approved 2026-11-13.
+- Resolution: replicate — when wrapping long lines, a quote stays open across lines and the field written after a `+` does not count toward the new line's length, as xschem does, in both modes; only where long lines wrap changes. Golden case SCHEM-NL-12. Approved 2026-11-13; reworded 2026-11-20 (meaning unchanged, approved by the maintainer; second paraphrase review).
 
 ### Q-SCHEM-21: Multi-line templates break `.subckt` lines
 - Kind: bug

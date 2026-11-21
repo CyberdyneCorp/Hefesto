@@ -66,11 +66,11 @@ The second spec-team reviewer checked the record against the specs on `main` @ `
 - Mechanical sweep of the six specs and `SCHEM.md` (backticked identifiers, `awk`, numbered lists of three or more items, counter/buffer/pointer/variable/hash and similar words): PR-10 and PR-12 are its findings; PR-9 and PR-11 came from the source check; PR-8 is the maintainer's addition.
 - Kind "fidelity" marks a text that described behaviour but not xschem's; it is outside the three paraphrase kinds and is recorded because checking the faithfulness of PR-1 was in scope.
 
-Proposed for the user (not changed, because it is a `Resolution:` line): Q-SCHEM-20's `Resolution:` says the line breaker "resets the column counter as xschem does", program-state wording. Proposed wording: "replicate — when wrapping long lines, a quote stays open across lines and the field written after a `+` does not count toward the new line's length, as xschem does, in both modes; only where long lines wrap changes. Golden case SCHEM-NL-12." The meaning is unchanged.
+Q-SCHEM-20's `Resolution:` said the line breaker "resets the column counter as xschem does", program-state wording. The second reviewer proposed a behavioural wording with the same meaning; the maintainer approved it on 2026-11-20 and it is applied in `SCHEM.md` and in `docs/decisions/m8-decision-table.md`: "replicate — when wrapping long lines, a quote stays open across lines and the field written after a `+` does not count toward the new line's length, as xschem does, in both modes; only where long lines wrap changes. Golden case SCHEM-NL-12."
 
 ## Effect on decisions
 
-No `Resolution:` line changed. No expected text of a scenario changed. The rewrites keep the rules that decide output bytes; the golden cases SCHEM-NL-01..23 pin the behaviour independently of the wording (design R2).
+No `Resolution:` line changed in meaning; Q-SCHEM-20's was reworded with the maintainer's approval (2026-11-20). No expected text of a scenario changed. The rewrites keep the rules that decide output bytes; the golden cases SCHEM-NL-01..23 pin the behaviour independently of the wording (design R2).
 
 ## Sign-off
 
