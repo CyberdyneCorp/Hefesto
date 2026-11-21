@@ -35,8 +35,9 @@ def probes(spec: tclcase.TclCase) -> list[str]:
 
 
 class InventoryTest(unittest.TestCase):
-    def test_inventory_has_143_rows(self):
-        self.assertEqual(len(lefdef_cases.rows()), 143)
+    def test_inventory_has_144_rows(self):
+        # 143 planned rows and LEFDEF-241 (Q-LEFDEF-83, added by the user decision E2 of 2026-11-20).
+        self.assertEqual(len(lefdef_cases.rows()), 144)
 
     def test_every_row_is_authored(self):
         self.assertEqual(m6_cases.missing_rows(), [])
@@ -46,8 +47,8 @@ class InventoryTest(unittest.TestCase):
         ids = {s.id for s in LEFDEF}
         self.assertEqual(len(lefdef_pdk_cases.RT_CASES), 3)
         self.assertTrue(set(lefdef_pdk_cases.RT_CASES) | {"LEFDEF-240"} <= ids)
-        # 143 rows, the three round trips and the startup case of task 15.4.
-        self.assertEqual(len(LEFDEF), 147)
+        # 144 rows, the three round trips and the startup case of task 15.4.
+        self.assertEqual(len(LEFDEF), 148)
         self.assertIn(lefdef_lef_cases.STARTUP_CASE, ids)
 
 
