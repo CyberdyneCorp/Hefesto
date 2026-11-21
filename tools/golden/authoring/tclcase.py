@@ -84,6 +84,7 @@ class TclCase:
     rc: bool = True                                    # PDK cases: start with the PDK rc file
     gui: bool = False                                  # Tk wrapper under Xvfb
     gl: bool = False                                   # Tk wrapper on OpenGL (-d OGL) in the magic-gl image
+    gl_capture: bool = False                           # gl cases: Magic runs with the polygon-recording shim
     timeout: int | None = None                         # seconds; the case is killed (Q-SCRIPT-3)
     run_timeout: int | None = None                     # seconds per run ([reference]/[hefesto] timeout_s)
     magic_args: list[str] = field(default_factory=list)  # extra Magic options before the script
@@ -187,6 +188,7 @@ def case_toml(case: TclCase) -> str:
              *([f"capture_blocked = {_toml_str(case.capture_blocked)}"] if case.capture_blocked else []), "",
              "[reference]", 'script = "input/commands.tcl"', f"argv = {_toml_list(reference_argv(case))}",
              *(['display = "xvfb"'] if case.gui or case.gl else []), *(GL_IMAGE if case.gl else []),
+             *(["gl_capture = true"] if case.gl_capture else []),
              *(STDIN if case.stdin else []),
              *(["allow_nonzero_exit = true"] if case.timeout or case.allow_nonzero_exit else []),
              *run_timeout_line(case), "",
