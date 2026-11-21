@@ -158,6 +158,7 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
   - No `RAVEN_API` declaration was removed or changed; 81 were added (installer, Plot widget, tray title, `Rwindow_focus`, notification clicks, the application popup).
   - Enumerations gained trailing values only (`R_BACKEND_WEBGL`, `R_WINDOW_SYSTEM_EMSCRIPTEN`, and `R_WIDGET_PLOT` before the `R_WIDGET_LAST_` sentinel); no value Hefesto uses moved. No structure Hefesto reads changed. `RAVEN_API_VERSION` stays "0.2".
   - Hefesto needed no caller change for the bump; it now uses `Rpopup_open`, `Rpopup_close` and `Rpopup_is_open` (`ui::Popup`) and calls `Rwidget_set_event_callback` on text inputs too (`ui::TextInput::on_key`).
+- Added in M10 (m10-3d-view task 5.1, the 3D view's texture mode): `Rvulkan_texture_create_from_image_view`, `Rvulkan_texture_set_image_view`, `Rviewport_set_texture`, `Rviewport_get_pixel_size`, `Rtexture_destroy` (`ui::Viewport::show_vulkan_image`, `pixel_size`) and `Rwindow_set_size` (`ui::Window::set_size`, the spike's resize step). All are in v0.2.3.
 - Raven's README still says that the public API is subject to change before 1.0.
 
 **Judgment: acceptable.** The exact-commit pin, the one-file wrapper and the symbol list above bound the cost of an upgrade to editing `raven_ui.cpp`. Keep this list current, and repeat the diff at each upgrade (P-11: re-evaluate at each milestone gate).

@@ -54,6 +54,9 @@ class HeadlessCanvas {
   HeadlessCanvas& operator=(const HeadlessCanvas&) = delete;
 
   [[nodiscard]] CanvasRenderer& renderer() noexcept;
+  /// The device, for other renderers on it (the 3D view's offscreen target
+  /// in its GPU tests, m10-3d-view design D8). Owned by this canvas.
+  [[nodiscard]] VulkanDevice vulkan_device() const noexcept;
   [[nodiscard]] int width() const noexcept;
   [[nodiscard]] int height() const noexcept;
 

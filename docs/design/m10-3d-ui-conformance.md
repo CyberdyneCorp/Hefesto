@@ -30,12 +30,14 @@ Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D 
 
 ## Renderer spike (RENDER3D, task 5.1)
 
+Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/render3d_spike.cpp`): it draws the spike's test mesh (`hefesto/render/mesh3d_spike.hpp`: a nearer red quad drawn first, a farther green quad behind it, a blue quad coplanar with the red one drawn later, and a back-facing quad over everything) into a `render::VulkanOffscreenTarget` on Raven's Vulkan device, shows it in a Raven viewport in texture mode, resizes the window from 640 × 400 to 900 × 300 (logical), and compares five window pixels with the expected colors after each step (exit 1 on a mismatch). The same mesh is read back image by image (color, depth, pick id) by `tests/unit/render/mesh3d_target_test.cpp`.
+
 | Item | Result | Status |
 |---|---|---|
-| Offscreen depth-tested mesh shown through Raven's viewport texture mode on macOS (MoltenVK) | — | todo |
-| The same on Linux (lavapipe) | — | todo |
-| Resize, synchronisation and layout transitions | — | todo |
-| Color image format and views (sRGB image, UNORM view) | — | todo |
+| Offscreen depth-tested mesh shown through Raven's viewport texture mode on macOS (MoltenVK) | Apple M3 Pro, Homebrew MoltenVK 1.4.2 (the same `libMoltenVK.dylib` image for Raven and Hefesto), Raven v0.2.3: both steps pass (window 1280 × 800 and 1800 × 600 framebuffer pixels); captures [640 × 400](m10-3d-spike/macos-moltenvk-640x400.png), [900 × 300](m10-3d-spike/macos-moltenvk-900x300.png). The `[cap:view-3d]` readback tests pass on the same device. | done |
+| The same on Linux (lavapipe) | Wired, not yet run: the readback tests are in `hefesto_render_tests`, which the `gpu-readback-lavapipe` job runs with `HEFESTO_REQUIRE_VULKAN_DEVICE=llvmpipe`; the window check is the ctest "3D offscreen frame shown through viewport texture mode (x11 / wayland)" (labels `desktop-window-x11`, `desktop-window-wayland`) of the desktop CI legs. The first CI run of the branch records the result here. | todo |
+| Resize, synchronisation and layout transitions | Resize: the viewport's resize callback calls `OffscreenTarget::resize`, which only records the size; a buffer is recreated at the new size the next time it becomes the back buffer, so the shown image stays valid until the viewport is re-pointed (`Rvulkan_texture_set_image_view`, which returns once Raven no longer samples the old view). Synchronisation: the frame is submitted on Raven's graphics queue under the shell's queue lock (the mutex Raven also takes through `Rvulkan_set_queue_lock_callbacks`) and waited on with a fence (redraw on demand, D8); the render pass's external dependencies order Raven's earlier fragment-shader reads and the readback copies before the clears, and the attachment writes before Raven's sampling and the copies. Layouts: every attachment starts UNDEFINED (each frame clears it); color ends in `SHADER_READ_ONLY_OPTIMAL`, the layout Raven requires; pick and depth end in `TRANSFER_SRC_OPTIMAL` for the readbacks; a color readback goes to `TRANSFER_SRC_OPTIMAL` and back (tests only, never while a viewport shows the target). | done (macOS) |
+| Color image format and views (sRGB image, UNORM view) | `R8G8B8A8_SRGB` created with `MUTABLE_FORMAT`, drawn through an `_SRGB` view and shown through an `R8G8B8A8_UNORM` view; linear 0.2158605 is stored as 128 and reaches the window as 128 (both checked). Depth `D32_SFLOAT`, pick id `R32_UINT` (0 = background); all three checked as optimal-tiling formats at creation (VulkanError otherwise). No fallback was needed. | done |
 
 ## Tab and window (D12; tasks 9.1, 8.4)
 

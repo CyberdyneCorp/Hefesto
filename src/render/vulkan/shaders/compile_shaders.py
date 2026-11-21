@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Compile the canvas shaders to SPIR-V and embed them as a C++ header.
+"""Compile the renderer shaders to SPIR-V and embed them as C++ headers.
 
-The generated header (src/generated/rect_spv.hpp) is committed, so building
+The generated headers (src/generated/rect_spv.hpp for the 2D canvas,
+src/generated/mesh3d_spv.hpp for the 3D view) are committed, so building
 Hefesto never needs a shader compiler. Run this script after editing a shader:
 
     python3 src/render/vulkan/shaders/compile_shaders.py [--glslang PATH]
@@ -23,8 +24,12 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUTPUT = HERE.parent / "src" / "generated" / "rect_spv.hpp"
-SHADERS = (("rect.vert", "kRectVertSpv"), ("poly.vert", "kPolyVertSpv"), ("rect.frag", "kRectFragSpv"))
+GENERATED = HERE.parent / "src" / "generated"
+# Output header -> (shader source, array name) pairs.
+OUTPUTS = {
+    "rect_spv.hpp": (("rect.vert", "kRectVertSpv"), ("poly.vert", "kPolyVertSpv"), ("rect.frag", "kRectFragSpv")),
+    "mesh3d_spv.hpp": (("mesh3d_spike.vert", "kMesh3dSpikeVertSpv"), ("mesh3d_spike.frag", "kMesh3dSpikeFragSpv")),
+}
 
 HEADER = """\
 // SPDX-License-Identifier: Apache-2.0
@@ -66,20 +71,21 @@ def format_array(name: str, words: list[int]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--glslang", default=shutil.which("glslangValidator"))
-    parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument("--output-dir", type=Path, default=GENERATED)
     args = parser.parse_args()
     if not args.glslang:
         print("compile_shaders: glslangValidator not found", file=sys.stderr)
         return 1
 
-    parts = [HEADER.format(sources=", ".join(s for s, _ in SHADERS))]
-    with tempfile.TemporaryDirectory() as tmp:
-        for source, name in SHADERS:
-            words = compile_spirv(args.glslang, HERE / source, Path(tmp))
-            parts.append(format_array(name, words) + "\n")
-    parts.append("}  // namespace hefesto::render::spv\n")
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text("\n".join(parts), encoding="utf-8")
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    for output, shaders in OUTPUTS.items():
+        parts = [HEADER.format(sources=", ".join(s for s, _ in shaders))]
+        with tempfile.TemporaryDirectory() as tmp:
+            for source, name in shaders:
+                words = compile_spirv(args.glslang, HERE / source, Path(tmp))
+                parts.append(format_array(name, words) + "\n")
+        parts.append("}  // namespace hefesto::render::spv\n")
+        (args.output_dir / output).write_text("\n".join(parts), encoding="utf-8")
     return 0
 
 
