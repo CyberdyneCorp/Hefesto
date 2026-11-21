@@ -8,4 +8,8 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/netlist.cpp
   ${CMAKE_CURRENT_LIST_DIR}/expr.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/bus.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/expr_text.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/bus.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/connectivity.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/substitute.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/element.cpp)

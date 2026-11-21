@@ -39,6 +39,8 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_cif_reader       # CIF files read then written (cif-format-io)
   fuzz_cifoutput_section  # the technology `cifoutput` section (mask-output-styles, mask-output-operators)
   fuzz_cifinput_section   # the technology `cifinput` section (mask-input-styles)
+  fuzz_schem_bus        # bus and vector notation, net naming (schematic-netlisting; m8 design D19)
+  fuzz_schem_expr       # expr evaluation and format substitution (schematic-netlisting; m8 design D19)
 )
 
 if(HEFESTO_BUILD_FUZZ)
