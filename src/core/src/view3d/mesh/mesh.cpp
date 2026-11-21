@@ -41,9 +41,8 @@ Chunk build_chunk(const detail::FlatLayout& flat, const LayerStack& stack, const
     if (index < 0) {
       continue;
     }
-    // Zero thickness: top faces only (W3Dmain.c:287). The stored thickness
-    // is zero exactly when the drawn one is, in both modes.
-    const bool sides = layers[i].thickness != 0.0F;
+    // Zero thickness: top faces only (W3Dmain.c:287).
+    const bool sides = stack.draw_height(static_cast<LayerId>(i)).thickness != 0.0F;
     detail::emit_layer(flat.types[static_cast<std::size_t>(index)], static_cast<LayerId>(i), sides, clip, chunk);
   }
   return chunk;
