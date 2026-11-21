@@ -77,17 +77,26 @@ std::optional<tech::TileType> cut_type_on(const tech::Technology& tech, tech::Ti
 bool name_maps(const tech::Technology& tech, tech::TileType type, const LayerRecord* record,
                const ViaDefinition* via) {
   const LayerClass cls = via != nullptr ? via->layer_class : record->layer_class;
-  const bool contact = tech.is_contact(type);
-  const bool class_ok =
-      contact ? cls == LayerClass::cut : (cls == LayerClass::route || cls == LayerClass::masterslice);
+  const bool class_ok = tech.is_contact(type) ? cls == LayerClass::cut
+                                              : (cls == LayerClass::route || cls == LayerClass::masterslice);
   if (!class_ok) {
     return false;
   }
   if (via != nullptr) {
     return via->type == type || via->obstruction_type == type;
   }
-  return (record->type != tech::kSpace && record->type == type) ||
-         (record->obstruction_type != tech::kSpace && record->obstruction_type == type);
+  return record->type == type || record->obstruction_type == type;
+}
+
+// One LefInfo entry: it names every type it maps that no earlier entry named.
+void name_types(NameMap& map, const tech::Technology& tech, const LayerRecord* record, const ViaDefinition* via) {
+  const std::string& name = via != nullptr ? via->canonical_name : record->canonical_name;
+  const std::size_t end = std::min(tech.type_count(), tech::kMaxTileTypes);
+  for (std::size_t t = tech::kFirstUserType; t < end; ++t) {
+    if (map.at(t) == nullptr && name_maps(tech, static_cast<tech::TileType>(t), record, via)) {
+      map.at(t) = &name;
+    }
+  }
 }
 
 }  // namespace
@@ -97,18 +106,11 @@ bool name_maps(const tech::Technology& tech, tech::TileType type, const LayerRec
 // shadows a layer of the same name).
 NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers, const ViaTable* vias) {
   NameMap map{};
-  const std::size_t end = std::min(tech.type_count(), tech::kMaxTileTypes);
   layers.enumerate_keys([&](std::string_view key, const LayerRecord* record) {
-    const auto* via = vias != nullptr ? vias->find(std::string{key}) : nullptr;
-    const ViaDefinition* definition = via != nullptr && via->value ? &*via->value : nullptr;
-    if (definition == nullptr && record == nullptr) {
-      return;
-    }
-    for (std::size_t t = tech::kFirstUserType; t < end; ++t) {
-      const auto type = static_cast<tech::TileType>(t);
-      if (map.at(t) == nullptr && name_maps(tech, type, record, definition)) {
-        map.at(t) = definition != nullptr ? &definition->canonical_name : &record->canonical_name;
-      }
+    const auto* entry = vias != nullptr ? vias->find(std::string{key}) : nullptr;
+    const ViaDefinition* via = entry != nullptr && entry->value ? &*entry->value : nullptr;
+    if (via != nullptr || record != nullptr) {
+      name_types(map, tech, record, via);
     }
   });
   return map;
