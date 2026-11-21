@@ -18,25 +18,29 @@ namespace {
 namespace codes = diag::codes;
 using Json = nlohmann::ordered_json;
 
-constexpr std::array<std::string_view, 3> kNames = {kMagicCompat, kNetgenCompat, kScriptStrict};
+constexpr std::array<std::string_view, 5> kNames = {kMagicCompat, kNetgenCompat, kXschemCompat,
+                                                    kPortableNetlistPaths, kScriptStrict};
 
-// The one place that maps a setting name to its field.
+// The one place that maps a setting name to its field (same order as kNames).
 bool* field(ProjectSettings& settings, std::string_view name) noexcept {
-  if (name == kMagicCompat) {
-    return &settings.compat.magic_compat;
-  }
-  if (name == kNetgenCompat) {
-    return &settings.compat.netgen_compat;
-  }
-  if (name == kScriptStrict) {
-    return &settings.script_strict;
+  const std::array<bool*, kNames.size()> fields = {
+      &settings.compat.magic_compat, &settings.compat.netgen_compat, &settings.compat.xschem_compat,
+      &settings.portable_netlist_paths, &settings.script_strict};
+  for (std::size_t i = 0; i < kNames.size(); ++i) {
+    if (name == kNames[i]) {
+      return fields[i];
+    }
   }
   return nullptr;
 }
 
 diag::Diagnostic unknown_name(std::string_view name) {
-  return diag::make(codes::kSettingsName, "unknown project setting '" + std::string{name} +
-                                              "' (known: magic-compat, netgen-compat, script-strict)");
+  std::string known;
+  for (const auto known_name : kNames) {
+    known += (known.empty() ? "" : ", ") + std::string{known_name};
+  }
+  return diag::make(codes::kSettingsName,
+                    "unknown project setting '" + std::string{name} + "' (known: " + known + ")");
 }
 
 diag::Diagnostic file_error(std::string_view source_name, std::string text) {

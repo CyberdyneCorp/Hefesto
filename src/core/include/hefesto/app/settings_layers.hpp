@@ -37,7 +37,9 @@ inline constexpr std::string_view kPdkRoot = "pdk-root";
 /// on/off: the automatic PDK update check (hefesto-pdk-manager "Updates"); built-in on.
 inline constexpr std::string_view kPdkUpdateCheck = "pdk-update-check";
 
-/// Built-in layer: magic-compat on, netgen-compat on, script-strict off,
+/// Built-in layer: the typed project settings at their defaults
+/// (settings::setting_names(): the three compat settings on,
+/// portable-netlist-paths off, script-strict off),
 /// vdd `vdd!`, gnd `gnd!` (Magic's system startup file values), no globals,
 /// pdk-update-check on.
 void install_builtin_defaults(SettingsStack& stack);
@@ -46,7 +48,7 @@ void install_builtin_defaults(SettingsStack& stack);
 /// settings verbatim, the set fields of the global nets).
 void apply_project(SettingsStack& stack, const ProjectFile& project);
 
-/// Copies the effective magic-compat, netgen-compat and script-strict into
+/// Copies the effective value of each settings::setting_names() entry into
 /// the typed project settings.
 void apply_effective(const SettingsStack& stack, settings::ProjectSettings& typed);
 

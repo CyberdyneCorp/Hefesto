@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Per-project settings store: the compatibility settings plus `script-strict`
-// (capability hefesto-diagnostics, requirement "Script strict mode switch").
-// All three are independent booleans addressed by their spec names.
+// Per-project settings store: the compatibility settings, `portable-netlist-paths`
+// (capability schematic-netlisting, requirement "Netlist file structure";
+// Q-SCHEM-13) and `script-strict` (capability hefesto-diagnostics,
+// requirement "Script strict mode switch"). All are independent booleans
+// addressed by their spec names (capability hefesto-settings "Project files").
 
 #pragma once
 
@@ -24,16 +26,20 @@ namespace hefesto::settings {
 
 inline constexpr std::string_view kMagicCompat = "magic-compat";
 inline constexpr std::string_view kNetgenCompat = "netgen-compat";
+inline constexpr std::string_view kXschemCompat = "xschem-compat";
+inline constexpr std::string_view kPortableNetlistPaths = "portable-netlist-paths";
 inline constexpr std::string_view kScriptStrict = "script-strict";
 
 struct ProjectSettings {
-  compat::CompatSettings compat;  // magic-compat ON, netgen-compat ON
-  bool script_strict = false;     // initial strict state of each new interpreter
+  compat::CompatSettings compat;         // magic-compat, netgen-compat, xschem-compat: ON
+  bool portable_netlist_paths = false;   // schematic netlists: portable `** sch_path:` lines
+  bool script_strict = false;            // initial strict state of each new interpreter
 
   friend bool operator==(const ProjectSettings&, const ProjectSettings&) = default;
 };
 
-/// Setting names in a fixed order: magic-compat, netgen-compat, script-strict.
+/// Setting names in a fixed order: magic-compat, netgen-compat, xschem-compat,
+/// portable-netlist-paths, script-strict.
 [[nodiscard]] std::span<const std::string_view> setting_names() noexcept;
 
 /// Accepts on/off, true/false, yes/no, 1/0 (case-sensitive, lower case).

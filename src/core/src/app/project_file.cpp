@@ -47,9 +47,9 @@ json settings_json(const ProjectFile& project) {
   for (const auto& [name, value] : project.extra_settings) {
     out[name] = value;
   }
-  out[std::string{settings::kMagicCompat}] = project.settings.compat.magic_compat;
-  out[std::string{settings::kNetgenCompat}] = project.settings.compat.netgen_compat;
-  out[std::string{settings::kScriptStrict}] = project.settings.script_strict;
+  for (const auto name : settings::setting_names()) {
+    out[std::string{name}] = settings::get(project.settings, name).value();
+  }
   return out;
 }
 

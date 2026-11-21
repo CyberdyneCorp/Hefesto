@@ -221,7 +221,8 @@ TEST_CASE("built-in commands", CMD_API_TAGS) {
   // `help` is the ui area's (ui-command-dispatch "help command"), not a built-in.
   CHECK(s.registry().find("help") == nullptr);
 
-  CHECK(s.exec("setting").value.to_string() == "magic-compat on netgen-compat on script-strict off");
+  CHECK(s.exec("setting").value.to_string() ==
+        "magic-compat on netgen-compat on xschem-compat on portable-netlist-paths off script-strict off");
   CHECK(s.exec("setting", {"set", "netgen-compat", "off"}).ok());
   CHECK(s.exec("setting", {"get", "netgen-compat"}).value == Value{"off"});
   CHECK(s.exec("setting", {"get", "nope"}).diagnostics.at(0).code == codes::kSettingsName);
