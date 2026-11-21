@@ -8,6 +8,11 @@ Capability hefesto-architecture, requirement "Platform-independent core"
 C++20 standard library, zlib and nlohmann/json, so it builds on iPadOS without
 UI. Every `#include` / `#import` under src/core/ is matched against FORBIDDEN.
 
+Restricted headers (RESTRICTED) may be included only from the listed areas:
+`hefesto/db/plane_stitch.hpp`, the stitch editor that breaks the canonical tile
+decomposition, only from extract/ and extresist/ (and db/, which implements it;
+openspec/changes/m7-extraction design D6).
+
 Usage:
     check_core_includes.py              # scan src/core
     check_core_includes.py file.cpp ... # scan these files
@@ -40,6 +45,12 @@ FORBIDDEN: tuple[tuple[str, str], ...] = (
 )
 COMPILED = tuple((re.compile(pattern, re.I), reason) for pattern, reason in FORBIDDEN)
 
+# header -> the areas (directories under src/core/{src,include/hefesto}/) that may include it.
+RESTRICTED: dict[str, tuple[str, ...]] = {
+    "hefesto/db/plane_stitch.hpp": ("db", "extract", "extresist"),
+}
+AREA_ROOTS = (Path("src") / "core" / "src", Path("src") / "core" / "include" / "hefesto")
+
 
 def forbidden_reason(header: str) -> str | None:
     for pattern, reason in COMPILED:
@@ -48,11 +59,31 @@ def forbidden_reason(header: str) -> str | None:
     return None
 
 
-def scan(path: Path) -> list[str]:
+def area_of(path: Path, root: Path) -> str | None:
+    """The area directory of a core file (`extract` for src/core/src/extract/node/x.cpp)."""
+    try:
+        relative = path.resolve().relative_to(root)
+    except ValueError:
+        return None
+    for base in AREA_ROOTS:
+        if relative.parts[: len(base.parts)] == base.parts and len(relative.parts) > len(base.parts) + 1:
+            return relative.parts[len(base.parts)]
+    return None
+
+
+def restricted_reason(header: str, area: str | None) -> str | None:
+    allowed = RESTRICTED.get(header)
+    if allowed is None or area in allowed:
+        return None
+    return "restricted header; only " + ", ".join(f"{a}/" for a in allowed) + " may include it"
+
+
+def scan(path: Path, root: Path = ROOT) -> list[str]:
     text = path.read_text(encoding="utf-8", errors="replace")
+    area = area_of(path, root.resolve())
     problems: list[str] = []
     for match in INCLUDE.finditer(text):
-        reason = forbidden_reason(match.group(1))
+        reason = forbidden_reason(match.group(1)) or restricted_reason(match.group(1), area)
         if reason:
             line = text.count("\n", 0, match.start()) + 1
             problems.append(f"{path}:{line}: forbidden include <{match.group(1)}> ({reason})")
@@ -70,7 +101,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     files = args.files or core_files(args.root.resolve())
-    problems = [problem for path in files for problem in scan(path)]
+    root = args.root.resolve()
+    problems = [problem for path in files for problem in scan(path, root)]
     for problem in problems:
         print(problem, file=sys.stderr)
     print(f"{len(files)} core files scanned, {len(problems)} forbidden includes")

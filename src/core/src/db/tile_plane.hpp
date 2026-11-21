@@ -54,7 +54,17 @@ struct Tile {
   Tile* rt = nullptr;  // right-top corner stitch (above, rightmost)
   Coord x = 0;         // LEFT
   Coord y = 0;         // BOTTOM
+  /// ti_client (tiles/tile.h:73): run-scoped scratch of the extractor and
+  /// extresist (m7 design D6). Not part of the plane's value: copies,
+  /// comparisons, undo and the writers ignore it; a new or reused tile
+  /// starts at kClientDefault (TiSplitX, TiAlloc).
+  std::uintptr_t client = kClientDefault;
 };
+
+// One pointer more than the stitches and the coordinates, as Magic's Tile
+// (m7 design R3: the iPad memory bound assumes 56 bytes per tile on 64-bit
+// targets; growing it needs a new measurement).
+static_assert(sizeof(void*) != 8 || sizeof(Tile) == 56, "detail::Tile grew beyond its measured size");
 
 [[nodiscard]] inline Coord left(const Tile* t) noexcept { return t->x; }
 [[nodiscard]] inline Coord bottom(const Tile* t) noexcept { return t->y; }
@@ -107,6 +117,15 @@ class TilePlane {
   /// Releases the tiles freed during the operation.
   void end_operation();
 
+  /// One of the four boundary tiles at infinity around the plane.
+  [[nodiscard]] bool is_boundary(const Tile* t) const noexcept {
+    return t == left_ || t == top_ || t == right_ || t == bottom_;
+  }
+  /// The corner tile beyond the boundary, which has no stitches.
+  [[nodiscard]] bool is_infinity(const Tile* t) const noexcept { return t == infinity_; }
+  /// Any tile that is not an internal tile.
+  [[nodiscard]] bool is_outside(const Tile* t) const noexcept { return is_infinity(t) || is_boundary(t); }
+
   /// Visits every internal tile (for copy, statistics and tests).
   void for_each_tile(util::FunctionRef<void(const Tile*)> visit) const;
 
@@ -132,6 +151,10 @@ class TilePlane {
   std::atomic<Tile*> hint_{nullptr};
   std::vector<SplitEdit>* split_log_ = nullptr;
 };
+
+/// The view of internal tile `t` as the plane reports it: `dinfo` is 0,
+/// kDiagonalBit (left side) or kDiagonalBit|kSideBit (right side).
+[[nodiscard]] TileView view_of(const Tile* t, Body dinfo);
 
 /// GOTOPOINT: the tile containing `p` (bottom and left edges inclusive).
 [[nodiscard]] Tile* goto_point(Tile* tp, Point p) noexcept;
@@ -184,3 +207,12 @@ bool search_nm_area(TilePlane& plane, Body exact, const Rect& area, const tech::
                     TileFn visit);
 
 }  // namespace hefesto::db::detail
+
+namespace hefesto::db {
+
+/// The state behind db::Plane (here so that StitchEditor reaches it).
+struct Plane::Impl {
+  detail::TilePlane tiles;
+};
+
+}  // namespace hefesto::db
