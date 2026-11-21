@@ -77,6 +77,12 @@ styles
     metal2 21
 end
 
+contact
+end
+
+compose
+end
+
 connect
     poly    poly
     metal1  metal1
