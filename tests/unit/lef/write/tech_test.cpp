@@ -107,7 +107,7 @@ TEST_CASE("an obstruction type is written under its route layer's name",
 
 TEST_CASE("a contact is written under the name of its first cut record in table order",
           "[cap:lef-write][req:Magic type to LEF layer name]") {
-  Session s;
+  Session s(false);  // a lone contact's cut is dropped with magic-compat ON (Q-LEFDEF-136)
   LayerRecord via;
   via.layer_class = LayerClass::cut;
   via.type = s.type("m2c");

@@ -126,7 +126,8 @@ TEST_CASE("plain generated via naming", "[cap:def-write][req:Generated via defin
   CHECK(via->position_key == "m1_10_10");
 
   ViaTable vias;
-  const DefVias registered = register_vias(l.cell, vias, LayerTable{}, c);
+  LayerTable layers;
+  const DefVias registered = register_vias(l.cell, vias, layers, c);
   CHECK(registered.count == 1);
   CHECK(registered.created == std::vector<std::string>{"via1_260_260"});
   CHECK(registered.positions.at("m1_10_10") == "via1_260_260");
@@ -138,12 +139,14 @@ TEST_CASE("two identical vias share one definition", "[cap:def-write][req:Genera
   l.paint("m2contact", db::Rect{10, 10, 36, 36});
   l.paint("m2contact", db::Rect{100, 10, 126, 36});
   ViaTable vias;
-  const DefVias registered = register_vias(l.cell, vias, LayerTable{}, l.context());
+  LayerTable layers;
+  const DefVias registered = register_vias(l.cell, vias, layers, l.context());
   CHECK(registered.count == 1);
   CHECK(registered.positions.size() == 2);
   CHECK(registered.positions.at("m1_100_10") == "via1_260_260");
   // A second write reuses the record without counting it.
-  CHECK(register_vias(l.cell, vias, LayerTable{}, l.context()).count == 0);
+  CHECK(register_vias(l.cell, vias, layers, l.context()).count == 0);
+  CHECK(layers.size() == 1);  // the name is noted once in the shared key order (Q-LEFDEF-135)
 }
 
 TEST_CASE("a contact type with no LEF name gives no via", "[cap:def-write][req:Generated via definitions]") {
@@ -151,7 +154,8 @@ TEST_CASE("a contact type with no LEF name gives no via", "[cap:def-write][req:G
   l.names.erase("m2contact");
   l.paint("m2contact", db::Rect{10, 10, 36, 36});
   ViaTable vias;
-  const DefVias registered = register_vias(l.cell, vias, LayerTable{}, l.context());
+  LayerTable layers;
+  const DefVias registered = register_vias(l.cell, vias, layers, l.context());
   CHECK(registered.count == 0);
   CHECK(registered.positions.empty());
 }

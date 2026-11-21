@@ -82,7 +82,7 @@ The output file name SHALL be derived from the name `N` given on the command lin
 1. Let `B` be the part of `N` after its last `/`. If `B` contains a `.` and the text from the last `.` is not `.def`, the system SHALL first try to open `N` exactly as given. If that succeeds, `N` SHALL be used unchanged. Otherwise, the extension SHALL be stripped and `.def` appended.
 2. If `B` ends in `.def`, `N` SHALL be used as given.
 3. If `B` has no `.`, `.def` SHALL be appended.
-4. With `magic-compat` ON (the default), when the name of rules 1-3 cannot be opened and `N` is not the cell's name, `<cellname>.def` SHALL be tried, as Magic's lefFileOpen does for a write with a cell (the rule `lef write` follows for `.lef`). With it OFF no other name is tried.
+4. With `magic-compat` ON (the default), when the name of rules 1-3 cannot be opened and `N` is not the cell's name, `<cellname>.def` SHALL be tried, as Magic's lefFileOpen does for a write with a cell (the rule `lef write` follows for `.lef`). With it OFF no other name is tried (Q-LEFDEF-137, resolution: compat).
 
 If no name can be opened, `Generating DEF output <last name tried> for cell <c>:` and `Cannot open output file <name> (<reason>).` SHALL be the only messages, nothing SHALL be written and the session SHALL be unchanged: no generated via key and no non-default rule is added, as in Magic, which opens the file before anything else.
 
@@ -850,6 +850,7 @@ Compatibility: exact
 
 Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be the iteration order of a Magic string hash table as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes (see Q-LEFDEF-116). Under decision X-1 these orders depend only on names and insertion history, and the output SHALL be byte-identical to Magic's. This capability adds:
 
+- **One table for layers and vias.** As Magic's LefInfo, the layer table holds the keys of the layers and of the vias in one insertion history: the tech `lef` section's names, the layers and vias the LEF and DEF readers add, the names a NONDEFAULTRULE looks up (a key with no record when the name is unknown), and the vias a `def write` generates. Every enumeration of the layer table (the magic-to-LEF map, VIAS, the `-anal` lines, BLOCKAGES) SHALL follow that one history, including the table's growth when the 97th key is inserted, in both `magic-compat` settings (Q-LEFDEF-135, resolution: replicate). A write that cannot open its file adds no key.
 - **Size.** The layer table and the rule table each request 32 buckets.
 - **Removal.** Removing a generated via clears its value but keeps the key and its position, so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
 

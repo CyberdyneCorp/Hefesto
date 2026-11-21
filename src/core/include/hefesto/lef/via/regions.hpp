@@ -108,8 +108,9 @@ struct DefVias {
 
 /// defCountVias: the generated via of every region of `cell`; a name not in
 /// `vias` (nor a layer name of `layers`) is inserted and counted, a known
-/// one is reused uncounted.
-[[nodiscard]] DefVias register_vias(const db::CellDef& cell, ViaTable& vias, const LayerTable& layers,
+/// one is reused uncounted. Every name is noted in the shared key order of
+/// `layers` (Q-LEFDEF-135).
+[[nodiscard]] DefVias register_vias(const db::CellDef& cell, ViaTable& vias, LayerTable& layers,
                                     const DefViaContext& context);
 
 /// One `+ RECT <layer> ( x1 y1 ) ( x2 y2 )` of a VIAS record: binary32

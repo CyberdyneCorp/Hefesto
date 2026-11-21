@@ -1093,7 +1093,8 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:2519, lef/lefWrite.c:150-235 (lefFileOpen, PaOpen)
 - Options: replicate | fix (decompress)
 - Recommendation: fix, as gds read does, with the gzip inflate cap (M5-S1).
-- Resolution: fix — in both modes a gzip-compressed DEF file (by its content) is read decompressed. Approved 2026-11-19.
+- Resolution: fix — in both modes a gzip-compressed DEF file (by its content) is read decompressed. Approved 2026-11-19. Extended 2026-11-20 (E2): the same for a gzip-compressed LEF file in `lef read`.
+- Extended 2026-11-20 (user decision E2): `lef read` reads a gzip-compressed LEF decompressed too, in both modes, as implemented (LEFR, `lef/read/read.cpp` through `gds::open_source`; a `<name>.lef.gz` is found for `<name>`).
 
 ### Q-LEFDEF-133: File named in `lef read`'s missing-file error
 - Kind: platform
@@ -1112,6 +1113,61 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Options: replicate | compat (replicate ON; end each line OFF)
 - Recommendation: compat (message-only).
 - Resolution: compat — with `magic-compat` ON both messages have no line end, as Magic prints them (the `.mag` read message for FIXED_BBOX as well as OBS_BBOX); with it OFF each line is ended. Approved 2026-11-19. Specs: cell-file-format "Properties section records", lef-write.
+
+### Q-LEFDEF-135: One key order for the LEF layers and vias in `def write`
+- Kind: platform
+- Status: approved 2026-11-20 (user decision E1)
+- Magic behavior: LefInfo is one string hash table of 32 buckets that holds the tech-section layer names, the layers and vias the LEF and DEF readers add, the names a NONDEFAULTRULE looks up (HashFind inserts a key with no record), and the vias `def write` generates (their keys stay after the write). `def write` enumerates it for the magic-to-LEF map, VIAS, the `-anal` lines and BLOCKAGES, so the order depends on that whole insertion history, the growth at the 97th key included.
+- Evidence: lef/lefTech.c:124-127, 299; lef/lefRead.c:652, 1943, 1968, 3062, 3126; lef/defRead.c:892, 1971; lef/defWrite.c:1944
+- Hefesto (before): the records are in two tables (LayerTable, ViaTable); `def write` rebuilt the combined order by replaying the layer keys then the via keys, which differs from Magic once vias and layers were inserted in turn or the table grew.
+- Options: a shared key-order table | a decision accepting the difference
+- Recommendation: a shared key-order table.
+- Resolution: replicate — the layer table's key table is the shared key order (`LayerTable::note_key`, `enumerate_keys`): the LEF and DEF readers and `def write` note every via name and every looked-up rule name in it, in Magic's insertion order, and `def write` enumerates it, so its table order is Magic's (growth included). With `magic-compat` ON this is required for byte identity; it is the same with it OFF, since the hash order is X-1's deterministic order and has no corrected form. Approved 2026-11-20. Spec: def-write "Table enumeration order".
+
+### Q-LEFDEF-136: `lef write` drops a cut painted in place over a written routing tile
+- Kind: quirk
+- Status: approved 2026-11-20 (user decision E2; LEFDEF-118, 119, 127)
+- Magic behavior: lefWriteGeometry marks every yank-buffer tile it visits and skips marked tiles. The contact round paints the contacts into the same yank plane the routing round wrote; when a contact's area starts at the lower-left corner of a routing tile already written (no bottom or left clip, as when the routing material is exactly the contact's area), DBPaintPlane changes that tile in place, it keeps its mark, and no cut record is written.
+- Evidence: lef/lefWrite.c:822-830, 1686-1724; database/DBpaint.c:330-520 (clip order); tiles/tile.c:251-333 (new tiles unmarked)
+- Options: replicate | compat (replicate ON; write every cut OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the yank tiles carry Magic's marks by tile identity, so such a cut is not written (and the second side of a split tile is skipped, Q-LEFDEF-39); with it OFF every cut is written once per PORT or OBS block. Approved 2026-11-20. Spec: lef-write "Contact cut records".
+
+### Q-LEFDEF-137: `def write` retry of a typed file name
+- Kind: quirk
+- Status: approved 2026-11-20 (user decision E2; implemented by the round-4 DEFW workstream)
+- Magic behavior: lefFileOpen retries with `<cell>.def` whenever the name is not the cell's own name, so a typed name that cannot be opened writes `<cell>.def` instead.
+- Evidence: lef/lefWrite.c:150-235, lef/defWrite.c:3000
+- Options: replicate | compat (replicate ON; fail OFF)
+- Recommendation: compat (as Q-LEFDEF-128 for `lef write`).
+- Resolution: compat — with `magic-compat` ON a typed name that cannot be opened is retried as `<cell>.def`; with it OFF the write fails with Magic's two lines and writes nothing. Approved 2026-11-20. Spec: def-write "Output file naming".
+
+### Q-LEFDEF-138: `lef writeall` names its output after a failed read's `<name>.mag`
+- Kind: quirk
+- Status: approved 2026-11-20 (user decision E2; LEFDEF-RT-*)
+- Magic behavior: `lef writeall` opens its file with lefFileOpen(root, NULL), which takes the root's cd_file. A cell whose read failed has cd_file `<name>.mag` (DBio.c), and lefFileOpen opens a name with a foreign extension as given, so the LEF is written into `<name>.mag` (the library round trips write `lefdef_rt.mag`). A cell read from disk has cd_file without `.mag`.
+- Evidence: lef/lefWrite.c:150-235, 2254; database/DBio.c:1587-1604
+- Options: replicate | compat (replicate ON; `<name>.lef` OFF)
+- Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON a root whose read failed (and whose file name is the `<name>.mag` the failure set) gets its LEF in `<name>.mag`; with it OFF the `.mag` suffix is always dropped and the file is `<name>.lef`, so a LEF never takes a layout file's name. Approved 2026-11-20. Spec: lef-write "Output file naming".
+
+### Q-LEFDEF-139: Technology file lines of more than 30 words
+- Kind: bug
+- Status: approved 2026-11-20 (user decision E2; LEFDEF-334)
+- Magic behavior: techGetTokens stores the words of a line in a 30-slot vector it never bounds-checks (MAXARGS); the words past the 30th overwrite TechLoad's stack. In LEFDEF-334's first capture a 46-word `ignore` line printed a keyword error with garbage text.
+- Evidence: utils/tech.c:120, 433, 977-1080; golden-capture run 44743146734 (LEFDEF-334)
+- Options: replicate | compat (replicate ON; every word OFF, as Q-TECH-4)
+- Recommendation: compat, as decided. Magic's ON behaviour is undefined (stack corruption), so it cannot be copied as such: a defined ON rule is needed.
+- Resolution: compat — with `magic-compat` ON a line keeps Magic's 30-word vector; with it OFF every word is read (Q-TECH-4). Approved 2026-11-20. Implementation open: the tokenizer is in `tech/` (not a LEF/DEF file), and the ON rule for the words past the 30th (Magic's undefined overwrite) needs to be fixed by the user (proposed: the first 30 words are read and the line is reported with a TECH error naming the dropped words). LEFDEF-334 splits its line, so no golden case depends on it.
+
+### Q-LEFDEF-140: `def write` inputs Magic crashes on
+- Kind: bug
+- Status: approved 2026-11-20 (user decision E2; implemented by the round-4 DEFW workstream)
+- Magic behavior: three inputs crash `def write`: a NONDEFAULTRULE entry whose name has no LEF record (a null lefInfo dereferenced), a generated via whose route residue has no LEF route name (`strlen(NULL)`), and a `.ext` node layer the technology lacks (`DBConnectTbl[-1]`).
+- Evidence: lef/defWrite.c:3143, 3166 (rule entries), 1434-1515 (via residue names), 778 and 2626 (node layer)
+- Options: fix
+- Recommendation: fix in both modes (X-2 tier 1).
+- Resolution: fix — in both modes the rule entry is written by name, the via record has no route layer name, and the node's geometry is not searched, each with the Hefesto-only DEF-WRITE-012 warning. Approved 2026-11-20. Spec: def-write "NONDEFAULTRULES section", "Route record assembly", "Net geometry discovery".
 
 ### Q-LEFDEF-150: DEF write of a LEF VIA whose cut array is unbounded
 - Kind: bug

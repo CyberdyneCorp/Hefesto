@@ -111,6 +111,7 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 | LEFDEF-238 | def-read | file lookup: `t`, `t.def`, `t.txt` variants | which file opened | DEF file lookup |
 | LEFDEF-239 | def-read | >100 errors in one DEF | truncation message and summary | Diagnostics and error limits |
 | LEFDEF-240 | def-read | full OpenROAD-style small DEF (sky130 inverter chain) after tech LEF + cell LEF | complete written .mag of design cell | all |
+| LEFDEF-241 | def-read | two COMPONENTS named u1 (same master) | rename message; use ids in .mag | COMPONENTS section (Q-LEFDEF-83) |
 | LEFDEF-300 | def-write | tech demo (10 nm grid, metal1/metal2/via1 lef section); empty cell `e`; `def write` | full e.def | Output scale and number formatting; DEF output file grammar and section order |
 | LEFDEF-301 | def-write | cell with paint bbox (0,0)-(100,50), no FIXED_BBOX; `def write` | DIEAREA line | DIEAREA |
 | LEFDEF-302 | def-write | same cell with property FIXED_BBOX "-10 -10 110 60" | DIEAREA line | DIEAREA |
@@ -145,7 +146,7 @@ Test cases to capture later by running Magic (commit fc5daa9e) headless. Each ca
 | LEFDEF-331 | def-write | write cell with wide wire, then write second cell without | second file still has rule | Session state after writing (Q-LEFDEF-99) |
 | LEFDEF-332 | def-write | obsm1 obstruction paint (non-electrical) | BLOCKAGES section | BLOCKAGES section |
 | LEFDEF-333 | def-write | floating labeled metal1 net (special); obsm1, obsm2 and obsv1 obstruction paint | SPECIALNETS; BLOCKAGES per route and via bucket | BLOCKAGES section (Q-LEFDEF-101) |
-| LEFDEF-334 | def-write | tech with 40+ lef layers forcing hash rebuild; several vias; every net labeled | order of VIAS and BLOCKAGES records | Table enumeration order |
+| LEFDEF-334 | def-write | tech whose lef section gives 95 LefInfo keys (72 `ignore` names, lines of at most 15), so the two generated vias grow the table (Q-LEFDEF-135); every net labeled | order of VIAS and BLOCKAGES records | Table enumeration order |
 | LEFDEF-335 | def-write | cell named (UNNAMED) | error, no file | Preconditions and diagnostics |
 
 ## Authoring notes (task 15.1)

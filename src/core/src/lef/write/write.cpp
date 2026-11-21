@@ -171,10 +171,16 @@ cmd::CommandResult no_technology() {
   return cmd::CommandResult::failure(diag::make_native("LEF-WRITE-011", "No technology is loaded; nothing is written"));
 }
 
-// The base name's path without a ".mag" suffix: Magic's cd_file never
-// holds it, so a LEF never replaces the layout file.
-std::string cell_file_base(const db::CellDef& cell) {
+// The cell's file path as the base name. Like Magic's cd_file it holds a
+// ".mag" suffix only after a failed read (DBio.c sets "<name>.mag"), which
+// lefFileOpen opens as given: with magic-compat ON it is kept, so writeall
+// writes the LEF into `<name>.mag` as Magic does; with it OFF the suffix is
+// dropped, so a LEF never takes a layout file's name (Q-LEFDEF-138).
+std::string cell_file_base(const db::CellDef& cell, bool magic_compat) {
   std::string base = cell.file_path().string();
+  if (magic_compat) {
+    return base;
+  }
   for (const std::string_view suffix : {std::string_view{".mag.gz"}, std::string_view{".mag"}}) {
     if (base.size() > suffix.size() && base.ends_with(suffix)) {
       base.resize(base.size() - suffix.size());
@@ -325,7 +331,7 @@ cmd::CommandResult write_all(editor::EditorState& editor, db::CellDef& root, con
   // lefFileOpen(rootdef, NULL): the cell's file path, else its name.
   const bool derived = path.empty();
   const bool from_file = derived && !root.file_path().empty();
-  const std::string base = !derived ? path.string() : (from_file ? cell_file_base(root) : root.name());
+  const std::string base = !derived ? path.string() : (from_file ? cell_file_base(root, run.magic_compat()) : root.name());
   cmd::CommandResult result = run.save(wd::output_names(base, root.name(), from_file, run.magic_compat()), text,
                                        "for hierarchy rooted at cell " + root.name());
   if (result.ok()) {

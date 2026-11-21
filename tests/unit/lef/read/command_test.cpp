@@ -173,7 +173,9 @@ TEST_CASE("the read prints the totals and the search path finds the file", "[cap
   CHECK(contains(texts, "LEF Read: encountered 1 warning total."));
 }
 
-TEST_CASE("a gzip-compressed LEF is read", "[cap:lef-read][req:lef read side effects]") {
+// Q-LEFDEF-132 (extended 2026-11-20 to LEF): a gzip-compressed file is read
+// decompressed in both modes.
+TEST_CASE("a gzip-compressed LEF is read, in both modes", "[cap:lef-read][req:lef read side effects]") {
   // cells.lef.gz is found for `cells` (cell::search_file) and inflated.
   Files files{"gzip"};
   hefesto::platform::LocalFileSystem local;
@@ -182,9 +184,13 @@ TEST_CASE("a gzip-compressed LEF is read", "[cap:lef-read][req:lef read side eff
   const auto data = bytes(kCells);
   REQUIRE(sink.value()->write(data).ok());
   REQUIRE(sink.value()->finish().ok());
-  Session s;
-  REQUIRE(s.run("lef read " + files.path("cells")).ok());
-  CHECK(s.state.cells.find("INV") != nullptr);
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s;
+    s.project.compat.magic_compat = on;
+    REQUIRE(s.run("lef read " + files.path("cells")).ok());
+    CHECK(s.state.cells.find("INV") != nullptr);
+  }
 }
 
 TEST_CASE("regression: lef read reads through the session's file system", "[cap:lef-read][req:lef read side effects]") {

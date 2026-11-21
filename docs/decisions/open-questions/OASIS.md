@@ -252,7 +252,7 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
 - Options: read as 32767 | drop the element | wrap
 - Recommendation: read as 32767, with a message once per element.
-- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (proposed).
+- Resolution: fix — in both modes a layer, datatype, textlayer, texttype or attribute number above 32767 is read as 32767, with a message once per element (OASIS-READ-009). Approved 2026-11-19 (D1). An attribute below -32768 is not covered by D1: see Q-OASIS-45 (approved 2026-11-20).
 
 ### Q-OASIS-44: Polygons with more than 8191 points
 - Kind: ambiguity
@@ -261,37 +261,57 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
 - Options: fracture | drop | fail the read
 - Recommendation: fracture into polygons of at most 8191 points.
-- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46 (proposed), and a path over 8191 points is Q-OASIS-47 (proposed).
+- Resolution: fix — in both modes a polygon over 8191 points is fractured into polygons of at most 8191 points (OASIS-READ-008). Approved 2026-11-19 (D1). D1 approved only the fracturing: an outline the cuts cannot shrink, or one wider or taller than 2^32, is Q-OASIS-46, and a path over 8191 points is Q-OASIS-47 (both approved 2026-11-20).
 
 ### Q-OASIS-45: An attribute number below -32768
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2: approved as proposed)
 - Magic behavior: n/a. A GDS PROPATTR is 16-bit; an OASIS `S_GDS_PROPERTY` attribute is a signed integer of any size. D1 approved reading a number above 32767 as 32767 (Q-OASIS-43) and says nothing about a negative one.
 - Evidence: oasis-read "Input limits" rule 3; security.md M6-S3
 - As implemented (round 4, OASCMD): an attribute below -32768 is read as 32767, with the once-per-element message of OASIS-READ-009. That flips the sign.
 - Options: read as -32768 (clamp to the nearest GDS value) | drop the property | keep reading it as 32767
 - Recommendation: read as -32768, with the OASIS-READ-009 message (the nearest representable value, the same rule as above 32767).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes an attribute below -32768 is read as -32768 (the nearest GDS value), with the once-per-element OASIS-READ-009 message, as recommended. Approved 2026-11-20. Implementation open: `oasis/read/transcode_placements.cpp` still reads it as 32767 (OASR).
 
 ### Q-OASIS-46: An outline the fracture cuts cannot shrink, or wider or taller than 2^32
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2: approved as proposed)
 - Magic behavior: n/a (Magic has no OASIS reader).
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3; `oasis/read/fracture.cpp`
 - As implemented (round 4, OASCMD): a polygon over 8191 points whose vertices lie on two lines in each axis (the median cuts do not shrink it), or whose width or height is above 2^32, is reported and dropped (OASIS-READ-006). D1 approved fracturing polygons over 8191 points (Q-OASIS-44), not dropping any.
 - Options: drop with a message | fail the read
 - Recommendation: drop with a message (the GDS reader cannot hold the outline, and failing the whole read for one element is harsher than gds-read's own handling of a bad element).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes such a polygon is reported and dropped (OASIS-READ-006), as implemented. Approved 2026-11-20.
 
 ### Q-OASIS-47: A PATH with more than 8191 points
 - Kind: ambiguity
-- Status: proposed (round 4, 2026-11-20; not approved)
+- Status: approved 2026-11-20 (user decision E2: approved as proposed)
 - Magic behavior: n/a. A GDS PATH holds at most 8191 points; an OASIS PATH is unbounded.
 - Evidence: oasis-read "Input limits" rule 4; security.md M6-S3
 - As implemented (round 4, OASCMD): the path is reported and dropped. D1 approved fracturing polygons only (Q-OASIS-44).
 - Options: drop with a message | split into paths of at most 8191 points that share their end points | fail the read
 - Recommendation: drop with a message (splitting changes the path ends' extensions at the joints).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes such a path is reported and dropped, as implemented. Approved 2026-11-20.
+
+### Q-OASIS-48: A read-only GDS cell whose vendor file has another unit, under `oasis write`
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E2: as implemented)
+- Magic behavior: n/a (Magic has no OASIS writer). gds-write copies a read-only cell's vendor GDS structure; `oasis write` transcodes it, which needs the vendor file's database unit to be the output unit.
+- Evidence: oasis-write "Read-only cells"; `oasis/write/vendor_cells.cpp`; `gds/write/vendor_oasis.cpp`; docs/diagnostics/codes/gds.md GDS-WRITE-054
+- As implemented (round 4, OASW): a vendor GDS file whose UNITS do not round to the output unit (1 nm, or 1 angstrom with `units angstroms`) is not transcoded: the cell is generated from its layout, with GDS-WRITE-054.
+- Options: regenerate from the layout with a message | rescale the vendor geometry | fail the write
+- Recommendation: regenerate from the layout (the layout is what Magic would write for a cell that is not read-only).
+- Resolution: fix — in both modes the cell is generated from its layout with GDS-WRITE-054, as implemented. Approved 2026-11-20.
+
+### Q-OASIS-49: A negative vendor PROPATTR under `oasis write`
+- Kind: ambiguity
+- Status: approved 2026-11-20 (user decision E2: as implemented)
+- Magic behavior: n/a. A GDS PROPATTR is a signed 16-bit number; the S_GDS_PROPERTY attribute OASIS writes is an unsigned integer.
+- Evidence: `oasis/write/gds_elements.cpp` (PROPATTR read as signed 16-bit), `oasis/write/translate.cpp` `gds_property` (written as `static_cast<std::uint16_t>`)
+- As implemented (round 4, OASW): a negative attribute is written as its unsigned 16-bit value (-1 gives 65535).
+- Options: unsigned 16-bit | signed integer | drop the property
+- Recommendation: unsigned 16-bit (the bit pattern of the GDS record, which a GDS round trip through a reader reading INT2 restores).
+- Resolution: fix — in both modes a negative vendor PROPATTR is written as its unsigned 16-bit value, as implemented. Approved 2026-11-20.
 
 ### Q-OASIS-60: Character mapping applied to OASIS strings
 - Kind: ambiguity

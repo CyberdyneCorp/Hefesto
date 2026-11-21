@@ -120,16 +120,42 @@ void yank_routing(const Yank& y, const db::Plane& source, tech::PlaneId plane, c
   });
 }
 
+std::vector<const void*> TileMarks::tiles(const db::Plane& plane, const db::Rect& area) {
+  std::vector<const void*> out;
+  const db::Rect grown{area.x0 - 1, area.y0 - 1, area.x1 + 1, area.y1 + 1};
+  plane.enumerate(grown, tech::TypeMask::all(), [&](const db::TileView& t) {
+    out.push_back(t.tile);
+    return true;
+  });
+  return out;
+}
+
+void TileMarks::forget_freed(const std::vector<const void*>& before, const db::Plane& plane, const db::Rect& area) {
+  const std::vector<const void*> after = tiles(plane, area);
+  const std::unordered_set<const void*> live(after.begin(), after.end());
+  for (const void* tile : before) {
+    if (!live.contains(tile)) {
+      marked_.erase(tile);
+    }
+  }
+}
+
 // lefYankContacts.
 void yank_contacts(const Yank& y, const db::Plane& source, tech::PlaneId plane, const db::Rect& area,
-                   db::Plane& target) {
+                   db::Plane& target, TileMarks* marks) {
   source.enumerate(area, all_but_space_and_drc(), [&](const db::TileView& t) {
     if (t.split || !y.tech.is_contact(t.type)) {
       return true;
     }
     const std::optional<tech::TileType> cut = cut_type_on(y.tech, t.type, plane);
-    if (cut && y.names[*cut] != nullptr) {
-      (void)target.paint(t.area, db::paint_row(y.tech, plane, *cut), db::PaintMerge::none);
+    if (!cut || y.names[*cut] == nullptr) {
+      return true;
+    }
+    const std::vector<const void*> before = marks != nullptr ? TileMarks::tiles(target, t.area)
+                                                             : std::vector<const void*>{};
+    (void)target.paint(t.area, db::paint_row(y.tech, plane, *cut), db::PaintMerge::none);
+    if (marks != nullptr) {
+      marks->forget_freed(before, target, t.area);
     }
     return true;
   });
@@ -153,35 +179,50 @@ void RecordWriter::begin(Block block) {
   writes_ = 0;
   last_type_ = tech::kSpace;
   written_cuts_.clear();
+  marks_.clear();
 }
 
-// lefWriteGeometry over one plane. Magic marks a split tile visited before
-// it looks at its side, so with magic-compat ON only the first side
-// reported is written (Q-LEFDEF-39); OFF writes both.
+// lefWriteGeometry over one plane.
 void RecordWriter::write_plane(const tech::Technology& tech, const db::Plane& yank, const tech::TypeMask& route,
                                const db::Rect& area, Round round) {
-  const void* last_split = nullptr;
   yank.enumerate(area, route, [&](const db::TileView& t) {
-    if (t.split) {
-      if (magic_compat_ && t.tile == last_split) {
-        return true;
-      }
-      last_split = t.tile;
-    }
-    if (round == Round::cut) {
-      if (!tech.is_contact(t.type)) {
-        return true;  // routing left over from the routing round
-      }
-      if (header && magic_compat_) {
-        return false;  // the search stops at the first cut; the header stays pending
-      }
-      const auto key = std::make_tuple(static_cast<db::Coord>(t.type), t.area.x0, t.area.y0, t.area.x1, t.area.y1);
-      if (!written_cuts_.insert(key).second) {
-        return true;
-      }
-    }
-    return record(t);
+    return magic_compat_ ? visit_marked(tech, t, round) : visit_native(tech, t, round);
   });
+}
+
+// Magic marks every tile it visits before looking at it, and skips marked
+// ones: the second side of a split tile (Q-LEFDEF-39), and a cut painted
+// in place over a routing tile the routing round wrote (Q-LEFDEF-136).
+bool RecordWriter::visit_marked(const tech::Technology& tech, const db::TileView& t, Round round) {
+  if (marks_.test(t.tile)) {
+    return true;
+  }
+  marks_.set(t.tile);
+  if (round == Round::cut) {
+    if (!tech.is_contact(t.type)) {
+      return true;  // routing left over from the routing round
+    }
+    if (header) {
+      marks_.reset(t.tile);
+      return false;  // the search stops at the first cut; the header stays pending
+    }
+  }
+  return record(t);
+}
+
+// magic-compat OFF: both sides of a split tile, and each cut once per
+// block.
+bool RecordWriter::visit_native(const tech::Technology& tech, const db::TileView& t, Round round) {
+  if (round == Round::cut) {
+    if (!tech.is_contact(t.type)) {
+      return true;  // routing left over from the routing round
+    }
+    const auto key = std::make_tuple(static_cast<db::Coord>(t.type), t.area.x0, t.area.y0, t.area.x1, t.area.y1);
+    if (!written_cuts_.insert(key).second) {
+      return true;
+    }
+  }
+  return record(t);
 }
 
 bool RecordWriter::record(const db::TileView& t) {
