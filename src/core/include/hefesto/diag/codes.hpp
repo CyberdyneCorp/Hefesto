@@ -56,6 +56,10 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // option or function the M6 scaffold declared before its workstream
 // implemented it. INTEGRATION retires the code at M6 exit.
 inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-006";
+// Scaffold stubs of the schem area (openspec/changes/m8-schematic tasks.md
+// 5.2): a function the M8 scaffold declared before its workstream
+// implemented it (schem/not_implemented.hpp). Retired at M8 exit.
+inline constexpr std::string_view kSchemNotImplemented = "CORE-NOTIMPL-007";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
@@ -72,7 +76,7 @@ struct CodeArea {
   std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app",
                             // "undo", "select", "connect", "ui", "wiring", "drc", "hints",
                             // "script", "pcell", "tools", "gui", "mask", "gds", "cif",
-                            // "lef", "def", "oasis", "extflat", "extract",
+                            // "lef", "def", "oasis", "extflat", "extract", "schem",
                             // "view3d"
   std::string_view prefix;  // required AREA part of each code; empty for "core"
   std::string_view doc;     // repository-relative path of the area's document

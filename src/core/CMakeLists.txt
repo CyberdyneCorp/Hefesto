@@ -76,6 +76,9 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       INTEGRATION (dispatcher), def/read DEFR, def/write DEFW, oasis/codec
 #       OASFMT, oasis/read OASR, oasis/write OASW, oasis/command OASCMD,
 #       extract/tech EXTSUB)   extflat/ EXTSUB
+#   M8 (openspec/changes/m8-schematic/design.md D3): schem/ SCAFFOLD (shared
+#       files; file/ FORMAT, sym/ lib/ tcl/ SYMLIB, net/ NETLIST, edit/ EDIT,
+#       cmd/ CMD, sim/ SIMINT, each with its own sources.cmake)
 #   M10 (openspec/changes/m10-3d-view/design.md D2/D3): view3d/ SCAFFOLD
 #       (shared files; each subdirectory has its own sources.cmake owned by
 #       its workstream: view3d/stack TECH, view3d/mesh MESH, view3d/camera
@@ -83,7 +86,7 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       view3d/export EXPORT, view3d/overlay OVERLAY); extract/tech is
 #       extended by TECH (the 3D height subset, design D5)
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
-                       script pcell tools gui mask gds cif lef def oasis extflat extract view3d)
+                       script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

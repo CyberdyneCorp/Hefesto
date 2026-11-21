@@ -19,4 +19,8 @@ std::string netgen_compat_header_tag(const CompatSettings& settings) {
   return tag("netgen-compat", settings.netgen_compat);
 }
 
+std::string xschem_compat_netlist_line(const CompatSettings& settings) {
+  return settings.xschem_compat ? std::string{} : "** " + tag("xschem-compat", false);
+}
+
 }  // namespace hefesto::compat

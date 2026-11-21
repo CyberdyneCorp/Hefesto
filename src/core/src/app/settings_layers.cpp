@@ -36,9 +36,9 @@ std::string join_sorted(std::vector<std::string> names) {
 
 void install_builtin_defaults(SettingsStack& stack) {
   const settings::ProjectSettings defaults;
-  stack.set(SettingLayer::builtin, settings::kMagicCompat, on_off(defaults.compat.magic_compat));
-  stack.set(SettingLayer::builtin, settings::kNetgenCompat, on_off(defaults.compat.netgen_compat));
-  stack.set(SettingLayer::builtin, settings::kScriptStrict, on_off(defaults.script_strict));
+  for (const auto name : settings::setting_names()) {
+    stack.set(SettingLayer::builtin, name, on_off(settings::get(defaults, name).value()));
+  }
   stack.set(SettingLayer::builtin, kVdd, "vdd!");
   stack.set(SettingLayer::builtin, kGnd, "gnd!");
   stack.set(SettingLayer::builtin, kGlobalNets, "");
@@ -49,9 +49,9 @@ void apply_project(SettingsStack& stack, const ProjectFile& project) {
   for (const auto& [name, value] : project.extra_settings) {
     stack.set(SettingLayer::project, name, value);
   }
-  stack.set(SettingLayer::project, settings::kMagicCompat, on_off(project.settings.compat.magic_compat));
-  stack.set(SettingLayer::project, settings::kNetgenCompat, on_off(project.settings.compat.netgen_compat));
-  stack.set(SettingLayer::project, settings::kScriptStrict, on_off(project.settings.script_strict));
+  for (const auto name : settings::setting_names()) {
+    stack.set(SettingLayer::project, name, on_off(settings::get(project.settings, name).value()));
+  }
   if (project.nets.global_nets) {
     stack.set(SettingLayer::project, kGlobalNets, join_sorted(*project.nets.global_nets));
   }

@@ -47,7 +47,7 @@ struct GlobalNets {
 struct ProjectFile {
   std::optional<PdkPin> pdk;
   std::vector<std::string> cell_search_paths;      // relative to the project folder
-  settings::ProjectSettings settings;              // magic-compat, netgen-compat, script-strict
+  settings::ProjectSettings settings;              // the settings::setting_names() booleans
   std::map<std::string, std::string> extra_settings;  // other project-layer settings, sorted
   GlobalNets nets;                                 // "Global nets and power names"
   std::vector<std::string> open_documents;
