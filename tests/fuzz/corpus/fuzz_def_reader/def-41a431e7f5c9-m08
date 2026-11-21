@@ -1,0 +1,11 @@
+VERSION 5.7 ;
+DIVIDERCHAR "/" ;
+BUSBITCHARS "[]" ;
+DESIGN twolayer ;
+UNITS DISTANCE MICRONS 1000 ;
+DIEAREA ( 0 0 ) ( 10000 10000 ) ;
+PINS 2 ;
+- P + NET P + PLACED ( 1000 1000 ) N + LAYER metal1 ( -50 -50 ) ( 50 50 ) + LAYER metal2 ( -100 -100 ) ( 100 100 ) ;
+- Q + NET Q + LAYER metal1 ( -50 -50 ) ( 50 50 ) + PLACED ( 3000 1000 ) N ;
+END PINS
+END DESIGN

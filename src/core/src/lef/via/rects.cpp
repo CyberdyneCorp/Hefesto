@@ -4,12 +4,15 @@
 // The RECT lines of a VIAS record in DEF write: the residue rectangles and
 // the cut array of the output style (defWriteVias, lef/defWrite.c:2099-2256;
 // CIFGetContactSize, cif/CIFtech.c:2327-2382; capability def-write "VIAS
-// section content", Q-LEFDEF-107, 115). Magic is (c) the Regents of the
+// section content", Q-LEFDEF-107, 115, 150). Magic is (c) the Regents of the
 // University of California, BSD-style licence (see THIRD_PARTY_NOTICES.md).
 //
 // Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -28,17 +31,38 @@ struct CutArray {
   std::int32_t size = 0;
   std::int32_t sep = 0;
   std::int32_t border = 0;
-  std::int32_t pitch() const { return size + sep; }
+  [[nodiscard]] std::int64_t pitch() const { return std::int64_t{size} + sep; }
 };
 
+/// The most cuts one VIAS record's cut array may have (Q-LEFDEF-150,
+/// security.md M6-S2): above it one cut the size of the area is written.
+constexpr std::int64_t kMaxCuts = 1'000'000;
+
+/// A binary32 value truncated toward zero to int, as Magic's int
+/// assignments do; values outside the int range (UB in C) saturate, and
+/// NaN gives 0, in both modes.
+std::int32_t trunc_int(float v) {
+  if (std::isnan(v)) {
+    return 0;
+  }
+  constexpr float kLimit = 2147483648.0F;  // 2^31
+  if (v >= kLimit) {
+    return std::numeric_limits<std::int32_t>::max();
+  }
+  if (v < -kLimit) {
+    return std::numeric_limits<std::int32_t>::min();
+  }
+  return static_cast<std::int32_t>(v);
+}
+
 std::int32_t to_output(std::int32_t v, float scale, float cscale) {
-  const auto scaled = static_cast<std::int32_t>(static_cast<float>(v) * scale);
-  return static_cast<std::int32_t>(static_cast<float>(scaled) / cscale);
+  const std::int32_t scaled = trunc_int(static_cast<float>(v) * scale);
+  return trunc_int(static_cast<float>(scaled) / cscale);
 }
 
 /// `v *= oscale; v /= 2` on an int.
 std::int32_t half_output(db::Coord v, float scale) {
-  return static_cast<std::int32_t>(static_cast<float>(v) * scale) / 2;
+  return trunc_int(static_cast<float>(v) * scale) / 2;
 }
 
 float scaled_half(db::Coord v, float scale) {
@@ -88,15 +112,17 @@ const db::Rect& residue_area(const ViaDefinition& via, tech::TileType r) {
 
 /// The cut count and first cut position along one axis; `single` when no
 /// whole cut fits and one is centred (the case of the size warning).
+/// Computed in 64 bits: the int arithmetic of Magic cannot overflow for
+/// the 32-bit inputs, and a count is never truncated.
 struct Axis {
-  std::int32_t count = 0;
-  std::int32_t start = 0;
+  std::int64_t count = 0;
+  std::int64_t start = 0;
   bool single = false;
 };
 
-Axis axis(std::int32_t lo, std::int32_t hi, const CutArray& cut) {
+Axis axis(std::int64_t lo, std::int64_t hi, const CutArray& cut) {
   Axis a;
-  a.count = (hi - lo + cut.sep - 2 * cut.border) / cut.pitch();
+  a.count = (hi - lo + cut.sep - 2 * std::int64_t{cut.border}) / cut.pitch();
   if (a.count == 0) {
     a.count = 1;
     a.single = true;
@@ -107,14 +133,30 @@ Axis axis(std::int32_t lo, std::int32_t hi, const CutArray& cut) {
   return a;
 }
 
-void warn_size(std::string_view code, std::string_view what, const CutArray& cut, std::int32_t extent,
+/// The cuts of a two-axis array; 0 when either count is not positive (the
+/// loops write nothing).
+std::int64_t cut_count(const Axis& ax, const Axis& ay) {
+  return ax.count > 0 && ay.count > 0 ? ax.count * ay.count : 0;
+}
+
+void warn_size(std::string_view code, std::string_view what, const CutArray& cut, std::int64_t extent,
                const DefViaContext& context) {
   context.sink.emit(diag::make(code, "Warning: via size is " + std::to_string(cut.size) + " but area " +
                                          std::string{what} + " is " + std::to_string(extent) + "!"));
 }
 
-void add_cut_array(const ViaDefinition& via, const std::string& layer, const CutArray& cut,
-                   const DefViaContext& context, std::vector<ViaRect>& out) {
+/// Q-LEFDEF-150: a cut array above kMaxCuts, refused in both modes.
+void refuse_cut_array(std::string_view via_name, const Axis& ax, const Axis& ay, const DefViaContext& context) {
+  context.sink.emit(diag::make("LEF-VIA-012", "Via \"" + std::string{via_name} + "\": cut array of " +
+                                                  std::to_string(ax.count) + " x " + std::to_string(ay.count) +
+                                                  " gives more than " + std::to_string(kMaxCuts) +
+                                                  " cuts; one cut the size of the via area is written."));
+}
+
+/// The cut array of `via`; false (nothing written) when it is above
+/// kMaxCuts.
+bool add_cut_array(const ViaDefinition& via, std::string_view via_name, const std::string& layer,
+                   const CutArray& cut, const DefViaContext& context, std::vector<ViaRect>& out) {
   const std::int32_t x0 = half_output(via.area.x0, context.scale);
   const std::int32_t y0 = half_output(via.area.y0, context.scale);
   const std::int32_t x1 = half_output(via.area.x1, context.scale);
@@ -122,20 +164,27 @@ void add_cut_array(const ViaDefinition& via, const std::string& layer, const Cut
   const Axis ax = axis(x0, x1, cut);
   const Axis ay = axis(y0, y1, cut);
   if (ax.single && ax.start < x0) {
-    warn_size("LEF-VIA-009", "width", cut, x1 - x0, context);
+    warn_size("LEF-VIA-009", "width", cut, std::int64_t{x1} - x0, context);
   }
   const bool y_fires = context.compat.magic_compat ? ay.start >= y0 : ay.start < y0;  // Q-LEFDEF-107
   if (ay.single && y_fires) {
-    warn_size("LEF-VIA-010", "height", cut, y1 - y0, context);
+    warn_size("LEF-VIA-010", "height", cut, std::int64_t{y1} - y0, context);
   }
-  for (std::int32_t i = 0; i < ay.count; ++i) {
-    const std::int32_t b = ay.start + i * cut.pitch();
-    for (std::int32_t j = 0; j < ax.count; ++j) {
-      const std::int32_t l = ax.start + j * cut.pitch();
+  const std::int64_t cuts = cut_count(ax, ay);
+  if (cuts > kMaxCuts) {
+    refuse_cut_array(via_name, ax, ay, context);
+    return false;
+  }
+  out.reserve(out.size() + static_cast<std::size_t>(cuts));
+  for (std::int64_t i = 0; i < ay.count; ++i) {
+    const std::int64_t b = ay.start + i * cut.pitch();
+    for (std::int64_t j = 0; j < ax.count; ++j) {
+      const std::int64_t l = ax.start + j * cut.pitch();
       out.push_back(ViaRect{layer, static_cast<float>(l), static_cast<float>(b), static_cast<float>(l + cut.size),
                             static_cast<float>(b + cut.size)});
     }
   }
+  return true;
 }
 
 /// The cut operator of `type` in output units; nullopt when the style has
@@ -176,9 +225,8 @@ std::vector<ViaRect> via_rects(const ViaDefinition& via, std::string_view via_na
   if (!cut_name) {
     return out;
   }
-  if (const auto cut = cut_array(*via.type, style, context.scale)) {
-    add_cut_array(via, *cut_name, *cut, context, out);
-  } else {
+  const auto cut = cut_array(*via.type, style, context.scale);
+  if (!cut || !add_cut_array(via, via_name, *cut_name, *cut, context, out)) {
     out.push_back(float_rect(*cut_name, via.area, context.scale));
   }
   return out;

@@ -83,7 +83,7 @@ Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`;
 - `GDS-WRITE-052`: "Calma output error:  cell <cell> has an element on layer <l>/<d>, which GDS cannot hold (above 32767); the cell cannot be written." (or "a polygon of <n> XY points with the closing point, above GDS's 8191", or "a path of <n> points"): an element of a read-only OASIS cell that GDS cannot hold (Q-OASIS-35). Nothing of the cell is written, and the cell and its parents fail. Owner: OASW (`vendor_oasis.cpp`).
 - `GDS-WRITE-053`: a read-only OASIS cell has XELEMENT or XGEOMETRY records; GDS has no counterpart and they are not written. Once per cell. Native only.
 - `GDS-WRITE-054`: the OASIS file of a read-only OASIS cell cannot be decoded, or its unit does not give 1 nm (1 Angstrom with `units angstroms`) per database unit; the cell is generated from its layout. A file or cell that cannot be found is `GDS-WRITE-041` ("Can't find OASIS file ..."). Under `oasis write` only, also a read-only GDS cell whose vendor file's UNITS do not round to that unit (oasis-write "Read-only GDS vendor cells" rule 3); `gds write` copies such a cell verbatim, as before.
-- `GDS-WRITE-055`: a read-only OASIS cell's repetitions expand to more than 2^28 element instances (a proposed resource cap, as oasis-read's, design D21); the cell and its parents fail.
+- `GDS-WRITE-055`: a read-only OASIS cell's repetitions expand to more than 2^28 element instances (Q-OASIS-71, approved 2026-11-20, as oasis-read's cap of Q-OASIS-41; security.md M6-S3); the cell and its parents fail.
 
 ## CMD
 

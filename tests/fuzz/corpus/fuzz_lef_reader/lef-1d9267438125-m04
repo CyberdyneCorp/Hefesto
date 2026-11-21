@@ -1,0 +1,26 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+SITE core
+  CLASS CORE ;
+  SIZE 0.2 BY 2 ;
+END core
+MACRO tap
+  CLASS CORE WELLTAP ;
+  SYMMETRY X Y R90 ;
+  SITE core ;
+  PROPERTY CDL "tap x" ;
+  PROPERTY weight 2 ;
+  SOURCE USER ;
+  ORIGIN 0 0 ;
+  SIZE 0.2 BY 2 ;
+  OBS
+      LAYER metal1 ;
+        RECT 0 0 0.2 2 ;
+  END
+  TIMING
+    FROMPIN A ;
+    TOPIN Y ;
+  END TIMING
+END tap
+END LIBRARY

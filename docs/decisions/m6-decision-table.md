@@ -322,6 +322,16 @@ Proposed in round 4, not approved (the parts of the implemented read limits that
 | Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 | proposed | dropped with a message (OASIS-READ-006) |
 | Q-OASIS-47 | A PATH with more than 8191 points | proposed | dropped with a message |
 
+## Decided 2026-11-20: write caps (E3)
+
+The user's decision E3 of 2026-11-20 approved three resource caps on writes, each an error with a regression test and an M6-S row in `docs/contributing/security.md`. The two OASIS caps were implemented in round 4 (OASW) as proposals; the DEF write cap is implemented in round 5 (FUZZSEC). Each row has `Status: approved 2026-11-20` and a `Resolution:` line; the def-write, oasis-write and gds-write specs cite them.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-150 | DEF write of a LEF VIA whose cut array is unbounded | **fix** | both modes: above 1,000,000 cuts one cut the size of the via area is written (LEF-VIA-012) |
+| Q-OASIS-70 | Inexact AREF of a read-only GDS cell in an OASIS write | **fix** | both modes: above 2^24 instances the AREF is not written and the write fails (OASIS-WRITE-010) |
+| Q-OASIS-71 | Element instances of a read-only OASIS cell in a GDS write | **fix** | both modes: above 2^28 element instances the cell and its parents fail (GDS-WRITE-055) |
+
 ## Planning questions raised by the M6 plan
 
 These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. **All six were decided by the user on 2026-11-18, each as recommended**; for question 3 the recommendation was conditional, and its fallback (b) applies because the user named no source.

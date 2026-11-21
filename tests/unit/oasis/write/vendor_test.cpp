@@ -191,11 +191,12 @@ TEST_CASE("triangles, degenerate boundaries, boxes, nodes and inexact arrays",
   CHECK(sink_has(t.sink, "OASIS-WRITE-005", "NODE"));
 }
 
-// Proposed cap, not approved (security.md M6-S3, OASIS-WRITE-010): an
+// Approved cap (Q-OASIS-70, user decision E3 of 2026-11-20; security.md
+// M6-S3, OASIS-WRITE-010): an
 // inexact AREF lists every instance in a type 10 repetition, so a 32767 x
 // 32767 COLROW would allocate about 17 GB. Above 2^24 instances the array
 // is not written and the transcode fails.
-TEST_CASE("an inexact AREF above 2^24 instances fails the transcode (proposed cap)",
+TEST_CASE("an inexact AREF above 2^24 instances fails the transcode (approved cap)",
           "[cap:oasis-write][req:Read-only GDS vendor cells]") {
   GdsLibrary lib;
   const std::uint64_t at = lib.begin("v");
@@ -488,11 +489,12 @@ TEST_CASE("a regular placement repetition becomes an AREF", "[cap:gds-write][req
   }
 }
 
-// Proposed cap, not approved (security.md M6-S3, GDS-WRITE-055): the
+// Approved cap (Q-OASIS-71, user decision E3 of 2026-11-20; security.md
+// M6-S3, GDS-WRITE-055): the
 // element instances a read-only OASIS cell expands to in GDS output are
 // bounded by the oasis-read cap of 2^28 (Q-OASIS-41). The count is checked
 // before any instance is written.
-TEST_CASE("a vendor OASIS cell above 2^28 element instances fails the cell (proposed cap)",
+TEST_CASE("a vendor OASIS cell above 2^28 element instances fails the cell (approved cap)",
           "[cap:gds-write][req:Read-only OASIS vendor cells]") {
   for (const std::uint64_t rows : {std::uint64_t{1} << 14, (std::uint64_t{1} << 14) + 1}) {
     INFO("rows " << rows);

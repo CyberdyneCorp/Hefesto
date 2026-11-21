@@ -21,3 +21,4 @@ HEFESTO_LEF_CODE("LEF-VIA-008", warning, "A via PATTERN does not parse; every cu
 HEFESTO_LEF_CODE("LEF-VIA-009", warning, "DEF write: a via's cut is wider than its area.")
 HEFESTO_LEF_CODE("LEF-VIA-010", warning, "DEF write: a via's cut height check (inverted in Magic) fired.")
 HEFESTO_LEF_CODE("LEF-VIA-011", warning, "DEF write: a via layer has no LEF name; its RECT is skipped.")
+HEFESTO_LEF_CODE("LEF-VIA-012", error, "DEF write: a via's cut array is above 1,000,000 cuts (Q-LEFDEF-150); one cut the size of the via area is written.")
