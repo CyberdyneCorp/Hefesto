@@ -264,6 +264,24 @@ class CoreIncludesTest(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("bad.cpp:4", text)
 
+    def test_plane_stitch_only_from_extract_and_extresist(self):
+        include = HEADER + '#include "hefesto/db/plane_stitch.hpp"\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for allowed in ("src/core/src/extract/node/regions.cpp", "src/core/src/extresist/network/fracture.cpp",
+                            "src/core/include/hefesto/extresist/network/fracture.hpp",
+                            "src/core/src/db/plane_stitch.cpp"):
+                write(root, allowed, include)
+            code, _ = run_quiet(includes.main, ["--root", str(root)])
+            self.assertEqual(code, 0)
+            write(root, "src/core/src/drc/engine/kernel.cpp", include)
+            write(root, "src/core/src/extflat/reader.cpp", include)
+            code, text = run_quiet(includes.main, ["--root", str(root)])
+            self.assertEqual(code, 1)
+            self.assertIn("kernel.cpp:3", text)
+            self.assertIn("reader.cpp:3", text)
+            self.assertIn("restricted header", text)
+
 
 class CompareGoldenOutputsTest(unittest.TestCase):
     def test_identical_drift_and_missing(self):
