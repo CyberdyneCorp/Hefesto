@@ -11,8 +11,10 @@ exists only in a Magic built with OpenGL and run on the OpenGL display. They are
 display-type check is not applied (Q-MISC-75), so ``-d OGL`` only selects the OpenGL display styles.
 
 Both tools load ``input/v3d.tech``: three planes, the mos display styles (so ``render`` resolves the
-style long name ``metal1``), an output style ``gdsii`` of scalefactor 10 with ``render MET1 metal1
-1.376 0.36``, and an extract style with plane orders and heights. ``input/c3d.mag`` is the cell of
+style long name ``metal1``), an output style ``gdsii`` of plain ``scalefactor 10`` (centimicrons: expander 1,
+so CIFTechOutputScale's GCF reduction keeps cs_scaleFactor = 10 and ``cif`` really rescales the camera; with
+``scalefactor 10 nanometers`` the factor and the expander are both 10 and reduce to 1) with ``render MET1
+metal1 1.376 0.36``, and an extract style with plane orders and heights. ``input/c3d.mag`` is the cell of
 bounding box (0,0)-(100,50) of the spec's "Default view" scenarios. Magic reads its display style,
 colour map and glyph files from its installation; hefesto-cli from the replay's CAD_ROOT, so each case
 stages them as ``magic-sys`` inputs.
@@ -91,7 +93,7 @@ end
 
 cifoutput
 style gdsii
-    scalefactor 10 nanometers
+    scalefactor 10
     layer POLY poly
         calma 66 20
     layer MET1 m1

@@ -67,7 +67,7 @@ class M10CaseSpecTest(unittest.TestCase):
     def test_render_statement_and_cell_match_the_spec_scenarios(self):
         """The Render statement example of view-3d and the 100 x 50 cell of "Default view"."""
         self.assertIn("    render MET1 metal1 1.376 0.36\n", m10_cases.V3D_TECH)
-        self.assertIn("    scalefactor 10 nanometers\n", m10_cases.V3D_TECH)
+        self.assertIn("    scalefactor 10\n", m10_cases.V3D_TECH)  # f = 10 after the GCF reduction
         self.assertIn("<< metal1 >>\nrect 0 0 100 50\n", m10_cases.C3D_MAG)
 
     def test_window_is_opened_like_the_render3d_wrapper(self):

@@ -36,7 +36,7 @@ end
 
 cifoutput
 style gdsii
-    scalefactor 10 nanometers
+    scalefactor 10
     layer POLY poly
         calma 66 20
     layer MET1 m1
