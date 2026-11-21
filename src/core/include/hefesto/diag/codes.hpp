@@ -72,7 +72,8 @@ struct CodeArea {
   std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app",
                             // "undo", "select", "connect", "ui", "wiring", "drc", "hints",
                             // "script", "pcell", "tools", "gui", "mask", "gds", "cif",
-                            // "lef", "def", "oasis", "extflat", "extract"
+                            // "lef", "def", "oasis", "extflat", "extract",
+                            // "view3d"
   std::string_view prefix;  // required AREA part of each code; empty for "core"
   std::string_view doc;     // repository-relative path of the area's document
   std::span<const CodeInfo> codes;  // sorted by code

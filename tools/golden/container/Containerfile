@@ -25,6 +25,7 @@
 # selects it (goldenlib/refrunners.py); nothing else uses a display.
 # KLayout runs in batch mode (`klayout -b`, QT_QPA_PLATFORM=offscreen) and gdstk from
 # $HEFESTO_GDSTK_PYTHON (m6-lef-def-oasis design D18).
+# --build-arg WITH_OPENGL=1 builds the magic-gl variant of the MISC-3D-* cases (last step below).
 
 ARG BASE_IMAGE=docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 FROM ${BASE_IMAGE}
@@ -163,10 +164,42 @@ RUN set -eux; \
        -o "${PREFIX}/bin/magic-hash-harness" \
        /opt/src/magic-hash-harness/driver.c /opt/src/magic/utils/hash.c
 
+# The magic-gl variant (openspec/changes/m10-3d-view design D13, Open Question 3 (a)): the same Magic
+# commit built again with OpenGL, against Mesa (llvmpipe through GLX), for the MISC-3D-* cases only;
+# they run `magic -d OGL -noconsole` under xvfb-run with the GLX extension (goldenlib/refrunners.py).
+#   docker build -f tools/golden/container/Containerfile --build-arg WITH_OPENGL=1 \
+#       -t hefesto-golden-gl:local tools/golden
+# The ARG is declared here, after every other step, so both images share the layers above. Magic's
+# configure silently drops OpenGL when the GL headers are missing, so the build checks that -DOGL
+# reached defs.mak, that Xvfb offers GLX on llvmpipe, and that a 3D window opens and answers `view`.
+ARG WITH_OPENGL=0
+COPY container/magic_gl_smoke.tcl /opt/src/
+RUN set -eux; \
+    if [ "${WITH_OPENGL}" = "1" ]; then \
+      apt-get -o Acquire::Check-Valid-Until=false update; \
+      apt-get install -y --no-install-recommends \
+          libgl-dev libglu1-mesa-dev libgl1-mesa-dri libglx-mesa0 mesa-utils; \
+      rm -rf /var/lib/apt/lists/*; \
+      fetch_commit /opt/src/magic-gl "${MAGIC_REPO}" "${MAGIC_COMMIT}"; \
+      cd /opt/src/magic-gl; \
+      ./configure --prefix="${PREFIX}" --with-tcl=/usr/lib/tcl8.6 --with-tk=/usr/lib/tk8.6 \
+          --with-opengl --with-cairo=no; \
+      grep -q -- '-DOGL' defs.mak; \
+      grep -q -- '-DTHREE_D' defs.mak; \
+      make -j"$(nproc)"; make install; \
+      xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" glxinfo -B | tee /tmp/glxinfo.txt; \
+      grep -q 'llvmpipe' /tmp/glxinfo.txt; rm -f /tmp/glxinfo.txt; \
+      cd /tmp; \
+      timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" \
+          "${PREFIX}/bin/magic" -d OGL -noconsole -norc /opt/src/magic_gl_smoke.tcl | tee /tmp/smoke.txt; \
+      grep -qx 'magic-gl-smoke 0 {0.0 10.0 0.0}' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
+    fi
+
 LABEL org.opencontainers.image.title="hefesto-golden" \
       org.opencontainers.image.description="Pinned headless Magic/netgen/ngspice/xschem/KLayout/gdstk for Hefesto golden capture" \
       org.opencontainers.image.licenses="Apache-2.0" \
       io.hefesto.magic.commit="${MAGIC_COMMIT}" \
+      io.hefesto.magic.opengl="${WITH_OPENGL}" \
       io.hefesto.netgen.commit="${NETGEN_COMMIT}" \
       io.hefesto.ngspice.commit="${NGSPICE_COMMIT}" \
       io.hefesto.xschem.commit="${XSCHEM_COMMIT}" \

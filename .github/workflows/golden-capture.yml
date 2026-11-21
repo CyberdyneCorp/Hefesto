@@ -328,6 +328,23 @@ jobs:
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
+      # The magic-gl variant (Magic built --with-opengl, Mesa llvmpipe under Xvfb) for the
+      # MISC-3D-* cases (m10-3d-view design D13). Built only when a selected case asks for it;
+      # it shares every layer but the last with hefesto-golden:ci. An empty output makes
+      # capture.py skip the magic-gl cases with a note instead of failing them.
+      - name: Build the magic-gl image variant
+        id: gl
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          manifests=()
+          for c in "${cases[@]}"; do manifests+=("$c/case.toml"); done
+          if [ "${#manifests[@]}" -gt 0 ] && grep -qsx 'image = "magic-gl"' "${manifests[@]}"; then
+            docker build -f tools/golden/container/Containerfile --build-arg WITH_OPENGL=1 \
+              -t hefesto-golden-gl:ci tools/golden
+            echo "image=hefesto-golden-gl:ci" >> "$GITHUB_OUTPUT"
+          fi
+
       # m8-schematic task 3.1: the image's awk is GNU Awk (the SCHEM captures depend on it).
       - name: Report the image's awk
         run: docker run --rm hefesto-golden:ci awk --version | head -n 1
@@ -339,7 +356,7 @@ jobs:
           # capture.py --only-captured keeps the cases with expected/provenance.json.
           mapfile -t cases < cases.txt
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --verify --only-captured "${cases[@]}"
+            --gl-image "${{ steps.gl.outputs.image }}" --verify --only-captured "${cases[@]}"
 
       - name: Capture cases without expected/
         if: env.MODE == 'both' || env.MODE == 'capture'
@@ -353,7 +370,7 @@ jobs:
           # collect and upload what was captured, then fail the step.
           status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
+            --gl-image "${{ steps.gl.outputs.image }}" --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
           # Collect the new expected/ directories, keeping their tests/golden/... paths.
           mkdir -p golden-expected
           git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt

@@ -152,11 +152,16 @@ Compatibility: exact
 `planeorder P N` SHALL assign order index N (`atoi`) to plane P; N SHALL be in `[0, numTechPlanes-1]` (else `Planeorder index must be [0..k]`), and an unknown plane SHALL be reported (`Unknown planeorder plane <P>`). Any `planeorder` line SHALL set the style status to "seen". `noplaneordering` SHALL set status "not needed" unless a `planeorder` was already seen (error `"noplaneordering" specified after "planeorder".`); a `planeorder` after `noplaneordering` SHALL report `"planeorder" specified after "noplaneordering".` and still apply.
 Compatibility: exact
 
-At the end of the style, unless status is "not needed", the orders of all tech planes SHALL be checked to be a permutation of `0..k`. On a conflict or missing index a warning SHALL be printed (`Warning: Extraction Style <name>` followed by `Conflicting planeorder for plane(s):` / `Missing planeorder for plane(s):`) and every plane SHALL receive the default order `planeIndex - firstTechPlane` (i.e., declaration order of planes). A higher order index means "farther from the substrate".
+At the end of the style, unless status is "not needed", the orders of all tech planes SHALL be checked to be a permutation of `0..k`. On a conflict or missing index a warning SHALL be printed (`Warning: Extraction Style <name>` followed by `Conflicting planeorder for plane(s):` / `Missing planeorder for plane(s):`) and every plane SHALL receive the default order `planeIndex - firstTechPlane` (i.e., declaration order of planes). A higher order index means "farther from the substrate". When the status is "not needed" at the end of the style, the end-of-style processing SHALL stop before the check, as in Magic (extTechFinalStyle returns early): no height or thickness default is applied (Requirement: Layer height and thickness defaults; a type without a `height` line keeps h = t = 0) and no step of Requirement: Micron conversion runs (with `units microns` the values stay in microns).
 
 `defaultareacap`, `defaultperimeter`, `defaultoverlap` and `defaultsideoverlap` SHALL be rejected (`Cannot parse ... line without plane ordering!`) unless a `planeorder` line has been seen earlier in the style.
 
 (Magic ref: extract/ExtTech.c:3496-3520, extract/ExtTech.c:3796-3847, extract/ExtTech.c:1207-1211)
+
+#### Scenario: noplaneordering keeps undeclared heights at zero
+- **GIVEN** a style with `noplaneordering` and only `height metal1 1 0.5`
+- **WHEN** the style is loaded
+- **THEN** metal1 has height 1 and thickness 0.5, and metal2 has height 0 and thickness 0
 
 #### Scenario: Missing plane order falls back to default
 - **GIVEN** a tech with planes `well, active, metal1` and a style that only declares `planeorder active 1`

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3381 scenarios, 920 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3382 scenarios, 920 open questions.
 
 ## Hefesto product (native)
 
@@ -138,7 +138,7 @@ Open questions: [27](decisions/open-questions/EXTRACT.md) · Golden cases: [CASE
 | [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 18 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
 | [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 6 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
 | [`extract-substrate`](../openspec/specs/extract-substrate/spec.md) | 8 | 9 | Defines how the extractor represents the substrate: the global substrate node of each cell, isolated substrate regions (e.g., p-wells inside deep n-wells), substrate shielding type… |
-| [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 32 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
+| [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 33 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
 
 ## Netlists and extresist (NETLIST)
 
