@@ -185,6 +185,11 @@ class Reader {
   void fix_warning(std::string_view text) const;  // Hefesto-only
   void report(std::string text) const;          // TxPrintf
   void progress() const;                        // LefEstimate: the progress host
+  /// LefEstimate of one item of a counted section (`total` declared): the
+  /// progress host, and with `total` > 0 Magic's display status leaves
+  /// DISPLAY_SUSPEND (EditorState::display_status_active).
+  void estimate(std::int32_t total);
+  [[nodiscard]] bool estimated() const noexcept { return estimated_; }
   [[nodiscard]] bool cancelled() const noexcept;
 
   // --- units and geometry (geometry.cpp) ---
@@ -311,6 +316,8 @@ class Reader {
   // Generated-via parameters kept across the definitions of the read
   // (magic-compat ON keeps the last value, defRead.c:1916-1921).
   lef::ViaParamSet via_params_;
+
+  bool estimated_ = false;  // a LefEstimate call with a declared count
 
   // PINS state that lives across pins (magic-compat ON, Q-LEFDEF-64, 65).
   std::uint32_t pin_number_ = 0;

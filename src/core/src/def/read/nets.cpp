@@ -207,7 +207,7 @@ void Reader::nets(std::int32_t total, bool special) {
       error("Net END statement missing.");
       continue;
     }
-    progress();
+    estimate(total);
     ++processed;
     NetReader{*this, special}.run();
   }

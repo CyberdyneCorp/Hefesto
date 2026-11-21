@@ -105,6 +105,7 @@ class PinsReader {
   Reader& r_;
   db::CellDef& cell_;
   std::int32_t processed_ = 0;
+  std::int32_t total_ = 0;  // the declared count (LefEstimate)
   bool has_ports_ = false;
   // Magic's state: the rectangle list (head first), the pin attributes and
   // the pending placement.
@@ -120,6 +121,7 @@ class PinsReader {
 };
 
 void PinsReader::run(std::int32_t total) {
+  total_ = total;
   while (const auto token = r_.next()) {
     const auto key = lef::lookup_full(*token, kStatementKeys);
     if (!key) {
@@ -144,7 +146,7 @@ void PinsReader::pin() {
   if (pending_) {
     r_.error("Pin specified without layer, was not placed.");
   }
-  r_.progress();
+  r_.estimate(total_);
   ++processed_;
   const auto name = r_.next();
   if (!name) {

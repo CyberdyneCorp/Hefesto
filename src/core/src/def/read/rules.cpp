@@ -253,7 +253,7 @@ void Reader::blockages(std::int32_t total) {
       error("Blockage END statement missing.");
       continue;
     }
-    progress();
+    estimate(total);
     ++processed;
     blockage();
   }

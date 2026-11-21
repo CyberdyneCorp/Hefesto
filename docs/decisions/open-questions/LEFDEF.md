@@ -1170,6 +1170,15 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Recommendation: fix in both modes (X-2 tier 1).
 - Resolution: fix — in both modes the rule entry is written by name, the via record has no route layer name, and the node's geometry is not searched, each with the Hefesto-only DEF-WRITE-012 warning. Approved 2026-11-20. Spec: def-write "NONDEFAULTRULES section", "Route record assembly", "Net geometry discovery".
 
+### Q-LEFDEF-141: A DEF read's progress estimate ends the NULL driver's display suspension
+- Kind: quirk
+- Status: implemented under the standing rule in the round-5 integration (no user decision yet; reported for confirmation)
+- Magic behavior: LefEstimate sets GrDisplayStatus to DISPLAY_IN_PROGRESS on its first call (an item of a section with a declared count above 0) and to DISPLAY_IDLE on the last item, overwriting the DISPLAY_SUSPEND the NULL driver set, and nothing sets it back. DefRead's DBWloadWindow, and every later window load, then deletes an untouched "(UNNAMED)" root, which batch Magic otherwise keeps. Found with lefdef-bench: after `def read` of the generated block Magic lists 440 cells and Hefesto 441, the extra one "(UNNAMED)" (perf run 44868150477).
+- Evidence: lef/lefRead.c:87-131 (LefEstimate), lef/defRead.c:1124, 1566, 1829, 1958, 2240 (callers), graphics/grNull.c:380, dbwind/DBWprocs.c:321-331, 608-617
+- Options: replicate | compat (replicate ON; keep "(UNNAMED)" in a batch session OFF) | fix
+- Recommendation: compat (the standing rule).
+- Resolution: compat — with `magic-compat` ON a DEF read that reads an item of a counted section sets `EditorState::display_status_active`, and from then on a window load deletes an untouched "(UNNAMED)" root as with a running display; with it OFF nothing changes. Spec: def-read "Command context". Regression test "a counted DEF section makes the design load delete an untouched (UNNAMED) with magic-compat ON" (`tests/unit/def/read/command_test.cpp`).
+
 ### Q-LEFDEF-150: DEF write of a LEF VIA whose cut array is unbounded
 - Kind: bug
 - Status: approved 2026-11-20 (user decision E3)

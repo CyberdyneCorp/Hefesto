@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 130 entries and `OASIS.md` has 49, 179 in all. Every one has a `Resolution:` line:
+As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 131 entries and `OASIS.md` has 49, 180 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -19,6 +19,7 @@ As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 130 en
 | Approved 2026-11-20 (user decisions E1, E2; recorded in round 5) | 6: Q-LEFDEF-135..140; amendments of Q-TECH-27 and Q-LEFDEF-132 | "Decided 2026-11-20: LEF/DEF rows" |
 | Approved 2026-11-20 (user decisions E2, E3, E4; recorded in round 5) | 10: Q-OASIS-45..54 (45..47 were proposed in round 4) | "Decided 2026-11-20: OASIS rows" |
 | Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
+| Implemented under the standing rule (round-5 integration), user confirmation pending | 1: Q-LEFDEF-141 (compat) | "Decided 2026-11-20: LEF/DEF rows" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -331,6 +332,7 @@ The user's decisions of 2026-11-20 (E1, E2) for LEF/DEF, recorded in round 5 (`m
 | Q-LEFDEF-138 | `lef writeall` output named after a failed read's `<name>.mag` (LEFDEF-RT-*) | **compat** | ON: the LEF goes into `<name>.mag`; OFF: `<name>.lef` |
 | Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **compat** | ON: Magic's 30-word vector (undefined past it: the ON rule is open, user_needed); OFF: every word (Q-TECH-4); implementation open (`tech/`) |
 | Q-LEFDEF-140 | `def write` inputs Magic crashes on | **fix** | both modes: rule entry written by name, via without route name, node geometry not searched; DEF-WRITE-012 |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; to confirm) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
 | Q-TECH-27 (amended) | LEFDEF-003: minimum-grid quotient below 1 | **fix** | both modes: read as 1:1 |
 | Q-LEFDEF-132 (extended) | gzip-compressed LEF files | **fix** | both modes: read decompressed (as implemented) |
 
