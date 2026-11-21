@@ -46,4 +46,35 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
 
 ## Performance (PERF)
 
-`hefesto-performance` "Batch throughput relative to Magic" for LEF/DEF and OASIS (design D22, Open Question 4 (a)). PERF records the `lefdef-bench` and `oasis-bench` results here (tasks.md section 16). Not measured yet.
+`hefesto-performance` "Batch throughput relative to Magic" for LEF/DEF and OASIS (design D22, Open Question 4 (a): each workload gated at its own callgrind baseline + 2 %; the Magic and GDS-path comparisons are information). PERF records the `lefdef-bench` and `oasis-bench` results here (tasks.md section 16).
+
+**How it is measured.** `perf.yml` `lefdef-bench` and `oasis-bench`, on the x86_64 runner, with a GCC 14 Release build of hefesto-cli (`-g -fno-omit-frame-pointer`, as `gds-bench`):
+
+- **LEF/DEF workloads** (`bench/lefdef/lefdef_bench.py`, sky130-lef and sky130 sets):
+  - `lef-read`: `lef read sky130_fd_sc_hd.lef`, after the technology LEF `sky130_fd_sc_hd__nom.tlef`;
+  - `def-read`: `def read lefdef_block.def` over the library. No pinned data set has a routed sky130 DEF, so `bench/lefdef/defgen.py` generates one from the cell LEF: 5000 cells in abutting N/FS rows, 5001 nets routed on li1, met1 and met2 with L1M1 and M1M2 vias, met1 power rails and met4 straps. The same LEF always gives the same bytes;
+  - `lef-writeall`: `lef writeall -notop` of a wrapper placing every cell read, as `LEFDEF-RT-sky130_fd_sc_hd` does.
+  Magic 8.3.694 (reference image) runs the same scripts.
+- **OASIS workloads** (`bench/oasis/oasis_bench.py`, the `gds-bench` workloads; sky130 and sky130-gds-sc sets). Magic has no OASIS, so the comparison is Hefesto's GDS path over the same layouts:
+  - `read`: `oasis read sky130_fd_sc_hd.oas` against `gds read sky130_fd_sc_hd.gds`. hefesto-cli converts the library once (`gds read`, a wrapper placing every cell read, `oasis library yes`, `oasis write`), so both reads create the same cells;
+  - `write`, `write-merge`: `oasis write` of the all-cells block with `oasis merge no`/`yes`, against `gds_bench.py`'s `gds write` scripts.
+- **Scripts.** Each workload has a base script (the set-up) and an op script (the set-up and the operation). Its cost is callgrind's op total minus its base total.
+- **Gate.** `bench/lefdef/baseline_gate.py` fails a workload above its baseline + 2 % (`bench/lefdef/baseline.json`, `bench/oasis/baseline.json`). A workload with no recorded baseline is reported as "no baseline" and passes. A missing Hefesto profile fails the job.
+- **Information only.** Magic's count (LEF/DEF) or the GDS path's count (OASIS), the wall time of op minus base (`--repeat 3`), and the instructions by function (`bench/drc/callgrind_pass_diff.py`). The timing step fails when the cell counts of a workload differ (Hefesto against Magic, OASIS read against GDS read) or a write is empty.
+
+**Recording the baselines.** Once a Performance run on main (or a `workflow_dispatch` of `perf.yml` on main) has passed `lefdef-bench` and `oasis-bench`:
+
+1. Download its artifacts: `gh run download <run> -n lefdef-bench -D lefdef-bench` and `gh run download <run> -n oasis-bench -D oasis-bench`.
+2. Record the counts:
+   - `python3 bench/lefdef/baseline_gate.py lefdef-bench --baseline bench/lefdef/baseline.json --tool hefesto --reference magic --workload lef-read --workload def-read --workload lef-writeall --record <run> --commit <sha>`;
+   - `python3 bench/lefdef/baseline_gate.py oasis-bench --baseline bench/oasis/baseline.json --tool oasis --reference gds --workload read --workload write --workload write-merge --record <run> --commit <sha>`.
+3. Add the rows to the table below and commit both baseline files. From then on, each workload is gated at its baseline + 2 %.
+
+A change to a workload (for example `defgen.py`'s parameters or a script) needs its baseline recorded again in the same pull request.
+
+| Run | Workload | Hefesto | Comparison | Gate |
+|---|---|---|---|---|
+| local, 2026-11-20, macOS arm64, `macos-debug` hefesto-cli at `m6-r5-perf` (base 0c5f29fb); wall time of a Debug build only, a smoke run of the scripts (no callgrind or Magic on this Mac) | lef-read | 1.55 s (440 cells) | not measured | CI |
+| same | def-read | 5.78 s (441 cells; 5000 instances, 2 pins, 2 special nets, 5001 nets read) | not measured | CI |
+| same | lef-writeall | 2.86 s (2.7 MB written) | not measured | CI |
+| CI `lefdef-bench` and `oasis-bench` | all | pending: the first dispatch reports the counts, then the baselines are recorded as above | | |
