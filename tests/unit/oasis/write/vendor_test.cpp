@@ -191,11 +191,11 @@ TEST_CASE("triangles, degenerate boundaries, boxes, nodes and inexact arrays",
   CHECK(sink_has(t.sink, "OASIS-WRITE-005", "NODE"));
 }
 
-// Proposed cap, not approved (security.md M6-S3, OASIS-WRITE-010): an
+// Approved cap (E3, 2026-11-20; Q-OASIS-53, security.md M6-S3, OASIS-WRITE-010): an
 // inexact AREF lists every instance in a type 10 repetition, so a 32767 x
 // 32767 COLROW would allocate about 17 GB. Above 2^24 instances the array
 // is not written and the transcode fails.
-TEST_CASE("an inexact AREF above 2^24 instances fails the transcode (proposed cap)",
+TEST_CASE("an inexact AREF above 2^24 instances fails the transcode",
           "[cap:oasis-write][req:Read-only GDS vendor cells]") {
   GdsLibrary lib;
   const std::uint64_t at = lib.begin("v");
@@ -210,6 +210,33 @@ TEST_CASE("an inexact AREF above 2^24 instances fails the transcode (proposed ca
   CHECK_FALSE(t.status.ok());
   CHECK(sink_has(t.sink, "OASIS-WRITE-010", "an AREF of 4097 x 4096 in cell v has inexact steps"));
   CHECK(t.decoded.elements("v").empty());
+}
+
+// Q-OASIS-52 (E2, approved 2026-11-20, as implemented): a vendor SREF's
+// negative PROPATTR is written as its unsigned 16-bit value (-1 as 65535),
+// the bits of the GDS INT2.
+TEST_CASE("a negative vendor PROPATTR is written as an unsigned 16-bit attribute",
+          "[cap:oasis-write][req:Read-only GDS vendor cells]") {
+  GdsLibrary lib;
+  const std::uint64_t at = lib.begin("v");
+  lib.empty(gds::RecordType::sref);
+  lib.str(gds::RecordType::sname, "child");
+  lib.i4(gds::RecordType::xy, {0, 0});
+  lib.i2(gds::RecordType::propattr, {-1});
+  lib.str(gds::RecordType::propvalue, "neg");
+  lib.empty(gds::RecordType::endel);
+  (void)lib.end();
+  Transcoded t;
+  transcode(lib, at, "v", t);
+  REQUIRE(t.status.ok());
+  std::vector<std::uint64_t> attributes;
+  for (const oasis::Record& r : t.decoded.records) {
+    if (r.property && r.property->values.size() == 2 &&
+        r.property->values[0].kind == oasis::PropertyValue::Kind::unsigned_integer) {
+      attributes.push_back(r.property->values[0].unsigned_value);
+    }
+  }
+  CHECK(attributes == std::vector<std::uint64_t>{65535});
 }
 
 TEST_CASE("a read-only GDS cell in a write is transcoded without repetition detection",
@@ -488,11 +515,52 @@ TEST_CASE("a regular placement repetition becomes an AREF", "[cap:gds-write][req
   }
 }
 
-// Proposed cap, not approved (security.md M6-S3, GDS-WRITE-055): the
+// Regression (found with OASIS-023): a rule-2 placement repetition (rotated
+// 90) kept its columns as the AREF's, so gds-read, which takes the columns
+// along the child's x axis, read the array with spacing 0.
+TEST_CASE("a rotated placement repetition becomes an AREF with columns and rows swapped",
+          "[cap:gds-write][req:Read-only OASIS vendor cells]") {
+  OasFixture f;
+  OasLibrary lib;
+  lib.cell("A").add(rectangle(1, 0, 0, 0, 5, 5));
+  oasis::Element p;
+  p.kind = oasis::ElementKind::placement;
+  p.name = "A";
+  p.angle = 90.0;
+  oasis::Repetition r;
+  r.type = 1;
+  r.columns = 2;
+  r.rows = 3;
+  r.column_step = {400, 0};
+  r.row_step = {0, 100};
+  p.repetition = r;
+  lib.cell("V").add(p);
+  store(f, "/lib.oas", lib.bytes());
+  db::CellDef& a = f.cell("A");
+  read_only_oasis(a, "/lib.oas", "A");
+  db::CellDef& v = f.cell("V");
+  read_only_oasis(v, "/lib.oas", "V");
+  f.place(v, a);
+  db::CellDef& top = f.cell("top");
+  f.place(top, v);
+  const std::vector<Rec> recs = body(f.write(top), "V");
+  REQUIRE(f.last.ok());
+  CHECK(count_type(recs, gds::RecordType::aref) == 1);
+  for (const Rec& rec : recs) {
+    if (rec.record() == gds::RecordType::colrow) {
+      CHECK(rec.i2() == std::vector<std::int16_t>{3, 2});
+    }
+    if (rec.record() == gds::RecordType::xy) {
+      CHECK(rec.i4() == std::vector<std::int32_t>{0, 0, 0, 300, 800, 0});
+    }
+  }
+}
+
+// Approved cap (E3, 2026-11-20; Q-OASIS-54, security.md M6-S3, GDS-WRITE-055): the
 // element instances a read-only OASIS cell expands to in GDS output are
 // bounded by the oasis-read cap of 2^28 (Q-OASIS-41). The count is checked
 // before any instance is written.
-TEST_CASE("a vendor OASIS cell above 2^28 element instances fails the cell (proposed cap)",
+TEST_CASE("a vendor OASIS cell above 2^28 element instances fails the cell",
           "[cap:gds-write][req:Read-only OASIS vendor cells]") {
   for (const std::uint64_t rows : {std::uint64_t{1} << 14, (std::uint64_t{1} << 14) + 1}) {
     INFO("rows " << rows);
