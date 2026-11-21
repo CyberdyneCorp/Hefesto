@@ -47,6 +47,7 @@ class Library:
     name: str         # libs.ref/<name>
     tech_lef: str     # path below libs.ref/<name>/
     cell_lef: str     # path below libs.ref/<name>/
+    probe: tuple[str, ...] = ()   # macros whose full LEF text is also kept (PROBE)
 
     @property
     def lef_set(self) -> str:
@@ -58,12 +59,34 @@ class Library:
 
 
 LIBRARIES = (
-    Library("sky130A", "sky130_fd_sc_hd", "techlef/sky130_fd_sc_hd__nom.tlef", "lef/sky130_fd_sc_hd.lef"),
+    Library("sky130A", "sky130_fd_sc_hd", "techlef/sky130_fd_sc_hd__nom.tlef", "lef/sky130_fd_sc_hd.lef",
+            ("sky130_fd_sc_hd__probe_p_8",)),
     Library("gf180mcuD", "gf180mcu_fd_sc_mcu7t5v0", "techlef/gf180mcu_fd_sc_mcu7t5v0__nom.tlef",
             "lef/gf180mcu_fd_sc_mcu7t5v0.lef"),
-    Library("ihp-sg13g2", "sg13g2_stdcell", "lef/sg13g2_tech.lef", "lef/sg13g2_stdcell.lef"),
+    Library("ihp-sg13g2", "sg13g2_stdcell", "lef/sg13g2_tech.lef", "lef/sg13g2_stdcell.lef", ("sg13g2_sdfbbp_1",)),
 )
 RT_CASES = tuple(f"{PREFIX}{lib.name}" for lib in LIBRARIES)
+PROBE = f"{WRAPPER}.probe.lef"
+
+
+def probe_body(macros: tuple[str, ...]) -> list[str]:
+    """Copy the full text of ``macros`` from the written LEF into PROBE, so that a difference the
+    digest and summary only flag can be located (the round-5 RTNAME deferral)."""
+    if not macros:
+        return []
+    names = " ".join(macros)
+    return [
+        f"if {{[file exists {OUT}]}} {{",
+        f"    set rt_in [open {OUT}]; set rt_lines [split [read $rt_in] \\n]; close $rt_in",
+        f"    set rt_out [open {PROBE} w]; set rt_on 0",
+        "    foreach line $rt_lines {",
+        f"        if {{[regexp {{^MACRO (\\S+)}} $line -> m]}} {{set rt_on [expr {{[lsearch -exact {{{names}}} $m] >= 0}}]}}",
+        "        if {$rt_on} {puts $rt_out $line}",
+        "        if {$rt_on && [regexp {^END (\\S+)} $line -> m] && [lsearch -exact {" + names + "} $m] >= 0} {set rt_on 0}",
+        "    }",
+        "    close $rt_out",
+        "}",
+    ]
 
 
 def rt_body(lib: Library) -> str:
@@ -91,6 +114,7 @@ def rt_body(lib: Library) -> str:
         f"if {{[file exists {WRAPPER}.mag]}} {{file rename -force {WRAPPER}.mag {OUT}}}",
         f"puts [list lefdef-rt written [file exists {OUT}]]",
         f"if {{![file exists {OUT}]}} {{puts [list lefdef-rt path [path search]]}}",
+        *probe_body(lib.probe),
     ])
 
 
@@ -99,7 +123,7 @@ def rt_case(lib: Library) -> tclcase.TclCase:
         f"{PREFIX}{lib.name}", "lef-write", list(RT_REQUIREMENTS),
         f"Library round trip of {lib.variant} {lib.name}: lef read of {Path(lib.tech_lef).name} and "
         f"{Path(lib.cell_lef).name}, a wrapper placing every cell read, lef writeall -notop.",
-        rt_body(lib), outputs=[DIGEST, SUMMARY], output_names=dict(OUTPUT_NAMES), pdk=lib.variant,
+        rt_body(lib), outputs=[DIGEST, SUMMARY, *([PROBE] if lib.probe else [])], output_names=dict(OUTPUT_NAMES), pdk=lib.variant,
         external=[lib.external(lib.tech_lef), lib.external(lib.cell_lef)], stream_comparator="lef-text",
         stream_masks=["completed-percent", "magic-undo-note"], driver=ld.DRIVER,
         notes=["LEFDEF-RT case (m6-lef-def-oasis task 15.5): fresh session with the PDK's rc and random seed 1.",
