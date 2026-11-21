@@ -305,3 +305,41 @@ TEST_CASE("embedded symbols are used before files", kCache) {
   cache.clear();
   CHECK(cache.resolve({"res.sym"}, top, {path, fs}).embedded);
 }
+
+// Regression: embedded symbols were cached by (document path, reference)
+// only, so two unsaved documents (empty path) shared the first one's block,
+// an edited block stayed stale, and forget() never dropped them.
+TEST_CASE("embedded symbols of unsaved and edited documents are not shared", kCache) {
+  platform::MemoryFileSystem fs;
+  const schem::SearchPath path;
+  const auto with_block = [](const char* pin) {
+    schem::Document doc;  // unsaved: empty path
+    schem::Document block;
+    block.kind = schem::FileKind::symbol;
+    block.boxes.push_back({5, {-2.5, -2.5}, {2.5, 2.5}, std::string{"name="} + pin});
+    doc.embedded.push_back({"res.sym", block});
+    return doc;
+  };
+  schem::Document a = with_block("A");
+  const schem::Document b = with_block("B");
+  schem::SymbolCache cache;
+  const schem::Symbol& from_a = cache.resolve({"res.sym"}, a, {path, fs});
+  const schem::Symbol& from_b = cache.resolve({"res.sym"}, b, {path, fs});
+  REQUIRE(from_a.pins.size() == 1);
+  REQUIRE(from_b.pins.size() == 1);
+  CHECK(from_a.pins[0].name == "A");
+  CHECK(from_b.pins[0].name == "B");
+  CHECK(&cache.resolve({"res.sym"}, a, {path, fs}) == &from_a);  // still cached, still valid
+
+  a.embedded[0].symbol.boxes[0].props = "name=C";  // the block is edited
+  const schem::Symbol& edited = cache.resolve({"res.sym"}, a, {path, fs});
+  REQUIRE(edited.pins.size() == 1);
+  CHECK(edited.pins[0].name == "C");
+
+  schem::Document saved = with_block("D");
+  saved.path = "/w/top.sch";
+  CHECK(cache.resolve({"res.sym"}, saved, {path, fs}).pins[0].name == "D");
+  cache.forget("/w/top.sch");
+  saved.embedded[0].symbol.boxes[0].props = "name=E";
+  CHECK(cache.resolve({"res.sym"}, saved, {path, fs}).pins[0].name == "E");
+}

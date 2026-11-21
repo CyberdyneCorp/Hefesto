@@ -15,6 +15,7 @@
 
 #include "hefesto/schem/lib/symbol_cache.hpp"
 
+#include <algorithm>
 #include <utility>
 
 #include "hefesto/diag/sink.hpp"
@@ -50,6 +51,16 @@ class LoadingGuard {
   platform::Path file_;
 };
 
+// Whether a cached embedded symbol was built from `block`: a document's
+// path does not identify a block (unsaved documents share the empty path,
+// and a block can be edited), so the records are compared.
+bool same_block(const Document& cached, const Document& block) {
+  return cached.kind == block.kind && cached.file_version == block.file_version &&
+         cached.header_text == block.header_text && cached.globals == block.globals && cached.lines == block.lines &&
+         cached.boxes == block.boxes && cached.arcs == block.arcs && cached.polygons == block.polygons &&
+         cached.texts == block.texts && cached.wires == block.wires && cached.instances == block.instances;
+}
+
 }  // namespace
 
 SymbolCache::SymbolCache() {
@@ -65,6 +76,7 @@ void SymbolCache::clear() noexcept {
 
 void SymbolCache::forget(const platform::Path& file) {
   symbols_.erase(file);
+  std::erase_if(embedded_, [&](const auto& entry) { return entry.first.first == file; });
   // A schematic used as a symbol holds copies of the graphics it places.
   std::erase_if(symbols_, [](const auto& entry) { return is_schematic_file(entry.first); });
 }
@@ -79,15 +91,17 @@ void SymbolCache::warn_once(const ResolveContext& context, const std::string& ke
 }
 
 const Symbol* SymbolCache::embedded(const Reference& reference, const Document& from) {
+  const auto block = std::find_if(from.embedded.begin(), from.embedded.end(),
+                                  [&](const EmbeddedSymbol& b) { return b.reference == reference.text; });
+  if (block == from.embedded.end()) return nullptr;
   auto key = std::make_pair(from.path, reference.text);
-  if (const auto it = embedded_.find(key); it != embedded_.end()) return &it->second;
-  for (const EmbeddedSymbol& block : from.embedded) {
-    if (block.reference != reference.text) continue;
-    Symbol symbol = make_symbol(reference.text, {}, block.symbol);
-    symbol.embedded = true;
-    return &embedded_.emplace(std::move(key), std::move(symbol)).first->second;
+  const auto [first, last] = embedded_.equal_range(key);
+  for (auto it = first; it != last; ++it) {
+    if (same_block(it->second.document, block->symbol)) return &it->second;
   }
-  return nullptr;
+  Symbol symbol = make_symbol(reference.text, {}, block->symbol);
+  symbol.embedded = true;
+  return &embedded_.emplace(std::move(key), std::move(symbol))->second;
 }
 
 const Symbol& SymbolCache::resolve_at(const Reference& reference, const Document& from, const ResolveContext& context,
