@@ -97,8 +97,7 @@ TEST_CASE("the NETLIST stubs answer their documented values", "[m8-scaffold]") {
   CHECK(result.failed);
   CHECK(result.text.empty());
   CHECK(is_not_implemented(result.diagnostics));
-  CHECK(schem::evaluate_expr("2-1", true) == "2-1");
-  CHECK(schem::expand_bus("A[1:0]") == std::vector<std::string>{"A[1:0]"});
+  // evaluate_expr and expand_bus are implemented: tests/unit/schem/net/.
 }
 
 TEST_CASE("the EDIT, CMD and SIMINT stubs answer their documented values", "[m8-scaffold]") {
