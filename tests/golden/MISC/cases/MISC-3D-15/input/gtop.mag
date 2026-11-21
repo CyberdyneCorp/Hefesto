@@ -1,0 +1,12 @@
+magic
+tech g3d
+timestamp 0
+use ga ga_0
+timestamp 0
+transform 1 0 0 0 1 0
+box 0 0 50 20
+use gb gb_0
+timestamp 0
+transform 1 0 0 0 1 0
+box 50 0 100 20
+<< end >>

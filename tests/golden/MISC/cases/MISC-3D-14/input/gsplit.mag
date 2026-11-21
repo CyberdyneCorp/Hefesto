@@ -1,0 +1,14 @@
+magic
+tech g3d
+timestamp 0
+<< polysilicon >>
+tri 60 0 80 20 nw
+<< ndiffusion >>
+tri 60 0 80 20 se
+<< metal1 >>
+tri 0 0 20 10 sw
+tri 30 0 50 10 ne
+<< metal2 >>
+rect 90 0 100 20
+tri 100 0 120 20 sw
+<< end >>

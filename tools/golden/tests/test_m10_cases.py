@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""The M10 3D-view cases MISC-3D-01..04 and the magic-gl image variant they are captured in
-(m10-3d-view design D13, tasks 12.1 and 12.2).
+"""The M10 3D-view cases MISC-3D-01..16 and the magic-gl image variant they are captured in
+(m10-3d-view design D13, tasks 12.1-12.4).
 
 cap:hefesto-testing-strategy req:Golden compatibility suite
 """
@@ -26,7 +26,8 @@ import tclcase  # noqa: E402
 from compare import COMPARATORS  # noqa: E402
 from goldenlib import deviations  # noqa: E402
 from goldenlib.case import CaseError, load_case  # noqa: E402
-from goldenlib.refrunners import GL_ENVIRONMENT, XVFB_GL_PREFIX, XVFB_PREFIX, ContainerRunner  # noqa: E402
+from goldenlib.refrunners import (GL_CAPTURE_PREFIX, GL_ENVIRONMENT, XVFB_GL_PREFIX, XVFB_PREFIX,  # noqa: E402
+                                  ContainerRunner, default_argv)
 
 SPECS = m10_cases.specs()
 CASES_DIR = REPO / "tests" / "golden" / "MISC" / "cases"
@@ -45,7 +46,7 @@ def misc_3d_rows() -> list[str]:
 class M10CaseSpecTest(unittest.TestCase):
     def test_every_row_is_authored(self):
         self.assertEqual([s.id for s in SPECS], misc_3d_rows())
-        self.assertEqual(misc_3d_rows(), ["MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04"])
+        self.assertEqual(misc_3d_rows(), [f"MISC-3D-{n:02d}" for n in range(1, 17)])
 
     def test_requirements_are_view_3d_headings(self):
         headings = spec_headings("view-3d")
@@ -76,12 +77,13 @@ class M10CaseSpecTest(unittest.TestCase):
         for spec in SPECS:
             with self.subTest(case=spec.id):
                 self.assertIn("toplevel .render\ntkwait visibility .render\n", spec.body)
+                paths = (".render.magic", ".render.magic2") if spec.id == "MISC-3D-12" else (".render.magic",)
                 opens = [line for line in spec.body.splitlines() if line.startswith("probe {specialopen wind3d")]
                 self.assertTrue(opens)
                 for line in opens:
-                    self.assertTrue(line.endswith(" .render.magic}"), line)
+                    self.assertIn(line.rsplit(" ", 1)[1].rstrip("}"), paths, line)
                 for line in spec.body.splitlines():
-                    if line.startswith("probe {.") and not line.startswith("probe {.render.magic "):
+                    if line.startswith("probe {.") and line[len("probe {"):].split(" ", 1)[0] not in paths:
                         self.fail(line)
 
 
@@ -111,11 +113,132 @@ class M10WrittenCaseTest(unittest.TestCase):
             if spec.id not in m10_cases.REPLAYED:
                 with self.subTest(case=spec.id):
                     self.assertEqual(known[spec.id].deferred, "M10")
-                    self.assertFalse(known[spec.id].decisions)  # no deviation for the mode (design D1)
+                    # no deviation for the mode (design D1); only the Q-MISC-73 case documents one
+                    expected = ("Q-MISC-73",) if spec.id == "MISC-3D-11" else ()
+                    self.assertEqual(known[spec.id].decisions, expected)
+
+    def test_replayed_cases_keep_only_their_decisions(self):
+        specs = {s.id: s for s in SPECS}
+        saved = set(m10_cases.REPLAYED)
+        try:
+            m10_cases.REPLAYED.update(("MISC-3D-02", "MISC-3D-11"))
+            self.assertIsNone(m10_cases.deviation_entry(specs["MISC-3D-02"]))
+            entry = m10_cases.deviation_entry(specs["MISC-3D-11"])
+            self.assertIn('decisions = ["Q-MISC-73"]', entry)
+            self.assertNotIn("deferred", entry)
+            self.assertIn('outputs = ["stdout.txt", "stderr.txt", "exit.txt"]', entry)
+        finally:
+            m10_cases.REPLAYED.clear()
+            m10_cases.REPLAYED.update(saved)
+            self.assertEqual(m10_cases.REPLAYED, saved)
 
     def test_dispatch_names_every_case(self):
         cases = m10_cases.dispatch_command().split('cases="', 1)[1].rstrip('"').split()
         self.assertEqual([Path(c).name for c in cases], [s.id for s in SPECS])
+
+
+class M10CommandCaseTest(unittest.TestCase):
+    """Task 12.3: the technologies and cells the command cases rest on."""
+
+    def test_f3_style_reduces_to_three(self):
+        """30 nanometers: factor 30, expander 10, GCF 10 (CIFtech.c:2631-2641), so f = 3 stays > 1."""
+        self.assertIn("    scalefactor 30 nanometers\n", m10_cases.V3D_F3_TECH)
+        self.assertNotIn("    scalefactor 10\n", m10_cases.V3D_F3_TECH)
+        self.assertNotRegex(m10_cases.V3D_F3_TECH, r"\b(grow|shrink|bloat-or|squares)\b")  # no op distance
+
+    def test_two_output_styles(self):
+        tech = m10_cases.V3D_TWO_STYLES_TECH.split("cifoutput\n", 1)[1].split("cifinput\n", 1)[0]
+        self.assertEqual(re.findall(r"^style (\S+)$", tech, re.MULTILINE), ["gdsii", "half"])
+        self.assertIn("    scalefactor 5\n", tech)
+
+    def test_no_style_tech_has_no_cifoutput(self):
+        tech = m10_cases.V3D_NO_STYLE_TECH
+        self.assertNotIn("cifoutput", tech)
+        self.assertIn("cifinput\nend\n", tech)
+        spec = next(s for s in SPECS if s.id == "MISC-3D-11")
+        self.assertIn("allow_nonzero_exit = true", tclcase.case_toml(spec))
+        self.assertIn('source = "exitcode"', tclcase.case_toml(spec))
+
+    def test_odd_cell_halves_by_shift(self):
+        self.assertIn("rect -15 -7 86 44\n", m10_cases.CODD_MAG)
+
+    def test_closewindow_case_reopens_after_closing(self):
+        spec = next(s for s in SPECS if s.id == "MISC-3D-12")
+        body = spec.body.splitlines()
+        close = body.index("probe {.render.magic closewindow}")
+        self.assertEqual(body[close + 2], "probe {specialopen wind3d c3d .render.magic}")
+
+
+class M10GeometryCaseTest(unittest.TestCase):
+    """Task 12.4: the geometry cases run Magic with the shim and compare the reduced faces."""
+
+    GEOMETRY = [s for s in SPECS if s.gl_capture]
+
+    def test_four_geometry_cases(self):
+        self.assertEqual([s.id for s in self.GEOMETRY], ["MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16"])
+
+    def test_manifest(self):
+        for spec in self.GEOMETRY:
+            with self.subTest(case=spec.id):
+                text = tclcase.case_toml(spec)
+                self.assertIn("gl_capture = true", text)
+                self.assertIn('HEFESTO_GL_CAPTURE = "{work}/gl.log"', text)
+                self.assertIn('source = "derived:gl-faces:gl.log"', text)
+                self.assertNotIn('source = "stdout"', text)
+                self.assertEqual(spec.requirements, ["Rendered geometry"])
+                self.assertIn("probe {.render.magic cif}", spec.body)  # layout-layer mode
+
+    def test_container_argv_preloads_the_shim_into_magic_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            case = load_case(tclcase.write(self.GEOMETRY[0], Path(tmp)), COMPARATORS)
+        argv = default_argv(case)
+        self.assertEqual(argv[:len(XVFB_GL_PREFIX)], XVFB_GL_PREFIX)
+        self.assertEqual(argv[len(XVFB_GL_PREFIX):len(XVFB_GL_PREFIX) + 2], GL_CAPTURE_PREFIX)
+        self.assertEqual(argv[len(XVFB_GL_PREFIX) + 2], "magic")
+        docker = ContainerRunner("hefesto-golden-gl:ci").argv(case, Path("/w"))
+        self.assertIn("HEFESTO_GL_CAPTURE=/work/gl.log", docker)
+        self.assertFalse(any(arg.startswith("LD_PRELOAD") for arg in docker[:docker.index("hefesto-golden-gl:ci")]))
+
+    def test_command_cases_do_not_preload(self):
+        case = load_case(CASES_DIR / "MISC-3D-01", COMPARATORS)
+        self.assertNotIn(GL_CAPTURE_PREFIX[0], default_argv(case))
+
+    def test_subcells_are_placed_with_the_identity(self):
+        """No transformed subcell under the clip area (Q-MISC-70 is fixed in Hefesto only)."""
+        self.assertEqual(m10_cases.GTOP_MAG.count("transform 1 0 0 0 1 0\n"), 2)
+
+    def test_split_tiles_include_a_space_left_half(self):
+        self.assertIn("tri 30 0 50 10 ne", m10_cases.GSPLIT_MAG)  # left type space (J3)
+
+    def test_contact_has_two_drawn_styles_and_a_cross(self):
+        self.assertIn("    m2c 20 21 32\n", m10_cases.G3D_TECH)
+
+
+class GlCaptureValidationTest(unittest.TestCase):
+    def _write(self, tmp: Path, reference: str, env: str) -> Path:
+        root = tmp / "MISC" / "cases" / "MISC-X"
+        (root / "input").mkdir(parents=True)
+        (root / "input" / "commands.tcl").write_text("quit\n", encoding="utf-8")
+        (root / "case.toml").write_text(
+            'schema = 1\nid = "MISC-X"\narea = "MISC"\ncapability = "view-3d"\nrequirements = ["Rendered geometry"]\n'
+            f'tool = "magic"\n\n[reference]\nscript = "input/commands.tcl"\n{reference}\n{env}\n'
+            '[[outputs]]\nname = "stdout.txt"\nsource = "stdout"\ncomparator = "bytes"\n', encoding="utf-8")
+        return root
+
+    def test_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._write(Path(tmp), 'display = "xvfb"\nimage = "magic-gl"\ngl_capture = true',
+                               '[env]\nHEFESTO_GL_CAPTURE = "{work}/gl.log"\n')
+            self.assertTrue(load_case(root, COMPARATORS).reference["gl_capture"])
+
+    def test_rejected(self):
+        env = '[env]\nHEFESTO_GL_CAPTURE = "{work}/gl.log"\n'
+        for reference, case_env in (('display = "xvfb"\ngl_capture = true', env),
+                                    ('display = "xvfb"\nimage = "magic-gl"\ngl_capture = true', ""),
+                                    ('display = "xvfb"\nimage = "magic-gl"\ngl_capture = "yes"', env)):
+            with self.subTest(reference=reference, env=case_env), tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(CaseError):
+                    load_case(self._write(Path(tmp), reference, case_env), COMPARATORS)
 
 
 def _args(**overrides) -> argparse.Namespace:

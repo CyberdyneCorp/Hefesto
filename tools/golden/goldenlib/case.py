@@ -34,6 +34,9 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     image = "magic-gl"               # optional: the image variant to run in (pins.toml image_variants;
                                      # magic-gl: Magic with OpenGL, the MISC-3D-* cases of m10-3d-view
                                      # D13; needs tool magic and display "xvfb")
+    gl_capture = true                # optional (image magic-gl only): preload the polygon-recording
+                                     # shim (tools/golden/gl_capture/, m10-3d-view D13 task 12.4) into
+                                     # Magic; it writes the file named by [env] HEFESTO_GL_CAPTURE
     stdin = "input/commands.tcl"     # optional: the tool's standard input (path relative to the case)
     timeout_s = 3600                 # optional: seconds before the run is abandoned (default 600)
     xschem_sets = ["sky130-xschem"]  # optional (tool xschem): xschem data sets of scripts/fetch_pdk.py,
@@ -261,6 +264,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
         raise CaseError(f"{where}: reference.display must be one of {', '.join(DISPLAYS)}")
     _check_xschem_sets(case, where)
     _check_image(case, where)
+    _check_gl_capture(case, where)
     if case.id != root.name:
         raise CaseError(f"{where}: id '{case.id}' does not match directory '{root.name}'")
     if root.parent.name != "cases" or root.parent.parent.name != case.area:
@@ -290,6 +294,19 @@ def _check_image(case: Case, where: str) -> None:
         raise CaseError(f"{where}: reference.image must be one of {', '.join(IMAGE_VARIANTS)}")
     if case.tool != "magic" or case.reference.get("display") != "xvfb":
         raise CaseError(f"{where}: reference.image {image} needs tool magic and display \"xvfb\"")
+
+
+def _check_gl_capture(case: Case, where: str) -> None:
+    value = case.reference.get("gl_capture", False)
+    if not isinstance(value, bool):
+        raise CaseError(f"{where}: reference.gl_capture must be true or false")
+    if value and (image_variant(case) != "magic-gl" or "HEFESTO_GL_CAPTURE" not in case.env):
+        raise CaseError(f"{where}: reference.gl_capture needs image \"magic-gl\" and env.HEFESTO_GL_CAPTURE")
+
+
+def gl_capture(case: Case) -> bool:
+    """Whether Magic runs with the polygon-recording shim preloaded (``[reference] gl_capture``)."""
+    return case.reference.get("gl_capture", False) is True
 
 
 def image_variant(case: Case) -> str | None:
