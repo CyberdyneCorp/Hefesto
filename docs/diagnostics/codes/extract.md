@@ -32,6 +32,20 @@ technology's own type-list code. Magic prints the section's other messages
 (and `The following types are not handled by extraction ...`) when the
 technology loads; those stay with the technology loader and M7.
 
+`extract::HeightView` (the 3D height subset M10 added to the same reader,
+`openspec/changes/m10-3d-view/design.md` D5) reports only its own lines
+of the selected style, so reading both views never reports a line twice:
+`EXTRACT-STYLE-003` is `Layer height <h> must be numeric` or `Layer
+thickness <t> must be numeric`; `EXTRACT-STYLE-004` is `Units must be
+microns or lambda.  Using the default value (lambda).`; `EXTRACT-STYLE-005`
+is `Unknown planeorder plane <p>`, `Planeorder index must be [0..k]`,
+`"noplaneordering" specified after "planeorder".` or `"planeorder"
+specified after "noplaneordering".`; `EXTRACT-STYLE-006` is the
+end-of-style check's `Warning: Extraction Style <name>` with its
+`Conflicting planeorder` / `Missing planeorder` lists and the default
+order Magic falls back to (one diagnostic, Magic's lines). A bad type list
+of a `height` line is reported with the technology's type-list code.
+
 ## Table
 
 The table below is generated from the fragments:
@@ -48,4 +62,8 @@ fails when the two disagree.
 |---|---|---|
 | `EXTRACT-STYLE-001` | error | A `style` or `device` line of the selected extraction style is malformed (Magic's `Malformed line for keyword ...` text); the line has no effect. |
 | `EXTRACT-STYLE-002` | error | A `device` line names an unknown device class (`Illegal device.  Legal devices are:`); the line has no effect. |
+| `EXTRACT-STYLE-003` | error | A `height` line of the selected extraction style has a non-numeric height or thickness (`Layer height ... must be numeric`); the line has no effect. |
+| `EXTRACT-STYLE-004` | error | A `units` line names neither microns nor lambda (`Units must be microns or lambda.`); lambda is used. |
+| `EXTRACT-STYLE-005` | error | A `planeorder` or `noplaneordering` line is rejected or out of order (unknown plane, index out of range, one after the other); Magic's text. |
+| `EXTRACT-STYLE-006` | warning | The plane orders of the extraction style are not a permutation of 0..k (`Warning: Extraction Style ...`); every plane gets its declaration order. |
 <!-- END DIAGNOSTIC CODES -->

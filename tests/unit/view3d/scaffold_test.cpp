@@ -15,7 +15,6 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
-#include "hefesto/extract/tech/height_view.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
 #include "hefesto/view3d/client/commands.hpp"
@@ -28,7 +27,6 @@
 #include "hefesto/view3d/stack/layer_stack.hpp"
 
 namespace diag = hefesto::diag;
-namespace extract = hefesto::extract;
 namespace view3d = hefesto::view3d;
 
 TEST_CASE("the view3d code area is declared", "[m10-scaffold]") {
@@ -52,26 +50,10 @@ TEST_CASE("EditorState carries a 3D session with no window", "[m10-scaffold]") {
   CHECK(window.mesh == nullptr);
 }
 
-TEST_CASE("the TECH stubs answer no extraction style and empty stacks", "[m10-scaffold]") {
-  diag::NullSink sink;
-  const hefesto::tech::Technology tech;
-  const auto heights = extract::HeightView::from_technology(tech, sink);
-  CHECK_FALSE(heights.has_style());
-  CHECK_FALSE(heights.height(1).has_value());
-  const hefesto::display::TypeStyleMap styles;
-  const auto layout = view3d::build_layout_stack(tech, heights, styles, true, 0.01);
-  CHECK(layout.mode() == view3d::Mode::layout_layer);
-  CHECK(layout.size() == 0);
-  CHECK(layout.draw_height(0) == view3d::DrawHeight{});
-  CHECK_FALSE(layout.physical_height_um(0).has_value());
-  const hefesto::mask::OutputStyle ostyle;
-  CHECK(view3d::build_mask_stack(ostyle, false).mode() == view3d::Mode::mask_layer);
-}
-
 TEST_CASE("the MESH, INSPECT, EXPORT and OVERLAY stubs answer empty results", "[m10-scaffold]") {
   diag::NullSink sink;
   const hefesto::mask::OutputStyle ostyle;
-  const auto stack = view3d::build_mask_stack(ostyle, true);
+  const auto stack = view3d::build_mask_stack(ostyle, nullptr, true, sink);
   view3d::BuildContext ctx;
   const view3d::ClipArea clip{hefesto::db::Rect{0, 0, 10, 10}, true, 0};
   const hefesto::mask::LayerPlanes planes;
