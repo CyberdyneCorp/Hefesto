@@ -17,6 +17,7 @@ hefesto_add_unit_test(hefesto_core_tests
     m5_scaffold_test.cpp
     m6_scaffold_test.cpp
     m6_shared_interfaces_test.cpp
+    m7_scaffold_test.cpp
     platform_test.cpp
     script_test.cpp
     settings_test.cpp

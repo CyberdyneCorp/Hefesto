@@ -5,8 +5,10 @@
 // (openspec/changes/m4-scripting/design.md D2/D14; capability
 // scripting-pdk-integration "Command surface used by device generators",
 // "PDK startup file contract" step 5): `ext2spice scale` as a setting.
-// The rest of `ext2spice` arrives with extraction (M7) and answers
-// UI-CLIENT-002 (an optional module not available yet) until then.
+// Since the M7 scaffold the `ext2spice` command is M7's
+// (netlist/spice/spice.hpp), which hands its `scale` option to
+// ext2spice_scale() below; register_pdk_commands() is kept for sessions
+// built without the M7 registration.
 //
 // Owner: PDKINT (design D2).
 
@@ -14,6 +16,8 @@
 
 #include <string_view>
 
+#include "hefesto/cmd/command.hpp"
+#include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/registry.hpp"
 
 namespace hefesto::script {
@@ -22,6 +26,10 @@ namespace hefesto::script {
 /// editor::EditorState::settings): "on" (Magic's default, `.option scale`
 /// card) or "off".
 inline constexpr std::string_view kExt2spiceScale = "ext2spice-scale";
+
+/// `ext2spice scale [on|off]` (`invocation.args` starts with the option
+/// word): queries or sets kExt2spiceScale.
+[[nodiscard]] cmd::CommandResult ext2spice_scale(cmd::CommandContext& ctx, const cmd::Invocation& invocation);
 
 /// Registers `ext2spice` (layout table, as Magic's ext2spice module does).
 /// False when a command of that name already exists.

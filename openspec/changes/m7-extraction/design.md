@@ -589,6 +589,81 @@ The headers are the contract, and each one is documented. The key types and func
 - `Plane::client`, `set_client`, `reset_clients`, `kClientDefault`
 - `StitchEditor` (`db/plane_stitch.hpp`): `split_x`, `join_y`, `tile_at`, `neighbors`
 
+## As-landed scaffold contracts
+
+The scaffold (tasks.md 3.2, 3.3, 3.5, 3.6; branch `m7-r1-scaffold`) landed the areas, headers and stubs below. Task 3.4 (the tile client slot and `db/plane_stitch.hpp`) is INTEGRATION's with the MODEL review and is not part of it. The headers are the contract; this section records where they are, who fills them in, and where they differ from "Area contracts", D4 and D5. Include paths are under `src/core/include/hefesto/`, sources under `src/core/src/`.
+
+### Files and owners
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `extract/{sources.cmake,codes.cpp}` | the area's source list and code table, now assembled from `extract/<sub>/codes.inc` for `tech node file cap device hier command length` | INTEGRATION |
+| `extract/<sub>/{sources.cmake,codes.inc}` for `node file cap device hier command length` | one source list and code fragment per subdirectory (no codes yet) | the D3 owner |
+| `netlist/{sources.cmake,codes.cpp}`, `netlist/<sub>/{sources.cmake,codes.inc}` for `spice sim extcheck` | the new area; `HEFESTO_CORE_AREAS` gains `netlist extresist antenna` | INTEGRATION; SPICE, SIM |
+| `extresist/{sources.cmake,codes.cpp}`, `extresist/<sub>/{sources.cmake,codes.inc}` for `network command output` | the new area | INTEGRATION; RESNET, RESCMD |
+| `antenna/{sources.cmake,codes.cpp,codes.inc}` | the new area (one directory, as `extflat/`) | INTEGRATION (`codes.cpp`); ANTENNA |
+| `docs/diagnostics/codes/{netlist,extresist,antenna}.md`; `extract.md` fragment table | one section per owning workstream, the generated (empty) tables | INTEGRATION; sections: their workstreams |
+| `cmd/m7_stubs.hpp`, `src/cmd/m7_stubs.cpp` | `m7_not_implemented{,_diagnostic,_status}(what)`, `CORE-NOTIMPL-008` (`diag::codes::kExtractNotImplemented`) | INTEGRATION (removed at M7 exit) |
+| `extract/tech/style.hpp`, `src/extract/tech/style.cpp` | `DeviceClass`, `DeviceParam`, `ParamRange`, `DevicePattern`, `ResistClass`, `OverlapRule`, `SidewallRule`, `SideOverlapRule`, `TypeCap`, `CapRules`, `AntennaModel`, `AntennaRule`, `SubstrateDecl`, `FringeModel`, `DeviceInfo`, `TypeHeightThickness`, `ExtStyle` (with `device_info()`, `set_device_info`, the four StyleView queries, `rescale`, `micron_convert`), `StyleTable` (`names`, `select`), `load_styles` | EXTTECH |
+| `extract/tech/testing/style_builder.hpp` | `extract::testing::StyleBuilder`, header-only, fluent setters, `build()`, `shared()` | INTEGRATION; EXTTECH may add setters |
+| `extract/node/{regions,names,unique}.hpp`, `src/extract/node/node_stubs.cpp` | `ConnectTable`, `ClassArea`, `LabelRegion`, `NodeRegion`, `DeviceRegion`, `NodeRegionList`, `RegionCallbacks`, `RegionFinder::find`, `reset`; `node_name`, `generated_name`; `UniqueMode`, `UniqueRenamer` | EXTNODE |
+| `extract/file/{writer,atomic_output}.hpp`, `src/extract/file/file_stubs.cpp` | `ExtHeader`, `ExtTerminal`, `format_value`, `ExtWriter` (one emitter per record, `finish`); `AtomicOutput` (`open`, `write`, `commit`, `abandon`, `target`) | EXTNODE |
+| `extract/cap/caps.hpp`, `src/extract/cap/cap_stubs.cpp` | `CouplingTable` (index-keyed, smaller first), `CapInputs`, `substrate_caps`, `overlap_caps`, `sidewall_caps`, `sideoverlap_caps`, `corner_caps`, `lumped_resistance`, `fringe_fraction` | EXTCAP |
+| `extract/device/devices.hpp`, `src/extract/device/device_stubs.cpp` | `DeviceTerminal`, `DeviceRecord`, `Dimensions`, `find_devices`, `select_pattern`, `gate_dimensions`, `resistor_dimensions`, `capacitor_dimensions`, `SubstrateNodes`, `prepare_substrate` | EXTDEV |
+| `extract/hier/extract_cell.hpp`, `src/extract/hier/hier_stubs.cpp` | `YankBuffers`, `ExtractContext`, `CellResult`, `InteractionAreas`, `extract_cell`, `interactions` | EXTHIER |
+| `extract/command/session.hpp` | `ExtractOptions` (Magic's start-up defaults), `Overrides`, `LengthLists`, `ExtractSession {styles, current, options, overrides, length}`; `EditorState::extract` | INTEGRATION (members: EXTTECH `styles`/`current`, EXTCMD the rest) |
+| `extract/command/run.hpp`, `src/extract/command/run_stubs.cpp` | `RunMode`, `RunRequest`, `RunReport`, `run`, `ensure_extracted` | EXTCMD |
+| `extract/command/commands.hpp`, `src/extract/command/commands.cpp` | `extract_options`, `extract_do_options`, `extract_warn_options`, `extract_length_options`, `extract_unique_options` (Magic's five tables, byte for byte), `register_extract_commands` (`extract`, `ext`) | INTEGRATION (dispatcher); EXTCMD (option parsers) |
+| `extract/length/length.hpp`, `src/extract/length/length_stubs.cpp` | `path_lengths` | EXTCMD |
+| `extflat/records.hpp`; `extflat/read.hpp` | `FlatTerminal`, `FlatDevice`, `FlatCap`, `FlatResist`; `Netlist` gains `devices`, `caps`, `resists` and `visit_devices`, `visit_caps`, `visit_resists` (M6's constructor and `visit_nodes` unchanged) | EXTFLAT |
+| `extflat/{hierarchy,args,names}.hpp`, `src/extflat/m7_stubs.cpp` | `FlatFlags` (`operator|`, `has`), `HierDef`, `HierUse`, `Hierarchy` (`visit_defs`, `visit_uses`), `read`, `flatten`, `OverlayRecord`, `read_res_overlay`; `CommonArgs`, `ExtraFlags`, `parse_common_args`; `SpiceDialect`, `NameFlags`, `name_to_spice`, `name_to_sim` | EXTFLAT |
+| `netlist/first_word.hpp`, `src/netlist/first_word.cpp`; private `src/netlist/table_command.{hpp,cpp}` | `FirstWord`, `FirstWordResult`, `classify_first_word` (Q-NETLIST-13); the shared dispatcher of `ext2spice`, `ext2sim` and `antennacheck` (`help` prints `    <entry>` per entry) | INTEGRATION |
+| `netlist/session.hpp` | `NetlistSession {spice, sim, names}`; `EditorState::netlist` | INTEGRATION (members: SPICE, SIM, EXTFLAT) |
+| `netlist/spice/{settings,spice}.hpp`, `src/netlist/spice/spice_command.cpp` | `Dialect` (= `extflat::SpiceDialect`), `MergeMode`, `ShortMode`, `TopSubckt`, `SpiceSettings` (defaults of "Command options", static `lvs(base)`), `format_si`; `SpiceRun`, `run`, `render`, `spice_options`, `register_spice_commands` (`ext2spice`, `exttospice`) | INTEGRATION (registration); SPICE |
+| `netlist/sim/sim.hpp`, `src/netlist/sim/sim_command.cpp` | `SimFormat`, `SimMerge`, `SimSettings`, `SimRun`, `run`, `sim_options`, `register_sim_commands` (`ext2sim`, `exttosim`) | INTEGRATION (registration); SIM |
+| `netlist/extcheck/extcheck.hpp`, `src/netlist/extcheck/extcheck_stub.cpp` | `extcheck::run(args, out, err, program)` | SIM |
+| `src/cli/extcheck/{CMakeLists.txt,main.cpp}` | the `hefesto-extcheck` executable over `netlist::extcheck::run` (built where `hefesto-cli` is); `src/cli/CMakeLists.txt` adds the subdirectory | SIM (target); INTEGRATION (install, packaging) |
+| `extresist/network/network.hpp`, `src/extresist/network/network_stubs.cpp` | `NetGeometry`, `NetNode`, `NetResistor`, `NetDevice`, `Network`, `DeviceAnnotations`, `Tolerances`, `HeapState`, `yank_net`, `fracture`, `build_network`, `reduce` | RESNET |
+| `extresist/command/{session,command}.hpp`, `src/extresist/command/command.cpp` | `ResistOptions` (defaults of "Command options"), `ResistSession {options, heap}` (`EditorState::extresist`); `ResistRun`, `run`, `extresist_options`, `register_extresist_command` | INTEGRATION (struct, registration); RESCMD, RESNET (`heap`) |
+| `extresist/output/output.hpp`, `src/extresist/output/output_stubs.cpp` | `InputNode`, `InputModel`, `GeometryElement`, `read_input`, `write_res_ext`, `write_res_lump`, `write_fasthenry`, `geometry_elements` | RESCMD |
+| `antenna/antenna.hpp`, `src/antenna/antenna.cpp` | `RuleView` (`from_style`, `rules`, `tiedown_types`), `AntennaOptions`, `check`, `antennacheck_options`, `register_antenna_command` | INTEGRATION (registration); ANTENNA |
+| `editor/extract_hook.hpp`, `src/editor/extract_hook.cpp` | `install_extract_styles(EditorState&, DiagnosticSink&)`, `rescale_extract_style(EditorState&, n, d)` | INTEGRATION; EXTTECH (the builders it calls) |
+| `editor/editor_state.hpp` | members `extract`, `netlist`, `extresist` (after `lefdef`) | INTEGRATION |
+| `cmd/all_commands.cpp` | registers the five commands after `oasis` | INTEGRATION |
+| `tests/unit/{extract/<sub>,netlist/<sub>,extresist/<sub>,antenna}/` | one executable per directory once it has a `*_test.cpp` (data: `tests/data/<area>/<sub>`) | the D3 owners |
+| `tests/unit/core/m7_scaffold_test.cpp` | the `[m7-scaffold]` tests: code areas, every option of the five commands, Magic's invalid-option messages, the first-word rule per mode, the stubs' values, the D5 defaults, the hook | INTEGRATION; owners replace them with `[cap:][req:]` tests |
+| `docs/design/m7-ui-conformance.md` | the seed (every row **todo** or **partial**) | SHELL |
+
+### Stub values
+
+Every option of the five commands except `help` answers `CORE-NOTIMPL-008` with the text `not implemented yet: <command> <option>` (bare `extract`: `extract`; the run paths: `ext2spice run`, `ext2sim run`, `extresist run`, `antennacheck run`). Before that the dispatchers already do Magic's part: `extract` strips a leading `list`/`listall`, prints `"<w>" isn't a valid extract option.  Type "extract help" for a list of valid options.` for an unknown or ambiguous option, `Point to a window first` (VIEW-WINDOW-003, as the `lef` scaffold) without a window or command point for every option but `style` and `help`, the help text, and the wrong-argument message for `extract help <x>`; `extresist` prints `Ambiguous option: <w>` and `Unknown option: <w>` and its unindented help; `ext2spice`, `ext2sim` and `antennacheck` apply the first-word rule and print their help as Magic's usage loop. The entry points (`extract::run`, `ensure_extracted`, `netlist::spice::run`, `render`, `netlist::sim::run`, `extresist::run`, `antenna::check`) fail with `CORE-NOTIMPL-008`; `netlist::extcheck::run` prints it to `err` and returns 1. Accumulators, readers and writers that return a status fail with it; pure functions answer neutral values (`fringe_fraction` and `lumped_resistance` 0, the dimension functions zero, `select_pattern` nullopt, `node_name` empty, `format_value` and `format_si` empty, `name_to_spice`/`name_to_sim` the components joined with `/`, `flatten` an empty netlist, `ExtStyle::rescale` and `micron_convert` a copy, `load_styles` an empty table, `StyleTable::select` nullptr; `ExtWriter`'s emitters append nothing). `RuleView` and `ExtStyle::gate_types` are implemented (plain views of the data model).
+
+### The tech-load and grid hook
+
+`editor::install_extract_styles` runs at the end of `tech::install_technology` (`tech/commands.cpp`, after the grid, the DRC rules, the cifoutput styles and the display styles are installed): it clears the style table, the current style and the overrides (Q-EXTRACT-25), then calls `load_styles` on the technology's last `extract` section, selects the first style, micron-converts it with the current cifoutput style and scales it to the session grid (TechLoad's `ExtTechScale(DBLambda[0], DBLambda[1])`). `editor::rescale_extract_style` runs inside `tech::scale_layout`, next to LefTechScale, so `scalegrid`, finer-grid `.mag` reads and mask-input reads (every DBScaleEverything site) rescale the style once; a layout factor n/d is `ExtStyle::rescale(d, n)`, Magic's ExtTechScale argument order. Until EXTTECH lands `load_styles` the table is empty and `extract.current` stays null, so no output changes.
+
+### Differences from "Area contracts", D4 and D5
+
+- **Hook placement.** D20 says the hook goes on the editor side and "`tech/` is not changed". The hook's code is in `editor/`, but the technology is installed and the grid rescaled in `tech/commands.cpp` (`install_technology`) and `tech/scale_layout.cpp` (`scale_layout`), so each gets one call line and one include; there is no editor-side path to hang it on without moving M1's loader.
+- **Stub helper.** D4's "next free core code" is `CORE-NOTIMPL-008`, in `cmd/m7_stubs.hpp` (one helper for the five M7 areas) rather than M6's `cmd/stubs.hpp`, which M6 retires at its exit.
+- **`ExtStyle::rescale(n, d)`** takes Magic's ExtTechScale order (distances × d/n), documented in the header.
+- **`ExtStyle`** is a class with public data members and a private `device_info_` (set with `set_device_info`); `CapRules::area` and `perimeter` are lists of `TypeCap {type, outside, cap}`.
+- **`node_name`** and `generated_name` take the `tech::Technology` (plane and type names for the generated name), which the contract left out.
+- **`RegionFinder::find`** returns `diag::Outcome<NodeRegionList>`; device and label regions are carried in `DeviceRegion` and `NodeRegion::labels`.
+- **`AtomicOutput::open`** is static and returns `diag::Outcome<AtomicOutput>`; `write(text)` was added.
+- **Capacitance accumulators** take a `CapInputs {cell, style, compat}` bundle instead of the elided parameters.
+- **`prepare_substrate`** takes `app::GlobalNets` (`app/project_file.hpp`); there is no `settings::GlobalNets`. It returns `diag::Outcome<SubstrateNodes>`.
+- **`extract_cell` and `interactions`** return `diag::Outcome<...>`; `ExtractContext` carries copies of the options, overrides and length lists, the compat settings and the progress pointer. `Overrides`, `ExtractOptions` and `LengthLists` live in `extract/command/session.hpp`, which `hier/` and `length/` include.
+- **`name_to_spice` / `name_to_sim`** take the name as its components (`std::span<const std::string>`) and the compat settings; the `.ext` HierName stays private to `extflat/`. `Dialect` is defined in `extflat/names.hpp` as `SpiceDialect` and aliased as `netlist::spice::Dialect`, so `extflat/` does not depend on `netlist/`.
+- **`parse_common_args`** takes an `ExtraFlags` callback for each netlister's own flags.
+- **`extcheck::run`** takes a fourth argument, the program name for the usage text (`argv[0]`, D15's masking).
+- **`fracture`** takes `db::StitchEditor&`, forward-declared until task 3.4 lands `db/plane_stitch.hpp`.
+- **`antenna::check`** keeps the contract signature; `AntennaOptions` holds the run arguments and the `debug` flag.
+- **ext2sim and antennacheck first word.** Their tables start with the same `[run] [options]` entry as ext2spice's, so they follow Q-NETLIST-13's rule in both modes (the standing compat rule; no Q-row names them, reported for a decision). The antenna-check spec's "matched by unique prefix against `run`, `debug`, `help`" describes the magic-compat OFF behaviour.
+- **`extract list`** with nothing after it makes Magic look up a NULL argv entry and crash (CmdE.c:1151-1162); Hefesto prints the wrong-argument message in both modes (crash fixes apply in both modes; no Q-row, reported).
+- **M4's `ext2spice`.** PDKINT registered a partial `ext2spice` in M4 (`script/pdk/commands.cpp`: `scale` as the setting `ext2spice-scale`, everything else `UI-CLIENT-002`), so a second registration failed `register_all_commands`. `cmd/all_commands.cpp` no longer calls `script::register_pdk_commands`; M7's dispatcher hands `scale` to the newly exported `script::ext2spice_scale`, and the other options answer `CORE-NOTIMPL-008` (the PDKINT test "ext2spice scale is a setting" now expects that code). SPICE must keep `ext2spice scale` reading and writing that setting, or move it into `SpiceSettings::scale` with the PDK startup tests (`tests/unit/script/pdk/`).
+- **UI-G-005** still lists the M7 commands as unregistered in `tests/golden/deviations.toml` (GOLDEN's file): an open item of this round.
+
 ## Risks / Trade-offs
 
 - **R1. Port size.** About 58,000 lines of Magic C, twice M6. → Seven rounds, with the netlisters in parallel with the extractor on Magic-written inputs. One dispatch table per reader. One helper per compat branch, and flagged exceptions of at most 25.

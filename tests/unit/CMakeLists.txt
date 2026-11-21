@@ -34,6 +34,10 @@
 #            workstream (openspec/changes/m8-schematic design.md D3)   (always)
 #   view3d/  SCAFFOLD (M10 shared tests); each subdirectory is owned by its
 #            workstream (openspec/changes/m10-3d-view design.md D2/D3)   (always)
+#   netlist/ extresist/  INTEGRATION (M7 shared tests); each subdirectory is
+#            owned by its workstream; antenna/ ANTENNA; extract/ gains the M7
+#            subdirectories (openspec/changes/m7-extraction design.md D2/D3)
+#            (always)
 #   render/  VIEWER                         (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
@@ -93,7 +97,8 @@ function(hefesto_add_area_tests area)
 endfunction()
 
 foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints
-                      script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d)
+                      script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d
+                      netlist extresist antenna)
   add_subdirectory(${_area})
 endforeach()
 

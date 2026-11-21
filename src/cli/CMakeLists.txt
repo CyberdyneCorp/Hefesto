@@ -19,3 +19,8 @@ add_executable(hefesto-cli
   main.cpp)
 target_link_libraries(hefesto-cli PRIVATE hefesto_cli_lib)
 hefesto_set_warnings(hefesto-cli)
+
+# hefesto-extcheck: the standalone extcheck (openspec/changes/m7-extraction
+# design.md D2, D15; Open Question 6 (a)). Owner: SIM (the target);
+# INTEGRATION (install and packaging, design D20).
+add_subdirectory(extcheck)

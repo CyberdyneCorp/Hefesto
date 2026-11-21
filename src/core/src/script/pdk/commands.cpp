@@ -34,7 +34,7 @@ cmd::CommandResult usage() {
       diag::make("CMD-USAGE-001", "Usage: ext2spice scale [on|off]  (other ext2spice options arrive with M7)"));
 }
 
-cmd::CommandResult scale(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
+cmd::CommandResult scale_option(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   auto editor = cmd::require_editor(ctx);
   if (!editor) {
     return cmd::CommandResult::failure(editor.error());
@@ -65,12 +65,16 @@ cmd::CommandResult ext2spice(cmd::CommandContext& ctx, const cmd::Invocation& in
   }
   const auto option = cmd::lookup(inv.args.front(), kOptions);
   if (option.match == cmd::Match::found && option.index == kScale) {
-    return scale(ctx, inv);
+    return scale_option(ctx, inv);
   }
   return writer_unavailable();
 }
 
 }  // namespace
+
+cmd::CommandResult ext2spice_scale(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
+  return scale_option(ctx, invocation);
+}
 
 bool register_pdk_commands(cmd::CommandRegistry& registry) {
   cmd::CommandSpec spec{"ext2spice", "ext2spice [option]",

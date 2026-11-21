@@ -9,7 +9,8 @@
 // openspec/changes/m2-interactive-editing/design.md D2/D4 for the M2
 // members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members;
 // openspec/changes/m4-scripting/design.md D4 for the M4 member;
-// openspec/changes/m8-schematic/design.md D4 for the M8 member).
+// openspec/changes/m8-schematic/design.md D4 for the M8 member;
+// openspec/changes/m7-extraction/design.md D5 for the M7 members).
 // Areas request new members through their open items instead of editing it.
 
 #pragma once
@@ -30,8 +31,11 @@
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/drc/session.hpp"
+#include "hefesto/extract/command/session.hpp"
+#include "hefesto/extresist/command/session.hpp"
 #include "hefesto/lef/session.hpp"
 #include "hefesto/mask/session.hpp"
+#include "hefesto/netlist/session.hpp"
 #include "hefesto/schem/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
 #include "hefesto/script/project.hpp"
@@ -216,6 +220,20 @@ struct EditorState {
   // table, the VIA and NONDEFAULTRULE tables, `lef datestamp`, `lef
   // nocheck` and the sticky LEF units.
   lef::LefSession lefdef;
+
+  // ---- M7 (openspec/changes/m7-extraction/design.md D5) ----
+
+  // EXTTECH / EXTCMD: the extraction session (extract/command/session.hpp;
+  // each member's owner is named there): the style table and current style
+  // (rebuilt by editor/extract_hook.hpp on tech load and grid rescale), the
+  // `extract` options, overrides and path-length lists.
+  extract::ExtractSession extract;
+  // SPICE / SIM / EXTFLAT: the session-sticky `ext2spice` and `ext2sim`
+  // options and the name-conversion flags (netlist/session.hpp).
+  netlist::NetlistSession netlist;
+  // RESCMD / RESNET: the `extresist` options and the path-resistance heap
+  // (extresist/command/session.hpp).
+  extresist::ResistSession extresist;
 
   // ---- M8 (openspec/changes/m8-schematic/design.md D4) ----
 
