@@ -21,7 +21,9 @@ set -euo pipefail
 COMMIT=$1 PREFIX=$2
 DIR=${PREFIX}/share/hefesto-golden
 mkdir -p "${DIR}"
-LDD=$(ldd --version 2>&1 | head -n 1)
+# sed reads all of ldd's output: `head -n 1` closes the pipe early, and under pipefail ldd's SIGPIPE
+# status (141) failed the image build (golden-capture run 44961580186).
+LDD=$(ldd --version 2>&1 | sed -n 1p)
 GETCONF=$(getconf GNU_LIBC_VERSION)
 python3 - "${DIR}/manifest.json" "${COMMIT}" "${LDD}" "${GETCONF}" "${DIR}/extcheck.status" <<'EOF'
 import json

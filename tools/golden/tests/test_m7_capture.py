@@ -10,7 +10,9 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -395,6 +397,25 @@ class ContainerfileTest(unittest.TestCase):
         manifest = (CONTAINER / "write_manifest.sh").read_text(encoding="utf-8")
         self.assertIn("ldd --version", manifest)
         self.assertIn("/opt/ref/share/hefesto-golden/manifest.json", manifest)
+
+    def test_manifest_survives_a_long_ldd_output_under_pipefail(self):
+        """Regression (golden-capture run 44961580186): `ldd --version | head -n 1` exited 141 (SIGPIPE)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            bin_dir = Path(tmp) / "bin"
+            bin_dir.mkdir()
+            for name, body in (("ldd", 'echo "ldd (GNU libc) 2.41"; awk \'BEGIN { for (i = 0; i < 200000; i++) print "line" }\''),
+                               ("getconf", 'echo "glibc 2.41"')):
+                tool = bin_dir / name
+                tool.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+                tool.chmod(0o755)
+            env = {**os.environ, "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}
+            proc = subprocess.run(["bash", str(CONTAINER / "write_manifest.sh"), "abc123", tmp], env=env,
+                                  capture_output=True, text=True, check=False)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            manifest = json.loads((Path(tmp) / "share" / "hefesto-golden" / "manifest.json").read_text())
+            self.assertEqual(manifest["glibc"]["ldd_version"], "ldd (GNU libc) 2.41")
+            self.assertEqual(manifest["glibc"]["gnu_libc_version"], "2.41")
+            self.assertEqual(manifest["extcheck"], {"build": "not attempted"})
 
     def test_no_new_build_arg(self):
         """test_pins.py checks every ARG against pins.toml; the extcheck build reuses MAGIC_COMMIT."""

@@ -50,7 +50,7 @@ link_reason() {
   symbols=$(grep -oE "undefined reference to \`[^']+'|\"_[A-Za-z0-9_]+\", referenced" "${LOG}" \
     | sed -E "s/undefined reference to \`([^']+)'/\1/; s/\"_([A-Za-z0-9_]+)\", referenced/\1/" | sort -u)
   if [ -n "${symbols}" ]; then
-    echo "link failed: $(echo "${symbols}" | wc -l) undefined symbols, e.g. $(echo "${symbols}" | head -n 8 | tr '\n' ' ')"
+    echo "link failed: $(echo "${symbols}" | wc -l) undefined symbols, e.g. $(echo "${symbols}" | sed -n 1,8p | tr '\n' ' ')"
   else
     echo "build failed: $(tail -n 3 "${LOG}" | tr '\n' ' ')"
   fi
