@@ -41,9 +41,11 @@ record or field concerned is dropped and reading goes on. The texts of
 | `SCHEM-FILE-001` | `missing fields for <KIND> object, ignoring`: a numeric field of an `L`, `B`, `A`, `P`, `T`, `N` or `C` record is missing or not a number (KIND is `LINE`, `xRECT`, `ARC`, `POLYGON`, `TEXT`, `WIRE` or `INSTANCE`). The record is skipped together with the rest of the line where reading stopped, which may be the next line ("Malformed input"). A negative polygon point count and an integer field that does not fit an `int` count as missing. |
 | `SCHEM-FILE-002` | `wrong or missing layer number for <KIND> object, ignoring`: the layer of an `L`, `B`, `A` or `P` record is missing or outside 0..21 ("Layers"); the record and the rest of its line are skipped. |
 | `SCHEM-FILE-003` | `EOF reached, malformed {...} string input, missing close brace`: the file ends inside a brace string (or before its `{`); the field is read as absent ("Brace strings"). |
-| `SCHEM-FILE-004` | A `[` embedded symbol block does not directly follow an instance record; the block is read and dropped ("Embedded symbols"). |
-| `SCHEM-FILE-005` | The file ends inside an embedded symbol block (no `]`); the block read so far is kept. |
+| `SCHEM-FILE-004` | A `[` embedded symbol block at the file's own level comes before any instance record; the block is skipped up to the first later line that starts with `]` ("Embedded symbols"). A block belongs to the last instance read before it, whatever records lie between. |
+| `SCHEM-FILE-005` | The file ends inside an embedded symbol block (no `]`); the records read so far define the symbol. Reported once per file. |
 | `SCHEM-FILE-006` | Error of `schem::save_document`: the file at the document's own path no longer has the bytes the document was loaded from or last saved as, so it is not overwritten until the user confirms ("Safe saving"). |
+| `SCHEM-FILE-007` | `embedded symbol blocks nested deeper than 64 levels; block skipped`: a `[` would open a 65th nested block level; it is skipped up to the next line that starts with `]` (input limit Q-SCHEM-32, approved 2026-11-21, both modes of `xschem-compat`). |
+| `SCHEM-FILE-008` | `Symbol recursively instantiating symbol: max depth reached, skipping`: inside one embedded block, a nested block would open symbol level 40 ("Embedded symbols", following the 40-level limit of schematic-symbols-and-libraries "Schematic used as symbol"); that block and the rest of the outer block are not read, at any level; the records read before it are kept. |
 
 ## SYMLIB
 
@@ -157,9 +159,11 @@ fails when the two disagree.
 | `SCHEM-FILE-001` | warning | A record has a missing or non-numeric field and is skipped. |
 | `SCHEM-FILE-002` | warning | A graphic record has a missing or out-of-range layer and is skipped. |
 | `SCHEM-FILE-003` | warning | The file ends inside a brace string; the field is read as absent. |
-| `SCHEM-FILE-004` | warning | An embedded symbol block does not follow an instance and is skipped. |
+| `SCHEM-FILE-004` | warning | An embedded symbol block comes before any instance and is skipped. |
 | `SCHEM-FILE-005` | warning | The file ends inside an embedded symbol block; the block is kept. |
 | `SCHEM-FILE-006` | error | The file changed on disk since it was loaded; it is not overwritten. |
+| `SCHEM-FILE-007` | warning | Embedded symbol blocks are nested deeper than 64 levels; the block is skipped. |
+| `SCHEM-FILE-008` | warning | An embedded symbol nests symbols 40 levels deep; the rest of its block is not read. |
 | `SCHEM-LIB-001` | warning | A `./` or `../` reference, or one found through the `.` search-path element, was resolved against the schematic folder, where xschem uses its start folder (Q-SCHEM-30). |
 | `SCHEM-LIB-002` | warning | An `http://` or `https://` symbol reference is not fetched; the instance is shown as a missing symbol (Q-SCHEM-9). |
 | `SCHEM-LIB-003` | warning | Symbol not found: the reference resolves to no file; the instance is shown as a missing symbol. |

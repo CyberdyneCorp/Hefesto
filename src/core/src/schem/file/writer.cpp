@@ -10,9 +10,11 @@
 // Owner: FORMAT.
 
 #include <algorithm>
+#include <cstddef>
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/schem/file/properties.hpp"
@@ -25,6 +27,8 @@ namespace {
 
 using file_detail::format_g16;
 using file_detail::format_int;
+
+constexpr int kPinLayer = 5;
 
 // Records of one kind, grouped by layer in ascending order and kept in list
 // order within a layer.
@@ -40,6 +44,36 @@ std::vector<const Record*> by_layer(const std::vector<Record>& records) {
   return sorted;
 }
 
+// "Pin boxes on save": the layer-5 boxes of `boxes` (pointers in list
+// order) sorted by sim_pinnumber when every one has a non-empty value;
+// otherwise unchanged. Stable, so equal values keep their order.
+void order_pin_boxes(std::vector<const BoxRecord*>& pins) {
+  std::vector<std::pair<int, const BoxRecord*>> keyed;
+  keyed.reserve(pins.size());
+  for (const BoxRecord* box : pins) {
+    const auto value = get_token(box->props, "sim_pinnumber");
+    if (!value || value->empty()) {
+      return;
+    }
+    keyed.emplace_back(file_detail::atoi_clamped(*value), box);
+  }
+  std::stable_sort(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+  for (std::size_t i = 0; i < keyed.size(); ++i) {
+    pins[i] = keyed[i].second;
+  }
+}
+
+// The boxes grouped by layer, with the layer-5 boxes in pin-box order.
+std::vector<const BoxRecord*> boxes_in_write_order(const std::vector<BoxRecord>& boxes) {
+  std::vector<const BoxRecord*> sorted = by_layer(boxes);
+  const auto first = std::find_if(sorted.begin(), sorted.end(), [](const BoxRecord* b) { return b->layer == kPinLayer; });
+  const auto last = std::find_if(first, sorted.end(), [](const BoxRecord* b) { return b->layer != kPinLayer; });
+  std::vector<const BoxRecord*> pins{first, last};
+  order_pin_boxes(pins);
+  std::copy(pins.begin(), pins.end(), first);
+  return sorted;
+}
+
 class Writer {
  public:
   std::string take() { return std::move(out_); }
@@ -50,7 +84,7 @@ class Writer {
     for (const LineRecord* line : by_layer(doc.lines)) {
       layered('L', *line);
     }
-    for (const BoxRecord* box : by_layer(doc.boxes)) {
+    for (const BoxRecord* box : boxes_in_write_order(doc.boxes)) {
       layered('B', *box);
     }
     for (const ArcRecord* arc : by_layer(doc.arcs)) {
@@ -173,9 +207,9 @@ class Writer {
     brace_line(record.props);
   }
 
-  void instance(const InstanceRecord& record) {
+  void instance(const Document& doc, const InstanceRecord& record) {
     out_ += "C ";
-    out_ += brace_string(record.symbol);
+    out_ += brace_string(instance_symbol_reference(doc, record));
     out_ += ' ';
     num(record.origin.x);
     num(record.origin.y);
@@ -193,7 +227,7 @@ class Writer {
     }
     std::set<std::string_view> written;
     for (const InstanceRecord& record : doc.instances) {
-      instance(record);
+      instance(doc, record);
       const auto embed = get_token(record.props, "embed");
       if (!embed || !is_true(*embed)) {
         continue;
@@ -206,8 +240,9 @@ class Writer {
   }
 
   // The block as xschem writes it in both modes (Q-SCHEM-2): no header
-  // text, no `F`, `G`/`V`/`S`/`E` empty, wires as `L 1`, polygons after
-  // texts, no wires or instances.
+  // text, no `F`, `G`/`V`/`S`/`E` empty, wires (of a schematic used as a
+  // symbol) as `L 1` after the other layer-1 lines, layer-5 boxes in pin
+  // order, polygons after texts, no wires or instances.
   void embedded_block(const Document& symbol) {
     out_ += "[\n";
     version("");
@@ -223,7 +258,7 @@ class Writer {
     for (const LineRecord* line : by_layer(lines)) {
       layered('L', *line);
     }
-    for (const BoxRecord* box : by_layer(symbol.boxes)) {
+    for (const BoxRecord* box : boxes_in_write_order(symbol.boxes)) {
       layered('B', *box);
     }
     for (const ArcRecord* arc : by_layer(symbol.arcs)) {
@@ -264,6 +299,26 @@ std::string brace_string(std::string_view value) {
   }
   out += '}';
   return out;
+}
+
+void sort_pin_boxes(Document& document) {
+  std::vector<std::size_t> slots;
+  std::vector<const BoxRecord*> pins;
+  for (std::size_t i = 0; i < document.boxes.size(); ++i) {
+    if (document.boxes[i].layer == kPinLayer) {
+      slots.push_back(i);
+      pins.push_back(&document.boxes[i]);
+    }
+  }
+  order_pin_boxes(pins);
+  std::vector<BoxRecord> sorted;
+  sorted.reserve(pins.size());
+  for (const BoxRecord* box : pins) {
+    sorted.push_back(*box);
+  }
+  for (std::size_t i = 0; i < slots.size(); ++i) {
+    document.boxes[slots[i]] = std::move(sorted[i]);
+  }
 }
 
 std::string write_document(const Document& document) {

@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <string_view>
 
 #include "file_test_util.hpp"
 #include "hefesto/schem/file/read_write.hpp"
@@ -65,19 +66,49 @@ TEST_CASE("file version 1.0 replaces the extension; 1.1 keeps the reference",
   CHECK(no_key.doc.instances[0].symbol == "res.sym");
 }
 
+namespace {
+
+constexpr std::string_view kLeadingInstance = "C {res} 0 0 0 0 {name=R1}\nC {capa} 100 0 0 0 {name=C1}\n";
+
+}  // namespace
+
 TEST_CASE("leading instance record, xschem-compat ON", "[cap:schematic-file-format][req:Version record and header text]") {
-  const auto r = read_text("C {res} 0 0 0 0 {name=R1}\nC {capa} 0 0 0 0 {name=C1}\n", schem::FileKind::schematic, true);
+  const auto r = read_text(kLeadingInstance, schem::FileKind::schematic, true);
   REQUIRE(r.doc.instances.size() == 2);
   CHECK(r.doc.instances[0].symbol == "res");
   CHECK(r.doc.instances[1].symbol == "capa.sym");
   CHECK(r.doc.file_version == "1.0");
+  // Resolution and writing add `.sym` (SCHEM-RT-08 b.sch, round-2 answer F1).
+  CHECK(schem::instance_symbol_reference(r.doc, r.doc.instances[0]) == "res.sym");
+  const std::string saved = schem::write_document(r.doc);
+  CHECK(saved == std::string{kEmptyHeader} + "C {res.sym} 0 0 0 0 {name=R1}\nC {capa.sym} 100 0 0 0 {name=C1}\n");
+  CHECK(round_trip(saved) == saved);
 }
 
 TEST_CASE("leading instance record, xschem-compat OFF", "[cap:schematic-file-format][req:Version record and header text]") {
-  const auto r = read_text("C {res} 0 0 0 0 {name=R1}\nC {capa} 0 0 0 0 {name=C1}\n", schem::FileKind::schematic, false);
+  const auto r = read_text(kLeadingInstance, schem::FileKind::schematic, false);
   REQUIRE(r.doc.instances.size() == 2);
   CHECK(r.doc.instances[0].symbol == "res.sym");
   CHECK(r.doc.instances[1].symbol == "capa.sym");
+  CHECK(schem::write_document(r.doc) == round_trip(kLeadingInstance, schem::FileKind::schematic, true));
+}
+
+TEST_CASE("a file version 1.0 document writes every reference with .sym",
+          "[cap:schematic-file-format][req:Version record and header text]") {
+  auto r = read_text("v {xschem version=2.0 file_version=1.0}\n");
+  r.doc.instances.push_back({"lib/blk.sch", {0, 0}, 0, 0, ""});  // placed after loading
+  CHECK(schem::instance_symbol_reference(r.doc, r.doc.instances[0]) == "lib/blk.sym");
+  CHECK(schem::write_document(r.doc).find("C {lib/blk.sym} 0 0 0 0 {}\n") != std::string::npos);
+  // From 1.1 on, references are written as stored.
+  auto newer = read_text("v {xschem version=2.9 file_version=1.1}\nC {blk.sch} 0 0 0 0 {}\n");
+  CHECK(schem::instance_symbol_reference(newer.doc, newer.doc.instances[0]) == "blk.sch");
+  CHECK(schem::write_document(newer.doc).find("C {blk.sch} 0 0 0 0 {}\n") != std::string::npos);
+}
+
+TEST_CASE("header keys removed with their separator", "[cap:schematic-file-format][req:Version record and header text]") {
+  const auto r = read_text("v {xschem version=3.4.7RC file_version=1.2\n\n* Copyright 2022 X\n}\n", schem::FileKind::symbol);
+  CHECK(r.doc.header_text == "* Copyright 2022 X\n");
+  CHECK(schem::write_document(r.doc).rfind("v {xschem version=3.4.8RC file_version=1.3\n* Copyright 2022 X\n}\n", 0) == 0);
 }
 
 TEST_CASE("pinned version", "[cap:schematic-file-format][req:Writer version string]") {
