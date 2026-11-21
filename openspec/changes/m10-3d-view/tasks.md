@@ -16,10 +16,10 @@ How this plan runs:
 
 ## 2. SCAFFOLD (P1; after M5 GEN is merged)
 
-- [ ] 2.1 Confirm the start gate: M5 GEN merged on main and section 1 approved. Verify by the merge commit and the readiness check.
-- [ ] 2.2 Add the area `view3d` (subdirectories `stack`, `mesh`, `camera`, `client`, `pick`, `section`, `export`, `overlay`) and `extract/tech`, each with `sources.cmake` and `codes.inc`, their test directories, and `docs/diagnostics/codes/view3d.md` with one section per workstream (design D2). Verify that the build passes and the code-table test covers `view3d`.
-- [ ] 2.3 Write the documented public headers of design "Area contracts" with stubs, and `view3d::Session` in `EditorState` (design D4). Verify that the headers compile in `macos-debug` and `macos-bench`, `scripts/check_core_includes.py` passes, and the existing core and shell tests pass unchanged.
-- [ ] 2.4 Seed `docs/design/m10-3d-ui-conformance.md` and record the as-landed contracts in design.md. Verify that `openspec validate --all --strict` passes.
+- [x] 2.1 Confirm the start gate: M5 GEN merged on main and section 1 approved. Verify by the merge commit and the readiness check.
+- [x] 2.2 Add the area `view3d` (subdirectories `stack`, `mesh`, `camera`, `client`, `pick`, `section`, `export`, `overlay`) and `extract/tech`, each with `sources.cmake` and `codes.inc`, their test directories, and `docs/diagnostics/codes/view3d.md` with one section per workstream (design D2). Verify that the build passes and the code-table test covers `view3d`.
+- [x] 2.3 Write the documented public headers of design "Area contracts" with stubs, and `view3d::Session` in `EditorState` (design D4). Verify that the headers compile in `macos-debug` and `macos-bench`, `scripts/check_core_includes.py` passes, and the existing core and shell tests pass unchanged.
+- [x] 2.4 Seed `docs/design/m10-3d-ui-conformance.md` and record the as-landed contracts in design.md. Verify that `openspec validate --all --strict` passes.
 
 ## 3. TECH: layer stack data (P1)
 

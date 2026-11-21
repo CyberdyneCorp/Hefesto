@@ -270,6 +270,49 @@ Datasets are read, never recomputed: node and coupling capacitance from the `.ex
 ### EXPORT: `hefesto/view3d/export/`
 - `write_gltf(const MeshModel&, const LayerStack&, ExportOptions, ByteSink&)`, `write_stl(...)`
 
+## As-landed scaffold contracts
+
+The scaffold (tasks.md 2.1–2.4, branch `m10-r1-scaffold` from main at 0c5f29fb) landed the area, headers and stubs below. The headers are the contract; this section records where they are, who fills them in, and where they differ from "Area contracts" and D4. Include paths are under `src/core/include/hefesto/`, sources under `src/core/src/`.
+
+**Start gate (task 2.1).** M5 GEN (m5-mask-gds-cif section 6, tasks 6.1–6.8 ticked) reached main with PR #55 (merge fcf4f68b, `generate_flat` in 3c49deed and the hierarchy switches and progress in 1304245b); section 1 was approved on 2026-11-13 and `check_milestone_readiness.py --milestone M10` lists no Q-MISC-7x entry and nothing cited by `view-3d` or `hefesto-3d-visualization`.
+
+### Files and owners
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `view3d/{sources.cmake,codes.cpp}` | area sources and the code table assembled from `view3d/<sub>/codes.inc` | SCAFFOLD |
+| `view3d/<sub>/{sources.cmake,codes.inc,<sub>.cpp}` for `stack`, `mesh`, `camera`, `client`, `pick`, `section`, `export`, `overlay` | one directory per workstream, each with one stub source | as D2 |
+| `view3d/mode.hpp` | `Mode` (`layout_layer`, `mask_layer`), `LayerId` (16-bit) | SCAFFOLD (shared) |
+| `extract/tech/height_view.hpp`, `src/extract/tech/height_view.cpp` | `HeightSource`, `TypeHeight`, `StyleHeights`, `HeightView` (`from_section` ×2, `from_technology`, `rescaled`, `has_style`, `style_name`, `height`, `style`) | TECH (extends M6's `style_reader.cpp`) |
+| `view3d/stack/layer_stack.hpp` | `ValueSource`, `DrawHeight`, `PhysicalHeight`, `StackLayer`, `LayerStack` (`draw_height`, `physical_height_um`), `build_layout_stack`, `build_mask_stack` | TECH |
+| `view3d/mesh/mesh_model.hpp`, `view3d/mesh/build.hpp` | `RectInstance`, `SideInstance` (`side_flag`), `Triangle`, `Chunk`, `MeshModel`, `MeshHandle`; `ClipArea`, `BuildContext`, `build_from_layout`, `build_from_planes`, `rebuild_chunks` | MESH (`build_from_planes`: MASKSRC) |
+| `view3d/camera/view_state.hpp` | `ViewState`, `Angles`, `Projection`, `ProjectionParams`, `Matrix4`, `Preset`, `Gesture`; `default_view`, `rescale`, `matrix`, `apply`, `preset` | CAMERA |
+| `view3d/client/session.hpp`, `view3d/client/commands.hpp` | `Session`, `WindowState` (`exit_mask_factor`), `VisibilitySets`, the toolkit paths; `kWind3dClient`, `OpenRequest`, `open_wind3d`, `register_wind3d_commands` | WIND3D |
+| `view3d/pick/pick.hpp` | `PickId`, `kNoPick`, `PickTarget`, `HighlightSet`; `resolve`, `to_selection`, `from_selection`, `net_highlight` | INSPECT |
+| `view3d/section/section.hpp` | `Segment`, `CrossSection`, `section` | INSPECT (P2) |
+| `view3d/export/export.hpp` | `ExportFormat`, `ExportOptions`, `write_gltf`, `write_stl` | EXPORT (P2) |
+| `view3d/overlay/dataset.hpp` | `overlay::KeyKind`, `Value`, `Dataset`, `Rgb`, `ColorMap`, `color_of` | OVERLAY (P3) |
+| `src/render/vulkan/include/hefesto/render/mesh3d_renderer.hpp` (header only) | `render::OffscreenTarget`, `DrawParams`, `Mesh3dRenderer` (abstract: `upload`, `draw`, `read_pick`) | RENDER3D |
+| `tests/unit/view3d/` and `tests/unit/view3d/<sub>/` | one executable per directory once it has a `*_test.cpp`; `scaffold_test.cpp` holds the `[m10-scaffold]` tests | SCAFFOLD; owners replace them with `[cap:][req:]` tests |
+| `docs/diagnostics/codes/view3d.md` | one section per workstream and the generated table (no code yet) | SCAFFOLD (sections: their workstreams) |
+| `docs/design/m10-3d-ui-conformance.md` | seeded with the D12 elements, the board review and the renderer spike | SHELL (board review: DESIGN; spike: RENDER3D; "Performance": PERF) |
+
+The stubs answer neutral values: no extraction style, empty stacks of the right mode (every layer flat, no physical height), empty meshes over the clip area (`rebuild_chunks` returns the previous model), `ViewState{}` and an identity matrix, no pick target, empty highlight sets and sections, nothing written, black colors. `open_wind3d` answers `UI-CLIENT-002` with the text `specialopen wind3d` gives today, and `register_wind3d_commands` registers nothing, so no command reaches a stub and no `CORE-NOTIMPL` code is needed (`CORE-NOTIMPL-006` belongs to M6 and goes away at M6 exit).
+
+### Differences from "Area contracts" and D4
+
+- **Extract subset (TECH).** M6 landed the extract-style reader as `hefesto::extract::StyleView` (`extract/tech/style_view.hpp`) over `detail::read_style` in `style_reader.cpp`. The area contract's `extract::tech::ExtractStyleSubset` and `parse_extract_subset(RawSection, Technology&)` are lined up with it (the M6 design's note: whichever lands second lines the two up): `hefesto::extract::HeightView` with `StyleHeights`, built like `StyleView` by `from_section(section, tech, sink[, style])` and `from_technology(tech, sink)`. TECH implements it by extending the one reader's pass, never with a second parser. h and t are `float`, as Magic's `exts_height` / `exts_thick`. `rescaled(n, d)` is task 3.2's grid rescale. The technology already keeps the raw `extract` section (`Technology::raw_sections()`), which is what the `tech/loader.cpp` hand-off of D18 meant; TECH changes the loader only if it needs the section earlier.
+- **LayerStack.** `build_layout_stack(tech, HeightView, display::TypeStyleMap, magic_compat, microns_per_unit)`: the (type, style) pairs come from the display `TypeStyleMap` (Q-MISC-77), and µm per internal unit is passed in. `build_mask_stack(const mask::OutputStyle&, bool magic_compat)` as the contract; `mask::OutputLayer` has no `RenderAttrs` yet (task 1.4 is open), so TECH adds them in task 3.3. `draw_height` and `physical_height_um` take a `LayerId` (the stack index).
+- **Mesh builders** return `std::optional<MeshModel>`: nullopt when the build was cancelled, so the caller keeps the previous model (D6). `BuildContext` carries a `mask::Progress` (fraction and cancel flag), an `on_chunk` callback for progressive display and the J1 option. `ClipArea` holds the area, whether it is the cut box, and the halo. `rebuild_chunks` takes the previous model, the stack, the cell and the dirty rectangles.
+- **Camera.** `ViewState` uses Magic's field names (`view_x`, `trans_x`, `scale_xy`, `prescale_z`, `scale_z`, ...). `matrix` takes `ProjectionParams` (kind and field of view); `preset` returns `Angles`. `Gesture` carries `dx`, `dy`, `factor`, `zoom_z` and a preset.
+- **Session.** `view3d::Session` and `WindowState` live in `view3d/client/session.hpp` (D4 names no file); `EditorState::view3d`. The visibility sets are hidden sets (`VisibilitySets`: a `TypeMask` for layout-layer mode and one flag per mask layer), so the default is "everything visible". The f recorded on entering mask-layer mode is `applied_factor`; the Q-MISC-78 branch point is `WindowState::exit_mask_factor(magic_compat, current_factor)`.
+- **Client.** `open_wind3d(EditorState&, const OpenRequest&)` (cell and toolkit path). The command table is registered by `register_wind3d_commands`, which `cmd/all_commands.cpp` calls, in the `wind3d` client table.
+- **Pick.** `PickId` is `std::uint32_t` with `kNoPick = 0` for the background. `net_highlight(mesh, editor, seed)` and `from_selection(mesh, selection)` return a `HighlightSet` (sorted ids).
+- **Section** takes the `LayerStack` too (`section(mesh, stack, segment)`), since the heights in µm come from it; layers with no physical height are listed in `CrossSection::no_height`.
+- **Export** writes to the existing `gds::ByteSink` (`gds/stream/io.hpp`) and reports warnings to a `diag::DiagnosticSink`; `ExportOptions` holds the format, `-merged`, `-zscale`, `-visible`/`-all` and the style table for materials.
+- **Renderer.** `Mesh3dRenderer` is an abstract interface in the render library, header only; `OffscreenTarget` is an abstract handle the backend creates, so the interface names no Vulkan type. `DrawParams` holds the projection, level, stack, per-layer hidden flags and alpha, and the highlight set.
+- **Edits outside the new area.** `src/core/CMakeLists.txt` (`HEFESTO_CORE_AREAS`), `diag/codes.cpp`, `diag/area_codes.hpp` and the `diag/codes.hpp` comment (the `view3d` area), `cmd/all_commands.cpp`, `editor/editor_state.hpp`, `extract/tech/sources.cmake` (`height_view.cpp`), `tests/unit/CMakeLists.txt` and `docs/diagnostics/codes.md`.
+
 ## Risks / Trade-offs
 
 - **R1. Raven texture mode on MoltenVK and lavapipe.** Zero-copy image views shared between Hefesto's submission and Raven's frame need correct layout transitions and synchronisation. → Spike first (task 5.1). Fallback: Raven's CPU `Rtexture_update` path for the first slice (slower, correct), then fix forward; the draw-callback path with a depth attachment would need a Raven change and is the last resort.
