@@ -117,7 +117,7 @@ TEST_CASE("Render by style name", "[cap:view-3d][req:Render statement in the cif
   CHECK(s.messages.empty());
   const mask::OutputLayer& met1 = s.current().layers[0];
   REQUIRE(met1.render.size() == 1);
-  CHECK(met1.render[0] == mask::RenderAttrs{"metal1", 1.376F, 0.36F});
+  CHECK(met1.render[0] == mask::RenderAttrs{"metal1", 1.376F, 0.36F, 1});
 
   const display::StyleTable table = style_table();
   diag::CollectingSink sink;
@@ -167,7 +167,7 @@ TEST_CASE("render errors: argument count and non-numeric values ignore the line"
   CHECK(s.current().layers[0].render.empty());
 }
 
-TEST_CASE("a render style that does not resolve is reported once and its statement ignored",
+TEST_CASE("a render style that does not resolve is reported once per line and its statement ignored",
           "[cap:view-3d][req:Render statement in the cifoutput section]") {
   const auto t = load(kGdsStyle + " render MET1 metal1 1.376 0.36\n render MET1 nosuch 9 9\n"
                                   " render MET2 999 2 2\n");
@@ -177,7 +177,7 @@ TEST_CASE("a render style that does not resolve is reported once and its stateme
   diag::CollectingSink sink;
   const view3d::LayerStack stack = view3d::build_mask_stack(s.current(), &table, true, sink);
   const auto messages = sink.take();
-  REQUIRE(messages.size() == 2);  // `nosuch` once (two MET1 layers), `999` once
+  REQUIRE(messages.size() == 2);  // the `nosuch` line once (two MET1 layers), the `999` line once
   CHECK(messages[0].code == "VIEW3D-STACK-002");
   CHECK(messages[0].text == "Error:  Bad render style for CIF layer.");
   // MET1 keeps the earlier statement, as Magic ignores the bad one.
@@ -186,6 +186,22 @@ TEST_CASE("a render style that does not resolve is reported once and its stateme
   // MET2 has no valid statement: the default.
   CHECK(stack.layers()[1].style == view3d::kPaleHighlightStyle);
   CHECK(stack.layers()[1].source == view3d::ValueSource::none);
+}
+
+TEST_CASE("two render lines with the same bad style report it twice, as Magic reports each line",
+          "[cap:view-3d][req:Render statement in the cifoutput section]") {
+  // Regression (PR #77 review): the error was deduplicated by style name.
+  const auto t = load(kGdsStyle + " render MET1 nosuch 1 1\n render MET2 nosuch 2 2\n");
+  const Styles s = output_styles(*t);
+  CHECK(s.current().layers[0].render[0].statement == 1);
+  CHECK(s.current().layers[1].render[0].statement == 2);
+  const display::StyleTable table = style_table();
+  diag::CollectingSink sink;
+  (void)view3d::build_mask_stack(s.current(), &table, true, sink);
+  const auto messages = sink.take();
+  REQUIRE(messages.size() == 2);
+  CHECK(messages[0].text == "Error:  Bad render style for CIF layer.");
+  CHECK(messages[1].text == "Error:  Bad render style for CIF layer.");
 }
 
 TEST_CASE("several mask layers sharing a name all take the render statement",

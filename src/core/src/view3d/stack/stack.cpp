@@ -52,7 +52,7 @@ class RenderResolver {
 
   void apply(const mask::OutputLayer& layer, StackLayer& out) {
     for (const mask::RenderAttrs& attrs : layer.render) {
-      const std::optional<std::size_t> style = resolve(attrs.style);
+      const std::optional<std::size_t> style = resolve(attrs);
       if (styles_ != nullptr && !style) {
         continue;
       }
@@ -64,12 +64,14 @@ class RenderResolver {
   }
 
  private:
-  std::optional<std::size_t> resolve(const std::string& ref) {
+  // Magic reports a bad style once per `render` line, also when the line
+  // names several layers.
+  std::optional<std::size_t> resolve(const mask::RenderAttrs& attrs) {
     if (styles_ == nullptr) {
       return std::nullopt;
     }
-    std::optional<std::size_t> style = styles_->find_layout_style(ref);
-    if (!style && reported_.insert(ref).second) {
+    std::optional<std::size_t> style = styles_->find_layout_style(attrs.style);
+    if (!style && reported_.insert(attrs.statement).second) {
       sink_.emit(diag::make(kBadRenderStyle, "Error:  Bad render style for CIF layer."));
     }
     return style;
@@ -77,7 +79,7 @@ class RenderResolver {
 
   const display::StyleTable* styles_;
   diag::DiagnosticSink& sink_;
-  std::set<std::string> reported_;
+  std::set<std::uint32_t> reported_;  // statements already reported
 };
 
 }  // namespace

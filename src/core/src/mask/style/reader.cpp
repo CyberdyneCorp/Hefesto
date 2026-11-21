@@ -101,6 +101,7 @@ class Reader {
   bool current_op_ = false;                   // cifCurOp != NULL
   bool got_labels_ = false;                   // cifGotLabels
   bool section_failed_ = false;
+  std::uint32_t render_statements_ = 0;  // the style's `render` lines so far
 };
 
 void Reader::line(const tech::RawLine& raw) {
@@ -355,12 +356,13 @@ void Reader::render_line(const Tokens& t) {
     return;
   }
   current_layer_.reset();  // not in a layer definition any more
+  ++render_statements_;
   if (!str_is_numeric(t[3]) || !str_is_numeric(t[4])) {
     messages_.error("Syntax: render <layer> <style> <height> <thick>");
     return;
   }
   const RenderAttrs attrs{t[2], static_cast<float>(std::atof(t[3].c_str())),
-                          static_cast<float>(std::atof(t[4].c_str()))};
+                          static_cast<float>(std::atof(t[4].c_str())), render_statements_};
   bool matched = false;
   for (OutputLayer& layer : style_.layers) {
     if (layer.name == t[1]) {

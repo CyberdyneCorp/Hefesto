@@ -153,6 +153,10 @@ struct RenderAttrs {
   std::string style;
   float height = 0.0F;
   float thickness = 0.0F;
+  /// Which `render` line of the style this is (1-based, in file order): a
+  /// line naming several layers is one statement, so its bad-style error
+  /// is reported once.
+  std::uint32_t statement = 0;
 
   friend bool operator==(const RenderAttrs&, const RenderAttrs&) = default;
 };

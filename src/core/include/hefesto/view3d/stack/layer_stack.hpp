@@ -161,9 +161,10 @@ class LayerStack {
 /// the internal grid). Each layer takes the last of its `render`
 /// statements whose style reference resolves in `styles`
 /// (StyleTable::find_layout_style: a style number or an exact long name);
-/// each reference that does not resolve is reported once to `sink`
-/// (VIEW3D-STACK-002, Magic's "Error:  Bad render style for CIF layer.")
-/// and that statement is ignored. Without a style table (headless) the
+/// each `render` line whose reference does not resolve is reported once
+/// per build to `sink` (VIEW3D-STACK-002, Magic's "Error:  Bad render
+/// style for CIF layer.", once per line as in Magic) and that statement is
+/// ignored. Without a style table (headless) the
 /// last statement's height and thickness apply with the pale-highlight
 /// style.
 [[nodiscard]] LayerStack build_mask_stack(const mask::OutputStyle& style, const display::StyleTable* styles,

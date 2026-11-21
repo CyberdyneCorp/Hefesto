@@ -47,11 +47,17 @@ Codes of the layer stack (`view3d::LayerStack`, design D5). Owner: TECH.
   section; Hefesto loads the display styles after that section (and a
   headless session has none), so the reference is kept as written
   (`mask::RenderAttrs`) and `view3d::build_mask_stack` resolves it,
-  reports each bad reference once per build and ignores that statement,
-  so the layer keeps its earlier `render` values as in Magic. The other
-  `render` errors (argument count, `Syntax: render <layer> <style>
-  <height> <thick>`, `Unknown layer name.`) are reported at load with
-  `MASK-STYLE-001` ([mask.md](mask.md)).
+  reports each `render` line with a bad reference once per build (once
+  per line, as Magic, also when the line names several layers) and
+  ignores that statement, so the layer keeps its earlier `render` values
+  as in Magic. The other `render` errors (argument count, `Syntax: render
+  <layer> <style> <height> <thick>`, `Unknown layer name.`) are reported
+  at load with `MASK-STYLE-001` ([mask.md](mask.md)). Two differences
+  from Magic await a decision (m10-3d-view tasks.md 3.4, integration note
+  (a)): Magic checks the style first, so a line with a bad style and bad
+  numbers or an unknown layer prints only this error, where Hefesto
+  prints the load-time error and never this one; and the error comes
+  again on each stack build rather than once per tech load.
 
 ## MESH
 
