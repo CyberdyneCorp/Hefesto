@@ -332,7 +332,7 @@ Compatibility: exact
 ### Requirement: Element line post-processing
 The netlist text (the element texts of Requirement "Format string substitution", the user code and the lines of Requirement "Netlist file structure") SHALL become the final netlist lines by the rules below. They state the result; where one rule works on the result of another, the rule says so. None of these rules depends on the `xschem-compat` setting except "Trailing m=1".
 
-**User-code blocks.** A user-code block runs from a line starting with `**** begin user architecture code` or `**** begin user header code` to the matching `**** end user ... code` line. Lines inside a block SHALL be written unchanged, except for "Trailing m=1". The begin and end lines of architecture code SHALL be written; those of header code SHALL NOT.
+**User-code blocks.** The user-code blocks are the header code (item 2 of Requirement "Netlist file structure") and the architecture code blocks, each of which runs from a line starting with `**** begin user architecture code` to the next line starting with `**** end user architecture code`; both of these lines SHALL be written. Lines inside a block SHALL be written unchanged, except for "Trailing m=1" and "Parametric vector names".
 
 **Continuation lines.** Outside user-code blocks, a line starting with `+` continues the line before it: they SHALL form one line, the earlier line followed by one space and the rest of the continuation line after the `+`. The other rules apply to the joined line.
 
@@ -340,7 +340,7 @@ The netlist text (the element texts of Requirement "Format string substitution",
 
 **Comment lines.** A line whose first field starts with `*` SHALL be written unchanged.
 
-**Notations in element text.** Element text MAY contain these notations, from the tokens of Requirement "Format string substitution" or written literally in a format string. None of them appears in the netlist:
+**Notations in element text.** Element text MAY contain these notations, from the tokens of Requirement "Format string substitution" or written literally in a format string. They are part of the format-string syntax: a user MAY write any of them in a `format` or `lvs_format` attribute, and they have the meaning below whether a token produced them or the user wrote them. None of them appears in the netlist:
 - **width marker**: a field matching `^(.*=)?\?-?[0-9]+$`, that is an optional `<key>=` and `?<w>`, applies to the field after it (see "Vector elements")
 - `##` at the start of a field SHALL be removed
 - `#<p>#<rest>` SHALL become `<p><rest>` with `<p>` also inserted after every comma of `<rest>`, and the field SHALL be treated as preceded by the width marker `?1` when the field before it is not a width marker
@@ -354,7 +354,7 @@ The netlist text (the element texts of Requirement "Format string substitution",
 
 An element line whose name list is empty SHALL be written as an empty line.
 
-**Parametric vector names.** The `name=value` pairs of the `.param` lines (matched case-insensitively, spaces around `=` ignored) that precede an element SHALL be used to expand its first field when that field matches `^[a-zA-Z][^\[\]:]+\[[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\]$`: `<base>[<a>:<b>]` becomes the bus expansion (Requirement "Bus and vector notation") of `<base>[<value of a>:<value of b>]`.
+**Parametric vector names.** The `name=value` pairs of every line of the netlist text that starts with `.param` (matched case-insensitively, spaces around `=` ignored, lines in user-code blocks included, wherever the line is in the netlist relative to the element, and as written before "Trailing m=1" removes anything; a later pair for a name replaces an earlier one) SHALL be used to expand the first field of every line, user-code lines included, when that field matches `^[a-zA-Z][^\[\]:]+\[[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\]$`: `<base>[<a>:<b>]` becomes the bus expansion (Requirement "Bus and vector notation") of `<base>[<value of a>:<value of b>]`.
 
 **Renames.** On an element line starting with `g` or `G`, the first ` value=` (case-insensitive) SHALL become ` cur=`; with `e` or `E` it becomes ` vol=`; with `r` or `R`, ` r=`; with `c` or `C`, ` c=`. On a line starting with `D`, the first `PERI` followed by optional spaces and `=` SHALL become `PJ=`.
 
@@ -396,10 +396,10 @@ Compatibility: exact
 ### Requirement: Line breaking
 Finally, long lines SHALL be wrapped with SPICE continuation lines. This is xschem's layout of long lines, kept whatever the `xschem-compat` setting because it changes only where lines wrap (Q-SCHEM-20, `Resolution: replicate`):
 - Trailing spaces and tabs SHALL be removed from every line; an empty line stays empty.
-- These lines SHALL NOT be wrapped: lines inside user-code blocks, lines whose first field in lower case contains a match of `\.inc(lude)?|\.lib|\.title|\.save|\.write` (unanchored), and lines matching `^\*\* ..._path:`.
+- These lines SHALL NOT be wrapped: the lines of architecture code blocks (Requirement "Element line post-processing", "User-code blocks"), including their begin and end lines, lines whose first field in lower case contains a match of `\.inc(lude)?|\.lib|\.title|\.save|\.write` (unanchored), and lines matching `^\*\* ..._path:`. Header code lines are wrapped like other lines.
 - A wrap SHALL insert LF and `+` (or `*+` when the line starts with `*`) directly before the whitespace that precedes a field, so the continuation line starts with `+` followed by that whitespace.
 - **Field rule.** A line with no `{`, `}` or `'`, read while no quote is open (below), SHALL be wrapped before a field when the length of the current segment, counted up to the end of that field, exceeds 130 characters. A segment's length counts each field with the whitespace before it, except the field that starts a continuation segment (the field written after the `+`), which counts as zero.
-- **Quote rule.** A line that contains `{`, `}` or `'`, or that starts while a quote is open, SHALL instead be read character by character. Each `{`, `}` and `'` opens a quote when none is open and closes it otherwise (there is no nesting, and the three characters are interchangeable); a quote left open at the end of a line stays open for the following lines. The line SHALL be wrapped before a space or tab when no quote is open and the segment, counted in characters from its start to that space or tab, is longer than 130 characters; the next segment is counted from zero.
+- **Quote rule.** A line that contains `{`, `}` or `'`, or that starts while a quote is open, SHALL instead be read character by character. Each `{`, `}` and `'` opens a quote when none is open and closes it otherwise (there is no nesting, and the three characters are interchangeable); a quote left open at the end of a line stays open for the following lines. Lines that are not wrapped are read for quotes too; empty lines are not. The line SHALL be wrapped before a space or tab when no quote is open and the segment, counted in characters from its start to that space or tab, is longer than 130 characters; the next segment is counted from zero.
 
 Compatibility: exact
 
@@ -413,7 +413,7 @@ Compatibility: exact
 ### Requirement: Netlist file structure
 The hierarchical SPICE netlist of top schematic `T` (path `/abs/T.sch`) SHALL consist of, in order:
 1. `** sch_path: /abs/T.sch`, followed, only when `xschem-compat` is OFF, by the line `** xschem-compat=off` (capability `hefesto-magic-compat-mode`, Requirement "xschem-compat setting for xschem quirks")
-2. Header code: the `netlist_commands` instances whose `place` (symbol property first, then instance property) is `header`, in instance order, each element text written as is (no markers in the final text).
+2. Header code: the `netlist_commands` instances whose `place` (symbol property first, then instance property) is `header`, in instance order, each element text written as is. This header code is a user-code block (Requirement "Element line post-processing").
 3. Netlist options are applied (Requirement "Netlist options").
 4. The top line: `**.subckt T` (or `.subckt T` when the top is a subcircuit, Requirement "LVS netlist mode"; `.SUBCKT` with `uppercase_subckt`), followed by the port list (Requirement "Top-level port order"), then LF.
 5. The body of `T` (Requirement "Subcircuit body") at top level.

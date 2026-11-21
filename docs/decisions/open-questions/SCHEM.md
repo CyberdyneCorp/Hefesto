@@ -252,7 +252,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-27: Missing subcircuit schematic
 - Kind: ambiguity
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: when the schematic of a `subcircuit` symbol does not exist, the header lines are still written and the body comes from an empty load; the exact text was not derived.
+- xschem behavior: when the schematic of a `subcircuit` symbol does not exist, the header lines are still written and the body is empty; the exact text was not derived. (Reworded as behaviour by the second paraphrase review of 2026-11-20.)
 - Evidence: spice_netlist.c:700-735, actions.c:2544-2562
 - Options: replicate after golden capture | always error
 - Recommendation: capture with golden case SCHEM-NL-14, then replicate and warn.

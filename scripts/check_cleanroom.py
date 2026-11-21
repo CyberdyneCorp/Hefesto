@@ -11,7 +11,8 @@ source"; the process is docs/contributing/cleanroom.md. The check fails when:
 2. a golden case under tests/golden/SCHEM/ (a directory holding a ``case.toml``) declares no
    ``provenance``, or declares one that is neither ``"hefesto"`` nor ``"pdk:<set>:<path>"`` with an
    xschem data set of scripts/fetch_pdk.py, or names xschem's own distribution;
-3. a file under src/ contains an ``xschem ref:`` trace.
+3. a file under src/ or tests/ contains an ``xschem ref:`` trace. Excluded: captured xschem output
+   (``expected/`` directories of the golden cases under tests/golden/SCHEM/) and Markdown documents.
 
 The files checked are those git tracks under --root (every file below --root when it is not a git
 work tree, as for the test fixtures).
@@ -71,11 +72,19 @@ def header_findings(root: Path, files: list[Path]) -> list[str]:
     return findings
 
 
+def trace_checked(rel: Path) -> bool:
+    """Whether ``rel`` is implementation code or a test, where no ``xschem ref:`` trace may appear."""
+    if rel.parts[:1] not in (("src",), ("tests",)) or rel.suffix.lower() == ".md":
+        return False
+    is_capture = rel.as_posix().startswith(GOLDEN_DIR + "/") and "expected" in rel.parts
+    return not is_capture
+
+
 def trace_findings(root: Path, files: list[Path]) -> list[str]:
     findings = []
     for path in files:
         rel = path.relative_to(root)
-        if rel.parts[:1] != ("src",):
+        if not trace_checked(rel):
             continue
         text = read_text(path) or ""
         for number, line in enumerate(text.splitlines(), 1):
