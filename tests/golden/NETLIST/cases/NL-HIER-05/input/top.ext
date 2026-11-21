@@ -1,0 +1,11 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use inv r[0:2:10][0:0:0] 1 0 0 0 1 0
+use inv a2[0:1:10][0:1:20] 1 0 0 0 1 100
+node "n" 0 1 0 200 metal1 0 0 0 0 0 0
+merge "r[0]/in" "n" 0
+merge "a2[0,0]/in" "n" 0

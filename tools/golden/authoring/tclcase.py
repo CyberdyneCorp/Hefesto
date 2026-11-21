@@ -103,10 +103,12 @@ class TclCase:
     output_sources: dict[str, str] = field(default_factory=dict)  # output key -> its source (default: the key)
     tool: str = "magic"                                # the reference tool (oasis-spec: SPEC_ARGV)
     capture_blocked: str = ""                          # why Magic cannot capture it yet (goldenlib/case.py)
+    golden_area: str = ""                              # the tests/golden/<AREA> directory when the ID prefix
+                                                       # is not it (M7: EX-* in EXTRACT, NL-* in NETLIST)
 
     @property
     def area(self) -> str:
-        return self.id.split("-")[0]
+        return self.golden_area or self.id.split("-")[0]
 
 
 HEFESTO_SCRIPT = "hefesto.tcl"

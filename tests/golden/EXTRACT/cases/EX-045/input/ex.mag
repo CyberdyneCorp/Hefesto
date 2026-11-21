@@ -1,0 +1,22 @@
+magic
+tech exttest
+timestamp 100
+<< dnwell >>
+rect 0 0 30 4
+rect 0 26 30 30
+rect 0 4 4 26
+rect 26 4 30 26
+<< nfet >>
+rect 12 12 14 16
+rect 50 12 52 16
+<< ndiff >>
+rect 9 12 12 16
+rect 14 12 17 16
+rect 47 12 50 16
+rect 52 12 55 16
+<< psd >>
+rect 60 0 64 4
+<< labels >>
+rlabel nfet 13 13 13 13 0 gin
+rlabel nfet 51 13 51 13 0 gout
+<< end >>

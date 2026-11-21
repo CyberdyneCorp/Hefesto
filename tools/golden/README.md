@@ -18,7 +18,7 @@ tools/golden/
   oasis_validate.py      M6: check Hefesto's OASIS files with KLayout and gdstk (mode oasis-validate)
   compare/               canonical comparators and time-field masks (python3 -m compare)
   goldenlib/             case model, pins, reference runners, hash-table model, external inputs, GDS and OASIS decoders
-  authoring/             generators of the M1-M6 cases (m1_cases.py ... m6_cases.py; M6 OASIS: oasis_cases.py), the paint/erase table dump, the GDS writer gdsgen.py, the OASIS writer oasgen.py and the GDS equivalent of an OASIS file oasequiv.py
+  authoring/             generators of the M1-M10 cases (m1_cases.py ... m7_cases.py, m10_cases.py; M6 OASIS: oasis_cases.py; M7: exttest.tech, nltest.tech), the paint/erase table dump, the GDS writer gdsgen.py, the OASIS writer oasgen.py and the GDS equivalent of an OASIS file oasequiv.py
   harness/magic_hash/    driver around Magic's own utils/hash.c (magic-hash-harness)
   harness/ext_probe/     M6: the .ext probe Magic runs (extract all)
   harness/oasis_validate/ M6: the KLayout and gdstk scripts of oasis_validate.py
@@ -187,6 +187,24 @@ python3 capture.py --gl-image hefesto-golden-gl:local ../../tests/golden/MISC/ca
 python3 authoring/m10_cases.py                # write the cases (never expected/)
 python3 authoring/m10_cases.py --deviations   # rewrite the M10 block of deviations.toml
 python3 authoring/m10_cases.py --dispatch     # the golden-capture.yml capture command
+```
+
+## M7: the EXTRACT and NETLIST cases
+
+`authoring/m7_cases.py` drives the M7 cases of m7-extraction design D21. In R1 (tasks 2.5 and 2.6) it writes two families:
+
+- **The 53 flat EX rows** of `tests/golden/EXTRACT/CASES.md` (EX-001..042, 044..046, 048, 057..063): `authoring/extract_cases.py`. Each case copies `authoring/exttest.tech` as `input/exttest.tech`, with the case's rule lines appended to its style `exttest` (the style and grammar rows give a whole extract section). The layout is an `input/<cell>.mag`, so split tiles, label order, ports and cell properties are exact. The script loads the technology, turns DRC off, loads the cell, sets the box (`extract` finds its cell from the box when there is no window), applies the case's `extract` options and runs `extract all`. The `.ext` file is written next to the `.mag`, and the case compares `input/<cell>.ext` with `ext-cap` and `ext-timestamp`. A case with several runs keeps each run as `input/<cell>.<tag>.ext`. The cases replay from R3, through EXTCMD's driver (task 9.2).
+- **The 44 NETLIST rows with hand-written `.ext` inputs** (NL-FLAT-01..18, NL-SPICE-01..14, NL-HIER-01..06, NL-SIM-01..05, NL-CHK-01): `authoring/netlist_cases.py`, on the minimal technology `authoring/nltest.tech`. The `.ext` files are in `input/`, which `addpath input` puts on EFReadFile's search path. Netlists are written to the work directory and kept per run as `<cell>.<tag>.spice` (`.cdl`, `.sim`, `.al`, `.nodes`). SPICE and CDL netlists use `spice-cap` and `.sim` files `sim-cap`, the comparators of task 2.4. NL-CHK-01 is an external-command case (design D15, task 2.3): its `case.toml` has `tool = "extcheck"` and `command = "input/command.toml"` in `[reference]` and `[hefesto]`. `command.toml` names the role `extcheck`, the files it reads and one `[[run]]` per invocation (`name`, `args`). Each run writes `<name>.stdout`, `<name>.stderr` and `<name>.exit` in the work directory, and those files are the outputs. The streams are compared with `extcheck-console`: `magic-console`, plus the usage line's program name masked as `<prog>` and the informative `Memory used:` line masked.
+
+`tests/test_m7_cases.py` checks the cases against the generator and the catalogues. It also runs every script under `tclsh` against `tests/fake_magic_m7.tcl`, a stand-in that models only where `extract`, `save`, `ext2spice` and `ext2sim` write their files. That check catches a rename that finds no file, or an output that a script never writes. `deviations.toml` defers each case to M7 until its workstream replays it (`m7_cases.REPLAYED`, then `--deviations`). `--exit-check` counts the 155 cases of design D21. It fails while a row is not authored or an M7 deferral is left.
+
+```sh
+python3 authoring/m7_cases.py                 # write the cases (never expected/)
+python3 authoring/m7_cases.py --list          # the authored case ids
+python3 authoring/m7_cases.py --not-authored  # catalogue rows without a case: reason and task
+python3 authoring/m7_cases.py --deviations    # rewrite the M7 block of deviations.toml
+python3 authoring/m7_cases.py --dispatch      # the golden-capture.yml capture command
+python3 authoring/m7_cases.py --exit-check    # design D25
 ```
 
 ## Building the reference image (CI, not developer machines)

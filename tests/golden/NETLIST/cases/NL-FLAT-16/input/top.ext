@@ -1,0 +1,14 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "g" 0 1 0 10 metal1 0 0 0 0 0 0
+node "s" 0 1 0 0 metal1 0 0 0 0 0 0
+node "d" 0 1 4 0 metal1 0 0 0 0 0 0
+node "g2" 0 1 0 20 metal1 0 0 0 0 0 0
+node "g3" 0 1 0 30 metal1 0 0 0 0 0 0
+fet nfet 0 0 2 4 8 12 "GND!" "g" 8 0 "s" 4 0
+fet nfet 10 0 12 4 8 12 "GND!" "g2" 4 0 "s" 6 0 "d" 6 0
+fet nfet 20 0 22 4 8 12 "GND!" "g3" 4 "ext:l=LL","ext:w=6" "s" 6 0 "d" 6 0

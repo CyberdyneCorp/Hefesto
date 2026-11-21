@@ -1,0 +1,10 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "in" 0 0 0 1 1 metal1
+node "in" 0 1 0 0 metal1 0 0 0 0 0 0
+use inv i1 1 0 0 0 1 0
+merge "i1/in" "in" 0
