@@ -1,0 +1,38 @@
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+use leaf u[0:19:30][0:0:0] 1 0 0 0 1 0
+node "bus" 15 23.2 0 10 m1 0 0 0 0 2320 1168 0 0 0 0 0 0
+merge "u[19]/A" "u[18]/A" 0 0 0 0 0 0 -400 0 0 0 0 0 0
+merge "u[18]/A" "u[17]/A"
+merge "u[17]/A" "u[16]/A"
+merge "u[16]/A" "u[15]/A"
+merge "u[15]/A" "u[14]/A"
+merge "u[14]/A" "u[13]/A"
+merge "u[13]/A" "u[12]/A"
+merge "u[12]/A" "u[11]/A"
+merge "u[11]/A" "u[10]/A"
+merge "u[10]/A" "u[9]/A"
+merge "u[9]/A" "u[8]/A"
+merge "u[8]/A" "u[7]/A"
+merge "u[7]/A" "u[6]/A"
+merge "u[6]/A" "u[5]/A"
+merge "u[5]/A" "u[4]/A"
+merge "u[4]/A" "u[3]/A"
+merge "u[3]/A" "u[2]/A"
+merge "u[2]/A" "u[1]/A"
+merge "u[1]/A" "u[0]/A"
+merge "u[0]/A" "bus"
+
+@@ leaf
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+port "A" 1 0 0 10 10 m1
+node "A" 0 1 0 0 m1 0 0 0 0 100 40 0 0 0 0 0 0
