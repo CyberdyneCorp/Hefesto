@@ -62,6 +62,11 @@ target_sources(hefesto_shell_tests PRIVATE
 # (openspec/changes/m6-lef-def-oasis tasks 14.1-14.3, SHELL).
 target_sources(hefesto_shell_tests PRIVATE
   m6_open_test.cpp)
+# M10 3D view: the 3D tab's view models, the layer stack panel and `see`,
+# gestures, focus routing and picking (openspec/changes/m10-3d-view tasks
+# 9.1, 9.2, 9.6, SHELL).
+target_sources(hefesto_shell_tests PRIVATE
+  view3d_models_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
@@ -103,9 +108,10 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
       PASS_REGULAR_EXPRESSION "panel inspector 1156 [0-9]+ 284 [0-9][0-9][0-9]"
       TIMEOUT 120)
-    # M10 renderer spike (m10-3d-view task 5.1): the 3D offscreen target, drawn
-    # on Raven's device, shown in a viewport in texture mode, then resized;
-    # the window's pixels are checked after each step (exit 1 on a mismatch).
+    # M10 3D window check (m10-3d-view tasks 5.1, 9.1): a mesh built by
+    # view3d/mesh, drawn by VulkanMesh3dRenderer on Raven's device, shown in a
+    # viewport in texture mode, then resized; the window's pixels and the pick
+    # image are checked after each step (exit 1 on a mismatch).
     add_test(NAME "hefesto: 3D offscreen frame shown through viewport texture mode (${_system})"
              COMMAND hefesto-render3d-spike --capture "${CMAKE_CURRENT_BINARY_DIR}/render3d-spike-${_system}"
                      --expect-window-system ${_system})

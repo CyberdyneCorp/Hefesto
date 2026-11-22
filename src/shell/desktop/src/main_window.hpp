@@ -82,6 +82,7 @@
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
 #include "side_panels.hpp"
+#include "view3d_view.hpp"
 
 namespace hefesto::tech {
 class Technology;
@@ -395,6 +396,12 @@ class MainWindow {
   int top_fit_width_ = -1;               // the window width fit_top_bar last applied
 
   std::unique_ptr<LayoutCanvas> canvas_;
+  // M10 (task 9.1): the 3D view, shown instead of the canvas while the
+  // editor-view tab "3D" is active (view3d_view.hpp).
+  std::unique_ptr<View3dView> view3d_;
+  bool view3d_tab_ = false;
+  ui::Painted* view_tabs_widget_ = nullptr;  // the segmented editor-view tabs (owned by painted_)
+  void show_view3d_tab(bool on);
   std::unique_ptr<LeftPanel> left_;
   std::unique_ptr<InspectorPanel> inspector_;
   std::unique_ptr<PdkPanel> pdk_;

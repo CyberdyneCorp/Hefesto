@@ -34,9 +34,14 @@ enum class ButtonStyle : std::uint8_t { secondary, primary, ghost };
 void app_mark(ui::Painter& p, float x, float y, float size, const ThemeTokens& t);
 /// The cell name and the PDK line, left-aligned at `x`, vertically centered in `h`.
 void header_title(ui::Painter& p, float x, float h, const HeaderText& text, const ThemeTokens& t);
-/// The segmented Layout / Schematic / 3D / Waveforms control; `labels[0]` is active.
-void segmented(ui::Painter& p, float w, float h, const std::vector<std::string_view>& labels, const ThemeTokens& t);
+/// The segmented Layout / Schematic / 3D / Waveforms control; `labels[active]`
+/// is active; bit i of `enabled` marks labels[i] usable (others tertiary).
+void segmented(ui::Painter& p, float w, float h, const std::vector<std::string_view>& labels, const ThemeTokens& t,
+               std::size_t active = 0, std::uint32_t enabled = 1U);
 [[nodiscard]] float segmented_width(const ui::Runtime& rt, const std::vector<std::string_view>& labels);
+/// The index of the segment at local x (the last one past the end).
+[[nodiscard]] std::size_t segmented_index_at(const ui::Runtime& rt, const std::vector<std::string_view>& labels,
+                                             float x);
 void chip(ui::Painter& p, float w, float h, const StatusChip& chip, const ThemeTokens& t);
 [[nodiscard]] float chip_width(const ui::Runtime& rt, const StatusChip& chip);
 void button(ui::Painter& p, float w, float h, std::string_view label, std::string_view icon, ButtonStyle style,
