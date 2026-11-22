@@ -312,8 +312,8 @@ reason = "the traced engine-command counts differ by design: native sky130/gf180
 [SCRIPT-API-20]
 decisions = ["Q-UI-12"]
 deferred = "M7"
-outputs = ["stdout.txt"]
-reason = "extract style (and its list form) needs the extractor, which arrives with extraction; macro list also shows the keysym bindings Hefesto defines without an X display, which Magic -dnull cannot parse"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "extract style (and its list form) needs the extractor, which arrives with extraction (until then the M7 scaffold's extract answers CORE-NOTIMPL-008 on stderr); macro list also shows the keysym bindings Hefesto defines without an X display, which Magic -dnull cannot parse"
 
 [SCRIPT-GUI-05]
 decisions = ["Q-SCRIPT-50"]
