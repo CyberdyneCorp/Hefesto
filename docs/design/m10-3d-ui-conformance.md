@@ -18,6 +18,10 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` opens the 3D window since WIND3D (tasks 8.1-8.4).
 
+Round 3 (SHELL, branch `m10-3d-round3-shell`, 2026-11-22): the 3D tab, the layer stack panel and the controls are built (`src/shell/desktop/src/view3d_view.cpp`, view models in `hefesto/shell/view3d_models.hpp`), every control is covered by the headless view-model tests in `tests/unit/shell/view3d_models_test.cpp`, and the 3D window check `hefesto-render3d-spike` now draws a mesh built by MESH with `VulkanMesh3dRenderer`. Rows below say what was seen in a capture; picking and net highlighting stay **blocked** on INSPECT's `view3d/pick` functions, which are stubs on main.
+
+macOS capture (2026-11-22, Apple M3 Pro, MoltenVK 1.4.2, debug build): the product app with `sky130_fd_sc_hd__dfxtp_1` open, `render3d` run from the command bar, window 1600 × 989 logical: [view3d-macos.png](../images/ui/view3d-macos.png). The 3D tab is active in the editor-view control, the header reads "sky130_fd_sc_hd__dfxtp_1 · 3D / layout layers · level 1 · render3d opened this tab", the mesh is drawn in Magic's default 3D view (875 rectangles, status "Mesh ready · 875 rectangles"), and the layer stack panel lists the layers top first with their µm ranges and the Hide / Solo / 100 % row buttons. The 3D window check `hefesto-render3d-spike` passes on the same machine (the mesh's white top face at the centre, black corners, pick instance 1 at the centre, before and after the resize): [640 × 400](../images/ui/view3d-check-macos-640x400.png), [900 × 300](../images/ui/view3d-check-macos-900x300.png). Linux captures come from the CI desktop legs (open).
+
 ## Board review (DESIGN, task 7.1)
 
 Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION).
@@ -46,34 +50,35 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Editor-view tab "3D" next to Layout and Schematic | — | todo |
-| Window > 3D Display and `render3d` open the tab | — | todo |
-| "Open in separate window" tab menu item | — | todo |
-| Progress while a mesh builds; the previous model stays visible | — | todo |
-| Focus-based command routing (`.magic3d <cmd>` and the command bar) | — | todo |
-| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | — | todo |
+| Editor-view tab "3D" next to Layout and Schematic | The segmented control's "3D" is live: a click shows the 3D view (a second Raven viewport in texture mode beside the layer stack panel), or runs `magic::render3d` when no window is open; "Layout" shows the canvas again. Enter or Space on the focused control toggles the two. | done (macOS capture); Linux capture open (CI desktop legs) |
+| Window > 3D Display and `render3d` open the tab | Options > 3D Display (Magic's wrapper puts it under Options) is enabled; any open of the 3D window (`render3d`, `specialopen wind3d`) shows the tab, `closewindow` returns to Layout. Test "Options > 3D Display is enabled". | done (macOS: opened by `render3d` in the capture); Linux open |
+| "Open in separate window" tab menu item | Not built: a Raven window per tab needs a second texture-mode viewport host. | todo (open item, P2) |
+| Progress while a mesh builds; the previous model stays visible | One `MeshWorker` per window; status line "Building mesh · n %", then "Mesh ready · n rectangles"; the previous model stays drawn until the new one is done. | partial: "Mesh ready" seen in the macOS capture; the progress state is too short on a cell to capture |
+| Focus-based command routing (`.magic3d <cmd>` and the command bar) | While the 3D tab is shown, a typed line whose first word is a `wind3d` command runs as `<path> <line>`; keys in the 3D view run the `wind3d` macro table on the path. Tests "lines typed while the 3D view has the focus go to the window's path", "keys in the 3D view run the wind3d bindings on the window's path". | done (headless) |
+| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | A warning banner at the top of the view in mask-layer mode; the layout mesh is drawn with xy scaled by f through `DrawParams::xy_scale` once RENDER's field is on main (unscaled until then). | partial: the scale waits for RENDER |
+| Frame-time readout (task 13.2, viewport part) | The "Frame time" toggle shows the rolling mean of the last 30 renderer draws and its frame rate in the status line; `hefesto-render3d-spike --bench-rects N` draws bench/view3d's synthetic region in a window and prints draw and whole-frame times. | done: `--bench-rects 1000000` on the M3 Pro (debug build, 1280 × 800 target, 1,004,944 rectangles in 19 chunks, 120 orbiting frames): draw 33.40 ms (29.9 fps), whole frame 33.73 ms (29.6 fps). The P1 gate (≥ 30 fps, Release) is PERF's measurement in "Performance" |
 
 ## Layer stack panel and camera (D12; task 9.2)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Layers bottom to top with µm ranges (`physical_height_um`) | — | todo |
-| Show / hide / isolate, kept in sync with `see` (Q-MISC-71) | — | todo |
-| Per-layer transparency | — | todo |
-| Presets Isometric, Top, Front, Side | — | todo |
-| Perspective toggle | — | todo |
-| Mouse, trackpad and key gestures (orbit, pan, zoom, reset) | — | todo |
-| Cutbox toggle (`cutbox box` / `cutbox none`) | — | todo |
-| `level` and the mask/layout mode toggle (`cif`) | — | todo |
+| Layers bottom to top with µm ranges (`physical_height_um`) | One row per drawn layer, sorted by draw height and listed top first (as the board), swatch in the display style's color, range in µm, blank when the layer has no height source; non-solid, non-stippled styles are left out (N3). | done (headless) |
+| Show / hide / isolate, kept in sync with `see` (Q-MISC-71) | Row buttons Hide/Show, Solo and "Show all layers" run `<path> see [no] <layer>`, `see no *` + `see <layer>`, `see *`; the rows are read back from the window's set after every command, so `see` from the console updates the panel. Disabled in mask-layer mode (the mask set applies to P2's layers). Test "panel visibility and see stay in sync both ways". | done (headless) |
+| Per-layer transparency | The row's percentage button cycles 100 / 50 / 20 % (`DrawParams::alpha`), outside Magic's state. | done (headless) |
+| Presets Isometric, Top, Front, Side | Buttons running `<path> view ax ay az` with CAMERA's preset angles. | done (headless) |
+| Perspective toggle | Orthographic / Perspective pair (`DrawParams::projection`), not part of Magic's view values. | done (headless) |
+| Mouse, trackpad and key gestures (orbit, pan, zoom, reset) | Drag orbits; Option/Shift/right/middle drag pans; wheel and pinch zoom (Shift scales z); two-finger scroll pans; keys through the `wind3d` bindings (space is `defaults`, Magic's reset). | done (headless) |
+| Cutbox toggle (`cutbox box` / `cutbox none`) | A toggle button, pressed while the window has a cut box. | done (headless) |
+| `level` and the mask/layout mode toggle (`cif`) | Level − / value / + (`level down` / `level up`) and the Mask layers / Layout layers pair (`cif` when the mode differs). | done (headless) |
 
 ## Inspection (D10; tasks 9.3–9.5)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Click picks a target; 3D → 2D selection and scroll | — | todo |
-| 2D selection highlighted in 3D | — | todo |
-| "Isolate selected net" | — | todo |
-| "Show contacts and vias" (J1 "Span connected layers") | — | todo |
+| Click picks a target; 3D → 2D selection and scroll | A left click (under 3 px of motion) reads the pick image, then `view3d::resolve` and `view3d::to_selection`; the caption "layer · picked · selected in 2D" shows bottom right. Tested with a fake resolver. | blocked: INSPECT's `resolve` / `to_selection` are stubs on main |
+| 2D selection highlighted in 3D | `view3d::from_selection` after every command, passed as `DrawParams::highlight`. | blocked: INSPECT stub |
+| "Isolate selected net" | Toggle button: `view3d::net_highlight` of the picked target as the highlight. | blocked: INSPECT stub |
+| "Show contacts and vias" (J1 "Span connected layers") | "Span connected layers" toggle: a full build with `span_connected_layers` and the technology. | done (headless) |
 
 ## Later phases
 
@@ -84,12 +89,26 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 | Overlay dropdown and legend | P3 (task 15.1) | later |
 | Touch orbit and pinch zoom | M14 (iPadOS) | later |
 
+## Desktop review of P1 (SHELL, task 9.6)
+
+Reviewed on 2026-11-22 against `docs/design/mockups/View3D.dc.html` with the macOS capture above.
+
+| Board part | Seen in the product | Status / gap |
+|---|---|---|
+| Editor-view tab "3D" with its header (cell, mode, level, what opened the tab) | As on the board; the tab is the active segment and the header is a chip at the top left of the view. | done (macOS) |
+| Layer stack, top layer first, swatch, name, µm range, row controls | As on the board; the row buttons are always shown (the board shows them on hover), so they are reachable by Tab and need no hover state. With a 349-layer technology (sky130A) the list is long and scrolls. | done (macOS); difference noted |
+| View toolbar along the bottom of the 3D view (mode, level, cut box, mesh status) | The mesh status is at the bottom left of the view as on the board; the mode, level and cut box controls are in the side panel under the layer stack ("Magic 3D" section), below the presets, not in a bottom toolbar. With a long layer list they are reached by scrolling the panel or by Tab. | gap: move them to a bottom toolbar (follow-up) |
+| Orthographic / Perspective and the presets | In the side panel's "View" section. | done (headless); not in the capture's visible area |
+| Inspect group (Isolate selected net, Span connected layers) | In the side panel's "Inspect" section with Frame time and Close 3D view. | partial: picking blocked on INSPECT |
+| Tab menu ("Open in separate window", "Close 3D view") | "Close 3D view" is a side-panel button; "Open in separate window" is not built. | todo (P2) |
+| Pick callout ("metal1 · VPWR, picked · selected in 2D") | Caption at the bottom right after a click. | blocked: INSPECT |
+
 ## Accessibility (task 9.6)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Keyboard access to every control | — | todo |
-| Screen-reader labels for every control | — | todo |
+| Keyboard access to every control | Every control is a focusable painted button (Tab reaches it; Enter and Space click it), including the row buttons and the editor-view tabs; the 3D view takes the focus on a click or when its tab is shown, and its keys are Magic's `wind3d` bindings. | partial: reviewed in code, view-model tests and the macOS capture; a VoiceOver pass on the running app is pending |
+| Screen-reader labels for every control | Names: "3D view", "3D view controls", "Layer stack, top layer first", each row "metal1, 1.38–1.73 µm, shown", "Hide metal1", "Isolate metal1", "Transparency of metal1, 50 percent", "Level down" / "Level up", the presets by name; toggles announce ", on" / ", off" (Perspective, Cut box, Span connected layers, Frame time, Isolate selected net). | partial: as above |
 
 ## Performance (PERF, section 13)
 
