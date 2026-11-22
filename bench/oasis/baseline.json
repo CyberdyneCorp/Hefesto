@@ -1,4 +1,20 @@
 {
-  "comment": "Hefesto's callgrind instructions per OASIS workload (op minus base of the oasis scripts, bench/oasis/oasis_bench.py) on the x86_64 runner, GCC 14 Release with -g -fno-omit-frame-pointer. Each workload is gated at its baseline + 2 % by bench/lefdef/baseline_gate.py (m6-lef-def-oasis design D22, Open Question 4 (a)); the GDS path's count is information. Empty until the baseline-recording procedure of docs/design/m6-ui-conformance.md \"Performance\" records a Performance run on main. Entry: {\"instructions\": N, \"run\": <Performance run id>, \"commit\": <sha>}.",
-  "workloads": {}
+  "comment": "Hefesto's callgrind instructions per OASIS workload (op minus base of the oasis scripts, bench/oasis/oasis_bench.py) on the x86_64 runner, GCC 14 Release with -g -fno-omit-frame-pointer. Each workload is gated at its baseline + 2 % by bench/lefdef/baseline_gate.py (m6-lef-def-oasis design D22, Open Question 4 (a)); the GDS path's count is information. Recorded by the procedure of docs/design/m6-ui-conformance.md \"Performance\"; the first baselines come from the Performance dispatch 44971811678 on the m6-round6 branch (e3ff89d0), not from main. Entry: {\"instructions\": N, \"run\": <Performance run id>, \"commit\": <sha>}.",
+  "workloads": {
+    "read": {
+      "instructions": 10091458517,
+      "run": "44971811678",
+      "commit": "e3ff89d04f1bb68d98340f8e57e61368eda419a3"
+    },
+    "write": {
+      "instructions": 7221188223,
+      "run": "44971811678",
+      "commit": "e3ff89d04f1bb68d98340f8e57e61368eda419a3"
+    },
+    "write-merge": {
+      "instructions": 7158963360,
+      "run": "44971811678",
+      "commit": "e3ff89d04f1bb68d98340f8e57e61368eda419a3"
+    }
+  }
 }

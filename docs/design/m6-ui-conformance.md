@@ -65,7 +65,7 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
 - **Gate.** `bench/lefdef/baseline_gate.py` fails a workload above its baseline + 2 % (`bench/lefdef/baseline.json`, `bench/oasis/baseline.json`). A workload with no recorded baseline is reported as "no baseline" and passes. A missing Hefesto profile fails the job.
 - **Information only.** Magic's count (LEF/DEF) or the GDS path's count (OASIS), the wall time of op minus base (`--repeat 3`), and the instructions by function (`bench/drc/callgrind_pass_diff.py`). The timing step fails when the cell counts of a workload differ (Hefesto against Magic, OASIS read against GDS read) or a write is empty.
 
-**Recording the baselines.** Once a Performance run on main (or a `workflow_dispatch` of `perf.yml` on main) has passed `lefdef-bench` and `oasis-bench`:
+**Recording the baselines.** Once a Performance run on main (or a `workflow_dispatch` of `perf.yml`) has passed `lefdef-bench` and `oasis-bench` (the first baselines, M6 round 6, come from the dispatch 44971811678 on the `m6-round6` branch at e3ff89d0, not from main):
 
 1. Download its artifacts: `gh run download <run> -n lefdef-bench -D lefdef-bench` and `gh run download <run> -n oasis-bench -D oasis-bench`.
 2. Record the counts:
@@ -80,4 +80,9 @@ A change to a workload (for example `defgen.py`'s parameters or a script) needs 
 | local, 2026-11-20, macOS arm64, `macos-debug` hefesto-cli at `m6-r5-perf` (base 0c5f29fb); wall time of a Debug build only, a smoke run of the scripts (no callgrind or Magic on this Mac) | lef-read | 1.55 s (440 cells) | not measured | CI |
 | same | def-read | 5.78 s (441 cells; 5000 instances, 2 pins, 2 special nets, 5001 nets read) | not measured | CI |
 | same | lef-writeall | 2.86 s (2.7 MB written) | not measured | CI |
-| CI `lefdef-bench` and `oasis-bench` | all | pending: the first dispatch reports the counts, then the baselines are recorded as above | | |
+| CI Performance 44971811678 (`workflow_dispatch` on `m6-round6`, e3ff89d0), x86_64, GCC 14 Release; callgrind op minus base; recorded as the baselines | lef-read | 3.334 x 10^9 instructions | Magic 0.842 x 10^9 (3.96 x) | baseline + 2 % |
+| same | def-read | 8.900 x 10^9 | Magic 1.798 x 10^9 (4.95 x) | baseline + 2 % |
+| same | lef-writeall | 8.640 x 10^9 | Magic 2.196 x 10^9 (3.93 x) | baseline + 2 % |
+| same | oasis read | 10.091 x 10^9 | GDS path 9.228 x 10^9 (1.09 x) | baseline + 2 % |
+| same | oasis write | 7.221 x 10^9 | GDS path 6.220 x 10^9 (1.16 x) | baseline + 2 % |
+| same | oasis write-merge | 7.159 x 10^9 | GDS path 6.417 x 10^9 (1.12 x) | baseline + 2 % |
