@@ -1,0 +1,11 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+parameters nmod l=l w=w*1e+06 c=cg r=rr
+node "d" 0 0 2 0 nd
+node "s" 0 0 -3 0 nd
+node "g" 0 0 0 -2 p
+device msubckt nmod 0 0 1 1 l=2 w=4 c=0 r=3 "VSUB" "g" 4 0 "s" 4 12,14 "d" 4 12,14

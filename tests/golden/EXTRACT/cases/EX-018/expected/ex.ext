@@ -1,0 +1,7 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses 5000 80
+node "n" 30480 0 0 0 p 24 28 24 28

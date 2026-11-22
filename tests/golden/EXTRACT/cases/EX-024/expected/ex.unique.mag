@@ -1,0 +1,14 @@
+magic
+tech exttest
+timestamp 1795304269
+<< metal1 >>
+rect 0 0 4 4
+rect 10 0 14 4
+rect 20 0 24 4
+rect 30 0 34 4
+<< labels >>
+rlabel metal1 2 2 2 2 0 net1
+rlabel metal1 22 2 22 2 0 vdd!
+rlabel metal1 32 2 32 2 0 vdd!_uq0
+rlabel metal1 12 2 12 2 0 net1_uq0
+<< end >>

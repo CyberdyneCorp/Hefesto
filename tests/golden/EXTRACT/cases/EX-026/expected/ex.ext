@@ -1,0 +1,10 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+node "d" 0 0 2 0 nd
+node "s" 0 0 -3 0 nd
+node "g" 0 0 0 -2 p
+device mosfet nfet 0 0 1 1 2 4 "GND!" "g" 4 0 "s" 4 12,14 "d" 4 12,14

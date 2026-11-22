@@ -1,0 +1,15 @@
+* HSPICE file created from top.ext - technology: nltest
+
+.option scale=10n
+
+M1000 x0/b x0/b z@10 GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1001 z@10 t t GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+** m1/averylonginstancename/node_with_long_name == z@10
+C0 z@10 0 3f
+C1 x0/b 0 3f **FLOATING
+
+** hspice subcircuit dictionary
+* x0	m1/averylonginstancename
+* x1	m1

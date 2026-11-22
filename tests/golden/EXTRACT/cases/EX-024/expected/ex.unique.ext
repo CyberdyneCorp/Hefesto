@@ -1,0 +1,10 @@
+timestamp 1795304269
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+node "vdd!_uq0" 0 0 30 0 m1
+node "vdd!" 0 0 20 0 m1
+node "net1_uq0" 0 0 10 0 m1
+node "net1" 0 0 0 0 m1
