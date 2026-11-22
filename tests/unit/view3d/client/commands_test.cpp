@@ -281,6 +281,32 @@ TEST_CASE("render reports and sets a mask layer's values", "[cap:view-3d][req:3D
   CHECK(s.w3d_value("render MET1") == "1.3760000467300415 0.36000001430511475 -49");
 }
 
+TEST_CASE("Bad style reported when the layer stack is built",
+          "[cap:view-3d][req:Render statement in the cifoutput section]") {
+  // Regression (PR #81 review): the stack was built with a null sink, so
+  // the error never reached the user.
+  std::string tech{view3d::test::kTech};
+  const std::string good = "render MET1 metal1 1.376 0.36";
+  tech.replace(tech.find(good), good.size(), "render MET1 nosuchstyle 1.376 0.36");
+  ClientSession s(true, tech);
+  CHECK(s.take_printed().find("Bad render style") == std::string::npos);  // nothing at load
+  hefesto::display::StyleSet styles;
+  styles.table.styles.resize(hefesto::display::kFixedStyleCount);
+  hefesto::display::DisplayStyle metal1;
+  metal1.ordinal = 20;
+  metal1.long_name = "metal1";
+  styles.table.styles.push_back(metal1);
+  styles.table.layout_count = 1;
+  s.editor.styles = std::move(styles);
+  s.ok("specialopen wind3d c3d");
+  s.take_printed();
+  const std::string error = "VIEW3D-STACK-002: Error:  Bad render style for CIF layer.\n";
+  for (int build = 0; build < 2; ++build) {
+    CHECK(s.w3d_value("render MET1") == "0.0 0.0 -49");  // the statement is ignored
+    CHECK(s.take_printed() == error);
+  }
+}
+
 TEST_CASE("render values outlive the window while the style stays current", "[cap:view-3d][req:3D view commands]") {
   ClientSession s;
   s.ok("specialopen wind3d c3d");

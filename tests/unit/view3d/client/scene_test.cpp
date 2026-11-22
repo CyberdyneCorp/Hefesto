@@ -144,7 +144,8 @@ TEST_CASE("the mask stack carries the render command's values", "[cap:view-3d][r
   ClientSession s;
   s.ok("specialopen wind3d c3d");
   s.w3d("render MET2 4 2 7");
-  const view3d::LayerStack stack = view3d::mask_stack(s.editor, true);
+  hefesto::diag::NullSink quiet;
+  const view3d::LayerStack stack = view3d::mask_stack(s.editor, true, quiet);
   REQUIRE(stack.size() == 3);
   CHECK(stack.layers()[2].height == 4.0F);
   CHECK(stack.layers()[2].thickness == 2.0F);

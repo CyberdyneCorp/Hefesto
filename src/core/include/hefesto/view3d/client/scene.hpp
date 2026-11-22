@@ -46,8 +46,9 @@ struct Scene {
 /// The mask-layer stack of the current output style (empty without one),
 /// with the values `render name height thick [style]` wrote while that
 /// style stayed current (Session::render_overrides). `render name` reads
-/// it; MASKSRC (P2) draws from it.
-[[nodiscard]] LayerStack mask_stack(const editor::EditorState& editor, bool magic_compat);
+/// it; MASKSRC (P2) draws from it. A `render` statement whose style does
+/// not resolve is reported to `sink` on every build (decision J2).
+[[nodiscard]] LayerStack mask_stack(const editor::EditorState& editor, bool magic_compat, diag::DiagnosticSink& sink);
 
 /// The scene of `window`: the stack, the mesh of the rendered cell clipped
 /// to the cut box or the bounding box grown by 1 (Q-MISC-70), the hidden

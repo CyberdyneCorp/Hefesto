@@ -64,8 +64,8 @@ std::map<std::size_t, RenderOverride>& overrides(editor::EditorState& editor) {
   return session.render_overrides;
 }
 
-CommandResult render_query(editor::EditorState& editor, std::size_t index) {
-  const LayerStack stack = mask_stack(editor, true);
+CommandResult render_query(CommandContext& ctx, editor::EditorState& editor, std::size_t index) {
+  const LayerStack stack = mask_stack(editor, true, ctx.sink());
   const StackLayer& layer = stack.layers()[index];
   return CommandResult::success(cmd::Value::List{static_cast<double>(layer.height),
                                                  static_cast<double>(layer.thickness),
@@ -205,7 +205,7 @@ CommandResult render_cmd(CommandContext& ctx, const Invocation& inv) {
     index = named.front();
   }
   if (inv.args.size() == 1) {
-    return render_query(t.value().editor, index);
+    return render_query(ctx, t.value().editor, index);
   }
   if (inv.args.size() == 3 || inv.args.size() == 4) {
     return render_set(t.value(), *style, inv.args);

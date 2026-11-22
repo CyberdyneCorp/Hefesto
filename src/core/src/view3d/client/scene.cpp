@@ -57,14 +57,13 @@ LayerStack layout_stack(const editor::EditorState& editor, bool magic_compat) {
   return build_layout_stack(*editor.technology, heights, styles, magic_compat, microns_per_unit(editor));
 }
 
-LayerStack mask_stack(const editor::EditorState& editor, bool magic_compat) {
+LayerStack mask_stack(const editor::EditorState& editor, bool magic_compat, diag::DiagnosticSink& sink) {
   const mask::OutputStyle* style = detail::current_style(editor);
   if (style == nullptr) {
     return LayerStack{Mode::mask_layer, {}, magic_compat, 0.0};
   }
-  diag::NullSink quiet;
   const display::StyleTable* table = editor.styles ? &editor.styles->table : nullptr;
-  const LayerStack built = build_mask_stack(*style, table, magic_compat, quiet);
+  const LayerStack built = build_mask_stack(*style, table, magic_compat, sink);
   const Session& session = editor.view3d;
   if (session.render_overrides.empty() || !(session.render_key == detail::current_key(editor))) {
     return built;
