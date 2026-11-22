@@ -183,43 +183,72 @@ Extends M6's code (design D13). The 18 requirements M6 covered keep their tests,
 
 Develops against the NETLIST cases captured in task 2.5. Needs EXTTECH tasks 4.3 and 4.5 wired (ExtGetDevInfo through `ExtStyle::device_info()`, design D3) for the NL-SPICE replays; until then unit tests use `StyleBuilder` fixtures.
 
-- [ ] 11.1 Implement the command and the file, reading device types, resistance classes and substrate names from `extract.current`'s `device_info()` as ext2spice.c:932 does (needs EXTTECH 4.3 and 4.5 wired). Covers "Command options" (Q-NETLIST-13, Q-NETLIST-41 per mode), "Run arguments and output file" (Q-NETLIST-42), "File header and scale card". Verify the tests, and NL-SPICE-01 and 02.
+- [x] 11.1 Implement the command and the file, reading device types, resistance classes and substrate names from `extract.current`'s `device_info()` as ext2spice.c:932 does (needs EXTTECH 4.3 and 4.5 wired). Covers "Command options" (Q-NETLIST-13, Q-NETLIST-41 per mode), "Run arguments and output file" (Q-NETLIST-42), "File header and scale card". Verify the tests, and NL-SPICE-01 and 02.
 
   Code landed 2026-11-22 (branch `m7-round2-spice`): every option of `ext2spice`/`exttospice` (`netlist/spice/options.cpp`) with Magic's Tcl results and usage paths, pinned to NL-SPICE-01's results; Q-NETLIST-13 and Q-NETLIST-41 per mode. `scale` is `SpiceSettings::scale` (user decision M7-3): `script::ext2spice_scale` is removed and the PDK startup tests read the new setting. The run (`run.cpp`) parses spcParseArgs through `extflat::parse_common_args` (`-o` per run, Q-NETLIST-42; `-M -m -f -B -d -J` persist as Magic's globals, `-F` per run), takes the window's root cell, reads with `extflat::read`/`flatten` (EF_FLATNODES, EF_FLATCAPS, EF_NONAMEMERGE), fills `SpiceInput` (`netlist/spice/input.hpp`) with `ExtStyle::device_info()` as ext2spice.c:932 does, and writes `<cell>.spice`/`.cdl`. Header and scale card pinned to NL-SPICE-02. Open: NL-SPICE-01/02 replay after EXTFLAT (parse_common_args, read, flatten and the records SPICE needs) and EXTTECH 4.3/4.5 integrate; `hierarchy on` answers CORE-NOTIMPL-008 (11.6).
-- [ ] 11.2 Implement values, names and parasitics. Covers "SI value formatting" (pinned values per leg), "Node names per dialect", "Parasitic and node lines" (Q-NETLIST-19, Q-NETLIST-20 per mode). Verify the tests, and NL-SPICE-03, 04 and 07.
+
+  R2 integration (branch `m7-round2`): NL-SPICE-02 replays (after `-o` was taken from EXTFLAT's CommonArgs, which consumes it before spcParseArgs; the run had ignored it) and leaves `deviations.toml`. NL-SPICE-01 matches up to its one `hierarchy on` run (probe line 46), which moves to 11.6.
+
+- [x] 11.2 Implement values, names and parasitics. Covers "SI value formatting" (pinned values per leg), "Node names per dialect", "Parasitic and node lines" (Q-NETLIST-19, Q-NETLIST-20 per mode). Verify the tests, and NL-SPICE-03, 04 and 07.
 
   Code landed 2026-11-22: esSIvalue with Magic's single-precision steps (`numbers.cpp`, pinned values incl. NL-SPICE-03's boundaries; an infinite value no longer hangs), node names per dialect (SPICE2 numbers, HSPICE prefixes and dictionary, `errGnd!`), coupling, resistor and node lines; Q-NETLIST-19 (flat rules) and Q-NETLIST-20 (flat: node lines to the substrate node or `0`). Magic's flat FLOATING/-F test (every device node is "not connected") is copied with magic-compat ON; OFF uses the documented rule (reported). Pinned to NL-SPICE-02, 03 and 07 on hand-built inputs; NL-SPICE-04 needs EXTFLAT.
+
+  R2 integration (branch `m7-round2`): NL-SPICE-03 and 07 replay. NL-SPICE-04 runs with `hierarchy on` and moves to 11.6.
+
 - [ ] 11.3 Implement the netlist structure. Covers "Flat netlist structure" (Q-NETLIST-37 per mode), "Subcircuit header line", "Subcircuit instance lines", "Global card in hierarchical mode". Verify the tests, and NL-SPICE-05, 06 and 08.
 
   Code landed 2026-11-22: flat structure with the wrapper of Q-NETLIST-37 per mode, the `.subckt` header (x-prefix, implicit and duplicate ports, 80-column continuation, cell parameters looked up under the renamed cell as Magic does), `instance_line` and `global_card` for hierarchical output; coupling capacitors in the netlist's visit order (Q-NETLIST-1, golden `spice-cap`). Pinned to NL-SPICE-05 and 06; NL-SPICE-08 is hierarchical (11.6).
-- [ ] 11.4 Implement MOSFETs and parameters. Covers "Device instance names" (Q-NETLIST-34 per mode), "Device eligibility and annotations", "MOSFET lines", "Terminal area and perimeter" (Q-NETLIST-7 per mode), "Device parameter output" (Q-NETLIST-4, Q-NETLIST-32 per mode). Verify the tests, and NL-SPICE-09 and 13.
+
+  R2 integration (branch `m7-round2`): open. NL-SPICE-05 and 06 write the root's implicit ports in reverse order (`.subckt inv out in` for `in out`): `from_netlist` passes `RootPort` index -1 for every top port because `extflat::Netlist` does not carry the `port` records' indices. Needs EXTFLAT to expose the root ports with their indices in node-table order; NL-SPICE-08 is hierarchical (11.6).
+
+- [x] 11.4 Implement MOSFETs and parameters. Covers "Device instance names" (Q-NETLIST-34 per mode), "Device eligibility and annotations", "MOSFET lines", "Terminal area and perimeter" (Q-NETLIST-7 per mode), "Device parameter output" (Q-NETLIST-4, Q-NETLIST-32 per mode). Verify the tests, and NL-SPICE-09 and 13.
 
   Code landed 2026-11-22: instance names (Q-NETLIST-34 per mode), eligibility and annotations, MOSFET lines, terminal area and perimeter (Q-NETLIST-7 per mode, -d), declared parameters (Q-NETLIST-8 and Q-NETLIST-32 per mode, Q-NETLIST-19 SI perimeter per mode). Pinned to NL-SPICE-09 and 13 (flat).
-- [ ] 11.5 Implement the other devices and merging. Covers "Resistor lines" (Q-NETLIST-5, Q-NETLIST-31 per mode), "Capacitor, diode, BJT and voltage source lines", "Subcircuit-class device lines", "Substrate terminal text", "Parallel device merging" (Q-NETLIST-6 fix). Verify the tests, and NL-SPICE-10, 11, 12 and 14.
+
+  R2 integration (branch `m7-round2`): NL-SPICE-09 and NL-SPICE-13's flat netlist replay; NL-SPICE-13's hierarchical run moves to 11.6.
+
+- [x] 11.5 Implement the other devices and merging. Covers "Resistor lines" (Q-NETLIST-5, Q-NETLIST-31 per mode), "Capacitor, diode, BJT and voltage source lines", "Subcircuit-class device lines", "Substrate terminal text", "Parallel device merging" (Q-NETLIST-6 fix). Verify the tests, and NL-SPICE-10, 11, 12 and 14.
 
   Code landed 2026-11-22: resistor lines with pi/tee (Q-NETLIST-5 per mode), capacitor, diode, BJT and voltage source lines, subcircuit-class lines (Magic drops the last of terminals 3.. with magic-compat ON; OFF writes them all, reported), substrate text, merging (Q-NETLIST-6 fix: per-device multipliers, regression test). Q-NETLIST-31 needs EXTFLAT's shorted-port devices. Pinned to NL-SPICE-10, 11, 12 and 14.
+
+  R2 integration (branch `m7-round2`): NL-SPICE-10, 11, 12 and 14 replay and leave `deviations.toml`.
+
 - [ ] 11.6 Implement hierarchical output. Covers "Definition traversal order", "Port promotion", "Omitted, stubbed and absorbed definitions", "Section layout", "Subcircuit calls in hierarchical mode", "Hierarchical device and parasitic differences" (Q-NETLIST-35 per mode). Verify the tests, and NL-HIER-01..06.
-- [ ] 11.7 Implement `render` for M9 (design D18). Verify a test that renders with the `lvs` preset and with simulation overrides, and shows `netlist.spice` unchanged afterwards.
+- [x] 11.7 Implement `render` for M9 (design D18). Verify a test that renders with the `lvs` preset and with simulation overrides, and shows `netlist.spice` unchanged afterwards.
 
   Code landed 2026-11-22: `render(EditorState&, cell, SpiceSettings)` copies the settings and the name flags, writes no file and leaves `netlist.spice`/`netlist.names` unchanged (test with `lvs` and simulation overrides); the `lvs` preset is hierarchical, so it renders once 11.6 lands, and the flat render once EXTFLAT's read lands.
+
+  R2 integration (branch `m7-round2`): the render test (`run_test.cpp` 'render leaves the session's settings untouched', lvs preset and overrides) passes on the merged tree.
+
 - [ ] 11.8 Run `check_requirement_coverage.py --capability netlist-spice-options` (10 of 10), `--capability netlist-spice-devices` (10 of 10) and `--capability netlist-spice-hierarchy` (6 of 6), and the complexity check on `netlist/spice/`.
 
   Partial 2026-11-22: `netlist-spice-options` 10 of 10, `netlist-spice-devices` 10 of 10, `netlist-spice-hierarchy` 0 of 6 (11.6, R3). clang-tidy cognitive complexity of `netlist/spice/` is at most 15 per function.
+
+  R2 integration (branch `m7-round2`): netlist-spice-options 10/10, netlist-spice-devices 10/10, netlist-spice-hierarchy 0/6 (11.6, R3); cognitive complexity <= 15 on `netlist/spice/` including the integration edits.
 
 ## 12. SIM: netlist-sim, netlist-extcheck (R2–R3; Open Question 6)
 
 - [ ] 12.1 Implement the command and device lines, reading `device_info()` as ext2sim.c:647 does (needs EXTTECH 4.3 and 4.5 wired; `StyleBuilder` fixtures until then). Covers "Command options and defaults" (Q-NETLIST-18 per mode, Q-NETLIST-14 fix), "File structure and order", "Device lines" (Q-NETLIST-17 per mode). Verify the tests, and NL-SIM-01 and 02.
 
   Landed 2026-11-22 (R2, SIM), open for the replay: `netlist/sim/` (`sim_command.cpp` option handlers with Magic's tables, `run.cpp` the run through `extflat::parse_common_args`, `read` and `flatten`, `writer.hpp`/`writer.cpp` the port of simdevVisit, simcapVisit, simresistVisit, simnodeVisit and the merge pre-pass, `from_netlist.cpp`). The device table is `extract.current->device_info()`, used only when the `.ext` files name the current style (EFStyle); `extGetDevType` and DBNumTypes go to the read for the device visit order. Q-NETLIST-14, -17 and -18 per mode; the `-B -F -J -A -L -M -m -f` switches are session state with magic-compat ON (Magic's globals) and per run with it OFF; `-o -a -l` per run in both. Tests: `tests/unit/netlist/sim/sim_writer_test.cpp`, `sim_command_test.cpp`; the run tests skip while `parse_common_args` is the scaffold stub. Fields EXTFLAT adds to extflat's records and ReadOptions this round are read under `requires` guards (removed once both are on main). Against EXTFLAT's branch, NL-SIM-05 replays exactly once the style's units per lambda is known; NL-SIM-01..04 differ only in what the extraction style supplies (EFScale, the device table, the device order), so they replay after EXTTECH 4.3/4.5 wire `extract.current`.
-- [ ] 12.2 Implement attributes, parasitics and name state. Covers "Transistor attributes", "Parasitic and node records" (Q-NETLIST-15 per mode), "Name conversion state" (Q-NETLIST-16 per mode). Verify the tests, and NL-SIM-03 and 04.
+
+  R2 integration (branch `m7-round2`): NL-SIM-01 replays. NL-SIM-02 still differs on the BJT line (`b b e c 0 0 0 0`, Magic `b b e c 8 5 0 0`): L and W of a `device bjt` record are 0 in `FlatDevice` while Magic's efBuildDevice leaves values there; EXTFLAT and SIM to trace in R2b. NL-FLAT-16 (legacy `fet` with `ext:l=LL`, ext2sim) differs in one length (2 against 3).
+
+- [x] 12.2 Implement attributes, parasitics and name state. Covers "Transistor attributes", "Parasitic and node records" (Q-NETLIST-15 per mode), "Name conversion state" (Q-NETLIST-16 per mode). Verify the tests, and NL-SIM-03 and 04.
 
   Landed 2026-11-22 with 12.1 (`writer.cpp`): attributes (SU `A_`/`P_` with flat and hierarchical accounting), parasitics, Q-NETLIST-15 per mode, Q-NETLIST-16 per mode (the session's `EditorState::netlist.names` with magic-compat ON, a fresh set per run OFF; names through `extflat::name_to_sim`), Q-NETLIST-52 (each run writes only its own `.al`/`.nodes`). Open for NL-SIM-03/04 after EXTTECH (12.1's note) and SPICE (NL-SIM-04 runs `ext2spice` first).
+
+  R2 integration (branch `m7-round2`): NL-SIM-03 and 04 replay and leave `deviations.toml` (NL-SIM-05 too).
+
 - [x] 12.3 Document "Deprecated sim2simp filter" (informative) as not provided (Q-NETLIST-48) in the command help and `docs/reference/`. Verify that the help text names `ext2sim merge`.
 
   Landed 2026-11-22: with magic-compat OFF `ext2sim help` ends with `(sim2simp is not provided: use "ext2sim merge conservative|aggressive" to merge parallel devices)`; with it ON the help is Magic's table. `docs/reference/magic/netlist-generation.md` has the note. Tests: `[req:Deprecated sim2simp filter]` in `sim_command_test.cpp`.
 - [ ] 12.4 Implement extcheck. Covers "Invocation" (Q-NETLIST-36 defaults), "Counts and report format". Add `hefesto-extcheck` (Open Question 6 (a)) with its install rule and desktop packaging (design D20; INTEGRATION for the install and packaging files). Verify the tests, NL-CHK-01 through the external-command case mode (task 2.3), the exit status 1 on a usage error, and that an install tree contains `hefesto-extcheck` next to `hefesto-cli`.
 
   Landed 2026-11-22 (R2, SIM), open for INTEGRATION's install rule and packaging: `netlist/extcheck/extcheck.cpp` (`run(args, out, err, program)`: the standalone EFArgs, the usage text on the error stream with exit status 1, `-h` on the output stream; the read with no style, Q-NETLIST-50; two reads so that every leaf ending in `!` is global, the non-Tcl EFHNIsGlob; a failed read prints `<argv[0]>: <code> <text>` and exits 1 where Magic dereferences a missing root) and `counts.hpp` (extcheck.c's visitors and report). Tests: `tests/unit/netlist/extcheck/extcheck_test.cpp`. Against EXTFLAT's branch, NL-CHK-01 replays with all four runs matching (`REPLAYED` in `authoring/m7_cases.py`, so its deferral left `deviations.toml`).
+
+  R2 integration (branch `m7-round2`): the install rule is in the top-level CMakeLists.txt and `cmake --install` puts `hefesto-extcheck` next to `hefesto-cli` in `bin/`. Left open: the project has no desktop packaging yet, so there is nothing to add `hefesto-extcheck` to; NL-CHK-01 replays (4 runs).
+
 - [x] 12.5 Run `check_requirement_coverage.py --capability netlist-sim` (6 of 6, the informative one documented) and `--capability netlist-extcheck` (2 of 2), and the complexity check on `netlist/{sim,extcheck}/`.
 
   Done 2026-11-22: netlist-sim 6 of 6 normative requirements covered ("Deprecated sim2simp filter" is informative and tagged too), netlist-extcheck 2 of 2. clang-tidy readability-function-cognitive-complexity (threshold 15) reports nothing on `netlist/sim/`, `netlist/extcheck/` and `src/cli/extcheck/`.
@@ -274,6 +303,8 @@ Develops against the NETLIST cases captured in task 2.5. Needs EXTTECH tasks 4.3
 ## 19. INTEGRATION (every round; exit in R6)
 
 - [ ] 19.1 Apply the shared-file open items of sections 2–18 each round: CMake, the `EditorState` members, the editor-side extract-style hook (design D7, D20), the command registrations, the `golden-capture.yml` and `perf.yml` jobs, `check_core_includes.py`, and the install and packaging rules of `hefesto-extcheck`. Verify that every macOS preset configures, builds and tests with `-DHEFESTO_WARNINGS_AS_ERRORS=ON`.
+
+  R2 integration (branch `m7-round2`, 2026-11-22): merged EXTFLAT, DECIDE/SIM, SPICE and EXTTECH. Applied: the top-level `install(TARGETS hefesto-cli hefesto-extcheck RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})` (desktop hosts, `GNUInstallDirs`); `extract_hook.cpp` passes the tech-load sink to `micron_convert` (EXTRACT-STYLE-016 is reported) and its stale comments; the `if constexpr (requires ...)` guards removed from `netlist/sim/from_netlist.cpp`, `sim/run.cpp` and `extcheck/extcheck.cpp` (the EXTFLAT fields are on the branch); `m7_scaffold_test.cpp` now expects the installed and rescaled style; `diag/codes.hpp` comment on UI-CLIENT-002 (M7-3); SPICE's `from_netlist` adapter fills node cap, area/perimeter and attributes, device L/W/area/perimeter/value/scale/`substrate_local`, raw terminal attributes, EFScale, EFTech, EFStyle, EFCompat and the `parameters` records from EXTFLAT's records, and the SPICE read uses EFReadFile's arguments (dosubckt = hierarchy, extresist, scaled, isspice, short mode) and the style lookups. Left open: desktop packaging of `hefesto-extcheck` (the project has no packaging rules yet); retiring `script::register_pdk_commands` and the `pdk_fixture.hpp` fallback (PDKINT files); `extflat::ReadOptions::bang_globals` so that extcheck can drop its two-pass read; the `$` substitution of a default substrate name (`extract::substitute_substrate_node`) needs a Tcl-variable lookup on the session.
 - [ ] 19.2 Add `fuzz_extract_section`, `fuzz_ext_netlist`, `fuzz_res_ext_reader` and `fuzz_extract_layout` with seeds and resource caps (design D22), and wire them into the fuzz job. Verify that the seed replays pass on every leg and that the 60 s job runs each target without a crash.
 - [ ] 19.3 Review the new readers and extraction on hostile layouts (design D24, M7-S1..S8), and write the findings in `docs/contributing/security.md`. Draft each cap that changes behaviour as a proposed decision for the user, and never approve it here. Verify that each finding is fixed with a regression test or recorded as an accepted limit.
 - [ ] 19.4 Add `--require-area EXTRACT --require-area NETLIST` to the determinism job once the expected outputs exist. Verify that the job is identical on every leg.

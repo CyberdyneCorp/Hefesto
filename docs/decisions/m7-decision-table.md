@@ -224,7 +224,7 @@ Applied 2026-11-22, after the approval:
 - **Q-NETLIST-50:** `netlist-extcheck` "Invocation" states the `scale` rule, with a scenario.
 - **Q-NETLIST-51:** `ext-flattening-read` "Device records" gives `vsource` its token count, with a scenario.
 - **Q-NETLIST-53:** `extresist-network` "Tile fracturing" gives the split-tile rule per mode, with a scenario per mode.
-- **M7-3:** `netlist-spice-options` does not name M4's setting; no change.
+- **M7-3:** `netlist-spice-options` "Command options" says the `scale` row is the setting PDK startup files set with `ext2spice scale`; "Run arguments and output file" says which run flags persist (added at integration).
 - Q-EXTRACT-29 is a tile-database rule with no capability text; design D6 and D16 carry it.
 
 ## Notable changes to the entries' original recommendations
