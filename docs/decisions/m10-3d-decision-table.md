@@ -18,7 +18,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
-**Round 2 decisions, recommended 2026-11-21, pending user confirmation.** Round 1 (PR #77) left six items for the user; they are recorded with recommendations on 2026-11-21 and await the user's confirmation (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Both new entries have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` still lists no 3D entry.
+**Round 2 decisions, recommended 2026-11-21, pending user confirmation.** Round 1 (PR #77) left six items for the user; they are recorded with recommendations on 2026-11-21 and await the user's confirmation (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Until the user confirms them they carry `Proposed resolution:` lines and a pending `Status:`, and `check_milestone_readiness.py` counts an entry with a pending status as unresolved (PR #81 review), so `--milestone M10` lists Q-MISC-74 (the amendment), 79 and 80 as blocking until then.
 
 ## Judgement items
 
@@ -76,13 +76,13 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 | Kind | Rows |
 |---|---|
-| fix | 5 (Q-MISC-70, 71, 74, 76, 77) |
+| fix | 5 (Q-MISC-70, 71, 74, 76, 77; Q-MISC-74's aspect amended 2026-11-21, pending confirmation) |
 | compat | 3 (Q-MISC-72, 78, 79) |
 | replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture) |
-| fix, amendment of a resolved entry | 2 (Q-MISC-73; Q-MISC-74 aspect, 2026-11-21) |
+| fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
 
-Q-MISC-70, 71, 72 and 74 have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` lists no 3D blocker.
+Q-MISC-70, 71, 72 and 74 have `Resolution:` lines. The round-2 items (Q-MISC-74's amendment, 79, 80) have pending statuses, so `check_milestone_readiness.py --milestone M10` lists them until the user confirms them.
 
 ## Notable changes to the entries' original recommendations
 
@@ -125,7 +125,7 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 
 ## Round 2 decisions (recommended 2026-11-21, pending user confirmation)
 
-Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). All six are recorded with recommendations on 2026-11-21 and await the user's confirmation. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: recommended 2026-11-21, pending user confirmation` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there.
+Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). All six are recorded with recommendations on 2026-11-21 and await the user's confirmation. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: recommended 2026-11-21, pending user confirmation` and a `Proposed resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there. On confirmation each becomes a `Resolution:` line.
 
 | Item | Question | Recommendation (2026-11-21, pending confirmation) | Where recorded |
 |---|---|---|---|
