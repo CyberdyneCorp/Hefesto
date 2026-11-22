@@ -111,7 +111,10 @@ StitchTile StitchEditor::split_x(StitchTile t, Coord x) {
     return {};
   }
   detail::Tile* tile = tile_of(t);
-  if (x <= detail::left(tile) || x >= detail::right(tile)) {
+  // A split tile keeps its diagonal body over whatever rectangle it is
+  // left with, so cutting it would move the triangle (ResFracture works on
+  // Manhattan tiles only).
+  if (detail::is_split(tile->body) || x <= detail::left(tile) || x >= detail::right(tile)) {
     return {};
   }
   return handle_of(tiles.split_x(tile, x));
@@ -124,6 +127,9 @@ bool StitchEditor::join_y(StitchTile keep, StitchTile gone) {
   }
   detail::Tile* k = tile_of(keep);
   detail::Tile* g = tile_of(gone);
+  if (detail::is_split(k->body) || detail::is_split(g->body)) {
+    return false;
+  }
   const bool stacked = k->rt == g || g->rt == k;
   if (!stacked || detail::left(k) != detail::left(g) || detail::right(k) != detail::right(g)) {
     return false;

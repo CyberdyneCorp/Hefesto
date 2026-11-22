@@ -10,11 +10,16 @@ cap:netlist-extcheck req:Counts and report format
 """
 from __future__ import annotations
 
+import sys
 import unittest
+from pathlib import Path
 
-from compare import COMPARATORS, compare_bytes
-from compare.masks import apply_masks
-from compare.magic_console import canonicalize as console
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "authoring"))
+
+import netlist_cases  # noqa: E402
+from compare import COMPARATORS, compare_bytes  # noqa: E402
+from compare.masks import apply_masks  # noqa: E402
+from compare.magic_console import canonicalize as console  # noqa: E402
 
 SPICE = b"""* SPICE3 file created from top.ext - technology: extsmoke
 
@@ -83,6 +88,52 @@ class SpiceCapTest(unittest.TestCase):
         a = b"C0 top bot sky130_fd_pr__cap_mim_m3_1 w=2 l=2\nC1 x y 1f\n"
         b = b"C0 bot top sky130_fd_pr__cap_mim_m3_1 w=2 l=2\nC1 x y 1f\n"
         self.assertFalse(spice_equal(a, b))
+
+    def test_model_less_capacitor_device_is_compared_byte_for_byte_without_couplings(self):
+        """Negative control (review of PR #80): a `device devcap None` prints `C<n> top bottom value`
+        (ext2spice.c:3195-3217), the coupling shape. spice-cap cannot tell it apart, so a netlist with
+        no couplings is compared with `bytes`, the comparator the M7 helper picks for it, and swapped
+        terminals fail."""
+        devcap = b"M0 d g s GND! nfet w=4 l=2\nC2 ct cb 12.5f\nD0 k GND! dn\n"
+        swapped = devcap.replace(b"C2 ct cb 12.5f", b"C2 cb ct 12.5f")
+        self.assertTrue(spice_equal(devcap, swapped))  # the documented limitation of spice-cap
+        self.assertFalse(compare_bytes(devcap, swapped, "bytes").equal)
+        spec = netlist_cases.NlSpec("NL-X", "netlist-spice", [], "", {"top.ext": netlist_cases.ext(
+            'device devcap None 50 0 60 10 12.5 "ct" 0 0 "cb" 0 0')})
+        comparator = next(c.comparator for c in netlist_cases.collect(spec) if c.pattern == "*.spice")
+        self.assertEqual(comparator, "bytes")
+        self.assertFalse(compare_bytes(devcap, swapped, comparator).equal)
+
+
+class SpiceCapSubstrateTest(unittest.TestCase):
+    """spice-cap:<node>: node capacitances to a named substrate stay byte for byte (design D21)."""
+
+    NET = b".subckt rcell A B\nC0 m A -1f\nC1 A VSUB 3f\nC2 B VSUB 3f\nC3 m VSUB 2f\n.ends\nC0 n c2/VSUB 1f\n"
+
+    def equal(self, a: bytes, b: bytes, comparator: str = "spice-cap:VSUB,c2/VSUB") -> bool:
+        return compare_bytes(a, b, comparator).equal
+
+    def test_registered_with_an_argument(self):
+        self.assertIn("spice-cap:VSUB", COMPARATORS)
+        self.assertIn("spice-cap:VSUB,c2/VSUB", COMPARATORS)
+        for bad in ("spice-cap:", "spice-cap:a b", "spice-cap:a,,b", "sim-cap:VSUB", "bytes:x"):
+            self.assertNotIn(bad, COMPARATORS)
+
+    def test_node_capacitance_order_to_the_substrate_is_compared(self):
+        swapped = self.NET.replace(b"C1 A VSUB 3f\nC2 B VSUB 3f", b"C1 B VSUB 3f\nC2 A VSUB 3f")
+        self.assertTrue(self.equal(self.NET, swapped, "spice-cap"))  # what plain spice-cap absorbs
+        self.assertFalse(self.equal(self.NET, swapped))
+
+    def test_substrate_terminal_order_is_compared(self):
+        self.assertFalse(self.equal(self.NET, self.NET.replace(b"C3 m VSUB 2f", b"C3 VSUB m 2f")))
+        self.assertFalse(self.equal(self.NET, self.NET.replace(b"C0 n c2/VSUB 1f", b"C0 c2/VSUB n 1f")))
+
+    def test_couplings_are_still_canonicalized(self):
+        self.assertTrue(self.equal(self.NET, self.NET.replace(b"C0 m A -1f", b"C0 A m -1f")))
+
+    def test_unknown_comparator_is_an_error(self):
+        with self.assertRaises(ValueError):
+            compare_bytes(b"", b"", "spice-cap:a b")
 
 
 SIM = b"""| units: 100 tech: extsmoke format: MIT

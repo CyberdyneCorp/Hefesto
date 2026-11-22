@@ -7,6 +7,7 @@ cap:hefesto-testing-strategy req:Golden compatibility suite
 """
 from __future__ import annotations
 
+import fnmatch
 import re
 import shutil
 import subprocess
@@ -41,8 +42,15 @@ def spec_headings(capability: str) -> set[str]:
     return set(re.findall(r"^### Requirement: (.+?)\s*$", text, re.MULTILINE))
 
 
-def known_comparators() -> set[str]:
-    return set(COMPARATORS)
+def known_comparators():
+    return COMPARATORS  # its `in` also accepts names with an argument (spice-cap:VSUB)
+
+
+def collected_names(case) -> list[str]:
+    """The files the case's script leaves for [[collect]] (the fake run checks they exist)."""
+    if case.area == "EXTRACT":
+        return extract_cases.ext_files(next(s for s in extract_cases.specs() if s.id == case.id))
+    return next(s for s in netlist_cases.specs() if s.id == case.id).outputs
 
 
 class CatalogueTest(unittest.TestCase):
@@ -80,20 +88,60 @@ class CaseSpecTest(unittest.TestCase):
                 self.assertTrue(set(case.requirements) <= spec_headings(case.capability), case.requirements)
         self.assertTrue(set(netlist_cases.CHK_REQUIREMENTS) <= spec_headings("netlist-extcheck"))
 
-    def test_areas_and_comparators(self):
+    def test_areas_and_collected_outputs(self):
+        """Design D21: the .ext files and the netlists are collected by name pattern, never listed."""
         for case in CASES:
             with self.subTest(case=case.id):
                 self.assertEqual(case.area, "EXTRACT" if case.id.startswith("EX-") else "NETLIST")
-                for out in case.outputs:
-                    expected = {".ext": "ext-cap", ".spice": "spice-cap", ".cdl": "spice-cap", ".sim": "sim-cap"}
-                    want = next((v for k, v in expected.items() if out.endswith(k)), "bytes")
-                    self.assertEqual(case.output_comparators.get(out, "bytes"), want, out)
+                self.assertFalse([o for o in case.outputs if o.endswith((".ext", ".spice", ".cdl", ".sim", ".al", ".nodes"))])
+                self.check_collect(case)
 
-    def test_ext_outputs_mask_their_timestamp(self):
-        for case in CASES:
-            for out in (o for o in case.outputs if o.endswith(".ext")):
-                with self.subTest(case=case.id, output=out):
-                    self.assertIn('masks = ["ext-timestamp"]', tclcase.case_toml(case).split(f'source = "{out}"', 1)[1][:80])
+    def check_collect(self, case):
+        patterns = [c.pattern for c in case.collect]
+        if case.area == "EXTRACT":
+            self.assertEqual(case.collect, extract_cases.COLLECT)
+        else:
+            self.assertEqual(patterns, list(netlist_cases.NETLIST_PATTERNS))
+        for name in collected_names(case):
+            self.assertTrue(any(fnmatch.fnmatchcase(Path(name).name, p) for p in patterns), name)
+
+    def test_ext_files_mask_their_timestamp(self):
+        self.assertEqual(extract_cases.COLLECT[0].masks, ("ext-timestamp",))
+        self.assertEqual(extract_cases.COLLECT[0].comparator, "ext-cap")
+
+    def test_canonicalizers_only_where_there_are_couplings(self):
+        """spice-cap and sim-cap absorb the shape of a model-less capacitor device too (compare/spice_cap.py),
+        so a case uses them only when an .ext input has a cap record; a named substrate is passed along."""
+        for spec in netlist_cases.specs():
+            case = netlist_cases.to_case(spec)
+            comparators = {c.pattern: c.comparator for c in case.collect}
+            with self.subTest(case=spec.id):
+                self.assertEqual(comparators["*.al"], "bytes")
+                self.assertEqual(comparators["*.nodes"], "bytes")
+                if not netlist_cases.has_couplings(spec):
+                    self.assertEqual(set(comparators.values()), {"bytes"})
+                    continue
+                self.assertEqual(comparators["*.sim"], "sim-cap")
+                self.assertTrue(comparators["*.spice"].startswith("spice-cap"))
+        with_caps = sorted(s.id for s in netlist_cases.specs() if netlist_cases.has_couplings(s))
+        self.assertEqual(with_caps, ["NL-FLAT-08", "NL-FLAT-13", "NL-FLAT-14", "NL-HIER-02", "NL-HIER-06"])
+        hier06 = next(c for c in CASES if c.id == "NL-HIER-06")
+        self.assertEqual(hier06.collect[0].comparator, "spice-cap:VSUB,c2/VSUB")
+
+    def test_nl_sim_01_has_an_alias(self):
+        """The = line goes into the .sim with alias off and into the .al file with alias on (ext2sim.c:1673-1694)."""
+        case = next(c for c in CASES if c.id == "NL-SIM-01")
+        self.assertIn('equiv "out" "y"', case.files["inv.ext"])
+        body = case.body
+        self.assertLess(body.index("ext2sim format MIT"), body.index("ext2sim alias on"))
+
+    def test_ex_024_steps_2_and_3_use_an_untouched_copy(self):
+        """Q-EXTRACT-6: Magic keeps the step-1 renames of ex, so unique # and unique run on exb."""
+        case = next(c for c in CASES if c.id == "EX-024")
+        self.assertEqual(case.files["ex.mag"], case.files["exb.mag"])
+        body = case.body
+        self.assertLess(body.index("input/ex.dounique.ext"), body.index("load exb"))
+        self.assertLess(body.index("load exb"), body.index("probe {extract unique #}"))
 
     def test_extract_options_follow_the_box(self):
         """extract needs a window or the box for every option but style and help (CmdE.c:1170-1180)."""
@@ -210,7 +258,7 @@ class ScriptRunTest(unittest.TestCase):
                 run = subprocess.run(["tclsh", str(driver)], cwd=work, capture_output=True, text=True, timeout=60)
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertNotIn("script-error", run.stdout)
-                for out in case.outputs:
+                for out in [*case.outputs, *collected_names(case)]:
                     self.assertTrue((work / out).is_file(), out)
 
 

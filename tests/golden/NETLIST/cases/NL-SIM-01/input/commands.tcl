@@ -1,4 +1,4 @@
-# NL-SIM-01: inverter in MIT, LBL and SU; alias on (inv.al); then labels on with alias still on (inv.nodes)
+# NL-SIM-01: inverter whose node out is also named y (equiv): MIT, LBL and SU with alias off (the = line in the .sim); alias on (the = line in inv.al); then labels on with alias still on (inv.nodes)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

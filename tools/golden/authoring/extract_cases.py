@@ -14,21 +14,30 @@ on one cell: EX-001..042, EX-044..046, EX-048 and EX-057..063. Each case is a
 * the script loads the technology, turns DRC off, loads the cell, sets the box (``extract`` finds
   its cell from the box when there is no window, CmdE.c:1172-1180), applies the case's ``extract``
   options and runs ``extract all``. A cell loaded from ``input/`` gets its ``.ext`` next to the
-  ``.mag`` (ExtFileOpen, ExtCell.c:153-230), so the compared output is ``input/<cell>.ext``.
+  ``.mag`` (ExtFileOpen, ExtCell.c:153-230), so the file is ``input/<cell>.ext``.
   A case with several runs renames each run's file to ``input/<cell>.<tag>.ext`` before the next
   one, so every run is compared.
 
-``.ext`` outputs use the ``ext-cap`` comparator (canonical ``cap`` records, Q-EXTRACT-7) and the
-``ext-timestamp`` mask; the console is compared with ``magic-console``. Inputs only: ``expected/``
+The ``.ext`` files are collected by name pattern (design D21, ``[[collect]] pattern = "*.ext"``,
+goldenlib/collect.py) as ``collected/input/<cell>[.<tag>].ext``, so a ``.ext`` file one side writes
+and the other does not fails the case. They use the ``ext-cap`` comparator (canonical ``cap`` records,
+Q-EXTRACT-7) and the ``ext-timestamp`` mask; other files a case compares (saved layouts) are named
+outputs. The console is compared with ``magic-console``. Inputs only: ``expected/``
 is captured in CI (golden-capture.yml) and the cases replay from R3, through EXTCMD's driver
 (task 9.2). Driven by ``m7_cases.py``.
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tclcase import TclCase, lines, p
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from goldenlib.collect import Collect  # noqa: E402
+from tclcase import TclCase, lines, p  # noqa: E402
+
+COLLECT = (Collect("*.ext", "ext-cap", ("ext-timestamp",)),)
 
 HERE = Path(__file__).resolve().parent
 EXTTEST = (HERE / "exttest.tech").read_text(encoding="utf-8")
@@ -114,6 +123,7 @@ class Run:
     tag: str                                          # "" for a single run
     cmds: tuple[str, ...] = ()                        # extract options before this run
     after: tuple[str, ...] = ()                       # raw Tcl after the run (saves, queries)
+    cell: str = ""                                    # the cell this run loads and extracts ("" for the root)
 
 
 @dataclass
@@ -146,8 +156,13 @@ def root_lines(spec: ExSpec, root: str) -> list[str]:
     body = [f"load {root}", "box 0 0 1 1"]
     if spec.setup:
         body.append(p(*spec.setup))
+    loaded = root
     for run in spec.runs:
-        body += run_lines(root, run)
+        cell = run.cell or root
+        if cell != loaded:
+            body += [f"load {cell}", "box 0 0 1 1"]
+            loaded = cell
+        body += run_lines(cell, run)
     return body
 
 
@@ -162,24 +177,26 @@ def body(spec: ExSpec) -> str:
     return lines(*parts)
 
 
-def outputs(spec: ExSpec) -> list[str]:
+def ext_files(spec: ExSpec) -> list[str]:
+    """The .ext files the runs leave in the work directory (collected as ``collected/<path>``)."""
     outs = []
     for root in roots(spec):
-        outs += [f"input/{root}.{r.tag}.ext" if r.tag else f"input/{root}.ext" for r in spec.runs]
-    return outs + spec.extra_outputs
+        for r in spec.runs:
+            cell = r.cell or root
+            outs.append(f"input/{cell}.{r.tag}.ext" if r.tag else f"input/{cell}.ext")
+    return outs
 
 
 def to_case(spec: ExSpec) -> TclCase:
     files: dict[str, str | bytes] = {"exttest.tech": tech(spec.rules, spec.section)}
     files.update({f"{name}.mag": mag(cell) for name, cell in spec.cells.items()})
     files.update(spec.extra_files)
-    outs = outputs(spec)
-    comparators = {o: "ext-cap" for o in outs if o.endswith(".ext")}
+    outs = list(spec.extra_outputs)
     names = {o: o.split("/")[-1] for o in outs}
     notes = ["Layout in input/*.mag; rules appended to style exttest of authoring/exttest.tech (design D21).",
-             *spec.notes]
+             "Collected .ext files: " + ", ".join(ext_files(spec)) + ".", *spec.notes]
     return TclCase(spec.id, spec.capability, spec.requirements, spec.description, body(spec), files=files,
-                   outputs=outs, output_comparators=comparators, output_names=names, driver=DRIVER, notes=notes, golden_area="EXTRACT")
+                   outputs=outs, output_names=names, collect=COLLECT, driver=DRIVER, notes=notes, golden_area="EXTRACT")
 
 
 # --- shared layouts ----------------------------------------------------------------------------
@@ -365,18 +382,24 @@ def node_specs() -> list[ExSpec]:
 
 
 def unique_spec(dups: Cell) -> ExSpec:
-    def saved(tag: str) -> tuple[str, ...]:
-        return ("save", f"file copy -force input/ex.mag ex.{tag}.mag", p("feedback count"), "feedback clear")
-    runs = [Run("dounique", ("extract do unique",), (p("extract no unique"), *saved("dounique"))),
-            Run("uniquehash", ("extract unique #",), saved("uniquehash")),
-            Run("unique", ("extract unique",), saved("unique"))]
+    """EX-024. Magic's Q-EXTRACT-6 bug makes the step-1 ``_uq0`` renames of the top cell permanent,
+    so steps 2 and 3 run on exb, an untouched copy of the layout: ``extract unique #`` keeps vdd!
+    and warns about net1 (feedback, ExtUnique.c:238-261), then ``extract unique`` renames both.
+    Step 2 renames nothing, so step 3 still sees the duplicates."""
+    def saved(cell: str, tag: str) -> tuple[str, ...]:
+        return ("save", f"file copy -force input/{cell}.mag {cell}.{tag}.mag", p("feedback count"), "feedback clear")
+    runs = [Run("dounique", ("extract do unique",), (p("extract no unique"), *saved("ex", "dounique"))),
+            Run("uniquehash", ("extract unique #",), saved("exb", "uniquehash"), cell="exb"),
+            Run("unique", ("extract unique",), saved("exb", "unique"), cell="exb")]
     return ExSpec("EX-024", NODE, ["Unique naming of duplicate labels", "Duplicate label warning"],
-                  "two unconnected net1 labels and two unconnected vdd! labels: extract do unique (temporary), then "
-                  "extract unique # (vdd! kept, net1 warned), then extract unique; the .ext names and the saved layout "
-                  "labels after each step", {"ex": dups}, runs=runs,
-                  extra_outputs=["ex.dounique.mag", "ex.uniquehash.mag", "ex.unique.mag"],
+                  "two unconnected net1 labels and two unconnected vdd! labels: extract do unique (temporary) on ex; "
+                  "then, on exb (the same layout, untouched by step 1), extract unique # (vdd! kept, net1 warned) and "
+                  "extract unique; the .ext names, the feedback counts and the saved layout labels after each step",
+                  {"ex": dups, "exb": dups}, runs=runs,
+                  extra_outputs=["ex.dounique.mag", "exb.uniquehash.mag", "exb.unique.mag"],
                   notes=["ex.dounique.mag carries Q-EXTRACT-6 (fix in both modes): Hefesto reverts the temporary _uq "
-                         "labels of the top cell (design D21, task 17.7)."])
+                         "labels of the top cell (design D21, task 17.7). Steps 2 and 3 run on exb so that bug does "
+                         "not reach them."])
 
 
 def device_specs() -> list[ExSpec]:

@@ -289,10 +289,16 @@ class CoreIncludesTest(unittest.TestCase):
             self.assertEqual(code, 0)
             write(root, "src/core/src/drc/engine/kernel.cpp", include)
             write(root, "src/core/src/extflat/reader.cpp", include)
+            # Design D5/D6: of db/, only the implementation file (review of PR #80).
+            write(root, "src/core/src/db/plane.cpp", include)
+            write(root, "src/core/include/hefesto/db/cell_def.hpp", include)
             code, text = run_quiet(includes.main, ["--root", str(root)])
             self.assertEqual(code, 1)
             self.assertIn("kernel.cpp:3", text)
             self.assertIn("reader.cpp:3", text)
+            self.assertIn("plane.cpp:3", text)
+            self.assertIn("cell_def.hpp:3", text)
+            self.assertNotIn("plane_stitch.cpp:", text)
             self.assertIn("restricted header", text)
 
     @unittest.skipUnless(shutil.which("cmake"), "cmake not on PATH")
@@ -311,9 +317,11 @@ class CoreIncludesTest(unittest.TestCase):
             ok = run()
             self.assertEqual(ok.returncode, 0, ok.stderr)
             write(core, "src/drc/engine/kernel.cpp", include)
+            write(core, "src/db/plane.cpp", include)
             bad = run()
             self.assertNotEqual(bad.returncode, 0)
             self.assertIn("kernel.cpp", bad.stderr)
+            self.assertIn("db/plane.cpp", bad.stderr)
             self.assertNotIn("plane_stitch.cpp:", bad.stderr)
 
 

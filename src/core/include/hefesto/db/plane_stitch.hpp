@@ -89,15 +89,17 @@ class StitchEditor {
 
   /// TiSplitX: cuts `t` at `x` and returns the new right part, of type
   /// space (body 0) with a kClientDefault slot; `t` keeps its body and its
-  /// slot. Empty, and nothing changes, unless `t` is an internal tile with
-  /// LEFT < x < RIGHT.
+  /// slot. Empty, and nothing changes, unless `t` is an internal Manhattan
+  /// tile with LEFT < x < RIGHT: a split (diagonal) tile is refused, since
+  /// TiSplitX would leave its diagonal body over the narrower rectangle and
+  /// move the triangle (ResFracture works on Manhattan tiles only).
   StitchTile split_x(StitchTile t, Coord x);
 
-  /// TiJoinY: merges `gone` into `keep`, which must be internal tiles
-  /// stacked one directly on the other with the same LEFT and RIGHT. `gone`
-  /// stays readable until release(). Returns false, and nothing changes,
-  /// when they are not joinable. The bodies are not compared (ResSplitX
-  /// checks the types first).
+  /// TiJoinY: merges `gone` into `keep`, which must be internal Manhattan
+  /// tiles stacked one directly on the other with the same LEFT and RIGHT.
+  /// `gone` stays readable until release(). Returns false, and nothing
+  /// changes, when they are not joinable, a split tile included. The bodies
+  /// are not compared otherwise (ResSplitX checks the types first).
   bool join_y(StitchTile keep, StitchTile gone);
 
   /// Frees the tiles the joins removed (TiFreeIf); handles to them become

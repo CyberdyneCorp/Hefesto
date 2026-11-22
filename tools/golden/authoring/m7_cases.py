@@ -57,6 +57,10 @@ CATALOGUE_TOTAL = 155  # design D21
 # Case IDs whose replay passes; each leaves the generated deferral block.
 REPLAYED: set[str] = set()
 
+# The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
+# behaviour that an approved fix changes names the decision).
+DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"]}
+
 
 def tcl_cases() -> list[tclcase.TclCase]:
     return [*extract_cases.cases(), *netlist_cases.cases()]
@@ -89,7 +93,9 @@ def output_names(case_id: str) -> list[str]:
     if case_id == netlist_cases.CHK_ID:
         return netlist_cases.extcheck_outputs()
     case = next(c for c in tcl_cases() if c.id == case_id)
-    return ["stdout.txt", "stderr.txt", *(case.output_names.get(o, o.replace("/", "__")) for o in case.outputs)]
+    collected = ["collected/*"] if case.collect else []
+    return ["stdout.txt", "stderr.txt", *(case.output_names.get(o, o.replace("/", "__")) for o in case.outputs),
+            *collected]
 
 
 def owner(case_id: str) -> str:
@@ -103,7 +109,8 @@ def deviation_block() -> str:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
         reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
-        entries.append(f'[{case_id}]\ndeferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{reason}"\n')
+        decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
+        entries.append(f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{reason}"\n')
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
 
 

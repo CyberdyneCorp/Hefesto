@@ -158,3 +158,26 @@ TEST_CASE("a joined tile stays readable until release", GEO) {
   ed.release();
   CHECK(ed.area(right) == Rect{5, 0, 10, db::kInfinity});
 }
+
+TEST_CASE("split tiles are neither split nor joined", GEO) {
+  // Regression (review of PR #80): TiSplitX only rewires the stitches, so a
+  // diagonal tile cut at x kept its diagonal over the narrower rectangle
+  // and the triangle moved.
+  db::Plane p;
+  REQUIRE(p.paint_triangle({0, 0, 10, 10}, db::Diagonal::ne_sw, false, paint_row_of(kM1), true, nullptr,
+                           db::PaintMerge::none)
+              .ok());
+  REQUIRE(p.paint({0, 10, 10, 20}, paint_row_of(kM1)).ok());
+  const auto before = db::test::tiles(p, tech::TypeMask::all());
+  db::StitchEditor ed(p);
+  const StitchTile split = ed.tile_at({0, 0});
+  REQUIRE(ed.view(split).split);
+  REQUIRE(ed.area(split) == Rect{0, 0, 10, 10});
+  const StitchTile above = ed.tile_at({0, 10});
+  REQUIRE(ed.area(above) == Rect{0, 10, 10, 20});
+  CHECK_FALSE(ed.join_y(above, split));
+  CHECK_FALSE(ed.join_y(split, above));
+  CHECK_FALSE(ed.split_x(split, 5));
+  ed.release();
+  CHECK(db::test::tiles(p, tech::TypeMask::all()) == before);
+}

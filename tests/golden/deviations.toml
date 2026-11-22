@@ -842,267 +842,268 @@ reason = "smoke case of the M7 capture modes: extract all, ext2spice, ext2sim an
 
 [EX-001]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-002]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.c1.ext", "ex.c1000.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-003]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-004]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-005]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-006]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-007]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-008]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-009]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-010]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-011]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-012]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-013]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.nocorners.ext", "ex.corners.ext", "ex.corners05.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-014]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-015]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-016]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-017]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.r1.ext", "ex.r1000.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-018]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-019]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-020]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-021]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-022]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-023]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.noaliases.ext", "ex.aliases.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-024]
+decisions = ["Q-EXTRACT-6"]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.dounique.ext", "ex.uniquehash.ext", "ex.unique.ext", "ex.dounique.mag", "ex.uniquehash.mag", "ex.unique.mag"]
+outputs = ["stdout.txt", "stderr.txt", "ex.dounique.mag", "exb.uniquehash.mag", "exb.unique.mag", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-025]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-026]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-027]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-028]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-029]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-030]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-031]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-032]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-033]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-034]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-035]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-036]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-037]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-038]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-039]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.warnfets.ext", "ex.nowarnfets.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-040]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-041]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-042]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "cap1.ext", "dev2.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-044]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-045]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-046]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-048]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-057]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.default.ext", "ex.si.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-058]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-059]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-060]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.f35.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-061]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.missing.ext", "ex.noorder.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-062]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [EX-063]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "ex.ext"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
 [NL-CHK-01]
@@ -1112,217 +1113,217 @@ reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-ex
 
 [NL-FLAT-01]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-02]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-03]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-04]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-05]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.scaleon.spice", "top.scaleoff.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-06]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.none.spice", "top.resistor.spice", "top.voltage.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-07]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-08]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-09]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-10]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top40.spice", "top120.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-11]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.flat.spice", "top.hier.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-12]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.globalon.spice", "top.globalsarray.spice", "top.globaloff.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-13]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-14]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-15]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-16]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-17]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-FLAT-18]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice3.spice", "top.hspice.spice", "top.cdl", "top.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
 [NL-HIER-01]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-HIER-02]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.cfinite.spice", "top.cinfinite.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-HIER-03]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.bboff.spice", "top.bbon.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-HIER-04]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "topnp.hier.spice", "topp.hier.spice", "topnp.lvs.spice", "topp.lvs.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-HIER-05]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.renumoff.spice", "top.renumon.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-HIER-06]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
 [NL-SIM-01]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "inv.mit.sim", "inv.lbl.sim", "inv.su.sim", "inv.alias.sim", "inv.alias.al", "inv.labels.sim", "inv.labels.al", "inv.labels.nodes"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SIM-02]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SIM-03]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SIM-04]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.fresh.sim", "top.spice", "top.afterspice.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SIM-05]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "inv.ext.sim"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
 [NL-SPICE-01]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-02]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "inv.spice2.spice", "inv.spice3.spice", "inv.hspice.spice", "inv.ngspice.spice", "inv.cdl", "custom.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-03]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-04]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.flat.spice", "top.hier.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-05]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "inv.topon.spice", "inv.topauto.spice", "inv.topoff.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-06]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "7seg.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-07]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice3.spice", "top.ngspice.spice", "top.dashF.spice", "top.dashB.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-08]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice", "top.cdl"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-09]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.scaleon.spice", "top.scaleoff.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-10]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.teeoff.spice", "top.teeon.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-11]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.cdl"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-12]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.none.spice", "top.conservative.spice", "top.aggressive.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-13]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.flat.spice", "top.hier.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 [NL-SPICE-14]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "top.spice"]
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 # --- END M7 deferrals ---

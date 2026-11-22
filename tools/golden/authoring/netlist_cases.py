@@ -14,9 +14,17 @@ no extraction, so they are captured in R1 and SPICE, SIM and EXTFLAT develop aga
 * A netlist is written to the work directory as ``<cell>.spice`` (``<cell>.cdl`` in CDL), ``<cell>.sim``,
   ``.al`` and ``.nodes``. A case with several runs renames each run's files to ``<cell>.<tag>.<ext>``
   before the next one, so every run is compared.
-* Comparators (design D21): ``spice-cap`` for SPICE and CDL netlists and ``sim-cap`` for ``.sim``
-  files (flat coupling lines as a multiset, Q-NETLIST-1; both added by the GOLDEN infra task 2.4),
-  ``bytes`` for ``.al`` and ``.nodes``, ``magic-console`` for the console (option results are probed).
+* The netlists are collected by name pattern (design D21, ``[[collect]]``, goldenlib/collect.py):
+  ``*.spice``, ``*.cdl``, ``*.sim``, ``*.al`` and ``*.nodes``, so a file one side writes and the other
+  does not fails the case. The renamed files of a multi-run case match the same patterns. The
+  ``.ext`` inputs are never collected (the run leaves them unchanged).
+* Comparators (design D21): a case whose ``.ext`` inputs have a ``cap`` record, so that its netlists
+  have flat coupling lines, uses ``spice-cap`` for SPICE and CDL netlists and ``sim-cap`` for ``.sim``
+  files (coupling lines as a multiset, Q-NETLIST-1). A case that names a substrate node lists it
+  (``spice-cap:VSUB``) so its node capacitances stay byte for byte. Every other netlist, and every
+  ``.al`` and ``.nodes`` file, uses ``bytes``: a capacitor device without a model has the shape of a
+  coupling line (compare/spice_cap.py), so the canonicalizers are kept off the netlists that have
+  no couplings. The console uses ``magic-console`` (option results are probed).
 * Each case runs in a fresh session (Q-NETLIST-16, Q-NETLIST-46); NL-SIM-04 compares the two states
   inside one session by running ``ext2sim`` before and after ``ext2spice``.
 * NL-CHK-01 runs Magic's standalone ``extcheck`` through the external-command case mode of design
@@ -26,10 +34,14 @@ Inputs only: ``expected/`` is captured in CI. Driven by ``m7_cases.py``.
 """
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tclcase import TclCase, lines, p
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from goldenlib.collect import Collect  # noqa: E402
+from tclcase import TclCase, lines, p  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 NLTEST = (HERE / "nltest.tech").read_text(encoding="utf-8")
@@ -102,6 +114,7 @@ class NlSpec:
     outputs: list[str] = field(default_factory=list)
     tech: str = NLTEST
     notes: list[str] = field(default_factory=list)
+    substrates: tuple[str, ...] = ()                  # substrate node names in the netlists (spice-cap:<node>)
 
 
 class Script:
@@ -140,21 +153,35 @@ class Script:
         self.outputs.append(kept)
 
 
-def comparator(name: str) -> str:
-    if name.endswith((".spice", ".cdl")):
-        return "spice-cap"
-    if name.endswith(".sim"):
+NETLIST_PATTERNS = ("*.spice", "*.cdl", "*.sim", "*.al", "*.nodes")
+
+
+def has_couplings(spec: NlSpec) -> bool:
+    """Whether an .ext input has a cap record, so the netlists can have flat coupling lines."""
+    return any(line.startswith("cap ") for name, text in spec.files.items() if name.endswith(".ext")
+               for line in text.splitlines())
+
+
+def comparator(spec: NlSpec, pattern: str) -> str:
+    """The comparator of the files ``pattern`` collects (design D21; see the module docstring)."""
+    if not has_couplings(spec) or pattern in ("*.al", "*.nodes"):
+        return "bytes"
+    if pattern == "*.sim":
         return "sim-cap"
-    return "bytes"
+    return "spice-cap" + (":" + ",".join(spec.substrates) if spec.substrates else "")
+
+
+def collect(spec: NlSpec) -> tuple[Collect, ...]:
+    return tuple(Collect(pattern, comparator(spec, pattern)) for pattern in NETLIST_PATTERNS)
 
 
 def to_case(spec: NlSpec) -> TclCase:
     body = lines("tech load input/nltest -noprompt", "drc off", *spec.steps)
     files: dict[str, str | bytes] = {"nltest.tech": spec.tech, **spec.files}
-    notes = ["Hand-written .ext inputs and authoring/nltest.tech (design D21).", *spec.notes]
+    notes = ["Hand-written .ext inputs and authoring/nltest.tech (design D21).",
+             "Netlists collected by name: " + ", ".join(spec.outputs) + ".", *spec.notes]
     return TclCase(spec.id, spec.capability, spec.requirements, spec.description, body, files=files,
-                   outputs=list(spec.outputs), output_comparators={o: comparator(o) for o in spec.outputs},
-                   driver=DRIVER, notes=notes, golden_area="NETLIST")
+                   collect=collect(spec), driver=DRIVER, notes=notes, golden_area="NETLIST")
 
 
 def nl(cid: str, capability: str, requirements: list[str], description: str, files: dict[str, str],
@@ -313,7 +340,7 @@ def flat_hier_specs() -> list[NlSpec]:
            {"top.ext": kills}, Script().opts("ext2spice cthresh 0").run("ext2spice", "top")),
         nl("NL-FLAT-14", HIER, ["Coupling capacitance flattening"],
            "a coupling to the substrate node VSUB and one between nodes; cthresh 0: the ground C sum and the coupling line",
-           {"top.ext": coupling}, Script().opts("ext2spice cthresh 0").run("ext2spice", "top")),
+           {"top.ext": coupling}, Script().opts("ext2spice cthresh 0").run("ext2spice", "top"), substrates=("VSUB",)),
         nl("NL-FLAT-15", HIER, ["Lumped node resistance"],
            "node w with area/perimeter in the poly and metal1 classes; ext2sim rthresh 0: the R line (25100 mOhm)",
            {"top.ext": lumped}, Script().opts("ext2sim rthresh 0").run("ext2sim", "top")),
@@ -558,7 +585,8 @@ def hier_specs() -> list[NlSpec]:
            {"top.ext": arrays, "inv.ext": INV}, rscript),
         nl("NL-HIER-06", hs, ["Hierarchical device and parasitic differences"],
            "two cells with a tee rsubckt, a modeled resistor in scale mode, negative couplings and shorted ports under "
-           "short voltage (Q-NETLIST-35, Q-NETLIST-19, Q-NETLIST-20, magic-compat ON)", {"top.ext": diff_top, "rcell.ext": rcell}, diff),
+           "short voltage (Q-NETLIST-35, Q-NETLIST-19, Q-NETLIST-20, magic-compat ON)", {"top.ext": diff_top, "rcell.ext": rcell}, diff,
+           substrates=("VSUB", "c2/VSUB")),
     ]
 
 
@@ -568,6 +596,9 @@ SIM = "netlist-sim"
 
 
 def sim_specs() -> list[NlSpec]:
+    # NL-SIM-01's inv.ext: node out also named y (an equiv record), so ext2sim writes `= <canonical> <alias>`
+    # into the .sim while alias is off (the MIT, LBL and SU runs) and into the .al file once it is on
+    # (simnodeVisit, ext2sim.c:1673-1694). The runs with alias off come first: see the note below.
     fmts = Script()
     for name in ("MIT", "LBL", "SU"):
         fmts.opts(f"ext2sim format {name}").run("ext2sim", "inv", tag=name.lower())
@@ -589,7 +620,9 @@ def sim_specs() -> list[NlSpec]:
     resext = "\n".join(["scale 1000 1000 5", 'rnode "out.n0" 0 2 10 4 0', 'resist "out" "out.n0" 12.3']) + "\n"
     return [
         nl("NL-SIM-01", SIM, ["File structure and order", "Device lines", "Parasitic and node records"],
-           "inverter in MIT, LBL and SU; alias on (inv.al); then labels on with alias still on (inv.nodes)", {"inv.ext": INV}, fmts),
+           "inverter whose node out is also named y (equiv): MIT, LBL and SU with alias off (the = line in the .sim); "
+           "alias on (the = line in inv.al); then labels on with alias still on (inv.nodes)",
+           {"inv.ext": ext(*inv_records(), 'equiv "out" "y"')}, fmts),
         nl("NL-SIM-02", SIM, ["Device lines"], "bjt, diode, devres, devcap and subckt devices: the device lines",
            {"top.ext": devs}, Script().run("ext2sim", "top")),
         nl("NL-SIM-03", SIM, ["Transistor attributes"],
