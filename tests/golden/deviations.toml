@@ -1121,12 +1121,6 @@ deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
-[NL-CHK-01]
-decisions = ["Q-NETLIST-50"]
-deferred = "M7"
-outputs = ["default.stdout", "default.stderr", "default.exit", "thresholds.stdout", "thresholds.stderr", "thresholds.exit", "nocaps.stdout", "nocaps.stderr", "nocaps.exit", "usage.stdout", "usage.stderr", "usage.exit"]
-reason = "expected/ hand-derived (design R7 option (a), M7-9); replays once SIM (m7-extraction task 12.4) lands"
-
 [NL-FLAT-01]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]

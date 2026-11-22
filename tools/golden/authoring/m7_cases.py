@@ -55,7 +55,7 @@ EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier miles
 CATALOGUE_TOTAL = 155  # design D21
 
 # Case IDs whose replay passes; each leaves the generated deferral block.
-REPLAYED: set[str] = set()
+REPLAYED: set[str] = {netlist_cases.CHK_ID}  # SIM (task 12.4) with EXTFLAT (tasks 10.x)
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).

@@ -251,29 +251,44 @@ std::string memory_used() {
   return "0k";
 }
 
+// capVisit.
+void count_caps(const std::vector<double>& caps, double threshold, Counts& c) {
+  for (const double cap : caps) {
+    ++c.caps;
+    c.thresh_caps += cap / 1000. > threshold ? 1 : 0;
+  }
+}
+
+// resistVisit.
+void count_resists(const std::vector<double>& resists, std::int64_t threshold, Counts& c) {
+  for (const double res : resists) {
+    ++c.resists;
+    c.thresh_resists += res / 1000. > static_cast<double>(threshold) ? 1 : 0;
+  }
+}
+
+// nodeVisit.
+void count_nodes(const std::vector<NodeSample>& nodes, const Thresholds& thresholds, Counts& c) {
+  for (const NodeSample& node : nodes) {
+    ++c.nodes;
+    c.global_nodes += node.global ? 1 : 0;
+    c.node_resists += (node.resist + 500) / 1000 > thresholds.resist ? 1 : 0;
+    c.node_caps += (node.cap + 500) / 1000 > thresholds.cap ? 1 : 0;
+  }
+}
+
 }  // namespace
 
 Counts count(const CheckInput& input, const Thresholds& thresholds) {
   Counts c;
   c.devices = static_cast<int>(input.devices);  // devVisit
   if (thresholds.cap < kInfiniteCap) {         // IS_FINITE_F(EFCapThreshold)
-    for (const double cap : input.caps) {      // capVisit
-      ++c.caps;
-      c.thresh_caps += cap / 1000. > thresholds.cap ? 1 : 0;
-    }
+    count_caps(input.caps, thresholds.cap, c);
   }
   if (thresholds.resist != kInfiniteResist) {
-    for (const double res : input.resists) {  // resistVisit
-      ++c.resists;
-      c.thresh_resists += res / 1000. > static_cast<double>(thresholds.resist) ? 1 : 0;
-    }
+    count_resists(input.resists, thresholds.resist, c);
   }
-  for (const NodeSample& node : input.nodes) {  // nodeVisit
-    ++c.nodes;
-    c.global_nodes += node.global ? 1 : 0;
-    c.node_resists += (node.resist + 500) / 1000 > thresholds.resist ? 1 : 0;
-    c.node_caps += (node.cap + 500) / 1000 > thresholds.cap ? 1 : 0;
-  }
+  count_nodes(input.nodes, thresholds, c);
   return c;
 }
 
