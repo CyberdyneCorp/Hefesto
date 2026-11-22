@@ -7,7 +7,7 @@
 # openspec/changes/m8-schematic task 6.4 asks for.
 #
 # The targets are split over four shards so that each job stays well under the 6-hour job limit
-# (27 targets x 10 minutes is 4.5 hours in one job). Each shard builds the linux-fuzz preset, as
+# (32 targets on 2026-11-22: 32 x 10 minutes is over 5 hours in one job, 8 per shard is 80 minutes). Each shard builds the linux-fuzz preset, as
 # ci.yml's `fuzz` job does, and runs the targets whose position in the sorted list of seed corpora
 # (tests/fuzz/corpus/<target>/, one per target) is its shard index modulo the shard count. The
 # corpus each target grows is uploaded with its crashes, so a finding can be replayed with
@@ -44,7 +44,7 @@ jobs:
   fuzz:
     name: fuzz (libFuzzer, 10 min per target, shard ${{ matrix.shard }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 150  # up to 7 targets x 10 minutes, plus the build
+    timeout-minutes: 150  # 8 targets x 10 minutes (32 targets on 2026-11-22), plus the build; at most 12 fit
     strategy:
       fail-fast: false
       matrix:
