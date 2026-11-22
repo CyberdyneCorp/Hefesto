@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Unit tests of LEF unit conversion and LEF layer name resolution
-// (capability lef-read; openspec/changes/m6-lef-def-oasis tasks.md 5.2).
+// (capability lef-read; openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 5.2).
 
 #include <catch2/catch_test_macros.hpp>
 

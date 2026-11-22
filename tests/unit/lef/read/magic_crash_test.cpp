@@ -10,7 +10,7 @@
 // `lef write cont -tech` writes the technology section and the via. Both
 // modes must run it without fault.
 //
-// Owner: LEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

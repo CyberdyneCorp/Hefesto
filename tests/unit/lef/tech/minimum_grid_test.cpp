@@ -15,7 +15,7 @@
 // modes (tech/loader.cpp apply_post_load), so the LEF table keeps its 1:1
 // values and nothing crashes.
 //
-// Owner: LEFTECH (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFTECH (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

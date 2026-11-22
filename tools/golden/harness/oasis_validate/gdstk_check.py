@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""gdstk side of ``oasis-validate`` (openspec/changes/m6-lef-def-oasis design D18, task 1.7).
+"""gdstk side of ``oasis-validate`` (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D18, task 1.7).
 
 Run with the gdstk environment of the capture image:
 

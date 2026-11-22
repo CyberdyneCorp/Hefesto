@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The M6 desktop items (openspec/changes/m6-lef-def-oasis tasks.md 14.1,
+// The M6 desktop items (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 14.1,
 // 14.2; design D16): File > Open and drag and drop through the generic open
 // path, so an OASIS file is recognised by content whatever its name, and
 // `oasis read` / `oasis write` through the M5 progress and cancel hosts as

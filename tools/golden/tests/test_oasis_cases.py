@@ -14,7 +14,9 @@
 """
 from __future__ import annotations
 
+import contextlib
 import filecmp
+import io
 import sys
 import tempfile
 import unittest
@@ -202,8 +204,14 @@ class CasesTest(unittest.TestCase):
             case = next(c for c in oasis_cases.specs() if c.id == cid)
             self.assertTrue(any("Q-OASIS-2" in note for note in case.notes), cid)
 
-    def test_exit_check_names_the_open_rows(self):
-        self.assertEqual(m6_cases.exit_check(), 1)  # captured inputs are synced in CI
+    def test_exit_check_names_the_covered_row(self):
+        """M6 close-out: OASIS-092 is the one unwritten row, accepted as covered (Q-OASIS-92), so the
+        exit check passes and names it."""
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(m6_cases.exit_check(), 0)
+        self.assertIn("OASIS-092: covered outside the golden suite, Q-OASIS-92", out.getvalue())
+        self.assertNotIn("not written", out.getvalue())
 
     def test_spec_argv_matches_the_runner(self):
         self.assertEqual(tclcase.SPEC_ARGV, list(refrunners.SPEC_COPY_ARGV))

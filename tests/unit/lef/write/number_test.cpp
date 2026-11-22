@@ -4,7 +4,7 @@
 // lef-write: the output scale, the LEF database units and lefPrint's
 // float32 formatting (tasks.md 6.2; Q-LEFDEF-34, Q-LEFDEF-45).
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

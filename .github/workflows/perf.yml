@@ -43,7 +43,7 @@
 #                uses): replay.py --include-gds-rt with every case's input required, then
 #                Hefesto's non-gating, order-insensitive equivalence report of a second read and
 #                write (bench/gds/gds_equivalence.py) in the job summary.
-#   lefdef-bench The LEF/DEF instruction gate (openspec/changes/m6-lef-def-oasis design D22, Open
+#   lefdef-bench The LEF/DEF instruction gate (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D22, Open
 #                Question 4 decided (a), task 16.2): a GCC 14 Release build of hefesto-cli and Magic
 #                8.3.694 (reference image) run the base and op scripts of bench/lefdef/lefdef_bench.py
 #                (`lef read` of sky130_fd_sc_hd.lef, `def read` of the generated 5000-cell placed-and-

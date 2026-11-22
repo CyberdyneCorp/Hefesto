@@ -187,7 +187,7 @@ Before you register a new engine command, Tcl command or `magic::` procedure:
 
 ## LEF, DEF, OASIS and `.ext` input (M6 review, 2026-11-20)
 
-The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the same rule: every file is hostile input (design D23 of `openspec/changes/m6-lef-def-oasis/`, task 17.3). The review covered M6-S1..S9 of D23 by reading the readers and the writers that re-encode read data, and by replaying the five M6 fuzz corpora (below). Caps that change behaviour where Magic does not crash are proposals until the user decides them (D21); the approved ones cite their Q-row.
+The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the same rule: every file is hostile input (design D23 of `openspec/changes/archive/2026-11-22-m6-lef-def-oasis/`, task 17.3). The review covered M6-S1..S9 of D23 by reading the readers and the writers that re-encode read data, and by replaying the five M6 fuzz corpora (below). Caps that change behaviour where Magic does not crash are proposals until the user decides them (D21); the approved ones cite their Q-row.
 
 ### Bounds in place
 

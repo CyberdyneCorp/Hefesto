@@ -496,3 +496,12 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Options: CBLOCK only (current) | also allow gzip wrapping
 - Recommendation: other (a Hefesto format choice). In both modes, OASIS output uses CBLOCK compression only and is never gzip-wrapped. Reading gzip-wrapped OASIS files stays supported, because other tools produce them.
 - Resolution: other (Hefesto format choice) — OASIS output uses CBLOCK compression only and is never gzip-wrapped, in both modes; gzip-wrapped OASIS files are still read. Approved 2026-11-13.
+
+### Q-OASIS-92: OASIS-092 has no headless golden case
+- Kind: other
+- Status: approved 2026-11-22 (user decision: "Accept unit coverage")
+- Magic behavior: n/a (Magic has no OASIS code; the row is a Hefesto open path).
+- Evidence: `tests/golden/OASIS/CASES.md` row OASIS-092 (open `chip.gds` whose content is OASIS through the document picker or the scripting generic open; oasis-command "Format recognition on open"). hefesto-cli `--magic` has no headless entry point for that open: the document picker, drag and drop, Files "Open in" and the scripting API's generic open are desktop paths (`oasis_write_cases.NOT_AUTHORED`). Covered by the unit tests of m6-lef-def-oasis task 13.2, "sniff_format recognises OASIS, GDS and Magic cells by content", "the generic open path reads by content, whatever the extension" and "scripting access to the oasis command" (`tests/unit/oasis/command/open_test.cpp`), and by the desktop test of task 14.1, "the desktop opens an OASIS file named .gds as OASIS" (`tests/unit/shell/m6_open_test.cpp`, run green in the round-6 desktop build).
+- Options: author a headless golden case (needs a new hefesto-cli entry point) | accept the unit and desktop coverage
+- Recommendation: accept the unit and desktop coverage.
+- Resolution: other — OASIS-092 is covered outside the golden suite by the task 13.2 unit tests and the task 14.1 desktop test above; no golden case is written. `m6_cases.py` lists it in `COVERED_OUTSIDE_GOLDEN` with this decision, so `--exit-check` reports it as covered instead of unwritten. Approved 2026-11-22.

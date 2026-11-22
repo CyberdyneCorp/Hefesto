@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-22 (the M6 close-out), `docs/decisions/open-questions/LEFDEF.md` has 133 entries and `OASIS.md` has 52, 185 in all. Every one has a `Resolution:` line:
+As of 2026-11-22 (the M6 close-out), `docs/decisions/open-questions/LEFDEF.md` has 133 entries and `OASIS.md` has 53, 186 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -21,10 +21,10 @@ As of 2026-11-22 (the M6 close-out), `docs/decisions/open-questions/LEFDEF.md` h
 | Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
 | Approved 2026-11-21 (user decisions G3, G4; recorded in round 6) | 3: Q-LEFDEF-139 (amended to fix, G3), Q-LEFDEF-141 and 151 (compat, confirmed as implemented, G4) | "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
 | Approved 2026-11-21 (user decisions G1, G2, G5; recorded in round 6) | 3: Q-OASIS-14, 55, 56 | "Decided 2026-11-21: OASIS rows" |
-| Approved 2026-11-22 (user decision; recorded in the M6 close-out) | 1: Q-LEFDEF-152 (MASK-OS-016 deferred to M13) | "Decided 2026-11-22: MASK-OS-016" |
+| Approved 2026-11-22 (user decisions; recorded in the M6 close-out) | 2: Q-LEFDEF-152 (MASK-OS-016 deferred to M13), Q-OASIS-92 (OASIS-092 covered by unit and desktop tests) | "Decided 2026-11-22: MASK-OS-016 and OASIS-092" |
 | Pending: no `Resolution:` line | 0 | |
 
-Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
+Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
@@ -388,17 +388,18 @@ The user's decisions of 2026-11-21 for LEF/DEF, recorded in round 6 (`m6-r6-lefd
 
 Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8.
 
-## Decided 2026-11-22: MASK-OS-016
+## Decided 2026-11-22: MASK-OS-016 and OASIS-092
 
-The user's decision of 2026-11-22: "MASK-OS-016: defer past M6 as a known Magic crash". The entry has `Status: approved 2026-11-22` and a `Resolution:` line in `docs/decisions/open-questions/LEFDEF.md`.
+The user's decisions of 2026-11-22: "MASK-OS-016: defer past M6 as a known Magic crash" and, for OASIS-092, "Accept unit coverage". Each entry has `Status: approved 2026-11-22` and a `Resolution:` line in `docs/decisions/open-questions/LEFDEF.md` or `OASIS.md`.
 
 | ID | Question | Kind | Resolution |
 |---|---|---|---|
 | Q-LEFDEF-152 | MASK-OS-016 cannot be captured because Magic crashes on it (SIGSEGV, golden-capture runs 44743146734 and 44860968058) | **other** | deferred past M6: the case stays capture_blocked and its deviations.toml entry is deferred to M13 (`m6_cases.LATER`), so `m6_cases.py --exit-check` no longer lists it |
+| Q-OASIS-92 | OASIS-092 has no headless golden case (no hefesto-cli entry point for the generic open) | **other** | covered outside the golden suite by the task 13.2 unit tests (`tests/unit/oasis/command/open_test.cpp`) and the task 14.1 desktop test (`tests/unit/shell/m6_open_test.cpp`); `m6_cases.COVERED_OUTSIDE_GOLDEN` cites it, so `--exit-check` no longer reports the row unwritten |
 
 ## Planning questions raised by the M6 plan
 
-These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. **All six were decided by the user on 2026-11-18, each as recommended**; for question 3 the recommendation was conditional, and its fallback (b) applies because the user named no source.
+These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. **All six were decided by the user on 2026-11-18, each as recommended**; for question 3 the recommendation was conditional, and its fallback (b) applies because the user named no source.
 
 | # | Question | Decision (2026-11-18) | Where it lands |
 |---|---|---|---|

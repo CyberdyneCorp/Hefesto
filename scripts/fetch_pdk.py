@@ -37,7 +37,7 @@ PDK root ``<root>/gds/`` (``<root>/gds/ciel/<family>/versions/<pin>/``). Each ho
                   (sky130_fd_sc_hd, gf180mcu_fd_sc_mcu7t5v0, sg13g2_stdcell), for the MASK-RT cases
                   of every CI golden leg. They share the full sets' version directories.
 
-LEF sets (openspec/changes/m6-lef-def-oasis design D2, tasks 1.2 and 1.4), same pins, installed under their
+LEF sets (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D2, tasks 1.2 and 1.4), same pins, installed under their
 own PDK root ``<root>/lef/``. Each holds the LEF directories of one standard-cell library:
 
 ``sky130-lef``    sky130A/libs.ref/sky130_fd_sc_hd/{lef,techlef}/ (134 MB downloaded, 2.0 MB kept, 8 files)

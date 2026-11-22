@@ -36,7 +36,7 @@ golden LEFDEF-RT case owns that comparison).
 tools' scripts into DIR, for the profiling job.
 
 Exit status: 0 when the counts agree and every write produced output, 1
-otherwise, 2 on a setup error. Owner: PERF (openspec/changes/m6-lef-def-oasis design.md ownership table).
+otherwise, 2 on a setup error. Owner: PERF (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design.md ownership table).
 """
 
 from __future__ import annotations

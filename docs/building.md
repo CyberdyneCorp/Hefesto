@@ -240,7 +240,7 @@ The M7 PDK golden cases (`EXTRACT-PDK-<lib>`, `NETLIST-PDK-<lib>`; design D21 an
 
 ### LEF data sets (M6)
 
-The LEF/DEF tests on real PDK data (the PDK LEF read tests, the `LEFDEF-RT-<lib>` golden cases and LEFDEF-240; design D2 and Open Question 6 (a) of `openspec/changes/m6-lef-def-oasis`) read the tech LEF and the standard-cell LEF of the same three releases. They come in three more data sets, fetched only when named:
+The LEF/DEF tests on real PDK data (the PDK LEF read tests, the `LEFDEF-RT-<lib>` golden cases and LEFDEF-240; design D2 and Open Question 6 (a) of `openspec/changes/archive/2026-11-22-m6-lef-def-oasis`) read the tech LEF and the standard-cell LEF of the same three releases. They come in three more data sets, fetched only when named:
 
 | Set | Subset (`<variant>/libs.ref/<lib>/…`) | Files | Downloaded | Kept (cached) | Peak disk |
 |---|---|---|---|---|---|
@@ -250,7 +250,7 @@ The LEF/DEF tests on real PDK data (the PDK LEF read tests, the `LEFDEF-RT-<lib>
 
 - **Root.** The LEF sets install under their own PDK root, `.cache/pdks/lef/` (`.cache/pdks/lef/ciel/<family>/versions/<pin>/`), for the same reason as the GDS sets: `pdk install` skips a library whose `libs.ref/<lib>` directory exists, and each set is its own CI cache entry.
 - **Tech LEF.** sky130 and gf180mcu ship the tech LEF in the library's `techlef/` directory, one file per corner (sky130 also has the `rram` variants); the tests use `__nom.tlef`. IHP ships it in `lef/` as `sg13g2_tech.lef`.
-- **Other libraries.** The other libraries' LEF files are listed in design D2 of `openspec/changes/m6-lef-def-oasis` (PDK row); no test uses them, so no set holds them.
+- **Other libraries.** The other libraries' LEF files are listed in design D2 of `openspec/changes/archive/2026-11-22-m6-lef-def-oasis` (PDK row); no test uses them, so no set holds them.
 - **Cache keys.** `pdk-sky130-lef-5740c4a81c42-b8ebb4f6dcfe84d1`, `pdk-gf180mcu-lef-5740c4a81c42-1b748b5dc37d40a6`, `pdk-ihp-lef-5e6d592e4002-fbc2d9eaf68f4d1c` (`--cache-info` output names `sky130_lef_key`, `sky130_lef_path`, and so on).
 - **CI.** `FETCH_LEF_SETS` in the `env` of `ci.yml` and of `golden-capture.yml` is `"true"` (since M6 round 3): `ci.yml`'s `reference-data` job looks the three sets up, fetches the missing ones and saves them, and the build legs restore and verify them; `golden-capture.yml`'s `capture` job restores, fetches and saves them. `perf.yml`'s `lefdef-bench` restores `sky130-lef` by the same keys.
 - **Tests.** `tests/unit/common/reference_data.hpp` gives `pinned_lef_library`, `pinned_tech_lef` and `pinned_cell_lef` for `kSky130FdScHdLef`, `kGf180mcu7t5v0Lef` and `kSg13g2StdcellLef`; a test whose set is missing skips.
@@ -309,7 +309,7 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), normally in CI through `golden-capture.yml`; `tools/golden/README.md` also documents local container runs (and the `local` and `model` runners of the hash harness) and is the full guide; the image holds:
 
 - Magic 8.3.694, netgen, ngspice and xschem, built from pinned commits;
-- since M6, KLayout 0.30.0 (Debian package `klayout 0.30.0-1+b1` from the APT snapshot, run as `klayout -b`) and gdstk 1.0.2 (a pinned wheel in `$HEFESTO_GDSTK_PYTHON`), reference tools of the OASIS cases only (design D18 of `openspec/changes/m6-lef-def-oasis`). Hefesto never links or calls them.
+- since M6, KLayout 0.30.0 (Debian package `klayout 0.30.0-1+b1` from the APT snapshot, run as `klayout -b`) and gdstk 1.0.2 (a pinned wheel in `$HEFESTO_GDSTK_PYTHON`), reference tools of the OASIS cases only (design D18 of `openspec/changes/archive/2026-11-22-m6-lef-def-oasis`). Hefesto never links or calls them.
 
 The M6 dispatch modes of `golden-capture.yml`:
 

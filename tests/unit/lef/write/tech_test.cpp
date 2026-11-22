@@ -4,7 +4,7 @@
 // lef-write: the -tech LAYER blocks and the magic-type to LEF-name map
 // (tasks.md 6.3; Q-LEFDEF-31, 32).
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

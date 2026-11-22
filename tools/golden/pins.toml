@@ -54,7 +54,7 @@ commit = "7aa4716494c01ac1d3120211316e898539a6cb4c"
 repo = "https://github.com/StefanSchippers/xschem"
 commit = "4142e6d6f1eb5cd0e271bb183f14202af374ce27"
 
-# Reference tools of the OASIS cases (openspec/changes/m6-lef-def-oasis design D18), installed
+# Reference tools of the OASIS cases (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D18), installed
 # rather than built, so they have no `commit`. They run as separate programs in the image only:
 # Hefesto never links, bundles or calls them. Resolved 2026-11-18:
 #   KLayout: the Packages index of trixie/main amd64 at apt_snapshot lists klayout 0.30.0-1+b1;

@@ -4,9 +4,9 @@
 // Polygon painting shared by LEF POLYGON (Q-LEFDEF-23), DEF pin POLYGON
 // (Q-LEFDEF-66 OFF) and DEF route POLYGON (Q-LEFDEF-70 OFF): one
 // db::decompose_polygon, with port labels from the single decomposition
-// (openspec/changes/m6-lef-def-oasis tasks.md 4.4).
+// (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 4.4).
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

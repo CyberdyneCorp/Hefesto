@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# Unit tests of the extract area (openspec/changes/m6-lef-def-oasis/design.md D1/D2; openspec/changes/m7-extraction/design.md D2/D3).
+# Unit tests of the extract area (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2; openspec/changes/m7-extraction/design.md D2/D3).
 # Owner: INTEGRATION (this file and the shared tests here). Each
 # subdirectory is owned by its workstream and builds its own executable once
 # it has a *_test.cpp:

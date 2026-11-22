@@ -198,7 +198,7 @@ class GdsDataSets(unittest.TestCase):
 
 
 class LefDataSets(unittest.TestCase):
-    """The LEF sets of openspec/changes/m6-lef-def-oasis design D2 (tasks 1.2 and 1.4, Open Question 6 (a))."""
+    """The LEF sets of openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D2 (tasks 1.2 and 1.4, Open Question 6 (a))."""
 
     LEF_SETS = {"sky130-lef": ("sky130_fd_sc_hd", ("lef", "techlef")),
                 "gf180mcu-lef": ("gf180mcu_fd_sc_mcu7t5v0", ("lef", "techlef")),

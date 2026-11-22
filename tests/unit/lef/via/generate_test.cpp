@@ -5,9 +5,9 @@
 // order check, omitted parameters (Q-LEFDEF-61), and ORIGIN, OFFSET and
 // PATTERN with magic-compat OFF only (Q-LEFDEF-62)
 // (capabilities lef-read "Generated via geometry", def-read "Generated DEF
-// vias"; openspec/changes/m6-lef-def-oasis tasks.md 4.3).
+// vias"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 4.3).
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

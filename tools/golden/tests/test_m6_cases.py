@@ -249,6 +249,18 @@ class ExitCheckTest(unittest.TestCase):
                 self.assertNotIn(cid, listed)
         self.assertEqual(m6_cases.LATER["MASK-OS-016"][0], "M13")
 
+    def test_rows_covered_outside_golden_need_an_approved_decision(self):
+        """Q-OASIS-92 (2026-11-22): an unwritten row passes the exit check only through
+        COVERED_OUTSIDE_GOLDEN and only while its decision is resolved."""
+        rows = {"OASIS-092": "no headless entry point", "X-1": "not written"}
+        self.assertEqual(m6_cases.covered_rows(rows, {"Q-OASIS-92": ("OASIS", True)}),
+                         {"OASIS-092": "Q-OASIS-92: " + m6_cases.COVERED_OUTSIDE_GOLDEN["OASIS-092"][1]})
+        self.assertEqual(m6_cases.covered_rows(rows, {"Q-OASIS-92": ("OASIS", False)}), {})
+        self.assertEqual(m6_cases.covered_rows(rows, {}), {})
+        self.assertEqual(m6_cases.covered_rows({"X-1": "not written"}, {"Q-OASIS-92": ("OASIS", True)}), {})
+        # The committed decision is resolved and the row is still unwritten, so it is covered.
+        self.assertIn("OASIS-092", m6_cases.covered_rows(m6_cases.not_authored()))
+
     def test_every_m6_deferral_is_listed(self):
         known = deviations.load(REPO / "tests" / "golden")
         expected = sorted(cid for cid, d in known.items() if d.deferred == "M6")

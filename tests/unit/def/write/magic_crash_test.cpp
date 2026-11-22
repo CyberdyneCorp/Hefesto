@@ -13,7 +13,7 @@
 // the plane number (Q-LEFDEF-101). Hefesto writes the geometry under
 // BLOCKAGES in both modes and says Magic would have crashed.
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

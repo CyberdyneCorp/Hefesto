@@ -33,7 +33,8 @@ capability cites without a ``Resolution:`` line (scripts/check_milestone_readine
 and the approved deviations the case modules record outside ``deviations.toml`` (``APPROVED_DEVIATIONS``:
 cases that pass with a recorded decision, e.g. Q-OASIS-2, task 15.6) and the rows not written yet. It
 fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision,
-recorded in ``LATER`` (the case's entry is then deferred to that milestone).
+recorded in ``LATER`` (the case's entry is then deferred to that milestone). Accepting a row as covered
+outside the golden suite is one too, recorded in ``COVERED_OUTSIDE_GOLDEN`` with its approved decision.
 """
 from __future__ import annotations
 
@@ -113,6 +114,14 @@ LATER: dict[str, tuple[str, str]] = {
 }
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+# Rows with no golden case that a user decision accepts as covered outside the golden suite: row ID ->
+# (Q-ID, why). --exit-check reports such a row as covered, not unwritten, only while the row is still
+# unwritten and the Q-ID has an approved Resolution (covered_rows). OASIS-092 (Q-OASIS-92, approved
+# 2026-11-22): the generic open has no headless entry point; tasks 13.2 and 14.1 test it.
+COVERED_OUTSIDE_GOLDEN: dict[str, tuple[str, str]] = {
+    "OASIS-092": ("Q-OASIS-92", "covered by the unit tests of task 13.2 (tests/unit/oasis/command/open_test.cpp) "
+                                "and the desktop test of task 14.1 (tests/unit/shell/m6_open_test.cpp)"),
+}
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7). OASIS-020 and OASIS-021-* (round 6, G2 of
@@ -463,6 +472,17 @@ def unresolved_decisions(milestone: str = MILESTONE) -> list[str]:
     return sorted(lines, key=lambda line: readiness.sort_key(line.split(":", 1)[0]))
 
 
+def covered_rows(rows: dict[str, str], entries: dict[str, tuple[str, bool]] | None = None) -> dict[str, str]:
+    """``<row>: <decision and why>`` of the unwritten ``rows`` that COVERED_OUTSIDE_GOLDEN accepts with a
+    resolved decision; a row whose decision is missing or unresolved stays unwritten."""
+    entries = _readiness_module().load_entries() if entries is None else entries
+    covered = {}
+    for row, (qid, why) in COVERED_OUTSIDE_GOLDEN.items():
+        if row in rows and entries.get(qid, ("", False))[1]:
+            covered[row] = f"{qid}: {why}"
+    return covered
+
+
 def case_dir(spec: tclcase.TclCase) -> Path:
     return casegen.GOLDEN / spec.area / "cases" / spec.id
 
@@ -502,8 +522,12 @@ def exit_check() -> int:
     print("\n".join(blockers) if blockers else "no deferral targets M6")
     decisions = unresolved_decisions()
     print("\n".join(decisions) if decisions else "every decision M6 cites is resolved")
-    unwritten = [f"{row}: not written, {why}" for row, why in not_authored().items()] + missing_rows()
-    print("\n".join(unwritten) if unwritten else "every row is written")
+    rows = not_authored()
+    covered = covered_rows(rows)
+    unwritten = [f"{row}: not written, {why}" for row, why in rows.items() if row not in covered] + missing_rows()
+    print("\n".join(unwritten) if unwritten else "every row is written or covered outside the golden suite")
+    for row, why in covered.items():
+        print(f"{row}: covered outside the golden suite, {why}")
     for cid, why in approved_deviations().items():
         print(f"{cid}: approved deviation, {why}")
     return 1 if blockers or decisions or unwritten else 0

@@ -19,7 +19,7 @@
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
 // set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15, and
-// openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/m6-lef-def-oasis/design.md D2, and
+// openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2, and
 // openspec/changes/m8-schematic/design.md D17, openspec/changes/m7-extraction/design.md D21); the device
 // libraries were added by NATIVE in M4 round 2, the standard-cell helpers of the M7 PDK cases in M7 round 1.
 
@@ -212,7 +212,7 @@ inline std::optional<std::filesystem::path> pinned_stdcell_gds(std::string_view 
   return cell != nullptr ? pinned_gds(*cell->gds) : std::nullopt;
 }
 
-// The LEF data sets (openspec/changes/m6-lef-def-oasis/design.md D2, tasks 1.2 and 1.4): the tech LEF and
+// The LEF data sets (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2, tasks 1.2 and 1.4): the tech LEF and
 // the cell LEF of one standard-cell library per PDK, same pins, under their own PDK root `.cache/pdks/lef/`
 // (fetch_pdk.py `pdk_dir`): sky130-lef, gf180mcu-lef and ihp-lef.
 

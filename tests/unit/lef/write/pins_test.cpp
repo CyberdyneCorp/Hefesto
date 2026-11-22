@@ -5,7 +5,7 @@
 // areas and the PORT records (tasks.md 6.4, 6.5; Q-LEFDEF-36, 39, 40, 44,
 // 46, 50, 52, 53).
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 
