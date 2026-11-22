@@ -150,6 +150,8 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 Total: 56. IDs are given without the `Q-` prefix.
 
+Approved 2026-11-22 ("Entries approved 2026-11-22"): compat 4 (EXTRACT-29, MISC-91, NETLIST-49, NETLIST-53), fix 4 (EXTRACT-28, NETLIST-50, NETLIST-51, NETLIST-52), with Q-EXTRACT-27 (fix, 2026-11-21) under "Entries raised by the M7 plan".
+
 ## Planning questions raised by the M7 plan
 
 These come from planning the implementation, not from the specs. Each is drafted in `openspec/changes/m7-extraction/design.md` "Open Questions" with its options and reasons. **All nine were approved by the user on 2026-11-21, each with its recommended option (a).** Options are listed with the recommended one first.
@@ -185,18 +187,45 @@ Applied 2026-11-21, after the approval:
 
 The entry is in `docs/decisions/open-questions/EXTRACT.md` with `Status: approved (recommendation drafted 2026-11-20 in the M7 plan, approved 2026-11-21)` and a `Resolution: fix` line. Under X-2 tier 1 the decision is a both-modes fix: the truncated `.ext` keeps a valid timestamp, and the truncated `.res.ext` is newer than its `.ext`, so the loss is silent and every netlist read from them is wrong.
 
-## Entries proposed in round R1 (not approved)
+## Entries approved 2026-11-22
 
-Raised by the R1 workstreams for Magic behaviours no row covers. Each branch implements the standing rule (compat for option-word parsing, a both-modes fix for crashes and undefined behaviour); each needs a user decision.
+Raised by the R1 workstreams and the R1 integration for Magic behaviours no row covered, and for plan items that needed the user's acceptance. **All were approved by the user on 2026-11-22, each with its recommended option.** The open-questions entries carry `Status: approved 2026-11-22` and a `Resolution:` line; the plan items are recorded in `openspec/changes/m7-extraction/design.md` and `tasks.md`.
 
-| ID | Question | Kind | Recommendation |
-|---|---|---|---|
-| Q-NETLIST-49 | `ext2sim run` becomes the cell name | **compat** (proposed) | as Q-NETLIST-13 |
-| Q-MISC-91 | `antennacheck run` becomes the cell name | **compat** (proposed) | as Q-NETLIST-13; antenna-check text to say the prefix match is OFF-only |
-| Q-EXTRACT-28 | `extract list`/`listall` with nothing after it crashes | **fix** (proposed) | both modes: the wrong-number-of-arguments message |
-| Q-NETLIST-50 | Standalone extcheck dereferences a NULL `ExtCurStyle` on a `scale` line | **fix** (proposed) | both modes: hefesto-extcheck never crashes; regression test |
-| Q-NETLIST-51 | `device vsource` reads an uninitialised token count | **fix** (proposed) | both modes: parse with `ac = 7`; regression test |
-| Q-NETLIST-52 | ext2sim reuses a closed `.al`/`.nodes` stream after `alias off`/`labels off` (double free) | **fix** (proposed) | both modes: never touch a previous run's stream; regression test |
+### Behaviour questions
+
+| ID | Question | Kind | Resolution | Spec | Implemented by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-28 (M7-1) | `extract list`/`listall` with nothing after it crashes | **fix** | both modes: `Wrong number of arguments in "extract" command.  Try "extract help" for help.` | extract-commands "Command syntax and option matching" | scaffold (R1); test retagged in R2 |
+| Q-NETLIST-49 (M7-2) | `ext2sim run` becomes the cell name | **compat** | as Q-NETLIST-13: ON `run` and an ambiguous word are run arguments (the word is the cell name); OFF `run` is a keyword and an ambiguous prefix prints `Ambiguous option: <w>` | netlist-sim "Command options and defaults" | scaffold (`netlist/first_word.cpp`); SIM tests |
+| Q-MISC-91 (M7-2) | `antennacheck run` becomes the cell name | **compat** | as Q-NETLIST-13; the antenna-check prefix match holds with magic-compat OFF only | antenna-check "Antenna check command" | scaffold; SIM's tagged tests |
+| Q-NETLIST-51 (M7-4) | `device vsource` reads an uninitialised token count | **fix** | both modes: parse with `ac = 7` | ext-flattening-read "Device records" | EXTFLAT (task 10.1) |
+| Q-NETLIST-50 (M7-5) | standalone extcheck dereferences an unset extraction style on a `scale` line | **fix** | both modes: `hefesto-extcheck` reads the record with the reader's own unit and never crashes | netlist-extcheck "Invocation" | SIM (task 12.4) |
+| Q-EXTRACT-29 (M7-6) | TiSplitX on a split (diagonal) tile moves its triangle | **compat** | ON: copy Magic's cut; OFF: refuse. `StitchEditor::split_x` refuses in both modes today; the ON branch lands with RESNET (R4) | none (db-internal; design D6, D16) | RESNET with the MODEL review (R4) |
+| Q-NETLIST-53 (M7-7) | ResFracture on a split (diagonal) tile | **compat** | ON: make the tile Manhattan via `set_type` (its left type), then split; OFF: keep it whole | extresist-network "Tile fracturing" | RESNET (task 13.1) |
+| Q-NETLIST-52 (M7-8) | ext2sim reuses a closed `.al`/`.nodes` stream after `alias off`/`labels off` (double free) | **fix** | both modes: a run writes `.al`/`.nodes` only when its option is on and never touches a previous run's stream | netlist-sim "Command options and defaults" | SIM (task 12.1) |
+
+### Plan items
+
+| Item | Question | Resolution |
+|---|---|---|
+| M7-3 | M4's partial `ext2spice` (PDKINT, `script/pdk/commands.cpp`) and M7's command | M4's command is folded into M7's `ext2spice`; the `scale` option is kept; SPICE moves `scale` into `SpiceSettings` in round R2 (design "Differences from Area contracts", M4's `ext2spice`) |
+| M7-9 | Magic's standalone `extcheck` cannot be built at fc5daa9e (golden-capture runs 44961645329, 44964258826: `build=unavailable`) | design R7 option (a): NL-CHK-01's expected output is hand-derived from extcheck/extcheck.c and extflat/EFargs.c (one case, four runs, every line traced to a source line), recorded as hand-derived under this decision in the case (`hand_derived`, provenance) and, until it replays, as a deferral in `tests/golden/deviations.toml`, and compared with the new `extcheck-console` comparator; the `netlist-extcheck` spec is kept; the `<prog>` mask applies to Hefesto's usage line only (design D15, D21) |
+| M7-10 | Magic writes flat coupling `cap` lines in address order when the substrate is named | the `spice-cap` comparator with a substrate node list (`spice-cap:VSUB`, `spice-cap:VSUB,c2/VSUB`), as landed in R1 (design D21) |
+| M7-11 | The synthetic tech additions of R1's golden authoring | accepted: `exttest.tech` gains `ndc`, `ndiffh`, `thkox` and the seventh plane `oxide`, and the CIF output scale is 0.5 um (design D21) |
+| M7-12 | The tile client slot's memory cost on iPad (task 3.4) | the analytical bound of about +240 MB for a 10M-rectangle layout held flat is accepted (under the 3 GB iPad limit, `hefesto-performance` "Memory bound on iPad"); the perf gates passed (dispatch run 44965550726), so task 3.4 is done |
+| M7-13 | The editor-side extract-style hook needs one call in `tech/` | design D20 is amended: `tech/commands.cpp` (`install_technology`) and `tech/scale_layout.cpp` (`scale_layout`) each gain one call line and one include, calling `editor/extract_hook.cpp`; this is no longer a difference from the plan |
+
+### Spec changes the answers imply
+
+Applied 2026-11-22, after the approval:
+- **Q-EXTRACT-28:** `extract-commands` "Command syntax and option matching" states the both-modes message for a bare `list`/`listall`, with a scenario.
+- **Q-NETLIST-49 and Q-NETLIST-52:** `netlist-sim` "Command options and defaults" gives the first-word rule per mode and the both-modes file rule, with a scenario per mode and one for `alias off` after a run.
+- **Q-MISC-91:** `antenna-check` "Antenna check command" says that the unique-prefix match is the magic-compat OFF behaviour, with a scenario per mode.
+- **Q-NETLIST-50:** `netlist-extcheck` "Invocation" states the `scale` rule, with a scenario.
+- **Q-NETLIST-51:** `ext-flattening-read` "Device records" gives `vsource` its token count, with a scenario.
+- **Q-NETLIST-53:** `extresist-network` "Tile fracturing" gives the split-tile rule per mode, with a scenario per mode.
+- **M7-3:** `netlist-spice-options` does not name M4's setting; no change.
+- Q-EXTRACT-29 is a tile-database rule with no capability text; design D6 and D16 carry it.
 
 ## Notable changes to the entries' original recommendations
 

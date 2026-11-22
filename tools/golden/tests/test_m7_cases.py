@@ -7,7 +7,10 @@ cap:hefesto-testing-strategy req:Golden compatibility suite
 """
 from __future__ import annotations
 
+import contextlib
 import fnmatch
+import io
+import json
 import re
 import shutil
 import subprocess
@@ -239,7 +242,29 @@ class WrittenCaseTest(unittest.TestCase):
 
     def test_dispatch_names_every_case(self):
         cases = m7_cases.dispatch_command().split('cases="', 1)[1].rstrip('"').split()
-        self.assertEqual([Path(c).name for c in cases], m7_cases.authored_ids())
+        expected = [i for i in m7_cases.authored_ids() if i not in m7_cases.HAND_DERIVED]
+        self.assertEqual([Path(c).name for c in cases], expected)
+
+    def test_hand_derived_extcheck_case(self):
+        """NL-CHK-01 (design R7 option (a), M7-9): expected/ is the generator's, provenance says it was
+        not captured, the case names the extcheck-console comparator, and --exit-check lists it with
+        its decision."""
+        chk = m7_cases.case_dir(netlist_cases.CHK_ID)
+        for name, content in netlist_cases.extcheck_expected().items():
+            with self.subTest(output=name):
+                self.assertEqual((chk / "expected" / name).read_text(encoding="utf-8"), content)
+        provenance = json.loads((chk / "expected" / "provenance.json").read_text(encoding="utf-8"))
+        self.assertFalse(provenance["reference_captured"])
+        self.assertEqual(provenance["hand_derived"]["decisions"], ["Q-NETLIST-50"])
+        case = load_case(chk, known_comparators())
+        self.assertEqual(case.capture_blocked, "")
+        self.assertEqual({o.comparator for o in case.outputs}, {"extcheck-console"})
+        self.assertIn("hand_derived = ", (chk / "case.toml").read_text(encoding="utf-8"))
+        self.assertEqual(netlist_cases.extcheck_expected()["usage.exit"], "1\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            m7_cases.exit_check()
+        self.assertIn(f"hand-derived: {netlist_cases.CHK_ID} (Q-NETLIST-50): ", out.getvalue())
 
 
 @unittest.skipUnless(shutil.which("tclsh"), "tclsh is not installed")

@@ -8,7 +8,7 @@ Defines the `extract` command family: which cells are extracted and when (increm
 
 ### Requirement: Command syntax and option matching
 
-The command SHALL be `extract [list|listall] [OPTION [ARGS...]]` with OPTION one of `all, cell, do, halo, help, length, no, parents, path, showparents, stepsize, style, unique, warn`, matched case-insensitively by unique prefix (an exact match wins). An unknown or ambiguous option SHALL report `"<opt>" isn't a valid extract option.  Type "extract help" for a list of valid options.` and do nothing. A first argument beginning with `list` (or `listall`) SHALL select list-style results for `path` and `style` and be removed before matching. All options except `style` and `help` SHALL require a current layout window or box-tool cell to determine the root cell (`Point to a window first` otherwise). Wrong argument counts SHALL report `Wrong number of arguments in "extract" command.  Try "extract help" for help.`
+The command SHALL be `extract [list|listall] [OPTION [ARGS...]]` with OPTION one of `all, cell, do, halo, help, length, no, parents, path, showparents, stepsize, style, unique, warn`, matched case-insensitively by unique prefix (an exact match wins). An unknown or ambiguous option SHALL report `"<opt>" isn't a valid extract option.  Type "extract help" for a list of valid options.` and do nothing. A first argument beginning with `list` (or `listall`) SHALL select list-style results for `path` and `style` and be removed before matching. All options except `style` and `help` SHALL require a current layout window or box-tool cell to determine the root cell (`Point to a window first` otherwise). Wrong argument counts SHALL report `Wrong number of arguments in "extract" command.  Try "extract help" for help.` A `list` or `listall` word with nothing after it is a wrong argument count: it SHALL report that message and do nothing else, in both `magic-compat` settings (Q-EXTRACT-28, resolution: fix; Magic looks up the missing argument and crashes).
 Compatibility: behavioral (operations); informative (message text)
 
 (Magic ref: commands/CmdE.c:1064-1220, utils/lookup.c:58-160)
@@ -17,6 +17,11 @@ Compatibility: behavioral (operations); informative (message text)
 - **GIVEN** the command `extract s`
 - **WHEN** it is executed
 - **THEN** it reports that `s` isn't a valid extract option (it matches `showparents`, `stepsize`, `style`)
+
+#### Scenario: List with no option
+- **GIVEN** the command `extract list` or `extract listall` with nothing after it, with `magic-compat` ON or OFF
+- **WHEN** it is executed
+- **THEN** it reports `Wrong number of arguments in "extract" command.  Try "extract help" for help.` and does nothing else
 
 ### Requirement: Incremental extraction
 
