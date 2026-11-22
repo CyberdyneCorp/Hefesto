@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3392 scenarios, 940 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3394 scenarios, 940 open questions.
 
 ## Hefesto product (native)
 
@@ -118,11 +118,11 @@ Open questions: [132](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 68 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
+| [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 69 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
 | [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 55 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
-| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 73 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
+| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 74 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
 
 ## Circuit extraction (EXTRACT)
 
