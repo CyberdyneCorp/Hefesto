@@ -120,7 +120,9 @@ CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
-# deviations.toml, scoped to the outputs it changes (task 15.7).
+# deviations.toml, scoped to the outputs it changes (task 15.7). OASIS-020 and OASIS-021-* (round 6, G2 of
+# the user decisions of 2026-11-21) carry the approved Q-OASIS-56 deviation there, with `deferred = "M6"`
+# until their recapture on KLayout's strm2gds input (golden-capture.yml); the recapture drops that line.
 REPLAYED: set[str] = {
     "LEFDEF-RT-sky130_fd_sc_hd",
     "LEFDEF-RT-sg13g2_stdcell",
@@ -131,6 +133,7 @@ REPLAYED: set[str] = {
     "OASIS-021-flatten",
     "OASIS-021-noduplicates",
     "OASIS-021-ordering",
+    "OASIS-021-unique",
     "OASIS-023",
     "OASIS-032",
     "LEFDEF-118",

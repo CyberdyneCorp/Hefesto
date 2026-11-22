@@ -54,6 +54,7 @@ The decoder (`oasis::Decoder`) returns an error that stops decoding from `next()
 - `OASIS-CODEC-027`: CBLOCK compression failed, or the level is not 1 to 9.
 - `OASIS-CODEC-028`: "invalid property value type <n>" (above 15).
 - `OASIS-CODEC-029`: a warning, "invalid magnification (0 or less) in a PLACEMENT; the placement is dropped" (oasis-format "PLACEMENT records", oasis-read "Placement transforms"; D3(b) of the user decisions of 2026-11-19, both modes).
+- `OASIS-CODEC-030`: "point list of <n> points, more than 16777216; the element is dropped", "repetition of type <t> lists more than 16777216 displacements; the element is dropped", or the same for a later element that reuses such a list or repetition as its modal value. The entries are read and not stored, and decoding continues (oasis-format "Point lists" and "Repetitions"; Q-OASIS-14, approved 2026-11-21, both modes; security review M6-S3).
 
 ## READ
 
@@ -148,6 +149,7 @@ fails when the two disagree.
 | `OASIS-CODEC-027` | error | CBLOCK compression failed (zlib) or the compression level is not 1 to 9. |
 | `OASIS-CODEC-028` | error | Invalid PROPERTY value type (above 15); decoding stops. |
 | `OASIS-CODEC-029` | warning | PLACEMENT with a magnification of 0 or less; the placement is dropped. |
+| `OASIS-CODEC-030` | error | A point list or a type 4-7, 10 or 11 repetition lists more than 2^24 entries; the element is dropped. |
 | `OASIS-READ-001` | error | No cifinput style: nothing in the "cifinput" section of the technology file; nothing is read. |
 | `OASIS-READ-002` | error | The OASIS file cannot be opened or read. |
 | `OASIS-READ-003` | error | Decoding stopped (a fatal oasis-format error); only the cells complete before it are read. |

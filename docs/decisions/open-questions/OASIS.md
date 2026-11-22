@@ -134,6 +134,15 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Recommendation: drop with a warning in both modes; change the golden decoder to match the codec.
 - Resolution: fix — in both modes a PLACEMENT whose magnification is 0 or less is dropped with the warning "invalid magnification" (OASIS-CODEC-029); `goldenlib/oasis.py` drops it too, and OASIS-001 and OASIS-009 were regenerated. Approved 2026-11-19 (D3(b)).
 
+### Q-OASIS-14: Point lists and explicit repetitions with more than 2^24 entries (cap)
+- Kind: ambiguity
+- Status: approved 2026-11-21 (user decision G5)
+- Magic behavior: n/a (Magic has no OASIS reader).
+- Evidence: oasis-format "Point lists" and "Repetitions" rule 7; docs/contributing/security.md M6-S3 (round-5 review: a decoded point list or explicit repetition was a vector bounded only by the inflated input, so a CBLOCK of about 1 MB inflating to 1 GiB of one-byte deltas decoded to about 16 GiB of points)
+- Options: cap at 2^24 entries, drop the element with a message | no cap (memory at most 16 times the inflate cap)
+- Recommendation: cap in both modes (the read fractures polygons at 8191 points anyway).
+- Resolution: fix — in both modes a decoded point list of more than 2^24 points, or a type 4, 5, 6, 7, 10 or 11 repetition listing more than 2^24 displacements, is read without being stored and its element is dropped with OASIS-CODEC-030 ("point list of <n> points, more than 16777216; the element is dropped", "repetition of type <r> lists more than 16777216 displacements; the element is dropped"); a later element that reuses that list or repetition as its modal value is dropped with the same code; decoding continues (`oasis/codec/lists.cpp`, `oasis::kMaxListEntries`). Regression tests "security fix M6-S3: a point list above 2^24 points is read, not stored, and dropped (approved cap)", "... a list repetition above 2^24 displacements ..." (`tests/unit/oasis/codec/primitives_test.cpp`) and "... a POLYGON above 2^24 points is dropped, and so is its modal reuse ...", "... a repetition above 2^24 displacements is dropped, and so is its modal reuse ..." (`tests/unit/oasis/codec/records_test.cpp`). Approved 2026-11-21 (G5).
+
 ### Q-OASIS-30: Cell timestamps without dates in OASIS
 - Kind: platform
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
@@ -319,7 +328,7 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Options: write XGEOMETRY in full form | record a gdstk limitation
 - Recommendation: full form.
 - Resolution: fix — in both modes an XGEOMETRY is written with layer, datatype, x and y explicit and a repetition never as type 0, whatever the modal state; the modal variables are still updated (`oasis/codec/encoder_elements.cpp`). Regression test "XGEOMETRY is written in full form" (`tests/unit/oasis/codec/encoder_test.cpp`); oasis-validate's OASIS-062 gdstk read is the third-party check. Approved 2026-11-20 (E4).
-- Finding (round-5 integration, oasis-validate run 44860998162): the full form did not stop the crash. Hefesto's OASIS-062 XGEOMETRY is now byte-identical to the vendor file's, and gdstk 1.0.2 still exits with SIGSEGV. gdstk's `read_oas` loop (`src/library.cpp` v1.0.2, `while (*error_code == NoError ...)`) stops at the first unsupported record, which an XGEOMETRY is (`ErrorCode::UnsupportedRecord`), so the END record, which resolves CELL-by-refnum names from the CELLNAME table, is never read. The vendor file names its cells in the CELL records, so it reads (without the records after the XGEOMETRY); Hefesto writes CELL refnums with the CELLNAME table at the end, so its cells keep a null name and gdstk crashes. No XGEOMETRY encoding avoids this. Proposed (user decision needed): record it as a gdstk 1.0.2 limitation and give OASIS-062's gdstk read a validator skip, as OASIS-055-names has; the full form stays (it is valid and matches the vendor file). Writer-side alternative (also for the user): write CELL records with explicit names (CELL record type 14, as the vendor file does) instead of refnums, so gdstk names the cells read before it stops; this changes every OASIS output and its golden bytes.
+- Finding (round-5 integration, oasis-validate run 44860998162): the full form did not stop the crash. Hefesto's OASIS-062 XGEOMETRY is now byte-identical to the vendor file's, and gdstk 1.0.2 still exits with SIGSEGV. gdstk's `read_oas` loop (`src/library.cpp` v1.0.2, `while (*error_code == NoError ...)`) stops at the first unsupported record, which an XGEOMETRY is (`ErrorCode::UnsupportedRecord`), so the END record, which resolves CELL-by-refnum names from the CELLNAME table, is never read. The vendor file names its cells in the CELL records, so it reads (without the records after the XGEOMETRY); Hefesto writes CELL refnums with the CELLNAME table at the end, so its cells keep a null name and gdstk crashes. No XGEOMETRY encoding avoids this. Proposed (user decision needed): record it as a gdstk 1.0.2 limitation and give OASIS-062's gdstk read a validator skip, as OASIS-055-names has; the full form stays (it is valid and matches the vendor file). Writer-side alternative (also for the user): write CELL records with explicit names (CELL record type 14, as the vendor file does) instead of refnums, so gdstk names the cells read before it stops; this changes every OASIS output and its golden bytes. Decided 2026-11-21 (G1): the validator skip, writer unchanged (Q-OASIS-55).
 
 ### Q-OASIS-51: An OASIS write of a vendor GDS cell with other units
 - Kind: ambiguity
@@ -352,6 +361,24 @@ OASIS support is a Hefesto product decision (docs/decisions/product.md#P-6). Mag
 - Evidence: gds-write "Read-only OASIS vendor cells"; docs/contributing/security.md M6-S3
 - Options: cap at 2^28 element instances per cell (as oasis-read, Q-OASIS-41) | no cap
 - Resolution: fix — in both modes a read-only OASIS cell that expands to more than 2^28 element instances fails, with its parents: `Calma output error:  cell <c> expands to more than 268435456 element instances; the cell cannot be written.` (GDS-WRITE-055); the instances are counted before any is written. Regression test "a vendor OASIS cell above 2^28 element instances fails the cell (approved cap)" (`tests/unit/oasis/write/vendor_test.cpp`). Approved 2026-11-20 (E3).
+
+### Q-OASIS-55: gdstk 1.0.2 cannot read OASIS-062's output (validator skip)
+- Kind: ambiguity
+- Status: approved 2026-11-21 (user decision G1)
+- Magic behavior: n/a (Magic has no OASIS).
+- Evidence: Q-OASIS-50's round-5 finding; oasis-validate runs 44860998162 and 44873406393: gdstk 1.0.2 `read_oas` exits with SIGSEGV on Hefesto's OASIS-062 `out.oas`. Its loop (`src/library.cpp`, v1.0.2) stops at the first unsupported record, an XGEOMETRY, so the END record whose CELLNAME table names Hefesto's cells (CELL by refnum) is never read and the cells keep a null name. The vendor file names its cells in its CELL records and reads.
+- Options: skip gdstk's read of OASIS-062 in oasis-validate, writer unchanged | write CELL records with explicit names (changes every OASIS output and its golden bytes)
+- Recommendation: the validator skip (the full-form XGEOMETRY of Q-OASIS-50 stays; the output is valid and KLayout reads it).
+- Resolution: other — the oasis-validate gdstk 1.0.2 leg skips its read of OASIS-062's output, as it skips the XOR of OASIS-055-names, with the reason in the step detail (`tools/golden/oasis_validate.py` `GDSTK_READ_SKIPS`); OASIS-062's other checks, KLayout's reads and gdstk's `oas_validate` still run. The writer is unchanged. Test "test_gdstk_read_skip_of_oasis_062" (`tools/golden/tests/test_oasis_validate.py`). Approved 2026-11-21 (G1).
+
+### Q-OASIS-56: The converter that makes Magic's GDS input for OASIS-020/021
+- Kind: ambiguity
+- Status: approved 2026-11-21 (user decision G2)
+- Magic behavior: n/a (Magic reads the GDS file it is given; the question is which file).
+- Evidence: oasis-read "GDS-equivalence cross-check"; round 5 switched Magic's input of OASIS-020/021 from KLayout's `strm2gds` of the strm2oas file to Hefesto's own `authoring/oasequiv.py` conversion (commit a363d27c), because strm2gds writes the two coincident copies of a zero-displacement shape repetition once while oasis-read reads one element per displacement ("Shape repetitions"); with strm2gds, Hefesto's `.mag` has a zero-area label beside the port label in 45 cells.
+- Options: keep KLayout's strm2gds (independent converter) and record the coincident-repetition difference as a deviation | keep oasequiv.py (exact equivalent, but written by Hefesto's authors)
+- Recommendation: strm2gds, with the deviation.
+- Resolution: other — KLayout's strm2gds stays the converter that makes Magic's GDS input of OASIS-020 and OASIS-021-*, so the reading of repetitions is cross-checked by a tool independent of Hefesto's authors; round 5's switch to oasequiv.py is reverted (`tools/golden/authoring/oasis_captured_cases.py`; the committed `tests/golden/OASIS/equivalent/` is removed). The coincident-repetition difference is a documented deviation of `cells.sha256` in `tests/golden/deviations.toml`; the reading rule is unchanged. The cases are recaptured on the strm2gds input (golden-capture.yml), and the deviation entries keep `deferred = "M6"` until then. oasis-read "GDS-equivalence cross-check" says so. Approved 2026-11-21 (G2).
 
 ### Q-OASIS-60: Character mapping applied to OASIS strings
 - Kind: ambiguity

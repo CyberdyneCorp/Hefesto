@@ -84,10 +84,17 @@ void check_delta(Point64 delta, Drop& drop);
 /// Reads and discards a string (END padding).
 void skip_string(Input& in);
 [[nodiscard]] Point64 read_delta(Input& in, DeltaForm form);
-/// A point list; a count of 0 drops the element, a type above 5 stops.
+/// A point list; a count of 0 drops the element, a type above 5 stops, a
+/// count above kMaxListEntries drops the element (OASIS-CODEC-030) and
+/// comes back `capped` with no vertices.
 [[nodiscard]] PointList read_point_list(Input& in, Drop& drop);
-/// A repetition; type 0 returns `modal` (undefined: OASIS-CODEC-020).
+/// A repetition; type 0 returns `modal` (undefined: OASIS-CODEC-020). A
+/// list type above kMaxListEntries displacements drops the element
+/// (OASIS-CODEC-030) and comes back with no offsets (see capped()).
 [[nodiscard]] Repetition read_repetition(Input& in, const std::optional<Repetition>& modal, Drop& drop);
+/// Whether `repetition` is a list repetition dropped by the entry cap (a
+/// list type with no offsets; a decoded one always has at least one).
+[[nodiscard]] bool capped(const Repetition& repetition) noexcept;
 [[nodiscard]] Interval read_interval(Input& in);
 
 /// The bytes of `value` (the unsigned and signed encodings), for tests of
