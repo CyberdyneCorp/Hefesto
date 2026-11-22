@@ -39,6 +39,7 @@ using Clock = std::chrono::steady_clock;
   std::sort(runs.begin(), runs.end());
   const double median = runs[runs.size() / 2];
   j["median_ms"] = median;
+  j["p95_ms"] = runs[std::min(runs.size() - 1, (runs.size() * 95) / 100)];
   j["min_ms"] = runs.front();
   j["fps"] = median > 0.0 ? 1000.0 / median : 0.0;
   return j;
@@ -46,14 +47,19 @@ using Clock = std::chrono::steady_clock;
 
 #ifdef HEFESTO_VIEW3D_BENCH_FRAME
 
-/// Times `frames` draws at `level` after one warm-up draw.
+/// Times `frames` draws at `level` after one warm-up draw, orbiting the
+/// camera around z by 360 / frames degrees before each frame (the orbit
+/// gesture), so every frame draws a new view of the whole region.
 json time_level(render::VulkanMesh3dRenderer& renderer, render::VulkanOffscreenTarget& target,
-                const view3d::ViewState& view, render::DrawParams params, int level, int frames) {
+                view3d::ViewState view, render::DrawParams params, int level, int frames) {
   params.level = level;
   renderer.draw(view, params, target);  // warm-up: pipelines, MSAA images, layer buffers
+  const view3d::Gesture orbit{view3d::Gesture::Kind::orbit, 360.0F / static_cast<float>(frames), 0, 1, false,
+                              view3d::Preset::top};
   std::vector<double> runs;
   runs.reserve(static_cast<std::size_t>(frames));
   for (int i = 0; i < frames; ++i) {
+    view3d::apply(view, orbit);
     const auto start = Clock::now();
     renderer.draw(view, params, target);  // record, submit, wait (end_frame)
     runs.push_back(ms_since(start));
@@ -76,7 +82,7 @@ json measure(const view3d::MeshModel& mesh, const view3d::LayerStack& stack, con
   j["device"] = canvas.device_name();
   j["width"] = o.width;
   j["height"] = o.height;
-  j["view"] = "isometric, whole region";
+  j["view"] = "isometric, whole region, orbiting 360 degrees around z over the timed frames";
   j["msaa"] = renderer.multisampling();
   const auto start = Clock::now();
   renderer.upload(mesh);

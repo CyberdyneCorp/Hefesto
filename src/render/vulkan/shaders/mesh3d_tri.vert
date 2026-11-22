@@ -4,9 +4,10 @@
 #extension GL_GOOGLE_include_directive : require
 
 //
-// Mesh3dRenderer: one split-tile Triangle per instance, drawn as 6
-// vertices: the top face at z_top and the bottom face at z_bot, each
-// counter-clockwise seen from outside (Magic's w3dFillPolygon), with the
+// Mesh3dRenderer: one split-tile Triangle per instance, drawn as 3
+// vertices: the top face at z_top when it faces the viewer, the bottom
+// face at z_bot otherwise, each counter-clockwise seen from outside
+// (Magic's w3dFillPolygon draws both; culling keeps at most one), with the
 // triangle's own h and t (its source tile's left type, MESH).
 
 #include "mesh3d_common.glsl"
@@ -28,9 +29,9 @@ void main() {
     p1 = p2;
     p2 = t;
   }
-  bool top = gl_VertexIndex < 3;
-  int v = gl_VertexIndex % 3;
-  vec2 xy = v == 0 ? p0 : ((v == 1) == top ? p1 : p2);
   vec2 z = z_range(in_ht);
+  bool top = front_facing(vec3(p0, z.x), vec3(p1, z.x), vec3(p2, z.x));
+  int v = gl_VertexIndex;
+  vec2 xy = v == 0 ? p0 : ((v == 1) == top ? p1 : p2);
   emit(in_layer, vec3(xy, top ? z.x : z.y), vec3(0.0, 0.0, top ? 1.0 : -1.0), in_pick);
 }

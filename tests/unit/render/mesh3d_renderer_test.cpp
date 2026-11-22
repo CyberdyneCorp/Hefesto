@@ -504,6 +504,43 @@ TEST_CASE("3D renderer top view shows metal1 in front of poly where they overlap
   }
 }
 
+TEST_CASE("3D renderer draws the face of each rectangle toward the viewer, from above and from below",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // A rectangle is one 4-vertex strip: the shader emits its h + t face or
+  // its h face, whichever faces the viewer (task 13.2), where the rasterizer
+  // used to cull one of the two. Seen from below (view_x 180) the h faces
+  // are shown and poly (h 0.3) is in front of metal1 (h 1.0); orthographic
+  // and perspective, levels 0 and 1.
+  Fixture f;
+  const Scene s = basic_scene();
+  for (const view3d::Projection kind : {view3d::Projection::orthographic, view3d::Projection::perspective}) {
+    for (const float view_x : {0.0F, 180.0F}) {
+      for (const int level : {0, 1}) {
+        INFO("projection " << static_cast<int>(kind) << ", view_x " << view_x << ", level " << level);
+        view3d::ViewState v = view_of(s, view3d::Preset::top);
+        v.view_x = view_x;
+        render::DrawParams p = f.params(s.stack, level);
+        p.projection.kind = kind;
+        const render::TargetReadback r = f.draw(s, v, p);
+        const bool below = view_x > 90.0F;
+        // Orthographic pixel positions; the probes sit well inside each
+        // region, so the perspective frame (same framing of z = 0) hits them.
+        const auto [px, py] = project(v, 50, 30, 0);  // poly under metal1
+        CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == (below ? kPoly : kMetal));
+        const auto [mx, my] = project(v, 70, 30, 0);  // metal1 alone
+        const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, mx, my)]);
+        REQUIRE(ref.has_value());
+        CHECK(ref->kind == render::PickKind::rect);
+        CHECK(layer_of(s.mesh, *ref) == kMetal);
+        if (kind == view3d::Projection::orthographic) {
+          const double z = below ? -1.0 * static_cast<double>(v.scale_z) : far_end_z(v, 1.0F, 0.5F);
+          CHECK(std::abs(r.depth[pixel(r, mx, my)] - depth_of(v, 70, 30, z)) < 1e-6F);
+        }
+      }
+    }
+  }
+}
+
 TEST_CASE("3D renderer isometric view matches its reference image",
           "[cap:view-3d][req:Viewing transform and shading]") {
   Fixture f;
@@ -730,21 +767,21 @@ int edge_differences(const std::vector<std::string>& expected, const std::vector
 TEST_CASE("3D renderer scales x and y by DrawParams::xy_scale",
           "[cap:view-3d][req:Viewing transform and shading]") {
   // Mask-layer mode in P1 draws the layout mesh scaled by Scene::xy_factor:
-  // the mesh drawn at xy_scale 2 covers the pixels of the same layout built
-  // at twice the coordinates.
+  // the mesh drawn at xy_scale 10 covers the pixels of the same layout built
+  // at ten times the coordinates.
   Fixture f;
   const Scene unit = scaled_basic_scene(1);
-  const Scene twice = scaled_basic_scene(2);
+  const Scene tenfold = scaled_basic_scene(10);
   for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
     INFO("preset " << static_cast<int>(preset));
-    const view3d::ViewState v = view_of(twice, preset);
-    const auto expected = pick_map(twice.mesh, f.draw(twice, v, f.params(twice.stack)));
+    const view3d::ViewState v = view_of(tenfold, preset);
+    const auto expected = pick_map(tenfold.mesh, f.draw(tenfold, v, f.params(tenfold.stack)));
     render::DrawParams p = f.params(unit.stack);
-    p.xy_scale = 2.0F;
+    p.xy_scale = 10.0F;
     const auto scaled = pick_map(unit.mesh, f.draw(unit, v, p));
     REQUIRE(scaled.size() == expected.size());
     CHECK(edge_differences(expected, scaled) * 100 <= kWidth * kHeight);
-    // Unscaled, the unit mesh covers about a quarter of that area.
+    // Unscaled, the unit mesh covers about a hundredth of that area.
     const auto plain = pick_map(unit.mesh, f.draw(unit, v, f.params(unit.stack)));
     CHECK(plain != scaled);
   }

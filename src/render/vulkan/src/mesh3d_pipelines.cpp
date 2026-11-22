@@ -251,7 +251,7 @@ struct FixedState {
     vertex_input.vertexAttributeDescriptionCount = static_cast<std::uint32_t>(input.attributes.size());
     vertex_input.pVertexAttributeDescriptions = input.attributes.data();
     assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;  // one strip per instance
     viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport.viewportCount = 1;
     viewport.scissorCount = 1;

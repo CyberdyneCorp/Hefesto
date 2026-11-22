@@ -65,9 +65,11 @@ struct FramePush {
 };
 static_assert(sizeof(FramePush) == 96);
 
-/// Vertices per instance of each kind.
+/// Vertices per instance of each kind, drawn as one triangle strip: the
+/// face of a rectangle or a triangle toward the viewer (the shader picks
+/// the top or the bottom face), a side face's quad.
 [[nodiscard]] constexpr std::uint32_t vertices_per_instance(Kind kind) noexcept {
-  return kind == Kind::rect ? 12U : 6U;
+  return kind == Kind::triangle ? 3U : 4U;
 }
 
 /// Shader modules, layouts, the multisampled pass and every pipeline.

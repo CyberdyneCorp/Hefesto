@@ -70,6 +70,19 @@ float light(vec3 model, vec3 normal) {
   return 0.4 + max(dot(vec3(normal.xy, -normal.z), vec3(0.57735027)), 0.0);
 }
 
+// Whether the chunk-local triangle (p0, p1, p2) faces the viewer once
+// projected: the rasterizer's own test (front faces are clockwise in
+// framebuffer coordinates, R1), taken on the homogeneous (x, y, w) of the
+// clip-space corners so that it holds for any w (its sign tells on which
+// side of the triangle's plane the eye is). Lets an instance draw only the
+// face of a top/bottom pair that can be seen.
+bool front_facing(vec3 p0, vec3 p1, vec3 p2) {
+  vec3 a = (frame.mvp * vec4(p0, 1.0)).xyw;
+  vec3 b = (frame.mvp * vec4(p1, 1.0)).xyw;
+  vec3 c = (frame.mvp * vec4(p2, 1.0)).xyw;
+  return determinant(mat3(a, b, c)) > 0.0;
+}
+
 // Places a chunk-local vertex and writes the color and pick outputs.
 void emit(uint layer, vec3 local, vec3 normal, uint pick_local) {
   Layer l = layers[layer];
