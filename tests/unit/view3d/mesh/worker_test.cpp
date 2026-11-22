@@ -188,6 +188,54 @@ TEST_CASE("a change event rebuilds the affected chunks of the current model in t
   CHECK(view3d::test::face_area(*after, 0) == view3d::test::face_area(*before, 0) + 4.0);
 }
 
+TEST_CASE("a cancelled rebuild's areas are rebuilt by the next change event",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  // Regression (PR #81 review): cancel() dropped the recorded areas and a
+  // cancelled rebuild its own, so later rebuilds left those edits out.
+  Grid g;
+  Gate gate;
+  std::atomic<bool> hold{false};
+  view3d::WorkerCallbacks cb;
+  cb.on_chunk = [&](const view3d::Chunk&) {
+    if (hold.exchange(false)) {
+      gate.arrive_and_wait();
+    }
+  };
+  view3d::MeshWorker worker(cb);
+  worker.build(g.inputs());
+  REQUIRE(worker.wait_idle(kWaitMs));
+  const view3d::MeshHandle before = worker.current();
+  REQUIRE(before != nullptr);
+
+  const Rect first{16, 11, 18, 13};
+  view3d::test::paint(g.root, g.tech, first, g.tech.metal1);
+  hold = true;
+  worker.changed(std::vector<Rect>{first});
+  REQUIRE(gate.wait_arrived());  // the rebuild is half done
+  const Rect queued{56, 51, 58, 53};
+  view3d::test::paint(g.root, g.tech, queued, g.tech.metal1);
+  worker.changed(std::vector<Rect>{queued});  // recorded while it runs
+  worker.cancel();
+  gate.open();
+  REQUIRE(worker.wait_idle(kWaitMs));
+  CHECK(worker.current() == before);
+
+  const Rect second{126, 131, 128, 133};
+  view3d::test::paint(g.root, g.tech, second, g.tech.metal1);
+  worker.changed(std::vector<Rect>{second});
+  REQUIRE(worker.wait_idle(kWaitMs));
+  const view3d::MeshHandle after = worker.current();
+  REQUIRE(after != nullptr);
+  view3d::BuildContext ctx;
+  const auto fresh = hefesto::view3d::detail::build_layout(*g.stack, g.root, g.inputs().clip, ctx, 16);
+  REQUIRE(fresh.has_value());
+  for (view3d::LayerId layer = 0; layer < 2; ++layer) {
+    CHECK(view3d::test::face_area(*after, layer) == view3d::test::face_area(*fresh, layer));
+    CHECK(view3d::test::side_length(*after, layer) == view3d::test::side_length(*fresh, layer));
+  }
+  CHECK(view3d::test::face_area(*after, 0) == view3d::test::face_area(*before, 0) + 12.0);
+}
+
 TEST_CASE("a background build reads the database only when no command holds the lock",
           "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
   const Grid g;

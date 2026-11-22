@@ -32,6 +32,7 @@ struct MeshWorker::State {
   std::optional<BuildInputs> queued;  // a full build waiting
   std::optional<BuildInputs> inputs;  // those of the current model
   std::vector<db::Rect> dirty;        // recorded since the current model's build started
+  std::vector<db::Rect> parked;       // areas of cancelled rebuilds, joined to the next changed()
   MeshHandle current;
   bool running = false;
   bool stopping = false;
@@ -72,6 +73,7 @@ struct MeshWorker::State {
       job.inputs = std::move(*queued);
       queued.reset();
       dirty.clear();
+      parked.clear();
     } else {
       job.inputs = *inputs;
       job.previous = current;
@@ -105,6 +107,10 @@ struct MeshWorker::State {
       const std::lock_guard lock(mutex);
       running = false;
       const bool dropped = !model || cancel.load(std::memory_order_relaxed);
+      if (dropped && job.previous && !queued) {
+        // The model still lacks these edits: keep them for the next change.
+        parked.insert(parked.end(), job.dirty.begin(), job.dirty.end());
+      }
       if (!dropped) {
         done = std::make_shared<const MeshModel>(std::move(*model));
         current = done;
@@ -140,6 +146,7 @@ void MeshWorker::build(BuildInputs inputs) {
     const std::lock_guard lock(state_->mutex);
     state_->queued = std::move(inputs);
     state_->dirty.clear();
+    state_->parked.clear();
     if (state_->running) {
       state_->cancel.store(true, std::memory_order_relaxed);
     }
@@ -153,7 +160,10 @@ void MeshWorker::changed(std::span<const db::Rect> dirty) {
   }
   {
     const std::lock_guard lock(state_->mutex);
-    state_->dirty.insert(state_->dirty.end(), dirty.begin(), dirty.end());
+    State& s = *state_;
+    s.dirty.insert(s.dirty.end(), s.parked.begin(), s.parked.end());
+    s.parked.clear();
+    s.dirty.insert(s.dirty.end(), dirty.begin(), dirty.end());
   }
   state_->wake.notify_all();
 }
@@ -161,7 +171,11 @@ void MeshWorker::changed(std::span<const db::Rect> dirty) {
 void MeshWorker::cancel() {
   const std::lock_guard lock(state_->mutex);
   state_->queued.reset();
-  state_->dirty.clear();
+  // The areas are parked, not dropped: the current model does not have
+  // them, so the next changed() rebuilds them too.
+  State& s = *state_;
+  s.parked.insert(s.parked.end(), s.dirty.begin(), s.dirty.end());
+  s.dirty.clear();
   if (state_->running) {
     state_->cancel.store(true, std::memory_order_relaxed);
   }

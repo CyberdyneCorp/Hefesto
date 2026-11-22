@@ -16,9 +16,11 @@
 //   every area recorded since. A change never cancels a running build: the
 //   areas wait for it, so edits during a long build cannot starve it. A
 //   build() that cancels a rebuild covers its areas.
-// - cancel(): cancels the running build and drops the queued work and the
-//   recorded areas; the previous model stays current. The next build() or
-//   changed() starts again.
+// - cancel(): cancels the running build and drops the queued full build;
+//   the previous model stays current. The areas recorded so far, and those
+//   of a rebuild it cancels, are kept aside: the next changed() rebuilds
+//   them with its own, so the model never misses an edit; the next build()
+//   covers them.
 // A finished build becomes current() and is handed to on_done; a cancelled
 // one leaves current() as it was ("cancellation drops unfinished chunks and
 // leaves the previous model visible"). on_chunk sees each chunk as it is
