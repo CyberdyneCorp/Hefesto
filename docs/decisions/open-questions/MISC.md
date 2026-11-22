@@ -357,15 +357,42 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-80: reopening the 3D window after `closewindow`
 - Kind: bug
-- Status: recommended 2026-11-21, pending user confirmation (found by CAMERA/WIND3D planning in M10 round 1); the Magic behaviour below was disproved by the MISC-3D-12 capture, see "Capture" and the revised recommendation
+- Status: approved 2026-11-22 (J5, revised after the MISC-3D-12 capture; found by CAMERA/WIND3D planning in M10 round 1); the Magic behaviour below was disproved by the MISC-3D-12 capture, see "Capture" and the revised recommendation
 - Magic behavior (superseded: disproved by the MISC-3D-12 capture, see "Capture"; kept for the record): W3Ddelete frees the client record and clears `w3dWindow`, but leaves the Tk window alive (`Tk_DestroyWindow` is commented out) and does not delete the `.magic3d` Tcl command made by MakeWindowCommand. A later `specialopen wind3d` on the default path calls Tk_CreateWindowFromPath for `.magic3d`, which fails because the path exists, so Magic reports "Could not create a new Tk window" and opens nothing. Meanwhile `.magic3d <cmd>` reaches the freed client record (a use-after-free).
 - Evidence: graphics/W3Dmain.c:1617-1631 (W3Ddelete), :1548-1551 (Tk_CreateWindowFromPath of `.magic3d`), :1584 (MakeWindowCommand), :1595-1596 (the refusal); what actually runs on close: windows/windMove.c:228 (WindDelete calls GrDeleteWindowPtr after the client's delete), graphics/grTOGL1.c:1027 and :1256-1268 (GrTOGLDelete: Tcl_DeleteCommand on the path, Tk_DestroyWindow)
 - Options: replicate | compat (refuse ON; reopen OFF) | fix
 - Recommendation (superseded by the revised recommendation below): compat for reopening (the refusal is an observable command result, so ON copies it); the use-after-free is fixed in both modes (standing rule: crashes and undefined behaviour are fixed in both modes). With magic-compat ON, after `.magic3d closewindow`, `specialopen wind3d` on the default path reports "Could not create a new Tk window" and opens nothing, and `.magic3d <cmd>` no longer reaches a freed window: it is refused and changes nothing (Magic has no defined output there to match; WIND3D chooses the message and lists it in `docs/diagnostics/codes/view3d.md`). With it OFF, closing removes the toolkit path and its command, and `specialopen wind3d` opens a new window.
-- Proposed resolution (revised 2026-11-21 after the MISC-3D-12 capture; pending user confirmation; was compat for reopening and fix for a use-after-free): replicate, in both modes (X-2) — `closewindow` deletes the toolkit-path command, as Magic's GrTOGLDelete does, so `info commands <path>` is empty and calling it is "invalid command name", and a later `specialopen wind3d` on the same path opens a new window.
 - Open point (M10 round 2, GOLDEN and INTEGRATION): the Magic behaviour above may be wrong. `.magic3d closewindow` runs w3dClose → WindDelete (windows/windMove.c:228), which after W3Ddelete calls GrDeleteWindowPtr = GrTOGLDelete under the Tk OGL display (graphics/grTOGL1.c:1027); GrTOGLDelete runs Tcl_DeleteCommand on the path and Tk_DestroyWindow (graphics/grTOGL1.c:1256-1268). The commented-out Tk_DestroyWindow in W3Ddelete is therefore not the last word: the command is deleted, no use-after-free is reachable through it, and a second `specialopen wind3d` on the same path probably succeeds. MISC-3D-12 captures what Magic does; if it reopens, ON should reopen too and this entry becomes a replicate (no compat).
 - Capture (M10 round 2, golden-capture run 44965506225, MISC-3D-12 on `.render.magic`): after `closewindow`, `info commands .render.magic` is empty, a second `specialopen wind3d c3d .render.magic` opens the window (its result is the same `isn't a top-level window` text as the first open, and `info commands` lists the path again), and a third `specialopen` on `.render.magic2` is refused with "Only one 3D window allowed.". Magic does not refuse, and no use-after-free is reachable through the command.
-- Revised recommendation (INTEGRATION, M10 round 2; pending user confirmation): replicate, in both modes. Closing deletes the toolkit-path command and a later `specialopen wind3d` on the same path opens a new window. As implemented on `m10-3d-round2` (view3d/client/client.cpp `retire_path`); MISC-3D-12 replays with no deviation. MISC-3D-12 opens the window at `.render.magic`, not at the default `.magic3d` the view-3d scenario "Reopening after closewindow" names: with `.magic3d` (an unmapped toplevel) the magic-gl captures crashed Magic at random (exit 139, tools/golden/authoring/m10_cases.py). Both paths end in the same GrTOGLDelete; the `.magic3d` sequence is covered by the unit test "a closed 3D window's toolkit path is no command and reopens in both modes".
+- Revised recommendation (INTEGRATION, M10 round 2; approved by the user 2026-11-22): replicate, in both modes. Closing deletes the toolkit-path command and a later `specialopen wind3d` on the same path opens a new window. As implemented on `m10-3d-round2` (view3d/client/client.cpp `retire_path`); MISC-3D-12 replays with no deviation. MISC-3D-12 opens the window at `.render.magic`, not at the default `.magic3d` the view-3d scenario "Reopening after closewindow" names: with `.magic3d` (an unmapped toplevel) the magic-gl captures crashed Magic at random (exit 139, tools/golden/authoring/m10_cases.py). Both paths end in the same GrTOGLDelete; the `.magic3d` sequence is covered by the unit test "a closed 3D window's toolkit path is no command and reopens in both modes".
+- Resolution: replicate, in both modes (X-2; revised after the MISC-3D-12 capture, was compat for reopening and fix for a use-after-free) — `closewindow` deletes the toolkit-path command, as Magic's GrTOGLDelete does, so `info commands <path>` is empty and calling it is "invalid command name"; a later `specialopen wind3d` on the same path opens a new window. No refusal and no reachable use-after-free. Approved 2026-11-22 (J5 revised).
+
+### Q-MISC-81: depth-tested 3D faces put lower layers in front in the top view
+- Kind: quirk
+- Status: approved 2026-11-22 (R1; found by RENDER3D in M10 round 2, PR #81 review)
+- Magic behavior: Magic emits each face counter-clockwise seen from outside with z_top = −h·s_z, culls back faces and never enables a depth test (Q-MISC-77), so draw order decides what shows: the later display style, usually metal over poly. The face orientation puts the viewer of the top view on the physical underside (higher layers have more negative z), so with the depth test Q-MISC-77 adds, Magic's orientation and depth sense show lower layers in front of higher ones where they overlap, the opposite of Magic's usual picture.
+- Evidence: graphics/W3Dmain.c:101-105 (culling and depth test off at setup), :526-528 (glEnable(GL_CULL_FACE), glCullFace(GL_BACK)), :234-446 (faces, z = −h·s_z), :471-544 (viewing transform); tests/data/render/mesh3d/top.txt (round-2 reference pick map: lower layers in front)
+- Options: replicate (Magic's orientation with the depth test: lower layers in front) | compat (ON keep, OFF flip) | fix (flip the depth and culling sides in both modes)
+- Recommendation: fix, in both modes (X-2 tier 3: pixels are informative and no command returns the draw order; Q-MISC-77 already leaves Magic's draw-order picture in both modes, so a per-mode split would copy a picture Magic never shows). The depth comparison and the culled side are flipped so higher layers are in front in the top view; RENDER3D updates the reference pick maps.
+- Resolution: fix, in both modes (X-2 tier 3) — the 3D view flips the depth and culling sides so that higher layers are in front in the top view (metal1 over poly where they overlap), as Magic's draw order usually shows; Magic's face orientation with Q-MISC-77's depth test would show lower layers in front. No command output changes. Approved 2026-11-22.
+
+### Q-MISC-82: layout commands a script runs after `specialopen wind3d` go to the 3D window
+- Kind: quirk
+- Status: approved 2026-11-22 (N1; found by GOLDEN and INTEGRATION in M10 round 2 replaying MISC-3D-05 and MISC-3D-10)
+- Magic behavior: once the 3D window is open, the commands a script runs are dispatched with the current window ID, which is then the 3D window's, so layout commands reach the 3D client: `box` and `load` fail with an empty error (W3Dcreate clears WIND_COMMANDS, so the 3D window knows only its own commands), and `cif ostyle half` reaches the 3D window's `cif`.
+- Evidence: textio/txCommands.c:1491-1540 (TxTclDispatch: `tx_wid = txCurrentWindowID`, WindSendCommand), windows/windSend.c:186 (WindCurrentWindow); golden-capture run 44965506225 (MISC-3D-05, MISC-3D-10; `m10_cases.REPLAY_GAPS`)
+- Options: replicate | compat (ON route to the 3D window as Magic; OFF to the layout window)
+- Recommendation: compat (standing rule; the command results differ, so ON copies them). With magic-compat ON, once a 3D window is open the layout commands a script runs (`box`, `load`, `cif ostyle`, ...) go to the 3D window, as Magic does; with it OFF they go to the layout window. WIND3D implements it; MISC-3D-05 and MISC-3D-10 then replay with magic-compat ON.
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON, while a 3D window is open the layout commands a script runs (`box`, `load`, `cif ostyle`) go to the 3D window, as Magic does (`box` and `load` fail there; `cif ostyle half` reaches the 3D `cif`); with it OFF they go to the layout window. Cited by MISC-3D-05 and MISC-3D-10. Approved 2026-11-22.
+
+### Q-MISC-83: a split tile cut by the clip area is closed along its clipped bounding rectangle
+- Kind: bug
+- Status: approved 2026-11-22 (N2; found by MESH in M10 round 2, PR #81 review; already implemented)
+- Magic behavior: where the clip area (the cut box, or the window area grown by 1) cuts a split tile, w3dRenderVolume closes the cut along the edges of the tile's bounding rectangle clipped to the area, because it tests the rectangle `r`, not the triangle, so the cut face also spans the part of the rectangle the triangle does not cover and the solid is not closed there.
+- Evidence: graphics/W3Dmain.c:360-378
+- Options: replicate | compat (ON the clipped bounding rectangle; OFF the triangle's own cut)
+- Recommendation: compat (standing rule; the face is part of the geometry the GL capture compares, design D13). With magic-compat ON the cut of a split tile is closed along its bounding rectangle clipped to the area, as Magic; with it OFF along the triangle's own cut.
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON a split tile cut by the clip area is closed along the edges of its bounding rectangle clipped to the area, as Magic does (W3Dmain.c:360-378); with it OFF along the triangle's own cut. Implemented in M10 round 2 (view3d/mesh `rect_clip_edges`). Approved 2026-11-22.
 
 ### Round-2 decisions without a Q row (approved 2026-11-21)
 
@@ -380,6 +407,38 @@ Native or Hefesto-side questions from M10 round 1 that no Magic quirk entry cove
 - **J6: empty extents, abutting cells and clip-edge faces.**
   - Status: approved 2026-11-21 (round-1 as-landed behaviour of CAMERA and MESH).
   - Resolution: in both modes — the default view fits the non-empty dimension of the cell's bounding box when the other is empty, and an empty cell as 1 × 1 (Magic divides by zero; view-3d "Default view"); pieces of one layer that abut across cells get no inner side faces (Magic draws each cell's tile outlines, which no command returns; the D13 geometry comparison reduces both to the same boundary); faces cut by the clip area (the cut box, or the window area grown by 1) are closed, as Magic does for any clip area (W3Dmain.c:360-378) (view-3d "Rendered geometry").
+
+### Round-3 decisions without a Q row (approved 2026-11-22)
+
+Items left open by M10 round 2 (PR #81) that no Magic quirk entry covers, or that refine one; approved by the user on 2026-11-22 with the recommended option. Each is listed in `docs/decisions/m10-3d-decision-table.md` "Round 3 decisions". The rows with a Q entry are Q-MISC-80 (J5, revised), Q-MISC-81 (R1), Q-MISC-82 (N1) and Q-MISC-83 (N2) above.
+
+- **R2: lighting per mode.**
+  - Status: approved 2026-11-22 (RENDER3D round 2, as built).
+  - Resolution: kept as built, no Q row — with magic-compat ON the lighting copies Magic's GL state (no normal is set, so every face uses (0, 0, 1); one white positional light at (50, 50, 50) in model coordinates; ambient 0.2 + 0.4; per vertex); with it OFF one white directional light from (1, 1, 1) on each face's own normal with ambient 0.4. Pixels are informative; view-3d "Viewing transform and shading" already states both.
+- **R3: translucent display styles drawn opaque.**
+  - Status: approved 2026-11-22 (RENDER3D round 2, as built; follows from Q-MISC-77).
+  - Resolution: in both modes, no Q row (a consequence of Q-MISC-77's depth test) — a display style that Magic draws translucent (grtoglSetWMandC blends the 2c − 0.8 supercolour with alpha mask/127 to show c, graphics/grTOGL1.c:90-133) is drawn opaque in its plain colour c; with depth-tested faces the blend has no Magic picture to match (view-3d "Viewing transform and shading"). The per-layer transparency of the layer panel (hefesto-3d-visualization) is a separate, Hefesto-side alpha.
+- **M1: a spanned contact whose residues leave no gap keeps its own height and thickness.**
+  - Status: approved 2026-11-22 (MESH round 2, task 6.5, the J1 option).
+  - Resolution: in both modes (a native view option) — with "Span connected layers" on, a contact whose lowest residue's top (h + t) is not below its highest residue's h keeps its own technology h and t instead of being spanned (hefesto-3d-visualization "Mesh generation from layout").
+- **M2: memory gate.**
+  - Status: approved 2026-11-22 (PERF round 2, perf run 44969020740).
+  - Resolution: the `view3d-bench` memory gates stay as set from the round-2 run (about 150 to 170 bytes per meshed rectangle; `bench/view3d/gates.json`); design D6's target of ≤ 64 bytes per rectangle (CPU model) is deferred and revisited after P1. No behaviour changes.
+- **W1: console noise after tagged 3D-window commands.**
+  - Status: approved 2026-11-22 (WIND3D round 2, as built; MISC-3D-02..04 and 08).
+  - Resolution: compat, no Q row — with magic-compat ON a 3D-window command whose wrapper tag runs `magic::scrollupdate` (`view`, `scroll`, `zoom`, `findbox`) or `magic::toolupdate` (`see`) prints the two "Unknown command:" failures of that procedure's `*bypass logcommands suspend|resume`, as Magic does in the OpenGL window; with it OFF nothing is printed (view-3d "3D view commands").
+- **W2: `specialopen` result for a path below a top-level window.**
+  - Status: approved 2026-11-22 (WIND3D round 2, as built; MISC-3D-01..04, 12).
+  - Resolution: compat, no Q row — with magic-compat ON `specialopen wind3d <cell> <path>` on a path below a top-level window (such as `render3d`'s `.render.magic`) leaves Magic's `window "<path>" isn't a top-level window` (the failing `wm protocol`) as its result; with it OFF the result is empty. The window opens in both settings (view-3d "Opening the 3D window").
+- **W3: crashes fixed in both modes.**
+  - Status: approved 2026-11-22 (WIND3D round 2, as built).
+  - Resolution: fix, in both modes (standing rule: crashes and undefined behaviour) — the 3D window never dereferences a missing output style (Q-MISC-73; when the current output style disappears the window returns to layout-layer mode); `level n` and `level up`/`down` saturate at the `int` range instead of overflowing `atoi` or the increment; a call through a closed window's retired toolkit-path command is "invalid command name" and never reaches the closed window (Q-MISC-80) (view-3d "3D view commands", "Opening the 3D window").
+- **W4: `level` limits.**
+  - Status: approved 2026-11-22 (WIND3D round 2, as built).
+  - Resolution: replicate, in both modes, no Q row — `level` is clamped at 0 from below and has no upper limit, as in Magic (values beyond the `int` range saturate, W3) (view-3d "3D view commands").
+- **N3: only solid and stippled styles drawn.**
+  - Status: approved 2026-11-22 (RENDER3D round 2; MISC-3D-15).
+  - Resolution: replicate, in both modes — only display styles whose fill is solid or stippled are drawn (W3Dmain.c:406, :439), by the renderer and in the `HEFESTO_GL_CAPTURE` face log alike, so an outline or cross style (sky130A's contact cross) draws nothing (view-3d "Rendered geometry"; MISC-3D-15).
 
 ## Scope
 

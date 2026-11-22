@@ -1,6 +1,6 @@
 # Proposal: M10 3D view (view-3d, hefesto-3d-visualization)
 
-> **Status: plan drafted 2026-11-13; its decisions approved by the user the same day.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76, 77 and 78, the `render3d` cut-box spec correction and the judgement items J1 and J2 (`docs/decisions/m10-3d-decision-table.md`) were approved as drafted, and design Open Questions 3 and 4 were decided (a). Every place in this change that depends on one of them names it; the table at the end of design.md lists the D-numbers each one shapes.
+> **Status: plan drafted 2026-11-13; its decisions approved by the user the same day; round-2 decisions approved 2026-11-21 and round-3 decisions (Q-MISC-80 as revised, Q-MISC-81, 82, 83, R2, R3, M1, M2, W1-W4, N3) approved 2026-11-22.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76, 77 and 78, the `render3d` cut-box spec correction and the judgement items J1 and J2 (`docs/decisions/m10-3d-decision-table.md`) were approved as drafted, and design Open Questions 3 and 4 were decided (a). Every place in this change that depends on one of them names it; the table at the end of design.md lists the D-numbers each one shapes.
 
 ## Why
 

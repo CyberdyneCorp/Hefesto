@@ -134,7 +134,7 @@ Prisms with h and t both zero (gf180mcuD in mask-layer mode) still draw top face
 |---|---|
 | Frame rate, 1M meshed rectangles, isometric view, whole region visible | ≥ 30 fps on every reference machine (spec); goal 60 fps on the M1 Mac |
 | GPU memory | ≤ 96 bytes per meshed rectangle on average (≤ 96 MB per million); an isolated rectangle costs one 20-byte rectangle instance plus four side instances of about 18 bytes. Deriving the sides of fully isolated tiles in the shader is an optimisation PERF may take, not a target |
-| CPU memory of the model | ≤ 64 bytes per meshed rectangle, excluding the database |
+| CPU memory of the model | ≤ 64 bytes per meshed rectangle, excluding the database (deferred: decision M2, approved 2026-11-22, keeps the round-2 `view3d-bench` gates, about 170 B/rect at most, and revisits this target after P1) |
 | Build time | ≤ 1.5 s for 1M rectangles off the UI thread on the M1 Mac; first chunks on screen within 200 ms |
 | Incremental rebuild after a local edit | ≤ 50 ms for the affected chunks |
 | Memory pressure (iPadOS, M14) | meshes are droppable caches, rebuilt on demand (`hefesto-performance` memory warning) |
@@ -178,7 +178,7 @@ Prisms with h and t both zero (gf180mcuD in mask-layer mode) still draw top face
 
 **Visibility.** The screen's per-layer show/hide edits the same per-mode set as `see` (Q-MISC-71); isolate is "hide all others"; transparency is a per-layer alpha kept outside Magic's state.
 
-**Picking.** Each instance carries a 32-bit pick id: chunk-local index plus chunk id. `view3d::pick` maps an id back to a `PickTarget`: the layer, the root-coordinate rectangle or triangle, and, in layout-layer mode, the instance path and the tile's cell-local rectangle (kept in a per-chunk side table built with the mesh; not uploaded). A click reads one pixel of the id image.
+**Picking.** Each instance carries a 32-bit pick id: chunk-local index plus chunk id (as landed: 1 + the instance's ordinal in the model, `view3d/pick/pick_id.hpp`; see "As-landed: round 3 INSPECT"). `view3d::pick` maps an id back to a `PickTarget`: the layer, the root-coordinate rectangle or triangle, and, in layout-layer mode, the instance path and the tile's cell-local rectangle (kept in a per-chunk side table built with the mesh; not uploaded). A click reads one pixel of the id image.
 - 3D → 2D: selecting a target selects that material in the 2D view, as `select area <type>` at the target's point would in the cell that holds it: in the edit cell directly; under a subcell, the subcell use (Magic's selection semantics for unexpanded material), with the target's path shown. The 2D view scrolls to it if it is outside the window.
 - 2D → 3D: the 2D selection's paint (flattened, root coordinates, as `Selection` already provides) is drawn as a highlight in 3D by overlapping it with the mesh's instances per layer.
 
@@ -225,7 +225,7 @@ Datasets are read, never recomputed: node and coupling capacitance from the `.ex
 
 ### D17. Performance gates (PERF)
 
-`bench/view3d/` builds models from the reference layouts of `hefesto-performance` and a synthetic 1M-rectangle region, and measures build time, memory and frame time headless (llvmpipe numbers are information only; the gates are on hardware runs recorded in `docs/decisions/` like the Raven checks). `perf.yml` gains a `view3d-bench` job with the build time and memory as gates (deterministic on CI) and frame time as information.
+`bench/view3d/` builds models from the reference layouts of `hefesto-performance` and a synthetic 1M-rectangle region, and measures build time, memory and frame time headless (llvmpipe numbers are information only; the gates are on hardware runs recorded in `docs/decisions/` like the Raven checks). `perf.yml` gains a `view3d-bench` job with the build time and memory as gates (deterministic on CI) and frame time as information. The memory gates stay at the round-2 values (about 150 to 170 bytes per meshed rectangle); D6's 64-byte target is deferred and revisited after P1 (decision M2, approved 2026-11-22).
 
 ### D18. Changes to earlier code
 
@@ -348,7 +348,7 @@ TECH (tasks.md 3.1–3.4, branch `m10-r1-tech`) filled in the scaffold's stubs. 
 - **J1 "Span connected layers".** `BuildContext::span_connected_layers` with `BuildContext::technology`: a contact is drawn from its lowest residue's h + t to its highest residue's h (`detail::spanned_height`); without a gap it keeps its own values. `MeshModel::layer_heights` (per `LayerId`) holds the h and t every rectangle and plain side face is drawn with; RENDER3D, INSPECT and EXPORT read it instead of `LayerStack::draw_height`.
 - **J3 (Q-MISC-79).** With magic-compat OFF a split-tile triangle takes its own layer's h, t and side faces, and no `own_height` faces are produced; ON keeps the source left type's values.
 - **Cancelled rebuilds (PR #81 review).** `cancel()` and a rebuild it cancels no longer drop dirty areas: they are parked and joined to the next `changed()`, so later rebuilds never leave an edit out; a `build()` clears them.
-- **Split tile under the clip area (PR #81 review, N2).** With magic-compat ON a split tile's cut is closed along its bounding rectangle clipped to the chunk (`rect_clip_edges`), as W3Dmain.c:360-378 tests `r`, not the triangle, so the face also spans where the triangle has no material and the mesh is not closed there; with it OFF along the triangle's own cut. Standing rule, no Q row yet (proposed to the user).
+- **Split tile under the clip area (PR #81 review, N2).** With magic-compat ON a split tile's cut is closed along its bounding rectangle clipped to the chunk (`rect_clip_edges`), as W3Dmain.c:360-378 tests `r`, not the triangle, so the face also spans where the triangle has no material and the mesh is not closed there; with it OFF along the triangle's own cut. Q-MISC-83 (compat, approved 2026-11-22).
 
 ## As-landed: Mesh3dRenderer (RENDER3D, tasks 5.3, 5.4)
 
@@ -365,7 +365,7 @@ TECH (tasks.md 3.1–3.4, branch `m10-r1-tech`) filled in the scaffold's stubs. 
 
 - **Window display seam** (`view3d/client/session.hpp`, `view3d/client/scene.hpp`). `view3d::WindowDisplay` (`redraw(editor, window)`, `closed(window)`) is installed in `Session::display` by the front end; the client calls `redraw` on open and after every command that changes what is drawn, and `closed` on `closewindow`. `build_scene(editor, window, magic_compat, ctx)` gives the layout-layer `LayerStack` (`layout_stack`), the synchronous MESH build of the rendered cell clipped to the cut box or the bounding box grown by 1 (Q-MISC-70), the hidden flags of the window's visibility set and the P1 mask-layer placeholder factor `xy_factor`; `mask_stack(editor, magic_compat, sink)` gives the current output style's stack with the `render` overrides and reports a `render` statement whose style does not resolve to `sink` on each build (J2; `render name` passes the command's sink). SHELL (task 9.1) implements `WindowDisplay` over `render::VulkanMesh3dRenderer`, passing `DrawParams::styles` from `EditorState::styles`, and moves the build to a `MeshWorker` per window (MESH round 2). The renderer has no model transform yet, so `xy_factor` (the layout mesh scaled by f in mask-layer mode, P1) needs a `DrawParams` xy scale before SHELL can draw that mode.
 - **Model heights.** The renderer places rectangles and plain side faces from `MeshModel::layer_heights` (the J1 span) and falls back to `LayerStack::draw_height` for a layer the model does not list; triangles and `own_height` side faces keep their own h and t. Chunks missing from a new model are dropped on upload.
-- **Toolkit paths.** Closing moves the path's command aside (`retire_path`; deleting the command while `<path> closewindow` runs would free its binding), so `info commands` no longer lists it and calling it is "invalid command name"; the path stays in `Session::closed_paths`. A new `specialopen wind3d` on it opens a window in both modes: the MISC-3D-12 capture shows Magic does this (GrTOGLDelete), so Q-MISC-80 is revised to replicate (pending confirmation). Only a call through the retired name (`view3d::is_retired_command`) answers "invalid command name"; a window command defined on the path again is ordinary.
+- **Toolkit paths.** Closing moves the path's command aside (`retire_path`; deleting the command while `<path> closewindow` runs would free its binding), so `info commands` no longer lists it and calling it is "invalid command name"; the path stays in `Session::closed_paths`. A new `specialopen wind3d` on it opens a window in both modes: the MISC-3D-12 capture shows Magic does this (GrTOGLDelete), so Q-MISC-80 is revised to replicate (approved by the user 2026-11-22). Only a call through the retired name (`view3d::is_retired_command`) answers "invalid command name"; a window command defined on the path again is ordinary.
 - **Wrapper console noise (W1).** With magic-compat ON a 3D-window command whose tag script starts with `magic::scrollupdate` (`view`, `scroll`, `zoom`, `findbox`) or `magic::toolupdate` (`see`) prints the two "Unknown command:" failures of the procedure's `*bypass logcommands suspend|resume`, as Magic; OFF prints nothing. MISC-3D-08 replays.
 - **Ownership exceptions of round 2 (PR #81 review).** WIND3D edited files outside D3's list; each change is needed for the 3D window's command routing or bindings and is to be signed off by the owning area:
   - `cmd/dispatcher.cpp`, `hefesto/cmd/dispatcher.hpp` (`set_window_commands`): the dispatcher looks only in the `wind3d` table while a 3D-window command runs (Magic's W3Dcreate clears WIND_COMMANDS). Owner: CORE (command dispatch).
@@ -374,7 +374,15 @@ TECH (tasks.md 3.1–3.4, branch `m10-r1-tech`) filled in the scaffold's stubs. 
   - `ui/macro_commands.cpp`: a comment only (`wind3d` is no longer an unavailable module). Owner: UI.
   - `script/pdk/commands.cpp`: a comment only (same reason). Owner: SCRIPT.
   None changes behaviour outside the 3D window; the M7 and M8 workstreams touch none of these files.
-- **Open for the user (R1, revised by the PR #81 review).** With the Q-MISC-77 depth test, the top view shows lower layers covering higher ones in both modes (`tests/data/render/mesh3d/top.txt`), because Magic's faces put the viewer on the physical underside; Magic, drawing in style order without a depth test, shows the later style (usually metal over poly) instead. Since Q-MISC-77 already leaves Magic's picture in both modes, the recommendation is to flip the depth and culling sides in both modes so higher layers are in front, not "ON keep, OFF flip". RENDER3D and CAMERA change once the user decides.
+- **Decided (R1, Q-MISC-81, approved 2026-11-22; was open for the user after the PR #81 review).** With the Q-MISC-77 depth test, the top view showed lower layers covering higher ones in both modes (`tests/data/render/mesh3d/top.txt`), because Magic's faces put the viewer on the physical underside; Magic, drawing in style order without a depth test, shows the later style (usually metal over poly) instead. Since Q-MISC-77 already leaves Magic's picture in both modes, the user approved flipping the depth and culling sides in both modes so higher layers are in front (fix, not "ON keep, OFF flip"). RENDER3D and CAMERA change in round 3 and update the reference pick maps.
+
+## As-landed: round 3 INSPECT (tasks 9.3-9.5)
+
+- **Pick ids in the core.** The encoding moved from `hefesto/render/mesh3d_pick.hpp` to `hefesto/view3d/pick/pick_id.hpp` (`view3d::PickKind`, `PickRef`, `pick_instance_count`, `pick_local_index`, `encode_pick`, `decode_pick`; `PickId` and `kNoPick` too), unchanged: 1 + the instance's ordinal in the model (chunks in model order; in each chunk rects, then sides, then triangles). `mesh3d_pick.hpp` is a forwarding header with `using` declarations in `hefesto::render`, so the renderer and its tests keep their names; the definitions live in `src/core/src/view3d/pick/pick_id.cpp`, so the iPadOS renderer (M14) links the same code. D10's "chunk-local index plus chunk id" stays superseded, as RENDER3D found in round 2: the 32-bit Morton chunk id leaves no bits for the index.
+- **Resolution without a side table.** `resolve(mesh, id)` gives the layer, the face's root rectangle (a triangle's or side segment's bounding box) and the triangle flag from the model alone. `resolve(mesh, PickContext{stack, cell, magic_compat}, id)` adds the tile type (`StackLayer::type`, so both (type, style) pairs of a multi-style type map back to it, Q-MISC-77) and the source tile: one `connect::search_tree_tiles` of the rendered cell over the instance's probe area (the rectangle, a triangle's bounding box, or the unit strip inside a side face) finds the first tile of the type there, giving `use_path` (path elements), `cell_rect` (in the cell holding it) and `material` (the same tile in root coordinates). The mesh keeps no per-chunk side table, so MESH needs no change; a tile gone since the build leaves `material` null. `PickTarget` gained `material` and `cell` (the rendered cell); the scaffold signatures are unchanged.
+- **3D -> 2D.** `link_to_2d(editor, target)` (and `to_selection`, which calls it) makes the rendered cell the selection root and replaces the selection, as a new `select area` or cell click does: a tile of the rendered cell selects its type's paint under the source tile (`select area <type>` with the box there; `area_types` set, provenance recorded); a tile under a subcell selects the rendered cell's child use named by the first path element (an array element selects its whole array use), as Magic selects unexpanded material. One undo event (`select::record_change`). It returns the selection root and the area to scroll into view (the tile, or the use's bounding box); a stale target selects nothing.
+- **2D -> 3D and nets.** `from_selection(mesh, stack, selection)` highlights the instances whose layer's type is selected under their probe area; the scaffold overload without the stack matches any selected type (SHELL passes the stack). `net_highlight(mesh, editor, seed, NetOptions{scope, magic_compat, stack})` runs `connect::search_flat` (the rendered cell only; a seed in a subcell finds nothing) or `connect::search_hierarchical` (the default) from the seed's source tile, paints the net into a scratch cell in root coordinates and highlights the instances over it the same way; the scaffold overload uses the hierarchical search, magic-compat ON and the editor's layout-layer stack. `isolate_others(mesh, keep)` gives every other instance, to hide or dim for "Isolate selected net" (the renderer already dims to 35 % around a highlight set).
+- **No codes.** Picking reports no diagnostics: a stale or background pick yields nothing, so `VIEW3D-PICK-*` stays empty.
 
 ## Risks / Trade-offs
 
@@ -406,7 +414,7 @@ All 3D open questions were approved as drafted on 2026-11-13: Q-MISC-70, 71, 74,
 
 ## Decisions this design depends on
 
-| Decision (approved 2026-11-13) | Option | Design sections it shapes |
+| Decision (approved 2026-11-13 unless dated) | Option | Design sections it shapes |
 |---|---|---|
 | Q-MISC-70 | fix (clip in root coordinates) | D6, D13 |
 | Q-MISC-71 | fix (per-mode visibility sets) | D4, D9, D10 |
@@ -421,3 +429,18 @@ All 3D open questions were approved as drafted on 2026-11-13: Q-MISC-70, 71, 74,
 | J2 | (a) physical µm, optional z scale | D14 |
 | Open Question 3 | (a) `magic-gl` image and GL shim | D13 |
 | Open Question 4 | (a) extract subset in `extract-tech-section`'s home | D5 |
+| Q-MISC-74 amendment (round-2 J1, 2026-11-21) | A = diag(1, W/H, 1) for a window taller than wide | D7, D8 |
+| J2 of round 2 (2026-11-21) | bad `render` style reported at each stack build | D5, D9 |
+| Q-MISC-79 (J3, 2026-11-21) | compat (ON left type, OFF own type) | D5, D6, D8 |
+| J4 (2026-11-21) | replicate (`noplaneordering`: no defaults, no conversion) | D5 |
+| J6 (2026-11-21) | empty extents, no inner faces, closed clip faces | D6, D7 |
+| Q-MISC-80 (J5, 2026-11-22) | replicate (closing deletes the path command; reopening works) | D9 |
+| Q-MISC-81 (R1, 2026-11-22) | fix (depth and culling sides flipped: higher layers in front) | D7, D8 |
+| R2 (2026-11-22) | lighting as built (ON Magic's GL state, OFF directional) | D8 |
+| R3 (2026-11-22) | translucent styles opaque in their plain colour | D8 |
+| M1 (2026-11-22) | a spanned contact without a gap keeps its own h and t | D6, D10 |
+| M2 (2026-11-22) | keep the round-2 memory gates; 64 B target deferred | D6, D17 |
+| W1-W4 (2026-11-22) | wrapper noise and `isn't a top-level window` with ON; crash fixes both modes; `level` ≥ 0, no upper limit | D9 |
+| Q-MISC-82 (N1, 2026-11-22) | compat (ON script layout commands to the 3D window) | D9, D13 |
+| Q-MISC-83 (N2, 2026-11-22) | compat (ON clipped bounding rectangle, OFF triangle) | D6, D13 |
+| N3 (2026-11-22) | only solid and stippled styles, also in the GL face log | D5, D8, D13 |
