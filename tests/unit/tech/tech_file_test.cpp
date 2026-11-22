@@ -86,11 +86,59 @@ TEST_CASE("final line without newline, long lines and many tokens",
   REQUIRE(!diags.empty());
   CHECK(diags[0].code == "TECH-READ-001");
   CHECK(diags[0].text == "long line truncated");
-  std::string many = "drc\n";
-  for (int i = 0; i < 40; ++i) {
-    many += "t" + std::to_string(i) + " ";
+}
+
+namespace {
+
+// A `drc` section whose one line has `words` words t0, t1, ...
+std::string many_words(int words) {
+  std::string text = "drc\n";
+  for (int i = 0; i < words; ++i) {
+    text += "t" + std::to_string(i) + " ";
   }
-  CHECK(read(many + "\nend\n").sections.at(0).lines.at(0).tokens.size() == 40);
+  return text + "\nend\n";
+}
+
+void check_thirty_words(bool compat) {
+  platform::MemoryFileSystem fs;
+  hefesto::diag::CollectingSink sink;
+  tech::ReadOptions options;
+  options.magic_compat = compat;
+  const auto doc = tech::read_tech_text(many_words(33), "/d/f.tech", fs, "/d", sink, options);
+  REQUIRE(doc.ok());
+  const auto& tokens = doc.value().sections.at(0).lines.at(0).tokens;
+  REQUIRE(tokens.size() == 30);
+  CHECK(tokens.back() == "t29");
+  const auto diags = sink.take();
+  REQUIRE(diags.size() == 1);
+  CHECK(diags[0].code == "TECH-READ-002");
+  CHECK(diags[0].severity == hefesto::diag::Severity::error);
+  CHECK_FALSE(diags[0].native_only);
+  CHECK(diags[0].text == "line has more than 30 words; dropped: t30 t31 t32");
+}
+
+}  // namespace
+
+// Regression (Q-LEFDEF-139): Magic's techGetTokens overwrites the stack past
+// its 30-word vector; both modes keep the first 30 words and report the rest.
+TEST_CASE("a line of more than 30 words keeps its first 30 with TECH-READ-002 (magic-compat ON)",
+          "[cap:tech-file-format][req:Line length and token limits]") {
+  check_thirty_words(true);
+}
+
+TEST_CASE("a line of more than 30 words keeps its first 30 with TECH-READ-002 (magic-compat OFF)",
+          "[cap:tech-file-format][req:Line length and token limits]") {
+  check_thirty_words(false);
+}
+
+TEST_CASE("a line of exactly 30 words is read whole without a message",
+          "[cap:tech-file-format][req:Line length and token limits]") {
+  platform::MemoryFileSystem fs;
+  hefesto::diag::CollectingSink sink;
+  const auto doc = tech::read_tech_text(many_words(30), "f", fs, "", sink);
+  REQUIRE(doc.ok());
+  CHECK(doc.value().sections.at(0).lines.at(0).tokens.size() == 30);
+  CHECK(sink.take().empty());
 }
 
 TEST_CASE("bad headers and stray end skip to the next end", "[cap:tech-file-format][req:Section structure]") {
