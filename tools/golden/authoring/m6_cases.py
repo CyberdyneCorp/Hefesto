@@ -82,15 +82,10 @@ BLOCKER_REASONS = {
     "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
                "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
                "44860968058. The crash point is not found; the case is capture_blocked until it is"),
-    "STARTUP": ("GOLDEN: round 6 prints the 'Using technology' line after the command-line files with the version, "
-                "as Magic's Tcl startup does, and gives the case's technology a version section (Magic shows the "
-                "stale minimum version, Q-TECH-8); expected/ is removed for the recapture (golden-capture "
-                "dispatch, mode capture); drop the deferral when every output matches"),
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
-    "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
 }
 BLOCKER_PREFIX = "M6 exit blocker, "
@@ -113,13 +108,15 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7). OASIS-020 and OASIS-021-* (round 6, G2 of
-# the user decisions of 2026-11-21) carry the approved Q-OASIS-56 deviation there, with `deferred = "M6"`
-# until their recapture on KLayout's strm2gds input (golden-capture.yml); the recapture drops that line.
+# the user decisions of 2026-11-21) carry the approved Q-OASIS-56 deviation there; their recapture on
+# KLayout's strm2gds input (golden-capture run 44971808830) dropped its `deferred = "M6"` line.
 REPLAYED: set[str] = {
     # Round 6: lef write and def read -annotate print the cells they read in Magic's place (LEFDEF-128
     # matches; LEFDEF-232 differs only by its hand-written Q-LEFDEF-1 entry, stderr.txt).
     "LEFDEF-128",
     "LEFDEF-232",
+    # Round 6: recaptured with the startup technology line and its version (golden-capture run 44971808830).
+    "LEFDEF-STARTUP-lef",
     "LEFDEF-RT-sky130_fd_sc_hd",
     "LEFDEF-RT-sg13g2_stdcell",
     "LEFDEF-241",

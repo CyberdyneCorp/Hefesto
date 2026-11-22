@@ -784,48 +784,37 @@ reason = "a later cell whose mapped name duplicates an earlier one (a-b after a_
 
 [OASIS-020]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 [OASIS-021-flatglob]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 [OASIS-021-flatten]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 [OASIS-021-noduplicates]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 [OASIS-021-ordering]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 [OASIS-021-unique]
 decisions = ["Q-OASIS-56"]
-deferred = "M6"
 outputs = ["cells.sha256"]
-reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; deferred until the recapture on the strm2gds input (golden-capture.yml), which drops the deferred line"
+reason = "Q-OASIS-56 (approved 2026-11-21, G2): Magic reads KLayout's strm2gds of the strm2oas file, which writes the two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element per displacement (oasis-read 'Shape repetitions'), so in 45 cells Hefesto saves a zero-area label beside the port label Magic saves; cells.sha256 differs, report.txt matches (recaptured on the strm2gds input in golden-capture run 44971808830)"
 
 # --- end OASIS ---
 
 # --- BEGIN M6 deferrals (generated by tools/golden/authoring/m6_cases.py --deviations) ---
-
-[LEFDEF-STARTUP-lef]
-deferred = "M6"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "M6 exit blocker, LEFR; GOLDEN: round 6 prints the 'Using technology' line after the command-line files with the version, as Magic's Tcl startup does, and gives the case's technology a version section (Magic shows the stale minimum version, Q-TECH-8); expected/ is removed for the recapture (golden-capture dispatch, mode capture); drop the deferral when every output matches"
 
 [MASK-OS-016]
 deferred = "M6"
