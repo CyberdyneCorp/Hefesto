@@ -10,6 +10,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "app.hpp"
@@ -28,6 +29,17 @@ using Args = std::vector<std::string_view>;
 #define SERVICES_TAGS "[cap:hefesto-architecture][req:Platform services abstraction]"
 
 namespace {
+
+// Startup prints the technology in use once, after the command-line files,
+// whatever supplied it; with none given it is the built-in minimum
+// (scripting-pdk-integration "Script-host startup sequence" step 12): on
+// stdout in Magic's console format, as an APP-TECH-002 note on stderr
+// otherwise.
+constexpr std::string_view kMinimumTechMagic = "Using technology \"minimum\", version 0.0\n";
+constexpr std::string_view kMinimumTechText = "info: APP-TECH-002: Using technology \"minimum\", version 0.0\n";
+constexpr std::string_view kMinimumTechJson =
+    "{\"severity\":\"info\",\"code\":\"APP-TECH-002\",\"text\":\"Using technology \\\"minimum\\\", version 0.0\","
+    "\"location\":null,\"related\":null}\n";
 
 std::string slurp(std::FILE* f) {
   std::fflush(f);
@@ -122,14 +134,15 @@ TEST_CASE("exit status: 0 success, 1 command failure, 2 usage", CLI_TAGS) {
 TEST_CASE("results go to stdout, diagnostics to stderr", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "-c", "echo hello\nsetting get magic-compat\nnosuch\necho never"});
   CHECK(r.out == "hello\non\n");
-  CHECK(r.err == "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:3\n");
+  CHECK(r.err == std::string{kMinimumTechText} + "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:3\n");
 }
 
 TEST_CASE("JSON diagnostics option prints JSON lines", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "--diagnostics=json", "-c", "nosuch"});
-  CHECK(r.err ==
-        "{\"severity\":\"error\",\"code\":\"SCRIPT-TCL-001\",\"text\":\"invalid command name \\\"nosuch\\\"\","
-        "\"location\":{\"file\":\"-c\",\"line\":1},\"related\":null}\n");
+  CHECK(r.err == std::string{kMinimumTechJson} +
+                     "{\"severity\":\"error\",\"code\":\"SCRIPT-TCL-001\","
+                     "\"text\":\"invalid command name \\\"nosuch\\\"\","
+                     "\"location\":{\"file\":\"-c\",\"line\":1},\"related\":null}\n");
 }
 
 TEST_CASE("Magic console diagnostics print each script command's result like puts", PRESENTATION_TAGS) {
@@ -137,7 +150,7 @@ TEST_CASE("Magic console diagnostics print each script command's result like put
                          "puts [setting get magic-compat]\ncatch {nosuch} result; puts $result\nnosuch\nputs never"});
   // An unknown command is a Tcl error: its message is the result. The reference lines catch it
   // (`catch {cmd} result; puts $result`, Q-UI-41); an uncaught one stops -c and prints its message.
-  CHECK(r.out == "on\ninvalid command name \"nosuch\"\n");
+  CHECK(r.out == std::string{kMinimumTechMagic} + "on\ninvalid command name \"nosuch\"\n");
   CHECK(r.err == "invalid command name \"nosuch\"\n");
   CHECK(cli::parse_args(Args{"--diagnostics=magic"}).options.diagnostics == hefesto::diag::Format::magic);
 }
@@ -147,7 +160,7 @@ TEST_CASE("Magic console diagnostics print each script command's result like put
 TEST_CASE("Magic console prints an ordinary command error on stderr and an empty result", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
                          "catch {tech foo} result; puts <$result>\ncatch {tech la} result; puts <$result>\nputs after"});
-  CHECK(r.out == "<>\n<>\nafter\n");
+  CHECK(r.out == std::string{kMinimumTechMagic} + "<>\n<>\nafter\n");
   CHECK(r.err ==
         "\"foo\" isn't a valid tech option.  Type \":tech help\" for help.\n"
         "Ambiguous techinfo option: \"la\"\n  Type \":tech help\" for help.\n");
@@ -166,9 +179,9 @@ TEST_CASE("Magic console prints the tech load failure result on stdout", PRESENT
   const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
                          "catch {tech load " + missing + " -noprompt} result; puts $result\n" +
                              "catch {tech load " + broken + " -noprompt} result; puts $result"});
-  CHECK(r.out ==
-        "Technology file does not exist or is not readable\n\n"
-        "Error in loading technology file\n\n");
+  CHECK(r.out == std::string{kMinimumTechMagic} +
+                     "Technology file does not exist or is not readable\n\n"
+                     "Error in loading technology file\n\n");
   CHECK(r.err.find("Could not find file '" + missing + ".tech' in any of these directories:") == 0);
   CHECK(r.err.find("does not exist or is not readable") == std::string::npos);
   CHECK(r.err.find("Error in loading") == std::string::npos);
@@ -417,7 +430,8 @@ TEST_CASE("the CLI resolves command names exactly, like Magic's Tcl build",
           "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-004]") {
   const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
                          "catch {vers} r; puts $r\ncatch {VERSION} r; puts $r\nputs [magic::echo ok]"});
-  CHECK(r.out == "invalid command name \"vers\"\ninvalid command name \"VERSION\"\nok\n");
+  CHECK(r.out ==
+        std::string{kMinimumTechMagic} + "invalid command name \"vers\"\ninvalid command name \"VERSION\"\nok\n");
   CHECK(r.err.empty());
 }
 
@@ -468,14 +482,14 @@ TEST_CASE("script files are Tcl: each command's result is printed and a Tcl erro
   const Run r = run_cli({"--no-log", script.string(), "-c", "puts after"});
   CHECK(r.status == cli::kExitFailure);
   CHECK(r.out == "6\nb a\n8\n");  // a later source does not run either
-  CHECK(r.err == "error: SCRIPT-TCL-001: boom at " + script.string() + ":7\n");
+  CHECK(r.err == std::string{kMinimumTechText} + "error: SCRIPT-TCL-001: boom at " + script.string() + ":7\n");
 }
 
 TEST_CASE("Text given to -c continues a command over lines and reports a Tcl error at its line",
           "[cap:hefesto-architecture][req:Headless command-line tool]") {
   const Run r = run_cli({"--no-log", "-c", "set a {x\ny}\nputs [string length $a]\nif {1} {\n  nosuch\n}"});
   CHECK(r.out == "x\ny\n3\n");
-  CHECK(r.err == "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:4\n");
+  CHECK(r.err == std::string{kMinimumTechText} + "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:4\n");
 }
 
 
