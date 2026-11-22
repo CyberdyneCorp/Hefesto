@@ -263,14 +263,7 @@ void MainWindow::build_top_bar() {
     paint::segmented(p, w, h, tabs, t, view3d_tab_ ? tab_3d : 0, 1U | (1U << tab_3d));
   });
   segmented->on_click([this, tabs, tab_3d](float x, float) {
-    const std::size_t hit = x < 0.0F ? (view3d_tab_ ? 0 : tab_3d) : paint::segmented_index_at(ctx_.runtime, tabs, x);
-    if (hit == 0) show_view3d_tab(false);
-    if (hit != tab_3d) return;
-    if (view3d_->window_open()) {
-      show_view3d_tab(true);
-    } else {
-      run_line("magic::render3d");
-    }
+    click_view_tab(x, tabs, tab_3d);
   });
   const float tabs_width = paint::segmented_width(ctx_.runtime, tabs);
   segmented->set_size(tabs_width, 36.0F);
@@ -837,6 +830,18 @@ void MainWindow::sync_styles() {
   } else {
     ed.styles.reset();
     ctx_.core.dispatcher().report(styles.error());
+  }
+}
+
+void MainWindow::click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d) {
+  // x < 0 (a click with no position) toggles between Layout and 3D.
+  const std::size_t hit = x < 0.0F ? (view3d_tab_ ? 0 : tab_3d) : paint::segmented_index_at(ctx_.runtime, tabs, x);
+  if (hit == 0) show_view3d_tab(false);
+  if (hit != tab_3d) return;
+  if (view3d_->window_open()) {
+    show_view3d_tab(true);
+  } else {
+    run_line("magic::render3d");
   }
 }
 

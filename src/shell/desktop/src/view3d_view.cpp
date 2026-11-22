@@ -522,36 +522,40 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
 void View3dView::refresh_rows() {
   const view3d::WindowState* w = window();
   const view3d::LayerStack* stack = drawn_stack_ ? drawn_stack_.get() : build_stack_.get();
-  if (w != nullptr && stack != nullptr) {
-    rows_ = layer_rows(*stack, *w, options_.alpha, drawable_);
-    std::reverse(rows_.begin(), rows_.end());  // the panel lists the top layer first
-    const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
-    const std::vector<render::LayerPaint> paints = render::layer_paints(*stack, styles);
-    row_colors_.clear();
-    for (const View3dLayerRow& r : rows_) {
-      const bool known = !r.layers.empty() && r.layers.front() < paints.size();
-      row_colors_.push_back(known ? rgb_of(paints[r.layers.front()].rgb) : Rgba{1.0F, 1.0F, 1.0F, 1.0F});
-    }
-  }
+  if (w != nullptr && stack != nullptr) rebuild_rows(*w, *stack);
+  const bool editable = w != nullptr && visibility_editable(*w);
   for (std::size_t i = 0; i < std::max(rows_.size(), rows_widgets_.size()); ++i) {
     Row& row = row_widgets(i);
     const bool shown = i < rows_.size();
     row.box.set_visible(shown);
-    if (!shown) continue;
-    const View3dLayerRow& r = rows_[i];
-    row.label->set_accessible_name(r.name + (r.range_um.empty() ? "" : ", " + r.range_um + " µm") +
-                                   (r.visible ? ", shown" : ", hidden"));
-    row.hide->set_accessible_name((r.visible ? "Hide " : "Show ") + r.name);
-    row.isolate->set_accessible_name("Isolate " + r.name);
-    row.alpha->set_accessible_name("Transparency of " + r.name + ", " +
-                                   std::to_string(static_cast<int>(r.alpha * 100.0F + 0.5F)) + " percent");
-    const bool editable = visibility_editable(*w);
-    row.hide->set_enabled(editable);
-    row.isolate->set_enabled(editable);
-    row.label->invalidate();
-    row.hide->invalidate();
-    row.alpha->invalidate();
+    if (shown) update_row(row, rows_[i], editable);
   }
+}
+
+void View3dView::rebuild_rows(const view3d::WindowState& window, const view3d::LayerStack& stack) {
+  rows_ = layer_rows(stack, window, options_.alpha, drawable_);
+  std::reverse(rows_.begin(), rows_.end());  // the panel lists the top layer first
+  const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
+  const std::vector<render::LayerPaint> paints = render::layer_paints(stack, styles);
+  row_colors_.clear();
+  for (const View3dLayerRow& r : rows_) {
+    const bool known = !r.layers.empty() && r.layers.front() < paints.size();
+    row_colors_.push_back(known ? rgb_of(paints[r.layers.front()].rgb) : Rgba{1.0F, 1.0F, 1.0F, 1.0F});
+  }
+}
+
+void View3dView::update_row(Row& row, const View3dLayerRow& r, bool editable) {
+  row.label->set_accessible_name(r.name + (r.range_um.empty() ? "" : ", " + r.range_um + " µm") +
+                                 (r.visible ? ", shown" : ", hidden"));
+  row.hide->set_accessible_name((r.visible ? "Hide " : "Show ") + r.name);
+  row.isolate->set_accessible_name("Isolate " + r.name);
+  row.alpha->set_accessible_name("Transparency of " + r.name + ", " +
+                                 std::to_string(static_cast<int>(r.alpha * 100.0F + 0.5F)) + " percent");
+  row.hide->set_enabled(editable);
+  row.isolate->set_enabled(editable);
+  row.label->invalidate();
+  row.hide->invalidate();
+  row.alpha->invalidate();
 }
 
 void View3dView::repaint() {

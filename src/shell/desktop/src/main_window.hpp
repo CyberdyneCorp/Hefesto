@@ -48,6 +48,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/cmd/prompt.hpp"
@@ -402,6 +403,8 @@ class MainWindow {
   bool view3d_tab_ = false;
   ui::Painted* view_tabs_widget_ = nullptr;  // the segmented editor-view tabs (owned by painted_)
   void show_view3d_tab(bool on);
+  /// A click at `x` on the editor-view tabs: Layout shows the canvas, 3D shows the 3D view or runs render3d.
+  void click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d);
   std::unique_ptr<LeftPanel> left_;
   std::unique_ptr<InspectorPanel> inspector_;
   std::unique_ptr<PdkPanel> pdk_;

@@ -110,6 +110,10 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   void start_build(const BuildKey& key, const view3d::LayerStack& stack);
   void take_model(const view3d::MeshHandle& model);
   void refresh_rows();
+  /// Rebuilds rows_ and row_colors_ from the drawn (or building) stack.
+  void rebuild_rows(const view3d::WindowState& window, const view3d::LayerStack& stack);
+  /// The screen-reader names and enabled state of one panel row.
+  static void update_row(Row& row, const View3dLayerRow& r, bool editable);
   void repaint();
   bool ensure_renderer();
   void draw_frame();
