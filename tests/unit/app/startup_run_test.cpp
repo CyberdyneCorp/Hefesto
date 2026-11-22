@@ -22,6 +22,7 @@
 #include "hefesto/platform/services.hpp"
 #include "hefesto/script/pdk/consent.hpp"
 #include "hefesto/script/project.hpp"
+#include "hefesto/tech/loader.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "temp_dir.hpp"
 
@@ -66,6 +67,9 @@ class Session {
                                                line += " " + a;
                                              }
                                              calls.push_back(line);
+                                             if (std::string_view{name} == "tech" && tech_to_load != nullptr) {
+                                               editor.technology = tech_to_load;  // as a real load would
+                                             }
                                              if (std::string_view{name} != "tech") {
                                                editor.undo.record(std::make_unique<NoteEvent>());
                                              }
@@ -109,6 +113,7 @@ class Session {
   hefesto::editor::EditorState editor;
   hefesto::settings::ProjectSettings project_;
   std::vector<std::string> calls;
+  std::shared_ptr<const hefesto::tech::Technology> tech_to_load;  // what the fake `tech` installs, if set
 
  private:
   hefesto::platform::PortableServices services_;
@@ -116,6 +121,20 @@ class Session {
   cmd::CommandRegistry registry_;
   cmd::Dispatcher dispatcher_;
 };
+
+// The built-in minimum technology renamed `beta` with a two-word version.
+std::shared_ptr<const hefesto::tech::Technology> beta_technology() {
+  std::string text{hefesto::tech::builtin_technology_text()};
+  const auto name = text.find("    minimum\n");
+  text.replace(name, 12, "    beta\n");
+  const auto version = text.find("version 0.0");
+  text.replace(version, 11, "version 1.2 beta");
+  hefesto::platform::MemoryFileSystem fs;
+  diag::NullSink sink;
+  auto loaded = hefesto::tech::load_technology_text(text, "/t/beta.tech", fs, hefesto::tech::LoadOptions{}, sink);
+  REQUIRE(loaded.ok());
+  return loaded.value();
+}
 
 app::StartupOptions with_files(std::vector<std::string> names) {
   app::StartupOptions options;
@@ -182,10 +201,49 @@ TEST_CASE("the technology line follows the command-line files and names the vers
     }
   }
   CHECK(codes == std::vector<std::string>{std::string{app::codes::kFileLoading}, std::string{app::codes::kTechUsing}});
-  const std::string version = s.editor.technology->version().version_lines.empty()
-                                  ? std::string{}
-                                  : s.editor.technology->version().version_lines.back();
-  CHECK(s.reported(app::codes::kTechUsing, "Using technology \"" + s.editor.technology->name() + "\", version " + version));
+  CHECK(s.reported(app::codes::kTechUsing, "Using technology \"minimum\", version 0.0"));  // the fake `tech` loads nothing
+}
+
+// Regression: the line was printed only when startup's own -T or file
+// technology load ran, so a PDK whose .magicrc runs `tech load` (as
+// sky130A.magicrc does) and a start with the built-in minimum printed none;
+// Magic's Tcl startup prints it every time (SCRIPT-API-14).
+TEST_CASE("the technology line is printed when a startup file or nothing supplies the technology",
+          "[cap:scripting-pdk-integration][req:Script-host startup sequence]") {
+  Session minimum;
+  REQUIRE(minimum.start({}).ok());
+  CHECK(minimum.reported(app::codes::kTechUsing, "Using technology \"minimum\", version 0.0"));
+
+  Session rc;
+  rc.tech_to_load = beta_technology();
+  write_file(rc.env.working_directory / ".magicrc", "tech load beta\n");
+  REQUIRE(rc.start({}).ok());
+  CHECK(rc.calls == std::vector<std::string>{"tech load beta"});
+  CHECK(rc.reported(app::codes::kTechUsing, "Using technology \"beta\", version 1.2"));
+}
+
+// Regression: with magic-compat OFF a multi-word version (stored with its
+// words LF-joined) broke the line in two. ON prints `lindex [tech version] 0`,
+// the first word; OFF prints the whole version on one line.
+TEST_CASE("the technology line's version: first word with magic-compat ON, whole version OFF",
+          "[cap:scripting-pdk-integration][req:Script-host startup sequence]") {
+  const auto using_line = [](const char* compat) {
+    Session s;
+    s.tech_to_load = beta_technology();
+    app::StartupOptions options;
+    options.technology = "beta";
+    options.session_settings = {{"magic-compat", compat}};
+    REQUIRE(s.start(options).ok());
+    std::vector<std::string> lines;
+    for (const auto& d : s.sink.snapshot()) {
+      if (d.code == app::codes::kTechUsing) {
+        lines.push_back(d.text);
+      }
+    }
+    return lines;
+  };
+  CHECK(using_line("on") == std::vector<std::string>{"Using technology \"beta\", version 1.2"});
+  CHECK(using_line("off") == std::vector<std::string>{"Using technology \"beta\", version 1.2 beta"});
 }
 
 TEST_CASE("option T overrides the file's technology; a failed -T is retried, not the file",

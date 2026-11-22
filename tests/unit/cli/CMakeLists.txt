@@ -29,7 +29,9 @@ set_tests_properties("hefesto-cli: --version exits 0" PROPERTIES
   LABELS "unit;cli"
   PASS_REGULAR_EXPRESSION "^hefesto-cli [0-9]+\\.[0-9]+\\.[0-9]+")
 
-hefesto_cli_smoke("commands exit 0" "^hello\n" -c "echo hello; quit")
+# The startup technology line (scripting-pdk-integration "Script-host startup
+# sequence" step 12) goes to stderr, which the regex also sees.
+hefesto_cli_smoke("commands exit 0" "(^|\n)hello\n" -c "echo hello; quit")
 
 add_test(NAME "hefesto-cli: usage error exits 2"
          COMMAND "${CMAKE_COMMAND}" -DCLI=$<TARGET_FILE:hefesto-cli> -DEXPECT=2 -DARGS=--no-such-option

@@ -15,6 +15,8 @@
 
 #include "hefesto/app/startup.hpp"
 
+#include <algorithm>
+
 #include "hefesto/app/diag_codes.hpp"
 #include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/settings_layers.hpp"
@@ -611,10 +613,11 @@ class Startup {
   // `Using technology "<name>", version <first element of tech version>`
   // (tcltk/magic.tcl.in:446; the C build's line after the -T load,
   // utils/main.c:892, is not printed by the Tcl build). A file argument that
-  // ran `quit` ends startup before it. As before, it is printed only when
-  // startup loaded a technology (none for the built-in minimum).
+  // ran `quit` ends startup before it. Like Magic it is printed whatever
+  // supplied the technology: -T, a file's technology, a startup file's
+  // `tech load`, or the built-in minimum.
   void report_technology() {
-    if (quit_requested() || loaded_tech_path_.empty()) {
+    if (quit_requested() || state_.technology == nullptr) {
       return;
     }
     report(codes::kTechUsing, "Using technology \"" + state_.technology->name() + "\", version " +
@@ -624,10 +627,12 @@ class Startup {
   // `lindex [tech version] 0`. With magic-compat ON `tech version` is the
   // raw version string (its words joined by LF) followed by the description,
   // so the first element is the version's first word; with it OFF it is a
-  // proper list whose first element is the whole version string.
+  // proper list whose first element is the whole version string, printed on
+  // one line (its words, stored LF-joined, are joined with spaces).
   static std::string first_version_element(const tech::TechVersion& v, bool magic_compat) {
-    const std::string version = v.version_lines.empty() ? std::string{} : v.version_lines.back();
+    std::string version = v.version_lines.empty() ? std::string{} : v.version_lines.back();
     if (!magic_compat) {
+      std::replace(version.begin(), version.end(), '\n', ' ');
       return version;
     }
     const auto begin = version.find_first_not_of(" \t\n");
