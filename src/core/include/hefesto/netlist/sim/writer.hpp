@@ -164,6 +164,9 @@ struct SimResist {
 struct SimInput {
   float scale = 0.0F;     // EFScale (the header's units)
   std::string tech;       // EFTech
+  /// EFStyle != NULL: the `.ext` files name the current extraction style
+  /// (or none), so the style's device table applies.
+  bool style_matched = true;
   std::vector<SimDevice> devices;
   std::vector<SimCap> caps;
   std::vector<SimResist> resists;

@@ -248,14 +248,44 @@ void ext2sim_read(Options& options, bool extresist) {
   }
 }
 
+// extGetDevType and DBNumTypes, which key the device table and so decide
+// the device visit order (EFbuild.c efBuildDevice): the lowest tile type
+// whose device list in the current style names the device, as
+// ExtGetDevInfo lists them by type. Guarded like ext2sim_read().
+template <class Options>
+void device_types(Options& options, const editor::EditorState& editor) {
+  if constexpr (requires { options.device_tile_type, options.tile_type_count; }) {
+    if (editor.technology) {
+      options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
+    }
+    if (!editor.extract.current) {
+      return;
+    }
+    options.device_tile_type = [style = editor.extract.current](std::string_view name) -> std::optional<std::int32_t> {
+      for (const extract::DeviceInfo& info : style->device_info()) {
+        if (info.model == name) {
+          return static_cast<std::int32_t>(info.type);
+        }
+      }
+      return std::nullopt;
+    };
+  }
+}
+
 extflat::ReadOptions read_options(const editor::EditorState& editor, const extflat::CommonArgs& args,
                                   bool extresist, bool magic_compat) {
   extflat::ReadOptions options;
   ext2sim_read(options, extresist);
+  device_types(options, editor);
   options.magic_compat = magic_compat;
   if (editor.extract.current) {
     options.units_per_lambda = editor.extract.current->units_per_lambda;  // ExtCurStyle (EFread.c:252-259)
   }
+  // ExtCompareStyle: a `style` record naming a style of the technology.
+  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
+    const auto style = editor.extract.styles.select(name);
+    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
+  };
   options.search_path = args.search_path;
   options.tech_name = editor.technology ? editor.technology->name() : std::string{};
   options.global_nets = global_nets(editor);
@@ -363,11 +393,16 @@ CommandResult write_run(const editor::EditorState& editor, const SimRun& request
   if (input.tech.empty() && editor.technology) {
     input.tech = editor.technology->name();
   }
-  if (write.device_info.empty() && write.settings.format == SimFormat::su) {
-    message(request.emit, "Warning:  Current extraction style does not match .ext file!");
-    message(request.emit, "Area/Perimeter values will be zero.");
+  WriteOptions options = write;
+  if (!input.style_matched) {
+    options.device_info.clear();  // fetInfo keeps its defaults when EFStyle is NULL (ext2sim.c:657)
+    options.type_long_names.clear();
+    if (write.settings.format == SimFormat::su) {
+      message(request.emit, "Warning:  Current extraction style does not match .ext file!");
+      message(request.emit, "Area/Perimeter values will be zero.");
+    }
   }
-  const SimOutput output = write_sim(input, write, names, compat);
+  const SimOutput output = write_sim(input, options, names, compat);
   for (const ConsoleLine& line : output.console) {
     if (line.error) {
       message(request.emit, line.text);

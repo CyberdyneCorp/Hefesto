@@ -339,3 +339,19 @@ TEST_CASE("ext2sim name conversion after ext2spice with magic-compat OFF",
   CHECK(run.file("inv.sim").find("C a vdd! 5.0\n") != std::string::npos);
   CHECK(editor.netlist.names == session);  // the run leaves the session's flags alone
 }
+
+// ext2sim.c:624-662: with EFStyle NULL the style's device table is not used,
+// and the SU format warns that area and perimeter are zero.
+TEST_CASE("ext2sim when the extraction style does not match", "[cap:netlist-sim][req:Transistor attributes]") {
+  REQUIRE_COMMON_ARGS();
+  hefesto::editor::EditorState editor;
+  Runner run{editor};
+  run.circuit.style_matched = false;
+  REQUIRE(run({"-f", "su", "inv"}, false).ok());
+  REQUIRE(run.messages.size() >= 2);
+  CHECK(run.messages[0] == "Warning:  Current extraction style does not match .ext file!");
+  CHECK(run.messages[1] == "Area/Perimeter values will be zero.");
+  run.messages.clear();
+  REQUIRE(run({"inv"}, false).ok());  // MIT: no warning
+  CHECK(run.messages == std::vector<std::string>{"exttosim finished."});
+}

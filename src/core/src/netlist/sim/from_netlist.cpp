@@ -103,9 +103,10 @@ void device_values(const Flat& flat, SimDevice& device) {
 
 template <class Flat>
 void netlist_values(const Flat& flat, SimInput& input) {
-  if constexpr (requires { flat.scale, flat.tech; }) {
+  if constexpr (requires { flat.scale, flat.tech, flat.style; }) {
     input.scale = flat.scale;
     input.tech = flat.tech.value_or(std::string{});
+    input.style_matched = flat.style.has_value();
   }
 }
 

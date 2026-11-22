@@ -126,11 +126,42 @@ diag::Outcome<extflat::Netlist> flatten_reporting(const Hierarchy& hierarchy, do
                                                   diag::DiagnosticSink& sink) {
   constexpr extflat::FlatFlags kFlags =
       extflat::FlatFlags::flat_nodes | extflat::FlatFlags::flat_caps | extflat::FlatFlags::flat_resists;
-  if constexpr (requires { extflat::flatten(hierarchy, kFlags, {cap_threshold}, sink); }) {
-    return extflat::flatten(hierarchy, kFlags, {cap_threshold}, sink);
+  if constexpr (requires { extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink); }) {
+    return extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink);
   } else {
     return extflat::flatten(hierarchy, kFlags);
   }
+}
+
+// EFReadFile and EFFlatBuild of the root cell from the local file system.
+diag::Outcome<extflat::Netlist> read_and_flatten(const std::string& cell, const extflat::ReadOptions& options,
+                                                 double cap_threshold, diag::CollectingSink& sink) {
+  platform::LocalFileSystem fs;
+  const cell::SearchPaths paths;
+  const cell::PathVariables vars;
+  cell::LookupContext lookup{fs, paths, vars, sink};
+  auto hierarchy = extflat::read(lookup, cell, options);
+  if (!hierarchy.ok()) {
+    return hierarchy.error();
+  }
+  return flatten_reporting(hierarchy.value(), cap_threshold, sink);
+}
+
+// The leaf names that end in `!` in a flattened netlist. Magic's standalone
+// extcheck is a non-Tcl build, whose EFHNIsGlob makes exactly those names
+// global; extflat takes its globals as a list of leaves (the Tcl rule,
+// capability ext-flattening-names "Global and ground detection"), so the
+// run reads twice: once to find them, once with them as the globals.
+std::vector<std::string> bang_leaves(const extflat::Netlist& netlist) {
+  std::vector<std::string> leaves;
+  netlist.visit_nodes([&leaves](const extflat::FlatNode& node) {
+    for (const std::vector<std::string>& name : node.names) {
+      if (is_global(name) && std::find(leaves.begin(), leaves.end(), name.back()) == leaves.end()) {
+        leaves.push_back(name.back());
+      }
+    }
+  });
+  return leaves;
 }
 
 // The run's arguments, or the exit status after the usage text.
@@ -261,18 +292,18 @@ int run(std::span<const std::string> args, std::ostream& out, std::ostream& err,
   if (parsed.exit) {
     return *parsed.exit;
   }
-  platform::LocalFileSystem fs;
-  const cell::SearchPaths paths;
-  const cell::PathVariables vars;
-  diag::CollectingSink sink;
-  cell::LookupContext lookup{fs, paths, vars, sink};
   extflat::ReadOptions options;  // no technology, no style (Q-NETLIST-50)
   extcheck_read(options);
   options.search_path = parsed.args.search_path;
   const Thresholds limits = thresholds(parsed.args);
-  auto hierarchy = extflat::read(lookup, *parsed.args.cell, options);
-  diag::Outcome<extflat::Netlist> flat =
-      hierarchy.ok() ? flatten_reporting(hierarchy.value(), limits.cap, sink) : hierarchy.error();
+  // The first pass finds the global names; its messages are dropped.
+  diag::CollectingSink first_sink;
+  auto first = read_and_flatten(*parsed.args.cell, options, limits.cap, first_sink);
+  if (first.ok()) {
+    options.global_nets = bang_leaves(first.value());
+  }
+  diag::CollectingSink sink;
+  auto flat = first.ok() ? read_and_flatten(*parsed.args.cell, options, limits.cap, sink) : first;
   print_messages(sink.take(), out, err);
   if (!flat.ok()) {
     err << program << ": " << diag::format_text(flat.error()) << '\n';
