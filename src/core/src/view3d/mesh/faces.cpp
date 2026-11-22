@@ -12,7 +12,11 @@
 //   rather than one cell's plane, so abutting pieces of different cells
 //   leave no inner faces), clipped to the chunk;
 // - closed faces on the clip-area edge (Magic's "edges cut by the clipping
-//   area", W3Dmain.c:357-374), flagged clip_edge;
+//   area", W3Dmain.c:357-374), flagged clip_edge. For a split tile they
+//   follow, with magic-compat ON, the edges of the tile's bounding
+//   rectangle clipped to the area, as Magic does (it tests `r`, not the
+//   triangle, so the face also spans where the triangle has no material);
+//   with it OFF, the triangle's own cut (standing rule, PR #81 review N2);
 // - no side faces at all for a zero-thickness piece (W3Dmain.c:287).
 // With magic-compat ON a split tile is drawn with the h and t of its
 // source tile's left type on both triangles (w3dRenderVolume calls
@@ -215,7 +219,7 @@ class Emitter {
         boundary(t, s);
       }
     }
-    polygon_edges(poly);
+    polygon_edges(poly, intersect(t.area, chunk_.area));
     split_z_.reset();
   }
 
@@ -299,8 +303,10 @@ class Emitter {
     }
   }
 
-  // The diagonal piece and the clip-edge pieces of a clipped triangle.
-  void polygon_edges(const Polygon& poly) {
+  // The diagonal piece and the clip-edge pieces of a clipped triangle
+  // (`piece`: its bounding rectangle in this chunk).
+  void polygon_edges(const Polygon& poly, const db::Rect& piece) {
+    const bool magic_cut = heights_.stack().magic_compat();
     Vec2 centre;
     for (const Vec2& v : poly) {
       centre.x += v.x / static_cast<double>(poly.size());
@@ -311,6 +317,8 @@ class Emitter {
       const Vec2& b = poly[(i + 1) % poly.size()];
       if (a.x != b.x && a.y != b.y) {
         diagonal(a, b, centre);
+      } else if (magic_cut) {
+        continue;
       } else if (a.x == b.x && on_clip_line(true, a.x)) {
         axis_side(a.x == clip_.x0 ? db::Side::left : db::Side::right, a.x, std::min(a.y, b.y), std::max(a.y, b.y),
                   side_flag::clip_edge);
@@ -318,6 +326,9 @@ class Emitter {
         axis_side(a.y == clip_.y0 ? db::Side::bottom : db::Side::top, a.y, std::min(a.x, b.x), std::max(a.x, b.x),
                   side_flag::clip_edge);
       }
+    }
+    if (magic_cut) {
+      rect_clip_edges(piece);  // W3Dmain.c:360-378 closes the cut along `r`
     }
   }
 

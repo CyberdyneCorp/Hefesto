@@ -113,8 +113,22 @@ TEST_CASE("a split tile renders as a triangle with a diagonal side face", "[cap:
           std::vector<Seg>{{0, 0, 0, 10, kLeft}, {0, 0, 10, 10, kDiag}, {0, 10, 10, 10, kLeft}});
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
   }
-  SECTION("cut by the cut box: the exact polygon, a closed cut face") {
+  SECTION("cut by the cut box, magic-compat ON: the exact polygon, the cut closed along the clipped bounding box") {
+    // Magic tests the clipped tile rectangle `r` (W3Dmain.c:360-378): the
+    // face at y = 5 spans r's width, and r's right edge on the cut box's
+    // gets a face where the triangle has no material (PR #81 review N2).
     const auto mesh = view3d::test::build(stack, root, Rect{-5, -5, 10, 5});
+    REQUIRE(mesh.has_value());
+    CHECK(view3d::test::face_area(*mesh, 0) == 12.5);
+    CHECK(view3d::test::sides_of(*mesh, 0) == std::vector<Seg>{{0, 0, 0, 5, kLeft},
+                                                               {0, 0, 5, 5, kDiag},
+                                                               {0, 5, 10, 5, kClip | kLeft},
+                                                               {10, 0, 10, 5, kClip}});
+  }
+  SECTION("cut by the cut box, magic-compat OFF: the exact polygon, a closed cut face") {
+    const view3d::LayerStack off{view3d::Mode::layout_layer,
+                                 {view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F)}, false, 0.01};
+    const auto mesh = view3d::test::build(off, root, Rect{-5, -5, 10, 5});
     REQUIRE(mesh.has_value());
     CHECK(view3d::test::face_area(*mesh, 0) == 12.5);
     CHECK(view3d::test::sides_of(*mesh, 0) ==
@@ -317,8 +331,12 @@ TEST_CASE("split tiles of a transformed subcell keep their area and stay closed"
     CHECK(view3d::test::face_area(*mesh, 0) == 8.0 * (100.0 + 80.0));
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
   }
-  SECTION("cut through every triangle") {
-    const auto mesh = view3d::test::build(stack, root, Rect{-100, -7, 900, 3});
+  SECTION("cut through every triangle (magic-compat OFF: closed on each triangle's own cut)") {
+    // With it ON the cut is closed along each clipped bounding box, as
+    // Magic does, which leaves edges open by design.
+    const view3d::LayerStack off{view3d::Mode::layout_layer,
+                                 {view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F)}, false, 0.01};
+    const auto mesh = view3d::test::build(off, root, Rect{-100, -7, 900, 3});
     REQUIRE(mesh.has_value());
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
     CHECK(view3d::test::triangles_of(*mesh, 0).size() >= 8);
