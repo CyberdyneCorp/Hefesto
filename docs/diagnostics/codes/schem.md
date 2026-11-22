@@ -68,9 +68,10 @@ Owner: SYMLIB.
 - `SCHEM-LIB-001` (warning): `Relative symbol reference <reference> resolved
   against the schematic folder <folder>; xschem resolves it against its
   start folder`. A `./` or `../` reference, or a reference found through the
-  `.` element of the search path, was resolved against the folder of the
-  schematic that contains the instance, in both modes (Q-SCHEM-30,
-  `Resolution: fix`). Once per reference and folder.
+  `.` element of the search path, or through another relative element such
+  as `lib` or `../lib`, was resolved against the folder of the schematic
+  that contains the instance, in both modes (Q-SCHEM-30, `Resolution: fix`;
+  Q-SCHEM-38 option (a), approved 2026-11-22). Once per reference and folder.
 - `SCHEM-LIB-002` (warning): an `http://` or `https://` reference is kept as
   written and never fetched; the instance shows the missing-symbol
   placeholder (Q-SCHEM-9, `Resolution: platform`). Once per reference.
@@ -88,7 +89,12 @@ Owner: SYMLIB.
   any level, and what was read before is kept. Once per file.
 - `SCHEM-LIB-006` (warning): an `xschemrc` raised a Tcl error (a sandbox
   denial included); what it set before the error is kept, the rest of the
-  file is not run. The search path is built from what was set.
+  file is not run. The search path is built from what was set. An unknown
+  command is such an error (`invalid command name "<cmd>"`), except the
+  GUI-only commands the three PDK `xschemrc` files call (`button`,
+  `destroy`, `focus`, `label`, `menu`, `pack`, `radiobutton`, `raise`,
+  `toplevel`, `winfo`, `wm`), which do nothing while the files run
+  (Q-SCHEM-38 option (a), approved 2026-11-22, both modes).
 - `SCHEM-LIB-007` (info): an `xschemrc` set `xschem_execute_scripts`; the
   value is read and ignored, because `tcleval` values always run in the
   sandbox and launcher scripts are confirmed once per document (Q-SCHEM-25,
@@ -96,15 +102,27 @@ Owner: SYMLIB.
 - `SCHEM-LIB-008` (info): a line an `xschemrc` printed with `puts`; rc files
   never write to Hefesto's standard streams.
 - `SCHEM-LIB-009` (warning): `Symbol <reference>: more than 1000000 records
-  when flattened; the rest is not loaded`. A schematic used as a symbol
-  would hold more than 1,000,000 records over all levels; the records added
-  so far are kept and reading stops, in both modes (input limit approved
-  2026-11-21, Q-SCHEM-32). Once per file.
+  when flattened; the rest is not loaded`, or `... more than 268435456 bytes
+  when flattened; ...`. A schematic used as a symbol would hold more than
+  1,000,000 records (input limit approved 2026-11-21, Q-SCHEM-32) or more
+  than 256 MiB (16 bytes per point plus every string a record carries;
+  Q-SCHEM-40, M8-D2, approved 2026-11-22) over all levels; the records added
+  so far are kept and reading stops, in both modes. The message names the
+  limit reached. Once per file.
 - `SCHEM-LIB-010` (warning): `xschemrc <file>: evaluation stopped after 10 s`.
   The `xschemrc` files of one document ran for 10 s in total; the stop is
   handled like a Tcl error in `<file>` (earlier settings kept, later ones
   and later files lost), in both modes (input limit approved 2026-11-21,
   Q-SCHEM-32).
+- `SCHEM-LIB-011` (warning): `Symbol <reference>: symbol generators that
+  run external programs are not supported`. A generator reference
+  `name(args)` names a program that is not a Tcl script (a name ending in
+  `.tcl`, or a first `#!` line naming `tclsh` or `wish`); it is not run and
+  the instance shows the placeholder (Q-SCHEM-11). Once per program.
+- `SCHEM-LIB-012` (warning): `Symbol generator <file> failed: <why>`. A Tcl
+  generator raised an error, ran past its 10 s limit or printed more than
+  256 MiB; the instance shows the placeholder. Once per reference until the
+  cache is cleared or the generator is forgotten.
 - `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
   (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
   `write_data` was refused outside the sandbox's granted folders; the
@@ -256,8 +274,10 @@ fails when the two disagree.
 | `SCHEM-LIB-006` | warning | An `xschemrc` file raised a Tcl error; the settings it would have made after the error are lost. |
 | `SCHEM-LIB-007` | info | `xschem_execute_scripts` in an `xschemrc` is ignored: `tcleval` values always run in the sandbox and launchers are confirmed (Q-SCHEM-25). |
 | `SCHEM-LIB-008` | info | A line an `xschemrc` file printed with `puts`. |
-| `SCHEM-LIB-009` | warning | A schematic used as a symbol holds more than 1,000,000 records when flattened; the rest is not loaded (Q-SCHEM-32). |
+| `SCHEM-LIB-009` | warning | A schematic used as a symbol holds more than 1,000,000 records or 256 MiB when flattened; the rest is not loaded (Q-SCHEM-32, Q-SCHEM-40). |
 | `SCHEM-LIB-010` | warning | Evaluating the `xschemrc` files of a document stopped at the 10 s limit; later settings are lost (Q-SCHEM-32). |
+| `SCHEM-LIB-011` | warning | A symbol generator that is not a Tcl script is not run (symbol generators that run external programs are not supported); the instance is shown as a missing symbol (Q-SCHEM-11). |
+| `SCHEM-LIB-012` | warning | A Tcl symbol generator failed, ran past its 10 s limit or printed more than 256 MiB; the instance is shown as a missing symbol. |
 | `SCHEM-NET-001` | error | Two differently named nets are shorted (`Error: <tag> shorted: <a> - <b>`); the first name is kept and the netlist is still written. |
 | `SCHEM-NET-002` | warning | A net, pin or instance name is not valid bus notation (`syntax error in <string>`); it is used unchanged with unknown width. |
 | `SCHEM-NET-003` | warning | A pin has no net and is written as `__UNCONNECTED_PIN__<k>`. |
