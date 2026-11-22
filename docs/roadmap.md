@@ -263,7 +263,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Status (2026-11-18): planned; golden capture done, implementation not started.** The 24 open SCHEM questions and D-21 were approved on 2026-11-13 (`docs/decisions/m8-decision-table.md`): xschem quirks are governed by the `xschem-compat` setting (default ON), and the specs follow a two-team clean-room process (`hefesto-licensing`). The plan is OpenSpec change `openspec/changes/m8-schematic`. Done: the xschem PDK data sets and the inventory (section 2), the clean-room check and pull-request template (tasks 1.3, 1.4), and the 41 SCHEM golden cases, captured from xschem 3.4.8RC with gawk in runs 44239093096 and 44239987461, with the capture-fixed texts recorded in the specs (gate G2, task 3.6). Decided 2026-11-18: Q-SCHEM-30 (fix: relative symbol references resolve against the containing schematic's folder in both modes, with a warning; SCHEM-PR-05 has an approved deviation), the Q-SCHEM-21 OFF-mode amendment (a template LF followed by `+` is kept), and the SCHEM-SIM-01/02 simulation results move to M9 (both cases deferred to M9, captures kept). Open: gate G1 needs the outside reviewer's confirmation of `docs/contributing/cleanroom.md` (task 1.1) and the second spec-team signature of the paraphrase review (task 1.2). Implementation starts after G1.
 
-**Status (2026-11-22): in progress (implementation rounds 1 to 3).** File format, symbols and libraries (with the clean-room system symbol library), SPICE netlisting through the session environment and the `schematic`/`xschem` commands have landed with their input limits (Q-SCHEM-32, -39, -40, -41). Open: schematic editing, the desktop editor, the M8 part of simulation integration, the security review (task 12.1), `schem-bench`, and Q-SCHEM-34 to -37, which await the user. Progress per task: `openspec/changes/m8-schematic/tasks.md`.
+**Status (2026-11-22): in progress (implementation rounds 1 to 3).** File format, symbols and libraries (with the clean-room system symbol library), SPICE netlisting through the session environment and the `schematic`/`xschem` commands have landed with their input limits (Q-SCHEM-32, -40, -41, -42). Open: schematic editing, the desktop editor, the M8 part of simulation integration, the security review (task 12.1), `schem-bench`, and Q-SCHEM-34 to -37, which await the user. Progress per task: `openspec/changes/m8-schematic/tasks.md`.
 
 **Capabilities:** `schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration`, `schematic-command`
 
@@ -279,6 +279,21 @@ Depends on `mask-hints`, which is completed in M3.
 - A `hefesto-security` review signs off the schematic script permission model (Q-SCHEM-25).
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
+
+**Status (2026-11-22): plan drafted, with no decision approved yet.**
+- The plan is OpenSpec change [`openspec/changes/m9-lvs-simulation`](../openspec/changes/m9-lvs-simulation/README.md).
+- Its decisions are in [`docs/decisions/m9-decision-table.md`](decisions/m9-decision-table.md). They cover:
+  - the 34 entries that `check_milestone_readiness.py --milestone M9` reports as blocking;
+  - Q-SIM-1 and the rest of Q-SIMADV-5;
+  - audit decisions D-22 to D-28;
+  - 18 entries the plan proposes (Q-LVS-30 to -36, Q-SIM-20 to -28, Q-SIMADV-13, Q-SCHEM-39);
+  - four planning questions.
+- Recommended direction:
+  - LVS is clean-room under a two-team process (Q-LVS-30).
+  - ngspice runs in the worker `hefesto-simd`, which alone loads a shared `libngspice-hefesto`. That worker is the licence and crash boundary on desktop (Q-SIM-20, -21).
+  - D-28 is split: the desktop part is decided in M9, the iPad part before M14 (Q-SIM-26).
+  - Desktop Beta is signed off on one inverter flow per PDK (Q-SIM-27).
+- Implementation starts after gate G0, once the user has approved the table.
 
 **Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`, `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`
 

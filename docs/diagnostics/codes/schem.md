@@ -189,7 +189,7 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
 - `SCHEM-NET-014` (warning): `Symbol: <symbol>: no type attribute set`.
 - `SCHEM-NET-015` (warning): every pin of an instance is unconnected.
 - `SCHEM-NET-016` (warning): two identical instances of one symbol overlap.
-- `SCHEM-NET-017` (warning): the flat netlist stopped (Q-SCHEM-39, user
+- `SCHEM-NET-017` (warning): the flat netlist stopped (Q-SCHEM-42, user
   decision M8-D1 approved 2026-11-22, both modes): `flat netlist stopped:
   depth limit of 64 levels` (`schem::kMaxFlatDepth`; the instance below the
   limit is kept as an `X` line and flattening goes on with the next line)
@@ -312,7 +312,7 @@ fails when the two disagree.
 | `SCHEM-NET-014` | warning | A symbol has no `type` attribute. |
 | `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
-| `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-39); what was written so far is kept and the run does not fail. |
+| `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |

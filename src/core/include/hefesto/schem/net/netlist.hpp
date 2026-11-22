@@ -78,13 +78,13 @@ struct NetlistResult {
   std::vector<ComputedLabel> labels;
 };
 
-/// Deepest subcircuit nesting "Flat netlist" expands (Q-SCHEM-39, user
+/// Deepest subcircuit nesting "Flat netlist" expands (Q-SCHEM-42, user
 /// decision M8-D1 of 2026-11-22; both modes): an instance below it is kept
 /// as an `X` line with warning SCHEM-NET-017 (a subcircuit that places
 /// itself would otherwise expand forever).
 inline constexpr int kMaxFlatDepth = 64;
 
-/// Most bytes "Flat netlist" writes (Q-SCHEM-39, M8-D1; both modes): 256
+/// Most bytes "Flat netlist" writes (Q-SCHEM-42, M8-D1; both modes): 256
 /// MiB. Each line counts with its LF, and each expanded instance counts its
 /// own line too, so a hierarchy of empty subcircuits cannot expand forever.
 /// Flattening stops before the line that would pass it, with warning
@@ -119,7 +119,7 @@ struct NetlistEnvironment {
   int ev_precision = 4;
   /// Bytes of expanded bus text the run may produce in total (Q-SCHEM-41).
   std::uint64_t bus_budget = kMaxBusTotalBytes;
-  /// The limits of the flat netlist (Q-SCHEM-39).
+  /// The limits of the flat netlist (Q-SCHEM-42).
   FlatLimits flat_limits{};
 };
 

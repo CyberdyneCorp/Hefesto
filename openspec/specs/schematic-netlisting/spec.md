@@ -696,7 +696,7 @@ In `flat` mode, Hefesto SHALL produce a netlist with no subcircuit hierarchy for
 
 The flat netlist SHALL be electrically equivalent to the hierarchical one and to xschem's flat netlist: the same devices, the same connections, and the same model names and parameter values. It is not byte-compared: the golden comparison SHALL parse both netlists into a canonical form (devices with their resolved nodes, models and parameter values, in a canonical order, with names compared case-insensitively as SPICE reads them) and compare those. Any other property of xschem's flat text is informative and is not reproduced (Q-SCHEM-15, `Resolution: replicate`, behavioural), in particular: its letter case (xschem writes the flat text in upper case except `.end`), the whitespace inside quoted expressions (xschem removes it: `'int((1 + 1)/2) * WN / 1 * 0.29'` becomes `'INT((1+1)/2)*WN/1*0.29'`, which SPICE reads the same), and its `*--------BEGIN_<path>->...`/`*--------END___<path>->...` comment lines. The canonical form SHALL therefore compare quoted expressions without their whitespace.
 
-**Limits** (approved by the user on 2026-11-22, Q-SCHEM-39, decision M8-D1; both modes of `xschem-compat`; xschem bounds neither):
+**Limits** (approved by the user on 2026-11-22, Q-SCHEM-42, decision M8-D1; both modes of `xschem-compat`; xschem bounds neither):
 - **Depth.** Substitution SHALL descend at most 64 levels (`kMaxFlatDepth`), the top schematic's instances being level 1. An instance of a defined subcircuit that would open level 65 SHALL NOT be substituted: it SHALL be written as its `X` line, and the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once per run. A subcircuit body that places itself therefore stops after 64 levels.
 - **Size.** When the flat output passes 268,435,456 bytes (256 MiB), flattening SHALL stop: no further instance SHALL be substituted, the instances not yet substituted SHALL be written as their `X` lines, and the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once per run.
 - In both cases the netlist run SHALL NOT fail; the warning is the only sign that the flat netlist is incomplete.
@@ -718,12 +718,12 @@ Compatibility: behavioral
 #### Scenario: Flat netlist deeper than 64 levels
 - **GIVEN** a subcircuit `loop` whose body holds one resistor and one instance of `loop`, and a top schematic that places `loop` once, with `xschem-compat` ON or OFF
 - **WHEN** a flat netlist is generated
-- **THEN** it SHALL hold 64 resistor lines (levels 1 to 64) and one `X` line for the instance of `loop` at level 65, the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once, and the run SHALL complete without failing (Q-SCHEM-39)
+- **THEN** it SHALL hold 64 resistor lines (levels 1 to 64) and one `X` line for the instance of `loop` at level 65, the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once, and the run SHALL complete without failing (Q-SCHEM-42)
 
 #### Scenario: Flat netlist larger than 256 MiB
 - **GIVEN** a hierarchy whose fully flattened netlist would be larger than 268,435,456 bytes (for example 24 levels that each place the next subcircuit twice, the last holding a resistor: 2^24 resistor lines), with `xschem-compat` ON or OFF
 - **WHEN** a flat netlist is generated
-- **THEN** the output SHALL hold no more than 268,435,456 bytes plus the line that passed the limit and the `X` lines of the instances not yet substituted, the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once, the run SHALL complete without failing, and work and memory SHALL stay bounded by the limit (Q-SCHEM-39)
+- **THEN** the output SHALL hold no more than 268,435,456 bytes plus the line that passed the limit and the `X` lines of the instances not yet substituted, the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once, the run SHALL complete without failing, and work and memory SHALL stay bounded by the limit (Q-SCHEM-42)
 
 ### Requirement: Errors and warnings
 Netlisting SHALL report, without stopping:

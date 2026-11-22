@@ -9,7 +9,7 @@
 // kinds), the rest are its arguments; an X line whose last positional field
 // names a subcircuit defined in the netlist is replaced by that subcircuit's
 // body. Flattening stops at kMaxFlatDepth levels and after kMaxFlatBytes
-// bytes of output (Q-SCHEM-39, both modes) with warning SCHEM-NET-017.
+// bytes of output (Q-SCHEM-42, both modes) with warning SCHEM-NET-017.
 //
 // Owner: NETLIST.
 

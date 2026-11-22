@@ -611,7 +611,7 @@ TEST_CASE("schematic resolution: @symname is replaced in one pass",
   CHECK(elapsed < std::chrono::seconds{10});
 }
 
-// --- Round 3: output limits (Q-SCHEM-39, Q-SCHEM-41) and linear headers ------
+// --- Round 3: output limits (Q-SCHEM-42, Q-SCHEM-41) and linear headers ------
 
 namespace {
 
@@ -653,7 +653,7 @@ std::size_t occurrences(const std::string& text, const std::string& what) {
 
 }  // namespace
 
-// Q-SCHEM-39 (user decision M8-D1, 2026-11-22), both modes: a subcircuit
+// Q-SCHEM-42 (user decision M8-D1, 2026-11-22), both modes: a subcircuit
 // whose schematic places itself expands 64 levels deep, then the instance is
 // kept as an X line with one SCHEM-NET-017 warning; the run does not fail.
 TEST_CASE("Flat netlist deeper than 64 levels", "[cap:schematic-netlisting][req:Flat netlist]") {
@@ -676,7 +676,7 @@ TEST_CASE("Flat netlist deeper than 64 levels", "[cap:schematic-netlisting][req:
   }
 }
 
-// Q-SCHEM-39, both modes: ten instances per level, nine levels (10^9
+// Q-SCHEM-42, both modes: ten instances per level, nine levels (10^9
 // resistors unflattened). Flattening stops before the line that would pass
 // the byte limit, with one SCHEM-NET-017 warning, keeps the lines written so
 // far, and finishes quickly without allocating far past the limit. The

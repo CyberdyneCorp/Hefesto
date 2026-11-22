@@ -6,7 +6,7 @@ The reference is xschem, not Magic: `StefanSchippers/xschem` @ `4142e6d6f1eb5cd0
 
 xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they carry the GPL header). The PDK symbol libraries are Apache-2.0. Hefesto is implemented clean-room from the specs.
 
-**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18"). Q-SCHEM-31 (drafted 2026-11-20), Q-SCHEM-32 (input limits) and Q-SCHEM-33 (fuzzing) were approved by the user on 2026-11-21; Q-SCHEM-34 to -38 were drafted by the spec team on 2026-11-21 from the round-1 spec issues; Q-SCHEM-34 to -37 await the user (decision table, "Decisions of 2026-11-21" and "Proposed 2026-11-21"). Q-SCHEM-38 (option (a)) and Q-SCHEM-39 to -41 (input limits M8-D1 to M8-D3, proposed by round 2) were approved by the user on 2026-11-22 (decision table, "Decisions of 2026-11-22").
+**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18"). Q-SCHEM-31 (drafted 2026-11-20), Q-SCHEM-32 (input limits) and Q-SCHEM-33 (fuzzing) were approved by the user on 2026-11-21; Q-SCHEM-34 to -38 were drafted by the spec team on 2026-11-21 from the round-1 spec issues; Q-SCHEM-34 to -37 await the user (decision table, "Decisions of 2026-11-21" and "Proposed 2026-11-21"). Q-SCHEM-38 (option (a)) and Q-SCHEM-42, -40 and -41 (input limits M8-D1, M8-D2 and M8-D3, proposed by round 2) were approved by the user on 2026-11-22 (decision table, "Decisions of 2026-11-22").
 
 **Compatibility setting (D-21, approved 2026-11-13).** Entries in this file that record `Resolution: compat` are governed by the `xschem-compat` setting (default ON) of capability `hefesto-magic-compat-mode`, not by `magic-compat`.
 
@@ -365,15 +365,16 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Spec effect: `schematic-symbols-and-libraries` "Library search path" (relative elements; scenario "Relative library element resolved against the document folder") and "xschemrc as data" (environment, unknown commands; scenarios "Synthetic HOME and PWD", "Unknown command in an xschemrc", "GUI-only command in a PDK xschemrc").
 - Resolution: platform — option (a) in both modes of `xschem-compat`: `env(PWD)` and `env(HOME)` are the document's folder; relative search-path elements other than `.` resolve against the document's folder with warning `SCHEM-LIB-001` (extends Q-SCHEM-30); an unknown command in an `xschemrc` raises Tcl's error (reported as `SCHEM-LIB-006`, earlier settings kept) except the GUI-only commands the three PDK `xschemrc` files call (the `rc_commands` of `tests/data/schem/inventory.json` that are GUI-only), which are accepted and do nothing. Approved by the user 2026-11-22.
 
-### Q-SCHEM-39: Size of a flat netlist
+### Q-SCHEM-39: SCHEM-LVS-01 needs the LVS engine
 - Kind: platform
-- Status: approved 2026-11-22 (proposed by round 2 of `openspec/changes/m8-schematic`; user decision M8-D1 of 2026-11-22)
-- xschem behavior: flattening is not bounded. A subcircuit body that places itself is substituted without end, and a deep or wide hierarchy gives a flat netlist of any size (as for the other unbounded inputs of Q-SCHEM-32).
-- Evidence: round-2 review of `flat` mode (`docs/contributing/security.md` "Schematic input", row "Flat netlist: subcircuit nesting"; proposed `schem::kMaxFlatDepth` = 64 with a regression test).
-- Options: cap the nesting depth and the output size, the same in both modes, with a warning and a regression test per limit | cap the depth only | leave unbounded (as xschem)
-- Recommendation: cap both, both modes; the run is not failed, the warning names the limit.
-- Spec effect: `schematic-netlisting` "Flat netlist" (scenarios "Flat netlist deeper than 64 levels", "Flat netlist larger than 256 MiB"); `docs/contributing/security.md` "Schematic input"; new warning `SCHEM-NET-017` in `docs/diagnostics/codes/schem.md`.
-- Resolution: platform — in both modes of `xschem-compat`, flattening a hierarchy (`schematic-netlisting` "Flat netlist") stops at `kMaxFlatDepth` = 64 levels and when the flat output passes 256 MiB (268,435,456 bytes); flattening stops there with the warning `SCHEM-NET-017` (`flat netlist stopped: <depth limit of 64 levels | output passed 268435456 bytes>`); the run is not failed; a regression test per limit. Approved by the user 2026-11-22.
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D16)
+- xschem behavior: n/a. This is a question about when a golden case is scheduled.
+  - SCHEM-LVS-01 runs netgen with `sky130A_setup.tcl` to compare Magic's extracted `sky130_fd_sc_hd__inv_1` against `inv_1.sch`.
+  - On the Hefesto side the case writes `lvs.out`. That needs the `lvs-*` capabilities, which design D13 of m8-schematic places in M9.
+  - `tests/golden/deviations.toml` marks the case `deferred = "M8"`, so the M8 exit (m8 design D21) would have to wait for M9 code.
+- Evidence: `tests/golden/deviations.toml` (`[SCHEM-LVS-01]`); `tests/golden/SCHEM/cases/SCHEM-LVS-01/`; `openspec/changes/m8-schematic/design.md` D13, D21
+- Options: (a) move SCHEM-LVS-01 to `deferred = "M9"`, as SCHEM-SIM-01/02 were moved on 2026-11-18; M8 keeps checking the case's `inv_1.spice` netlist output, and M9 makes the whole case pass; (b) keep the case in M8 and let the M8 exit wait for M9's LVS; (c) split it into a netlist case for M8 and an LVS case for M9.
+- Recommendation: (a). The reasoning is the same as for the SCHEM-SIM decision, and no captured file changes.
 
 ### Q-SCHEM-40: Byte size of a schematic used as a symbol
 - Kind: platform
@@ -394,3 +395,13 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Recommendation: cap the total at 64 × `kMaxBusBytes`, both modes.
 - Spec effect: `schematic-netlisting` "Bus and vector notation" (paragraph "Input limits", scenario "Total bus expansion limit"); `docs/contributing/security.md` "Schematic input".
 - Resolution: platform — in both modes of `xschem-compat`, the expanded bus text of one netlist run, or of one editing session, is capped in total at 64 × `kMaxBusBytes` = 4,294,967,296 bytes (4 GiB); a name whose expansion would pass the total is used unchanged with `SCHEM-NET-006` (as a single name over `kMaxBusBytes` is today); regression test. Approved by the user 2026-11-22.
+
+### Q-SCHEM-42: Size of a flat netlist
+- Kind: platform
+- Status: approved 2026-11-22 (proposed by round 2 of `openspec/changes/m8-schematic`; user decision M8-D1 of 2026-11-22)
+- xschem behavior: flattening is not bounded. A subcircuit body that places itself is substituted without end, and a deep or wide hierarchy gives a flat netlist of any size (as for the other unbounded inputs of Q-SCHEM-32).
+- Evidence: round-2 review of `flat` mode (`docs/contributing/security.md` "Schematic input", row "Flat netlist: subcircuit nesting"; proposed `schem::kMaxFlatDepth` = 64 with a regression test).
+- Options: cap the nesting depth and the output size, the same in both modes, with a warning and a regression test per limit | cap the depth only | leave unbounded (as xschem)
+- Recommendation: cap both, both modes; the run is not failed, the warning names the limit.
+- Spec effect: `schematic-netlisting` "Flat netlist" (scenarios "Flat netlist deeper than 64 levels", "Flat netlist larger than 256 MiB"); `docs/contributing/security.md` "Schematic input"; new warning `SCHEM-NET-017` in `docs/diagnostics/codes/schem.md`.
+- Resolution: platform — in both modes of `xschem-compat`, flattening a hierarchy (`schematic-netlisting` "Flat netlist") stops at `kMaxFlatDepth` = 64 levels and when the flat output passes 256 MiB (268,435,456 bytes); flattening stops there with the warning `SCHEM-NET-017` (`flat netlist stopped: <depth limit of 64 levels | output passed 268435456 bytes>`); the run is not failed; a regression test per limit. Approved by the user 2026-11-22.
