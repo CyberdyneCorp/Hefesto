@@ -62,7 +62,7 @@ class OffscreenTarget {
 struct DrawParams {
   view3d::ProjectionParams projection;
   int level = 1;                                 // `level`: MSAA 4x at level >= 1
-  const view3d::LayerStack* stack = nullptr;     // h, t per layer (shader z); its magic_compat picks the lighting
+  const view3d::LayerStack* stack = nullptr;     // h, t of layers missing from MeshModel::layer_heights; its magic_compat picks the lighting
   const display::StyleSet* styles = nullptr;     // layer colors and the background (mesh3d_shading.hpp)
   std::vector<bool> hidden;                      // per stack layer
   std::vector<float> alpha;                      // per stack layer; empty = opaque (transparency pass)

@@ -229,7 +229,18 @@ LayerDraw classify(const DrawParams& p, std::size_t layer, const LayerPaint& pai
   return alpha < 1.0F ? LayerDraw::transparent : LayerDraw::opaque;
 }
 
-void prepare_layers(const DrawParams& p, std::size_t count, Frame& f) {
+// The h and t a layer's rectangles and plain side faces are drawn with: the
+// model's MeshModel::layer_heights (the stack's, or a contact spanned by the
+// J1 option), else the stack's draw_height.
+view3d::DrawHeight layer_height(const DrawParams& p, const std::vector<view3d::DrawHeight>& model, std::size_t i) {
+  if (i < model.size()) {
+    return model[i];
+  }
+  return p.stack != nullptr ? p.stack->draw_height(static_cast<view3d::LayerId>(i)) : view3d::DrawHeight{};
+}
+
+void prepare_layers(const DrawParams& p, const std::vector<view3d::DrawHeight>& model_heights, std::size_t count,
+                    Frame& f) {
   std::vector<LayerPaint> paints =
       p.stack != nullptr ? layer_paints(*p.stack, p.styles) : std::vector<LayerPaint>{};
   paints.resize(count);
@@ -238,8 +249,7 @@ void prepare_layers(const DrawParams& p, std::size_t count, Frame& f) {
   for (std::size_t i = 0; i < count; ++i) {
     f.layers[i] = classify(p, i, paints[i]);
     f.any_transparent = f.any_transparent || f.layers[i] == LayerDraw::transparent;
-    const view3d::DrawHeight z =
-        p.stack != nullptr ? p.stack->draw_height(static_cast<view3d::LayerId>(i)) : view3d::DrawHeight{};
+    const view3d::DrawHeight z = layer_height(p, model_heights, i);
     const float alpha = std::clamp(layer_alpha(p, i), 0.0F, 1.0F);
     f.gpu_layers[i] = GpuLayer{{paints[i].rgb[0], paints[i].rgb[1], paints[i].rgb[2], alpha},
                                {z.height, z.thickness, 0.0F, 0.0F}};
@@ -270,6 +280,7 @@ struct VulkanMesh3dRenderer::Impl {
   std::vector<GpuChunk> chunks;  // model order
   std::vector<std::uint32_t> bases;  // pick base of each chunk
   std::size_t layer_count = 0;   // 1 + the largest layer id of the model
+  std::vector<view3d::DrawHeight> heights;  // MeshModel::layer_heights of the uploaded model
   std::uint64_t uploads = 0;
   bool drawn = false;
 
@@ -402,6 +413,7 @@ struct VulkanMesh3dRenderer::Impl {
     }
     for (GpuChunk& old : chunks) vk::destroy_buffer(device, old.buffer);
     chunks = std::move(next);
+    heights = mesh.layer_heights;
     index_chunks();
   }
 
@@ -427,7 +439,7 @@ struct VulkanMesh3dRenderer::Impl {
     f.width = owner->width();
     f.height = owner->height();
     const std::size_t count = std::max(layer_count, p.stack != nullptr ? p.stack->size() : 0U);
-    prepare_layers(p, count, f);
+    prepare_layers(p, heights, count, f);
     f.clear = clear_color(p);
     const view3d::Matrix4 m = view3d::matrix(view, f.width, f.height, p.projection);
     const std::uint32_t lighting = p.stack == nullptr || p.stack->magic_compat() ? 0U : 1U;

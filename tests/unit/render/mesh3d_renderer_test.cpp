@@ -136,11 +136,12 @@ Scene basic_scene(bool magic_compat = false) {
   return s;
 }
 
-/// A metal1 triangle, and an ndiff | poly split tile whose poly triangle is
-/// drawn with ndiff's h and t (own_height).
-Scene split_scene() {
+/// A metal1 triangle, and an ndiff | poly split tile. With magic-compat ON
+/// the poly triangle is drawn with ndiff's h and t (own_height, Q-MISC-79);
+/// with it OFF with poly's own.
+Scene split_scene(bool magic_compat = true) {
   Scene s;
-  s.stack = stack_for(s.tech, false);
+  s.stack = stack_for(s.tech, magic_compat);
   db::CellDef cell("split", s.tech.tech->plane_count());
   REQUIRE(db::paint_triangle(cell, *s.tech.tech, Rect{0, 0, 40, 40}, db::Diagonal::ne_sw, false, s.tech.metal1).ok());
   view3d::test::paint(cell, s.tech, Rect{50, 0, 90, 40}, s.tech.ndiff);
@@ -477,7 +478,6 @@ TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
   const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
   const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("split", pick_map(s.mesh, r));
-  check_colors(s, f.styles, r);
 
   // The poly triangle of the ndiff | poly tile sits at ndiff's height (h 0),
   // not poly's (0.3): its top face depth is that of z = 0 (top view).
@@ -491,6 +491,25 @@ TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
   const view3d::Matrix4 m = view3d::matrix(top, kWidth, kHeight, view3d::ProjectionParams{});
   const auto z_ndc = static_cast<double>(m[14]);  // z' of z = 0 (a translation-only depth row in the top view)
   CHECK(std::abs(rt.depth[pixel(rt, px, py)] - static_cast<float>(0.5 * (1.0 - z_ndc))) < 1e-6F);
+}
+
+TEST_CASE("3D renderer draws a split tile's triangle at its own type's height with magic-compat OFF (Q-MISC-79)",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  Fixture f;
+  const Scene s = split_scene(false);
+  check_colors(s, f.styles, f.draw(s, view_of(s, view3d::Preset::isometric), f.params(s.stack)));
+  const view3d::ViewState top = view_of(s, view3d::Preset::top);
+  const render::TargetReadback rt = f.draw(s, top, f.params(s.stack));
+  const auto [px, py] = project(top, 85, 10, 0);  // inside the poly triangle (right side)
+  const auto ref = render::decode_pick(s.mesh, rt.pick[pixel(rt, px, py)]);
+  REQUIRE(ref.has_value());
+  CHECK(ref->kind == render::PickKind::triangle);
+  CHECK(layer_of(s.mesh, *ref) == kPoly);
+  // Its top face lies at poly's h (0.3), behind the plane z = 0 where
+  // magic-compat ON draws it with ndiff's h.
+  const view3d::Matrix4 m = view3d::matrix(top, kWidth, kHeight, view3d::ProjectionParams{});
+  const auto z_ndc = static_cast<double>(m[14]);  // z' of z = 0
+  CHECK(rt.depth[pixel(rt, px, py)] > static_cast<float>(0.5 * (1.0 - z_ndc)) + 1e-4F);
 }
 
 TEST_CASE("3D renderer closes the faces cut by the cut box", "[cap:view-3d][req:Rendered geometry]") {
@@ -668,6 +687,22 @@ TEST_CASE("3D pick sees through a transparent layer and skips hidden ones",
   CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kMetal);
   const auto [qx, qy] = project(v, 50, 50, 0);  // poly alone
   CHECK(r.pick[pixel(r, qx, qy)] == view3d::kNoPick);
+}
+
+TEST_CASE("3D renderer places rectangles from the model's layer heights (J1 span), not the stack's",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  Fixture f;
+  Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  REQUIRE(s.mesh.layer_heights.size() > kPoly);
+  (void)f.draw(s, v, f.params(s.stack));
+  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kPoly);  // poly (h 0.3) in front of metal1 (h 1.0)
+
+  // The model's heights win over the stack's: poly lifted above metal1 now
+  // lies behind it, as a contact spanned by the J1 option would.
+  s.mesh.layer_heights[kPoly] = view3d::DrawHeight{2.0F, 0.2F};
+  (void)f.draw(s, v, f.params(s.stack));
+  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kMetal);
 }
 
 TEST_CASE("3D renderer dims what is not in the highlight set",

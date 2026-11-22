@@ -16,7 +16,7 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 ## How this was checked
 
-Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` still answers `UI-CLIENT-002` until WIND3D lands (task 8.1).
+Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` opens the 3D window since WIND3D (tasks 8.1-8.4).
 
 ## Board review (DESIGN, task 7.1)
 
