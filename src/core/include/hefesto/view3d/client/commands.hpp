@@ -60,8 +60,9 @@ struct OpenRequest {
 /// on it), else empty. Failures print Magic's message and open nothing.
 [[nodiscard]] cmd::CommandResult open_wind3d(cmd::CommandContext& ctx, const OpenRequest& request);
 
-/// Closes the 3D window, if one is open (W3Ddelete). Its toolkit path is
-/// kept in Session::closed_paths. False when no window was open.
+/// Closes the 3D window, if one is open (W3Ddelete, GrTOGLDelete). Its
+/// toolkit path is kept in Session::closed_paths and stops being a command.
+/// False when no window was open.
 bool close_wind3d(editor::EditorState& editor);
 
 /// The current output style's f (cs_scaleFactor after the GCF reduction of

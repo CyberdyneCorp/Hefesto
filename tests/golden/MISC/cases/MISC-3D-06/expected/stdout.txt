@@ -1,0 +1,40 @@
+Use openwrapper to create a new GUI-based layout window
+Use closewrapper to remove a new GUI-based layout window
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 22 00:37:16 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+New windows will not have a title caption.
+New windows will not have scroll bars.
+New windows will not have a border.
+Handling file entry input/commands.tcl extension .tcl
+The following types are not handled by extraction and will be treated as non-electrical types:
+    metal2 
+Cell c3d read from path input
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 5.000   ( 0.000,  0.000), ( 10.000,  5.000)  50.000    
+lambda:      100 x 50      (     0,  0    ), (   100,  50   )  5000      
+0 {window ".render.magic" isn't a top-level window}
+0 1
+0 {}
+0 3
+0 {}
+0 4
+0 {}
+0 3
+0 {}
+0 0
+0 {}
+0 0
+0 {}
+0 {}
+0 {}
+0 0

@@ -92,9 +92,8 @@ command returns normally).
   in its order: `Ambiguous directive:  Put cursor box in one of the
   windows.` (no cell named, no box, not exactly one layout window); `Cells
   cannot be created in the 3D window.` (the cell does not exist, or cannot
-  be read); with magic-compat ON, `Could not create a new Tk window` for
-  the toolkit path of a 3D window closed in this session (user decision J5
-  of 2026-11-21; with it OFF the window reopens).
+  be read). A closed window's toolkit path reopens in both modes
+  (Q-MISC-80: Magic deletes the path on close, MISC-3D-12).
 - `VIEW3D-CLIENT-004`: `Error: zoom values/factors must be positive and
   nonzero`.
 - `VIEW3D-CLIENT-005`: `No CIF output style set!` from `render` with a

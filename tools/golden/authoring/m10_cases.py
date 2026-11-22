@@ -23,7 +23,7 @@ Task 12.3 adds MISC-3D-05..12: ``cutbox``, ``level``, ``render``, ``see``/``defa
 trip with ``scalefactor 30 nanometers`` (f = 3 after the GCF reduction, so ``1.0/(float)3`` drifts), a
 ``cif ostyle`` change in mask-layer mode (Q-MISC-78, ON), the technology without an output style
 (Q-MISC-73: Magic dereferences the missing style when the window opens; a documented deviation) and
-``closewindow`` followed by a second ``specialopen`` (J5, Q-MISC-80: ON copies Magic). Task 12.4 adds
+``closewindow`` followed by a second ``specialopen`` (Q-MISC-80: Magic reopens, in both modes). Task 12.4 adds
 the geometry cases MISC-3D-13..16 (flat cell, split tiles, abutting subcells with a contact type in two
 display styles, cut box) on ``input/g3d.tech``: Magic runs with the polygon-recording shim
 (``[reference] gl_capture = true``, tools/golden/gl_capture/gl_capture.c), the window is switched to
@@ -71,7 +71,22 @@ NO_STYLE_REASON = ("with no output style the window opens in layout-layer mode, 
 
 # Case IDs whose replay passes (or, for a case of DECISIONS, differs only as documented); each loses its
 # deferral in the generated block.
-REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04"}
+REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04", "MISC-3D-06", "MISC-3D-07",
+                      "MISC-3D-09", "MISC-3D-11", "MISC-3D-12"}
+
+# Captured cases that do not replay yet, with the reason (the deferral stays until the gap is closed).
+ROUTING_GAP = ("captured (run 44965506225); Magic routes the layout commands a script runs after `specialopen wind3d` "
+               "to the 3D window (WindSendCommand): `box` and `load` fail with an empty error, `cif ostyle half` "
+               "reaches the 3D window's `cif` ('Usage: cif'); Hefesto runs them in the layout client. No Q row yet "
+               "(proposed to the user in M10 round 2)")
+NOISE_GAP = ("captured (run 44965506225); Magic's magic::scrollupdate console noise ('logcommands' echo and "
+             "'Unknown command:') also follows `see` and `defaults` here, where Hefesto prints it only after "
+             "view, scroll and zoom (WIND3D)")
+REPLAY_GAPS: dict[str, str] = {
+    "MISC-3D-05": ROUTING_GAP,
+    "MISC-3D-08": NOISE_GAP,
+    "MISC-3D-10": ROUTING_GAP,
+}
 
 # Cases whose Magic output shows a resolved decision Hefesto does not reproduce: (decisions, outputs, reason).
 DECISIONS: dict[str, tuple[list[str], list[str], str]] = {
@@ -492,7 +507,7 @@ def deviation_entry(spec: TclCase) -> str | None:
     replayed = spec.id in REPLAYED
     if replayed and not decisions:
         return None
-    deferral = "" if replayed else (GL_REASON if spec.gl_capture else REASON)
+    deferral = "" if replayed else REPLAY_GAPS.get(spec.id, GL_REASON if spec.gl_capture else REASON)
     entry = [f"[{spec.id}]"]
     if decisions:
         entry.append(f"decisions = {_toml_strings(decisions)}")

@@ -70,14 +70,15 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | ID | Question | Kind | Decision |
 |---|---|---|---|
 | Q-MISC-79 | split tile drawn with its left type's h and t, also when the left half is space | **compat** | ON: left type for both triangles, as Magic (a left half of space gives a flat triangle, no side faces); OFF: each triangle's own type for height, thickness and side faces |
-| Q-MISC-80 | `.magic3d closewindow` keeps the Tk window and command | **compat** + **fix** | ON: `specialopen wind3d` then reports "Could not create a new Tk window", as Magic; OFF: it opens a new window; the use-after-free of `.magic3d` after the close is fixed in both modes |
+| Q-MISC-80 | reopening after `.magic3d closewindow` | **replicate** (revised after the MISC-3D-12 capture; was compat + fix) | Magic's closewindow ends in GrTOGLDelete, which deletes the path's command and destroys the window; both modes do the same, and `specialopen wind3d` on the path opens a new window. No use-after-free exists |
 
 ## Counts
 
 | Kind | Rows |
 |---|---|
 | fix | 5 (Q-MISC-70, 71, 74, 76, 77) |
-| compat | 4 (Q-MISC-72, 78, 79, 80; Q-MISC-80 also fixes a use-after-free in both modes) |
+| compat | 3 (Q-MISC-72, 78, 79) |
+| replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture) |
 | fix, amendment of a resolved entry | 2 (Q-MISC-73; Q-MISC-74 aspect, 2026-11-21) |
 | platform, no change | 1 (Q-MISC-75) |
 
@@ -132,7 +133,7 @@ Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (
 | J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |
 | J3 | split tile whose left half is space | compat: ON keeps Magic (left type: flat, no side faces); OFF uses the triangle's own type for height, thickness and side faces | Q-MISC-79 (new) |
 | J4 | `noplaneordering` skips the defaults and the micron conversion | replicate, both modes; no Q row | MISC.md, without a Q row |
-| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disputed: Magic's GrTOGLDelete may delete the path, so it may reopen (MISC-3D-12 decides) | Q-MISC-80 (new) |
+| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disproved by the MISC-3D-12 capture: Magic deletes the path and reopens, so the revised recommendation is replicate in both modes (implemented) | Q-MISC-80 (new) |
 | J6 | empty cell extent, abutting cells, clip-edge faces | confirmed, both modes: an empty dimension is left out of the fit (1 × 1 when both are empty); pieces abutting across cells get no inner side faces; faces on the clip area are closed | MISC.md, without a Q row |
 
 ### Spec changes of round 2 (applied with the decisions)

@@ -132,12 +132,11 @@ class WindowDisplay {
 struct Session {
   // WIND3D: the open 3D window, if any (at most one).
   std::optional<WindowState> window;
-  // WIND3D: the toolkit paths of closed 3D windows. Their window commands
-  // stay defined in the interpreter and answer "invalid command name", as
-  // Magic's deleted command does (the use-after-free of `.magic3d` after
-  // `closewindow` is fixed in both modes); with magic-compat ON a new
-  // window on one of them is refused with "Could not create a new Tk
-  // window" (Q-MISC-80).
+  // WIND3D: the toolkit paths of closed 3D windows. Closing moves the
+  // path's command out of the way, as Magic's GrTOGLDelete deletes it, so
+  // `info commands` no longer lists it and calling it is "invalid command
+  // name"; a new `specialopen wind3d` on the path opens a window in both
+  // modes (Q-MISC-80, MISC-3D-12).
   std::set<std::string> closed_paths;
   // WIND3D: the `render name height thick [style]` values, per mask layer
   // index of the output style `render_key` names.

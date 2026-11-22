@@ -171,7 +171,26 @@ void announce_path(editor::EditorState& editor, const std::string& path) {
     return;
   }
   static_cast<void>(interp->evaluate(
+      "catch {rename {::hefesto::wind3d_closed::" + path + "} {}}; "
       "if {[llength [info commands ::hefesto::tk::window_command]]} {::hefesto::tk::window_command {" + path + "}}"));
+}
+
+// GrTOGLDelete: the closed window's toolkit path stops being a command
+// (`info commands` no longer lists it; calling it is "invalid command name").
+// The command is moved aside, not deleted: `<path> closewindow` is still
+// running it, and deleting a running command would free its binding.
+constexpr std::string_view kRetiredNamespace = "::hefesto::wind3d_closed";
+
+std::string retired_name(const std::string& path) { return std::string{kRetiredNamespace} + "::" + path; }
+
+void retire_path(editor::EditorState& editor, const std::string& path) {
+  script::Interpreter* interp = editor.script.interp.get();
+  if (interp == nullptr || !interp->has_command(path)) {
+    return;
+  }
+  static_cast<void>(interp->evaluate("namespace eval " + std::string{kRetiredNamespace} + " {}; catch {rename {" +
+                                     retired_name(path) + "} {}}; catch {rename {" + path + "} {" +
+                                     retired_name(path) + "}}"));
 }
 
 }  // namespace
@@ -224,10 +243,6 @@ cmd::CommandResult open_wind3d(cmd::CommandContext& ctx, const OpenRequest& requ
     return cmd::CommandResult::failure(def.error());
   }
   const bool compat = detail::magic_compat(ctx);
-  if (compat && session.closed_paths.contains(request.toolkit_path)) {
-    // Q-MISC-80: magic-compat ON keeps Magic's refusal.
-    return detail::fail(kCannotOpen, "Could not create a new Tk window");
-  }
   WindowState window;
   window.cell = std::string{def.value()->name()};
   window.toolkit_path = request.toolkit_path;
@@ -255,6 +270,7 @@ bool close_wind3d(editor::EditorState& editor) {
   const WindowState closed = std::move(*session.window);
   session.window.reset();
   session.closed_paths.insert(closed.toolkit_path);
+  retire_path(editor, closed.toolkit_path);
   if (session.display != nullptr) {
     session.display->closed(closed);
   }
