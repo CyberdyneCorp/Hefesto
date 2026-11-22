@@ -118,6 +118,12 @@ command returns normally).
 Codes of the pick mapping, the 3D/2D selection link and net highlighting
 (design D10). Owner: INSPECT.
 
+Picking has no codes (M10 round 3): the background, an id past the model
+and a stale target (its tile edited away, or its cell deleted, since the
+mesh was built) resolve or select nothing instead of failing, and the
+highlight sets of an empty selection or a failed connectivity search are
+empty.
+
 ## SECTION
 
 Codes of cross-sections (design D10, P2). Owner: INSPECT.
