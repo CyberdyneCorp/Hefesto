@@ -147,6 +147,26 @@ TEST_CASE("level is clamped at zero", "[cap:view-3d][req:3D view commands]") {
   CHECK(s.window().level == INT_MAX);
 }
 
+TEST_CASE("level has no upper limit and saturates in both modes (W3, W4)", "[cap:view-3d][req:3D view commands]") {
+  // W4 (approved 2026-11-22): lower limit 0, no upper limit; W3: the atoi
+  // overflow fix applies with magic-compat OFF too.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s(compat);
+    s.ok("specialopen wind3d c3d");
+    s.w3d("level 1000");
+    CHECK(s.w3d_value("level") == "1000");
+    s.w3d("level -1");
+    CHECK(s.w3d_value("level") == "0");
+    s.w3d("level 99999999999");
+    CHECK(s.window().level == INT_MAX);
+    s.w3d("level up");
+    CHECK(s.window().level == INT_MAX);
+    s.w3d("level -99999999999");
+    CHECK(s.window().level == 0);
+  }
+}
+
 TEST_CASE("help lists the 3D window's commands", "[cap:view-3d][req:3D view commands]") {
   ClientSession s;
   s.ok("specialopen wind3d c3d");

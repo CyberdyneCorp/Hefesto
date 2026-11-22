@@ -144,6 +144,12 @@ struct Session {
   std::map<std::size_t, RenderOverride> render_overrides;
   // WIND3D / SHELL: the front end's display of the window (nullptr: none).
   WindowDisplay* display = nullptr;
+  // WIND3D: whether the last window-path command was sent to the 3D
+  // window (Magic's txCurrentWindowID, which _tk_dispatch sets and keeps
+  // for every later command). With magic-compat ON a script command with
+  // no window path then goes to the open 3D window (N1, Q-MISC-82): a
+  // closed window's id is free again and the next 3D window reuses it.
+  bool script_target_3d = false;
 
   [[nodiscard]] bool has_window() const noexcept { return window.has_value(); }
 };
