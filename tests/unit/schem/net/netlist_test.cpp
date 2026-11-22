@@ -491,7 +491,7 @@ TEST_CASE("flat netlist: globals, 0, undefined subcircuits, nesting and quoted v
       {".ends", false},
       {".GLOBAL VDD", false},
       {".end", false}};
-  const auto flat = schem::flatten_netlist(lines);
+  const auto flat = schem::flatten_netlist(lines).lines;
   std::vector<std::string> text;
   for (const auto& l : flat) text.push_back(l.text);
   CHECK(text == std::vector<std::string>{"**.subckt top", "XM1_x1_x7 a x1_n VDD 0 nfet W=0.42 ad='W_N*0.29'",
@@ -504,7 +504,7 @@ TEST_CASE("flat netlist: a subcircuit that places itself stops at kMaxFlatDepth"
   const std::vector<schem::ProcessedLine> lines{{"**.subckt top", false}, {"x1 a loop", false}, {"**.ends", false},
                                                 {".subckt loop P", false}, {"x2 P loop", false}, {"R1 P 0 1", false},
                                                 {".ends", false}};
-  const auto flat = schem::flatten_netlist(lines);
+  const auto flat = schem::flatten_netlist(lines).lines;
   const auto resistors = std::count_if(flat.begin(), flat.end(), [](const auto& l) { return l.text.starts_with("R1"); });
   CHECK(resistors == schem::kMaxFlatDepth);
   CHECK(std::any_of(flat.begin(), flat.end(), [](const auto& l) { return l.text.starts_with("x2_"); }));
@@ -609,4 +609,196 @@ TEST_CASE("schematic resolution: @symname is replaced in one pass",
   CHECK(r.text.find(".subckt cell A Y\n") != std::string::npos);
   CHECK(r.text.find("cellcellcellcell") != std::string::npos);
   CHECK(elapsed < std::chrono::seconds{10});
+}
+
+// --- Round 3: output limits (Q-SCHEM-39, Q-SCHEM-41) and linear headers ------
+
+namespace {
+
+/// Netlists `top` of `p` with the bus budget and flat limits given
+/// (NetlistEnvironment fields that tests lower).
+schem::NetlistResult netlist_with(MemoryProject& p, const std::string& top, const schem::NetlistOptions& options,
+                                  bool xschem_compat, std::uint64_t bus_budget, schem::FlatLimits flat = {}) {
+  const schem::SearchPath search{std::vector<Path>{kDevices, p.folder}};
+  schem::SymbolCache symbols;
+  schem::ReadOptions read;
+  read.xschem_compat = xschem_compat;
+  auto document = schem::load_document(p.fs, p.folder / top, read);
+  REQUIRE(document);
+  schem::NetlistEnvironment environment{symbols, search, p.fs, nullptr, {}, 4};
+  environment.bus_budget = bus_budget;
+  environment.flat_limits = flat;
+  return schem::netlist(environment, document.value(), options, compat(xschem_compat));
+}
+
+std::vector<const hefesto::diag::Diagnostic*> with_code(const schem::NetlistResult& r, std::string_view code) {
+  std::vector<const hefesto::diag::Diagnostic*> out;
+  for (const auto& d : r.diagnostics) {
+    if (d.code == code) out.push_back(&d);
+  }
+  return out;
+}
+
+schem::NetlistOptions flat_options() {
+  schem::NetlistOptions options;
+  options.hierarchy = schem::Hierarchy::flat;
+  return options;
+}
+
+std::size_t occurrences(const std::string& text, const std::string& what) {
+  std::size_t n = 0;
+  for (std::size_t at = text.find(what); at != std::string::npos; at = text.find(what, at + 1)) ++n;
+  return n;
+}
+
+}  // namespace
+
+// Q-SCHEM-39 (user decision M8-D1, 2026-11-22), both modes: a subcircuit
+// whose schematic places itself expands 64 levels deep, then the instance is
+// kept as an X line with one SCHEM-NET-017 warning; the run does not fail.
+TEST_CASE("Flat netlist deeper than 64 levels", "[cap:schematic-netlisting][req:Flat netlist]") {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    MemoryProject p;
+    p.put("loop.sym", symbol("type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"name=x1\"", {"A"}));
+    p.put("loop.sch", std::string{kHeader} +
+                          "C {iopin.sym} 0 0 0 0 {name=p1 lab=A}\nC {loop.sym} 100 0 0 0 {name=x1}\n"
+                          "C {lab_pin.sym} 60 0 0 0 {name=l1 lab=A}\nC {res.sym} 0 100 0 0 {name=R1 value=1}\n"
+                          "C {lab_pin.sym} 0 70 0 0 {name=l2 lab=A}\nC {lab_pin.sym} 0 130 0 0 {name=l3 lab=0}\n");
+    p.put("t.sch", std::string{kHeader} + "C {loop.sym} 0 0 0 0 {name=x1}\nC {lab_pin.sym} -40 0 0 0 {name=l1 lab=IN}\n");
+    const auto r = netlist_with(p, "t.sch", flat_options(), on, schem::kMaxBusTotalBytes);
+    CHECK_FALSE(r.failed);
+    const auto stopped = with_code(r, schem::net_codes::kFlatStopped);
+    REQUIRE(stopped.size() == 1);
+    CHECK(stopped.front()->text == "flat netlist stopped: depth limit of 64 levels");
+    CHECK(occurrences(r.text, "\nR1_") == static_cast<std::size_t>(schem::kMaxFlatDepth));
+    CHECK(r.text.ends_with(".end\n"));  // what follows the kept instance is written
+  }
+}
+
+// Q-SCHEM-39, both modes: ten instances per level, nine levels (10^9
+// resistors unflattened). Flattening stops before the line that would pass
+// the byte limit, with one SCHEM-NET-017 warning, keeps the lines written so
+// far, and finishes quickly without allocating far past the limit. The
+// limit is lowered through NetlistEnvironment::flat_limits; the default is
+// checked against the decided 268435456 bytes.
+TEST_CASE("Flat netlist larger than 256 MiB", "[cap:schematic-netlisting][req:Flat netlist]") {
+  CHECK(schem::kMaxFlatBytes == 268435456U);
+  CHECK(schem::FlatLimits{}.bytes == schem::kMaxFlatBytes);
+  CHECK(schem::FlatLimits{}.depth == schem::kMaxFlatDepth);
+  constexpr std::size_t kLimit = std::size_t{1} << 20;
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    MemoryProject p;
+    for (int level = 0; level < 9; ++level) {
+      const std::string cell = "c" + std::to_string(level);
+      p.put(cell + ".sym", symbol("type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"name=x1\"", {}));
+      std::string body = kHeader;
+      for (int k = 0; k < 10; ++k) {
+        const std::string at = std::to_string(200 * k) + " 0 0 0 {name=";
+        body += level < 8 ? "C {c" + std::to_string(level + 1) + ".sym} " + at + "x" + std::to_string(k) + "}\n"
+                          : "C {res.sym} " + at + "R" + std::to_string(k) + " value=1}\n";
+      }
+      p.put(cell + ".sch", body);
+    }
+    p.put("t.sch", std::string{kHeader} + "C {c0.sym} 0 0 0 0 {name=x1}\n");
+    const auto start = std::chrono::steady_clock::now();
+    const auto r =
+        netlist_with(p, "t.sch", flat_options(), on, schem::kMaxBusTotalBytes, {schem::kMaxFlatDepth, kLimit});
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    CHECK_FALSE(r.failed);
+    const auto stopped = with_code(r, schem::net_codes::kFlatStopped);
+    REQUIRE(stopped.size() == 1);
+    CHECK(stopped.front()->text == "flat netlist stopped: output passed 1048576 bytes");
+    CHECK(r.text.size() <= kLimit + 4096);  // line breaking adds a little
+    CHECK(r.text.size() > kLimit / 2);
+    CHECK(r.text.find("\nR0_x1_x0_x0_x0_x0_x0_x0_x0_x0 ") != std::string::npos);
+    CHECK(elapsed < std::chrono::seconds{20});
+  }
+}
+
+TEST_CASE("flat netlist: the byte limit counts expanded instances, so empty subcircuits stop too",
+          "[cap:schematic-netlisting][req:Flat netlist]") {
+  std::vector<schem::ProcessedLine> lines{{"**.subckt top", false}, {"x1 c0", false}, {"**.ends", false}};
+  for (int level = 0; level < 12; ++level) {
+    lines.push_back({".subckt c" + std::to_string(level), false});
+    for (int k = 0; k < 10 && level < 11; ++k) {
+      lines.push_back({"x" + std::to_string(k) + " c" + std::to_string(level + 1), false});
+    }
+    lines.push_back({".ends", false});
+  }
+  const auto start = std::chrono::steady_clock::now();
+  const auto flat = schem::flatten_netlist(lines, {schem::kMaxFlatDepth, 4096});
+  CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{10});
+  REQUIRE(flat.warnings.size() == 1);
+  CHECK(flat.warnings.front().code == schem::net_codes::kFlatStopped);
+  CHECK(flat.lines.front().text == "**.subckt top");
+}
+
+// Q-SCHEM-41 (user decision M8-D3, 2026-11-22), both modes: the expanded
+// bus text of one netlist run is capped in total; past the cap a name is
+// used unchanged with SCHEM-NET-006, like one name over kMaxBusBytes. The
+// budget is lowered through NetlistEnvironment::bus_budget (default
+// 64 x kMaxBusBytes).
+TEST_CASE("Total bus expansion limit in a netlist run", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  const std::string total = "exceeds the total of 4294967296 bytes of expanded bus text per netlist run or session";
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    MemoryProject p;
+    p.put("t.sch", std::string{kHeader} + "C {ipin.sym} 0 0 0 0 {name=p1 lab=A[3:0]}\n"
+                                          "C {ipin.sym} 0 100 0 0 {name=p2 lab=B[3:0]}\n");
+    const auto full = netlist_with(p, "t.sch", {}, on, schem::kMaxBusTotalBytes);
+    CHECK(full.text.find("B[3],B[2],B[1],B[0]") != std::string::npos);
+    CHECK(full.text.find("B[3:0]") == std::string::npos);
+    CHECK(with_code(full, schem::net_codes::kSizeLimit).empty());
+
+    const auto capped = netlist_with(p, "t.sch", {}, on, 30);
+    CHECK_FALSE(capped.failed);
+    CHECK(capped.text.find("A[3],A[2],A[1],A[0]") != std::string::npos);  // 19 bytes fit
+    CHECK(capped.text.find("B[3:0]") != std::string::npos);               // the next 19 do not
+    const auto limited = with_code(capped, schem::net_codes::kSizeLimit);
+    REQUIRE_FALSE(limited.empty());
+    CHECK(limited.front()->text == "bus expansion of B[3:0] " + total + "; used unchanged");
+  }
+  schem::SymbolCache symbols;
+  const schem::SearchPath search;
+  platform::MemoryFileSystem fs;
+  CHECK(schem::NetlistEnvironment{symbols, search, fs, nullptr, {}, 4}.bus_budget == schem::kMaxBusTotalBytes);
+}
+
+// Regression (round-2 review): the `.subckt` header template looked every
+// key up in `extra` with a find() and a scan of its word list, so 20,000
+// template keys against an `extra` of 20,000 words took about a minute.
+// Both lookups now use structures built once per definition, and a key found
+// only inside a word is reported once with `extra` cut to 80 bytes.
+TEST_CASE("the .subckt header template is built in linear time",
+          "[cap:schematic-netlisting][req:Subcircuit definitions]") {
+  constexpr int kKeys = 20000;
+  std::string templ = "name=x1";
+  std::string extra;
+  for (int i = 0; i < kKeys; ++i) {
+    templ += " k" + std::to_string(i) + "=1";
+    extra += (i == 0 ? "kz" : " kz") + std::to_string(i);
+  }
+  extra += " ak1b ak1b";
+  MemoryProject p;
+  two_pin_cell(p, "cell",
+               "type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"" + templ + " k1=2\"\nextra=\"" + extra +
+                   " k7\"",
+               "1k");
+  p.put("t.sch", std::string{kHeader} + "C {cell.sym} 0 0 0 0 {name=x1}\n");
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    const auto start = std::chrono::steady_clock::now();
+    const auto r = p.netlist("t.sch", {}, on);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+    CHECK(elapsed < std::chrono::seconds{10});
+    CHECK(r.text.find(" k19999=1") != std::string::npos);
+    CHECK(r.text.find(" k7=1") == std::string::npos);  // a whole word of extra
+    CHECK((r.text.find(" k1=1") == std::string::npos) == on);  // inside ak1b only: ON drops it
+    const auto inside = with_code(r, hefesto::schem::net_codes::kExtraSubstring);
+    REQUIRE(inside.size() == 1);  // k1 twice in the template: one warning
+    CHECK(inside.front()->text.find("template key k1 of ") == 0);
+    CHECK(inside.front()->text.size() < 200);
+  }
 }

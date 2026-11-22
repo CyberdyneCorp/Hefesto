@@ -16,12 +16,15 @@
 // hostile names cannot overflow or exhaust memory (Q-SCHEM-32). Every level
 // appends to one output and repeats only its own tail of it, so nested
 // groups never copy an inner list once per level; a width-only parse keeps
-// the counts and byte totals and builds no names.
+// the counts and byte totals and builds no names. A BusBudget (Q-SCHEM-41)
+// lowers the byte limit to what remains of it, and a successful expansion
+// takes its text from it.
 //
 // Owner: NETLIST.
 
 #include "hefesto/schem/net/bus.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <cstdint>
 #include <iterator>
@@ -179,7 +182,12 @@ enum class Failure : std::uint8_t { none, syntax, too_large };
 
 class Parser {
  public:
-  Parser(std::string_view text, bool keep_names) : text_{text} { out_.keep = keep_names; }
+  /// `max_bytes`: the most bytes of text the expansion may have (kMaxBusBytes,
+  /// or less when a BusBudget has less left).
+  Parser(std::string_view text, bool keep_names, std::uint64_t max_bytes = kMaxBusBytes)
+      : text_{text}, max_bytes_{max_bytes} {
+    out_.keep = keep_names;
+  }
 
   std::optional<Bits> parse() {
     const bool parsed = list(0);
@@ -195,6 +203,9 @@ class Parser {
 
   [[nodiscard]] Failure failure() const noexcept { return failure_; }
   [[nodiscard]] bool literal_index() const noexcept { return literal_index_; }
+  /// The byte limit failed while it was below kMaxBusBytes: the budget, not
+  /// the per-name limit, stopped the expansion.
+  [[nodiscard]] bool over_budget() const noexcept { return byte_limit_hit_ && max_bytes_ < kMaxBusBytes; }
 
  private:
   /// The terms of one list; the limits apply to the list's own names.
@@ -568,7 +579,12 @@ class Parser {
 
   /// `size` names whose text, commas included, takes `bytes` - 1 bytes.
   bool fits(std::uint64_t size, std::uint64_t bytes) {
-    if (size > kMaxBusBits || bytes > kMaxBusBytes + 1) {
+    if (size > kMaxBusBits) {
+      fail(Failure::too_large);
+      return false;
+    }
+    if (bytes > max_bytes_ + 1) {
+      byte_limit_hit_ = true;
       fail(Failure::too_large);
       return false;
     }
@@ -577,7 +593,12 @@ class Parser {
 
   /// `bits` repeated `times` times.
   bool fits_product(Mark bits, std::uint64_t times) {
-    if (times != 0 && (bits.count > kMaxBusBits / times || bits.bytes > (kMaxBusBytes + 1) / times)) {
+    if (times != 0 && bits.count > kMaxBusBits / times) {
+      fail(Failure::too_large);
+      return false;
+    }
+    if (times != 0 && bits.bytes > (max_bytes_ + 1) / times) {
+      byte_limit_hit_ = true;
       fail(Failure::too_large);
       return false;
     }
@@ -605,39 +626,60 @@ class Parser {
   }
 
   std::string_view text_;
+  std::uint64_t max_bytes_;
   std::size_t pos_ = 0;
   Bits out_;
   Failure failure_ = Failure::none;
   bool literal_index_ = false;
+  bool byte_limit_hit_ = false;
 };
+
+/// The byte limit of one expansion under `budget`.
+std::uint64_t byte_limit(const BusBudget* budget) noexcept {
+  return budget == nullptr ? kMaxBusBytes : std::min<std::uint64_t>(kMaxBusBytes, budget->remaining());
+}
+
+/// `name` used unchanged with unknown width after `parser` failed.
+BusExpansion unchanged(std::string_view name, const Parser& parser) {
+  BusExpansion out;
+  out.bits.emplace_back(name);
+  out.width_known = false;
+  out.syntax_error = parser.failure() == Failure::syntax;
+  out.too_large = parser.failure() == Failure::too_large;
+  out.over_budget = out.too_large && parser.over_budget();
+  return out;
+}
+
+std::string shown_name(std::string_view name) {
+  return name.size() > 80 ? std::string{name.substr(0, 80)} + "..." : std::string{name};
+}
 
 }  // namespace
 
-BusExpansion parse_bus(std::string_view name) {
+BusExpansion parse_bus(std::string_view name, BusBudget* budget) {
   BusExpansion out;
   if (!needs_parsing(name)) {
     out.bits.emplace_back(name);
     return out;
   }
-  Parser parser{name, true};
+  Parser parser{name, true, byte_limit(budget)};
   auto bits = parser.parse();
   if (!bits) {
-    out.bits.emplace_back(name);
-    out.width_known = false;
-    out.syntax_error = parser.failure() == Failure::syntax;
-    out.too_large = parser.failure() == Failure::too_large;
-    return out;
+    return unchanged(name, parser);
+  }
+  if (budget != nullptr) {
+    (void)budget->take(bits->bytes - 1);  // fits: the parser's limit was at most what remains
   }
   out.bits = std::move(bits->names);
   out.width_known = !parser.literal_index();
   return out;
 }
 
-std::size_t bus_width(std::string_view name) {
+std::size_t bus_width(std::string_view name, const BusBudget* budget) {
   if (!needs_parsing(name)) {
     return 1;
   }
-  Parser parser{name, false};
+  Parser parser{name, false, byte_limit(budget)};
   const auto bits = parser.parse();
   return bits && !parser.literal_index() ? static_cast<std::size_t>(bits->count) : 1;
 }
@@ -649,15 +691,20 @@ std::optional<diag::Diagnostic> bus_diagnostic(const BusExpansion& bus, std::str
   if (!bus.too_large) {
     return std::nullopt;
   }
-  const std::string shown = name.size() > 80 ? std::string{name.substr(0, 80)} + "..." : std::string{name};
+  const std::string shown = shown_name(name);
+  if (bus.over_budget) {
+    return diag::make(net_codes::kSizeLimit, "bus expansion of " + shown + " exceeds the total of " +
+                                                 std::to_string(kMaxBusTotalBytes) +
+                                                 " bytes of expanded bus text per netlist run or session; used unchanged");
+  }
   return diag::make(net_codes::kSizeLimit, "bus expansion of " + shown + " exceeds a limit (" +
                                                std::to_string(kMaxBusBits) + " names, " +
                                                std::to_string(kMaxBusBytes) + " bytes or " +
                                                std::to_string(kMaxBusParenDepth) + " nested parentheses); used unchanged");
 }
 
-std::vector<std::string> expand_bus(std::string_view name) {
-  return parse_bus(name).bits;
+std::vector<std::string> expand_bus(std::string_view name, BusBudget* budget) {
+  return parse_bus(name, budget).bits;
 }
 
 std::string replace_bus_chars(std::string_view name, std::string_view replacement) {

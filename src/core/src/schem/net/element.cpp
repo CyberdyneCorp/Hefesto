@@ -140,7 +140,7 @@ class ElementBuilder {
     if (pin.width <= 1) {
       return base;
     }
-    return join_bits(expand_bus(base + "_[" + std::to_string(pin.width - 1) + "..0]"), ",");
+    return join_bits(expand_bus(base + "_[" + std::to_string(pin.width - 1) + "..0]", state_.bus_budget), ",");
   }
 
   /// `@#<n>`, `@#<pin>` and `@#<n>:<attr>`.
@@ -304,7 +304,7 @@ class ElementBuilder {
 
   /// `name` bus-expanded with the bus replacement characters.
   std::string expanded(std::string_view name) {
-    const BusExpansion bus = parse_bus(name);
+    const BusExpansion bus = parse_bus(name, state_.bus_budget);
     if (auto warning = bus_diagnostic(bus, name)) {
       out_.diagnostics.push_back(std::move(*warning));
     }
