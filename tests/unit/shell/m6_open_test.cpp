@@ -135,7 +135,27 @@ TEST_CASE("oasis read runs through the desktop's read host",
   };
   s.ok("oasis read /work/chip.gds");
   CHECK(labels == std::vector<std::string>{"chip.gds"});
+  CHECK(frames > 0);  // the read's reports pump frames
   CHECK(s.core.editor().cells.find("inv") != nullptr);
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.read_host = {};
+}
+
+TEST_CASE("a cancelled OASIS read stops and the host ends the job",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  // The Interrupt arrives with the first frame the read's progress draws.
+  host.set_pump([&host] { (void)host.request_cancel(); }, std::chrono::milliseconds{0});
+  s.core.editor().mask.read_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_read(label, work);
+  };
+  (void)s.run("oasis read /work/chip.gds");
+  CHECK(labels == std::vector<std::string>{"chip.gds"});
+  // The read stops after the first reported element, inside `inv`: TOP is never read.
+  CHECK(s.core.editor().cells.find("TOP") == nullptr);
   CHECK_FALSE(host.busy());
   s.core.editor().mask.read_host = {};
 }
@@ -182,9 +202,11 @@ TEST_CASE("an OASIS write runs through the desktop's write and emit hosts and op
   m.emit_host = [&host](std::string_view label, const mask::ProgressWork& work) {
     return host.run_emit(label, work);
   };
-  host.set_pump([] {}, std::chrono::milliseconds{0});
+  std::size_t frames = 0;
+  host.set_pump([&frames] { ++frames; }, std::chrono::milliseconds{0});
   s.ok("oasis write /work/out");
   CHECK(labels == std::vector<std::string>{"out.oas"});
+  CHECK(frames > 0);  // the write's subtree loading ticks
   CHECK_FALSE(host.busy());
   REQUIRE(s.core.files().exists("/work/out.oas"));
   CHECK(plan_open(s.core.files(), std::vector<std::string>{"/work/out.oas"}).lines ==
@@ -216,6 +238,25 @@ TEST_CASE("def read reports its progress to the desktop's read host",
   CHECK(labels == std::vector<std::string>{"blk.def"});
   CHECK_FALSE(fractions.empty());
   CHECK(s.core.editor().cells.find("blk") != nullptr);
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.read_host = {};
+}
+
+TEST_CASE("a cancelled def read stops before the next statement",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  REQUIRE(s.core.files().write_atomic("/work/blk.def", "DESIGN blk ;\nDIEAREA ( 0 0 ) ( 10 10 ) ;\nEND DESIGN\n").ok());
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  // The Interrupt arrives with the first frame the read's progress draws.
+  host.set_pump([&host] { (void)host.request_cancel(); }, std::chrono::milliseconds{0});
+  s.core.editor().mask.read_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_read(label, work);
+  };
+  (void)s.run("def read /work/blk.def");
+  CHECK(labels == std::vector<std::string>{"blk.def"});
+  CHECK(s.core.editor().cells.find("blk") == nullptr);  // DESIGN was not read
   CHECK_FALSE(host.busy());
   s.core.editor().mask.read_host = {};
 }
@@ -259,6 +300,35 @@ TEST_CASE("lef write and def write run through the desktop's write host",
   CHECK(s.core.files().exists("/work/topdef.def"));
   CHECK_FALSE(host.busy());
   s.core.editor().mask.write_host = {};
+}
+
+// lef-write "Write side effects": an interrupt during `lef writeall` skips
+// the remaining macros but END LIBRARY is still written, so the file exists.
+// `lef write` writes a single macro, and the DEF writer reports no progress
+// and takes no cancel (by design), so neither has a cancel test.
+TEST_CASE("a cancelled lef writeall skips the macros and still ends the library",
+          "[cap:lef-write][req:Write side effects]") {
+  OpenSession s;
+  s.open({"/work/chip.gds"});
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  host.set_pump([] {}, std::chrono::milliseconds{0});
+  s.core.editor().mask.write_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    // `lef writeall` reports no progress, so the Interrupt is taken as the job starts.
+    return host.run_job(MaskJobKind::write, label, [&host, &work](const mask::Progress* progress) {
+      (void)host.request_cancel();
+      return work(progress);
+    });
+  };
+  (void)s.run("lef writeall");
+  CHECK(labels == std::vector<std::string>{"TOP"});
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.write_host = {};
+  const auto text = s.core.files().read("TOP.lef");  // named after the root, in the working directory
+  REQUIRE(text.ok());
+  CHECK(text.value().find("MACRO") == std::string::npos);  // `inv` is skipped
+  CHECK(text.value().ends_with("END LIBRARY\n\n"));
 }
 
 TEST_CASE("the desktop adds no LEF, DEF or OASIS menu item (Open Question 5 (a))",
