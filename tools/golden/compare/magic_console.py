@@ -44,10 +44,17 @@ checks (scripting-pdk-integration "Command-line file arguments").
 The table is the whole rule: extend it (with the Magic source line) when a
 first capture shows another preamble message, never with a pattern that could
 match a line a case checks.
+
+After the preamble, the CPU-time values of Magic's extraction statistics
+(extract/ExtTimes.c, ``*extract time``) are masked wherever they appear, with
+the ``ext-times`` mask of masks.py (m7-extraction design D21): those lines
+print measured seconds and rates, which no two runs share.
 """
 from __future__ import annotations
 
 import re
+
+from .masks import mask_ext_times
 
 _PREAMBLE = re.compile(
     rb"^(?:"
@@ -74,4 +81,4 @@ def canonicalize(data: bytes) -> bytes:
     # The last element is what follows the final newline (normally b"").
     while start < len(lines) - 1 and _PREAMBLE.match(lines[start]):
         start += 1
-    return b"\n".join(lines[start:])
+    return mask_ext_times(b"\n".join(lines[start:]))

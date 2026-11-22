@@ -1,0 +1,11 @@
+* NGSPICE file created from topnp.ext - technology: nltest
+
+.global VDD GND 
+
+.subckt topnp
+M1000 out in gnd gnd nfet w=40n l=20n
++  ad=4f pd=0.26u as=2f ps=0.18u
+M1001 out in vdd vdd pfet w=80n l=20n
++  ad=0 pd=0 as=4f ps=0.26u
+.ends
+

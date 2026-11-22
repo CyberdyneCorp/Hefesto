@@ -1,0 +1,4 @@
+| units: 1 tech: nltest format: MIT
+n g s 2 4 0 0
+n g3 s d 3 6 100 0 g=ext:l=LL,ext:w=6
+n g2 s d 2 6 50 0

@@ -1,0 +1,24 @@
+* SPICE3 file created from top.ext - technology: nltest
+
+.option scale=10n
+
+.global VDD GND 
+
+.subckt leaf a b
+Mfoo b g a GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+**devattr g=foo
+** SOURCE/DRAIN TIED
+M1000 a g a GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1001 a g b GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+**devattr d=D
+.ends
+
+
+* Top level circuit top
+
+Xu1 x u1/b leaf
+.end
+

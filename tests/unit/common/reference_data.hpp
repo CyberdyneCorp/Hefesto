@@ -20,11 +20,14 @@
 // stale cache cannot silently change what a test checks; a test whose data
 // set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15, and
 // openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/m6-lef-def-oasis/design.md D2, and
-// openspec/changes/m8-schematic/design.md D17); the device libraries were added by NATIVE in M4 round 2.
+// openspec/changes/m8-schematic/design.md D17, openspec/changes/m7-extraction/design.md D21); the device
+// libraries were added by NATIVE in M4 round 2, the standard-cell helpers of the M7 PDK cases in M7 round 1.
 
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
+#include <initializer_list>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -157,6 +160,56 @@ inline std::optional<std::filesystem::path> pinned_gds(const PinnedGds& gds) {
     return std::nullopt;
   }
   return *dir / std::string{gds.file};
+}
+
+// The standard-cell libraries of the M7 PDK golden cases (openspec/changes/m7-extraction design D21, Open
+// Question 4 (a), task 2.1): one library per PDK, from data sets that already exist. sky130_fd_sc_hd and
+// gf180mcu_fd_sc_mcu7t5v0 are read from the `.mag` libraries of the sky130 and gf180mcu sets; sg13g2_stdcell
+// has no `.mag` cells and is read with `gds read` from the ihp-gds-sc set (the standard-cell library alone,
+// not the 456 MB ihp-gds set). Counts confirmed on the pinned sets on 2026-11-21: 446 and 229 `.mag` files,
+// 84 GDS structures. Every PDK's tech file is format 35 and its first extract style is `ngspice` with the
+// variants `()`, ..., so its default style is `ngspice()` (ExtTech.c:2087-2135: the style name followed by
+// the first variant). Format 35 is at or above 34, so the fringe-halo sideoverlap model is on by default.
+
+/// One standard-cell library of the M7 PDK cases.
+struct PinnedStdcell {
+  const PinnedPdk* pdk;
+  const PinnedGds* gds;              // its GDS in the *-gds-sc set (every library has one)
+  bool has_mag;                      // whether the PDK's .mag set holds it (sg13g2_stdcell does not)
+  std::size_t cells;                 // .mag files, or GDS structures for a GDS-only library
+  std::string_view extract_style;    // the PDK's default extract style
+  int tech_format;                   // the tech section's `format`
+};
+
+inline constexpr PinnedStdcell kSky130FdScHd{&kSky130A, &kSky130FdScHdGds, true, 446, "ngspice()", 35};
+inline constexpr PinnedStdcell kGf180mcu7t5v0{&kGf180mcuD, &kGf180mcu7t5v0Gds, true, 229, "ngspice()", 35};
+inline constexpr PinnedStdcell kSg13g2Stdcell{&kIhpSg13g2, &kSg13g2StdcellGds, false, 84, "ngspice()", 35};
+
+/// The library named `lib` (`sky130_fd_sc_hd`, `gf180mcu_fd_sc_mcu7t5v0` or `sg13g2_stdcell`), or nullptr.
+inline const PinnedStdcell* pinned_stdcell(std::string_view lib) {
+  for (const PinnedStdcell* cell : {&kSky130FdScHd, &kGf180mcu7t5v0, &kSg13g2Stdcell}) {
+    if (cell->gds->library == lib) {
+      return cell;
+    }
+  }
+  return nullptr;
+}
+
+/// The `.mag` directory of standard-cell library `lib` (`libs.ref/<lib>/mag` of the sky130 or gf180mcu set),
+/// or std::nullopt when the set is missing, `lib` has no `.mag` cells (sg13g2_stdcell) or is unknown.
+inline std::optional<std::filesystem::path> pinned_stdcell_mag(std::string_view lib) {
+  const PinnedStdcell* cell = pinned_stdcell(lib);
+  if (cell == nullptr || !cell->has_mag || cell->pdk->library != lib) {
+    return std::nullopt;
+  }
+  return pinned_library(*cell->pdk);
+}
+
+/// The GDS file of standard-cell library `lib` (`libs.ref/<lib>/gds/<lib>.gds` of its *-gds-sc set), or
+/// std::nullopt when that set is missing or `lib` is unknown.
+inline std::optional<std::filesystem::path> pinned_stdcell_gds(std::string_view lib) {
+  const PinnedStdcell* cell = pinned_stdcell(lib);
+  return cell != nullptr ? pinned_gds(*cell->gds) : std::nullopt;
 }
 
 // The LEF data sets (openspec/changes/m6-lef-def-oasis/design.md D2, tasks 1.2 and 1.4): the tech LEF and

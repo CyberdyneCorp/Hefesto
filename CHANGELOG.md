@@ -4,6 +4,19 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
+## Unreleased (M7: extraction and netlisting, in progress)
+
+### Changed
+
+- **`extract`, `ext`, `ext2spice`, `exttospice`, `ext2sim`, `exttosim`,
+  `extresist` and `antennacheck` are registered commands.** They take
+  Magic's option tables and print Magic's help and invalid-option
+  messages. Until extraction and the netlisters land, each option answers
+  `CORE-NOTIMPL-008` ("not implemented yet: extract all"), so a script's
+  `extract all` now fails with that message instead of "unknown command".
+  `ext2spice scale [on|off]` keeps working as before; other `ext2spice`
+  options answer `CORE-NOTIMPL-008` instead of `UI-CLIENT-002`.
+
 ## Unreleased (M6: LEF/DEF and OASIS, in progress)
 
 ### Changed

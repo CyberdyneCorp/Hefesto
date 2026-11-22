@@ -1,0 +1,16 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+substrate "VSUB" 0 0 -1073741817 -1073741817 space 0 0 0 0 0 0
+port "A" 0 0 0 1 1 metal1
+port "B" 1 4 0 5 1 metal1
+node "A" 0 3 0 0 metal1 0 0 0 0 0 0
+node "B" 0 3 4 0 metal1 0 0 0 0 0 0
+node "m" 0 2 2 0 metal1 0 0 0 0 0 0
+equiv "A" "B"
+device rsubckt rres 0 10 10 12 "m" 0 0 "A" 0 0 "B" 0 0
+device devres rppd 20 0 30 2 10 3 "None" "m" 0 0 "A" 2 0 "B" 2 0
+cap "A" "m" -1

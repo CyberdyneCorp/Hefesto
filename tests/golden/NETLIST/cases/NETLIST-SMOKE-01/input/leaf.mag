@@ -1,0 +1,12 @@
+magic
+tech extsmoke
+timestamp 100
+<< metal1 >>
+rect 0 0 10 4
+rect 0 8 10 12
+<< labels >>
+rlabel metal1 0 0 10 4 0 A
+port 1 nsew
+rlabel metal1 0 8 10 12 0 Y
+port 2 nsew
+<< end >>

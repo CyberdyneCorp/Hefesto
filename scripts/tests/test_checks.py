@@ -9,6 +9,8 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -180,6 +182,17 @@ class RequirementCoverageTest(unittest.TestCase):
             self.assertIn(("cap-b", "Beta merge"), uncovered)
             self.assertNotIn(("cap-b", "Alpha order"), uncovered)
 
+    def test_golden_smoke_case_covers_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            write(root, "tests/golden/NETLIST/cases/NETLIST-SMOKE-02/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Beta merge"]\n')
+            code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json"])
+            self.assertEqual(code, 0)
+            uncovered = {(u["capability"], u["requirement"]) for u in json.loads(text)["uncovered"]}
+            self.assertIn(("cap-b", "Beta merge"), uncovered)
+
     def test_milestone_filter_and_fail_under(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -264,6 +277,53 @@ class CoreIncludesTest(unittest.TestCase):
             code, text = run_quiet(includes.main, ["--root", str(root)])
             self.assertEqual(code, 1)
             self.assertIn("bad.cpp:4", text)
+
+    def test_plane_stitch_only_from_extract_and_extresist(self):
+        include = HEADER + '#include "hefesto/db/plane_stitch.hpp"\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for allowed in ("src/core/src/extract/node/regions.cpp", "src/core/src/extresist/network/fracture.cpp",
+                            "src/core/include/hefesto/extresist/network/fracture.hpp",
+                            "src/core/src/db/plane_stitch.cpp"):
+                write(root, allowed, include)
+            code, _ = run_quiet(includes.main, ["--root", str(root)])
+            self.assertEqual(code, 0)
+            write(root, "src/core/src/drc/engine/kernel.cpp", include)
+            write(root, "src/core/src/extflat/reader.cpp", include)
+            # Design D5/D6: of db/, only the implementation file (review of PR #80).
+            write(root, "src/core/src/db/plane.cpp", include)
+            write(root, "src/core/include/hefesto/db/cell_def.hpp", include)
+            code, text = run_quiet(includes.main, ["--root", str(root)])
+            self.assertEqual(code, 1)
+            self.assertIn("kernel.cpp:3", text)
+            self.assertIn("reader.cpp:3", text)
+            self.assertIn("plane.cpp:3", text)
+            self.assertIn("cell_def.hpp:3", text)
+            self.assertNotIn("plane_stitch.cpp:", text)
+            self.assertIn("restricted header", text)
+
+    @unittest.skipUnless(shutil.which("cmake"), "cmake not on PATH")
+    def test_cmake_copy_of_the_plane_stitch_rule(self):
+        """Regression (PR #80 linux-asan): the CTest copy used IN_LIST, which a -P script without
+        CMP0057 does not evaluate, so the db/ include was reported."""
+        script = SCRIPTS.parent / "tests" / "unit" / "core" / "check_core_includes.cmake"
+        include = HEADER + '#include "hefesto/db/plane_stitch.hpp"\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp) / "core"
+            for allowed in ("src/db/plane_stitch.cpp", "src/extract/node/regions.cpp",
+                            "include/hefesto/extresist/network/fracture.hpp"):
+                write(core, allowed, include)
+            run = lambda: subprocess.run(["cmake", "-Wno-dev", f"-DCORE_DIR={core}", "-P", str(script)],
+                                         capture_output=True, text=True, check=False)
+            ok = run()
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            write(core, "src/drc/engine/kernel.cpp", include)
+            write(core, "src/db/plane.cpp", include)
+            bad = run()
+            self.assertNotEqual(bad.returncode, 0)
+            self.assertIn("kernel.cpp", bad.stderr)
+            self.assertIn("db/plane.cpp", bad.stderr)
+            self.assertNotIn("plane_stitch.cpp:", bad.stderr)
 
 
 class CompareGoldenOutputsTest(unittest.TestCase):

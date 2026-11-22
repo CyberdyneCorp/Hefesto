@@ -14,7 +14,9 @@ document, so parallel work never edits the same table
 `openspec/changes/m4-scripting/design.md` D1; the M5 areas:
 `openspec/changes/m5-mask-gds-cif/design.md` D1; the M6 areas:
 `openspec/changes/m6-lef-def-oasis/design.md` D1; the M8 area:
-`openspec/changes/m8-schematic/design.md` D3):
+`openspec/changes/m8-schematic/design.md` D3; the M10 area:
+`openspec/changes/m10-3d-view/design.md` D2; the M7 areas:
+`openspec/changes/m7-extraction/design.md` D2):
 
 | Area | Prefix | Source | Document |
 |---|---|---|---|
@@ -47,6 +49,9 @@ document, so parallel work never edits the same table
 | extract | EXTRACT | `src/core/src/extract/codes.cpp` (fragments `extract/<sub>/codes.inc`) | [codes/extract.md](codes/extract.md) |
 | schem | SCHEM | `src/core/src/schem/codes.cpp` (fragments `schem/<sub>/codes.inc`) | [codes/schem.md](codes/schem.md) |
 | view3d | VIEW3D | `src/core/src/view3d/codes.cpp` (fragments `view3d/<sub>/codes.inc`) | [codes/view3d.md](codes/view3d.md) |
+| netlist | NETLIST | `src/core/src/netlist/codes.cpp` (fragments `netlist/<sub>/codes.inc`) | [codes/netlist.md](codes/netlist.md) |
+| extresist | EXTRESIST | `src/core/src/extresist/codes.cpp` (fragments `extresist/<sub>/codes.inc`) | [codes/extresist.md](codes/extresist.md) |
+| antenna | ANTENNA | `src/core/src/antenna/codes.cpp` (fragment `antenna/codes.inc`) | [codes/antenna.md](codes/antenna.md) |
 
 Regenerate the core table with:
 
@@ -94,6 +99,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CORE-NOTIMPL-005` | error | Retired in M5, never reused. Was: an M5 command option or function declared by the M5 scaffold before its workstream landed it. |
 | `CORE-NOTIMPL-006` | error | Retired in M6, never reused. Was: an M6 command option or function declared by the M6 scaffold before its workstream landed it. |
 | `CORE-NOTIMPL-007` | error | Not implemented yet: an M8 schematic function declared by the M8 scaffold before its workstream landed it (retired at M8 exit). |
+| `CORE-NOTIMPL-008` | error | Not implemented yet: an M7 extraction or netlisting command option or function declared by the M7 scaffold before its workstream landed it (retired at M7 exit). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

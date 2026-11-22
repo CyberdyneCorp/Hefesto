@@ -1,0 +1,21 @@
+* SPICE3 file created from top.ext - technology: nltest
+
+.option scale=10n
+
+.global VDD GND 
+
+.subckt leaf in out
+M1000 out in out GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+.ends
+
+
+* Top level circuit top
+
+Xu1 u1/in u1/out leaf
+Xu2 u2/in u2/out leaf
+Xu3 u3/in u3/out leaf
+Xua ua/in ua/out leaf
+Xb10 b10/in b10/out leaf
+.end
+

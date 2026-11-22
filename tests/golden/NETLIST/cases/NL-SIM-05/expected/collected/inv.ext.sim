@@ -1,0 +1,5 @@
+| units: 1 tech: nltest format: MIT
+n in gnd! out 2 4 0 0
+p in vdd! out 2 8 0 50
+r out out.n0 12.3005
+C out0 5.0

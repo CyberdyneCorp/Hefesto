@@ -1,0 +1,4 @@
+in -9 20 poly
+out 20 20 metal1
+vdd! 0 100 metal1
+gnd! 0 -49 metal1

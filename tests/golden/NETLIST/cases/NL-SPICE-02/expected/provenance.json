@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "case": "NL-SPICE-02",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:a1ab333bc02447cacbc4cb02ee4945a1ab235e578ff8febe3a70ea2139cf6ac7",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-22T04:48:33Z",
+  "outputs": {
+    "collected/custom.spice": "c955497635ac993cbf591203e7cabf90c9333c879ae1f349a2ffd6fb823cb4fd",
+    "collected/inv.cdl": "2611008568a37e32a0c4eb45798721ffcc3f66849cb7c4a9f65ca2d9f7f3ac70",
+    "collected/inv.hspice.spice": "d2e9cc8c984f839e27151f03f92fd1d43528c2d6148e65ac61dc4dfdfa55ecfd",
+    "collected/inv.ngspice.spice": "aa8006a3eee96613fc52bd2ac3faf0b1bc4641b4db6bb81c062b610fed1ded77",
+    "collected/inv.spice2.spice": "15939c2dbd3e371ee38f58571eed6c033fba3fe006ec3204d4c43c9bbe461a20",
+    "collected/inv.spice3.spice": "c955497635ac993cbf591203e7cabf90c9333c879ae1f349a2ffd6fb823cb4fd",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "ecf0312936880951095255b5d3ab8a6e4944778e25f4fd8ed25af1bcddc2aca9"
+  }
+}

@@ -224,6 +224,20 @@ python3 scripts/fetch_pdk.py sky130-gds gf180mcu-gds ihp-gds --cli build/macos-d
 python3 scripts/fetch_pdk.py --print-digest sky130-gds
 ```
 
+### Standard-cell inputs of the extraction cases (M7)
+
+The M7 PDK golden cases (`EXTRACT-PDK-<lib>`, `NETLIST-PDK-<lib>`; design D21 and Open Question 4 (a) of `openspec/changes/m7-extraction`) extract every cell of one standard-cell library per PDK. They need no new data set:
+
+| Library | Read from | Set | Cells | Default extract style | Tech format |
+|---|---|---|---|---|---|
+| `sky130_fd_sc_hd` | `.mag` (`sky130A/libs.ref/sky130_fd_sc_hd/mag/`) | `sky130` | 446 | `ngspice()` | 35 |
+| `gf180mcu_fd_sc_mcu7t5v0` | `.mag` (`gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/`) | `gf180mcu` | 229 | `ngspice()` | 35 |
+| `sg13g2_stdcell` | GDS (`ihp-sg13g2/libs.ref/sg13g2_stdcell/gds/sg13g2_stdcell.gds`, `gds read`) | `ihp-gds-sc` | 84 | `ngspice()` | 35 |
+
+- **Counts.** Checked on the pinned sets on 2026-11-21: 446 and 229 `.mag` files, and 84 structures in IHP-Open-PDK `5e6d592e`'s `sg13g2_stdcell.gds` (also 84 macros in the `ihp-lef` set's `sg13g2_stdcell.lef`). IHP ships no `.mag` standard cells; the 456 MB `ihp-gds` set is not used. The `sky130` and `gf180mcu` tree digests (`--print-digest`) reproduce their pins.
+- **Extract defaults.** Each PDK's extract section (`<variant>-extract.tech`, included by the tech file) declares `style ngspice variants (),...` first, so the default style is `ngspice()`: Magic names each variant style by the style name followed by the variant (`extract/ExtTech.c:2087-2135`) and loads the first one. No PDK `.magicrc` selects another. Every tech file is `format 35`, at or above the format 34 at which the fringe-halo sideoverlap model is on by default (`extract-tech-section` "Fringe model default chosen from tech format").
+- **Tests.** `tests/unit/common/reference_data.hpp` gives `pinned_stdcell_mag(lib)` (nullopt for `sg13g2_stdcell` or a missing set), `pinned_stdcell_gds(lib)` (the `*-gds-sc` file, nullopt when the set is missing) and the `PinnedStdcell` records `kSky130FdScHd`, `kGf180mcu7t5v0`, `kSg13g2Stdcell` with the counts and defaults above; `tests/unit/pdk/reference_pdks_test.cpp` checks them on a leg that has the sets.
+
 ### LEF data sets (M6)
 
 The LEF/DEF tests on real PDK data (the PDK LEF read tests, the `LEFDEF-RT-<lib>` golden cases and LEFDEF-240; design D2 and Open Question 6 (a) of `openspec/changes/m6-lef-def-oasis`) read the tech LEF and the standard-cell LEF of the same three releases. They come in three more data sets, fetched only when named:

@@ -56,11 +56,15 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // 5.2): a function the M8 scaffold declared before its workstream
 // implemented it (schem/not_implemented.hpp). Retired at M8 exit.
 inline constexpr std::string_view kSchemNotImplemented = "CORE-NOTIMPL-007";
+// Scaffold stubs of the M7 areas (openspec/changes/m7-extraction/design.md
+// D4, tasks.md 3.3): a command option or function the M7 scaffold declared
+// before its workstream implemented it (cmd/m7_stubs.hpp). Retired at M7 exit.
+inline constexpr std::string_view kExtractNotImplemented = "CORE-NOTIMPL-008";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
 // is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
-// `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7), CMD-PARSE-001..003
+// `ext2spice` beyond `scale` answered UI-CLIENT-002 until M7), CMD-PARSE-001..003
 // (M4: command lines are Tcl, the M0 command-script reader is removed),
 // CORE-NOTIMPL-005 (M5: every scaffold stub is implemented), CORE-NOTIMPL-006
 // (M6: every scaffold stub is implemented; cmd/stubs.* removed).

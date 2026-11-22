@@ -1,0 +1,9 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf2 x1 1 0 0 0 1 0
+use leaf2 x2 1 0 50 0 1 0
+node "o" 0 1 0 40 metal1 0 0 0 0 0 0

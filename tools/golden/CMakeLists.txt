@@ -36,6 +36,13 @@ if(NOT TARGET hefesto-cli)
   return()
 endif()
 
+# External-command cases (m7-extraction design D15, goldenlib/external_command.py) replay
+# hefesto-extcheck; without the target replay.py looks next to hefesto-cli and skips the case.
+set(_golden_extcheck "")
+if(TARGET hefesto-extcheck)
+  set(_golden_extcheck --hefesto-extcheck $<TARGET_FILE:hefesto-extcheck>)
+endif()
+
 # One test per captured case. Re-run CMake after adding a case.
 file(GLOB _golden_manifests CONFIGURE_DEPENDS
   ${PROJECT_SOURCE_DIR}/tests/golden/*/cases/*/expected/provenance.json)
@@ -59,7 +66,7 @@ foreach(_manifest IN LISTS _golden_manifests)
   endif()
   add_test(NAME golden.${_case_id}
     COMMAND Python3::Interpreter replay.py --hefesto-cli $<TARGET_FILE:hefesto-cli>
-            --skip-code 77 ${_golden_extra} ${_case_dir}
+            ${_golden_extcheck} --skip-code 77 ${_golden_extra} ${_case_dir}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   # 77 (reported as Skipped): the case needs a command this hefesto-cli lacks, or it is a documented
   # deviation (tests/golden/deviations.toml, goldenlib/deviations.py).
