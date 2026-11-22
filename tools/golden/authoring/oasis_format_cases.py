@@ -327,7 +327,11 @@ def oasis_013():
                      "a warning and LayoutDiff finds no difference from its GDS equivalent (oasis-validate).",
                      Read({"ref419": o.reference_419()}),
                      notes=["The KLayout and gdstk checks of the file run in golden-capture.yml mode oasis-validate "
-                            "(design D20); their run ID and versions go in tasks.md and here."])
+                            "(design D20); their run ID and versions go in tasks.md and here.",
+                            "Confirmed (task 17.6): oasis-validate run 44987468409 (m6-round6, 46d90d0d), KLayout "
+                            "0.30.0 and gdstk 1.0.2: KLayout reads reference_419.oas with no warning, strmcmp of "
+                            "ref419.oas against its KLayout-made GDS reports identical=True, gdstk reads it and "
+                            "accepts its signature (4001250259); 229 checks, 0 failures."])
 
 
 def strict_file(name: str, body: list[bytes], tables: dict[int, list[bytes]]) -> bytes:

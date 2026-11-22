@@ -184,7 +184,7 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 | M3 | Design rule checking (complete) | |
 | M4 | Scripting and PDK integration (complete; Desktop Alpha sign-off pending) | Desktop Alpha |
 | M5 | Mask generation, GDS and CIF (in review: every golden case and library round trip matches Magic or carries an approved deviation, and the exit criteria are met (task 15.6); tasks 15.1 and 15.7 remain; see the roadmap) | |
-| M6 | LEF/DEF and OASIS (in review: implemented and every decision resolved; recaptures, bench baselines and the exit-round CI runs remain; see the roadmap) | |
+| M6 | LEF/DEF and OASIS (in review: every exit criterion met except MASK-OS-016, which Magic cannot capture (it crashes) and is still deferred to M6; see the roadmap) | |
 | M7 | Extraction and netlisting | |
 | M8 | Schematic capture | |
 | M9 | LVS and simulation, including advanced analog | Desktop Beta |

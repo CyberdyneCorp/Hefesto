@@ -36,14 +36,20 @@ release notices.
 - **LEF/DEF and OASIS benches.** `perf.yml` measures each workload in
   callgrind instructions (`lefdef-bench` against Magic, `oasis-bench`
   against Hefesto's GDS path) and gates it at its own baseline + 2 %
-  (baselines are recorded at the M6 exit round; until then a workload
-  reports "no baseline" and passes).
+  (the baselines were recorded at the M6 exit round, from a Performance
+  run on the round-6 branch).
 
 ### Changed
 
 - **Startup prints the technology line after the command-line files.**
   `hefesto-cli` prints `Using technology "<name>", version <v>` once,
-  after the files named on the command line, as Magic's Tcl startup does.
+  after the files named on the command line, as Magic's Tcl startup does,
+  including `Using technology "minimum", version 0.0` when nothing supplies
+  a technology.
+- **`lef write` and `def read -annotate` print the cells they read in
+  Magic's order.** `Cell <c> read from path ...` now comes inside the
+  macro's messages (after `Writing LEF output`) and between the DEF
+  section counts, instead of before the command's other lines.
 - **Technology lines of more than 30 words.** The first 30 words are read
   and the dropped words are reported as error `TECH-READ-002`; the load
   goes on (Magic overflows its word buffer there).

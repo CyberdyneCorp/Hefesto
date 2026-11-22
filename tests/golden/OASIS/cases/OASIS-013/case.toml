@@ -7,6 +7,7 @@
 # Magic runs input/commands.tcl, hefesto-cli input/hefesto.tcl (authoring/tclcase.py).
 # Magic GDS cross-check (design D19): Magic reads <stem>.gds, the GDS equivalent of <stem>.oas (authoring/oasequiv.py); Hefesto reads <stem>.oas (input/hefesto.tcl). Saved cells and report.txt are compared; the console is not (two different commands, informative wording).
 # The KLayout and gdstk checks of the file run in golden-capture.yml mode oasis-validate (design D20); their run ID and versions go in tasks.md and here.
+# Confirmed (task 17.6): oasis-validate run 44987468409 (m6-round6, 46d90d0d), KLayout 0.30.0 and gdstk 1.0.2: KLayout reads reference_419.oas with no warning, strmcmp of ref419.oas against its KLayout-made GDS reports identical=True, gdstk reads it and accepts its signature (4001250259); 229 checks, 0 failures.
 
 schema = 1
 id = "OASIS-013"
