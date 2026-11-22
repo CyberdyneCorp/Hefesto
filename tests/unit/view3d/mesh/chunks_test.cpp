@@ -95,7 +95,7 @@ TEST_CASE("a chunked build has the same geometry as a single chunk and stays clo
     CHECK(view3d::test::open_edge(*chunked, l).empty());
   }
   for (const view3d::Chunk& c : chunked->chunks) {
-    CHECK(c.version == 1U);
+    CHECK(c.version == chunked->version);
     CHECK(c.origin_x == c.area.x0);
     CHECK(c.origin_y == c.area.y0);
     for (const view3d::RectInstance& r : c.rects) {
@@ -128,6 +128,33 @@ TEST_CASE("two builds of the same cell are byte-equal",
     CHECK(models_byte_equal(*first, *second));
     CHECK(models_byte_equal(*first, *other));
   }
+}
+
+TEST_CASE("every build takes fresh versions from one process-wide counter",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  // Regression: every fresh build used to start at version 1, so a chunk's
+  // (id, version) did not tell two builds apart and the renderer had to
+  // fingerprint the content.
+  const auto t = view3d::test::build_tech();
+  db::CellDef a("a", t.tech->plane_count());
+  paint_grid(a, t, false);
+  const auto stack = grid_stack(t);
+  const view3d::ClipArea clip{Rect{-1, -1, 161, 161}, false, 0};
+  view3d::BuildContext c1;
+  view3d::BuildContext c2;
+  const auto first = detail::build_layout(stack, a, clip, c1, 16);
+  const auto second = detail::build_layout(stack, a, clip, c2, 16);
+  REQUIRE(first.has_value());
+  REQUIRE(second.has_value());
+  CHECK(first->version != 0U);
+  CHECK(second->version > first->version);
+  REQUIRE(first->chunks.size() == second->chunks.size());
+  for (std::size_t i = 0; i < first->chunks.size(); ++i) {
+    CHECK(first->chunks[i].id == second->chunks[i].id);
+    CHECK(first->chunks[i].version == first->version);
+    CHECK(second->chunks[i].version == second->version);
+  }
+  CHECK(detail::next_version() > second->version);
 }
 
 TEST_CASE("instances keep sub-unit precision near 2^30",

@@ -206,7 +206,7 @@ TEST_CASE("a change event rebuilds the affected chunks of the current model in t
   REQUIRE(worker.wait_idle(kWaitMs));
   const view3d::MeshHandle after = worker.current();
   REQUIRE(after != nullptr);
-  CHECK(after->version == before->version + 1);
+  CHECK(after->version > before->version);
   std::size_t kept = 0;
   for (const view3d::Chunk& c : after->chunks) {
     kept += c.version == before->version ? 1U : 0U;

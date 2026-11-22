@@ -76,18 +76,19 @@ TEST_CASE("a local paint rebuilds only the affected chunks",
   view3d::test::paint(root, t, dirty, t.metal1);
   const auto after = rebuild_small(*before, stack, root, dirty, 16);
   REQUIRE(after.has_value());
-  CHECK(after->version == 2U);
+  CHECK(after->version > before->version);
   std::size_t rebuilt = 0;
   for (const view3d::Chunk& c : after->chunks) {
     INFO("chunk " << c.id);
     if (meets(c.area, db::expand(dirty, 1))) {
       ++rebuilt;
-      CHECK(c.version == 2U);
+      CHECK(c.version == after->version);
       continue;
     }
     const view3d::Chunk* old = find_chunk(*before, c.id);
     REQUIRE(old != nullptr);
     CHECK(view3d::test::chunks_byte_equal(c, *old));
+    CHECK(c.version == old->version);  // only rebuilt chunks take the new version
   }
   CHECK(rebuilt >= 1);
   CHECK(rebuilt < after->chunks.size());
@@ -124,6 +125,7 @@ TEST_CASE("paint outside every chunk adds a chunk and erasing a chunk's paint dr
       const view3d::Chunk* kept = find_chunk(*after, c.id);
       REQUIRE(kept != nullptr);
       CHECK(view3d::test::chunks_byte_equal(c, *kept));
+      CHECK(kept->version == c.version);
     }
     const auto fresh = build_small(stack, root, clip, 1);
     REQUIRE(fresh.has_value());
@@ -157,6 +159,7 @@ TEST_CASE("a change outside the region keeps the model; a cancelled rebuild retu
   const auto same = view3d::rebuild_chunks(*first, stack, root, outside, ctx);
   REQUIRE(same.has_value());
   CHECK(view3d::test::models_byte_equal(*same, *first));
+  CHECK(same->version == first->version);
 
   std::atomic<bool> cancel{true};
   view3d::BuildContext cancelled;

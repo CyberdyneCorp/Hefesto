@@ -303,14 +303,17 @@ inline bool bytes_equal(const std::vector<T>& a, const std::vector<T>& b) {
   return true;
 }
 
+// Versions are left out: they come from a process-wide counter, so two
+// builds of the same cell differ in them alone (chunks_test.cpp checks
+// them).
 inline bool chunks_byte_equal(const Chunk& x, const Chunk& y) {
-  return x.id == y.id && x.version == y.version && x.origin_x == y.origin_x && x.origin_y == y.origin_y &&
+  return x.id == y.id && x.origin_x == y.origin_x && x.origin_y == y.origin_y &&
          x.area == y.area && bytes_equal(x.rects, y.rects) && bytes_equal(x.sides, y.sides) &&
          bytes_equal(x.triangles, y.triangles);
 }
 
 inline bool models_byte_equal(const MeshModel& a, const MeshModel& b) {
-  if (a.chunks.size() != b.chunks.size() || !(a.region == b.region) || a.version != b.version) {
+  if (a.chunks.size() != b.chunks.size() || !(a.region == b.region)) {
     return false;
   }
   for (std::size_t i = 0; i < a.chunks.size(); ++i) {
