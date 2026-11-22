@@ -78,6 +78,19 @@ target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/te
 # label desktop-window-x11 under Xvfb and desktop-window-wayland under a
 # headless Weston; both need a display, so they are opt-in.
 if(HEFESTO_TEST_DESKTOP_WINDOW)
+  # Magic's mos display styles for the 3D tab capture below (test input only).
+  set(_view3d_magic "${PROJECT_SOURCE_DIR}/build/ref/magic")
+  set(_view3d_style_files "${_view3d_magic}/scmos/mos.OpenGL.std.cmap" "${_view3d_magic}/scmos/mos.OpenGL.dstyle"
+                          "${_view3d_magic}/graphics/color.glyphs")
+  set(_view3d_cad_root "${CMAKE_CURRENT_BINARY_DIR}/view3d-cad")
+  foreach(_file IN LISTS _view3d_style_files)
+    if(NOT EXISTS "${_file}")
+      set(_view3d_cad_root "")
+    endif()
+  endforeach()
+  if(_view3d_cad_root)
+    file(COPY ${_view3d_style_files} DESTINATION "${_view3d_cad_root}/magic/sys")
+  endif()
   foreach(_system x11 wayland)
     add_test(NAME "hefesto: window smoke test (${_system})"
              COMMAND hefesto --smoke-frames 30 --rects 10000 --no-vsync --expect-window-system ${_system})
@@ -119,6 +132,22 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       LABELS "desktop-window;desktop-window-${_system}"
       ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
       TIMEOUT 120)
+    # M10 3D tab capture (m10-3d-view tasks 9.1, 9.6): the product app opens
+    # the 3D tab with render3d on a four-layer cell of view3d_tab.tech; CI
+    # uploads view3d-tab-<system>.ppm for the Linux rows of
+    # docs/design/m10-3d-ui-conformance.md. The display styles come from the
+    # Magic reference tree (scripts/fetch_pdk.py magic-ref), copied into a
+    # CAD_ROOT under the build tree; without that tree the test is not added.
+    if(_view3d_cad_root)
+      add_test(NAME "hefesto: 3D tab opened by render3d (${_system})"
+               COMMAND hefesto -T "${PROJECT_SOURCE_DIR}/tests/data/shell/view3d_tab.tech" --width 1280 --height 800
+                       --run "load view3d_tab; box 0 0 120 30; paint ndiff; box 50 -20 70 60; paint poly; box 10 10 110 20; paint metal1; box 90 -10 105 50; paint metal2; box -10 -30 130 70; magic::render3d"
+                       --capture "${CMAKE_CURRENT_BINARY_DIR}/view3d-tab-${_system}.ppm" --capture-frames 60 --no-vsync)
+      set_tests_properties("hefesto: 3D tab opened by render3d (${_system})" PROPERTIES
+        LABELS "desktop-window;desktop-window-${_system}"
+        ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system};CAD_ROOT=${_view3d_cad_root}"
+        TIMEOUT 120)
+    endif()
   endforeach()
 endif()
 
