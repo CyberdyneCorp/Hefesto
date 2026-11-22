@@ -39,7 +39,9 @@ inline constexpr std::string_view kOasisCell = "OASIS_CELL";
 class VendorStamper {
  public:
   /// Looks OASIS files up through `ctx` (which must outlive the stamper).
-  explicit VendorStamper(cell::LookupContext& ctx) : ctx_(ctx) {}
+  /// `magic_compat` selects the stamp rule of content_stamps (Q-OASIS-49).
+  explicit VendorStamper(cell::LookupContext& ctx, bool magic_compat = true)
+      : ctx_(ctx), magic_compat_(magic_compat) {}
 
   /// The content stamp of read-only cell `def`: its OASIS_CELL in the file
   /// its OASIS_FILE names, found as gds::VendorStamper finds a GDS_FILE
@@ -57,6 +59,7 @@ class VendorStamper {
   [[nodiscard]] const gds::StampTable* table_for(const platform::Path& path);
 
   cell::LookupContext& ctx_;
+  bool magic_compat_ = true;
   std::map<std::string, std::optional<gds::StampTable>> cache_;  // by the path opened; nullopt: unreadable
 };
 

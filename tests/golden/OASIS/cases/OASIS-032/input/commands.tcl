@@ -21,6 +21,7 @@ probe {drc off}
 probe {tech load input/oastest -noprompt}
 probe {snap internal}
 probe {gds datestamp 1}
+set PDK_ROOT $env(PDK_ROOT)
 probe {gds readonly yes}
 probe {gds read $env(PDK_ROOT)/lib/cells}
 specrep {$PDK_ROOT/lib/cells.oas}

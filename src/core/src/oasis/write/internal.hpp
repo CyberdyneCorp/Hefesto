@@ -67,8 +67,8 @@ inline constexpr std::string_view kGdsStream = "OASIS-WRITE-012";
 }  // namespace codes
 
 /// The most explicit displacements one vendor AREF may expand to (a
-/// repetition of type 10); above it the element is an error (proposed
-/// resource cap, design D21: GDS COLROW allows 32767 x 32767).
+/// repetition of type 10); above it the element is an error (approved
+/// resource cap, E3 of 2026-11-20, Q-OASIS-53; GDS COLROW allows 32767 x 32767).
 inline constexpr std::uint64_t kMaxExplicitOffsets = std::uint64_t{1} << 24;
 
 // --- the GDS element stream (gds_elements.cpp) ------------------------------

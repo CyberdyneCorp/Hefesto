@@ -52,10 +52,6 @@ inline constexpr std::string_view kSettingsFile = "SETTINGS-FILE-001";
 inline constexpr std::string_view kCliUsage = "CLI-USAGE-001";
 inline constexpr std::string_view kCliScript = "CLI-SCRIPT-001";
 inline constexpr std::string_view kCliLog = "CLI-LOG-001";
-// Scaffold stubs (openspec/changes/m6-lef-def-oasis/design.md D3): a command
-// option or function the M6 scaffold declared before its workstream
-// implemented it. INTEGRATION retires the code at M6 exit.
-inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-006";
 // Scaffold stubs of the schem area (openspec/changes/m8-schematic tasks.md
 // 5.2): a function the M8 scaffold declared before its workstream
 // implemented it (schem/not_implemented.hpp). Retired at M8 exit.
@@ -66,7 +62,8 @@ inline constexpr std::string_view kSchemNotImplemented = "CORE-NOTIMPL-007";
 // is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
 // `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7), CMD-PARSE-001..003
 // (M4: command lines are Tcl, the M0 command-script reader is removed),
-// CORE-NOTIMPL-005 (M5: every scaffold stub is implemented).
+// CORE-NOTIMPL-005 (M5: every scaffold stub is implemented), CORE-NOTIMPL-006
+// (M6: every scaffold stub is implemented; cmd/stubs.* removed).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the

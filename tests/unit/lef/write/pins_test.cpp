@@ -267,16 +267,37 @@ TEST_CASE("the whole net is the default pin and leaves no obstruction", "[cap:le
   CHECK(text.find("  OBS\n") == std::string::npos);
 }
 
-TEST_CASE("a via in a pin is one cut record of the whole contact area", "[cap:lef-write][req:Contact cut records]") {
-  Session s;
-  db::CellDef& c = s.cell("c");
-  s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
-  s.paint(c, "m2c", db::Rect{0, 0, 20, 20});
-  s.label(c, Port{"A", "metal1", db::Rect{0, 50, 20, 60}, 0});
-  CHECK(block(s.macro(c), "    PORT", "    END") ==
-        "    PORT\n      LAYER met1 ;\n        RECT 0.000 0.000 0.200 1.000 ;\n"
-        "      LAYER via1 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n"
-        "      LAYER met2 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n    END\n");
+// Q-LEFDEF-136 (approved 2026-11-20): the via shares the lower-left corner
+// of the metal1 tile the routing round wrote, so Magic's paint changes that
+// tile in place, it keeps its visited mark, and no cut is written.
+TEST_CASE("a via at its metal's lower-left corner writes its cut only with magic-compat OFF",
+          "[cap:lef-write][req:Contact cut records]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    db::CellDef& c = s.cell("c");
+    s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
+    s.paint(c, "m2c", db::Rect{0, 0, 20, 20});
+    s.label(c, Port{"A", "metal1", db::Rect{0, 50, 20, 60}, 0});
+    const std::string cut = on ? "" : "      LAYER via1 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n";
+    CHECK(block(s.macro(c), "    PORT", "    END") ==
+          "    PORT\n      LAYER met1 ;\n        RECT 0.000 0.000 0.200 1.000 ;\n" + cut +
+              "      LAYER met2 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n    END\n");
+  }
+}
+
+TEST_CASE("a via inside its metal is one cut record of the whole contact area, in both modes",
+          "[cap:lef-write][req:Contact cut records]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    db::CellDef& c = s.cell("c");
+    s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
+    s.paint(c, "m2c", db::Rect{0, 40, 20, 60});
+    s.label(c, Port{"A", "metal1", db::Rect{0, 80, 20, 90}, 0});
+    const std::string port = block(s.macro(c), "    PORT", "    END");
+    CHECK(port.find("      LAYER via1 ;\n        RECT 0.000 0.400 0.200 0.600 ;\n") != std::string::npos);
+  }
 }
 
 TEST_CASE("a cut below the pin's first routing record is dropped only with magic-compat ON",

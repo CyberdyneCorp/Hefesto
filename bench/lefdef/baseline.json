@@ -1,0 +1,4 @@
+{
+  "comment": "Hefesto's callgrind instructions per LEF/DEF workload (op minus base, bench/lefdef/lefdef_bench.py with the default 5000-cell DEF block) on the x86_64 runner, GCC 14 Release with -g -fno-omit-frame-pointer. Each workload is gated at its baseline + 2 % by bench/lefdef/baseline_gate.py (m6-lef-def-oasis design D22, Open Question 4 (a)); Magic's count is information. Empty until the baseline-recording procedure of docs/design/m6-ui-conformance.md \"Performance\" records a Performance run on main. Entry: {\"instructions\": N, \"run\": <Performance run id>, \"commit\": <sha>}.",
+  "workloads": {}
+}

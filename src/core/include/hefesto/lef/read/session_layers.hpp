@@ -13,7 +13,6 @@
 
 #pragma once
 
-#include <set>
 #include <string>
 #include <string_view>
 
@@ -54,16 +53,19 @@ class SessionLayers final : public LayerAccess {
 
   void update_route(std::string_view name, const RouteUpdate& update) override;
 
-  /// The name takes its place in the table's hash order with no record
-  /// (LayerTable::add then release), once per name.
+  /// The name takes its place in the table's key order with no record
+  /// (LayerTable::note_key; a name already there is unchanged).
   void reserve(std::string_view name) override;
+
+  /// A key of the layer table's shared key order with no layer and no via
+  /// record.
+  [[nodiscard]] bool keyed_without_entry(std::string_view name) const override;
 
  private:
   LayerTable& layers_;
   const ViaTable& vias_;
   const tech::Technology& tech_;
   const drc::RuleSet* rules_;
-  std::set<std::string, std::less<>> reserved_;
 };
 
 }  // namespace hefesto::lef

@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <map>
 #include <memory>
@@ -141,6 +142,11 @@ class FakeLayers final : public lef::LayerAccess {
   }
 
   void reserve(std::string_view name) override { reserved.emplace_back(name); }
+
+  [[nodiscard]] bool keyed_without_entry(std::string_view name) const override {
+    return !records.contains(std::string{name}) &&
+           std::find(reserved.begin(), reserved.end(), std::string{name}) != reserved.end();
+  }
 
   [[nodiscard]] const Record& at(const std::string& name) const { return *records.at(name); }
 

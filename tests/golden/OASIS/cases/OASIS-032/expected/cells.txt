@@ -1,7 +1,7 @@
 file anchor.mag
 magic
 tech oastest
-timestamp 1795084843
+timestamp 1795232276
 << metal1 >>
 rect 0 0 1 1
 << end >>
@@ -15,6 +15,6 @@ rect 0 0 10 20
 rect 0 0 10 20
 << properties >>
 string GDS_END 232
-string GDS_FILE /work/input/pdk/lib/cells.gds
+string GDS_FILE $PDK_ROOT/lib/cells.gds
 string GDS_START 100
 << end >>

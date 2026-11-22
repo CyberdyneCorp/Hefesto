@@ -24,6 +24,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_set>
 #include <vector>
 
 #include "hefesto/db/cell.hpp"
@@ -43,11 +44,13 @@ inline constexpr std::string_view kIn1 = "    ";
 inline constexpr std::string_view kIn2 = "      ";
 inline constexpr std::string_view kIn3 = "        ";
 
-/// defMakeInverseLayerMap(LAYER_MAP_VIAS): the LEF record of each type, or
-/// nullptr when the type has no LEF name.
-using NameMap = std::array<const LayerRecord*, tech::kMaxTileTypes>;
+/// defMakeInverseLayerMap(LAYER_MAP_VIAS): the LEF name (lefName) of each
+/// type, or nullptr when the type has no LEF name. The first layer or VIA
+/// record of the type's class in the shared key order wins, so a VIA
+/// definition can name a cut type (defGetType; Q-LEFDEF-92, Q-LEFDEF-135).
+using NameMap = std::array<const std::string*, tech::kMaxTileTypes>;
 
-[[nodiscard]] NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers);
+[[nodiscard]] NameMap make_name_map(const tech::Technology& tech, const LayerTable& layers, const ViaTable* vias);
 
 /// DBAllButSpaceAndDRCBits.
 [[nodiscard]] tech::TypeMask all_but_space_and_drc();
@@ -72,11 +75,36 @@ struct Yank {
 void yank_routing(const Yank& y, const db::Plane& source, tech::PlaneId plane, const db::Rect& area,
                   db::Plane& target, const std::optional<db::Rect>& clip = std::nullopt);
 
+/// Magic's tile client marks in the yank buffer (lefWriteGeometry marks
+/// every tile it visits), by tile identity (db::TileView::tile). A paint
+/// keeps a tile's identity where Magic's keeps its struct (and its mark):
+/// a contact painted over exactly a routing tile's lower-left part changes
+/// that tile in place (Q-LEFDEF-136).
+class TileMarks {
+ public:
+  [[nodiscard]] bool test(const void* tile) const { return marked_.contains(tile); }
+  void set(const void* tile) { marked_.insert(tile); }
+  void reset(const void* tile) { marked_.erase(tile); }
+  void clear() noexcept { marked_.clear(); }
+  /// Drops the marks of the tiles of `plane` around `area` that a paint
+  /// of `area` freed: `before` is what tiles() gave before the paint.
+  /// A freed tile's storage can be reused by a later paint, so its mark
+  /// must not outlive it (Magic's new tiles are never marked).
+  void forget_freed(const std::vector<const void*>& before, const db::Plane& plane, const db::Rect& area);
+  /// The tiles of `plane` overlapping `area` grown by one unit, every type.
+  [[nodiscard]] static std::vector<const void*> tiles(const db::Plane& plane, const db::Rect& area);
+
+ private:
+  std::unordered_set<const void*> marked_;
+};
+
 /// lefYankContacts: copies the non-split contact tiles of `source`
 /// overlapping `area` whose contact (or, for a stacked type, component
-/// contact) has its home plane on `plane` and a LEF name.
+/// contact) has its home plane on `plane` and a LEF name. With `marks`
+/// (magic-compat ON) the marks of the yank tiles each paint frees are
+/// dropped.
 void yank_contacts(const Yank& y, const db::Plane& source, tech::PlaneId plane, const db::Rect& area,
-                   db::Plane& target);
+                   db::Plane& target, TileMarks* marks);
 
 /// lefEraseGeometry: erases every tile of `selection` from `flat`, plane
 /// `plane` only.
@@ -103,14 +131,25 @@ class RecordWriter {
   std::function<void()> header;
 
   /// Writes the tiles of `yank` overlapping `area` whose type is in
-  /// `route`, in tile order. A cut round writes only contact tiles, each
-  /// once per block.
+  /// `route`, in tile order. A cut round writes only contact tiles. With
+  /// magic-compat ON a tile is visited once per block (Magic's client
+  /// marks), so a cut painted in place over a routing tile already written
+  /// is not written (Q-LEFDEF-136), nor the second side of a split tile
+  /// (Q-LEFDEF-39); with it OFF each cut is written once per block.
   void write_plane(const tech::Technology& tech, const db::Plane& yank, const tech::TypeMask& route,
                    const db::Rect& area, Round round);
+
+  /// The block's tile marks (magic-compat ON), for yank_contacts; nullptr
+  /// with magic-compat OFF.
+  [[nodiscard]] TileMarks* marks() noexcept { return magic_compat_ ? &marks_ : nullptr; }
 
  private:
   bool record(const db::TileView& t);
   void shape(const db::TileView& t);
+  /// One tile of write_plane with magic-compat ON (lefWriteGeometry).
+  bool visit_marked(const tech::Technology& tech, const db::TileView& t, Round round);
+  /// One tile of write_plane with magic-compat OFF.
+  bool visit_native(const tech::Technology& tech, const db::TileView& t, Round round);
 
   std::string& out_;
   const NameMap& names_;
@@ -121,6 +160,7 @@ class RecordWriter {
   int writes_ = 0;
   tech::TileType last_type_ = tech::kSpace;
   std::set<std::tuple<db::Coord, db::Coord, db::Coord, db::Coord, db::Coord>> written_cuts_;
+  TileMarks marks_;
 };
 
 /// One pin rectangle remembered for the -hide 0 obstruction cut-out

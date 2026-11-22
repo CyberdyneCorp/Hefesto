@@ -25,7 +25,10 @@ namespace hefesto::oasis {
 
 /// The content stamps of every CELL record of the OASIS stream `source`,
 /// read from its start (empty when it is not OASIS). A cell the stream
-/// ends inside has no entry.
-[[nodiscard]] gds::StampTable content_stamps(gds::ByteSource& source);
+/// ends inside has no entry. With `child_names` (magic-compat ON, Q-OASIS-49)
+/// the names of the cells a cell places are part of its hash, as the SNAME
+/// of each SREF is part of a GDS structure's bytes in Magic's stamp; without
+/// it a renamed child leaves its parent's stamp unchanged.
+[[nodiscard]] gds::StampTable content_stamps(gds::ByteSource& source, bool child_names = true);
 
 }  // namespace hefesto::oasis

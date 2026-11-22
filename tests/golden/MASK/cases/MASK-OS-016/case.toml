@@ -7,6 +7,8 @@
 # Magic and hefesto-cli both run input/commands.tcl (authoring/tclcase.py).
 # MASK case (m5-mask-gds-cif design D18): fresh session, drc off, gds datestamp 0.
 # Authored in M6 (m6-lef-def-oasis task 15.4) by m6_cases.py: the contact cut size is observable through LEF.
+# Round 5: the LEF VIA is VX1; named V1, as the tech section's cut alias, it made Magic redefine the shared cut record (LefRedefined) and Magic exited with SIGSEGV. VX1 still crashes Magic (golden-capture run 44860968058), so the redefinition is not shown to be the cause.
+# The round-4 input (VIA V1) is kept in tests/golden/MASK/magic-crash/MASK-OS-016/ for Hefesto-only tests (tests/unit/lef/read/magic_crash_test.cpp).
 
 schema = 1
 id = "MASK-OS-016"
@@ -15,7 +17,7 @@ capability = "mask-output-styles"
 requirements = ["Contact cut size query"]
 tool = "magic"
 description = "Contact type via1 with squares 10 20 20; lef read of a VIA whose via1 cut (0.1 um) differs from the contact's (cut-size warnings, the cut grown to the contact size), then lef write -tech of a via1 contact cell."
-capture_blocked = "GOLDEN/LEFW: Magic exits with SIGSEGV (status 139) on this script in golden-capture run 44743146734 (lef read of VIA V1 with grown cuts, then lef write cont -tech); the crash point is not found yet, so the case cannot be captured"
+capture_blocked = "GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run 44860968058. The crash point is not found; the case is capture_blocked until it is"
 
 [reference]
 script = "input/commands.tcl"

@@ -69,3 +69,9 @@ name = "lefdef_rt.lef.summary.txt"
 source = "derived:lef-summary:lefdef_rt.lef"
 comparator = "bytes"
 masks = []
+
+[[outputs]]
+name = "lefdef_rt.probe.lef"
+source = "lefdef_rt.probe.lef"
+comparator = "bytes"
+masks = []

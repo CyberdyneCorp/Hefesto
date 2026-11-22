@@ -4,7 +4,7 @@
 """Write the generated M6 golden cases (LEF/DEF and OASIS; m6-lef-def-oasis design D19, task 15.1).
 
 The LEFDEF specs live in ``lefdef_lef_cases.py`` (LEFDEF-001..023, 100..142), ``lefdef_def_cases.py``
-(LEFDEF-200..239, 300..335) and ``lefdef_pdk_cases.py`` (LEFDEF-240 and the library round trips
+(LEFDEF-200..239, 241, 300..335) and ``lefdef_pdk_cases.py`` (LEFDEF-240 and the library round trips
 ``LEFDEF-RT-<lib>`` of task 15.5), on the framework of ``lefdef_cases.py``. The OASIS specs live in
 ``oasis_cases.py`` (tasks 15.2, 15.6). Each LEFDEF module's ``NOT_AUTHORED`` lists the rows it leaves
 out, with the reason and the target milestone; ``oasis_cases.not_authored()`` does the same for the
@@ -79,70 +79,23 @@ BLOCKER_REASONS = {
     "PATH": ("LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"),
     "SPECIAL": ("DEFR: special-net geometry differs from Magic's capture; to investigate"),
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
-    "PINLAYER": ("LEFW: Magic writes no cut record when the contact's area is, unchanged, a yank-plane tile already "
-                 "written in the routing round (lefWriteGeometry skips tiles whose client mark is set, lef/lefWrite.c:"
-                 "822-830; the contact round keeps the marks, 1716-1729); Hefesto writes it. Proposed compat "
-                 "(round 4, LEFDEF), waiting for the user's decision"),
     "LEFW": ("LEFW: buf.lef matches since round 4 (lef write reads the subcells it flattens); left: Hefesto prints "
              "'Cell inv read from path ...' before 'Generating LEF output', Magic after it (the cell-read messages are "
              "not in the writer's message buffer)"),
     "MASTER": ("DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line "
                "comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the "
                "zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"),
-    "RTNAME": ("LEFW: the library round trip differs from Magic's capture (golden-capture run 44583527997): Magic names "
-               "its LEF output lefdef_rt.mag (the file name its failed read gave the new wrapper; no Q-row) and the "
-               "macro bodies differ (e.g. sky130_fd_sc_hd__a2111oi_4: 240 lines in Magic, 286 in Hefesto); the "
-               "gf180mcu LEF matches except the stdout name line. Replayed locally against hefesto-cli in round 4"),
-    "OASSTD": ("OASR/GOLDEN: two causes, found by replaying hefesto-cli's gds read of the captured strm2gds file (it "
-               "matches Magic's capture) next to its oasis read. (1) GOLDEN: every cell's timestamp line: '<fmt> "
-               "datestamp 1' parses as 'yes', so Magic keeps the GDS structure date (1623700384) while an OASIS cell has "
-               "no date and is saved with the save time (Q-OASIS-30); the derived:digest output has no mag-timestamp "
-               "mask, so the case should use a fixed integer datestamp (e.g. 1700000000) on both sides. (2) OASR: 45 "
-               "cells (e.g. sky130_fd_sc_hd__and3_2, a32oi_4, dfxtp_1) keep an extra zero-area label next to the port "
-               "label of the same text ('rlabel metal1 s 46 0 46 0 4 VGND' and VPWR) that the GDS read does not make; "
-               "suspected rule: gds-read's empty-placeholder pin-label merge (calma/CalmaRdpt.c:1043-1085) is not "
-               "reached for the transcoded TEXT (oasis-read 'TEXT elements', element order of the transcode)"),
-    "OAS023": ("OASR: cells.txt, cell preps: the arrays of uses c_19, c_21, c_23 and c_25 (repetition type 3 under the "
-               "orientations without a 90-degree turn) and c_26..c_33 (type 1 under the turned ones) differ: Magic's read "
-               "of the equivalent AREF gives 'array 0 2 0 0 0 0' (all copies at one place), Hefesto's 'array 0 0 0 0 2 "
-               "20', and the checkpaint grows to 1460. hefesto-cli's gds read of the case's preps.gds matches Magic, so the "
-               "difference is in OASR's transcode of placement repetitions into AREFs (oasis-read 'Placement "
-               "repetitions', D12), not in the GDS reader"),
-    "OAS032": ("OASR/GOLDEN: report.txt line 1: OASIS_FILE of sc_inv is the absolute path, not '$PDK_ROOT/lib/cells.oas'. "
-               "The case sets PDK_ROOT in the environment only; OASR's substitution (gds::gds_file_value, Magic's "
-               "DBPathSubstitute) reads the Tcl variables PDK_PATH, PDKPATH, PDK_ROOT and PDKROOT. Suspected rule: "
-               "oasis-read 'Read-only OASIS vendor views' does not say where PDK_ROOT comes from; either the case sets "
-               "the Tcl variable or the reader also reads the environment (a decision)"),
-    "OAS033": ("OASR: report.txt line 2: '[cellname timestamp vt] == [cellname timestamp wt]' is 1 in Hefesto, 0 in "
-               "Magic. Magic's GDS content stamp hashes the structure bytes, so the parent renamed in packed.gds (its "
-               "SREF names wa, not va) gets another stamp; OASR's content stamp of the parent is the same in both files. "
-               "Suspected rule: oasis-read 'Content-hash timestamps for read-only OASIS cells' (whether a child's name "
-               "is part of its parent's stamp)"),
-    "MASKOS": ("GOLDEN/LEFW: Magic exits with SIGSEGV (status 139) on this script in golden-capture run 44743146734 "
-               "(lef read of VIA V1 with grown cuts, then lef write cont -tech); the crash point is not found yet, so "
-               "the case cannot be captured"),
+    "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
+               "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
+               "44860968058. The crash point is not found; the case is capture_blocked until it is"),
     "STARTUP": ("LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, "
                 "'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in "
                 "hefesto-cli's startup path"),
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
-    "LEFDEF-118": BLOCKER_REASONS["PINLAYER"],
-    "LEFDEF-119": BLOCKER_REASONS["PINLAYER"],
-    "LEFDEF-127": BLOCKER_REASONS["PINLAYER"],
     "LEFDEF-128": BLOCKER_REASONS["LEFW"],
     "LEFDEF-232": BLOCKER_REASONS["MASTER"],
-    "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0": BLOCKER_REASONS["RTNAME"],
-    "LEFDEF-RT-sg13g2_stdcell": BLOCKER_REASONS["RTNAME"],
-    "LEFDEF-RT-sky130_fd_sc_hd": BLOCKER_REASONS["RTNAME"],
-    "OASIS-020": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-flatglob": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-flatten": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-noduplicates": BLOCKER_REASONS["OASSTD"],
-    "OASIS-021-ordering": BLOCKER_REASONS["OASSTD"],
-    "OASIS-023": BLOCKER_REASONS["OAS023"],
-    "OASIS-032": BLOCKER_REASONS["OAS032"],
-    "OASIS-033": BLOCKER_REASONS["OAS033"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -157,8 +110,10 @@ TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # (Magic's SIGFPE in LEFDEF-003, SIGSEGV in def write of LEFDEF-317/318/320/330/333/334, the unpainted
 # bound layer of LEFDEF-113) were re-authored in round 4 (decision D4): the crashing inputs are in
 # tests/golden/LEFDEF/magic-crash/ (lefdef_cases.MAGIC_CRASH) for Hefesto's own tests.
-# Round 4: MASK-OS-016's Magic run exits 139 (SIGSEGV) in golden-capture run 44743146734 (lef read of a
-# VIA whose cut is grown, then lef write -tech); the cause is not found yet.
+# Round 4: MASK-OS-016's Magic run exited 139 (SIGSEGV) in golden-capture run 44743146734; round 5 found
+# the cause (its LEF VIA was named as the tech section's cut alias, LefRedefined) and re-authored it.
+# Round 5: the re-authored MASK-OS-016 still exited 139 in golden-capture run 44860968058, so it is
+# capture_blocked again.
 LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ("MASK-OS-016",)
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
@@ -166,10 +121,25 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7).
 REPLAYED: set[str] = {
+    "LEFDEF-RT-sky130_fd_sc_hd",
+    "LEFDEF-RT-sg13g2_stdcell",
+    "LEFDEF-241",
+    "LEFDEF-334",
+    "OASIS-020",
+    "OASIS-021-flatglob",
+    "OASIS-021-flatten",
+    "OASIS-021-noduplicates",
+    "OASIS-021-ordering",
+    "OASIS-023",
+    "OASIS-032",
+    "LEFDEF-118",
+    "LEFDEF-119",
+    "LEFDEF-127",
+    "LEFDEF-RT-gf180mcu_fd_sc_mcu7t5v0",
+    "OASIS-033",
     "OASIS-012",
     "LEFDEF-328",
     "OASIS-055-names",
-    "LEFDEF-334",
     "LEFDEF-003",
     "LEFDEF-113",
     "OASIS-064-arrays",

@@ -291,6 +291,8 @@ RAW = "#raw "  # a body line written as is (Tcl control flow), not under probe
 # Cases re-authored because Magic crashed on their first input (m6 decision D4, 2026-11-19): the
 # original input stays in MAGIC_CRASH/<id>/ for Hefesto's own crash tests (both modes fixed).
 MAGIC_CRASH = casegen.GOLDEN / "LEFDEF" / "magic-crash"
+# The same for a MASK case this driver writes (MASK-OS-016, lefdef_lef_cases.contact_case).
+MASK_MAGIC_CRASH = casegen.GOLDEN / "MASK" / "magic-crash"
 MAGIC_CRASH_NOTE = ("Re-authored (decision D4, 2026-11-19): Magic crashed on the first input ({what}); that "
                     "input is kept in tests/golden/LEFDEF/magic-crash/{id}/ for Hefesto-only tests.")
 

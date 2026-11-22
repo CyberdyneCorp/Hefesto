@@ -121,6 +121,7 @@ class RuleReader {
   // LAYER, VIA or VIARULE <name>: a new rule, first in the list.
   std::string target(lef::NonDefaultRule& set, bool layer) {
     std::string name = r_.take();
+    r_.context().layers.note_key(name);  // HashFind(&LefInfo, token) (Q-LEFDEF-135)
     const LefEntry entry = r_.lookup(name);
     lef::NonDefaultRuleLayer rule;
     rule.name = name;
@@ -252,7 +253,7 @@ void Reader::blockages(std::int32_t total) {
       error("Blockage END statement missing.");
       continue;
     }
-    progress();
+    estimate(total);
     ++processed;
     blockage();
   }
