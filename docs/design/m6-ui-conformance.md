@@ -17,13 +17,15 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 Round 4 (SHELL, tasks 14.1-14.3) built the open path and the host wiring and tested them below the toolkit: `tests/unit/shell/m6_open_test.cpp` (desktop builds) and `tests/unit/oasis/command/open_test.cpp` (every build). No capture of the product app was taken in round 4 (no desktop build on that host), so no row is **done** yet; each row says what its capture must show.
 
+Round 6 (SHELL, exit round) built the desktop (`macos-debug` preset with `HEFESTO_BUILD_DESKTOP=ON` and `HEFESTO_WARNINGS_AS_ERRORS=ON`, against MoltenVK and the Vulkan 1.4.309 headers) and ran `hefesto_shell_tests` (279 cases: 277 passed, 2 skipped for the absent sky130A data set). The M6 cases of `m6_open_test.cpp` all pass: an OASIS file named `.gds` opened through `shell::plan_open`; a dropped file that is not a layout reported while the others open; `oasis read`, `def read` and `lef read` through the read host (the DEF read's fractions reach the job state the card draws); `oasis write` through the write and emit hosts, its file opened again as OASIS by content; `lef write` and `def write` through the write host; a cancelled `oasis write` over OASW's writer leaving no file and no temporary file; and no LEF, DEF or OASIS menu item. The `ci-macos-desktop` and `ci-linux-desktop` legs run the same tests. No capture was compared with a board in round 6, so the rows whose only gap is the capture stay **partial**.
+
 Missing from every board: nothing. The open paths are the M1 Open button and the window itself as a drop target (no new control), and the progress of a read or write reuses the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
 
 ## Menu bar (M4-Menu-Bar)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged; no board added | partial: test "the desktop adds no LEF, DEF or OASIS menu item" checks the bar's menus and that no item runs `lef`, `def` or `oasis`; the capture is pending |
+| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged; no board added | partial: test "the desktop adds no LEF, DEF or OASIS menu item" checks the bar's menus and that no item runs `lef`, `def` or `oasis` (passing in the round-6 desktop build); no board is added and none is needed; the capture is pending |
 
 ## Format recognition on open (`oasis-command` "Format recognition on open", D15)
 
@@ -38,11 +40,11 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
 | Element | Implemented as | Status / gap |
 |---|---|---|
 | A long `oasis read` shows the console's running header and, after 2 s, the canvas Interrupt card | the `oasis read` command runs `oasis::read` through `MaskSession::read_host`, with its `mask::Progress` reports (as `gds read`) | partial: test "oasis read runs through the desktop's read host"; capture pending |
-| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | blocked: `oasis::write` is still the scaffold stub until OASW (task 12.1) lands |
-| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | blocked: test "a cancelled OASIS write leaves no output file" passes against the stub; its end-to-end check needs OASW |
-| `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: capture pending |
-| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | todo: LEFR adds `LefReadOptions::progress` (LefEstimate and the interrupt check) |
-| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | done; a `DefWriteOptions::progress` is a later improvement |
+| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | partial: OASW's `oasis::write` replaced the stub; test "an OASIS write runs through the desktop's write and emit hosts and opens again as OASIS" (round 6); capture pending |
+| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | partial: test "a cancelled OASIS write leaves no output file" passes over OASW's writer in the round-6 desktop build (the core-level `tests/unit/oasis/command/round_trip_test.cpp` checks the same in every build); capture of the Interrupt card pending |
+| `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: test "def read reports its progress to the desktop's read host" (round 6); capture pending |
+| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | partial: test "lef read runs through the desktop's read host" (round 6) covers the card's host; the LefEstimate fraction and the interrupt check still need `LefReadOptions::progress` (LEFR, open item) |
+| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | partial: test "lef write and def write run through the desktop's write host" (round 6); capture pending (round 4 marked this row done without a capture, against the rule above); a `DefWriteOptions::progress` is a later improvement |
 
 ## Performance (PERF)
 

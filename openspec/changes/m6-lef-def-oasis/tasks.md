@@ -405,13 +405,16 @@ Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layo
 
 ## 14. SHELL: desktop (Open Question 5, decided (a))
 
-- [ ] 14.1 Route the desktop File > Open picker and drag and drop through the generic open, so OASIS is recognised by content. Verify a shell test that opens an OASIS file named `.gds`.
+- [x] 14.1 Route the desktop File > Open picker and drag and drop through the generic open, so OASIS is recognised by content. Verify a shell test that opens an OASIS file named `.gds`.
   - Round-4 note (SHELL): built (`shell::plan_open`, `MainWindow::open_paths`, `ui::Window::on_files_dropped` over `Rwindow_set_drop_callback`; the picker offers `*`) with `tests/unit/shell/m6_open_test.cpp`; open: the desktop build and the shell tests were not run (no Vulkan SDK on the round-4 host; syntax-checked only) and no capture was taken.
-- [ ] 14.2 Run LEF, DEF and OASIS reads and writes through the M5 progress and cancel hosts. Verify shell tests for progress and for a cancelled OASIS write leaving no file. Record the items in `docs/design/m6-ui-conformance.md`.
+  - As landed (round 6): desktop build (`macos-debug`, desktop ON, `-Werror`, MoltenVK) runs `hefesto_shell_tests` green, including "the desktop opens an OASIS file named .gds as OASIS". The drop is not injected (needs a window); no capture taken.
+- [x] 14.2 Run LEF, DEF and OASIS reads and writes through the M5 progress and cancel hosts. Verify shell tests for progress and for a cancelled OASIS write leaving no file. Record the items in `docs/design/m6-ui-conformance.md`.
   - Round-4 note (SHELL): `oasis read`/`write` and `def read` use the hosts; recorded in `m6-ui-conformance.md`. Open: `lef read` (LEFR), `lef write|writeall` (LEFW) and `def write` (DEFW) still run inline (open items); the cancelled-write test passes against OASW's stub and needs OASW for its end-to-end check.
   - Round-4 integration: `lef read` runs through `read_host`, `lef write`/`writeall` and `def write` through `write_host` (`lef write` passes the host's `Progress*` into `LefWriteOptions::progress`; `lef::read` and `def::write` report no progress, so their card cannot cancel). Core-level end-to-end tests over OASW's `oasis::write`: `tests/unit/oasis/command/round_trip_test.cpp` (a write cancelled through the write host leaves no file; `oasis write` read back with `oasis read`). Open: the desktop shell tests (no Vulkan SDK here; the ci-macos-desktop and ci-linux-desktop legs run them).
-- [ ] 14.3 Verify that the desktop adds no LEF, DEF or OASIS menu item or board (Open Question 5 (a)), and that `docs/design/m6-ui-conformance.md` says so.
+  - As landed (round 6): shell tests added for `oasis write` through the write and emit hosts, `def read` progress fractions, `lef read`, and `lef write`/`def write` through the write host; the cancelled-write test now passes over OASW's writer in the desktop build; conformance rows updated. Open: `lef read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions::progress`, LEFR); captures.
+- [x] 14.3 Verify that the desktop adds no LEF, DEF or OASIS menu item or board (Open Question 5 (a)), and that `docs/design/m6-ui-conformance.md` says so.
   - Round-4 note (SHELL): test "the desktop adds no LEF, DEF or OASIS menu item" and the conformance row added; open: the desktop test run and the capture.
+  - As landed (round 6): the test passes in the desktop build; the conformance doc records no menu item and no board. Capture pending.
 
 ## 15. GOLDEN: LEFDEF and OASIS cases
 
