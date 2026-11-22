@@ -653,7 +653,7 @@
         -10.0
       ],
       "notes": [
-        "Not in the inventory: golden case SCHEM-NL-17 places it (Q-SCHEM-31, proposed). Its keys are applied as Requirement \"Netlist options\" of capability schematic-netlisting says."
+        "Not in the inventory: golden case SCHEM-NL-17 places it, and it is shipped (Q-SCHEM-31, approved 2026-11-21). Its keys are applied as Requirement \"Netlist options\" of capability schematic-netlisting says."
       ],
       "pins": [],
       "properties": {

@@ -1,0 +1,11 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=logo
+template="name=l1 author=\\"Stefan Schippers\\""
+spice_ignore=true}
+V {}
+S {}
+E {}

@@ -126,8 +126,20 @@ The sandboxed Tcl interpreter SHALL provide a command `xschem` with the subcomma
 | `xschem raw_read <file> [<type>]`, `xschem annotate_op` | Load results / turn annotation on (capability `schematic-simulation-integration`, Requirement "Simulation launchers") |
 | `xschem translate <inst> <string>`, `xschem expandlabel <s>`, `xschem get_tok <s> <key>`, `xschem subst_tok <s> <key> <value>` | Substitution and property helpers of capabilities `schematic-symbols-and-libraries`, `schematic-netlisting` and `schematic-file-format` |
 | `xschem select`, `xschem unselect_all`, `xschem redraw`, `xschem zoom_full`, `xschem hilight_netname`, `xschem unhilight_all`, `xschem load <file>`, `xschem go_back`, `xschem instance_list` | The corresponding `schematic` options |
+| `xschem set <var> <value>` | `netlist_type`: `spice` is accepted and any other value raises the error `xschem set netlist_type: only spice is supported`; `netlist_name`: the file name the next `xschem netlist` writes; `header_text`, `schprop`, `schsymbolprop`: the header text, the `S` text and the `K` text of the current document (`schematic setprop schematic`). Variables that only change xschem's drawing or GUI state (`cadgrid`, `cadsnap`, `no_draw`, `no_undo`, `draw_window`, `show_hidden_texts`, `semaphore`, `line_width`, `rectcolor`, ...) are accepted and do nothing. Any other variable raises `xschem command 'set <var>' is not supported` |
+| `xschem descend [<n>] [<set_title>] [<instname>]`, `xschem change_sch_path <n> [<draw>]` | `schematic descend` into the selected instance or into `<instname>`; for a vector instance, `n` picks the element (1 the leftmost, -1 the rightmost; 0, which asks in xschem, picks the leftmost in a script). `change_sch_path` moves to element `n` of the vector instance last descended into, as `schematic ascend` followed by `schematic descend` would |
+| `xschem load_new_window [<file>]` | `schematic open <file> -window new`; with no file or `{}`, `schematic new schematic` |
+| `xschem place_symbol [<sym>] [<props>]` | Start placing `<sym>` interactively with `<props>` (default: the symbol's `template`), as the editor's place command (capability `schematic-editing`); in a run with no editor it raises `xschem command 'place_symbol' needs the editor` |
+| `xschem hilight_instname [-fast] <inst>` | `schematic hilight instance <inst>` |
+| `xschem logic_set <n> [<num>]` | Accepted and does nothing: Hefesto has no logic propagation (xschem sets logic levels on the selected nets for its logic simulation) |
+| `xschem rebuild_connectivity`, `xschem reset_caches`, `xschem update_all_sym_bboxes` | `rebuild_connectivity` recomputes connectivity (as `schematic check` does, without returning its list); `reset_caches` re-reads changed symbol files (`schematic reload_symbols`); `update_all_sym_bboxes` does nothing, since Hefesto keeps symbol bounding boxes current. Each returns the empty string |
+| `xschem save [fast]` | `schematic save` of the current document when it is modified, without asking; nothing when it is not |
+| `xschem search regex\|exact <select> <key> <value> [no_match_case] [nodraw]` | Find the instances (and wires, texts) whose attribute `<key>` matches `<value>` (a regular expression, or an exact text), case-insensitively with `no_match_case`; `<select>` 1 selects them, -1 unselects them, 0 highlights them (`schematic select` / `schematic hilight`). Returns what xschem returns |
+| `xschem selected_set [rect\|text]` | The names of the selected instances, or the selected boxes or texts with their coordinates (`schematic selection`) |
+| `xschem simulate [<callback>]` | `schematic simulate` of the current testbench; `<callback>` is a Tcl procedure called when it ends (capability `schematic-simulation-integration`; until M9 the call answers CORE-NOTIMPL) |
+| `xschem raw <what> ...`, `xschem raw_clear` | Query or unload the loaded simulation results (`raw value`, `values`, `index`, `points`, `datasets`, `loaded`, `rawfile`, `sim_type`, `vars`, `list`; capability `schematic-simulation-integration`, M9; until then `raw loaded` returns -1 and the others answer CORE-NOTIMPL) |
 
-`xschem version` SHALL return the pinned compatibility version string. Any other subcommand SHALL raise the error `xschem command '<cmd>' is not supported`. The result formats of the supported subcommands SHALL equal xschem's. The list SHALL be fixed by an inventory script over the `xschem` calls in the three pinned PDK libraries, kept as a test that fails when a PDK bump adds a subcommand that is not in the table (Q-SCHEM-10, `Resolution: other`).
+`xschem version` SHALL return the pinned compatibility version string. The table SHALL list every subcommand of the `xschem_subcommands` lists of `tests/data/schem/inventory.json` (checked 2026-11-21: `annotate_op`, `change_sch_path`, `descend`, `expandlabel`, `get`, `getprop`, `go_back`, `hilight_instname`, `instance_list`, `load_new_window`, `logic_set`, `netlist`, `place_symbol`, `raw`, `raw_clear`, `raw_read`, `rebuild_connectivity`, `redraw`, `reset_caches`, `save`, `search`, `select`, `selected_set`, `set`, `setprop`, `simulate`, `translate`, `unhilight_all`, `unselect_all`, `update_all_sym_bboxes`). Any other subcommand SHALL raise the error `xschem command '<cmd>' is not supported`, and so SHALL a `get` key not listed in the table (`xschem command 'get <key>' is not supported`). The result formats of the supported subcommands SHALL equal xschem's. The list SHALL be fixed by an inventory script over the `xschem` calls in the three pinned PDK libraries, kept as a test that fails when a PDK bump adds a subcommand that is not in the table (Q-SCHEM-10, `Resolution: other`).
 
 Compatibility: exact
 
@@ -137,6 +149,15 @@ Compatibility: exact
 - **GIVEN** an instance `M1` with `w=1.0u`
 - **WHEN** a PDK script calls `xschem getprop instance M1 w`
 - **THEN** it SHALL return `1.0u`
+
+#### Scenario: Launcher saves and netlists
+- **GIVEN** a modified testbench whose launcher runs `xschem set netlist_type spice; xschem save; xschem netlist`
+- **WHEN** the launcher is confirmed and runs
+- **THEN** the document SHALL be saved, the SPICE netlist SHALL be written, and no error SHALL be raised
+
+#### Scenario: Non-SPICE netlist type
+- **WHEN** a script calls `xschem set netlist_type verilog`
+- **THEN** it SHALL get the error `xschem set netlist_type: only spice is supported`
 
 #### Scenario: Unsupported subcommand
 - **WHEN** a launcher calls `xschem fork_sch`

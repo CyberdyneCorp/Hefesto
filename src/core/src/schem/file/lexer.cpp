@@ -96,4 +96,19 @@ void Lexer::skip_to_line_end() noexcept {
   pos_ = lf == std::string_view::npos ? bytes_.size() : lf;
 }
 
+void Lexer::skip_past_closing_line() noexcept {
+  while (true) {
+    const auto lf = bytes_.find('\n', pos_);
+    if (lf == std::string_view::npos) {
+      pos_ = bytes_.size();
+      return;
+    }
+    pos_ = lf + 1;
+    if (pos_ < bytes_.size() && bytes_[pos_] == ']') {
+      skip_to_line_end();
+      return;
+    }
+  }
+}
+
 }  // namespace hefesto::schem::file_detail

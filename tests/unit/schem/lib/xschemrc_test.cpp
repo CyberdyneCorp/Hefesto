@@ -15,8 +15,9 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <iterator>
 #include <atomic>
+#include <chrono>
+#include <iterator>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -244,4 +245,54 @@ TEST_CASE("xschem_execute_scripts ignored for the three PDK xschemrc files", kPe
     if (set != result.variables.end()) CHECK(with_code(result.diagnostics, "SCHEM-LIB-007").size() == 1);
     CHECK_FALSE(result.search_path.directories().empty());
   }
+}
+
+// Input limit approved 2026-11-21 (Q-SCHEM-32): an endless loop in an rc
+// file hung the opening. The limit is shortened here; the default is
+// checked on its own.
+TEST_CASE("Endless loop in an xschemrc", kRc) {
+  CHECK(schem::kXschemrcTimeLimit == std::chrono::seconds{10});
+  CHECK(schem::XschemrcInput{}.time_limit == std::chrono::seconds{10});
+  TempDir dir;
+  dir.mkdir("a");
+  dir.mkdir("b");
+  dir.write("work/xschemrc", "set XSCHEM_LIBRARY_PATH " + (dir.path() / "a").generic_string() +
+                                 "\nwhile 1 {}\nset XSCHEM_LIBRARY_PATH " + (dir.path() / "b").generic_string() +
+                                 "\n");
+  schem::XschemrcInput input;
+  input.document_folder = dir.path() / "work";
+  input.time_limit = std::chrono::milliseconds{300};
+  platform::LocalFileSystem files;
+  const auto start = std::chrono::steady_clock::now();
+  const auto result = schem::SearchPath::from_xschemrc(files, input);
+  CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{10});
+  const auto stops = with_code(result.diagnostics, "SCHEM-LIB-010");
+  REQUIRE(stops.size() == 1);
+  CHECK(stops[0].text == "xschemrc " + (dir.path() / "work" / "xschemrc").generic_string() +
+                             ": evaluation stopped after 0.3 s");
+  CHECK(result.search_path.directories() == std::vector<platform::Path>{(dir.path() / "a").generic_string()});
+}
+
+TEST_CASE("an endless loop that catches errors is still stopped", kRc) {
+  TempDir dir;
+  dir.write("work/xschemrc", "while 1 { catch { while 1 {} } }\nset LATER 1\n");
+  schem::XschemrcInput input;
+  input.document_folder = dir.path() / "work";
+  input.time_limit = std::chrono::milliseconds{200};
+  platform::LocalFileSystem files;
+  const auto result = schem::SearchPath::from_xschemrc(files, input);
+  CHECK(with_code(result.diagnostics, "SCHEM-LIB-010").size() == 1);
+  CHECK(result.variables.count("LATER") == 0);
+}
+
+TEST_CASE("Synthetic HOME and PWD", kRc) {
+  TempDir dir;
+  dir.mkdir("s/lib");
+  dir.write("s/xschemrc", "set XSCHEM_LIBRARY_PATH $env(PWD):$env(HOME)/lib\n");
+  schem::XschemrcInput input;
+  input.document_folder = dir.path() / "s";
+  platform::LocalFileSystem files;
+  const auto result = schem::SearchPath::from_xschemrc(files, input);
+  CHECK(result.search_path.directories() ==
+        std::vector<platform::Path>{(dir.path() / "s").generic_string(), (dir.path() / "s" / "lib").generic_string()});
 }

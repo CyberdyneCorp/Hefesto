@@ -100,12 +100,22 @@ FloaterInfo floater_info(const TextRecord& text) {
     info.owner = std::move(*name);
   } else if (auto floater = get_token(text.props, "floater")) {
     info.floater = true;
-    info.owner = std::move(*floater);
+    // A true value is looked up as the text `true` ("Floater texts").
+    info.owner = is_true(*floater) ? std::string{"true"} : std::move(*floater);
   }
   return info;
 }
 
 const InstanceRecord* floater_owner(const Document& document, std::string_view owner) {
+  const bool index = !owner.empty() && owner.find_first_not_of("0123456789") == std::string_view::npos;
+  if (index) {
+    const std::size_t digits = owner.find_first_not_of('0');
+    const std::string_view value = digits == std::string_view::npos ? std::string_view{"0"} : owner.substr(digits);
+    // More digits than any instance count can have: out of range.
+    if (value.size() > 18) return nullptr;
+    const auto at = static_cast<std::size_t>(std::stoull(std::string{value}));
+    return at < document.instances.size() ? &document.instances[at] : nullptr;
+  }
   for (const InstanceRecord& instance : document.instances) {
     if (get_token(instance.props, "name") == owner) return &instance;
   }

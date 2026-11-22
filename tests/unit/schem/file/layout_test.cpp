@@ -73,32 +73,17 @@ TEST_CASE("reading a block sets embed=true and skips a second definition", "[cap
   CHECK(written.find("C {res.sym} 0 0 0 0 {name=R1\nembed=true}\n[\n") != std::string::npos);
 }
 
-TEST_CASE("a block with no preceding instance is skipped with a warning", "[cap:schematic-file-format][req:Embedded symbols]") {
-  const auto r = read_text("C {a.sym} 0 0 0 0 {}\nN 0 0 1 1 {}\n[\nK {type=x}\nN 5 5 6 6 {}\n]\nN 2 2 3 3 {}\n");
-  CHECK(r.doc.embedded.empty());
-  CHECK(r.doc.wires.size() == 2);
-  REQUIRE(r.warnings.size() == 1);
-  CHECK(r.warnings[0].code == "SCHEM-FILE-004");
-}
-
-TEST_CASE("an unclosed block is kept with a warning", "[cap:schematic-file-format][req:Embedded symbols]") {
-  const auto r = read_text("C {a.sym} 0 0 0 0 {}\n[\nK {type=x}\nL 4 0 0 1 1 {}\n");
-  REQUIRE(r.doc.embedded.size() == 1);
-  CHECK(r.doc.embedded[0].symbol.lines.size() == 1);
-  REQUIRE(r.warnings.size() == 1);
-  CHECK(r.warnings[0].code == "SCHEM-FILE-005");
-}
-
 TEST_CASE("the block layout is xschem's in both modes", "[cap:schematic-file-format][req:Embedded symbols]") {
-  // Header text and F of the symbol are dropped, polygons follow texts,
-  // wires become L 1 after the other layer-1 lines, instances are left out.
+  // Header text, G, V, S, F and E of the symbol are dropped, polygons
+  // follow texts, N records become L 1 lines in read order, an instance
+  // whose symbol is a file is left out of the written block.
   const std::string block_in =
       "[\nv {xschem version=3.4.8RC file_version=1.3\nheader}\nG {g}\nK {type=subcircuit}\nV {v}\nS {s}\nF {f}\nE {e}\n"
       "P 4 2 0 0 1 1 {}\nT {t} 0 0 0 0 0.2 0.2 {}\nN 9 9 8 8 {lab=A}\nL 1 0 0 5 0 {}\nL 0 1 1 2 2 {}\n"
       "C {inner.sym} 0 0 0 0 {}\nA 3 0 0 1 0 360 {}\nB 2 0 0 1 1 {}\n]\n";
   const std::string block_out =
       "[\nv {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\nG {}\nV {}\nS {}\nE {}\n"
-      "L 0 1 1 2 2 {}\nL 1 0 0 5 0 {}\nL 1 8 8 9 9 {lab=A}\nB 2 0 0 1 1 {}\nA 3 0 0 1 0 360 {}\n"
+      "L 0 1 1 2 2 {}\nL 1 8 8 9 9 {lab=A}\nL 1 0 0 5 0 {}\nB 2 0 0 1 1 {}\nA 3 0 0 1 0 360 {}\n"
       "T {t} 0 0 0 0 0.2 0.2 {}\nP 4 2 0 0 1 1 {}\n]\n";
   for (const bool compat : {true, false}) {
     const std::string in = std::string{kEmptyHeader} + "C {blk.sch} 0 0 0 0 {embed=true}\n" + block_in;
@@ -107,21 +92,10 @@ TEST_CASE("the block layout is xschem's in both modes", "[cap:schematic-file-for
   }
 }
 
-TEST_CASE("blocks nested in blocks are listed in the outer document", "[cap:schematic-file-format][req:Embedded symbols]") {
-  const auto r = read_text("C {a.sym} 0 0 0 0 {}\n[\nC {b.sym} 0 0 0 0 {}\n[\nK {type=b}\n]\nK {type=a}\n]\n");
-  REQUIRE(r.doc.embedded.size() == 2);
-  CHECK(r.doc.embedded[0].reference == "a.sym");
-  CHECK(r.doc.embedded[0].symbol.globals.k == "type=a");
-  CHECK(r.doc.embedded[0].symbol.embedded.empty());
-  CHECK(r.doc.embedded[1].reference == "b.sym");
-  CHECK(r.doc.embedded[1].symbol.globals.k == "type=b");
-  CHECK(r.warnings.empty());
-}
-
 // Regression: every open block held a whole Document, so a file made of
 // `[` lines (2 bytes each) cost about 250 bytes of memory per input byte.
-// Discarded blocks now share one scratch document and a frame is a few
-// words; the result is unchanged.
+// A stray `[` is now skipped to the first `]` line with no reader state at
+// all ("Embedded symbols", round-2 answer F4).
 TEST_CASE("deeply nested stray blocks are read with little state per block",
           "[cap:schematic-file-format][req:Embedded symbols]") {
   std::string text = "N 0 0 1 1 {}\n";
@@ -129,15 +103,8 @@ TEST_CASE("deeply nested stray blocks are read with little state per block",
   const auto r = read_text(text);
   CHECK(r.doc.wires.size() == 1);
   CHECK(r.doc.embedded.empty());
-  CHECK(r.warnings.size() == 200000);  // each `[` is stray and unclosed
-  // A real block inside a discarded one still gets its own entry (the
-  // behaviour before this change; nested blocks are open in spec issue F4).
-  const auto nested = read_text("[\nC {a.sym} 0 0 0 0 {}\n[\nK {type=a}\n]\nN 5 5 6 6 {}\n]\nN 2 2 3 3 {}\n");
-  REQUIRE(nested.doc.embedded.size() == 1);
-  CHECK(nested.doc.embedded[0].reference == "a.sym");
-  CHECK(nested.doc.embedded[0].symbol.globals.k == "type=a");
-  CHECK(nested.doc.wires.size() == 1);
-  CHECK(nested.doc.instances.empty());
+  REQUIRE(r.warnings.size() == 1);  // the first `[` skips the rest of the file
+  CHECK(r.warnings[0].code == "SCHEM-FILE-004");
 }
 
 TEST_CASE("an instance with embed=true and no definition is written alone",
@@ -184,6 +151,83 @@ TEST_CASE("texts and arcs follow the placement", "[cap:schematic-file-format][re
   CHECK(schem::transform_arc_start({{0, 0}, 3, 0}, 45, 90) == 135);
   CHECK(schem::transform_arc_start({{0, 0}, 0, 1}, 90, 180) == 270);  // fmod(180 - 180 - 90) + 360
   CHECK(schem::transform_arc_start({{0, 0}, 1, 1}, 0, 90) == 0);      // fmod(270 + 180 - 90, 360) = 0
+}
+
+TEST_CASE("flip 2 mirrors and rotation 5 acts as 3", "[cap:schematic-file-format][req:Orientation transform]") {
+  CHECK(schem::transform_point({{100, 200}, 0, 2}, {-20, 0}) == schem::Point{120, 200});
+  CHECK(schem::transform_point({{100, 200}, 5, 0}, {-20, 0}) == schem::Point{100, 220});
+  // Every rotation other than 0, 1 and 2 acts as 3, also 4 and negative values.
+  const schem::Point p{3, 7};
+  for (const int rotation : {3, 4, 5, -1, -4, 2147483647, -2147483647 - 1}) {
+    CHECK(schem::transform_point({{0, 0}, rotation, 0}, p) == schem::Point{7, -3});
+  }
+  CHECK(schem::transform_point({{0, 0}, 1, -3}, p) == schem::transform_point({{0, 0}, 1, 1}, p));
+}
+
+TEST_CASE("text rotation is taken mod 4 and arcs use the stored rotation",
+          "[cap:schematic-file-format][req:Orientation transform]") {
+  using schem::TextOrientation;
+  CHECK(schem::transform_text({{0, 0}, 5, 0}, 0, 0) == TextOrientation{1, 0});
+  CHECK(schem::transform_text({{0, 0}, -1, 0}, 0, 0) == TextOrientation{3, 0});
+  CHECK(schem::transform_text({{0, 0}, 1, 2}, 1, 0) == TextOrientation{0, 2});  // flip 2: odd text gets r + 2
+  CHECK(schem::transform_text({{0, 0}, 2147483647, 1}, 2147483647, 0).rotation == 0);  // no overflow
+  CHECK(schem::transform_arc_start({{0, 0}, 5, 0}, 0, 90) == 270);   // fmod(1350, 360)
+  CHECK(schem::transform_arc_start({{0, 0}, 0, 2}, 90, 180) == 270);  // mirrored as flip 1
+}
+
+TEST_CASE("rotation and flip outside their usual range are written as read",
+          "[cap:schematic-file-format][req:Record grammar]") {
+  const std::string record = "C {res.sym} 0 0 5 2 {name=R1}\n";
+  const auto r = read_text(std::string{kEmptyHeader} + record);
+  REQUIRE(r.doc.instances.size() == 1);
+  CHECK(r.doc.instances[0].rotation == 5);
+  CHECK(r.doc.instances[0].flip == 2);
+  CHECK(round_trip(std::string{kEmptyHeader} + record) == std::string{kEmptyHeader} + record);
+  const std::string text = "T {t} 0 0 -1 7 0.2 0.2 {}\n";
+  CHECK(round_trip(std::string{kEmptyHeader} + text) == std::string{kEmptyHeader} + text);
+}
+
+TEST_CASE("pin boxes saved in sim_pinnumber order", "[cap:schematic-file-format][req:Canonical write order]") {
+  const std::string in =
+      "B 5 0 0 1 1 {name=D sim_pinnumber=2}\nB 2 0 0 1 1 {}\nB 5 2 0 3 1 {name=G sim_pinnumber=1}\n"
+      "B 5 4 0 5 1 {name=S sim_pinnumber=3}\n";
+  auto r = read_text(in, schem::FileKind::symbol);
+  // Reading does not reorder.
+  REQUIRE(r.doc.boxes.size() == 4);
+  CHECK(r.doc.boxes[0].props == "name=D sim_pinnumber=2");
+  const std::string boxes =
+      "B 2 0 0 1 1 {}\nB 5 2 0 3 1 {name=G sim_pinnumber=1}\nB 5 0 0 1 1 {name=D sim_pinnumber=2}\n"
+      "B 5 4 0 5 1 {name=S sim_pinnumber=3}\n";
+  CHECK(schem::write_document(r.doc) == std::string{kEmptyHeader} + boxes);
+  schem::sort_pin_boxes(r.doc);
+  CHECK(r.doc.boxes[0].props == "name=G sim_pinnumber=1");
+  CHECK(r.doc.boxes[1].layer == 2);  // the other boxes keep their places
+  CHECK(r.doc.boxes[2].props == "name=D sim_pinnumber=2");
+  CHECK(r.doc.boxes[3].props == "name=S sim_pinnumber=3");
+  CHECK_FALSE(r.doc.modified);
+}
+
+TEST_CASE("pin boxes not reordered when one lacks sim_pinnumber", "[cap:schematic-file-format][req:Canonical write order]") {
+  for (const char* second : {"{name=A}", "{name=A sim_pinnumber=}"}) {
+    const std::string in = std::string{"B 5 0 0 1 1 {name=B sim_pinnumber=2}\nB 5 2 0 3 1 "} + second + "\n";
+    auto r = read_text(in, schem::FileKind::symbol);
+    schem::sort_pin_boxes(r.doc);
+    CHECK(r.doc.boxes[0].props == "name=B sim_pinnumber=2");
+    CHECK(schem::write_document(r.doc) == std::string{kEmptyHeader} + in);
+  }
+}
+
+TEST_CASE("pin boxes sort by the atoi value of sim_pinnumber, stable on ties",
+          "[cap:schematic-file-format][req:Canonical write order]") {
+  const std::string in =
+      "B 5 0 0 1 1 {name=a sim_pinnumber=2a}\nB 5 0 0 1 1 {name=b sim_pinnumber=\" 1.9\"}\n"
+      "B 5 0 0 1 1 {name=c sim_pinnumber=x}\nB 5 0 0 1 1 {name=d sim_pinnumber=99999999999}\n"
+      "B 5 0 0 1 1 {name=e sim_pinnumber=-99999999999}\nB 5 0 0 1 1 {name=f sim_pinnumber=-}\n";
+  auto r = read_text(in, schem::FileKind::symbol);
+  schem::sort_pin_boxes(r.doc);
+  std::string names;
+  for (const auto& box : r.doc.boxes) names += box.props.substr(5, 1);
+  CHECK(names == "ecfbad");  // INT_MIN, 0, 0 (file order), 1, 2, INT_MAX
 }
 
 TEST_CASE("layers regrouped", "[cap:schematic-file-format][req:Canonical write order]") {

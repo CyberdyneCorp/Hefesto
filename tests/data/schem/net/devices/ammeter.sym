@@ -1,0 +1,13 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=ammeter
+format="@name @pinlist 0 @savecurrent"
+template="name=Vmeas savecurrent=true spice_ignore=0"}
+V {}
+S {}
+E {}
+B 5 -2.5 -32.5 2.5 -27.5 {name=plus dir=inout propag=1}
+B 5 -2.5 27.5 2.5 32.5 {name=minus dir=inout propag=0}

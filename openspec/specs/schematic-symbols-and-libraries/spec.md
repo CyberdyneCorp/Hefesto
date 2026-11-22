@@ -127,7 +127,9 @@ Compatibility: exact
 - **THEN** the right pin SHALL also connect to net `N1`
 
 ### Requirement: Pin order
-The pin order of a symbol SHALL be the order of its layer-5 boxes in the file. If every pin has a `sim_pinnumber` key, the pins SHALL instead be sorted by the integer value of `sim_pinnumber`, ascending. Pins with equal `sim_pinnumber` have no defined relative order in xschem; Hefesto SHALL keep their file order (a stable sort) and SHALL report a warning naming the symbol and the duplicated value, whatever the `xschem-compat` setting (Q-SCHEM-5, `Resolution: fix`). If at least one pin lacks `sim_pinnumber`, no sorting SHALL happen. Pin order SHALL define `@pinlist`, the `.subckt` port list and pin numbers used by `@#n`.
+The pin order of a symbol SHALL be the order of its layer-5 boxes in the file. If every pin has a `sim_pinnumber` key with a non-empty value, the pins SHALL instead be sorted by the integer value of `sim_pinnumber`, ascending.
+
+The **integer value** of `sim_pinnumber` SHALL be read as C `atoi` reads it: leading blanks skipped, an optional `+` or `-`, then the longest run of decimal digits; the value stops at the first other character, so `2a` is 2, `1.9` is 1, ` 3` is 3, and a value with no leading digits (`x`, `-`) is 0. A run of digits whose value does not fit a signed 32-bit integer is undefined in C; Hefesto SHALL clamp it to -2147483648 or 2147483647, in both modes (proposed Q-SCHEM-34, recommendation `fix`, awaiting the user). The same reading SHALL be used when a file is saved (capability `schematic-file-format`, Requirement "Canonical write order", paragraph "Pin boxes on save"). Pins with equal `sim_pinnumber` have no defined relative order in xschem; Hefesto SHALL keep their file order (a stable sort) and SHALL report a warning naming the symbol and the duplicated value, whatever the `xschem-compat` setting (Q-SCHEM-5, `Resolution: fix`). If at least one pin lacks `sim_pinnumber`, no sorting SHALL happen. Pin order SHALL define `@pinlist`, the `.subckt` port list and pin numbers used by `@#n`.
 
 Compatibility: exact
 
@@ -147,6 +149,16 @@ Compatibility: exact
 - **GIVEN** pins in file order `B` (sim_pinnumber=1), `A` (sim_pinnumber=1), `C` (sim_pinnumber=0)
 - **WHEN** the symbol is loaded
 - **THEN** the pin order SHALL be C, B, A, and a warning SHALL report the duplicated `sim_pinnumber` 1
+
+#### Scenario: Non-integer sim_pinnumber values
+- **GIVEN** pins in file order `A` (sim_pinnumber=2a), `B` (sim_pinnumber=1.9), `C` (sim_pinnumber=x)
+- **WHEN** the symbol is loaded
+- **THEN** their integer values SHALL be 2, 1 and 0, and the pin order SHALL be C, B, A
+
+#### Scenario: Empty sim_pinnumber disables sorting
+- **GIVEN** pins in file order `B` (sim_pinnumber=2) and `A` (written `sim_pinnumber=""`)
+- **WHEN** the symbol is loaded
+- **THEN** the pin order SHALL be B, A
 
 ### Requirement: Templates and instance attributes
 A new instance SHALL get the symbol's `template` value (decoded, capability `schematic-file-format`, Requirement "Property strings") as its property string, with `name` made unique (Requirement "Instance names"). When an `@key` token is resolved for an instance (capability `schematic-netlisting`, Requirement "Format string substitution"), the instance property string SHALL be searched first, then the symbol template. Instance attributes that the template does not define SHALL be kept and SHALL be usable by `@key`. An instance MAY override `format` and `lvs_format`; an instance value SHALL be used before the symbol value.
@@ -183,7 +195,7 @@ Compatibility: exact
 - **THEN** the copy SHALL be named `x2[3:0]`
 
 ### Requirement: Floater texts
-A text in a schematic whose property string has a `name` key, or a `floater` key, SHALL be a floater. Its owner SHALL be the instance whose name equals the value of `name`, or, if `name` is absent, the value of `floater`. If the owner exists, the text's tokens (Requirement "Text substitution tokens") SHALL be resolved against it. If no such instance exists, a text that starts with `tcleval(` or contains `@` or `%` SHALL be resolved with no instance (only instance-independent tokens and Tcl evaluation apply). The editor can move floaters together with their owner (capability `schematic-editing`). Inside a schematic-used-as-symbol, floater texts SHALL be dropped.
+A text in a schematic whose property string has a `name` key, or a `floater` key, SHALL be a floater. Its owner SHALL be the instance whose name equals the value of `name`, or, if `name` is absent, the value of `floater`. The owner value SHALL be compared with instance names exactly (case-sensitive, byte for byte; unlike the uniqueness check of Requirement "Instance names"). A `floater` value that is true (capability `schematic-file-format`, Requirement "Boolean values") SHALL be looked up as the text `true`. An owner value made only of decimal digits SHALL instead select the instance with that index (0-based, in instance order), or no instance if the index is out of range. If the owner exists, the text's tokens (Requirement "Text substitution tokens") SHALL be resolved against it. If no such instance exists, a text that starts with `tcleval(` or contains `@` or `%` SHALL be resolved with no instance (only instance-independent tokens and Tcl evaluation apply). The editor can move floaters together with their owner (capability `schematic-editing`). Inside a schematic-used-as-symbol, floater texts SHALL be dropped.
 
 Compatibility: behavioral
 
@@ -193,6 +205,16 @@ Compatibility: behavioral
 - **GIVEN** an instance `M1` with `W=2` and a schematic text `T {W=@W} ... {name=M1}`
 - **WHEN** the schematic is displayed
 - **THEN** the text SHALL read `W=2`
+
+#### Scenario: Floater owner matched case-sensitively
+- **GIVEN** an instance `M1` with `W=2` and a schematic text `T {W=@W} ... {name=m1}`, and no instance named `m1`
+- **WHEN** the schematic is displayed
+- **THEN** the text SHALL have no owner and SHALL read `W=`
+
+#### Scenario: Floater owner given as an index
+- **GIVEN** instances `R1` (index 0, `value=1k`) and `R2` (index 1, `value=2k`) and a schematic text `T {@value} ... {name=1}`
+- **WHEN** the schematic is displayed
+- **THEN** the text SHALL read `2k`
 
 ### Requirement: Text substitution tokens
 When a symbol text is drawn for an instance, every token SHALL be replaced as follows. A token starts at an unescaped `@` or `%` and ends before the next unescaped space, `@` or `%` outside parentheses, or before an escaped character. A backslash escapes the next character and is removed.
@@ -255,7 +277,7 @@ Hefesto SHALL run this in the embedded, sandboxed Tcl interpreter of capability 
 The set of procedures and variables SHALL be exactly the one that an inventory script finds in the three pinned PDK trees (every `tcleval(` value, every `[`-command and every `$::` variable). The inventory SHALL be kept as a test that fails when a PDK bump adds a procedure or variable that Hefesto does not provide. Each procedure's semantics SHALL be specified from the public xschem manual and from expected values computed for the PDK symbols, never from xschem's Tcl code (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"; Q-SCHEM-8, `Resolution: other`).
 
 **Where the inventoried names come from.** The names of `tests/data/schem/inventory.json` (`tcleval_commands`, `tcleval_variables`, `rc_commands`, `rc_variables`) fall into four groups, and only the first needs semantics here:
-1. Procedures that xschem provides, specified in the table below: `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `sim_is_ngspice`, `sim_is_xyce`, `tabulate`, `ngspice::get_node`, `ngspice::get_current`, `ngspice::get_voltage`, `abs_sym_path`, `textwindow`, `write_data`. `ngspice::get_current` and `ngspice::get_voltage` are not in the inventory: the sky130 example schematics call them in the `node` attribute of `ngspice_get_expr.sym` instances, which only the symbol's displayed text evaluates (the known gap of task 2.3 of `openspec/changes/m8-schematic`). `ev0` and `from_eng` are used by none of the pinned trees (the sky130 generator `sky130_tests/res.tcl` defines its own `from_eng`) and are provided because Q-SCHEM-8 names them.
+1. Procedures that xschem provides, specified in the table below: `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `sim_is_ngspice`, `sim_is_xyce`, `tabulate`, `ngspice::get_node`, `ngspice::get_current`, `ngspice::get_voltage`, `abs_sym_path`, `textwindow`, `write_data`. `ngspice::get_current` and `ngspice::get_voltage` are called by the sky130 example schematics in the `node` attribute of `ngspice_get_expr.sym` instances, which only the symbol's displayed text evaluates; the inventory lists them since 2026-11-21 (its table of such system-library attributes, which closed the gap noted under task 2.3 of `openspec/changes/m8-schematic`). `ev0` and `from_eng` are used by none of the pinned trees (the sky130 generator `sky130_tests/res.tcl` defines its own `from_eng`) and are provided because Q-SCHEM-8 names them.
 2. Procedures that the PDK defines in its own `xschemrc` or in the Tcl files it sources (the inventory's `pdk_procs`: for example `display_fet_params`, `sky130_display_fet_params`, `display_bip_params`, `cap_cmomi_C`, `symtype`, `hierarchy_config`). They SHALL run as the PDK wrote them, in the sandbox; their results follow from the procedures they call.
 3. Tcl and Tk built-in commands (`append`, `expr`, `foreach`, `format`, `if`, `return`, `set`, `subst`, `string`, `file`, `menu`, `toplevel`, ...), with Tcl 8.6 semantics as the sandbox of capability `hefesto-scripting` provides them. Tk commands in an `xschemrc` only build PDK menus and dialogs (capability `hefesto-scripting` decides how they are served; they never change a netlist).
 4. The `xschem` command, whose subcommands capability `schematic-command` specifies (Requirement "xschem compatibility command").
@@ -400,9 +422,13 @@ Compatibility: exact
 ### Requirement: Library search path
 The search path SHALL be an ordered list of folders built from the value of `XSCHEM_LIBRARY_PATH`:
 - the value SHALL be split at `:`; on Windows hosts it is split at `;` (informative)
-- an element of the form `<folder> | <alias>` (spaces around `|` optional, `\|` an escaped bar) SHALL define the alias `<alias>` for `<folder>`
+- an element of the form `<folder> | <alias>` (spaces around `|` optional, `\|` an escaped bar) SHALL define the alias `<alias>` for `<folder>`, and `<folder>` itself SHALL stay in the search path at that position, searched in step 7 of Requirement "Symbol references" like any other folder (golden case SCHEM-PR-05)
 - elements that start with `#` SHALL be dropped
-- `~` and environment references in an element SHALL be expanded, and elements that do not exist SHALL be dropped
+- a leading `~` alone or `~/` SHALL be replaced by the value of `env(HOME)` (Requirement "xschemrc as data"); `~user` is not expanded
+- no other expansion SHALL be done: environment references such as `$PDK_ROOT` are expanded by Tcl when the `xschemrc` that builds the value is evaluated, not by the search path, so an element that still contains `$NAME` or `${NAME}` is used as literal text, and is dropped when no such folder exists
+- each element SHALL be cleaned as a symbol reference is (step 4 of Requirement "Symbol references": runs of `/` collapsed, `/./` and `dir/../` removed, a trailing `/` or `/.` removed); duplicates SHALL be kept
+- elements that do not exist SHALL be dropped
+- a relative element other than `.` (for example `lib` or `../lib`): xschem checks and uses it against the folder it was started in. Hefesto SHALL resolve it against the folder of the current schematic, in both modes, and SHALL report the warning `SCHEM-LIB-001` for a reference found through it, as for `.` (proposed Q-SCHEM-38, recommendation `fix`, which extends Q-SCHEM-30; awaiting the user)
 - the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
@@ -417,6 +443,16 @@ Compatibility: behavioral
 - **WHEN** the search path is built
 - **THEN** it SHALL be `/a`, `/b`
 
+#### Scenario: Alias folder is also searched
+- **GIVEN** `XSCHEM_LIBRARY_PATH` = `/w/libB | lib`, the file `/w/libB/x.sym`, and an instance whose reference is `x.sym`
+- **WHEN** the instance is resolved
+- **THEN** its symbol SHALL be `/w/libB/x.sym`, found by searching the alias folder in step 7
+
+#### Scenario: Environment reference left as text
+- **GIVEN** `XSCHEM_LIBRARY_PATH` = `$NOPE/lib:/a` where `/a` exists and no folder named `$NOPE/lib` exists
+- **WHEN** the search path is built
+- **THEN** it SHALL be `/a`
+
 #### Scenario: Dot element is the schematic folder
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
 - **WHEN** the instance is resolved
@@ -430,7 +466,9 @@ PDKs configure xschem through a Tcl file named `xschemrc`. Hefesto SHALL read it
 - Commands that only affect the xschem GUI (colours, toolbar, `dircolor`, `XSCHEM_START_WINDOW`, `bespice_listen_port`, `to_pdf`, ...) SHALL be accepted and ignored.
 - `source` of a Tcl file inside the PDK (for example IHP `cap_cmomi.tcl`) SHALL be allowed.
 - An `xschemrc` in the document's folder SHALL be evaluated after the PDK's one, as xschem does when started in that folder.
-- Environment variables read by the file SHALL be synthetic values mapped to the PDK store and the document folder on every platform (see Q-SCHEM-23).
+- Environment variables read by the file SHALL be synthetic values mapped to the PDK store and the document folder on every platform (see Q-SCHEM-23): `env(PDK_ROOT)` and `env(PDK)` name the active PDK in the PDK store; `env(PWD)` SHALL be the document's folder (the folder `.` means, Q-SCHEM-30); `env(HOME)` SHALL be the document's folder too (proposed Q-SCHEM-38, recommendation, awaiting the user). No other host environment variable SHALL be visible; reading an unset `env(...)` raises Tcl's usual error.
+- **Unknown commands.** A command the sandbox does not define SHALL raise Tcl's `invalid command name "<cmd>"` error, as in xschem, except the GUI-only commands that the three pinned PDK `xschemrc` files call (the `rc_commands` lists of `tests/data/schem/inventory.json` that are xschem GUI commands), which SHALL be accepted, do nothing and return the empty string (proposed Q-SCHEM-38, recommendation, awaiting the user; until it is decided, accepting every unknown command is the interim behaviour of round 1).
+- **Time limit.** Evaluating the `xschemrc` files for one document SHALL stop after **10 s** of evaluation, in both modes of `xschem-compat` (input limit approved by the user on 2026-11-21, Q-SCHEM-32; `SandboxLimits`). The stop SHALL be handled like a Tcl error in the file (settings made before the stop are kept, later ones are lost) and SHALL report the warning `xschemrc <file>: evaluation stopped after 10 s`. The limit SHALL hold for any script, including `while 1 {}`.
 
 In xschem, the files evaluated are, in order: the system `xschemrc`, then the one given on the command line, or else `./xschemrc`, or else the user's `~/.xschem/xschemrc` (informative).
 
@@ -438,18 +476,28 @@ Compatibility: behavioral
 
 (xschem ref: xinit.c:3552-3610)
 
+#### Scenario: Endless loop in an xschemrc
+- **GIVEN** a document folder whose `xschemrc` is `set XSCHEM_LIBRARY_PATH /a` LF `while 1 {}` LF `set XSCHEM_LIBRARY_PATH /b`, where `/a` and `/b` exist, with `xschem-compat` ON or OFF
+- **WHEN** a schematic in that folder is opened
+- **THEN** the opening SHALL complete, the warning `xschemrc <file>: evaluation stopped after 10 s` SHALL be reported, and the search path SHALL contain `/a` and not `/b`
+
+#### Scenario: Synthetic HOME and PWD
+- **GIVEN** a document `/w/s/top.sch` and an `xschemrc` in `/w/s` that does `set XSCHEM_LIBRARY_PATH $env(PWD):$env(HOME)/lib`, with `/w/s/lib` existing
+- **WHEN** the schematic is opened
+- **THEN** the search path SHALL be `/w/s`, `/w/s/lib`, whatever folder Hefesto was started in and whatever the host's `HOME` is
+
 #### Scenario: IHP library path
 - **GIVEN** the IHP sg13g2 PDK installed in the PDK store
 - **WHEN** a schematic is opened with sg13g2 active
 - **THEN** the search path SHALL contain `<PDK root>/ihp-sg13g2/libs.tech/xschem`, `<PDK root>/ihp-sg13g2/libs.tech/xschem/sg13g2_pr` and `<PDK root>/ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem`, in that order after the system library folders
 
 ### Requirement: System library
-Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference: the list SHALL be generated by an inventory script over the pinned Apache-2.0 PDK trees and kept as a test that fails when a PDK bump references a symbol that the library lacks (Q-SCHEM-10, `Resolution: other`).
+Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference, and the symbols the golden suite places (today only `netlist_options.sym`, Q-SCHEM-31, approved 2026-11-21): the PDK list SHALL be generated by an inventory script over the pinned Apache-2.0 PDK trees and kept as a test that fails when a PDK bump references a symbol that the library lacks (Q-SCHEM-10, `Resolution: other`, extended by Q-SCHEM-31).
 
 Clean-room provenance (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"): the interface of each symbol (file name, pin names, pin order, pin positions and the netlisting properties) has no public source other than xschem's GPL `devices/*.sym` files. It SHALL be extracted from them by the spec side only and recorded in the four interface tables below; implementers SHALL take it from this spec, and SHALL draw the graphics independently. The tables are covered by the one counsel review that `hefesto-licensing` requires before Desktop 1.0.
 
 The interface tables SHALL be read as follows:
-- **Rows.** The tables hold one symbol for every entry of the `devices` lists of `tests/data/schem/inventory.json` (the inventory of design D18 of `openspec/changes/m8-schematic`), and `netlist_options.sym`, which no PDK references but golden case SCHEM-NL-17 places (Q-SCHEM-31, proposed). Column "Referenced by" names the PDKs whose inventory lists the symbol.
+- **Rows.** The tables hold one symbol for every entry of the `devices` lists of `tests/data/schem/inventory.json` (the inventory of design D18 of `openspec/changes/m8-schematic`), and `netlist_options.sym`, which no PDK references but golden case SCHEM-NL-17 places (Q-SCHEM-31, approved 2026-11-21: shipped in the system library). Column "Referenced by" names the PDKs whose inventory lists the symbol.
 - **Values.** Every value in the property and note tables is written as a JSON string literal (RFC 8259: `\n` is LF, `\"` a quote, `\\` a backslash, ``` a backtick, `|` a vertical bar). A property value is the **decoded value** of that key (capability `schematic-file-format`, Requirement "Property strings"): the value a lookup returns, after the brace-string escapes of the `K` record are resolved and with the unescaped quotes and backslashes of the property string removed. A library file SHALL hold each listed key with a text whose decoded value is exactly the listed value, and SHALL hold no other key that changes SPICE netlisting or display.
 - **Keys not listed.** Keys that only other netlisters or tools read are not part of the interface and are left out: `spectre_format`, `spectre_device_model`, `verilog_format`, `vhdl_format`, `tedax_format`, `verilog_ignore`, `vhdl_ignore`, `tedax_ignore`, `function0`, `function1` (SPICE is the only M8 netlister, Q-SCHEM-4). A library file MAY hold them.
 - **Pins.** Pins are listed in pin order: index 0 is the first `B` record on layer 5 of the file, and `@pinlist` and `@#<n>:` tokens follow this order. No listed symbol sets `sim_pinnumber`. "Box" is the pin rectangle `x1 y1 x2 y2` in symbol coordinates (y down, Requirement "Coordinate system" of capability `schematic-file-format`), corners sorted. "Other pin properties" lists the pin's attributes besides `name` and `dir`, in file order, or `-` when there are none. Two pins of `short.sym` share the name `A`.
@@ -713,7 +761,7 @@ Symbols with no row in the pin table have no pins: `architecture.sym`, `code.sym
 | `ngspice_probe.sym` | `"Shows @spice_get_voltage of the net at its pin. Emits nothing in netlists (no format)."` |
 | `lab_show.sym` | `"Shows the name of the net at its pin (@#0:net_name). Emits nothing in netlists (no format)."` |
 | `intuitive_interface_cheatsheet.sym` | `"A help panel whose content is text (graphics, not described); it has no pins and no schematic."` |
-| `netlist_options.sym` | `"Not in the inventory: golden case SCHEM-NL-17 places it (Q-SCHEM-31, proposed). Its keys are applied as Requirement \"Netlist options\" of capability schematic-netlisting says."` |
+| `netlist_options.sym` | `"Not in the inventory: golden case SCHEM-NL-17 places it, and it is shipped (Q-SCHEM-31, approved 2026-11-21). Its keys are applied as Requirement \"Netlist options\" of capability schematic-netlisting says."` |
 
 Compatibility: behavioral
 
@@ -729,10 +777,16 @@ If a symbol reference names a `.sch` file, the schematic SHALL be loaded as a sy
 - its `K` record is the symbol property
 - its graphics are the symbol graphics
 - its wires are drawn as lines on layer 1
-- the instances inside it are drawn transformed by their orientation (Requirement "Orientation transform" of capability `schematic-file-format`), recursively, to at most 40 levels
-- the pins of the outer symbol are generated from its `ipin`, `opin` and `iopin` instances, at their positions, named by their `lab`
-- floater texts and graph boxes inside it are dropped
+- the instances inside it are drawn transformed by their orientation (Requirement "Orientation transform" of capability `schematic-file-format`), recursively, to at most 40 levels (below)
+- the pins of the outer symbol are generated from its `ipin`, `opin` and `iopin` instances (by symbol type), at their positions, named by their `lab`: each generated pin is a layer-5 box of 5×5 units centred on the pin instance's origin, with the property string `name=<lab> dir=<d> ` (`d` is `in` for `ipin`, `out` for `opin`, `inout` for `iopin`; note the trailing space) followed by the pin instance's other attributes (all but `name` and `lab`); an empty `lab` gives `name=` with no name. Only pin instances at the schematic's own level make pins; pin instances inside nested instances are drawn only
+- layer-5 boxes drawn in the schematic itself (at its own level) SHALL be pins of the outer symbol too, after their own `B` record order; layer-5 boxes of nested instances are moved to layer 7 (Requirement "Pins")
+- floater texts (texts with a `name` or `floater` key) are dropped, at every level
+- graph boxes are dropped at every level: a box is a graph box when the value of its `flags` key contains the text `graph` anywhere (for example `flags=graph` or `flags=graph,unlocked`)
 - objects with `symbol_ignore=true` are dropped
+
+**Recursion.** The schematic loaded as the symbol is level 0; each instance whose symbol is itself loaded this way opens the next level. An instance that would open level 40 SHALL NOT be loaded: Hefesto SHALL report `Symbol recursively instantiating symbol: max depth reached, skipping` once and SHALL stop reading the symbol, keeping the records read before that instance (depth-first, in file order) and reading none after it at any level. A schematic that places itself is not detected as a cycle: it nests until level 40, as in xschem, so its copies are drawn 40 levels deep (round-1 spec issue Y5: confirmed, not reworded).
+
+**Flattened size.** A symbol built this way SHALL hold at most **1,000,000** records (lines, wires drawn as lines, boxes including generated pins, arcs, polygons and texts, counted over all levels), in both modes of `xschem-compat` (input limit approved by the user on 2026-11-21, Q-SCHEM-32). The record that would be the 1,000,001st SHALL NOT be added, the warning `Symbol <reference>: more than 1000000 records when flattened; the rest is not loaded` SHALL be reported once, and reading the symbol SHALL stop there, keeping the records added so far (depth-first, in file order). The work SHALL stay bounded by the limit, so a chain of schematics that each place the next one twice (2^40 records unbounded) stops after about 1,000,000 records.
 
 If a `.sym` with the same base name exists next to the `.sch`, its pin order SHALL be applied to the generated pins.
 
@@ -741,9 +795,19 @@ Compatibility: exact
 (xschem ref: save.c:5455-5600, save.c:4656-4705, xschem.h:200)
 
 #### Scenario: Recursion limit
-- **GIVEN** a schematic `a.sch` that places itself as a symbol
-- **WHEN** it is opened
-- **THEN** loading SHALL stop at 40 levels with the warning `Symbol recursively instantiating symbol: max depth reached, skipping`
+- **GIVEN** a schematic `a.sch` holding one line `L 4 0 0 10 0 {}` and one instance of `a.sch` at (0,0) with r=0, f=0, and a schematic `top.sch` that places `a.sch`
+- **WHEN** `top.sch` is opened
+- **THEN** the symbol `a.sch` SHALL hold 40 copies of the line (levels 0 to 39), and loading SHALL report the warning `Symbol recursively instantiating symbol: max depth reached, skipping` once
+
+#### Scenario: Flattened size limit
+- **GIVEN** schematics `s0.sch` ... `s39.sch`, where each `s<i>.sch` holds one line and two instances of `s<i+1>.sch`, and `s39.sch` holds one line, and a schematic `top.sch` that places `s0.sch`, with `xschem-compat` ON or OFF
+- **WHEN** `top.sch` is opened
+- **THEN** the symbol `s0.sch` SHALL hold exactly 1,000,000 records, the warning `Symbol s0.sch: more than 1000000 records when flattened; the rest is not loaded` SHALL be reported once, and the opening SHALL complete in time proportional to the limit
+
+#### Scenario: Generated pins and graph boxes
+- **GIVEN** a schematic `blk.sch` with an `ipin` instance `C {ipin.sym} 40 20 0 0 {name=p1 lab=IN sig_type=std_logic}` and a box `B 2 0 0 100 100 {flags=graph}`, placed as a symbol
+- **WHEN** the symbol is built
+- **THEN** it SHALL have one pin, a layer-5 box from (37.5,17.5) to (42.5,22.5) whose property string begins with `name=IN dir=in ` and holds `sig_type=std_logic`, and no layer-2 box
 
 ### Requirement: Missing symbols
 An instance whose symbol cannot be found SHALL be drawn with a placeholder symbol that has no pins. The warning `Symbol not found: <reference>` SHALL be reported once per reference. The instance SHALL keep its reference and properties, SHALL be saved unchanged, and SHALL be netlisted as nothing (it has no `format`). A later change of the search path SHALL re-resolve it.

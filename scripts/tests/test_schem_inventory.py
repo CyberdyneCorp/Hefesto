@@ -40,6 +40,9 @@ C {sky130_fd_pr/missing.sym} 40 0 0 0 {name=x9}
 C {sky130_tests/res.tcl(@value\\)} 50 0 0 0 {name=x10 value=2}
 C {launcher.sym} 60 0 0 0 {name=h1 descr="run" tclcommand="xschem netlist; xschem simulate"}
 T {tcleval(id=[to_eng [ngspice::get_node \\{i(@m.x1.m0\\\\[id])\\}]])} 0 0 0 0 0.2 0.2 {}
+C {ngspice_get_expr.sym} 70 0 0 0 {name=r1 node="[ngspice::get_current v3]" descr="I="}
+C {devices/ngspice_get_expr.sym} 80 0 0 0 {name=r2 node="[to_eng [ngspice::get_voltage s]]W"}
+C {sky130_tests/probe.sym} 90 0 0 0 {name=r3 node="[not_a_device_text]"}
 """
 SKY_CORNER = """v {xschem version=3.4.8RC file_version=1.3}
 K {type=netlist_commands
@@ -105,6 +108,7 @@ def make_tree(root: Path) -> None:
     write(sky, "sky130_tests/not.sym", SKY_NOT)
     write(sky, "sky130_tests/prim.sym", SKY_PRIM)
     write(sky, "sky130_tests/res.tcl", "proc res {v} { return {} }\n")
+    write(sky, "sky130_tests/probe.sym", "v {}\nK {type=probe}\n")
     write(sky, "xschemrc", SKY_RC)
     ihp = variant_dir(root, "ihp-xschem")
     write(ihp, "libs.tech/xschem/sg13g2_pr/rhigh.sym", IHP_RES)
@@ -133,7 +137,8 @@ class FixtureInventory(unittest.TestCase):
 
     def test_devices_references_in_both_forms(self):
         # devices/<name>, a bare name not in the PDK directories, and a reference without an extension.
-        self.assertEqual(self.sky["devices"], ["code_shown.sym", "iopin.sym", "lab_pin.sym", "launcher.sym"])
+        self.assertEqual(self.sky["devices"], ["code_shown.sym", "iopin.sym", "lab_pin.sym", "launcher.sym",
+                                               "ngspice_get_expr.sym"])
         self.assertEqual(self.gf["devices"], ["gnd.sym"])
 
     def test_bare_reference_found_in_a_pdk_directory_is_not_a_device(self):
@@ -146,7 +151,16 @@ class FixtureInventory(unittest.TestCase):
 
     def test_tcleval_commands_and_variables(self):
         # [to_eng [ngspice::get_node {...\\[id]}]]: the escaped bracket is not a command.
-        self.assertEqual(self.sky["tcleval_commands"], ["ngspice::get_node", "to_eng"])
+        self.assertEqual(self.sky["tcleval_commands"],
+                         ["ngspice::get_current", "ngspice::get_node", "ngspice::get_voltage", "to_eng"])
+
+    def test_node_of_ngspice_get_expr_is_tcl(self):
+        # Regression (task 2.3 gap): the node of ngspice_get_expr.sym, in both reference forms, is a tcleval
+        # value that only the symbol's own text evaluates; the node of a PDK symbol is not scanned.
+        commands = self.sky["tcleval_commands"]
+        self.assertIn("ngspice::get_current", commands)
+        self.assertIn("ngspice::get_voltage", commands)
+        self.assertNotIn("not_a_device_text", commands)
         self.assertEqual(self.sky["tcleval_variables"], ["SKYWATER_MODELS"])
 
     def test_attributes_substituted_into_tcleval_bodies(self):

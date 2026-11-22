@@ -16,7 +16,6 @@
 #include <filesystem>
 #include <map>
 #include <optional>
-#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -62,15 +61,6 @@ std::map<std::string, std::string> expected_digests() {
   return out;
 }
 
-// xschem writes the pin boxes of these two symbols in sim_pinnumber order
-// (schematic-symbols-and-libraries "Pin order") rather than file order;
-// "Canonical write order" says file order. Listed until the spec issue
-// raised with tasks.md 6.4 is answered.
-const std::set<std::string> kPendingPinOrder = {
-    "ihp-sg13g2_libs.tech_xschem/sg13g2_pr/nmoscl_2.sym",
-    "ihp-sg13g2_libs.tech_xschem/sg13g2_pr/nmoscl_4.sym",
-};
-
 std::string sha256(std::string_view bytes) {
   hefesto::pdk::Sha256 sha;
   sha.update(bytes);
@@ -102,7 +92,7 @@ TEST_CASE("SCHEM-RT-02 every PDK file round-trips as xschem saves it",
       const schem::FileKind kind = schem::file_kind_of(file);
       const std::string first = schem::test::round_trip(schem::test::slurp(file), kind);
       ++checked;
-      if (sha256(first) != digest && kPendingPinOrder.count(key) == 0) {
+      if (sha256(first) != digest) {
         mismatches.push_back(key);
       }
       if (schem::test::round_trip(first, kind) != first) {

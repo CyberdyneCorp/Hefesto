@@ -9,6 +9,7 @@
 #include "hefesto/schem/sym/symbol.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <numeric>
@@ -22,8 +23,16 @@ namespace hefesto::schem {
 
 namespace {
 
+// Every pin has a non-empty `sim_pinnumber` ("Pin order"): an empty value
+// turns sorting off like a missing one.
 bool all_numbered(const std::vector<Pin>& pins) {
-  return std::all_of(pins.begin(), pins.end(), [](const Pin& pin) { return pin.sim_pinnumber.has_value(); });
+  return std::all_of(pins.begin(), pins.end(),
+                     [](const Pin& pin) { return pin.sim_pinnumber.has_value() && !pin.sim_pinnumber->empty(); });
+}
+
+// C isspace in the "C" locale.
+bool is_c_space(char c) noexcept {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
 
 std::string symbol_label(const Symbol& symbol) {
@@ -66,18 +75,20 @@ Symbol make_symbol(std::string reference, platform::Path file, Document document
 }
 
 long long sim_pinnumber_value(std::string_view text) noexcept {
-  std::size_t at = text.find_first_not_of(" \t\n");
-  if (at == std::string_view::npos) return 0;
+  std::size_t at = 0;
+  while (at < text.size() && is_c_space(text[at])) ++at;
+  if (at == text.size()) return 0;
   const bool negative = text[at] == '-';
   if (text[at] == '-' || text[at] == '+') ++at;
-  constexpr long long kMax = std::numeric_limits<long long>::max();
+  // Clamped to the signed 32-bit range (proposed Q-SCHEM-34): the
+  // magnitude stops growing once it passes the range.
+  constexpr long long kLimit = static_cast<long long>(std::numeric_limits<std::int32_t>::max()) + 1;
   long long value = 0;
   for (; at < text.size() && text[at] >= '0' && text[at] <= '9'; ++at) {
-    const int digit = text[at] - '0';
-    if (value > (kMax - digit) / 10) return negative ? std::numeric_limits<long long>::min() : kMax;
-    value = value * 10 + digit;
+    value = std::min(value * 10 + (text[at] - '0'), kLimit);
   }
-  return negative ? -value : value;
+  if (negative) return -value;
+  return std::min(value, kLimit - 1);
 }
 
 std::vector<PinIndex> pin_order(const Symbol& symbol, diag::DiagnosticSink* warnings) {

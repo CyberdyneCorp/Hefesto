@@ -71,6 +71,7 @@ diag::Status save_document(platform::FileSystem& fs, Document& document, const p
   if (!written.ok()) {
     return written.error();
   }
+  sort_pin_boxes(document);  // the order just written stays in the model ("Pin boxes on save")
   document.path = destination;
   document.disk_digest = digest_of(text);
   document.modified = false;

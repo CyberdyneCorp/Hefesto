@@ -27,6 +27,17 @@ struct ScriptSource {
   friend bool operator==(const ScriptSource&, const ScriptSource&) = default;
 };
 
+/// `--netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]` (schematic-command
+/// "Headless use"): netlist one schematic and exit.
+struct NetlistRequest {
+  std::string schematic;
+  std::optional<std::string> output;  // -o <out>; without it the netlist goes to stdout
+  bool lvs = false;                   // --lvs: options lvs_netlist and lvs_ignore
+  std::optional<std::string> pdk;     // --pdk <name>
+
+  friend bool operator==(const NetlistRequest&, const NetlistRequest&) = default;
+};
+
 struct Options {
   std::optional<std::string> tech;  // -T <tech>
   std::vector<ScriptSource> sources;
@@ -58,6 +69,9 @@ struct Options {
   /// --strip-reflibs <dir>: run the reference-library stripper on the `.mag`
   /// files of <dir> and exit (scripting-auxiliary-tools; tools::strip_reflibs).
   std::optional<std::filesystem::path> strip_reflibs;
+  /// --netlist <file.sch>: netlist the schematic and exit (status 0, 10 for a
+  /// failed netlist run, 1 for other errors). -o, --lvs and --pdk need it.
+  std::optional<NetlistRequest> netlist;
   diag::Format diagnostics = diag::Format::text;
   std::optional<std::filesystem::path> log_dir;
   bool no_log = false;

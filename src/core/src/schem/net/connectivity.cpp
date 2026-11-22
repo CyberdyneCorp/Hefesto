@@ -169,6 +169,9 @@ struct Tap {
 /// The bus base name of "Bus taps": after the last `,` and the spaces after
 /// it, up to the first `[`.
 std::string_view bus_base(std::string_view bus) noexcept {
+  if (bus.starts_with('#')) {
+    bus.remove_prefix(1);  // `net3[2]` built from `#net3` is not automatic
+  }
   const std::size_t comma = bus.rfind(',');
   if (comma != std::string_view::npos) {
     bus.remove_prefix(comma + 1);
