@@ -8,9 +8,6 @@
 // with magic-compat ON, a fresh one per run with it OFF; the caller keeps
 // it in EditorState::netlist.names) and Q-NETLIST-10.
 //
-// Scaffold state (tasks.md 3.3): both conversions join the components with
-// `/` unchanged until EXTFLAT lands them.
-//
 // Owner: INTEGRATION (this header); EXTFLAT (the implementation).
 
 #pragma once
@@ -18,6 +15,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 
 #include "hefesto/compat/compat_settings.hpp"
 
@@ -38,10 +36,39 @@ struct NameFlags {
   friend bool operator==(const NameFlags&, const NameFlags&) = default;
 };
 
-/// A hierarchical name as its components from the root side.
+/// A hierarchical name as its components from the root side, converted
+/// with the run's flags (EFHNSprintf, ext2spice.c:4307-4375; EFHNOut,
+/// EFvisit.c:878-939). `flags` is read, not changed.
 [[nodiscard]] std::string name_to_spice(std::span<const std::string> components, SpiceDialect dialect,
                                         NameFlags& flags, const compat::CompatSettings& compat);
 [[nodiscard]] std::string name_to_sim(std::span<const std::string> components, NameFlags& flags,
                                       const compat::CompatSettings& compat);
+
+/// No conversion flag at all (EFOutputFlags & EF_TRIM_MASK == 0).
+[[nodiscard]] constexpr NameFlags no_name_flags() noexcept {
+  return NameFlags{false, false, false, false, false};
+}
+
+/// EFArgs' `-t` characters: `!` trim-global, `#` trim-local, `,`
+/// convert-comma, `=` convert-equal, `[` or `]` convert-brackets, each
+/// added to `flags`.
+void add_trim_chars(NameFlags& flags, std::string_view chars) noexcept;
+
+/// The flags of one `ext2spice` run (Q-NETLIST-16; ext2spice.c:1071-1076).
+/// With magic-compat ON the session-wide set `session` (Magic's
+/// EFOutputFlags, 0 at start-up) gains the run's `-t` characters, then
+/// trim-global, convert-comma and convert-equal, then trim-local in HSPICE
+/// format, then loses trim-global in CDL format, and is the run's set; so
+/// flags of earlier `ext2spice` and `ext2sim` runs stay in effect. With it
+/// OFF the run's set is that base (trim-global, convert-comma,
+/// convert-equal, plus trim-local in HSPICE, without trim-global in CDL)
+/// plus the run's `-t` characters, and `session` is left alone.
+[[nodiscard]] NameFlags spice_run_flags(NameFlags& session, SpiceDialect dialect, std::string_view trim_chars,
+                                        const compat::CompatSettings& compat) noexcept;
+/// The flags of one `ext2sim` run (Q-NETLIST-16): ON, `session` gains the
+/// run's `-t` characters and is the run's set; OFF, the run's set is its
+/// `-t` characters alone.
+[[nodiscard]] NameFlags sim_run_flags(NameFlags& session, std::string_view trim_chars,
+                                      const compat::CompatSettings& compat) noexcept;
 
 }  // namespace hefesto::extflat

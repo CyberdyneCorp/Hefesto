@@ -1,0 +1,23 @@
+*** Global name vdd! not fully connected:
+One portion contains the names:
+    x2/vdd!
+The other portion contains the names:
+    x1/vdd!
+I'm merging the two pieces into a single node, but you
+should be sure eventually to connect them in the layout.
+
+*** Global name gnd! not fully connected:
+One portion contains the names:
+    x2/gnd!
+The other portion contains the names:
+    x1/gnd!
+I'm merging the two pieces into a single node, but you
+should be sure eventually to connect them in the layout.
+
+Memory used: <masked>
+4 devices
+6 nodes (2 global, 4 local)
+4 nodes above capacitance threshold
+0 nodes above resistance threshold
+2 internodal capacitors (2 above threshold)
+2 explicit resistors (2 above threshold)

@@ -70,6 +70,10 @@ output's masks. The outputs match when the canonical forms are identical.
 ``res-ext``
     ``.res.ext`` files of ``extresist``: the resistor records of one net in canonical order, every
     other record byte for byte; record order only, never topology (design D21). See res_ext.py.
+``extcheck-console``
+    The stdout, stderr and exit status of an external ``extcheck`` run (NL-CHK-01): line endings
+    unified, then the ``prog-name`` and ``extcheck-memory`` masks, then byte for byte (m7-extraction
+    design D15, D21). See extcheck_console.py.
 ``lef-text``, ``def-text``
     LEF and DEF files, and the console of LEF/DEF commands: plain text after removing the
     informative progress lines (``Diagnostic:`` lines, ``(This can take a while!)``,
@@ -100,7 +104,7 @@ from typing import Callable
 from goldenlib.gds import dump as gds_dump
 from goldenlib.oasis import dump as oasis_dump
 
-from . import (drc_console, ext_cap, lefdef_text, mag_backup, magic_console, polygon_set, res_ext, sim_cap,
+from . import (drc_console, ext_cap, extcheck_console, lefdef_text, mag_backup, magic_console, polygon_set, res_ext, sim_cap,
                spice_canonical, spice_cap, stream_elements, stream_geometry, stream_hierarchy)
 from .masks import apply_masks
 
@@ -155,6 +159,7 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = _Comparators({
     "spice-cap": spice_cap.canonicalize,
     "sim-cap": sim_cap.canonicalize,
     "res-ext": res_ext.canonicalize,
+    extcheck_console.NAME: extcheck_console.canonicalize,
 })
 
 # Comparators whose verdict needs both sides at once (a node bijection); they return the first difference.

@@ -9,9 +9,11 @@
 // The command matches its first word with Magic's table and the
 // first-word rule of Q-NETLIST-13 (netlist/first_word.hpp).
 //
-// Scaffold state (tasks.md 3.3, 3.5): every option but `help` and the run
-// fail with CORE-NOTIMPL-008, and render() reports it, until SPICE lands
-// them.
+// State (tasks.md 11.1-11.5, 11.7): every option is implemented; the run
+// and render() read and flatten through extflat::parse_common_args, read
+// and flatten (EXTFLAT, tasks.md 10.x) and write flat output with
+// write_flat (writer.hpp). Hierarchical output (`hierarchy on`, task 11.6)
+// answers CORE-NOTIMPL-008.
 //
 // Owner: INTEGRATION (this header and the registration); SPICE (the
 // implementation).
@@ -39,8 +41,12 @@ struct SpiceRun {
   std::vector<std::string> args;
 };
 
+/// The run with the session's settings and magic-compat setting; writes
+/// `<cell>.spice` (or the `-o` file) in the current directory.
 [[nodiscard]] cmd::CommandResult run(editor::EditorState& editor, const SpiceRun& request);
 
+/// The netlist of `cell` with one-run settings (M9's entry, design D18):
+/// no file is written and EditorState::netlist is not changed.
 [[nodiscard]] diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view cell,
                                                 const SpiceSettings& settings);
 

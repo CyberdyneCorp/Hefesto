@@ -131,6 +131,8 @@ The `.ext` header SHALL report these values (see `extract-file-format`); every c
 - With `magic-compat` OFF: `step V` SHALL be parsed as a double and `sidehalo D` stored as a double; both SHALL be kept fractional through unit conversion and rounded to the nearest internal unit only after it, with no integer truncation of fractional lambda values.
 
 In both modes a step size `<= 0` (after rounding, with `magic-compat` OFF) SHALL report `Hierarchical interaction step size must be > 0` and SHALL abort the tech-file load as a fatal error. Integer values, as in the reference PDKs, give the same result in both modes.
+
+In both modes every conversion of a parsed value to an integer in the extract section (step, side halo, device limits and offsets, their micron conversion and grid rescale) SHALL saturate to the int range, and a NaN SHALL become 0 (Q-EXTRACT-30, fix). Magic's conversion of such a value is undefined behaviour.
 Compatibility: exact
 
 (Magic ref: extract/ExtTech.c:3362-3375, extract/ExtTech.c:3444-3452, extract/ExtTech.c:3986-3997)
@@ -140,6 +142,11 @@ Compatibility: exact
 - **WHEN** the style is loaded with a 1:1 internal grid
 - **THEN** with `magic-compat` ON the side halo is 2 internal units (2500/1000 truncated)
 - **AND** with `magic-compat` OFF it is 3 internal units (2.5 rounded to the nearest unit)
+
+#### Scenario: Huge and NaN values saturate
+- **GIVEN** `sidehalo 1e10`, `step 1e20` and a device line with `l>1e10` and `l=l+1e10`
+- **WHEN** the style is loaded, in either `magic-compat` setting
+- **THEN** the side halo, the step size, the limit and the offset are 2^31 − 1, and `sidehalo nan` gives 0
 
 #### Scenario: Fractional step
 - **GIVEN** `step 7.9`

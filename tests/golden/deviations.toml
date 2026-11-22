@@ -134,7 +134,7 @@ reason = "feedback save writes the box coordinates with an i suffix so the file 
 [UI-G-005]
 deferred = "M12"
 outputs = ["stdout.txt"]
-reason = "help prints Magic's help string of every registered command; the layout commands of later milestones are not registered yet (drc M3; plot, iroute, *iroute, *mzroute M10; channels, garoute, route, plow, getnode, *garoute, *groute, *seeflags M12)"
+reason = "help prints Magic's help string of every registered command; the layout commands of later milestones are not registered yet (plot, iroute, *iroute, *mzroute M10; channels, garoute, route, plow, getnode, *garoute, *groute, *seeflags M12)"
 
 [UI-G-009]
 decisions = ["Q-UI-12", "Q-UI-42"]
@@ -1136,97 +1136,7 @@ deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
 
-[NL-CHK-01]
-deferred = "M7"
-outputs = ["default.stdout", "default.stderr", "default.exit", "thresholds.stdout", "thresholds.stderr", "thresholds.exit", "nocaps.stdout", "nocaps.stderr", "nocaps.exit", "usage.stdout", "usage.stderr", "usage.exit"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12.4) lands"
-
-[NL-FLAT-01]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-02]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-03]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-04]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-05]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-06]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-07]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-08]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-09]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-10]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
 [NL-FLAT-11]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-12]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-13]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-14]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-15]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-16]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-17]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-FLAT-18]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
@@ -1261,42 +1171,12 @@ deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
 
-[NL-SIM-01]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
-
 [NL-SIM-02]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
 
-[NL-SIM-03]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
-
-[NL-SIM-04]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
-
-[NL-SIM-05]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
-
 [NL-SPICE-01]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-02]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-03]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
@@ -1316,42 +1196,12 @@ deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
-[NL-SPICE-07]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
 [NL-SPICE-08]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
-[NL-SPICE-09]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-10]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-11]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-12]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
 [NL-SPICE-13]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-14]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
