@@ -137,7 +137,7 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 
 Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). The user approved all six as recommended on 2026-11-21. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: approved 2026-11-21` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there. The exception is J5: the MISC-3D-12 capture later disproved the premise of the approved text, so Q-MISC-80 keeps `Status: recommended 2026-11-21, pending user confirmation` and a `Proposed resolution:` line (replicate in both modes) until the user decides again.
 
-| Item | Question | Decision (approved 2026-11-21; J5 pending) | Where recorded |
+| Item | Question | Decision (approved 2026-11-21; J5 approved 2026-11-22 as revised) | Where recorded |
 |---|---|---|---|
 | J1 | Q-MISC-74 aspect for a window taller than wide | confirmed as built: A = diag(H/W, 1, 1) when W ≥ H, else diag(1, W/H, 1), both modes | Q-MISC-74 (amendment; resolution changed) |
 | J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |

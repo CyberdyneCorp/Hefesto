@@ -4,6 +4,31 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
+## Unreleased (M10: 3D view, phase 1)
+
+### Added
+
+- **3D view of the layout layers.** `specialopen wind3d [cell]` (and the
+  Tcl `magic::render3d`, Options > 3D Display, or the 3D tab of the
+  desktop app) opens a 3D window of the cell with Magic's commands:
+  `view`, `scroll`, `zoom`, `refresh`, `level`, `defaults`, `cif`,
+  `render`, `see`, `cutbox`, `closewindow` and `help`, with Magic's
+  messages. Heights and thicknesses come from the technology's extract
+  `height` and `planeorder` statements; the cifoutput `render` statement
+  is read. Higher layers are drawn in front, in both magic-compat modes
+  (Magic's depth test puts lower layers in front in the top view).
+- **Desktop 3D tab.** The 3D viewport builds the mesh in the background
+  and draws it with Vulkan on Linux and macOS (MoltenVK). The side panel
+  lists the layers with their µm ranges and show, hide, isolate and
+  transparency toggles, the top, isometric, front and side presets, the
+  perspective toggle, "Span connected layers", the level and the cut
+  box. Clicking a face picks it: the 2D view selects the material (or
+  the subcell use) under it, a 2D selection highlights its faces, and
+  "Isolate selected net" highlights the picked net and dims the rest.
+- **Script routing with magic-compat ON.** While a 3D window is open and
+  current, the layout commands a script runs go to it, as in Magic; with
+  magic-compat OFF they go to the layout window.
+
 ## Unreleased (M7: extraction and netlisting, in progress)
 
 ### Changed
