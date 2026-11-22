@@ -35,7 +35,9 @@ release notices.
   write`.
 - **LEF/DEF and OASIS benches.** `perf.yml` measures each workload in
   callgrind instructions (`lefdef-bench` against Magic, `oasis-bench`
-  against Hefesto's GDS path) and gates it at its own baseline + 2 %.
+  against Hefesto's GDS path) and gates it at its own baseline + 2 %
+  (baselines are recorded at the M6 exit round; until then a workload
+  reports "no baseline" and passes).
 
 ### Changed
 
