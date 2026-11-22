@@ -254,10 +254,28 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-28: `extract list` or `extract listall` with nothing after it crashes
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: CmdExtract removes the `list`/`listall` word and then looks up `argv[1]`, which is the NULL terminator: Lookup dereferences NULL and Magic crashes.
 - Evidence: commands/CmdE.c:1145-1162; extract-commands
 - As implemented (round R1, scaffold): both modes print `Wrong number of arguments in "extract" command.  Try "extract help" for help.`
 - Options: fix (as implemented) | another message
 - Recommendation: fix.
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes `extract list` or `extract listall` with nothing after it prints `Wrong number of arguments in "extract" command.  Try "extract help" for help.` and does nothing else, instead of Magic's NULL dereference (X-2 tier 1). Spec: `extract-commands` "Command syntax and option matching". Test: `tests/unit/core/m7_scaffold_test.cpp` "extract list and listall with no option print the argument-count message". Approved 2026-11-22.
+
+### Q-EXTRACT-29: TiSplitX on a split (diagonal) tile moves its triangle
+- Kind: bug
+- Status: approved 2026-11-22 (raised in M7 round R2 from the round R1 MODEL review, 2026-11-22; approved with the recommended option)
+- Magic behavior: TiSplitX cuts a tile at x without looking at its body (tiles/tile.c:250-300): the new right-hand tile gets body 0 and the original keeps its `TT_DIAGONAL`, `TT_SIDE` and `TT_DIRECTION` bits, so the diagonal now spans the narrower left tile and the triangle's area and slope change. ResSplitX then gives the new tile `TiGetType(tile)`, the left type only (resis/ResFract.c:436-446). extresist's fracture plane is the only caller that can meet a split tile (net geometry with non-Manhattan pieces).
+- Evidence: tiles/tile.c:250-300, resis/ResFract.c:424-490; m7-extraction design D6, D16; tasks.md 3.4 (as landed: `db::StitchEditor::split_x` and `join_y` refuse split tiles in both modes and change nothing)
+- Options: compat (ON: copy Magic's cut of a split tile; OFF: refuse, as `StitchEditor` does today) | fix (refuse in both modes) | replicate
+- Recommendation: compat. With `magic-compat` ON the stitch editor copies Magic's cut; with it OFF it refuses a split tile and changes nothing. Today `StitchEditor::split_x` refuses split tiles in both modes; the ON branch lands with RESNET (R4, task 13.1), together with Q-NETLIST-53, which decides what ResFracture does before it cuts.
+- Resolution: compat — with `magic-compat` ON `StitchEditor::split_x` on a split tile copies Magic's TiSplitX (the right-hand tile is a plain tile, the left keeps the diagonal bits); with it OFF it refuses and changes nothing. As landed in R1 the editor refuses in both modes; the ON branch lands with RESNET (R4). Approved 2026-11-22.
+
+### Q-EXTRACT-30: Out-of-range float-to-int conversions in the extract section
+- Kind: bug
+- Status: decided by the standing rule (undefined behaviour is fixed in both modes); raised in the M7 round R2 review, 2026-11-22, reported for confirmation
+- Magic behavior: the extract-section reader converts doubles to `int` with no range check: `(int)(0.5 + dval * 1000)` for a device limit (`l<=1e10`) and offset (`l=l+1e10`), then `ival + 1` / `ival - 1` in int; `step` as `(int)atof`; `sidehalo` as `(int)(d * 1000.0)`; ExtTechScale's `scalen * scalen` in int and its `int *= float` conversions. A value past the int range, or a NaN (`nan` is accepted by `sscanf("%lf")`), is undefined behaviour in C.
+- Evidence: extract/ExtTech.c:2505-2520 and :2600-2620 (device parameter offsets and limits), :3365-3372 (sidehalo), :3444-3451 (step), :3973-3976 (micron conversion of step and halo), :4022-4130 (ExtTechScale); Hefesto `src/core/src/extract/tech/device_rules.cpp`, `scale_rules.cpp`, `conversion.cpp`
+- Options: fix (saturate to the int range, NaN as 0, in both modes) | replicate (not possible: undefined)
+- Recommendation: fix.
+- Resolution: fix — in both modes every such conversion saturates to the int range and a NaN becomes 0 (`detail::saturate_int32`), and ExtTechScale squares its factors in float. Real technology files never reach these values, so no golden case changes. Spec: `extract-tech-section` "Step size and side halo parsing". Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "a huge or NaN step and halo saturate instead of overflowing", "huge or NaN device limits and offsets saturate", `ext_style_scale_test.cpp` "rescale by a factor past the int range clamps instead of overflowing"; fuzz seed `tests/fuzz/corpus/fuzz_tech_file/extract-hostile-numbers.tech`.

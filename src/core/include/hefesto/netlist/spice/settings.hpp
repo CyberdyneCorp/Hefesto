@@ -7,13 +7,19 @@
 // settings simulation-netlist-preparation overrides are values of this
 // type; render() takes one by value and never writes it back (D18).
 //
+// `scale` is also the M4 PDK startup setting `ext2spice scale` (user
+// decision M7-3, 2026-11-22: M4's partial ext2spice is folded into this
+// command).
+//
 // Owner: INTEGRATION (this header); SPICE (the members' semantics).
 
 #pragma once
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "hefesto/extflat/names.hpp"
 
@@ -43,6 +49,17 @@ struct SpiceSettings {
   bool blackbox = false;
   bool renumber = false;
   bool global = true;  // esMergeNames
+  /// Run flags that persist across runs, as Magic's globals do: `-B`
+  /// (esNoAttrs), `-d` (esDistrJunct), `-J hier|flat` (esHierAP). `-F`
+  /// applies to one run only.
+  bool no_attributes = false;
+  bool distributed_junctions = false;
+  bool hier_ap = false;
+  /// The `-p` search path and `-T` technology of the last run that gave
+  /// them (EFSearchPath, EFArgTech persist across runs); `default` clears
+  /// them.
+  std::vector<std::string> search_path;
+  std::optional<std::string> tech;
 
   friend bool operator==(const SpiceSettings&, const SpiceSettings&) = default;
 

@@ -63,6 +63,33 @@ or time. `EXTFLAT-READ-009` fails the read when a cap of
 and `EXTFLAT-READ-011` ignores a line of more than 128 tokens with a
 warning.
 
+### M7 additions (EXTFLAT, `openspec/changes/m7-extraction/design.md` D13)
+
+`extflat::read` and `extflat::flatten` read and flatten for the netlisters
+(EFReadFile with the netlister's dosubckt, `extresist` overlay, noscale and
+isspice; EFFlatBuild with the efFlatNodes path, couplings and the visits;
+EFFlatBuildOneLevel for hierarchical output). They reuse the codes above:
+`EXTFLAT-READ-002` also carries `Error: expected L and W, got ...`,
+`Error: expected resistance value, got ...`, `Bad terminal description for
+Short device` and, with `-v`, `Warning: duplicate node name <n>`, `Node <n>
+doesn't exist so creating it`, `Merged nodes <a> and <b>` and `Error:
+subcap has unknown node <n>`; `EXTFLAT-READ-007` also carries `cap(1)`,
+`cap(2)`, `resist(1)` and `resist(2)` lookups and the `kill` lookup of a
+device terminal, and in the efFlatNodes path the `connect(1)`/`connect(2)`
+warning of flat mode (none in one-level flattening). New codes:
+
+- `EXTFLAT-READ-013`: efFlatNodes with `EF_WARNABSTRACT` (antennacheck)
+  for each instance of a cell read with an `abstract` record, Magic's
+  `Error:  Cell <name> was extracted as an abstract view.` The run goes on.
+- `EXTFLAT-READ-014`: EFHierVisitDevs for a device of the definition being
+  netlisted whose terminal is on a killed node; the device is still written.
+- `EXTFLAT-READ-015`: `extflat::parse_common_args` (EFArgs) for an
+  unrecognised flag, a flag without its value (`-<c> requires a following
+  <what>`, `Bad argument <word>`) or `-h`; the text ends with EFArgs' usage.
+- `EXTFLAT-READ-016`: EFArgs' messages that do not fail the command:
+  `Warning: multiple input files specified; ignoring "<name>"` and the
+  efSymAdd rejections of a `-s` symbol.
+
 ## Table
 
 The table below is generated from the fragments:
@@ -89,4 +116,8 @@ fails when the two disagree.
 | `EXTFLAT-READ-010` | error | The `use` records of the `.ext` files form a cycle; the read fails. |
 | `EXTFLAT-READ-011` | warning | A `.ext` line has more than 128 tokens; the line is ignored with this warning, in both modes. |
 | `EXTFLAT-READ-012` | warning | A `device` record overlaps an incompatible device at the same place and is ignored. |
+| `EXTFLAT-READ-013` | warning | A cell of the flattened hierarchy was extracted as an abstract view (`Error:  Cell <name> was extracted as an abstract view.`). |
+| `EXTFLAT-READ-014` | warning | A device of a hierarchical netlist is connected to a killed node and is written anyway (`Error:  Device at (<x> <y>) is connected to one or more eliminated nodes.`). |
+| `EXTFLAT-READ-015` | error | A netlister argument is not recognised or lacks its value; the command prints its usage and fails. |
+| `EXTFLAT-READ-016` | warning | A netlister argument is ignored (a second root cell, or a `-s` symbol that is malformed or already defined). |
 <!-- END DIAGNOSTIC CODES -->

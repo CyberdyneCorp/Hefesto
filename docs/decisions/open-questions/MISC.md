@@ -71,13 +71,13 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-91: `antennacheck run` becomes the cell name
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: antennacheck's option table has a `[run] [options]` entry that is never matched; the word becomes the cell name, as for `ext2spice` (Q-NETLIST-13) and `ext2sim` (Q-NETLIST-49).
 - Evidence: extflat/EFantenna.c (CmdAntennaCheck); antenna-check "Antenna check command" (says `run` is matched by prefix, which holds only with magic-compat OFF)
 - As implemented (round R1, scaffold): compat, as Q-NETLIST-49.
 - Options: compat | replicate | fix
 - Recommendation: compat; the spec text should say that the prefix match holds with magic-compat OFF.
-- Resolution: open — needs a user decision.
+- Resolution: compat — as Q-NETLIST-13 and Q-NETLIST-49: with `magic-compat` ON `run` and any ambiguous first word are run arguments, so `antennacheck run` checks a cell named `run`, as Magic does; with it OFF the first word is matched by unique prefix against `run`, `debug` and `help`, `run` is a keyword and an ambiguous prefix prints `Ambiguous option: <w>`. In both modes a word that is not an option prefix is the cell name. Spec: `antenna-check` "Antenna check command". Approved 2026-11-22.
 
 ## mask-hints
 

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "case": "NL-CHK-01",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "reference_captured": false,
+  "hand_derived": {
+    "reason": "R7 option (a), approved 2026-11-22 (m7-decision-table M7-9; Q-NETLIST-50): Magic's standalone extcheck does not link at fc5daa9e (golden-capture runs 44961645329, 44964258826: build=unavailable), so expected/ is hand-derived from extcheck/extcheck.c and extflat/EFargs.c by tools/golden/authoring/netlist_cases.py extcheck_expected()",
+    "decisions": [
+      "Q-NETLIST-50"
+    ],
+    "derivation": "tools/golden/authoring/netlist_cases.py extcheck_expected()"
+  }
+}

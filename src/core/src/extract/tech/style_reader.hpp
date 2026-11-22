@@ -30,6 +30,7 @@
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/extract/tech/height_view.hpp"
+#include "hefesto/extract/tech/style.hpp"
 #include "hefesto/extract/tech/style_view.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -46,8 +47,9 @@ namespace hefesto::extract::detail {
                                                    diag::DiagnosticSink& sink,
                                                    const std::optional<std::string_view>& style);
 
-/// Which view's messages a pass reports.
-enum class Subset : std::uint8_t { types, heights };
+/// Which messages a pass reports: one view's subset, or every message of
+/// the full reader (load_styles; EXTTECH's handlers run only then).
+enum class Subset : std::uint8_t { types, heights, all };
 
 struct ReadOptions {
   std::optional<std::string_view> style;  // nullopt: the first declared style
@@ -55,12 +57,19 @@ struct ReadOptions {
   /// dscale of "Micron conversion": µm per lambda of the current cifoutput
   /// style at the unscaled grid (1.0 without one).
   float microns_per_lambda = 1.0F;
+  /// The magic-compat setting of a full read (Subset::all).
+  bool magic_compat = true;
 };
 
 /// Both tables of one style, from one pass.
 struct StyleTables {
   StyleTypes types;
   StyleHeights heights;
+  /// A full read only (Subset::all): the parsed style before micron
+  /// conversion (its active types before the non-electrical ones are
+  /// removed) and the types its lines mention, connected types included.
+  ExtStyle style;
+  tech::TypeMask mentioned;
 };
 
 /// The pass behind read_style and HeightView; nullopt as read_style.

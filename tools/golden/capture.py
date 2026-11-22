@@ -30,7 +30,8 @@ Usage:
 Selection (applied to the CASE_DIR list before anything runs):
     --only-captured    keep the cases that have expected/provenance.json
     --only-missing     keep the cases that do not (golden-capture.yml capture mode)
-A selection that leaves no case is not an error (exit 0, a note is printed).
+A selection that leaves no case is not an error (exit 0, a note is printed). A case whose case.toml
+sets ``hand_derived`` is never run (its reference program is not in the image); only --check keeps it.
 
 A case whose case.toml sets ``capture_blocked = "<reason>"`` (the reference tool crashes on it, its
 output differs between runs, an input is missing) is skipped with its reason and is not a failure;
@@ -59,6 +60,7 @@ import os
 import shutil
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes, compare_collected
@@ -242,13 +244,27 @@ def is_captured(case_dir: Path) -> bool:
     return (Path(case_dir) / "expected" / "provenance.json").is_file()
 
 
-def select_cases(case_dirs: list[Path], only_captured: bool, only_missing: bool) -> list[Path]:
-    """The case directories kept by --only-captured / --only-missing."""
+def is_hand_derived(case_dir: Path) -> bool:
+    """True for a case whose case.toml has `hand_derived`: its expected/ is written by its authoring
+    script because the reference program cannot run (m7-extraction design R7 option (a), M7-9)."""
+    case_toml = Path(case_dir) / "case.toml"
+    if not case_toml.is_file():
+        return False
+    with case_toml.open("rb") as handle:
+        return "hand_derived" in tomllib.load(handle)
+
+
+def select_cases(case_dirs: list[Path], only_captured: bool, only_missing: bool,
+                 keep_hand_derived: bool = False) -> list[Path]:
+    """The case directories kept by --only-captured / --only-missing. Hand-derived cases are never
+    captured or verified (the reference program they stand in for is not in the image); --check
+    keeps them."""
+    kept = [c for c in case_dirs if keep_hand_derived or not is_hand_derived(c)]
     if only_captured:
-        return [c for c in case_dirs if is_captured(c)]
+        return [c for c in kept if is_captured(c)]
     if only_missing:
-        return [c for c in case_dirs if not is_captured(c)]
-    return list(case_dirs)
+        return [c for c in kept if not is_captured(c)]
+    return kept
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -275,7 +291,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     pins = load_pins()
-    cases = select_cases(args.cases, args.only_captured, args.only_missing)
+    cases = select_cases(args.cases, args.only_captured, args.only_missing, keep_hand_derived=args.check)
     if not cases:
         print("no case selected")
         return 0

@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -84,6 +85,37 @@ struct ReadOptions {
   /// is reported in Netlist::selected_style. Unset: every style is unknown.
   std::function<std::optional<float>(std::string_view style)> style_units;
   ReadLimits limits;
+
+  // M7 additions (EFReadFile's arguments and the netlisters' options; M7
+  // design D13). The defaults are `def write`'s read (defWrite.c:251-293),
+  // so read_flat is unchanged.
+
+  /// EFReadFile's dosubckt: `port` records mark their cell a subcircuit.
+  bool subcircuits = true;
+  /// EFReadFile's resist (`extresist on`): read each cell's `.res.ext`
+  /// overlay after its `.ext` file and defer `equiv` records
+  /// (ext-flattening-read "Resistance-extraction overlay").
+  bool resist_overlay = false;
+  /// EFReadFile's noscale: coordinates stay in database units, `scale`
+  /// records leave the definitions' scale and the output scale alone, and
+  /// node locations are saved (EFSaveLocs).
+  bool noscale = true;
+  /// EFReadFile's isspice: ports equal ignoring case merge silently.
+  bool spice = false;
+  /// EFOutputFlags' short mode (`ext2spice short`): what an `equiv` or
+  /// `merge` of two ports with different indices builds.
+  enum class PortShorts : std::uint8_t { none, resistor, voltage };
+  PortShorts shorts = PortShorts::none;
+  /// `-v` (efWarn): the reader's optional warnings.
+  bool warnings = false;
+  /// extGetDevType: the tile type of a device name in the current
+  /// extraction style, nullopt when the style has none; and DBNumTypes,
+  /// from which unknown names are numbered. They build the device table's
+  /// keys ("<x>x<y>_<t>"), which decide the device visit order. Unset:
+  /// every device name is numbered from `tile_type_count` in order of first
+  /// appearance, and two records of one name at one place are duplicates.
+  std::function<std::optional<std::int32_t>(std::string_view device)> device_tile_type;
+  std::int32_t tile_type_count = 0;
 };
 
 /// One saved node location (EFNode efnode_disjoint, EFSaveLocs): the
@@ -120,6 +152,26 @@ struct FlatNode {
   std::vector<std::vector<std::string>> names;
   /// The saved locations (efnode_disjoint) in list order.
   std::vector<NodeLocation> locations;
+
+  // M7 additions (EFVisitNodes' arguments; M7 design D13). Each has a
+  // default member initializer so M6's positional initializers stay valid.
+
+  /// The capacitance to ground in aF as EFVisitNodes passes it: 0 for the
+  /// global substrate node, and in substrate compatibility mode (no
+  /// `substrate` record read) for a root-level `GND!` node.
+  float cap = 0.0F;
+  /// The node's own capacitance in aF, before that zeroing.
+  float raw_cap = 0.0F;
+  /// The lumped resistance estimate in mohm (EFNodeResist).
+  std::int32_t resistance = 0;
+  /// Area and perimeter per resistance class (efnode_pa).
+  std::vector<std::pair<std::int32_t, std::int32_t>> area_perim{};
+  /// The attribute texts in list order (efnode_attrs).
+  std::vector<std::string> attributes{};
+  /// EF_SUBS_PORT, EF_SUBS_NODE and EF_DEVTERM.
+  bool substrate_port = false;
+  bool device_substrate = false;
+  bool device_terminal_only = false;
 };
 
 /// The timestamp of one `.ext` file read (its `timestamp` record).
@@ -170,10 +222,34 @@ class Netlist {
   std::vector<FlatDevice> devices;
   std::vector<FlatCap> caps;
   std::vector<FlatResist> resists;
+  /// EFVisitSubcircuits' calls in its order (M7 round 2).
+  std::vector<FlatSubcircuit> subcircuits;
 
   /// The style a `style` record selected (ExtCompareStyle loads it in
   /// Magic, a session side effect the caller applies), if any.
   std::optional<std::string> selected_style;
+
+  // M7 additions (the extflat globals the netlisters read; M7 design D13).
+
+  /// The `parameters` declarations by device type name (efDevParamTable),
+  /// each list newest first (Q-NETLIST-9).
+  std::map<std::string, std::vector<DeviceParam>, std::less<>> device_params;
+  /// EFScale (S_out): the output scale, 1 when it changed between files.
+  float scale = 1.0F;
+  /// efScaleChanged.
+  bool scale_changed = false;
+  /// EFTech: the last `tech` record's name, if any.
+  std::optional<std::string> tech;
+  /// EFStyle: the extraction style named by the `.ext` files; cleared by an
+  /// unknown style (the netlisters then write zero parasitics).
+  std::optional<std::string> style;
+  /// EFCompat: no `substrate` record was read (substrate compatibility
+  /// mode, in which a root-level `GND!` is the substrate).
+  bool substrate_compat = true;
+  /// efResists: the sheet resistance of each resistance class (mohm/sq).
+  std::vector<std::int32_t> resist_classes;
+  /// efResistChanged: two files declared different resistance classes.
+  bool resist_changed = false;
 
  private:
   std::vector<FlatNode> nodes_;    // EFVisitNodes order

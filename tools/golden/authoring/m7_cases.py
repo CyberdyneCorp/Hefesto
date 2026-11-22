@@ -55,11 +55,21 @@ EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier miles
 CATALOGUE_TOTAL = 155  # design D21
 
 # Case IDs whose replay passes; each leaves the generated deferral block.
-REPLAYED: set[str] = set()
+REPLAYED: set[str] = {
+    netlist_cases.CHK_ID,  # SIM (task 12.4) with EXTFLAT (tasks 10.x)
+    # R2 integration (EXTFLAT, SPICE, SIM and EXTTECH merged)
+    *(f"NL-FLAT-{n:02d}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18)),  # 16: R2 fix pass (-s symbols)
+    *(f"NL-SIM-{n:02d}" for n in (1, 3, 4, 5)),
+    *(f"NL-SPICE-{n:02d}" for n in (2, 3, 7, 9, 10, 11, 12, 14)),
+}
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
-DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"]}
+DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS}
+
+# Cases whose expected/ is hand-derived instead of captured, with the approved decision that allows it
+# (design R7 option (a), m7-decision-table M7-9): capture.py never runs them, --exit-check lists them.
+HAND_DERIVED: dict[str, str] = {netlist_cases.CHK_ID: netlist_cases.CHK_HAND_DERIVED}
 
 
 def tcl_cases() -> list[tclcase.TclCase]:
@@ -109,6 +119,8 @@ def deviation_block() -> str:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
         reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
+        if case_id in HAND_DERIVED:
+            reason = f"expected/ hand-derived (design R7 option (a), M7-9); replays once {owner(case_id)} lands"
         decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
         entries.append(f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{reason}"\n')
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
@@ -127,7 +139,7 @@ def update_deviations(path: Path = DEVIATIONS) -> None:
 
 
 def dispatch_command(only_uncaptured: bool = False) -> str:
-    dirs = [case_dir(i) for i in authored_ids()]
+    dirs = [case_dir(i) for i in authored_ids() if i not in HAND_DERIVED]
     if only_uncaptured:
         dirs = [d for d in dirs if not (d / "expected" / "provenance.json").is_file()]
     cases = " ".join(str(d.relative_to(casegen.REPO)) for d in dirs)
@@ -140,9 +152,12 @@ def m7_deferrals() -> list[str]:
 
 def exit_check() -> int:
     """Design D25: every catalogue row authored, no M7 deferral left (the approved deviations of
-    task 17.7 carry decisions, not deferrals)."""
+    task 17.7 carry decisions, not deferrals). A hand-derived case is listed with its decision and
+    does not count as work left."""
     rows, missing, deferred = catalogue_rows(), not_authored(), m7_deferrals()
     print(f"M7 catalogue: {len(rows)} cases (design D21: {CATALOGUE_TOTAL})")
+    for case_id, reason in HAND_DERIVED.items():
+        print(f"hand-derived: {case_id} ({', '.join(DECISIONS.get(case_id, []))}): {reason}")
     for row, reason in missing.items():
         print(f"not authored: {row}: {reason}")
     for case_id in deferred:

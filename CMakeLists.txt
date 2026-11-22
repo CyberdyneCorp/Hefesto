@@ -91,6 +91,9 @@ if(NOT HEFESTO_IS_IOS)
   add_subdirectory(src/platform_posix)  # POSIX host services for the CLI and desktop
   add_subdirectory(src/platform_net)    # HTTPS Fetcher: URLSession (macOS) or libcurl (Linux)
   add_subdirectory(src/cli)
+  # Install tree: the CLI and the standalone extcheck (m7-extraction D20).
+  include(GNUInstallDirs)
+  install(TARGETS hefesto-cli hefesto-extcheck RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 else()
   add_subdirectory(tests/ios)  # link probe: the core links on iPadOS
 endif()

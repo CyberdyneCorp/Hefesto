@@ -97,9 +97,13 @@ In Tcl builds, a name SHALL be global only when it is in the Tcl `globals` array
 - **WHEN** `ext2sim format SU` is run
 - **THEN** the `.sim` header SHALL report `format: SU`
 
+Hefesto note (not part of Magic's behaviour): Magic's source tree also holds `ext2sim/sim2simp.c`, a filter that merges parallel transistors of a `.sim` file, but neither builds nor installs it (ext2sim/Makefile.in:20). Hefesto does not provide it (Q-NETLIST-48); `ext2sim merge conservative` or `ext2sim merge aggressive` merges parallel devices while the file is written, and with `magic-compat` OFF `ext2sim help` says so. The filter's behaviour is recorded, informatively, in capability `netlist-sim` "Deprecated sim2simp filter".
+
 ### Requirement: extcheck
 The standalone `extcheck` program SHALL flatten a `.ext` tree and print counts of devices, nodes, capacitors and resistors. It SHALL NOT be built by default. (src: extcheck/extcheck.c:93-102, Makefile.in:128-132)
 
 #### Scenario: Statistics
 - **WHEN** `extcheck top` is run
 - **THEN** it SHALL print lines such as "N devices" and "M nodes (G global, L local)"
+
+Hefesto note (not part of Magic's behaviour): Hefesto ships it as `hefesto-extcheck` (capability `netlist-extcheck`). At fc5daa9e Magic's `extcheck` does not link (M7 decision M7-9), and its standalone read would crash on any `scale` record (Q-NETLIST-50, fixed in Hefesto).
