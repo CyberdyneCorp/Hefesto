@@ -11,6 +11,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <atomic>
+#include <chrono>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -164,6 +166,99 @@ TEST_CASE("a cancelled OASIS write leaves no output file",
   CHECK(listed.value().size() == 2);  // m6open.tech and chip.gds: no temporary file is left
   m.write_host = {};
   m.emit_host = {};
+}
+
+TEST_CASE("an OASIS write runs through the desktop's write and emit hosts and opens again as OASIS",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  s.open({"/work/chip.gds"});
+  MaskJobHost host(s.core.editor().database_lock);
+  mask::MaskSession& m = s.core.editor().mask;
+  std::vector<std::string> labels;
+  m.write_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_job(MaskJobKind::write, label, work);
+  };
+  m.emit_host = [&host](std::string_view label, const mask::ProgressWork& work) {
+    return host.run_emit(label, work);
+  };
+  host.set_pump([] {}, std::chrono::milliseconds{0});
+  s.ok("oasis write /work/out");
+  CHECK(labels == std::vector<std::string>{"out.oas"});
+  CHECK_FALSE(host.busy());
+  REQUIRE(s.core.files().exists("/work/out.oas"));
+  CHECK(plan_open(s.core.files(), std::vector<std::string>{"/work/out.oas"}).lines ==
+        std::vector<std::string>{"oasis read /work/out.oas"});
+  m.write_host = {};
+  m.emit_host = {};
+}
+
+TEST_CASE("def read reports its progress to the desktop's read host",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  REQUIRE(s.core.files().write_atomic("/work/blk.def", "DESIGN blk ;\nDIEAREA ( 0 0 ) ( 10 10 ) ;\nEND DESIGN\n").ok());
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  std::vector<double> fractions;
+  // Each report pumps a frame on the command thread (interval 0), where the
+  // card reads the job's state.
+  host.set_pump(
+      [&] {
+        const std::optional<MaskJobState> state = host.state();
+        if (state && state->kind == MaskJobKind::read && state->fraction) fractions.push_back(*state->fraction);
+      },
+      std::chrono::milliseconds{0});
+  s.core.editor().mask.read_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_read(label, work);
+  };
+  s.ok("def read /work/blk.def");
+  CHECK(labels == std::vector<std::string>{"blk.def"});
+  CHECK_FALSE(fractions.empty());
+  CHECK(s.core.editor().cells.find("blk") != nullptr);
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.read_host = {};
+}
+
+TEST_CASE("lef read runs through the desktop's read host",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  REQUIRE(s.core.files()
+              .write_atomic("/work/cells.lef",
+                            "VERSION 5.8 ;\nMACRO lefcell\n  CLASS CORE ;\n  SIZE 1 BY 2 ;\nEND lefcell\nEND LIBRARY\n")
+              .ok());
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  host.set_pump([] {}, std::chrono::milliseconds{0});
+  s.core.editor().mask.read_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_read(label, work);
+  };
+  s.ok("lef read /work/cells.lef");
+  CHECK(labels == std::vector<std::string>{"cells.lef"});
+  CHECK(s.core.editor().cells.find("lefcell") != nullptr);
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.read_host = {};
+}
+
+TEST_CASE("lef write and def write run through the desktop's write host",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  OpenSession s;
+  s.open({"/work/chip.gds"});
+  MaskJobHost host(s.core.editor().database_lock);
+  std::vector<std::string> labels;
+  host.set_pump([] {}, std::chrono::milliseconds{0});
+  s.core.editor().mask.write_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    return host.run_job(MaskJobKind::write, label, work);
+  };
+  s.ok("lef write /work/toplef");
+  s.ok("def write /work/topdef");
+  CHECK(labels == std::vector<std::string>{"/work/toplef", "/work/topdef"});
+  CHECK(s.core.files().exists("/work/toplef.lef"));
+  CHECK(s.core.files().exists("/work/topdef.def"));
+  CHECK_FALSE(host.busy());
+  s.core.editor().mask.write_host = {};
 }
 
 TEST_CASE("the desktop adds no LEF, DEF or OASIS menu item (Open Question 5 (a))",
