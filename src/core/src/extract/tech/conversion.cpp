@@ -21,7 +21,10 @@
 //
 // Owner: EXTTECH.
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <utility>
 
 #include "hefesto/extract/tech/height_view.hpp"
@@ -33,6 +36,19 @@ namespace hefesto::extract {
 namespace {
 
 constexpr double dbl(float f) noexcept { return static_cast<double>(f); }
+
+// ExtTechScale's `(float)(scalen * scalen)`. The product is taken in float:
+// Magic's int product overflows for a factor above 46340 (undefined
+// behaviour, fixed in both modes).
+constexpr float square(std::int32_t v) noexcept { return static_cast<float>(v) * static_cast<float>(v); }
+
+// A float truncated to int as Magic's `int *= float` does, clamped to the
+// int range instead of overflowing (fixed in both modes).
+std::int32_t truncate_int(double v) noexcept {
+  constexpr double kMax = std::numeric_limits<std::int32_t>::max();
+  constexpr double kMin = std::numeric_limits<std::int32_t>::min();
+  return static_cast<std::int32_t>(std::clamp(v, kMin, kMax));
+}
 
 // How many times Magic's per-record loops visit a pattern's shared list.
 std::size_t visits(const DevicePattern& d, bool magic_compat) {
@@ -207,17 +223,17 @@ ExtStyle convert(const ExtStyle& in, const mask::OutputStyle* style, diag::Diagn
 // magic-compat ON, milli-units kept exact with it OFF).
 void scale_param(DeviceParam& p, std::int32_t n, std::int32_t d, bool magic_compat) {
   const bool area = area_param(p);
-  const auto sqn = static_cast<float>(n * n);
-  const auto sqd = static_cast<float>(d * d);
+  const float sqn = square(n);
+  const float sqd = square(d);
   const auto scale = [&](double v) -> double {
     if (!magic_compat) {
       return area ? v * dbl(sqd) / dbl(sqn) : v * d / n;
     }
     if (area) {
-      const auto grown = static_cast<std::int32_t>(static_cast<float>(v) * sqd);
-      return static_cast<std::int32_t>(static_cast<float>(grown) / sqn);
+      const std::int32_t grown = truncate_int(dbl(static_cast<float>(v) * sqd));
+      return truncate_int(dbl(static_cast<float>(grown) / sqn));
     }
-    return (static_cast<std::int32_t>(v) * d) / n;
+    return truncate_int(static_cast<double>(static_cast<std::int64_t>(truncate_int(v)) * d / n));
   };
   if (p.offset != 0.0) {
     p.offset = scale(p.offset);
@@ -230,8 +246,8 @@ void scale_param(DeviceParam& p, std::int32_t n, std::int32_t d, bool magic_comp
 }
 
 void scale_device(DevicePattern& dev, std::int32_t n, std::int32_t d, bool magic_compat) {
-  const auto sqn = static_cast<float>(n * n);
-  const auto sqd = static_cast<float>(d * d);
+  const float sqn = square(n);
+  const float sqd = square(d);
   if (magic_compat) {
     dev.perimeter_cap *= dbl(sqn);
     dev.perimeter_cap /= dbl(sqd);
@@ -249,8 +265,8 @@ void scale_device(DevicePattern& dev, std::int32_t n, std::int32_t d, bool magic
 }
 
 void scale_caps(CapRules& caps, std::int32_t n, std::int32_t d) {
-  const auto sqn = static_cast<float>(n * n);
-  const auto sqd = static_cast<float>(d * d);
+  const float sqn = square(n);
+  const float sqd = square(d);
   const auto area = [&](double& v) {
     v *= dbl(sqn);
     v /= dbl(sqd);
@@ -338,8 +354,8 @@ ExtStyle ExtStyle::rescale(std::int32_t n, std::int32_t d, const compat::CompatS
     return out;
   }
   const bool on = compat.magic_compat;
-  const auto sqn = static_cast<float>(n * n);
-  const auto sqd = static_cast<float>(d * d);
+  const float sqn = square(n);
+  const float sqd = square(d);
   out.units_per_lambda = out.units_per_lambda * static_cast<float>(n) / static_cast<float>(d);
   scale_lengths(out, n, d, on);
   for (DevicePattern& dev : out.devices) {

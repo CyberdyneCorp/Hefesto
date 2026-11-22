@@ -215,8 +215,8 @@ void FlatWriter::merge_devices() {
       continue;
     }
     Candidate fp{i,
-                 static_cast<float>(static_cast<float>(dev.length) * dev.scale),
-                 static_cast<float>(static_cast<float>(dev.width) * dev.scale),
+                 static_cast<float>(dev.length) * dev.scale,
+                 static_cast<float>(dev.width) * dev.scale,
                  find_node(dev.terminals[0].node),
                  find_node(dev.terminals[1].node),
                  find_node(dev.terminals[dev.terminals.size() >= 3 ? 2 : 1].node),

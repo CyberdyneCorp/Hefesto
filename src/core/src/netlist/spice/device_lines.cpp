@@ -15,6 +15,7 @@
 // Owner: SPICE.
 
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 
 #include "netlist/spice/flat_writer.hpp"
@@ -399,7 +400,7 @@ void mos_substrate_ap(const Dev& d, std::optional<std::size_t> sub) {
   if (info.substrate_class < 0) {
     const auto& names = w.in.type_names;
     const auto it = std::find(names.begin(), names.end(), d.dev.type);
-    const long index = it == names.end() ? -1 : static_cast<long>(it - names.begin());
+    const std::ptrdiff_t index = it == names.end() ? -1 : it - names.begin();
     w.warn("error: subap for devtype " + std::to_string(index) + " unspecified");
     w.out += "asub=0 psub=0";
   } else if (sub) {

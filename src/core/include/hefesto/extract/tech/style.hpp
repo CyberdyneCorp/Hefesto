@@ -330,6 +330,20 @@ struct TypeHeightThickness {
   friend bool operator==(const TypeHeightThickness&, const TypeHeightThickness&) = default;
 };
 
+namespace detail {
+
+// A per-type table with every entry `value`. At namespace scope, not a
+// private member: older Clang rejects a member template used in a default
+// member initializer before the class is complete (-Wundefined-inline).
+template <typename T>
+constexpr std::array<T, tech::kMaxTileTypes> filled(T value) noexcept {
+  std::array<T, tech::kMaxTileTypes> out{};
+  out.fill(value);
+  return out;
+}
+
+}  // namespace detail
+
 /// ExtCurStyle.
 class ExtStyle {
  public:
@@ -366,9 +380,9 @@ class ExtStyle {
   // Per type (index = tech::TileType): exts_typeToResistClass (-1 = none),
   // exts_sheetResist, exts_cornerChop, exts_viaResist, and
   // exts_typesResistChanged (empty until the reader fills it).
-  std::array<std::int32_t, tech::kMaxTileTypes> resist_class = filled(std::int32_t{-1});
+  std::array<std::int32_t, tech::kMaxTileTypes> resist_class = detail::filled(std::int32_t{-1});
   std::array<std::int32_t, tech::kMaxTileTypes> sheet_resistance{};
-  std::array<float, tech::kMaxTileTypes> corner_chop = filled(1.0F);
+  std::array<float, tech::kMaxTileTypes> corner_chop = detail::filled(1.0F);
   std::array<std::int32_t, tech::kMaxTileTypes> via_resistance{};
   std::vector<tech::TypeMask> resist_changed;
   CapRules caps;
@@ -414,13 +428,6 @@ class ExtStyle {
   friend bool operator==(const ExtStyle&, const ExtStyle&) = default;
 
  private:
-  template <typename T>
-  static constexpr std::array<T, tech::kMaxTileTypes> filled(T value) noexcept {
-    std::array<T, tech::kMaxTileTypes> out{};
-    out.fill(value);
-    return out;
-  }
-
   std::vector<DeviceInfo> device_info_;
 };
 

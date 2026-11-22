@@ -9,8 +9,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -187,6 +189,19 @@ TEST_CASE("rescale: gscap and parameter limits per mode (Q-EXTRACT-3, Q-EXTRACT-
   const extract::ExtStyle b = finished(off).rescale(2, 3, compat_mode(false));
   CHECK(only_record(b, type_of(*off.tech, "nfet")).params[0].maximum == 3000.0 * 3 / 2);
   CHECK(only_record(b, type_of(*off.tech, "pfet")).perimeter_cap == 12.0 * 2 / 3);
+}
+
+TEST_CASE("rescale by a factor past the int range clamps instead of overflowing",
+          "[cap:extract-tech-section][req:Scaling to internal units]") {
+  // Magic computes scalen * scalen and the integer limits in int, which
+  // overflows for a large `scalegrid` factor (undefined behaviour); both
+  // modes take the squares in float and clamp the limits to the int range.
+  const std::string body = " style s\n" + kOrdered + " device msubcircuit n nfet ndiff pwell VSUBS l<=3 a<=5 l=l a=a\n";
+  const Loaded on = load(body, true);
+  const extract::ExtStyle a = finished(on).rescale(1, 1000000000, compat_mode(true));
+  constexpr double kIntMax = std::numeric_limits<std::int32_t>::max();
+  CHECK(only_record(a, type_of(*on.tech, "nfet")).params[0].maximum == kIntMax);
+  CHECK(only_record(a, type_of(*on.tech, "nfet")).params[1].maximum == kIntMax);
 }
 
 TEST_CASE("rescale of step and halo: DBScaleValue ON, rounded exact values OFF (Q-EXTRACT-19)",
