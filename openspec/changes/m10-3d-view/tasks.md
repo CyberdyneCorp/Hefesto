@@ -130,8 +130,9 @@ How this plan runs:
 
 ## 13. PERF (P1, P2)
 
-- [ ] 13.1 (P1) Add `bench/view3d/` (synthetic 1M-rectangle region and the reference layouts) and the `perf.yml` `view3d-bench` job: build time and memory gated, frame time recorded (design D17). Verify a CI run with the numbers.
+- [x] 13.1 (P1) Add `bench/view3d/` (synthetic 1M-rectangle region and the reference layouts) and the `perf.yml` `view3d-bench` job: build time and memory gated, frame time recorded (design D17). Verify a CI run with the numbers.
   As landed (round 2): `bench/view3d/` (`hefesto-bench-view3d`, option `HEFESTO_BUILD_VIEW3D_BENCH`; workloads synthetic, array, block), `view3d_gate.py` with its unit tests and `gates.json`, and the `perf.yml` `view3d-bench` job. Local Release numbers (synthetic: 1.12 s median, 155.5 B/rect, D6 memory target missed) are in the conformance doc "Performance". Left open: the CI run with the numbers (dispatch by INTEGRATION) and gates for array and block from that run.
+  Round 2 (INTEGRATION): CI run with the numbers: perf run 44969020740, job view3d-bench green. synthetic 1.13 s / 155.5 B/rect, array 24.0 s / 149.0 B/rect (8.8M rectangles), block 0.167 s / 172.9 B/rect; gates for all three set in `gates.json` from that run and recorded in the conformance doc. Done. The D6 memory target (64 B/rect) stays missed (MESH open item), and the array build is about 2.5 times slower per rectangle than synthetic (349 layers).
 - [ ] 13.2 (P1) Measure frame rate on the M3 Pro development machine and on the `hefesto-performance` reference hardware when available; record the results with the Raven confirmation checks. Verify that ≥ 30 fps at 1M rectangles is met on the M3 Pro (the P1 exit gate, design D19); the other D6 numbers (60 fps on the M1, first chunks within 200 ms) and the reference-hardware runs are recorded, a miss being an open item.
 - [ ] 13.3 (P2) Re-run 13.1 and 13.2 in mask-layer mode. Verify the recorded numbers.
 

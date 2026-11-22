@@ -1,14 +1,25 @@
 {
   "_comment": [
     "Gates of bench/view3d/view3d_gate.py (m10-3d-view design D6, D17, task 13.1).",
-    "synthetic: measured 2026-11-21 on the M-series development Mac (Release): median build 1.12 s for 1,004,944 rectangles,",
-    "model 155.5 bytes per rectangle (deterministic; the D6 target of 64 is missed, recorded in",
-    "docs/design/m10-3d-ui-conformance.md 'Performance'). max_build_s allows for the slower ubuntu-24.04 runner.",
-    "array and block are reported only until their first CI run gives numbers to gate on."
+    "First CI numbers (perf run 44969020740, ubuntu-24.04, Release): synthetic median 1.13 s, 155.5 B/rect;",
+    "array (100 x 100 dfxtp_1, 8,827,796 rectangles) median 24.0 s, 149.0 B/rect; block (446 cells, 289,535",
+    "rectangles) median 0.167 s, 172.9 B/rect. Time gates allow about 50 % over the first run; the memory gates",
+    "stay above the measured values while the D6 target of 64 B/rect is missed (docs/design/m10-3d-ui-conformance.md",
+    "'Performance')."
   ],
   "synthetic": {
     "min_rects": 1000000,
-    "max_build_s": 4.0,
+    "max_build_s": 1.75,
     "max_model_bytes_per_rect": 170
+  },
+  "array": {
+    "min_rects": 8000000,
+    "max_build_s": 36.0,
+    "max_model_bytes_per_rect": 170
+  },
+  "block": {
+    "min_rects": 250000,
+    "max_build_s": 0.5,
+    "max_model_bytes_per_rect": 190
   }
 }
