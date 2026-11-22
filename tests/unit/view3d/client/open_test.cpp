@@ -190,8 +190,8 @@ TEST_CASE("the wrapper's scrollupdate tag on the 3D window prints Magic's *bypas
 
 TEST_CASE("a closed 3D window's command answers invalid command name in both modes",
           "[cap:view-3d][req:Opening the 3D window]") {
-  // Regression (J5): Magic's `.magic3d <cmd>` after `closewindow` reaches a
-  // freed client record; Hefesto keeps the command and refuses it.
+  // Regression: Magic deletes the command on close (GrTOGLDelete), so
+  // calling it is Tcl's "invalid command name", never a freed window.
   for (const bool compat : {true, false}) {
     ClientSession s(compat);
     s.ok("specialopen wind3d c3d");
@@ -206,27 +206,23 @@ TEST_CASE("a closed 3D window's command answers invalid command name in both mod
   }
 }
 
-TEST_CASE("reopening a closed 3D window's toolkit path follows J5", "[cap:view-3d][req:Opening the 3D window]") {
-  SECTION("magic-compat ON: Magic's refusal") {
-    ClientSession s(true);
+TEST_CASE("a closed 3D window's toolkit path is no command and reopens in both modes",
+          "[cap:view-3d][req:Opening the 3D window]") {
+  // Regression (Q-MISC-80, MISC-3D-12): Magic's closewindow ends in
+  // GrTOGLDelete, which deletes the path's command and destroys the window,
+  // so `info commands` no longer lists it and a second specialopen opens.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s(compat);
     s.ok("specialopen wind3d c3d");
+    CHECK(s.value("info commands .magic3d") == ".magic3d");
     s.w3d("closewindow");
-    const auto again = s.run("specialopen wind3d c3d");
-    CHECK(first_error(again) == "VIEW3D-CLIENT-003: Could not create a new Tk window");
-    CHECK_FALSE(s.editor.view3d.has_window());
-    // The cell is checked first, as W3Dcreate does.
-    CHECK(first_error(s.run("specialopen wind3d nosuchcell")) ==
-          "VIEW3D-CLIENT-003: Cells cannot be created in the 3D window.");
-    // Another toolkit path opens.
-    REQUIRE(s.run("specialopen wind3d c3d .other").ok());
-    CHECK(s.value(".other level") == "1");
-  }
-  SECTION("magic-compat OFF: the window reopens") {
-    ClientSession s(false);
-    s.ok("specialopen wind3d c3d");
-    s.w3d("closewindow");
+    CHECK(s.value("info commands .magic3d").empty());
     REQUIRE(s.run("specialopen wind3d c3d").ok());
+    CHECK(s.value("info commands .magic3d") == ".magic3d");
     CHECK(s.value(".magic3d level") == "1");
+    // One window at a time still holds.
+    CHECK(first_error(s.run("specialopen wind3d c3d .other")) == "VIEW3D-CLIENT-002: Only one 3D window allowed.");
   }
 }
 
