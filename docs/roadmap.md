@@ -278,6 +278,21 @@ Depends on `mask-hints`, which is completed in M3.
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
 
+**Status (2026-11-22): plan drafted, with no decision approved yet.**
+- The plan is OpenSpec change [`openspec/changes/m9-lvs-simulation`](../openspec/changes/m9-lvs-simulation/README.md).
+- Its decisions are in [`docs/decisions/m9-decision-table.md`](decisions/m9-decision-table.md). They cover:
+  - the 34 entries that `check_milestone_readiness.py --milestone M9` reports as blocking;
+  - Q-SIM-1 and the rest of Q-SIMADV-5;
+  - audit decisions D-22 to D-28;
+  - 18 entries the plan proposes (Q-LVS-30 to -36, Q-SIM-20 to -28, Q-SIMADV-13, Q-SCHEM-39);
+  - four planning questions.
+- Recommended direction:
+  - LVS is clean-room under a two-team process (Q-LVS-30).
+  - ngspice runs in the worker `hefesto-simd`, which alone loads a shared `libngspice-hefesto`. That worker is the licence and crash boundary on desktop (Q-SIM-20, -21).
+  - D-28 is split: the desktop part is decided in M9, the iPad part before M14 (Q-SIM-26).
+  - Desktop Beta is signed off on one inverter flow per PDK (Q-SIM-27).
+- Implementation starts after gate G0, once the user has approved the table.
+
 **Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`, `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`
 
 **Deliverables**
