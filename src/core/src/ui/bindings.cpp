@@ -279,7 +279,10 @@ void apply(editor::EditorState& editor, const StartupBinding& line) {
     return;
   }
   if (const ClientInfo* client = find_client_exact(line.table); client != nullptr && !client_available(*client)) {
-    return;  // a module this build lacks (wind3d, netlist): Magic's `macro` ignores its bindings
+    return;  // a module this build lacks (netlist): Magic's `macro` ignores its bindings
+  }
+  if (line.table == "wind3d") {
+    return;  // install_wind3d_bindings, when a 3D window opens
   }
   const std::string table = line.table.empty() ? macro_table_for(editor, "layout") : std::string{line.table};
   define(editor, table, line.key, line.text, line.interactive);
@@ -306,6 +309,18 @@ void install_defaults(editor::EditorState& editor) {
 void ensure_defaults(editor::EditorState& editor) {
   if (editor.tools.tools().empty()) {
     install_defaults(editor);
+  }
+}
+
+void install_wind3d_bindings(editor::EditorState& editor) {
+  for (const StartupBinding& line : kStartup) {
+    if (line.table != "wind3d") {
+      continue;
+    }
+    const auto key = parse_key_name(line.key);
+    if (key.ok() && editor.macros.find(line.table, key.value()) == nullptr) {
+      define(editor, line.table, line.key, line.text, line.interactive);
+    }
   }
 }
 

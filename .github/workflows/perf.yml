@@ -59,12 +59,24 @@
 #                count for information. Results: the job summary and the artifact "oasis-bench".
 #                Until a baseline is recorded, a workload is reported as "no baseline" and passes;
 #                docs/design/m6-ui-conformance.md "Performance" has the recording procedure.
+#   view3d-bench The 3D mesh benchmark (openspec/changes/m10-3d-view design D6, D17, task 13.1;
+#                hefesto-performance "Interactive frame rate"): a Release build of
+#                bench/view3d/hefesto-bench-view3d builds the layout-layer mesh of a synthetic
+#                1M-rectangle region and of the sky130 reference layouts (the 100 x 100 dfxtp_1
+#                array and the all-cells block). bench/view3d/view3d_gate.py gates the median
+#                build time and the model's memory per rectangle (bench/view3d/gates.json); the GPU
+#                size estimate, the peak resident set and the frame time (once Mesh3dRenderer
+#                exists, task 5.3) are recorded for information. Results: the job summary and the
+#                artifact "view3d-bench"; recorded in docs/design/m10-3d-ui-conformance.md
+#                "Performance".
 #
 # `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
 # only when a DRC path changed, the GDS jobs only when a GDS, mask, CIF or use-index path
-# changed, lefdef-bench only when a LEF, DEF, cell, db, tech or GDS stream path changed and
-# oasis-bench only when an OASIS or GDS read/write/stream path changed (the workflow-level path
-# lists carry cell/** and tech/** so such a pull request starts the workflow at all); on main, the schedule and workflow_dispatch every job runs.
+# changed, lefdef-bench only when a LEF, DEF, cell, db, tech or GDS stream path changed,
+# oasis-bench only when an OASIS or GDS read/write/stream path changed and view3d-bench only when
+# a view3d, mesh-database or bench/view3d path changed (the workflow-level path lists carry cell/**
+# and tech/** so such a pull request starts the workflow at all); on main, the schedule and
+# workflow_dispatch every job runs.
 
 name: Performance
 
@@ -106,6 +118,9 @@ on:
       - src/core/src/tech/**
       - bench/lefdef/**
       - bench/oasis/**
+      - src/core/include/hefesto/view3d/**
+      - src/core/src/view3d/**
+      - bench/view3d/**
       - .github/workflows/perf.yml
   pull_request:
     paths:
@@ -142,6 +157,9 @@ on:
       - src/core/src/tech/**
       - bench/lefdef/**
       - bench/oasis/**
+      - src/core/include/hefesto/view3d/**
+      - src/core/src/view3d/**
+      - bench/view3d/**
       - .github/workflows/perf.yml
   schedule:
     - cron: "41 3 * * 2"
@@ -170,6 +188,7 @@ jobs:
       gds: ${{ steps.select.outputs.gds }}
       lefdef: ${{ steps.select.outputs.lefdef }}
       oasis: ${{ steps.select.outputs.oasis }}
+      view3d: ${{ steps.select.outputs.view3d }}
       rt_any: ${{ steps.rt.outputs.rt_any }}
       rt_matrix: ${{ steps.rt.outputs.rt_matrix }}
     steps:
@@ -188,7 +207,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$EVENT" != "pull_request" ]; then
-            { echo "drc=true"; echo "gds=true"; echo "lefdef=true"; echo "oasis=true"; } >> "$GITHUB_OUTPUT"
+            { echo "drc=true"; echo "gds=true"; echo "lefdef=true"; echo "oasis=true"; echo "view3d=true"; } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed.txt
@@ -196,6 +215,7 @@ jobs:
           gds=false
           lefdef=false
           oasis=false
+          view3d=false
           while IFS= read -r path; do
             case "$path" in
               src/core/include/hefesto/drc/*|src/core/src/drc/*|src/core/src/db/*|src/core/include/hefesto/db/*|\
@@ -228,11 +248,17 @@ jobs:
                 oasis=true ;;
             esac
             case "$path" in
-              tools/golden/container/*|.github/workflows/perf.yml) drc=true; gds=true; lefdef=true; oasis=true ;;
+              src/core/include/hefesto/view3d/*|src/core/src/view3d/*|src/core/src/db/*|src/core/include/hefesto/db/*|\
+              bench/view3d/*)
+                view3d=true ;;
+            esac
+            case "$path" in
+              tools/golden/container/*) drc=true; gds=true; lefdef=true; oasis=true ;;
+              .github/workflows/perf.yml) drc=true; gds=true; lefdef=true; oasis=true; view3d=true ;;
             esac
           done < changed.txt
-          { echo "drc=$drc"; echo "gds=$gds"; echo "lefdef=$lefdef"; echo "oasis=$oasis"; } >> "$GITHUB_OUTPUT"
-          echo "::notice::DRC jobs: $drc; GDS jobs: $gds; lefdef-bench: $lefdef; oasis-bench: $oasis"
+          { echo "drc=$drc"; echo "gds=$gds"; echo "lefdef=$lefdef"; echo "oasis=$oasis"; echo "view3d=$view3d"; } >> "$GITHUB_OUTPUT"
+          echo "::notice::DRC jobs: $drc; GDS jobs: $gds; lefdef-bench: $lefdef; oasis-bench: $oasis; 3D bench: $view3d"
       - name: Shards of the MASK-RT cases
         id: rt
         shell: bash
@@ -1233,5 +1259,92 @@ jobs:
         with:
           name: oasis-bench
           path: oasis-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  view3d-bench:
+    name: 3D mesh build time and memory (bench/view3d)
+    needs: plan
+    if: needs.plan.outputs.view3d == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja and the OpenSSL headers for libcurl
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Unit tests of the gate script
+        run: python3 -m unittest discover -s bench/view3d/tests -v
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      # The display styles of sky130A's styletype (mos.OpenGL.dstyle and its cmap) come from Magic's scmos/,
+      # the cursor glyphs (color.glyphs) from graphics/.
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli and the 3D benchmark (Release)
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DHEFESTO_BUILD_VIEW3D_BENCH=ON
+          cmake --build --preset linux-release --target hefesto-cli hefesto-bench-view3d
+
+      - name: Fetch or verify sky130
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the meshes (synthetic 1M rectangles, dfxtp_1 array, all-cells block)
+        shell: bash
+        run: |
+          bench=build/linux-release/bench/view3d/hefesto-bench-view3d
+          pdk="${{ steps.keys.outputs.sky130_path }}/sky130A"
+          mkdir -p view3d-bench
+          # One process per workload, so each peak resident set is its own.
+          "$bench" --workload synthetic --rects 1000000 --repeat 5 --json view3d-bench/synthetic.json > /dev/null
+          for w in array block; do
+            "$bench" --workload "$w" --repeat 5 --pdk-root "$pdk" --style-dir build/ref/magic/scmos --style-dir build/ref/magic/graphics \
+              --json "view3d-bench/$w.json" > /dev/null
+          done
+
+      - name: Gate build time and memory
+        shell: bash
+        run: |
+          {
+            echo "## 3D mesh benchmark"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+          python3 bench/view3d/view3d_gate.py view3d-bench/synthetic.json view3d-bench/array.json \
+            view3d-bench/block.json --summary "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: view3d-bench
+          path: view3d-bench
           if-no-files-found: ignore
           retention-days: 90

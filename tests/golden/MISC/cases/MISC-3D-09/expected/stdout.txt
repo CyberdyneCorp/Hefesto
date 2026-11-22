@@ -1,0 +1,99 @@
+Use openwrapper to create a new GUI-based layout window
+Use closewrapper to remove a new GUI-based layout window
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 22 00:37:16 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+New windows will not have a title caption.
+New windows will not have scroll bars.
+New windows will not have a border.
+Handling file entry input/commands.tcl extension .tcl
+The following types are not handled by extraction and will be treated as non-electrical types:
+    metal2 
+Cell codd read from path input
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.030 x 1.530   (-0.450, -0.210), ( 2.580,  1.320)  4.636     
+lambda:      101 x 51      (   -15, -7    ), (    86,  44   )  5151      
+0 {window ".render.magic" isn't a top-level window}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-105.0 -54.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.006000600289553404 75.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-63.337501525878906 29.324996948242188 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.012001200579106808 225.0}
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-21.11250114440918 9.774999618530273 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.03600360080599785 75.0}
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-63.337501525878906 29.32499885559082 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.012001200579106808 225.0}
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-21.11250114440918 9.774999618530273 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.03600360080599785 75.0}
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-63.337501525878906 29.32499885559082 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.012001200579106808 225.0}
+0 {}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.0 0.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {-105.0 -54.0 0.0}
+ 'logcommands' 'suspend' at (20, 20)
+ 'logcommands' 'resume' at (20, 20)
+0 {0.006000600289553404 75.0}

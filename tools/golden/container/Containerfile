@@ -185,8 +185,10 @@ RUN bash /opt/src/write_manifest.sh "${MAGIC_COMMIT}" "${PREFIX}"
 # The ARG is declared here, after every other step, so both images share the layers above. Magic's
 # configure silently drops OpenGL when the GL headers are missing, so the build checks that -DOGL
 # reached defs.mak, that Xvfb offers GLX on llvmpipe, and that a 3D window opens and answers `view`.
+# The step also builds the polygon-recording shim of the geometry cases (gl_capture/gl_capture.c, task
+# 12.4) as ${PREFIX}/lib/gl_capture.so and checks that, preloaded into the smoke run, it logs polygons.
 ARG WITH_OPENGL=0
-COPY container/magic_gl_smoke.tcl /opt/src/
+COPY container/magic_gl_smoke.tcl gl_capture/gl_capture.c /opt/src/
 RUN set -eux; \
     if [ "${WITH_OPENGL}" = "1" ]; then \
       apt-get -o Acquire::Check-Valid-Until=false update; \
@@ -206,6 +208,13 @@ RUN set -eux; \
       timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" \
           "${PREFIX}/bin/magic" -d OGL -noconsole -norc /opt/src/magic_gl_smoke.tcl | tee /tmp/smoke.txt; \
       grep -qx 'magic-gl-smoke 0 {0.0 10.0 0.0}' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
+      cc -std=gnu99 -O1 -Wall -Werror -shared -fPIC -o "${PREFIX}/lib/gl_capture.so" /opt/src/gl_capture.c -ldl -Wl,--no-as-needed -lGL; \
+      HEFESTO_GL_CAPTURE=/tmp/gl.log timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24 +extension GLX" \
+          env LD_PRELOAD="${PREFIX}/lib/gl_capture.so" \
+          "${PREFIX}/bin/magic" -d OGL -noconsole -norc /opt/src/magic_gl_smoke.tcl | tee /tmp/smoke.txt; \
+      grep -qx 'magic-gl-smoke 0 {0.0 10.0 0.0}' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
+      head -n 1 /tmp/gl.log | grep -qx 'gl-capture 1'; grep -q '^poly ' /tmp/gl.log; \
+      grep -c '^poly ' /tmp/gl.log; rm -f /tmp/gl.log; \
     fi
 
 LABEL org.opencontainers.image.title="hefesto-golden" \

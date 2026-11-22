@@ -1,0 +1,204 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// hefesto-bench-view3d: the 3D mesh benchmark (openspec/changes/m10-3d-view
+// design D6, D17, task 13.1; hefesto-performance "Interactive frame rate").
+//
+// Loads one workload (workloads.hpp), builds its layout-layer mesh over the
+// cell's bounding box grown by 1 (no cut box, as an opened window without
+// one) --repeat times, and prints a JSON report:
+//   - build time of each run (wall clock; the mesh builder is single-threaded);
+//   - the model's counts: rectangle, side and triangle instances and chunks;
+//   - model_bytes: the model's CPU memory (vector capacities and chunk records,
+//     excluding the database), and per meshed rectangle (D6 target <= 64);
+//   - gpu_bytes_estimate: the D6 instance encoding (rectangle 20 bytes, side
+//     20 bytes, triangle as stored), per meshed rectangle (D6 target <= 96),
+//     information until the renderer (task 5.3) uploads real buffers;
+//   - peak_rss_bytes: the process's peak resident set;
+//   - frame_time_ms: null with a note until Mesh3dRenderer exists (task 5.3).
+// bench/view3d/view3d_gate.py checks the gated numbers against gates.json.
+//
+//   hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]
+//                        [--pdk-root DIR] [--style-dir DIR ...] [--json FILE]
+
+#include <sys/resource.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "hefesto/view3d/mesh/build.hpp"
+#include "workloads.hpp"
+
+namespace {
+
+namespace bench = hefesto::bench_view3d;
+namespace view3d = hefesto::view3d;
+using nlohmann::json;
+
+struct Options {
+  bench::WorkloadOptions workload;
+  int repeat = 3;
+  std::string json_path;
+};
+
+void usage() {
+  std::cerr << "usage: hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]\n"
+               "                            [--pdk-root DIR] [--style-dir DIR]... [--json FILE]\n";
+}
+
+bool apply_option(Options& o, std::string_view flag, const char* value) {
+  if (flag == "--workload") {
+    o.workload.name = value;
+  } else if (flag == "--rects") {
+    o.workload.rects = std::strtoull(value, nullptr, 10);
+  } else if (flag == "--repeat") {
+    o.repeat = std::max(1, std::atoi(value));
+  } else if (flag == "--pdk-root") {
+    o.workload.pdk_root = value;
+  } else if (flag == "--style-dir") {
+    o.workload.style_dirs.emplace_back(value);
+  } else if (flag == "--json") {
+    o.json_path = value;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+std::optional<Options> parse(int argc, char** argv) {
+  Options o;
+  for (int i = 1; i < argc; i += 2) {
+    if (i + 1 >= argc || !apply_option(o, argv[i], argv[i + 1])) {
+      return std::nullopt;
+    }
+  }
+  return o;
+}
+
+struct Counts {
+  std::uint64_t rects = 0;
+  std::uint64_t sides = 0;
+  std::uint64_t triangles = 0;
+  std::uint64_t model_bytes = 0;
+};
+
+Counts count(const view3d::MeshModel& model) {
+  Counts c;
+  c.model_bytes = sizeof(view3d::MeshModel) + model.chunks.capacity() * sizeof(view3d::Chunk);
+  for (const view3d::Chunk& chunk : model.chunks) {
+    c.rects += chunk.rects.size();
+    c.sides += chunk.sides.size();
+    c.triangles += chunk.triangles.size();
+    c.model_bytes += chunk.rects.capacity() * sizeof(view3d::RectInstance) +
+                     chunk.sides.capacity() * sizeof(view3d::SideInstance) +
+                     chunk.triangles.capacity() * sizeof(view3d::Triangle);
+  }
+  return c;
+}
+
+// The D6 encoding: a rectangle is four float32 corners and a 16-bit layer
+// (20 bytes), a side a segment plus layer and flags (20 bytes, aligned).
+constexpr std::uint64_t kGpuRectBytes = 20;
+constexpr std::uint64_t kGpuSideBytes = 20;
+
+std::uint64_t peak_rss_bytes() {
+  rusage usage{};
+  (void)getrusage(RUSAGE_SELF, &usage);
+#if defined(__APPLE__)
+  return static_cast<std::uint64_t>(usage.ru_maxrss);  // bytes
+#else
+  return static_cast<std::uint64_t>(usage.ru_maxrss) * 1024U;  // kilobytes
+#endif
+}
+
+double per_rect(std::uint64_t bytes, std::uint64_t rects) {
+  return rects == 0 ? 0.0 : static_cast<double>(bytes) / static_cast<double>(rects);
+}
+
+/// One timed build; nullopt when the builder returned no model.
+std::optional<view3d::MeshModel> timed_build(const bench::Workload& w, double& seconds) {
+  const hefesto::db::Rect b = w.cell().bbox();
+  const view3d::ClipArea clip{hefesto::db::Rect{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1}, false, 0};
+  view3d::BuildContext ctx;
+  const auto start = std::chrono::steady_clock::now();
+  auto model = view3d::build_from_layout(w.stack(), w.cell(), clip, ctx);
+  seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+  return model;
+}
+
+json timing(std::vector<double> runs) {
+  json j;
+  j["runs"] = runs;
+  std::sort(runs.begin(), runs.end());
+  j["min"] = runs.front();
+  j["median"] = runs[runs.size() / 2];
+  return j;
+}
+
+json report(const Options& o, const bench::Workload& w, const view3d::MeshModel& model, std::vector<double> runs) {
+  const Counts c = count(model);
+  const std::uint64_t gpu =
+      c.rects * kGpuRectBytes + c.sides * kGpuSideBytes + c.triangles * sizeof(view3d::Triangle);
+  json j;
+  j["workload"] = o.workload.name;
+  j["description"] = w.description();
+  j["layers"] = w.stack().size();
+  j["rects"] = c.rects;
+  j["sides"] = c.sides;
+  j["triangles"] = c.triangles;
+  j["chunks"] = model.chunks.size();
+  j["build_s"] = timing(std::move(runs));
+  j["model_bytes"] = c.model_bytes;
+  j["model_bytes_per_rect"] = per_rect(c.model_bytes, c.rects);
+  j["gpu_bytes_estimate"] = gpu;
+  j["gpu_bytes_per_rect_estimate"] = per_rect(gpu, c.rects);
+  j["peak_rss_bytes"] = peak_rss_bytes();
+  j["frame_time_ms"] = nullptr;
+  j["frame_time_note"] = "not measured: Mesh3dRenderer (m10-3d-view task 5.3) is not implemented yet";
+  return j;
+}
+
+int run(const Options& o) {
+  std::string error;
+  const auto workload = bench::load_workload(o.workload, error);
+  if (!workload) {
+    std::cerr << "hefesto-bench-view3d: " << error << "\n";
+    return 2;
+  }
+  std::vector<double> runs;
+  std::optional<view3d::MeshModel> last;
+  for (int i = 0; i < o.repeat; ++i) {
+    double seconds = 0.0;
+    last = timed_build(*workload, seconds);
+    if (!last) {
+      std::cerr << "hefesto-bench-view3d: the build returned no model\n";
+      return 1;
+    }
+    runs.push_back(seconds);
+  }
+  json out = {{"tool", "hefesto-bench-view3d"}, {"results", json::array({report(o, *workload, *last, runs)})}};
+  std::cout << out.dump(2) << "\n";
+  if (!o.json_path.empty()) {
+    std::ofstream(o.json_path) << out.dump(2) << "\n";
+  }
+  return 0;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+  const auto options = parse(argc, argv);
+  if (!options) {
+    usage();
+    return 2;
+  }
+  return run(*options);
+}

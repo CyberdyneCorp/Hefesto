@@ -16,7 +16,11 @@ Usage:
     check_milestone_readiness.py --through M1     # M0 and M1
     check_milestone_readiness.py --summary        # per-file Resolution counts
 
-Exits 1 if a cited entry has no `Resolution:` line or does not exist.
+An entry whose `- Status:` line says it is pending user confirmation counts as
+unresolved even when it has a `Resolution:` line: a recommendation is not a decision.
+
+Exits 1 if a cited entry has no `Resolution:` line, is pending confirmation, or
+does not exist.
 """
 from __future__ import annotations
 
@@ -33,6 +37,7 @@ QUESTIONS = ROOT / "docs" / "decisions" / "open-questions"
 QID = re.compile(r"Q-[A-Z]+-\d+")
 ENTRY_HEADING = re.compile(r"^### (Q-[A-Z]+-\d+):", re.M)
 RESOLUTION = re.compile(r"^- Resolution:", re.M)
+PENDING_STATUS = re.compile(r"^- Status:.*\bpending\b", re.M | re.I)
 
 
 def milestone_assignments(roadmap: str) -> dict[str, list[str]]:
@@ -54,7 +59,7 @@ def milestone_number(name: str) -> int:
 
 
 def load_entries() -> dict[str, tuple[str, bool]]:
-    """Map each Q-ID to (file name, has a Resolution line)."""
+    """Map each Q-ID to (file name, resolved: a Resolution line and no pending Status)."""
     entries: dict[str, tuple[str, bool]] = {}
     for path in sorted(QUESTIONS.glob("*.md")):
         text = path.read_text()
@@ -62,7 +67,8 @@ def load_entries() -> dict[str, tuple[str, bool]]:
         for i, heading in enumerate(headings):
             end = headings[i + 1].start() if i + 1 < len(headings) else len(text)
             body = text[heading.end():end]
-            entries[heading.group(1)] = (path.stem, bool(RESOLUTION.search(body)))
+            resolved = bool(RESOLUTION.search(body)) and not PENDING_STATUS.search(body)
+            entries[heading.group(1)] = (path.stem, resolved)
     return entries
 
 

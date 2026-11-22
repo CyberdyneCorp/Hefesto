@@ -1,0 +1,16 @@
+"c3d" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Unknown command:Unknown command:Unknown command:Unknown command:CIF name "NOSUCH" doesn't exist in style "gdsii".
+The valid CIF layer names are: POLY, MET1, MET2.
+Unknown command:Unknown command:CIF name "no" doesn't exist in style "gdsii".
+The valid CIF layer names are: POLY, MET1, MET2.
+Unknown command:Unknown command:Unknown command:Unknown command:Usage: see [no] layer
+Unknown command:Unknown command:Usage: see [no] layer
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unrecognized layer: nosuch
+    $
+    *
+    errors
+    labels
+    subcell
+    connect
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:

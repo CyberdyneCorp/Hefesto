@@ -29,6 +29,13 @@ GENERATED = HERE.parent / "src" / "generated"
 OUTPUTS = {
     "rect_spv.hpp": (("rect.vert", "kRectVertSpv"), ("poly.vert", "kPolyVertSpv"), ("rect.frag", "kRectFragSpv")),
     "mesh3d_spv.hpp": (("mesh3d_spike.vert", "kMesh3dSpikeVertSpv"), ("mesh3d_spike.frag", "kMesh3dSpikeFragSpv")),
+    "mesh3d_renderer_spv.hpp": (
+        ("mesh3d_rect.vert", "kMesh3dRectVertSpv"),
+        ("mesh3d_side.vert", "kMesh3dSideVertSpv"),
+        ("mesh3d_tri.vert", "kMesh3dTriVertSpv"),
+        ("mesh3d.frag", "kMesh3dFragSpv"),
+        ("mesh3d_msaa.frag", "kMesh3dMsaaFragSpv"),
+    ),
 }
 
 HEADER = """\

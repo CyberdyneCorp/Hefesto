@@ -47,6 +47,13 @@ task 15.5, compared through ``digest``): a line ``file <relative path>``, then o
 MACRO), each ``macro`` (from its ``MACRO`` line through its ``END <name>`` line) and ``text`` (the
 lines between two macros or after the last), so a differing digest can be located to a macro.
 
+    derived:gl-faces:<glob>
+
+is for the 3D-view geometry cases (m10-3d-view design D13, task 12.4): a line ``file <relative
+path>`` followed by the ``gl-faces 1`` form that tools/golden/gl_capture/faces.py reduces the
+``gl-capture 1`` polygon log to (per style and z, the union of the horizontal faces and the
+boundary parts of the side faces), or a line ``error <reason>`` when the log is malformed.
+
 A source that matches no file yields no output (the case then fails as if a plain file
 were missing).
 """
@@ -60,7 +67,7 @@ from pathlib import Path
 from . import gds
 
 PREFIX = "derived:"
-_REDUCERS = ("mag-drc-sections", "digest", "files", "gds-digest", "gds-summary", "lef-summary")
+_REDUCERS = ("mag-drc-sections", "digest", "files", "gds-digest", "gds-summary", "lef-summary", "gl-faces")
 _GZIP_MAGIC = b"\x1f\x8b"
 _DRC_SECTIONS = (b"checkpaint", b"error_p", b"error_s", b"error_ps")
 _SECTION = re.compile(rb"^<< (\S+) >>\r?$")
@@ -152,8 +159,19 @@ def _lef_summary_entry(name: bytes, data: bytes) -> bytes:
     return b"\n".join(lines) + b"\n"
 
 
+def _gl_faces_entry(name: bytes, data: bytes) -> bytes:
+    from gl_capture import faces  # gl_capture/ sits beside goldenlib/ in tools/golden
+
+    try:
+        body = faces.reduce_log(data.decode("utf-8"))
+    except (faces.LogError, UnicodeDecodeError) as error:
+        body = f"error {error}\n"
+    return b"file " + name + b"\n" + body.encode("utf-8")
+
+
 _ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry, "files": _file_entry,
-          "gds-digest": _gds_digest_entry, "gds-summary": _gds_summary_entry, "lef-summary": _lef_summary_entry}
+          "gds-digest": _gds_digest_entry, "gds-summary": _gds_summary_entry, "lef-summary": _lef_summary_entry,
+          "gl-faces": _gl_faces_entry}
 
 
 def build(work: Path, source: str) -> bytes | None:

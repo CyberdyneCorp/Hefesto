@@ -69,13 +69,5 @@ TEST_CASE("the MESH, INSPECT, EXPORT and OVERLAY stubs answer empty results", "[
   CHECK(view3d::overlay::color_of({}, 1.0, 0.0, 2.0) == view3d::overlay::Rgb{0, 0, 0});
 }
 
-TEST_CASE("the WIND3D stubs keep today's answer", "[m10-scaffold]") {
-  // WIND3D: opening still answers UI-CLIENT-002; no command registered.
-  hefesto::editor::EditorState state;
-  const auto opened = view3d::open_wind3d(state, view3d::OpenRequest{});
-  REQUIRE_FALSE(opened.ok());
-  CHECK(opened.error().code == "UI-CLIENT-002");
-  hefesto::cmd::CommandRegistry registry;
-  CHECK(view3d::register_wind3d_commands(registry));
-  CHECK(registry.find("cutbox", view3d::kWind3dClient) == nullptr);
-}
+// The WIND3D stub test is replaced by tests/unit/view3d/client/ (M10 tasks
+// 8.1-8.4).

@@ -1,0 +1,4 @@
+"c3d" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Usage: cutbox [none|box|llx lly urx ur]
+Usage: cutbox [none|box|llx lly urx ur]

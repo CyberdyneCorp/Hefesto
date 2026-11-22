@@ -1,0 +1,5 @@
+"c3d" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Usage: cif
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Usage: cif
+Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:Unknown command:

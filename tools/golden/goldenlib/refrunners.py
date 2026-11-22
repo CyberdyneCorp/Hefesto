@@ -39,7 +39,7 @@ from pathlib import Path
 
 from . import magic_hash_model
 from . import external_command
-from .case import Case, image_variant, run_timeout, substitute_env
+from .case import Case, gl_capture, image_variant, run_timeout, substitute_env
 from .external import ExternalUnavailable, xschem_set_tree
 from .pins import tool_pin
 
@@ -73,6 +73,11 @@ DISPLAY_ENVIRONMENT = {"XDG_CACHE_HOME": "/tmp/.cache"}
 # server; Mesa renders with llvmpipe, in software (Xvfb has no DRI), whatever the host has.
 XVFB_GL_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24 +extension GLX"]
 GL_ENVIRONMENT = {"LIBGL_ALWAYS_SOFTWARE": "1", "GALLIUM_DRIVER": "llvmpipe"}
+# The geometry cases (m10-3d-view design D13, task 12.4, `[reference] gl_capture = true`): Magic runs
+# with the polygon-recording shim tools/golden/gl_capture/gl_capture.c preloaded, which writes the file
+# HEFESTO_GL_CAPTURE names (the case's [env]). Only Magic gets it, not xvfb-run and Xvfb.
+GL_CAPTURE_LIBRARY = "/opt/ref/lib/gl_capture.so"
+GL_CAPTURE_PREFIX = ["env", f"LD_PRELOAD={GL_CAPTURE_LIBRARY}"]
 CONTAINER_WORK = "/work"
 # SCHEM captures (m8-schematic design D16): the xschem data sets a case names are mounted read-only as
 # /pdk/<variant>, the layout of an open_pdks install, so each PDK's xschemrc finds its tree through PDK_ROOT.
@@ -95,6 +100,8 @@ def default_argv(case: Case) -> list[str]:
     prefix = []
     if ref.get("display") == "xvfb":
         prefix = XVFB_GL_PREFIX if image_variant(case) == "magic-gl" else XVFB_PREFIX
+    if gl_capture(case):
+        prefix = prefix + GL_CAPTURE_PREFIX
     return prefix + _tool_argv(case)
 
 
