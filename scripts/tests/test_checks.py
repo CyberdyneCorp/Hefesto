@@ -9,6 +9,8 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -292,6 +294,27 @@ class CoreIncludesTest(unittest.TestCase):
             self.assertIn("kernel.cpp:3", text)
             self.assertIn("reader.cpp:3", text)
             self.assertIn("restricted header", text)
+
+    @unittest.skipUnless(shutil.which("cmake"), "cmake not on PATH")
+    def test_cmake_copy_of_the_plane_stitch_rule(self):
+        """Regression (PR #80 linux-asan): the CTest copy used IN_LIST, which a -P script without
+        CMP0057 does not evaluate, so the db/ include was reported."""
+        script = SCRIPTS.parent / "tests" / "unit" / "core" / "check_core_includes.cmake"
+        include = HEADER + '#include "hefesto/db/plane_stitch.hpp"\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp) / "core"
+            for allowed in ("src/db/plane_stitch.cpp", "src/extract/node/regions.cpp",
+                            "include/hefesto/extresist/network/fracture.hpp"):
+                write(core, allowed, include)
+            run = lambda: subprocess.run(["cmake", "-Wno-dev", f"-DCORE_DIR={core}", "-P", str(script)],
+                                         capture_output=True, text=True, check=False)
+            ok = run()
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            write(core, "src/drc/engine/kernel.cpp", include)
+            bad = run()
+            self.assertNotEqual(bad.returncode, 0)
+            self.assertIn("kernel.cpp", bad.stderr)
+            self.assertNotIn("plane_stitch.cpp:", bad.stderr)
 
 
 class CompareGoldenOutputsTest(unittest.TestCase):

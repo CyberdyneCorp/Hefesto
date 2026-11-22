@@ -32,7 +32,10 @@ foreach(_file IN LISTS _sources)
     if(_header STREQUAL _stitch_header)
       file(RELATIVE_PATH _rel "${CORE_DIR}" "${_file}")
       string(REGEX REPLACE "^(src|include/hefesto)/([^/]+)/.*$" "\\2" _area "${_rel}")
-      if(_area STREQUAL _rel OR NOT _area IN_LIST _stitch_areas)
+      # list(FIND), not IN_LIST: a -P script has no cmake_minimum_required, so CMP0057 is unset and
+      # older CMake reads IN_LIST as a plain word (linux-asan/tsan failure on PR #80).
+      list(FIND _stitch_areas "${_area}" _area_index)
+      if(_area STREQUAL _rel OR _area_index EQUAL -1)
         list(APPEND _violations "${_file}: #include <${_header}> (only db/, extract/, extresist/)")
       endif()
     endif()
