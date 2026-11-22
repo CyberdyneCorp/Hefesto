@@ -69,7 +69,8 @@ std::string join_equals(std::string_view text) {
 
 /// The `name=value` pairs of one `.param` line (spaces around `=` ignored).
 void collect_param_pairs(std::string_view line, ParamValues& values) {
-  for (const std::string_view field : split_fields(join_equals(line.substr(6)))) {
+  const std::string joined = join_equals(line.substr(6));  // the fields view it
+  for (const std::string_view field : split_fields(joined)) {
     const std::size_t eq = field.find('=');
     if (eq != std::string_view::npos && eq > 0) {
       values[std::string{field.substr(0, eq)}] = std::string{field.substr(eq + 1)};
