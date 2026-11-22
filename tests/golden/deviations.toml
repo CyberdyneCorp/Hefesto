@@ -1141,11 +1141,6 @@ deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
 
-[NL-FLAT-16]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
 [NL-HIER-01]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
