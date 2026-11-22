@@ -45,7 +45,7 @@ std::string join(const std::vector<std::string_view>& parts) {
 
 // The folder a search-path directory names: a relative one (`.`, `lib`,
 // `../lib`) is under the containing schematic's folder (Q-SCHEM-30,
-// proposed Q-SCHEM-38), never the folder Hefesto was started in.
+// Q-SCHEM-38 option (a)), never the folder Hefesto was started in.
 platform::Path folder_of(const platform::Path& directory, const platform::Path& document_folder) {
   if (directory.is_absolute()) return directory;
   if (directory == platform::Path{std::string{kDocumentFolderElement}}) return document_folder;

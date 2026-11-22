@@ -51,11 +51,15 @@ struct ResolveContext {
 /// destroyed.
 class SymbolCache {
  public:
-  SymbolCache();
+  /// `limits` bound the schematics used as symbols (Q-SCHEM-32,
+  /// Q-SCHEM-40); tests shorten them.
+  explicit SymbolCache(FlattenLimits limits = {});
 
   /// The symbol `reference` names, resolved from the document `from` (its
-  /// folder for relative references, its embedded blocks first). Never
-  /// fails: an unresolvable or unreadable reference gives placeholder().
+  /// folder for relative references, its embedded blocks first; a generator
+  /// reference `name(args)` runs the Tcl generator `name`, generator.hpp).
+  /// Never fails: an unresolvable or unreadable reference gives
+  /// placeholder().
   [[nodiscard]] const Symbol& resolve(const Reference& reference, const Document& from,
                                       const ResolveContext& context);
 
@@ -67,8 +71,9 @@ class SymbolCache {
   void clear() noexcept;
 
   /// Drops the symbol loaded from `file`, so the next resolve() reads it
-  /// again (a symbol edited and saved in Hefesto), and the embedded symbols
-  /// of the document saved as `file`.
+  /// again (a symbol edited and saved in Hefesto), the embedded symbols of
+  /// the document saved as `file`, and the symbols the generator `file`
+  /// made.
   void forget(const platform::Path& file);
 
   [[nodiscard]] std::size_t size() const noexcept { return symbols_.size(); }
@@ -84,6 +89,7 @@ class SymbolCache {
                                const ResolveContext& context);
   std::optional<Document> read(const platform::Path& file, const std::string& reference, const ResolveContext& context);
   const Symbol* embedded(const Reference& reference, const Document& from);
+  const Symbol& generated(const Reference& reference, const Document& from, const ResolveContext& context);
   void warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic);
 
   std::map<platform::Path, Symbol> symbols_;
@@ -91,8 +97,13 @@ class SymbolCache {
   // block content, so unsaved documents (empty path) and edited blocks never
   // share a symbol. Map nodes keep returned references valid.
   std::multimap<std::pair<platform::Path, std::string>, Symbol> embedded_;
+  // Generated symbols by (generator script, reference); a failed run is
+  // kept as a placeholder, so a generator runs once per reference until
+  // clear() or forget() of its script.
+  std::map<std::pair<platform::Path, std::string>, Symbol> generated_;
   std::set<std::string> warned_;      // warnings already given, by key
   Symbol placeholder_;
+  FlattenLimits limits_;
 };
 
 }  // namespace hefesto::schem

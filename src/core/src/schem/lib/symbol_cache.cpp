@@ -3,7 +3,7 @@
 //
 // The symbol cache (capability schematic-symbols-and-libraries "Symbol
 // references", "Missing symbols", "Schematic used as symbol", "Symbol cache
-// and reload"; Q-SCHEM-9, Q-SCHEM-30, Q-SCHEM-32).
+// and reload"; Q-SCHEM-9, Q-SCHEM-30, Q-SCHEM-32, Q-SCHEM-40).
 //
 // Misses are not cached, so a later change of the search path re-resolves a
 // missing symbol; each warning is given once per reference (or file) until
@@ -21,6 +21,7 @@
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/schem/file/read_write.hpp"
+#include "hefesto/schem/lib/generator.hpp"
 #include "hefesto/schem/lib/reference.hpp"
 
 namespace hefesto::schem {
@@ -58,6 +59,7 @@ class SymbolCache::SchematicLoad {
   NestedTarget operator()(const InstanceRecord& instance, const Document& from) {
     const Reference reference{instance.symbol};
     if (const Symbol* inline_symbol = cache_.embedded(reference, from)) return {nullptr, inline_symbol};
+    if (is_generator_reference(reference.text)) return {nullptr, &cache_.generated(reference, from, context_)};
     const platform::Path file = cache_.locate(reference, from, context_);
     if (file.empty()) return {nullptr, &cache_.placeholder_};
     if (!is_schematic_file(file)) return {nullptr, &cache_.load(file, instance.symbol, context_)};
@@ -73,7 +75,7 @@ class SymbolCache::SchematicLoad {
   std::map<platform::Path, Document> schematics_;  // map nodes keep addresses
 };
 
-SymbolCache::SymbolCache() {
+SymbolCache::SymbolCache(FlattenLimits limits) : limits_(limits) {
   placeholder_.placeholder = true;
   placeholder_.document.kind = FileKind::symbol;
 }
@@ -81,20 +83,60 @@ SymbolCache::SymbolCache() {
 void SymbolCache::clear() noexcept {
   symbols_.clear();
   embedded_.clear();
+  generated_.clear();
   warned_.clear();
 }
 
 void SymbolCache::forget(const platform::Path& file) {
   symbols_.erase(file);
   std::erase_if(embedded_, [&](const auto& entry) { return entry.first.first == file; });
+  std::erase_if(generated_, [&](const auto& entry) { return entry.first.first == file; });
   // A schematic used as a symbol holds copies of the graphics it places.
   std::erase_if(symbols_, [](const auto& entry) { return is_schematic_file(entry.first); });
 }
 
 const Symbol& SymbolCache::resolve(const Reference& reference, const Document& from, const ResolveContext& context) {
   if (const Symbol* inline_symbol = embedded(reference, from)) return *inline_symbol;
+  if (is_generator_reference(reference.text)) return generated(reference, from, context);
   const platform::Path file = locate(reference, from, context);
   return file.empty() ? placeholder_ : load(file, reference.text, context);
+}
+
+// "Symbol generators" (Q-SCHEM-11): the program is looked up like a symbol
+// file; only a Tcl script runs, and what it prints is read as a `.sym`.
+const Symbol& SymbolCache::generated(const Reference& reference, const Document& from,
+                                     const ResolveContext& context) {
+  const std::string& text = reference.text;
+  const GeneratorCall call = parse_generator(text).value_or(GeneratorCall{});
+  const platform::Path folder = from.path.parent_path();
+  const platform::Path script = resolve_reference(call.program, folder, context.search_path, context.fs).file;
+  if (script.empty() || !context.fs.exists(script)) {
+    warn_once(context, "missing|" + text, diag::make("SCHEM-LIB-003", "Symbol not found: " + text));
+    return placeholder_;
+  }
+  auto key = std::make_pair(script, text);
+  if (const auto it = generated_.find(key); it != generated_.end()) return it->second;
+  Symbol& symbol = generated_.emplace(std::move(key), placeholder_).first->second;
+  if (!is_tcl_generator(script, context.fs)) {
+    warn_once(context, "external|" + script.generic_string(),
+              diag::make("SCHEM-LIB-011", "Symbol " + text + ": " + std::string{kExternalGeneratorMessage}));
+    return symbol;
+  }
+  GeneratorOutput output = run_tcl_generator(context.fs, {script, call.args, folder});
+  for (const diag::Diagnostic& diagnostic : output.diagnostics) {
+    if (context.warnings != nullptr) context.warnings->emit(diagnostic);
+  }
+  if (!output.text) return symbol;
+  const ReadOptions options{FileKind::symbol, context.xschem_compat, context.warnings, text};
+  auto document = read_document(*output.text, options);
+  if (!document.ok()) {
+    warn_once(context, "read|" + text,
+              diag::make("SCHEM-LIB-004", "Symbol " + text + " could not be read from the output of " +
+                                              script.generic_string() + ": " + document.error().text));
+    return symbol;
+  }
+  symbol = make_symbol(text, script, std::move(document.value()));
+  return symbol;
 }
 
 void SymbolCache::warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic) {
@@ -175,16 +217,17 @@ const Symbol& SymbolCache::load_schematic(const platform::Path& file, const std:
   const Symbol* order_from = context.fs.exists(sibling) ? &load(sibling, reference, context) : nullptr;
   SchematicLoad nested(*this, context);
   FlattenReport report;
-  Symbol symbol = schematic_symbol(reference, file, document, std::ref(nested), order_from, &report);
+  Symbol symbol = schematic_symbol(reference, file, document, std::ref(nested), order_from, &report, limits_);
   if (report.depth_reached) {
     warn_once(context, "depth|" + file.generic_string(),
               diag::make("SCHEM-LIB-005", "Symbol recursively instantiating symbol: max depth reached, skipping"));
   }
-  if (report.size_reached) {
+  if (report.size_reached || report.bytes_reached) {
+    const std::string limit = report.size_reached ? std::to_string(limits_.max_records) + " records"
+                                                  : std::to_string(limits_.max_bytes) + " bytes";
     warn_once(context, "size|" + file.generic_string(),
-              diag::make("SCHEM-LIB-009", "Symbol " + reference + ": more than " +
-                                              std::to_string(kMaxFlattenedRecords) +
-                                              " records when flattened; the rest is not loaded"));
+              diag::make("SCHEM-LIB-009", "Symbol " + reference + ": more than " + limit +
+                                              " when flattened; the rest is not loaded"));
   }
   return symbols_.insert_or_assign(file, std::move(symbol)).first->second;
 }

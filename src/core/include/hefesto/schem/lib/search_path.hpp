@@ -40,7 +40,7 @@ struct LibraryAlias {
 /// The ordered library directories symbol references are looked up in, and
 /// the library aliases. A directory equal to kDocumentFolderElement means
 /// the containing schematic's folder; any other relative directory names a
-/// folder under it (proposed Q-SCHEM-38).
+/// folder under it (Q-SCHEM-38 option (a), approved 2026-11-22).
 class SearchPath {
  public:
   SearchPath() = default;
@@ -57,7 +57,7 @@ class SearchPath {
   /// expansion: `$NAME` is literal text), each element is cleaned as step 4
   /// of "Symbol references", duplicates are kept, and elements that do not
   /// exist in `fs` are dropped. A relative element other than `.` names a
-  /// folder under `document_folder` (proposed Q-SCHEM-38): it is kept as
+  /// folder under `document_folder` (Q-SCHEM-38 option (a), approved 2026-11-22): it is kept as
   /// written when that folder exists, and dropped when it does not or when
   /// `document_folder` is empty. An empty result is the document folder.
   [[nodiscard]] static SearchPath parse(std::string_view value, const std::map<std::string, std::string>& env,
