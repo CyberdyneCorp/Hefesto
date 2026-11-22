@@ -414,6 +414,33 @@ TEST_CASE("a click picks a target, selects it in 2D and isolates its net",
   CHECK_FALSE(picking.picked().has_value());
 }
 
+TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile type in the rendered cell",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s;
+  open(s);
+  const auto stack = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  view3d::MeshWorker worker;
+  worker.build(build_inputs(s.editor, s.window(), stack, false));
+  REQUIRE(worker.wait_idle(10000));
+  const view3d::MeshHandle mesh = worker.current();
+  REQUIRE(mesh != nullptr);
+  const view3d::PickId id = view3d::encode_pick(*mesh, view3d::PickRef{0, view3d::PickKind::rect, 0});
+  REQUIRE(id != view3d::kNoPick);
+  PickResolver resolver;
+  // Without a scope: the plain resolve, which cannot map the layer to a type.
+  const auto plain = resolver.resolve(*mesh, id);
+  REQUIRE(plain);
+  CHECK(plain->cell == nullptr);
+  // With the drawn stack, the rendered cell and the compat flag: INSPECT's overload.
+  const view3d::PickContext scope{stack.get(), s.cell, true};
+  resolver.set_scope(scope);
+  const auto scoped = resolver.resolve(*mesh, id);
+  REQUIRE(scoped);
+  CHECK(scoped == view3d::resolve(*mesh, scope, id));
+  CHECK(scoped->cell == s.cell);
+  CHECK(scoped->type.has_value());
+}
+
 TEST_CASE("the frame's highlight is passed as DrawParams::highlight",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   ClientSession s;

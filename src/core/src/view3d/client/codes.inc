@@ -11,7 +11,7 @@
 // Owner: WIND3D (openspec/changes/m10-3d-view/design.md D2/D3).
 HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-001", error, "A 3D window command was given the wrong arguments (Magic's `Usage: ...` line); nothing changes.")
 HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-002", error, "A 3D window is already open (Magic's `Only one 3D window allowed.`).")
-HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-003", error, "The 3D window cannot open: no cell to render, the cell does not exist, or (magic-compat ON) the toolkit path of a closed 3D window (user decision J5).")
+HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-003", error, "The 3D window cannot open: no cell to render, or the cell does not exist (a closed window's toolkit path reopens in both modes, Q-MISC-80).")
 HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-004", error, "A `zoom` value or factor is zero or negative (Magic's `Error: zoom values/factors must be positive and nonzero`).")
 HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-005", error, "The command needs a current output style and there is none (Magic's `No CIF output style set!`; Q-MISC-73).")
 HEFESTO_VIEW3D_CODE("VIEW3D-CLIENT-006", error, "No mask layer of the current output style has the name given to `render` or `see`.")

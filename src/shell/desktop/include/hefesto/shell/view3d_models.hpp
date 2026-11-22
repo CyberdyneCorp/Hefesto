@@ -160,8 +160,8 @@ struct View3dOptions {
 void set_row_alpha(View3dOptions& options, const View3dLayerRow& row, float alpha, std::size_t stack_size);
 
 /// The frame's DrawParams: projection, level, stack, styles, hidden flags,
-/// alpha, highlight, and the P1 mask-layer xy scale (Scene::xy_factor,
-/// through DrawParams::xy_scale once RENDER adds it).
+/// alpha, highlight, and the P1 mask-layer xy scale (Scene::xy_factor, as
+/// DrawParams::xy_scale).
 struct FrameInputs {
   const view3d::WindowState* window = nullptr;
   const view3d::LayerStack* stack = nullptr;
@@ -174,9 +174,6 @@ struct FrameInputs {
 /// The xy scale the P1 placeholder draws mask-layer mode with: the f applied
 /// on entering the mode, 1 in layout-layer mode (view3d::Scene::xy_factor).
 [[nodiscard]] float xy_factor(const view3d::WindowState& window) noexcept;
-/// Whether render::DrawParams has `xy_scale` in this build (RENDER adds it
-/// on m10-3d-round3-render; until then mask-layer mode draws unscaled).
-[[nodiscard]] bool draw_params_have_xy_scale() noexcept;
 
 // --- mesh builds -----------------------------------------------------------------
 
@@ -289,18 +286,26 @@ class PointerTracker {
 // --- picking (design D10; view3d/pick is INSPECT's) -------------------------------
 
 /// The pick functions of hefesto/view3d/pick/pick.hpp, replaceable in tests.
+/// With a scope set (the stack the model was built from, the rendered cell
+/// and the compat flag), they call the overloads that map a layer back to
+/// its tile type (PickContext, NetOptions); without one, the plain ones.
 class PickResolver {
  public:
   PickResolver() = default;
   PickResolver(const PickResolver&) = delete;
   PickResolver& operator=(const PickResolver&) = delete;
   virtual ~PickResolver() = default;
+  void set_scope(const view3d::PickContext& scope) noexcept { scope_ = scope; }
+  [[nodiscard]] const view3d::PickContext& scope() const noexcept { return scope_; }
   [[nodiscard]] virtual std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& mesh, view3d::PickId id);
   [[nodiscard]] virtual diag::Status select(editor::EditorState& editor, const view3d::PickTarget& target);
   [[nodiscard]] virtual view3d::HighlightSet from_selection(const view3d::MeshModel& mesh,
                                                             const editor::EditorState& editor);
   [[nodiscard]] virtual view3d::HighlightSet net(const view3d::MeshModel& mesh, const editor::EditorState& editor,
                                                  const view3d::PickTarget& seed);
+
+ private:
+  view3d::PickContext scope_;
 };
 
 /// The 3D view's picking state: the last picked target, the highlight of

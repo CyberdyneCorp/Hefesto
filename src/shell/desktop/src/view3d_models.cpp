@@ -26,22 +26,6 @@ namespace {
 constexpr float kWheelZoomStep = 1.15F;
 constexpr double kTrackpadLinePixels = 48.0;
 
-/// Whether `P` has the `xy_scale` field RENDER adds to DrawParams.
-template <class P>
-constexpr bool kHasXyScale = requires(P& p) { p.xy_scale = 1.0F; };
-
-template <class P>
-void set_xy_scale(P& params, float scale) {
-  if constexpr (kHasXyScale<P>) {
-    params.xy_scale = scale;
-  } else {
-    // TODO(m10-3d-round3-render): DrawParams::xy_scale is not on main yet;
-    // mask-layer mode draws the layout mesh unscaled until it lands.
-    (void)params;
-    (void)scale;
-  }
-}
-
 bool type_hidden(const view3d::WindowState& window, const std::optional<tech::TileType>& type) {
   return window.mode == view3d::Mode::layout_layer && type && window.visibility.layout_hidden.test(*type);
 }
@@ -195,10 +179,6 @@ float xy_factor(const view3d::WindowState& window) noexcept {
   return window.mode == view3d::Mode::mask_layer ? window.applied_factor : 1.0F;
 }
 
-bool draw_params_have_xy_scale() noexcept {
-  return kHasXyScale<render::DrawParams>;
-}
-
 render::DrawParams draw_params(const FrameInputs& in) {
   render::DrawParams params;
   if (in.options != nullptr) {
@@ -210,7 +190,7 @@ render::DrawParams draw_params(const FrameInputs& in) {
   params.highlight = in.highlight;
   if (in.window != nullptr) {
     params.level = in.window->level;
-    set_xy_scale(params, xy_factor(*in.window));
+    params.xy_scale = xy_factor(*in.window);
     if (in.stack != nullptr) params.hidden = hidden_flags(*in.stack, *in.window);
   }
   return params;
@@ -372,7 +352,8 @@ std::optional<std::pair<float, float>> PointerTracker::release(float x, float y)
 // --- picking ---------------------------------------------------------------------
 
 std::optional<view3d::PickTarget> PickResolver::resolve(const view3d::MeshModel& mesh, view3d::PickId id) {
-  return view3d::resolve(mesh, id);
+  if (scope_.stack == nullptr) return view3d::resolve(mesh, id);
+  return view3d::resolve(mesh, scope_, id);
 }
 
 diag::Status PickResolver::select(editor::EditorState& editor, const view3d::PickTarget& target) {
@@ -380,12 +361,15 @@ diag::Status PickResolver::select(editor::EditorState& editor, const view3d::Pic
 }
 
 view3d::HighlightSet PickResolver::from_selection(const view3d::MeshModel& mesh, const editor::EditorState& editor) {
-  return view3d::from_selection(mesh, editor.selection);
+  if (scope_.stack == nullptr) return view3d::from_selection(mesh, editor.selection);
+  return view3d::from_selection(mesh, *scope_.stack, editor.selection);
 }
 
 view3d::HighlightSet PickResolver::net(const view3d::MeshModel& mesh, const editor::EditorState& editor,
                                        const view3d::PickTarget& seed) {
-  return view3d::net_highlight(mesh, editor, seed);
+  if (scope_.stack == nullptr) return view3d::net_highlight(mesh, editor, seed);
+  return view3d::net_highlight(mesh, editor, seed,
+                               view3d::NetOptions{view3d::NetScope::hierarchical, scope_.magic_compat, scope_.stack});
 }
 
 std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack) {

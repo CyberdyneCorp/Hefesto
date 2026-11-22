@@ -119,6 +119,8 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   bool handle_pointer(const CanvasInput& input);
   void apply_gesture(const view3d::Gesture& gesture);
   void pick_at(float x, float y);
+  /// Points the resolver at `stack` (the drawn model's), the rendered cell and the compat flag.
+  void update_pick_scope(const view3d::LayerStack* stack);
 
   void paint_stage(ui::Painter& p, float w, float h);
   void paint_row(ui::Painter& p, float w, float h, std::size_t index, bool hovered, bool focused);

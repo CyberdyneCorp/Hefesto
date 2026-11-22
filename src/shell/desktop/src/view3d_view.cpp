@@ -612,6 +612,7 @@ void View3dView::draw_frame() {
     uploaded_ = model_;
   }
   if (highlight_dirty_) {
+    update_pick_scope(drawn_stack_.get());
     highlight_ = picking_.highlight(model_.get(), ctx_.editor());
     highlight_dirty_ = false;
   }
@@ -692,12 +693,19 @@ void View3dView::pick_at(float x, float y) {
   if (!renderer_ || stack == nullptr) return;
   const float ratio = pixel_ratio_ ? pixel_ratio_() : 1.0F;
   const view3d::PickId id = renderer_->read_pick(static_cast<int>(x * ratio), static_cast<int>(y * ratio));
+  update_pick_scope(stack);
   const std::optional<std::string> caption = picking_.click(model_.get(), id, ctx_.editor(), *stack);
   pick_caption_ = caption.value_or(std::string{});
   highlight_dirty_ = true;
   dirty_ = true;
   repaint();
   if (caption && selection_changed_) selection_changed_();
+}
+
+void View3dView::update_pick_scope(const view3d::LayerStack* stack) {
+  const view3d::WindowState* w = window();
+  db::CellDef* cell = w != nullptr ? ctx_.editor().cells.find(w->cell) : nullptr;
+  resolver_.set_scope(view3d::PickContext{stack, cell, magic_compat()});
 }
 
 // --- painting ------------------------------------------------------------------------

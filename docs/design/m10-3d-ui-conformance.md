@@ -24,7 +24,7 @@ macOS capture (2026-11-22, Apple M3 Pro, MoltenVK 1.4.2, debug build): the produ
 
 ## Board review (DESIGN, task 7.1)
 
-Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION).
+Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION). Round 3 (INTEGRATION): the README now shows the macOS capture `view3d-macos.png` with a caption that names the overlay as phase 3; the board render `view3d.png` stays as the mockup reference.
 
 | Item | Board change | Status |
 |---|---|---|
@@ -55,7 +55,7 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 | "Open in separate window" tab menu item | Not built: a Raven window per tab needs a second texture-mode viewport host. | todo (open item, P2) |
 | Progress while a mesh builds; the previous model stays visible | One `MeshWorker` per window; status line "Building mesh · n %", then "Mesh ready · n rectangles"; the previous model stays drawn until the new one is done. | partial: "Mesh ready" seen in the macOS capture; the progress state is too short on a cell to capture |
 | Focus-based command routing (`.magic3d <cmd>` and the command bar) | While the 3D tab is shown, a typed line whose first word is a `wind3d` command runs as `<path> <line>`; keys in the 3D view run the `wind3d` macro table on the path. Tests "lines typed while the 3D view has the focus go to the window's path", "keys in the 3D view run the wind3d bindings on the window's path". | done (headless) |
-| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | A warning banner at the top of the view in mask-layer mode; the layout mesh is drawn with xy scaled by f through `DrawParams::xy_scale` once RENDER's field is on main (unscaled until then). | partial: the scale waits for RENDER |
+| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | A warning banner at the top of the view in mask-layer mode; the layout mesh is drawn with xy scaled by f through `DrawParams::xy_scale` (integrated in round 3). | done |
 | Frame-time readout (task 13.2, viewport part) | The "Frame time" toggle shows the rolling mean of the last 30 renderer draws and its frame rate in the status line; `hefesto-render3d-spike --bench-rects N` draws bench/view3d's synthetic region in a window and prints draw and whole-frame times. | done: `--bench-rects 1000000` on the M3 Pro (debug build, 1280 × 800 target, 1,004,944 rectangles in 19 chunks, 120 orbiting frames): draw 33.40 ms (29.9 fps), whole frame 33.73 ms (29.6 fps). The P1 gate (≥ 30 fps, Release) is PERF's measurement in "Performance" |
 
 ## Layer stack panel and camera (D12; task 9.2)
@@ -75,9 +75,9 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Click picks a target; 3D → 2D selection and scroll | A left click (under 3 px of motion) reads the pick image, then `view3d::resolve` and `view3d::to_selection`; the caption "layer · picked · selected in 2D" shows bottom right. Tested with a fake resolver. | blocked: INSPECT's `resolve` / `to_selection` are stubs on main |
-| 2D selection highlighted in 3D | `view3d::from_selection` after every command, passed as `DrawParams::highlight`. | blocked: INSPECT stub |
-| "Isolate selected net" | Toggle button: `view3d::net_highlight` of the picked target as the highlight. | blocked: INSPECT stub |
+| Click picks a target; 3D → 2D selection and scroll | A left click (under 3 px of motion) reads the pick image, then `view3d::resolve` and `view3d::to_selection`; the caption "layer · picked · selected in 2D" shows bottom right. Integrated in round 3 with INSPECT's `resolve(mesh, PickContext, id)` (stack, rendered cell, compat flag set through `PickResolver::set_scope`). Tested with a fake resolver and a real-mesh resolver test. | partial: the 2D canvas does not scroll to `link_to_2d`'s area yet (no core hook) |
+| 2D selection highlighted in 3D | `view3d::from_selection` after every command, passed as `DrawParams::highlight`; the overload with the drawn stack. | done |
+| "Isolate selected net" | Toggle button: `view3d::net_highlight` of the picked target as the highlight (hierarchical search, the drawn stack, the project's compat flag). | done |
 | "Show contacts and vias" (J1 "Span connected layers") | "Span connected layers" toggle: a full build with `span_connected_layers` and the technology. | done (headless) |
 
 ## Later phases
@@ -99,7 +99,7 @@ Reviewed on 2026-11-22 against `docs/design/mockups/View3D.dc.html` with the mac
 | Layer stack, top layer first, swatch, name, µm range, row controls | As on the board; the row buttons are always shown (the board shows them on hover), so they are reachable by Tab and need no hover state. With a 349-layer technology (sky130A) the list is long and scrolls. | done (macOS); difference noted |
 | View toolbar along the bottom of the 3D view (mode, level, cut box, mesh status) | The mesh status is at the bottom left of the view as on the board; the mode, level and cut box controls are in the side panel under the layer stack ("Magic 3D" section), below the presets, not in a bottom toolbar. With a long layer list they are reached by scrolling the panel or by Tab. | gap: move them to a bottom toolbar (follow-up) |
 | Orthographic / Perspective and the presets | In the side panel's "View" section. | done (headless); not in the capture's visible area |
-| Inspect group (Isolate selected net, Span connected layers) | In the side panel's "Inspect" section with Frame time and Close 3D view. | partial: picking blocked on INSPECT |
+| Inspect group (Isolate selected net, Span connected layers) | In the side panel's "Inspect" section with Frame time and Close 3D view. | done (picking integrated in round 3) |
 | Tab menu ("Open in separate window", "Close 3D view") | "Close 3D view" is a side-panel button; "Open in separate window" is not built. | todo (P2) |
 | Pick callout ("metal1 · VPWR, picked · selected in 2D") | Caption at the bottom right after a click. | blocked: INSPECT |
 
