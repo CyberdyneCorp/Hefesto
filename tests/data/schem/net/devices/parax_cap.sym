@@ -1,0 +1,12 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=parax_cap
+format="@name @pinlist @gnd @value m=@m"
+template="name=C1 gnd=0 value=4f m=1"}
+V {}
+S {}
+E {}
+B 5 -2.5 -12.5 2.5 -7.5 {name=p dir=in}

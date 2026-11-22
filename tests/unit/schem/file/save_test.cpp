@@ -134,3 +134,25 @@ TEST_CASE("warnings of a loaded file name the file", "[cap:schematic-file-format
   REQUIRE(location != nullptr);
   CHECK(location->file == "/w/bad.sch");
 }
+
+TEST_CASE("pin boxes saved in sim_pinnumber order stay in that order in the model",
+          "[cap:schematic-file-format][req:Canonical write order]") {
+  // The shape of IHP nmoscl_2.sym (SCHEM-RT-02): pins D, G, S numbered 2, 1, 3.
+  const std::string boxes =
+      "B 5 0 0 1 1 {name=D sim_pinnumber=2}\nB 5 2 0 3 1 {name=G sim_pinnumber=1}\nB 5 4 0 5 1 {name=S sim_pinnumber=3}\n";
+  const std::string sorted =
+      "B 5 2 0 3 1 {name=G sim_pinnumber=1}\nB 5 0 0 1 1 {name=D sim_pinnumber=2}\nB 5 4 0 5 1 {name=S sim_pinnumber=3}\n";
+  platform::MemoryFileSystem fs;
+  REQUIRE(fs.write_atomic("/w/n.sym", std::string{schem::test::kEmptyHeader} + boxes).ok());
+  auto doc = std::move(schem::load_document(fs, "/w/n.sym", {})).value();
+  REQUIRE(doc.boxes.size() == 3);
+  CHECK(doc.boxes[0].props == "name=D sim_pinnumber=2");  // loading does not reorder
+  REQUIRE(schem::save_document(fs, doc, "/w/n.sym").ok());
+  CHECK(contents(fs, "/w/n.sym") == std::string{schem::test::kEmptyHeader} + sorted);
+  CHECK(doc.boxes[0].props == "name=G sim_pinnumber=1");
+  CHECK(doc.boxes[1].props == "name=D sim_pinnumber=2");
+  CHECK_FALSE(doc.modified);
+  // The model now holds the written order, so a second save writes the same bytes.
+  REQUIRE(schem::save_document(fs, doc, "/w/n.sym").ok());
+  CHECK(contents(fs, "/w/n.sym") == std::string{schem::test::kEmptyHeader} + sorted);
+}

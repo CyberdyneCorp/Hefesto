@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Nightly fuzzing: every libFuzzer target of tests/fuzz runs for 10 minutes (Q-SCHEM-33, user
+# decision H3 of 2026-11-21; capability hefesto-testing-strategy "Parser fuzzing"). Pull requests
+# keep the 60 s per target of ci.yml's `fuzz` job; this run is the 10-minute run per target that
+# openspec/changes/m8-schematic task 6.4 asks for.
+#
+# The targets are split over four shards so that each job stays well under the 6-hour job limit
+# (32 targets on 2026-11-22: 32 x 10 minutes is over 5 hours in one job, 8 per shard is 80 minutes). Each shard builds the linux-fuzz preset, as
+# ci.yml's `fuzz` job does, and runs the targets whose position in the sorted list of seed corpora
+# (tests/fuzz/corpus/<target>/, one per target) is its shard index modulo the shard count. The
+# corpus each target grows is uploaded with its crashes, so a finding can be replayed with
+# `<target> <artifact file>`.
+
+name: Fuzz (nightly)
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Seconds per fuzz target"
+        required: false
+        default: "600"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "3.31.6"
+  NINJA_VERSION: "1.11.1.4"
+  PYTHON_VERSION: "3.12"
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+  FUZZ_SHARDS: "4"
+
+jobs:
+  fuzz:
+    name: fuzz (libFuzzer, 10 min per target, shard ${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150  # 8 targets x 10 minutes (32 targets on 2026-11-22), plus the build; at most 12 fit
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      FUZZ_SECONDS: ${{ github.event.inputs.seconds || '600' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-fuzz
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-linux-fuzz-
+      # The linux-fuzz preset uses the unversioned clang/clang++ (Clang 18 on ubuntu-24.04).
+      - run: cmake --preset linux-fuzz
+      - run: cmake --build --preset linux-fuzz
+      - name: Run this shard's fuzz targets
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          case "$FUZZ_SECONDS" in
+            ''|*[!0-9]*) echo "::error::seconds must be a whole number, got '$FUZZ_SECONDS'"; exit 1 ;;
+          esac
+          mkdir -p fuzz-artifacts fuzz-corpora
+          mapfile -t names < <(find tests/fuzz/corpus -mindepth 1 -maxdepth 1 -type d -name 'fuzz_*' -exec basename {} \; | sort)
+          if [ "${#names[@]}" -eq 0 ]; then
+            echo "::error::no seed corpora in tests/fuzz/corpus"
+            exit 1
+          fi
+          status=0
+          for i in "${!names[@]}"; do
+            if [ $((i % FUZZ_SHARDS)) -ne "$SHARD" ]; then
+              continue
+            fi
+            name="${names[$i]}"
+            target="build/linux-fuzz/tests/fuzz/$name"
+            # A corpus without its executable means the libFuzzer probe or a build failed: fail,
+            # never pass silently (as ci.yml's `fuzz` job).
+            if [ ! -x "$target" ]; then
+              echo "::error::$name was not built (libFuzzer probe failed?)"
+              status=1
+              continue
+            fi
+            corpus="fuzz-corpora/$name"
+            mkdir -p "$corpus"
+            cp -R "tests/fuzz/corpus/$name/." "$corpus/"
+            echo "::group::$name (${FUZZ_SECONDS} s)"
+            # -close_fd_mask=3: fuzz_tcl_sandbox's scripts may `puts` to stdout/stderr.
+            "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 -close_fd_mask=3 \
+              -artifact_prefix="$PWD/fuzz-artifacts/$name-" -print_final_stats=1 || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-nightly-crashes-shard-${{ matrix.shard }}
+          path: fuzz-artifacts/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-nightly-corpora-shard-${{ matrix.shard }}
+          path: fuzz-corpora/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -71,14 +71,17 @@ class InstanceNamer {
 struct FloaterInfo {
   /// The text has a `name` or `floater` key.
   bool floater = false;
-  /// The owner instance name: the `name` value, else the `floater` value.
+  /// The owner instance name: the `name` value, else the `floater` value
+  /// (`true` when that value is true).
   std::string owner;
 };
 
 [[nodiscard]] FloaterInfo floater_info(const TextRecord& text);
 
-/// The instance of `document` named `owner` (exact name match); nullptr
-/// when there is none.
+/// The owner of a floater ("Floater texts"): for an `owner` made only of
+/// decimal digits, the instance with that 0-based index; otherwise the
+/// instance whose `name` equals `owner` byte for byte (case-sensitive).
+/// nullptr when there is none.
 [[nodiscard]] const InstanceRecord* floater_owner(const Document& document, std::string_view owner);
 
 /// For a floater with no owner instance: whether the text is still resolved

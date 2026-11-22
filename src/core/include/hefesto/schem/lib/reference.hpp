@@ -26,7 +26,7 @@ enum class ResolvedVia : std::uint8_t {
   relative,         // `./` or `../` against the document folder (step 5)
   alias,            // a library alias (step 6)
   search_path,      // a search-path folder (step 7)
-  document_folder,  // the `.` element of the search path (step 7)
+  document_folder,  // a relative search-path element such as `.` (step 7)
   fallback,         // `<document folder>/<reference>` (step 8)
 };
 
@@ -34,8 +34,8 @@ struct ResolvedReference {
   /// The file the reference names; empty for `none` and `web`.
   platform::Path file;
   ResolvedVia via = ResolvedVia::none;
-  /// For `relative` and `document_folder`: the folder that took the place of
-  /// xschem's start folder (the SCHEM-LIB-001 warning names it).
+  /// For `relative` and `document_folder`: the schematic folder that took the
+  /// place of xschem's start folder (the SCHEM-LIB-001 warning names it).
   platform::Path folder;
 };
 

@@ -6,7 +6,7 @@ The reference is xschem, not Magic: `StefanSchippers/xschem` @ `4142e6d6f1eb5cd0
 
 xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they carry the GPL header). The PDK symbol libraries are Apache-2.0. Hefesto is implemented clean-room from the specs.
 
-**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18").
+**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18"). Q-SCHEM-31 (drafted 2026-11-20), Q-SCHEM-32 (input limits) and Q-SCHEM-33 (fuzzing) were approved by the user on 2026-11-21; Q-SCHEM-34 to -38 were drafted by the spec team on 2026-11-21 from the round-1 spec issues and await the user (decision table, "Decisions of 2026-11-21" and "Proposed 2026-11-21").
 
 **Compatibility setting (D-21, approved 2026-11-13).** Entries in this file that record `Resolution: compat` are governed by the `xschem-compat` setting (default ON) of capability `hefesto-magic-compat-mode`, not by `magic-compat`.
 
@@ -36,6 +36,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate | fix (decide the version before reading any record)
 - Recommendation: compat. With `xschem-compat` ON, the file version stays unset until the end of the first record, as in xschem, so a leading `C` record gets no `.sym`. With it OFF, a file with no `v` record is version `1.0` from its first record, so every reference gets `.sym`. Which symbol a reference loads is file content, so the standing rule makes this compat. Only hand-written or very old files are affected. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `xschem-compat` ON the file version is unset until the end of the first record, so a leading `C` record gets no `.sym`; with it OFF a file with no `v` record is version `1.0` from its first record, so every reference gets `.sym` (`schematic-file-format` "Version record and header text"). Approved 2026-11-13.
+- Verified 2026-11-21 (golden case SCHEM-RT-08, capture run 44239093096; round-1 spec issue F1): xschem saves the leading instance of `b.sch` as `C {res.sym}`, not `C {res}`, because a document whose file version is `1.0` also gets `.sym` added when it is written and when its symbols are looked up. The leading reference stays without `.sym` only in the model (what `xschem getprop instance R1 cell::name` returns). The spec now says so ("Version record and header text", scenarios "Leading instance record, xschem-compat ON/OFF"): the saved files are identical in both modes. The `Resolution:` is unchanged; it governs only the stored reference.
 
 ### Q-SCHEM-4: Verilog, VHDL, Spectre and tEDAx netlisters
 - Kind: ambiguity
@@ -54,6 +55,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate glibc's order (not portable) | stable sort (file order on ties)
 - Recommendation: stable sort; duplicate `sim_pinnumber` values are a user error, so warn about them.
 - Resolution: fix — in both modes pins, and top-level ports, are sorted by `sim_pinnumber` with a stable sort (file order, or instance order, on ties), and duplicate `sim_pinnumber` values are reported as a warning. xschem's order on ties depends on the C library, so there is nothing portable to match (X-1). Approved 2026-11-13.
+- Verified 2026-11-21 (golden case SCHEM-RT-02, IHP `nmoscl_2.sym` and `nmoscl_4.sym`; round-1 spec issue F2): xschem also sorts a document's layer-5 boxes by `sim_pinnumber` each time it saves, when every box has a non-empty one, and the new order stays in memory. Recorded in `schematic-file-format` "Canonical write order" (paragraph "Pin boxes on save") with the same stable sort; the `Resolution:` is unchanged.
 
 ### Q-SCHEM-6: Symbol `drc` scripts
 - Kind: platform
@@ -154,6 +156,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate | fix (always report)
 - Recommendation: fix: always report shorts; the netlist text is unaffected.
 - Resolution: fix — shorts are always reported, including top-level shorts on the first pass and in `-nohier` runs. The netlist text is unchanged; only diagnostics differ. Approved 2026-11-13.
+- Answered 2026-11-21 (round-1 spec issue N5, from xschem's source by the spec team): the six short tags and the situation each one names are tabled in `schematic-netlisting` "Net naming order". The `Bus tap` tag is the subject of proposed Q-SCHEM-37. The `Resolution:` is unchanged.
 
 ### Q-SCHEM-17: Simulation preparation must accept schematic decks
 - Kind: doc-mismatch
@@ -290,9 +293,73 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 
 ### Q-SCHEM-31: `netlist_options.sym` is outside the system-library inventory
 - Kind: ambiguity
-- Status: proposed (drafted 2026-11-20 by the spec team, task 4.1 of `openspec/changes/m8-schematic`; awaiting the user)
+- Status: approved 2026-11-21 (drafted 2026-11-20 by the spec team, task 4.1 of `openspec/changes/m8-schematic`; user decision H1 of 2026-11-21)
 - xschem behavior: `devices/netlist_options.sym` is a symbol of type `netlist_options` with no pins and no `format`; its instance's keys set netlister options (`schematic-netlisting` "Netlist options").
 - Evidence: golden case SCHEM-NL-17 (`tests/golden/SCHEM/cases/SCHEM-NL-17/input/nl17.sch` places `netlist_options.sym`); `tests/data/schem/inventory.json` (no PDK of the three lists it); xschem_library/devices/netlist_options.sym.
 - Options: ship it (the system library holds the inventoried symbols plus the symbols the golden suite places, today only `netlist_options.sym`) | inventory only (Q-SCHEM-10 as written; SCHEM-NL-17 then embeds or draws its own symbol, and its input changes)
 - Recommendation: ship it. `netlist_options` is a type the netlister must support anyway (`schematic-netlisting` "Netlist options"), the symbol has no pins and no graphics beyond a line and two texts, and changing SCHEM-NL-17's input would need a recapture. The interface table of `schematic-symbols-and-libraries` "System library" already lists it, marked as outside the inventory, and `scripts/tests/test_devices_interface.py` allows exactly this one extra row.
 - Spec effect: `schematic-symbols-and-libraries` "System library" (the sentence "The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference" gains "and the symbols the golden suite places"); design D8 step 3 (the DEVLIB test's "exactly the inventoried symbols"); Q-SCHEM-10's Resolution is extended, not changed.
+- Resolution: other — ship `netlist_options.sym` in the system library: the library holds the symbols the three PDKs reference plus the symbols the golden suite places, today only `netlist_options.sym` (`schematic-symbols-and-libraries` "System library"; Q-SCHEM-10 extended, not changed). Approved by the user 2026-11-21 (H1).
+
+### Q-SCHEM-32: Input limits of the schematic readers
+- Kind: platform
+- Status: approved 2026-11-21 (proposed by round 1 of `openspec/changes/m8-schematic`, `docs/contributing/security.md` "Schematic input"; user decision H2 of 2026-11-21)
+- xschem behavior: none of these inputs is bounded. Deeply nested embedded blocks, a schematic used as a symbol that places the next one twice per level (2^40 records), an `xschemrc` with `while 1 {}`, a 64 KB name with `[1048575:0]`, deep parentheses in bus names and in `expr()` make xschem run out of memory, hang or overflow its stack.
+- Evidence: round-1 fuzzing and review (`docs/contributing/security.md` "Schematic input"); spec issues F4, Y5 of round 1.
+- Options: cap each input, the same in both modes, each with a message and a regression test | leave unbounded (as xschem)
+- Recommendation: cap, both modes.
+- Resolution: platform — in both modes of `xschem-compat`, each with a message and a regression test: expanded bus text at most 64 MiB per name (`kMaxBusBytes`, 67,108,864 bytes) and at most 2^20 names (`kMaxBusBits`), bus parentheses at most 256 deep (`schematic-netlisting` "Bus and vector notation"); `expr` nesting at most 200 levels (`kMaxExprDepth`, "expr evaluation"); embedded-block nesting at most 64 levels (`schematic-file-format` "Embedded symbols"); a schematic used as a symbol at most 1,000,000 records when flattened (`schematic-symbols-and-libraries` "Schematic used as symbol"); `xschemrc` evaluation at most 10 s per document (`SandboxLimits`, "xschemrc as data"). Approved by the user 2026-11-21 (H2).
+
+### Q-SCHEM-33: Fuzzing duration of the schematic fuzz targets
+- Kind: other
+- Status: approved 2026-11-21 (raised by task 6.4 of `openspec/changes/m8-schematic`, which asks for a 10-minute run per target; user decision H3 of 2026-11-21)
+- xschem behavior: not applicable (Hefesto process).
+- Evidence: tasks.md 6.4; the CI `fuzz` job runs each target for 60 s.
+- Options: keep 60 s in pull-request CI and add a scheduled nightly run of 10 minutes per target | 10 minutes in pull-request CI | 60 s only
+- Recommendation: keep 60 s per target in pull-request CI and add a nightly scheduled workflow.
+- Resolution: other — pull-request CI keeps 60 s per fuzz target; a scheduled nightly workflow runs each fuzz target for 10 minutes, and that run satisfies the 10-minute run of task 6.4. Approved by the user 2026-11-21 (H3).
+
+### Q-SCHEM-34: Out-of-range integers in schematic files
+- Kind: quirk
+- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issues F5 and Y1; awaiting the user)
+- xschem behavior: layer, polygon count, rotation and flip are read with C's integer scan (rotation and flip into 16-bit integers), and `sim_pinnumber` with `atoi`; a value that does not fit is undefined behaviour in C. A negative polygon count is passed to the allocator, which is undefined too. Values that fit are stored as read: flip 2 and rotation 5 are kept and written back.
+- Evidence: save.c (instance, text and polygon readers; pin sorting on save); xschem.h (16-bit rotation and flip fields).
+- Options: fix (a layer, count, rotation or flip that does not fit a signed 32-bit integer, a rotation or flip outside -32768..32767, and a negative polygon count make the record skipped as a missing field; a `sim_pinnumber` value outside the 32-bit range is clamped) | replicate glibc's wrap-around for 16-bit fields (not portable, platform-dependent)
+- Recommendation: fix, in both modes. xschem has no defined result to match (the standing rule for undefined input), the records concerned are hostile or corrupt, and skipping them is the existing malformed-field rule.
+- Spec effect: `schematic-file-format` "Record grammar" (rules "Out-of-range integers" and "Polygon count", scenarios "Polygon counts", "Integer that does not fit"); `schematic-symbols-and-libraries` "Pin order" (the integer value of `sim_pinnumber`).
+
+### Q-SCHEM-35: Bus notation counts that xschem does not handle
+- Kind: quirk
+- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N1; awaiting the user)
+- xschem behavior: a repetition count of 0 (`a*0`, `0*a`) gives an empty list of width 0; a negative count reads undefined memory; a range `step` of 0 or below, or a stepped range whose ends are equal, loops forever; a `rep` of 0 or below leaves an undefined index list.
+- Evidence: expandlabel.y (multiplier and range actions); parselabel.l (integers may be negative). Round-1 CI fuzzing found that an empty expansion crashed Hefesto's naming stage.
+- Options: fix (all of these are syntax errors, the string is used unchanged with unknown width, except that a stepped range with equal ends gives its one element) | replicate the defined case (`a*0` and `0*a` give an empty list of width 0) and fix the undefined ones
+- Recommendation: fix, in both modes. An empty net or pin name has no SPICE meaning, no PDK uses a count of 0, and the undefined cases have no xschem result.
+- Spec effect: `schematic-netlisting` "Bus and vector notation" (scenarios "Zero and negative counts are syntax errors", "Stepped range with equal ends").
+
+### Q-SCHEM-36: `%` with a zero divisor and the text of NaN in `expr`
+- Kind: quirk
+- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N2; awaiting the user)
+- xschem behavior: `%` converts both operands to C `int`; a right operand that truncates to 0 is an integer division by zero (a crash on most hosts), and operands outside the 32-bit range are undefined. A NaN result is printed by the C library: `nan`, or `-nan` on the GNU C library when the sign bit is set, and whether 0/0 sets it depends on the processor. `expr_eng` prints NaN as `nana` or `-nana` and infinity as `infT`.
+- Evidence: eval_expr.y (`%`, result printing); editprop.c (engineering formatter).
+- Options: (a) fix: `%` is fmod(trunc(a), trunc(b)) in binary64 (C's `%` wherever xschem has a result; NaN for a zero divisor), and NaN always prints `nan` (`nana` with `expr_eng`) | (b) as (a), but print `-nan` when the sign bit is set and define the sign of every NaN Hefesto makes, matching x86-64 Linux | (c) make a zero divisor an `expr` error (text copied without the marker)
+- Recommendation: (a), in both modes. No PDK uses either case, and (a) gives the same netlist on every platform (D20).
+- Spec effect: `schematic-netlisting` "expr evaluation" (the `%` and NaN bullets, scenario "Remainder by zero and NaN text").
+
+### Q-SCHEM-37: `Bus tap` shorts when the tap side is already named
+- Kind: quirk
+- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N4; awaiting the user)
+- xschem behavior: when the tap pin of a `bus_tap` already has a non-automatic name, it is kept, and xschem reports `Error: Bus tap shorted: <bus net> - <tap pin name>` whenever the two texts differ. A bus name and a bit name nearly always differ, so a tap whose bit wire carries the matching label (`DATA[3]` on a tap `[3]` of `DATA[3:0]`) is reported as a short.
+- Evidence: netlist.c (`bus_tap` branch of the instance check).
+- Options: fix (report the `Bus tap` short only when the tap name computed from `lab` differs from the name the tap pin already has, naming those two) | replicate (report whenever the bus net and the tap pin name differ)
+- Recommendation: fix, in both modes. The netlist text is the same either way; Q-SCHEM-16 makes every short fail the run, so the replicated report would fail correct schematics.
+- Spec effect: `schematic-netlisting` "Bus taps" (scenario "Tap side already named").
+
+### Q-SCHEM-38: Environment, relative library elements and unknown commands in `xschemrc`
+- Kind: platform
+- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issues Y2 and Y6; awaiting the user)
+- xschem behavior: `env(HOME)` and `env(PWD)` are the user's home folder and xschem's start folder; relative search-path elements other than `.` (`lib`, `../lib`) are checked and used against the start folder; an unknown command in an `xschemrc` is a Tcl error that stops the rest of the file. The search path itself expands only a leading `~`; `$NAME` references are expanded by Tcl when the rc file is evaluated.
+- Evidence: xschem.tcl (search-path construction and path cleanup); golden case SCHEM-PR-05 (start-folder resolution, Q-SCHEM-30).
+- Options: (a) `env(PWD)` and `env(HOME)` are the document's folder; relative elements other than `.` resolve against the document's folder with warning `SCHEM-LIB-001` (as Q-SCHEM-30 does for `.`); unknown commands raise Tcl's error except the GUI-only commands the three PDK `xschemrc` files call, which are accepted and do nothing | (b) as (a), but `env(HOME)` is a Hefesto per-user folder (desktop) or the app container (iPadOS) | (c) as (a), but every unknown command is accepted and ignored (round 1's interim behaviour)
+- Recommendation: (a), in both modes: the document opens the same way on every machine and start folder, only granted folders are visible, and a typo in an rc file is reported instead of silently ignored. User libraries belong in the Hefesto search-path setting, not in `~`.
+- Spec effect: `schematic-symbols-and-libraries` "Library search path" (relative elements) and "xschemrc as data" (environment, unknown commands; scenario "Synthetic HOME and PWD").

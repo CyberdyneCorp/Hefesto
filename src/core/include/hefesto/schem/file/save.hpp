@@ -39,7 +39,8 @@ struct SaveOptions {
 /// no longer has the bytes the document was loaded from or last saved as,
 /// the save is refused with SCHEM-FILE-006 unless
 /// `options.overwrite_changed_file`. On success the document's `path`,
-/// `disk_digest` and `modified` are updated. Saving is always an explicit
+/// `disk_digest` and `modified` are updated, and its layer-5 boxes take the
+/// order they were written in (sort_pin_boxes; `modified` is not set by it). Saving is always an explicit
 /// request: nothing in this area saves on its own.
 [[nodiscard]] diag::Status save_document(platform::FileSystem& fs, Document& document,
                                          const platform::Path& destination, const SaveOptions& options = {});

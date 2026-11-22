@@ -12,4 +12,9 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/bus.cpp
   ${CMAKE_CURRENT_LIST_DIR}/connectivity.cpp
   ${CMAKE_CURRENT_LIST_DIR}/substitute.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/element.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/element.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/postprocess.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/line_break.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/level.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/definitions.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/flat.cpp)

@@ -9,7 +9,7 @@
 
 #include "hefesto/schem/lib/search_path.hpp"
 
-#include <cctype>
+#include "hefesto/schem/lib/reference.hpp"
 
 namespace hefesto::schem {
 
@@ -24,49 +24,23 @@ std::string_view trim(std::string_view text) {
   return text.substr(first, last - first + 1);
 }
 
-bool is_name_char(char c) {
-  return std::isalnum(static_cast<unsigned char>(c)) != 0 || c == '_';
+// A leading `~` alone or `~/` replaced by env(HOME); `~user` and every
+// other text are kept as written ("Library search path": no other
+// expansion is done, `$NAME` stays literal).
+std::string expand_home(std::string_view element, const Env& env) {
+  const bool home = element == "~" || element.starts_with("~/");
+  const auto value = env.find("HOME");
+  if (!home || value == env.end()) return std::string{element};
+  return value->second + std::string{element.substr(1)};
 }
 
-// The `$NAME` or `${NAME}` reference at `text[at]` (a `$`): its name and
-// length; an empty name when there is no reference.
-std::pair<std::string_view, std::size_t> variable_at(std::string_view text, std::size_t at) {
-  if (at + 1 < text.size() && text[at + 1] == '{') {
-    const std::size_t close = text.find('}', at + 2);
-    if (close == std::string_view::npos) return {{}, 0};
-    return {text.substr(at + 2, close - at - 2), close - at + 1};
-  }
-  std::size_t end = at + 1;
-  while (end < text.size() && is_name_char(text[end])) ++end;
-  return {text.substr(at + 1, end - at - 1), end - at};
-}
-
-// `~` at the start and `$NAME` / `${NAME}` references, from `env`. A
-// reference to an undefined name is left as written.
-std::string expand(std::string_view element, const Env& env) {
-  std::string out;
-  std::size_t at = 0;
-  if (element.starts_with('~')) {
-    if (const auto home = env.find("HOME"); home != env.end()) {
-      out = home->second;
-      at = 1;
-    }
-  }
-  while (at < element.size()) {
-    const std::size_t dollar = element.find('$', at);
-    out.append(element.substr(at, dollar - at));
-    if (dollar == std::string_view::npos) break;
-    const auto [name, length] = variable_at(element, dollar);
-    const auto value = name.empty() ? env.end() : env.find(std::string{name});
-    if (value == env.end()) {
-      out.push_back('$');
-      at = dollar + 1;
-      continue;
-    }
-    out.append(value->second);
-    at = dollar + length;
-  }
-  return out;
+// Step 4 of "Symbol references" applied to a folder: runs of `/` collapsed,
+// `/./` and `dir/../` removed, a trailing `/` or `/.` removed; a leading `/`
+// is kept.
+std::string clean(std::string_view folder) {
+  if (!folder.starts_with('/')) return normalize_reference(folder);
+  std::string cleaned = "/" + normalize_reference(folder.substr(1));
+  return cleaned == "/." ? std::string{"/"} : cleaned;
 }
 
 // Splits `<folder> | <alias>` at the first unescaped bar; `\|` is a bar.
@@ -100,19 +74,30 @@ std::vector<std::string_view> split_elements(std::string_view value) {
 
 }  // namespace
 
-SearchPath SearchPath::parse(std::string_view value, const Env& env, platform::FileSystem& fs) {
+namespace {
+
+// Whether a cleaned element names an existing folder; `.` always does, and
+// any other relative element is looked up under `document_folder`.
+bool element_exists(const std::string& folder, platform::FileSystem& fs, const platform::Path& document_folder) {
+  if (folder == kDocumentFolderElement) return true;
+  if (platform::Path{folder}.is_absolute()) return fs.exists(folder);
+  return !document_folder.empty() && fs.exists((document_folder / folder).lexically_normal());
+}
+
+}  // namespace
+
+SearchPath SearchPath::parse(std::string_view value, const Env& env, platform::FileSystem& fs,
+                             const platform::Path& document_folder) {
   std::vector<platform::Path> directories;
   std::vector<LibraryAlias> aliases;
   for (const std::string_view raw : split_elements(value)) {
     const std::string_view element = trim(raw);
     if (element.empty() || element.starts_with('#')) continue;
     auto [folder_text, alias] = split_alias(element);
-    const std::string folder = expand(folder_text, env);
-    if (folder == kDocumentFolderElement) {
-      directories.emplace_back(folder);
-      continue;
-    }
-    if (folder.empty() || !fs.exists(folder)) continue;
+    const std::string folder = clean(expand_home(folder_text, env));
+    // A relative element is kept as written: references resolve it against
+    // the containing schematic's folder (reference.cpp).
+    if (folder.empty() || !element_exists(folder, fs, document_folder)) continue;
     directories.emplace_back(folder);
     if (!alias.empty()) aliases.push_back({std::move(alias), folder});
   }

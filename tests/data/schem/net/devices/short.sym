@@ -1,0 +1,14 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=short
+format="* short @name : @#0:net_name <--> @#1:net_name"
+template="name=x1 value=0.1"
+highlight=true}
+V {}
+S {}
+E {}
+B 5 -2.5 -32.5 2.5 -27.5 {name=A dir=inout}
+B 5 -2.5 27.5 2.5 32.5 {name=A dir=inout}

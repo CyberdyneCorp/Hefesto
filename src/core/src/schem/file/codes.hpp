@@ -16,5 +16,7 @@ inline constexpr std::string_view kUnterminatedString = "SCHEM-FILE-003";
 inline constexpr std::string_view kStrayEmbeddedBlock = "SCHEM-FILE-004";
 inline constexpr std::string_view kUnclosedEmbeddedBlock = "SCHEM-FILE-005";
 inline constexpr std::string_view kChangedOnDisk = "SCHEM-FILE-006";
+inline constexpr std::string_view kBlockTooDeep = "SCHEM-FILE-007";
+inline constexpr std::string_view kBlockSymbolTooDeep = "SCHEM-FILE-008";
 
 }  // namespace hefesto::schem::file_codes

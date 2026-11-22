@@ -23,6 +23,7 @@
 #include "hefesto/oasis/command/command.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
+#include "hefesto/schem/cmd/commands.hpp"
 #include "hefesto/script/binding/commands.hpp"
 #include "hefesto/script/pdk/commands.hpp"
 #include "hefesto/select/commands.hpp"
@@ -71,6 +72,8 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   // M6 (openspec/changes/m6-lef-def-oasis/design.md D3, D14, D15).
   ok = lef::register_lef_def_commands(registry) && ok;
   ok = oasis::register_oasis_command(registry) && ok;
+  // M8 (openspec/changes/m8-schematic/design.md D12): `schematic`.
+  ok = !schem::register_schematic_command(registry).has_value() && ok;
   // M7 (openspec/changes/m7-extraction/design.md D4).
   ok = extract::register_extract_commands(registry) && ok;
   ok = netlist::spice::register_spice_commands(registry) && ok;

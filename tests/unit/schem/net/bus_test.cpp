@@ -164,3 +164,108 @@ TEST_CASE("bus notation: trailing repeat counts copy the expansion once",
   CHECK_FALSE(big.syntax_error);
   CHECK(schem::parse_bus("a*2*0").syntax_error);
 }
+
+TEST_CASE("Precedence, blanks and negative indices", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  CHECK(joined("2*a,b") == "a,a,b");
+  CHECK(joined("a , b*2") == "a,b,b");
+  CHECK(joined("A[1:-1]") == "A[1],A[0],A[-1]");
+  CHECK(joined("D[1:0]_n") == "D[1]_n,D[0]_n");
+  CHECK(joined("Q[0..-1]") == "Q0,Q-1");
+}
+
+// Bus expansion does not read xschem-compat: these rules hold in both modes.
+TEST_CASE("Zero and negative counts are syntax errors", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  for (const char* bad : {"a*0", "0*a", "a*-1", "D[7:0:0]", "D[7:0:-2]", "D[3:0:1:0]"}) {
+    INFO(bad);
+    const auto bus = schem::parse_bus(bad);
+    CHECK(bus.syntax_error);
+    CHECK_FALSE(bus.width_known);
+    CHECK(bus.bits == Bits{bad});
+    const auto warning = schem::bus_diagnostic(bus, bad);
+    REQUIRE(warning);
+    CHECK(warning->text == std::string{"syntax error in "} + bad);
+  }
+}
+
+TEST_CASE("Stepped range with equal ends", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  const auto bus = schem::parse_bus("D[3:3:2]");
+  CHECK(bus.bits == Bits{"D[3]"});
+  CHECK(bus.width() == 1);
+  CHECK(joined("Q[3..3..2]") == "Q3");
+}
+
+TEST_CASE("Expansion past the limits", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  const std::string bits = "A[1048576:0]";
+  const std::string bytes = std::string(128, 'n') + "[1048575:0]";  // 2^20 names of > 64 bytes each
+  // A comma, so the name is not returned unchanged by the fast path.
+  std::string parens(300, '(');
+  parens += "a";
+  parens += std::string(300, ')') + ",b";
+  const auto start = std::chrono::steady_clock::now();
+  for (const std::string& name : {bits, bytes, parens}) {
+    INFO(name.substr(0, 40));
+    const auto bus = schem::parse_bus(name);
+    CHECK(bus.too_large);
+    CHECK_FALSE(bus.width_known);
+    CHECK(bus.bits == Bits{name});
+    const auto warning = schem::bus_diagnostic(bus, name);
+    REQUIRE(warning);
+    CHECK(warning->code == "SCHEM-NET-006");
+    const std::string shown = name.size() > 80 ? name.substr(0, 80) + "..." : name;
+    CHECK(warning->text == "bus expansion of " + shown +
+                               " exceeds a limit (1048576 names, 67108864 bytes or 256 nested parentheses); used "
+                               "unchanged");
+  }
+  CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(10));
+  // Just inside the limits.
+  CHECK(schem::parse_bus(std::string(256, '(') + "a" + std::string(256, ')') + ",b").bits == Bits{"a", "b"});
+  CHECK(schem::kMaxBusBytes == 67108864U);
+}
+
+// H2 regression: the byte cap is checked on the text, not on the name count:
+// 2^19 names of 130 bytes pass the name cap but not the byte cap.
+TEST_CASE("bus notation: the expanded text is capped at kMaxBusBytes",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  const std::string wide = std::string(130, 'w') + "[524287:0]";
+  CHECK(schem::parse_bus(wide).too_large);
+  const std::string fits = std::string(40, 'w') + "[524287:0]";  // about 25 MiB
+  const auto bus = schem::parse_bus(fits);
+  CHECK_FALSE(bus.too_large);
+  CHECK(bus.width() == 524288U);
+}
+
+// Regression (review of PR #80, point 7): every enclosing group copied the
+// whole inner list, so a wide bus inside 200 nested groups made about
+// 2 x 10^8 string copies. Every level now appends to one output.
+TEST_CASE("bus notation: nested groups do not copy the inner list once per level",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  std::string nested = "a[1047999:0]";
+  for (int i = 0; i < 200; ++i) nested = "(b" + std::to_string(i) + "," + nested + ")";
+  const auto start = std::chrono::steady_clock::now();
+  const auto bus = schem::parse_bus(nested);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK_FALSE(bus.too_large);
+  REQUIRE(bus.width() == 1048200);
+  CHECK(bus.bits.front() == "b199");
+  CHECK(bus.bits[199] == "b0");
+  CHECK(bus.bits[200] == "a[1047999]");
+  CHECK(bus.bits.back() == "a[0]");
+  CHECK(elapsed < std::chrono::seconds{10});
+  CHECK(joined("2*(a,(b,c)*2),d") == "a,b,b,c,c,a,b,b,c,c,d");
+}
+
+// The width-only parse (review of PR #80, point 4) agrees with parse_bus()
+// on every form, including the limits, and builds no names.
+TEST_CASE("bus notation: bus_width counts without building the names",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  for (const char* name : {"A", "$x,y", "A[3:0]", "A[0:7:2]", "A0..3", "2*(a,b)*3", "A[1:0]B[1:0]x", "A[x]",
+                           "A[1:0", "a,,b", "A[1048575:0]", "A[1048576:0]", "1024*1025*a", "a*1048576*2*0",
+                           "A[-9223372036854775807:-9223372036854775806]", "R[0:1048575]long_trailer_text"}) {
+    INFO(name);
+    CHECK(schem::bus_width(name) == schem::parse_bus(name).width());
+  }
+  // Past kMaxBusBytes by bytes alone: 2^20 names of 70 bytes.
+  const std::string wide = "a" + std::string(60, 'n') + "[1048575:0]";
+  CHECK(schem::parse_bus(wide).too_large);
+  CHECK(schem::bus_width(wide) == 1);
+}

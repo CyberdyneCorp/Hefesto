@@ -8,4 +8,5 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/instance.cpp
   ${CMAKE_CURRENT_LIST_DIR}/symbol.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/tokens.cpp
   ${CMAKE_CURRENT_LIST_DIR}/types.cpp)

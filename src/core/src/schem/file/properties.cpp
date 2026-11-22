@@ -136,7 +136,7 @@ std::string replace_value(std::string_view props, const AttributeSpan& span, std
     out.append(props.substr(span.key_end + 1));
     return out;
   }
-  out.append("=").append(value);
+  out.append("=").append(value).append(" ");  // at the end of the string: key, `=v` and one space
   return out;
 }
 

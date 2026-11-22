@@ -1,0 +1,13 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=source
+format="@name @pinlist @VAR = @FUNC m=@m"
+template="name=B1 VAR=I FUNC=\\"'pwl(V(plus,minus),0,0, 1,10m, 2, 100m)'\\" m=1"}
+V {}
+S {}
+E {}
+B 5 -2.5 -32.5 2.5 -27.5 {name=p dir=inout}
+B 5 -2.5 27.5 2.5 32.5 {name=m dir=inout}

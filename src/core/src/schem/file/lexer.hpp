@@ -56,6 +56,12 @@ class Lexer {
   /// Discards the bytes up to, not including, the next LF.
   void skip_to_line_end() noexcept;
 
+  /// Discards the rest of the current line and every later line up to and
+  /// including the first one whose first byte is `]` (the skipped embedded
+  /// block of "Embedded symbols"; nested `[` lines are not counted). Stops
+  /// at the LF that ends that line, or at the end of the input.
+  void skip_past_closing_line() noexcept;
+
  private:
   std::string_view bytes_;
   std::size_t pos_ = 0;

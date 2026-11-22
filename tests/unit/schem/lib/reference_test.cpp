@@ -190,17 +190,75 @@ TEST_CASE("Missing folder dropped", kSearchPath) {
   CHECK(path.directories() == std::vector<platform::Path>{"/a", "/b"});
 }
 
-TEST_CASE("search path elements: comments, aliases, ~ and environment references", kSearchPath) {
+TEST_CASE("search path elements: comments, aliases and ~", kSearchPath) {
   platform::MemoryFileSystem fs;
   touch(fs, "/home/u/lib/x.sym");
   touch(fs, "/pdk/sky130A/libs.tech/xschem/a.sym");
   touch(fs, "/odd|dir/z.sym");
+  touch(fs, "/home/u/z.sym");
   const std::map<std::string, std::string> env{{"HOME", "/home/u"}, {"PDK_ROOT", "/pdk"}, {"PDK", "sky130A"}};
   const auto path = schem::SearchPath::parse(
-      "#/commented: ~/lib :${PDK_ROOT}/$PDK/libs.tech/xschem|sky : /odd\\|dir : $UNDEFINED/x", env, fs);
+      "#/commented: ~/lib :/pdk/sky130A/libs.tech/xschem|sky : /odd\\|dir : ~ : ~u/lib", env, fs);
   CHECK(path.directories() ==
-        std::vector<platform::Path>{"/home/u/lib", "/pdk/sky130A/libs.tech/xschem", "/odd|dir"});
+        std::vector<platform::Path>{"/home/u/lib", "/pdk/sky130A/libs.tech/xschem", "/odd|dir", "/home/u"});
   CHECK(path.aliases() == std::vector<schem::LibraryAlias>{{"sky", "/pdk/sky130A/libs.tech/xschem"}});
+}
+
+TEST_CASE("Environment reference left as text", kSearchPath) {
+  platform::MemoryFileSystem fs;
+  touch(fs, "/a/x.sym");
+  touch(fs, "/pdk/lib/x.sym");
+  const std::map<std::string, std::string> env{{"NOPE", "/pdk"}, {"PDK_ROOT", "/pdk"}};
+  CHECK(schem::SearchPath::parse("$NOPE/lib:/a", env, fs, "/w").directories() == std::vector<platform::Path>{"/a"});
+  // An absolute element with a reference is literal text, dropped when no
+  // such folder exists.
+  CHECK(schem::SearchPath::parse("/${PDK_ROOT}/lib:/a", env, fs).directories() == std::vector<platform::Path>{"/a"});
+}
+
+TEST_CASE("relative search path elements resolve against the schematic folder", kSearchPath) {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    platform::MemoryFileSystem fs;
+    touch(fs, "/w/s/lib/y.sym");
+    touch(fs, "/w/lib/z.sym");
+    const auto path = schem::SearchPath::parse("lib:../lib:missing", kNoEnv, fs, "/w/s");
+    CHECK(path.directories() == std::vector<platform::Path>{"lib", "../lib"});
+    CHECK(schem::SearchPath::parse("lib", kNoEnv, fs).directories() == std::vector<platform::Path>{"."});
+    const auto y = schem::resolve_reference("y.sym", "/w/s", path, fs);
+    CHECK(y.file == "/w/s/lib/y.sym");
+    CHECK(y.via == schem::ResolvedVia::document_folder);
+    CHECK(y.folder == "/w/s");
+    CHECK(schem::resolve_reference("z.sym", "/w/s", path, fs).file == "/w/lib/z.sym");
+    // An unsaved document has no folder: relative elements give nothing.
+    CHECK(schem::resolve_reference("y.sym", "", path, fs).via == schem::ResolvedVia::fallback);
+
+    schem::Document top;
+    top.path = "/w/s/top.sch";
+    diag::CollectingSink sink;
+    schem::SymbolCache cache;
+    CHECK_FALSE(cache.resolve({"y.sym"}, top, schem::ResolveContext{path, fs, &sink, compat}).placeholder);
+    const auto relative = with_code(sink.take(), "SCHEM-LIB-001");
+    REQUIRE(relative.size() == 1);
+    CHECK(relative[0].text.find("y.sym resolved against the schematic folder /w/s;") != std::string::npos);
+  }
+}
+
+TEST_CASE("search path elements are cleaned and duplicates kept", kSearchPath) {
+  platform::MemoryFileSystem fs;
+  touch(fs, "/a/b/x.sym");
+  const auto path = schem::SearchPath::parse("//a//b/:/a/./b/.:/a/c/../b:/a/b", kNoEnv, fs);
+  CHECK(path.directories() == std::vector<platform::Path>{"/a/b", "/a/b", "/a/b", "/a/b"});
+}
+
+TEST_CASE("Alias folder is also searched", kSearchPath) {
+  platform::MemoryFileSystem fs;
+  touch(fs, "/w/libB/x.sym");
+  const auto path = schem::SearchPath::parse("/w/libB | lib", kNoEnv, fs);
+  CHECK(path.directories() == std::vector<platform::Path>{"/w/libB"});
+  const auto resolved = schem::resolve_reference("x.sym", "/elsewhere", path, fs);
+  CHECK(resolved.file == "/w/libB/x.sym");
+  CHECK(resolved.via == schem::ResolvedVia::search_path);
+  CHECK(schem::resolve_reference("lib/x.sym", "/elsewhere", path, fs).via == schem::ResolvedVia::alias);
 }
 
 TEST_CASE("an empty search path is the schematic folder", kSearchPath) {

@@ -26,6 +26,7 @@ class ArgParser {
         parse_option(arg);
       }
     }
+    check_netlist();
     return std::move(result_);
   }
 
@@ -83,8 +84,41 @@ class ArgParser {
     } else if (is_option(arg, "--strip-reflibs")) {
       set_value(arg, "--strip-reflibs",
                 [this](std::string_view v) { result_.options.strip_reflibs = std::filesystem::path{v}; });
-    } else {
+    } else if (!parse_netlist_option(arg)) {
       fail("unknown option '" + std::string{arg} + "'");
+    }
+  }
+
+  // --netlist, -o, --pdk and --lvs; false when `arg` is none of them.
+  bool parse_netlist_option(std::string_view arg) {
+    if (is_option(arg, "--netlist")) {
+      set_value(arg, "--netlist", [this](std::string_view v) { netlist_.schematic = std::string{v}; });
+      netlist_given_ = true;
+    } else if (is_option(arg, "-o")) {
+      set_value(arg, "-o", [this](std::string_view v) { netlist_.output = std::string{v}; });
+    } else if (is_option(arg, "--pdk")) {
+      set_value(arg, "--pdk", [this](std::string_view v) { netlist_.pdk = std::string{v}; });
+    } else if (arg == "--lvs") {
+      netlist_.lvs = true;
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  // -o, --lvs and --pdk belong to --netlist, which runs no scripts.
+  void check_netlist() {
+    if (result_.error) {
+      return;
+    }
+    if (netlist_given_) {
+      if (!result_.options.sources.empty() || !result_.options.files.empty() || result_.options.magic_mode) {
+        fail("--netlist takes no scripts, layout files or --magic");
+        return;
+      }
+      result_.options.netlist = netlist_;
+    } else if (netlist_ != NetlistRequest{}) {
+      fail("-o, --lvs and --pdk need --netlist");
     }
   }
 
@@ -159,6 +193,8 @@ class ArgParser {
   std::span<const std::string_view> args_;
   std::size_t index_ = 0;
   bool options_ended_ = false;
+  bool netlist_given_ = false;
+  NetlistRequest netlist_;
   ParsedArgs result_;
 };
 
@@ -181,6 +217,7 @@ ParsedArgs parse_args(std::span<const std::string_view> args) {
 std::string usage_text() {
   return "usage: hefesto-cli [options] [script | layout-file ...]\n"
          "       hefesto-cli [options] --magic [magic options] [file ...]\n"
+         "       hefesto-cli [options] --netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]\n"
          "\n"
          "Runs Hefesto command scripts headless. Startup (settings, technology,\n"
          "layout files) runs first; then scripts and -c commands run in\n"
@@ -209,6 +246,9 @@ std::string usage_text() {
          "                            diagnostic format on stderr (default text); magic prints\n"
          "                            Magic's console text and each script command's result\n"
          "                            (golden replay against Magic)\n"
+         "  --netlist <file.sch>      netlist the schematic (SPICE) and exit; the netlist\n"
+         "                            goes to stdout, or to -o <out>; --lvs sets the LVS\n"
+         "                            options; --pdk <name> selects the PDK first\n"
          "  --strip-reflibs <dir>     remove the GDS_START/GDS_END lines of every .mag\n"
          "                            file in <dir> (reference-library stripper) and exit\n"
          "  --log-dir=<dir>           session log directory (default: app storage)\n"
@@ -220,7 +260,8 @@ std::string usage_text() {
          "  --version                 print the version and exit\n"
          "  -h, --help                print this help and exit\n"
          "\n"
-         "exit status: 0 success, 1 a command or script failed, 2 usage error\n";
+         "exit status: 0 success, 1 a command or script failed, 2 usage error,\n"
+         "             10 the --netlist run reported a netlist failure\n";
 }
 
 }  // namespace hefesto::cli

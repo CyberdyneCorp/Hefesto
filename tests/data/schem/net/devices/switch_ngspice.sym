@@ -1,0 +1,18 @@
+v {xschem version=3.4.8RC file_version=1.2
+* SPDX-License-Identifier: Apache-2.0
+* Netlisting test symbol written by tests/unit/schem/net/gen_test_devices.py
+* from tests/data/schem/devices_interface.json.}
+G {}
+K {type=switch
+format="@name @@P @@M @@CP @@CM @model"
+template="name=S1 model=SW1
+device_model=\\".MODEL SW1 SW 
++ VT=0.9 VH=0.01
++ RON=0.01 ROFF=10G \\""}
+V {}
+S {}
+E {}
+B 5 -42.5 -2.5 -37.5 2.5 {name=CP dir=in}
+B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}
+B 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}
+B 5 -42.5 17.5 -37.5 22.5 {name=CM dir=in}

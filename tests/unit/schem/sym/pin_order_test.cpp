@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
@@ -68,6 +69,26 @@ TEST_CASE("Duplicate sim_pinnumber", kPinOrder) {
   CHECK(warnings[0].text.find("sim_pinnumber 1") != std::string::npos);
 }
 
+TEST_CASE("Non-integer sim_pinnumber values", kPinOrder) {
+  schem::Symbol symbol;
+  symbol.pins = {pin("A", "2a"), pin("B", "1.9"), pin("C", "x")};
+  CHECK(schem::sim_pinnumber_value("2a") == 2);
+  CHECK(schem::sim_pinnumber_value("1.9") == 1);
+  CHECK(schem::sim_pinnumber_value("x") == 0);
+  CHECK(names_in_order(symbol) == std::vector<std::string>{"C", "B", "A"});
+}
+
+TEST_CASE("Empty sim_pinnumber disables sorting", kPinOrder) {
+  // `sim_pinnumber=""` decodes to the empty value.
+  schem::Document document;
+  document.boxes = {{5, {0, 0}, {5, 5}, "name=B sim_pinnumber=2"}, {5, {10, 0}, {15, 5}, "name=A sim_pinnumber=\"\""}};
+  const schem::Symbol symbol = schem::make_symbol("e.sym", {}, document);
+  REQUIRE(symbol.pins[1].sim_pinnumber == std::optional<std::string>{""});
+  diag::CollectingSink sink;
+  CHECK(names_in_order(symbol, &sink) == std::vector<std::string>{"B", "A"});
+  CHECK(sink.snapshot().empty());
+}
+
 TEST_CASE("ties keep file order however many pins share a number", kPinOrder) {
   schem::Symbol symbol;
   for (int i = 0; i < 40; ++i) symbol.pins.push_back(pin("P" + std::to_string(i), i % 2 == 0 ? "5" : "4"));
@@ -79,14 +100,20 @@ TEST_CASE("ties keep file order however many pins share a number", kPinOrder) {
   }
 }
 
-TEST_CASE("sim_pinnumber values are read as integers and saturate", kPinOrder) {
+TEST_CASE("sim_pinnumber values are read as atoi reads them and clamp to 32 bits", kPinOrder) {
   CHECK(schem::sim_pinnumber_value("12") == 12);
   CHECK(schem::sim_pinnumber_value("  -3") == -3);
+  CHECK(schem::sim_pinnumber_value("\v\f\r 3") == 3);
   CHECK(schem::sim_pinnumber_value("+7x") == 7);
   CHECK(schem::sim_pinnumber_value("") == 0);
   CHECK(schem::sim_pinnumber_value("abc") == 0);
-  CHECK(schem::sim_pinnumber_value("99999999999999999999999") == std::numeric_limits<long long>::max());
-  CHECK(schem::sim_pinnumber_value("-99999999999999999999999") == std::numeric_limits<long long>::min());
+  CHECK(schem::sim_pinnumber_value("-") == 0);
+  CHECK(schem::sim_pinnumber_value("2147483647") == 2147483647);
+  CHECK(schem::sim_pinnumber_value("2147483648") == 2147483647);
+  CHECK(schem::sim_pinnumber_value("-2147483648") == -2147483648LL);
+  CHECK(schem::sim_pinnumber_value("-2147483649") == -2147483648LL);
+  CHECK(schem::sim_pinnumber_value("99999999999999999999999") == std::numeric_limits<std::int32_t>::max());
+  CHECK(schem::sim_pinnumber_value("-99999999999999999999999") == std::numeric_limits<std::int32_t>::min());
 }
 
 TEST_CASE("a symbol without pins has an empty pin order", kPinOrder) {

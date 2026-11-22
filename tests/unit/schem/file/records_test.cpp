@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "file_test_util.hpp"
 #include "hefesto/schem/file/read_write.hpp"
@@ -259,6 +260,8 @@ TEST_CASE("malformed records are reported with their line", "[cap:schematic-file
 
 TEST_CASE("hostile input is read in bounded work", "[cap:schematic-file-format][req:Malformed input]") {
   // Deep nesting of embedded blocks, a huge polygon count and stray braces.
+  // At most 64 blocks are open at once (Q-SCHEM-32); the `[` that would
+  // open the 65th skips the rest of this file, which has no `]` line.
   std::string text;
   for (int i = 0; i < 20000; ++i) {
     text += "C {s" + std::to_string(i) + "} 0 0 0 0 {}\n[\n";
@@ -266,8 +269,40 @@ TEST_CASE("hostile input is read in bounded work", "[cap:schematic-file-format][
   text += "P 1 2147483647 0 0 {\n}}}}{{{\n";
   const auto r = read_text(text);
   CHECK(r.doc.instances.size() == 1);
-  CHECK(r.doc.embedded.size() == 20000);
-  CHECK(r.doc.embedded.back().symbol.instances.empty());
-  CHECK(r.doc.embedded.front().symbol.instances.size() == 1);
+  CHECK(r.doc.embedded.size() == 1);
   CHECK_FALSE(r.warnings.empty());
+  // The polygon alone: its count is never used to reserve storage.
+  const auto polygon = read_text("P 1 2147483647 0 0 {\n}}}}{{{\n");
+  CHECK(polygon.doc.polygons.empty());
+  CHECK(codes(polygon.warnings).front() == "SCHEM-FILE-001");
+}
+
+TEST_CASE("polygon counts", "[cap:schematic-file-format][req:Record grammar]") {
+  const auto r = read_text("P 4 0 {}\nP 4 -1 {}\nP 4 2 0 0 1 1 {}\n");
+  REQUIRE(r.doc.polygons.size() == 2);
+  CHECK(r.doc.polygons[0].points.empty());
+  REQUIRE(r.warnings.size() == 1);
+  CHECK(r.warnings[0].text == "missing fields for POLYGON object, ignoring");
+  CHECK(schem::write_document(r.doc) == std::string{kEmptyHeader} + "P 4 0 {}\nP 4 2 0 0 1 1 {}\n");
+}
+
+TEST_CASE("integer that does not fit", "[cap:schematic-file-format][req:Record grammar]") {
+  const auto r = read_text("L 99999999999 0 0 1 1 {}\nP 4 99999999999 0 0 {}\nN 0 0 1 0 {}\n");
+  CHECK(r.doc.lines.empty());
+  CHECK(r.doc.polygons.empty());
+  CHECK(r.doc.wires.size() == 1);
+  CHECK(r.warnings.size() == 2);
+}
+
+TEST_CASE("end of file before the opening brace", "[cap:schematic-file-format][req:Malformed input]") {
+  const auto wire = read_text("N 0 0 10 0");
+  REQUIRE(wire.doc.wires.size() == 1);
+  CHECK(wire.doc.wires[0].props.empty());
+  CHECK(codes(wire.warnings) == std::vector<std::string>{"SCHEM-FILE-003"});
+  const auto text = read_text("T");
+  CHECK(text.doc.texts.empty());
+  CHECK_FALSE(text.warnings.empty());
+  const auto instance = read_text("C");
+  CHECK(instance.doc.instances.empty());
+  CHECK_FALSE(instance.warnings.empty());
 }

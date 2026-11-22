@@ -18,7 +18,7 @@ import gen_devices_interface as gen  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 INVENTORY = REPO / "tests/data/schem/inventory.json"
-# Symbols outside the inventory that a golden case places (Q-SCHEM-31, proposed).
+# Symbols outside the inventory that a golden case places (Q-SCHEM-31, approved 2026-11-21).
 OUTSIDE_INVENTORY = {"netlist_options.sym"}
 
 MINI_SPEC = """### Requirement: System library

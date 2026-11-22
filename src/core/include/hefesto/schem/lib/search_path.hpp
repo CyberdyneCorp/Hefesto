@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <string>
 #include <string_view>
@@ -38,7 +39,8 @@ struct LibraryAlias {
 
 /// The ordered library directories symbol references are looked up in, and
 /// the library aliases. A directory equal to kDocumentFolderElement means
-/// the containing schematic's folder.
+/// the containing schematic's folder; any other relative directory names a
+/// folder under it (proposed Q-SCHEM-38).
 class SearchPath {
  public:
   SearchPath() = default;
@@ -50,16 +52,22 @@ class SearchPath {
 
   /// Builds the search path from an XSCHEM_LIBRARY_PATH value ("Library
   /// search path"): split at `:`, `<folder> | <alias>` elements define
-  /// aliases (`\|` is an escaped bar), `#` elements are dropped, `~` and
-  /// `$NAME` / `${NAME}` are expanded from `env`, and elements that do not
-  /// exist in `fs` are dropped. An empty result is the document folder.
+  /// aliases (`\|` is an escaped bar) and stay in the path, `#` elements are
+  /// dropped, a leading `~` or `~/` is replaced by `env` HOME (no other
+  /// expansion: `$NAME` is literal text), each element is cleaned as step 4
+  /// of "Symbol references", duplicates are kept, and elements that do not
+  /// exist in `fs` are dropped. A relative element other than `.` names a
+  /// folder under `document_folder` (proposed Q-SCHEM-38): it is kept as
+  /// written when that folder exists, and dropped when it does not or when
+  /// `document_folder` is empty. An empty result is the document folder.
   [[nodiscard]] static SearchPath parse(std::string_view value, const std::map<std::string, std::string>& env,
-                                        platform::FileSystem& fs);
+                                        platform::FileSystem& fs, const platform::Path& document_folder = {});
 
   /// Runs `input.rc_file` as data in a fresh sandboxed interpreter with the
   /// synthetic `env()` of Q-SCHEM-23 and returns the search path and the
   /// global variables it set. `xschem_execute_scripts` is read, ignored and
-  /// logged (Q-SCHEM-25).
+  /// logged (Q-SCHEM-25). The evaluation stops after `input.time_limit`
+  /// (SCHEM-LIB-010, Q-SCHEM-32).
   [[nodiscard]] static XschemrcResult from_xschemrc(platform::FileSystem& fs, const XschemrcInput& input);
 
   /// `front`'s directories and aliases, then this path's (the Hefesto
@@ -73,6 +81,10 @@ class SearchPath {
   std::vector<LibraryAlias> aliases_;
 };
 
+/// The longest evaluation of the `xschemrc` files of one document (input
+/// limit approved 2026-11-21, Q-SCHEM-32).
+inline constexpr std::chrono::milliseconds kXschemrcTimeLimit{10'000};
+
 struct XschemrcInput {
   platform::Path rc_file;
   /// The synthetic `env()` entries (Q-SCHEM-23), e.g. PDK_ROOT and PDK.
@@ -84,6 +96,10 @@ struct XschemrcInput {
   /// Tcl globals set before evaluation ("xschemrc as data"):
   /// XSCHEM_SHAREDIR, USER_CONF_DIR, PDK_ROOT, PDK.
   std::map<std::string, std::string> variables;
+  /// The evaluation of both files stops after this long, in both modes of
+  /// `xschem-compat`, with SCHEM-LIB-010; the settings made before the stop
+  /// are kept. Tests shorten it.
+  std::chrono::milliseconds time_limit = kXschemrcTimeLimit;
 };
 
 /// The input for the active PDK `pdk` installed under `pdk_root`: its
@@ -99,7 +115,7 @@ struct XschemrcResult {
   /// Global Tcl variables the rc files set that `tcleval` values read
   /// (e.g. SKYWATER_MODELS), by name; scalars only.
   std::map<std::string, std::string> variables;
-  /// Errors and the Q-SCHEM-25 log line.
+  /// Errors, the time-limit stop and the Q-SCHEM-25 log line.
   std::vector<diag::Diagnostic> diagnostics;
 };
 
