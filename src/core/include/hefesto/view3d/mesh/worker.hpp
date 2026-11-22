@@ -92,7 +92,8 @@ class MeshWorker {
   [[nodiscard]] MeshHandle current() const;
   /// True when no build runs or waits.
   [[nodiscard]] bool idle() const;
-  /// Waits until idle or `timeout_ms` passed; true when idle.
+  /// Waits until idle or `timeout_ms` passed; true when idle. A finished
+  /// build's on_done has returned by then.
   bool wait_idle(int timeout_ms);
 
  private:

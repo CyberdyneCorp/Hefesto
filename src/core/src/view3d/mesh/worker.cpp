@@ -101,11 +101,12 @@ struct MeshWorker::State {
     return detail::build_layout(*in.stack, *in.cell, in.clip, ctx, in.max_chunk_tiles);
   }
 
+  // `running` stays true until on_done has returned, so wait_idle() and
+  // idle() never report idle while the callback is still running.
   void finish(Job& job, std::optional<MeshModel> model) {
     MeshHandle done;
     {
       const std::lock_guard lock(mutex);
-      running = false;
       const bool dropped = !model || cancel.load(std::memory_order_relaxed);
       if (dropped && job.previous && !queued) {
         // The model still lacks these edits: keep them for the next change.
@@ -121,6 +122,10 @@ struct MeshWorker::State {
     }
     if (done && callbacks.on_done) {
       callbacks.on_done(done);
+    }
+    {
+      const std::lock_guard lock(mutex);
+      running = false;
     }
     idle.notify_all();
   }

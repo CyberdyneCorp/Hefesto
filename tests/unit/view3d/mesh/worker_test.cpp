@@ -163,6 +163,34 @@ TEST_CASE("a new build cancels the running one and only the latest becomes curre
   CHECK(finished.size() == 1);
 }
 
+// Regression: the worker used to clear `running` before calling on_done, so
+// idle() (and a wait_idle() woken by an earlier notify) reported idle while
+// the callback was still running.
+TEST_CASE("the worker is not idle until the finished build's on_done has returned",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  Grid g;
+  std::atomic<bool> entered{false};
+  std::atomic<bool> returned{false};
+  view3d::WorkerCallbacks cb;
+  cb.on_done = [&](const view3d::MeshHandle&) {
+    entered.store(true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    returned.store(true);
+  };
+  view3d::MeshWorker worker(cb);
+  worker.build(g.inputs());
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(kWaitMs);
+  while (!entered.load() && std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::yield();
+  }
+  REQUIRE(entered.load());
+  while (!worker.idle() && std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::yield();
+  }
+  CHECK(returned.load());
+  REQUIRE(worker.wait_idle(kWaitMs));
+}
+
 TEST_CASE("a change event rebuilds the affected chunks of the current model in the background",
           "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
   Grid g;
