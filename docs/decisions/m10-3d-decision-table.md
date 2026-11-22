@@ -18,7 +18,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
-**Round 2 decisions, recommended 2026-11-21, pending user confirmation.** Round 1 (PR #77) left six items for the user; they are recorded with recommendations on 2026-11-21 and await the user's confirmation (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). Until the user confirms them they carry `Proposed resolution:` lines and a pending `Status:`, and `check_milestone_readiness.py` counts an entry with a pending status as unresolved (PR #81 review), so `--milestone M10` lists Q-MISC-74 (the amendment), 79 and 80 as blocking until then.
+**Round 2 decisions, approved 2026-11-21 except J5.** Round 1 (PR #77) left six items for the user; the user approved them as recommended on 2026-11-21 (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). J1 (Q-MISC-74's amendment), J2, J3 (Q-MISC-79), J4 and J6 carry `Resolution:` lines. J5 (Q-MISC-80) is not approved: the MISC-3D-12 capture disproved the premise of the approved text ("ON refuses, OFF reopens"; Magic deletes the command and reopens), so it keeps a `Proposed resolution:` line and a pending `Status:` until the user decides again. `check_milestone_readiness.py` counts an entry with a pending status as unresolved (PR #81 review), so `--milestone M10` lists Q-MISC-80 as blocking until then.
 
 ## Judgement items
 
@@ -65,7 +65,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-77 | no depth test | **fix** | depth-buffered rendering in both modes; multi-style types drawn once per style with a less-or-equal test, last style wins |
 | Q-MISC-78 | `cif` rescales by the current style's scalefactor | **compat** | ON: current f, as Magic; OFF: the f applied on entering mask-layer mode, and a style change rescales from f_old to f_new |
 
-### New entries of round 2 (recommended 2026-11-21, pending user confirmation; cited by view-3d)
+### New entries of round 2 (cited by view-3d; Q-MISC-79 approved 2026-11-21, Q-MISC-80 pending user confirmation)
 
 | ID | Question | Kind | Decision |
 |---|---|---|---|
@@ -76,13 +76,13 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 | Kind | Rows |
 |---|---|
-| fix | 5 (Q-MISC-70, 71, 74, 76, 77; Q-MISC-74's aspect amended 2026-11-21, pending confirmation) |
+| fix | 5 (Q-MISC-70, 71, 74, 76, 77; Q-MISC-74's aspect amended and approved 2026-11-21) |
 | compat | 3 (Q-MISC-72, 78, 79) |
 | replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture) |
 | fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
 
-Q-MISC-70, 71, 72 and 74 have `Resolution:` lines. The round-2 items (Q-MISC-74's amendment, 79, 80) have pending statuses, so `check_milestone_readiness.py --milestone M10` lists them until the user confirms them.
+Q-MISC-70, 71, 72, 74 (with its 2026-11-21 amendment) and 79 have `Resolution:` lines. Q-MISC-80 has a pending status, so `check_milestone_readiness.py --milestone M10` lists it until the user decides it.
 
 ## Notable changes to the entries' original recommendations
 
@@ -123,17 +123,17 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 - **J1** ((a), approved), "Mesh generation from layout": "Contact and via cuts SHALL be drawn with their technology height and thickness; a view option SHALL draw them as vertical solids spanning the layers they connect."
 - **J2** ((a), approved), "3D export": "Exported geometry SHALL equal the displayed model's geometry in physical microns, without the view's z exaggeration, unless a z scale is requested; the scale is recorded in the file."
 
-## Round 2 decisions (recommended 2026-11-21, pending user confirmation)
+## Round 2 decisions (approved 2026-11-21, except J5)
 
-Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). All six are recorded with recommendations on 2026-11-21 and await the user's confirmation. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: recommended 2026-11-21, pending user confirmation` and a `Proposed resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there. On confirmation each becomes a `Resolution:` line.
+Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). The user approved all six as recommended on 2026-11-21. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: approved 2026-11-21` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there. The exception is J5: the MISC-3D-12 capture later disproved the premise of the approved text, so Q-MISC-80 keeps `Status: recommended 2026-11-21, pending user confirmation` and a `Proposed resolution:` line (replicate in both modes) until the user decides again.
 
-| Item | Question | Recommendation (2026-11-21, pending confirmation) | Where recorded |
+| Item | Question | Decision (approved 2026-11-21; J5 pending) | Where recorded |
 |---|---|---|---|
 | J1 | Q-MISC-74 aspect for a window taller than wide | confirmed as built: A = diag(H/W, 1, 1) when W ≥ H, else diag(1, W/H, 1), both modes | Q-MISC-74 (amendment; resolution changed) |
 | J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |
 | J3 | split tile whose left half is space | compat: ON keeps Magic (left type: flat, no side faces); OFF uses the triangle's own type for height, thickness and side faces | Q-MISC-79 (new) |
 | J4 | `noplaneordering` skips the defaults and the micron conversion | replicate, both modes; no Q row | MISC.md, without a Q row |
-| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disproved by the MISC-3D-12 capture: Magic deletes the path and reopens, so the revised recommendation is replicate in both modes (implemented) | Q-MISC-80 (new) |
+| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disproved by the MISC-3D-12 capture: Magic deletes the path and reopens, so the approval does not stand and the revised recommendation, replicate in both modes (implemented), is pending user confirmation | Q-MISC-80 (new) |
 | J6 | empty cell extent, abutting cells, clip-edge faces | confirmed, both modes: an empty dimension is left out of the fit (1 × 1 when both are empty); pieces abutting across cells get no inner side faces; faces on the clip area are closed | MISC.md, without a Q row |
 
 ### Spec changes of round 2 (applied with the decisions)
