@@ -65,10 +65,12 @@
 #                1M-rectangle region and of the sky130 reference layouts (the 100 x 100 dfxtp_1
 #                array and the all-cells block). bench/view3d/view3d_gate.py gates the median
 #                build time and the model's memory per rectangle (bench/view3d/gates.json); the GPU
-#                size estimate, the peak resident set and the frame time (once Mesh3dRenderer
-#                exists, task 5.3) are recorded for information. Results: the job summary and the
-#                artifact "view3d-bench"; recorded in docs/design/m10-3d-ui-conformance.md
-#                "Performance".
+#                size estimate and the peak resident set are recorded for information. The frame
+#                time (task 13.2, bench/view3d/frame.cpp) needs the Vulkan renderer: this job
+#                builds without the desktop (no GPU on the runner), so it reports it as not
+#                measured; it is recorded from the M3 Pro (--frames, HEFESTO_BUILD_DESKTOP=ON).
+#                Results: the job summary and the artifact "view3d-bench"; recorded in
+#                docs/design/m10-3d-ui-conformance.md "Performance".
 #
 # `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
 # only when a DRC path changed, the GDS jobs only when a GDS, mask, CIF or use-index path

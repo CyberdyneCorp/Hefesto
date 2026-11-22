@@ -8,8 +8,8 @@
 // include/hefesto/render/mesh3d_shading.hpp (the CPU copy of the lighting).
 
 layout(push_constant) uniform Frame {
-  mat4 mvp;        // chunk-local (x, y, z) -> Vulkan clip space (y down, depth (w - z) / 2: nearer is smaller)
-  vec4 origin_sz;  // x, y: the chunk origin in root coordinates (lighting); z: s_z
+  mat4 mvp;        // chunk-local (x, y, z) -> Vulkan clip space (xy scaled, y down, depth (w + z) / 2: higher layers nearer)
+  vec4 origin_sz;  // x, y: the chunk origin in root coordinates (lighting); z: s_z; w: the xy scale
   uvec4 params;    // x: pick base; y: lighting (0 Magic, 1 directional); z: highlight active
 } frame;
 
@@ -48,29 +48,33 @@ bool highlighted(uint pick) {
 }
 
 // Model z is -h * s_z and Magic's faces are counter-clockwise seen from
-// outside in right-handed coordinates, so the viewer of the default view is
-// on the +z side and the face at z_top (the layer's h end) has the normal
-// (0, 0, 1) (CAMERA: z' grows toward the viewer).
+// outside in right-handed coordinates, so Magic's viewer is on the +z
+// side, the physical underside. The renderer mirrors the depth (R1,
+// Q-MISC-81: higher layers in front) and sees the faces toward -z, at
+// each layer's h + t end; the displayed scene is the model mirrored in z,
+// z growing with the height.
 // Magic (magic-compat ON): GL fixed-function lighting with every transform
 // in the projection matrix and no glNormal call, so the normal is (0, 0, 1)
 // for every face and the positional light #1 at (50, 50, 50) is in model
 // coordinates; ambient = GL's global 0.2 + light #0's 0.4.
 // Directional (OFF): the light Magic's comment calls directional, from
-// (1, 1, 1), on the face's own normal, with the spec's ambient 0.4.
+// (1, 1, 1), on the face's own outward normal in the displayed scene (the
+// model normal mirrored in z, so the faces the viewer sees are lit as
+// before R1), with the spec's ambient 0.4.
 float light(vec3 model, vec3 normal) {
   if (frame.params.y == 0u) {
     vec3 to_light = vec3(50.0) - model;
     float len = length(to_light);
     return 0.6 + (len > 0.0 ? max(to_light.z / len, 0.0) : 1.0);
   }
-  return 0.4 + max(dot(normal, vec3(0.57735027)), 0.0);
+  return 0.4 + max(dot(vec3(normal.xy, -normal.z), vec3(0.57735027)), 0.0);
 }
 
 // Places a chunk-local vertex and writes the color and pick outputs.
 void emit(uint layer, vec3 local, vec3 normal, uint pick_local) {
   Layer l = layers[layer];
   gl_Position = frame.mvp * vec4(local, 1.0);
-  vec3 model = vec3(frame.origin_sz.xy + local.xy, local.z);
+  vec3 model = vec3((frame.origin_sz.xy + local.xy) * frame.origin_sz.w, local.z);
   vec3 c = clamp(l.color.rgb * light(model, normal), 0.0, 1.0);
   uint pick = frame.params.x + pick_local;
   if (frame.params.z != 0u && !highlighted(pick)) {

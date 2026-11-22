@@ -24,7 +24,12 @@
 // (Q-MISC-79), so only magic-compat ON produces own_height faces and
 // triangles whose h and t differ from their layer's.
 // Instances are emitted in a fixed order (layer order, then Morton chunk
-// order, then the plane's tile order), so two builds are byte-equal.
+// order, then the plane's tile order), so two builds are byte-equal in
+// everything but their versions.
+// Versions come from one process-wide counter (increasing, never reused):
+// every build or rebuild takes a fresh one for the model and the chunks it
+// builds, so a chunk's (id, version) names its content across builds, and
+// version 0 marks a model made by hand.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3); MESH fills in
 // src/core/src/view3d/mesh/ (design D3, section 6).
@@ -90,7 +95,7 @@ struct Triangle {
 /// The unit of rebuild, culling and progressive display.
 struct Chunk {
   std::uint32_t id = 0;       // Morton index of the chunk
-  std::uint64_t version = 0;  // bumped when the chunk is rebuilt; the renderer uploads changed chunks only
+  std::uint64_t version = 0;  // process-wide, fresh on each (re)build of the chunk; with id, the renderer's upload key
   double origin_x = 0.0;      // root coordinates of the chunk's origin
   double origin_y = 0.0;
   db::Rect area;              // the chunk's area in root coordinates
@@ -102,7 +107,7 @@ struct Chunk {
 struct MeshModel {
   Mode mode = Mode::layout_layer;
   db::Rect region;            // the clipped region the mesh covers (root coordinates)
-  std::uint64_t version = 0;  // of the whole model
+  std::uint64_t version = 0;  // of the whole model (process-wide, fresh on each build or rebuild)
   std::vector<Chunk> chunks;  // in Morton order
   /// Per LayerId: the h and t the layer's rectangles and plain side faces
   /// are drawn with (the stack's draw_height, or the spanned values of a
