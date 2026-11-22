@@ -33,6 +33,7 @@
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/extflat/records.hpp"
 
 namespace hefesto::extflat {
 
@@ -142,8 +143,33 @@ class Netlist {
     }
   }
 
+  /// The device, coupling-capacitor and resistor visits in Magic's orders
+  /// (EFVisitDevs, EFVisitCaps, EFVisitResists; M7 design D5, D13). The
+  /// M6 reader fills none of them; EXTFLAT does (M7 tasks.md 10.x).
+  void visit_devices(const std::function<void(const FlatDevice&)>& visitor) const {
+    for (const FlatDevice& device : devices) {
+      visitor(device);
+    }
+  }
+  void visit_caps(const std::function<void(const FlatCap&)>& visitor) const {
+    for (const FlatCap& cap : caps) {
+      visitor(cap);
+    }
+  }
+  void visit_resists(const std::function<void(const FlatResist&)>& visitor) const {
+    for (const FlatResist& resist : resists) {
+      visitor(resist);
+    }
+  }
+
   [[nodiscard]] const std::vector<FlatNode>& nodes() const noexcept { return nodes_; }
   [[nodiscard]] const std::vector<FileStamp>& stamps() const noexcept { return stamps_; }
+
+  /// The flat devices, coupling capacitors and resistors, in visit order
+  /// (M7 design D13; filled by extflat::flatten, M7 EXTFLAT).
+  std::vector<FlatDevice> devices;
+  std::vector<FlatCap> caps;
+  std::vector<FlatResist> resists;
 
   /// The style a `style` record selected (ExtCompareStyle loads it in
   /// Magic, a session side effect the caller applies), if any.

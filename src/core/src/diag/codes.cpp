@@ -36,6 +36,7 @@ constexpr std::array kTable = {
     CodeInfo{"CORE-NOTIMPL-005", error, "Retired in M5, never reused. Was: an M5 command option or function declared by the M5 scaffold before its workstream landed it."},
     CodeInfo{"CORE-NOTIMPL-006", error, "Retired in M6, never reused. Was: an M6 command option or function declared by the M6 scaffold before its workstream landed it."},
     CodeInfo{"CORE-NOTIMPL-007", error, "Not implemented yet: an M8 schematic function declared by the M8 scaffold before its workstream landed it (retired at M8 exit)."},
+    CodeInfo{"CORE-NOTIMPL-008", error, "Not implemented yet: an M7 extraction or netlisting command option or function declared by the M7 scaffold before its workstream landed it (retired at M7 exit)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -62,8 +63,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 29>& areas() noexcept {
-  static const std::array<CodeArea, 29> table = {
+const std::array<CodeArea, 32>& areas() noexcept {
+  static const std::array<CodeArea, 32> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -99,6 +100,10 @@ const std::array<CodeArea, 29>& areas() noexcept {
       CodeArea{"schem", "SCHEM", "docs/diagnostics/codes/schem.md", area_codes::schem()},
       // M10 area (openspec/changes/m10-3d-view/design.md D2).
       CodeArea{"view3d", "VIEW3D", "docs/diagnostics/codes/view3d.md", area_codes::view3d()},
+      // M7 areas (openspec/changes/m7-extraction/design.md D2).
+      CodeArea{"netlist", "NETLIST", "docs/diagnostics/codes/netlist.md", area_codes::netlist()},
+      CodeArea{"extresist", "EXTRESIST", "docs/diagnostics/codes/extresist.md", area_codes::extresist()},
+      CodeArea{"antenna", "ANTENNA", "docs/diagnostics/codes/antenna.md", area_codes::antenna()},
   };
   return table;
 }

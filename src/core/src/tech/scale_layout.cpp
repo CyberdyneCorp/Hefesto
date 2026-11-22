@@ -24,6 +24,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/editor/extract_hook.hpp"
 #include "hefesto/lef/via/store.hpp"
 #include "hefesto/tech/commands.hpp"
 
@@ -187,6 +188,9 @@ bool scale_layout(editor::EditorState& editor, std::int64_t n, std::int64_t d) {
   // LefTechScale, which every DBScaleEverything call site runs with the same
   // factor (lef-tech-section "Scaling the LEF table"); it never refills.
   editor.lefdef.layers.scale(static_cast<std::int32_t>(n), static_cast<std::int32_t>(d));
+  // ExtTechScale, which every DBScaleEverything call site runs too (M7
+  // design D7, D20; editor/extract_hook.hpp).
+  hefesto::editor::rescale_extract_style(editor, n, d);
   lef::scale_via_areas(editor.lefdef.vias, static_cast<std::int32_t>(n), static_cast<std::int32_t>(d),
                        editor.drc.compat_settings().magic_compat);
   bool inexact = false;

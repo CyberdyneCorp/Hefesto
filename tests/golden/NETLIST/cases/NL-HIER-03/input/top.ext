@@ -1,0 +1,14 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use sram s1 1 0 0 0 1 0
+use prim p1 1 0 20 0 1 0
+use wire w1 1 0 40 0 1 0
+use inv i1 1 0 60 0 1 0
+node "n" 0 1 0 80 metal1 0 0 0 0 0 0
+merge "s1/A" "n" 0
+merge "w1/w" "n" 0
+merge "i1/in" "n" 0

@@ -1,0 +1,84 @@
+* SPICE3 file created from top40.ext - technology: nltest
+
+.option scale=10n
+
+M1000 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1001 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1002 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1003 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1004 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1005 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1006 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1007 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1008 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1009 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1010 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1011 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1012 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1013 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1014 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1015 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1016 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1017 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1018 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1019 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1020 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1021 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1022 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1023 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1024 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1025 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1026 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1027 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1028 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1029 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1030 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1031 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1032 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1033 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1034 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1035 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1036 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1037 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1038 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1039 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0

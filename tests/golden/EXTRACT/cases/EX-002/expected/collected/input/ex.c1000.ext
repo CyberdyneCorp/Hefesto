@@ -1,0 +1,7 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest1000
+scale 1 1000 1
+resistclasses
+node "metal1_0_0#" 0 1.76 0 0 m1

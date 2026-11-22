@@ -1,0 +1,9 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use inv u1 1 0 0 0 1 0
+node "a" 0 1 0 40 metal1 0 0 0 0 0 0
+merge "u1/in" "a" 0

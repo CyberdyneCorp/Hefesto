@@ -1,0 +1,12 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf u3 1 0 0 0 1 0
+use leaf u1 1 0 20 0 1 0
+use leaf u2 1 0 40 0 1 0
+use leaf ua 1 0 60 0 1 0
+use leaf b10 1 0 80 0 1 0
+node "top_n" 0 1 0 40 metal1 0 0 0 0 0 0

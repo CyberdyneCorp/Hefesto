@@ -1,0 +1,11 @@
+magic
+tech exttest
+timestamp 100
+<< ndiff >>
+rect 0 0 4 5
+<< pwell >>
+rect -5 -5 10 10
+<< labels >>
+rlabel ndiff 2 2 2 2 0 k
+rlabel pwell -4 -4 -4 -4 0 w
+<< end >>

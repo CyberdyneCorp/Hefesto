@@ -14,6 +14,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
   ${CMAKE_CURRENT_LIST_DIR}/graph.cpp
   ${CMAKE_CURRENT_LIST_DIR}/hier_name.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/m7_stubs.cpp
   ${CMAKE_CURRENT_LIST_DIR}/model.cpp
   ${CMAKE_CURRENT_LIST_DIR}/read.cpp
   ${CMAKE_CURRENT_LIST_DIR}/reader.cpp

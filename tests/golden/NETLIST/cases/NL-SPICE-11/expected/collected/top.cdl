@@ -1,0 +1,6 @@
+* CDL file created from top.ext - technology: nltest
+
+.option scale=10n
+
+C0 ct cb 0 sub=GND! mimcapm w=10 l=10
+R0 ra rc 0 sub=GND! rppd w=2 l=10 l=10 w=2

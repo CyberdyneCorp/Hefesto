@@ -27,6 +27,13 @@
 
 namespace hefesto::db {
 
+class StitchEditor;
+
+/// The value of a tile's client slot that no pass has written: Magic's
+/// CLIENTDEFAULT, -(2^(w-2) - 4) for w-bit pointers (tiles/tile.h:171-172).
+inline constexpr std::uintptr_t kClientDefault =
+    static_cast<std::uintptr_t>(-((std::intptr_t{1} << (8 * sizeof(std::intptr_t) - 2)) - 4));
+
 /// Diagonal of a split (triangle) tile. `nw_se` (`\`): the diagonal runs
 /// from the upper-left to the lower-right corner (Magic's TT_DIRECTION set;
 /// the left part is the lower-left triangle). `ne_sw` (`/`): from the
@@ -243,8 +250,37 @@ class Plane {
   /// Number of tiles, space included (for tests and statistics).
   [[nodiscard]] std::size_t tile_count() const;
 
+  // --- The tile client slot (m7 design D6, Open Question 1 (a)) ---
+  //
+  // Each tile carries one pointer-sized scratch word, Magic's ti_client
+  // (TiGetClient / TiSetClient). It is not part of the plane's value:
+  // clone() and every copy start all slots at kClientDefault, TileView
+  // comparison, undo and the writers ignore it, and a paint gives the tiles
+  // it creates kClientDefault. The slot is written through a const plane:
+  // an extraction run owns the slots of the planes it reads under the
+  // shared lock (one run at a time, ExtractSession's run token), and
+  // resets them before it ends; DRC, rendering and connectivity never read
+  // it.
+
+  /// The slot of `t`'s tile (a view this plane reported since its last
+  /// change); kClientDefault for a view without a tile.
+  [[nodiscard]] std::uintptr_t client(const TileView& t) const noexcept;
+
+  /// Sets the slot of `t`'s tile (a view this plane reported since its last
+  /// change); does nothing for a view without a tile. Both sides of a split
+  /// tile share the one slot, as in Magic.
+  void set_client(const TileView& t, std::uintptr_t value) const noexcept;
+
+  /// Sets the slot of every tile overlapping `area` (both sides of split
+  /// tiles, space included) to `value` (DBResetTilePlane over the area;
+  /// ExtResetTiles passes whole_plane()). `area` is clamped to the usable
+  /// plane; an inverted area resets nothing.
+  void reset_clients(const Rect& area, std::uintptr_t value = kClientDefault) const noexcept;
+
  private:
-  struct Impl;
+  friend class StitchEditor;  // db/plane_stitch.hpp: split and join on scratch planes
+
+  struct Impl;  // defined in src/db/tile_plane.hpp
   std::unique_ptr<Impl> impl_;
 };
 

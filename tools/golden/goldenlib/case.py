@@ -54,7 +54,16 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     path = "sky130A/libs.tech/magic/sky130A.tech"
     to = "sky130A.tech"
 
-    [[outputs]]                      # one per compared output
+    [reference] mode = "external-command"   # optional: run the standalone program that
+                                     # input/command.toml names instead of a script
+                                     # (goldenlib/external_command.py; NL-CHK-01, m7-extraction D15)
+
+    [[collect]]                      # optional: outputs gathered by file-name pattern, each compared as
+    pattern = "*.ext"                # expected/collected/<path> (goldenlib/collect.py; m7-extraction D21)
+    comparator = "ext-cap"
+    masks = ["ext-timestamp"]
+
+    [[outputs]]                      # one per compared output (at least one [[outputs]] or [[collect]])
     name = "stdout.txt"              # file name under expected/
     source = "stdout"                # stdout | stderr | exitcode (the exit status as one line)
                                      # | a path relative to the work dir
@@ -67,9 +76,12 @@ from __future__ import annotations
 
 import re
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+from . import collect as collect_mod
+from . import external_command
+from .collect import Collect
 from .derived import is_derived
 from .derived import parse as parse_derived
 from .external import External, parse_external
@@ -120,6 +132,8 @@ class Case:
     slow: bool = False
     gds_rt: bool = False
     capture_blocked: str = ""  # why capture.py cannot capture the case yet (empty: it can)
+    collect: tuple[Collect, ...] = ()  # [[collect]] entries (goldenlib/collect.py)
+    command: external_command.Command | None = None  # input/command.toml of an external-command case
 
     @property
     def label(self) -> str:
@@ -236,9 +250,12 @@ def load_case(root: Path, known_comparators=None) -> Case:
     tool = _require(data, "tool", str, where)
     if tool not in REFERENCE_TOOLS:
         raise CaseError(f"{where}: unknown tool '{tool}'")
-    raw_outputs = _require(data, "outputs", list, where)
-    if not raw_outputs:
-        raise CaseError(f"{where}: at least one [[outputs]] entry is required")
+    raw_outputs = data.get("outputs", [])
+    if not isinstance(raw_outputs, list):
+        raise CaseError(f"{where}: 'outputs' must be an array of tables")
+    collect = _parse_collect(data, where, known_comparators)
+    if not raw_outputs and not collect:
+        raise CaseError(f"{where}: at least one [[outputs]] or [[collect]] entry is required")
     case = Case(
         root=root,
         id=_require(data, "id", str, where),
@@ -255,6 +272,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
         slow=_flag(data, "slow", where),
         gds_rt=_flag(data, "gds_rt", where),
         capture_blocked=_reason(data, "capture_blocked", where),
+        collect=collect,
     )
     display = case.reference.get("display")
     if display is not None and display not in DISPLAYS:
@@ -268,7 +286,33 @@ def load_case(root: Path, known_comparators=None) -> Case:
     _check_paths(case)
     for table in ("reference", "hefesto"):
         _check_timeout(getattr(case, table), table, where)
-    return case
+    return _with_command(case, where)
+
+
+def _parse_collect(data: dict, where: str, known_comparators) -> tuple[Collect, ...]:
+    raw = data.get("collect", [])
+    if not isinstance(raw, list):
+        raise CaseError(f"{where}: 'collect' must be an array of tables")
+    try:
+        return tuple(collect_mod.parse(entry, i, known_comparators) for i, entry in enumerate(raw))
+    except ValueError as error:
+        raise CaseError(f"{where}: {error}") from None
+
+
+def _with_command(case: Case, where: str) -> Case:
+    """``case`` with its input/command.toml when ``[reference] mode`` is external-command."""
+    mode = case.reference.get("mode")
+    if mode is None:
+        return case
+    if mode != external_command.MODE:
+        raise CaseError(f"{where}: reference.mode must be \"{external_command.MODE}\"")
+    if "script" in case.reference or "argv" in case.reference:
+        raise CaseError(f"{where}: an external-command case takes its command from {external_command.COMMAND_FILE}")
+    try:
+        command = external_command.load(case.root)
+    except (external_command.CommandError, ValueError) as error:
+        raise CaseError(str(error)) from None
+    return replace(case, command=command)
 
 
 XSCHEM_SETS = ("sky130-xschem", "gf180mcu-xschem", "ihp-xschem")

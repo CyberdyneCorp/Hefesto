@@ -1,0 +1,11 @@
+* SPICE3 file created from top.ext - technology: nltest
+
+M1000 x g a GND nfet w=80n l=20n
++  ad=3f pd=0.16u as=4f ps=0.26u
+M1001 b g a GND nfet w=80n l=20n
++  ad=4f pd=0.26u as=1.2f ps=0.14u
+M1002 x g b GND nfet w=80n l=20n
++  ad=0 pd=0 as=0 ps=0
+Mext:aps b g a GND nfet w=80n l=20n
++  ad=0 pd=0 as=0 ps=0 * asub=0 psub=0
+**devattr g=ext:aps

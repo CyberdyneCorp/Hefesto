@@ -1,0 +1,3 @@
+scale 1000 1000 5
+rnode "out.n0" 0 2 10 4 0
+resist "out" "out.n0" 12.3

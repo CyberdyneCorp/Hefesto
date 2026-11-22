@@ -30,6 +30,7 @@
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/editor/extract_hook.hpp"
 #include "hefesto/lef/tech/lifecycle.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
@@ -587,6 +588,8 @@ void install_technology(editor::EditorState& editor, platform::FileSystem& files
     editor.cells.for_each([new_planes](db::CellDef& def) { def.set_plane_count(new_planes); });
   }
   reload_display_styles(editor, files, magic_compat);
+  // M7: the session's extraction style (editor/extract_hook.hpp, M7 design D7, D20).
+  hefesto::editor::install_extract_styles(editor, sink);
 }
 
 }  // namespace
