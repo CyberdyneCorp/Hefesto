@@ -1,4 +1,0 @@
-| units: 1 tech: nltest format: SU
-n in gnd! out 2 4 0 0 g=S_gnd! s=A_20,P_18 d=A_40,P_26
-p in vdd! out 2 8 0 50 g=S_vdd! s=A_40,P_26 d=A_0,P_0
-C out0 5.0

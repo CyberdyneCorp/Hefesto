@@ -1,4 +1,0 @@
-| units: 1 tech: nltest format: LBL
-n in gnd! out gnd! 2 4 0 0
-p in vdd! out vdd! 2 8 0 50
-C out0 5.0

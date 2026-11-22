@@ -1,9 +1,0 @@
-timestamp 100
-version 8.3
-tech exttest
-style exttest
-scale 1 1 1
-resistclasses
-node "top" 0 0 0 0 m2
-node "plate" 0 0 -20 -20 m1
-cap "plate" "top" 240

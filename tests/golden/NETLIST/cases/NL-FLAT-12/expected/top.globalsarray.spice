@@ -1,8 +1,0 @@
-* SPICE3 file created from top.ext - technology: nltest
-
-.option scale=10n
-
-M1000 x1/o x1/o vdd vdd pfet w=4 l=2
-+  ad=0 pd=0 as=0 ps=0
-M1001 x2/o x2/o vdd vdd pfet w=4 l=2
-+  ad=0 pd=0 as=0 ps=0

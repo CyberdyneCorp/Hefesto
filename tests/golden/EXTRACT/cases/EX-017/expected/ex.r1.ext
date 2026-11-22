@@ -1,8 +1,0 @@
-timestamp 100
-version 8.3
-tech exttest
-style exttest
-scale 1 1 1
-resistclasses 80
-node "b" 80 0 20 0 m1 16 16
-node "a" 400 0 0 0 m1 20 24

@@ -1,9 +1,0 @@
-* SPICE3 file created from top.ext - technology: nltest
-
-.option scale=10n
-
-M1000 a a b VSUB nfet w=4 l=2
-+  ad=0 pd=0 as=0 ps=0
-C0 b a 4f
-C1 a VSUB 4f **FLOATING
-C2 b VSUB 1f **FLOATING

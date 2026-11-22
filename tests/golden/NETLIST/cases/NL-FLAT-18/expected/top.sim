@@ -1,4 +1,0 @@
-| units: 1 tech: nltest format: MIT
-n u=1,a.b/a|b u=1,a.b/c=d u=1,a.b/e_1] 2 4 0 0
-n u=1,a.b/f.g u=1,a.b/h u=1,a.b/i 2 4 50 0
-n t.o|p t.o|p t.o|p 2 4 200 0

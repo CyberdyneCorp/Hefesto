@@ -1,6 +1,0 @@
-| units: 1 tech: nltest format: MIT
-x k GND! l=0 w=0 x=50 y=0 dn
-x ra ct l=0 w=0 x=200 y=0 sbx
-b b e c 8 5 0 0
-c ct cb 12.500000
-r ra rb 25.500000

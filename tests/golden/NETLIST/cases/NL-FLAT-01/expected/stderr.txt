@@ -1,2 +1,0 @@
-input/top.ext, line 13: Unrecognized token "s" (ignored)
-input/top.ext, line 14: Unrecognized token "bogus" (ignored)

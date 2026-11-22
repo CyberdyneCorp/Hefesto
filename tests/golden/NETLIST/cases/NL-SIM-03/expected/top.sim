@@ -1,3 +1,0 @@
-| units: 1 tech: nltest format: SU
-n g a x 2 8 0 0 g=ext:aps,S_GND! s=A_40,P_26 d=A_30,P_16
-n g a x 2 8 50 0 g=S_GND! s=A_0,P_0 d=A_0,P_0

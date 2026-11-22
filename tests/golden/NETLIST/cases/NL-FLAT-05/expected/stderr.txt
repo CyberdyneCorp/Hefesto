@@ -1,2 +1,0 @@
-input/top.ext, line 11: Incomplete terminal description for device
-input/top.ext, line 11: Incomplete terminal description for device

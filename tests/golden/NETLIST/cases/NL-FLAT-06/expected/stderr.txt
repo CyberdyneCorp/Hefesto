@@ -1,1 +1,0 @@
-Warning:  Ports "A" and "B" are electrically shorted.

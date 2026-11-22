@@ -1,2 +1,0 @@
-error: subap for devtype 0 unspecified
-error: subap for devtype 0 unspecified

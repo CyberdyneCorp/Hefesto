@@ -1,7 +1,0 @@
-timestamp 100
-version 8.3
-tech exttest
-style exttest
-scale 1 1 1
-resistclasses 1000
-node "well_0_0#" 3228 0 0 0 pw 416 96

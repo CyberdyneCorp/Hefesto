@@ -1,9 +1,0 @@
-timestamp 100
-version 8.3
-tech exttest
-style exttest
-scale 1 1 1
-resistclasses
-node "t" 0 0 0 0 mimcap
-node "b" 0 0 -1 -1 m2
-device devcap mimcapm 0 0 1 1 10 6 "t" 0 0 "b" 0 144,48

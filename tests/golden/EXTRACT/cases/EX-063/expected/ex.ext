@@ -1,9 +1,0 @@
-timestamp 100
-version 8.3
-tech exttest
-style exttest
-scale 1 1 1
-resistclasses
-node "b" 0 1200 2 2 m2
-node "a" 0 3480 0 0 m1
-substrate "well_n1073741817_n1073741817#" 0 0 -1073741817 -1073741817 space

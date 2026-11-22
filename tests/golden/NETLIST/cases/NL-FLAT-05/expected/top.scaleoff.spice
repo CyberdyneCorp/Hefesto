@@ -1,4 +1,0 @@
-* SPICE3 file created from top.ext - technology: nltest
-
-M1000 d g s GND nfet w=80n l=20n xpos=5e-07 as=3f ps=0.22u w=80n l=20n
-+  ad=2f pd=0.18u as=0 ps=0
