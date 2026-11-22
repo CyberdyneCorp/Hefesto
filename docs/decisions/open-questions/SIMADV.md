@@ -96,3 +96,17 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: openspec/specs/agent-schematic-driven-layout/spec.md (Requirement "Iterative improvement"); openspec/specs/simulation-optimization-hooks/spec.md (Requirement "Evaluation interface")
 - Options: (a) parameters only, with the agent editing layout between sessions (current spec); (b) PCell-parameter variables that regenerate and re-extract in the scratch session for each candidate.
 - Recommendation: (a) for the first release. Specify (b) together with the agent's PCell tools, including its cost per evaluation and how it interacts with the result cache.
+
+### Q-SIMADV-13: Worker pool size and result order for run sets
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D9)
+- ngspice/PDK behavior: there is one ngspice instance per address space (Q-SIM-5). Sweeps, corners and Monte Carlo each run many jobs. Q-SIM-5 recommends reviewing the default worker count `min(4, cores − 1)` against the memory that large RC netlists use.
+- Evidence: `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Multiple simulations and corner parallelism"); `openspec/specs/simulation-sweeps/spec.md` (Requirement "Run set execution"); Q-SIM-5
+- Options:
+  - (a) Use `min(4, cores − 1, ⌊B_total / B_job⌋)` workers:
+    - `B_total` is half the physical memory;
+    - `B_job` is the job's result budget plus an estimate of the deck size;
+    - results are stored and reported by point index, whatever order the jobs finish in.
+  - (b) Use `min(4, cores − 1)` workers, with no memory term.
+  - (c) A user setting only.
+- Recommendation: (a), plus a user setting that can only lower the count. Results then do not depend on how many workers ran, and a large post-layout deck does not start four copies that exhaust memory.

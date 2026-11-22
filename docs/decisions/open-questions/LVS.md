@@ -236,3 +236,99 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:7290-7312
 - Options: replicate | fix (a deterministic unique identity)
 - Recommendation: fix. The identity is not observable except through collisions (see Q-LVS-4).
+
+### Q-LVS-30: Clean-room process for the `lvs-*` specs
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D2)
+- Magic behavior: n/a, because this is a Hefesto process question. The header of this file says that the entries' "Evidence" cites netgen source, so the eight `lvs-*` specs were written by reading GPL source. netgen's `Copying` file is GNU GPL version 1 text. The requirement "Two-team clean-room process for specs written from GPL source" in `hefesto-licensing` was written for xschem in M8 (J-1).
+- Evidence: this file's header; `openspec/specs/hefesto-licensing/spec.md` (Requirements "Clean-room rule for GPL-sourced behavior" and "Two-team clean-room process for specs written from GPL source"); `docs/contributing/cleanroom.md`; `docs/decisions/m8-decision-table.md` (J-1)
+- Options:
+  - (a) Apply the M8 two-team process to LVS:
+    - a named spec team and a named implementation team;
+    - a paraphrase review of the eight `lvs-*` specs and this file before any LVS implementation starts;
+    - `check_cleanroom.py` extended to detect netgen's GPL header and `netgen ref:` traces;
+    - golden inputs authored by Hefesto only.
+  - (b) One team that works from the specs under the existing rule only.
+  - (c) Rewrite the `lvs-*` specs using only netgen's public reference manual and black-box runs.
+- Recommendation: (a). The LVS specs were written from source in the same way as the schematic specs, and the M8 process and checks already exist. (c) would discard work that has already been reviewed. (b) gives a weaker provenance argument than M8's.
+
+### Q-LVS-31: The IHP netgen setup file is `ihp-sg13g2_setup.tcl`
+- Kind: doc-mismatch
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: n/a (PDK data).
+  - IHP-Open-PDK @ `5e6d592e` installs `ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl`.
+  - The "Purpose" section of `lvs-setup-file` names `sg13g2_setup.tcl` instead, and `tests/golden/LVS/CASES.md` refers to an "sg13g2" setup file.
+  - The bare-name rule (`<PDK>_setup.tcl`) in the `lvs-command` requirement "Setup file and input resolution" finds the file only when the PDK name is `ihp-sg13g2`. That is the name the PDK manager uses.
+- Evidence: GitHub contents API for `IHP-GmbH/IHP-Open-PDK` `ihp-sg13g2/libs.tech/netgen` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6`; `openspec/specs/lvs-setup-file/spec.md` (Purpose); `openspec/specs/lvs-command/spec.md` (Requirement "Setup file and input resolution")
+- Options: (a) correct the spec and golden texts to `ihp-sg13g2_setup.tcl`, and add a bare-name scenario for `ihp-sg13g2`; (b) also accept `sg13g2` as an alias of the PDK name when looking up the setup file; (c) leave the text as it is.
+- Recommendation: (a). The file name comes from the PDK. An alias would be a name that exists only in Hefesto and that netgen users do not type.
+
+### Q-LVS-32: Layout side of `lvs -layout` extracts incrementally
+- Kind: ambiguity
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: n/a.
+  - Step 1 of the `lvs-command` requirement "Layout netlist from extraction" extracts "as `extract all` would".
+  - Design D18 of the M7 plan gives M9 `extract::ensure_extracted` instead. It re-extracts only stale or missing cells and their parents, as Magic's `extract` does. Magic's `extract all` ignores timestamps.
+- Evidence: `openspec/specs/lvs-command/spec.md` (Requirement "Layout netlist from extraction"); `openspec/changes/m7-extraction/design.md` D18; Magic `extract/ExtMain.c:284-299`, `:360-384`
+- Options: (a) extract incrementally with `ensure_extracted`; the netlist equals the `extract all` netlist whenever the `.ext` files are current; (b) always run `extract all`; (c) a setting, defaulting to incremental.
+- Recommendation: (a). For an up-to-date hierarchy the result is the same, and LVS reruns on large layouts become fast. A user who wants a full re-extraction can run `extract all` first.
+
+### Q-LVS-33: Name map from the layout netlist back to layout objects
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: n/a.
+  - Three requirements need a map from every device instance and net name in the generated SPICE back to the layout objects: "Layout netlist from extraction" and "Cross-probing" in `lvs-command`, and "Net name map" in `simulation-netlist-preparation`.
+  - M7's `netlist::spice::render` returns only the text (`src/core/include/hefesto/netlist/spice/spice.hpp:44-45`).
+  - M8's `schem::netlist` returns no map of instances or nets (`src/core/include/hefesto/schem/net/netlist.hpp:99-107`).
+  - M7 design D18 makes any change to these entry points after M7 exits an open item for M9.
+- Evidence: the files above; `openspec/changes/m7-extraction/design.md` D18 ("Stability")
+- Options:
+  - (a) Add entry points without changing the existing ones:
+    - `netlist::spice::render_with_map`, and a `NameMap` field in `schem::NetlistResult`;
+    - the map takes each net name to a hierarchical node with one layout point or schematic wire, and each device name to a use path and device location or to a schematic instance;
+    - it is filled by the code that already chooses the names;
+    - the existing `render` stays unchanged.
+  - (b) M9 rebuilds the map by flattening the `.ext` files again with `extflat` and matching the names.
+  - (c) Parse the names back out of the SPICE text.
+- Recommendation: (a). The netlister is the only place that knows why a name was chosen (renumbering, `global` merges, case collisions). (b) would duplicate that logic, and (c) cannot recover positions.
+
+### Q-LVS-34: LVS threading
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: netgen compares one cell pair at a time on one thread. The `lvs-command` requirement "Execution model" requires a background worker. The `hefesto-architecture` requirement "Concurrency model" requires parallel results to equal single-threaded results.
+- Evidence: `openspec/specs/lvs-command/spec.md` (Requirement "Execution model"); `openspec/specs/hefesto-architecture/spec.md` (Requirement "Concurrency model"); netgen reference manual (http://opencircuitdesign.com/netgen/reference.html)
+- Options:
+  - (a) One background worker per run. Each pair is compared single-threaded in queue order. The comparison state holds no globals, so pairs can run in parallel later.
+  - (b) Compare the independent pairs of one hierarchy level in parallel, and write the reports in queue order.
+  - (c) Parallel refinement inside a pair.
+- Recommendation: (a) in M9. The report order and the pseudo-random choices of Q-LVS-4 and Q-LVS-29 stay deterministic without extra work. (b) is a later optimisation that needs no format change.
+
+### Q-LVS-35: LVS performance target
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: n/a. The `hefesto-performance` requirement "Batch throughput relative to Magic" has no LVS line, and netgen is the reference tool for LVS.
+- Evidence: `openspec/specs/hefesto-performance/spec.md` (Requirement "Batch throughput relative to Magic"); `tools/golden/container/Containerfile` (netgen is built in the capture image)
+- Options:
+  - (a) Callgrind instruction counts on the x86_64 runner:
+    - at most netgen 1.5.327's count on each of three reference workloads: the `sky130_fd_sc_hd` library cell by cell, a 50k-device flat block, and a hierarchical 1M-device block;
+    - after that, at most the recorded baseline + 2 %;
+    - netgen is only run as a subprocess in the benchmark job.
+  - (b) Wall time against netgen, reported for information only.
+  - (c) Absolute wall-time targets on the M3 Pro.
+- Recommendation: (a). The requirement already uses this method for DRC, GDS and extraction. Running the netgen binary to measure it does not involve its source.
+
+### Q-LVS-36: LVS input and run limits
+- Kind: bug
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Magic behavior: the netgen manual states no limits. Deep `.include` chains, very long continuation lines and deep hierarchies are bounded only by memory and stack. A crash or hang must be fixed in both `netgen-compat` modes (X-2 tier 1).
+- Evidence: `openspec/specs/lvs-netlist-input/spec.md` (Requirements "SPICE lexical structure" and "Globals, includes and parameters"); `openspec/specs/lvs-hierarchy/spec.md`; decision X-2
+- Options:
+  - (a) Fixed limits in both modes. Each has its own diagnostic, and exceeding one ends the run as `error`:
+    - include depth 64;
+    - one logical line (after continuations) 16 MiB;
+    - one name 4 KiB;
+    - hierarchy depth 256, with iterative traversal and no recursion;
+    - 50 million devices per run.
+  - (b) Memory-only limits: the run fails when an allocation fails.
+  - (c) Configurable limits, with (a)'s values as defaults.
+- Recommendation: (c) with (a)'s defaults. Every PDK and golden input is far below these limits, and hostile inputs fail with a message instead of a stack overflow.

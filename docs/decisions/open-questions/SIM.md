@@ -143,3 +143,129 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: not applicable
 - Options: pause on background (current spec) | request a background-processing task (time-limited and not guaranteed) | a remote engine.
 - Recommendation: pause and resume, as specified. Show an in-app notice when a run is paused.
+
+### Q-SIM-20: [platform] How `hefesto-simd` links ngspice on desktop
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D2)
+- ngspice behavior: ngspice's core is under the Modified BSD licence. KLU is LGPLv2, numparam is LGPLv2 or newer, and `src/osdi` is MPL-2.0. On desktop, `simulation-engine-embedding` runs ngspice in the separate worker executable `hefesto-simd`, which talks to the core over IPC. The requirement "ngspice embedded as a library" also asks for a static archive "on every platform". Under the M9 rule, an external tool keeps its licence boundary as a subprocess or an optional plugin.
+- Evidence: COPYING:1-45; `openspec/specs/simulation-engine-embedding/spec.md` (Requirements "ngspice embedded as a library" and "Crash containment on desktop"); `docs/decisions/audit/DECISIONS.md` D-28
+- Options:
+  - (a) On desktop, build ngspice as one shared library, `libngspice-hefesto`, from the pinned source and the Hefesto patches. Install it next to `hefesto-simd` and load it only from there, through the install-relative runpath. The editor, the CLI and the core never link ngspice. A user can replace the library as the LGPL allows. iPadOS stays with D-28.
+  - (b) Link ngspice statically into `hefesto-simd`, and offer its object files and relink instructions on request.
+  - (c) Link it statically into the editor process (rejected by the licence rule).
+- Recommendation: (a). The process boundary and the replaceable shared library each meet the LGPL obligations without a relink kit. They also keep the code-model and OSDI registries the same as in the static build. The spec's "static archive on every platform" becomes "static on iPadOS (D-28), shared and loaded only by `hefesto-simd` on desktop".
+
+### Q-SIM-21: [platform] Worker IPC transport and the platform contract
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. This is a Hefesto host question.
+  - `platform::ProcessRunner` offers only a blocking `run(request) -> {exit_code, stdout, stderr}` (`src/core/include/hefesto/platform/process_runner.hpp`).
+  - `hefesto-simd` needs a long-lived, bidirectional and streaming channel that carries deck lines, commands, events and float64 vectors. It must also be restarted after a crash.
+- Evidence: `src/core/include/hefesto/platform/process_runner.hpp`; `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Crash containment on desktop"); `openspec/specs/hefesto-architecture/spec.md` (Requirement "Platform services abstraction")
+- Options:
+  - (a) A new platform service `platform::WorkerHost`:
+    - it starts a worker and returns a `WorkerChannel` with `send(frame)`, a receive callback, `terminate()` and an exit callback;
+    - frames are length-prefixed, little-endian binary messages over the worker's stdin and stdout pipes;
+    - a version handshake comes first, and heartbeats follow;
+    - hosts implement it in `src/cli` and the desktop shell, and the iPadOS host reports it unsupported.
+  - (b) A Unix-domain socket per worker.
+  - (c) Shared memory for vectors, plus a pipe for control.
+- Recommendation: (a). Pipes exist on both desktop hosts, need no file-system names or permissions, and close by themselves when the worker dies. Shared memory (c) can be added later behind the same frames if profiling shows that vector transfer dominates.
+
+### Q-SIM-22: In-process simulation on desktop
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. The `simulation-engine-embedding` requirement "Crash containment on desktop" says "A setting MAY select in-process execution on desktop, for debugging". Under Q-SIM-20 (a), the editor never links ngspice.
+- Evidence: `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Crash containment on desktop")
+- Options: (a) developer builds only: the in-process engine loads the same `libngspice-hefesto` as an optional plugin, and release builds do not offer the setting; (b) keep it as a user setting in release builds; (c) drop it.
+- Recommendation: (a). Developers keep a debuggable path that matches the iPadOS in-process engine, and users cannot lose unsaved layout work to an engine crash.
+
+### Q-SIM-23: Reference ngspice build for the SIM and SIMADV captures
+- Kind: doc-mismatch
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. The question is about Hefesto's capture setup.
+  - The golden container builds stock ngspice `7aa47164` (`pre-master-48`) with `--enable-cider` and applies no Hefesto patches. It has no OpenVAF.
+  - `tests/golden/SIM/CASES.md` requires "same source and patch level" as the engine.
+  - `tests/golden/SIMADV/CASES.md` requires "the same portable-seed patch".
+  - The IHP OSDI models need OpenVAF to compile.
+- Evidence: `tools/golden/container/Containerfile:116-125`; `tools/golden/pins.toml:46-52`; `tests/golden/SIM/CASES.md:4`; `tests/golden/SIMADV/CASES.md:4`; `openspec/specs/simulation-engine-embedding/spec.md` (Requirements "ngspice build configuration and license hygiene" and "OSDI compact models")
+- Options:
+  - (a) The capture image builds ngspice from the engine's own pin (Q-SIM-7), with the Hefesto patch series and the spec's feature table (CIDER off). It adds a pinned OpenVAF to compile the IHP OSDI modules. The stock build is kept only for the existing `--with-ngshared` smoke test.
+  - (b) Capture with stock ngspice, and record deviations for every seeded or OSDI case.
+  - (c) Capture with Hefesto's own `hefesto-simd`.
+- Recommendation: (a). The reference must be ngspice with the same source and patches as the engine. If Hefesto's engine were used (c), the captures would compare Hefesto with itself.
+
+### Q-SIM-24: Hierarchical node names for layout probes before M12
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. Background:
+  - The `simulation-ui-and-crossprobe` requirement "Probing a layout net" names nets as `irsim-interface` "Hierarchical node names" does, which is Magic's `getnode` naming. `irsim-interface` is an M12 capability.
+  - Magic's `getnode` copies names into fixed buffers: `static nodename[256]` in `SimGetNodeName` and `name[30]` in `SimTxtorLabel`. Deep hierarchies overflow them.
+- Evidence: `openspec/specs/simulation-ui-and-crossprobe/spec.md` (Requirement "Probing a layout net"); `openspec/specs/irsim-interface/spec.md`; Magic `sim/SimExtract.c:357`, `:734-765`; `sim/SimDBstuff.c:431`
+- Options:
+  - (a) Bring the naming function forward into M9, tagged to the `irsim-interface` requirement. Names have no length limit in both `magic-compat` modes (X-2 tier 1). The `getnode`, `rsim`, `startrsim` and `simcmd` commands stay in M12.
+  - (b) Option (a), and also bring the `getnode` command forward.
+  - (c) A Hefesto-only naming rule for probes.
+- Recommendation: (a). Probing needs only the names. The command belongs with the rest of the IRSIM interface, which stays M12 (UI-CLIENT-002 is not retired).
+
+### Q-SIM-25: Simulation input and transport limits
+- Kind: bug
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: ngspice bounds decks and results only by memory. The result budget of `simulation-analyses-and-results` (Q-SIM-16) covers vectors, but nothing bounds:
+  - deck size;
+  - include depth;
+  - the IPC frames of Q-SIM-21;
+  - the size of a run set;
+  - the size of an imported raw file.
+- Evidence: `openspec/specs/simulation-analyses-and-results/spec.md` (Requirement "Saved vectors and memory budget"); `openspec/specs/simulation-netlist-preparation/spec.md` (Requirement "Deck validation and sanitisation"); `openspec/specs/simulation-sweeps/spec.md`, `simulation-monte-carlo/spec.md`
+- Options:
+  - (a) Configurable limits, each with its own diagnostic:
+    - prepared deck 256 MiB;
+    - include depth 32;
+    - IPC frame 64 MiB (vectors are sent in chunks);
+    - worker start-up 10 s, then a heartbeat every 2 s, with a timeout of 10 s;
+    - 100 000 points per run set and 100 000 Monte Carlo samples;
+    - raw import 4 GiB, and never more than the result budget once loaded.
+  - (b) Memory-only limits.
+  - (c) The values of (a) as fixed limits.
+- Recommendation: (a). The values are far above every PDK testbench and golden case. Hostile or runaway inputs fail with a message, and a stuck worker is detected and replaced.
+
+### Q-SIM-26: When D-28 must be settled
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. The roadmap's M9 "Early de-risking" line says the ngspice LGPL and MPL linking review "must be decided before M14". `docs/decisions/audit/DECISIONS.md` gives D-28 the priority "blocks M9 (must be settled before M14)". The draft resolution of Q-SIM-1 says "confirm in D-28 before M9".
+- Evidence: `docs/roadmap.md` (M9 "Early de-risking" and the de-risking schedule); `docs/decisions/audit/DECISIONS.md` D-28; Q-SIM-1
+- Options:
+  - (a) Split the decision. The desktop linking (Q-SIM-20) is decided in M9, because Desktop Beta ships `hefesto-simd`. The legal review starts in M9, and the iPadOS choice (static with a relink offer, or an embedded framework) is made before M14. The roadmap and D-28 say this.
+  - (b) Decide everything before M9 implementation starts.
+  - (c) Decide everything before M14.
+- Recommendation: (a). The desktop build is the one M9 ships, and its boundary does not depend on how the iPadOS question is answered.
+
+### Q-SIM-27: Desktop Beta sign-off
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. The roadmap defines Desktop Beta as "the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS". No checklist exists, unlike the Desktop Alpha checklist of M4 (`docs/roadmap.md`, M4 status, task 13.6 of m4-scripting).
+- Evidence: `docs/roadmap.md` (M4 and M9 sections); `openspec/changes/m4-scripting/tasks.md` 13.6
+- Options:
+  - (a) A beta flow per PDK, checked by end-to-end tests in CI on Linux x86_64 and macOS arm64 and then signed off by the user on real pointers, like Desktop Alpha. The flows are sky130 `inv_1`, gf180mcu `gf180mcu_fd_sc_mcu7t5v0__inv_1` and IHP `sg13g2_inv_1`. Each flow runs these steps:
+    1. the PDK testbench schematic is simulated (`tran`);
+    2. the standard-cell layout is DRC clean and written to GDS;
+    3. the layout is extracted;
+    4. LVS against the schematic netlist matches;
+    5. the post-layout simulation with parasitic mode `rc` runs, and the measured delay is within 30 % of the schematic run.
+  - (b) sky130 only.
+  - (c) CI only, with no user sign-off.
+- Recommendation: (a). All three PDKs are first-class from M1 on, the inverters exist in every library, and the 30 % band catches a broken parasitic path without becoming a timing sign-off.
+
+### Q-SIM-28: Simulation performance gate
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- ngspice behavior: n/a. The solver time is ngspice's own. Hefesto adds deck preparation, IPC transfer and result storage. `hefesto-performance` sets no target for simulation, apart from the waveform rendering requirement of `simulation-ui-and-crossprobe`.
+- Evidence: `openspec/specs/hefesto-performance/spec.md`; `openspec/specs/simulation-ui-and-crossprobe/spec.md` (Requirement "Waveform rendering performance")
+- Options:
+  - (a) Two gates:
+    - Hefesto overhead, meaning the whole job time minus ngspice's own analysis time as reported by `rusage`, is at most 10 % of ngspice's time on three reference decks: the sky130 inverter `tran`, a 1 000-device post-layout `rc` deck, and a 1 000-point sweep;
+    - a 1 000-sample Monte Carlo of the inverter scales by at least 0.6 × the worker count up to 4 workers.
+  - (b) Wall time only, reported for information.
+  - (c) No gate in M9.
+- Recommendation: (a). It measures what Hefesto controls, it is stable across runners because it is a ratio, and it catches a slow IPC path.

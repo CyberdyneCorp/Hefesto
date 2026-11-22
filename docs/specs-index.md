@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3436 scenarios, 952 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3436 scenarios, 970 open questions.
 
 ## Hefesto product (native)
 
@@ -160,7 +160,7 @@ Open questions: [52](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 
 ## LVS (netgen-compatible) (LVS)
 
-Open questions: [29](decisions/open-questions/LVS.md) · Golden cases: [CASES.md](../tests/golden/LVS/CASES.md)
+Open questions: [36](decisions/open-questions/LVS.md) · Golden cases: [CASES.md](../tests/golden/LVS/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -175,7 +175,7 @@ Open questions: [29](decisions/open-questions/LVS.md) · Golden cases: [CASES.md
 
 ## Embedded simulation (ngspice) (SIM)
 
-Open questions: [19](decisions/open-questions/SIM.md) · Golden cases: [CASES.md](../tests/golden/SIM/CASES.md)
+Open questions: [28](decisions/open-questions/SIM.md) · Golden cases: [CASES.md](../tests/golden/SIM/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -207,7 +207,7 @@ Open questions: [6](decisions/open-questions/AGENT.md) · Golden cases: [CASES.m
 
 ## Schematic capture (xschem-compatible) (SCHEM)
 
-Open questions: [38](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
+Open questions: [39](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
