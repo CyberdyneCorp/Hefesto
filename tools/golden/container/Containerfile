@@ -186,7 +186,8 @@ RUN bash /opt/src/write_manifest.sh "${MAGIC_COMMIT}" "${PREFIX}"
 # configure silently drops OpenGL when the GL headers are missing, so the build checks that -DOGL
 # reached defs.mak, that Xvfb offers GLX on llvmpipe, and that a 3D window opens and answers `view`.
 # The step also builds the polygon-recording shim of the geometry cases (gl_capture/gl_capture.c, task
-# 12.4) as ${PREFIX}/lib/gl_capture.so and checks that, preloaded into the smoke run, it logs polygons.
+# 12.4) as ${PREFIX}/lib/gl_capture.so and checks that, preloaded into the smoke run, it logs polygons,
+# each with its display style named (none logged as `?`, the unresolved style of run 44965506225).
 ARG WITH_OPENGL=0
 COPY container/magic_gl_smoke.tcl gl_capture/gl_capture.c /opt/src/
 RUN set -eux; \
@@ -214,6 +215,7 @@ RUN set -eux; \
           "${PREFIX}/bin/magic" -d OGL -noconsole -norc /opt/src/magic_gl_smoke.tcl | tee /tmp/smoke.txt; \
       grep -qx 'magic-gl-smoke 0 {0.0 10.0 0.0}' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
       head -n 1 /tmp/gl.log | grep -qx 'gl-capture 1'; grep -q '^poly ' /tmp/gl.log; \
+      ! grep -q '^poly ? ' /tmp/gl.log; \
       grep -c '^poly ' /tmp/gl.log; rm -f /tmp/gl.log; \
     fi
 
