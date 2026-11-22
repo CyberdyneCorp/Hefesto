@@ -59,7 +59,7 @@ std::optional<PickRef> decode_pick(const MeshModel& mesh, PickId id) noexcept {
   if (id == kNoPick) {
     return std::nullopt;
   }
-  std::uint64_t rest = id - 1U;
+  std::size_t rest = id - 1U;  // size_t, not uint64_t: an index (no cast, -Wuseless-cast on LP64 Linux)
   for (std::size_t c = 0; c < mesh.chunks.size(); ++c) {
     const Chunk& chunk = mesh.chunks[c];
     if (rest >= pick_instance_count(chunk)) {
@@ -68,7 +68,7 @@ std::optional<PickRef> decode_pick(const MeshModel& mesh, PickId id) noexcept {
     }
     for (const PickKind kind : {PickKind::rect, PickKind::side, PickKind::triangle}) {
       if (rest < kind_size(chunk, kind)) {
-        return PickRef{c, kind, static_cast<std::size_t>(rest)};
+        return PickRef{c, kind, rest};
       }
       rest -= kind_size(chunk, kind);
     }
