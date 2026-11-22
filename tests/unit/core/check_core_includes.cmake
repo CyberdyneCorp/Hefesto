@@ -17,12 +17,30 @@ set(_forbidden
   "Foundation/" "CoreGraphics/" "QuartzCore/" "X11/" "xcb/" "wayland-" "windows.h" "SDL" "GLFW/"
   "Qt" "gtk/" "spawn.h" "unistd.h" "sys/wait.h" "sys/types.h" "process.h" "boost/process")
 
+# Restricted headers (m7-extraction design D5, D6): hefesto/db/plane_stitch.hpp, the stitch editor
+# that breaks the canonical tile decomposition, only from the extract and extresist areas and from its
+# implementation file src/db/plane_stitch.cpp (scripts/check_core_includes.py RESTRICTED and
+# RESTRICTED_FILES).
+set(_stitch_header "hefesto/db/plane_stitch.hpp")
+set(_stitch_areas extract extresist)
+set(_stitch_file "src/db/plane_stitch.cpp")
+
 file(GLOB_RECURSE _sources "${CORE_DIR}/*.hpp" "${CORE_DIR}/*.cpp" "${CORE_DIR}/*.h" "${CORE_DIR}/*.in")
 set(_violations "")
 foreach(_file IN LISTS _sources)
   file(STRINGS "${_file}" _includes REGEX "^[ \t]*#[ \t]*include[ \t]*[<\"]")
   foreach(_line IN LISTS _includes)
     string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*[<\"]([^>\"]*)[>\"].*$" "\\1" _header "${_line}")
+    if(_header STREQUAL _stitch_header)
+      file(RELATIVE_PATH _rel "${CORE_DIR}" "${_file}")
+      string(REGEX REPLACE "^(src|include/hefesto)/([^/]+)/.*$" "\\2" _area "${_rel}")
+      # list(FIND), not IN_LIST: a -P script has no cmake_minimum_required, so CMP0057 is unset and
+      # older CMake reads IN_LIST as a plain word (linux-asan/tsan failure on PR #80).
+      list(FIND _stitch_areas "${_area}" _area_index)
+      if(NOT _rel STREQUAL _stitch_file AND (_area STREQUAL _rel OR _area_index EQUAL -1))
+        list(APPEND _violations "${_file}: #include <${_header}> (only extract/, extresist/, db/plane_stitch.cpp)")
+      endif()
+    endif()
     foreach(_pattern IN LISTS _forbidden)
       string(FIND "${_header}" "${_pattern}" _pos)
       if(_pos EQUAL 0 OR (_pattern STREQUAL "raven" AND NOT _pos EQUAL -1))

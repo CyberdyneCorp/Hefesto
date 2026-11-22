@@ -1,0 +1,49 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "g" 0 1 0 10 metal1 0 0 0 0 0 0
+node "s" 0 1 0 20 metal1 0 0 0 0 0 0
+node "d" 0 1 0 30 metal1 0 0 0 0 0 0
+device mosfet nfet 3 0 5 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 10 0 12 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 17 0 19 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 24 0 26 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 31 0 33 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 38 0 40 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 45 0 47 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 52 0 54 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 59 0 61 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 66 0 68 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 73 0 75 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 80 0 82 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 87 0 89 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 94 0 96 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 101 0 103 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 108 0 110 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 115 0 117 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 122 0 124 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 129 0 131 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 136 0 138 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 143 0 145 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 150 0 152 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 157 0 159 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 164 0 166 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 171 0 173 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 178 0 180 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 185 0 187 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 192 0 194 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 199 0 201 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 206 0 208 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 213 0 215 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 220 0 222 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 227 0 229 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 234 0 236 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 241 0 243 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 248 0 250 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 255 0 257 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 262 0 264 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 269 0 271 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 276 0 278 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0

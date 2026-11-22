@@ -1,0 +1,24 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+device mosfet nfet 0 0 2 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device asymmetric nfet 6 0 8 4 2 4 "GND!" "g" 8 0 "s" 4 0 "d2" 4 0
+fet nfet 12 0 14 4 8 12 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device bjt npn 20 0 24 4 4 4 "GND!" "b" 16 0 "e" 16 0 "c" 16 0
+device devres None 30 0 31 1 25.5 "rb" 0 0 "ra" 0 0 "rc" 0 0
+device devres rppd 40 0 50 2 10 2 "None" "rb2" 0 0 "ra" 2 0 "rc" 2 0
+device devcap None 50 0 60 10 12.5 "ct" 0 0 "cb" 0 0
+device devcap mimcapm 60 0 70 10 10 10 "ct2" 0 0 "cb" 0 0
+device devcaprev mimcapm 70 0 80 10 10 10 "ct3" 0 0 "cb" 0 0
+device diode dn 80 0 84 5 "k" 0 0 "GND!" 0 0
+device pdiode pdn 85 0 89 5 "k2" 0 0 "GND!" 0 0
+device ndiode ndn 90 0 94 5 "k3" 0 0 "GND!" 0 0
+device subckt sbx 100 0 104 4 "x1" 0 0 "x2" 0 0
+device rsubckt rres 110 0 120 2 "rb3" 0 0 "ra3" 0 0 "rc3" 0 0
+device msubckt nmod 120 0 122 4 l=2 w=4 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device csubckt cmod 130 0 140 10 "ct4" 0 0 "cb" 0 0
+device dsubckt dmod 140 0 144 4 "k4" 0 0 "GND!" 0 0
+device veriloga vamod 150 0 154 4 "va1" 0 0 "va2" 0 0

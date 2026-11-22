@@ -1,0 +1,11 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+node "A" 0 0 0 0 m1
+node "B" 0 0 0 4 m1
+node "C" 0 0 0 8 m1
+cap "C" "B" 200
+cap "B" "A" 200

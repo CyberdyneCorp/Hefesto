@@ -1,0 +1,27 @@
+magic
+tech extsmoke
+timestamp 100
+<< metal1 >>
+rect -6 0 0 4
+rect 14 0 18 8
+rect 18 0 20 4
+rect 10 8 18 12
+rect 0 20 36 24
+<< metal2 >>
+rect 36 20 40 30
+<< via1 >>
+rect 36 20 40 24
+use leaf leaf_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 12
+use leaf leaf_1
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 10 12
+<< labels >>
+rlabel metal1 -6 0 -6 4 0 IN
+port 1 nsew
+rlabel metal1 14 6 14 6 0 mid
+rlabel metal1 2 22 2 22 0 vdd!
+<< end >>

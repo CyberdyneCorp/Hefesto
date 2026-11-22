@@ -1,0 +1,12 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use rcell c1 1 0 0 0 1 0
+use rcell c2 1 0 50 0 1 0
+node "n" 0 1 0 80 metal1 0 0 0 0 0 0
+merge "c1/A" "n" 0
+merge "c2/A" "n" 0
+cap "c1/A" "n" -0.5

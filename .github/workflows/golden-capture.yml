@@ -349,6 +349,20 @@ jobs:
       - name: Report the image's awk
         run: docker run --rm hefesto-golden:ci awk --version | head -n 1
 
+      # m7-extraction task 2.2: the image manifest records the glibc version (Open Question 3) and how
+      # Magic's standalone extcheck was built (container/build_extcheck.sh; "unavailable" with the
+      # reason when it does not link at the pin, design R7). The same JSON goes into every provenance.json.
+      - name: Report the image manifest (glibc, extcheck)
+        shell: bash
+        run: |
+          docker run --rm hefesto-golden:ci cat /opt/ref/share/hefesto-golden/manifest.json | tee manifest.json
+          { echo '### Capture image manifest'; echo '```json'; cat manifest.json; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if docker run --rm hefesto-golden:ci sh -c 'command -v extcheck'; then
+            set +e
+            docker run --rm hefesto-golden:ci extcheck
+            echo "extcheck with no arguments: exit status $?"
+          fi
+
       - name: Verify captured cases against a fresh capture
         if: env.MODE == 'both' || env.MODE == 'verify'
         shell: bash
@@ -371,7 +385,8 @@ jobs:
           status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
             --gl-image "${{ steps.gl.outputs.image }}" --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
-          # Collect the new expected/ directories, keeping their tests/golden/... paths.
+          # Collect the new expected/ directories, keeping their tests/golden/... paths. The pathspec's `*`
+          # also matches `/`, so the expected/collected/<path> files of [[collect]] cases (M7) are included.
           mkdir -p golden-expected
           git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
           if [ -s new-files.txt ]; then

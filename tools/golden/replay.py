@@ -13,6 +13,7 @@ Usage:
     replay.py [--hefesto-cli PATH] [--root tests/golden] [CASE_DIR...]
               [--json FILE] [--output-dir DIR] [--skip-code N]
               [--include-gds-rt] [--require-inputs ID[,ID...]]...
+              [--hefesto-extcheck PATH]
 
 hefesto-cli comes from --hefesto-cli or $HEFESTO_CLI. Without CASE_DIR every
 captured case under --root is replayed. --output-dir writes the actual outputs,
@@ -31,6 +32,16 @@ Every ID given to --require-inputs must name a case directory under --root.
 A case with ``gds_rt = true`` (label golden-gds-rt: the library round trips of
 m5-mask-gds-cif D19) is left out of the default selection and SKIPPED when named,
 unless --include-gds-rt is passed.
+Each case is replayed in a fresh session: its own scratch directory and its own
+hefesto-cli process (m7-extraction D21: Q-NETLIST-16 and Q-NETLIST-46 depend on it).
+``[[collect]]`` outputs (goldenlib/collect.py) are gathered from that directory the
+way capture.py gathers them and compared as ``collected/<path>``: a file the
+reference wrote that Hefesto does not, or the reverse, fails the case.
+An external-command case (goldenlib/external_command.py) runs Hefesto's program of
+its role instead of hefesto-cli: ``hefesto-extcheck`` from --hefesto-extcheck or
+$HEFESTO_EXTCHECK, else next to hefesto-cli (``<dir>/hefesto-extcheck`` or
+``<dir>/extcheck/hefesto-extcheck``). The case is SKIPPED while that program is
+not built.
 A case without expected/ that deviations.toml lists as ``deferred`` is reported
 as a DEVIATION (its capture is pending in CI); without such an entry it is an
 ERROR when named.
@@ -56,8 +67,8 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from compare import COMPARATORS, compare_bytes, normalized
-from goldenlib import deviations
+from compare import COMPARATORS, compare_bytes, compare_collected, normalized
+from goldenlib import collect, deviations, external_command
 from goldenlib.case import (RUN_SOURCES, Case, CaseError, discover, load_case, run_output, run_timeout,
                             substitute_env)
 from goldenlib.derived import read_output
@@ -95,6 +106,11 @@ class Execution:
     stderr: bytes
     returncode: int
     files: dict[str, bytes]
+    collected: dict[str, bytes] = field(default_factory=dict)  # collected/<path> -> bytes
+
+
+class ProgramUnavailable(RuntimeError):
+    """The external-command case's Hefesto program is not built."""
 
 
 def hefesto_argv(cli: Path, case: Case, work: Path, args: list[str] | None = None) -> list[str]:
@@ -132,14 +148,41 @@ def run_hefesto(cli: Path, case: Case, work: Path, args: list[str] | None = None
                           timeout=run_timeout(case.hefesto, TIMEOUT_S), check=False, input=stdin)
 
 
-def execute(cli: Path, case: Case, work: Path, raw: RawKeep | None = None) -> Execution:
-    """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent.
-    ``raw`` keeps the run's raw outputs (``--keep-raw``)."""
+def run_external(program: Path, case: Case, work: Path) -> subprocess.CompletedProcess:
+    """Hefesto's program of an external-command case, from the command's ``cwd`` in ``work``."""
+    command = case.command
+    cwd = work if command.cwd == "." else work / command.cwd
+    env = {**os.environ, **ENVIRONMENT, **substitute_env(case.env, str(work))}
+    timeout = run_timeout(case.hefesto, TIMEOUT_S)
+    if command.runs:  # [[run]] tables: each writes <name>.stdout/.stderr/.exit in work
+        external_command.replay_runs(program, command, work, env, timeout)
+        return subprocess.CompletedProcess([str(program)], 0, b"", b"")
+    return subprocess.run([str(program), *command.args], capture_output=True, cwd=cwd, env=env,
+                          timeout=timeout, check=False)
+
+
+def run_case_program(cli: Path, case: Case, work: Path, extcheck: Path | None) -> subprocess.CompletedProcess:
+    """hefesto-cli, or for an external-command case its role's program (ProgramUnavailable if not built)."""
+    if case.command is None:
+        return run_hefesto(cli, case, work)
+    explicit = extcheck if case.command.role == "extcheck" else None
+    program = external_command.find_replay_program(case.command.program, cli, explicit)
+    if program is None:
+        raise ProgramUnavailable(f"{case.command.program.replay} is not built")
+    return run_external(program, case, work)
+
+
+def execute(cli: Path, case: Case, work: Path, raw: RawKeep | None = None,
+            extcheck: Path | None = None) -> Execution:
+    """Run hefesto-cli (or the external command's program) on a work copy of input/;
+    ExternalUnavailable if an external input is absent, ProgramUnavailable if the external
+    program is not built. ``raw`` keeps the run's raw outputs (``--keep-raw``)."""
     shutil.copytree(case.input_dir, work / "input")
     stage(case.externals, work / "input")
     if raw is not None:
         raw.prepare(case, work)
-    proc = run_hefesto(cli, case, work)
+    before = collect.snapshot(work) if case.collect else {}
+    proc = run_case_program(cli, case, work, extcheck)
     if raw is not None:
         raw.keep(case.id, work, proc.stdout, proc.stderr)
     files = {}
@@ -148,8 +191,10 @@ def execute(cli: Path, case: Case, work: Path, raw: RawKeep | None = None) -> Ex
             data = read_output(work, out.source)
             if data is not None:
                 files[out.source] = with_container_work(data, work)
+    collected = {name: with_container_work(data, work)
+                 for name, (_, data) in collect.gather(work, before, case.collect).items()}
     return Execution(with_container_work(proc.stdout, work), with_container_work(proc.stderr, work),
-                     proc.returncode, files)
+                     proc.returncode, files, collected)
 
 
 def with_container_work(data: bytes, work: Path) -> bytes:
@@ -188,6 +233,7 @@ class Options:
     include_gds_rt: bool = False
     require_inputs: frozenset[str] = frozenset()       # case ids whose external inputs must exist
     raw: RawKeep | None = None                          # --keep-raw
+    extcheck: Path | None = None                        # --hefesto-extcheck (external-command cases)
 
 
 def compare_outputs(case: Case, execution: Execution) -> list[OutputReport]:
@@ -200,6 +246,25 @@ def compare_outputs(case: Case, execution: Execution) -> list[OutputReport]:
         expected = (case.expected_dir / out.name).read_bytes()
         result = compare_bytes(expected, actual, out.comparator, out.masks, out.display)
         reports.append(OutputReport(out.name, out.comparator, "pass" if result.equal else "fail", result.detail))
+    return reports + compare_collected_outputs(case, execution)
+
+
+def compare_collected_outputs(case: Case, execution: Execution) -> list[OutputReport]:
+    """One report per collected file of either side; a file on one side only fails."""
+    if not case.collect:
+        return []
+    committed = collect.expected_files(case.expected_dir)
+    reports = []
+    for name in sorted(set(committed) | set(execution.collected)):
+        entry = collect.entry_for(case.collect, name)
+        comparator = entry.comparator if entry is not None else "?"
+        if name not in execution.collected:
+            reports.append(OutputReport(name, comparator, "fail", "hefesto did not write it"))
+        elif name not in committed:
+            reports.append(OutputReport(name, comparator, "fail", "hefesto wrote it; the reference did not"))
+        else:
+            detail = compare_collected(case.collect, name, committed[name].read_bytes(), execution.collected[name])
+            reports.append(OutputReport(name, comparator, "fail" if detail else "pass", detail))
     return reports
 
 
@@ -218,6 +283,11 @@ def save_outputs(case: Case, execution: Execution, output_dir: Path) -> None:
         data = actual_output(execution, out.source)
         if data is not None:
             (target / out.name).write_bytes(normalized(data, out.comparator, out.masks))
+    for name, data in execution.collected.items():
+        entry = collect.entry_for(case.collect, name)
+        path = target / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(normalized(data, entry.comparator, entry.masks) if entry is not None else data)
 
 
 def is_provisional(case: Case) -> bool:
@@ -225,19 +295,30 @@ def is_provisional(case: Case) -> bool:
     return not prov.get("reference_captured", False)
 
 
-def replay_case(cli: Path, case: Case, output_dir: Path | None,
-                deviation: deviations.Deviation | None = None, require_inputs: bool = False,
-                raw: RawKeep | None = None) -> CaseReport:
-    report = CaseReport(case.id, case.area, "error", is_provisional(case))
+def execute_or_skip(cli: Path, case: Case, report: CaseReport, require_inputs: bool,
+                    raw: RawKeep | None, extcheck: Path | None) -> Execution | None:
+    """The case's run in a fresh scratch directory; None, with ``report`` set to skip (or fail, for a
+    missing input of a --require-inputs case), when an input or the external program is missing."""
     with tempfile.TemporaryDirectory(prefix=f"replay-{case.id}-") as tmp:
         try:
-            execution = execute(cli, case, Path(tmp), raw)
+            return execute(cli, case, Path(tmp), raw, extcheck)
+        except ProgramUnavailable as error:
+            report.status, report.detail = "skip", str(error)
         except ExternalUnavailable as error:
             report.status = "fail" if require_inputs else "skip"
             report.detail = f"external input unavailable: {error}"
             if require_inputs:
                 report.detail += " (required by --require-inputs)"
-            return report
+    return None
+
+
+def replay_case(cli: Path, case: Case, output_dir: Path | None,
+                deviation: deviations.Deviation | None = None, require_inputs: bool = False,
+                raw: RawKeep | None = None, extcheck: Path | None = None) -> CaseReport:
+    report = CaseReport(case.id, case.area, "error", is_provisional(case))
+    execution = execute_or_skip(cli, case, report, require_inputs, raw, extcheck)
+    if execution is None:
+        return report
     if output_dir is not None and not (deviation is not None and deviation.deferred):
         save_outputs(case, execution, output_dir)
     missing = missing_command(case, execution)
@@ -283,11 +364,11 @@ def run_one(cli: Path, case_dir: Path, options: Options | None = None) -> CaseRe
             return CaseReport(case.id, case.area, "skip", detail="golden-gds-rt case (pass --include-gds-rt)")
         deviation = options.known.get(case.id)
         if deviation is not None:
-            deviations.check(deviation, [o.name for o in case.outputs])
+            deviations.check(deviation, [o.name for o in case.outputs], bool(case.collect))
         if not case.is_captured:
             return uncaptured(case, deviation)
         return replay_case(cli, case, options.output_dir, deviation, case.id in options.require_inputs,
-                           options.raw)
+                           options.raw, options.extcheck)
     except (CaseError, OSError, subprocess.TimeoutExpired, ValueError) as error:
         return CaseReport(case_dir.name, case_dir.parent.parent.name, "error", detail=str(error))
 
@@ -319,6 +400,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="also replay the golden-gds-rt cases (gds_rt = true)")
     parser.add_argument("--require-inputs", action="append", default=[], metavar="ID[,ID...]",
                         help="fail, not skip, when these cases miss an external input (repeatable)")
+    parser.add_argument("--hefesto-extcheck", type=Path, default=os.environ.get("HEFESTO_EXTCHECK"),
+                        help="hefesto-extcheck for external-command cases (default: next to hefesto-cli)")
     rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
     args.raw = rawkeep.from_args(args, parser)
@@ -339,7 +422,8 @@ def main(argv: list[str]) -> int:
     except (deviations.DeviationError, ValueError) as error:
         print(f"replay.py: {error}", file=sys.stderr)
         return 2
-    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs, args.raw)
+    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs, args.raw,
+                      args.hefesto_extcheck.resolve() if args.hefesto_extcheck else None)
     reports = [run_one(args.hefesto_cli, case_dir, options) for case_dir in select_cases(args)]
     human = sys.stderr if str(args.json) == "-" else sys.stdout
     for report in reports:

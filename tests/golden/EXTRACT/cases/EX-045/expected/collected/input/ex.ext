@@ -1,0 +1,16 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses 1000
+node "active_52_12#" 0 0 52 12 nd 0 0
+node "gout" 0 0 50 12 nfet 0 0
+node "active_47_12#" 0 0 47 12 nd 0 0
+node "active_14_12#" 0 0 14 12 nd 0 0
+node "gin" 0 0 12 12 nfet 0 0
+node "active_9_12#" 0 0 9 12 nd 0 0
+node "well_0_0#" 23958 0 0 0 dnw 416 208
+substrate "active_60_0#" 0 0 60 0 psd 0 0
+device mosfet nfet 50 12 51 13 2 4 "active_60_0#" "gout" 0 0 "active_47_12#" 4 12,14 "active_52_12#" 4 12,14
+device mosfet nfet 12 12 13 13 2 4 "active_60_0#" "gin" 0 0 "active_9_12#" 4 12,14 "active_14_12#" 4 12,14

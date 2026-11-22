@@ -59,6 +59,17 @@ output's masks. The outputs match when the canonical forms are identical.
     polygons from their first vertex, paths, texts and placements (arrays as their sorted
     displacements) with their properties; an OASIS shape repetition shows as such (m6-lef-def-oasis
     design D19, OASIS-052: ``repetitions no`` keeps gds-write's element order). See stream_elements.py.
+``spice-cap``
+    SPICE netlists of ``ext2spice``: coupling-capacitor lines compared as a multiset (terminals in
+    order, index masked), every other line byte for byte (m7-extraction design D21, Q-NETLIST-1).
+    ``spice-cap:<node>[,<node>...]`` also treats the named substrate nodes like ground ``0``, so the
+    node capacitances to them stay byte for byte. See spice_cap.py.
+``sim-cap``
+    ``.sim`` files of ``ext2sim``: the same rule for the ``C <n1> <n2> <value>`` coupling lines.
+    See sim_cap.py.
+``res-ext``
+    ``.res.ext`` files of ``extresist``: the resistor records of one net in canonical order, every
+    other record byte for byte; record order only, never topology (design D21). See res_ext.py.
 ``lef-text``, ``def-text``
     LEF and DEF files, and the console of LEF/DEF commands: plain text after removing the
     informative progress lines (``Diagnostic:`` lines, ``(This can take a while!)``,
@@ -89,8 +100,8 @@ from typing import Callable
 from goldenlib.gds import dump as gds_dump
 from goldenlib.oasis import dump as oasis_dump
 
-from . import (drc_console, ext_cap, lefdef_text, mag_backup, magic_console, polygon_set, spice_canonical,
-               stream_elements, stream_geometry, stream_hierarchy)
+from . import (drc_console, ext_cap, lefdef_text, mag_backup, magic_console, polygon_set, res_ext, sim_cap,
+               spice_canonical, spice_cap, stream_elements, stream_geometry, stream_hierarchy)
 from .masks import apply_masks
 
 
@@ -102,7 +113,31 @@ def gunzip(data: bytes) -> bytes:
         return b"<not gzip>\n" + data
 
 
-COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
+class _Comparators(dict):
+    """The comparator table; a name with an argument (``spice-cap:VSUB``) resolves through the
+    module that owns its base name, so ``in`` and lookup accept it."""
+
+    PARAMETRIZED: dict[str, Callable[[str], Callable[[bytes], bytes] | None]] = {
+        spice_cap.NAME: spice_cap.parametrized,
+    }
+
+    def _resolve(self, name: object) -> Callable[[bytes], bytes] | None:
+        if not isinstance(name, str) or ":" not in name:
+            return None
+        factory = self.PARAMETRIZED.get(name.split(":", 1)[0])
+        return factory(name) if factory is not None else None
+
+    def __contains__(self, name: object) -> bool:
+        return super().__contains__(name) or self._resolve(name) is not None
+
+    def __missing__(self, name: str) -> Callable[[bytes], bytes]:
+        canonical = self._resolve(name)
+        if canonical is None:
+            raise KeyError(name)
+        return canonical
+
+
+COMPARATORS: dict[str, Callable[[bytes], bytes]] = _Comparators({
     "bytes": lambda data: data,
     "ext-cap": ext_cap.canonicalize,
     "magic-console": magic_console.canonicalize,
@@ -117,7 +152,10 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "stream-elements": stream_elements.canonicalize,
     "lef-text": lefdef_text.canonicalize,
     "def-text": lefdef_text.canonicalize,
-}
+    "spice-cap": spice_cap.canonicalize,
+    "sim-cap": sim_cap.canonicalize,
+    "res-ext": res_ext.canonicalize,
+})
 
 # Comparators whose verdict needs both sides at once (a node bijection); they return the first difference.
 PAIRWISE: dict[str, Callable[[bytes, bytes], str | None]] = {
@@ -173,3 +211,16 @@ def compare_bytes(expected: bytes, actual: bytes, comparator: str, masks=(), dis
         view = DISPLAYS[display]
         return Result(False, f"{display}: {_first_difference(view(exp_masked), view(act_masked))}")
     return Result(False, _first_difference(exp, act))
+
+
+def compare_collected(entries, name: str, expected: bytes, actual: bytes) -> str:
+    """'' when the collected output ``name`` (``collected/<path>``, goldenlib/collect.py) matches
+    under the comparator and masks of the ``[[collect]]`` entry its file name belongs to, else
+    the difference."""
+    from goldenlib.collect import entry_for
+
+    entry = entry_for(entries, name)
+    if entry is None:
+        return "no [[collect]] pattern matches it"
+    result = compare_bytes(expected, actual, entry.comparator, entry.masks)
+    return "" if result.equal else result.detail

@@ -1,0 +1,85 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 22 04:49:41 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 spice3
+0 {}
+0 hspice
+0 on
+0 {}
+0 {}
+0 on
+0 2.0
+0 {}
+0 0.5
+0 {}
+0 infinite
+0 infinite
+0 {}
+0 none
+0 {}
+0 conservative
+0 none
+0 {}
+0 on
+0 auto
+0 {}
+0 {}
+0 auto
+0 off
+0 off
+0 off
+0 on
+0 off
+0 off
+0 {}
+0 on
+0 {Bad format type.  Formats are:spice2, spice3, hspice, ngspice, and cdl.}
+0 hspice
+0 {}
+0 ngspice
+0 on
+0 infinite
+0 off
+0 on
+0 off
+0 {}
+0 2.0
+0 infinite
+0 ngspice
+0 {Cannot read extract file YES.ext
+}
+0 {Cannot read extract file r.ext
+}
+0 {Cannot read extract file run.ext
+}
+    [run] [options]	run exttospice on current cell
+			use "run -help" to get standard options
+    default		reset to default values
+    format [<type>]	set output format
+    rthresh [<value>]	set resistance threshold value
+    cthresh [<value>]	set capacitance threshold value
+    merge [<type>]		merge parallel transistors
+    extresist [on|off]	incorporate information from extresist
+    resistor tee [on|off]	model resistor capacitance as a T-network
+    scale [on|off]		use .option card for scaling
+    short [voltage|resistor|none]
+			set method for handling shorted ports
+    subcircuits [top|descend] [on|off|auto]
+			standard cells become subcircuit calls
+    hierarchy [on|off]	output hierarchical spice for LVS
+    blackbox [on|off]	output abstract views as black-box entries
+    renumber [on|off]	on = number instances X1, X2, etc.
+			off = keep instance ID names
+    global [on|off]	on = merge unconnected global nets by name
+    lvs    		apply typical default settings for LVS
+    help			print help information
+0 {}

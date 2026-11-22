@@ -69,6 +69,16 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Recommendation: compat. ON: restrict only the first contact type whose home plane is the check plane, and compare plane numbers, as Magic does (gf180mcuD's metal4 results included). OFF: restrict every contact type whose home plane is the check plane, and keep only the types whose plane order is ≤ the check plane's order. This is a bug that changes antenna results, so the compat rule applies. The release notes should name gf180mcuD's metal4 check as the case where the modes differ.
 - Resolution: compat — with `magic-compat` ON the connectivity restriction applies to the first contact type on the check plane and compares plane numbers, as Magic does (gf180mcuD's metal4 check included); with it OFF it applies to every contact type on the check plane and compares plane order. Release notes name gf180mcuD's metal4 check. Approved 2026-11-13.
 
+### Q-MISC-91: `antennacheck run` becomes the cell name
+- Kind: bug
+- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Magic behavior: antennacheck's option table has a `[run] [options]` entry that is never matched; the word becomes the cell name, as for `ext2spice` (Q-NETLIST-13) and `ext2sim` (Q-NETLIST-49).
+- Evidence: extflat/EFantenna.c (CmdAntennaCheck); antenna-check "Antenna check command" (says `run` is matched by prefix, which holds only with magic-compat OFF)
+- As implemented (round R1, scaffold): compat, as Q-NETLIST-49.
+- Options: compat | replicate | fix
+- Recommendation: compat; the spec text should say that the prefix match holds with magic-compat OFF.
+- Resolution: open — needs a user decision.
+
 ## mask-hints
 
 ### Q-MISC-10: Mask hints do not round-trip with `property compat false`

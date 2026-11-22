@@ -294,6 +294,11 @@ def deferred_cases(golden_dir: Path) -> set[str]:
     return {case for case, entry in data.items() if isinstance(entry, dict) and "deferred" in entry}
 
 
+def is_smoke_case(case_id: str) -> bool:
+    """A capture-machinery smoke case (`<AREA>-SMOKE-<n>`, m7-extraction task 2.3): not a catalogue row."""
+    return "-SMOKE-" in case_id
+
+
 def scan_golden(golden_dir: Path, root: Path) -> list[TestRef]:
     refs: list[TestRef] = []
     skipped = deferred_cases(golden_dir)
@@ -304,7 +309,7 @@ def scan_golden(golden_dir: Path, root: Path) -> list[TestRef]:
         print("warning: Python < 3.11 has no tomllib; case.toml manifests skipped", file=sys.stderr)
     for pattern in patterns:
         for path in sorted(golden_dir.glob(pattern)):
-            if path.parent.name in skipped:
+            if path.parent.name in skipped or is_smoke_case(path.parent.name):
                 continue
             source = path.relative_to(root).as_posix()
             try:

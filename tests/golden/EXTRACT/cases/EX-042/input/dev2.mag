@@ -1,0 +1,10 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 4 4
+<< labels >>
+rlabel metal1 2 2 2 2 0 VSS
+<< properties >>
+string device mosfet nmod 0 0 2 4 4 2 extra
+<< end >>

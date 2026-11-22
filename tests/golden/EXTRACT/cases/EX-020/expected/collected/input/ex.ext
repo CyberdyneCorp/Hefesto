@@ -1,0 +1,11 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+port "B" 2 10 2 10 2 m1
+port "A" 1 6 2 6 2 m1
+node "B" 0 0 10 2 m1
+equiv "B" "A"
+equiv "B" "int1"

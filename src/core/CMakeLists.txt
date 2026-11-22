@@ -21,6 +21,7 @@ add_library(hefesto_core STATIC
   src/cmd/dispatcher.cpp
   src/cmd/host_access.cpp
   src/cmd/keywords.cpp
+  src/cmd/m7_stubs.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/quit_policy.cpp
@@ -34,6 +35,7 @@ add_library(hefesto_core STATIC
   src/editor/coordinate_units.cpp
   src/editor/edit_frame.cpp
   src/editor/editor_state.cpp
+  src/editor/extract_hook.cpp
   src/editor/post_command.cpp
   src/platform/file_picker.cpp
   src/platform/local_file_system.cpp
@@ -84,8 +86,17 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       CAMERA, view3d/client WIND3D, view3d/{pick,section} INSPECT,
 #       view3d/export EXPORT, view3d/overlay OVERLAY); extract/tech is
 #       extended by TECH (the 3D height subset, design D5)
+#   M7 (openspec/changes/m7-extraction/design.md D2/D3): extract/, netlist/,
+#       extresist/ INTEGRATION (shared files; each subdirectory has its own
+#       sources.cmake owned by its workstream: extract/tech EXTTECH,
+#       extract/{node,file} EXTNODE, extract/cap EXTCAP, extract/device
+#       EXTDEV, extract/hier EXTHIER, extract/{command,length} EXTCMD,
+#       netlist/spice SPICE, netlist/{sim,extcheck} SIM, extresist/network
+#       RESNET, extresist/{command,output} RESCMD)   extflat/ EXTFLAT
+#       antenna/ ANTENNA
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
-                       script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d)
+                       script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d
+                       netlist extresist antenna)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

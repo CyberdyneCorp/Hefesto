@@ -1,0 +1,244 @@
+* SPICE3 file created from top120.ext - technology: nltest
+
+.option scale=10n
+
+M1000 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1001 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1002 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1003 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1004 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1005 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1006 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1007 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1008 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1009 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1010 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1011 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1012 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1013 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1014 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1015 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1016 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1017 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1018 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1019 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1020 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1021 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1022 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1023 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1024 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1025 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1026 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1027 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1028 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1029 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1030 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1031 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1032 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1033 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1034 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1035 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1036 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1037 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1038 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1039 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1040 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1041 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1042 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1043 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1044 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1045 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1046 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1047 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1048 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1049 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1050 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1051 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1052 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1053 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1054 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1055 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1056 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1057 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1058 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1059 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1060 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1061 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1062 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1063 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1064 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1065 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1066 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1067 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1068 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1069 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1070 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1071 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1072 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1073 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1074 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1075 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1076 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1077 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1078 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1079 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1080 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1081 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1082 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1083 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1084 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1085 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1086 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1087 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1088 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1089 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1090 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1091 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1092 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1093 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1094 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1095 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1096 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1097 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1098 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1099 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1100 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1101 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1102 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1103 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1104 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1105 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1106 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1107 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1108 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1109 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1110 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1111 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1112 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1113 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1114 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1115 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1116 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1117 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1118 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+M1119 d g s GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0

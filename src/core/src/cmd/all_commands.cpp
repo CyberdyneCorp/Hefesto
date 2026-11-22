@@ -11,10 +11,15 @@
 #include "hefesto/cmd/units.hpp"
 #include "hefesto/db/commands.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/antenna/antenna.hpp"
 #include "hefesto/drc/commands/command.hpp"
+#include "hefesto/extract/command/commands.hpp"
+#include "hefesto/extresist/command/command.hpp"
 #include "hefesto/gds/command/command.hpp"
 #include "hefesto/gui/commands.hpp"
 #include "hefesto/lef/command/command.hpp"
+#include "hefesto/netlist/sim/sim.hpp"
+#include "hefesto/netlist/spice/spice.hpp"
 #include "hefesto/oasis/command/command.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
@@ -55,7 +60,8 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = drc::register_drc_command(registry) && ok;
   // M4 areas (openspec/changes/m4-scripting/design.md D1/D3).
   ok = script::register_binding_commands(registry) && ok;
-  ok = script::register_pdk_commands(registry) && ok;
+  // `ext2spice` (with M4's `scale` option) is registered by the M7 netlist
+  // area below (netlist/spice/spice.hpp).
   ok = pcell::register_pcell_commands(registry) && ok;
   ok = tools::register_tools_commands(registry) && ok;
   ok = gui::register_gui_commands(registry) && ok;
@@ -65,6 +71,12 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   // M6 (openspec/changes/m6-lef-def-oasis/design.md D3, D14, D15).
   ok = lef::register_lef_def_commands(registry) && ok;
   ok = oasis::register_oasis_command(registry) && ok;
+  // M7 (openspec/changes/m7-extraction/design.md D4).
+  ok = extract::register_extract_commands(registry) && ok;
+  ok = netlist::spice::register_spice_commands(registry) && ok;
+  ok = netlist::sim::register_sim_commands(registry) && ok;
+  ok = extresist::register_extresist_command(registry) && ok;
+  ok = antenna::register_antenna_command(registry) && ok;
   // M10 (openspec/changes/m10-3d-view/design.md D9): the wind3d client.
   ok = view3d::register_wind3d_commands(registry) && ok;
   return ok;

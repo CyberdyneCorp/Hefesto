@@ -29,6 +29,8 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/paint.cpp
   ${CMAKE_CURRENT_LIST_DIR}/paint_plane.cpp
   ${CMAKE_CURRENT_LIST_DIR}/plane.cpp
+  # M7 (openspec/changes/m7-extraction/design.md D6): the restricted stitch editor.
+  ${CMAKE_CURRENT_LIST_DIR}/plane_stitch.cpp
   ${CMAKE_CURRENT_LIST_DIR}/polygon.cpp
   ${CMAKE_CURRENT_LIST_DIR}/property.cpp
   ${CMAKE_CURRENT_LIST_DIR}/tile_plane.cpp

@@ -1,0 +1,24 @@
+* SPICE3 file created from top.ext - technology: nltest
+
+C0 c1 gnd 0
+C1 c7 gnd 0.9999k
+C2 c4 gnd 0.10001n
+M1000 d g s GND nfet w=20n l=20n
++  ad=0 pd=0 as=0 ps=0
+M1001 d g s GND nfet w=10n l=20n
++  ad=0 pd=0 as=0 ps=0
+C3 c9 gnd 1G
+C4 c6 gnd 10m
+M1002 d g s GND nfet w=2u l=20n
++  ad=0 pd=0 as=0 ps=0
+M1003 d g s GND nfet w=0.2m l=20n
++  ad=0 pd=0 as=0 ps=0
+M1004 d g s GND nfet w=0.2u l=20n
++  ad=0 pd=0 as=0 ps=0
+C5 c8 gnd 1k
+M1005 d g s GND nfet w=20u l=20n
++  ad=0 pd=0 as=0 ps=0
+C6 c3 gnd 0.1p
+C7 c0 gnd 0
+C8 c5 gnd 100n
+C9 c2 gnd 99.99f
