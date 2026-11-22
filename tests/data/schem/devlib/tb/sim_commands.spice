@@ -1,0 +1,13 @@
+** sch_path: /work/input/sim_commands.sch
+**.subckt sim_commands
+V1 A GND 1
+**** begin user architecture code
+
+
+* ngspice block
+
+
+**** end user architecture code
+**.ends
+.GLOBAL GND
+.end
