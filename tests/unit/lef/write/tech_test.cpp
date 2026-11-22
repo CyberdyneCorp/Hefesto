@@ -87,6 +87,34 @@ TEST_CASE("a via record of a LEF read is a LAYER block only with magic-compat ON
   }
 }
 
+// Regression: only layer-table records were written, so a via a LEF or DEF
+// read made (a via-table record whose key has no layer record) never gave
+// a LAYER block, although in Magic it is a LefInfo record like any other
+// and is written with magic-compat ON (Q-LEFDEF-127; found with
+// MASK-OS-016's first input, tests/unit/lef/read/magic_crash_test.cpp).
+TEST_CASE("a via of a LEF read with no layer record is a LAYER block only with magic-compat ON",
+          "[cap:lef-write][req:Technology layers]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Session s(on);
+    ViaDefinition via;
+    via.type = s.type("m2c");
+    via.area = db::Rect{-10, -10, 10, 10};
+    via.canonical_name = "VX1";
+    s.editor.lefdef.layers.note_key("VX1");
+    (void)s.editor.lefdef.vias.insert("VX1", via);
+    ViaDefinition untyped;  // no geometry read: Magic's type -1, skipped
+    untyped.canonical_name = "VX2";
+    s.editor.lefdef.layers.note_key("VX2");
+    (void)s.editor.lefdef.vias.insert("VX2", untyped);
+    const std::string text = tech_output(s);
+    // CUT AREA is 4x the area in half units (Q-LEFDEF-32): 20 * 20 * oscale^2.
+    CHECK((text.find("LAYER VX1\n  TYPE CUT ;\n  CUT AREA ") != std::string::npos) == on);
+    CHECK((text.find("END VX1\n\n") != std::string::npos) == on);
+    CHECK(text.find("LAYER VX2") == std::string::npos);
+  }
+}
+
 TEST_CASE("without -tech no LAYER block is written", "[cap:lef-write][req:Technology layers]") {
   Session s;
   db::CellDef& inv = s.cell("inv");
@@ -107,7 +135,7 @@ TEST_CASE("an obstruction type is written under its route layer's name",
 
 TEST_CASE("a contact is written under the name of its first cut record in table order",
           "[cap:lef-write][req:Magic type to LEF layer name]") {
-  Session s;
+  Session s(false);  // a lone contact's cut is dropped with magic-compat ON (Q-LEFDEF-136)
   LayerRecord via;
   via.layer_class = LayerClass::cut;
   via.type = s.type("m2c");
@@ -124,6 +152,39 @@ TEST_CASE("a contact is written under the name of its first cut record in table 
   db::CellDef& poly = s.cell("polyonly");
   s.paint(poly, "poly", db::Rect{0, 0, 10, 10});
   CHECK(s.macro(poly).find("RECT") == std::string::npos);
+}
+
+// Regression (found with LEFDEF-RT-sky130_fd_sc_hd and -sg13g2_stdcell in
+// round 5): defGetType enumerates all of LefInfo, so a VIA definition read
+// from LEF, a ViaTable entry with no layer record, names a cut type when its
+// key comes first (Magic wrote `LAYER M4M5_PR_C ;` for via4); lef write
+// looked at the layer records only.
+TEST_CASE("a VIA definition earlier in the key order names the cut type it holds",
+          "[cap:lef-write][req:Magic type to LEF layer name]") {
+  bool via_won = false;
+  for (const std::string name : {"M1M2_PR", "M1M2_PR_C", "V12", "VIA12", "M1M2", "Via1_XY_s"}) {
+    INFO(name);
+    Session s(false);  // a lone contact's cut is dropped with magic-compat ON (Q-LEFDEF-136)
+    ViaDefinition via;
+    via.type = s.type("m2c");
+    via.area = db::Rect{-10, -10, 10, 10};
+    via.canonical_name = name;
+    s.editor.lefdef.layers.note_key(name);  // as begin_via does (Q-LEFDEF-135)
+    s.editor.lefdef.vias.insert(name, via);
+    std::string first;
+    s.editor.lefdef.layers.enumerate_keys([&](std::string_view key, const LayerRecord* record) {
+      const bool cut = record != nullptr && record->layer_class == LayerClass::cut && record->type == s.type("m2c");
+      if (first.empty() && (key == name || cut)) {
+        first = key == name ? name : record->canonical_name;
+      }
+    });
+    via_won = via_won || first == name;
+    db::CellDef& inv = s.cell("inv");
+    s.paint(inv, "m2c", db::Rect{0, 0, 10, 10});
+    CHECK(s.macro(inv).find("      LAYER " + first + " ;\n        RECT 0.000 0.000 0.100 0.100 ;\n") !=
+          std::string::npos);
+  }
+  CHECK(via_won);  // at least one name precedes the cut layer's key
 }
 
 }  // namespace

@@ -18,9 +18,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/lef/write/codes.inc` | `LEF-WRITE-*` | LEFW |
 | `src/core/src/lef/command/codes.inc` | `LEF-CMD-*` | LEFR, LEFW |
 
-While M6 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-006`
-([../codes.md](../codes.md)).
+Every option and function the M6 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-006` is retired ([../codes.md](../codes.md)).
 
 ## LEX
 
@@ -83,6 +82,11 @@ The texts are Magic's message bodies; the LEF and DEF readers add the
 - `LEF-VIA-011` (Hefesto only): `No LEF layer corresponding to magic type
   "<t>" of via "<name>"; RECT skipped.` where Magic writes `(null)`
   (Q-LEFDEF-115 fix).
+- `LEF-VIA-012` (Hefesto only, error): `Via "<name>": cut array of <nx> x
+  <ny> gives more than 1000000 cuts; one cut the size of the via area is
+  written.` A VIAS record whose cut array is above 1,000,000 cuts gets one
+  cut rectangle equal to its area instead, in both modes (Q-LEFDEF-150,
+  approved 2026-11-20; security.md M6-S2). Magic writes every cut.
 
 ## READ
 
@@ -160,6 +164,7 @@ fails when the two disagree.
 | `LEF-VIA-009` | warning | DEF write: a via's cut is wider than its area. |
 | `LEF-VIA-010` | warning | DEF write: a via's cut height check (inverted in Magic) fired. |
 | `LEF-VIA-011` | warning | DEF write: a via layer has no LEF name; its RECT is skipped. |
+| `LEF-VIA-012` | error | DEF write: a via's cut array is above 1,000,000 cuts (Q-LEFDEF-150); one cut the size of the via area is written. |
 | `LEF-WRITE-001` | info | LEF write progress: `Generating LEF output <file> for cell <name>:` and the `Diagnostic:` lines. |
 | `LEF-WRITE-002` | error | LEF write: the output file cannot be opened; nothing is written. |
 | `LEF-WRITE-003` | error | lef writeall: a cell of the subtree cannot be read; nothing is written. |

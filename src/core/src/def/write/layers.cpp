@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Magic's LefInfo order over Hefesto's split layer and via tables, and the
+// Magic's LefInfo order from the layer table's shared key order, and the
 // magic-to-LEF layer map of DEF write (capability def-write "Magic-to-LEF
-// layer map", "Table enumeration order"; Q-LEFDEF-92, 116).
+// layer map", "Table enumeration order"; Q-LEFDEF-92, 116, 135).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) lef/defWrite.c defGetType and
 // defMakeInverseLayerMap, Copyright (C) 1985, 1990 Regents of the
@@ -18,19 +18,12 @@
 #include <vector>
 
 #include "def/write/internal.hpp"
-#include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::def::write_detail {
 
 namespace {
 
 const std::string kNoName;
-
-/// The value of one combined key.
-struct Ref {
-  const lef::LayerRecord* layer = nullptr;
-  const lef::ViaDefinition* via = nullptr;
-};
 
 /// defGetType's test of one record against `type`: the class of the type
 /// (cut for a contact; route or masterslice otherwise), then the normal or
@@ -96,31 +89,13 @@ const std::string& InfoEntry::canonical_name() const noexcept {
 }
 
 std::vector<InfoEntry> info_order(const lef::LayerTable& layers, const lef::ViaTable& vias) {
-  std::vector<std::pair<std::string, const lef::LayerRecord*>> layer_keys;
-  layers.enumerate([&](std::string_view name, const lef::LayerRecord& record) {
-    layer_keys.emplace_back(std::string{name}, &record);
-  });
-  std::vector<const lef::ViaTable::Entry*> via_keys;
-  vias.for_each([&](const lef::ViaTable::Entry& e) { via_keys.push_back(&e); });
-
-  // Reversed enumeration order replays each bucket's insertion order (a
-  // chain is newest first), the layers before the vias.
-  util::MagicHashTable<Ref> combined(32);
-  for (auto it = layer_keys.rbegin(); it != layer_keys.rend(); ++it) {
-    combined.insert(it->first, Ref{it->second, nullptr});
-  }
-  for (auto it = via_keys.rbegin(); it != via_keys.rend(); ++it) {
-    auto& entry = combined.find_or_insert((*it)->key);
-    if ((*it)->value) {
-      entry.value = Ref{nullptr, &*(*it)->value};
-    } else if (!entry.value) {
-      entry.value = Ref{};
-    }
-  }
   std::vector<InfoEntry> out;
-  combined.for_each([&](const util::MagicHashTable<Ref>::Entry& e) {
-    const Ref ref = e.value.value_or(Ref{});
-    out.push_back(InfoEntry{e.key, ref.layer, ref.via});
+  layers.enumerate_keys([&](std::string_view key, const lef::LayerRecord* record) {
+    InfoEntry entry{std::string{key}, record, nullptr};
+    if (const auto* via = vias.find(entry.key); via != nullptr && via->value) {
+      entry = InfoEntry{std::string{key}, nullptr, &*via->value};  // a via shadows a layer name
+    }
+    out.push_back(std::move(entry));
   });
   return out;
 }

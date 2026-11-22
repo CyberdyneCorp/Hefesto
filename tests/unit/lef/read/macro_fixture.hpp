@@ -81,7 +81,7 @@ struct MacroRun {
 
   LefRun lef;
   LibraryHost host;
-  lef::MacroOptions macros;
+  lef::MacroReadOptions macros;
 };
 
 /// The tiles of `type` on its home plane.

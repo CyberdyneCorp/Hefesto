@@ -12,7 +12,8 @@
 // memory first, so a cell that fails writes nothing.
 //
 // Expanding repetitions is bounded by kMaxInstances element instances per
-// cell (the OASIS read cap of design D21; proposed for this path).
+// cell (the OASIS read cap of design D21; approved for this path, E3 of
+// 2026-11-20, Q-OASIS-54).
 // Owner: OASW (design D2, D17).
 
 #include "vendor_oasis.hpp"
@@ -20,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 #include "codes.hpp"
@@ -76,18 +78,36 @@ Point64 inverse(const Element& e, Point64 p) {
   return e.flip ? Point64{r.x, -r.y} : r;
 }
 
-// oasis-read "Placement repetitions" rules 1 and 2.
-bool reads_as_array(const Element& e) {
+/// The columns and rows of the AREF a placement repetition is written as.
+struct ArrayAxes {
+  Point64 column_step;
+  std::int64_t columns = 1;
+  Point64 row_step;
+  std::int64_t rows = 1;
+};
+
+// oasis-read "Placement repetitions" rules 1 and 2. gds-read takes the
+// columns along the child's x axis (xsep = T^-1(P1 - P0).x / cols,
+// calma/CalmaRdcl.c:1476-1500), so under rule 2 the repetition's rows are
+// the AREF's columns. Regression (OASIS-023's finding): the columns were
+// kept, and a rotated array read back with spacing 0.
+std::optional<ArrayAxes> array_axes(const Element& e) {
   const oasis::Repetition& r = *e.repetition;
   const bool grid = r.type <= 3 || r.type == 8 || r.type == 9;
   if (!grid || r.columns > kMaxGdsNumber || r.rows > kMaxGdsNumber) {
-    return false;
+    return std::nullopt;
   }
   const Point64 u = inverse(e, r.column_step);
   const Point64 v = inverse(e, r.row_step);
-  const bool rule1 = (r.columns == 1 || u.y == 0) && (r.rows == 1 || v.x == 0);
-  const bool rule2 = (r.columns == 1 || u.x == 0) && (r.rows == 1 || v.y == 0);
-  return rule1 || rule2;
+  const auto na = static_cast<std::int64_t>(r.columns);
+  const auto nb = static_cast<std::int64_t>(r.rows);
+  if ((na == 1 || u.y == 0) && (nb == 1 || v.x == 0)) {
+    return ArrayAxes{r.column_step, na, r.row_step, nb};
+  }
+  if ((na == 1 || u.x == 0) && (nb == 1 || v.y == 0)) {
+    return ArrayAxes{r.row_step, nb, r.column_step, na};
+  }
+  return std::nullopt;
 }
 
 /// The transcoding of one cell into a structure built in memory.
@@ -342,16 +362,15 @@ class CellTranscoder {
     return s.ok() ? out_.empty(RecordType::endel) : s;
   }
 
-  diag::Status array(const Element& e, std::span<const oasis::Record> properties) {
-    const oasis::Repetition& r = *e.repetition;
-    const auto na = static_cast<std::int64_t>(r.columns);
-    const auto nb = static_cast<std::int64_t>(r.rows);
+  diag::Status array(const Element& e, const ArrayAxes& axes, std::span<const oasis::Record> properties) {
+    const std::int64_t na = axes.columns;
+    const std::int64_t nb = axes.rows;
     const auto corner = [&e](std::int64_t n, Point64 step) {
       return OutputPoint{saturating_add(e.position.x, saturating_mul(n, step.x)),
                          saturating_add(e.position.y, saturating_mul(n, step.y))};
     };
-    const std::array<OutputPoint, 3> xy{OutputPoint{e.position.x, e.position.y}, corner(na, r.column_step),
-                                        corner(nb, r.row_step)};
+    const std::array<OutputPoint, 3> xy{OutputPoint{e.position.x, e.position.y}, corner(na, axes.column_step),
+                                        corner(nb, axes.row_step)};
     for (const OutputPoint& p : xy) {
       if (!out_.checked_i4(p.x).ok() || !out_.checked_i4(p.y).ok()) {
         return out_.xy(xy);  // the GDS-WRITE-004 error
@@ -368,8 +387,10 @@ class CellTranscoder {
   }
 
   diag::Status placement(const Element& e, std::span<const oasis::Record> properties) {
-    if (e.repetition && reads_as_array(e)) {
-      return array(e, properties);
+    if (e.repetition) {
+      if (const std::optional<ArrayAxes> axes = array_axes(e)) {
+        return array(e, *axes, properties);
+      }
     }
     const oasis::Repetition none;
     const oasis::Repetition& r = e.repetition ? *e.repetition : none;

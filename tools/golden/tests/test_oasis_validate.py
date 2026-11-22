@@ -102,6 +102,19 @@ class ProduceTest(unittest.TestCase):
         self.assertIn({"tool": "klayout", "op": "xor", "against": "files/OASIS-061/out.oas.magic.gds"}, item["checks"])
         self.assertTrue((self.out / "files" / "OASIS-061" / "out.oas.magic.gds").is_file())
 
+    def test_xor_skip_of_oasis_055_names(self):
+        # E4 (2026-11-20): KLayout cannot read Magic's reference GDS of OASIS-055-names (two a_b structures).
+        case_dir = make_case(self.cases, "OASIS-055-names")
+        (case_dir / "expected").mkdir()
+        (case_dir / "expected" / "out.oas").write_bytes(b"\x00\x06\x00\x02")  # Magic's GDS bytes
+        manifest = self.produce(lambda *a: execution({"out.oas": b"%SEMI-OASIS\r\n"}))
+        [item] = manifest["entries"]
+        self.assertNotIn("xor", [c["op"] for c in item["checks"]])
+        self.assertIn({"tool": "klayout", "op": "read"}, item["checks"])
+        self.assertFalse((self.out / "files" / "OASIS-055-names" / "out.oas.magic.gds").exists())
+        [produced] = [s for s in manifest["steps"] if s["step"] == "OASIS-055-names"]
+        self.assertIn("XOR with Magic's GDS skipped", produced["detail"])
+
     def test_input_checks_copy_the_files_they_name(self):
         case_dir = make_case(self.cases, "OASIS-030")
         (case_dir / "input" / "trap.oas").write_bytes(b"F")

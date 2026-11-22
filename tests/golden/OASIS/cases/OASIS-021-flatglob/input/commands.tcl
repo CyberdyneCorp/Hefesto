@@ -19,7 +19,7 @@ proc specrep {value} {
     close $f
 }
 probe {drc off}
-probe {gds datestamp 1}
+probe {gds datestamp 1700000000}
 probe {gds flatglob *_CDNS_*}
 probe {gds flatten yes}
 probe {gds read input/sky130_fd_sc_hd.gds.gz}

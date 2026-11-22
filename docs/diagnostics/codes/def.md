@@ -14,9 +14,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/def/read/codes.inc` | `DEF-READ-*` | DEFR |
 | `src/core/src/def/write/codes.inc` | `DEF-WRITE-*` | DEFW |
 
-While M6 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-006`
-([../codes.md](../codes.md)).
+Every option and function the M6 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-006` is retired ([../codes.md](../codes.md)).
 
 ## READ
 

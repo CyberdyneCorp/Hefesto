@@ -9,9 +9,8 @@
 // read` and `lef datestamp` call LEFR's parsers (lef/read/args.hpp); `lef
 // write`, `lef writeall` and `lef nocheck` call LEFW's (lef/write/args.hpp);
 // `def read` calls DEFR's (def/read/command.hpp) and `def write` DEFW's
-// (def/write/command.hpp). No option answers CORE-NOTIMPL-006 any more; the
-// last line of lef_def_command is unreachable and kept until the code is
-// retired at M6 exit (tasks.md 17.5).
+// (def/write/command.hpp). Every option has its implementation; the scaffold
+// stub code CORE-NOTIMPL-006 is retired (tasks.md 17.5).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) lef/lefCmd.c CmdLef (the option
 // tables, the lookup, the window check, the `def` refusals and the help),
@@ -29,7 +28,6 @@
 #include "db/command_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/def/read/command.hpp"
 #include "hefesto/def/write/command.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -77,11 +75,6 @@ constexpr std::array<std::string_view, 5> kDefOptions{
 
 // LEF_READ .. LEF_HELP (lefCmd.c:70-75).
 enum Option : std::size_t { kRead = 0, kWrite = 1, kWriteAll = 2, kNoCheck = 3, kDateStamp = 4, kHelp = 5 };
-
-std::string option_name(std::size_t option) {
-  const std::string_view entry = kLefOptions.at(option);
-  return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
-}
 
 // LEF_HELP (also reached by an invalid option): "The "<cmd>" options are:"
 // and each entry of the command's table.
@@ -189,10 +182,8 @@ CommandResult lef_def_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   if (is_lef && option == kRead) {
     return read_option(s, invocation, print_help);
   }
-  if (is_lef && option == kDateStamp) {
-    return datestamp_option(s, invocation, print_help);
-  }
-  return cmd::not_implemented((is_lef ? "lef " : "def ") + option_name(option));
+  // Only `lef datestamp` is left: every other option returned above.
+  return datestamp_option(s, invocation, print_help);
 }
 
 }  // namespace

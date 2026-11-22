@@ -1,4 +1,4 @@
-# LEFDEF-334: tech with 40+ lef layers forcing hash rebuild; several vias; every net labeled. Captures: order of VIAS and BLOCKAGES records.
+# LEFDEF-334: tech whose lef section gives 95 LefInfo keys (72 `ignore` names, lines of at most 15), so the two generated vias grow the table (Q-LEFDEF-135); every net labeled. Captures: order of VIAS and BLOCKAGES records.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

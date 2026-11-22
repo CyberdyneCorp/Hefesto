@@ -27,6 +27,16 @@ probe {lef writeall -notop}
 if {[file exists lefdef_rt.mag]} {file rename -force lefdef_rt.mag lefdef_rt.lef}
 puts [list lefdef-rt written [file exists lefdef_rt.lef]]
 if {![file exists lefdef_rt.lef]} {puts [list lefdef-rt path [path search]]}
+if {[file exists lefdef_rt.lef]} {
+    set rt_in [open lefdef_rt.lef]; set rt_lines [split [read $rt_in] \n]; close $rt_in
+    set rt_out [open lefdef_rt.probe.lef w]; set rt_on 0
+    foreach line $rt_lines {
+        if {[regexp {^MACRO (\S+)} $line -> m]} {set rt_on [expr {[lsearch -exact {sg13g2_sdfbbp_1} $m] >= 0}]}
+        if {$rt_on} {puts $rt_out $line}
+        if {$rt_on && [regexp {^END (\S+)} $line -> m] && [lsearch -exact {sg13g2_sdfbbp_1} $m] >= 0} {set rt_on 0}
+    }
+    close $rt_out
+}
 } scriptError]} {
     puts [list script-error $scriptError]
     flush stdout

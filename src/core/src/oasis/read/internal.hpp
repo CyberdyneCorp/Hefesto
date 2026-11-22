@@ -54,6 +54,7 @@ inline constexpr std::size_t kMaxRecordPayload = 0xffff - 4;            // 65531
 inline constexpr std::size_t kMaxPoints = kMaxRecordPayload / 8;        // 8191 XY points, the closing one included
 inline constexpr std::size_t kMaxString = kMaxRecordPayload & ~std::size_t{1};  // 65530, padded even
 inline constexpr std::int64_t kMaxGdsInt2 = 32767;
+inline constexpr std::int64_t kMinGdsInt2 = -32768;
 
 /// Where a record is in the decompressed stream (oasis-read "Read
 /// diagnostics"): its file offset, or the file offset of the CBLOCK holding

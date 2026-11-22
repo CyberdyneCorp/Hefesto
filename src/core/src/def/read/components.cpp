@@ -228,7 +228,7 @@ void Reader::components(std::int32_t total) {
       error("Component END statement missing.");
       continue;
     }
-    progress();
+    estimate(total);
     ++processed;
     ComponentReader{*this}.run();
   }

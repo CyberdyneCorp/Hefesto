@@ -27,9 +27,9 @@ float scale_of(std::int32_t scale_factor, std::int32_t expander) {
 struct Resolver {
   explicit Resolver(bool magic_compat = true) { compat.magic_compat = magic_compat; }
 
-  void layer(std::string_view name, lef::LayerLookup lookup) {
+  void layer(std::string_view name, lef::LayerLookup lookup, lef::LayerSource from = lef::LayerSource::geometry) {
     const lef::MessageTarget messages{counter, sink, lexer};
-    lef::resolve_layer(name, lookup, state, lef::LayerContext{layers, *technology(), compat, messages});
+    lef::resolve_layer(name, lookup, state, lef::LayerContext{layers, *technology(), compat, messages}, from);
   }
 
   std::vector<std::string> texts() {
@@ -100,6 +100,31 @@ TEST_CASE("fallback to magic type name", "[cap:lef-read][req:LEF layer name reso
   r.layer("METAL1", lef::LayerLookup::normal);
   CHECK(r.state.type == type_of("metal1"));
   CHECK(r.texts().empty());
+}
+
+// Regression: a key with no record (a name a NONDEFAULTRULE looked up, a
+// released generated via) fell back to the magic type names in every
+// lookup. Magic's LefReadLayer finds the key, gets no record and resolves
+// no type (lefRead.c:715-756: no fallback, the unknown-layer errors); only
+// LefReadLayers with result pointers (PORT and OBS) dereferences it and
+// crashes, which Q-LEFDEF-4 fixes by treating the key as absent.
+// Compat (Q-LEFDEF-151): magic-compat OFF treats it as absent everywhere.
+TEST_CASE("a key with no record resolves to nothing in a LefReadLayer lookup with magic-compat ON",
+          "[cap:lef-read][req:LEF layer name resolution]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Resolver r(on);
+    define_scenario_layers(r.layers);
+    r.layers.reserve("poly");
+    r.layer("poly", lef::LayerLookup::normal, lef::LayerSource::read_layer);
+    CHECK((r.state.type == std::nullopt) == on);
+    CHECK((r.texts() == Strings{"LEF read, Line 0 (Error): Don't know how to parse layer \"poly\"",
+                                "LEF read, Line 0 (Error): Try adding this name to the LEF techfile section"}) == on);
+    // PORT and OBS geometry: treated as absent in both modes (Q-LEFDEF-4).
+    r.layer("poly", lef::LayerLookup::obstruction);
+    CHECK(r.state.type == type_of("poly"));
+    CHECK(r.texts().empty());
+  }
 }
 
 TEST_CASE("table entries give the normal type and a cut's contact area", "[cap:lef-read][req:LEF layer name resolution]") {

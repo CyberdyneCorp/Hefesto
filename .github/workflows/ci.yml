@@ -59,6 +59,8 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -v
       - name: Unit tests of the GDS bench scripts
         run: python3 -m unittest discover -s bench/gds/tests -v
+      - name: Unit tests of the LEF/DEF and OASIS bench scripts
+        run: python3 -m unittest discover -s bench/lefdef/tests -v
       - name: Unit tests of the OASIS reference-file script
         run: python3 -m unittest discover -s tests/data/oasis/codec -v
       - name: SPDX Apache-2.0 headers on first-party files
@@ -810,8 +812,10 @@ jobs:
           # replay.py --output-dir already applied each case's documented masks (case.toml [[outputs]] masks,
           # e.g. gds-dates, mag-timestamp), so the trees are compared byte for byte.
           # The M4 areas must stay in the comparison (m4-scripting task 13.6), and MASK
-          # once its expected outputs exist (m5-mask-gds-cif task 15.4).
+          # once its expected outputs exist (m5-mask-gds-cif task 15.4), and LEFDEF and OASIS
+          # (m6-lef-def-oasis task 17.4).
           python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP --require-area MASK \
+            --require-area LEFDEF --require-area OASIS \
             "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
@@ -899,7 +903,7 @@ jobs:
   fuzz:
     name: fuzz (libFuzzer, 60 s per target)
     runs-on: ubuntu-24.04
-    timeout-minutes: 80  # 23 targets x 60 s, plus the build
+    timeout-minutes: 90  # 28 targets x 60 s, plus the build
     env:
       FUZZ_SECONDS: "60"
     steps:

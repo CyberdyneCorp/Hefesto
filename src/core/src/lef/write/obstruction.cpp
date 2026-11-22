@@ -166,7 +166,7 @@ void yank_everything(const MacroState& m, db::CellDef& yank) {
 void write_cuts(const MacroState& m, RecordWriter& w, db::CellDef& yank, tech::PlaneId plane) {
   const Yank y = m.yank();
   if (m.options.setback < 0) {
-    yank_contacts(y, m.flat->plane(plane), plane, db::whole_plane(), yank.plane(plane));
+    yank_contacts(y, m.flat->plane(plane), plane, db::whole_plane(), yank.plane(plane), w.marks());
     w.write_plane(m.tech(), yank.plane(plane), m.sets.route, db::whole_plane(), Round::cut);
     return;
   }
@@ -174,7 +174,7 @@ void write_cuts(const MacroState& m, RecordWriter& w, db::CellDef& yank, tech::P
     return;
   }
   for (const db::Rect& r : setback_strips(m)) {
-    yank_contacts(y, m.flat->plane(plane), plane, r, yank.plane(plane));
+    yank_contacts(y, m.flat->plane(plane), plane, r, yank.plane(plane), w.marks());
     w.write_plane(m.tech(), yank.plane(plane), m.sets.route, r, Round::cut);
   }
 }

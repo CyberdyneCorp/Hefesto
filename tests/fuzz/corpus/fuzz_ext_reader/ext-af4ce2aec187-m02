@@ -1,0 +1,8 @@
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+node "n1" 2 3.76 0 0 m1 0 0 0 0 216 116 200 108 0 0 0 0
+node "n2" 2 4.76 0 20 m1 0 0 0 0 316 120 200 108 0 0 0 0

@@ -7,6 +7,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <map>
+#include <memory>
 #include <string>
 
 #include "hefesto/db/property.hpp"
@@ -14,6 +16,7 @@
 #include "hefesto/gds/stream/gzip.hpp"
 #include "hefesto/oasis/read/stamps.hpp"
 #include "hefesto/oasis/read/vendor.hpp"
+#include "hefesto/script/interp.hpp"
 #include "oasis_read_fixture.hpp"
 
 using namespace oasis_read_test;
@@ -31,6 +34,31 @@ Bytes library(std::int32_t compress, std::int64_t leaf_width = 100) {
   f.cell("top").add(place("leaf", 0, 0)).add(rect(69, 20, 0, 0, 500, 500));
   return f.bytes();
 }
+
+/// An interpreter that holds global variables only (the path substitution
+/// reads `::PDK_ROOT` and the like from it).
+class VariablesOnly : public hefesto::script::Interpreter {
+ public:
+  std::map<std::string, std::string, std::less<>> vars;
+  hefesto::cmd::CommandResult evaluate(std::string_view /*script*/, hefesto::cmd::Origin /*origin*/) override {
+    return hefesto::cmd::CommandResult::success();
+  }
+  hefesto::cmd::CommandResult source(const hefesto::platform::Path& /*path*/) override {
+    return hefesto::cmd::CommandResult::success();
+  }
+  bool set_var(std::string_view name, const hefesto::cmd::Value& value, std::string* /*error*/) override {
+    vars[std::string{name}] = value.to_string();
+    return true;
+  }
+  [[nodiscard]] std::optional<hefesto::cmd::Value> get_var(std::string_view name) const override {
+    const auto it = vars.find(name);
+    return it == vars.end() ? std::nullopt : std::optional{hefesto::cmd::Value{it->second}};
+  }
+  void define_command(std::string_view /*name*/, hefesto::script::NativeCommand /*command*/) override {}
+  [[nodiscard]] bool has_command(std::string_view /*name*/) const override { return false; }
+  [[nodiscard]] std::string info_script() const override { return {}; }
+  void request_interrupt() noexcept override {}
+};
 
 gds::StampTable stamps_of(const Bytes& bytes) {
   gds::MemorySource source{bytes};
@@ -209,6 +237,39 @@ TEST_CASE("content-hash timestamps for read-only OASIS cells",
     }
     CHECK(stamp_named(a, "c199") != stamp_named(a, "c198"));
   }
+  // Q-OASIS-49 (E4, OASIS-033, compat): Magic's GDS stamp hashes each SREF's
+  // child name with its parent's bytes, so a renamed child changes the
+  // parent's stamp; a strict OASIS file names the child by refnum only.
+  SECTION("a renamed child changes its parent's stamp with magic-compat ON only") {
+    const auto named = [](const std::string& child) {
+      Oas f(true, 0, 1000.0);
+      f.cell(child).add(rect(68, 20, 0, 0, 100, 100));
+      f.cell("top").add(place(child, 0, 0));
+      return f.bytes();
+    };
+    const Bytes first = named("leaf");
+    const Bytes second = named("cell");
+    const auto stamps = [](const Bytes& bytes, bool compat) {
+      gds::MemorySource source{bytes};
+      return oasis::content_stamps(source, compat);
+    };
+    CHECK(stamp_named(stamps(first, true), "leaf") == stamp_named(stamps(second, true), "cell"));
+    CHECK(stamp_named(stamps(first, true), "top") != stamp_named(stamps(second, true), "top"));
+    CHECK(stamp_named(stamps(first, false), "leaf") == stamp_named(stamps(second, false), "cell"));
+    CHECK(stamp_named(stamps(first, false), "top") == stamp_named(stamps(second, false), "top"));
+    for (const bool compat : {true, false}) {  // the read and a restamp agree
+      OasSession s(kStyle, compat);
+      readonly(s);
+      (void)s.read_oasis(first);
+      CHECK(s.cell("top").timestamp() == stamp_named(stamps(first, compat), "top"));
+      cell::SearchPaths paths;
+      cell::PathVariables vars;
+      diag::CollectingSink sink;
+      cell::LookupContext lookup{s.fs, paths, vars, sink};
+      oasis::VendorStamper stamper{lookup, compat};
+      CHECK(stamper.stamp(s.cell("top")) == s.cell("top").timestamp());
+    }
+  }
   SECTION("a child's content changes its parent's stamp, not the other way round") {
     const auto a = stamps_of(library(0, 100));
     const auto b = stamps_of(library(0, 120));
@@ -292,5 +353,20 @@ TEST_CASE("host mechanisms used by the reader", "[cap:oasis-read][req:Host mecha
     (void)s.read_oasis(library(0), "/data/cells.oas");
     REQUIRE(string_property(s.cell("leaf"), "OASIS_FILE") != nullptr);
     CHECK(*string_property(s.cell("leaf"), "OASIS_FILE") == "$PDK_ROOT/sky130/cells.oas");
+  }
+  // E4 (OASIS-032, compat): as Magic's DBPathSubstitute, the PDK variables
+  // come from the Tcl global variables only; PDK_ROOT set in the environment
+  // alone leaves the path as it is.
+  SECTION("OASIS_FILE substitutes the Tcl variable PDK_ROOT, not the environment's") {
+    OasSession s;
+    s.editor.path_variables.variable = [](std::string_view name) -> std::optional<std::string> {
+      return name == "PDK_ROOT" ? std::optional<std::string>{"/pdk"} : std::nullopt;  // the environment
+    };
+    CHECK(gds::gds_file_value("/pdk/lib/cells.oas", s.editor) == "/pdk/lib/cells.oas");
+    auto interp = std::make_unique<VariablesOnly>();
+    interp->vars["::PDK_ROOT"] = "/pdk";
+    s.editor.script.interp = std::move(interp);
+    CHECK(gds::gds_file_value("/pdk/lib/cells.oas", s.editor) == "$PDK_ROOT/lib/cells.oas");
+    s.editor.script.interp.reset();
   }
 }

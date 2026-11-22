@@ -24,7 +24,6 @@ add_library(hefesto_core STATIC
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/quit_policy.cpp
-  src/cmd/stubs.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp
   src/compat/compat_settings.cpp
