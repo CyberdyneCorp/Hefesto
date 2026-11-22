@@ -1155,12 +1155,12 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 
 ### Q-LEFDEF-139: Technology file lines of more than 30 words
 - Kind: bug
-- Status: approved 2026-11-20 (user decision E2; LEFDEF-334)
+- Status: approved 2026-11-21 (user decision G3; first approved 2026-11-20 as compat, E2, with the ON rule left open)
 - Magic behavior: techGetTokens stores the words of a line in a 30-slot vector it never bounds-checks (MAXARGS); the words past the 30th overwrite TechLoad's stack. In LEFDEF-334's first capture a 46-word `ignore` line printed a keyword error with garbage text.
 - Evidence: utils/tech.c:120, 433, 977-1080; golden-capture run 44743146734 (LEFDEF-334)
-- Options: replicate | compat (replicate ON; every word OFF, as Q-TECH-4)
-- Recommendation: compat, as decided. Magic's ON behaviour is undefined (stack corruption), so it cannot be copied as such: a defined ON rule is needed.
-- Resolution: compat — with `magic-compat` ON a line keeps Magic's 30-word vector; with it OFF every word is read (Q-TECH-4). Approved 2026-11-20. Implementation open: the tokenizer is in `tech/` (not a LEF/DEF file), and the ON rule for the words past the 30th (Magic's undefined overwrite) needs to be fixed by the user (proposed: the first 30 words are read and the line is reported with a TECH error naming the dropped words). LEFDEF-334 splits its line, so no golden case depends on it.
+- Options: replicate | compat (replicate ON; every word OFF, as Q-TECH-4) | fix (the first 30 words, the rest reported)
+- Recommendation: compat, as decided on 2026-11-20. Magic's ON behaviour is undefined (stack corruption), so it cannot be copied as such: a defined ON rule is needed (proposed: the first 30 words are read and the line is reported with a TECH error naming the dropped words).
+- Resolution: fix — in both modes a technology-file line keeps its first 30 words; the words past the 30th are dropped and reported with the error `line has more than 30 words; dropped: <words>` (TECH-READ-002), and the load goes on. Magic's stack overwrite is undefined behaviour, so the fix applies with `magic-compat` ON as well; it replaces Q-TECH-4's "accept every word" with it OFF. Approved 2026-11-21 (G3). Spec: tech-file-format "Line length and token limits". Regression tests "a line of more than 30 words keeps its first 30 with TECH-READ-002 (magic-compat ON)" and "(magic-compat OFF)" (`tests/unit/tech/tech_file_test.cpp`). LEFDEF-334 splits its line, so no golden case depends on it.
 
 ### Q-LEFDEF-140: `def write` inputs Magic crashes on
 - Kind: bug
@@ -1173,12 +1173,12 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 
 ### Q-LEFDEF-141: A DEF read's progress estimate ends the NULL driver's display suspension
 - Kind: quirk
-- Status: implemented under the standing rule in the round-5 integration (no user decision yet; reported for confirmation)
+- Status: approved 2026-11-21 (user decision G4: confirmed as implemented; implemented under the standing rule in the round-5 integration)
 - Magic behavior: LefEstimate sets GrDisplayStatus to DISPLAY_IN_PROGRESS on its first call (an item of a section with a declared count other than 0, negative counts included: it returns early only for `!total`) and to DISPLAY_IDLE on the last item, overwriting the DISPLAY_SUSPEND the NULL driver set, and nothing sets it back. DefRead's DBWloadWindow, and every later window load, then deletes an untouched "(UNNAMED)" root, which batch Magic otherwise keeps. Found with lefdef-bench: after `def read` of the generated block Magic lists 440 cells and Hefesto 441, the extra one "(UNNAMED)" (perf run 44868150477).
 - Evidence: lef/lefRead.c:87-131 (LefEstimate), lef/defRead.c:1124, 1566, 1829, 1958, 2240 (callers), graphics/grNull.c:380, dbwind/DBWprocs.c:321-331, 608-617
 - Options: replicate | compat (replicate ON; keep "(UNNAMED)" in a batch session OFF) | fix
 - Recommendation: compat (the standing rule).
-- Resolution: compat — with `magic-compat` ON a DEF read that reads an item of a counted section sets `EditorState::display_status_active`, and from then on a window load deletes an untouched "(UNNAMED)" root as with a running display; with it OFF nothing changes. Spec: def-read "Command context". Regression test "a counted DEF section makes the design load delete an untouched (UNNAMED) with magic-compat ON" (`tests/unit/def/read/command_test.cpp`).
+- Resolution: compat — with `magic-compat` ON a DEF read that reads an item of a counted section (any declared count other than 0, a negative one included) sets `EditorState::display_status_active`, and from then on a window load deletes an untouched "(UNNAMED)" root as with a running display; with it OFF nothing changes. Approved 2026-11-21 (G4, as implemented). Spec: def-read "Command context". Regression test "a counted DEF section makes the design load delete an untouched (UNNAMED) with magic-compat ON" (`tests/unit/def/read/command_test.cpp`).
 
 ### Q-LEFDEF-150: DEF write of a LEF VIA whose cut array is unbounded
 - Kind: bug
@@ -1191,10 +1191,10 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 
 ### Q-LEFDEF-151: A LefReadLayer lookup of a table key with no record
 - Kind: quirk
-- Status: implemented under the standing rule in the round-5 review (no user decision yet; reported for confirmation)
+- Status: approved 2026-11-21 (user decision G4: confirmed as implemented; implemented under the standing rule in the round-5 review)
 - Magic behavior: LefInfo keeps names with no record (a name a LEF or DEF NONDEFAULTRULE looked up, a generated via `def write` removed). LefReadLayers finds such a key with HashLookOnly and does not fall back to the magic type names (lefRead.c:715-756). Called with result pointers (MACRO PORT and OBS geometry) it then dereferences the missing record and crashes (Q-LEFDEF-4: fixed by treating the key as absent). Called through LefReadLayer, with no result pointers (LEF VIA and LAYER section geometry, lefRead.c:2900; DEF geometry, defRead.c:1630, 1846, 2020, 2045-2047), it does not crash: the layer resolves to no type, the two "Don't know how to parse layer" errors are printed, and the geometry is dropped.
 - Evidence: lef/lefRead.c:697-756, 784-789, 2900; lef/defRead.c:1630, 1846, 2020, 2045-2047
 - Hefesto (before): every lookup treated such a key as absent and took the magic type, so the geometry was painted.
 - Options: replicate | compat (replicate ON; treat as absent OFF, as Q-LEFDEF-4)
 - Recommendation: compat (the standing rule).
-- Resolution: compat — with `magic-compat` ON a LefReadLayer lookup (`lef::LayerSource::read_layer`: LEF VIA and LAYER section geometry, DEF geometry) of a key with no layer or via record resolves to no type, with the unknown-layer errors; with it OFF the key is treated as absent and the magic-name fallback applies. PORT and OBS geometry keep Q-LEFDEF-4's fix in both modes. Spec: lef-read "LEF layer name resolution". Regression tests "a key with no record resolves to nothing in a LefReadLayer lookup with magic-compat ON" (`tests/unit/lef/read/units_layers_test.cpp`), "a VIA LAYER that names a rule's unknown layer gets no type with magic-compat ON" (`nondefault_rule_test.cpp`), "a BLOCKAGES layer named by an unknown rule layer gets no type with magic-compat ON" (`tests/unit/def/read/rules_test.cpp`). Not covered: a LEF `LAYER` section for such a key with none of TYPE, WIDTH, SPACING, PITCH, DIRECTION or a RECT is read and discarded by Magic (lefRead.c:3138-3146 with a null record); Hefesto creates the layer (Q-LEFDEF-4); every other such section crashes Magic. DEF route legs keep their own handling (`def::Reader::named_without_record`, via-table keys only).
+- Resolution: compat — with `magic-compat` ON a LefReadLayer lookup (`lef::LayerSource::read_layer`: LEF VIA and LAYER section geometry, DEF geometry) of a key with no layer or via record resolves to no type, with the unknown-layer errors; with it OFF the key is treated as absent and the magic-name fallback applies. PORT and OBS geometry keep Q-LEFDEF-4's fix in both modes. Approved 2026-11-21 (G4, as implemented). Spec: lef-read "LEF layer name resolution". Regression tests "a key with no record resolves to nothing in a LefReadLayer lookup with magic-compat ON" (`tests/unit/lef/read/units_layers_test.cpp`), "a VIA LAYER that names a rule's unknown layer gets no type with magic-compat ON" (`nondefault_rule_test.cpp`), "a BLOCKAGES layer named by an unknown rule layer gets no type with magic-compat ON" (`tests/unit/def/read/rules_test.cpp`). Not covered: a LEF `LAYER` section for such a key with none of TYPE, WIDTH, SPACING, PITCH, DIRECTION or a RECT is read and discarded by Magic (lefRead.c:3138-3146 with a null record); Hefesto creates the layer (Q-LEFDEF-4); every other such section crashes Magic. DEF route legs keep their own handling (`def::Reader::named_without_record`, via-table keys only).

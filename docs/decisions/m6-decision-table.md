@@ -19,7 +19,7 @@ As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 131 en
 | Approved 2026-11-20 (user decisions E1, E2; recorded in round 5) | 6: Q-LEFDEF-135..140; amendments of Q-TECH-27 and Q-LEFDEF-132 | "Decided 2026-11-20: LEF/DEF rows" |
 | Approved 2026-11-20 (user decisions E2, E3, E4; recorded in round 5) | 10: Q-OASIS-45..54 (45..47 were proposed in round 4) | "Decided 2026-11-20: OASIS rows" |
 | Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
-| Implemented under the standing rule (round-5 integration and review), user confirmation pending | 2: Q-LEFDEF-141 (compat), Q-LEFDEF-151 (compat) | "Decided 2026-11-20: LEF/DEF rows" |
+| Approved 2026-11-21 (user decisions G3, G4; recorded in round 6) | 3: Q-LEFDEF-139 (amended to fix, G3), Q-LEFDEF-141 and 151 (compat, confirmed as implemented, G4) | "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -330,10 +330,10 @@ The user's decisions of 2026-11-20 (E1, E2) for LEF/DEF, recorded in round 5 (`m
 | Q-LEFDEF-136 | `lef write` drops a cut painted in place over a written routing tile (LEFDEF-118, 119, 127) | **compat** | ON: Magic's tile marks, the cut is not written; OFF: every cut once per block |
 | Q-LEFDEF-137 | `def write` retry of a typed file name | **compat** | ON: retried as `<cell>.def`; OFF: the write fails |
 | Q-LEFDEF-138 | `lef writeall` output named after a failed read's `<name>.mag` (LEFDEF-RT-*) | **compat** | ON: the LEF goes into `<name>.mag`; OFF: `<name>.lef` |
-| Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **compat** | ON: Magic's 30-word vector (undefined past it: the ON rule is open, user_needed); OFF: every word (Q-TECH-4); implementation open (`tech/`) |
+| Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **fix** | amended 2026-11-21 (G3), see "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
 | Q-LEFDEF-140 | `def write` inputs Magic crashes on | **fix** | ON: rule entry written by name (OFF writes no read rule, Q-LEFDEF-99); both modes: via without route name, node geometry not searched; DEF-WRITE-012 |
-| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; to confirm) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
-| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (standing rule, round-5 review; to confirm) | **compat** | ON: LEF VIA/LAYER section and DEF geometry resolve no type (unknown-layer errors); OFF: treated as absent (magic-name fallback); PORT/OBS: absent in both modes (Q-LEFDEF-4) |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; confirmed 2026-11-21, G4) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
+| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (standing rule, round-5 review; confirmed 2026-11-21, G4) | **compat** | ON: LEF VIA/LAYER section and DEF geometry resolve no type (unknown-layer errors); OFF: treated as absent (magic-name fallback); PORT/OBS: absent in both modes (Q-LEFDEF-4) |
 | Q-TECH-27 (amended) | LEFDEF-003: minimum-grid quotient below 1 | **fix** | both modes: read as 1:1 |
 | Q-LEFDEF-132 (extended) | gzip-compressed LEF files | **fix** | both modes: read decompressed (as implemented) |
 
@@ -363,6 +363,18 @@ The user's decision E3 of 2026-11-20 approved three resource caps on writes, eac
 | ID | Question | Kind | Resolution |
 |---|---|---|---|
 | Q-LEFDEF-150 | DEF write of a LEF VIA whose cut array is unbounded | **fix** | both modes: above 1,000,000 cuts one cut the size of the via area is written (LEF-VIA-012) |
+
+## Decided 2026-11-21: LEF/DEF rows (G3, G4)
+
+The user's decisions of 2026-11-21 for LEF/DEF, recorded in round 6 (`m6-r6-lefdef`). Each entry has `Status: approved 2026-11-21` and a `Resolution:` line in `docs/decisions/open-questions/LEFDEF.md`.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-139 | Technology file lines of more than 30 words (G3; amends the 2026-11-20 compat row) | **fix** | both modes: the first 30 words are read, the dropped words are reported with the error TECH-READ-002 and the load goes on (Magic's stack overwrite is undefined behaviour); amends Q-TECH-4 |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (G4) | **compat** | confirmed as implemented: ON, after an item of a section with any non-zero declared count, window loads delete an untouched (UNNAMED); OFF: kept in batch |
+| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (G4) | **compat** | confirmed as implemented: ON, LEF VIA/LAYER section and DEF geometry resolve no type; OFF: treated as absent; PORT/OBS: absent in both modes |
+
+Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8.
 
 ## Planning questions raised by the M6 plan
 

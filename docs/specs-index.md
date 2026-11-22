@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3388 scenarios, 937 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3390 scenarios, 937 open questions.
 
 ## Hefesto product (native)
 
@@ -45,7 +45,7 @@ Open questions: [33](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 | [`tech-command`](../openspec/specs/tech-command/spec.md) | 9 | 17 | Defines the `tech` command. It queries the current technology (name, file name, version, internal scale, planes, layers and DRC values), loads a new technology, and changes which l… |
 | [`tech-compose-and-connect`](../openspec/specs/tech-compose-and-connect/spec.md) | 17 | 30 | Defines the `compose` and `connect` sections of a technology file and the tables they produce: - the per-plane **paint** and **erase** result tables, which define what any type bec… |
 | [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
-| [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 31 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
+| [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 32 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
 | [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
 | [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 21 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
 | [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |
@@ -148,7 +148,7 @@ Open questions: [48](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 14 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
-| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 26 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
+| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 27 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 11 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 27 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 10 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
