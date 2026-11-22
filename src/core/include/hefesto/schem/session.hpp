@@ -20,6 +20,7 @@
 #include "hefesto/schem/file/document.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
+#include "hefesto/schem/net/bus.hpp"
 
 namespace hefesto::schem {
 
@@ -43,6 +44,11 @@ struct Session {
   SymbolCache symbols;
   SearchPath search_path;
   std::optional<XschemrcResult> xschemrc;
+
+  // CMD: the expanded bus text the session's own expansions (the `xschem`
+  // subcommands) may still produce (Q-SCHEM-41); each netlist run has its
+  // own budget.
+  BusBudget bus_budget;
 };
 
 }  // namespace hefesto::schem

@@ -3,7 +3,12 @@
 //
 // The read-only and netlisting options of `schematic` that CMD implements:
 // getprop, instances, netlist and check (capability schematic-command
-// "Subcommand table", "Return values and errors in scripts").
+// "Subcommand table", "Return values and errors in scripts"). Netlisting
+// runs in the session's environment: its symbol cache and search path, the
+// platform file system, the active PDK root, and a Tcl bridge over a
+// sandboxed interpreter holding the xschem procedures and the session's
+// `xschemrc` files, so `tcleval(...)` values are evaluated (capability
+// schematic-symbols-and-libraries "tcleval values").
 //
 // Owner: CMD.
 
@@ -12,9 +17,12 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/schem/file/properties.hpp"
+#include "hefesto/schem/lib/reference.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
 #include "hefesto/schem/net/netlist.hpp"
+#include "hefesto/schem/tcl/tcl_environment.hpp"
 #include "internal.hpp"
 
 namespace hefesto::schem::cmdimpl {
@@ -117,9 +125,37 @@ std::string error_list(const std::vector<diag::Diagnostic>& diagnostics) {
   return text.empty() ? std::string{"schematic: the netlist run failed"} : text;
 }
 
-// Runs the netlister on the active document and publishes its diagnostics.
+// The sandboxed interpreter `tcleval` values of one run are evaluated in
+// (SYMLIB's TclEnvironment, under the project interpreter's sandbox policy):
+// the xschem procedures, with `abs_sym_path` resolving against `folder`,
+// and the session's `xschemrc` files evaluated into it (their diagnostics
+// were reported when the document was opened). nullptr without an editor.
+std::unique_ptr<TclEnvironment> tcl_environment(cmd::CommandContext& ctx, const Session& session,
+                                                const platform::Path& folder) {
+  editor::EditorState* editor = ctx.editor();
+  if (editor == nullptr) return nullptr;
+  platform::FileSystem& fs = ctx.services().files;
+  ProcedureHooks hooks;
+  hooks.abs_sym_path = [&session, &fs, folder](std::string_view reference) {
+    const ResolvedReference found = resolve_reference(reference, folder, session.search_path, fs);
+    return found.file.empty() ? std::string{reference} : found.file.generic_string();
+  };
+  auto tcl = std::make_unique<TclEnvironment>(*editor, editor->script.sandbox, fs, std::move(hooks));
+  if (session.xschemrc) {
+    if (const auto files = xschemrc_files(ctx, session, folder)) (void)tcl->load_xschemrc(*files);
+  }
+  return tcl;
+}
+
+// Runs the netlister on the active document in the session's environment
+// and publishes its diagnostics.
 NetlistResult run_netlist(cmd::CommandContext& ctx, Session& session, const NetlistOptions& options) {
-  NetlistResult result = netlist(session, active_document(session)->document, options, ctx.project().compat);
+  const Document& top = active_document(session)->document;
+  const std::unique_ptr<TclEnvironment> tcl = tcl_environment(ctx, session, top.path.parent_path());
+  const TclBridge bridge = tcl != nullptr ? tcl->bridge() : TclBridge{};
+  const NetlistEnvironment environment{session.symbols, session.search_path, ctx.services().files,
+                                       &bridge,         sandbox_env(ctx, "PDK_ROOT"), 4};
+  NetlistResult result = netlist(environment, top, options, ctx.project().compat);
   for (const diag::Diagnostic& d : result.diagnostics) ctx.emit(d);
   apply_labels(session, result.labels);
   return result;
