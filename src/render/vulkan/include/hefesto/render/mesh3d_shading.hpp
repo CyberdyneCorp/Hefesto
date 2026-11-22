@@ -23,7 +23,13 @@
 //   (50, 50, 50) is in model coordinates (root units, z = -h * s_z ...):
 //   I = 0.2 (GL's global ambient) + 0.4 (light 0) + max(0, n . l), per
 //   vertex. OFF: the light Magic's comment calls directional, from
-//   (1, 1, 1), on each face's own normal, with the spec's ambient 0.4.
+//   (1, 1, 1), on each face's own outward normal in the displayed scene,
+//   with the spec's ambient 0.4. The displayed scene is the model mirrored
+//   in z (R1, Q-MISC-81: the viewer on the side of the higher layers), so
+//   the face at a layer's h + t end, the one the top view shows, has the
+//   displayed normal (0, 0, 1).
+// - Translucent styles are drawn opaque in their plain colour, in both
+//   modes (R3, approved 2026-11-22).
 //   The lit color is clamp(c * I, 0, 1) (Magic's GL_COLOR_MATERIAL).
 //
 // Owner: RENDER3D.
@@ -58,8 +64,9 @@ enum class Lighting : std::uint8_t {
 /// The background (display values); black without a style set.
 [[nodiscard]] std::array<float, 3> background_color(const display::StyleSet* styles);
 
-/// The light intensity at model point (x, y, z) of a face with outward
-/// normal (nx, ny, nz) (unit length, or zero).
+/// The light intensity at model point (x, y, z) (z = -h * s_z) of a face
+/// with outward normal (nx, ny, nz) in the displayed scene (the model
+/// normal with z negated; unit length, or zero).
 [[nodiscard]] float light_intensity(Lighting lighting, const std::array<double, 3>& model,
                                     const std::array<float, 3>& normal);
 
