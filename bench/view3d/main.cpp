@@ -15,11 +15,17 @@
 //     20 bytes, triangle as stored), per meshed rectangle (D6 target <= 96),
 //     information until the renderer (task 5.3) uploads real buffers;
 //   - peak_rss_bytes: the process's peak resident set;
-//   - frame_time_ms: null with a note until Mesh3dRenderer exists (task 5.3).
+//   - frame (task 13.2, frame.hpp): with the Vulkan renderer built
+//     (HEFESTO_BUILD_DESKTOP=ON), the mesh uploaded to VulkanMesh3dRenderer
+//     on the headless device and --frames whole frames timed at 1280 x 800,
+//     isometric view, level 0 and level 1 (MSAA 4x), plus the upload and
+//     the first frame; frame_time_ms is level 1's median (the default
+//     level), null with frame_time_note otherwise. Recorded, not gated.
 // bench/view3d/view3d_gate.py checks the gated numbers against gates.json.
 //
 //   hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]
-//                        [--pdk-root DIR] [--style-dir DIR ...] [--json FILE]
+//                        [--frames N] [--pdk-root DIR] [--style-dir DIR ...] [--json FILE]
+//   --frames 0 skips the frame workload (default 30).
 
 #include <sys/resource.h>
 
@@ -34,6 +40,7 @@
 #include <string_view>
 #include <vector>
 
+#include "frame.hpp"
 #include "hefesto/view3d/mesh/build.hpp"
 #include "workloads.hpp"
 
@@ -46,12 +53,13 @@ using nlohmann::json;
 struct Options {
   bench::WorkloadOptions workload;
   int repeat = 3;
+  int frames = 30;  // 0: no frame workload
   std::string json_path;
 };
 
 void usage() {
   std::cerr << "usage: hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]\n"
-               "                            [--pdk-root DIR] [--style-dir DIR]... [--json FILE]\n";
+               "                            [--frames N] [--pdk-root DIR] [--style-dir DIR]... [--json FILE]\n";
 }
 
 bool apply_option(Options& o, std::string_view flag, const char* value) {
@@ -61,6 +69,8 @@ bool apply_option(Options& o, std::string_view flag, const char* value) {
     o.workload.rects = std::strtoull(value, nullptr, 10);
   } else if (flag == "--repeat") {
     o.repeat = std::max(1, std::atoi(value));
+  } else if (flag == "--frames") {
+    o.frames = std::max(0, std::atoi(value));
   } else if (flag == "--pdk-root") {
     o.workload.pdk_root = value;
   } else if (flag == "--style-dir") {
@@ -161,9 +171,26 @@ json report(const Options& o, const bench::Workload& w, const view3d::MeshModel&
   j["gpu_bytes_estimate"] = gpu;
   j["gpu_bytes_per_rect_estimate"] = per_rect(gpu, c.rects);
   j["peak_rss_bytes"] = peak_rss_bytes();
-  j["frame_time_ms"] = nullptr;
-  j["frame_time_note"] = "not measured: Mesh3dRenderer (m10-3d-view task 5.3) is not implemented yet";
   return j;
+}
+
+/// The frame workload's fields of the report (task 13.2).
+void add_frames(json& j, const Options& o, const bench::Workload& w, const view3d::MeshModel& model) {
+  if (o.frames == 0) {
+    j["frame_time_ms"] = nullptr;
+    j["frame_time_note"] = "not measured: --frames 0";
+    return;
+  }
+  const hefesto::db::Rect b = w.cell().bbox();
+  const hefesto::db::Rect region{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1};
+  json frame = bench::measure_frames(model, w.stack(), region, bench::FrameOptions{o.frames, 1280, 800});
+  if (frame.contains("error")) {
+    j["frame_time_ms"] = nullptr;
+    j["frame_time_note"] = frame["error"];
+    return;
+  }
+  j["frame_time_ms"] = frame["level1"]["median_ms"];
+  j["frame"] = std::move(frame);
 }
 
 int run(const Options& o) {
@@ -184,7 +211,9 @@ int run(const Options& o) {
     }
     runs.push_back(seconds);
   }
-  json out = {{"tool", "hefesto-bench-view3d"}, {"results", json::array({report(o, *workload, *last, runs)})}};
+  json result = report(o, *workload, *last, runs);
+  add_frames(result, o, *workload, *last);
+  json out = {{"tool", "hefesto-bench-view3d"}, {"results", json::array({std::move(result)})}};
   std::cout << out.dump(2) << "\n";
   if (!o.json_path.empty()) {
     std::ofstream(o.json_path) << out.dump(2) << "\n";
