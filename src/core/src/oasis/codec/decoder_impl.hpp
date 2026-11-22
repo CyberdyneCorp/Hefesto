@@ -99,6 +99,9 @@ struct Decoder::Impl {
   void position_fields(Element& e, std::uint8_t info);
   void finish_element(Element e);
   void drop_unless_outline(const Element& e);
+  /// Drops the element when its point list is one the entry cap dropped
+  /// (OASIS-CODEC-030, Q-OASIS-14).
+  void drop_if_capped(bool capped, std::string_view kind);
 
   gds::ByteSource* source;
   DecoderOptions options;
@@ -112,6 +115,9 @@ struct Decoder::Impl {
   bool finished = false;
   PropertyTarget target = PropertyTarget::file;
   detail::Drop drop;
+  /// The modal polygon or path point list was dropped by the entry cap.
+  bool polygon_points_capped = false;
+  bool path_points_capped = false;
   detail::StrictTracker strict;
   Record record;
 

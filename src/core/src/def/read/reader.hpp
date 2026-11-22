@@ -184,6 +184,10 @@ class Reader {
   void fix_error(std::string_view text) const;    // Hefesto-only (a fixed crash or undefined value)
   void fix_warning(std::string_view text) const;  // Hefesto-only
   void report(std::string text) const;          // TxPrintf
+  /// DBCellRead of a master through the options' read_master; its messages
+  /// join the read's at this point. False when there is no reader or the
+  /// read fails.
+  bool read_master(db::CellDef& def) const;
   void progress() const;                        // LefEstimate: the progress host
   /// LefEstimate of one item of a counted section (`total` declared): the
   /// progress host, and with `total` > 0 Magic's display status leaves

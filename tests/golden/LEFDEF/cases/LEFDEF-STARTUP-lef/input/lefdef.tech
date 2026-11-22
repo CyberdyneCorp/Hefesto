@@ -3,6 +3,11 @@ tech
     lefdef
 end
 
+version
+    version 1.2
+    description "LEFDEF startup test"
+end
+
 planes
     well,w
     active,a

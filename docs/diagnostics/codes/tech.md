@@ -45,6 +45,7 @@ being read (an included file while inside an `include`).
 | `TECH-LOAD-004` | warning | Existing layout may be invalid after a technology load (and the number of planes changed). |
 | `TECH-NAME-001` | error | The `tech` section has no technology name line; the load fails (Q-TECH-8). |
 | `TECH-READ-001` | warning | A logical line longer than 1023 characters was truncated. |
+| `TECH-READ-002` | error | A logical line has more than 30 words; its first 30 are read and the load goes on (Q-LEFDEF-139). |
 | `TECH-REPEAT-001` | warning | `repeat` with an invalid count; the block is read once. |
 | `TECH-REPEAT-002` | error | A `repeat` block crosses an include file boundary; the load fails. |
 | `TECH-REPEAT-003` | warning | `repeat` blocks read more than 100000 lines; the rest of the file is read once (Q-TECH-33). |

@@ -8,6 +8,9 @@
 // - repetitions keep their parameters and expand lazily (instance_count,
 //   offset_at); the decoder checks that the farthest offset fits in 64 bits
 //   and that every step fits in 32 bits, else the element is dropped;
+// - a point list or a list repetition (types 4-7, 10, 11) with more than
+//   kMaxListEntries entries is read without storing it and drops the
+//   element (OASIS-CODEC-030, Q-OASIS-14);
 // - the encoders write a given type, or report that it cannot represent
 //   the values.
 //
@@ -137,12 +140,33 @@ Point64 list_step(Input& in, std::uint8_t type, std::uint64_t factor, Drop& drop
   return step;
 }
 
+/// Reads and discards the n' + 1 steps of a list repetition above the entry
+/// cap (Q-OASIS-14); the input bounds the loop.
+void skip_list_steps(Input& in, std::uint8_t type, std::uint64_t stored) {
+  for (std::uint64_t i = 0;; ++i) {
+    if (type >= 10) {
+      static_cast<void>(read_delta(in, DeltaForm::g));
+    } else {
+      static_cast<void>(read_unsigned(in));
+    }
+    if (i == stored) {
+      return;
+    }
+  }
+}
+
 Repetition list_repetition(Input& in, std::uint8_t type, Drop& drop) {
   Repetition r;
   r.type = type;
   const std::uint64_t stored = read_unsigned(in);  // n' (n = n' + 2, so n' + 1 steps)
   const bool gridded = type == 5 || type == 7 || type == 11;
   r.grid = gridded ? grid(in) : 0;
+  if (stored >= kMaxListEntries) {  // n' + 1 displacements above the cap
+    drop.set("OASIS-CODEC-030", "repetition of type " + std::to_string(type) + " lists more than " +
+                                    std::to_string(kMaxListEntries) + " displacements; the element is dropped");
+    skip_list_steps(in, type, stored);
+    return r;
+  }
   Point64 position;
   for (std::uint64_t i = 0;; ++i) {  // i = 0 .. n', without computing n' + 1
     position = add(position, list_step(in, type, gridded ? r.grid : 1, drop), drop);
@@ -354,6 +378,15 @@ PointList read_point_list(Input& in, Drop& drop) {
   if (count == 0) {
     drop.set("OASIS-CODEC-009", "invalid point list (count 0)");
   }
+  if (count > kMaxListEntries) {
+    drop.set("OASIS-CODEC-030", "point list of " + std::to_string(count) + " points, more than " +
+                                    std::to_string(kMaxListEntries) + "; the element is dropped");
+    for (std::uint64_t i = 0; i < count; ++i) {  // the input bounds the loop
+      static_cast<void>(read_delta(in, list_form(list.type, i)));
+    }
+    list.capped = true;
+    return list;
+  }
   Point64 point;
   Point64 difference;
   for (std::uint64_t i = 0; i < count; ++i) {
@@ -383,6 +416,10 @@ Repetition read_repetition(Input& in, const std::optional<Repetition>& modal, Dr
   }
   const auto t = static_cast<std::uint8_t>(type);
   return is_grid_type(t) ? grid_repetition(in, t, drop) : list_repetition(in, t, drop);
+}
+
+bool capped(const Repetition& repetition) noexcept {
+  return repetition.type != 0 && !is_grid_type(repetition.type) && repetition.offsets.empty();
 }
 
 bool write_repetition(std::vector<std::byte>& out, const Repetition& repetition) {

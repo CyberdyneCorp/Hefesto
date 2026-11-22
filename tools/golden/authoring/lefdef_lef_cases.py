@@ -636,6 +636,11 @@ def lef_write_specs() -> list[tclcase.TclCase]:
 
 STARTUP_CASE = "LEFDEF-STARTUP-lef"
 
+# The startup case's technology has a version section: Magic never resets the version string on a
+# load, so without one its closing "Using technology" line shows the version of the minimum technology
+# it loaded before (0.0), which Hefesto resets (Q-TECH-8).
+STARTUP_VERSION = "version\n    version 1.2\n    description \"LEFDEF startup test\"\nend\n\n"
+
 
 def startup_case() -> tclcase.TclCase:
     """Magic reads a ``.lef`` file named on the command line after its startup files and technology
@@ -647,12 +652,16 @@ def startup_case() -> tclcase.TclCase:
         STARTUP_CASE, "app-startup", ["Command-line file arguments"],
         "magic -T input/lefdef input/cells.lef, commands on standard input: the LEF macros read at startup "
         "(the cells listed and saved).", body,
-        files={"lefdef.tech": tech(), "cells.lef": lef(INV_MACRO)}, outputs=[CELLS],
+        files={"lefdef.tech": tech().replace("end\n\n", "end\n\n" + STARTUP_VERSION, 1), "cells.lef": lef(INV_MACRO)},
+        outputs=[CELLS],
         output_names={CELLS: "cells.txt"}, output_comparators={}, stream_comparator="lef-text",
         stream_masks=["completed-percent", "magic-undo-note"], magic_args=["-T", "input/lefdef", "input/cells.lef"],
         stdin=True, driver=ld.DRIVER,
         notes=["Startup case (m6-lef-def-oasis task 15.4): the LEF read runs before any command, so its datestamp "
-               "cannot be pinned; the saved cells are compared with their timestamp masked."])
+               "cannot be pinned; the saved cells are compared with their timestamp masked.",
+               "Round 6: the technology has a version section (version 1.2), so the 'Using technology' line "
+               "Magic prints after the command-line files (magic.tcl.in:446) does not show the stale minimum "
+               "technology version (Q-TECH-8)."])
 
 
 # --- MASK-OS-016: the contact cut size through LEF (task 15.4; m5 task 13.4) -----------------------

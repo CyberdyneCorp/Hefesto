@@ -98,6 +98,13 @@ XOR_SKIPS = {
     "OASIS-055-names": "Magic's reference GDS holds two structures named a_b (Q-OASIS-61, Q-MASK-209), which "
                        "KLayout refuses to read",
 }
+# Write cases whose output gdstk 1.0.2 cannot read, so its read is skipped (the output's other checks,
+# KLayout's included, still run). G1 of the user decisions of 2026-11-21 (Q-OASIS-55).
+GDSTK_READ_SKIPS = {
+    "OASIS-062": "gdstk 1.0.2 read_oas stops at the first XGEOMETRY (an unsupported record), so it never reads "
+                 "the END record whose CELLNAME table names Hefesto's cells, and exits with SIGSEGV on the "
+                 "unnamed cells; the writer is unchanged (Q-OASIS-55)",
+}
 # Readers only (task 15.6): committed inputs of read cases that KLayout and gdstk read, with the GDS
 # equivalent Magic reads beside them for KLayout's XOR (OASIS-030) or LayoutDiff (OASIS-013).
 INPUT_CHECKS = {
@@ -172,7 +179,17 @@ def magic_reference(case, output, out: Path) -> list[dict]:
 def output_checks(case, output, out: Path) -> tuple:
     row = case.id[:len("OASIS-000")]
     extra = OUTPUT_CHECKS.get((case.id, output.source), OUTPUT_CHECKS.get((row, output.source), ()))
-    return (*DEFAULT_CHECKS, *extra, *magic_reference(case, output, out))
+    defaults = DEFAULT_CHECKS
+    if case.id in GDSTK_READ_SKIPS:
+        defaults = tuple(c for c in DEFAULT_CHECKS if c != {"tool": "gdstk", "op": "read"})
+    return (*defaults, *extra, *magic_reference(case, output, out))
+
+
+def skip_notes(case_id: str) -> str:
+    """The skipped checks of a produced case, for its step detail."""
+    notes = [f" (XOR with Magic's GDS skipped: {XOR_SKIPS[case_id]})" if case_id in XOR_SKIPS else "",
+             f" (gdstk read skipped: {GDSTK_READ_SKIPS[case_id]})" if case_id in GDSTK_READ_SKIPS else ""]
+    return "".join(notes)
 
 
 def collect_case(case, outputs, execution, out: Path) -> tuple[dict, list[dict]]:
@@ -184,8 +201,7 @@ def collect_case(case, outputs, execution, out: Path) -> tuple[dict, list[dict]]
         path.write_bytes(execution.files[output.source])
         entries.append(entry(path.relative_to(out).as_posix(), "hefesto", output_checks(case, output, out)))
     if len(produced) == len(outputs):
-        skip = f" (XOR with Magic's GDS skipped: {XOR_SKIPS[case.id]})" if case.id in XOR_SKIPS else ""
-        return step(case.id, "produced", " ".join(o.source for o in produced) + skip), entries
+        return step(case.id, "produced", " ".join(o.source for o in produced) + skip_notes(case.id)), entries
     stderr = execution.stderr.decode(errors="replace")
     reason = not_yet_reason(stderr)
     if reason is not None and not produced:

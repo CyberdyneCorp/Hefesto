@@ -17,17 +17,62 @@ release notices.
   `ext2spice scale [on|off]` keeps working as before; other `ext2spice`
   options answer `CORE-NOTIMPL-008` instead of `UI-CLIENT-002`.
 
-## Unreleased (M6: LEF/DEF and OASIS, in progress)
+## Unreleased (M6: LEF/DEF and OASIS)
+
+### Added
+
+- **`lef read`, `lef write`, `lef writeall`, `def read` and `def write`.**
+  They take Magic's options and print Magic's messages. `lef read` reads a
+  technology LEF and cell LEF into abstract views (`-annotate` adds
+  ports to existing cells), `lef write`/`writeall` write them back, `def
+  read` builds a placed-and-routed layout (or annotates labels), and `def
+  write` writes components, pins, vias and the nets it flattens from the
+  `.ext` files of the cell. The technology file's `lef` section maps LEF
+  layer names and vias. With `magic-compat` on Hefesto copies Magic's
+  quirks; with it off it applies the documented fixes.
+- **`oasis read` and `oasis write`.** OASIS (SEMI P39) read and write,
+  equivalent to the GDS path: `oasis` takes the `gds` options plus
+  `strict`, `validation`, `repetitions`, `layernames` and `circlepoints`,
+  and shares the read settings with `gds`. Writes are deterministic, use
+  CBLOCK compression and detect shape repetitions. The outputs are checked
+  with KLayout and gdstk.
+- **GDS and OASIS transcoding of read-only cells.** A read-only GDS cell
+  can be written as OASIS and a read-only OASIS cell as GDS, so a vendor
+  view keeps its content when it is written in the other format.
+- **Opening an OASIS file.** The desktop app's File > Open and drag and
+  drop recognise an OASIS file by its content, even when it is named
+  `.gds`. OASIS reads and writes, `def read` and the LEF/DEF writes run on
+  the Interrupt card (`def read` and OASIS show progress; `lef read` shows
+  none yet).
+- **`.ext` reading and flattening** (pulled forward from M7), used by `def
+  write`.
+- **LEF/DEF and OASIS benches.** `perf.yml` measures each workload in
+  callgrind instructions (`lefdef-bench` against Magic, `oasis-bench`
+  against Hefesto's GDS path) and gates it at its own baseline + 2 %
+  (the baselines were recorded at the M6 exit round, from a Performance
+  run on the round-6 branch).
 
 ### Changed
 
-- **`lef`, `def` and `oasis` are registered commands.** They take Magic's
-  option names (`oasis` the `gds` options plus `strict`, `validation`,
-  `repetitions`, `layernames` and `circlepoints`), and `help` prints
-  Magic's `lef` and `def` lines. Until the readers and writers land, each
-  option answers `CORE-NOTIMPL-006` ("not implemented yet: lef read"), so
-  a startup script's `lef read` now fails with that message instead of
-  "unknown command".
+- **Startup prints the technology line after the command-line files.**
+  `hefesto-cli` prints `Using technology "<name>", version <v>` once,
+  after the files named on the command line, as Magic's Tcl startup does,
+  including `Using technology "minimum", version 0.0` when nothing supplies
+  a technology.
+- **`lef write` and `def read -annotate` print the cells they read in
+  Magic's order.** `Cell <c> read from path ...` now comes inside the
+  macro's messages (after `Writing LEF output`) and between the DEF
+  section counts, instead of before the command's other lines.
+- **Technology lines of more than 30 words.** The first 30 words are read
+  and the dropped words are reported as error `TECH-READ-002`; the load
+  goes on (Magic overflows its word buffer there).
+- **Input limits on hostile files.** An OASIS point list or explicit
+  repetition of more than 2^24 entries drops its element
+  (`OASIS-CODEC-030`); a `.ext` line of more than 128 tokens is ignored
+  with warning `EXTFLAT-READ-011`; the other read and write caps are in
+  `docs/contributing/security.md`.
+- **`CORE-NOTIMPL-006` is retired.** Every `lef` and `def` option is
+  implemented, and the code is never reused.
 
 ## Unreleased (M5: mask generation, GDS and CIF)
 

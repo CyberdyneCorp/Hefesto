@@ -151,11 +151,12 @@ void FileReader::read(std::string_view text) {
 
 void FileReader::line(const std::vector<std::string>& argv) {
   if (argv.size() > kMaxTokens) {
-    // Magic's argv[128] overflows here.
-    st_.sink.emit(diag::make_native(codes::kTooManyTokens,
-                                    st_.file + ", line " + std::to_string(st_.line) + ": more than " +
-                                        std::to_string(kMaxTokens) + " tokens; line ignored",
-                                    diag::SourceLocation{st_.file, st_.line}));
+    // Magic's argv[128] overflows here. The line is ignored with a warning
+    // every console prints, in both modes (approved 2026-11-21, M6-S8).
+    st_.sink.emit(diag::make(codes::kTooManyTokens,
+                             st_.file + ", line " + std::to_string(st_.line) + ": more than " +
+                                 std::to_string(kMaxTokens) + " tokens; line ignored",
+                             diag::SourceLocation{st_.file, st_.line}));
     return;
   }
   const auto key = lookup_key(argv[0]);

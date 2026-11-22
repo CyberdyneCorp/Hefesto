@@ -74,11 +74,14 @@ DEVIATIONS = {
 
 # Cases Magic cannot capture yet (m6_cases.py lists them as M6 exit blockers): their case.toml carries
 # the reason as ``capture_blocked`` (goldenlib/case.py), so capture.py skips them.
-CAPTURE_BLOCKED = {
-    "OASIS-021-unique": "GOLDEN: Magic's output differs between captures (cells.sha256 of "
-                        "sky130_fd_sc_hd__macro_sparecell_1, golden-capture run 44515678560), so it is left "
-                        "uncaptured; to investigate",
-}
+CAPTURE_BLOCKED: dict[str, str] = {}
+# OASIS-021-unique was blocked from round 3 to round 5 (Magic's cells.sha256 of
+# sky130_fd_sc_hd__macro_sparecell_1 differed between captures, golden-capture run 44515678560). Cause
+# (round 6): `gds unique yes` renames the cells of the first read (calmaUniqueCell), and DBCellRenameDef
+# sets CDGETNEWSTAMP on the parents of a renamed cell, here the renamed sparecell; with `gds datestamp 1`
+# (read as "yes": no CDFIXEDSTAMP) writeall gave it the time of the run (dbStampFunc). The integer
+# datestamp 1700000000 of round 5 sets CDFIXEDSTAMP on every cell read (CalmaRdcl.c:504-510), so the
+# stamp is fixed and the case is captured again.
 # OASIS-064-arrays/uses were blocked in round 3 ("Magic wrote no .mag file"): their cells are loaded from
 # input/ and saved back there, outside the top-level glob; round 4 widened their glob (oasis_write_cases.py
 # RT_INPUT_CELLS).

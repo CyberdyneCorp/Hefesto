@@ -17,13 +17,15 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 Round 4 (SHELL, tasks 14.1-14.3) built the open path and the host wiring and tested them below the toolkit: `tests/unit/shell/m6_open_test.cpp` (desktop builds) and `tests/unit/oasis/command/open_test.cpp` (every build). No capture of the product app was taken in round 4 (no desktop build on that host), so no row is **done** yet; each row says what its capture must show.
 
+Round 6 (SHELL, exit round) built the desktop (`macos-debug` preset with `HEFESTO_BUILD_DESKTOP=ON` and `HEFESTO_WARNINGS_AS_ERRORS=ON`, against MoltenVK and the Vulkan 1.4.309 headers) and ran `hefesto_shell_tests` (279 cases: 277 passed, 2 skipped for the absent sky130A data set). The M6 cases of `m6_open_test.cpp` all pass: an OASIS file named `.gds` opened through `shell::plan_open`; a dropped file that is not a layout reported while the others open; `oasis read`, `def read` and `lef read` through the read host (the DEF read's fractions reach the job state the card draws); `oasis write` through the write and emit hosts, its file opened again as OASIS by content; `lef write` and `def write` through the write host; a cancelled `oasis write` over OASW's writer leaving no file and no temporary file; and no LEF, DEF or OASIS menu item. The `ci-macos-desktop` and `ci-linux-desktop` legs run the same tests. No capture was compared with a board in round 6, so the rows whose only gap is the capture stay **partial**.
+
 Missing from every board: nothing. The open paths are the M1 Open button and the window itself as a drop target (no new control), and the progress of a read or write reuses the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
 
 ## Menu bar (M4-Menu-Bar)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged; no board added | partial: test "the desktop adds no LEF, DEF or OASIS menu item" checks the bar's menus and that no item runs `lef`, `def` or `oasis`; the capture is pending |
+| No LEF, DEF or OASIS menu item (Open Question 5 (a); Magic's wrapper has none) | the M5 wrapper items unchanged; no board added | partial: test "the desktop adds no LEF, DEF or OASIS menu item" checks the bar's menus and that no item runs `lef`, `def` or `oasis` (passing in the round-6 desktop build); no board is added and none is needed; the capture is pending |
 
 ## Format recognition on open (`oasis-command` "Format recognition on open", D15)
 
@@ -38,11 +40,11 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
 | Element | Implemented as | Status / gap |
 |---|---|---|
 | A long `oasis read` shows the console's running header and, after 2 s, the canvas Interrupt card | the `oasis read` command runs `oasis::read` through `MaskSession::read_host`, with its `mask::Progress` reports (as `gds read`) | partial: test "oasis read runs through the desktop's read host"; capture pending |
-| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | blocked: `oasis::write` is still the scaffold stub until OASW (task 12.1) lands |
-| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | blocked: test "a cancelled OASIS write leaves no output file" passes against the stub; its end-to-end check needs OASW |
-| `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: capture pending |
-| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | todo: LEFR adds `LefReadOptions::progress` (LefEstimate and the interrupt check) |
-| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | done; a `DefWriteOptions::progress` is a later improvement |
+| A long `oasis write`: prepare on the command thread, `oasis::emit` on a worker, edits queued | the `oasis write` command (and a bare `oasis`) runs `oasis::write` through `write_host`; `emit_host` is OASW's (D4: the M5 three-phase write) | partial: OASW's `oasis::write` replaced the stub; test "an OASIS write runs through the desktop's write and emit hosts and opens again as OASIS" (round 6); capture pending |
+| A cancelled `oasis write` leaves no output file | the writers' temporary file (`mask::OutputFile`) | partial: test "a cancelled OASIS write leaves no output file" passes over OASW's writer in the round-6 desktop build (the core-level `tests/unit/oasis/command/round_trip_test.cpp` checks the same in every build); capture of the Interrupt card pending |
+| `def read` reports progress and can be interrupted | `read_host` with the DEF reader's reports (DEFR, round 3) | partial: test "def read reports its progress to the desktop's read host" (round 6); capture pending |
+| `lef read` reports LefEstimate progress (Q-LEFDEF-88) and can be interrupted | partly: `lef read` runs through `read_host` (round-4 integration, `lef/read/args.cpp`), so the desktop shows its card; `lef::read` reports no LefEstimate fraction and cannot be interrupted (`LefReadOptions` has no progress field) | partial: test "lef read runs through the desktop's read host" (round 6) covers the card's host; the LefEstimate fraction and the interrupt check still need `LefReadOptions::progress` (LEFR, open item) |
+| `lef write`, `lef writeall` and `def write` run under the write host | yes (round-4 integration): `lef write`/`writeall` pass the host's `Progress` into `LefWriteOptions::progress`; `def write` runs under the host without progress (`def::write` builds the file in memory and reports none) | partial: test "lef write and def write run through the desktop's write host" (round 6); capture pending (round 4 marked this row done without a capture, against the rule above); a `DefWriteOptions::progress` is a later improvement |
 
 ## Performance (PERF)
 
@@ -59,10 +61,11 @@ Missing from every board: nothing. The open paths are the M1 Open button and the
   - `read`: `oasis read sky130_fd_sc_hd.oas` against `gds read sky130_fd_sc_hd.gds`. hefesto-cli converts the library once (`gds read`, a wrapper placing every cell read, `oasis library yes`, `oasis write`), so both reads create the same cells;
   - `write`, `write-merge`: `oasis write` of the all-cells block with `oasis merge no`/`yes`, against `gds_bench.py`'s `gds write` scripts.
 - **Scripts.** Each workload has a base script (the set-up) and an op script (the set-up and the operation). Its cost is callgrind's op total minus its base total.
+- **When it runs.** On pull requests `plan` starts `lefdef-bench` when a LEF, DEF, cell, db, tech or GDS stream path changed and `oasis-bench` when an OASIS or GDS read, write or stream path changed. The workflow-level `paths` lists carry `src/core/{include/hefesto,src}/{cell,tech}/**` too, so a pull request that touches only cell/ or tech/ starts the workflow (round 6).
 - **Gate.** `bench/lefdef/baseline_gate.py` fails a workload above its baseline + 2 % (`bench/lefdef/baseline.json`, `bench/oasis/baseline.json`). A workload with no recorded baseline is reported as "no baseline" and passes. A missing Hefesto profile fails the job.
 - **Information only.** Magic's count (LEF/DEF) or the GDS path's count (OASIS), the wall time of op minus base (`--repeat 3`), and the instructions by function (`bench/drc/callgrind_pass_diff.py`). The timing step fails when the cell counts of a workload differ (Hefesto against Magic, OASIS read against GDS read) or a write is empty.
 
-**Recording the baselines.** Once a Performance run on main (or a `workflow_dispatch` of `perf.yml` on main) has passed `lefdef-bench` and `oasis-bench`:
+**Recording the baselines.** Once a Performance run on main (or a `workflow_dispatch` of `perf.yml`) has passed `lefdef-bench` and `oasis-bench` (the first baselines, M6 round 6, come from the dispatch 44971811678 on the `m6-round6` branch at e3ff89d0, not from main):
 
 1. Download its artifacts: `gh run download <run> -n lefdef-bench -D lefdef-bench` and `gh run download <run> -n oasis-bench -D oasis-bench`.
 2. Record the counts:
@@ -77,4 +80,9 @@ A change to a workload (for example `defgen.py`'s parameters or a script) needs 
 | local, 2026-11-20, macOS arm64, `macos-debug` hefesto-cli at `m6-r5-perf` (base 0c5f29fb); wall time of a Debug build only, a smoke run of the scripts (no callgrind or Magic on this Mac) | lef-read | 1.55 s (440 cells) | not measured | CI |
 | same | def-read | 5.78 s (441 cells; 5000 instances, 2 pins, 2 special nets, 5001 nets read) | not measured | CI |
 | same | lef-writeall | 2.86 s (2.7 MB written) | not measured | CI |
-| CI `lefdef-bench` and `oasis-bench` | all | pending: the first dispatch reports the counts, then the baselines are recorded as above | | |
+| CI Performance 44971811678 (`workflow_dispatch` on `m6-round6`, e3ff89d0), x86_64, GCC 14 Release; callgrind op minus base; recorded as the baselines | lef-read | 3.334 x 10^9 instructions | Magic 0.842 x 10^9 (3.96 x) | baseline + 2 % |
+| same | def-read | 8.900 x 10^9 | Magic 1.798 x 10^9 (4.95 x) | baseline + 2 % |
+| same | lef-writeall | 8.640 x 10^9 | Magic 2.196 x 10^9 (3.93 x) | baseline + 2 % |
+| same | oasis read | 10.091 x 10^9 | GDS path 9.228 x 10^9 (1.09 x) | baseline + 2 % |
+| same | oasis write | 7.221 x 10^9 | GDS path 6.220 x 10^9 (1.16 x) | baseline + 2 % |
+| same | oasis write-merge | 7.159 x 10^9 | GDS path 6.417 x 10^9 (1.12 x) | baseline + 2 % |

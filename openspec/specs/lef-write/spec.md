@@ -1152,6 +1152,8 @@ The system SHALL report progress while writing; Magic prints these messages:
 - `Diagnostic:  Writing LEF output for cell <name>`
 - `Diagnostic:  Scale value is <oscale %f>`
 
+`lef write` reads the subcells it flattens that are not read yet; their messages (such as `Cell <c> read from path <dir>`) SHALL come between the `Writing LEF output` and `Scale value` lines, where Magic's paint copy reads them, in both `magic-compat` modes. A write that fails prints them before its error.
+
 Compatibility: informative
 
 (Magic ref: lef/lefWrite.c:265, lef/lefWrite.c:1175, lef/lefWrite.c:1225, lef/lefWrite.c:2257, lef/lefWrite.c:2369)
@@ -1159,3 +1161,8 @@ Compatibility: informative
 #### Scenario: Messages
 - **WHEN** the user runs `lef write` on `inv`
 - **THEN** Magic prints `Generating LEF output inv.lef for cell inv:` before writing
+
+#### Scenario: A subcell read during the write
+- **GIVEN** `load buf` left its subcell `inv` unread
+- **WHEN** the user runs `lef write`
+- **THEN** `Cell inv read from path <dir>` SHALL be printed after `Diagnostic:  Writing LEF output for cell buf` and before `Diagnostic:  Scale value is ...`

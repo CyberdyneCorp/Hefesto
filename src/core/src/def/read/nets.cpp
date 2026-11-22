@@ -230,7 +230,7 @@ bool Reader::annotate_terminal(const std::string& component, const std::string& 
   // that `load` left unread is found through its labels.
   cell::CellReader read;
   if (context_.options.read_master) {
-    read = [this](db::CellDef& def) { (void)context_.options.read_master(def); };
+    read = [this](db::CellDef& def) { (void)read_master(def); };
   }
   const auto instance = cell::find_instance(*lookup_cell, component, read);
   const db::CellDef* where = instance ? instance->use->def : lookup_cell;

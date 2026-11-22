@@ -26,6 +26,7 @@
 
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/command.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::editor {
@@ -58,6 +59,11 @@ struct DefReadOptions {
   /// definition (DBCellRead(def, TRUE, TRUE, NULL)); false when there is
   /// none. Empty: only loaded cells can be masters.
   std::function<bool(db::CellDef&)> read_master;
+  /// The sink `read_master` prints to. After each master read the reader
+  /// moves its messages into the read's own, so they come out in Magic's
+  /// order among the section counts (LEFDEF-232). nullptr: they go where
+  /// read_master sends them.
+  diag::CollectingSink* master_messages = nullptr;
   /// Progress reports and cancellation (Q-LEFDEF-88); null: none. A
   /// cancelled read stops as if the file ended there.
   const mask::Progress* progress = nullptr;

@@ -12,6 +12,7 @@
 
 #include "hefesto/def/read/command.hpp"
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@
 #include "def/read/reader.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/lef/command/command.hpp"
 #include "hefesto/mask/gen/progress.hpp"
@@ -46,15 +48,20 @@ CommandResult print_options(cmd::CommandContext& ctx, const std::string& command
 // cell into the window, by name and not through the `load` command's
 // argument parser (a hostile `DESIGN -nowindow ;` is a cell name, not an
 // option).
-void load_design(cmd::CommandContext& ctx, cell::detail::IoSession& session, const std::string& design) {
+// `pass_on` prints what the session printed so far (it prints into the
+// read's master sink), so its lines keep their place.
+void load_design(cmd::CommandContext& ctx, cell::detail::IoSession& session, const std::string& design,
+                 const std::function<void()>& pass_on) {
   cell::ReadOptions options;
   options.ignore_tech = true;
   session.ed.windows.set_cell_reader(&cell::detail::read_for_expansion);
   const CommandResult loaded = cell::detail::load_into_window(session, design, options);
+  pass_on();
   for (const diag::Diagnostic& d : loaded.diagnostics) {
     ctx.emit(d);
   }
   session.process_mismatches();
+  pass_on();
 }
 
 // The read through the session's progress host (the desktop pumps frames
@@ -124,29 +131,36 @@ CommandResult read_command(cmd::CommandContext& ctx, const cmd::Invocation& invo
     return CommandResult::failure(diag::make(
         detail::kCannotOpen, "Cannot open input file " + tried_name(name) + " (No such file or directory)."));
   }
-  auto session = std::make_shared<cell::detail::IoSession>(ctx, ed);
+  // The masters' reads (COMPONENTS, and the -annotate terminal lookup) print
+  // into `masters`; the reader moves those lines into its own after each
+  // read, so they come out where Magic prints them: after "Reading DEF data
+  // from file ..." and before the section's count (LEFDEF-211, 232). What
+  // the session prints after the read (mismatches, the design load) is
+  // passed on to the command's sink.
+  diag::CollectingSink masters;
+  cmd::CommandContext master_ctx(ctx.services(), ctx.project(), ctx.session(), masters, ctx.registry(), &ed);
+  auto session = std::make_shared<cell::detail::IoSession>(master_ctx, ed);
   options.read_master = [session](db::CellDef& def) {
     cell::ReadOptions read_options;
     read_options.ignore_tech = true;  // DBCellRead(def, TRUE, TRUE, NULL)
     return cell::read_cell(session->io, def, read_options).ok() && def.flags().available;
   };
-  // The read's first line is printed before the COMPONENTS masters are read
-  // from disk, whose messages go straight to the console (DefRead prints it
-  // before parsing); def::read's copy of it is dropped below.
-  const std::string reading = "Reading DEF data from file " + found->path.string() + ".";
-  ctx.emit(diag::make(detail::kReport, reading));
+  options.master_messages = &masters;
+  const std::function<void()> pass_on = [&ctx, &masters] {
+    for (const diag::Diagnostic& d : masters.take()) {
+      ctx.emit(d);
+    }
+  };
   CommandResult result = hosted_read(ed, found->path, options);
   session->process_mismatches();
-  if (!result.diagnostics.empty() && result.diagnostics.front().text == reading) {
-    result.diagnostics.erase(result.diagnostics.begin());
-  }
+  pass_on();
   const std::string* design = std::get_if<std::string>(&result.value.data());
   if (result.ok() && design != nullptr && !design->empty() && ed.windows.size() == 1) {
     for (const diag::Diagnostic& d : result.diagnostics) {
       ctx.emit(d);
     }
     result.diagnostics.clear();
-    load_design(ctx, *session, *design);
+    load_design(ctx, *session, *design, pass_on);
   }
   // CmdLef sets no Tcl result for `def read`.
   result.value = cmd::Value{};

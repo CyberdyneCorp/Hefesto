@@ -211,7 +211,7 @@ The writer SHALL encode a g-delta in form 1 when the vector is axis-parallel or 
 - **THEN** the encoding is the single byte `7C`: form 1, direction SW (6), magnitude 7, so `(7 << 4) | (6 << 1) = 124`
 
 ### Requirement: Point lists
-A point list SHALL be encoded as an unsigned type `t` (0–5), an unsigned count `n ≥ 1`, and `n` deltas. It describes vertices relative to an implicit first vertex `P0 = (0, 0)`. The element's (x, y) position is added to every vertex. A count of 0 or a type above 5 SHALL be reported as "invalid point list". A count of 0 drops the element. A type above 5 stops decoding, since the record's length cannot be known.
+A point list SHALL be encoded as an unsigned type `t` (0–5), an unsigned count `n ≥ 1`, and `n` deltas. It describes vertices relative to an implicit first vertex `P0 = (0, 0)`. The element's (x, y) position is added to every vertex. A count of 0 or a type above 5 SHALL be reported as "invalid point list". A count of 0 drops the element. A type above 5 stops decoding, since the record's length cannot be known. A count above 2^24 (16777216) SHALL be reported ("point list of <n> points, more than 16777216; the element is dropped", OASIS-CODEC-030): its deltas are read and not stored, decoding continues, and the element is dropped, as is a later element that reuses that list as its modal point list. This holds in both modes (Q-OASIS-14, resolution: fix; security review M6-S3).
 
 Compatibility: native
 
@@ -247,6 +247,11 @@ For PATH records, the point list is the centerline: `P0..P_n`, with no closure a
 - **WHEN** it is decoded
 - **THEN** the differences are (10,0), (10,10), (0,0), and the centerline is (0,0), (10,0), (20,10), (20,10)
 
+#### Scenario: Point list above the entry cap
+- **GIVEN** a POLYGON whose type 2 point list has a count of 16777217
+- **WHEN** it is decoded
+- **THEN** "point list of 16777217 points, more than 16777216; the element is dropped" is reported and the next record is decoded
+
 ### Requirement: Repetitions
 A repetition SHALL be encoded as an unsigned type `r` (0–11) followed by type-specific fields. It decodes to an ordered list of displacements `d_0 = (0,0), d_1, …`. The element is instantiated once at its position plus each displacement, in list order. A type above 11 SHALL be reported as "invalid repetition type", and decoding stops.
 
@@ -274,6 +279,7 @@ Rules:
 4. A modal `repetition` is set by every element record that carries a repetition of type 1–11. Type 0 reuses it.
 5. A `grid` of 0 in types 5, 7 and 11 SHALL be reported as "zero repetition grid", and decoding stops.
 6. A step outside the signed 32-bit range, or a farthest displacement that does not fit in 64 bits, SHALL be reported as "coordinate overflow", and the element is dropped.
+7. A type 4, 5, 6, 7, 10 or 11 repetition that lists more than 2^24 displacements (`n' + 1 > 16777216`) SHALL be reported ("repetition of type <r> lists more than 16777216 displacements; the element is dropped", OASIS-CODEC-030): its displacements are read and not stored, decoding continues, and the element is dropped, as is a later element that reuses it through type 0. The regular types keep counts only and are not capped here. This holds in both modes (Q-OASIS-14, resolution: fix; security review M6-S3).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -292,6 +298,11 @@ Rules:
 - **GIVEN** repetition bytes `09 00 48`, where g-delta `48` is form 1 with magnitude 4 and direction NE (4)
 - **WHEN** they are decoded
 - **THEN** the displacements are (0,0), (4,4)
+
+#### Scenario: Explicit repetition above the entry cap
+- **GIVEN** a RECTANGLE with a type 4 repetition whose `n'` is 16777216, followed by a RECTANGLE that reuses the modal repetition and a RECTANGLE without one
+- **WHEN** they are decoded
+- **THEN** the first two are dropped with OASIS-CODEC-030 and the third is decoded
 
 ### Requirement: Intervals
 An interval SHALL be encoded as an unsigned type `k` (0–4) followed by bounds, and SHALL denote a closed range of unsigned 32-bit values:

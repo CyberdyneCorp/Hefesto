@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "ext_fixture.hpp"
+#include "hefesto/diag/format.hpp"
 
 namespace extflat = hefesto::extflat;
 using extflat::test::all_names;
@@ -53,19 +54,42 @@ TEST_CASE("a NUL byte ends a line and a continuation cut by the end of file is d
   CHECK(f.sink.snapshot().empty());
 }
 
-// Regression: efReadLine stores tokens in argv[128] without a bound.
-TEST_CASE("a line of more than 128 tokens is ignored with EXTFLAT-READ-011", "[cap:ext-flattening-read][req:Line tokenization]") {
+namespace {
+
+// Regression: efReadLine stores tokens in argv[128] without a bound. The
+// line is ignored with a warning every console shows, never silently
+// (approved 2026-11-21, M6-S8), in both modes.
+void check_long_line_warning(bool compat) {
   ExtFixture f;
   std::string line = "node big 0 0 1 1 m1";
   for (int i = 0; i < 130; ++i) {
     line += " 0";
   }
   f.file("top", line + "\nnode small 0 0 0 0 m1\n");
-  const auto n = f.read("top");
+  extflat::ReadOptions options;
+  options.magic_compat = compat;
+  const auto n = f.read("top", options);
   REQUIRE(n.ok());
   CHECK(names(n.value()) == Strings{"small"});
-  REQUIRE(f.texts("EXTFLAT-READ-011").size() == 1);
-  CHECK(f.sink.snapshot()[0].native_only);
+  CHECK(f.texts("EXTFLAT-READ-011") == Strings{"/w/top.ext, line 1: more than 128 tokens; line ignored"});
+  const auto diags = f.sink.snapshot();
+  REQUIRE(diags.size() == 1);
+  const auto& d = diags[0];
+  CHECK(d.severity == hefesto::diag::Severity::warning);
+  CHECK_FALSE(d.native_only);
+  CHECK(hefesto::diag::shown_in(d, hefesto::diag::Format::magic));
+}
+
+}  // namespace
+
+TEST_CASE("a line of more than 128 tokens is ignored with the EXTFLAT-READ-011 warning (magic-compat ON)",
+          "[cap:ext-flattening-read][req:Line tokenization]") {
+  check_long_line_warning(true);
+}
+
+TEST_CASE("a line of more than 128 tokens is ignored with the EXTFLAT-READ-011 warning (magic-compat OFF)",
+          "[cap:ext-flattening-read][req:Line tokenization]") {
+  check_long_line_warning(false);
 }
 
 TEST_CASE("keywords match by unique prefix, case-insensitively", "[cap:ext-flattening-read][req:Keyword recognition]") {
