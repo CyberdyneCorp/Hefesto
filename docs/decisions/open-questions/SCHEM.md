@@ -363,3 +363,14 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: (a) `env(PWD)` and `env(HOME)` are the document's folder; relative elements other than `.` resolve against the document's folder with warning `SCHEM-LIB-001` (as Q-SCHEM-30 does for `.`); unknown commands raise Tcl's error except the GUI-only commands the three PDK `xschemrc` files call, which are accepted and do nothing | (b) as (a), but `env(HOME)` is a Hefesto per-user folder (desktop) or the app container (iPadOS) | (c) as (a), but every unknown command is accepted and ignored (round 1's interim behaviour)
 - Recommendation: (a), in both modes: the document opens the same way on every machine and start folder, only granted folders are visible, and a typo in an rc file is reported instead of silently ignored. User libraries belong in the Hefesto search-path setting, not in `~`.
 - Spec effect: `schematic-symbols-and-libraries` "Library search path" (relative elements) and "xschemrc as data" (environment, unknown commands; scenario "Synthetic HOME and PWD").
+
+### Q-SCHEM-39: SCHEM-LVS-01 needs the LVS engine
+- Kind: platform
+- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D16)
+- xschem behavior: n/a. This is a question about when a golden case is scheduled.
+  - SCHEM-LVS-01 runs netgen with `sky130A_setup.tcl` to compare Magic's extracted `sky130_fd_sc_hd__inv_1` against `inv_1.sch`.
+  - On the Hefesto side the case writes `lvs.out`. That needs the `lvs-*` capabilities, which design D13 of m8-schematic places in M9.
+  - `tests/golden/deviations.toml` marks the case `deferred = "M8"`, so the M8 exit (m8 design D21) would have to wait for M9 code.
+- Evidence: `tests/golden/deviations.toml` (`[SCHEM-LVS-01]`); `tests/golden/SCHEM/cases/SCHEM-LVS-01/`; `openspec/changes/m8-schematic/design.md` D13, D21
+- Options: (a) move SCHEM-LVS-01 to `deferred = "M9"`, as SCHEM-SIM-01/02 were moved on 2026-11-18; M8 keeps checking the case's `inv_1.spice` netlist output, and M9 makes the whole case pass; (b) keep the case in M8 and let the M8 exit wait for M9's LVS; (c) split it into a netlist case for M8 and an LVS case for M9.
+- Recommendation: (a). The reasoning is the same as for the SCHEM-SIM decision, and no captured file changes.
