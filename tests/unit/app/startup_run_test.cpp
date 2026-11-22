@@ -164,6 +164,30 @@ TEST_CASE("the technology of the first file is loaded before the file",
   CHECK(s.reported(app::codes::kFileLoading, "Loading \"inv\" from command line."));
 }
 
+// Regression (LEFDEF-STARTUP-lef): the line was printed right after the -T
+// load, before the startup files and command-line files, and without the
+// version; Magic's Tcl startup prints it once, after the files
+// (tcltk/magic.tcl.in:446).
+TEST_CASE("the technology line follows the command-line files and names the version",
+          "[cap:scripting-pdk-integration][req:Script-host startup sequence]") {
+  Session s;
+  write_file(s.env.working_directory / "inv.mag", "magic\ntech sky130A\n");
+  app::StartupOptions options = with_files({"inv.mag"});
+  options.technology = "gf180mcuD";
+  REQUIRE(s.start(options).ok());
+  std::vector<std::string> codes;
+  for (const auto& d : s.sink.snapshot()) {
+    if (d.code == app::codes::kTechUsing || d.code == app::codes::kFileLoading) {
+      codes.push_back(d.code);
+    }
+  }
+  CHECK(codes == std::vector<std::string>{std::string{app::codes::kFileLoading}, std::string{app::codes::kTechUsing}});
+  const std::string version = s.editor.technology->version().version_lines.empty()
+                                  ? std::string{}
+                                  : s.editor.technology->version().version_lines.back();
+  CHECK(s.reported(app::codes::kTechUsing, "Using technology \"" + s.editor.technology->name() + "\", version " + version));
+}
+
 TEST_CASE("option T overrides the file's technology; a failed -T is retried, not the file",
           "[cap:app-startup][req:Startup file order]") {
   Session s;

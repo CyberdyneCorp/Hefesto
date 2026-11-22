@@ -789,7 +789,7 @@ reason = "M6 exit blocker, LEFW; LEFW: buf.lef matches since round 4 (lef write 
 [LEFDEF-STARTUP-lef]
 deferred = "M6"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "M6 exit blocker, LEFR; LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, 'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in hefesto-cli's startup path"
+reason = "M6 exit blocker, LEFR; GOLDEN: round 6 prints the 'Using technology' line after the command-line files with the version, as Magic's Tcl startup does, and gives the case's technology a version section (Magic shows the stale minimum version, Q-TECH-8); expected/ is removed for the recapture (golden-capture dispatch, mode capture); drop the deferral when every output matches"
 
 [MASK-OS-016]
 deferred = "M6"

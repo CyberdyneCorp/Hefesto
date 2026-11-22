@@ -88,9 +88,10 @@ BLOCKER_REASONS = {
     "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
                "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
                "44860968058. The crash point is not found; the case is capture_blocked until it is"),
-    "STARTUP": ("LEFR: the startup .lef is read, but the console differs from Magic's (the tech-load extraction note, "
-                "'This action cannot be undone.' and the 'Using technology' line are placed differently); to fix in "
-                "hefesto-cli's startup path"),
+    "STARTUP": ("GOLDEN: round 6 prints the 'Using technology' line after the command-line files with the version, "
+                "as Magic's Tcl startup does, and gives the case's technology a version section (Magic shows the "
+                "stale minimum version, Q-TECH-8); expected/ is removed for the recapture (golden-capture "
+                "dispatch, mode capture); drop the deferral when every output matches"),
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {

@@ -128,6 +128,7 @@ class Startup {
     } else {
       load_files();
     }
+    report_technology();
     set_box();
     resume_drc(drc_state);
     // Magic's UndoFlush after the command-line files (utils/main.c:1236):
@@ -478,7 +479,6 @@ class Startup {
       result_.technology_file = Path{target};
     }
     loaded_tech_path_ = target;
-    report(codes::kTechUsing, "Using technology \"" + state_.technology->name() + "\".");
     return true;
   }
 
@@ -605,6 +605,37 @@ class Startup {
       const std::string name = cell::load_definition_name(*first_cell);
       (void)dispatcher_.execute(cmd::Invocation{"load", {name}, cmd::Origin::cli, std::nullopt});
     }
+  }
+
+  // Step 12 of "Script-host startup sequence", after the command-line files:
+  // `Using technology "<name>", version <first element of tech version>`
+  // (tcltk/magic.tcl.in:446; the C build's line after the -T load,
+  // utils/main.c:892, is not printed by the Tcl build). A file argument that
+  // ran `quit` ends startup before it. As before, it is printed only when
+  // startup loaded a technology (none for the built-in minimum).
+  void report_technology() {
+    if (quit_requested() || loaded_tech_path_.empty()) {
+      return;
+    }
+    report(codes::kTechUsing, "Using technology \"" + state_.technology->name() + "\", version " +
+                                  first_version_element(state_.technology->version(), typed_.compat.magic_compat));
+  }
+
+  // `lindex [tech version] 0`. With magic-compat ON `tech version` is the
+  // raw version string (its words joined by LF) followed by the description,
+  // so the first element is the version's first word; with it OFF it is a
+  // proper list whose first element is the whole version string.
+  static std::string first_version_element(const tech::TechVersion& v, bool magic_compat) {
+    const std::string version = v.version_lines.empty() ? std::string{} : v.version_lines.back();
+    if (!magic_compat) {
+      return version;
+    }
+    const auto begin = version.find_first_not_of(" \t\n");
+    if (begin == std::string::npos) {
+      return {};
+    }
+    const auto end = version.find_first_of(" \t\n", begin);
+    return version.substr(begin, end == std::string::npos ? std::string::npos : end - begin);
   }
 
   // NULL graphics: `Loading "<f>" from command line.` (utils/main.c:1197);

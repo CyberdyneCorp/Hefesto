@@ -40,7 +40,7 @@ constexpr std::array kAppCodes = {
              "A startup file was found; its script commands run only once the Tcl binding exists (M4), its plain settings were applied."},
     CodeInfo{"APP-STARTUP-002", info, "A deprecated startup file name (`~/.magic`, `.magic`) is in use."},
     CodeInfo{"APP-TECH-001", warning, "The technology named at startup could not be loaded; the previous choice is kept."},
-    CodeInfo{"APP-TECH-002", info, "The technology chosen at startup (`Using technology \"NAME\"`)."},
+    CodeInfo{"APP-TECH-002", info, "The technology in use once startup has loaded the command-line files (`Using technology \"NAME\", version V`)."},
 };
 
 }  // namespace
