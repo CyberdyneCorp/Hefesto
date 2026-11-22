@@ -428,7 +428,7 @@ The search path SHALL be an ordered list of folders built from the value of `XSC
 - no other expansion SHALL be done: environment references such as `$PDK_ROOT` are expanded by Tcl when the `xschemrc` that builds the value is evaluated, not by the search path, so an element that still contains `$NAME` or `${NAME}` is used as literal text, and is dropped when no such folder exists
 - each element SHALL be cleaned as a symbol reference is (step 4 of Requirement "Symbol references": runs of `/` collapsed, `/./` and `dir/../` removed, a trailing `/` or `/.` removed); duplicates SHALL be kept
 - elements that do not exist SHALL be dropped
-- a relative element other than `.` (for example `lib` or `../lib`): xschem checks and uses it against the folder it was started in. Hefesto SHALL resolve it against the folder of the current schematic, in both modes, and SHALL report the warning `SCHEM-LIB-001` for a reference found through it, as for `.` (proposed Q-SCHEM-38, recommendation `fix`, which extends Q-SCHEM-30; awaiting the user)
+- a relative element other than `.` (for example `lib` or `../lib`): xschem checks and uses it against the folder it was started in. Hefesto SHALL resolve it against the folder of the current schematic (the document's folder), in both modes of `xschem-compat`, and SHALL report the warning `SCHEM-LIB-001` for a reference found through it, as for `.` (Q-SCHEM-38 option (a), approved by the user on 2026-11-22; extends Q-SCHEM-30)
 - the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
@@ -453,6 +453,11 @@ Compatibility: behavioral
 - **WHEN** the search path is built
 - **THEN** it SHALL be `/a`
 
+#### Scenario: Relative library element resolved against the document folder
+- **GIVEN** `XSCHEM_LIBRARY_PATH` = `lib:../shared`, the schematic `/w/s/top.sch` with the instances `y.sym` and `z.sym`, the files `/w/s/lib/y.sym` and `/w/shared/z.sym`, no `lib` or `shared` folder in the folder Hefesto was started in, with `xschem-compat` ON or OFF
+- **WHEN** the instances are resolved
+- **THEN** their symbols SHALL be `/w/s/lib/y.sym` and `/w/shared/z.sym`, whatever folder Hefesto was started in, and the warning `SCHEM-LIB-001` SHALL be reported for `y.sym` and for `z.sym` (Q-SCHEM-38)
+
 #### Scenario: Dot element is the schematic folder
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
 - **WHEN** the instance is resolved
@@ -463,11 +468,11 @@ PDKs configure xschem through a Tcl file named `xschemrc`. Hefesto SHALL read it
 - The `xschemrc` of the active PDK (`<PDK root>/<PDK>/libs.tech/xschem/xschemrc` in the PDK store of capability `hefesto-files-and-pdks`) SHALL be evaluated in the sandboxed Tcl interpreter (capability `hefesto-scripting`).
 - Before evaluation, Tcl variables SHALL be set: `XSCHEM_SHAREDIR` (the Hefesto copy of the xschem system library, Requirement "System library"), `USER_CONF_DIR`, `PDK_ROOT`, `PDK`, `env(PDK_ROOT)`, `env(PDK)` and `env(HOME)`.
 - `XSCHEM_LIBRARY_PATH` and every other global variable SHALL be read from the interpreter afterwards; Tcl variables such as `SKYWATER_MODELS`, `SG13G2_MODELS` and `MODELS_NGSPICE` SHALL stay defined for `tcleval`.
-- Commands that only affect the xschem GUI (colours, toolbar, `dircolor`, `XSCHEM_START_WINDOW`, `bespice_listen_port`, `to_pdf`, ...) SHALL be accepted and ignored.
+- Commands that only affect the xschem GUI and that the three pinned PDK `xschemrc` files call SHALL be accepted and ignored (bullet "Unknown commands" below); setting GUI-only variables (colours, toolbar, `dircolor`, `XSCHEM_START_WINDOW`, `bespice_listen_port`, `to_pdf`, ...) is plain `set` and has no effect.
 - `source` of a Tcl file inside the PDK (for example IHP `cap_cmomi.tcl`) SHALL be allowed.
 - An `xschemrc` in the document's folder SHALL be evaluated after the PDK's one, as xschem does when started in that folder.
-- Environment variables read by the file SHALL be synthetic values mapped to the PDK store and the document folder on every platform (see Q-SCHEM-23): `env(PDK_ROOT)` and `env(PDK)` name the active PDK in the PDK store; `env(PWD)` SHALL be the document's folder (the folder `.` means, Q-SCHEM-30); `env(HOME)` SHALL be the document's folder too (proposed Q-SCHEM-38, recommendation, awaiting the user). No other host environment variable SHALL be visible; reading an unset `env(...)` raises Tcl's usual error.
-- **Unknown commands.** A command the sandbox does not define SHALL raise Tcl's `invalid command name "<cmd>"` error, as in xschem, except the GUI-only commands that the three pinned PDK `xschemrc` files call (the `rc_commands` lists of `tests/data/schem/inventory.json` that are xschem GUI commands), which SHALL be accepted, do nothing and return the empty string (proposed Q-SCHEM-38, recommendation, awaiting the user; until it is decided, accepting every unknown command is the interim behaviour of round 1).
+- Environment variables read by the file SHALL be synthetic values mapped to the PDK store and the document folder on every platform (see Q-SCHEM-23): `env(PDK_ROOT)` and `env(PDK)` name the active PDK in the PDK store; `env(PWD)` SHALL be the document's folder (the folder `.` means, Q-SCHEM-30); `env(HOME)` SHALL be the document's folder too, in both modes of `xschem-compat` (Q-SCHEM-38 option (a), approved by the user on 2026-11-22). No other host environment variable SHALL be visible; reading an unset `env(...)` raises Tcl's usual error.
+- **Unknown commands.** A command the sandbox does not define SHALL raise Tcl's `invalid command name "<cmd>"` error, as in xschem, except the GUI-only commands that the three pinned PDK `xschemrc` files call (the `rc_commands` lists of `tests/data/schem/inventory.json` that are xschem GUI commands), which SHALL be accepted, do nothing and return the empty string. The error SHALL be handled like any Tcl error in the file: it SHALL be reported as the warning `SCHEM-LIB-006`, settings made before the error SHALL be kept and later ones are lost. This holds in both modes of `xschem-compat` (Q-SCHEM-38 option (a), approved by the user on 2026-11-22; it replaces round 1's interim behaviour of accepting every unknown command).
 - **Time limit.** Evaluating the `xschemrc` files for one document SHALL stop after **10 s** of evaluation, in both modes of `xschem-compat` (input limit approved by the user on 2026-11-21, Q-SCHEM-32; `SandboxLimits`). The stop SHALL be handled like a Tcl error in the file (settings made before the stop are kept, later ones are lost) and SHALL report the warning `xschemrc <file>: evaluation stopped after 10 s`. The limit SHALL hold for any script, including `while 1 {}`.
 
 In xschem, the files evaluated are, in order: the system `xschemrc`, then the one given on the command line, or else `./xschemrc`, or else the user's `~/.xschem/xschemrc` (informative).
@@ -485,6 +490,16 @@ Compatibility: behavioral
 - **GIVEN** a document `/w/s/top.sch` and an `xschemrc` in `/w/s` that does `set XSCHEM_LIBRARY_PATH $env(PWD):$env(HOME)/lib`, with `/w/s/lib` existing
 - **WHEN** the schematic is opened
 - **THEN** the search path SHALL be `/w/s`, `/w/s/lib`, whatever folder Hefesto was started in and whatever the host's `HOME` is
+
+#### Scenario: Unknown command in an xschemrc
+- **GIVEN** a document folder `/w/s` whose `xschemrc` is `set XSCHEM_LIBRARY_PATH /a` LF `no_such_command 1` LF `set XSCHEM_LIBRARY_PATH /b`, where `/a` and `/b` exist and `no_such_command` is neither a sandbox command nor a GUI-only command of the pinned PDK `xschemrc` files, with `xschem-compat` ON or OFF
+- **WHEN** a schematic in that folder is opened
+- **THEN** the opening SHALL complete, the warning `SCHEM-LIB-006` SHALL be reported naming the file and `invalid command name "no_such_command"`, and the search path SHALL contain `/a` and not `/b` (Q-SCHEM-38)
+
+#### Scenario: GUI-only command in a PDK xschemrc
+- **GIVEN** an `xschemrc` that calls a GUI-only command listed in the `rc_commands` of a pinned PDK in `tests/data/schem/inventory.json`, followed by `set XSCHEM_LIBRARY_PATH /b`, where `/b` exists, with `xschem-compat` ON or OFF
+- **WHEN** the file is evaluated
+- **THEN** the command SHALL return the empty string and have no effect, no `SCHEM-LIB-006` warning SHALL be reported, and the search path SHALL contain `/b` (Q-SCHEM-38)
 
 #### Scenario: IHP library path
 - **GIVEN** the IHP sg13g2 PDK installed in the PDK store
@@ -788,6 +803,8 @@ If a symbol reference names a `.sch` file, the schematic SHALL be loaded as a sy
 
 **Flattened size.** A symbol built this way SHALL hold at most **1,000,000** records (lines, wires drawn as lines, boxes including generated pins, arcs, polygons and texts, counted over all levels), in both modes of `xschem-compat` (input limit approved by the user on 2026-11-21, Q-SCHEM-32). The record that would be the 1,000,001st SHALL NOT be added, the warning `Symbol <reference>: more than 1000000 records when flattened; the rest is not loaded` SHALL be reported once, and reading the symbol SHALL stop there, keeping the records added so far (depth-first, in file order). The work SHALL stay bounded by the limit, so a chain of schematics that each place the next one twice (2^40 records unbounded) stops after about 1,000,000 records.
 
+**Flattened bytes.** Besides the record cap, a symbol built this way SHALL hold at most about **256 MiB**, in both modes of `xschem-compat` (input limit approved by the user on 2026-11-22, Q-SCHEM-40, decision M8-D2). Its size SHALL be estimated as 16 bytes per point (each line, box and arc counted by its points, each polygon by its point count) plus the byte length of every string it holds (property strings and text strings). The record whose addition would take the estimate past 268,435,456 bytes SHALL NOT be added, `SCHEM-LIB-009` SHALL be reported once (the code of the record cap, with the message `Symbol <reference>: more than 268435456 bytes when flattened; the rest is not loaded`), and reading the symbol SHALL stop there, keeping the records added so far. Whichever cap is reached first applies.
+
 If a `.sym` with the same base name exists next to the `.sch`, its pin order SHALL be applied to the generated pins.
 
 Compatibility: exact
@@ -803,6 +820,11 @@ Compatibility: exact
 - **GIVEN** schematics `s0.sch` ... `s39.sch`, where each `s<i>.sch` holds one line and two instances of `s<i+1>.sch`, and `s39.sch` holds one line, and a schematic `top.sch` that places `s0.sch`, with `xschem-compat` ON or OFF
 - **WHEN** `top.sch` is opened
 - **THEN** the symbol `s0.sch` SHALL hold exactly 1,000,000 records, the warning `Symbol s0.sch: more than 1000000 records when flattened; the rest is not loaded` SHALL be reported once, and the opening SHALL complete in time proportional to the limit
+
+#### Scenario: Flattened symbol larger than 256 MiB
+- **GIVEN** a schematic `big.sch` holding 2,000 texts, each with the text `a` and a property string of 200,000 bytes that holds no `name` or `floater` key (about 400 MB, far fewer than 1,000,000 records), placed as a symbol by `top.sch`, with `xschem-compat` ON or OFF
+- **WHEN** `top.sch` is opened
+- **THEN** the symbol `big.sch` SHALL hold only the records whose estimated size stays within 268,435,456 bytes (about 1,342 texts at 16 bytes plus the string sizes each), `SCHEM-LIB-009` SHALL be reported once, and the opening SHALL complete (Q-SCHEM-40)
 
 #### Scenario: Generated pins and graph boxes
 - **GIVEN** a schematic `blk.sch` with an `ipin` instance `C {ipin.sym} 40 20 0 0 {name=p1 lab=IN sig_type=std_logic}` and a box `B 2 0 0 100 100 {flags=graph}`, placed as a symbol
