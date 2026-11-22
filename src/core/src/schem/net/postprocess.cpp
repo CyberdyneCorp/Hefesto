@@ -305,7 +305,7 @@ class VectorWriter {
 
   bool append_items(std::string& line, const Field& marker, std::string_view text, std::size_t i) const {
     const auto items = split_items(text);
-    const auto k = static_cast<std::uint64_t>(items.size());
+    const std::uint64_t k = items.size();
     const std::uint64_t w = marker.width < 0 ? k : static_cast<std::uint64_t>(marker.width);
     line += marker.key;
     const std::uint64_t start = (w % k) * (i % k) % k;  // w*(i-1) mod k, with i from 0 here

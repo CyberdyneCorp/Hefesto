@@ -201,7 +201,9 @@ TEST_CASE("Flattened size limit", "[cap:schematic-symbols-and-libraries][req:Sch
     schem::SymbolCache cache;
     const auto start = std::chrono::steady_clock::now();
     const schem::Symbol& s0 = cache.resolve({"s0.sch"}, top, {path, fs, &sink, compat});
-    CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{60});
+    // Without the cap the 2^40 expansion never ends; with it the run takes
+    // seconds (about 90 s under ASan or TSan), so the bound is generous.
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::minutes{10});
     CHECK(record_count(s0) == schem::kMaxFlattenedRecords);
     const auto warnings = sink.take();
     REQUIRE(warnings.size() == 1);
