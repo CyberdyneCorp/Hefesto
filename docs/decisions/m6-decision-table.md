@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-21 (round 6), `docs/decisions/open-questions/LEFDEF.md` has 132 entries and `OASIS.md` has 52, 184 in all. Every one has a `Resolution:` line:
+As of 2026-11-22 (the M6 close-out), `docs/decisions/open-questions/LEFDEF.md` has 133 entries and `OASIS.md` has 52, 185 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -21,6 +21,7 @@ As of 2026-11-21 (round 6), `docs/decisions/open-questions/LEFDEF.md` has 132 en
 | Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
 | Approved 2026-11-21 (user decisions G3, G4; recorded in round 6) | 3: Q-LEFDEF-139 (amended to fix, G3), Q-LEFDEF-141 and 151 (compat, confirmed as implemented, G4) | "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
 | Approved 2026-11-21 (user decisions G1, G2, G5; recorded in round 6) | 3: Q-OASIS-14, 55, 56 | "Decided 2026-11-21: OASIS rows" |
+| Approved 2026-11-22 (user decision; recorded in the M6 close-out) | 1: Q-LEFDEF-152 (MASK-OS-016 deferred to M13) | "Decided 2026-11-22: MASK-OS-016" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -386,6 +387,14 @@ The user's decisions of 2026-11-21 for LEF/DEF, recorded in round 6 (`m6-r6-lefd
 | Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (G4) | **compat** | confirmed as implemented: ON, LEF VIA/LAYER section and DEF geometry resolve no type; OFF: treated as absent; PORT/OBS: absent in both modes |
 
 Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8.
+
+## Decided 2026-11-22: MASK-OS-016
+
+The user's decision of 2026-11-22: "MASK-OS-016: defer past M6 as a known Magic crash". The entry has `Status: approved 2026-11-22` and a `Resolution:` line in `docs/decisions/open-questions/LEFDEF.md`.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-152 | MASK-OS-016 cannot be captured because Magic crashes on it (SIGSEGV, golden-capture runs 44743146734 and 44860968058) | **other** | deferred past M6: the case stays capture_blocked and its deviations.toml entry is deferred to M13 (`m6_cases.LATER`), so `m6_cases.py --exit-check` no longer lists it |
 
 ## Planning questions raised by the M6 plan
 

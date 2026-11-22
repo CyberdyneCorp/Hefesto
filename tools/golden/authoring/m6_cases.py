@@ -32,7 +32,8 @@ mode ``ext-inputs`` runs and ``lefdef_cases.py --sync-ext`` commits the files in
 capability cites without a ``Resolution:`` line (scripts/check_milestone_readiness.py --milestone M6),
 and the approved deviations the case modules record outside ``deviations.toml`` (``APPROVED_DEVIATIONS``:
 cases that pass with a recorded decision, e.g. Q-OASIS-2, task 15.6) and the rows not written yet. It
-fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision.
+fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision,
+recorded in ``LATER`` (the case's entry is then deferred to that milestone).
 """
 from __future__ import annotations
 
@@ -103,6 +104,13 @@ TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # Round 5: the re-authored MASK-OS-016 still exited 139 in golden-capture run 44860968058, so it is
 # capture_blocked again.
 LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ("MASK-OS-016",)
+# Cases deferred past M6 by a user decision: case ID -> (milestone of docs/roadmap.md, decision). Their
+# deviations.toml entry is deferred to that milestone, so --exit-check no longer lists them; they keep
+# their capture_blocked reason. MASK-OS-016 (Q-LEFDEF-152, approved 2026-11-22): Magic exits with SIGSEGV
+# on it, so it goes to M13, whose release gates close the golden gaps left for Desktop 1.0.
+LATER: dict[str, tuple[str, str]] = {
+    "MASK-OS-016": ("M13", "deferred past M6 as a known Magic crash (Q-LEFDEF-152, approved 2026-11-22)"),
+}
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
@@ -394,10 +402,15 @@ def owner(spec: tclcase.TclCase) -> str:
     return f"{base} and LEFVIA" if VIA_REQUIREMENTS & set(spec.requirements) else base
 
 
+def deferral_milestone(spec: tclcase.TclCase) -> str:
+    return LATER[spec.id][0] if spec.id in LATER else MILESTONE
+
+
 def deferral_reason(spec: tclcase.TclCase) -> str:
     if spec.id in BLOCKERS:
         note = CAPTURE_BLOCKED_NOTE if spec.id in CAPTURE_BLOCKED else ""
-        return f"{BLOCKER_PREFIX}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
+        prefix = f"{LATER[spec.id][1]}; " if spec.id in LATER else BLOCKER_PREFIX
+        return f"{prefix}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
     ext = EXT_NOTE if spec.id in lefdef_cases.DEF_NET_CASES else ""
     task = TASK_154.get(spec.id) or ("15.2" if spec.area == "OASIS" else "15.1")
     return REASON.format(owner=owner(spec), task=task) + ext
@@ -409,7 +422,7 @@ def deviation_block() -> str:
         if spec.id in REPLAYED:
             continue
         outs = ", ".join(f'"{n}"' for n in output_names(spec))
-        entries.append(f'[{spec.id}]\ndeferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{deferral_reason(spec)}"\n')
+        entries.append(f'[{spec.id}]\ndeferred = "{deferral_milestone(spec)}"\noutputs = [{outs}]\nreason = "{deferral_reason(spec)}"\n')
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
 
 

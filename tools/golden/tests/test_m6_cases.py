@@ -168,7 +168,7 @@ class WrittenCaseTest(unittest.TestCase):
         for spec in SPECS:
             if spec.id not in m6_cases.REPLAYED:
                 with self.subTest(case=spec.id):
-                    self.assertEqual(known[spec.id].deferred, "M6")
+                    self.assertEqual(known[spec.id].deferred, m6_cases.LATER.get(spec.id, ("M6",))[0])
                     self.assertIn(m6_cases.owner(spec), known[spec.id].reason)
 
     def test_owners(self):
@@ -177,7 +177,7 @@ class WrittenCaseTest(unittest.TestCase):
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-010"]), "LEFR and LEFVIA")
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-317"]), "DEFW")
         mask_os = next(s for s in SPECS if s.id == "MASK-OS-016")
-        self.assertTrue(m6_cases.deferral_reason(mask_os).startswith(m6_cases.BLOCKER_PREFIX + "LEFW; "))
+        self.assertTrue(m6_cases.deferral_reason(mask_os).startswith(m6_cases.LATER["MASK-OS-016"][1] + "; LEFW; "))
 
 
 class MagicCrashTest(unittest.TestCase):
@@ -234,6 +234,21 @@ class ExitCheckTest(unittest.TestCase):
                             encoding="utf-8")
             self.assertEqual(m6_cases.exit_blockers(path), ["A-2: M6 exit blocker, X: y"])
 
+    def test_cases_deferred_past_m6_leave_the_exit_check(self):
+        """A user decision moves a case to a later milestone (LATER): its entry is deferred there, cites the
+        decision and is no longer an M6 exit blocker."""
+        known = deviations.load(REPO / "tests" / "golden")
+        listed = {line.split(":", 1)[0] for line in m6_cases.exit_blockers()}
+        milestones = set(re.findall(r"^## (M\d+) ", (REPO / "docs" / "roadmap.md").read_text(encoding="utf-8"), re.M))
+        for cid, (milestone, decision) in m6_cases.LATER.items():
+            with self.subTest(case=cid):
+                self.assertIn(milestone, milestones)
+                self.assertGreater(int(milestone[1:]), 6)
+                self.assertEqual(known[cid].deferred, milestone)
+                self.assertTrue(known[cid].reason.startswith(decision))
+                self.assertNotIn(cid, listed)
+        self.assertEqual(m6_cases.LATER["MASK-OS-016"][0], "M13")
+
     def test_every_m6_deferral_is_listed(self):
         known = deviations.load(REPO / "tests" / "golden")
         expected = sorted(cid for cid, d in known.items() if d.deferred == "M6")
@@ -241,13 +256,15 @@ class ExitCheckTest(unittest.TestCase):
 
     def test_capture_blocked_cases_are_uncaptured_listed_blockers(self):
         blockers = {line.split(":", 1)[0]: line for line in m6_cases.exit_blockers()}
+        known = deviations.load(REPO / "tests" / "golden")
         by_id = {s.id: s for s in SPECS}
         for cid in m6_cases.CAPTURE_BLOCKED:
             with self.subTest(case=cid):
                 case = load_case(m6_cases.case_dir(by_id[cid]), COMPARATORS)
                 self.assertEqual(case.capture_blocked, m6_cases.BLOCKERS[cid])
                 self.assertFalse(case.is_captured)
-                self.assertIn(m6_cases.CAPTURE_BLOCKED_NOTE, blockers[cid])
+                listed = known[cid].reason if cid in m6_cases.LATER else blockers[cid]
+                self.assertIn(m6_cases.CAPTURE_BLOCKED_NOTE, listed)
         others = [s.id for s in SPECS if s.capture_blocked and s.id not in m6_cases.CAPTURE_BLOCKED]
         self.assertEqual(others, [])
 
