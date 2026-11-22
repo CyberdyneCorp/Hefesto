@@ -394,7 +394,7 @@ Most M1 cases (TECH, CELL, MODEL, UI) run a Tcl script in Magic and the equivale
 
 Capture in CI (`.github/workflows/golden-capture.yml`):
 
-- `capture.py --only-captured` / `--only-missing` keep the cases that have, or lack, `expected/provenance.json`; an empty selection succeeds.
+- `capture.py --only-captured` / `--only-missing` keep the cases that have, or lack, `expected/provenance.json`; an empty selection succeeds. A case whose `case.toml` sets `hand_derived` (NL-CHK-01, decision M7-9) is never run by capture or `--verify`, whose reference program is not in the image; only `--check` validates it.
 - A case whose `case.toml` sets `capture_blocked = "<reason>"` (Magic crashes on it, its output differs between runs, it writes no output) is skipped by every `capture.py` mode with its reason, so golden-capture.yml stays green; the flag is an error once the case has `expected/`. Its milestone driver keeps it deferred, so `--exit-check` lists it (M6: `m6_cases.py` `LEFDEF_CAPTURE_BLOCKED` and `oasis_cases.py` `CAPTURE_BLOCKED`).
 - Pull requests that add or edit a `case.toml` or `input/` run both steps: a fresh capture of the captured cases must match `expected/` (verify), and the cases without `expected/` are captured and uploaded as the `golden-expected` artifact (paths under `tests/golden/`), to review and commit. `SOURCE_DATE_EPOCH` is the commit time, so provenance is reproducible.
 - `workflow_dispatch` takes `mode` (`both`, `verify`, `capture`) and an optional list of case directories; the weekly schedule verifies only.

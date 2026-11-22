@@ -222,6 +222,19 @@ class SelectionTest(unittest.TestCase):
             self.assertEqual(capture.select_cases([done, todo], False, True), [todo])
             self.assertEqual(capture.select_cases([done, todo], False, False), [done, todo])
 
+    def test_hand_derived_cases_are_never_captured_or_verified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            hand, plain = Path(tmp) / "NL-CHK-01", Path(tmp) / "A-1"
+            for case in (hand, plain):
+                (case / "expected").mkdir(parents=True)
+                (case / "expected" / "provenance.json").write_text("{}", encoding="utf-8")
+            (hand / "case.toml").write_text('id = "NL-CHK-01"\nhand_derived = "M7-9"\n', encoding="utf-8")
+            (plain / "case.toml").write_text('id = "A-1"\n', encoding="utf-8")
+            self.assertEqual(capture.select_cases([hand, plain], True, False), [plain])
+            self.assertEqual(capture.select_cases([hand, plain], False, True), [])
+            self.assertEqual(capture.select_cases([hand, plain], False, False), [plain])
+            self.assertEqual(capture.select_cases([hand, plain], False, False, keep_hand_derived=True), [hand, plain])
+
     def test_an_empty_selection_succeeds(self):
         with tempfile.TemporaryDirectory() as tmp:
             todo = Path(tmp) / "A-2"
