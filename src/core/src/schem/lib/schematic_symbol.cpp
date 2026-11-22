@@ -11,7 +11,9 @@
 // of its own, and a subtree known to add nothing at a level is skipped the
 // next time it is placed there (a chain of empty schematics that each place
 // the next twice would otherwise take 2^40 visits). The recursion is at most
-// kMaxSymbolDepth deep.
+// kMaxSymbolDepth deep. Besides the record count, the estimated bytes of the
+// records added are capped (Q-SCHEM-40, M8-D2), so a few records with huge
+// strings stop too.
 //
 // Owner: SYMLIB.
 
@@ -38,6 +40,7 @@ namespace {
 constexpr int kWireLayer = 1;
 constexpr int kNestedPinLayer = 7;
 constexpr double kPinHalfSize = 2.5;  // generated pins are 5x5 units
+constexpr std::size_t kPointBytes = 16;  // Q-SCHEM-40: two doubles per point
 
 bool ignored(const std::string& props) {
   const auto value = get_token(props, "symbol_ignore");
@@ -138,22 +141,30 @@ class Flattener {
   [[nodiscard]] const FlattenReport& report() const noexcept { return report_; }
 
  private:
-  [[nodiscard]] bool stopped() const noexcept { return report_.depth_reached || report_.size_reached; }
+  [[nodiscard]] bool stopped() const noexcept {
+    return report_.depth_reached || report_.size_reached || report_.bytes_reached;
+  }
 
-  // Takes a slot for one record; false (and stop) when the limit is reached.
-  bool take_slot() {
+  // Takes a slot for one record of `bytes` estimated bytes; false (and
+  // stop) when the record or the byte limit is reached.
+  bool take_slot(std::size_t bytes) {
     if (stopped()) return false;
     if (count_ >= limits_.max_records) {
       report_.size_reached = true;
       return false;
     }
+    if (bytes > limits_.max_bytes - std::min(bytes_, limits_.max_bytes)) {
+      report_.bytes_reached = true;
+      return false;
+    }
     ++count_;
+    bytes_ += bytes;
     return true;
   }
 
   template <typename Record>
   void add(std::vector<Record>& to, Record record) {
-    if (take_slot()) to.push_back(std::move(record));
+    if (take_slot(flattened_bytes(record))) to.push_back(std::move(record));
   }
 
   // The records of one schematic level (level 0 is the symbol's own).
@@ -199,7 +210,8 @@ class Flattener {
       moved.layer = kNestedPinLayer;
       return add(out_.boxes, std::move(moved));
     }
-    if (take_slot()) own_pins_.push_back(make_pin(box));
+    Pin pin = make_pin(box);
+    if (take_slot(flattened_bytes(pin))) own_pins_.push_back(std::move(pin));
   }
 
   void place(const InstanceRecord& instance, const Document& from, int level) {
@@ -243,7 +255,8 @@ class Flattener {
   }
 
   void add_generated_pin(const InstanceRecord& instance, const Symbol& port, std::string_view type) {
-    if (take_slot()) generated_pins_.push_back(generated_pin(instance, port, type));
+    Pin pin = generated_pin(instance, port, type);
+    if (take_slot(flattened_bytes(pin))) generated_pins_.push_back(std::move(pin));
   }
 
   const NestedResolver& nested_;
@@ -253,6 +266,7 @@ class Flattener {
   std::vector<Pin> own_pins_;
   std::vector<Pin> generated_pins_;
   std::size_t count_ = 0;
+  std::size_t bytes_ = 0;  // flattened_bytes() of the records added
   std::set<std::pair<const Document*, int>> empty_;  // subtrees that add nothing at a level
   FlattenReport report_;
 };
@@ -281,6 +295,27 @@ std::vector<Pin> ordered_like(std::vector<Pin> pins, const Symbol& order_from) {
 }
 
 }  // namespace
+
+std::size_t flattened_bytes(const LineRecord& line) noexcept {
+  return 2 * kPointBytes + line.props.size();
+}
+
+std::size_t flattened_bytes(const ArcRecord& arc) noexcept {
+  return kPointBytes + arc.props.size();
+}
+
+std::size_t flattened_bytes(const PolygonRecord& polygon) noexcept {
+  return polygon.points.size() * kPointBytes + polygon.props.size();
+}
+
+std::size_t flattened_bytes(const TextRecord& text) noexcept {
+  return kPointBytes + text.text.size() + text.props.size();
+}
+
+std::size_t flattened_bytes(const Pin& pin) noexcept {
+  return flattened_bytes(pin.box) + pin.name.size() + pin.direction.size() +
+         (pin.sim_pinnumber ? pin.sim_pinnumber->size() : 0);
+}
 
 bool is_graph_box(const BoxRecord& box) {
   const auto flags = get_token(box.props, "flags");

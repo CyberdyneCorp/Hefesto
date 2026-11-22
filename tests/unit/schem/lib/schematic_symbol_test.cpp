@@ -212,6 +212,47 @@ TEST_CASE("Flattened size limit", "[cap:schematic-symbols-and-libraries][req:Sch
   }
 }
 
+// Input limit approved 2026-11-22 (Q-SCHEM-40, M8-D2): a few records with
+// huge strings stayed far below the record cap and could flatten to any
+// size. The byte cap is shortened here; the default is checked on its own.
+TEST_CASE("Flattened symbol larger than 256 MiB", kSchematicSymbol) {
+  CHECK(schem::kMaxFlattenedBytes == 268'435'456);
+  CHECK(schem::FlattenLimits{}.max_bytes == schem::kMaxFlattenedBytes);
+  CHECK(schem::flattened_bytes(schem::LineRecord{4, {0, 0}, {1, 1}, "abc"}) == 2 * 16 + 3);
+  CHECK(schem::flattened_bytes(schem::TextRecord{"hello", {0, 0}, 0, 0, 0.2, 0.2, "x=1"}) == 16 + 5 + 3);
+  CHECK(schem::flattened_bytes(schem::PolygonRecord{4, {{0, 0}, {1, 0}, {1, 1}}, ""}) == 3 * 16);
+  constexpr std::size_t kHuge = 1 << 20;  // each line carries 1 MiB of properties
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    platform::MemoryFileSystem fs;
+    std::string text = "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\n";
+    for (int i = 0; i < 4; ++i) text += "L 4 0 0 10 0 {note=" + std::string(kHuge, 'a') + "}\n";
+    REQUIRE(fs.write_atomic("/w/big.sch", text).ok());
+    const schem::SearchPath path{{"/w"}};
+    schem::Document top;
+    top.path = "/w/top.sch";
+    diag::CollectingSink sink;
+    const std::size_t max_bytes = 3 * kHuge;  // room for two lines, not three
+    schem::SymbolCache cache({schem::kMaxSymbolDepth, schem::kMaxFlattenedRecords, max_bytes});
+    const schem::Symbol& big = cache.resolve({"big.sch"}, top, {path, fs, &sink, compat});
+    CHECK(record_count(big) == 2);
+    const auto warnings = sink.take();
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].code == "SCHEM-LIB-009");
+    CHECK(warnings[0].text == "Symbol big.sch: more than " + std::to_string(max_bytes) +
+                                  " bytes when flattened; the rest is not loaded");
+  }
+  const Library library;
+  schem::Document sch;
+  for (int i = 0; i < 3; ++i) sch.texts.push_back({std::string(kHuge, 't'), {0, 0}, 0, 0, 0.2, 0.2, ""});
+  schem::FlattenReport report;
+  const schem::Symbol symbol = schem::schematic_symbol("t.sch", "/lib/t.sch", sch, library.resolver(), nullptr,
+                                                       &report, {schem::kMaxSymbolDepth, 1000, kHuge + 100});
+  CHECK(report.bytes_reached);
+  CHECK_FALSE(report.size_reached);
+  CHECK(record_count(symbol) == 1);
+}
+
 TEST_CASE("the flattened-size limit counts generated pins and keeps what was added", kSchematicSymbol) {
   const Library library;
   schem::FlattenReport report;
