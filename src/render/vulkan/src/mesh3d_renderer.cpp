@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// VulkanMesh3dRenderer: chunk upload by version, the opaque, transparency
+// VulkanMesh3dRenderer: chunk upload by (id, version), the opaque, transparency
 // and multisampled passes, and the pick read (design.md D6, D8, D10;
 // tasks.md 5.3, 5.4). Owner: RENDER3D.
 
@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <cstring>
 #include <functional>
 #include <limits>
@@ -51,37 +52,6 @@ struct Range {
   std::uint32_t first = 0;
   std::uint32_t count = 0;
 };
-
-class Fingerprint {
- public:
-  void add(std::uint64_t v) noexcept {
-    for (int i = 0; i < 8; ++i) {
-      h_ = (h_ ^ ((v >> (8 * i)) & 0xFFU)) * 0x100000001b3ULL;  // FNV-1a
-    }
-  }
-  void add(float v) noexcept { add(static_cast<std::uint64_t>(std::bit_cast<std::uint32_t>(v))); }
-  [[nodiscard]] std::uint64_t value() const noexcept { return h_; }
-
- private:
-  std::uint64_t h_ = 0xcbf29ce484222325ULL;
-};
-
-std::uint64_t fingerprint(const view3d::Chunk& c) {
-  Fingerprint f;
-  for (const view3d::RectInstance& r : c.rects) {
-    for (float v : {r.x0, r.y0, r.x1, r.y1}) f.add(v);
-    f.add(std::uint64_t{r.layer});
-  }
-  for (const view3d::SideInstance& s : c.sides) {
-    for (float v : {s.x0, s.y0, s.x1, s.y1, s.height, s.thickness}) f.add(v);
-    f.add((std::uint64_t{s.layer} << 8U) | s.flags);
-  }
-  for (const view3d::Triangle& t : c.triangles) {
-    for (float v : {t.x[0], t.y[0], t.x[1], t.y[1], t.x[2], t.y[2], t.height, t.thickness}) f.add(v);
-    f.add(std::uint64_t{t.layer});
-  }
-  return f.value();
-}
 
 GpuRect to_gpu(const view3d::RectInstance& r, std::uint32_t pick) {
   return GpuRect{r.x0, r.y0, r.x1, r.y1, r.layer, pick};
@@ -127,7 +97,6 @@ struct GpuChunk {
   std::uint64_t version = 0;
   db::Rect area;
   std::array<std::size_t, kKindCount> counts{};
-  std::uint64_t fingerprint = 0;
   double origin_x = 0.0;
   double origin_y = 0.0;
   vk::Buffer buffer;
@@ -149,9 +118,11 @@ std::array<std::size_t, kKindCount> counts_of(const view3d::Chunk& c) {
   return n;
 }
 
-bool same_chunk(const GpuChunk& g, const view3d::Chunk& c, std::uint64_t print) {
-  return g.id == c.id && g.version == c.version && g.area == c.area && g.counts == counts_of(c) &&
-         g.fingerprint == print && g.origin_x == c.origin_x && g.origin_y == c.origin_y;
+/// MESH gives versions from one process-wide counter, so (id, version)
+/// names a chunk's content across builds and rebuilds. Version 0 is a model
+/// made by hand, never cached.
+bool same_chunk(const GpuChunk& g, const view3d::Chunk& c) {
+  return c.version != 0 && g.id == c.id && g.version == c.version;
 }
 
 VkDeviceSize align16(VkDeviceSize v) {
@@ -176,13 +147,19 @@ enum class LayerDraw : std::uint8_t { skip, opaque, transparent };
 
 using Mat = std::array<double, 16>;  // column-major
 
-/// clip = m * T(ox, oy, 0), then GL clip -> Vulkan clip: y down, depth
-/// (w - z) / 2, so the nearer point (larger z', CAMERA) has the smaller
-/// depth and LESS_OR_EQUAL keeps it.
-Mat chunk_matrix(const view3d::Matrix4& m, double ox, double oy) {
+/// clip = m * S(s, s, 1) * T(ox, oy, 0) (s: DrawParams::xy_scale), then GL
+/// clip -> Vulkan clip: y down and depth (w + z) / 2. CAMERA's z' grows
+/// toward the side where Magic's faces put the viewer, the physical
+/// underside (z = -h * s_z); mirroring the depth puts the viewer on the side
+/// of the higher layers instead, so they are in front where layers overlap
+/// (R1, Q-MISC-81, both modes). x and y, hence the projected picture, are
+/// unchanged; the pipelines cull the other winding (mesh3d_pipelines.cpp).
+Mat chunk_matrix(const view3d::Matrix4& m, double ox, double oy, double s) {
   Mat c{};
   for (std::size_t i = 0; i < 16; ++i) c[i] = static_cast<double>(m[i]);
   for (std::size_t r = 0; r < 4; ++r) {
+    c[r] *= s;
+    c[4 + r] *= s;
     c[12 + r] = (c[r] * ox) + (c[4 + r] * oy) + c[12 + r];
   }
   for (std::size_t col = 0; col < 4; ++col) {
@@ -190,9 +167,14 @@ Mat chunk_matrix(const view3d::Matrix4& m, double ox, double oy) {
     const double z = c[(col * 4) + 2];
     const double w = c[(col * 4) + 3];
     c[(col * 4) + 1] = -y;
-    c[(col * 4) + 2] = 0.5 * (w - z);
+    c[(col * 4) + 2] = 0.5 * (w + z);
   }
   return c;
+}
+
+/// DrawParams::xy_scale, or 1 when it is not a positive finite number.
+double xy_scale_of(const DrawParams& p) {
+  return std::isfinite(p.xy_scale) && p.xy_scale > 0.0F ? static_cast<double>(p.xy_scale) : 1.0;
 }
 
 /// The Vulkan depth of chunk-local (x, y, 0) under `c`.
@@ -357,13 +339,12 @@ struct VulkanMesh3dRenderer::Impl {
 
   // --- upload ---
 
-  GpuChunk upload_chunk(const view3d::Chunk& c, std::uint64_t print) {
+  GpuChunk upload_chunk(const view3d::Chunk& c) {
     GpuChunk g;
     g.id = c.id;
     g.version = c.version;
     g.area = c.area;
     g.counts = counts_of(c);
-    g.fingerprint = print;
     g.origin_x = c.origin_x;
     g.origin_y = c.origin_y;
     const auto pick_of = [&](PickKind kind) { return static_cast<std::uint32_t>(pick_local_index(c, kind, 0)); };
@@ -401,14 +382,13 @@ struct VulkanMesh3dRenderer::Impl {
       }
     }
     for (const view3d::Chunk& c : mesh.chunks) {
-      const std::uint64_t print = fingerprint(c);
       const auto it = previous.find(c.id);
       if (it != previous.end() && chunks[it->second].buffer.buffer != VK_NULL_HANDLE &&
-          same_chunk(chunks[it->second], c, print)) {
+          same_chunk(chunks[it->second], c)) {
         next.push_back(std::move(chunks[it->second]));
         chunks[it->second].buffer = vk::Buffer{};
       } else {
-        next.push_back(upload_chunk(c, print));
+        next.push_back(upload_chunk(c));
       }
     }
     for (GpuChunk& old : chunks) vk::destroy_buffer(device, old.buffer);
@@ -444,14 +424,16 @@ struct VulkanMesh3dRenderer::Impl {
     const view3d::Matrix4 m = view3d::matrix(view, f.width, f.height, p.projection);
     const std::uint32_t lighting = p.stack == nullptr || p.stack->magic_compat() ? 0U : 1U;
     const std::uint32_t highlight = p.highlight != nullptr && !p.highlight->empty() ? 1U : 0U;
+    const double scale = xy_scale_of(p);
     std::vector<double> depth(chunks.size());
     f.push.resize(chunks.size());
     for (std::size_t i = 0; i < chunks.size(); ++i) {
       const GpuChunk& c = chunks[i];
-      const Mat cm = chunk_matrix(m, c.origin_x, c.origin_y);
+      const Mat cm = chunk_matrix(m, c.origin_x, c.origin_y, scale);
       FramePush& push = f.push[i];
       for (std::size_t k = 0; k < 16; ++k) push.mvp[k] = static_cast<float>(cm[k]);
-      push.origin_sz = {static_cast<float>(c.origin_x), static_cast<float>(c.origin_y), view.scale_z, 0.0F};
+      push.origin_sz = {static_cast<float>(c.origin_x), static_cast<float>(c.origin_y), view.scale_z,
+                        static_cast<float>(scale)};
       push.params = {bases[i], lighting, highlight, 0U};
       const double cx = (static_cast<double>(c.area.x0) + static_cast<double>(c.area.x1)) / 2.0 - c.origin_x;
       const double cy = (static_cast<double>(c.area.y0) + static_cast<double>(c.area.y1)) / 2.0 - c.origin_y;

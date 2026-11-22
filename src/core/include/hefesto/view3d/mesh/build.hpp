@@ -79,8 +79,9 @@ struct BuildContext {
 
 /// `previous` with the chunks that meet `dirty` (grown by 1) rebuilt from
 /// `cell`, new chunks where paint appeared outside every chunk, and the
-/// chunks left empty dropped. Rebuilt and new chunks get version
-/// `previous.version + 1`, as does the model; the others keep theirs.
+/// chunks left empty dropped. Rebuilt and new chunks get one fresh version
+/// from the process-wide counter, as does the model (greater than every
+/// version given before); the others keep theirs.
 /// `previous` itself when no dirty rectangle meets its region.
 [[nodiscard]] std::optional<MeshModel> rebuild_chunks(const MeshModel& previous, const LayerStack& stack,
                                                       const db::CellDef& cell, std::span<const db::Rect> dirty,

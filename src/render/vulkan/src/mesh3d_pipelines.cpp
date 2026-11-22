@@ -228,7 +228,9 @@ VkPipelineColorBlendAttachmentState color_blend(const VariantState& s) {
 }
 
 /// The fixed-function state of one pipeline: depth test LESS_OR_EQUAL
-/// (Q-MISC-77), counter-clockwise front faces with back faces culled.
+/// (Q-MISC-77), back faces culled. The depth is mirrored so the viewer sits
+/// on the side of the higher layers (R1, Q-MISC-81), which reverses the
+/// screen winding of the faces it sees: they are the clockwise ones.
 struct FixedState {
   VertexInput input;
   VkPipelineVertexInputStateCreateInfo vertex_input{};
@@ -256,7 +258,7 @@ struct FixedState {
     raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.cullMode = VK_CULL_MODE_BACK_BIT;
-    raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    raster.frontFace = VK_FRONT_FACE_CLOCKWISE;  // R1: the faces toward the higher layers' side
     raster.lineWidth = 1.0F;
     multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample.rasterizationSamples = s.msaa ? kMsaaSamples : VK_SAMPLE_COUNT_1_BIT;

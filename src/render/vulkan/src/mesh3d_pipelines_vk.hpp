@@ -60,7 +60,7 @@ struct GpuLayer {
 /// The push constants of every draw (vertex stage).
 struct FramePush {
   std::array<float, 16> mvp;
-  std::array<float, 4> origin_sz;      // chunk origin x, y; s_z; 0
+  std::array<float, 4> origin_sz;      // chunk origin x, y; s_z; xy scale (DrawParams::xy_scale)
   std::array<std::uint32_t, 4> params;  // pick base; lighting; highlight active; 0
 };
 static_assert(sizeof(FramePush) == 96);
