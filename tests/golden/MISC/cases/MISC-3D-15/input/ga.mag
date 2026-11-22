@@ -1,0 +1,10 @@
+magic
+tech g3d
+timestamp 0
+<< metal1 >>
+rect 0 0 40 20
+rect 40 0 50 5
+rect 40 15 50 20
+<< m2contact >>
+rect 40 5 50 15
+<< end >>

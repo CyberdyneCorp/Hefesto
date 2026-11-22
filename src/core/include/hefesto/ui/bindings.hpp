@@ -56,6 +56,14 @@ void install_defaults(editor::EditorState& editor);
 /// needs tools or macros in a session that did not install them).
 void ensure_defaults(editor::EditorState& editor);
 
+/// The startup bindings of the `wind3d` table (proto.magicrc's 3D keys),
+/// which install_defaults() leaves out: the golden reference is a Magic
+/// without 3D support, whose startup defines no `wind3d` table (`macro
+/// layout list`, UI-G-049). view3d::open_wind3d installs them when a 3D
+/// window opens; a key the table already binds (a user's `macro wind3d`)
+/// keeps its binding.
+void install_wind3d_bindings(editor::EditorState& editor);
+
 /// Replaces every `%W` in a macro text with the window's name (Tk's window
 /// path substitution in the tools.tcl bindings).
 [[nodiscard]] std::string substitute_window(std::string_view text, std::string_view window);

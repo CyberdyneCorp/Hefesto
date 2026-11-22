@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3429 scenarios, 950 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3436 scenarios, 952 open questions.
 
 ## Hefesto product (native)
 
@@ -307,7 +307,7 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [40](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [42](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -315,7 +315,7 @@ Open questions: [40](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
 | [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
 | [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
-| [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 19 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
+| [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 26 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 

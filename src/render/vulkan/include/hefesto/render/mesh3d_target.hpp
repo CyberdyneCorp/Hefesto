@@ -79,6 +79,10 @@ class VulkanOffscreenTarget final : public OffscreenTarget {
   /// Reads the color, depth and pick images of the shown buffer; empty
   /// before the first frame.
   [[nodiscard]] TargetReadback read_back();
+  /// The pick id at pixel (x, y) of the shown buffer, x from the left and y
+  /// from the top (one pixel read back); 0 (view3d::kNoPick) outside it or
+  /// before the first frame.
+  [[nodiscard]] std::uint32_t read_pick(int x, int y);
 
   /// The Vulkan side, for the renderer in this library (mesh3d_target_vk.hpp).
   struct Impl;

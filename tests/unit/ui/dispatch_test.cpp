@@ -46,7 +46,7 @@ TEST_CASE("built-in clients and user-typed client names", "[cap:ui-command-dispa
   CHECK(clients[0].name == "*window");
   CHECK(clients[0].hidden);
   CHECK(clients[3].optional_module);
-  CHECK_FALSE(ui::client_available(clients[4]));
+  CHECK(ui::client_available(clients[4]));  // wind3d arrived in M10 (view-3d)
   CHECK(ui::client_available(clients[2]));
 
   // "Client prefix": `col` names the color client (case-sensitive prefix).

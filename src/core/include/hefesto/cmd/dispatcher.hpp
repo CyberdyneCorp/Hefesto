@@ -105,6 +105,13 @@ class Dispatcher {
   void set_client(std::string client) { client_ = std::move(client); }
   [[nodiscard]] const std::string& client() const noexcept { return client_; }
 
+  /// Whether commands also look in the global (`*window`) table (on by
+  /// default). The 3D window takes only its own client's commands (Magic's
+  /// W3Dcreate clears WIND_COMMANDS), so the binding turns it off, with
+  /// set_client("wind3d"), while it runs a command sent to that window.
+  void set_window_commands(bool on) noexcept { window_commands_ = on; }
+  [[nodiscard]] bool window_commands() const noexcept { return window_commands_; }
+
   /// Q-UI-43: a script command with no point set by `setpoint` gets the
   /// point at screen (x, y) of the window under it (the topmost, color or
   /// layout), as Magic's Tcl dispatcher gives every command
@@ -163,6 +170,7 @@ class Dispatcher {
   editor::EditorState* editor_ = nullptr;
   std::string client_{kLayoutClient};
   bool typed_abbreviations_ = true;
+  bool window_commands_ = true;
   std::optional<db::Point> default_point_;
   bool chrome_point_ = false;  // the default point is on a window's chrome
   std::vector<CommandObserver*> observers_;

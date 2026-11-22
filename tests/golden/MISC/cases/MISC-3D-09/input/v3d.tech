@@ -1,0 +1,65 @@
+tech
+    format 35
+    v3d
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly
+    metal1  metal1,m1
+    metal2  metal2,m2
+end
+
+styles
+    styletype mos
+    poly 1
+    metal1 20
+    metal2 21
+end
+
+contact
+end
+
+compose
+end
+
+connect
+    poly    poly
+    metal1  metal1
+    metal2  metal2
+end
+
+cifoutput
+style gdsii
+    scalefactor 30 nanometers
+    layer POLY poly
+        calma 66 20
+    layer MET1 m1
+        calma 68 20
+    layer MET2 m2
+        calma 69 20
+    render MET1 metal1 1.376 0.36
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style default
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder active 0
+    planeorder metal1 1
+    planeorder metal2 2
+    height poly 0.2 0.1
+    height metal1 0.5 0.3
+end

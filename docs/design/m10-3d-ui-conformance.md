@@ -16,17 +16,20 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 ## How this was checked
 
-Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` still answers `UI-CLIENT-002` until WIND3D lands (task 8.1).
+Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` opens the 3D window since WIND3D (tasks 8.1-8.4).
 
 ## Board review (DESIGN, task 7.1)
 
+Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION).
+
 | Item | Board change | Status |
 |---|---|---|
-| Parity controls: `level`, mask/layout mode toggle | to be drawn | todo |
-| J1 option "Span connected layers" (the "Show contacts and vias" area) | to be drawn | todo |
-| Perspective toggle | to be drawn | todo |
-| P2/P3 parts disabled with their phase | to be drawn | todo |
-| "Open in separate window" tab menu item | to be drawn | todo |
+| Parity controls: `level`, mask/layout mode toggle | A view toolbar along the bottom of the 3D view: the segmented "Mask layers / Layout layers" (`cif`), a Level stepper (`level up` / `level down`, value shown), the Cut box toggle (`cutbox box` / `cutbox none`, the wrapper's checkbutton, D9) and a mesh status ("Mesh ready · n rectangles"; progress while building, D6). A note states that mask-layer mode draws a placeholder with "Mask layers arrive in phase 2" in P1 while `view`, `scroll` and `zoom` keep Magic's values (D1). | done |
+| J1 option "Span connected layers" (the "Show contacts and vias" area) | "Show contacts and vias" became "Span connected layers", off by default, with its help text: off, contacts and vias use their tech height and thickness as in Magic; on, each spans from the lower layer's top to the upper layer's bottom (`hefesto-3d-visualization` "Mesh generation from layout"). It moved to an "Inspect" group with "Isolate selected net" (both P1). | done |
+| Perspective toggle | An "Orthographic / Perspective" segmented control above the camera presets (design D7; orthographic is Magic's projection and the default). | done |
+| P2/P3 parts disabled with their phase | Cross-section and Export glTF… in the top bar, and the A–A′ section panel, are disabled with a "P2" chip and a tooltip; the Overlay dropdown is disabled with "P3" and the note "after M7 extraction", where the legend will show. The 3D view no longer shows simulation data: the rails are drawn in metal1's display color, and the callout shows a pick ("metal1 · VPWR, picked · selected in 2D", D10) instead of a current-density value. | done |
+| "Open in separate window" tab menu item | The 3D tab has a menu caret; the open menu shows "Open in separate window" and "Close 3D view" (`closewindow`). The header subtitle says the tab was opened by `render3d`. | done |
+| Layer row controls | The hovered metal1 row shows hide (`see no`), isolate and transparency buttons with labels (D10, task 9.2); the board had none. | done |
 
 ## Renderer spike (RENDER3D, task 5.1)
 
@@ -90,4 +93,15 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 
 ## Performance (PERF, section 13)
 
-No numbers yet. PERF records the frame rate at 1M rectangles on the M3 Pro (≥ 30 fps, the P1 exit gate) and the other D6 numbers here.
+PERF records the frame rate at 1M rectangles on the M3 Pro (≥ 30 fps, the P1 exit gate, task 13.2) and the other D6 numbers here.
+
+Mesh build (task 13.1, `bench/view3d/`, layout-layer mode, no cut box), measured 2026-11-21 on the M-series development Mac, Release build:
+
+| Workload | Rectangles | Sides | Median build | Model (CPU) | GPU estimate | Peak RSS | D6 |
+|---|---|---|---|---|---|---|---|
+| synthetic (87 × 86 array of a 134-rectangle unit, 4 layers) | 1,004,944 | 3,760,676 | 1.12 s (runs 0.94–1.62 s) | 155.5 B/rect | 94.8 B/rect | 357 MiB | build met (≤ 1.5 s); CPU memory missed (64 B/rect); GPU met (≤ 96 B/rect) |
+| synthetic, CI (ubuntu-24.04, perf run 44969020740) | 1,004,944 | 3,760,676 | 1.13 s (runs 1.10–1.21 s) | 155.5 B/rect | 94.8 B/rect | 390 MiB | build met; CPU memory missed; GPU met |
+| array (100 × 100 sky130 dfxtp_1, 349 layers), CI | 8,827,796 | 30,701,344 | 24.0 s (runs 24.0–25.1 s) | 149.0 B/rect | 89.6 B/rect | 2.9 GiB | about 2.7 µs per rectangle against 1.1 µs for synthetic: the 349 (type, style) layers cost per-layer passes; CPU memory missed |
+| block (446 sky130_fd_sc_hd cells, 349 layers), CI | 289,535 | 1,015,220 | 0.167 s (runs 0.153–0.187 s) | 172.9 B/rect | 90.1 B/rect | 171 MiB | CPU memory missed |
+
+Gates (`bench/view3d/gates.json`, checked by `view3d_gate.py` in the `perf.yml` `view3d-bench` job), set from the first CI run (M10 round 2): synthetic median build ≤ 1.75 s and model ≤ 170 B/rect; array ≤ 36 s and ≤ 170 B/rect; block ≤ 0.5 s and ≤ 190 B/rect (block's 172.9 B/rect is above the synthetic gate). The memory gate is looser than D6's 64 B/rect while that target is missed (open item for MESH: about 3.7 side instances per rectangle at 28 bytes each, since `SideInstance` carries its own height and thickness, plus the vectors' growth slack; a 20-byte side and `shrink_to_fit` after the build would bring it to about 95 B/rect). Frame time is still recorded as not measured: `Mesh3dRenderer` landed in round 2 (task 5.3) but the benchmark does not draw yet (task 13.2); llvmpipe frame times would be information only (D17).

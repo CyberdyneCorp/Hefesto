@@ -1,0 +1,75 @@
+tech
+    format 35
+    g3d
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal1  m2contact,m2c
+end
+
+contact
+    m2c metal1 metal2
+end
+
+styles
+    styletype mos
+    poly 1
+    ndiff 2
+    metal1 20
+    metal2 21
+    m2c 20 21 32
+end
+
+compose
+end
+
+connect
+    poly    poly
+    ndiff   ndiff
+    metal1,m2c  metal1,m2c
+    metal2,m2c  metal2,m2c
+end
+
+cifoutput
+style gdsii
+    scalefactor 10
+    layer POLY poly
+        calma 66 20
+    layer DIFF ndiff
+        calma 65 20
+    layer MET1 m1,m2c
+        calma 68 20
+    layer MET2 m2,m2c
+        calma 69 20
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style default
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder active 0
+    planeorder metal1 1
+    planeorder metal2 2
+    height poly 0.2 0.1
+    height ndiff 0.1 0.15
+    height metal1 0.5 0.3
+    height metal2 1.0 0.3
+    height m2c 0.5 0.8
+end

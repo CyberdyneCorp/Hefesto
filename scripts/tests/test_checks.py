@@ -35,6 +35,7 @@ headers = load("check_license_headers")
 includes = load("check_core_includes")
 golden = load("compare_golden_outputs")
 notices = load("check_third_party_notices")
+readiness = load("check_milestone_readiness")
 
 
 def write(root: Path, relative: str, text: str) -> Path:
@@ -379,6 +380,36 @@ FetchContent_Declare(hefesto_tcl
   SOURCE_SUBDIR hefesto-sources-only)
 """
 TCL_SHA = "91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5"
+
+
+class MilestoneReadinessTest(unittest.TestCase):
+    QUESTIONS = """# Area
+
+### Q-AREA-1: decided
+- Status: approved 2026-11-13
+- Resolution: fix. Approved 2026-11-13.
+
+### Q-AREA-2: recommended, not confirmed
+- Status: recommended 2026-11-21, pending user confirmation
+- Resolution: compat. Pending user confirmation.
+
+### Q-AREA-3: open
+- Status: open
+
+### Q-AREA-4: decided, amendment pending
+- Status: approved 2026-11-13; amendment recommended 2026-11-21, pending user confirmation
+- Resolution: fix. Approved 2026-11-13.
+- Proposed resolution: fix, amended.
+"""
+
+    def test_a_pending_status_is_not_resolved(self):
+        """Regression (PR #81 review): a pending recommendation with a Resolution line passed the gate."""
+        with tempfile.TemporaryDirectory() as tmp:
+            write(Path(tmp), "AREA.md", self.QUESTIONS)
+            with mock.patch.object(readiness, "QUESTIONS", Path(tmp)):
+                entries = readiness.load_entries()
+        self.assertEqual({qid: resolved for qid, (_, resolved) in entries.items()},
+                         {"Q-AREA-1": True, "Q-AREA-2": False, "Q-AREA-3": False, "Q-AREA-4": False})
 
 
 class ThirdPartyNoticesTest(unittest.TestCase):

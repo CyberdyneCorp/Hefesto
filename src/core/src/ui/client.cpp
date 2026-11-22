@@ -20,7 +20,7 @@ std::span<const ClientInfo> builtin_clients() noexcept {
       ClientInfo{ClientId::layout, "layout", false, false},
       ClientInfo{ClientId::color, "color", false, false},
       ClientInfo{ClientId::netlist, "netlist", false, true},
-      ClientInfo{ClientId::wind3d, "wind3d", false, true},
+      ClientInfo{ClientId::wind3d, "wind3d", false, false},  // M10 (view-3d)
   };
   return kClients;
 }

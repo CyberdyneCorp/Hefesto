@@ -113,8 +113,22 @@ TEST_CASE("a split tile renders as a triangle with a diagonal side face", "[cap:
           std::vector<Seg>{{0, 0, 0, 10, kLeft}, {0, 0, 10, 10, kDiag}, {0, 10, 10, 10, kLeft}});
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
   }
-  SECTION("cut by the cut box: the exact polygon, a closed cut face") {
+  SECTION("cut by the cut box, magic-compat ON: the exact polygon, the cut closed along the clipped bounding box") {
+    // Magic tests the clipped tile rectangle `r` (W3Dmain.c:360-378): the
+    // face at y = 5 spans r's width, and r's right edge on the cut box's
+    // gets a face where the triangle has no material (PR #81 review N2).
     const auto mesh = view3d::test::build(stack, root, Rect{-5, -5, 10, 5});
+    REQUIRE(mesh.has_value());
+    CHECK(view3d::test::face_area(*mesh, 0) == 12.5);
+    CHECK(view3d::test::sides_of(*mesh, 0) == std::vector<Seg>{{0, 0, 0, 5, kLeft},
+                                                               {0, 0, 5, 5, kDiag},
+                                                               {0, 5, 10, 5, kClip | kLeft},
+                                                               {10, 0, 10, 5, kClip}});
+  }
+  SECTION("cut by the cut box, magic-compat OFF: the exact polygon, a closed cut face") {
+    const view3d::LayerStack off{view3d::Mode::layout_layer,
+                                 {view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F)}, false, 0.01};
+    const auto mesh = view3d::test::build(off, root, Rect{-5, -5, 10, 5});
     REQUIRE(mesh.has_value());
     CHECK(view3d::test::face_area(*mesh, 0) == 12.5);
     CHECK(view3d::test::sides_of(*mesh, 0) ==
@@ -206,6 +220,95 @@ TEST_CASE("both triangles of a split tile use the left type's h and t, and its t
   }
 }
 
+// Q-MISC-79 (J3): a split tile whose left half is space.
+// magic-compat ON keeps Magic (the left type's h and t: flat, no side
+// faces); OFF draws each triangle with its own type's h, t and side faces.
+namespace {
+
+view3d::LayerStack split_stack(const view3d::test::MeshTech& t, bool magic_compat) {
+  std::vector<view3d::DrawHeight> heights(hefesto::tech::kMaxTileTypes);
+  heights[t.ndiff] = view3d::DrawHeight{0.3F, 0.25F};
+  heights[t.poly] = view3d::DrawHeight{0.1F, 0.2F};
+  heights[t.metal1] = view3d::DrawHeight{2.0F, 0.5F};
+  return view3d::LayerStack{{view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F),
+                             view3d::test::layer("ndiff", t.ndiff, 0.3F, 0.25F),
+                             view3d::test::layer("poly", t.poly, 0.1F, 0.2F)},
+                            std::move(heights), magic_compat, 0.01};
+}
+
+// A metal1 right triangle over space, and a poly right triangle over ndiff.
+void paint_splits(db::CellDef& root, const view3d::test::MeshTech& t) {
+  REQUIRE(db::paint_triangle(root, *t.tech, Rect{0, 0, 10, 10}, db::Diagonal::ne_sw, true, t.metal1).ok());
+  view3d::test::paint(root, t, Rect{20, 0, 30, 10}, t.ndiff);
+  REQUIRE(db::paint_triangle(root, *t.tech, Rect{20, 0, 30, 10}, db::Diagonal::ne_sw, true, t.poly).ok());
+  db::recompute_bbox(root);
+}
+
+std::vector<view3d::Triangle> layer_triangles(const view3d::MeshModel& m, view3d::LayerId layer) {
+  std::vector<view3d::Triangle> out;
+  for (const view3d::Chunk& c : m.chunks) {
+    for (const view3d::Triangle& tri : c.triangles) {
+      if (tri.layer == layer) {
+        out.push_back(tri);
+      }
+    }
+  }
+  return out;
+}
+
+}  // namespace
+
+TEST_CASE("J3 magic-compat ON: a right triangle over space is flat with no side faces",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  const auto t = view3d::test::build_tech();
+  db::CellDef root("root", t.tech->plane_count());
+  paint_splits(root, t);
+  const auto stack = split_stack(t, true);
+  const auto mesh = view3d::test::build(stack, root, Rect{-1, -1, 31, 11}, false);
+  REQUIRE(mesh.has_value());
+  const auto metal = layer_triangles(*mesh, 0);
+  REQUIRE_FALSE(metal.empty());
+  for (const view3d::Triangle& tri : metal) {
+    CHECK(tri.height == 0.0F);
+    CHECK(tri.thickness == 0.0F);
+  }
+  CHECK(view3d::test::sides_of(*mesh, 0).empty());
+  for (const view3d::Triangle& tri : layer_triangles(*mesh, 2)) {
+    CHECK(tri.height == 0.3F);  // ndiff, the left type
+    CHECK(tri.thickness == 0.25F);
+  }
+}
+
+TEST_CASE("J3 magic-compat OFF: each triangle takes its own type's height, thickness and side faces",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  const auto t = view3d::test::build_tech();
+  db::CellDef root("root", t.tech->plane_count());
+  paint_splits(root, t);
+  const auto stack = split_stack(t, false);
+  const auto mesh = view3d::test::build(stack, root, Rect{-1, -1, 31, 11}, false);
+  REQUIRE(mesh.has_value());
+  const auto metal = layer_triangles(*mesh, 0);
+  REQUIRE_FALSE(metal.empty());
+  for (const view3d::Triangle& tri : metal) {
+    CHECK(tri.height == 2.0F);
+    CHECK(tri.thickness == 0.5F);
+  }
+  for (const view3d::Triangle& tri : layer_triangles(*mesh, 2)) {
+    CHECK(tri.height == 0.1F);
+    CHECK(tri.thickness == 0.2F);
+  }
+  for (const view3d::LayerId l : {view3d::LayerId{0}, view3d::LayerId{2}}) {
+    INFO("layer " << l);
+    const auto sides = view3d::test::sides_of(*mesh, l);
+    REQUIRE_FALSE(sides.empty());
+    for (const Seg& s : sides) {
+      CHECK((s.flags & view3d::side_flag::own_height) == 0);
+    }
+    CHECK(view3d::test::open_edge(*mesh, l).empty());
+  }
+  CHECK(view3d::test::face_area(*mesh, 0) == 50.0);
+}
+
 TEST_CASE("split tiles of a transformed subcell keep their area and stay closed",
           "[cap:view-3d][req:Rendered geometry]") {
   const auto t = view3d::test::build_tech();
@@ -228,8 +331,12 @@ TEST_CASE("split tiles of a transformed subcell keep their area and stay closed"
     CHECK(view3d::test::face_area(*mesh, 0) == 8.0 * (100.0 + 80.0));
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
   }
-  SECTION("cut through every triangle") {
-    const auto mesh = view3d::test::build(stack, root, Rect{-100, -7, 900, 3});
+  SECTION("cut through every triangle (magic-compat OFF: closed on each triangle's own cut)") {
+    // With it ON the cut is closed along each clipped bounding box, as
+    // Magic does, which leaves edges open by design.
+    const view3d::LayerStack off{view3d::Mode::layout_layer,
+                                 {view3d::test::layer("metal1", t.metal1, 2.0F, 0.5F)}, false, 0.01};
+    const auto mesh = view3d::test::build(off, root, Rect{-100, -7, 900, 3});
     REQUIRE(mesh.has_value());
     CHECK(view3d::test::open_edge(*mesh, 0).empty());
     CHECK(view3d::test::triangles_of(*mesh, 0).size() >= 8);

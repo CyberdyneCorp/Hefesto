@@ -53,7 +53,7 @@ cmd::CommandResult scale_option(cmd::CommandContext& ctx, const cmd::Invocation&
 }
 
 // The SPICE netlist writer is an optional module that arrives with
-// extraction (M7): UI-CLIENT-002, as `netlist` and `wind3d` do.
+// extraction (M7): UI-CLIENT-002, as `netlist` does.
 cmd::CommandResult writer_unavailable() {
   return cmd::CommandResult::failure(diag::make(ui::codes::kModuleUnavailable,
                                                 "ext2spice: the SPICE netlist writer is not available yet (ext2spice, M7)"));
