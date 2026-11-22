@@ -70,7 +70,7 @@ std::string slot_item(const std::string& value, std::string_view instance_name) 
   if (colon == std::string_view::npos || value.find(':') == std::string::npos) return value;
   const std::string_view slot = instance_name.substr(colon + 1);
   if (!all_digits(slot) || slot.size() > 6) return value;
-  std::size_t k = static_cast<std::size_t>(std::stoul(std::string{slot}));
+  std::size_t k = std::stoul(std::string{slot});
   std::size_t begin = 0;
   while (k > 1 && begin != std::string::npos) {
     begin = value.find(':', begin);
@@ -149,7 +149,7 @@ class Resolver {
     if (!all_digits(ref)) return pin_named(ref);
     if (context_.symbol == nullptr || ref.size() > 9) return std::nullopt;
     const auto order = pin_order(*context_.symbol);
-    const auto n = static_cast<std::size_t>(std::stoul(std::string{ref}));
+    const std::size_t n = std::stoul(std::string{ref});
     if (n >= order.size()) return std::nullopt;
     return order[n];
   }

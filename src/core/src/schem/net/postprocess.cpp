@@ -146,10 +146,10 @@ std::string with_parametric_first_field(std::string_view line, const ParamValues
 /// A field of an element line after the notations are read.
 struct Field {
   bool marker = false;
-  std::string key;     // `<key>=` of a marker, with its `=`
-  std::string prefix;  // `#<p>#` prefix put before each item of the next field
+  std::string key{};     // `<key>=` of a marker, with its `=`
+  std::string prefix{};  // `#<p>#` prefix put before each item of the next field
   std::int64_t width = 1;
-  std::string text;  // a plain field
+  std::string text{};  // a plain field
 };
 
 /// `^-?[0-9]+$` as a width; saturated far above any useful width.

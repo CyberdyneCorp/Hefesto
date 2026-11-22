@@ -34,7 +34,7 @@ std::size_t count(const std::string& text, std::string_view needle) {
 std::size_t count_if_code(const std::vector<hefesto::diag::Diagnostic>& warnings, std::string_view code) {
   std::size_t n = 0;
   for (const auto& w : warnings) {
-    n += w.code == code ? 1 : 0;
+    n += w.code == code ? 1U : 0U;
   }
   return n;
 }

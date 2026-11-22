@@ -352,6 +352,7 @@
     "format",
     "if",
     "ngspice::get_current",
+    "ngspice::get_node",
     "ngspice::get_voltage",
     "return",
     "set",

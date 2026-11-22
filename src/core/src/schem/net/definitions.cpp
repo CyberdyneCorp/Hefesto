@@ -82,10 +82,10 @@ std::vector<std::string_view> words(std::string_view text) {
 /// its key, the `=` with the separators around it, and its raw value.
 struct Piece {
   bool attribute = false;
-  std::string_view text;  // separators
-  std::string_view key;
-  std::string_view equals;
-  std::string_view value;
+  std::string_view text{};  // separators
+  std::string_view key{};
+  std::string_view equals{};
+  std::string_view value{};
 };
 
 /// Splits a property string by the grammar of schematic-file-format
