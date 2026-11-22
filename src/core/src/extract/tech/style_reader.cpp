@@ -6,6 +6,9 @@
 // Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10); the
 // height subset (`lambda`, `units`, `planeorder`, `noplaneordering`,
 // `height`, finish_heights): TECH (openspec/changes/m10-3d-view/design.md D5).
+// The full read (Subset::all, load_styles) and the keyword handlers it
+// calls from the switch of apply() (rule_context.hpp): EXTTECH
+// (openspec/changes/m7-extraction/design.md D7).
 
 #include "style_reader.hpp"
 
@@ -15,6 +18,8 @@
 #include <cstdlib>
 #include <string>
 #include <utility>
+
+#include "rule_context.hpp"
 
 namespace hefesto::extract::detail {
 
@@ -26,6 +31,7 @@ constexpr std::string_view kBadHeight = "EXTRACT-STYLE-003";
 constexpr std::string_view kBadUnits = "EXTRACT-STYLE-004";
 constexpr std::string_view kBadPlaneOrder = "EXTRACT-STYLE-005";
 constexpr std::string_view kPlaneOrderFallback = "EXTRACT-STYLE-006";
+constexpr std::string_view kIllegalKeyword = "EXTRACT-STYLE-020";
 
 enum class Key : std::uint8_t {
   areacap, connect, contact, cscale, defaultareacap, defaultoverlap, defaultperimeter, defaultsideoverlap,
@@ -127,24 +133,6 @@ const T* lookup(const std::array<T, N>& table, std::string_view word) {
   return ambiguous ? nullptr : match;
 }
 
-bool str_is_numeric(const std::string& s) {
-  char* end = nullptr;
-  (void)std::strtod(s.c_str(), &end);
-  return end != s.c_str();
-}
-
-bool str_is_int(std::string_view s) noexcept {
-  if (!s.empty() && (s.front() == '-' || s.front() == '+')) {
-    s.remove_prefix(1);
-  }
-  for (const char c : s) {
-    if (c < '0' || c > '9') {
-      return false;
-    }
-  }
-  return true;
-}
-
 // The comma-separated elements of a `style ... variants` list, as
 // ExtTechLine walks them: an empty element ends the list.
 std::vector<std::string> variant_list(std::string_view list) {
@@ -178,22 +166,36 @@ std::vector<std::string> variants_line(std::string_view list) {
 
 enum class Status : std::uint8_t { not_loaded, pending, suspended, loaded };
 
-using Tokens = std::vector<std::string>;
-
 // ExtTechLine for one style.
 class StyleReader {
  public:
   StyleReader(const tech::Technology& tech, diag::DiagnosticSink& sink, const ReadOptions& options)
       : tech_(tech), sink_(sink), target_(options.style), report_(options.report),
-        dscale_(options.microns_per_lambda) {
+        dscale_(options.microns_per_lambda),
+        ctx_{tech_, style_, mentioned_, types1_, heights_.plane_order, seen_plane_order_,
+             [this](std::string_view code, std::string text, Print print) {
+               report(code, std::move(text), Subset::all, print);
+             }} {
     types_.active = all_but_space_and_drc();
     heights_.plane_order.assign(tech.plane_count(), kNoPlaneOrder);
+    init_style(style_, tech, options.magic_compat);
   }
+  StyleReader(const StyleReader&) = delete;
+  StyleReader& operator=(const StyleReader&) = delete;
 
   void line(const tech::RawLine& line);
   [[nodiscard]] std::optional<StyleTables> finish();
 
  private:
+  // EXTTECH's handler for the line, in the full read only.
+  template <typename Handler>
+  void rule(Handler handler, const Tokens& t) {
+    if (report_ == Subset::all) {
+      handler(ctx_, t);
+    }
+  }
+  void finish_style();
+
   // exts_planeOrderStatus.
   enum class Order : std::uint8_t { needed, seen, not_needed };
 
@@ -224,7 +226,8 @@ class StyleReader {
   [[nodiscard]] tech::TypeMask parse(std::string_view text, bool report);
   void mention(const Tokens& t, std::size_t index);
   void malformed(const Keyword& kw);
-  void report(std::string_view code, std::string text, Subset subset = Subset::types);
+  void report(std::string_view code, std::string text, Subset subset = Subset::types,
+              Print print = Print::tech_error);
 
   const tech::Technology& tech_;
   diag::DiagnosticSink& sink_;
@@ -241,6 +244,8 @@ class StyleReader {
   tech::TypeMask height_lines_;  // types a valid `height` line set
   StyleTypes types_;
   StyleHeights heights_;
+  ExtStyle style_;   // the full read's style
+  RuleContext ctx_;  // what the handlers see
 };
 
 tech::TypeMask StyleReader::all_but_space_and_drc() {
@@ -251,15 +256,21 @@ tech::TypeMask StyleReader::all_but_space_and_drc() {
   return mask;
 }
 
-void StyleReader::report(std::string_view code, std::string text, Subset subset) {
-  if (subset != report_) {
+// A view reports its own subset; the full read reports everything, a
+// TechError with Magic's file, line and section prefix.
+void StyleReader::report(std::string_view code, std::string text, Subset subset, Print print) {
+  if (subset != report_ && report_ != Subset::all) {
     return;
   }
   diag::Location where;
   if (where_ != nullptr && !where_->file.empty()) {
     where = diag::SourceLocation{where_->file, where_->line};
   }
-  sink_.emit(diag::make(code, std::move(text), where));
+  diag::Diagnostic d = diag::make(code, std::move(text), where);
+  if (report_ == Subset::all && print == Print::tech_error) {
+    d.related = diag::ObjectRef{diag::ObjectKind::section, "extract"};
+  }
+  sink_.emit(d);
 }
 
 void StyleReader::malformed(const Keyword& kw) {
@@ -270,7 +281,9 @@ void StyleReader::malformed(const Keyword& kw) {
 tech::TypeMask StyleReader::parse(std::string_view text, bool report_error) {
   auto parsed = tech_.parse_type_list(text);
   if (!parsed.ok()) {
-    if (report_error) {
+    if (report_error && report_ == Subset::all) {
+      report(parsed.error().code, parsed.error().text, Subset::all);
+    } else if (report_error) {
       sink_.emit(parsed.error());
     }
     return {};
@@ -292,11 +305,22 @@ void StyleReader::line(const tech::RawLine& raw) {
   }
   const Keyword* kw = lookup(kKeywords, t[0]);
   if (kw == nullptr) {
-    return;  // "Illegal keyword": printed when the technology loads
+    // Reported for every line of the section, whatever its style, by the
+    // full read only (the technology load).
+    std::string text = "Illegal keyword.  Legal keywords are:\n\t";
+    for (const Keyword& k : kKeywords) {
+      text += " " + std::string{k.name};
+    }
+    report(kIllegalKeyword, std::move(text), Subset::all);
+    return;
   }
   const bool bad_count = t.size() < kw->min_args || (t.size() > kw->max_args && kw->key != Key::device);
   if (bad_count) {
-    return;  // "Malformed line": printed when the technology loads
+    report(kMalformed,
+           "Malformed line for keyword " + std::string{kw->name} + ".  Correct usage:\n\t" + std::string{kw->name} +
+               " " + std::string{kw->usage},
+           Subset::all);
+    return;
   }
   if (kw->key == Key::style) {
     style_line(t);
@@ -346,7 +370,8 @@ void StyleReader::wanted_style(const Tokens& t) {
 
 void StyleReader::style_line(const Tokens& t) {
   if (t.size() != 2 && (t.size() != 4 || t[2].compare(0, 7, "variant") != 0)) {
-    if (status_ == Status::pending) {
+    // Magic reports it for every style; the types subset for its own.
+    if (status_ == Status::pending || report_ == Subset::all) {
       malformed(*lookup(kKeywords, "style"));
     }
     return;
@@ -376,6 +401,9 @@ void StyleReader::variants(const Tokens& t) {
 // Whether this pass reports a bad first type list of `key`
 // (DBTechNoisyNameMask): each view reports the keywords of its subset.
 bool StyleReader::noisy(Key key) const noexcept {
+  if (report_ == Subset::all) {
+    return true;  // ExtTechLine's DBTechNoisyNameMask
+  }
   if (key == Key::height) {
     return report_ == Subset::heights;
   }
@@ -475,15 +503,80 @@ void StyleReader::apply(const Keyword& kw, const Tokens& t) {
       break;
     case Key::fet:
       types_.gate |= types1_;
+      rule(fet_rule, t);
       break;
     case Key::tiedown:
       types_.diff |= types1_;
+      rule(tiedown_rule, t);
       break;
     case Key::substrate:
       substrate(t);
+      rule(substrate_rule, t);
       break;
     case Key::resist:
       resist(t);
+      rule(resist_rule, t);
+      break;
+    case Key::contact:
+      rule(contact_rule, t);
+      break;
+    case Key::devresist:
+    case Key::fetresist:
+      rule(devresist_rule, t);
+      break;
+    case Key::areacap:
+      rule(areacap_rule, t);
+      break;
+    case Key::perimc:
+      rule(perimc_rule, t);
+      break;
+    case Key::overlap:
+      rule(overlap_rule, t);
+      break;
+    case Key::sidewall:
+      rule(sidewall_rule, t);
+      break;
+    case Key::sideoverlap:
+      rule(sideoverlap_rule, t);
+      break;
+    case Key::defaultareacap:
+      rule(default_areacap_rule, t);
+      break;
+    case Key::defaultperimeter:
+      rule(default_perimeter_rule, t);
+      break;
+    case Key::defaultsidewall:
+      rule(default_sidewall_rule, t);
+      break;
+    case Key::defaultoverlap:
+      rule(default_overlap_rule, t);
+      break;
+    case Key::defaultsideoverlap:
+      rule(default_sideoverlap_rule, t);
+      break;
+    case Key::antenna:
+      rule(antenna_rule, t);
+      break;
+    case Key::model:
+      rule(model_rule, t);
+      break;
+    case Key::connect:
+      rule([](RuleContext& c, const Tokens& w) { connect_rule(c, w, true); }, t);
+      break;
+    case Key::disconnect:
+      rule([](RuleContext& c, const Tokens& w) { connect_rule(c, w, false); }, t);
+      break;
+    case Key::cscale:
+      rule(cscale_rule, t);
+      break;
+    case Key::rscale:
+      rule(rscale_rule, t);
+      break;
+    case Key::step:
+      rule([](RuleContext& c, const Tokens& w) { (void)step_rule(c, w); }, t);
+      break;
+    case Key::sidehalo:
+      rule(sidehalo_rule, t);
       break;
     case Key::planeorder:
       plane_order(t);
@@ -617,7 +710,7 @@ void StyleReader::check_plane_order() {
     heights_.plane_order[p] = static_cast<std::int32_t>(p - first);
     text += " " + std::string{tech_.plane_name(static_cast<tech::PlaneId>(p))} + "=" + std::to_string(p - first) + ",";
   }
-  report(kPlaneOrderFallback, std::move(text), Subset::heights);
+  report(kPlaneOrderFallback, std::move(text), Subset::heights, Print::plain);  // TxError
 }
 
 // A type's values come from its `height` line only when that line left
@@ -693,6 +786,7 @@ void StyleReader::device(const Tokens& t) {
   if (dc->dev == Dev::mosfet || dc->dev == Dev::msubckt) {
     types_.gate |= types1_;
   }
+  rule([dc](RuleContext& c, const Tokens& w) { device_rule(c, w, dc->name); }, t);
 }
 
 // A `k=name` parameter argument: an `=` not preceded by `<` or `>`.
@@ -832,7 +926,25 @@ std::optional<StyleTables> StyleReader::finish() {
   }
   types_.gate &= real;
   finish_heights();
-  return StyleTables{std::move(types_), std::move(heights_)};
+  if (report_ == Subset::all) {
+    finish_style();
+  }
+  return StyleTables{std::move(types_), std::move(heights_), std::move(style_), mentioned_};
+}
+
+// The full read's style: M10's plane and height tables, then the parse
+// half of extTechFinalStyle (finalize.cpp). Heights stay in the style's
+// units (the full read runs with dscale 1); micron_convert() converts.
+void StyleReader::finish_style() {
+  style_.name = types_.style;
+  style_.units_microns = heights_.units_microns;
+  style_.units_per_lambda = heights_.units_per_lambda;
+  style_.plane_ordering = heights_.plane_ordering;
+  style_.plane_order = heights_.plane_order;
+  for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
+    style_.heights[t] = TypeHeightThickness{heights_.heights[t].height, heights_.heights[t].thickness};
+  }
+  finalize_style(style_, tech_);
 }
 
 }  // namespace
