@@ -107,6 +107,13 @@ class Flattener {
   void mark_nodevices(std::uint32_t def) { nodevices_[def] = 1; }
   [[nodiscard]] bool nodevices(std::uint32_t def) const { return nodevices_[def] != 0; }
   [[nodiscard]] bool failed() const { return ctx_.fatal.has_value(); }
+  // Each traversal of the hierarchy counts its instances and expanded
+  // connections against the limits afresh: the limits bound one
+  // flattening of the design, not the number of visits made over it.
+  void begin_pass() {
+    instances_ = 0;
+    connections_ = 0;
+  }
 
  private:
   template <typename F>
@@ -929,6 +936,7 @@ std::vector<FlatNode> flatten_nodes(ReadState& st, std::uint32_t root) {
   const HierContext top{root, {}, Transform{}};
   f.stdcell_nodes(top, 0);
   if (!ctx.fatal) {
+    f.begin_pass();
     f.flat_kills(top, 0);
   }
   if (!ctx.fatal) {
@@ -954,20 +962,25 @@ Netlist flatten_full(FlatContext& ctx, std::uint32_t root, const FlatPlan& plan)
     f.full_nodes(top, 0, kDoWarn | (has(plan.flags, FlatFlags::warn_abstract) ? kNoAbstract : 0U));
   }
   if (!f.failed()) {
+    f.begin_pass();
     f.flat_kills(top, 0);
   }
   if (!f.failed() && !has(plan.flags, FlatFlags::no_name_merge)) {
     f.flat_glob();
   }
   if (!f.failed() && has(plan.flags, FlatFlags::flat_caps)) {
+    f.begin_pass();
     f.flat_caps(top, 0, false);
   }
   std::vector<FlatNode> nodes = f.visit_nodes(false);
   std::vector<FlatDevice> devices;
   std::vector<FlatResist> resists;
   std::vector<FlatSubcircuit> subcircuits;
+  f.begin_pass();
   f.visit_devices(top, 0, devices);
+  f.begin_pass();
   f.visit_resists(top, 0, resists);
+  f.begin_pass();
   f.visit_subcircuits(top, subcircuits);
   if (f.failed()) {
     return Netlist{};
@@ -985,6 +998,7 @@ Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& pl
   std::int64_t usecount = use_count(def);
   if (!f.failed() && usecount > 0) {
     // efHierSrUses over the root's uses: the root itself is never absorbed.
+    f.begin_pass();
     f.deviceless_uses(top, usecount);
   }
   if (usecount == 0 && def.devices.empty()) {
@@ -992,12 +1006,14 @@ Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& pl
   }
   nodevices = f.nodevices(def_id);
   if (!f.failed()) {
+    f.begin_pass();
     f.flat_kills(top, 0);
   }
   if (!f.failed() && !has(plan.flags, FlatFlags::no_name_merge)) {
     f.flat_glob();
   }
   if (!f.failed() && has(plan.flags, FlatFlags::flat_caps)) {
+    f.begin_pass();
     f.flat_caps(top, 0, true);
   }
   std::vector<FlatNode> nodes = f.visit_nodes(true);

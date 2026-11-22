@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <string>
@@ -581,6 +582,21 @@ TEST_CASE("a step that is not positive is reported", "[cap:extract-tech-section]
   }
 }
 
+// Regression (Q-EXTRACT-30, fixed in both modes): `(int)(0.5 + v * 1000)`
+// of a huge or NaN step, halo, limit or offset was undefined behaviour.
+TEST_CASE("a huge or NaN step and halo saturate instead of overflowing",
+          "[cap:extract-tech-section][req:Step size and side halo parsing]") {
+  constexpr std::int32_t kMax = std::numeric_limits<std::int32_t>::max();
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    const extract::ExtStyle big = parsed(load(" style s\n" + kOrdered + " sidehalo 1e10\n step 1e20\n", on));
+    CHECK(big.side_halo == kMax);
+    CHECK(big.step_size == kMax);
+    const extract::ExtStyle nan = parsed(load(" style s\n" + kOrdered + " sidehalo nan\n", on));
+    CHECK(nan.side_halo == 0);
+  }
+}
+
 // --- Plane ordering (the full read's part) ------------------------------------
 
 TEST_CASE("the default* shorthands need a planeorder line first",
@@ -789,4 +805,26 @@ TEST_CASE("Old format: fringe halo off; format 34 and later: on, for every style
   const Loaded v34 = load_full(load_tech(tech_text(body, "", " format 34\n")));
   CHECK(parsed(v34).fringe_model == extract::FringeModel::fringe_halo);
   CHECK(v34.table.select("b")->fringe_model == extract::FringeModel::fringe_halo);
+}
+
+// Regression (Q-EXTRACT-30, fixed in both modes): a limit or offset past
+// the int range, and `ival + 1` / `ival - 1` of a saturated limit, were
+// undefined behaviour.
+TEST_CASE("huge or NaN device limits and offsets saturate",
+          "[cap:extract-tech-section][req:Device declaration parsing]") {
+  constexpr double kMax = std::numeric_limits<std::int32_t>::max();
+  constexpr double kMin = std::numeric_limits<std::int32_t>::min();
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    const std::string body = " style s\n" + kOrdered +
+                             " device msubcircuit n nfet ndiff pwell VSUBS l>1e10 w<-1e10 a<=nan l=l+1e10 w=w-1e10 a=a\n";
+    const Loaded l = load(body, on);
+    const extract::DevicePattern& d = only_record(parsed(l), type_of(*l.tech, "nfet"));
+    REQUIRE(d.params.size() == 3);
+    CHECK(d.params[0].minimum == kMax);
+    CHECK(d.params[0].offset == kMax);
+    CHECK(d.params[1].maximum == kMin);
+    CHECK(d.params[1].offset == kMin);
+    CHECK(d.params[2].maximum == 0);
+  }
 }

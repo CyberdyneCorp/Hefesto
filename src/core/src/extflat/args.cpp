@@ -10,8 +10,10 @@
 
 #include <algorithm>
 #include <climits>
+#include <string>
 #include <utility>
 
+#include "hefesto/platform/file_system.hpp"
 #include "state.hpp"
 #include "text.hpp"
 
@@ -58,7 +60,8 @@ diag::Diagnostic usage_error(std::string_view why) {
 // The parse of one run.
 class ArgParser {
  public:
-  ArgParser(std::span<const std::string> args, const ExtraFlags& extra) : args_(args), extra_(extra) {}
+  ArgParser(std::span<const std::string> args, const ExtraFlags& extra, const ArgOptions& options)
+      : args_(args), extra_(extra), options_(options) {}
 
   diag::Outcome<CommonArgs> parse();
 
@@ -68,13 +71,17 @@ class ArgParser {
   bool flag(char c);
   void store(char c, std::string v);
   bool extra_flag();
+  bool help();
+  [[nodiscard]] bool takes_value(char c) const;
   void add_symbol_arg(const std::string& text);
+  void add_symbol_file(const std::string& name);
+  void warn(std::string text);
 
   std::span<const std::string> args_;
   const ExtraFlags& extra_;
+  const ArgOptions& options_;
   std::size_t i_ = 0;
   CommonArgs out_;
-  std::map<std::string, std::int32_t, std::less<>> symbols_;
   std::optional<diag::Diagnostic> error_;
 };
 
@@ -98,12 +105,36 @@ std::optional<std::string> ArgParser::value(std::string_view what) {
   return std::nullopt;
 }
 
+void ArgParser::warn(std::string text) {
+  out_.messages.push_back(diag::make(detail::codes::kArgumentWarning, std::move(text)));
+}
+
+// efSymAdd.
 void ArgParser::add_symbol_arg(const std::string& text) {
-  if (const auto rejected = add_symbol(symbols_, text)) {
-    out_.messages.push_back(diag::make(detail::codes::kArgumentWarning, *rejected));
+  if (const auto rejected = add_symbol(out_.symbols, text)) {
+    warn(*rejected);
+  }
+}
+
+// efSymAddFile: each line as a `-s` argument, a rejected one followed by
+// its line number. A file that cannot be opened is reported (perror) and
+// the parse goes on.
+void ArgParser::add_symbol_file(const std::string& name) {
+  out_.symbol_file = name;
+  const auto text = options_.read_file ? options_.read_file(name) : std::nullopt;
+  if (!text) {
+    warn(name + ": No such file or directory");
     return;
   }
-  out_.symbols.push_back(text);
+  std::size_t start = 0;
+  for (int line = 1; start < text->size(); ++line) {
+    const std::size_t end = std::min(text->find('\n', start), text->size());
+    if (const auto rejected = add_symbol(out_.symbols, std::string_view{*text}.substr(start, end - start))) {
+      warn(*rejected);
+      warn("Error at line " + std::to_string(line) + " of " + name);
+    }
+    start = end + 1;
+  }
 }
 
 bool ArgParser::extra_flag() {
@@ -118,6 +149,16 @@ bool ArgParser::extra_flag() {
   }
   i_ = *next - 1;
   return true;
+}
+
+// `-h`: the tool's flag parser sees it first (its usage text or its
+// "Unrecognized flag"), then EFArgs' usage text ends the parse.
+bool ArgParser::help() {
+  if (extra_) {
+    (void)extra_(args_, i_);
+  }
+  error_ = usage_error("");
+  return false;
 }
 
 // The ArgStr description of a flag that takes a value; null for the others.
@@ -137,6 +178,16 @@ const char* value_kind(char c) noexcept {
   }
 }
 
+bool ArgParser::takes_value(char c) const {
+  if (c == 'o') {
+    return options_.output;
+  }
+  if (c == 'T') {
+    return options_.tech;
+  }
+  return value_kind(c) != nullptr;
+}
+
 // The value of a flag that takes one.
 void ArgParser::store(char c, std::string v) {
   switch (c) {
@@ -145,7 +196,7 @@ void ArgParser::store(char c, std::string v) {
     case 'r': out_.resist_threshold = detail::c_atoi(v); break;
     case 's': add_symbol_arg(v); break;
     case 't': out_.trim_chars += v; break;
-    case 'S': out_.symbol_file = std::move(v); break;
+    case 'S': add_symbol_file(v); break;
     case 'T': out_.tech = std::move(v); break;
     case 'o': out_.output = std::move(v); break;
     default: break;  // -n, -N
@@ -165,19 +216,27 @@ bool ArgParser::flag(char c) {
       return true;
     case 'v': out_.verbose = true; return true;
     case 'z': return true;
-    case 'h':
-      error_ = usage_error("");
-      return false;
+    case 'h': return help();
     default: break;
   }
-  const char* kind = value_kind(c);
-  if (kind == nullptr) {
+  if (!takes_value(c)) {
     return extra_flag();
   }
-  if (auto v = value(kind)) {
+  if (auto v = value(value_kind(c))) {
     store(c, std::move(*v));
   }
   return !error_;
+}
+
+// A trailing `.ext` is removed from the root cell's name.
+void strip_ext_suffix(std::optional<std::string>& cell) {
+  if (!cell || cell->size() < 4) {
+    return;
+  }
+  const std::size_t dot = cell->rfind('.');
+  if (dot != std::string::npos && cell->compare(dot, std::string::npos, ".ext") == 0) {
+    cell->resize(dot);
+  }
 }
 
 diag::Outcome<CommonArgs> ArgParser::parse() {
@@ -185,8 +244,7 @@ diag::Outcome<CommonArgs> ArgParser::parse() {
     const std::string& word = args_[i_];
     if (word.empty() || word[0] != '-') {
       if (out_.cell) {
-        out_.messages.push_back(diag::make(detail::codes::kArgumentWarning,
-                                           "Warning: multiple input files specified; ignoring \"" + *out_.cell + "\""));
+        warn("Warning: multiple input files specified; ignoring \"" + *out_.cell + "\"");
       }
       out_.cell = word;
       continue;
@@ -195,27 +253,29 @@ diag::Outcome<CommonArgs> ArgParser::parse() {
       return *error_;
     }
   }
-  if (out_.cell && out_.cell->size() >= 4) {
-    const std::size_t dot = out_.cell->rfind('.');
-    if (dot != std::string::npos && out_.cell->compare(dot, std::string::npos, ".ext") == 0) {
-      out_.cell->resize(dot);
-    }
-  }
+  strip_ext_suffix(out_.cell);
   return std::move(out_);
 }
 
 }  // namespace
 
-diag::Outcome<CommonArgs> parse_common_args(std::span<const std::string> args, const ExtraFlags& extra) {
-  return ArgParser{args, extra}.parse();
+diag::Outcome<CommonArgs> parse_common_args(std::span<const std::string> args, const ExtraFlags& extra,
+                                            const ArgOptions& options) {
+  return ArgParser{args, extra, options}.parse();
 }
 
 std::string_view common_args_usage() noexcept {
   return kUsage;
 }
 
-std::optional<std::string> add_symbol(std::map<std::string, std::int32_t, std::less<>>& symbols,
-                                      std::string_view assignment) {
+std::function<std::optional<std::string>(const std::string& path)> file_reader(platform::FileSystem& fs) {
+  return [&fs](const std::string& path) -> std::optional<std::string> {
+    auto text = fs.read(platform::Path{path});
+    return text.ok() ? std::optional<std::string>{std::move(text).value()} : std::nullopt;
+  };
+}
+
+std::optional<std::string> add_symbol(SymbolTable& symbols, std::string_view assignment) {
   const std::size_t eq = assignment.find('=');
   if (eq == std::string_view::npos) {
     return std::string{"Missing '=' in symbol assignment"};

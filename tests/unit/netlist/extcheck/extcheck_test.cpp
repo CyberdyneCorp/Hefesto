@@ -4,8 +4,7 @@
 // Tests of extcheck (netlist/extcheck/extcheck.hpp, counts.hpp; capability
 // netlist-extcheck; openspec/changes/m7-extraction/design.md D15). The
 // end-to-end runs read NL-CHK-01's inputs (tests/golden/NETLIST/cases/
-// NL-CHK-01/input) and need EXTFLAT's read and flattening (tasks.md 10.x);
-// they are skipped while those are scaffold stubs.
+// NL-CHK-01/input) through EXTFLAT's read and flattening.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -13,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include "hefesto/extflat/args.hpp"
 #include "hefesto/netlist/extcheck/counts.hpp"
 #include "hefesto/netlist/extcheck/extcheck.hpp"
 
@@ -51,19 +49,6 @@ std::string counts_of(const std::string& out) {
   const std::size_t memory = out.find("Memory used: ");
   REQUIRE(memory != std::string::npos);
   return out.substr(out.find('\n', memory) + 1);
-}
-
-bool common_args_available() {
-  const std::vector<std::string> args{"inv"};
-  return hefesto::extflat::parse_common_args(args, {}).ok();
-}
-
-// EXTFLAT's read of the case: true once the inputs read and flatten.
-bool reader_available() {
-  if (!common_args_available()) {
-    return false;
-  }
-  return run({"-p", case_input(), "top"}).exit == 0;
 }
 
 }  // namespace
@@ -111,9 +96,6 @@ TEST_CASE("extcheck skips couplings and resistors at an infinite threshold",
 }
 
 TEST_CASE("extcheck with no arguments prints the usage text", "[cap:netlist-extcheck][req:Invocation]") {
-  if (!common_args_available()) {
-    SKIP("extflat::parse_common_args is a scaffold stub until EXTFLAT lands it");
-  }
   const Result r = run({});
   CHECK(r.exit == 1);
   CHECK(r.out.empty());
@@ -127,9 +109,6 @@ TEST_CASE("extcheck with no arguments prints the usage text", "[cap:netlist-extc
 }
 
 TEST_CASE("extcheck reports a read failure with its program name", "[cap:netlist-extcheck][req:Invocation]") {
-  if (!common_args_available()) {
-    SKIP("extflat::parse_common_args is a scaffold stub until EXTFLAT lands it");
-  }
   const Result r = run({"-p", case_input(), "missing.ext"});
   CHECK(r.exit == 1);
   CHECK(r.err.starts_with("hefesto-extcheck: "));
@@ -138,9 +117,6 @@ TEST_CASE("extcheck reports a read failure with its program name", "[cap:netlist
 // Q-NETLIST-50 (fix, both modes): the inputs start with `scale 1000 1000 5`
 // and no technology is loaded; Magic's standalone program crashes there.
 TEST_CASE("extcheck reads a scale record without a technology", "[cap:netlist-extcheck][req:Invocation]") {
-  if (!reader_available()) {
-    SKIP("extflat's read and flattening are scaffold stubs until EXTFLAT lands them");
-  }
   const Result r = run({"-p", case_input(), "top.ext"});
   CHECK(r.exit == 0);
   CHECK(r.err.empty());
@@ -152,9 +128,6 @@ TEST_CASE("extcheck reads a scale record without a technology", "[cap:netlist-ex
 }
 
 TEST_CASE("extcheck thresholds from the command line", "[cap:netlist-extcheck][req:Counts and report format]") {
-  if (!reader_available()) {
-    SKIP("extflat's read and flattening are scaffold stubs until EXTFLAT lands them");
-  }
   CHECK(counts_of(run({"-p", case_input(), "-c", "0", "-r", "0", "top"}).out) ==
         "4 devices\n6 nodes (2 global, 4 local)\n6 nodes above capacitance threshold\n"
         "4 nodes above resistance threshold\n2 internodal capacitors (2 above threshold)\n"
@@ -163,4 +136,24 @@ TEST_CASE("extcheck thresholds from the command line", "[cap:netlist-extcheck][r
         "4 devices\n6 nodes (2 global, 4 local)\n0 nodes above capacitance threshold\n"
         "4 nodes above resistance threshold\n0 internodal capacitors (0 above threshold)\n"
         "2 explicit resistors (2 above threshold)\n");
+}
+
+// Magic's extcheck calls EFArgs with no flag parser of its own
+// (extcheck.c:76), so `-o` is a usage error; `-T` is a flag of the
+// standalone EFArgs.
+TEST_CASE("extcheck rejects -o and accepts -T", "[cap:netlist-extcheck][req:Invocation]") {
+  const Result o = run({"-o", "x", "-p", case_input(), "top"});
+  CHECK(o.exit == 1);
+  CHECK(o.out.empty());
+  CHECK(o.err == kUsage);
+  const Result t = run({"-T", "scmos", "-p", case_input(), "top"});
+  CHECK(t.exit == 0);
+}
+
+// efSymAddFile: a symbol file that cannot be opened is reported (perror)
+// and the run goes on.
+TEST_CASE("extcheck reports a missing -S symbol file and goes on", "[cap:netlist-extcheck][req:Invocation]") {
+  const Result r = run({"-S", "/nonexistent/syms", "-p", case_input(), "top"});
+  CHECK(r.exit == 0);
+  CHECK(r.err == "/nonexistent/syms: No such file or directory\n");
 }

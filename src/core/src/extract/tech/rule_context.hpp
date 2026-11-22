@@ -18,8 +18,10 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -89,6 +91,29 @@ struct RuleContext {
 [[nodiscard]] std::optional<double> scan_double(const std::string& s);
 /// sscanf("%d"): the value, nullopt when nothing converts.
 [[nodiscard]] std::optional<std::int32_t> scan_int(const std::string& s);
+
+/// Magic's `(int)v`, made total (Q-EXTRACT-30, fixed in both modes): the
+/// value truncated toward zero, saturated to the int range, NaN as 0.
+/// Magic's conversion of an out-of-range or NaN value is undefined.
+[[nodiscard]] inline std::int32_t saturate_int32(double v) noexcept {
+  constexpr double kMax = std::numeric_limits<std::int32_t>::max();
+  constexpr double kMin = std::numeric_limits<std::int32_t>::min();
+  if (std::isnan(v)) {
+    return 0;
+  }
+  if (v >= kMax) {
+    return std::numeric_limits<std::int32_t>::max();
+  }
+  if (v <= kMin) {
+    return std::numeric_limits<std::int32_t>::min();
+  }
+  return static_cast<std::int32_t>(v);
+}
+
+/// saturate_int32 of a rounded value (std::lround made total).
+[[nodiscard]] inline std::int32_t saturate_round(double v) noexcept {
+  return saturate_int32(std::round(v));
+}
 
 // The handlers, one per keyword group (wired in StyleReader::apply).
 void resist_rule(RuleContext& ctx, const Tokens& t);    // resist

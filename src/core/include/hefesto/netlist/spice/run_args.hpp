@@ -5,7 +5,8 @@
 // arguments and output file"): spcParseArgs, called by EFArgs
 // (extflat::parse_common_args) for each flag it does not know. Flags that
 // are Magic globals change the session settings and persist (`-M`, `-m`,
-// `-f`, `-B`, `-d`, `-J`); `-F` and `-o` apply to one run (Q-NETLIST-42,
+// `-f`, `-B`, `-d`, `-J`); `-F` applies to one run. `-o` is taken by
+// EFArgs into the run's CommonArgs (ArgOptions::output; Q-NETLIST-42,
 // fix).
 //
 // Owner: SPICE.
@@ -27,7 +28,6 @@ namespace hefesto::netlist::spice {
 struct RunArgs {
   SpiceSettings& settings;          // the session's settings
   RunFlags flags;                   // -F
-  std::optional<std::string> output;  // -o, this run only
   std::vector<WriteMessage> messages;  // the text spcParseArgs prints
 };
 

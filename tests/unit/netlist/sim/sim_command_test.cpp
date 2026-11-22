@@ -4,12 +4,13 @@
 // Tests of the `ext2sim` / `exttosim` command (netlist/sim/sim.hpp;
 // capability netlist-sim; openspec/changes/m7-extraction/design.md D15):
 // the option handlers, the first-word rule, help, and the run with a
-// hand-built source. The run parses its flags with
-// extflat::parse_common_args; until EXTFLAT lands it (tasks.md 10.x) the
-// run tests are skipped.
+// hand-built source or EXTFLAT's read and flattening of `.ext` files in
+// an in-memory file system. The run parses its flags with
+// extflat::parse_common_args.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <string>
 #include <vector>
@@ -108,17 +109,30 @@ struct Runner {
   }
 };
 
-bool common_args_available() {
-  const std::vector<std::string> args{"inv"};
-  return extflat::parse_common_args(args, {}).ok();
-}
+// The run of one `ext2sim <args>` through the default source: EXTFLAT's
+// read and flattening of the `.ext` files under /w of `files`.
+struct ExtRunner {
+  hefesto::editor::EditorState editor;
+  platform::MemoryFileSystem files;
+  std::vector<std::string> messages;
 
-#define REQUIRE_COMMON_ARGS()                                                          \
-  do {                                                                                 \
-    if (!common_args_available()) {                                                    \
-      SKIP("extflat::parse_common_args is a scaffold stub until EXTFLAT lands it");    \
-    }                                                                                  \
-  } while (false)
+  void ext(const std::string& cell, std::string_view text) {
+    REQUIRE(files.write_atomic(platform::Path{"/w/" + cell + ".ext"}, text).ok());
+  }
+
+  cmd::CommandResult operator()(const std::vector<std::string>& args) {
+    sim::SimRun request;
+    request.args = {"-p", "/w"};
+    request.args.insert(request.args.end(), args.begin(), args.end());
+    request.files = &files;
+    request.emit = [this](diag::Diagnostic d) { messages.push_back(d.text); };
+    return sim::run(editor, request);
+  }
+
+  [[nodiscard]] bool printed(std::string_view text) const {
+    return std::find(messages.begin(), messages.end(), text) != messages.end();
+  }
+};
 
 }  // namespace
 
@@ -215,7 +229,6 @@ TEST_CASE("ext2sim help with magic-compat OFF says sim2simp is not provided",
 }
 
 TEST_CASE("ext2sim run writes the sim file and reports", "[cap:netlist-sim][req:Command options and defaults]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   Runner run{editor};
   REQUIRE(run({"inv"}).ok());
@@ -232,7 +245,6 @@ TEST_CASE("ext2sim run writes the sim file and reports", "[cap:netlist-sim][req:
 }
 
 TEST_CASE("ext2sim extresist file naming", "[cap:netlist-sim][req:Command options and defaults]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   editor.netlist.sim.extresist = true;
   editor.netlist.sim.alias = true;
@@ -245,7 +257,6 @@ TEST_CASE("ext2sim extresist file naming", "[cap:netlist-sim][req:Command option
 // Q-NETLIST-52 (fix, both modes): a run after `alias off` / `labels off`
 // never writes or closes the previous run's `.al` / `.nodes`.
 TEST_CASE("ext2sim alias and labels turned off after a run", "[cap:netlist-sim][req:Command options and defaults]") {
-  REQUIRE_COMMON_ARGS();
   for (const bool compat : {true, false}) {
     INFO("magic-compat " << compat);
     hefesto::editor::EditorState editor;
@@ -267,7 +278,6 @@ TEST_CASE("ext2sim alias and labels turned off after a run", "[cap:netlist-sim][
 }
 
 TEST_CASE("ext2sim without a cell or window", "[cap:netlist-sim][req:Command options and defaults]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   Runner run{editor};
   REQUIRE(run({}).ok());
@@ -278,7 +288,6 @@ TEST_CASE("ext2sim without a cell or window", "[cap:netlist-sim][req:Command opt
 // Q-NETLIST-18 (compat): which threshold enables the coupling lines.
 TEST_CASE("ext2sim run-level coupling threshold with magic-compat ON",
           "[cap:netlist-sim][req:File structure and order]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   editor.netlist.sim.cthresh = std::numeric_limits<double>::infinity();
   Runner run{editor};
@@ -290,7 +299,6 @@ TEST_CASE("ext2sim run-level coupling threshold with magic-compat ON",
 
 TEST_CASE("ext2sim run-level coupling threshold with magic-compat OFF",
           "[cap:netlist-sim][req:File structure and order]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   editor.netlist.sim.cthresh = std::numeric_limits<double>::infinity();
   Runner run{editor};
@@ -303,7 +311,6 @@ TEST_CASE("ext2sim run-level coupling threshold with magic-compat OFF",
 // simParseArgs' switches are globals in Magic: sticky with magic-compat ON,
 // this run only with it OFF.
 TEST_CASE("ext2sim run flags stay set with magic-compat ON only", "[cap:netlist-sim][req:Command options and defaults]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   Runner run{editor};
   REQUIRE(run({"-B", "-f", "su", "inv"}, false).ok());
@@ -318,7 +325,6 @@ TEST_CASE("ext2sim run flags stay set with magic-compat ON only", "[cap:netlist-
 // Q-NETLIST-16 (compat): the name flags an earlier ext2spice left set.
 TEST_CASE("ext2sim name conversion after ext2spice with magic-compat ON",
           "[cap:netlist-sim][req:Name conversion state]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   editor.netlist.names = extflat::NameFlags{true, true, false, true, false};  // as ext2spice leaves them
   Runner run{editor};
@@ -330,7 +336,6 @@ TEST_CASE("ext2sim name conversion after ext2spice with magic-compat ON",
 
 TEST_CASE("ext2sim name conversion after ext2spice with magic-compat OFF",
           "[cap:netlist-sim][req:Name conversion state]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   const extflat::NameFlags session{true, true, false, true, false};
   editor.netlist.names = session;
@@ -343,7 +348,6 @@ TEST_CASE("ext2sim name conversion after ext2spice with magic-compat OFF",
 // ext2sim.c:624-662: with EFStyle NULL the style's device table is not used,
 // and the SU format warns that area and perimeter are zero.
 TEST_CASE("ext2sim when the extraction style does not match", "[cap:netlist-sim][req:Transistor attributes]") {
-  REQUIRE_COMMON_ARGS();
   hefesto::editor::EditorState editor;
   Runner run{editor};
   run.circuit.style_matched = false;
@@ -354,4 +358,63 @@ TEST_CASE("ext2sim when the extraction style does not match", "[cap:netlist-sim]
   run.messages.clear();
   REQUIRE(run({"inv"}, false).ok());  // MIT: no warning
   CHECK(run.messages == std::vector<std::string>{"exttosim finished."});
+}
+
+// Regression: the default source flattened through the overload that drops
+// every message and turns a failure into an empty netlist, so a use cycle
+// wrote a header-only `.sim` and reported "exttosim finished.".
+TEST_CASE("ext2sim fails on a flattening error and writes no file",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  ExtRunner run;
+  run.ext("top", "use a a0 1 0 0 0 1 0\n");
+  run.ext("a", "use top t0 1 0 0 0 1 0\n");
+  const cmd::CommandResult r = run({"top"});
+  REQUIRE_FALSE(r.ok());
+  REQUIRE_FALSE(r.diagnostics.empty());
+  CHECK(r.diagnostics.back().code == "EXTFLAT-READ-010");
+  CHECK_FALSE(run.files.exists(platform::Path{"top.sim"}));
+  CHECK_FALSE(run.printed("exttosim finished."));
+}
+
+TEST_CASE("ext2sim prints the flattening messages", "[cap:netlist-sim][req:Command options and defaults]") {
+  ExtRunner run;
+  run.ext("top", "node a 0 0 0 0 m1\ncap a nosuch 5000\n");
+  REQUIRE(run({"top"}).ok());
+  CHECK(run.printed("cap(2): no such node nosuch"));
+  CHECK(run.printed("exttosim finished."));
+}
+
+// Regression: -s/-S were parsed and dropped, and the flattening used the
+// default 2 fF threshold instead of the run's.
+TEST_CASE("ext2sim passes the run's threshold and symbols to the flattening",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  hefesto::editor::EditorState editor;
+  Runner run{editor};
+  REQUIRE(run.files.write_atomic(platform::Path{"syms"}, "W=7\nbad\n").ok());
+  REQUIRE(run({"-c", "0.5", "-s", "L=4", "-S", "syms", "inv"}).ok());
+  REQUIRE(run.reads.size() == 1);
+  const extflat::FlattenOptions& flatten = run.reads.front().flatten;
+  CHECK(flatten.cap_threshold == 0.5);
+  CHECK(flatten.symbols == extflat::SymbolTable{{"L", 4}, {"W", 7}});
+  REQUIRE(run.messages.size() >= 2);
+  CHECK(run.messages[0] == "Missing '=' in symbol assignment");
+  CHECK(run.messages[1] == "Error at line 2 of syms");
+}
+
+// EFArgs runs simParseArgs for -h before its own usage text, so ext2sim
+// prints "Unrecognized flag: -h" and its usage; -T is a flag of the
+// standalone EFArgs only.
+TEST_CASE("ext2sim -h and -T go to simParseArgs", "[cap:netlist-sim][req:Command options and defaults]") {
+  hefesto::editor::EditorState editor;
+  Runner run{editor};
+  const cmd::CommandResult help = run({"-h"});
+  REQUIRE_FALSE(help.ok());
+  REQUIRE(run.messages.size() == 2);
+  CHECK(run.messages[0] == "Unrecognized flag: -h");
+  CHECK(run.messages[1].starts_with("Usage: ext2sim"));
+  CHECK(help.diagnostics.back().text == extflat::common_args_usage());
+  run.messages.clear();
+  REQUIRE_FALSE(run({"-T", "scmos", "inv"}).ok());
+  CHECK(run.messages.front() == "Unrecognized flag: -T");
+  CHECK(run.reads.empty());
 }

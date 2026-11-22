@@ -92,10 +92,10 @@ DeviceParam parameter_option(const RuleContext& ctx, std::string& word, std::siz
     param.scale = std::atof(name.c_str() + mult + 1);
     name.resize(mult);
   } else if (const std::size_t plus = name.find('+'); plus != std::string::npos) {
-    param.offset = static_cast<std::int32_t>(0.5 + (std::atof(name.c_str() + plus + 1) * 1000));
+    param.offset = saturate_int32(0.5 + (std::atof(name.c_str() + plus + 1) * 1000));
     name.resize(plus);
   } else if (const std::size_t minus = name.find('-'); minus != std::string::npos) {
-    param.offset = static_cast<std::int32_t>(0.5 + (-std::atof(name.c_str() + minus + 1) * 1000));
+    param.offset = saturate_int32(0.5 + (-std::atof(name.c_str() + minus + 1) * 1000));
     name.resize(minus);
   }
   word.resize(eq + 1 + name.size());  // Magic cuts the word at '*', '+' or '-'
@@ -158,11 +158,12 @@ bool limit_option(const RuleContext& ctx, Args& a, std::vector<DeviceParam>& par
                Print::plain);
     return false;
   }
-  const auto ival = static_cast<std::int32_t>(0.5 + (*dval * 1000));
+  const std::int64_t ival = saturate_int32(0.5 + (*dval * 1000));
+  // `ival + 1` / `ival - 1` saturate too (Q-EXTRACT-30).
   if (cond == '>') {
-    param.minimum = equal ? ival : ival + 1;
+    param.minimum = static_cast<double>(saturate_int32(static_cast<double>(equal ? ival : ival + 1)));
   } else {
-    param.maximum = equal ? ival : ival - 1;
+    param.maximum = static_cast<double>(saturate_int32(static_cast<double>(equal ? ival : ival - 1)));
   }
   --a.argc;
   return true;

@@ -107,17 +107,18 @@ void extcheck_read(extflat::ReadOptions& options) {
   options.noscale = false;
 }
 
-// EFFlatBuild with its messages.
-diag::Outcome<extflat::Netlist> flatten_reporting(const extflat::Hierarchy& hierarchy, double cap_threshold,
-                                                  diag::DiagnosticSink& sink) {
+// EFFlatBuild with its messages, the run's EFCapThreshold and the -s/-S
+// symbols.
+diag::Outcome<extflat::Netlist> flatten_reporting(const extflat::Hierarchy& hierarchy,
+                                                  const extflat::FlattenOptions& flatten, diag::DiagnosticSink& sink) {
   constexpr extflat::FlatFlags kFlags =
       extflat::FlatFlags::flat_nodes | extflat::FlatFlags::flat_caps | extflat::FlatFlags::flat_resists;
-  return extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink);
+  return extflat::flatten(hierarchy, kFlags, flatten, sink);
 }
 
 // EFReadFile and EFFlatBuild of the root cell from the local file system.
 diag::Outcome<extflat::Netlist> read_and_flatten(const std::string& cell, const extflat::ReadOptions& options,
-                                                 double cap_threshold, diag::CollectingSink& sink) {
+                                                 const extflat::FlattenOptions& flatten, diag::CollectingSink& sink) {
   platform::LocalFileSystem fs;
   const cell::SearchPaths paths;
   const cell::PathVariables vars;
@@ -126,7 +127,7 @@ diag::Outcome<extflat::Netlist> read_and_flatten(const std::string& cell, const 
   if (!hierarchy.ok()) {
     return hierarchy.error();
   }
-  return flatten_reporting(hierarchy.value(), cap_threshold, sink);
+  return flatten_reporting(hierarchy.value(), flatten, sink);
 }
 
 // The leaf names that end in `!` in a flattened netlist. Magic's standalone
@@ -170,7 +171,10 @@ void print_arg_messages(const extflat::CommonArgs& args, std::ostream& err) {
 }
 
 Parsed parse(std::span<const std::string> words, std::ostream& out, std::ostream& err, const std::string& program) {
-  auto args = extflat::parse_common_args(words, {});  // argsProc NULL: every other flag is a usage error
+  // argsProc NULL: every other flag (`-o` too) is a usage error; `-T` is a
+  // flag of the standalone build.
+  platform::LocalFileSystem fs;
+  auto args = extflat::parse_common_args(words, {}, extflat::ArgOptions{false, true, extflat::file_reader(fs)});
   if (!args.ok()) {
     const diag::Diagnostic& error = args.error();
     if (error.text.find("Standard arguments:") == std::string::npos) {
@@ -290,14 +294,17 @@ int run(std::span<const std::string> args, std::ostream& out, std::ostream& err,
   extcheck_read(options);
   options.search_path = parsed.args.search_path;
   const Thresholds limits = thresholds(parsed.args);
+  extflat::FlattenOptions flatten;
+  flatten.cap_threshold = limits.cap;
+  flatten.symbols = parsed.args.symbols;
   // The first pass finds the global names; its messages are dropped.
   diag::CollectingSink first_sink;
-  auto first = read_and_flatten(*parsed.args.cell, options, limits.cap, first_sink);
+  auto first = read_and_flatten(*parsed.args.cell, options, flatten, first_sink);
   if (first.ok()) {
     options.global_nets = bang_leaves(first.value());
   }
   diag::CollectingSink sink;
-  auto flat = first.ok() ? read_and_flatten(*parsed.args.cell, options, limits.cap, sink) : first;
+  auto flat = first.ok() ? read_and_flatten(*parsed.args.cell, options, flatten, sink) : first;
   print_messages(sink.take(), out, err);
   if (!flat.ok()) {
     err << program << ": " << diag::format_text(flat.error()) << '\n';

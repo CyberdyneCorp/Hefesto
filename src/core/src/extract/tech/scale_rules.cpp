@@ -81,12 +81,12 @@ void rscale_rule(RuleContext& ctx, const Tokens& t) {
 // fractional value (rounded after unit conversion, micron_convert()).
 bool step_rule(RuleContext& ctx, const Tokens& t) {
   const double value = std::atof(t[1].c_str());
-  const bool positive = ctx.magic_compat() ? static_cast<std::int32_t>(value) > 0 : value > 0.0;
+  const bool positive = ctx.magic_compat() ? saturate_int32(value) > 0 : value > 0.0;
   if (!positive) {
     ctx.report(kCodeBadStep, "Hierarchical interaction step size must be > 0", Print::tech_error);
     return false;
   }
-  ctx.style.step_size = static_cast<std::int32_t>(value);
+  ctx.style.step_size = saturate_int32(value);
   ctx.style.step_exact = ctx.magic_compat() ? static_cast<double>(ctx.style.step_size) : value;
   return true;
 }
@@ -95,7 +95,7 @@ bool step_rule(RuleContext& ctx, const Tokens& t) {
 // that does not convert is 0 (Magic reads an uninitialised double).
 void sidehalo_rule(RuleContext& ctx, const Tokens& t) {
   const double value = scan_double(t[1]).value_or(0.0);
-  ctx.style.side_halo = static_cast<std::int32_t>(value * 1000.0);
+  ctx.style.side_halo = saturate_int32(value * 1000.0);
   ctx.style.side_halo_exact = value;
 }
 

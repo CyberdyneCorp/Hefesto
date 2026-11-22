@@ -316,7 +316,18 @@ SimSource default_source(editor::EditorState& editor, platform::FileSystem& fs, 
     if (!hierarchy.ok()) {
       return hierarchy.error();
     }
-    return from_netlist(extflat::flatten(hierarchy.value(), request.flags));
+    // EFFlatBuild with its messages (split globals, unresolved names); a
+    // use cycle or a reached limit fails the run, writing no file.
+    auto netlist = extflat::flatten(hierarchy.value(), request.flags, request.flatten, sink);
+    for (const diag::Diagnostic& d : sink.take()) {
+      if (emit) {
+        emit(d);
+      }
+    }
+    if (!netlist.ok()) {
+      return netlist.error();
+    }
+    return from_netlist(netlist.value());
   };
 }
 
@@ -378,6 +389,27 @@ RunSetup run_setup(const editor::EditorState& editor, const SimSettings& setting
   return setup;
 }
 
+// The flattening settings: efFlatSingleCap's EFCapThreshold is the run's
+// (the option level, then -c/-C), with $GND and the -s/-S symbols.
+extflat::FlattenOptions flatten_options(const editor::EditorState& editor, const WriteOptions& write,
+                                        const extflat::CommonArgs& args) {
+  extflat::FlattenOptions options;
+  options.cap_threshold = static_cast<double>(write.cap_threshold);
+  if (const auto gnd = editor.settings.effective(app::kGnd)) {
+    options.gnd = gnd->value;
+  }
+  options.symbols = args.symbols;
+  return options;
+}
+
+void emit_all(const console::Emit& emit, const std::vector<diag::Diagnostic>& messages) {
+  for (const diag::Diagnostic& d : messages) {
+    if (emit) {
+      emit(d);
+    }
+  }
+}
+
 // After the read: the style warning, the writer, its console lines and the files.
 CommandResult write_run(const editor::EditorState& editor, const SimRun& request, const WriteOptions& write,
                         SimInput& input, extflat::NameFlags& names, const FileNames& files) {
@@ -424,12 +456,16 @@ CommandResult run(editor::EditorState& editor, const SimRun& request, const SimS
   // magic-compat ON, a copy for this run with it OFF.
   SimSettings run_copy = editor.netlist.sim;
   SimSettings& settings = request.magic_compat ? editor.netlist.sim : run_copy;
+  platform::LocalFileSystem local;
+  platform::FileSystem& fs = request.files != nullptr ? *request.files : local;
   Parsed parsed;
-  auto args = extflat::parse_common_args(request.args, sim_flags(settings, parsed.run, request.emit));
+  auto args = extflat::parse_common_args(request.args, sim_flags(settings, parsed.run, request.emit),
+                                         extflat::ArgOptions{true, false, extflat::file_reader(fs)});
   if (!args.ok()) {
     return CommandResult::failure(args.error());
   }
   parsed.args = std::move(args).value();
+  emit_all(request.emit, parsed.args.messages);
   const std::string cell = parsed.args.cell.value_or(request.window_cell);
   if (cell.empty()) {
     message(request.emit, "Point to a window or specify a cell name.");
@@ -440,7 +476,8 @@ CommandResult run(editor::EditorState& editor, const SimRun& request, const SimS
   extflat::NameFlags& names = request.magic_compat ? editor.netlist.names : run_names;
   add_trim_chars(parsed.args.trim_chars, names);
   const RunSetup setup = run_setup(editor, settings, parsed.args, request.magic_compat);
-  auto input = source(ReadRequest{cell, read_options(editor, parsed.args, settings.extresist, request.magic_compat), setup.flags});
+  auto input = source(ReadRequest{cell, read_options(editor, parsed.args, settings.extresist, request.magic_compat),
+                                  setup.flags, flatten_options(editor, setup.write, parsed.args)});
   if (!input.ok()) {
     return CommandResult::failure(input.error());
   }

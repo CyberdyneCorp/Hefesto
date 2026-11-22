@@ -175,6 +175,25 @@ Outcome attribute_rule(FlatWriter& w, std::size_t index, const Candidate& cfp, P
   return Outcome::merge;
 }
 
+// The newest-first search of the kept devices for one `fp` is parallel to;
+// true when `fp` was merged into it (and killed).
+bool merge_into_kept(FlatWriter& w, const Candidate& fp, std::vector<Candidate>& kept) {
+  for (auto it = kept.rbegin(); it != kept.rend(); ++it) {
+    const Parallel mode = parallel(w, fp, *it);
+    if (mode == Parallel::no) {
+      continue;
+    }
+    if (attribute_rule(w, fp.index, *it, mode) == Outcome::stop) {
+      return false;
+    }
+    w.mult[it->index] = merged_mult(w, fp, *it);
+    w.killed[fp.index] = true;
+    ++w.merged;
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 void FlatWriter::distribute_junction(const InputDevice& dev) {
@@ -221,22 +240,7 @@ void FlatWriter::merge_devices() {
                  find_node(dev.terminals[1].node),
                  find_node(dev.terminals[dev.terminals.size() >= 3 ? 2 : 1].node),
                  dev.substrate ? substrate(dev, false) : std::nullopt};
-    bool merged_away = false;
-    for (auto it = kept.rbegin(); it != kept.rend() && !merged_away; ++it) {
-      const Parallel mode = parallel(*this, fp, *it);
-      if (mode == Parallel::no) {
-        continue;
-      }
-      const Outcome rule = attribute_rule(*this, i, *it, mode);
-      if (rule == Outcome::stop) {
-        break;
-      }
-      mult[it->index] = merged_mult(*this, fp, *it);
-      killed[i] = true;
-      ++merged;
-      merged_away = true;
-    }
-    if (!merged_away) {
+    if (!merge_into_kept(*this, fp, kept)) {
       kept.push_back(fp);
     }
   }

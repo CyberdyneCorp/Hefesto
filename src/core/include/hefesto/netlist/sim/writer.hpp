@@ -219,6 +219,7 @@ struct ReadRequest {
   std::string cell;
   extflat::ReadOptions options;
   extflat::FlatFlags flags = extflat::FlatFlags::flat_nodes;
+  extflat::FlattenOptions flatten{};  // the run's threshold, $GND and symbols
 };
 
 /// Reads and flattens a root cell into the visit data. The default source

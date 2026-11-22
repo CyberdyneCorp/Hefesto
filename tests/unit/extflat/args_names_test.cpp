@@ -27,8 +27,19 @@ using Strings = std::vector<std::string>;
 
 namespace {
 
-hefesto::diag::Outcome<extflat::CommonArgs> parse(const Strings& args, const extflat::ExtraFlags& extra = {}) {
-  return extflat::parse_common_args(std::span<const std::string>{args}, extra);
+hefesto::diag::Outcome<extflat::CommonArgs> parse(const Strings& args, const extflat::ExtraFlags& extra = {},
+                                                  const extflat::ArgOptions& options = {}) {
+  return extflat::parse_common_args(std::span<const std::string>{args}, extra, options);
+}
+
+// A tool that takes -o and -T, reading -S files from `files`.
+extflat::ArgOptions all_flags(const std::map<std::string, std::string>& files = {}) {
+  extflat::ArgOptions options{true, true, {}};
+  options.read_file = [files](const std::string& path) -> std::optional<std::string> {
+    const auto it = files.find(path);
+    return it == files.end() ? std::nullopt : std::optional<std::string>{it->second};
+  };
+  return options;
 }
 
 hefesto::compat::CompatSettings compat_mode(bool on) {
@@ -78,7 +89,8 @@ TEST_CASE("EFArgs -c sets this run's capacitance threshold and a word is the roo
 
 TEST_CASE("a flag's value may be glued to it; -C and -R are infinite",
           "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
-  const auto a = parse({"-r50", "-C", "-R", "-v", "-pa:b:c", "-t!", "-t", "#,", "-Tnltest", "-S", "syms"});
+  const auto a = parse({"-r50", "-C", "-R", "-v", "-pa:b:c", "-t!", "-t", "#,", "-Tnltest", "-S", "syms"}, {},
+                       all_flags({{"syms", "A=1\n"}}));
   REQUIRE(a.ok());
   const auto& v = a.value();
   CHECK(v.cap_infinite);
@@ -90,6 +102,7 @@ TEST_CASE("a flag's value may be glued to it; -C and -R are infinite",
   CHECK(v.trim_chars == "!#,");  // every -t concatenated
   CHECK(v.tech == std::optional<std::string>{"nltest"});
   CHECK(v.symbol_file == std::optional<std::string>{"syms"});
+  CHECK(v.symbols == extflat::SymbolTable{{"A", 1}});
   CHECK_FALSE(v.cell.has_value());
 }
 
@@ -105,10 +118,10 @@ TEST_CASE("EFArgs -s accepts numeric symbols once; rejected ones are reported an
           "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
   const auto a = parse({"-s", "L=4", "-s", "W=x", "-s", "L=5", "-s", "noeq"});
   REQUIRE(a.ok());
-  CHECK(a.value().symbols == Strings{"L=4"});
+  CHECK(a.value().symbols == extflat::SymbolTable{{"L", 4}});
   CHECK(texts(a.value()) == Strings{"Symbol value must be numeric; ignoring \"W=x\"", "Symbol \"L\" already defined",
                                     "Missing '=' in symbol assignment"});
-  std::map<std::string, std::int32_t, std::less<>> table;
+  extflat::SymbolTable table;
   CHECK_FALSE(extflat::add_symbol(table, "N=-3").has_value());
   CHECK(table.at("N") == -3);
 }
@@ -133,12 +146,62 @@ TEST_CASE("an unknown flag prints the usage text and fails; a tool flag is accep
 // Regression (Q-NETLIST-42, fix in both modes): `-o` names the output of
 // one run; a later run without it has no output name.
 TEST_CASE("EFArgs -o applies to one run only (Q-NETLIST-42)", "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
-  const auto first = parse({"-o", "out.spice", "top"});
+  const auto first = parse({"-o", "out.spice", "top"}, {}, all_flags());
   REQUIRE(first.ok());
   CHECK(first.value().output == std::optional<std::string>{"out.spice"});
-  const auto second = parse({"top"});
+  const auto second = parse({"top"}, {}, all_flags());
   REQUIRE(second.ok());
   CHECK_FALSE(second.value().output.has_value());
+}
+
+// efSymAddFile: each line of a -S file is a -s argument, in argument order
+// with the -s flags; a rejected line is followed by its line number.
+TEST_CASE("EFArgs -S reads a symbol file in argument order",
+          "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+  const auto a = parse({"-s", "L=4", "-S", "syms", "-s", "W=9", "top"}, {},
+                       all_flags({{"syms", "W=7\nL=5\n\nX=y"}}));
+  REQUIRE(a.ok());
+  CHECK(a.value().symbols == extflat::SymbolTable{{"L", 4}, {"W", 7}});
+  CHECK(texts(a.value()) == Strings{"Symbol \"L\" already defined", "Error at line 2 of syms",
+                                    "Missing '=' in symbol assignment", "Error at line 3 of syms",
+                                    "Symbol value must be numeric; ignoring \"X=y\"", "Error at line 4 of syms",
+                                    "Symbol \"W\" already defined"});
+  const auto missing = parse({"-S", "nope", "top"}, {}, all_flags());
+  REQUIRE(missing.ok());
+  CHECK(texts(missing.value()) == Strings{"nope: No such file or directory"});
+  CHECK(missing.value().cell == std::optional<std::string>{"top"});
+}
+
+// -o and -T are opt-in: a tool without them sees the flag as unknown.
+TEST_CASE("EFArgs -o and -T only for the tools that take them",
+          "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+  for (const char* flag : {"-o", "-T"}) {
+    INFO(flag);
+    const auto bad = parse({flag, "x", "top"});
+    REQUIRE_FALSE(bad.ok());
+    CHECK(bad.error().text == extflat::common_args_usage());
+  }
+  std::vector<std::string> seen;
+  const extflat::ExtraFlags extra = [&seen](std::span<const std::string> args, std::size_t i) -> std::optional<std::size_t> {
+    seen.push_back(args[i]);
+    return std::nullopt;
+  };
+  (void)parse({"-T", "x"}, extra);
+  CHECK(seen == Strings{"-T"});
+}
+
+// EFargs.c case 'h': argsProc runs first, then the usage text.
+TEST_CASE("EFArgs -h calls the tool's flag parser before failing",
+          "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+  std::vector<std::string> seen;
+  const extflat::ExtraFlags extra = [&seen](std::span<const std::string> args, std::size_t i) -> std::optional<std::size_t> {
+    seen.push_back(args[i]);
+    return i + 1;
+  };
+  const auto help = parse({"-h", "top"}, extra);
+  REQUIRE_FALSE(help.ok());
+  CHECK(help.error().text == extflat::common_args_usage());
+  CHECK(seen == Strings{"-h"});
 }
 
 // ---- SPICE output name conversion ------------------------------------------

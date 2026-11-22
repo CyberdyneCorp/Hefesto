@@ -42,12 +42,10 @@ constexpr double dbl(float f) noexcept { return static_cast<double>(f); }
 // behaviour, fixed in both modes).
 constexpr float square(std::int32_t v) noexcept { return static_cast<float>(v) * static_cast<float>(v); }
 
-// A float truncated to int as Magic's `int *= float` does, clamped to the
-// int range instead of overflowing (fixed in both modes).
+// A float truncated to int as Magic's `int *= float` does, saturated to
+// the int range and NaN as 0 instead of undefined (Q-EXTRACT-30).
 std::int32_t truncate_int(double v) noexcept {
-  constexpr double kMax = std::numeric_limits<std::int32_t>::max();
-  constexpr double kMin = std::numeric_limits<std::int32_t>::min();
-  return static_cast<std::int32_t>(std::clamp(v, kMin, kMax));
+  return detail::saturate_int32(v);
 }
 
 // How many times Magic's per-record loops visit a pattern's shared list.
@@ -61,7 +59,7 @@ bool area_param(const DeviceParam& p) {
 
 // `int /= float`: the int converted to float, divided, truncated.
 double int_div_float(double value, float by) {
-  return static_cast<std::int32_t>(static_cast<float>(value) / by);
+  return detail::saturate_int32(static_cast<double>(static_cast<float>(value) / by));
 }
 
 void convert_param(DeviceParam& p, float dscale, float dsq, bool magic_compat) {
@@ -79,13 +77,13 @@ void convert_param(DeviceParam& p, float dscale, float dsq, bool magic_compat) {
 
 void normalize_param(DeviceParam& p) {
   if (p.offset != 0.0) {
-    p.offset = static_cast<std::int32_t>(p.offset) / 1000;
+    p.offset = detail::saturate_int32(p.offset) / 1000;
   }
   if (p.minimum > p.maximum) {
     return;
   }
-  p.maximum = static_cast<std::int32_t>(p.maximum) / 1000;
-  p.minimum = static_cast<std::int32_t>(p.minimum) / 1000;
+  p.maximum = detail::saturate_int32(p.maximum) / 1000;
+  p.minimum = detail::saturate_int32(p.minimum) / 1000;
 }
 
 void convert_device(DevicePattern& d, float dscale, bool magic_compat) {
@@ -102,9 +100,9 @@ void convert_device(DevicePattern& d, float dscale, bool magic_compat) {
   }
   for (DeviceResist& r : d.resist) {
     if (r.region == "area") {
-      r.value = static_cast<std::int32_t>(static_cast<float>(r.value) / dsq);
+      r.value = detail::saturate_int32(static_cast<double>(static_cast<float>(r.value) / dsq));
     } else if (r.region == "perimeter" || r.region == "linear") {
-      r.value = static_cast<std::int32_t>(static_cast<float>(r.value) / dscale);
+      r.value = detail::saturate_int32(static_cast<double>(static_cast<float>(r.value) / dscale));
     }
   }
 }
@@ -169,8 +167,8 @@ void convert_units(ExtStyle& s, float dscale) {
     }
   }
   // `(int)(((float)v / dscale) + 0.5)`: the quotient in float, the sum in double.
-  s.side_halo = static_cast<std::int32_t>(static_cast<double>(static_cast<float>(s.side_halo) / dscale) + 0.5);
-  s.step_size = static_cast<std::int32_t>(static_cast<double>(static_cast<float>(s.step_size) / dscale) + 0.5);
+  s.side_halo = detail::saturate_int32(static_cast<double>(static_cast<float>(s.side_halo) / dscale) + 0.5);
+  s.step_size = detail::saturate_int32(static_cast<double>(static_cast<float>(s.step_size) / dscale) + 0.5);
   s.side_halo_exact /= dbl(dscale);
   s.step_exact /= dbl(dscale);
 }
@@ -179,7 +177,7 @@ void convert_units(ExtStyle& s, float dscale) {
 // Q-EXTRACT-21), after the unit conversion.
 void normalize(ExtStyle& s, diag::DiagnosticSink* sink) {
   if (!s.magic_compat) {
-    s.step_size = static_cast<std::int32_t>(std::lround(s.step_exact));
+    s.step_size = detail::saturate_round(s.step_exact);
   }
   if (s.step_size <= 0) {
     if (sink != nullptr) {
@@ -189,7 +187,7 @@ void normalize(ExtStyle& s, diag::DiagnosticSink* sink) {
     s.step_exact = 100.0;
   }
   if (!s.magic_compat) {
-    s.side_halo = static_cast<std::int32_t>(std::lround(s.side_halo_exact));
+    s.side_halo = detail::saturate_round(s.side_halo_exact);
     return;
   }
   s.side_halo /= 1000;
@@ -334,8 +332,8 @@ void scale_lengths(ExtStyle& s, std::int32_t n, std::int32_t d, bool magic_compa
   }
   s.step_exact = s.step_exact * d / n;
   s.side_halo_exact = s.side_halo_exact * d / n;
-  s.step_size = static_cast<std::int32_t>(std::lround(s.step_exact));
-  s.side_halo = static_cast<std::int32_t>(std::lround(s.side_halo_exact));
+  s.step_size = detail::saturate_round(s.step_exact);
+  s.side_halo = detail::saturate_round(s.side_halo_exact);
 }
 
 }  // namespace

@@ -16,6 +16,7 @@
 #include "hefesto/compat/compat_settings.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/extflat/args.hpp"
 #include "hefesto/netlist/spice/input.hpp"
 #include "hefesto/netlist/spice/settings.hpp"
 #include "hefesto/netlist/spice/writer.hpp"
@@ -34,7 +35,7 @@ namespace hefesto::netlist::spice::detail {
 [[nodiscard]] diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_view cell,
                                                    const SpiceSettings& settings,
                                                    const compat::CompatSettings& compat, platform::FileSystem& fs,
-                                                   diag::DiagnosticSink& sink);
+                                                   diag::DiagnosticSink& sink, const extflat::SymbolTable& symbols);
 
 [[nodiscard]] std::vector<diag::Diagnostic> to_diagnostics(const std::vector<WriteMessage>& messages);
 

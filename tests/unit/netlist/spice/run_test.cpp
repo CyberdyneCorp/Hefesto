@@ -4,9 +4,10 @@
 // The `ext2spice` run flags and output file, and render() for M9
 // (capability netlist-spice-options "Run arguments and output file";
 // openspec/changes/m7-extraction/design.md D18). The read and flatten are
-// EXTFLAT's (extflat::parse_common_args, read, flatten); until they land
-// the run answers their CORE-NOTIMPL-008 and the writer is tested on
-// hand-built inputs (flat_netlist_test.cpp, device_lines_test.cpp).
+// EXTFLAT's (extflat::parse_common_args, read, flatten); the runs here read
+// small `.ext` files from the session's in-memory file system, and the
+// writer is tested on hand-built inputs (flat_netlist_test.cpp,
+// device_lines_test.cpp).
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -16,6 +17,8 @@
 
 #include "hefesto/netlist/spice/run_args.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
+#include "hefesto/platform/file_system.hpp"
+#include "hefesto/settings/project_settings.hpp"
 #include "spice_fixture.hpp"
 
 using namespace spice_test;
@@ -24,7 +27,7 @@ namespace {
 
 struct Parsed {
   spice::SpiceSettings settings;
-  spice::RunArgs run{settings, {}, std::nullopt, {}};
+  spice::RunArgs run{settings, {}, {}};
   std::vector<std::size_t> next;
   bool ok = true;
 
@@ -45,17 +48,16 @@ struct Parsed {
 
 TEST_CASE("Run flags set the run and the persistent switches",
           "[cap:netlist-spice-options][req:Run arguments and output file]") {
-  Parsed p{{"-d", "-m", "-B", "-F", "-o", "amp.out", "-fHSPICE", "-J", "hier"}};
+  Parsed p{{"-d", "-m", "-B", "-F", "-fHSPICE", "-J", "hier"}};
   REQUIRE(p.ok);
   CHECK(p.settings.distributed_junctions);
   CHECK(p.settings.merge == spice::MergeMode::conservative);
   CHECK(p.settings.no_attributes);
   CHECK(p.run.flags.device_nodes_only);
-  CHECK(p.run.output == "amp.out");
   CHECK(p.settings.format == spice::Dialect::hspice);
   CHECK(p.settings.scale);
   CHECK(p.settings.hier_ap);
-  CHECK(p.next == std::vector<std::size_t>{1, 2, 3, 4, 6, 7, 9});
+  CHECK(p.next == std::vector<std::size_t>{1, 2, 3, 4, 5, 7});
   // -M wins over -m, as Magic's two booleans do.
   Parsed m{{"-M", "-m"}};
   CHECK(m.settings.merge == spice::MergeMode::aggressive);
@@ -71,23 +73,66 @@ TEST_CASE("Deprecated and unknown run flags", "[cap:netlist-spice-options][req:R
   REQUIRE(bad.run.messages.size() == 2);
   CHECK(bad.run.messages[0].text == "Unrecognized flag: -q");
   CHECK(bad.run.messages[1].text.starts_with("Usage: ext2spice [-B] [-o spicefile]"));
-  Parsed missing{{"-o"}};
+  Parsed missing{{"-f"}};
   CHECK_FALSE(missing.ok);
   Parsed format{{"-f", "verilog"}};
   CHECK_FALSE(format.ok);
 }
 
+namespace {
+
+// A session whose in-memory file system holds /w/inv.ext.
+struct ExtSession : Session {
+  explicit ExtSession(std::string_view inv = "node a 0 0 0 0 m1\nnode b 0 0 0 0 m1\n") {
+    REQUIRE(services.files().write_atomic(hefesto::platform::Path{"/w/inv.ext"}, inv).ok());
+  }
+  bool exists(const std::string& name) { return services.files().exists(hefesto::platform::Path{name}); }
+};
+
+}  // namespace
+
+// Regression (Q-NETLIST-42, fix in both modes): `-o` names this run's file
+// only; the next run without it writes <cell>.spice.
 TEST_CASE("The output file name is per run", "[cap:netlist-spice-options][req:Run arguments and output file]") {
-  // Q-NETLIST-42 (fix): `-o` lives in the run's RunArgs, never in the
-  // session settings, so a later run without it writes <cell>.spice.
-  spice::SpiceSettings session;
-  spice::RunArgs first{session, {}, std::nullopt, {}};
-  const std::vector<std::string> words{"-o", "custom.spice"};
-  REQUIRE(spice::parse_spice_flag(words, 0, first).has_value());
-  CHECK(first.output == "custom.spice");
-  spice::RunArgs second{session, {}, std::nullopt, {}};
-  CHECK_FALSE(second.output.has_value());
-  CHECK(session == spice::SpiceSettings{});
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", compat ? "on" : "off").ok());
+    REQUIRE(s.run("ext2spice -p /w -o custom.spice inv").ok());
+    CHECK(s.exists("custom.spice"));
+    CHECK_FALSE(s.exists("inv.spice"));
+    REQUIRE(s.services.files().remove(hefesto::platform::Path{"custom.spice"}).ok());
+    REQUIRE(s.run("ext2spice inv").ok());
+    CHECK(s.exists("inv.spice"));
+    CHECK_FALSE(s.exists("custom.spice"));
+  }
+}
+
+// Regression: the flattening used the default 2 fF threshold instead of the
+// run's, so `-c 0` hid efFlatSingleCap's message for a 1 fF coupling.
+TEST_CASE("The run's cap threshold reaches the flattening",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s{"node a 0 0 0 0 m1\ncap a nosuch 1000\n"};
+  REQUIRE(s.run("ext2spice -p /w inv").ok());
+  CHECK(s.take_printed().find("cap(2): no such node nosuch") == std::string::npos);
+  REQUIRE(s.run("ext2spice -c 0 inv").ok());
+  CHECK(s.take_printed().find("cap(2): no such node nosuch\n") != std::string::npos);
+}
+
+// EFArgs runs spcParseArgs for -h first (its usage text), then prints its
+// own; -T is a flag of the standalone EFArgs only.
+TEST_CASE("ext2spice -h prints both usage texts; -T is unrecognized",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  Session s;
+  const auto help = s.run("ext2spice -h");
+  REQUIRE_FALSE(help.ok());
+  CHECK(s.take_printed().find("Usage: ext2spice [-B] [-o spicefile]") != std::string::npos);
+  REQUIRE_FALSE(help.diagnostics.empty());
+  CHECK(help.diagnostics.back().text.find("Standard arguments:") != std::string::npos);
+  const auto tech = s.run("ext2spice -T scmos inv");
+  REQUIRE_FALSE(tech.ok());
+  CHECK(s.take_printed().find("Unrecognized flag: -T") != std::string::npos);
+  CHECK_FALSE(s.state.netlist.spice.tech.has_value());
 }
 
 TEST_CASE("The run reaches EFArgs with the run arguments", "[cap:netlist-spice-options][req:Run arguments and output file]") {
@@ -115,7 +160,7 @@ TEST_CASE("render leaves the session's settings untouched", "[cap:netlist-spice-
   sim.format = spice::Dialect::ngspice;
   sim.cthresh = 0.0;
   const auto flat = spice::render(s.state, "inv", sim);
-  REQUIRE_FALSE(flat.ok());  // EXTFLAT's read (tasks.md 10.1)
+  REQUIRE_FALSE(flat.ok());  // no inv.ext here
   CHECK(s.state.netlist.spice == before);
   CHECK(s.state.netlist.names == names);
   CHECK(s.result("ext2spice format") == "cdl");

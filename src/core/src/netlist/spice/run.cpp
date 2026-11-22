@@ -97,13 +97,10 @@ bool hier_flag(std::span<const std::string> args, std::size_t& i, RunArgs& run) 
   return false;
 }
 
+// spcParseArgs' flags with a value. `-o` is EFArgs' (ArgOptions::output),
+// so it never reaches here.
 bool value_flag(std::span<const std::string> args, std::size_t& i, RunArgs& run, char flag) {
   switch (flag) {
-    case 'o': {
-      const auto name = arg_str(args, i);
-      run.output = name;
-      return name.has_value();
-    }
     case 'f':
       return format_flag(args, i, run);
     case 'J':
@@ -237,6 +234,19 @@ extflat::ReadOptions spice_read_options(const editor::EditorState& editor, const
   return options;
 }
 
+// The flattening settings of a run: efFlatSingleCap's EFCapThreshold is
+// the run's threshold (the option level, then -c/-C).
+extflat::FlattenOptions flatten_options(const editor::EditorState& editor, const SpiceSettings& settings,
+                                        const extflat::SymbolTable& symbols) {
+  extflat::FlattenOptions options;
+  options.cap_threshold = settings.cthresh;
+  if (const auto gnd = editor.settings.effective(app::kGnd)) {
+    options.gnd = gnd->value;
+  }
+  options.symbols = symbols;
+  return options;
+}
+
 }  // namespace
 
 std::optional<std::size_t> parse_spice_flag(std::span<const std::string> args, std::size_t flag, RunArgs& run) {
@@ -254,7 +264,8 @@ namespace detail {
 
 diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_view cell,
                                      const SpiceSettings& settings, const compat::CompatSettings& compat,
-                                     platform::FileSystem& fs, diag::DiagnosticSink& sink) {
+                                     platform::FileSystem& fs, diag::DiagnosticSink& sink,
+                                     const extflat::SymbolTable& symbols) {
   cell::LookupContext lookup{fs, editor.search_paths, editor.path_variables, sink};
   extflat::ReadOptions options = spice_read_options(editor, settings);
   options.magic_compat = compat.magic_compat;
@@ -275,8 +286,10 @@ diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_vi
   if (!hierarchy.ok()) {
     return hierarchy.error();
   }
-  // EFFlatBuild with its messages (split globals, unresolved names).
-  auto netlist = extflat::flatten(hierarchy.value(), flat_flags(settings), extflat::FlattenOptions{}, sink);
+  // EFFlatBuild with its messages (split globals, unresolved names), the
+  // run's EFCapThreshold, $GND and the -s/-S symbols.
+  auto netlist = extflat::flatten(hierarchy.value(), flat_flags(settings), flatten_options(editor, settings, symbols),
+                                  sink);
   if (!netlist.ok()) {
     return netlist.error();
   }
@@ -339,19 +352,18 @@ cmd::CommandResult with_messages(cmd::CommandResult result, std::vector<diag::Di
 cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<std::string>& args,
                                const compat::CompatSettings& compat, platform::FileSystem& fs) {
   SpiceSettings& session = editor.netlist.spice;
-  RunArgs run{session, {}, std::nullopt, {}};
+  RunArgs run{session, {}, {}};
   auto parsed = extflat::parse_common_args(
-      args, [&run](std::span<const std::string> words, std::size_t flag) { return parse_spice_flag(words, flag, run); });
+      args, [&run](std::span<const std::string> words, std::size_t flag) { return parse_spice_flag(words, flag, run); },
+      extflat::ArgOptions{true, false, extflat::file_reader(fs)});
   std::vector<diag::Diagnostic> messages = to_diagnostics(run.messages);
   if (!parsed.ok()) {
     return with_messages(cmd::CommandResult::failure(parsed.error()), std::move(messages));
   }
   const extflat::CommonArgs& common = parsed.value();
+  messages.insert(messages.end(), common.messages.begin(), common.messages.end());
   if (!common.search_path.empty()) {
     session.search_path = common.search_path;
-  }
-  if (common.tech) {
-    session.tech = common.tech;
   }
   const auto cell = run_cell(editor, common);
   if (!cell) {
@@ -361,13 +373,12 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
   if (session.hierarchy) {
     return with_messages(cmd::m7_not_implemented("ext2spice hierarchy"), std::move(messages));
   }
-  // Q-NETLIST-42 (fix): `-o` names this run's file only. EXTFLAT's EFArgs
-  // takes `-o` itself (CommonArgs::output) before spcParseArgs sees it.
-  const std::optional<std::string> named = run.output ? run.output : common.output;
-  const std::string output = named.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
+  // Q-NETLIST-42 (fix): `-o` names this run's file only. EFArgs takes it
+  // for ext2spice (ArgOptions::output), into this run's CommonArgs.
+  const std::string output = common.output.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
   const SpiceSettings local = run_settings(session, common);
   diag::CollectingSink sink;
-  auto input = read_input(editor, *cell, local, compat, fs, sink);
+  auto input = read_input(editor, *cell, local, compat, fs, sink, common.symbols);
   for (diag::Diagnostic& d : sink.take()) {
     messages.push_back(std::move(d));
   }
@@ -404,7 +415,7 @@ diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view 
   platform::LocalFileSystem fs;
   diag::CollectingSink sink;
   const compat::CompatSettings compat = session_compat(editor);
-  auto input = detail::read_input(editor, cell, local, compat, fs, sink);
+  auto input = detail::read_input(editor, cell, local, compat, fs, sink, {});
   if (!input.ok()) {
     return input.error();
   }

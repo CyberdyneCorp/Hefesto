@@ -99,6 +99,24 @@ std::string name_to_spice(std::span<const std::string> components, SpiceDialect 
   return out;
 }
 
+namespace {
+
+// One character of a sim leaf before its last: ',' becomes '|' or goes,
+// a bracket becomes '_' with convert-brackets.
+void sim_leaf_char(std::string& out, char c, const NameFlags& flags) {
+  if (c == ',') {
+    if (flags.convert_comma) {
+      out += '|';
+    }
+  } else if (flags.convert_brackets && is_bracket(c)) {
+    out += '_';
+  } else {
+    out += c;
+  }
+}
+
+}  // namespace
+
 std::string name_to_sim(std::span<const std::string> components, NameFlags& flags,
                         const compat::CompatSettings& /*compat*/) {
   std::string out;
@@ -114,16 +132,7 @@ std::string name_to_sim(std::span<const std::string> components, NameFlags& flag
     return out + leaf;
   }
   for (std::size_t i = 0; i + 1 < leaf.size(); ++i) {
-    const char c = leaf[i];
-    if (c == ',') {
-      if (flags.convert_comma) {
-        out += '|';
-      }
-    } else if (flags.convert_brackets && is_bracket(c)) {
-      out += '_';
-    } else {
-      out += c;
-    }
+    sim_leaf_char(out, leaf[i], flags);
   }
   const char last = leaf.back();
   if (!((last == '!' && flags.trim_global) || (last == '#' && flags.trim_local))) {
