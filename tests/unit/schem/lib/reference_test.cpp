@@ -215,7 +215,9 @@ TEST_CASE("Environment reference left as text", kSearchPath) {
   CHECK(schem::SearchPath::parse("/${PDK_ROOT}/lib:/a", env, fs).directories() == std::vector<platform::Path>{"/a"});
 }
 
-TEST_CASE("relative search path elements resolve against the schematic folder", kSearchPath) {
+// Q-SCHEM-38 option (a), approved 2026-11-22, both modes; SCHEM-LIB-001
+// once for each reference found through a relative element, as for `.`.
+TEST_CASE("Relative library element resolved against the document folder", kSearchPath) {
   for (const bool compat : {true, false}) {
     CAPTURE(compat);
     platform::MemoryFileSystem fs;
@@ -240,6 +242,13 @@ TEST_CASE("relative search path elements resolve against the schematic folder", 
     const auto relative = with_code(sink.take(), "SCHEM-LIB-001");
     REQUIRE(relative.size() == 1);
     CHECK(relative[0].text.find("y.sym resolved against the schematic folder /w/s;") != std::string::npos);
+    // Once per reference: resolving y.sym again warns no more; z.sym warns once.
+    (void)cache.resolve({"y.sym"}, top, schem::ResolveContext{path, fs, &sink, compat});
+    touch(fs, "/w/lib/z.sym", "v {xschem version=3.4.8RC file_version=1.2}\n");
+    CHECK_FALSE(cache.resolve({"z.sym"}, top, schem::ResolveContext{path, fs, &sink, compat}).placeholder);
+    const auto again = with_code(sink.take(), "SCHEM-LIB-001");
+    REQUIRE(again.size() == 1);
+    CHECK(again[0].text.find("z.sym resolved against the schematic folder /w/s;") != std::string::npos);
   }
 }
 
