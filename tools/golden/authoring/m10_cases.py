@@ -71,18 +71,14 @@ NO_STYLE_REASON = ("with no output style the window opens in layout-layer mode, 
 
 # Case IDs whose replay passes (or, for a case of DECISIONS, differs only as documented); each loses its
 # deferral in the generated block.
-REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04", "MISC-3D-06", "MISC-3D-07",
-                      "MISC-3D-08", "MISC-3D-09", "MISC-3D-11", "MISC-3D-12"}
+REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04", "MISC-3D-05", "MISC-3D-06",
+                      "MISC-3D-07", "MISC-3D-08", "MISC-3D-09", "MISC-3D-10", "MISC-3D-11", "MISC-3D-12",
+                      "MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16"}
 
 # Captured cases that do not replay yet, with the reason (the deferral stays until the gap is closed).
-ROUTING_GAP = ("captured (run 44965506225); Magic routes the layout commands a script runs after `specialopen wind3d` "
-               "to the 3D window (WindSendCommand): `box` and `load` fail with an empty error, `cif ostyle half` "
-               "reaches the 3D window's `cif` ('Usage: cif'); Hefesto runs them in the layout client. No Q row yet "
-               "(proposed to the user in M10 round 2)")
-REPLAY_GAPS: dict[str, str] = {
-    "MISC-3D-05": ROUTING_GAP,
-    "MISC-3D-10": ROUTING_GAP,
-}
+# MISC-3D-05 and 10 replay since N1 (Q-MISC-82): with magic-compat ON a script command goes to the 3D
+# window once the last window-path command went there, as Magic's WindSendCommand does.
+REPLAY_GAPS: dict[str, str] = {}
 
 # Cases whose Magic output shows a resolved decision Hefesto does not reproduce: (decisions, outputs, reason).
 DECISIONS: dict[str, tuple[list[str], list[str], str]] = {
