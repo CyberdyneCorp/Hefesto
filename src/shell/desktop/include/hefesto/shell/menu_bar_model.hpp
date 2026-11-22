@@ -93,8 +93,8 @@ struct MenuBarInputs {
 [[nodiscard]] std::string collapse_spaces(std::string_view label);
 
 /// The milestone that enables a wrapper command, for the items present but
-/// disabled until a later milestone (Netlist Window: M12, 3D Display:
-/// M10); nullopt for the others.
+/// disabled until a later milestone (Netlist Window: M12; 3D Display is
+/// live since M10); nullopt for the others.
 [[nodiscard]] std::optional<std::string_view> later_milestone(std::string_view command);
 
 /// True for the wrapper commands that write the layout (File › Save…, Save as…).

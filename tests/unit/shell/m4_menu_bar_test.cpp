@@ -134,7 +134,7 @@ TEST_CASE("later-milestone menu items are present and disabled", "[cap:ui-gui-ma
   // Read GDS and Write GDS arrived in M5 (m5_gds_menu_test.cpp).
   CHECK_FALSE(item(menu(view, "Options"), "Netlist Window")->enabled);
   CHECK(item(menu(view, "Options"), "Netlist Window")->tooltip == "Netlist Window: arrives in M12");
-  CHECK(item(menu(view, "Options"), "3D Display")->tooltip == "3D Display: arrives in M10");
+  // 3D Display (`magic::render3d`) arrived in M10 (view3d_models_test.cpp).
   CHECK(item(menu(view, "Options"), "Cell Manager")->enabled);
   CHECK(later_milestone("magic::flush") == std::nullopt);
 }

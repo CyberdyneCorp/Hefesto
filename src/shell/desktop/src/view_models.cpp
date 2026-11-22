@@ -407,7 +407,7 @@ std::optional<std::string> short_tech_version(const std::vector<std::string>& ve
 const std::vector<DeferredControl>& deferred_view_tabs() {
   static const std::vector<DeferredControl> tabs = {
       {"Schematic", "Schematic editor: arrives in M8"},
-      {"3D", "3D inspection: arrives in M10"},
+      {"3D", "3D inspection: Options > 3D Display or render3d opens the 3D window"},
       {"Waveforms", "Waveforms: arrive in M8"},
   };
   return tabs;
