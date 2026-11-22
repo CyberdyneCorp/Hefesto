@@ -148,16 +148,16 @@ TEST_CASE("subcircuits descend auto is a usage error with magic-compat OFF",
 
 TEST_CASE("ext2spice run is the cell name with magic-compat ON", "[cap:netlist-spice-options][req:Command options]") {
   Session s;
-  // The run reaches EFArgs with `run foo`; until EXTFLAT lands
-  // parse_common_args (tasks.md 10.2) it answers CORE-NOTIMPL-008.
+  // The run reaches EFArgs with `run foo`: `foo` is the cell, whose
+  // `.ext` file does not exist here.
   const auto r = s.run("ext2spice run foo");
   REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().code == "CORE-NOTIMPL-008");
+  CHECK(r.diagnostics.back().text == "Cannot read extract file foo.ext");
   // An ambiguous word (resistor, renumber) is a run argument too.
   (void)s.take_printed();
   const auto ambiguous = s.run("ext2spice re");
   REQUIRE_FALSE(ambiguous.ok());
-  CHECK(ambiguous.diagnostics.back().code == "CORE-NOTIMPL-008");
+  CHECK(ambiguous.diagnostics.back().text == "Cannot read extract file re.ext");
   CHECK(s.take_printed().find("Ambiguous option") == std::string::npos);
 }
 

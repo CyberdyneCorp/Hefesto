@@ -236,40 +236,32 @@ std::vector<std::string> global_nets(const editor::EditorState& editor) {
 }
 
 // EFReadFile(inName, FALSE, esDoSimExtResis, FALSE, FALSE) (ext2sim.c:618):
-// no subcircuit marking, `.res.ext` overlays with extresist on, scaled. The
-// fields are EXTFLAT's M7 additions to ReadOptions (tasks.md 10.x); the
-// guard goes once they are on main.
-template <class Options>
-void ext2sim_read(Options& options, bool extresist) {
-  if constexpr (requires { options.subcircuits, options.resist_overlay, options.noscale; }) {
-    options.subcircuits = false;
-    options.resist_overlay = extresist;
-    options.noscale = false;
-  }
+// no subcircuit marking, `.res.ext` overlays with extresist on, scaled.
+void ext2sim_read(extflat::ReadOptions& options, bool extresist) {
+  options.subcircuits = false;
+  options.resist_overlay = extresist;
+  options.noscale = false;
 }
 
 // extGetDevType and DBNumTypes, which key the device table and so decide
 // the device visit order (EFbuild.c efBuildDevice): the lowest tile type
 // whose device list in the current style names the device, as
-// ExtGetDevInfo lists them by type. Guarded like ext2sim_read().
-template <class Options>
-void device_types(Options& options, const editor::EditorState& editor) {
-  if constexpr (requires { options.device_tile_type, options.tile_type_count; }) {
-    if (editor.technology) {
-      options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
-    }
-    if (!editor.extract.current) {
-      return;
-    }
-    options.device_tile_type = [style = editor.extract.current](std::string_view name) -> std::optional<std::int32_t> {
-      for (const extract::DeviceInfo& info : style->device_info()) {
-        if (info.model == name) {
-          return static_cast<std::int32_t>(info.type);
-        }
-      }
-      return std::nullopt;
-    };
+// ExtGetDevInfo lists them by type.
+void device_types(extflat::ReadOptions& options, const editor::EditorState& editor) {
+  if (editor.technology) {
+    options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
   }
+  if (!editor.extract.current) {
+    return;
+  }
+  options.device_tile_type = [style = editor.extract.current](std::string_view name) -> std::optional<std::int32_t> {
+    for (const extract::DeviceInfo& info : style->device_info()) {
+      if (info.model == name) {
+        return static_cast<std::int32_t>(info.type);
+      }
+    }
+    return std::nullopt;
+  };
 }
 
 extflat::ReadOptions read_options(const editor::EditorState& editor, const extflat::CommonArgs& args,

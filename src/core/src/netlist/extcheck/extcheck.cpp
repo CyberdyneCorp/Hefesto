@@ -75,15 +75,10 @@ bool is_global(std::string_view name) {
   return !name.empty() && name.back() == '!';
 }
 
-// The capacitance and lumped resistance EFVisitNodes passes: fields EXTFLAT
-// adds to FlatNode in M7 round 2 (tasks.md 10.x); the guard goes once they
-// are on main.
-template <class Flat>
-void node_values(const Flat& flat, NodeSample& sample) {
-  if constexpr (requires { flat.cap, flat.resistance; }) {
-    sample.cap = static_cast<double>(flat.cap);
-    sample.resist = flat.resistance;
-  }
+// The capacitance and lumped resistance EFVisitNodes passes.
+void node_values(const extflat::FlatNode& flat, NodeSample& sample) {
+  sample.cap = static_cast<double>(flat.cap);
+  sample.resist = flat.resistance;
 }
 
 CheckInput check_input(const extflat::Netlist& netlist) {
@@ -105,32 +100,19 @@ CheckInput check_input(const extflat::Netlist& netlist) {
 }
 
 // EFReadFile(name, FALSE, FALSE, FALSE, FALSE) (extcheck.c:81): no
-// subcircuit marking, no `.res.ext` overlays, scaled. The fields are
-// EXTFLAT's M7 additions to ReadOptions; the guard goes once they are on
-// main.
-template <class Options>
-void extcheck_read(Options& options) {
-  if constexpr (requires { options.subcircuits, options.resist_overlay, options.noscale; }) {
-    options.subcircuits = false;
-    options.resist_overlay = false;
-    options.noscale = false;
-  }
+// subcircuit marking, no `.res.ext` overlays, scaled.
+void extcheck_read(extflat::ReadOptions& options) {
+  options.subcircuits = false;
+  options.resist_overlay = false;
+  options.noscale = false;
 }
 
-// EFFlatBuild with its messages: EXTFLAT's flatten(hierarchy, flags,
-// options, sink) once it is on main, else the scaffold's flatten(), which
-// reports nothing. A template so that the call is resolved when it is
-// instantiated.
-template <class Hierarchy>
-diag::Outcome<extflat::Netlist> flatten_reporting(const Hierarchy& hierarchy, double cap_threshold,
+// EFFlatBuild with its messages.
+diag::Outcome<extflat::Netlist> flatten_reporting(const extflat::Hierarchy& hierarchy, double cap_threshold,
                                                   diag::DiagnosticSink& sink) {
   constexpr extflat::FlatFlags kFlags =
       extflat::FlatFlags::flat_nodes | extflat::FlatFlags::flat_caps | extflat::FlatFlags::flat_resists;
-  if constexpr (requires { extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink); }) {
-    return extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink);
-  } else {
-    return extflat::flatten(hierarchy, kFlags);
-  }
+  return extflat::flatten(hierarchy, kFlags, {cap_threshold, {}, {}, {}}, sink);
 }
 
 // EFReadFile and EFFlatBuild of the root cell from the local file system.
@@ -181,12 +163,9 @@ std::string usage_reason(const std::string& text) {
   return reason;
 }
 
-template <class Args>
-void print_arg_messages(const Args& args, std::ostream& err) {
-  if constexpr (requires { args.messages; }) {
-    for (const diag::Diagnostic& d : args.messages) {
-      err << d.text << '\n';
-    }
+void print_arg_messages(const extflat::CommonArgs& args, std::ostream& err) {
+  for (const diag::Diagnostic& d : args.messages) {
+    err << d.text << '\n';
   }
 }
 

@@ -66,7 +66,7 @@ Strings texts(const extflat::CommonArgs& a) {
 
 // ---- Common netlister arguments --------------------------------------------
 
-TEST_CASE("-c sets this run's capacitance threshold and a word is the root cell",
+TEST_CASE("EFArgs -c sets this run's capacitance threshold and a word is the root cell",
           "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
   const auto a = parse({"-c", "0.5", "top"});
   REQUIRE(a.ok());
@@ -101,7 +101,7 @@ TEST_CASE("a later root cell replaces an earlier one with a warning; .ext is rem
   CHECK(texts(a.value()) == Strings{"Warning: multiple input files specified; ignoring \"first\""});
 }
 
-TEST_CASE("-s accepts numeric symbols once; rejected ones are reported and skipped",
+TEST_CASE("EFArgs -s accepts numeric symbols once; rejected ones are reported and skipped",
           "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
   const auto a = parse({"-s", "L=4", "-s", "W=x", "-s", "L=5", "-s", "noeq"});
   REQUIRE(a.ok());
@@ -132,7 +132,7 @@ TEST_CASE("an unknown flag prints the usage text and fails; a tool flag is accep
 
 // Regression (Q-NETLIST-42, fix in both modes): `-o` names the output of
 // one run; a later run without it has no output name.
-TEST_CASE("-o applies to one run only (Q-NETLIST-42)", "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+TEST_CASE("EFArgs -o applies to one run only (Q-NETLIST-42)", "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
   const auto first = parse({"-o", "out.spice", "top"});
   REQUIRE(first.ok());
   CHECK(first.value().output == std::optional<std::string>{"out.spice"});

@@ -6,10 +6,7 @@
 //
 // The values EFVisitNodes and EFVisitDevs pass (node capacitance, lumped
 // resistance, area/perimeter and attributes; device L, W, values and scale;
-// EFScale and EFTech) are fields EXTFLAT adds to extflat's records in M7
-// round 2 (tasks.md 10.x). Until both workstreams are integrated each is
-// copied under an `if constexpr (requires ...)` guard, so this file builds
-// with and without them; the guards go once the fields are on main.
+// EFScale and EFTech) are the fields EXTFLAT keeps on extflat's records.
 //
 // Owner: SIM (design D3).
 
@@ -50,15 +47,12 @@ bool is_global(const HierName& name) {
   return !name.empty() && !name.back().empty() && name.back().back() == '!';
 }
 
-template <class Flat>
-void node_values(const Flat& flat, SimNode& node) {
-  if constexpr (requires { flat.cap, flat.resistance, flat.area_perim, flat.attributes; }) {
-    node.cap = static_cast<double>(flat.cap);
-    node.resist = flat.resistance;
-    node.attributes = flat.attributes;
-    for (const auto& [area, perim] : flat.area_perim) {
-      node.area_perim.push_back(AreaPerim{area, perim});
-    }
+void node_values(const extflat::FlatNode& flat, SimNode& node) {
+  node.cap = static_cast<double>(flat.cap);
+  node.resist = flat.resistance;
+  node.attributes = flat.attributes;
+  for (const auto& [area, perim] : flat.area_perim) {
+    node.area_perim.push_back(AreaPerim{area, perim});
   }
 }
 
@@ -90,24 +84,18 @@ std::string attribute_text(const std::vector<std::string>& attributes) {
   return text;
 }
 
-template <class Flat>
-void device_values(const Flat& flat, SimDevice& device) {
-  if constexpr (requires { flat.length, flat.width, flat.res, flat.cap, flat.scale; }) {
-    device.length = flat.length;
-    device.width = flat.width;
-    device.resistance = static_cast<double>(flat.res);
-    device.capacitance = static_cast<double>(flat.cap);
-    device.scale = flat.scale;
-  }
+void device_values(const extflat::FlatDevice& flat, SimDevice& device) {
+  device.length = flat.length;
+  device.width = flat.width;
+  device.resistance = static_cast<double>(flat.res);
+  device.capacitance = static_cast<double>(flat.cap);
+  device.scale = flat.scale;
 }
 
-template <class Flat>
-void netlist_values(const Flat& flat, SimInput& input) {
-  if constexpr (requires { flat.scale, flat.tech, flat.style; }) {
-    input.scale = flat.scale;
-    input.tech = flat.tech.value_or(std::string{});
-    input.style_matched = flat.style.has_value();
-  }
+void netlist_values(const extflat::Netlist& flat, SimInput& input) {
+  input.scale = flat.scale;
+  input.tech = flat.tech.value_or(std::string{});
+  input.style_matched = flat.style.has_value();
 }
 
 SimDevice device_of(const extflat::FlatDevice& flat, const NodeIndex& index) {

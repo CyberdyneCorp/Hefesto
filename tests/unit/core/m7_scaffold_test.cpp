@@ -104,6 +104,20 @@ void check_not_implemented(const cmd::CommandResult& result, const std::string& 
   CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
 }
 
+// The run reached EXTFLAT's read of `<cell>.ext` (no such file here).
+void check_reads(const cmd::CommandResult& result, const std::string& cell) {
+  REQUIRE_FALSE(result.ok());
+  REQUIRE_FALSE(result.diagnostics.empty());
+  CHECK(result.diagnostics.front().text == "Cannot read extract file " + cell + ".ext");
+}
+
+// No cell argument and no layout window (NETLIST-SPICE-001).
+void check_no_cell(const cmd::CommandResult& result) {
+  REQUIRE_FALSE(result.ok());
+  REQUIRE_FALSE(result.diagnostics.empty());
+  CHECK(result.diagnostics.front().code == "NETLIST-SPICE-001");
+}
+
 }  // namespace
 
 // --- tasks.md 3.2/3.3: code areas and CORE-NOTIMPL-008 ----------------------
@@ -252,12 +266,12 @@ TEST_CASE("ext2spice has Magic's option table and help", "[m7-scaffold]") {
 TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaffold]") {
   Session s;
   // magic-compat ON: `run`, an ambiguous word (`re`: resistor, renumber) and
-  // an unknown word are all run arguments. The run stops at EXTFLAT's
-  // argument parser until it lands (tasks.md 10.2).
-  for (const auto* line : {"ext2spice", "ext2spice run foo", "ext2spice re", "ext2spice foo"}) {
-    INFO(line);
-    check_not_implemented(s.run(line), "extflat arguments");
-  }
+  // an unknown word are all run arguments: the word is the cell whose
+  // `.ext` file the run reads.
+  check_no_cell(s.run("ext2spice"));
+  check_reads(s.run("ext2spice run foo"), "foo");
+  check_reads(s.run("ext2spice re"), "re");
+  check_reads(s.run("ext2spice foo"), "foo");
   const std::array<std::string_view, 3> table{"[run] [options]\trun", "resistor tee", "renumber"};
   const std::vector<std::string> run_foo{"run", "foo"};
   auto on = netlist::classify_first_word(run_foo, table, true);
@@ -277,8 +291,8 @@ TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaff
   (void)s.take_printed();
   REQUIRE(s.run("ext2spice re").ok());
   CHECK(s.take_printed() == "Ambiguous option: re\n");
-  check_not_implemented(s.run("ext2spice run foo"), "extflat arguments");
-  check_not_implemented(s.run("ext2spice foo"), "extflat arguments");
+  check_reads(s.run("ext2spice run foo"), "foo");
+  check_reads(s.run("ext2spice foo"), "foo");
   CHECK(s.run("ext2spice renumber").value.to_string() == "off");
 }
 
@@ -394,8 +408,9 @@ TEST_CASE("StyleBuilder builds ExtStyle fixtures", "[m7-scaffold]") {
   CHECK(style->gate_types() == gate);
   REQUIRE(style->device_info().size() == 1);
   CHECK(style->device_info().front().substrate_node == "VSUBS");
-  // The builders are stubs until EXTTECH lands them (tasks.md 4.1-4.6).
-  CHECK(style->rescale(1, 2, {}) == *style);
+  // ExtTechScale(1, 2): distances scaled by 2 (tasks.md 4.6).
+  CHECK(style->rescale(1, 2, {}).side_halo == 8);
+  CHECK(style->rescale(1, 2, {}).step_size == 200);
   CHECK(extract::StyleTable{}.select("lvs") == nullptr);
   const auto rules = hefesto::antenna::RuleView::from_style(*style);
   CHECK_FALSE(rules.rules(7).has_value());
@@ -407,10 +422,10 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   const auto ensured = extract::ensure_extracted(s.state, "top", nullptr);
   REQUIRE_FALSE(ensured.ok());
   CHECK(ensured.error().code == kNotImplemented);
-  check_not_implemented(netlist::spice::run(s.state, {}), "extflat arguments");
+  check_no_cell(netlist::spice::run(s.state, {}));  // SPICE landed the run (tasks.md 11.1)
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());
-  CHECK(rendered.error().code == kNotImplemented);
+  CHECK(rendered.error().code == "EXTFLAT-READ-001");
   check_not_implemented(hefesto::extresist::run(s.state, {}, nullptr), "extresist run");
   CHECK(extract::fringe_fraction(1.0, 1.0) == 0.0);
   const std::vector<std::string> parts{"x1", "n1"};
@@ -466,21 +481,20 @@ TEST_CASE("EditorState has the M7 members with Magic's defaults", "[m7-scaffold]
   CHECK_FALSE(state.extresist.options.fasthenry_frequency.has_value());
 }
 
-TEST_CASE("the tech-load and grid hooks leave no style until EXTTECH lands the builder", "[m7-scaffold]") {
+TEST_CASE("the tech-load and grid hooks install and rescale the current style", "[m7-scaffold]") {
   Session s;
   diag::NullSink quiet;
   editor::install_extract_styles(s.state, quiet);
-  CHECK(s.state.extract.current == nullptr);
-  editor::rescale_extract_style(s.state, 2, 1);
-  CHECK(s.state.extract.current == nullptr);
-  // A style installed by a test survives a rescale (the stub copies it).
+  REQUIRE(s.state.extract.current != nullptr);
+  // A style installed by a test is rescaled by the grid hook
+  // (ExtTechScale(1, 2): distances doubled).
   s.state.extract.current = extract::testing::StyleBuilder("x").side_halo(4).shared();
   editor::rescale_extract_style(s.state, 2, 1);
   REQUIRE(s.state.extract.current != nullptr);
-  CHECK(s.state.extract.current->side_halo == 4);
+  CHECK(s.state.extract.current->side_halo == 8);
   // `scalegrid` still runs through tech::scale_layout with the hook in it.
   REQUIRE(s.run("scalegrid 1 2").ok());
-  // A technology load rebuilds the (empty) table.
+  // A technology load rebuilds the table and selects the first style.
   editor::install_extract_styles(s.state, quiet);
-  CHECK(s.state.extract.current == nullptr);
+  CHECK(s.state.extract.current != nullptr);
 }

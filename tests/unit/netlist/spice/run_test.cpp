@@ -94,8 +94,8 @@ TEST_CASE("The run reaches EFArgs with the run arguments", "[cap:netlist-spice-o
   Session s;
   const auto r = spice::run(s.state, spice::SpiceRun{{"-F", "inv"}});
   REQUIRE_FALSE(r.ok());
-  // extflat::parse_common_args is EXTFLAT's (tasks.md 10.2).
-  CHECK(r.diagnostics.back().code == "CORE-NOTIMPL-008");
+  // EFArgs took `-F` and the cell `inv`; the read finds no inv.ext here.
+  CHECK(r.diagnostics.back().text == "Cannot read extract file inv.ext");
   CHECK_FALSE(s.state.netlist.spice.no_attributes);
 }
 

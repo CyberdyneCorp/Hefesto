@@ -5,8 +5,8 @@
 // openspec/changes/m7-extraction/design.md D7, D20). The order follows
 // Magic's tech load (ExtTechFinal's micron conversion with the current
 // cifoutput scale, then TechLoad's post-load ExtTechScale) and
-// DBScaleEverything's ExtTechScale. Until EXTTECH lands load_styles()
-// (tasks.md 4.1, 4.6) the table is empty and the current style null.
+// DBScaleEverything's ExtTechScale. A technology without an `extract`
+// section leaves the table empty and the current style null.
 //
 // Owner: INTEGRATION.
 
@@ -54,7 +54,7 @@ void install_extract_styles(EditorState& editor, diag::DiagnosticSink& sink) {
   if (first == nullptr) {
     return;
   }
-  extract::ExtStyle style = first->micron_convert(editor.mask.output_styles.current_style());
+  extract::ExtStyle style = first->micron_convert(editor.mask.output_styles.current_style(), sink);
   // TechLoad's post-load ExtTechScale(DBLambda[0], DBLambda[1]): distances
   // grow by internal/lambda.
   if (editor.grid.internal != editor.grid.lambda) {

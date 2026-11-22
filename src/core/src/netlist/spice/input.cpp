@@ -70,6 +70,11 @@ InputNode node_of(const extflat::FlatNode& flat) {
   for (const auto& name : flat.names) {
     node.aliases.push_back(joined(name));
   }
+  node.cap = flat.cap;
+  for (const auto& [area, perim] : flat.area_perim) {
+    node.pa.push_back(AreaPerim{area, perim});
+  }
+  node.attributes = flat.attributes;
   node.substrate = flat.substrate;
   node.port = flat.port;
   return node;
@@ -79,7 +84,9 @@ InputTerminal terminal_of(const extflat::FlatTerminal& flat) {
   InputTerminal term;
   term.node = flat.node;
   term.length = flat.length;
-  if (!flat.attributes.empty()) {
+  if (!flat.attribute_text.empty()) {
+    term.attributes = flat.attribute_text;  // dterm_attrs, kept raw as Magic does
+  } else if (!flat.attributes.empty()) {
     std::string text;
     for (const std::string& a : flat.attributes) {
       text += (text.empty() ? "" : ",") + a;
@@ -108,11 +115,29 @@ InputDevice device_of(const extflat::FlatDevice& flat) {
   }
   if (!flat.substrate.empty()) {
     dev.substrate = flat.substrate;
-    dev.substrate_local = local_name(flat.substrate, flat.hier_prefix);
+    dev.substrate_local =
+        flat.substrate_local.empty() ? local_name(flat.substrate, flat.hier_prefix) : flat.substrate_local;
   }
   dev.prefix = split_path(flat.hier_prefix);
   dev.params = flat.params;
+  dev.length = flat.length;
+  dev.width = flat.width;
+  dev.area = flat.device_area;
+  dev.perim = flat.perimeter;
+  dev.resistance = flat.res;
+  dev.capacitance = flat.cap;
+  dev.scale = flat.scale;
   return dev;
+}
+
+// The `parameters` records (EFDevParams), keyed by device type or `:cell`.
+void copy_params(const extflat::Netlist& netlist, SpiceInput& input) {
+  for (const auto& [type, decls] : netlist.device_params) {
+    std::vector<ParamDecl>& out = input.params[type];
+    for (const extflat::DeviceParam& d : decls) {
+      out.push_back(ParamDecl{d.type, d.name, d.scale, d.offset});
+    }
+  }
 }
 
 }  // namespace
@@ -150,14 +175,15 @@ void apply_device_info(SpiceInput& input, std::span<const extract::DeviceInfo> t
 SpiceInput from_netlist(const extflat::Netlist& netlist, std::string_view cell) {
   SpiceInput input;
   input.cell = std::string{cell};
-  input.compat_substrate = true;  // until a substrate node is seen (EFCompat)
+  input.compat_substrate = netlist.substrate_compat;  // EFCompat
+  input.scale = netlist.scale;                          // EFScale
+  input.tech = netlist.tech.value_or(std::string{});    // EFTech
+  input.style_matches = netlist.style.has_value();     // EFStyle != NULL
+  copy_params(netlist, input);
   netlist.visit_nodes([&](const extflat::FlatNode& flat) {
     input.nodes.push_back(node_of(flat));
     if (flat.top_port) {
       input.ports.push_back(RootPort{flat.name, -1});
-    }
-    if (flat.substrate) {
-      input.compat_substrate = false;
     }
   });
   netlist.visit_devices([&](const extflat::FlatDevice& flat) {

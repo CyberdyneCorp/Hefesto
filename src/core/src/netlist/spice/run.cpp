@@ -194,18 +194,47 @@ extflat::FlatFlags flat_flags(const SpiceSettings& settings) {
 }
 
 void apply_style(SpiceInput& input, const editor::EditorState& editor) {
-  input.tech = editor.technology ? editor.technology->name() : std::string{};
   const auto& style = editor.extract.current;
-  input.style_matches = style != nullptr;
   if (style == nullptr) {
+    input.style_matches = false;
     return;
   }
-  input.scale = style->units_per_lambda;
   input.resist_classes = style->resist_classes.size();
   apply_device_info(input, style->device_info());
   if (const auto gnd = editor.settings.effective(app::kGnd); gnd && !gnd->value.empty()) {
     input.gnd_names.insert(input.gnd_names.begin(), gnd->value);
   }
+}
+
+// EFReadFile(inName, esDoHierarchy, esDoExtResis, FALSE, TRUE)
+// (ext2spice.c:888) with EFOutputFlags' short mode, and the style lookups
+// the read takes from the session: extGetDevType/DBNumTypes, which key the
+// device table, and ExtCompareStyle for a `style` record.
+extflat::ReadOptions spice_read_options(const editor::EditorState& editor, const SpiceSettings& settings) {
+  extflat::ReadOptions options;
+  options.subcircuits = settings.hierarchy;
+  options.resist_overlay = settings.extresist;
+  options.noscale = false;
+  options.spice = true;
+  options.shorts = static_cast<extflat::ReadOptions::PortShorts>(settings.shorts);
+  if (editor.technology) {
+    options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
+  }
+  if (const auto style = editor.extract.current) {
+    options.device_tile_type = [style](std::string_view name) -> std::optional<std::int32_t> {
+      for (const extract::DeviceInfo& info : style->device_info()) {
+        if (info.model == name) {
+          return static_cast<std::int32_t>(info.type);
+        }
+      }
+      return std::nullopt;
+    };
+  }
+  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
+    const auto style = editor.extract.styles.select(name);
+    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
+  };
+  return options;
 }
 
 }  // namespace
@@ -227,7 +256,7 @@ diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_vi
                                      const SpiceSettings& settings, const compat::CompatSettings& compat,
                                      platform::FileSystem& fs, diag::DiagnosticSink& sink) {
   cell::LookupContext lookup{fs, editor.search_paths, editor.path_variables, sink};
-  extflat::ReadOptions options;
+  extflat::ReadOptions options = spice_read_options(editor, settings);
   options.magic_compat = compat.magic_compat;
   options.tech_name = editor.technology ? editor.technology->name() : std::string{};
   options.global_nets = global_nets(editor);
@@ -246,8 +275,12 @@ diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_vi
   if (!hierarchy.ok()) {
     return hierarchy.error();
   }
-  const extflat::Netlist netlist = extflat::flatten(hierarchy.value(), flat_flags(settings));
-  SpiceInput input = from_netlist(netlist, cell);
+  // EFFlatBuild with its messages (split globals, unresolved names).
+  auto netlist = extflat::flatten(hierarchy.value(), flat_flags(settings), extflat::FlattenOptions{}, sink);
+  if (!netlist.ok()) {
+    return netlist.error();
+  }
+  SpiceInput input = from_netlist(netlist.value(), cell);
   apply_style(input, editor);
   return input;
 }
@@ -328,8 +361,10 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
   if (session.hierarchy) {
     return with_messages(cmd::m7_not_implemented("ext2spice hierarchy"), std::move(messages));
   }
-  // Q-NETLIST-42 (fix): `-o` names this run's file only.
-  const std::string output = run.output.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
+  // Q-NETLIST-42 (fix): `-o` names this run's file only. EXTFLAT's EFArgs
+  // takes `-o` itself (CommonArgs::output) before spcParseArgs sees it.
+  const std::optional<std::string> named = run.output ? run.output : common.output;
+  const std::string output = named.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
   const SpiceSettings local = run_settings(session, common);
   diag::CollectingSink sink;
   auto input = read_input(editor, *cell, local, compat, fs, sink);
