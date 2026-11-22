@@ -21,7 +21,7 @@ Compatibility: behavioral
 - **THEN** metal1 SHALL be drawn as a solid from z = 1.0 to z = 1.5 in tech units, as in Magic
 
 ### Requirement: Mesh generation from layout
-The 3D model SHALL be built from the generated mask geometry (capability `mask-output-operators`) or from magic layers, as selected by the user. For each layer, the polygons SHALL be extruded between that layer's height and height + thickness. Contact and via cuts SHALL be drawn with their technology height and thickness, as in Magic; a view option, off by default, SHALL draw them as vertical solids spanning the layers they connect, from the top of the lowest connected layer to the bottom of the highest, the layers being found from the contact's residues (capability `tech-contacts-and-stacking`). Generating the model SHALL be incremental and run in the background. It SHALL cover either the whole cell or the box region.
+The 3D model SHALL be built from the generated mask geometry (capability `mask-output-operators`) or from magic layers, as selected by the user. For each layer, the polygons SHALL be extruded between that layer's height and height + thickness. Contact and via cuts SHALL be drawn with their technology height and thickness, as in Magic; a view option, off by default, SHALL draw them as vertical solids spanning the layers they connect, from the top of the lowest connected layer to the bottom of the highest, the layers being found from the contact's residues (capability `tech-contacts-and-stacking`); a contact whose residues leave no gap (the lowest connected layer's top is not below the highest one's bottom) SHALL keep its own technology height and thickness under the option (decision M1, approved 2026-11-22). Generating the model SHALL be incremental and run in the background. It SHALL cover either the whole cell or the box region.
 
 Compatibility: native
 
@@ -37,6 +37,11 @@ Compatibility: native
 - **THEN** the via SHALL be drawn with its own technology height and thickness
 - **WHEN** the option to span connected layers is turned on
 - **THEN** the via SHALL be drawn from the top of metal1 to the bottom of metal2
+
+#### Scenario: Spanning a contact whose residues leave no gap
+- **GIVEN** a via between metal1 (from 1.0 to 1.5) and metal2 starting at 1.2, with its own height 1.2 and thickness 0.3
+- **WHEN** the option to span connected layers is turned on
+- **THEN** the via SHALL keep its own height 1.2 and thickness 0.3
 
 ### Requirement: Interactive 3D inspection
 The 3D view SHALL support the following:

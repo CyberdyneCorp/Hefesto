@@ -75,7 +75,7 @@ Compatibility: exact
 
 ### Requirement: Opening the 3D window
 
-The system SHALL open a 3D view with `specialopen wind3d [cellname [toolkit-path]]` (and the scripting convenience `render3d [cell]`, which opens it in its own top-level window (toolkit path `.render.magic`) and sets the cut box once from the layout box (`cutbox box`); the cut box does not follow later changes of the layout box), and SHALL enforce: at most one 3D view exists ("Only one 3D window allowed."); in Magic the display must be OpenGL ("Display type is ...  OpenGL is required for the 3D display."); the rendered cell is `cellname` if given, else the cell holding the layout box, else the root cell of the only layout window, else the error "Ambiguous directive:  Put cursor box in one of the windows."; the cell must already exist (it is read from disk if not yet loaded) — otherwise "Cells cannot be created in the 3D window." and no window is created. The window has no scroll bars, caption or border, an initial size of 500 × 500 pixels, the default toolkit path `.magic3d`, mask-layer mode on if a current output style exists, otherwise layout-layer mode (Q-MISC-73: Magic opens in mask-layer mode and dereferences the missing style; fixed), rendering level 1, and the default view of requirement "Default view". Mouse buttons perform no action. Closing the window (`<path> closewindow` or `closewindow` in it) removes its toolkit-path command, as Magic's GrTOGLDelete does: `info commands <path>` no longer lists it, calling it is "invalid command name", and a new `specialopen wind3d` on that path opens a new window, in both settings (Q-MISC-80, MISC-3D-12).
+The system SHALL open a 3D view with `specialopen wind3d [cellname [toolkit-path]]` (and the scripting convenience `render3d [cell]`, which opens it in its own top-level window (toolkit path `.render.magic`) and sets the cut box once from the layout box (`cutbox box`); the cut box does not follow later changes of the layout box), and SHALL enforce: at most one 3D view exists ("Only one 3D window allowed."); in Magic the display must be OpenGL ("Display type is ...  OpenGL is required for the 3D display."); the rendered cell is `cellname` if given, else the cell holding the layout box, else the root cell of the only layout window, else the error "Ambiguous directive:  Put cursor box in one of the windows."; the cell must already exist (it is read from disk if not yet loaded) — otherwise "Cells cannot be created in the 3D window." and no window is created. The window has no scroll bars, caption or border, an initial size of 500 × 500 pixels, the default toolkit path `.magic3d`, mask-layer mode on if a current output style exists, otherwise layout-layer mode (Q-MISC-73: Magic opens in mask-layer mode and dereferences the missing style; fixed), rendering level 1, and the default view of requirement "Default view". Mouse buttons perform no action. Closing the window (`<path> closewindow` or `closewindow` in it) removes its toolkit-path command, as Magic's GrTOGLDelete does: `info commands <path>` no longer lists it, calling it is "invalid command name", and a new `specialopen wind3d` on that path opens a new window, in both settings (Q-MISC-80, approved 2026-11-22, MISC-3D-12). With magic-compat ON, `specialopen wind3d <cell> <path>` on a path below a top-level window (such as `render3d`'s `.render.magic`) leaves Magic's `window "<path>" isn't a top-level window` (its failing `wm protocol`) as the command's result; with it OFF the result is empty; the window opens in both settings (decision W2, approved 2026-11-22).
 
 Compatibility: behavioral
 
@@ -99,6 +99,11 @@ Compatibility: behavioral
 - **GIVEN** a 3D view opened with `specialopen wind3d` on the default toolkit path `.magic3d`
 - **WHEN** the user runs `.magic3d closewindow` and then `specialopen wind3d`
 - **THEN** in both settings `info commands .magic3d` is empty after the close, `.magic3d view` is "invalid command name", and the second `specialopen wind3d` opens a new 3D view at `.magic3d` (Q-MISC-80)
+
+#### Scenario: specialopen below a top-level window
+- **GIVEN** a top-level window `.render` and no 3D view
+- **WHEN** the user runs `specialopen wind3d c3d .render.magic`
+- **THEN** the 3D view opens at `.render.magic` in both settings, and the command's result is `window ".render.magic" isn't a top-level window` with magic-compat ON and empty with it OFF
 
 #### Scenario: render3d copies the box once
 - **GIVEN** a layout box (0,0)-(10,10) in the rendered cell
@@ -142,7 +147,7 @@ The 3D view SHALL accept the following commands (exact names; extra or missing a
 | `zoom xy z [abs*\|rel*]` | sets or multiplies s_xy and s_z; non-positive values: "Error: zoom values/factors must be positive and nonzero" |
 | `refresh` | redraws |
 | `cif` | toggles between mask-layer mode and layout-layer mode, rescaling the view by f (to mask mode) or 1/f (to layout mode) as in requirement "Default view"; f is the current output style's scalefactor (Q-MISC-78: with magic-compat OFF, leaving mask-layer mode divides by the scalefactor applied on entering it, and a change of output style while in mask-layer mode rescales the view from the old to the new scalefactor); switching to mask mode requires a current output style, otherwise layout-layer mode is kept and reported (Q-MISC-73); the mode is per window, and a new window draws in the mode it reports (Q-MISC-76: Magic keeps the redisplay procedure of the last toggle; fixed) |
-| `level` / `level n\|up\|down` | returns / sets the rendering quality level (integer, clamped at ≥ 0) |
+| `level` / `level n\|up\|down` | returns / sets the rendering quality level (integer, clamped at 0 from below, with no upper limit as in Magic; a value or step beyond the integer range saturates instead of overflowing; decisions W3 and W4, approved 2026-11-22) |
 | `defaults` | restores the default view; both visibility sets reset to all visible |
 | `closewindow` | closes the 3D view |
 | `render name` | returns (height, thickness, style) of the named mask layer, as stored; with no current output style: "No CIF output style set!" |
@@ -152,6 +157,8 @@ The 3D view SHALL accept the following commands (exact names; extra or missing a
 | `help` | lists the commands |
 
 Default key bindings: `L`/`l` level up/down, `C` cif, space defaults, Ctrl-L refresh, `Z`/`z` zoom ×2/×0.5 in xy, `>`/`<` zoom ×2/×0.5 in z, digits `1`–`6` rotate by ±10° about y, x, z, digits `7`–`0` by ±1° about y and x, `-`/`=` ±1° about z, arrow keys scroll by 0.25 in screen units.
+
+While a 3D view is open, the layout commands a script runs (`box`, `load`, `cif ostyle`, ...) go to the 3D view with magic-compat ON, as in Magic, which dispatches them with the current window, then the 3D window: `box` and `load` fail there with an empty error, and `cif ostyle <style>` reaches the 3D view's `cif`; with magic-compat OFF they go to the layout window (Q-MISC-82). With magic-compat ON, a command sent through the window's toolkit path whose wrapper tag runs `magic::scrollupdate` (`view`, `scroll`, `zoom`, `findbox`) or `magic::toolupdate` (`see`) also prints the two "Unknown command:" failures of the tag's `*bypass logcommands suspend|resume`, as Magic's OpenGL window does; with it OFF nothing more is printed (decision W1, approved 2026-11-22).
 
 Compatibility: behavioral
 
@@ -176,6 +183,26 @@ Compatibility: behavioral
 - **WHEN** the user runs `cif`, then `cif ostyle` selecting a style with scalefactor 5, then `cif`
 - **THEN** with magic-compat ON `zoom` returns s_z = 50, as in Magic (Q-MISC-78); with it OFF it returns s_z = 25
 
+#### Scenario: Level limits
+- **GIVEN** a 3D view at level 1
+- **WHEN** the user runs `level -5`, then `level 99999999999`, then `level up`
+- **THEN** `level` returns 0 after the first command and 2147483647 after the second and the third, with magic-compat ON and OFF
+
+#### Scenario: Script layout commands reach the 3D window with magic-compat ON
+- **GIVEN** magic-compat ON, a layout window on cell `c3d` and a script that runs `specialopen wind3d c3d` and then `box 0 0 10 10`
+- **WHEN** the script runs
+- **THEN** `box` is sent to the 3D view, which has no such command, and fails with an empty error, as in Magic; the layout box is unchanged (Q-MISC-82; MISC-3D-05)
+
+#### Scenario: Script layout commands reach the layout window with magic-compat OFF
+- **GIVEN** magic-compat OFF and the same script
+- **WHEN** the script runs
+- **THEN** `box` sets the layout box to (0,0)-(10,10) and the 3D view is unchanged (Q-MISC-82)
+
+#### Scenario: Wrapper console noise
+- **GIVEN** a 3D view opened at `.render.magic` with the wrapper's `magic::scrollupdate` tag on `view`
+- **WHEN** the user runs `.render.magic view`
+- **THEN** it returns the view angles in both settings; with magic-compat ON the console also shows "Unknown command:" twice, followed by `'logcommands' 'suspend'` and `'logcommands' 'resume'`; with it OFF nothing more is printed (decision W1)
+
 #### Scenario: Visibility sets are per mode
 - **GIVEN** a 3D view in mask-layer mode
 - **WHEN** the user runs `see no MET1`, `cif` and `cif` again
@@ -183,7 +210,7 @@ Compatibility: behavioral
 
 ### Requirement: Rendered geometry
 
-The system SHALL render, in layout-layer mode, every non-space tile of the rendered cell and all its descendants (flattened through instance transforms) whose type is visible, grouped by display style in style-table order, clipped to the cut box if one is set (otherwise to the window area enlarged by one unit), as a prism whose top face is at z_top = −h·s_z and bottom face at z_bot = z_top − t·s_z (h, t from requirement "Layer height and thickness"), drawn with the tile type's display style; and in mask-layer mode, the mask layers generated by the current output style for the flattened cell over the cell bounding box (or the cut box) grown by the style's interaction radius, each visible mask layer's rectangles as prisms with z_top = −h·s_z and z_bot = z_top − t·s_z using the `render` height, thickness and style: h and t as stored with magic-compat ON, as in Magic; with it OFF taken as micrometres and converted to internal units by the output style's scale, cs_scaleFactor / (100 · cs_expander) µm per internal unit (Q-MISC-72). A mask layer with no `render` statement is drawn flat (h = t = 0) in both settings. Prisms have top and bottom faces and side faces on the boundary of each layer's flattened geometry, where the neighbour is another layer, space or the clip edge (only when z_top ≠ z_bot); pieces of one layer that abut across cells get no side faces between them (Magic draws each cell's tile outlines, so it emits such inner faces; decision J6, approved 2026-11-21); diagonal (split) tiles render as triangles with a diagonal side face; faces cut by the clip area (the cut box, or the window area grown by one unit) are closed: for a split tile, with magic-compat ON along the edges of its bounding rectangle clipped to the area, as Magic does (so the cut face also spans the part of the rectangle the triangle does not cover), and with it OFF along the triangle's own cut (standing rule; no Q row yet, proposed to the user in M10 round 2). Only solid or stippled styles are rendered; outlines, contact crosses and labels are not. Tiles of subcells are clipped after their instance transform, in root coordinates (Q-MISC-70: Magic clips against the area in the subcell's coordinates; fixed). Each mode keeps its own visibility set: tile types in layout-layer mode, mask-layer indices of the current output style in mask-layer mode, the latter reset to all visible when the output style changes (Q-MISC-71: Magic shares one; fixed).
+The system SHALL render, in layout-layer mode, every non-space tile of the rendered cell and all its descendants (flattened through instance transforms) whose type is visible, grouped by display style in style-table order, clipped to the cut box if one is set (otherwise to the window area enlarged by one unit), as a prism whose top face is at z_top = −h·s_z and bottom face at z_bot = z_top − t·s_z (h, t from requirement "Layer height and thickness"), drawn with the tile type's display style; and in mask-layer mode, the mask layers generated by the current output style for the flattened cell over the cell bounding box (or the cut box) grown by the style's interaction radius, each visible mask layer's rectangles as prisms with z_top = −h·s_z and z_bot = z_top − t·s_z using the `render` height, thickness and style: h and t as stored with magic-compat ON, as in Magic; with it OFF taken as micrometres and converted to internal units by the output style's scale, cs_scaleFactor / (100 · cs_expander) µm per internal unit (Q-MISC-72). A mask layer with no `render` statement is drawn flat (h = t = 0) in both settings. Prisms have top and bottom faces and side faces on the boundary of each layer's flattened geometry, where the neighbour is another layer, space or the clip edge (only when z_top ≠ z_bot); pieces of one layer that abut across cells get no side faces between them (Magic draws each cell's tile outlines, so it emits such inner faces; decision J6, approved 2026-11-21); diagonal (split) tiles render as triangles with a diagonal side face; faces cut by the clip area (the cut box, or the window area grown by one unit) are closed: for a split tile, with magic-compat ON along the edges of its bounding rectangle clipped to the area, as Magic does (so the cut face also spans the part of the rectangle the triangle does not cover), and with it OFF along the triangle's own cut (Q-MISC-83). Only solid or stippled styles are rendered; outlines, contact crosses and labels are not; the same rule applies to the GL face log Hefesto writes for the golden geometry comparison, with magic-compat ON and OFF (decision N3, approved 2026-11-22; MISC-3D-15). Tiles of subcells are clipped after their instance transform, in root coordinates (Q-MISC-70: Magic clips against the area in the subcell's coordinates; fixed). Each mode keeps its own visibility set: tile types in layout-layer mode, mask-layer indices of the current output style in mask-layer mode, the latter reset to all visible when the output style changes (Q-MISC-71: Magic shares one; fixed).
 
 Compatibility: behavioral
 
@@ -204,6 +231,16 @@ Compatibility: behavioral
 - **WHEN** the view is drawn in layout-layer mode
 - **THEN** metal1 has side faces only on the outline of (0,0)-(20,10), none along x = 10
 
+#### Scenario: Split tile under the cut box
+- **GIVEN** a split tile (0,0)-(10,10) with diagonal from (0,0) to (10,10) whose lower-right triangle is metal1, and the cut box (0,0)-(5,10)
+- **WHEN** the view is drawn in layout-layer mode
+- **THEN** with magic-compat ON the closed cut face at x = 5 spans y 0..10, the tile's bounding rectangle clipped to the cut box, as in Magic; with it OFF it spans y 0..5, the triangle's own cut (Q-MISC-83)
+
+#### Scenario: Outline style draws nothing
+- **GIVEN** a contact type that belongs to a solid display style and to an outline (cross) style
+- **WHEN** the view is drawn in layout-layer mode
+- **THEN** only the solid style's prism is drawn, and the GL face log lists faces of the solid style only, with magic-compat ON and OFF (decision N3)
+
 #### Scenario: Render heights in micrometres with magic-compat OFF
 - **GIVEN** `render MET1 metal1 1.376 0.36` and a current output style with 0.01 µm per internal unit
 - **WHEN** the view is drawn in mask-layer mode
@@ -211,7 +248,7 @@ Compatibility: behavioral
 
 ### Requirement: Viewing transform and shading
 
-The system SHALL map a model point v = (x, y, z) (x, y in internal or mask units, z as computed above) to normalized view coordinates by v' = A · S · Rx(ax) · Ry(ay) · Rz(az) · T · v, where T translates by (tx, ty, tz), Rx/Ry/Rz are right-handed rotations by the view angles in degrees, S = diag(s_xy, s_xy, p_z), and, for the window's current size of W_w × H_w pixels, A = diag(H_w / W_w, 1, 1) when W_w ≥ H_w and A = diag(1, W_w / H_w, 1) otherwise, so units stay 1:1 and the limiting dimension is fitted; the current size also sets the viewport and the refresh area (Q-MISC-74: Magic keeps 500 × 500 after a resize, and its formula, the first case, overflows the width of a window taller than wide; fixed; the second case is an amendment approved 2026-11-21, decision J1), with an orthographic projection of the cube [−1, 1]³ onto the window (no perspective); faces are emitted counter-clockwise when seen from outside and back faces are not drawn. Faces are depth-tested; a type in several display styles is drawn once per style, in style-table order, and the last style drawn wins on equal depth (Q-MISC-77: Magic draws in style order without a depth test; fixed). Shading follows the magic-compat setting: with it ON Magic's fixed-function lighting, in which every face has the normal (0, 0, 1) and is lit by one white diffuse light positioned at (50, 50, 50) in model coordinates plus an ambient light of 0.6 (GL's global 0.2 and Magic's light #0 ambient 0.4); with it OFF one white directional light from (1, 1, 1) on each face's own normal plus an ambient light of 0.4; either is applied to the style colour (R2, recommended 2026-11-21, pending user confirmation); the background is the display's background colour; at level ≥ 1 edges and polygons are anti-aliased. Exact pixel output is host-dependent.
+The system SHALL map a model point v = (x, y, z) (x, y in internal or mask units, z as computed above) to normalized view coordinates by v' = A · S · Rx(ax) · Ry(ay) · Rz(az) · T · v, where T translates by (tx, ty, tz), Rx/Ry/Rz are right-handed rotations by the view angles in degrees, S = diag(s_xy, s_xy, p_z), and, for the window's current size of W_w × H_w pixels, A = diag(H_w / W_w, 1, 1) when W_w ≥ H_w and A = diag(1, W_w / H_w, 1) otherwise, so units stay 1:1 and the limiting dimension is fitted; the current size also sets the viewport and the refresh area (Q-MISC-74: Magic keeps 500 × 500 after a resize, and its formula, the first case, overflows the width of a window taller than wide; fixed; the second case is an amendment approved 2026-11-21, decision J1), with an orthographic projection of the cube [−1, 1]³ onto the window (no perspective); faces are emitted counter-clockwise when seen from outside and back faces are not drawn. Faces are depth-tested; a type in several display styles is drawn once per style, in style-table order, and the last style drawn wins on equal depth (Q-MISC-77: Magic draws in style order without a depth test; fixed). The depth comparison and the culled side are chosen so that higher layers are in front in the top view, with magic-compat ON and OFF (Q-MISC-81: with a depth test, Magic's face orientation would show lower layers in front; fixed). A display style that Magic draws translucent (blended over the background) is drawn opaque in its plain colour, with magic-compat ON and OFF (decision R3, approved 2026-11-22). Shading follows the magic-compat setting: with it ON Magic's fixed-function lighting, in which every face has the normal (0, 0, 1) and is lit by one white diffuse light positioned at (50, 50, 50) in model coordinates plus an ambient light of 0.6 (GL's global 0.2 and Magic's light #0 ambient 0.4); with it OFF one white directional light from (1, 1, 1) on each face's own normal plus an ambient light of 0.4; either is applied to the style colour (decision R2, approved 2026-11-22); the background is the display's background colour; at level ≥ 1 edges and polygons are anti-aliased. Exact pixel output is host-dependent.
 
 Compatibility: informative
 
@@ -221,6 +258,16 @@ Compatibility: informative
 - **GIVEN** the default view of a cell
 - **WHEN** the window is drawn
 - **THEN** the cell appears as in a plan view, centred, filling about 91% (1/1.1) of the limiting window dimension
+
+#### Scenario: Higher layers in front in the top view
+- **GIVEN** metal1 (h = 2.0) and poly (h = 1.0) overlapping at (0,0)-(10,10)
+- **WHEN** the default top view is drawn
+- **THEN** the overlap shows metal1, with magic-compat ON and OFF (Q-MISC-81)
+
+#### Scenario: Translucent style drawn opaque
+- **GIVEN** a display style that Magic draws translucent
+- **WHEN** a tile drawn in that style is shown
+- **THEN** its faces are opaque, in the style's plain colour, with magic-compat ON and OFF (decision R3)
 
 #### Scenario: Tall window
 - **GIVEN** the default view of a 100 × 100 cell in a window of 500 × 800 pixels
