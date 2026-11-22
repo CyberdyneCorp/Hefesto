@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <limits>
 #include <string>
 #include <vector>
@@ -287,7 +288,7 @@ TEST_CASE("security fix M6-S3: a list repetition above 2^24 displacements is rea
           "(approved cap)",
           "[cap:oasis-format][req:Repetitions]") {
   // Q-OASIS-14 (approved 2026-11-21), both modes: n' = 2^24 gives 2^24 + 1 displacements.
-  for (const std::uint8_t type : {4, 5, 6, 7, 10, 11}) {
+  for (const std::uint8_t type : std::initializer_list<std::uint8_t>{4, 5, 6, 7, 10, 11}) {
     CAPTURE(type);
     std::vector<std::byte> bytes{std::byte{type}};
     oasis::write_unsigned(bytes, oasis::kMaxListEntries);
