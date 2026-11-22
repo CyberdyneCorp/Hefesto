@@ -89,27 +89,31 @@ std::string NetlistRun::path_text(const platform::Path& file) const {
 /// `*.PININFO` lines only.
 void NetlistRun::apply_options_instances(const Level& top) {
   for (const Placed& p : top.instances) {
-    if (p.ignored || p.type != "netlist_options") {
-      continue;
+    if (!p.ignored && p.type == "netlist_options") {
+      apply_options_instance(p);
     }
-    if (const auto v = p.instance.get("bus_replacement_char", ValueForm::decoded); v && v->size() == 2) {
-      options_.bus_replacement_char = *v;
-    }
-    if (const auto v = p.instance.get("lvs_ignore", ValueForm::decoded)) {
-      options_.lvs_ignore = is_true(*v);
-    }
-    if (const auto v = p.instance.get("lvs_netlist", ValueForm::decoded)) {
-      options_.lvs_netlist = is_true(*v);
-    }
-    if (const auto v = p.instance.get("top_is_subckt", ValueForm::decoded)) {
-      pininfo_top_ = is_true(*v);
-    }
-    if (const auto v = p.instance.get("spiceprefix", ValueForm::decoded)) {
-      options_.spiceprefix = !is_false(*v);
-    }
-    if (const auto v = p.instance.get("hiersep", ValueForm::decoded)) {
-      options_.hiersep = *v;
-    }
+  }
+}
+
+/// The keys one `netlist_options` instance defines.
+void NetlistRun::apply_options_instance(const Placed& p) {
+  if (const auto v = p.instance.get("bus_replacement_char", ValueForm::decoded); v && v->size() == 2) {
+    options_.bus_replacement_char = *v;
+  }
+  if (const auto v = p.instance.get("lvs_ignore", ValueForm::decoded)) {
+    options_.lvs_ignore = is_true(*v);
+  }
+  if (const auto v = p.instance.get("lvs_netlist", ValueForm::decoded)) {
+    options_.lvs_netlist = is_true(*v);
+  }
+  if (const auto v = p.instance.get("top_is_subckt", ValueForm::decoded)) {
+    pininfo_top_ = is_true(*v);
+  }
+  if (const auto v = p.instance.get("spiceprefix", ValueForm::decoded)) {
+    options_.spiceprefix = !is_false(*v);
+  }
+  if (const auto v = p.instance.get("hiersep", ValueForm::decoded)) {
+    options_.hiersep = *v;
   }
 }
 
@@ -126,20 +130,8 @@ std::string NetlistRun::place_of(const Placed& instance) const {
 /// pins, else the port `lab` values in instance order, sorted by
 /// `sim_pinnumber` (stable, Q-SCHEM-5) when every port has one.
 std::string NetlistRun::top_ports(const Level& top) {
-  const std::string reference = top_cell(top_) + ".sym";
-  const ResolvedReference resolved =
-      resolve_reference(reference, top_.path.parent_path(), env_.search_path, env_.fs);
-  if (!resolved.file.empty() && env_.fs.exists(resolved.file)) {
-    const Symbol& symbol = env_.symbols.resolve(Reference{reference}, top_, resolve_);
-    if (!symbol.placeholder && !symbol.pins.empty()) {
-      PlannedDefinition definition;
-      definition.entry.symbol = &symbol;
-      definition.entry.reference = reference;
-      const PropertyString templ{get_token(symbol.property(), "template").value_or(std::string{})};
-      bool reached_end = false;
-      check_pins(symbol, top);
-      return " " + header_ports(definition, Parents{nullptr, &templ}, reached_end);
-    }
+  if (auto ports = top_symbol_ports(top)) {
+    return *ports;
   }
   std::vector<const Placed*> ports;
   for (const Placed& p : top.instances) {
@@ -147,23 +139,7 @@ std::string NetlistRun::top_ports(const Level& top) {
       ports.push_back(&p);
     }
   }
-  const bool sorted = !ports.empty() && std::all_of(ports.begin(), ports.end(), [](const Placed* p) {
-    return p->instance.defines("sim_pinnumber");
-  });
-  if (sorted) {
-    const auto value = [](const Placed* p) {
-      return sim_pinnumber_value(p->instance.get("sim_pinnumber", ValueForm::decoded).value_or(""));
-    };
-    std::stable_sort(ports.begin(), ports.end(), [&](const Placed* a, const Placed* b) { return value(a) < value(b); });
-    for (std::size_t i = 1; i < ports.size(); ++i) {
-      if (value(ports[i]) == value(ports[i - 1])) {
-        warn(diag::make(net_codes::kDuplicatePortNumber, "ports " + ports[i - 1]->name + " and " + ports[i]->name +
-                                                             " share sim_pinnumber " +
-                                                             std::to_string(value(ports[i])) +
-                                                             "; they keep their instance order"));
-      }
-    }
-  }
+  sort_top_ports(ports);
   std::string out;
   for (const Placed* p : ports) {
     const std::string lab = substitute_parents(attribute(*p, "lab"), top.parents);
@@ -174,6 +150,49 @@ std::string NetlistRun::top_ports(const Level& top) {
     out += " " + replace_bus_chars(join_bits(bus.bits, ","), options_.bus_replacement_char);
   }
   return out;
+}
+
+/// The ports of `<top base name>.sym` when it exists and has pins.
+std::optional<std::string> NetlistRun::top_symbol_ports(const Level& top) {
+  const std::string reference = top_cell(top_) + ".sym";
+  const ResolvedReference resolved =
+      resolve_reference(reference, top_.path.parent_path(), env_.search_path, env_.fs);
+  if (resolved.file.empty() || !env_.fs.exists(resolved.file)) {
+    return std::nullopt;
+  }
+  const Symbol& symbol = env_.symbols.resolve(Reference{reference}, top_, resolve_);
+  if (symbol.placeholder || symbol.pins.empty()) {
+    return std::nullopt;
+  }
+  PlannedDefinition definition;
+  definition.entry.symbol = &symbol;
+  definition.entry.reference = reference;
+  const PropertyString templ{get_token(symbol.property(), "template").value_or(std::string{})};
+  bool reached_end = false;
+  check_pins(symbol, top);
+  return " " + header_ports(definition, Parents{nullptr, &templ}, reached_end);
+}
+
+/// The ports sorted by `sim_pinnumber` (stable) when every port has one;
+/// a warning for each pair that shares a number.
+void NetlistRun::sort_top_ports(std::vector<const Placed*>& ports) {
+  const bool sorted = !ports.empty() && std::all_of(ports.begin(), ports.end(), [](const Placed* p) {
+    return p->instance.defines("sim_pinnumber");
+  });
+  if (!sorted) {
+    return;
+  }
+  const auto value = [](const Placed* p) {
+    return sim_pinnumber_value(p->instance.get("sim_pinnumber", ValueForm::decoded).value_or(""));
+  };
+  std::stable_sort(ports.begin(), ports.end(), [&](const Placed* a, const Placed* b) { return value(a) < value(b); });
+  for (std::size_t i = 1; i < ports.size(); ++i) {
+    if (value(ports[i]) == value(ports[i - 1])) {
+      warn(diag::make(net_codes::kDuplicatePortNumber, "ports " + ports[i - 1]->name + " and " + ports[i]->name +
+                                                           " share sim_pinnumber " + std::to_string(value(ports[i])) +
+                                                           "; they keep their instance order"));
+    }
+  }
 }
 
 /// Item 4 of "Netlist file structure".
@@ -313,36 +332,51 @@ std::string netlist_path(const platform::Path& file, bool portable, const platfo
   return file.lexically_relative(top_folder).generic_string();
 }
 
+namespace {
+
+bool is_model_blank(char c) noexcept {
+  return c == ' ' || c == '\t' || c == '\n';
+}
+
+/// The first two blank-separated words of `text` from `from` (fewer at the
+/// end of the text).
+std::vector<std::string> first_two_words(std::string_view text, std::size_t from) {
+  std::vector<std::string> words;
+  std::size_t i = from;
+  while (i < text.size() && words.size() < 2) {
+    while (i < text.size() && is_model_blank(text[i])) {
+      ++i;
+    }
+    const std::size_t start = i;
+    while (i < text.size() && !is_model_blank(text[i])) {
+      ++i;
+    }
+    if (i > start) {
+      words.emplace_back(text.substr(start, i - start));
+    }
+  }
+  return words;
+}
+
+/// Where the words after the first `.subckt` (else `.model`) start; 0
+/// without either.
+std::size_t after_model_marker(std::string_view lower) noexcept {
+  for (const std::string_view marker : {".subckt", ".model"}) {
+    if (const std::size_t at = lower.find(marker); at != std::string_view::npos) {
+      return at + marker.size();
+    }
+  }
+  return 0;
+}
+
+}  // namespace
+
 std::string device_model_key(std::string_view value) {
   std::string lower{value};
   for (char& c : lower) {
     c = (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
   }
-  const auto words_after = [&](std::size_t from) {
-    std::vector<std::string> words;
-    std::size_t i = from;
-    while (i < lower.size() && words.size() < 2) {
-      while (i < lower.size() && (lower[i] == ' ' || lower[i] == '\t' || lower[i] == '\n')) {
-        ++i;
-      }
-      const std::size_t start = i;
-      while (i < lower.size() && lower[i] != ' ' && lower[i] != '\t' && lower[i] != '\n') {
-        ++i;
-      }
-      if (i > start) {
-        words.push_back(lower.substr(start, i - start));
-      }
-    }
-    return words;
-  };
-  std::size_t from = 0;
-  for (const std::string_view marker : {".subckt", ".model"}) {
-    if (const std::size_t at = lower.find(marker); at != std::string::npos) {
-      from = at + marker.size();
-      break;
-    }
-  }
-  const auto words = words_after(from);
+  const auto words = first_two_words(lower, after_model_marker(lower));
   return words.size() >= 2 ? words[0] + words[1] : lower;
 }
 

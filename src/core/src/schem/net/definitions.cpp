@@ -279,25 +279,63 @@ std::optional<std::string> NetlistRun::definition_name(const DefinitionEntry& en
   }
 }
 
-/// "Schematic resolution".
-platform::Path NetlistRun::resolve_schematic(const DefinitionEntry& entry, const std::string& cell) {
+namespace {
+
+/// `text` with each occurrence of `what`, found left to right, replaced by
+/// `with` (the replacement is not searched again). One pass, so a long run
+/// of occurrences costs linear time.
+std::string replace_all(std::string_view text, std::string_view what, std::string_view with) {
+  std::string out;
+  std::size_t at = 0;
+  for (std::size_t hit = text.find(what); hit != std::string_view::npos; hit = text.find(what, at)) {
+    out.append(text.substr(at, hit - at));
+    out.append(with);
+    at = hit + what.size();
+  }
+  out.append(text.substr(at));
+  return out;
+}
+
+/// `spice_sym_def` with its tokens replaced: `@symname` by the definition
+/// name, others by the template's values (kept as written when undefined).
+std::string sym_def_text(const std::string& def, const std::string& name, const PropertyString& templ) {
+  std::string text;
+  detail::scan_format(
+      def, false, [&](char c) { text += c; },
+      [&](char /*sigil*/, const std::string& key, std::string_view source) {
+        const auto value = key == "symname" ? std::optional<std::string>{name} : templ.get(key, ValueForm::decoded);
+        text += value ? *value : std::string{source};
+      });
+  return text;
+}
+
+}  // namespace
+
+/// The variant, else the symbol's `schematic` attribute, with every
+/// `@symname` replaced and a `tcleval(...)` value evaluated; nullopt when
+/// neither is set.
+std::optional<std::string> NetlistRun::schematic_value(const DefinitionEntry& entry) {
   std::string value = entry.variant;
   if (value.empty()) {
     value = get_token(entry.symbol->property(), "schematic").value_or(std::string{});
   }
-  if (!value.empty()) {
-    const std::string symbol_cell = cell_of(entry.reference);
-    for (std::size_t at = value.find("@symname"); at != std::string::npos; at = value.find("@symname", at)) {
-      value.replace(at, 8, symbol_cell);
-      at += symbol_cell.size();
+  if (value.empty()) {
+    return std::nullopt;
+  }
+  value = replace_all(value, "@symname", cell_of(entry.reference));
+  if (value.starts_with("tcleval(")) {
+    value = env_.tcl != nullptr ? env_.tcl->evaluate(value, TclContext{}) : std::string{kTclFailure};
+    while (!value.empty() && value.back() == '\n') {
+      value.pop_back();
     }
-    if (value.starts_with("tcleval(")) {
-      value = env_.tcl != nullptr ? env_.tcl->evaluate(value, TclContext{}) : std::string{kTclFailure};
-      while (!value.empty() && value.back() == '\n') {
-        value.pop_back();
-      }
-    }
-    const ResolvedReference resolved = resolve_reference(value, entry.from_folder, env_.search_path, env_.fs);
+  }
+  return value;
+}
+
+/// "Schematic resolution".
+platform::Path NetlistRun::resolve_schematic(const DefinitionEntry& entry, const std::string& cell) {
+  if (const auto value = schematic_value(entry)) {
+    const ResolvedReference resolved = resolve_reference(*value, entry.from_folder, env_.search_path, env_.fs);
     if (!resolved.file.empty() && (env_.fs.exists(resolved.file) || entry.variant.empty())) {
       return resolved.file;
     }
@@ -371,15 +409,7 @@ void NetlistRun::write_definition(const PlannedDefinition& definition) {
                      "\n** sym_path: " + path_text(symbol.file) + "\n";
   const PropertyString templ{get_token(symbol.property(), "template").value_or(std::string{})};
   if (const auto def = get_token(symbol.property(), "spice_sym_def"); def && !def->empty()) {
-    std::string text;
-    detail::scan_format(
-        *def, false, [&](char c) { text += c; },
-        [&](char /*sigil*/, const std::string& key, std::string_view source) {
-          const auto value = key == "symname" ? std::optional<std::string>{definition.name}
-                                              : templ.get(key, ValueForm::decoded);
-          text += value ? *value : std::string{source};
-        });
-    emit(head + text + "\n");
+    emit(head + sym_def_text(*def, definition.name, templ) + "\n");
     return;
   }
   const PropertyString variant{entry.variant_props};
@@ -396,14 +426,22 @@ void NetlistRun::write_definition(const PlannedDefinition& definition) {
     check_pins(symbol, level);
     body(level);
   }
-  if (definition.document != nullptr && !definition.document->globals.s.empty()) {
-    std::string s = definition.document->globals.s;
-    if (!s.ends_with('\n')) {
-      s += '\n';
-    }
-    emit(std::string{kBeginUserCode} + "\n" + s + std::string{kEndUserCode} + "\n");
+  if (definition.document != nullptr) {
+    schematic_user_code(*definition.document);
   }
   emit(std::string{options_.uppercase_subckt ? ".ENDS" : ".ends"} + "\n\n");
+}
+
+/// The `S` text of a definition's schematic as a user-code block.
+void NetlistRun::schematic_user_code(const Document& document) {
+  if (document.globals.s.empty()) {
+    return;
+  }
+  std::string s = document.globals.s;
+  if (!s.ends_with('\n')) {
+    s += '\n';
+  }
+  emit(std::string{kBeginUserCode} + "\n" + s + std::string{kEndUserCode} + "\n");
 }
 
 /// "pin mismatches between a symbol and its schematic": the bits of the
@@ -541,6 +579,23 @@ std::string NetlistRun::header_ports(const PlannedDefinition& definition, const 
   return out;
 }
 
+/// Whether the header template leaves out `key`: `name`, `spiceprefix`,
+/// `model`, and a key of `extra` (a whole word; any substring with
+/// xschem-compat ON), with a warning for a key found only inside a word.
+bool NetlistRun::drops_template_key(const Symbol& symbol, std::string_view key, const std::string& extra,
+                                    std::span<const std::string_view> extra_words) {
+  if (key == "name" || key == "spiceprefix" || key == "model") {
+    return true;
+  }
+  const bool substring = !key.empty() && extra.find(key) != std::string::npos;
+  const bool whole = std::find(extra_words.begin(), extra_words.end(), key) != extra_words.end();
+  if (substring && !whole) {
+    warn(diag::make(net_codes::kExtraSubstring, "template key " + std::string{key} + " of " + symbol.reference +
+                                                    " occurs in extra=\"" + extra + "\" only inside a word"));
+  }
+  return compat_ ? substring : whole;
+}
+
 /// The template on the header: `name`, `spiceprefix`, `model` and the keys
 /// in `extra` removed (Q-SCHEM-19), values decoded, separators kept, and
 /// its LFs by the Q-SCHEM-21 branch point.
@@ -555,17 +610,7 @@ std::string NetlistRun::header_template(const PlannedDefinition& definition) {
       out += piece.text;
       continue;
     }
-    if (piece.key == "name" || piece.key == "spiceprefix" || piece.key == "model") {
-      continue;
-    }
-    const bool substring = !piece.key.empty() && extra.find(piece.key) != std::string::npos;
-    const bool whole = std::find(extra_words.begin(), extra_words.end(), piece.key) != extra_words.end();
-    if (substring && !whole) {
-      warn(diag::make(net_codes::kExtraSubstring, "template key " + std::string{piece.key} + " of " +
-                                                      symbol.reference + " occurs in extra=\"" + extra +
-                                                      "\" only inside a word"));
-    }
-    if (compat_ ? substring : whole) {
+    if (drops_template_key(symbol, piece.key, extra, extra_words)) {
       continue;
     }
     out += piece.key;

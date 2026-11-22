@@ -27,6 +27,7 @@ namespace {
 
 using detail::ascii_lower;
 using detail::iequals;
+using detail::is_blank;
 using detail::split_fields;
 using detail::starts_with_ci;
 
@@ -47,24 +48,28 @@ std::string_view first_field(std::string_view line) noexcept {
 
 using ParamValues = std::map<std::string, std::string, std::less<>>;
 
-/// The `name=value` pairs of one `.param` line (spaces around `=` ignored).
-void collect_param_pairs(std::string_view line, ParamValues& values) {
+/// `text` with the blanks around every `=` removed.
+std::string join_equals(std::string_view text) {
   std::string joined;
-  std::string_view rest = line.substr(6);
-  for (std::size_t i = 0; i < rest.size(); ++i) {
-    if (rest[i] == '=') {
-      while (!joined.empty() && (joined.back() == ' ' || joined.back() == '\t')) {
-        joined.pop_back();
-      }
-      joined += '=';
-      while (i + 1 < rest.size() && (rest[i + 1] == ' ' || rest[i + 1] == '\t')) {
-        ++i;
-      }
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    if (text[i] != '=') {
+      joined += text[i];
       continue;
     }
-    joined += rest[i];
+    while (!joined.empty() && is_blank(joined.back())) {
+      joined.pop_back();
+    }
+    joined += '=';
+    while (i + 1 < text.size() && is_blank(text[i + 1])) {
+      ++i;
+    }
   }
-  for (const std::string_view field : split_fields(joined)) {
+  return joined;
+}
+
+/// The `name=value` pairs of one `.param` line (spaces around `=` ignored).
+void collect_param_pairs(std::string_view line, ParamValues& values) {
+  for (const std::string_view field : split_fields(join_equals(line.substr(6)))) {
     const std::size_t eq = field.find('=');
     if (eq != std::string_view::npos && eq > 0) {
       values[std::string{field.substr(0, eq)}] = std::string{field.substr(eq + 1)};
@@ -186,10 +191,19 @@ std::optional<Field> parse_marker(std::string_view text) {
   return field;
 }
 
-void erase_all(std::string& text, std::string_view what) {
-  for (std::size_t at = text.find(what); at != std::string::npos; at = text.find(what, at)) {
-    text.erase(at, what.size());
+/// `text` without the occurrences of `what` found left to right; the text
+/// left behind is not searched again ("PAPARAM:RAM:" gives "PARAM:"). One
+/// pass, so a long run of occurrences costs linear time.
+std::string erase_all(std::string_view text, std::string_view what) {
+  std::string out;
+  out.reserve(text.size());
+  std::size_t at = 0;
+  for (std::size_t hit = text.find(what); hit != std::string_view::npos; hit = text.find(what, at)) {
+    out.append(text.substr(at, hit - at));
+    at = hit + what.size();
   }
+  out.append(text.substr(at));
+  return out;
 }
 
 /// `<p>` before every comma-separated item of `rest`.
@@ -204,37 +218,46 @@ std::string prefix_items(std::string_view prefix, std::string_view rest) {
   return out;
 }
 
-/// The fields after the first, with `PARAM:`, `##`, `#<p>#` and width
-/// markers read. A `#<p>#<rest>` field not preceded by a marker gets `?1`.
+/// A `#<p>#<rest>` field: a marker with prefix `<p>`, or the items of
+/// `<rest>` each prefixed, after `?1` unless a marker precedes them.
+void read_prefixed(const std::string& text, std::size_t second, std::vector<Field>& out) {
+  const std::string prefix = text.substr(1, second - 1);
+  const std::string rest = text.substr(second + 1);
+  if (auto marker = parse_marker(rest); marker && marker->key.empty()) {
+    marker->prefix = prefix;
+    out.push_back(std::move(*marker));
+    return;
+  }
+  if (out.empty() || !out.back().marker) {
+    out.push_back(Field{.marker = true});
+  }
+  out.push_back(Field{.text = prefix_items(prefix, rest)});
+}
+
+/// One field after the first, with `PARAM:`, `##`, `#<p>#` and width
+/// markers read.
+void read_field(std::string_view raw, std::vector<Field>& out) {
+  std::string text = erase_all(raw, "PARAM:");
+  if (text.starts_with("##")) {
+    out.push_back(Field{.text = text.substr(2)});
+    return;
+  }
+  const std::size_t second = text.size() > 1 && text[0] == '#' ? text.find('#', 1) : std::string::npos;
+  if (second != std::string::npos) {
+    read_prefixed(text, second, out);
+  } else if (auto marker = parse_marker(text)) {
+    out.push_back(std::move(*marker));
+  } else {
+    out.push_back(Field{.text = std::move(text)});
+  }
+}
+
+/// The fields after the first. A `#<p>#<rest>` field not preceded by a
+/// marker gets `?1`.
 std::vector<Field> read_fields(std::span<const std::string_view> raw) {
   std::vector<Field> out;
   for (const std::string_view r : raw) {
-    std::string text{r};
-    erase_all(text, "PARAM:");
-    if (text.starts_with("##")) {
-      out.push_back(Field{.text = text.substr(2)});
-      continue;
-    }
-    const std::size_t second = text.size() > 1 && text[0] == '#' ? text.find('#', 1) : std::string::npos;
-    if (second != std::string::npos) {
-      const std::string prefix = text.substr(1, second - 1);
-      const std::string rest = text.substr(second + 1);
-      if (auto marker = parse_marker(rest); marker && marker->key.empty()) {
-        marker->prefix = prefix;
-        out.push_back(std::move(*marker));
-        continue;
-      }
-      if (out.empty() || !out.back().marker) {
-        out.push_back(Field{.marker = true});
-      }
-      out.push_back(Field{.text = prefix_items(prefix, rest)});
-      continue;
-    }
-    if (auto marker = parse_marker(text)) {
-      out.push_back(std::move(*marker));
-      continue;
-    }
-    out.push_back(Field{.text = std::move(text)});
+    read_field(r, out);
   }
   return out;
 }
@@ -262,10 +285,19 @@ bool repeats_first_field(std::string_view name) noexcept {
 }
 
 /// Builds the lines of one vector element, stopping once the text would
-/// pass kMaxBusBytes (hostile widths cannot exhaust memory).
+/// pass kMaxBusBytes (hostile widths cannot exhaust memory). The field after
+/// each marker is split into its items once, not once per name, so the work
+/// is bounded by the text written.
 class VectorWriter {
  public:
-  VectorWriter(std::string_view prefix, const std::vector<Field>& fields) : prefix_{prefix}, fields_{fields} {}
+  VectorWriter(std::string_view prefix, const std::vector<Field>& fields)
+      : prefix_{prefix}, fields_{fields}, items_(fields.size()) {
+    for (std::size_t j = 1; j < fields.size(); ++j) {
+      if (fields[j - 1].marker && !fields[j].marker) {
+        items_[j] = split_items(fields[j].text);
+      }
+    }
+  }
 
   /// The lines, or nullopt when they would exceed kMaxBusBytes.
   std::optional<std::vector<std::string>> write(std::span<const std::string_view> names) {
@@ -287,9 +319,10 @@ class VectorWriter {
  private:
   bool append_fields(std::string& line, std::size_t i) const {
     const Field* marker = nullptr;
-    for (const Field& field : fields_) {
+    for (std::size_t j = 0; j < fields_.size(); ++j) {
+      const Field& field = fields_[j];
       if (marker != nullptr) {
-        if (!append_items(line, *marker, field.text, i)) {
+        if (!append_items(line, *marker, items_[j], i)) {
           return false;
         }
         marker = nullptr;
@@ -303,8 +336,8 @@ class VectorWriter {
     return true;
   }
 
-  bool append_items(std::string& line, const Field& marker, std::string_view text, std::size_t i) const {
-    const auto items = split_items(text);
+  bool append_items(std::string& line, const Field& marker, std::span<const std::string_view> items,
+                    std::size_t i) const {
     const std::uint64_t k = items.size();
     const std::uint64_t w = marker.width < 0 ? k : static_cast<std::uint64_t>(marker.width);
     line += marker.key;
@@ -322,6 +355,7 @@ class VectorWriter {
 
   std::string_view prefix_;
   const std::vector<Field>& fields_;
+  std::vector<std::vector<std::string_view>> items_;  // by field, for the fields after a marker
   std::size_t bytes_ = 0;
 };
 
@@ -380,14 +414,21 @@ bool is_width_marker(std::string_view field) {
   return second != std::string_view::npos && parse_marker(field.substr(second + 1)).has_value();
 }
 
-/// `.save t(a,b)` with width markers as one lower-case line per name.
-std::vector<std::string> expand_save(std::span<const std::string_view> fields) {
+/// The fields after the first that are not width markers, each followed by
+/// a space.
+std::string save_operands(std::span<const std::string_view> fields) {
   std::string rest;
   for (std::size_t i = 1; i < fields.size(); ++i) {
     if (!is_width_marker(fields[i])) {
-      rest += std::string{fields[i]} + " ";
+      rest += fields[i];
+      rest += ' ';
     }
   }
+  return rest;
+}
+
+/// `rest` without the spaces before or after a parenthesis.
+std::string tighten_parens(std::string_view rest) {
   std::string tight;
   for (std::size_t i = 0; i < rest.size(); ++i) {
     const bool space = rest[i] == ' ';
@@ -398,6 +439,12 @@ std::vector<std::string> expand_save(std::span<const std::string_view> fields) {
     }
     tight += rest[i];
   }
+  return tight;
+}
+
+/// `.save t(a,b)` with width markers as one lower-case line per name.
+std::vector<std::string> expand_save(std::span<const std::string_view> fields) {
+  const std::string tight = tighten_parens(save_operands(fields));
   const std::string head = ascii_lower(fields[0]);
   std::vector<std::string> lines;
   for (const std::string_view field : split_fields(tight)) {

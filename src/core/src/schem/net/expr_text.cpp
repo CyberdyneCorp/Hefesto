@@ -164,7 +164,7 @@ std::string format_engineering(double value, int digits) {
                                      {0.999999e-15, 1e15, "f"}};
   const double magnitude = std::fabs(value);
   if (std::isnan(value)) {
-    return "nana";  // xschem's formatter sends NaN to its `a` branch (Q-SCHEM-36)
+    return "nana";  // NaN prints "nana" with expr_eng (schematic-netlisting "expr evaluation", Q-SCHEM-36)
   }
   if (magnitude < 0.999999e-23) {
     return "0";

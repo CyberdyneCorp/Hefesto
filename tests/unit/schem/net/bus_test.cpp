@@ -233,3 +233,39 @@ TEST_CASE("bus notation: the expanded text is capped at kMaxBusBytes",
   CHECK_FALSE(bus.too_large);
   CHECK(bus.width() == 524288U);
 }
+
+// Regression (review of PR #80, point 7): every enclosing group copied the
+// whole inner list, so a wide bus inside 200 nested groups made about
+// 2 x 10^8 string copies. Every level now appends to one output.
+TEST_CASE("bus notation: nested groups do not copy the inner list once per level",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  std::string nested = "a[1047999:0]";
+  for (int i = 0; i < 200; ++i) nested = "(b" + std::to_string(i) + "," + nested + ")";
+  const auto start = std::chrono::steady_clock::now();
+  const auto bus = schem::parse_bus(nested);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK_FALSE(bus.too_large);
+  REQUIRE(bus.width() == 1048200);
+  CHECK(bus.bits.front() == "b199");
+  CHECK(bus.bits[199] == "b0");
+  CHECK(bus.bits[200] == "a[1047999]");
+  CHECK(bus.bits.back() == "a[0]");
+  CHECK(elapsed < std::chrono::seconds{10});
+  CHECK(joined("2*(a,(b,c)*2),d") == "a,b,b,c,c,a,b,b,c,c,d");
+}
+
+// The width-only parse (review of PR #80, point 4) agrees with parse_bus()
+// on every form, including the limits, and builds no names.
+TEST_CASE("bus notation: bus_width counts without building the names",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  for (const char* name : {"A", "$x,y", "A[3:0]", "A[0:7:2]", "A0..3", "2*(a,b)*3", "A[1:0]B[1:0]x", "A[x]",
+                           "A[1:0", "a,,b", "A[1048575:0]", "A[1048576:0]", "1024*1025*a", "a*1048576*2*0",
+                           "A[-9223372036854775807:-9223372036854775806]", "R[0:1048575]long_trailer_text"}) {
+    INFO(name);
+    CHECK(schem::bus_width(name) == schem::parse_bus(name).width());
+  }
+  // Past kMaxBusBytes by bytes alone: 2^20 names of 70 bytes.
+  const std::string wide = "a" + std::string(60, 'n') + "[1048575:0]";
+  CHECK(schem::parse_bus(wide).too_large);
+  CHECK(schem::bus_width(wide) == 1);
+}

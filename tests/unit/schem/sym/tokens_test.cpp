@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <string>
 
 #include "hefesto/diag/sink.hpp"
@@ -124,4 +125,30 @@ TEST_CASE("schematic names, index and path", kTokens) {
         "sub sub.sch top 3 x1.x2 1");
   // No instance: `@key` is empty and `%key` is the key.
   CHECK(schem::substitute_text("@value %value", context) == " value");
+}
+
+// Regression (review of PR #80, point 5): every identifier prefix of an
+// undefined token was looked up in turn, and each lookup re-read (and
+// copied) the instance's property string, so a 400 kB token against 400 kB
+// of properties took about 10^11 steps. The defined keys are now read once.
+TEST_CASE("an undefined token's prefix is found in linear time", kTokens) {
+  Fixture f;
+  std::string props = "name=X1 aaa=1";
+  for (int i = 0; i < 40000; ++i) props += " k" + std::to_string(i) + "=1";
+  const schem::InstanceRecord big{"devices/res.sym", {0, 0}, 0, 0, props};
+  const std::string token = "@" + std::string(400000, 'a');
+  const auto start = std::chrono::steady_clock::now();
+  CHECK(f.on(big, token).empty());
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  const auto warnings = f.sink.take();
+  REQUIRE(warnings.size() == 1);
+  CHECK(warnings[0].code == "SCHEM-SYM-002");
+  CHECK(warnings[0].text.find(" is not defined, but aaa is:") != std::string::npos);
+  CHECK(elapsed < std::chrono::seconds{10});
+  // A predefined name and a `spice_get_` value count as defined prefixes.
+  CHECK(f.on(f.r7, "@symnamex").empty());
+  CHECK(f.on(f.r7, "@spice_get_v(x)").empty());
+  const auto more = f.sink.take();
+  REQUIRE(more.size() == 1);
+  CHECK(more[0].text.find(" is not defined, but symname is:") != std::string::npos);
 }

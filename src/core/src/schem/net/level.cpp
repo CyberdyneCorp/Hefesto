@@ -158,32 +158,49 @@ void NetlistRun::connect(Level& level) {
     nets.wires.push_back({wire.p1, wire.p2, ignores(spice) || (options_.lvs_ignore && ignores(lvs))});
   }
   for (const Placed& p : level.instances) {
-    NetInstance n;
-    n.name = p.name;
-    n.type = p.type;
-    n.ignored = p.ignored;
-    n.shorted = p.shorted;
-    if (is_naming_type(p.type) || p.type == "bus_tap") {
-      if (auto lab = p.instance.get("lab", ValueForm::decoded)) {
-        n.lab = substitute_parents(*lab, level.parents);
-      }
-    }
-    auto global = p.instance.get("global", ValueForm::decoded);
-    if (!global) {
-      global = p.symprops.get("global", ValueForm::decoded);
-    }
-    n.global = global && (is_true(*global) || *global == "ground");
-    n.vector_width = parse_bus(p.name).width();
-    const Placement placement{p.record->origin, p.record->rotation, p.record->flip};
-    for (const PinIndex k : p.order) {
-      const Pin& pin = p.symbol->pins[k];
-      const std::string name = substitute_parents(pin.name, level.parents);
-      n.pins.push_back({name, transform_point(placement, pin_point(pin.box)), parse_bus(name).width()});
-    }
-    nets.instances.push_back(std::move(n));
+    nets.instances.push_back(net_instance(level, p));
   }
   level.naming = name_nets(nets);
   record_naming(level);
+}
+
+/// One instance as the connectivity sees it: its naming `lab`, `global`,
+/// bus widths and pin points.
+NetInstance NetlistRun::net_instance(const Level& level, const Placed& p) {
+  NetInstance n;
+  n.name = p.name;
+  n.type = p.type;
+  n.ignored = p.ignored;
+  n.shorted = p.shorted;
+  if (is_naming_type(p.type) || p.type == "bus_tap") {
+    if (auto lab = p.instance.get("lab", ValueForm::decoded)) {
+      n.lab = substitute_parents(*lab, level.parents);
+    }
+  }
+  auto global = p.instance.get("global", ValueForm::decoded);
+  if (!global) {
+    global = p.symprops.get("global", ValueForm::decoded);
+  }
+  n.global = global && (is_true(*global) || *global == "ground");
+  n.vector_width = width_of(p.name);
+  const Placement placement{p.record->origin, p.record->rotation, p.record->flip};
+  for (const PinIndex k : p.order) {
+    const Pin& pin = p.symbol->pins[k];
+    const std::string name = substitute_parents(pin.name, level.parents);
+    n.pins.push_back({name, transform_point(placement, pin_point(pin.box)), width_of(name)});
+  }
+  return n;
+}
+
+/// The bus width of `name`, counted once per distinct name in a run (a
+/// symbol placed many times repeats its pin names) and without building the
+/// bit names.
+std::size_t NetlistRun::width_of(const std::string& name) {
+  const auto [it, inserted] = widths_.try_emplace(name, 0);
+  if (inserted) {
+    it->second = bus_width(name);
+  }
+  return it->second;
 }
 
 /// Shorts, globals and the computed `lab` values of one schematic, and the
@@ -210,11 +227,7 @@ void NetlistRun::record_naming(const Level& level) {
       uses[net] += 2;  // a wire counts as a connection
     }
   }
-  for (const auto& pins : level.naming.pin_nets) {
-    for (const std::string& net : pins) {
-      ++uses[net];
-    }
-  }
+  count_pin_uses(level.naming, uses);
   for (const Placed& p : level.instances) {
     check_instance(level, p);
     const auto& pins = level.naming.pin_nets[p.index];
@@ -223,6 +236,15 @@ void NetlistRun::record_naming(const Level& level) {
     if (open && !is_naming_type(p.type)) {
       warn(diag::make(net_codes::kAllPinsUnconnected, "instance " + p.name + " (" + p.record->symbol +
                                                           "): all pins unconnected"));
+    }
+  }
+}
+
+/// One use of each net per pin that touches it.
+void NetlistRun::count_pin_uses(const NetNaming& naming, std::map<std::string, std::size_t>& uses) {
+  for (const auto& pins : naming.pin_nets) {
+    for (const std::string& net : pins) {
+      ++uses[net];
     }
   }
 }
@@ -264,7 +286,7 @@ ElementText NetlistRun::element(const Level& level, const Placed& p) {
     const Pin& pin = p.symbol->pins[p.order[k]];
     ElementPin e;
     e.name = substitute_parents(pin.name, level.parents);
-    e.width = parse_bus(e.name).width();
+    e.width = width_of(e.name);
     if (k < nets.size() && !nets[k].empty()) {
       e.net = net_text(nets[k], level.naming, options_.bus_replacement_char);
     }

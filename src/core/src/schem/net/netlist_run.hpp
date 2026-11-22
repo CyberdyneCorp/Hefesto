@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -127,8 +128,11 @@ class NetlistRun {
  private:
   // netlist.cpp
   void apply_options_instances(const Level& top);
+  void apply_options_instance(const Placed& instance);
   void top_line(const Level& top);
   std::string top_ports(const Level& top);
+  std::optional<std::string> top_symbol_ports(const Level& top);
+  void sort_top_ports(std::vector<const Placed*>& ports);
   void top_user_code(const Level& top, std::string_view place);
   void end_block(const Level& top);
   void globals_block();
@@ -141,6 +145,8 @@ class NetlistRun {
   Level place(const Document& document, Parents parents, bool top);
   void place_one(Level& level, std::size_t index);
   void connect(Level& level);
+  NetInstance net_instance(const Level& level, const Placed& instance);
+  static void count_pin_uses(const NetNaming& naming, std::map<std::string, std::size_t>& uses);
   void record_naming(const Level& level);
   void body(Level& level);
   void port_lines(const Level& level);
@@ -153,16 +159,19 @@ class NetlistRun {
   bool pininfo(const Level& level) const;
   void check_instance(const Level& level, const Placed& instance);
   void emit(std::string text, std::string prefix = {}, bool user_code = false);
+  std::size_t width_of(const std::string& name);
 
   // definitions.cpp
   void add_used(const Level& level);
   void plan_definitions();
   bool skip_definition(const DefinitionEntry& entry) const;
   std::optional<std::string> definition_name(const DefinitionEntry& entry);
+  std::optional<std::string> schematic_value(const DefinitionEntry& entry);
   platform::Path resolve_schematic(const DefinitionEntry& entry, const std::string& cell);
   const Document* load_schematic(const platform::Path& file);
   void write_definitions();
   void write_definition(const PlannedDefinition& definition);
+  void schematic_user_code(const Document& document);
   void check_pins(const Symbol& symbol, const Level& level);
   std::string header_line(const PlannedDefinition& definition, const Parents& parents);
   std::string header_ports(const PlannedDefinition& definition, const Parents& parents, bool& reached_end);
@@ -170,6 +179,8 @@ class NetlistRun {
                            bool& stopped);
   std::string port_names(const Symbol& symbol, const Parents& parents, std::span<const PinIndex> pins);
   std::string header_template(const PlannedDefinition& definition);
+  bool drops_template_key(const Symbol& symbol, std::string_view key, const std::string& extra,
+                          std::span<const std::string_view> extra_words);
   std::string symbol_format(const Symbol& symbol) const;
   std::optional<std::string> symname_override(const Placed& instance) const;
   [[nodiscard]] std::string cell_name(const DefinitionEntry& entry) const;
@@ -191,6 +202,7 @@ class NetlistRun {
   std::vector<std::string> globals_;
   std::unordered_set<std::string> globals_seen_;
   std::set<const Symbol*> untyped_warned_;
+  std::unordered_map<std::string, std::size_t> widths_;  // bus_width() by name, for this run
 
   std::vector<DefinitionEntry> entries_;
   std::set<std::pair<const Symbol*, std::string>> entry_keys_;

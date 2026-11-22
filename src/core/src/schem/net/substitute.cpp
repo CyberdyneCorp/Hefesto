@@ -77,6 +77,23 @@ std::optional<std::string> PropertyString::get(std::string_view key, ValueForm f
   return get_token(props_, key, form);
 }
 
+std::vector<std::string> PropertyString::keys() const {
+  std::vector<std::string> out;
+  for (Property& property : parse_properties(props_)) {
+    out.push_back(std::move(property.key));
+  }
+  return out;
+}
+
+std::vector<std::string> PropertyMap::keys() const {
+  std::vector<std::string> out;
+  out.reserve(values_.size());
+  for (const auto& [key, value] : values_) {
+    out.push_back(key);
+  }
+  return out;
+}
+
 std::optional<std::string> PropertyMap::get(std::string_view key, ValueForm /*form*/) const {
   const auto it = values_.find(key);
   if (it == values_.end()) {

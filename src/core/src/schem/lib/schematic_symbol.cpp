@@ -165,10 +165,12 @@ class Flattener {
     }
   }
 
-  // Adds `place(record)` to `to` for each record not `symbol_ignore`d.
+  // Adds `place(record)` to `to` for each record not `symbol_ignore`d; no
+  // record is transformed (copied) once the flattening has stopped.
   template <typename Record, typename Out, typename Place>
   void add_kept(std::vector<Out>& to, const std::vector<Record>& records, Place place) {
     for (const Record& record : records) {
+      if (stopped()) return;
       if (!ignored(record.props)) add(to, place(record));
     }
   }
@@ -181,6 +183,7 @@ class Flattener {
     add_kept(out_.arcs, schematic.arcs, [this](const ArcRecord& arc) { return chain_.arc(arc); });
     add_kept(out_.polygons, schematic.polygons, [this](const PolygonRecord& p) { return chain_.polygon(p); });
     for (const TextRecord& text : schematic.texts) {
+      if (stopped()) return;
       if (kept_text(text)) add(out_.texts, chain_.text(text));
     }
     add_kept(out_.lines, schematic.wires,

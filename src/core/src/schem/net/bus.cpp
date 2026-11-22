@@ -13,7 +13,10 @@
 // are skipped; blanks between name characters belong to the name. Every step
 // checks kMaxBusBits and kMaxBusBytes before it allocates, parentheses nest
 // at most kMaxBusParenDepth deep, and integer arithmetic is checked, so
-// hostile names cannot overflow or exhaust memory (Q-SCHEM-32).
+// hostile names cannot overflow or exhaust memory (Q-SCHEM-32). Every level
+// appends to one output and repeats only its own tail of it, so nested
+// groups never copy an inner list once per level; a width-only parse keeps
+// the counts and byte totals and builds no names.
 //
 // Owner: NETLIST.
 
@@ -21,6 +24,7 @@
 
 #include <charconv>
 #include <cstdint>
+#include <iterator>
 #include <optional>
 
 #include "hefesto/schem/net/codes.hpp"
@@ -29,18 +33,83 @@ namespace hefesto::schem {
 
 namespace {
 
+/// A position in an expansion: the names and bytes before it.
+struct Mark {
+  std::uint64_t count = 0;
+  std::uint64_t bytes = 0;
+};
+
 /// The names of one expansion and the bytes of their text: the names'
-/// lengths plus one comma (or the end) per name.
+/// lengths plus one comma (or the end) per name. Without `keep`, only the
+/// counts are kept (a width-only parse).
 struct Bits {
   std::vector<std::string> names;
+  std::uint64_t count = 0;
   std::uint64_t bytes = 0;
+  bool keep = true;
 
   void push_back(std::string name) {
-    bytes += name.size() + 1;
-    names.push_back(std::move(name));
+    add_length(name.size());
+    if (keep) {
+      names.push_back(std::move(name));
+    }
   }
-  [[nodiscard]] std::size_t size() const noexcept { return names.size(); }
+  void add_length(std::uint64_t length) noexcept {
+    bytes += length + 1;
+    ++count;
+  }
+  [[nodiscard]] Mark mark() const noexcept { return {count, bytes}; }
+  /// The names and bytes after `from`.
+  [[nodiscard]] Mark since(Mark from) const noexcept { return {count - from.count, bytes - from.bytes}; }
+
+  /// Each name after `from` repeated `times` times in place (`a,b` * 2 is
+  /// `a,a,b,b`).
+  void repeat_each(Mark from, std::uint64_t times) {
+    const Mark tail = since(from);
+    if (keep) {
+      std::vector<std::string> each;
+      each.reserve(tail.count * times);
+      for (std::size_t i = from.count; i < names.size(); ++i) {
+        each.insert(each.end(), times, names[i]);
+      }
+      names.resize(from.count);
+      names.insert(names.end(), std::make_move_iterator(each.begin()), std::make_move_iterator(each.end()));
+    }
+    grow(tail, times);
+  }
+
+  /// The names after `from` repeated as a whole `times` times (2 * `a,b` is
+  /// `a,b,a,b`).
+  void repeat_all(Mark from, std::uint64_t times) {
+    const Mark tail = since(from);
+    if (keep) {
+      names.reserve(names.size() + tail.count * (times - 1));
+      for (std::uint64_t t = 1; t < times; ++t) {
+        for (std::uint64_t i = 0; i < tail.count; ++i) {
+          names.push_back(names[from.count + i]);
+        }
+      }
+    }
+    grow(tail, times);
+  }
+
+ private:
+  void grow(Mark tail, std::uint64_t times) noexcept {
+    count += tail.count * (times - 1);
+    bytes += tail.bytes * (times - 1);
+  }
 };
+
+/// The decimal digits of `value`, with its sign.
+std::uint64_t decimal_length(std::int64_t value) noexcept {
+  std::uint64_t magnitude = value < 0 ? 0 - static_cast<std::uint64_t>(value) : static_cast<std::uint64_t>(value);
+  std::uint64_t length = value < 0 ? 2 : 1;
+  while (magnitude >= 10) {
+    magnitude /= 10;
+    ++length;
+  }
+  return length;
+}
 
 bool is_space(char c) noexcept {
   return c == ' ' || c == '\t' || c == '\n';
@@ -110,101 +179,97 @@ enum class Failure : std::uint8_t { none, syntax, too_large };
 
 class Parser {
  public:
-  explicit Parser(std::string_view text) : text_{text} {}
+  Parser(std::string_view text, bool keep_names) : text_{text} { out_.keep = keep_names; }
 
   std::optional<Bits> parse() {
-    auto bits = list(0);
+    const bool parsed = list(0);
     skip_space();
-    if (bits && pos_ != text_.size()) {
+    if (parsed && pos_ != text_.size()) {
       fail(Failure::syntax);
     }
     if (failure_ != Failure::none) {
       return std::nullopt;
     }
-    return bits;
+    return std::move(out_);
   }
 
   [[nodiscard]] Failure failure() const noexcept { return failure_; }
   [[nodiscard]] bool literal_index() const noexcept { return literal_index_; }
 
  private:
-  std::optional<Bits> list(int depth) {
-    auto out = term(depth);
-    while (out) {
-      skip_space();
-      if (!accept(',')) {
-        break;
-      }
-      auto more = term(depth);
-      if (!more || !fits(out->size() + more->size(), out->bytes + more->bytes)) {
-        return std::nullopt;
-      }
-      out->names.insert(out->names.end(), more->names.begin(), more->names.end());
-      out->bytes += more->bytes;
+  /// The terms of one list; the limits apply to the list's own names.
+  bool list(int depth) {
+    const Mark start = out_.mark();
+    if (!term(depth)) {
+      return false;
     }
-    return out;
+    skip_space();
+    while (accept(',')) {
+      if (!term(depth)) {
+        return false;
+      }
+      const Mark size = out_.since(start);
+      if (!fits(size.count, size.bytes)) {
+        return false;
+      }
+      skip_space();
+    }
+    return true;
   }
 
   /// `factor * n1 * n2 ...` repeats each element n1 * n2 * ... times. The
   /// counts are multiplied first and the elements copied once, so a long
   /// run of `*1` costs no copy per count; the size check after each count
   /// fails at the same count as copying step by step would.
-  std::optional<Bits> term(int depth) {
-    auto out = factor(depth);
+  bool term(int depth) {
+    const Mark start = out_.mark();
+    if (!factor(depth)) {
+      return false;
+    }
     std::uint64_t times = 1;
-    while (out) {
-      skip_space();
-      if (!accept('*')) {
-        break;
-      }
+    skip_space();
+    while (accept('*')) {
       const auto n = count();
       if (!n) {
-        return std::nullopt;
+        return false;
       }
       times = saturating_product(times, *n);
-      if (!fits_product(*out, times)) {
-        return std::nullopt;
+      if (!fits_product(out_.since(start), times)) {
+        return false;
       }
+      skip_space();
     }
-    if (!out || times == 1) {
-      return out;
+    if (times != 1) {
+      out_.repeat_each(start, times);
     }
-    Bits each;
-    each.names.reserve(out->size() * times);
-    for (const auto& bit : out->names) {
-      each.names.insert(each.names.end(), times, bit);
-    }
-    each.bytes = out->bytes * times;
-    return each;
+    return true;
   }
 
   /// `n1 * n2 * ... factor` repeats the factor n1 * n2 * ... times. The
   /// prefixes are read in a loop, not by recursion, so a long run of them
   /// cannot exhaust the stack.
-  std::optional<Bits> factor(int depth) {
+  bool factor(int depth) {
     skip_space();
     std::uint64_t times = 1;
     while (const auto n = leading_repeat()) {
       times = saturating_product(times, *n);
       skip_space();
     }
-    auto inner = primary(depth);
-    if (times == 1 || !inner) {
-      return inner;
+    const Mark start = out_.mark();
+    if (!primary(depth)) {
+      return false;
     }
-    if (!fits_product(*inner, times)) {
-      return std::nullopt;
+    if (times == 1) {
+      return true;
     }
-    Bits out;
-    out.names.reserve(inner->size() * times);
-    for (std::uint64_t i = 0; i < times; ++i) {
-      out.names.insert(out.names.end(), inner->names.begin(), inner->names.end());
+    if (!fits_product(out_.since(start), times)) {
+      return false;
     }
-    out.bytes = inner->bytes * times;
-    return out;
+    out_.repeat_all(start, times);
+    return true;
   }
 
-  std::optional<Bits> primary(int depth) {
+  bool primary(int depth) {
     if (accept('(')) {
       return group(depth + 1);
     }
@@ -216,18 +281,20 @@ class Parser {
     return a > kMaxBusBits / b ? kMaxBusBits + 1 : a * b;
   }
 
-  std::optional<Bits> group(int depth) {
+  bool group(int depth) {
     if (depth > kMaxBusParenDepth) {
       fail(Failure::too_large);
-      return std::nullopt;
+      return false;
     }
-    auto out = list(depth);
+    if (!list(depth)) {
+      return false;
+    }
     skip_space();
-    if (out && !accept(')')) {
+    if (!accept(')')) {
       fail(Failure::syntax);
-      return std::nullopt;
+      return false;
     }
-    return out;
+    return true;
   }
 
   /// `n *` before a factor: digits followed by `*`.
@@ -249,24 +316,23 @@ class Parser {
     return n;
   }
 
-  std::optional<Bits> item() {
+  bool item() {
     const std::size_t start = pos_;
     take_name();
     const std::string_view name = text_.substr(start, pos_ - start);
     if (pos_ >= text_.size() || text_[pos_] != '[') {
       if (name.empty()) {
         fail(Failure::syntax);
-        return std::nullopt;
+        return false;
       }
-      return one(std::string{name});
+      return one(name);
     }
     return indexed(start, name);
   }
 
-  static Bits one(std::string name) {
-    Bits bits;
-    bits.push_back(std::move(name));
-    return bits;
+  bool one(std::string_view name) {
+    out_.push_back(std::string{name});
+    return true;
   }
 
   /// A run of name characters, with the blanks between them; a `-` starts a
@@ -287,18 +353,18 @@ class Parser {
     }
   }
 
-  std::optional<Bits> indexed(std::size_t start, std::string_view name) {
+  bool indexed(std::size_t start, std::string_view name) {
     const std::size_t close = text_.find(']', pos_);
     if (close == std::string_view::npos) {
       fail(Failure::syntax);
-      return std::nullopt;
+      return false;
     }
     const std::string_view index = text_.substr(pos_ + 1, close - pos_ - 1);
     pos_ = close + 1;
     const std::string_view trailer = take_trailer();
     if (!starts_numeric(index)) {
       literal_index_ = true;
-      return one(std::string{text_.substr(start, pos_ - start)});
+      return one(text_.substr(start, pos_ - start));
     }
     return expand_index(name, index, trailer);
   }
@@ -329,53 +395,71 @@ class Parser {
     return i < index.size() && (is_digit(index[i]) || index[i] == '-');
   }
 
-  std::optional<Bits> expand_index(std::string_view name, std::string_view index, std::string_view trailer) {
+  struct Item {
+    Mark start;
+    std::string_view name;
+    bool bracketless = false;
+    std::string_view trailer;
+  };
+
+  /// The names of one indexed item; the limits apply to the item's own
+  /// names (its enclosing list checks the total).
+  bool expand_index(std::string_view name, std::string_view index, std::string_view trailer) {
     const bool bracketless = index.find("..") != std::string_view::npos;
     if (bracketless && index.find(':') != std::string_view::npos) {
       fail(Failure::syntax);
-      return std::nullopt;
+      return false;
     }
-    Bits out;
+    const Item item{out_.mark(), name, bracketless, trailer};
     std::size_t at = 0;
     while (true) {
       const std::size_t comma = index.find(',', at);
       const std::string_view part = index.substr(at, comma == std::string_view::npos ? index.npos : comma - at);
-      if (!append_range(out, name, part, bracketless, trailer)) {
-        return std::nullopt;
+      if (!append_range(item, part)) {
+        return false;
       }
       if (comma == std::string_view::npos) {
-        return out;
+        return true;
       }
       at = comma + 1;
     }
   }
 
-  bool append_range(Bits& out, std::string_view name, std::string_view part, bool bracketless,
-                    std::string_view trailer) {
-    const auto range = parse_range(part, bracketless ? std::string_view{".."} : std::string_view{":"});
+  bool append_range(const Item& item, std::string_view part) {
+    const auto range = parse_range(part, item.bracketless ? std::string_view{".."} : std::string_view{":"});
     if (!range) {
       fail(Failure::syntax);
       return false;
     }
+    const Mark size = out_.since(item.start);
     if (range->count > kMaxBusBits || range->repeat > kMaxBusBits || range->repeat > kMaxBusBits / range->count ||
-        !fits(out.size() + range->count * range->repeat, out.bytes)) {
+        !fits(size.count + range->count * range->repeat, size.bytes)) {
       fail(Failure::too_large);
       return false;
     }
     for (std::uint64_t r = 0; r < range->repeat; ++r) {
       for (std::uint64_t k = 0; k < range->count; ++k) {
-        const auto value = range_value(*range, r, k);
-        if (!value) {
-          fail(Failure::syntax);
-          return false;
-        }
-        out.push_back(bit_name(name, *value, bracketless, trailer));
-        if (!fits(out.size(), out.bytes)) {
+        if (!append_bit(item, range_value(*range, r, k))) {
           return false;
         }
       }
     }
     return true;
+  }
+
+  /// One name of an indexed item, built only when names are kept.
+  bool append_bit(const Item& item, std::optional<std::int64_t> value) {
+    if (!value) {
+      fail(Failure::syntax);
+      return false;
+    }
+    if (out_.keep) {
+      out_.push_back(bit_name(item.name, *value, item.bracketless, item.trailer));
+    } else {
+      out_.add_length(item.name.size() + decimal_length(*value) + (item.bracketless ? 0 : 2) + item.trailer.size());
+    }
+    const Mark size = out_.since(item.start);
+    return fits(size.count, size.bytes);
   }
 
   static std::optional<std::int64_t> range_value(const Range& range, std::uint64_t r, std::uint64_t k) noexcept {
@@ -492,12 +576,12 @@ class Parser {
   }
 
   /// `bits` repeated `times` times.
-  bool fits_product(const Bits& bits, std::uint64_t times) {
-    if (times != 0 && (bits.size() > kMaxBusBits / times || bits.bytes > (kMaxBusBytes + 1) / times)) {
+  bool fits_product(Mark bits, std::uint64_t times) {
+    if (times != 0 && (bits.count > kMaxBusBits / times || bits.bytes > (kMaxBusBytes + 1) / times)) {
       fail(Failure::too_large);
       return false;
     }
-    return fits(bits.size() * times, bits.bytes * times);
+    return fits(bits.count * times, bits.bytes * times);
   }
 
   void skip_space() noexcept {
@@ -522,6 +606,7 @@ class Parser {
 
   std::string_view text_;
   std::size_t pos_ = 0;
+  Bits out_;
   Failure failure_ = Failure::none;
   bool literal_index_ = false;
 };
@@ -534,7 +619,7 @@ BusExpansion parse_bus(std::string_view name) {
     out.bits.emplace_back(name);
     return out;
   }
-  Parser parser{name};
+  Parser parser{name, true};
   auto bits = parser.parse();
   if (!bits) {
     out.bits.emplace_back(name);
@@ -546,6 +631,15 @@ BusExpansion parse_bus(std::string_view name) {
   out.bits = std::move(bits->names);
   out.width_known = !parser.literal_index();
   return out;
+}
+
+std::size_t bus_width(std::string_view name) {
+  if (!needs_parsing(name)) {
+    return 1;
+  }
+  Parser parser{name, false};
+  const auto bits = parser.parse();
+  return bits && !parser.literal_index() ? static_cast<std::size_t>(bits->count) : 1;
 }
 
 std::optional<diag::Diagnostic> bus_diagnostic(const BusExpansion& bus, std::string_view name) {

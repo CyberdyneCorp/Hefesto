@@ -15,6 +15,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -588,4 +589,24 @@ TEST_CASE("netlisting: computed lab values are returned, not stored (Q-SCHEM-29)
   CHECK(std::any_of(r.labels.begin(), r.labels.end(), [](const schem::ComputedLabel& l) {
     return l.target == schem::LabelTarget::instance && l.instance == 0 && l.lab == "net1";
   }));
+}
+
+// Regression (found while applying the review of PR #80): each `@symname`
+// of a `schematic` attribute was replaced in place, shifting the rest of the
+// value, so a value of 400,000 of them took about 10^12 byte moves. They
+// are now replaced in one pass.
+TEST_CASE("schematic resolution: @symname is replaced in one pass",
+          "[cap:schematic-netlisting][req:Schematic resolution]") {
+  MemoryProject p;
+  std::string value;
+  for (int i = 0; i < 400000; ++i) value += "@symname";
+  p.put("cell.sym", symbol("type=subcircuit format=\"@name @pinlist @symname\" template=\"name=x1\" schematic=" + value,
+                           {"A", "Y"}));
+  p.put("top.sch", std::string{kHeader} + "C {cell.sym} 0 0 0 0 {name=x1}\n");
+  const auto start = std::chrono::steady_clock::now();
+  const auto r = p.netlist("top.sch");
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(r.text.find(".subckt cell A Y\n") != std::string::npos);
+  CHECK(r.text.find("cellcellcellcell") != std::string::npos);
+  CHECK(elapsed < std::chrono::seconds{10});
 }

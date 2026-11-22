@@ -279,20 +279,8 @@ class Flattener {
     }
     scope.path = parent != nullptr ? parent->path + "_" + name : name;
     scope.depth = depth;
-    for (std::size_t i = 0, k = 0; i + 1 < device.fields.size() && k < definition.ports.size(); ++i) {
-      const std::string& field = device.fields[i + 1];
-      if (!is_parameter(field) && k < device.nodes) {
-        scope.ports[definition.ports[k++]] = field;
-      }
-    }
-    for (const auto& [key, value] : definition.defaults) {
-      scope.values[key] = value;
-      if (parent != nullptr) {
-        if (const auto outer = parent->values.find(ascii_lower(value)); outer != parent->values.end()) {
-          scope.values[key] = outer->second;
-        }
-      }
-    }
+    map_ports(device, definition, scope);
+    default_values(definition, parent, scope);
     for (const std::string& field : device.fields) {
       const std::size_t eq = field.find('=');
       if (eq != std::string::npos) {
@@ -300,6 +288,30 @@ class Flattener {
       }
     }
     return scope;
+  }
+
+  /// The definition's ports mapped onto the X line's nodes, in order.
+  static void map_ports(const DeviceLine& device, const Definition& definition, Scope& scope) {
+    for (std::size_t i = 0, k = 0; i + 1 < device.fields.size() && k < definition.ports.size(); ++i) {
+      const std::string& field = device.fields[i + 1];
+      if (!is_parameter(field) && k < device.nodes) {
+        scope.ports[definition.ports[k++]] = field;
+      }
+    }
+  }
+
+  /// The header parameters; a default naming a parameter of the enclosing
+  /// scope takes its value.
+  static void default_values(const Definition& definition, const Scope* parent, Scope& scope) {
+    for (const auto& [key, value] : definition.defaults) {
+      scope.values[key] = value;
+      if (parent == nullptr) {
+        continue;
+      }
+      if (const auto outer = parent->values.find(ascii_lower(value)); outer != parent->values.end()) {
+        scope.values[key] = outer->second;
+      }
+    }
   }
 
   const Definitions& definitions_;

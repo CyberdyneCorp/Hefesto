@@ -49,6 +49,10 @@ struct BusExpansion {
 /// Expands `name` by the grammar of "Bus and vector notation".
 [[nodiscard]] BusExpansion parse_bus(std::string_view name);
 
+/// `parse_bus(name).width()` without building the names: the same limits
+/// apply, so a name past them has width 1.
+[[nodiscard]] std::size_t bus_width(std::string_view name);
+
 /// The warning `parse_bus(name)` gives: SCHEM-NET-002 `syntax error in
 /// <name>` or SCHEM-NET-006 `bus expansion of <name> exceeds a limit (...);
 /// used unchanged` (the name cut to 80 bytes and `...`); nullopt otherwise.

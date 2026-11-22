@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -188,4 +189,38 @@ TEST_CASE("line breaking: the quote rule carries its state across lines", "[cap:
   const std::string wrapped = schem::break_lines(std::vector<schem::ProcessedLine>{{quoted, false}});
   CHECK(wrapped.find("\n+ ") != std::string::npos);
   CHECK(wrapped.find('\n') > 130);
+}
+
+// Regression (review of PR #80, point 1): the field after a width marker
+// was split into its items once per name, so 200,000 names with a field of
+// 200,000 items took about 4 x 10^10 steps although the text written is a
+// few megabytes. The items are now split once per element.
+TEST_CASE("post-processing: a marker's items are split once, not once per name",
+          "[cap:schematic-netlisting][req:Element line post-processing]") {
+  const std::string names = schem::join_bits(schem::expand_bus("R[199999:0]"), ",");
+  const std::string items = schem::join_bits(schem::expand_bus("n[199999:0]"), ",");
+  const auto start = std::chrono::steady_clock::now();
+  const auto lines = schem::postprocess(std::vector{element(names + " ?1 " + items + " 1k\n")}, true, nullptr);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  REQUIRE(lines.size() == 200000);
+  CHECK(lines.front().text == "R[199999] n[199999] 1k ");
+  CHECK(lines.back().text == "R[0] n[0] 1k ");
+  CHECK(elapsed < std::chrono::seconds{10});
+}
+
+// Regression (review of PR #80, point 8): each `PARAM:` was erased in
+// place, shifting the rest of the field, so a field of 400,000 of them took
+// about 5 x 10^11 byte moves. They are now removed in one pass, still
+// without searching the text left behind again.
+TEST_CASE("post-processing: PARAM: is removed in one pass",
+          "[cap:schematic-netlisting][req:Element line post-processing]") {
+  std::string field;
+  for (int i = 0; i < 400000; ++i) field += "PARAM:";
+  const auto start = std::chrono::steady_clock::now();
+  const auto lines = schem::postprocess(std::vector{element("X1 ?1 a " + field + "w=1\n")}, true, nullptr);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  REQUIRE(lines.size() == 1);
+  CHECK(lines.front().text == "X1 a w=1 ");
+  CHECK(elapsed < std::chrono::seconds{10});
+  CHECK(finish({element("X1 ?1 a PAPARAM:RAM:w=1\n")}) == "X1 a PARAM:w=1\n");
 }

@@ -17,12 +17,22 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/sym/instance.hpp"
+#include "hefesto/schem/sym/symbol.hpp"
 
 namespace hefesto::schem {
 
 namespace {
 
 constexpr std::string_view kUndefined = "--UNDEF--";
+
+// The predefined tokens that always have a value (Resolver::predefined();
+// `spice_get_*` is matched by prefix).
+constexpr std::string_view kPredefinedNames[] = {
+    "name",       "symname",           "symname_ext",       "symref",
+    "path",       "schname",           "schname_ext",       "topschname",
+    "index",      "prop_ptr",          "sch_last_modified", "sym_last_modified",
+    "time_last_modified", "lvs_ignore"};
+constexpr std::string_view kSpiceGet = "spice_get_";
 
 bool is_blank(char c) noexcept {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -99,7 +109,10 @@ class Resolver {
   }
 
  private:
-  [[nodiscard]] std::string props() const { return context_.instance != nullptr ? context_.instance->props : std::string{}; }
+  [[nodiscard]] const std::string& props() const {
+    static const std::string kNone;
+    return context_.instance != nullptr ? context_.instance->props : kNone;
+  }
 
   [[nodiscard]] std::string reference() const {
     if (context_.instance != nullptr) return context_.instance->symbol;
@@ -132,7 +145,7 @@ class Resolver {
     if (name == "time_last_modified") return context_.time_last_modified;
     if (name == "lvs_ignore") return std::string{context_.lvs_ignore ? "1" : "0"};
     // Simulation values are M9's; nothing is shown before results load.
-    if (name.starts_with("spice_get_")) return std::string{};
+    if (name.starts_with(kSpiceGet)) return std::string{};
     return std::nullopt;
   }
 
@@ -148,10 +161,16 @@ class Resolver {
   [[nodiscard]] std::optional<PinIndex> pin_ref(std::string_view ref) const {
     if (!all_digits(ref)) return pin_named(ref);
     if (context_.symbol == nullptr || ref.size() > 9) return std::nullopt;
-    const auto order = pin_order(*context_.symbol);
+    const std::vector<PinIndex>& order = symbol_pin_order();
     const std::size_t n = std::stoul(std::string{ref});
     if (n >= order.size()) return std::nullopt;
     return order[n];
+  }
+
+  // The symbol's pin order, computed once per text.
+  [[nodiscard]] const std::vector<PinIndex>& symbol_pin_order() const {
+    if (!pin_order_) pin_order_ = pin_order(*context_.symbol);
+    return *pin_order_;
   }
 
   [[nodiscard]] std::string net_of(std::optional<PinIndex> pin) const {
@@ -185,17 +204,34 @@ class Resolver {
     if (context_.warnings == nullptr || context_.instance == nullptr) return;
     std::size_t length = 0;
     while (length < name.size() && is_identifier(name[length])) ++length;
-    for (std::size_t n = std::min(length, name.size() - 1); n > 0; --n) {
-      const std::string_view prefix = name.substr(0, n);
-      if (!attribute(prefix) && !predefined(prefix)) continue;
-      context_.warnings->emit(diag::make("SCHEM-SYM-002", "Token " + std::string{token} + " is not defined, but " +
-                                                              std::string{prefix} +
-                                                              " is: a token ends only before a blank, @ or %"));
-      return;
+    const std::size_t n = longest_defined_prefix(name, std::min(length, name.size() - 1));
+    if (n == 0) return;
+    context_.warnings->emit(diag::make("SCHEM-SYM-002", "Token " + std::string{token} + " is not defined, but " +
+                                                            std::string{name.substr(0, n)} +
+                                                            " is: a token ends only before a blank, @ or %"));
+  }
+
+  // The length of the longest prefix of `name`, at most `bound` long, that
+  // attribute() or predefined() defines; 0 for none. The defined keys are
+  // listed once and each is checked as a prefix, so the work is linear in
+  // the token and the property strings (trying every prefix of the token
+  // would re-read the properties once per prefix).
+  [[nodiscard]] std::size_t longest_defined_prefix(std::string_view name, std::size_t bound) const {
+    if (name.starts_with(kSpiceGet) && bound >= kSpiceGet.size()) return bound;
+    std::size_t best = 0;
+    const auto consider = [&](std::string_view key) {
+      if (key.size() > best && key.size() <= bound && name.starts_with(key)) best = key.size();
+    };
+    for (const Property& property : parse_properties(props())) consider(property.key);
+    if (context_.symbol != nullptr) {
+      for (const Property& property : parse_properties(symbol_template(*context_.symbol))) consider(property.key);
     }
+    for (const std::string_view key : kPredefinedNames) consider(key);
+    return best;
   }
 
   const TextTokenContext& context_;
+  mutable std::optional<std::vector<PinIndex>> pin_order_;
 };
 
 }  // namespace

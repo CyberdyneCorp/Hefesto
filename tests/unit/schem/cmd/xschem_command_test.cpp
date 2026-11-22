@@ -207,3 +207,29 @@ TEST_CASE("every inventoried xschem subcommand is supported (Q-SCHEM-10)", kXsch
   }
   CHECK(std::is_sorted(supported.begin(), supported.end()));
 }
+
+// Review of PR #80, point 6: an `xschemrc` chooses `netlist_dir`, and a
+// script chooses `netlist_name`, but `xschem netlist` writes through
+// `::magic::schematic netlist` with script origin, so the sandboxed file
+// system refuses any path outside the granted folders (security finding
+// S-02) and xschem's failure status 1 is returned.
+TEST_CASE("xschem netlist writes only inside the granted folders", kXschem) {
+  SchemSession s;
+  const hefesto::test::TempFolder outside;
+  s.folder().write("w/xschemrc", "set netlist_dir {" + outside.str() + "}\n");
+  open_two_instances(s);
+  REQUIRE(s.tcl("xschem get netlist_dir").value.to_string() == outside.str());
+  CHECK(caught(s, "xschem netlist") == "0 1");
+  CHECK_FALSE(std::filesystem::exists(outside.path() / "top.spice"));
+
+  s.schem().xschemrc.reset();
+  CHECK(caught(s, "xschem set netlist_name {" + outside.str("abs.spice") + "}") == "0 {}");
+  CHECK(caught(s, "xschem netlist") == "0 1");
+  CHECK_FALSE(std::filesystem::exists(outside.path() / "abs.spice"));
+  CHECK(caught(s, "xschem set netlist_name ../../escape.spice") == "0 {}");
+  CHECK(caught(s, "xschem netlist") == "0 1");
+  CHECK_FALSE(std::filesystem::exists(s.folder().path().parent_path() / "escape.spice"));
+  // Inside the granted folder the same command writes.
+  CHECK(caught(s, "xschem netlist") == "0 0");
+  CHECK(s.folder().read("w/top.spice").find(".end") != std::string::npos);
+}

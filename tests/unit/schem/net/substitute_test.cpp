@@ -11,6 +11,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <optional>
 #include <string>
 #include <vector>
@@ -326,4 +328,24 @@ TEST_CASE("hierarchical parameters: the parent instance comes before the templat
   c.templ = &templ;
   c.parent_instance = &parent;
   CHECK(schem::resolve_parameter(c, "value") == std::optional<std::string>{"5k"});
+}
+
+// Regression (review of PR #80, point 5, the netlister's copy): every
+// identifier prefix of an undefined token was looked up in turn, and each
+// lookup re-read the property string, so a 400 kB token against 400 kB of
+// properties took about 10^11 steps. The defined keys are now read once.
+TEST_CASE("token prefix warning: linear in the token and the properties",
+          "[cap:schematic-netlisting][req:Format string substitution]") {
+  const std::string token = "@" + std::string(400000, 'a');
+  std::string props = "name=X1 aaa=1 format=\"" + token + "\"";
+  for (int i = 0; i < 40000; ++i) props += " k" + std::to_string(i) + "=1";
+  const schem::PropertyString instance{props};
+  const auto start = std::chrono::steady_clock::now();
+  const auto t = build(resistor(instance, "A", "B"));
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  REQUIRE(count_code(t, net_codes::kTokenPrefix) == 1);
+  const auto warning = std::find_if(t.diagnostics.begin(), t.diagnostics.end(),
+                                    [](const auto& d) { return d.code == net_codes::kTokenPrefix; });
+  CHECK(warning->text.ends_with("' is undefined while 'aaa' is defined"));
+  CHECK(elapsed < std::chrono::seconds{10});
 }
