@@ -4,7 +4,7 @@
 """Compile the renderer shaders to SPIR-V and embed them as C++ headers.
 
 The generated headers (src/generated/rect_spv.hpp for the 2D canvas,
-src/generated/mesh3d_spv.hpp for the 3D view) are committed, so building
+src/generated/mesh3d_renderer_spv.hpp for the 3D view) are committed, so building
 Hefesto never needs a shader compiler. Run this script after editing a shader:
 
     python3 src/render/vulkan/shaders/compile_shaders.py [--glslang PATH]
@@ -28,7 +28,6 @@ GENERATED = HERE.parent / "src" / "generated"
 # Output header -> (shader source, array name) pairs.
 OUTPUTS = {
     "rect_spv.hpp": (("rect.vert", "kRectVertSpv"), ("poly.vert", "kPolyVertSpv"), ("rect.frag", "kRectFragSpv")),
-    "mesh3d_spv.hpp": (("mesh3d_spike.vert", "kMesh3dSpikeVertSpv"), ("mesh3d_spike.frag", "kMesh3dSpikeFragSpv")),
     "mesh3d_renderer_spv.hpp": (
         ("mesh3d_rect.vert", "kMesh3dRectVertSpv"),
         ("mesh3d_side.vert", "kMesh3dSideVertSpv"),
