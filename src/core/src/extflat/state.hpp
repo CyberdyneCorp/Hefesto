@@ -10,6 +10,8 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -35,6 +37,10 @@ inline constexpr std::string_view kLimit = "EXTFLAT-READ-009";
 inline constexpr std::string_view kUseCycle = "EXTFLAT-READ-010";
 inline constexpr std::string_view kTooManyTokens = "EXTFLAT-READ-011";
 inline constexpr std::string_view kDeviceOverlap = "EXTFLAT-READ-012";
+inline constexpr std::string_view kAbstractView = "EXTFLAT-READ-013";
+inline constexpr std::string_view kEliminatedNodes = "EXTFLAT-READ-014";
+inline constexpr std::string_view kBadArgument = "EXTFLAT-READ-015";
+inline constexpr std::string_view kArgumentWarning = "EXTFLAT-READ-016";
 }  // namespace codes
 
 /// The most tokens efReadLine's argv holds.
@@ -61,6 +67,23 @@ struct ReadState {
 
   std::optional<std::string> selected_style;
   std::vector<FileStamp> stamps;
+
+  // M7: the extflat globals the netlisters read.
+  float ef_scale = 0.0F;              // EFScale (0: not set yet)
+  bool scale_changed = false;         // efScaleChanged
+  bool resist_changed = false;        // efResistChanged
+  bool compat = true;                 // EFCompat (no `substrate` record yet)
+  std::optional<std::string> tech;    // EFTech
+  std::optional<std::string> style;   // EFStyle
+  std::map<std::string, std::vector<DevParam>, std::less<>> params;  // efDevParamTable
+  std::map<std::string, std::int32_t, std::less<>> synthetic_types;  // device names without a tile-type lookup
+  /// The names of the `rnode` and `resist` records of the overlay being
+  /// read (resNames); unset outside an overlay.
+  std::optional<std::unordered_set<std::string>> res_names;
+  bool reading_overlay = false;  // the .res.ext of the current cell (!DoResist)
+
+  [[nodiscard]] bool magic_compat() const noexcept { return options.magic_compat; }
+  [[nodiscard]] std::size_t classes() const noexcept { return resist_classes.value_or(0); }
   std::optional<diag::Diagnostic> fatal;    // a cap or a cycle: the read stops
   std::optional<diag::Diagnostic> failure;  // the first reason EFReadFile returns FALSE
 

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The record builders of EFbuild.c (see build.hpp).
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10).
+// Owner: EXTFLAT (openspec/changes/m7-extraction/design.md D13; M6 EXTSUB).
 
 #include "build.hpp"
 
@@ -51,6 +51,21 @@ std::uint32_t layer_index(ReadState& st, const std::optional<std::string_view>& 
   return layer ? st.layers.add(*layer) : 0;
 }
 
+// (int)(0.5 + (float)v * locScale * locScale), an area delta.
+std::int32_t scale_area(const ReadState& st, std::int32_t v) noexcept {
+  return round_half_up_trunc(static_cast<double>(static_cast<float>(v) * st.loc_scale * st.loc_scale));
+}
+
+// The area/perimeter pairs of a node record: one per resistance class
+// while two tokens remain, the rest zero.
+std::vector<PerimArea> node_perim_area(const ReadState& st, std::span<const std::string> av) {
+  std::vector<PerimArea> pa(st.classes());
+  for (std::size_t n = 0; n < pa.size() && 2 * n + 1 < av.size(); ++n) {
+    pa[n] = PerimArea{c_atoi(av[2 * n]), c_atoi(av[2 * n + 1])};
+  }
+  return pa;
+}
+
 // efBuildNode's handling of a name defined again right after a kill of a
 // node that aliases it: the alias leaves the killed node. Returns true
 // when the name must become a new node.
@@ -73,14 +88,20 @@ bool detach_killed_alias(Def& def, std::string_view name, std::uint32_t entry) {
 }
 
 void add_to_existing(ReadState& st, Def& def, std::uint32_t entry, const NodeRecord& r) {
+  if (st.options.warnings) {
+    st.read_error("Warning: duplicate node name " + std::string{r.name});
+  }
   GraphNode& node = def.graph.node(def.graph.node_of(entry));
+  node.cap += r.cap;
+  add_perim_area(node.pa, node_perim_area(st, r.area_perim));
   if (r.device_substrate) {
     node.flags |= kFlagSubsNode;
   }
   if (r.substrate) {
     node.flags |= kFlagGlobSubs;
+    st.compat = false;
   }
-  if (r.ext_node) {
+  if (st.options.noscale && r.ext_node) {
     // A duplicate port name at another place: prepend the location.
     const SavedLocation loc{{scale_coord(st, r.x), scale_coord(st, r.y)}, layer_index(st, r.layer)};
     node.disjoint.insert(node.disjoint.begin(), loc);
@@ -106,6 +127,23 @@ void add_alias(Def& def, std::uint32_t node, std::string_view name, bool never_p
 std::string_view before_uq(std::string_view name) noexcept {
   const std::size_t at = name.find("_uq");
   return at == std::string_view::npos ? name : name.substr(0, at);
+}
+
+char ascii_lower(char c) noexcept {
+  return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+}
+
+// strcasecmp() == 0 in the C locale.
+bool equal_ignoring_case(std::string_view a, std::string_view b) noexcept {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    if (ascii_lower(a[i]) != ascii_lower(b[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // sscanf("%d:%d") right after a '[' or ','.
@@ -279,7 +317,7 @@ std::size_t terminal_start(std::uint8_t cls, bool has_model) noexcept {
     case kDSubckt:
       return 0;
     default:
-      return 1;
+      return 1;  // vsource: its value (EFread.c sets no token count for it; Q-NETLIST-51)
   }
 }
 
@@ -288,16 +326,20 @@ bool has_optional_substrate(std::uint8_t cls) noexcept {
 }
 
 // efBuildDevNode.
-void build_dev_node(ReadState& st, Def& def, std::string_view name, bool is_substrate) {
+std::uint32_t build_dev_node(ReadState& st, Def& def, std::string_view name, bool is_substrate) {
   bool is_new = false;
   if (lookup_name(def, name) == kNil) {
+    if (st.options.warnings && !is_substrate) {
+      st.read_error("Node " + std::string{name} + " doesn't exist so creating it");
+    }
     build_node(st, def, NodeRecord{name, 0, 0, std::nullopt, false, is_substrate, false});
     is_new = true;
   }
   const std::uint32_t entry = lookup_name(def, name);
-  GraphNode& node = def.graph.node(def.graph.node_of(entry));
+  const std::uint32_t id = def.graph.node_of(entry);
+  GraphNode& node = def.graph.node(id);
   if (!is_substrate && (node.flags & kFlagGlobSubs) == 0) {
-    return;
+    return id;
   }
   if (!st.is_global(name_leaf(def.graph.name(entry).key))) {
     node.flags |= kFlagSubsPort;
@@ -309,72 +351,306 @@ void build_dev_node(ReadState& st, Def& def, std::string_view name, bool is_subs
   if (is_new) {
     node.flags |= kFlagDevTerm;
   }
+  return id;
 }
 
-// The value checks of a new resistor or capacitor (efBuildDevice).
-void check_device_value(ReadState& st, std::uint8_t cls, bool has_model, std::span<const std::string> args) {
-  if (cls != kRes && cls != kCap && cls != kCapRev) {
-    return;
+// The values a device record parses before the device table check
+// (efBuildDevice's devtmp).
+struct DevScratch {
+  float cap = 0.0F;
+  float res = 0.0F;
+  std::int32_t area = 0;
+  std::int32_t perim = 0;
+  std::int32_t length = 0;
+  std::int32_t width = 0;
+  std::vector<std::string> params;  // newest first
+  std::uint32_t subs = kNil;
+};
+
+// strncasecmp(parm_type, key, 2) == 0.
+bool param_type_matches(std::string_view ptype, std::string_view key) noexcept {
+  for (std::size_t i = 0; i < 2; ++i) {
+    const char a = i < ptype.size() ? ptype[i] : '\0';
+    const char b = i < key.size() ? key[i] : '\0';
+    if (ascii_lower(a) != ascii_lower(b)) {
+      return false;
+    }
+    if (a == '\0') {
+      return true;
+    }
   }
+  return true;
+}
+
+bool declared(const ReadState& st, std::string_view type, std::string_view key) {
+  const auto it = st.params.find(type);
+  if (it == st.params.end()) {
+    return false;
+  }
+  for (const DevParam& p : it->second) {
+    if (param_type_matches(p.type, key)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// a, p, l and w are kept as values when the key is one character or its
+// digit is 0 (a0, p0, l0, w0).
+bool primary_key(std::string_view token, std::size_t eq) noexcept {
+  return eq == 1 || token[1] == '0';
+}
+
+// One declared parameter of efBuildDevice's parameter loop.
+void apply_param(const ReadState& st, const std::string& token, std::size_t eq, DevScratch& t) {
+  const std::string_view value = std::string_view{token}.substr(eq + 1);
+  const bool primary = primary_key(token, eq);
+  switch (token[0]) {
+    case 'a':
+      if (primary) {
+        t.area = scale_area(st, c_atoi(value));
+      }
+      break;
+    case 'p':
+      if (primary) {
+        t.perim = scale_coord(st, c_atoi(value));
+      }
+      break;
+    case 'l':
+    case 'w': {
+      if (!primary) {
+        t.params.insert(t.params.begin(), token);
+        break;
+      }
+      (token[0] == 'l' ? t.length : t.width) = scale_coord(st, c_atoi(value));
+      break;
+    }
+    case 'c': t.cap = static_cast<float>(c_atof(value)); break;
+    case 'r': t.res = static_cast<float>(c_atof(value)); break;
+    default: break;
+  }
+}
+
+// efBuildDevice's parameter loop: returns the first token after them.
+std::size_t parse_params(const ReadState& st, std::string_view type, std::span<const std::string> args,
+                         std::size_t termstart, DevScratch& t) {
+  // Magic reads past the tokens when every remaining one holds '='; the
+  // reader stops there.
+  while (termstart < args.size()) {
+    const std::string& token = args[termstart];
+    const std::size_t eq = token.find('=');
+    if (eq == std::string::npos) {
+      break;
+    }
+    if (declared(st, type, std::string_view{token}.substr(0, eq))) {
+      apply_param(st, token, eq, t);
+    } else {
+      t.params.insert(t.params.begin(), token);
+    }
+    ++termstart;
+  }
+  return termstart;
+}
+
+// The tile type of a device name for the device table's key.
+std::optional<std::int32_t> device_tile_type(ReadState& st, std::string_view type) {
+  if (st.options.device_tile_type) {
+    return st.options.device_tile_type(type);
+  }
+  if (type == "None") {
+    return std::nullopt;
+  }
+  // No extraction style: number each name in order of first appearance,
+  // below the unknown names' range.
+  const auto [it, inserted] =
+      st.synthetic_types.try_emplace(std::string{type}, -1 - static_cast<std::int32_t>(st.synthetic_types.size()));
+  return it->second;
+}
+
+std::string device_key(const db::Rect& r, std::int32_t ttype) {
+  return std::to_string(r.x0) + "x" + std::to_string(r.y0) + "_" + std::to_string(ttype);
+}
+
+// The device table key: the type's tile type, or for an unknown type the
+// smallest index from DBNumTypes whose key is unused.
+std::string device_table_key(ReadState& st, const Def& def, std::string_view type, const db::Rect& r,
+                             std::int32_t& ttype) {
+  if (const auto known = device_tile_type(st, type)) {
+    ttype = *known;
+    return device_key(r, ttype);
+  }
+  ttype = st.options.tile_type_count;
+  while (def.dev_table.find(device_key(r, ttype)) != nullptr && ttype < INT32_MAX) {
+    ++ttype;
+  }
+  return device_key(r, ttype);
+}
+
+// The check of a record that lands on an existing device: false (with the
+// overlap message) when it is incompatible.
+bool compatible_duplicate(ReadState& st, const Device& old, std::uint8_t cls, std::string_view type,
+                          const db::Rect& r, std::size_t terminals) {
+  const std::string where = std::string{kDeviceClasses[cls]} + " " + std::string{type} + " at (" +
+                            std::to_string(r.x0) + ", " + std::to_string(r.y0) + ")";
+  if (old.device_class != cls) {
+    st.message(codes::kDeviceOverlap, "Device " + where + " overlaps incompatible device " +
+                                          std::string{kDeviceClasses[old.device_class]} + " " + old.type + "!");
+    return false;
+  }
+  if (old.terms.size() != terminals) {
+    st.message(codes::kDeviceOverlap, "Device " + where +
+                                          " overlaps device with incompatible number of terminals (" +
+                                          std::to_string(terminals) + " vs. " + std::to_string(old.terms.size()) +
+                                          ")!");
+    return false;
+  }
+  return true;
+}
+
+// The class values of a resistor or capacitor (efBuildDevice): L and W,
+// or the value, or the error.
+void rc_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string> args) {
   const std::string& a0 = args[0];
   const std::string& a1 = args.size() > 1 ? args[1] : a0;
-  if ((has_model && str_is_int(a0) && str_is_int(a1)) || str_is_numeric(a0)) {
+  if (has_model && str_is_int(a0) && str_is_int(a1)) {
+    dev.length = c_atoi(a0);
+    dev.width = c_atoi(a1);
+    return;
+  }
+  if (str_is_numeric(a0)) {
+    (dev.device_class == kRes ? dev.res : dev.cap) = static_cast<float>(c_atof(a0));
     return;
   }
   if (has_model) {
     st.read_error("Error: expected L and W, got " + a0 + " " + a1);
+    dev.length = 0;
+    dev.width = 0;
   } else {
-    st.read_error(std::string{"Error: expected "} + (cls == kRes ? "resistance" : "capacitance") +
+    st.read_error(std::string{"Error: expected "} + (dev.device_class == kRes ? "resistance" : "capacitance") +
                   " value, got " + a0);
+    (dev.device_class == kRes ? dev.res : dev.cap) = 0.0F;
   }
 }
 
-enum class DeviceSlot : std::uint8_t { fresh, duplicate, incompatible };
+// The fixed values of a new device (efBuildDevice's class switch).
+void class_values(ReadState& st, Device& dev, bool has_model, std::span<const std::string> args) {
+  switch (dev.device_class) {
+    case kFet:
+      dev.area = args.empty() ? 0 : c_atoi(args[0]);
+      dev.perim = args.size() > 1 ? c_atoi(args[1]) : 0;
+      break;
+    case kMosfet:
+    case kAsymmetric:
+    case kBjt:
+      dev.length = args.empty() ? 0 : c_atoi(args[0]);
+      dev.width = args.size() > 1 ? c_atoi(args[1]) : 0;
+      break;
+    case kRes:
+    case kCap:
+    case kCapRev:
+      if (!args.empty()) {
+        rc_values(st, dev, has_model, args);
+      }
+      break;
+    default: break;
+  }
+}
 
-// The device table check. An incompatible duplicate is dropped. Magic keys
-// devices by the tile type of their name in the extraction style (a name
-// the style does not know never collides); the subset keys them by the
-// name, which agrees whenever two records name the same device type.
-DeviceSlot register_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, db::Point ll,
-                     std::size_t terminals) {
-  const std::string key = std::to_string(ll.x) + "x" + std::to_string(ll.y) + "_" + std::string{type};
-  const auto [it, inserted] = def.devices.try_emplace(key, DeviceKey{cls, std::string{type}, terminals});
-  if (inserted) {
-    return DeviceSlot::fresh;
-  }
-  const DeviceKey& old = it->second;
-  const std::string where = std::string{kDeviceClasses[cls]} + " " + std::string{type} + " at (" +
-                            std::to_string(ll.x) + ", " + std::to_string(ll.y) + ")";
-  if (old.device_class != cls) {
-    st.message(codes::kDeviceOverlap, "Device " + where + " overlaps incompatible device " +
-                                          std::string{kDeviceClasses[old.device_class]} + " " + old.type + "!");
-    return DeviceSlot::incompatible;
-  }
-  if (old.terminals != terminals) {
-    st.message(codes::kDeviceOverlap, "Device " + where +
-                                          " overlaps device with incompatible number of terminals (" +
-                                          std::to_string(terminals) + " vs. " + std::to_string(old.terminals) + ")!");
-    return DeviceSlot::incompatible;
-  }
-  return DeviceSlot::duplicate;
+Device new_device(std::uint8_t cls, std::string_view type, const db::Rect& r, std::size_t terminals,
+                  DevScratch& t) {
+  Device dev;
+  dev.device_class = cls;
+  dev.type = std::string{type};
+  dev.rect = r;
+  dev.cap = t.cap;
+  dev.res = t.res;
+  dev.area = t.area;
+  dev.perim = t.perim;
+  dev.length = t.length;
+  dev.width = t.width;
+  dev.params = std::move(t.params);
+  dev.terms.resize(terminals);
+  return dev;
 }
 
 // The substrate given in the fixed fields (efBuildDevice after the device
 // table check).
-void build_fixed_substrate(ReadState& st, Def& def, std::uint8_t cls, std::size_t termstart,
-                           std::span<const std::string> args) {
+std::uint32_t fixed_substrate(ReadState& st, Def& def, std::uint8_t cls, std::size_t termstart,
+                              std::span<const std::string> args, std::uint32_t subs) {
   if (args.size() <= 2) {
-    return;
+    return subs;
   }
   if (cls == kFet) {
-    build_dev_node(st, def, args[2], true);
-    return;
+    return build_dev_node(st, def, args[2], true);
   }
   const bool fixed_class = cls == kMosfet || cls == kAsymmetric || cls == kBjt || cls == kRes || cls == kCap ||
                            cls == kCapRev;
   if (fixed_class && termstart == 3 && !starts_with_none(args[2])) {
-    build_dev_node(st, def, args[2], true);
+    return build_dev_node(st, def, args[2], true);
   }
+  return subs;
+}
+
+// Finds or creates the device of the table key; nullptr for an
+// incompatible duplicate.
+Device* place_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
+                     std::size_t terminals, DevScratch& t, std::span<const std::string> args) {
+  std::int32_t ttype = 0;
+  const std::string key = device_table_key(st, def, type, r, ttype);
+  auto& entry = def.dev_table.find_or_insert(key);
+  if (entry.value) {
+    Device& old = def.devices[*entry.value];
+    return compatible_duplicate(st, old, cls, type, r, terminals) ? &old : nullptr;
+  }
+  const bool has_model = type != "None";
+  Device dev = new_device(cls, type, r, terminals, t);
+  dev.tile_type = ttype;
+  class_values(st, dev, has_model, args);
+  def.devices.push_back(std::move(dev));
+  entry.value = static_cast<std::uint32_t>(def.devices.size() - 1);
+  return &def.devices.back();
+}
+
+// The zero-valued resistor or voltage source between two shorted ports
+// (efBuildEquiv and efBuildMerge with `short resistor`/`short voltage`).
+void build_short_device(ReadState& st, Def& def, std::string_view name1, std::string_view name2) {
+  const std::array<std::string, 10> argv{"0.0", "dummy", "0", "0", std::string{name1}, "0", "0",
+                                         std::string{name2}, "0", "0"};
+  const std::uint8_t cls = st.options.shorts == ReadOptions::PortShorts::resistor ? kRes : kVsource;
+  (void)build_device(st, def, cls, "None", db::Rect{}, argv);
+}
+
+bool shorts_on(const ReadState& st) noexcept {
+  return st.options.shorts != ReadOptions::PortShorts::none;
+}
+
+enum class ShortAction : std::uint8_t { merge, keep_apart, device_built };
+
+// efBuildEquiv for two ports of different indices: merge, keep apart, or
+// build a short device between them.
+ShortAction port_short(ReadState& st, Def& def, std::string_view name1, std::string_view name2, bool resist) {
+  if (st.options.spice && equal_ignoring_case(name1, name2)) {
+    return ShortAction::merge;
+  }
+  if (before_uq(name1) == before_uq(name2)) {
+    return resist ? ShortAction::keep_apart : ShortAction::merge;
+  }
+  if (shorts_on(st)) {
+    build_short_device(st, def, name1, name2);
+    return ShortAction::device_built;
+  }
+  if (resist) {
+    return ShortAction::keep_apart;
+  }
+  st.message(codes::kShortedPorts, "Warning:  Ports \"" + std::string{name1} + "\" and \"" + std::string{name2} +
+                                       "\" are electrically shorted.");
+  return ShortAction::merge;
+}
+
+bool different_ports(const Def& def, std::uint32_t nn1, std::uint32_t nn2) {
+  const std::int32_t p1 = def.graph.name(nn1).port;
+  const std::int32_t p2 = def.graph.name(nn2).port;
+  return p1 >= 0 && p2 >= 0 && p1 != p2;
 }
 
 }  // namespace
@@ -392,6 +668,10 @@ std::optional<std::uint8_t> device_class(std::string_view word) noexcept {
   return std::nullopt;
 }
 
+std::string_view device_class_name(std::uint8_t cls) noexcept {
+  return cls < kDeviceClasses.size() ? kDeviceClasses[cls] : std::string_view{};
+}
+
 void build_node(ReadState& st, Def& def, const NodeRecord& r) {
   std::uint32_t entry = lookup_name(def, r.name);
   if (entry != kNil && detach_killed_alias(def, r.name, entry)) {
@@ -405,13 +685,38 @@ void build_node(ReadState& st, Def& def, const NodeRecord& r) {
   node.loc = db::Point{scale_coord(st, r.x), scale_coord(st, r.y)};
   node.layer = layer_index(st, r.layer);
   node.flags = (r.substrate ? kFlagGlobSubs : 0U) | (r.device_substrate ? kFlagSubsNode : 0U);
-  if (r.ext_node) {
+  node.cap = r.cap;
+  node.pa = node_perim_area(st, r.area_perim);
+  if (st.options.noscale && r.ext_node) {
     node.disjoint.push_back(SavedLocation{node.loc, node.layer});
+  }
+  if (r.substrate) {
+    st.compat = false;
   }
   const std::uint32_t id = def.graph.add_node(std::move(node));
   const std::uint32_t name = def.graph.add_name(name_from_string(r.name), id);
   def.names[std::string{r.name}] = name;
   def.graph.link_head(id, name);
+}
+
+void adjust_subcap(ReadState& st, Def& def, std::string_view name, float cap) {
+  const std::uint32_t entry = lookup_name(def, name);
+  if (entry != kNil) {
+    def.graph.node(def.graph.node_of(entry)).cap += cap;
+  } else if (st.options.warnings) {
+    st.read_error("Error: subcap has unknown node " + std::string{name});
+  }
+}
+
+void build_attr(ReadState& st, Def& def, std::string_view name, const db::Rect& r, std::string_view layer,
+                std::string_view text) {
+  const std::uint32_t entry = lookup_name(def, name);
+  if (entry == kNil) {
+    st.read_error("Attribute for nonexistent node " + std::string{name} + " ignored");
+    return;
+  }
+  GraphNode& node = def.graph.node(def.graph.node_of(entry));
+  node.attrs.insert(node.attrs.begin(), NodeAttr{std::string{text}, st.layers.add(layer), r});
 }
 
 void build_port_node(ReadState& st, Def& def, std::string_view name, std::int32_t index, std::int32_t x,
@@ -425,7 +730,7 @@ void build_port_node(ReadState& st, Def& def, std::string_view name, std::int32_
   def.graph.name(entry).port = index;
 }
 
-void build_equiv(ReadState& st, Def& def, std::string_view name1, std::string_view name2) {
+void build_equiv(ReadState& st, Def& def, std::string_view name1, std::string_view name2, bool resist) {
   const std::uint32_t nn1 = lookup_name(def, name1);
   const std::uint32_t nn2 = lookup_name(def, name2);
   if (nn1 == nn2) {
@@ -439,33 +744,60 @@ void build_equiv(ReadState& st, Def& def, std::string_view name1, std::string_vi
     add_alias(def, def.graph.node_of(nn2), name1, false);
     return;
   }
-  const std::int32_t p1 = def.graph.name(nn1).port;
-  const std::int32_t p2 = def.graph.name(nn2).port;
-  if (p1 >= 0 && p2 >= 0 && p1 != p2 && before_uq(name1) != before_uq(name2)) {
-    st.message(codes::kShortedPorts, "Warning:  Ports \"" + std::string{name1} + "\" and \"" + std::string{name2} +
-                                         "\" are electrically shorted.");
+  if (different_ports(def, nn1, nn2) && port_short(st, def, name1, name2, resist) != ShortAction::merge) {
+    return;
   }
   const std::uint32_t node1 = def.graph.node_of(nn1);
   const std::uint32_t node2 = def.graph.node_of(nn2);
   if (node1 == node2) {
     return;
   }
+  if (st.options.warnings) {
+    st.read_error("Merged nodes " + std::string{name1} + " and " + std::string{name2});
+  }
   def.graph.merge(node1, node2);
   // efNodeMerge leaves nn2 without a node; the hash entries holding it
-  // are pointed at nn1.
+  // are pointed at nn1. Device terminals reach the kept node through
+  // NodeGraph::find.
   def.graph.name(nn2).redirect = nn1;
 }
 
-void build_merge(ReadState& st, Def& def, std::string_view name1, std::string_view name2) {
+void build_merge(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float cap,
+                 std::span<const std::string> area_perim) {
+  if (before_uq(name1) != before_uq(name2) && shorts_on(st)) {
+    const std::uint32_t nn1 = lookup_name(def, name1);
+    const std::uint32_t nn2 = lookup_name(def, name2);
+    if (nn1 != kNil && nn2 != kNil && different_ports(def, nn1, nn2)) {
+      build_short_device(st, def, name1, name2);
+      return;
+    }
+  }
+  Conn conn;
+  if (!init_subs(st, name1, name2, conn)) {
+    return;
+  }
+  conn.cap = cap;
+  conn.pa.resize(st.classes());
+  for (std::size_t n = 0; n < conn.pa.size() && 2 * n + 1 < area_perim.size(); ++n) {
+    conn.pa[n] = PerimArea{scale_area(st, c_atoi(area_perim[2 * n])), scale_coord(st, c_atoi(area_perim[2 * n + 1]))};
+  }
+  def.conns.push_back(std::move(conn));
+}
+
+void build_cap(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float cap) {
   Conn conn;
   if (init_subs(st, name1, name2, conn)) {
-    def.conns.push_back(std::move(conn));
+    conn.cap = cap;
+    def.caps.push_back(std::move(conn));
   }
 }
 
-void check_connection(ReadState& st, std::string_view name1, std::string_view name2) {
+void build_resistor(ReadState& st, Def& def, std::string_view name1, std::string_view name2, float res) {
   Conn conn;
-  (void)init_subs(st, name1, name2, conn);
+  if (init_subs(st, name1, name2, conn)) {
+    conn.res = res;
+    def.resistors.push_back(std::move(conn));
+  }
 }
 
 void build_use(ReadState& st, Def& def, std::string_view def_name, std::string_view use_id, const Transform& t) {
@@ -492,21 +824,16 @@ void build_use(ReadState& st, Def& def, std::string_view def_name, std::string_v
   entry.value = static_cast<std::uint32_t>(def.uses.size() - 1);
 }
 
-bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, db::Point ll,
+bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
                   std::span<const std::string> args) {
-  const bool has_model = type != "None";
-  std::size_t termstart = terminal_start(cls, has_model);
-  // Parameters (name=value) follow the fixed fields. Magic reads past the
-  // tokens when every remaining one holds '='; the subset stops there.
-  while (termstart < args.size() && args[termstart].find('=') != std::string::npos) {
-    ++termstart;
-  }
+  DevScratch t;
+  std::size_t termstart = parse_params(st, type, args, terminal_start(cls, type != "None"), t);
   if (termstart > args.size()) {
     return false;
   }
   if (has_optional_substrate(cls) && (args.size() - termstart) % 3 == 1) {
     if (!starts_with_none(args[termstart])) {
-      build_dev_node(st, def, args[termstart], true);
+      t.subs = build_dev_node(st, def, args[termstart], true);
     }
     ++termstart;
   }
@@ -514,16 +841,22 @@ bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view ty
     return false;
   }
   const std::size_t terminals = (args.size() - termstart) / 3;
-  const DeviceSlot slot = register_device(st, def, cls, type, ll, terminals);
-  if (slot == DeviceSlot::incompatible) {
+  Device* dev = place_device(st, def, cls, type, r, terminals, t, args);
+  if (dev == nullptr) {
     return true;
   }
-  if (slot == DeviceSlot::fresh) {
-    check_device_value(st, cls, has_model, args);
-  }
-  build_fixed_substrate(st, def, cls, termstart, args);
+  const std::size_t index = static_cast<std::size_t>(dev - def.devices.data());
+  const std::uint32_t subs = fixed_substrate(st, def, cls, termstart, args, t.subs);
+  def.devices[index].subs = subs;
   for (std::size_t n = 0; n < terminals; ++n) {
-    build_dev_node(st, def, args[termstart + 3 * n], false);
+    const std::string& attrs = args[termstart + 3 * n + 2];
+    DevTerm term;
+    term.node = build_dev_node(st, def, args[termstart + 3 * n], false);
+    term.length = c_atoi(args[termstart + 3 * n + 1]);
+    if (attrs != "0") {
+      term.attrs = attrs;
+    }
+    def.devices[index].terms[n] = std::move(term);
   }
   return true;
 }
@@ -537,17 +870,58 @@ void build_short(ReadState& st, Def& def, std::span<const std::string> args) {
     st.read_error("Bad terminal description for Short device");
     return;
   }
-  build_equiv(st, def, args[start + 1], args[start + 4]);
+  // With overlays the short merges only while the .res.ext is read.
+  if (!st.options.resist_overlay || st.reading_overlay) {
+    build_equiv(st, def, args[start + 1], args[start + 4], false);
+  }
 }
 
-void build_device_params(ReadState& st, Def& /*def*/, std::string_view type, std::span<const std::string> args) {
-  if (!st.device_params.insert(std::string{type}).second) {
-    return;  // the first declaration of a type wins
+namespace {
+
+// One token of efBuildDeviceParams.
+DevParam parse_declared_param(std::string_view type, std::string_view token, std::size_t eq, std::size_t index) {
+  DevParam p;
+  p.type = std::string{token.substr(0, eq == 1 ? 1 : 2)};
+  std::string_view name = token.substr(eq + 1);
+  std::size_t cut = std::string_view::npos;
+  if (const std::size_t star = name.find('*'); star != std::string_view::npos) {
+    cut = star;
+    p.scale = c_atof(name.substr(star + 1));
+    // Magic leaves parm_offset uninitialised here; 0 in both modes
+    // (Q-NETLIST-8, tier 1).
+  } else if (const std::size_t plus = name.find('+'); plus != std::string_view::npos) {
+    cut = plus;
+    p.offset = c_atoi(name.substr(plus + 1));
+  } else if (const std::size_t minus = name.find('-'); minus != std::string_view::npos) {
+    cut = minus;
+    p.offset = static_cast<std::int32_t>(-static_cast<std::int64_t>(c_atoi(name.substr(minus + 1))));
   }
-  for (const std::string& a : args) {
-    if (a.find('=') == std::string::npos) {
-      st.read_error("Bad parameter assignment \"" + a + "\" for device \"" + std::string{type} + "\"");
+  if (!type.empty() && type.front() == ':') {
+    // A cell's instance parameter: the token (cut where Magic wrote its
+    // NUL) and the token index as the type.
+    p.name = std::string{cut == std::string_view::npos ? token : token.substr(0, eq + 1 + cut)};
+    p.type = {static_cast<char>('0' + (index / 10) % 10), static_cast<char>('0' + index % 10)};
+  } else {
+    p.name = std::string{name.substr(0, cut)};
+  }
+  return p;
+}
+
+}  // namespace
+
+void build_device_params(ReadState& st, std::string_view type, std::span<const std::string> args) {
+  auto& list = st.params[std::string{type}];
+  if (!list.empty()) {
+    return;  // the first declaration with a parameter wins
+  }
+  for (std::size_t n = 0; n < args.size(); ++n) {
+    const std::size_t eq = args[n].find('=');
+    if (eq == std::string::npos) {
+      st.read_error("Bad parameter assignment \"" + args[n] + "\" for device \"" + std::string{type} + "\"");
+      continue;
     }
+    // Prepended: the list is in reverse token order (Q-NETLIST-9).
+    list.insert(list.begin(), parse_declared_param(type, args[n], eq, n));
   }
 }
 
