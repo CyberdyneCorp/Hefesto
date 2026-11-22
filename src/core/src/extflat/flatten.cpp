@@ -91,6 +91,7 @@ class Flattener {
   void stdcell_nodes(const HierContext& hc, std::size_t depth);
   void full_nodes(const HierContext& hc, std::size_t depth, unsigned pass);
   void deviceless_nodes(const HierContext& hc, std::size_t depth, std::int64_t& usecount);
+  void deviceless_uses(const HierContext& root, std::int64_t& usecount);
   void flat_kills(const HierContext& hc, std::size_t depth);
   void flat_glob();
   void flat_caps(const HierContext& hc, std::size_t depth, bool deviceless);
@@ -114,6 +115,8 @@ class Flattener {
   void for_each_element(const HierContext& hc, const Use& use, F&& visit_child);
   template <typename F>
   void for_each_conn(const HierContext& hc, const std::vector<Conn>& conns, F&& visit);
+  template <typename F>
+  void expand_conn(const Conn& conn, F& visit);
   [[nodiscard]] bool subckt(std::uint32_t def) const;
   bool count_instance();
   void add_nodes(const HierContext& hc, unsigned pass);
@@ -237,26 +240,33 @@ void Flattener::for_each_conn(const HierContext& hc, const std::vector<Conn>& co
   (void)hc;
   for (auto it = conns.rbegin(); it != conns.rend() && !ctx_.fatal; ++it) {
     const Conn& conn = *it;
-    const ConnName& c1 = conn.name1;
-    const ConnName& c2 = conn.name2;
-    if (c1.nsubs == 0) {
-      visit(conn, c1.before, c2.before);
-      continue;
+    if (conn.name1.nsubs == 0) {
+      visit(conn, conn.name1.before, conn.name2.before);
+    } else {
+      expand_conn(conn, visit);
     }
-    const bool two = c1.nsubs == 2;
-    const std::int64_t jlo = two ? c1.subs[1].lo : 0;
-    const std::int64_t jhi = two ? c1.subs[1].hi : 0;
-    for (std::int64_t i = c1.subs[0].lo; i <= c1.subs[0].hi && !ctx_.fatal; ++i) {
-      for (std::int64_t j = jlo; j <= jhi; ++j) {
-        if (++connections_ > ctx_.options.limits.max_connections) {
-          ctx_.fail(codes::kLimit, "the .ext merge records expand to more than " +
-                                       std::to_string(ctx_.options.limits.max_connections) + " connections");
-          return;
-        }
-        const std::int64_t i2 = i - c1.subs[0].lo + c2.subs[0].lo;
-        const std::int64_t j2 = two ? j - jlo + c2.subs[1].lo : 0;
-        visit(conn, c1.element(i, j), c2.element(i2, j2));
+  }
+}
+
+// One arrayed connection: each element pair of its subscript ranges,
+// counted against the connection limit.
+template <typename F>
+void Flattener::expand_conn(const Conn& conn, F& visit) {
+  const ConnName& c1 = conn.name1;
+  const ConnName& c2 = conn.name2;
+  const bool two = c1.nsubs == 2;
+  const std::int64_t jlo = two ? c1.subs[1].lo : 0;
+  const std::int64_t jhi = two ? c1.subs[1].hi : 0;
+  for (std::int64_t i = c1.subs[0].lo; i <= c1.subs[0].hi && !ctx_.fatal; ++i) {
+    for (std::int64_t j = jlo; j <= jhi; ++j) {
+      if (++connections_ > ctx_.options.limits.max_connections) {
+        ctx_.fail(codes::kLimit, "the .ext merge records expand to more than " +
+                                     std::to_string(ctx_.options.limits.max_connections) + " connections");
+        return;
       }
+      const std::int64_t i2 = i - c1.subs[0].lo + c2.subs[0].lo;
+      const std::int64_t j2 = two ? j - jlo + c2.subs[1].lo : 0;
+      visit(conn, c1.element(i, j), c2.element(i2, j2));
     }
   }
 }
@@ -314,6 +324,12 @@ void Flattener::deviceless_nodes(const HierContext& hc, std::size_t depth, std::
   if (!def.subcircuit && !def.abstract && !def.primitive) {
     --usecount;
   }
+}
+
+// EFFlatBuildOneLevel's efHierSrUses(root, efFlatNodesDeviceless): each use
+// of the root, never the root itself (its connections were added once).
+void Flattener::deviceless_uses(const HierContext& root, std::int64_t& usecount) {
+  for_each_use(root, 0, [&](const HierContext& child) { deviceless_nodes(child, 1, usecount); });
 }
 
 // efAddNodes: the def's live nodes in list order (reverse creation); with
@@ -598,6 +614,7 @@ FlatDevice Flattener::device_out(const HierContext& hc, const Def& def, const De
     const FlatTerminal subs = terminal_out(hc.prefix, def, dev.subs, 0, std::nullopt);
     out.substrate = subs.node;
     out.substrate_index = subs.node_index;
+    out.substrate_local = name_to_string(local_key(def, dev.subs));
   }
   out.params = dev.params;
   out.hier_prefix = name_to_string(hc.prefix);
@@ -967,8 +984,8 @@ Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& pl
   f.full_nodes(top, 0, kHier);
   std::int64_t usecount = use_count(def);
   if (!f.failed() && usecount > 0) {
-    f.deviceless_nodes(top, 0, usecount);
-    // efHierSrUses over the root's uses only: the root's own count.
+    // efHierSrUses over the root's uses: the root itself is never absorbed.
+    f.deviceless_uses(top, usecount);
   }
   if (usecount == 0 && def.devices.empty()) {
     f.mark_nodevices(def_id);

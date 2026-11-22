@@ -42,18 +42,21 @@ void spice_prefix(std::string& out, const std::string& component, const NameFlag
   out += '/';
 }
 
+// Whether a leaf `!` (trim-global) or `#` (trim-local) is deleted: anywhere
+// with magic-compat ON, only as the leaf's last character with it OFF
+// (Q-NETLIST-30).
+bool trims(char c, bool last, const NameFlags& f, bool compat) noexcept {
+  const bool flag = (c == '!' && f.trim_global) || (c == '#' && f.trim_local);
+  return flag && (compat || last);
+}
+
 // One leaf character of EFHNSprintf; `last` tells whether it ends the
 // leaf, which matters for `!` and `#` with magic-compat OFF.
 void spice_leaf_char(std::string& out, char c, bool last, bool hspice, const NameFlags& f, bool compat) {
-  const bool trimmable = compat || last;
   switch (c) {
     case '!':
-      if (!(f.trim_global && trimmable)) {
-        out += c;
-      }
-      break;
     case '#':
-      if (!(f.trim_local && trimmable)) {
+      if (!trims(c, last, f, compat)) {
         out += c;
       }
       break;

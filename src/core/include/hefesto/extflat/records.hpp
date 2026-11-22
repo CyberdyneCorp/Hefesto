@@ -79,6 +79,11 @@ struct FlatDevice {
   /// One-level visits only: a terminal is on a killed node (EFHierVisitDevs
   /// reports it and emits the device anyway).
   bool on_killed_node = false;
+  /// The substrate's local canonical name in its definition (the suffix
+  /// spcdevSubstrate compares with a default substrate); `substrate` is
+  /// that name joined to the instance path and resolved when it is a flat
+  /// name (an implicit global substrate is flat under its bare name only).
+  std::string substrate_local{};
 
   friend bool operator==(const FlatDevice&, const FlatDevice&) = default;
 };

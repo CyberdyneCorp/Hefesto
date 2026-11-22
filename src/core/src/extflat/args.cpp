@@ -66,6 +66,7 @@ class ArgParser {
   // ArgStr: the rest of the flag word, else the next word.
   std::optional<std::string> value(std::string_view what);
   bool flag(char c);
+  void store(char c, std::string v);
   bool extra_flag();
   void add_symbol_arg(const std::string& text);
 
@@ -119,35 +120,41 @@ bool ArgParser::extra_flag() {
   return true;
 }
 
+// The ArgStr description of a flag that takes a value; null for the others.
+const char* value_kind(char c) noexcept {
+  switch (c) {
+    case 'c': return "cap threshold";
+    case 'p': return "search path";
+    case 'r': return "resist threshold";
+    case 's': return "symbolic name";
+    case 't': return "trim characters";
+    case 'S': return "symbol file";
+    case 'T': return "tech name";
+    case 'o': return "output file";
+    case 'n': return "nodename";  // debugging: watched nodes are not reported
+    case 'N': return "filename";
+    default: return nullptr;
+  }
+}
+
+// The value of a flag that takes one.
+void ArgParser::store(char c, std::string v) {
+  switch (c) {
+    case 'c': out_.cap_threshold = static_cast<double>(static_cast<float>(detail::c_atof(v))); break;
+    case 'p': out_.search_path = split_path(v); break;
+    case 'r': out_.resist_threshold = detail::c_atoi(v); break;
+    case 's': add_symbol_arg(v); break;
+    case 't': out_.trim_chars += v; break;
+    case 'S': out_.symbol_file = std::move(v); break;
+    case 'T': out_.tech = std::move(v); break;
+    case 'o': out_.output = std::move(v); break;
+    default: break;  // -n, -N
+  }
+}
+
 // One flag of EFArgs' switch; false when the parse stops.
 bool ArgParser::flag(char c) {
-  std::optional<std::string> v;
   switch (c) {
-    case 'c':
-      if ((v = value("cap threshold"))) {
-        out_.cap_threshold = static_cast<double>(static_cast<float>(detail::c_atof(*v)));
-      }
-      break;
-    case 'p':
-      if ((v = value("search path"))) {
-        out_.search_path = split_path(*v);
-      }
-      break;
-    case 'r':
-      if ((v = value("resist threshold"))) {
-        out_.resist_threshold = detail::c_atoi(*v);
-      }
-      break;
-    case 's':
-      if ((v = value("symbolic name"))) {
-        add_symbol_arg(*v);
-      }
-      break;
-    case 't':
-      if ((v = value("trim characters"))) {
-        out_.trim_chars += *v;
-      }
-      break;
     case 'C':
       out_.cap_infinite = true;
       out_.cap_threshold = static_cast<double>(kInfiniteCap);
@@ -156,29 +163,19 @@ bool ArgParser::flag(char c) {
       out_.resist_infinite = true;
       out_.resist_threshold = INT_MAX;
       return true;
-    case 'S':
-      if ((v = value("symbol file"))) {
-        out_.symbol_file = *v;
-      }
-      break;
-    case 'T':
-      if ((v = value("tech name"))) {
-        out_.tech = *v;
-      }
-      break;
-    case 'o':
-      if ((v = value("output file"))) {
-        out_.output = *v;
-      }
-      break;
-    case 'n': v = value("nodename"); break;  // debugging: watched nodes are not reported
-    case 'N': v = value("filename"); break;
     case 'v': out_.verbose = true; return true;
     case 'z': return true;
     case 'h':
       error_ = usage_error("");
       return false;
-    default: return extra_flag();
+    default: break;
+  }
+  const char* kind = value_kind(c);
+  if (kind == nullptr) {
+    return extra_flag();
+  }
+  if (auto v = value(kind)) {
+    store(c, std::move(*v));
   }
   return !error_;
 }
