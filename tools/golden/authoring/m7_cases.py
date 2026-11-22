@@ -58,7 +58,7 @@ CATALOGUE_TOTAL = 155  # design D21
 REPLAYED: set[str] = {
     netlist_cases.CHK_ID,  # SIM (task 12.4) with EXTFLAT (tasks 10.x)
     # R2 integration (EXTFLAT, SPICE, SIM and EXTTECH merged)
-    *(f"NL-FLAT-{n:02d}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18)),
+    *(f"NL-FLAT-{n:02d}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18)),  # 16: R2 fix pass (-s symbols)
     *(f"NL-SIM-{n:02d}" for n in (1, 3, 4, 5)),
     *(f"NL-SPICE-{n:02d}" for n in (2, 3, 7, 9, 10, 11, 12, 14)),
 }
