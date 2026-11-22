@@ -24,7 +24,11 @@ workstream implemented it fails with the core code `CORE-NOTIMPL-008`
 
 ## SPICE
 
-Codes of the SPICE netlister (`ext2spice`, `exttospice`). Owner: SPICE. None yet.
+Codes of the SPICE netlister (`ext2spice`, `exttospice`). Owner: SPICE.
+
+- `NETLIST-SPICE-001` (error): a run with no cell argument and no layout window to take the root cell from. Magic's text: `Point to a window or specify a cell name.`
+
+The other lines the SPICE netlister prints are Magic's report and warning text and carry the generic report codes (`DB-REPORT-001`, `DB-REPORT-002`): `exttospice finished.`, `Devs merged: <n>`, the style-mismatch warning, `Device other than subcircuit has only one terminal`, `Diode has only one terminal`, `outPremature`, `error: subap for devtype <n> unspecified`, `Error:  No substrate definition for device <type>`, `spcnAP: major internal inconsistency`, `Unrecognized flag: <f>` and the usage text. A failed output open is the Tcl result `exttospice: Unable to open file <f> for writing`, as in Magic. Read errors are EXTFLAT's codes ([extflat.md](extflat.md)).
 
 ## SIM
 
@@ -69,4 +73,5 @@ fails when the two disagree.
 | `NETLIST-SIM-001` | info | An `ext2sim` report line (Magic's TxPrintf): `Devices merged: <n>`, `exttosim finished.`, the `-y` deprecation note. |
 | `NETLIST-SIM-002` | warning | An `ext2sim` message on the error stream (Magic's TxError): a run-flag error, no cell to netlist, a style mismatch in SU format, a device the `.sim` format cannot name. |
 | `NETLIST-SIM-003` | error | `ext2sim` cannot write one of its output files (`exttosim: Unable to open file <name> for writing`); the run stops there. |
+| `NETLIST-SPICE-001` | error | ext2spice run: no cell named and no window to take one from. |
 <!-- END DIAGNOSTIC CODES -->

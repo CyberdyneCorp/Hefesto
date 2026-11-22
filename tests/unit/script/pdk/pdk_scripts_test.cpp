@@ -369,13 +369,18 @@ TEST_CASE("ext2spice scale is a setting", "[cap:scripting-pdk-integration][req:C
   CHECK(s.eval("ext2spice scale") == "off");
   s.eval("ext2spice scale yes");
   CHECK(s.eval("ext2spice scale") == "on");
+  // A bad value prints the option table and changes nothing, as Magic's
+  // `goto usage` does (no Tcl error).
   const auto bad = s.dispatcher->execute({"ext2spice", {"scale", "maybe"}, hefesto::cmd::Origin::script, std::nullopt});
-  CHECK_FALSE(bad.ok());
+  CHECK(bad.ok());
+  CHECK(s.eval("ext2spice scale") == "on");
+  // User decision M7-3: `scale` is M7's SpiceSettings::scale, next to the
+  // other options of the full command, which now work.
+  s.eval("ext2spice scale off");
+  CHECK_FALSE(s.editor.netlist.spice.scale);
   const auto later = s.dispatcher->execute({"ext2spice", {"hierarchy", "on"}, hefesto::cmd::Origin::script, std::nullopt});
-  REQUIRE_FALSE(later.ok());
-  // The M7 scaffold registers the full option table; the option is a stub
-  // until SPICE lands it (openspec/changes/m7-extraction tasks.md 3.3).
-  CHECK(later.diagnostics.front().code == "CORE-NOTIMPL-008");
+  REQUIRE(later.ok());
+  CHECK(s.editor.netlist.spice.hierarchy);
 }
 
 TEST_CASE("Portable library reference", "[cap:scripting-pdk-integration][req:PDK-relative paths in saved files]") {
