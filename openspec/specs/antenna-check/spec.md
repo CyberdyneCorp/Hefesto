@@ -77,7 +77,10 @@ Compatibility: exact
 
 ### Requirement: Antenna check command
 
-The system SHALL provide an `antennacheck` command with the forms `antennacheck`, `antennacheck run [options] [cell]`, `antennacheck debug` and `antennacheck help`, where the first argument is matched by unique prefix against `run`, `debug`, `help`, and any first argument that matches none of them is treated as if `run` had been given with that argument kept as an option/cell argument.
+The system SHALL provide an `antennacheck` command with the forms `antennacheck`, `antennacheck run [options] [cell]`, `antennacheck debug` and `antennacheck help`. How the first argument is matched depends on the `magic-compat` setting (Q-MISC-91, resolution: compat, as Q-NETLIST-13):
+- With it ON (the default), the first argument is looked up in Magic's option table, whose first entry is `[run] [options]`, so only `debug` and `help` (by unique prefix) select an option. The word `run`, an ambiguous prefix and any other word are run arguments, so `antennacheck run` checks a cell named `run`, as Magic does.
+- With it OFF, the first argument is matched by unique prefix against `run`, `debug`, `help`: `run` is a keyword whose following words are the run arguments, and an ambiguous prefix prints `Ambiguous option: <w>` and does nothing.
+- In both settings a first argument that is not a prefix of any option is treated as if `run` had been given, with that argument kept as an option/cell argument.
 
 Compatibility: behavioral
 
@@ -90,6 +93,17 @@ Compatibility: behavioral
 - Progress messages (informative): "Reading extract file.", "Building flattened netlist.", "Running antenna checks.", "   <n> gates analyzed." after every 100 distinct gate nets, and "antennacheck finished.".
 
 (Magic ref: extflat/EFantenna.c:126-265, extflat/EFantenna.c:294-315, extflat/EFargs.c:158-283, dbwind/DBWcommands.c:235)
+
+#### Scenario: The word run with magic-compat ON
+- **GIVEN** `magic-compat` ON
+- **WHEN** the user runs `antennacheck run`
+- **THEN** `run` is a run argument, so the cell checked is the one named `run`, as in Magic
+
+#### Scenario: The word run with magic-compat OFF
+- **GIVEN** `magic-compat` OFF
+- **WHEN** the user runs `antennacheck run inv`
+- **THEN** `run` is the keyword and `inv` is the cell checked
+- **AND** `antennacheck d` selects `debug`, while a word that is a prefix of more than one option prints `Ambiguous option: <w>` and does nothing
 
 #### Scenario: Debug arms the next run only
 - **GIVEN** a layout with extraction files present
