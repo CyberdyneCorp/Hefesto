@@ -188,6 +188,27 @@ TEST_CASE("the wrapper's scrollupdate tag on the 3D window prints Magic's *bypas
   }
 }
 
+TEST_CASE("the wrapper's toolupdate tag on see prints the same *bypass failures only with magic-compat ON",
+          "[cap:view-3d][req:3D view commands]") {
+  // Regression (PR #81 review, MISC-3D-08): `see` is tagged
+  // magic::toolupdate (wrapper.tcl:577), which also runs `*bypass
+  // logcommands suspend|resume` before it returns for the 3D window.
+  for (const bool compat : {true, false}) {
+    ClientSession s(compat);
+    s.value("proc ::magic::toolupdate {args} {}");
+    s.value("magic::tag see {magic::toolupdate %W %1 %2}");
+    s.ok("specialopen wind3d c3d .render.magic");
+    s.take_printed();
+    CHECK(s.value(".render.magic see MET1") == "");
+    const std::string expected = compat ? "VIEW3D-CLIENT-007: Unknown command:\n"
+                                          "VIEW3D-CLIENT-008:  'logcommands' 'suspend' at (20, 20)\n"
+                                          "VIEW3D-CLIENT-007: Unknown command:\n"
+                                          "VIEW3D-CLIENT-008:  'logcommands' 'resume' at (20, 20)\n"
+                                        : "";
+    CHECK(s.take_printed() == expected);
+  }
+}
+
 TEST_CASE("a closed 3D window's command answers invalid command name in both modes",
           "[cap:view-3d][req:Opening the 3D window]") {
   // Regression: Magic deletes the command on close (GrTOGLDelete), so
@@ -224,6 +245,30 @@ TEST_CASE("a closed 3D window's toolkit path is no command and reopens in both m
     // One window at a time still holds.
     CHECK(first_error(s.run("specialopen wind3d c3d .other")) == "VIEW3D-CLIENT-002: Only one 3D window allowed.");
   }
+}
+
+TEST_CASE("a window command defined again on a closed 3D window's path is an ordinary window command",
+          "[cap:view-3d][req:Opening the 3D window]") {
+  // Regression (PR #81 review): the closed path stayed in closed_paths, so
+  // a layout window later created at that path answered "invalid command
+  // name". Only the retired name is Magic's deleted command.
+  ClientSession s;
+  s.ok("specialopen wind3d c3d .render.magic");
+  s.w3d("closewindow");
+  CHECK(s.value("info commands .render.magic").empty());
+  s.value("::hefesto::tk::window_command .render.magic");  // a layout window at the same path
+  const auto box = s.eval(".render.magic box values");
+  INFO((box.diagnostics.empty() ? std::string{} : box.diagnostics.front().text));
+  CHECK(box.ok());
+  CHECK(box.value.to_string() == s.value("box values"));
+  const auto retired = s.eval("::hefesto::wind3d_closed::.render.magic level");
+  REQUIRE_FALSE(retired.ok());
+  CHECK(retired.diagnostics.front().text == "invalid command name \".render.magic\"");
+  CHECK(view3d::is_retired_command("::hefesto::wind3d_closed::.render.magic"));
+  CHECK(view3d::is_retired_command("hefesto::wind3d_closed::.x"));
+  CHECK_FALSE(view3d::is_retired_command(".render.magic"));
+  CHECK_FALSE(view3d::is_retired_command("::hefesto::wind3d_closed::"));
+  CHECK_FALSE(view3d::is_retired_command("::hefesto::wind3d_closedx::.x"));
 }
 
 TEST_CASE("closewindow with the 3D window's name closes it", "[cap:view-3d][req:Opening the 3D window]") {

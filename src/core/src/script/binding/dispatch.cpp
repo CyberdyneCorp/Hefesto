@@ -163,20 +163,22 @@ class Wind3dScope {
   bool window_commands_;
 };
 
-// Magic's wrapper tag magic::scrollupdate (wrapper.tcl:905-924, on `view`,
-// `scroll` and `zoom`) starts and ends with `*bypass logcommands suspend`
-// and `resume`; *bypass sends them to the command's window, and the 3D
-// window takes no window commands, so Magic prints WindSendCommand's
-// "Unknown command:" for each. The widget model keeps scrollupdate a no-op,
-// so with magic-compat ON the binding prints what those two calls print in
-// Magic (standing rule; OFF prints nothing, as the wrapper intends).
+// Magic's wrapper tags magic::scrollupdate (wrapper.tcl:905-924, on `view`,
+// `scroll`, `zoom` and `findbox`) and magic::toolupdate (wrapper.tcl:
+// 731-744, on `see`, which returns at once for the 3D window) start and end
+// with `*bypass logcommands suspend` and `resume`; *bypass sends them to
+// the command's window, and the 3D window takes no window commands, so
+// Magic prints WindSendCommand's "Unknown command:" for each. The widget
+// model keeps both procedures no-ops, so with magic-compat ON the binding
+// prints what those two calls print in Magic (standing rule; OFF prints
+// nothing, as the wrapper intends).
 void report_scrollupdate_bypass(const Binding& b, std::string_view word) {
   const editor::EditorState* editor = b.editor();
   if (editor == nullptr || !b.magic_compat()) {
     return;
   }
   const std::optional<std::string> script = editor->script.tags.get(tag_key(word));
-  if (!script || !script->starts_with("magic::scrollupdate")) {
+  if (!script || !(script->starts_with("magic::scrollupdate") || script->starts_with("magic::toolupdate"))) {
     return;
   }
   for (const char* step : {"suspend", "resume"}) {
@@ -260,9 +262,10 @@ cmd::CommandResult dispatch_procedure(const Binding& b, const std::string& name,
 
 cmd::CommandResult dispatch_window(const Binding& b, const std::string& path, const cmd::Invocation& call) {
   const editor::EditorState* editor = b.editor();
-  if (editor != nullptr && view3d::is_closed_path(*editor, path)) {
-    // Magic deletes a closed 3D window's command (GrTOGLDelete); calling it
-    // is no use-after-free here.
+  if (view3d::is_retired_command(call.name)) {
+    // Magic deletes a closed 3D window's command (GrTOGLDelete); a call
+    // through the name it was moved to is no use-after-free here. A command
+    // defined on the path again later is an ordinary window command.
     return tcl_error(cmd::invalid_command_name(path));
   }
   if (call.args.empty()) {

@@ -84,6 +84,12 @@ void sync_output_style(editor::EditorState& editor, bool magic_compat);
 [[nodiscard]] bool is_open_path(const editor::EditorState& editor, std::string_view path);
 [[nodiscard]] bool is_closed_path(const editor::EditorState& editor, std::string_view path);
 
+/// Whether `name`, a command name as invoked, is the name a closed window's
+/// toolkit-path command was moved to (close_wind3d). Only a call through it
+/// is Magic's deleted command: a window command defined again on the path
+/// later (a layout window there) is an ordinary window command.
+[[nodiscard]] bool is_retired_command(std::string_view name);
+
 /// WindSendCommand's answer to a word that is not a command of the 3D
 /// window: "Unknown command:" (no newline, standard error), then the words
 /// and the window point as windPrintCommand echoes them on standard output

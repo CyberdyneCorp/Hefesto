@@ -296,4 +296,14 @@ bool is_closed_path(const editor::EditorState& editor, std::string_view path) {
   return !is_open_path(editor, path) && editor.view3d.closed_paths.contains(std::string{path});
 }
 
+bool is_retired_command(std::string_view name) {
+  constexpr std::string_view kGlobal = "::";
+  const std::string_view retired = kRetiredNamespace.substr(kGlobal.size());  // "hefesto::wind3d_closed"
+  if (name.starts_with(kGlobal)) {
+    name.remove_prefix(kGlobal.size());
+  }
+  return name.size() > retired.size() + kGlobal.size() && name.starts_with(retired) &&
+         name.substr(retired.size()).starts_with(kGlobal);
+}
+
 }  // namespace hefesto::view3d
