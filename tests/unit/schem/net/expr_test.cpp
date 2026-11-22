@@ -204,3 +204,41 @@ TEST_CASE("expr: many unclosed markers are stripped in linear time",
   CHECK(run("expr(expr(2) expr(").text == "2 ");
   CHECK(run("a expr((1) b").text == "a (1) b");
 }
+
+TEST_CASE("Rounding functions", "[cap:schematic-netlisting][req:expr evaluation]") {
+  CHECK(run("expr(round(2.5))").text == "3");
+  CHECK(run("expr(round(-2.5))").text == "-3");
+  CHECK(run("expr(round6(1.23456789))").text == "1.23457");
+  CHECK(run("expr(round1(-123))").text == "-100");
+  CHECK(run("expr(round1(9.96))").text == "10");
+  CHECK(run("expr(round(0.49999999999999994))").text == "1");  // the addition rounds up
+  CHECK(run("expr(round6(0))").text == "0");
+}
+
+TEST_CASE("Remainder by zero and NaN text", "[cap:schematic-netlisting][req:expr evaluation]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    CHECK(run("expr(7%3)", compat).text == "1");
+    CHECK(run("expr(-7.9%2)", compat).text == "-1");
+    CHECK(run("expr(7%0.5)", compat).text == "nan");
+    CHECK(run("expr(0/0)", compat).text == "nan");
+    CHECK(run("expr_eng(0/0)", compat).text == "nana");
+    CHECK(run("expr(1e300*1e300)", compat).text == "inf");
+    CHECK(run("expr_eng(-1e300*1e300)", compat).text == "-infT");
+  }
+}
+
+TEST_CASE("Nesting past 200 levels", "[cap:schematic-netlisting][req:expr evaluation]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    const std::string inner = std::string(201, '(') + "1" + std::string(201, ')');
+    const auto r = run("expr(" + inner + ")", compat);
+    CHECK(r.text == inner);
+    REQUIRE(count_code(r, net_codes::kSizeLimit) == 1);
+    CHECK(r.warnings.front().text == "expr nested deeper than 200 levels; text copied without evaluation");
+    // Regression: each parenthesis counted two levels (the ternary and the
+    // unary rule), so 101 parentheses already failed. 200 are within the limit.
+    const std::string fits = std::string(200, '(') + "1" + std::string(200, ')');
+    CHECK(run("expr(" + fits + ")", compat).text == "1");
+  }
+}

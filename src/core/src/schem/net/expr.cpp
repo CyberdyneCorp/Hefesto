@@ -20,6 +20,7 @@
 // Owner: NETLIST.
 
 #include <cmath>
+#include <limits>
 #include <cstdlib>
 #include <string>
 #include <cstdint>
@@ -112,8 +113,30 @@ double si_multiplier(std::string_view rest) noexcept {
   }
 }
 
-double round_significant(double value, int digits) {
-  return std::strtod(format_g(value, digits).c_str(), nullptr);
+/// round(x): half away from zero, as floor(x + 0.5) above 0 and
+/// ceil(x - 0.5) below; 0, -0, NaN and infinities unchanged ("expr
+/// evaluation").
+double round_half_away(double x) noexcept {
+  if (x > 0.0 && std::isfinite(x)) {
+    return std::floor(x + 0.5);
+  }
+  if (x < 0.0 && std::isfinite(x)) {
+    return std::ceil(x - 0.5);
+  }
+  return x;
+}
+
+/// round6 / round1: x unchanged when 0; else round(x / s) * s with
+/// s = 10^(ceil(log10(|x|)) - digits). NaN and infinities give NaN.
+double round_significant(double x, int digits) noexcept {
+  if (x == 0.0) {
+    return x;
+  }
+  if (!std::isfinite(x)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  const double s = std::pow(10.0, std::ceil(std::log10(std::fabs(x))) - digits);
+  return round_half_away(x / s) * s;
 }
 
 std::optional<double> constant(std::string_view name) noexcept {
@@ -151,7 +174,7 @@ Function function(std::string_view name) noexcept {
       {"sqrt", [](double x) { return std::sqrt(x); }},
       {"round6", [](double x) { return round_significant(x, 6); }},
       {"round1", [](double x) { return round_significant(x, 1); }},
-      {"round", [](double x) { return std::round(x); }},
+      {"round", [](double x) { return round_half_away(x); }},
   };
   for (const auto& [key, fn] : kFunctions) {
     if (key == name) {
@@ -204,20 +227,24 @@ class Evaluator {
  private:
   using Value = std::optional<double>;
 
-  Value ternary() {
+  /// `parse` one nesting level deeper: a parenthesis, a function argument,
+  /// a unary operand, or the right operand of `?:` or `^` (the parts that
+  /// recurse). Past kMaxExprDepth it fails like a syntax error.
+  Value nested(Value (Evaluator::*parse)()) {
     const Guard guard{*this};
-    if (!guard.ok()) {
-      return std::nullopt;
-    }
+    return guard.ok() ? (this->*parse)() : std::nullopt;
+  }
+
+  Value ternary() {
     auto cond = equality();
     if (!cond || !accept("?")) {
       return cond;
     }
-    auto yes = ternary();
+    auto yes = nested(&Evaluator::ternary);
     if (!yes || !accept(":")) {
       return std::nullopt;
     }
-    auto no = ternary();
+    auto no = nested(&Evaluator::ternary);
     if (!no) {
       return std::nullopt;
     }
@@ -252,12 +279,8 @@ class Evaluator {
   Value product() { return binary(&Evaluator::unary, kProduct); }
 
   Value unary() {
-    const Guard guard{*this};
-    if (!guard.ok()) {
-      return std::nullopt;
-    }
     if (accept("-")) {
-      auto value = unary();
+      auto value = nested(&Evaluator::unary);
       return value ? Value{-*value} : std::nullopt;
     }
     return power();
@@ -268,7 +291,7 @@ class Evaluator {
     if (!base || !accept("^")) {
       return base;
     }
-    return combine(base, unary(), [](double a, double b) { return std::pow(a, b); });
+    return combine(base, nested(&Evaluator::unary), [](double a, double b) { return std::pow(a, b); });
   }
 
   Value primary() {
@@ -281,7 +304,7 @@ class Evaluator {
       return number();
     }
     if (accept("(")) {
-      auto value = ternary();
+      auto value = nested(&Evaluator::ternary);
       return value && accept(")") ? value : std::nullopt;
     }
     if (is_alpha(c) || c == '_') {
@@ -315,7 +338,7 @@ class Evaluator {
         return std::nullopt;
       }
       ++pos_;
-      auto arg = ternary();
+      auto arg = nested(&Evaluator::ternary);
       return arg && accept(")") ? Value{fn(*arg)} : std::nullopt;
     }
     return constant(name);
@@ -352,7 +375,8 @@ class Evaluator {
       if (++e_.depth_ > kMaxExprDepth && !e_.depth_reported_) {
         e_.depth_reported_ = true;
         if (e_.warnings_ != nullptr) {
-          e_.warnings_->push_back(diag::make(net_codes::kSizeLimit, "expr: the expression is nested too deeply"));
+          e_.warnings_->push_back(diag::make(net_codes::kSizeLimit, "expr nested deeper than " + std::to_string(kMaxExprDepth) +
+                                                                     " levels; text copied without evaluation"));
         }
       }
     }

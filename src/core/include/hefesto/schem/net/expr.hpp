@@ -22,7 +22,8 @@ namespace hefesto::schem {
 
 /// Deepest nesting of parentheses, operators and function calls an
 /// expression may have; a deeper one fails like a syntax error and reports
-/// SCHEM-NET-006. Proposed limit, pending approval.
+/// SCHEM-NET-006 (`expr nested deeper than 200 levels; text copied without
+/// evaluation`). Input limit Q-SCHEM-32, approved 2026-11-21, both modes.
 inline constexpr int kMaxExprDepth = 200;
 
 /// How an `expr` result is printed.

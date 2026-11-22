@@ -69,7 +69,7 @@ struct Symbol {
 [[nodiscard]] Pin make_pin(const BoxRecord& box);
 
 /// The pin order of "Pin order": file order, or ascending `sim_pinnumber`
-/// (stable, Q-SCHEM-5) when every pin has one. Each duplicated
+/// (stable, Q-SCHEM-5) when every pin has a non-empty one. Each duplicated
 /// `sim_pinnumber` of a sorted symbol is reported once to `warnings`
 /// (SCHEM-SYM-001, in both modes of `xschem-compat`); nullptr drops them.
 [[nodiscard]] std::vector<PinIndex> pin_order(const Symbol& symbol, diag::DiagnosticSink* warnings);
@@ -77,9 +77,10 @@ struct Symbol {
 /// pin_order() without warnings.
 [[nodiscard]] std::vector<PinIndex> pin_order(const Symbol& symbol);
 
-/// The integer value of a `sim_pinnumber` text: an optional sign and the
-/// decimal digits that follow, after leading blanks; 0 when there are none,
-/// and saturated at the range of `long long`.
+/// The integer value of a `sim_pinnumber` text, read as C `atoi` reads it:
+/// leading blanks (C isspace) skipped, an optional sign, then the decimal
+/// digits; 0 when there are none. A value outside the signed 32-bit range is
+/// clamped to -2147483648 or 2147483647 (proposed Q-SCHEM-34).
 [[nodiscard]] long long sim_pinnumber_value(std::string_view text) noexcept;
 
 }  // namespace hefesto::schem

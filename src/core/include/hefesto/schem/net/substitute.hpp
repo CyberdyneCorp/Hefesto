@@ -44,6 +44,9 @@ class PropertySource {
   [[nodiscard]] virtual std::optional<std::string> get(std::string_view key, ValueForm form) const = 0;
 
   [[nodiscard]] bool defines(std::string_view key) const { return get(key, ValueForm::raw).has_value(); }
+
+  /// The keys defines() is true for, each read once.
+  [[nodiscard]] virtual std::vector<std::string> keys() const = 0;
 };
 
 /// A property string read with the property-string grammar (get_token).
@@ -51,6 +54,7 @@ class PropertyString final : public PropertySource {
  public:
   explicit PropertyString(std::string props) : props_{std::move(props)} {}
   [[nodiscard]] std::optional<std::string> get(std::string_view key, ValueForm form) const override;
+  [[nodiscard]] std::vector<std::string> keys() const override;
 
  private:
   std::string props_;
@@ -63,6 +67,7 @@ class PropertyMap final : public PropertySource {
   PropertyMap(std::initializer_list<std::pair<const std::string, std::string>> values) : values_{values} {}
   void set(std::string key, std::string value) { values_[std::move(key)] = std::move(value); }
   [[nodiscard]] std::optional<std::string> get(std::string_view key, ValueForm form) const override;
+  [[nodiscard]] std::vector<std::string> keys() const override;
 
  private:
   std::map<std::string, std::string, std::less<>> values_;
@@ -92,6 +97,9 @@ struct ElementContext {
   std::vector<ElementPin> pins;
   std::size_t index = 0;    // instance index in its schematic (@index)
   std::string symref;       // symbol reference as written (@symref)
+  /// `@symname` in place of the one derived from `symref`: the subcircuit
+  /// name of a schematic variant (Q-SCHEM-28) or a renamed cell (Q-SCHEM-14).
+  std::optional<std::string> symname;
   std::string schname;      // current schematic file name with extension
   std::string topschname;   // @topschname text
   TclContext tcl;           // `path` and `sch_basename` for tcleval

@@ -77,6 +77,23 @@ std::optional<std::string> PropertyString::get(std::string_view key, ValueForm f
   return get_token(props_, key, form);
 }
 
+std::vector<std::string> PropertyString::keys() const {
+  std::vector<std::string> out;
+  for (Property& property : parse_properties(props_)) {
+    out.push_back(std::move(property.key));
+  }
+  return out;
+}
+
+std::vector<std::string> PropertyMap::keys() const {
+  std::vector<std::string> out;
+  out.reserve(values_.size());
+  for (const auto& [key, value] : values_) {
+    out.push_back(key);
+  }
+  return out;
+}
+
 std::optional<std::string> PropertyMap::get(std::string_view key, ValueForm /*form*/) const {
   const auto it = values_.find(key);
   if (it == values_.end()) {
@@ -127,10 +144,9 @@ std::optional<std::string> resolve_parameter(const ElementContext& context, std:
   if (!defined) {
     return std::nullopt;
   }
-  // 1. The instance, then the template ("Templates and instance attributes");
-  //    an unresolved token is kept as text.
-  std::string value = get_from(context.instance, key, ValueForm::decoded)
-                          .value_or(get_from(context.templ, key, ValueForm::decoded).value_or("@" + std::string{key}));
+  // 1. The instance property string only; an unresolved token is kept as
+  //    text. The template comes in step 2, after the parent instance.
+  std::string value = get_from(context.instance, key, ValueForm::decoded).value_or("@" + std::string{key});
   // 2. The instance, the parent instance, the symbol template.
   if (has_sigil(value)) {
     const std::array<const PropertySource*, 3> sources{context.instance, context.parent_instance, context.templ};

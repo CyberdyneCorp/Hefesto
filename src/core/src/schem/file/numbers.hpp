@@ -37,6 +37,12 @@ struct Parsed {
 /// `%d` has undefined behaviour there; Hefesto treats it as a missing field).
 [[nodiscard]] std::optional<Parsed<int>> parse_c_int(std::string_view text);
 
+/// `text` read as C `atoi` reads it (schematic-symbols-and-libraries "Pin
+/// order"): leading blanks skipped, an optional sign, then the longest run
+/// of decimal digits; no digits gives 0. A value that does not fit an `int`
+/// is clamped to INT_MIN / INT_MAX (C leaves it undefined).
+[[nodiscard]] int atoi_clamped(std::string_view text) noexcept;
+
 /// `value` as C `printf("%.16g")` prints it in the "C" locale, with glibc's
 /// spelling of the non-finite values (`inf`, `-inf`, `nan`, `-nan`).
 [[nodiscard]] std::string format_g16(double value);

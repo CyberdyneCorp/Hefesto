@@ -7,6 +7,7 @@
 // Owner: NETLIST.
 
 #include <charconv>
+#include <initializer_list>
 
 #include "format_scan.hpp"
 #include "hefesto/schem/net/bus.hpp"
@@ -150,7 +151,7 @@ class ElementBuilder {
       return pin ? pin_entry(*pin) : std::string{};
     }
     if (!pin) {
-      return std::string{kUndefined};
+      return std::string{};  // no such pin: nothing ("Format string substitution")
     }
     return pin_attribute(*pin, spec.substr(colon + 1));
   }
@@ -202,7 +203,7 @@ class ElementBuilder {
       return expanded(name_);
     }
     if (key == "symname") {
-      return symbol_name(ctx_.symref);
+      return ctx_.symname ? *ctx_.symname : symbol_name(ctx_.symref);
     }
     if (key == "symname_ext") {
       const std::size_t slash = ctx_.symref.rfind('/');
@@ -272,25 +273,40 @@ class ElementBuilder {
     while (n < key.size() && is_identifier_char(key[n])) {
       ++n;
     }
-    for (std::size_t len = std::min(n, key.size() - 1); len > 0 && len < key.size(); --len) {
-      if (resolve_parameter(ctx_, key.substr(0, len))) {
-        out_.diagnostics.push_back(diag::make(net_codes::kTokenPrefix, "token '" + std::string{source} +
-                                                                           "' is undefined while '" +
-                                                                           std::string{key.substr(0, len)} +
-                                                                           "' is defined"));
-        return;
+    const std::size_t len = longest_defined_prefix(key, std::min(n, key.size() - 1));
+    if (len == 0) {
+      return;
+    }
+    out_.diagnostics.push_back(diag::make(net_codes::kTokenPrefix, "token '" + std::string{source} +
+                                                                       "' is undefined while '" +
+                                                                       std::string{key.substr(0, len)} +
+                                                                       "' is defined"));
+  }
+
+  /// The length of the longest prefix of `key`, at most `bound` long, that
+  /// resolve_parameter() finds (a key one of its sources defines); 0 for
+  /// none. Each source's keys are read once and checked as prefixes, so the
+  /// work is linear in the token and the property strings.
+  [[nodiscard]] std::size_t longest_defined_prefix(std::string_view key, std::size_t bound) const {
+    std::size_t best = 0;
+    for (const PropertySource* source : {ctx_.instance, ctx_.templ, ctx_.parent_instance, ctx_.parent_template}) {
+      if (source == nullptr) {
+        continue;
+      }
+      for (const std::string& defined : source->keys()) {
+        if (defined.size() > best && defined.size() <= bound && key.starts_with(defined)) {
+          best = defined.size();
+        }
       }
     }
+    return best;
   }
 
   /// `name` bus-expanded with the bus replacement characters.
   std::string expanded(std::string_view name) {
     const BusExpansion bus = parse_bus(name);
-    if (bus.syntax_error) {
-      out_.diagnostics.push_back(diag::make(net_codes::kBusSyntax, "syntax error in " + std::string{name}));
-    } else if (bus.too_large) {
-      out_.diagnostics.push_back(
-          diag::make(net_codes::kSizeLimit, "bus expansion of " + std::string{name} + " is too large"));
+    if (auto warning = bus_diagnostic(bus, name)) {
+      out_.diagnostics.push_back(std::move(*warning));
     }
     return replace_bus_chars(join_bits(bus.bits, ","), opts_.bus_replacement);
   }

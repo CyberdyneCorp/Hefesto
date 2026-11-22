@@ -117,9 +117,13 @@ TEST_CASE("SCHEM-RT-08 files with no version record", "[cap:schematic-file-forma
   CHECK(round_trip(slurp(golden("SCHEM-RT-08", "input/a.sch"))) == slurp(golden("SCHEM-RT-08", "expected/a.sch")));
   check_fixpoint("SCHEM-RT-08", "expected/a.sch", "expected/2-a.sch", schem::FileKind::schematic);
   check_fixpoint("SCHEM-RT-08", "expected/b.sch", "expected/2-b.sch", schem::FileKind::schematic);
-  // (b) starts with the instance. The capture gives `res.sym`, which is the
-  // spec's xschem-compat OFF result; the spec's ON result (`res`) is under
-  // review (spec issue raised with tasks.md 6.2).
-  CHECK(round_trip(slurp(golden("SCHEM-RT-08", "input/b.sch")), schem::FileKind::schematic, false) ==
-        slurp(golden("SCHEM-RT-08", "expected/b.sch")));
+  // (b) starts with the instance: both modes write `C {res.sym}`, since a
+  // file version 1.0 document writes references with `.sym` (round-2 answer
+  // F1); only the reference stored in the model differs.
+  for (const bool compat : {true, false}) {
+    CHECK(round_trip(slurp(golden("SCHEM-RT-08", "input/b.sch")), schem::FileKind::schematic, compat) ==
+          slurp(golden("SCHEM-RT-08", "expected/b.sch")));
+    const auto second = round_trip(slurp(golden("SCHEM-RT-08", "expected/b.sch")), schem::FileKind::schematic, compat);
+    CHECK(second == slurp(golden("SCHEM-RT-08", "expected/2-b.sch")));
+  }
 }

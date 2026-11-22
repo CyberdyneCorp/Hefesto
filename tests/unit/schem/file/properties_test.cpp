@@ -97,6 +97,16 @@ TEST_CASE("setting a key written without equals", "[cap:schematic-file-format][r
   CHECK(schem::set_token("k name=x1", "k", "5") == "k =5 name=x1");
 }
 
+TEST_CASE("setting a key written without equals at the end", "[cap:schematic-file-format][req:Property strings]") {
+  CHECK(schem::set_token("k", "k", "5") == "k=5 ");
+  CHECK(schem::set_token("a=1 k", "k", "5") == "a=1 k=5 ");
+}
+
+TEST_CASE("removing a key written without equals at the end", "[cap:schematic-file-format][req:Property strings]") {
+  CHECK(schem::set_token("a=1 k", "k", "") == "a=1 ");
+  CHECK(schem::set_token("k", "k", std::nullopt).empty());
+}
+
 TEST_CASE("removing a key", "[cap:schematic-file-format][req:Property strings]") {
   CHECK(schem::set_token("name=x1 value=1 m=2", "value", "") == "name=x1 m=2");
   CHECK(schem::set_token("name=x1 value=1 m=2", "value", std::nullopt) == "name=x1 m=2");

@@ -109,7 +109,18 @@ Hefesto SHALL name the nets of one schematic in this order, and the first name g
 2. **Unnamed wires.** For each non-ignored wire in wire order that is still unnamed: it gets the next automatic name (Requirement "Unnamed nets"), which spreads as in step 1.
 3. **Unnamed pins.** For each non-ignored instance in instance order, for each pin in pin order that is still unnamed: it gets the next automatic name, which spreads to other instance pins at the same point.
 
-When the spreading reaches a wire or pin that already has a different name, the existing name SHALL be kept and the netlist SHALL still be written. This is a short, reported as `Error: <tag> shorted: <a> - <b>` with tag `Net to net` (wire to wire), `net to named instance pin`, `Net`, `Instance pin`, `Pass_through symbol` or `Bus tap` (Requirement "Errors and warnings"). Every short SHALL be reported, including shorts at the top level during its first connectivity pass and in runs that do not netlist the hierarchy, which xschem does not always report; the netlist text is the same either way (Q-SCHEM-16, `Resolution: fix`).
+When the spreading reaches a wire or pin that already has a different name, the existing name SHALL be kept and the netlist SHALL still be written. This is a short, reported as `Error: <tag> shorted: <a> - <b>` (Requirement "Errors and warnings"), where `<a>` is the name being spread and `<b>` the name already there, and the tag says where the two met:
+
+| Tag | When |
+|---|---|
+| `Net` | a label or port pin (step 1) names a wire it touches that already has a different name |
+| `Net to net` | a name spreading through wires reaches a connected wire that already has a different name |
+| `net to named instance pin` | a name spreading through wires reaches an instance pin that touches the wire and already has a different name |
+| `Instance pin` | a name given to an instance pin (by a label or port, a wire, or another pin) reaches another instance's pin at the same point that already has a different name |
+| `Pass_through symbol` | two pins of one instance share a `name` and both already have nets, with different names (Requirement "Pass-through and shorted symbols") |
+| `Bus tap` | the tap pin of a bus tap already has a name (Requirement "Bus taps") |
+
+A short is reported only when the two names differ. Every short SHALL be reported, including shorts at the top level during its first connectivity pass and in runs that do not netlist the hierarchy, which xschem does not always report; the netlist text is the same either way (Q-SCHEM-16, `Resolution: fix`).
 
 After naming, every wire's `lab` attribute SHALL be set to its net name (unnamed nets including their `#`), and every label or port without `lab` SHALL get `lab` set to its net name without `#`. These updates SHALL use the property update rules of capability `schematic-file-format`; they change the saved file like xschem does, but SHALL NOT mark the document as modified (Q-SCHEM-29, `Resolution: replicate`, whatever the `xschem-compat` setting).
 
@@ -130,7 +141,7 @@ Compatibility: exact
 ### Requirement: Unnamed nets
 Automatic names SHALL be `#net<N>` internally, with N counting 1, 2, 3, ... per schematic, skipping any N for which `net<N>` is already a net name in that schematic (for example from a label). In the netlist the `#` SHALL be removed, giving `net<N>`. The multiplicity of an unnamed net SHALL be the smallest product (pin bus width × instance vector width) among the pins attached to it. An unnamed net with multiplicity m > 1 SHALL be written as the expansion of `net<N>_[m−1..0]`, that is `net<N>_<m−1>,...,net<N>_0`.
 
-A pin that has no net at all (for example on an instance whose node data is missing) SHALL be written `__UNCONNECTED_PIN__<k>`, or `__UNCONNECTED_PIN__<k>_[w−1..0]` expanded for a pin of width w > 1, with k counting from 0 over the whole netlist run, and SHALL report the warning `Warning: unconnected pin,  Inst idx: <i>, Pin idx: <j>  Inst:<name>`.
+A pin that has no net at all (for example on an instance whose node data is missing) SHALL be written `__UNCONNECTED_PIN__<k>`, or `__UNCONNECTED_PIN__<k>_[w−1..0]` expanded for a pin of width w > 1, with k counting from 0 over the whole netlist run (it starts at 0 for each run and is never reset inside one). k SHALL advance by one each time such a pin's net is written, once per token occurrence and not once per bit or per pin: a pin written by both `@pinlist` and `@#0` takes two numbers, and a bus pin takes one, and SHALL report the warning `Warning: unconnected pin,  Inst idx: <i>, Pin idx: <j>  Inst:<name>`.
 
 Compatibility: exact
 
@@ -159,11 +170,13 @@ Compatibility: exact
 - **THEN** both pins SHALL be on net `A`
 
 ### Requirement: Bus taps
-For an instance of type `bus_tap` with at least two pins, pin 1 connects to a bus and pin 0 is the tap. When pin 1 gets a net name `bus`, pin 0 SHALL be renamed, unless it already has a non-automatic name:
-- if the instance's `lab` starts with `[` or is all digits, the tap name SHALL be the bus base name (the part of `bus` before `[`, taken after the last `,` and its following spaces if the bus is a list) followed by `lab`
-- otherwise the tap name SHALL be `lab`
+For an instance of type `bus_tap` with at least two pins, pin 1 connects to a bus and pin 0 is the tap. When pin 1 gets a net name `bus`, pin 0 SHALL be renamed, unless it already has a non-automatic name. An **automatic** name is one that starts with `#` (Requirement "Unnamed nets"); a name derived from an automatic name without the `#` (for example `net3[2]` built from a bus `#net3`) is not automatic. The tap name is:
+- if the instance's `lab` starts with `[` or is all digits, the bus base name (the part of `bus` before `[`, taken after the last `,` and its following spaces if the bus is a list) followed by `lab`
+- otherwise `lab`
 
-The tap name then spreads from pin 0.
+An empty or missing `lab` gives no tap name: pin 0 stays unnamed and later gets an automatic name (step 3 of Requirement "Net naming order"). A tap name spreads from pin 0.
+
+When pin 0 already has a non-automatic name, that name SHALL be kept and pin 0 SHALL NOT be renamed. xschem then reports `Error: Bus tap shorted: <bus> - <pin 0 name>` whenever the two texts differ, which is almost always (a bus name is not a bit name). Hefesto SHALL instead report the `Bus tap` short only when the tap name computed from `lab` differs from the name pin 0 already has, naming those two, in both modes (proposed Q-SCHEM-37, recommendation `fix`: the netlist text is the same either way, only the diagnostic and the exit status differ; awaiting the user).
 
 Compatibility: exact
 
@@ -173,6 +186,16 @@ Compatibility: exact
 - **GIVEN** a bus tap whose pin 1 is on net `DATA[15:0]` and whose `lab` is `[3]`
 - **WHEN** the schematic is netlisted
 - **THEN** its pin 0 net SHALL be `DATA[3]`
+
+#### Scenario: Tap with an empty lab
+- **GIVEN** a bus tap whose pin 1 is on net `DATA[3:0]`, whose `lab` is empty, and whose pin 0 touches only a resistor pin
+- **WHEN** the schematic is netlisted
+- **THEN** pin 0 SHALL get an automatic name (`net<N>`) and no short SHALL be reported
+
+#### Scenario: Tap side already named
+- **GIVEN** a bus tap with `lab=[3]` whose pin 1 is on net `DATA[3:0]` and whose pin 0 wire carries a label `DATA[3]` that comes before the bus label in instance order, and a second such tap with `lab=[2]` whose pin 0 wire carries a label `X`
+- **WHEN** the schematic is netlisted
+- **THEN** the pin 0 nets SHALL be `DATA[3]` and `X`, and exactly one short SHALL be reported, `Error: Bus tap shorted: DATA[2] - X` (proposed Q-SCHEM-37)
 
 ### Requirement: Bus and vector notation
 Net names, pin names and instance names SHALL be expanded into comma-separated lists of single names by this grammar. A string that contains none of `*`, `,`, `.` and `:`, or that starts with `$`, SHALL be returned unchanged with width 1.
@@ -198,6 +221,16 @@ Index semantics, with s = sign(j − i), or +1 when i = j:
 - a `trailer` (characters after `]`) is appended to every element
 - the width is the number of elements
 
+Lexical rules:
+- **Names.** A `name` is a run of letters, digits and the characters `_ % $ ~ " + # ! / \ < > ? . :` and `-`; a `-` starts a name only when more name characters follow it. Blanks (space, tab, LF) between name characters belong to the name (`a b` is one name); blanks between other tokens are ignored (`a , b` is `a,b`).
+- **Integers** (`int`, `i`, `j`, `step`, `ext`, `rep`) are an optional `-` followed by decimal digits, so indices MAY be negative: `A[1:-1]` is `A[1],A[0],A[-1]` and `Q[0..-1]` is `Q0,Q-1`.
+- **Trailer** (`item-suffix`): characters right after `]` that are not `*`, `,` or `)` start a trailer, a run of name characters, blanks, `(`, `)` and `*`; it is appended to every element (`A[1:0]_n` is `A[1]_n,A[0]_n`).
+- **Precedence.** `*` binds tighter than `,`, and both group from the left: `2*a,b` is `a,a,b` and `a,b*2` is `a,b,b`; parentheses group explicitly.
+
+Values that xschem does not handle (it loops forever, reads undefined memory or gives an empty list) SHALL be syntax errors, in both modes (proposed Q-SCHEM-35, recommendation `fix`, awaiting the user): a repetition count of 0 or below (`a*0`, `0*a`, `a*-1`; xschem gives an empty list of width 0 for 0), a `step` of 0 or below, and a `rep` of 0 or below. A stepped range `i:j:step` or `i..j..step` with i = j is the single element i (xschem loops forever; same proposed row).
+
+**Input limits** (approved by the user on 2026-11-21, Q-SCHEM-32; both modes): one expansion SHALL give at most 1,048,576 (2^20) names (`kMaxBusBits`) and at most 67,108,864 bytes (64 MiB, `kMaxBusBytes`) of expanded text, commas included; parentheses SHALL nest at most 256 deep; index and count arithmetic SHALL NOT overflow. Input past a limit SHALL be used unchanged with unknown width, like a syntax error, and SHALL report the warning `bus expansion of <string> exceeds a limit (1048576 names, 67108864 bytes or 256 nested parentheses); used unchanged` (`SCHEM-NET-006`), where `<string>` is cut to its first 80 bytes followed by `...` when longer.
+
 When option `bus_replacement_char` is set, every `[` and `]` in an expanded name SHALL be replaced by its first and second character. A syntax error SHALL report `syntax error in <string>` and SHALL use the string unchanged with unknown width.
 
 Compatibility: exact
@@ -215,6 +248,22 @@ Compatibility: exact
 #### Scenario: Repetition
 - **WHEN** `2*(a,b)` and `(a,b)*2` are expanded
 - **THEN** the results SHALL be `a,b,a,b` and `a,a,b,b`
+
+#### Scenario: Precedence, blanks and negative indices
+- **WHEN** `2*a,b`, `a , b*2`, `A[1:-1]` and `D[1:0]_n` are expanded
+- **THEN** the results SHALL be `a,a,b`, `a,b,b`, `A[1],A[0],A[-1]` and `D[1]_n,D[0]_n`
+
+#### Scenario: Zero and negative counts are syntax errors
+- **WHEN** `a*0`, `0*a`, `D[7:0:0]`, `D[7:0:-2]` and `D[3:0:1:0]` are expanded, with `xschem-compat` ON or OFF
+- **THEN** each SHALL report `syntax error in <string>` and SHALL be used unchanged with unknown width (proposed Q-SCHEM-35)
+
+#### Scenario: Stepped range with equal ends
+- **WHEN** `D[3:3:2]` is expanded
+- **THEN** the result SHALL be `D[3]` with width 1
+
+#### Scenario: Expansion past the limits
+- **WHEN** `A[1048576:0]`, a 128-byte name followed by `[1048575:0]` (more than 64 MiB of text) and a name inside 300 nested parentheses are expanded, with `xschem-compat` ON or OFF
+- **THEN** each SHALL be used unchanged with unknown width and SHALL report the `SCHEM-NET-006` warning, with work and memory bounded by the limits
 
 #### Scenario: Bus replacement characters
 - **GIVEN** option `bus_replacement_char` = `<>`
@@ -238,7 +287,7 @@ Each netlisted instance SHALL produce the text of its format string with tokens 
 
 Parsing:
 - A backslash escapes the next character, and the backslash is dropped. An escaped LF is dropped entirely.
-- A token starts at an unescaped `@` or `%`. It ends before the first character, at position 2 or later of the token, that is an unescaped separator (space, tab, LF, `;`, end of string), an unescaped `@` or `%`, or an escaped character other than a separator, `@` or `%`. This is xschem's rule, kept whatever the `xschem-compat` setting because PDK formats rely on it (`@spice_get_voltage(net)`). When a token's lookup fails but a shorter prefix of the token made of identifier characters (letters, digits, `_`) names a defined key, Hefesto SHALL report a warning naming the token and that prefix (Q-SCHEM-26, `Resolution: replicate`).
+- A token starts at any unescaped `@` or `%`, wherever it stands (also inside a word, as in `x@a`). Its first character is the `@` or `%`, and its second character always belongs to it, whatever it is: an ending is looked for only from the token's second character on, that is, at the third character of the token or later counting the `@` as the first. So in `a @ b c` the token is `@ b`, and `@@` starts the token `@@...`. It ends before the first such character that is an unescaped separator (space, tab, LF, `;`, end of string), an unescaped `@` or `%`, or an escaped character other than a separator, `@` or `%`. A lone `@` or `%` at the end of the string produces nothing. This is xschem's rule, kept whatever the `xschem-compat` setting because PDK formats rely on it (`@spice_get_voltage(net)`). When a token's lookup fails but a shorter prefix of the token made of identifier characters (letters, digits, `_`) names a defined key, Hefesto SHALL report a warning naming the token and that prefix (Q-SCHEM-26, `Resolution: replicate`).
 - The ending character is copied to the output unless it is `@` or `%` (which starts the next token) or the end of the string. Characters outside tokens are copied.
 - A LF is appended at the end.
 
@@ -248,9 +297,9 @@ Token values:
 |---|---|
 | `@pinlist` | For each pin in pin order that does not have `spice_ignore` true, only the first pin of each distinct name: `?<w> <nets> `, where w is the pin's width (bus expansion of its name) and `<nets>` is the comma-separated expansion of the attached net |
 | `@@<pin>` | The same `?<w> <nets> ` for the first pin named `<pin>`, if it does not have `spice_ignore` true |
-| `@#<n>` or `@#<pin>` | The same for pin number n (0-based) or the named pin |
-| `@#<n>:<attr>` | The pin attribute value (capability `schematic-symbols-and-libraries`, Requirement "Text substitution tokens"); `--UNDEF--` if not found; for `pinnumber` with an instance name ending in `:<k>` and a value containing `:`, the k-th `:`-separated item |
-| `@symname`, `@symname_ext`, `@symref`, `@schname`, `@schname_ext`, `@topschname`, `@index` | As in capability `schematic-symbols-and-libraries`; `@symname` sanitised like a generator name |
+| `@#<n>` or `@#<pin>` | The same for pin number n (0-based) or the named pin. A number below 0 or not below the pin count, or a name that is no pin, produces nothing (no text, no warning) |
+| `@#<n>:<attr>` | The pin attribute value (capability `schematic-symbols-and-libraries`, Requirement "Text substitution tokens"); `--UNDEF--` if the pin exists but has no such attribute; nothing if the pin does not exist (out-of-range number or unknown name); for `pinnumber` with an instance name ending in `:<k>` and a value containing `:`, the k-th `:`-separated item |
+| `@symname`, `@symname_ext`, `@symref`, `@schname`, `@schname_ext`, `@topschname`, `@index` | As in capability `schematic-symbols-and-libraries`; `@symname` sanitised like a generator name. `@topschname` is the file name of the top schematic of the netlist run, without its folder and without its extension (the text after its last `.`), for example `inv_tb` for `/w/inv_tb.sch`; when the name contains `(`, every `.` becomes `_` and no extension is removed |
 | `@savecurrent` | If the instance's (else template's) `savecurrent` is true: LF `.save I( ?1 <instance name> )`; else nothing |
 | `@spiceprefix` | Nothing is written. With option `spiceprefix` on, its value v (Requirement "Hierarchical parameters"), if non-empty, becomes the element's spice prefix, which Requirement "Element line post-processing" puts before each element name |
 | `@tcleval(...)` | Tcl evaluation (capability `schematic-symbols-and-libraries`, Requirement "tcleval values") |
@@ -268,6 +317,21 @@ Compatibility: exact
 - **WHEN** the element text is built
 - **THEN** it SHALL be `R1 ?1 A ?1 B  1k m=1` (two spaces before `1k`, because `@pinlist` ends with a space and the space after the token is copied) followed by LF, and the netlist line SHALL be `R1 A B 1k`
 
+#### Scenario: Token start and lone markers
+- **GIVEN** a format `a @ b c@` and an instance with no key `b`
+- **WHEN** it is substituted
+- **THEN** the token SHALL be `@ b`, it SHALL give nothing, the space after it SHALL be copied, the final lone `@` SHALL give nothing, and the output SHALL be `a  c` followed by LF
+
+#### Scenario: Out-of-range pin number
+- **GIVEN** a two-pin symbol with format `@name X@#5 Y@#5:name Z@#1:foo` and an instance `R1`
+- **WHEN** the element text is built
+- **THEN** it SHALL be `R1 X Y Z--UNDEF--` followed by LF, with no warning for `@#5`
+
+#### Scenario: Top schematic name
+- **GIVEN** a netlist run of `/w/inv_tb.sch` whose subcircuit schematic `inv.sch` holds an instance of a symbol whose format is `* top=@topschname`
+- **WHEN** the netlist is written
+- **THEN** that instance's text inside `.subckt inv` SHALL be `* top=inv_tb`
+
 #### Scenario: Token ends at whitespace only
 - **GIVEN** a format containing `@W/@L` and an instance with `W=2 L=1`
 - **WHEN** it is substituted
@@ -275,7 +339,7 @@ Compatibility: exact
 
 ### Requirement: Hierarchical parameters
 The value of `@key` for an instance SHALL be found as follows, where "lookup in S1, S2, ..." means: the first source that defines the key gives the value v; each later source that defines a key equal to v replaces v with that key's value:
-1. v = the result of substituting the token in the instance property string (unresolved tokens are kept as text).
+1. v = the result of substituting the token in the instance property string only (unresolved tokens are kept as text). The symbol template is NOT consulted in this step: it comes in step 2, after the parent instance.
 2. If v still contains `@` or `%`: substitute v by lookup in the instance properties, then the properties of the parent instance (the instance through which the netlister descended into the current schematic; none at top level), then the symbol template.
 3. If v still contains `@` or `%`: substitute v in the instance properties without predefined tokens; then, if still needed, by lookup in the instance properties and then the parent symbol's template, keeping backslash escapes.
 4. If v still starts with `@`, the value is empty.
@@ -286,6 +350,11 @@ Compatibility: exact
 
 (xschem ref: token.c:2690-2760, token.c:5709-5800, token.c:5223-5297, netlist.c:971-1015)
 
+#### Scenario: Template default found in step 2
+- **GIVEN** a top-level instance `R1` of a symbol whose template is `name=R1 value=1k` and whose format is `@name @pinlist @value`, the instance property string `name=R1`, and no parent instance
+- **WHEN** the element text is built
+- **THEN** step 1 SHALL leave `@value` unresolved, step 2 SHALL find `value=1k` in the template, and the element SHALL end in `1k`
+
 #### Scenario: Model passed down from the parent template
 - **GIVEN** `passgate.sym` with template `... modeln=nfet_01v8`, and inside `passgate.sch` an nmos instance with `model=@modeln` and format token `@model`
 - **WHEN** the hierarchical netlist is generated
@@ -295,8 +364,12 @@ Compatibility: exact
 Text SHALL be scanned for the markers `expr(`, `expr_eng(` and `expr_eng4(`. Text outside markers SHALL be copied. After a marker, an arithmetic expression SHALL be parsed up to the matching `)`, optionally enclosed in single quotes (`expr('...')`):
 - **numbers**: a run of the characters `.0-9a-zA-Z_-` starting with a digit or `.`, converted by a C `%lf` scan, then multiplied by the SI suffix that starts the rest of the run: `T` 1e12, `G` 1e9, `x`/`X` or `meg` (case-insensitive) or `M` 1e6, `m` 1e-3, `k` 1e3, `u` 1e-6, `n` 1e-9, `p` 1e-12, `f` 1e-15, `a` 1e-18. With `xschem-compat` ON, `-` belongs to the run anywhere after its first character, as in xschem, so `2-1` is read as the number 2. With `xschem-compat` OFF, a `-` belongs to the run only directly after an `e` or `E` (an exponent sign), so `2-1` is the number 2 minus the number 1. In both modes, a run as read with `xschem-compat` ON that contains a `-` not directly after `e` or `E` SHALL be reported as a warning, because the two modes read it differently (Q-SCHEM-12, `Resolution: compat`).
 - **constants**: `pi`, `e`, `k` (1.380649e-23), `h` (6.62607e-34), `echarge` (1.60217646e-19), `abszero` (273.15), `c` (2.99792458e8)
-- **functions** of one argument: `int` (truncate toward zero), `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log` (base 10), `ln`, `exp`, `sqrt`, `round6`, `round1` (round to 6 or 1 significant digits), `round`
-- **operators**, lowest to highest precedence: `?:` (right-assoc), `==` and `!=`, `<` `>` `<=` `>=`, `+` and `-`, `*` `/` `%` (integer remainder of truncated operands), unary minus, `^` (power, right-assoc), parentheses
+- **functions** of one argument: `int` (truncate toward zero, in floating point: no integer conversion, so any finite value works), `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log` (base 10), `ln`, `exp`, `sqrt`, `round6`, `round1` (round to 6 or 1 significant digits), `round`
+- **rounding**: `round(x)` rounds half away from zero, computed as floor(x + 0.5) for x > 0 and ceil(x − 0.5) for x < 0 (so 2.5 gives 3, −2.5 gives −3, and 0.49999999999999994 gives 1, as the addition rounds up); 0, −0, NaN and infinities are returned unchanged. `round6(x)` and `round1(x)` (n = 6 or 1) return x unchanged when x is 0; otherwise they take s = 10^(ceil(log10(|x|)) − n) and return round(x / s) · s, so −123 with n = 2 would give −120 and 9.96 gives 10. NaN gives NaN, and an infinite x gives NaN
+- **operators**, lowest to highest precedence: `?:` (right-assoc), `==` and `!=`, `<` `>` `<=` `>=`, `+` and `-`, `*` `/` `%`, unary minus, `^` (power by C `pow`, right-assoc), parentheses
+- **`%`** truncates both operands toward zero and gives the remainder with the sign of the left operand (`7 % 3` is 1, `-7.9 % 2` is −1, `7 % 0.5` uses 0 as the right operand). xschem converts the operands to C `int`, so a right operand that truncates to 0, or an operand outside the 32-bit range, is undefined (a crash on most hosts). Hefesto SHALL compute fmod(trunc(a), trunc(b)) in binary64, which equals C's `%` for every pair xschem handles, gives NaN when trunc(b) is 0, and is exact for operands up to 2^53, in both modes (proposed Q-SCHEM-36, recommendation `fix`, awaiting the user)
+- **nesting**: parentheses, function calls and unary operators SHALL nest at most **200** levels (`kMaxExprDepth`), in both modes (input limit approved by the user on 2026-11-21, Q-SCHEM-32). Deeper input SHALL fail like a syntax error (the errors rule below) and SHALL report the warning `expr nested deeper than 200 levels; text copied without evaluation` (`SCHEM-NET-006`)
+- **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists (proposed Q-SCHEM-36, recommendation: always `nan`, so netlists are identical on every platform, D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
 - **result**: `expr` prints with C `%.15g`; `expr_eng` prints in engineering notation with the `ev_precision` setting (default 4) significant digits; `expr_eng4` with 4. Engineering notation divides by 1e12, 1e9, 1e6 or 1e3 for |x| above 0.999999 times that power (suffix `T`, `G`, `MEG`, `k`), keeps the value for |x| > 0.0999999, else multiplies by 1e3 ... 1e18 (suffix `m`, `u`, `n`, `p`, `f`, `a`); |x| < 0.999999e-23 prints `0`.
 - **errors**: on a syntax error or an unknown identifier, the rest of the text from the failing expression on SHALL be copied with every `expr(`, `expr_eng(` or `expr_eng4(` marker and its matching `)` removed.
 
@@ -323,6 +396,20 @@ Compatibility: exact
 - **GIVEN** `xschem-compat` OFF
 - **WHEN** `expr(2-1)`, `expr(1e-3-1)` and `expr(2 - 1)` are evaluated
 - **THEN** they SHALL give `1`, `-0.999` and `1`, and a warning SHALL be reported for the first two only
+
+#### Scenario: Rounding functions
+- **WHEN** `expr(round(2.5))`, `expr(round(-2.5))`, `expr(round6(1.23456789))`, `expr(round1(-123))` and `expr(round1(9.96))` are evaluated
+- **THEN** they SHALL give `3`, `-3`, `1.23457`, `-100` and `10`
+
+#### Scenario: Remainder by zero and NaN text
+- **GIVEN** `xschem-compat` ON or OFF
+- **WHEN** `expr(7%3)`, `expr(-7.9%2)`, `expr(7%0.5)`, `expr(0/0)` and `expr_eng(0/0)` are evaluated
+- **THEN** they SHALL give `1`, `-1`, `nan` (no crash), `nan` and `nana`, on every platform (proposed Q-SCHEM-36)
+
+#### Scenario: Nesting past 200 levels
+- **GIVEN** `xschem-compat` ON or OFF
+- **WHEN** `expr(` followed by 201 `(`, `1`, 201 `)` and `)` is evaluated
+- **THEN** the evaluation SHALL fail like a syntax error, the text SHALL be copied with the `expr(` marker and its `)` removed, and the warning `expr nested deeper than 200 levels; text copied without evaluation` SHALL be reported
 
 #### Scenario: Engineering notation and division by zero
 - **GIVEN** golden case SCHEM-NL-13

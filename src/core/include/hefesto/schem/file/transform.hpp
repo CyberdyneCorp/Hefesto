@@ -13,9 +13,11 @@
 
 namespace hefesto::schem {
 
-/// An instance placement: origin, rotation (taken modulo 4) and flip (1
-/// flips, any other value does not). The flip is applied before the rotation; each
-/// rotation step turns the symbol 90 degrees clockwise on screen.
+/// An instance placement: origin, rotation and flip as stored (records keep
+/// any value). Points: rotation 0, 1 and 2 as the table says, every other
+/// value as 3; any non-zero flip mirrors. The flip is applied before the
+/// rotation; each rotation step turns the symbol 90 degrees clockwise on
+/// screen ("Orientation transform").
 struct Placement {
   Point origin;
   int rotation = 0;
@@ -36,13 +38,14 @@ struct TextOrientation {
 };
 
 /// The orientation of a text with `rotation`/`flip` inside a symbol placed
-/// with `placement`: rotation `(t_rot + (f = 1 and t_rot odd ? r + 2 : r))
-/// mod 4`, flip `t_flip XOR f`.
+/// with `placement`: rotation `(t_rot + (f != 0 and t_rot odd ? r + 2 : r))
+/// mod 4` (r as stored, the result in 0..3), flip `t_flip XOR f`.
 [[nodiscard]] TextOrientation transform_text(const Placement& placement, int rotation, int flip) noexcept;
 
 /// The start angle in degrees of an arc with `start`/`sweep` after placement
-/// (the sweep is unchanged and the centre transforms as a point), in
-/// [0, 360) for finite input.
+/// (the sweep is unchanged and the centre transforms as a point):
+/// `fmod(a + 270 r, 360)`, or `fmod(270 r + 180 - b - a, 360)` when the flip
+/// is non-zero, with r as stored, in [0, 360) for finite input.
 [[nodiscard]] double transform_arc_start(const Placement& placement, double start, double sweep) noexcept;
 
 /// The connection point of a pin box: the centre of the box.

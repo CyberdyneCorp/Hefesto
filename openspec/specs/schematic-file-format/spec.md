@@ -70,8 +70,8 @@ comment     = "#" , rest-of-line ;
 unknown     = other-tag , { any-char-or-bstring } ;   (* skipped up to the next LF outside braces *)
 layer       = integer ;                 (* 0 <= layer < 22 *)
 count       = integer ;
-rot         = integer ;                 (* 0..3 *)
-flip        = integer ;                 (* 0..1 *)
+rot         = integer ;                 (* normally 0..3; other values are kept, see Rules *)
+flip        = integer ;                 (* normally 0..1; other values are kept, see Rules *)
 num         = decimal-floating-point ;
 ws          = { " " | TAB | CR | LF } ;
 ws1         = ws ;                       (* at least the separator the writer emits *)
@@ -82,6 +82,10 @@ Rules:
 - A `bstring` MAY span lines (Requirement "Brace strings"). The "discard to end of line" step applies after the closing brace of the last field.
 - An unknown tag SHALL be skipped up to the next LF that is not inside a brace string; braces in it SHALL be read as brace strings so that an LF inside them does not end the record.
 - A `#` record SHALL be skipped to the end of its line.
+- **Integer fields.** An integer field is an optional sign followed by decimal digits; reading stops at the first other character (so `4.5` as a layer reads `4`, and `.5` starts the next field). A field with no digits is a missing field (Requirement "Malformed input").
+- **Rotation and flip values.** The rotation and flip of `T` and `C` records SHALL be stored as read and written back as read, also outside 0..3 and 0..1; Requirement "Orientation transform" says how such values are used. xschem keeps them as 16-bit integers.
+- **Out-of-range integers (proposed Q-SCHEM-34, recommendation `fix`, awaiting the user).** C's reading of an integer that does not fit its field is undefined, so xschem has no result to match. A layer, polygon count, rotation or flip whose value does not fit a signed 32-bit integer, and a rotation or flip outside -32768..32767, SHALL make the record skipped as a missing field, in both modes; a layer that fits but is outside 0..21 is an invalid layer (Requirement "Layers").
+- **Polygon count.** A count of 0 SHALL give a polygon with no points, kept and written back as `P <layer> 0 {...}`. A negative count SHALL make the record skipped as a missing field (xschem allocates from the negative count, which is undefined; part of proposed Q-SCHEM-34). No storage SHALL be reserved from the count before the points are read: the points are read one pair at a time, and a record with fewer pairs than its count is skipped (Requirement "Line, box, arc and polygon records").
 
 Compatibility: exact
 
@@ -92,6 +96,21 @@ Compatibility: exact
 - **WHEN** the file is read
 - **THEN** the `Z` record, including its two-line brace string, SHALL be skipped, and exactly one wire from (0,0) to (10,0) SHALL be loaded
 
+#### Scenario: Rotation and flip outside their usual range
+- **GIVEN** the record `C {res.sym} 0 0 5 2 {name=R1}`
+- **WHEN** the file is read and written
+- **THEN** the instance SHALL have rotation 5 and flip 2, and the record SHALL be written back byte-identically
+
+#### Scenario: Polygon counts
+- **GIVEN** the records `P 4 0 {}`, `P 4 -1 {}` and `P 4 2 0 0 1 1 {}`
+- **WHEN** the file is read and written
+- **THEN** `P 4 0 {}` and `P 4 2 0 0 1 1 {}` SHALL be written back, and `P 4 -1 {}` SHALL be skipped with the warning `missing fields for POLYGON object`
+
+#### Scenario: Integer that does not fit
+- **GIVEN** the records `L 99999999999 0 0 1 1 {}`, `C {res.sym} 0 0 40000 0 {name=R1}` and `N 0 0 1 0 {}`, with `xschem-compat` ON or OFF
+- **WHEN** the file is read
+- **THEN** the line and the instance SHALL be skipped with a warning, and the wire SHALL be loaded
+
 ### Requirement: Brace strings
 Every text field and property field SHALL be a brace string. Reading SHALL work as follows:
 1. Characters up to and including the first `{` are skipped.
@@ -99,7 +118,7 @@ Every text field and property field SHALL be a brace string. Reading SHALL work 
 3. An unescaped `}` ends the string.
 4. CR characters are dropped. All other characters, including LF, are kept.
 5. An empty result SHALL be stored as "no value" (absent property), which is equivalent to the empty string for every lookup.
-6. End of file inside a brace string SHALL make that field absent and SHALL report `EOF reached, malformed {...} string input, missing close brace`.
+6. End of file inside a brace string, or before its opening `{`, SHALL make that field absent and SHALL report `EOF reached, malformed {...} string input, missing close brace`. The record keeps the fields read before it: a record whose numeric fields were all read is kept with the field absent (Requirement "Malformed input"), and a record that still needs a numeric field after it is skipped as a missing field.
 
 Writing SHALL emit `{`, then each character of the value with a backslash inserted before every `\`, `{` and `}`, then `}`. An absent or empty value SHALL be written as `{}`. No other character is escaped.
 
@@ -120,7 +139,7 @@ Compatibility: exact
 ### Requirement: Numeric fields
 Coordinates, radii, angles and text scales SHALL be IEEE-754 binary64 values. Reading SHALL accept any decimal floating-point syntax accepted by C `strtod` in the "C" locale (optional sign, digits, optional fraction, optional exponent; `inf` and `nan` are accepted but have no defined drawing). Layer, point count, rotation and flip SHALL be read as decimal integers.
 
-Writing SHALL format every floating-point field with the C format `%.16g` and every integer field with `%d`. Consequences that SHALL hold:
+Writing SHALL format every floating-point field with the C format `%.16g` and every integer field with `%d`. The source text of a numeric field SHALL NOT be kept: a field is written from its binary64 value on every save, edited or not, which is what xschem does (golden case SCHEM-RT-02: `%.16g` reproduces xschem's first save of 1373 of the 1375 PDK files; the other two differ only in the layer-5 box order of Requirement "Canonical write order"). Consequences that SHALL hold:
 - `10.0` is written `10`
 - `0.1` is written `0.1`
 - `1e-5` is written `1e-05`
@@ -139,7 +158,7 @@ Compatibility: exact
 ### Requirement: Version record and header text
 The `v` record SHALL hold a property string. On reading:
 - `file_version` SHALL be the value of the `file_version` key (property grammar, Requirement "Property strings"). If the file has no `v` record or the key is absent, the file version SHALL be `1.0`.
-- The header text SHALL be the `v` string with the keys `xschem`, `version` and `file_version` removed (the key `xschem` only if the substring `xschem` starts within the first 50 characters), then leading spaces and tabs removed, then one leading LF removed.
+- The header text SHALL be the `v` string with the keys `xschem`, `version` and `file_version` removed, in that order (the key `xschem` only if the substring `xschem` starts within the first 50 characters), then leading spaces and tabs removed, then one leading LF removed. Each key is removed by setting it to the empty value (Requirement "Property strings", setting rule 5): its first occurrence goes, with its `=` and value if it has them and one following space or LF; a key that is absent removes nothing. So in `xschem version=3.4.7RC file_version=1.2` LF LF `* text` the removals leave LF `* text`, and the header text is `* text` (golden case SCHEM-RT-02, gf180mcu headers that start with an empty line).
 
 On writing, the `v` record SHALL be the first line of the file:
 - with no header text: `v {xschem version=<V> file_version=1.3}`
@@ -147,8 +166,8 @@ On writing, the `v` record SHALL be the first line of the file:
 
 where `<V>` is the xschem compatibility version (Requirement "Writer version string"). Hefesto SHALL always write file format `1.3` regardless of the version read.
 
-File version `1.0` SHALL change the meaning of symbol references: a reference is a symbol name without extension, and `.sym` SHALL be appended (replacing any extension) when the instance is loaded, so the reference is written back with `.sym`. From `1.1` on, the reference is used as written. When the file has no `v` record, the first record depends on the `xschem-compat` setting (capability `hefesto-magic-compat-mode`; Q-SCHEM-3, `Resolution: compat`):
-- with `xschem-compat` ON, the file version is unset (not `1.0`) until the end of the first record, as in xschem, so an instance record that comes before any other record is not given the extension; later records see `1.0`
+File version `1.0` SHALL change the meaning of symbol references: a reference is a symbol name without extension, and `.sym` SHALL be appended (replacing any extension) when the instance is loaded, so the reference is written back with `.sym`. Independently of when each instance got the extension, a document whose file version (as read) is `1.0` SHALL resolve every instance reference with `.sym` appended (replacing any extension) and SHALL write every instance reference that way, so a saved file never holds a reference without `.sym` that came from a 1.0 file (golden case SCHEM-RT-08). From `1.1` on, the reference is used and written as written. When the file has no `v` record, the first record depends on the `xschem-compat` setting (capability `hefesto-magic-compat-mode`; Q-SCHEM-3, `Resolution: compat`):
+- with `xschem-compat` ON, the file version is unset (not `1.0`) until the end of the first record, as in xschem, so an instance record that comes before any other record is not given the extension when it is read: its stored reference, which property queries such as `xschem getprop instance <name> cell::name` return, stays as written; later records see `1.0`. Resolution and writing still add `.sym` (paragraph above), so the instance shows the same symbol and is saved the same way in both modes
 - with `xschem-compat` OFF, a file with no `v` record is version `1.0` from its first record, so every instance reference is given the extension
 
 Compatibility: exact
@@ -166,14 +185,21 @@ Compatibility: exact
 - **THEN** the file version SHALL be `1.0` and the instance SHALL reference symbol `res.sym`
 
 #### Scenario: Leading instance record, xschem-compat ON
-- **GIVEN** `xschem-compat` ON and a schematic with no `v` record whose first record is `C {res} 0 0 0 0 {name=R1}`, followed by `C {capa} 0 0 0 0 {name=C1}`
-- **WHEN** it is read and saved
-- **THEN** `R1` SHALL reference `res` and `C1` SHALL reference `capa.sym`
+- **GIVEN** `xschem-compat` ON and a schematic with no `v` record whose first record is `C {res} 0 0 0 0 {name=R1}`, followed by `C {capa} 100 0 0 0 {name=C1}` (golden case SCHEM-RT-08, input `b.sch`)
+- **WHEN** it is read
+- **THEN** the stored reference of `R1` SHALL be `res` and that of `C1` `capa.sym`, and `R1` SHALL resolve to `res.sym`
+- **WHEN** it is then saved, and the saved file read and saved again
+- **THEN** both saved files SHALL contain `C {res.sym} 0 0 0 0 {name=R1}` and `C {capa.sym} 100 0 0 0 {name=C1}` (SCHEM-RT-08 `b.sch`, `2-b.sch`)
 
 #### Scenario: Leading instance record, xschem-compat OFF
 - **GIVEN** `xschem-compat` OFF and the same schematic
 - **WHEN** it is read and saved
-- **THEN** `R1` SHALL reference `res.sym` and `C1` SHALL reference `capa.sym`
+- **THEN** the stored references SHALL be `res.sym` and `capa.sym`, and the saved file SHALL be the same as with `xschem-compat` ON
+
+#### Scenario: Header keys removed with their separator
+- **GIVEN** a symbol whose first record is `v {xschem version=3.4.7RC file_version=1.2` LF LF `* Copyright 2022 X` LF `}`
+- **WHEN** it is read and saved
+- **THEN** the header text SHALL be `* Copyright 2022 X` LF, and the first record written SHALL be `v {xschem version=3.4.8RC file_version=1.3` LF `* Copyright 2022 X` LF `}`
 
 ### Requirement: Writer version string
 Hefesto SHALL write the version key as `xschem version=<V>`, where `<V>` is a single pinned xschem compatibility version, initially `3.4.8RC`. It SHALL NOT write a Hefesto version there, because xschem and other tools only check `file_version`. The pinned value SHALL change only together with a re-validation of this capability against a newer xschem, and SHALL NOT depend on the `xschem-compat` setting (Q-SCHEM-1, `Resolution: replicate`).
@@ -323,11 +349,21 @@ Compatibility: exact
 - **THEN** the record SHALL be written back byte-identically
 
 ### Requirement: Embedded symbols
-A `[` record SHALL directly follow a `C` record and SHALL hold a complete symbol definition (records up to a line starting with `]`). On reading:
-- the preceding instance SHALL get `embed=true` set in its property string (property update rules of Requirement "Property strings")
-- if a symbol with the same reference is already loaded, the block SHALL be skipped; otherwise its records SHALL define that symbol (as a `.sym` would), and the symbol SHALL be marked embedded
-- a `[` with no preceding instance SHALL be skipped with a warning
+A `[` record normally directly follows a `C` record and holds a complete symbol definition (records up to a line starting with `]`). On reading a `[` record at the top level of a file:
+- the block SHALL belong to the last instance read before it in the file, whatever records lie between that instance and the `[` (xschem does not check that the previous record is a `C` record); Hefesto MAY report a warning when the previous record is not a `C` record
+- that instance SHALL get `embed=true` set in its property string (property update rules of Requirement "Property strings"), also when the block is then skipped
+- if no instance has been read yet, or the instance's symbol reference is empty, or a symbol with the same reference is already loaded (for example from an earlier block), the block SHALL be skipped; otherwise its records SHALL define that symbol (as a `.sym` would), and the symbol SHALL be marked embedded
+- **skipping** a block SHALL discard every line up to and including the first later line that starts with `]`, without counting nested `[` lines, or up to the end of the file; a `[` with no instance before it SHALL also report a warning
 - every later instance that references the same symbol SHALL use the embedded definition
+
+A block that defines a symbol SHALL end at the first line that starts with `]` at its own level, or at the end of the file. At the end of the file the records read so far SHALL define the symbol; xschem reports nothing, and Hefesto MAY report a warning. Inside a block that defines a symbol:
+- a `C` record SHALL be an instance drawn inside the embedded symbol, handled as an instance inside a schematic used as a symbol (capability `schematic-symbols-and-libraries`, Requirement "Schematic used as symbol"): its symbol's graphics are added to the embedded symbol, transformed by the instance's placement (Requirement "Orientation transform"), its layer-5 boxes on layer 7, one nesting level deeper
+- when that instance's symbol is not found as a file and the next non-blank character after its record is `[`, that nested block SHALL define the instance's symbol in place (its records read at the deeper level, up to the `]` that closes it); any other `[` inside a block SHALL be skipped as above
+- `N` records SHALL become lines on layer 1, kept with the `L 1` lines in the order the records are met (depth-first through nested instances and blocks)
+- `v`, `G` (when a `K` was read), `V`, `S`, `F` and `E` records SHALL be ignored for the symbol; `K`, or `G` when no `K` was read, SHALL be the symbol property only at the block's own level
+- floater texts and boxes whose `flags` contain `graph` SHALL be dropped, and objects with `symbol_ignore=true` SHALL be dropped
+
+The nesting depth of symbol levels inside one block SHALL follow the 40-level limit of Requirement "Schematic used as symbol" of capability `schematic-symbols-and-libraries`. In addition, the reader SHALL keep at most **64** levels of nested `[` blocks open at once, in both modes of `xschem-compat` (input limit approved by the user on 2026-11-21, Q-SCHEM-32): a `[` that would open a 65th level SHALL be skipped as above (up to the next line that starts with `]`) and SHALL report the warning `embedded symbol blocks nested deeper than 64 levels; block skipped`. The reader SHALL read nested blocks without recursion.
 
 On writing, for each symbol, the block SHALL be emitted exactly once, right after the first instance (in instance order) that references that symbol and has `embed=true`:
 
@@ -347,7 +383,7 @@ E {}
 ]
 ```
 
-The embedded block SHALL NOT contain `F`, `N` or `C` records and SHALL write polygons after texts. Wires of a schematic-used-as-symbol appear there as `L 1` records. These are xschem quirks that Hefesto SHALL reproduce whatever the `xschem-compat` setting, because they change only the layout of the block, which reads back the same either way (Q-SCHEM-2, `Resolution: replicate`).
+The embedded block SHALL NOT contain `F`, `N` or `C` records or nested blocks: it is written from the symbol as built (graphics of nested instances and nested blocks already added, layer-5 boxes of nested levels on layer 7), and SHALL write polygons after texts. Wires of a schematic-used-as-symbol, and `N` records of a block, appear there as `L 1` records, in the order of the layer-1 lines of the symbol as built. The layer-5 boxes of the block SHALL be written in the symbol's pin order (capability `schematic-symbols-and-libraries`, Requirement "Pin order"). These are xschem quirks that Hefesto SHALL reproduce whatever the `xschem-compat` setting, because they change only the layout of the block, which reads back the same either way (Q-SCHEM-2, `Resolution: replicate`).
 
 Compatibility: exact
 
@@ -357,6 +393,36 @@ Compatibility: exact
 - **GIVEN** three instances of `res.sym` of which the second and third have `embed=true`
 - **WHEN** the schematic is saved
 - **THEN** exactly one `[` ... `]` block SHALL follow the second instance, and none SHALL follow the first or third
+
+#### Scenario: Block after a wire belongs to the last instance
+- **GIVEN** the records `C {a.sym} 0 0 0 0 {name=x1}`, `N 0 0 10 0 {}`, then a block `[` LF `K {type=x}` LF `]`, and no other definition of `a.sym`
+- **WHEN** the file is read
+- **THEN** `x1` SHALL get `embed=true`, the block SHALL define `a.sym` with symbol property `type=x`, and the wire SHALL be loaded
+
+#### Scenario: Block with no instance before it
+- **GIVEN** a file whose first records are `N 0 0 1 1 {}`, then `[` LF `K {type=x}` LF `N 5 5 6 6 {}` LF `]`, then `N 2 2 3 3 {}`
+- **WHEN** the file is read
+- **THEN** the block SHALL be skipped with a warning, no symbol SHALL be defined, and exactly the wires (0,0)-(1,1) and (2,2)-(3,3) SHALL be loaded
+
+#### Scenario: Skipped block ends at the first closing line
+- **GIVEN** an instance `C {a.sym} 0 0 0 0 {}` followed by a block defining `a.sym`, then a second instance `C {a.sym} 10 0 0 0 {}` followed by `[` LF `C {b.sym} 0 0 0 0 {}` LF `[` LF `K {type=b}` LF `]` LF `N 7 7 8 8 {}` LF `]` LF `N 2 2 3 3 {}`
+- **WHEN** the file is read
+- **THEN** the second block SHALL be skipped up to the first `]` line, so the wire (7,7)-(8,8) and the wire (2,2)-(3,3) SHALL both be loaded as wires of the schematic, the line `]` after the first wire SHALL be skipped as an unknown record, and `b.sym` SHALL NOT be defined
+
+#### Scenario: Block cut by the end of the file
+- **GIVEN** a file that ends with `C {a.sym} 0 0 0 0 {}`, `[`, `K {type=x}`, `L 4 0 0 1 1 {}` and no `]`
+- **WHEN** the file is read and saved
+- **THEN** `a.sym` SHALL be defined with the one line, and the saved file SHALL contain a complete block for it ending with `]`
+
+#### Scenario: Nested block merged into the outer symbol
+- **GIVEN** `C {a.sym} 0 0 0 0 {}` followed by the block `[`, `K {type=a}`, `C {b.sym} 100 0 0 0 {}`, `[`, `K {type=b}`, `L 4 0 0 10 0 {}`, `B 5 -2.5 -2.5 2.5 2.5 {name=P}`, `]`, `L 4 0 0 0 10 {}`, `]`, where no file `b.sym` exists
+- **WHEN** the file is read and saved
+- **THEN** `a.sym` SHALL hold the lines (100,0)-(110,0) and (0,0)-(0,10) on layer 4 and the box (97.5,-2.5)-(102.5,2.5) on layer 7, no pin, and the saved block SHALL contain no `C` record and no nested block
+
+#### Scenario: Nesting deeper than 64 blocks
+- **GIVEN** a file of 70 levels of `C {s<i>.sym} 0 0 0 0 {}` records each followed by `[`, then 70 `]` lines, then `N 2 2 3 3 {}`, with `xschem-compat` ON or OFF
+- **WHEN** the file is read
+- **THEN** the reader SHALL report the warning `embedded symbol blocks nested deeper than 64 levels; block skipped` once, for the block that would open level 65, SHALL skip that block up to the next line that starts with `]`, SHALL NOT crash or recurse, and SHALL give the same document in both modes (the 40-level warning of capability `schematic-symbols-and-libraries` is reported as well, when the symbol is built)
 
 ### Requirement: Property strings
 Every property string SHALL be parsed as a list of attributes with this grammar. Separators are space, tab, LF and `;`.
@@ -382,10 +448,10 @@ Lookup of key `k` SHALL return the first attribute whose key equals `k` exactly 
 
 Setting key `k` to value `v` SHALL follow these rules:
 1. If `v` contains `;`, LF, space or tab, is not already enclosed in `"`, and `k` is not `name`, `v` SHALL be written as `"v"`.
-2. If `k` exists, the value of its first occurrence SHALL be replaced. An attribute without `=` that is followed by a separator SHALL become the key, that separator, `=v` and one space, before the next attribute (golden case SCHEM-PR-01: setting `k` to `5` in `k name=x1` gives `k =5 name=x1`).
+2. If `k` exists, the value of its first occurrence SHALL be replaced. An attribute without `=` that is followed by a separator SHALL become the key, that separator, `=v` and one space, before the next attribute (golden case SCHEM-PR-01: setting `k` to `5` in `k name=x1` gives `k =5 name=x1`). An attribute without `=` at the very end of the string SHALL become the key, `=v` and one space: setting `k` to `5` in `k` gives `k=5 ` and in `a=1 k` gives `a=1 k=5 ` (both with a trailing space).
 3. If `k` does not exist and the string is empty, the result SHALL be `k=v`.
 4. If `k` does not exist and the string ends in a space or LF, `k=v` SHALL be appended. Otherwise LF followed by `k=v` SHALL be appended.
-5. Setting an empty value SHALL remove the first occurrence of `k`, together with its `=`, its value and one following space or LF.
+5. Setting an empty value SHALL remove the first occurrence of `k`, together with its `=`, its value and one following space or LF. Separators before `k` are kept: removing `k` from `a=1 k` gives `a=1 ` (with the trailing space), and from `k` gives the empty string.
 
 Compatibility: exact
 
@@ -421,6 +487,16 @@ Compatibility: exact
 - **WHEN** key `value` is set to the empty value
 - **THEN** the string SHALL become `name=x1 m=2` (golden case SCHEM-PR-01)
 
+#### Scenario: Setting a key written without equals at the end
+- **GIVEN** the property strings `k` and `a=1 k`
+- **WHEN** key `k` is set to `5` in each
+- **THEN** they SHALL become `k=5 ` and `a=1 k=5 `, each ending in one space
+
+#### Scenario: Removing a key written without equals at the end
+- **GIVEN** the property strings `a=1 k` and `k`
+- **WHEN** key `k` is set to the empty value in each
+- **THEN** they SHALL become `a=1 ` and the empty string
+
 ### Requirement: Boolean values
 Wherever this specification says an attribute is "true" or "false", the comparison SHALL work as follows:
 - A value made only of decimal digits is true if non-zero and false if zero.
@@ -448,16 +524,16 @@ Compatibility: exact
 - **THEN** it SHALL be (-20, 0), the centre of the box
 
 ### Requirement: Orientation transform
-An instance with origin (x0,y0), rotation r and flip f SHALL map a symbol-local point (x,y) to the schematic point (x0+rx, y0+ry), where x' = −x if f = 1, else x' = x, and:
+An instance with origin (x0,y0), rotation r and flip f SHALL map a symbol-local point (x,y) to the schematic point (x0+rx, y0+ry), where x' = −x if f ≠ 0, else x' = x, and:
 
 | r | rx | ry |
 |---|---|---|
 | 0 | x' | y |
 | 1 | −y | x' |
 | 2 | −x' | −y |
-| 3 | y | −x' |
+| any other value (3, and also 4, 5, −1, ...) | y | −x' |
 
-The flip is applied before the rotation. On screen (y down) each rotation step turns the symbol 90° clockwise. The same transform SHALL apply to texts: a text inside a symbol placed with (r, f) SHALL get rotation `(t_rot + (f = 1 and t_rot odd ? r + 2 : r)) mod 4` and flip `t_flip XOR f`. An arc (centre transformed as a point) SHALL get start angle `fmod(a + 270·r, 360)` when f = 0, or `fmod(270·r + 180 − b − a, 360)` when f = 1, plus 360 if negative; the sweep b is unchanged.
+The flip is applied before the rotation. On screen (y down) each rotation step turns the symbol 90° clockwise. A flip is a mirror whenever it is non-zero: flip 2 mirrors exactly as flip 1 does. The same transform SHALL apply to texts: a text inside a symbol placed with (r, f) SHALL get rotation `(t_rot + (f ≠ 0 and t_rot odd ? r + 2 : r)) mod 4` (the remainder taken as 0..3, also for negative sums) and flip `t_flip XOR f`. An arc (centre transformed as a point) SHALL get start angle `fmod(a + 270·r, 360)` when f = 0, or `fmod(270·r + 180 − b − a, 360)` when f ≠ 0, plus 360 if negative; the sweep b is unchanged. These rules use r and f as stored (Requirement "Record grammar", rule "Rotation and flip values"); values outside 0..3 and 0..1 are written back unchanged.
 
 Compatibility: exact
 
@@ -472,6 +548,11 @@ Compatibility: exact
 - **GIVEN** the same symbol placed at (100,200) with r=0, f=1
 - **WHEN** the pin position is computed
 - **THEN** it SHALL be (120, 200)
+
+#### Scenario: Flip 2 mirrors and rotation 5 acts as 3
+- **GIVEN** the same symbol placed at (100,200) with r=0, f=2, and again with r=5, f=0
+- **WHEN** the pin positions are computed
+- **THEN** they SHALL be (120, 200) and (100, 220), the positions for (r=0, f=1) and (r=3, f=0)
 
 ### Requirement: Canonical write order
 Hefesto SHALL write a file in this order:
@@ -499,6 +580,8 @@ C {s} %g %g %d %d {s}
 
 Fields SHALL be separated by exactly one space. The order of objects inside a list SHALL be the order of the in-memory model (capability `schematic-editing` defines how edits and "change element order" alter it).
 
+**Pin boxes on save.** Before each save, if the document has at least one box on layer 5 and every layer-5 box has a non-empty `sim_pinnumber`, the layer-5 boxes SHALL be put in order of the integer value of `sim_pinnumber` (read as Requirement "Pin order" of capability `schematic-symbols-and-libraries` says), ascending, with a stable sort that keeps the model order on ties (Q-SCHEM-5, `Resolution: fix`, both modes). The new order SHALL stay in the in-memory model and SHALL NOT mark the document modified. This applies to `.sym` and `.sch` files alike; if one layer-5 box has no `sim_pinnumber`, or an empty one, the order is left unchanged. Reading does not reorder: a file that is read and not saved keeps its box order in the model. Embedded blocks write their layer-5 boxes in the symbol's pin order (Requirement "Embedded symbols").
+
 Compatibility: exact
 
 (xschem ref: save.c:3223-3281, save.c:3080-3221)
@@ -508,12 +591,24 @@ Compatibility: exact
 - **WHEN** it is read and saved
 - **THEN** the written order SHALL be: the `L 3` record, the two `L 4` records in their original order, the `B 5` record, the `T` record, the `N` record
 
+#### Scenario: Pin boxes saved in sim_pinnumber order
+- **GIVEN** a symbol whose layer-5 boxes are, in file order, `B 5 ... {name=D sim_pinnumber=2}`, `B 5 ... {name=G sim_pinnumber=1}`, `B 5 ... {name=S sim_pinnumber=3}` (the shape of IHP `nmoscl_2.sym` in golden case SCHEM-RT-02)
+- **WHEN** it is read and saved
+- **THEN** the boxes SHALL be written in the order G, D, S, and the document SHALL NOT be marked modified by the reordering
+
+#### Scenario: Pin boxes not reordered when one lacks sim_pinnumber
+- **GIVEN** a symbol whose layer-5 boxes are `{name=B sim_pinnumber=2}` and `{name=A}` in that order
+- **WHEN** it is read and saved
+- **THEN** the boxes SHALL be written in the order B, A
+
 ### Requirement: Round-trip guarantee
 Reading a file and writing it with no edit SHALL produce exactly what xschem 3.4.8RC writes for the same file. In particular, for a file last written by xschem with file format 1.3 and the same version string, the output SHALL be byte-identical to the input. For other files, the only differences SHALL be the canonicalisations listed in this capability:
 - version line and global-record order
 - the added `F {}` record
 - layer grouping
 - endpoint and corner ordering
+- the order of layer-5 boxes when every one has `sim_pinnumber` (Requirement "Canonical write order", paragraph "Pin boxes on save")
+- `.sym` added to references of a file version `1.0` file (Requirement "Version record and header text")
 - numeric reformatting
 - re-escaping of brace strings
 - added `embed=true`
@@ -535,7 +630,9 @@ Compatibility: exact
 Hefesto SHALL read a malformed file as far as possible and SHALL report each problem without aborting:
 - a record with a missing or non-numeric numeric field SHALL be skipped, with the warning `missing fields for <KIND> object` (KIND is `LINE`, `xRECT`, `ARC`, `POLYGON`, `TEXT`, `WIRE` or `INSTANCE`). Because the separators between fields include LF (Requirement "Record grammar"), the fields are looked for across line ends: reading stops at the first character that cannot start the expected number, and the characters from there up to and including the next LF SHALL be discarded. A record cut short at the end of a line therefore also loses the line that follows it (golden case SCHEM-RT-06)
 - an invalid layer SHALL be handled as in Requirement "Layers"
-- a missing closing brace SHALL be handled as in Requirement "Brace strings"
+- a missing closing brace, or the end of the file before an opening brace, SHALL be handled as in Requirement "Brace strings"
+- integers that do not fit their field, negative polygon counts and rotation or flip values outside their usual range SHALL be handled as in Requirement "Record grammar"
+- no input SHALL make the reader crash, recurse without bound, or allocate storage from a count read in the file before the data is there
 - the exact message texts are informative
 
 The skip and recovery behaviour is exact; the wording is informative.
@@ -553,6 +650,11 @@ Compatibility: exact
 - **GIVEN** a file whose last line is `N 0 0 10 0 {lab=A` with no closing brace
 - **WHEN** the file is read and saved
 - **THEN** the wire (0,0)-(10,0) SHALL be loaded with no property, the missing-brace warning SHALL be reported, and the saved file SHALL contain `N 0 0 10 0 {}` (golden case SCHEM-RT-06)
+
+#### Scenario: End of file before the opening brace
+- **GIVEN** a file whose last bytes are `N 0 0 10 0` with no brace and no LF, and another file whose last bytes are `T`
+- **WHEN** each file is read
+- **THEN** the first SHALL load the wire (0,0)-(10,0) with no property and report the missing-brace warning, and the second SHALL load no text and report a warning
 
 ### Requirement: Safe saving
 Saving SHALL write the complete file to a temporary file in the destination folder and then atomically replace the destination, through the platform file services of capability `hefesto-files-and-pdks`. A failed write SHALL leave the previous file intact and report the error. Hefesto SHALL detect when the file on disk changed since it was loaded and SHALL ask before overwriting it.

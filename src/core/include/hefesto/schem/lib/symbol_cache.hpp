@@ -11,6 +11,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/file/document.hpp"
+#include "hefesto/schem/lib/schematic_symbol.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/schem/sym/symbol.hpp"
 
@@ -43,10 +45,6 @@ struct ResolveContext {
   /// `xschem-compat`, passed to the reader of symbol files.
   bool xschem_compat = true;
 };
-
-/// Nesting depth at which a schematic used as a symbol stops loading the
-/// symbols it places ("Schematic used as symbol").
-inline constexpr int kMaxSymbolDepth = 40;
 
 /// Loaded symbols keyed by resolved absolute path. A returned reference
 /// stays valid until clear(), forget() of its file, or the cache is
@@ -76,8 +74,15 @@ class SymbolCache {
   [[nodiscard]] std::size_t size() const noexcept { return symbols_.size(); }
 
  private:
-  const Symbol& resolve_at(const Reference& reference, const Document& from, const ResolveContext& context, int depth);
-  const Symbol& load(const platform::Path& file, const std::string& reference, const ResolveContext& context, int depth);
+  class SchematicLoad;
+
+  /// The file `reference` resolves to from `from` after the warnings of
+  /// "Symbol references"; empty when it names no existing file.
+  platform::Path locate(const Reference& reference, const Document& from, const ResolveContext& context);
+  const Symbol& load(const platform::Path& file, const std::string& reference, const ResolveContext& context);
+  const Symbol& load_schematic(const platform::Path& file, const std::string& reference, Document document,
+                               const ResolveContext& context);
+  std::optional<Document> read(const platform::Path& file, const std::string& reference, const ResolveContext& context);
   const Symbol* embedded(const Reference& reference, const Document& from);
   void warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic);
 
@@ -86,7 +91,6 @@ class SymbolCache {
   // block content, so unsaved documents (empty path) and edited blocks never
   // share a symbol. Map nodes keep returned references valid.
   std::multimap<std::pair<platform::Path, std::string>, Symbol> embedded_;
-  std::set<platform::Path> loading_;  // files being loaded, to stop cycles
   std::set<std::string> warned_;      // warnings already given, by key
   Symbol placeholder_;
 };

@@ -14,14 +14,13 @@ namespace hefesto::schem {
 
 namespace {
 
-int quarter_turns(int rotation) noexcept {
-  return ((rotation % 4) + 4) % 4;
+int quarter_turns(long long rotation) noexcept {
+  return static_cast<int>(((rotation % 4) + 4) % 4);
 }
 
-// "Orientation transform": x' = -x if f = 1, else x. Other flip values
-// (spec issue F5) are therefore not flipped.
+// "Orientation transform": any non-zero flip mirrors.
 bool flipped(int flip) noexcept {
-  return flip == 1;
+  return flip != 0;
 }
 
 }  // namespace
@@ -30,33 +29,34 @@ Point transform_point(const Placement& placement, Point local) noexcept {
   const double x = flipped(placement.flip) ? -local.x : local.x;
   const double y = local.y;
   Point offset;
-  switch (quarter_turns(placement.rotation)) {
+  switch (placement.rotation) {
+    case 0:
+      offset = {x, y};
+      break;
     case 1:
       offset = {-y, x};
       break;
     case 2:
       offset = {-x, -y};
       break;
-    case 3:
+    default:  // 3, and every other value, acts as 3
       offset = {y, -x};
-      break;
-    default:
-      offset = {x, y};
       break;
   }
   return {placement.origin.x + offset.x, placement.origin.y + offset.y};
 }
 
+// Rotation `(t_rot + (f != 0 and t_rot odd ? r + 2 : r)) mod 4` with r and
+// t_rot as stored, the remainder taken as 0..3; flip `t_flip XOR f`.
 TextOrientation transform_text(const Placement& placement, int rotation, int flip) noexcept {
-  const int r = quarter_turns(placement.rotation);
-  const bool f = flipped(placement.flip);
-  const int own = quarter_turns(rotation);
-  const int turn = (f && own % 2 == 1) ? r + 2 : r;
-  return {quarter_turns(own + turn), flip ^ placement.flip};
+  const long long r = placement.rotation;
+  const bool odd = rotation % 2 != 0;
+  const long long turn = (flipped(placement.flip) && odd) ? r + 2 : r;
+  return {quarter_turns(static_cast<long long>(rotation) + turn), flip ^ placement.flip};
 }
 
 double transform_arc_start(const Placement& placement, double start, double sweep) noexcept {
-  const double r = quarter_turns(placement.rotation);
+  const double r = placement.rotation;
   const double angle = flipped(placement.flip) ? std::fmod(270.0 * r + 180.0 - sweep - start, 360.0)
                                                : std::fmod(start + 270.0 * r, 360.0);
   return angle < 0.0 ? angle + 360.0 : angle;

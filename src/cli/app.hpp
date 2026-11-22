@@ -16,6 +16,9 @@ namespace hefesto::cli {
 inline constexpr int kExitOk = 0;
 inline constexpr int kExitFailure = 1;
 inline constexpr int kExitUsage = 2;
+/// `--netlist`: the netlist run reported a failure (xschem's netlist exit code;
+/// schematic-command "Headless use").
+inline constexpr int kExitNetlistFailed = 10;
 
 /// Runs the CLI with argv[1..]; returns the process exit status.
 /// Results go to `out`, diagnostics to `err`.

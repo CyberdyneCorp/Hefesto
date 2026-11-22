@@ -51,10 +51,10 @@ struct Library {
     symbols["title.sym"] = port_symbol("logo");
   }
 
-  [[nodiscard]] schem::NestedSymbol resolver() const {
-    return [this](const schem::InstanceRecord& instance) -> const schem::Symbol& {
+  [[nodiscard]] schem::NestedResolver resolver() const {
+    return [this](const schem::InstanceRecord& instance, const schem::Document&) -> schem::NestedTarget {
       const auto it = symbols.find(instance.symbol);
-      return it == symbols.end() ? missing : it->second;
+      return {nullptr, it == symbols.end() ? &missing : &it->second};
     };
   }
 };
@@ -139,11 +139,16 @@ TEST_CASE("a .sym next to the schematic orders the generated pins", kSchematicSy
   CHECK(symbol.pins[1].name == "A");
 }
 
+std::size_t record_count(const schem::Symbol& symbol) {
+  const schem::Document& d = symbol.document;
+  return d.lines.size() + d.boxes.size() + d.arcs.size() + d.polygons.size() + d.texts.size();
+}
+
 TEST_CASE("Recursion limit", kSchematicSymbol) {
   platform::MemoryFileSystem fs;
   REQUIRE(fs.write_atomic("/w/a.sch",
                           "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\n"
-                          "C {a.sch} 0 0 0 0 {name=x1}\nC {a.sch} 0 100 0 0 {name=x2}\n")
+                          "L 4 0 0 10 0 {}\nC {a.sch} 0 0 0 0 {name=x1}\n")
               .ok());
   const schem::SearchPath path{{"/w"}};
   schem::Document top;
@@ -152,10 +157,84 @@ TEST_CASE("Recursion limit", kSchematicSymbol) {
   schem::SymbolCache cache;
   const schem::Symbol& a = cache.resolve({"a.sch"}, top, {path, fs, &sink});
   CHECK_FALSE(a.placeholder);
+  CHECK(a.document.lines.size() == 40);  // levels 0 to 39
+  for (const auto& line : a.document.lines) CHECK(line == schem::LineRecord{4, {0, 0}, {10, 0}, ""});
   const auto warnings = sink.take();
   REQUIRE(warnings.size() == 1);
   CHECK(warnings[0].code == "SCHEM-LIB-005");
   CHECK(warnings[0].text == "Symbol recursively instantiating symbol: max depth reached, skipping");
+}
+
+TEST_CASE("Recursion limit: nothing after the deep instance is read at any level", kSchematicSymbol) {
+  platform::MemoryFileSystem fs;
+  REQUIRE(fs.write_atomic("/w/a.sch",
+                          "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\n"
+                          "C {a.sch} 0 0 0 0 {name=x1}\nC {b.sch} 0 0 0 0 {name=x2}\n")
+              .ok());
+  REQUIRE(fs.write_atomic("/w/b.sch", "v {xschem version=3.4.8RC file_version=1.3}\nL 4 0 0 1 1 {}\n").ok());
+  const schem::SearchPath path{{"/w"}};
+  schem::Document top;
+  top.path = "/w/top.sch";
+  schem::SymbolCache cache;
+  const schem::Symbol& a = cache.resolve({"a.sch"}, top, {path, fs, nullptr});
+  CHECK(a.document.lines.empty());  // every b.sch comes after the instance that would open level 40
+}
+
+// Input limit approved 2026-11-21 (Q-SCHEM-32): a chain of schematics that
+// each place the next twice would flatten to 2^40 records.
+TEST_CASE("Flattened size limit", "[cap:schematic-symbols-and-libraries][req:Schematic used as symbol]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    platform::MemoryFileSystem fs;
+    for (int i = 0; i < 40; ++i) {
+      std::string text = "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\nL 4 0 0 10 0 {}\n";
+      if (i < 39) {
+        const std::string next = "s" + std::to_string(i + 1) + ".sch";
+        text += "C {" + next + "} 0 0 0 0 {name=x1}\nC {" + next + "} 0 20 0 0 {name=x2}\n";
+      }
+      REQUIRE(fs.write_atomic("/w/s" + std::to_string(i) + ".sch", text).ok());
+    }
+    const schem::SearchPath path{{"/w"}};
+    schem::Document top;
+    top.path = "/w/top.sch";
+    diag::CollectingSink sink;
+    schem::SymbolCache cache;
+    const auto start = std::chrono::steady_clock::now();
+    const schem::Symbol& s0 = cache.resolve({"s0.sch"}, top, {path, fs, &sink, compat});
+    // Without the cap the 2^40 expansion never ends; with it the run takes
+    // seconds (about 90 s under ASan or TSan), so the bound is generous.
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::minutes{10});
+    CHECK(record_count(s0) == schem::kMaxFlattenedRecords);
+    const auto warnings = sink.take();
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].code == "SCHEM-LIB-009");
+    CHECK(warnings[0].text == "Symbol s0.sch: more than 1000000 records when flattened; the rest is not loaded");
+  }
+}
+
+TEST_CASE("the flattened-size limit counts generated pins and keeps what was added", kSchematicSymbol) {
+  const Library library;
+  schem::FlattenReport report;
+  const schem::Symbol symbol = schem::schematic_symbol("inv.sch", "/lib/inv.sch", inverter(), library.resolver(),
+                                                       nullptr, &report, {schem::kMaxSymbolDepth, 3});
+  CHECK(report.size_reached);
+  CHECK_FALSE(report.depth_reached);
+  CHECK(record_count(symbol) == 3);
+}
+
+TEST_CASE("Generated pins and graph boxes", kSchematicSymbol) {
+  const Library library;
+  schem::Document blk;
+  blk.instances.push_back({"ipin.sym", {40, 20}, 0, 0, "name=p1 lab=IN sig_type=std_logic"});
+  blk.boxes.push_back({2, {0, 0}, {100, 100}, "flags=graph"});
+  const schem::Symbol symbol = schem::schematic_symbol("blk.sch", "/lib/blk.sch", blk, library.resolver(), nullptr);
+  REQUIRE(symbol.pins.size() == 1);
+  CHECK(symbol.pins[0].box.layer == 5);
+  CHECK(symbol.pins[0].box.p1 == schem::Point{37.5, 17.5});
+  CHECK(symbol.pins[0].box.p2 == schem::Point{42.5, 22.5});
+  CHECK(symbol.pins[0].box.props.rfind("name=IN dir=in ", 0) == 0);
+  CHECK(symbol.pins[0].box.props.find("sig_type=std_logic") != std::string::npos);
+  for (const auto& box : symbol.document.boxes) CHECK(box.layer != 2);
 }
 
 // Regression: SYMLIB and NETLIST had their own copies of the orientation
@@ -192,8 +271,8 @@ TEST_CASE("placed graphics follow FORMAT's orientation transform",
       CHECK(placed.document.texts[0].flip == text.flip);
     }
   }
-  // "x' = -x if f = 1, else x": a flip of 2 does not mirror.
-  CHECK(schem::transform_point({{0, 0}, 0, 2}, {3, 7}) == schem::Point{3, 7});
+  // Any non-zero flip mirrors (F5), so a flip of 2 acts as 1.
+  CHECK(schem::transform_point({{0, 0}, 0, 2}, {3, 7}) == schem::Point{-3, 7});
 }
 
 // Regression: ordering the generated pins like the sibling .sym searched

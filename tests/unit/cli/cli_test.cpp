@@ -648,3 +648,71 @@ TEST_CASE("the reference-library stripper is a CLI option",
   const std::string text{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
   CHECK(text == "magic\ntech scmos\n<< end >>\n");
 }
+
+// ---- schematic-command "Headless use": hefesto-cli --netlist ----------------
+
+#define HEADLESS_TAGS "[cap:schematic-command][req:Headless use]"
+
+namespace {
+
+constexpr const char* kLabelSymbol =
+    "v {xschem version=3.4.8RC file_version=1.3}\n"
+    "K {type=label format=\"*.alias @lab\" template=\"name=l1 lab=xxx\"}\n"
+    "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=inout}\n";
+
+// One wire with a label at each end, named `left` and `right`.
+std::string two_labels(const std::string& left, const std::string& right) {
+  return "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+         "N 0 0 100 0 {}\n"
+         "C {lbl.sym} 0 0 0 0 {name=l1 lab=" +
+         left + "}\nC {lbl.sym} 100 0 0 0 {name=l2 lab=" + right + "}\n";
+}
+
+void write_file(const std::filesystem::path& p, const std::string& text) {
+  std::ofstream out(p, std::ios::binary);
+  out << text;
+}
+
+}  // namespace
+
+TEST_CASE("netlist option parsing", HEADLESS_TAGS) {
+  const auto parsed = cli::parse_args(Args{"--netlist", "inv.sch", "--lvs", "--pdk", "sky130A", "-o", "inv.spice"});
+  REQUIRE_FALSE(parsed.error.has_value());
+  REQUIRE(parsed.options.netlist.has_value());
+  CHECK(*parsed.options.netlist == cli::NetlistRequest{"inv.sch", "inv.spice", true, "sky130A"});
+  CHECK_FALSE(cli::parse_args(Args{"-c", "echo"}).options.netlist.has_value());
+  CHECK(cli::parse_args(Args{"-o", "x.spice"}).error.has_value());
+  CHECK(cli::parse_args(Args{"--lvs"}).error.has_value());
+  CHECK(cli::parse_args(Args{"--netlist", "a.sch", "-c", "echo"}).error.has_value());
+  CHECK(cli::parse_args(Args{"--netlist"}).error.has_value());
+}
+
+TEST_CASE("CI netlist check", HEADLESS_TAGS) {
+  ScratchDir dir;
+  write_file(dir.path() / "lbl.sym", kLabelSymbol);
+  write_file(dir.path() / "inv.sch", two_labels("A", "A"));
+  const std::string out = (dir.path() / "inv.spice").string();
+  const std::string sch = (dir.path() / "inv.sch").string();
+  // The files must lie in the sandbox's granted folders: here the project.
+  const std::string project = "--project=" + dir.str();
+  const Run r = run_cli({"--no-log", project, "--netlist", sch, "--lvs", "-o", out});
+  CHECK(r.status == cli::kExitOk);
+  CHECK(read_file(out).find(".subckt inv") != std::string::npos);  // --lvs: the top level is a .subckt
+  // Without -o the netlist goes to stdout.
+  const Run to_stdout = run_cli({"--no-log", project, "--netlist", sch});
+  CHECK(to_stdout.status == cli::kExitOk);
+  CHECK(to_stdout.out.find(".end") != std::string::npos);
+}
+
+TEST_CASE("netlist option: exits 10 on a failed netlist run and 1 on other errors", HEADLESS_TAGS) {
+  ScratchDir dir;
+  write_file(dir.path() / "lbl.sym", kLabelSymbol);
+  write_file(dir.path() / "short.sch", two_labels("A", "B"));
+  const std::string sch = (dir.path() / "short.sch").string();
+  const std::string project = "--project=" + dir.str();
+  const Run shorted = run_cli({"--no-log", project, "--netlist", sch});
+  CHECK(shorted.status == cli::kExitNetlistFailed);
+  CHECK(shorted.err.find("shorted") != std::string::npos);
+  const std::string missing = (dir.path() / "missing.sch").string();
+  CHECK(run_cli({"--no-log", project, "--netlist", missing}).status == cli::kExitFailure);
+}

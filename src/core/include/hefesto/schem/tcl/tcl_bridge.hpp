@@ -31,13 +31,20 @@ struct TclContext {
   std::string symname;       // `@tcleval` only: the symbol reference
 };
 
+/// Steps 1 and 2 of "tcleval values": every `\}` replaced by `}`, then the
+/// leading `tcleval(` and the last `)` (with the blanks after it) removed.
+[[nodiscard]] std::string tcleval_body(std::string_view value);
+
 class TclBridge {
  public:
   /// `interpreter` is the sandboxed interpreter holding the inventoried
   /// procedures; nullptr makes every evaluation fail. Not owned.
   explicit TclBridge(script::Interpreter* interpreter = nullptr) noexcept : interpreter_(interpreter) {}
 
-  /// Evaluates a value that begins with `tcleval(`; kTclFailure on failure.
+  /// Evaluates a value that begins with `tcleval(` ("tcleval values" steps
+  /// 1-5): sets the globals `path` and `sch_basename` (and `instname` and
+  /// `symname` when the context gives them, else unsets them), then runs the
+  /// body as `subst {<body>}` at global level. kTclFailure on failure.
   [[nodiscard]] std::string evaluate(std::string_view value, const TclContext& context) const;
 
  private:

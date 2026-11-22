@@ -7,6 +7,7 @@
 
 #include "numbers.hpp"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cmath>
@@ -71,6 +72,25 @@ std::optional<Parsed<int>> parse_c_int(std::string_view text) {
     return std::nullopt;
   }
   return Parsed<int>{static_cast<int>(negative ? -value : value), i};
+}
+
+int atoi_clamped(std::string_view text) noexcept {
+  std::size_t i = text.find_first_not_of(" \t\n\v\f\r");
+  if (i == std::string_view::npos) {
+    return 0;
+  }
+  bool negative = false;
+  if (text[i] == '+' || text[i] == '-') {
+    negative = text[i] == '-';
+    ++i;
+  }
+  constexpr std::int64_t kMax = std::numeric_limits<int>::max();
+  const std::int64_t limit = negative ? kMax + 1 : kMax;
+  std::int64_t value = 0;
+  for (; i < text.size() && is_digit(text[i]); ++i) {
+    value = std::min(limit, value * 10 + (text[i] - '0'));
+  }
+  return static_cast<int>(negative ? -value : value);
 }
 
 std::string format_g16(double value) {
