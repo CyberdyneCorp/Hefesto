@@ -62,8 +62,9 @@
 #
 # `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
 # only when a DRC path changed, the GDS jobs only when a GDS, mask, CIF or use-index path
-# changed, lefdef-bench only when a LEF or DEF path changed and oasis-bench only when an OASIS
-# path changed; on main, the schedule and workflow_dispatch every job runs.
+# changed, lefdef-bench only when a LEF, DEF, cell, db, tech or GDS stream path changed and
+# oasis-bench only when an OASIS or GDS read/write/stream path changed (the workflow-level path
+# lists carry cell/** and tech/** so such a pull request starts the workflow at all); on main, the schedule and workflow_dispatch every job runs.
 
 name: Performance
 
@@ -99,6 +100,10 @@ on:
       - src/core/src/def/**
       - src/core/include/hefesto/oasis/**
       - src/core/src/oasis/**
+      - src/core/include/hefesto/cell/**
+      - src/core/src/cell/**
+      - src/core/include/hefesto/tech/**
+      - src/core/src/tech/**
       - bench/lefdef/**
       - bench/oasis/**
       - .github/workflows/perf.yml
@@ -131,6 +136,10 @@ on:
       - src/core/src/def/**
       - src/core/include/hefesto/oasis/**
       - src/core/src/oasis/**
+      - src/core/include/hefesto/cell/**
+      - src/core/src/cell/**
+      - src/core/include/hefesto/tech/**
+      - src/core/src/tech/**
       - bench/lefdef/**
       - bench/oasis/**
       - .github/workflows/perf.yml
