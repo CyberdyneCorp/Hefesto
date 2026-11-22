@@ -1,0 +1,10 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+abstract
+port "A" 1 5 2 5 2 m1
+node "A" 0 0 5 2 m1
+node "VSUB" 0 0 -1073741817 -1073741817 space
