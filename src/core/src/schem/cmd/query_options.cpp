@@ -90,12 +90,19 @@ std::optional<NetlistOptions> netlist_options(cmd::CommandContext& ctx, const Pa
 
 // Stores the computed `lab` values (Q-SCHEM-29) in the open documents they
 // belong to, without marking them modified ("Document and session state").
+// A label targets a wire or an instance (ComputedLabel::target).
+std::string* label_props(Document& document, const ComputedLabel& label) {
+  if (label.target == LabelTarget::wire) {
+    return label.instance < document.wires.size() ? &document.wires[label.instance].props : nullptr;
+  }
+  return label.instance < document.instances.size() ? &document.instances[label.instance].props : nullptr;
+}
+
 void apply_labels(Session& session, const std::vector<ComputedLabel>& labels) {
   for (const ComputedLabel& label : labels) {
     for (OpenDocument& open : session.documents) {
-      if (open.document.path != label.schematic || label.instance >= open.document.instances.size()) continue;
-      std::string& props = open.document.instances[label.instance].props;
-      props = set_token(props, "lab", label.lab);
+      std::string* props = open.document.path == label.schematic ? label_props(open.document, label) : nullptr;
+      if (props != nullptr) *props = set_token(*props, "lab", label.lab);
     }
   }
 }

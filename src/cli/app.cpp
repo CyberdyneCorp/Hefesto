@@ -285,6 +285,11 @@ class Session {
       wrapper_display_ = display.ok() && !display.value().headless;
     }
     run_startup(startup);
+    if (options_.netlist) {
+      const int netlist_status = run_netlist(*options_.netlist);
+      log(diag::Severity::info, "session end exit=" + std::to_string(netlist_status));
+      return netlist_status;
+    }
     const bool ok = script_session_.quit_requested || run_sources();
     magic_console_.flush();
     cell::end_crash_session(editor_, services_.files());  // normal exit: drop this session's backup and lock
@@ -502,6 +507,38 @@ class Session {
       return {source.value, false, true, false, origin};
     }
     return {source.value, true, false, true, origin};
+  }
+
+  cmd::CommandResult schematic(std::vector<std::string> args) {
+    return dispatcher_->execute({"schematic", std::move(args), cmd::Origin::script, std::nullopt});
+  }
+
+  // `--netlist` (schematic-command "Headless use"): `schematic pdk`, `open`
+  // and `netlist`; 10 when the netlist run fails (SCHEM-CMD-005), 1 for any
+  // other error. The commands' diagnostics go to stderr like a script's.
+  int run_netlist(const NetlistRequest& request) {
+    if (request.pdk && !schematic({"pdk", *request.pdk}).ok()) {
+      return kExitFailure;
+    }
+    if (!schematic({"open", request.schematic}).ok()) {
+      return kExitFailure;
+    }
+    std::vector<std::string> args{"netlist"};
+    if (request.output) {
+      args.push_back(*request.output);
+    }
+    if (request.lvs) {
+      args.insert(args.end(), {"-lvs", "-lvsignore"});
+    }
+    const cmd::CommandResult result = schematic(std::move(args));
+    if (result.ok()) {
+      if (!request.output) {
+        std::fputs(result.value.to_string().c_str(), out_);
+      }
+      return kExitOk;
+    }
+    const bool netlist_failed = !result.diagnostics.empty() && result.diagnostics.back().code == "SCHEM-CMD-005";
+    return netlist_failed ? kExitNetlistFailed : kExitFailure;
   }
 
   // Runs every source in order; stops at an aborted script or `quit`.

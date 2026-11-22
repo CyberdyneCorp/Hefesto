@@ -106,8 +106,9 @@ TEST_CASE("xschem set accepts GUI variables and maps netlist_name onto the next 
   open_two_instances(s);
   CHECK(caught(s, "xschem set cadsnap 10") == "0 {}");
   CHECK(caught(s, "xschem set netlist_name custom.spice") == "0 {}");
-  // Until NETLIST lands the run fails: xschem returns 1 and raises nothing.
-  CHECK(caught(s, "xschem netlist") == "0 1");
+  // A successful run returns 0 and writes the file named by netlist_name.
+  CHECK(caught(s, "xschem netlist") == "0 0");
+  CHECK(s.folder().read("w/custom.spice").find(".end") != std::string::npos);
 }
 
 TEST_CASE("Launcher saves and netlists: xschem save writes only a modified document", kXschem) {
@@ -117,9 +118,24 @@ TEST_CASE("Launcher saves and netlists: xschem save writes only a modified docum
   CHECK(caught(s, "xschem save") == "0 {}");
   CHECK(s.folder().read("w/top.sch") == original);  // not modified: nothing written
   s.schem().documents.back().document.modified = true;
-  CHECK(caught(s, "xschem set netlist_type spice; xschem save; xschem netlist") == "0 1");
+  CHECK(caught(s, "xschem set netlist_type spice; xschem save") == "0 {}");
   CHECK(s.folder().read("w/top.sch") == schem::write_document(s.schem().documents.back().document));
   CHECK_FALSE(s.schem().documents.back().document.modified);
+  CHECK(caught(s, "xschem netlist") == "0 0");
+  CHECK(s.folder().read("w/top.spice").find(".end") != std::string::npos);
+}
+
+// Regression: the computed lab values of a netlist run (Q-SCHEM-29) were all
+// stored on instances, so a wire's net name landed on the instance with the
+// wire's index. They now go to the wire or instance ComputedLabel names.
+TEST_CASE("computed lab values are stored on wires, not on the instance with the wire's index", kXschem) {
+  SchemSession s;
+  open_two_instances(s);
+  REQUIRE(s.schematic({"netlist"}).ok());
+  const schem::Document& document = s.schem().documents.back().document;
+  CHECK(document.instances[0].props == "name=R1 value=1k");
+  CHECK(document.wires[0].props.find("lab=") != std::string::npos);
+  CHECK_FALSE(document.modified);
 }
 
 TEST_CASE("xschem load and load_new_window open documents", kXschem) {

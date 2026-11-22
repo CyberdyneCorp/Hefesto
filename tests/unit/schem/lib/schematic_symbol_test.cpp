@@ -269,8 +269,8 @@ TEST_CASE("placed graphics follow FORMAT's orientation transform",
       CHECK(placed.document.texts[0].flip == text.flip);
     }
   }
-  // "x' = -x if f = 1, else x": a flip of 2 does not mirror.
-  CHECK(schem::transform_point({{0, 0}, 0, 2}, {3, 7}) == schem::Point{3, 7});
+  // Any non-zero flip mirrors (F5), so a flip of 2 acts as 1.
+  CHECK(schem::transform_point({{0, 0}, 0, 2}, {3, 7}) == schem::Point{-3, 7});
 }
 
 // Regression: ordering the generated pins like the sibling .sym searched

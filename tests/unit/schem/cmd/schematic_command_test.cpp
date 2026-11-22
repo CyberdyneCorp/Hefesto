@@ -325,16 +325,26 @@ TEST_CASE("errors raise a script error that catch sees", kScripts) {
 }
 
 TEST_CASE("a failed netlist run raises an error with the error list", kScripts) {
+  // "Netlist error in a script": two labels name one wire A and B, so the
+  // run reports the short and fails (Q-SCHEM-16).
   SchemSession s;
-  open_two_instances(s);
+  s.folder().write("w/lbl.sym",
+                   "v {xschem version=3.4.8RC file_version=1.3}\n"
+                   "K {type=label format=\"*.alias @lab\" template=\"name=l1 lab=xxx\"}\n"
+                   "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=inout}\n");
+  s.folder().write("w/top.sch",
+                   "v {xschem version=3.4.8RC file_version=1.3}\n"
+                   "G {}\nK {}\nV {}\nS {}\nE {}\n"
+                   "N 0 0 100 0 {}\n"
+                   "C {lbl.sym} 0 0 0 0 {name=l1 lab=A}\n"
+                   "C {lbl.sym} 100 0 0 0 {name=l2 lab=B}\n");
+  REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
   const auto caught = s.tcl("list [catch {schematic netlist} msg] $msg");
   REQUIRE(caught.ok());
   CHECK(caught.value.to_string().rfind("1 ", 0) == 0);
-  // Until NETLIST's netlist() lands, the run fails with CORE-NOTIMPL-007 and
-  // that text is the error list ("Netlist error in a script" with `shorted`
-  // waits for task 8.4).
-  CHECK(caught.value.to_string().find("not implemented yet: schem::netlist") != std::string::npos);
+  CHECK(caught.value.to_string().find("shorted: A - B") != std::string::npos);
   const auto direct = s.schematic({"netlist"});
+  CHECK(direct.raises);
   CHECK(direct.diagnostics.back().code == "SCHEM-CMD-005");
 }
 
