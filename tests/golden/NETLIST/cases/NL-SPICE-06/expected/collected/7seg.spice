@@ -1,0 +1,15 @@
+* SPICE3 file created from 7seg.ext - technology: nltest
+
+.option scale=10n
+
+.subckt x7seg long_port_name_number_00 long_port_name_number_01 long_port_name_number_02
++ long_port_name_number_03 long_port_name_number_04 long_port_name_number_05 long_port_name_number_06
++ long_port_name_number_07 long_port_name_number_08 long_port_name_number_09 long_port_name_number_10
++ long_port_name_number_11 long_port_name_number_12 long_port_name_number_13 long_port_name_number_14
++ long_port_name_number_15 long_port_name_number_16 long_port_name_number_17 long_port_name_number_18
++ long_port_name_number_19 long_port_name_number_20 long_port_name_number_21 long_port_name_number_22
++ long_port_name_number_23 long_port_name_number_24 long_port_name_number_25 long_port_name_number_26
++ long_port_name_number_27 long_port_name_number_28 long_port_name_number_29
+M1000 long_port_name_number_02 long_port_name_number_00 long_port_name_number_01 GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+.ends

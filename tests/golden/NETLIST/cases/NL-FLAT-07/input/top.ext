@@ -1,0 +1,17 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "net" 0 0 0 1 1 metal1
+port "net_uq1" 1 10 0 11 1 metal1
+port "Vdd" 2 20 0 21 1 metal1
+port "VDD" 3 30 0 31 1 metal1
+node "net" 0 1 0 0 metal1 0 0 0 0 0 0
+node "net_uq1" 0 1 10 0 metal1 0 0 0 0 0 0
+node "Vdd" 0 1 20 0 metal1 0 0 0 0 0 0
+node "VDD" 0 1 30 0 metal1 0 0 0 0 0 0
+equiv "net" "net_uq1"
+equiv "Vdd" "VDD"
+device mosfet nfet 0 0 2 4 2 4 "GND!" "net" 8 0 "Vdd" 4 0 "net" 4 0

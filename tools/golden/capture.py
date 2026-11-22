@@ -10,6 +10,18 @@ For each case directory: validate case.toml, copy input/ to a scratch work
 directory, run the pinned reference tool there (TZ=UTC, LC_ALL=C), and write
 every declared output plus provenance.json into the case's expected/.
 
+Each case runs in a fresh session: its own scratch directory and its own run of the
+tool (a new container), never a session shared with another case (m5 design D18;
+m7-extraction D21, Q-NETLIST-16, Q-NETLIST-46).
+
+``[[collect]]`` entries (goldenlib/collect.py) add the files the run wrote whose names
+match a pattern (``*.ext``, ``*.spice``, ``*.sim``, ``*.al``, ``*.nodes``, ``*.res.ext``,
+``*.res.lump``, ``*.fh`` for M7) as ``expected/collected/<path>``; --verify fails when the
+set of collected files differs. An external-command case (``[reference] mode =
+"external-command"``, goldenlib/external_command.py) runs the program its
+``input/command.toml`` names; its exit status is an output, so a non-zero status is
+captured, not a failure.
+
 Usage:
     capture.py [--runner container|local|model] [--image REF] [--gl-image REF] CASE_DIR...
     capture.py --check CASE_DIR...      validate only, run nothing
@@ -49,7 +61,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from compare import COMPARATORS, compare_bytes
+from compare import COMPARATORS, compare_bytes, compare_collected
+from goldenlib import collect
 from goldenlib.case import RUN_SOURCES, Case, CaseError, image_variant, load_case, run_output
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
@@ -68,7 +81,10 @@ def captured_at() -> str:
     return moment.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def collect_outputs(case: Case, work: Path, result: RunResult) -> dict[str, bytes]:
+def collect_outputs(case: Case, work: Path, result: RunResult,
+                    before: dict[str, str] | None = None) -> dict[str, bytes]:
+    """The declared outputs of a run, then its ``[[collect]]`` files (``before``: the work
+    directory's snapshot taken just before the run)."""
     outputs = {}
     for out in case.outputs:
         if out.source in RUN_SOURCES:
@@ -80,7 +96,15 @@ def collect_outputs(case: Case, work: Path, result: RunResult) -> dict[str, byte
                               f"stdout: {result.stdout.decode(errors='replace')[-1500:]}\n"
                               f"stderr: {result.stderr.decode(errors='replace')[-1500:]}")
         outputs[out.name] = data
+    for name, (_, data) in collect.gather(work, before or {}, case.collect).items():
+        outputs[name] = data
     return outputs
+
+
+def allows_nonzero_exit(case: Case) -> bool:
+    """Whether a non-zero exit status is part of the case: ``allow_nonzero_exit``, or an
+    external-command case (its exit status is compared)."""
+    return case.command is not None or bool(case.reference.get("allow_nonzero_exit", False))
 
 
 def provenance(case: Case, pins: dict, runner_name: str, result: RunResult, outputs: dict[str, bytes]) -> dict:
@@ -113,13 +137,14 @@ def run_reference(case: Case, runner, raw: RawKeep | None = None) -> tuple[RunRe
             raise RunnerError(f"{case.id}: external input unavailable: {error}") from error
         if raw is not None:
             raw.prepare(case, work)
+        before = collect.snapshot(work) if case.collect else {}
         result = runner.run(case, work)
         if raw is not None:
             print(f"{case.id}: raw outputs in {raw.keep(case.id, work, result.stdout, result.stderr)}")
-        if result.returncode != 0 and not case.reference.get("allow_nonzero_exit", False):
+        if result.returncode != 0 and not allows_nonzero_exit(case):
             raise RunnerError(f"{case.id}: reference tool exited {result.returncode}:\n"
                               f"{result.stderr.decode(errors='replace')[-2000:]}")
-        return result, collect_outputs(case, work, result)
+        return result, collect_outputs(case, work, result, before)
 
 
 def write_expected(case: Case, prov: dict, outputs: dict[str, bytes]) -> None:
@@ -127,7 +152,9 @@ def write_expected(case: Case, prov: dict, outputs: dict[str, bytes]) -> None:
         shutil.rmtree(case.expected_dir)
     case.expected_dir.mkdir()
     for name, data in outputs.items():
-        (case.expected_dir / name).write_bytes(data)
+        target = case.expected_dir / name
+        target.parent.mkdir(parents=True, exist_ok=True)  # collected/<path>
+        target.write_bytes(data)
     text = json.dumps(prov, indent=2, sort_keys=False) + "\n"
     (case.expected_dir / "provenance.json").write_text(text, encoding="utf-8")
 
@@ -142,6 +169,21 @@ def verify_expected(case: Case, outputs: dict[str, bytes]) -> list[str]:
         result = compare_bytes(path.read_bytes(), outputs[out.name], out.comparator, out.masks)
         if not result.equal:
             problems.append(f"{out.name}: {result.detail}")
+    return problems + verify_collected(case, outputs)
+
+
+def verify_collected(case: Case, outputs: dict[str, bytes]) -> list[str]:
+    """The ``[[collect]]`` differences: another set of files, or a file that compares unequal."""
+    if not case.collect:
+        return []
+    committed = collect.expected_files(case.expected_dir)
+    fresh = {name for name in outputs if name.startswith(collect.PREFIX)}
+    difference = collect.set_difference(set(committed), fresh)
+    problems = [f"collected files differ: {difference}"] if difference else []
+    for name in sorted(set(committed) & fresh):
+        detail = compare_collected(case.collect, name, committed[name].read_bytes(), outputs[name])
+        if detail:
+            problems.append(f"{name}: {detail}")
     return problems
 
 
@@ -168,7 +210,8 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
     if args.check:
         variant = image_variant(case)
         suffix = f", image {variant}" if variant else ""
-        print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool}{suffix})")
+        collected = f", {len(case.collect)} collect pattern(s)" if case.collect else ""
+        print(f"{case.id}: valid ({len(case.outputs)} output(s){collected}, tool {case.tool}{suffix})")
         return True
     image = case_image(case, args)
     if image is None:

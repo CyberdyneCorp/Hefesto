@@ -25,6 +25,10 @@ milestone of docs/roadmap.md that brings it, instead of or beside
 
 Every entry needs at least one decision or a ``deferred`` milestone.
 
+An output name may also be a pattern over the case's collected outputs (``[[collect]]``,
+goldenlib/collect.py), such as ``collected/*`` or ``collected/*.spice``: it covers every
+``collected/<path>`` it matches (fnmatch), including one written by only one side.
+
 replay.py reports such a case as ``deviation`` (skipped, not passed) when
 only the listed outputs differ. It still fails when any other output
 differs, and it fails when the case passes, so a stale entry is removed
@@ -35,6 +39,7 @@ outputs (``check``), and each decision must be a heading in ``docs/decisions``
 """
 from __future__ import annotations
 
+import fnmatch
 import re
 import tomllib
 from dataclasses import dataclass
@@ -64,6 +69,14 @@ class Deviation:
 
     def describe(self) -> str:
         return f"documented deviation ({self.basis()}): {self.reason}"
+
+    def covers(self, output_name: str) -> bool:
+        """Whether the entry lists ``output_name``, or a ``collected/`` pattern matches it."""
+        return any(output_name == name or (name.startswith(COLLECTED) and fnmatch.fnmatchcase(output_name, name))
+                   for name in self.outputs)
+
+
+COLLECTED = "collected/"  # goldenlib/collect.py PREFIX
 
 
 def _strings(entry: dict, key: str, case_id: str) -> tuple[str, ...]:
@@ -105,9 +118,11 @@ def load(golden_root: Path) -> dict[str, Deviation]:
     return parse(path.read_text(encoding="utf-8")) if path.is_file() else {}
 
 
-def check(deviation: Deviation, output_names: list[str]) -> None:
-    """Raise DeviationError when the entry names an output the case lacks."""
-    missing = [name for name in deviation.outputs if name not in output_names]
+def check(deviation: Deviation, output_names: list[str], collects: bool = False) -> None:
+    """Raise DeviationError when the entry names an output the case lacks (a ``collected/`` pattern
+    needs a case with ``[[collect]]`` entries, ``collects``)."""
+    missing = [name for name in deviation.outputs
+               if name not in output_names and not (collects and name.startswith(COLLECTED))]
     if missing:
         raise DeviationError(f"{FILE_NAME} [{deviation.case_id}]: no such outputs {missing}")
 
@@ -124,7 +139,7 @@ def classify(deviation: Deviation | None, failed_outputs: list[str]) -> tuple[st
     if not failed_outputs:
         return "fail", (f"listed in {FILE_NAME} ({deviation.basis()}) but every output "
                         f"now matches: remove the entry")
-    unexpected = [name for name in failed_outputs if name not in deviation.outputs]
+    unexpected = [name for name in failed_outputs if not deviation.covers(name)]
     if unexpected:
         return "fail", f"outputs outside the documented deviation differ: {', '.join(unexpected)}"
     return "deviation", deviation.describe()

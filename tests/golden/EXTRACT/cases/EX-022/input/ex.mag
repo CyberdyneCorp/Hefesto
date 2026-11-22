@@ -1,0 +1,11 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 10 20
+rect 11 0 21 20
+<< labels >>
+rlabel metal1 10 10 11 10 0 onA
+rlabel metal1 11 10 11 10 0 onB
+rlabel metal1 40 40 40 40 0 orphan
+<< end >>

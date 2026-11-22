@@ -373,7 +373,9 @@ TEST_CASE("ext2spice scale is a setting", "[cap:scripting-pdk-integration][req:C
   CHECK_FALSE(bad.ok());
   const auto later = s.dispatcher->execute({"ext2spice", {"hierarchy", "on"}, hefesto::cmd::Origin::script, std::nullopt});
   REQUIRE_FALSE(later.ok());
-  CHECK(later.diagnostics.front().code == "UI-CLIENT-002");  // the netlist writer arrives in M7
+  // The M7 scaffold registers the full option table; the option is a stub
+  // until SPICE lands it (openspec/changes/m7-extraction tasks.md 3.3).
+  CHECK(later.diagnostics.front().code == "CORE-NOTIMPL-008");
 }
 
 TEST_CASE("Portable library reference", "[cap:scripting-pdk-integration][req:PDK-relative paths in saved files]") {

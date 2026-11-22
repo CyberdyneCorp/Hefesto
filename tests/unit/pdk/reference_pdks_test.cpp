@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -113,5 +114,75 @@ TEST_CASE("reference data lookups use only the exact pinned install",
     tst::PinnedPdk missing_library = tst::kGf180mcuD;
     missing_library.library = "gf180mcu_fd_sc_not_fetched";
     CHECK_FALSE(tst::pinned_variant(missing_library));
+  }
+}
+
+// The standard-cell inputs of the M7 PDK golden cases (openspec/changes/m7-extraction design D21, Open
+// Question 4 (a), task 2.1): sky130_fd_sc_hd and gf180mcu_fd_sc_mcu7t5v0 from the .mag sets, sg13g2_stdcell
+// from the ihp-gds-sc set. The path checks run only on a leg that has the set; the counts are the pins'.
+namespace {
+
+std::size_t count_mag_files(const fs::path& dir) {
+  std::size_t n = 0;
+  for (const auto& entry : fs::directory_iterator(dir)) {
+    n += entry.is_regular_file() && entry.path().extension() == ".mag" ? 1U : 0U;
+  }
+  return n;
+}
+
+}  // namespace
+
+TEST_CASE("standard-cell helpers name the M7 PDK libraries and their extract defaults",
+          "[cap:hefesto-testing-strategy][req:Golden compatibility suite]") {
+  CHECK(tst::pinned_stdcell("sky130_fd_sc_hd") == &tst::kSky130FdScHd);
+  CHECK(tst::pinned_stdcell("gf180mcu_fd_sc_mcu7t5v0") == &tst::kGf180mcu7t5v0);
+  CHECK(tst::pinned_stdcell("sg13g2_stdcell") == &tst::kSg13g2Stdcell);
+  CHECK(tst::pinned_stdcell("sky130_fd_sc_hs") == nullptr);
+  for (const auto* cell : {&tst::kSky130FdScHd, &tst::kGf180mcu7t5v0, &tst::kSg13g2Stdcell}) {
+    CHECK(cell->extract_style == "ngspice()");
+    CHECK(cell->tech_format == 35);
+  }
+  CHECK(tst::kSky130FdScHd.cells == 446);
+  CHECK(tst::kGf180mcu7t5v0.cells == 229);
+  CHECK(tst::kSg13g2Stdcell.cells == 84);
+  // IHP ships no .mag standard cells, and an unknown library has no path.
+  CHECK_FALSE(tst::pinned_stdcell_mag("sg13g2_stdcell"));
+  CHECK_FALSE(tst::pinned_stdcell_mag("sky130_fd_sc_hs"));
+  CHECK_FALSE(tst::pinned_stdcell_gds("sky130_fd_sc_hs"));
+}
+
+TEST_CASE("standard-cell .mag helpers return the pinned libraries with the confirmed cell counts",
+          "[cap:hefesto-testing-strategy][req:Golden compatibility suite]") {
+  int found = 0;
+  for (const auto* cell : {&tst::kSky130FdScHd, &tst::kGf180mcu7t5v0}) {
+    const auto dir = tst::pinned_stdcell_mag(cell->gds->library);
+    if (!dir) {
+      continue;
+    }
+    ++found;
+    CHECK(*dir == *tst::pinned_library(*cell->pdk));
+    CHECK(dir->filename() == "mag");
+    CHECK(count_mag_files(*dir) == cell->cells);
+  }
+  if (found == 0) {
+    SKIP("neither .mag set in .cache/pdks (scripts/fetch_pdk.py sky130 gf180mcu)");
+  }
+}
+
+TEST_CASE("standard-cell GDS helpers return the pinned *-gds-sc files",
+          "[cap:hefesto-testing-strategy][req:Golden compatibility suite]") {
+  int found = 0;
+  for (const auto* cell : {&tst::kSky130FdScHd, &tst::kGf180mcu7t5v0, &tst::kSg13g2Stdcell}) {
+    const std::string lib{cell->gds->library};
+    const auto file = tst::pinned_stdcell_gds(lib);
+    if (!file) {
+      continue;
+    }
+    ++found;
+    CHECK(*file == *tst::pinned_gds(*cell->gds));
+    CHECK(file->filename() == lib + ".gds");
+  }
+  if (found == 0) {
+    SKIP("no *-gds-sc set in .cache/pdks/gds (scripts/fetch_pdk.py sky130-gds-sc gf180mcu-gds-sc ihp-gds-sc)");
   }
 }

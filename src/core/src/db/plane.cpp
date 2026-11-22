@@ -15,10 +15,6 @@
 
 namespace hefesto::db {
 
-struct Plane::Impl {
-  detail::TilePlane tiles;
-};
-
 namespace {
 
 diag::Status check_area(const Rect& area) {
@@ -36,7 +32,9 @@ detail::Body exact_of(Diagonal diagonal, bool right_side) noexcept {
          (right_side ? detail::kSideBit : 0U);
 }
 
-TileView view_of(const detail::Tile* t, detail::Body dinfo) {
+}  // namespace
+
+TileView detail::view_of(const detail::Tile* t, detail::Body dinfo) {
   TileView v;
   v.area = detail::tile_rect(t);
   v.tile = t;
@@ -52,6 +50,8 @@ TileView view_of(const detail::Tile* t, detail::Body dinfo) {
   v.type = v.right_side ? v.right_type : v.left_type;
   return v;
 }
+
+namespace {
 
 /// The search area clamped to the plane: the boundary tiles have no
 /// neighbours beyond them, so an area out to +-kInfinity must stop there.
@@ -125,7 +125,7 @@ bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, TileVi
     return true;
   }
   return !detail::search_area(impl_->tiles, area, types,
-                              [&](detail::Tile* t, detail::Body dinfo) { return !visit(view_of(t, dinfo)); });
+                              [&](detail::Tile* t, detail::Body dinfo) { return !visit(detail::view_of(t, dinfo)); });
 }
 
 bool Plane::enumerate_triangle(const Rect& unclamped, Diagonal diagonal, bool right_side, const tech::TypeMask& types,
@@ -135,7 +135,7 @@ bool Plane::enumerate_triangle(const Rect& unclamped, Diagonal diagonal, bool ri
     return true;
   }
   return !detail::search_nm_area(impl_->tiles, exact_of(diagonal, right_side), area, types,
-                                 [&](detail::Tile* t, detail::Body dinfo) { return !visit(view_of(t, dinfo)); });
+                                 [&](detail::Tile* t, detail::Body dinfo) { return !visit(detail::view_of(t, dinfo)); });
 }
 
 namespace {
@@ -154,7 +154,7 @@ bool first_view(detail::Tile* t, const Rect& rect, TileView& out) {
   if (detail::is_split(t->body) && !detail::first_split_side(t, rect, dinfo)) {
     return false;
   }
-  out = view_of(t, dinfo);
+  out = detail::view_of(t, dinfo);
   return true;
 }
 
@@ -226,7 +226,7 @@ TileView Plane::tile_at(Point p, const TileView* near) const {
   if (in_usable_plane(square)) {
     detail::Tile* t = detail::goto_point(start_tile(near, impl_->tiles), p);
     if (!detail::is_split(t->body)) {
-      return view_of(t, 0);
+      return detail::view_of(t, 0);
     }
     if (first_view(t, square, found)) {
       return found;
@@ -298,6 +298,37 @@ std::size_t Plane::tile_count() const {
   std::size_t n = 0;
   impl_->tiles.for_each_tile([&](const detail::Tile*) { ++n; });
   return n;
+}
+
+namespace {
+
+detail::Tile* tile_of(const TileView& t) noexcept {
+  // The plane's tiles are mutable records; the slot is run-scoped scratch.
+  return const_cast<detail::Tile*>(static_cast<const detail::Tile*>(t.tile));  // NOLINT
+}
+
+}  // namespace
+
+std::uintptr_t Plane::client(const TileView& t) const noexcept {
+  return t.tile != nullptr ? tile_of(t)->client : kClientDefault;
+}
+
+void Plane::set_client(const TileView& t, std::uintptr_t value) const noexcept {
+  if (t.tile != nullptr) {
+    tile_of(t)->client = value;
+  }
+}
+
+void Plane::reset_clients(const Rect& unclamped, std::uintptr_t value) const noexcept {
+  const Rect area = clamp_to_plane(unclamped);
+  if (area.x0 >= area.x1 || area.y0 >= area.y1) {
+    return;
+  }
+  detail::Tile* tile = detail::area_first(impl_->tiles, area);
+  while (tile != nullptr) {
+    tile->client = value;
+    tile = detail::area_next(tile, area, std::min(detail::top(tile), area.y1));
+  }
 }
 
 }  // namespace hefesto::db

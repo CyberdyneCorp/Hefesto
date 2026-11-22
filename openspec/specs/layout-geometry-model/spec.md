@@ -277,6 +277,7 @@ Magic stores each plane as a corner-stitched tile plane and the subcells of a ce
 Compatibility: informative
 
 - Magic tile: lower-left point, type word (bit 30 = split, bit 28 = `\` direction, bits 0..13 left type, bits 14..27 right type; bit 29 is a transient "side" flag), four corner stitches. Top/right coordinates are derived from neighbours. Each plane carries a "hint" tile for locality of searches.
+- Hefesto tiles also carry Magic's `ti_client` scratch word (the extractor's client slot, m7-extraction design D6); it is not part of a plane's value.
 - Paint is performed by splitting tiles at the paint boundary, changing types via a result table, and re-merging (see `layout-paint-semantics`).
 - Interrupting a long paint or search (a user interrupt in Magic) may leave a partially applied operation; Hefesto SHALL make paint operations atomic. See Q-MODEL-27.
 

@@ -20,7 +20,8 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(prog="python3 -m compare", description=__doc__.split("\n", 1)[0])
     parser.add_argument("expected", type=Path)
     parser.add_argument("actual", type=Path)
-    parser.add_argument("--comparator", default="bytes", choices=sorted(COMPARATORS))
+    parser.add_argument("--comparator", default="bytes",
+                        help="one of " + ", ".join(sorted(COMPARATORS)) + "; spice-cap:<node>[,<node>...]")
     parser.add_argument("--mask", action="append", default=[], help="mask name (repeatable)")
     parser.add_argument("--display", choices=sorted(DISPLAYS), help="render a difference with this view")
     args = parser.parse_args(argv)

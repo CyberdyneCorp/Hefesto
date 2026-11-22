@@ -1,0 +1,6 @@
+
+Warning: Extraction Style exttest
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2, metal3, mimcap, oxide,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3, metal3=4, mimcap=5, oxide=6,

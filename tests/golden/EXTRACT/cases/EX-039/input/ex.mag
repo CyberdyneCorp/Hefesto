@@ -1,0 +1,11 @@
+magic
+tech exttest
+timestamp 100
+<< nfet >>
+rect 0 0 2 4
+<< ndiff >>
+rect -3 0 0 4
+<< labels >>
+rlabel ndiff -2 2 -2 2 0 s
+rlabel nfet 1 1 1 1 0 g
+<< end >>

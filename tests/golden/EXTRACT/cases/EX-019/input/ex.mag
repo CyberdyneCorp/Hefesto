@@ -1,0 +1,10 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect -10 4 0 8
+rect -10 -6 -6 4
+rect 0 -20 4 8
+tri 20 0 24 4 ne
+tri 30 0 34 4 sw
+<< end >>

@@ -16,6 +16,15 @@ returns the streams plus the facts that go into provenance.json.
 Tool ``oasis-spec`` (m6-lef-def-oasis design D19) runs under every runner: it only copies the
 spec-listing bytes of ``input/spec/`` into the work directory (``cp`` in the image, a host copy
 under ``local`` and ``model``).
+
+An external-command case (``[reference] mode = "external-command"``, goldenlib/external_command.py)
+runs the program its ``input/command.toml`` names, in the image, from the command's ``cwd``.
+
+Every case is its own run: a new container (``docker run --rm``) in a new scratch directory, so no
+session state (Magic's options, the ``ext2spice``/``ext2sim`` settings, loaded cells) carries from one
+case to the next (m5 design D18; Q-NETLIST-16 and Q-NETLIST-46 depend on it, m7-extraction D21).
+The container runner adds the image manifest (container/write_manifest.sh: the glibc version, the
+extcheck build) to the provenance facts when the image has one.
 """
 from __future__ import annotations
 
@@ -29,6 +38,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import magic_hash_model
+from . import external_command
 from .case import Case, image_variant, run_timeout, substitute_env
 from .external import ExternalUnavailable, xschem_set_tree
 from .pins import tool_pin
@@ -90,6 +100,8 @@ def default_argv(case: Case) -> list[str]:
 
 def _tool_argv(case: Case) -> list[str]:
     ref = case.reference
+    if case.command is not None:
+        return external_command.capture_argv(case.command)
     if "argv" in ref:
         return list(ref["argv"])
     script = ref.get("script")
@@ -105,6 +117,25 @@ def _tool_argv(case: Case) -> list[str]:
         "oasis-spec": list(SPEC_COPY_ARGV),
     }
     return table[case.tool]
+
+
+def recorded_argv(case: Case) -> list[str]:
+    """The command line provenance.json records: the external program without its guard."""
+    if case.command is not None:
+        return external_command.recorded_argv(case.command)
+    return default_argv(case)
+
+
+def container_cwd(case: Case) -> str:
+    """The run directory in the container: ``/work``, or the external command's ``cwd`` under it."""
+    if case.command is None or case.command.cwd == ".":
+        return CONTAINER_WORK
+    return f"{CONTAINER_WORK}/{case.command.cwd}"
+
+
+# The image manifest (container/write_manifest.sh), read once per image.
+MANIFEST_PATH = "/opt/ref/share/hefesto-golden/manifest.json"
+_MANIFESTS: dict[tuple[str, str], dict] = {}
 
 
 def harness_stdin(case: Case, work: Path) -> bytes:
@@ -137,7 +168,23 @@ class ContainerRunner:
         if proc.returncode != 0:
             raise RunnerError(f"image {self.image} not available: {proc.stderr.decode(errors='replace').strip()}")
         info = json.loads(proc.stdout)
-        return {"image": self.image, "image_id": info.get("Id"), "image_repo_digests": info.get("RepoDigests", [])}
+        facts = {"image": self.image, "image_id": info.get("Id"), "image_repo_digests": info.get("RepoDigests", [])}
+        manifest = self.manifest()
+        if manifest:
+            facts["image_manifest"] = manifest
+        return facts
+
+    def manifest(self) -> dict:
+        """The image's manifest.json (glibc version, extcheck build), {} when the image has none."""
+        key = (self.engine, self.image)
+        if key not in _MANIFESTS:
+            proc = _run([self.engine, "run", "--rm", "--network=none", self.image, "cat", MANIFEST_PATH], b"",
+                        Path.cwd(), INSPECT_TIMEOUT_S)
+            try:
+                _MANIFESTS[key] = json.loads(proc.stdout) if proc.returncode == 0 else {}
+            except ValueError:
+                _MANIFESTS[key] = {}
+        return _MANIFESTS[key]
 
     @staticmethod
     def xschem_mounts(case: Case) -> tuple[list[str], dict[str, str]]:
@@ -176,14 +223,17 @@ class ContainerRunner:
         # returns (measured: the GUI cases hung until killed), so display cases get an init.
         init = ["--init"] if case.reference.get("display") else []
         return [self.engine, "run", "--rm", "-i", *init, "--network=none", *user, *env_flags,
-                "-v", f"{work}:{CONTAINER_WORK}", *mounts, "-w", CONTAINER_WORK, self.image,
+                "-v", f"{work}:{CONTAINER_WORK}", *mounts, "-w", container_cwd(case), self.image,
                 *default_argv(case)]
 
     def run(self, case: Case, work: Path) -> RunResult:
         facts = self._image_facts()
         argv = self.argv(case, work)
         proc = _run(argv, harness_stdin(case, work), work, run_timeout(case.reference, TIMEOUT_S))
-        return RunResult(proc.stdout, proc.stderr, proc.returncode, default_argv(case), facts)
+        if case.command is not None and external_command.is_missing(proc.returncode, proc.stderr):
+            raise RunnerError(f"{case.id}: {proc.stderr.decode(errors='replace').strip()} "
+                              f"(see {MANIFEST_PATH} in the image)")
+        return RunResult(proc.stdout, proc.stderr, proc.returncode, recorded_argv(case), facts)
 
 
 def _sha256(data: bytes) -> str:

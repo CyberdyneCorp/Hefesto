@@ -1,0 +1,59 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 21 23:58:20 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ntransistor 
+0 {}
+Cell top read from path input
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   1.000 x 1.000   ( 0.000,  0.000), ( 1.000,  1.000)  1.000     
+lambda:        1 x 1       (     0,  0    ), (     1,  1    )  1         
+0 {}
+Cell leaf read from path input
+Extracting leaf into input/leaf.ext:
+Processing leaf
+Extracting top into input/top.ext:
+Processing top
+0 {}
+exttospice finished.
+0 {}
+0 {}
+0 {}
+exttosim finished.
+0 {}
+0 {}
+Extracting Y
+Extracting A
+Total Nets: 2
+Nets extracted: 2 (1.000000)
+Nets output: 0 (0.000000)
+Extracting IN
+Total Nets: 3
+Nets extracted: 1 (0.333333)
+Nets output: 0 (0.000000)
+0 {}
+Writing FastHenry-format geometry file "leaf.fh"
+Extracting Y
+Extracting A
+Total Nets: 2
+Nets extracted: 2 (1.000000)
+Nets output: 0 (0.000000)
+Writing FastHenry-format geometry file "top.fh"
+Extracting IN
+Total Nets: 3
+Nets extracted: 1 (0.333333)
+Nets output: 0 (0.000000)
+0 {}

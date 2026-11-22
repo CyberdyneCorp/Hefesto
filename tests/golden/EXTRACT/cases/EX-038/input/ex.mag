@@ -1,0 +1,32 @@
+magic
+tech exttest
+timestamp 100
+<< pwell >>
+rect -6 -4 8 8
+rect 14 -4 28 8
+<< thkox >>
+rect 14 -4 28 8
+<< nwell >>
+rect 34 -4 48 8
+<< dnwell >>
+rect 54 -4 68 8
+<< nfet >>
+rect 0 0 2 4
+rect 20 0 22 4
+rect 40 0 42 4
+rect 60 0 62 4
+<< ndiff >>
+rect -3 0 0 4
+rect 2 0 5 4
+rect 17 0 20 4
+rect 22 0 25 4
+rect 37 0 40 4
+rect 42 0 45 4
+rect 57 0 60 4
+rect 62 0 65 4
+<< labels >>
+rlabel nfet 1 1 1 1 0 g0
+rlabel nfet 21 1 21 1 0 g20
+rlabel nfet 41 1 41 1 0 g40
+rlabel nfet 61 1 61 1 0 g60
+<< end >>

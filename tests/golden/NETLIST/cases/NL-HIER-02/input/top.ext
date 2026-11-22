@@ -1,0 +1,11 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf u1 1 0 0 0 1 0
+node "a" 0 1 0 50 metal1 0 0 0 0 0 0
+node "b" 0 1 0 60 metal1 0 0 0 0 0 0
+merge "u1/n5" "a" 0
+cap "u1/n6" "b" 4

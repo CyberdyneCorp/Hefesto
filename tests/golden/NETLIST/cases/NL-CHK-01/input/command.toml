@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# NL-CHK-01: external-command case (m7-extraction design D15, task 2.3). The role extcheck is Magic's
+# standalone extcheck on capture and hefesto-extcheck on replay; each run's stdout, stderr and exit
+# status are captured as <name>.stdout, <name>.stderr and <name>.exit.
+
+schema = 1
+role = "extcheck"
+cwd = "."
+reads = ["input/top.ext", "input/inv.ext"]
+
+[[run]]
+name = "default"
+args = ["-p", "input", "top"]
+
+[[run]]
+name = "thresholds"
+args = ["-p", "input", "-c", "0", "-r", "0", "top"]
+
+[[run]]
+name = "nocaps"
+args = ["-p", "input", "-C", "-r", "0", "top"]
+
+[[run]]
+name = "usage"
+args = []

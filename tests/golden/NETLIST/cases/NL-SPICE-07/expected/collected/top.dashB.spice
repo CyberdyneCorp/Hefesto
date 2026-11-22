@@ -1,0 +1,8 @@
+* SPICE3 file created from top.ext - technology: nltest
+
+.option scale=10n
+
+M1000 g g out GND nfet w=4 l=2
++  ad=0 pd=0 as=0 ps=0
+C0 fl 0 3f **FLOATING
+C1 out 0 5f **FLOATING

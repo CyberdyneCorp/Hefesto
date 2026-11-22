@@ -1,0 +1,12 @@
+magic
+tech exttest
+timestamp 100
+<< rpoly >>
+rect 0 0 10 2
+<< poly >>
+rect -2 0 0 2
+rect 10 0 12 2
+<< labels >>
+rlabel poly -1 1 -1 1 0 a
+rlabel poly 11 1 11 1 0 b
+<< end >>

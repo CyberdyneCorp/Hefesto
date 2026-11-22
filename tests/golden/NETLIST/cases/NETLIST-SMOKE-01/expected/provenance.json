@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "case": "NETLIST-SMOKE-01",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:0cf014e91b996d631c12cd0f209b456bfa4405dcc5517f69de103b59d4dac14a",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-21T23:57:04Z",
+  "outputs": {
+    "collected/input/leaf.ext": "beedccb4e31536938ee392b8feb9fa074ec252ec12d18b5fd283735521c106bf",
+    "collected/input/top.ext": "085c6fa2c097d3b37ca54dfd84524e45131027ceb478d0aae7a349140bea9bb4",
+    "collected/leaf.fh": "58051d8eb86dc68e3ea91c40f047e8784de063b04fe3e503704014cf8be289b0",
+    "collected/leaf.res.ext": "f7e3d89f90041f5683f6b0dcbfc66d38b69625a6b5d6dcb9312400be4dc2208f",
+    "collected/leaf.res.lump": "f5439ece9118f533f38f682fccd7329cdba27eb20a47d26324822f54cbfba711",
+    "collected/top.al": "25e2367896ff317f341bb917f3adeec7aaba22515c5778d3826f99ee4bab32c3",
+    "collected/top.fh": "fa564a27d05f6bf1a16863bc44fbe38c2f3680ac182e7cdc98ac0c47f806af0f",
+    "collected/top.nodes": "f093052e0a7fa542f69d58704d3c9951f685d806645490231b69f9b620bae1ea",
+    "collected/top.res.ext": "f7e3d89f90041f5683f6b0dcbfc66d38b69625a6b5d6dcb9312400be4dc2208f",
+    "collected/top.res.lump": "c3d2aedd6d12a34e8ab14011e96fd99d6f4a06cb2789f71871e5e0b86c86abc6",
+    "collected/top.sim": "c958d217cdcba1b81cae76ab6e5838b2da015fcde1426ba2ab8c623c09868050",
+    "collected/top.spice": "48b3dcc68b6e340b7fceabeadb7e734118e63d1b5b446feba48b28f34fe26bf5",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "4691fbf986087b6e8ca7e52cf6bba9d02482faa807d88ea39813a7f2697a0e84"
+  }
+}
