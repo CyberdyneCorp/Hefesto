@@ -461,7 +461,7 @@ With `oasis readonly yes`, every cell read (except magnified copies) SHALL produ
 
 Compatibility: native
 
-- `OASIS_FILE`: the path of the file as opened, with the PDK path-variable substitution of gds-read for `GDS_FILE`;
+- `OASIS_FILE`: the path of the file as opened, with the PDK path-variable substitution of gds-read for `GDS_FILE`. As in Magic (DBPathSubstitute), the PDK variables are the Tcl global variables only: `PDK_ROOT` set in the environment alone leaves the path unsubstituted, in both modes, as for `GDS_FILE` (Q-OASIS-48, E4, OASIS-032);
 - `OASIS_CELL`: the cell's name as defined in the file, before any renaming by `unique`, duplicates or `cell` labels.
 
 Rules:
@@ -473,7 +473,7 @@ Rules:
 (Hefesto decision: docs/decisions/product.md#P-6)
 
 #### Scenario: Vendor cell properties
-- **GIVEN** `oasis readonly yes`, `PDK_ROOT=/opt/pdk`, and a file `/opt/pdk/lib/cells.oas` defining `sc_inv`
+- **GIVEN** `oasis readonly yes`, the Tcl global variable `PDK_ROOT` set to `/opt/pdk`, and a file `/opt/pdk/lib/cells.oas` defining `sc_inv`
 - **WHEN** read
 - **THEN** cell `sc_inv` is read-only, with `OASIS_FILE = $PDK_ROOT/lib/cells.oas` and `OASIS_CELL = sc_inv`
 
@@ -489,7 +489,7 @@ Compatibility: native
 
 1. **Cell bytes.** For a cell `c`, take the decompressed byte stream from the first byte after its CELL record through the last byte of its last cell-content record. CBLOCK record headers and compressed bytes are excluded, and their decompressed bytes are included.
 2. **Own hash.** `h` = FNV-1a 64-bit over those bytes, with offset basis 14695981039346656037 and prime 1099511628211.
-3. **Children.** The cell names referenced by PLACEMENT records with C = 1, in record order, resolved to names, with consecutive duplicates removed.
+3. **Children.** The cell names referenced by PLACEMENT records with C = 1, in record order, resolved to names, with consecutive duplicates removed. With `magic-compat` ON the FNV-1a hash then continues over the bytes of each child name, in that order, so a renamed child changes its parent's stamp, as in Magic's GDS stamp, where each SREF holds its child's name; with it OFF the names are not hashed (Q-OASIS-49, resolution: compat). The read and every later restamp use the session's setting.
 4. **Stamp.** The memoized `stamp(s)` procedure of gds-read "Content-hash timestamps for read-only cells" is applied with these hashes and children, including cycle handling, the folding of each child stamp as 4 bytes, the final mix `h XOR (h >> 31) XOR (h >> 62)`, the mask `0x7fffffff`, and the replacement of 0 by 1.
 5. **Lookup.** A cell's stamp is the stamp of the cell named `OASIS_CELL` in the file `OASIS_FILE`. It is 0 if either property is missing or the cell is not defined there.
 
@@ -546,8 +546,8 @@ Compatibility: native
 
 1. The GDS-equivalent stream of one read holds at most 2 GiB, and one read writes at most 2^28 element instances and uses, counting dropped ones. When either is reached, "the file has more than 268435456 element instances, or a GDS-equivalent stream over 2147483648 bytes; the rest of the file is not read" is reported, and the cells and elements written before it are read (Q-OASIS-41, resolution: fix).
 2. A cell name, placed cell name, TEXT string or `S_GDS_PROPERTY` value longer than 65530 bytes (a GDS string record) is cut to its first 65530 bytes, with a message naming the length. The top cell is found under its cut name (Q-OASIS-42, resolution: fix).
-3. A layer, datatype, textlayer, texttype or `S_GDS_PROPERTY` attribute number above 32767 is read as 32767, with a message once per element. 32767 matches only a `*` wildcard (rule 1 of "Layer and datatype mapping"; Q-OASIS-43, resolution: fix). An attribute below -32768 is currently also read as 32767; that rule is proposed, not approved (Q-OASIS-45).
-4. A POLYGON (or any outline) with more than 8191 points, the closing one included, is fractured into polygons of at most 8191 points whose union is the outline: it is cut in two by an axis-parallel line through the median vertex coordinate, along the axis whose cut leaves the smaller larger half, and each half is cut again until it fits, with a message giving the number of pieces. A cut point on an edge that is not axis-parallel is rounded half away from zero to the grid, the same point in both pieces. (Q-OASIS-44, resolution: fix.) An outline that cuts do not shrink (its vertices on two lines in each axis), or one wider or taller than 2^32, is reported and dropped (Q-OASIS-46, proposed, not approved). A PATH with more than 8191 points is reported and dropped (Q-OASIS-47, proposed, not approved).
+3. A layer, datatype, textlayer, texttype or `S_GDS_PROPERTY` attribute number above 32767 is read as 32767, with a message once per element. 32767 matches only a `*` wildcard (rule 1 of "Layer and datatype mapping"; Q-OASIS-43, resolution: fix). An `S_GDS_PROPERTY` attribute below -32768 is read as -32768, the nearest GDS value, with the same message (Q-OASIS-45, resolution: fix).
+4. A POLYGON (or any outline) with more than 8191 points, the closing one included, is fractured into polygons of at most 8191 points whose union is the outline: it is cut in two by an axis-parallel line through the median vertex coordinate, along the axis whose cut leaves the smaller larger half, and each half is cut again until it fits, with a message giving the number of pieces. A cut point on an edge that is not axis-parallel is rounded half away from zero to the grid, the same point in both pieces. (Q-OASIS-44, resolution: fix.) An outline that cuts do not shrink (its vertices on two lines in each axis), or one wider or taller than 2^32, is reported and dropped (Q-OASIS-46, resolution: fix). A PATH with more than 8191 points is reported and dropped (Q-OASIS-47, resolution: fix).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -576,12 +576,12 @@ For every OASIS file `F` whose content has a GDS equivalent (no CIRCLE, no XGEOM
 
 Compatibility: exact
 
-This is the acceptance criterion for this capability. The golden cases in `tests/golden/OASIS/CASES.md` check it using an independent converter (KLayout `strm2gds` / `strm2oas`), with Magic's `gds read` as the reference.
+This is the acceptance criterion for this capability. The golden cases in `tests/golden/OASIS/CASES.md` check it with Magic's `gds read` as the reference. `F` is a hand-built file (`oasgen.py`) or KLayout's `strm2oas` of a GDS library (OASIS-020/021); `G` is made from `F` by the golden tooling's converter (`authoring/oasequiv.py`), which implements the element mapping of this capability. KLayout's `strm2gds` is not used for `G`: it writes the coincident copies of a zero-displacement repetition once, so its output is not the equivalent. The conversion of `F` to `G`, and so the reading of repetitions, is therefore not cross-checked by a tool independent of Hefesto's authors (round-5 review; open for the user).
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRead.c:173-332)
 
 #### Scenario: Converted standard-cell library
-- **GIVEN** a GDS standard-cell library `G` and `F = strm2oas(G)`
+- **GIVEN** a GDS standard-cell library `L`, `F = strm2oas(L)` and `G` the GDS equivalent of `F`
 - **WHEN** Magic reads `G` with `gds read` and Hefesto reads `F` with `oasis read`
 - **THEN** the `.mag` files saved from both are identical, except for timestamp lines
 

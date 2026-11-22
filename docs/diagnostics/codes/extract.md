@@ -26,9 +26,8 @@ progress, an `extract` option or extractor function the M7 scaffold
 declared before its workstream implemented it fails with the core code
 `CORE-NOTIMPL-008` ([../codes.md](../codes.md)).
 
-While M6 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-006`
-([../codes.md](../codes.md)).
+Every option and function the M6 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-006` is retired ([../codes.md](../codes.md)).
 
 ## STYLE
 

@@ -146,7 +146,7 @@ struct Library {
   db::CellDef* nand2 = nullptr;
   db::CellDef* nmos4 = nullptr;
 
-  Library() {
+  explicit Library(bool magic_compat = true) : s(magic_compat) {
     nmos4 = &s.cell("nmos4");
     s.paint(*nmos4, "metal1", db::Rect{0, 0, 4, 4});
     inv = &s.cell("inv");
@@ -306,10 +306,33 @@ TEST_CASE("writeall names its file from the root's file path", "[cap:lef-write][
   CHECK(lib.s.exists("/work/top.lef"));
   REQUIRE_FALSE(r.diagnostics.empty());
   CHECK(r.diagnostics.front().text == "Generating LEF output /work/top.lef for hierarchy rooted at cell top:");
-  // A layout path never becomes the LEF name.
+  // A file path ending in .mag (Magic's cd_file of a failed read) is opened
+  // as given with magic-compat ON (Q-LEFDEF-138).
   lib.top->set_file_path("/work/top2.mag");
   REQUIRE(lef::write_all(lib.s.editor, *lib.top, {}, o).ok());
-  CHECK(lib.s.exists("/work/top2.lef"));
+  CHECK(lib.s.exists("/work/top2.mag"));
+  CHECK_FALSE(lib.s.exists("/work/top2.lef"));
+}
+
+// Q-LEFDEF-138 (approved 2026-11-20): a root whose read failed has the
+// file name "<name>.mag" (DBio.c); lefFileOpen opens a foreign extension as
+// given, so Magic writes the LEF into it (LEFDEF-RT-*: lefdef_rt.mag).
+TEST_CASE("writeall of a root whose read failed writes <name>.mag with magic-compat ON only",
+          "[cap:lef-write][req:Output file naming]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Library lib(on);
+    lib.top->set_file_path("top.mag");  // what a failed read sets (DBio.c)
+    LefWriteOptions o;
+    o.files = &lib.s.services.view().files;
+    const auto r = lef::write_all(lib.s.editor, *lib.top, {}, o);
+    REQUIRE(r.ok());
+    CHECK(lib.s.exists("top.mag") == on);
+    CHECK(lib.s.exists("top.lef") == !on);
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.front().text ==
+          std::string{"Generating LEF output "} + (on ? "top.mag" : "top.lef") + " for hierarchy rooted at cell top:");
+  }
 }
 
 TEST_CASE("writeall stops when a cell of the subtree cannot be read", "[cap:lef-write][req:lef writeall arguments and scope]") {

@@ -1,0 +1,12 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+VIA V1 DEFAULT
+  LAYER metal1 ;
+    RECT -0.2 -0.2 0.2 0.2 ;
+  LAYER via1 ;
+    RECT -0.05 -0.05 0.05 0.05 ;
+  LAYER metal2 ;
+    RECT -0.2 -0.2 0.2 0.2 ;
+END V1
+END LIBRARY

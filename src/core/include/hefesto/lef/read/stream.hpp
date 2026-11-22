@@ -54,7 +54,7 @@ struct StreamOptions {
   compat::CompatSettings compat;
   /// The current output style (cut growing, Q-LEFDEF-17); nullptr: none.
   const mask::OutputStyle* style = nullptr;
-  MacroOptions macros;
+  MacroReadOptions macros;
 };
 
 /// What a LEF read reports back.

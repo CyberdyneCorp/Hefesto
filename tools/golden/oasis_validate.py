@@ -92,6 +92,12 @@ OUTPUT_CHECKS = {
     ("OASIS-058", "checksum.oas"): (SIGNED,),
     ("OASIS-061", "out.oas"): (STRICT,),
 }
+# Write cases whose Magic GDS reference KLayout cannot read, so the XOR against it is skipped (the
+# output's other checks still run). E4 of the user decisions of 2026-11-20.
+XOR_SKIPS = {
+    "OASIS-055-names": "Magic's reference GDS holds two structures named a_b (Q-OASIS-61, Q-MASK-209), which "
+                       "KLayout refuses to read",
+}
 # Readers only (task 15.6): committed inputs of read cases that KLayout and gdstk read, with the GDS
 # equivalent Magic reads beside them for KLayout's XOR (OASIS-030) or LayoutDiff (OASIS-013).
 INPUT_CHECKS = {
@@ -155,7 +161,7 @@ def produce_case(cli: Path, case_dir: Path, out: Path) -> tuple[dict, list[dict]
 def magic_reference(case, output, out: Path) -> list[dict]:
     """An XOR check against Magic's captured GDS of a write cross-check, when it is committed."""
     expected = case.expected_dir / output.name
-    if not expected.is_file() or expected.read_bytes()[:len(OASIS_MAGIC)] == OASIS_MAGIC:
+    if case.id in XOR_SKIPS or not expected.is_file() or expected.read_bytes()[:len(OASIS_MAGIC)] == OASIS_MAGIC:
         return []
     target = out / "files" / case.id / f"{output.source}.magic.gds"
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -178,7 +184,8 @@ def collect_case(case, outputs, execution, out: Path) -> tuple[dict, list[dict]]
         path.write_bytes(execution.files[output.source])
         entries.append(entry(path.relative_to(out).as_posix(), "hefesto", output_checks(case, output, out)))
     if len(produced) == len(outputs):
-        return step(case.id, "produced", " ".join(o.source for o in produced)), entries
+        skip = f" (XOR with Magic's GDS skipped: {XOR_SKIPS[case.id]})" if case.id in XOR_SKIPS else ""
+        return step(case.id, "produced", " ".join(o.source for o in produced) + skip), entries
     stderr = execution.stderr.decode(errors="replace")
     reason = not_yet_reason(stderr)
     if reason is not None and not produced:

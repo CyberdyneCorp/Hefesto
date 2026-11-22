@@ -13,7 +13,9 @@
 //
 // Owner: LEFW (design D2).
 
+#include <optional>
 #include <set>
+#include <string>
 
 #include "hefesto/util/magic_hash_table.hpp"
 #include "lef/write/library.hpp"
@@ -159,14 +161,45 @@ bool layer_written(const HeaderInput& in, std::string_view name, const LayerReco
   return in.magic_compat || in.vias == nullptr || in.vias->find(std::string{name}) == nullptr;
 }
 
+std::string layer_block(const HeaderInput& in, const LayerRecord& r) {
+  return "LAYER " + r.canonical_name + "\n" + layer_body(in, r) + "END " + r.canonical_name + "\n\n";
+}
+
+// A key with no layer record that names a via of a LEF or DEF read: in
+// Magic the via is the LefInfo record itself (refCnt 1, never a geometry
+// cell), so with magic-compat ON it is written like a layer record: its
+// class, its normal type (none: skipped) and its contact area as the cut
+// (Q-LEFDEF-127). A DEF write's temporary via (refCnt 0) is skipped.
+std::optional<LayerRecord> via_record(const HeaderInput& in, std::string_view key) {
+  if (!in.magic_compat || in.vias == nullptr) {
+    return std::nullopt;
+  }
+  const auto* entry = in.vias->find(std::string{key});
+  if (entry == nullptr || !entry->value || entry->value->ref_count == 0 || !entry->value->type) {
+    return std::nullopt;
+  }
+  const ViaDefinition& via = *entry->value;
+  LayerRecord record;
+  record.layer_class = via.layer_class;
+  record.type = *via.type;
+  record.contact_area = via.area;
+  record.canonical_name = via.canonical_name.empty() ? std::string{key} : via.canonical_name;
+  return record;
+}
+
 std::string technology_layers(const HeaderInput& in) {
   std::string out;
   std::set<const LayerRecord*> written;
-  in.layers->enumerate([&](std::string_view name, const LayerRecord& r) {
-    if (!written.insert(&r).second || !layer_written(in, name, r)) {
+  in.layers->enumerate_keys([&](std::string_view key, const LayerRecord* r) {
+    if (r == nullptr) {
+      if (const auto via = via_record(in, key); via && layer_written(in, key, *via)) {
+        out += layer_block(in, *via);
+      }
       return;
     }
-    out += "LAYER " + r.canonical_name + "\n" + layer_body(in, r) + "END " + r.canonical_name + "\n\n";
+    if (written.insert(r).second && layer_written(in, key, *r)) {
+      out += layer_block(in, *r);
+    }
   });
   return out;
 }

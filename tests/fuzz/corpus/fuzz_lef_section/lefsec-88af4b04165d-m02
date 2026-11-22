@@ -1,0 +1,12 @@
+    masterslice nwell NWELL nwell
+    masterslice poly POLY poly
+    routing metal1 metal1 met1 M1
+    routing metal2 metal2 met2 M2
+    routing metal3 metal3 met3 M3
+    routing metal5 metal5 met5 M5
+    contact pc cont1
+    cut via1 via1 via V1
+    cut via2 via2 V2
+    obstruction obsm1 metal1
+    obstruction obsm2 metal2
+    obstruction obsv1 via1

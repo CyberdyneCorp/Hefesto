@@ -313,7 +313,7 @@ void LayerBody::current_density(bool alternating) {
 // LAYER n: the layer of the RECTs that follow (LefReadLayer, normal lookup).
 void LayerBody::layer_statement() {
   if (const auto name = reader_.token()) {
-    resolve_layer(name->text, LayerLookup::normal, layer_, reader_.layer_context());
+    resolve_layer(name->text, LayerLookup::normal, layer_, reader_.layer_context(), LayerSource::read_layer);
     const auto entry = layer_.type ? std::nullopt : reader_.target().layers.find(name->text);
     ignored_layer_ = entry && entry->layer_class == LayerClass::ignore;
     if (via_ != nullptr) {

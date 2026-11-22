@@ -1,0 +1,124 @@
+VERSION 5.7 ;
+BUSBITCHARS "[]" ;
+DIVIDERCHAR "/" ;
+UNITS
+  DATABASE MICRONS 1000 ;
+END UNITS
+SITE core
+  CLASS CORE ;
+  SYMMETRY Y ;
+  SIZE 0.2 BY 2 ;
+END core
+VIA M1M2 DEFAULT
+  LAYER met1 ;
+    RECT -0.04 -0.04 0.04 0.04 ;
+  LAYER V1 ;
+    RECT -0.02 -0.02 0.02 0.02 ;
+  LAYER met2 ;
+    RECT -0.04 -0.04 0.04 0.04 ;
+END M1M2
+VIA M2M3
+  LAYER met2 ;
+    RECT -0.05 -0.05 0.05 0.05 ;
+  LAYER V2 ;
+    RECT -0.02 -0.02 0.02 0.02 ;
+  LAYER met3 ;
+    RECT -0.05 -0.05 0.05 0.05 ;
+END M2M3
+VIARULE M1M2gen GENERATE
+  LAYER met1 ;
+    ENCLOSURE 0.01 0.01 ;
+  LAYER met2 ;
+    ENCLOSURE 0.01 0.01 ;
+  LAYER V1 ;
+    RECT -0.02 -0.02 0.02 0.02 ;
+    SPACING 0.08 BY 0.08 ;
+END M1M2gen
+VIARULE M2M3gen GENERATE
+  LAYER met2 ;
+    ENCLOSURE 0.01 0.01 ;
+  LAYER met3 ;
+    ENCLOSURE 0.02 0.02 ;
+  LAYER V2 ;
+    RECT -0.02 -0.02 0.02 0.02 ;
+    SPACING 0.08 BY 0.08 ;
+END M2M3gen
+NONDEFAULTRULE wide
+  LAYER met1
+    WIDTH 0.2 ;
+    SPACING 0.2 ;
+  END met1
+  LAYER met2
+    WIDTH 0.3 ;
+  END met2
+  VIA M1M2wide
+    LAYER met1 ;
+      RECT -0.1 -0.1 0.1 0.1 ;
+    LAYER V1 ;
+      RECT -0.02 -0.02 0.02 0.02 ;
+    LAYER met2 ;
+      RECT -0.1 -0.1 0.1 0.1 ;
+  END M1M2wide
+END wide
+MACRO inv
+  CLASS CORE ;
+  FOREIGN inv 0 0 ;
+  SYMMETRY X Y ;
+  SITE core ;
+  ORIGIN 0 0 ;
+  SIZE 1 BY 2 ;
+  PIN A
+    DIRECTION INPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER met1 ;
+        RECT 0.1 0.8 0.3 1 ;
+    END
+  END A
+  PIN Y
+    DIRECTION OUTPUT ;
+    USE SIGNAL ;
+    PORT
+      LAYER met1 ;
+        RECT 0.7 0.8 0.9 1 ;
+    END
+  END Y
+  PIN VDD
+    DIRECTION INOUT ;
+    USE POWER ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER met1 ;
+        RECT 0 1.85 1 2 ;
+    END
+  END VDD
+  PIN VSS
+    DIRECTION INOUT ;
+    USE GROUND ;
+    SHAPE ABUTMENT ;
+    PORT
+      LAYER met1 ;
+        RECT 0 0 1 0.15 ;
+    END
+  END VSS
+  OBS
+    LAYER met1 ;
+      RECT 0.4 0.4 0.6 1.4 ;
+    LAYER met2 ;
+      POLYGON 0.1 0.1 0.9 0.1 0.9 0.3 0.1 0.3 ;
+  END
+END inv
+MACRO tap
+  CLASS CORE WELLTAP ;
+  ORIGIN 0 0 ;
+  SIZE 0.4 BY 2 ;
+  PIN VDD
+    USE POWER ;
+    PORT
+      LAYER met1 ;
+        RECT 0 1.85 0.4 2 ;
+      VIA 0.2 1.9 M1M2 ;
+    END
+  END VDD
+END tap
+END LIBRARY

@@ -49,8 +49,11 @@ class MacroHost {
   virtual void finished(db::CellDef& cell, std::optional<db::Rect> drc_area) = 0;
 };
 
-/// The `lef read` settings a MACRO or SITE section uses.
-struct MacroOptions {
+/// The `lef read` settings a MACRO or SITE section uses. Not named
+/// MacroOptions: lef/write/macro.hpp has a hefesto::lef::MacroOptions of
+/// another layout, and two inline constructors of one name broke the ODR
+/// (ASan stack-buffer-overflow in lef write, found by MASK-OS-016's replay).
+struct MacroReadOptions {
   bool annotate = false;                  // -annotate
   std::optional<std::int64_t> datestamp;  // `lef datestamp`; nullopt: default
 };

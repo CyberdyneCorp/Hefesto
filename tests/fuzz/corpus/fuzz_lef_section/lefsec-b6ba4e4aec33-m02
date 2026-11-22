@@ -1,0 +1,15 @@
+    masterslice nwell NWELL nwell
+    masterslice poly POLY poly
+    routing metal1 metal1 met1 M1
+    routing metal2 metal2 met2 M2
+    routing metal3 metal3 met3 M3
+    routing metal5 metal5 met5 M5
+    cut pc cont mcon
+    cut via1 via1 via V1
+    cut via2 via2 V2
+    obstruction obsm1 metal1
+    obstruction obsm2 metal2
+    obstruction obsv1 via1
+    ignore L00 L01 L02 L03 L04 L05 L06 L07 L08 L09 L10 L11 L12 L13 L14
+    ignore L15 L16 L17 L18 L19 L20 L21 L22 L23 L24 L25 L26 L27 L28 L29
+    ignore L30 L31 L32 L33 L34 L35 L36 L37 L38 L39 L40 L41 L42 L43 L44

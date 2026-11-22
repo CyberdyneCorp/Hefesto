@@ -35,8 +35,9 @@ def probes(spec: tclcase.TclCase) -> list[str]:
 
 
 class InventoryTest(unittest.TestCase):
-    def test_inventory_has_143_rows(self):
-        self.assertEqual(len(lefdef_cases.rows()), 143)
+    def test_inventory_has_144_rows(self):
+        # 143 planned rows and LEFDEF-241 (Q-LEFDEF-83, added by the user decision E2 of 2026-11-20).
+        self.assertEqual(len(lefdef_cases.rows()), 144)
 
     def test_every_row_is_authored(self):
         self.assertEqual(m6_cases.missing_rows(), [])
@@ -46,8 +47,8 @@ class InventoryTest(unittest.TestCase):
         ids = {s.id for s in LEFDEF}
         self.assertEqual(len(lefdef_pdk_cases.RT_CASES), 3)
         self.assertTrue(set(lefdef_pdk_cases.RT_CASES) | {"LEFDEF-240"} <= ids)
-        # 143 rows, the three round trips and the startup case of task 15.4.
-        self.assertEqual(len(LEFDEF), 147)
+        # 144 rows, the three round trips and the startup case of task 15.4.
+        self.assertEqual(len(LEFDEF), 148)
         self.assertIn(lefdef_lef_cases.STARTUP_CASE, ids)
 
 
@@ -192,6 +193,14 @@ class MagicCrashTest(unittest.TestCase):
                 self.assertTrue((lefdef_cases.MAGIC_CRASH / cid / "commands.tcl").is_file())
                 self.assertIn(f"magic-crash/{cid}/", "\n".join(by_id[cid].notes))
                 self.assertEqual(by_id[cid].capture_blocked, "")
+
+    def test_mask_os_016_original_is_kept_and_noted(self):
+        spec = next(s for s in SPECS if s.id == "MASK-OS-016")
+        original = lefdef_cases.MASK_MAGIC_CRASH / "MASK-OS-016"
+        for name in ("commands.tcl", "masktest.tech", "v.lef"):
+            self.assertTrue((original / name).is_file(), name)
+        self.assertIn("VIA V1 DEFAULT", (original / "v.lef").read_text(encoding="utf-8"))
+        self.assertIn("magic-crash/MASK-OS-016/", "\n".join(spec.notes))
 
     def test_def_write_nets_are_special_or_ports(self):
         """Magic's def write crashes on a top-level net that is neither special nor a port (Q-LEFDEF-101):

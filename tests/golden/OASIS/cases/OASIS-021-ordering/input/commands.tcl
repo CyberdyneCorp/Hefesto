@@ -19,7 +19,7 @@ proc specrep {value} {
     close $f
 }
 probe {drc off}
-probe {gds datestamp 1}
+probe {gds datestamp 1700000000}
 probe {gds ordering on}
 probe {gds read input/sky130_fd_sc_hd.gds.gz}
 rep {llength [cellname list allcells]}

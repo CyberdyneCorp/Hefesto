@@ -7,9 +7,10 @@
 // Q-LEFDEF-90, 99, 110). The file is assembled in memory in Magic's
 // section order, the nets sections in their own buffer (Magic's
 // `<name>_part.def`), and written in one piece. The write works on copies
-// of the session's via and rule tables and commits them only when the file
-// was written, so a write that cannot open its file changes nothing, as in
-// Magic (which opens the file first).
+// of the session's layer table (its shared key order), via table and rule
+// table and commits them only when the file was written, so a write that
+// cannot open its file changes nothing, as in Magic (which opens the file
+// first).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) lef/defWrite.c DefWriteCell and
 // defCountNets, and lef/lefWrite.c lefFileOpen, Copyright (C) 1985, 1990
@@ -117,6 +118,7 @@ class WriteRun {
         scale_(lef::output_scale(style_) * static_cast<float>(units_)),
         extract_style_(extract::StyleView::from_technology(tech_, quiet_)),
         map_(wd::info_order(editor.lefdef.layers, editor.lefdef.vias), tech_),
+        layers_(editor.lefdef.layers),
         vias_(editor.lefdef.vias),
         rules_(compat_.magic_compat ? editor.lefdef.rules : lef::RuleTable{}),
         sink_(messages_),
@@ -132,8 +134,8 @@ class WriteRun {
     wd::write_header(c_, tech_.name(), units_, text);
     lef::DefViaContext via_context{tech_, c_.rules, [this](tech::TileType t) { return map_.name(t); }, scale_,
                                    compat_, sink_};
-    const lef::DefVias vias = lef::register_vias(cell_, vias_, editor_.lefdef.layers, via_context);
-    const std::vector<wd::InfoEntry> order = wd::info_order(editor_.lefdef.layers, vias_);
+    const lef::DefVias vias = lef::register_vias(cell_, vias_, layers_, via_context);
+    const std::vector<wd::InfoEntry> order = wd::info_order(layers_, vias_);
     wd::write_vias(c_, order, via_context, vias.created, text);
     wd::write_components(c_, text);
     wd::write_pins(c_, text);
@@ -144,7 +146,7 @@ class WriteRun {
     if (netlist) {
       write_nets(*netlist, plan, positions(vias), nets);
     }
-    wd::write_rules(c_, rules_, order, editor_.lefdef.layers, vias_, options_.anal, text);
+    wd::write_rules(c_, rules_, order, layers_, vias_, options_.anal, text);
     text += nets;
     wd::write_blockages(c_, order, netlist ? &*netlist : nullptr, plan, text);
     text += "END DESIGN\n\n";
@@ -158,7 +160,7 @@ class WriteRun {
     wd::ViaPositions out;
     for (const auto& [key, name] : vias.positions) {
       std::string canonical = name;
-      if (const lef::LayerRecord* layer = editor_.lefdef.layers.find(name)) {
+      if (const lef::LayerRecord* layer = layers_.find(name)) {
         canonical = layer->canonical_name;
       } else if (const auto* via = vias_.find(name); via != nullptr && via->value) {
         canonical = via->value->canonical_name;
@@ -253,7 +255,8 @@ class WriteRun {
   }
 
   // lefRemoveGeneratedVias: the temporary vias leave the table, their keys
-  // stay (an emptied slot can be refilled by a later write); the rules
+  // stay in the shared key order (an emptied slot can be refilled by a
+  // later write, Q-LEFDEF-135); the rules
   // created with magic-compat ON stay for the session (Q-LEFDEF-99).
   void commit() {
     std::vector<std::string> generated;
@@ -265,6 +268,7 @@ class WriteRun {
     for (const std::string& key : generated) {
       (void)vias_.clear_value(key);
     }
+    editor_.lefdef.layers = std::move(layers_);
     editor_.lefdef.vias = std::move(vias_);
     if (compat_.magic_compat) {
       editor_.lefdef.rules = std::move(rules_);
@@ -295,6 +299,7 @@ class WriteRun {
   diag::NullSink quiet_;
   extract::StyleView extract_style_;
   wd::LayerMap map_;
+  lef::LayerTable layers_;
   lef::ViaTable vias_;
   lef::RuleTable rules_;
   std::vector<diag::Diagnostic> messages_;

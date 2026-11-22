@@ -80,12 +80,27 @@ class LayerAccess {
   /// takes its place in Magic's hash order with no entry, so an entry added
   /// later under it keeps that place (NONDEFAULTRULE LAYER and USEVIA).
   virtual void reserve(std::string_view name) = 0;
+
+  /// True when `name` is a key of Magic's LefInfo table with no record (a
+  /// released generated via, a noted via or rule name): find gives nullopt
+  /// although Magic's HashLookOnly finds the key. False by default.
+  [[nodiscard]] virtual bool keyed_without_entry(std::string_view /*name*/) const { return false; }
 };
 
 /// LefReadLayers' `obstruct` argument.
 enum class LayerLookup : std::uint8_t {
   normal,       // pin, route and via geometry
   obstruction,  // OBS geometry
+};
+
+/// Which of Magic's lookups resolves the name: LefReadLayers with result
+/// pointers (MACRO PORT and OBS geometry, where a key with no record
+/// crashes Magic: Q-LEFDEF-4, treated as absent), or LefReadLayer without
+/// them (LEF VIA and LAYER section geometry, DEF geometry), where such a
+/// key gives no type and the unknown-layer error (Q-LEFDEF-151).
+enum class LayerSource : std::uint8_t {
+  geometry,
+  read_layer,
 };
 
 /// The layer state of one geometry block: the current type (curlayer), the
@@ -113,8 +128,12 @@ struct LayerContext {
 /// type and the contact area. With magic-compat OFF both are reset first
 /// (Q-LEFDEF-3). A `;` reports "Bad Layer statement"; a name that does not
 /// resolve and is not an IGNORE entry reports the two "Don't know how to
-/// parse layer" errors (LEF-READ-001).
-void resolve_layer(std::string_view token, LayerLookup lookup, LayerState& state, const LayerContext& context);
+/// parse layer" errors (LEF-READ-001). A name with no entry falls back to
+/// the magic type names, except that with magic-compat ON a LefReadLayer
+/// lookup (`source` read_layer) of a key with no record resolves to nothing,
+/// as in Magic (Q-LEFDEF-151).
+void resolve_layer(std::string_view token, LayerLookup lookup, LayerState& state, const LayerContext& context,
+                   LayerSource source = LayerSource::geometry);
 
 /// DBTechNameType of `name`, then of its lowercase form (the first 255
 /// characters, as LefHelper_DBTechNameType_LefLower).
