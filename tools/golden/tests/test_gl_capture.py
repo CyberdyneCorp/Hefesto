@@ -22,7 +22,8 @@ Z_TOP, Z_BOT = -12.5, -20.0
 
 
 def quad(style, a, b, z_top, z_bot):
-    """A vertical face over segment a-b, as w3dFillXSide/w3dFillEdge draw it."""
+    """A vertical face over segment a-b, as w3dFillXSide/w3dFillEdge draw it: its front (outside)
+    is on the left of a -> b."""
     return (f"poly {style} 4 {a[0]} {a[1]} {z_bot} {a[0]} {a[1]} {z_top} "
             f"{b[0]} {b[1]} {z_top} {b[0]} {b[1]} {z_bot}")
 
@@ -32,12 +33,23 @@ def flat(style, points, z, top=True):
     return f"poly {style} {len(pts)} " + " ".join(f"{x} {y} {z}" for x, y in pts)
 
 
+def wall(style, a, b, z_top=Z_TOP, z_bot=Z_BOT):
+    """The outward side face over a counter-clockwise boundary edge a -> b."""
+    return quad(style, b, a, z_top, z_bot)
+
+
+def diagonal(style, a, b, z_top=Z_TOP, z_bot=Z_BOT):
+    """A diagonal side as w3dFillDiagonal draws it (a -> b counter-clockwise around the tile)."""
+    return (f"poly {style} 4 {a[0]} {a[1]} {z_bot} {b[0]} {b[1]} {z_bot} "
+            f"{b[0]} {b[1]} {z_top} {a[0]} {a[1]} {z_top}")
+
+
 def prism(style, x0, y0, x1, y1, z_top=Z_TOP, z_bot=Z_BOT, sides=None):
-    """A box as Magic's w3dFillOps draws a tile: top, bottom, then the four sides."""
+    """A box as Magic's w3dFillOps draws a tile: top, bottom, then the four outward sides."""
     ring = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     out = [flat(style, ring, z_top), flat(style, ring, z_bot, top=False)]
     edges = list(zip(ring, ring[1:] + ring[:1]))
-    out += [quad(style, a, b, z_top, z_bot) for i, (a, b) in enumerate(edges) if sides is None or i in sides]
+    out += [wall(style, a, b, z_top, z_bot) for i, (a, b) in enumerate(edges) if sides is None or i in sides]
     return out
 
 
@@ -63,7 +75,7 @@ class FaceReductionTest(unittest.TestCase):
     def test_l_shape_decompositions_agree(self):
         """Horizontal strips (Magic's maximal tiles) and vertical strips give one union."""
         horizontal = reduced(prism("metal1", 0, 0, 30, 10, sides=(0, 1, 3)), prism("metal1", 0, 10, 10, 30, sides=(1, 2, 3)),
-                             [quad("metal1", (30, 10), (10, 10), Z_TOP, Z_BOT)])
+                             [wall("metal1", (30, 10), (10, 10))])
         vertical = reduced(prism("metal1", 0, 0, 10, 30), prism("metal1", 10, 0, 30, 10, sides=(0, 1, 2)))
         self.assertEqual(horizontal, vertical)
 
@@ -95,21 +107,21 @@ class FaceReductionTest(unittest.TestCase):
         """metal1 (h .5, t .3) and a contact (h .5, t .8) both in style metal1 share their top z;
         each keeps its side at their common edge, which bounds its own prism."""
         out = reduced(prism("metal1", 0, 0, 10, 10, sides=(0, 2, 3)), prism("metal1", 10, 0, 20, 10, -12.5, -32.5, sides=(0, 1, 2)),
-                      [quad("metal1", (10, 0), (10, 10), Z_TOP, Z_BOT), quad("metal1", (10, 10), (10, 0), -12.5, -32.5)])
+                      [wall("metal1", (10, 0), (10, 10)), wall("metal1", (10, 10), (10, 0), -12.5, -32.5)])
         self.assertIn("side metal1 -12.5 -20 10 0 10 10\n", out)
-        self.assertIn("side metal1 -12.5 -32.5 10 0 10 10\n", out)
+        self.assertIn("side metal1 -12.5 -32.5 10 10 10 0\n", out)
 
     def test_split_tile_triangle_and_its_diagonal_side(self):
         tri = [(0, 0), (20, 0), (0, 10)]
         magic = reduced([flat("metal1", tri, Z_TOP), flat("metal1", tri, Z_BOT, top=False),
-                         quad("metal1", (0, 0), (20, 0), Z_TOP, Z_BOT), quad("metal1", (20, 0), (0, 10), Z_TOP, Z_BOT),
-                         quad("metal1", (0, 10), (0, 0), Z_TOP, Z_BOT)])
+                         wall("metal1", (0, 0), (20, 0)), diagonal("metal1", (20, 0), (0, 10)),
+                         wall("metal1", (0, 10), (0, 0))])
         halves = [[(0, 0), (10, 0), (10, 5), (0, 10)], [(10, 0), (20, 0), (10, 5)]]
         hefesto = reduced([flat("metal1", h, Z_TOP) for h in halves], [flat("metal1", h, Z_BOT, top=False) for h in halves],
-                          [quad("metal1", (0, 0), (20, 0), Z_TOP, Z_BOT), quad("metal1", (20, 0), (10, 5), Z_TOP, Z_BOT),
-                           quad("metal1", (10, 5), (0, 10), Z_TOP, Z_BOT), quad("metal1", (0, 10), (0, 0), Z_TOP, Z_BOT)])
+                          [wall("metal1", (0, 0), (20, 0)), wall("metal1", (20, 0), (10, 5)),
+                           wall("metal1", (10, 5), (0, 10)), wall("metal1", (0, 10), (0, 0))])
         self.assertEqual(magic, hefesto)
-        self.assertIn("side metal1 -12.5 -20 0 10 20 0\n", magic)
+        self.assertIn("side metal1 -12.5 -20 20 0 0 10\n", magic)
         self.assertIn("face metal1 -12.5 +z 0 20 0 0 10 0\n", magic)
 
     def test_overlapping_triangles_union(self):
@@ -120,6 +132,14 @@ class FaceReductionTest(unittest.TestCase):
                            flat("poly", [(0, 0), (10, 0), (10, 10)], 0)])
         self.assertEqual(square, split)
         self.assertEqual(square, crossed)
+
+    def test_side_facing_is_kept(self):
+        """A side wound inward (hidden by back-face culling) differs from the outward one."""
+        outward = reduced(prism("metal1", 0, 0, 10, 10))
+        inward = reduced(prism("metal1", 0, 0, 10, 10, sides=(1, 2, 3)), [quad("metal1", (0, 0), (10, 0), Z_TOP, Z_BOT)])
+        self.assertNotEqual(outward, inward)
+        self.assertIn("side metal1 -12.5 -20 0 0 10 0\n", outward)
+        self.assertIn("side metal1 -12.5 -20 10 0 0 0\n", inward)
 
     def test_cut_box_faces_close_the_prism(self):
         """A prism clipped to a cut box keeps closed faces along the cut."""

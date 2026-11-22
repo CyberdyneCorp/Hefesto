@@ -18,10 +18,14 @@ differ where the geometry does not, so both logs are reduced to:
   the union of the horizontal polygons, as the canonical trapezoids of its maximal vertical slabs
   (between consecutive x where the union's boundary changes). The facing is the sign of the
   polygon's area in xy: Magic draws top faces counter-clockwise and bottom faces clockwise.
-* ``side <style> <z_hi> <z_lo> <x1> <y1> <x2> <y2>``: per (style, z range), the union of the
-  vertical polygons as segments in xy, keeping only the parts on the boundary of the prisms of
-  that range: a part with prism on both sides (the union of the ``+z`` faces at z_hi intersected
-  with the ``-z`` faces at z_lo of the same style) is an inner face and is dropped.
+* ``side <style> <z_hi> <z_lo> <x1> <y1> <x2> <y2>``: per (style, z range, facing), the union
+  of the vertical polygons as segments in xy, keeping only the parts on the boundary of the
+  prisms of that range: a part with prism on both sides (the union of the ``+z`` faces at z_hi
+  intersected with the ``-z`` faces at z_lo of the same style) is an inner face and is dropped.
+  The segment runs with the face's outside on its right: the polygon's front (counter-clockwise
+  as seen from outside, as Magic's w3dFillEdge and w3dFillDiagonal draw it) faces right of
+  (x1, y1) -> (x2, y2). A side wound inward, which back-face culling hides, therefore prints
+  reversed and compares different.
 * ``skew <style> <n> <coordinates>``: a polygon that is neither horizontal nor vertical (none is
   expected; it is listed as is).
 
@@ -256,16 +260,19 @@ def _boundary_parts(carrier: _Carrier, lo: Fraction, hi: Fraction,
 
 def _side_lines(style: str, z_hi: str, z_lo: str, segments: list[tuple[Point, Point]],
                 faces: dict) -> list[str]:
+    """Each segment is oriented with its outside on the right; the orientation is kept."""
     tops, bottoms = faces.get((style, z_hi, "+z"), []), faces.get((style, z_lo, "-z"), [])
-    by_line: dict[_Carrier, list[tuple[Fraction, Fraction]]] = defaultdict(list)
+    by_line: dict[tuple[_Carrier, bool], list[tuple[Fraction, Fraction]]] = defaultdict(list)
     for a, b in segments:
         carrier = _Carrier.of(a, b)
-        by_line[carrier].append(tuple(sorted((carrier.param(a), carrier.param(b)))))
+        ta, tb = carrier.param(a), carrier.param(b)
+        by_line[(carrier, ta < tb)].append((min(ta, tb), max(ta, tb)))
     out = []
-    for carrier, intervals in by_line.items():
+    for (carrier, forward), intervals in by_line.items():
         parts = [part for lo, hi in _merge(intervals) for part in _boundary_parts(carrier, lo, hi, tops, bottoms)]
         for lo, hi in _merge(parts):
-            (x1, y1), (x2, y2) = carrier.point(lo), carrier.point(hi)
+            start, end = (lo, hi) if forward else (hi, lo)
+            (x1, y1), (x2, y2) = carrier.point(start), carrier.point(end)
             out.append(f"side {style} {z_hi} {z_lo} " + " ".join(_num(v) for v in (x1, y1, x2, y2)))
     return out
 
@@ -276,6 +283,23 @@ def _segment(points: list[Point]) -> tuple[Point, Point]:
     carrier = _Carrier.of(points[0], max(points, key=lambda p: abs(p[0] - points[0][0]) + abs(p[1] - points[0][1])))
     ordered = sorted(points, key=carrier.param)
     return ordered[0], ordered[-1]
+
+
+def _outward(points: tuple[tuple[Fraction, Fraction, float], ...]) -> tuple[float, float]:
+    """The xy part of the polygon's Newell normal: its front (counter-clockwise) side."""
+    nx = ny = 0.0
+    for (x1, y1, z1), (x2, y2, z2) in zip(points, points[1:] + points[:1]):
+        nx += float(y1 - y2) * (z1 + z2)
+        ny += (z1 - z2) * float(x1 + x2)
+    return nx, ny
+
+
+def _oriented_segment(points: tuple[tuple[Fraction, Fraction, float], ...]) -> tuple[Point, Point]:
+    """The polygon's xy segment, run with its front on the right."""
+    a, b = _segment([(x, y) for x, y, _ in points])
+    nx, ny = _outward(points)
+    right = float(b[1] - a[1]) * nx - float(b[0] - a[0]) * ny  # (dy, -dx) . n
+    return (b, a) if right < 0 else (a, b)
 
 
 class _Groups:
@@ -294,7 +318,7 @@ class _Groups:
         if _z_key(zs[0]) == _z_key(zs[-1]):
             self._add_face(poly.style, _z_key(zs[0]), xy)
         elif _collinear(xy):
-            self._add_side(poly.style, _z_key(zs[0]), _z_key(zs[-1]), xy)
+            self._add_side(poly.style, _z_key(zs[0]), _z_key(zs[-1]), poly.points)
         else:
             coords = " ".join(f"{_num(x)} {_num(y)} {_z_key(z)}" for x, y, z in poly.points)
             self.skew.append(f"skew {poly.style} {len(poly.points)} {coords}")
@@ -304,8 +328,8 @@ class _Groups:
         if area != 0:
             self.faces[(style, z, "+z" if area > 0 else "-z")].append(xy)
 
-    def _add_side(self, style: str, z_hi: str, z_lo: str, xy: list[Point]) -> None:
-        a, b = _segment(xy)
+    def _add_side(self, style: str, z_hi: str, z_lo: str, points: tuple[tuple[Fraction, Fraction, float], ...]) -> None:
+        a, b = _oriented_segment(points)
         if a != b:
             self.sides[(style, z_hi, z_lo)].append((a, b))
 
