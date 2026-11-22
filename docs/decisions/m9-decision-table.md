@@ -12,6 +12,8 @@ M9 ("LVS, simulation and advanced analog simulation → Desktop Beta", `docs/roa
 
 **Status: drafted 2026-11-22. Nothing here is approved.** Each new entry has `Status: pending user decision` and no `Resolution:` line, and each existing entry keeps its current state. After the user decides, INTEGRATION records the answers (m9 tasks 1.1–1.3), and the readiness check must then report "ready".
 
+**Verify rows at G0.** Four rows (Q-SIM-8, Q-SIMADV-3, -4, -9) are settled by reference runs that need the patched capture image, which is built only after G0. They are therefore approved at G0 as rules, recorded as conditional `Resolution:` lines ("verify: (a) if the D-22 run shows the later `.param` taking effect, otherwise (b)"), which the readiness check counts as resolved. Task 3.3 later adds each row's `Verified` line with the run id. A result that no branch of the approved rule covers goes back to the user before gate G2-SIM.
+
 ## Method and sources
 
 No netgen or xschem source was read while drafting this table. For netgen, only the licence file and the public reference manual were fetched. The `Evidence:` lines of `LVS.md` cite netgen source; they are repeated only by entry ID and were not followed. Magic's source (read-only, fc5daa9e) was read for the parts of M9 that touch Magic: `getnode` naming, the netlist window and IRSIM bridge (both M12) and the Tcl glue. The ngspice licence and API documentation are public.
@@ -27,7 +29,7 @@ Evidence tags:
 
 ## Recommendation kinds
 
-These follow X-2 (`docs/decisions/cross-cutting.md`), with `netgen-compat` (D-2, default ON) in place of `magic-compat` for the LVS entries:
+The **Kind** column of the tables below is the kind of the recommendation, as X-2 (`docs/decisions/cross-cutting.md`) defines it, with `netgen-compat` (D-2, default ON) in place of `magic-compat` for the LVS entries. It is not the entry's own `- Kind:` line, which classifies the question (bug, ambiguity, doc-mismatch, platform). The two can differ: Q-LVS-36's entry is a `bug` whose recommendation is a `fix`; Q-SIM-23's entry is a `doc-mismatch` whose recommendation is a process choice (`other`).
 - **replicate**: do what netgen does, in both modes.
 - **compat**: replicate with `netgen-compat` ON, and use the corrected behaviour with it OFF.
 - **fix**: corrected behaviour in both modes. This covers tier 1 (crashes, undefined behaviour, invalid output) and cases where netgen's output is unspecified.
@@ -39,15 +41,15 @@ These follow X-2 (`docs/decisions/cross-cutting.md`), with `netgen-compat` (D-2,
 
 Six items need the user's decision on product, legal, schedule or process grounds. Each lists the recommended option.
 
-- **J-1 (Q-LVS-30), the LVS clean room.** (a) Apply the M8 two-team process to netgen: separate spec and implementation teams, a paraphrase review of the eight `lvs-*` specs and `LVS.md`, `check_cleanroom.py` extended, Hefesto-authored golden inputs, and the counsel review joined to the M13 item. The LVS specs were written from GPL source, as the schematic specs were.
-- **J-2 (Q-SIM-20, D-28 desktop part), the ngspice licence boundary on desktop.** (a) Build a shared `libngspice-hefesto` that only the worker executable `hefesto-simd` loads. The editor, the CLI and the core never link ngspice, a CI check enforces this, and users can replace the library. This makes the M9 rule "subprocess or optional plugin" concrete: the worker process is the boundary, and the shared library meets the LGPL without a relink kit.
-- **J-3 (Q-SIM-26), D-28 timing.** (a) Split D-28. The desktop part is decided now (J-2). The iPadOS part (static linking with a relink offer, or an embedded framework) is decided before M14, after a legal review that starts in M9. The roadmap and D-28 are reworded to match.
+- **J-1 (Q-LVS-30), how the LVS clean room is applied.** The approved `hefesto-licensing` requirement "Two-team clean-room process for specs written from GPL source" already covers specs written from GPL source, which the `lvs-*` specs were, so a single team is not an option. (a) Apply it as M8 did: separate spec and implementation teams, a MODIFIED delta that adds the eight `lvs-*` capabilities, `LVS.md` and `netgen ref:` traces to the requirement, a roster rule that keeps netgen readers off LVSCMD and SCHEMSIM 16.3, a paraphrase review, `check_cleanroom.py` extended, Hefesto-authored golden inputs, and the counsel review joined to the Desktop 1.0 item. (b) would rewrite the specs from the public manual and black-box runs only.
+- **J-2 (Q-SIM-20, Q-SIM-22, D-28 desktop part), the ngspice licence boundary on desktop.** (a) Build a shared `libngspice-hefesto` behind a separate adapter plugin, `hefesto-ngspice-adapter`, that in release builds only the worker executable `hefesto-simd` loads (a developer build may load it in the editor for debugging). The editor, the CLI and the core never link ngspice, and a CI check enforces this. On macOS `hefesto-simd` alone disables library validation, so that users can actually replace the library, and it runs sandboxed. The intended LGPL position (a replaceable library in a separate process, no relink kit) goes through D-28's legal review before the Desktop Beta; the review can change the link type without touching the editor.
+- **J-3 (Q-SIM-26), when each linking question is settled.** D-28 is about the iPadOS app and already says "must be settled before M14", as the roadmap does; there is no conflict. (a) Decide the new desktop question (J-2) in R0 and review it before the Desktop Beta, and keep D-28's iPadOS choice before M14 after the same review. The roadmap and D-28 gain a sentence naming the desktop part.
 - **J-4 (Q-SIM-27), the Desktop Beta sign-off.** (a) A beta flow for each of the three PDKs on Linux x86_64 and macOS arm64:
-  - testbench simulation;
-  - a DRC-clean standard-cell inverter written to GDS;
+  - an inverter schematic `beta_inv.sch` drawn in Hefesto and simulated in a shared testbench with a fixed FO4 load;
+  - a layout cell `beta_inv` drawn in Hefesto around the library inverter, clean under Hefesto's DRC with the PDK's Magic tech file (KLayout sign-off is not part of Beta), written to GDS;
   - extraction;
-  - an LVS match;
-  - post-layout `rc` simulation whose delay is within 30 % of the schematic run.
+  - an LVS match against `beta_inv.sch`;
+  - post-layout `rc` simulation of `beta_inv` in the same testbench, with `tpd` within 30 % of the schematic run.
   
   Each flow is an end-to-end CI case, followed by the user's sign-off with real input, as for Desktop Alpha.
 - **J-5 (design Open Question 1), how spec changes are recorded.** (a) As spec deltas in the change, synced to the living specs once G0 passes. M7 and M8 edited the living specs after approval instead. Deltas let the recommendations be reviewed before anything is approved.
@@ -82,8 +84,8 @@ Six items need the user's decision on product, legal, schedule or process ground
 | Q-SIM-4 | Crash containment on iPadOS | **platform** | (a) In-process, with a mandatory autosave before each run (M14). A remote engine can come later. | [E] |
 | Q-SIM-5 | One instance per process; parallelism | **platform** | (a) Worker processes on desktop and serial runs on iPadOS. The pool size follows Q-SIMADV-13. | [E] |
 | Q-SIM-6 | ngspice lowercases names | **fix** (as specified) | Rename on collision to `<name>__c<k>`. Confirm vector naming with SIM-NET-03 and SIM-UI-04. | [E] |
-| Q-SIM-7 | ngspice version pin and the CMake build | **other** | Pin the first ngspice release whose tree has the CMake build. If ngspice-47 lacks it, pin ngspice-47 with Hefesto's own CMake wrapper instead of waiting. Carry the Hefesto patches and offer them upstream. The golden pin (`7aa47164`) moves to the same release (Q-SIM-23). | [E]; [code] `tools/golden/pins.toml:46-52` |
-| Q-SIM-8 | PDK model descriptors need verification | **verify** | Verify against the pinned PDK sets in the capture image (D-26). This includes the sg13g2 HBT, RES and CAP sections and sky130 `ng_nomodcheck`. | [E]; [D] D-26 |
+| Q-SIM-7 | ngspice version pin and the CMake build | **other** | Pin ngspice-47 with Hefesto's own CMake wrapper. Checked 2026-11-22: the ngspice-47 tag (`a80f6e3e`) has no `cmake/` directory or top-level `CMakeLists.txt`, and no later release exists, so the choice is not conditional. Move to the first release that ships the upstream CMake build when one exists. Carry the Hefesto patches and offer them upstream. The golden pin (`7aa47164`) and roadmap principle 2 move to the same release (Q-SIM-23), and the SIM spec team re-checks every `(ngspice ref: ...)` trace against it (task 1.4). | [E]; [code] `tools/golden/pins.toml:46-52`; [web] ngspice git tag `ngspice-47` |
+| Q-SIM-8 | PDK model descriptors need verification | **verify** | Approve at G0 as a rule: the descriptors are the ones the entry lists, each confirmed or corrected by the D-26 run against the pinned PDK sets (including the sg13g2 HBT, RES and CAP sections); sky130 sets `ng_nomodcheck` only if the run without it fails on `combined`. `Verified` line at G2-SIM. | [E]; [D] D-26 |
 | Q-SIM-9 | `.control` sections and the `shell` command | **platform** | Keep the spec's behaviour: strip `.control` by default and block dangerous commands. The iPad subset (`let`, `meas`, `print`, `alter`) is reviewed against App Store guideline 2.5.2 in M14. | [E] |
 | Q-SIM-10 | Cross-platform numeric reproducibility | **platform** | Build with `-ffp-contract=off` everywhere and keep tolerance-based golden comparison. Re-tune the tolerances with SIM-XP. | [E] |
 | Q-SIM-11 | Recovery after an ngspice error | **platform** | Always replace the worker after any fault on desktop. On iPadOS, use `ngSpice_Reset` with fuzz tests (D-25). | [E]; [D] D-25 |
@@ -98,11 +100,11 @@ Six items need the user's decision on product, legal, schedule or process ground
 
 | ID | Question | Kind | Recommendation | Evidence |
 |---|---|---|---|---|
-| Q-SIMADV-3 | sky130 Monte Carlo switches | **verify** | Run the D-22 reference deck. If a later `.param MC_MM_SWITCH=1` takes effect, use (a); otherwise use (b), a Hefesto-side section. Do not expose the variation-scaling factors in M9. | [E]; [D] D-22 |
-| Q-SIMADV-4 | gf180mcu statistical switches and defaults | **verify** | Keep the explicit `.param` overrides, confirmed by D-22. Use `ngbehavior` per D-27. Report the comment mismatch upstream. | [E]; [D] D-22, D-27 |
+| Q-SIMADV-3 | sky130 Monte Carlo switches | **verify** | Approve at G0 as a rule: (a) if the D-22 run shows a later `.param MC_MM_SWITCH=1` taking effect, otherwise (b), a Hefesto-side section. Do not expose the variation-scaling factors in M9. `Verified` line at G2-SIM. | [E]; [D] D-22 |
+| Q-SIMADV-4 | gf180mcu statistical switches and defaults | **verify** | Approve at G0 as a rule: explicit `.param` overrides if D-22 shows that the later definition wins, otherwise a Hefesto-side section as in Q-SIMADV-3 (b); `ngbehavior` per D-27. Report the comment mismatch upstream. `Verified` line at G2-SIM. | [E]; [D] D-22, D-27 |
 | Q-SIMADV-5 (rest) | `mm_ok=1` for extracted sg13g2 devices | **fix** | (a) Simulation preparation adds `mm_ok=1` when the Monte Carlo mode includes mismatch, inside the deck only (D-23). `ext2spice` output does not change. | [E]; [D] D-23 |
 | Q-SIMADV-8 | Monte Carlo around non-typical corners | **other** | (a) Reject `process` and `both` at non-typical corners unless the descriptor names a statistical counterpart. Evaluate (b) with the PDK maintainers later. | [E] |
-| Q-SIMADV-9 | Overriding parameters in point decks | **verify** | Decide with D-22. If the last definition wins, append override lines after the last model line (b). Otherwise change only top-level text and report "cannot sweep" (a). | [E]; [D] D-22 |
+| Q-SIMADV-9 | Overriding parameters in point decks | **verify** | Approve at G0 as a rule: if the D-22 run shows that the last definition wins, append override lines after the last model line (b); otherwise change only top-level text and report "cannot sweep" (a). `Verified` line at G2-SIM. | [E]; [D] D-22 |
 | Q-SIMADV-10 | Hefesto measurements against ngspice `.meas` | **other** | (a) Hefesto's value is authoritative. (b) Debug builds also capture ngspice's value and warn on a difference (SIMADV-MEAS-04). | [E] |
 | Q-SIMADV-11 | Waveform retention and stale measurements | **other** | Add the `measured` mode now. It becomes the default above 100 points only after `sim-bench` has measured its storage cost and the user approves (D-24). | [E]; [D] D-24 |
 
@@ -110,13 +112,13 @@ Six items need the user's decision on product, legal, schedule or process ground
 
 | Decision | Question | Recommendation | How it closes |
 |---|---|---|---|
-| D-22 | Does a later top-level `.param` override an earlier one in the pinned ngspice? | Run one reference deck per PDK before G2 (task 3.3). | `Verified` lines under Q-SIMADV-3, -4, -9 |
+| D-22 | Does a later top-level `.param` override an earlier one in the pinned ngspice? | Approve the conditional rules of Q-SIMADV-3, -4, -9 at G0; run one reference deck per PDK before G2-SIM (task 3.3). | `Verified` lines under Q-SIMADV-3, -4, -9 |
 | D-23 | sg13g2 `mm_ok=1` for extracted devices | (a) Simulation preparation adds it. | the `simulation-netlist-preparation` delta "sg13g2 mismatch flag on extracted devices" |
 | D-24 | `measured` retention mode | Add it. It becomes the default only after measurement. | the `simulation-sweeps` delta "Measured waveform retention"; task 19.2 |
-| D-25 | Engine recovery after a fault | Replace the worker on desktop. Reset on iPadOS, with fuzz tests. | the `simulation-engine-embedding` delta "Crash containment on desktop" |
+| D-25 | Engine recovery after a fault | Replace the worker on desktop. Reset on iPadOS, with fuzz tests (M14). | the `simulation-engine-embedding` deltas "Crash containment on desktop" and "Cancellation and fault states" |
 | D-26 | sky130 descriptor: `combined`, `ng_nomodcheck` | Scan `combined`. Decide `ng_nomodcheck` with a reference run. | task 3.3; Q-SIM-8 |
 | D-27 | gf180mcu `hs` or `hsa` | Follow the PDK (`hs`) unless a reference run shows a difference that `hsa` fixes. | task 3.3 |
-| D-28 | Linking ngspice's LGPL and MPL parts | Split it (J-3). The desktop part is J-2, a shared library loaded only by `hefesto-simd`. The iPad part goes through legal review first, then a framework or static linking, before M14. | Q-SIM-20, Q-SIM-26; the `hefesto-licensing` delta |
+| D-28 | Linking ngspice's LGPL and MPL parts | D-28's own recommendation is a legal review first. The new desktop question is J-2 (a shared library behind the adapter plugin, loaded only by `hefesto-simd` in release builds), reviewed before the Desktop Beta. The iPad part (a framework or static linking) stays before M14, after the same review (J-3). | Q-SIM-20, Q-SIM-26; the `hefesto-licensing` delta; task 20.1 |
 
 Two related audit decisions are already resolved and are used as they stand: D-10 (native undo events for `sim` testbench edits) and D-34 (the `netgen` helper only names `lvs` in a diagnostic).
 
@@ -124,22 +126,22 @@ Two related audit decisions are already resolved and are used as they stand: D-1
 
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
-| Q-LVS-30 | Clean-room process for the `lvs-*` specs | **other** | (a) The M8 two-team process (J-1) |
+| Q-LVS-30 | How the approved two-team process applies to the `lvs-*` specs | **other** | (a) The M8 process, a MODIFIED delta of the requirement and a roster rule (J-1) |
 | Q-LVS-31 | The IHP setup file is `ihp-sg13g2_setup.tcl` | **fix** (doc) | (a) Correct the texts and add the bare-name scenario |
 | Q-LVS-32 | `lvs -layout` extracts incrementally | **other** | (a) `ensure_extracted` (M7 D18) |
 | Q-LVS-33 | Name map from netlists back to layout and schematic objects | **platform** | (a) Additive `render_with_map` and `NetlistResult::names` |
 | Q-LVS-34 | LVS threading | **platform** | (a) Single-threaded per pair, with no globals |
 | Q-LVS-35 | LVS performance target | **platform** | (a) Callgrind counts ≤ netgen, then baseline + 2 % |
 | Q-LVS-36 | LVS input and run limits | **fix** | (c) Configurable limits with the proposed defaults |
-| Q-SIM-20 | How `hefesto-simd` links ngspice on desktop | **platform** | (a) Shared `libngspice-hefesto`, loaded only by the worker (J-2) |
+| Q-SIM-20 | How `hefesto-simd` links ngspice on desktop | **platform** | (a) Shared `libngspice-hefesto` behind the adapter plugin, loaded only by the worker in release builds; replaceable on macOS; legal review before Beta (J-2) |
 | Q-SIM-21 | Worker IPC transport and platform contract | **platform** | (a) `platform::WorkerHost`, framed pipes, heartbeats |
-| Q-SIM-22 | In-process simulation on desktop | **platform** | (a) Developer builds only |
+| Q-SIM-22 | In-process simulation on desktop | **platform** | (a) Developer builds only, through the same adapter plugin |
 | Q-SIM-23 | Reference ngspice build for SIM and SIMADV captures | **other** | (a) Patched build from the engine's pin, with OpenVAF |
 | Q-SIM-24 | Node names for layout probes before M12 | **platform** | (a) Bring the naming function forward, with no length limit; `getnode` stays M12 |
 | Q-SIM-25 | Simulation input and transport limits | **fix** | (a) Configurable limits with the proposed defaults |
-| Q-SIM-26 | When D-28 must be settled | **other** | (a) Desktop part in M9, iPad part before M14 (J-3) |
-| Q-SIM-27 | Desktop Beta sign-off | **other** | (a) Three PDK flows, CI plus the user's sign-off (J-4) |
-| Q-SIM-28 | Simulation performance gate | **platform** | (a) Overhead ≤ 10 %, Monte Carlo scaling ≥ 0.6 × the worker count |
+| Q-SIM-26 | When D-28 must be settled | **other** | (a) Desktop question in R0 and reviewed before Beta; iPad part before M14, as D-28 says (J-3) |
+| Q-SIM-27 | Desktop Beta sign-off | **other** | (a) Three PDK flows with Hefesto-drawn schematic and layout, Hefesto DRC, FO4 testbench; CI plus the user's sign-off (J-4) |
+| Q-SIM-28 | Simulation performance gate | **platform** | (a) Overhead ≤ 10 % against ngspice's `rusage` analysis time; Monte Carlo scaling ≥ 0.6 × `w` for `w` up to `min(4, cores − 1)` of the runner |
 | Q-SIMADV-13 | Worker pool size and result order | **platform** | (a) A memory-aware pool, results in point-index order |
 | Q-SCHEM-39 | SCHEM-LVS-01 needs the LVS engine | **other** | (a) Defer to M9, as SCHEM-SIM-01/02 were |
 
@@ -182,24 +184,25 @@ These are recorded as spec deltas in `openspec/changes/m9-lvs-simulation/specs/`
 | `lvs-property-matching` | ADDED "Platform-independent property arithmetic" | X-1 |
 | `lvs-hierarchy` | ADDED "Hierarchy depth limit" | Q-LVS-36 |
 | `lvs-reports` | ADDED "Layout object references in structured results" | Q-LVS-33 |
-| `lvs-command` | MODIFIED "Layout netlist from extraction", "Setup file and input resolution"; ADDED "LVS status chip" | Q-LVS-31, -32, -33 |
-| `simulation-engine-embedding` | MODIFIED "ngspice embedded as a library", "Crash containment on desktop"; ADDED "Worker channel limits" | Q-SIM-7, -11, -20, -21, -22, -25, -26, D-25, D-28 |
-| `simulation-netlist-preparation` | ADDED "sg13g2 mismatch flag on extracted devices", "Deck limits" | D-23, Q-SIM-25 |
+| `lvs-command` | MODIFIED "Layout netlist from extraction" (incremental, with the stale-header rule), "Setup file and input resolution"; ADDED "LVS status chip" | Q-LVS-31, -32, -33 |
+| `simulation-engine-embedding` | MODIFIED "ngspice embedded as a library", "Crash containment on desktop", "ngspice build configuration and license hygiene", "Cancellation and fault states" (reset only on iPadOS), "In-process execution on iPadOS" (link type per D-28), "Multiple simulations and corner parallelism" (the pool formula); ADDED "Worker channel limits", "Worker confinement" | Q-SIM-5, -7, -11, -20, -21, -22, -25, -26, Q-SIMADV-13, D-25, D-28 |
+| `simulation-netlist-preparation` | MODIFIED "Net name map" (layout point and `layoutName` computed at it); ADDED "sg13g2 mismatch flag on extracted devices", "Deck limits" | Q-SIM-24, D-23, Q-SIM-25 |
 | `simulation-analyses-and-results` | ADDED "Chunked result transfer", "Raw files in golden comparisons" | Q-SIM-21, -17 |
-| `simulation-ui-and-crossprobe` | ADDED "Probe names without length limits", "Simulate button" | Q-SIM-24 |
+| `simulation-ui-and-crossprobe` | MODIFIED "Probing a layout net" (lookup by `layoutName`, then connectivity); ADDED "Probe names without length limits", "Simulate button" | Q-SIM-24, Q-LVS-33 |
 | `simulation-command` | ADDED "Schematic launcher calls" | m8 D13 |
 | `simulation-sweeps` | ADDED "Measured waveform retention", "Results in point order" | D-24, Q-SIMADV-13 |
-| `simulation-corners` | ADDED "Corner jobs on the worker pool" | Q-SIMADV-13 |
+| `simulation-corners` | ADDED "Corner jobs on the worker pool" (the pool size is referenced, not repeated) | Q-SIMADV-13 |
 | `simulation-monte-carlo` | ADDED "Sample independence from worker assignment", "Sample count limit" | Q-SIMADV-13, Q-SIM-25 |
 | `simulation-measurements-and-statistics` | ADDED "ngspice measure cross-check in debug builds", "Platform-independent statistics" | Q-SIMADV-10 |
-| `hefesto-licensing` | ADDED "Process boundary for external engines" | Q-SIM-20, -26, Q-LVS-30, D-28 |
+| `hefesto-licensing` | MODIFIED "Two-team clean-room process for specs written from GPL source" (netgen added); ADDED "Process boundary for external engines" | Q-SIM-20, -22, -26, Q-LVS-30, D-28 |
 | `hefesto-architecture` | ADDED "Long-lived worker processes" | Q-SIM-21 |
 | `hefesto-performance` | ADDED "LVS and simulation throughput" | Q-LVS-35, Q-SIM-28 |
 
 Deltas cannot carry these edits, so they are made directly at G0:
 - the `lvs-setup-file` Purpose names `ihp-sg13g2_setup.tcl` (Q-LVS-31);
 - `tests/golden/LVS/CASES.md` uses that name;
-- the roadmap's M9 "Early de-risking" line and the de-risking schedule, and D-28's priority line, say "desktop part in M9, iPad part before M14" (Q-SIM-26);
+- the roadmap's M9 "Early de-risking" line and D-28 gain a sentence naming the desktop linking question (Q-SIM-20), decided in R0 and reviewed before the Desktop Beta; D-28's iPadOS deadline is unchanged (Q-SIM-26);
+- roadmap principle 2 names the new ngspice pin (Q-SIM-7, Q-SIM-23);
 - `docs/contributing/cleanroom.md` covers netgen (Q-LVS-30);
 - `tests/golden/deviations.toml` defers SCHEM-LVS-01 to M9 (Q-SCHEM-39).
 
@@ -207,7 +210,7 @@ Deltas cannot carry these edits, so they are made directly at G0:
 
 | Run | Settles | Where it is recorded |
 |---|---|---|
-| `.param` precedence, one deck per PDK | D-22, Q-SIMADV-3, -4, -9 | `Verified` lines in `SIMADV.md` |
-| sky130 with and without `ng_nomodcheck` on `combined` | D-26, Q-SIM-8 | `SIM.md` |
+| `.param` precedence, one deck per PDK | D-22, Q-SIMADV-3, -4, -9 (approved at G0 as conditional rules) | `Verified` lines in `SIMADV.md` |
+| sky130 with and without `ng_nomodcheck` on `combined` | D-26, Q-SIM-8 (approved at G0 as a conditional rule) | `Verified` line in `SIM.md` |
 | gf180mcu `hs` against `hsa` on the PDK testbenches | D-27, Q-SIMADV-4 | `SIMADV.md` |
 | `ihp-sg13g2_setup.tcl` evaluated by netgen 1.5.327 | Q-LVS-31 | NG-PDK capture |

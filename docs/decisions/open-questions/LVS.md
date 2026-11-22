@@ -237,20 +237,22 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Options: replicate | fix (a deterministic unique identity)
 - Recommendation: fix. The identity is not observable except through collisions (see Q-LVS-4).
 
-### Q-LVS-30: Clean-room process for the `lvs-*` specs
+### Q-LVS-30: How the two-team clean-room process applies to the `lvs-*` specs
 - Kind: platform
 - Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D2)
-- Magic behavior: n/a, because this is a Hefesto process question. The header of this file says that the entries' "Evidence" cites netgen source, so the eight `lvs-*` specs were written by reading GPL source. netgen's `Copying` file is GNU GPL version 1 text. The requirement "Two-team clean-room process for specs written from GPL source" in `hefesto-licensing` was written for xschem in M8 (J-1).
+- Magic behavior: n/a, because this is a Hefesto process question. The header of this file says that the entries' "Evidence" cites netgen source, so the eight `lvs-*` specs were written by reading GPL source. netgen's `Copying` file is GNU GPL version 1 text. The approved requirement "Two-team clean-room process for specs written from GPL source" in `hefesto-licensing` already applies: it covers any Hefesto spec "written by reading GPL source". Its "Today this covers" list, its `(xschem ref: ...)` rule and its scenarios name only xschem, so the question is how it is applied to netgen, not whether.
 - Evidence: this file's header; `openspec/specs/hefesto-licensing/spec.md` (Requirements "Clean-room rule for GPL-sourced behavior" and "Two-team clean-room process for specs written from GPL source"); `docs/contributing/cleanroom.md`; `docs/decisions/m8-decision-table.md` (J-1)
 - Options:
-  - (a) Apply the M8 two-team process to LVS:
-    - a named spec team and a named implementation team;
+  - (a) Apply the M8 process to LVS as it stands:
+    - a spec team and an implementation team (roles, not names, for agents);
+    - a MODIFIED delta of the requirement that adds the eight `lvs-*` capabilities and this file to its list, extends the source-trace rule to `(netgen ref: ...)` and adds netgen scenarios;
+    - a roster rule: a session that read netgen source does not work on the `lvs` command (LVSCMD) or on schematic-driven LVS (SCHEMSIM task 16.3);
     - a paraphrase review of the eight `lvs-*` specs and this file before any LVS implementation starts;
     - `check_cleanroom.py` extended to detect netgen's GPL header and `netgen ref:` traces;
     - golden inputs authored by Hefesto only.
-  - (b) One team that works from the specs under the existing rule only.
-  - (c) Rewrite the `lvs-*` specs using only netgen's public reference manual and black-box runs.
-- Recommendation: (a). The LVS specs were written from source in the same way as the schematic specs, and the M8 process and checks already exist. (c) would discard work that has already been reviewed. (b) gives a weaker provenance argument than M8's.
+  - (b) Rewrite the `lvs-*` specs using only netgen's public reference manual and black-box runs, so that the requirement no longer applies to them.
+  - A single team working from the specs is not an option: it would break the approved requirement.
+- Recommendation: (a). The LVS specs were written from source in the same way as the schematic specs, and the M8 process and checks already exist. (b) would discard work that has already been reviewed.
 
 ### Q-LVS-31: The IHP netgen setup file is `ihp-sg13g2_setup.tcl`
 - Kind: doc-mismatch
@@ -270,8 +272,9 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - Step 1 of the `lvs-command` requirement "Layout netlist from extraction" extracts "as `extract all` would".
   - Design D18 of the M7 plan gives M9 `extract::ensure_extracted` instead. It re-extracts only stale or missing cells and their parents, as Magic's `extract` does. Magic's `extract all` ignores timestamps.
 - Evidence: `openspec/specs/lvs-command/spec.md` (Requirement "Layout netlist from extraction"); `openspec/changes/m7-extraction/design.md` D18; Magic `extract/ExtMain.c:284-299`, `:360-384`
-- Options: (a) extract incrementally with `ensure_extracted`; the netlist equals the `extract all` netlist whenever the `.ext` files are current; (b) always run `extract all`; (c) a setting, defaulting to incremental.
-- Recommendation: (a). For an up-to-date hierarchy the result is the same, and LVS reruns on large layouts become fast. A user who wants a full re-extraction can run `extract all` first.
+  - Magic's incremental check (`extTimestampMisMatch`, `extract/ExtMain.c:968-990`) compares only the `timestamp` line of the `.ext` file with the cell's timestamp. A `.ext` file written under another extract style or technology therefore looks current, although its `tech` and `style` lines (`extract/ExtCell.c:573-582`) say otherwise.
+- Options: (a) extract incrementally with `ensure_extracted`, treating a `.ext` file as stale when it is missing, when its timestamp differs, or when its `tech` or `style` line differs from the current ones (an open item against M7's `ensure_extracted`); the netlist equals the `extract all` netlist whenever the `.ext` files are current; (b) always run `extract all`; (c) a setting, defaulting to incremental.
+- Recommendation: (a). For an up-to-date hierarchy the result is the same, and LVS reruns on large layouts become fast. The header check closes the one case in which Magic's timestamp check would accept a file that `extract all` would not produce. A user who wants a full re-extraction can run `extract all` first.
 
 ### Q-LVS-33: Name map from the layout netlist back to layout objects
 - Kind: platform

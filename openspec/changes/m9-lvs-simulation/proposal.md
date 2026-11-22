@@ -162,7 +162,7 @@ M9 also implements the M9 part of `schematic-simulation-integration` (m8 design 
 |---|---|
 | Decision table approved, readiness "ready" | gate G0 (R0) |
 | LVS clean-room roles and paraphrase review | CLEANROOM, before any LVS implementation (gate G1) |
-| LVS, SIM, SIMADV goldens captured (roadmap principle 2) | GOLDEN, section 3 (gate G2) |
+| LVS, SIM, SIMADV goldens captured (roadmap principle 2) | GOLDEN, section 3 (gates G2-LVS and G2-SIM) |
 | `ensure_extracted`, `render` (+ `render_with_map`), `extresist::run` working | M7 exit, plus the additive API of Q-LVS-33 (gate G3) |
 | `schem::netlist` (+ `NameMap`), `schem::build_deck` working | M8 exit (gate G4) |
 | ngspice desktop linking decided | Q-SIM-20 / D-28 desktop part (R0) |

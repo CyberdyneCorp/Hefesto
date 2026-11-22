@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Sample independence from worker assignment
-The result of Monte Carlo sample `k` SHALL depend only on the deck, the base seed and `k`. It SHALL NOT depend on which worker ran the sample, on how many workers ran, or on which samples a worker ran before. Each sample SHALL start from a freshly initialised or reset engine with its own seed.
+The result of Monte Carlo sample `k` SHALL depend only on the deck, the base seed and `k`. It SHALL NOT depend on which worker ran the sample, on how many workers ran, or on which samples a worker ran before. A sample MAY run in a worker that ran other jobs before. Before each sample is loaded, the worker SHALL have cleared the previous circuit and repeated the per-load initialisation with the sample's own seed, as capability `simulation-engine-embedding` specifies (Requirements "Crash containment on desktop" and "Deterministic engine initialisation").
 
 Compatibility: native
 

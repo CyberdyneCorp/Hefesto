@@ -2,7 +2,7 @@
 
 ### Requirement: Layout netlist from extraction
 When `lvs` is invoked through Hefesto's layout-aware form, `lvs -layout <cell> <schematic> [<setup>] [<log>] [option …]`, the layout side SHALL be generated internally:
-1. Bring the extraction of `<cell>` and its hierarchy up to date as `extract` does (capability `extract-commands`, Requirement "Incremental extraction"): only cells whose `.ext` file is missing or older than the cell, and their parents, are re-extracted. `extract all`, which ignores timestamps, SHALL NOT be used.
+1. Bring the extraction of `<cell>` and its hierarchy up to date as `extract` does (capability `extract-commands`, Requirement "Incremental extraction"): only cells whose `.ext` file is stale, and their parents, are re-extracted. A `.ext` file is stale when it is missing, when its timestamp differs from the cell's, or when its `tech` or `style` line differs from the current technology or extract style. The last rule is Hefesto's: Magic compares timestamps only, and would accept a file written under another style. `extract all`, which ignores timestamps, SHALL NOT be used.
 2. Netlist it with the `ext2spice lvs` preset as defined by capability `netlist-spice-options` (hierarchy on, ngspice format, infinite cthresh and rthresh, renumber off, scale off, blackbox on, global off, subcircuits top auto). The preset SHALL be passed as a value, and the user's `ext2spice` settings SHALL be left unchanged.
 3. Load the result as circuit 1.
 
@@ -21,6 +21,11 @@ Compatibility: native
 - **GIVEN** a completed `lvs -layout top top.spice sky130A` run, after which only cell `buf` (used by `top`) was edited
 - **WHEN** the same command is run again
 - **THEN** only `buf` and its parents up to `top` SHALL be re-extracted, and the result SHALL equal a run after `extract all`
+
+#### Scenario: Extract style changed
+- **GIVEN** a completed `lvs -layout inv inv.spice sky130A` run, after which the user selected another extract style without editing any cell
+- **WHEN** the same command is run again
+- **THEN** every cell of `inv`'s hierarchy SHALL be re-extracted under the new style, and the result SHALL equal a run after `extract all` under that style
 
 #### Scenario: User settings untouched
 - **GIVEN** the user has set `ext2spice format hspice` and `ext2spice cthresh 0`

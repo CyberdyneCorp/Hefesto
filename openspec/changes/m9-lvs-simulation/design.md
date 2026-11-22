@@ -28,7 +28,7 @@ What is new in M9:
 
 Magic's own code in this area matters only at the edges:
 - **The `ext2spice lvs` preset (M7).** M9 takes it from M7 as it is.
-- **The `getnode` hierarchical naming that probes use (Q-SIM-24).** M9 brings the naming function forward from M12 without its fixed 256-byte and 30-byte buffers (`sim/SimExtract.c:357`, `:734-765`).
+- **The `getnode` hierarchical naming that probes use (Q-SIM-24).** M9 brings the naming function forward from M12 without the fixed buffers of `SimGetNodeName`: `strcpy`/`strcat` into `static nodename[256]` and `buff[256]` overflow on long paths or labels (`sim/SimExtract.c:734-767`). `SimTxtorLabel`'s `name[30]` (`:357-366`) cannot overflow: `@=%c%d,%d` with two 32-bit integers is at most 26 characters plus the terminator.
 - **Magic's Tcl glue (`magic.tcl.in:94-151`).** It loads netgen and IRSIM into Magic's own interpreter. Hefesto deliberately does not do this (D2).
 
 The netlist window and the IRSIM bridge (`rsim`, `startrsim`, `simcmd`) stay in M12, and UI-CLIENT-002 is not retired. The crashes and undefined behaviour visible in that Magic code are recorded for M12 and do not need M9 code:
@@ -58,24 +58,33 @@ The netlist window and the IRSIM bridge (`rsim`, `startrsim`, `simcmd`) stay in 
 
 | Gate | Passes when | Unlocks |
 |---|---|---|
-| G0 decisions | The M9 decision table is approved and the approved answers are recorded as `Resolution:` lines and in `audit/DECISIONS.md`. This change's spec deltas are applied to the living specs. `check_milestone_readiness.py --milestone M9` reports "ready". | every other task |
-| G1 LVS clean room | CLEANROOM tasks 2.1–2.4 are done: roles recorded, paraphrase review of the eight `lvs-*` specs and `LVS.md`, `check_cleanroom.py` covering netgen. | every LVS implementation task |
-| G2 golden | The LVS, SIM and SIMADV cases are captured (roadmap principle 2). The reference runs of D-22, D-26 and D-27 are recorded, and the spec team has recorded the texts that depend on captures. | the matching implementation workstreams (LVS after the LVS capture, SIM after the SIM capture) |
+| G0 decisions | The M9 decision table is approved and the approved answers are recorded as `Resolution:` lines and in `audit/DECISIONS.md`. The four **verify** rows (Q-SIM-8, Q-SIMADV-3, -4, -9) get conditional `Resolution:` lines that name the option for each outcome of their reference run ("verify: (a) if the D-22 run shows the later `.param` taking effect, otherwise (b)"); their `Verified` lines are added at G2-SIM. This change's spec deltas are applied to the living specs. `check_milestone_readiness.py --milestone M9` reports "ready". | every other task |
+| G1 LVS clean room | CLEANROOM tasks 2.1–2.4 are done: roles recorded, paraphrase review of the eight `lvs-*` specs and `LVS.md`, `check_cleanroom.py` covering netgen. | LVS golden inputs (task 3.5) and every LVS implementation task |
+| G2-LVS golden | The LVS cases are captured (roadmap principle 2), and the spec team has recorded the LVS texts that depend on captures. | the LVS implementation workstreams |
+| G2-SIM golden | The SIM and SIMADV cases are captured. The reference runs of D-22, D-26 and D-27 have added the `Verified` lines of the four verify rows (task 3.3), and the spec team has recorded the simulation texts that depend on captures. | the simulation implementation workstreams |
 | G3 M7 | M7 has exited, and `render_with_map` (Q-LVS-33) has landed. | LVSCMD layout source, SIMDECK layout source and parasitic modes, SIMPROBE layout probes |
 | G4 M8 | M8 has exited, and `schem::NetlistResult::names` has landed. | SCHEMSIM, LVSCMD schematic source, SIMDECK schematic source |
 | Exit | D25 | M9 done, Desktop Beta |
 
-Rounds. Workstreams edit only what D3 assigns them.
+A verify row is approved at G0 as a rule ("option X if the run shows Y"), not as a guess. If a reference run shows an outcome that no branch of the approved rule covers, the result goes back to the user before G2-SIM passes.
 
-| Round | Work | Needs |
-|---|---|---|
-| R0 | the decisions (tasks section 1) | nothing |
-| R1 | CLEANROOM, PDK data sets, GOLDEN capture and comparators, NGBUILD, SCAFFOLD, PLATFORM `WorkerHost` | G0 |
-| R2 | LVSREAD, LVSSETUP, LVSALG; SIMD and SIMENG (engine, jobs); SIMDECK for raw and SPICE-file sources; SIMRES | G1, G2 |
-| R3 | LVSRED, LVSPROP, LVSHIER, LVSREP; SIMCMD; SIMADV and SIMMEAS on raw and SPICE-file testbenches; DESIGN boards | R2 |
-| R4 | LVSCMD, SIMDECK layout and schematic sources, SIMPROBE, SCHEMSIM, SHELL, SECURITY | G3, G4 |
-| R5 | GOLDEN SCHEM-SIM/LVS and the Beta end-to-end cases, PERF | R4 |
-| R6 | INTEGRATION exit | R5 |
+Rounds. Workstreams edit only what D3 assigns them. The LVS and simulation streams are gated separately, so neither waits for the other's capture or clean room.
+
+| Round | LVS stream | Simulation stream | Shared |
+|---|---|---|---|
+| R0 | — | — | the decisions (tasks section 1); needs nothing |
+| R1 | CLEANROOM (G0); then LVS golden inputs and capture (after G1) | NGBUILD → GOLDEN capture image → reference runs → SIM/SIMADV inputs and capture (the G2-SIM critical path, below) | PDK data sets, GOLDEN comparators, SCAFFOLD, PLATFORM `WorkerHost` (G0) |
+| R2 | LVSREAD, LVSSETUP, LVSALG (G1, G2-LVS) | SIMD and SIMENG; SIMDECK for raw and SPICE-file sources; SIMRES (G2-SIM) | — |
+| R3 | LVSRED, LVSPROP, LVSHIER, LVSREP (LVS R2) | SIMCMD; SIMADV and SIMMEAS on raw and SPICE-file testbenches (simulation R2) | DESIGN boards |
+| R4a | MAPS → LVSCMD (G3, G4) | MAPS → SIMDECK layout and schematic sources (G3, G4) | SECURITY |
+| R4b | — | SIMPROBE (after SIMDECK 13.4); SCHEMSIM 16.1–16.2 (after SIMDECK 13.4) | SCHEMSIM 16.3 (after LVSCMD 12); SHELL (after LVSCMD 12.3 and SIMPROBE 14.2) |
+| R5 | | | GOLDEN SCHEM-SIM/LVS and the Beta end-to-end cases, PERF (R4b) |
+| R6 | | | INTEGRATION exit (R5) |
+
+**R1 order.**
+- Simulation, the G2-SIM critical path: NGBUILD 5.1 (pin and patch series) → GOLDEN 3.2 (capture image built from that series) → 3.3 (reference runs) and 3.6 (SIM and SIMADV inputs) → 3.7 (SIM and SIMADV capture) → 3.8.
+- LVS: CLEANROOM 2.1–2.2 → GOLDEN 3.5 (LVS inputs, by the LVS implementation team) → 3.7 (LVS capture) → 3.8. 2.3–2.4 finish before G1 but do not hold up 3.5.
+- SCAFFOLD 4.2 writes the area-contract headers except the PLATFORM-owned `platform/worker_host.hpp` and the SIMD-owned frame codec `sim/engine/frames.hpp`, which PLATFORM 5.3 and SIMD 5.4 write.
 
 R1–R3 need neither M7 nor M8, because the LVS readers take SPICE files and the simulation engine takes decks. This is why design Open Question 2 recommends starting them as soon as G0 passes, without waiting for M7 or M8 to exit.
 
@@ -85,32 +94,35 @@ R1–R3 need neither M7 nor M8, because the LVS readers take SPICE files and the
 - netgen is never linked, vendored, shipped or started by the product.
 - Its only use is as the golden reference and the performance baseline. The capture and benchmark jobs run it as a subprocess in the pinned container (`tools/golden/goldenlib/refrunners.py`: `netgen -batch source <script>`).
 - The `lvs-command` requirement "Execution model" (no fork or exec, no external netgen) stays as it is.
-- Under Q-LVS-30 (a), the M8 two-team process applies to LVS:
+- The approved `hefesto-licensing` requirement "Two-team clean-room process for specs written from GPL source" already applies: it covers every Hefesto spec "written by reading GPL source", and the `lvs-*` specs were. Q-LVS-30 decides only how it is applied to netgen. A MODIFIED delta adds the eight `lvs-*` capabilities, `LVS.md` and the `(netgen ref: ...)` traces to the requirement's list:
   - **Spec team.** It owns the `lvs-*` specs, `LVS.md` and the texts that depend on captures. It may read netgen source and run netgen.
   - **Implementation team.** It writes `src/core/*/lvs/`, the tests and the golden inputs from the specs only. It never opens netgen's repository or the capture image's `/opt/src/netgen`, and it never follows `Evidence:` lines or `(netgen ref: ...)` traces.
+  - **Roster rule.** A session that read netgen source is on the LVS spec team for the whole milestone. It does not work on LVSCMD or on SCHEMSIM 16.3 (schematic-driven LVS), which implement LVS behaviour.
   - **Allowed observation.** Running the netgen binary in the capture runner, and reading the public reference manual, are allowed for both teams.
   - **Paraphrase review.** The spec team reviews the eight specs and `LVS.md` for paraphrase before G1. The algorithm specs (`lvs-comparison-algorithm`, `lvs-device-reduction`) come first, because they describe internal procedures.
   - **`check_cleanroom.py`.** It gains netgen's GPL header, `netgen ref:` traces under `src/` and `tests/`, and the `provenance` rule for `tests/golden/LVS/`.
-  - **Counsel.** Counsel review of the LVS process joins the M13 counsel item that already exists for J-1.
+  - **Counsel.** Counsel review of the LVS process joins the counsel review the requirement already demands before Desktop 1.0 (the M13 item that exists for J-1).
 - `THIRD_PARTY_NOTICES.md` does not list netgen, because nothing of it is distributed. `hefesto-licensing` gains the requirement "Process boundary for external engines", which says so explicitly.
 
 **ngspice on desktop (Q-SIM-20 (a)).**
 - NGBUILD builds the pinned ngspice (Q-SIM-7) with the Hefesto patch series as one shared library, `libngspice-hefesto`, with the feature table of `simulation-engine-embedding`:
   - KLU, OSDI and XSPICE on, with the code models registered statically;
   - `table`, FFTW3, CIDER, `d_cosim` and readline off.
-- `hefesto-simd` is a small executable. It is the only binary that links the library, and it finds the library through an install-relative runpath (`$ORIGIN` on Linux, `@loader_path` on macOS).
-- `hefesto-simd` contains the engine adapter, the only translation unit that includes `sharedspice.h`, and the IPC server.
-- The editor, `hefesto-cli` and the core library never link ngspice. A CI step (`scripts/check_engine_boundary.py`) fails if `nm` finds an `ngSpice_` symbol in any of them, or if a file outside `src/simd/adapter/` includes `sharedspice.h`.
-- A user can replace `libngspice-hefesto` with a rebuilt one. The build manifest records the source, the patches and the configure line, which meets the LGPL without a relink kit. The OSDI code (MPL-2.0) ships as source in the manifest's source archive, as MPL requires for modified files.
-- The in-process engine (Q-SIM-22 (a)) exists only in developer builds. It loads the same shared library through `dlopen` behind the same engine interface, and release builds compile it out.
+- The engine adapter is its own plugin, `hefesto-ngspice-adapter`: a shared module built from `src/simd/adapter/`, the only code that includes `sharedspice.h`. It links `libngspice-hefesto` and exports only Hefesto's engine interface as a C ABI with no ngspice types. Both libraries are found through an install-relative runpath (`$ORIGIN` on Linux, `@loader_path` on macOS).
+- `hefesto-simd` is a small executable: the IPC server and the heartbeat thread. It loads the adapter plugin at start-up and has no ngspice symbol itself.
+- The in-process engine (Q-SIM-22 (a)) exists only in developer builds. The developer desktop host loads the same adapter plugin behind the same engine interface, so no adapter code is compiled into the editor. Release builds compile the in-process host out and never load the plugin into the editor.
+- The editor, `hefesto-cli` and the core library never link ngspice or the adapter plugin. A CI step (`scripts/check_engine_boundary.py`) fails if `nm` finds an `ngSpice_` symbol in any binary other than `hefesto-ngspice-adapter` and `libngspice-hefesto`, if a release binary other than `hefesto-simd` references the adapter plugin, or if a file outside `src/simd/adapter/` includes `sharedspice.h`.
+- **Replaceability.** The build manifest records the source, the patches and the configure line, so a user can rebuild `libngspice-hefesto`. On macOS a notarized, hardened-runtime `hefesto-simd` with library validation would refuse a library the user signed, so `hefesto-simd` (and only it) carries the `com.apple.security.cs.disable-library-validation` entitlement, and `docs/building.md` documents ad-hoc signing of a rebuilt library. The worker's sandbox (D9) bounds what that entitlement exposes.
+- **Legal review.** D-28 recommends a legal review before the linking is settled. The desktop linking goes through that review before the Desktop Beta (task 20.1). The plan states the intended LGPL position (a replaceable shared library loaded by a separate process); the review confirms it or changes the link type (risk R5).
+- **MPL-2.0.** The source archive of each release carries the source of every MPL-covered file that is built, the whole `src/osdi` tree as built and not only modified files, as MPL-2.0 section 3.2 requires for the executable form.
 
 **ngspice on iPadOS.**
 - There is no process creation on iPadOS, so the engine must be in-process. Whether it is statically linked with a relink offer or loaded as an embedded signed framework is D-28's iPad part.
-- Q-SIM-26 (a) splits D-28. The desktop part (Q-SIM-20) is decided in R0. The iPad part is decided before M14, with the legal review starting in M9.
-- M9 builds no iPad engine. The engine interface is the same, so M14 adds only an `InProcessEngine` host.
+- Q-SIM-26 (a) records when each part of D-28 is settled. The desktop part (Q-SIM-20) is decided in R0 and reviewed before the Desktop Beta. The iPad part is decided before M14, as D-28 already requires, after the same legal review.
+- M9 builds no iPad engine. The engine interface and the adapter are the same, so M14 adds only an `InProcessEngine` host and the iPadOS link type.
 
 **Third-party notices.** INTEGRATION adds rows to `THIRD_PARTY_NOTICES.md`, and `check_third_party_notices.py` verifies them:
-- KLU, numparam, OSDI and sparse under ngspice (sparse already has a row);
+- under ngspice: KLU and the SuiteSparse parts it brings (AMD, COLAMD, BTF, SuiteSparse_config), each with the licence its files carry in the pinned tree; numparam; OSDI; sparse (which already has a row); the XSPICE code-model libraries compiled in;
 - the compiled-in OSDI compact models (PSP103, the `cap_cmom*` modules; Q-SIM-2);
 - OpenVAF, which is a build-time tool only and is not distributed.
 
@@ -132,8 +144,9 @@ There are two new core areas:
 | `comp.out`, list, JSON, classification | `lvs/report/` | LVSREP | LVS impl |
 | `lvs`, `netgen` namespace, sources, result model, cross-probe | `lvs/cmd/` | LVSCMD | LVS impl |
 | ngspice CMake wrapper, patches, manifest | `third_party/ngspice/` | NGBUILD | either |
-| `hefesto-simd`, engine adapter, IPC server | `src/simd/` | SIMD | either |
+| `hefesto-simd`, the `hefesto-ngspice-adapter` plugin, IPC server, heartbeat, worker sandbox profiles, frame codec | `src/simd/`, `sim/engine/frames.hpp` | SIMD | either |
 | `WorkerHost` contract and hosts | `platform/worker_host.hpp`, `src/cli/`, desktop shell | PLATFORM | either |
+| Area directories, `sources.cmake`, `codes.inc`, the stub headers of "Area contracts" except `platform/worker_host.hpp` and `sim/engine/frames.hpp`, `check_engine_boundary.py` | `lvs/`, `sim/` skeletons, `scripts/check_engine_boundary.py` | SCAFFOLD (R1 only; each header then passes to the owner named in this table) | either |
 | Engine interface, worker client, job manager | `sim/engine/` | SIMENG | either |
 | Circuit sources, testbench, stimuli, descriptors, sanitisation | `sim/deck/` | SIMDECK | either |
 | Result storage, raw, CSV, waveform measurements | `sim/result/` | SIMRES | either |
@@ -161,10 +174,14 @@ There are two new core areas:
   - `lvs::Session` holds the last result per document, the run in progress and the name maps of its two circuits.
   - `sim::Session` holds the testbenches, the jobs, the run sets, the result store index and the engine status.
 - `NameMap` (Q-LVS-33 (a)) is one value type in `netlist/name_map.hpp`, shared by M7's `render_with_map` and M8's `NetlistResult::names`. It has two parts:
-  - `nets`: netlist name → `{hier_path, layout point | schematic wire}`;
+  - `nets`: netlist name → `{layout_name, hier_path, layout point | schematic wire}`;
   - `devices`: netlist name → `{use_path, location | schematic instance}`.
   
-  It is ordered (a sorted vector) for deterministic iteration. LVS and simulation both read it, and neither recomputes names.
+  It is ordered (a sorted vector) for deterministic iteration, with a second sorted index over `layout_name`. LVS and simulation both read it, and neither recomputes netlist names.
+- **Two namings, one node.** The netlister chooses the netlist name (`ext2spice`'s choice, after `global` merges, case-collision renames and generated `<cell>_<x>_<y>#` names). Probes compute the `getnode`-style hierarchical name of the selected node (Q-SIM-24), which can differ: `@=` transistor-terminal names, a different preferred label, a different case. The two are reconciled by connectivity, never by comparing strings:
+  - when SIMDECK builds the simulation net-name map, it fills `layout_name` by calling SIMPROBE's `node_name` at the entry's layout point, so both names describe the same node by construction;
+  - a probe computes `node_name` of the selection and looks it up in the `layout_name` index;
+  - if that fails (for example a node whose map entry was taken at a point the naming function names differently), the probe traces the selected node's connectivity in the extracted hierarchy and takes the map entry whose layout point lies in that node. Only when no entry's point lies in the node does the probe report the net as not netlisted.
 - LVS and simulation read the layout through the M7 entry points only:
   - `ensure_extracted`, then `render_with_map` with the `lvs` preset, or with the simulation settings passed by value;
   - `extresist::run` for mode `rc`.
@@ -206,7 +223,7 @@ There are two new core areas:
 ### D9. Simulation engine, worker and platform service (NGBUILD, SIMD, PLATFORM, SIMENG; Q-SIM-7, -11, -20, -21, -22, D-25)
 
 **Build.**
-- `third_party/ngspice/` holds the pin (Q-SIM-7: the first ngspice release with the CMake build, carried with Hefesto patches) and the patch series:
+- `third_party/ngspice/` holds the pin (Q-SIM-7) and the patch series. The ngspice-47 tag (`a80f6e3e`, checked 2026-11-22) has no `cmake/` directory and no top-level `CMakeLists.txt`; the CMake build exists only on master after 47. The pin is therefore ngspice-47 built by a Hefesto-written CMake wrapper, moving to the first release that ships the upstream CMake build once one exists. The `(ngspice ref: ...)` traces taken from `7aa47164` are re-checked against the pin by the SIM spec team (task 1.4). The patch series:
   - the static OSDI registry;
   - static code-model registration;
   - portable seeding (`simulation-monte-carlo` "Portable random numbers");
@@ -216,6 +233,12 @@ There are two new core areas:
 
 **Worker.**
 - `hefesto-simd` runs one engine instance and serves one job at a time.
+- **Reuse between jobs.** A healthy worker is reused for the next job, including the points of a run set. After a job's results are copied out, the adapter sends `remcirc` and `destroy all` (`simulation-engine-embedding` "Single engine instance per address space"). Before the next load it sends the PDK initialisation commands and `setseed <s>` again ("Deterministic engine initialisation"). The worker is replaced only after a fault. This is the single mechanism behind run-set determinism (D10, D14), and the 1-against-4-worker tests prove that no state leaks from one job to the next. Starting a process per point is not used: it would cost more than the 10 % overhead gate allows on a 1 000-point sweep (D21).
+- **Heartbeat thread.** A dedicated thread in `hefesto-simd` writes the `beat` frame every 2 s. It does not touch the engine and is not blocked by it, so `ngSpice_Circ` loading a large deck (which runs on the calling thread and can take longer than 10 s) or a long analysis never trips the timeout. The beat proves that the process is alive and its frame writer works; a stuck analysis is handled by cancellation (2 s for `bg_halt`, then a fault).
+- **Confinement.** The worker parses untrusted decks with ngspice's C parser, so it runs with less than the user's rights:
+  - macOS: a sandbox profile applied at start (`sandbox_init` with a Hefesto profile, or the App Sandbox entitlement for the bundled worker) with no network, read-only access to the PDK store and the installed libraries, and write access only to the job directory;
+  - Linux: `prctl(PR_SET_NO_NEW_PRIVS)`, a seccomp filter that denies network sockets and process creation, and a Landlock ruleset with the same file rules where the kernel supports it (otherwise the seccomp filter alone, recorded in the job log);
+  - the core passes the job directory and the PDK store path in the `WorkerSpec`; the worker applies the confinement before it loads the adapter plugin.
 - Its IPC protocol uses length-prefixed little-endian frames over stdin and stdout (Q-SIM-21 (a)). It starts with a handshake that carries the protocol and engine versions, then uses frames of these kinds:
 
 | Frame | Direction | Meaning |
@@ -251,8 +274,8 @@ Malformed frames, oversize frames (64 MiB; Q-SIM-25), unknown kinds and missed h
 | Run sets | pool of workers per Q-SIMADV-13 | results stored by point index |
 | UI | UI thread | receives decimated streams and finished results by message |
 
-- Results never depend on thread count. The LVS reports do not, and the stored simulation results do not either: each point has its own seed, and the worker is replaced or reset between points.
-- The determinism tests run every run-set case with 1 worker and with 4 workers and compare the stored results bit for bit.
+- Results never depend on thread count. The LVS reports do not, and the stored simulation results do not either: each point has its own seed, and each point starts from the reuse sequence of D9 (`remcirc`, `destroy all`, the initialisation commands, `setseed`) in a reused worker. No `ngSpice_Reset` is used on desktop.
+- The determinism tests run every run-set case with 1 worker and with 4 workers and compare the stored results bit for bit. With one worker, every point follows a different earlier history than with four, so the test catches state that leaks between jobs.
 
 ### D11. Deck preparation (SIMDECK; `simulation-netlist-preparation`)
 
@@ -297,7 +320,7 @@ Malformed frames, oversize frames (64 MiB; Q-SIM-25), unknown kinds and missed h
 **Layout node names.** Q-SIM-24 (a): SIMPROBE implements the `irsim-interface` requirement "Hierarchical node names", including preferred names and globals. Its tests are tagged to that requirement. The names have no length limit. The `getnode` command is not implemented.
 
 **Probes.**
-- A layout probe resolves a net through the name map, as specified.
+- A layout probe resolves a net through the name map's `layout_name` index, then by connectivity to the map's layout points (D4 "Two namings, one node"; `simulation-ui-and-crossprobe` "Probing a layout net", delta). A test probes a node whose netlist name and `getnode` name differ (a case-collision rename and an unlabelled node named by a transistor terminal).
 - A schematic probe resolves a net through `NameMap` and `schem::vector_name`.
 - Device-current probes use `@dev[i]` vectors when `savecurrents` is on.
 
@@ -346,7 +369,7 @@ Each point is one job on the worker pool (Q-SIMADV-13 (a)), and results are stor
 - The order of sections that netgen takes from hash order is deterministic, and the comparator treats those sections as sets (Q-LVS-2 fix).
 - The extra `.` line is copied (Q-LVS-21).
 
-**Layout references.** When circuit 1 is a layout, every net and device in the structured result carries the layout reference from the name map ("Layout object references in structured results", delta). `comp.out` and `comp.json` stay as netgen writes them.
+**Layout references.** When circuit 1 is a layout, every net and device in the structured result carries the layout reference from the name map ("Layout object references in structured results", delta). Adding the references changes nothing in `comp.out`, the `-list` result or `comp.json`; those otherwise follow Q-LVS-2, -13 and -19.
 
 **The `lvs` command.**
 - The netgen form and `lvs -layout`.
@@ -355,7 +378,9 @@ Each point is one job on the worker pool (Q-SIMADV-13 (a)), and results are stor
 - Results go to the result browser and cross-probing, and the command works headless.
 - The `netgen` helper only names `lvs` in its diagnostic (D-34).
 
-**Status chip.** The top-bar chip shows `LVS not run`, `LVS match`, `LVS mismatch (<n>)`, `LVS error` or `LVS stale`. It becomes `LVS stale` when the layout or the schematic changed after the run ("LVS status chip", delta).
+**Incremental layout side.** `ensure_extracted` treats a `.ext` file as stale when its timestamp differs from the cell's (Magic's check, `extTimestampMisMatch`, `extract/ExtMain.c:968-990`) and also when its `tech` or `style` header line differs from the current technology and extract style, which Magic does not check. The extra rule is raised as an open item against M7's `ensure_extracted` (D24) and covered by the `lvs-command` scenario "Extract style changed".
+
+**Status chip.** The top-bar chip shows `LVS not run`, `LVS match`, `LVS mismatch (<n>)`, `LVS error`, `LVS cancelled` or `LVS stale`. It becomes `LVS stale` when the layout or the schematic changed after the run ("LVS status chip", delta).
 
 ### D17. Schematic simulation integration, M9 part (SCHEMSIM)
 
@@ -372,7 +397,11 @@ This work is taken over from m8 D13. Implementation sessions follow the M8 clean
 | Schematic-driven LVS command | `lvs` with a `.sch` side (D16) |
 | Results interchange with xschem | raw read and write (`xschem raw ...`, `xschem simulate`) |
 
-The exact outputs of `to_eng`, `tabulate` and the three `ngspice::` procedures are pinned from the SCHEM-SIM-02 capture by the M8 spec team (`schematic-symbols-and-libraries`).
+**Captures with results loaded.** M8 captured SCHEM-SIM-01's deck only, and SCHEM-SIM-02's texts "with no simulation loaded", because no data set then carried the PDK ngspice models (`tests/golden/SCHEM/CASES.md`, "As authored"; `deviations.toml` `[SCHEM-SIM-01]`, `[SCHEM-SIM-02]`). There is therefore nothing yet to pin the result-dependent outputs from. The M8 spec team (xschem clean room, spec side) re-captures them in R1, once the capture image has the patched ngspice and the `*-ngspice` data sets (task 3.9):
+- SCHEM-SIM-01 and -02 again, now with xschem running the PDK models through ngspice, so that the raw vectors, the op values and the annotated texts are captured;
+- new SCHEM-SIM cases for what `schematic-symbols-and-libraries` defers to "M9 (SCHEM-SIM-02)" but SCHEM-SIM-02 (sky130 `test_inv` only) does not exercise: the gf180mcu `*fet*.sym` gm/id texts; the `annotate_fet_params.sym` and `annotate_bip_params.sym` texts on the three PDKs; the `xschem raw <what>` queries and `xschem raw_clear` as `schematic-command` lists them (`value`, `values`, `index`, `points`, `datasets`, `loaded`, `rawfile`, `sim_type`, `vars`, `list`), plus `xschem raw_read`, and the sky130 `test_customplot.sch` text that combines `tabulate`, `to_eng` and `xschem raw`.
+
+The exact outputs of `to_eng`, `tabulate` and the three `ngspice::` procedures are then pinned from those captures by the M8 spec team (`schematic-symbols-and-libraries`).
 
 ### D18. Resource caps
 
@@ -394,7 +423,7 @@ Each cap has its own diagnostic and ends the run as `error` (LVS) or `failed` (s
 | Points per run set | 100 000 | `sim/runset` |
 | Monte Carlo samples | 100 000 | `sim/runset` |
 | Raw import | 4 GiB and within the result budget | `sim/result` |
-| Workers | `min(4, cores − 1, ⌊B_total / B_job⌋)` | `sim/runset` (Q-SIMADV-13) |
+| Workers | `max(1, min(4, physical_cores − 1, ⌊B_total / B_job⌋))`; a user setting can only lower it | `sim/runset` (Q-SIMADV-13; `simulation-engine-embedding` "Multiple simulations and corner parallelism", delta) |
 
 ### D19. Golden-case plan (PDK, GOLDEN)
 
@@ -425,17 +454,38 @@ Each cap has its own diagnostic and ends the run as `error` (LVS) or `failed` (s
 | Area | Cases | Reference | Notes |
 |---|---|---|---|
 | LVS | 77 (ALG 7, CMD 1, HIER 9, NAME 3, PDK 3, PIN 6, PROP 11, READ 13, RED 6, REP 5, SET 13) | netgen | NG-PDK cases use the three setup files |
-| SIM | 53 | patched ngspice, Magic for the DUT netlists | SIM-XP compares the three platforms |
-| SIMADV | 40 in M9 (CO 8, MC 13, MEAS 9, SW 10) | patched ngspice | SIMADV-OPT (5) is M11 |
-| SCHEM | SCHEM-SIM-01, -02, and SCHEM-LVS-01 under Q-SCHEM-39 (a) | xschem, ngspice, netgen | captures kept from M8 |
+| SIM | 53 inventoried; 48 whole cases plus the desktop legs of SIM-ENG-01 and -13 in M9 | patched ngspice, Magic for the DUT netlists | SIM-XP compares the three platforms; iPadOS cases below |
+| SIMADV | 40 in M9 (CO 8, MC 13, MEAS 9, SW 10); 38 whole cases plus the desktop legs of MC-04 | patched ngspice | SIMADV-OPT (5) is M11; iPadOS cases below |
+| SCHEM | SCHEM-SIM-01, -02 re-captured with results loaded; new SCHEM-SIM cases for the gf180mcu `*fet*` texts, the `annotate_fet_params`/`annotate_bip_params` texts on three PDKs and the `xschem raw` queries (D17); SCHEM-LVS-01 under Q-SCHEM-39 (a) | xschem, ngspice, netgen | re-captured by the M8 spec team (task 3.9) |
 | Beta | BETA-E2E-SKY130, -GF180, -IHP | Hefesto run (end-to-end), checked against the step goldens | Q-SIM-27 |
 
-**Reference runs before G2** (verification decisions, X-6):
+**Beta flow inputs (Q-SIM-27).** One flow per PDK, the same steps on each, so that every step of the roadmap's "schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation" runs in Hefesto:
+
+| | sky130 | gf180mcu | IHP sg13g2 |
+|---|---|---|---|
+| Schematic | `beta_inv.sch`, drawn in Hefesto by the flow's script (`tests/e2e/beta/sky130/`), one `nfet_01v8` and one `pfet_01v8_hvt` with the sizes of `sky130_fd_sc_hd__inv_1` | `beta_inv.sch`, drawn the same way, with the devices and sizes of `gf180mcu_fd_sc_mcu7t5v0__inv_1` | `beta_inv.sch`, drawn the same way, with the devices and sizes of `sg13g2_inv_1`; the PDK's own `sg13g2_inv_1.sch` is used only as a cross-check netlist |
+| Layout | cell `beta_inv`, drawn in Hefesto by the script: an instance of the PDK inverter cell plus Hefesto-drawn metal1 pin shapes and labels `A`, `Y`, power and ground | as sky130, with `gf180mcu_fd_sc_mcu7t5v0__inv_1` | as sky130, with `sg13g2_inv_1` |
+| DRC | Hefesto's DRC with the PDK's Magic tech file (M3); zero errors | the same | the same |
+| Authors | GOLDEN, from the specs (no xschem or netgen source); the user redraws both by hand for the sign-off | the same | the same |
+
+- **Shared testbench** `beta_tb.sch` (one per PDK, same topology): an ideal supply at the PDK's nominal core voltage, a pulse input with 20 ps rise and fall, and a fixed load of four copies of the same inverter (FO4). It measures `tpd` as the mean of the 50 %–50 % rise and fall delays from the input to the DUT output.
+- **The 30 % band** compares `tpd` of the schematic run with `tpd` of the `rc` post-layout run of `beta_inv` in the same testbench. Both runs drive the same FO4 load, so the band measures the cell's own parasitics, not an unloaded output.
+- KLayout sign-off DRC (P-18) is not part of the Beta flow; it belongs to tape-out.
+
+**iPadOS cases.** M9 builds no iPad engine, so these cases (or their iPad legs) get `deferred = "M14"` in `tests/golden/deviations.toml` when they are authored (task 3.6), each with the reason "needs the iPadOS in-process engine (M14)":
+- SIM: SIM-ENG-01 (iPad leg), SIM-ENG-07 (reset fuzz; D9 resets only on iPadOS), SIM-ENG-09, SIM-ENG-10, SIM-ENG-12, SIM-ENG-13 (iPad leg), SIM-RES-07;
+- SIMADV: SIMADV-SW-07, SIMADV-MC-04 (iPad leg), SIMADV-MC-13.
+
+Two desktop cases are re-authored to match D9:
+- SIM-ENG-06 expects the next DIV job to succeed in a replaced worker (a different process id), not after a reset (D-25);
+- SIM-ENG-04 submits A and B to a pool of one worker, whose single engine instance gives the same `queued` timeline; the in-process variant is covered on iPadOS in M14.
+
+**Reference runs before G2-SIM** (verification decisions, X-6):
 - D-22: `.param` precedence, with one deck per PDK;
 - D-26: sky130 `ng_nomodcheck`;
 - D-27: gf180mcu `hs` against `hsa`.
 
-Their results are recorded in `SIMADV.md` and `SIM.md` as `Verified` lines.
+Their results are recorded in `SIMADV.md` and `SIM.md` as `Verified` lines under the conditional `Resolution:` lines approved at G0 (D1).
 
 **Capture runs.** Capture is split into three runs (LVS, SIM, SIMADV) of `golden-capture.yml`, each verified by a second run on a fresh image build.
 
@@ -461,17 +511,22 @@ A cross-platform digest test runs the LVS goldens and a set of decks on the thre
 ### D21. Performance (PERF; Q-LVS-35, Q-SIM-28)
 
 - **`lvs-bench`.** Callgrind instruction counts on the x86_64 runner for three workloads: the `sky130_fd_sc_hd` library cell by cell, a 50k-device flat block and a hierarchical 1M-device block. Each must be at most netgen's count, and after that at most the baseline + 2 %. Wall time is reported only.
-- **`sim-bench`.** Hefesto's overhead (the whole job time minus ngspice's analysis time) must be at most 10 % on the inverter `tran` deck, a 1 000-device `rc` deck and a 1 000-point sweep. A 1 000-sample Monte Carlo must scale by at least 0.6 × the worker count up to 4 workers.
+  - **Isolating the comparison** uses the method of the DRC, GDS and extraction gates: the count of a script that reads both netlists, evaluates the setup file and compares, minus the count of the same script without the comparison command. This holds for Hefesto and for netgen, so no `--toggle-collect` on netgen's internal function names is used, and PERF needs no knowledge of netgen's source.
+  - **Time budget.** Before the gate is enabled, PERF measures the 1M-device netgen run under callgrind (roughly 20–50 × native time) and checks that the three workloads fit `perf.yml`'s job limit. If they do not, the 1M-device workload runs in the nightly benchmark job instead of on every pull request.
+- **`sim-bench`.** Hefesto's overhead (the whole job time minus ngspice's analysis time) must be at most 10 % on the inverter `tran` deck, a 1 000-device `rc` deck and a 1 000-point sweep. The 1 000-point sweep includes the reuse sequence of D9 between points.
+  - **Analysis time** is taken from ngspice's own `rusage` command (its total analysis time), which the adapter sends after each analysis and reports in the job's events. The worker's process `rusage` is not used, because it includes the adapter and IPC time that the gate measures.
+  - **Monte Carlo scaling.** A 1 000-sample run must be at least 0.6 × `w` times faster with `w` workers than with one, for `w` up to `min(4, physical_cores − 1)` of the runner. The GitHub-hosted runners have 4 vCPUs (Linux) and 3 (macOS arm64), so they check `w` up to 3 and 2; the `w = 4` point is checked on the M3 Pro bench machine and on a larger runner named in `perf.yml` when one is available.
 - **Waveform viewer.** The rendering requirement of `simulation-ui-and-crossprobe`, measured on the M3 Pro and the Linux runner.
 - Baselines are recorded in `bench/lvs/` and `bench/sim/`. `hefesto-performance` gains the requirement "LVS and simulation throughput" (delta).
 
 ### D22. Security review (SECURITY; `docs/contributing/security.md`)
 
-A reviewer outside both LVS teams checks four areas:
+A reviewer outside both LVS teams checks five areas:
 - **Setup files.** Tcl in the sandbox against `hefesto-security` "Script sandbox enforcement", using hostile setup files that try `exec`, `socket`, `open` outside the roots, `load`, `interp` and infinite loops.
 - **Deck sanitisation.** `.control`, `shell`, `system`, includes outside the granted folders, and `.lib` path tricks.
 - **The core's frame parser.** It is fed by `fuzz_sim_frames` and must handle a worker that sends malformed, oversize or slow frames.
 - **Raw import.**
+- **Worker confinement (D9).** A test deck that tries to open a network socket, write outside the job directory, write into the PDK store and spawn a process is run in the worker on macOS and Linux; each attempt must be denied by the OS. The review also checks that only `hefesto-simd` carries the library-validation entitlement (D2).
 
 Each denial gives the sandbox diagnostic or the deck diagnostic. The sign-off is recorded in the M9 exit table, and M9 cannot exit without it.
 
@@ -509,16 +564,16 @@ All of these go through INTEGRATION.
 
 Taken over:
 - **From M8 (m8 D13):** the six requirements and two partial requirements of `schematic-simulation-integration`; SCHEM-SIM-01/02 and, under Q-SCHEM-39 (a), SCHEM-LVS-01; `xschem simulate` and `xschem raw`; the exact outputs of `to_eng`, `tabulate` and `ngspice::`; the Waveforms tab.
-- **From M7 (m7 D18):** the entry points, plus any change to them as an open item. The one change planned now is Q-LVS-33.
+- **From M7 (m7 D18):** the entry points, plus any change to them as an open item. Two changes are planned now: Q-LVS-33 (`render_with_map`) and the stale-header rule of `ensure_extracted` (D16, Q-LVS-32).
 - **From M1:** the LVS chip and the Simulate button.
 - **From the audit:** D-22 to D-28.
 
 Exit criteria:
-- The LVS, SIM and SIMADV (M9 part) goldens pass under D19's comparators. SCHEM-SIM-01/02 and SCHEM-LVS-01 pass.
-- `check_requirement_coverage.py` covers every requirement of the 17 capabilities and the M9 part of `schematic-simulation-integration`.
+- The LVS, SIM and SIMADV (M9 part) goldens pass under D19's comparators, except the iPadOS cases and legs that D19 defers to M14. SCHEM-SIM-01/02, the new SCHEM-SIM cases of D17 and SCHEM-LVS-01 pass.
+- `check_requirement_coverage.py` covers every requirement of the 17 capabilities after the task 1.2 sync and the M9 part of `schematic-simulation-integration`; the iPadOS-only requirements of `simulation-engine-embedding` are listed as deferred to M14.
 - Unit, property and fuzz tests are green. LVS and non-numeric output are byte-identical on the three platforms, and simulation results agree within tolerance (D20).
 - Each `netgen-compat` branch point is tested in both modes.
-- `check_engine_boundary.py`, `check_cleanroom.py` and `check_third_party_notices.py` pass.
+- `check_engine_boundary.py`, `check_cleanroom.py` and `check_third_party_notices.py` pass, and the legal review of the desktop ngspice linking (D2) is recorded.
 - The security sign-off of D22 is recorded.
 - The PERF gates of D21 are met.
 - The Desktop Beta end-to-end cases pass on Linux x86_64 and macOS arm64, and the user signs off the Beta checklist (Q-SIM-27).
@@ -550,11 +605,12 @@ Exit criteria:
 `class Engine` is the specified interface: `load`, `run`, `pause`, `resume`, `cancel`, `vectors` and callbacks. `WorkerEngine` implements it over `platform::WorkerHost`. `JobManager` is `submit(Deck, JobOptions) -> JobId`, with states, events and the queue.
 
 ### SIMD: `src/simd/`
-- `adapter/ngspice_adapter.{hpp,cpp}` is the only file that includes `sharedspice.h`.
-- `ipc/frames.{hpp,cpp}` defines the frames. It is shared with `sim/engine` as a header-only codec in `hefesto/sim/engine/frames.hpp`.
+- `adapter/ngspice_adapter.{hpp,cpp}` is the only file that includes `sharedspice.h`. It builds the `hefesto-ngspice-adapter` plugin, whose exported C ABI (`hefesto_engine_v1`) mirrors `sim::Engine` with no ngspice types.
+- `ipc/frames.{hpp,cpp}` defines the frames. It is shared with `sim/engine` as a header-only codec in `hefesto/sim/engine/frames.hpp`, which SIMD owns (SCAFFOLD does not write it).
+- `sandbox/` holds the macOS profile and the Linux seccomp and Landlock set-up (D9).
 
 ### PLATFORM: `hefesto/platform/worker_host.hpp`
-`WorkerSpec {program, args, env}`, `WorkerHost::supported()`, `WorkerHost::start(const WorkerSpec&) -> diag::Outcome<std::unique_ptr<WorkerChannel>>` and `WorkerChannel::{send, on_frame, on_exit, terminate}`.
+`WorkerSpec {program, args, env, job_dir, readonly_roots}`, `WorkerHost::supported()`, `WorkerHost::start(const WorkerSpec&) -> diag::Outcome<std::unique_ptr<WorkerChannel>>` and `WorkerChannel::{send, on_frame, on_exit, terminate}`.
 
 ### SIMDECK: `hefesto/sim/deck/`
 `prepare(const Testbench&, const DeckContext&) -> diag::Outcome<PreparedDeck>`, where `PreparedDeck` holds the lines, the `NameMap`, the descriptor and the diagnostics. `ModelDescriptor::load(pdk)`.
@@ -562,6 +618,7 @@ Exit criteria:
 ### SIMRES, SIMPROBE: `hefesto/sim/result/`, `hefesto/sim/probe/`
 - `ResultStore` with `write_raw`, `read_raw`, `export_csv` and `measure_waveform`.
 - `node_name(const LayoutSelection&) -> std::string`, which implements irsim-interface "Hierarchical node names".
+- `resolve_probe(const NameMap&, const LayoutSelection&) -> std::optional<NetEntry>`: the `layout_name` index, then connectivity to the map's points (D4).
 - `probe(const Job&, const ProbeTarget&) -> diag::Outcome<TraceId>`.
 - `OverlayFeed`.
 
@@ -571,15 +628,15 @@ Exit criteria:
 - `evaluate_measurements(const ResultStore&, const MeasSet&) -> MeasTable` and `statistics(const MeasTable&, const Specs&) -> StatsReport`.
 
 ### MAPS: `hefesto/netlist/name_map.hpp`
-`NameMap {nets, devices}` (sorted). `netlist::spice::render_with_map(..., Settings) -> diag::Outcome<RenderedNetlist {text, names}>`. `schem::NetlistResult::names`.
+`NameMap {nets, devices}` (sorted), with `NetEntry {netlist_name, layout_name, hier_path, point | wire}` and a `layout_name` index. `netlist::spice::render_with_map(..., Settings) -> diag::Outcome<RenderedNetlist {text, names}>`. `schem::NetlistResult::names`.
 
 ## Risks / Trade-offs
 
 - **R1. M7 and M8 slip.** Mitigation: R1–R3 need neither (D1), and their sources are SPICE files and decks. The layout and schematic sources come last.
-- **R2. Spec gaps under the LVS clean room.** Mitigation: goldens first (G2). Spec issues go to the LVS spec team, with a turnaround target of one working day.
+- **R2. Spec gaps under the LVS clean room.** Mitigation: goldens first (G2-LVS). Spec issues go to the LVS spec team, with a turnaround target of one working day.
 - **R3. Paraphrase in the algorithm specs.** Mitigation: they are reviewed first (D2). The NG-ALG and NG-RED goldens pin the behaviour independently of the wording.
 - **R4. Simulation tolerance tuning.** Mitigation: `-ffp-contract=off`, then the SIM-XP cases re-tune the tolerances (Q-SIM-10). A case that needs a looser tolerance gets an approved deviation, never a silent change.
-- **R5. Legal review changes Q-SIM-20.** Mitigation: the worker boundary stays. Only the link type of `hefesto-simd` would change, and the editor is unaffected.
+- **R5. Legal review changes Q-SIM-20.** The review runs before the Desktop Beta (task 20.1). Mitigation: the worker boundary stays. Only the link type of the adapter plugin and the library would change, and the editor is unaffected.
 - **R6. IPC bandwidth for large results.** Mitigation: chunked frames now. Shared memory behind the same frames if `sim-bench` shows transfer dominating.
 - **R7. Reference-run surprises (D-22).** If ngspice keeps the first `.param`, the sky130 `both` mode and the sweep overrides move to Q-SIMADV-3 (b) and the Q-SIMADV-9 fallback. Both are drafted.
 - **R8. Desktop Beta scope.** Mitigation: the Beta checklist is fixed in R0 (Q-SIM-27), so the exit has no open-ended items.
@@ -597,7 +654,7 @@ None is decided. Each one's recommended option is (a).
    - (b) Follow the M7 and M8 precedent: edit the living specs directly after approval and set `skip_specs: true`.
    - (c) Both: deltas for review, then a direct edit.
 2. **When M9 implementation starts relative to M7 and M8.**
-   - (a) *Recommended:* R0 and R1 as soon as the plan is approved. R2–R3 once G0–G2 pass, in parallel with M7 and M8 implementation. R4 after their exits (G3, G4).
+   - (a) *Recommended:* R0 and R1 as soon as the plan is approved. R2–R3 once G0, G1 and each stream's G2 pass, in parallel with M7 and M8 implementation. R4 after their exits (G3, G4).
    - (b) Start everything after M8 exits.
    - (c) Start R1 only, and plan the rest again after M7 exits.
 3. **Desktop scope.**
@@ -613,13 +670,13 @@ None is decided. Each one's recommended option is (a).
 
 | Decision (all pending) | Recommended option | Design sections it shapes |
 |---|---|---|
-| Q-LVS-30 LVS clean room | (a) M8 two-team process | D1, D2, D3, D19 |
-| Q-SIM-20, D-28 (desktop) | (a) shared `libngspice-hefesto` loaded only by `hefesto-simd` | D2, D9 |
+| Q-LVS-30 LVS clean room (how the approved two-team requirement applies to netgen) | (a) M8 two-team process | D1, D2, D3, D19 |
+| Q-SIM-20, D-28 (desktop) | (a) shared `libngspice-hefesto` behind the `hefesto-ngspice-adapter` plugin, loaded only by `hefesto-simd` in release builds; legal review before Beta | D2, D9 |
 | Q-SIM-21 worker IPC | (a) `WorkerHost`, framed pipes | D9, D10, D18 |
-| Q-SIM-22 in-process desktop | (a) developer builds only | D2, D9 |
-| Q-SIM-26 D-28 timing | (a) desktop in M9, iPad before M14 | D2 |
+| Q-SIM-22 in-process desktop | (a) developer builds only, through the same adapter plugin | D2, D9 |
+| Q-SIM-26 D-28 timing | (a) desktop decided in R0 and reviewed before Beta, iPad before M14 | D2 |
 | Q-SIM-11, D-25 fault recovery | replace the worker on desktop | D9 |
-| Q-SIM-7, Q-SIM-23 ngspice pin, reference build | first CMake release plus patches; patched reference with OpenVAF | D9, D19 |
+| Q-SIM-7, Q-SIM-23 ngspice pin, reference build | ngspice-47 (no CMake build in that tag) with a Hefesto-written CMake wrapper plus patches; patched reference with OpenVAF | D9, D19 |
 | Q-LVS-31, -32, -33 | (a) | D4, D7, D16, D24 |
 | Q-LVS-34, Q-SIMADV-13 threading, pool | (a) | D8, D10, D14 |
 | Q-LVS-35, Q-SIM-28 performance | (a) | D21 |

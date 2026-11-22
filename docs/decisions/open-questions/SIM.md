@@ -54,6 +54,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: CMakeLists.txt:150-260, cmake/NgspiceOptions.cmake:86-91, NEWS:1
 - Options: pin ngspice-47 and write Hefesto's own CMake wrapper | pin a master commit that has the CMake build | wait for ngspice-48.
 - Recommendation: pin the first release that has the CMake build, and carry Hefesto patches for the static archive, the static code-model and OSDI registries, and iOS. Offer these upstream.
+- Checked 2026-11-22 (M9 plan): the ngspice-47 tag (`a80f6e3e95d51534905b1f23410a951802666656`) has no `cmake/` directory and no top-level `CMakeLists.txt`; it builds with autotools only. No released ngspice has the CMake build yet, so the first option (ngspice-47 with Hefesto's own CMake wrapper) is the one the recommendation leads to (`docs/decisions/m9-decision-table.md`).
 
 ### Q-SIM-8: PDK simulation model descriptors need verification
 - Kind: doc-mismatch
@@ -150,10 +151,10 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - ngspice behavior: ngspice's core is under the Modified BSD licence. KLU is LGPLv2, numparam is LGPLv2 or newer, and `src/osdi` is MPL-2.0. On desktop, `simulation-engine-embedding` runs ngspice in the separate worker executable `hefesto-simd`, which talks to the core over IPC. The requirement "ngspice embedded as a library" also asks for a static archive "on every platform". Under the M9 rule, an external tool keeps its licence boundary as a subprocess or an optional plugin.
 - Evidence: COPYING:1-45; `openspec/specs/simulation-engine-embedding/spec.md` (Requirements "ngspice embedded as a library" and "Crash containment on desktop"); `docs/decisions/audit/DECISIONS.md` D-28
 - Options:
-  - (a) On desktop, build ngspice as one shared library, `libngspice-hefesto`, from the pinned source and the Hefesto patches. Install it next to `hefesto-simd` and load it only from there, through the install-relative runpath. The editor, the CLI and the core never link ngspice. A user can replace the library as the LGPL allows. iPadOS stays with D-28.
+  - (a) On desktop, build ngspice as one shared library, `libngspice-hefesto`, from the pinned source and the Hefesto patches. The engine adapter is a separate plugin, `hefesto-ngspice-adapter`, which links the library; in release builds only `hefesto-simd` loads it, through the install-relative runpath. The editor, the CLI and the core never link ngspice or the plugin. A user can replace the library: on macOS `hefesto-simd` carries the disable-library-validation entitlement (and is sandboxed), and the build documentation describes how to sign a rebuilt library. The linking goes through D-28's legal review before the Desktop Beta. iPadOS stays with D-28.
   - (b) Link ngspice statically into `hefesto-simd`, and offer its object files and relink instructions on request.
   - (c) Link it statically into the editor process (rejected by the licence rule).
-- Recommendation: (a). The process boundary and the replaceable shared library each meet the LGPL obligations without a relink kit. They also keep the code-model and OSDI registries the same as in the static build. The spec's "static archive on every platform" becomes "static on iPadOS (D-28), shared and loaded only by `hefesto-simd` on desktop".
+- Recommendation: (a). The process boundary and a library the user can actually replace are intended to meet the LGPL obligations without a relink kit; D-28 recommends a legal review before linking is settled, so that position is confirmed by the review before the Desktop Beta, not assumed. Without the entitlement, a notarized hardened-runtime worker would refuse a user-signed library, and the library would not be replaceable in practice. The option also keeps the code-model and OSDI registries the same as in the static build. The spec's "static archive on every platform" becomes "as D-28 settles on iPadOS, a shared library behind the adapter plugin on desktop". MPL-2.0 requires the source of every covered file in the executable (the whole OSDI tree as built), not only the modified files.
 
 ### Q-SIM-21: [platform] Worker IPC transport and the platform contract
 - Kind: platform
@@ -177,8 +178,8 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Status: pending user decision (proposed 2026-11-22 by the M9 plan)
 - ngspice behavior: n/a. The `simulation-engine-embedding` requirement "Crash containment on desktop" says "A setting MAY select in-process execution on desktop, for debugging". Under Q-SIM-20 (a), the editor never links ngspice.
 - Evidence: `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Crash containment on desktop")
-- Options: (a) developer builds only: the in-process engine loads the same `libngspice-hefesto` as an optional plugin, and release builds do not offer the setting; (b) keep it as a user setting in release builds; (c) drop it.
-- Recommendation: (a). Developers keep a debuggable path that matches the iPadOS in-process engine, and users cannot lose unsaved layout work to an engine crash.
+- Options: (a) developer builds only: the developer desktop host loads the same `hefesto-ngspice-adapter` plugin that `hefesto-simd` loads (Q-SIM-20 (a)), so no adapter code and no `sharedspice.h` include is compiled into the editor, and release builds neither offer the setting nor load the plugin; (b) keep it as a user setting in release builds; (c) drop it on desktop.
+- Recommendation: (a). Developers keep a debuggable path that matches the iPadOS in-process engine, the licence boundary check stays "only the worker, or the developer host, loads the adapter plugin", and users cannot lose unsaved layout work to an engine crash.
 
 ### Q-SIM-23: Reference ngspice build for the SIM and SIMADV captures
 - Kind: doc-mismatch
@@ -200,10 +201,11 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Status: pending user decision (proposed 2026-11-22 by the M9 plan)
 - ngspice behavior: n/a. Background:
   - The `simulation-ui-and-crossprobe` requirement "Probing a layout net" names nets as `irsim-interface` "Hierarchical node names" does, which is Magic's `getnode` naming. `irsim-interface` is an M12 capability.
-  - Magic's `getnode` copies names into fixed buffers: `static nodename[256]` in `SimGetNodeName` and `name[30]` in `SimTxtorLabel`. Deep hierarchies overflow them.
-- Evidence: `openspec/specs/simulation-ui-and-crossprobe/spec.md` (Requirement "Probing a layout net"); `openspec/specs/irsim-interface/spec.md`; Magic `sim/SimExtract.c:357`, `:734-765`; `sim/SimDBstuff.c:431`
+  - Magic's `SimGetNodeName` builds names with `strcpy` and `strcat` into the fixed buffers `static nodename[256]` and `buff[256]` (`sim/SimExtract.c:765-767`); a long hierarchical path or label overflows them. `SimTxtorLabel`'s `static name[30]` cannot overflow: it holds `@=%c%d,%d` with two 32-bit integers, at most 26 characters plus the terminator (`sim/SimExtract.c:357-366`).
+  - The probe looks the `getnode`-style name up in the net-name map, whose entries come from the netlister. The two names can differ for the same node (`@=` terminal names, case-collision renames, a different preferred label), so the map needs a `layoutName` field computed with the same naming function, and a fallback by connectivity.
+- Evidence: `openspec/specs/simulation-ui-and-crossprobe/spec.md` (Requirement "Probing a layout net"); `openspec/specs/simulation-netlist-preparation/spec.md` (Requirement "Net name map"); `openspec/specs/irsim-interface/spec.md`; Magic `sim/SimExtract.c:357-366`, `:734-767`; `sim/SimDBstuff.c:431`
 - Options:
-  - (a) Bring the naming function forward into M9, tagged to the `irsim-interface` requirement. Names have no length limit in both `magic-compat` modes (X-2 tier 1). The `getnode`, `rsim`, `startrsim` and `simcmd` commands stay in M12.
+  - (a) Bring the naming function forward into M9, tagged to the `irsim-interface` requirement. Names have no length limit in both `magic-compat` modes (X-2 tier 1). The net-name map gets a `layoutName` computed with that function at each entry's layout point, and probes fall back to connectivity when the names differ (`simulation-ui-and-crossprobe` "Probing a layout net" and `simulation-netlist-preparation` "Net name map", deltas). The `getnode`, `rsim`, `startrsim` and `simcmd` commands stay in M12.
   - (b) Option (a), and also bring the `getnode` command forward.
   - (c) A Hefesto-only naming rule for probes.
 - Recommendation: (a). Probing needs only the names. The command belongs with the rest of the IRSIM interface, which stays M12 (UI-CLIENT-002 is not retired).
@@ -233,12 +235,12 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 ### Q-SIM-26: When D-28 must be settled
 - Kind: platform
 - Status: pending user decision (proposed 2026-11-22 by the M9 plan)
-- ngspice behavior: n/a. The roadmap's M9 "Early de-risking" line says the ngspice LGPL and MPL linking review "must be decided before M14". `docs/decisions/audit/DECISIONS.md` gives D-28 the priority "blocks M9 (must be settled before M14)". The draft resolution of Q-SIM-1 says "confirm in D-28 before M9".
+- ngspice behavior: n/a. D-28 is about how the LGPL and MPL parts are linked into the iPadOS app; its priority is "blocks M9 (must be settled before M14)", which matches the roadmap's M9 "Early de-risking" line ("must be decided before M14"). There is no conflict between the two. What is new is the desktop question that M9 raises (Q-SIM-20), because Desktop Beta ships `hefesto-simd`. The draft resolution of Q-SIM-1 says "confirm in D-28 before M9".
 - Evidence: `docs/roadmap.md` (M9 "Early de-risking" and the de-risking schedule); `docs/decisions/audit/DECISIONS.md` D-28; Q-SIM-1
 - Options:
-  - (a) Split the decision. The desktop linking (Q-SIM-20) is decided in M9, because Desktop Beta ships `hefesto-simd`. The legal review starts in M9, and the iPadOS choice (static with a relink offer, or an embedded framework) is made before M14. The roadmap and D-28 say this.
-  - (b) Decide everything before M9 implementation starts.
-  - (c) Decide everything before M14.
+  - (a) Decide the desktop linking (Q-SIM-20) in R0 and put it through D-28's legal review before the Desktop Beta. The iPadOS choice (static with a relink offer, or an embedded framework) stays where D-28 puts it, before M14, after the same review. The roadmap and D-28 gain a sentence naming the desktop part.
+  - (b) Decide the desktop and iPadOS linking together before M9 implementation starts.
+  - (c) Decide everything before M14, and ship the Desktop Beta without a recorded desktop decision.
 - Recommendation: (a). The desktop build is the one M9 ships, and its boundary does not depend on how the iPadOS question is answered.
 
 ### Q-SIM-27: Desktop Beta sign-off
@@ -248,14 +250,16 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: `docs/roadmap.md` (M4 and M9 sections); `openspec/changes/m4-scripting/tasks.md` 13.6
 - Options:
   - (a) A beta flow per PDK, checked by end-to-end tests in CI on Linux x86_64 and macOS arm64 and then signed off by the user on real pointers, like Desktop Alpha. The flows are sky130 `inv_1`, gf180mcu `gf180mcu_fd_sc_mcu7t5v0__inv_1` and IHP `sg13g2_inv_1`. Each flow runs these steps:
-    1. the PDK testbench schematic is simulated (`tran`);
-    2. the standard-cell layout is DRC clean and written to GDS;
+    1. an inverter schematic `beta_inv.sch` with the devices and sizes of the library inverter is drawn in Hefesto (by the flow's script in CI, by hand for the sign-off), placed in a shared testbench `beta_tb.sch` with a pulse input and a fixed FO4 load (four copies of the same inverter), and simulated (`tran`, `tpd` as the mean of the 50 %–50 % rise and fall delays);
+    2. a layout cell `beta_inv` is drawn in Hefesto: an instance of the library inverter plus Hefesto-drawn metal1 pins and labels; it has no errors under Hefesto's DRC with the PDK's Magic tech file, and is written to GDS (KLayout sign-off DRC, P-18, is not part of the Beta flow);
     3. the layout is extracted;
-    4. LVS against the schematic netlist matches;
-    5. the post-layout simulation with parasitic mode `rc` runs, and the measured delay is within 30 % of the schematic run.
+    4. LVS of `beta_inv` against `beta_inv.sch` matches (for IHP, the PDK's `sg13g2_inv_1.sch` is also compared, as a cross-check);
+    5. the post-layout simulation of `beta_inv` with parasitic mode `rc` runs in the same testbench, and its `tpd` is within 30 % of the schematic run's.
+  
+  The CI scripts and inputs are authored by GOLDEN from the specs; the user redraws both cells for the sign-off.
   - (b) sky130 only.
   - (c) CI only, with no user sign-off.
-- Recommendation: (a). All three PDKs are first-class from M1 on, the inverters exist in every library, and the 30 % band catches a broken parasitic path without becoming a timing sign-off.
+- Recommendation: (a). All three PDKs are first-class from M1 on, the inverters exist in every library, every roadmap step runs inside Hefesto, and the 30 % band with a fixed FO4 load catches a broken parasitic path without becoming a timing sign-off. An unloaded output would let parasitics alone move the delay by more than 30 %.
 
 ### Q-SIM-28: Simulation performance gate
 - Kind: platform
@@ -264,8 +268,8 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: `openspec/specs/hefesto-performance/spec.md`; `openspec/specs/simulation-ui-and-crossprobe/spec.md` (Requirement "Waveform rendering performance")
 - Options:
   - (a) Two gates:
-    - Hefesto overhead, meaning the whole job time minus ngspice's own analysis time as reported by `rusage`, is at most 10 % of ngspice's time on three reference decks: the sky130 inverter `tran`, a 1 000-device post-layout `rc` deck, and a 1 000-point sweep;
-    - a 1 000-sample Monte Carlo of the inverter scales by at least 0.6 × the worker count up to 4 workers.
+    - Hefesto overhead, meaning the whole job time minus ngspice's own analysis time as reported by ngspice's `rusage` command (not the worker process's resource usage, which includes Hefesto's adapter and transfer time), is at most 10 % of ngspice's time on three reference decks: the sky130 inverter `tran`, a 1 000-device post-layout `rc` deck, and a 1 000-point sweep (including the worker reuse steps between points);
+    - a 1 000-sample Monte Carlo of the inverter scales by at least 0.6 × the worker count for every `w` up to `min(4, physical_cores − 1)` of the measuring runner: up to 3 on the 4-vCPU Linux runner, 2 on the 3-vCPU macOS runner, and 4 on the M3 Pro bench machine or a larger runner.
   - (b) Wall time only, reported for information.
   - (c) No gate in M9.
 - Recommendation: (a). It measures what Hefesto controls, it is stable across runners because it is a ratio, and it catches a slow IPC path.

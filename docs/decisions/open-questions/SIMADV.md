@@ -103,7 +103,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - ngspice/PDK behavior: there is one ngspice instance per address space (Q-SIM-5). Sweeps, corners and Monte Carlo each run many jobs. Q-SIM-5 recommends reviewing the default worker count `min(4, cores − 1)` against the memory that large RC netlists use.
 - Evidence: `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Multiple simulations and corner parallelism"); `openspec/specs/simulation-sweeps/spec.md` (Requirement "Run set execution"); Q-SIM-5
 - Options:
-  - (a) Use `min(4, cores − 1, ⌊B_total / B_job⌋)` workers:
+  - (a) Use `max(1, min(4, physical_cores − 1, ⌊B_total / B_job⌋))` workers, defined once in `simulation-engine-embedding` "Multiple simulations and corner parallelism" (which today allows 1 to the core count) and referenced by the run-set capabilities:
     - `B_total` is half the physical memory;
     - `B_job` is the job's result budget plus an estimate of the deck size;
     - results are stored and reported by point index, whatever order the jobs finish in.
