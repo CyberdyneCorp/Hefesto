@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "case": "NL-SIM-01",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:db4039029d2cd40eaf744d14968a62e5d9d5a5ac579dd4dea99f2fed92bdab66",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-22T00:00:30Z",
+  "outputs": {
+    "inv.alias.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "inv.alias.sim": "63f826286f33274a90a7cd78d12e8f50ecf58ce0f5367d30472882a85fff1601",
+    "inv.labels.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "inv.labels.nodes": "12232dfb0ac94769b0c2a3343fa7fae7b741580479e8693ac2de180abe869e18",
+    "inv.labels.sim": "63f826286f33274a90a7cd78d12e8f50ecf58ce0f5367d30472882a85fff1601",
+    "inv.lbl.sim": "98eed638f44277de1eb303ff28b7b6b18bad6fb1ba39d5b3c30060d9362ef690",
+    "inv.mit.sim": "63f826286f33274a90a7cd78d12e8f50ecf58ce0f5367d30472882a85fff1601",
+    "inv.su.sim": "8f2698521c014460f66453947a5ab344bccd8b8ad5e2d1c4c37a097758a737ec",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "8977504a0737732e0912f4baf5542cf8c08e28f8b5855da1e6a5f55cef63d292"
+  }
+}
