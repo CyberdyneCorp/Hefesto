@@ -240,14 +240,9 @@ TEST_CASE("ext2spice has Magic's option table and help", "[m7-scaffold]") {
     }
     CHECK(s.take_printed() == expected);
   }
-  for (const std::string_view entry : netlist::spice::spice_options().subspan(1)) {
-    const std::string name = option_name(entry);
-    if (name != "help" && name != "scale") {
-      check_not_implemented(s.run("ext2spice " + name), "ext2spice " + name);
-    }
-  }
-  check_not_implemented(s.run("exttospice lvs"), "exttospice lvs");
-  // M4's `ext2spice scale` setting keeps working (scripting-pdk-integration).
+  // SPICE landed the options (tasks.md 11.1; tests/unit/netlist/spice/).
+  CHECK(s.run("ext2spice format").value.to_string() == "spice3");
+  REQUIRE(s.run("exttospice lvs").ok());
   REQUIRE(s.run("ext2spice scale off").ok());
   REQUIRE(s.run("exttospice scale on").ok());
 }
@@ -255,10 +250,11 @@ TEST_CASE("ext2spice has Magic's option table and help", "[m7-scaffold]") {
 TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaffold]") {
   Session s;
   // magic-compat ON: `run`, an ambiguous word (`re`: resistor, renumber) and
-  // an unknown word are all run arguments.
+  // an unknown word are all run arguments. The run stops at EXTFLAT's
+  // argument parser until it lands (tasks.md 10.2).
   for (const auto* line : {"ext2spice", "ext2spice run foo", "ext2spice re", "ext2spice foo"}) {
     INFO(line);
-    check_not_implemented(s.run(line), "ext2spice run");
+    check_not_implemented(s.run(line), "extflat arguments");
   }
   const std::array<std::string_view, 3> table{"[run] [options]\trun", "resistor tee", "renumber"};
   const std::vector<std::string> run_foo{"run", "foo"};
@@ -279,9 +275,9 @@ TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaff
   (void)s.take_printed();
   REQUIRE(s.run("ext2spice re").ok());
   CHECK(s.take_printed() == "Ambiguous option: re\n");
-  check_not_implemented(s.run("ext2spice run foo"), "ext2spice run");
-  check_not_implemented(s.run("ext2spice foo"), "ext2spice run");
-  check_not_implemented(s.run("ext2spice renumber"), "ext2spice renumber");
+  check_not_implemented(s.run("ext2spice run foo"), "extflat arguments");
+  check_not_implemented(s.run("ext2spice foo"), "extflat arguments");
+  CHECK(s.run("ext2spice renumber").value.to_string() == "off");
 }
 
 // --- tasks.md 3.3: ext2sim and exttosim (design D4, D15) --------------------
@@ -387,7 +383,7 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   const auto ensured = extract::ensure_extracted(s.state, "top", nullptr);
   REQUIRE_FALSE(ensured.ok());
   CHECK(ensured.error().code == kNotImplemented);
-  check_not_implemented(netlist::spice::run(s.state, {}), "ext2spice run");
+  check_not_implemented(netlist::spice::run(s.state, {}), "extflat arguments");
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());
   CHECK(rendered.error().code == kNotImplemented);

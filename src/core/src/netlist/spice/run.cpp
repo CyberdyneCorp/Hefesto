@@ -1,0 +1,386 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// The `ext2spice` run and render() (capability netlist-spice-options "Run
+// arguments and output file", "File header and scale card"; design D18):
+// the run flags (spcParseArgs through extflat::parse_common_args), the
+// root cell, the read and flatten (extflat::read, extflat::flatten with
+// EFFlatBuild's flags), the writer's input from the current extraction
+// style (ExtGetDevInfo through ExtStyle::device_info()), and the output
+// file. render() writes no file and leaves EditorState::netlist untouched.
+// Hierarchical output (`hierarchy on`, tasks.md 11.6) is CORE-NOTIMPL-008
+// until it lands.
+//
+// Ported from Magic 8.3.694 (fc5daa9e) ext2spice/ext2spice.c:821-1100
+// (runexttospice) and 1416-1508 (spcParseArgs), Copyright (C) 1985, 1990
+// Regents of the University of California (see THIRD_PARTY_NOTICES.md).
+//
+// Owner: SPICE.
+
+#include <array>
+#include <cmath>
+#include <iterator>
+#include <limits>
+#include <strings.h>
+
+#include "netlist/spice/run_impl.hpp"
+
+#include "hefesto/app/settings_layers.hpp"
+#include "hefesto/cmd/m7_stubs.hpp"
+#include "hefesto/db/diag_codes.hpp"
+#include "hefesto/editor/editor_state.hpp"
+#include "hefesto/extflat/args.hpp"
+#include "hefesto/extflat/hierarchy.hpp"
+#include "hefesto/netlist/spice/run_args.hpp"
+#include "hefesto/netlist/spice/spice.hpp"
+#include "hefesto/platform/file_system.hpp"
+#include "hefesto/settings/project_settings.hpp"
+#include "hefesto/view/window.hpp"
+
+namespace hefesto::netlist::spice {
+
+namespace {
+
+// NETLIST-SPICE-001: no cell argument and no window.
+constexpr std::string_view kNoCell = "NETLIST-SPICE-001";
+
+constexpr std::string_view kUsage =
+    "Usage: ext2spice [-B] [-o spicefile] [-M|-m] [-J flat|hier]\n"
+    "[-f spice2|spice3|hspice|ngspice|cdl] [-M] [-m] [file]\n";
+
+// ArgStr: the rest of the flag word, else the next word.
+std::optional<std::string> arg_str(std::span<const std::string> args, std::size_t& index) {
+  const std::string& flag = args[index];
+  if (flag.size() > 2) {
+    return flag.substr(2);
+  }
+  if (index + 1 >= args.size()) {
+    return std::nullopt;
+  }
+  ++index;
+  return args[index];
+}
+
+std::optional<Dialect> dialect_named(const std::string& name) {
+  constexpr std::array<std::string_view, 5> kNames{"SPICE2", "SPICE3", "HSPICE", "NGSPICE", "CDL"};
+  for (std::size_t i = 0; i < kNames.size(); ++i) {
+    if (strcasecmp(name.c_str(), std::string{kNames[i]}.c_str()) == 0) {
+      return static_cast<Dialect>(i);
+    }
+  }
+  return std::nullopt;
+}
+
+bool format_flag(std::span<const std::string> args, std::size_t& i, RunArgs& run) {
+  const auto value = arg_str(args, i);
+  const auto format = value ? dialect_named(*value) : std::nullopt;
+  if (!format) {
+    return false;
+  }
+  run.settings.format = *format;
+  if (*format == Dialect::hspice) {
+    run.settings.scale = true;
+  }
+  return true;
+}
+
+bool hier_flag(std::span<const std::string> args, std::size_t& i, RunArgs& run) {
+  const auto value = arg_str(args, i);
+  if (value && strcasecmp(value->c_str(), "HIER") == 0) {
+    run.settings.hier_ap = true;
+    return true;
+  }
+  if (value && strcasecmp(value->c_str(), "FLAT") == 0) {
+    run.settings.hier_ap = false;
+    return true;
+  }
+  return false;
+}
+
+bool value_flag(std::span<const std::string> args, std::size_t& i, RunArgs& run, char flag) {
+  switch (flag) {
+    case 'o': {
+      const auto name = arg_str(args, i);
+      run.output = name;
+      return name.has_value();
+    }
+    case 'f':
+      return format_flag(args, i, run);
+    case 'J':
+      return hier_flag(args, i, run);
+    case 'y':
+      if (!arg_str(args, i)) {
+        return false;
+      }
+      run.messages.push_back({false, "The cap accuracy flag 'y' is deprecated."});
+      return true;
+    default:
+      break;
+  }
+  run.messages.push_back({true, "Unrecognized flag: " + args[i]});
+  return false;
+}
+
+// -M / -m set Magic's two merge booleans; aggressive wins a query.
+void merge_flag(RunArgs& run, bool aggressive) {
+  if (aggressive) {
+    run.settings.merge = MergeMode::aggressive;
+  } else if (run.settings.merge != MergeMode::aggressive) {
+    run.settings.merge = MergeMode::conservative;
+  }
+}
+
+bool switch_flag(RunArgs& run, char flag) {
+  switch (flag) {
+    case 'd':
+      run.settings.distributed_junctions = true;
+      return true;
+    case 'M':
+    case 'm':
+      merge_flag(run, flag == 'M');
+      return true;
+    case 'B':
+      run.settings.no_attributes = true;
+      return true;
+    case 'F':
+      run.flags.device_nodes_only = true;
+      return true;
+    case 'h':
+      run.messages.push_back({false, std::string{kUsage.substr(0, kUsage.size() - 1)}});
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool finite_cap(double cthresh) {
+  return std::isfinite(cthresh) && static_cast<float>(cthresh) != 1.0E38F;
+}
+
+compat::CompatSettings session_compat(const editor::EditorState& editor) {
+  compat::CompatSettings compat;
+  const auto value = editor.settings.effective(settings::kMagicCompat);
+  compat.magic_compat = !value || value->value != "off";
+  return compat;
+}
+
+std::vector<std::string> global_nets(const editor::EditorState& editor) {
+  std::vector<std::string> names;
+  if (const auto value = editor.settings.effective(app::kGlobalNets)) {
+    std::string word;
+    for (const char c : value->value + " ") {
+      if (c == ' ') {
+        if (!word.empty()) {
+          names.push_back(word);
+        }
+        word.clear();
+      } else {
+        word += c;
+      }
+    }
+  }
+  return names;
+}
+
+extflat::FlatFlags flat_flags(const SpiceSettings& settings) {
+  extflat::FlatFlags flags = extflat::FlatFlags::flat_nodes;
+  if (!settings.global) {
+    flags = flags | extflat::FlatFlags::no_name_merge;
+  }
+  if (finite_cap(settings.cthresh)) {
+    flags = flags | extflat::FlatFlags::flat_caps;
+  }
+  return flags;
+}
+
+void apply_style(SpiceInput& input, const editor::EditorState& editor) {
+  input.tech = editor.technology ? editor.technology->name() : std::string{};
+  const auto& style = editor.extract.current;
+  input.style_matches = style != nullptr;
+  if (style == nullptr) {
+    return;
+  }
+  input.scale = style->units_per_lambda;
+  input.resist_classes = style->resist_classes.size();
+  apply_device_info(input, style->device_info());
+  if (const auto gnd = editor.settings.effective(app::kGnd); gnd && !gnd->value.empty()) {
+    input.gnd_names.insert(input.gnd_names.begin(), gnd->value);
+  }
+}
+
+}  // namespace
+
+std::optional<std::size_t> parse_spice_flag(std::span<const std::string> args, std::size_t flag, RunArgs& run) {
+  const std::string& word = args[flag];
+  const char letter = word.size() > 1 ? word[1] : '\0';
+  std::size_t i = flag;
+  if (switch_flag(run, letter) || value_flag(args, i, run, letter)) {
+    return i + 1;
+  }
+  run.messages.push_back({true, std::string{kUsage.substr(0, kUsage.size() - 1)}});
+  return std::nullopt;
+}
+
+namespace detail {
+
+diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_view cell,
+                                     const SpiceSettings& settings, const compat::CompatSettings& compat,
+                                     platform::FileSystem& fs, diag::DiagnosticSink& sink) {
+  cell::LookupContext lookup{fs, editor.search_paths, editor.path_variables, sink};
+  extflat::ReadOptions options;
+  options.magic_compat = compat.magic_compat;
+  options.tech_name = editor.technology ? editor.technology->name() : std::string{};
+  options.global_nets = global_nets(editor);
+  options.search_path = settings.search_path;
+  options.cell_directory = [&editor](std::string_view name) -> std::optional<std::string> {
+    const db::CellDef* def = editor.cells.find(name);
+    if (def == nullptr || def->file_path().empty()) {
+      return std::nullopt;
+    }
+    return def->file_path().parent_path().string();
+  };
+  if (editor.extract.current != nullptr) {
+    options.units_per_lambda = editor.extract.current->units_per_lambda;
+  }
+  auto hierarchy = extflat::read(lookup, cell, options);
+  if (!hierarchy.ok()) {
+    return hierarchy.error();
+  }
+  const extflat::Netlist netlist = extflat::flatten(hierarchy.value(), flat_flags(settings));
+  SpiceInput input = from_netlist(netlist, cell);
+  apply_style(input, editor);
+  return input;
+}
+
+std::vector<diag::Diagnostic> to_diagnostics(const std::vector<WriteMessage>& messages) {
+  std::vector<diag::Diagnostic> out;
+  for (const WriteMessage& m : messages) {
+    out.push_back(diag::make(m.warning ? db::codes::kWarning : db::codes::kReport, m.text));
+  }
+  return out;
+}
+
+namespace {
+
+// EFArgs' `-t`: trim and conversion characters added to the run's flags.
+void apply_trim(extflat::NameFlags& names, const std::string& chars) {
+  names.trim_global = names.trim_global || chars.find('!') != std::string::npos;
+  names.trim_local = names.trim_local || chars.find('#') != std::string::npos;
+  names.convert_comma = names.convert_comma || chars.find(',') != std::string::npos;
+  names.convert_equal = names.convert_equal || chars.find('=') != std::string::npos;
+  names.convert_brackets = names.convert_brackets || chars.find_first_of("[]") != std::string::npos;
+}
+
+// The run's cell: the argument, else the current window's root cell.
+std::optional<std::string> run_cell(const editor::EditorState& editor, const extflat::CommonArgs& args) {
+  if (args.cell) {
+    return args.cell;
+  }
+  if (const view::LayoutWindow* w = editor.windows.current(); w != nullptr && w->root() != nullptr) {
+    return w->root()->name();
+  }
+  return std::nullopt;
+}
+
+// The run's copy of the settings: EFArgs' -c, -C apply to this run only.
+SpiceSettings run_settings(const SpiceSettings& session, const extflat::CommonArgs& args) {
+  SpiceSettings local = session;
+  if (args.cap_threshold) {
+    local.cthresh = static_cast<double>(static_cast<float>(*args.cap_threshold));  // EFCapValue
+  }
+  if (args.cap_infinite) {
+    local.cthresh = std::numeric_limits<double>::infinity();
+  }
+  return local;
+}
+
+cmd::CommandResult with_messages(cmd::CommandResult result, std::vector<diag::Diagnostic> messages) {
+  messages.insert(messages.end(), std::make_move_iterator(result.diagnostics.begin()),
+                  std::make_move_iterator(result.diagnostics.end()));
+  result.diagnostics = std::move(messages);
+  return result;
+}
+
+}  // namespace
+
+cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<std::string>& args,
+                               const compat::CompatSettings& compat, platform::FileSystem& fs) {
+  SpiceSettings& session = editor.netlist.spice;
+  RunArgs run{session, {}, std::nullopt, {}};
+  auto parsed = extflat::parse_common_args(
+      args, [&run](std::span<const std::string> words, std::size_t flag) { return parse_spice_flag(words, flag, run); });
+  std::vector<diag::Diagnostic> messages = to_diagnostics(run.messages);
+  if (!parsed.ok()) {
+    return with_messages(cmd::CommandResult::failure(parsed.error()), std::move(messages));
+  }
+  const extflat::CommonArgs& common = parsed.value();
+  if (!common.search_path.empty()) {
+    session.search_path = common.search_path;
+  }
+  if (common.tech) {
+    session.tech = common.tech;
+  }
+  const auto cell = run_cell(editor, common);
+  if (!cell) {
+    return with_messages(cmd::CommandResult::failure(diag::make(kNoCell, "Point to a window or specify a cell name.")),
+                         std::move(messages));
+  }
+  if (session.hierarchy) {
+    return with_messages(cmd::m7_not_implemented("ext2spice hierarchy"), std::move(messages));
+  }
+  // Q-NETLIST-42 (fix): `-o` names this run's file only.
+  const std::string output = run.output.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
+  const SpiceSettings local = run_settings(session, common);
+  diag::CollectingSink sink;
+  auto input = read_input(editor, *cell, local, compat, fs, sink);
+  for (diag::Diagnostic& d : sink.take()) {
+    messages.push_back(std::move(d));
+  }
+  if (!input.ok()) {
+    return with_messages(cmd::CommandResult::failure(input.error()), std::move(messages));
+  }
+  // Q-NETLIST-16: the session's flags with magic-compat ON, fresh ones per
+  // run with it OFF.
+  extflat::NameFlags fresh;
+  extflat::NameFlags& names = compat.magic_compat ? editor.netlist.names : fresh;
+  apply_trim(names, common.trim_chars);
+  const WriteResult written = write_flat(input.value(), local, run.flags, compat, names);
+  if (!fs.write_atomic(output, written.text).ok()) {
+    // A Tcl result in Magic, not a printed line.
+    return with_messages(
+        cmd::CommandResult::success(std::string{"exttospice: Unable to open file " + output + " for writing\n"}),
+        std::move(messages));
+  }
+  for (diag::Diagnostic& d : to_diagnostics(written.messages)) {
+    messages.push_back(std::move(d));
+  }
+  messages.push_back(diag::make(db::codes::kReport, "exttospice finished."));
+  return with_messages(cmd::CommandResult::success(), std::move(messages));
+}
+
+}  // namespace detail
+
+diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view cell,
+                                  const SpiceSettings& settings) {
+  const SpiceSettings local = settings;
+  if (local.hierarchy) {
+    return cmd::m7_not_implemented_diagnostic("ext2spice hierarchy");
+  }
+  platform::LocalFileSystem fs;
+  diag::CollectingSink sink;
+  const compat::CompatSettings compat = session_compat(editor);
+  auto input = detail::read_input(editor, cell, local, compat, fs, sink);
+  if (!input.ok()) {
+    return input.error();
+  }
+  // A fresh copy of the name flags: render never changes the session.
+  extflat::NameFlags names = compat.magic_compat ? editor.netlist.names : extflat::NameFlags{};
+  return write_flat(input.value(), local, RunFlags{}, compat, names).text;
+}
+
+cmd::CommandResult run(editor::EditorState& editor, const SpiceRun& request) {
+  platform::LocalFileSystem fs;
+  return detail::run_session(editor, request.args, session_compat(editor), fs);
+}
+
+}  // namespace hefesto::netlist::spice

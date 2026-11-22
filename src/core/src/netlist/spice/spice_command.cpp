@@ -3,8 +3,9 @@
 //
 // The `ext2spice` and `exttospice` commands (netlist/spice/spice.hpp;
 // openspec/changes/m7-extraction/design.md D4, D14): Magic's option table,
-// the first-word rule of Q-NETLIST-13 and `help`. The run and every other
-// option answer CORE-NOTIMPL-008 until SPICE lands them.
+// the first-word rule of Q-NETLIST-13, `help`, the options (options.cpp)
+// and the run (run.cpp). M4's partial `ext2spice scale` is folded into the
+// `scale` option (user decision M7-3).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) ext2spice/ext2spice.c CmdExtToSpice
 // (cmdExtToSpcOption, the lookup and the usage loop), Copyright (C) 1985,
@@ -16,10 +17,11 @@
 
 #include <array>
 
-#include "hefesto/cmd/m7_stubs.hpp"
+#include "db/command_util.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
-#include "hefesto/script/pdk/commands.hpp"
+#include "netlist/spice/options.hpp"
+#include "netlist/spice/run_impl.hpp"
 #include "netlist/table_command.hpp"
 
 namespace hefesto::netlist::spice {
@@ -47,43 +49,28 @@ constexpr std::array<std::string_view, 17> kOptions{
     "help\t\t\tprint help information",
 };
 
-constexpr std::size_t kScale = 8;
 constexpr std::size_t kHelp = 16;
 
-// M4's `ext2spice scale` (scripting-pdk-integration "PDK startup file
-// contract" step 5, script/pdk/commands.hpp) stays implemented; SPICE takes
-// it over with the rest of the options.
-std::optional<cmd::CommandResult> implemented(cmd::CommandContext& ctx, const cmd::Invocation& invocation,
-                                              std::size_t option) {
-  if (option == kScale) {
-    return script::ext2spice_scale(ctx, invocation);
+cmd::CommandResult run_command(cmd::CommandContext& ctx, std::vector<std::string> args) {
+  auto session = db::cmdutil::session(ctx);
+  if (!session) {
+    return db::cmdutil::fail(session.error());
   }
-  return std::nullopt;
+  compat::CompatSettings compat;
+  compat.magic_compat = session.value().magic_compat;
+  return detail::run_session(*session.value().editor, args, compat, ctx.services().files);
 }
 
 cmd::CommandResult spice_command(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
-  const detail::TableCommand command{kOptions, kHelp,
-                                     [](cmd::CommandContext& c, std::vector<std::string> args) {
-                                       return run(*c.editor(), SpiceRun{std::move(args)});
-                                     },
-                                     implemented};
-  return detail::dispatch(ctx, invocation, command);
+  const netlist::detail::TableCommand command{
+      kOptions, kHelp, run_command,
+      [](cmd::CommandContext& c, const cmd::Invocation& inv, std::size_t option) {
+        return detail::spice_option(c, inv, option, kOptions);
+      }};
+  return netlist::detail::dispatch(ctx, invocation, command);
 }
 
 }  // namespace
-
-cmd::CommandResult run(editor::EditorState& /*editor*/, const SpiceRun& /*request*/) {
-  return cmd::m7_not_implemented("ext2spice run");
-}
-
-diag::Outcome<std::string> render(editor::EditorState& /*editor*/, std::string_view /*cell*/,
-                                  const SpiceSettings& /*settings*/) {
-  return cmd::m7_not_implemented_diagnostic("ext2spice render");
-}
-
-std::string format_si(double /*value*/) {
-  return {};
-}
 
 std::span<const std::string_view> spice_options() noexcept {
   return kOptions;
