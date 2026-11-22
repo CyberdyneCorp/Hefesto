@@ -12,6 +12,7 @@
 #include "hefesto/view3d/stack/layer_stack.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -103,6 +104,9 @@ std::optional<PhysicalHeight> LayerStack::physical_height_um(LayerId layer) cons
   }
   const StackLayer& l = layers_[layer];
   const double scale = mode_ == Mode::mask_layer ? 1.0 : microns_per_unit_;
+  if (!std::isfinite(scale) || scale <= 0.0) {
+    return std::nullopt;  // layout-layer mode without a known µm per unit
+  }
   return PhysicalHeight{static_cast<double>(l.height) * scale, static_cast<double>(l.thickness) * scale};
 }
 
