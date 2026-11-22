@@ -6,7 +6,8 @@
 // frame rate"): uploads a mesh to render::VulkanMesh3dRenderer on the
 // headless Vulkan device and times whole frames (record, submit and wait,
 // the renderer's draw, which ends in the target's end_frame) in the
-// isometric view with the whole region visible, at level 0 and at level 1
+// isometric view with the whole region visible, orbiting the camera around
+// z before each frame, at level 0 and at level 1
 // (MSAA 4x: the geometry is drawn twice).
 //
 // Built only when the Vulkan renderer is (HEFESTO_BUILD_DESKTOP=ON, which
@@ -30,7 +31,7 @@ struct FrameOptions {
 };
 
 /// {"device", "width", "height", "upload_s", "first_frame_ms",
-///  "level0": {"median_ms", "min_ms", "fps", "runs_ms"}, "level1": {...}},
+///  "level0": {"median_ms", "p95_ms", "min_ms", "fps", "runs_ms"}, "level1": {...}},
 /// or {"error": "..."} when no Vulkan device or renderer is available.
 /// `bbox`: the region the default view fits.
 [[nodiscard]] nlohmann::json measure_frames(const view3d::MeshModel& mesh, const view3d::LayerStack& stack,
