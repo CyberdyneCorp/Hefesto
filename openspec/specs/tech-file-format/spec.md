@@ -136,7 +136,7 @@ Compatibility: behavioral
 Magic's behavior beyond these limits is undefined. A physical line longer than the buffer, a final line with no LF, and more than 30 tokens all cause memory-safety faults. Hefesto MUST NOT crash. It SHALL handle these cases as follows:
 - A final line without a terminating LF SHALL be accepted as if it had one.
 - A physical line longer than 1023 characters SHALL be truncated to 1023 characters with the warning `long line truncated`, and reading SHALL continue (Q-TECH-3).
-- A line with more than 30 tokens SHALL be accepted with all of its tokens (Q-TECH-4).
+- A line with more than 30 tokens SHALL keep its first 30 tokens, in both modes. The tokens past the 30th SHALL be dropped and reported with the error `line has more than 30 words; dropped: <tokens>` (TECH-READ-002), and the load SHALL go on (Q-LEFDEF-139, approved 2026-11-21; it replaces Q-TECH-4's "accept every token").
 
 (Magic ref: utils/tech.c:120-121, utils/tech.c:1007-1041)
 
@@ -144,6 +144,12 @@ Magic's behavior beyond these limits is undefined. A physical line longer than t
 - **GIVEN** a file whose last bytes are `end` with no trailing LF
 - **WHEN** the file is read
 - **THEN** `end` is recognized as a complete line
+
+#### Scenario: Line of more than 30 words
+- **GIVEN** a `drc` section line of 33 words `t0` to `t32`
+- **WHEN** the file is read, with `magic-compat` ON or OFF
+- **THEN** the line has the 30 tokens `t0` to `t29`
+- **AND** the error `line has more than 30 words; dropped: t30 t31 t32` is reported and the load goes on
 
 ### Requirement: Section structure
 

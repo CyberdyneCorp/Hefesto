@@ -1,7 +1,7 @@
 file inv.mag
 magic
 tech lefdef
-timestamp 1795181059
+timestamp 1795312478
 << metal1 >>
 rect 0 185 100 200
 rect 10 80 30 100

@@ -148,8 +148,7 @@ class ComponentReader {
       auto created = cells.create(name, r_.context().tech.plane_count());
       made = created.ok() ? created.value() : nullptr;
     }
-    const auto& read = r_.context().options.read_master;
-    if (made != nullptr && read && read(*made)) {
+    if (made != nullptr && r_.read_master(*made)) {
       db::recompute_bbox(*made, r_.magic_compat());
       return made;
     }

@@ -197,6 +197,9 @@ diag::Status MacroBuilder::write(std::string& out, std::vector<diag::Diagnostic>
   m.out = &out;
   m.messages = &messages;
   m.message("LEF-WRITE-001", "Diagnostic:  Writing LEF output for cell " + m.cell.name());
+  if (m.ctx.flatten_messages != nullptr) {
+    messages.insert(messages.end(), m.ctx.flatten_messages->begin(), m.ctx.flatten_messages->end());
+  }
   if (m.flat == nullptr) {
     if (auto st = flatten(); !st.ok()) {
       return st;

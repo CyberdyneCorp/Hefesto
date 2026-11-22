@@ -826,6 +826,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/fetch_pdk.py sky130-gds-sc --cli build/linux-release/src/cli/hefesto-cli
+      # The magic-sys fonts of the label cases (OASIS-051-labels, OASIS-052-labels: DEFAULT_FONTS), which
+      # were skipped without them; a sparse checkout of a few MB.
+      - name: Fetch the Magic reference data
+        run: python3 scripts/fetch_pdk.py magic-ref
       # A failed case fails the job, but the tools still run and report (the steps below).
       - name: Write Hefesto's OASIS files
         shell: bash

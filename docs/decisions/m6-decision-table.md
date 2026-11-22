@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 131 entries and `OASIS.md` has 49, 180 in all. Every one has a `Resolution:` line:
+As of 2026-11-21 (round 6), `docs/decisions/open-questions/LEFDEF.md` has 132 entries and `OASIS.md` has 52, 184 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -19,7 +19,8 @@ As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 131 en
 | Approved 2026-11-20 (user decisions E1, E2; recorded in round 5) | 6: Q-LEFDEF-135..140; amendments of Q-TECH-27 and Q-LEFDEF-132 | "Decided 2026-11-20: LEF/DEF rows" |
 | Approved 2026-11-20 (user decisions E2, E3, E4; recorded in round 5) | 10: Q-OASIS-45..54 (45..47 were proposed in round 4) | "Decided 2026-11-20: OASIS rows" |
 | Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
-| Implemented under the standing rule (round-5 integration and review), user confirmation pending | 2: Q-LEFDEF-141 (compat), Q-LEFDEF-151 (compat) | "Decided 2026-11-20: LEF/DEF rows" |
+| Approved 2026-11-21 (user decisions G3, G4; recorded in round 6) | 3: Q-LEFDEF-139 (amended to fix, G3), Q-LEFDEF-141 and 151 (compat, confirmed as implemented, G4) | "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
+| Approved 2026-11-21 (user decisions G1, G2, G5; recorded in round 6) | 3: Q-OASIS-14, 55, 56 | "Decided 2026-11-21: OASIS rows" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -330,10 +331,10 @@ The user's decisions of 2026-11-20 (E1, E2) for LEF/DEF, recorded in round 5 (`m
 | Q-LEFDEF-136 | `lef write` drops a cut painted in place over a written routing tile (LEFDEF-118, 119, 127) | **compat** | ON: Magic's tile marks, the cut is not written; OFF: every cut once per block |
 | Q-LEFDEF-137 | `def write` retry of a typed file name | **compat** | ON: retried as `<cell>.def`; OFF: the write fails |
 | Q-LEFDEF-138 | `lef writeall` output named after a failed read's `<name>.mag` (LEFDEF-RT-*) | **compat** | ON: the LEF goes into `<name>.mag`; OFF: `<name>.lef` |
-| Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **compat** | ON: Magic's 30-word vector (undefined past it: the ON rule is open, user_needed); OFF: every word (Q-TECH-4); implementation open (`tech/`) |
+| Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **fix** | amended 2026-11-21 (G3), see "Decided 2026-11-21: LEF/DEF rows (G3, G4)" |
 | Q-LEFDEF-140 | `def write` inputs Magic crashes on | **fix** | ON: rule entry written by name (OFF writes no read rule, Q-LEFDEF-99); both modes: via without route name, node geometry not searched; DEF-WRITE-012 |
-| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; to confirm) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
-| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (standing rule, round-5 review; to confirm) | **compat** | ON: LEF VIA/LAYER section and DEF geometry resolve no type (unknown-layer errors); OFF: treated as absent (magic-name fallback); PORT/OBS: absent in both modes (Q-LEFDEF-4) |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; confirmed 2026-11-21, G4) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
+| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (standing rule, round-5 review; confirmed 2026-11-21, G4) | **compat** | ON: LEF VIA/LAYER section and DEF geometry resolve no type (unknown-layer errors); OFF: treated as absent (magic-name fallback); PORT/OBS: absent in both modes (Q-LEFDEF-4) |
 | Q-TECH-27 (amended) | LEFDEF-003: minimum-grid quotient below 1 | **fix** | both modes: read as 1:1 |
 | Q-LEFDEF-132 (extended) | gzip-compressed LEF files | **fix** | both modes: read decompressed (as implemented) |
 
@@ -341,7 +342,7 @@ Decision E2 also adds golden case LEFDEF-241 (two COMPONENTS named `u1`, the Q-L
 
 ## Decided 2026-11-20: OASIS rows (user decisions E2, E3, E4)
 
-The user's decisions of 2026-11-20 approved the three read-limit rows proposed in round 4 as proposed (E2), the OASIS behaviours round 4 implemented with no row (E2), two write caps (E3) and the OASIS golden findings (E4). They are recorded as Q-OASIS-45..54 (round 5, OASIS + GOLDEN), each with `Status: approved 2026-11-20` and a `Resolution:` line; oasis-read, oasis-write and gds-write cite them, and `docs/contributing/security.md` lists the caps under M6-S3. E4's golden-only items need no row: OASIS-055-names gets a validator skip (Magic's reference GDS has two structures named `a_b`, Q-OASIS-61), and OASIS-020/021 are re-authored with the integer datestamp 1700000000 ; the round also changed what Magic reads, from KLayout's `strm2gds` to the GDS equivalent of the strm2oas file made by `authoring/oasequiv.py` (strm2gds writes the coincident copies of a zero-displacement repetition once). That change goes beyond E4: it makes the repetition reading in those cases depend on Hefesto's own converter, and is open for the user (keep `oasequiv.py`, or return to `strm2gds` and record the coincident-repetition difference as a deviation).
+The user's decisions of 2026-11-20 approved the three read-limit rows proposed in round 4 as proposed (E2), the OASIS behaviours round 4 implemented with no row (E2), two write caps (E3) and the OASIS golden findings (E4). They are recorded as Q-OASIS-45..54 (round 5, OASIS + GOLDEN), each with `Status: approved 2026-11-20` and a `Resolution:` line; oasis-read, oasis-write and gds-write cite them, and `docs/contributing/security.md` lists the caps under M6-S3. E4's golden-only items need no row: OASIS-055-names gets a validator skip (Magic's reference GDS has two structures named `a_b`, Q-OASIS-61), and OASIS-020/021 are re-authored with the integer datestamp 1700000000 ; the round also changed what Magic reads, from KLayout's `strm2gds` to the GDS equivalent of the strm2oas file made by `authoring/oasequiv.py` (strm2gds writes the coincident copies of a zero-displacement repetition once). That change went beyond E4: it made the repetition reading in those cases depend on Hefesto's own converter. Decided 2026-11-21 (G2, Q-OASIS-56): back to `strm2gds`, with the coincident-repetition difference as a documented deviation.
 
 | ID | Question | Kind | Resolution |
 |---|---|---|---|
@@ -350,11 +351,21 @@ The user's decisions of 2026-11-20 approved the three read-limit rows proposed i
 | Q-OASIS-47 | A PATH with more than 8191 points (E2) | **fix** | both modes: dropped with a message |
 | Q-OASIS-48 | Where the PDK variables of OASIS_FILE come from (E4, OASIS-032) | **compat** | the Tcl global variables only, as Magic's DBPathSubstitute, in both modes (the GDS_FILE substitution; OFF has no separate rule) |
 | Q-OASIS-49 | Child names in the content stamp of a read-only OASIS cell (E4, OASIS-033) | **compat** | ON: the children's names are folded into the hash, as Magic's GDS stamp; OFF: content only |
-| Q-OASIS-50 | XGEOMETRY in full form (E4, OASIS-062) | **fix** | both modes: layer, datatype, x, y explicit, no type-0 repetition; gdstk 1.0.2 still cannot read OASIS-062 (it stops at XGEOMETRY before END, so CELLNAME-named cells keep no name): user decision open |
+| Q-OASIS-50 | XGEOMETRY in full form (E4, OASIS-062) | **fix** | both modes: layer, datatype, x, y explicit, no type-0 repetition; gdstk 1.0.2 still cannot read OASIS-062 (it stops at XGEOMETRY before END, so CELLNAME-named cells keep no name): validator skip, decided 2026-11-21 (G1, Q-OASIS-55) |
 | Q-OASIS-51 | An OASIS write of a vendor GDS cell with other units (E2, GDS-WRITE-054) | **fix** | both modes: generated from its layout with GDS-WRITE-054 (as implemented) |
 | Q-OASIS-52 | A negative vendor PROPATTR in OASIS output (E2) | **fix** | both modes: the unsigned 16-bit value (-1 as 65535) (as implemented) |
 | Q-OASIS-53 | An inexact vendor AREF in OASIS output (E3) | **fix** | both modes: above 2^24 displacements the write fails (OASIS-WRITE-010) |
 | Q-OASIS-54 | Element instances of a vendor OASIS cell in GDS output (E3) | **fix** | both modes: above 2^28 the cell and its parents fail (GDS-WRITE-055) |
+
+## Decided 2026-11-21: OASIS rows (user decisions G1, G2, G5)
+
+The user's decisions of 2026-11-21 settled the two OASIS golden questions left open in round 5 (G1: OASIS-062's gdstk read; G2: the converter of OASIS-020/021) and approved the proposed OASIS decoder cap (G5). They are recorded as Q-OASIS-14, 55 and 56 (round 6, OASIS), each with `Status: approved 2026-11-21` and a `Resolution:` line; oasis-format cites Q-OASIS-14, oasis-read Q-OASIS-56, and `docs/contributing/security.md` lists the cap under M6-S3.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-OASIS-14 | Point lists and explicit repetitions with more than 2^24 entries (G5, cap) | **fix** | both modes: read without storing, element dropped with OASIS-CODEC-030, as is a later modal reuse; decoding continues |
+| Q-OASIS-55 | gdstk 1.0.2 cannot read OASIS-062's output (G1) | **other** | oasis-validate skips gdstk's read of OASIS-062 (reason in the step detail), as for OASIS-055-names; the writer is unchanged |
+| Q-OASIS-56 | The converter that makes Magic's GDS input for OASIS-020/021 (G2) | **other** | KLayout's strm2gds (round 5's oasequiv.py switch reverted); the coincident-repetition difference is a deviation of `cells.sha256` in deviations.toml; recaptured in CI |
 
 ## Decided 2026-11-20: write caps (E3)
 
@@ -363,6 +374,18 @@ The user's decision E3 of 2026-11-20 approved three resource caps on writes, eac
 | ID | Question | Kind | Resolution |
 |---|---|---|---|
 | Q-LEFDEF-150 | DEF write of a LEF VIA whose cut array is unbounded | **fix** | both modes: above 1,000,000 cuts one cut the size of the via area is written (LEF-VIA-012) |
+
+## Decided 2026-11-21: LEF/DEF rows (G3, G4)
+
+The user's decisions of 2026-11-21 for LEF/DEF, recorded in round 6 (`m6-r6-lefdef`). Each entry has `Status: approved 2026-11-21` and a `Resolution:` line in `docs/decisions/open-questions/LEFDEF.md`.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-139 | Technology file lines of more than 30 words (G3; amends the 2026-11-20 compat row) | **fix** | both modes: the first 30 words are read, the dropped words are reported with the error TECH-READ-002 and the load goes on (Magic's stack overwrite is undefined behaviour); amends Q-TECH-4 |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (G4) | **compat** | confirmed as implemented: ON, after an item of a section with any non-zero declared count, window loads delete an untouched (UNNAMED); OFF: kept in batch |
+| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (G4) | **compat** | confirmed as implemented: ON, LEF VIA/LAYER section and DEF geometry resolve no type; OFF: treated as absent; PORT/OBS: absent in both modes |
+
+Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8.
 
 ## Planning questions raised by the M6 plan
 

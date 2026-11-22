@@ -115,6 +115,23 @@ class ProduceTest(unittest.TestCase):
         [produced] = [s for s in manifest["steps"] if s["step"] == "OASIS-055-names"]
         self.assertIn("XOR with Magic's GDS skipped", produced["detail"])
 
+    def test_gdstk_read_skip_of_oasis_062(self):
+        # G1 (2026-11-21, Q-OASIS-55): gdstk 1.0.2 stops at XGEOMETRY before END and crashes on the unnamed cells.
+        make_case(self.cases, "OASIS-062")
+        manifest = self.produce(lambda *a: execution({"out.oas": b"%SEMI-OASIS\r\n"}))
+        [item] = manifest["entries"]
+        self.assertNotIn({"tool": "gdstk", "op": "read"}, item["checks"])
+        self.assertIn({"tool": "gdstk", "op": "validate"}, item["checks"])
+        self.assertIn({"tool": "klayout", "op": "read"}, item["checks"])
+        [produced] = [s for s in manifest["steps"] if s["step"] == "OASIS-062"]
+        self.assertIn("gdstk read skipped", produced["detail"])
+
+    def test_other_cases_keep_the_gdstk_read(self):
+        make_case(self.cases, "OASIS-061")
+        manifest = self.produce(lambda *a: execution({"out.oas": b"%SEMI-OASIS\r\n"}))
+        [item] = manifest["entries"]
+        self.assertIn({"tool": "gdstk", "op": "read"}, item["checks"])
+
     def test_input_checks_copy_the_files_they_name(self):
         case_dir = make_case(self.cases, "OASIS-030")
         (case_dir / "input" / "trap.oas").write_bytes(b"F")

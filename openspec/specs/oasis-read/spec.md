@@ -576,14 +576,14 @@ For every OASIS file `F` whose content has a GDS equivalent (no CIRCLE, no XGEOM
 
 Compatibility: exact
 
-This is the acceptance criterion for this capability. The golden cases in `tests/golden/OASIS/CASES.md` check it with Magic's `gds read` as the reference. `F` is a hand-built file (`oasgen.py`) or KLayout's `strm2oas` of a GDS library (OASIS-020/021); `G` is made from `F` by the golden tooling's converter (`authoring/oasequiv.py`), which implements the element mapping of this capability. KLayout's `strm2gds` is not used for `G`: it writes the coincident copies of a zero-displacement repetition once, so its output is not the equivalent. The conversion of `F` to `G`, and so the reading of repetitions, is therefore not cross-checked by a tool independent of Hefesto's authors (round-5 review; open for the user).
+This is the acceptance criterion for this capability. The golden cases in `tests/golden/OASIS/CASES.md` check it with Magic's `gds read` as the reference. For a hand-built `F` (`oasgen.py`), `G` is made by the golden tooling's converter (`authoring/oasequiv.py`), which implements the element mapping of this capability. For OASIS-020/021, `F` is KLayout's `strm2oas` of a GDS library and `G` is KLayout's `strm2gds` of `F`, so the reading of repetitions is cross-checked by a converter independent of Hefesto's authors (user decision G2 of 2026-11-21; Q-OASIS-56, resolution: other). `strm2gds` writes the two coincident copies of a zero-displacement shape repetition once, while this capability reads one element per displacement ("Shape repetitions"), so `G` is not the exact equivalent there: in 45 cells of the sky130 standard-cell library Hefesto's `.mag` has a zero-area label beside the port label Magic's has. That difference is a documented deviation of those cases (`tests/golden/deviations.toml`), not a change of the reading rule.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRead.c:173-332)
 
 #### Scenario: Converted standard-cell library
-- **GIVEN** a GDS standard-cell library `L`, `F = strm2oas(L)` and `G` the GDS equivalent of `F`
+- **GIVEN** a GDS standard-cell library `L`, `F = strm2oas(L)` and `G = strm2gds(F)`
 - **WHEN** Magic reads `G` with `gds read` and Hefesto reads `F` with `oasis read`
-- **THEN** the `.mag` files saved from both are identical, except for timestamp lines
+- **THEN** the `.mag` files saved from both are identical, except for timestamp lines and, in cells where `F` has a zero-displacement shape repetition, the extra coincident element Hefesto reads (Q-OASIS-56)
 
 ### Requirement: Host mechanisms used by the reader
 Hefesto SHALL provide PDK path-variable substitution for `OASIS_FILE` from its own configuration on every platform, as for `GDS_FILE`, and SHALL support gzip-wrapped and CBLOCK-compressed input on all platforms, including iPadOS. Files are opened through the platform document model (capability `hefesto-files-and-pdks`).

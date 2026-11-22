@@ -36,7 +36,7 @@ The reader SHALL split each physical line into tokens as follows:
 - Tokens are separated by whitespace. A double quote starts a quoted section, which may contain whitespace, and the next double quote ends it. The quote characters themselves are removed from the token.
 - A backslash inside a token is copied into the token as an ordinary character, and the character after it is processed as usual (it does not escape whitespace or a double quote). A backslash that is the last character of the logical line is dropped. Magic's comment says "any character preceded by a backslash is taken literally", but its code does this; the spec follows the code (D-5).
 
-Lines have no length limit. At most 128 tokens per line are supported.
+Lines have no length limit. At most 128 tokens per line are supported. A line of more than 128 tokens SHALL be ignored with the warning `<file>, line <n>: more than 128 tokens; line ignored` (EXTFLAT-READ-011), shown on every console, in both modes (Magic overflows its 128-slot `argv`; approved 2026-11-21, `docs/contributing/security.md` M6-S8). The read SHALL go on with the next line.
 Compatibility: exact
 (Magic ref: extflat/EFread.c:770-885)
 
@@ -54,6 +54,12 @@ Compatibility: exact
 - **GIVEN** the two physical lines `node n1 0 10 \` and `0 0 metal1 0 0`
 - **WHEN** they are tokenized
 - **THEN** a single logical line with 9 tokens results
+
+#### Scenario: Line of more than 128 tokens
+- **GIVEN** `top.ext` whose first line is a `node` record of 137 tokens, followed by `node small 0 0 0 0 m1`
+- **WHEN** it is read, with `magic-compat` ON or OFF
+- **THEN** only the node `small` is read
+- **AND** the warning `<dir>/top.ext, line 1: more than 128 tokens; line ignored` is printed
 
 ### Requirement: Keyword recognition
 The first token of a line SHALL be matched case-insensitively against this keyword table. A unique prefix is accepted, and an exact match always wins:

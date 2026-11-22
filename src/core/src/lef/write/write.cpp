@@ -99,8 +99,10 @@ class WriteRun {
     return wd::library_header(in, body_);
   }
 
-  [[nodiscard]] diag::Status macro(const db::CellDef& cell, LefUnits units, std::string& out) {
+  [[nodiscard]] diag::Status macro(const db::CellDef& cell, LefUnits units, std::string& out,
+                                   const std::vector<diag::Diagnostic>* flatten_messages = nullptr) {
     MacroContext ctx;
+    ctx.flatten_messages = flatten_messages;
     ctx.tech = editor_.technology.get();
     ctx.layers = &editor_.lefdef.layers;
     ctx.vias = &editor_.lefdef.vias;
@@ -235,6 +237,11 @@ std::vector<const db::CellDef*> header_cells(const std::vector<const db::CellDef
   return {order.begin() + static_cast<std::ptrdiff_t>(first), order.end()};
 }
 
+cmd::CommandResult with_reads_first(cmd::CommandResult result, const std::vector<diag::Diagnostic>& reads) {
+  result.diagnostics.insert(result.diagnostics.begin(), reads.begin(), reads.end());
+  return result;
+}
+
 bool cancelled(const LefWriteOptions& options) {
   return options.progress != nullptr && options.progress->cancelled();
 }
@@ -279,6 +286,10 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& cell, const p
   if (options.loader.read) {
     (void)gds::load_area(cell, cell.bbox(), options.loader, false, editor.drc.compat_settings());
   }
+  // Magic prints those reads inside lefWriteMacro, after its "Writing LEF
+  // output" line; a failed write prints them first, as they happened.
+  const std::vector<diag::Diagnostic> reads =
+      options.read_messages != nullptr ? options.read_messages->take() : std::vector<diag::Diagnostic>{};
   WriteRun run(editor, options);
   const bool is_root = &cell == edit_root(editor);
   LefUnits units = run.headerless_units();
@@ -287,14 +298,17 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& cell, const p
     units = database_units(output_style(editor));
     text = run.header(cell, {&cell}, units);
   }
-  if (auto st = run.macro(cell, units, text); !st.ok()) {
-    return cmd::CommandResult::failure(st.error());
+  if (auto st = run.macro(cell, units, text, &reads); !st.ok()) {
+    return with_reads_first(cmd::CommandResult::failure(st.error()), reads);
   }
   text += "END LIBRARY\n\n";
   const std::string base = path.string();
   cmd::CommandResult result = run.save(wd::output_names(base, cell.name(), false, run.magic_compat()), text,
                                        "for cell " + cell.name());
-  if (result.ok() && is_root) {
+  if (!result.ok()) {
+    return with_reads_first(std::move(result), reads);
+  }
+  if (is_root) {
     editor.lefdef.units = units;
   }
   return result;

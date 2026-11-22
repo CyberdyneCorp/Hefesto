@@ -176,7 +176,8 @@ class WrittenCaseTest(unittest.TestCase):
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-001"]), "LEFTECH")
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-010"]), "LEFR and LEFVIA")
         self.assertEqual(m6_cases.owner(by_id["LEFDEF-317"]), "DEFW")
-        self.assertTrue(m6_cases.deferral_reason(by_id["LEFDEF-232"]).startswith(m6_cases.BLOCKER_PREFIX + "DEFR; "))
+        mask_os = next(s for s in SPECS if s.id == "MASK-OS-016")
+        self.assertTrue(m6_cases.deferral_reason(mask_os).startswith(m6_cases.BLOCKER_PREFIX + "LEFW; "))
 
 
 class MagicCrashTest(unittest.TestCase):

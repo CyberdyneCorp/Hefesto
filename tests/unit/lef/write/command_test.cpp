@@ -9,7 +9,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <string>
+#include <vector>
 
 #include "hefesto/db/use_index.hpp"
 #include "hefesto/lef/command/command.hpp"
@@ -368,6 +371,56 @@ TEST_CASE("regression: lef write reads the subcells it flattens", "[cap:lef-writ
     const std::string text = s.macro(top, o);
     CHECK(asked == std::vector<std::string>{"leaf"});
     CHECK(text.find("LAYER met1 ;") != std::string::npos);
+  }
+}
+
+TEST_CASE("regression: a subcell lef write reads is reported inside the macro",
+          "[cap:lef-write][req:Progress messages]") {
+  // LEFDEF-128: Magic's DBCellCopyAllPaint reads the subcells inside
+  // lefWriteMacro, so "Cell inv read from path ..." comes between the
+  // "Writing LEF output" and "Scale value" lines; Hefesto printed it first,
+  // before "Generating LEF output".
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    s.file("/d/inv.mag", "magic\ntech lefwrite\ntimestamp 100\n<< metal1 >>\nrect 0 0 10 10\n<< end >>\n");
+    s.file("/d/buf.mag",
+           "magic\ntech lefwrite\ntimestamp 100\n<< metal1 >>\nrect 0 0 30 10\n<< labels >>\n"
+           "rlabel metal1 0 0 10 10 0 A\nport 1 nsew\nuse inv  x1\ntimestamp 100\ntransform 1 0 0 0 1 0\n"
+           "box 0 0 10 10\n<< end >>\n");
+    s.editor.search_paths.path = {"/d"};
+    REQUIRE(s.run("load buf").ok());
+    db::CellDef* buf = s.editor.cells.find("buf");
+    REQUIRE(buf != nullptr);
+    db::CellDef* inv = s.editor.cells.find("inv");
+    REQUIRE(inv != nullptr);
+    REQUIRE_FALSE(inv->flags().available);
+    if (s.editor.windows.size() == 0) {
+      s.window(*buf);
+    }
+    s.editor.edit_root = buf;
+    (void)s.printed.take();
+    REQUIRE(s.run("lef write").ok());
+    std::vector<std::string> texts;
+    for (const auto& d : s.printed.take()) {
+      texts.push_back(d.text);
+    }
+    const auto at = [&texts](std::string_view prefix) {
+      return std::find_if(texts.begin(), texts.end(), [prefix](const std::string& t) { return t.starts_with(prefix); });
+    };
+    const auto generating = at("Generating LEF output buf.lef for cell buf:");
+    const auto writing = at("Diagnostic:  Writing LEF output for cell buf");
+    const auto read = at("Cell inv read from path /d");
+    const auto scale = at("Diagnostic:  Scale value is");
+    REQUIRE(generating != texts.end());
+    REQUIRE(writing != texts.end());
+    REQUIRE(read != texts.end());
+    REQUIRE(scale != texts.end());
+    CHECK(generating < writing);
+    CHECK(writing < read);
+    CHECK(read < scale);
+    const auto reads = [](const std::string& t) { return t.starts_with("Cell inv read"); };
+    CHECK(std::count_if(texts.begin(), texts.end(), reads) == 1);
   }
 }
 

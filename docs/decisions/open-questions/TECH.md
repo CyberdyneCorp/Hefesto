@@ -33,6 +33,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Options: fix (error) | fix (accept any number of tokens)
 - Recommendation: accept any number of tokens. Long `variant`, `layer` and `mask` lists in real PDKs may exceed 30 tokens without this ever having been noticed.
 - Resolution: fix — the 30-slot token vector overflows the stack; Hefesto accepts any number of tokens (X-2 tier 1, 2026-11-07).
+- Amended 2026-11-21 by Q-LEFDEF-139 (user decision G3, `docs/decisions/open-questions/LEFDEF.md`): in both modes a line keeps its first 30 tokens and the dropped ones are reported with the error TECH-READ-002; the load goes on. tech-file-format "Line length and token limits" follows the amendment.
 
 ### Q-TECH-5: repeat/endrepeat limitations
 - Kind: quirk

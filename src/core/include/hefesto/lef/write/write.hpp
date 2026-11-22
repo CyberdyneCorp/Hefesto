@@ -20,6 +20,7 @@
 
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/db/geometry.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/gds/write/subtree.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -50,6 +51,11 @@ struct LefWriteOptions {
   /// gds::command_subtree_loader in a command). Empty members: an
   /// unavailable cell cannot be read and fails the write.
   gds::SubtreeLoader loader;
+  /// `lef write`: the sink `loader` prints to. Its messages are taken after
+  /// the subcells are read and printed where Magic prints them, after the
+  /// macro's "Writing LEF output for cell" line (LEFDEF-128). nullptr: they
+  /// go where the loader sends them, before the write's own messages.
+  diag::CollectingSink* read_messages = nullptr;
   /// writeall: an interrupt skips the remaining macros; `END LIBRARY` is
   /// still written. nullptr: never interrupted.
   const mask::Progress* progress = nullptr;

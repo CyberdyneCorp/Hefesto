@@ -90,6 +90,10 @@ std::optional<Repetition> Decoder::Impl::repetition(bool present) {
     return std::nullopt;
   }
   Repetition r = detail::read_repetition(in, modal.repetition, drop);
+  if (detail::capped(r)) {  // read now, or reused from the modal variable (Q-OASIS-14)
+    drop.set("OASIS-CODEC-030", "the modal repetition lists more than " + std::to_string(kMaxListEntries) +
+                                    " displacements; the element is dropped");
+  }
   modal.repetition = r;
   return r;
 }
@@ -108,6 +112,13 @@ void Decoder::Impl::position_fields(Element& e, std::uint8_t info) {
 void Decoder::Impl::finish_element(Element e) {
   target = PropertyTarget::element;
   record.element = std::move(e);
+}
+
+void Decoder::Impl::drop_if_capped(bool capped, std::string_view kind) {
+  if (capped) {  // the first OASIS-CODEC-030 message stays when the list was just read
+    drop.set("OASIS-CODEC-030", "the modal " + std::string(kind) + " point list has more than " +
+                                    std::to_string(kMaxListEntries) + " points; the element is dropped");
+  }
 }
 
 void Decoder::Impl::drop_unless_outline(const Element& e) {
@@ -219,8 +230,10 @@ void Decoder::Impl::polygon() {
     }
     modal.polygon_points = std::move(list.vertices);
     modal.polygon_point_list_type = list.type;
+    polygon_points_capped = list.capped;
   }
   e.points = modal_value(modal.polygon_points, "polygon-point-list");
+  drop_if_capped(polygon_points_capped, "polygon");
   e.point_list_type = modal.polygon_point_list_type;
   position_fields(e, info);
   if (e.points.size() + 1 < 3) {
@@ -254,8 +267,10 @@ void Decoder::Impl::path() {
     PointList list = detail::read_point_list(in, drop);
     modal.path_points = std::move(list.vertices);
     modal.path_point_list_type = list.type;
+    path_points_capped = list.capped;
   }
   e.points = modal_value(modal.path_points, "path-point-list");
+  drop_if_capped(path_points_capped, "path");
   e.point_list_type = modal.path_point_list_type;
   position_fields(e, info);
   if (e.points.empty()) {

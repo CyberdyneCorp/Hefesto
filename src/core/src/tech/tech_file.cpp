@@ -13,6 +13,7 @@
 #include "hefesto/tech/tech_file.hpp"
 
 #include <cctype>
+#include <string>
 #include <utility>
 
 #include "tech/reader.hpp"
@@ -23,6 +24,7 @@ namespace hefesto::tech {
 namespace {
 
 constexpr std::size_t kMaxLogicalLine = 1023;  // MAXLINESIZE - 1
+constexpr std::size_t kMaxLineWords = 30;      // MAXARGS, techGetTokens' word vector
 
 constexpr SectionMask kTypes = section_bit(kSecTypes);
 constexpr SectionMask kPlanes = section_bit(kSecPlanes);
@@ -299,7 +301,25 @@ std::optional<TechLine> LineReader::raw_line() {
       break;
     }
   }
-  return TechLine{tokenize_tech_line(logical), diag::SourceLocation{files_.back().name, line_no}};
+  TechLine line{tokenize_tech_line(logical), diag::SourceLocation{files_.back().name, line_no}};
+  drop_extra_words(line);
+  return line;
+}
+
+// Q-LEFDEF-139 (approved 2026-11-21, both modes): techGetTokens stores the
+// words in a 30-slot vector and overwrites TechLoad's stack past it, so the
+// line keeps its first 30 words and the dropped ones are reported.
+void LineReader::drop_extra_words(TechLine& line) {
+  if (line.tokens.size() <= kMaxLineWords) {
+    return;
+  }
+  std::string dropped;
+  for (std::size_t i = kMaxLineWords; i < line.tokens.size(); ++i) {
+    dropped += ' ';
+    dropped += line.tokens[i];
+  }
+  line.tokens.resize(kMaxLineWords);
+  warn("TECH-READ-002", line.where, "line has more than " + std::to_string(kMaxLineWords) + " words; dropped:" + dropped);
 }
 
 std::optional<TechLine> LineReader::next() {

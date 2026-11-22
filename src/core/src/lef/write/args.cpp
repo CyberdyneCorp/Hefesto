@@ -23,6 +23,7 @@
 
 #include "db/command_util.hpp"
 #include "hefesto/db/use_index.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/lef/command/command.hpp"
 #include "hefesto/lef/write/write.hpp"
@@ -234,7 +235,12 @@ CommandResult lef_write(cmd::CommandContext& ctx, const cu::Session& s, const cm
     return no_cell();
   }
   p.options.files = &ctx.services().files;
-  p.options.loader = gds::command_subtree_loader(ctx, *s.editor);
+  // The subcell reads print into `reads`; lef::write puts their lines where
+  // Magic prints them, inside the macro (LEFDEF-128).
+  diag::CollectingSink reads;
+  cmd::CommandContext read_ctx(ctx.services(), ctx.project(), ctx.session(), reads, ctx.registry(), ctx.editor());
+  p.options.loader = gds::command_subtree_loader(read_ctx, *s.editor);
+  p.options.read_messages = &reads;
   p.options.typed_name = p.name.value_or(std::string{});
   const std::string name = p.name.value_or(target->name());
   return hosted_write(s, name, p.options, [&] { return write(*s.editor, *target, name, p.options); });

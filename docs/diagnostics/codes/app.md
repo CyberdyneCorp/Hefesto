@@ -34,5 +34,5 @@ fails when the two disagree.
 | `APP-STARTUP-001` | info | A startup file was found; its script commands run only once the Tcl binding exists (M4), its plain settings were applied. |
 | `APP-STARTUP-002` | info | A deprecated startup file name (`~/.magic`, `.magic`) is in use. |
 | `APP-TECH-001` | warning | The technology named at startup could not be loaded; the previous choice is kept. |
-| `APP-TECH-002` | info | The technology chosen at startup (`Using technology "NAME"`). |
+| `APP-TECH-002` | info | The technology in use once startup has loaded the command-line files (`Using technology "NAME", version V`). |
 <!-- END DIAGNOSTIC CODES -->

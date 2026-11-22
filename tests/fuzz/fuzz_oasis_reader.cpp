@@ -27,7 +27,10 @@
 //
 // Resource caps: the decoder's (CBLOCK inflation at most 256 times the
 // compressed size, at least 1 GiB; repetitions are never expanded into a
-// list, M6-S3/S4), the read's approved limits (2 GiB stream, 2^28
+// list, M6-S3/S4; a point list or explicit repetition (types 4/5/6/7/10/11)
+// of more than 2^24 entries is skipped without being stored and its element
+// dropped, OASIS-CODEC-030, Q-OASIS-14 -- the main memory bound once a
+// CBLOCK inflates), the read's approved limits (2 GiB stream, 2^28
 // instances, 65530-byte strings, 8191 points; Q-OASIS-41..44), the vendor
 // write caps (OASIS-WRITE-010 at 2^24 explicit offsets, GDS-WRITE-055 at
 // 2^28 instances). Those caps still let a few bytes of repetition make a

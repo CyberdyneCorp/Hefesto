@@ -894,12 +894,19 @@ Compatibility: behavioral
 
 In annotation mode, COMPONENTS and BLOCKAGES SHALL be skipped. VIAS and NONDEFAULTRULES SHALL still be read. PINS SHALL still paint geometry and add labels, after erasing matching labels (see "Pin port labels").
 
+The terminal lookup reads each cell on the path that is not read yet. The messages of such a read (such as `Cell <c> read from path <dir>`), like those of a COMPONENTS master read from disk, SHALL be printed in order with the read's own lines, where the read happens (after the PINS count and before the NETS count for a terminal of the NETS section), in both `magic-compat` modes.
+
 (Magic ref: lef/defRead.c:1131-1190, lef/defRead.c:722-756, lef/defRead.c:2660-2730)
 
 #### Scenario: Annotate a net through a terminal
 - **GIVEN** an edit cell with subcell `u1` whose terminal `Y` is metal1 at `(10,10)-(20,20)`, and top-level metal1 covering `(0,0)-(100,30)`
 - **WHEN** `def read top -annotate` reads `- n1 ( u1 Y ) + ROUTED met1 ( 0 15 ) ( 100 15 ) ;`
 - **THEN** a label `n1` SHALL be placed at `(50,15)` on metal1, and no paint SHALL be added
+
+#### Scenario: A cell read by the terminal lookup
+- **GIVEN** `load top` left subcell `leaf` unread, and the file has a PINS section of one pin before a NETS section naming `( u1 A )`
+- **WHEN** `def read top -annotate` runs
+- **THEN** `Cell leaf read from path <dir>` SHALL be printed after `  Processed 1 pins total.` and before `  Processed 1 nets total.`
 
 #### Scenario: Annotation when the edit cell is not the design cell
 - **GIVEN** the design cell `top` contains subcell `u1` with terminal `Y` on metal1 under top-level metal1, and the current edit cell is another cell that has no use `u1`

@@ -225,6 +225,21 @@ Depends on `mask-hints`, which is completed in M3.
 - The LEFDEF and OASIS golden cases pass. OASIS-012, OASIS-030 and OASIS-061 run without commercial-tool inputs, under an approved deviation (Q-OASIS-2, user decision 2026-11-18).
 - The 419-byte OASIS reference file is confirmed by a third-party reader.
 
+**Status (in review, 2026-11-22; change `openspec/changes/m6-lef-def-oasis`, round 6 exit-round integration on branch `m6-round6`, PR #83).** The tech `lef` section, `lef read`/`write`/`writeall`, `def read`/`write`, the OASIS codec, `oasis read`/`write` with read-only vendor views and GDS transcoding, the `.ext` read-and-flatten subset and the desktop open of OASIS files are implemented, and every decision M6 cites is resolved (the user's decisions of 2026-11-21, G1..G5, are recorded as Q-LEFDEF-139/141/151 and Q-OASIS-14/55/56). Every exit criterion is met at the round-6 head except one: MASK-OS-016 is still deferred to M6, because Magic exits with SIGSEGV on it and it cannot be captured (deferring it past M6 is the user's decision). M6 is therefore not declared done. Exit criteria at the round-6 head (task 17.7):
+
+| Criterion | Result | Evidence |
+|---|---|---|
+| Unit, property and fuzz tests green on every leg | met | CI 44987472406 (46d90d0d): every leg, both macOS presets, ASan, TSan, fuzz and the golden replay legs |
+| LEFDEF and OASIS golden cases pass or carry an approved deviation; `m6_cases.py --exit-check` has no entry deferred to M6 | not met | `--exit-check` exits 1 with MASK-OS-016 only (Magic SIGSEGV, capture_blocked). Recaptured in golden-capture 44971808830 and stable in verify 44973981552: OASIS-020 and OASIS-021-* (approved Q-OASIS-56 deviation, 45 cells) and LEFDEF-STARTUP-lef (replays). LEFDEF-128 replays and LEFDEF-232 differs only through Q-LEFDEF-1, after the message-order fix of `lef write` and `def read -annotate`. OASIS-012/030/061 carry Q-OASIS-2. Local replay: LEFDEF 116 pass, 28 deviation, 4 skip, 0 fail |
+| `oasis-validate`: no `strmxor` difference, no strict warning for OASIS-051/057/060/061/062 | met | run 44987468409 (46d90d0d): 229 checks, 0 failures, labels cases included |
+| 419-byte reference file confirmed (task 17.6) | met | run 44987468409: KLayout 0.30.0 reads it with no warning, `strmcmp` identical, gdstk 1.0.2 reads it and validates its signature |
+| Determinism covers LEFDEF and OASIS | met | determinism job of CI 44987472406 with `--require-area LEFDEF --require-area OASIS`, every leg identical |
+| M6 requirement coverage | met | 146 of 146 exact and behavioural; 208 of 208 with native |
+| `check_milestone_readiness.py --milestone M7` | met | M7: ready |
+| `openspec validate --all --strict` | met | 179 passed |
+| `perf.yml` green, `lefdef-bench` and `oasis-bench` within baseline + 2 % | met | baselines recorded from Performance dispatch 44971811678 (m6-round6, e3ff89d0); dispatch 44976052953 (c7bfb1ee) green, every workload within its gate |
+| Every result from a run at the head declared done | not met | the runs above are at the round-6 heads named; M6 is not declared done while MASK-OS-016 is deferred |
+
 ## M7 — Extraction and netlisting
 
 **Capabilities:** `extract-tech-section`, `extract-nodes-and-labels`, `extract-capacitance`, `extract-resistance-lumped`, `extract-devices`, `extract-hierarchy`, `extract-substrate`, `extract-file-format`, `extract-commands`, `ext-flattening-read`, `ext-flattening-hierarchy`, `ext-flattening-names`, `netlist-spice-options`, `netlist-spice-devices`, `netlist-spice-hierarchy`, `netlist-sim`, `netlist-extcheck`, `extresist-command`, `extresist-network`, `extresist-output`, `antenna-check`

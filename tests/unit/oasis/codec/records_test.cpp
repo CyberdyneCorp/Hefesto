@@ -478,6 +478,63 @@ TEST_CASE("POLYGON point lists and closure", "[cap:oasis-format][req:POLYGON rec
   CHECK(oasis_test::decode(cell_file("15 23 31 00 06 01 00")).error->code == "OASIS-CODEC-009");
 }
 
+TEST_CASE("security fix M6-S3: a POLYGON above 2^24 points is dropped, and so is its modal reuse (approved cap)",
+          "[cap:oasis-format][req:Point lists]") {
+  // Q-OASIS-14 (approved 2026-11-21), both modes; decoding goes on after the list.
+  std::vector<std::byte> body = hex("15 23 31 00 02");
+  oasis::write_unsigned(body, oasis::kMaxListEntries + 1);
+  body.resize(body.size() + oasis::kMaxListEntries + 1, std::byte{0x28});
+  const auto modal_reuse = hex("15 03 31 00");
+  const auto valid = hex("15 23 31 00 02 02 28 29");
+  body.insert(body.end(), modal_reuse.begin(), modal_reuse.end());
+  body.insert(body.end(), valid.begin(), valid.end());
+  File f;
+  f.add("0E").add(str("top")).add(body);
+  const auto d = oasis_test::decode(f.end());
+  REQUIRE_FALSE(d.error);
+  const auto elements = d.elements();
+  REQUIRE(elements.size() == 1);
+  CHECK(elements.front().points == std::vector{pt(10, 0), pt(10, 10)});
+  std::vector<std::string> texts;
+  for (const auto& diagnostic : d.diagnostics) {
+    if (diagnostic.code == "OASIS-CODEC-030") {
+      texts.push_back(diagnostic.text);
+    }
+  }
+  CHECK(texts == std::vector<std::string>{
+                     "point list of 16777217 points, more than 16777216; the element is dropped",
+                     "the modal polygon point list has more than 16777216 points; the element is dropped"});
+}
+
+TEST_CASE("security fix M6-S3: a repetition above 2^24 displacements is dropped, and so is its modal reuse "
+          "(approved cap)",
+          "[cap:oasis-format][req:Repetitions]") {
+  // Q-OASIS-14 (approved 2026-11-21), both modes: a type 4 repetition with n' = 2^24 on a RECTANGLE.
+  std::vector<std::byte> body = hex("14 67 31 00 90 03 C8 01 04");
+  oasis::write_unsigned(body, oasis::kMaxListEntries);
+  body.resize(body.size() + oasis::kMaxListEntries + 1, std::byte{0x01});
+  const auto modal_reuse = hex("14 67 31 00 90 03 C8 01 00");
+  const auto plain = hex("14 63 31 00 90 03 C8 01");
+  body.insert(body.end(), modal_reuse.begin(), modal_reuse.end());
+  body.insert(body.end(), plain.begin(), plain.end());
+  File f;
+  f.add("0E").add(str("top")).add(body);
+  const auto d = oasis_test::decode(f.end());
+  REQUIRE_FALSE(d.error);
+  const auto elements = d.elements();
+  REQUIRE(elements.size() == 1);
+  CHECK_FALSE(elements.front().repetition.has_value());
+  std::vector<std::string> texts;
+  for (const auto& diagnostic : d.diagnostics) {
+    if (diagnostic.code == "OASIS-CODEC-030") {
+      texts.push_back(diagnostic.text);
+    }
+  }
+  CHECK(texts == std::vector<std::string>{
+                     "repetition of type 4 lists more than 16777216 displacements; the element is dropped",
+                     "the modal repetition lists more than 16777216 displacements; the element is dropped"});
+}
+
 TEST_CASE("PATH half-width and extensions (Q-OASIS-11)", "[cap:oasis-format][req:PATH record]") {
   const auto d = oasis_test::decode(cell_file("16 E3 31 00 05 0A 00 01 C8 01  16 60 08 00 01 C8 01"));
   REQUIRE_FALSE(d.error);

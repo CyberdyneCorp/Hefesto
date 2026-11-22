@@ -43,11 +43,19 @@ enum class StringKind : std::uint8_t { a_string, b_string, n_string };
 /// the axis its context implies.
 enum class DeltaForm : std::uint8_t { one_horizontal, one_vertical, two, three, g };
 
+/// The most entries a decoded point list, or a type 4, 5, 6, 7, 10 or 11
+/// repetition, may list (Q-OASIS-14, security review M6-S3). Above it the
+/// entries are read and discarded and the element is dropped
+/// (OASIS-CODEC-030), in both modes.
+inline constexpr std::uint64_t kMaxListEntries = std::uint64_t{1} << 24;
+
 /// A decoded point list: its type and the vertices P1..Pn relative to the
-/// implicit P0 = (0, 0) (no polygon closure).
+/// implicit P0 = (0, 0) (no polygon closure). `capped`: the list had more
+/// than kMaxListEntries points, so `vertices` is empty.
 struct PointList {
   std::uint8_t type = 0;
   std::vector<Point64> vertices;
+  bool capped = false;
 
   friend bool operator==(const PointList&, const PointList&) = default;
 };

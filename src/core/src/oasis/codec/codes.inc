@@ -39,3 +39,4 @@ HEFESTO_OASIS_CODE("OASIS-CODEC-026", error, "The encoder cannot write a value: 
 HEFESTO_OASIS_CODE("OASIS-CODEC-027", error, "CBLOCK compression failed (zlib) or the compression level is not 1 to 9.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-028", error, "Invalid PROPERTY value type (above 15); decoding stops.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-029", warning, "PLACEMENT with a magnification of 0 or less; the placement is dropped.")
+HEFESTO_OASIS_CODE("OASIS-CODEC-030", error, "A point list or a type 4-7, 10 or 11 repetition lists more than 2^24 entries; the element is dropped.")

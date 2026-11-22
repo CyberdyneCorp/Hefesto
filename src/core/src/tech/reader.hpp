@@ -87,6 +87,7 @@ class LineReader {
   };
 
   [[nodiscard]] std::optional<TechLine> raw_line();
+  void drop_extra_words(TechLine& line);
   [[nodiscard]] bool read_physical(std::string& out, std::uint32_t& line_no);
   bool directive(const TechLine& line);
   void start_repeat(const TechLine& line);

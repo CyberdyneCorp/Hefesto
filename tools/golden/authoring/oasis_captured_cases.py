@@ -9,13 +9,14 @@
   presentation OASIS cannot carry).
 * OASIS-020/021 (task 15.2): KLayout converts the sky130 standard-cell library GDS
   (``sky130-gds-sc``) to OASIS (``strm2oas``, strict mode) and that OASIS file back to GDS
-  (``strm2gds``, gzip-compressed, kept for ``oasis-validate``): Hefesto reads the OASIS file, Magic
-  its GDS equivalent (``oasequiv``, committed gzip-compressed under ``equivalent/OASIS-020/``).
-  KLayout's ``strm2gds`` is not that equivalent: strm2oas wrote some pin shapes and port TEXTs with a
-  repetition holding a zero displacement (two coincident copies), which strm2gds writes once, while
-  oasis-read reads one element per displacement ("Shape repetitions"); Magic then made one port label
-  where Hefesto made a port label and a zero-area label in 45 cells. OASIS-021 repeats the read with
-  each option of the row in turn (``OASIS-021-<option>``). The library's saved cells are compared
+  (``strm2gds``, gzip-compressed): Hefesto reads the OASIS file, Magic the converted GDS. KLayout stays
+  the independent converter (G2 of the user decisions of 2026-11-21, Q-OASIS-56), so the reading of
+  repetitions is cross-checked by a tool Hefesto's authors did not write. strm2oas wrote some pin shapes
+  and port TEXTs with a repetition holding a zero displacement (two coincident copies), which strm2gds
+  writes once, while oasis-read reads one element per displacement ("Shape repetitions"); Magic then
+  makes one port label where Hefesto makes a port label and a zero-area label in 45 cells. That is a
+  documented deviation of ``cells.sha256`` (``COINCIDENT_DEVIATION``, in ``deviations.toml``).
+  OASIS-021 repeats the read with each option of the row in turn (``OASIS-021-<option>``). The library's saved cells are compared
   through their digests (``derived:digest``); both sides read with the integer datestamp
   1700000000, so every cell's timestamp is that value (``<fmt> datestamp 1`` parses as ``yes``,
   which keeps the GDS structure date that an OASIS cell does not have).
@@ -34,12 +35,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import casegen
-import common
-import oasequiv
 from oasis_common import REPORT, Line, Read, _case, both, opt, read_case, rep
 
 CAPTURED_DIR = casegen.GOLDEN / "OASIS" / "captured"
-EQUIVALENT_DIR = casegen.GOLDEN / "OASIS" / "equivalent"
 MANIFEST = "captured.json"
 SKY130_GDS = {"set": "sky130-gds-sc", "path": "sky130A/libs.ref/sky130_fd_sc_hd/gds/sky130_fd_sc_hd.gds"}
 LIBRARY = "sky130_fd_sc_hd"
@@ -125,24 +123,22 @@ def oasis_012():
 
 
 LIBRARY_EXTERNALS = [{"source": "golden", "path": f"OASIS/captured/OASIS-020/{LIBRARY}.oas", "to": f"{LIBRARY}.oas"},
-                     {"source": "golden", "path": f"OASIS/equivalent/OASIS-020/{LIBRARY}.gds.gz",
+                     {"source": "golden", "path": f"OASIS/captured/OASIS-020/{LIBRARY}.gds.gz",
                       "to": f"{LIBRARY}.gds.gz"}]
 CELL_DIGESTS = "derived:digest:*.mag"
 READ_LIBRARY = Line(f"gds read input/{LIBRARY}.gds.gz", f"oasis read input/{LIBRARY}.oas")
 # A fixed integer datestamp on both sides (E4, 2026-11-20): every saved cell gets this timestamp.
 LIBRARY_DATESTAMP = 1700000000
+# The approved deviation of every library case (G2 of the user decisions of 2026-11-21, Q-OASIS-56):
+# KLayout's strm2gds writes the coincident copies of a zero-displacement repetition once, oasis-read
+# reads one element per displacement, so 45 cells differ by a zero-area label beside a port label.
+COINCIDENT_DEVIATION = (
+    "Q-OASIS-56 (approved 2026-11-21): Magic reads KLayout's strm2gds of the strm2oas file, which writes the "
+    "two coincident copies of a zero-displacement shape repetition once, while oasis-read reads one element "
+    "per displacement (oasis-read 'Shape repetitions'); in 45 cells Hefesto saves a zero-area label beside "
+    "the port label Magic saves, so cells.sha256 differs; report.txt matches")
 
 
-def write_equivalent() -> Path:
-    """``equivalent/OASIS-020/<library>.gds.gz``: the GDS equivalent of the captured OASIS file
-    (``oasequiv``, deterministic gzip), rewritten only when its bytes change."""
-    source = CAPTURED_DIR / "OASIS-020" / f"{LIBRARY}.oas"
-    target = EQUIVALENT_DIR / "OASIS-020" / f"{LIBRARY}.gds.gz"
-    data = common.gzip_bytes(oasequiv.gds_equivalent(source.read_bytes()))
-    if not target.is_file() or target.read_bytes() != data:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-    return target
 OPTIONS_021 = {
     "ordering": [opt("ordering on")],
     "flatten": [opt("flatten yes")],
@@ -153,15 +149,13 @@ OPTIONS_021 = {
 
 
 def library_case(cid: str, requirements: list[str], description: str, before: list[Line]):
-    write_equivalent()
     body = [both("drc off"), opt(f"datestamp {LIBRARY_DATESTAMP}"), *before, READ_LIBRARY,
             rep("llength [cellname list allcells]"), both("writeall force")]
     return _case(cid, "oasis-read", requirements, description, body, {}, [CELL_DIGESTS, REPORT],
-                 ["Magic GDS cross-check on the sky130 standard-cell library: Magic reads the GDS equivalent "
-                  "(authoring/oasequiv.py) of KLayout's strm2oas file that Hefesto reads (captured by oasis-validate, "
-                  "task 15.2); KLayout's strm2gds writes the coincident copies of a zero-displacement repetition "
-                  "once, so it is not the equivalent. The saved cells are compared through their SHA-256 (the "
-                  f"integer datestamp {LIBRARY_DATESTAMP} makes them stable)."],
+                 ["Magic GDS cross-check on the sky130 standard-cell library: Magic reads KLayout's strm2gds of the "
+                  "OASIS file Hefesto reads (both captured by oasis-validate, task 15.2; KLayout is the independent "
+                  "converter, Q-OASIS-56). The saved cells are compared through their SHA-256 (the integer "
+                  f"datestamp {LIBRARY_DATESTAMP} makes them stable). Approved deviation: {COINCIDENT_DEVIATION}."],
                  output_names={CELL_DIGESTS: "cells.sha256"}, pdk="sky130A", external=list(LIBRARY_EXTERNALS),
                  run_timeout=1800)
 
@@ -171,7 +165,7 @@ def oasis_020():
         return None
     return library_case("OASIS-020", ["GDS-equivalence cross-check", "Cell processing", "Layer and datatype mapping"],
                         "The sky130 standard-cell library read by Hefesto from KLayout's strm2oas, by Magic from "
-                        "the GDS equivalent of that file, with default options.", [])
+                        "the KLayout strm2gds of that file, with default options.", [])
 
 
 def oasis_021() -> list:

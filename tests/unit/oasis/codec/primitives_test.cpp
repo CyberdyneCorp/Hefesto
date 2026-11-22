@@ -9,7 +9,9 @@
 
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <limits>
+#include <string>
 #include <vector>
 
 #include "codec_fixture.hpp"
@@ -262,6 +264,54 @@ TEST_CASE("huge repetition counts are never expanded eagerly", "[cap:oasis-forma
   oasis::write_unsigned(far, (std::uint64_t{1} << 40));
   oasis::write_unsigned(far, 2000000000);
   CHECK(error_code(far, oasis::read_repetition) == "OASIS-CODEC-008");
+}
+
+TEST_CASE("security fix M6-S3: a point list above 2^24 points is read, not stored, and dropped (approved cap)",
+          "[cap:oasis-format][req:Point lists]") {
+  // Q-OASIS-14 (approved 2026-11-21), both modes: 2^24 + 1 one-byte 2-deltas.
+  const std::uint64_t count = oasis::kMaxListEntries + 1;
+  std::vector<std::byte> bytes = hex("02");
+  oasis::write_unsigned(bytes, count);
+  const std::size_t list_size = bytes.size() + count;
+  bytes.resize(list_size, std::byte{0x28});
+  bytes.push_back(std::byte{0x7F});  // the next field, not part of the list
+  oasis::ByteCursor cursor{bytes};
+  const auto r = oasis::read_point_list(cursor);
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.error().code == "OASIS-CODEC-030");
+  CHECK(r.error().text == "point list of 16777217 points, more than 16777216; the element is dropped");
+  CHECK(cursor.offset == list_size);
+  CHECK(diag::make("OASIS-CODEC-030", "").severity == diag::Severity::error);
+}
+
+TEST_CASE("security fix M6-S3: a list repetition above 2^24 displacements is read, not stored, and dropped "
+          "(approved cap)",
+          "[cap:oasis-format][req:Repetitions]") {
+  // Q-OASIS-14 (approved 2026-11-21), both modes: n' = 2^24 gives 2^24 + 1 displacements.
+  for (const std::uint8_t type : std::initializer_list<std::uint8_t>{4, 5, 6, 7, 10, 11}) {
+    CAPTURE(type);
+    std::vector<std::byte> bytes{std::byte{type}};
+    oasis::write_unsigned(bytes, oasis::kMaxListEntries);
+    if (type == 5 || type == 7 || type == 11) {
+      bytes.push_back(std::byte{1});  // grid
+    }
+    const std::size_t size = bytes.size() + oasis::kMaxListEntries + 1;
+    bytes.resize(size, std::byte{0x02});  // one-byte steps (unsigned, or a one-byte g-delta)
+    bytes.push_back(std::byte{0x7F});
+    oasis::ByteCursor cursor{bytes};
+    const auto r = oasis::read_repetition(cursor);
+    REQUIRE_FALSE(r.ok());
+    CHECK(r.error().code == "OASIS-CODEC-030");
+    CHECK(r.error().text == "repetition of type " + std::to_string(type) +
+                                " lists more than 16777216 displacements; the element is dropped");
+    CHECK(cursor.offset == size);
+  }
+  // The grid types keep counts only, so the cap does not apply to them.
+  std::vector<std::byte> grid = hex("02");
+  oasis::write_unsigned(grid, oasis::kMaxListEntries * 4);
+  grid.push_back(std::byte{0x05});
+  CHECK(oasis::instance_count(decoded<oasis::Repetition>(grid, oasis::read_repetition)) ==
+        oasis::kMaxListEntries * 4 + 2);
 }
 
 TEST_CASE("intervals of types 0-4", "[cap:oasis-format][req:Intervals]") {

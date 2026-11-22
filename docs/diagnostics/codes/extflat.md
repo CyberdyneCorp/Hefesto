@@ -50,15 +50,18 @@ the lines of efFlatGlobError for a global name (from the project setting
 "global nets and power names") split over unconnected nodes, which are
 merged.
 
-`EXTFLAT-READ-009`, `-010` and `-011` are Hefesto's own (`native_only`;
-design D21, D23 M6-S8). Magic has no caps: a use cycle recurses until the
+`EXTFLAT-READ-009`, `-010` and `-011` are Hefesto's own (design D21, D23
+M6-S8; caps approved 2026-11-21). `-009` and `-010` are `native_only`;
+`-011` is a warning every console shows, in both modes, so a dropped line
+is never silent. Magic has no caps: a use cycle recurses until the
 stack overflows, a line of more than 128 tokens overflows efReadLine's
 `argv`, and a huge array, subscript range or hierarchy runs out of memory
 or time. `EXTFLAT-READ-009` fails the read when a cap of
 `extflat::ReadLimits` is passed (file size 1 GiB, logical line 16 MiB,
 1 Mi cells, use depth 1000, 4 Mi flattened instances, 16 Mi flat names,
 16 Mi merge-record elements), `EXTFLAT-READ-010` fails it on a use cycle,
-and `EXTFLAT-READ-011` ignores a line of more than 128 tokens.
+and `EXTFLAT-READ-011` ignores a line of more than 128 tokens with a
+warning.
 
 ## Table
 
@@ -84,6 +87,6 @@ fails when the two disagree.
 | `EXTFLAT-READ-008` | info | A global node name is split over unconnected nodes, which are merged (`*** Global name <g> not fully connected:`). |
 | `EXTFLAT-READ-009` | error | The `.ext` input passes a resource cap of the read (file size, line length, cells, depth, instances, names or connections); the read fails. |
 | `EXTFLAT-READ-010` | error | The `use` records of the `.ext` files form a cycle; the read fails. |
-| `EXTFLAT-READ-011` | error | A `.ext` line has more than 128 tokens; the line is ignored. |
+| `EXTFLAT-READ-011` | warning | A `.ext` line has more than 128 tokens; the line is ignored with this warning, in both modes. |
 | `EXTFLAT-READ-012` | warning | A `device` record overlaps an incompatible device at the same place and is ignored. |
 <!-- END DIAGNOSTIC CODES -->
