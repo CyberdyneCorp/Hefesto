@@ -85,6 +85,58 @@ TEST_CASE("regression: the read's first line comes before the masters' messages"
   CHECK(reading < master);
 }
 
+// Regression (LEFDEF-232): the -annotate terminal lookup reads an unread
+// subcell (DBTreeFindUse), and Magic prints "Cell leaf read from path ..."
+// between the PINS and NETS counts; Hefesto printed it straight away, before
+// every line of the read, which the command returns at its end.
+TEST_CASE("regression: a cell the annotation reads is reported between the section counts",
+          "[cap:def-read][req:def read command]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    s.file("/d/leaf.mag",
+           "magic\ntech deftest\ntimestamp 100\n<< metal1 >>\nrect 0 0 10 10\n<< labels >>\n"
+           "rlabel metal1 0 0 10 10 0 A\nport 1 nsew\n<< end >>\n");
+    s.file("/d/top.mag",
+           "magic\ntech deftest\ntimestamp 100\n<< metal1 >>\nrect 0 5 200 6\nuse leaf  u1\ntimestamp 100\n"
+           "transform 1 0 0 0 1 0\nbox 0 0 10 10\n<< end >>\n");
+    s.file("/d/top.def",
+           "DESIGN top ;\nDIEAREA ( 0 0 ) ( 200 100 ) ;\nCOMPONENTS 1 ;\n- u1 leaf + PLACED ( 0 0 ) N ;\n"
+           "END COMPONENTS\nPINS 1 ;\n- IN + NET IN + DIRECTION INPUT + LAYER met1 ( -1 -1 ) ( 1 1 ) "
+           "+ PLACED ( 100 5 ) N ;\nEND PINS\nNETS 1 ;\n- sig ( u1 A ) + ROUTED met1 ( 0 5 ) ( 200 5 ) ;\n"
+           "END NETS\nEND DESIGN\n");
+    s.editor.search_paths.path = {"/d"};
+    REQUIRE(s.run("load top").ok());
+    REQUIRE(s.cell("leaf").flags().available == false);
+    s.editor.edit_cell = &s.cell("top");  // `load top` in a window makes it the edit cell
+    (void)s.printed.take();
+    REQUIRE(s.run("defr read /d/top -annotate").ok());
+    std::vector<std::string> texts;
+    for (const auto& d : s.printed.take()) {
+      texts.push_back(d.text);
+    }
+    std::string printed;
+    for (const std::string& t : texts) {
+      printed += t + "\n";
+    }
+    INFO(printed);
+    const auto at = [&texts](std::string_view prefix) {
+      return std::find_if(texts.begin(), texts.end(), [prefix](const std::string& t) { return t.starts_with(prefix); });
+    };
+    const auto reading = at("Reading DEF data from file /d/top.def.");
+    const auto pins = at("  Processed 1 pins total.");
+    const auto leaf = at("Cell leaf read from path /d");
+    const auto nets = at("  Processed 1 nets total.");
+    REQUIRE(reading != texts.end());
+    REQUIRE(pins != texts.end());
+    REQUIRE(leaf != texts.end());
+    REQUIRE(nets != texts.end());
+    CHECK(reading < pins);
+    CHECK(pins < leaf);
+    CHECK(leaf < nets);
+  }
+}
+
 // --- Command context (Q-LEFDEF-86, 88) ----------------------------------------------
 
 TEST_CASE("no window context", "[cap:def-read][req:Command context]") {

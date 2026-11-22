@@ -239,6 +239,20 @@ void Reader::report(std::string text) const {
   out_.emit(diag::make(kReport, std::move(text)));
 }
 
+bool Reader::read_master(db::CellDef& def) const {
+  const DefReadOptions& options = context_.options;
+  if (!options.read_master) {
+    return false;
+  }
+  const bool read = options.read_master(def);
+  if (options.master_messages != nullptr) {
+    for (const diag::Diagnostic& d : options.master_messages->take()) {
+      out_.emit(d);
+    }
+  }
+  return read;
+}
+
 void Reader::progress() const {
   if (context_.options.progress != nullptr) {
     context_.options.progress->update(lexer_.estimate());

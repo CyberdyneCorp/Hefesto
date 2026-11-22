@@ -79,12 +79,6 @@ BLOCKER_REASONS = {
     "PATH": ("LEFR/INTEGRATION: for a missing file Magic reports the last search-path candidate (/opt/ref/lib/magic/tutorial/<name>.lef), Hefesto the typed name; approved as a fix with a recorded deviation (decision D4, 2026-11-19), stderr.txt only; the deviations.toml entry replaces this deferral once docs/decisions has its Q-LEFDEF row"),
     "SPECIAL": ("DEFR: special-net geometry differs from Magic's capture; to investigate"),
     "OBSMSG": ("LEFW: Magic prints its two OBS_BBOX errors on one line (the first has no newline); no Q-row (proposed compat)"),
-    "LEFW": ("LEFW: buf.lef matches since round 4 (lef write reads the subcells it flattens); left: Hefesto prints "
-             "'Cell inv read from path ...' before 'Generating LEF output', Magic after it (the cell-read messages are "
-             "not in the writer's message buffer)"),
-    "MASTER": ("DEFR: the -annotate terminal lookup reads unread cells since round 4; left: the 'Cell leaf read' line "
-               "comes before '  Processed 1 pins total.' (message order), and with Q-LEFDEF-1's width fix the "
-               "zero-width rectangle's label lands where Magic's does not (stderr, approved fix)"),
     "MASKOS": ("GOLDEN/LEFW: Magic still exits with SIGSEGV (status 139) after the round-5 re-authoring (the LEF "
                "VIA renamed VX1, so the tech section's cut alias V1 is no longer redefined): golden-capture run "
                "44860968058. The crash point is not found; the case is capture_blocked until it is"),
@@ -95,8 +89,6 @@ BLOCKER_REASONS = {
     "RT": ("LEFW/INTEGRATION: the library round trip is captured (golden-capture run 44583527997; Magic writes the LEF as lefdef_rt.mag, the file its failed read gave the new wrapper, and the script renames it) and has not been replayed against Hefesto's lef writeall yet: it needs a hefesto-cli build and the PDK and LEF sets (replay.py --require-inputs with the three IDs); drop the deferral when every output matches"),
 }
 BLOCKERS: dict[str, str] = {
-    "LEFDEF-128": BLOCKER_REASONS["LEFW"],
-    "LEFDEF-232": BLOCKER_REASONS["MASTER"],
     "MASK-OS-016": BLOCKER_REASONS["MASKOS"],
     "LEFDEF-STARTUP-lef": BLOCKER_REASONS["STARTUP"],
     **oasis_cases.CAPTURE_BLOCKED,
@@ -124,6 +116,10 @@ CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets cap
 # the user decisions of 2026-11-21) carry the approved Q-OASIS-56 deviation there, with `deferred = "M6"`
 # until their recapture on KLayout's strm2gds input (golden-capture.yml); the recapture drops that line.
 REPLAYED: set[str] = {
+    # Round 6: lef write and def read -annotate print the cells they read in Magic's place (LEFDEF-128
+    # matches; LEFDEF-232 differs only by its hand-written Q-LEFDEF-1 entry, stderr.txt).
+    "LEFDEF-128",
+    "LEFDEF-232",
     "LEFDEF-RT-sky130_fd_sc_hd",
     "LEFDEF-RT-sg13g2_stdcell",
     "LEFDEF-241",

@@ -86,6 +86,10 @@ struct MacroContext {
   std::vector<std::string> nocheck;            // `lef nocheck`
   std::optional<std::string> vdd;              // "global nets and power names" (Q-LEFDEF-44)
   std::optional<std::string> gnd;
+  /// Printed right after the "Writing LEF output for cell" line: the
+  /// messages of the subcells the flattening reads (DBCellCopyAllPaint
+  /// prints "Cell <c> read from path ..." there). nullptr: none.
+  const std::vector<diag::Diagnostic>* flatten_messages = nullptr;
 };
 
 /// The abstract options of one macro (lefWriteMacro's arguments).
