@@ -243,6 +243,9 @@ struct Pending {
 };
 
 using LabelKey = std::tuple<db::Coord, db::Coord, db::Coord, db::Coord, tech::TileType, std::string>;
+/// A piece found by the search: its area, type and triangle side (-1:
+/// rectangle).
+using PieceKey = std::tuple<db::Coord, db::Coord, db::Coord, db::Coord, tech::TileType, int>;
 
 class TreeSearch {
  public:
@@ -302,10 +305,21 @@ class TreeSearch {
     if (!paint_net(t.plane, piece, type, triangle) || !report(t, piece, type, triangle)) {
       return false;
     }
-    if (fresh) {
+    if (fresh && first_time(piece, type, triangle)) {
       enqueue(grow(piece, triangle), type, connect_mask(tech_, options_, type), triangle);
     }
     return true;
+  }
+
+  /// True the first time a piece is queued (a Hefesto guard; Magic's
+  /// dbcConnectFunc has none). Painting a piece into the net normally marks
+  /// it processed, but a triangle can be fractured there into triangles
+  /// that leave slivers of it uncovered; it then stays unprocessed and was
+  /// queued again on every visit, without end. Searching the same area
+  /// with the same mask again reaches nothing new.
+  bool first_time(const db::Rect& piece, tech::TileType type, const std::optional<db::TriangleSide>& triangle) {
+    const int side = triangle ? 2 * static_cast<int>(triangle->diagonal) + (triangle->right_side ? 1 : 0) : -1;
+    return queued_.insert(PieceKey{piece.x0, piece.y0, piece.x1, piece.y1, type, side}).second;
   }
 
   /// dbcConnectFunc's corner rule, in the tile's own frame: a tile within
@@ -446,6 +460,7 @@ class TreeSearch {
   std::size_t last_top_ = 0;
   db::Rect current_area_;
   std::set<LabelKey> labels_;
+  std::set<PieceKey> queued_;  // pieces already queued (termination guard)
   diag::Status status_ = diag::Done{};
   bool stopped_ = false;
 };
