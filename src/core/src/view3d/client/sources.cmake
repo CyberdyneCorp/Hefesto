@@ -8,5 +8,6 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/client.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/face_log.cpp
   ${CMAKE_CURRENT_LIST_DIR}/render.cpp
   ${CMAKE_CURRENT_LIST_DIR}/scene.cpp)
