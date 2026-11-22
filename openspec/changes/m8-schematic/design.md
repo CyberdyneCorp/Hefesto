@@ -244,6 +244,10 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-5, -16 | fix | D7, D9 |
 | Q-SCHEM-8 | other (inventory, public-doc semantics) | D7, D18 |
 | Q-SCHEM-9, -13, -24 | platform | D5, D7, D15 |
+| Q-SCHEM-38 (approved 2026-11-22) | platform, option (a): `env(HOME)`/`env(PWD)` the document's folder, relative library elements against it (`SCHEM-LIB-001`), unknown `xschemrc` commands are Tcl errors except the PDK GUI-only ones; both modes | D7, D14 |
+| Q-SCHEM-39 / M8-D1 (approved 2026-11-22) | platform: flat netlist stops at 64 levels or past 256 MiB, `SCHEM-NET-017`, run not failed; both modes | D9, D10, D19 |
+| Q-SCHEM-40 / M8-D2 (approved 2026-11-22) | platform: schematic used as a symbol capped at about 256 MiB besides 1,000,000 records, `SCHEM-LIB-009`; both modes | D7, D19 |
+| Q-SCHEM-41 / M8-D3 (approved 2026-11-22) | platform: total bus expansion 4 GiB (64 × `kMaxBusBytes`) per netlist run or editing session, `SCHEM-NET-006`; both modes | D9, D19 |
 
 ## As-landed scaffold contracts
 
