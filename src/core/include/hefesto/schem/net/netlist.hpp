@@ -85,12 +85,19 @@ struct NetlistResult {
 inline constexpr int kMaxFlatDepth = 64;
 
 /// Most bytes "Flat netlist" writes (Q-SCHEM-42, M8-D1; both modes): 256
-/// MiB. Each line counts with its LF, and each expanded instance counts its
-/// own line too, so a hierarchy of empty subcircuits cannot expand forever.
-/// Flattening stops before the line that would pass it, with warning
-/// SCHEM-NET-017; the lines written so far are kept and the run does not
-/// fail.
+/// MiB. Each kept line counts its text, its LF and kFlatLineOverhead (its
+/// in-memory record), and each expanded instance counts its own line too,
+/// so a hierarchy of empty subcircuits cannot expand forever. When a line
+/// would pass it, substitution stops with warning SCHEM-NET-017: the
+/// instances not yet substituted are written as their X lines, every other
+/// line is still written (the output stays a complete netlist ending in
+/// `.end`), and the run does not fail.
 inline constexpr std::size_t kMaxFlatBytes = std::size_t{256} << 20;
+
+/// The bytes each kept flat-netlist line adds to its text against
+/// kMaxFlatBytes: at least sizeof(ProcessedLine) on every supported
+/// standard library (24-byte libc++ and 32-byte libstdc++ strings).
+inline constexpr std::size_t kFlatLineOverhead = 40;
 
 /// The limits of flatten_netlist(); tests lower them.
 struct FlatLimits {

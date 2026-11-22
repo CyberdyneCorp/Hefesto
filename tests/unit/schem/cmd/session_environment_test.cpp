@@ -106,6 +106,30 @@ TEST_CASE("schematic netlist: tcleval sees the procedures of the document's xsch
   CHECK(line_of(result.value.to_string(), "R3 ").ends_with(" W=42nfet"));
 }
 
+// Regression (review of PR #88), Q-SCHEM-38 (a): netlisting evaluated the
+// xschemrc under the project's sandbox policy, whose `env` has no HOME or
+// PWD, so an rc reading `$env(HOME)` stopped at that line and the procedure
+// defined after it was missing (the value gave `?`). The rc now runs under
+// the policy it runs under when the document is opened: `env(HOME)` and
+// `env(PWD)` are the document's folder.
+TEST_CASE("schematic netlist: the xschemrc sees the synthetic env(HOME) and env(PWD)", kTcleval) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/xschemrc", "set H [lindex [split $env(HOME) /] end]\n"
+                                   "set P [lindex [split $env(PWD) /] end]\n"
+                                   "proc my_width {} { return 42 }\n");
+    s.folder().write("w/r.sym", kResistor);
+    s.folder().write("w/top.sch", std::string{kHeader} +
+                                      "C {r.sym} 0 0 0 0 {name=R4 value=\"tcleval(W=[my_width]$H$P)\"}\n");
+    REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
+    const auto result = s.schematic({"netlist"});
+    REQUIRE(result.ok());
+    CHECK(line_of(result.value.to_string(), "R4 ").ends_with(" W=42ww"));
+  }
+}
+
 // ---- xschem translate --------------------------------------------------------
 
 // "Token values from xschem translate" and the scenarios around it, on
@@ -131,6 +155,28 @@ TEST_CASE("xschem translate substitutes the tokens of a text for an instance", k
   // An index that names no instance gives the text unchanged (SCHEM-PR-04).
   CHECK(caught(s, "xschem translate -1 {@name %undef}") == "0 {@name %undef}");
   CHECK(caught(s, "xschem translate 0") == "1 {xschem translate: wrong number of arguments}");
+}
+
+// Regression (review of PR #88): `xschem translate` read the instance's
+// symbol with xschem-compat ON whatever the project said, through its own
+// local file system, and left it in the session's cache for later netlists.
+// It now reads with the project's setting and file services. The symbol is
+// a schematic used as a symbol whose file has no `v` record and starts with
+// `C {ipin}`: OFF reads it as version 1.0 (`ipin.sym`, so pin A is
+// generated), ON leaves the reference as written (Q-SCHEM-3), which names
+// no file, so the symbol has no pin.
+TEST_CASE("xschem translate reads the symbol with the project's xschem-compat", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/ipin.sym", "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {type=ipin}\nV {}\nS {}\n"
+                                   "E {}\nB 5 -2.5 -2.5 2.5 2.5 {name=p dir=in}\n");
+    s.folder().write("w/cell.sch", "C {ipin} 0 0 0 0 {name=p1 lab=A}\n");
+    s.folder().write("w/top.sch", std::string{kHeader} + "C {cell.sch} 0 0 0 0 {name=x1}\n");
+    REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
+    CHECK(caught(s, "xschem translate 0 {pin @#0:name}") == (on ? "0 {pin }" : "0 {pin A}"));
+  }
 }
 
 // ---- abs_sym_path and rel_sym_path (SCHEM-PR-05's tree) ----------------------
@@ -161,6 +207,27 @@ TEST_CASE("abs_sym_path and rel_sym_path resolve against the active schematic", 
     CHECK(caught(s, "rel_sym_path [abs_sym_path a.sym]") == "0 a.sym");
     CHECK(caught(s, "rel_sym_path [abs_sym_path lib/missing.sym]") == "0 lib/missing.sym");
     CHECK(caught(s, "abs_sym_path") == "1 {wrong # args: should be \"abs_sym_path reference\"}");
+  }
+}
+
+// Regression (review of PR #88), both modes: with an unsaved document the
+// procedures resolved `./x.sym` and the fallback against the folder Hefesto
+// was started in. An unsaved document has no folder, so a reference that
+// needs one is returned unchanged, as the symbol cache leaves it missing
+// (Q-SCHEM-30, Q-SCHEM-38 (a)).
+TEST_CASE("abs_sym_path of an unsaved document never uses the start folder", kReferences) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    REQUIRE(s.schematic({"new", "schematic"}).ok());
+    const std::string lib = s.folder().str("lib");
+    s.folder().write("lib/a.sym", kResistor);
+    REQUIRE(s.schematic({"path", "set", lib}).ok());
+    CHECK(caught(s, "abs_sym_path ./x.sym") == "0 ./x.sym");
+    CHECK(caught(s, "abs_sym_path ../x.sym") == "0 ../x.sym");
+    CHECK(caught(s, "abs_sym_path missing.sym") == "0 missing.sym");
+    CHECK(caught(s, "abs_sym_path a.sym") == "0 " + lib + "/a.sym");
   }
 }
 

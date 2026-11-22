@@ -233,6 +233,21 @@ TEST_CASE("Relative library element resolved against the document folder", kSear
     CHECK(schem::resolve_reference("z.sym", "/w/s", path, fs).file == "/w/lib/z.sym");
     // An unsaved document has no folder: relative elements give nothing.
     CHECK(schem::resolve_reference("y.sym", "", path, fs).via == schem::ResolvedVia::fallback);
+    // Nor do `./` references (regression, review of PR #88): `./w.sym`
+    // was looked up as `w.sym` in the folder Hefesto was started in (here
+    // the memory file system's relative `w.sym`).
+    touch(fs, "w.sym");
+    const auto dot = schem::resolve_reference("./w.sym", "", path, fs);
+    CHECK(dot.via == schem::ResolvedVia::fallback);
+    CHECK_FALSE(dot.file.is_absolute());
+    {
+      schem::Document unsaved;
+      diag::CollectingSink missing;
+      schem::SymbolCache unsaved_cache;
+      CHECK(unsaved_cache.resolve({"./w.sym"}, unsaved, schem::ResolveContext{path, fs, &missing, compat}).placeholder);
+      CHECK(unsaved_cache.resolve({"w.sym"}, unsaved, schem::ResolveContext{path, fs, &missing, compat}).placeholder);
+      CHECK(with_code(missing.take(), "SCHEM-LIB-003").size() == 2);
+    }
 
     schem::Document top;
     top.path = "/w/s/top.sch";

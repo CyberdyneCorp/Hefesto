@@ -175,3 +175,52 @@ TEST_CASE("a failing generator is a missing symbol, run once", kGenerators) {
   CHECK(cache.resolve({"bad.tcl(1)"}, library.top, context).placeholder);
   CHECK(with_code(sink.take(), "SCHEM-LIB-012").size() == 1);
 }
+
+// Regression (review of PR #88), both modes: each distinct generator
+// reference ran for up to 10 s with no total, so a schematic with 10,000
+// references `gen.tcl(1)`, `gen.tcl(2)`, ... blocked its opening for about a
+// day. The runs of one cache now share kGeneratorTotalTimeLimit (until
+// clear()); past it no generator runs, with one SCHEM-LIB-012.
+TEST_CASE("symbol generators share a total time limit", kGenerators) {
+  CHECK(schem::kGeneratorTotalTimeLimit == std::chrono::seconds{60});
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Library library;
+    REQUIRE(library.fs.write_atomic("/lib/loop.tcl", "while 1 { catch { while 1 {} } }\n").ok());
+    diag::CollectingSink sink;
+    schem::SymbolCache cache({}, std::chrono::milliseconds{300});
+    const schem::ResolveContext context{library.path, library.fs, &sink, compat};
+    const auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < 1000; ++i) {
+      CHECK(cache.resolve({"loop.tcl(" + std::to_string(i) + ")"}, library.top, context).placeholder);
+    }
+    CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{5});
+    const auto failed = with_code(sink.take(), "SCHEM-LIB-012");
+    REQUIRE(failed.size() == 2);  // the run stopped at 300 ms, then the total
+    CHECK(failed[0].text == "Symbol generator /lib/loop.tcl failed: stopped after 300 ms");
+    CHECK(failed[1].text.find("symbol generators ran for their total of 300 ms") != std::string::npos);
+    cache.clear();  // reloading the symbols gives the generators their time again
+    CHECK_FALSE(cache.resolve({"pins.tcl(1)"}, library.top, context).placeholder);
+  }
+}
+
+// Regression (review of PR #88): telling whether a file without `.tcl` is a
+// Tcl generator read the whole file for its first line; a file over
+// kMaxGeneratorScriptBytes is now not read (and not a Tcl generator).
+TEST_CASE("a generator file over the script size limit is not read", kGenerators) {
+  CHECK(schem::kMaxGeneratorScriptBytes == schem::kMaxFlattenedBytes);
+  platform::MemoryFileSystem fs;
+  const std::string script = "#!/usr/bin/env tclsh\nputs {v {xschem version=3.4.8RC file_version=1.2}}\n";
+  REQUIRE(fs.write_atomic("/lib/gen", script).ok());
+  REQUIRE(fs.write_atomic("/lib/gen.tcl", script).ok());
+  CHECK(schem::is_tcl_generator("/lib/gen", fs));
+  CHECK_FALSE(schem::is_tcl_generator("/lib/gen", fs, script.size() - 1));
+  schem::GeneratorInput input{"/lib/gen.tcl", {}, "/w"};
+  CHECK(schem::run_tcl_generator(fs, input).text.has_value());
+  input.max_script = script.size() - 1;
+  const auto output = schem::run_tcl_generator(fs, input);
+  CHECK_FALSE(output.text.has_value());
+  REQUIRE(output.diagnostics.size() == 1);
+  CHECK(output.diagnostics[0].text.find("the script is larger than " + std::to_string(script.size() - 1) + " bytes") !=
+        std::string::npos);
+}

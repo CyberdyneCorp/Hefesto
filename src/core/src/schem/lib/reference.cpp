@@ -124,7 +124,9 @@ ResolvedReference resolve_reference(std::string_view reference, const platform::
   if (is_web_reference(reference)) return {{}, ResolvedVia::web, {}};
   if (reference.starts_with('/')) return {platform::Path{std::string{reference}}, ResolvedVia::absolute, {}};
   const std::string normal = normalize_reference(reference);
-  if (normal.starts_with("./") || normal.starts_with("../")) {
+  // An unsaved document has no folder: step 5 resolves nothing then, never
+  // against the folder Hefesto was started in (Q-SCHEM-30).
+  if (!document_folder.empty() && (normal.starts_with("./") || normal.starts_with("../"))) {
     const platform::Path file = joined(document_folder, normal);
     if (exists_or_folder(fs, file)) return {file, ResolvedVia::relative, document_folder};
   }

@@ -17,6 +17,7 @@
 #include "hefesto/schem/lib/symbol_cache.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <utility>
 
 #include "hefesto/diag/sink.hpp"
@@ -75,7 +76,8 @@ class SymbolCache::SchematicLoad {
   std::map<platform::Path, Document> schematics_;  // map nodes keep addresses
 };
 
-SymbolCache::SymbolCache(FlattenLimits limits) : limits_(limits) {
+SymbolCache::SymbolCache(FlattenLimits limits, std::chrono::milliseconds generator_time)
+    : limits_(limits), generator_time_(generator_time), generator_left_(generator_time) {
   placeholder_.placeholder = true;
   placeholder_.document.kind = FileKind::symbol;
 }
@@ -85,6 +87,7 @@ void SymbolCache::clear() noexcept {
   embedded_.clear();
   generated_.clear();
   warned_.clear();
+  generator_left_ = generator_time_;
 }
 
 void SymbolCache::forget(const platform::Path& file) {
@@ -110,7 +113,7 @@ const Symbol& SymbolCache::generated(const Reference& reference, const Document&
   const GeneratorCall call = parse_generator(text).value_or(GeneratorCall{});
   const platform::Path folder = from.path.parent_path();
   const platform::Path script = resolve_reference(call.program, folder, context.search_path, context.fs).file;
-  if (script.empty() || !context.fs.exists(script)) {
+  if (!script.is_absolute() || !context.fs.exists(script)) {  // relative: an unsaved document's fallback
     warn_once(context, "missing|" + text, diag::make("SCHEM-LIB-003", "Symbol not found: " + text));
     return placeholder_;
   }
@@ -122,13 +125,10 @@ const Symbol& SymbolCache::generated(const Reference& reference, const Document&
               diag::make("SCHEM-LIB-011", "Symbol " + text + ": " + std::string{kExternalGeneratorMessage}));
     return symbol;
   }
-  GeneratorOutput output = run_tcl_generator(context.fs, {script, call.args, folder});
-  for (const diag::Diagnostic& diagnostic : output.diagnostics) {
-    if (context.warnings != nullptr) context.warnings->emit(diagnostic);
-  }
-  if (!output.text) return symbol;
+  const std::optional<std::string> output = run_generator(text, script, call.args, folder, context);
+  if (!output) return symbol;
   const ReadOptions options{FileKind::symbol, context.xschem_compat, context.warnings, text};
-  auto document = read_document(*output.text, options);
+  auto document = read_document(*output, options);
   if (!document.ok()) {
     warn_once(context, "read|" + text,
               diag::make("SCHEM-LIB-004", "Symbol " + text + " could not be read from the output of " +
@@ -137,6 +137,32 @@ const Symbol& SymbolCache::generated(const Reference& reference, const Document&
   }
   symbol = make_symbol(text, script, std::move(document.value()));
   return symbol;
+}
+
+// One generator run under what is left of the cache's total time
+// (kGeneratorTotalTimeLimit): each run gets at most kGeneratorTimeLimit, and
+// once the total is spent no generator runs until clear(). What it printed,
+// or nullopt after SCHEM-LIB-012.
+std::optional<std::string> SymbolCache::run_generator(const std::string& reference, const platform::Path& script,
+                                                      std::vector<std::string> args, const platform::Path& folder,
+                                                      const ResolveContext& context) {
+  using std::chrono::milliseconds;
+  if (generator_left_ <= milliseconds{0}) {
+    warn_once(context, "generator-time",
+              diag::make("SCHEM-LIB-012", "Symbol " + reference + ": symbol generators ran for their total of " +
+                                              std::to_string(generator_time_.count()) +
+                                              " ms; no further generator runs until the symbols are reloaded"));
+    return std::nullopt;
+  }
+  GeneratorInput input{script, std::move(args), folder};
+  input.time_limit = std::min(kGeneratorTimeLimit, generator_left_);
+  const auto start = std::chrono::steady_clock::now();
+  GeneratorOutput output = run_tcl_generator(context.fs, input);
+  generator_left_ -= std::chrono::duration_cast<milliseconds>(std::chrono::steady_clock::now() - start);
+  for (const diag::Diagnostic& diagnostic : output.diagnostics) {
+    if (context.warnings != nullptr) context.warnings->emit(diagnostic);
+  }
+  return std::move(output.text);
 }
 
 void SymbolCache::warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic) {
@@ -178,7 +204,9 @@ platform::Path SymbolCache::locate(const Reference& reference, const Document& f
     default:
       break;
   }
-  if (!context.fs.exists(resolved.file)) {
+  // A relative result is the fallback of an unsaved document (no folder):
+  // missing, never looked up in the folder Hefesto was started in.
+  if (!resolved.file.is_absolute() || !context.fs.exists(resolved.file)) {
     warn_once(context, "missing|" + text, diag::make("SCHEM-LIB-003", "Symbol not found: " + text));
     return {};
   }

@@ -203,8 +203,9 @@ class Parser {
 
   [[nodiscard]] Failure failure() const noexcept { return failure_; }
   [[nodiscard]] bool literal_index() const noexcept { return literal_index_; }
-  /// The byte limit failed while it was below kMaxBusBytes: the budget, not
-  /// the per-name limit, stopped the expansion.
+  /// The byte limit failed while it was below kMaxBusBytes: the budget, or
+  /// the per-name limit too (within_name_limits() tells), stopped the
+  /// expansion.
   [[nodiscard]] bool over_budget() const noexcept { return byte_limit_hit_ && max_bytes_ < kMaxBusBytes; }
 
  private:
@@ -639,6 +640,14 @@ std::uint64_t byte_limit(const BusBudget* budget) noexcept {
   return budget == nullptr ? kMaxBusBytes : std::min<std::uint64_t>(kMaxBusBytes, budget->remaining());
 }
 
+/// Whether `name` alone fits the per-name limits (a width-only parse that
+/// builds no names): an expansion the budget stopped is reported as over
+/// the budget only then, else as over the per-name limit it also passes.
+bool within_name_limits(std::string_view name) {
+  Parser parser{name, false, kMaxBusBytes};
+  return parser.parse().has_value();
+}
+
 /// `name` used unchanged with unknown width after `parser` failed.
 BusExpansion unchanged(std::string_view name, const Parser& parser) {
   BusExpansion out;
@@ -646,7 +655,7 @@ BusExpansion unchanged(std::string_view name, const Parser& parser) {
   out.width_known = false;
   out.syntax_error = parser.failure() == Failure::syntax;
   out.too_large = parser.failure() == Failure::too_large;
-  out.over_budget = out.too_large && parser.over_budget();
+  out.over_budget = out.too_large && parser.over_budget() && within_name_limits(name);
   return out;
 }
 

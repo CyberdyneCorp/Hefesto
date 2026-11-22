@@ -57,7 +57,10 @@ cmd::CommandResult run_option(cmd::CommandContext& ctx, const cmd::Invocation& i
 cmd::CommandResult schematic(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   const auto editor = cmd::require_editor(ctx);
   if (!editor) return fail(editor.error());
-  if (inv.args.empty()) return option_help(ctx, editor.value()->schem, {});
+  Session& session = editor.value()->schem;
+  session.compat = &ctx.project().compat;
+  session.files = &ctx.services().files;
+  if (inv.args.empty()) return option_help(ctx, session, {});
   const std::vector<std::string_view> names = option_names();
   const auto index = match_keyword(inv.args.front(), names);
   if (!index) return fail(index.error());

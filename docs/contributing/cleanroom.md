@@ -26,7 +26,7 @@ A person or agent session joins one team for the whole of M8 and does not switch
 | SCAFFOLD, COMPAT | `src/core/src/schem/` layout, `compat/`, `settings/` | implementation |
 | FORMAT | `schem/file/` | implementation |
 | SYMLIB | `schem/sym/`, `schem/lib/`, `schem/tcl/` | implementation |
-| DEVLIB | `assets/schematic/devices/` | implementation |
+| DEVLIB | `assets/schematic/xschem_library/devices/` | implementation |
 | NETLIST | `schem/net/` | implementation |
 | EDIT, CMD, SIMINT | `schem/edit/`, `schem/cmd/`, `schem/sim/` | implementation |
 | DESIGN, SHELL | `docs/design/`, `src/shell/desktop/src/schematic_*.cpp` | implementation |

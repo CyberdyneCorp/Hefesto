@@ -846,7 +846,15 @@ Compatibility: behavioral
 ### Requirement: Symbol generators
 A symbol reference of the form `name(args)` (matching `^[^ \t()]+\([^()]*\)[ \t]*$`) is a symbol generator in xschem: the program `name` found on the search path is run with the arguments split at `(`, `)`, `,` and spaces, and its standard output is read as a `.sym` file. A generator reference in a `schematic` attribute works the same way. The symbol name used in netlists SHALL be the reference with every run of ` . ( ) ,` and surrounding spaces replaced by `_`, and a trailing `_` removed.
 
-Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text. Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported`. See Q-SCHEM-11.
+Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text. Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
+
+**Limits** (both modes of `xschem-compat`; xschem bounds none of them). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
+- A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A file larger than 268,435,456 bytes (256 MiB, the bound of a flattened symbol, Q-SCHEM-40) SHALL NOT be read to check its first line, and a Tcl generator that large SHALL NOT be run.
+- One run SHALL stop after 10 s (the `xschemrc` time limit of Q-SCHEM-32), and SHALL fail when it prints more than 268,435,456 bytes.
+- The runs of one session's symbol cache SHALL share a total of 60 s until the symbols are reloaded (Requirement "Symbol cache and reload"); each run gets at most what is left, and once it is spent no generator SHALL run: the reference is a missing symbol and the warning `SCHEM-LIB-012` (`Symbol <reference>: symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded`) SHALL be reported once.
+- A failed run (Tcl error, a limit above) SHALL be reported once with `SCHEM-LIB-012` and kept as a missing symbol for that reference, so it is not run again until the symbols are reloaded or the generator file is reloaded.
+
+The 60 s total and the script size limit were added by the M8 round-3 review fix and await the user's approval (reported with the round).
 
 Compatibility: behavioral
 
@@ -856,6 +864,16 @@ Compatibility: behavioral
 - **GIVEN** an instance with reference `ramdec(4, 8)`
 - **WHEN** its `@symname` is netlisted
 - **THEN** it SHALL print `ramdec_4_8`
+
+#### Scenario: Endless generators share the total time limit
+- **GIVEN** a schematic with 10,000 instances `loop.tcl(1)` to `loop.tcl(10000)` of a Tcl generator that never ends, with `xschem-compat` ON or OFF
+- **WHEN** the schematic is opened
+- **THEN** the generator runs stop after 60 s in total (each at most 10 s, each reported with `SCHEM-LIB-012`), every instance SHALL be a missing symbol, the total-time warning SHALL be reported once, and the opening SHALL complete
+
+#### Scenario: Oversized generator file
+- **GIVEN** a generator reference `big(1)` whose file `big` has no `.tcl` extension and is larger than 268,435,456 bytes
+- **WHEN** the reference is resolved
+- **THEN** the file SHALL NOT be read, and the instance SHALL be a missing symbol with `SCHEM-LIB-011`
 
 ### Requirement: Symbol cache and reload
 Hefesto SHALL load each referenced symbol file once per open document and share it among instances. It SHALL detect changes to a loaded symbol file (file-system notification or modification time) and SHALL reload it on request (`schematic reload_symbols`, capability `schematic-command`) or automatically when the user returns to the window. A symbol edited and saved in Hefesto SHALL update every open schematic that uses it.

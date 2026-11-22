@@ -41,19 +41,22 @@ std::string new_instance_properties(const Symbol& symbol, InstanceNamer& names) 
   return names.unique_properties(symbol_template(symbol));
 }
 
-InstanceNamer::InstanceNamer(const Document& document) {
+InstanceNamer::InstanceNamer(const Document& document, BusBudget* budget) : budget_{budget} {
   for (const InstanceRecord& instance : document.instances) {
     if (auto name = get_token(instance.props, "name")) add(*name);
   }
 }
 
+// Only the kept bits take from the budget; used() expands a name for one
+// comparison and keeps nothing.
 void InstanceNamer::add(std::string_view name) {
   if (name.empty()) return;
-  for (const std::string& bit : expand_bus(name)) used_.insert(ascii_lower(bit));
+  for (const std::string& bit : expand_bus(name, budget_)) used_.insert(ascii_lower(bit));
 }
 
 bool InstanceNamer::used(std::string_view name) const {
   if (name.empty()) return false;
+  if (used_.count(ascii_lower(name)) != 0) return true;  // also a name kept unexpanded past the budget
   const auto bits = expand_bus(name);
   return std::any_of(bits.begin(), bits.end(), [this](const std::string& bit) { return used_.count(ascii_lower(bit)) != 0; });
 }

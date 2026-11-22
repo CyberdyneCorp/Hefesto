@@ -4,8 +4,9 @@
 // Tcl symbol generators (capability schematic-symbols-and-libraries "Symbol
 // generators"; Q-SCHEM-11). The generator runs in its own sandboxed
 // interpreter, bounded in time (the sandbox's time limit, which a script
-// cannot catch) and in output (Q-SCHEM-40's 256 MiB), in both modes of
-// `xschem-compat`.
+// cannot catch) and in script and output size (Q-SCHEM-40's 256 MiB), in
+// both modes of `xschem-compat`. The symbol cache bounds the total time of
+// all runs (kGeneratorTotalTimeLimit).
 //
 // Owner: SYMLIB.
 
@@ -141,8 +142,10 @@ std::optional<GeneratorCall> parse_generator(std::string_view reference) {
   return call;
 }
 
-bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs) {
+bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs, std::size_t max_script) {
   if (file.extension() == ".tcl") return true;
+  const auto size = fs.size(file);
+  if (!size.ok() || size.value() > max_script) return false;
   const auto text = fs.read(file);
   if (!text.ok() || !text.value().starts_with("#!")) return false;
   const std::string_view first_line = std::string_view{text.value()}.substr(0, text.value().find('\n'));
@@ -150,6 +153,10 @@ bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs) {
 }
 
 GeneratorOutput run_tcl_generator(platform::FileSystem& fs, const GeneratorInput& input) {
+  const auto size = fs.size(input.script);
+  if (size.ok() && size.value() > input.max_script) {
+    return failed(input, "the script is larger than " + std::to_string(input.max_script) + " bytes");
+  }
   const auto script = fs.read(input.script);
   if (!script.ok()) return failed(input, script.error().text);
   editor::EditorState editor;

@@ -14,6 +14,7 @@
 
 #include <array>
 #include <charconv>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -125,11 +126,25 @@ std::string error_list(const std::vector<diag::Diagnostic>& diagnostics) {
   return text.empty() ? std::string{"schematic: the netlist run failed"} : text;
 }
 
+// The policy of a run's `tcleval` interpreter: the project interpreter's,
+// plus what the `xschemrc` files are evaluated under when the document is
+// opened (xschemrc_policy: their folders readable, and the synthetic
+// `env(HOME)` and `env(PWD)`, the document's folder, of Q-SCHEM-38 (a)), so
+// an rc file runs the same way in both places.
+script::SandboxPolicy tcleval_policy(const script::SandboxPolicy& project, const std::optional<XschemrcInput>& files) {
+  script::SandboxPolicy policy = project;
+  if (!files) return policy;
+  script::SandboxPolicy rc = xschemrc_policy(*files);
+  policy.read_only_roots.insert(policy.read_only_roots.end(), rc.read_only_roots.begin(), rc.read_only_roots.end());
+  for (auto& [name, value] : rc.environment) policy.environment.insert_or_assign(name, std::move(value));
+  return policy;
+}
+
 // The sandboxed interpreter `tcleval` values of one run are evaluated in
-// (SYMLIB's TclEnvironment, under the project interpreter's sandbox policy):
-// the xschem procedures, with `abs_sym_path` resolving against `folder`,
-// and the session's `xschemrc` files evaluated into it (their diagnostics
-// were reported when the document was opened). nullptr without an editor.
+// (SYMLIB's TclEnvironment, under tcleval_policy()): the xschem procedures,
+// with `abs_sym_path` resolving against `folder`, and the session's
+// `xschemrc` files evaluated into it (their diagnostics were reported when
+// the document was opened). nullptr without an editor.
 std::unique_ptr<TclEnvironment> tcl_environment(cmd::CommandContext& ctx, const Session& session,
                                                 const platform::Path& folder) {
   editor::EditorState* editor = ctx.editor();
@@ -138,12 +153,13 @@ std::unique_ptr<TclEnvironment> tcl_environment(cmd::CommandContext& ctx, const 
   ProcedureHooks hooks;
   hooks.abs_sym_path = [&session, &fs, folder](std::string_view reference) {
     const ResolvedReference found = resolve_reference(reference, folder, session.search_path, fs);
-    return found.file.empty() ? std::string{reference} : found.file.generic_string();
+    return found.file.is_absolute() ? found.file.generic_string() : std::string{reference};
   };
-  auto tcl = std::make_unique<TclEnvironment>(*editor, editor->script.sandbox, fs, std::move(hooks));
-  if (session.xschemrc) {
-    if (const auto files = xschemrc_files(ctx, session, folder)) (void)tcl->load_xschemrc(*files);
-  }
+  const std::optional<XschemrcInput> files =
+      session.xschemrc ? xschemrc_files(ctx, session, folder) : std::optional<XschemrcInput>{};
+  auto tcl = std::make_unique<TclEnvironment>(*editor, tcleval_policy(editor->script.sandbox, files), fs,
+                                              std::move(hooks));
+  if (files) (void)tcl->load_xschemrc(*files);
   return tcl;
 }
 

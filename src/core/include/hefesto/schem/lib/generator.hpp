@@ -45,14 +45,28 @@ struct GeneratorCall {
 /// The call a generator reference makes; nullopt when `reference` is not one.
 [[nodiscard]] std::optional<GeneratorCall> parse_generator(std::string_view reference);
 
-/// True when the generator `file` is a Tcl script: its name ends in `.tcl`
-/// (as the generators of the pinned sky130 tree, `res.tcl(...)`), or its
-/// first line is a `#!` line that names `tclsh` or `wish`.
-[[nodiscard]] bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs);
-
 /// The longest run of one Tcl generator (the time limit of the `xschemrc`
 /// files, Q-SCHEM-32, applied to generators too).
 inline constexpr std::chrono::milliseconds kGeneratorTimeLimit = kXschemrcTimeLimit;
+
+/// The longest the Tcl generators of one symbol cache may run in total
+/// between two SymbolCache::clear() calls (a schematic with thousands of
+/// distinct generator references would otherwise block for hours); past it
+/// no generator runs and the reference is a missing symbol (SCHEM-LIB-012).
+/// Both modes of `xschem-compat`; proposed in M8 round 3, awaiting the user.
+inline constexpr std::chrono::milliseconds kGeneratorTotalTimeLimit{60'000};
+
+/// The largest generator file read, to check its first line or to run it
+/// (the bound of a flattened symbol, Q-SCHEM-40); a larger one is not a Tcl
+/// generator, or fails with SCHEM-LIB-012.
+inline constexpr std::size_t kMaxGeneratorScriptBytes = kMaxFlattenedBytes;
+
+/// True when the generator `file` is a Tcl script: its name ends in `.tcl`
+/// (as the generators of the pinned sky130 tree, `res.tcl(...)`), or its
+/// first line is a `#!` line that names `tclsh` or `wish` (a file over
+/// kMaxGeneratorScriptBytes is not read and is not one).
+[[nodiscard]] bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs,
+                                    std::size_t max_script = kMaxGeneratorScriptBytes);
 
 struct GeneratorInput {
   platform::Path script;           // the Tcl generator, absolute
@@ -63,6 +77,8 @@ struct GeneratorInput {
   /// The most bytes the generator may print; more is a failure (the bound
   /// of a flattened symbol, Q-SCHEM-40).
   std::size_t max_output = kMaxFlattenedBytes;
+  /// The largest script read; a larger one fails (tests lower it).
+  std::size_t max_script = kMaxGeneratorScriptBytes;
 };
 
 struct GeneratorOutput {

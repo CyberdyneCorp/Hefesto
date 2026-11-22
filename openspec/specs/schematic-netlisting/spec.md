@@ -698,7 +698,7 @@ The flat netlist SHALL be electrically equivalent to the hierarchical one and to
 
 **Limits** (approved by the user on 2026-11-22, Q-SCHEM-42, decision M8-D1; both modes of `xschem-compat`; xschem bounds neither):
 - **Depth.** Substitution SHALL descend at most 64 levels (`kMaxFlatDepth`), the top schematic's instances being level 1. An instance of a defined subcircuit that would open level 65 SHALL NOT be substituted: it SHALL be written as its `X` line, and the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once per run. A subcircuit body that places itself therefore stops after 64 levels.
-- **Size.** When the flat output passes 268,435,456 bytes (256 MiB), flattening SHALL stop: no further instance SHALL be substituted, the instances not yet substituted SHALL be written as their `X` lines, and the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once per run.
+- **Size.** The flat output is counted line by line before line breaking: each written line counts its text, its line feed and a fixed 40 bytes for its in-memory record, and each substituted instance counts its own line too. When the next line would pass 268,435,456 bytes (256 MiB), substitution SHALL stop: no further instance SHALL be substituted, the instances not yet substituted SHALL be written as their `X` lines, every other remaining line (the rest of the bodies already being substituted, `**.ends`, `.GLOBAL`, `.end`) SHALL still be written, so the output stays a complete netlist, and the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once per run.
 - In both cases the netlist run SHALL NOT fail; the warning is the only sign that the flat netlist is incomplete.
 
 Compatibility: behavioral
@@ -723,7 +723,7 @@ Compatibility: behavioral
 #### Scenario: Flat netlist larger than 256 MiB
 - **GIVEN** a hierarchy whose fully flattened netlist would be larger than 268,435,456 bytes (for example 24 levels that each place the next subcircuit twice, the last holding a resistor: 2^24 resistor lines), with `xschem-compat` ON or OFF
 - **WHEN** a flat netlist is generated
-- **THEN** the output SHALL hold no more than 268,435,456 bytes plus the line that passed the limit and the `X` lines of the instances not yet substituted, the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once, the run SHALL complete without failing, and work and memory SHALL stay bounded by the limit (Q-SCHEM-42)
+- **THEN** the output SHALL hold no more than 268,435,456 bytes plus the remaining lines written after the stop (the `X` lines of the instances not yet substituted and the other lines of the bodies already open and of the top level), SHALL end with `.end`, the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once, the run SHALL complete without failing, and work and memory SHALL stay bounded by the limit (Q-SCHEM-42)
 
 ### Requirement: Errors and warnings
 Netlisting SHALL report, without stopping:

@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// "Does `key` occur in `text`?" for many keys against one text, in time
-// linear in the text plus the keys: a suffix automaton of the text (built
-// once in O(n log 256), queried in O(|key| log 256)). Used by the `.subckt`
-// header template, which checks every template key against the symbol's
-// `extra` (Q-SCHEM-19); a find() per key costs O(keys x |extra|).
+// "Does `key` occur in `text`?" for many keys against one text. Used by the
+// `.subckt` header template, which checks every template key against the
+// symbol's `extra` (Q-SCHEM-19); a find() per key costs O(keys x |extra|).
+//
+// The first kDirectQueries queries use find(), which needs no memory; after
+// them a suffix array of the text is built once (prefix doubling, O(n log^2
+// n) time, 12 bytes per text byte while it is built and 4 kept) and each
+// later query is a binary search, O(|key| log n). So few keys cost no
+// memory, and many keys cost a bounded multiple of the text instead of
+// quadratic time. A text over kMaxIndexedBytes (whose positions would not
+// fit the 32-bit array) is never indexed.
 //
 // Internal to schem/net. Owner: NETLIST.
 
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
-#include <optional>
+#include <numeric>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -22,92 +29,65 @@ namespace hefesto::schem::detail {
 
 class SubstringIndex {
  public:
-  explicit SubstringIndex(std::string_view text) {
-    states_.reserve(2 * text.size() + 1);
-    states_.emplace_back();
-    for (const char c : text) {
-      extend(c);
-    }
-  }
+  /// Queries answered with find() before the suffix array is built.
+  static constexpr std::size_t kDirectQueries = 64;
+  /// The longest text indexed: positions and ranks are 32-bit.
+  static constexpr std::size_t kMaxIndexedBytes = UINT32_MAX / 2;
+
+  /// `text` must outlive the index.
+  explicit SubstringIndex(std::string_view text) noexcept : text_{text} {}
 
   /// Whether `key` is a substring of the text (the empty key always is).
-  [[nodiscard]] bool contains(std::string_view key) const {
-    std::uint32_t state = 0;
-    for (const char c : key) {
-      const auto next = find(state, c);
-      if (!next) {
-        return false;
-      }
-      state = *next;
+  [[nodiscard]] bool contains(std::string_view key) {
+    if (key.empty()) {
+      return true;
     }
-    return true;
+    if (!indexed() && (++queries_ <= kDirectQueries || text_.size() > kMaxIndexedBytes)) {
+      return text_.find(key) != std::string_view::npos;
+    }
+    if (!indexed()) {
+      build();
+    }
+    const auto before = [this](std::uint32_t at, std::string_view k) { return text_.substr(at, k.size()) < k; };
+    const auto it = std::lower_bound(suffixes_.begin(), suffixes_.end(), key, before);
+    return it != suffixes_.end() && text_.substr(*it, key.size()) == key;
   }
+
+  /// Whether the suffix array has been built (for tests).
+  [[nodiscard]] bool indexed() const noexcept { return !suffixes_.empty() || text_.empty(); }
 
  private:
-  static constexpr std::uint32_t kNone = UINT32_MAX;
-
-  struct State {
-    std::uint32_t length = 0;
-    std::uint32_t link = kNone;
-    std::vector<std::pair<char, std::uint32_t>> next;  // sorted by character
-  };
-
-  [[nodiscard]] std::optional<std::uint32_t> find(std::uint32_t state, char c) const {
-    const auto& next = states_[state].next;
-    const auto it = std::lower_bound(next.begin(), next.end(), c, [](const auto& e, char k) { return e.first < k; });
-    if (it == next.end() || it->first != c) {
-      return std::nullopt;
+  /// Prefix doubling: sorts the suffixes by their first 2k bytes from their
+  /// ranks by k bytes, until every rank is distinct.
+  void build() {
+    const auto n = static_cast<std::uint32_t>(text_.size());
+    suffixes_.resize(n);
+    std::iota(suffixes_.begin(), suffixes_.end(), std::uint32_t{0});
+    std::vector<std::uint32_t> rank(n);
+    std::vector<std::uint32_t> next(n);
+    for (std::uint32_t i = 0; i < n; ++i) {
+      rank[i] = static_cast<unsigned char>(text_[i]);
     }
-    return it->second;
+    for (std::uint32_t k = 1;; k *= 2) {
+      const auto key = [&rank, n, k](std::uint32_t i) {
+        return std::pair{rank[i], i + k < n ? rank[i + k] + 1 : std::uint32_t{0}};
+      };
+      const auto less = [&key](std::uint32_t a, std::uint32_t b) { return key(a) < key(b); };
+      std::sort(suffixes_.begin(), suffixes_.end(), less);
+      next[suffixes_[0]] = 0;
+      for (std::uint32_t i = 1; i < n; ++i) {
+        next[suffixes_[i]] = next[suffixes_[i - 1]] + (key(suffixes_[i - 1]) < key(suffixes_[i]) ? 1 : 0);
+      }
+      rank.swap(next);
+      if (rank[suffixes_[n - 1]] == n - 1 || k >= n) {
+        return;
+      }
+    }
   }
 
-  void set(std::uint32_t state, char c, std::uint32_t target) {
-    auto& next = states_[state].next;
-    const auto it = std::lower_bound(next.begin(), next.end(), c, [](const auto& e, char k) { return e.first < k; });
-    if (it != next.end() && it->first == c) {
-      it->second = target;
-    } else {
-      next.insert(it, {c, target});
-    }
-  }
-
-  /// The standard online construction: adds `c` to the end of the text.
-  void extend(char c) {
-    const auto current = static_cast<std::uint32_t>(states_.size());
-    states_.push_back(State{states_[last_].length + 1, kNone, {}});
-    std::uint32_t p = last_;
-    while (p != kNone && !find(p, c)) {
-      set(p, c, current);
-      p = states_[p].link;
-    }
-    last_ = current;
-    if (p == kNone) {
-      states_[current].link = 0;
-      return;
-    }
-    const std::uint32_t q = *find(p, c);
-    if (states_[p].length + 1 == states_[q].length) {
-      states_[current].link = q;
-      return;
-    }
-    split(p, q, c, current);
-  }
-
-  /// Clones `q` for the shorter suffixes that reach it from `p` by `c`.
-  void split(std::uint32_t p, std::uint32_t q, char c, std::uint32_t current) {
-    const auto clone = static_cast<std::uint32_t>(states_.size());
-    State copy{states_[p].length + 1, states_[q].link, states_[q].next};
-    states_.push_back(std::move(copy));
-    while (p != kNone && find(p, c) == q) {
-      set(p, c, clone);
-      p = states_[p].link;
-    }
-    states_[q].link = clone;
-    states_[current].link = clone;
-  }
-
-  std::vector<State> states_;
-  std::uint32_t last_ = 0;
+  std::string_view text_;
+  std::size_t queries_ = 0;
+  std::vector<std::uint32_t> suffixes_;  // text positions in suffix order
 };
 
 }  // namespace hefesto::schem::detail

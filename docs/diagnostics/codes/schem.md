@@ -120,9 +120,13 @@ Owner: SYMLIB.
   `.tcl`, or a first `#!` line naming `tclsh` or `wish`); it is not run and
   the instance shows the placeholder (Q-SCHEM-11). Once per program.
 - `SCHEM-LIB-012` (warning): `Symbol generator <file> failed: <why>`. A Tcl
-  generator raised an error, ran past its 10 s limit or printed more than
-  256 MiB; the instance shows the placeholder. Once per reference until the
-  cache is cleared or the generator is forgotten.
+  generator raised an error, ran past its 10 s limit, printed more than
+  256 MiB or its script is larger than 256 MiB; the instance shows the
+  placeholder. Once per reference until the cache is cleared or the
+  generator is forgotten. Also `Symbol <reference>: symbol generators ran
+  for their total of 60000 ms; no further generator runs until the symbols
+  are reloaded`, once per cache, when the generators of one symbol cache
+  have spent their shared 60 s.
 - `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
   (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
   `write_data` was refused outside the sandbox's granted folders; the
@@ -295,7 +299,7 @@ fails when the two disagree.
 | `SCHEM-LIB-009` | warning | A schematic used as a symbol holds more than 1,000,000 records or 256 MiB when flattened; the rest is not loaded (Q-SCHEM-32, Q-SCHEM-40). |
 | `SCHEM-LIB-010` | warning | Evaluating the `xschemrc` files of a document stopped at the 10 s limit; later settings are lost (Q-SCHEM-32). |
 | `SCHEM-LIB-011` | warning | A symbol generator that is not a Tcl script is not run (symbol generators that run external programs are not supported); the instance is shown as a missing symbol (Q-SCHEM-11). |
-| `SCHEM-LIB-012` | warning | A Tcl symbol generator failed, ran past its 10 s limit or printed more than 256 MiB; the instance is shown as a missing symbol. |
+| `SCHEM-LIB-012` | warning | A Tcl symbol generator failed, ran past its 10 s limit, printed more than 256 MiB, its script is larger than 256 MiB, or the generators of the symbol cache spent their shared 60 s; the instance is shown as a missing symbol. |
 | `SCHEM-NET-001` | error | Two differently named nets are shorted (`Error: <tag> shorted: <a> - <b>`); the first name is kept and the netlist is still written. |
 | `SCHEM-NET-002` | warning | A net, pin or instance name is not valid bus notation (`syntax error in <string>`); it is used unchanged with unknown width. |
 | `SCHEM-NET-003` | warning | A pin has no net and is written as `__UNCONNECTED_PIN__<k>`. |

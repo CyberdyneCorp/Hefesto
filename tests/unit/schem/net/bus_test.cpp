@@ -308,4 +308,16 @@ TEST_CASE("Total bus expansion limit", "[cap:schematic-netlisting][req:Bus and v
   CHECK(wide.too_large);
   CHECK_FALSE(wide.over_budget);
   CHECK(large.remaining() == schem::kMaxBusTotalBytes);
+  // Regression (review of PR #88): with little budget left, a name that
+  // also passes kMaxBusBytes on its own (100,000 names of about 1 KB) was
+  // reported with the total-budget message; it keeps the per-name one.
+  const std::string long_name = std::string(1000, 'N') + "[99999:0]";
+  REQUIRE(schem::bus_width(long_name) == 1);  // over kMaxBusBytes alone
+  const auto both = schem::parse_bus(long_name, &budget);
+  CHECK(both.too_large);
+  CHECK_FALSE(both.over_budget);
+  const auto per_name = schem::bus_diagnostic(both, long_name);
+  REQUIRE(per_name);
+  CHECK(per_name->text.find("exceeds a limit (") != std::string::npos);
+  CHECK(budget.remaining() == 3);
 }

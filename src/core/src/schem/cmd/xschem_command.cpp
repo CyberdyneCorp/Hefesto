@@ -73,6 +73,19 @@ cmd::CommandResult done_with(cmd::Value value, std::vector<diag::Diagnostic> war
   return result;
 }
 
+// The file services the session's last `schematic` command recorded; the
+// local file system before any (no document is open then).
+platform::FileSystem& session_files(Session& session) {
+  static platform::LocalFileSystem local;
+  return session.files != nullptr ? *session.files : local;
+}
+
+// The project's xschem-compat as the session's last `schematic` command
+// recorded it; ON (the default) before any.
+bool session_compat(const Session& session) {
+  return session.compat == nullptr || session.compat->xschem_compat;
+}
+
 // The bus expansion of `name` under the session's budget, with its warning
 // (SCHEM-NET-002 or -006) added to `warnings`.
 BusExpansion session_bus(std::string_view name, Session& session, std::vector<diag::Diagnostic>& warnings) {
@@ -228,16 +241,19 @@ class Xschem {
   }
 
   // What a symbol lookup outside a `schematic` command reads: the session's
-  // search path and the local file system.
+  // search path, and the project's file services and xschem-compat that the
+  // last `schematic` command recorded, so a symbol cached here is read as
+  // the project's netlist and `getprop symbol` read it.
   struct SymbolLookup {
     const SearchPath& search_path;
-    std::unique_ptr<platform::FileSystem> fs;
+    platform::FileSystem& fs;
+    bool xschem_compat;
     [[nodiscard]] ResolveContext context(diag::DiagnosticSink& sink) const {
-      return ResolveContext{search_path, *fs, &sink, true};
+      return ResolveContext{search_path, fs, &sink, xschem_compat};
     }
   };
   SymbolLookup symbol_lookup(const Document& /*doc*/) {
-    return SymbolLookup{session_.search_path, std::make_unique<platform::LocalFileSystem>()};
+    return SymbolLookup{session_.search_path, session_files(session_), session_compat(session_)};
   }
 
   // ---- get / set -----------------------------------------------------------
@@ -491,23 +507,26 @@ std::span<const std::string_view> xschem_subcommands() {
 
 namespace {
 
-// The folder `./`, `../` and `.` resolve against: the active document's,
-// else the working folder (Q-SCHEM-30).
+// The folder `./`, `../` and `.` resolve against: the active document's;
+// empty for an unsaved document or none, which resolves no relative
+// reference (Q-SCHEM-30, Q-SCHEM-38 (a): never the folder Hefesto was
+// started in, as the symbol cache does).
 platform::Path reference_folder(Session& session) {
   const OpenDocument* active = active_document(session);
   if (active != nullptr && !active->document.path.empty()) return active->document.path.parent_path();
-  return absolute_path(".");
+  return {};
 }
 
 // `abs_sym_path <ref>` ("tcleval values", table "Procedures that xschem
 // provides"): the file `ref` resolves to by "Symbol references", whether or
 // not it exists, with SCHEM-LIB-001 for a reference resolved against the
-// schematic folder (Q-SCHEM-30).
+// schematic folder (Q-SCHEM-30); with no document folder a reference that
+// needs one is returned unchanged.
 cmd::CommandResult abs_sym_path(Session& session, const cmd::Invocation& inv) {
   if (inv.args.size() != 1) return fail(kUsage, "wrong # args: should be \"abs_sym_path reference\"");
-  platform::LocalFileSystem fs;
-  const ResolvedReference found = resolve_reference(inv.args[0], reference_folder(session), session.search_path, fs);
-  cmd::CommandResult result = done(found.file.empty() ? inv.args[0] : found.file.generic_string());
+  const ResolvedReference found =
+      resolve_reference(inv.args[0], reference_folder(session), session.search_path, session_files(session));
+  cmd::CommandResult result = done(found.file.is_absolute() ? found.file.generic_string() : inv.args[0]);
   if (found.via == ResolvedVia::relative || found.via == ResolvedVia::document_folder) {
     result.diagnostics.push_back(diag::make("SCHEM-LIB-001", "Relative symbol reference " + inv.args[0] +
                                                                  " resolved against the schematic folder " +

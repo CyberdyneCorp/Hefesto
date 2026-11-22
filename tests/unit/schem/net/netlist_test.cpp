@@ -677,11 +677,14 @@ TEST_CASE("Flat netlist deeper than 64 levels", "[cap:schematic-netlisting][req:
 }
 
 // Q-SCHEM-42, both modes: ten instances per level, nine levels (10^9
-// resistors unflattened). Flattening stops before the line that would pass
-// the byte limit, with one SCHEM-NET-017 warning, keeps the lines written so
-// far, and finishes quickly without allocating far past the limit. The
-// limit is lowered through NetlistEnvironment::flat_limits; the default is
-// checked against the decided 268435456 bytes.
+// resistors unflattened). Substitution stops before the line that would pass
+// the byte limit, with one SCHEM-NET-017 warning; the instances not yet
+// substituted are written as their X lines and the rest of the netlist down
+// to `.end` is kept (regression: everything after the stop was dropped, so
+// the netlist had no `.end`). It finishes quickly without allocating far
+// past the limit. The limit is lowered through
+// NetlistEnvironment::flat_limits; the default is checked against the
+// decided 268435456 bytes.
 TEST_CASE("Flat netlist larger than 256 MiB", "[cap:schematic-netlisting][req:Flat netlist]") {
   CHECK(schem::kMaxFlatBytes == 268435456U);
   CHECK(schem::FlatLimits{}.bytes == schem::kMaxFlatBytes);
@@ -710,9 +713,12 @@ TEST_CASE("Flat netlist larger than 256 MiB", "[cap:schematic-netlisting][req:Fl
     const auto stopped = with_code(r, schem::net_codes::kFlatStopped);
     REQUIRE(stopped.size() == 1);
     CHECK(stopped.front()->text == "flat netlist stopped: output passed 1048576 bytes");
-    CHECK(r.text.size() <= kLimit + 4096);  // line breaking adds a little
-    CHECK(r.text.size() > kLimit / 2);
+    CHECK(r.text.size() <= kLimit + 4096);  // the kept X lines and line breaking add a little
+    CHECK(r.text.size() > kLimit / 4);
     CHECK(r.text.find("\nR0_x1_x0_x0_x0_x0_x0_x0_x0_x0 ") != std::string::npos);
+    CHECK(r.text.find("\nx9_x1 c1\n") != std::string::npos);  // a level-1 instance not substituted
+    CHECK(r.text.find("\n**.ends\n") != std::string::npos);
+    CHECK(r.text.ends_with("\n.end\n"));
     CHECK(elapsed < std::chrono::seconds{20});
   }
 }
@@ -733,6 +739,30 @@ TEST_CASE("flat netlist: the byte limit counts expanded instances, so empty subc
   REQUIRE(flat.warnings.size() == 1);
   CHECK(flat.warnings.front().code == schem::net_codes::kFlatStopped);
   CHECK(flat.lines.front().text == "**.subckt top");
+}
+
+// Q-SCHEM-42 regression (review of PR #88): the byte limit counted only the
+// text and LF of each kept line, so short lines (a 1-byte comment counted 2)
+// kept about 16 times the limit in line records. Each kept line now also
+// counts kFlatLineOverhead.
+TEST_CASE("flat netlist: the byte limit bounds the kept line records", "[cap:schematic-netlisting][req:Flat netlist]") {
+  constexpr std::size_t kLimit = 4096;
+  std::vector<schem::ProcessedLine> lines{{"**.subckt top", false}};
+  for (int k = 0; k < 1000; ++k) lines.push_back({"x" + std::to_string(k) + " c", false});
+  lines.push_back({"**.ends", false});
+  lines.push_back({".subckt c", false});
+  for (int k = 0; k < 100; ++k) lines.push_back({"*", false});
+  lines.push_back({".ends", false});
+  lines.push_back({".end", false});
+  const auto flat = schem::flatten_netlist(lines, {schem::kMaxFlatDepth, kLimit});
+  REQUIRE(flat.warnings.size() == 1);
+  const auto comments = static_cast<std::size_t>(
+      std::count_if(flat.lines.begin(), flat.lines.end(), [](const auto& l) { return l.text == "*"; }));
+  // The limit's worth, plus the rest of the one body open when it stopped.
+  CHECK(comments <= kLimit / (schem::kFlatLineOverhead + 2) + 100);
+  CHECK(comments > 0);
+  CHECK(flat.lines.back().text == ".end");
+  CHECK(flat.lines[flat.lines.size() - 3].text == "x999 c");  // later instances are kept as X lines
 }
 
 // Q-SCHEM-41 (user decision M8-D3, 2026-11-22), both modes: the expanded
