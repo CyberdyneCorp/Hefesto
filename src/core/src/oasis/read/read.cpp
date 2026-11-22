@@ -190,7 +190,7 @@ cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
     const bool stamp_default = options.settings.datestamp.value_or(0) == 0;
     std::optional<gds::StampTable> stamps;
     if (options.stream_read.readonly && stamp_default) {
-      stamps = oasis::content_stamps(*source.value());
+      stamps = oasis::content_stamps(*source.value(), editor.drc.compat_settings().magic_compat);
     }
     const std::string file = options.oasis_file.empty() ? gds::gds_file_value(path.string(), editor) : options.oasis_file;
     convert_vendor_cells(editor, t, file, stamps ? &*stamps : nullptr);

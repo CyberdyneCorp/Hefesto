@@ -20,7 +20,8 @@ clean-room decoder ``goldenlib/oasis.py`` and the GDS writer ``gdsgen.py``:
 * a shape or TEXT repetition: one element per displacement, in displacement order ("Shape
   repetitions");
 * PLACEMENT: an SREF (STRANS 0x8000 for the flip, ANGLE, MAG as decoded) or, for a regular
-  repetition whose vectors are axis-aligned in the child ("Placement repetitions" rules 1 and 2),
+  repetition whose vectors are axis-aligned in the child ("Placement repetitions" rules 1 and 2;
+  rule 2 swaps columns and rows, so gds-read takes the columns along the child's x axis),
   one AREF; otherwise one SREF per displacement ("Placement repetitions" rule 3);
 * ``S_GDS_PROPERTY`` on a placement: PROPATTR/PROPVALUE pairs ("Instance properties"); other
   properties are discarded;
@@ -177,12 +178,17 @@ def _vectors(pattern: oasis.Repetition) -> tuple[Point, int, Point, int] | None:
     return table[pattern.type]() if pattern.type in table else None
 
 
-def _array_ok(placement: oasis.Placement, vectors) -> bool:
+def _array_axes(placement: oasis.Placement, vectors) -> tuple[Point, int, Point, int] | None:
+    """The AREF's column and row (vector, count) under oasis-read "Placement repetitions": rule 1 keeps
+    (a, na) as the columns; rule 2 swaps them, because gds-read takes the column count along the child's
+    x axis (T^-1 of the column vector, calma/CalmaRdcl.c:1476-1500). None for rule 3."""
     a, na, b, nb = vectors
     u, v = _inverse(placement, a), _inverse(placement, b)
-    rule1 = (na == 1 or u[1] == 0) and (nb == 1 or v[0] == 0)
-    rule2 = (na == 1 or u[0] == 0) and (nb == 1 or v[1] == 0)
-    return rule1 or rule2
+    if (na == 1 or u[1] == 0) and (nb == 1 or v[0] == 0):
+        return a, na, b, nb
+    if (na == 1 or u[0] == 0) and (nb == 1 or v[1] == 0):
+        return b, nb, a, na
+    return None
 
 
 def _placement(placement: oasis.Placement) -> list[bytes]:
@@ -191,8 +197,9 @@ def _placement(placement: oasis.Placement) -> list[bytes]:
     transform = _transform(placement)
     x, y = placement.position
     vectors = _vectors(placement.pattern) if placement.pattern is not None else None
-    if vectors is not None and _array_ok(placement, vectors):
-        a, na, b, nb = vectors
+    axes = _array_axes(placement, vectors) if vectors is not None else None
+    if axes is not None:
+        a, na, b, nb = axes
         col_end = (x + na * a[0], y + na * a[1])
         row_end = (x + nb * b[0], y + nb * b[1])
         return [g.aref(name, na, nb, (x, y), col_end, row_end, props=props, **transform)]

@@ -665,7 +665,15 @@ CONTACT_LEF_SECTION = "lef\n    routing metal1 metal1\n    routing metal2 metal2
 def contact_case() -> tclcase.TclCase:
     """MASK-OS-016: the contact cut size (size + 2 border = 40, edge 20 centimicrons) is what a LEF read
     grows a via cut to (lefRead.c LefGrowVia: the two warnings print the edge and the LEF cut, in half
-    lambda), and ``lef write -tech`` of a contact cell writes that via (decision D2: its VIA records)."""
+    lambda), and ``lef write -tech`` of a contact cell writes that via (decision D2: its VIA records).
+
+    The VIA is named VX1, not V1: the round-4 input named it V1, which the tech section's ``cut via1 via1
+    V1`` already maps, so Magic's LefRead took it as a redefinition of a shared cut record and LefRedefined
+    (lefRead.c:611-671) gave the new record no lefClass and no info.via.obsType (mallocMagic memory, not
+    cleared); Magic then exited with SIGSEGV (golden-capture run 44743146734). The re-authored VX1 input
+    still crashes Magic (run 44860968058), so that is not shown to be the cause. The cut-size requirement
+    does not depend on the name. The round-4 input is kept in tests/golden/MASK/magic-crash/MASK-OS-016/
+    (MASK_MAGIC_CRASH), where Hefesto's unit test reads it in both modes."""
     technology = mask_cases.tech().replace("drc\n", CONTACT_LEF_SECTION + "drc\n", 1)
     spec = mask_cases.case(
         "MASK-OS-016", ["Contact cut size query"],
@@ -673,10 +681,15 @@ def contact_case() -> tclcase.TclCase:
         "contact's (cut-size warnings, the cut grown to the contact size), then lef write -tech of a via1 "
         "contact cell.",
         ["lef read input/v.lef", *mask_cases.paint("via1", 0, 0, 4, 4), "lef write cont -tech"],
-        files={"v.lef": lef(via_lef("V1", 0.2, 0.05, 0.2, default=True))}, technology=technology,
+        files={"v.lef": lef(via_lef("VX1", 0.2, 0.05, 0.2, default=True))}, technology=technology,
         start=["load cont"], outputs=["cont.lef"],
         notes=["Authored in M6 (m6-lef-def-oasis task 15.4) by m6_cases.py: the contact cut size is "
-               "observable through LEF."])
+               "observable through LEF.",
+               "Round 5: the LEF VIA is VX1; named V1, as the tech section's cut alias, it made Magic redefine "
+               "the shared cut record (LefRedefined) and Magic exited with SIGSEGV. VX1 still crashes Magic "
+               "(golden-capture run 44860968058), so the redefinition is not shown to be the cause.",
+               "The round-4 input (VIA V1) is kept in tests/golden/MASK/magic-crash/MASK-OS-016/ for Hefesto-only "
+               "tests (tests/unit/lef/read/magic_crash_test.cpp)."])
     return dataclasses.replace(spec, driver=ld.DRIVER, output_comparators={"cont.lef": "lef-text"},
                                stream_comparator="lef-text", stream_masks=["completed-percent", "magic-undo-note"])
 

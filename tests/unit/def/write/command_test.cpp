@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <set>
 #include <string>
 
@@ -164,6 +165,47 @@ TEST_CASE("an output file that cannot be opened writes nothing and changes nothi
   CHECK(result.diagnostics[0].text == "Generating DEF output top.def for cell top:");
   CHECK(result.diagnostics[1].text == "Cannot open output file top.def (Permission denied).");
   CHECK(s.editor.lefdef.vias.size() == 0);  // no generated via key was left behind
+}
+
+// Q-LEFDEF-135: the generated via names a failed write noted stay out of
+// the shared key order too.
+TEST_CASE("a write that cannot open its file leaves the layer key order alone",
+          "[cap:def-write][req:Table enumeration order]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    db::CellDef& top = s.cell("top");
+    s.paint(top, "via1", db::Rect{10, 10, 36, 36});
+    const std::size_t keys = s.editor.lefdef.layers.size();
+    FailingFiles files(s.services.view().files, {"top.def"});
+    def::DefWriteOptions o;
+    o.files = &files;
+    REQUIRE_FALSE(def::write(s.editor, top, "top", o).ok());
+    CHECK(s.editor.lefdef.layers.size() == keys);
+    o.files = &s.services.view().files;
+    REQUIRE(def::write(s.editor, top, "top", o).ok());
+    CHECK(s.editor.lefdef.layers.size() == keys + 1);  // via1_260_260 keeps its key after the write
+  }
+}
+
+// Q-LEFDEF-137 (approved 2026-11-20): lefFileOpen retries a typed name it
+// cannot open as <cell>.def.
+TEST_CASE("a typed name that cannot be opened is retried as <cell>.def with magic-compat ON only",
+          "[cap:def-write][req:Output file naming]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    db::CellDef& top = s.cell("top");
+    FailingFiles files(s.services.view().files, {"/nodir/x.def"});
+    def::DefWriteOptions o;
+    o.files = &files;
+    const auto result = def::write(s.editor, top, "/nodir/x", o);
+    CHECK(result.ok() == on);
+    CHECK(s.exists("top.def") == on);
+    REQUIRE_FALSE(result.diagnostics.empty());
+    CHECK(result.diagnostics[0].text ==
+          std::string{"Generating DEF output "} + (on ? "top.def" : "/nodir/x.def") + " for cell top:");
+  }
 }
 
 TEST_CASE("an unnamed cell is refused", "[cap:def-write][req:Preconditions and diagnostics]") {

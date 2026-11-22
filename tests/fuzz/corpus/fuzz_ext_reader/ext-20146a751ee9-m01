@@ -1,0 +1,7 @@
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+node "w8" 1 8 0 0 m1 0 0 0 0 800 216 0 0 0 0 0 0

@@ -271,7 +271,7 @@ void Reader::vias(std::int32_t total) {
       error("Vias END statement missing.");
       continue;
     }
-    progress();
+    estimate(total);
     ++processed;
     via_definition(generated);
   }

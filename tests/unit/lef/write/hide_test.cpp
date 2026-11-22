@@ -156,21 +156,26 @@ TEST_CASE("a setback over half the boundary hides nothing and is reported", "[ca
   CHECK(s.macro(c, hide(-5)) == plain);  // a negative distance disables hiding
 }
 
+// The via sits on its metal1's lower-left corner, so with magic-compat ON
+// its cut is not written (Q-LEFDEF-136).
 TEST_CASE("lef write -toplayer writes only the net's top plane", "[cap:lef-write][req:Top-layer pins]") {
-  Session s;
-  db::CellDef& c = s.cell("c");
-  s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
-  s.paint(c, "metal2", db::Rect{0, 0, 100, 20});
-  s.paint(c, "m2c", db::Rect{0, 0, 20, 20});
-  s.label(c, Port{"A", "metal1", db::Rect{0, 50, 20, 60}, 0});
-  LefWriteOptions o;
-  o.top_layer = true;
-  const std::string text = s.macro(c, o);
-  CHECK(pin(text) ==
-        "  PIN A\n    PORT\n      LAYER met2 ;\n        RECT 0.000 0.000 1.000 0.200 ;\n    END\n  END A\n");
-  CHECK(block(text, "  OBS", "  END") ==
-        "  OBS\n      LAYER met1 ;\n        RECT 0.000 0.000 0.200 1.000 ;\n"
-        "      LAYER via1 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n  END\n");
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s(on);
+    db::CellDef& c = s.cell("c");
+    s.paint(c, "metal1", db::Rect{0, 0, 20, 100});
+    s.paint(c, "metal2", db::Rect{0, 0, 100, 20});
+    s.paint(c, "m2c", db::Rect{0, 0, 20, 20});
+    s.label(c, Port{"A", "metal1", db::Rect{0, 50, 20, 60}, 0});
+    LefWriteOptions o;
+    o.top_layer = true;
+    const std::string text = s.macro(c, o);
+    CHECK(pin(text) ==
+          "  PIN A\n    PORT\n      LAYER met2 ;\n        RECT 0.000 0.000 1.000 0.200 ;\n    END\n  END A\n");
+    const std::string cut = on ? "" : "      LAYER via1 ;\n        RECT 0.000 0.000 0.200 0.200 ;\n";
+    CHECK(block(text, "  OBS", "  END") ==
+          "  OBS\n      LAYER met1 ;\n        RECT 0.000 0.000 0.200 1.000 ;\n" + cut + "  END\n");
+  }
 }
 
 // lef-write "Obstructions with zero setback", the abstract cover.
@@ -254,8 +259,10 @@ TEST_CASE("a tile crossing a setback strip is copied whole only with magic-compa
   }
 }
 
+// The contact is exactly its metal, so its cut is written with magic-compat
+// OFF only (Q-LEFDEF-136); OFF shows the strip rule.
 TEST_CASE("lef write -hide d writes the strips' contacts as cuts", "[cap:lef-write][req:Obstructions with positive setback]") {
-  Session s;
+  Session s(false);
   db::CellDef& c = s.cell("c");
   fix_boundary(s, c);
   s.paint(c, "metal1", db::Rect{0, 0, 8, 8});

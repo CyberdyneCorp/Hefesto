@@ -134,6 +134,20 @@ TEST_CASE("input limits: numbers above 32767", "[cap:oasis-read][req:Input limit
     (void)s.read_oasis(f.bytes());
     CHECK(s.said("S_GDS_PROPERTY attribute outside -32768 to 32767 is read as 32767"));
   }
+  // Q-OASIS-45 (approved 2026-11-20 as proposed): the nearest INT2 value.
+  // Regression: an attribute below -32768 was read as 32767, flipping its sign.
+  SECTION("an S_GDS_PROPERTY attribute below -32768 is read as -32768 with a message") {
+    Oas f;
+    f.cell("A").add(rect(68, 20, 0, 0, 10, 10));
+    oasis::Property p = gds_property(0, "x");
+    p.values[0].kind = oasis::PropertyValue::Kind::signed_integer;
+    p.values[0].signed_value = -40000;
+    f.cell("top").add(place("A", 0, 0)).property(p);
+    OasSession s;
+    (void)s.read_oasis(f.bytes());
+    CHECK(s.said("S_GDS_PROPERTY attribute outside -32768 to 32767 is read as -32768"));
+    CHECK_FALSE(s.said("is read as 32767"));
+  }
   SECTION("32767 itself is read without a message") {
     Oas f;
     f.cell("c").add(rect(32767, 32767, 0, 0, 10, 10));

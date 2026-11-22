@@ -6,6 +6,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <string>
+
 #include "read_fixture.hpp"
 
 using namespace lefread_test;
@@ -203,4 +206,31 @@ TEST_CASE("rules persist across reads", "[cap:lef-read][req:LEF NONDEFAULTRULE s
   run.read("NONDEFAULTRULE R LAYER met1 WIDTH 0.2 ; END met1 END R\n");
   CHECK(run.rules.size() == 2);
   CHECK(run.rule("R_0").layers.front().width == 40);
+}
+
+// Regression: a LEF VIA's LAYER that names a key a NONDEFAULTRULE left with
+// no record fell back to the magic type. Magic's LefReadLayer resolves no
+// type for it, so the via gets no geometry from that layer, with the
+// unknown-layer errors (Q-LEFDEF-151, compat: OFF treats it as absent).
+TEST_CASE("a VIA LAYER that names a rule's unknown layer gets no type with magic-compat ON",
+          "[cap:lef-read][req:LEF layer name resolution]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    LefRun run{on, kFiveNm};
+    define_met1(run);
+    run.read("NONDEFAULTRULE R LAYER poly WIDTH 0.2 ; END poly END R\n"
+             "VIA V2 DEFAULT LAYER poly ; RECT -0.1 -0.1 0.1 0.1 ; END V2\nEND LIBRARY\n");
+    const auto* via = run.vias.find("V2");
+    REQUIRE(via != nullptr);
+    REQUIRE(via->value.has_value());
+    CHECK((via->value->type == std::nullopt) == on);
+    const auto texts = run.texts();
+    for (const auto& t : texts) {
+      UNSCOPED_INFO(t);
+    }
+    const bool error = std::any_of(texts.begin(), texts.end(), [](const std::string& t) {
+      return t.find("Don't know how to parse layer \"poly\"") != std::string::npos;
+    });
+    CHECK(error == on);
+  }
 }

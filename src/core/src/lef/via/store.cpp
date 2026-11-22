@@ -68,6 +68,7 @@ std::size_t shared_names(const LayerTable& layers, std::string_view name) {
 ViaDefinition* begin_via(ViaTable& vias, LayerTable& layers, std::string_view name, ViaSection section,
                          const ViaContext& context) {
   const std::string key{name};
+  layers.note_key(name);  // HashFind(&LefInfo, name): one key order for layers and vias (Q-LEFDEF-135)
   if (auto* entry = vias.find(key); entry != nullptr && entry->value) {
     if (section == ViaSection::lef_viarule) {
       return nullptr;  // VIA followed by VIARULE: not reprocessed

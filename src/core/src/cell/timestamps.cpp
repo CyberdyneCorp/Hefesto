@@ -183,15 +183,16 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
   }
 }
 
-void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup) {
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup,
+                       bool magic_compat) {
   const std::array<db::CellDef*, 1> one{only};
-  update_timestamps(library, std::span<db::CellDef* const>{one.data(), one.size()}, now, lookup);
+  update_timestamps(library, std::span<db::CellDef* const>{one.data(), one.size()}, now, lookup, magic_compat);
 }
 
 void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
-                       LookupContext& lookup) {
+                       LookupContext& lookup, bool magic_compat) {
   gds::VendorStamper stamper{lookup};
-  oasis::VendorStamper oasis_stamper{lookup};  // OASIS_FILE cells (oasis-read "Content-hash timestamps ...")
+  oasis::VendorStamper oasis_stamper{lookup, magic_compat};  // OASIS_FILE cells (oasis-read "Content-hash timestamps ...")
   const VendorStampFn stamp = [&stamper, &oasis_stamper](const db::CellDef& def) {
     return oasis::is_oasis_vendor(def) ? oasis_stamper.stamp(def) : stamper.stamp(def);
   };

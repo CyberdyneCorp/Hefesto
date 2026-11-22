@@ -169,6 +169,8 @@ const LayerRecord* LayerTable::find(std::string_view lef_name) const {
   return entry != nullptr && entry->value ? &records_[*entry->value] : nullptr;
 }
 
+bool LayerTable::has_key(std::string_view lef_name) const { return names_.find(std::string{lef_name}) != nullptr; }
+
 LayerRecord* LayerTable::find_mutable(std::string_view lef_name) {
   auto* entry = names_.find(std::string{lef_name});
   return entry != nullptr && entry->value ? &records_[*entry->value] : nullptr;
@@ -185,6 +187,10 @@ LayerRecord& LayerTable::add(std::string_view lef_name, LayerRecord record) {
 
 void LayerTable::release(std::string_view lef_name) {
   (void)names_.clear_value(std::string{lef_name});
+}
+
+void LayerTable::note_key(std::string_view lef_name) {
+  (void)names_.find_or_insert(std::string{lef_name});
 }
 
 void LayerTable::redefine_alias(std::string_view lef_name) {
@@ -227,6 +233,10 @@ void LayerTable::enumerate(const Visitor& visit) const {
       visit(entry.key, records_[*entry.value]);
     }
   });
+}
+
+void LayerTable::enumerate_keys(const KeyVisitor& visit) const {
+  names_.for_each([&](const auto& entry) { visit(entry.key, entry.value ? &records_[*entry.value] : nullptr); });
 }
 
 }  // namespace hefesto::lef

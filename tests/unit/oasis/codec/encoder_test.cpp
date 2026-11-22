@@ -357,6 +357,26 @@ TEST_CASE("a field equal to its modal value is omitted", "[cap:oasis-format][req
   CHECK(contains(bytes, hex("0D 00 14 63 31 00 90 03 C8 01 14 10 D0 0F 07")));
 }
 
+// Regression (OASIS-062, E4): an XGEOMETRY after a RECTANGLE on the same layer
+// at the same point was written with info 09 (datatype and x omitted), which
+// gdstk 1.0.2 crashes on; it is now written in full form.
+TEST_CASE("XGEOMETRY is written in full form", "[cap:oasis-write][req:Modal field omission]") {
+  oasis::Element xg;
+  xg.kind = oasis::ElementKind::xgeometry;
+  xg.layer = 9;
+  xg.datatype = 0;
+  xg.attribute = 3;
+  xg.payload = "ab";
+  const std::vector<Cell> cells = {{"top", {rectangle(9, 0, pt(0, 0), pt(10, 20)), xg, rectangle(9, 0, pt(0, 0), pt(10, 20))}}};
+  const auto bytes = encode(cells, oasis::EncoderOptions{true, oasis::ValidationScheme::crc32, 0, 1000.0});
+  // 21 1B: attribute 3, layer 9, datatype 0, "ab", x 0, y 0; then the second
+  // rectangle with every field modal (info 00): the modal state was updated.
+  CHECK(contains(bytes, hex("21 1B 03 09 00 02 61 62 00 00 14 00")));
+  const Decoded d = oasis_test::decode(bytes);
+  REQUIRE_FALSE(d.error);
+  CHECK(cells_of(d) == cells);
+}
+
 TEST_CASE("the encoder's placement and property forms", "[cap:oasis-format][req:PLACEMENT records]") {
   gds::MemorySink sink;
   oasis::Encoder encoder{sink, oasis::EncoderOptions{true, oasis::ValidationScheme::crc32, 0, 1000.0}};

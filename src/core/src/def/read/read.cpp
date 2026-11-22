@@ -133,6 +133,9 @@ cmd::CommandResult read(editor::EditorState& editor, gds::ByteSource& source, st
     } else {
       out.emit(diag::make(kReport, "DEF read: Design has no contents."));
     }
+    if (compat.magic_compat && reader.estimated()) {
+      editor.display_status_active = true;  // LefEstimate left GrDisplayStatus off DISPLAY_SUSPEND (Q-LEFDEF-141)
+    }
     created = reader.created();
     die_changed = reader.die_change().changed;
     before = reader.die_change().before;

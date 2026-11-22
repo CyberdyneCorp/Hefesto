@@ -74,7 +74,7 @@ cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
   detail::SessionMacroHost host{editor};
   StreamTarget target{layers, lefdef.vias, lefdef.rules, &lefdef.layers, &host};
   const StreamOptions stream_options{technology, lef_scale(style), compat, style,
-                                     MacroOptions{options.annotate, lefdef.datestamp}};
+                                     MacroReadOptions{options.annotate, lefdef.datestamp}};
   StreamResult result;
   {
     const undo::ScopedSuspend unrecorded(editor.undo);

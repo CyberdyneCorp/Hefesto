@@ -6,7 +6,7 @@ The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies 
 
 ## Status of every entry
 
-As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and `OASIS.md` has 39, 162 in all. Every one has a `Resolution:` line:
+As of 2026-11-20 (round 5), `docs/decisions/open-questions/LEFDEF.md` has 131 entries and `OASIS.md` has 49, 180 in all. Every one has a `Resolution:` line:
 
 | Status | Count | Where listed |
 |---|---|---|
@@ -16,6 +16,10 @@ As of 2026-11-20, `docs/decisions/open-questions/LEFDEF.md` has 123 entries and 
 | Approved 2026-11-19 | 3: Q-LEFDEF-25 (compat), 26 (fix), 27 (compat) | "Decided 2026-11-19" |
 | Approved 2026-11-19 (user decisions D1, D2, D4; recorded in round 4) | 18: Q-LEFDEF-117..134 | "Decided 2026-11-19: input caps and implemented behaviours" |
 | Approved 2026-11-19 (user decisions D1, D3(b); recorded in round 4) | 5: Q-OASIS-13, 41..44 | "Decided 2026-11-19: OASIS read caps and magnification" |
+| Approved 2026-11-20 (user decisions E1, E2; recorded in round 5) | 6: Q-LEFDEF-135..140; amendments of Q-TECH-27 and Q-LEFDEF-132 | "Decided 2026-11-20: LEF/DEF rows" |
+| Approved 2026-11-20 (user decisions E2, E3, E4; recorded in round 5) | 10: Q-OASIS-45..54 (45..47 were proposed in round 4) | "Decided 2026-11-20: OASIS rows" |
+| Approved 2026-11-20 (user decision E3; recorded in round 5) | 1: Q-LEFDEF-150 | "Decided 2026-11-20: write caps (E3)" |
+| Implemented under the standing rule (round-5 integration and review), user confirmation pending | 2: Q-LEFDEF-141 (compat), Q-LEFDEF-151 (compat) | "Decided 2026-11-20: LEF/DEF rows" |
 | Pending: no `Resolution:` line | 0 | |
 
 Q-OASIS-2 keeps its `Resolution:` line, but its judgement item (buy SEMI P39) was reopened on 2026-11-18 with option (b) (judgement item 1 below). `check_milestone_readiness.py --milestone M6` reports ready. The six planning questions raised by the M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) were decided on 2026-11-18 and are listed under "Planning questions raised by the M6 plan".
@@ -298,7 +302,7 @@ The user's decisions of 2026-11-19 approved two LEF/DEF input caps (D1), the beh
 | Q-LEFDEF-129 | DEF pin labels erased in annotation mode | **compat** | ON: only on the PLACED/FIXED/COVER path; OFF: for every painted rectangle |
 | Q-LEFDEF-130 | Undefined values in DEF read | **fix** | both modes: treated as unparsed, clipped to the plane, DEF-READ-007/008 |
 | Q-LEFDEF-131 | Default route width of a via record | **replicate** | both modes: the via's contact-area lower-left x (Magic's union) |
-| Q-LEFDEF-132 | gzip-compressed DEF files | **fix** | both modes: read decompressed |
+| Q-LEFDEF-132 | gzip-compressed DEF and LEF files (LEF: E2, 2026-11-20) | **fix** | both modes: read decompressed |
 | Q-LEFDEF-133 | File named in `lef read`'s missing-file error (D4) | **fix** | both modes: the candidate built from the typed name; LEFDEF-021/022 record the deviation |
 | Q-LEFDEF-134 | Malformed OBS_BBOX and FIXED_BBOX messages on one line (D4, LEFDEF-132) | **compat** | ON: no line end, as Magic; OFF: each line ended |
 
@@ -314,13 +318,51 @@ The OASIS read caps of the user's decision D1 and the PLACEMENT magnification ru
 | Q-OASIS-43 | Layer, datatype and attribute numbers outside the GDS range (D1) | **fix** | both modes: a number above 32767 read as 32767 with a message (OASIS-READ-009) |
 | Q-OASIS-44 | Polygons with more than 8191 points (D1) | **fix** | both modes: fractured into polygons of at most 8191 points (OASIS-READ-008) |
 
-Proposed in round 4, not approved (the parts of the implemented read limits that D1 did not cover; each needs a user decision):
+Proposed in round 4 (the parts of the implemented read limits that D1 did not cover) and approved as proposed on 2026-11-20 (decision E2): Q-OASIS-45..47, listed under "Decided 2026-11-20: OASIS rows".
 
-| ID | Question | Kind | As implemented |
+## Decided 2026-11-20: LEF/DEF rows
+
+The user's decisions of 2026-11-20 (E1, E2) for LEF/DEF, recorded in round 5 (`m6-r5-lefdef`). Each entry has `Status: approved 2026-11-20` and a `Resolution:` line; the specs cite them.
+
+| ID | Question | Kind | Resolution |
 |---|---|---|---|
-| Q-OASIS-45 | An attribute number below -32768 | proposed | read as 32767 (recommended: -32768) |
-| Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 | proposed | dropped with a message (OASIS-READ-006) |
-| Q-OASIS-47 | A PATH with more than 8191 points | proposed | dropped with a message |
+| Q-LEFDEF-135 | One key order for the LEF layers and vias in `def write` (E1) | **replicate** | both modes: the layer table's key table is LefInfo's insertion history (vias and looked-up rule names noted), so the table order is Magic's, growth included |
+| Q-LEFDEF-136 | `lef write` drops a cut painted in place over a written routing tile (LEFDEF-118, 119, 127) | **compat** | ON: Magic's tile marks, the cut is not written; OFF: every cut once per block |
+| Q-LEFDEF-137 | `def write` retry of a typed file name | **compat** | ON: retried as `<cell>.def`; OFF: the write fails |
+| Q-LEFDEF-138 | `lef writeall` output named after a failed read's `<name>.mag` (LEFDEF-RT-*) | **compat** | ON: the LEF goes into `<name>.mag`; OFF: `<name>.lef` |
+| Q-LEFDEF-139 | Technology file lines of more than 30 words (LEFDEF-334) | **compat** | ON: Magic's 30-word vector (undefined past it: the ON rule is open, user_needed); OFF: every word (Q-TECH-4); implementation open (`tech/`) |
+| Q-LEFDEF-140 | `def write` inputs Magic crashes on | **fix** | ON: rule entry written by name (OFF writes no read rule, Q-LEFDEF-99); both modes: via without route name, node geometry not searched; DEF-WRITE-012 |
+| Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (standing rule, round-5 integration; to confirm) | **compat** | ON: after a counted section item, window loads delete an untouched (UNNAMED); OFF: kept in batch |
+| Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (standing rule, round-5 review; to confirm) | **compat** | ON: LEF VIA/LAYER section and DEF geometry resolve no type (unknown-layer errors); OFF: treated as absent (magic-name fallback); PORT/OBS: absent in both modes (Q-LEFDEF-4) |
+| Q-TECH-27 (amended) | LEFDEF-003: minimum-grid quotient below 1 | **fix** | both modes: read as 1:1 |
+| Q-LEFDEF-132 (extended) | gzip-compressed LEF files | **fix** | both modes: read decompressed (as implemented) |
+
+Decision E2 also adds golden case LEFDEF-241 (two COMPONENTS named `u1`, the Q-LEFDEF-83 fix); it carries the approved Q-LEFDEF-83 deviation once captured.
+
+## Decided 2026-11-20: OASIS rows (user decisions E2, E3, E4)
+
+The user's decisions of 2026-11-20 approved the three read-limit rows proposed in round 4 as proposed (E2), the OASIS behaviours round 4 implemented with no row (E2), two write caps (E3) and the OASIS golden findings (E4). They are recorded as Q-OASIS-45..54 (round 5, OASIS + GOLDEN), each with `Status: approved 2026-11-20` and a `Resolution:` line; oasis-read, oasis-write and gds-write cite them, and `docs/contributing/security.md` lists the caps under M6-S3. E4's golden-only items need no row: OASIS-055-names gets a validator skip (Magic's reference GDS has two structures named `a_b`, Q-OASIS-61), and OASIS-020/021 are re-authored with the integer datestamp 1700000000 ; the round also changed what Magic reads, from KLayout's `strm2gds` to the GDS equivalent of the strm2oas file made by `authoring/oasequiv.py` (strm2gds writes the coincident copies of a zero-displacement repetition once). That change goes beyond E4: it makes the repetition reading in those cases depend on Hefesto's own converter, and is open for the user (keep `oasequiv.py`, or return to `strm2gds` and record the coincident-repetition difference as a deviation).
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-OASIS-45 | An attribute number below -32768 (E2) | **fix** | both modes: read as -32768 with the OASIS-READ-009 message (round 5 changed it from 32767) |
+| Q-OASIS-46 | An outline the fracture cuts cannot shrink, or wider or taller than 2^32 (E2) | **fix** | both modes: dropped with a message (OASIS-READ-006) |
+| Q-OASIS-47 | A PATH with more than 8191 points (E2) | **fix** | both modes: dropped with a message |
+| Q-OASIS-48 | Where the PDK variables of OASIS_FILE come from (E4, OASIS-032) | **compat** | the Tcl global variables only, as Magic's DBPathSubstitute, in both modes (the GDS_FILE substitution; OFF has no separate rule) |
+| Q-OASIS-49 | Child names in the content stamp of a read-only OASIS cell (E4, OASIS-033) | **compat** | ON: the children's names are folded into the hash, as Magic's GDS stamp; OFF: content only |
+| Q-OASIS-50 | XGEOMETRY in full form (E4, OASIS-062) | **fix** | both modes: layer, datatype, x, y explicit, no type-0 repetition; gdstk 1.0.2 still cannot read OASIS-062 (it stops at XGEOMETRY before END, so CELLNAME-named cells keep no name): user decision open |
+| Q-OASIS-51 | An OASIS write of a vendor GDS cell with other units (E2, GDS-WRITE-054) | **fix** | both modes: generated from its layout with GDS-WRITE-054 (as implemented) |
+| Q-OASIS-52 | A negative vendor PROPATTR in OASIS output (E2) | **fix** | both modes: the unsigned 16-bit value (-1 as 65535) (as implemented) |
+| Q-OASIS-53 | An inexact vendor AREF in OASIS output (E3) | **fix** | both modes: above 2^24 displacements the write fails (OASIS-WRITE-010) |
+| Q-OASIS-54 | Element instances of a vendor OASIS cell in GDS output (E3) | **fix** | both modes: above 2^28 the cell and its parents fail (GDS-WRITE-055) |
+
+## Decided 2026-11-20: write caps (E3)
+
+The user's decision E3 of 2026-11-20 approved three resource caps on writes, each an error with a regression test and an M6-S row in `docs/contributing/security.md`. The two OASIS caps, implemented in round 4 (OASW) as proposals, are Q-OASIS-53 and 54 under "Decided 2026-11-20: OASIS rows"; the DEF write cap is implemented in round 5 (FUZZSEC). Each row has `Status: approved 2026-11-20` and a `Resolution:` line; the def-write, oasis-write and gds-write specs cite them.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-150 | DEF write of a LEF VIA whose cut array is unbounded | **fix** | both modes: above 1,000,000 cuts one cut the size of the via area is written (LEF-VIA-012) |
 
 ## Planning questions raised by the M6 plan
 
