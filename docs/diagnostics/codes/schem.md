@@ -141,7 +141,16 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   (`schem::kMaxBusBits`, `kMaxBusBytes`, `kMaxBusParenDepth`; the string cut
   to 80 bytes and `...`), `expr nested deeper than 200 levels; text copied
   without evaluation` (`schem::kMaxExprDepth`), or a vector element whose
-  lines would pass `kMaxBusBytes`, written unexpanded.
+  lines would pass `kMaxBusBytes`, written unexpanded. Past the total of
+  expanded bus text one netlist run or one editing session may produce
+  (Q-SCHEM-41, user decision M8-D3 approved 2026-11-22, both modes:
+  `schem::kMaxBusTotalBytes` = 64 x `kMaxBusBytes` = 4294967296 bytes, kept
+  in a `schem::BusBudget`), a name is used unchanged with `bus expansion of
+  <string> exceeds the total of 4294967296 bytes of expanded bus text per
+  netlist run or session; used unchanged`, and a vector element is written
+  unexpanded with `vector element <text> exceeds the total of 4294967296
+  bytes of expanded bus text per netlist run when expanded; written
+  unexpanded`.
 - `SCHEM-NET-007` (warning): top-level ports share a `sim_pinnumber`; the
   stable sort keeps their instance order (Q-SCHEM-5).
 - `SCHEM-NET-008` (error): the pins of a symbol and the ports of its
@@ -162,6 +171,15 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
 - `SCHEM-NET-014` (warning): `Symbol: <symbol>: no type attribute set`.
 - `SCHEM-NET-015` (warning): every pin of an instance is unconnected.
 - `SCHEM-NET-016` (warning): two identical instances of one symbol overlap.
+- `SCHEM-NET-017` (warning): the flat netlist stopped (Q-SCHEM-39, user
+  decision M8-D1 approved 2026-11-22, both modes): `flat netlist stopped:
+  depth limit of 64 levels` (`schem::kMaxFlatDepth`; the instance below the
+  limit is kept as an `X` line and flattening goes on with the next line)
+  or `flat netlist stopped: output passed 268435456 bytes`
+  (`schem::kMaxFlatBytes`; each line counts with its LF and each expanded
+  instance counts its own line; nothing after the line that would pass the
+  limit is written). What was written so far is kept and the run does not
+  fail.
 
 ## EDIT
 
@@ -274,6 +292,7 @@ fails when the two disagree.
 | `SCHEM-NET-014` | warning | A symbol has no `type` attribute. |
 | `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
+| `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-39); what was written so far is kept and the run does not fail. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |

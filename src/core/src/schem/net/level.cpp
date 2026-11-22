@@ -152,6 +152,7 @@ Level NetlistRun::place(const Document& document, Parents parents, bool top) {
 
 void NetlistRun::connect(Level& level) {
   SchematicNets nets;
+  nets.bus_budget = &bus_budget_;
   for (const WireRecord& wire : level.document->wires) {
     const auto spice = get_token(wire.props, "spice_ignore");
     const auto lvs = get_token(wire.props, "lvs_ignore");
@@ -198,7 +199,7 @@ NetInstance NetlistRun::net_instance(const Level& level, const Placed& p) {
 std::size_t NetlistRun::width_of(const std::string& name) {
   const auto [it, inserted] = widths_.try_emplace(name, 0);
   if (inserted) {
-    it->second = bus_width(name);
+    it->second = bus_width(name, &bus_budget_);
   }
   return it->second;
 }
@@ -288,7 +289,7 @@ ElementText NetlistRun::element(const Level& level, const Placed& p) {
     e.name = substitute_parents(pin.name, level.parents);
     e.width = width_of(e.name);
     if (k < nets.size() && !nets[k].empty()) {
-      e.net = net_text(nets[k], level.naming, options_.bus_replacement_char);
+      e.net = net_text(nets[k], level.naming, options_.bus_replacement_char, &bus_budget_);
     }
     e.spice_ignore = is_true(get_token(pin.box.props, "spice_ignore").value_or(std::string{}));
     e.attributes = &p.pin_attributes[k];

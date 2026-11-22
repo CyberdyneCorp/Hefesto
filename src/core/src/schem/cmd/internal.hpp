@@ -20,6 +20,7 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/schem/cmd/commands.hpp"
+#include "hefesto/schem/lib/xschemrc.hpp"
 #include "hefesto/schem/session.hpp"
 
 namespace hefesto::schem::cmdimpl {
@@ -104,6 +105,16 @@ struct ParsedArgs {
 /// The active PDK name: the one the last `xschemrc` evaluation used, else
 /// the project's (env PDK of its interpreter); empty when none.
 [[nodiscard]] std::string active_pdk(const cmd::CommandContext& ctx, const Session& session);
+
+/// The synthetic `env(<name>)` of the project interpreter's sandbox
+/// (PDK_ROOT, PDK, CAD_ROOT); empty when unset or without an editor.
+[[nodiscard]] std::string sandbox_env(const cmd::CommandContext& ctx, std::string_view name);
+
+/// The `xschemrc` files a document in `document_folder` evaluates with the
+/// active PDK, as evaluate_xschemrc() reads them (a missing PDK file left
+/// out); nullopt when neither the PDK's nor the folder's exists.
+[[nodiscard]] std::optional<XschemrcInput> xschemrc_files(cmd::CommandContext& ctx, const Session& session,
+                                                         const platform::Path& document_folder);
 
 // ---- options implemented by CMD ---------------------------------------------
 using OptionHandler = cmd::CommandResult (*)(cmd::CommandContext&, Session&, std::span<const std::string>);

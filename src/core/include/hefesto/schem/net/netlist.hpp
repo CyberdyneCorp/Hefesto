@@ -23,6 +23,7 @@
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/file/document.hpp"
+#include "hefesto/schem/net/bus.hpp"
 #include "hefesto/schem/net/postprocess.hpp"
 
 namespace hefesto::schem {
@@ -77,6 +78,32 @@ struct NetlistResult {
   std::vector<ComputedLabel> labels;
 };
 
+/// Deepest subcircuit nesting "Flat netlist" expands (Q-SCHEM-39, user
+/// decision M8-D1 of 2026-11-22; both modes): an instance below it is kept
+/// as an `X` line with warning SCHEM-NET-017 (a subcircuit that places
+/// itself would otherwise expand forever).
+inline constexpr int kMaxFlatDepth = 64;
+
+/// Most bytes "Flat netlist" writes (Q-SCHEM-39, M8-D1; both modes): 256
+/// MiB. Each line counts with its LF, and each expanded instance counts its
+/// own line too, so a hierarchy of empty subcircuits cannot expand forever.
+/// Flattening stops before the line that would pass it, with warning
+/// SCHEM-NET-017; the lines written so far are kept and the run does not
+/// fail.
+inline constexpr std::size_t kMaxFlatBytes = std::size_t{256} << 20;
+
+/// The limits of flatten_netlist(); tests lower them.
+struct FlatLimits {
+  int depth = kMaxFlatDepth;
+  std::size_t bytes = kMaxFlatBytes;
+};
+
+struct FlatNetlist {
+  std::vector<ProcessedLine> lines;
+  /// SCHEM-NET-017 (at most one per limit).
+  std::vector<diag::Diagnostic> warnings;
+};
+
 /// What netlisting reads besides the top document: the symbol cache and
 /// search path (symbols and subcircuit schematics are resolved like symbol
 /// references), the files, the Tcl bridge for `tcleval` values (nullptr: every
@@ -90,6 +117,10 @@ struct NetlistEnvironment {
   platform::Path pdk_root;
   /// The `ev_precision` setting used by `expr_eng`.
   int ev_precision = 4;
+  /// Bytes of expanded bus text the run may produce in total (Q-SCHEM-41).
+  std::uint64_t bus_budget = kMaxBusTotalBytes;
+  /// The limits of the flat netlist (Q-SCHEM-39).
+  FlatLimits flat_limits{};
 };
 
 /// Netlists `top` in memory ("In-process netlisting"): never writes a file,
@@ -119,16 +150,12 @@ struct NetlistEnvironment {
 /// "Device models": the bucket (0..366) of a key.
 [[nodiscard]] std::size_t device_model_bucket(std::string_view key) noexcept;
 
-/// Deepest subcircuit nesting "Flat netlist" expands; an instance below it
-/// is kept as an `X` line (a subcircuit that places itself would otherwise
-/// expand forever).
-inline constexpr int kMaxFlatDepth = 64;
-
 /// "Flat netlist": the post-processed hierarchical netlist `lines` with every
 /// instance of a subcircuit it defines replaced by the subcircuit's body
 /// (instance names suffixed `_<path>`, local nets prefixed `<path>_`, the
 /// `.GLOBAL` nets and `0` kept, parameters whose whole value names a
-/// subcircuit parameter replaced), and the definitions removed.
-[[nodiscard]] std::vector<ProcessedLine> flatten_netlist(std::span<const ProcessedLine> lines);
+/// subcircuit parameter replaced), and the definitions removed, within
+/// `limits`.
+[[nodiscard]] FlatNetlist flatten_netlist(std::span<const ProcessedLine> lines, const FlatLimits& limits = {});
 
 }  // namespace hefesto::schem
