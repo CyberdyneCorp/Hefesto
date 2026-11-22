@@ -8,4 +8,6 @@
 // docs/diagnostics/codes/netlist.md with `hefesto-cli --diagnostic-codes=netlist`
 // and describe the codes in its SPICE section.
 //
-// Owner: SPICE (openspec/changes/m7-extraction/design.md D2/D3). The scaffold declared no code.
+// Owner: SPICE (openspec/changes/m7-extraction/design.md D2/D3).
+
+HEFESTO_NETLIST_CODE("NETLIST-SPICE-001", error, "ext2spice run: no cell named and no window to take one from.")

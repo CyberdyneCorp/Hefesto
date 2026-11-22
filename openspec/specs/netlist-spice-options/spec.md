@@ -24,7 +24,7 @@ The command SHALL take an optional first word. It is matched case-insensitively,
 | `merge none\|conservative\|aggressive` | Parallel-device merging (see capability `netlist-spice-devices`). | none |
 | `extresist on\|off` | Read `.res.ext` overlays. | off |
 | `resistor tee [on\|off]` | Split resistors into two halves. | off |
-| `scale on\|off` | On: emit `.option scale` and dimensionless geometry. Off: emit SI-scaled geometry. | on |
+| `scale on\|off` | On: emit `.option scale` and dimensionless geometry. Off: emit SI-scaled geometry. This is also the setting PDK startup files set with `ext2spice scale` (capability `scripting-pdk-integration`); it is session state of the netlister, not a project setting. | on |
 | `short none\|resistor\|voltage` | Shorted-port policy (see capability `ext-flattening-read`). | none |
 | `subcircuits on\|off` | Same as `subcircuits descend on\|off`. | on |
 | `subcircuits top on\|off\|auto` | Top-level `.subckt` wrapper. | auto |
@@ -89,6 +89,8 @@ An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell
 - SPICE2 node numbers start at 10
 - all other counters start at 0
 
+The flags `-M`, `-m`, `-f`, `-B`, `-d` and `-J` SHALL change the session's settings, as Magic's globals do, so they hold for later runs; `-F` and `-o` SHALL apply to one run only.
+
 On completion, the informative message `exttospice finished.` SHALL be printed.
 Compatibility: behavioral
 (Magic ref: ext2spice/ext2spice.c:824-880, ext2spice/ext2spice.c:1416-1508)
@@ -97,6 +99,11 @@ Compatibility: behavioral
 - **GIVEN** format cdl and cell `amp`
 - **WHEN** the netlister runs without `-o`
 - **THEN** it writes `amp.cdl`
+
+#### Scenario: Run flags that persist
+- **GIVEN** format spice3
+- **WHEN** a run is given `-f hspice -F` and a second run is given no flags
+- **THEN** the second run writes HSPICE format and lists floating nodes again
 
 ### Requirement: File header and scale card
 The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × S_out / 100`, where `S_out` is the global output scale of capability `ext-flattening-read`. If scale mode is off, the output length unit SHALL be `S_out / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.

@@ -15,7 +15,6 @@
 #include <array>
 #include <cmath>
 #include <limits>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -34,7 +33,6 @@
 #include "hefesto/extract/command/run.hpp"
 #include "hefesto/extract/tech/testing/style_builder.hpp"
 #include "hefesto/extresist/command/command.hpp"
-#include "hefesto/netlist/extcheck/extcheck.hpp"
 #include "hefesto/netlist/first_word.hpp"
 #include "hefesto/netlist/sim/sim.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
@@ -104,6 +102,21 @@ void check_not_implemented(const cmd::CommandResult& result, const std::string& 
   REQUIRE_FALSE(result.diagnostics.empty());
   CHECK(result.diagnostics.front().code == kNotImplemented);
   CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
+}
+
+// The run reached EXTFLAT's read of `<cell>.ext` (no such file here); the
+// failure is the last diagnostic, after EFArgs' messages.
+void check_reads(const cmd::CommandResult& result, const std::string& cell) {
+  REQUIRE_FALSE(result.ok());
+  REQUIRE_FALSE(result.diagnostics.empty());
+  CHECK(result.diagnostics.back().text == "Cannot read extract file " + cell + ".ext");
+}
+
+// No cell argument and no layout window (NETLIST-SPICE-001).
+void check_no_cell(const cmd::CommandResult& result) {
+  REQUIRE_FALSE(result.ok());
+  REQUIRE_FALSE(result.diagnostics.empty());
+  CHECK(result.diagnostics.front().code == "NETLIST-SPICE-001");
 }
 
 }  // namespace
@@ -184,16 +197,20 @@ TEST_CASE("an invalid or ambiguous extract option prints Magic's message", "[m7-
   CHECK(s.take_printed().starts_with("\"bogus\" isn't a valid extract option."));
 }
 
-// Magic looks up argv[1] after removing `list`, a NULL pointer when nothing
-// follows, and crashes (CmdE.c:1151-1162). Hefesto reports the wrong
-// argument count in both modes.
-TEST_CASE("extract list with no option does not crash", "[m7-scaffold]") {
+// Q-EXTRACT-28 (fix, both modes): Magic looks up argv[1] after removing
+// `list`/`listall`, a NULL pointer when nothing follows, and crashes
+// (CmdE.c:1151-1162). Hefesto reports the wrong argument count.
+TEST_CASE("extract list and listall with no option print the argument-count message",
+          "[cap:extract-commands][req:Command syntax and option matching]") {
   Session s;
   for (const bool compat : {true, false}) {
     s.project.compat.magic_compat = compat;
-    REQUIRE(s.run("extract list").ok());
-    CHECK(s.take_printed() ==
-          "Wrong number of arguments in \"extract\" command.  Try \"extract help\" for help.\n");
+    for (const auto* line : {"extract list", "extract listall", "ext listall"}) {
+      INFO(line << " magic-compat " << compat);
+      REQUIRE(s.run(line).ok());
+      CHECK(s.take_printed() ==
+            "Wrong number of arguments in \"extract\" command.  Try \"extract help\" for help.\n");
+    }
   }
 }
 
@@ -240,14 +257,9 @@ TEST_CASE("ext2spice has Magic's option table and help", "[m7-scaffold]") {
     }
     CHECK(s.take_printed() == expected);
   }
-  for (const std::string_view entry : netlist::spice::spice_options().subspan(1)) {
-    const std::string name = option_name(entry);
-    if (name != "help" && name != "scale") {
-      check_not_implemented(s.run("ext2spice " + name), "ext2spice " + name);
-    }
-  }
-  check_not_implemented(s.run("exttospice lvs"), "exttospice lvs");
-  // M4's `ext2spice scale` setting keeps working (scripting-pdk-integration).
+  // SPICE landed the options (tasks.md 11.1; tests/unit/netlist/spice/).
+  CHECK(s.run("ext2spice format").value.to_string() == "spice3");
+  REQUIRE(s.run("exttospice lvs").ok());
   REQUIRE(s.run("ext2spice scale off").ok());
   REQUIRE(s.run("exttospice scale on").ok());
 }
@@ -255,11 +267,15 @@ TEST_CASE("ext2spice has Magic's option table and help", "[m7-scaffold]") {
 TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaffold]") {
   Session s;
   // magic-compat ON: `run`, an ambiguous word (`re`: resistor, renumber) and
-  // an unknown word are all run arguments.
-  for (const auto* line : {"ext2spice", "ext2spice run foo", "ext2spice re", "ext2spice foo"}) {
-    INFO(line);
-    check_not_implemented(s.run(line), "ext2spice run");
-  }
+  // an unknown word are all run arguments: the word is the cell whose
+  // `.ext` file the run reads.
+  check_no_cell(s.run("ext2spice"));
+  const cmd::CommandResult run_foo_result = s.run("ext2spice run foo");
+  check_reads(run_foo_result, "foo");
+  // EFArgs takes `run` as the first root cell and warns when `foo` replaces it.
+  CHECK(run_foo_result.diagnostics.front().text == "Warning: multiple input files specified; ignoring \"run\"");
+  check_reads(s.run("ext2spice re"), "re");
+  check_reads(s.run("ext2spice foo"), "foo");
   const std::array<std::string_view, 3> table{"[run] [options]\trun", "resistor tee", "renumber"};
   const std::vector<std::string> run_foo{"run", "foo"};
   auto on = netlist::classify_first_word(run_foo, table, true);
@@ -279,14 +295,16 @@ TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaff
   (void)s.take_printed();
   REQUIRE(s.run("ext2spice re").ok());
   CHECK(s.take_printed() == "Ambiguous option: re\n");
-  check_not_implemented(s.run("ext2spice run foo"), "ext2spice run");
-  check_not_implemented(s.run("ext2spice foo"), "ext2spice run");
-  check_not_implemented(s.run("ext2spice renumber"), "ext2spice renumber");
+  check_reads(s.run("ext2spice run foo"), "foo");
+  check_reads(s.run("ext2spice foo"), "foo");
+  CHECK(s.run("ext2spice renumber").value.to_string() == "off");
 }
 
 // --- tasks.md 3.3: ext2sim and exttosim (design D4, D15) --------------------
 
-TEST_CASE("ext2sim has Magic's option table, help and first-word rule", "[m7-scaffold]") {
+// SIM landed the options and the run (tasks.md 12.1); their tests are in
+// tests/unit/netlist/sim/.
+TEST_CASE("ext2sim has Magic's option table and help", "[m7-scaffold]") {
   Session s;
   REQUIRE(s.registry.find("ext2sim") != nullptr);
   REQUIRE(s.registry.find("exttosim") != nullptr);
@@ -297,17 +315,9 @@ TEST_CASE("ext2sim has Magic's option table, help and first-word rule", "[m7-sca
   CHECK(s.take_printed().starts_with("    [run] [options]\trun exttosim on current cell\n"));
   for (const std::string_view entry : netlist::sim::sim_options().subspan(1)) {
     const std::string name = option_name(entry);
-    if (name != "help") {
-      check_not_implemented(s.run("ext2sim " + name), "ext2sim " + name);
-    }
+    INFO(name);
+    CHECK(s.run("ext2sim " + name).ok());
   }
-  check_not_implemented(s.run("ext2sim"), "ext2sim run");
-  check_not_implemented(s.run("ext2sim run inv"), "ext2sim run");
-  check_not_implemented(s.run("ext2sim inv"), "ext2sim run");
-  s.project.compat.magic_compat = false;
-  (void)s.take_printed();
-  REQUIRE(s.run("ext2sim r").ok());  // run, rthresh
-  CHECK(s.take_printed() == "Ambiguous option: r\n");
 }
 
 // --- tasks.md 3.3: extresist (design D4, D16) -------------------------------
@@ -340,7 +350,7 @@ TEST_CASE("extresist has Magic's option table and messages", "[m7-scaffold]") {
 
 // --- tasks.md 3.3: antennacheck (design D4, D17) ----------------------------
 
-TEST_CASE("antennacheck has Magic's option table, help and first-word rule", "[m7-scaffold]") {
+TEST_CASE("antennacheck has Magic's option table and help", "[m7-scaffold]") {
   Session s;
   REQUIRE(s.registry.find("antennacheck") != nullptr);
   CHECK(option_names(hefesto::antenna::antennacheck_options()) == std::vector<std::string>{"[run]", "debug", "help"});
@@ -350,8 +360,36 @@ TEST_CASE("antennacheck has Magic's option table, help and first-word rule", "[m
         "    debug\t\t\tprint detailed information about each error\n"
         "    help\t\t\tprint help information\n");
   check_not_implemented(s.run("antennacheck debug"), "antennacheck debug");
+}
+
+// Q-MISC-91 (compat, as Q-NETLIST-13): ON, the word `run` is a run argument
+// (the cell named `run`); `debug` and `help` are the only options.
+TEST_CASE("antennacheck first word run with magic-compat ON", "[cap:antenna-check][req:Antenna check command]") {
+  Session s;
+  const std::vector<std::string> run{"run"};
+  const auto on = netlist::classify_first_word(run, hefesto::antenna::antennacheck_options(), true);
+  CHECK(on.kind == netlist::FirstWord::run);
+  CHECK(on.run_args == run);
+  const std::vector<std::string> d{"d"};
+  CHECK(netlist::classify_first_word(d, hefesto::antenna::antennacheck_options(), true).kind ==
+        netlist::FirstWord::option);
   check_not_implemented(s.run("antennacheck"), "antennacheck run");
   check_not_implemented(s.run("antennacheck run -x"), "antennacheck run");
+}
+
+// OFF: `run` is a keyword whose following words are the run arguments; an
+// unknown word is still the cell name.
+TEST_CASE("antennacheck first word run with magic-compat OFF", "[cap:antenna-check][req:Antenna check command]") {
+  Session s;
+  s.project.compat.magic_compat = false;
+  const std::vector<std::string> run_inv{"run", "inv"};
+  const auto off = netlist::classify_first_word(run_inv, hefesto::antenna::antennacheck_options(), false);
+  CHECK(off.kind == netlist::FirstWord::run);
+  CHECK(off.run_args == std::vector<std::string>{"inv"});
+  const std::vector<std::string> inv{"inv"};
+  CHECK(netlist::classify_first_word(inv, hefesto::antenna::antennacheck_options(), false).run_args == inv);
+  check_not_implemented(s.run("antennacheck run inv"), "antennacheck run");
+  check_not_implemented(s.run("antennacheck inv"), "antennacheck run");
 }
 
 // --- tasks.md 3.3/3.5: the area-contract stubs ------------------------------
@@ -374,8 +412,9 @@ TEST_CASE("StyleBuilder builds ExtStyle fixtures", "[m7-scaffold]") {
   CHECK(style->gate_types() == gate);
   REQUIRE(style->device_info().size() == 1);
   CHECK(style->device_info().front().substrate_node == "VSUBS");
-  // The builders are stubs until EXTTECH lands them (tasks.md 4.1-4.6).
-  CHECK(style->rescale(1, 2, {}) == *style);
+  // ExtTechScale(1, 2): distances scaled by 2 (tasks.md 4.6).
+  CHECK(style->rescale(1, 2, {}).side_halo == 8);
+  CHECK(style->rescale(1, 2, {}).step_size == 200);
   CHECK(extract::StyleTable{}.select("lvs") == nullptr);
   const auto rules = hefesto::antenna::RuleView::from_style(*style);
   CHECK_FALSE(rules.rules(7).has_value());
@@ -387,16 +426,11 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   const auto ensured = extract::ensure_extracted(s.state, "top", nullptr);
   REQUIRE_FALSE(ensured.ok());
   CHECK(ensured.error().code == kNotImplemented);
-  check_not_implemented(netlist::spice::run(s.state, {}), "ext2spice run");
+  check_no_cell(netlist::spice::run(s.state, {}));  // SPICE landed the run (tasks.md 11.1)
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());
-  CHECK(rendered.error().code == kNotImplemented);
-  check_not_implemented(netlist::sim::run(s.state, {}), "ext2sim run");
+  CHECK(rendered.error().code == "EXTFLAT-READ-001");
   check_not_implemented(hefesto::extresist::run(s.state, {}, nullptr), "extresist run");
-  std::ostringstream out;
-  std::ostringstream err;
-  CHECK(netlist::extcheck::run({}, out, err) == 1);
-  CHECK(err.str().find(std::string{kNotImplemented}) != std::string::npos);
   CHECK(extract::fringe_fraction(1.0, 1.0) == 0.0);
   const std::vector<std::string> parts{"x1", "n1"};
   extflat::NameFlags flags;
@@ -451,21 +485,20 @@ TEST_CASE("EditorState has the M7 members with Magic's defaults", "[m7-scaffold]
   CHECK_FALSE(state.extresist.options.fasthenry_frequency.has_value());
 }
 
-TEST_CASE("the tech-load and grid hooks leave no style until EXTTECH lands the builder", "[m7-scaffold]") {
+TEST_CASE("the tech-load and grid hooks install and rescale the current style", "[m7-scaffold]") {
   Session s;
   diag::NullSink quiet;
   editor::install_extract_styles(s.state, quiet);
-  CHECK(s.state.extract.current == nullptr);
-  editor::rescale_extract_style(s.state, 2, 1);
-  CHECK(s.state.extract.current == nullptr);
-  // A style installed by a test survives a rescale (the stub copies it).
+  REQUIRE(s.state.extract.current != nullptr);
+  // A style installed by a test is rescaled by the grid hook
+  // (ExtTechScale(1, 2): distances doubled).
   s.state.extract.current = extract::testing::StyleBuilder("x").side_halo(4).shared();
   editor::rescale_extract_style(s.state, 2, 1);
   REQUIRE(s.state.extract.current != nullptr);
-  CHECK(s.state.extract.current->side_halo == 4);
+  CHECK(s.state.extract.current->side_halo == 8);
   // `scalegrid` still runs through tech::scale_layout with the hook in it.
   REQUIRE(s.run("scalegrid 1 2").ok());
-  // A technology load rebuilds the (empty) table.
+  // A technology load rebuilds the table and selects the first style.
   editor::install_extract_styles(s.state, quiet);
-  CHECK(s.state.extract.current == nullptr);
+  CHECK(s.state.extract.current != nullptr);
 }

@@ -64,7 +64,8 @@ inline constexpr std::string_view kExtractNotImplemented = "CORE-NOTIMPL-008";
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
 // is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
-// `ext2spice` beyond `scale` answered UI-CLIENT-002 until M7), CMD-PARSE-001..003
+// `ext2spice` beyond `scale` answered UI-CLIENT-002 until M7 folded M4's partial
+// command into its own (M7-3)), CMD-PARSE-001..003
 // (M4: command lines are Tcl, the M0 command-script reader is removed),
 // CORE-NOTIMPL-005 (M5: every scaffold stub is implemented), CORE-NOTIMPL-006
 // (M6: every scaffold stub is implemented; cmd/stubs.* removed).

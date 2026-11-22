@@ -129,6 +129,8 @@ splitX(t, x): split t at x into t=[L,x] and n=[x,R] (same type);
 
 The resulting tiling is generally not the maximal-horizontal-strip form. Resistor extraction uses it as is.
 
+**Split tiles.** What `splitX` does to a split (diagonal) tile depends on the `magic-compat` setting (Q-NETLIST-53, resolution: compat): with it ON (the default) the tile SHALL first be made Manhattan with its left type (`set_type`, the type ResSplitX gives the new tile) and then split, which gives Magic's tiles; with it OFF a split tile SHALL never be split: the cut is skipped and the tile keeps its diagonal, so the network keeps the net's geometry. The tile database's own cut of a split tile is Q-EXTRACT-29.
+
 (Magic ref: resis/ResFract.c:43-160, resis/ResFract.c:164-269, resis/ResFract.c:271-421, resis/ResFract.c:423-493, resis/ResMain.c:1531-1537)
 
 #### Scenario: Wide vertical branch is cut vertically
@@ -136,6 +138,16 @@ The resulting tiling is generally not the maximal-horizontal-strip form. Resisto
 - **WHEN** the plane is fractured
 - **THEN** at the corner (30,10) (case 2) xl = 30 and yl = 10, so the bottom strip is split at x = 30 and its left part joins the strip above
 - **AND** the tiles are `[0,30]×[0,100]` and `[30,100]×[0,10]`
+
+#### Scenario: Split tile at a cut with magic-compat ON
+- **GIVEN** `magic-compat` ON and a walk that must split a split metal1 tile at x0
+- **WHEN** the plane is fractured
+- **THEN** the tile becomes a plain metal1 tile (its left type) and is then split at x0
+
+#### Scenario: Split tile at a cut with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same walk
+- **WHEN** the plane is fractured
+- **THEN** the split tile is not split and keeps its diagonal
 
 #### Scenario: Equal runs keep the horizontal strips
 - **GIVEN** a metal1 net `[0,100]×[0,10] ∪ [0,10]×[10,100]`

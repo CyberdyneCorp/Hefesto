@@ -7,9 +7,14 @@ This capability defines `extcheck`, a standalone checker. It reads and flattens 
 ## Requirements
 
 ### Requirement: Invocation
-`extcheck` SHALL accept the common arguments of capability `ext-flattening-hierarchy` (`-c -C -r -R -p -s -S -t -T -v`) and a root cell name. A trailing `.ext` on the name is removed. Missing arguments or a bad flag SHALL print the usage text and exit with status 1. The tree SHALL be read without `.res.ext` overlays and without subcircuit marking. It SHALL be flattened with node, coupling and resistor flattening, including global name merging. That merging prints the `*** Global name … not fully connected` reports. The default thresholds SHALL be 2 fF and 10 Ω; the manual page states 10 fF (Q-NETLIST-36).
+`extcheck` SHALL accept the common arguments of capability `ext-flattening-hierarchy` (`-c -C -r -R -p -s -S -t -T -v`) and a root cell name. A trailing `.ext` on the name is removed. Missing arguments or a bad flag SHALL print the usage text and exit with status 1. The tree SHALL be read without `.res.ext` overlays and without subcircuit marking. It SHALL be flattened with node, coupling and resistor flattening, including global name merging. That merging prints the `*** Global name … not fully connected` reports. The default thresholds SHALL be 2 fF and 10 Ω; the manual page states 10 fF (Q-NETLIST-36). No technology is loaded, so a `scale` record SHALL be read with the reader's own unit: the file's lscale is taken as the extraction style's and coordinates are not rescaled, in both `magic-compat` settings (Q-NETLIST-50, resolution: fix). Magic's standalone program compares lscale with the unset style's units per lambda and crashes on every file that has a `scale` record.
 Compatibility: behavioral
 (Magic ref: extcheck/extcheck.c:60-100, extflat/EFargs.c:46-48, doc/man/extcheck.1)
+
+#### Scenario: Scale record without a technology
+- **GIVEN** a `.ext` file whose first records include `scale 1000 1000 5`
+- **WHEN** `extcheck` reads it, with `magic-compat` ON or OFF
+- **THEN** it does not crash, reads the file with lscale 5 and prints the counts with exit status 0
 
 #### Scenario: Missing root
 - **GIVEN** the invocation `extcheck` with no arguments

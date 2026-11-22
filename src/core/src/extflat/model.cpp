@@ -62,6 +62,15 @@ db::Point transform_unit_rect(const Transform& t, db::Point ll) noexcept {
   return db::Point{sat32(std::min(px0, px1)), sat32(std::min(py0, py1))};
 }
 
+db::Rect transform_rect(const Transform& t, const db::Rect& r) noexcept {
+  const std::int64_t px0 = lin(r.x0, t.a, r.y0, t.b) + t.c;
+  const std::int64_t py0 = lin(r.x0, t.d, r.y0, t.e) + t.f;
+  const std::int64_t px1 = lin(r.x1, t.a, r.y1, t.b) + t.c;
+  const std::int64_t py1 = lin(r.x1, t.d, r.y1, t.e) + t.f;
+  return db::Rect{sat32(std::min(px0, px1)), sat32(std::min(py0, py1)), sat32(std::max(px0, px1)),
+                  sat32(std::max(py0, py1))};
+}
+
 std::string ConnName::element(std::int64_t i, std::int64_t j) const {
   std::string out = before;
   out.push_back('[');

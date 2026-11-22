@@ -8,8 +8,8 @@
 // style is rebuilt or rescaled here, so tech/ never learns about
 // EditorState::extract. The hook calls EXTTECH's builders
 // (extract::load_styles, StyleTable::select, ExtStyle::micron_convert and
-// ExtStyle::rescale); until EXTTECH fills them (tasks.md 4.6) they answer
-// an empty table, so EditorState::extract.current stays null.
+// ExtStyle::rescale); EditorState::extract.current stays null only when the
+// technology has no `extract` section.
 //
 // Owner: INTEGRATION (the hook and its call sites); EXTTECH (the builders
 // it calls).

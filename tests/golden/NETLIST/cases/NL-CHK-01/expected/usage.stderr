@@ -1,0 +1,3 @@
+Standard arguments: [-R] [-C] [-r rthresh] [-c cthresh] [-v]
+[-p searchpath] [-s sym=value] [-S symfile] [-t trimchars]
+[-T techname] rootfile
