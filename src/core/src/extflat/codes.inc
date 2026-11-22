@@ -19,5 +19,5 @@ HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-007", warning, "A merge or kill names a node 
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-008", info, "A global node name is split over unconnected nodes, which are merged (`*** Global name <g> not fully connected:`).")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-009", error, "The `.ext` input passes a resource cap of the read (file size, line length, cells, depth, instances, names or connections); the read fails.")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-010", error, "The `use` records of the `.ext` files form a cycle; the read fails.")
-HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-011", error, "A `.ext` line has more than 128 tokens; the line is ignored.")
+HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-011", warning, "A `.ext` line has more than 128 tokens; the line is ignored with this warning, in both modes.")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-012", warning, "A `device` record overlaps an incompatible device at the same place and is ignored.")
