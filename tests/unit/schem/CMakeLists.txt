@@ -16,6 +16,6 @@
 
 hefesto_add_area_tests(schem)
 
-foreach(_schem_sub IN ITEMS file sym lib tcl net edit cmd sim)
+foreach(_schem_sub IN ITEMS file sym lib tcl net edit cmd sim devlib)
   add_subdirectory(${_schem_sub})
 endforeach()

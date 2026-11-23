@@ -8,7 +8,10 @@
 // Q, 4 for M E G, every positional field but the last for X and the other
 // kinds), the rest are its arguments; an X line whose last positional field
 // names a subcircuit defined in the netlist is replaced by that subcircuit's
-// body.
+// body. Substitution stops at kMaxFlatDepth levels and after kMaxFlatBytes
+// bytes of output (Q-SCHEM-42, both modes) with warning SCHEM-NET-017; the
+// instances not substituted are kept as their X lines and every other line
+// is still written, so the netlist keeps its `.ends`, `.GLOBAL` and `.end`.
 //
 // Owner: NETLIST.
 
@@ -21,6 +24,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/schem/net/codes.hpp"
 #include "hefesto/schem/net/netlist.hpp"
 #include "line_fields.hpp"
 
@@ -192,6 +196,8 @@ class NetlistSplitter {
 
 /// Where one subcircuit body is substituted: its path, its port nets in the
 /// parent, its parameter values.
+static_assert(sizeof(ProcessedLine) <= kFlatLineOverhead, "kFlatLineOverhead must cover a kept line's record");
+
 struct Scope {
   std::string path;  // instance names from the top joined with `_`
   std::map<std::string, std::string> ports;   // lower-case port -> parent net
@@ -201,13 +207,13 @@ struct Scope {
 
 class Flattener {
  public:
-  Flattener(const Definitions& definitions, const std::set<std::string>& globals)
-      : definitions_{definitions}, globals_{globals} {}
+  Flattener(const Definitions& definitions, const std::set<std::string>& globals, const FlatLimits& limits)
+      : definitions_{definitions}, globals_{globals}, limits_{limits} {}
 
   void line(const ProcessedLine& line, const Scope* scope) {
     const std::string_view head = first_field(line.text);
     if (line.architecture_code || head.empty() || head.starts_with('*') || head.starts_with('.')) {
-      out_.push_back(line);
+      write(line);
       return;
     }
     DeviceLine device = parse_device(line.text);
@@ -216,8 +222,10 @@ class Flattener {
     }
     const Definition* definition = instantiated(device, definitions_);
     const int depth = scope != nullptr ? scope->depth + 1 : 1;
-    if (definition == nullptr || depth > kMaxFlatDepth) {
-      out_.push_back({join(device.fields), false});
+    // An expanded instance counts its own line; once a limit is reached
+    // the instance is kept as its X line.
+    if (!expands(definition, depth) || !charge(cost(line.text))) {
+      write({join(device.fields), false});
       return;
     }
     const Scope inner = enter(device, *definition, scope, depth);
@@ -226,9 +234,54 @@ class Flattener {
     }
   }
 
-  std::vector<ProcessedLine> take() { return std::move(out_); }
+  FlatNetlist take() { return {std::move(out_), std::move(warnings_)}; }
 
  private:
+  /// Whether an instance of `definition` at `depth` is replaced by its body;
+  /// past the depth limit it is kept, with one warning per run.
+  bool expands(const Definition* definition, int depth) {
+    if (definition == nullptr) {
+      return false;
+    }
+    if (depth <= limits_.depth) {
+      return true;
+    }
+    if (!depth_warned_) {
+      depth_warned_ = true;
+      warnings_.push_back(diag::make(net_codes::kFlatStopped, "flat netlist stopped: depth limit of " +
+                                                                  std::to_string(limits_.depth) + " levels"));
+    }
+    return false;
+  }
+
+  /// Keeps `line`. After the byte limit stopped the flattening, the lines
+  /// still written are bounded by the input: no instance is expanded, so
+  /// only the rest of the bodies already open (at most limits_.depth of
+  /// them) and the rest of the top part remain.
+  void write(ProcessedLine line) {
+    charge(cost(line.text));
+    out_.push_back(std::move(line));
+  }
+
+  /// What one kept line costs against the byte limit: its text, its LF and
+  /// its in-memory record, so the limit bounds memory as well as text.
+  static std::size_t cost(std::string_view text) noexcept { return kFlatLineOverhead + text.size() + 1; }
+
+  /// Counts `bytes` of output; past the byte limit, stops the flattening.
+  bool charge(std::size_t bytes) {
+    if (stopped_) {
+      return false;
+    }
+    if (bytes > limits_.bytes - bytes_) {  // bytes_ never exceeds the limit
+      stopped_ = true;
+      warnings_.push_back(diag::make(net_codes::kFlatStopped, "flat netlist stopped: output passed " +
+                                                                  std::to_string(limits_.bytes) + " bytes"));
+      return false;
+    }
+    bytes_ += bytes;
+    return true;
+  }
+
   static std::string join(const std::vector<std::string>& fields) {
     std::string out;
     for (const std::string& field : fields) {
@@ -316,14 +369,19 @@ class Flattener {
 
   const Definitions& definitions_;
   const std::set<std::string>& globals_;
+  FlatLimits limits_;
   std::vector<ProcessedLine> out_;
+  std::vector<diag::Diagnostic> warnings_;
+  std::size_t bytes_ = 0;
+  bool stopped_ = false;
+  bool depth_warned_ = false;
 };
 
 }  // namespace
 
-std::vector<ProcessedLine> flatten_netlist(std::span<const ProcessedLine> lines) {
+FlatNetlist flatten_netlist(std::span<const ProcessedLine> lines, const FlatLimits& limits) {
   const NetlistSplitter split{lines};
-  Flattener flattener{split.definitions, split.globals};
+  Flattener flattener{split.definitions, split.globals, limits};
   for (const ProcessedLine& line : split.top) {
     flattener.line(line, nullptr);
   }

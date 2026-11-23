@@ -59,8 +59,10 @@ TEST_CASE("Prefix match: schematic netl acts as schematic netlist", kMatching) {
   const auto full = s.schematic({"netlist"});
   const auto prefix = s.schematic({"netl"});
   CHECK(prefix.status == full.status);
-  CHECK(SchemSession::message(prefix) == SchemSession::message(full));
-  CHECK(s.schematic({"NETLIST", "-HIER"}).diagnostics.back().code == full.diagnostics.back().code);
+  // The session cache reports a missing symbol once (SCHEM-LIB-003), so the
+  // runs compare by their netlist text.
+  CHECK(prefix.value.to_string() == full.value.to_string());
+  CHECK(s.schematic({"NETLIST", "-HIER"}).value.to_string() == full.value.to_string());
 }
 
 TEST_CASE("Ambiguous prefix: schematic s", kMatching) {

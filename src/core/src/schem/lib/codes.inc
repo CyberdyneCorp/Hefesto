@@ -17,5 +17,7 @@ HEFESTO_SCHEM_CODE("SCHEM-LIB-005", warning, "Symbol recursively instantiating s
 HEFESTO_SCHEM_CODE("SCHEM-LIB-006", warning, "An `xschemrc` file raised a Tcl error; the settings it would have made after the error are lost.")
 HEFESTO_SCHEM_CODE("SCHEM-LIB-007", info, "`xschem_execute_scripts` in an `xschemrc` is ignored: `tcleval` values always run in the sandbox and launchers are confirmed (Q-SCHEM-25).")
 HEFESTO_SCHEM_CODE("SCHEM-LIB-008", info, "A line an `xschemrc` file printed with `puts`.")
-HEFESTO_SCHEM_CODE("SCHEM-LIB-009", warning, "A schematic used as a symbol holds more than 1,000,000 records when flattened; the rest is not loaded (Q-SCHEM-32).")
+HEFESTO_SCHEM_CODE("SCHEM-LIB-009", warning, "A schematic used as a symbol holds more than 1,000,000 records or 256 MiB when flattened; the rest is not loaded (Q-SCHEM-32, Q-SCHEM-40).")
 HEFESTO_SCHEM_CODE("SCHEM-LIB-010", warning, "Evaluating the `xschemrc` files of a document stopped at the 10 s limit; later settings are lost (Q-SCHEM-32).")
+HEFESTO_SCHEM_CODE("SCHEM-LIB-011", warning, "A symbol generator that is not a Tcl script is not run (symbol generators that run external programs are not supported); the instance is shown as a missing symbol (Q-SCHEM-11).")
+HEFESTO_SCHEM_CODE("SCHEM-LIB-012", warning, "A Tcl symbol generator failed, ran past its 10 s limit, printed more than 256 MiB, its script is larger than 256 MiB, or the generators of the symbol cache spent their shared 60 s; the instance is shown as a missing symbol.")

@@ -62,7 +62,7 @@ The core area is `schem`, diagnostic prefix `SCHEM-`, code document `docs/diagno
 | Document model, editing operations, highlight | `schem/edit/` | EDIT | impl |
 | `schematic` and `xschem` commands | `schem/cmd/` | CMD | impl |
 | Schematic circuit source and deck building | `schem/sim/` | SIMINT | impl |
-| System symbol library | `assets/schematic/devices/` | DEVLIB | impl |
+| System symbol library | `assets/schematic/xschem_library/devices/` (under `${XSCHEM_SHAREDIR}` = `<CAD_ROOT>/assets/schematic`, where the PDK `xschemrc` files look) | DEVLIB | impl |
 | Desktop screen | `src/shell/desktop/src/schematic_*.cpp` | SHELL | impl |
 | Specs, `SCHEM.md`, interface table, capture-fixed texts | `openspec/specs/schematic-*`, `docs/decisions/` | SPEC | spec |
 | Inventory script, PDK data sets | `scripts/schem_inventory.py`, `scripts/fetch_pdk.py` | PDK | either (reads only Apache-2.0 PDK trees) |
@@ -99,7 +99,7 @@ A hand-written lexer and reader over the shared record grammar, producing `schem
 
 1. PDK runs the inventory (D18) and commits the list of referenced `devices/` symbols.
 2. The spec team extracts each listed symbol's interface into `schematic-symbols-and-libraries` "System library": file name, pin names, order and positions, pin directions, and the netlisting properties (`type`, `format`, `lvs_format`, `template`, `global`, `spice_ignore` and the like), as one table. Graphics are not described beyond a bounding box.
-3. DEVLIB writes each `.sym` from that table with independently drawn graphics, under `assets/schematic/devices/`, with Apache-2.0 headers in the `v` record. A test parses every library file and checks its interface against a machine-readable copy of the table (`tests/data/schem/devices_interface.json`, generated from the spec by a script), and that the library holds exactly the inventoried symbols.
+3. DEVLIB writes each `.sym` from that table with independently drawn graphics, under `assets/schematic/xschem_library/devices/` (the PDK `xschemrc` files append `${XSCHEM_SHAREDIR}/xschem_library/devices`), with Apache-2.0 headers in the `v` record. A test parses every library file and checks its interface against a machine-readable copy of the table (`tests/data/schem/devices_interface.json`, generated from the spec by a script), and that the library holds exactly the inventoried symbols.
 4. The library is reachable as `devices/<name>` and `<name>`. Its shipping in a release waits for the counsel review (D2), which is an M13 item.
 
 ### D9. Netlisting (NETLIST; `schematic-netlisting`)
@@ -244,6 +244,10 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-5, -16 | fix | D7, D9 |
 | Q-SCHEM-8 | other (inventory, public-doc semantics) | D7, D18 |
 | Q-SCHEM-9, -13, -24 | platform | D5, D7, D15 |
+| Q-SCHEM-38 (approved 2026-11-22) | platform, option (a): `env(HOME)`/`env(PWD)` the document's folder, relative library elements against it (`SCHEM-LIB-001`), unknown `xschemrc` commands are Tcl errors except the PDK GUI-only ones; both modes | D7, D14 |
+| Q-SCHEM-42 / M8-D1 (approved 2026-11-22) | platform: flat netlist stops at 64 levels or past 256 MiB, `SCHEM-NET-017`, run not failed; both modes | D9, D10, D19 |
+| Q-SCHEM-40 / M8-D2 (approved 2026-11-22) | platform: schematic used as a symbol capped at about 256 MiB besides 1,000,000 records, `SCHEM-LIB-009`; both modes | D7, D19 |
+| Q-SCHEM-41 / M8-D3 (approved 2026-11-22) | platform: total bus expansion 4 GiB (64 × `kMaxBusBytes`) per netlist run or editing session, `SCHEM-NET-006`; both modes | D9, D19 |
 
 ## As-landed scaffold contracts
 

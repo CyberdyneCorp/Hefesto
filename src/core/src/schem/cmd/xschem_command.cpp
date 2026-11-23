@@ -8,7 +8,10 @@
 // needs the editor runs `::magic::schematic` in the same interpreter, so it
 // is dispatched, logged and undone like any other `schematic` command.
 // Subcommands whose behaviour belongs to M9 (simulation results) answer
-// CORE-NOTIMPL-007, as the table says.
+// CORE-NOTIMPL-007, as the table says. Bus expansions take their text from
+// the session's budget (Q-SCHEM-41). The interpreter also gets the
+// `abs_sym_path` and `rel_sym_path` procedures, resolved against the active
+// document (Q-SCHEM-30).
 //
 // Owner: CMD.
 
@@ -21,10 +24,13 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/file/read_write.hpp"
+#include "hefesto/schem/lib/reference.hpp"
 #include "hefesto/schem/net/bus.hpp"
 #include "hefesto/schem/not_implemented.hpp"
+#include "hefesto/schem/sym/tokens.hpp"
 #include "hefesto/script/interp.hpp"
 #include "internal.hpp"
 
@@ -60,6 +66,34 @@ cmd::CommandResult done(cmd::Value value = {}) {
   return cmd::CommandResult::success(std::move(value));
 }
 
+// `value` with the warnings of the run attached.
+cmd::CommandResult done_with(cmd::Value value, std::vector<diag::Diagnostic> warnings) {
+  cmd::CommandResult result = done(std::move(value));
+  result.diagnostics = std::move(warnings);
+  return result;
+}
+
+// The file services the session's last `schematic` command recorded; the
+// local file system before any (no document is open then).
+platform::FileSystem& session_files(Session& session) {
+  static platform::LocalFileSystem local;
+  return session.files != nullptr ? *session.files : local;
+}
+
+// The project's xschem-compat as the session's last `schematic` command
+// recorded it; ON (the default) before any.
+bool session_compat(const Session& session) {
+  return session.compat == nullptr || session.compat->xschem_compat;
+}
+
+// The bus expansion of `name` under the session's budget, with its warning
+// (SCHEM-NET-002 or -006) added to `warnings`.
+BusExpansion session_bus(std::string_view name, Session& session, std::vector<diag::Diagnostic>& warnings) {
+  BusExpansion bus = parse_bus(name, &session.bus_budget);
+  if (auto warning = bus_diagnostic(bus, name)) warnings.push_back(std::move(*warning));
+  return bus;
+}
+
 std::optional<long long> parse_int(std::string_view text) {
   long long value = 0;
   const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
@@ -70,8 +104,7 @@ std::optional<long long> parse_int(std::string_view text) {
 // Element `n` of the instance name `name` (1 the leftmost, -1 the
 // rightmost, 0 the leftmost; other values count from that end); nullopt
 // when out of range.
-std::optional<std::string> vector_element(std::string_view name, long long n) {
-  const std::vector<std::string> bits = expand_bus(name);
+std::optional<std::string> vector_element(const std::vector<std::string>& bits, long long n) {
   const auto size = static_cast<long long>(bits.size());
   const long long index = n == 0 ? 0 : (n > 0 ? n - 1 : size + n);
   if (index < 0 || index >= size) return std::nullopt;
@@ -168,8 +201,10 @@ class Xschem {
   // ---- property helpers ----------------------------------------------------
   cmd::CommandResult expandlabel(Args args) {
     if (args.size() != 1) return wrong_args("expandlabel");
-    const BusExpansion bus = parse_bus(args[0]);
-    return done(cmd::Value::List{join_bits(bus.bits, ","), static_cast<std::int64_t>(bus.width())});
+    std::vector<diag::Diagnostic> warnings;
+    const BusExpansion bus = session_bus(args[0], session_, warnings);
+    return done_with(cmd::Value::List{join_bits(bus.bits, ","), static_cast<std::int64_t>(bus.width())},
+                     std::move(warnings));
   }
 
   cmd::CommandResult get_tok(Args args) {
@@ -182,8 +217,43 @@ class Xschem {
     return done(set_token(args[0], args[1], std::string_view{args[2]}));
   }
 
-  cmd::CommandResult translate(Args /*args*/) {
-    return fail(not_implemented("xschem translate (text substitution tokens, SYMLIB)"));
+  // `xschem translate <inst> <text>`: the text substituted for the instance
+  // at index `inst` ("Text substitution tokens"); an index that names no
+  // instance gives the text unchanged, as xschem does.
+  cmd::CommandResult translate(Args args) {
+    if (args.size() != 2) return wrong_args("translate");
+    const Document* doc = document();
+    if (doc == nullptr) return no_document();
+    const auto index = parse_int(args[0]);
+    if (!index || *index < 0 || static_cast<std::size_t>(*index) >= doc->instances.size()) return done(args[1]);
+    const auto i = static_cast<std::size_t>(*index);
+    diag::CollectingSink warnings;
+    const SymbolLookup lookup = symbol_lookup(*doc);
+    TextTokenContext context;
+    context.instance = &doc->instances[i];
+    context.symbol = &session_.symbols.resolve(Reference{doc->instances[i].symbol}, *doc, lookup.context(warnings));
+    context.index = i;
+    context.schematic = doc->path;
+    context.top_schematic = doc->path;
+    context.warnings = &warnings;
+    std::string text = substitute_text(args[1], context);
+    return done_with(std::move(text), warnings.take());
+  }
+
+  // What a symbol lookup outside a `schematic` command reads: the session's
+  // search path, and the project's file services and xschem-compat that the
+  // last `schematic` command recorded, so a symbol cached here is read as
+  // the project's netlist and `getprop symbol` read it.
+  struct SymbolLookup {
+    const SearchPath& search_path;
+    platform::FileSystem& fs;
+    bool xschem_compat;
+    [[nodiscard]] ResolveContext context(diag::DiagnosticSink& sink) const {
+      return ResolveContext{search_path, fs, &sink, xschem_compat};
+    }
+  };
+  SymbolLookup symbol_lookup(const Document& /*doc*/) {
+    return SymbolLookup{session_.search_path, session_files(session_), session_compat(session_)};
   }
 
   // ---- get / set -----------------------------------------------------------
@@ -330,13 +400,16 @@ class Xschem {
 
   cmd::CommandResult descend_into(const std::string& inst, long long n) {
     std::vector<std::string> command{"descend", inst};
-    if (expand_bus(inst).size() > 1) {
-      const auto element = vector_element(inst, n);
+    std::vector<diag::Diagnostic> warnings;
+    const BusExpansion bus = session_bus(inst, session_, warnings);
+    if (bus.bits.size() > 1) {
+      const auto element = vector_element(bus.bits, n);
       if (!element) return fail(kNoObject, "xschem descend: no element " + std::to_string(n) + " of " + inst);
       command.push_back(*element);
     }
     cmd::CommandResult result = schematic(std::move(command));
     if (result.ok()) state_.last_descended = inst;
+    result.diagnostics.insert(result.diagnostics.begin(), warnings.begin(), warnings.end());
     return result;
   }
 
@@ -432,9 +505,55 @@ std::span<const std::string_view> xschem_subcommands() {
   return kSubcommands;
 }
 
+namespace {
+
+// The folder `./`, `../` and `.` resolve against: the active document's;
+// empty for an unsaved document or none, which resolves no relative
+// reference (Q-SCHEM-30, Q-SCHEM-38 (a): never the folder Hefesto was
+// started in, as the symbol cache does).
+platform::Path reference_folder(Session& session) {
+  const OpenDocument* active = active_document(session);
+  if (active != nullptr && !active->document.path.empty()) return active->document.path.parent_path();
+  return {};
+}
+
+// `abs_sym_path <ref>` ("tcleval values", table "Procedures that xschem
+// provides"): the file `ref` resolves to by "Symbol references", whether or
+// not it exists, with SCHEM-LIB-001 for a reference resolved against the
+// schematic folder (Q-SCHEM-30); with no document folder a reference that
+// needs one is returned unchanged.
+cmd::CommandResult abs_sym_path(Session& session, const cmd::Invocation& inv) {
+  if (inv.args.size() != 1) return fail(kUsage, "wrong # args: should be \"abs_sym_path reference\"");
+  const ResolvedReference found =
+      resolve_reference(inv.args[0], reference_folder(session), session.search_path, session_files(session));
+  cmd::CommandResult result = done(found.file.is_absolute() ? found.file.generic_string() : inv.args[0]);
+  if (found.via == ResolvedVia::relative || found.via == ResolvedVia::document_folder) {
+    result.diagnostics.push_back(diag::make("SCHEM-LIB-001", "Relative symbol reference " + inv.args[0] +
+                                                                 " resolved against the schematic folder " +
+                                                                 found.folder.generic_string() +
+                                                                 "; xschem resolves it against its start folder"));
+  }
+  return result;
+}
+
+// `rel_sym_path <file>`: the reference Hefesto writes for `file` (relative
+// to the first search-path folder holding it, in its alias form, else the
+// bare name in the document folder, else the path itself).
+cmd::CommandResult rel_sym_path(Session& session, const cmd::Invocation& inv) {
+  if (inv.args.size() != 1) return fail(kUsage, "wrong # args: should be \"rel_sym_path file\"");
+  const platform::Path file{inv.args[0]};
+  if (!file.is_absolute()) return done(inv.args[0]);
+  return done(shortest_reference(file.lexically_normal(), reference_folder(session), session.search_path));
+}
+
+}  // namespace
+
 void register_xschem_command(script::Interpreter& interpreter, Session& session) {
   auto xschem = std::make_shared<Xschem>(interpreter, session);
   interpreter.define_command("xschem", [xschem](const cmd::Invocation& inv) { return xschem->run(inv); });
+  Session* s = &session;
+  interpreter.define_command("abs_sym_path", [s](const cmd::Invocation& inv) { return abs_sym_path(*s, inv); });
+  interpreter.define_command("rel_sym_path", [s](const cmd::Invocation& inv) { return rel_sym_path(*s, inv); });
 }
 
 }  // namespace hefesto::schem

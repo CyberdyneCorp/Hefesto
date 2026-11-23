@@ -99,7 +99,7 @@ if {[file exists ${PDK_ROOT}/${PDK}/libs.tech/xschem/sg13g2_pr/helper.tcl]} {
   source ${PDK_ROOT}/${PDK}/libs.tech/xschem/sg13g2_pr/helper.tcl
 }
 append XSCHEM_LIBRARY_PATH :${PDK_ROOT}/${PDK}/libs.ref/sg13g2_stdcell/sym/xschem
-toolbar_show
+wm title . {IHP}
 set xschem_execute_scripts yes
 )tcl";
 
@@ -244,6 +244,8 @@ TEST_CASE("xschem_execute_scripts ignored for the three PDK xschemrc files", kPe
     // Whatever the file sets (sky130: yes) has no effect, and is logged.
     if (set != result.variables.end()) CHECK(with_code(result.diagnostics, "SCHEM-LIB-007").size() == 1);
     CHECK_FALSE(result.search_path.directories().empty());
+    // Q-SCHEM-38 (a): the PDK file calls no command outside the GUI-only list.
+    for (const auto& d : with_code(result.diagnostics, "SCHEM-LIB-006")) FAIL_CHECK(d.text);
   }
 }
 
@@ -295,4 +297,28 @@ TEST_CASE("Synthetic HOME and PWD", kRc) {
   const auto result = schem::SearchPath::from_xschemrc(files, input);
   CHECK(result.search_path.directories() ==
         std::vector<platform::Path>{(dir.path() / "s").generic_string(), (dir.path() / "s" / "lib").generic_string()});
+}
+
+// Q-SCHEM-38 option (a), approved 2026-11-22, both modes: round 1 accepted
+// every unknown command through `unknown`, so a typo in an rc file was
+// silently ignored and the settings after it were still made.
+TEST_CASE("Unknown command in an xschemrc", kRc) {
+  for (const bool compat : {true, false}) {  // the same in both modes of xschem-compat
+    CAPTURE(compat);
+    TempDir dir;
+    dir.mkdir("a");
+    dir.mkdir("b");
+    dir.write("work/xschemrc", "set XSCHEM_LIBRARY_PATH " + (dir.path() / "a").generic_string() +
+                                   "\nfrobnicate_colors 1 2\nset XSCHEM_LIBRARY_PATH " +
+                                   (dir.path() / "b").generic_string() + "\nset LATER 1\n");
+    schem::XschemrcInput input;
+    input.document_folder = dir.path() / "work";
+    platform::LocalFileSystem files;
+    const auto result = schem::SearchPath::from_xschemrc(files, input);
+    const auto errors = with_code(result.diagnostics, "SCHEM-LIB-006");
+    REQUIRE(errors.size() == 1);
+    CHECK(errors[0].text.find("invalid command name \"frobnicate_colors\"") != std::string::npos);
+    CHECK(result.variables.count("LATER") == 0);
+    CHECK(result.search_path.directories() == std::vector<platform::Path>{(dir.path() / "a").generic_string()});
+  }
 }

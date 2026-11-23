@@ -17,9 +17,12 @@
 #include <optional>
 #include <vector>
 
+#include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/file/document.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
+#include "hefesto/schem/net/bus.hpp"
 
 namespace hefesto::schem {
 
@@ -43,6 +46,19 @@ struct Session {
   SymbolCache symbols;
   SearchPath search_path;
   std::optional<XschemrcResult> xschemrc;
+
+  // CMD: the expanded bus text the session's own expansions (the `xschem`
+  // subcommands) may still produce (Q-SCHEM-41); each netlist run has its
+  // own budget.
+  BusBudget bus_budget;
+
+  // CMD: what the `xschem` command and the `abs_sym_path`/`rel_sym_path`
+  // procedures read with, outside a `schematic` command: the project's
+  // compat settings (xschem-compat) and file services. Every `schematic`
+  // command points them at its context (as cmd::Dispatcher::set_editor does
+  // for the undo recorder); nullptr until the first one.
+  const compat::CompatSettings* compat = nullptr;
+  platform::FileSystem* files = nullptr;
 };
 
 }  // namespace hefesto::schem

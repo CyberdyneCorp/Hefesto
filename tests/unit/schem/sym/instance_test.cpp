@@ -51,6 +51,30 @@ TEST_CASE("Vector instance copy", kNames) {
   CHECK(names.unique("x1[3:0]") == "x2[3:0]");
 }
 
+// Q-SCHEM-41 regression (review of PR #88), both modes (the namer has no
+// mode): the bits a namer keeps were never charged to the editing session's
+// bus budget, so a document of names just under kMaxBusBytes each held
+// about 64 MiB per name. They now take from the budget given; past it a
+// name is kept unexpanded.
+TEST_CASE("instance names take their bits from the session's bus budget", kNames) {
+  schem::BusBudget budget{30};
+  schem::InstanceNamer names{&budget};
+  names.add("A[3:0]");  // A[3],A[2],A[1],A[0]: 19 bytes
+  CHECK(budget.remaining() == 11);
+  CHECK(names.used("A[2]"));
+  names.add("B[3:0]");  // 19 more do not fit: kept as written
+  CHECK(budget.remaining() == 11);
+  CHECK(names.used("b[3:0]"));
+  CHECK_FALSE(names.used("B[2]"));
+  schem::Document document;
+  document.instances.push_back(schem::InstanceRecord{});
+  document.instances.back().props = "name=C[1:0]";
+  schem::BusBudget small{3};
+  const schem::InstanceNamer loaded{document, &small};
+  CHECK(small.remaining() == 3);  // C[1],C[0] is 9 bytes
+  CHECK(loaded.used("c[1:0]"));
+}
+
 TEST_CASE("names compare ASCII case-insensitively", kNames) {
   schem::InstanceNamer names;
   names.add("r1");

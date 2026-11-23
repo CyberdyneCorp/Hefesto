@@ -28,6 +28,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/schem/file/properties.hpp"
+#include "hefesto/schem/net/bus.hpp"
 #include "hefesto/schem/tcl/tcl_bridge.hpp"
 
 namespace hefesto::schem {
@@ -114,9 +115,11 @@ struct ElementOptions {
   const TclBridge* tcl = nullptr;  // nullptr: every tcleval fails (`?` LF)
 };
 
-/// Run-wide state: the `__UNCONNECTED_PIN__` counter.
+/// Run-wide state: the `__UNCONNECTED_PIN__` counter and the run's bus
+/// expansion budget (Q-SCHEM-41; nullptr: none).
 struct ElementRunState {
   std::size_t unconnected = 0;
+  BusBudget* bus_budget = nullptr;
 };
 
 struct ElementText {

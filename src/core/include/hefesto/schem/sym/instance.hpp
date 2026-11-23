@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "hefesto/schem/file/document.hpp"
+#include "hefesto/schem/net/bus.hpp"
 #include "hefesto/schem/sym/symbol.hpp"
 
 namespace hefesto::schem {
@@ -32,13 +33,19 @@ namespace hefesto::schem {
 /// Unique instance names of one schematic ("Instance names"): names compare
 /// ASCII case-insensitively after bus expansion, and a used name is renamed
 /// to `<base><q><suffix>` from the last index used for that base and suffix.
+///
+/// The bits a namer keeps are taken from `budget` when one is given (the
+/// editing session's Session::bus_budget, Q-SCHEM-41): past it a name is
+/// kept as written, unexpanded, like a name over kMaxBusBytes, so the
+/// names of a document stay bounded in total. `budget` must outlive the
+/// namer; nullptr bounds each name by kMaxBusBytes only.
 class InstanceNamer {
  public:
-  InstanceNamer() = default;
+  explicit InstanceNamer(BusBudget* budget = nullptr) noexcept : budget_{budget} {}
   /// Records the `name` of every instance of `document`.
-  explicit InstanceNamer(const Document& document);
+  explicit InstanceNamer(const Document& document, BusBudget* budget = nullptr);
 
-  /// Records `name` as used (each bit of a bus name).
+  /// Records `name` as used (each bit of a bus name, under the budget).
   void add(std::string_view name);
 
   /// True when `name`, or one of its bits, is used.
@@ -53,7 +60,8 @@ class InstanceNamer {
   [[nodiscard]] std::string unique_properties(std::string_view props);
 
  private:
-  std::set<std::string> used_;  // ASCII-lowercased bit names
+  BusBudget* budget_ = nullptr;  // not owned
+  std::set<std::string> used_;   // ASCII-lowercased bit names
   std::map<std::pair<std::string, std::string>, long long> last_index_;
 };
 
