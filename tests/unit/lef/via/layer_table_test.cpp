@@ -4,7 +4,7 @@
 // Via redefinition over a LEF layer table read from a tech `lef` section
 // (LEFTECH's lef::read_layer_section) instead of an empty table: the round-2
 // integration test of LEFVIA's store against LEFTECH's aliases
-// (openspec/changes/m6-lef-def-oasis tasks.md 4.1), including the
+// (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 4.1), including the
 // canonical-name move of Q-LEFDEF-8 (LayerTable::redefine_alias).
 //
 // Owner: INTEGRATION (cross-workstream test; design D2).

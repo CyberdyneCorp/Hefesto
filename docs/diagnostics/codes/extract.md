@@ -1,7 +1,7 @@
 # Diagnostic codes: extract area
 
 Codes `EXTRACT-<TOPIC>-<NNN>` emitted by `src/core/src/extract/` (the extraction-style subset of the `extract` tech section reader that LEF and DEF write read (Open Question 2, decided (a); built to the M7 spec extract-tech-section, which M7 extends);
-`openspec/changes/m6-lef-def-oasis/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/extract/codes.cpp` (owner:

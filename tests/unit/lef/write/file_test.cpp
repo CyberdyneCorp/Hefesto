@@ -4,7 +4,7 @@
 // lef-write: the file grammar and layout, the library header, SITE blocks,
 // technology layers and the macro header lines (tasks.md 6.3).
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

@@ -1,7 +1,7 @@
 # Diagnostic codes: lef area
 
 Codes `LEF-<TOPIC>-<NNN>` emitted by `src/core/src/lef/` (LEF/DEF tokenizer and message reporting, the tech `lef` section and the LEF layer table, the via geometry generator, LEF read and write, and the `lef`/`def` commands;
-`openspec/changes/m6-lef-def-oasis/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/lef/codes.cpp` (owner:

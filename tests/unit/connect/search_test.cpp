@@ -435,3 +435,29 @@ TEST_CASE("regression: tree searches over part of a descended cell search its us
     }
   }
 }
+
+TEST_CASE("regression: a hierarchical search ends when the net copy fractures a triangle",
+          "[cap:layout-connectivity][req:Hierarchical connectivity]") {
+  // A metal1 polygon reduced from the fuzz_lef_reader timeout input: the
+  // net copy painted the triangle as smaller triangles that leave slivers
+  // of it uncovered, so it was found unprocessed and queued again forever.
+  HEFESTO_SELECT_MT(mt);
+  db::CellDef def("top", mt.tech->plane_count());
+  for (const Rect& r : {Rect{122, 180, 1734, 184}, Rect{122, 177, 1476, 180}, Rect{261, 176, 1476, 177},
+                        Rect{314, 168, 1476, 176}}) {
+    paint(def, mt, r, mt.m1);
+  }
+  REQUIRE(db::paint_triangle(def, *mt.tech, {198, 148, 281, 168}, db::Diagonal::ne_sw, true, mt.m1).ok());
+  paint(def, mt, {281, 167, 1476, 168}, mt.m1);
+  struct Bounded final : connect::NetVisitor {
+    long tiles = 0;
+    bool triangle = false;
+    bool on_tile(const connect::NetTile& t) override {
+      triangle = triangle || (t.tile.split && t.tile.area == Rect{198, 148, 281, 168});
+      return ++tiles < 100000;  // the old search reported tiles without end
+    }
+  } net;
+  REQUIRE(connect::search_hierarchical(def, *mt.tech, start_at(mt, {200, 181}), {}, net).ok());
+  CHECK(net.tiles < 1000);
+  CHECK(net.triangle);
+}

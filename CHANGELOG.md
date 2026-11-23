@@ -42,7 +42,7 @@ release notices.
   `ext2spice scale [on|off]` keeps working as before; other `ext2spice`
   options answer `CORE-NOTIMPL-008` instead of `UI-CLIENT-002`.
 
-## Unreleased (M6: LEF/DEF and OASIS)
+## Unreleased (M6: LEF/DEF and OASIS, complete)
 
 ### Added
 

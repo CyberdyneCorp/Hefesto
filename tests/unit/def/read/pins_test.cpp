@@ -5,7 +5,7 @@
 // Q-LEFDEF-64, 65, 66 per mode; Q-LEFDEF-67, 68, 89 fixed), including the
 // DEF pin POLYGON test LEFVIA left open (Q-LEFDEF-66).
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

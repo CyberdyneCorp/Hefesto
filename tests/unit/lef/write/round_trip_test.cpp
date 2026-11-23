@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// LEF read and LEF write together (openspec/changes/m6-lef-def-oasis tasks.md
+// LEF read and LEF write together (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md
 // 5.4, 6.4; round-3 integration): a macro read by `lef read` is written back
 // by `lef write` as the same text, and a written file read into a new
 // session is written again unchanged, with either magic-compat setting.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""LEFDEF golden cases (openspec/changes/m6-lef-def-oasis design D19, tasks 1.6, 15.1 and 15.5).
+"""LEFDEF golden cases (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D19, tasks 1.6, 15.1 and 15.5).
 
 This module holds the shared framework of the LEFDEF cases and the ``.ext`` probe of task 1.6
 (Open Question 1, decided (a)). The cases themselves are in ``lefdef_lef_cases.py`` (the

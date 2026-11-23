@@ -39,7 +39,7 @@ env:
   # The PDK install test over the network (ctest label `network`, tests/unit/pdk/network_e2e.cpp) skips
   # itself everywhere except the one leg that runs it on purpose (matrix `network`, step "PDK network test").
   HEFESTO_SKIP_NETWORK_TESTS: "1"
-  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
+  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D2, task
   # 1.4): the tech LEF and standard-cell LEF of each PDK. "true" makes reference-data look them up, fetch the
   # missing ones and save them, and the build legs restore and verify them. On since the M6 round 3: the
   # LEF PDK unit tests of tasks 3.4/5.7 and the LEFDEF-RT-<lib> and LEFDEF-240 golden cases of task 15.5 read them.

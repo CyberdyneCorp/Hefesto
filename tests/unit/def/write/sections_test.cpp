@@ -5,7 +5,7 @@
 // COMPONENTS and PINS (capability def-write; openspec/changes/
 // m6-lef-def-oasis tasks.md 8.1-8.3; Q-LEFDEF-93, 94, 103, 114).
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

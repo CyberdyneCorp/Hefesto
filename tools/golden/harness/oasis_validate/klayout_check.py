@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""KLayout side of ``oasis-validate`` (openspec/changes/m6-lef-def-oasis design D18, task 1.7).
+"""KLayout side of ``oasis-validate`` (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D18, task 1.7).
 
 The Debian KLayout package has no strm2gds/strmxor/strmcmp buddy programs, so their
 operations run here through KLayout's documented scripting API, in batch mode:

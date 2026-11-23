@@ -5,7 +5,7 @@
 // 68 fixes), section count checks, diagnostics with error limits, and read
 // completion with its undo step (tasks.md 7.6; Q-LEFDEF-22).
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

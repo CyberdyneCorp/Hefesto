@@ -11,7 +11,7 @@
 //   treated as unparsed and geometry is clipped to the plane;
 // - Q-LEFDEF-132: a gzip-compressed DEF file is decompressed.
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

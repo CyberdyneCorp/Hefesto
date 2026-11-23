@@ -7,7 +7,7 @@
 // "Route record assembly"; tasks.md 8.4; Q-LEFDEF-95, 96, 97, 102, 112).
 // The `.ext` files are written by hand in Magic's format.
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

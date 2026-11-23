@@ -2,10 +2,10 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Cut growing to the output style's contact size (capability lef-read "Cut
-// growing", Q-LEFDEF-17; openspec/changes/m6-lef-def-oasis tasks.md 4.2),
+// growing", Q-LEFDEF-17; openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 4.2),
 // including the warning text of golden case LEFDEF-011.
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 
