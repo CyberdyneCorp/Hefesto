@@ -6,7 +6,7 @@
 // section", "BLOCKAGES section", "Table enumeration order", "Session state
 // after writing"; tasks.md 8.2, 8.5; Q-LEFDEF-91, 92, 98, 99, 100, 101).
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

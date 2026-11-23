@@ -4,7 +4,7 @@
 
 Used by ``ext_inputs.py`` (golden-capture.yml mode ``ext-inputs``) and by
 ``authoring/lefdef_cases.py --sync-ext`` before an ``.ext`` file becomes a case input
-(openspec/changes/m6-lef-def-oasis task 1.6). The record keywords are those of
+(openspec/changes/archive/2026-11-22-m6-lef-def-oasis task 1.6). The record keywords are those of
 ``extract-file-format`` "Record grammar"; the header order is its "Header records".
 A file is complete when it is ASCII, starts with the six header records, ends with a
 newline after a whole record, and has no ``error`` line.

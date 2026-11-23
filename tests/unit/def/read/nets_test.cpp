@@ -7,7 +7,7 @@
 // painting and labels, and annotation (Q-LEFDEF-81), including the DEF
 // route POLYGON test LEFVIA left open (Q-LEFDEF-70).
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

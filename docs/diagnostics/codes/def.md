@@ -1,7 +1,7 @@
 # Diagnostic codes: def area
 
 Codes `DEF-<TOPIC>-<NNN>` emitted by `src/core/src/def/` (DEF read and DEF write;
-`openspec/changes/m6-lef-def-oasis/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/def/codes.cpp` (owner:

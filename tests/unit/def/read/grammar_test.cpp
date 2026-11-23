@@ -4,7 +4,7 @@
 // def-read: tokenization, the top-level grammar, unit scaling, the design
 // cell and the die area (tasks.md 7.1, 7.2; Q-LEFDEF-77, 78, 79, 84, 68).
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

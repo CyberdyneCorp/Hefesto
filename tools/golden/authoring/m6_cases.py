@@ -32,7 +32,9 @@ mode ``ext-inputs`` runs and ``lefdef_cases.py --sync-ext`` commits the files in
 capability cites without a ``Resolution:`` line (scripts/check_milestone_readiness.py --milestone M6),
 and the approved deviations the case modules record outside ``deviations.toml`` (``APPROVED_DEVIATIONS``:
 cases that pass with a recorded decision, e.g. Q-OASIS-2, task 15.6) and the rows not written yet. It
-fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision.
+fails while a deferral, an open decision or an unwritten row is left. Moving a row to a later milestone is a user decision,
+recorded in ``LATER`` (the case's entry is then deferred to that milestone). Accepting a row as covered
+outside the golden suite is one too, recorded in ``COVERED_OUTSIDE_GOLDEN`` with its approved decision.
 """
 from __future__ import annotations
 
@@ -103,8 +105,23 @@ TASK_154 = {"MASK-OS-016": "15.4", lefdef_lef_cases.STARTUP_CASE: "15.4"}
 # Round 5: the re-authored MASK-OS-016 still exited 139 in golden-capture run 44860968058, so it is
 # capture_blocked again.
 LEFDEF_CAPTURE_BLOCKED: tuple[str, ...] = ("MASK-OS-016",)
+# Cases deferred past M6 by a user decision: case ID -> (milestone of docs/roadmap.md, decision). Their
+# deviations.toml entry is deferred to that milestone, so --exit-check no longer lists them; they keep
+# their capture_blocked reason. MASK-OS-016 (Q-LEFDEF-152, approved 2026-11-22): Magic exits with SIGSEGV
+# on it, so it goes to M13, whose release gates close the golden gaps left for Desktop 1.0.
+LATER: dict[str, tuple[str, str]] = {
+    "MASK-OS-016": ("M13", "deferred past M6 as a known Magic crash (Q-LEFDEF-152, approved 2026-11-22)"),
+}
 CAPTURE_BLOCKED = (*LEFDEF_CAPTURE_BLOCKED, *oasis_cases.CAPTURE_BLOCKED)
 CAPTURE_BLOCKED_NOTE = "; Magic cannot capture it yet, so its case.toml sets capture_blocked"
+# Rows with no golden case that a user decision accepts as covered outside the golden suite: row ID ->
+# (Q-ID, why). --exit-check reports such a row as covered, not unwritten, only while the row is still
+# unwritten and the Q-ID has an approved Resolution (covered_rows). OASIS-092 (Q-OASIS-92, approved
+# 2026-11-22): the generic open has no headless entry point; tasks 13.2 and 14.1 test it.
+COVERED_OUTSIDE_GOLDEN: dict[str, tuple[str, str]] = {
+    "OASIS-092": ("Q-OASIS-92", "covered by the unit tests of task 13.2 (tests/unit/oasis/command/open_test.cpp) "
+                                "and the desktop test of task 14.1 (tests/unit/shell/m6_open_test.cpp)"),
+}
 # Authored cases that replay against Magic's captured output (no deferral any more). The ones that differ
 # only through an approved fix (Q-LEFDEF-1, Q-LEFDEF-76) carry it in the hand-written part of
 # deviations.toml, scoped to the outputs it changes (task 15.7). OASIS-020 and OASIS-021-* (round 6, G2 of
@@ -394,10 +411,15 @@ def owner(spec: tclcase.TclCase) -> str:
     return f"{base} and LEFVIA" if VIA_REQUIREMENTS & set(spec.requirements) else base
 
 
+def deferral_milestone(spec: tclcase.TclCase) -> str:
+    return LATER[spec.id][0] if spec.id in LATER else MILESTONE
+
+
 def deferral_reason(spec: tclcase.TclCase) -> str:
     if spec.id in BLOCKERS:
         note = CAPTURE_BLOCKED_NOTE if spec.id in CAPTURE_BLOCKED else ""
-        return f"{BLOCKER_PREFIX}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
+        prefix = f"{LATER[spec.id][1]}; " if spec.id in LATER else BLOCKER_PREFIX
+        return f"{prefix}{owner(spec)}; {BLOCKERS[spec.id]}{note}"
     ext = EXT_NOTE if spec.id in lefdef_cases.DEF_NET_CASES else ""
     task = TASK_154.get(spec.id) or ("15.2" if spec.area == "OASIS" else "15.1")
     return REASON.format(owner=owner(spec), task=task) + ext
@@ -409,7 +431,7 @@ def deviation_block() -> str:
         if spec.id in REPLAYED:
             continue
         outs = ", ".join(f'"{n}"' for n in output_names(spec))
-        entries.append(f'[{spec.id}]\ndeferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{deferral_reason(spec)}"\n')
+        entries.append(f'[{spec.id}]\ndeferred = "{deferral_milestone(spec)}"\noutputs = [{outs}]\nreason = "{deferral_reason(spec)}"\n')
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
 
 
@@ -448,6 +470,17 @@ def unresolved_decisions(milestone: str = MILESTONE) -> list[str]:
     lines = [f"{qid}: unresolved decision cited by {', '.join(caps)}" for qid, caps in unresolved.items()]
     lines += [f"{qid}: missing decision cited by {', '.join(caps)}" for qid, caps in missing.items()]
     return sorted(lines, key=lambda line: readiness.sort_key(line.split(":", 1)[0]))
+
+
+def covered_rows(rows: dict[str, str], entries: dict[str, tuple[str, bool]] | None = None) -> dict[str, str]:
+    """``<row>: <decision and why>`` of the unwritten ``rows`` that COVERED_OUTSIDE_GOLDEN accepts with a
+    resolved decision; a row whose decision is missing or unresolved stays unwritten."""
+    entries = _readiness_module().load_entries() if entries is None else entries
+    covered = {}
+    for row, (qid, why) in COVERED_OUTSIDE_GOLDEN.items():
+        if row in rows and entries.get(qid, ("", False))[1]:
+            covered[row] = f"{qid}: {why}"
+    return covered
 
 
 def case_dir(spec: tclcase.TclCase) -> Path:
@@ -489,8 +522,12 @@ def exit_check() -> int:
     print("\n".join(blockers) if blockers else "no deferral targets M6")
     decisions = unresolved_decisions()
     print("\n".join(decisions) if decisions else "every decision M6 cites is resolved")
-    unwritten = [f"{row}: not written, {why}" for row, why in not_authored().items()] + missing_rows()
-    print("\n".join(unwritten) if unwritten else "every row is written")
+    rows = not_authored()
+    covered = covered_rows(rows)
+    unwritten = [f"{row}: not written, {why}" for row, why in rows.items() if row not in covered] + missing_rows()
+    print("\n".join(unwritten) if unwritten else "every row is written or covered outside the golden suite")
+    for row, why in covered.items():
+        print(f"{row}: covered outside the golden suite, {why}")
     for cid, why in approved_deviations().items():
         print(f"{cid}: approved deviation, {why}")
     return 1 if blockers or decisions or unwritten else 0

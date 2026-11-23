@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// lef read on the pinned PDK LEF sets (openspec/changes/m6-lef-def-oasis
+// lef read on the pinned PDK LEF sets (openspec/changes/archive/2026-11-22-m6-lef-def-oasis
 // tasks.md 1.4, 5.7): the tech LEF and the standard-cell LEF of sky130A,
 // gf180mcuD and ihp-sg13g2 read without errors into a session with the
 // PDK's technology; every MACRO becomes a cell, and one macro's properties
 // and port labels match its LEF text. Each test skips when its PDK or LEF
 // set is not in .cache/pdks (scripts/fetch_pdk.py).
 //
-// Owner: LEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

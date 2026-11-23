@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Run the ``.ext`` probe in the pinned image (openspec/changes/m6-lef-def-oasis task 1.6).
+"""Run the ``.ext`` probe in the pinned image (openspec/changes/archive/2026-11-22-m6-lef-def-oasis task 1.6).
 
 golden-capture.yml mode ``ext-inputs``. The plan comes from
 ``authoring/lefdef_cases.py --ext-plan``: one Magic session per target, each in a scratch
