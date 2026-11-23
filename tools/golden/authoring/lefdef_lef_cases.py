@@ -698,7 +698,9 @@ def contact_case() -> tclcase.TclCase:
                "the shared cut record (LefRedefined) and Magic exited with SIGSEGV. VX1 still crashes Magic "
                "(golden-capture run 44860968058), so the redefinition is not shown to be the cause.",
                "The round-4 input (VIA V1) is kept in tests/golden/MASK/magic-crash/MASK-OS-016/ for Hefesto-only "
-               "tests (tests/unit/lef/read/magic_crash_test.cpp)."])
+               "tests (tests/unit/lef/read/magic_crash_test.cpp).",
+               "Deferred past M6 to M13 as a known Magic crash (Q-LEFDEF-152, user decision 2026-11-22): the case "
+               "stays capture_blocked and deviations.toml defers it to M13."])
     return dataclasses.replace(spec, driver=ld.DRIVER, output_comparators={"cont.lef": "lef-text"},
                                stream_comparator="lef-text", stream_masks=["completed-percent", "magic-undo-note"])
 

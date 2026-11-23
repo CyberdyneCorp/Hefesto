@@ -29,7 +29,7 @@
 #            design.md D1/D2)              (always)
 #   lef/ def/ oasis/ extract/  INTEGRATION (M6 shared tests); each
 #            subdirectory is owned by its workstream; extflat/ EXTSUB
-#            (openspec/changes/m6-lef-def-oasis design.md D1/D2)   (always)
+#            (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design.md D1/D2)   (always)
 #   schem/   SCAFFOLD (M8 shared tests); each subdirectory is owned by its
 #            workstream (openspec/changes/m8-schematic design.md D3)   (always)
 #   view3d/  SCAFFOLD (M10 shared tests); each subdirectory is owned by its

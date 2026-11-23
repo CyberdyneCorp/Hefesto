@@ -4,10 +4,10 @@
 // The DEF-write side of the via code: contact regions (Q-LEFDEF-111),
 // generated via names and records (Q-LEFDEF-105, 106), registration, and
 // the VIAS RECT lines (Q-LEFDEF-107, 115) (capability def-write;
-// openspec/changes/m6-lef-def-oasis tasks.md 4.5). The cells are painted
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 4.5). The cells are painted
 // directly; DEF write itself lands with DEFW.
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

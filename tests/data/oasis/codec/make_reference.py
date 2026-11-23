@@ -4,7 +4,7 @@
 """Assemble the 419-byte OASIS reference file from its specification listing.
 
 Capability oasis-format, requirement "Complete annotated example"
-(openspec/changes/m6-lef-def-oasis design D11, D20, task 10.5). The listing in
+(openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D11, D20, task 10.5). The listing in
 openspec/specs/oasis-format/spec.md is the single source: every row gives its
 offset and bytes, quoted text stands for its ASCII bytes and ``+ N x HH`` for N
 copies of byte HH. The script checks that each row starts at its listed offset,

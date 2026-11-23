@@ -91,7 +91,7 @@ env:
   KEEP_RAW: ${{ github.event_name == 'workflow_dispatch' && inputs.keep-raw && 'true' || 'false' }}
   FEEDBACK_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.feedback-probe && 'true' || 'false' }}
   PROBE_TCL: ${{ github.event_name == 'workflow_dispatch' && inputs.probe-tcl || '' }}
-  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
+  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D2, task
   # 1.4). "true" makes `capture` restore them, fetch the missing ones and save them. On since the M6 round 3:
   # the LEFDEF-RT-<lib> cases and LEFDEF-240 of task 15.5 read them as `[[external]] set` inputs.
   FETCH_LEF_SETS: "true"

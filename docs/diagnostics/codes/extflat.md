@@ -5,7 +5,7 @@ read-and-flatten subset that `def write` calls: EFReadFile, EFFlatBuild with
 `EF_FLATNODES | EF_NOFLATSUBCKT` and EFVisitNodes, pulled forward from M7 by
 Open Question 1, decided (a), and built to the M7 specs ext-flattening-read,
 ext-flattening-hierarchy and ext-flattening-names, which M7 extends;
-`openspec/changes/m6-lef-def-oasis/design.md` D1/D2, D10). Conventions and the
+`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1/D2, D10). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/extflat/codes.cpp` (owner:

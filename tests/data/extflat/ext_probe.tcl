@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# The .ext probe (openspec/changes/m6-lef-def-oasis task 1.6, Open Question 1 (a)).
+# The .ext probe (openspec/changes/archive/2026-11-22-m6-lef-def-oasis task 1.6, Open Question 1 (a)).
 #
 # Magic writes the .ext files that the DEF-write net cases and EXTSUB's read tests take as
 # inputs, since Hefesto cannot extract before M7. Run by tools/golden/ext_inputs.py in the

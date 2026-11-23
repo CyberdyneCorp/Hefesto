@@ -4,7 +4,7 @@
 // lef-write: the -pinonly, -hide and -toplayer passes and the hidden
 // obstructions (tasks.md 6.5; Q-LEFDEF-37, 38, 47, 51).
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

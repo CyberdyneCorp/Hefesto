@@ -5,7 +5,7 @@
 // def-write "def command argument validation", "Output file naming",
 // "Preconditions and diagnostics"; tasks.md 8.1; Q-LEFDEF-90, 104, 110).
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

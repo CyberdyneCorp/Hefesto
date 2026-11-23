@@ -6,7 +6,7 @@
 // via context. The LEF and DEF parsers land separately (LEFR, DEFR), so the
 // tests drive the via code through its own API with hand-built records.
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

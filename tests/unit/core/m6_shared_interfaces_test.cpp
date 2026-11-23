@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// M6 scaffold (openspec/changes/m6-lef-def-oasis tasks.md 2.4, 2.5): the
+// M6 scaffold (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 2.4, 2.5): the
 // shared read settings split out of gds::GdsSettings into
 // MaskSession::stream_read (design D15), and the shared interfaces of design
 // D4: the session state (EditorState::lefdef, MaskSession::oasis), the

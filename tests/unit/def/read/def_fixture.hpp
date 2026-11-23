@@ -14,7 +14,7 @@
 // Without an output style the DEF scale s0 is 1, so DEF numbers are
 // internal units when the file has no UNITS statement (oscale = 1).
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

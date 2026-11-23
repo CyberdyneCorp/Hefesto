@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// M6 scaffold (openspec/changes/m6-lef-def-oasis tasks.md 2.2, 2.3): the
+// M6 scaffold (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks.md 2.2, 2.3): the
 // lef, def, oasis, extflat and extract code areas exist; `lef` and `def`
 // share one dispatcher with Magic's option lookup and help, and `oasis` is
 // registered with its full option table; the area-contract stubs answer

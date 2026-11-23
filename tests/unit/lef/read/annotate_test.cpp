@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // MACRO sections that annotate an existing cell (capability lef-read
-// "Annotation of existing cells"; openspec/changes/m6-lef-def-oasis
+// "Annotation of existing cells"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis
 // tasks.md 5.5), with Q-LEFDEF-21 in both modes.
 
 #include <catch2/catch_test_macros.hpp>

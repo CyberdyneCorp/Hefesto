@@ -1,7 +1,7 @@
 # Diagnostic codes: oasis area
 
 Codes `OASIS-<TOPIC>-<NNN>` emitted by `src/core/src/oasis/` (the OASIS codec, OASIS read with read-only vendor views and content-hash timestamps, OASIS write with repetition detection and transcoding, and the `oasis` command;
-`openspec/changes/m6-lef-def-oasis/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/oasis/codes.cpp` (owner:
