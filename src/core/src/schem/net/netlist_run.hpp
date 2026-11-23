@@ -96,6 +96,8 @@ struct PlannedDefinition {
   const Document* document = nullptr;  // nullptr: the schematic is missing
 };
 
+struct ExtraKeys;  // definitions.cpp
+
 /// What scanning a symbol format for `.subckt` header ports reads.
 struct HeaderScan {
   const Symbol& symbol;
@@ -179,8 +181,7 @@ class NetlistRun {
                            bool& stopped);
   std::string port_names(const Symbol& symbol, const Parents& parents, std::span<const PinIndex> pins);
   std::string header_template(const PlannedDefinition& definition);
-  bool drops_template_key(const Symbol& symbol, std::string_view key, const std::string& extra,
-                          std::span<const std::string_view> extra_words);
+  bool drops_template_key(const Symbol& symbol, std::string_view key, ExtraKeys& extra);
   std::string symbol_format(const Symbol& symbol) const;
   std::optional<std::string> symname_override(const Placed& instance) const;
   [[nodiscard]] std::string cell_name(const DefinitionEntry& entry) const;
@@ -194,6 +195,7 @@ class NetlistRun {
   bool top_subckt_ = false;   // top level written as an active subcircuit
   ResolveContext resolve_;
   diag::CollectingSink resolve_warnings_;
+  BusBudget bus_budget_;  // Q-SCHEM-41: the expanded bus text of this run
 
   NetlistResult result_;
   std::vector<NetlistChunk> chunks_;

@@ -6,10 +6,12 @@
 // Q-SCHEM-25, Q-SCHEM-32): the PDK's file, then the document folder's, run in
 // a sandboxed interpreter that may only read the PDK, the rc file's folder,
 // XSCHEM_SHAREDIR and the document folder, with a synthetic `env` array.
-// Commands the interpreter does not know (xschem GUI commands such as Tk
-// widgets) are accepted and ignored through `unknown` (round 1's interim
-// behaviour until proposed Q-SCHEM-38 is decided); `puts` output becomes
-// SCHEM-LIB-008 notes instead of reaching the process's streams.
+// A command the interpreter does not know raises Tcl's `invalid command
+// name` error (SCHEM-LIB-006, the settings made before it kept), except the
+// GUI-only commands the three PDK `xschemrc` files call
+// (xschemrc_gui_commands()), which are defined as no-ops while the files run
+// (Q-SCHEM-38 option (a), approved 2026-11-22, both modes); `puts` output
+// becomes SCHEM-LIB-008 notes instead of reaching the process's streams.
 //
 // The evaluation of both files is limited to XschemrcInput::time_limit (10 s,
 // Q-SCHEM-32) in total: while a file runs, the interpreter's progress hook
@@ -37,6 +39,18 @@ using Clock = std::chrono::steady_clock;
 
 constexpr std::string_view kExecuteScripts = "xschem_execute_scripts";
 constexpr std::string_view kInterrupted = "SCRIPT-TCL-002";
+
+// Defines each GUI-only command that is not already a command as a no-op
+// and records it, so restore() removes exactly those.
+std::string gui_stub_script() {
+  std::string script = "set ::hefesto::schem::rc_gui {}\n";
+  for (const std::string_view name : xschemrc_gui_commands()) {
+    const std::string command = "::" + std::string{name};
+    script += "if {[info commands " + command + "] eq {}} {proc " + command +
+              " {args} {return {}}; lappend ::hefesto::schem::rc_gui " + command + "}\n";
+  }
+  return script;
+}
 
 std::set<std::string> split_lines(const std::string& text) {
   std::set<std::string> lines;
@@ -115,16 +129,16 @@ class XschemrcRun {
     return names.ok() ? split_lines(names.value.to_string()) : std::set<std::string>{};
   }
 
-  // `puts` and `unknown` are replaced while the files run and restored
-  // afterwards, so an interpreter that goes on to evaluate `tcleval` values
-  // keeps Tcl's own (the capturing `puts` refers to this run).
+  // `puts` is replaced and the GUI-only commands defined while the files
+  // run, and both undone afterwards, so an interpreter that goes on to
+  // evaluate `tcleval` values keeps Tcl's own `puts` (the capturing one
+  // refers to this run) and no GUI stubs.
   void prepare() {
     for (const auto& [name, value] : input_.variables) interp_.set_var(name, cmd::Value{value});
     (void)interp_.evaluate(
         "namespace eval ::hefesto::schem {}\n"
-        "catch {rename ::puts ::hefesto::schem::rc_saved_puts}\n"
-        "catch {rename ::unknown ::hefesto::schem::rc_saved_unknown}\n"
-        "proc ::unknown {args} {return {}}");
+        "catch {rename ::puts ::hefesto::schem::rc_saved_puts}\n" +
+        gui_stub_script());
     interp_.define_command("::puts", [this](const cmd::Invocation& inv) { return capture_puts(inv, result_.diagnostics); });
   }
 
@@ -132,8 +146,8 @@ class XschemrcRun {
     (void)interp_.evaluate(
         "catch {rename ::puts {}}\n"
         "catch {rename ::hefesto::schem::rc_saved_puts ::puts}\n"
-        "catch {rename ::unknown {}}\n"
-        "catch {rename ::hefesto::schem::rc_saved_unknown ::unknown}");
+        "foreach command $::hefesto::schem::rc_gui {catch {rename $command {}}}\n"
+        "unset -nocomplain ::hefesto::schem::rc_gui");
   }
 
   // Sources each file until the time limit stops one; later files are lost.
@@ -198,6 +212,16 @@ class XschemrcRun {
 };
 
 }  // namespace
+
+const std::vector<std::string_view>& xschemrc_gui_commands() {
+  // The `rc_commands` of tests/data/schem/inventory.json that are Tk-only:
+  // neither Tcl built-ins, procedures the PDK defines, procedures xschem
+  // provides (schem/tcl/procedures.hpp) nor the `xschem` command. Sorted;
+  // the inventory test of xschemrc_test.cpp fails when a PDK bump adds one.
+  static const std::vector<std::string_view> names{"button", "destroy",  "focus", "label", "menu", "pack",
+                                                   "radiobutton", "raise", "toplevel", "winfo", "wm"};
+  return names;
+}
 
 script::SandboxPolicy xschemrc_policy(const XschemrcInput& input) {
   script::SandboxPolicy policy;

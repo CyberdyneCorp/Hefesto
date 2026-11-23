@@ -457,7 +457,7 @@ class Namer {
   // First-seen order; the set keeps a wide global bus linear, not quadratic.
   void add_globals(const std::string& net, NetNaming& out) {
     const std::string_view name = is_automatic(net) ? std::string_view{net}.substr(1) : std::string_view{net};
-    for (std::string& bit : expand_bus(name)) {
+    for (std::string& bit : expand_bus(name, s_.bus_budget)) {
       if (bit != "0" && globals_seen_.insert(bit).second) {
         out.globals.push_back(std::move(bit));
       }
@@ -500,15 +500,16 @@ NetNaming name_nets(const SchematicNets& schematic) {
   return Namer{schematic}.run();
 }
 
-std::string net_text(std::string_view net, const NetNaming& naming, std::string_view bus_replacement) {
+std::string net_text(std::string_view net, const NetNaming& naming, std::string_view bus_replacement,
+                     BusBudget* budget) {
   std::vector<std::string> bits;
   if (is_automatic(net)) {
     const auto it = naming.multiplicity.find(std::string{net});
     const std::size_t m = it == naming.multiplicity.end() ? 1 : it->second;
     const std::string base{net.substr(1)};
-    bits = m > 1 ? expand_bus(base + "_[" + std::to_string(m - 1) + "..0]") : std::vector<std::string>{base};
+    bits = m > 1 ? expand_bus(base + "_[" + std::to_string(m - 1) + "..0]", budget) : std::vector<std::string>{base};
   } else {
-    bits = expand_bus(net);
+    bits = expand_bus(net, budget);
   }
   return replace_bus_chars(join_bits(bits, ","), bus_replacement);
 }

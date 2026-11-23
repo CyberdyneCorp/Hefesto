@@ -16,6 +16,7 @@
 #include <array>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 #include "format_scan.hpp"
 #include "hefesto/schem/file/properties.hpp"
@@ -26,8 +27,22 @@
 #include "hefesto/schem/sym/types.hpp"
 #include "hefesto/schem/tcl/tcl_bridge.hpp"
 #include "netlist_run.hpp"
+#include "substring_index.hpp"
 
 namespace hefesto::schem::detail {
+
+/// What the `.subckt` header template checks its keys against (Q-SCHEM-19),
+/// built once per definition so the cost is linear in the template and
+/// `extra`: the whole words of `extra`, an index of its substrings, and the
+/// keys already warned about.
+struct ExtraKeys {
+  explicit ExtraKeys(std::string_view text);
+
+  std::string_view extra;
+  std::unordered_set<std::string_view> words;
+  SubstringIndex substrings;
+  std::unordered_set<std::string_view> warned;
+};
 
 namespace {
 
@@ -452,13 +467,13 @@ void NetlistRun::check_pins(const Symbol& symbol, const Level& level) {
   std::map<std::string, std::string> pins;   // bit -> dir
   std::map<std::string, std::string> ports;  // bit -> dir
   for (const Pin& pin : symbol.pins) {
-    for (std::string& bit : expand_bus(substitute_parents(pin.name, level.parents))) {
+    for (std::string& bit : expand_bus(substitute_parents(pin.name, level.parents), &bus_budget_)) {
       pins.emplace(std::move(bit), pin.direction);
     }
   }
   for (const Placed& p : level.instances) {
     if (!p.ignored && is_port_type(p.type)) {
-      for (std::string& bit : expand_bus(substitute_parents(attribute(p, "lab"), level.parents))) {
+      for (std::string& bit : expand_bus(substitute_parents(attribute(p, "lab"), level.parents), &bus_budget_)) {
         ports.emplace(std::move(bit), port_direction(p.type));
       }
     }
@@ -496,7 +511,7 @@ std::string NetlistRun::port_names(const Symbol& symbol, const Parents& parents,
   std::string out;
   for (const PinIndex k : pins) {
     const std::string name = substitute_parents(symbol.pins[k].name, parents);
-    const BusExpansion bus = parse_bus(name);
+    const BusExpansion bus = parse_bus(name, &bus_budget_);
     if (auto warning = bus_diagnostic(bus, name)) {
       warn(std::move(*warning));
     }
@@ -579,38 +594,46 @@ std::string NetlistRun::header_ports(const PlannedDefinition& definition, const 
   return out;
 }
 
+ExtraKeys::ExtraKeys(std::string_view text) : extra{text}, substrings{text} {
+  const std::vector<std::string_view> list = detail::words(text);
+  words.insert(list.begin(), list.end());
+}
+
 /// Whether the header template leaves out `key`: `name`, `spiceprefix`,
 /// `model`, and a key of `extra` (a whole word; any substring with
-/// xschem-compat ON), with a warning for a key found only inside a word.
-bool NetlistRun::drops_template_key(const Symbol& symbol, std::string_view key, const std::string& extra,
-                                    std::span<const std::string_view> extra_words) {
+/// xschem-compat ON), with one warning per key found only inside a word
+/// (`extra` shown cut to 80 bytes).
+bool NetlistRun::drops_template_key(const Symbol& symbol, std::string_view key, ExtraKeys& extra) {
   if (key == "name" || key == "spiceprefix" || key == "model") {
     return true;
   }
-  const bool substring = !key.empty() && extra.find(key) != std::string::npos;
-  const bool whole = std::find(extra_words.begin(), extra_words.end(), key) != extra_words.end();
-  if (substring && !whole) {
+  const bool whole = extra.words.count(key) != 0;
+  const bool substring = whole || (!key.empty() && extra.substrings.contains(key));
+  if (substring && !whole && extra.warned.insert(key).second) {
+    const std::string shown =
+        extra.extra.size() > 80 ? std::string{extra.extra.substr(0, 80)} + "..." : std::string{extra.extra};
     warn(diag::make(net_codes::kExtraSubstring, "template key " + std::string{key} + " of " + symbol.reference +
-                                                    " occurs in extra=\"" + extra + "\" only inside a word"));
+                                                    " occurs in extra=\"" + shown + "\" only inside a word"));
   }
   return compat_ ? substring : whole;
 }
 
 /// The template on the header: `name`, `spiceprefix`, `model` and the keys
 /// in `extra` removed (Q-SCHEM-19), values decoded, separators kept, and
-/// its LFs by the Q-SCHEM-21 branch point.
+/// its LFs by the Q-SCHEM-21 branch point. Linear in the template and
+/// `extra` (ExtraKeys).
 std::string NetlistRun::header_template(const PlannedDefinition& definition) {
   const Symbol& symbol = *definition.entry.symbol;
   const std::string templ = get_token(symbol.property(), "template").value_or(std::string{});
-  const std::string extra = get_token(symbol.property(), "extra").value_or(std::string{});
-  const std::vector<std::string_view> extra_words = words(extra);
+  const std::string extra_text = get_token(symbol.property(), "extra").value_or(std::string{});
+  ExtraKeys extra{extra_text};
   std::string out;
   for (const Piece& piece : PieceReader{templ}.read()) {
     if (!piece.attribute) {
       out += piece.text;
       continue;
     }
-    if (drops_template_key(symbol, piece.key, extra, extra_words)) {
+    if (drops_template_key(symbol, piece.key, extra)) {
       continue;
     }
     out += piece.key;

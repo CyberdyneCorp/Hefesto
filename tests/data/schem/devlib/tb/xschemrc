@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Hefesto-authored rc file of the DEVLIB reachability tests: the system library
+# folders exactly as the three pinned PDK xschemrc files append them.
+set XSCHEM_LIBRARY_PATH {}
+append XSCHEM_LIBRARY_PATH :${XSCHEM_SHAREDIR}/xschem_library/devices
+append XSCHEM_LIBRARY_PATH :${XSCHEM_SHAREDIR}/xschem_library

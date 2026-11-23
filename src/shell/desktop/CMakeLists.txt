@@ -145,3 +145,9 @@ add_custom_command(TARGET hefesto POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${PROJECT_SOURCE_DIR}/assets/icons" "$<TARGET_FILE_DIR:hefesto>/assets/icons"
   VERBATIM)
+# The schematic system symbol library (Apache-2.0; XSCHEM_SHAREDIR is
+# <CAD_ROOT>/assets/schematic, openspec/changes/m8-schematic design D8).
+add_custom_command(TARGET hefesto POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${PROJECT_SOURCE_DIR}/assets/schematic" "$<TARGET_FILE_DIR:hefesto>/assets/schematic"
+  VERBATIM)

@@ -6,3 +6,6 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(schem_net DATA_DIR schem/net)
+# substring_index_test.cpp includes the netlister's internal header
+# (src/core/src/schem/net/substring_index.hpp).
+target_include_directories(hefesto_schem_net_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")

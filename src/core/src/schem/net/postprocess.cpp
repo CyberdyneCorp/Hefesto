@@ -116,7 +116,7 @@ std::optional<ParametricName> match_parametric(std::string_view field) noexcept 
 
 /// The first field of a line expanded by "Parametric vector names", or
 /// nullopt when it does not match or a bound has no `.param` value.
-std::optional<std::string> expand_parametric(std::string_view field, const ParamValues& values) {
+std::optional<std::string> expand_parametric(std::string_view field, const ParamValues& values, BusBudget* budget) {
   const auto name = match_parametric(field);
   if (!name) {
     return std::nullopt;
@@ -126,7 +126,8 @@ std::optional<std::string> expand_parametric(std::string_view field, const Param
   if (first == values.end() || last == values.end()) {
     return std::nullopt;
   }
-  const BusExpansion bus = parse_bus(std::string{name->base} + "[" + first->second + ":" + last->second + "]");
+  const BusExpansion bus =
+      parse_bus(std::string{name->base} + "[" + first->second + ":" + last->second + "]", budget);
   if (!bus.width_known) {
     return std::nullopt;
   }
@@ -134,12 +135,12 @@ std::optional<std::string> expand_parametric(std::string_view field, const Param
 }
 
 /// `line` with its first field replaced by its parametric expansion.
-std::string with_parametric_first_field(std::string_view line, const ParamValues& values) {
+std::string with_parametric_first_field(std::string_view line, const ParamValues& values, BusBudget* budget) {
   const std::string_view field = first_field(line);
   if (field.empty()) {
     return std::string{line};
   }
-  const auto expanded = expand_parametric(field, values);
+  const auto expanded = expand_parametric(field, values, budget);
   if (!expanded) {
     return std::string{line};
   }
@@ -286,13 +287,14 @@ bool repeats_first_field(std::string_view name) noexcept {
 }
 
 /// Builds the lines of one vector element, stopping once the text would
-/// pass kMaxBusBytes (hostile widths cannot exhaust memory). The field after
-/// each marker is split into its items once, not once per name, so the work
-/// is bounded by the text written.
+/// pass `max_bytes` (kMaxBusBytes, or less when the run's BusBudget has less
+/// left), so hostile widths cannot exhaust memory. The field after each
+/// marker is split into its items once, not once per name, so the work is
+/// bounded by the text written.
 class VectorWriter {
  public:
-  VectorWriter(std::string_view prefix, const std::vector<Field>& fields)
-      : prefix_{prefix}, fields_{fields}, items_(fields.size()) {
+  VectorWriter(std::string_view prefix, const std::vector<Field>& fields, std::uint64_t max_bytes)
+      : prefix_{prefix}, fields_{fields}, items_(fields.size()), max_bytes_{max_bytes} {
     for (std::size_t j = 1; j < fields.size(); ++j) {
       if (fields[j - 1].marker && !fields[j].marker) {
         items_[j] = split_items(fields[j].text);
@@ -300,7 +302,7 @@ class VectorWriter {
     }
   }
 
-  /// The lines, or nullopt when they would exceed kMaxBusBytes.
+  /// The lines, or nullopt when they would exceed the byte limit.
   std::optional<std::vector<std::string>> write(std::span<const std::string_view> names) {
     std::vector<std::string> lines;
     for (std::size_t i = 0; i < names.size(); ++i) {
@@ -309,7 +311,7 @@ class VectorWriter {
         return std::nullopt;
       }
       bytes_ += line.size();
-      if (bytes_ > kMaxBusBytes) {
+      if (bytes_ > max_bytes_) {
         return std::nullopt;
       }
       lines.push_back(std::move(line));
@@ -347,7 +349,7 @@ class VectorWriter {
       line += marker.prefix;
       line += items[(start + l % k) % k];
       line += ' ';
-      if (bytes_ + line.size() > kMaxBusBytes) {
+      if (bytes_ + line.size() > max_bytes_) {
         return false;
       }
     }
@@ -357,7 +359,12 @@ class VectorWriter {
   std::string_view prefix_;
   const std::vector<Field>& fields_;
   std::vector<std::vector<std::string_view>> items_;  // by field, for the fields after a marker
+  std::uint64_t max_bytes_;
   std::size_t bytes_ = 0;
+
+ public:
+  /// The bytes of the lines written.
+  [[nodiscard]] std::size_t bytes() const noexcept { return bytes_; }
 };
 
 // --- Renames, save lines, subcircuit lines --------------------------------
@@ -513,8 +520,8 @@ ParamValues collect_params(std::span<const RawLine> lines) {
 
 class PostProcessor {
  public:
-  PostProcessor(bool xschem_compat, std::vector<diag::Diagnostic>* warnings, ParamValues params)
-      : compat_{xschem_compat}, warnings_{warnings}, params_{std::move(params)} {}
+  PostProcessor(bool xschem_compat, std::vector<diag::Diagnostic>* warnings, ParamValues params, BusBudget* budget)
+      : compat_{xschem_compat}, warnings_{warnings}, params_{std::move(params)}, budget_{budget} {}
 
   void feed(const RawLine& line) {
     if (line.chunk->user_code) {
@@ -552,7 +559,7 @@ class PostProcessor {
     if (strips_trailing_m1(line, true, compat_)) {
       line = remove_trailing_m1(line);
     }
-    out_.push_back({with_parametric_first_field(line, params_), architecture});
+    out_.push_back({with_parametric_first_field(line, params_, budget_), architecture});
   }
 
   void flush() {
@@ -577,7 +584,7 @@ class PostProcessor {
       emit(subcircuit_line(std::move(text)));
       return;
     }
-    text = apply_renames(with_parametric_first_field(text, params_));
+    text = apply_renames(with_parametric_first_field(text, params_, budget_));
     const auto fields = split_fields(text);
     if (fields.empty()) {
       emit({});
@@ -604,25 +611,35 @@ class PostProcessor {
       emit({});  // an empty name list is an empty line
       return;
     }
-    auto lines = VectorWriter{prefix, rest}.write(names);
+    // Only a vector element (several names) is bus expansion text (Q-SCHEM-41).
+    BusBudget* budget = names.size() > 1 ? budget_ : nullptr;
+    const std::uint64_t limit =
+        budget == nullptr ? kMaxBusBytes : std::min<std::uint64_t>(kMaxBusBytes, budget->remaining());
+    VectorWriter writer{prefix, rest, limit};
+    auto lines = writer.write(names);
     if (!lines) {
-      warn_size(text);
+      warn_size(text, limit < kMaxBusBytes);
       emit(std::string{prefix} + text);
       return;
+    }
+    if (budget != nullptr) {
+      (void)budget->take(writer.bytes());
     }
     for (std::string& line : *lines) {
       emit(std::move(line));
     }
   }
 
-  void warn_size(std::string_view text) {
+  void warn_size(std::string_view text, bool over_budget) {
     if (warnings_ == nullptr) {
       return;
     }
     const std::string shown = text.size() > 80 ? std::string{text.substr(0, 80)} + "..." : std::string{text};
-    warnings_->push_back(diag::make(net_codes::kSizeLimit, "vector element " + shown + " exceeds " +
-                                                               std::to_string(kMaxBusBytes) +
-                                                               " bytes when expanded; written unexpanded"));
+    const std::string limit = over_budget ? "the total of " + std::to_string(kMaxBusTotalBytes) +
+                                                " bytes of expanded bus text per netlist run"
+                                          : std::to_string(kMaxBusBytes) + " bytes";
+    warnings_->push_back(
+        diag::make(net_codes::kSizeLimit, "vector element " + shown + " exceeds " + limit + " when expanded; written unexpanded"));
   }
 
   void emit(std::string text) { out_.push_back({std::move(text), false}); }
@@ -630,6 +647,7 @@ class PostProcessor {
   bool compat_;
   std::vector<diag::Diagnostic>* warnings_;
   ParamValues params_;
+  BusBudget* budget_;
   bool in_block_ = false;
   std::optional<Pending> pending_;
   std::vector<ProcessedLine> out_;
@@ -678,9 +696,9 @@ std::string remove_trailing_m1(std::string_view line) {
 }
 
 std::vector<ProcessedLine> postprocess(std::span<const NetlistChunk> chunks, bool xschem_compat,
-                                       std::vector<diag::Diagnostic>* warnings) {
+                                       std::vector<diag::Diagnostic>* warnings, BusBudget* budget) {
   const std::vector<RawLine> lines = split_chunks(chunks);
-  PostProcessor processor{xschem_compat, warnings, collect_params(lines)};
+  PostProcessor processor{xschem_compat, warnings, collect_params(lines), budget};
   for (const RawLine& line : lines) {
     processor.feed(line);
   }
@@ -688,8 +706,8 @@ std::vector<ProcessedLine> postprocess(std::span<const NetlistChunk> chunks, boo
 }
 
 std::string finish_netlist(std::span<const NetlistChunk> chunks, bool xschem_compat,
-                           std::vector<diag::Diagnostic>* warnings) {
-  const std::vector<ProcessedLine> lines = postprocess(chunks, xschem_compat, warnings);
+                           std::vector<diag::Diagnostic>* warnings, BusBudget* budget) {
+  const std::vector<ProcessedLine> lines = postprocess(chunks, xschem_compat, warnings, budget);
   return break_lines(lines);
 }
 

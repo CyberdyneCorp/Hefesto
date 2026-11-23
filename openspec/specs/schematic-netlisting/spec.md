@@ -231,6 +231,8 @@ Values that xschem does not handle (it loops forever, reads undefined memory or 
 
 **Input limits** (approved by the user on 2026-11-21, Q-SCHEM-32; both modes): one expansion SHALL give at most 1,048,576 (2^20) names (`kMaxBusBits`) and at most 67,108,864 bytes (64 MiB, `kMaxBusBytes`) of expanded text, commas included; parentheses SHALL nest at most 256 deep; index and count arithmetic SHALL NOT overflow. Input past a limit SHALL be used unchanged with unknown width, like a syntax error, and SHALL report the warning `bus expansion of <string> exceeds a limit (1048576 names, 67108864 bytes or 256 nested parentheses); used unchanged` (`SCHEM-NET-006`), where `<string>` is cut to its first 80 bytes followed by `...` when longer.
 
+**Total expansion** (approved by the user on 2026-11-22, Q-SCHEM-41, decision M8-D3; both modes): the expanded text of all bus expansions of one netlist run, or of one editing session, SHALL total at most 4,294,967,296 bytes (4 GiB, 64 × `kMaxBusBytes`), commas included. A name whose expansion would take the total past that limit SHALL be used unchanged with unknown width and SHALL report the same `SCHEM-NET-006` warning as a single name past `kMaxBusBytes`; names expanded before it keep their expansion. The total starts at 0 for each netlist run and for each editing session.
+
 When option `bus_replacement_char` is set, every `[` and `]` in an expanded name SHALL be replaced by its first and second character. A syntax error SHALL report `syntax error in <string>` and SHALL use the string unchanged with unknown width.
 
 Compatibility: exact
@@ -264,6 +266,11 @@ Compatibility: exact
 #### Scenario: Expansion past the limits
 - **WHEN** `A[1048576:0]`, a 128-byte name followed by `[1048575:0]` (more than 64 MiB of text) and a name inside 300 nested parentheses are expanded, with `xschem-compat` ON or OFF
 - **THEN** each SHALL be used unchanged with unknown width and SHALL report the `SCHEM-NET-006` warning, with work and memory bounded by the limits
+
+#### Scenario: Total bus expansion limit
+- **GIVEN** a netlist run in which 64 names each expand to 67,108,864 bytes or slightly less, so that their total is just under 4,294,967,296 bytes, followed by a name whose expansion would take the total past it, with `xschem-compat` ON or OFF
+- **WHEN** the names are expanded
+- **THEN** the first 64 names SHALL be expanded, the last name SHALL be used unchanged with unknown width and SHALL report the `SCHEM-NET-006` warning, and the run SHALL continue (Q-SCHEM-41)
 
 #### Scenario: Bus replacement characters
 - **GIVEN** option `bus_replacement_char` = `<>`
@@ -689,6 +696,11 @@ In `flat` mode, Hefesto SHALL produce a netlist with no subcircuit hierarchy for
 
 The flat netlist SHALL be electrically equivalent to the hierarchical one and to xschem's flat netlist: the same devices, the same connections, and the same model names and parameter values. It is not byte-compared: the golden comparison SHALL parse both netlists into a canonical form (devices with their resolved nodes, models and parameter values, in a canonical order, with names compared case-insensitively as SPICE reads them) and compare those. Any other property of xschem's flat text is informative and is not reproduced (Q-SCHEM-15, `Resolution: replicate`, behavioural), in particular: its letter case (xschem writes the flat text in upper case except `.end`), the whitespace inside quoted expressions (xschem removes it: `'int((1 + 1)/2) * WN / 1 * 0.29'` becomes `'INT((1+1)/2)*WN/1*0.29'`, which SPICE reads the same), and its `*--------BEGIN_<path>->...`/`*--------END___<path>->...` comment lines. The canonical form SHALL therefore compare quoted expressions without their whitespace.
 
+**Limits** (approved by the user on 2026-11-22, Q-SCHEM-42, decision M8-D1; both modes of `xschem-compat`; xschem bounds neither):
+- **Depth.** Substitution SHALL descend at most 64 levels (`kMaxFlatDepth`), the top schematic's instances being level 1. An instance of a defined subcircuit that would open level 65 SHALL NOT be substituted: it SHALL be written as its `X` line, and the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once per run. A subcircuit body that places itself therefore stops after 64 levels.
+- **Size.** The flat output is counted line by line before line breaking: each written line counts its text, its line feed and a fixed 40 bytes for its in-memory record, and each substituted instance counts its own line too. When the next line would pass 268,435,456 bytes (256 MiB), substitution SHALL stop: no further instance SHALL be substituted, the instances not yet substituted SHALL be written as their `X` lines, every other remaining line (the rest of the bodies already being substituted, `**.ends`, `.GLOBAL`, `.end`) SHALL still be written, so the output stays a complete netlist, and the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once per run.
+- In both cases the netlist run SHALL NOT fail; the warning is the only sign that the flat netlist is incomplete.
+
 Compatibility: behavioral
 
 (xschem ref: flatten.awk:36-312, xschem.tcl:1006-1013)
@@ -702,6 +714,16 @@ Compatibility: behavioral
 - **GIVEN** golden case SCHEM-NL-21 (sky130 `top.sch` and `gain_stage.sch` netlisted flat by xschem and by Hefesto; xschem's flat `top.sch` has only comment lines and `.end`, no device line, while flat `gain_stage.sch` has 16 device lines, two of them from the `passgate_1` variant of instance `x6`)
 - **WHEN** the outputs are compared
 - **THEN** the comparison SHALL pass when the canonical parsed forms are equal, even if the texts differ in letter case, whitespace inside quoted expressions or line order
+
+#### Scenario: Flat netlist deeper than 64 levels
+- **GIVEN** a subcircuit `loop` whose body holds one resistor and one instance of `loop`, and a top schematic that places `loop` once, with `xschem-compat` ON or OFF
+- **WHEN** a flat netlist is generated
+- **THEN** it SHALL hold 64 resistor lines (levels 1 to 64) and one `X` line for the instance of `loop` at level 65, the warning `flat netlist stopped: depth limit of 64 levels` (`SCHEM-NET-017`) SHALL be reported once, and the run SHALL complete without failing (Q-SCHEM-42)
+
+#### Scenario: Flat netlist larger than 256 MiB
+- **GIVEN** a hierarchy whose fully flattened netlist would be larger than 268,435,456 bytes (for example 24 levels that each place the next subcircuit twice, the last holding a resistor: 2^24 resistor lines), with `xschem-compat` ON or OFF
+- **WHEN** a flat netlist is generated
+- **THEN** the output SHALL hold no more than 268,435,456 bytes plus the remaining lines written after the stop (the `X` lines of the instances not yet substituted and the other lines of the bodies already open and of the top level), SHALL end with `.end`, the warning `flat netlist stopped: output passed 268435456 bytes` (`SCHEM-NET-017`) SHALL be reported once, the run SHALL complete without failing, and work and memory SHALL stay bounded by the limit (Q-SCHEM-42)
 
 ### Requirement: Errors and warnings
 Netlisting SHALL report, without stopping:

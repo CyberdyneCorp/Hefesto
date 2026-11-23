@@ -12,6 +12,9 @@
 
 #pragma once
 
+#include <string_view>
+#include <vector>
+
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/script/interp.hpp"
@@ -19,6 +22,13 @@
 #include "hefesto/script/tcl/sandbox.hpp"
 
 namespace hefesto::schem {
+
+/// The GUI-only commands the three pinned PDK `xschemrc` files call (Tk
+/// widgets and window commands, from the inventory's `rc_commands`), sorted.
+/// While an `xschemrc` runs they are accepted, do nothing and return the
+/// empty string; every other unknown command is a Tcl error (Q-SCHEM-38
+/// option (a), approved 2026-11-22, both modes of `xschem-compat`).
+[[nodiscard]] const std::vector<std::string_view>& xschemrc_gui_commands();
 
 /// The sandbox an `xschemrc` runs in: read-only access to the rc file's
 /// folder, the document folder, PDK_ROOT and XSCHEM_SHAREDIR, nothing
@@ -30,8 +40,9 @@ namespace hefesto::schem {
 /// folder's `xschemrc` in `interp`, at most `input.time_limit` in total
 /// (enforced through `progress`, the interpreter's progress hook, which is
 /// restored afterwards); returns the search path and the global variables
-/// the files set. `puts` is redefined to capture output and `unknown`
-/// accepts every unknown command.
+/// the files set. `puts` is redefined to capture output, the
+/// xschemrc_gui_commands() are no-ops, and any other unknown command raises
+/// Tcl's error (SCHEM-LIB-006; Q-SCHEM-38 option (a)).
 [[nodiscard]] XschemrcResult evaluate_xschemrc(script::Interpreter& interp, script::ProgressReporting& progress,
                                                platform::FileSystem& fs, const XschemrcInput& input);
 

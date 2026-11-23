@@ -25,6 +25,7 @@
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/schem/lib/xschemrc.hpp"
 #include "hefesto/schem/tcl/permission.hpp"
 #include "hefesto/schem/tcl/procedures.hpp"
 #include "hefesto/schem/tcl/tcl_bridge.hpp"
@@ -39,6 +40,7 @@ namespace {
 
 constexpr const char* kTcleval = "[cap:schematic-symbols-and-libraries][req:tcleval values]";
 constexpr const char* kPermission = "[cap:schematic-symbols-and-libraries][req:Script execution permission]";
+constexpr const char* kRc = "[cap:schematic-symbols-and-libraries][req:xschemrc as data]";
 
 class TempDir {
  public:
@@ -210,22 +212,25 @@ TEST_CASE("tcleval runs in the sandbox", kTcleval) {
 // The inventory test of "tcleval values": every command an inventoried
 // tcleval value calls is an xschem procedure Hefesto provides, a procedure
 // the PDK defines, the `xschem` command (CMD) or a Tcl built-in.
-TEST_CASE("every inventoried tcleval command is provided", kTcleval) {
+// The union over the three PDKs of the inventory list `key`.
+std::set<std::string> inventory_list(const std::string& key) {
   std::ifstream in(std::string{HEFESTO_SOURCE_DIR} + "/tests/data/schem/inventory.json");
   REQUIRE(in.good());
   std::stringstream buffer;
   buffer << in.rdbuf();
   const std::string json = buffer.str();
-  auto lists = [&json](const std::string& key) {
-    std::set<std::string> names;
-    const std::regex list("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
-    const std::regex item("\"([^\"]+)\"");
-    for (std::sregex_iterator it(json.begin(), json.end(), list), end; it != end; ++it) {
-      const std::string body = (*it)[1];
-      for (std::sregex_iterator i(body.begin(), body.end(), item); i != end; ++i) names.insert((*i)[1]);
-    }
-    return names;
-  };
+  std::set<std::string> names;
+  const std::regex list("\"" + key + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+  const std::regex item("\"([^\"]+)\"");
+  for (std::sregex_iterator it(json.begin(), json.end(), list), end; it != end; ++it) {
+    const std::string body = (*it)[1];
+    for (std::sregex_iterator i(body.begin(), body.end(), item); i != end; ++i) names.insert((*i)[1]);
+  }
+  return names;
+}
+
+TEST_CASE("every inventoried tcleval command is provided", kTcleval) {
+  const auto lists = [](const std::string& key) { return inventory_list(key); };
   const std::set<std::string> commands = lists("tcleval_commands");
   const std::set<std::string> pdk_procs = lists("pdk_procs");
   REQUIRE_FALSE(commands.empty());
@@ -279,4 +284,63 @@ TEST_CASE("a launcher runs in the sandbox", kPermission) {
   schem::LauncherPermission permission;
   const schem::ConfirmLauncher yes = [](std::string_view) { return true; };
   CHECK_FALSE(schem::run_launcher(env.tcl.interpreter(), permission, 1, "exec ls", yes).ok());
+}
+
+// Q-SCHEM-38 option (a), approved 2026-11-22: the GUI-only list is derived
+// from the inventory. Every command the PDK xschemrc files (and the files
+// they source) call is a Tcl built-in of the sandbox, an xschem procedure
+// Hefesto provides, a procedure the PDK defines, the `xschem` command (CMD)
+// or a GUI-only command; a GUI-only command is none of the others. The
+// gf180mcu menu procedure (`xschem-menu`) runs the external program `mkdir`,
+// which the sandbox refuses like any other unknown command (no GUI stub).
+TEST_CASE("every inventoried xschemrc command is provided or GUI-only", kRc) {
+  const std::set<std::string> external_programs{"mkdir"};
+  const std::set<std::string> commands = inventory_list("rc_commands");
+  const std::set<std::string> pdk_procs = inventory_list("pdk_procs");
+  REQUIRE_FALSE(commands.empty());
+  const auto& provided = schem::xschem_procedure_names();
+  const auto& gui = schem::xschemrc_gui_commands();
+  CHECK(std::is_sorted(gui.begin(), gui.end()));
+  Env env;
+  const auto builtin = [&env](std::string_view name) {
+    return env.tcl.interpreter().evaluate("info commands ::" + std::string{name}).value.to_string() ==
+           "::" + std::string{name};
+  };
+  for (const std::string& name : commands) {
+    INFO(name);
+    const bool xschem_proc = std::find(provided.begin(), provided.end(), name) != provided.end();
+    const bool gui_only = std::find(gui.begin(), gui.end(), name) != gui.end();
+    const bool external = external_programs.count(name) != 0;
+    CHECK((xschem_proc || pdk_procs.count(name) != 0 || name == "xschem" || builtin(name) || gui_only || external));
+  }
+  for (const std::string_view name : gui) {
+    INFO(name);
+    CHECK(commands.count(std::string{name}) == 1);
+    CHECK_FALSE(builtin(name));
+    CHECK(pdk_procs.count(std::string{name}) == 0);
+  }
+}
+
+TEST_CASE("GUI-only command in a PDK xschemrc", kRc) {
+  for (const bool compat : {true, false}) {  // the same in both modes of xschem-compat
+    CAPTURE(compat);
+    TempDir dir;
+    std::string rc;
+    for (const std::string_view name : schem::xschemrc_gui_commands()) rc += std::string{name} + " .pdk -text x\n";
+    rc += "set AFTER_GUI [menu .m]\n";
+    std::ofstream(dir.path() / "xschemrc") << rc;
+    schem::XschemrcInput input;
+    input.document_folder = dir.path();
+    Env env(schem::xschemrc_policy(input));
+    const auto result = env.tcl.load_xschemrc(input);
+    for (const auto& d : result.diagnostics) {
+      INFO(d.text);
+      CHECK(d.code != "SCHEM-LIB-006");
+    }
+    REQUIRE(result.variables.count("AFTER_GUI") == 1);
+    CHECK(result.variables.at("AFTER_GUI").empty());
+    // The no-ops exist only while the rc files run.
+    CHECK(env.tcl.interpreter().evaluate("info commands ::menu").value.to_string().empty());
+    CHECK(env.eval("tcleval([info commands ::wm])").empty());
+  }
 }

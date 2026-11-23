@@ -45,7 +45,7 @@ std::string join(const std::vector<std::string_view>& parts) {
 
 // The folder a search-path directory names: a relative one (`.`, `lib`,
 // `../lib`) is under the containing schematic's folder (Q-SCHEM-30,
-// proposed Q-SCHEM-38), never the folder Hefesto was started in.
+// Q-SCHEM-38 option (a)), never the folder Hefesto was started in.
 platform::Path folder_of(const platform::Path& directory, const platform::Path& document_folder) {
   if (directory.is_absolute()) return directory;
   if (directory == platform::Path{std::string{kDocumentFolderElement}}) return document_folder;
@@ -124,7 +124,9 @@ ResolvedReference resolve_reference(std::string_view reference, const platform::
   if (is_web_reference(reference)) return {{}, ResolvedVia::web, {}};
   if (reference.starts_with('/')) return {platform::Path{std::string{reference}}, ResolvedVia::absolute, {}};
   const std::string normal = normalize_reference(reference);
-  if (normal.starts_with("./") || normal.starts_with("../")) {
+  // An unsaved document has no folder: step 5 resolves nothing then, never
+  // against the folder Hefesto was started in (Q-SCHEM-30).
+  if (!document_folder.empty() && (normal.starts_with("./") || normal.starts_with("../"))) {
     const platform::Path file = joined(document_folder, normal);
     if (exists_or_folder(fs, file)) return {file, ResolvedVia::relative, document_folder};
   }

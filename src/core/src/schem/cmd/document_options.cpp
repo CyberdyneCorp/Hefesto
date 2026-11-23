@@ -31,9 +31,7 @@ constexpr std::array<std::string_view, 2> kKinds{"schematic", "symbol"};
 constexpr std::array<std::string_view, 3> kPathActions{"list", "set", "prepend"};
 
 std::string env_value(const cmd::CommandContext& ctx, std::string_view name) {
-  const auto& env = ctx.editor()->script.sandbox.environment;
-  const auto it = env.find(name);
-  return it == env.end() ? std::string{} : it->second;
+  return sandbox_env(ctx, name);
 }
 
 // The Hefesto copy of the xschem system library (Requirement "System
@@ -54,6 +52,15 @@ XschemrcInput xschemrc_input(const cmd::CommandContext& ctx, const std::string& 
   input.env = {{"HOME", folder.generic_string()}, {"PWD", folder.generic_string()}};
   input.variables = {{"XSCHEM_SHAREDIR", sharedir(ctx).generic_string()},
                      {"USER_CONF_DIR", user_conf.generic_string()}};
+  return input;
+}
+
+// `input` with a missing PDK file left out; nullopt when the folder has no
+// `xschemrc` either.
+std::optional<XschemrcInput> existing_files(platform::FileSystem& fs, XschemrcInput input,
+                                            const platform::Path& folder) {
+  if (!input.rc_file.empty() && !fs.exists(input.rc_file)) input.rc_file.clear();
+  if (input.rc_file.empty() && !fs.exists(folder / "xschemrc")) return std::nullopt;
   return input;
 }
 
@@ -112,6 +119,19 @@ DocumentId add_document(Session& session, Document document) {
 
 }  // namespace
 
+std::string sandbox_env(const cmd::CommandContext& ctx, std::string_view name) {
+  if (ctx.editor() == nullptr) return {};
+  const auto& env = ctx.editor()->script.sandbox.environment;
+  const auto it = env.find(name);
+  return it == env.end() ? std::string{} : it->second;
+}
+
+std::optional<XschemrcInput> xschemrc_files(cmd::CommandContext& ctx, const Session& session,
+                                            const platform::Path& document_folder) {
+  return existing_files(ctx.services().files, xschemrc_input(ctx, active_pdk(ctx, session), document_folder),
+                        document_folder);
+}
+
 std::string active_pdk(const cmd::CommandContext& ctx, const Session& session) {
   if (session.xschemrc) {
     const auto it = session.xschemrc->variables.find("PDK");
@@ -129,9 +149,9 @@ diag::Status evaluate_xschemrc(cmd::CommandContext& ctx, Session& session, const
     const std::string where = input.rc_file.empty() ? std::string{"no PDK store"} : input.rc_file.generic_string();
     return diag::make(kNoPdkData, "schematic: PDK " + *pdk + " has no xschem data (" + where + ")");
   }
-  if (!pdk_rc) input.rc_file.clear();
-  if (!pdk_rc && !fs.exists(document_folder / "xschemrc")) return diag::Done{};
-  publish_xschemrc(ctx, session, SearchPath::from_xschemrc(fs, input));
+  auto files = existing_files(fs, std::move(input), document_folder);
+  if (!files) return diag::Done{};
+  publish_xschemrc(ctx, session, SearchPath::from_xschemrc(fs, *files));
   return diag::Done{};
 }
 

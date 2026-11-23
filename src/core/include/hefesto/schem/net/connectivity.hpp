@@ -25,6 +25,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/schem/file/document.hpp"
+#include "hefesto/schem/net/bus.hpp"
 
 namespace hefesto::schem {
 
@@ -65,6 +66,8 @@ struct NetInstance {
 struct SchematicNets {
   std::vector<NetWire> wires;          // wire order
   std::vector<NetInstance> instances;  // instance order
+  /// The run's bus expansion budget (Q-SCHEM-41); nullptr: none.
+  BusBudget* bus_budget = nullptr;
 };
 
 /// One short ("Net naming order").
@@ -105,7 +108,9 @@ struct NetNaming {
 /// vector notation"): the `#` of an automatic name removed, an automatic
 /// net of multiplicity m > 1 expanded as `net<N>_[m-1..0]`, any other name
 /// bus-expanded, and `[`/`]` replaced by `bus_replacement` when it has two
-/// characters.
-[[nodiscard]] std::string net_text(std::string_view net, const NetNaming& naming, std::string_view bus_replacement);
+/// characters. The expansion takes its text from `budget` when given
+/// (Q-SCHEM-41).
+[[nodiscard]] std::string net_text(std::string_view net, const NetNaming& naming, std::string_view bus_replacement,
+                                   BusBudget* budget = nullptr);
 
 }  // namespace hefesto::schem

@@ -63,7 +63,10 @@ NetlistRun::NetlistRun(const NetlistEnvironment& environment, const Document& to
       options_{options},
       compat_{xschem_compat},
       resolve_{environment.search_path, environment.fs, &resolve_warnings_, xschem_compat},
-      topschname_{topschname(top)} {}
+      bus_budget_{environment.bus_budget},
+      topschname_{topschname(top)} {
+  element_state_.bus_budget = &bus_budget_;
+}
 
 void NetlistRun::warn(diag::Diagnostic diagnostic) {
   result_.diagnostics.push_back(std::move(diagnostic));
@@ -143,7 +146,7 @@ std::string NetlistRun::top_ports(const Level& top) {
   std::string out;
   for (const Placed* p : ports) {
     const std::string lab = substitute_parents(attribute(*p, "lab"), top.parents);
-    const BusExpansion bus = parse_bus(lab);
+    const BusExpansion bus = parse_bus(lab, &bus_budget_);
     if (auto warning = bus_diagnostic(bus, lab)) {
       warn(std::move(*warning));
     }
@@ -280,9 +283,13 @@ NetlistResult NetlistRun::run() {
   for (diag::Diagnostic& d : resolve_warnings_.take()) {
     warn(std::move(d));
   }
-  std::vector<ProcessedLine> lines = postprocess(chunks_, compat_, &result_.diagnostics);
+  std::vector<ProcessedLine> lines = postprocess(chunks_, compat_, &result_.diagnostics, &bus_budget_);
   if (options_.hierarchy == Hierarchy::flat) {
-    lines = flatten_netlist(lines);
+    FlatNetlist flat = flatten_netlist(lines, env_.flat_limits);
+    lines = std::move(flat.lines);
+    for (diag::Diagnostic& d : flat.warnings) {
+      warn(std::move(d));
+    }
   }
   result_.text = break_lines(lines);
   return std::move(result_);

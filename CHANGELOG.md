@@ -29,6 +29,33 @@ release notices.
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.
 
+## Unreleased (M8: schematic capture, in progress)
+
+### Added
+
+- **xschem-compatible SPICE netlisting through the session.** `schematic
+  netlist`, `xschem netlist` and `hefesto-cli --netlist` resolve symbols
+  through the session's library search path and `xschemrc` files, so
+  `tcleval(...)` values are evaluated. `xschem translate`,
+  `abs_sym_path` and `rel_sym_path` are available to scripts.
+- **System symbol library.** A clean-room `devices/` library (43 symbols)
+  ships under `assets/schematic/xschem_library/devices/`, where the PDK
+  `xschemrc` files look for it.
+- **Tcl symbol generators** run in a sandboxed interpreter (10 s and
+  256 MiB per run, 60 s in total until the symbols are reloaded);
+  generators that run external programs are not run (`SCHEM-LIB-011`).
+
+### Changed
+
+- **Input limits for hostile schematics, in both `xschem-compat` modes.**
+  A flat netlist stops substituting at 64 levels or 256 MiB of output
+  and is still written to its `.end` (`SCHEM-NET-017`); a schematic used as a symbol stops at 256 MiB when
+  flattened (`SCHEM-LIB-009`); the total bus expansion of a netlist run or
+  editing session is capped at 4 GiB (`SCHEM-NET-006`).
+- **Unknown commands in an `xschemrc` file are Tcl errors**
+  (`SCHEM-LIB-006`, earlier settings kept), except the GUI-only commands
+  the sky130, GF180MCU and IHP `xschemrc` files call, which do nothing.
+
 ## Unreleased (M7: extraction and netlisting, in progress)
 
 ### Changed

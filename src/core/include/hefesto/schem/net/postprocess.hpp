@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "hefesto/diag/diagnostic.hpp"
+#include "hefesto/schem/net/bus.hpp"
 
 namespace hefesto::schem {
 
@@ -52,9 +53,12 @@ struct ProcessedLine {
 /// is the Q-SCHEM-22 branch point (trailing `m=1`); every other rule is the
 /// same in both modes. A vector element whose lines would pass kMaxBusBytes
 /// is written unexpanded with a SCHEM-NET-006 warning to `warnings` (when
-/// not null).
+/// not null). With a `budget`, the expanded text of vector elements and
+/// parametric vector names is also taken from it (Q-SCHEM-41); an element
+/// that no longer fits is written unexpanded with SCHEM-NET-006 as well.
 [[nodiscard]] std::vector<ProcessedLine> postprocess(std::span<const NetlistChunk> chunks, bool xschem_compat,
-                                                     std::vector<diag::Diagnostic>* warnings = nullptr);
+                                                     std::vector<diag::Diagnostic>* warnings = nullptr,
+                                                     BusBudget* budget = nullptr);
 
 /// The longest segment "Line breaking" leaves on one line.
 inline constexpr std::size_t kMaxSegment = 130;
@@ -66,7 +70,8 @@ inline constexpr std::size_t kMaxSegment = 130;
 
 /// postprocess() then break_lines().
 [[nodiscard]] std::string finish_netlist(std::span<const NetlistChunk> chunks, bool xschem_compat,
-                                         std::vector<diag::Diagnostic>* warnings = nullptr);
+                                         std::vector<diag::Diagnostic>* warnings = nullptr,
+                                         BusBudget* budget = nullptr);
 
 /// The Q-SCHEM-22 branch point: whether a trailing ` m=1` is removed from
 /// `line`. ON: from every line. OFF: only from device lines, which are lines

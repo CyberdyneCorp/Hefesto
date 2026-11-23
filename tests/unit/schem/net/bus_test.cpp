@@ -269,3 +269,55 @@ TEST_CASE("bus notation: bus_width counts without building the names",
   CHECK(schem::parse_bus(wide).too_large);
   CHECK(schem::bus_width(wide) == 1);
 }
+
+// Q-SCHEM-41 (user decision M8-D3, 2026-11-22): the expanded bus text of a
+// netlist run or an editing session is capped at 64 x kMaxBusBytes in
+// total. Past it a name is used unchanged with unknown width and
+// SCHEM-NET-006, like a single name over kMaxBusBytes. The budget is a
+// constructor argument, so the test needs no 4 GiB.
+TEST_CASE("Total bus expansion limit", "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  CHECK(schem::kMaxBusTotalBytes == 4294967296U);
+  CHECK(schem::BusBudget{}.remaining() == 64U * schem::kMaxBusBytes);
+
+  schem::BusBudget budget{25};
+  const auto first = schem::parse_bus("A[3:0]", &budget);  // `A[3],A[2],A[1],A[0]`: 19 bytes
+  CHECK(first.bits == Bits{"A[3]", "A[2]", "A[1]", "A[0]"});
+  CHECK(budget.remaining() == 6);
+  CHECK(schem::expand_bus("plain", &budget) == Bits{"plain"});  // nothing to expand: nothing taken
+  CHECK(budget.remaining() == 6);
+  CHECK(schem::bus_width("B[1:0]", &budget) == 1);  // `B[1],B[0]` would take 9
+  CHECK(schem::bus_width("B[1:0]") == 2);
+  CHECK(budget.remaining() == 6);  // a width takes nothing
+  const auto over = schem::parse_bus("B[1:0]", &budget);
+  CHECK(over.bits == Bits{"B[1:0]"});
+  CHECK(over.width() == 1);
+  CHECK(over.too_large);
+  CHECK(over.over_budget);
+  CHECK_FALSE(over.syntax_error);
+  const auto warning = schem::bus_diagnostic(over, "B[1:0]");
+  REQUIRE(warning);
+  CHECK(warning->code == "SCHEM-NET-006");
+  CHECK(warning->text ==
+        "bus expansion of B[1:0] exceeds the total of 4294967296 bytes of expanded bus text per netlist run or session; "
+        "used unchanged");
+  CHECK(schem::parse_bus("C,D", &budget).bits == Bits{"C", "D"});  // 3 bytes still fit
+  CHECK(budget.remaining() == 3);
+  // A name over a per-name limit keeps the per-name message, budget or not.
+  schem::BusBudget large;
+  const auto wide = schem::parse_bus("A[1048576:0]", &large);
+  CHECK(wide.too_large);
+  CHECK_FALSE(wide.over_budget);
+  CHECK(large.remaining() == schem::kMaxBusTotalBytes);
+  // Regression (review of PR #88): with little budget left, a name that
+  // also passes kMaxBusBytes on its own (100,000 names of about 1 KB) was
+  // reported with the total-budget message; it keeps the per-name one.
+  const std::string long_name = std::string(1000, 'N') + "[99999:0]";
+  REQUIRE(schem::bus_width(long_name) == 1);  // over kMaxBusBytes alone
+  const auto both = schem::parse_bus(long_name, &budget);
+  CHECK(both.too_large);
+  CHECK_FALSE(both.over_budget);
+  const auto per_name = schem::bus_diagnostic(both, long_name);
+  REQUIRE(per_name);
+  CHECK(per_name->text.find("exceeds a limit (") != std::string::npos);
+  CHECK(budget.remaining() == 3);
+}
