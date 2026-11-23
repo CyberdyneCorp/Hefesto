@@ -21,3 +21,7 @@ HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-009", error, "The `.ext` input passes a resou
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-010", error, "The `use` records of the `.ext` files form a cycle; the read fails.")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-011", warning, "A `.ext` line has more than 128 tokens; the line is ignored with this warning, in both modes.")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-012", warning, "A `device` record overlaps an incompatible device at the same place and is ignored.")
+HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-013", warning, "A cell of the flattened hierarchy was extracted as an abstract view (`Error:  Cell <name> was extracted as an abstract view.`).")
+HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-014", warning, "A device of a hierarchical netlist is connected to a killed node and is written anyway (`Error:  Device at (<x> <y>) is connected to one or more eliminated nodes.`).")
+HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-015", error, "A netlister argument is not recognised or lacks its value; the command prints its usage and fails.")
+HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-016", warning, "A netlister argument is ignored (a second root cell, or a `-s` symbol that is malformed or already defined).")

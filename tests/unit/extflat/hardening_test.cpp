@@ -157,3 +157,42 @@ TEST_CASE("random bytes and mutated records never crash the reader", CAP_REQ) {
   }
   SUCCEED();
 }
+
+// Regression: every visit of a full flatten (nodes, kills, caps, devices,
+// resistors, subcircuits) added to one instance count, so a design with a
+// sixth of max_instances instances failed with EXTFLAT-READ-009.
+TEST_CASE("a hierarchy with exactly max_instances instances flattens", CAP_REQ) {
+  ExtFixture f;
+  f.file("top", "use c u[0:99:1][0:0:0] 1 0 0 0 1 0\n");
+  f.file("c", "node n 0 0 0 0 m1\ndevice mosfet nfet 0 0 1 1 2 8 VSUB n 4 0 n 8 0 n 8 0\n");
+  auto options = ExtFixture::netlister_options();
+  options.limits.max_instances = 100;
+  const auto full = f.flat("top", ExtFixture::netlister_flags(), {}, options);
+  REQUIRE(full.ok());
+  CHECK(full.value().devices.size() == 100);
+
+  options.limits.max_instances = 99;
+  const auto over = f.flat("top", ExtFixture::netlister_flags(), {}, options);
+  REQUIRE_FALSE(over.ok());
+  CHECK(over.error().code == "EXTFLAT-READ-009");
+}
+
+TEST_CASE("a hierarchy with exactly max_instances instances flattens one level", CAP_REQ) {
+  ExtFixture f;
+  f.file("top", "use c u[0:99:1][0:0:0] 1 0 0 0 1 0\n");
+  f.file("c", "node n 0 0 0 0 m1\n");
+  auto options = ExtFixture::netlister_options();
+  options.limits.max_instances = 100;
+  auto h = f.read_hier("top", options);
+  REQUIRE(h.ok());
+  const auto level = extflat::flatten_one_level(h.value(), "top", ExtFixture::netlister_flags(), {}, f.sink);
+  CHECK(level.ok());
+}
+
+TEST_CASE("merge records expanding to exactly max_connections connections flatten", CAP_REQ) {
+  ExtFixture f;
+  f.file("top", "node a 0 0 0 0 m1\nnode b 0 0 0 0 m1\nmerge a[0:9] b[0:9]\n");
+  auto options = ExtFixture::netlister_options();
+  options.limits.max_connections = 10;
+  CHECK(f.flat("top", ExtFixture::netlister_flags(), {}, options).ok());
+}

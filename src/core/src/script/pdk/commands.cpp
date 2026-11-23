@@ -52,8 +52,9 @@ cmd::CommandResult scale_option(cmd::CommandContext& ctx, const cmd::Invocation&
   return cmd::CommandResult::success();
 }
 
-// The SPICE netlist writer is an optional module that arrives with
-// extraction (M7): UI-CLIENT-002, as `netlist` does.
+// M4's partial `ext2spice`, registered only by sessions built without the
+// M7 netlisters; the full command is netlist/spice/spice.hpp (user decision
+// M7-3), so the rest of the options answer UI-CLIENT-002 here.
 cmd::CommandResult writer_unavailable() {
   return cmd::CommandResult::failure(diag::make(ui::codes::kModuleUnavailable,
                                                 "ext2spice: the SPICE netlist writer is not available yet (ext2spice, M7)"));
@@ -71,10 +72,6 @@ cmd::CommandResult ext2spice(cmd::CommandContext& ctx, const cmd::Invocation& in
 }
 
 }  // namespace
-
-cmd::CommandResult ext2spice_scale(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
-  return scale_option(ctx, invocation);
-}
 
 bool register_pdk_commands(cmd::CommandRegistry& registry) {
   cmd::CommandSpec spec{"ext2spice", "ext2spice [option]",

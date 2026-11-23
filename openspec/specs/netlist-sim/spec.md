@@ -7,7 +7,7 @@ This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `extto
 ## Requirements
 
 ### Requirement: Command options and defaults
-The command SHALL take an optional first word, matched case-insensitively with unique-prefix matching, from `alias labels default format rthresh cthresh merge extresist help`. Any other first word SHALL be treated as run arguments. The options are:
+The command SHALL take an optional first word, matched case-insensitively with unique-prefix matching, from `alias labels default format rthresh cthresh merge extresist help`. Any other first word SHALL be treated as run arguments. How the word `run` and an ambiguous prefix are treated depends on the `magic-compat` setting (Q-NETLIST-49, resolution: compat, as Q-NETLIST-13 for `ext2spice`): with it ON (the default) they are run arguments, so `ext2sim run` netlists a cell named `run`, as Magic does, whose option table starts with the entry `[run] [options]` that no word matches; with it OFF `run` is a keyword whose following words are the run arguments, and an ambiguous prefix prints `Ambiguous option: <w>` and does nothing. In both settings a word that is not a prefix of any option is the cell name. The options are:
 
 | Option | Effect | Default |
 |---|---|---|
@@ -37,8 +37,34 @@ The command SHALL take an optional first word, matched case-insensitively with u
 | `-y <n>` | Deprecated; prints `Cap accuracy option -y is deprecated.` |
 
 The default file names SHALL be `<cell>.sim`, `<cell>.al` and `<cell>.nodes`. With extresist on they SHALL be `<cell>.ext.sim`, `<cell>.ext.al` and `<cell>.ext.nodes`.
+
+A run SHALL write `<cell>.al` only when alias is on and `<cell>.nodes` only when labels is on, and SHALL never write to or close a file that an earlier run opened, in both `magic-compat` settings (Q-NETLIST-52, resolution: fix). Magic closes the two files at the end of a run but keeps their handles, so a run after `alias off` or `labels off` writes through a freed handle and closes it again (a double free). The names given with `-o`, `-a` and `-l` SHALL apply to that run only, in both settings: Magic keeps pointers to the run's argument words, which later runs read after they are freed (the rule of Q-NETLIST-42 for `ext2spice -o`).
+
+The flags `-A`, `-B`, `-F`, `-L`, `-M`, `-m`, `-f` and `-J` set Magic globals that later runs keep. With `magic-compat` ON they SHALL change the session's settings, so they hold for later runs; with it OFF they SHALL apply to that run only and leave the session's settings unchanged. (As landed in M7 round R2; `ext2spice` keeps its flags in both settings, and whether the two netlisters should follow one rule is an open user decision of that round.)
 Compatibility: behavioral
 (Magic ref: ext2sim/ext2sim.c:62-100, ext2sim/ext2sim.c:255-600, ext2sim/ext2sim.c:870-970)
+
+#### Scenario: The word run with magic-compat ON
+- **GIVEN** `magic-compat` ON
+- **WHEN** `ext2sim run` is executed
+- **THEN** `run` is a run argument, so the cell netlisted is the one named `run`
+
+#### Scenario: The word run with magic-compat OFF
+- **GIVEN** `magic-compat` OFF
+- **WHEN** `ext2sim run inv` is executed
+- **THEN** `run` is the keyword and `inv` is netlisted
+- **AND** `ext2sim r` (a prefix of `run` and `rthresh`) prints `Ambiguous option: r` and does nothing
+
+#### Scenario: Alias turned off after a run
+- **GIVEN** `ext2sim alias on`, a run on `inv`, then `ext2sim alias off`
+- **WHEN** `ext2sim` is run on `inv` again
+- **THEN** the second run writes its `= <canonical> <alias>` lines to `inv.sim`, does not write or close `inv.al`, and does not fail
+- **AND** the same holds for `labels off` after a run with labels on: the second run writes no `inv.nodes`
+
+#### Scenario: Run flags per magic-compat setting
+- **GIVEN** the session's default settings
+- **WHEN** `ext2sim -B -f su inv` runs with `magic-compat` OFF, and then with it ON
+- **THEN** the first run writes an SU file and leaves the session's settings unchanged, and the second leaves `-B` and format SU set for later runs
 
 #### Scenario: Extresist file naming
 - **GIVEN** `ext2sim extresist on`

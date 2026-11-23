@@ -52,7 +52,7 @@ All netlisters SHALL accept these arguments, which may be mixed with tool-specif
 | `-R` | Infinite resistance threshold |
 | `-p <path>` | `.ext` search path |
 | `-s sym=value` | Defines a symbol for `ext:l=`/`ext:w=` attributes |
-| `-S <file>` | Symbol file |
+| `-S <file>` | Symbol file: each line read as a `-s` argument |
 | `-t <chars>` | Output-name conversions (see below) |
 | `-T <tech>` | Technology (informative: accepted only by Magic's standalone netlister programs) |
 | `-v` | Warnings |
@@ -67,14 +67,29 @@ For `-t`, each character in `<chars>` turns on one conversion:
 - `=` converts `=` to `:`.
 - `[` or `]` converts brackets to `_`.
 
-A non-flag argument SHALL be taken as the root cell name. A later one replaces an earlier one, with a warning. The default thresholds are 2 fF and 10 Ω. Infinite means a capacitance of 1.0E38 and a resistance of 2^31 − 1. An unrecognized flag that the tool does not accept SHALL print the usage text and fail the command.
+A non-flag argument SHALL be taken as the root cell name. A later one replaces an earlier one, with a warning. The default thresholds are 2 fF and 10 Ω. Infinite means a capacitance of 1.0E38 and a resistance of 2^31 − 1. An unrecognized flag that the tool does not accept SHALL print the usage text and fail the command. `-T` SHALL be accepted only by the standalone programs (`hefesto-extcheck`); the embedded `ext2spice` and `ext2sim` pass it to their own flag parser, which answers `Unrecognized flag: -T`. `-o` is a flag of `ext2spice` and `ext2sim` only; `hefesto-extcheck` answers it with the usage text. `-h` SHALL first be passed to the tool's own flag parser (`ext2spice` prints its usage text, `ext2sim` prints `Unrecognized flag: -h` and its usage text) and then print the common usage text and fail.
+
+The `-s` and `-S` symbols SHALL be collected in argument order into one table for the run; a rejected assignment (no `=`, a value that is not an integer, or a symbol already defined) is reported and skipped, and a rejected line of a `-S` file is followed by `Error at line <n> of <file>`. A `-S` file that cannot be opened is reported as `<file>: No such file or directory` and the parse goes on. The table, the run's capacitance threshold (after `-c`/`-C`) and the `gnd` name SHALL be passed to the flattening of every netlister, so `ext:l=`/`ext:w=` attributes naming a symbol resolve and efFlatSingleCap's unresolved-name messages follow the run's threshold.
 Compatibility: behavioral
-(Magic ref: extflat/EFargs.c:46-58, extflat/EFargs.c:100-345, extflat/EFtypes.h:308-310)
+(Magic ref: extflat/EFargs.c:46-58, extflat/EFargs.c:100-345, extflat/EFsym.c:80-170, extflat/EFtypes.h:308-310)
 
 #### Scenario: Threshold override
 - **GIVEN** the command `ext2spice -c 0.5 top`
 - **WHEN** the arguments are parsed
 - **THEN** the capacitance threshold for this run is 0.5 fF and the root cell is `top`
+
+#### Scenario: Symbols from -s and -S reach the flattening
+- **GIVEN** a file `syms` holding `W=7` and the line `bad`
+- **WHEN** `ext2sim -s L=4 -S syms top` runs
+- **THEN** `Missing '=' in symbol assignment` and `Error at line 2 of syms` are printed and the flattening sees the symbols `L=4` and `W=7`
+
+#### Scenario: -h runs the tool's parser first
+- **WHEN** `ext2sim -h` runs
+- **THEN** `Unrecognized flag: -h` and the ext2sim usage text are printed, then the common usage text, and the command fails
+
+#### Scenario: -o and -T per tool
+- **WHEN** `hefesto-extcheck -o x top` runs, then `ext2spice -T scmos top`
+- **THEN** extcheck prints its usage text and exits with status 1, and ext2spice prints `Unrecognized flag: -T` and fails
 
 ### Requirement: Flat node construction
 Full flattening SHALL visit the hierarchy depth-first. Children are visited before the parent's own items, and uses are visited in use-table order. For an array use, x is the outer loop and y the inner loop, each running from the lower index to the higher. Element (x, y) SHALL be translated by `(xsep·(x−xlo), ysep·(y−ylo))`; a reversed range negates the separation.

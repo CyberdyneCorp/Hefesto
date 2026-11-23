@@ -146,6 +146,8 @@ params      = { name , "=" , value } ;
 terms       = { node_name , length , attrs } ;               (* attrs "0" means none *)
 ```
 
+A `vsource` record SHALL be read with the token count of the subcircuit-like classes (7 tokens before the parameters, the keyword included), in both `magic-compat` settings (Q-NETLIST-51, resolution: fix); Magic leaves the count unset for this class and reads an uninitialised value.
+
 A resistor or capacitor whose type is `None` SHALL take one numeric value: resistance in Ω, or capacitance in fF. Otherwise it SHALL take integer L and W. A resistor or capacitor whose type is `None` and that has non-numeric arguments SHALL report an error and use 0.
 
 An optional substrate is present when the remaining token count after the parameters is ≡ 1 (mod 3). A substrate token starting with `None` SHALL mean no substrate. Every parameter token `k=v` before the terminals SHALL be matched case-insensitively on its first two characters against the device type's declared parameters (see Requirement "Parameters records"):
@@ -167,6 +169,11 @@ Compatibility: exact
 - **GIVEN** `device mosfet nfet 10 20 11 21 2 8 GND! a 4 0 b 8 0 c 8 0` and no declared parameters
 - **WHEN** it is read
 - **THEN** a device of class mosfet with L=2, W=8, substrate `GND!`, gate `a`, source `b` and drain `c` exists under key `10x20_<t>`
+
+#### Scenario: Voltage source record
+- **GIVEN** `device vsource vs 0 0 1 1 a 0 0 b 0 0`, with `magic-compat` ON or OFF
+- **WHEN** it is read
+- **THEN** it is parsed as a subcircuit-like record (7 leading tokens): a device of class vsource with terminals `a` and `b`, and the result is the same on every run
 
 #### Scenario: Unmodeled resistor value
 - **GIVEN** `device devres None 0 0 1 1 25.5 n1 0 0 n2 0 0`

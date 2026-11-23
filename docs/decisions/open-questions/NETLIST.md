@@ -447,37 +447,46 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 
 ### Q-NETLIST-49: `ext2sim run` becomes the cell name
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: ext2sim's option table has a `[run] [options]` entry, but the command never matches `run` against it: the first word that is not an option is taken as the cell name, so `ext2sim run` looks for a cell called `run`. Same table shape as `ext2spice` (Q-NETLIST-13).
 - Evidence: ext2sim/ext2sim.c (CmdExtToSim option table and argument loop); Q-NETLIST-13; netlist-sim
 - As implemented (round R1, scaffold): the standing compat rule: magic-compat ON copies Magic; OFF makes `run` a keyword, prints `Ambiguous option: <w>` for an ambiguous prefix and still treats an unknown word as the cell name.
 - Options: compat (as implemented, mirrors Q-NETLIST-13) | replicate | fix
 - Recommendation: compat.
-- Resolution: open — needs a user decision.
+- Resolution: compat — mirrors Q-NETLIST-13: with `magic-compat` ON `run` and any ambiguous first word are run arguments, so `ext2sim run` netlists a cell named `run`, as Magic does; with it OFF `run` is a keyword whose following words are the run arguments, and an ambiguous prefix prints `Ambiguous option: <w>` and does nothing. In both modes a word that is not an option prefix is the cell name. Spec: `netlist-sim` "Command options and defaults". Approved 2026-11-22.
 
 ### Q-NETLIST-50: Standalone extcheck dereferences an unset extraction style on a `scale` line
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: the standalone `extcheck` never loads a technology, so `ExtCurStyle` is NULL; EFReadFile's `scale` record compares against `ExtCurStyle->exts_unitsPerLambda` and crashes on any `.ext` file that has a `scale` line (every file Magic writes). At fc5daa9e the standalone program also does not link (golden image manifest, m7-extraction design R7).
 - Evidence: extflat/EFread.c:255-262; extcheck/extcheck.c; tools/golden/container/build_extcheck.sh
 - Options: fix (both modes: `hefesto-extcheck` reads the scale with the reader's own unit, never crashes) | replicate (not allowed: crash)
 - Recommendation: fix, with a regression test in SIM's extcheck tests.
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes `hefesto-extcheck` never crashes on a `scale` record: with no technology loaded it reads the record with the reader's own unit (the file's lscale is taken as the style's, so coordinates are not rescaled), as `extflat::ReadOptions::units_per_lambda` unset does. Spec: `netlist-extcheck` "Invocation". Regression test in `tests/unit/netlist/extcheck/`. Approved 2026-11-22.
 
 ### Q-NETLIST-51: A `device vsource` record reads an uninitialised token count
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: EFReadFile sets the expected token count `ac` for every device class except `vsource`, so a `device vsource ...` record reads `ac` uninitialised (left from an earlier record or garbage): undefined behaviour.
 - Evidence: extflat/EFread.c:305-345
 - Options: fix (both modes: parse `vsource` with the subcircuit-like token rule, `ac = 7`) | reject the record with "Unknown device class"
 - Recommendation: fix with `ac = 7`, regression test in EXTFLAT. Golden inputs avoid the record (the V line is covered through `short voltage`, NL-FLAT-06, NL-HIER-06).
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes a `device vsource` record is parsed with the subcircuit-like token rule, `ac = 7`, instead of Magic's uninitialised token count (X-2 tier 1). EXTFLAT implements it with a regression test. Golden inputs avoid the record. Spec: `ext-flattening-read` "Device records". Approved 2026-11-22.
 
 ### Q-NETLIST-52: ext2sim writes to and closes a freed `.al`/`.nodes` stream after `alias off` or `labels off`
 - Kind: bug
-- Status: proposed (M7 round R1, 2026-11-21; not approved)
+- Status: approved 2026-11-22 (proposed in M7 round R1, 2026-11-21; approved with the recommended option)
 - Magic behavior: CmdExtToSim closes `esAliasF` and `esLabF` at the end of a run without setting them to NULL (ext2sim/ext2sim.c:704-706). The next run opens them only when the option is on (:591, :604), so after `ext2sim alias off` (or `labels off`) the stale pointer survives: simnodeVisit writes alias/label lines through it (:1681-1702, use after free) and the run fcloses it again. glibc aborts with `free(): double free detected in tcache 2` (golden-capture run 44961645329, NL-SIM-01: an `alias on` run, then `alias off`, `labels on` and another run; Magic exited 139). The standalone path (:834-835) has the same pattern.
 - Evidence: ext2sim/ext2sim.c:591-606, :704-706, :834-835, :1681-1702; netlist-sim
 - Options: fix (both modes: a run writes `.al`/`.nodes` only when its option is on and never touches a previous run's stream) | replicate (not allowed: crash)
 - Recommendation: fix, with a SIM regression test running `alias on`, a run, `alias off`, a run. NL-SIM-01 keeps `alias on` for its labels run so Magic can be captured.
-- Resolution: open — needs a user decision.
+- Resolution: fix — in both modes an `ext2sim` run writes `<cell>.al` only when alias is on and `<cell>.nodes` only when labels is on (aliases go to the `.sim` file otherwise), and never writes to or closes a file opened by an earlier run (Magic keeps the closed `FILE *` and double-frees it, X-2 tier 1). Spec: `netlist-sim` "Command options and defaults". Regression test in `tests/unit/netlist/sim/` running `alias on`, a run, `alias off`, a run, and the same for `labels`. NL-SIM-01 keeps `alias on` for its labels run so Magic can be captured. Approved 2026-11-22.
+
+### Q-NETLIST-53: ResFracture on a split (diagonal) tile
+- Kind: quirk
+- Status: approved 2026-11-22 (raised in M7 round R2, 2026-11-22; approved with the recommended option)
+- Magic behavior: ResFracture walks the fracture plane and cuts tiles at concave corners through ResSplitX (resis/ResFract.c:60-140, 424-490). A split tile on that plane is cut by TiSplitX like any other tile, and ResSplitX gives the new tile the left type only, so the result has no diagonal and its area differs from the net's geometry (Q-EXTRACT-29).
+- Evidence: resis/ResFract.c:60-140, 424-490, tiles/tile.c:250-300; extresist-network "Tile fracturing"; m7-extraction design D6, D16
+- Options: compat (ON: make the tile Manhattan through `set_type` with its left type, then split; OFF: keep split tiles whole and never cut them) | replicate
+- Recommendation: compat. With `magic-compat` ON RESNET first makes a split tile Manhattan with `set_type` (the left type, as ResSplitX assigns), then splits it, which gives Magic's tiles; with it OFF a split tile is never cut, so the network keeps the net's geometry. Implemented when RESNET lands (task 13.1).
+- Resolution: compat — with `magic-compat` ON ResFracture makes a split tile Manhattan via `set_type` with its left type and then splits it, as Magic's result is; with it OFF a split tile is kept whole. Implemented when RESNET lands (task 13.1). Spec: `extresist-network` "Tile fracturing". Approved 2026-11-22.

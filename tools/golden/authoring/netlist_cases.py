@@ -672,29 +672,146 @@ CHK_ID = "NL-CHK-01"
 CHK_REQUIREMENTS = ["Counts and report format", "Invocation"]
 CHK_DESCRIPTION = ("two inverters (x1, x2) each with a vdd! node, not connected, plus a coupling and a resistor; extcheck "
                    "with default thresholds, with -c 0 -r 0, with -C -r 0, and with no arguments (usage, exit status 1)")
-# The console streams (task 2.3): bytes with the masks of the external-command mode (as NETLIST-SMOKE-02),
-# the usage line's leading program name as <prog> (prog-name) and the informative "Memory used:"
-# value (extcheck-memory), compare/masks.py.
-# Task 2.2: the image cannot build Magic's extcheck, so NL-CHK-01 is hand-derived (design R7).
-CHK_CAPTURE_BLOCKED = "Magic's standalone extcheck does not link at fc5daa9e (image manifest, golden-capture run 44961580186: build=unavailable, tcl-tree and tcl-free link failures); hand-derived under design R7"
-CHK_STREAM_COMPARATOR = "bytes"
+# The console streams: the extcheck-console comparator (compare/extcheck_console.py), which unifies line
+# endings and applies the masks of the external-command mode: prog-name (a leading program name of a
+# line of Hefesto's own diagnostics; no line below has one) and extcheck-memory (the informative
+# "Memory used:" value). The masks stay listed so that replay --output-dir saves the masked text.
+CHK_STREAM_COMPARATOR = "extcheck-console"
 CHK_STREAM_MASKS = ["prog-name", "extcheck-memory"]
+
+# R7 option (a), approved 2026-11-22 (docs/decisions/m7-decision-table.md M7-9): Magic's standalone
+# extcheck does not link at fc5daa9e (golden-capture runs 44961645329 and 44964258826: build=unavailable,
+# 152 and 147 undefined symbols), so NL-CHK-01's expected/ is hand-derived from the source below, with
+# Q-NETLIST-50's fix (the scale record read with the file's own unit; Magic's standalone program would
+# dereference the unset ExtCurStyle at extflat/EFread.c:259). The case carries `hand_derived` instead
+# of `capture_blocked`, and its provenance.json says reference_captured = false.
+CHK_HAND_DERIVED = ("R7 option (a), approved 2026-11-22 (m7-decision-table M7-9; Q-NETLIST-50): Magic's standalone "
+                    "extcheck does not link at fc5daa9e (golden-capture runs 44961645329, 44964258826: build=unavailable), "
+                    "so expected/ is hand-derived from extcheck/extcheck.c and extflat/EFargs.c by "
+                    "tools/golden/authoring/netlist_cases.py extcheck_expected()")
+CHK_DECISIONS = ["Q-NETLIST-50"]
+
+# --- The hand derivation (Magic 8.3.694 at fc5daa9e, the non-Tcl build of extcheck) ----------------
+#
+# Reading (EFReadFile, extflat/EFread.c), shared by the three runs that name `top`:
+# - top.ext then inv.ext (once; both uses share the def). `version 8.3` equals MagicVersion
+#   (scripts/defs.mak.in:127, VERSION cut to 8.3): no warning (EFread.c:604-611). `tech`, `style`:
+#   first values, kept (EFread.c:556-598, the non-MAGIC_WRAPPER branches). `scale 1000 1000 5`:
+#   rscale = cscale = 1000, lscale 5 kept (EFread.c:245-276 with Q-NETLIST-50). `resistclasses
+#   1000 5000 100`: efResists = {1000, 5000, 100} mOhm per square (EFread.c:491-497).
+# - Node capacitances, cap = atoCap(C) * cscale as a float (EFread.c:454): in 400, out 5000,
+#   vdd! 1200, gnd! 2400 (each inv), a 1000 (top). Area/perimeter pairs (EFbuild.c:298-299):
+#   in {(0,0), (24,20), (0,0)}, out {(40,26), (0,0), (40,28)}, vdd! {(40,26), (0,0), (80,48)}.
+# - `cap "in" "out" 3`: 3000 aF; `resist "out" "in" 20000`: (float)(0.5 + 1000 * 20000) =
+#   20000000 mOhm (EFread.c:633-634); the two devices of inv (EFbuild.c efBuildDevice). The
+#   ports set no DEF_SUBCIRCUIT: extcheck reads with dosubckt FALSE (extcheck.c:81, EFread.c:468-471).
+#
+# Flattening (EFFlatBuild(top, EF_FLATNODES|EF_FLATCAPS|EF_FLATRESISTS), extcheck.c:86; efFlatNodes,
+# EFflat.c:320-345):
+# - Uses in def_uses hash order (efHierSrUses, EFhier.c:84-96; HashInit 32 buckets, EFdef.c:39,260;
+#   utils/hash.c hash(): x1 -> bucket 1, x2 -> bucket 2): x1, then x2, then top's own nodes.
+# - efAddNodes prepends each node (EFflat.c:532-536) in def_firstn order, which efBuildNode keeps
+#   newest first (EFbuild.c:309-312): gnd!, vdd!, out, in. The flat node list is therefore
+#   a, x2/in, x2/out, x2/vdd!, x2/gnd!, x1/in, x1/out, x1/vdd!, x1/gnd!.
+# - `merge "x1/out" "x2/in"` (efAddOneConn, EFflat.c:657-698; efNodeMerge, EFbuild.c:2185-2316):
+#   both nodes have efnode_num 1, x1/out's node is kept, and EFHNBest prefers x2/in (shorter,
+#   EFname.c:560-566), so the merged node is named x2/in, x1/out; caps and areas add up.
+# - efFlatGlob (EFflat.c:730-830): a name is global when its leaf ends in `!` (EFHNIsGlob, the
+#   non-Tcl branch, EFname.c:101-113). Walking the list, x2/vdd! and x2/gnd! enter the global table
+#   first; x1/vdd! then finds x2/vdd!'s node, and neither node is a device-terminal-only node (vdd!
+#   and gnd! exist before the devices name them, EFbuild.c:1434-1462), so efFlatGlobError prints
+#   the report for vdd! (EFflat.c:845-873), then the same for gnd!, and merges the pieces.
+# - Coupling capacitors (efFlatSingleCap, EFflat.c:1087-1136): x1/in-(x2/in) and (x2/in)-x2/out,
+#   3000 aF each. Resistors (efVisitResists, EFvisit.c:514-598): x1/out-x1/in and x2/out-x2/in,
+#   both between different nodes, 20000000 mOhm each. Devices: 2 per inv (efVisitDevs, EFvisit.c:304-330).
+#
+# The six flat nodes (EFVisitNodes, EFvisit.c:685-732; EFCompat stays TRUE and no node is `GND!`,
+# EFname.c:137-154, so no capacitance is zeroed), capacitance in aF and EFNodeResist in mOhm
+# (EFvisit.c:780-811: sum over classes of (P + S) / (P - S) * efResists[n], S = sqrt(P*P - 16A)):
+#   x1/in        400 aF   7500 (class 1: (20+4)/(20-4) * 5000)
+#   x2/in       5400 aF   9350 (1600 + 7500 + 250)
+#   x2/out      5000 aF   1850 (class 0: 32/20 * 1000 = 1600; class 2: 40/16 * 100 = 250)
+#   vdd!        2400 aF   7522 (class 0 (80,52): 6291; class 2 (160,96): 1231; integer sums)
+#   gnd!        4800 aF      0
+#   a           1000 aF      0
+# Globals (canonical name global, extcheck.c:145-146): vdd! and gnd!.
+CHK_GLOBAL_REPORTS = "".join(
+    f"*** Global name {g} not fully connected:\n"   # EFflat.c:853-854
+    "One portion contains the names:\n"             # EFflat.c:855
+    f"    x2/{g}\n"                                 # EFflat.c:856-860, the node seen first
+    "The other portion contains the names:\n"       # EFflat.c:863
+    f"    x1/{g}\n"                                 # EFflat.c:864-868
+    "I'm merging the two pieces into a single node, but you\n"     # EFflat.c:871
+    "should be sure eventually to connect them in the layout.\n\n"  # EFflat.c:872
+    for g in ("vdd!", "gnd!"))
+CHK_USAGE = ("Standard arguments: [-R] [-C] [-r rthresh] [-c cthresh] [-v]\n"  # EFargs.c:159
+             "[-p searchpath] [-s sym=value] [-S symfile] [-t trimchars]\n"   # EFargs.c:160
+             "[-T techname] rootfile\n")                                       # EFargs.c:164 (non-Tcl)
+
+
+def chk_counts(node_caps: int, node_resists: int, caps: tuple[int, int], resists: tuple[int, int]) -> str:
+    """extcheck.c:100-111: the report after the counts of nodeVisit, devVisit, capVisit, resistVisit."""
+    return ("Memory used: <masked>\n"                      # extcheck.c:100 (masked: extcheck-memory)
+            "4 devices\n"                                  # extcheck.c:101; devVisit, :162
+            "6 nodes (2 global, 4 local)\n"                # extcheck.c:102-103; nodeVisit, :140-149
+            f"{node_caps} nodes above capacitance threshold\n"   # extcheck.c:104
+            f"{node_resists} nodes above resistance threshold\n"  # extcheck.c:105
+            f"{caps[0]} internodal capacitors ({caps[1]} above threshold)\n"      # extcheck.c:106-107
+            f"{resists[0]} explicit resistors ({resists[1]} above threshold)\n")  # extcheck.c:108-109
+
+
+def extcheck_expected() -> dict[str, str]:
+    """The hand-derived outputs of the four runs (the derivation above)."""
+    return {
+        # -p input top: thresholds 2 fF and 10 Ohm (EFargs.c:46-48, Q-NETLIST-36). Node caps
+        # (C + 500) / 1000 > 2 (extcheck.c:140-148): x2/in 5.9, x2/out 5.5, vdd! 2.9, gnd! 5.3 -> 4;
+        # (R + 500) / 1000 > 10: none. Couplings 3.0 > 2: 2 of 2 (extcheck.c:175-176); resistors
+        # 20000 > 10: 2 of 2 (extcheck.c:189-190). Exit 0 (extcheck.c:110).
+        "default.stdout": CHK_GLOBAL_REPORTS + chk_counts(4, 0, (2, 2), (2, 2)),
+        "default.stderr": "",
+        "default.exit": "0\n",
+        # -c 0 -r 0: every node's (C + 500) / 1000 > 0 -> 6; (R + 500) / 1000 > 0 for x1/in 8,
+        # x2/in 9, x2/out 2, vdd! 8 -> 4; couplings and resistors all above.
+        "thresholds.stdout": CHK_GLOBAL_REPORTS + chk_counts(6, 4, (2, 2), (2, 2)),
+        "thresholds.stderr": "",
+        "thresholds.exit": "0\n",
+        # -C -r 0: EFCapThreshold = INFINITE_THRESHOLD_F (EFargs.c:222-223), so no node is above it
+        # and EFVisitCaps is not called (extcheck.c:89-90): 0 (0); resistors as above.
+        "nocaps.stdout": CHK_GLOBAL_REPORTS + chk_counts(0, 4, (0, 0), (2, 2)),
+        "nocaps.stderr": "",
+        "nocaps.exit": "0\n",
+        # No arguments: no root name, so EFArgs prints the usage text with TxError (stderr) and exits
+        # with status 1 (EFargs.c:305-316 non-Tcl, :329-336; utils/LIBtextio.c:99-108).
+        "usage.stdout": "",
+        "usage.stderr": CHK_USAGE,
+        "usage.exit": "1\n",
+    }
+
+
+def extcheck_provenance() -> str:
+    """provenance.json of the hand-derived expected/ (no reference capture)."""
+    import json
+    return json.dumps({"schema": 1, "case": CHK_ID, "area": "NETLIST", "tool": "magic", "tool_version": "8.3.694",
+                       "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e", "reference_captured": False,
+                       "hand_derived": {"reason": CHK_HAND_DERIVED, "decisions": CHK_DECISIONS,
+                                        "derivation": "tools/golden/authoring/netlist_cases.py extcheck_expected()"}},
+                      indent=2) + "\n"
 
 
 def extcheck_case_toml() -> str:
     from casegen import HEADER, _output_block, _toml_list, _toml_str
-    head = [HEADER + "#", f"# {CHK_ID} (NETLIST/CASES.md). Inputs only: expected/ is written by capture.py in CI.",
-            f"# Generated by tools/golden/authoring/{DRIVER}. External-command case (m7-extraction design D15,",
+    head = [HEADER + "#", f"# {CHK_ID} (NETLIST/CASES.md). expected/ is hand-derived (design R7 option (a), decision M7-9):",
+            f"# written by tools/golden/authoring/{DRIVER}, never by capture.py. External-command case (m7-extraction design D15,",
             "# task 2.3): input/command.toml names the role extcheck (Magic's standalone extcheck on capture,",
             "# hefesto-extcheck on replay); each run writes <run>.stdout, <run>.stderr and <run>.exit in the work dir.", "",
             "schema = 1", f'id = "{CHK_ID}"', 'area = "NETLIST"', 'capability = "netlist-extcheck"',
             f"requirements = {_toml_list(CHK_REQUIREMENTS)}", 'tool = "magic"',
-            f"description = {_toml_str(CHK_DESCRIPTION)}", f"capture_blocked = {_toml_str(CHK_CAPTURE_BLOCKED)}", "", "[reference]", 'mode = "external-command"']
+            f"description = {_toml_str(CHK_DESCRIPTION)}", f"hand_derived = {_toml_str(CHK_HAND_DERIVED)}", "",
+            "[reference]", 'mode = "external-command"']
     text = "\n".join(head) + "\n"
     for name in extcheck_outputs():
         stream = not name.endswith(".exit")
-        text += _output_block(name, name, CHK_STREAM_COMPARATOR if stream else "bytes",
-                              CHK_STREAM_MASKS if stream else [])
+        text += _output_block(name, name, CHK_STREAM_COMPARATOR, CHK_STREAM_MASKS if stream else [])
     return text
 
 
@@ -705,6 +822,11 @@ def write_extcheck(golden: Path) -> Path:
     files = {"command.toml": command_toml(), "top.ext": CHK_TOP, "inv.ext": CHK_INV}
     for name, content in files.items():
         (root / "input" / name).write_text(content, encoding="utf-8", newline="")
+    expected = root / "expected"
+    expected.mkdir(exist_ok=True)
+    for name, content in extcheck_expected().items():
+        (expected / name).write_text(content, encoding="utf-8", newline="")
+    (expected / "provenance.json").write_text(extcheck_provenance(), encoding="utf-8", newline="")
     return root
 
 

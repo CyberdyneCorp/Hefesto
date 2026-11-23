@@ -6,6 +6,8 @@
 
 #include "graph.hpp"
 
+#include <iterator>
+
 #include "hier_name.hpp"
 
 namespace hefesto::extflat::detail {
@@ -139,6 +141,34 @@ void NodeGraph::splice_names(std::uint32_t keep, std::uint32_t removing, bool re
   r.tail = kNil;
 }
 
+void add_perim_area(std::vector<PerimArea>& sum, const std::vector<PerimArea>& add) {
+  if (sum.size() < add.size()) {
+    sum.resize(add.size());
+  }
+  for (std::size_t n = 0; n < add.size(); ++n) {
+    sum[n].area = static_cast<std::int32_t>(static_cast<std::uint32_t>(sum[n].area) +
+                                            static_cast<std::uint32_t>(add[n].area));
+    sum[n].perim = static_cast<std::int32_t>(static_cast<std::uint32_t>(sum[n].perim) +
+                                             static_cast<std::uint32_t>(add[n].perim));
+  }
+}
+
+// efNodeMerge's attribute splice: Magic walks to the last attribute of
+// `removing`, links the kept list after it and makes that last attribute
+// the kept list's head, so the removed node's other attributes are lost.
+void NodeGraph::merge_attrs(GraphNode& keep, GraphNode& removing) const {
+  if (removing.attrs.empty()) {
+    return;
+  }
+  if (compat_attrs_) {
+    keep.attrs.insert(keep.attrs.begin(), std::move(removing.attrs.back()));
+  } else {
+    keep.attrs.insert(keep.attrs.begin(), std::make_move_iterator(removing.attrs.begin()),
+                      std::make_move_iterator(removing.attrs.end()));
+  }
+  removing.attrs.clear();
+}
+
 std::uint32_t NodeGraph::merge(std::uint32_t node1, std::uint32_t node2) {
   if (node1 == node2) {
     return node1;
@@ -148,6 +178,8 @@ std::uint32_t NodeGraph::merge(std::uint32_t node1, std::uint32_t node2) {
   const std::uint32_t removing = first_kept ? node2 : node1;
   GraphNode& k = nodes_[keep];
   GraphNode& r = nodes_[removing];
+  k.cap += r.cap;
+  add_perim_area(k.pa, r.pa);
   if (r.head != kNil) {
     const bool swap = keep_removed_name(k, r);
     if (swap && r.layer > 0) {
@@ -157,6 +189,7 @@ std::uint32_t NodeGraph::merge(std::uint32_t node1, std::uint32_t node2) {
     splice_names(keep, removing, swap);
   }
   k.num += r.num;
+  merge_attrs(k, r);
   if ((r.flags & kFlagDevTerm) == 0) {
     k.flags &= ~kFlagDevTerm;
   }
