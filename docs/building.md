@@ -45,6 +45,7 @@ ctest --preset linux-debug
 | `HEFESTO_WARNINGS_AS_ERRORS` | OFF | `-Werror` for first-party code |
 | `HEFESTO_SANITIZERS` | empty | comma list for `-fsanitize=`, applied to all targets |
 | `HEFESTO_TEST_DESKTOP_WINDOW` | OFF | registers the window smoke tests (labels `desktop-window-x11`, `desktop-window-wayland`): each starts `hefesto --smoke-frames 30` through Raven and needs a display |
+| `HEFESTO_BUILD_NGSPICE` | OFF | builds the simulation engine library `libngspice-hefesto` from the pinned ngspice-47 (`third_party/ngspice/`, M9); see [Simulation engine library](#simulation-engine-library-m9) |
 
 Pass options after the preset, e.g. `cmake --preset macos-debug -DHEFESTO_BUILD_DESKTOP=OFF`.
 
@@ -327,6 +328,54 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 ```
 
 `--jobs N` sets how many `hefesto-cli` sessions run at a time (default: the CPU count; a full run takes about 7 minutes with 6 jobs on an M-series Mac), `--chunk N` the cases per session, `--work DIR` keeps the two runs' files (`native/` and `tcl/` per chunk, with `console.txt`). The exit status is 0 when every case agrees, 1 on a difference, 3 when a data set is missing. The console lines of the two runs are compared too and only reported: the framework prints its own diagnostics when the `gencell` command returns, so their order may differ.
+
+## Simulation engine library (M9)
+
+`libngspice-hefesto` is ngspice-47 (`a80f6e3e`) with Hefesto's patch series
+(`third_party/ngspice/patches/`), built by a Hefesto-written CMake wrapper
+(Q-SIM-7, Q-SIM-20). Only the simulation worker `hefesto-simd` loads it; the
+editor, `hefesto-cli` and the core never link it, and
+`scripts/check_engine_boundary.py` checks that in CI. It is off by default:
+
+```sh
+cmake --preset macos-debug -DHEFESTO_BUILD_NGSPICE=ON
+cmake --build --preset macos-debug --target ngspice-hefesto
+# or on its own, as .github/workflows/ngspice.yml and the capture image do:
+cmake -S third_party/ngspice -B build/ngspice -G Ninja -DCMAKE_BUILD_TYPE=Release [-DHEFESTO_NGSPICE_EXECUTABLE=ON]
+cmake --build build/ngspice -j4
+cmake --build build/ngspice --target ngspice_hefesto_source_archive
+```
+
+It needs Python 3 and `patch`; the first configure downloads the pinned
+`ngspice-47.tar.gz` (SHA-256 checked) and applies `patches/series`. Outputs:
+`libngspice-hefesto`, `ngspice-manifest.json` (source, patches, configure line,
+features, code models and licences; the build fails if a compiled file carries a
+GPL notice) and, from the target `ngspice_hefesto_source_archive`, the source
+archive the LGPL and MPL terms require. `third_party/ngspice/README.md` has the
+details, including how to update the pin.
+
+### Replacing the ngspice library
+
+The library is replaceable by the user (`hefesto-licensing`; design D2 of
+`openspec/changes/m9-lvs-simulation`):
+
+1. Unpack the source archive shipped with the release
+   (`ngspice-hefesto-<version>-src.tar.gz`: every compiled ngspice file as
+   patched, all headers, the whole `src/osdi` tree, cppduals, the code-model
+   inputs, the patches and the wrapper), or start from the pinned tarball and
+   `third_party/ngspice/patches/`.
+2. Make your change and build as above. Keep the exported C API (`ngSpice_*`,
+   `ngGet_*`, `ngCM_Input_Path`) unchanged.
+3. Put the new `libngspice-hefesto` next to `hefesto-simd`, replacing the
+   installed one; the worker finds it through its install-relative run path
+   (`$ORIGIN` on Linux, `@loader_path` on macOS).
+4. macOS: sign the rebuilt library ad hoc,
+   `codesign --force -s - libngspice-hefesto.dylib`. Only `hefesto-simd`
+   carries `com.apple.security.cs.disable-library-validation`, so a notarized
+   Hefesto loads an ad-hoc-signed library in the worker and nowhere else.
+
+The desktop linking (a replaceable library loaded only by the sandboxed
+worker) goes through a legal review before the Desktop Beta (D-28, task 20.1).
 
 ## Golden capture
 

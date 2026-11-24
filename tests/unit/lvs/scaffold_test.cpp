@@ -13,6 +13,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/registry.hpp"
@@ -175,6 +176,12 @@ TEST_CASE("scaffold lvs command is registered and reports CORE-NOTIMPL-009",
   const auto result = dispatcher.execute(invocation);
   CHECK_FALSE(result.ok());
   CHECK(is_not_implemented(result.diagnostics));
+}
+
+TEST_CASE("lvs is part of the full command set", "[cap:lvs-command][req:lvs command syntax]") {
+  cmd::CommandRegistry registry;
+  REQUIRE(cmd::register_all_commands(registry));
+  CHECK(registry.find("lvs") != nullptr);
 }
 
 TEST_CASE("scaffold layout_circuit reports CORE-NOTIMPL-009",

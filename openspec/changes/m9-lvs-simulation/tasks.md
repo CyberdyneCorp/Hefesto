@@ -44,20 +44,28 @@ How this plan runs:
   - the session rules of design D2 (no netgen repository, no `/opt/src/netgen`, no `Evidence:` or `netgen ref` paths; the public manual and black-box runs allowed).
   
   Verify that a reviewer outside both teams confirms each rule against `hefesto-licensing`.
+
+  As landed (PR #94 via m9-round0, LVS spec team, 2026-11-24): `docs/contributing/cleanroom.md` section "netgen clean room for LVS (M9)": LVS spec and implementation teams by role, the D3 workstream table, the roster rule (no netgen reader on LVSCMD, SCHEMSIM 16.3 or task 3.5), the D2 session rules, an implementation instruction block, the LVS checks, the LVS roster and the hefesto-licensing mapping table. **Open:** the sign-off of a reviewer outside both LVS teams on the mapping table (raised to the user).
 - [ ] 2.2 Paraphrase review of the eight `lvs-*` specs and `docs/decisions/open-questions/LVS.md`, starting with `lvs-comparison-algorithm` and `lvs-device-reduction`. Rewrite each finding as behaviour, and record the findings in `docs/decisions/m9-paraphrase-review.md`. Verify `openspec validate --all --strict` and a second spec-team signature.
-- [ ] 2.3 Extend `scripts/check_cleanroom.py` and its tests:
+- [x] 2.3 Extend `scripts/check_cleanroom.py` and its tests:
   - netgen's GPL header in any tracked file;
   - `netgen ref:` traces under `src/` and `tests/`;
   - `provenance` on every `tests/golden/LVS/` case.
   
   Verify with fixture trees for each failure and a clean run on the branch.
-- [ ] 2.4 Add the LVS item to the pull-request template's clean-room section ("I have not read netgen's source"). Add LVS to the Desktop 1.0 counsel row of the roadmap's de-risking schedule. Verify that the template renders and the roadmap row names Q-LVS-30. **Roadmap half done (2026-11-22, R0):** the Desktop 1.0 counsel row names LVS (Q-LVS-30); the template item remains.
+
+  As landed (PR #94 via m9-round0): `check_cleanroom.py` checks a per-tool table (xschem, netgen): netgen's GPL header (first and copyright lines of 1.5.327 `base/netgen.c`), `netgen ref:` under `src/` and `tests/`, and `provenance` (`hefesto` or `pdk:<set>:<path>`, never netgen's distribution or `/opt/src/netgen`) on `tests/golden/LVS/**/case.toml`; a tree without `tests/golden/LVS` passes. 15 fixture tests; clean on the branch.
+- [x] 2.4 Add the LVS item to the pull-request template's clean-room section ("I have not read netgen's source"). Add LVS to the Desktop 1.0 counsel row of the roadmap's de-risking schedule. Verify that the template renders and the roadmap row names Q-LVS-30. **Roadmap half done (2026-11-22, R0):** the Desktop 1.0 counsel row names LVS (Q-LVS-30); the template item remains.
+
+  Template half as landed (PR #94 via m9-round0): the LVS author item "I have not read netgen's source" and two LVS reviewer items in `.github/pull_request_template.md`. INTEGRATION added `.github/ISSUE_TEMPLATE/lvs-spec-issue.md` (label `lvs-spec`) and named netgen/LVS in the roadmap M13 counsel-review exit item.
 
 ## 3. PDK and GOLDEN: data sets, capture image, comparators, captures (R1; gates G2-LVS and G2-SIM)
 
 The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) → 3.8. The G2-LVS path is 2.1–2.2 → 3.5 → 3.7 (LVS) → 3.8.
 
-- [ ] 3.1 (PDK) Add the data sets `gf180mcu-netgen`, `ihp-netgen`, `sky130-ngspice` (`libs.tech/combined` and `libs.tech/ngspice`), `gf180mcu-ngspice` and `ihp-ngspice` (with the Verilog-A sources) to `scripts/fetch_pdk.py`, each with pins, subsets, tree digests and cache keys. Add their paths to `tests/unit/common/reference_data.hpp` with clean skips, and document them in `docs/building.md`. Verify that a fresh install matches the digests, that a second run is a no-op, and that the `scripts/tests/` tests pass.
+- [x] 3.1 (PDK) Add the data sets `gf180mcu-netgen`, `ihp-netgen`, `sky130-ngspice` (`libs.tech/combined` and `libs.tech/ngspice`), `gf180mcu-ngspice` and `ihp-ngspice` (with the Verilog-A sources) to `scripts/fetch_pdk.py`, each with pins, subsets, tree digests and cache keys. Add their paths to `tests/unit/common/reference_data.hpp` with clean skips, and document them in `docs/building.md`. Verify that a fresh install matches the digests, that a second run is a no-op, and that the `scripts/tests/` tests pass.
+
+  As landed (PR #94 via m9-round0): five sets under `.cache/pdks/{netgen,ngspice}/`, digests gf180mcu-netgen `91b3dffa`, ihp-netgen `7f6cf90b`, sky130-ngspice `a4e109d0` (also keeps `libs.ref/sky130_fd_pr/spice`, which both model trees include), gf180mcu-ngspice `31ead471`, ihp-ngspice `89ad3139`; a fresh install matched every digest and a second run was a no-op; `reference_data.hpp` `pinned_tool_file()`; `docs/building.md` section "netgen and ngspice data sets (M9)". Not yet wired into `golden-capture.yml` (see 3.7).
 - [x] 3.2 (GOLDEN; after 5.1) Capture image (Q-SIM-23 (a)):
   - build ngspice from the engine's pin (Q-SIM-7) with the patch series of task 5.1 and the spec feature table, as both the executable and `--with-ngshared`;
   - add a pinned OpenVAF;
@@ -72,12 +80,14 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   - D-27, gf180mcu `hs` against `hsa`.
   
   Verify that each entry has a `Verified` line with the run id that names the branch of the rule it selects. If a result falls outside every branch of the approved rule, raise it to the user before G2-SIM.
-- [ ] 3.4 (GOLDEN) Comparators `tools/golden/compare/lvs_canonical.py`, `raw_tolerance.py` and `meas_table.py` (design D19), registered with the case tool, with tests on hand-written equal and unequal inputs:
+- [x] 3.4 (GOLDEN) Comparators `tools/golden/compare/lvs_canonical.py`, `raw_tolerance.py` and `meas_table.py` (design D19), registered with the case tool, with tests on hand-written equal and unequal inputs:
   - a reordered hash section passes and a changed device count fails;
   - a `Date:`-only difference passes and a 1 % voltage error fails;
   - a column within its tolerance passes.
   
   Verify the tests.
+
+  As landed (PR #94 via m9-round0): `lvs-canonical`, `raw-tolerance` (pairwise) and `meas-table[:<col>=<rel>/<abs>,...]` (pairwise, parametrized) registered in `compare/__init__.py`; 29 tests in `tools/golden/tests/test_m9_compare.py`. The comp.out run-boundary rules of `lvs_canonical.py` are tunable and are checked against the first LVS capture in task 3.8.
 - [ ] 3.5 (GOLDEN, LVS implementation team for inputs; after 2.1–2.2) Author the 77 LVS cases of `tests/golden/LVS/CASES.md` as `case.toml` plus inputs, each with `provenance`. Hand-written netlists are written from the specs only, by sessions that the 2.1 roster places on the implementation team. NG-PDK uses the three setup files (Q-LVS-31). Verify `check_cleanroom.py` and that every case has a requirement tag.
 - [ ] 3.6 (GOLDEN; after 3.2) Author the 53 SIM cases and the 40 M9 SIMADV cases. The DUT netlists come from Magic in the image; the decks are Hefesto-written.
   - Mark the iPadOS cases and legs of design D19 `deferred = "M14"` in `tests/golden/deviations.toml` with the reason "needs the iPadOS in-process engine (M14)": SIM-ENG-01 (iPad leg), SIM-ENG-07, -09, -10, -12, SIM-ENG-13 (iPad leg), SIM-RES-07, SIMADV-SW-07, SIMADV-MC-04 (iPad leg), SIMADV-MC-13.
@@ -86,6 +96,8 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   
   Verify that every case has a requirement tag and declared tolerances, and that the harness lists exactly the D19 cases and legs as deferred to M14.
 - [ ] 3.7 (GOLDEN) Capture `expected/` in three `golden-capture.yml` runs: LVS (after 3.5), SIM and SIMADV (after 3.3 and 3.6). Verify each with a second run on a fresh image build. Verify the run ids, and that every case has stdout, stderr and an exit code plus its declared outputs.
+
+  Note (R0 integration): the five data sets of task 3.1 are not yet wired into `golden-capture.yml`. Per set add an `actions/cache` step with `${{ steps.keys.outputs.<set>_path }}` / `<set>_key` (outputs `gf180mcu_netgen`, `ihp_netgen`, `sky130_ngspice`, `gf180mcu_ngspice`, `ihp_ngspice`) and add the set names to the `fetch_pdk.py` call of the LVS/SIM/SIMADV capture jobs; do this with the first capture run.
 - [ ] 3.8 (SPEC) Record the texts that depend on captures: the `comp.out` texts the LVS specs leave to capture (Q-LVS-2 set sections, Q-LVS-13 naming), the vector names of SIM-NET-03 and SIM-UI-04 (Q-SIM-6), and progress on the third run (SIM-RUN-03, Q-SIM-14). Verify `openspec validate --all --strict`, and that no `Resolution:` line changed (otherwise raise it to the user).
 - [ ] 3.9 (M8 spec team, xschem clean room spec side; after 3.1, 3.2) Re-capture the schematic simulation cases with results loaded, in the capture image with xschem, the patched ngspice and the `*-ngspice` data sets:
   - SCHEM-SIM-01 (IHP `dc_lv_nmos.sch`: raw vectors and op values, beside the deck M8 kept) and SCHEM-SIM-02 (sky130 `test_inv.sch` with `annotate_op` after a real op run);
@@ -96,9 +108,15 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
 
 ## 4. SCAFFOLD (R1; after G0)
 
-- [ ] 4.1 Add the areas `lvs` (subdirectories `net read setup cmp reduce prop hier report cmd`) and `sim` (`engine deck result probe cmd runset meas`), each with `sources.cmake`, `codes.inc` and test directories. Add `docs/diagnostics/codes/{lvs,sim}.md` and `CORE-NOTIMPL-009` (constant `diag::codes::kM9NotImplemented`). Verify that the build passes in `macos-debug` and that the code-table test covers both areas.
-- [ ] 4.2 Write the public headers of design "Area contracts" with stubs that return `CORE-NOTIMPL-009`, except `platform/worker_host.hpp` (PLATFORM, task 5.3) and `sim/engine/frames.hpp` (SIMD, task 5.4). Add `lvs::Session` and `sim::Session` to `EditorState`. Record the as-landed contracts in the design. Verify that the headers compile and that `scripts/check_core_includes.py` passes.
-- [ ] 4.3 Add `scripts/check_engine_boundary.py` (design D2): no `ngSpice_` symbol in any binary other than `hefesto-ngspice-adapter` and `libngspice-hefesto`; no release binary other than `hefesto-simd` references the adapter plugin; `sharedspice.h` included only under `src/simd/adapter/`. Run it in CI. Verify with a fixture that violates each rule, and a clean run.
+- [x] 4.1 Add the areas `lvs` (subdirectories `net read setup cmp reduce prop hier report cmd`) and `sim` (`engine deck result probe cmd runset meas`), each with `sources.cmake`, `codes.inc` and test directories. Add `docs/diagnostics/codes/{lvs,sim}.md` and `CORE-NOTIMPL-009` (constant `diag::codes::kM9NotImplemented`). Verify that the build passes in `macos-debug` and that the code-table test covers both areas.
+
+  As landed (PR #98 via m9-round0): areas `lvs` and `sim` with per-subdirectory `sources.cmake`/`codes.inc`, test directories `tests/unit/{lvs,sim}/<sub>/`, `docs/diagnostics/codes/{lvs,sim}.md`, `CORE-NOTIMPL-009` (`kM9NotImplemented`); the diag area test covers both areas.
+- [x] 4.2 Write the public headers of design "Area contracts" with stubs that return `CORE-NOTIMPL-009`, except `platform/worker_host.hpp` (PLATFORM, task 5.3) and `sim/engine/frames.hpp` (SIMD, task 5.4). Add `lvs::Session` and `sim::Session` to `EditorState`. Record the as-landed contracts in the design. Verify that the headers compile and that `scripts/check_core_includes.py` passes.
+
+  As landed (PR #98 via m9-round0): headers and stubs per design "Area contracts > As landed"; `lvs::Session` and `sim::Session` in `EditorState`; one `[cap:][req:]` test per stub; `NetNameMap` (Q-SIM-24 `layout_name` index, connectivity fallback as a predicate) implemented; pool formula (Q-SIMADV-13) stubbed in `sim/engine/pool.hpp`; `lvs` registered in `cmd/all_commands.cpp` (answers CORE-NOTIMPL-009); `check_core_includes.py` passes.
+- [x] 4.3 Add `scripts/check_engine_boundary.py` (design D2): no `ngSpice_` symbol in any binary other than `hefesto-ngspice-adapter` and `libngspice-hefesto`; no release binary other than `hefesto-simd` references the adapter plugin; `sharedspice.h` included only under `src/simd/adapter/`. Run it in CI. Verify with a fixture that violates each rule, and a clean run.
+
+  As landed (PR #98 via m9-round0): `scripts/check_engine_boundary.py` (symbol, plugin and header rules; `--developer-build` turns the plugin rule off for Q-SIM-22) with fixture tests in `scripts/tests/test_check_engine_boundary.py`; every `ci.yml` build leg runs it after Build.
 
 ## 5. NGBUILD, SIMD, PLATFORM: engine build, worker, worker service (R1–R2)
 
@@ -113,6 +131,8 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
 
   As landed (branch `m9-round0-ngbuild`): `pin.json` (ngspice-47 tarball, SHA-256 `894e6496…`, version `47-hefesto1`); four patches (0001 OSDI registry, 0002 code models, 0003 portable seeding, 0004 deterministic initialisation, which also fixes a stock crash when `ngSpice_nospinit()`/`ngSpice_nospiceinit()` run before `ngSpice_Init()`); `cmake/sources.cmake` generated from ngspice's own build by `tools/gen_sources.py`; option `HEFESTO_BUILD_NGSPICE` (default OFF); `.github/workflows/ngspice.yml` (Linux x86_64, Linux arm64, macOS arm64) runs the patch regression tests, the manifest check, the export check and the source archive. cppduals (MPL-2.0, used by HICUM) is in the manifest and the archive besides OSDI. The IHP OSDI modules are task 5.2.
 - [ ] 5.2 (NGBUILD) Compile the IHP OSDI modules (PSP103, `cap_cmomi`, `cap_cmomf`) from the `ihp-ngspice` set with the pinned OpenVAF, and register them statically. Verify "Version mismatch avoided" and an sg13g2 `op` deck.
+
+  Deferred to the next round: the `ihp-ngspice` set landed in the same round (3.1), so the modules were not compiled. Ready: patch 0001, `hefesto_static.c` and `cmake/Registries.cmake` (empty OSDI table). Open: OpenVAF-reloaded publishes linux_x64 and win_x64 only, so macOS and arm64 need OpenVAF from source or cross-compiled objects (raised to the user).
 - [ ] 5.3 (PLATFORM) Add `platform::WorkerHost` and `WorkerChannel` (design D9) with hosts in `src/cli/` and the desktop shell (`posix_spawn` and pipes); `WorkerSpec` carries the job directory and the read-only roots for the worker's confinement. The core default reports it unsupported. Verify unit tests with a test worker that echoes frames, exits, crashes and hangs, and the `hefesto-architecture` scenarios of "Long-lived worker processes".
 - [ ] 5.4 (SIMD) Add `src/simd/`:
   - the `hefesto-ngspice-adapter` plugin (the only includer of `sharedspice.h`; it copies every string and array before returning, and exports Hefesto's engine interface as a C ABI);
@@ -213,6 +233,8 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   - the legal review of the desktop linking (D-28, Q-SIM-20), recorded before the Desktop Beta; if it changes the link type, the affected tasks are revised with the user.
   
   Verify `check_third_party_notices.py`, the `hefesto-licensing` scenarios (including "Rebuilt library on macOS" on a notarized build), and the recorded review.
+
+  Progress (R0 integration): `THIRD_PARTY_NOTICES.md` rows for ngspice 47-hefesto1 and its KLU/AMD/COLAMD/BTF/SuiteSparse_config, numparam, OSDI, cppduals, sparse and XSPICE code-model parts, OpenVAF-reloaded as build-only, and netgen absent; `docs/building.md` "Replacing the ngspice library". Open: the compiled-in IHP OSDI models (task 5.2) and the legal review (D-28).
 - [ ] 20.2 Desktop Beta end-to-end cases BETA-E2E-SKY130, -GF180 and -IHP (Q-SIM-27, design D19 "Beta flow inputs"): `beta_inv.sch` drawn in Hefesto and simulated in `beta_tb.sch` with the FO4 load; `beta_inv` layout drawn in Hefesto around the library inverter, clean under Hefesto's DRC with the PDK's Magic tech file, written to GDS; extraction; an LVS match against `beta_inv.sch` (plus the PDK `sg13g2_inv_1.sch` cross-check for IHP); `rc` post-layout simulation in the same testbench with `tpd` within 30 % of the schematic run. Verify them on Linux x86_64 and macOS arm64 in CI.
 - [ ] 20.3 Docs: `docs/diagnostics/codes/{lvs,sim}.md` complete; `docs/building.md` (ngspice, OpenVAF, data sets); `docs/contributing/` (areas, fuzz targets, golden modules); the CHANGELOG; the roadmap M9 status; `docs/design/m1-ui-conformance.md` rows. Verify the docs checks.
 - [ ] 20.4 M9 exit check (design D25): the golden suites (with only the D19 iPadOS cases deferred to M14), coverage of the 17 capabilities plus the M9 part of `schematic-simulation-integration`, three-platform identity and tolerance, both-mode tests, `check_engine_boundary.py`, `check_cleanroom.py`, the security sign-off, the legal review, the PERF gates, retirement of `CORE-NOTIMPL-009`, and `openspec validate --all --strict`. Verify each item in the M9 exit table with run ids.

@@ -361,7 +361,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **Accessibility and localization:** completed.
 - **Packaging:** an AppImage and a native Linux package, and a signed, notarized macOS app with MoltenVK bundled.
 - **Release gates:** license and acknowledgements checks. Every open question is resolved for the shipped scope.
-- **Clean-room counsel review (exit item):** legal counsel has reviewed the two-team clean-room process of the schematic editor and the system-library interface table, and the review is recorded (J-1, Q-SCHEM-10; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", scenario "Counsel review before Desktop 1.0"; early de-risking schedule, "Before Desktop 1.0"). Desktop 1.0 does not ship the xschem-compatible system symbol library without it.
+- **Clean-room counsel review (exit item):** legal counsel has reviewed the two-team clean-room processes of the schematic editor (xschem) and of LVS (netgen, Q-LVS-30) and the system-library interface table, and the review is recorded (J-1, Q-SCHEM-10, Q-LVS-30; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", scenario "Counsel review before Desktop 1.0"; early de-risking schedule, "Before Desktop 1.0"). Desktop 1.0 does not ship the xschem-compatible system symbol library without it.
 
 **Desktop 1.0:** release on Linux and macOS, ready to take a design to a shuttle.
 

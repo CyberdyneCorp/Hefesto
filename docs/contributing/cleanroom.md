@@ -191,7 +191,7 @@ answer a question, stop and raise an LVS spec issue (cleanroom.md, "Raising an L
 
 ### Raising an LVS spec issue
 
-As for the schematic editor (above), with the capability one of the eight `lvs-*` specs and the label `lvs-spec`. Until an LVS issue template exists, use the fields of the **Schematic spec issue** template (capability, exact requirement heading, question, the test or code that needs the answer) and change the label. The answer is spec text, never an excerpt or summary of netgen's code, within one working day.
+As for the schematic editor (above), with the capability one of the eight `lvs-*` specs and the label `lvs-spec`. Use the **LVS spec issue** template (`.github/ISSUE_TEMPLATE/lvs-spec-issue.md`). The answer is spec text, never an excerpt or summary of netgen's code, within one working day.
 
 ### LVS checks
 

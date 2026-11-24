@@ -10,7 +10,9 @@ M4), the notices file must name the upstream repository (github.com/<owner>/<rep
 and the pin: the commit of a GIT_TAG, or the release tag (vX.Y.Z, curl-8_23_0,
 ...) of a GitHub release URL. A release archive hosted elsewhere (Tcl's
 tcl8.6.16-src.tar.gz) is named by its archive file name and pinned by the
-SHA-256 of its URL_HASH.
+SHA-256 of its URL_HASH. Since M9 the vendored sources pinned by a
+third_party/<name>/pin.json (ngspice) are checked the same way: the archive
+file name of their first URL and its SHA-256.
 
 Usage:
     check_third_party_notices.py
@@ -20,6 +22,7 @@ Exits 1 if a dependency or its pin is missing from the notices file.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -57,10 +60,22 @@ def declarations(cmake_text: str) -> list[tuple[str, str | None, str | None]]:
     return result
 
 
-def problems(cmake_text: str, notices: str) -> list[str]:
+def pin_declarations(pin_texts: list[str]) -> list[tuple[str, str | None, str | None]]:
+    """Return (name, archive file name, SHA-256) for each third_party pin.json."""
+    result = []
+    for text in pin_texts:
+        pin = json.loads(text)
+        archive = pin.get("archive", {})
+        urls = archive.get("urls") or [""]
+        file_name = urls[0].rstrip("/").rsplit("/", 1)[-1] or None
+        result.append((pin.get("name", "?"), file_name, archive.get("sha256")))
+    return result
+
+
+def problems(cmake_text: str, notices: str, pin_texts: list[str] | None = None) -> list[str]:
     found = []
     lowered = notices.lower()
-    for name, repo, pin in declarations(cmake_text):
+    for name, repo, pin in declarations(cmake_text) + pin_declarations(pin_texts or []):
         if repo is None or pin is None:
             found.append(f"{name}: cannot read the repository or pin from cmake/")
             continue
@@ -77,11 +92,13 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--root", type=Path, default=ROOT, help=argparse.SUPPRESS)
     root = parser.parse_args(argv).root
     cmake_text = "\n".join(path.read_text(encoding="utf-8") for path in sorted((root / "cmake").glob("*.cmake")))
+    pin_texts = [path.read_text(encoding="utf-8") for path in sorted((root / "third_party").glob("*/pin.json"))]
     notices = (root / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
-    found = problems(cmake_text, notices)
+    found = problems(cmake_text, notices, pin_texts)
     for problem in found:
         print(problem, file=sys.stderr)
-    print(f"{len(declarations(cmake_text))} dependencies checked, {len(found)} problems")
+    count = len(declarations(cmake_text)) + len(pin_texts)
+    print(f"{count} dependencies checked, {len(found)} problems")
     return 1 if found else 0
 
 
