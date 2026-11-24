@@ -8,13 +8,16 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "hefesto/extract/cap/caps.hpp"
 #include "util/cr_atan.hpp"
@@ -50,6 +53,40 @@ TEST_CASE("cr_atan matches the correctly rounded reference bit for bit",
   }
   CHECK(count == 4000);
   CHECK(mismatches == 0);
+}
+
+// Open Question 3 (tasks.md 6.4): cr_atan itself on the capture image's
+// probe (EX-P01, golden-capture run 45418696738, glibc 2.41): each line is
+// x, glibc's atan(x) at 17 digits and its %lg of 0.6366 * atan(x). cr_atan
+// differs from glibc in the last bit for one argument only, and no %lg text
+// differs, so the exception table stays empty.
+TEST_CASE("cr_atan against the capture image's atan probe",
+          "[cap:extract-capacitance][req:Fringe-halo sideoverlap]") {
+  std::ifstream in(std::string{HEFESTO_TEST_DATA_DIR} + "/atan_probe/EXTRACT/cases/EX-P01/expected/atan_probe.out");
+  REQUIRE(in.good());
+  std::string xs;
+  std::string atan_text;
+  std::string lg_text;
+  int count = 0;
+  std::vector<double> bit_diffs;
+  int text_diffs = 0;
+  while (in >> xs >> atan_text >> lg_text) {
+    const double x = std::strtod(xs.c_str(), nullptr);
+    const double got = cr_atan(x);
+    if (bits(got) != bits(std::strtod(atan_text.c_str(), nullptr))) {
+      bit_diffs.push_back(x);
+    }
+    std::array<char, 64> lg{};
+    (void)std::snprintf(lg.data(), lg.size(), "%g", 0.6366 * got);
+    if (lg_text != lg.data()) {
+      ++text_diffs;
+      UNSCOPED_INFO("x=" << xs << " glibc=" << lg_text << " hefesto=" << lg.data());
+    }
+    ++count;
+  }
+  CHECK(count == 3701);
+  CHECK(bit_diffs == std::vector<double>{0x1.78c4e5p+3});
+  CHECK(text_diffs == 0);
 }
 
 TEST_CASE("cr_atan special values", "[cap:extract-capacitance][req:Fringe-halo sideoverlap]") {
