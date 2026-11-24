@@ -177,7 +177,7 @@ class Layout {
     const db::Plane& p = cell_->plane(plane(plane_name));
     const std::uintptr_t c = p.client(p.tile_at(db::Point{x, y}));
     REQUIRE(c != db::kClientDefault);
-    return static_cast<std::size_t>(c);
+    return c;  // std::uintptr_t is std::size_t on every target
   }
 
   [[nodiscard]] extract::CapInputs inputs() const {

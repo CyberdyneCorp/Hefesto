@@ -344,7 +344,7 @@ DeviceNodeLookup client_slot_lookup(const db::CellDef& cell) {
     if (v == db::kClientDefault) {
       return std::nullopt;
     }
-    return static_cast<std::size_t>(v);
+    return v;  // std::uintptr_t is std::size_t on every target
   };
 }
 

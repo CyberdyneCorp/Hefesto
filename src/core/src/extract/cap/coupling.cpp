@@ -52,7 +52,7 @@ std::optional<std::size_t> client_node(const db::Plane& plane, const db::TileVie
   if (c == db::kClientDefault || c >= node_count) {
     return std::nullopt;
   }
-  return static_cast<std::size_t>(c);
+  return c;  // std::uintptr_t is std::size_t on every target
 }
 
 NodeLookup region_node_lookup(const RegionFinder& finder, const db::CellDef& cell, std::size_t list_size) {

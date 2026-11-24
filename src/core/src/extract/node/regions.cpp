@@ -34,7 +34,7 @@ namespace {
 constexpr std::uintptr_t kPending = 0;  // Magic's VISITPENDING
 
 constexpr std::uintptr_t region_code(std::size_t d) noexcept {
-  return 2 * (static_cast<std::uintptr_t>(d) + 1);
+  return 2 * (d + 1);  // std::uintptr_t is std::size_t on every target
 }
 
 constexpr bool is_region(std::uintptr_t v) noexcept {
@@ -151,7 +151,7 @@ class RegionPass {
     if (slot == db::kClientDefault || slot == kPending) {
       k = finder_.split_.size();
       finder_.split_.push_back({slot, slot});
-      plane.set_client(it.view, 2 * static_cast<std::uintptr_t>(k) + 1);
+      plane.set_client(it.view, 2 * k + 1);
     } else {
       k = slot / 2;
     }
