@@ -15,6 +15,8 @@
 //     (sky130-lef, gf180mcu-lef, ihp-lef: tech LEF and standard-cell LEF, M6);
 //   - the xschem data sets in .cache/pdks/xschem/ciel/<family>/versions/<pin>/
 //     (sky130-xschem, gf180mcu-xschem, ihp-xschem, M8);
+//   - the netgen and ngspice data sets in .cache/pdks/{netgen,ngspice}/ciel/<family>/versions/<pin>/
+//     (gf180mcu-netgen, ihp-netgen, sky130-ngspice, gf180mcu-ngspice, ihp-ngspice, M9);
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
@@ -278,6 +280,45 @@ inline std::optional<std::filesystem::path> pinned_tech_lef(const PinnedLef& lef
 inline std::optional<std::filesystem::path> pinned_cell_lef(const PinnedLef& lef) {
   const auto dir = pinned_lef_library(lef);
   return dir ? std::optional{*dir / std::string{lef.cell_lef}} : std::nullopt;
+}
+
+// The netgen and ngspice data sets (openspec/changes/m9-lvs-simulation/design.md D19, task 3.1): trees of the
+// same ciel releases under their own PDK roots `.cache/pdks/netgen/` and `.cache/pdks/ngspice/` (fetch_pdk.py
+// `pdk_dir`): gf180mcu-netgen, ihp-netgen, sky130-ngspice, gf180mcu-ngspice and ihp-ngspice. sky130's netgen
+// setup file is in the sky130-xschem set (`kSky130NetgenSetup` below, read with pinned_xschem).
+
+/// One pinned file of a netgen or ngspice data set, relative to `<variant>/`.
+struct PinnedToolFile {
+  const PinnedPdk* pdk;
+  std::string_view pdk_dir;  // the set's PDK root below .cache/pdks: "netgen", "ngspice" or "xschem"
+  std::string_view path;     // relative to the variant directory
+};
+
+/// The three netgen setup files of the NG-PDK cases (Q-LVS-31).
+inline constexpr PinnedToolFile kSky130NetgenSetup{&kSky130A, "xschem", "libs.tech/netgen/sky130A_setup.tcl"};
+inline constexpr PinnedToolFile kGf180mcuNetgenSetup{&kGf180mcuD, "netgen", "libs.tech/netgen/gf180mcuD_setup.tcl"};
+inline constexpr PinnedToolFile kIhpNetgenSetup{&kIhpSg13g2, "netgen", "libs.tech/netgen/ihp-sg13g2_setup.tcl"};
+
+/// The model entry points of the ngspice sets: sky130's corner library (discrete and continuous models,
+/// Q-SIMADV-2), gf180mcu's corner library and IHP's low-voltage MOS corners plus the PSP103 Verilog-A source.
+inline constexpr PinnedToolFile kSky130NgspiceLib{&kSky130A, "ngspice", "libs.tech/ngspice/sky130.lib.spice"};
+inline constexpr PinnedToolFile kSky130CombinedLib{&kSky130A, "ngspice", "libs.tech/combined/sky130.lib.spice"};
+inline constexpr PinnedToolFile kGf180mcuNgspiceLib{&kGf180mcuD, "ngspice", "libs.tech/ngspice/sm141064.ngspice"};
+inline constexpr PinnedToolFile kIhpNgspiceMosLib{&kIhpSg13g2, "ngspice", "libs.tech/ngspice/models/cornerMOSlv.lib"};
+inline constexpr PinnedToolFile kIhpPsp103Source{&kIhpSg13g2, "ngspice", "libs.tech/verilog-a/psp103/psp103.va"};
+
+/// `.cache/pdks/<pdk_dir>/ciel/<family>/versions/<version>/<variant>/<path>` when that file exists, else
+/// std::nullopt (the set was not fetched); a test whose file is missing skips.
+inline std::optional<std::filesystem::path> pinned_tool_file(const PinnedToolFile& file) {
+  const std::filesystem::path path = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" /
+                                     std::string{file.pdk_dir} / "ciel" / std::string{file.pdk->family} /
+                                     "versions" / std::string{file.pdk->version} /
+                                     std::string{file.pdk->variant} / std::string{file.path};
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec) || ec) {
+    return std::nullopt;
+  }
+  return path;
 }
 
 }  // namespace hefesto::test
