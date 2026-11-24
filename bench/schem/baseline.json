@@ -5,7 +5,7 @@
     "max(baseline * ratio, baseline + slack_s). Recorded with schem_bench.py --record on the host named by --host:",
     "macos-m3pro (Apple M3 Pro, Release, macos-release preset) and linux-runner (GitHub ubuntu-24.04, GCC 14",
     "Release, the schem-bench job of .github/workflows/perf.yml).",
-    "linux-runner: Performance run 45405460263 (workflow_dispatch on m8-round4-decide), artifact schem-bench."
+    "linux-runner: Performance run 45459577048 (workflow_dispatch on m8-round4-decide, the commit of the first baseline), artifact schem-bench. It replaces run 45405460263, whose medians were about half of every later run: run 45459577048 of the same commit and two runs of the M8 round-4 head (45420087982), which a local A/B shows equal to it, slower on loading too, whose code did not change: a faster runner."
   ],
   "ratio": 2.0,
   "slack_s": 0.05,
@@ -54,43 +54,43 @@
     },
     "linux-runner": {
       "recorded": "2026-11-24",
-      "commit": "d5109f41b1f3747f86b45ae7364b819e538e88d4",
+      "commit": "fea57afba382f824816feac986ea8d2f14130cef",
       "workloads": {
         "hier10k": {
-          "load_s": 0.0064,
-          "save_s": 0.0076,
-          "netlist_s": 0.2716,
-          "flat_s": 0.3089
+          "load_s": 0.0093,
+          "save_s": 0.0104,
+          "netlist_s": 0.5437,
+          "flat_s": 0.5987
         },
         "sky130A/xschem_verilog_import/audiodac": {
-          "load_s": 0.0059,
-          "save_s": 0.0065,
-          "netlist_s": 0.1806
+          "load_s": 0.0082,
+          "save_s": 0.0089,
+          "netlist_s": 0.3642
         },
         "sky130A/xschem_verilog_import/audiodac_clean": {
-          "load_s": 0.0037,
-          "save_s": 0.0039,
-          "netlist_s": 0.1092
+          "load_s": 0.0052,
+          "save_s": 0.0052,
+          "netlist_s": 0.2264
         },
         "gf180mcuD/tests/0_top": {
-          "load_s": 0.0,
-          "save_s": 0.0001,
-          "netlist_s": 0.0132
+          "load_s": 0.0001,
+          "save_s": 0.0003,
+          "netlist_s": 0.0232
         },
         "gf180mcuD/tests/test_cap_mim_analog": {
           "load_s": 0.0,
-          "save_s": 0.0001,
-          "netlist_s": 0.0003
+          "save_s": 0.0002,
+          "netlist_s": 0.0006
         },
         "ihp-sg13g2/sg13g2_tests/iso_dc_res": {
-          "load_s": 0.0009,
-          "save_s": 0.0014,
-          "netlist_s": 0.0007
+          "load_s": 0.0016,
+          "save_s": 0.0017,
+          "netlist_s": 0.0012
         },
         "ihp-sg13g2/sg13g2_tests/iso_dc_hv_nmos": {
-          "load_s": 0.0006,
-          "save_s": 0.0011,
-          "netlist_s": 0.0006
+          "load_s": 0.001,
+          "save_s": 0.0013,
+          "netlist_s": 0.001
         }
       }
     }
