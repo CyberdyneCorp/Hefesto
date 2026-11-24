@@ -10,7 +10,8 @@
 // members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members;
 // openspec/changes/m4-scripting/design.md D4 for the M4 member;
 // openspec/changes/m8-schematic/design.md D4 for the M8 member;
-// openspec/changes/m7-extraction/design.md D5 for the M7 members).
+// openspec/changes/m7-extraction/design.md D5 for the M7 members;
+// openspec/changes/m9-lvs-simulation/design.md D4 for the M9 members).
 // Areas request new members through their open items instead of editing it.
 
 #pragma once
@@ -34,12 +35,14 @@
 #include "hefesto/extract/command/session.hpp"
 #include "hefesto/extresist/command/session.hpp"
 #include "hefesto/lef/session.hpp"
+#include "hefesto/lvs/session.hpp"
 #include "hefesto/mask/session.hpp"
 #include "hefesto/netlist/session.hpp"
 #include "hefesto/schem/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/select/selection.hpp"
+#include "hefesto/sim/session.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/macros.hpp"
 #include "hefesto/ui/stacks.hpp"
@@ -256,6 +259,17 @@ struct EditorState {
   // session.hpp; each member's owner is named there): the at-most-one 3D
   // window with its mode, view state, cut box, visibility sets and mesh.
   view3d::Session view3d;
+
+  // ---- M9 (openspec/changes/m9-lvs-simulation/design.md D4) ----
+
+  // LVSCMD / LVSHIER: the LVS session (lvs/session.hpp; each member's owner
+  // is named there): the last result per document, the run in progress and
+  // the name maps of its two circuits.
+  lvs::Session lvs;
+  // SIMENG / SIMDECK / SIMRES / SIMADV: the simulation session
+  // (sim/session.hpp): the testbenches, the jobs, the run sets, the result
+  // store index and the engine status.
+  sim::Session sim;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed
