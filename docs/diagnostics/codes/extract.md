@@ -135,6 +135,27 @@ of the single-kind coupling functions without the cell, the extraction style
 or the technology in `CapInputs`; it is a programming error and nothing is
 computed.
 
+## DEV
+
+Codes of device recognition (`src/core/src/extract/device/`; capabilities
+extract-devices and extract-substrate; design D10). Owner: EXTDEV.
+
+The device pass reports what Magic's extOutputDevices prints on the
+console: `EXTRACT-DEV-001` a region no record matches; `EXTRACT-DEV-002`
+more terminals than the records declare; `EXTRACT-DEV-003` to
+`EXTRACT-DEV-006` record selection by substrate and identifier layers;
+`EXTRACT-DEV-007` parameter ranges no compatible record accepts
+(Q-EXTRACT-21); `EXTRACT-DEV-008` a gate with several lengths;
+`EXTRACT-DEV-009` a capacitor or diode with an empty terminal boundary (the
+equivalent-square fallback); `EXTRACT-DEV-010` a malformed `device` cell
+property (Q-EXTRACT-16); `EXTRACT-DEV-011` equal terminal positions while
+sorting. Magic's per-device feedback (`device missing N terminal(s)`,
+`Could not determine device boundary`, `Resistor has zero width`,
+`Capacitor has zero size`, `L,W estimated for non-rectangular capacitor.`
+and the resistor terminal-count warnings) goes to the feedback list, not
+to a code, as Magic's DBWFeedbackAdd does. `EXTRACT-DEV-012` is an internal
+error of a caller that omits the cell, technology, style or node list.
+
 ## Table
 
 The table below is generated from the fragments:
@@ -151,6 +172,18 @@ fails when the two disagree.
 |---|---|---|
 | `EXTRACT-CAP-001` | warning | Two port labels of different names are on one node (`Warning:  Ports "a" and "b" are electrically shorted.`, ExtBasic.c:815-838); suppressed per Q-EXTRACT-22: with magic-compat ON whenever lumped resistance is on, with it OFF only when extresist runs in the same pass. |
 | `EXTRACT-CAP-002` | error | A capacitance entry point was called without a cell, an extraction style or a technology; nothing is computed. |
+| `EXTRACT-DEV-001` | warning | A device region matches no extraction record after terminal discovery (`Warning:  No matching extraction type for device at (x y)`); no device is written. |
+| `EXTRACT-DEV-002` | warning | A device has more terminals than any record of its type declares (`Warning:  Device has more terminals than defined for type!`); the record is kept. |
+| `EXTRACT-DEV-003` | error | The substrate layer under a device matches no record of its type (`No matching device for <type> with substrate layer <layer>`); no device is written. |
+| `EXTRACT-DEV-004` | error | No substrate node is found under a device whose record needs one (`Device <type> does not have a compatible substrate node!`); no device is written. |
+| `EXTRACT-DEV-005` | error | A device without identifier layer matches no record without one (`No matching device for <type> with no ID layer`); no device is written. |
+| `EXTRACT-DEV-006` | warning | An identifier layer over a device matches no record of its type (`ID layer <layer> on non-matching device <type> was ignored.`); the record is kept. |
+| `EXTRACT-DEV-007` | warning | No compatible record's parameter ranges accept a device's dimensions (`Device parameters do not match any extraction model.`). |
+| `EXTRACT-DEV-008` | warning | A non-rectangular gate has several lengths (`Device has multiple lengths:  scaling all widths to length L`); the widths are scaled to the shortest. |
+| `EXTRACT-DEV-009` | error | A capacitor's or diode's terminal boundary is empty (`extract:  Can't get capacitor L and W`); L and W are the equivalent square of the terminal area. |
+| `EXTRACT-DEV-010` | error | A `device` cell property names an unknown device class or is malformed (`Extract error:  "device" property has unknown device type: ...`, `... property syntax error`); the normal device output is used. |
+| `EXTRACT-DEV-011` | info | Two terminals of a symmetric device have the same position while sorting (`Extract error:  Duplicate tile position, ignoring`); they keep their order. |
+| `EXTRACT-DEV-012` | error | The device pass was called without its cell, technology, style or node list (an internal error); nothing is extracted. |
 | `EXTRACT-FILE-001` | error | A `node`, `substrate` or `merge` record does not hold one area and perimeter pair per resistance class of the header; the `.ext` text is not produced. |
 | `EXTRACT-FILE-002` | error | The `.ext` writer was finished without header records; the `.ext` text is not produced. |
 | `EXTRACT-FILE-003` | error | An extraction output file cannot be opened, written or renamed over its target (`Cannot open output file ...`); the previous file is left unchanged. |
