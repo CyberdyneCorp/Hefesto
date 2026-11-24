@@ -282,7 +282,7 @@ Hefesto SHALL accept any number of submitted jobs, for example one per corner. O
 
 `N = max(1, min(4, physical_cores − 1, ⌊B_total / B_job⌋))`
 
-`B_total` is half the physical memory, and `B_job` is the job's result memory budget (capability `simulation-analyses-and-results`) plus an estimate of its prepared deck size. A user setting MAY lower `N` and SHALL NOT raise it. On iPadOS, jobs SHALL run one at a time in submission order. A job's results SHALL NOT depend on the number of workers, on which worker ran it, or on the order in which jobs finish. Sweeps, corners and Monte Carlo runs share this pool (capabilities `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`).
+`B_total` is half the physical memory, and `B_job` is the job's result memory budget (capability `simulation-analyses-and-results`) plus an estimate of its prepared deck size. A user setting MAY lower `N` and SHALL NOT raise it. Degenerate inputs SHALL still give a pool of at least one worker: a user setting of 0 SHALL count as 1, a `B_job` of 0 (no estimate) SHALL drop the memory term from the minimum, and an unknown core count (0) SHALL count as one core. On iPadOS, jobs SHALL run one at a time in submission order. A job's results SHALL NOT depend on the number of workers, on which worker ran it, or on the order in which jobs finish. Sweeps, corners and Monte Carlo runs share this pool (capabilities `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`).
 
 Compatibility: native
 
@@ -312,6 +312,16 @@ Compatibility: native
 - **GIVEN** a Linux host with 10 physical cores and 16 GiB of memory, and a 4-point sweep of a post-layout deck whose jobs each have the default 4 GiB result budget plus a 300 MiB prepared deck
 - **WHEN** the sweep is started
 - **THEN** `N` SHALL be 1 (half of 16 GiB divided by a `B_job` above 4 GiB rounds down to 1), the points SHALL run one at a time, and the results SHALL equal those of the same sweep with `N` set to 1
+
+#### Scenario: Worker setting of zero
+- **GIVEN** a host on which the formula gives `N = 3`
+- **WHEN** the user setting is 0
+- **THEN** `N` SHALL be 1, and the jobs SHALL run one at a time and complete
+
+#### Scenario: Job with no memory estimate
+- **GIVEN** an 8-physical-core host with 32 GB of memory and a job whose `B_job` is 0
+- **WHEN** the pool size is computed
+- **THEN** `N` SHALL be 4 (the memory term is dropped, `min(4, 7)`), with no division by zero
 
 ### Requirement: No runtime loading of executable code on iPadOS
 On iPadOS, the engine SHALL NOT load executable code at runtime. Every OSDI model and XSPICE code model SHALL be compiled into the app at build time and registered statically. The ngspice commands that would load code (`osdi`, `pre_osdi`, `codemodel`) SHALL be resolved against the built-in registry, as Requirement "OSDI compact models" specifies, and SHALL NEVER reach a dynamic loader. The ngspice `shell` command and `.control`-section execution of host programs SHALL be rejected on every platform; see capability `simulation-netlist-preparation`, Requirement "Deck validation and sanitisation".

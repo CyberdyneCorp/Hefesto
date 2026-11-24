@@ -10,7 +10,10 @@
 //
 // where B_total is half the physical memory and B_job the job's result
 // memory budget plus an estimate of its prepared deck size. A user setting
-// can only lower N, never raise it. Jobs, sweeps, corners and Monte Carlo
+// can only lower N, never raise it. Degenerate inputs still give N >= 1: a
+// user_limit of 0 counts as 1 (no empty pool, so no hang), a job_budget of 0
+// drops the memory term (no division by zero), and physical_cores 0 counts as
+// one core. Jobs, sweeps, corners and Monte Carlo
 // samples share the pool; iPadOS runs one job at a time.
 //
 // The scaffold declares the signature only; SIMENG implements it (task 5.5).
@@ -29,9 +32,9 @@ namespace hefesto::sim {
 struct PoolInputs {
   std::uint32_t physical_cores = 1;
   std::uint64_t physical_memory = 0;  // bytes; B_total = physical_memory / 2
-  std::uint64_t job_budget = 0;       // bytes; B_job (result budget + deck estimate)
+  std::uint64_t job_budget = 0;       // bytes; B_job (result budget + deck estimate); 0 = no memory term
   /// The user setting: a value below the formula's N lowers it; a larger
-  /// value has no effect. nullopt = no setting.
+  /// value has no effect; 0 counts as 1. nullopt = no setting.
   std::optional<std::uint32_t> user_limit;
 };
 
