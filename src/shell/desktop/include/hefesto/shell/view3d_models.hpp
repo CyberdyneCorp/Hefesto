@@ -328,13 +328,19 @@ class View3dPicking {
   /// selection's instances (2D -> 3D link). Null when empty.
   const view3d::HighlightSet* highlight(const view3d::MeshModel* mesh, const editor::EditorState& editor);
   [[nodiscard]] const std::optional<view3d::PickTarget>& picked() const noexcept { return picked_; }
-  /// Drops the picked target and the net (a new model, a closed window).
+  /// A new model replaced the drawn one: its pick ids are other ordinals,
+  /// so the isolated net is recomputed from the picked target against the
+  /// model the next highlight() is given. The picked target (a tile, not
+  /// an id) is kept.
+  void model_changed() noexcept { net_stale_ = net_.has_value(); }
+  /// Drops the picked target and the net (a closed window).
   void reset();
 
  private:
   PickResolver& resolver_;
   std::optional<view3d::PickTarget> picked_;
   std::optional<view3d::HighlightSet> net_;
+  bool net_stale_ = false;
   view3d::HighlightSet shown_;
 };
 

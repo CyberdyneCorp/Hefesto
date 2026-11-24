@@ -132,6 +132,28 @@ TEST_CASE("selecting a rectangle in 2D highlights exactly the overlapping instan
   }
 }
 
+// Review of PR #86 (finding 4): a selection rooted in another cell holds
+// paint in that cell's coordinates; it highlights nothing in the rendered
+// cell's model.
+TEST_CASE("the 2D -> 3D highlight ignores a selection rooted in another cell",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Session s;
+  db::CellDef& top = s.cell("top");
+  db::CellDef& other = s.cell("other");
+  s.paint(top, Rect{0, 0, 10, 10}, s.t.metal1);
+  s.paint(other, Rect{0, 0, 10, 10}, s.t.metal1);
+  const view3d::MeshModel mesh = s.mesh(top);
+  const view3d::PickContext context{&s.stack, &top, true};
+  select_paint(s, other, Rect{0, 0, 10, 10}, s.t.metal1);
+  CHECK(view3d::from_selection(mesh, context, s.editor.selection).empty());
+  // The same paint selected in the rendered cell lights its instances.
+  s.editor.selection.clear();
+  select_paint(s, top, Rect{0, 0, 10, 10}, s.t.metal1);
+  const auto set = view3d::from_selection(mesh, context, s.editor.selection);
+  CHECK(set.ids == view3d::from_selection(mesh, s.stack, s.editor.selection).ids);
+  CHECK(set.ids.size() == 5);
+}
+
 TEST_CASE("net highlighting on an inverter equals the net's tiles from connect::search_flat",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   for (const bool compat : {true, false}) {
