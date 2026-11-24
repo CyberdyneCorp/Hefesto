@@ -130,3 +130,27 @@ TEST_CASE("schematic netlist: hostile tcleval values give ?", sec::kPermissionMo
     CHECK_FALSE(std::filesystem::exists(outside.path() / "made"));
   }
 }
+
+// Regression (review 12.1, S8-05): `schematic netlist` gave `?` for a denied
+// tcleval value but reported no sandbox diagnostic, and the evaluation named
+// no instance. The denial now reaches the command's result, naming the
+// instance and its symbol, in both modes.
+TEST_CASE("schematic netlist reports a denied tcleval value, naming the instance", sec::kPermissionModel) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    hefesto::test::SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/r.sym", kResistor);
+    s.folder().write("w/top.sch", std::string{kHeader} + "C {r.sym} 0 0 0 0 {name=R7 value=\"tcleval([exec id])\"}\n");
+    REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
+    const auto result = s.schematic({"netlist"});
+    REQUIRE(result.ok());
+    bool named = false;
+    for (const auto& d : result.diagnostics) {
+      if (d.code == "SCRIPT-SANDBOX-001" && d.text.find("(tcleval of instance R7 (r.sym))") != std::string::npos) {
+        named = true;
+      }
+    }
+    CHECK(named);
+  }
+}

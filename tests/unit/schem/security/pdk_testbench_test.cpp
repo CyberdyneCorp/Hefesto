@@ -104,7 +104,14 @@ void check_bench(const stdfs::path& root, const std::string& pdk, const stdfs::p
   (void)schem::netlist(environment, document.value(), schem::NetlistOptions{}, hefesto::compat::CompatSettings{});
   for (const auto& d : sec::with_code_prefix(rc.diagnostics, "SCRIPT-SANDBOX-")) FAIL_CHECK(d.text);
   for (const auto& d : sink.take()) FAIL_CHECK(d.code + " " + d.text);
-  for (const std::string& path : denied.paths()) FAIL_CHECK("denied path " + path);
+  // Tcl probes the process working directory (Tcl_FSGetCwd, when it
+  // normalizes a relative path) without accessing it, and the layer records
+  // that claim as a denial; a real access there would also have reached
+  // `sink` as SCRIPT-SANDBOX-004 above. Every other denied path fails.
+  const std::string cwd = stdfs::current_path().generic_string();
+  for (const std::string& path : denied.paths()) {
+    if (path != cwd) FAIL_CHECK("denied path " + path);
+  }
 }
 
 void check_pdk(const hefesto::test::PinnedPdk& pinned) {

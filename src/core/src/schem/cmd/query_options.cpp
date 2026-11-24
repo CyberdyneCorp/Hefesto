@@ -160,6 +160,10 @@ std::unique_ptr<TclEnvironment> tcl_environment(cmd::CommandContext& ctx, const 
   auto tcl = std::make_unique<TclEnvironment>(*editor, tcleval_policy(editor->script.sandbox, files), fs,
                                               std::move(hooks));
   if (files) (void)tcl->load_xschemrc(*files);
+  // From here on, the sandbox denials and stops of the run's tcleval values
+  // reach the command's result (security review 12.1, S8-05); the xschemrc
+  // diagnostics above were reported when the document was opened.
+  tcl->set_diagnostics(&ctx.sink());
   return tcl;
 }
 
