@@ -171,11 +171,10 @@ TEST_CASE("xschem subcommands of M9 and the editor fail as the table says", kXsc
 TEST_CASE("xschem subcommands that need EDIT pass through schematic", kXschem) {
   SchemSession s;
   open_two_instances(s);
-  // Until EDIT implements `schematic ascend`, `xschem go_back` reports its
-  // CORE-NOTIMPL-007 error, which shows the mapping.
-  CHECK(caught(s, "xschem go_back").find("not implemented yet: schematic ascend") != std::string::npos);
-  CHECK(caught(s, "xschem unselect_all").find("not implemented yet: schematic select") != std::string::npos);
-  CHECK(caught(s, "xschem descend 1 0 R1").find("not implemented yet: schematic descend") != std::string::npos);
+  // The errors of EDIT's `schematic ascend` and `descend` show the mapping.
+  CHECK(caught(s, "xschem go_back") == "1 {schematic: already at the top of the hierarchy}");
+  CHECK(caught(s, "xschem unselect_all") == "0 {}");
+  CHECK(caught(s, "xschem descend 1 0 R1").find("schematic: cannot descend into res.sym") != std::string::npos);
   CHECK(caught(s, "xschem change_sch_path 1") == "1 {xschem change_sch_path: no instance descended into}");
 }
 
@@ -186,8 +185,8 @@ TEST_CASE("xschem passes hostile arguments to schematic as single words", kXsche
   s.folder().write("w/a [set ::pwned 1] $x;.sch", hefesto::test::kTwoInstances);
   CHECK(caught(s, "xschem load {" + s.folder().str("w/a [set ::pwned 1] $x;.sch") + "}") == "0 1");
   CHECK(s.tcl("info exists ::pwned").value.to_string() == "0");
-  CHECK(caught(s, "xschem setprop instance R1 value {[set ::pwned 1];}").find("not implemented yet") !=
-        std::string::npos);
+  CHECK(caught(s, "xschem setprop instance R1 value {[set ::pwned 1];}").starts_with("0 "));
+  CHECK(s.tcl("xschem getprop instance R1 value").value.to_string() == "[set ::pwned 1];");
   CHECK(s.tcl("info exists ::pwned").value.to_string() == "0");
 }
 
