@@ -29,6 +29,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extflat/args.hpp"
 #include "hefesto/extflat/hierarchy.hpp"
+#include "hefesto/netlist/session.hpp"
 #include "hefesto/netlist/spice/run_args.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -338,19 +339,19 @@ void apply_trim(extflat::NameFlags& names, const std::string& chars) {
 }  // namespace
 
 // The netlist of one run: flat, or hierarchical with `hierarchy on`.
-// EFArgs' -t is applied to the name flags after the read, as Magic's
-// EFOutputFlags are.
+// EFArgs' -t is applied to the name flags before the read, in both paths,
+// as EFArgs sets EFOutputFlags while it parses: with magic-compat ON (the
+// session's flags) a `-t` survives a failed read.
 diag::Outcome<WriteResult> write_run(editor::EditorState& editor, std::string_view cell, const RunRequest& request,
                                      platform::FileSystem& fs, diag::DiagnosticSink& sink, extflat::NameFlags& names) {
+  apply_trim(names, request.trim_chars);
   if (request.settings.hierarchy) {
-    apply_trim(names, request.trim_chars);
     return write_hierarchy(editor, cell, request, fs, sink, names);
   }
   auto input = read_input(editor, cell, request.settings, request.compat, fs, sink, request.symbols);
   if (!input.ok()) {
     return input.error();
   }
-  apply_trim(names, request.trim_chars);
   return write_flat(input.value(), request.settings, request.flags, request.compat, names);
 }
 
@@ -401,23 +402,26 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
       extflat::ArgOptions{true, false, extflat::file_reader(fs)});
   std::vector<diag::Diagnostic> messages = to_diagnostics(run.messages);
   if (!parsed.ok()) {
+    editor.netlist.search_path.clear();  // EFDone
     return with_messages(cmd::CommandResult::failure(parsed.error()), std::move(messages));
   }
   const extflat::CommonArgs& common = parsed.value();
   messages.insert(messages.end(), common.messages.begin(), common.messages.end());
-  if (!common.search_path.empty()) {
-    session.search_path = common.search_path;
-    editor.netlist.spice.search_path = common.search_path;  // EFSearchPath, a global in both modes
-  }
+  // Q-NETLIST-61: -p holds for this run only (EFDone frees EFSearchPath).
+  const std::vector<std::string> search_path = take_search_path(editor.netlist, common.search_path);
   const auto cell = run_cell(editor, common);
   if (!cell) {
+    if (compat.magic_compat) {
+      editor.netlist.search_path = search_path;  // Magic returns here without EFDone
+    }
     return with_messages(cmd::CommandResult::failure(diag::make(kNoCell, "Point to a window or specify a cell name.")),
                          std::move(messages));
   }
   // Q-NETLIST-42 (fix): `-o` names this run's file only. EFArgs takes it
   // for ext2spice (ArgOptions::output), into this run's CommonArgs.
   const std::string output = common.output.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
-  const SpiceSettings local = run_settings(session, common);
+  SpiceSettings local = run_settings(session, common);
+  local.search_path = search_path;
   // Q-NETLIST-16: the session's flags with magic-compat ON, fresh ones per
   // run with it OFF.
   extflat::NameFlags fresh;

@@ -115,6 +115,7 @@ struct ExtRunner {
   hefesto::editor::EditorState editor;
   platform::MemoryFileSystem files;
   std::vector<std::string> messages;
+  bool compat = true;
 
   void ext(const std::string& cell, std::string_view text) {
     REQUIRE(files.write_atomic(platform::Path{"/w/" + cell + ".ext"}, text).ok());
@@ -124,6 +125,7 @@ struct ExtRunner {
     sim::SimRun request;
     request.args = {"-p", "/w"};
     request.args.insert(request.args.end(), args.begin(), args.end());
+    request.magic_compat = compat;
     request.files = &files;
     request.emit = [this](diag::Diagnostic d) { messages.push_back(d.text); };
     return sim::run(editor, request);
@@ -430,4 +432,72 @@ TEST_CASE("ext2sim -h and -T go to simParseArgs", "[cap:netlist-sim][req:Command
   REQUIRE_FALSE(run({"-T", "scmos", "inv"}).ok());
   CHECK(run.messages.front() == "Unrecognized flag: -T");
   CHECK(run.reads.empty());
+}
+
+// Q-NETLIST-59 (compat): EFReadFile sets `Cannot read extract file
+// <cell>.ext` as the Tcl result and the command succeeds. Regression:
+// ext2sim failed in both modes while ext2spice copied Magic.
+TEST_CASE("ext2sim with a missing .ext file and magic-compat ON returns the message",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  ExtRunner run;
+  const cmd::CommandResult r = run({"nosuch"});
+  REQUIRE(r.ok());
+  CHECK(r.value.to_string() == "Cannot read extract file nosuch.ext\n");
+  CHECK_FALSE(run.files.exists(platform::Path{"nosuch.sim"}));
+}
+
+TEST_CASE("ext2sim with a missing .ext file and magic-compat OFF fails",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  ExtRunner run;
+  run.compat = false;
+  const cmd::CommandResult r = run({"nosuch"});
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.diagnostics.back().code == "EXTFLAT-READ-001");
+  CHECK_FALSE(run.files.exists(platform::Path{"nosuch.sim"}));
+}
+
+// Q-NETLIST-61 (compat-neutral): -p holds for the run that names it, in
+// both tools, as Magic's EFDone frees EFSearchPath after every run.
+TEST_CASE("ext2sim -p holds for one run", "[cap:netlist-sim][req:Command options and defaults]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    hefesto::editor::EditorState editor;
+    Runner run{editor};
+    REQUIRE(run({"-p", "/x", "inv"}, compat).ok());
+    REQUIRE(run({"inv"}, compat).ok());
+    REQUIRE(run.reads.size() == 2);
+    CHECK(run.reads[0].options.search_path == std::vector<std::string>{"/x"});
+    CHECK(run.reads[1].options.search_path.empty());
+  }
+}
+
+// Q-NETLIST-61: unlike ext2spice, simParseArgs' caller runs EFDone when no
+// cell is named (ext2sim.c:548-552), so that run's -p is dropped in both
+// modes.
+TEST_CASE("ext2sim -p of a run without a cell is dropped",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    hefesto::editor::EditorState editor;
+    Runner run{editor};
+    REQUIRE(run({"-p", "/x"}, compat).ok());
+    REQUIRE(run({"inv"}, compat).ok());
+    REQUIRE(run.reads.size() == 1);
+    CHECK(run.reads[0].options.search_path.empty());
+  }
+}
+
+// Q-NETLIST-61: an ext2spice run without a cell leaves its -p (Magic
+// returns before EFDone), and the next ext2sim run reads with it
+// (magic-compat ON).
+TEST_CASE("ext2sim reads with the -p an ext2spice run without a cell left",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  hefesto::editor::EditorState editor;
+  editor.netlist.search_path = {"/x"};  // as `ext2spice -p /x` without a cell leaves it
+  Runner run{editor};
+  REQUIRE(run({"inv"}, true).ok());
+  REQUIRE(run({"inv"}, true).ok());
+  REQUIRE(run.reads.size() == 2);
+  CHECK(run.reads[0].options.search_path == std::vector<std::string>{"/x"});
+  CHECK(run.reads[1].options.search_path.empty());
 }

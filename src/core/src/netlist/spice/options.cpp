@@ -259,6 +259,7 @@ cmd::CommandResult default_option(const Call& call) {
   call.settings.rthresh = std::numeric_limits<std::int64_t>::max();
   call.settings.search_path.clear();
   call.settings.tech.reset();
+  call.session.editor->netlist.search_path.clear();  // EFSearchPath
   extflat::NameFlags& names = call.session.editor->netlist.names;
   names.trim_global = false;
   names.trim_local = false;
