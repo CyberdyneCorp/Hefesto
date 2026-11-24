@@ -537,3 +537,20 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: accept the difference now and pass the real error text through `FileSystem::read` later | change `FileSystem` now
 - Recommendation: accept now; the missing-file case, the only one the golden cases use, matches Magic.
 - Resolution: compat-neutral, accepted difference — in both modes an unreadable `-S` file is reported as `<file>: No such file or directory` and the parse goes on; Magic prints the OS error text, which differs for a file that exists but cannot be read (permissions, a directory). Passing the real error text through `FileSystem::read` is a later improvement (`openspec/changes/m7-extraction/tasks.md` 10.6). Spec: `ext-flattening-hierarchy` "Common netlister arguments". Test: `tests/unit/extflat/args_names_test.cpp` "EFArgs -S reads a symbol file in argument order" (`nope: No such file or directory`). Approved 2026-11-23.
+
+### Q-NETLIST-59: A missing `.ext` file in ext2spice and ext2sim
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for ext2spice per the standing rule)
+- Magic behavior: EFReadFile sets `Cannot read extract file <cell>.ext` (with a newline) as the Tcl result and the command returns OK.
+- Evidence: extflat/EFread.c:207-216; NL-SPICE-01
+- As implemented (round R3): ext2spice with magic-compat ON returns the text as the command's result and succeeds (NL-SPICE-01 replays); with it OFF it fails with EXTFLAT-READ-001. ext2sim still fails in both modes; aligning it is a small change in `netlist/sim/run.cpp` once this is decided. Test: `tests/unit/core/m7_scaffold_test.cpp` (the three magic-compat ON ext2spice reads).
+- Options: compat (ON: the text is the result and the command succeeds; OFF: EXTFLAT-READ-001) | replicate
+- Recommendation: compat, for both tools.
+
+### Q-NETLIST-60: The name of a shorted-port device's anonymous terminal-0 node (Q-NETLIST-31 with magic-compat OFF)
+- Kind: compat-neutral
+- Status: pending user decision (raised in M7 round R3 by NETLIST, 2026-11-24)
+- Magic behavior: n/a. With magic-compat ON Magic's `dummy` path is used (implemented; NL-FLAT-06 and NL-HIER-06 replay). Q-NETLIST-31's OFF branch gives each shorted-port device its own anonymous terminal-0 node, and the spec does not say what name a resistor-tee midpoint prints for it.
+- Evidence: Q-NETLIST-31; `netlist-spice-devices`; `openspec/changes/m7-extraction/tasks.md` 11.5
+- Options: a generated name the reader can never produce, `dummy#<n>` numbered per cell | another scheme
+- Recommendation: `dummy#<n>` numbered per cell, with one spec sentence. Q-NETLIST-31's OFF branch stays unimplemented until this is decided.

@@ -260,6 +260,22 @@ Applied 2026-11-23, after the approval:
 - **Q-NETLIST-55, 56, 57, 58:** `ext-flattening-hierarchy` "Common netlister arguments" already states the behaviour with its scenarios; it now cites the rows.
 - Q-EXTRACT-30 and M7-18 need no spec change.
 
+## Entries raised in round R3 (pending user decision)
+
+Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) for Magic behaviours no row covered, and for both-modes fixes made by the standing rule. Each is implemented as its recommendation says (magic-compat ON copies Magic, OFF does the intended thing; crashes, hangs and undefined behaviour fixed in both modes), and none is cited by a spec yet, so none blocks `check_milestone_readiness.py`. The spec edits each implies are written in its open-questions entry and are applied after approval.
+
+| ID | Question | Kind | Recommendation | Spec on approval | Implemented by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-31 | The second side of a two-sided split tile is never a region seed | bug | **compat** | extract-nodes-and-labels "Node connectivity" (scenario per mode) | EXTNODE (R3) |
+| Q-EXTRACT-32 | Per-class area and perimeter stored only with lumped resistance on | quirk | **compat** | extract-resistance-lumped "Per-class area and perimeter of a node" | EXTCAP (R3) |
+| Q-EXTRACT-33 | Corner coupling and fringe-halo shield pieces follow Q-EXTRACT-17's quirk | quirk | **compat** | extract-capacitance "Corner fringe coupling", "Fringe-halo sideoverlap" | EXTCAP (R3) |
+| Q-EXTRACT-34 | A parameter range with only a lower limit is never checked | quirk | **compat** | extract-devices "Model selection by parameter ranges" | EXTDEV (R3) |
+| Q-EXTRACT-35 | Range matching falls back to the last record tried | quirk | **compat** | extract-devices "Model selection by parameter ranges" | EXTDEV (R3) |
+| Q-EXTRACT-36 | Crashes, hangs and undefined behaviour in the node, capacitance and device passes (nine cases) | bug | **fix** (both modes) | none | EXTNODE, EXTCAP, EXTDEV (R3) |
+| Q-EXTRACT-37 | The shorted-ports warning truncates the cell's port labels | bug | **fix** (both modes) | none | EXTNODE, EXTCAP (R3) |
+| Q-NETLIST-59 | A missing `.ext` file is the command's result and the command succeeds | quirk | **compat** (both tools) | ext-flattening-read or netlist-spice-options (one scenario per mode) | NETLIST (R3, ext2spice only) |
+| Q-NETLIST-60 | The name of a shorted-port device's anonymous terminal-0 node under Q-NETLIST-31 OFF | compat-neutral | `dummy#<n>` per cell | netlist-spice-devices (one sentence) | not yet (blocks Q-NETLIST-31 OFF) |
+
 ## Notable changes to the entries' original recommendations
 
 - **Q-EXTRACT-1**: replicate → compat.
