@@ -74,8 +74,8 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   Verify the CI image build and a log line reporting `<release>-hefesto<n>`.
 
   As landed (branch `m9-round0-ngbuild`): `tools/golden/container/build_ngspice.sh` builds `third_party/ngspice` (copied into the build context as `container/ngspice/` by `third_party/ngspice/tools/sync_image_copy.py`; `test_pins.py` checks the copy) as `/opt/ref/bin/ngspice` and `/opt/ref/lib/libngspice-hefesto.so`, then installs OpenVAF-reloaded 20260616 (`/opt/ref/bin/openvaf-r`, SHA-256 checked). The stock pre-master-48 build moved to `/opt/ngspice-stock` (`[tools.ngspice_stock]`). golden-capture run 45411226446 logged `hefesto-golden: ngspice 47-hefesto1` and `OpenVAF-Reloaded 20260616-0-g44cfee3b`.
-- [ ] 3.3 (GOLDEN, with SPEC; after 3.1, 3.2) Reference runs on the image, each recorded as a `Verified` line under the conditional `Resolution:` line approved at G0:
-  - D-22, `.param` precedence: one deck per PDK, with the result recorded in `SIMADV.md` under Q-SIMADV-3, -4 and -9;
+- [ ] 3.3 (GOLDEN, with SPEC; after 3.1, 3.2, and after the F1 decision) Reference runs on the image, each recorded as a `Verified` line under the conditional `Resolution:` line approved at G0:
+  - D-22, `.param` precedence: one deck per PDK, with the result recorded in `SIMADV.md` under Q-SIMADV-3, -4 and -9 (after the F1 decision of `docs/decisions/m9-decision-table.md`: a later F1 patch changes `.param` evaluation and would invalidate these runs);
   - D-26, sky130 `ng_nomodcheck`, recorded in `SIM.md` under Q-SIM-8;
   - D-27, gf180mcu `hs` against `hsa`.
   

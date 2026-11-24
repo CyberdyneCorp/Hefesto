@@ -20,6 +20,6 @@ The plan depends on the M7 entry points (`extract::ensure_extracted`, `netlist::
 - `check_milestone_readiness.py --milestone M9` reports `M9: ready`; the four verify rows (Q-SIM-8, Q-SIMADV-3, -4, -9) are conditional rules whose `Verified` lines come from task 3.3.
 - Audit decisions D-22 to D-28 have `Status:` lines; design Open Questions 1–4 are (a).
 - The spec deltas are synced into `openspec/specs/` and the change sets `skip_specs: true` (task 1.2).
-- The ngspice traces were re-checked against the ngspice-47 pin (task 1.4); two findings (F1, F2) need a decision on backport patches.
+- The ngspice traces were re-checked against the ngspice-47 pin (task 1.4); finding F1 (`.param` draws) needs a decision on a backport patch; F2 (`setseed` and the `trnoise` pool) is carried by patch 0004, pending approval.
 
 All of these, with the approved option, are in `docs/decisions/m9-decision-table.md`. Sections 2–20 of `tasks.md` start under design D1 once G0 is merged.
