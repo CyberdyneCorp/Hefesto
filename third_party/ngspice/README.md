@@ -81,8 +81,11 @@ Tests:
 | 0004 deterministic initialisation | Gaussian pool seeded from the last seed, not the pid; `setseed` refills it; `ngSpice_nospiceinit()` honoured on hosts with `pwd.h`; no crash when `ngSpice_nospinit()`/`ngSpice_nospiceinit()` run before `ngSpice_Init()` | yes, trnoise/trrandom draws (on purpose) |
 
 Raise `hefesto_level` in `pin.json` whenever the series changes. A cached,
-patched tree records the series it carries (`.hefesto-patch-series`); after a
-series change the configure stops and asks for that directory to be deleted.
+patched tree records the series it carries (`.hefesto-patch-series`) and keeps
+a copy of the applied patches (`.hefesto-applied/`). Editing a patch or the
+series re-runs the configure, which reverses the old series (last patch first)
+and applies the new one; only a tree patched before those copies existed asks
+for its directory to be deleted.
 
 ## Rebuilding or replacing the library (LGPL)
 
@@ -95,10 +98,13 @@ The library is meant to be replaceable by the user (design D2, "Replaceability")
    and `patches/`.
 2. Change what you want, then build as above (`ngspice-manifest.json` records
    the configure feature line and the patches).
-3. Put the new `libngspice-hefesto` next to `hefesto-simd`, replacing the
-   installed one; it is found through the install-relative run path
-   (`$ORIGIN` / `@loader_path`). Keep the exported C API unchanged.
-4. macOS: sign the rebuilt library ad hoc (`codesign -s - libngspice-hefesto.dylib`);
+3. Put the new library into the install's `lib/` directory, replacing the
+   versioned file (`libngspice-hefesto.47.<level>.dylib`,
+   `libngspice-hefesto.so.47.<level>`) and keeping its links; `hefesto-simd`
+   in `bin/` finds it through the install-relative run path
+   (`$ORIGIN/../lib` / `@loader_path/../lib`). Keep the exported C API unchanged.
+4. macOS: sign the versioned file ad hoc
+   (`codesign --force -s - lib/libngspice-hefesto.47.<level>.dylib`);
    `hefesto-simd` alone carries `com.apple.security.cs.disable-library-validation`
    so it can load it. `docs/building.md` gives the full steps (INTEGRATION task).
 

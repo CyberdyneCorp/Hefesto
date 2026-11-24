@@ -11,7 +11,9 @@
 #   - that the library exports only the ngspice C API (ngSpice_*, ngGet_*, ngCM_*);
 #   - the source archive (every built file, the whole OSDI tree, the patches);
 #   - that cmake/sources.cmake is what tools/gen_sources.py derives from the pinned tree (Linux x86_64);
-#   - the one-line top-level integration (HEFESTO_BUILD_NGSPICE=ON) on Linux x86_64.
+#   - the one-line top-level integration (HEFESTO_BUILD_NGSPICE=ON) on Linux x86_64, with the
+#     engine boundary check (scripts/check_engine_boundary.py) run on a build tree that holds
+#     libngspice-hefesto (ci.yml's legs build with HEFESTO_BUILD_NGSPICE=OFF).
 
 name: ngspice
 
@@ -26,6 +28,7 @@ on:
     paths:
       - third_party/ngspice/**
       - .github/workflows/ngspice.yml
+      - CMakeLists.txt
   workflow_dispatch:
 
 permissions:
@@ -143,3 +146,5 @@ jobs:
         run: |
           cmake --preset ci-linux -DHEFESTO_BUILD_NGSPICE=ON -DHEFESTO_BUILD_TESTS=OFF
           cmake --build --preset ci-linux --target ngspice-hefesto -j4
+      - name: Check the simulation engine boundary (release rules, library present)
+        run: python3 scripts/check_engine_boundary.py --build-dir build/ci-linux

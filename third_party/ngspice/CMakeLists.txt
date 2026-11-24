@@ -54,7 +54,11 @@ foreach(_i RANGE ${_ng_last})
   list(APPEND _ng_urls "${_url}")
 endforeach()
 set(NGSPICE_VERSION "${_ng_release}-hefesto${_ng_level}")
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_ng_dir}/pin.json" "${_ng_dir}/patches/series")
+# Every patch, not only the series: editing one patch re-runs the configure, which
+# reverses the old series and applies the new one (cmake/ApplyPatchSeries.cmake).
+file(GLOB _ng_patch_files CONFIGURE_DEPENDS "${_ng_dir}/patches/*.patch")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_ng_dir}/pin.json" "${_ng_dir}/patches/series"
+             ${_ng_patch_files})
 
 # --- Source: the release archive, patched ---------------------------------------
 set(_ng_apply "${CMAKE_COMMAND}" "-DSERIES=${_ng_dir}/patches/series"

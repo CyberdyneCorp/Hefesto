@@ -13,7 +13,7 @@ ngspice reference: release ngspice-47, SourceForge `ngspice` tag commit `a80f6e3
 Hefesto SHALL run SPICE simulation by calling the ngspice shared-library API from an ngspice build that Hefesto makes itself. It SHALL NOT depend on an ngspice executable or library installed on the host. The ngspice source SHALL be pinned to one exact upstream release tag plus a recorded, versioned set of Hefesto patches, following the dependency policy of capability `hefesto-build-and-distribution`. The pin is ngspice-47 (tag commit `a80f6e3e95d51534905b1f23410a951802666656`, Q-SIM-7). That release builds with autotools only, so Hefesto builds it with its own CMake build (`third_party/ngspice/CMakeLists.txt`); moving to a later release, for example the first one that ships an upstream CMake build, is a separate decision.
 
 How the build is linked depends on the platform:
-- **Linux and macOS.** The build SHALL produce one shared library, `libngspice-hefesto`. The engine adapter SHALL be a separate plugin, `hefesto-ngspice-adapter`, which links that library and exports only Hefesto's engine interface. Both are installed next to the worker executable `hefesto-simd` and found through an install-relative run path. In release builds only `hefesto-simd` SHALL load the adapter plugin. The editor, the headless command-line tool and the core library SHALL NOT link ngspice or the adapter plugin, and SHALL NOT contain any ngspice symbol.
+- **Linux and macOS.** The build SHALL produce one shared library, `libngspice-hefesto`. The engine adapter SHALL be a separate plugin, `hefesto-ngspice-adapter`, which links that library and exports only Hefesto's engine interface. Both are installed in the install tree's library directory (`lib/`, beside the `bin/` that holds the worker executable `hefesto-simd`) and found through an install-relative run path (`$ORIGIN/../lib` on Linux, `@loader_path/../lib` on macOS). The library file carries the release as its version (`libngspice-hefesto.so.47` on Linux, `libngspice-hefesto.47.dylib` on macOS, with the unversioned name as a link). In release builds only `hefesto-simd` SHALL load the adapter plugin. The editor, the headless command-line tool and the core library SHALL NOT link ngspice or the adapter plugin, and SHALL NOT contain any ngspice symbol.
 - **iPadOS.** The build SHALL be linked into the app process, as decision D-28 settles: either statically, with object files and relink instructions offered, or as an embedded signed framework.
 
 The ngspice version string reported to users SHALL be `<release>-hefesto<patch-level>`, for example `47-hefesto3`.
@@ -34,7 +34,7 @@ Compatibility: native
 
 #### Scenario: Pinned source in the build manifest
 - **WHEN** the build manifest of a release build is generated
-- **THEN** its ngspice entry SHALL name release `ngspice-47`, commit `a80f6e3e95d51534905b1f23410a951802666656` and the Hefesto CMake build, and the build SHALL fail if the fetched source does not match that commit
+- **THEN** its ngspice entry SHALL name release `ngspice-47`, commit `a80f6e3e95d51534905b1f23410a951802666656` and the Hefesto CMake build, and the build SHALL fail if the fetched release archive's SHA-256 differs from the pinned archive's SHA-256 (`third_party/ngspice/pin.json`; the archive is the ngspice-47 release tarball of that tag, and the build does not compare it with the tag's git tree)
 
 #### Scenario: No ngspice in the editor
 - **WHEN** the symbol tables of the desktop editor, `hefesto-cli` and the core library of a Linux release build are listed

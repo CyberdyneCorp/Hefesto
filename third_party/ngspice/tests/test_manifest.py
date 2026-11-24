@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -110,6 +113,56 @@ class CheckManifestTest(unittest.TestCase):
         m = good_manifest()
         m["version"] = "47"
         self.assertTrue(nm.check_manifest(m))
+
+
+def _patch(old: str, new: str) -> str:
+    return f"--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,2 @@\n one\n-{old}\n+{new}\n"
+
+
+@unittest.skipUnless(shutil.which("cmake") and shutil.which("patch"), "needs cmake and patch")
+class ApplySeriesTest(unittest.TestCase):
+    """cmake/ApplyPatchSeries.cmake: an edited patch is re-applied, not refused."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="ng-series-"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.tree, self.patches = self.tmp / "tree", self.tmp / "patches"
+        self.tree.mkdir()
+        self.patches.mkdir()
+        (self.tree / "a.txt").write_text("one\ntwo\n")
+        (self.patches / "series").write_text("# test\n0001-a.patch\n0002-a.patch\n")
+        (self.patches / "0001-a.patch").write_text(_patch("two", "three"))
+        (self.patches / "0002-a.patch").write_text(_patch("three", "four"))
+
+    def apply(self) -> subprocess.CompletedProcess:
+        return subprocess.run(["cmake", f"-DSOURCE_DIR={self.tree}", f"-DSERIES={self.patches / 'series'}",
+                               "-P", str(ROOT / "cmake" / "ApplyPatchSeries.cmake")],
+                              capture_output=True, text=True, check=False)
+
+    def test_same_series_is_a_no_op(self):
+        self.assertEqual(self.apply().returncode, 0)
+        self.assertEqual(self.apply().returncode, 0)
+        self.assertEqual((self.tree / "a.txt").read_text(), "one\nfour\n")
+
+    def test_edited_patch_is_reapplied(self):
+        # Regression: an edited patch stopped the configure ("delete that directory").
+        self.assertEqual(self.apply().returncode, 0)
+        (self.patches / "0002-a.patch").write_text(_patch("three", "five"))
+        result = self.apply()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.tree / "a.txt").read_text(), "one\nfive\n")
+
+    def test_tree_without_copies_asks_to_unpack(self):
+        self.assertEqual(self.apply().returncode, 0)
+        shutil.rmtree(self.tree / ".hefesto-applied")
+        (self.patches / "0002-a.patch").write_text(_patch("three", "five"))
+        result = self.apply()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unpacked and patched again", result.stderr)
+
+    def test_wrapper_reconfigures_on_any_patch_edit(self):
+        text = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertIn('file(GLOB _ng_patch_files CONFIGURE_DEPENDS "${_ng_dir}/patches/*.patch")', text)
 
 
 class PinTest(unittest.TestCase):

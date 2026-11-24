@@ -366,11 +366,15 @@ The library is replaceable by the user (`hefesto-licensing`; design D2 of
    `third_party/ngspice/patches/`.
 2. Make your change and build as above. Keep the exported C API (`ngSpice_*`,
    `ngGet_*`, `ngCM_Input_Path`) unchanged.
-3. Put the new `libngspice-hefesto` next to `hefesto-simd`, replacing the
-   installed one; the worker finds it through its install-relative run path
-   (`$ORIGIN` on Linux, `@loader_path` on macOS).
-4. macOS: sign the rebuilt library ad hoc,
-   `codesign --force -s - libngspice-hefesto.dylib`. Only `hefesto-simd`
+3. Put the new library into the install's `lib/` directory, replacing the
+   installed files: the versioned file (`libngspice-hefesto.47.<level>.dylib`
+   on macOS, `libngspice-hefesto.so.47.<level>` on Linux) and its links
+   `libngspice-hefesto.47.dylib` / `libngspice-hefesto.so.47` (the name the
+   adapter records) and `libngspice-hefesto.dylib` / `.so`. The worker
+   `hefesto-simd` in `bin/` finds it through its install-relative run path
+   (`$ORIGIN/../lib` on Linux, `@loader_path/../lib` on macOS).
+4. macOS: sign the rebuilt library ad hoc, naming the versioned file, not a
+   link: `codesign --force -s - lib/libngspice-hefesto.47.<level>.dylib`. Only `hefesto-simd`
    carries `com.apple.security.cs.disable-library-validation`, so a notarized
    Hefesto loads an ad-hoc-signed library in the worker and nowhere else.
 
