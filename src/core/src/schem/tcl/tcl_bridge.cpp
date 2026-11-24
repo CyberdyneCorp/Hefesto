@@ -3,18 +3,32 @@
 //
 // `tcleval(...)` values evaluated in the sandboxed interpreter (capability
 // schematic-symbols-and-libraries "tcleval values", steps 1-5; Q-SCHEM-25:
-// they always run, in the sandbox).
+// they always run, in the sandbox). Security review (task 12.1), both modes
+// of `xschem-compat`: the sandbox's denials are reported to the run's sink
+// (they were dropped with the result), and every value is bounded in time.
 //
 // Owner: SYMLIB.
 
 #include "hefesto/schem/tcl/tcl_bridge.hpp"
 
+#include <algorithm>
+#include <optional>
+#include <utility>
+
 #include "hefesto/cmd/value.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/script/interp.hpp"
+#include "schem/lib/run_guards.hpp"
 
 namespace hefesto::schem {
 
 namespace {
+
+// `10 s`, or `250 ms` for a limit that is not whole seconds.
+std::string limit_text(std::chrono::milliseconds limit) {
+  const auto ms = limit.count();
+  return ms % 1000 == 0 ? std::to_string(ms / 1000) + " s" : std::to_string(ms) + " ms";
+}
 
 constexpr std::string_view kPrefix = "tcleval(";
 
@@ -55,8 +69,49 @@ std::string TclBridge::evaluate(std::string_view value, const TclContext& contex
     interpreter_->set_var("::symname", cmd::Value{context.symname});
   }
   // Steps 4 and 5: the body of `subst {...}` in the global scope.
-  const auto result = interpreter_->evaluate("subst {" + tcleval_body(value) + "}");
+  if (run_ != nullptr) {
+    run_->owner = !context.owner.empty()     ? context.owner
+                  : !context.symname.empty() ? context.symname
+                                             : context.instname;
+  }
+  return run_script("subst {" + tcleval_body(value) + "}");
+}
+
+// One evaluation under the run's limits: at most `each`, and at most what is
+// left of `total`; once that is spent nothing runs (reported once).
+std::string TclBridge::run_script(const std::string& script) const {
+  using Clock = std::chrono::steady_clock;
+  const bool limited = run_ != nullptr && run_->progress != nullptr;
+  if (limited && run_->left <= std::chrono::milliseconds{0}) {
+    if (!std::exchange(run_->spent_reported, true)) {
+      report(diag::make("SCHEM-TCL-003", "tcleval values ran for their total of " + limit_text(run_->total) +
+                                             "; no further value is evaluated in this run"));
+    }
+    return std::string{kTclFailure};
+  }
+  const Clock::time_point start = Clock::now();
+  const std::chrono::milliseconds limit = limited ? std::min(run_->each, run_->left) : std::chrono::milliseconds{0};
+  std::optional<detail::DeadlineHook> hook;
+  if (limited) hook.emplace(*run_->progress, *interpreter_, start + limit);
+  const cmd::CommandResult result = interpreter_->evaluate(script);
+  const bool stopped = hook.has_value() && hook->expired() && !result.ok();
+  hook.reset();
+  if (limited) run_->left -= std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start);
+  for (const diag::Diagnostic& d : result.diagnostics) {
+    if (detail::is_sandbox_denial(d)) report(d);
+  }
+  if (stopped) report(diag::make("SCHEM-TCL-003", "tcleval value stopped after " + limit_text(limit)));
   return result.ok() ? result.value.to_string() : std::string{kTclFailure};
+}
+
+void TclBridge::report(diag::Diagnostic diagnostic) const {
+  if (run_ != nullptr) report_tcleval(*run_, std::move(diagnostic));
+}
+
+void report_tcleval(const TclRun& run, diag::Diagnostic diagnostic) {
+  if (run.sink == nullptr) return;
+  if (!run.owner.empty()) diagnostic.text += " (tcleval of " + run.owner + ")";
+  run.sink->emit(diagnostic);
 }
 
 }  // namespace hefesto::schem

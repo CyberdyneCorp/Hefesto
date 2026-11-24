@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/script/tcl/sandbox.hpp"
@@ -40,6 +41,10 @@ struct ProcedureHooks {
   /// `write_data <text> <file>` writes through this file system, which the
   /// caller restricts to the sandbox's granted folders (nullptr: refused).
   platform::FileSystem* files = nullptr;
+  /// Receives the sandbox's refusal of a `write_data` (SCRIPT-SANDBOX-004),
+  /// which a native command's error would otherwise lose (security review,
+  /// task 12.1); empty function: dropped.
+  std::function<void(const diag::Diagnostic&)> denied;
 };
 
 /// The names of the table "Procedures that xschem provides", in its order.

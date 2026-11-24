@@ -67,6 +67,13 @@ target_sources(hefesto_shell_tests PRIVATE
 # 9.1, 9.2, 9.6, SHELL).
 target_sources(hefesto_shell_tests PRIVATE
   view3d_models_test.cpp)
+# M8 schematic editor: canvas, library browser, panels, netlist action and
+# key bindings (openspec/changes/m8-schematic task 13.2, SHELL).
+target_sources(hefesto_shell_tests PRIVATE
+  schematic_bindings_test.cpp
+  schematic_canvas_test.cpp
+  schematic_library_test.cpp
+  schematic_panels_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")

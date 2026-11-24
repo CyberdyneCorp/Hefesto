@@ -123,6 +123,10 @@ on:
       - src/core/include/hefesto/view3d/**
       - src/core/src/view3d/**
       - bench/view3d/**
+      - src/core/include/hefesto/schem/**
+      - src/core/src/schem/**
+      - bench/schem/**
+      - scripts/gen_schem_hierarchy.py
       - .github/workflows/perf.yml
   pull_request:
     paths:
@@ -162,6 +166,10 @@ on:
       - src/core/include/hefesto/view3d/**
       - src/core/src/view3d/**
       - bench/view3d/**
+      - src/core/include/hefesto/schem/**
+      - src/core/src/schem/**
+      - bench/schem/**
+      - scripts/gen_schem_hierarchy.py
       - .github/workflows/perf.yml
   schedule:
     - cron: "41 3 * * 2"
@@ -1375,5 +1383,124 @@ jobs:
         with:
           name: view3d-bench
           path: view3d-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # Schematic benchmark (openspec/changes/m8-schematic task 14.1): a Release build of
+  # bench/schem/hefesto-bench-schem times load, save and netlist of the generated 10k-instance
+  # hierarchy (scripts/gen_schem_hierarchy.py; hierarchical and flat) and of the two largest
+  # example schematics of each xschem data set (sky130, gf180mcu, IHP), and
+  # bench/schem/schem_bench.py compares the medians with the linux-runner entry of
+  # bench/schem/baseline.json (no entry: reported, not gated). The artifact "schem-bench" holds
+  # the report and baseline.json with this run's medians as the linux-runner entry. The job
+  # selects itself on pull requests (schem paths, bench/schem, this workflow), so `plan` is
+  # unchanged.
+  schem-bench:
+    name: Schematic load, save and netlist time (bench/schem)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select
+        id: select
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=true
+          if [ "$EVENT" = "pull_request" ]; then
+            run=false
+            if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq \
+              '^(src/core/include/hefesto/schem/|src/core/src/schem/|bench/schem/|scripts/gen_schem_hierarchy\.py|\.github/workflows/perf\.yml)'; then
+              run=true
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "::notice::schem-bench: $run"
+
+      - uses: actions/setup-python@v5
+        if: steps.select.outputs.run == 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja and the OpenSSL headers
+        if: steps.select.outputs.run == 'true'
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Unit tests of the driver and the hierarchy generator
+        if: steps.select.outputs.run == 'true'
+        run: python3 -m unittest discover -s bench/schem/tests -v
+
+      - name: Cache keys of the xschem data sets
+        if: steps.select.outputs.run == 'true'
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: ${{ steps.keys.outputs.sky130_xschem_path }}
+          key: ${{ steps.keys.outputs.sky130_xschem_key }}
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: ${{ steps.keys.outputs.ihp_xschem_path }}
+          key: ${{ steps.keys.outputs.ihp_xschem_key }}
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Build hefesto-cli and the schematic benchmark (Release)
+        if: steps.select.outputs.run == 'true'
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DHEFESTO_BUILD_SCHEM_BENCH=ON
+          cmake --build --preset linux-release --target hefesto-cli hefesto-bench-schem
+
+      # A data set that cannot be fetched is skipped by the driver with a note.
+      - name: Fetch or verify the xschem data sets
+        if: steps.select.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/fetch_pdk.py sky130-xschem gf180mcu-xschem ihp-xschem \
+            --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Time load, save and netlist
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Schematic benchmark"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p schem-bench
+          python3 bench/schem/schem_bench.py --bench build/linux-release/bench/schem/hefesto-bench-schem \
+            --host linux-runner --work build/schem-bench --json schem-bench/report.json \
+            --record schem-bench/baseline.json --commit "$GITHUB_SHA" --summary "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.select.outputs.run == 'true'
+        with:
+          name: schem-bench
+          path: schem-bench
           if-no-files-found: ignore
           retention-days: 90

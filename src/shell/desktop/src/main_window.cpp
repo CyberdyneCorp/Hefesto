@@ -98,6 +98,7 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   left_ = std::make_unique<LeftPanel>(ctx_);
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
+  schematic_view_ = std::make_unique<SchematicView>(ctx_);  // M8 task 13.2
   color_ = std::make_unique<ColorPanel>(ctx_);
   drc_link_ = std::make_unique<DrcLink>(core.editor());
   drc_panel_ = std::make_unique<DrcPanel>(ctx_);
@@ -259,8 +260,12 @@ void MainWindow::build_top_bar() {
   // M10 (task 9.1): Layout and 3D are live; a click on 3D opens the 3D
   // window (`render3d`) or shows it, a click on Layout shows the canvas.
   const std::size_t tab_3d = static_cast<std::size_t>(std::find(tabs.begin(), tabs.end(), "3D") - tabs.begin());
-  auto segmented = make_painted(ctx_, [this, tabs, tab_3d](ui::Painter& p, float w, float h, const ThemeTokens& t) {
-    paint::segmented(p, w, h, tabs, t, view3d_tab_ ? tab_3d : 0, 1U | (1U << tab_3d));
+  // M8 (task 13.2): Schematic is live too; Waveforms stays disabled (M9).
+  const std::size_t tab_sch = static_cast<std::size_t>(std::find(tabs.begin(), tabs.end(), "Schematic") - tabs.begin());
+  auto segmented = make_painted(ctx_, [this, tabs, tab_3d, tab_sch](ui::Painter& p, float w, float h,
+                                                                     const ThemeTokens& t) {
+    const std::size_t active = schematic_tab_ ? tab_sch : (view3d_tab_ ? tab_3d : 0);
+    paint::segmented(p, w, h, tabs, t, active, 1U | (1U << tab_3d) | (1U << tab_sch));
   });
   segmented->on_click([this, tabs, tab_3d](float x, float) {
     click_view_tab(x, tabs, tab_3d);
@@ -270,8 +275,8 @@ void MainWindow::build_top_bar() {
   view_tabs.width = tabs_width;
   view_tabs.widgets.push_back(segmented.get());
   segmented->set_role(ui::Role::tab_list);
-  segmented->set_accessible_name("Editor view: Layout or 3D (Schematic and Waveforms arrive in M8)");
-  segmented->set_tooltip("Layout and 3D (Options > 3D Display, render3d); Schematic and Waveforms arrive in M8");
+  segmented->set_accessible_name("Editor view: Layout, Schematic or 3D (Waveforms arrive in M9)");
+  segmented->set_tooltip("Layout, Schematic and 3D (Options > 3D Display, render3d); Waveforms arrive in M9");
   view_tabs_widget_ = segmented.get();
   row.add_centered(*segmented);
   painted_.push_back(std::move(segmented));
@@ -369,6 +374,8 @@ void MainWindow::build_center() {
   center.add(canvas_->widget(), 1.0F);
   center.add(view3d_->widget(), 1.0F);
   view3d_->widget().set_visible(false);
+  center.add(schematic_view_->widget(), 1.0F);  // M8: the Schematic tab
+  schematic_view_->widget().set_visible(false);
   console_.set_font(ctx_.runtime.mono_font());
   console_.set_accessible_name("Console");
   diagnostics_.set_font(ctx_.runtime.mono_font());
@@ -836,6 +843,10 @@ void MainWindow::sync_styles() {
 void MainWindow::click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d) {
   // x < 0 (a click with no position) toggles between Layout and 3D.
   const std::size_t hit = x < 0.0F ? (view3d_tab_ ? 0 : tab_3d) : paint::segmented_index_at(ctx_.runtime, tabs, x);
+  // M8 (task 13.2): Schematic shows the schematic view; any other tab leaves it.
+  const bool schematic = hit < tabs.size() && tabs[hit] == "Schematic";
+  show_schematic_tab(schematic);
+  if (schematic) return;
   if (hit == 0) show_view3d_tab(false);
   if (hit != tab_3d) return;
   if (view3d_->window_open()) {
@@ -855,7 +866,19 @@ void MainWindow::show_view3d_tab(bool on) {
   window_.request_redraw();
 }
 
+// M8 (task 13.2): the Schematic tab replaces the canvas (and the 3D view).
+void MainWindow::show_schematic_tab(bool on) {
+  if (on) show_view3d_tab(false);
+  schematic_tab_ = on;
+  schematic_view_->widget().set_visible(on);
+  canvas_->widget().set_visible(!on && !view3d_tab_);
+  if (on) schematic_view_->refresh();
+  if (view_tabs_widget_ != nullptr) view_tabs_widget_->invalidate();
+  window_.request_redraw();
+}
+
 void MainWindow::refresh_all() {
+  if (schematic_tab_) schematic_view_->refresh();  // M8: after each command
   sync_styles();
   view3d_->refresh();
   const view::LayoutWindow* win = ctx_.editor().windows.current();
