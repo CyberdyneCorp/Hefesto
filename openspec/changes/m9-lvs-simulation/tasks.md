@@ -1,7 +1,7 @@
 # Tasks
 
 How this plan runs:
-- **Section 1 comes first.** No decision this plan cites is approved yet (`docs/decisions/m9-decision-table.md`). The tasks below follow the recommended options. If the user picks another option, the affected tasks are revised in section 1 before gate G0 passes.
+- **Section 1 comes first.** The user approved every decision this plan cites on 2026-11-22, each with its recommended option (`docs/decisions/m9-decision-table.md`), so the tasks below stand as written.
 - Gates and rounds follow design D1:
   - G0: section 1 is done.
   - G1: the LVS clean room, section 2.
@@ -20,21 +20,21 @@ How this plan runs:
 
 ## 1. Decisions (R0; gate G0)
 
-- [ ] 1.1 (INTEGRATION) Present `docs/decisions/m9-decision-table.md` to the user, and record the answers:
+- [x] 1.1 (INTEGRATION) Present `docs/decisions/m9-decision-table.md` to the user, and record the answers:
   - `Status:`/`Resolution:` lines on the 34 blocking entries, on Q-SIM-1, on the rest of Q-SIMADV-5 and on the 18 entries raised by this plan;
   - for the four verify rows (Q-SIM-8, Q-SIMADV-3, -4, -9), conditional `Resolution:` lines that name the option for each outcome of the reference run (design D1), so that the rows are resolved at G0 and only their `Verified` lines wait for task 3.3;
   - D-22 to D-28 in `docs/decisions/audit/DECISIONS.md`;
   - the design's Open Questions 1–4.
   
-  Verify with `check_milestone_readiness.py --milestone M9` ("ready", with no row left pending for a reference run) and `openspec validate --all --strict`.
-- [ ] 1.2 (SPEC) Apply the approved spec changes. Under Open Question 1 (a), sync this change's `specs/` deltas into `openspec/specs/`, then set `skip_specs: true` in `openspec/changes/m9-lvs-simulation/.openspec.yaml`, so that the archive at exit (task 20.6) does not apply the deltas a second time. Add the edits that deltas cannot express:
+  Verify with `check_milestone_readiness.py --milestone M9` ("ready", with no row left pending for a reference run) and `openspec validate --all --strict`. **As landed (2026-11-22, branch `m9-round0-decide`):** all approved with the recommended options; 52 entries got `Status: approved 2026-11-22` and a `Resolution:` line (20 LVS, 24 SIM, 7 SIMADV, Q-SCHEM-39), Q-SIM-1's draft line was replaced and Q-SIMADV-5's open part resolved (D-23); the four verify rows have conditional lines and no `Verified` line; D-22 to D-28 have `Status:` lines; OQ1–4 (a) are in `design.md`. Readiness: `M9: ready`; `openspec validate --all --strict`: 179 passed.
+- [x] 1.2 (SPEC) Apply the approved spec changes. Under Open Question 1 (a), sync this change's `specs/` deltas into `openspec/specs/`, then set `skip_specs: true` in `openspec/changes/m9-lvs-simulation/.openspec.yaml`, so that the archive at exit (task 20.6) does not apply the deltas a second time. Add the edits that deltas cannot express:
   - the `lvs-setup-file` Purpose names `ihp-sg13g2_setup.tcl` (Q-LVS-31);
   - the roadmap's M9 de-risking line and D-28 gain a sentence naming the desktop linking question, decided in R0 and reviewed before the Desktop Beta, with D-28's iPadOS deadline unchanged (Q-SIM-26);
   - roadmap principle 2 names the ngspice pin approved under Q-SIM-7 in place of `7aa47164` (Q-SIM-23).
   
-  Revise any delta whose answer differs from the recommendation. Verify that `openspec validate --all --strict` passes, that a dry-run `openspec archive m9-lvs-simulation` reports no spec change, and that the decision table's "Spec changes" section lists each edit.
-- [ ] 1.3 (INTEGRATION) Q-SCHEM-39: if it is approved (a), set `[SCHEM-LVS-01] deferred = "M9"` in `tests/golden/deviations.toml` with D13's reason, and update `tests/golden/SCHEM/CASES.md`, m8 design D21 and the roadmap M8 exit line. Verify that the golden harness reports SCHEM-LVS-01 as deferred to M9 and that the M8 exit list no longer waits for it.
-- [ ] 1.4 (SPEC, simulation spec side) Re-check every `(ngspice ref: ...)` trace of the nine `simulation-*` specs and `SIM.md`/`SIMADV.md` against the approved pin. ngspice-47 (`a80f6e3e`) has no `cmake/` tree, so traces such as `cmake/NgspiceOptions.cmake:21-74` and `:86` are rewritten to the pinned tree's build files or to the Hefesto wrapper, and moved line numbers are corrected. Verify with a list of every trace checked in `docs/decisions/m9-decision-table.md` and `openspec validate --all --strict`.
+  Revise any delta whose answer differs from the recommendation. Verify that `openspec validate --all --strict` passes, that a dry-run `openspec archive m9-lvs-simulation` reports no spec change, and that the decision table's "Spec changes" section lists each edit. **As landed (2026-11-22):** synced by running the archive on a scratch copy (+29 added, ~11 modified, 0 removed, 20 capabilities; no new capability folder, so `docs/specs-index.md` is unchanged); deltas revised first for the roster wording (Q-LVS-30), the ngspice-47 pin (Q-SIM-7), the Q-SIM-1 sentence and a pool scenario (Q-SIMADV-13). `openspec` 1.13 fails `--strict` when `skip_specs: true` sits beside delta files, so the synced `specs/` folder was removed from the change; a dry-run archive of the branch then changes no spec. The `tests/golden/LVS/CASES.md` rename (NG-PDK-03) is left to GOLDEN.
+- [x] 1.3 (INTEGRATION) Q-SCHEM-39: if it is approved (a), set `[SCHEM-LVS-01] deferred = "M9"` in `tests/golden/deviations.toml` with D13's reason, and update `tests/golden/SCHEM/CASES.md`, m8 design D21 and the roadmap M8 exit line. Verify that the golden harness reports SCHEM-LVS-01 as deferred to M9 and that the M8 exit list no longer waits for it. **As landed (2026-11-22):** the SCHEM deviation block is generated, so the entry was added to `LATER` in `tools/golden/authoring/schem_cases.py` and the block regenerated; `goldenlib.deviations.load` gives `deferred='M9'`; `test_schem_golden.py` (now also asserting SCHEM-LVS-01) and `test_deviations.py` pass; CASES.md row, m8 D21 and the roadmap M8 exit line updated.
+- [x] 1.4 (SPEC, simulation spec side) Re-check every `(ngspice ref: ...)` trace of the nine `simulation-*` specs and `SIM.md`/`SIMADV.md` against the approved pin. ngspice-47 (`a80f6e3e`) has no `cmake/` tree, so traces such as `cmake/NgspiceOptions.cmake:21-74` and `:86` are rewritten to the pinned tree's build files or to the Hefesto wrapper, and moved line numbers are corrected. Verify with a list of every trace checked in `docs/decisions/m9-decision-table.md` and `openspec validate --all --strict`. **As landed (2026-11-22):** 112 traces checked (66 spec, 46 in SIM.md/SIMADV.md) through SourceForge raw views, nothing cloned: 51 same lines, 35 moved, 6 rewritten from CMake to `configure.ac`/`src/Makefile.am`/the wrapper, 20 tied to findings F1–F5 (ngspice-47 lacks the post-47 draw-once `.param` semantics and the `setseed` reseed of the `trnoise` pool, which `simulation-monte-carlo` and `simulation-engine-embedding` assume; raised to the user).
 
 ## 2. CLEANROOM: netgen two-team process (LVS spec team; R1; gate G1)
 
@@ -51,7 +51,7 @@ How this plan runs:
   - `provenance` on every `tests/golden/LVS/` case.
   
   Verify with fixture trees for each failure and a clean run on the branch.
-- [ ] 2.4 Add the LVS item to the pull-request template's clean-room section ("I have not read netgen's source"). Add LVS to the Desktop 1.0 counsel row of the roadmap's de-risking schedule. Verify that the template renders and the roadmap row names Q-LVS-30.
+- [ ] 2.4 Add the LVS item to the pull-request template's clean-room section ("I have not read netgen's source"). Add LVS to the Desktop 1.0 counsel row of the roadmap's de-risking schedule. Verify that the template renders and the roadmap row names Q-LVS-30. **Roadmap half done (2026-11-22, R0):** the Desktop 1.0 counsel row names LVS (Q-LVS-30); the template item remains.
 
 ## 3. PDK and GOLDEN: data sets, capture image, comparators, captures (R1; gates G2-LVS and G2-SIM)
 
