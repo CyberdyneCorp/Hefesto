@@ -22,6 +22,7 @@
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/tools.hpp"
 #include "hefesto/view/color_window.hpp"
+#include "hefesto/view3d/client/commands.hpp"
 #include "ui/command_util.hpp"
 
 namespace hefesto::ui::detail {
@@ -249,6 +250,12 @@ CommandResult setpoint(CommandContext& ctx, const Invocation& inv) {
   ed.command_point = pointer;
   state(ed).pointer_pixel = db::Point{px, py};
   state(ed).point_forced = true;
+  if (a.size() == 3) {
+    // TxSetPoint makes the named window current for later script commands
+    // (windCmdSZ.c:286): the 3D window's toolkit path routes them there
+    // with magic-compat ON (N1, Q-MISC-82); any other window, back.
+    view3d::note_window_command(ed, view3d::is_open_path(ed, a[2]));
+  }
   return CommandResult::success();
 }
 

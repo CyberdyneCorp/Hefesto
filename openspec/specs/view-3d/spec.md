@@ -158,7 +158,7 @@ The 3D view SHALL accept the following commands (exact names; extra or missing a
 
 Default key bindings: `L`/`l` level up/down, `C` cif, space defaults, Ctrl-L refresh, `Z`/`z` zoom ×2/×0.5 in xy, `>`/`<` zoom ×2/×0.5 in z, digits `1`–`6` rotate by ±10° about y, x, z, digits `7`–`0` by ±1° about y and x, `-`/`=` ±1° about z, arrow keys scroll by 0.25 in screen units.
 
-While a 3D view is open, the layout commands a script runs (`box`, `load`, `cif ostyle`, ...) go to the 3D view with magic-compat ON, as in Magic, which dispatches them with the current window, then the 3D window: `box` and `load` fail there with an empty error, and `cif ostyle <style>` reaches the 3D view's `cif`; with magic-compat OFF they go to the layout window (Q-MISC-82). With magic-compat ON, a command sent through the window's toolkit path whose wrapper tag runs `magic::scrollupdate` (`view`, `scroll`, `zoom`, `findbox`) or `magic::toolupdate` (`see`) also prints the two "Unknown command:" failures of the tag's `*bypass logcommands suspend|resume`, as Magic's OpenGL window does; with it OFF nothing more is printed (decision W1, approved 2026-11-22).
+While a 3D view is open, after a command sent through the 3D window's toolkit path (Magic's `_tk_dispatch` makes that window current with `TxSetPoint`) or a `setpoint x y <window>` naming that path, the layout commands a script runs (`box`, `load`, `cif ostyle`, ...) go to the 3D view with magic-compat ON, as in Magic, which dispatches them with the current window, then the 3D window: `box` and `load` fail there with an empty error, and `cif ostyle <style>` reaches the 3D view's `cif`. Opening the window alone does not make it current. A command sent through a layout window's path, a `setpoint` naming another window, a key or button in a layout window, or closing the 3D window sends them to the layout window again. With magic-compat OFF they always go to the layout window (Q-MISC-82). With magic-compat ON, a command sent through the window's toolkit path whose wrapper tag runs `magic::scrollupdate` (`view`, `scroll`, `zoom`, `findbox`) or `magic::toolupdate` (`see`) also prints the two "Unknown command:" failures of the tag's `*bypass logcommands suspend|resume`, as Magic's OpenGL window does; with it OFF nothing more is printed (decision W1, approved 2026-11-22).
 
 Compatibility: behavioral
 
@@ -189,7 +189,7 @@ Compatibility: behavioral
 - **THEN** `level` returns 0 after the first command and 2147483647 after the second and the third, with magic-compat ON and OFF
 
 #### Scenario: Script layout commands reach the 3D window with magic-compat ON
-- **GIVEN** magic-compat ON, a layout window on cell `c3d` and a script that runs `specialopen wind3d c3d` and then `box 0 0 10 10`
+- **GIVEN** magic-compat ON, a layout window on cell `c3d` and a script that runs `specialopen wind3d c3d .render.magic`, then `.render.magic cutbox none`, then `box 0 0 10 10`
 - **WHEN** the script runs
 - **THEN** `box` is sent to the 3D view, which has no such command, and fails with an empty error, as in Magic; the layout box is unchanged (Q-MISC-82; MISC-3D-05)
 
@@ -197,6 +197,21 @@ Compatibility: behavioral
 - **GIVEN** magic-compat OFF and the same script
 - **WHEN** the script runs
 - **THEN** `box` sets the layout box to (0,0)-(10,10) and the 3D view is unchanged (Q-MISC-82)
+
+#### Scenario: Opening the 3D window alone leaves script commands in the layout window
+- **GIVEN** magic-compat ON and a script that runs `specialopen wind3d c3d .render.magic` and then `box 0 0 10 10`, with no command on the window's path in between
+- **WHEN** the script runs
+- **THEN** `box` sets the layout box to (0,0)-(10,10): `specialopen` does not make the 3D window current, as in Magic (Q-MISC-82)
+
+#### Scenario: A layout key or button makes the layout window current again
+- **GIVEN** magic-compat ON, an open 3D window, a command sent through its path, and a layout button macro `box 20 10 70 45`
+- **WHEN** the user presses the button in the layout window
+- **THEN** the layout box becomes (20,10)-(70,45), as Magic's `TxSetPoint` on a layout event makes that window current; with magic-compat OFF the box changes the same way (Q-MISC-82)
+
+#### Scenario: setpoint names the window script commands go to
+- **GIVEN** magic-compat ON and an open 3D window at `.render.magic`
+- **WHEN** a script runs `setpoint 10 10 .render.magic` and then `box 2 2 6 6`, then `setpoint 10 10 .layout1` and `box 2 2 6 6` again
+- **THEN** the first `box` fails with an empty error and the second sets the layout box, as Magic's `setpoint` makes the named window current (windCmdSZ.c:286); with magic-compat OFF both set the layout box
 
 #### Scenario: Wrapper console noise
 - **GIVEN** a 3D view opened at `.render.magic` with the wrapper's `magic::scrollupdate` tag on `view`

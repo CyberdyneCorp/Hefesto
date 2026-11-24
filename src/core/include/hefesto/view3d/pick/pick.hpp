@@ -19,7 +19,8 @@
 //   path (Magic's selection of unexpanded material). link_to_2d also
 //   returns the area the 2D view scrolls to.
 // - from_selection (2D -> 3D): the instances overlapping the selection's
-//   flattened paint, per layer.
+//   flattened paint, per layer; given a PickContext, only a selection
+//   rooted in the rendered cell.
 // - net_highlight: the instances of the net through `connect` (flat or
 //   hierarchical search); isolate_others gives the rest, for "Isolate
 //   selected net".
@@ -119,6 +120,13 @@ struct SelectionLink {
 
 /// The instances whose layer's tile type is selected under them.
 [[nodiscard]] HighlightSet from_selection(const MeshModel& mesh, const LayerStack& stack,
+                                          const select::Selection& selection);
+
+/// from_selection for the model of `context`: empty when the selection's
+/// root is not the rendered cell (a selection in another window or an
+/// edited subcell holds paint in that cell's coordinates); with no stack in
+/// `context` every selected type matches, as the plain overload.
+[[nodiscard]] HighlightSet from_selection(const MeshModel& mesh, const PickContext& context,
                                           const select::Selection& selection);
 
 /// Which connectivity search net highlighting runs.

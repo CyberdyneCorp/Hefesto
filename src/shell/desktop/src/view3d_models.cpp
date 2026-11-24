@@ -361,8 +361,7 @@ diag::Status PickResolver::select(editor::EditorState& editor, const view3d::Pic
 }
 
 view3d::HighlightSet PickResolver::from_selection(const view3d::MeshModel& mesh, const editor::EditorState& editor) {
-  if (scope_.stack == nullptr) return view3d::from_selection(mesh, editor.selection);
-  return view3d::from_selection(mesh, *scope_.stack, editor.selection);
+  return view3d::from_selection(mesh, scope_, editor.selection);
 }
 
 view3d::HighlightSet PickResolver::net(const view3d::MeshModel& mesh, const editor::EditorState& editor,
@@ -392,15 +391,21 @@ std::optional<std::string> View3dPicking::click(const view3d::MeshModel* mesh, v
 bool View3dPicking::toggle_isolate_net(const view3d::MeshModel* mesh, const editor::EditorState& editor) {
   if (net_) {
     net_.reset();
+    net_stale_ = false;
     return true;
   }
   if (mesh == nullptr || !picked_) return false;
   net_ = resolver_.net(*mesh, editor, *picked_);
+  net_stale_ = false;
   return true;
 }
 
 const view3d::HighlightSet* View3dPicking::highlight(const view3d::MeshModel* mesh,
                                                      const editor::EditorState& editor) {
+  if (net_ && net_stale_ && mesh != nullptr && picked_) {
+    net_ = resolver_.net(*mesh, editor, *picked_);
+    net_stale_ = false;
+  }
   if (net_) return net_->empty() ? nullptr : &*net_;
   if (mesh == nullptr) return nullptr;
   shown_ = resolver_.from_selection(*mesh, editor);
@@ -410,6 +415,7 @@ const view3d::HighlightSet* View3dPicking::highlight(const view3d::MeshModel* me
 void View3dPicking::reset() {
   picked_.reset();
   net_.reset();
+  net_stale_ = false;
   shown_ = {};
 }
 
