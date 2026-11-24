@@ -153,10 +153,24 @@ struct StartupEnvironment {
 };
 
 /// "Installation root and search paths": the environment variable
-/// CAD_ROOT when set and non-empty, else the built-in install prefix. (The
+/// CAD_ROOT when set and non-empty, else the built-in install prefix
+/// (install_root_for_executable for hefesto-cli and the desktop app). (The
 /// scripting variable CAD_ROOT, step 1, arrives with the Tcl binding, M4.)
 [[nodiscard]] platform::Path resolve_install_root(const std::optional<std::string>& cad_root_env,
                                                   const platform::Path& builtin_prefix);
+
+/// The built-in install prefix of hefesto-cli and the desktop app (M8-D10,
+/// approved 2026-11-23): the install root derived from the folder holding
+/// the running executable, so the schematic system library
+/// (`assets/schematic/xschem_library/devices/`) is found without CAD_ROOT.
+/// It is the first of `executable_dir` (a build tree, where the build copies
+/// `assets/` next to the executable), `executable_dir/../Resources` (a macOS
+/// app bundle) and `executable_dir/..` (an install prefix with the executable
+/// in `bin/`) that holds an `assets` folder, lexically normalised; empty when
+/// none does or `executable_dir` is empty. CAD_ROOT still overrides it
+/// (resolve_install_root).
+[[nodiscard]] platform::Path install_root_for_executable(platform::FileSystem& fs,
+                                                         const platform::Path& executable_dir);
 
 /// The system library path `. $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/current`
 /// (unexpanded entries).

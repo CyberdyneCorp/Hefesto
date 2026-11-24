@@ -32,6 +32,7 @@
 #include "hefesto/shell/drc_link.hpp"
 #include "hefesto/shell/mask_job_host.hpp"
 #include "hefesto/shell/options.hpp"
+#include "hefesto/shell/schematic_library.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 #include "main_window.hpp"
 #include "manager_panels.hpp"
@@ -253,10 +254,13 @@ std::optional<platform::Path> env_path(const char* name) {
 /// Steps 6-11 of app-startup "Startup sequence" on the window's session:
 /// technology, settings layers, startup files, file arguments. Problems are
 /// reported to the Diagnostics panel; the window stays open.
-void run_startup(CoreSession& core, const app::StartupOptions& startup,
+void run_startup(CoreSession& core, const app::StartupOptions& startup, const platform::Path& program,
                  std::function<void(script::Interpreter&)> configure_interpreter = {}) {
   app::StartupEnvironment env;
-  env.install_root = env_path("CAD_ROOT").value_or(platform::Path());
+  // M8-D10: CAD_ROOT, else the install root holding the executable (assets/schematic).
+  const char* cad_root = std::getenv("CAD_ROOT");
+  env.install_root = desktop_install_root(core.files(), program,
+                                          cad_root != nullptr ? std::optional<std::string>{cad_root} : std::nullopt);
   env.home = env_path("HOME").value_or(platform::Path());
   std::error_code ec;
   env.working_directory = std::filesystem::current_path(ec);
@@ -347,7 +351,8 @@ int run_window(const ShellOptions& options) {
     MainWindow window(*runtime, options, queue_mutex, core);
     asking = &window;
     window.set_consent_host(&consent);
-    run_startup(core, startup.value(), [&window](script::Interpreter& interp) { window.attach_interpreter(interp); });
+    run_startup(core, startup.value(), options.program,
+                [&window](script::Interpreter& interp) { window.attach_interpreter(interp); });
     // The background DRC checker (m3-drc design D8 "Hosts"): started once
     // the editor is set up; its ready callback posts to Raven's event loop,
     // which commits the square between commands. Stopped before the window.

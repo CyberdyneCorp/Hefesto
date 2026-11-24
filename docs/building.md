@@ -72,6 +72,8 @@ The desktop app (`hefesto`), its renderer and the canvas benchmark need Vulkan h
 
 Both front ends run the same Magic-compatible startup (`app::run_startup`, capability `app-startup`): settings layers, the project's sandboxed Tcl interpreter, startup files (evaluated as Tcl; a PDK's rc file only after consent, see below), the technology, then the layout files named on the command line, then the box. `CAD_ROOT` (environment) is the Magic installation root: its `magic/sys` directories are searched for technology, display-style and font files (FreeSans/FreeSerif/FreeMono `.pt3`, needed for `flabel` labels); without it there are no system files and the session starts on the built-in `minimum` technology.
 
+**Installation root.** When `CAD_ROOT` is unset or empty, `hefesto-cli` and the desktop app use the install root that holds the running executable (decision M8-D10, approved 2026-11-23): the first of the executable's folder, `<folder>/../Resources` (a macOS app bundle) and `<folder>/..` (an install prefix with the executable in `bin/`) that contains an `assets` folder. The build copies `assets/schematic/` next to `hefesto-cli` and `hefesto` (`build/<preset>/src/cli/assets/schematic`, `build/<preset>/src/shell/desktop/assets/schematic`), and `cmake --install` puts it under `<prefix>/assets/schematic`, so the schematic system library (`<root>/assets/schematic/xschem_library/devices`, the `${XSCHEM_SHAREDIR}/xschem_library/devices` the PDK `xschemrc` files append) is found without setting anything. A `CAD_ROOT` set in the environment still overrides it; then `$CAD_ROOT/assets/schematic` must hold the library. The build-tree copy is refreshed when the executable is relinked.
+
 ### `hefesto-cli`
 
 | Option | Meaning |
