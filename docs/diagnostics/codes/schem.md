@@ -126,14 +126,35 @@ Owner: SYMLIB.
   generator is forgotten. Also `Symbol <reference>: symbol generators ran
   for their total of 60000 ms; no further generator runs until the symbols
   are reloaded`, once per cache, when the generators of one symbol cache
-  have spent their shared 60 s.
+  have spent their shared 60 s (M8-D5, approved 2026-11-23); no generator
+  file is read after that. Also `Symbol <reference>: the generator <file> is
+  larger than 268435456 bytes; it is neither read nor run`, once per file,
+  for a generator file over 256 MiB with or without `.tcl` (M8-D6, approved
+  2026-11-23; before, a file without `.tcl` gave `SCHEM-LIB-011`). Both modes.
+  The sandbox's denials during a generator run (`SCRIPT-SANDBOX-*`, also those
+  the generator catches) are reported next to it (security review, task 12.1);
+  when an uncaught denial stopped the run, `<why>` is `the script sandbox
+  denied an operation (<code>)` and the denial's text is in its own
+  diagnostic only. A script that grows past 256 MiB after its size was
+  checked is not read past that size and fails the same way.
 - `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
   (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
-  `write_data` was refused outside the sandbox's granted folders; the
-  enclosing value gives `?` LF.
+  `write_data` was refused outside the sandbox's writable folders; the
+  enclosing value gives `?` LF. A refused `write_data` is also reported with
+  the sandbox's `SCRIPT-SANDBOX-004` (security review, task 12.1).
 - `SCHEM-TCL-002` (info): a launcher's `tclcommand` did not run because the
   user did not confirm it for this document (Q-SCHEM-25); the next Ctrl+click
   asks again.
+- `SCHEM-TCL-003` (warning): `tcleval value stopped after 10 s (tcleval of
+  <owner>)`: one `tcleval` value ran for 10 s (`kTclevalTimeLimit`); or
+  `tcleval values ran for their total of 60 s; no further value is evaluated
+  in this run`, once per netlist run, when the values of one `TclEnvironment`
+  spent their shared 60 s (`kTclevalTotalTimeLimit`). The value gives `?` LF.
+  Both modes of `xschem-compat` (a hang, fixed by the security review of task
+  12.1; xschem has no limit). The sandbox's denials during a value
+  (`SCRIPT-SANDBOX-*`, also caught ones) go to the same sink with
+  ` (tcleval of <owner>)` appended, `<owner>` being what the value belongs to
+  (`TclContext::owner`, else the symbol, else the instance).
 
 ## NETLIST
 
@@ -209,7 +230,35 @@ Codes of the document model, the editing operations and net highlighting
 (`src/core/src/schem/edit/`; capability schematic-editing; design D11).
 Owner: EDIT.
 
-No codes yet.
+The errors raise a script error and leave the document as it was
+(schematic-command "Return values and errors in scripts").
+
+- `SCHEM-EDIT-001`: `schematic: <file> is read-only (PDK store or system
+  library); use "schematic save <file>" to save it in a user folder`, from
+  every option that changes a document whose file is under `PDK_ROOT`, under
+  `<CAD_ROOT>/assets/schematic` or under a read-only root of the project
+  sandbox ("Read-only libraries"). Viewing, selecting, highlighting and
+  descending stay allowed.
+- `SCHEM-EDIT-002`: `schematic: cannot descend into <symbol>: its type is not
+  subcircuit or primitive` ("Hierarchy navigation"; `descend -symbol` opens
+  the symbol of any instance).
+- `SCHEM-EDIT-003`: `schematic: descending is limited to 40 levels`.
+- `SCHEM-EDIT-004`: `schematic: already at the top of the hierarchy`, from
+  `ascend` at the top (or after another document was made active, which
+  becomes the new top).
+- `SCHEM-EDIT-005` (warning): `schematic: bus width mismatch at pin <pin> of
+  <instance>: net <net> has <n> bits, the pin <p> and the instance <w>`, when
+  the net width is neither the pin width nor the pin width times the
+  instance width ("Bus editing"). Reported after an edit, once per mismatch:
+  an edit reports only mismatches the previous edit of the document did not
+  have.
+- `SCHEM-EDIT-006`: `schematic: no schematic <file> for <symbol>` or
+  `schematic: cannot open <file>`, from `descend` when the schematic (or,
+  with `-symbol`, the symbol file) does not exist or cannot be read.
+- `SCHEM-EDIT-007`: `schematic: <file> exists; use "schematic symbol make
+  -force"`, from `symbol make` without `-force` and `symbol toschematic` when
+  the file to write exists ("Labels and ports": no overwrite without
+  confirmation).
 
 ## CMD
 
@@ -280,6 +329,13 @@ fails when the two disagree.
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
 | `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
+| `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |
+| `SCHEM-EDIT-003` | error | Descending would pass the hierarchy depth limit of 40 levels. |
+| `SCHEM-EDIT-004` | error | `schematic ascend` at the top of the hierarchy. |
+| `SCHEM-EDIT-005` | warning | Bus width mismatch: the net on a pin is neither the pin width nor the pin width times the instance width. |
+| `SCHEM-EDIT-006` | error | The schematic or symbol file to descend into does not exist or cannot be read. |
+| `SCHEM-EDIT-007` | error | `schematic symbol make` or `toschematic` would overwrite an existing file (`make -force` overwrites). |
 | `SCHEM-FILE-001` | warning | A record has a missing or non-numeric field and is skipped. |
 | `SCHEM-FILE-002` | warning | A graphic record has a missing or out-of-range layer and is skipped. |
 | `SCHEM-FILE-003` | warning | The file ends inside a brace string; the field is read as absent. |
@@ -321,4 +377,5 @@ fails when the two disagree.
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |
 | `SCHEM-TCL-002` | info | A launcher's `tclcommand` did not run: the user did not confirm it for this document. |
+| `SCHEM-TCL-003` | warning | A `tcleval` value stopped at its 10 s limit, or the `tcleval` values of one netlist run spent their shared 60 s; the value is `?`. |
 <!-- END DIAGNOSTIC CODES -->

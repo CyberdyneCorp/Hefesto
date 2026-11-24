@@ -29,6 +29,12 @@ class FileSystem {
 
   /// Whole-file read, in binary mode.
   [[nodiscard]] virtual diag::Outcome<std::string> read(const Path& path) = 0;
+  /// The first `max_bytes` bytes of the file (all of it when it is
+  /// shorter), with the errors of read(). Bounds the memory a read of a file
+  /// that grows meanwhile can take, whatever size() said before. The
+  /// default reads the whole file and cuts it; LocalFileSystem never reads
+  /// more than `max_bytes`.
+  [[nodiscard]] virtual diag::Outcome<std::string> read_at_most(const Path& path, std::size_t max_bytes);
   /// Replaces the file atomically: readers see the old or the new content,
   /// never a partial file. Parent directories must exist.
   [[nodiscard]] virtual diag::Status write_atomic(const Path& path, std::string_view data) = 0;
@@ -50,6 +56,7 @@ class FileSystem {
 class LocalFileSystem final : public FileSystem {
  public:
   diag::Outcome<std::string> read(const Path& path) override;
+  diag::Outcome<std::string> read_at_most(const Path& path, std::size_t max_bytes) override;
   diag::Status write_atomic(const Path& path, std::string_view data) override;
   diag::Status append(const Path& path, std::string_view data) override;
   bool exists(const Path& path) override;

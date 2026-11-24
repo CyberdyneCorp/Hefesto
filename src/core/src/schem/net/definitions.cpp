@@ -339,7 +339,9 @@ std::optional<std::string> NetlistRun::schematic_value(const DefinitionEntry& en
   }
   value = replace_all(value, "@symname", cell_of(entry.reference));
   if (value.starts_with("tcleval(")) {
-    value = env_.tcl != nullptr ? env_.tcl->evaluate(value, TclContext{}) : std::string{kTclFailure};
+    TclContext context;
+    context.owner = "symbol " + entry.reference;
+    value = env_.tcl != nullptr ? env_.tcl->evaluate(value, context) : std::string{kTclFailure};
     while (!value.empty() && value.back() == '\n') {
       value.pop_back();
     }
@@ -578,7 +580,9 @@ std::string NetlistRun::header_ports(const PlannedDefinition& definition, const 
   const Symbol& symbol = *definition.entry.symbol;
   std::string format = symbol_format(symbol);
   if (format.starts_with("tcleval(")) {
-    format = env_.tcl != nullptr ? env_.tcl->evaluate(format, TclContext{}) : std::string{kTclFailure};
+    TclContext context;
+    context.owner = "symbol " + definition.entry.reference;
+    format = env_.tcl != nullptr ? env_.tcl->evaluate(format, context) : std::string{kTclFailure};
   }
   const std::vector<PinIndex> order = pin_order(symbol);
   const std::vector<PinIndex> listed = listed_pins(symbol, order);

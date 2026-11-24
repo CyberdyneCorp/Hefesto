@@ -13,6 +13,7 @@
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/state.hpp"
 #include "hefesto/view/window.hpp"
+#include "hefesto/view3d/client/commands.hpp"
 
 namespace hefesto::shell {
 
@@ -189,6 +190,10 @@ void InputRouter::set_point(const PointerContext& at) {
   ui.pointer_pixel = at.pixel;
   ui.point_forced = false;
   dispatcher_.set_client("layout");
+  // A key or button in a layout window makes it the current window, as
+  // Magic's TxSetPoint does on every event (grTOGL1.c:648): script commands
+  // no longer go to the 3D window (N1, Q-MISC-82).
+  view3d::note_window_command(editor_, false);
 }
 
 bool InputRouter::run(const std::string& line, const PointerContext* at) {

@@ -80,3 +80,11 @@ add_test(NAME "hefesto-cli: --magic reads Tcl commands from standard input"
 set_tests_properties("hefesto-cli: --magic reads Tcl commands from standard input" PROPERTIES
   LABELS "unit;cli"
   PASS_REGULAR_EXPRESSION "8\ninvalid command name \"nosuch\"\n12\n")
+
+# M8-D10: the CLI tests run the CLI in-process, so the install root is the
+# test program's folder; it gets the build tree's copy of the schematic
+# system library, as hefesto-cli does (src/cli/CMakeLists.txt).
+add_custom_command(TARGET hefesto_cli_tests POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          "${PROJECT_SOURCE_DIR}/assets/schematic" "$<TARGET_FILE_DIR:hefesto_cli_tests>/assets/schematic"
+  VERBATIM)

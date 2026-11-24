@@ -30,6 +30,7 @@
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/tcl/tcl_interpreter.hpp"
+#include "schem/lib/run_guards.hpp"
 
 namespace hefesto::schem {
 
@@ -77,31 +78,7 @@ std::string seconds_text(std::chrono::milliseconds limit) {
   return std::to_string(ms / 1000) + "." + fraction + " s";
 }
 
-// Installs a progress hook that interrupts the running evaluation once
-// `deadline` has passed, chained to the hook that was there; restores it.
-class DeadlineHook {
- public:
-  DeadlineHook(script::ProgressReporting& progress, script::Interpreter& interp, Clock::time_point deadline)
-      : progress_(progress), saved_(progress.handler) {
-    progress_.handler = [this, &interp, deadline](const script::ScriptProgress& report) {
-      if (saved_) saved_(report);
-      if (!report.done && Clock::now() >= deadline) {
-        expired_ = true;
-        interp.request_interrupt();
-      }
-    };
-  }
-  ~DeadlineHook() { progress_.handler = std::move(saved_); }
-  DeadlineHook(const DeadlineHook&) = delete;
-  DeadlineHook& operator=(const DeadlineHook&) = delete;
-
-  [[nodiscard]] bool expired() const noexcept { return expired_; }
-
- private:
-  script::ProgressReporting& progress_;
-  script::ProgressHandler saved_;
-  bool expired_ = false;
-};
+using detail::DeadlineHook;
 
 class XschemrcRun {
  public:

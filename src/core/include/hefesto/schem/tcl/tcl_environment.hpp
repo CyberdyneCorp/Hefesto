@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -35,7 +36,8 @@ class TclEnvironment {
   /// Creates the interpreter of `editor`'s project restricted by `policy`
   /// (sandbox always, on every platform) and installs the xschem
   /// procedures. `write_data` writes through `fs` restricted to `policy`;
-  /// `hooks.files` is ignored. `editor` and `fs` must outlive this object.
+  /// `hooks.files` and `hooks.denied` are replaced (its refusals go to
+  /// set_diagnostics()). `editor` and `fs` must outlive this object.
   TclEnvironment(editor::EditorState& editor, script::SandboxPolicy policy, platform::FileSystem& fs,
                  ProcedureHooks hooks = {});
   ~TclEnvironment();
@@ -46,13 +48,30 @@ class TclEnvironment {
   /// (evaluate_xschemrc: at most `input.time_limit`, SCHEM-LIB-010).
   [[nodiscard]] XschemrcResult load_xschemrc(const XschemrcInput& input);
 
-  /// A bridge over this interpreter, valid while this object lives.
-  [[nodiscard]] TclBridge bridge() const noexcept { return TclBridge{interp_.get()}; }
+  /// A bridge over this interpreter, valid while this object lives. Its
+  /// evaluations share this environment's time limits (kTclevalTimeLimit
+  /// each, kTclevalTotalTimeLimit in total) and diagnostic sink.
+  [[nodiscard]] TclBridge bridge() const noexcept { return TclBridge{interp_.get(), &run_}; }
+
+  /// Where the sandbox denials and time-limit stops of the `tcleval` values
+  /// go (hefesto-security "Schematic script permission model"); nullptr
+  /// drops them. Not owned; must outlive the evaluations.
+  void set_diagnostics(diag::DiagnosticSink* sink) noexcept { run_.sink = sink; }
+
+  /// The time limits of the `tcleval` values (tests shorten them); the
+  /// total starts again.
+  void set_time_limits(std::chrono::milliseconds each, std::chrono::milliseconds total) noexcept {
+    run_.each = each;
+    run_.total = total;
+    run_.left = total;
+    run_.spent_reported = false;
+  }
 
   [[nodiscard]] script::Interpreter& interpreter() noexcept { return *interp_; }
   [[nodiscard]] const script::SandboxPolicy& policy() const noexcept { return *policy_; }
 
  private:
+  mutable TclRun run_;  // shared by the bridges, which evaluate through a const object
   editor::EditorState& editor_;
   std::unique_ptr<script::SandboxPolicy> policy_;  // stable address: files_ refers to it
   platform::FileSystem& fs_;

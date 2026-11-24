@@ -166,9 +166,9 @@ std::optional<diag::Diagnostic> SandboxedFileSystem::refuse(std::string_view ope
   return diag::make(kPathDenied, std::string{operation} + ": \"" + path.string() + "\" " + why);
 }
 
-diag::Outcome<std::string> SandboxedFileSystem::read(const platform::Path& path) {
+std::optional<diag::Diagnostic> SandboxedFileSystem::refuse_read(const platform::Path& path) const {
   if (auto denied = refuse("read", path, false)) {
-    return *denied;
+    return denied;
   }
   std::error_code error;
   const auto status = std::filesystem::status(path, error);
@@ -176,7 +176,21 @@ diag::Outcome<std::string> SandboxedFileSystem::read(const platform::Path& path)
     // A device (/dev/zero) or FIFO never ends or blocks (S-02).
     return diag::make(kPathDenied, "read: \"" + path.string() + "\" is not a regular file");
   }
+  return std::nullopt;
+}
+
+diag::Outcome<std::string> SandboxedFileSystem::read(const platform::Path& path) {
+  if (auto denied = refuse_read(path)) {
+    return *denied;
+  }
   return base_.read(path);
+}
+
+diag::Outcome<std::string> SandboxedFileSystem::read_at_most(const platform::Path& path, std::size_t max_bytes) {
+  if (auto denied = refuse_read(path)) {
+    return *denied;
+  }
+  return base_.read_at_most(path, max_bytes);
 }
 
 diag::Status SandboxedFileSystem::write_atomic(const platform::Path& path, std::string_view data) {

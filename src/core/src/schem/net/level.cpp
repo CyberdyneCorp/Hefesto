@@ -101,6 +101,7 @@ std::string NetlistRun::evaluate_value(const std::string& value, const Placed& i
   TclContext context;
   context.instname = instance.name;
   context.symname = instance.record->symbol;
+  context.owner = "instance " + instance.name + " (" + instance.record->symbol + ")";
   std::string out = env_.tcl->evaluate(value, context);
   while (!out.empty() && out.back() == '\n') {
     out.pop_back();

@@ -23,4 +23,11 @@ struct HierPath {
   friend bool operator==(const HierPath&, const HierPath&) = default;
 };
 
+/// The path text: `.` then each element followed by `.` (`.x1.xinv[2].`).
+[[nodiscard]] std::string path_text(const HierPath& path);
+
+/// The value of `@path`: path_text() without the leading `.` (`x1.x2.`;
+/// empty at the top).
+[[nodiscard]] std::string at_path(const HierPath& path);
+
 }  // namespace hefesto::schem

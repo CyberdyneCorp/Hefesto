@@ -52,6 +52,7 @@ option(HEFESTO_BUILD_TESTS "Build unit tests and register golden tests" ON)
 option(HEFESTO_BUILD_FUZZ "Build libFuzzer targets (Clang with libFuzzer only)" OFF)
 option(HEFESTO_BUILD_BENCH "Build the canvas benchmark (requires HEFESTO_BUILD_DESKTOP)" OFF)
 option(HEFESTO_BUILD_VIEW3D_BENCH "Build the 3D mesh benchmark bench/view3d (core only)" OFF)
+option(HEFESTO_BUILD_SCHEM_BENCH "Build the schematic benchmark bench/schem (core only)" OFF)
 option(HEFESTO_WARNINGS_AS_ERRORS "Treat compiler warnings in first-party code as errors" OFF)
 option(HEFESTO_TEST_DESKTOP_WINDOW
   "Register desktop smoke tests that open a window through Raven (needs a display; CI X11/Wayland legs)" OFF)
@@ -127,6 +128,10 @@ endif()
 option(HEFESTO_BUILD_NGSPICE "Build libngspice-hefesto from the pinned ngspice and its patch series" OFF)
 if(HEFESTO_BUILD_NGSPICE AND NOT HEFESTO_IS_IOS)
   add_subdirectory(third_party/ngspice)
+endif()
+
+if(HEFESTO_BUILD_SCHEM_BENCH AND NOT HEFESTO_IS_IOS)
+  add_subdirectory(bench/schem)  # PERF, m8-schematic task 14.1
 endif()
 
 message(STATUS "Hefesto ${PROJECT_VERSION}: desktop=${HEFESTO_BUILD_DESKTOP} tests=${HEFESTO_BUILD_TESTS} "

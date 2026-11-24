@@ -25,6 +25,7 @@
 #include "hefesto/diag/format.hpp"
 #include "hefesto/gui/wrapper.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/platform_posix/executable.hpp"
 #include "hefesto/shell/assets.hpp"
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/render/synthetic_layout.hpp"
@@ -32,6 +33,7 @@
 #include "hefesto/shell/drc_link.hpp"
 #include "hefesto/shell/mask_job_host.hpp"
 #include "hefesto/shell/options.hpp"
+#include "hefesto/shell/schematic_library.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 #include "main_window.hpp"
 #include "manager_panels.hpp"
@@ -256,7 +258,11 @@ std::optional<platform::Path> env_path(const char* name) {
 void run_startup(CoreSession& core, const app::StartupOptions& startup,
                  std::function<void(script::Interpreter&)> configure_interpreter = {}) {
   app::StartupEnvironment env;
-  env.install_root = env_path("CAD_ROOT").value_or(platform::Path());
+  // M8-D10: CAD_ROOT, else the install root holding the executable (assets/schematic),
+  // located by the operating system, not argv[0] (which is a bare name when started from PATH).
+  const char* cad_root = std::getenv("CAD_ROOT");
+  env.install_root = desktop_install_root(core.files(), platform_posix::executable_dir(),
+                                          cad_root != nullptr ? std::optional<std::string>{cad_root} : std::nullopt);
   env.home = env_path("HOME").value_or(platform::Path());
   std::error_code ec;
   env.working_directory = std::filesystem::current_path(ec);
