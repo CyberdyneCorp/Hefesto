@@ -4,9 +4,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <string>
@@ -715,4 +717,74 @@ TEST_CASE("netlist option: exits 10 on a failed netlist run and 1 on other error
   CHECK(shorted.err.find("shorted") != std::string::npos);
   const std::string missing = (dir.path() / "missing.sch").string();
   CHECK(run_cli({"--no-log", project, "--netlist", missing}).status == cli::kExitFailure);
+}
+
+// ---- M8-D10: the default CAD_ROOT is the install root ----------------------
+
+namespace {
+
+// Sets or unsets one environment variable for a test's scope.
+class EnvOverride {
+ public:
+  EnvOverride(const char* name, const char* value) : name_(name) {
+    if (const char* old = std::getenv(name); old != nullptr) old_ = std::string{old};
+    if (value == nullptr) {
+      ::unsetenv(name);
+    } else {
+      ::setenv(name, value, 1);
+    }
+  }
+  EnvOverride(const EnvOverride&) = delete;
+  EnvOverride& operator=(const EnvOverride&) = delete;
+  ~EnvOverride() {
+    if (old_) {
+      ::setenv(name_, old_->c_str(), 1);
+    } else {
+      ::unsetenv(name_);
+    }
+  }
+
+ private:
+  const char* name_;
+  std::optional<std::string> old_;
+};
+
+// A schematic placing the system library's resistor by both reference
+// forms, with an xschemrc whose search path is ${XSCHEM_SHAREDIR}'s library
+// (as the PDK xschemrc files append it).
+void write_devices_schematic(const std::filesystem::path& dir) {
+  write_file(dir / "xschemrc",
+             "set XSCHEM_LIBRARY_PATH ${XSCHEM_SHAREDIR}/xschem_library:${XSCHEM_SHAREDIR}/xschem_library/devices\n");
+  write_file(dir / "div.sch",
+             "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+             "C {devices/res.sym} 0 0 0 0 {name=R1 value=1k m=1}\n"
+             "C {res.sym} 200 0 0 0 {name=R2 value=2k m=1}\n");
+}
+
+}  // namespace
+
+TEST_CASE("netlist option finds the system library without CAD_ROOT",
+          "[cap:schematic-symbols-and-libraries][req:System library]") {
+  ScratchDir dir;
+  write_devices_schematic(dir.path());
+  const std::string sch = (dir.path() / "div.sch").string();
+  const std::string project = "--project=" + dir.str();
+  const EnvOverride no_cad_root("CAD_ROOT", nullptr);
+  const Run r = run_cli({"--no-log", project, "--netlist", sch});
+  CHECK(r.status == cli::kExitOk);
+  CHECK(r.out.find("R1 ") != std::string::npos);
+  CHECK(r.out.find("R2 ") != std::string::npos);
+  CHECK(r.out.find("1k") != std::string::npos);
+}
+
+TEST_CASE("CAD_ROOT overrides the install root", "[cap:schematic-symbols-and-libraries][req:System library]") {
+  ScratchDir dir;
+  write_devices_schematic(dir.path());
+  const std::string sch = (dir.path() / "div.sch").string();
+  const std::string project = "--project=" + dir.str();
+  // A CAD_ROOT without assets/schematic: the resistors are missing symbols.
+  const EnvOverride empty_root("CAD_ROOT", dir.str().c_str());
+  const Run r = run_cli({"--no-log", project, "--netlist", sch});
+  CHECK(r.out.find("R1 ") == std::string::npos);
+  CHECK(r.out.find("R2 ") == std::string::npos);
 }
