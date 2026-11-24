@@ -351,7 +351,11 @@ cmd::CommandResult with_messages(cmd::CommandResult result, std::vector<diag::Di
 
 cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<std::string>& args,
                                const compat::CompatSettings& compat, platform::FileSystem& fs) {
-  SpiceSettings& session = editor.netlist.spice;
+  // Q-NETLIST-54 (compat): spcParseArgs' -M -m -f -B -d -J set Magic's
+  // globals, so they hold for later runs with magic-compat ON; with it OFF
+  // they change a copy for this run only.
+  SpiceSettings run_copy = editor.netlist.spice;
+  SpiceSettings& session = compat.magic_compat ? editor.netlist.spice : run_copy;
   RunArgs run{session, {}, {}};
   auto parsed = extflat::parse_common_args(
       args, [&run](std::span<const std::string> words, std::size_t flag) { return parse_spice_flag(words, flag, run); },
@@ -364,6 +368,7 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
   messages.insert(messages.end(), common.messages.begin(), common.messages.end());
   if (!common.search_path.empty()) {
     session.search_path = common.search_path;
+    editor.netlist.spice.search_path = common.search_path;  // EFSearchPath, a global in both modes
   }
   const auto cell = run_cell(editor, common);
   if (!cell) {

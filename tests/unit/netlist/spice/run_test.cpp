@@ -87,6 +87,10 @@ struct ExtSession : Session {
     REQUIRE(services.files().write_atomic(hefesto::platform::Path{"/w/inv.ext"}, inv).ok());
   }
   bool exists(const std::string& name) { return services.files().exists(hefesto::platform::Path{name}); }
+  std::string file(const std::string& name) {
+    auto text = services.files().read(hefesto::platform::Path{name});
+    return text.ok() ? text.value() : std::string{};
+  }
 };
 
 }  // namespace
@@ -182,4 +186,52 @@ TEST_CASE("Rendering a value never changes the caller's flags", "[cap:netlist-sp
   CHECK(spice::write_flat(in, sim, {}, compat, again, kMagicNames).text == first);
   CHECK(names == before);
   CHECK(copy.trim_local);  // the run's flags went to the copy
+}
+
+// Q-NETLIST-54 (compat, M7-14): spcParseArgs' -M -m -f -B -d -J are Magic
+// globals, so with magic-compat ON they hold for later runs.
+TEST_CASE("Run flags persist for later runs with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+  REQUIRE(s.run("ext2spice -p /w -f hspice -B -d -m -J hier inv").ok());
+  CHECK(s.state.netlist.spice.format == spice::Dialect::hspice);
+  CHECK(s.state.netlist.spice.no_attributes);
+  CHECK(s.state.netlist.spice.distributed_junctions);
+  CHECK(s.state.netlist.spice.merge == spice::MergeMode::conservative);
+  CHECK(s.state.netlist.spice.hier_ap);
+  REQUIRE(s.run("ext2spice inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* HSPICE file created from inv.ext"));
+}
+
+// Q-NETLIST-54 (compat, M7-14): with magic-compat OFF the flags apply to
+// the run that names them and leave the session's settings unchanged.
+// Regression: ext2spice kept them in both modes.
+TEST_CASE("Run flags apply to one run with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+  const spice::SpiceSettings before = s.state.netlist.spice;
+  REQUIRE(s.run("ext2spice -p /w -f hspice -B -d -m -J hier inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* HSPICE file created from inv.ext"));
+  CHECK(s.state.netlist.spice.format == before.format);
+  CHECK(s.state.netlist.spice.no_attributes == before.no_attributes);
+  CHECK(s.state.netlist.spice.distributed_junctions == before.distributed_junctions);
+  CHECK(s.state.netlist.spice.merge == before.merge);
+  CHECK(s.state.netlist.spice.hier_ap == before.hier_ap);
+  CHECK(s.state.netlist.spice.scale == before.scale);
+  REQUIRE(s.run("ext2spice inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* SPICE3 file created from inv.ext"));
+}
+
+// Regression (tasks.md 11.3, NL-SPICE-05): the root's ports were all
+// numbered as implicit, in reverse node order, because the flattened
+// netlist did not carry the `port` records' indices.
+TEST_CASE("The subcircuit wrapper lists the root's ports by their indices",
+          "[cap:netlist-spice-options][req:Subcircuit header line]") {
+  ExtSession s{"port in 0 0 0 1 1 m1\nport out 1 0 10 1 11 m1\nnode in 0 0 0 0 m1\nnode out 0 0 0 10 m1\n"
+               "node mid 0 0 0 20 m1\n"};
+  REQUIRE(s.run("ext2spice subcircuits top on").ok());
+  REQUIRE(s.run("ext2spice -p /w inv").ok());
+  CHECK(s.file("inv.spice").find(".subckt inv in out\n") != std::string::npos);
 }

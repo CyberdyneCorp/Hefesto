@@ -308,17 +308,30 @@ TEST_CASE("ext2sim run-level coupling threshold with magic-compat OFF",
   CHECK(run.file("inv.sim").find("C a vdd! 5.0\n") != std::string::npos);
 }
 
-// simParseArgs' switches are globals in Magic: sticky with magic-compat ON,
-// this run only with it OFF.
-TEST_CASE("ext2sim run flags stay set with magic-compat ON only", "[cap:netlist-sim][req:Command options and defaults]") {
+// Q-NETLIST-54 (compat, M7-14): simParseArgs' switches are globals in
+// Magic. With magic-compat OFF they apply to this run only.
+TEST_CASE("ext2sim run flags apply to one run with magic-compat OFF",
+          "[cap:netlist-sim][req:Command options and defaults]") {
   hefesto::editor::EditorState editor;
   Runner run{editor};
-  REQUIRE(run({"-B", "-f", "su", "inv"}, false).ok());
+  REQUIRE(run({"-A", "-B", "-F", "-L", "-m", "-J", "hier", "-f", "su", "inv"}, false).ok());
   CHECK(run.file("inv.sim").starts_with("| units: 1 tech: nltest format: SU\n"));
   CHECK(editor.netlist.sim == sim::SimSettings{});
+  REQUIRE(run({"inv"}, false).ok());
+  CHECK_FALSE(run.file("inv.sim").starts_with("| units: 1 tech: nltest format: SU\n"));
+}
+
+// Q-NETLIST-54 (compat, M7-14): with magic-compat ON they hold for later
+// runs, as Magic's globals do.
+TEST_CASE("ext2sim run flags persist for later runs with magic-compat ON",
+          "[cap:netlist-sim][req:Command options and defaults]") {
+  hefesto::editor::EditorState editor;
+  Runner run{editor};
   REQUIRE(run({"-B", "-f", "su", "inv"}, true).ok());
   CHECK(editor.netlist.sim.no_attrs);
   CHECK(editor.netlist.sim.format == sim::SimFormat::su);
+  REQUIRE(run({"inv"}, true).ok());
+  CHECK(run.file("inv.sim").starts_with("| units: 1 tech: nltest format: SU\n"));
   REQUIRE_FALSE(run({"-q", "inv"}, true).ok());
 }
 
