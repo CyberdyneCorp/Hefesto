@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <cmath>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@
 #include "hefesto/shell/view3d_models.hpp"
 #include "hefesto/view/window.hpp"
 #include "hefesto/view3d/client/scene.hpp"
+#include "hefesto/view3d/stack/ghost.hpp"
 
 using namespace hefesto::shell;
 namespace view3d = hefesto::view3d;
@@ -497,6 +499,248 @@ TEST_CASE("a layout window's change areas for the rendered cell feed the worker"
   CHECK_FALSE(change_areas(window, &other).has_value());  // another cell: not this window's root
   window.mark_redisplay_all();
   CHECK(change_areas(window, s.cell)->all);
+}
+
+// --- the board look and ghosted layers (Q-MISC-84, Q-MISC-85) ---------------------
+
+namespace {
+
+/// The fixture's technology with a well plane (nwell) and a via contact
+/// between metal1 and metal2, so the classifier has conducting planes.
+std::string ghost_tech() {
+  std::string text{view3d::test::kTech};
+  const auto replace = [&text](std::string_view from, std::string_view to) {
+    const std::size_t at = text.find(from);
+    REQUIRE(at != std::string::npos);
+    text.replace(at, from.size(), to);
+  };
+  replace("planes\n    active,a\n", "planes\n    well,w\n    active,a\n");
+  replace("types\n    active  polysilicon,poly\n",
+          "types\n    well  nwell\n    active  polysilicon,poly\n    active  polycontact,pc\n    metal1  via1\n");
+  replace("contact\nend\n", "contact\n    pc poly metal1\n    via1 metal1 metal2\nend\n");
+  return text;
+}
+
+/// The window on c3d with nwell, poly, metal1, via1 and metal2 bound to styles.
+void open_ghost(ClientSession& s) {
+  bind_styles(s);
+  auto& types = s.editor.styles->types.styles_of_type;
+  types[*s.editor.technology->find_type("nwell").id] = {hefesto::display::kFixedStyleCount + 5};
+  types[*s.editor.technology->find_type("via1").id] = {hefesto::display::kFixedStyleCount + 22};
+  s.paint("nwell", db::Rect{-10, -10, 110, 60});
+  s.paint("via1", db::Rect{30, 20, 40, 30});
+  s.ok("specialopen wind3d c3d");
+  s.w3d("cif");
+  REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+}
+
+/// The panel's rows with the classifier's defaults and `options`' overrides.
+std::vector<View3dLayerRow> ghost_panel(ClientSession& s, View3dOptions& options) {
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, s.project.compat.magic_compat);
+  const std::vector<bool> ghosted = view3d::ghosted_by_default(stack, *s.editor.technology);
+  apply_default_alpha(options, stack, ghosted);
+  return layer_rows(stack, s.window(), options.alpha, {}, ghosted);
+}
+
+}  // namespace
+
+TEST_CASE("Wells ghosted by default: the nwell row starts at 20 % and conducting rows stay opaque, both modes",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat, ghost_tech()};
+    open_ghost(s);
+    View3dOptions options;
+    const std::vector<View3dLayerRow> rows = ghost_panel(s, options);
+    const View3dLayerRow* nwell = find_row(rows, "nwell");
+    REQUIRE(nwell != nullptr);
+    CHECK(nwell->ghosted);
+    CHECK(nwell->alpha == kGhostAlpha);
+    for (const char* name : {"polysilicon", "metal1", "via1", "metal2"}) {
+      const View3dLayerRow* row = find_row(rows, name);
+      REQUIRE(row != nullptr);
+      CHECK_FALSE(row->ghosted);
+      CHECK(row->alpha == 1.0F);
+    }
+    // The ghosted alpha reaches the renderer; `see`'s sets are untouched.
+    const view3d::LayerStack stack = view3d::layout_stack(s.editor, compat);
+    const hefesto::render::DrawParams params =
+        draw_params(FrameInputs{&s.window(), &stack, nullptr, nullptr, &options});
+    REQUIRE(params.alpha.size() == stack.size());
+    CHECK(params.alpha[nwell->layers.front()] == kGhostAlpha);
+    CHECK(s.window().visibility == view3d::VisibilitySets{});
+  }
+}
+
+TEST_CASE("User makes a ghosted layer opaque: the choice survives a rebuild of the stack and see is unaffected",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s{true, ghost_tech()};
+  open_ghost(s);
+  View3dOptions options;
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
+  const View3dLayerRow nwell = *find_row(ghost_panel(s, options), "nwell");
+  set_row_alpha(options, nwell, 1.0F, stack.size());
+  CHECK(options.alpha_override.at("nwell") == 1.0F);
+  // A rebuild (a new stack object, the defaults applied again) keeps it.
+  s.paint("metal1", db::Rect{100, 0, 120, 20});
+  CHECK(find_row(ghost_panel(s, options), "nwell")->alpha == 1.0F);
+  // Hide and Solo still run `see`; the transparency stays.
+  tcl(s, see_command(".magic3d", "nwell", false));
+  const std::vector<View3dLayerRow> after = ghost_panel(s, options);
+  const View3dLayerRow* hidden = find_row(after, "nwell");
+  REQUIRE(hidden != nullptr);
+  CHECK_FALSE(hidden->visible);
+  CHECK(hidden->alpha == 1.0F);
+  // A user's 20 % on an opaque layer is kept too.
+  set_row_alpha(options, *find_row(ghost_panel(s, options), "metal1"), 0.2F, stack.size());
+  CHECK(find_row(ghost_panel(s, options), "metal1")->alpha == 0.2F);
+}
+
+TEST_CASE("no default ghosting in mask-layer mode",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  std::vector<view3d::StackLayer> masks(2);
+  masks[0].name = "NWELL";
+  masks[0].mask_layer = 0;
+  masks[1].name = "MET1";
+  masks[1].mask_layer = 1;
+  const view3d::LayerStack stack{view3d::Mode::mask_layer, masks, true, 0.01};
+  ClientSession s{true, ghost_tech()};
+  View3dOptions options;
+  apply_default_alpha(options, stack, view3d::ghosted_by_default(stack, *s.editor.technology));
+  CHECK(options.alpha == std::vector<float>{1.0F, 1.0F});
+}
+
+TEST_CASE("ghosted rows announce their transparency to screen readers",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s{true, ghost_tech()};
+  open_ghost(s);
+  View3dOptions options;
+  const std::vector<View3dLayerRow> rows = ghost_panel(s, options);
+  const View3dLayerRow& nwell = *find_row(rows, "nwell");
+  CHECK(row_accessible_name(nwell).find(", shown, ghosted, 20 percent opaque") != std::string::npos);
+  CHECK(alpha_button_name(nwell) == "Transparency of nwell, 20 percent, ghosted by default");
+  const View3dLayerRow& metal1 = *find_row(rows, "metal1");
+  CHECK(row_accessible_name(metal1).find("percent") == std::string::npos);
+  CHECK(alpha_button_name(metal1) == "Transparency of metal1, 100 percent");
+}
+
+#ifdef HEFESTO_TEST_RENDER_ROUND4  // until RENDER m10-3d-round4-render is merged
+TEST_CASE("Background from the theme: the frame clears to the canvas token in both themes",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  ClientSession s;
+  open(s);
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
+  const View3dOptions options;
+  for (const ThemeMode mode : {ThemeMode::dark, ThemeMode::light}) {
+    const Rgba& canvas = theme_tokens(mode).canvas;
+    const std::array<float, 3> expected{canvas.r, canvas.g, canvas.b};
+    CHECK(view3d_background(mode) == expected);
+    FrameInputs in{&s.window(), &stack, nullptr, nullptr, &options};
+    in.background = view3d_background(mode);
+    const hefesto::render::DrawParams params = draw_params(in);
+    REQUIRE(params.background.has_value());
+    CHECK(*params.background == expected);
+  }
+}
+
+TEST_CASE("Board look with magic-compat ON: the desktop tab draws with the board lighting",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  ClientSession s{true};
+  open(s);
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
+  REQUIRE(stack.magic_compat());
+  const View3dOptions options;
+  CHECK(draw_params(FrameInputs{&s.window(), &stack, nullptr, nullptr, &options}).lighting ==
+        hefesto::render::Lighting::board);
+}
+
+TEST_CASE("Board look with magic-compat OFF: the desktop tab draws with the same board lighting",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  ClientSession s{false};
+  open(s);
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, false);
+  REQUIRE_FALSE(stack.magic_compat());
+  const View3dOptions options;
+  CHECK(draw_params(FrameInputs{&s.window(), &stack, nullptr, nullptr, &options}).lighting ==
+        hefesto::render::Lighting::board);
+}
+
+#endif  // RENDER round 4
+
+TEST_CASE("Isometric default from above: opening the tab runs the framed isometric preset once per window",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  ClientSession s;
+  open(s);
+  DefaultCameraLatch latch;
+  const auto apply_default = [&s] {
+    view3d::ViewState camera = s.window().view;
+    const view3d::Angles iso = view3d::preset(view3d::Preset::isometric);
+    camera.view_x = iso.x;
+    camera.view_y = iso.y;
+    camera.view_z = iso.z;
+    camera.scale_xy *= 0.5F;  // stands for the framing's zoom
+    camera.trans_x = -48.0F;
+    const std::vector<std::string> lines = camera_commands(".magic3d", camera);
+    REQUIRE(lines.size() == 3);
+    CHECK(lines[0].rfind(".magic3d view ", 0) == 0);
+    CHECK(lines[1].rfind(".magic3d scroll ", 0) == 0);
+    CHECK(lines[2].rfind(".magic3d zoom ", 0) == 0);
+    for (const std::string& line : lines) tcl(s, line);
+    return camera;
+  };
+  REQUIRE(latch.take(true));
+  const view3d::ViewState framed = apply_default();
+  // `view`, `scroll` and `zoom` report what the user sees.
+  CHECK(s.window().view.view_x == framed.view_x);
+  CHECK(s.window().view.view_z == framed.view_z);
+  CHECK(s.window().view.trans_x == framed.trans_x);
+  CHECK(s.window().view.scale_xy == framed.scale_xy);
+  CHECK(s.window().view.scale_z == framed.scale_z);
+  // A later sync keeps the user's camera.
+  tcl(s, ".magic3d view 10 0 20");
+  CHECK_FALSE(latch.take(true));
+  CHECK(s.window().view.view_x == 10.0F);
+  // closewindow re-arms it: a reopened window gets the default again.
+  tcl(s, close_command(".magic3d"));
+  CHECK_FALSE(latch.take(s.editor.view3d.has_window()));
+  open(s);
+  CHECK(latch.take(true));
+}
+
+TEST_CASE("a script-opened window keeps the top-down default view outside the desktop tab",
+          "[cap:view-3d][req:Default view]") {
+  ClientSession s;
+  open(s);
+  CHECK(s.window().view.view_x == 0.0F);
+  CHECK(s.window().view.view_y == 0.0F);
+  CHECK(s.window().view.view_z == 0.0F);
+}
+
+TEST_CASE("the axis gizmo follows the view's rotation",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  const auto near = [](float a, float b) { return std::abs(a - b) < 1e-4F; };
+  view3d::ViewState top;  // (0, 0, 0): x right, y up, z toward the viewer
+  const std::array<AxisArrow, 3> t = axis_gizmo(top);
+  CHECK(t[0].name == 'x');
+  CHECK((near(t[0].dx, 1.0F) && near(t[0].dy, 0.0F)));
+  CHECK((near(t[1].dx, 0.0F) && near(t[1].dy, -1.0F)));
+  CHECK((near(t[2].dx, 0.0F) && near(t[2].dy, 0.0F)));
+  // Scale and translation do not change it.
+  view3d::ViewState scaled = top;
+  scaled.scale_xy = 0.01F;
+  scaled.trans_x = 500.0F;
+  CHECK((near(axis_gizmo(scaled)[0].dx, 1.0F) && near(axis_gizmo(scaled)[1].dy, -1.0F)));
+  // The isometric preset is seen from above: z points up the screen and x
+  // and y spread to either side.
+  view3d::ViewState iso;
+  const view3d::Angles a = view3d::preset(view3d::Preset::isometric);
+  iso.view_x = a.x;
+  iso.view_y = a.y;
+  iso.view_z = a.z;
+  const std::array<AxisArrow, 3> g = axis_gizmo(iso);
+  CHECK(g[2].dy < -0.5F);
+  CHECK(std::abs(g[2].dx) < 1e-3F);
+  CHECK(g[0].dx * g[1].dx < 0.0F);
 }
 
 TEST_CASE("the mesh status and the frame-time readout",

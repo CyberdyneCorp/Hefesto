@@ -23,15 +23,25 @@
 //   highlight set handed to the renderer and "Isolate selected net";
 // - the DrawParams of a frame, the MeshWorker inputs and when a full build
 //   is due, the mesh status, the mask-layer notice and the frame-time
-//   readout.
+//   readout;
+// - the board look of the desktop tab in both magic-compat modes
+//   (Q-MISC-84, approved 2026-11-24): the theme's canvas token as the
+//   background, the renderer's board lighting, the isometric camera framed
+//   to the cell when the tab opens (as `view`/`scroll`/`zoom` commands, once
+//   per opened window) and the x/y/z axis gizmo;
+// - the default transparency of ghosted layers (Q-MISC-85: wells, implants
+//   and other non-conducting area layers at 20 %, view3d::ghosted_by_default),
+//   which a user's per-row choice overrides for the life of the window.
 //
-// Owner: SHELL (design D3; tasks 9.1, 9.2, 9.6, 13.2).
+// Owner: SHELL (design D3; tasks 9.1, 9.2, 9.6, 13.2, 16.6-16.8, 16.10).
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -43,6 +53,7 @@
 #include "hefesto/display/styles.hpp"
 #include "hefesto/render/mesh3d_renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
+#include "hefesto/shell/theme_tokens.hpp"
 #include "hefesto/tech/types.hpp"
 #include "hefesto/ui/macros.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
@@ -79,6 +90,7 @@ struct View3dLayerRow {
   float bottom = 0.0F;                  // draw height of the first entry (ordering)
   bool visible = true;
   float alpha = 1.0F;
+  bool ghosted = false;                 // ghosted by default (Q-MISC-85)
 
   friend bool operator==(const View3dLayerRow&, const View3dLayerRow&) = default;
 };
@@ -91,11 +103,21 @@ struct View3dLayerRow {
 /// stack entry, empty = all) leaves out entries whose style is neither
 /// solid nor stippled (they are not drawn, design D8). Visibility comes
 /// from the window's layout-layer set; `alpha` is per stack entry (empty =
-/// opaque).
+/// opaque); `ghosted` per stack entry (empty = none; a row is ghosted when
+/// its first entry is).
 [[nodiscard]] std::vector<View3dLayerRow> layer_rows(const view3d::LayerStack& stack,
                                                      const view3d::WindowState& window,
                                                      std::span<const float> alpha = {},
-                                                     const std::vector<bool>& drawable = {});
+                                                     const std::vector<bool>& drawable = {},
+                                                     const std::vector<bool>& ghosted = {});
+
+/// The screen-reader name of a row's label: "nwell, 0.00–1.00 µm, shown"
+/// and, for a translucent row, ", ghosted, 20 percent opaque" (a ghosted
+/// row) or ", 50 percent opaque".
+[[nodiscard]] std::string row_accessible_name(const View3dLayerRow& row);
+/// The screen-reader name of a row's transparency button: "Transparency of
+/// nwell, 20 percent" (", ghosted by default" for a ghosted row).
+[[nodiscard]] std::string alpha_button_name(const View3dLayerRow& row);
 
 /// The hidden flags of `stack` for the renderer: the window's layout-layer
 /// set in layout-layer mode; none in mask-layer mode (P1 draws the layout
@@ -119,6 +141,12 @@ struct View3dLayerRow {
 [[nodiscard]] std::string show_all_command(std::string_view path);
 /// A camera preset: `view ax ay az` with view3d::preset's angles.
 [[nodiscard]] std::string preset_command(std::string_view path, view3d::Preset preset);
+/// The commands that put the window on `camera` (Q-MISC-84): `view ax ay
+/// az`, `scroll tx ty tz` and `zoom s_xy s_z`, all absolute, so `view`,
+/// `scroll` and `zoom` then report what the user sees. The presets and the
+/// default camera run them with a view framed to the cell
+/// (view3d::frame_view). prescale_z is not a command value and is kept.
+[[nodiscard]] std::vector<std::string> camera_commands(std::string_view path, const view3d::ViewState& camera);
 /// The Level stepper: `level up` (step > 0) or `level down`.
 [[nodiscard]] std::string level_command(std::string_view path, int step);
 /// The Mask layers / Layout layers toggle: `cif` (switches the mode).
@@ -152,22 +180,101 @@ struct View3dOptions {
   bool span_connected_layers = false;  // J1 "Span connected layers"
   bool show_frame_time = false;        // the frame-time readout (task 13.2)
   std::vector<float> alpha;            // per stack entry; empty = opaque
+  /// The user's per-row transparency, by layer name: it overrides the
+  /// ghosted default and survives rebuilds of the window's stack; cleared
+  /// when the window closes.
+  std::map<std::string, float, std::less<>> alpha_override;
 
   friend bool operator==(const View3dOptions&, const View3dOptions&) = default;
 };
 
-/// Sets the transparency of every stack entry of `row`.
+/// The default transparency of a ghosted layer (Q-MISC-85): the 20 % step
+/// of the row's transparency control.
+inline constexpr float kGhostAlpha = 0.2F;
+
+/// Sets the transparency of every stack entry of `row` and records it as
+/// the user's choice for that layer name (alpha_override).
 void set_row_alpha(View3dOptions& options, const View3dLayerRow& row, float alpha, std::size_t stack_size);
 
+/// Recomputes `options.alpha` for `stack`: per entry the user's choice for
+/// its name when there is one, else kGhostAlpha when `ghosted` flags it
+/// (view3d::ghosted_by_default), else opaque.
+void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack, const std::vector<bool>& ghosted);
+
+// --- the board look (Q-MISC-84) -------------------------------------------------
+
+/// The 3D view's background in `mode`: the theme's canvas token (the 2D
+/// canvas's background), as display values 0..1, in both magic-compat modes.
+[[nodiscard]] std::array<float, 3> view3d_background(ThemeMode mode) noexcept;
+
+/// True once per opened window: the first call with `open` after the window
+/// opened; a call with !open (the window closed) re-arms it. The view applies
+/// the default camera when it answers true, so a user's later camera is kept.
+class DefaultCameraLatch {
+ public:
+  [[nodiscard]] bool take(bool open) noexcept;
+
+ private:
+  bool applied_ = false;
+};
+
+/// The model-space box the camera frames: the cell's clip area in x and y,
+/// the stack's prisms in z (z_top = -h * s_z, z_bot = z_top - t * s_z).
+struct StackBox {
+  double x0 = 0.0;
+  double y0 = 0.0;
+  double z0 = 0.0;
+  double x1 = 0.0;
+  double y1 = 0.0;
+  double z1 = 0.0;
+
+  friend bool operator==(const StackBox&, const StackBox&) = default;
+};
+/// The box of `area` and every layer of `stack` drawn with `scale_z`
+/// (`drawable` per stack entry, empty = all).
+[[nodiscard]] StackBox stack_box(const db::Rect& area, const view3d::LayerStack& stack, float scale_z,
+                                 const std::vector<bool>& drawable = {});
+
+/// Per stack entry, whether `mesh` draws any face of it (the layers the
+/// camera frames: a stack lists every layer of the technology).
+[[nodiscard]] std::vector<bool> layers_present(const view3d::MeshModel& mesh, std::size_t stack_size);
+
+/// The z scale the desktop tab opens with (Q-MISC-84 board look): heights in
+/// proportion to the widths, instead of Magic's default 25x exaggeration,
+/// which spreads the layers far apart. Set through `zoom`, so `zoom`
+/// reports it; `defaults` returns to Magic's values.
+inline constexpr float kBoardScaleZ = 1.0F;
+
+/// `view` with its angles kept and translation and s_xy set so `box` fits a
+/// `width` x `height` drawable with the default view's 1/1.1 margin (design
+/// D7 amended; CAMERA's view3d::frame_view when merged).
+[[nodiscard]] view3d::ViewState framed_view(const view3d::ViewState& view, const StackBox& box, int width,
+                                            int height);
+
+/// One arrow of the axis gizmo: its screen direction (x right, y down) as
+/// the view's rotation projects the unit axis; the z arrow points toward the
+/// higher layers (model -z, view-3d "Rendered geometry").
+struct AxisArrow {
+  char name = 'x';
+  float dx = 0.0F;
+  float dy = 0.0F;
+};
+/// The x, y and z arrows of `view`'s rotation (scale and translation ignored).
+[[nodiscard]] std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view);
+
 /// The frame's DrawParams: projection, level, stack, styles, hidden flags,
-/// alpha, highlight, and the P1 mask-layer xy scale (Scene::xy_factor, as
-/// DrawParams::xy_scale).
+/// alpha, highlight, the P1 mask-layer xy scale (Scene::xy_factor, as
+/// DrawParams::xy_scale), the background and the board lighting in both
+/// magic-compat modes (Q-MISC-84: Magic's GL lighting is never used by the
+/// desktop tab).
 struct FrameInputs {
   const view3d::WindowState* window = nullptr;
   const view3d::LayerStack* stack = nullptr;
   const display::StyleSet* styles = nullptr;
   const view3d::HighlightSet* highlight = nullptr;
   const View3dOptions* options = nullptr;
+  /// The background (view3d_background); nullopt leaves the renderer's.
+  std::optional<std::array<float, 3>> background = std::nullopt;
 };
 [[nodiscard]] render::DrawParams draw_params(const FrameInputs& in);
 
