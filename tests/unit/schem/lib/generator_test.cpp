@@ -9,9 +9,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -223,4 +229,163 @@ TEST_CASE("a generator file over the script size limit is not read", kGenerators
   REQUIRE(output.diagnostics.size() == 1);
   CHECK(output.diagnostics[0].text.find("the script is larger than " + std::to_string(script.size() - 1) + " bytes") !=
         std::string::npos);
+}
+
+// ---- User decisions M8-D5 to M8-D7 (approved 2026-11-23) ----------------------
+
+namespace {
+
+// A file system that reports chosen sizes and counts the reads of each file,
+// so a test can prove a generator file was never read.
+class WatchedFileSystem final : public platform::FileSystem {
+ public:
+  explicit WatchedFileSystem(platform::FileSystem& base) : base_(base) {}
+
+  std::map<platform::Path, std::uint64_t> sizes;  // reported instead of the real size
+  std::map<platform::Path, int> reads;
+
+  diag::Outcome<std::string> read(const platform::Path& path) override {
+    ++reads[path];
+    return base_.read(path);
+  }
+  diag::Status write_atomic(const platform::Path& path, std::string_view data) override {
+    return base_.write_atomic(path, data);
+  }
+  diag::Status append(const platform::Path& path, std::string_view data) override { return base_.append(path, data); }
+  bool exists(const platform::Path& path) override { return base_.exists(path); }
+  diag::Outcome<std::uint64_t> size(const platform::Path& path) override {
+    const auto it = sizes.find(path);
+    return it != sizes.end() ? diag::Outcome<std::uint64_t>{it->second} : base_.size(path);
+  }
+  diag::Outcome<std::vector<platform::Path>> list(const platform::Path& directory) override {
+    return base_.list(directory);
+  }
+  diag::Status create_directories(const platform::Path& directory) override {
+    return base_.create_directories(directory);
+  }
+  diag::Status rename(const platform::Path& from, const platform::Path& to) override { return base_.rename(from, to); }
+  diag::Status remove(const platform::Path& path) override { return base_.remove(path); }
+
+ private:
+  platform::FileSystem& base_;
+};
+
+std::size_t count_text(const std::vector<diag::Diagnostic>& all, std::string_view text) {
+  return static_cast<std::size_t>(
+      std::count_if(all.begin(), all.end(), [text](const auto& d) { return d.text.find(text) != std::string::npos; }));
+}
+
+}  // namespace
+
+// M8-D5 (approved 2026-11-23; Q-row assigned by DECIDE), both modes,
+// identical: the runs of one cache share the total (here 300 ms instead of
+// 60 s); once it is spent no generator runs (its file is not even read),
+// exactly one SCHEM-LIB-012 reports it, and reloading the symbols (clear(),
+// `schematic reload_symbols`) gives the generators their total again.
+TEST_CASE("M8-D5: no generator runs once the total time is spent, until reload", kGenerators) {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Library library;
+    REQUIRE(library.fs.write_atomic("/lib/loop.tcl", "while 1 {}\n").ok());
+    WatchedFileSystem fs(library.fs);
+    diag::CollectingSink sink;
+    schem::SymbolCache cache({}, std::chrono::milliseconds{300});
+    const schem::ResolveContext context{library.path, fs, &sink, compat};
+    CHECK(cache.resolve({"loop.tcl(1)"}, library.top, context).placeholder);  // spends the 300 ms
+    for (int i = 1; i <= 50; ++i) {
+      CHECK(cache.resolve({"pins.tcl(" + std::to_string(i) + ")"}, library.top, context).placeholder);
+      CHECK(cache.resolve({"loop.tcl(" + std::to_string(i + 1) + ")"}, library.top, context).placeholder);
+    }
+    CHECK(fs.reads["/lib/pins.tcl"] == 0);
+    CHECK(fs.reads["/lib/loop.tcl"] == 1);
+    const auto failed = with_code(sink.take(), "SCHEM-LIB-012");
+    REQUIRE(failed.size() == 2);
+    CHECK(failed[0].text == "Symbol generator /lib/loop.tcl failed: stopped after 300 ms");
+    CHECK(count_text(failed, "symbol generators ran for their total of 300 ms") == 1);
+    cache.clear();
+    CHECK_FALSE(cache.resolve({"pins.tcl(1)"}, library.top, context).placeholder);
+    CHECK(fs.reads["/lib/pins.tcl"] == 1);
+    CHECK(sink.take().empty());
+  }
+}
+
+// M8-D6 (approved 2026-11-23; Q-row assigned by DECIDE), both modes: a
+// generator file larger than 268,435,456 bytes is not read, not even for its
+// `#!` line, and not run: SCHEM-LIB-012 once per file, with or without
+// `.tcl` (a file without `.tcl` gave SCHEM-LIB-011 before). A file of
+// exactly the limit runs.
+TEST_CASE("M8-D6: a generator file over 256 MiB is neither read nor run", kGenerators) {
+  CHECK(schem::kMaxGeneratorScriptBytes == std::size_t{268'435'456});
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Library library;
+    const std::string script = "#!/usr/bin/env tclsh\nputs {v {xschem version=3.4.8RC file_version=1.2}}\n";
+    REQUIRE(library.fs.write_atomic("/lib/big", script).ok());
+    REQUIRE(library.fs.write_atomic("/lib/big.tcl", script).ok());
+    REQUIRE(library.fs.write_atomic("/lib/edge.tcl", script).ok());
+    WatchedFileSystem fs(library.fs);
+    fs.sizes = {{"/lib/big", schem::kMaxGeneratorScriptBytes + 1},
+                {"/lib/big.tcl", schem::kMaxGeneratorScriptBytes + 1},
+                {"/lib/edge.tcl", schem::kMaxGeneratorScriptBytes}};
+    diag::CollectingSink sink;
+    schem::SymbolCache cache;
+    const schem::ResolveContext context{library.path, fs, &sink, compat};
+    CHECK(cache.resolve({"big(1)"}, library.top, context).placeholder);
+    CHECK(cache.resolve({"big(2)"}, library.top, context).placeholder);
+    CHECK(cache.resolve({"big.tcl(1)"}, library.top, context).placeholder);
+    CHECK_FALSE(cache.resolve({"edge.tcl(1)"}, library.top, context).placeholder);
+    CHECK(fs.reads["/lib/big"] == 0);
+    CHECK(fs.reads["/lib/big.tcl"] == 0);
+    const auto all = sink.take();
+    CHECK(with_code(all, "SCHEM-LIB-011").empty());
+    const auto failed = with_code(all, "SCHEM-LIB-012");
+    REQUIRE(failed.size() == 2);
+    CHECK(failed[0].text ==
+          "Symbol big(1): the generator /lib/big is larger than 268435456 bytes; it is neither read nor run");
+    CHECK(failed[1].text.starts_with("Symbol big.tcl(1): the generator /lib/big.tcl is larger than"));
+    // run_tcl_generator refuses it too, without reading it.
+    CHECK_FALSE(schem::run_tcl_generator(fs, {"/lib/big.tcl", {}, "/w"}).text.has_value());
+    CHECK(fs.reads["/lib/big.tcl"] == 0);
+  }
+}
+
+// M8-D7 (approved 2026-11-23; Q-row assigned by DECIDE), both modes: a
+// generator named by an absolute `.tcl` path outside the search path stays
+// allowed and runs in the sandbox: it reads its own folder and the document
+// folder, and a write (even into those folders) is denied with the sandbox
+// diagnostic, which is reported.
+TEST_CASE("M8-D7: an absolute-path generator outside the search path runs in the sandbox", kGenerators) {
+  namespace stdfs = std::filesystem;
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    const stdfs::path root = stdfs::canonical(stdfs::temp_directory_path()) /
+                             ("hefesto-generator-d7-" + std::to_string(::getpid()) + (compat ? "-on" : "-off"));
+    stdfs::remove_all(root);
+    stdfs::create_directories(root / "gens");
+    stdfs::create_directories(root / "doc");
+    std::ofstream(root / "doc" / "width.txt") << "4";
+    std::ofstream(root / "gens" / "abs.tcl") << "set here [file dirname $argv0]\n"
+                                                "set f [open $env(HOME)/width.txt]; set n [read $f]; close $f\n"
+                                                "if {[catch {open $here/written w}]} { set a 1 }\n"
+                                                "if {[catch {open $env(HOME)/written w}]} { set b 1 }\n"
+                                                "puts {v {xschem version=3.4.8RC file_version=1.2}}\n"
+                                                "puts \"T {n=$n} 0 0 0 0 0.2 0.2 {}\"\n";
+    platform::LocalFileSystem local;
+    diag::CollectingSink sink;
+    schem::SymbolCache cache;
+    schem::Document top;
+    top.path = root / "doc" / "top.sch";
+    const schem::SearchPath path{{"/no/such/library"}};
+    const std::string reference = (root / "gens" / "abs.tcl").generic_string() + "(1)";
+    const schem::Symbol& symbol = cache.resolve({reference}, top, {path, local, &sink, compat});
+    REQUIRE_FALSE(symbol.placeholder);
+    REQUIRE(symbol.document.texts.size() == 1);
+    CHECK(symbol.document.texts[0].text == "n=4");
+    const auto denied = with_code(sink.take(), "SCRIPT-SANDBOX-004");
+    REQUIRE(denied.size() == 2);
+    CHECK(denied[0].text.find("caught by the script's catch") != std::string::npos);
+    CHECK_FALSE(stdfs::exists(root / "gens" / "written"));
+    CHECK_FALSE(stdfs::exists(root / "doc" / "written"));
+    stdfs::remove_all(root);
+  }
 }

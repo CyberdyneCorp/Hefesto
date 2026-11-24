@@ -12,11 +12,13 @@
 
 #include "hefesto/schem/lib/generator.hpp"
 
+#include <algorithm>
 #include <iterator>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/tcl/tcl_interpreter.hpp"
+#include "schem/lib/run_guards.hpp"
 
 namespace hefesto::schem {
 
@@ -167,6 +169,10 @@ GeneratorOutput run_tcl_generator(platform::FileSystem& fs, const GeneratorInput
   const cmd::CommandResult result = interp->evaluate(script.value());
   GeneratorOutput output = result.ok() && !puts.too_long() ? GeneratorOutput{puts.take(), {}}
                                                            : failed(input, failure_reason(result, puts, input));
+  // Every denial is reported, also one the generator caught (security
+  // review, task 12.1: they were dropped with the result).
+  std::copy_if(result.diagnostics.begin(), result.diagnostics.end(), std::back_inserter(output.diagnostics),
+               detail::is_sandbox_denial);
   interp.reset();  // before editor, whose events it posts to
   return output;
 }

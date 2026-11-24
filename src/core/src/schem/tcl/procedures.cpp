@@ -105,10 +105,13 @@ cmd::CommandResult usage(std::string_view text) {
   return cmd::CommandResult::failure(diag::make("SCHEM-TCL-001", std::string{text}));
 }
 
-cmd::CommandResult write_data(const cmd::Invocation& invocation, platform::FileSystem* files) {
+cmd::CommandResult write_data(const cmd::Invocation& invocation, const ProcedureHooks& hooks) {
   if (invocation.args.size() != 2) return usage("wrong # args: should be \"write_data data file\"");
-  if (files == nullptr) return usage("write_data: writing files is not allowed here");
-  const diag::Status written = files->write_atomic(invocation.args[1], invocation.args[0]);
+  if (hooks.files == nullptr) return usage("write_data: writing files is not allowed here");
+  const diag::Status written = hooks.files->write_atomic(invocation.args[1], invocation.args[0]);
+  if (!written.ok() && written.error().code.starts_with("SCRIPT-SANDBOX-") && hooks.denied) {
+    hooks.denied(written.error());
+  }
   if (!written.ok()) return usage("write_data: " + written.error().text);
   return cmd::CommandResult::success();
 }
@@ -137,7 +140,7 @@ void install_xschem_procedures(script::Interpreter& interp, ProcedureHooks hooks
     return cmd::CommandResult::success();
   });
   interp.define_command("::write_data", [shared](const cmd::Invocation& invocation) {
-    return write_data(invocation, shared->files);
+    return write_data(invocation, *shared);
   });
 }
 

@@ -126,14 +126,31 @@ Owner: SYMLIB.
   generator is forgotten. Also `Symbol <reference>: symbol generators ran
   for their total of 60000 ms; no further generator runs until the symbols
   are reloaded`, once per cache, when the generators of one symbol cache
-  have spent their shared 60 s.
+  have spent their shared 60 s (M8-D5, approved 2026-11-23); no generator
+  file is read after that. Also `Symbol <reference>: the generator <file> is
+  larger than 268435456 bytes; it is neither read nor run`, once per file,
+  for a generator file over 256 MiB with or without `.tcl` (M8-D6, approved
+  2026-11-23; before, a file without `.tcl` gave `SCHEM-LIB-011`). Both modes.
+  The sandbox's denials during a generator run (`SCRIPT-SANDBOX-*`, also those
+  the generator catches) are reported next to it (security review, task 12.1).
 - `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
   (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
-  `write_data` was refused outside the sandbox's granted folders; the
-  enclosing value gives `?` LF.
+  `write_data` was refused outside the sandbox's writable folders; the
+  enclosing value gives `?` LF. A refused `write_data` is also reported with
+  the sandbox's `SCRIPT-SANDBOX-004` (security review, task 12.1).
 - `SCHEM-TCL-002` (info): a launcher's `tclcommand` did not run because the
   user did not confirm it for this document (Q-SCHEM-25); the next Ctrl+click
   asks again.
+- `SCHEM-TCL-003` (warning): `tcleval value stopped after 10 s (tcleval of
+  <owner>)`: one `tcleval` value ran for 10 s (`kTclevalTimeLimit`); or
+  `tcleval values ran for their total of 60 s; no further value is evaluated
+  in this run`, once per netlist run, when the values of one `TclEnvironment`
+  spent their shared 60 s (`kTclevalTotalTimeLimit`). The value gives `?` LF.
+  Both modes of `xschem-compat` (a hang, fixed by the security review of task
+  12.1; xschem has no limit). The sandbox's denials during a value
+  (`SCRIPT-SANDBOX-*`, also caught ones) go to the same sink with
+  ` (tcleval of <owner>)` appended, `<owner>` being what the value belongs to
+  (`TclContext::owner`, else the symbol, else the instance).
 
 ## NETLIST
 
@@ -321,4 +338,5 @@ fails when the two disagree.
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |
 | `SCHEM-TCL-002` | info | A launcher's `tclcommand` did not run: the user did not confirm it for this document. |
+| `SCHEM-TCL-003` | warning | A `tcleval` value stopped at its 10 s limit, or the `tcleval` values of one netlist run spent their shared 60 s; the value is `?`. |
 <!-- END DIAGNOSTIC CODES -->
