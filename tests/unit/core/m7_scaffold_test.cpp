@@ -438,7 +438,7 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   REQUIRE_FALSE(rendered.ok());
   CHECK(rendered.error().code == "EXTFLAT-READ-001");
   check_not_implemented(hefesto::extresist::run(s.state, {}, nullptr), "extresist run");
-  CHECK(extract::fringe_fraction(1.0, 1.0) == 0.0);
+  // EXTCAP landed fringe_fraction (tasks.md 6.4): tests/unit/extract/cap/cr_atan_test.cpp.
   const std::vector<std::string> parts{"x1", "n1"};
   extflat::NameFlags flags;
   CHECK(extflat::name_to_spice(parts, extflat::SpiceDialect::spice3, flags, {}) == "x1/n1");
