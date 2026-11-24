@@ -624,7 +624,6 @@ TEST_CASE("ghosted rows announce their transparency to screen readers",
   CHECK(alpha_button_name(metal1) == "Transparency of metal1, 100 percent");
 }
 
-#ifdef HEFESTO_TEST_RENDER_ROUND4  // until RENDER m10-3d-round4-render is merged
 TEST_CASE("Background from the theme: the frame clears to the canvas token in both themes",
           "[cap:view-3d][req:Viewing transform and shading]") {
   ClientSession s;
@@ -665,8 +664,6 @@ TEST_CASE("Board look with magic-compat OFF: the desktop tab draws with the same
         hefesto::render::Lighting::board);
 }
 
-#endif  // RENDER round 4
-
 TEST_CASE("Isometric default from above: opening the tab runs the framed isometric preset once per window",
           "[cap:view-3d][req:Viewing transform and shading]") {
   ClientSession s;
@@ -705,6 +702,45 @@ TEST_CASE("Isometric default from above: opening the tab runs the framed isometr
   CHECK_FALSE(latch.take(s.editor.view3d.has_window()));
   open(s);
   CHECK(latch.take(true));
+}
+
+TEST_CASE("presets frame the drawn layers: view, scroll and zoom report frame_view's camera",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  ClientSession s;
+  open(s);
+  const auto shared = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  const view3d::LayerStack& stack = *shared;
+  view3d::MeshWorker worker;
+  worker.build(build_inputs(s.editor, s.window(), shared, false));
+  REQUIRE(worker.wait_idle(10000));
+  REQUIRE(worker.current() != nullptr);
+  const view3d::MeshModel& mesh = *worker.current();
+  const std::vector<bool> present = layers_present(mesh, stack.size());
+  // Only metal1 and metal2 are painted: poly is not framed.
+  const view3d::Extent3 box = stack_extent(mesh.region, stack, present);
+  const view3d::DrawHeight m1 = stack.draw_height(*stack.find(*s.editor.technology->find_type("metal1").id,
+                                                              hefesto::display::kFixedStyleCount + 20));
+  const view3d::DrawHeight m2 = stack.draw_height(*stack.find(*s.editor.technology->find_type("metal2").id,
+                                                              hefesto::display::kFixedStyleCount + 21));
+  CHECK(box.z0 == std::min(static_cast<double>(m1.height), static_cast<double>(m2.height)));
+  CHECK(box.z1 == std::max(static_cast<double>(m1.height) + static_cast<double>(m1.thickness),
+                           static_cast<double>(m2.height) + static_cast<double>(m2.thickness)));
+  CHECK(box.x0 == -1.0);
+  CHECK(box.x1 == 101.0);
+  view3d::ViewState camera = s.window().view;
+  const view3d::Angles iso = view3d::preset(view3d::Preset::isometric);
+  camera.view_x = iso.x;
+  camera.view_y = iso.y;
+  camera.view_z = iso.z;
+  camera.scale_z = kBoardScaleZ;
+  const view3d::ViewState framed = view3d::frame_view(camera, box, 800, 600);
+  for (const std::string& line : camera_commands(".magic3d", framed)) tcl(s, line);
+  CHECK(s.window().view.view_x == framed.view_x);
+  CHECK(s.window().view.view_z == framed.view_z);
+  CHECK(s.window().view.trans_x == framed.trans_x);
+  CHECK(s.window().view.trans_z == framed.trans_z);
+  CHECK(s.window().view.scale_xy == framed.scale_xy);
+  CHECK(s.window().view.scale_z == kBoardScaleZ);
 }
 
 TEST_CASE("a script-opened window keeps the top-down default view outside the desktop tab",

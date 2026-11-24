@@ -74,16 +74,6 @@ int percent(float alpha) {
   return static_cast<int>(alpha * 100.0F + 0.5F);
 }
 
-// The board look of RENDER's round-4 DrawParams (Q-MISC-84): the theme
-// background and the board lighting, in both magic-compat modes.
-template <typename Params>
-void set_board_look(Params& params, const std::optional<std::array<float, 3>>& background) {
-  if constexpr (requires { params.background = background; }) {
-    if (background) params.background = background;
-  }
-  if constexpr (requires { params.lighting; }) params.lighting = decltype(params.lighting)::board;
-}
-
 bool pans(PointerButton button, std::uint8_t modifiers) {
   if (button == PointerButton::middle || button == PointerButton::right) return true;
   return button == PointerButton::left && (modifiers & (kModAlt | kModShift)) != 0;
@@ -251,16 +241,16 @@ bool DefaultCameraLatch::take(bool open) noexcept {
   return true;
 }
 
-StackBox stack_box(const db::Rect& area, const view3d::LayerStack& stack, float scale_z,
-                   const std::vector<bool>& drawable) {
-  StackBox box{static_cast<double>(area.x0), static_cast<double>(area.y0), 0.0,
-               static_cast<double>(area.x1), static_cast<double>(area.y1), 0.0};
+view3d::Extent3 stack_extent(const db::Rect& area, const view3d::LayerStack& stack,
+                             const std::vector<bool>& drawable) {
+  view3d::Extent3 box{static_cast<double>(area.x0), static_cast<double>(area.y0), static_cast<double>(area.x1),
+                      static_cast<double>(area.y1), 0.0, 0.0};
   bool any = false;
   for (view3d::LayerId id = 0; id < stack.size(); ++id) {
     if (!entry_drawn(drawable, id)) continue;
     const view3d::DrawHeight h = stack.draw_height(id);
-    const double top = -static_cast<double>(h.height) * static_cast<double>(scale_z);
-    const double bottom = top - static_cast<double>(h.thickness) * static_cast<double>(scale_z);
+    const auto bottom = static_cast<double>(h.height);
+    const double top = bottom + static_cast<double>(h.thickness);
     box.z0 = any ? std::min(box.z0, bottom) : bottom;
     box.z1 = any ? std::max(box.z1, top) : top;
     any = true;
@@ -280,44 +270,20 @@ std::vector<bool> layers_present(const view3d::MeshModel& mesh, std::size_t stac
   return present;
 }
 
-view3d::ViewState framed_view(const view3d::ViewState& view, const StackBox& box, int width, int height) {
-  view3d::ViewState framed = view;
-  framed.trans_x = static_cast<float>(-(box.x0 + box.x1) / 2.0);
-  framed.trans_y = static_cast<float>(-(box.y0 + box.y1) / 2.0);
-  framed.trans_z = static_cast<float>(-(box.z0 + box.z1) / 2.0);
-  framed.scale_xy = 1.0F;
-  // At s_xy = 1 the projected x and y are linear in s_xy: fit the largest.
-  const view3d::Matrix4 m = view3d::matrix(framed, width, height, view3d::ProjectionParams{});
-  double extent = 0.0;
-  for (int corner = 0; corner < 8; ++corner) {
-    const double x = (corner & 1) != 0 ? box.x1 : box.x0;
-    const double y = (corner & 2) != 0 ? box.y1 : box.y0;
-    const double z = (corner & 4) != 0 ? box.z1 : box.z0;
-    for (int row = 0; row < 2; ++row) {
-      const auto r = static_cast<std::size_t>(row);
-      const auto c = [&m](std::size_t i) { return static_cast<double>(m[i]); };
-      const double v = c(r) * x + c(4 + r) * y + c(8 + r) * z + c(12 + r);
-      extent = std::max(extent, std::abs(v));
-    }
-  }
-  framed.scale_xy = extent > 0.0 ? static_cast<float>(1.0 / (1.1 * extent)) : view.scale_xy;
-  return framed;
-}
-
 std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view) {
   view3d::ViewState rotation;
   rotation.view_x = view.view_x;
   rotation.view_y = view.view_y;
   rotation.view_z = view.view_z;
   const view3d::Matrix4 m = view3d::matrix(rotation, 1, 1, view3d::ProjectionParams{});
-  // Column-major: the image of model axis j is column j; the screen's y is
-  // the negated clip y (the renderer draws clip y up), and z toward the
-  // higher layers is model -z.
+  // Column-major: the image of axis j of the displayed scene is column j;
+  // the screen's y is the negated clip y (the renderer draws clip y up). The
+  // scene is the model mirrored in z, so its +z points to the higher layers.
   const auto arrow = [&m](char name, int column, float sign) {
     return AxisArrow{name, sign * m[static_cast<std::size_t>(column * 4)],
                      -sign * m[static_cast<std::size_t>(column * 4 + 1)]};
   };
-  return {arrow('x', 0, 1.0F), arrow('y', 1, 1.0F), arrow('z', 2, -1.0F)};
+  return {arrow('x', 0, 1.0F), arrow('y', 1, 1.0F), arrow('z', 2, 1.0F)};
 }
 
 float xy_factor(const view3d::WindowState& window) noexcept {
@@ -333,7 +299,9 @@ render::DrawParams draw_params(const FrameInputs& in) {
   params.stack = in.stack;
   params.styles = in.styles;
   params.highlight = in.highlight;
-  set_board_look(params, in.background);
+  // The board look in both magic-compat modes (Q-MISC-84).
+  if (in.background) params.background = in.background;
+  params.lighting = render::Lighting::board;
   if (in.window != nullptr) {
     params.level = in.window->level;
     params.xy_scale = xy_factor(*in.window);

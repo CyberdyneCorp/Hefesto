@@ -218,22 +218,11 @@ class DefaultCameraLatch {
   bool applied_ = false;
 };
 
-/// The model-space box the camera frames: the cell's clip area in x and y,
-/// the stack's prisms in z (z_top = -h * s_z, z_bot = z_top - t * s_z).
-struct StackBox {
-  double x0 = 0.0;
-  double y0 = 0.0;
-  double z0 = 0.0;
-  double x1 = 0.0;
-  double y1 = 0.0;
-  double z1 = 0.0;
-
-  friend bool operator==(const StackBox&, const StackBox&) = default;
-};
-/// The box of `area` and every layer of `stack` drawn with `scale_z`
-/// (`drawable` per stack entry, empty = all).
-[[nodiscard]] StackBox stack_box(const db::Rect& area, const view3d::LayerStack& stack, float scale_z,
-                                 const std::vector<bool>& drawable = {});
+/// The box the camera frames (view3d::frame_view): `area` in x and y, and
+/// in z the lowest h and the highest h + t of the layers of `stack` drawn
+/// (`drawable` per stack entry, empty = all), in draw units.
+[[nodiscard]] view3d::Extent3 stack_extent(const db::Rect& area, const view3d::LayerStack& stack,
+                                           const std::vector<bool>& drawable = {});
 
 /// Per stack entry, whether `mesh` draws any face of it (the layers the
 /// camera frames: a stack lists every layer of the technology).
@@ -245,15 +234,9 @@ struct StackBox {
 /// reports it; `defaults` returns to Magic's values.
 inline constexpr float kBoardScaleZ = 1.0F;
 
-/// `view` with its angles kept and translation and s_xy set so `box` fits a
-/// `width` x `height` drawable with the default view's 1/1.1 margin (design
-/// D7 amended; CAMERA's view3d::frame_view when merged).
-[[nodiscard]] view3d::ViewState framed_view(const view3d::ViewState& view, const StackBox& box, int width,
-                                            int height);
-
 /// One arrow of the axis gizmo: its screen direction (x right, y down) as
 /// the view's rotation projects the unit axis; the z arrow points toward the
-/// higher layers (model -z, view-3d "Rendered geometry").
+/// higher layers (the displayed scene's +z: the model mirrored in z).
 struct AxisArrow {
   char name = 'x';
   float dx = 0.0F;

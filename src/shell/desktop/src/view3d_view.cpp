@@ -756,13 +756,14 @@ void View3dView::apply_camera(view3d::Preset which, std::optional<float> scale_z
   // The layers the mesh draws (not the whole technology), in its region.
   std::vector<bool> framed = layers_present(*model_, stack->size());
   for (std::size_t i = 0; i < framed.size() && i < drawable_.size(); ++i) framed[i] = framed[i] && drawable_[i];
-  StackBox box = stack_box(model_->region, *stack, camera.scale_z, framed);
+  view3d::Extent3 box = stack_extent(model_->region, *stack, framed);
   const auto f = static_cast<double>(xy_factor(*w));  // mask-layer mode draws x and y scaled by f
   box.x0 *= f;
   box.y0 *= f;
   box.x1 *= f;
   box.y1 *= f;
-  for (const std::string& line : camera_commands(path(), framed_view(camera, box, pixels_.first, pixels_.second))) {
+  for (const std::string& line :
+       camera_commands(path(), view3d::frame_view(camera, box, pixels_.first, pixels_.second))) {
     run(line);
   }
 }
