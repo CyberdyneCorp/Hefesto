@@ -354,6 +354,7 @@ For the same deck, corner and Hefesto version:
   - node voltages: `|a − b| ≤ 1e-3 × max(|a|, |b|) + 1e-4 V`
   - branch currents: `|a − b| ≤ 1e-3 × max(|a|, |b|) + 1e-9 A`
   - AC complex values: `|a − b| ≤ 1e-3 × max(|a|, |b|) + 1e-12` of the vector's unit
+  - a NaN or infinite value SHALL NOT agree with a finite value; two non-finite values agree only when equal (the same infinity; NaN agrees with nothing)
 
 The reference platform for golden comparisons SHALL be Linux x86_64. Compiler flags that change floating-point semantics (`-ffast-math`, `-Ofast`) SHALL NOT be used for ngspice on any platform.
 
@@ -365,6 +366,11 @@ Compatibility: native
 - **GIVEN** the deck `V1 in 0 1.8`, `R1 in out 1k`, `R2 out 0 2k`, `.op`
 - **WHEN** it is run on Linux x86_64 and on iPad
 - **THEN** both SHALL report `v(out)` = 1.2 V within the voltage tolerance
+
+#### Scenario: A diverged value does not agree
+- **GIVEN** a reference `v(out)` of 1.8 V at a time point
+- **WHEN** another platform reports NaN or infinity for `v(out)` at that point
+- **THEN** the results SHALL NOT agree
 
 ### Requirement: ngspice host mechanics (informative)
 The specification SHALL record these ngspice mechanics for reference. They explain the requirements above, and Hefesto MAY rely on them only through those requirements:

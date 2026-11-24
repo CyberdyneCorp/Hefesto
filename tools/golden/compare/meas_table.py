@@ -17,7 +17,8 @@ tolerances as an argument::
 not named. Two tables match when they have the same header row, the same number of rows, and every
 cell matches: a cell of a column with a tolerance matches when both cells are numbers within it, or
 when both texts are equal (a no-value reason such as ``n/a``, a verdict); every other cell matches only
-when its text is equal. Row order is significant (the tables are written in a documented order). The
+when its text is equal. An infinity matches only the same infinity and NaN no number, whatever the
+tolerance. Row order is significant (the tables are written in a documented order). The
 difference names the row, the column and both cells. The canonical form (for display) is the table
 with its cells joined by tabs.
 
@@ -73,6 +74,8 @@ def _cell_matches(a: str, b: str, tolerance: tuple[float, float] | None) -> bool
     x, y = _number(a), _number(b)
     if x is None or y is None:
         return False
+    if not (math.isfinite(x) and math.isfinite(y)):
+        return x == y  # an infinity matches only the same infinity (NaN is never a number here)
     rel, absolute = tolerance
     return abs(x - y) <= rel * max(abs(x), abs(y)) + absolute
 

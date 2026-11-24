@@ -49,6 +49,7 @@ nfet (2)`` still differs.
 """
 from __future__ import annotations
 
+import itertools
 import json
 import re
 
@@ -217,7 +218,9 @@ def _properties(value: list) -> list:
 
 def _pins(value: list) -> list:
     if len(value) == 2 and all(isinstance(side, list) for side in value):
-        return _multiset([list(pair) for pair in zip(*value)]) + [len(value[0]), len(value[1])]
+        # An unpaired pin of the longer list is kept, paired with None, so a renamed extra pin differs.
+        pairs = itertools.zip_longest(*value, fillvalue=None)
+        return _multiset([list(pair) for pair in pairs]) + [len(value[0]), len(value[1])]
     return value
 
 

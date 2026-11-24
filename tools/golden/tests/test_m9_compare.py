@@ -141,6 +141,13 @@ class LvsCanonicalJson(unittest.TestCase):
         self.assertFalse(lvs_equal(comp_json(self.D1, self.D1),
                                    comp_json(self.D1, self.D1, pins=(["A", "Y"], ["Y", "A"]))))
 
+    def test_unpaired_extra_pin_is_compared(self):
+        # Regression: zip() dropped the third pin, so a renamed unpaired pin matched.
+        a = comp_json(self.D1, self.D1, pins=(["A", "Y", "C"], ["A", "Y"]))
+        b = comp_json(self.D1, self.D1, pins=(["A", "Y", "D"], ["A", "Y"]))
+        self.assertFalse(lvs_equal(a, b))
+        self.assertTrue(lvs_equal(a, comp_json(self.D1, self.D1, pins=(["Y", "A", "C"], ["Y", "A"]))))
+
     def test_invalid_json_compares_as_bytes(self):
         self.assertEqual(lvs_canonical.canonicalize(b"[ {"), b"<not json>\n[ {")
 
@@ -209,6 +216,24 @@ class RawTolerance(unittest.TestCase):
         self.assertTrue(compare_bytes(ac(100.0), ac(100.0), "raw-tolerance").equal)
         self.assertFalse(compare_bytes(ac(100.0), ac(101.0), "raw-tolerance").equal)
 
+    def test_nan_or_infinity_never_matches_a_number(self):
+        # Regression: abs(a - b) > tol is False for NaN, and inf tolerances accepted inf.
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            diverged = [(t, bad if v == 1.8 else v, i) for t, v, i in POINTS]
+            with self.subTest(value=bad):
+                self.assertIsNotNone(raw_tolerance.compare(binary_raw("a", POINTS), binary_raw("a", diverged)))
+                self.assertIsNotNone(raw_tolerance.compare(binary_raw("a", diverged), binary_raw("a", POINTS)))
+        nan = [(t, float("nan") if v == 1.8 else v, i) for t, v, i in POINTS]
+        self.assertIsNotNone(raw_tolerance.compare(binary_raw("a", nan), binary_raw("a", nan)))
+        inf = [(t, float("inf") if v == 1.8 else v, i) for t, v, i in POINTS]
+        self.assertIsNone(raw_tolerance.compare(binary_raw("a", inf), binary_raw("a", inf)))
+        minus = [(t, -float("inf") if v == 1.8 else v, i) for t, v, i in POINTS]
+        self.assertIsNotNone(raw_tolerance.compare(binary_raw("a", inf), binary_raw("a", minus)))
+
+    def test_non_finite_scale_never_matches(self):
+        scale = [(float("nan") if t == 1e-10 else t, v, i) for t, v, i in POINTS]
+        self.assertIsNotNone(raw_tolerance.compare(binary_raw("a", POINTS), binary_raw("a", scale)))
+
     def test_unparseable_file_compares_as_bytes(self):
         self.assertIsNone(raw_tolerance.compare(b"junk", b"junk"))
         self.assertIsNotNone(raw_tolerance.compare(b"junk", b"junk2"))
@@ -239,6 +264,15 @@ class MeasTable(unittest.TestCase):
         self.assertFalse(compare_bytes(TABLE, near, "meas-table").equal)
         self.assertFalse(compare_bytes(TABLE, TABLE.replace(b"ss,1.400e-11,pass", b"ss,1.400e-11,fail"),
                                        "meas-table:*=1/0").equal)
+
+    def test_infinity_never_matches_a_number(self):
+        # Regression: with rel > 0, |x - inf| <= rel * inf + abs held, so inf matched anything.
+        for text in (b"inf", b"-inf", b"nan"):
+            with self.subTest(value=text):
+                self.assertFalse(compare_bytes(TABLE, TABLE.replace(b"1.000e-11", text), "meas-table:tpd=1e-3/0").equal)
+        inf, minus = TABLE.replace(b"1.000e-11", b"inf"), TABLE.replace(b"1.000e-11", b"-inf")
+        self.assertFalse(compare_bytes(inf, minus, "meas-table:tpd=1e-3/0").equal)
+        self.assertTrue(compare_bytes(inf, TABLE.replace(b"1.000e-11", b"Infinity"), "meas-table:tpd=1e-3/0").equal)
 
     def test_default_tolerance_and_header(self):
         near = TABLE.replace(b"1.400e-11", b"1.4001e-11")

@@ -24,6 +24,9 @@ Two raw files match when:
    abs = 1e-4 for type ``voltage``, 1e-9 for type ``current``, 1e-12 (of the vector's unit, on the
    complex magnitude of the difference) for a complex plot, and 1e-12 for any other type.
 
+A NaN or an infinity (in the scale or a vector) never matches a finite value; two non-finite values
+match only when equal (the same infinity; NaN matches nothing), so a diverged run fails its golden.
+
 A file that cannot be parsed compares byte for byte. The difference names the plot, the vector, the
 point and both values. The canonical form (for display) is the header without ``Date:`` and
 ``Command:`` and the values in ASCII with 17 significant digits.
@@ -34,6 +37,7 @@ against 1.818 V (1 %) does not: the tolerance is 1.9e-3 V.
 from __future__ import annotations
 
 import bisect
+import cmath
 import struct
 from dataclasses import dataclass, field
 
@@ -170,11 +174,19 @@ def _tolerance(plot: Plot, vector: int, a: complex, b: complex) -> float:
     return REL * max(abs(a), abs(b)) + absolute
 
 
+def _within(a: complex, b: complex, tolerance: float) -> bool:
+    """Whether ``a`` and ``b`` agree within ``tolerance``. A NaN or an infinity never matches a finite
+    value: two non-finite values match only when equal (an infinity of the same sign; NaN never)."""
+    if not (cmath.isfinite(a) and cmath.isfinite(b)):
+        return not cmath.isfinite(a) and not cmath.isfinite(b) and a == b
+    return abs(a - b) <= tolerance
+
+
 def _scale_difference(index: int, exp: Plot, act: Plot) -> str | None:
     xs, ys = [v.real for v in exp.values[0]], [v.real for v in act.values[0]]
     span = (max(xs) - min(xs)) * SCALE_SPAN
     for point, (a, b) in enumerate(zip(xs, ys)):
-        if abs(a - b) > REL * max(abs(a), abs(b)) + span:
+        if not _within(a, b, REL * max(abs(a), abs(b)) + span):
             return f"plot {index} scale {exp.names[0]} point {point}: expected {a!r}, got {b!r}"
     return None
 
@@ -185,7 +197,7 @@ def _vector_difference(index: int, vector: int, exp: Plot, act: Plot) -> str | N
     for point, a in enumerate(exp.values[vector]):
         b = act.values[vector][point] if same_scale else _interpolate(axs, act.values[vector], xs[point])
         tolerance = _tolerance(exp, vector, a, b)
-        if abs(a - b) > tolerance:
+        if not _within(a, b, tolerance):
             return (f"plot {index} vector {exp.names[vector]} point {point}: expected {_show(a)}, "
                     f"got {_show(b)} (tolerance {tolerance:.3g})")
     return None
