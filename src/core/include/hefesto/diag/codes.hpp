@@ -60,6 +60,11 @@ inline constexpr std::string_view kSchemNotImplemented = "CORE-NOTIMPL-007";
 // D4, tasks.md 3.3): a command option or function the M7 scaffold declared
 // before its workstream implemented it (cmd/m7_stubs.hpp). Retired at M7 exit.
 inline constexpr std::string_view kExtractNotImplemented = "CORE-NOTIMPL-008";
+// Scaffold stubs of the M9 areas lvs and sim
+// (openspec/changes/m9-lvs-simulation/design.md D24, tasks.md 4.2): a command
+// or function the M9 scaffold declared before its workstream implemented it
+// (lvs/not_implemented.hpp, sim/not_implemented.hpp). Retired at M9 exit.
+inline constexpr std::string_view kM9NotImplemented = "CORE-NOTIMPL-009";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
