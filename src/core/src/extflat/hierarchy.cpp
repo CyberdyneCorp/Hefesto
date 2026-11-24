@@ -56,7 +56,11 @@ namespace {
 
 HierDef hier_def(const Def& def) {
   std::size_t uses = 0;  // HashGetNumEntries(&def->def_uses)
-  def.use_table.for_each([&uses](const auto& entry) { uses += entry.value ? 1 : 0; });
+  def.use_table.for_each([&uses](const auto& entry) {
+    if (entry.value) {
+      ++uses;
+    }
+  });
   return HierDef{def.name, def.subcircuit, def.abstract, def.primitive, def.devices.size(), uses};
 }
 

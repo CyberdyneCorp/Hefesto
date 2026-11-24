@@ -611,7 +611,8 @@ std::optional<std::size_t> RegionFinder::region_of(const db::Plane& plane, const
   if (!is_region(state)) {
     return std::nullopt;
   }
-  return static_cast<std::size_t>(state / 2 - 1);
+  const std::size_t region = state / 2 - 1;  // std::uintptr_t is std::size_t on every target
+  return region;
 }
 
 std::optional<std::size_t> RegionFinder::node_of(const db::Plane& plane, const db::TileView& tile,
