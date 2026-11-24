@@ -189,7 +189,8 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   std::shared_ptr<const view3d::LayerStack> build_stack_;  // of the build in progress or done last
   std::shared_ptr<const view3d::LayerStack> drawn_stack_;  // of model_
   view3d::MeshHandle model_;
-  view3d::MeshHandle uploaded_;
+  view3d::MeshHandle uploaded_;                               // the model the renderer draws (pick ids decode against it)
+  std::shared_ptr<const view3d::LayerStack> uploaded_stack_;  // of uploaded_
   View3dOptions options_;
   std::vector<View3dLayerRow> rows_;  // display order: top layer first
   std::vector<Rgba> row_colors_;      // swatches, per row

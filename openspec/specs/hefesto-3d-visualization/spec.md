@@ -85,6 +85,16 @@ Compatibility: native
 - **WHEN** the user drags with one finger in the 3D view
 - **THEN** the camera SHALL orbit, and a two-finger pinch SHALL zoom
 
+#### Scenario: A selection in another cell highlights nothing in 3D
+- **GIVEN** a 3D view of cell `top` and a 2D selection whose root is another cell
+- **WHEN** the 3D view draws the 2D selection's highlight
+- **THEN** no instance SHALL be highlighted; the same paint selected in `top` SHALL highlight the instances over it
+
+#### Scenario: An isolated net survives a rebuild
+- **GIVEN** a picked target with "Isolate selected net" on
+- **WHEN** an edit rebuilds the 3D model, so its instances take other ids
+- **THEN** the highlighted instances SHALL be the net's instances in the new model
+
 ### Requirement: 3D export
 Hefesto SHALL export the current 3D model:
 - as glTF 2.0 (`.gltf` with `.bin`, or `.glb`), with one mesh node per layer and the layer names and display colors as material names and base colors

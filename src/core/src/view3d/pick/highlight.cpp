@@ -130,6 +130,13 @@ HighlightSet from_selection(const MeshModel& mesh, const LayerStack& stack, cons
   return overlapping(mesh, *selection.def(), types_from_stack(stack));
 }
 
+HighlightSet from_selection(const MeshModel& mesh, const PickContext& context, const select::Selection& selection) {
+  if (context.cell != nullptr && selection.root() != context.cell) {
+    return HighlightSet{};
+  }
+  return context.stack != nullptr ? from_selection(mesh, *context.stack, selection) : from_selection(mesh, selection);
+}
+
 HighlightSet net_highlight(const MeshModel& mesh, const editor::EditorState& editor, const PickTarget& seed) {
   return net_highlight(mesh, editor, seed, NetOptions{});
 }

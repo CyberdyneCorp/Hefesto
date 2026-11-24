@@ -81,7 +81,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | ID | Question | Kind | Decision |
 |---|---|---|---|
 | Q-MISC-81 | depth-tested faces put lower layers in front in the top view (R1) | **fix** | flip the depth and culling sides in both modes so higher layers are in front in the top view; RENDER3D updates the reference pick maps |
-| Q-MISC-82 | layout commands a script runs after `specialopen wind3d` (N1) | **compat** | ON: they go to the 3D window, as Magic (`box`/`load` fail, `cif ostyle` reaches the 3D `cif`); OFF: to the layout window (MISC-3D-05, MISC-3D-10) |
+| Q-MISC-82 | layout commands a script runs after a command on the 3D window's path (N1) | **compat** | ON: after a command sent through the 3D window's toolkit path (Magic's `_tk_dispatch` `TxSetPoint`) or `setpoint` naming it, while that window is open, they go to the 3D window, as Magic (`box`/`load` fail, `cif ostyle` reaches the 3D `cif`); opening alone, a layout-path command, a layout key or button, or `setpoint` naming another window keeps or sends them to the layout window; OFF: to the layout window (MISC-3D-05, MISC-3D-10) |
 | Q-MISC-83 | split tile cut by the clip area (N2) | **compat** | ON: closed along its bounding rectangle clipped to the area, as Magic (W3Dmain.c:360-378); OFF: along the triangle's own cut; already implemented |
 
 ### New entries of round 4 (cited by view-3d and hefesto-3d-visualization; approved 2026-11-24)
@@ -185,7 +185,7 @@ Items left open by M10 round 2 (PR #81: J5, the design.md "Open for the user" pa
 | W2 | `specialopen` on a path below a top-level window | compat: ON leaves `window "<path>" isn't a top-level window` as the result, OFF an empty result; the window opens in both | MISC.md, without a Q row |
 | W3 | crashes: missing output style, `atoi` overflow, a retired path | fix, both modes | MISC.md, without a Q row |
 | W4 | `level` limits | replicate, both modes: lower limit 0, no upper limit (saturating at the `int` range) | MISC.md, without a Q row |
-| N1 | layout commands a script runs while the 3D window is open | compat: ON to the 3D window as Magic, OFF to the layout window; WIND3D implements | Q-MISC-82 (new) |
+| N1 | layout commands a script runs after a command sent through the 3D window's toolkit path, while that window is open | compat: ON to the 3D window as Magic, OFF to the layout window; WIND3D implements | Q-MISC-82 (new) |
 | N2 | split tile cut by the clip area | compat: ON its clipped bounding rectangle, OFF the triangle; already implemented | Q-MISC-83 (new) |
 | N3 | which styles are drawn | replicate, both modes: only solid and stippled styles, in the renderer and in the GL face log (MISC-3D-15) | MISC.md, without a Q row |
 

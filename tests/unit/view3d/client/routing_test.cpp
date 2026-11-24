@@ -83,3 +83,34 @@ TEST_CASE("routing to the 3D window starts with a command on its path and follow
   CHECK(s.eval("box 3 3 7 7").ok());
   CHECK(s.editor.box == Rect{3, 3, 7, 7});
 }
+
+// Review of PR #86 (finding 8; Magic behaviour no Q row covered, standing
+// rule): `setpoint x y <window>` makes the named window current
+// (windCmdSZ.c:286 TxSetPoint), so naming the 3D window's path routes later
+// script commands there with ON, and naming another window routes them back.
+TEST_CASE("setpoint naming a window switches where script commands go with magic-compat ON",
+          "[cap:view-3d][req:3D view commands]") {
+  ClientSession s(true);
+  s.ok("specialopen wind3d c3d .render.magic");
+  CHECK(s.eval("box 1 1 5 5").ok());
+  CHECK(s.eval("setpoint 10 10 .render.magic").ok());
+  CHECK_FALSE(s.eval("box 2 2 6 6").ok());
+  CHECK(s.editor.box == Rect{1, 1, 5, 5});
+  // setpoint is a window command, so it still runs while routed to the 3D window.
+  CHECK(s.eval("setpoint 10 10 .layout1").ok());
+  CHECK(s.eval("box 2 2 6 6").ok());
+  CHECK(s.editor.box == Rect{2, 2, 6, 6});
+  // Without a window argument the current window stays current.
+  CHECK(s.eval("setpoint 10 10 .render.magic").ok());
+  CHECK(s.eval("setpoint 10 10").ok());
+  CHECK_FALSE(s.eval("box 3 3 7 7").ok());
+}
+
+TEST_CASE("setpoint naming the 3D window leaves script commands in the layout window with magic-compat OFF",
+          "[cap:view-3d][req:3D view commands]") {
+  ClientSession s(false);
+  s.ok("specialopen wind3d c3d .render.magic");
+  CHECK(s.eval("setpoint 10 10 .render.magic").ok());
+  CHECK(s.eval("box 2 2 6 6").ok());
+  CHECK(s.editor.box == Rect{2, 2, 6, 6});
+}
