@@ -22,6 +22,8 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 **Round 3 decisions, approved 2026-11-22.** Round 2 (PR #81) left J5 and eleven further items for the user; the user approved every one with the recommended option on 2026-11-22 (section "Round 3 decisions" below). J5 (Q-MISC-80) is now approved as revised: replicate in both modes, closing deletes the toolkit-path command and `specialopen wind3d` on the path reopens, with no refusal. Three new entries: Q-MISC-81 (R1, depth and culling sides flipped so higher layers are in front in the top view, fix in both modes), Q-MISC-82 (N1, layout commands a script runs go to the open 3D window with magic-compat ON, compat) and Q-MISC-83 (N2, a split tile cut by the clip area closes along its clipped bounding rectangle with magic-compat ON, compat, already implemented). R2, R3, M1, M2, W1-W4 and N3 are recorded without a Q row under "Round-3 decisions without a Q row" in `docs/decisions/open-questions/MISC.md`. Every entry carries `Status: approved 2026-11-22` and a `Resolution:` line; `python3 scripts/check_milestone_readiness.py --milestone M10` lists no entry cited by `view-3d` or `hefesto-3d-visualization`.
 
+**Round 4 decisions, approved 2026-11-24.** After the round-3 desktop capture the user asked for the desktop 3D tab to look like the approved board and approved two decisions with the recommended option on 2026-11-24 (section "Round 4 decisions" below): Q-MISC-84 (V1, platform, both modes: the desktop tab renders the board look, with flat per-face shading, the theme's canvas background and the isometric preset on opening, in both magic-compat modes; amends R2 for the desktop tab) and Q-MISC-85 (V2, platform, both modes: non-conducting area layers ghosted by default in the desktop tab). Both carry `Status: approved 2026-11-24` and a `Resolution:` line.
+
 ## Judgement items
 
 **Decided 2026-11-13: the user chose option (a) for J1, J2 and design Open Questions 3 and 4.** The options are kept for the record.
@@ -82,6 +84,13 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-82 | layout commands a script runs after `specialopen wind3d` (N1) | **compat** | ON: they go to the 3D window, as Magic (`box`/`load` fail, `cif ostyle` reaches the 3D `cif`); OFF: to the layout window (MISC-3D-05, MISC-3D-10) |
 | Q-MISC-83 | split tile cut by the clip area (N2) | **compat** | ON: closed along its bounding rectangle clipped to the area, as Magic (W3Dmain.c:360-378); OFF: along the triangle's own cut; already implemented |
 
+### New entries of round 4 (cited by view-3d and hefesto-3d-visualization; approved 2026-11-24)
+
+| ID | Question | Kind | Decision |
+|---|---|---|---|
+| Q-MISC-84 | the desktop 3D tab uses Magic's GL-state lighting and a top-down default (V1) | **platform** | both modes: the desktop tab renders the board look (theme canvas background, flat per-face shading on each face's own normal, saturated style colours, isometric preset from above on opening with axis gizmo); Magic's GL lighting is not used by the desktop tab; `defaults`, scripts and golden cases keep the top-down default; amends R2 for the desktop tab |
+| Q-MISC-85 | wells, implants and other non-conducting area layers hide the devices (V2) | **platform** | both modes: in the desktop tab a layer whose type is not a contact and whose plane holds no contact residue is drawn at alpha 0.2, no depth write, no pick id; the row's transparency control changes it and the user's value is kept for the window |
+
 ## Counts
 
 | Kind | Rows |
@@ -91,8 +100,9 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture, approved 2026-11-22) |
 | fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
+| platform (product, desktop tab) | 2 (Q-MISC-84, 85; approved 2026-11-24) |
 
-Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions"; they add no row here.
+Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22, Q-MISC-84 and 85 since 2026-11-24. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions"; they add no row here.
 
 ## Notable changes to the entries' original recommendations
 
@@ -167,7 +177,7 @@ Items left open by M10 round 2 (PR #81: J5, the design.md "Open for the user" pa
 |---|---|---|---|
 | J5 | `closewindow` then `specialopen wind3d` (revised) | replicate, both modes: closing deletes the toolkit-path command as Magic's GrTOGLDelete does and a later `specialopen wind3d` on the path reopens; no refusal | Q-MISC-80 (resolution added) |
 | R1 | lower layers in front in the top view with the depth test | fix, both modes: flip the depth and culling sides so higher layers are in front; RENDER3D updates the reference pick maps | Q-MISC-81 (new) |
-| R2 | lighting | kept as built: ON Magic's GL state (normal (0, 0, 1), positional light at (50, 50, 50), ambient 0.6), OFF one directional light from (1, 1, 1) on each face's normal, ambient 0.4 | MISC.md, without a Q row |
+| R2 | lighting | kept as built: ON Magic's GL state (normal (0, 0, 1), positional light at (50, 50, 50), ambient 0.6), OFF one directional light from (1, 1, 1) on each face's normal, ambient 0.4; **amended by Q-MISC-84 (2026-11-24)**: the desktop 3D tab uses the board's per-face shading in both modes | MISC.md, without a Q row |
 | R3 | translucent display styles | both modes: drawn opaque in their plain colour (a consequence of Q-MISC-77) | MISC.md, without a Q row |
 | M1 | spanned contact whose residues leave no gap | keeps its own h and t (J1 option) | MISC.md, without a Q row |
 | M2 | memory per meshed rectangle | keep the round-2 `view3d-bench` gates (about 170 B/rect at most); D6's 64-byte target deferred, revisited after P1 | MISC.md, without a Q row |
@@ -197,3 +207,26 @@ Items left open by M10 round 2 (PR #81: J5, the design.md "Open for the user" pa
 `openspec/specs/hefesto-3d-visualization/spec.md`:
 
 - **M1**, "Mesh generation from layout": a contact whose residues leave no gap keeps its own h and t; new scenario "Spanning a contact whose residues leave no gap".
+
+## Round 4 decisions (approved 2026-11-24)
+
+The user's request of 2026-11-24, after the round-3 desktop capture (`sky130_fd_sc_hd__dfxtp_1`, sky130A, magic-compat ON: light grey background, pastel faces washed to white by Magic's positional lighting on the normal (0, 0, 1), the nwell drawn as an opaque slab over the devices, a stack that reads as inverted), was that the desktop 3D tab look like the approved board (`docs/design/mockups/View3D.dc.html`, `docs/images/ui/view3d.png`). Two decisions, both approved with the recommended option on 2026-11-24, each recorded in `docs/decisions/open-questions/MISC.md` with `Status: approved 2026-11-24` and a `- Resolution:` line.
+
+| Item | Question | Decision (approved 2026-11-24) | Where recorded |
+|---|---|---|---|
+| V1 | the desktop 3D tab's lighting, background and default camera | platform, both modes: the board look regardless of magic-compat (background `ThemeTokens::canvas`; flat directional shading on each face's own outward normal in the displayed scene, top faces lighter than side faces; the style colour, never washed to white; the isometric preset from above, framed to the cell, applied on opening through the same `view`/`zoom`/`scroll` commands a preset runs; axis gizmo; presets Isometric, Top, Front, Side). Magic's GL-state lighting is not used by the desktop tab; `defaults`, scripts, hefesto-cli and the golden MISC-3D cases keep the top-down default. Amends R2 (2026-11-22) for the desktop tab | Q-MISC-84 (new) |
+| V2 | wells and other non-conducting area layers drawn as opaque slabs | platform, both modes: ghosted by default in the desktop tab (alpha 0.2, transparency pass, no depth write, no pick id); class rule: not a contact type and on a plane that holds no residue of any contact type (stacked contacts with their full residue set); user override per row (100 / 50 / 20 %), kept for the window, outside Magic's state; no default ghosting in mask-layer mode; the board's synthetic substrate slab deferred | Q-MISC-85 (new) |
+
+Workstreams of round 4 (design.md "Round 4 decisions"; tasks.md section 16): RENDER (`m10-3d-round4-render`) and SHELL (`m10-3d-round4-shell`).
+
+### Spec changes of round 4 (applied with the decisions)
+
+`openspec/specs/view-3d/spec.md` (no requirement heading renamed):
+
+- **V1 / Q-MISC-84**, "Viewing transform and shading": the sentence "Shading follows the magic-compat setting: ..." is replaced by the V1 rule (the desktop 3D tab's board look in both modes; the background from the theme in the desktop tab and the display's background colour elsewhere; Magic's GL lighting no longer used by the desktop tab); new scenarios "Board look with magic-compat ON", "Board look with magic-compat OFF", "Top faces lighter than side faces", "Background from the theme" and "Isometric default from above". "Top-down default shows the layout" and "Higher layers in front in the top view" are kept (the window state and the top preset).
+- **V1 / Q-MISC-84**, "Default view": one sentence: the desktop 3D tab then applies the isometric preset through the preset's commands; `defaults` and windows opened by scripts keep the values above. No value changes.
+
+`openspec/specs/hefesto-3d-visualization/spec.md`:
+
+- **V2 / Q-MISC-85**, "Interactive 3D inspection", Layer visibility: the ghosting default and the layer-class rule; new scenarios "Wells ghosted by default", "User makes a ghosted layer opaque" and "Contact planes stay opaque".
+- **V1 / Q-MISC-84**, "Interactive 3D inspection", Camera: the desktop tab opens on the isometric preset with an axis gizmo.

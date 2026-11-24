@@ -139,13 +139,14 @@ Prisms with h and t both zero (gf180mcuD in mask-layer mode) still draw top face
 | Incremental rebuild after a local edit | ≤ 50 ms for the affected chunks |
 | Memory pressure (iPadOS, M14) | meshes are droppable caches, rebuilt on demand (`hefesto-performance` memory warning) |
 
-### D7. View state, camera and presets (CAMERA; Q-MISC-74, 78)
+### D7. View state, camera and presets (CAMERA; Q-MISC-74, 78, 84)
 
 **Magic's state is the state.** `ViewState` holds exactly Magic's values: angles (ax, ay, az), translation (tx, ty, tz), s_xy, s_z, p_z, with the default view and the f rescale of "Default view" (integer halving by arithmetic shift, `float` arithmetic as Magic's `float` fields, so `view`, `scroll` and `zoom` print the same values). Every Hefesto camera operation is an operation on this state, so the commands always report the camera the user sees:
 - orbit: changes ax and az (pointer drag, one-finger drag);
 - pan: changes tx, ty in screen units, as `scroll ... rel`;
 - zoom: multiplies s_xy (wheel, pinch), and s_z with a modifier;
 - presets: top (0, 0, 0), isometric (−54.7356, 0, 45), front (−90, 0, 0), side (−90, 0, −90) as absolute `view` angles; DESIGN confirms them on the board.
+- **Amended (round 4, Q-MISC-84, 2026-11-24).** Each preset also frames the cell: after the `view` angles it runs the `zoom` and `scroll` that fit the projected bounding box of the cell's stack (its prisms from the lowest h to the highest h + t, at the current s_z) in the window with the default view's 1/1.1 margin, so a preset never shows the cell larger than the window (the round-3 SHELL finding). The desktop 3D tab, on opening a window, applies the isometric preset this way, seen from above: the higher layers' top faces are visible and in front of the lower layers (RENDER checks the orientation; if the isometric angles show the scene from below, CAMERA changes the preset's angles and reports it). `defaults`, a window opened by a script or hefesto-cli, and the golden MISC-3D cases keep Magic's top-down default (view-3d "Default view"). The tab draws an x/y/z axis gizmo in a corner, from the current rotation.
 
 **Output style changes (Q-MISC-78, compat).** `rescale` is called with the current output style's f (magic-compat ON, as Magic), or with the f the window recorded on entering mask-layer mode (OFF); with OFF, a change of output style while in mask-layer mode rescales the view by f_new / f_old. One branch point: `WindowState::exit_mask_factor()`.
 
@@ -155,13 +156,15 @@ Prisms with h and t both zero (gf180mcuD in mask-layer mode) still draw top face
 
 **Gestures.** `view3d::camera::Gesture` is an abstract event (orbit, pan, zoom, preset, reset) with deltas in view units. The desktop maps mouse, trackpad and keys to it; the iPadOS app (M14) maps one-finger drag to orbit and pinch to zoom (spec scenario "Touch orbit"). The key macros of `proto.magicrc` stay commands.
 
-### D8. Renderer integration (RENDER3D; Q-MISC-77)
+### D8. Renderer integration (RENDER3D; Q-MISC-77, 84, 85)
 
 **Raven texture mode.** The 2D canvas records into Raven's render pass through the viewport draw callback, which has one color attachment and no depth (Raven v0.2.2 `include/raven/raven_viewport.h:53`). The 3D view uses the viewport's texture mode instead (`raven_viewport.h:8-16`): it renders offscreen into its own images on Raven's Vulkan device (`Rvulkan_get_device`, already used by `raven_ui.cpp:311`), and shows the color image with `Rvulkan_texture_create_from_image_view` / `Rvulkan_texture_set_image_view` (`raven_vulkan.h:111-117`, zero copy) and `Rviewport_set_texture`. Submission uses the graphics queue under the existing queue-lock callbacks (`raven_ui.cpp:275`). `hefesto-rendering` already allows "into a texture that the viewport presents". This needs no Raven change, and Raven can draw UI on top of the view (legend, presets). Task 5.1 is a spike that confirms it on macOS (MoltenVK) and Linux (lavapipe) before the pipeline is written.
 
 **Images.** Color: an sRGB-encoded image (`R8G8B8A8_SRGB` with `MUTABLE_FORMAT`), rendered through an `_SRGB` view and shown through a `_UNORM` view, because `Rvulkan_texture_create_from_image_view` expects a UNORM view of an sRGB-encoded image (the doc comment before `raven_vulkan.h:111`); task 5.1 records the format it chose. Depth (`D32_SFLOAT`), and a pick-id image (`R32_UINT`), sized to the viewport's pixel size from the resize callback; double-buffered so the texture shown is never the one being drawn.
 
 **Pipeline.** Instanced rectangle and side-segment pipelines plus a triangle pipeline, depth-tested with `LESS_OR_EQUAL` in style-table order so the last style wins on coplanar faces (Q-MISC-77 fix, both modes; D5), back faces culled, lighting as the spec: ambient 0.4, one white diffuse light at (50, 50, 50), on the display style's color; anti-aliasing at level ≥ 1 by MSAA 4× (resolved before display). Only solid and stippled styles are drawn (W3Dmain.c:406, :439); Magic's OpenGL style setup applies the stipple as a GL polygon stipple (grTOGL1.c:236-240), while Hefesto draws stippled styles solid with the style color, since pixels are informative and a screen-space stipple on 3D faces does not read as depth. Transparency (INSPECT) uses a second, sorted-by-chunk pass without depth writes.
+
+**Amended (round 4, Q-MISC-84 and Q-MISC-85, approved 2026-11-24).** Lighting is the board's in both magic-compat modes: flat per-face shading by one white directional light fixed in the model and coming from above, evaluated on each face's own outward normal in the displayed (z-mirrored, R1) scene, as a factor on the display style's colour: top faces 1.0 to 1.1, each side face at least 0.15 below the top factor, no channel above the style colour times the top factor, so faces keep the style's hue and never wash to white. Magic's GL state (normal (0, 0, 1), positional light at (50, 50, 50), ambient 0.6; R2's magic-compat ON branch) is no longer used by the desktop tab; RENDER keeps it only if a headless test needs it, and nothing in the golden face log depends on lighting. The clear colour is a `DrawParams` input: the desktop tab passes the theme's canvas token (`ThemeTokens::canvas`), other callers the display's background colour. Ghosted layers (Q-MISC-85) are drawn in the transparency pass with their per-layer alpha (0.2 by default), no depth write and no pick id, after the opaque faces, so the opaque faces under them show and a click reads the material below.
 
 **Redraw.** On demand only (state change, build progress, resize), not realtime, matching the 2D canvas.
 
@@ -390,6 +393,7 @@ Branch `m10-3d-round3-render` (tasks 5.3, 5.4, 6.3, 6.4, 13.2).
 
 - **R1: higher layers in front (Q-MISC-81, approved 2026-11-22, both modes).** The chunk matrix maps depth as (w + z')/2 instead of (w − z')/2 and the pipelines take clockwise faces as front faces, so the viewer is on the side of the higher layers: in the top view metal covers poly where they overlap, and in the isometric view the faces shown are each layer's upper faces and the side faces toward that viewer. x and y are CAMERA's unchanged values, so the projected picture, the pick pixel positions and the `view`, `scroll` and `zoom` outputs ("Default view", "Viewing transform") do not change; CAMERA's matrix is untouched. `LESS_OR_EQUAL` in style order (Q-MISC-77) is kept, so the last style still wins on coplanar faces. The reference pick maps in `tests/data/render/mesh3d/` (top, isometric, split, cutbox) were regenerated. Regression test: metal1 over poly in the top view shows metal1's pick id at the overlap, with magic-compat ON and OFF, levels 0 and 1 (fails on the round-2 mapping).
 - **R2 lighting** is kept as built (ON: Magic's GL state, normal (0, 0, 1) and the positional light in model coordinates; OFF: the directional light). With OFF the light is evaluated on the outward normal of the displayed, z-mirrored scene, so the faces the viewer sees keep their round-2 shading.
+  **Amended (round 4, Q-MISC-84, 2026-11-24):** the desktop 3D tab no longer uses the ON branch; both modes draw the board's per-face shading on the outward normal of the displayed scene (D8 "Amended (round 4)").
 - **R3 translucent styles** are drawn opaque in their plain color-map colour in both modes (`mesh3d_shading.hpp`, unchanged); a test per mode checks a style with a partial alpha mask.
 - **`DrawParams::xy_scale`** (default 1) multiplies x and y of every instance in the chunk matrix and the lighting's model coordinates; z is unchanged; a value that is not a positive finite number draws at 1. SHELL passes `view3d::Scene::xy_factor` in mask-layer mode (P1, task 9.1). Test: a mesh drawn at `xy_scale` 2 covers the pixels of the same layout built at twice the coordinates.
 - **Process-wide versions (MESH).** `build_mesh` and `rebuild_chunks` take one fresh version from `detail::next_version()` (an atomic `uint64_t`, from 1, never reused) for the model and every chunk they build; untouched chunks of a rebuild keep theirs. A chunk's (id, version) therefore names its content across builds, rebuilds and cells. Two builds of the same cell are byte-equal except for the versions (the determinism helpers mask them).
@@ -433,6 +437,17 @@ Branch `m10-3d-round3-render` (tasks 5.3, 5.4, 6.3, 6.4, 13.2).
 - **Cognitive complexity.** Splitting functions brought two SHELL functions under 15. `View3dView::refresh_rows` (20) became `rebuild_rows` plus `update_row`; the split also stops it dereferencing a missing window when rows outlive it. `MainWindow::build_top_bar` (23) moved its tab click into `click_view_tab`. `MainWindow::on_frame` (23), `add_undo_buttons`, `complete` and `refresh_feedback` are over 15 on main already; the round adds only one plain call to `on_frame`.
 - **Ownership exceptions, for sign-off on the round PR.** Rounds 2 and 3: CORE `cmd/dispatcher` (round 2), SCRIPT `script/binding/dispatch.cpp` (3D-window routing, Q-MISC-82) and UI `ui/bindings` (round 2). Round 3 adds: SHELL's `main_window.*`, `screen_paint.*`, `menu_bar_model.*` and `tests/unit/shell/m4_menu_bar_test.cpp` (one line); the integration edits above to `main_window.*` and `render/vulkan/src/mesh3d_shading.cpp`; SHELL's rewrite of RENDER3D's `tests/unit/render/mesh3d_target_test.cpp` (needed to remove `Mesh3dSpike`); GOLDEN's `tools/golden/container/Containerfile` (one smoke-step line); WIND3D's `src/cli/app.cpp` (installs the face log); and the README image and caption (INTEGRATION).
 - **Diagnostics.** The `VIEW3D-CLIENT-003` text no longer lists the J5 refusal: a closed window's toolkit path reopens in both modes (Q-MISC-80).
+
+## Round 4 decisions (2026-11-24)
+
+The round-3 desktop capture (`sky130_fd_sc_hd__dfxtp_1`, sky130A, magic-compat ON) did not look like the approved board (`docs/design/mockups/View3D.dc.html`, `docs/images/ui/view3d.png`): a light grey background, pastel faces washed to white by Magic's positional light on the normal (0, 0, 1) (R2's ON branch), wells drawn as opaque slabs over the devices, a stack that read as inverted, and a top-down view on opening. The user approved two decisions with the recommended option (`docs/decisions/m10-3d-decision-table.md` "Round 4 decisions"):
+
+- **V1, Q-MISC-84 (platform, both modes).** The desktop 3D tab renders the board look regardless of magic-compat: the theme's canvas background, flat per-face directional shading on each face's own normal (top lighter than sides), saturated style colours, and the isometric preset from above, framed to the cell, on opening, with an axis gizmo and the four presets. Magic's GL lighting is not used by the tab. The tab sets the view through the preset's commands, so `view` reports it; `defaults`, script and hefesto-cli windows and the golden cases keep the top-down default. Amends R2 for the desktop tab (D7, D8).
+- **V2, Q-MISC-85 (platform, both modes).** Non-conducting area layers (type not a contact, on a plane holding no contact residue) are ghosted by default in the desktop tab: alpha 0.2, transparency pass, no depth write, no pick id; the row's transparency control overrides it per window, outside Magic's state (D8, D10, D12). The board's synthetic substrate slab is deferred.
+
+Workstreams (tasks.md section 16), each on its own branch from origin/main:
+- **RENDER** (`m10-3d-round4-render`; `render/vulkan` mesh3d shading and shaders, `view3d/camera`, `view3d/mesh` if the orientation needs it): the board lighting in both modes, the orientation check (z order, isometric from above, with a regression test for any inversion found), the background as a `DrawParams` input, the ghost pass (alpha, no depth write, no pick id), preset framing (CAMERA), and the frame-rate re-run with ghosted layers (13.2).
+- **SHELL** (`m10-3d-round4-shell`; `shell/desktop` 3D view and view models): the theme background, the ghost defaults from the stack classifier (tile type and plane against the technology's contact residues) with the user's per-row value kept for the window, the isometric default on opening, the axis gizmo, the bottom view toolbar (the 9.6 gap), before/after captures and the conformance rows. SHELL does not edit `view3d/client` routing or the N1 shell code (the round-3 fix pass owns them).
 
 ## Risks / Trade-offs
 
@@ -486,7 +501,7 @@ All 3D open questions were approved as drafted on 2026-11-13: Q-MISC-70, 71, 74,
 | J6 (2026-11-21) | empty extents, no inner faces, closed clip faces | D6, D7 |
 | Q-MISC-80 (J5, 2026-11-22) | replicate (closing deletes the path command; reopening works) | D9 |
 | Q-MISC-81 (R1, 2026-11-22) | fix (depth and culling sides flipped: higher layers in front) | D7, D8 |
-| R2 (2026-11-22) | lighting as built (ON Magic's GL state, OFF directional) | D8 |
+| R2 (2026-11-22; amended by Q-MISC-84, 2026-11-24) | lighting as built (ON Magic's GL state, OFF directional); the desktop tab uses the board's per-face shading in both modes | D8 |
 | R3 (2026-11-22) | translucent styles opaque in their plain colour | D8 |
 | M1 (2026-11-22) | a spanned contact without a gap keeps its own h and t | D6, D10 |
 | M2 (2026-11-22) | keep the round-2 memory gates; 64 B target deferred | D6, D17 |
@@ -494,6 +509,8 @@ All 3D open questions were approved as drafted on 2026-11-13: Q-MISC-70, 71, 74,
 | Q-MISC-82 (N1, 2026-11-22) | compat (ON script layout commands to the 3D window) | D9, D13 |
 | Q-MISC-83 (N2, 2026-11-22) | compat (ON clipped bounding rectangle, OFF triangle) | D6, D13 |
 | N3 (2026-11-22) | only solid and stippled styles, also in the GL face log | D5, D8, D13 |
+| Q-MISC-84 (V1, 2026-11-24) | platform (desktop tab: board look in both modes, theme background, isometric preset from above on opening) | D7, D8 |
+| Q-MISC-85 (V2, 2026-11-24) | platform (desktop tab: non-conducting area layers ghosted by default, per-row override) | D8, D10, D12 |
 
 ## As-landed: round 4 RENDER3D and CAMERA
 
