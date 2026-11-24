@@ -285,7 +285,7 @@ TEST_CASE("A failed read keeps -t with magic-compat ON",
   CHECK(s.state.netlist.names.trim_local);
 }
 
-TEST_CASE("-t never reaches the session's flags with magic-compat OFF",
+TEST_CASE("A -t never reaches the session's flags with magic-compat OFF",
           "[cap:netlist-spice-options][req:Run arguments and output file]") {
   ExtSession s;
   REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
