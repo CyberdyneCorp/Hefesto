@@ -115,3 +115,27 @@ TEST_CASE("the technology of a .mag file header", "[cap:app-startup][req:Default
   CHECK_FALSE(app::mag_technology("not magic\ntech sky130A\n").has_value());
   CHECK_FALSE(app::mag_technology("").has_value());
 }
+
+// M8-D10 (approved 2026-11-23): without CAD_ROOT, the install root is the
+// folder holding the executable's assets: a build tree's executable folder,
+// a macOS bundle's Resources, an install prefix above bin/.
+TEST_CASE("installation root: the executable's install root, CAD_ROOT first",
+          "[cap:app-startup][req:Installation root and search paths]") {
+  MemoryFileSystem fs;
+  (void)fs.create_directories("/build/src/cli/assets");
+  (void)fs.create_directories("/opt/hefesto/assets");
+  (void)fs.create_directories("/opt/hefesto/bin");
+  (void)fs.create_directories("/Apps/Hefesto.app/Contents/Resources/assets");
+  (void)fs.create_directories("/Apps/Hefesto.app/Contents/MacOS");
+  (void)fs.create_directories("/usr/bin");
+  CHECK(app::install_root_for_executable(fs, "/build/src/cli") == Path{"/build/src/cli"});
+  CHECK(app::install_root_for_executable(fs, "/opt/hefesto/bin") == Path{"/opt/hefesto"});
+  CHECK(app::install_root_for_executable(fs, "/Apps/Hefesto.app/Contents/MacOS") ==
+        Path{"/Apps/Hefesto.app/Contents/Resources"});
+  CHECK(app::install_root_for_executable(fs, "/usr/bin").empty());  // no assets: no root, as before
+  CHECK(app::install_root_for_executable(fs, Path{}).empty());
+  const Path fallback = app::install_root_for_executable(fs, "/opt/hefesto/bin");
+  CHECK(app::resolve_install_root(std::string{"/cad"}, fallback) == Path{"/cad"});
+  CHECK(app::resolve_install_root(std::string{}, fallback) == Path{"/opt/hefesto"});
+  CHECK(app::resolve_install_root(std::nullopt, fallback) == Path{"/opt/hefesto"});
+}

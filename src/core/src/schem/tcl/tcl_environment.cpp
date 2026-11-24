@@ -24,7 +24,9 @@ TclEnvironment::TclEnvironment(editor::EditorState& editor, script::SandboxPolic
       fs_(fs),
       files_(std::make_unique<script::SandboxedFileSystem>(fs_, *policy_)),
       interp_(script::create_project_interpreter(editor_, *policy_)) {
+  run_.progress = &editor_.script.progress;  // the hook the time limits of the values go through
   hooks.files = files_.get();
+  hooks.denied = [this](const diag::Diagnostic& denial) { report_tcleval(run_, denial); };
   install_xschem_procedures(*interp_, std::move(hooks));
 }
 

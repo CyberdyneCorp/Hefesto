@@ -11,3 +11,4 @@
 // Owner: SYMLIB (openspec/changes/m8-schematic/design.md D3).
 HEFESTO_SCHEM_CODE("SCHEM-TCL-001", error, "A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused.")
 HEFESTO_SCHEM_CODE("SCHEM-TCL-002", info, "A launcher's `tclcommand` did not run: the user did not confirm it for this document.")
+HEFESTO_SCHEM_CODE("SCHEM-TCL-003", warning, "A `tcleval` value stopped at its 10 s limit, or the `tcleval` values of one netlist run spent their shared 60 s; the value is `?`.")

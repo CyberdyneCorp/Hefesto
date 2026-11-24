@@ -4,10 +4,11 @@
 # hefesto_platform_posix: POSIX host services that the core must not
 # contain (scripts/check_core_includes.py): the fcntl() cell FileLockService,
 # a cell FileHost with ownership, ctime and process liveness, and the
-# posix_spawn ProcessRunner. Linked by the CLI and the desktop on Linux and
-# macOS (not iPadOS, whose host provides its own). Added by the root
-# CMakeLists.txt. Owners: CELL (lock service, file host), INTEGRATION
-# (process runner, build).
+# posix_spawn ProcessRunner, and the folder of the running executable.
+# Linked by the CLI and the desktop on Linux and macOS (not iPadOS, whose
+# host provides its own). Added by the root CMakeLists.txt. Owners: CELL
+# (lock service, file host), INTEGRATION (process runner, executable folder,
+# build).
 #
 # Guarded so a directory configured on its own can still add it.
 if(TARGET hefesto_platform_posix)
@@ -15,6 +16,7 @@ if(TARGET hefesto_platform_posix)
 endif()
 
 add_library(hefesto_platform_posix STATIC
+  ${CMAKE_CURRENT_LIST_DIR}/src/executable.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/file_host.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/lock_service.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/process_runner.cpp)

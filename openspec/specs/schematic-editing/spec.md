@@ -27,6 +27,8 @@ Open questions are in `docs/decisions/open-questions/SCHEM.md` (Q-SCHEM-n).
 ### Requirement: Document model
 Each open schematic or symbol SHALL be a document holding, in order lists: lines, boxes, arcs and polygons per layer, texts, wires and instances, plus the global property strings and header text of capability `schematic-file-format`. The order of each list SHALL be the creation order, except as changed by Requirement "Object order". Every editing operation SHALL go through the command API (capability `schematic-command`, decision X-3), so that it can be scripted, logged and replayed. A schematic and a symbol with the same base name SHALL be separate documents.
 
+Coordinates, angles and scales given to an editing operation SHALL be finite numbers; `inf`, `nan` or a number out of the `double` range (such as `1e999`) SHALL be refused as a usage error and change nothing, in both modes (review of the M8 round-4 editing code; standing rule). A rotation SHALL be 0 to 3 and a flip 0 or 1 for instances, labels and texts alike. The selection of a document SHALL only name objects that exist: when the document changes under it (for example by `schematic reload`), selected objects that no longer exist SHALL be dropped before the next operation runs.
+
 Compatibility: behavioral
 
 (xschem ref: xschem.h:960-1210, save.c:3223-3281)
@@ -35,6 +37,15 @@ Compatibility: behavioral
 - **GIVEN** a schematic with wires w1 and w2
 - **WHEN** a wire w3 is drawn and the file is saved
 - **THEN** the `N` records SHALL be in the order w1, w2, w3
+
+#### Scenario: Non-finite coordinate refused
+- **WHEN** a script runs `schematic wire 0 0 1e999 0`
+- **THEN** the option SHALL fail with a usage error and no wire SHALL be added
+
+#### Scenario: Selection after reload
+- **GIVEN** a schematic with 10 wires of which wire 9 is selected
+- **WHEN** the file is changed on disk to hold 2 wires, the document is reloaded and the user deletes the selection
+- **THEN** nothing SHALL be deleted and the selection SHALL be empty
 
 ### Requirement: Snap and grid
 All placed and moved coordinates SHALL be snapped to the nearest multiple of the snap value, default 10 units. The visible grid SHALL default to 20 units. The user SHALL be able to halve the snap, double it and set it to any positive value. Snapping SHALL apply to the pointer position; objects SHALL move by snapped deltas, so an off-grid object stays off-grid by the same amount unless the user runs "align to grid", which SHALL round every coordinate of the selected objects to the nearest multiple of the snap.
@@ -152,6 +163,8 @@ The editor SHALL place net labels (`lab_pin.sym`, `lab_wire.sym`) and ports (`ip
 - **Make symbol from schematic**: generate `<name>.sym` with a box outline, one pin per port (inputs left, outputs right, inouts right), `type=subcircuit`, `format="@name @pinlist @symname"` and `template="name=x1"`. It SHALL NOT overwrite an existing symbol without confirmation.
 - **Make schematic from symbol**: generate `<name>.sch` with one port per symbol pin.
 
+A pin or port name with a blank or `;` SHALL be written quoted, so that the made file reads back the same name. Making a symbol or a schematic SHALL NOT write into the PDK store or the system library, even when overwriting was confirmed (Requirement "Read-only libraries").
+
 Compatibility: behavioral
 
 (xschem ref: save.c:3776-3822, save.c:5658-5810, actions.c:1371-1585, xschem.tcl:6560-6600, keys.help)
@@ -245,7 +258,7 @@ Compatibility: behavioral
 - **THEN** the hierarchy path SHALL end in `.xinv[0].`
 
 ### Requirement: Hierarchy path
-Each displayed schematic SHALL have a hierarchy path: `.` for the top, and on each descent the parent path followed by the chosen element of the instance name and a `.`. For example `.x1.xinv[2].`. The path SHALL be used for `@path` (without the leading `.`), for highlight propagation and for simulation cross-probing (capability `schematic-simulation-integration`).
+Each displayed schematic SHALL have a hierarchy path: `.` for the top, and on each descent the parent path followed by the chosen element of the instance name and a `.`. For example `.x1.xinv[2].`. While another document is active the path reads as `.`; reading the path SHALL NOT discard the descents, so activating the descended document again shows its path again (only descending or ascending from another document starts a new path). The path SHALL be used for `@path` (without the leading `.`), for highlight propagation and for simulation cross-probing (capability `schematic-simulation-integration`).
 
 Compatibility: exact
 
@@ -269,13 +282,18 @@ Compatibility: behavioral
 - **THEN** the child net `A` SHALL be highlighted in the same colour
 
 ### Requirement: Undo and redo
-Every command that changes a document SHALL be one undo step; a compound gesture (for example a move with inserted wires) SHALL be one step. Undo and redo SHALL restore the full document state including properties, object order and the modified flag. Hefesto SHALL keep at least 80 undo steps per document (xschem's limit). Netlisting, highlighting, selection and view changes SHALL NOT create undo steps.
+Every command that changes a document SHALL be one undo step; a compound gesture (for example a move with inserted wires) SHALL be one step. Undo and redo SHALL restore the full document state including properties, object order and the modified flag. Hefesto SHALL keep at least 80 undo steps per document (xschem's limit), up to 200, as long as the document states they hold take at most 512 MiB (`kUndoMaxBytes`); past that the oldest steps SHALL be dropped, and the newest step SHALL always be kept (Hefesto's bound, both modes; consecutive steps share the document state between them, so a history of n steps holds n + 1 states). Netlisting, highlighting, selection and view changes SHALL NOT create undo steps.
 
 In xschem the undo history is per window and is cleared when another schematic is loaded into it, including on descend, unless the `preserve_undo` setting is on (informative). Hefesto SHALL keep a separate undo history per open document for the whole session, so descending and ascending never lose undo history.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-12; xschem ref: xschem.h:278, in_memory_undo.c:246-460, xschem.tcl:12047)
+
+#### Scenario: Undo history byte bound
+- **GIVEN** a document whose undo history holds 6 steps and a byte bound of about three document states
+- **WHEN** another edit is made
+- **THEN** only the newest steps that fit the bound SHALL be kept (at least one), and undoing SHALL stop after them
 
 #### Scenario: Undo after ascending
 - **GIVEN** the user moved a wire in `top.sch`, descended into `x1`, and ascended again
@@ -318,3 +336,8 @@ Compatibility: native
 - **GIVEN** `sky130_fd_pr/nfet_01v8.sym` opened from the PDK store
 - **WHEN** the user tries to move a line
 - **THEN** the move SHALL be refused and "Save as" SHALL be offered
+
+#### Scenario: Make symbol in the PDK store
+- **GIVEN** a schematic `cell.sch` opened from the PDK store, next to `cell.sym`
+- **WHEN** a script runs `schematic symbol make -force`
+- **THEN** the option SHALL fail with `SCHEM-EDIT-001` and `cell.sym` SHALL be unchanged

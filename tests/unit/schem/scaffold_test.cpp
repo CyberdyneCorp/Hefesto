@@ -11,6 +11,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+
 #include <string>
 #include <vector>
 
@@ -97,7 +99,12 @@ TEST_CASE("the NETLIST entry point netlists an empty document", "[m8-scaffold]")
 }
 
 TEST_CASE("the EDIT, CMD and SIMINT stubs answer their documented values", "[m8-scaffold]") {
-  CHECK(schem::edit_operations().empty());
+  // EDIT's operations are implemented (tasks 9.1-9.3; tests in
+  // tests/unit/schem/edit/); the table stays sorted by option name.
+  const auto operations = schem::edit_operations();
+  CHECK_FALSE(operations.empty());
+  CHECK(std::is_sorted(operations.begin(), operations.end(),
+                       [](const auto& a, const auto& b) { return a.option < b.option; }));
 
   hefesto::cmd::CommandRegistry registry;
   CHECK_FALSE(schem::register_schematic_command(registry).has_value());

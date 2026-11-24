@@ -76,6 +76,16 @@ platform::Path resolve_install_root(const std::optional<std::string>& cad_root_e
   return builtin_prefix;
 }
 
+platform::Path install_root_for_executable(platform::FileSystem& fs, const platform::Path& executable_dir) {
+  if (executable_dir.empty()) return {};
+  for (const Path& root : {executable_dir, executable_dir / ".." / "Resources", executable_dir / ".."}) {
+    if (!fs.exists(root / "assets")) continue;
+    const Path normal = root.lexically_normal();
+    return normal.has_filename() ? normal : normal.parent_path();  // "/opt/x/bin/.." is "/opt/x/"
+  }
+  return {};
+}
+
 std::vector<std::string> system_library_path() {
   return {".", "$CAD_ROOT/magic/sys", "$CAD_ROOT/magic/sys/current"};
 }
