@@ -7,3 +7,7 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/stack.cpp)
+
+# The ghost-class classifier (Q-MISC-85; owner SHELL, M10 round 4).
+target_sources(hefesto_core PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/ghost.cpp)
