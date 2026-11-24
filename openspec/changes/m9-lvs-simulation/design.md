@@ -1,6 +1,6 @@
 # Design: M9 LVS, simulation and advanced analog simulation
 
-> Drafted 2026-11-22 against origin/main 072f50c8. **No decision this design cites is approved yet.** Every choice is drafted as the recommended option of `docs/decisions/m9-decision-table.md`. If the user picks another option, the D-numbers listed in "Decisions this design depends on" are revised before gate G0 passes.
+> Drafted 2026-11-22 against origin/main 072f50c8. **Approved 2026-11-22.** The user approved every decision this design cites with the recommended option of `docs/decisions/m9-decision-table.md` (G0, task 1.1); the four verify rows are approved as conditional rules (D1). The spec deltas were synced into `openspec/specs/` at G0 (task 1.2, Open Question 1 (a)), so the change no longer carries a `specs/` folder.
 
 ## Context
 
@@ -647,7 +647,13 @@ No existing user data changes. Projects gain a `sim/` result folder and testbenc
 
 ## Open Questions
 
-None is decided. Each one's recommended option is (a).
+All four were answered (a) by the user on 2026-11-22 (G0, task 1.1):
+- **OQ1: (a).** The spec changes were recorded as this change's `specs/` deltas and synced into the living specs at G0 (task 1.2). `openspec` 1.13 rejects `skip_specs: true` while delta files exist, so the synced delta files were removed from the change when `skip_specs: true` was set; the archive at exit (task 20.6) then applies nothing a second time.
+- **OQ2: (a).** R0 and R1 start now; R2–R3 start once G0, G1 and each stream's G2 pass, in parallel with M7 and M8 implementation; R4 starts after their exits (G3, G4).
+- **OQ3: (a).** DESIGN draws the LVS browser and waveform boards, including the run-set, corner and Monte Carlo views, before SHELL builds the screens.
+- **OQ4: (a).** A MAPS workstream of the M7 and M8 owners adds `render_with_map` and `NetlistResult::names` after each exit, reviewed by LVSCMD and SIMDECK.
+
+The options as drafted:
 
 1. **How spec changes are recorded.**
    - (a) *Recommended:* as this change's `specs/` deltas, applied to the living specs when G0 passes and validated with `openspec validate --all --strict`.
@@ -668,7 +674,7 @@ None is decided. Each one's recommended option is (a).
 
 ## Decisions this design depends on
 
-| Decision (all pending) | Recommended option | Design sections it shapes |
+| Decision (all approved 2026-11-22) | Approved option | Design sections it shapes |
 |---|---|---|
 | Q-LVS-30 LVS clean room (how the approved two-team requirement applies to netgen) | (a) M8 two-team process | D1, D2, D3, D19 |
 | Q-SIM-20, D-28 (desktop) | (a) shared `libngspice-hefesto` behind the `hefesto-ngspice-adapter` plugin, loaded only by `hefesto-simd` in release builds; legal review before Beta | D2, D9 |
