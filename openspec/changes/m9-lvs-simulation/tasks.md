@@ -58,12 +58,14 @@ How this plan runs:
 The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) → 3.8. The G2-LVS path is 2.1–2.2 → 3.5 → 3.7 (LVS) → 3.8.
 
 - [ ] 3.1 (PDK) Add the data sets `gf180mcu-netgen`, `ihp-netgen`, `sky130-ngspice` (`libs.tech/combined` and `libs.tech/ngspice`), `gf180mcu-ngspice` and `ihp-ngspice` (with the Verilog-A sources) to `scripts/fetch_pdk.py`, each with pins, subsets, tree digests and cache keys. Add their paths to `tests/unit/common/reference_data.hpp` with clean skips, and document them in `docs/building.md`. Verify that a fresh install matches the digests, that a second run is a no-op, and that the `scripts/tests/` tests pass.
-- [ ] 3.2 (GOLDEN; after 5.1) Capture image (Q-SIM-23 (a)):
+- [x] 3.2 (GOLDEN; after 5.1) Capture image (Q-SIM-23 (a)):
   - build ngspice from the engine's pin (Q-SIM-7) with the patch series of task 5.1 and the spec feature table, as both the executable and `--with-ngshared`;
   - add a pinned OpenVAF;
   - update `tools/golden/pins.toml` and `tools/golden/tests/test_pins.py`.
   
   Verify the CI image build and a log line reporting `<release>-hefesto<n>`.
+
+  As landed (branch `m9-round0-ngbuild`): `tools/golden/container/build_ngspice.sh` builds `third_party/ngspice` (copied into the build context as `container/ngspice/` by `third_party/ngspice/tools/sync_image_copy.py`; `test_pins.py` checks the copy) as `/opt/ref/bin/ngspice` and `/opt/ref/lib/libngspice-hefesto.so`, then installs OpenVAF-reloaded 20260616 (`/opt/ref/bin/openvaf-r`, SHA-256 checked). The stock pre-master-48 build moved to `/opt/ngspice-stock` (`[tools.ngspice_stock]`). golden-capture run 45411226446 logged `hefesto-golden: ngspice 47-hefesto1` and `OpenVAF-Reloaded 20260616-0-g44cfee3b`.
 - [ ] 3.3 (GOLDEN, with SPEC; after 3.1, 3.2) Reference runs on the image, each recorded as a `Verified` line under the conditional `Resolution:` line approved at G0:
   - D-22, `.param` precedence: one deck per PDK, with the result recorded in `SIMADV.md` under Q-SIMADV-3, -4 and -9;
   - D-26, sky130 `ng_nomodcheck`, recorded in `SIM.md` under Q-SIM-8;
