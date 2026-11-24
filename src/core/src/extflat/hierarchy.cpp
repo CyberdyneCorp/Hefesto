@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "flatten.hpp"
+#include "ports.hpp"
 #include "reader.hpp"
 #include "state.hpp"
 #include "text.hpp"
@@ -152,6 +153,7 @@ diag::Outcome<Netlist> flatten(const Hierarchy& hierarchy, FlatFlags flags, cons
     return *ctx.fatal;
   }
   detail::copy_read_globals(st, netlist);
+  netlist.root_ports = detail::port_entries(st.defs.at(hierarchy.model->root));
   return netlist;
 }
 
@@ -182,6 +184,7 @@ diag::Outcome<Netlist> flatten_one_level(const Hierarchy& hierarchy, std::string
     *devices_absent = nodevices;
   }
   detail::copy_read_globals(st, netlist);
+  netlist.root_ports = detail::port_entries(st.defs.at(*id));
   return netlist;
 }
 

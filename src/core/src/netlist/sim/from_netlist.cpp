@@ -84,6 +84,14 @@ std::string attribute_text(const std::vector<std::string>& attributes) {
   return text;
 }
 
+std::vector<AreaPerim> area_perim(const std::vector<std::pair<std::int32_t, std::int32_t>>& pairs) {
+  std::vector<AreaPerim> out;
+  for (const auto& [area, perim] : pairs) {
+    out.push_back(AreaPerim{area, perim});
+  }
+  return out;
+}
+
 void device_values(const extflat::FlatDevice& flat, SimDevice& device) {
   device.length = flat.length;
   device.width = flat.width;
@@ -105,11 +113,13 @@ SimDevice device_of(const extflat::FlatDevice& flat, const NodeIndex& index) {
   device.lower_left = db::Point{flat.area.x0, flat.area.y0};
   device.prefix = flat.hier_prefix;
   for (const extflat::FlatTerminal& term : flat.terminals) {
-    device.terminals.push_back(SimTerminal{find(index, term.node), attribute_text(term.attributes), {}, {}});
+    device.terminals.push_back(SimTerminal{find(index, term.node), attribute_text(term.attributes), term.local_node,
+                                           area_perim(term.local_area_perim)});
   }
   if (!flat.substrate.empty()) {
     const HierName parts = split(flat.substrate);
-    device.substrate = SimDevice::Substrate{parts.back(), find(index, flat.substrate), flat.substrate, {}};
+    device.substrate = SimDevice::Substrate{parts.back(), find(index, flat.substrate), flat.substrate,
+                                            area_perim(flat.substrate_area_perim)};
   }
   device_values(flat, device);
   return device;

@@ -283,43 +283,132 @@ bool wraps(const FlatWriter& w) {
   return false;
 }
 
-// Implicit ports take one past the maximum, in reverse node-table order
-// (Magic prepends them to a list), unless the root is a black box.
-std::vector<int> port_indices(const FlatWriter& w) {
-  std::vector<int> indices;
-  int portmax = -1;
-  for (const RootPort& port : w.in.ports) {
-    indices.push_back(port.index);
-    portmax = std::max(portmax, port.index);
-  }
-  if (w.settings.blackbox && w.in.root_abstract) {
-    return indices;
-  }
-  for (std::size_t i = indices.size(); i-- > 0;) {
-    if (indices[i] < 0) {
-      indices[i] = ++portmax;
+// topVisit's port numbering and order (ext2spice.c:1897-2060). The entries
+// are the root's node-name table entries whose node is a port, in hash
+// order; each name's port index is kept by name, as Magic keeps it in the
+// EFNodeName shared by the entries.
+class PortSorter {
+ public:
+  explicit PortSorter(FlatWriter& w) : w_(w) {
+    for (const RootPort& p : w.in.ports) {
+      port_of_.emplace(p.node, p.index);
+      for (const extflat::PortName& n : p.rest) {
+        port_of_.emplace(n.name, n.index);
+      }
+      if (p.canonical) {
+        port_of_.emplace(p.canonical->name, p.canonical->index);
+      }
     }
   }
-  return indices;
-}
 
-std::vector<std::string> sorted_ports(FlatWriter& w) {
-  const std::vector<int> indices = port_indices(w);
-  const int portmax = indices.empty() ? -1 : *std::max_element(indices.begin(), indices.end());
-  std::vector<std::string> sorted(static_cast<std::size_t>(portmax + 1));
-  std::map<std::string, int, std::less<>> seen;
-  for (std::size_t i = 0; i < indices.size(); ++i) {
-    const auto node = w.find_node(w.in.ports[i].node);
-    if (indices[i] < 0 || !node || !sorted[static_cast<std::size_t>(indices[i])].empty()) {
-      continue;
+  std::vector<std::string> sorted() {
+    number_implicit();
+    sorted_.assign(static_cast<std::size_t>(portmax_ + 1), std::string{});
+    for (const RootPort& p : w_.in.ports) {
+      if (!place_canonical(p)) {
+        place_from_chain(p);
+      }
     }
-    std::string name = w.in.root_abstract ? w.converted_name(*node) : w.spice_name(*node);
-    if (seen.emplace(name, indices[i]).second) {
-      sorted[static_cast<std::size_t>(indices[i])] = std::move(name);
+    return sorted_;
+  }
+
+ private:
+  static const std::string& canonical(const RootPort& p) { return p.canonical ? p.canonical->name : p.node; }
+
+  // First pass: the highest index, and the entries with none in their
+  // chain or on the canonical name, numbered past it in reverse table
+  // order (Magic prepends them to a list) unless the root is a black box.
+  void number_implicit() {
+    std::vector<const RootPort*> implicit;
+    for (const RootPort& p : w_.in.ports) {
+      bool explicit_port = see(port_of_[canonical(p)]);
+      explicit_port = see(port_of_[p.node]) || explicit_port;
+      for (const extflat::PortName& n : p.rest) {
+        explicit_port = see(port_of_[n.name]) || explicit_port;
+      }
+      if (!explicit_port) {
+        implicit.push_back(&p);
+      }
+    }
+    if (w_.settings.blackbox && w_.in.root_abstract) {
+      return;
+    }
+    for (auto it = implicit.rbegin(); it != implicit.rend(); ++it) {
+      port_of_[(*it)->node] = ++portmax_;
     }
   }
-  return sorted;
-}
+
+  bool see(int index) {
+    portmax_ = std::max(portmax_, index);
+    return index != -1;
+  }
+
+  // The canonical name's index: the port named by the node (or, for an
+  // abstract root, by the entry's own name).
+  bool place_canonical(const RootPort& p) {
+    const int index = port_of_[canonical(p)];
+    if (index < 0 || !sorted_[static_cast<std::size_t>(index)].empty()) {
+      return false;
+    }
+    const auto node = w_.find_node(canonical(p));
+    if (!w_.in.root_abstract && !node) {
+      return false;
+    }
+    std::string name = w_.in.root_abstract ? p.node : w_.spice_name(*node);
+    if (const auto seen = names_.find(name); seen != names_.end()) {
+      port_of_[canonical(p)] = seen->second;  // a repeat of an earlier port
+    } else {
+      names_.emplace(name, index);
+      sorted_[static_cast<std::size_t>(index)] = std::move(name);
+    }
+    return true;
+  }
+
+  // No index on the canonical name: the first name of the entry's chain
+  // that has one.
+  void place_from_chain(const RootPort& p) {
+    std::vector<std::string> chain{p.node};
+    for (const extflat::PortName& n : p.rest) {
+      chain.push_back(n.name);
+    }
+    for (const std::string& alias : chain) {
+      if (place_alias(p, alias)) {
+        return;
+      }
+    }
+  }
+
+  bool place_alias(const RootPort& p, const std::string& alias) {
+    const int index = port_of_[alias];
+    if (index < 0) {
+      return false;
+    }
+    const auto node = w_.find_node(w_.in.root_abstract ? alias : canonical(p));
+    if (!node) {
+      w_.info("Note:  Port " + alias + " was optimized out of " + w_.in.cell);
+      return false;
+    }
+    std::string name = w_.in.root_abstract ? alias : w_.spice_name(w_.find_node(alias).value_or(*node));
+    if (const auto seen = names_.find(name); seen != names_.end()) {
+      port_of_[alias] = seen->second;
+      return false;
+    }
+    names_.emplace(name, index);
+    if (!sorted_[static_cast<std::size_t>(index)].empty()) {
+      return false;
+    }
+    sorted_[static_cast<std::size_t>(index)] = std::move(name);
+    return true;
+  }
+
+  FlatWriter& w_;
+  std::map<std::string, int, std::less<>> port_of_;
+  std::map<std::string, int, std::less<>> names_;  // portNameTable
+  std::vector<std::string> sorted_;
+  int portmax_ = -1;
+};
+
+std::vector<std::string> sorted_ports(FlatWriter& w) { return PortSorter{w}.sorted(); }
 
 // Appends ` <word>` with Magic's 80-column continuation.
 void continued(std::string& out, std::size_t& tchars, const std::string& word) {

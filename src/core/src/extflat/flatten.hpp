@@ -39,7 +39,9 @@ struct FlatContext {
   const LayerNames& layers;
   std::optional<diag::Diagnostic> fatal;  // a cap or a cycle: the flattening stops
 
-  [[nodiscard]] bool is_global(std::string_view leaf) const { return globals.count(std::string{leaf}) != 0; }
+  [[nodiscard]] bool is_global(std::string_view leaf) const {
+    return (options.bang_globals && !leaf.empty() && leaf.back() == '!') || globals.count(std::string{leaf}) != 0;
+  }
   void message(std::string_view code, std::string text) const;
   /// Records the first fatal condition (later ones are not reported).
   void fail(std::string_view code, std::string text);
