@@ -52,10 +52,11 @@ std::int32_t to_int32(double v) noexcept {
 
 /// One class's resnew in Magic's single precision.
 std::int32_t class_resistance(std::int64_t area, std::int64_t perim, std::int32_t sheet) {
-  // v = (float)((dlong)perim * perim - 16 * area): 64-bit integer, then
-  // rounded to float. perim is an int in Magic.
+  // v = (double)((dlong)perim * perim - 16 * area) assigned to a float:
+  // the 64-bit integer is rounded to double, then to float (the two
+  // roundings differ from one past 2^53). perim is an int in Magic.
   const auto p = static_cast<std::int64_t>(static_cast<std::int32_t>(perim));
-  const auto v = static_cast<float>(p * p - 16 * area);
+  const auto v = static_cast<float>(static_cast<double>(p * p - 16 * area));
   const float s = v < 0 ? 0.0F : static_cast<float>(std::sqrt(static_cast<double>(v)));
   const auto fperim = static_cast<float>(p);
   const float ratio = (fperim + s) / (fperim - s);

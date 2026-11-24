@@ -125,6 +125,14 @@ TEST_CASE("a perimeter whose S rounds to P saturates instead of dividing by zero
         std::numeric_limits<std::int32_t>::max());
 }
 
+// Regression: v was rounded from the 64-bit value straight to float; Magic
+// assigns a double to the float (ExtBasic.c:638), rounding twice. Past 2^53
+// the two differ: here P^2 - 16A lies just above a float halfway point.
+TEST_CASE("v is rounded through double as Magic assigns it",
+          "[cap:extract-resistance-lumped][req:Lumped resistance formula]") {
+  CHECK(extract::lumped_resistance(with_class(24292115799391769, 1859785129), one_class(100000)) == 3356611);
+}
+
 TEST_CASE("a total past the int range keeps the previous value",
           "[cap:extract-resistance-lumped][req:Lumped resistance formula]") {
   extract::NodeRegion n;
