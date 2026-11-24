@@ -22,6 +22,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/compat/compat_settings.hpp"
@@ -245,7 +246,13 @@ class NodeFlood {
       const db::TileView t = cell_.plane(*home).tile_at({l.rect.x0, l.rect.y0});
       const std::uintptr_t v = cell_.plane(*home).client(t);
       if (v != db::kClientDefault && v < out_.list.size()) {
-        out_.list[v].labels.push_back(extract::LabelRegion{l.text, {l.rect.x0, l.rect.y0}, l.type, l.is_port()});
+        extract::LabelRegion lr;
+        lr.text = l.text;
+        lr.position = {l.rect.x0, l.rect.y0};
+        lr.type = l.type;
+        lr.port = l.is_port();
+        lr.rect = l.rect;
+        out_.list[v].labels.push_back(std::move(lr));
       }
     }
   }

@@ -338,13 +338,19 @@ std::vector<DeviceRegionTiles> find_device_regions(const db::CellDef& cell, cons
   return found;
 }
 
-NodeLookup client_slot_lookup(const db::CellDef& cell) {
+DeviceNodeLookup client_slot_lookup(const db::CellDef& cell) {
   return [&cell](tech::PlaneId plane, const db::TileView& t) -> std::optional<std::size_t> {
     const std::uintptr_t v = cell.plane(plane).client(t);
     if (v == db::kClientDefault) {
       return std::nullopt;
     }
     return static_cast<std::size_t>(v);
+  };
+}
+
+DeviceNodeLookup region_slot_lookup(const RegionFinder& finder, const db::CellDef& cell, std::size_t list_size) {
+  return [&finder, &cell, list_size](tech::PlaneId plane, const db::TileView& t) {
+    return finder.node_of(cell.plane(plane), t, list_size);
   };
 }
 

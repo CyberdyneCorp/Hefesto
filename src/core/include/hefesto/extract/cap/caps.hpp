@@ -98,6 +98,15 @@ using NodeLookup =
 [[nodiscard]] std::optional<std::size_t> client_node(const db::Plane& plane, const db::TileView& tile,
                                                      std::size_t node_count);
 
+/// The NodeLookup of a production pass (added at the M7 R3 integration):
+/// RegionFinder::node_of over the slots `finder` kept (keep_clients) for
+/// the pass whose NodeRegionList has `list_size` entries, asked for the
+/// side `right_side` names. client_node() reads a plain index and serves
+/// fixtures that write the index into the slots themselves; RegionFinder
+/// encodes its slots (regions.hpp), so a pass after find_nodes() uses this.
+[[nodiscard]] NodeLookup region_node_lookup(const RegionFinder& finder, const db::CellDef& cell,
+                                            std::size_t list_size);
+
 /// The inputs every accumulator shares. `cell`, `style` and `technology`
 /// are required; the others default to Magic's start-up state.
 struct CapInputs {

@@ -55,6 +55,15 @@ std::optional<std::size_t> client_node(const db::Plane& plane, const db::TileVie
   return static_cast<std::size_t>(c);
 }
 
+NodeLookup region_node_lookup(const RegionFinder& finder, const db::CellDef& cell, std::size_t list_size) {
+  return [&finder, &cell, list_size](tech::PlaneId plane, const db::TileView& tile,
+                                     bool right_side) -> std::optional<std::size_t> {
+    db::TileView side = tile;
+    side.right_side = tile.split && right_side;
+    return finder.node_of(cell.plane(plane), side, list_size);
+  };
+}
+
 diag::Status find_coupling(NodeRegionList& nodes, const CapInputs& in, CouplingTable& out) {
   Context ctx(in, &nodes, &out);
   if (!ctx.valid()) {

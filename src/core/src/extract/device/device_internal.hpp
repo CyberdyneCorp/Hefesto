@@ -157,7 +157,7 @@ struct Context {
   const db::CellDef& cell;
   const tech::Technology& tech;
   const ExtStyle& style;
-  NodeLookup node_of;
+  DeviceNodeLookup node_of;
   DeviceResult& out;
   /// Per gate node, its labels with their attribute state (persists over
   /// the cell's devices, as Magic's label lists do).

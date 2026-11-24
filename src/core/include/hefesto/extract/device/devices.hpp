@@ -16,7 +16,7 @@
 //   4. parameter_records() and device_property() for the `parameters`
 //      records and the `device` cell property.
 //
-// Nodes are read through NodeLookup: by default the plane client slot of
+// Nodes are read through DeviceNodeLookup: by default the plane client slot of
 // the tile (EXTNODE's region index, db::kClientDefault = no node).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) extract/ExtBasic.c, Copyright (C)
@@ -55,11 +55,19 @@ namespace hefesto::extract {
 /// The node of a tile (the region index into the cell's NodeRegionList), or
 /// nullopt when the tile belongs to no node. For a split tile `tile`
 /// reports the side asked about.
-using NodeLookup = std::function<std::optional<std::size_t>(tech::PlaneId plane, const db::TileView& tile)>;
+using DeviceNodeLookup = std::function<std::optional<std::size_t>(tech::PlaneId plane, const db::TileView& tile)>;
 
-/// The default NodeLookup: the tile's plane client slot as EXTNODE leaves
+/// The default DeviceNodeLookup: the tile's plane client slot as EXTNODE leaves
 /// it (the region index; db::kClientDefault = no node).
-[[nodiscard]] NodeLookup client_slot_lookup(const db::CellDef& cell);
+[[nodiscard]] DeviceNodeLookup client_slot_lookup(const db::CellDef& cell);
+
+/// The DeviceNodeLookup of a production pass (added at the M7 R3
+/// integration): RegionFinder::node_of over the slots `finder` kept
+/// (keep_clients) for the pass whose NodeRegionList has `list_size`
+/// entries. client_slot_lookup() reads a plain index and serves fixtures
+/// that write it themselves; RegionFinder encodes its slots (regions.hpp).
+[[nodiscard]] DeviceNodeLookup region_slot_lookup(const RegionFinder& finder, const db::CellDef& cell,
+                                                  std::size_t list_size);
 
 /// One device region (TransRegion): the connected device-type paint of
 /// one device, with its tiles in discovery order.
@@ -146,7 +154,7 @@ struct DeviceInputs {
   compat::CompatSettings compat;
   bool warn_fets = true;   // ExtDoWarn & EXTWARN_FETS (default on)
   bool warn_any = true;    // ExtDoWarn != 0
-  NodeLookup node_of;      // empty: client_slot_lookup(*cell)
+  DeviceNodeLookup node_of;      // empty: client_slot_lookup(*cell)
   /// Variable lookup for `$` substrate names in backward-compatible mode
   /// (Q-EXTRACT-9); empty: no variable is defined.
   std::function<std::optional<std::string>(std::string_view)> variable;
