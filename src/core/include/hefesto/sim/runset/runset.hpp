@@ -63,7 +63,8 @@ struct RunSet {
 [[nodiscard]] diag::Status execute(RunSet& run_set, JobManager& jobs);
 
 /// The ngspice seed of sample `k` with base seed `base` ("Sample seeds"); 1
-/// for the nominal sample. The scaffold stub returns 1 for every sample.
-[[nodiscard]] std::uint32_t sample_seed(std::uint32_t base, std::uint32_t k);
+/// for the nominal sample. The scaffold stub fails with CORE-NOTIMPL-009, so
+/// an early caller cannot run every sample with the same seed.
+[[nodiscard]] diag::Outcome<std::uint32_t> sample_seed(std::uint32_t base, std::uint32_t k);
 
 }  // namespace hefesto::sim

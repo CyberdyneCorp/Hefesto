@@ -152,9 +152,10 @@ TEST_CASE("scaffold run-set execution reports CORE-NOTIMPL-009", "[cap:simulatio
   CHECK(is_not_implemented(sim::execute(run_set, jobs)));
 }
 
-TEST_CASE("scaffold sample_seed answers the nominal seed", "[cap:simulation-monte-carlo][req:Sample seeds]") {
-  CHECK(sim::sample_seed(7, 0) == 1);
-  CHECK(sim::sample_seed(7, 3) == 1);  // documented scaffold value until SIMADV lands the formula
+TEST_CASE("scaffold sample_seed reports CORE-NOTIMPL-009", "[cap:simulation-monte-carlo][req:Sample seeds]") {
+  // Regression: the stub answered 1 for every sample, so every Monte Carlo sample got the same seed.
+  CHECK(is_not_implemented(sim::sample_seed(7, 0)));
+  CHECK(is_not_implemented(sim::sample_seed(7, 3)));
 }
 
 TEST_CASE("scaffold measurement evaluation reports CORE-NOTIMPL-009",

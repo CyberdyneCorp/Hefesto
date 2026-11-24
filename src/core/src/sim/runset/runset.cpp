@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Scaffold stubs (tasks.md 4.2): generate and execute fail with
-// CORE-NOTIMPL-009; sample_seed answers the nominal seed 1.
+// Scaffold stubs (tasks.md 4.2): generate, execute and sample_seed fail
+// with CORE-NOTIMPL-009.
 //
 // Owner: SIMADV.
 
@@ -20,8 +20,8 @@ diag::Status execute(RunSet& /*run_set*/, JobManager& /*jobs*/) {
   return not_implemented("sim::execute");
 }
 
-std::uint32_t sample_seed(std::uint32_t /*base*/, std::uint32_t /*k*/) {
-  return 1;
+diag::Outcome<std::uint32_t> sample_seed(std::uint32_t /*base*/, std::uint32_t /*k*/) {
+  return not_implemented("sim::sample_seed");
 }
 
 }  // namespace hefesto::sim
