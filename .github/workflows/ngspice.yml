@@ -70,6 +70,7 @@ jobs:
         run: cmake --build build/ngspice --target ngspice_hefesto_source_archive
 
       - name: Version line
+        shell: bash
         run: |
           build/ngspice/ngspice -v | tee version.txt
           version="$(python3 -c "import json; p = json.load(open('third_party/ngspice/pin.json')); print(p['release'] + '-hefesto' + str(p['hefesto_level']))")"
