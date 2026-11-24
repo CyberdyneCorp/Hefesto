@@ -260,6 +260,53 @@ Angles preset(Preset which) {
   return Angles{};
 }
 
+namespace {
+
+bool finite_box(const Extent3& b) {
+  return std::isfinite(b.x0) && std::isfinite(b.y0) && std::isfinite(b.x1) && std::isfinite(b.y1) &&
+         std::isfinite(b.z0) && std::isfinite(b.z1);
+}
+
+// The largest |x| or |y| in clip space of the corners of `b` (displayed
+// coordinates) under `m`.
+double clip_extent(const Matrix4& m, const Extent3& b, double scale_z) {
+  double extent = 0.0;
+  for (unsigned corner = 0; corner < 8U; ++corner) {
+    const double x = (corner & 1U) != 0U ? b.x1 : b.x0;
+    const double y = (corner & 2U) != 0U ? b.y1 : b.y0;
+    const double z = ((corner & 4U) != 0U ? b.z1 : b.z0) * scale_z;
+    for (int r = 0; r < 2; ++r) {
+      const auto e = [&](int c) { return static_cast<double>(at(m, r, c)); };
+      const double v = (e(0) * x) + (e(1) * y) + (e(2) * z) + e(3);
+      extent = std::fmax(extent, std::fabs(v));
+    }
+  }
+  return extent;
+}
+
+}  // namespace
+
+ViewState frame_view(const ViewState& view, const Extent3& box, int width_px, int height_px) {
+  if (!finite_box(box) || !std::isfinite(view.scale_z)) {
+    return view;
+  }
+  const auto scale_z = static_cast<double>(view.scale_z);
+  ViewState out = view;
+  out.trans_x = static_cast<float>(-0.5 * (box.x0 + box.x1));
+  out.trans_y = static_cast<float>(-0.5 * (box.y0 + box.y1));
+  out.trans_z = static_cast<float>(-0.5 * (box.z0 + box.z1) * scale_z);
+  ViewState unit = out;
+  unit.scale_xy = 1.0F;
+  const double extent = clip_extent(matrix(unit, width_px, height_px, ProjectionParams{}), box, scale_z);
+  // Below a millionth of a root unit the box is a point (float rounding of
+  // the rotation, not an extent).
+  constexpr double kPointExtent = 1e-6;
+  if (extent > kPointExtent && std::isfinite(extent)) {
+    out.scale_xy = static_cast<float>(kFrameFill / extent);
+  }
+  return out;
+}
+
 float exit_mask_factor(bool magic_compat, float applied_factor, float current_factor) {
   return magic_compat ? current_factor : applied_factor;
 }

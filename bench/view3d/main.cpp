@@ -18,7 +18,9 @@
 //   - frame (task 13.2, frame.hpp): with the Vulkan renderer built
 //     (HEFESTO_BUILD_DESKTOP=ON), the mesh uploaded to VulkanMesh3dRenderer
 //     on the headless device and --frames whole frames timed at 1280 x 800,
-//     isometric view, level 0 and level 1 (MSAA 4x), plus the upload and
+//     isometric view framed by frame_view, board lighting, level 0 and
+//     level 1 (MSAA 4x), again with a ghosted well over the whole region
+//     (level0_ghost, level1_ghost), plus the upload and
 //     the first frame; frame_time_ms is level 1's median (the default
 //     level), null with frame_time_note otherwise. Recorded, not gated.
 // bench/view3d/view3d_gate.py checks the gated numbers against gates.json.

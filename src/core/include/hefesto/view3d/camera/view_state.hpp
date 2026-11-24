@@ -22,6 +22,8 @@
 // - apply: a Gesture (D7), the abstraction the desktop and the iPadOS app
 //   (M14) map their input to;
 // - preset: the absolute `view` angles of top, isometric, front and side;
+// - frame_view: the translation and scale_xy that frame a 3D box under the
+//   current angles (Q-MISC-84), as `scroll`/`zoom` values;
 // - exit_mask_factor / change_output_style: the Q-MISC-78 rule.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3); CAMERA fills in
@@ -129,8 +131,42 @@ void apply(ViewState& view, const Gesture& gesture);
 void apply(ViewState& view, const Gesture& gesture, const ViewState& home);
 
 /// The absolute angles of `preset`: top (0, 0, 0), isometric (-54.7356, 0,
-/// 45), front (-90, 0, 0), side (-90, 0, -90).
+/// 45), front (-90, 0, 0), side (-90, 0, -90). The renderer draws the model
+/// mirrored in z (Q-MISC-84), so every preset looks from above or from the
+/// side with the higher layers up: the isometric one from (-1, -1, 1), the
+/// front one from -y, the side one from +x.
 [[nodiscard]] Angles preset(Preset which);
+
+/// The 3D box a frame should show: x and y in root coordinates as drawn
+/// (already multiplied by DrawParams::xy_scale in mask-layer mode), z as
+/// heights in the stack's draw units (LayerStack::draw_height: the lowest h
+/// and the highest h + t of the layers shown).
+struct Extent3 {
+  double x0 = 0.0;
+  double y0 = 0.0;
+  double x1 = 0.0;
+  double y1 = 0.0;
+  double z0 = 0.0;
+  double z1 = 0.0;
+
+  friend bool operator==(const Extent3&, const Extent3&) = default;
+};
+
+/// The share of the limiting dimension frame_view fills.
+inline constexpr double kFrameFill = 0.9;
+
+/// Frames `box` (Q-MISC-84, view-3d "Default view"): `view` with its angles,
+/// scale_z and prescale_z kept, and trans_x, trans_y, trans_z and scale_xy
+/// set so that the box, as the renderer draws it (the displayed scene: the
+/// model mirrored in z, a height h at z = +h * scale_z, so trans_z shifts
+/// along the height), projects centred and fills kFrameFill of the
+/// limiting dimension of a `width_px` x `height_px` drawable in the
+/// orthographic projection (the perspective one frames its z = 0 plane the
+/// same). The result is what `scroll trans_x trans_y trans_z` and
+/// `zoom scale_xy scale_z` (absolute) set, so a caller applies it through
+/// those commands. A box that projects to a point keeps scale_xy; a
+/// non-finite box returns `view` unchanged.
+[[nodiscard]] ViewState frame_view(const ViewState& view, const Extent3& box, int width_px, int height_px);
 
 /// Q-MISC-78 (compat): the f that `cif` back to layout-layer mode divides
 /// by: the current output style's f with magic-compat ON (as Magic,

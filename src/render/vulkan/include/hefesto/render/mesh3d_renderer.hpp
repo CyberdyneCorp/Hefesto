@@ -14,9 +14,11 @@
 // texture mode. Instanced rectangle, side-segment and triangle pipelines;
 // z from h, t and s_z in the shader; back-face culling; depth test
 // LESS_OR_EQUAL in style-table order (the last style wins on coplanar
-// faces, Q-MISC-77), with the viewer on the side of the higher layers
-// (R1, Q-MISC-81); ambient 0.4 and one white diffuse light at (50, 50,
-// 50); MSAA 4x at level >= 1. Redraws on demand only.
+// faces, Q-MISC-77), the scene drawn mirrored in z so the viewer is on the
+// side of the higher layers in projection and depth alike (R1, Q-MISC-81;
+// Q-MISC-84); the board's flat per-face shading in both magic-compat modes
+// (Q-MISC-84, mesh3d_shading.hpp); MSAA 4x at level >= 1. Redraws on
+// demand only.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3, interface only); RENDER3D
 // implements it in src/render/vulkan/src/mesh3d_*.cpp (design D3, section 5):
@@ -25,11 +27,14 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "hefesto/display/styles.hpp"
+#include "hefesto/render/mesh3d_shading.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
 #include "hefesto/view3d/mesh/mesh_model.hpp"
 #include "hefesto/view3d/pick/pick.hpp"
@@ -63,8 +68,15 @@ class OffscreenTarget {
 struct DrawParams {
   view3d::ProjectionParams projection;
   int level = 1;                                 // `level`: MSAA 4x at level >= 1
-  const view3d::LayerStack* stack = nullptr;     // h, t of layers missing from MeshModel::layer_heights; its magic_compat picks the lighting
-  const display::StyleSet* styles = nullptr;     // layer colors and the background (mesh3d_shading.hpp)
+  const view3d::LayerStack* stack = nullptr;     // h, t of layers missing from MeshModel::layer_heights
+  const display::StyleSet* styles = nullptr;     // layer colors and the default background (mesh3d_shading.hpp)
+  /// The clear color, display (sRGB-encoded) values 0..1; unset: the
+  /// transparent style's color, background_color(styles). The desktop tab
+  /// passes its theme token (Q-MISC-84).
+  std::optional<std::array<float, 3>> background;
+  /// The shading (Q-MISC-84: the board look in both magic-compat modes; the
+  /// stack's magic_compat no longer chooses it).
+  Lighting lighting = Lighting::board;
   std::vector<bool> hidden;                      // per stack layer
   std::vector<float> alpha;                      // per stack layer; empty = opaque (transparency pass)
   const view3d::HighlightSet* highlight = nullptr;  // drawn highlighted, the rest dimmed
