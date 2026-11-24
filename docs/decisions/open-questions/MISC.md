@@ -433,6 +433,7 @@ Items left open by M10 round 2 (PR #81) that no Magic quirk entry covers, or tha
 - **R2: lighting per mode.**
   - Status: approved 2026-11-22 (RENDER3D round 2, as built).
   - Resolution: kept as built, no Q row — with magic-compat ON the lighting copies Magic's GL state (no normal is set, so every face uses (0, 0, 1); one white positional light at (50, 50, 50) in model coordinates; ambient 0.2 + 0.4; per vertex); with it OFF one white directional light from (1, 1, 1) on each face's own normal with ambient 0.4. Pixels are informative; view-3d "Viewing transform and shading" already states both.
+  - Amended: by Q-MISC-84 (2026-11-24) for the desktop 3D tab, which uses the board's per-face shading in both modes; Magic's GL-state lighting was removed from the renderer (round 4, RENDER).
 - **R3: translucent display styles drawn opaque.**
   - Status: approved 2026-11-22 (RENDER3D round 2, as built; follows from Q-MISC-77).
   - Resolution: in both modes, no Q row (a consequence of Q-MISC-77's depth test) — a display style that Magic draws translucent (grtoglSetWMandC blends the 2c − 0.8 supercolour with alpha mask/127 to show c, graphics/grTOGL1.c:90-133) is drawn opaque in its plain colour c; with depth-tested faces the blend has no Magic picture to match (view-3d "Viewing transform and shading"). The per-layer transparency of the layer panel (hefesto-3d-visualization) is a separate, Hefesto-side alpha.
