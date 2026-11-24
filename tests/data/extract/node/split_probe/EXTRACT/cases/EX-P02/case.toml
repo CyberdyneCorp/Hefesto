@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+
+#
+# EX-P02: capture-only probe of Q-EXTRACT-31 (docs/decisions/open-questions/
+# EXTRACT.md): one split tile with poly on its lower-left (sw) side and
+# ndiff on its upper-right (ne) side, and nothing else. Magic's
+# DBSrPaintClient tests the tile's one client slot, so once the poly side
+# has a region the ndiff side is never a seed: the capture shows whether
+# the ndiff node is missing from the `.ext`. It lives outside tests/golden
+# so replay.py never runs it; the Hefesto side is
+# tests/unit/extract/node/regions_test.cpp ("Second side of a split tile as
+# a seed: magic-compat ON skips it"). Inputs: EX-019's tech and script.
+# Capture: gh workflow run golden-capture.yml -f mode=capture
+#            -f cases="tests/data/extract/node/split_probe/EXTRACT/cases/EX-P02"
+
+schema = 1
+id = "EX-P02"
+area = "EXTRACT"
+capability = "extract-nodes-and-labels"
+requirements = ["Node connectivity"]
+tool = "magic"
+description = "a split tile with poly (sw) and ndiff (ne) sides and nothing else: is the ndiff side a node (Q-EXTRACT-31 probe)"
+
+[reference]
+script = "input/commands.tcl"
+argv = ["magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+requires_commands = []
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[collect]]
+pattern = "*.ext"
+comparator = "ext-cap"
+masks = ["ext-timestamp"]
