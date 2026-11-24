@@ -38,6 +38,10 @@ release notices.
   implants and other non-conducting area layers ghosted at 20 % (each
   row can be changed). Mode, level, cut box and mesh status sit in a
   toolbar under the view.
+  The isometric opening applies to the window the tab opens (`render3d`);
+  a `specialopen wind3d` window keeps the top-down view. In mask-layer
+  mode the opening z scale follows the output scale factor, so the stack
+  keeps its proportions.
 - **Script routing with magic-compat ON.** While a 3D window is open and
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.
