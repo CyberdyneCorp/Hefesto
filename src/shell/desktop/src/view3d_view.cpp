@@ -284,7 +284,7 @@ void View3dView::build_inspect_section(ui::Box& box) {
              {nullptr, [] { return std::string{"Isolate selected net"}; }, [this] { return picking_.net_isolated(); },
               [this] { return picking_.picked().has_value() || picking_.net_isolated(); }},
              [this] {
-               if (picking_.toggle_isolate_net(model_.get(), ctx_.editor())) {
+               if (picking_.toggle_isolate_net(uploaded_.get(), ctx_.editor())) {
                  highlight_dirty_ = true;
                  dirty_ = true;
                  repaint();
@@ -512,6 +512,7 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
   if (!model->layer_heights.empty() && model->layer_heights.size() != build_stack_->size()) return;
   model_ = model;
   drawn_stack_ = build_stack_;
+  picking_.model_changed();  // the isolated net follows the new ordinals
   highlight_dirty_ = true;
   dirty_ = true;
   refresh_rows();
@@ -614,10 +615,11 @@ void View3dView::draw_frame() {
   if (model_ && model_ != uploaded_) {
     renderer_->upload(*model_);
     uploaded_ = model_;
+    uploaded_stack_ = drawn_stack_;
   }
   if (highlight_dirty_) {
-    update_pick_scope(drawn_stack_.get());
-    highlight_ = picking_.highlight(model_.get(), ctx_.editor());
+    update_pick_scope(uploaded_stack_.get());
+    highlight_ = picking_.highlight(uploaded_.get(), ctx_.editor());
     highlight_dirty_ = false;
   }
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
@@ -693,12 +695,14 @@ void View3dView::apply_gesture(const view3d::Gesture& gesture) {
 }
 
 void View3dView::pick_at(float x, float y) {
-  const view3d::LayerStack* stack = drawn_stack_.get();
+  // The id was drawn from the uploaded model; a newer model_ waiting for
+  // the next frame has other ordinals.
+  const view3d::LayerStack* stack = uploaded_stack_.get();
   if (!renderer_ || stack == nullptr) return;
   const float ratio = pixel_ratio_ ? pixel_ratio_() : 1.0F;
   const view3d::PickId id = renderer_->read_pick(static_cast<int>(x * ratio), static_cast<int>(y * ratio));
   update_pick_scope(stack);
-  const std::optional<std::string> caption = picking_.click(model_.get(), id, ctx_.editor(), *stack);
+  const std::optional<std::string> caption = picking_.click(uploaded_.get(), id, ctx_.editor(), *stack);
   pick_caption_ = caption.value_or(std::string{});
   highlight_dirty_ = true;
   dirty_ = true;

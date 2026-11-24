@@ -359,6 +359,40 @@ TEST_CASE("keys in the 3D view run the wind3d bindings on the window's path",
   CHECK(s.window().level == 2);
 }
 
+// Review of PR #86 (finding 1): a button in a layout window makes that
+// window current (Magic's TxSetPoint on every event), so with magic-compat
+// ON its macros reach the layout window again after a command on the 3D
+// window's path routed script commands there (N1, Q-MISC-82).
+namespace {
+
+void layout_button_after_3d_command(bool magic_compat) {
+  ClientSession s(magic_compat);
+  tcl(s, "macro Button1 {box 20 10 70 45}");
+  s.ok("specialopen wind3d c3d .render.magic");
+  tcl(s, ".render.magic level 1");
+  InputRouter router(*s.dispatcher, s.editor);
+  PointerContext at;
+  at.state.point = db::Point{20, 10};
+  at.state.pixel_area = db::Rect{20, 10, 20, 10};
+  at.pixel = db::Point{20, 10};
+  at.window_name = "layout1";
+  CHECK(router.button(1, true, 0, at));
+  CHECK(s.editor.box == db::Rect{20, 10, 70, 45});
+  CHECK_FALSE(s.editor.view3d.script_target_3d);
+}
+
+}  // namespace
+
+TEST_CASE("a layout button after a 3D window command reaches the layout window with magic-compat ON",
+          "[cap:view-3d][req:3D view commands]") {
+  layout_button_after_3d_command(true);
+}
+
+TEST_CASE("a layout button after a 3D window command reaches the layout window with magic-compat OFF",
+          "[cap:view-3d][req:3D view commands]") {
+  layout_button_after_3d_command(false);
+}
+
 TEST_CASE("a press that stays within the slop is a click, otherwise a drag",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   PointerTracker t;
@@ -412,6 +446,45 @@ TEST_CASE("a click picks a target, selects it in 2D and isolates its net",
   // A stale id clears the picked target.
   CHECK_FALSE(picking.click(&mesh, 5, s.editor, stack).has_value());
   CHECK_FALSE(picking.picked().has_value());
+}
+
+// Review of PR #86 (finding 3): pick ids are model ordinals, so after a
+// rebuild the isolated net is recomputed from the picked target against
+// the new model instead of keeping the old model's ids.
+TEST_CASE("an isolated net follows a rebuilt model's ids",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s;
+  open(s);
+  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
+  const view3d::MeshModel first;
+  view3d::MeshModel rebuilt;
+  rebuilt.chunks.emplace_back();  // an extra chunk before the net's instances
+  struct ModelResolver final : PickResolver {
+    const view3d::MeshModel* rebuilt_model = nullptr;
+    view3d::PickTarget target;
+    std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& /*mesh*/, view3d::PickId /*id*/) override {
+      return target;
+    }
+    hefesto::diag::Status select(hefesto::editor::EditorState& /*e*/, const view3d::PickTarget& /*t*/) override {
+      return hefesto::diag::Done{};
+    }
+    view3d::HighlightSet net(const view3d::MeshModel& mesh, const hefesto::editor::EditorState& /*e*/,
+                             const view3d::PickTarget& /*seed*/) override {
+      return &mesh == rebuilt_model ? view3d::HighlightSet{{17, 18}} : view3d::HighlightSet{{7, 8}};
+    }
+  } resolver;
+  resolver.rebuilt_model = &rebuilt;
+  View3dPicking picking{resolver};
+  REQUIRE(picking.click(&first, 42, s.editor, stack).has_value());
+  REQUIRE(picking.toggle_isolate_net(&first, s.editor));
+  CHECK(picking.highlight(&first, s.editor)->ids == std::vector<view3d::PickId>{7, 8});
+  picking.model_changed();
+  CHECK(picking.net_isolated());
+  CHECK(picking.highlight(&rebuilt, s.editor)->ids == std::vector<view3d::PickId>{17, 18});
+  REQUIRE(picking.picked().has_value());  // the target is a tile, not an id: kept
+  // Toggling off still clears the net.
+  CHECK(picking.toggle_isolate_net(&rebuilt, s.editor));
+  CHECK_FALSE(picking.net_isolated());
 }
 
 TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile type in the rendered cell",
