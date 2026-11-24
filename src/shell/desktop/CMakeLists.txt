@@ -97,6 +97,17 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/view3d_models.cpp
   src/view3d_view.cpp)
 
+# M8 (openspec/changes/m8-schematic tasks 13.1, 13.2, SHELL): the schematic
+# editor's view models (canvas, symbol library browser, properties,
+# hierarchy breadcrumb, net highlighting, netlist action, messages, the
+# xschem-style key bindings) and the desktop install root (M8-D10).
+target_sources(hefesto_shell_desktop PRIVATE
+  src/schematic_bindings.cpp
+  src/schematic_canvas.cpp
+  src/schematic_library.cpp
+  src/schematic_panels.cpp
+  src/schematic_view.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root

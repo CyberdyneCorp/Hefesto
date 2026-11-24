@@ -103,7 +103,8 @@ Compatibility: behavioral
 The installation root (`CAD_ROOT`) SHALL be resolved from, in order:
 1. the scripting variable `CAD_ROOT`
 2. the environment variable `CAD_ROOT`
-3. the built-in install prefix
+3. the install root of the running executable: the first of the executable's folder, `<folder>/../Resources` (a macOS app bundle) and `<folder>/..` (an install prefix with the executable in `bin/`) that contains an `assets` folder; for `hefesto-cli` and the desktop app this is the default, so the schematic system library (`<root>/assets/schematic/xschem_library/devices`) is found without setting `CAD_ROOT` (decision M8-D10, Q-SCHEM-45, approved 2026-11-23; both modes)
+4. the built-in install prefix
 
 Path entries SHALL expand `~`, `~user` and `$VAR`/`${VAR}`. Expansions SHALL be cached for the session.
 
@@ -115,13 +116,25 @@ The search paths SHALL be:
 
 Hefesto SHALL let the user or the PDK configuration designate an installation root containing `magic/sys`. On iPadOS this root SHALL be inside the app's sandbox (see Q-UI-26).
 
+The script sandbox (capability `hefesto-scripting`) SHALL make only `<root>/assets` and `<root>/magic` readable (never writable) to project scripts, not the whole installation root: with the default of step 3 the root is an install prefix such as `/usr/local` or `/opt/homebrew`, whose other contents scripts SHALL NOT read (review of the M8-D10 change; both modes).
+
 Compatibility: behavioral (host mechanics informative)
 (Magic ref: utils/path.c:193-388, utils/paths.h:30-73, utils/main.c:557-834, tcltk/tclmagic.c:1663-1669)
+
+#### Scenario: Install prefix not readable by scripts
+- **GIVEN** the installation root `/usr/local` (the default of step 3 for `/usr/local/bin/hefesto-cli`)
+- **WHEN** a project script reads `/usr/local/assets/schematic/xschem_library/devices/res.sym` and `/usr/local/other/file`
+- **THEN** the first read SHALL succeed and the second SHALL be refused by the sandbox, and neither path SHALL be writable
 
 #### Scenario: Relocated install
 - **GIVEN** `CAD_ROOT=/opt/eda/lib`
 - **WHEN** the application starts
 - **THEN** `mos.OpenGL.dstyle`, technology files and the system startup file SHALL be looked up under `/opt/eda/lib/magic/sys`
+
+#### Scenario: Install root without CAD_ROOT
+- **GIVEN** `hefesto-cli` installed as `/opt/hefesto/bin/hefesto-cli`, with `/opt/hefesto/assets/schematic/xschem_library/devices/res.sym`, and `CAD_ROOT` unset
+- **WHEN** the application starts
+- **THEN** the installation root SHALL be `/opt/hefesto`, and a schematic that references `res.sym` SHALL resolve it from the system library; with `CAD_ROOT=/elsewhere` set, the installation root SHALL be `/elsewhere` (Q-SCHEM-45)
 
 ### Requirement: Startup file order
 Startup files SHALL be processed in this order:

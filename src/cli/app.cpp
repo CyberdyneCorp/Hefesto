@@ -29,6 +29,7 @@
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
 #include "hefesto/platform_net/http_fetcher.hpp"
+#include "hefesto/platform_posix/executable.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
@@ -61,6 +62,15 @@ using platform::Path;
 constexpr std::string_view kMagicCompatVersion = "8.3.694";
 /// Its source revision (`--commit` in --magic mode prints it, as Magic does).
 constexpr std::string_view kMagicCompatCommit = "fc5daa9e2856b89a0a3056f296ded1fd4474e39e";
+
+/// The installation root: CAD_ROOT when set and non-empty, else the install
+/// root holding the running executable (M8-D10, approved 2026-11-23), so the
+/// schematic system library is found without CAD_ROOT.
+Path install_root(pdk::InstallHost& host) {
+  platform::LocalFileSystem fs;
+  return app::resolve_install_root(host.environment("CAD_ROOT"),
+                                   app::install_root_for_executable(fs, platform_posix::executable_dir()));
+}
 
 void print_line(std::FILE* stream, std::string_view text) {
   std::fwrite(text.data(), 1, text.size(), stream);
@@ -415,7 +425,7 @@ class Session {
   app::StartupEnvironment environment() {
     app::StartupEnvironment env;
     env.host = install_host_.get();
-    env.install_root = app::resolve_install_root(install_host_->environment("CAD_ROOT"), Path{});
+    env.install_root = install_root(*install_host_);
     env.home = install_host_->home_directory();
     std::error_code ec;
     env.working_directory = std::filesystem::current_path(ec);
@@ -762,7 +772,7 @@ int run_strip_reflibs(const Options& options, std::FILE* out, std::FILE* err) {
 // the engine's option parser in order (an option missing its argument
 // passes the empty string, as `lindex` does).
 script::ScriptHostCommandLine script_host_line(const Options& options) {
-  const auto cad_root = app::resolve_install_root(pdk::make_local_install_host()->environment("CAD_ROOT"), Path{});
+  const auto cad_root = install_root(*pdk::make_local_install_host());
   const script::ScriptHostInfo info{std::string{kMagicCompatVersion}, std::string{kMagicCompatCommit},
                                     cad_root.string()};
   return script::classify_command_line(options.magic_args, info);

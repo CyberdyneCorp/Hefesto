@@ -84,6 +84,7 @@
 #include "screen_context.hpp"
 #include "side_panels.hpp"
 #include "view3d_view.hpp"
+#include "schematic_view.hpp"
 
 namespace hefesto::tech {
 class Technology;
@@ -408,6 +409,11 @@ class MainWindow {
   std::unique_ptr<LeftPanel> left_;
   std::unique_ptr<InspectorPanel> inspector_;
   std::unique_ptr<PdkPanel> pdk_;
+  // M8 (task 13.2): the Schematic tab's view, shown instead of the canvas
+  // while the editor-view tab "Schematic" is active (schematic_view.hpp).
+  std::unique_ptr<SchematicView> schematic_view_;
+  bool schematic_tab_ = false;
+  void show_schematic_tab(bool on);
   bool pdk_visible_ = false;
   std::unique_ptr<ColorPanel> color_;
   bool color_visible_ = false;  // a color window is open

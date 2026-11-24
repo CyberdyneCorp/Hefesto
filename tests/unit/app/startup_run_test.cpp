@@ -22,6 +22,7 @@
 #include "hefesto/platform/services.hpp"
 #include "hefesto/script/pdk/consent.hpp"
 #include "hefesto/script/project.hpp"
+#include "hefesto/script/tcl/sandbox.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "temp_dir.hpp"
@@ -623,9 +624,33 @@ TEST_CASE("the install root and the PDK store are read-only roots of the script 
   std::filesystem::create_directories(*s.env.pdk_root);
   REQUIRE(s.start({}).ok());
   const auto& policy = s.editor.script.sandbox;
-  CHECK(has_root(policy.read_only_roots, s.env.install_root));
+  CHECK(has_root(policy.read_only_roots, s.env.install_root / "assets"));
+  CHECK(has_root(policy.read_only_roots, s.env.install_root / "magic"));
   CHECK_FALSE(has_root(policy.granted_roots, s.env.install_root));
   CHECK_FALSE(has_root(policy.granted_roots, *s.env.pdk_root));
+}
+
+// Regression (review of PR #101): since M8-D10 the install root defaults to
+// the install prefix (/usr/local, /opt/homebrew), and the whole prefix was a
+// read-only root, readable by every project script. Only its `assets` and
+// `magic` folders are.
+TEST_CASE("Install prefix not readable by scripts", "[cap:app-startup][req:Installation root and search paths]") {
+  Session s;
+  const auto prefix = s.dir.path() / "usr-local";
+  for (const char* folder : {"assets/schematic/xschem_library/devices", "magic/sys", "other", "bin"}) {
+    std::filesystem::create_directories(prefix / folder);
+  }
+  s.env.install_root = prefix;
+  REQUIRE(s.start({}).ok());
+  CHECK_FALSE(has_root(s.editor.script.sandbox.read_only_roots, prefix));
+  const hefesto::script::SandboxFilesystem layer(s.editor.script.sandbox);
+  const auto check = [&](const std::filesystem::path& path) { return layer.check("open", path.string(), "/"); };
+  const auto library = check(prefix / "assets/schematic/xschem_library/devices/res.sym");
+  CHECK(library.allowed);
+  CHECK_FALSE(library.writable);
+  CHECK(check(prefix / "magic/sys/.magicrc").allowed);
+  CHECK_FALSE(check(prefix / "other/file").allowed);
+  CHECK_FALSE(check(prefix / "bin/hefesto-cli").allowed);
 }
 
 TEST_CASE("the folder of an opened layout is granted, unless it is the home folder",

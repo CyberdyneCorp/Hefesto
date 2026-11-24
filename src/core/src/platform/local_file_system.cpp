@@ -97,9 +97,8 @@ bool write_file(const Path& path, std::string_view data, std::ios::openmode mode
   return static_cast<bool>(out);
 }
 
-}  // namespace
-
-diag::Outcome<std::string> LocalFileSystem::read(const Path& path) {
+// Opens a regular file for reading; the error of read() otherwise.
+std::optional<diag::Diagnostic> open_regular(const Path& path, std::ifstream& in) {
   std::error_code ec;
   const fs::file_status status = fs::status(path, ec);
   if (status.type() == fs::file_type::not_found) {
@@ -112,9 +111,46 @@ diag::Outcome<std::string> LocalFileSystem::read(const Path& path) {
   if (!fs::is_regular_file(status)) {
     return io_error(codes::kPlatformRead, "not a regular file", path);
   }
-  std::ifstream in(path, std::ios::binary);
+  in.open(path, std::ios::binary);
   if (!in) {
     return io_error(codes::kPlatformRead, "cannot read", path);
+  }
+  return std::nullopt;
+}
+
+}  // namespace
+
+diag::Outcome<std::string> FileSystem::read_at_most(const Path& path, std::size_t max_bytes) {
+  auto text = read(path);
+  if (text.ok() && text.value().size() > max_bytes) {
+    return std::string{text.value().substr(0, max_bytes)};
+  }
+  return text;
+}
+
+diag::Outcome<std::string> LocalFileSystem::read_at_most(const Path& path, std::size_t max_bytes) {
+  std::ifstream in;
+  if (auto error = open_regular(path, in)) {
+    return *error;
+  }
+  constexpr std::size_t kChunk = std::size_t{1} << 16U;  // grows with the file, never past max_bytes
+  std::string text;
+  while (text.size() < max_bytes && in) {
+    const std::size_t old = text.size();
+    text.resize(old + std::min(kChunk, max_bytes - old));
+    in.read(text.data() + old, static_cast<std::streamsize>(text.size() - old));
+    text.resize(old + static_cast<std::size_t>(in.gcount()));
+  }
+  if (in.bad()) {
+    return io_error(codes::kPlatformRead, "cannot read", path);
+  }
+  return text;
+}
+
+diag::Outcome<std::string> LocalFileSystem::read(const Path& path) {
+  std::ifstream in;
+  if (auto error = open_regular(path, in)) {
+    return *error;
   }
   std::ostringstream buffer;
   if (in.peek() != std::ifstream::traits_type::eof()) {

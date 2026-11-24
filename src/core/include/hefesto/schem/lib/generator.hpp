@@ -53,12 +53,12 @@ inline constexpr std::chrono::milliseconds kGeneratorTimeLimit = kXschemrcTimeLi
 /// between two SymbolCache::clear() calls (a schematic with thousands of
 /// distinct generator references would otherwise block for hours); past it
 /// no generator runs and the reference is a missing symbol (SCHEM-LIB-012).
-/// Both modes of `xschem-compat`; proposed in M8 round 3, awaiting the user.
+/// Both modes of `xschem-compat` (M8-D5, approved 2026-11-23).
 inline constexpr std::chrono::milliseconds kGeneratorTotalTimeLimit{60'000};
 
 /// The largest generator file read, to check its first line or to run it
 /// (the bound of a flattened symbol, Q-SCHEM-40); a larger one is not a Tcl
-/// generator, or fails with SCHEM-LIB-012.
+/// generator, or fails with SCHEM-LIB-012 (M8-D6, approved 2026-11-23).
 inline constexpr std::size_t kMaxGeneratorScriptBytes = kMaxFlattenedBytes;
 
 /// True when the generator `file` is a Tcl script: its name ends in `.tcl`

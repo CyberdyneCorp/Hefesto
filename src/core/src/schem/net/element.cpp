@@ -320,6 +320,7 @@ class ElementBuilder {
       context.instname = name_;
       context.symname = ctx_.symref;
     }
+    context.owner = "instance " + name_ + " (" + ctx_.symref + ")";
     return opts_.tcl->evaluate(text, context);
   }
 

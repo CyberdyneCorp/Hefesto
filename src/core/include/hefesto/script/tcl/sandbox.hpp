@@ -68,8 +68,9 @@ struct SandboxPolicy {
   /// symbolic links resolved when the policy is applied.
   std::vector<platform::Path> granted_roots;
   /// Absolute directories (or files) that may be read but never written
-  /// (security finding S-03): the PDK store and the install root. A path
-  /// under a granted root is writable even when a read-only root holds it.
+  /// (security finding S-03): the PDK store and the install root's `assets`
+  /// and `magic` folders. A path under a granted root is writable even when
+  /// a read-only root holds it.
   std::vector<platform::Path> read_only_roots;
   /// Commands replaced by a denial (default_removed_commands()).
   std::vector<std::string> removed_commands = default_removed_commands();
@@ -135,6 +136,7 @@ class SandboxedFileSystem final : public platform::FileSystem {
   SandboxedFileSystem(platform::FileSystem& base, const SandboxPolicy& policy) : base_(base), policy_(policy) {}
 
   [[nodiscard]] diag::Outcome<std::string> read(const platform::Path& path) override;
+  [[nodiscard]] diag::Outcome<std::string> read_at_most(const platform::Path& path, std::size_t max_bytes) override;
   [[nodiscard]] diag::Status write_atomic(const platform::Path& path, std::string_view data) override;
   [[nodiscard]] diag::Status append(const platform::Path& path, std::string_view data) override;
   [[nodiscard]] bool exists(const platform::Path& path) override;
@@ -148,6 +150,8 @@ class SandboxedFileSystem final : public platform::FileSystem {
   /// nullopt when `path` may be accessed (`write`: changed), else the refusal.
   [[nodiscard]] std::optional<diag::Diagnostic> refuse(std::string_view operation, const platform::Path& path,
                                                        bool write) const;
+  /// refuse("read", ...), and a path that is not a regular file (S-02).
+  [[nodiscard]] std::optional<diag::Diagnostic> refuse_read(const platform::Path& path) const;
 
   platform::FileSystem& base_;
   const SandboxPolicy& policy_;

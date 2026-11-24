@@ -48,6 +48,14 @@ bool same_block(const Document& cached, const Document& block) {
          cached.texts == block.texts && cached.wires == block.wires && cached.instances == block.instances;
 }
 
+// M8-D5..D7 (approved 2026-11-23), both modes: a generator file over
+// kMaxGeneratorScriptBytes is not read, not even for its `#!` line, and not
+// run, whatever its name (SCHEM-LIB-012; it was SCHEM-LIB-011 without `.tcl`).
+bool oversized_generator(const platform::Path& script, const ResolveContext& context) {
+  const auto size = context.fs.size(script);
+  return size.ok() && size.value() > kMaxGeneratorScriptBytes;
+}
+
 }  // namespace
 
 // The nested resolver of one schematic-as-symbol load: embedded blocks and
@@ -120,6 +128,13 @@ const Symbol& SymbolCache::generated(const Reference& reference, const Document&
   auto key = std::make_pair(script, text);
   if (const auto it = generated_.find(key); it != generated_.end()) return it->second;
   Symbol& symbol = generated_.emplace(std::move(key), placeholder_).first->second;
+  if (oversized_generator(script, context)) {
+    warn_once(context, "oversized|" + script.generic_string(),
+              diag::make("SCHEM-LIB-012", "Symbol " + text + ": the generator " + script.generic_string() +
+                                              " is larger than " + std::to_string(kMaxGeneratorScriptBytes) +
+                                              " bytes; it is neither read nor run"));
+    return symbol;
+  }
   if (!is_tcl_generator(script, context.fs)) {
     warn_once(context, "external|" + script.generic_string(),
               diag::make("SCHEM-LIB-011", "Symbol " + text + ": " + std::string{kExternalGeneratorMessage}));

@@ -342,10 +342,17 @@ class Startup {
     if (env_.grant_working_directory && grantable_folder(env_.working_directory)) {
       policy.granted_roots.push_back(env_.working_directory);
     }
-    for (const Path& root : {manager_.root(), env_.install_root}) {
-      if (!root.empty()) {
-        policy.read_only_roots.push_back(root);
-      }
+    if (!manager_.root().empty()) {
+      policy.read_only_roots.push_back(manager_.root());
+    }
+    // Of the install root only what Hefesto installs there is readable: its
+    // `assets` (the schematic system library) and Magic's `magic` tree
+    // (sys, tutorial, technology folders). Since M8-D10 the root defaults to
+    // the install prefix (/usr/local, /opt/homebrew), which must not become
+    // readable as a whole (review of PR #101).
+    if (!env_.install_root.empty()) {
+      policy.read_only_roots.push_back(env_.install_root / "assets");
+      policy.read_only_roots.push_back(env_.install_root / "magic");
     }
     if (env_.project_folder) {
       policy.granted_roots.push_back(*env_.project_folder);
