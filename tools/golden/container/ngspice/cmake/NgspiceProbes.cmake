@@ -67,6 +67,9 @@ string(APPEND NGSPICE_HAVE_DEFINES "#define HAVE_LIBM 1\n#define HAVE_LIBPTHREAD
 check_symbol_exists(isinf math.h HAVE_DECL_ISINF)
 check_symbol_exists(isnan math.h HAVE_DECL_ISNAN)
 check_symbol_exists(sigsetjmp setjmp.h HAVE_SIGSETJMP)
+# The signal-handler types are probed without _GNU_SOURCE, as configure does: some files
+# include <signal.h> before ngspice.h defines it, so glibc's sighandler_t is not visible there.
+unset(CMAKE_REQUIRED_DEFINITIONS)
 check_c_source_compiles("#include <signal.h>\nint main(void){sig_t s = 0; (void)s; return 0;}" HAVE_SIG_T)
 check_c_source_compiles("#include <signal.h>\nint main(void){sighandler_t s = 0; (void)s; return 0;}"
                         HAVE_SIGHANDLER_T)
