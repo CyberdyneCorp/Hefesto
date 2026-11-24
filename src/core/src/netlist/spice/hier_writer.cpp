@@ -32,6 +32,11 @@ namespace {
 
 using PortIndex = std::map<std::string, int, std::less<>>;
 
+const std::vector<extflat::PortEntry>& port_entries(const HierCall& call) {
+  static const std::vector<extflat::PortEntry> kNone;
+  return call.ports ? *call.ports : kNone;
+}
+
 // The port index of each name of a definition: the numbering its own
 // `.subckt` line gave, else the `port` records' indices.
 PortIndex port_index(const HierCall& call, const std::map<std::string, PortIndex, std::less<>>& numbered) {
@@ -39,7 +44,7 @@ PortIndex port_index(const HierCall& call, const std::map<std::string, PortIndex
     return it->second;
   }
   PortIndex out;
-  for (const extflat::PortEntry& e : call.ports) {
+  for (const extflat::PortEntry& e : port_entries(call)) {
     for (const extflat::PortName& n : e.chain) {
       out.emplace(n.name, n.index);
     }
@@ -55,25 +60,26 @@ int index_of(const PortIndex& ports, const std::string& name) {
 
 // subcktVisit's port list: by the canonical name's index, else the first
 // name of the entry's chain that has one.
+// The slots are kept sparse: port numbers come from the `.ext` file, so a
+// list sized by the highest one could be huge (both modes).
 std::vector<std::string> call_ports(const HierCall& call, const PortIndex& ports) {
-  int portmax = -1;
-  for (const auto& [name, index] : ports) {
-    portmax = std::max(portmax, index);
-  }
-  std::vector<std::string> list(static_cast<std::size_t>(portmax + 1));
-  for (const extflat::PortEntry& e : call.ports) {
+  std::map<int, std::string> slots;
+  for (const extflat::PortEntry& e : port_entries(call)) {
     const int canonical = index_of(ports, e.canonical.name);
-    if (canonical >= 0 && list[static_cast<std::size_t>(canonical)].empty()) {
-      list[static_cast<std::size_t>(canonical)] = e.canonical.name;
+    if (canonical >= 0 && slots.try_emplace(canonical, e.canonical.name).second) {
       continue;
     }
     for (const extflat::PortName& n : e.chain) {
       const int index = index_of(ports, n.name);
-      if (index >= 0 && list[static_cast<std::size_t>(index)].empty()) {
-        list[static_cast<std::size_t>(index)] = n.name;
+      if (index >= 0 && slots.try_emplace(index, n.name).second) {
         break;
       }
     }
+  }
+  std::vector<std::string> list;
+  list.reserve(slots.size());
+  for (auto& [index, name] : slots) {
+    list.push_back(std::move(name));
   }
   return list;
 }

@@ -50,6 +50,7 @@ struct ReadLimits {
   std::uint64_t max_instances = std::uint64_t{1} << 22;   // flattened instances (array elements count)
   std::uint64_t max_flat_names = std::uint64_t{1} << 24;  // flat node names
   std::uint64_t max_connections = std::uint64_t{1} << 24; // merge-record elements (array subscripts expanded)
+  std::int32_t max_port_index = std::int32_t{1} << 20;    // a `port` record's number (the netlisters number past it)
 };
 
 /// The options of one read.

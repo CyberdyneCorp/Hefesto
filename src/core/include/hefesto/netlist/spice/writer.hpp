@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -88,7 +89,7 @@ struct InstanceCall {
 struct HierCall {
   std::string cell;                       // the used definition
   std::vector<std::string> path;          // the use id with the element's subscript (`r[0]`, `a2[1,0]`)
-  std::vector<extflat::PortEntry> ports;  // the used definition's port entries
+  std::shared_ptr<const std::vector<extflat::PortEntry>> ports;  // the definition's port entries, shared by a use's elements
   bool devices_absent = false;            // DEF_NODEVICES: absorbed, no call unless a stub
   bool stub = false;                      // abstract or primitive with blackbox on
 };

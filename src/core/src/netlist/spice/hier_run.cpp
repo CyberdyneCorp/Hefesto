@@ -19,8 +19,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cmath>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -67,14 +69,10 @@ std::string element_name(const extflat::HierUse& use, std::int32_t x, std::int32
   return use.id;
 }
 
-std::vector<std::int32_t> indices(const std::array<std::int32_t, 3>& range) {
-  std::vector<std::int32_t> out;
-  const std::int32_t lo = std::min(range[0], range[1]);
-  const std::int32_t hi = std::max(range[0], range[1]);
-  for (std::int32_t i = lo; i <= hi; ++i) {
-    out.push_back(i);
-  }
-  return out;
+// An array range's lowest and highest index, widened so that a loop up to
+// INT32_MAX ends.
+std::pair<std::int64_t, std::int64_t> bounds(const std::array<std::int32_t, 3>& range) {
+  return {std::min(range[0], range[1]), std::max(range[0], range[1])};
 }
 
 class HierRun {
@@ -166,12 +164,15 @@ class HierRun {
       const extflat::HierDef& child = defs_.at(use.def);
       HierCall call;
       call.cell = use.def;
-      call.ports = extflat::def_ports(h_, use.def).entries;
+      // One port list per use, shared by all its array elements.
+      call.ports = std::make_shared<const std::vector<extflat::PortEntry>>(extflat::def_ports(h_, use.def).entries);
       call.devices_absent = extflat::devices_absent(h_, use.def);
       call.stub = (child.abstract || child.primitive) && settings().blackbox;
-      for (const std::int32_t x : indices(use.x_range)) {
-        for (const std::int32_t y : indices(use.y_range)) {
-          call.path = {element_name(use, x, y)};
+      const auto [xlo, xhi] = bounds(use.x_range);
+      const auto [ylo, yhi] = bounds(use.y_range);
+      for (std::int64_t x = xlo; x <= xhi; ++x) {
+        for (std::int64_t y = ylo; y <= yhi; ++y) {
+          call.path = {element_name(use, static_cast<std::int32_t>(x), static_cast<std::int32_t>(y))};
           section.calls.push_back(call);
         }
       }

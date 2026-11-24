@@ -305,13 +305,18 @@ class PortSorter {
 
   std::vector<std::string> sorted() {
     number_implicit();
-    sorted_.assign(static_cast<std::size_t>(portmax_ + 1), std::string{});
+    sorted_.clear();
     for (const RootPort& p : w_.in.ports) {
       if (!place_canonical(p)) {
         place_from_chain(p);
       }
     }
-    return sorted_;
+    std::vector<std::string> out;
+    out.reserve(sorted_.size());
+    for (auto& [index, name] : sorted_) {
+      out.push_back(std::move(name));
+    }
+    return out;
   }
 
  private:
@@ -349,7 +354,7 @@ class PortSorter {
   // abstract root, by the entry's own name).
   bool place_canonical(const RootPort& p) {
     const int index = port_of_[canonical(p)];
-    if (index < 0 || !sorted_[static_cast<std::size_t>(index)].empty()) {
+    if (index < 0 || sorted_.contains(index)) {
       return false;
     }
     const auto node = w_.find_node(canonical(p));
@@ -361,7 +366,7 @@ class PortSorter {
       port_of_[canonical(p)] = seen->second;  // a repeat of an earlier port
     } else {
       names_.emplace(name, index);
-      sorted_[static_cast<std::size_t>(index)] = std::move(name);
+      sorted_[index] = std::move(name);
     }
     return true;
   }
@@ -396,17 +401,21 @@ class PortSorter {
       return false;
     }
     names_.emplace(name, index);
-    if (!sorted_[static_cast<std::size_t>(index)].empty()) {
+    if (sorted_.contains(index)) {
       return false;
     }
-    sorted_[static_cast<std::size_t>(index)] = std::move(name);
+    sorted_[index] = std::move(name);
     return true;
   }
 
   FlatWriter& w_;
   std::map<std::string, int, std::less<>> port_of_;
   std::map<std::string, int, std::less<>> names_;  // portNameTable
-  std::vector<std::string> sorted_;
+  // Sparse: the indices come from the `.ext` file's port records, so a
+  // list sized by the highest one could be huge. ReadLimits::max_port_index
+  // bounds them, so numbering the implicit ports past portmax_ cannot
+  // overflow.
+  std::map<int, std::string> sorted_;
   int portmax_ = -1;
 };
 
