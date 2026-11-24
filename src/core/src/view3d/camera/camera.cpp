@@ -304,7 +304,11 @@ ViewState frame_view(const ViewState& view, const Extent3& box, int width_px, in
   if (extent > kPointExtent && std::isfinite(extent)) {
     out.scale_xy = static_cast<float>(kFrameFill / extent);
   }
-  return out;
+  // A huge scale_z or box overflows the float translation (`scroll inf`
+  // would turn the view into NaN): keep the view instead.
+  const bool finite = std::isfinite(out.trans_x) && std::isfinite(out.trans_y) && std::isfinite(out.trans_z) &&
+                      std::isfinite(out.scale_xy) && out.scale_xy > 0.0F;
+  return finite ? out : view;
 }
 
 float exit_mask_factor(bool magic_compat, float applied_factor, float current_factor) {

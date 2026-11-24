@@ -165,7 +165,8 @@ inline constexpr double kFrameFill = 0.9;
 /// same). The result is what `scroll trans_x trans_y trans_z` and
 /// `zoom scale_xy scale_z` (absolute) set, so a caller applies it through
 /// those commands. A box that projects to a point keeps scale_xy; a
-/// non-finite box returns `view` unchanged.
+/// non-finite box, or a result with a non-finite translation or scale (a
+/// huge scale_z or box overflowing float), returns `view` unchanged.
 [[nodiscard]] ViewState frame_view(const ViewState& view, const Extent3& box, int width_px, int height_px);
 
 /// Q-MISC-78 (compat): the f that `cif` back to layout-layer mode divides

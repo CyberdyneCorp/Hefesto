@@ -27,8 +27,9 @@
 // - the board look of the desktop tab in both magic-compat modes
 //   (Q-MISC-84, approved 2026-11-24): the theme's canvas token as the
 //   background, the renderer's board lighting, the isometric camera framed
-//   to the cell when the tab opens (as `view`/`scroll`/`zoom` commands, once
-//   per opened window) and the x/y/z axis gizmo;
+//   to the cell when the desktop opens the window (render3d's path; as
+//   `view`/`scroll`/`zoom` commands, once per window) and the x/y/z axis
+//   gizmo;
 // - the default transparency of ghosted layers (Q-MISC-85: wells, implants
 //   and other non-conducting area layers at 20 %, view3d::ghosted_by_default),
 //   which a user's per-row choice overrides for the life of the window.
@@ -201,6 +202,35 @@ void set_row_alpha(View3dOptions& options, const View3dLayerRow& row, float alph
 /// (view3d::ghosted_by_default), else opaque.
 void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack, const std::vector<bool>& ghosted);
 
+/// The stack the tab builds and draws (P1): the layout-layer stack
+/// (view3d::layout_stack) in both window modes; in mask-layer mode the P1
+/// tab draws that layout mesh with x and y scaled by f (xy_factor), so its
+/// layers, and the ghosted defaults, are the layout layers'. A mask-layer
+/// stack arrives in phase 2.
+[[nodiscard]] view3d::LayerStack tab_stack(const editor::EditorState& editor, bool magic_compat);
+
+/// The ghosted flags and the per-entry alpha of the stack that is drawn
+/// (Q-MISC-85). The view builds a new stack's mesh while it still draws the
+/// previous one, whose layer ids differ (a magic-compat toggle, a styles or
+/// technology reload): a new stack's flags are held until its model is
+/// drawn, so the frames and rows in between keep the drawn stack's alpha.
+class GhostDefaults {
+ public:
+  /// A build of `stack` started with its `ghosted` flags. While no stack is
+  /// drawn yet (`drawing` false) the flags and alpha apply at once.
+  void building(const view3d::LayerStack& stack, std::vector<bool> ghosted, bool drawing, View3dOptions& options);
+  /// The model of the stack last passed to building() is now drawn as `stack`.
+  void drawn(const view3d::LayerStack& stack, View3dOptions& options);
+  /// The window closed: no flags.
+  void clear() noexcept;
+  /// Per entry of the drawn stack (or of the first build before a model).
+  [[nodiscard]] const std::vector<bool>& ghosted() const noexcept { return ghosted_; }
+
+ private:
+  std::vector<bool> pending_;
+  std::vector<bool> ghosted_;
+};
+
 // --- the board look (Q-MISC-84) -------------------------------------------------
 
 /// The 3D view's background in `mode`: the theme's canvas token (the 2D
@@ -208,8 +238,9 @@ void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack
 [[nodiscard]] std::array<float, 3> view3d_background(ThemeMode mode) noexcept;
 
 /// True once per opened window: the first call with `open` after the window
-/// opened; a call with !open (the window closed) re-arms it. The view applies
-/// the default camera when it answers true, so a user's later camera is kept.
+/// opened; a call with !open (the window closed) re-arms it. The view asks
+/// for the default camera when it answers true, so a user's later camera is
+/// kept.
 class DefaultCameraLatch {
  public:
   [[nodiscard]] bool take(bool open) noexcept;
@@ -228,11 +259,53 @@ class DefaultCameraLatch {
 /// camera frames: a stack lists every layer of the technology).
 [[nodiscard]] std::vector<bool> layers_present(const view3d::MeshModel& mesh, std::size_t stack_size);
 
-/// The z scale the desktop tab opens with (Q-MISC-84 board look): heights in
-/// proportion to the widths, instead of Magic's default 25x exaggeration,
-/// which spreads the layers far apart. Set through `zoom`, so `zoom`
-/// reports it; `defaults` returns to Magic's values.
+/// The z scale the desktop tab opens with in layout-layer mode (Q-MISC-84
+/// board look): heights in proportion to the widths, instead of Magic's
+/// default 25x exaggeration, which spreads the layers far apart. Set
+/// through `zoom`, so `zoom` reports it; `defaults` returns to Magic's
+/// values. board_scale_z gives the value of a window in either mode.
 inline constexpr float kBoardScaleZ = 1.0F;
+
+/// What a framed camera reads: the window, the mesh drawn and its stack,
+/// the drawable flag per stack entry (empty = all) and the size of the
+/// drawable in pixels.
+struct CameraFrame {
+  const view3d::WindowState* window = nullptr;
+  const view3d::MeshModel* mesh = nullptr;
+  const view3d::LayerStack* stack = nullptr;
+  std::vector<bool> drawable;
+  int width_px = 0;
+  int height_px = 0;
+};
+
+/// True when `frame` has a window, a mesh, its stack and a non-empty size.
+[[nodiscard]] bool frame_ready(const CameraFrame& frame) noexcept;
+
+/// The commands that apply the camera preset `which` framed to the layers
+/// the mesh draws (view3d::frame_view, x and y scaled by xy_factor in
+/// mask-layer mode), with `scale_z` when given, else the window's: `view`,
+/// `scroll` and `zoom` (camera_commands). A frame that is not ready gives
+/// the preset's plain `view` (preset_command); no window gives nothing.
+[[nodiscard]] std::vector<std::string> preset_camera_commands(const CameraFrame& frame, view3d::Preset which,
+                                                              std::optional<float> scale_z = std::nullopt);
+
+/// True when the desktop opened `window` itself: render3d's toolkit path
+/// (the 3D tab and Options > 3D Display run `magic::render3d`). A window on
+/// any other path (`specialopen wind3d`, a script's own path) keeps Magic's
+/// top-down default view (Q-MISC-84, view-3d "Default view").
+[[nodiscard]] bool desktop_opened(const view3d::WindowState& window) noexcept;
+
+/// The board z scale of `window`: kBoardScaleZ in layout-layer mode and
+/// kBoardScaleZ x f in mask-layer mode (f = xy_factor): Magic's rescale
+/// multiplies s_z by f there, and the P1 tab draws x and y scaled by f, so
+/// the heights keep their proportion to the widths in both modes.
+[[nodiscard]] float board_scale_z(const view3d::WindowState& window) noexcept;
+
+/// The desktop tab's opening camera (Q-MISC-84): the isometric preset
+/// framed to the drawn layers at board_scale_z when the desktop opened the
+/// window (desktop_opened) and the frame is ready; nothing otherwise (a
+/// window opened elsewhere keeps the top-down default view).
+[[nodiscard]] std::vector<std::string> default_camera_commands(const CameraFrame& frame);
 
 /// One arrow of the axis gizmo: its screen direction (x right, y down) as
 /// the view's rotation projects the unit axis; the z arrow points toward the

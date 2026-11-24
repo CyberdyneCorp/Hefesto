@@ -103,8 +103,11 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   /// Q-MISC-84), with `scale_z` when given; only the angles while no model
   /// or size is known.
   void apply_camera(view3d::Preset which, std::optional<float> scale_z = std::nullopt);
-  /// The isometric default once per opened window (Q-MISC-84).
+  /// The isometric default once per window the desktop opened (Q-MISC-84,
+  /// default_camera_commands).
   void apply_default_camera();
+  /// The camera frame of the drawn mesh (CameraFrame).
+  [[nodiscard]] CameraFrame camera_frame() const;
   void build_inspect_section(ui::Box& box);
   ui::Painted& add_button(ui::Box& box, Control control, std::function<void()> click, std::string_view tooltip,
                           float width = -1.0F);
@@ -190,8 +193,9 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   View3dOptions options_;
   std::vector<View3dLayerRow> rows_;  // display order: top layer first
   std::vector<Rgba> row_colors_;      // swatches, per row
-  std::vector<bool> drawable_;
-  std::vector<bool> ghosted_;  // per stack entry of build_stack_ (Q-MISC-85)
+  std::vector<bool> drawable_;          // per stack entry of the drawn stack (or of the first build)
+  std::vector<bool> pending_drawable_;  // of build_stack_, until its model is drawn
+  GhostDefaults ghost_;                 // Q-MISC-85, per stack entry like drawable_
   DefaultCameraLatch camera_latch_;
   PickResolver resolver_;
   View3dPicking picking_{resolver_};

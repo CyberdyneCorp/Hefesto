@@ -18,6 +18,7 @@
 #include "hefesto/ui/input.hpp"
 #include "hefesto/view/window.hpp"
 #include "hefesto/view3d/camera/input.hpp"
+#include "hefesto/view3d/client/scene.hpp"
 
 namespace hefesto::shell {
 
@@ -224,6 +225,29 @@ void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack
   }
 }
 
+view3d::LayerStack tab_stack(const editor::EditorState& editor, bool magic_compat) {
+  return view3d::layout_stack(editor, magic_compat);
+}
+
+void GhostDefaults::building(const view3d::LayerStack& stack, std::vector<bool> ghosted, bool drawing,
+                             View3dOptions& options) {
+  pending_ = std::move(ghosted);
+  if (!drawing) {
+    ghosted_ = pending_;
+    apply_default_alpha(options, stack, ghosted_);
+  }
+}
+
+void GhostDefaults::drawn(const view3d::LayerStack& stack, View3dOptions& options) {
+  ghosted_ = pending_;
+  apply_default_alpha(options, stack, ghosted_);  // the user's per-row values win
+}
+
+void GhostDefaults::clear() noexcept {
+  pending_.clear();
+  ghosted_.clear();
+}
+
 // --- the board look --------------------------------------------------------------
 
 std::array<float, 3> view3d_background(ThemeMode mode) noexcept {
@@ -268,6 +292,49 @@ std::vector<bool> layers_present(const view3d::MeshModel& mesh, std::size_t stac
     for (const view3d::Triangle& t : chunk.triangles) mark(t.layer);
   }
   return present;
+}
+
+bool frame_ready(const CameraFrame& frame) noexcept {
+  return frame.window != nullptr && frame.mesh != nullptr && frame.stack != nullptr && frame.width_px > 0 &&
+         frame.height_px > 0;
+}
+
+std::vector<std::string> preset_camera_commands(const CameraFrame& frame, view3d::Preset which,
+                                                std::optional<float> scale_z) {
+  if (frame.window == nullptr) return {};
+  const std::string& path = frame.window->toolkit_path;
+  if (!frame_ready(frame)) return {preset_command(path, which)};
+  view3d::ViewState camera = frame.window->view;
+  const view3d::Angles angles = view3d::preset(which);
+  camera.view_x = angles.x;
+  camera.view_y = angles.y;
+  camera.view_z = angles.z;
+  if (scale_z) camera.scale_z = *scale_z;
+  // The layers the mesh draws (not the whole technology), in its region.
+  std::vector<bool> framed = layers_present(*frame.mesh, frame.stack->size());
+  for (std::size_t i = 0; i < framed.size() && i < frame.drawable.size(); ++i) {
+    framed[i] = framed[i] && frame.drawable[i];
+  }
+  view3d::Extent3 box = stack_extent(frame.mesh->region, *frame.stack, framed);
+  const auto f = static_cast<double>(xy_factor(*frame.window));  // mask-layer mode draws x and y scaled by f
+  box.x0 *= f;
+  box.y0 *= f;
+  box.x1 *= f;
+  box.y1 *= f;
+  return camera_commands(path, view3d::frame_view(camera, box, frame.width_px, frame.height_px));
+}
+
+bool desktop_opened(const view3d::WindowState& window) noexcept {
+  return window.toolkit_path == view3d::kRender3dToolkitPath;
+}
+
+float board_scale_z(const view3d::WindowState& window) noexcept {
+  return kBoardScaleZ * xy_factor(window);
+}
+
+std::vector<std::string> default_camera_commands(const CameraFrame& frame) {
+  if (!frame_ready(frame) || !desktop_opened(*frame.window)) return {};
+  return preset_camera_commands(frame, view3d::Preset::isometric, board_scale_z(*frame.window));
 }
 
 std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view) {

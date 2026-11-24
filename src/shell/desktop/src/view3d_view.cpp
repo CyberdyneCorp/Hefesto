@@ -485,7 +485,9 @@ void View3dView::reset_window_state() {
   highlight_ = nullptr;
   pick_caption_.clear();
   rows_.clear();
-  ghosted_.clear();
+  ghost_.clear();
+  drawable_.clear();
+  pending_drawable_.clear();
   options_.alpha.clear();
   options_.alpha_override.clear();  // a new window starts from the ghosted defaults
   (void)camera_latch_.take(false);  // and from the default camera
@@ -498,7 +500,7 @@ void View3dView::sync() {
   sync_pending_ = false;
   const view3d::WindowState* w = window();
   if (w == nullptr || !ctx_.editor().technology) return;
-  view3d::LayerStack stack = view3d::layout_stack(ctx_.editor(), magic_compat());
+  view3d::LayerStack stack = tab_stack(ctx_.editor(), magic_compat());
   const BuildKey key = build_key(ctx_.editor(), *w, stack, options_.span_connected_layers);
   if (!have_key_ || !(key == key_)) start_build(key, stack);
   refresh_rows();
@@ -512,10 +514,16 @@ void View3dView::start_build(const BuildKey& key, const view3d::LayerStack& stac
   have_key_ = true;
   build_stack_ = std::make_shared<const view3d::LayerStack>(stack);
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
-  drawable_.clear();
-  for (const render::LayerPaint& paint : render::layer_paints(*build_stack_, styles)) drawable_.push_back(paint.drawable);
-  ghosted_ = view3d::ghosted_by_default(*build_stack_, *ctx_.editor().technology);
-  apply_default_alpha(options_, *build_stack_, ghosted_);  // the user's per-row values win
+  // The rows and frames keep the drawn stack's flags until this build's
+  // model is drawn (take_model): the two stacks' layer ids may differ.
+  pending_drawable_.clear();
+  for (const render::LayerPaint& paint : render::layer_paints(*build_stack_, styles)) {
+    pending_drawable_.push_back(paint.drawable);
+  }
+  const bool drawing = drawn_stack_ != nullptr;
+  if (!drawing) drawable_ = pending_drawable_;
+  ghost_.building(*build_stack_, view3d::ghosted_by_default(*build_stack_, *ctx_.editor().technology), drawing,
+                  options_);
   if (key.cell == nullptr) {
     worker_->cancel();
     return;
@@ -536,6 +544,8 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
   if (!model->layer_heights.empty() && model->layer_heights.size() != build_stack_->size()) return;
   model_ = model;
   drawn_stack_ = build_stack_;
+  drawable_ = pending_drawable_;
+  ghost_.drawn(*drawn_stack_, options_);
   highlight_dirty_ = true;
   dirty_ = true;
   refresh_rows();
@@ -558,7 +568,7 @@ void View3dView::refresh_rows() {
 }
 
 void View3dView::rebuild_rows(const view3d::WindowState& window, const view3d::LayerStack& stack) {
-  rows_ = layer_rows(stack, window, options_.alpha, drawable_, ghosted_);
+  rows_ = layer_rows(stack, window, options_.alpha, drawable_, ghost_.ghosted());
   std::reverse(rows_.begin(), rows_.end());  // the panel lists the top layer first
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   const std::vector<render::LayerPaint> paints = render::layer_paints(stack, styles);
@@ -740,38 +750,21 @@ void View3dView::update_pick_scope(const view3d::LayerStack* stack) {
 
 // --- camera (Q-MISC-84) --------------------------------------------------------------
 
+CameraFrame View3dView::camera_frame() const {
+  return CameraFrame{window(), model_.get(), drawn_stack_.get(), drawable_, pixels_.first, pixels_.second};
+}
+
 void View3dView::apply_camera(view3d::Preset which, std::optional<float> scale_z) {
-  const view3d::WindowState* w = window();
-  const view3d::LayerStack* stack = drawn_stack_.get();
-  if (w == nullptr || stack == nullptr || !model_ || pixels_.first <= 0 || pixels_.second <= 0) {
-    run(preset_command(path(), which));
-    return;
-  }
-  view3d::ViewState camera = w->view;
-  const view3d::Angles angles = view3d::preset(which);
-  camera.view_x = angles.x;
-  camera.view_y = angles.y;
-  camera.view_z = angles.z;
-  if (scale_z) camera.scale_z = *scale_z;
-  // The layers the mesh draws (not the whole technology), in its region.
-  std::vector<bool> framed = layers_present(*model_, stack->size());
-  for (std::size_t i = 0; i < framed.size() && i < drawable_.size(); ++i) framed[i] = framed[i] && drawable_[i];
-  view3d::Extent3 box = stack_extent(model_->region, *stack, framed);
-  const auto f = static_cast<double>(xy_factor(*w));  // mask-layer mode draws x and y scaled by f
-  box.x0 *= f;
-  box.y0 *= f;
-  box.x1 *= f;
-  box.y1 *= f;
-  for (const std::string& line :
-       camera_commands(path(), view3d::frame_view(camera, box, pixels_.first, pixels_.second))) {
-    run(line);
-  }
+  for (const std::string& line : preset_camera_commands(camera_frame(), which, scale_z)) run(line);
 }
 
 void View3dView::apply_default_camera() {
   // Waits for the first model, so the camera frames what is drawn.
-  if (!model_ || drawn_stack_ == nullptr || pixels_.first <= 0 || pixels_.second <= 0) return;
-  if (camera_latch_.take(window_open())) apply_camera(view3d::Preset::isometric, kBoardScaleZ);
+  const CameraFrame frame = camera_frame();
+  if (!frame_ready(frame)) return;
+  if (camera_latch_.take(window_open())) {
+    for (const std::string& line : default_camera_commands(frame)) run(line);
+  }
 }
 
 // --- painting ------------------------------------------------------------------------

@@ -491,3 +491,17 @@ TEST_CASE("frame_view leaves the view unchanged for a box it cannot frame",
   CHECK(p.trans_y == -20.0F);
   CHECK(view3d::frame_view(v, kCellBox, 0, 0).scale_xy > 0.0F);  // a non-positive size is square
 }
+
+TEST_CASE("frame_view keeps the view when the framed camera would not be finite",
+          "[cap:view-3d][req:Default view]") {
+  // Regression: `zoom 1 3e38` then a preset made trans_z = -0.5 (z0 + z1)
+  // s_z overflow float, and `scroll ... inf` turned the view into NaN.
+  view3d::ViewState v = preset_default(view3d::Preset::isometric);
+  v.scale_z = 3e38F;  // finite; -0.5 * (z0 + z1) * s_z is not
+  const view3d::ViewState framed = view3d::frame_view(v, kCellBox, 500, 500);
+  CHECK(framed == v);
+  CHECK(std::isfinite(framed.trans_z));
+  // A box beyond float range in x is refused the same way.
+  const view3d::ViewState wide = preset_default(view3d::Preset::top);
+  CHECK(view3d::frame_view(wide, view3d::Extent3{-1e300, 0, 1e300 * 0.5, 10, 0, 1}, 500, 500) == wide);
+}
