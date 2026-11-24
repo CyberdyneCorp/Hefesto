@@ -157,3 +157,41 @@ TEST_CASE("sideoverlap_caps runs the sideoverlap kind alone with the given model
   REQUIRE(extract::sideoverlap_caps(nodes, l.inputs(), extract::FringeModel::legacy, table).ok());
   CHECK(table.value(l.node_at("metal2", 5, 5), l.node_at("metal1", -15, -15)) == 240.0);
 }
+
+// Q-EXTRACT-36 (e), both modes: the inside node of an edge is the left side
+// of its tile (ExtGetRegion(tile, 0)); the left side of a two-sided split
+// tile can be unvisited (Q-EXTRACT-31), and Magic then subtracts through a
+// CLIENTDEFAULT region. An edge whose inside has no node subtracts nothing.
+// The lookup here gives the metal2 tile no node, as such a side has none.
+TEST_CASE("Q-EXTRACT-36 (e): an edge whose inside tile has no node subtracts no substrate capacitance",
+          "[cap:extract-capacitance][req:Legacy sideoverlap (fringe directly below the edge)]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Layout l(style(" sideoverlap metal2 space metal1 6\n perimc metal2 space 9\n perimc metal1 space 3\n sidehalo 4\n"),
+             on);
+    l.paint("metal1", {-20, -20, 30, 30});
+    l.paint("metal2", {0, 0, 10, 10});
+    l.options().fringehalo = false;
+    extract::NodeRegionList nodes = l.find_nodes();
+    REQUIRE(nodes.size() == 2);
+    const std::size_t plate = l.node_at("metal1", -15, -15);
+    const hefesto::tech::PlaneId metal2 = l.plane("metal2");
+    const hefesto::db::CellDef& cell = l.cell();
+    extract::CapInputs in = l.inputs();
+    in.node_of = [&cell, metal2, count = nodes.size()](hefesto::tech::PlaneId plane, const hefesto::db::TileView& tile,
+                                                        bool) -> std::optional<std::size_t> {
+      if (plane == metal2) {
+        return std::nullopt;
+      }
+      return extract::client_node(cell.plane(plane), tile, count);
+    };
+    for (extract::NodeRegion& n : nodes) {
+      n.substrate_cap = 1000.0;
+    }
+    extract::CouplingTable coupling;
+    REQUIRE(extract::find_coupling(nodes, in, coupling).ok());
+    CHECK(nodes[plate].substrate_cap == 1000.0);
+    CHECK(nodes[1 - plate].substrate_cap == 1000.0);
+    CHECK(coupling.value(0, 1) == 0.0);
+  }
+}

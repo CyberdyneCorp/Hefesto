@@ -185,5 +185,23 @@ TEST_CASE("Substrate seeds make the first region and a tile-less substrate is a 
   CHECK(found.value().back().type == tech::kSpace);
 }
 
+// Q-EXTRACT-36 (a), both modes: the diagonal (int)sqrt(w*w + h*h) of a
+// split tile adds to the class perimeter; Magic squares the sides in int,
+// which overflows past 46340 (undefined behaviour). Computed in 64 bits.
+TEST_CASE("Q-EXTRACT-36 (a): a split tile past 46340 units adds its diagonal to the class perimeter in 64 bits",
+          "[cap:extract-nodes-and-labels][req:Node connectivity]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    const auto t = case_tech("EX-017");
+    const extract::ExtStyle style = first_style(*t, on);
+    auto cell = new_cell(*t);
+    REQUIRE(db::paint_triangle(*cell, *t, {0, 0, 60000, 80000}, db::Diagonal::nw_se, false, type_of(*t, "metal1")).ok());
+    const extract::NodeRegionList nodes = nodes_of(*cell, *t, style, on);
+    REQUIRE(nodes.size() == 1);
+    REQUIRE(nodes[0].classes.size() == 1);
+    CHECK(nodes[0].classes[0].perimeter == 60000 + 80000 + 100000);
+  }
+}
+
 }  // namespace
 }  // namespace hefesto::test::extnode

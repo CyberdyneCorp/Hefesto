@@ -265,5 +265,24 @@ TEST_CASE("A name on two unconnected nodes leaves one feedback entry per occurre
   CHECK(extract::duplicate_label_feedback(*m.cell, nodes, *m.t, {}).empty());
 }
 
+// Q-EXTRACT-36 (b), both modes: with magic-compat ON the left side of a
+// two-sided split tile stays unvisited once its right side was flooded
+// from a neighbour (Q-EXTRACT-31). ExtLabelRegions then dereferences
+// CLIENTDEFAULT for a label probed on that side; the label is dropped.
+TEST_CASE("Q-EXTRACT-36 (b): a label on the unvisited side of a two-sided split tile is dropped",
+          "[cap:extract-nodes-and-labels][req:Label attachment]") {
+  const auto t = case_tech("EX-019");
+  const extract::ExtStyle style = first_style(*t);
+  auto cell = new_cell(*t);
+  paint(*cell, *t, "ndiff", {0, 4, 4, 8});  // touches the right (ndiff) side's top edge
+  REQUIRE(db::paint_triangle(*cell, *t, {0, 0, 4, 4}, db::Diagonal::nw_se, false, type_of(*t, "poly")).ok());
+  REQUIRE(db::paint_triangle(*cell, *t, {0, 0, 4, 4}, db::Diagonal::nw_se, true, type_of(*t, "ndiff")).ok());
+  label(*cell, *t, "p", "poly", {1, 1, 1, 1});
+  const extract::NodeRegionList nodes = nodes_of(*cell, *t, style, true);
+  REQUIRE(nodes.size() == 1);
+  CHECK(nodes[0].type == type_of(*t, "ndiff"));
+  CHECK(nodes[0].labels.empty());
+}
+
 }  // namespace
 }  // namespace hefesto::test::extnode

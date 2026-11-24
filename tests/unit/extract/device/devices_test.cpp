@@ -308,3 +308,24 @@ TEST_CASE("Symmetric terminals are sorted by position", "[cap:extract-devices][r
   CHECK(c->name(c->result.devices[0].terminals.at(0).node) == "s");
   CHECK(c->name(c->result.devices[0].terminals.at(1).node) == "d");
 }
+
+// --- Q-EXTRACT-36: crashes and undefined behaviour (both modes) -----------------
+
+// (g) Regression: a device whose one terminal type borders more than MAXSD
+// (10) separate nodes. Magic writes the eleventh terminal past
+// tr_termnode[] (ExtBasic.c:4040-4060); without the bound Hefesto wrote
+// past TransRec::terms and crashed. The eleventh is not a terminal.
+TEST_CASE("Q-EXTRACT-36 (g): a terminal past MAXSD is not a terminal",
+          "[cap:extract-devices][req:Terminal discovery on the device plane]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    Options o;
+    o.magic_compat = on;
+    std::string mag = "<< nfet >>\nrect 0 0 22 2\n<< ndiff >>\n";
+    for (int i = 0; i < 11; ++i) {
+      mag += "rect " + std::to_string(2 * i) + " 2 " + std::to_string(2 * i + 1) + " 4\n";
+    }
+    const auto c = extract_texts(tech_with_extract("    device mosfet nfet nfet ndiff None GND!\n"), mag, o);
+    CHECK(c->lines() == one("device mosfet nfet 0 0 1 1 0 1 \"GND!\" \"@0_0\" 0 0 \"@18_2\" 1 2,6 \"@20_2\" 1 2,6"));
+  }
+}
