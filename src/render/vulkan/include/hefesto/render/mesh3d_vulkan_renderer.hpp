@@ -17,11 +17,13 @@
 //   triangle and an own_height side face use their own h and t, everything
 //   else its layer's MeshModel::layer_heights entry); back faces culled;
 //   depth test LESS_OR_EQUAL with writes, layers in stack (style-table)
-//   order, so the last style wins on coplanar faces (Q-MISC-77). The depth
-//   is mirrored so the viewer sits on the side of the higher layers, which
-//   are in front where layers overlap, in both magic-compat modes (R1,
-//   Q-MISC-81); the picture's x and y are CAMERA's. Magic's lighting
-//   (magic-compat ON) or the directional one (OFF), mesh3d_shading.hpp.
+//   order, so the last style wins on coplanar faces (Q-MISC-77). CAMERA's
+//   matrix is applied to the model mirrored in z, so the viewer sits on
+//   the side of the higher layers in projection and depth alike, in both
+//   magic-compat modes (R1, Q-MISC-81; Q-MISC-84): the top view shows
+//   higher layers in front, tilted views look from above. The board's flat
+//   per-face shading in both modes (Q-MISC-84, mesh3d_shading.hpp); the
+//   clear color is DrawParams::background or the transparent style's.
 //   DrawParams::xy_scale multiplies x and y of every instance. Chunk positions go to the GPU relative to a
 //   per-chunk matrix computed in double, so far-out chips keep sub-unit
 //   precision.

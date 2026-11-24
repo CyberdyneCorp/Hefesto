@@ -60,10 +60,11 @@ struct GpuLayer {
 /// The push constants of every draw (vertex stage).
 struct FramePush {
   std::array<float, 16> mvp;
-  std::array<float, 4> origin_sz;      // chunk origin x, y; s_z; xy scale (DrawParams::xy_scale)
+  std::array<float, 4> light;          // the board light (unit, displayed scene); ambient
+  std::array<float, 4> zscale;         // s_z; 0; 0; 0
   std::array<std::uint32_t, 4> params;  // pick base; lighting; highlight active; 0
 };
-static_assert(sizeof(FramePush) == 96);
+static_assert(sizeof(FramePush) == 112);  // within the 128 bytes every device offers
 
 /// Vertices per instance of each kind, drawn as one triangle strip: the
 /// face of a rectangle or a triangle toward the viewer (the shader picks

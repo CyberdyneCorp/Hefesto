@@ -258,7 +258,7 @@ struct FixedState {
     raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.cullMode = VK_CULL_MODE_BACK_BIT;
-    raster.frontFace = VK_FRONT_FACE_CLOCKWISE;  // R1: the faces toward the higher layers' side
+    raster.frontFace = VK_FRONT_FACE_CLOCKWISE;  // the z-mirrored scene (R1, Q-MISC-84): faces toward the viewer above
     raster.lineWidth = 1.0F;
     multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample.rasterizationSamples = s.msaa ? kMsaaSamples : VK_SAMPLE_COUNT_1_BIT;
