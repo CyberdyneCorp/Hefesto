@@ -5,6 +5,8 @@ M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open 
 
 **Status as of 2026-11-21.** The 56 entries above stay approved. The M7 implementation plan (`openspec/changes/m7-extraction/`, drafted 2026-11-20) raised nine planning questions and one new behaviour entry, Q-EXTRACT-27. **All ten were approved by the user on 2026-11-21, each with its recommended option**: (a) for Open Questions 1–9 and fix for Q-EXTRACT-27 (sections "Planning questions raised by the M7 plan" and "Entries raised by the M7 plan" below). The spec edits they imply are applied ("Spec changes the answers imply"). `extract-commands` and `extresist-output` now cite Q-EXTRACT-27, so `check_milestone_readiness.py --milestone M7` checks 57 entries and reports ready. The plan's round R0 (tasks section 1) is done. A review of the plan was applied the same day: rows 2, 3, 4, 6 and 9 and Q-EXTRACT-27 below reflect it (the as-landed M10 scaffold, the `atan` fallback, the `ihp-gds-sc` set and size budget, the `extcheck` case mode, the 155-case total, and `.res.ext` in Q-EXTRACT-27).
 
+**Status as of 2026-11-23.** The user approved the R2 follow-ups M7-14 to M7-18 with their recommended options: Q-NETLIST-54 (compat), Q-EXTRACT-30 (fix, confirmed), Q-NETLIST-55 to 58 (compat-neutral) and the plan item M7-18 (section "Entries approved 2026-11-23").
+
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
@@ -14,6 +16,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **fix**: corrected behavior in both modes (tier 1, or tier 3 when there is no Magic output to match).
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
+- **compat-neutral**: Magic's behaviour, the same in both modes, recorded so that a behaviour implemented without a row has one (used from 2026-11-23).
 
 ## Judgement items
 
@@ -152,6 +155,8 @@ Total: 56. IDs are given without the `Q-` prefix.
 
 Approved 2026-11-22 ("Entries approved 2026-11-22"): compat 4 (EXTRACT-29, MISC-91, NETLIST-49, NETLIST-53), fix 4 (EXTRACT-28, NETLIST-50, NETLIST-51, NETLIST-52), with Q-EXTRACT-27 (fix, 2026-11-21) under "Entries raised by the M7 plan".
 
+Approved 2026-11-23 ("Entries approved 2026-11-23"): compat 1 (NETLIST-54), fix 1 (EXTRACT-30), compat-neutral 4 (NETLIST-55, NETLIST-56, NETLIST-57, NETLIST-58), and the plan item M7-18.
+
 ## Planning questions raised by the M7 plan
 
 These come from planning the implementation, not from the specs. Each is drafted in `openspec/changes/m7-extraction/design.md` "Open Questions" with its options and reasons. **All nine were approved by the user on 2026-11-21, each with its recommended option (a).** Options are listed with the recommended one first.
@@ -226,6 +231,34 @@ Applied 2026-11-22, after the approval:
 - **Q-NETLIST-53:** `extresist-network` "Tile fracturing" gives the split-tile rule per mode, with a scenario per mode.
 - **M7-3:** `netlist-spice-options` "Command options" says the `scale` row is the setting PDK startup files set with `ext2spice scale`; "Run arguments and output file" says which run flags persist (added at integration).
 - Q-EXTRACT-29 is a tile-database rule with no capability text; design D6 and D16 carry it.
+
+## Entries approved 2026-11-23
+
+Raised by the R2 workstreams and the R2 review for Magic behaviours no row covered, for a both-modes fix made by the standing rule, and for a plan item. **All were approved by the user on 2026-11-23, each with its recommended option.** The open-questions entries carry `Status: approved 2026-11-23` and a `Resolution:` line; the plan item is recorded in `openspec/changes/m7-extraction/design.md` and `tasks.md`.
+
+### Behaviour questions
+
+| ID | Question | Kind | Resolution | Spec | Implemented by |
+|---|---|---|---|---|---|
+| Q-NETLIST-54 (M7-14) | `ext2spice` and `ext2sim` run flags are Magic globals that persist across runs | **compat** | one rule for both tools: ON `-M -m -f -B -d -J` (`ext2spice`) and `-A -B -F -L -M -m -f -J` (`ext2sim`) hold for later runs; OFF they apply to one run, as Q-NETLIST-16 and Q-NETLIST-42 | netlist-spice-options "Run arguments and output file"; netlist-sim "Command options and defaults" | SPICE (`netlist/spice/run.cpp`, R3); SIM (R2, retagged in R3); one test per mode per tool |
+| Q-EXTRACT-30 (M7-15) | Out-of-range and NaN float-to-int conversions in the extract section are undefined behaviour | **fix** | both modes: saturate to the int range, NaN as 0 (confirmed as implemented in R2) | extract-tech-section "Step size and side halo parsing" | EXTTECH (R2) |
+| Q-NETLIST-55 (M7-16) | `-h` runs the tool's own flag parser before the common usage text | **compat-neutral** | both modes as Magic: the tool's parser first (`ext2spice` usage; `ext2sim` `Unrecognized flag: -h` and usage), then the common usage text, and the command fails | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT, SPICE, SIM (R2) |
+| Q-NETLIST-56 (M7-16) | `-o` only for `ext2spice`/`ext2sim`, `-T` only for the standalone program | **compat-neutral** | both modes as Magic: `hefesto-extcheck -o` is a usage error; `ext2spice`/`ext2sim -T` is `Unrecognized flag: -T` | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT, SIM (R2) |
+| Q-NETLIST-57 (M7-16) | EFArgs prints its own messages while parsing | **compat-neutral** | both modes as Magic: second root cell, missing flag value, watched nodes, symbol and symbol-file messages printed before the run | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT (R2) |
+| Q-NETLIST-58 (M7-17) | An unreadable `-S` file is reported with the OS error text in Magic | **compat-neutral** (accepted difference) | both modes: `<file>: No such file or directory` for any unreadable file, the parse goes on; the OS text through `FileSystem::read` is a later improvement (tasks.md 10.6) | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT (R2) |
+
+### Plan items
+
+| Item | Question | Resolution |
+|---|---|---|
+| M7-18 | How the M6-S8 instance cap (`extflat::ReadLimits::max_instances`, 4 Mi flattened instances; decision G5 of 2026-11-21) counts when a netlister visits the hierarchy several times | per pass: each traversal of the hierarchy (node flattening, kills, couplings, device, resistor and subcircuit visits) counts its instances and expanded merge elements afresh, so a design of exactly 4 Mi instances flattens however many passes the netlister makes. Wording only (as implemented in R2, `Flattener::begin_pass`): `docs/contributing/security.md` M6-S8 and `docs/decisions/m6-decision-table.md` (G5's `ReadLimits` note); test `tests/unit/extflat/hardening_test.cpp` "a hierarchy with exactly max_instances instances flattens" |
+
+### Spec changes the answers imply
+
+Applied 2026-11-23, after the approval:
+- **Q-NETLIST-54:** `netlist-spice-options` "Run arguments and output file" gives the persistence rule per mode, with a scenario per mode (the scenario "Run flags that persist" becomes the magic-compat ON one); `netlist-sim` "Command options and defaults" cites the row and drops the R2 note that the rule was open, with a scenario per mode.
+- **Q-NETLIST-55, 56, 57, 58:** `ext-flattening-hierarchy` "Common netlister arguments" already states the behaviour with its scenarios; it now cites the rows.
+- Q-EXTRACT-30 and M7-18 need no spec change.
 
 ## Notable changes to the entries' original recommendations
 
