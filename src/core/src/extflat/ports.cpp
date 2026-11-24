@@ -182,7 +182,7 @@ class PortMaker {
     def.name_order.find_or_insert(locname);
     const auto it = def.names.find(locname);
     if (it == def.names.end()) {
-      st_.message(codes::kEliminatedNodes, "Error:  Node " + locname + " not found in cell " + def.name + "!");
+      st_.message(codes::kNoSuchNode, "Error:  Node " + locname + " not found in cell " + def.name + "!");
       return;
     }
     records_[rec].node = def.graph.node_of(it->second);
