@@ -44,6 +44,18 @@ release notices.
 - **Tcl symbol generators** run in a sandboxed interpreter (10 s and
   256 MiB per run, 60 s in total until the symbols are reloaded);
   generators that run external programs are not run (`SCHEM-LIB-011`).
+- **Schematic editing (M8 EDIT).** `schematic place`, `wire`, `label`,
+  `line`/`box`/`arc`/`polygon`/`text`, `select`, `delete`, `move`,
+  `copy`, `rotate`, `flip`, `align`, `setprop`, `replace`, `symbol`,
+  `descend`, `ascend`, `hierarchy`, `hilight`, `undo` and `redo`, with a
+  per-document undo history of 200 steps. PDK and system-library symbols
+  are read-only (`SCHEM-EDIT-001` to `-007`).
+- **Desktop Schematic tab.** The active schematic is drawn read-only with
+  its hierarchy breadcrumb; clicking an instance selects it. Headless
+  view models for the library browser, properties, messages, netlist
+  action and xschem-style key bindings.
+- **`schem-bench`** times loading, saving and netlisting of a generated
+  10,000-device hierarchy and of PDK testbenches (`bench/schem`).
 
 ### Changed
 
@@ -52,6 +64,16 @@ release notices.
   and is still written to its `.end` (`SCHEM-NET-017`); a schematic used as a symbol stops at 256 MiB when
   flattened (`SCHEM-LIB-009`); the total bus expansion of a netlist run or
   editing session is capped at 4 GiB (`SCHEM-NET-006`).
+- **`CAD_ROOT` defaults to the install root.** `hefesto-cli` and the
+  desktop app find the system symbol library without `CAD_ROOT`: the
+  install root is the first of the executable's folder, `../Resources`
+  and `..` that holds `assets/`. `CAD_ROOT` still overrides it.
+- **Script limits and reporting in schematics.** A `tcleval` value stops
+  after 10 s and the values of one netlist run share 60 s
+  (`SCHEM-TCL-003`); sandbox denials in `tcleval` values and generators
+  are reported, naming the instance. A generator file over 256 MiB is
+  neither read nor run (`SCHEM-LIB-012`, was `SCHEM-LIB-011` without
+  `.tcl`).
 - **Unknown commands in an `xschemrc` file are Tcl errors**
   (`SCHEM-LIB-006`, earlier settings kept), except the GUI-only commands
   the sky130, GF180MCU and IHP `xschemrc` files call, which do nothing.

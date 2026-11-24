@@ -103,7 +103,8 @@ Compatibility: behavioral
 The installation root (`CAD_ROOT`) SHALL be resolved from, in order:
 1. the scripting variable `CAD_ROOT`
 2. the environment variable `CAD_ROOT`
-3. the built-in install prefix
+3. the install root of the running executable: the first of the executable's folder, `<folder>/../Resources` (a macOS app bundle) and `<folder>/..` (an install prefix with the executable in `bin/`) that contains an `assets` folder; for `hefesto-cli` and the desktop app this is the default, so the schematic system library (`<root>/assets/schematic/xschem_library/devices`) is found without setting `CAD_ROOT` (decision M8-D10, Q-SCHEM-45, approved 2026-11-23; both modes)
+4. the built-in install prefix
 
 Path entries SHALL expand `~`, `~user` and `$VAR`/`${VAR}`. Expansions SHALL be cached for the session.
 
@@ -122,6 +123,11 @@ Compatibility: behavioral (host mechanics informative)
 - **GIVEN** `CAD_ROOT=/opt/eda/lib`
 - **WHEN** the application starts
 - **THEN** `mos.OpenGL.dstyle`, technology files and the system startup file SHALL be looked up under `/opt/eda/lib/magic/sys`
+
+#### Scenario: Install root without CAD_ROOT
+- **GIVEN** `hefesto-cli` installed as `/opt/hefesto/bin/hefesto-cli`, with `/opt/hefesto/assets/schematic/xschem_library/devices/res.sym`, and `CAD_ROOT` unset
+- **WHEN** the application starts
+- **THEN** the installation root SHALL be `/opt/hefesto`, and a schematic that references `res.sym` SHALL resolve it from the system library; with `CAD_ROOT=/elsewhere` set, the installation root SHALL be `/elsewhere` (Q-SCHEM-45)
 
 ### Requirement: Startup file order
 Startup files SHALL be processed in this order:

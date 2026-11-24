@@ -484,7 +484,8 @@ jobs:
       matrix:
         include:
           # Oldest supported GCC and Clang (hefesto-platform-targets "Supported toolchains").
-          - { name: linux-x64-gcc-11, os: ubuntu-22.04, cc: gcc-11, cxx: g++-11, preset: ci-linux }
+          # It also restores the three xschem sets, so the PDK schematic tests run on one leg (m8 task 12.1).
+          - { name: linux-x64-gcc-11, os: ubuntu-22.04, cc: gcc-11, cxx: g++-11, preset: ci-linux, xschem: true }
           - { name: linux-x64-clang-14, os: ubuntu-22.04, cc: clang-14, cxx: clang++-14, preset: ci-linux, network: true }
           # Newest GCC and Clang shipped on the runner image. Bump together with the image.
           # Both build the desktop shell and renderer, so Raven and the Vulkan code compile with GCC and Clang.
@@ -621,6 +622,26 @@ jobs:
         with:
           path: ${{ needs.reference-data.outputs.ihp_lef_path }}
           key: ${{ needs.reference-data.outputs.ihp_lef_key }}
+      # The xschem sets (openspec/changes/m8-schematic design D17), only on the leg with matrix.xschem: the
+      # PDK testbench security tests and the devlib PDK convention tests skip without them.
+      - name: Restore sky130-xschem
+        if: matrix.xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_xschem_path }}
+          key: ${{ needs.reference-data.outputs.sky130_xschem_key }}
+      - name: Restore gf180mcu-xschem
+        if: matrix.xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_xschem_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_xschem_key }}
+      - name: Restore ihp-xschem
+        if: matrix.xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_xschem_path }}
+          key: ${{ needs.reference-data.outputs.ihp_xschem_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ needs.reference-data.outputs.magic_ref_path }}

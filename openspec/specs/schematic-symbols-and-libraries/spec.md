@@ -274,6 +274,8 @@ A format token `@tcleval(...)` SHALL be evaluated the same way, with Tcl variabl
 
 Hefesto SHALL run this in the embedded, sandboxed Tcl interpreter of capability `hefesto-scripting` on every platform, so the PDK symbols that use `tcleval` work on iPadOS too. That interpreter SHALL provide xschem-compatible definitions of the Tcl procedures that PDK symbols call (Requirement "PDK attribute conventions"): `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `ngspice::get_node`, `ngspice::get_current`, `xschem getprop`, `xschem get` (subset), and the variables set by the active PDK's `xschemrc`. See Q-SCHEM-7.
 
+**Run time and denials** (both modes of `xschem-compat`; xschem bounds neither; found by the security review of task 12.1, finding S8-03, decided by the standing rule and reported to the user). One `tcleval` evaluation SHALL stop after 10 s (`kTclevalTimeLimit`), and the evaluations of one Tcl environment (one netlist run) SHALL share a total of 60 s (`kTclevalTotalTimeLimit`); `catch`, `after` and `vwait` SHALL NOT escape the limit. A stopped value gives `?` LF (step 5 above) and the warning `SCHEM-TCL-003` (`tcleval value stopped after 10000 ms`); once the total is spent no further value is evaluated, each gives `?` LF, and `SCHEM-TCL-003` (`tcleval values ran for their total of 60000 ms; no further value is evaluated in this run`) SHALL be reported once. A sandbox denial inside a value (`SCRIPT-SANDBOX-*`), even one the script catches, SHALL be reported with ` (tcleval of <owner>)` appended, where the owner names the instance and its symbol reference when known.
+
 The set of procedures and variables SHALL be exactly the one that an inventory script finds in the three pinned PDK trees (every `tcleval(` value, every `[`-command and every `$::` variable). The inventory SHALL be kept as a test that fails when a PDK bump adds a procedure or variable that Hefesto does not provide. Each procedure's semantics SHALL be specified from the public xschem manual and from expected values computed for the PDK symbols, never from xschem's Tcl code (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"; Q-SCHEM-8, `Resolution: other`).
 
 **Where the inventoried names come from.** The names of `tests/data/schem/inventory.json` (`tcleval_commands`, `tcleval_variables`, `rc_commands`, `rc_variables`) fall into four groups, and only the first needs semantics here:
@@ -368,6 +370,11 @@ Compatibility: behavioral
 - **WHEN** it is netlisted
 - **THEN** the text SHALL contain `N`, because the embedded simulator is ngspice
 
+#### Scenario: Endless tcleval value is stopped
+- **GIVEN** an instance whose `value` is `tcleval([while 1 {}])`, with `xschem-compat` ON or OFF
+- **WHEN** the schematic is netlisted
+- **THEN** the value SHALL give `?` after at most 10 s, `SCHEM-TCL-003` SHALL be reported, and the netlist run SHALL complete
+
 ### Requirement: Script execution permission
 xschem guards `tcleval` and `tclcommand` with a user setting whose values are `ask`, true or false. Hefesto SHALL instead run `tcleval` attribute values always, inside the sandbox of capability `hefesto-scripting`, because the sandbox removes process execution, sockets and file access outside granted folders. Launcher `tclcommand` scripts SHALL run only after the user confirms them once per document, and SHALL run in the same sandbox. The xschem `xschem_execute_scripts` variable in an `xschemrc` SHALL be read and ignored, and the log SHALL say that it was ignored. This permission model SHALL be signed off by a security review against capability `hefesto-security` (Requirement "Schematic script permission model") before M8 exits (Q-SCHEM-25, `Resolution: platform`).
 
@@ -398,7 +405,7 @@ A symbol reference in a `C` record SHALL be resolved to a file as follows:
 
 When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. A folder that has an alias SHALL be written in the alias form (golden case SCHEM-PR-05: with the element `/work/input/libB | lib`, `/work/input/libB/x.sym` is written `lib/x.sym`). References read from a file SHALL be written back unchanged.
 
-**Working folder (Q-SCHEM-30, `Resolution: fix`).** The `./` and `../` references of step 5 and the search-path element `.` of Requirement "Library search path" SHALL be resolved against the folder of the schematic that contains the instance, never against the folder Hefesto was started in, in both modes of `xschem-compat`, so a document resolves the same way on every platform and from every start folder. xschem resolves them against the folder it was started in (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists); the two agree when xschem is started in the schematic's folder. Because xschem may resolve such a reference elsewhere, each reference resolved through `./`, `../` or the `.` element SHALL report, once per reference, the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. SCHEM-PR-05 differs from xschem in its `./` and `../` lines by this decision (a recorded deviation).
+**Working folder (Q-SCHEM-30, `Resolution: fix`).** The `./` and `../` references of step 5 and the search-path element `.` of Requirement "Library search path" SHALL be resolved against the folder of the schematic that contains the instance, never against the folder Hefesto was started in, in both modes of `xschem-compat`, so a document resolves the same way on every platform and from every start folder. xschem resolves them against the folder it was started in (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists); the two agree when xschem is started in the schematic's folder. Because xschem may resolve such a reference elsewhere, each reference resolved through `./`, `../` or the `.` element SHALL report, once per reference, the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. SCHEM-PR-05 differs from xschem in its `./` and `../` lines by this decision (a recorded deviation). An unsaved document has no folder: it SHALL resolve no `./`, `../` or `.` reference (never against the start folder); such a reference is a missing symbol (`SCHEM-LIB-003`), in both modes (Q-SCHEM-30, confirmed by the user 2026-11-23, M8-D4).
 
 Compatibility: exact
 
@@ -413,6 +420,11 @@ Compatibility: exact
 - **GIVEN** golden case SCHEM-PR-05: `/work/input/sub/top.sch` with the instance `../x.sym`, the files `/work/input/x.sym` and `/work/input/sub/x.sym`, and Hefesto started in `/work`
 - **WHEN** `top.sch` is opened and `./x.sym` and `../x.sym` are resolved, with `xschem-compat` ON or OFF
 - **THEN** `../x.sym` SHALL resolve to `/work/input/x.sym` and `./x.sym` to `/work/input/sub/x.sym`, the instance SHALL NOT be reported as a missing symbol, and the warning `SCHEM-LIB-001` SHALL be reported once for each of the two references
+
+#### Scenario: Unsaved document resolves no relative reference
+- **GIVEN** an unsaved document with instances of `./w.sym` and `w.sym`, the search-path element `.`, and a file `w.sym` in the folder Hefesto was started in, with `xschem-compat` ON or OFF
+- **WHEN** the references are resolved
+- **THEN** both instances SHALL be missing symbols and `SCHEM-LIB-003` SHALL be reported for each (Q-SCHEM-30, M8-D4)
 
 #### Scenario: Web reference not fetched
 - **GIVEN** an instance whose reference is `https://example.com/lib/amp.sym`
@@ -508,6 +520,8 @@ Compatibility: behavioral
 
 ### Requirement: System library
 Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference, and the symbols the golden suite places (today only `netlist_options.sym`, Q-SCHEM-31, approved 2026-11-21): the PDK list SHALL be generated by an inventory script over the pinned Apache-2.0 PDK trees and kept as a test that fails when a PDK bump references a symbol that the library lacks (Q-SCHEM-10, `Resolution: other`, extended by Q-SCHEM-31).
+
+**Location.** The library SHALL live at `<install root>/assets/schematic/xschem_library/devices/` (Q-SCHEM-10, M8-D9). The install root is `CAD_ROOT` when set, otherwise the install root of the running `hefesto-cli` or desktop app (capability `app-startup`, Requirement "Installation root and search paths"; Q-SCHEM-45, M8-D10, approved 2026-11-23), so the library is found without setting `CAD_ROOT`.
 
 Clean-room provenance (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"): the interface of each symbol (file name, pin names, pin order, pin positions and the netlisting properties) has no public source other than xschem's GPL `devices/*.sym` files. It SHALL be extracted from them by the spec side only and recorded in the four interface tables below; implementers SHALL take it from this spec, and SHALL draw the graphics independently. The tables are covered by the one counsel review that `hefesto-licensing` requires before Desktop 1.0.
 
@@ -782,6 +796,11 @@ Compatibility: behavioral
 
 (xschem ref: xschem_library/devices/*.sym)
 
+#### Scenario: System library found without CAD_ROOT
+- **GIVEN** `CAD_ROOT` unset, and a schematic that references `res.sym`
+- **WHEN** `hefesto-cli --netlist` netlists it
+- **THEN** `res.sym` SHALL resolve to the system library under the executable's install root, with no missing-symbol diagnostic (Q-SCHEM-45)
+
 #### Scenario: IHP testbench with devices prefix
 - **GIVEN** IHP `sg13g2_tests/dc_lv_nmos.sch`, which references `devices/code_shown.sym`, `devices/gnd.sym` and `lab_pin.sym`
 - **WHEN** it is opened
@@ -849,7 +868,7 @@ A symbol reference of the form `name(args)` (matching `^[^ \t()]+\([^()]*\)[ \t]
 Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text. Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
 
 **Limits** (both modes of `xschem-compat`; xschem bounds none of them; approved by the user on 2026-11-23, Q-SCHEM-43, decisions M8-D5 and M8-D6). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
-- A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A file larger than 268,435,456 bytes (256 MiB, `kMaxGeneratorScriptBytes`, the bound of a flattened symbol, Q-SCHEM-40) SHALL NOT be read to check its first line, and a Tcl generator that large (a `.tcl` file) SHALL NOT be run: it is a failed run, reported with `SCHEM-LIB-012`.
+- A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A generator file larger than 268,435,456 bytes (256 MiB, `kMaxGeneratorScriptBytes`, the bound of a flattened symbol, Q-SCHEM-40), whatever its name, SHALL NOT be read (not even to check its first line) and SHALL NOT be run: the reference is a missing symbol and `SCHEM-LIB-012` (`Symbol <reference>: the generator <file> is larger than 268435456 bytes; it is neither read nor run`) SHALL be reported once (M8-D6).
 - One run SHALL stop after 10 s (the `xschemrc` time limit of Q-SCHEM-32), and SHALL fail when it prints more than 268,435,456 bytes.
 - The runs of one session's symbol cache SHALL share a total of 60 s (`kGeneratorTotalTimeLimit`) until the cache is cleared or the symbols are reloaded (Requirement "Symbol cache and reload"), which restores the full 60 s; each run gets at most 10 s or what is left, if less, and once it is spent no generator SHALL run: the reference is a missing symbol and the warning `SCHEM-LIB-012` (`Symbol <reference>: symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded`) SHALL be reported once.
 - A failed run (Tcl error, a limit above) SHALL be reported once with `SCHEM-LIB-012` and kept as a missing symbol for that reference, so it is not run again until the symbols are reloaded or the generator file is reloaded.
@@ -873,7 +892,7 @@ Compatibility: behavioral
 #### Scenario: Oversized generator file
 - **GIVEN** a generator reference `big(1)` whose file `big` has no `.tcl` extension and is larger than 268,435,456 bytes
 - **WHEN** the reference is resolved
-- **THEN** the file SHALL NOT be read, and the instance SHALL be a missing symbol with `SCHEM-LIB-011`
+- **THEN** the file SHALL NOT be read, and the instance SHALL be a missing symbol with `SCHEM-LIB-012` (`Symbol big(1): the generator <file> is larger than 268435456 bytes; it is neither read nor run`), not `SCHEM-LIB-011`, with `xschem-compat` ON or OFF (Q-SCHEM-43, M8-D6)
 
 #### Scenario: Generator time budget spent
 - **GIVEN** a symbol cache whose generator runs have used their total of 60 s, and a schematic with instances of two further generator references `res.tcl(1k)` and `res.tcl(2k)`, with `xschem-compat` ON or OFF
@@ -888,7 +907,7 @@ Compatibility: behavioral
 #### Scenario: Generator script larger than 256 MiB
 - **GIVEN** a generator reference `big.tcl(1)` whose file `big.tcl` is larger than 268,435,456 bytes, with `xschem-compat` ON or OFF
 - **WHEN** the reference is resolved
-- **THEN** the file SHALL NOT be read and SHALL NOT be run, the instance SHALL be a missing symbol, and `SCHEM-LIB-012` (`Symbol generator <file> failed: the script is larger than 268435456 bytes`) SHALL be reported once (Q-SCHEM-43)
+- **THEN** the file SHALL NOT be read and SHALL NOT be run, the instance SHALL be a missing symbol, and `SCHEM-LIB-012` (`Symbol big.tcl(1): the generator <file> is larger than 268435456 bytes; it is neither read nor run`) SHALL be reported once (Q-SCHEM-43)
 
 #### Scenario: Absolute-path generator runs sandboxed
 - **GIVEN** a schematic `/work/top.sch` with an instance of `/opt/gen/box.tcl(2)`, where `/opt/gen` is not on the search path, and `box.tcl` prints a symbol, then tries to open `/opt/gen/out.txt` for writing and to read `/etc/passwd`, with `xschem-compat` ON or OFF

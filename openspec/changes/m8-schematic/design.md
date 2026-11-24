@@ -188,7 +188,7 @@ Same output on Linux x86_64, Linux aarch64 and macOS arm64: number parsing and p
 - `check_requirement_coverage.py` covers every requirement of the six capabilities, or lists it as deferred to M9 with D13's reason.
 - Unit, property and fuzz tests green; output byte-identical across the three platforms (D20).
 - Each compat branch point tested in both modes; `xschem-compat` OFF changes no layout, extraction or LVS output (`hefesto-magic-compat-mode` scenarios).
-- The `hefesto-security` sign-off of D14 recorded.
+- The `hefesto-security` sign-off of D14 recorded. Exit table row (round 4, 2026-11-24): Security review of the schematic script paths (task 12.1, `hefesto-security` "Schematic script permission model"): **not signed off**; blocked by S8-04 (TCL, standard channels) and one passing run of the PDK testbench tests (S8-05 fixed in the round-4 integration); see `docs/contributing/security.md` "Script review (task 12.1, 2026-11-24)". Owner: SECURITY.
 - `check_cleanroom.py` passes and every schematic pull request carries the clean-room checkbox.
 - `openspec validate --all --strict` passes.
 
