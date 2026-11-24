@@ -112,7 +112,7 @@ Compatibility: behavioral
 
 ### Requirement: Default view
 
-The default view SHALL be computed from the rendered cell's bounding box (W × H, lower-left (x0, y0)) as: translation (tx, ty, tz) = (−(x0 + ⌊W/2⌋), −(y0 + ⌊H/2⌋), 0) (integer halving by arithmetic shift); xy-scale s_xy = min(2 / (1.1 W), 2 / (1.1 H)); z-scale s_z = 25 (height exaggeration); z prescale p_z = 0.0001; view angles (0, 0, 0) (top-down); all layers visible; no cut box. When W or H is 0, s_xy is fitted on the other dimension alone, and a cell with W = H = 0 is fitted as 1 × 1, with magic-compat ON and OFF (Magic divides by zero; decision J6, approved 2026-11-21). In mask-layer mode these values are then rescaled for mask units with factor f = output scalefactor: s_xy ← s_xy / f, p_z ← p_z / f, s_z ← s_z × f, tx ← tx × f, ty ← ty × f. The `defaults` command restores this view (keeping the current mode).
+The default view SHALL be computed from the rendered cell's bounding box (W × H, lower-left (x0, y0)) as: translation (tx, ty, tz) = (−(x0 + ⌊W/2⌋), −(y0 + ⌊H/2⌋), 0) (integer halving by arithmetic shift); xy-scale s_xy = min(2 / (1.1 W), 2 / (1.1 H)); z-scale s_z = 25 (height exaggeration); z prescale p_z = 0.0001; view angles (0, 0, 0) (top-down); all layers visible; no cut box. When W or H is 0, s_xy is fitted on the other dimension alone, and a cell with W = H = 0 is fitted as 1 × 1, with magic-compat ON and OFF (Magic divides by zero; decision J6, approved 2026-11-21). In mask-layer mode these values are then rescaled for mask units with factor f = output scalefactor: s_xy ← s_xy / f, p_z ← p_z / f, s_z ← s_z × f, tx ← tx × f, ty ← ty × f. The `defaults` command restores this view (keeping the current mode). A window opened by a script, by hefesto-cli or by `specialopen wind3d` keeps this view; when the desktop 3D tab opens a window it then applies the isometric preset from above, framed to the cell, by running the same `view`, `zoom` and `scroll` commands the preset runs, so these commands report the view shown (Q-MISC-84, approved 2026-11-24).
 
 Compatibility: exact
 
@@ -248,7 +248,7 @@ Compatibility: behavioral
 
 ### Requirement: Viewing transform and shading
 
-The system SHALL map a model point v = (x, y, z) (x, y in internal or mask units, z as computed above) to normalized view coordinates by v' = A · S · Rx(ax) · Ry(ay) · Rz(az) · T · v, where T translates by (tx, ty, tz), Rx/Ry/Rz are right-handed rotations by the view angles in degrees, S = diag(s_xy, s_xy, p_z), and, for the window's current size of W_w × H_w pixels, A = diag(H_w / W_w, 1, 1) when W_w ≥ H_w and A = diag(1, W_w / H_w, 1) otherwise, so units stay 1:1 and the limiting dimension is fitted; the current size also sets the viewport and the refresh area (Q-MISC-74: Magic keeps 500 × 500 after a resize, and its formula, the first case, overflows the width of a window taller than wide; fixed; the second case is an amendment approved 2026-11-21, decision J1), with an orthographic projection of the cube [−1, 1]³ onto the window (no perspective); faces are emitted counter-clockwise when seen from outside and back faces are not drawn. Faces are depth-tested; a type in several display styles is drawn once per style, in style-table order, and the last style drawn wins on equal depth (Q-MISC-77: Magic draws in style order without a depth test; fixed). The depth comparison and the culled side are chosen so that higher layers are in front in the top view, with magic-compat ON and OFF (Q-MISC-81: with a depth test, Magic's face orientation would show lower layers in front; fixed). A display style that Magic draws translucent (blended over the background) is drawn opaque in its plain colour, with magic-compat ON and OFF (decision R3, approved 2026-11-22). Shading follows the magic-compat setting: with it ON Magic's fixed-function lighting, in which every face has the normal (0, 0, 1) and is lit by one white diffuse light positioned at (50, 50, 50) in model coordinates plus an ambient light of 0.6 (GL's global 0.2 and Magic's light #0 ambient 0.4); with it OFF one white directional light from (1, 1, 1) on each face's own normal plus an ambient light of 0.4; either is applied to the style colour (decision R2, approved 2026-11-22); the background is the display's background colour; at level ≥ 1 edges and polygons are anti-aliased. Exact pixel output is host-dependent.
+The system SHALL map a model point v = (x, y, z) (x, y in internal or mask units, z as computed above) to normalized view coordinates by v' = A · S · Rx(ax) · Ry(ay) · Rz(az) · T · v, where T translates by (tx, ty, tz), Rx/Ry/Rz are right-handed rotations by the view angles in degrees, S = diag(s_xy, s_xy, p_z), and, for the window's current size of W_w × H_w pixels, A = diag(H_w / W_w, 1, 1) when W_w ≥ H_w and A = diag(1, W_w / H_w, 1) otherwise, so units stay 1:1 and the limiting dimension is fitted; the current size also sets the viewport and the refresh area (Q-MISC-74: Magic keeps 500 × 500 after a resize, and its formula, the first case, overflows the width of a window taller than wide; fixed; the second case is an amendment approved 2026-11-21, decision J1), with an orthographic projection of the cube [−1, 1]³ onto the window (no perspective); faces are emitted counter-clockwise when seen from outside and back faces are not drawn. Faces are depth-tested; a type in several display styles is drawn once per style, in style-table order, and the last style drawn wins on equal depth (Q-MISC-77: Magic draws in style order without a depth test; fixed). The depth comparison and the culled side are chosen so that higher layers are in front in the top view, with magic-compat ON and OFF (Q-MISC-81: with a depth test, Magic's face orientation would show lower layers in front; fixed). A display style that Magic draws translucent (blended over the background) is drawn opaque in its plain colour, with magic-compat ON and OFF (decision R3, approved 2026-11-22). The desktop 3D tab draws the approved board look with magic-compat ON and OFF alike (Q-MISC-84, approved 2026-11-24; amends decision R2 of 2026-11-22 for the desktop tab): each face is shaded flat by one white directional light, fixed in the model and coming from above, evaluated on the face's own outward normal in the displayed scene; the face's colour is the display style's colour times the face's factor, so colours stay saturated: top faces get the largest factor, between 1.0 and 1.1, each side face a factor at least 0.15 below it, so edges read, and no face is washed to white unless its style colour is white; the background is the desktop theme's canvas colour (`ThemeTokens::canvas`). Magic's fixed-function lighting (no normal set, so every face has the normal (0, 0, 1), lit per vertex by one white diffuse light positioned at (50, 50, 50) in model coordinates plus an ambient light of 0.6) is not used by the desktop tab; outside the desktop tab (a headless image) the background is the display's background colour. At level ≥ 1 edges and polygons are anti-aliased. Exact pixel output is host-dependent.
 
 Compatibility: informative
 
@@ -263,6 +263,31 @@ Compatibility: informative
 - **GIVEN** metal1 (h = 2.0) and poly (h = 1.0) overlapping at (0,0)-(10,10)
 - **WHEN** the default top view is drawn
 - **THEN** the overlap shows metal1, with magic-compat ON and OFF (Q-MISC-81)
+
+#### Scenario: Board look with magic-compat ON
+- **GIVEN** magic-compat ON and the desktop 3D tab on a cell with a metal1 rectangle, in the isometric preset
+- **WHEN** the tab is drawn
+- **THEN** every face of the metal1 prism is one flat colour in the metal1 style's hue (no fade across a face), its top face is lighter than its side faces and the background is the theme's canvas colour; Magic's lighting with the normal (0, 0, 1) is not used (Q-MISC-84)
+
+#### Scenario: Board look with magic-compat OFF
+- **GIVEN** magic-compat OFF and the same cell, tab and view
+- **WHEN** the tab is drawn
+- **THEN** the image is the same as with magic-compat ON (Q-MISC-84)
+
+#### Scenario: Top faces lighter than side faces
+- **GIVEN** a metal1 prism in the isometric preset of the desktop 3D tab
+- **WHEN** the tab is drawn
+- **THEN** its top face is lighter than each of its visible side faces, all of them in the metal1 style's hue and none of them white, with magic-compat ON and OFF (Q-MISC-84)
+
+#### Scenario: Background from the theme
+- **GIVEN** the desktop 3D tab, in the dark theme and in the light theme
+- **WHEN** the tab is drawn
+- **THEN** the pixels outside the model have the theme's canvas colour (`ThemeTokens::canvas`), not the display styles' background colour, with magic-compat ON and OFF (Q-MISC-84)
+
+#### Scenario: Isometric default from above
+- **GIVEN** a cell with poly (h = 1.0) under metal1 (h = 2.0) where they overlap
+- **WHEN** the user opens the desktop 3D tab on it
+- **THEN** `view` returns the isometric preset's angles, the cell is framed in the view, and on screen metal1's top face is above and in front of poly where they overlap and the top faces of the higher layers are visible, with magic-compat ON and OFF (Q-MISC-84)
 
 #### Scenario: Translucent style drawn opaque
 - **GIVEN** a display style that Magic draws translucent
