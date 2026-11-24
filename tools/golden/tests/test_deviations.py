@@ -54,6 +54,47 @@ class ParseTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(deviations.DeviationError):
                 deviations.parse(bad)
 
+    def test_per_output_deferral(self):
+        # Q-SCHEM-39: one output of an M9 case is due at the M8 exit.
+        dev = deviations.parse('[X-1]\ndeferred = "M9"\ndeferred_outputs = { "a.spice" = "M8" }\n'
+                               'outputs = ["a.spice", "lvs.out"]\nreason = "r"\n')["X-1"]
+        self.assertEqual(dev.milestone_of("a.spice"), "M8")
+        self.assertEqual(dev.milestone_of("lvs.out"), "M9")
+        self.assertIn("a.spice deferred to M8", dev.describe())
+        self.assertIs(dev.at_milestone("M7"), dev)
+        at_m8 = dev.at_milestone("M8")
+        self.assertEqual(at_m8.outputs, ("lvs.out",))
+        self.assertEqual(deviations.classify(at_m8, ["a.spice"])[0], "fail")
+        self.assertEqual(deviations.classify(dev, ["a.spice"])[0], "deviation")
+        self.assertIsNone(dev.at_milestone("M9"))
+        for bad in ('[X-1]\ndeferred_outputs = { "a" = "M8" }\ndecisions = ["Q"]\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = "M9"\ndeferred_outputs = { "b" = "M8" }\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = "M9"\ndeferred_outputs = { "a" = "soon" }\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = "M9"\ndeferred_outputs = { "a" = "" }\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = "M9"\ndeferred_outputs = ["a"]\noutputs = ["a"]\nreason = "r"\n'):
+            with self.subTest(bad=bad), self.assertRaises(deviations.DeviationError):
+                deviations.parse(bad)
+
+    def test_decided_deviation_outlives_its_deferral(self):
+        dev = deviations.parse(ENTRY + 'deferred = "M4"\n')["X-1"]
+        self.assertIs(dev.at_milestone("M3"), dev)
+        at_m4 = dev.at_milestone("M4")
+        self.assertEqual((at_m4.deferred, at_m4.outputs), ("", ("stdout.txt",)))
+        undeferred = deviations.parse(ENTRY)["X-1"]
+        self.assertIs(undeferred.at_milestone("M4"), undeferred)
+
+    def test_schem_lvs_01_checks_its_netlist_at_the_m8_exit(self):
+        dev = deviations.load(GOLDEN_ROOT)["SCHEM-LVS-01"]
+        self.assertEqual(dev.deferred, "M9")
+        self.assertNotIn("inv_1.spice", dev.at_milestone("M8").outputs)
+        self.assertIn("lvs.out", dev.at_milestone("M8").outputs)
+
+    def test_replay_milestone_filter(self):
+        known = deviations.parse('[X-1]\ndeferred = "M8"\noutputs = ["a"]\nreason = "r"\n'
+                                 '[X-2]\ndeferred = "M9"\noutputs = ["a"]\nreason = "r"\n')
+        self.assertEqual(replay.at_milestone(known, None), known)
+        self.assertEqual(sorted(replay.at_milestone(known, "M8")), ["X-2"])
+
     def test_check_rejects_unknown_outputs(self):
         dev = deviations.parse(ENTRY)["X-1"]
         deviations.check(dev, ["stdout.txt", "stderr.txt"])
@@ -106,8 +147,8 @@ class RepositoryFileTest(unittest.TestCase):
                 deviations.check(dev, [o.name for o in case.outputs], bool(case.collect))
                 for decision in dev.decisions:
                     self.assertIn(decision, headings, f"{decision} is not a heading in docs/decisions")
-                if dev.deferred:
-                    self.assertIn(dev.deferred, milestones, f"{dev.deferred} is not a milestone of docs/roadmap.md")
+                for milestone in [dev.deferred] * bool(dev.deferred) + [m for _, m in dev.deferred_outputs]:
+                    self.assertIn(milestone, milestones, f"{milestone} is not a milestone of docs/roadmap.md")
 
 
 if __name__ == "__main__":

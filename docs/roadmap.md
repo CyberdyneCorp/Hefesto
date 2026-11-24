@@ -275,7 +275,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Exit criteria**
 - The common exit criteria.
-- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics. SCHEM-SIM-01/02 are deferred to M9 (their simulation results need the embedded simulator; decided 2026-11-18), as is SCHEM-LVS-01 (its LVS result needs the `lvs-*` capabilities; Q-SCHEM-39, decided 2026-11-22), and SCHEM-PR-05 differs only by the approved fix Q-SCHEM-30.
+- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics. SCHEM-SIM-01/02 are deferred to M9 (their simulation results need the embedded simulator; decided 2026-11-18), as is SCHEM-LVS-01 (its LVS result needs the `lvs-*` capabilities; Q-SCHEM-39, decided 2026-11-22) except its `inv_1.spice` netlist output, which the M8 exit checks (`deferred_outputs`, `replay.py --milestone M8`), and SCHEM-PR-05 differs only by the approved fix Q-SCHEM-30.
 - A `hefesto-security` review signs off the schematic script permission model (Q-SCHEM-25).
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta

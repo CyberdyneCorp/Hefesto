@@ -229,7 +229,7 @@ Deltas cannot carry these edits, so they are made directly at G0 (all done 2026-
 - the roadmap's M9 "Early de-risking" line and D-28 gain a sentence naming the desktop linking question (Q-SIM-20), decided in R0 and reviewed before the Desktop Beta; D-28's iPadOS deadline is unchanged (Q-SIM-26);
 - roadmap principle 2 names the new ngspice pin (Q-SIM-7, Q-SIM-23);
 - `docs/contributing/cleanroom.md` covers netgen (Q-LVS-30) (task 2.1, CLEANROOM, R1);
-- `tests/golden/deviations.toml` defers SCHEM-LVS-01 to M9 (Q-SCHEM-39), through `tools/golden/authoring/schem_cases.py` (`LATER`), which generates that block; `tests/golden/SCHEM/CASES.md`, m8 design D21 and the roadmap's M8 exit line say so (task 1.3);
+- `tests/golden/deviations.toml` defers SCHEM-LVS-01 to M9 (Q-SCHEM-39), through `tools/golden/authoring/schem_cases.py` (`LATER`), which generates that block, except its `inv_1.spice` output, which stays due at the M8 exit (`LATER_OUTPUTS`, written as `deferred_outputs = { "inv_1.spice" = "M8" }`; `goldenlib/deviations.py` and `replay.py --milestone` enforce it); `tests/golden/SCHEM/CASES.md`, m8 design D21 and the roadmap's M8 exit line say so (task 1.3);
 - the roadmap's Desktop 1.0 counsel row of the early de-risking schedule names LVS (Q-LVS-30) (task 2.4, roadmap half).
 
 ## Verification runs needed before G2

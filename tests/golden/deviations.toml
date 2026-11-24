@@ -426,7 +426,8 @@ reason = "cellname list allcells sorts inv before inv_1 (the total natural order
 # Every SCHEM case waits for the schematic workstreams of M8 (openspec/changes/m8-schematic,
 # sections 6-11); a workstream whose implementation replays a case removes it from this block
 # (schem_cases.REPLAYED) and re-runs --deviations. SCHEM-PR-05 keeps its approved decision
-# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER).
+# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER),
+# except SCHEM-LVS-01's inv_1.spice, which M8 checks (schem_cases.LATER_OUTPUTS, Q-SCHEM-39).
 
 [SCHEM-RT-01]
 deferred = "M8"
@@ -626,8 +627,9 @@ reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem com
 
 [SCHEM-LVS-01]
 deferred = "M9"
+deferred_outputs = { "inv_1.spice" = "M8" }
 outputs = ["inv_1.spice", "layout.spice", "lvs.out", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "schematic-driven LVS (lvs.out, the match result and the cross-probe map) needs the lvs-* capabilities, which m8-schematic design D13 places in M9 (Q-SCHEM-39, approved 2026-11-22); the captures are kept"
+reason = "schematic-driven LVS (lvs.out, the match result and the cross-probe map) needs the lvs-* capabilities, which m8-schematic design D13 places in M9 (Q-SCHEM-39, approved 2026-11-22); the captures are kept; M8 checks inv_1.spice (deferred_outputs)"
 
 [SCHEM-CMD-01]
 deferred = "M8"

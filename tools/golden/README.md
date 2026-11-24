@@ -345,6 +345,8 @@ outputs = ["stdout.txt", "top.mag"]
 reason = "cifwidth errors come from the mask-layer check of the generated MET1 layer, which arrives with mask generation"
 ```
 
+An entry with `deferred` may give single outputs their own milestone with `deferred_outputs`, a table from output name to milestone (each key one of `outputs`); the other outputs keep `deferred`. SCHEM-LVS-01 is `deferred = "M9"` with `deferred_outputs = { "inv_1.spice" = "M8" }` (Q-SCHEM-39): M8 checks the netlist, M9 the LVS result. `replay.py --milestone M<n>` checks the state at the exit of milestone n: an output deferred to n or earlier is no longer covered by its entry and must match (a decided deviation keeps its decision and loses only its deferral).
+
 A case authored before its capture (the M5 MASK cases, whose `expected/` golden-capture.yml writes later) may be listed with `deferred` while it has no `expected/`: replay reports it as `DEVIATION` ("not captured yet") when named, and the default selection never runs it. An uncaptured case without such an entry is an error when named.
 
 `replay.py` reports such a case as `DEVIATION`, counted like a skip (CTest shows it as skipped). It still fails when another output differs, and it fails when the case passes, so a stale entry is removed. `tests/test_deviations.py` checks that every entry names a captured case, its outputs, existing decisions and a milestone heading of `docs/roadmap.md` for `deferred`. When the milestone lands, the case passes and the stale entry fails replay until it is removed. A Hefesto bug is never listed: fix it.

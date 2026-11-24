@@ -375,7 +375,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: `tests/golden/deviations.toml` (`[SCHEM-LVS-01]`); `tests/golden/SCHEM/cases/SCHEM-LVS-01/`; `openspec/changes/m8-schematic/design.md` D13, D21
 - Options: (a) move SCHEM-LVS-01 to `deferred = "M9"`, as SCHEM-SIM-01/02 were moved on 2026-11-18; M8 keeps checking the case's `inv_1.spice` netlist output, and M9 makes the whole case pass; (b) keep the case in M8 and let the M8 exit wait for M9's LVS; (c) split it into a netlist case for M8 and an LVS case for M9.
 - Recommendation: (a). The reasoning is the same as for the SCHEM-SIM decision, and no captured file changes.
-- Resolution: other — option (a): SCHEM-LVS-01 is `deferred = "M9"` in `tests/golden/deviations.toml`, as SCHEM-SIM-01/02 were; M8 keeps checking the case's `inv_1.spice` netlist output, and M9 makes the whole case pass. No captured file changes. Approved by the user 2026-11-22.
+- Resolution: other — option (a): SCHEM-LVS-01 is `deferred = "M9"` in `tests/golden/deviations.toml`, as SCHEM-SIM-01/02 were; M8 keeps checking the case's `inv_1.spice` netlist output, and M9 makes the whole case pass. No captured file changes. Approved by the user 2026-11-22. As implemented: the entry carries `deferred_outputs = { "inv_1.spice" = "M8" }` (`schem_cases.LATER_OUTPUTS`), and `replay.py --milestone M8` fails the case at the M8 exit when `inv_1.spice` differs.
 
 ### Q-SCHEM-40: Byte size of a schematic used as a symbol
 - Kind: platform
