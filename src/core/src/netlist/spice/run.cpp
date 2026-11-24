@@ -207,6 +207,36 @@ void apply_style(SpiceInput& input, const editor::EditorState& editor) {
   }
 }
 
+}  // namespace detail
+
+namespace {
+
+// The style lookups the read takes from the session: extGetDevType and
+// DBNumTypes, which key the device table, and ExtCompareStyle.
+void add_style_lookups(extflat::ReadOptions& options, const editor::EditorState& editor) {
+  if (editor.technology) {
+    options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
+  }
+  if (const auto style = editor.extract.current) {
+    options.device_tile_type = [style](std::string_view name) -> std::optional<std::int32_t> {
+      for (const extract::DeviceInfo& info : style->device_info()) {
+        if (info.model == name) {
+          return static_cast<std::int32_t>(info.type);
+        }
+      }
+      return std::nullopt;
+    };
+  }
+  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
+    const auto style = editor.extract.styles.select(name);
+    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
+  };
+}
+
+}  // namespace
+
+namespace detail {
+
 // EFReadFile(inName, esDoHierarchy, esDoExtResis, FALSE, TRUE)
 // (ext2spice.c:888) with EFOutputFlags' short mode, and the style lookups
 // the read takes from the session: extGetDevType/DBNumTypes, which key the
@@ -233,23 +263,7 @@ extflat::ReadOptions read_options(const editor::EditorState& editor, const Spice
   options.noscale = false;
   options.spice = true;
   options.shorts = static_cast<extflat::ReadOptions::PortShorts>(settings.shorts);
-  if (editor.technology) {
-    options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
-  }
-  if (const auto style = editor.extract.current) {
-    options.device_tile_type = [style](std::string_view name) -> std::optional<std::int32_t> {
-      for (const extract::DeviceInfo& info : style->device_info()) {
-        if (info.model == name) {
-          return static_cast<std::int32_t>(info.type);
-        }
-      }
-      return std::nullopt;
-    };
-  }
-  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
-    const auto style = editor.extract.styles.select(name);
-    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
-  };
+  add_style_lookups(options, editor);
   return options;
 }
 

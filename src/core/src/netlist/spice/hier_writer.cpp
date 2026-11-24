@@ -133,32 +133,37 @@ class HierWriter {
     }
   }
 
+  // subcktVisit: the child's ports as the parent's nodes (spcdevOutNode,
+  // which marks them used) and the cell's `parameters` entries.
+  InstanceCall call_line(detail::FlatWriter& w, const HierCall& call) const {
+    InstanceCall line{call.path, {}, call.cell, {}};
+    std::string prefix;
+    for (const std::string& part : call.path) {
+      prefix += part + "/";
+    }
+    for (const std::string& name : call_ports(call, port_index(call, numbered_))) {
+      if (name.empty()) {
+        continue;
+      }
+      line.nodes.push_back(w.spice_name_of(prefix + name));
+      if (const auto node = w.find_node(prefix + name)) {
+        w.mark_used(*node);
+      }
+    }
+    if (const auto* params = w.declared(":" + subcircuit_name(call.cell))) {
+      for (const ParamDecl& p : *params) {
+        line.params.push_back(p.name);
+      }
+    }
+    return line;
+  }
+
   void write_calls(detail::FlatWriter& w, const HierSection& section) {
     for (const HierCall& call : section.calls) {
       if (!has_call(call)) {
         continue;
       }
-      const PortIndex ports = port_index(call, numbered_);
-      InstanceCall line{call.path, {}, call.cell, {}};
-      std::string prefix;
-      for (const std::string& part : call.path) {
-        prefix += part + "/";
-      }
-      for (const std::string& name : call_ports(call, ports)) {
-        if (name.empty()) {
-          continue;
-        }
-        line.nodes.push_back(w.spice_name_of(prefix + name));
-        if (const auto node = w.find_node(prefix + name)) {
-          w.mark_used(*node);
-        }
-      }
-      if (const auto* params = w.declared(":" + subcircuit_name(call.cell))) {
-        for (const ParamDecl& p : *params) {
-          line.params.push_back(p.name);
-        }
-      }
-      w.out += instance_line(line, settings_.format, settings_.renumber, w.sbck_num, names_, w.convert);
+      w.out += instance_line(call_line(w, call), settings_.format, settings_.renumber, w.sbck_num, names_, w.convert);
     }
   }
 

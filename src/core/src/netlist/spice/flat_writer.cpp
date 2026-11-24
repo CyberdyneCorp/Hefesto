@@ -523,6 +523,22 @@ void write_node_attrs(FlatWriter& w, const InputNode& node, const std::string& n
   w.out += "\n";
 }
 
+// The node's capacitance line, compared as |C| in hierarchical output
+// (Q-NETLIST-19).
+void write_node_cap(FlatWriter& w, std::size_t index, const std::string& nsn, const std::string& cap_node,
+                    bool is_connected) {
+  const double cap = (w.hier ? detail::dbl(w.node_caps[index]) : visit_cap(w, index)) / 1000;
+  if ((w.hier ? std::fabs(cap) : cap) <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
+    return;
+  }
+  w.out += "C" + std::to_string(w.cap_num++) + " " + nsn + " " + cap_node + " " +
+           detail::si(static_cast<float>(1.0E-15 * cap));
+  if (!is_connected) {
+    w.out += std::string{w.settings.format == Dialect::ngspice ? " ;" : ""} + " **FLOATING";
+  }
+  w.out += "\n";
+}
+
 void write_node(FlatWriter& w, std::size_t index, const std::string& cap_node) {
   bool is_connected = connected(w, index);
   if (!is_connected && w.flags.device_nodes_only) {
@@ -537,15 +553,7 @@ void write_node(FlatWriter& w, std::size_t index, const std::string& cap_node) {
   if (w.settings.format == Dialect::spice2 || (w.settings.format == Dialect::hspice && nsn.starts_with("z@"))) {
     w.out += std::string{ng ? "; " : ""} + "** " + w.converted_name(index) + " == " + nsn + "\n";
   }
-  const double cap = (w.hier ? detail::dbl(w.node_caps[index]) : visit_cap(w, index)) / 1000;
-  if ((w.hier ? std::fabs(cap) : cap) > detail::dbl(static_cast<float>(w.settings.cthresh))) {
-    w.out += "C" + std::to_string(w.cap_num++) + " " + nsn + " " + cap_node + " " +
-             detail::si(static_cast<float>(1.0E-15 * cap));
-    if (!is_connected) {
-      w.out += std::string{ng ? " ;" : ""} + " **FLOATING";
-    }
-    w.out += "\n";
-  }
+  write_node_cap(w, index, nsn, cap_node, is_connected);
   write_node_attrs(w, node, nsn);
 }
 
