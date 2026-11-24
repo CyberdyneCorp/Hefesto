@@ -1,0 +1,188 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// The desktop's 3D view (the editor-view tab "3D"; openspec/changes/
+// m10-3d-view/design.md D8, D9, D10, D12, tasks 9.1, 9.2, 9.6, 13.2; board
+// docs/design/mockups/View3D.dc.html): a second Raven viewport, like
+// LayoutCanvas, in texture mode, showing the render::VulkanOffscreenTarget
+// that render::VulkanMesh3dRenderer draws into, with the layer stack panel
+// and the view, parity and inspect controls beside it.
+//
+// - It is the session's view3d::WindowDisplay (Session::display): the client
+//   calls redraw() when the window opens and after every 3D command, and
+//   closed() on `closewindow`; both only record what to do, and on_frame()
+//   (UI thread, outside commands) does it.
+// - One view3d::MeshWorker per window builds the mesh in the background
+//   (BuildInputs::lock = the session's database lock); a change of the
+//   stack, clip area, cell or J1 option runs a full build, and the layout
+//   windows' change areas for the rendered cell feed changed(). Worker
+//   callbacks are posted to the UI loop; the UI thread never waits on a
+//   build, and the previous model stays visible until the next is done.
+// - Mouse, trackpad and keys: gestures (view3d/camera/input.hpp) move the
+//   window's ViewState as `view`/`scroll`/`zoom` would; keys run the
+//   `wind3d` macro table on the window's toolkit path; a click picks.
+// - Commands typed while the 3D tab is shown go to the window's path when
+//   their first word is a `wind3d` command (route_typed_line).
+// Raven-free: built from the raven_ui wrappers.
+//
+// Owner: SHELL (design D3).
+
+#pragma once
+
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "hefesto/render/mesh3d_target.hpp"
+#include "hefesto/render/mesh3d_vulkan_renderer.hpp"
+#include "hefesto/shell/view3d_models.hpp"
+#include "hefesto/view/window.hpp"
+#include "hefesto/view3d/client/session.hpp"
+#include "hefesto/view3d/mesh/worker.hpp"
+#include "raven_ui.hpp"
+#include "screen_context.hpp"
+
+namespace hefesto::shell {
+
+class View3dView final : public view3d::WindowDisplay, public view::ViewObserver {
+ public:
+  /// `queue_mutex` is the lock shared with Raven around the Vulkan queue;
+  /// `pixel_ratio` the window's logical-to-pixel scale. Installs itself as
+  /// the session's WindowDisplay.
+  View3dView(ScreenContext& ctx, std::mutex& queue_mutex, std::function<float()> pixel_ratio);
+  ~View3dView() override;
+  View3dView(const View3dView&) = delete;
+  View3dView& operator=(const View3dView&) = delete;
+
+  [[nodiscard]] ui::Widget& widget() noexcept { return root_; }
+  /// Called with true when the 3D window opens, false when it closes.
+  void on_open_changed(std::function<void(bool)> callback) { open_changed_ = std::move(callback); }
+  /// Called when a pick changed the 2D selection (the main window refreshes).
+  void on_selection_changed(std::function<void()> callback) { selection_changed_ = std::move(callback); }
+  /// The 3D tab is shown (true) or the Layout tab (false).
+  void set_active(bool active);
+  [[nodiscard]] bool active() const noexcept { return active_; }
+  [[nodiscard]] bool window_open() const;
+  void focus() { viewport_->focus(); }
+  /// A typed line, routed to the 3D window while its tab is shown.
+  [[nodiscard]] std::string route_typed(const std::string& line) const;
+  /// After every command: the 2D selection may have changed (highlight).
+  void refresh();
+  /// Once per frame on the UI thread: syncs with the window and draws.
+  void on_frame();
+
+  void redraw(const editor::EditorState& editor, const view3d::WindowState& window) override;
+  void closed(const view3d::WindowState& window) override;
+  void on_window_changed(view::WindowId id, view::Change change) override;
+
+ private:
+  struct Row;
+  struct Shared;  // what worker callbacks reach through posted tasks
+  struct Control {
+    std::unique_ptr<ui::Painted> widget;
+    std::function<std::string()> label;
+    std::function<bool()> on;       // a toggle's pressed state; empty for a plain button
+    std::function<bool()> enabled;  // empty: always enabled
+  };
+
+  void build_stage();
+  void build_side();
+  void build_layer_section(ui::Box& box);
+  void build_view_section(ui::Box& box);
+  void build_parity_section(ui::Box& box);
+  void build_inspect_section(ui::Box& box);
+  ui::Painted& add_button(ui::Box& box, Control control, std::function<void()> click, std::string_view tooltip,
+                          float width = -1.0F);
+  void add_section(ui::Box& box, std::string_view title);
+  Row& row_widgets(std::size_t index);
+
+  [[nodiscard]] const view3d::WindowState* window() const;
+  [[nodiscard]] std::string path() const;
+  [[nodiscard]] bool magic_compat() const;
+  void run(const std::string& line);
+  void ensure_window_hook();
+  void ensure_path_command();
+  void sync();
+  void start_build(const BuildKey& key, const view3d::LayerStack& stack);
+  void take_model(const view3d::MeshHandle& model);
+  void refresh_rows();
+  /// Rebuilds rows_ and row_colors_ from the drawn (or building) stack.
+  void rebuild_rows(const view3d::WindowState& window, const view3d::LayerStack& stack);
+  /// The screen-reader names and enabled state of one panel row.
+  static void update_row(Row& row, const View3dLayerRow& r, bool editable);
+  void repaint();
+  bool ensure_renderer();
+  void draw_frame();
+  void reset_window_state();
+
+  bool handle_input(const CanvasInput& input);
+  bool handle_pointer(const CanvasInput& input);
+  void apply_gesture(const view3d::Gesture& gesture);
+  void pick_at(float x, float y);
+  /// Points the resolver at `stack` (the drawn model's), the rendered cell and the compat flag.
+  void update_pick_scope(const view3d::LayerStack* stack);
+
+  void paint_stage(ui::Painter& p, float w, float h);
+  void paint_row(ui::Painter& p, float w, float h, std::size_t index, bool hovered, bool focused);
+
+  void toggle_row(std::size_t index);
+  void isolate_row(std::size_t index);
+  void cycle_alpha(std::size_t index);
+
+  ScreenContext& ctx_;
+  std::mutex& queue_mutex_;
+  std::function<float()> pixel_ratio_;
+  ui::Box root_ = ui::Box::horizontal();
+  ui::Overlay stage_ = ui::Overlay::create();
+  std::unique_ptr<ui::Viewport> viewport_;
+  std::unique_ptr<ui::Painted> stage_paint_;
+  ui::Panel side_panel_ = ui::Panel::create(Rgba{});
+  ui::ScrollBox side_scroll_ = ui::ScrollBox::create();
+  ui::Box side_ = ui::Box::vertical();
+  ui::Box rows_box_ = ui::Box::vertical();
+  std::vector<Control> controls_;
+  std::vector<std::unique_ptr<ui::Painted>> painted_;  // section labels, notes, separators
+  std::vector<std::unique_ptr<Row>> rows_widgets_;
+  std::vector<ui::Box> boxes_;
+
+  std::function<void(bool)> open_changed_;
+  std::function<void()> selection_changed_;
+
+  std::unique_ptr<render::VulkanOffscreenTarget> target_;
+  std::unique_ptr<render::VulkanMesh3dRenderer> renderer_;
+  std::string renderer_error_;
+  std::unique_ptr<view3d::MeshWorker> worker_;
+  std::shared_ptr<Shared> shared_;
+  // Technologies a build may still read (kept alive until the worker is idle).
+  std::vector<std::shared_ptr<const tech::Technology>> held_tech_;
+
+  // The window's state as last synced (UI thread only).
+  bool was_open_ = false;
+  bool active_ = false;
+  bool sync_pending_ = false;
+  bool dirty_ = false;
+  bool highlight_dirty_ = true;
+  BuildKey key_;
+  bool have_key_ = false;
+  std::shared_ptr<const view3d::LayerStack> build_stack_;  // of the build in progress or done last
+  std::shared_ptr<const view3d::LayerStack> drawn_stack_;  // of model_
+  view3d::MeshHandle model_;
+  view3d::MeshHandle uploaded_;
+  View3dOptions options_;
+  std::vector<View3dLayerRow> rows_;  // display order: top layer first
+  std::vector<Rgba> row_colors_;      // swatches, per row
+  std::vector<bool> drawable_;
+  PickResolver resolver_;
+  View3dPicking picking_{resolver_};
+  const view3d::HighlightSet* highlight_ = nullptr;
+  std::string pick_caption_;
+  PointerTracker pointer_;
+  FrameTimer timer_;
+  std::pair<int, int> pixels_{0, 0};
+};
+
+}  // namespace hefesto::shell

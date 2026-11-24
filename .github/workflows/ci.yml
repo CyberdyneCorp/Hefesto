@@ -695,6 +695,18 @@ jobs:
           kill "$weston_pid"
           exit "$status"
 
+      # m10-3d-view tasks 9.1, 9.6: the 3D window check's frames and the 3D tab capture of the X11 and
+      # Wayland window tests, kept for the Linux rows of docs/design/m10-3d-ui-conformance.md.
+      - name: Upload the 3D view captures
+        if: always() && matrix.desktop
+        uses: actions/upload-artifact@v4
+        with:
+          name: view3d-captures-${{ matrix.name }}
+          path: |
+            build/${{ matrix.preset }}/tests/unit/shell/render3d-spike-*.ppm
+            build/${{ matrix.preset }}/tests/unit/shell/view3d-tab-*.ppm
+          if-no-files-found: ignore
+
       # hefesto-architecture "Platform-independent core": the core builds for iPadOS without UI (design D5).
       - name: Configure iPadOS (core only)
         if: matrix.ipados

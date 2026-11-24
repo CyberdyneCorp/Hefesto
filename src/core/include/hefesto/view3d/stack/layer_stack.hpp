@@ -128,7 +128,8 @@ class LayerStack {
   /// The physical height and thickness, independent of the compat setting:
   /// layout-layer mode h and t times µm per internal unit, mask-layer mode
   /// the `render` values (µm by PDK convention). Nullopt for a layer with
-  /// ValueSource::none or an out-of-range id.
+  /// ValueSource::none, an out-of-range id, or layout-layer mode when the
+  /// µm per internal unit is unknown (0, no cifoutput scale).
   [[nodiscard]] std::optional<PhysicalHeight> physical_height_um(LayerId layer) const;
 
   /// Layout-layer mode: the h and t a tile is drawn with, whatever style

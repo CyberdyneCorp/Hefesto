@@ -65,10 +65,12 @@
 #                1M-rectangle region and of the sky130 reference layouts (the 100 x 100 dfxtp_1
 #                array and the all-cells block). bench/view3d/view3d_gate.py gates the median
 #                build time and the model's memory per rectangle (bench/view3d/gates.json); the GPU
-#                size estimate, the peak resident set and the frame time (once Mesh3dRenderer
-#                exists, task 5.3) are recorded for information. Results: the job summary and the
-#                artifact "view3d-bench"; recorded in docs/design/m10-3d-ui-conformance.md
-#                "Performance".
+#                size estimate and the peak resident set are recorded for information. The frame
+#                time of the synthetic mesh (task 13.2, bench/view3d/frame.cpp) is measured on
+#                Mesa's software Vulkan driver (lavapipe; the runner has no GPU) and recorded,
+#                not gated (D17: llvmpipe frame times are information only); the gated frame
+#                rate is the M3 Pro's. Results: the job summary and the artifact "view3d-bench";
+#                recorded in docs/design/m10-3d-ui-conformance.md "Performance".
 #
 # `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
 # only when a DRC path changed, the GDS jobs only when a GDS, mask, CIF or use-index path
@@ -1275,10 +1277,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install CMake, Ninja and the OpenSSL headers for libcurl
+      - name: Install CMake, Ninja, the OpenSSL headers, the Vulkan loader and Mesa lavapipe
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev libvulkan-dev mesa-vulkan-drivers libx11-dev
 
       - name: Unit tests of the gate script
         run: python3 -m unittest discover -s bench/view3d/tests -v
@@ -1306,9 +1309,10 @@ jobs:
       - name: Fetch the Magic reference sources (sparse, pinned)
         run: python3 scripts/fetch_pdk.py magic-ref
 
+      # With the Vulkan renderer (HEFESTO_BUILD_DESKTOP=ON), so the benchmark times frames (task 13.2).
       - name: Build hefesto-cli and the 3D benchmark (Release)
         run: |
-          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=ON -DHEFESTO_BUILD_TESTS=OFF \
             -DHEFESTO_BUILD_VIEW3D_BENCH=ON
           cmake --build --preset linux-release --target hefesto-cli hefesto-bench-view3d
 
@@ -1323,11 +1327,15 @@ jobs:
           bench=build/linux-release/bench/view3d/hefesto-bench-view3d
           pdk="${{ steps.keys.outputs.sky130_path }}/sky130A"
           mkdir -p view3d-bench
+          # Frames of the synthetic mesh on lavapipe only (VK_DRIVER_FILES), 10 per level: recorded, not gated.
+          icd="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' | head -n 1)"
+          test -n "$icd" || { echo "::error::no lavapipe ICD manifest in /usr/share/vulkan/icd.d"; exit 1; }
           # One process per workload, so each peak resident set is its own.
-          "$bench" --workload synthetic --rects 1000000 --repeat 5 --json view3d-bench/synthetic.json > /dev/null
+          VK_DRIVER_FILES="$icd" "$bench" --workload synthetic --rects 1000000 --repeat 5 --frames 10 \
+            --json view3d-bench/synthetic.json > /dev/null
           for w in array block; do
-            "$bench" --workload "$w" --repeat 5 --pdk-root "$pdk" --style-dir build/ref/magic/scmos --style-dir build/ref/magic/graphics \
-              --json "view3d-bench/$w.json" > /dev/null
+            "$bench" --workload "$w" --repeat 5 --frames 0 --pdk-root "$pdk" --style-dir build/ref/magic/scmos \
+              --style-dir build/ref/magic/graphics --json "view3d-bench/$w.json" > /dev/null
           done
 
       - name: Gate build time and memory
@@ -1340,6 +1348,26 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           python3 bench/view3d/view3d_gate.py view3d-bench/synthetic.json view3d-bench/array.json \
             view3d-bench/block.json --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Frame time of the synthetic mesh on lavapipe (recorded, not gated)
+        if: always()
+        shell: bash
+        run: |
+          python3 - view3d-bench/synthetic.json >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import json, sys
+          r = json.load(open(sys.argv[1]))["results"][0]
+          f = r.get("frame")
+          print("\n### Frame time (task 13.2, recorded, not gated)\n")
+          if not f:
+              print(f"not measured: {r.get('frame_time_note', '')}")
+              sys.exit(0)
+          print(f"{f['device']}, {f['width']} x {f['height']}, {f['view']}; upload {f['upload_s']:.3f} s, "
+                f"upload plus first frame {f['first_frame_ms']:.0f} ms\n")
+          print("| Level | Median | p95 | fps (median) |\n|---|---|---|---|")
+          for level in ("level0", "level1"):
+              l = f[level]
+              print(f"| {level[-1]} | {l['median_ms']:.1f} ms | {l['p95_ms']:.1f} ms | {l['fps']:.2f} |")
+          EOF
 
       - uses: actions/upload-artifact@v4
         if: always()

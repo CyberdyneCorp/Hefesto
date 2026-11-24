@@ -195,7 +195,7 @@ struct DeferredControl {
   std::string_view label;
   std::string_view tooltip;
 };
-[[nodiscard]] const std::vector<DeferredControl>& deferred_view_tabs();  // Schematic, 3D, Waveforms
+[[nodiscard]] const std::vector<DeferredControl>& deferred_view_tabs();  // Schematic, 3D (live since M10 P1), Waveforms
 [[nodiscard]] const std::vector<DeferredControl>& deferred_actions();    // Extract, Simulate, Ask agent
 
 // --- tool rail -------------------------------------------------------------------

@@ -8,7 +8,10 @@ cap:view-3d req:Rendered geometry
 """
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -179,6 +182,77 @@ class DerivedGlFacesTest(unittest.TestCase):
         import tempfile
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(derived.build(Path(tmp), "derived:gl-faces:gl.log"))
+
+
+# A stand-in for Magic's tclmagic.so: GrStyleTable and GrSetStuff exported by a version script,
+# grCurDStyle kept local (magic/symbol.map), and a draw() that sets a style and emits one
+# polygon per style the way W3D does (GrSetStuff, then glBegin/glVertex3f/glEnd).
+FAKE_TCLMAGIC = r"""
+typedef struct { int idx, mask, color, outline, fill, stipple; char shortname; char *longname; } GR_STYLE_LINE;
+void glClear(unsigned int); void glBegin(unsigned int); void glVertex3f(float, float, float); void glEnd(void);
+static GR_STYLE_LINE styles[3] = {{0}, {1, 0, 0, 0, 0, 0, 'a', "metal1"}, {2, 0, 0, 0, 0, 0, 'b', "metal2"}};
+GR_STYLE_LINE *GrStyleTable = styles;
+int grCurDStyle;
+void GrSetStuff(int style) { grCurDStyle = style; }
+void draw(void)
+{
+    glClear(0x100u);
+    for (int s = 1; s <= 2; s++) {
+        GrSetStuff(s);
+        glBegin(9u);
+        glVertex3f(0, 0, -s); glVertex3f(10, 0, -s); glVertex3f(10, 10, -s);
+        glEnd();
+    }
+}
+"""
+FAKE_MAP = "FAKE { global: GrStyleTable; GrSetStuff; draw; local: *; };\n"
+FAKE_GL = ("void glClear(unsigned int m){(void)m;} void glBegin(unsigned int m){(void)m;} "
+           "void glVertex3f(float x, float y, float z){(void)x;(void)y;(void)z;} void glEnd(void){}\n")
+# Tcl loads tclmagic.so with RTLD_LOCAL; so does this driver.
+DRIVER = r"""
+#include <dlfcn.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+    (void)argc;
+    void *h = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
+    if (h == NULL) { fprintf(stderr, "%s\n", dlerror()); return 2; }
+    void (*draw)(void) = (void (*)(void))dlsym(h, "draw");
+    draw();
+    return 0;
+}
+"""
+
+
+@unittest.skipUnless(sys.platform.startswith("linux") and shutil.which("cc"), "LD_PRELOAD shim: Linux with cc only")
+class ShimStyleTest(unittest.TestCase):
+    """gl_capture.c names each polygon's style although grCurDStyle is not exported (golden-capture
+    run 44965506225 logged `?` for every polygon): it interposes GrSetStuff."""
+
+    def test_styles_are_named_with_a_local_grcurdstyle(self):
+        shim = GOLDEN / "gl_capture" / "gl_capture.c"
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp)
+            (t / "gl.c").write_text(FAKE_GL)
+            (t / "tclmagic.c").write_text(FAKE_TCLMAGIC)
+            (t / "tclmagic.map").write_text(FAKE_MAP)
+            (t / "driver.c").write_text(DRIVER)
+
+            def cc(*args):
+                subprocess.run(["cc", "-std=gnu99", "-Wall", "-Werror", *args], check=True, cwd=t)
+
+            cc("-shared", "-fPIC", "-o", "libGL.so", "gl.c")
+            cc("-shared", "-fPIC", "-o", "tclmagic.so", "tclmagic.c", "-Wl,--version-script=tclmagic.map",
+               "-L.", "-lGL")
+            cc("-shared", "-fPIC", "-o", "gl_capture.so", str(shim), "-ldl", "-L.", "-Wl,--no-as-needed", "-lGL")
+            cc("-o", "driver", "driver.c", "-ldl")
+            env = {"PATH": "/usr/bin:/bin", "LD_LIBRARY_PATH": tmp, "LD_PRELOAD": str(t / "gl_capture.so"),
+                   "HEFESTO_GL_CAPTURE": str(t / "gl.log")}
+            subprocess.run([str(t / "driver"), str(t / "tclmagic.so")], check=True, env=env)
+            lines = (t / "gl.log").read_text().splitlines()
+        self.assertEqual(lines[0], "gl-capture 1")
+        self.assertEqual([line.split()[1] for line in lines[1:]], ["metal1", "metal2"])
+        self.assertEqual(lines[1], "poly metal1 3 0 0 -1 10 0 -1 10 10 -1")
 
 
 if __name__ == "__main__":

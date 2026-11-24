@@ -4,8 +4,8 @@
 #extension GL_GOOGLE_include_directive : require
 
 //
-// Mesh3dRenderer: one SideInstance per instance, drawn as a quad (6
-// vertices) standing on its segment from z_bot to z_top, counter-clockwise
+// Mesh3dRenderer: one SideInstance per instance, drawn as a quad (a
+// 4-vertex triangle strip) standing on its segment from z_bot to z_top, counter-clockwise
 // seen from outside (Magic's w3dFillDiagonal order: a_bot, b_bot, b_top,
 // a_top with the outside on the right of a->b). A face flagged own_height
 // (a split tile's, MESH) uses its own h and t, every other its layer's.
@@ -19,7 +19,8 @@ layout(location = 3) in uint in_pick;
 
 const uint kOutwardLeft = 0x01u;
 const uint kOwnHeight = 0x08u;
-const int kQuad[6] = int[](0, 1, 2, 0, 2, 3);
+// Corners in strip order (0: a_bot, 1: b_bot, 2: b_top, 3: a_top).
+const int kQuad[4] = int[](0, 1, 3, 2);
 
 void main() {
   uint layer = in_layer_flags & 0xFFFFu;

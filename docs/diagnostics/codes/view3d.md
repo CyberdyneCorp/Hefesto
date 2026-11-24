@@ -118,6 +118,12 @@ command returns normally).
 Codes of the pick mapping, the 3D/2D selection link and net highlighting
 (design D10). Owner: INSPECT.
 
+Picking has no codes (M10 round 3): the background, an id past the model
+and a stale target (its tile edited away, or its cell deleted, since the
+mesh was built) resolve or select nothing instead of failing, and the
+highlight sets of an empty selection or a failed connectivity search are
+empty.
+
 ## SECTION
 
 Codes of cross-sections (design D10, P2). Owner: INSPECT.
@@ -148,7 +154,7 @@ fails when the two disagree.
 |---|---|---|
 | `VIEW3D-CLIENT-001` | error | A 3D window command was given the wrong arguments (Magic's `Usage: ...` line); nothing changes. |
 | `VIEW3D-CLIENT-002` | error | A 3D window is already open (Magic's `Only one 3D window allowed.`). |
-| `VIEW3D-CLIENT-003` | error | The 3D window cannot open: no cell to render, the cell does not exist, or (magic-compat ON) the toolkit path of a closed 3D window (user decision J5). |
+| `VIEW3D-CLIENT-003` | error | The 3D window cannot open: no cell to render, or the cell does not exist (a closed window's toolkit path reopens in both modes, Q-MISC-80). |
 | `VIEW3D-CLIENT-004` | error | A `zoom` value or factor is zero or negative (Magic's `Error: zoom values/factors must be positive and nonzero`). |
 | `VIEW3D-CLIENT-005` | error | The command needs a current output style and there is none (Magic's `No CIF output style set!`; Q-MISC-73). |
 | `VIEW3D-CLIENT-006` | error | No mask layer of the current output style has the name given to `render` or `see`. |

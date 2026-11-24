@@ -166,6 +166,12 @@ struct ChunkCell {
 /// OFF its own layer's (Q-MISC-79).
 void emit_layer(const FlatType& flat, LayerId layer, const HeightTable& heights, const db::Rect& clip, Chunk& chunk);
 
+/// The next model and chunk version: one process-wide counter, increasing
+/// from 1 and never repeating, so a chunk's (id, version) names its content
+/// across builds and rebuilds (the renderer's upload cache keys on it).
+/// Thread-safe (MeshWorker threads build concurrently).
+[[nodiscard]] std::uint64_t next_version() noexcept;
+
 /// build_from_layout with a chosen chunk size (the tests use small ones).
 [[nodiscard]] std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell,
                                                     const ClipArea& clip, BuildContext& ctx, std::size_t max_tiles);

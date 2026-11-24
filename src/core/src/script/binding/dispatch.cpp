@@ -9,6 +9,7 @@
 // THIRD_PARTY_NOTICES.md).
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include "binding_internal.hpp"
@@ -141,14 +142,18 @@ void report_lookup_failure(const Binding& b, const cmd::CommandLookup& found, co
   }
 }
 
-// While a command sent to the 3D window runs, the dispatcher looks only in
-// the `wind3d` table (Magic's W3Dcreate clears WIND_COMMANDS).
+// While a command sent to the 3D window runs, the dispatcher looks in the
+// `wind3d` table. A command on the window's path sees only that table
+// (`window_commands` false: _tk_dispatch passes the window, whose
+// WIND_COMMANDS flag W3Dcreate clears); a script command routed to the
+// window (N1) also sees the window commands (WindSendCommand is passed no
+// window, so it looks up both tables and the client's command wins).
 class Wind3dScope {
  public:
-  explicit Wind3dScope(cmd::Dispatcher& dispatcher)
+  Wind3dScope(cmd::Dispatcher& dispatcher, bool window_commands)
       : dispatcher_(dispatcher), client_(dispatcher.client()), window_commands_(dispatcher.window_commands()) {
     dispatcher_.set_client(std::string{view3d::kWind3dClient});
-    dispatcher_.set_window_commands(false);
+    dispatcher_.set_window_commands(window_commands);
   }
   ~Wind3dScope() {
     dispatcher_.set_client(client_);
@@ -205,7 +210,7 @@ cmd::CommandResult dispatch_wind3d(const Binding& b, const std::string& path, co
       b.dispatcher.report(d);
     }
   } else {
-    const Wind3dScope scope{b.dispatcher};
+    const Wind3dScope scope{b.dispatcher, false};
     cmd::CommandResult result =
         execute(b, cmd::Invocation{found.spec->name, args, command_origin(b, call), call.source});
     if (!result.ok() && !is_dispatch_failure(result) && (result.raises || b.dispatcher.session().strict)) {
@@ -238,6 +243,15 @@ cmd::CommandResult tcl_error(std::string message) {
 }
 
 cmd::CommandResult dispatch_command(const Binding& b, const std::string& name, const cmd::Invocation& call) {
+  // N1 (Q-MISC-82): with magic-compat ON a command with no window path goes
+  // to the 3D window once the last window-path command went there (Magic's
+  // txCurrentWindowID); OFF it goes to the layout window.
+  const editor::EditorState* editor = b.editor();
+  const bool to_3d = editor != nullptr && view3d::routes_script_commands(*editor, b.magic_compat());
+  std::optional<Wind3dScope> scope;
+  if (to_3d) {
+    scope.emplace(b.dispatcher, true);
+  }
   if (!dispatchable(b, name)) {
     return tcl_error({});  // quiet dispatch: an error with an empty result
   }
@@ -248,6 +262,9 @@ cmd::CommandResult dispatch_command(const Binding& b, const std::string& name, c
   }
   if (!result.ok() && (result.raises || b.dispatcher.session().strict)) {
     return tcl_error(error_message(result));
+  }
+  if (to_3d) {
+    report_scrollupdate_bypass(b, call.name);  // the tag's *bypass also reaches the 3D window
   }
   return run_tag(b, call.name, call.args, std::nullopt, cmd::CommandResult::success(std::move(result.value)));
 }
@@ -261,17 +278,21 @@ cmd::CommandResult dispatch_procedure(const Binding& b, const std::string& name,
 }
 
 cmd::CommandResult dispatch_window(const Binding& b, const std::string& path, const cmd::Invocation& call) {
-  const editor::EditorState* editor = b.editor();
+  editor::EditorState* editor = b.editor();
   if (view3d::is_retired_command(call.name)) {
     // Magic deletes a closed 3D window's command (GrTOGLDelete); a call
     // through the name it was moved to is no use-after-free here. A command
     // defined on the path again later is an ordinary window command.
     return tcl_error(cmd::invalid_command_name(path));
   }
+  const bool to_3d = editor != nullptr && view3d::is_open_path(*editor, path);
+  if (editor != nullptr) {
+    view3d::note_window_command(*editor, to_3d);  // _tk_dispatch's TxSetPoint, kept after the command
+  }
   if (call.args.empty()) {
     return cmd::CommandResult::success();
   }
-  if (editor != nullptr && view3d::is_open_path(*editor, path)) {
+  if (to_3d) {
     return dispatch_wind3d(b, path, call);
   }
   const std::string& word = call.args.front();

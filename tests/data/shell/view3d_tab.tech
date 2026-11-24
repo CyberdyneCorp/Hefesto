@@ -1,0 +1,55 @@
+# view3d_tab.tech -- a four-layer technology with extract heights for the
+# 3D tab capture of the desktop window tests (openspec/changes/m10-3d-view
+# tasks 9.1, 9.6; tests/unit/shell/CMakeLists.txt). Test input only.
+# SPDX-License-Identifier: Apache-2.0
+tech
+    format 35
+    view3dtab
+end
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+types
+    active  polysilicon,poly
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    metal2  metal2,m2
+end
+styles
+    styletype mos
+    poly 1
+    ndiff 2
+    metal1 20
+    metal2 21
+end
+contact
+end
+compose
+end
+connect
+    poly    poly
+    ndiff   ndiff
+    metal1  metal1
+    metal2  metal2
+end
+cifoutput
+end
+cifinput
+end
+drc
+end
+extract
+style default
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder active 0
+    planeorder metal1 1
+    planeorder metal2 2
+    height ndiff 0 4
+    height poly 6 4
+    height metal1 14 6
+    height metal2 26 8
+end

@@ -19,9 +19,16 @@
  * the GLU tessellator's glVertex3dv, never glVertex3f, so those groups are empty and dropped.
  * tools/golden/gl_capture/faces.py reduces the file to the compared form.
  *
- * Magic's tclmagic.so is loaded by Tcl with RTLD_LOCAL, so its globals are looked up through
- * a handle reopened with RTLD_NOLOAD; the GL entry points are forwarded with RTLD_NEXT (this
- * library links libGL, which puts it in the global scope after us).
+ * The style: Magic links tclmagic.so with a version script (magic/symbol.map) that exports
+ * GrStyleTable and GrSetStuff but keeps grCurDStyle local, so grCurDStyle cannot be looked up
+ * (golden-capture run 44965506225 logged every style as `?`). The shim therefore interposes
+ * GrSetStuff (graphics/grClip.c:86), which W3D calls before drawing each tile (W3Dmain.c:585,
+ * :630): an exported function of a shared object is called through its PLT, so the preloaded
+ * definition wins, records the style and forwards to Magic's. tclmagic.so is loaded by Tcl with
+ * RTLD_LOCAL, so Magic's own GrSetStuff and GrStyleTable are looked up through a handle
+ * reopened with RTLD_NOLOAD (dlsym on that handle searches tclmagic.so first, never this
+ * library); the GL entry points are forwarded with RTLD_NEXT (this library links libGL, which
+ * puts it in the global scope after us). A style never set by GrSetStuff is logged as `?`.
  */
 #define _GNU_SOURCE
 #include <dlfcn.h>
@@ -71,27 +78,45 @@ static int find_tclmagic(struct dl_phdr_info *info, size_t size, void *data)
 static void *magic_symbol(const char *name)
 {
     static void *handle;
-    void *sym = dlsym(RTLD_DEFAULT, name);
-    if (sym != NULL)
-        return sym;
     if (handle == NULL)
         dl_iterate_phdr(find_tclmagic, &handle);
-    return handle != NULL ? dlsym(handle, name) : NULL;
+    if (handle != NULL)
+        return dlsym(handle, name);
+    /* A Magic linked into the executable (no tclmagic.so): the next definition after ours. */
+    return dlsym(RTLD_NEXT, name);
+}
+
+/* The style of the last GrSetStuff call; -1 before the first one. */
+static int current_dstyle = -1;
+
+void GrSetStuff(int style)
+{
+    static void (*real)(int);
+    if (real == NULL) {
+        real = (void (*)(int))magic_symbol("GrSetStuff");
+        if (real == GrSetStuff)
+            real = NULL; /* found this library's own definition: Magic's is not reachable */
+        if (real == NULL) {
+            fprintf(stderr, "gl_capture: Magic's GrSetStuff not found\n");
+            abort();
+        }
+    }
+    current_dstyle = style;
+    real(style);
 }
 
 static void current_style(char *out, size_t size)
 {
-    int *style = magic_symbol("grCurDStyle");
     MagicStyle **table = magic_symbol("GrStyleTable");
-    if (style == NULL || table == NULL || *table == NULL) {
+    if (current_dstyle < 0 || table == NULL || *table == NULL) {
         snprintf(out, size, "?");
         return;
     }
-    const char *name = (*table)[*style].longname;
+    const char *name = (*table)[current_dstyle].longname;
     if (name != NULL && name[0] != '\0' && strpbrk(name, " \t\n") == NULL)
         snprintf(out, size, "%s", name);
     else
-        snprintf(out, size, "#%d", *style);
+        snprintf(out, size, "#%d", current_dstyle);
 }
 
 static void start_frame(void)

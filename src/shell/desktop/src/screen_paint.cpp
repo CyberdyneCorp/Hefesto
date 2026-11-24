@@ -326,20 +326,31 @@ float segmented_width(const ui::Runtime& rt, const std::vector<std::string_view>
   return w;
 }
 
-void segmented(ui::Painter& p, float w, float h, const std::vector<std::string_view>& labels, const ThemeTokens& t) {
+void segmented(ui::Painter& p, float w, float h, const std::vector<std::string_view>& labels, const ThemeTokens& t,
+               std::size_t active, std::uint32_t enabled) {
   p.fill(0.0F, 0.0F, w, h, kPanelRadius, t.input);
   p.stroke(0.0F, 0.0F, w, h, kPanelRadius, 1.0F, t.border);
   float x = 4.0F;
   for (std::size_t i = 0; i < labels.size(); ++i) {
-    const TextRole role = i == 0 ? TextRole::tab_active : TextRole::tab;
+    const TextRole role = i == active ? TextRole::tab_active : TextRole::tab;
     const float bw = p.text_width(role, labels[i]) + 28.0F;
-    if (i == 0) {
+    if (i == active) {
       p.fill(x, 4.0F, bw, h - 8.0F, kRadius, t.row_selected);
     }
     // Later-milestone tabs are disabled: tertiary text.
-    p.text_centered_y(role, x + 14.0F, h / 2.0F, labels[i], i == 0 ? t.text_primary : t.text_tertiary);
+    const bool usable = i < 32 && ((enabled >> i) & 1U) != 0;
+    p.text_centered_y(role, x + 14.0F, h / 2.0F, labels[i], usable ? t.text_primary : t.text_tertiary);
     x += bw;
   }
+}
+
+std::size_t segmented_index_at(const ui::Runtime& rt, const std::vector<std::string_view>& labels, float x) {
+  float right = 4.0F;
+  for (std::size_t i = 0; i < labels.size(); ++i) {
+    right += rt.text_width(TextRole::tab, labels[i]) + 28.0F;
+    if (x < right) return i;
+  }
+  return labels.empty() ? 0 : labels.size() - 1;
 }
 
 float chip_width(const ui::Runtime& rt, const StatusChip& c) {

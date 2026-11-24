@@ -18,7 +18,9 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
-**Round 2 decisions, approved 2026-11-21 except J5.** Round 1 (PR #77) left six items for the user; the user approved them as recommended on 2026-11-21 (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). J1 (Q-MISC-74's amendment), J2, J3 (Q-MISC-79), J4 and J6 carry `Resolution:` lines. J5 (Q-MISC-80) is not approved: the MISC-3D-12 capture disproved the premise of the approved text ("ON refuses, OFF reopens"; Magic deletes the command and reopens), so it keeps a `Proposed resolution:` line and a pending `Status:` until the user decides again. `check_milestone_readiness.py` counts an entry with a pending status as unresolved (PR #81 review), so `--milestone M10` lists Q-MISC-80 as blocking until then.
+**Round 2 decisions, approved 2026-11-21 except J5.** Round 1 (PR #77) left six items for the user; the user approved them as recommended on 2026-11-21 (section "Round 2 decisions" below): the Q-MISC-74 aspect rule for tall windows (amended), two new entries, Q-MISC-79 (split tile with a left half of space, compat) and Q-MISC-80 (reopening after `.magic3d closewindow`, compat, with the use-after-free fixed in both modes), and three items without a Q row (J2 the deferred bad-style error, J4 `noplaneordering`, J6 empty extents, abutting cells and clip-edge faces). J1 (Q-MISC-74's amendment), J2, J3 (Q-MISC-79), J4 and J6 carry `Resolution:` lines. J5 (Q-MISC-80) is not approved: the MISC-3D-12 capture disproved the premise of the approved text ("ON refuses, OFF reopens"; Magic deletes the command and reopens), so it keeps a `Proposed resolution:` line and a pending `Status:` until the user decides again. `check_milestone_readiness.py` counts an entry with a pending status as unresolved (PR #81 review), so `--milestone M10` listed Q-MISC-80 as blocking until the user decided it on 2026-11-22 (next paragraph).
+
+**Round 3 decisions, approved 2026-11-22.** Round 2 (PR #81) left J5 and eleven further items for the user; the user approved every one with the recommended option on 2026-11-22 (section "Round 3 decisions" below). J5 (Q-MISC-80) is now approved as revised: replicate in both modes, closing deletes the toolkit-path command and `specialopen wind3d` on the path reopens, with no refusal. Three new entries: Q-MISC-81 (R1, depth and culling sides flipped so higher layers are in front in the top view, fix in both modes), Q-MISC-82 (N1, layout commands a script runs go to the open 3D window with magic-compat ON, compat) and Q-MISC-83 (N2, a split tile cut by the clip area closes along its clipped bounding rectangle with magic-compat ON, compat, already implemented). R2, R3, M1, M2, W1-W4 and N3 are recorded without a Q row under "Round-3 decisions without a Q row" in `docs/decisions/open-questions/MISC.md`. Every entry carries `Status: approved 2026-11-22` and a `Resolution:` line; `python3 scripts/check_milestone_readiness.py --milestone M10` lists no entry cited by `view-3d` or `hefesto-3d-visualization`.
 
 ## Judgement items
 
@@ -65,24 +67,32 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-77 | no depth test | **fix** | depth-buffered rendering in both modes; multi-style types drawn once per style with a less-or-equal test, last style wins |
 | Q-MISC-78 | `cif` rescales by the current style's scalefactor | **compat** | ON: current f, as Magic; OFF: the f applied on entering mask-layer mode, and a style change rescales from f_old to f_new |
 
-### New entries of round 2 (cited by view-3d; Q-MISC-79 approved 2026-11-21, Q-MISC-80 pending user confirmation)
+### New entries of round 2 (cited by view-3d; Q-MISC-79 approved 2026-11-21, Q-MISC-80 approved 2026-11-22)
 
 | ID | Question | Kind | Decision |
 |---|---|---|---|
 | Q-MISC-79 | split tile drawn with its left type's h and t, also when the left half is space | **compat** | ON: left type for both triangles, as Magic (a left half of space gives a flat triangle, no side faces); OFF: each triangle's own type for height, thickness and side faces |
-| Q-MISC-80 | reopening after `.magic3d closewindow` | **replicate** (revised after the MISC-3D-12 capture; was compat + fix) | Magic's closewindow ends in GrTOGLDelete, which deletes the path's command and destroys the window; both modes do the same, and `specialopen wind3d` on the path opens a new window. No use-after-free exists |
+| Q-MISC-80 | reopening after `.magic3d closewindow` | **replicate** (revised after the MISC-3D-12 capture; was compat + fix) | Magic's closewindow ends in GrTOGLDelete, which deletes the path's command and destroys the window; both modes do the same, and `specialopen wind3d` on the path opens a new window. No use-after-free exists. Approved 2026-11-22 |
+
+### New entries of round 3 (cited by view-3d; approved 2026-11-22)
+
+| ID | Question | Kind | Decision |
+|---|---|---|---|
+| Q-MISC-81 | depth-tested faces put lower layers in front in the top view (R1) | **fix** | flip the depth and culling sides in both modes so higher layers are in front in the top view; RENDER3D updates the reference pick maps |
+| Q-MISC-82 | layout commands a script runs after `specialopen wind3d` (N1) | **compat** | ON: they go to the 3D window, as Magic (`box`/`load` fail, `cif ostyle` reaches the 3D `cif`); OFF: to the layout window (MISC-3D-05, MISC-3D-10) |
+| Q-MISC-83 | split tile cut by the clip area (N2) | **compat** | ON: closed along its bounding rectangle clipped to the area, as Magic (W3Dmain.c:360-378); OFF: along the triangle's own cut; already implemented |
 
 ## Counts
 
 | Kind | Rows |
 |---|---|
-| fix | 5 (Q-MISC-70, 71, 74, 76, 77; Q-MISC-74's aspect amended and approved 2026-11-21) |
-| compat | 3 (Q-MISC-72, 78, 79) |
-| replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture) |
+| fix | 6 (Q-MISC-70, 71, 74, 76, 77, 81; Q-MISC-74's aspect amended and approved 2026-11-21) |
+| compat | 5 (Q-MISC-72, 78, 79, 82, 83) |
+| replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture, approved 2026-11-22) |
 | fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
 
-Q-MISC-70, 71, 72, 74 (with its 2026-11-21 amendment) and 79 have `Resolution:` lines. Q-MISC-80 has a pending status, so `check_milestone_readiness.py --milestone M10` lists it until the user decides it.
+Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions"; they add no row here.
 
 ## Notable changes to the entries' original recommendations
 
@@ -127,13 +137,13 @@ Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with 
 
 Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (c), 4.2, 6.3 note (b), 8.1 input (b), and the round-1 user items). The user approved all six as recommended on 2026-11-21. Each is recorded in `docs/decisions/open-questions/MISC.md`, with `Status: approved 2026-11-21` and a `Resolution:` line: on the Q-MISC entry it touches, or under "Round-2 decisions without a Q row" there. The exception is J5: the MISC-3D-12 capture later disproved the premise of the approved text, so Q-MISC-80 keeps `Status: recommended 2026-11-21, pending user confirmation` and a `Proposed resolution:` line (replicate in both modes) until the user decides again.
 
-| Item | Question | Decision (approved 2026-11-21; J5 pending) | Where recorded |
+| Item | Question | Decision (approved 2026-11-21; J5 approved 2026-11-22 as revised) | Where recorded |
 |---|---|---|---|
 | J1 | Q-MISC-74 aspect for a window taller than wide | confirmed as built: A = diag(H/W, 1, 1) when W ≥ H, else diag(1, W/H, 1), both modes | Q-MISC-74 (amendment; resolution changed) |
 | J2 | `render` bad-style error deferred to the 3D stack build | both documented differences accepted, both modes: a bad style does not suppress the "Syntax" and "Unknown layer name." checks at load; the error is reported on each stack build | MISC.md, without a Q row |
 | J3 | split tile whose left half is space | compat: ON keeps Magic (left type: flat, no side faces); OFF uses the triangle's own type for height, thickness and side faces | Q-MISC-79 (new) |
 | J4 | `noplaneordering` skips the defaults and the micron conversion | replicate, both modes; no Q row | MISC.md, without a Q row |
-| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disproved by the MISC-3D-12 capture: Magic deletes the path and reopens, so the approval does not stand and the revised recommendation, replicate in both modes (implemented), is pending user confirmation | Q-MISC-80 (new) |
+| J5 | `.magic3d closewindow` then `specialopen wind3d` | compat: ON copies Magic's "Could not create a new Tk window"; OFF reopens; the use-after-free of `.magic3d` is fixed in both modes (standing rule); disproved by the MISC-3D-12 capture: Magic deletes the path and reopens, so the approval does not stand; the revised recommendation, replicate in both modes (implemented), was approved on 2026-11-22 ("Round 3 decisions") | Q-MISC-80 (new) |
 | J6 | empty cell extent, abutting cells, clip-edge faces | confirmed, both modes: an empty dimension is left out of the fit (1 × 1 when both are empty); pieces abutting across cells get no inner side faces; faces on the clip area are closed | MISC.md, without a Q row |
 
 ### Spec changes of round 2 (applied with the decisions)
@@ -148,3 +158,42 @@ Items left open by M10 round 1 (PR #77: tasks.md 3.4 integration notes (a) and (
 - **J6**, "Default view": the empty-extent fit and the scenario "Empty cell"; "Rendered geometry": side faces on each layer's flattened boundary, none between pieces abutting across cells, faces on the clip area (cut box or window area) closed; new scenario "Abutting cells leave no inner faces".
 
 `openspec/specs/hefesto-3d-visualization/spec.md` needs no change: its export and cross-sections take the displayed geometry, which these rules define.
+
+## Round 3 decisions (approved 2026-11-22)
+
+Items left open by M10 round 2 (PR #81: J5, the design.md "Open for the user" paragraph R1, the review findings N1 to N3 and the as-landed items of RENDER3D, MESH, PERF and WIND3D). The user approved every item with the recommended option on 2026-11-22. Each is recorded in `docs/decisions/open-questions/MISC.md` with `Status: approved 2026-11-22` and a `- Resolution:` line: on its Q entry, or under "Round-3 decisions without a Q row".
+
+| Item | Question | Decision (approved 2026-11-22) | Where recorded |
+|---|---|---|---|
+| J5 | `closewindow` then `specialopen wind3d` (revised) | replicate, both modes: closing deletes the toolkit-path command as Magic's GrTOGLDelete does and a later `specialopen wind3d` on the path reopens; no refusal | Q-MISC-80 (resolution added) |
+| R1 | lower layers in front in the top view with the depth test | fix, both modes: flip the depth and culling sides so higher layers are in front; RENDER3D updates the reference pick maps | Q-MISC-81 (new) |
+| R2 | lighting | kept as built: ON Magic's GL state (normal (0, 0, 1), positional light at (50, 50, 50), ambient 0.6), OFF one directional light from (1, 1, 1) on each face's normal, ambient 0.4 | MISC.md, without a Q row |
+| R3 | translucent display styles | both modes: drawn opaque in their plain colour (a consequence of Q-MISC-77) | MISC.md, without a Q row |
+| M1 | spanned contact whose residues leave no gap | keeps its own h and t (J1 option) | MISC.md, without a Q row |
+| M2 | memory per meshed rectangle | keep the round-2 `view3d-bench` gates (about 170 B/rect at most); D6's 64-byte target deferred, revisited after P1 | MISC.md, without a Q row |
+| W1 | console noise after `view`/`scroll`/`zoom`/`findbox`/`see` | compat: ON prints the two "Unknown command:" failures of the wrapper tag's `*bypass logcommands`, OFF prints nothing | MISC.md, without a Q row |
+| W2 | `specialopen` on a path below a top-level window | compat: ON leaves `window "<path>" isn't a top-level window` as the result, OFF an empty result; the window opens in both | MISC.md, without a Q row |
+| W3 | crashes: missing output style, `atoi` overflow, a retired path | fix, both modes | MISC.md, without a Q row |
+| W4 | `level` limits | replicate, both modes: lower limit 0, no upper limit (saturating at the `int` range) | MISC.md, without a Q row |
+| N1 | layout commands a script runs while the 3D window is open | compat: ON to the 3D window as Magic, OFF to the layout window; WIND3D implements | Q-MISC-82 (new) |
+| N2 | split tile cut by the clip area | compat: ON its clipped bounding rectangle, OFF the triangle; already implemented | Q-MISC-83 (new) |
+| N3 | which styles are drawn | replicate, both modes: only solid and stippled styles, in the renderer and in the GL face log (MISC-3D-15) | MISC.md, without a Q row |
+
+### Spec changes of round 3 (applied with the decisions)
+
+`openspec/specs/view-3d/spec.md` (no requirement heading renamed):
+
+- **J5 / Q-MISC-80**, "Opening the 3D window": "(Q-MISC-80, approved 2026-11-22, MISC-3D-12)".
+- **W2**, "Opening the 3D window": the `specialopen` result per mode; new scenario "specialopen below a top-level window".
+- **N1 / Q-MISC-82**, "3D view commands": the routing sentence; new scenarios "Script layout commands reach the 3D window with magic-compat ON" and "Script layout commands reach the layout window with magic-compat OFF".
+- **W1**, "3D view commands": the console noise per mode; new scenario "Wrapper console noise".
+- **W3 / W4**, "3D view commands": the `level` row ("clamped at 0 from below, no upper limit; values beyond the integer range saturate"); new scenario "Level limits".
+- **N2 / Q-MISC-83**, "Rendered geometry": "no Q row yet" replaced by Q-MISC-83; new scenario "Split tile under the cut box".
+- **N3**, "Rendered geometry": only solid or stippled styles are drawn, by the renderer and in the GL face log; new scenario "Outline style draws nothing".
+- **R1 / Q-MISC-81**, "Viewing transform and shading": the depth and culling sides; new scenario "Higher layers in front in the top view".
+- **R2**, "Viewing transform and shading": "(R2, recommended 2026-11-21, pending user confirmation)" becomes "(R2, approved 2026-11-22)"; the text already described both modes.
+- **R3**, "Viewing transform and shading": translucent styles drawn opaque in their plain colour; new scenario "Translucent style drawn opaque".
+
+`openspec/specs/hefesto-3d-visualization/spec.md`:
+
+- **M1**, "Mesh generation from layout": a contact whose residues leave no gap keeps its own h and t; new scenario "Spanning a contact whose residues leave no gap".

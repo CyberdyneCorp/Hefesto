@@ -42,6 +42,7 @@
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/version.hpp"
+#include "hefesto/view3d/client/face_log.hpp"
 #include "interactive.hpp"
 #include "options.hpp"
 #include "tcl_lines.hpp"
@@ -267,6 +268,12 @@ class Session {
       dispatcher_->add_sink(sink_);
     }
     dispatcher_->add_sink(monitor_);
+    // m10 task 12.4: HEFESTO_GL_CAPTURE names the 3D window's face log, as
+    // the GL capture shim writes it for Magic (tools/golden/gl_capture/).
+    if (const auto path = install_host_->environment("HEFESTO_GL_CAPTURE"); path && !path->empty()) {
+      face_log_ = std::make_unique<view3d::FaceLogDisplay>(services_.files(), *path);
+      editor_.view3d.display = face_log_.get();
+    }
   }
 
   Session(const Session&) = delete;
@@ -703,6 +710,7 @@ class Session {
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
   bool wrapper_display_ = false;  // -d names a display other than NULL (wrapper mode)
   std::unique_ptr<platform::FilePicker> file_picker_;  // wrapper mode: Tk's file dialogs
+  std::unique_ptr<view3d::FaceLogDisplay> face_log_;   // HEFESTO_GL_CAPTURE: the 3D window's face log
 };
 
 int report_usage_error(const std::string& text, std::FILE* err) {

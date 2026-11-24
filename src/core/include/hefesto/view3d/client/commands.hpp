@@ -84,6 +84,21 @@ void sync_output_style(editor::EditorState& editor, bool magic_compat);
 [[nodiscard]] bool is_open_path(const editor::EditorState& editor, std::string_view path);
 [[nodiscard]] bool is_closed_path(const editor::EditorState& editor, std::string_view path);
 
+/// Records which window a window-path command was sent to (`to_3d`: the
+/// 3D window's toolkit path; otherwise a layout window's path), as Magic's
+/// _tk_dispatch sets the current window with TxSetPoint for every command
+/// after it.
+void note_window_command(editor::EditorState& editor, bool to_3d);
+
+/// N1 (Q-MISC-82): whether a script command with no window path goes to
+/// the 3D window. With magic-compat ON, as Magic's WindSendCommand does,
+/// once the last window-path command went to the 3D window and a 3D window
+/// is open: the command then finds the window commands and the `wind3d`
+/// table (the client's command wins), so `box` and `load` fail quietly
+/// and `cif` is the 3D window's. With it OFF, never: the command goes to
+/// the layout window.
+[[nodiscard]] bool routes_script_commands(const editor::EditorState& editor, bool magic_compat);
+
 /// Whether `name`, a command name as invoked, is the name a closed window's
 /// toolkit-path command was moved to (close_wind3d). Only a call through it
 /// is Magic's deleted command: a window command defined again on the path

@@ -377,6 +377,21 @@ std::pair<int, int> project(const view3d::ViewState& v, double x, double y, doub
   return {static_cast<int>(px), static_cast<int>(py)};
 }
 
+/// The Vulkan depth of root point (x, y, z) in the renderer's mapping: the
+/// mirrored (w + z') / 2 of R1 (Q-MISC-81), higher layers nearer.
+float depth_of(const view3d::ViewState& v, double x, double y, double z) {
+  const view3d::Matrix4 m = view3d::matrix(v, kWidth, kHeight, view3d::ProjectionParams{});
+  const auto at = [&](std::size_t i) { return static_cast<double>(m[i]); };
+  const double cz = (at(2) * x) + (at(6) * y) + (at(10) * z) + at(14);
+  return static_cast<float>(0.5 * (1.0 + cz));
+}
+
+/// The model z of the face at a layer's h + t end, the one the top view
+/// shows (z = -(h + t) * s_z).
+double far_end_z(const view3d::ViewState& v, float h, float t) {
+  return -static_cast<double>(h + t) * static_cast<double>(v.scale_z);
+}
+
 view3d::PickId pick_at(Fixture& f, const view3d::ViewState& v, double x, double y, double z) {
   const auto [px, py] = project(v, x, y, z);
   return f.renderer.read_pick(px, py);
@@ -455,11 +470,75 @@ TEST_CASE("3D renderer top view matches its reference image",
   const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("top", pick_map(s.mesh, r));
   check_colors(s, f.styles, r);
-  // The faces nearest the viewer (+z) win: z_top = -h * s_z, so ndiff and
-  // poly (lower h) cover metal1 where they overlap.
-  CHECK(picked_layer(s, pick_at(f, v, 20, 30, 0)) == kNdiff);
+  // Higher layers are in front (R1, Q-MISC-81): metal1 covers ndiff and
+  // poly where they overlap.
+  CHECK(picked_layer(s, pick_at(f, v, 20, 30, 0)) == kMetal);
+  CHECK(picked_layer(s, pick_at(f, v, 5, 5, 0)) == kNdiff);
   CHECK(picked_layer(s, pick_at(f, v, 70, 30, 0)) == kMetal);
   CHECK(pick_at(f, v, 35, 50, 0) == view3d::kNoPick);
+}
+
+TEST_CASE("3D renderer top view shows metal1 in front of poly where they overlap, magic-compat ON and OFF (R1)",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Regression (R1, Q-MISC-81, approved 2026-11-22, both modes): the depth
+  // used to follow Magic's faces, which put the viewer on the physical
+  // underside, so poly (h 0.3) covered metal1 (h 1.0) in the top view.
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << (magic_compat ? "ON" : "OFF"));
+    const Scene s = basic_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::top);
+    for (const int level : {0, 1}) {
+      INFO("level " << level);
+      const render::TargetReadback r = f.draw(s, v, f.params(s.stack, level));
+      const auto [px, py] = project(v, 50, 30, 0);  // poly under metal1
+      const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, px, py)]);
+      REQUIRE(ref.has_value());
+      CHECK(ref->kind == render::PickKind::rect);
+      CHECK(layer_of(s.mesh, *ref) == kMetal);
+      // The face shown is metal1's at h + t (1.5), the nearest.
+      CHECK(std::abs(r.depth[pixel(r, px, py)] - depth_of(v, 50, 30, far_end_z(v, 1.0F, 0.5F))) < 1e-6F);
+      const auto [qx, qy] = project(v, 50, 50, 0);  // poly alone
+      CHECK(picked_layer(s, r.pick[pixel(r, qx, qy)]) == kPoly);
+    }
+  }
+}
+
+TEST_CASE("3D renderer draws the face of each rectangle toward the viewer, from above and from below",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // A rectangle is one 4-vertex strip: the shader emits its h + t face or
+  // its h face, whichever faces the viewer (task 13.2), where the rasterizer
+  // used to cull one of the two. Seen from below (view_x 180) the h faces
+  // are shown and poly (h 0.3) is in front of metal1 (h 1.0); orthographic
+  // and perspective, levels 0 and 1.
+  Fixture f;
+  const Scene s = basic_scene();
+  for (const view3d::Projection kind : {view3d::Projection::orthographic, view3d::Projection::perspective}) {
+    for (const float view_x : {0.0F, 180.0F}) {
+      for (const int level : {0, 1}) {
+        INFO("projection " << static_cast<int>(kind) << ", view_x " << view_x << ", level " << level);
+        view3d::ViewState v = view_of(s, view3d::Preset::top);
+        v.view_x = view_x;
+        render::DrawParams p = f.params(s.stack, level);
+        p.projection.kind = kind;
+        const render::TargetReadback r = f.draw(s, v, p);
+        const bool below = view_x > 90.0F;
+        // Orthographic pixel positions; the probes sit well inside each
+        // region, so the perspective frame (same framing of z = 0) hits them.
+        const auto [px, py] = project(v, 50, 30, 0);  // poly under metal1
+        CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == (below ? kPoly : kMetal));
+        const auto [mx, my] = project(v, 70, 30, 0);  // metal1 alone
+        const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, mx, my)]);
+        REQUIRE(ref.has_value());
+        CHECK(ref->kind == render::PickKind::rect);
+        CHECK(layer_of(s.mesh, *ref) == kMetal);
+        if (kind == view3d::Projection::orthographic) {
+          const double z = below ? -1.0 * static_cast<double>(v.scale_z) : far_end_z(v, 1.0F, 0.5F);
+          CHECK(std::abs(r.depth[pixel(r, mx, my)] - depth_of(v, 70, 30, z)) < 1e-6F);
+        }
+      }
+    }
+  }
 }
 
 TEST_CASE("3D renderer isometric view matches its reference image",
@@ -479,8 +558,9 @@ TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
   const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("split", pick_map(s.mesh, r));
 
-  // The poly triangle of the ndiff | poly tile sits at ndiff's height (h 0),
-  // not poly's (0.3): its top face depth is that of z = 0 (top view).
+  // The poly triangle of the ndiff | poly tile sits at ndiff's height (h 0,
+  // t 0.2), not poly's (0.3, 0.2): the face the top view shows lies at
+  // z = -(0 + 0.2) * s_z.
   const view3d::ViewState top = view_of(s, view3d::Preset::top);
   const render::TargetReadback rt = f.draw(s, top, f.params(s.stack));
   const auto [px, py] = project(top, 85, 10, 0);  // inside the poly triangle (right side)
@@ -488,9 +568,7 @@ TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
   REQUIRE(ref.has_value());
   CHECK(ref->kind == render::PickKind::triangle);
   CHECK(layer_of(s.mesh, *ref) == kPoly);
-  const view3d::Matrix4 m = view3d::matrix(top, kWidth, kHeight, view3d::ProjectionParams{});
-  const auto z_ndc = static_cast<double>(m[14]);  // z' of z = 0 (a translation-only depth row in the top view)
-  CHECK(std::abs(rt.depth[pixel(rt, px, py)] - static_cast<float>(0.5 * (1.0 - z_ndc))) < 1e-6F);
+  CHECK(std::abs(rt.depth[pixel(rt, px, py)] - depth_of(top, 85, 10, far_end_z(top, 0.0F, 0.2F))) < 1e-6F);
 }
 
 TEST_CASE("3D renderer draws a split tile's triangle at its own type's height with magic-compat OFF (Q-MISC-79)",
@@ -505,11 +583,10 @@ TEST_CASE("3D renderer draws a split tile's triangle at its own type's height wi
   REQUIRE(ref.has_value());
   CHECK(ref->kind == render::PickKind::triangle);
   CHECK(layer_of(s.mesh, *ref) == kPoly);
-  // Its top face lies at poly's h (0.3), behind the plane z = 0 where
-  // magic-compat ON draws it with ndiff's h.
-  const view3d::Matrix4 m = view3d::matrix(top, kWidth, kHeight, view3d::ProjectionParams{});
-  const auto z_ndc = static_cast<double>(m[14]);  // z' of z = 0
-  CHECK(rt.depth[pixel(rt, px, py)] > static_cast<float>(0.5 * (1.0 - z_ndc)) + 1e-4F);
+  // The face shown lies at poly's h + t (0.5), nearer than ndiff's h + t
+  // (0.2) where magic-compat ON draws it.
+  CHECK(std::abs(rt.depth[pixel(rt, px, py)] - depth_of(top, 85, 10, far_end_z(top, 0.3F, 0.2F))) < 1e-6F);
+  CHECK(rt.depth[pixel(rt, px, py)] + 1e-4F < depth_of(top, 85, 10, far_end_z(top, 0.0F, 0.2F)));
 }
 
 TEST_CASE("3D renderer closes the faces cut by the cut box", "[cap:view-3d][req:Rendered geometry]") {
@@ -549,14 +626,15 @@ TEST_CASE("3D renderer: Magic's lighting with magic-compat ON", "[cap:view-3d][r
   const Scene s = basic_scene(true);
   const view3d::ViewState v = view_of(s, view3d::Preset::top);
   const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
-  // The metal1 top face (z_top = -25): Gouraud-interpolated between the
-  // intensities at its corners.
+  // The metal1 face the top view shows (R1: at h + t, z = -1.5 * s_z):
+  // Gouraud-interpolated between the intensities at its corners, with
+  // Magic's normal (0, 0, 1).
   const auto paints = render::layer_paints(s.stack, &f.styles);
   float lo = 10.0F;
   float hi = 0.0F;
   for (const double x : {10.0, 80.0}) {
     for (const double y : {20.0, 40.0}) {
-      const float i = render::light_intensity(render::Lighting::magic, {x, y, -25.0}, {0, 0, 1});
+      const float i = render::light_intensity(render::Lighting::magic, {x, y, far_end_z(v, 1.0F, 0.5F)}, {0, 0, 1});
       lo = std::min(lo, i);
       hi = std::max(hi, i);
     }
@@ -599,7 +677,7 @@ TEST_CASE("3D renderer at level 1 resolves 4x MSAA and keeps the single-sample p
   }
 }
 
-TEST_CASE("3D renderer uploads only chunks whose version or content changed",
+TEST_CASE("3D renderer uploads only chunks whose id or version changed",
           "[cap:view-3d][req:Rendered geometry]") {
   Fixture f;
   Scene s = basic_scene();
@@ -611,23 +689,140 @@ TEST_CASE("3D renderer uploads only chunks whose version or content changed",
 
   view3d::MeshModel changed = s.mesh;
   changed.chunks.front().rects.front().x1 -= 5.0F;
-  ++changed.chunks.front().version;
+  changed.chunks.front().version = changed.chunks.front().version + 1000;
   f.renderer.upload(changed);
   CHECK(f.renderer.chunk_uploads() == first + 1);
   f.renderer.upload(s.mesh);
   CHECK(f.renderer.chunk_uploads() == first + 2);
 
-  // Regression guard: a fresh build restarts at version 1 (MESH), so the
-  // same id and version can carry other geometry; the content tells the
-  // renderer the chunk is new.
-  view3d::MeshModel fresh = s.mesh;
-  fresh.chunks.front().rects.front().x0 += 5.0F;
-  f.renderer.upload(fresh);
-  CHECK(f.renderer.chunk_uploads() == first + 3);
+  // A model made by hand (version 0) is never taken from the cache.
+  view3d::MeshModel by_hand = s.mesh;
+  for (view3d::Chunk& c : by_hand.chunks) c.version = 0;
+  f.renderer.upload(by_hand);
+  f.renderer.upload(by_hand);
+  CHECK(f.renderer.chunk_uploads() == first + 2 + (2 * s.mesh.chunks.size()));
 
   f.renderer.upload(view3d::MeshModel{});
   f.renderer.draw(view_of(s, view3d::Preset::top), f.params(s.stack), f.target);
   CHECK(f.renderer.read_pick(kWidth / 2, kHeight / 2) == view3d::kNoPick);
+}
+
+TEST_CASE("3D renderer uploads again after a fresh build of another cell with the same chunk ids",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  // MESH versions are process-wide, so a fresh build never reuses an
+  // earlier build's (id, version): the renderer keys its cache on the pair
+  // alone (no content fingerprint).
+  Fixture f;
+  const Scene a = basic_scene();
+  Scene b;
+  b.stack = stack_for(b.tech, false);
+  db::CellDef cell("other", b.tech.tech->plane_count());
+  view3d::test::paint(cell, b.tech, Rect{0, 0, 30, 30}, b.tech.metal1);
+  finish(b, cell, Rect{-1, -1, 81, 61}, false);
+  REQUIRE(a.mesh.chunks.size() == b.mesh.chunks.size());
+  for (std::size_t i = 0; i < a.mesh.chunks.size(); ++i) {
+    REQUIRE(a.mesh.chunks[i].id == b.mesh.chunks[i].id);
+    CHECK(a.mesh.chunks[i].version != b.mesh.chunks[i].version);
+  }
+  const view3d::ViewState v = view_of(a, view3d::Preset::top);
+  (void)f.draw(a, v, f.params(a.stack));
+  const std::uint64_t first = f.renderer.chunk_uploads();
+  CHECK(picked_layer(a, pick_at(f, v, 50, 50, 0)) == kPoly);
+  (void)f.draw(b, v, f.params(b.stack));
+  CHECK(f.renderer.chunk_uploads() == first + b.mesh.chunks.size());
+  CHECK(pick_at(f, v, 50, 50, 0) == view3d::kNoPick);  // a's poly is gone
+  CHECK(picked_layer(b, pick_at(f, v, 15, 15, 0)) == kMetal);
+}
+
+namespace {
+
+/// basic_scene's layout with every coordinate multiplied by `k`.
+Scene scaled_basic_scene(db::Coord k) {
+  Scene s;
+  s.stack = stack_for(s.tech, false);
+  db::CellDef cell("basic", s.tech.tech->plane_count());
+  view3d::test::paint(cell, s.tech, Rect{0, 0, 30 * k, 60 * k}, s.tech.ndiff);
+  view3d::test::paint(cell, s.tech, Rect{40 * k, 0, 60 * k, 60 * k}, s.tech.poly);
+  view3d::test::paint(cell, s.tech, Rect{10 * k, 20 * k, 80 * k, 40 * k}, s.tech.metal1);
+  finish(s, cell, Rect{-k, -k, 81 * k, 61 * k}, false);
+  return s;
+}
+
+/// Pixels where two pick maps differ; each must sit on an edge of `expected`.
+int edge_differences(const std::vector<std::string>& expected, const std::vector<std::string>& actual) {
+  int differing = 0;
+  for (std::size_t y = 0; y < expected.size(); ++y) {
+    for (std::size_t x = 0; x < expected[y].size(); ++x) {
+      if (expected[y][x] == actual[y][x]) continue;
+      ++differing;
+      INFO("pixel (" << x << ", " << y << ")");
+      CHECK(has_neighbour(expected, static_cast<int>(x), static_cast<int>(y), actual[y][x]));
+    }
+  }
+  return differing;
+}
+
+}  // namespace
+
+TEST_CASE("3D renderer scales x and y by DrawParams::xy_scale",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Mask-layer mode in P1 draws the layout mesh scaled by Scene::xy_factor:
+  // the mesh drawn at xy_scale 10 covers the pixels of the same layout built
+  // at ten times the coordinates.
+  Fixture f;
+  const Scene unit = scaled_basic_scene(1);
+  const Scene tenfold = scaled_basic_scene(10);
+  for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+    INFO("preset " << static_cast<int>(preset));
+    const view3d::ViewState v = view_of(tenfold, preset);
+    const auto expected = pick_map(tenfold.mesh, f.draw(tenfold, v, f.params(tenfold.stack)));
+    render::DrawParams p = f.params(unit.stack);
+    p.xy_scale = 10.0F;
+    const auto scaled = pick_map(unit.mesh, f.draw(unit, v, p));
+    REQUIRE(scaled.size() == expected.size());
+    CHECK(edge_differences(expected, scaled) * 100 <= kWidth * kHeight);
+    // Unscaled, the unit mesh covers about a hundredth of that area.
+    const auto plain = pick_map(unit.mesh, f.draw(unit, v, f.params(unit.stack)));
+    CHECK(plain != scaled);
+  }
+}
+
+TEST_CASE("3D renderer draws a translucent style opaque in its plain colour, magic-compat ON and OFF (R3)",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // R3 (approved 2026-11-22, both modes): Magic's OpenGL driver sends a
+  // translucent style (mask < 127) as 2c - 0.8 blended with alpha
+  // mask / 127; the 3D view draws it opaque in c, as the same colour with
+  // mask 127.
+  Fixture f;
+  display::StyleSet translucent = f.styles;
+  translucent.table.styles[kBlue].mask = 40;
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << (magic_compat ? "ON" : "OFF"));
+    const Scene s = basic_scene(magic_compat);
+    const auto opaque_paints = render::layer_paints(s.stack, &f.styles);
+    const auto paints = render::layer_paints(s.stack, &translucent);
+    CHECK(paints[kMetal] == opaque_paints[kMetal]);
+    CHECK(paints[kMetal] == render::LayerPaint{{70.0F / 255.0F, 90.0F / 255.0F, 230.0F / 255.0F}, true});
+    const view3d::ViewState v = view_of(s, view3d::Preset::top);
+    const render::TargetReadback plain = f.draw(s, v, f.params(s.stack));
+    render::DrawParams p = f.params(s.stack);
+    p.styles = &translucent;
+    const render::TargetReadback r = f.draw(s, v, p);
+    CHECK(r.pick == plain.pick);
+    const auto [mx, my] = project(v, 75, 30, 0);  // metal1 over the background
+    const auto [ox, oy] = project(v, 50, 30, 0);  // metal1 over poly
+    for (const auto& [x, y] : {std::pair{mx, my}, std::pair{ox, oy}}) {
+      INFO("pixel (" << x << ", " << y << ")");
+      CHECK(picked_layer(s, r.pick[pixel(r, x, y)]) == kMetal);
+      CHECK(r.color[pixel(r, x, y)] == plain.color[pixel(plain, x, y)]);
+      CHECK((r.color[pixel(r, x, y)] >> 24U) == 0xFFU);  // opaque
+    }
+    if (!magic_compat) {
+      const auto lit = render::lit_color(paints[kMetal].rgb,
+                                         render::light_intensity(render::Lighting::directional, {}, {0, 0, 1}));
+      CHECK(near_rgb(rgb_of(r.color[pixel(r, mx, my)]), lit, 2));
+    }
+  }
 }
 
 // --- picking and transparency (task 5.4) -----------------------------------------
@@ -656,18 +851,18 @@ TEST_CASE("3D pick sees through a transparent layer and skips hidden ones",
   Fixture f;
   const Scene s = basic_scene();
   const view3d::ViewState v = view_of(s, view3d::Preset::top);
-  const auto [px, py] = project(v, 50, 30, 0);  // poly over metal1
+  const auto [px, py] = project(v, 50, 30, 0);  // metal1 over poly (R1)
 
   render::TargetReadback r = f.draw(s, v, f.params(s.stack));
-  CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kPoly);
+  CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kMetal);
   const auto opaque = rgb_of(r.color[pixel(r, px, py)]);
 
   for (const int level : {0, 1}) {
     INFO("level " << level);
     render::DrawParams p = f.params(s.stack, level);
-    p.alpha = {1.0F, 0.5F, 1.0F};  // poly half transparent
+    p.alpha = {1.0F, 1.0F, 0.5F};  // metal1 half transparent
     r = f.draw(s, v, p);
-    CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kMetal);
+    CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kPoly);
     const auto paints = render::layer_paints(s.stack, &f.styles);
     const float top = render::light_intensity(render::Lighting::directional, {}, {0, 0, 1});
     const auto poly = render::lit_color(paints[kPoly].rgb, top);
@@ -682,10 +877,10 @@ TEST_CASE("3D pick sees through a transparent layer and skips hidden ones",
   }
 
   render::DrawParams hidden = f.params(s.stack);
-  hidden.hidden = {false, true};
+  hidden.hidden = {false, false, true};
   r = f.draw(s, v, hidden);
-  CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kMetal);
-  const auto [qx, qy] = project(v, 50, 50, 0);  // poly alone
+  CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kPoly);
+  const auto [qx, qy] = project(v, 75, 30, 0);  // metal1 alone
   CHECK(r.pick[pixel(r, qx, qy)] == view3d::kNoPick);
 }
 
@@ -696,13 +891,13 @@ TEST_CASE("3D renderer places rectangles from the model's layer heights (J1 span
   const view3d::ViewState v = view_of(s, view3d::Preset::top);
   REQUIRE(s.mesh.layer_heights.size() > kPoly);
   (void)f.draw(s, v, f.params(s.stack));
-  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kPoly);  // poly (h 0.3) in front of metal1 (h 1.0)
+  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kMetal);  // metal1 (h 1.0) in front of poly (h 0.3)
 
   // The model's heights win over the stack's: poly lifted above metal1 now
-  // lies behind it, as a contact spanned by the J1 option would.
+  // lies in front of it, as a contact spanned by the J1 option would.
   s.mesh.layer_heights[kPoly] = view3d::DrawHeight{2.0F, 0.2F};
   (void)f.draw(s, v, f.params(s.stack));
-  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kMetal);
+  CHECK(picked_layer(s, pick_at(f, v, 50, 30, 0)) == kPoly);
 }
 
 TEST_CASE("3D renderer dims what is not in the highlight set",

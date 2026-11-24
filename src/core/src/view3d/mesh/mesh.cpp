@@ -8,14 +8,17 @@
 // (faces.cpp). Chunks are emitted nearest the view centre first, each
 // handed to `on_chunk` as it finishes (progressive display), and the model
 // keeps them in Morton order, so two builds of the same cell are equal.
-// Every chunk and the model get version 1; a cancelled build returns
-// nullopt and the caller keeps the previous model.
+// The model and every chunk of a build get one fresh version from the
+// process-wide counter (next_version), so two builds differ only in their
+// versions; a cancelled build returns nullopt and the caller keeps the
+// previous model.
 // rebuild_chunks (task 6.4): the chunks meeting a dirty rectangle grown by
 // 1 (a tile side on the dirty boundary belongs to the chunk next to it)
 // are rebuilt from a flatten of their areas and the dirty areas, each
 // grown by 1 so their boundary faces see their neighbours; new chunks are
 // planned where changed paint fell outside every chunk; rebuilt chunks
-// left empty are dropped. Untouched chunks are kept as they were.
+// left empty are dropped. Untouched chunks are kept as they were, with
+// their versions; rebuilt and new ones and the model take a fresh version.
 // build_from_planes (MASKSRC, P2) is still the scaffold stub: an empty
 // model over the clip area.
 //
@@ -23,6 +26,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 
 #include "hefesto/view3d/mesh/build.hpp"
 #include "internal.hpp"
@@ -149,10 +153,15 @@ RebuildPlan affected_chunks(const MeshModel& previous, const std::vector<db::Rec
 
 namespace detail {
 
+std::uint64_t next_version() noexcept {
+  static std::atomic<std::uint64_t> counter{0};
+  return counter.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
 std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell, const ClipArea& clip,
                                       BuildContext& ctx, std::size_t max_tiles) {
   MeshModel model = empty_model(stack, clip);
-  model.version = 1;
+  model.version = next_version();
   FlatLayout flat;
   const std::array<db::Rect, 1> areas{clip.area};
   if (!flatten_snapshot(stack, cell, areas, ctx, flat)) {
@@ -160,7 +169,8 @@ std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef
   }
   const HeightTable heights(stack, ctx);
   model.layer_heights = heights.layers();
-  if (!emit_chunks(flat, heights, plan_chunks(flat, clip.area, max_tiles), clip.area, 1, ctx, model.chunks)) {
+  if (!emit_chunks(flat, heights, plan_chunks(flat, clip.area, max_tiles), clip.area, model.version, ctx,
+                   model.chunks)) {
     return std::nullopt;
   }
   return model;
@@ -186,7 +196,7 @@ std::optional<MeshModel> rebuild_layout(const MeshModel& previous, const LayerSt
   MeshModel model;
   model.mode = previous.mode;
   model.region = previous.region;
-  model.version = previous.version + 1;
+  model.version = next_version();
   const HeightTable heights(stack, ctx);
   model.layer_heights = heights.layers();
   std::vector<Chunk> fresh;
@@ -217,6 +227,7 @@ std::optional<MeshModel> build_from_layout(const LayerStack& stack, const db::Ce
 std::optional<MeshModel> build_from_planes(const LayerStack& stack, const mask::LayerPlanes& /*planes*/,
                                            const ClipArea& clip, BuildContext& ctx) {
   MeshModel model = empty_model(stack, clip);
+  model.version = detail::next_version();
   model.layer_heights = detail::HeightTable(stack, ctx).layers();
   return model;
 }

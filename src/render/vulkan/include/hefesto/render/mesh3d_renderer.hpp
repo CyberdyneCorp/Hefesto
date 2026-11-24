@@ -14,7 +14,8 @@
 // texture mode. Instanced rectangle, side-segment and triangle pipelines;
 // z from h, t and s_z in the shader; back-face culling; depth test
 // LESS_OR_EQUAL in style-table order (the last style wins on coplanar
-// faces, Q-MISC-77); ambient 0.4 and one white diffuse light at (50, 50,
+// faces, Q-MISC-77), with the viewer on the side of the higher layers
+// (R1, Q-MISC-81); ambient 0.4 and one white diffuse light at (50, 50,
 // 50); MSAA 4x at level >= 1. Redraws on demand only.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3, interface only); RENDER3D
@@ -67,6 +68,11 @@ struct DrawParams {
   std::vector<bool> hidden;                      // per stack layer
   std::vector<float> alpha;                      // per stack layer; empty = opaque (transparency pass)
   const view3d::HighlightSet* highlight = nullptr;  // drawn highlighted, the rest dimmed
+  /// Multiplies x and y of every instance (root coordinates) before the
+  /// view transform; z is unchanged. Mask-layer mode in P1 draws the layout
+  /// mesh with view3d::Scene::xy_factor (task 9.1). A value that is not a
+  /// positive finite number draws at 1.
+  float xy_scale = 1.0F;
 };
 
 class Mesh3dRenderer {

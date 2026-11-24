@@ -183,7 +183,6 @@ bool saves_layout(std::string_view command) {
 
 std::optional<std::string_view> later_milestone(std::string_view command) {
   if (command == "magic::specialopen netlist") return "M12";
-  if (command == "magic::render3d") return "M10";
   return std::nullopt;
 }
 

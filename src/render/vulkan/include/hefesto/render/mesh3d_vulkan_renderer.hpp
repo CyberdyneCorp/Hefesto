@@ -7,18 +7,22 @@
 //
 // - upload: one host-visible buffer per chunk holding its rects, sides and
 //   triangles, each grouped by layer, with the chunk-local pick index baked
-//   in (mesh3d_pick.hpp). A chunk is uploaded again only when its id,
-//   version, area, instance counts or content fingerprint changed (fresh
-//   builds all start at version 1, so the version alone does not tell two
-//   builds apart); chunks no longer in the model are dropped.
+//   in (mesh3d_pick.hpp). A chunk is uploaded again only when its (id,
+//   version) changed: MESH takes versions from one process-wide counter, so
+//   the pair names the chunk's content across builds and rebuilds. A chunk
+//   of version 0 (a model made by hand) is always uploaded; chunks no
+//   longer in the model are dropped.
 // - draw: instanced rectangle (top and bottom faces), side-segment and
 //   triangle pipelines; z from h, t and s_z in the vertex shader (a
 //   triangle and an own_height side face use their own h and t, everything
-//   else its layer's LayerStack::draw_height); counter-clockwise front
-//   faces, back faces culled; depth test LESS_OR_EQUAL with writes, layers
-//   in stack (style-table) order, so the last style wins on coplanar faces
-//   (Q-MISC-77); Magic's lighting (magic-compat ON) or the directional one
-//   (OFF), mesh3d_shading.hpp. Chunk positions go to the GPU relative to a
+//   else its layer's MeshModel::layer_heights entry); back faces culled;
+//   depth test LESS_OR_EQUAL with writes, layers in stack (style-table)
+//   order, so the last style wins on coplanar faces (Q-MISC-77). The depth
+//   is mirrored so the viewer sits on the side of the higher layers, which
+//   are in front where layers overlap, in both magic-compat modes (R1,
+//   Q-MISC-81); the picture's x and y are CAMERA's. Magic's lighting
+//   (magic-compat ON) or the directional one (OFF), mesh3d_shading.hpp.
+//   DrawParams::xy_scale multiplies x and y of every instance. Chunk positions go to the GPU relative to a
 //   per-chunk matrix computed in double, so far-out chips keep sub-unit
 //   precision.
 // - level >= 1: the color is drawn into 4x multisampled color and depth

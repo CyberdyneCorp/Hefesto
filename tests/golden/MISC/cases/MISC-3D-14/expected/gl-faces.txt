@@ -1,0 +1,27 @@
+file gl.log
+gl-faces 1
+face metal1 -12.5 +z 0 20 0 0 10 0
+face metal1 -20 -z 0 20 0 0 10 0
+face metal1 0 +z 30 50 10 0 10 10
+face metal1 0 -z 30 50 10 0 10 10
+face metal2 -25 +z 100 120 0 0 20 0
+face metal2 -25 +z 90 100 0 0 20 20
+face metal2 -32.5 -z 100 120 0 0 20 0
+face metal2 -32.5 -z 90 100 0 0 20 20
+face ndiffusion -5 +z 60 80 0 0 0 20
+face ndiffusion -7.5 -z 60 80 0 0 0 20
+face polysilicon -5 +z 60 80 0 20 20 20
+face polysilicon -7.5 -z 60 80 0 20 20 20
+side metal1 -12.5 -20 0 0 20 0
+side metal1 -12.5 -20 0 10 0 0
+side metal1 -12.5 -20 20 0 0 10
+side metal2 -25 -32.5 100 20 90 20
+side metal2 -25 -32.5 120 0 100 20
+side metal2 -25 -32.5 90 0 120 0
+side metal2 -25 -32.5 90 20 90 0
+side ndiffusion -5 -7.5 60 0 80 0
+side ndiffusion -5 -7.5 80 0 80 20
+side ndiffusion -5 -7.5 80 20 60 0
+side polysilicon -5 -7.5 60 0 80 20
+side polysilicon -5 -7.5 60 20 60 0
+side polysilicon -5 -7.5 80 20 60 20

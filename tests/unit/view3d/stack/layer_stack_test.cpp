@@ -266,6 +266,22 @@ TEST_CASE("Default height from plane order", "[cap:view-3d][req:Layer height and
   CHECK(um->height_um == static_cast<double>(static_cast<float>(0.1 * 4)) * 0.005);
 }
 
+TEST_CASE("an unknown µm per unit gives no physical height in layout-layer mode",
+          "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
+  const auto t = load("", " style s\n planeorder metal2 4\n");
+  diag::NullSink sink;
+  const auto heights = extract::HeightView::from_technology(*t, sink);
+  display::TypeStyleMap styles;
+  styles.styles_of_type.resize(tech::kMaxTileTypes);
+  styles.styles_of_type[type_of(*t, "metal2")] = {kMetal2Style};
+  for (const bool compat : {true, false}) {
+    const view3d::LayerStack stack = view3d::build_layout_stack(*t, heights, styles, compat, 0.0);
+    REQUIRE(stack.size() == 1);
+    CHECK(stack.layers()[0].source == view3d::ValueSource::extract_default);
+    CHECK_FALSE(stack.physical_height_um(0).has_value());
+  }
+}
+
 TEST_CASE("a type in two display styles gives two entries in style-table order (Q-MISC-77)",
           "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
   const auto t = load("", kOrdered + " height metal1 1.0 0.5\n");

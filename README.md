@@ -140,9 +140,9 @@ xschem-compatible schematic with PDK symbols, a testbench code block, ngspice wa
 ![Schematic and waveforms](docs/images/ui/schematic.png)
 
 ### 3D inspection
-The layer stack built from the tech file, with a current-density overlay from simulation and the electromigration limit taken from PDK data.
+The 3D tab (M10 phase 1, macOS capture): the layout of `sky130_fd_sc_hd__dfxtp_1` drawn from the layer stack built from the tech file, with the layer stack panel (micron ranges, hide, solo, transparency) beside the view. A current-density overlay from simulation, with the electromigration limit taken from PDK data, arrives in phase 3.
 
-![3D inspection](docs/images/ui/view3d.png)
+![3D inspection](docs/images/ui/view3d-macos.png)
 
 ### DRC results browser
 The approved M3 board: errors grouped by why-text with counts, `#k of n` stepping on the canvas, the error-area inspector, ignored rules and the style selector, and the DRC status chip. The measured value against the required value, nets, a suggested fix and the sign-off summary arrive in later milestones.

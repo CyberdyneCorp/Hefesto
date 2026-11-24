@@ -18,9 +18,17 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 Not checked yet. The scaffold (branch `m10-r1-scaffold`) adds no screen: the 3D tab and Window > 3D Display stay disabled as later-milestone items until SHELL enables them (task 9.1), and `specialopen wind3d` opens the 3D window since WIND3D (tasks 8.1-8.4).
 
+Round 3 (SHELL, branch `m10-3d-round3-shell`, 2026-11-22): the 3D tab, the layer stack panel and the controls are built (`src/shell/desktop/src/view3d_view.cpp`, view models in `hefesto/shell/view3d_models.hpp`), every control is covered by the headless view-model tests in `tests/unit/shell/view3d_models_test.cpp`, and the 3D window check `hefesto-render3d-spike` now draws a mesh built by MESH with `VulkanMesh3dRenderer`. Rows below say what was seen in a capture; picking and net highlighting stay **blocked** on INSPECT's `view3d/pick` functions, which are stubs on main.
+
+macOS capture (2026-11-22, Apple M3 Pro, MoltenVK 1.4.2, debug build): the product app with `sky130_fd_sc_hd__dfxtp_1` open, `render3d` run from the command bar, window 1600 × 989 logical: [view3d-macos.png](../images/ui/view3d-macos.png). The 3D tab is active in the editor-view control, the header reads "sky130_fd_sc_hd__dfxtp_1 · 3D / layout layers · level 1 · render3d opened this tab", the mesh is drawn in Magic's default 3D view (875 rectangles, status "Mesh ready · 875 rectangles"), and the layer stack panel lists the layers top first with their µm ranges and the Hide / Solo / 100 % row buttons. The 3D window check `hefesto-render3d-spike` passes on the same machine (the mesh's white top face at the centre, black corners, pick instance 1 at the centre, before and after the resize): [640 × 400](../images/ui/view3d-check-macos-640x400.png), [900 × 300](../images/ui/view3d-check-macos-900x300.png). Linux captures come from the CI desktop legs (open).
+
+Round 3 continuation (SHELL, 2026-11-22): the window tests gained "3D tab opened by render3d" (`tests/unit/shell/CMakeLists.txt`, labels `desktop-window-x11` / `-wayland`): the product app loads `tests/data/shell/view3d_tab.tech` (ndiff, poly, metal1, metal2 with extract heights), paints a four-layer cell, runs `magic::render3d` and writes `view3d-tab-<system>.ppm`, with Magic's `mos` display styles from the reference tree (`scripts/fetch_pdk.py magic-ref`) in a CAD_ROOT under the build tree. The CI desktop legs upload these and the window check's frames as the `view3d-captures-<leg>` artifact. macOS (same command, 1280 × 800 logical): [view3d-tab-macos.png](../images/ui/view3d-tab-macos.png): the 3D tab active, the layer stack listing metal2, metal1, polysilicon, ndiffusion top first, the top view with higher layers in front (R1), "Mesh ready · 5 rectangles". The tech has no `cifoutput` scale, so the µm ranges read "0.00–0.00 µm" (see the open item in design.md "As-landed: round 3 SHELL").
+
+Linux captures (PR #90 CI run 45058228743, leg `linux-x64-clang-latest`, ubuntu-24.04, Mesa lavapipe, artifact `view3d-captures-linux-x64-clang-latest`): the same test under X11 (Xvfb) [view3d-tab-linux-x11.png](../images/ui/view3d-tab-linux-x11.png) and Wayland (headless Weston) [view3d-tab-linux-wayland.png](../images/ui/view3d-tab-linux-wayland.png), 1280 × 800: the same tab, panel, top view and "Mesh ready · 5 rectangles" as the macOS capture (the menu bar is in the window on Linux). The window check's frames under X11: [640 × 400](../images/ui/view3d-check-linux-x11-640x400.png), [900 × 300](../images/ui/view3d-check-linux-x11-900x300.png) (white top face at the centre, black corners); both window tests pass under X11 and Wayland on that leg, and the `[cap:view-3d]` target and renderer tests pass in `linux-x64 GPU readback (lavapipe)` of the same run.
+
 ## Board review (DESIGN, task 7.1)
 
-Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION).
+Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mockups/View3D.dc.html` was updated where the plan changes it (design D12) and rendered at 1440 × 900 with Chromium's headless shell to check the layout (no overlaps, every control visible). The board and `hefesto-design-system` "3D inspection" (layer stack, isometric view with overlay legend, cross-section, camera presets) agree: all four parts are on the board; the overlay legend and the cross-section are shown disabled with their phase, as the M2–M5 boards show later-milestone controls. The render in `docs/images/ui/view3d.png` (used by the top-level README with a caption about the overlay) still shows the M1 drawing; it is re-rendered together with the README caption (open item for INTEGRATION). Round 3 (INTEGRATION): the README now shows the macOS capture `view3d-macos.png` with a caption that names the overlay as phase 3; the board render `view3d.png` stays as the mockup reference.
 
 | Item | Board change | Status |
 |---|---|---|
@@ -35,6 +43,8 @@ Reviewed on 2026-11-21 (M10 round 2, branch `m10-r2-decide`): `docs/design/mocku
 
 Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/render3d_spike.cpp`): it draws the spike's test mesh (`hefesto/render/mesh3d_spike.hpp`: a nearer red quad drawn first, a farther green quad behind it, a blue quad coplanar with the red one drawn later, and a back-facing quad over everything) into a `render::VulkanOffscreenTarget` on Raven's Vulkan device, shows it in a Raven viewport in texture mode, resizes the window from 640 × 400 to 900 × 300 (logical), and compares five window pixels with the expected colors after each step (exit 1 on a mismatch). The same mesh is read back image by image (color, depth, pick id) by `tests/unit/render/mesh3d_target_test.cpp`.
 
+Round 3 (SHELL): `Mesh3dSpike` is removed (`mesh3d_spike.hpp|.cpp`, the `mesh3d_spike` shaders, `src/generated/mesh3d_spv.hpp` and its `compile_shaders.py` entry). The window check draws a mesh built by MESH with `VulkanMesh3dRenderer` ("Tab and window"), and `mesh3d_target_test.cpp` draws its frames with the renderer too: it checks that the color, depth and pick images agree on the face at the centre and the background in a corner, the double buffering and the resize; the depth order and the coplanar rule the spike showed are covered by `mesh3d_renderer_test.cpp` (R1, Q-MISC-77).
+
 | Item | Result | Status |
 |---|---|---|
 | Offscreen depth-tested mesh shown through Raven's viewport texture mode on macOS (MoltenVK) | Apple M3 Pro, Homebrew MoltenVK 1.4.2 (the same `libMoltenVK.dylib` image for Raven and Hefesto), Raven v0.2.3: both steps pass (window 1280 × 800 and 1800 × 600 framebuffer pixels); captures [640 × 400](m10-3d-spike/macos-moltenvk-640x400.png), [900 × 300](m10-3d-spike/macos-moltenvk-900x300.png). The `[cap:view-3d]` readback tests pass on the same device. | done |
@@ -46,34 +56,35 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Editor-view tab "3D" next to Layout and Schematic | — | todo |
-| Window > 3D Display and `render3d` open the tab | — | todo |
-| "Open in separate window" tab menu item | — | todo |
-| Progress while a mesh builds; the previous model stays visible | — | todo |
-| Focus-based command routing (`.magic3d <cmd>` and the command bar) | — | todo |
-| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | — | todo |
+| Editor-view tab "3D" next to Layout and Schematic | The segmented control's "3D" is live: a click shows the 3D view (a second Raven viewport in texture mode beside the layer stack panel), or runs `magic::render3d` when no window is open; "Layout" shows the canvas again. Enter or Space on the focused control toggles the two. | done (macOS and Linux X11/Wayland captures) |
+| Window > 3D Display and `render3d` open the tab | Options > 3D Display (Magic's wrapper puts it under Options) is enabled; any open of the 3D window (`render3d`, `specialopen wind3d`) shows the tab, `closewindow` returns to Layout. Test "Options > 3D Display is enabled". | done (opened by `render3d` in the macOS and Linux captures) |
+| "Open in separate window" tab menu item | Not built: a Raven window per tab needs a second texture-mode viewport host. | todo (open item, P2) |
+| Progress while a mesh builds; the previous model stays visible | One `MeshWorker` per window; status line "Building mesh · n %", then "Mesh ready · n rectangles"; the previous model stays drawn until the new one is done. | partial: "Mesh ready" seen in the macOS capture; the progress state is too short on a cell to capture |
+| Focus-based command routing (`.magic3d <cmd>` and the command bar) | While the 3D tab is shown, a typed line whose first word is a `wind3d` command runs as `<path> <line>`; keys in the 3D view run the `wind3d` macro table on the path. Tests "lines typed while the 3D view has the focus go to the window's path", "keys in the 3D view run the wind3d bindings on the window's path". | done (headless) |
+| "Mask layers arrive in phase 2" notice in mask-layer mode (D1) | A warning banner at the top of the view in mask-layer mode; the layout mesh is drawn with xy scaled by f through `DrawParams::xy_scale` (integrated in round 3). | done |
+| Frame-time readout (task 13.2, viewport part) | The "Frame time" toggle shows the rolling mean of the last 30 renderer draws and its frame rate in the status line; `hefesto-render3d-spike --bench-rects N` draws bench/view3d's synthetic region in a window and prints draw and whole-frame times. | done: `--bench-rects 1000000` on the M3 Pro (debug build, 1280 × 800 target, 1,004,944 rectangles in 19 chunks, 120 orbiting frames): draw 33.40 ms (29.9 fps), whole frame 33.73 ms (29.6 fps). The P1 gate (≥ 30 fps, Release) is PERF's measurement in "Performance" |
 
 ## Layer stack panel and camera (D12; task 9.2)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Layers bottom to top with µm ranges (`physical_height_um`) | — | todo |
-| Show / hide / isolate, kept in sync with `see` (Q-MISC-71) | — | todo |
-| Per-layer transparency | — | todo |
-| Presets Isometric, Top, Front, Side | — | todo |
-| Perspective toggle | — | todo |
-| Mouse, trackpad and key gestures (orbit, pan, zoom, reset) | — | todo |
-| Cutbox toggle (`cutbox box` / `cutbox none`) | — | todo |
-| `level` and the mask/layout mode toggle (`cif`) | — | todo |
+| Layers bottom to top with µm ranges (`physical_height_um`) | One row per drawn layer, sorted by draw height and listed top first (as the board), swatch in the display style's color, range in µm, blank when the layer has no height source; non-solid, non-stippled styles are left out (N3). | done (headless) |
+| Show / hide / isolate, kept in sync with `see` (Q-MISC-71) | Row buttons Hide/Show, Solo and "Show all layers" run `<path> see [no] <layer>`, `see no *` + `see <layer>`, `see *`; the rows are read back from the window's set after every command, so `see` from the console updates the panel. Disabled in mask-layer mode (the mask set applies to P2's layers). Test "panel visibility and see stay in sync both ways". | done (headless) |
+| Per-layer transparency | The row's percentage button cycles 100 / 50 / 20 % (`DrawParams::alpha`), outside Magic's state. | done (headless) |
+| Presets Isometric, Top, Front, Side | Buttons running `<path> view ax ay az` with CAMERA's preset angles. | done (headless) |
+| Perspective toggle | Orthographic / Perspective pair (`DrawParams::projection`), not part of Magic's view values. | done (headless) |
+| Mouse, trackpad and key gestures (orbit, pan, zoom, reset) | Drag orbits; Option/Shift/right/middle drag pans; wheel and pinch zoom (Shift scales z); two-finger scroll pans; keys through the `wind3d` bindings (space is `defaults`, Magic's reset). | done (headless) |
+| Cutbox toggle (`cutbox box` / `cutbox none`) | A toggle button, pressed while the window has a cut box. | done (headless) |
+| `level` and the mask/layout mode toggle (`cif`) | Level − / value / + (`level down` / `level up`) and the Mask layers / Layout layers pair (`cif` when the mode differs). | done (headless) |
 
 ## Inspection (D10; tasks 9.3–9.5)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Click picks a target; 3D → 2D selection and scroll | — | todo |
-| 2D selection highlighted in 3D | — | todo |
-| "Isolate selected net" | — | todo |
-| "Show contacts and vias" (J1 "Span connected layers") | — | todo |
+| Click picks a target; 3D → 2D selection and scroll | A left click (under 3 px of motion) reads the pick image, then `view3d::resolve` and `view3d::to_selection`; the caption "layer · picked · selected in 2D" shows bottom right. Integrated in round 3 with INSPECT's `resolve(mesh, PickContext, id)` (stack, rendered cell, compat flag set through `PickResolver::set_scope`). Tested with a fake resolver and a real-mesh resolver test. | partial: the 2D canvas does not scroll to `link_to_2d`'s area yet (no core hook) |
+| 2D selection highlighted in 3D | `view3d::from_selection` after every command, passed as `DrawParams::highlight`; the overload with the drawn stack. | done |
+| "Isolate selected net" | Toggle button: `view3d::net_highlight` of the picked target as the highlight (hierarchical search, the drawn stack, the project's compat flag). | done |
+| "Show contacts and vias" (J1 "Span connected layers") | "Span connected layers" toggle: a full build with `span_connected_layers` and the technology. | done (headless) |
 
 ## Later phases
 
@@ -84,12 +95,26 @@ Checked on 2026-11-20 with `hefesto-render3d-spike` (`src/shell/desktop/src/rend
 | Overlay dropdown and legend | P3 (task 15.1) | later |
 | Touch orbit and pinch zoom | M14 (iPadOS) | later |
 
+## Desktop review of P1 (SHELL, task 9.6)
+
+Reviewed on 2026-11-22 against `docs/design/mockups/View3D.dc.html` with the macOS capture above.
+
+| Board part | Seen in the product | Status / gap |
+|---|---|---|
+| Editor-view tab "3D" with its header (cell, mode, level, what opened the tab) | As on the board; the tab is the active segment and the header is a chip at the top left of the view. | done (macOS) |
+| Layer stack, top layer first, swatch, name, µm range, row controls | As on the board; the row buttons are always shown (the board shows them on hover), so they are reachable by Tab and need no hover state. With a 349-layer technology (sky130A) the list is long and scrolls. | done (macOS); difference noted |
+| View toolbar along the bottom of the 3D view (mode, level, cut box, mesh status) | The mesh status is at the bottom left of the view as on the board; the mode, level and cut box controls are in the side panel under the layer stack ("Magic 3D" section), below the presets, not in a bottom toolbar. With a long layer list they are reached by scrolling the panel or by Tab. | gap: move them to a bottom toolbar (follow-up) |
+| Orthographic / Perspective and the presets | In the side panel's "View" section. | done (headless); not in the capture's visible area |
+| Inspect group (Isolate selected net, Span connected layers) | In the side panel's "Inspect" section with Frame time and Close 3D view. | done (picking integrated in round 3) |
+| Tab menu ("Open in separate window", "Close 3D view") | "Close 3D view" is a side-panel button; "Open in separate window" is not built. | todo (P2) |
+| Pick callout ("metal1 · VPWR, picked · selected in 2D") | Caption at the bottom right after a click. | blocked: INSPECT |
+
 ## Accessibility (task 9.6)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Keyboard access to every control | — | todo |
-| Screen-reader labels for every control | — | todo |
+| Keyboard access to every control | Every control is a focusable painted button (Tab reaches it; Enter and Space click it), including the row buttons and the editor-view tabs; the 3D view takes the focus on a click or when its tab is shown, and its keys are Magic's `wind3d` bindings. | partial: reviewed in code, view-model tests and the macOS capture; a VoiceOver pass on the running app is pending |
+| Screen-reader labels for every control | Names: "3D view", "3D view controls", "Layer stack, top layer first", each row "metal1, 1.38–1.73 µm, shown", "Hide metal1", "Isolate metal1", "Transparency of metal1, 50 percent", "Level down" / "Level up", the presets by name; toggles announce ", on" / ", off" (Perspective, Cut box, Span connected layers, Frame time, Isolate selected net). | partial: as above |
 
 ## Performance (PERF, section 13)
 
@@ -104,4 +129,13 @@ Mesh build (task 13.1, `bench/view3d/`, layout-layer mode, no cut box), measured
 | array (100 × 100 sky130 dfxtp_1, 349 layers), CI | 8,827,796 | 30,701,344 | 24.0 s (runs 24.0–25.1 s) | 149.0 B/rect | 89.6 B/rect | 2.9 GiB | about 2.7 µs per rectangle against 1.1 µs for synthetic: the 349 (type, style) layers cost per-layer passes; CPU memory missed |
 | block (446 sky130_fd_sc_hd cells, 349 layers), CI | 289,535 | 1,015,220 | 0.167 s (runs 0.153–0.187 s) | 172.9 B/rect | 90.1 B/rect | 171 MiB | CPU memory missed |
 
-Gates (`bench/view3d/gates.json`, checked by `view3d_gate.py` in the `perf.yml` `view3d-bench` job), set from the first CI run (M10 round 2): synthetic median build ≤ 1.75 s and model ≤ 170 B/rect; array ≤ 36 s and ≤ 170 B/rect; block ≤ 0.5 s and ≤ 190 B/rect (block's 172.9 B/rect is above the synthetic gate). The memory gate is looser than D6's 64 B/rect while that target is missed (open item for MESH: about 3.7 side instances per rectangle at 28 bytes each, since `SideInstance` carries its own height and thickness, plus the vectors' growth slack; a 20-byte side and `shrink_to_fit` after the build would bring it to about 95 B/rect). Frame time is still recorded as not measured: `Mesh3dRenderer` landed in round 2 (task 5.3) but the benchmark does not draw yet (task 13.2); llvmpipe frame times would be information only (D17).
+Gates (`bench/view3d/gates.json`, checked by `view3d_gate.py` in the `perf.yml` `view3d-bench` job), set from the first CI run (M10 round 2): synthetic median build ≤ 1.75 s and model ≤ 170 B/rect; array ≤ 36 s and ≤ 170 B/rect; block ≤ 0.5 s and ≤ 190 B/rect (block's 172.9 B/rect is above the synthetic gate). The memory gate is looser than D6's 64 B/rect while that target is missed (open item for MESH: about 3.7 side instances per rectangle at 28 bytes each, since `SideInstance` carries its own height and thickness, plus the vectors' growth slack; a 20-byte side and `shrink_to_fit` after the build would bring it to about 95 B/rect). Frame time (task 13.2) is measured by the frame workload of the same benchmark (`bench/view3d/frame.cpp`, `--frames N`, default 30) when the Vulkan renderer is built (`HEFESTO_BUILD_DESKTOP=ON`); the `perf.yml` `view3d-bench` job builds it and times 10 frames per level of the synthetic mesh on Mesa's lavapipe (the runner has no GPU), recorded in the job summary, not gated: llvmpipe frame times are information only (D17).
+
+Frame rate (task 13.2), measured 2026-11-22 (M10 round 3) on the development Mac: Apple M3 Pro (Mac15,7), MoltenVK, Release build, `hefesto-bench-view3d --workload synthetic --repeat 1 --frames 60`. The synthetic 1M-rectangle mesh (1,004,944 rectangles, 3,760,676 side faces, 19 chunks) is uploaded to `render::VulkanMesh3dRenderer` on the headless device and whole frames (record, submit and wait for `end_frame`) are timed at 1280 × 800 in the isometric view with the whole region visible, orbiting the camera 6° around z before each frame, after one warm-up frame per level; three runs, with other workflows building on the machine (load average about 6.5):
+
+| Level | Median frame | p95 frame | fps (median) | ≥ 30 fps gate (D19) |
+|---|---|---|---|---|
+| 0 (single-sampled) | 10.8–11.0 ms | 11.7–12.6 ms | 90.7–92.9 | met |
+| 1 (MSAA 4x: the geometry is drawn twice, design "As-landed: Mesh3dRenderer"; the default level) | 21.3–21.6 ms | 22.0–24.4 ms | 46.3–46.9 | met |
+
+Upload of every chunk: 0.061–0.065 s; upload plus the first frame: 101–121 ms (D6 "first chunks within 200 ms": met). The first measurement of the round (each rectangle drawn as 12 vertices, each side face as 6, a fixed isometric view) gave 17.3–17.6 ms at level 0 and 33.8–34.6 ms at level 1 (28.9–29.6 fps, the gate missed by about 1 fps). The fix kept in round 3 is the cheapest one in the vertex stage, which bounds this workload (about one rectangle per pixel): every instance is one triangle strip, a rectangle's or a split-tile triangle's face toward the viewer only (the shader picks the h or the h + t face with the rasterizer's own facing test) and a side face's quad as 4 vertices, so a frame shades about 19M vertices instead of 34M. Frustum culling (no gain with the whole region visible), device-local staging (host-visible memory is the GPU's own on Apple silicon) and drawing the geometry once at level ≥ 1 remain candidates. The M1 (60 fps) and reference-hardware (`hefesto-performance`) runs are not done yet (open item). On lavapipe the `perf.yml` `view3d-bench` job records the same workload for information.

@@ -90,6 +90,13 @@ target_sources(hefesto_shell_desktop PRIVATE
 target_sources(hefesto_shell_desktop PRIVATE
   src/open_files.cpp)
 
+# M10 (openspec/changes/m10-3d-view tasks 9.1, 9.2, 9.6, 13.2, SHELL): the 3D
+# view tab (texture-mode viewport over the Vulkan mesh renderer, the layer
+# stack panel, gestures, picking) and its view models.
+target_sources(hefesto_shell_desktop PRIVATE
+  src/view3d_models.cpp
+  src/view3d_view.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root
@@ -117,11 +124,16 @@ add_executable(hefesto
 target_link_libraries(hefesto PRIVATE hefesto::shell_desktop)
 hefesto_set_warnings(hefesto)
 
-# M10 renderer spike (openspec/changes/m10-3d-view task 5.1, RENDER3D): the
-# 3D offscreen target shown through a Raven viewport in texture mode, with a
-# pixel check; registered as a window smoke test in tests/unit/shell.
+# M10 3D window check (openspec/changes/m10-3d-view tasks 5.1, 9.1, 13.2):
+# a mesh built by view3d/mesh drawn by render::VulkanMesh3dRenderer into the
+# offscreen target, shown through a Raven viewport in texture mode, with a
+# pixel and pick check (a window smoke test in tests/unit/shell), and
+# --bench-rects, which draws bench/view3d's synthetic region and prints frame
+# times (its workload source is compiled in, read-only).
 add_executable(hefesto-render3d-spike
-  src/render3d_spike.cpp)
+  src/render3d_spike.cpp
+  "${PROJECT_SOURCE_DIR}/bench/view3d/workloads.cpp")
+target_include_directories(hefesto-render3d-spike PRIVATE "${PROJECT_SOURCE_DIR}/bench/view3d")
 target_link_libraries(hefesto-render3d-spike PRIVATE hefesto::shell_desktop)
 hefesto_set_warnings(hefesto-render3d-spike)
 

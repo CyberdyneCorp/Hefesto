@@ -92,6 +92,9 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   canvas_ = std::make_unique<LayoutCanvas>(ctx_, queue_mutex, [this] { return window_.scale(); });
   canvas_->on_view_changed([this] { refresh_status(); });
   canvas_->router().on_prompt([this](const std::string& text) { route_prompt(text); });
+  view3d_ = std::make_unique<View3dView>(ctx_, queue_mutex, [this] { return window_.scale(); });
+  view3d_->on_open_changed([this](bool open) { show_view3d_tab(open); });
+  view3d_->on_selection_changed([this] { dirty_ = true; });
   left_ = std::make_unique<LeftPanel>(ctx_);
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
@@ -253,16 +256,23 @@ void MainWindow::build_top_bar() {
 
   std::vector<std::string_view> tabs = {"Layout"};
   for (const DeferredControl& c : deferred_view_tabs()) tabs.push_back(c.label);
-  auto segmented = make_painted(ctx_, [tabs](ui::Painter& p, float w, float h, const ThemeTokens& t) {
-    paint::segmented(p, w, h, tabs, t);
+  // M10 (task 9.1): Layout and 3D are live; a click on 3D opens the 3D
+  // window (`render3d`) or shows it, a click on Layout shows the canvas.
+  const std::size_t tab_3d = static_cast<std::size_t>(std::find(tabs.begin(), tabs.end(), "3D") - tabs.begin());
+  auto segmented = make_painted(ctx_, [this, tabs, tab_3d](ui::Painter& p, float w, float h, const ThemeTokens& t) {
+    paint::segmented(p, w, h, tabs, t, view3d_tab_ ? tab_3d : 0, 1U | (1U << tab_3d));
+  });
+  segmented->on_click([this, tabs, tab_3d](float x, float) {
+    click_view_tab(x, tabs, tab_3d);
   });
   const float tabs_width = paint::segmented_width(ctx_.runtime, tabs);
   segmented->set_size(tabs_width, 36.0F);
   view_tabs.width = tabs_width;
   view_tabs.widgets.push_back(segmented.get());
   segmented->set_role(ui::Role::tab_list);
-  segmented->set_accessible_name("Editor view: Layout (Schematic arrives in M8, 3D in M10, Waveforms in M8)");
-  segmented->set_tooltip("Layout is the M1 view; Schematic and Waveforms arrive in M8, 3D in M10");
+  segmented->set_accessible_name("Editor view: Layout or 3D (Schematic and Waveforms arrive in M8)");
+  segmented->set_tooltip("Layout and 3D (Options > 3D Display, render3d); Schematic and Waveforms arrive in M8");
+  view_tabs_widget_ = segmented.get();
   row.add_centered(*segmented);
   painted_.push_back(std::move(segmented));
   add_undo_buttons(row);
@@ -357,6 +367,8 @@ void MainWindow::build_center() {
   build_tool_rail(middle_);
   ui::Box& center = center_;
   center.add(canvas_->widget(), 1.0F);
+  center.add(view3d_->widget(), 1.0F);
+  view3d_->widget().set_visible(false);
   console_.set_font(ctx_.runtime.mono_font());
   console_.set_accessible_name("Console");
   diagnostics_.set_font(ctx_.runtime.mono_font());
@@ -510,7 +522,8 @@ void MainWindow::run_typed_line(const std::string& text) {
   const TypedLine typed = expand_typed_line(ctx_.editor(), trim(text));
   if (typed.run) {
     // M4: the project's interpreter, shared with the Tcl console.
-    if (!run_console_line(*typed.run)) run_line(*typed.run);
+    const std::string line = view3d_->route_typed(*typed.run);  // M10: to the 3D window while its tab is shown
+    if (!run_console_line(line)) run_line(line);
     return;
   }
   if (typed.error) {
@@ -580,6 +593,7 @@ void MainWindow::on_frame() {
     undo_message_.reset();
   }
   poll_background();
+  view3d_->on_frame();
   if (!pending_run_.empty() && canvas_->viewport_ready()) {
     const std::string line = std::move(pending_run_);
     pending_run_.clear();
@@ -819,8 +833,31 @@ void MainWindow::sync_styles() {
   }
 }
 
+void MainWindow::click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d) {
+  // x < 0 (a click with no position) toggles between Layout and 3D.
+  const std::size_t hit = x < 0.0F ? (view3d_tab_ ? 0 : tab_3d) : paint::segmented_index_at(ctx_.runtime, tabs, x);
+  if (hit == 0) show_view3d_tab(false);
+  if (hit != tab_3d) return;
+  if (view3d_->window_open()) {
+    show_view3d_tab(true);
+  } else {
+    run_line("magic::render3d");
+  }
+}
+
+void MainWindow::show_view3d_tab(bool on) {
+  view3d_tab_ = on && view3d_->window_open();
+  canvas_->widget().set_visible(!view3d_tab_);
+  view3d_->widget().set_visible(view3d_tab_);
+  view3d_->set_active(view3d_tab_);
+  if (!view3d_tab_) canvas_->focus();
+  if (view_tabs_widget_ != nullptr) view_tabs_widget_->invalidate();
+  window_.request_redraw();
+}
+
 void MainWindow::refresh_all() {
   sync_styles();
+  view3d_->refresh();
   const view::LayoutWindow* win = ctx_.editor().windows.current();
   const db::CellDef* root = win != nullptr ? win->root() : nullptr;
   if (root != shown_root_) {
