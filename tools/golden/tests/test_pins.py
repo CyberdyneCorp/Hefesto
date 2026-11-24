@@ -6,7 +6,10 @@ cap:hefesto-testing-strategy req:Golden compatibility suite
 """
 from __future__ import annotations
 
+import json
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -15,8 +18,11 @@ from goldenlib.pins import base_image_ref, load_pins
 CONTAINERFILE = Path(__file__).resolve().parents[1] / "container" / "Containerfile"
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 SHA256 = r"^[0-9a-f]{64}$"
-# Tools installed from a package or a wheel (m6-lef-def-oasis design D18) instead of built.
-INSTALLED = ("klayout", "gdstk")
+# Tools installed from a package, a wheel (m6-lef-def-oasis design D18) or a binary release
+# (OpenVAF, m9-lvs-simulation design D19) instead of built.
+INSTALLED = ("klayout", "gdstk", "openvaf")
+NGSPICE_DIR = Path(__file__).resolve().parents[3] / "third_party" / "ngspice"
+NGSPICE_COPY = CONTAINERFILE.parent / "ngspice"
 
 
 def containerfile_args() -> dict[str, str]:
@@ -39,15 +45,15 @@ class PinsTest(unittest.TestCase):
 
     def test_roadmap_short_shas(self):
         tools = self.pins["tools"]
-        for tool, short in (("magic", "fc5daa9e"), ("netgen", "93dcda14"), ("ngspice", "7aa47164"),
-                            ("xschem", "4142e6d6")):
+        for tool, short in (("magic", "fc5daa9e"), ("netgen", "93dcda14"), ("ngspice", "a80f6e3e"),
+                            ("ngspice_stock", "7aa47164"), ("xschem", "4142e6d6")):
             self.assertTrue(tools[tool]["commit"].startswith(short), tool)
 
     def test_base_image_pinned_by_digest(self):
         self.assertEqual(self.args["BASE_IMAGE"], base_image_ref(self.pins))
         self.assertRegex(self.pins["base_image"]["digest"], r"^sha256:[0-9a-f]{64}$")
         self.assertEqual(self.args["APT_SNAPSHOT"], self.pins["base_image"]["apt_snapshot"])
-        self.assertEqual(self.args["NGSPICE_BRANCH"], self.pins["tools"]["ngspice"]["branch"])
+        self.assertEqual(self.args["NGSPICE_STOCK_BRANCH"], self.pins["tools"]["ngspice_stock"]["branch"])
 
     def test_klayout_debian_package_pinned_and_matches(self):
         """KLayout: the Debian package at the APT snapshot, its .deb SHA-256 checked (D18)."""
@@ -86,6 +92,36 @@ class PinsTest(unittest.TestCase):
         text = CONTAINERFILE.read_text(encoding="utf-8")
         self.assertIn("--with-opengl --with-cairo=no", text)
         self.assertIn("container/magic_gl_smoke.tcl", text)
+
+    def test_ngspice_is_the_engine_pin_with_the_patch_series(self):
+        """Q-SIM-23 (a): the image builds the engine's pin (third_party/ngspice/pin.json, Q-SIM-7) with its
+        patch series, from the build context's copy of third_party/ngspice (m9-lvs-simulation task 3.2)."""
+        pin = self.pins["tools"]["ngspice"]
+        engine = json.loads((NGSPICE_DIR / "pin.json").read_text(encoding="utf-8"))
+        self.assertEqual(pin["commit"], engine["commit"])
+        self.assertEqual(pin["tag"], engine["tag"])
+        self.assertEqual(pin["repo"], engine["repo"])
+        self.assertEqual(pin["archive_sha256"], engine["archive"]["sha256"])
+        self.assertIn(pin["archive_url"], engine["archive"]["urls"])
+        self.assertEqual(pin["version"], f"{engine['release']}-hefesto{engine['hefesto_level']}")
+        self.assertEqual(self.args["NGSPICE_VERSION"], pin["version"])
+        self.assertTrue((NGSPICE_DIR.parents[1] / pin["patch_series"]).is_file())
+        sync = subprocess.run([sys.executable, "-I", str(NGSPICE_DIR / "tools" / "sync_image_copy.py"), "--check"],
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(sync.returncode, 0, sync.stderr)
+        text = CONTAINERFILE.read_text(encoding="utf-8")
+        self.assertIn("COPY container/ngspice /opt/src/hefesto-ngspice", text)
+        self.assertIn("build_ngspice.sh", text)
+
+    def test_openvaf_binary_pinned_and_matches(self):
+        """OpenVAF-reloaded: a build-time tool of the image, pinned by URL and SHA-256 (Q-SIM-23 (a))."""
+        pin = self.pins["tools"]["openvaf"]
+        self.assertEqual(pin["source"], "binary")
+        self.assertRegex(pin["sha256"], SHA256)
+        self.assertRegex(pin["upstream_commit"], FULL_SHA)
+        self.assertIn(pin["version"], pin["url"])
+        self.assertEqual(self.args["OPENVAF_URL"], pin["url"])
+        self.assertEqual(self.args["OPENVAF_SHA256"], pin["sha256"])
 
     def test_every_tool_has_a_repo_and_version_for_provenance(self):
         for tool, pin in self.pins["tools"].items():

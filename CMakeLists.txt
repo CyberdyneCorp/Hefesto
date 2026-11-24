@@ -123,5 +123,11 @@ if(HEFESTO_BUILD_VIEW3D_BENCH AND NOT HEFESTO_IS_IOS)
   add_subdirectory(bench/view3d)  # PERF, m10-3d-view task 13.1
 endif()
 
+# libngspice-hefesto, the simulation engine (NGBUILD, m9-lvs-simulation task 5.1); off by default.
+option(HEFESTO_BUILD_NGSPICE "Build libngspice-hefesto from the pinned ngspice and its patch series" OFF)
+if(HEFESTO_BUILD_NGSPICE AND NOT HEFESTO_IS_IOS)
+  add_subdirectory(third_party/ngspice)
+endif()
+
 message(STATUS "Hefesto ${PROJECT_VERSION}: desktop=${HEFESTO_BUILD_DESKTOP} tests=${HEFESTO_BUILD_TESTS} "
                "fuzz=${HEFESTO_BUILD_FUZZ} bench=${HEFESTO_BUILD_BENCH} sanitizers='${HEFESTO_SANITIZERS}'")

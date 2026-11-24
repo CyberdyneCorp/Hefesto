@@ -1,0 +1,56 @@
+Subject: [PATCH 0001] Static OSDI registry
+
+Resolve `osdi`/`pre_osdi` against the modules compiled into the library
+(by the file's basename) before any dlopen, and refuse other files while
+dynamic loading is off. Active only with -DHEFESTO_STATIC_OSDI; the glue is
+third_party/ngspice/src/hefesto_static.c. Justification: patches/series.
+
+--- a/src/osdi/osdiregistry.c
++++ b/src/osdi/osdiregistry.c
+@@ -29,7 +29,14 @@
+ 
+ #include <dlfcn.h> /* to load libraries*/
+ #define OPENLIB(path) dlopen(path, RTLD_NOW | RTLD_LOCAL)
++#ifdef HEFESTO_STATIC_OSDI
++/* Hefesto patch 0001: a built-in module's symbols come from its static
++ * table, a loaded file's from dlsym (third_party/ngspice/src). */
++#include "hefesto_static.h"
++#define GET_SYM(lib, sym) hefesto_osdi_sym(lib, sym)
++#else
+ #define GET_SYM(lib, sym) dlsym(lib, sym)
++#endif
+ #define FREE_DLERR_MSG(msg)
+ 
+ #else /* ifdef HAS_WINGUI */
+@@ -354,7 +361,22 @@
+   if (!known_object_files) {
+     known_object_files = nghash_init_pointer(8);
+   }
+-  const char *path = resolve_input_path(input);
++  const char *path = NULL;
++  handle = NULL;
++#ifdef HEFESTO_STATIC_OSDI
++  /* Hefesto patch 0001: a module built into the library is found by the
++   * file's basename, whether or not such a file exists; any other file is
++   * opened only while dynamic loading is allowed. */
++  handle = hefesto_osdi_builtin(input);
++  if (handle) {
++    path = copy(input);
++  } else if (!hefesto_osdi_dynamic_allowed()) {
++    hefesto_osdi_report_not_builtin(input);
++    return INVALID_OBJECT;
++  }
++#endif
++  if (!handle) {
++  path = resolve_input_path(input);
+   if (!path) {
+     fprintf(stderr, "Error opening osdi lib \"%s\": No such file or directory!\n",
+            input);
+@@ -365,6 +387,7 @@
+   if (!handle) {
+     ERR_AND_RET
+   }
++  }
+ 
+   /* Keep track of loaded shared object files to avoid loading the same model
+    * multiple times. We use the handle as a key because the same SO will always

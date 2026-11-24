@@ -1,0 +1,96 @@
+Subject: [PATCH 0004] Deterministic initialisation
+
+Seed the Gaussian pool from the last seed instead of the process id, restart
+it on `setseed <n>`, and honour ngSpice_nospiceinit() on hosts with pwd.h
+(capability simulation-engine-embedding, "Deterministic engine
+initialisation"). Justification: patches/series.
+
+--- a/src/frontend/spiceif.c
++++ b/src/frontend/spiceif.c
+@@ -468,6 +468,12 @@
+         ft_nomod = TRUE;
+         return 0;
+     }
++
++    /* Hefesto patch 0004: ngSpice_nospinit() and ngSpice_nospiceinit() set
++     * their variable before ngSpice_Init() has made the simulator; such a
++     * variable is not a simulator option (stock: NULL ft_sim dereference). */
++    if (!ft_sim)
++        return 0;
+ 
+     which = ft_find_analysis("options");
+ 
+--- a/src/frontend/trannoise/wallace.c
++++ b/src/frontend/trannoise/wallace.c
+@@ -69,6 +69,17 @@
+     tfree(pool2);
+     tfree(addrif);
+     tfree(addrib);
++}
++
++
++/* Hefesto patch 0004: refill the pool after a new seed; no-op before initw(). */
++void
++reinitw(void)
++{
++    if (!pool1)
++        return;
++    destroy_wallace();
++    initw();
+ }
+ 
+ 
+@@ -80,8 +91,9 @@
+     unsigned int coa;
+ 
+     /* initialize the uniform generator */
+-    PortableSeed((unsigned int) getpid());
+-    // srand(17);
++    /* Hefesto patch 0004: restart from the last seed (1 at start-up, then
++     * the one of `setseed`), not from the process id, so the pool does not
++     * depend on the process and is the same after every `setseed <s>`. */
+     TausSeed();
+ 
+     ScaleGauss = 1.;
+--- a/src/include/ngspice/wallace.h
++++ b/src/include/ngspice/wallace.h
+@@ -20,3 +20,5 @@
+ void PolarGauss(double* py1, double* py2);
+ 
+ void destroy_wallace(void);
++
++void reinitw(void); /* Hefesto patch 0004 */
+--- a/src/maths/misc/randnumb.c
++++ b/src/maths/misc/randnumb.c
+@@ -40,6 +40,7 @@
+ #include "ngspice/cpdefs.h"
+ #include "ngspice/ftedefs.h"
+ #include "ngspice/randnumb.h"
++#include "ngspice/wallace.h"
+ #include <math.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -335,6 +336,9 @@
+         PortableSeed((unsigned int)newseed);
+         TausSeed();
+         cp_vset("rndseed", CP_NUM, &newseed);
++        /* Hefesto patch 0004: `setseed <n>` also restarts the Gaussian pool
++         * of trnoise/trrandom, so a reused engine draws as a fresh one. */
++        reinitw();
+     }
+ 
+     if (seedinfo)
+--- a/src/sharedspice.c
++++ b/src/sharedspice.c
+@@ -959,7 +959,10 @@
+     /* Read the user config files */
+ #ifdef HAVE_PWD_H
+     /* Try to source either .spiceinit or ~/.spiceinit. */
+-    if (access(".spiceinit", 0) == 0) {
++    /* Hefesto patch 0004: ngSpice_nospiceinit() is honoured here too. */
++    if (cp_getvar("no_spiceinit", CP_BOOL, NULL, 0)) {
++        fprintf(stdout, "Note: .spiceinit is ignored, because ngSpice_nospiceinit() has been called.\n");
++    } else if (access(".spiceinit", 0) == 0) {
+         inp_source(".spiceinit");
+     } else {
+         char *s;
