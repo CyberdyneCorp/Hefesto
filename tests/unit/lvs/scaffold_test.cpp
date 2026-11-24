@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -176,6 +177,16 @@ TEST_CASE("scaffold lvs command is registered and reports CORE-NOTIMPL-009",
   const auto result = dispatcher.execute(invocation);
   CHECK_FALSE(result.ok());
   CHECK(is_not_implemented(result.diagnostics));
+}
+
+TEST_CASE("lvs usage names the layout-aware form", "[cap:lvs-command][req:Layout netlist from extraction]") {
+  // Regression: the synopsis gave only the netgen form.
+  cmd::CommandRegistry registry;
+  REQUIRE(lvs::register_lvs_commands(registry));
+  const auto* spec = registry.find("lvs");
+  REQUIRE(spec != nullptr);
+  CHECK(spec->synopsis.find("lvs <name1> <name2> [<setup> [<log>]]") != std::string::npos);
+  CHECK(spec->synopsis.find("lvs -layout <cell> <schematic> [<setup> [<log>]]") != std::string::npos);
 }
 
 TEST_CASE("lvs is part of the full command set", "[cap:lvs-command][req:lvs command syntax]") {

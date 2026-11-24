@@ -18,7 +18,8 @@ namespace hefesto::lvs {
 bool register_lvs_commands(cmd::CommandRegistry& registry) {
   cmd::CommandSpec spec{
       "lvs",
-      "lvs <name1> <name2> [<setup> [<log>]] [-list] [-json] [-blackbox] [-noflatten=<file-or-list>]",
+      "lvs <name1> <name2> [<setup> [<log>]] [-list] [-json] [-blackbox] [-noflatten=<file-or-list>]"
+      " | lvs -layout <cell> <schematic> [<setup> [<log>]] [option ...]",
       "Compares two netlists (layout versus schematic) as netgen's lvs does (capability lvs-command).",
       [](cmd::CommandContext& /*context*/, const cmd::Invocation& /*invocation*/) {
         return cmd::CommandResult::failure(not_implemented("lvs"));

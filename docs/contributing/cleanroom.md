@@ -210,9 +210,12 @@ Roles, not names; agent sessions are listed by role.
 | Team | Role | Who |
 |---|---|---|
 | LVS spec | Spec authors | the sessions that wrote the eight `lvs-*` specs and `LVS.md` |
-| LVS spec | CLEANROOM (tasks 2.1, 2.3, the template half of 2.4), PDK data sets (3.1) and the comparators (3.4) | the M9 round 0 session of branch `m9-round0-cleanroom-pdk` (2026-11-24); it read netgen's licence header from the pinned 1.5.327 tag for `check_cleanroom.py`, so it never takes LVSCMD, SCHEMSIM 16.3 or task 3.5 |
+| LVS spec | CLEANROOM (tasks 2.1, 2.3, the template half of 2.4), PDK data sets (3.1) and the comparators (3.4) | the M9 round 0 session of branch `m9-round0-cleanroom-pdk` (2026-11-24); it read netgen's licence header (`base/netgen.c`, lines 1-2) at the git tag `1.5.327` for `check_cleanroom.py`. That tag is commit `8df5f0d9…`, not the spec pin `93dcda14` of `tools/golden/pins.toml` ("the tag is NOT used"); a spec-team session is to re-check the two lines at `93dcda14`. It never takes LVSCMD, SCHEMSIM 16.3 or task 3.5 |
 | LVS spec | Paraphrase review (2.2) and its second signature; capture-fixed texts (3.8) | spec-team sessions, assigned per task |
 | LVS implementation | One session per workstream (LVSREAD, LVSSETUP, LVSALG, LVSRED, LVSPROP, LVSHIER, LVSREP, LVSCMD, GOLDEN LVS inputs) | implementation-team sessions, each started with the instruction block above |
+| LVS implementation | SCAFFOLD (task 4.2: `src/core/include/hefesto/lvs/**`, `src/core/src/lvs/**` including the LVSCMD-owned `lvs/cmd/commands.cpp`, `tests/unit/lvs/scaffold_test.cpp`) | the M9 round 0 session of branch `m9-round0-scaffold` (2026-11-24). Attestation: it never read netgen's source; its session log has no web fetch and no tool use that opens a netgen repository, archive or `/opt/src/netgen` (audited 2026-11-24 by the R0 fix pass) |
+| LVS implementation | INTEGRATION of round 0 (registration of `lvs` in `cmd/all_commands.cpp`, shared files, task notes) | the M9 round 0 session of branch `m9-round0` (2026-11-24). Attestation: it never read netgen's source; same audit, no web fetch at all (its only `/opt/src/netgen` mentions are task-note text it wrote) |
+| LVS implementation | R0 fix pass (the `lvs` usage text in `lvs/cmd/commands.cpp`, the scaffold stubs) | the M9 round 0 fix session (2026-11-24); it never read netgen's source and read only the two sessions' tool-use logs, filtered to the netgen source paths, for the audit above |
 | Outside both | Clean-room process reviewer (task 2.1) | *to be assigned* (has not read netgen's source, writes no LVS code) |
 | Outside both | Security reviewer (design D22) | *to be assigned* |
 | Outside both | Legal counsel (M13, before Desktop 1.0) | *to be assigned* |
