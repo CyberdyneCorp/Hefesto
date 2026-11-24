@@ -209,7 +209,35 @@ Codes of the document model, the editing operations and net highlighting
 (`src/core/src/schem/edit/`; capability schematic-editing; design D11).
 Owner: EDIT.
 
-No codes yet.
+The errors raise a script error and leave the document as it was
+(schematic-command "Return values and errors in scripts").
+
+- `SCHEM-EDIT-001`: `schematic: <file> is read-only (PDK store or system
+  library); use "schematic save <file>" to save it in a user folder`, from
+  every option that changes a document whose file is under `PDK_ROOT`, under
+  `<CAD_ROOT>/assets/schematic` or under a read-only root of the project
+  sandbox ("Read-only libraries"). Viewing, selecting, highlighting and
+  descending stay allowed.
+- `SCHEM-EDIT-002`: `schematic: cannot descend into <symbol>: its type is not
+  subcircuit or primitive` ("Hierarchy navigation"; `descend -symbol` opens
+  the symbol of any instance).
+- `SCHEM-EDIT-003`: `schematic: descending is limited to 40 levels`.
+- `SCHEM-EDIT-004`: `schematic: already at the top of the hierarchy`, from
+  `ascend` at the top (or after another document was made active, which
+  becomes the new top).
+- `SCHEM-EDIT-005` (warning): `schematic: bus width mismatch at pin <pin> of
+  <instance>: net <net> has <n> bits, the pin <p> and the instance <w>`, when
+  the net width is neither the pin width nor the pin width times the
+  instance width ("Bus editing"). Reported after an edit, once per mismatch:
+  an edit reports only mismatches the previous edit of the document did not
+  have.
+- `SCHEM-EDIT-006`: `schematic: no schematic <file> for <symbol>` or
+  `schematic: cannot open <file>`, from `descend` when the schematic (or,
+  with `-symbol`, the symbol file) does not exist or cannot be read.
+- `SCHEM-EDIT-007`: `schematic: <file> exists; use "schematic symbol make
+  -force"`, from `symbol make` without `-force` and `symbol toschematic` when
+  the file to write exists ("Labels and ports": no overwrite without
+  confirmation).
 
 ## CMD
 
@@ -280,6 +308,13 @@ fails when the two disagree.
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
 | `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
+| `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |
+| `SCHEM-EDIT-003` | error | Descending would pass the hierarchy depth limit of 40 levels. |
+| `SCHEM-EDIT-004` | error | `schematic ascend` at the top of the hierarchy. |
+| `SCHEM-EDIT-005` | warning | Bus width mismatch: the net on a pin is neither the pin width nor the pin width times the instance width. |
+| `SCHEM-EDIT-006` | error | The schematic or symbol file to descend into does not exist or cannot be read. |
+| `SCHEM-EDIT-007` | error | `schematic symbol make` or `toschematic` would overwrite an existing file (`make -force` overwrites). |
 | `SCHEM-FILE-001` | warning | A record has a missing or non-numeric field and is skipped. |
 | `SCHEM-FILE-002` | warning | A graphic record has a missing or out-of-range layer and is skipped. |
 | `SCHEM-FILE-003` | warning | The file ends inside a brace string; the field is read as absent. |

@@ -19,6 +19,7 @@
 
 #include "hefesto/compat/compat_settings.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/schem/edit/edit_state.hpp"
 #include "hefesto/schem/file/document.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
@@ -59,6 +60,10 @@ struct Session {
   // for the undo recorder); nullptr until the first one.
   const compat::CompatSettings* compat = nullptr;
   platform::FileSystem* files = nullptr;
+
+  // EDIT: selection, snap, per-document undo history, hierarchy and
+  // highlights (schem/edit/edit_state.hpp); never saved.
+  EditSession edit;
 };
 
 }  // namespace hefesto::schem
