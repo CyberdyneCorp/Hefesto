@@ -94,6 +94,7 @@ A hand-written lexer and reader over the shared record grammar, producing `schem
 - **`tcleval`** runs in the X-3 sandbox (`script/tcl/sandbox.hpp`) with the procedures the inventory lists (`ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `ngspice::*`, the `xschem` subset), implemented from the semantics the spec team writes into "tcleval values" from the public manual and computed PDK values (Q-SCHEM-8, G3). Their numeric output is checked against values computed for every PDK symbol that uses them (SCHEM-NL-07/08 and unit tables).
 - **Pin order** uses `std::stable_sort` and warns on duplicates (Q-SCHEM-5).
 - **Symbol drc procedures** run in the sandbox (Q-SCHEM-6); generators are Tcl only (Q-SCHEM-11).
+- **Generator limits** (approved 2026-11-23, Q-SCHEM-43 and -44, M8-D5 to M8-D7; both modes): the generator runs of one `SymbolCache` share 60 s (`kGeneratorTotalTimeLimit`) until `clear()` or a symbol reload, each run at most 10 s; once spent no generator runs and one `SCHEM-LIB-012` is reported. A generator file over 256 MiB (`kMaxGeneratorScriptBytes`) is not read for its first line and not run. An absolute-path `.tcl` generator outside the search path runs, in the same sandbox (read-only script and document folders, no writes, no processes).
 
 ### D8. The system symbol library (DEVLIB; Q-SCHEM-10, J-3)
 
@@ -101,6 +102,7 @@ A hand-written lexer and reader over the shared record grammar, producing `schem
 2. The spec team extracts each listed symbol's interface into `schematic-symbols-and-libraries` "System library": file name, pin names, order and positions, pin directions, and the netlisting properties (`type`, `format`, `lvs_format`, `template`, `global`, `spice_ignore` and the like), as one table. Graphics are not described beyond a bounding box.
 3. DEVLIB writes each `.sym` from that table with independently drawn graphics, under `assets/schematic/xschem_library/devices/` (the PDK `xschemrc` files append `${XSCHEM_SHAREDIR}/xschem_library/devices`), with Apache-2.0 headers in the `v` record. A test parses every library file and checks its interface against a machine-readable copy of the table (`tests/data/schem/devices_interface.json`, generated from the spec by a script), and that the library holds exactly the inventoried symbols.
 4. The library is reachable as `devices/<name>` and `<name>`. Its shipping in a release waits for the counsel review (D2), which is an M13 item.
+5. **Location and `CAD_ROOT`** (recorded 2026-11-23, M8-D9 and M8-D10). The library lives at `assets/schematic/xschem_library/devices/` (D3) in the source tree and the install; `XSCHEM_SHAREDIR` is `<CAD_ROOT>/assets/schematic`. When `CAD_ROOT` is not set, `hefesto-cli` and the desktop app use the install root (Q-SCHEM-45), so the library is found without setting it; SHELL implements this in round 4.
 
 ### D9. Netlisting (NETLIST; `schematic-netlisting`)
 
@@ -248,6 +250,12 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-42 / M8-D1 (approved 2026-11-22) | platform: flat netlist stops at 64 levels or past 256 MiB, `SCHEM-NET-017`, run not failed; both modes | D9, D10, D19 |
 | Q-SCHEM-40 / M8-D2 (approved 2026-11-22) | platform: schematic used as a symbol capped at about 256 MiB besides 1,000,000 records, `SCHEM-LIB-009`; both modes | D7, D19 |
 | Q-SCHEM-41 / M8-D3 (approved 2026-11-22) | platform: total bus expansion 4 GiB (64 × `kMaxBusBytes`) per netlist run or editing session, `SCHEM-NET-006`; both modes | D9, D19 |
+| Q-SCHEM-30 / M8-D4 (confirmed 2026-11-23) | fix confirmed: an unsaved document resolves no `./`, `../` or `.`; both modes | D7 |
+| Q-SCHEM-43 / M8-D5, M8-D6 (approved 2026-11-23) | platform: generator runs of one symbol cache share 60 s until `clear()`/reload, then `SCHEM-LIB-012` once; generator files over 256 MiB not read or run; both modes | D7, D14, D19 |
+| Q-SCHEM-44 / M8-D7 (approved 2026-11-23) | platform: absolute-path `.tcl` generators outside the search path run in the sandbox (read-only script and document folders, no writes); both modes | D7, D14 |
+| Q-SCHEM-42 / M8-D8 (approved 2026-11-23) | clarification: flat byte count = text + LF + `kFlatLineOverhead` (40) per kept line | D9, D10 |
+| Q-SCHEM-10 / M8-D9 (recorded 2026-11-23) | system library at `assets/schematic/xschem_library/devices/` | D3, D8 |
+| Q-SCHEM-45 / M8-D10 (approved 2026-11-23) | platform: `CAD_ROOT` defaults to the install root in `hefesto-cli` and the desktop app | D8, D15 |
 
 ## As-landed scaffold contracts
 

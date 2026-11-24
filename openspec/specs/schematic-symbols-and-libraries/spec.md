@@ -848,13 +848,13 @@ A symbol reference of the form `name(args)` (matching `^[^ \t()]+\([^()]*\)[ \t]
 
 Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text. Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
 
-**Limits** (both modes of `xschem-compat`; xschem bounds none of them). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
-- A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A file larger than 268,435,456 bytes (256 MiB, the bound of a flattened symbol, Q-SCHEM-40) SHALL NOT be read to check its first line, and a Tcl generator that large SHALL NOT be run.
+**Limits** (both modes of `xschem-compat`; xschem bounds none of them; approved by the user on 2026-11-23, Q-SCHEM-43, decisions M8-D5 and M8-D6). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
+- A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A file larger than 268,435,456 bytes (256 MiB, `kMaxGeneratorScriptBytes`, the bound of a flattened symbol, Q-SCHEM-40) SHALL NOT be read to check its first line, and a Tcl generator that large (a `.tcl` file) SHALL NOT be run: it is a failed run, reported with `SCHEM-LIB-012`.
 - One run SHALL stop after 10 s (the `xschemrc` time limit of Q-SCHEM-32), and SHALL fail when it prints more than 268,435,456 bytes.
-- The runs of one session's symbol cache SHALL share a total of 60 s until the symbols are reloaded (Requirement "Symbol cache and reload"); each run gets at most what is left, and once it is spent no generator SHALL run: the reference is a missing symbol and the warning `SCHEM-LIB-012` (`Symbol <reference>: symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded`) SHALL be reported once.
+- The runs of one session's symbol cache SHALL share a total of 60 s (`kGeneratorTotalTimeLimit`) until the cache is cleared or the symbols are reloaded (Requirement "Symbol cache and reload"), which restores the full 60 s; each run gets at most 10 s or what is left, if less, and once it is spent no generator SHALL run: the reference is a missing symbol and the warning `SCHEM-LIB-012` (`Symbol <reference>: symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded`) SHALL be reported once.
 - A failed run (Tcl error, a limit above) SHALL be reported once with `SCHEM-LIB-012` and kept as a missing symbol for that reference, so it is not run again until the symbols are reloaded or the generator file is reloaded.
 
-The 60 s total and the script size limit were added by the M8 round-3 review fix and await the user's approval (reported with the round).
+**Location** (approved by the user on 2026-11-23, Q-SCHEM-44, decision M8-D7; both modes). A Tcl generator named by an absolute path (`/opt/gen/res.tcl(1k)`) SHALL be run even when its folder is not on the search path. It runs in the same sandbox as every generator: it SHALL read only its own folder and the document's folder, SHALL write nothing and SHALL run no process, and the limits above apply.
 
 Compatibility: behavioral
 
@@ -875,8 +875,28 @@ Compatibility: behavioral
 - **WHEN** the reference is resolved
 - **THEN** the file SHALL NOT be read, and the instance SHALL be a missing symbol with `SCHEM-LIB-011`
 
+#### Scenario: Generator time budget spent
+- **GIVEN** a symbol cache whose generator runs have used their total of 60 s, and a schematic with instances of two further generator references `res.tcl(1k)` and `res.tcl(2k)`, with `xschem-compat` ON or OFF
+- **WHEN** the schematic is opened with that cache
+- **THEN** no generator SHALL run, both instances SHALL be missing symbols, and the warning `Symbol res.tcl(1k): symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded` (`SCHEM-LIB-012`) SHALL be reported once, not once per reference (Q-SCHEM-43)
+
+#### Scenario: Generator budget restored by reload
+- **GIVEN** the symbol cache of the previous scenario, whose 60 s are spent, with `xschem-compat` ON or OFF
+- **WHEN** the symbols are reloaded (`schematic reload_symbols`, which clears the cache) and the schematic is resolved again
+- **THEN** the generators SHALL run again, each with at most 10 s, out of a new total of 60 s, and a generator that completes SHALL give its symbol (Q-SCHEM-43)
+
+#### Scenario: Generator script larger than 256 MiB
+- **GIVEN** a generator reference `big.tcl(1)` whose file `big.tcl` is larger than 268,435,456 bytes, with `xschem-compat` ON or OFF
+- **WHEN** the reference is resolved
+- **THEN** the file SHALL NOT be read and SHALL NOT be run, the instance SHALL be a missing symbol, and `SCHEM-LIB-012` (`Symbol generator <file> failed: the script is larger than 268435456 bytes`) SHALL be reported once (Q-SCHEM-43)
+
+#### Scenario: Absolute-path generator runs sandboxed
+- **GIVEN** a schematic `/work/top.sch` with an instance of `/opt/gen/box.tcl(2)`, where `/opt/gen` is not on the search path, and `box.tcl` prints a symbol, then tries to open `/opt/gen/out.txt` for writing and to read `/etc/passwd`, with `xschem-compat` ON or OFF
+- **WHEN** the reference is resolved
+- **THEN** the generator SHALL run in the sandbox, the write and the read outside `/opt/gen` and `/work` SHALL fail as Tcl errors, no file SHALL be created, and the run SHALL fail with `SCHEM-LIB-012` and leave a missing symbol; the same generator without the two forbidden accesses SHALL give its symbol (Q-SCHEM-44)
+
 ### Requirement: Symbol cache and reload
-Hefesto SHALL load each referenced symbol file once per open document and share it among instances. It SHALL detect changes to a loaded symbol file (file-system notification or modification time) and SHALL reload it on request (`schematic reload_symbols`, capability `schematic-command`) or automatically when the user returns to the window. A symbol edited and saved in Hefesto SHALL update every open schematic that uses it.
+Hefesto SHALL load each referenced symbol file once per open document and share it among instances. It SHALL detect changes to a loaded symbol file (file-system notification or modification time) and SHALL reload it on request (`schematic reload_symbols`, capability `schematic-command`) or automatically when the user returns to the window. A symbol edited and saved in Hefesto SHALL update every open schematic that uses it. Clearing the cache or reloading the symbols SHALL also restore the generators' total time of 60 s (Requirement "Symbol generators", Q-SCHEM-43).
 
 Compatibility: native
 
