@@ -142,9 +142,9 @@ TEST_CASE("ext2spice -h prints both usage texts; -T is unrecognized",
 TEST_CASE("The run reaches EFArgs with the run arguments", "[cap:netlist-spice-options][req:Run arguments and output file]") {
   Session s;
   const auto r = spice::run(s.state, spice::SpiceRun{{"-F", "inv"}});
-  REQUIRE_FALSE(r.ok());
+  REQUIRE(r.ok());
   // EFArgs took `-F` and the cell `inv`; the read finds no inv.ext here.
-  CHECK(r.diagnostics.back().text == "Cannot read extract file inv.ext");
+  CHECK(r.value.to_string() == "Cannot read extract file inv.ext\n");
   CHECK_FALSE(s.state.netlist.spice.no_attributes);
 }
 
@@ -155,10 +155,11 @@ TEST_CASE("render leaves the session's settings untouched", "[cap:netlist-spice-
   s.state.netlist.names.trim_local = true;
   const spice::SpiceSettings before = s.state.netlist.spice;
   const extflat::NameFlags names = s.state.netlist.names;
-  // The `lvs` preset is hierarchical (tasks.md 11.6, R3).
+  // The `lvs` preset is hierarchical: it reaches the read, which finds no
+  // inv.ext here (hier_test.cpp renders it on a golden case's files).
   const auto lvs = spice::render(s.state, "inv", spice::SpiceSettings::lvs(before));
   REQUIRE_FALSE(lvs.ok());
-  CHECK(lvs.error().code == "CORE-NOTIMPL-008");
+  CHECK(lvs.error().code == "EXTFLAT-READ-001");
   // Simulation overrides: flat, ngspice, every parasitic.
   spice::SpiceSettings sim = before;
   sim.format = spice::Dialect::ngspice;

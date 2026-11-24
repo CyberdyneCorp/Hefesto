@@ -105,6 +105,12 @@ class Flattener {
   [[nodiscard]] std::vector<FlatCap> visit_caps() const;
 
   void mark_nodevices(std::uint32_t def) { nodevices_[def] = 1; }
+  void set_nodevices(const std::vector<char>& marks) {
+    for (std::size_t i = 0; i < marks.size() && i < nodevices_.size(); ++i) {
+      nodevices_[i] = marks[i];
+    }
+  }
+  [[nodiscard]] const std::vector<char>& nodevices_marks() const { return nodevices_; }
   [[nodiscard]] bool nodevices(std::uint32_t def) const { return nodevices_[def] != 0; }
   [[nodiscard]] bool failed() const { return ctx_.fatal.has_value(); }
   // Each traversal of the hierarchy counts its instances and expanded
@@ -1006,8 +1012,9 @@ Netlist flatten_full(FlatContext& ctx, std::uint32_t root, const FlatPlan& plan)
   return netlist;
 }
 
-Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& plan, bool& nodevices) {
+Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& plan, std::vector<char>& nodevices) {
   Flattener f{ctx, plan, def_id, false};
+  f.set_nodevices(nodevices);
   const HierContext top{def_id, {}, Transform{}};
   const Def& def = ctx.defs.at(def_id);
   f.full_nodes(top, 0, kHier);
@@ -1020,7 +1027,7 @@ Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& pl
   if (usecount == 0 && def.devices.empty()) {
     f.mark_nodevices(def_id);
   }
-  nodevices = f.nodevices(def_id);
+  nodevices = f.nodevices_marks();
   if (!f.failed()) {
     f.begin_pass();
     f.flat_kills(top, 0);

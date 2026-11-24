@@ -49,12 +49,15 @@ struct HierModel {
   ReadOptions options;
   std::unique_ptr<ReadState> st;
   std::uint32_t root = 0;
+  std::vector<char> nodevices;  // DEF_NODEVICES, kept across one-level flattenings
 };
 
 namespace {
 
 HierDef hier_def(const Def& def) {
-  return HierDef{def.name, def.subcircuit, def.abstract, def.primitive, def.devices.size()};
+  std::size_t uses = 0;  // HashGetNumEntries(&def->def_uses)
+  def.use_table.for_each([&uses](const auto& entry) { uses += entry.value ? 1 : 0; });
+  return HierDef{def.name, def.subcircuit, def.abstract, def.primitive, def.devices.size(), uses};
 }
 
 HierUse hier_use(const DefTable& defs, const Def& parent, const Use& use) {
@@ -175,17 +178,58 @@ diag::Outcome<Netlist> flatten_one_level(const Hierarchy& hierarchy, std::string
     return diag::make(detail::codes::kCannotRead, "Cannot read extract file " + std::string{def} + ".ext");
   }
   detail::FlatContext ctx{sink, hierarchy.model->options, st.globals, st.defs, st.layers, std::nullopt};
-  bool nodevices = false;
-  Netlist netlist = detail::flatten_level(ctx, *id, detail::plan_for(st, flags, options), nodevices);
+  std::vector<char>& marks = hierarchy.model->nodevices;
+  marks.resize(st.defs.size(), 0);
+  Netlist netlist = detail::flatten_level(ctx, *id, detail::plan_for(st, flags, options), marks);
   if (ctx.fatal) {
     return *ctx.fatal;
   }
   if (devices_absent != nullptr) {
-    *devices_absent = nodevices;
+    *devices_absent = marks[*id] != 0;
   }
   detail::copy_read_globals(st, netlist);
   netlist.root_ports = detail::port_entries(st.defs.at(*id));
   return netlist;
+}
+
+void make_ports(Hierarchy& hierarchy, bool cap_infinite, double cap_threshold) {
+  if (!hierarchy.model) {
+    return;
+  }
+  detail::ReadState& st = *hierarchy.model->st;
+  for (const HierDef& def : hierarchy.defs) {
+    if (const auto id = st.defs.lookup(def.name)) {
+      detail::make_ports(st, *id, cap_infinite, cap_threshold);
+    }
+  }
+}
+
+DefPorts def_ports(const Hierarchy& hierarchy, std::string_view def) {
+  if (!hierarchy.model) {
+    return {};
+  }
+  const detail::ReadState& st = *hierarchy.model->st;
+  const auto id = st.defs.lookup(def);
+  return id ? detail::def_ports(st.defs.at(*id)) : DefPorts{};
+}
+
+void clear_ports(Hierarchy& hierarchy, std::string_view def) {
+  if (!hierarchy.model) {
+    return;
+  }
+  detail::ReadState& st = *hierarchy.model->st;
+  if (const auto id = st.defs.lookup(def)) {
+    detail::clear_ports(st.defs.at(*id));
+  }
+}
+
+bool devices_absent(const Hierarchy& hierarchy, std::string_view def) {
+  if (!hierarchy.model) {
+    return false;
+  }
+  const auto id = hierarchy.model->st->defs.lookup(def);
+  const std::vector<char>& marks = hierarchy.model->nodevices;
+  return id && *id < marks.size() && marks[*id] != 0;
 }
 
 diag::Outcome<std::vector<OverlayRecord>> read_res_overlay(cell::LookupContext& ctx, std::string_view cell,

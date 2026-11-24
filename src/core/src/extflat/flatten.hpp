@@ -65,8 +65,9 @@ struct FlatPlan {
 [[nodiscard]] Netlist flatten_full(FlatContext& ctx, std::uint32_t root, const FlatPlan& plan);
 
 /// EFFlatBuildOneLevel of `def` and the EFHierVisit* visits; `nodevices`
-/// receives DEF_NODEVICES of `def`.
-[[nodiscard]] Netlist flatten_level(FlatContext& ctx, std::uint32_t def, const FlatPlan& plan, bool& nodevices);
+/// holds DEF_NODEVICES per def across flattenings, as Magic's def flags do.
+[[nodiscard]] Netlist flatten_level(FlatContext& ctx, std::uint32_t def, const FlatPlan& plan,
+                                    std::vector<char>& nodevices);
 
 /// EFNodeResist over area/perimeter pairs and the class resistances.
 [[nodiscard]] std::int32_t node_resistance(const std::vector<PerimArea>& pa, const std::vector<std::int32_t>& resists);

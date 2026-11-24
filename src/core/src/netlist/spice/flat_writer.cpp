@@ -301,6 +301,8 @@ class PortSorter {
     }
   }
 
+  [[nodiscard]] const std::map<std::string, int, std::less<>>& ports() const { return port_of_; }
+
   std::vector<std::string> sorted() {
     number_implicit();
     sorted_.assign(static_cast<std::size_t>(portmax_ + 1), std::string{});
@@ -408,8 +410,6 @@ class PortSorter {
   int portmax_ = -1;
 };
 
-std::vector<std::string> sorted_ports(FlatWriter& w) { return PortSorter{w}.sorted(); }
-
 // Appends ` <word>` with Magic's 80-column continuation.
 void continued(std::string& out, std::size_t& tchars, const std::string& word) {
   if (tchars > 80) {
@@ -420,11 +420,12 @@ void continued(std::string& out, std::size_t& tchars, const std::string& word) {
   tchars += word.size() + 1;
 }
 
-void write_wrapper(FlatWriter& w) {
+std::map<std::string, int, std::less<>> write_wrapper(FlatWriter& w) {
   const std::string name = subcircuit_name(w.in.cell);
   w.out += ".subckt " + name;
   std::size_t tchars = 8 + name.size();
-  for (const std::string& port : sorted_ports(w)) {
+  PortSorter sorter{w};
+  for (const std::string& port : sorter.sorted()) {
     if (!port.empty()) {
       continued(w.out, tchars, port);
     }
@@ -436,12 +437,14 @@ void write_wrapper(FlatWriter& w) {
     }
   }
   w.out += "\n";
+  return sorter.ports();
 }
 
+// spccapVisit, or spccapHierVisit, which compares |C| (Q-NETLIST-19).
 void write_caps(FlatWriter& w) {
   for (const extflat::FlatCap& c : w.in.caps) {
     const double cap = static_cast<double>(static_cast<float>(c.cap)) / 1000;
-    if (cap <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
+    if ((w.hier ? std::fabs(cap) : cap) <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
       continue;
     }
     // Arguments evaluated right to left, as Magic's GCC build does.
@@ -488,11 +491,17 @@ double visit_cap(const FlatWriter& w, std::size_t index) {
 // device terminal or a resistor).
 bool connected(const FlatWriter& w, std::size_t index) {
   const detail::NodeClient& client = w.clients[index];
-  if (!w.compat.magic_compat) {
+  if (!w.compat.magic_compat && !w.hier) {
     return client.connected;
   }
   if (!client.exists) {
     return false;
+  }
+  if (w.hier) {
+    // spcnodeHierVisit: any terminal or resistor touched the node.
+    return w.settings.distributed_junctions
+               ? !client.widths.empty()
+               : std::any_of(client.visited.begin(), client.visited.end(), [](bool b) { return b; });
   }
   if (w.settings.distributed_junctions) {
     return !client.widths.empty();
@@ -528,8 +537,8 @@ void write_node(FlatWriter& w, std::size_t index, const std::string& cap_node) {
   if (w.settings.format == Dialect::spice2 || (w.settings.format == Dialect::hspice && nsn.starts_with("z@"))) {
     w.out += std::string{ng ? "; " : ""} + "** " + w.converted_name(index) + " == " + nsn + "\n";
   }
-  const double cap = visit_cap(w, index) / 1000;
-  if (cap > detail::dbl(static_cast<float>(w.settings.cthresh))) {
+  const double cap = (w.hier ? detail::dbl(w.node_caps[index]) : visit_cap(w, index)) / 1000;
+  if ((w.hier ? std::fabs(cap) : cap) > detail::dbl(static_cast<float>(w.settings.cthresh))) {
     w.out += "C" + std::to_string(w.cap_num++) + " " + nsn + " " + cap_node + " " +
              detail::si(static_cast<float>(1.0E-15 * cap));
     if (!is_connected) {
@@ -589,7 +598,7 @@ WriteResult FlatWriter::run() {
   apply_run_flags(names, settings.format);
   const bool wrapper = wraps(*this);
   if (wrapper) {
-    write_wrapper(*this);
+    (void)write_wrapper(*this);
   }
   write_devices(*this);
   if (finite_cap(settings.cthresh)) {
@@ -604,6 +613,36 @@ WriteResult FlatWriter::run() {
     write_dictionary(*this);
   }
   return WriteResult{std::move(out), std::move(messages)};
+}
+
+void FlatWriter::write_file_header() {
+  write_header(*this);
+  apply_run_flags(names, settings.format);
+}
+
+std::map<std::string, int, std::less<>> FlatWriter::write_subckt_line() { return write_wrapper(*this); }
+
+// esHierVisit after the calls: devices, resistors, couplings (always
+// visited; |C| against the threshold), and the node lines, which follow
+// Q-NETLIST-20: with magic-compat ON only when a `substrate` record was
+// read (EFCompat FALSE), with it OFF always.
+void FlatWriter::write_section_body() {
+  write_devices(*this);
+  write_resists(*this);
+  write_caps(*this);
+  if (in.compat_substrate && compat.magic_compat) {
+    return;
+  }
+  std::string cap_node = "0";
+  for (std::size_t i = 0; i < in.nodes.size(); ++i) {
+    if (in.nodes[i].substrate) {
+      cap_node = spice_name(i);
+      break;
+    }
+  }
+  for (std::size_t i = 0; i < in.nodes.size(); ++i) {
+    write_node(*this, i, cap_node);
+  }
 }
 
 }  // namespace detail
