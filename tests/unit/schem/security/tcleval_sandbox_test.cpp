@@ -176,6 +176,20 @@ TEST_CASE("an endless tcleval value is stopped", sec::kPermissionModel) {
   }
 }
 
+// Regression (review of PR #101): the spec gave the SCHEM-TCL-003 texts in
+// ms (`10000 ms`) while the code prints whole seconds (`10 s`); the spec now
+// says `10 s` / `60 s`. A limit of whole seconds (here 1 s) is printed in s.
+TEST_CASE("the tcleval limit texts print whole seconds in s", sec::kPermissionModel) {
+  Run run;
+  run.tcl.set_time_limits(milliseconds{1000}, milliseconds{1000});
+  CHECK(run.eval("[while 1 {}]") == "?\n");
+  CHECK(run.eval("[expr 1]") == "?\n");
+  const auto all = run.sink.take();
+  REQUIRE(all.size() == 2);
+  CHECK(all[0].text == "tcleval value stopped after 1 s (tcleval of instance R1 (evil.sym))");
+  CHECK(all[1].text.starts_with("tcleval values ran for their total of 1 s; no further value is evaluated"));
+}
+
 // The values of one run share kTclevalTotalTimeLimit (here 500 ms): 10,000
 // endless values would otherwise take 10,000 times the limit of one.
 TEST_CASE("endless tcleval values share a total time limit", sec::kPermissionModel) {

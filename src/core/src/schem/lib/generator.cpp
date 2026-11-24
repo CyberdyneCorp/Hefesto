@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
@@ -102,7 +103,9 @@ GeneratorOutput failed(const GeneratorInput& input, const std::string& why) {
   return output;
 }
 
-// Why a failed run failed, for the SCHEM-LIB-012 message.
+// Why a failed run failed, for the SCHEM-LIB-012 message. A sandbox denial
+// is reported with its own code (below), so the message names it without
+// repeating its text (review of PR #101: it was reported twice).
 std::string failure_reason(const cmd::CommandResult& result, const PutsCapture& puts, const GeneratorInput& input) {
   if (puts.too_long()) return "it printed more than " + std::to_string(input.max_output) + " bytes";
   for (const diag::Diagnostic& d : result.diagnostics) {
@@ -111,7 +114,24 @@ std::string failure_reason(const cmd::CommandResult& result, const PutsCapture& 
       return "stopped after " + (ms % 1000 == 0 ? std::to_string(ms / 1000) + " s" : std::to_string(ms) + " ms");
     }
   }
-  return result.diagnostics.empty() ? std::string{"error"} : result.diagnostics.front().text;
+  if (result.diagnostics.empty()) return "error";
+  const std::string& error = result.diagnostics.front().text;
+  const auto denial = std::find_if(result.diagnostics.begin(), result.diagnostics.end(), [&error](const auto& d) {
+    return detail::is_sandbox_denial(d) && d.text == error;
+  });
+  if (denial != result.diagnostics.end()) return "the script sandbox denied an operation (" + denial->code + ")";
+  return error;
+}
+
+std::string too_large(const GeneratorInput& input) {
+  return "the script is larger than " + std::to_string(input.max_script) + " bytes";
+}
+
+// At most max_script + 1 bytes of `file`: one more than allowed tells a
+// file that grew after its size was checked (review of PR #101).
+diag::Outcome<std::string> read_script(platform::FileSystem& fs, const platform::Path& file, std::size_t max_script) {
+  const std::size_t cap = max_script == std::numeric_limits<std::size_t>::max() ? max_script : max_script + 1;
+  return fs.read_at_most(file, cap);
 }
 
 }  // namespace
@@ -148,19 +168,18 @@ bool is_tcl_generator(const platform::Path& file, platform::FileSystem& fs, std:
   if (file.extension() == ".tcl") return true;
   const auto size = fs.size(file);
   if (!size.ok() || size.value() > max_script) return false;
-  const auto text = fs.read(file);
-  if (!text.ok() || !text.value().starts_with("#!")) return false;
+  const auto text = read_script(fs, file, max_script);
+  if (!text.ok() || text.value().size() > max_script || !text.value().starts_with("#!")) return false;
   const std::string_view first_line = std::string_view{text.value()}.substr(0, text.value().find('\n'));
   return first_line.find("tclsh") != std::string_view::npos || first_line.find("wish") != std::string_view::npos;
 }
 
 GeneratorOutput run_tcl_generator(platform::FileSystem& fs, const GeneratorInput& input) {
   const auto size = fs.size(input.script);
-  if (size.ok() && size.value() > input.max_script) {
-    return failed(input, "the script is larger than " + std::to_string(input.max_script) + " bytes");
-  }
-  const auto script = fs.read(input.script);
+  if (size.ok() && size.value() > input.max_script) return failed(input, too_large(input));
+  const auto script = read_script(fs, input.script, input.max_script);
   if (!script.ok()) return failed(input, script.error().text);
+  if (script.value().size() > input.max_script) return failed(input, too_large(input));
   editor::EditorState editor;
   auto interp = script::create_project_interpreter(editor, generator_policy(input));
   PutsCapture puts(input.max_output);

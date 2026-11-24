@@ -9,10 +9,13 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "edit_fixture.hpp"
+#include "hefesto/schem/edit/edit_state.hpp"
 #include "hefesto/schem/edit/hier_path.hpp"
 #include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/net/bus.hpp"
@@ -26,6 +29,7 @@ using hefesto::test::write_cell;
 
 namespace {
 
+constexpr const char* kModel = "[cap:schematic-editing][req:Document model]";
 constexpr const char* kUndo = "[cap:schematic-editing][req:Undo and redo]";
 constexpr const char* kReadOnly = "[cap:schematic-editing][req:Read-only libraries]";
 constexpr const char* kNavigation = "[cap:schematic-editing][req:Hierarchy navigation]";
@@ -293,4 +297,120 @@ TEST_CASE("an editing session's instance names take from the session bus budget"
   s.schem().bus_budget = schem::BusBudget{0};
   CHECK(run(s, {"place", "res.sym", "0", "200", "-props", "name=S[1:0]"}) == "S[1:0]");
   CHECK(s.schem().bus_budget.remaining() == 0);
+}
+
+// ---- Review of PR #101 -------------------------------------------------------------------
+
+// Regression: `schematic reload` replaced the document under the same id
+// and kept the selection, so `delete`, `move` and `copy` indexed wires that
+// no longer existed (out-of-bounds access, both modes). Every editing and
+// viewing option now first drops selected objects that do not exist.
+TEST_CASE("Selection after reload", kModel) {
+  for (const std::string option : {"delete", "move", "copy", "selection", "rotate"}) {
+    INFO(option);
+    SchemSession s;
+    new_schematic(s);
+    for (int i = 0; i < 10; ++i) run(s, {"wire", "0", std::to_string(i * 10), "5", std::to_string(i * 10)});
+    run(s, {"save"});
+    run(s, {"select", "wire", "9"});
+    run(s, {"select", "wire", "1"});
+    s.folder().write("top.sch", "v {xschem version=3.4.8RC file_version=1.3}\nN 0 0 5 0 {}\nN 0 10 5 10 {}\n");
+    run(s, {"reload"});
+    REQUIRE(active(s).wires.size() == 2);
+    std::vector<std::string> args{option};
+    if (option == "move" || option == "copy") args = {option, "10", "0"};
+    const std::string value = run(s, args);
+    if (option == "selection") CHECK(value == "{wire 1}");
+    std::size_t expected = 2;
+    if (option == "delete") expected = 1;
+    if (option == "copy") expected = 3;
+    CHECK(active(s).wires.size() == expected);
+    const auto& selection = s.schem().edit.selections[schem::active_document(s.schem())->id];
+    for (const schem::ObjectRef& ref : selection) CHECK(ref.index < active(s).wires.size());
+  }
+}
+
+// Regression: each undo step held two full copies of the document, without
+// any bound on their size. Steps now share their snapshots (the `after` of
+// one is the `before` of the next) and the oldest steps are dropped while
+// the history takes more than its byte bound; the newest is always kept.
+TEST_CASE("Undo history byte bound", kUndo) {
+  SchemSession s;
+  new_schematic(s);
+  const schem::DocumentId id = schem::active_document(s.schem())->id;
+  for (int i = 0; i < 5; ++i) run(s, {"wire", "0", std::to_string(i), "1", std::to_string(i)});
+  const auto& history = s.schem().edit.histories[id];
+  REQUIRE(history.records.size() == 5);
+  for (std::size_t i = 0; i + 1 < history.records.size(); ++i) {
+    CHECK(history.records[i]->after.get() == history.records[i + 1]->before.get());
+  }
+  // A bound of about three snapshots keeps only the newest steps.
+  const std::size_t snapshot = schem::document_bytes(active(s));
+  s.schem().edit.undo_max_bytes = 3 * snapshot;
+  run(s, {"wire", "0", "5", "1", "5"});
+  const std::size_t kept = history.records.size();
+  CHECK(kept >= 1);
+  CHECK(kept <= 3);
+  CHECK(run(s, {"undo", "10"}) == std::to_string(kept));
+  CHECK(active(s).wires.size() == 6 - kept);
+  CHECK(run(s, {"redo", "10"}) == std::to_string(kept));
+  CHECK(active(s).wires.size() == 6);
+  // A document larger than the bound still keeps its newest step.
+  s.schem().edit.undo_max_bytes = 1;
+  run(s, {"wire", "0", "6", "1", "6"});
+  CHECK(history.records.size() == 1);
+  CHECK(run(s, {"undo"}) == "1");
+  CHECK(active(s).wires.size() == 6);
+  CHECK(schem::kUndoMaxBytes >= std::size_t{256} << 20U);
+}
+
+// Regression: a failed edit is rolled back from the shared snapshot, and
+// keeps the modified flag the document had (here: just saved).
+TEST_CASE("a failed edit keeps the modified flag", kScripts) {
+  SchemSession s;
+  new_schematic(s);
+  run(s, {"wire", "0", "0", "1", "0"});
+  run(s, {"save"});
+  REQUIRE_FALSE(active(s).modified);
+  CHECK_FALSE(s.schematic({"setprop", "instance", "R9", "value", "1"}).ok());
+  CHECK_FALSE(active(s).modified);
+  CHECK(active(s).wires.size() == 1);
+}
+
+// Regression: `symbol make -force` and `symbol toschematic` skipped the
+// read-only check and wrote into the PDK store.
+TEST_CASE("Make symbol in the PDK store", kReadOnly) {
+  hefesto::test::TempFolder pdk;
+  const std::string cell = "sky130A/libs.tech/xschem/lib/cell";
+  pdk.write(cell + ".sch", "v {xschem version=3.4.8RC file_version=1.3}\nC {ipin.sym} -100 0 0 0 {name=p1 lab=A}\n");
+  pdk.write(cell + ".sym",
+            "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\nB 5 -2.5 -2.5 2.5 2.5 {name=A dir=in}\n");
+  const std::string sym_before = pdk.read(cell + ".sym");
+  SchemSession s({{"PDK_ROOT", pdk.str()}});
+  run(s, {"open", pdk.str(cell + ".sch")});
+  const auto made = s.schematic({"symbol", "make", "-force"});
+  CHECK_FALSE(made.ok());
+  CHECK(made.diagnostics.back().code == "SCHEM-EDIT-001");
+  CHECK(pdk.read(cell + ".sym") == sym_before);
+  std::filesystem::remove(pdk.path() / (cell + ".sch"));
+  run(s, {"open", pdk.str(cell + ".sym")});
+  const auto to_sch = s.schematic({"symbol", "toschematic"});
+  CHECK_FALSE(to_sch.ok());
+  CHECK(to_sch.diagnostics.back().code == "SCHEM-EDIT-001");
+  CHECK_FALSE(std::filesystem::exists(pdk.path() / (cell + ".sch")));
+}
+
+// Regression: reading the hierarchy path while another document was active
+// cleared the descent stack, so the path was lost for good.
+TEST_CASE("reading the hierarchy path keeps the descents", kPath) {
+  SchemSession s;
+  top_with_cell(s);
+  run(s, {"descend", "x1"});
+  REQUIRE(run(s, {"hierarchy"}) == ".x1.");
+  run(s, {"open", s.folder().str("top.sch")});  // activates the open top.sch
+  CHECK(run(s, {"hierarchy"}) == ".");          // a stale stack reads as the top
+  (void)run(s, {"hilight", "list"});
+  CHECK(s.schem().edit.hierarchy.size() == 1);  // and is kept
+  run(s, {"open", s.folder().str("inv.sch")});
+  CHECK(run(s, {"hierarchy"}) == ".x1.");
 }

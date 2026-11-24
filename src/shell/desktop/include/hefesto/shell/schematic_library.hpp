@@ -41,9 +41,10 @@ namespace hefesto::shell {
 [[nodiscard]] platform::Path system_library_dir(const platform::Path& install_root);
 
 /// The desktop app's installation root (M8-D10): `cad_root_env` when set
-/// and non-empty, else the install root of the executable `program`
-/// (argv[0], made canonical as the asset loader does), else empty.
-[[nodiscard]] platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Path& program,
+/// and non-empty, else the install root of `executable_dir` (the folder of
+/// the running executable, platform_posix::executable_dir(); never derived
+/// from argv[0]), else empty. A relative `executable_dir` is ignored.
+[[nodiscard]] platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Path& executable_dir,
                                                   const std::optional<std::string>& cad_root_env);
 
 /// The folders of `schematic path list`'s result (a Tcl list); empty when

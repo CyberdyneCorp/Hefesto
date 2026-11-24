@@ -132,7 +132,11 @@ Owner: SYMLIB.
   for a generator file over 256 MiB with or without `.tcl` (M8-D6, approved
   2026-11-23; before, a file without `.tcl` gave `SCHEM-LIB-011`). Both modes.
   The sandbox's denials during a generator run (`SCRIPT-SANDBOX-*`, also those
-  the generator catches) are reported next to it (security review, task 12.1).
+  the generator catches) are reported next to it (security review, task 12.1);
+  when an uncaught denial stopped the run, `<why>` is `the script sandbox
+  denied an operation (<code>)` and the denial's text is in its own
+  diagnostic only. A script that grows past 256 MiB after its size was
+  checked is not read past that size and fails the same way.
 - `SCHEM-TCL-001` (error): a procedure provided to `tcleval` values
   (`abs_sym_path`, `write_data`) was called with the wrong arguments, or
   `write_data` was refused outside the sandbox's writable folders; the

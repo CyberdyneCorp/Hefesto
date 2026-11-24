@@ -13,8 +13,8 @@
 //
 // Owner: EDIT.
 
+#include <algorithm>
 #include <array>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -27,16 +27,26 @@ namespace {
 
 using cmdimpl::FlagSpec;
 
-bool same(Point a, Point b) noexcept {
-  return a == b;
+// Points ordered by x, then y (coordinates are finite, so this is a strict
+// weak order, and -0 and 0 are the same point as for ==).
+bool point_less(Point a, Point b) noexcept {
+  return a.x < b.x || (a.x == b.x && a.y < b.y);
 }
 
-bool contains_point(const std::vector<Point>& points, Point p) {
-  for (const Point q : points) {
-    if (same(p, q)) return true;
+// A set of points for lookups in O(log n) (review of PR #101: a linear
+// search per wire endpoint made a move quadratic).
+class PointSet {
+ public:
+  explicit PointSet(std::vector<Point> points) : points_(std::move(points)) {
+    std::sort(points_.begin(), points_.end(), point_less);
   }
-  return false;
-}
+  [[nodiscard]] bool contains(Point p) const {
+    return std::binary_search(points_.begin(), points_.end(), p, point_less);
+  }
+
+ private:
+  std::vector<Point> points_;
+};
 
 // The pin points of the selected instances and the endpoints of the
 // selected wires, before the move.
@@ -67,13 +77,13 @@ std::vector<Point> selected_pins(EditContext& ec) {
 
 // "Stretch move": endpoints of unselected wires on a moved point follow it.
 std::vector<Point> stretch(EditContext& ec, Point delta) {
-  const std::vector<Point> points = moved_points(ec);
+  const PointSet points(moved_points(ec));
   std::vector<Point> kept;
   for (std::size_t i = 0; i < ec.doc().wires.size(); ++i) {
     if (ec.selection().contains({ObjectKind::wire, i})) continue;
     WireRecord& wire = ec.doc().wires[i];
     for (Point* end : {&wire.p1, &wire.p2}) {
-      if (!contains_point(points, *end)) continue;
+      if (!points.contains(*end)) continue;
       kept.push_back(*end);
       *end = {end->x + delta.x, end->y + delta.y};
     }
@@ -81,26 +91,35 @@ std::vector<Point> stretch(EditContext& ec, Point delta) {
   return kept;
 }
 
-// Whether `p` touches an unselected wire or an unselected instance's pin.
-bool connected_outside(EditContext& ec, Point p) {
-  for (std::size_t i = 0; i < ec.doc().wires.size(); ++i) {
-    const WireRecord& wire = ec.doc().wires[i];
-    if (!ec.selection().contains({ObjectKind::wire, i}) && touches(p, wire.p1, wire.p2)) return true;
-  }
+// The pin points of the unselected instances, computed once per command.
+PointSet unselected_pins(EditContext& ec) {
+  std::vector<Point> points;
   for (std::size_t i = 0; i < ec.doc().instances.size(); ++i) {
     if (ec.selection().contains({ObjectKind::instance, i})) continue;
     const InstanceRecord& instance = ec.doc().instances[i];
-    if (contains_point(pin_points(instance, ec.symbol(instance)), p)) return true;
+    for (const Point p : pin_points(instance, ec.symbol(instance))) points.push_back(p);
+  }
+  return PointSet(std::move(points));
+}
+
+// Whether `p` touches an unselected wire or an unselected instance's pin.
+bool connected_outside(EditContext& ec, const PointSet& outside_pins, Point p) {
+  if (outside_pins.contains(p)) return true;
+  for (std::size_t i = 0; i < ec.doc().wires.size(); ++i) {
+    const WireRecord& wire = ec.doc().wires[i];
+    if (!ec.selection().contains({ObjectKind::wire, i}) && touches(p, wire.p1, wire.p2)) return true;
   }
   return false;
 }
 
 // "Move with wire insertion": a wire (two for a diagonal move: horizontal,
 // then vertical) from each pin that leaves a connection to its new place.
-std::vector<WireRecord> inserted_wires(EditContext& ec, Point delta, const std::vector<Point>& stretched) {
+std::vector<WireRecord> inserted_wires(EditContext& ec, Point delta, std::vector<Point> stretched_points) {
+  const PointSet stretched(std::move(stretched_points));
+  const PointSet outside_pins = unselected_pins(ec);
   std::vector<WireRecord> wires;
   for (const Point p : selected_pins(ec)) {
-    if (contains_point(stretched, p) || !connected_outside(ec, p)) continue;
+    if (stretched.contains(p) || !connected_outside(ec, outside_pins, p)) continue;
     const Point to{p.x + delta.x, p.y + delta.y};
     const Point corner{to.x, p.y};
     if (delta.x != 0.0 && delta.y != 0.0) {
@@ -128,7 +147,7 @@ cmd::CommandResult move_body(EditContext& ec, std::span<const std::string> args)
   std::vector<Point> stretched;
   if (parsed.value().has(0)) stretched = stretch(ec, delta);
   std::vector<WireRecord> added;
-  if (parsed.value().has(1)) added = inserted_wires(ec, delta, stretched);
+  if (parsed.value().has(1)) added = inserted_wires(ec, delta, std::move(stretched));
   apply_to_selection(ec, Motion{Motion::Kind::translate, delta, {}});
   for (WireRecord& wire : added) ec.doc().wires.push_back(std::move(wire));
   ec.changed();

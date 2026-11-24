@@ -349,6 +349,31 @@ TEST_CASE("M8-D6: a generator file over 256 MiB is neither read nor run", kGener
   }
 }
 
+// Regression (review of PR #101): the size was checked, then the whole file
+// read, so a script that grew in between was read at any size. The read now
+// stops one byte past the limit, and such a script is neither recognised as
+// a generator nor run (here the file system reports a stale small size).
+TEST_CASE("a generator script that grows after its size check is not run", kGenerators) {
+  platform::MemoryFileSystem base;
+  const std::string script = "#!/usr/bin/env tclsh\nputs {v {xschem version=3.4.8RC file_version=1.2}}\n";
+  REQUIRE(base.write_atomic("/lib/grow", script).ok());
+  REQUIRE(base.write_atomic("/lib/grow.tcl", script).ok());
+  WatchedFileSystem fs(base);
+  fs.sizes = {{"/lib/grow", 10}, {"/lib/grow.tcl", 10}};  // as when the size was checked
+  const std::size_t limit = script.size() - 1;
+  CHECK_FALSE(schem::is_tcl_generator("/lib/grow", fs, limit));
+  schem::GeneratorInput input{"/lib/grow.tcl", {}, "/w"};
+  input.max_script = limit;
+  const auto output = schem::run_tcl_generator(fs, input);
+  CHECK_FALSE(output.text.has_value());
+  REQUIRE(output.diagnostics.size() == 1);
+  CHECK(output.diagnostics[0].text.ends_with("failed: the script is larger than " + std::to_string(limit) + " bytes"));
+  // Within the limit it runs as before.
+  input.max_script = script.size();
+  CHECK(schem::run_tcl_generator(fs, input).text.has_value());
+  CHECK(schem::is_tcl_generator("/lib/grow", fs, script.size()));
+}
+
 // M8-D7 (approved 2026-11-23; Q-row assigned by DECIDE), both modes: a
 // generator named by an absolute `.tcl` path outside the search path stays
 // allowed and runs in the sandbox: it reads its own folder and the document

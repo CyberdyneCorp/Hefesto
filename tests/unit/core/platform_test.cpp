@@ -128,6 +128,24 @@ TEST_CASE("local file system rejects reading a directory", SERVICES_TAGS) {
   CHECK(fs.read(dir.path() / "empty").value().empty());  // an empty regular file is still fine
 }
 
+// read_at_most bounds the bytes read whatever size() said before (review of
+// PR #101: a generator script that grew after its size check was read whole).
+TEST_CASE("a capped read never returns more than asked", SERVICES_TAGS) {
+  ScratchDir dir;
+  platform::LocalFileSystem local;
+  platform::MemoryFileSystem memory;
+  const std::string text(200'000, 'x');
+  for (platform::FileSystem* fs : {static_cast<platform::FileSystem*>(&local), static_cast<platform::FileSystem*>(&memory)}) {
+    REQUIRE(fs->write_atomic(dir.path() / "big", text).ok());
+    CHECK(fs->read_at_most(dir.path() / "big", 0).value().empty());
+    CHECK(fs->read_at_most(dir.path() / "big", 70'000).value() == text.substr(0, 70'000));
+    CHECK(fs->read_at_most(dir.path() / "big", text.size()).value() == text);
+    CHECK(fs->read_at_most(dir.path() / "big", text.size() + 1).value() == text);
+    CHECK(fs->read_at_most(dir.path() / "nope", 10).error().code == codes::kPlatformNotFound);
+  }
+  CHECK_FALSE(local.read_at_most(dir.path(), 10).ok());  // a directory, as read()
+}
+
 TEST_CASE("atomic writes leave no temp files behind", SERVICES_TAGS) {
   ScratchDir dir;
   platform::LocalFileSystem fs;

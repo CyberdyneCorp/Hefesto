@@ -9,8 +9,6 @@
 #include <array>
 #include <cctype>
 #include <charconv>
-#include <filesystem>
-#include <system_error>
 #include <utility>
 
 #include "hefesto/app/startup.hpp"
@@ -51,14 +49,11 @@ platform::Path system_library_dir(const platform::Path& install_root) {
   return install_root / "assets" / "schematic" / "xschem_library" / "devices";
 }
 
-platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Path& program,
+platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Path& executable_dir,
                                     const std::optional<std::string>& cad_root_env) {
-  platform::Path exe_dir;
-  if (!program.empty()) {
-    std::error_code ec;
-    const platform::Path canonical = std::filesystem::weakly_canonical(program, ec);  // as the asset loader
-    exe_dir = (ec ? program : canonical).lexically_normal().parent_path();
-  }
+  // A relative folder would resolve against the working directory, whose
+  // `assets/` must never become the system library or a sandbox root.
+  const platform::Path exe_dir = executable_dir.is_absolute() ? executable_dir : platform::Path{};
   return app::resolve_install_root(cad_root_env, app::install_root_for_executable(fs, exe_dir));
 }
 

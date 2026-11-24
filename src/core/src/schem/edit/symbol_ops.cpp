@@ -59,9 +59,22 @@ std::vector<Port> ports_of(EditContext& ec, const Document& doc) {
   return ports;
 }
 
+// `value` written so that get_token reads it back unchanged ("Property
+// strings"): `"` and `\` escaped, and quoted when it holds a separator
+// (review of PR #101: a port name with a blank gave malformed properties).
+std::string encoded(std::string_view value) {
+  std::string out;
+  for (const char c : value) {
+    if (c == '"' || c == '\\') out += '\\';
+    out += c;
+  }
+  if (value.find_first_of(" \t\n;") != std::string_view::npos) out = '"' + out + '"';
+  return out;
+}
+
 BoxRecord pin_box(Point at, const Port& port) {
   return {5, {at.x - kHalfPin, at.y - kHalfPin}, {at.x + kHalfPin, at.y + kHalfPin},
-          "name=" + port.name + " dir=" + port.direction};
+          "name=" + encoded(port.name) + " dir=" + encoded(port.direction)};
 }
 
 Document make_symbol_document(const std::vector<Port>& ports) {
@@ -99,13 +112,21 @@ Document make_schematic_document(const Document& symbol) {
     const Pin pin = make_pin(box);
     const std::string direction = pin.direction.empty() ? std::string{"inout"} : pin.direction;
     sch.instances.push_back({std::string{port_symbol(direction)}, box_centre(box), 0, 0,
-                             "name=p" + std::to_string(sch.instances.size() + 1) + " lab=" + pin.name});
+                             "name=p" + std::to_string(sch.instances.size() + 1) + " lab=" + encoded(pin.name)});
   }
   return sch;
 }
 
+// `make` and `toschematic` skip run_edit (they change no open document), so
+// they check "Read-only libraries" here: no file is written into the PDK
+// store or the system library, even with `-force`.
 cmd::CommandResult write_new(EditContext& ec, Document document, const platform::Path& file, bool force) {
   platform::FileSystem& fs = ec.ctx().services().files;
+  if (read_only_file(ec.ctx(), file)) {
+    return fail(kReadOnly, "schematic: " + file.generic_string() +
+                               " is read-only (PDK store or system library); save the document in a user folder "
+                               "first");
+  }
   if (!force && fs.exists(file)) {
     return fail(kExists, "schematic: " + file.generic_string() + " exists; use \"schematic symbol make -force\"");
   }
@@ -150,7 +171,10 @@ cmd::CommandResult add_pins(EditContext& ec, std::span<const std::string> rest) 
   if (!rest.empty()) return usage("symbol");
   if (auto bad = need_file(ec.doc(), FileKind::symbol); !bad.ok()) return bad;
   const platform::Path file = sibling(ec.doc(), ".sch");
-  auto loaded = load_document(ec.ctx().services().files, file, ReadOptions{});
+  ReadOptions options;  // as the document itself is read (hierarchy.cpp open_child)
+  options.xschem_compat = ec.ctx().project().compat.xschem_compat;
+  options.warnings = &ec.ctx().sink();
+  auto loaded = load_document(ec.ctx().services().files, file, options);
   if (!loaded) return fail(kNoSchematic, "schematic: cannot open " + file.generic_string());
   std::vector<std::string> existing;
   for (const BoxRecord& box : ec.doc().boxes) {

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "app.hpp"
+#include "hefesto/platform_posix/executable.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
 #include "options.hpp"
 
@@ -787,4 +788,21 @@ TEST_CASE("CAD_ROOT overrides the install root", "[cap:schematic-symbols-and-lib
   const Run r = run_cli({"--no-log", project, "--netlist", sch});
   CHECK(r.out.find("R1 ") == std::string::npos);
   CHECK(r.out.find("R2 ") == std::string::npos);
+}
+
+// Regression (review of PR #101): the desktop app took its install root from
+// argv[0], which is a bare name when it is started from PATH, so it resolved
+// against the working directory. Both front ends now ask the operating
+// system for the executable's folder, which no working directory changes.
+TEST_CASE("the executable folder comes from the operating system",
+          "[cap:app-startup][req:Installation root and search paths]") {
+  const std::filesystem::path before = hefesto::platform_posix::executable_dir();
+  REQUIRE(before.is_absolute());
+  CHECK(std::filesystem::exists(before / "hefesto_cli_tests"));
+  ScratchDir dir;
+  const auto saved = std::filesystem::current_path();
+  std::filesystem::current_path(dir.path());
+  const std::filesystem::path after = hefesto::platform_posix::executable_dir();
+  std::filesystem::current_path(saved);
+  CHECK(after == before);
 }

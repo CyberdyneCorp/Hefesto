@@ -66,17 +66,26 @@ using Selection = std::set<ObjectRef>;
 
 // ---- Undo and redo -----------------------------------------------------------
 
+/// A state of a document kept by the undo history. Snapshots are shared:
+/// the `after` of one step is the `before` of the next, so a history of n
+/// steps holds n + 1 documents, not 2n.
+using DocumentSnapshot = std::shared_ptr<const Document>;
+
 /// One undo step of one document: the document before and after the
-/// command. Shared by the per-document history and the session undo log
-/// (undo::UndoLog), so either can undo it.
+/// command, and their sizes (document_bytes). Shared by the per-document
+/// history and the session undo log (undo::UndoLog), so either can undo it.
 struct UndoRecord {
   DocumentId document = 0;
-  Document before;
-  Document after;
+  DocumentSnapshot before;
+  DocumentSnapshot after;
+  std::size_t before_bytes = 0;
+  std::size_t after_bytes = 0;
 };
 
 /// "Undo and redo": the per-document history. `records[0, position)` are
-/// done, the rest undone; at most kUndoDepth records are kept.
+/// done, the rest undone; at most kUndoDepth records are kept, and the
+/// oldest are dropped while the snapshots take more than
+/// EditSession::undo_max_bytes (the newest step is always kept).
 struct DocumentHistory {
   std::vector<std::shared_ptr<UndoRecord>> records;
   std::size_t position = 0;
@@ -84,6 +93,14 @@ struct DocumentHistory {
 
 /// The steps kept per document (at least xschem's 80).
 inline constexpr std::size_t kUndoDepth = 200;
+
+/// The memory the snapshots of one document's history may take (Hefesto's
+/// bound; xschem keeps its 80 copies whatever their size).
+inline constexpr std::size_t kUndoMaxBytes = std::size_t{512} << 20U;
+
+/// An estimate of the memory `document` takes: its records, strings and
+/// embedded symbols.
+[[nodiscard]] std::size_t document_bytes(const Document& document) noexcept;
 
 // ---- Hierarchy ---------------------------------------------------------------
 
@@ -125,6 +142,8 @@ struct EditSession {
 
   std::map<DocumentId, Selection> selections;
   std::map<DocumentId, DocumentHistory> histories;
+  /// The byte bound of each document's history (kUndoMaxBytes; tests lower it).
+  std::size_t undo_max_bytes = kUndoMaxBytes;
 
   /// The descents from the top schematic to the active one, top first.
   std::vector<HierFrame> hierarchy;

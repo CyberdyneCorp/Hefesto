@@ -25,6 +25,7 @@
 #include "hefesto/diag/format.hpp"
 #include "hefesto/gui/wrapper.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/platform_posix/executable.hpp"
 #include "hefesto/shell/assets.hpp"
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/render/synthetic_layout.hpp"
@@ -254,12 +255,13 @@ std::optional<platform::Path> env_path(const char* name) {
 /// Steps 6-11 of app-startup "Startup sequence" on the window's session:
 /// technology, settings layers, startup files, file arguments. Problems are
 /// reported to the Diagnostics panel; the window stays open.
-void run_startup(CoreSession& core, const app::StartupOptions& startup, const platform::Path& program,
+void run_startup(CoreSession& core, const app::StartupOptions& startup,
                  std::function<void(script::Interpreter&)> configure_interpreter = {}) {
   app::StartupEnvironment env;
-  // M8-D10: CAD_ROOT, else the install root holding the executable (assets/schematic).
+  // M8-D10: CAD_ROOT, else the install root holding the executable (assets/schematic),
+  // located by the operating system, not argv[0] (which is a bare name when started from PATH).
   const char* cad_root = std::getenv("CAD_ROOT");
-  env.install_root = desktop_install_root(core.files(), program,
+  env.install_root = desktop_install_root(core.files(), platform_posix::executable_dir(),
                                           cad_root != nullptr ? std::optional<std::string>{cad_root} : std::nullopt);
   env.home = env_path("HOME").value_or(platform::Path());
   std::error_code ec;
@@ -351,8 +353,7 @@ int run_window(const ShellOptions& options) {
     MainWindow window(*runtime, options, queue_mutex, core);
     asking = &window;
     window.set_consent_host(&consent);
-    run_startup(core, startup.value(), options.program,
-                [&window](script::Interpreter& interp) { window.attach_interpreter(interp); });
+    run_startup(core, startup.value(), [&window](script::Interpreter& interp) { window.attach_interpreter(interp); });
     // The background DRC checker (m3-drc design D8 "Hosts"): started once
     // the editor is set up; its ready callback posts to Raven's event loop,
     // which commits the square between commands. Stopped before the window.

@@ -53,15 +53,24 @@ namespace {
 
 using cmdimpl::FlagSpec;
 
-// The descents that lead to the active document `active` (empty when the
-// stack is stale).
-std::vector<HierFrame>& frames(Session& session, DocumentId active) {
+// The descents that lead to the active document `active`, for reading:
+// empty when the stack is stale, which is left as it is (review of PR #101:
+// a query made while another document was active dropped the descent path).
+std::span<const HierFrame> frames(const Session& session, DocumentId active) {
+  const std::vector<HierFrame>& stack = session.edit.hierarchy;
+  if (!stack.empty() && stack.back().child != active) return {};
+  return stack;
+}
+
+// The descents that lead to `active`, for descending and ascending, which
+// start a new stack when it is stale.
+std::vector<HierFrame>& frames_to_change(Session& session, DocumentId active) {
   std::vector<HierFrame>& stack = session.edit.hierarchy;
   if (!stack.empty() && stack.back().child != active) stack.clear();
   return stack;
 }
 
-HierPath current_path(const std::vector<HierFrame>& stack) {
+HierPath current_path(std::span<const HierFrame> stack) {
   HierPath path;
   for (const HierFrame& frame : stack) path.elements.push_back(frame.element);
   return path;
@@ -159,7 +168,7 @@ diag::Outcome<platform::Path> descend_target(EditContext& ec, const InstanceReco
 
 cmd::CommandResult descend(EditContext& ec, const DescendRequest& request) {
   Session& session = ec.session();
-  std::vector<HierFrame>& stack = frames(session, ec.id());
+  std::vector<HierFrame>& stack = frames_to_change(session, ec.id());
   if (stack.size() >= kMaxHierarchyDepth) {
     return fail(kDepthLimit, "schematic: descending is limited to " + std::to_string(kMaxHierarchyDepth) + " levels");
   }
@@ -193,7 +202,7 @@ cmd::CommandResult descend_body(EditContext& ec, std::span<const std::string> ar
 
 cmd::CommandResult ascend_body(EditContext& ec, std::span<const std::string> args) {
   if (!args.empty()) return usage("ascend");
-  std::vector<HierFrame>& stack = frames(ec.session(), ec.id());
+  std::vector<HierFrame>& stack = frames_to_change(ec.session(), ec.id());
   if (stack.empty()) return fail(kAtTop, "schematic: already at the top of the hierarchy");
   const DocumentId parent = stack.back().parent;
   stack.pop_back();
@@ -223,7 +232,7 @@ cmd::CommandResult hierarchy_body(EditContext& ec, std::span<const std::string> 
     if (!found) return fail(found.error());
     what = found.value();
   }
-  const std::vector<HierFrame>& stack = frames(ec.session(), ec.id());
+  const std::span<const HierFrame> stack = frames(ec.session(), ec.id());
   if (what == 0) return cmd::CommandResult::success(path_text(current_path(stack)));
   cmd::Value::List list;
   list.emplace_back(file_text(ec.session(), stack.empty() ? ec.id() : stack.front().parent));

@@ -6,7 +6,9 @@
 // model", "Undo and redo", "Read-only libraries"; design.md D11).
 //
 // Undo. Each editing command makes one UndoRecord (the document before and
-// after). It is kept in the document's own history (Session::edit), which
+// after, shared snapshots: the `after` of a step is the `before` of the next
+// while the document is unchanged in between, so each command copies the
+// document once). It is kept in the document's own history (Session::edit), which
 // `schematic undo`/`redo` walk, and recorded as one event on the session
 // undo log, so the editor-wide `undo` reverts it too. Both act on the same
 // records: undoing a record through the log first undoes the newer records
@@ -19,7 +21,9 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <memory>
+#include <set>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
@@ -54,7 +58,7 @@ void prune_selection(Session& session, DocumentId id) {
 bool undo_one(Session& session, DocumentHistory& history) {
   if (history.position == 0) return false;
   const UndoRecord& record = *history.records[--history.position];
-  if (OpenDocument* open = find_document(session, record.document)) restore_document(open->document, record.before);
+  if (OpenDocument* open = find_document(session, record.document)) restore_document(open->document, *record.before);
   prune_selection(session, record.document);
   return true;
 }
@@ -62,40 +66,87 @@ bool undo_one(Session& session, DocumentHistory& history) {
 bool redo_one(Session& session, DocumentHistory& history) {
   if (history.position == history.records.size()) return false;
   const UndoRecord& record = *history.records[history.position++];
-  if (OpenDocument* open = find_document(session, record.document)) restore_document(open->document, record.after);
+  if (OpenDocument* open = find_document(session, record.document)) restore_document(open->document, *record.after);
   prune_selection(session, record.document);
   return true;
 }
 
+// Whether `a` and `b` have the same content (where they live on disk and
+// the modified flag aside).
+bool same_content(const Document& a, const Document& b);
+
+bool same_embedded(const std::vector<EmbeddedSymbol>& a, const std::vector<EmbeddedSymbol>& b) {
+  return std::equal(a.begin(), a.end(), b.begin(), b.end(), [](const EmbeddedSymbol& x, const EmbeddedSymbol& y) {
+    return x.reference == y.reference && same_content(x.symbol, y.symbol);
+  });
+}
+
+bool same_content(const Document& a, const Document& b) {
+  return a.kind == b.kind && a.file_version == b.file_version && a.header_text == b.header_text &&
+         a.globals == b.globals && a.lines == b.lines && a.boxes == b.boxes && a.arcs == b.arcs &&
+         a.polygons == b.polygons && a.texts == b.texts && a.wires == b.wires && a.instances == b.instances &&
+         same_embedded(a.embedded, b.embedded);
+}
+
+// The state of `open` before a command: the newest done step's `after`
+// when the document still holds it (no copy), else a new snapshot.
+DocumentSnapshot snapshot_before(Session& session, const OpenDocument& open, std::size_t& bytes) {
+  const auto it = session.edit.histories.find(open.id);
+  if (it != session.edit.histories.end() && it->second.position > 0) {
+    const UndoRecord& last = *it->second.records[it->second.position - 1];
+    if (same_content(*last.after, open.document)) {
+      bytes = last.after_bytes;
+      return last.after;
+    }
+  }
+  bytes = document_bytes(open.document);
+  return std::make_shared<const Document>(open.document);
+}
+
+// The bytes the snapshots of `history` take (each shared snapshot once).
+std::size_t history_bytes(const DocumentHistory& history) {
+  std::set<const Document*> seen;
+  std::size_t total = 0;
+  for (const auto& record : history.records) {
+    if (seen.insert(record->before.get()).second) total += record->before_bytes;
+    if (seen.insert(record->after.get()).second) total += record->after_bytes;
+  }
+  return total;
+}
+
 // The index of `record` in its document's history; nullopt once dropped.
 std::optional<std::size_t> history_index(const DocumentHistory& history, const UndoRecord* record) {
+  if (record == nullptr) return std::nullopt;
   const auto it = std::find_if(history.records.begin(), history.records.end(),
                                [record](const auto& entry) { return entry.get() == record; });
   if (it == history.records.end()) return std::nullopt;
   return static_cast<std::size_t>(it - history.records.begin());
 }
 
-// One editing command on the session undo log.
+// One editing command on the session undo log. It does not keep the record
+// alive: once the document's history dropped it (kUndoDepth, the byte
+// bound), undoing it through the log does nothing.
 class SchematicStep final : public undo::Event {
  public:
-  explicit SchematicStep(std::shared_ptr<UndoRecord> record) : record_(std::move(record)) {}
+  explicit SchematicStep(const std::shared_ptr<UndoRecord>& record) : record_(record), document_(record->document) {}
 
   void undo(editor::EditorState& editor) override {
-    DocumentHistory& history = editor.schem.edit.histories[record_->document];
-    const auto index = history_index(history, record_.get());
+    DocumentHistory& history = editor.schem.edit.histories[document_];
+    const auto index = history_index(history, record_.lock().get());
     while (index && history.position > *index) (void)undo_one(editor.schem, history);
   }
   void redo(editor::EditorState& editor) override {
-    DocumentHistory& history = editor.schem.edit.histories[record_->document];
-    const auto index = history_index(history, record_.get());
+    DocumentHistory& history = editor.schem.edit.histories[document_];
+    const auto index = history_index(history, record_.lock().get());
     while (index && history.position <= *index) (void)redo_one(editor.schem, history);
   }
   [[nodiscard]] std::string describe() const override {
-    return "schematic edit of document " + std::to_string(record_->document);
+    return "schematic edit of document " + std::to_string(document_);
   }
 
  private:
-  std::shared_ptr<UndoRecord> record_;
+  std::weak_ptr<UndoRecord> record_;
+  DocumentId document_;
 };
 
 bool under(const platform::Path& path, const platform::Path& root) {
@@ -143,6 +194,9 @@ bool read_only_file(const cmd::CommandContext& ctx, const platform::Path& path) 
 cmd::CommandResult run_view(cmd::CommandContext& ctx, const cmd::Invocation& inv, const EditBody& body) {
   OpenDocument* open = active(ctx);
   if (open == nullptr) return cmdimpl::no_document();
+  // The document may have changed since the selection was made (`schematic
+  // reload`): no handler sees an object that does not exist.
+  prune_selection(ctx.editor()->schem, open->id);
   EditContext ec(ctx, ctx.editor()->schem, *open);
   return body(ec, option_args(inv));
 }
@@ -156,20 +210,24 @@ cmd::CommandResult run_edit(cmd::CommandContext& ctx, const cmd::Invocation& inv
                                "save it in a user folder");
   }
   Session& session = ctx.editor()->schem;
+  prune_selection(session, open->id);  // see run_view
   auto record = std::make_shared<UndoRecord>();
   record->document = open->id;
-  record->before = open->document;
+  record->before = snapshot_before(session, *open, record->before_bytes);
+  const bool was_modified = open->document.modified;
   EditContext ec(ctx, session, *open);
   cmd::CommandResult result = body(ec, option_args(inv));
   if (!result.ok()) {
-    open->document = std::move(record->before);
+    restore_document(open->document, *record->before);
+    open->document.modified = was_modified;
     prune_selection(session, open->id);
     return result;
   }
   if (!ec.was_changed()) return result;
   open->document.modified = true;
   update_buses(ec);
-  record->after = open->document;
+  record->after = std::make_shared<const Document>(open->document);
+  record->after_bytes = document_bytes(open->document);
   record_step(ctx, session, std::move(record));
   return result;
 }
@@ -188,10 +246,15 @@ void record_step(cmd::CommandContext& ctx, Session& session, std::shared_ptr<Und
   DocumentHistory& history = session.edit.histories[record->document];
   history.records.resize(history.position);
   history.records.push_back(record);
-  if (history.records.size() > kUndoDepth) history.records.erase(history.records.begin());
+  // The oldest steps go beyond kUndoDepth or the byte bound; the newest
+  // step is always kept, however large the document.
+  while (history.records.size() > 1 &&
+         (history.records.size() > kUndoDepth || history_bytes(history) > session.edit.undo_max_bytes)) {
+    history.records.erase(history.records.begin());
+  }
   history.position = history.records.size();
   undo::UndoLog& log = ctx.editor()->undo;
-  if (log.recording()) log.record(std::make_unique<SchematicStep>(std::move(record)));
+  if (log.recording()) log.record(std::make_unique<SchematicStep>(record));
 }
 
 std::size_t undo_steps(Session& session, DocumentId id, std::size_t steps) {
@@ -210,8 +273,12 @@ std::size_t redo_steps(Session& session, DocumentId id, std::size_t steps) {
 
 // ---- arguments -------------------------------------------------------------
 
+// Coordinates, angles and scales are finite: `1e999` or `inf` would put an
+// infinity into the document and its file.
 std::optional<double> number(std::string_view text) {
-  return cmdimpl::parse_number(text);
+  const auto value = cmdimpl::parse_number(text);
+  if (!value || !std::isfinite(*value)) return std::nullopt;
+  return value;
 }
 
 std::optional<std::size_t> index_value(std::string_view text) {
@@ -241,3 +308,38 @@ std::optional<std::vector<double>> numbers(std::span<const std::string> args, st
 }
 
 }  // namespace hefesto::schem::editimpl
+
+namespace hefesto::schem {
+
+namespace {
+
+template <typename T, typename Extra>
+std::size_t list_bytes(const std::vector<T>& list, Extra extra) noexcept {
+  std::size_t total = list.capacity() * sizeof(T);
+  for (const T& item : list) total += extra(item);
+  return total;
+}
+
+}  // namespace
+
+std::size_t document_bytes(const Document& document) noexcept {
+  const auto props = [](const auto& record) { return record.props.capacity(); };
+  const GlobalProperties& g = document.globals;
+  std::size_t total = sizeof(Document) + document.file_version.capacity() + document.header_text.capacity() +
+                      g.k.capacity() + g.g.capacity() + g.v.capacity() + g.s.capacity() + g.f.capacity() +
+                      g.e.capacity();
+  total += list_bytes(document.lines, props) + list_bytes(document.boxes, props) + list_bytes(document.arcs, props);
+  total += list_bytes(document.polygons, [](const PolygonRecord& p) {
+    return p.props.capacity() + p.points.capacity() * sizeof(Point);
+  });
+  total += list_bytes(document.texts, [](const TextRecord& t) { return t.text.capacity() + t.props.capacity(); });
+  total += list_bytes(document.wires, props);
+  total += list_bytes(document.instances,
+                      [](const InstanceRecord& i) { return i.symbol.capacity() + i.props.capacity(); });
+  total += list_bytes(document.embedded, [](const EmbeddedSymbol& e) {
+    return e.reference.capacity() + document_bytes(e.symbol);
+  });
+  return total;
+}
+
+}  // namespace hefesto::schem

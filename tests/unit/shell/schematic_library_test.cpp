@@ -6,7 +6,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <unistd.h>
+
 #include <algorithm>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -87,11 +90,35 @@ TEST_CASE("the desktop install root: CAD_ROOT, else the executable's",
           "[cap:app-startup][req:Installation root and search paths]") {
   MemoryFileSystem fs;
   add(fs, "/nonexistent-hefesto/build/src/shell/desktop/assets/schematic/xschem_library/devices/res.sym");
-  const Path program = "/nonexistent-hefesto/build/src/shell/desktop/hefesto";
-  CHECK(desktop_install_root(fs, program, std::nullopt) == Path{"/nonexistent-hefesto/build/src/shell/desktop"});
-  CHECK(desktop_install_root(fs, program, std::string{}) == Path{"/nonexistent-hefesto/build/src/shell/desktop"});
-  CHECK(desktop_install_root(fs, program, std::string{"/cad"}) == Path{"/cad"});
-  CHECK(desktop_install_root(fs, "/nonexistent-hefesto/bin/hefesto", std::nullopt).empty());
+  const Path exe_dir = "/nonexistent-hefesto/build/src/shell/desktop";
+  CHECK(desktop_install_root(fs, exe_dir, std::nullopt) == exe_dir);
+  CHECK(desktop_install_root(fs, exe_dir, std::string{}) == exe_dir);
+  CHECK(desktop_install_root(fs, exe_dir, std::string{"/cad"}) == Path{"/cad"});
+  CHECK(desktop_install_root(fs, "/nonexistent-hefesto/bin", std::nullopt).empty());
   CHECK(desktop_install_root(fs, Path{}, std::nullopt).empty());
   CHECK(system_library_dir(Path{}).empty());
+}
+
+// Regression (review of PR #101): the install root came from argv[0], so
+// `hefesto` started from PATH (argv[0] "hefesto") resolved against the
+// working directory, whose `assets/` became the system library and a
+// read-only sandbox root. shell.cpp now passes the folder the operating
+// system reports (platform_posix::executable_dir, tested with the CLI), and
+// a relative folder is ignored.
+TEST_CASE("the desktop install root never comes from the working directory",
+          "[cap:app-startup][req:Installation root and search paths]") {
+  const std::filesystem::path cwd =
+      std::filesystem::temp_directory_path() / ("hefesto-install-root-" + std::to_string(::getpid()));
+  std::filesystem::create_directories(cwd / "assets/schematic/xschem_library/devices");
+  hefesto::platform::LocalFileSystem fs;
+  const auto saved = std::filesystem::current_path();
+  std::filesystem::current_path(cwd);
+  const Path from_argv0 = desktop_install_root(fs, Path{"hefesto"}.parent_path(), std::nullopt);
+  const Path from_dot = desktop_install_root(fs, Path{"."}, std::nullopt);
+  const Path from_bin = desktop_install_root(fs, Path{"bin"}, std::nullopt);
+  std::filesystem::current_path(saved);
+  std::filesystem::remove_all(cwd);
+  CHECK(from_argv0.empty());
+  CHECK(from_dot.empty());
+  CHECK(from_bin.empty());
 }

@@ -46,7 +46,12 @@ TEST_CASE("hostile symbol generators are denied with the sandbox diagnostic", se
     const auto denials = sec::with_code_prefix(output.diagnostics, "SCRIPT-SANDBOX-");
     REQUIRE(denials.size() == 1);
     CHECK(denials[0].code == hostile.code);
-    CHECK(sec::with_code_prefix(output.diagnostics, "SCHEM-LIB-012").size() == 1);
+    const auto failed = sec::with_code_prefix(output.diagnostics, "SCHEM-LIB-012");
+    REQUIRE(failed.size() == 1);
+    // Regression (review of PR #101): the denial is reported once, with its
+    // own code; SCHEM-LIB-012 names it without repeating its text.
+    CHECK(failed[0].text.find(denials[0].text) == std::string::npos);
+    CHECK(failed[0].text.ends_with("failed: the script sandbox denied an operation (" + denials[0].code + ")"));
     CHECK_FALSE(std::filesystem::exists(outside.path() / "written"));
     CHECK(std::filesystem::exists(outside.path() / "evil.tcl"));
   }

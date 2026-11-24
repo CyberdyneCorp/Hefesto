@@ -48,8 +48,10 @@ release notices.
   `line`/`box`/`arc`/`polygon`/`text`, `select`, `delete`, `move`,
   `copy`, `rotate`, `flip`, `align`, `setprop`, `replace`, `symbol`,
   `descend`, `ascend`, `hierarchy`, `hilight`, `undo` and `redo`, with a
-  per-document undo history of 200 steps. PDK and system-library symbols
-  are read-only (`SCHEM-EDIT-001` to `-007`).
+  per-document undo history of 200 steps (at most 512 MiB of document
+  states; consecutive steps share them). PDK and system-library symbols
+  are read-only (`SCHEM-EDIT-001` to `-007`), also for `symbol make` and
+  `symbol toschematic`. Non-finite coordinates are refused.
 - **Desktop Schematic tab.** The active schematic is drawn read-only with
   its hierarchy breadcrumb; clicking an instance selects it. Headless
   view models for the library browser, properties, messages, netlist
@@ -67,7 +69,9 @@ release notices.
 - **`CAD_ROOT` defaults to the install root.** `hefesto-cli` and the
   desktop app find the system symbol library without `CAD_ROOT`: the
   install root is the first of the executable's folder, `../Resources`
-  and `..` that holds `assets/`. `CAD_ROOT` still overrides it.
+  and `..` that holds `assets/`, located by the operating system (not
+  argv[0]). `CAD_ROOT` still overrides it. Project scripts may read only
+  its `assets` and `magic` folders, not the whole install prefix.
 - **Script limits and reporting in schematics.** A `tcleval` value stops
   after 10 s and the values of one netlist run share 60 s
   (`SCHEM-TCL-003`); sandbox denials in `tcleval` values and generators

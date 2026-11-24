@@ -10,6 +10,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -482,4 +484,112 @@ TEST_CASE("make schematic from symbol and symbol pins from schematic ports", kLa
   const auto& boxes = active(s).boxes;
   REQUIRE(boxes.size() == 3);
   CHECK(boxes[2].props == "name=VDD dir=inout");
+}
+
+// ---- Review of PR #101 -------------------------------------------------------------------
+
+// Regression: coordinates went through strtod, so `1e999` put an infinity
+// into the document and its saved file. Every number of an editing option
+// must be finite.
+TEST_CASE("Non-finite coordinate refused", kModel) {
+  SchemSession s;
+  new_schematic(s);
+  run(s, {"wire", "0", "0", "10", "0"});
+  run(s, {"select", "wire", "0"});
+  const std::vector<std::vector<std::string>> refused{
+      {"wire", "0", "0", "1e999", "0"},      {"wire", "0", "-inf", "1", "0"},
+      {"place", "res.sym", "nan", "0"},      {"move", "1e999", "0"},
+      {"copy", "0", "-1e999"},               {"select", "area", "0", "0", "1e999", "10"},
+      {"line", "0", "0", "inf", "0"},        {"arc", "0", "0", "10", "0", "1e999"},
+      {"polygon", "0", "0", "inf", "1", "2", "2"}, {"text", "0", "0", "0", "0", "1e999", "1", "t"},
+      {"rotate", "inf", "0"}};
+  for (const auto& args : refused) {
+    INFO(args.front() << " " << args.back());
+    CHECK_FALSE(s.schematic(args).ok());
+  }
+  CHECK(active(s).wires.size() == 1);
+  CHECK(active(s).wires[0].p2 == schem::Point{10, 0});
+  CHECK(active(s).instances.empty());
+  CHECK(active(s).lines.empty());
+  CHECK(active(s).texts.empty());
+}
+
+// Regression: `text` wrote any integer as its rotation and flip; they are
+// 0..3 and 0 or 1, as for `place` and `label`.
+TEST_CASE("text takes a rotation of 0 to 3 and a flip of 0 or 1", kGraphics) {
+  SchemSession s;
+  new_schematic(s);
+  CHECK_FALSE(s.schematic({"text", "0", "0", "7", "0", "0.4", "0.4", "t"}).ok());
+  CHECK_FALSE(s.schematic({"text", "0", "0", "0", "-3", "0.4", "0.4", "t"}).ok());
+  CHECK_FALSE(s.schematic({"text", "0", "0", "-1", "0", "0.4", "0.4", "t"}).ok());
+  CHECK_FALSE(s.schematic({"text", "0", "0", "0", "2", "0.4", "0.4", "t"}).ok());
+  CHECK(active(s).texts.empty());
+  CHECK(run(s, {"text", "0", "0", "3", "1", "0.4", "0.4", "t"}) == "0");
+  CHECK(active(s).texts[0].rotation == 3);
+  CHECK(active(s).texts[0].flip == 1);
+}
+
+// Regression: `symbol make`/`toschematic` built the pin attributes by
+// concatenation, so a port name with a blank or a `;` gave
+// malformed properties.
+TEST_CASE("made symbols and schematics quote port names", kLabels) {
+  SchemSession s;
+  new_schematic(s, "odd.sch");
+  run(s, {"label", "-100", "0", "my net", "-kind", "ipin"});
+  run(s, {"label", "100", "0", "a;b", "-kind", "opin"});
+  run(s, {"save"});
+  run(s, {"symbol", "make"});
+  run(s, {"open", s.folder().str("odd.sym")});
+  std::vector<std::string> names;
+  for (const auto& box : active(s).boxes) {
+    if (box.layer == 5) names.push_back(schem::get_token(box.props, "name").value_or("?"));
+  }
+  CHECK(names == std::vector<std::string>{"my net", "a;b"});
+  std::filesystem::remove(s.folder().path() / "odd.sch");
+  run(s, {"path", "set", hefesto::test::devices_folder(s)});
+  run(s, {"symbol", "toschematic"});
+  run(s, {"open", s.folder().str("odd.sch")});
+  std::vector<std::string> labs;
+  for (const auto& instance : active(s).instances) labs.push_back(schem::get_token(instance.props, "lab").value_or("?"));
+  CHECK(labs == std::vector<std::string>{"my net", "a;b"});
+}
+
+// Regression: `symbol pins` read the schematic with default options, so its
+// read warnings were dropped (and xschem-compat ignored).
+TEST_CASE("symbol pins reports the read warnings of the schematic", kLabels) {
+  SchemSession s;
+  hefesto::test::write_cell(s, "inv");
+  s.folder().write("inv.sch",
+                   "v {xschem version=3.4.8RC file_version=1.3}\n"
+                   "B 99 0 0 1 1 {}\n"
+                   "C {iopin.sym} 0 0 0 0 {name=p3 lab=VDD}\n");
+  run(s, {"open", s.folder().str("inv.sym")});
+  run(s, {"path", "set", hefesto::test::devices_folder(s)});
+  const auto result = s.schematic({"symbol", "pins"});
+  REQUIRE(result.ok());
+  const bool warned = std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const auto& d) {
+    return d.text.find("wrong or missing layer") != std::string::npos;
+  });
+  CHECK(warned);
+}
+
+// Regression: deleting erased one object at a time and a stretch move
+// searched the moved points linearly per wire end, both quadratic. 100,000
+// wires now take well under the bound even in a debug build.
+TEST_CASE("deleting and stretching many objects is not quadratic", kMove) {
+  constexpr int kWireCount = 100'000;
+  SchemSession s;
+  new_schematic(s);
+  auto& wires = active(s).wires;
+  for (int i = 0; i < kWireCount; ++i) {
+    const double y = 10.0 * i;
+    wires.push_back({{0, y}, {10, y}, {}});
+  }
+  auto& selection = s.schem().edit.selections[schem::active_document(s.schem())->id];
+  for (int i = 0; i < kWireCount; i += 2) selection.insert({schem::ObjectKind::wire, static_cast<std::size_t>(i)});
+  const auto start = std::chrono::steady_clock::now();
+  run(s, {"move", "-stretch", "0", "5"});
+  run(s, {"delete"});
+  CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds{20});
+  CHECK(active(s).wires.size() == kWireCount / 2);
 }

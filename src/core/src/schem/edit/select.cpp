@@ -157,27 +157,35 @@ cmd::CommandResult select_body(EditContext& ec, std::span<const std::string> arg
   return cmd::CommandResult::success(selection_value(ec.doc(), ec.selection()));
 }
 
+// Removes the objects at `indices` in one pass (review of PR #101: one
+// vector::erase per index made deleting n objects O(n^2)). remove_if tests
+// each element at its original place, so its address gives its index.
 template <typename T>
-void erase_indices(std::vector<T>& list, const std::vector<std::size_t>& descending) {
-  for (const std::size_t i : descending) list.erase(list.begin() + static_cast<std::ptrdiff_t>(i));
+void erase_indices(std::vector<T>& list, const std::vector<std::size_t>& indices) {
+  std::vector<bool> drop(list.size(), false);
+  for (const std::size_t i : indices) {
+    if (i < drop.size()) drop[i] = true;
+  }
+  const T* first = list.data();
+  std::erase_if(list, [&](const T& item) { return drop[static_cast<std::size_t>(&item - first)]; });
 }
 
-void erase_kind(Document& doc, ObjectKind kind, const std::vector<std::size_t>& descending) {
+void erase_kind(Document& doc, ObjectKind kind, const std::vector<std::size_t>& indices) {
   switch (kind) {
     case ObjectKind::line:
-      return erase_indices(doc.lines, descending);
+      return erase_indices(doc.lines, indices);
     case ObjectKind::box:
-      return erase_indices(doc.boxes, descending);
+      return erase_indices(doc.boxes, indices);
     case ObjectKind::arc:
-      return erase_indices(doc.arcs, descending);
+      return erase_indices(doc.arcs, indices);
     case ObjectKind::polygon:
-      return erase_indices(doc.polygons, descending);
+      return erase_indices(doc.polygons, indices);
     case ObjectKind::text:
-      return erase_indices(doc.texts, descending);
+      return erase_indices(doc.texts, indices);
     case ObjectKind::wire:
-      return erase_indices(doc.wires, descending);
+      return erase_indices(doc.wires, indices);
     case ObjectKind::instance:
-      return erase_indices(doc.instances, descending);
+      return erase_indices(doc.instances, indices);
   }
 }
 
@@ -189,7 +197,6 @@ cmd::CommandResult delete_body(EditContext& ec, std::span<const std::string> arg
     for (const ObjectRef& ref : ec.selection()) {
       if (ref.kind == kind) indices.push_back(ref.index);
     }
-    std::sort(indices.rbegin(), indices.rend());
     erase_kind(ec.doc(), kind, indices);
   }
   ec.selection().clear();

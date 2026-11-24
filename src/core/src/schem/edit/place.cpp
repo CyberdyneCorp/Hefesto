@@ -37,16 +37,30 @@ struct Orientation {
   int flip = 0;
 };
 
+// A rotation is 0..3 and a flip 0 or 1 ("Document model"), for instances,
+// labels and texts alike.
+std::optional<int> rotation_value(std::string_view text) {
+  const auto r = int_value(text);
+  if (!r || *r < 0 || *r > 3) return std::nullopt;
+  return r;
+}
+
+std::optional<int> flip_value(std::string_view text) {
+  const auto f = int_value(text);
+  if (!f || (*f != 0 && *f != 1)) return std::nullopt;
+  return f;
+}
+
 std::optional<Orientation> orientation(const ParsedArgs& parsed, std::size_t rot_flag, std::size_t flip_flag) {
   Orientation o;
   if (parsed.has(rot_flag)) {
-    const auto r = int_value(*parsed.flags[rot_flag]);
-    if (!r || *r < 0 || *r > 3) return std::nullopt;
+    const auto r = rotation_value(*parsed.flags[rot_flag]);
+    if (!r) return std::nullopt;
     o.rotation = *r;
   }
   if (parsed.has(flip_flag)) {
-    const auto f = int_value(*parsed.flags[flip_flag]);
-    if (!f || (*f != 0 && *f != 1)) return std::nullopt;
+    const auto f = flip_value(*parsed.flags[flip_flag]);
+    if (!f) return std::nullopt;
     o.flip = *f;
   }
   return o;
@@ -202,8 +216,8 @@ cmd::CommandResult text_body(EditContext& ec, std::span<const std::string> args)
   const auto& positional = parsed.value().positional;
   const auto xy = numbers(positional, 0, 2);
   const auto scale = numbers(positional, 4, 2);
-  const auto rot = positional.size() == 7 ? int_value(positional[2]) : std::nullopt;
-  const auto flip = positional.size() == 7 ? int_value(positional[3]) : std::nullopt;
+  const auto rot = positional.size() == 7 ? rotation_value(positional[2]) : std::nullopt;
+  const auto flip = positional.size() == 7 ? flip_value(positional[3]) : std::nullopt;
   if (positional.size() != 7 || !xy || !scale || !rot || !flip) return usage("text");
   TextRecord text{positional[6], {(*xy)[0], (*xy)[1]}, *rot, *flip, (*scale)[0], (*scale)[1],
                   props_flag(parsed.value(), 0)};

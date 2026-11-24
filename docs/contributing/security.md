@@ -45,7 +45,7 @@ The thread's current session (`ActiveSession`) tells the filesystem layer which 
 
 `app::Startup::sandbox_policy` (`src/core/src/app/startup.cpp`) builds the policy. Design D5 lists the roots:
 - granted (read and write): the project folder, the session temporary area, explicitly opened documents (each startup file and each `.tcl` file argument is granted as itself) and the folder of each layout file argument;
-- read-only (`SandboxPolicy::read_only_roots`, S-03): the PDK store and the install root (`CAD_ROOT`);
+- read-only (`SandboxPolicy::read_only_roots`, S-03): the PDK store and, of the install root (`CAD_ROOT`), only `<root>/assets` and `<root>/magic` (since M8-D10 the root defaults to the install prefix, such as `/usr/local`, which must not become readable as a whole);
 - the working directory only when the front end asks for it (`StartupEnvironment::grant_working_directory`: hefesto-cli yes, the desktop app no), and never when it, or a layout file's folder, is `/`, the home folder or a folder above it (S-11).
 
 ### Engine commands inside Tcl

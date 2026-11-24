@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -13,7 +12,6 @@
 #include <mutex>
 #include <optional>
 #include <string>
-#include <system_error>
 #include <utility>
 
 #include "hefesto/app/startup.hpp"
@@ -31,6 +29,7 @@
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
 #include "hefesto/platform_net/http_fetcher.hpp"
+#include "hefesto/platform_posix/executable.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
@@ -50,9 +49,6 @@
 #include "tcl_lines.hpp"
 
 #include <unistd.h>
-#if defined(__APPLE__)
-#include <mach-o/dyld.h>
-#endif
 
 namespace hefesto::cli {
 
@@ -67,31 +63,13 @@ constexpr std::string_view kMagicCompatVersion = "8.3.694";
 /// Its source revision (`--commit` in --magic mode prints it, as Magic does).
 constexpr std::string_view kMagicCompatCommit = "fc5daa9e2856b89a0a3056f296ded1fd4474e39e";
 
-/// The folder holding the running executable (hefesto-cli, or the test
-/// program that links the CLI); empty when the platform does not say.
-Path executable_dir() {
-  std::error_code ec;
-#if defined(__APPLE__)
-  std::uint32_t size = 0;
-  (void)_NSGetExecutablePath(nullptr, &size);
-  std::string buffer(size, '\0');
-  if (size == 0 || _NSGetExecutablePath(buffer.data(), &size) != 0) return {};
-  const Path executable{buffer.c_str()};
-#else
-  const Path executable = std::filesystem::read_symlink("/proc/self/exe", ec);
-  if (ec) return {};
-#endif
-  const Path canonical = std::filesystem::weakly_canonical(executable, ec);
-  return (ec ? executable : canonical).parent_path();
-}
-
 /// The installation root: CAD_ROOT when set and non-empty, else the install
 /// root holding the running executable (M8-D10, approved 2026-11-23), so the
 /// schematic system library is found without CAD_ROOT.
 Path install_root(pdk::InstallHost& host) {
   platform::LocalFileSystem fs;
   return app::resolve_install_root(host.environment("CAD_ROOT"),
-                                   app::install_root_for_executable(fs, executable_dir()));
+                                   app::install_root_for_executable(fs, platform_posix::executable_dir()));
 }
 
 void print_line(std::FILE* stream, std::string_view text) {
