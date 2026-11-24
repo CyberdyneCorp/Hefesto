@@ -10,6 +10,9 @@ for bit). Prints the arguments whose atan bits differ (last-ULP differences)
 and, separately, those whose %lg text differs: only the latter go to the
 pinned exception table of Open Question 3. Exit 1 when any %lg text differs.
 
+mpmath stands in for cr_atan here; tests/unit/extract/cap/cr_atan_test.cpp "cr_atan against the capture
+image's atan probe" runs cr_atan itself on every argument of the captured file.
+
 Usage: compare_atan_probe.py atan_probe.out
 Requires mpmath.
 """

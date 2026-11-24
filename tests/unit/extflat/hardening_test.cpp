@@ -201,7 +201,8 @@ TEST_CASE("merge records expanding to exactly max_connections connections flatte
 // the SPICE writer sized its port list by the highest one: `port a
 // 1000000000` allocated about 32 GB of strings, and 2147483647 overflowed
 // the implicit numbering past it.
-TEST_CASE("a port number past the cap fails the read with EXTFLAT-READ-009", CAP_REQ) {
+TEST_CASE("a port number past the cap fails the read with EXTFLAT-READ-009",
+          "[cap:ext-flattening-read][req:Use, port, cap, resist, attr and connect records]") {
   for (const bool compat : {true, false}) {
     INFO("magic-compat " << compat);
     extflat::ReadOptions options;

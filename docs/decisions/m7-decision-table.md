@@ -262,7 +262,7 @@ Applied 2026-11-23, after the approval:
 
 ## Entries raised in round R3 (pending user decision)
 
-Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) for Magic behaviours no row covered, and for both-modes fixes made by the standing rule. Each is implemented as its recommendation says (magic-compat ON copies Magic, OFF does the intended thing; crashes, hangs and undefined behaviour fixed in both modes), and none is cited by a spec yet, so none blocks `check_milestone_readiness.py`. The spec edits each implies are written in its open-questions entry and are applied after approval.
+Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) and the R3 fix pass for Magic behaviours no row covered, and for both-modes fixes made by the standing rule. All but Q-NETLIST-60 are implemented as their recommendation says (magic-compat ON copies Magic, OFF does the intended thing; crashes, hangs and undefined behaviour fixed in both modes); Q-NETLIST-60 is not implemented (it blocks Q-NETLIST-31's OFF branch), and Q-EXTRACT-37 turned out to need no decision (see its row). None is cited by a spec yet, so none blocks `check_milestone_readiness.py`. The spec edits each implies are written in its open-questions entry and are applied after approval.
 
 | ID | Question | Kind | Recommendation | Spec on approval | Implemented by |
 |---|---|---|---|---|---|
@@ -271,10 +271,12 @@ Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) for Magic behavi
 | Q-EXTRACT-33 | Corner coupling and fringe-halo shield pieces follow Q-EXTRACT-17's quirk | quirk | **compat** | extract-capacitance "Corner fringe coupling", "Fringe-halo sideoverlap" | EXTCAP (R3) |
 | Q-EXTRACT-34 | A parameter range with only a lower limit is never checked | quirk | **compat** | extract-devices "Model selection by parameter ranges" | EXTDEV (R3) |
 | Q-EXTRACT-35 | Range matching falls back to the last record tried | quirk | **compat** | extract-devices "Model selection by parameter ranges" | EXTDEV (R3) |
-| Q-EXTRACT-36 | Crashes, hangs and undefined behaviour in the node, capacitance and device passes (nine cases) | bug | **fix** (both modes) | none | EXTNODE, EXTCAP, EXTDEV (R3) |
-| Q-EXTRACT-37 | The shorted-ports warning truncates the cell's port labels | bug | **fix** (both modes) | none | EXTNODE, EXTCAP (R3) |
-| Q-NETLIST-59 | A missing `.ext` file is the command's result and the command succeeds | quirk | **compat** (both tools) | ext-flattening-read or netlist-spice-options (one scenario per mode) | NETLIST (R3, ext2spice only) |
+| Q-EXTRACT-36 | Crashes, hangs and undefined behaviour in the node, capacitance and device passes (nine cases) | bug | **fix** (both modes) | none | EXTNODE, EXTCAP, EXTDEV (R3); tests for (a)-(e), (g) in the R3 fix pass |
+| Q-EXTRACT-37 | The shorted-ports warning truncates the cell's port labels | compat-neutral | none needed: Magic restores the cut names (withdrawn in the R3 fix pass) | none | EXTNODE, EXTCAP (R3) |
+| Q-NETLIST-59 | A missing `.ext` file is the command's result and the command succeeds | quirk | **compat** (both tools) | netlist-spice-options, netlist-sim (one scenario per mode) | NETLIST (R3 ext2spice, R3 fix pass ext2sim) |
 | Q-NETLIST-60 | The name of a shorted-port device's anonymous terminal-0 node under Q-NETLIST-31 OFF | compat-neutral | `dummy#<n>` per cell | netlist-spice-devices (one sentence) | not yet (blocks Q-NETLIST-31 OFF) |
+| Q-NETLIST-61 | The `-p` search path holds for one run in both netlisters | compat-neutral (with one compat edge) | **compat-neutral**; ON keeps the path of an `ext2spice` run that names no cell | netlist-spice-options, netlist-sim (behaviour stated; the row is cited after approval) | R3 fix pass |
+| Q-NETLIST-62 | A cap on `.ext` port numbers (ReadLimits::max_port_index, 2^20) | bug (hardening) | **fix** (both modes) | ext-flattening-read "Use, port, cap, resist, attr and connect records" (behaviour stated; the row is cited after approval) | R3 fix pass |
 
 ## Notable changes to the entries' original recommendations
 

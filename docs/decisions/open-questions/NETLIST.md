@@ -540,10 +540,10 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 
 ### Q-NETLIST-59: A missing `.ext` file in ext2spice and ext2sim
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for ext2spice per the standing rule)
+- Status: pending user decision (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for both tools per the standing rule: ext2spice in R3, ext2sim in the R3 fix pass)
 - Magic behavior: EFReadFile sets `Cannot read extract file <cell>.ext` (with a newline) as the Tcl result and the command returns OK.
 - Evidence: extflat/EFread.c:207-216; NL-SPICE-01
-- As implemented (round R3): ext2spice with magic-compat ON returns the text as the command's result and succeeds (NL-SPICE-01 replays); with it OFF it fails with EXTFLAT-READ-001. ext2sim still fails in both modes; aligning it is a small change in `netlist/sim/run.cpp` once this is decided. Test: `tests/unit/core/m7_scaffold_test.cpp` (the three magic-compat ON ext2spice reads).
+- As implemented (round R3 and its fix pass): with magic-compat ON both tools return the text as the command's result and succeed (NL-SPICE-01 replays); with it OFF they fail with EXTFLAT-READ-001. Tests: `tests/unit/core/m7_scaffold_test.cpp` (the three magic-compat ON ext2spice reads); `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim with a missing .ext file and magic-compat ON returns the message", "ext2sim with a missing .ext file and magic-compat OFF fails".
 - Options: compat (ON: the text is the result and the command succeeds; OFF: EXTFLAT-READ-001) | replicate
 - Recommendation: compat, for both tools.
 
@@ -554,3 +554,21 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: Q-NETLIST-31; `netlist-spice-devices`; `openspec/changes/m7-extraction/tasks.md` 11.5
 - Options: a generated name the reader can never produce, `dummy#<n>` numbered per cell | another scheme
 - Recommendation: `dummy#<n>` numbered per cell, with one spec sentence. Q-NETLIST-31's OFF branch stays unimplemented until this is decided.
+
+### Q-NETLIST-61: The `-p` search path holds for one run (ext2spice and ext2sim)
+- Kind: compat-neutral, with one compat edge
+- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule)
+- Magic behavior: EFArgs stores `-p` in the global EFSearchPath (EFargs.c:200), and EFDone frees it at the end of every run ("EFSearchPath does not persist beyond the command that set it", EFdef.c:179-184), so the path holds for the run that names it, in both tools. One exception: when `ext2spice` names no cell and no window is open it prints `Point to a window or specify a cell name.` and returns without EFDone (ext2spice.c:861-865), so that run's path stays set for the next run of either tool; `ext2sim` calls EFDone on the same path (ext2sim.c:548-552). `ext2spice default` and `ext2sim default` free it (ext2spice.c:803-807, ext2sim.c:502-506).
+- Evidence: as cited; Hefesto `src/core/src/netlist/spice/run.cpp`, `src/core/src/netlist/sim/run.cpp`, `netlist::take_search_path` (`hefesto/netlist/session.hpp`)
+- As implemented (R3 fix pass): in both modes and both tools `-p` holds for its run only (before, `ext2spice` kept it for later runs in both modes and `ext2sim` used it once). With magic-compat ON an `ext2spice` run that names no cell leaves its path in `NetlistSession::search_path` for the next run of either tool, which consumes it; with it OFF that path is dropped. Both `default` options clear it. Tests: `tests/unit/netlist/spice/run_test.cpp` "ext2spice -p holds for one run", "ext2spice -p of a run without a cell is left for the next run with magic-compat ON", "ext2spice -p of a run without a cell is dropped with magic-compat OFF", "ext2sim reads with the -p left by ext2spice without a cell (magic-compat ON)"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim -p holds for one run", "ext2sim -p of a run without a cell is dropped", "ext2sim reads with the -p an ext2spice run without a cell left".
+- Options: compat (as implemented) | compat-neutral without the edge (the no-cell path drops `-p` in both modes) | keep `-p` for later runs in both tools (a session setting, as `ext2spice` did)
+- Recommendation: compat. The rule matches Magic in both modes; only the no-cell leftover differs by mode.
+
+### Q-NETLIST-62: A cap on `.ext` port numbers
+- Kind: bug (hardening)
+- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule: crashes and undefined behaviour are fixed in both modes)
+- Magic behavior: efBuildPortNode stores a `port` record's number as given, and ext2spice's topVisit sizes its port array by the highest one (`portmax + 1`) and numbers the implicit ports past it (`++portmax`), so `port a 1000000000 ...` allocates gigabytes and `port a 2147483647 ...` overflows a signed int (undefined behaviour).
+- Evidence: extflat/EFbuild.c (efBuildPortNode); ext2spice/ext2spice.c:1649-1685 (topVisit: EFGetPortMax, `portmax++`, the `portmax + 1` array); Hefesto `src/core/src/extflat/reader.cpp` (`FileReader::port`), `src/core/src/netlist/spice/flat_writer.cpp` (`PortSorter`), `hier_writer.cpp` (`call_ports`)
+- As implemented (R3 fix pass), both modes: a `port` record whose number is above `ReadLimits::max_port_index` (2^20) fails the read with EXTFLAT-READ-009 `<file>, line <n>: port number <n> is larger than 1048576`; negative numbers are kept (they mean "no index"). The SPICE writers keep their port slots in a map, so the list is as long as the ports, not as the highest number. Tests: `tests/unit/extflat/hardening_test.cpp` "a port number past the cap fails the read with EXTFLAT-READ-009"; `tests/unit/netlist/spice/run_test.cpp` "Sparse port numbers keep their order; a number past the cap fails the read"; fuzz seeds `hostile-port-number-m00`, `-m04`.
+- Options: fix (the cap, as implemented) | no cap, sparse lists only (the implicit numbering then needs 64-bit indices)
+- Recommendation: fix. Real `.ext` files number ports from 0 up to the port count; 2^20 is far above any cell.
