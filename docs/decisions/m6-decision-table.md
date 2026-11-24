@@ -386,7 +386,7 @@ The user's decisions of 2026-11-21 for LEF/DEF, recorded in round 6 (`m6-r6-lefd
 | Q-LEFDEF-141 | A DEF read's progress estimate ends the NULL driver's display suspension (G4) | **compat** | confirmed as implemented: ON, after an item of a section with any non-zero declared count, window loads delete an untouched (UNNAMED); OFF: kept in batch |
 | Q-LEFDEF-151 | A LefReadLayer lookup of a table key with no record (G4) | **compat** | confirmed as implemented: ON, LEF VIA/LAYER section and DEF geometry resolve no type; OFF: treated as absent; PORT/OBS: absent in both modes |
 
-Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8.
+Decision G5 also approved `extflat::ReadLimits` as implemented, with one change: a `.ext` line over 128 tokens is ignored with a warning every console shows (EXTFLAT-READ-011, now a warning and no longer Hefesto-only), never silently; `docs/contributing/security.md` M6-S8. The user decision M7-18 (2026-11-23, `docs/decisions/m7-decision-table.md` "Entries approved 2026-11-23") states how the instance cap counts: per pass over the hierarchy, each traversal of the M7 netlisters (node flattening, kills, couplings, device, resistor and subcircuit visits) counting its flattened instances and merge elements afresh, so a design of exactly 4 Mi instances flattens however many passes are made (test `tests/unit/extflat/hardening_test.cpp` "a hierarchy with exactly max_instances instances flattens").
 
 ## Decided 2026-11-22: MASK-OS-016 and OASIS-092
 

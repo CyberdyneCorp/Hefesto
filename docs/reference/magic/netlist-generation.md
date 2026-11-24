@@ -64,6 +64,8 @@ Trailing `!` on global names SHALL be removed, except in CDL. Hierarchical outpu
 - **WHEN** `extract all` and then `ext2spice` are run on cell `top`
 - **THEN** `top.spice` SHALL be written and "exttospice finished." printed
 
+Hefesto note (not part of Magic's behaviour): `ext2spice hierarchy on` writes one subcircuit per cell, children first, as Magic does (capability `netlist-spice-hierarchy`; M7 round 3); the M7 golden cases NL-HIER-01..06 replay against Magic's output. The run flags `-M -m -f -B -d -J` of `ext2spice` and `-A -B -F -L -M -m -f -J` of `ext2sim` hold for later runs with `magic-compat` ON, as Magic's globals do, and apply to one run with it OFF (Q-NETLIST-54). A missing `.ext` file is the command's result `Cannot read extract file <cell>.ext` with `magic-compat` ON, as in Magic, and an error with it OFF.
+
 ### Requirement: Shorted ports
 When two ports of a cell are the same net, the behavior SHALL depend on the `short` mode:
 - `short resistor` or `short voltage`: a 0-ohm resistor or a 0 V source SHALL be inserted.

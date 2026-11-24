@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3477 scenarios, 984 open questions.
+**Totals:** 169 capabilities, 1996 requirements, 3479 scenarios, 989 open questions.
 
 ## Hefesto product (native)
 
@@ -142,7 +142,7 @@ Open questions: [30](decisions/open-questions/EXTRACT.md) · Golden cases: [CASE
 
 ## Netlists and extresist (NETLIST)
 
-Open questions: [53](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+Open questions: [58](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -153,10 +153,10 @@ Open questions: [53](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 29 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 10 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 4 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
-| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 17 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 18 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 21 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 10 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
-| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 24 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 25 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
 
 ## LVS (netgen-compatible) (LVS)
 

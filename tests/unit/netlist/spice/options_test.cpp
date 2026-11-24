@@ -149,15 +149,15 @@ TEST_CASE("subcircuits descend auto is a usage error with magic-compat OFF",
 TEST_CASE("ext2spice run is the cell name with magic-compat ON", "[cap:netlist-spice-options][req:Command options]") {
   Session s;
   // The run reaches EFArgs with `run foo`: `foo` is the cell, whose
-  // `.ext` file does not exist here.
+  // `.ext` file does not exist here (EFReadFile's Tcl result).
   const auto r = s.run("ext2spice run foo");
-  REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().text == "Cannot read extract file foo.ext");
+  REQUIRE(r.ok());
+  CHECK(r.value.to_string() == "Cannot read extract file foo.ext\n");
   // An ambiguous word (resistor, renumber) is a run argument too.
   (void)s.take_printed();
   const auto ambiguous = s.run("ext2spice re");
-  REQUIRE_FALSE(ambiguous.ok());
-  CHECK(ambiguous.diagnostics.back().text == "Cannot read extract file re.ext");
+  REQUIRE(ambiguous.ok());
+  CHECK(ambiguous.value.to_string() == "Cannot read extract file re.ext\n");
   CHECK(s.take_printed().find("Ambiguous option") == std::string::npos);
 }
 

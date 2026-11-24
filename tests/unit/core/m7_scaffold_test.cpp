@@ -112,6 +112,13 @@ void check_reads(const cmd::CommandResult& result, const std::string& cell) {
   CHECK(result.diagnostics.back().text == "Cannot read extract file " + cell + ".ext");
 }
 
+// With magic-compat ON `ext2spice` leaves EFReadFile's message as the
+// command's result and succeeds, as Magic's Tcl result (M7 round 3).
+void check_read_result(const cmd::CommandResult& result, const std::string& cell) {
+  REQUIRE(result.ok());
+  CHECK(result.value.to_string() == "Cannot read extract file " + cell + ".ext\n");
+}
+
 // No cell argument and no layout window (NETLIST-SPICE-001).
 void check_no_cell(const cmd::CommandResult& result) {
   REQUIRE_FALSE(result.ok());
@@ -271,11 +278,11 @@ TEST_CASE("ext2spice's first word follows Q-NETLIST-13 in each mode", "[m7-scaff
   // `.ext` file the run reads.
   check_no_cell(s.run("ext2spice"));
   const cmd::CommandResult run_foo_result = s.run("ext2spice run foo");
-  check_reads(run_foo_result, "foo");
+  check_read_result(run_foo_result, "foo");
   // EFArgs takes `run` as the first root cell and warns when `foo` replaces it.
   CHECK(run_foo_result.diagnostics.front().text == "Warning: multiple input files specified; ignoring \"run\"");
-  check_reads(s.run("ext2spice re"), "re");
-  check_reads(s.run("ext2spice foo"), "foo");
+  check_read_result(s.run("ext2spice re"), "re");
+  check_read_result(s.run("ext2spice foo"), "foo");
   const std::array<std::string_view, 3> table{"[run] [options]\trun", "resistor tee", "renumber"};
   const std::vector<std::string> run_foo{"run", "foo"};
   auto on = netlist::classify_first_word(run_foo, table, true);

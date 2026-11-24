@@ -40,7 +40,7 @@ The default file names SHALL be `<cell>.sim`, `<cell>.al` and `<cell>.nodes`. Wi
 
 A run SHALL write `<cell>.al` only when alias is on and `<cell>.nodes` only when labels is on, and SHALL never write to or close a file that an earlier run opened, in both `magic-compat` settings (Q-NETLIST-52, resolution: fix). Magic closes the two files at the end of a run but keeps their handles, so a run after `alias off` or `labels off` writes through a freed handle and closes it again (a double free). The names given with `-o`, `-a` and `-l` SHALL apply to that run only, in both settings: Magic keeps pointers to the run's argument words, which later runs read after they are freed (the rule of Q-NETLIST-42 for `ext2spice -o`).
 
-The flags `-A`, `-B`, `-F`, `-L`, `-M`, `-m`, `-f` and `-J` set Magic globals that later runs keep. With `magic-compat` ON they SHALL change the session's settings, so they hold for later runs; with it OFF they SHALL apply to that run only and leave the session's settings unchanged. (As landed in M7 round R2; `ext2spice` keeps its flags in both settings, and whether the two netlisters should follow one rule is an open user decision of that round.)
+The flags `-A`, `-B`, `-F`, `-L`, `-M`, `-m`, `-f` and `-J` set Magic globals that later runs keep. How long they hold depends on the `magic-compat` setting (Q-NETLIST-54, resolution: compat, one rule for `ext2sim` and `ext2spice`'s `-M -m -f -B -d -J` in capability `netlist-spice-options`): with it ON (the default) they SHALL change the session's settings, so they hold for later runs, as in Magic; with it OFF they SHALL apply to that run only and leave the session's settings unchanged.
 Compatibility: behavioral
 (Magic ref: ext2sim/ext2sim.c:62-100, ext2sim/ext2sim.c:255-600, ext2sim/ext2sim.c:870-970)
 
@@ -61,10 +61,15 @@ Compatibility: behavioral
 - **THEN** the second run writes its `= <canonical> <alias>` lines to `inv.sim`, does not write or close `inv.al`, and does not fail
 - **AND** the same holds for `labels off` after a run with labels on: the second run writes no `inv.nodes`
 
-#### Scenario: Run flags per magic-compat setting
-- **GIVEN** the session's default settings
-- **WHEN** `ext2sim -B -f su inv` runs with `magic-compat` OFF, and then with it ON
-- **THEN** the first run writes an SU file and leaves the session's settings unchanged, and the second leaves `-B` and format SU set for later runs
+#### Scenario: Run flags for one run with magic-compat OFF
+- **GIVEN** the session's default settings and `magic-compat` OFF
+- **WHEN** `ext2sim -B -f su inv` runs, then `ext2sim inv`
+- **THEN** the first run writes an SU file and leaves the session's settings unchanged, and the second writes an MIT file
+
+#### Scenario: Run flags that persist with magic-compat ON
+- **GIVEN** the session's default settings and `magic-compat` ON
+- **WHEN** `ext2sim -B -f su inv` runs, then `ext2sim inv`
+- **THEN** both runs write an SU file without attributes, and `-B` and format SU stay set for later runs
 
 #### Scenario: Extresist file naming
 - **GIVEN** `ext2sim extresist on`

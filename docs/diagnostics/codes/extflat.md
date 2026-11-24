@@ -45,7 +45,10 @@ than once in def!`, `EXTFLAT-READ-006` the shorted-ports warning of an
 `EXTFLAT-READ-012` the two `Device ... overlaps ...` messages of a device
 record at the place of an incompatible one. While flattening,
 `EXTFLAT-READ-007` is Magic's `connect(1): no such node <n>`,
-`connect(2): ...` and `kill: no such node <n>`, and `EXTFLAT-READ-008`
+`connect(2): ...` and `kill: no such node <n>`, and, in the port
+promotion of `ext2spice hierarchy on` (esMakePorts, `extflat::make_ports`),
+`Error:  Node <n> not found in cell <cell>!` for a parent net of a
+`merge` that the cell does not have; and `EXTFLAT-READ-008`
 the lines of efFlatGlobError for a global name (from the project setting
 "global nets and power names") split over unconnected nodes, which are
 merged.
@@ -86,6 +89,10 @@ warning of flat mode (none in one-level flattening). New codes:
 - `EXTFLAT-READ-015`: `extflat::parse_common_args` (EFArgs) for an
   unrecognised flag, a flag without its value (`-<c> requires a following
   <what>`, `Bad argument <word>`) or `-h`; the text ends with EFArgs' usage.
+- `EXTFLAT-READ-001` with `ext2spice`: with magic-compat ON the text
+  `Cannot read extract file <name>.ext` is the command's result and the
+  command succeeds, as EFReadFile's Tcl result in Magic; with it OFF the
+  command fails with this code.
 - `EXTFLAT-READ-016`: EFArgs' messages that do not fail the command:
   `Warning: multiple input files specified; ignoring "<name>"` and the
   efSymAdd rejections of a `-s` symbol.
