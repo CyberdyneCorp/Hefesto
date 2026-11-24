@@ -1,0 +1,39 @@
+{
+  "comment": "ngspice pin of Q-SIM-7 (approved 2026-11-22). Single source of truth for the CMake wrapper, the manifest generator and the golden capture image (tools/golden/pins.toml repeats it; tools/golden/tests/test_pins.py checks both). Resolved 2026-11-24: git ls-remote https://git.code.sf.net/p/ngspice/ngspice refs/tags/ngspice-47 -> a80f6e3e95d51534905b1f23410a951802666656; sha256 of the release tarball downloaded from the URLs below.",
+  "name": "ngspice",
+  "release": "47",
+  "tag": "ngspice-47",
+  "commit": "a80f6e3e95d51534905b1f23410a951802666656",
+  "repo": "https://git.code.sf.net/p/ngspice/ngspice",
+  "archive": {
+    "urls": [
+      "https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz",
+      "https://sourceforge.net/projects/ngspice/files/ng-spice-rework/47/ngspice-47.tar.gz/download"
+    ],
+    "sha256": "894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f",
+    "top_dir": "ngspice-47"
+  },
+  "hefesto_level": 1,
+  "configure": {
+    "comment": "The feature line of simulation-engine-embedding 'ngspice build configuration and license hygiene' in ngspice's own configure terms. tools/gen_sources.py runs configure with it to list the compiled files; the CMake wrapper writes the matching config.h itself. --with-ngshared is added for the shared library.",
+    "features": [
+      "--with-x=no",
+      "--enable-xspice",
+      "--enable-osdi",
+      "--disable-cider",
+      "--enable-klu",
+      "--with-fftw3=no",
+      "--with-readline=no",
+      "--with-editline=no",
+      "--disable-openmp",
+      "--disable-debug"
+    ]
+  },
+  "code_models": ["spice2poly", "analog", "digital", "xtradev"],
+  "code_models_excluded": {
+    "digital/d_cosim": "d_cosim loads arbitrary user code (feature table: d_cosim off)",
+    "table": "GPLv2+ (feature table: table off)",
+    "xtraevt": "not in the feature table's code-model list",
+    "tlines": "not in the feature table's code-model list"
+  }
+}

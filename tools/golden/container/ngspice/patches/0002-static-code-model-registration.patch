@@ -1,0 +1,127 @@
+Subject: [PATCH 0002] Static code-model registration
+
+Register the XSPICE code models compiled into the library when the device
+table is created, and treat `codemodel <file>` of a built-in library as
+already loaded. dlmain.c is compiled once, without the dll trampolines.
+Active only with -DHEFESTO_STATIC_CODEMODELS. Justification: patches/series.
+
+--- a/src/spicelib/devices/dev.c
++++ b/src/spicelib/devices/dev.c
+@@ -73,7 +73,10 @@
+ int add_udn(int,Evt_Udn_Info_t **);
+ 
+ extern struct coreInfo_t  coreInfo; /* cmexport.c */
++#ifdef HEFESTO_STATIC_CODEMODELS
++#include "hefesto_static.h"
+ #endif
++#endif
+ 
+ 
+ #include "asrc/asrcitf.h"
+@@ -262,6 +265,12 @@
+ 
+     for (i = 0; i < DEVNUM; i++)
+         DEVices[i] = static_devices[i]();
++
++#ifdef HEFESTO_STATIC_CODEMODELS
++    /* Hefesto patch 0002: the XSPICE code models are compiled into the
++     * library and registered here, before any spinit or deck is read. */
++    hefesto_cm_register_all();
++#endif
+ }
+ 
+ int num_devices(void)
+@@ -375,6 +384,11 @@
+     DEVicesfl[DEVNUM+i] = flag;
+   }
+   DEVNUM += n;
++#ifdef HEFESTO_STATIC_CODEMODELS
++  /* Hefesto patch 0002: called from spice_init_devices() before SIMinit()
++   * has set ft_sim, which then takes the device table itself. */
++  if (ft_sim)
++#endif
+   relink();
+   return 0;
+ }
+@@ -403,6 +417,12 @@
+     Evt_Udn_Info_t **udns;
+     funptr_t fetch;
+ 
++#ifdef HEFESTO_STATIC_CODEMODELS
++    /* Hefesto patch 0002: a built-in library is already registered. */
++    if (hefesto_cm_is_builtin(name))
++        return 0;
++#endif
++
+     lib = dlopen(name, RTLD_NOW);
+ //    fprintf(stdout, "Lib %s has handle %p\n", name, lib);
+     if (!lib) {
+--- a/src/xspice/icm/dlmain.c
++++ b/src/xspice/icm/dlmain.c
+@@ -22,8 +22,10 @@
+ #include "ngspice/evtudn.h"
+ #include "ngspice/inpdefs.h"
+ #include "ngspice/inertial.h"
++#ifndef HEFESTO_STATIC_CODEMODELS
+ #include "cmextrn.h"
+ #include "udnextrn.h"
++#endif
+ 
+ 
+ 
+@@ -32,6 +34,7 @@
+ // Do not modify anything below this line
+ //////////////////////////////////////////////////////////////////////////////
+ 
++#ifndef HEFESTO_STATIC_CODEMODELS
+ SPICEdev *cmDEVices[] = {
+ #include "cminfo.h"
+ 	NULL
+@@ -473,7 +476,47 @@
+     return (coreitf->dllitf_MIFbindCSCComplexToReal) (inModel, ckt) ;
+ }
+ #endif
++
++#else /* HEFESTO_STATIC_CODEMODELS */
+ 
++/* Hefesto patch 0002: built-in code models link against the core, which
++ * defines every function above except these; they behave as the coreInfo
++ * entries of cmexport.c (cp_getvar, no streams, the core allocator). */
++bool cm_getvar(char *name, enum cp_types type, void *retval, size_t rsize)
++{
++	return cp_getvar(name, type, retval, rsize);
++}
++
++FILE * cm_stream_out(void) {
++	return NULL;
++}
++
++FILE * cm_stream_in(void) {
++	return NULL;
++}
++
++FILE * cm_stream_err(void) {
++	return NULL;
++}
++
++void * malloc_pj(size_t s) {
++	return tmalloc(s);
++}
++
++void * calloc_pj(size_t s1, size_t s2) {
++	return tmalloc(s1 * s2);
++}
++
++void * realloc_pj(const void *ptr, size_t s) {
++	return trealloc(ptr, s);
++}
++
++void free_pj(const void *ptr) {
++	txfree(ptr);
++}
++
++#endif /* HEFESTO_STATIC_CODEMODELS */
++
+ /*
+ fopen_with_path()
+ Opens an input file <infile>. Called from d_state, file_source, d_source.

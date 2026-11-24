@@ -100,7 +100,7 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
 
 ## 5. NGBUILD, SIMD, PLATFORM: engine build, worker, worker service (R1–R2)
 
-- [ ] 5.1 (NGBUILD; R1, first on the G2-SIM critical path) Add `third_party/ngspice/` with:
+- [x] 5.1 (NGBUILD; R1, first on the G2-SIM critical path) Add `third_party/ngspice/` with:
   - the pin of Q-SIM-7 (ngspice-47, which has no upstream CMake build);
   - the patch series (static OSDI registry, static code-model registration, portable seeding, deterministic initialisation);
   - a Hefesto-written CMake wrapper with the feature table, `-ffp-contract=off` and OpenMP off;
@@ -108,6 +108,8 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   - `ngspice-manifest.json`, and a source archive that holds every built source file, including the whole OSDI tree.
   
   Verify the build on the three CI legs, that the manifest lists the patches and licences (KLU with AMD, COLAMD, BTF and SuiteSparse_config; numparam; OSDI; sparse; the XSPICE code models), and the `simulation-engine-embedding` scenarios "No GPL code linked" and "Patch list in the manifest".
+
+  As landed (branch `m9-round0-ngbuild`): `pin.json` (ngspice-47 tarball, SHA-256 `894e6496…`, version `47-hefesto1`); four patches (0001 OSDI registry, 0002 code models, 0003 portable seeding, 0004 deterministic initialisation, which also fixes a stock crash when `ngSpice_nospinit()`/`ngSpice_nospiceinit()` run before `ngSpice_Init()`); `cmake/sources.cmake` generated from ngspice's own build by `tools/gen_sources.py`; option `HEFESTO_BUILD_NGSPICE` (default OFF); `.github/workflows/ngspice.yml` (Linux x86_64, Linux arm64, macOS arm64) runs the patch regression tests, the manifest check, the export check and the source archive. cppduals (MPL-2.0, used by HICUM) is in the manifest and the archive besides OSDI. The IHP OSDI modules are task 5.2.
 - [ ] 5.2 (NGBUILD) Compile the IHP OSDI modules (PSP103, `cap_cmomi`, `cap_cmomf`) from the `ihp-ngspice` set with the pinned OpenVAF, and register them statically. Verify "Version mismatch avoided" and an sg13g2 `op` deck.
 - [ ] 5.3 (PLATFORM) Add `platform::WorkerHost` and `WorkerChannel` (design D9) with hosts in `src/cli/` and the desktop shell (`posix_spawn` and pipes); `WorkerSpec` carries the job directory and the read-only roots for the worker's confinement. The core default reports it unsupported. Verify unit tests with a test worker that echoes frames, exits, crashes and hangs, and the `hefesto-architecture` scenarios of "Long-lived worker processes".
 - [ ] 5.4 (SIMD) Add `src/simd/`:
