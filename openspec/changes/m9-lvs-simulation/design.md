@@ -630,6 +630,60 @@ Exit criteria:
 ### MAPS: `hefesto/netlist/name_map.hpp`
 `NameMap {nets, devices}` (sorted), with `NetEntry {netlist_name, layout_name, hier_path, point | wire}` and a `layout_name` index. `netlist::spice::render_with_map(..., Settings) -> diag::Outcome<RenderedNetlist {text, names}>`. `schem::NetlistResult::names`.
 
+### As landed (SCAFFOLD, tasks 4.1–4.3)
+
+The scaffold (branch `m9-round0-scaffold`) landed the two areas, the headers and the stubs below. The headers are the contract; this subsection records where they are, who fills them in, and where they differ from the contracts above. Include paths are under `src/core/include/hefesto/`, sources under `src/core/src/`. The areas use one namespace each, `hefesto::lvs` and `hefesto::sim`. `platform/worker_host.hpp` (PLATFORM, task 5.3) and `sim/engine/frames.hpp` (SIMD, task 5.4) are not written.
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `lvs/{sources.cmake,codes.cpp}`, `sim/{sources.cmake,codes.cpp}` | area sources; the code tables assembled from `<area>/<sub>/codes.inc` (topics `LVS-NET`, `-READ`, `-SETUP`, `-CMP`, `-REDUCE`, `-PROP`, `-HIER`, `-REPORT`, `-CMD`; `SIM-ENGINE`, `-DECK`, `-RESULT`, `-PROBE`, `-CMD`, `-RUNSET`, `-MEAS`); no code yet | SCAFFOLD |
+| `<area>/<sub>/{sources.cmake,codes.inc}` | one source list and code fragment per D3 subdirectory | the D3 owner |
+| `lvs/not_implemented.hpp`, `sim/not_implemented.hpp` | `not_implemented(what) -> diag::Diagnostic` (`CORE-NOTIMPL-009`, constant `diag::codes::kM9NotImplemented`) | SCAFFOLD (removed at M9 exit) |
+| `lvs/cancel.hpp` | `CancelToken {flag}::requested()`, shared by every LVS stage | SCAFFOLD |
+| `lvs/read/source.hpp` | `Format {spice, cdl, verilog, sim, ext}`, `Source {name, bytes}` (`bytes` set: in memory) | LVSREAD |
+| `lvs/net/netlist_db.hpp` | `CellId`, `kMaxDevicesPerRun` (50 million), `Cell {name}`, `NetlistDb {cells}` | LVSREAD |
+| `lvs/net/circuit.hpp` | `Circuit {source, format, cell, names, db, top}`; `names` is a `shared_ptr<const netlist::NameMap>`, forward-declared until MAPS writes `netlist/name_map.hpp` | LVSREAD |
+| `lvs/read/reader.hpp` | `ReadLimits {include_depth 64, logical_line 16 MiB, name_length 4 KiB}`, `ReadOptions {netgen_compat, limits, files}`, `read_netlist(NetlistDb&, const Source&, Format, const ReadOptions&) -> Outcome<CellId>`, `detect_format(const Source&) -> Outcome<Format>` | LVSREAD |
+| `lvs/setup/setup.hpp` | `SetupState` (the words of each recorded `permute`, `property`, `equate`, `ignore`, `model`, `global`, `flatten` command), `SetupContext {first, second, sandbox, cancel}` (`sandbox` is a `script::SandboxPolicy`), `evaluate_setup` | LVSSETUP |
+| `lvs/reduce/reduce.hpp` | `ReductionSummary {parallel_merged, series_merged, zero_valued_removed, diagnostics}`, `reduce(Cell&, const SetupState&)` | LVSRED |
+| `lvs/cmp/compare.hpp` | `CompareOptions {seed, netgen_compat, cancel}`, `PairStatus` (the seven statuses of lvs-reports "Result classification"), `Matching {devices, nets}`, `PairResult {cell1, cell2, status, matching, cancelled, diagnostics}`, `compare_pair` | LVSALG |
+| `lvs/prop/properties.hpp` | `PropertyError {device1, device2, property, detail}`, `PropertyResult {errors, diagnostics}`, `check_properties(const Matching&, const SetupState&)` | LVSPROP |
+| `lvs/hier/run.hpp` | `RunOptions {netgen_compat, seed, hierarchy_depth 256, cancel}`, `ProgressSink::pair_started`, `LvsResult {queue, pairs, property_errors, failed_subcells, top_pin_mismatch, clean, cancelled, netgen_compat, diagnostics}`, `run_lvs(Circuit, Circuit, const SetupState&, const RunOptions&, ProgressSink&)` | LVSHIER |
+| `lvs/report/report.hpp` | `write_comp_out`, `write_json -> Outcome<std::string>`, `to_list -> Outcome<cmd::Value>` | LVSREP |
+| `lvs/cmd/commands.hpp` | `ObjectRef {kind, pair, circuit, name}`, `LayoutRef {use_path, point}`, `register_lvs_commands(cmd::CommandRegistry&) -> bool`, `layout_circuit(EditorState&, std::string_view cell, const netlist::spice::SpiceSettings&) -> Outcome<Circuit>`, `cross_probe(const LvsResult&, const ObjectRef&) -> Outcome<std::vector<LayoutRef>>` | LVSCMD |
+| `lvs/session.hpp` | `Session {last_results, running, cancel, names1, names2}`; `EditorState::lvs` | SCAFFOLD (members: LVSCMD) |
+| `sim/engine/engine.hpp` | `EngineState`, `Vector {name, type, complex, real, imag}`, `EngineCallbacks {on_output, on_progress, on_state}`, `Engine` (`set_callbacks`, `load`, `run`, `pause`, `resume`, `cancel`, `vectors`), `WorkerEngineOptions {program "hefesto-simd", job_dir, readonly_roots}`, `make_worker_engine(platform::WorkerHost*, const WorkerEngineOptions&) -> Outcome<std::unique_ptr<Engine>>` | SIMENG |
+| `sim/engine/job.hpp` | `JobId` (the string id of "Job lifecycle"), `JobState` (queued, preparing, loading, running, paused, completed, failed, cancelled), `Job {id, state, dut, names}` | SIMENG |
+| `sim/engine/job_manager.hpp` | `JobOptions {testbench, corner, run_set_point}`, `JobManager::submit(PreparedDeck, JobOptions) -> Outcome<JobId>` | SIMENG |
+| `sim/engine/pool.hpp` | `PoolInputs {physical_cores, physical_memory, job_budget, user_limit}`, `worker_pool_size(const PoolInputs&) -> Outcome<std::uint32_t>`: the Q-SIMADV-13 formula, documented and stubbed (task 5.5 implements it) | SIMENG |
+| `sim/deck/deck.hpp` | `kMaxPreparedDeckBytes` (256 MiB), `kMaxDeckIncludeDepth` (32), `ParasiticMode`, `CircuitSource {kind, name, parasitics}`, `Testbench {name, dut, pdk, corner, lines}`, `ModelDescriptor {pdk, init_commands, model_libraries, corners}::load(pdk)`, `DeckContext {files, pdk_store, editor}`, `PreparedDeck {lines, names, descriptor, diagnostics}`, `prepare` | SIMDECK |
+| `sim/result/result_store.hpp` | `kDesktopResultBudget` (4 GiB), `Plot {name, vectors}`, `WaveformMeasure {function, vector, arguments, part}`, `ResultStore {files, root}` with `write_raw`, `read_raw`, `export_csv`, `measure_waveform` | SIMRES |
+| `sim/probe/net_name_map.hpp`, `src/sim/probe/net_name_map.cpp` | `LayoutPoint {use_path, point}`, `NetNameEntry {layout_name, spice_name, sim_name, point, rnode}`, `NetNameMap` (built once from its entries, sorted by `spice_name`, with a sorted `layout_name` index; `find_layout_name`, `find_spice_name`). Implemented, not stubbed (Q-SIM-24) | SIMPROBE (SIMDECK builds it) |
+| `sim/probe/probe.hpp` | `LayoutSelection {root, point}`, `OnSelectedNode`, `node_name -> Outcome<std::string>`, `resolve_probe(const NetNameMap&, const LayoutSelection&, const OnSelectedNode&) -> Outcome<NetNameEntry>`, `TraceId`, `ProbeTarget {kind, layout, name}`, `probe(const Job&, const ProbeTarget&) -> Outcome<TraceId>` | SIMPROBE |
+| `sim/probe/overlay_feed.hpp` | `NetVoltage`, `EdgeCurrent {net, node1, node2, amps, linear_density, volumetric_density}`, `OverlayFeed::{voltages, currents}(const Job&, double time)` | SIMPROBE |
+| `sim/runset/runset.hpp` | `kMaxRunSetPoints`, `kMaxMonteCarloSamples` (100 000 each), `SweepVariable`, `RunSetSpec {id, corners, sweeps, samples, base_seed}`, `RunPoint {index, corner, values, sample}`, `RunSet {spec, points, jobs}::generate`, `execute(RunSet&, JobManager&) -> Status`, `sample_seed(base, k) -> std::uint32_t` | SIMADV |
+| `sim/meas/meas.hpp` | `MeasDefinition`, `MeasSet {definitions, jobs}`, `MeasTable {columns, rows}`, `SpecLimit`, `Specs`, `ColumnStatistics`, `StatsReport`, `evaluate_measurements`, `statistics` | SIMMEAS |
+| `sim/session.hpp` | `EngineStatus`, `Session {testbenches, jobs, run_sets, results, stored_jobs, engine, engine_reason}`; `EditorState::sim` | SCAFFOLD (members: the named workstreams) |
+| `tests/unit/{lvs,sim}/` and `tests/unit/{lvs,sim}/<sub>/` | `hefesto_lvs_tests`, `hefesto_sim_tests` (shared) and one executable per subdirectory once it has a `*_test.cpp` (data: `tests/data/<area>/<sub>`) | SCAFFOLD; the D3 owners |
+| `scripts/check_engine_boundary.py`, `scripts/tests/test_check_engine_boundary.py` | the three D2 rules, below | SCAFFOLD, then SIMD |
+
+**Stub values.** Every function above fails with `CORE-NOTIMPL-009` (an `Outcome`'s error, or the one diagnostic of a result struct: `reduce`, `compare_pair`, `check_properties`, `run_lvs`), with two exceptions: `sample_seed` answers 1, the nominal seed, and `NetNameMap` is implemented. The `lvs` command is registered by `register_lvs_commands` with its final name and synopsis and fails with `CORE-NOTIMPL-009`; `cmd::register_all_commands` does not call it yet (an INTEGRATION open item). Tests: `tests/unit/lvs/scaffold_test.cpp`, `tests/unit/sim/scaffold_test.cpp` (one `[cap:][req:]` test per stub) and `tests/unit/sim/probe/net_name_map_test.cpp`.
+
+**Differences from the contracts above.**
+- Functions that the contracts give a plain return type but that can fail return an `Outcome`, so that the stub and the later errors carry a diagnostic: `detect_format`, `write_comp_out`, `write_json`, `to_list`, `cross_probe`, `node_name`, `resolve_probe` (it was `std::optional<NetEntry>`; the error is "Net <name> is not in the netlist of this run"), `RunSet::generate`, `worker_pool_size`.
+- `to_list` returns `cmd::Value`, the command and Tcl result type (the contract's `script::Value`).
+- `layout_circuit` takes the cell by name, as `extract::ensure_extracted` does, and `netlist::spice::SpiceSettings` (the contract's `Settings`).
+- The probe's map is `sim::NetNameMap`, the simulation net-name map of simulation-netlist-preparation "Net name map" with the `layoutName` field of Q-SIM-24, not MAPS's `netlist::NameMap`, which SIMDECK reads to build it. The connectivity fallback of D4 is a predicate the caller supplies (`OnSelectedNode`), so that `resolve_probe` does not depend on the extracted hierarchy.
+- `make_worker_engine` takes `platform::WorkerHost*` (nullptr: no host, the engine is unavailable), and `WorkerHost` is forward-declared until PLATFORM writes `platform/worker_host.hpp`.
+- The run-set point is `RunPoint` (the contract's `Point`, renamed to keep it apart from `db::Point`); `Specs` holds `SpecLimit` entries.
+- The worker pool size is declared in `sim/engine/pool.hpp` (D18 lists it under `sim/runset`), because SIMENG owns the pool (task 5.5).
+
+**`check_engine_boundary.py`** (D2; Q-SIM-20, Q-SIM-22, Q-SIM-26):
+- *symbols*: a binary (ELF, Mach-O or `ar` magic) other than `hefesto-ngspice-adapter` and `libngspice-hefesto` whose bytes contain `ngSpice_` is passed to `nm` (and `nm -D` for ELF); any `ngSpice_` symbol, defined or undefined, fails. Object files and the `CMakeFiles` and `_deps` trees of a build directory are skipped; test binaries are checked.
+- *plugin*: a binary other than `hefesto-simd` and the plugin itself whose bytes contain `hefesto-ngspice-adapter` fails, except under `tests/` and `bench/` of the build tree. `--developer-build` turns the rule off (Q-SIM-22).
+- *header*: a C, C++ or Objective-C file outside `src/simd/adapter/` that includes `sharedspice.h` fails; `third_party/ngspice/` (ngspice's own tree), top-level build trees and `.git`, `.cache`, `.claude` are not scanned.
+- CI runs it after the build of every leg of `ci.yml`'s `build` job (`--build-dir build/<preset>`), as release builds.
+
 ## Risks / Trade-offs
 
 - **R1. M7 and M8 slip.** Mitigation: R1–R3 need neither (D1), and their sources are SPICE files and decks. The layout and schematic sources come last.
