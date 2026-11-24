@@ -1,0 +1,19 @@
+timestamp 1730800000
+version 8.3
+tech scmos
+style default
+scale 1000 1000 100
+resistclasses 80
+use nand2 x1 1 0 20 0 1 0
+parameters nfet_01v8 l=l w=w
+port "OUT" 1 40 2 42 4 metal1
+node "OUT" 0 1.76 40 2 metal1 40 28
+attr OUT 2 2 2 2 metal1 "cap=10f"
+equiv "OUT" "out_int"
+node "IN" 0 0.52 0 -2 metal1 12 14
+substrate "VSUB" 0 0 -1073741817 -1073741817 space 0 0
+cap "OUT" "IN" 0.2
+device msubckt nfet_01v8 0 0 1 1 l=2 w=4 "VSUB" "IN" 4 0 "VSUB" 4 12,14 "OUT" 4 12,14
+cap "x1/A" "OUT" 0.015
+merge "x1/A" "IN" -0.52 -12 -14
+merge "x1/VSUB" "VSUB" 0 0 0
