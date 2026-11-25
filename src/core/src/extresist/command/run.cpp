@@ -18,12 +18,14 @@
 // mask::Progress, or a failed write, leaves the previous files and no
 // temporary file.
 //
-// The network contract (extresist/network/network.hpp) does not yet carry
-// the driver node, the Elmore delay or the device terminals of each node;
-// until it does, maxres is the largest shortest-path resistance from the
-// network's first node, no delay is computed, and terminal nodes are not
-// renamed (tasks.md 14.3). `geometry` and `fasthenry` need the network's
-// widths and heights and answer CORE-NOTIMPL-008.
+// Each net goes through RESNET's R4 contract (extresist/network/
+// network.hpp): yank_net from the node location (or its first drive
+// point), build_network with the drive and sink points in ResNodeTable's
+// hash order, then reduce, which sets maxres, the Elmore delay and
+// rg_nodecap; the label sink points build_network adds stay in the input
+// model for the later nets, as in Magic's node table. Terminal nodes are
+// not renamed yet (tasks.md 14.3). `geometry` and `fasthenry` answer
+// CORE-NOTIMPL-008 (tasks.md 14.4).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResRex.c (CmdExtResis's run
 // path, resSubcircuitFunc, ExtResisForDef, ResCheckExtNodes,
@@ -36,8 +38,6 @@
 #include <array>
 #include <cstdio>
 #include <functional>
-#include <limits>
-#include <queue>
 #include <set>
 #include <string>
 #include <utility>
@@ -52,6 +52,7 @@
 #include "hefesto/extresist/command/cutoff.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::extresist {
 
@@ -60,7 +61,6 @@ namespace {
 using cmd::CommandResult;
 using detail::Console;
 
-constexpr std::string_view kNotImplemented = "CORE-NOTIMPL-008";
 constexpr std::string_view kCancelled = "EXTRESIST-CMD-004";
 
 // C's "%.2f" and "%f".
@@ -76,46 +76,40 @@ std::string fixed6(double value) {
   return buffer.data();
 }
 
-// The largest shortest-path resistance from the network's first node.
-double max_resistance(const Network& network) {
-  const std::size_t n = network.nodes.size();
-  if (n == 0) {
-    return 0.0;
+// ResWriteExtFile's delay text: femtoseconds when either value is below
+// 0.01 ps, else picoseconds (`Tnew = %.2fps ; Tmin = %.2fps`).
+std::string delay_text(double tdi_zs, double min_zs) {
+  constexpr double kZeptoToPico = 1e-9;  // Z_TO_P
+  const auto tnew = static_cast<float>(tdi_zs * kZeptoToPico);
+  const auto tmin = static_cast<float>(min_zs * kZeptoToPico);
+  if (tnew < 0.01F || (tmin < 0.01F && min_zs > 0)) {
+    return "(Tnew = " + fixed2(static_cast<double>(tnew) * 1000) + "fs ; Tmin = " +
+           fixed2(static_cast<double>(tmin) * 1000) + "fs)";
   }
-  std::vector<std::vector<std::pair<std::size_t, double>>> edges(n);
-  for (const NetResistor& r : network.resistors) {
-    if (r.a < n && r.b < n) {
-      edges[r.a].emplace_back(r.b, r.resistance);
-      edges[r.b].emplace_back(r.a, r.resistance);
-    }
+  return "(Tnew = " + fixed2(static_cast<double>(tnew)) + "ps ; Tmin = " + fixed2(static_cast<double>(tmin)) + "ps)";
+}
+
+// ResWriteExtFile's `extresist debug` line for a net after its second
+// cutoff: why it is withheld, or that it is added.
+std::string debug_line(const std::string& net, const Extracted& measured, double node_cap, bool held,
+                       const ResistOptions& options) {
+  const std::string maxres = "(maxres = " + fixed2(measured.maxres * 0.001) + "ohm)";
+  const double min_delay = min_delay_zs(options);
+  if (held) {
+    const bool by_resistance = options.threshold > 0 && measured.maxres < options.threshold;
+    return by_resistance ? "Not adding " + net + " " + maxres
+                         : "Not adding  " + net + "; " + delay_text(measured.tdi.value_or(0.0), min_delay);
   }
-  std::vector<double> dist(n, std::numeric_limits<double>::infinity());
-  using Item = std::pair<double, std::size_t>;
-  std::priority_queue<Item, std::vector<Item>, std::greater<>> queue;
-  dist[0] = 0.0;
-  queue.emplace(0.0, 0);
-  while (!queue.empty()) {
-    const auto [d, u] = queue.top();
-    queue.pop();
-    if (d > dist[u]) {
-      continue;
-    }
-    for (const auto& [v, w] : edges[u]) {
-      if (d + w < dist[v]) {
-        dist[v] = d + w;
-        queue.emplace(dist[v], v);
-      }
-    }
+  if (min_delay == 0) {
+    return "Adding " + net + " " + maxres;
   }
-  double best = 0.0;
-  for (const double d : dist) {
-    best = d != std::numeric_limits<double>::infinity() && d > best ? d : best;
-  }
-  return best;
+  const double tdi = measured.tdi.value_or(measured.maxres * node_cap);
+  return "Adding " + net + "; " + delay_text(tdi, min_delay);
 }
 
 // One cell's outputs and counters.
 struct CellRun {
+  db::CellDef* def = nullptr;
   InputModel input;
   std::vector<OutputNet> nets;
   std::string lump;
@@ -138,8 +132,11 @@ class Runner {
   [[nodiscard]] std::vector<std::string> parents(const db::CellDef& def) const;
   CommandResult subcircuits(db::CellDef& def);
   CommandResult process_cell(db::CellDef& def);
-  CommandResult process_net(db::CellDef& def, CellRun& cell, std::size_t net);
-  CommandResult extract_net(db::CellDef& def, CellRun& cell, std::size_t net, const Driver& driver);
+  CommandResult process_net(CellRun& cell, std::size_t net);
+  CommandResult extract_net(CellRun& cell, std::size_t net, const Driver& driver);
+  std::optional<Network> network_of(CellRun& cell, std::size_t net, const Driver& driver);
+  BuildInput build_input(const CellRun& cell, const InputNode& node, db::Point start, const Driver& driver);
+  void print(std::vector<std::string>& messages) const;
   CommandResult write_outputs(db::CellDef& def, CellRun& cell);
   CommandResult commit(db::CellDef& def, std::string_view suffix, const std::string& text,
                        const std::optional<std::string>& local_path);
@@ -237,13 +234,14 @@ CommandResult Runner::process_cell(db::CellDef& def) {
     return CommandResult::success();  // ExtResisForDef returns; the run goes on
   }
   CellRun cell;
+  cell.def = &def;
   cell.input = std::move(input).value();
   for (const std::size_t net : cell.input.net_order()) {
     if (progress_ != nullptr && progress_->cancelled()) {
       // Q-EXTRACT-27: nothing is written; the previous files stay.
       return CommandResult::failure(diag::make(kCancelled, "extresist interrupted: " + def.name() + " not written"));
     }
-    if (CommandResult r = process_net(def, cell, net); !r.ok()) {
+    if (CommandResult r = process_net(cell, net); !r.ok()) {
       return r;
     }
   }
@@ -251,7 +249,7 @@ CommandResult Runner::process_cell(db::CellDef& def) {
 }
 
 // ResProcessNode.
-CommandResult Runner::process_net(db::CellDef& def, CellRun& cell, std::size_t net) {
+CommandResult Runner::process_net(CellRun& cell, std::size_t net) {
   const InputNode& node = cell.input.nodes[net];
   if (net_skip(node, options_, options_.all) != NetSkip::none) {
     return CommandResult::success();
@@ -276,27 +274,163 @@ CommandResult Runner::process_net(db::CellDef& def, CellRun& cell, std::size_t n
     console_.report(line);
   }
   ++cell.extracted;
-  return extract_net(def, cell, net, *driver);
+  return extract_net(cell, net, *driver);
 }
 
-CommandResult Runner::extract_net(db::CellDef& def, CellRun& cell, std::size_t net, const Driver& driver) {
-  const InputNode& node = cell.input.nodes[net];
-  const tech::TileType type = driver.type.value_or(node.tile_type.value_or(tech::kSpace));
-  auto geometry = yank_net(def, driver.location, type, options_.skip);
-  diag::Outcome<Network> network = geometry.ok() ? build_network(geometry.value(), *editor_.extract.current,
-                                                                 cell.input.annotations(net))
-                                                 : diag::Outcome<Network>{geometry.error()};
-  if (network.ok()) {
-    const Tolerances tol{options_.min_resist, min_delay_zs(options_), options_.simplify};
-    if (diag::Status st = reduce(network.value(), tol, editor_.extresist.heap, compat::CompatSettings{request_.magic_compat});
-        !st.ok()) {
-      network = st.error();
+// ResExtractNet's start: the node location, or the first drive point (a
+// node at infinity); the start types are DBConnectTbl of the node's type,
+// else of the first drive point with a type.
+struct NetStart {
+  db::Rect area;
+  db::Point point;
+  tech::TileType type = tech::kSpace;
+};
+
+std::string start_error(const InputNode& node) {
+  if (!node.drive_points.empty()) {
+    return "Node " + node.name + ":  Did not find the net layout at any drivepoint.";
+  }
+  const db::Point at = node.location.value_or(db::Point{});
+  return "Node " + node.name + ":  Did not find the net layout at node location (" + std::to_string(at.x) + " " +
+         std::to_string(at.y) + ").";
+}
+
+std::optional<NetStart> net_start(const InputNode& node, const Console& console) {
+  NetStart out;
+  if (node.location) {
+    out.point = *node.location;
+    out.area = db::Rect{out.point.x - 2, out.point.y - 2, out.point.x + 2, out.point.y + 2};
+  } else if (!node.drive_points.empty()) {
+    const db::Rect& r = node.drive_points.front().rect;
+    out.area = db::Rect{r.x0 - 2, r.y0 - 2, r.x1 + 2, r.y1 + 2};
+    out.point = db::Point{(r.x1 + r.x0) / 2, (r.y1 + r.y0) / 2};
+  } else {
+    console.message("Internal error:  Node location is set to infinity.");
+  }
+  if (node.tile_type && *node.tile_type != tech::kSpace) {
+    out.type = *node.tile_type;
+    return out;
+  }
+  const auto typed = std::find_if(node.drive_points.begin(), node.drive_points.end(), [](const ConnectPoint& c) {
+    return c.type && *c.type != tech::kSpace;
+  });
+  if (typed == node.drive_points.end()) {
+    console.message(start_error(node));
+    return std::nullopt;
+  }
+  out.type = *typed->type;
+  return out;
+}
+
+// ResMakeDriverSinkPorts' order: the nodes in ResNodeTable's hash order
+// (Magic's string table of 1024 buckets, filled in order of first mention),
+// each node's drive points, then its sink points.
+std::vector<NetPort> table_ports(const InputModel& input) {
+  util::MagicHashTable<std::size_t> table(1024);
+  for (std::size_t i = 0; i < input.nodes.size(); ++i) {
+    table.insert(input.nodes[i].name, i);
+  }
+  std::vector<NetPort> ports;
+  table.for_each([&](const util::MagicHashTable<std::size_t>::Entry& e) {
+    const InputNode& node = input.nodes[*e.value];
+    for (const ConnectPoint& c : node.drive_points) {
+      ports.push_back(NetPort{node.name, c.rect, c.type.value_or(tech::kSpace), false});
+    }
+    for (const ConnectPoint& c : node.sink_points) {
+      ports.push_back(NetPort{node.name, c.rect, c.type.value_or(tech::kSpace), true});
+    }
+  });
+  return ports;
+}
+
+// ResMakeLabelPorts' sink points stay in the node table for later nets.
+void keep_added_sinks(InputModel& input, const std::vector<NetPort>& sinks) {
+  for (auto it = sinks.rbegin(); it != sinks.rend(); ++it) {
+    std::optional<std::size_t> index = input.find(it->name);
+    if (!index) {
+      input.nodes.emplace_back();
+      input.nodes.back().name = it->name;
+      index = input.nodes.size() - 1;
+    }
+    std::vector<ConnectPoint>& sinks_of = input.nodes[*index].sink_points;
+    sinks_of.insert(sinks_of.begin(), ConnectPoint{it->rect, it->type});
+  }
+}
+
+BuildInput Runner::build_input(const CellRun& cell, const InputNode& node, db::Point start, const Driver& driver) {
+  BuildInput in;
+  in.technology = editor_.technology.get();
+  in.cif = editor_.mask.output_styles.current_style();
+  in.start = start;
+  in.driver = NetDriver{driver.location, driver.type.value_or(tech::kSpace), driver.drive_only};
+  in.ports = table_ports(cell.input);
+  const InputModel& input = cell.input;
+  in.has_drive_point = [&input](const std::string& name, const db::Rect& label) {
+    const std::optional<std::size_t> i = input.find(name);
+    return i && std::any_of(input.nodes[*i].drive_points.begin(), input.nodes[*i].drive_points.end(),
+                            [&label](const ConnectPoint& c) { return db::touch(label, c.rect); });
+  };
+  for (const InputNode& n : input.nodes) {
+    if (n.status.port) {
+      in.port_nodes.insert(n.name);
     }
   }
-  if (!network.ok()) {
-    if (network.error().code == kNotImplemented) {
-      return CommandResult::failure(network.error());  // RESNET's network is not there yet
-    }
+  in.node_cap = node.cap;
+  in.small_contact_warned = &editor_.extresist.small_contact_warned;
+  in.magic_compat = request_.magic_compat;
+  return in;
+}
+
+void Runner::print(std::vector<std::string>& messages) const {
+  for (const std::string& m : messages) {
+    console_.message(m);
+  }
+  messages.clear();
+}
+
+// ResExtractNet then ResDoSimplify; nullopt when the net was not extracted
+// (the messages are printed).
+std::optional<Network> Runner::network_of(CellRun& cell, std::size_t net, const Driver& driver) {
+  const std::optional<NetStart> start = net_start(cell.input.nodes[net], console_);
+  if (!start) {
+    return std::nullopt;
+  }
+  YankRequest yank;
+  yank.area = start->area;
+  yank.start_types = editor_.technology->connects_to(start->type);
+  yank.skip = options_.skip;
+  yank.magic_compat = request_.magic_compat;
+  auto geometry = yank_net(*cell.def, *editor_.technology, yank);
+  if (!geometry.ok()) {
+    console_.message(geometry.error().text);
+    return std::nullopt;
+  }
+  auto built = build_network(geometry.value(), *editor_.extract.current, cell.input.annotations(net),
+                             build_input(cell, cell.input.nodes[net], start->point, driver));
+  if (!built.ok()) {
+    console_.message(built.error().text);
+    return std::nullopt;
+  }
+  Network network = std::move(built).value();
+  print(network.messages);
+  keep_added_sinks(cell.input, network.added_sinks);
+  if (network.failed) {
+    return std::nullopt;
+  }
+  const Tolerances tol{options_.min_resist, min_delay_zs(options_), options_.simplify, options_.lumped};
+  const diag::Status reduced = reduce(network, tol, editor_.extresist.heap, compat::CompatSettings{request_.magic_compat});
+  print(network.messages);
+  if (!reduced.ok()) {
+    console_.message(reduced.error().text);
+    return std::nullopt;
+  }
+  return network;
+}
+
+CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& driver) {
+  std::optional<Network> network = network_of(cell, net, driver);
+  const InputNode& node = cell.input.nodes[net];
+  if (!network) {
     if (node.tile_type == tech::kSpace) {
       console_.report("Note:  Substrate node " + node.name + " not extracted as network.");
     } else {
@@ -304,18 +438,22 @@ CommandResult Runner::extract_net(db::CellDef& def, CellRun& cell, std::size_t n
     }
     return CommandResult::success();
   }
-  const Extracted measured{max_resistance(network.value()), std::nullopt};
+  const std::optional<double> tdi = network->tdi == -1 ? std::nullopt : std::optional<double>{network->tdi};
+  const Extracted measured{network->max_resistance, tdi};
+  InputNode lumped = node;
+  lumped.cap = network->node_cap;  // ResWriteLumpFile reads rg_nodecap after ResDoSimplify
   if (options_.lumped) {
-    cell.lump += lump_line(node.name, lumped_ohms(node, measured, options_));
+    cell.lump += lump_line(node.name, lumped_ohms(lumped, measured, options_));
   }
-  if (withheld(node, measured, options_)) {
-    if (options_.debug) {
-      console_.report("Not adding " + node.name + " (maxres = " + fixed2(measured.maxres * 0.001) + "ohm)");
-    }
+  const bool held = withheld(node, measured, options_);
+  if (options_.debug) {
+    console_.report(debug_line(node.name, measured, network->node_cap, held, options_));
+  }
+  if (held) {
     return CommandResult::success();
   }
   ++cell.output;
-  cell.nets.push_back(OutputNet{net, std::move(network).value(), {}, lumped_ohms(node, measured, options_)});
+  cell.nets.push_back(OutputNet{net, std::move(*network), {}, lumped_ohms(lumped, measured, options_)});
   return CommandResult::success();
 }
 

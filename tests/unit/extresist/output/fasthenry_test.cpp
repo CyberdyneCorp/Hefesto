@@ -9,11 +9,34 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <utility>
 
 #include "hefesto/extresist/output/output.hpp"
 
 namespace db = hefesto::db;
 namespace extresist = hefesto::extresist;
+
+namespace {
+
+// NetNode and NetResistor gained fields in M7 R4 (RESNET); these build the
+// ones the output tests set.
+[[maybe_unused]] extresist::NetNode net_node(db::Point at, std::string name, double cap) {
+  extresist::NetNode n;
+  n.location = at;
+  n.name = std::move(name);
+  n.cap = cap;
+  return n;
+}
+
+[[maybe_unused]] extresist::NetResistor net_resistor(std::size_t a, std::size_t b, double ohms) {
+  extresist::NetResistor r;
+  r.a = a;
+  r.b = b;
+  r.resistance = ohms;
+  return r;
+}
+
+}  // namespace
 
 TEST_CASE("the FastHenry reference plane segments", "[cap:extresist-output][req:FastHenry geometry file]") {
   const std::string text = extresist::fasthenry_reference("top", db::Rect{0, 0, 40, 200}, 0.1F);
@@ -54,8 +77,8 @@ TEST_CASE("FastHenry ids run across the file with magic-compat OFF",
 
 TEST_CASE("a centerline element between unnamed nodes", "[cap:extresist-output][req:Geometry centerlines]") {
   extresist::Network net;
-  net.nodes = {extresist::NetNode{db::Point{100, 2}, "", 0}, extresist::NetNode{db::Point{0, 2}, "", 0}};
-  net.resistors = {extresist::NetResistor{0, 1, 10.0}};
+  net.nodes = {net_node(db::Point{100, 2}, "", 0), net_node(db::Point{0, 2}, "", 0)};
+  net.resistors = {net_resistor(0, 1, 10.0)};
   std::int32_t next = 1;
   const auto elements = extresist::geometry_elements(net, next);
   REQUIRE(elements.size() == 1);

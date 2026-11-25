@@ -11,6 +11,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../command/resist_fixture.hpp"
@@ -22,10 +23,28 @@ namespace extflat = hefesto::extflat;
 
 namespace {
 
+// NetNode and NetResistor gained fields in M7 R4 (RESNET); these build the
+// ones the output tests set.
+[[maybe_unused]] extresist::NetNode net_node(db::Point at, std::string name, double cap) {
+  extresist::NetNode n;
+  n.location = at;
+  n.name = std::move(name);
+  n.cap = cap;
+  return n;
+}
+
+[[maybe_unused]] extresist::NetResistor net_resistor(std::size_t a, std::size_t b, double ohms) {
+  extresist::NetResistor r;
+  r.a = a;
+  r.b = b;
+  r.resistance = ohms;
+  return r;
+}
+
 extresist::Network two_node_net(const std::string& a, const std::string& b) {
   extresist::Network n;
-  n.nodes = {extresist::NetNode{db::Point{0, 0}, a, 1000.0}, extresist::NetNode{db::Point{50, 0}, b, 500.0}};
-  n.resistors = {extresist::NetResistor{0, 1, 2000.0}};
+  n.nodes = {net_node(db::Point{0, 0}, a, 1000.0), net_node(db::Point{50, 0}, b, 500.0)};
+  n.resistors = {net_resistor(0, 1, 2000.0)};
   return n;
 }
 
@@ -68,8 +87,8 @@ TEST_CASE("a global net's nodes are named without the trailing bang",
 TEST_CASE("terminal nodes are named first and a node with the net's name keeps it",
           "[cap:extresist-output][req:Naming of network nodes]") {
   extresist::Network net;
-  net.nodes = {extresist::NetNode{{0, 0}, "", 0}, extresist::NetNode{{1, 0}, "", 0},
-               extresist::NetNode{{2, 0}, "out", 0}};
+  net.nodes = {net_node(db::Point{0, 0}, "", 0), net_node(db::Point{1, 0}, "", 0),
+               net_node(db::Point{2, 0}, "out", 0)};
   const std::vector<extresist::TerminalNode> terminals{{0, extresist::Terminal::source, 1},
                                                        {1, extresist::Terminal::drain, 2}};
   CHECK_FALSE(extresist::name_nodes("out", net, terminals));  // "out" stays: not killed

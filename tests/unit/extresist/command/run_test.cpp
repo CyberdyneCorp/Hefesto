@@ -90,16 +90,22 @@ TEST_CASE("a missing .ext file is reported and the run goes on", "[cap:extresist
   CHECK_FALSE(s.files().exists(platform::Path{"top.res.ext"}));
 }
 
-// RESNET's network is needed for each processed net (integration).
-TEST_CASE("a processed net needs RESNET's network", "[cap:extresist-command][req:Run flow]") {
+// Each processed net goes through RESNET's network (wired at the M7 R4
+// integration): with no layout under the node the net is not extracted,
+// Magic's "Error in extracting node" is printed and the run goes on.
+TEST_CASE("a processed net with no layout is reported and the run goes on", "[cap:extresist-command][req:Run flow]") {
   Session s;
   REQUIRE(s.files().write_atomic("top.ext", kTwoNets).ok());
   REQUIRE(s.files().write_atomic("top.res.ext", "previous\n").ok());
-  const cmd::CommandResult r = s.run("extresist all");
-  REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().code == "CORE-NOTIMPL-008");
-  CHECK(has(s.take(), "Extracting b"));  // nets in reverse order of first mention
-  CHECK(s.file("top.res.ext") == "previous\n");
+  REQUIRE(s.run("extresist all").ok());
+  const std::vector<std::string> printed = s.take();
+  for (const std::string& line : printed) {
+    UNSCOPED_INFO(line);
+  }
+  CHECK(has(printed, "Extracting b"));  // nets in reverse order of first mention
+  CHECK(has(printed, "Error in extracting node b"));
+  CHECK(has(printed, "Error in extracting node a"));
+  CHECK(s.file("top.res.ext") == extresist::res_ext_scale(*s.editor.extract.current));
 }
 
 // Q-EXTRACT-27 (fix, both modes): a cancelled run writes nothing.

@@ -473,6 +473,9 @@ DeviceAnnotations InputModel::annotations(std::size_t node) const {
     const InputDevice& d = devices[on.device];
     NetDevice nd;
     nd.name = d.model;
+    nd.model = d.model;
+    nd.location = d.location;
+    nd.type = d.tile_type.value_or(tech::kSpace);
     for (const auto& term : {d.gate, d.source, d.drain, d.subs}) {
       if (term) {
         nd.terminals.push_back(*term);
