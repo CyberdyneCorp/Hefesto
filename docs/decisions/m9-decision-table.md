@@ -12,6 +12,8 @@ M9 ("LVS, simulation and advanced analog simulation → Desktop Beta", `docs/roa
 
 **Status: drafted 2026-11-22, approved by the user 2026-11-22.** Every row was approved with its recommended option, with no option changed ("Decisions of 2026-11-22" below). INTEGRATION recorded the answers (m9 tasks 1.1–1.4): each entry now has `Status: approved 2026-11-22` and a `Resolution:` line, D-22 to D-28 have a `Status:` line, and `check_milestone_readiness.py --milestone M9` reports `M9: ready`. The tables below keep the recommendations as drafted; the column "Recommendation" is the approved decision.
 
+**Round 1 status (2026-11-25).** No new user decision this round. Still open, awaiting the user: F1 (ngspice-47 statistical `.param` patch; task 3.3 waits), F2 (patch 0004 approval), Q-SIM-27 (Beta cell drawn in Hefesto), the netgen header provenance re-check at `93dcda14`, the clean-room roster attestation, the outside reviewer for the licensing mapping table (`docs/contributing/cleanroom.md`), and the Q-SIM-22 enforcement gap. None of these is approved.
+
 **Verify rows at G0.** Four rows (Q-SIM-8, Q-SIMADV-3, -4, -9) are settled by reference runs that need the patched capture image, which is built only after G0. They are therefore approved at G0 as rules, recorded as conditional `Resolution:` lines ("verify: (a) if the D-22 run shows the later `.param` taking effect, otherwise (b)"), which the readiness check counts as resolved. Task 3.3 later adds each row's `Verified` line with the run id. A result that no branch of the approved rule covers goes back to the user before gate G2-SIM.
 
 ## Decisions of 2026-11-22

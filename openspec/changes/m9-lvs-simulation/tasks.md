@@ -47,6 +47,8 @@ How this plan runs:
 
   As landed (PR #94 via m9-round0, LVS spec team, 2026-11-24): `docs/contributing/cleanroom.md` section "netgen clean room for LVS (M9)": LVS spec and implementation teams by role, the D3 workstream table, the roster rule (no netgen reader on LVSCMD, SCHEMSIM 16.3 or task 3.5), the D2 session rules, an implementation instruction block, the LVS checks, the LVS roster and the hefesto-licensing mapping table. **Open:** the sign-off of a reviewer outside both LVS teams on the mapping table (raised to the user).
 - [ ] 2.2 Paraphrase review of the eight `lvs-*` specs and `docs/decisions/open-questions/LVS.md`, starting with `lvs-comparison-algorithm` and `lvs-device-reduction`. Rewrite each finding as behaviour, and record the findings in `docs/decisions/m9-paraphrase-review.md`. Verify `openspec validate --all --strict` and a second spec-team signature.
+
+  As landed, first signature (branch m9-round1-lvsspec, LVS spec team, 2026-11-25): `docs/decisions/m9-paraphrase-review.md` records 29 findings (LPR-1 to LPR-29: 7 in `lvs-comparison-algorithm`, 4 in `lvs-device-reduction`, 2 in `lvs-netlist-input`, 2 in `lvs-property-matching`, 1 in `lvs-setup-file`, 1 in `lvs-hierarchy`, 12 in `LVS.md`), each rewritten as behaviour with no heading, scenario or `Resolution:` change, and 3 open items (OI-1 Q-LVS-3 Resolution against `lvs-netlist-input` cell lookup; OI-2 parallel-merge `_tag` markers unstated; OI-3 proposed rewordings of code-flavoured `Resolution:` lines, for the user). **Open:** the second spec-team signature (round 2); 2.2 stays unticked until then.
 - [x] 2.3 Extend `scripts/check_cleanroom.py` and its tests:
   - netgen's GPL header in any tracked file;
   - `netgen ref:` traces under `src/` and `tests/`;

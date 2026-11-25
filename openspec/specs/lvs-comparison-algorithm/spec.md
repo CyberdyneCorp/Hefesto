@@ -33,7 +33,7 @@ For each compared cell, after device reduction, the engine SHALL build a biparti
 - **Nets.** There SHALL be one net vertex per net that at least one instance pin connects to. Nets connected to nothing, including unconnected ports, SHALL NOT be vertices.
 - **Edges.** Each instance pin SHALL be an edge to its net.
 
-The vertices of both circuits SHALL be placed in one shared partition structure. Each vertex remembers which circuit it came from. Device vertices SHALL be ordered circuit 1 first, then circuit 2, each in instance order. Net vertices SHALL be ordered circuit 1 first, then circuit 2, each in increasing net number.
+The vertices of both circuits SHALL be partitioned together: one class can hold vertices of both circuits, and the circuit of every vertex is known. The vertex order SHALL be: devices of circuit 1, then devices of circuit 2, each in instance order; nets of circuit 1, then nets of circuit 2, each in increasing net number.
 
 If circuit 1 or circuit 2 has no devices, the comparison SHALL stop with `Circuit <c> contains no devices.` If it has no nets, it SHALL stop with `Circuit <c> contains no nets.`
 Compatibility: behavioral
@@ -76,7 +76,7 @@ Compatibility: exact
 - **THEN** all 8 net vertices SHALL be in one net class, and the 2 + 2 devices SHALL be in two device classes (pmos, nmos)
 
 ### Requirement: Partition legality
-A class SHALL be legal when it holds equally many vertices from circuit 1 and from circuit 2. Each time classes are re-formed, all illegal classes SHALL be merged into a single illegal class placed first in the class list. This merging SHALL raise the sticky "bad match" condition. The condition stays raised until the comparison is reset.
+A class SHALL be legal when it holds equally many vertices from circuit 1 and from circuit 2. Each time classes are re-formed, all illegal classes SHALL be combined into a single illegal class, which comes first in class order (the order in which classes are listed and visited). Whenever illegal classes are combined, the comparison SHALL enter the "bad match" condition. It stays in that condition until the comparison is reset, even if later rounds leave no illegal class.
 
 A class of exactly two vertices from the same circuit SHALL be marked illegal during refinement.
 Compatibility: exact
@@ -88,14 +88,10 @@ Compatibility: exact
 - **THEN** the nmos class SHALL be illegal and the bad-match condition SHALL be raised
 
 ### Requirement: Iterative refinement
-Refinement SHALL repeat rounds until convergence. One round SHALL work as follows:
-1. Give every device class and net class a fresh pseudo-random label.
-2. Recompute the key of every device d:
-   key(d) ← old_key(d) ⊕ Σ over pins p of d with a net (label(p) ⊕ label(class(net(p))))
-3. Re-partition the device classes by the new keys.
-4. Recompute the key of every net n:
-   key(n) ← Σ over pins p on n (label(p) ⊕ key(device(p)) ⊕ label(class(device(p))))
-5. Re-partition the net classes by the new keys.
+Refinement SHALL proceed in rounds until convergence. In effect, a round separates the devices of a class whose pins reach different net classes, and then separates the nets of a class whose pins lead to different device classes, each pin weighted by its pin label. Precisely, in each round:
+- **Labels.** Every device class and net class SHALL first receive a fresh pseudo-random label (Requirement "Pseudo-random labels").
+- **Device keys.** The new key of a device d SHALL be its previous key ⊕ the sum, over the pins p of d that are on a net, of (label(p) ⊕ the label of the class of p's net). Device classes SHALL then be split so that two devices stay in one class only if their new keys are equal.
+- **Net keys.** After the device classes are split, the new key of a net n SHALL be the sum, over the pins p on n, of (label(p) ⊕ the new key of p's device ⊕ the label of the class of p's device). Net classes SHALL then be split in the same way by the new net keys.
 
 Arithmetic SHALL be unsigned 64-bit, with wrap-around addition and bitwise XOR (⊕).
 
@@ -119,7 +115,7 @@ Compatibility: exact
 ### Requirement: Match verification
 After refinement, verification SHALL return one of these results, applying the checks in order:
 1. **−1 (mismatch).** If the bad-match condition is raised, or any device class or net class has unequal counts from the two circuits.
-2. **Property check.** Each device class with exactly one vertex from each circuit SHALL be property-checked once (capability `lvs-property-matching`). A failed check SHALL set the property-error state. A pair that passed SHALL not be checked again.
+2. **Property check.** Each device class with exactly one vertex from each circuit SHALL be property-checked once (capability `lvs-property-matching`). A failed check SHALL be remembered as a property error of the comparison. A pair that passed SHALL not be checked again.
 3. **k > 0 (symmetries).** k is the number of classes (device plus net) that hold more than one vertex per circuit.
 4. **−2 (port errors).** If k = 0 and any of these holds:
    - Some net class has different numbers of port nets from circuit 1 and circuit 2.
@@ -127,7 +123,7 @@ After refinement, verification SHALL return one of these results, applying the c
    - The counts are equal, but a disconnected port of circuit 1 has no same-named disconnected port in circuit 2.
 5. **0 (unique match).** Otherwise.
 
-The property-error state SHALL be one of three values: none, errors found, or failure to compare.
+The property outcome that the comparison remembers SHALL be one of three: no property errors, property errors found, or a property check that could not compare (Q-LVS-10).
 Compatibility: exact
 (netgen ref: base/netcmp.c:6491-6565)
 
@@ -145,10 +141,10 @@ Compatibility: exact
 `run resolve` (the default `run` option) SHALL do the following:
 1. Converge as `run converge` does.
 2. Verify. If the result is k > 0, attempt these resolvers in order. Each stage runs only while symmetries remain.
-   a. **By property** (prints `Resolving symmetries by property value.`). Within each symmetric device class, devices whose properties match are grouped under fresh keys. Each group is trimmed so that it holds equally many devices from each circuit; the extra devices return to the original class.
-   b. **By pin name** (prints `Resolving symmetries by pin name.`). Within each symmetric net class, a circuit-1 net and a circuit-2 net with equal names, where at least one of them is a port, get a shared fresh key.
+   a. **By property** (prints `Resolving symmetries by property value.`). Within each symmetric device class, each set of devices whose properties match SHALL become a class of its own. Such a new class keeps equally many devices from each circuit; the surplus devices stay in the original class.
+   b. **By pin name** (prints `Resolving symmetries by pin name.`). Within each symmetric net class, a circuit-1 net and a circuit-2 net with equal names, where at least one of them is a port, SHALL together become a class of their own.
    c. **By net name** (prints `Resolving symmetries by net name.`). The same as (b) but without the port condition.
-   d. **Arbitrary.** Repeatedly take the first symmetric class (device classes before net classes). Pair the last circuit-1 vertex with the last circuit-2 vertex under a fresh key. Converge, and continue while symmetries remain and no mismatch appears.
+   d. **Arbitrary.** Repeatedly take the first symmetric class in class order (device classes before net classes). Its last circuit-1 vertex and its last circuit-2 vertex, in vertex order, SHALL together become a class of their own. Converge, and continue while symmetries remain and no mismatch appears.
 
 After each of a–c, the engine SHALL re-partition, enable exhaustive mode, refine until convergence or a mismatch appears, and verify again.
 
@@ -220,7 +216,7 @@ Compatibility: exact
 - **THEN** the result SHALL be 0
 
 ### Requirement: Pseudo-random labels
-Fresh labels SHALL be drawn from a deterministic pseudo-random generator, so that a given comparison always produces the same partition. Pin labels for a class SHALL be derived deterministically from the class identity, so that equal identities in both circuits give equal labels. netgen uses a Numerical-Recipes `ran2`-style generator scaled to [0, 2^31−1). The exact label values are not observable in results. Hefesto MAY use any generator that meets these determinism and equality properties (see Q-LVS-4).
+Fresh labels SHALL be drawn from a deterministic pseudo-random generator, so that a given comparison always produces the same partition. Pin labels for a class SHALL be derived deterministically from the class identity, so that equal identities in both circuits give equal labels. Which generator netgen uses, and the exact label values, are not observable in results. Hefesto MAY use any generator that meets these determinism and equality properties (see Q-LVS-4).
 Compatibility: informative
 (netgen ref: base/netcmp.c:3018-3021, base/pdutils.c:39-114)
 
@@ -238,7 +234,7 @@ Compatibility: native
 - **THEN** the arbitrary pairings reported SHALL be identical on both
 
 ### Requirement: Long-running comparisons
-The comparison SHALL run on a background worker (capability `hefesto-architecture`). It SHALL be cancellable between refinement rounds. A cancelled refinement SHALL leave the partition consistent: reports can still be produced, and the result SHALL be marked cancelled. netgen implements this with an interrupt flag checked between rounds.
+The comparison SHALL run on a background worker (capability `hefesto-architecture`). It SHALL be cancellable between refinement rounds. A cancelled refinement SHALL leave the partition consistent: reports can still be produced, and the result SHALL be marked cancelled. netgen, too, can be interrupted between rounds.
 Compatibility: native
 (Hefesto decision: docs/decisions/product.md#P-5)
 
