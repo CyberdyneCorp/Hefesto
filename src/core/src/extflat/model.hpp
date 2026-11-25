@@ -122,6 +122,10 @@ struct Def {
   /// def_nodes: name string -> name entry. Never iterated in an order
   /// that reaches the output.
   std::unordered_map<std::string, std::uint32_t> names;
+  /// def_nodes' iteration order (Magic's string-keyed table, requested size
+  /// INITNODESIZE 32): every key of `names`, inserted when the name is
+  /// first entered. topVisit walks the ports in this order.
+  util::MagicHashTable<char> name_order{32};
   /// def_uses, iterated in Magic's hash-table order (requested size 32).
   util::MagicHashTable<std::uint32_t> use_table{32};
   std::vector<Use> uses;     // storage; use_table values index it

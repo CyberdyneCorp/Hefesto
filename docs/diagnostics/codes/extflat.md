@@ -45,7 +45,10 @@ than once in def!`, `EXTFLAT-READ-006` the shorted-ports warning of an
 `EXTFLAT-READ-012` the two `Device ... overlaps ...` messages of a device
 record at the place of an incompatible one. While flattening,
 `EXTFLAT-READ-007` is Magic's `connect(1): no such node <n>`,
-`connect(2): ...` and `kill: no such node <n>`, and `EXTFLAT-READ-008`
+`connect(2): ...` and `kill: no such node <n>`, and, in the port
+promotion of `ext2spice hierarchy on` (esMakePorts, `extflat::make_ports`),
+`Error:  Node <n> not found in cell <cell>!` for a parent net of a
+`merge` that the cell does not have; and `EXTFLAT-READ-008`
 the lines of efFlatGlobError for a global name (from the project setting
 "global nets and power names") split over unconnected nodes, which are
 merged.
@@ -86,6 +89,10 @@ warning of flat mode (none in one-level flattening). New codes:
 - `EXTFLAT-READ-015`: `extflat::parse_common_args` (EFArgs) for an
   unrecognised flag, a flag without its value (`-<c> requires a following
   <what>`, `Bad argument <word>`) or `-h`; the text ends with EFArgs' usage.
+- `EXTFLAT-READ-001` with `ext2spice`: with magic-compat ON the text
+  `Cannot read extract file <name>.ext` is the command's result and the
+  command succeeds, as EFReadFile's Tcl result in Magic; with it OFF the
+  command fails with this code.
 - `EXTFLAT-READ-016`: EFArgs' messages that do not fail the command:
   `Warning: multiple input files specified; ignoring "<name>"` and the
   efSymAdd rejections of a `-s` symbol.
@@ -112,7 +119,7 @@ fails when the two disagree.
 | `EXTFLAT-READ-006` | warning | An `equiv` record joins two ports of one cell (`Ports "a" and "b" are electrically shorted.`). |
 | `EXTFLAT-READ-007` | warning | A merge or kill names a node the flattened hierarchy does not have (`connect(1): no such node <name>`). |
 | `EXTFLAT-READ-008` | info | A global node name is split over unconnected nodes, which are merged (`*** Global name <g> not fully connected:`). |
-| `EXTFLAT-READ-009` | error | The `.ext` input passes a resource cap of the read (file size, line length, cells, depth, instances, names or connections); the read fails. |
+| `EXTFLAT-READ-009` | error | The `.ext` input passes a resource cap of the read (file size, line length, cells, depth, instances, names, connections or a `port` record's number); the read fails. |
 | `EXTFLAT-READ-010` | error | The `use` records of the `.ext` files form a cycle; the read fails. |
 | `EXTFLAT-READ-011` | warning | A `.ext` line has more than 128 tokens; the line is ignored with this warning, in both modes. |
 | `EXTFLAT-READ-012` | warning | A `device` record overlaps an incompatible device at the same place and is ignored. |

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -82,6 +83,44 @@ struct InstanceCall {
 /// advanced when the instance is numbered.
 [[nodiscard]] std::string instance_line(const InstanceCall& call, Dialect format, bool renumber, int& counter,
                                         const extflat::NameFlags& names, const NameConverter& convert);
+
+/// One subcircuit call of a hierarchical section (subcktHierVisit), for
+/// one use or array element.
+struct HierCall {
+  std::string cell;                       // the used definition
+  std::vector<std::string> path;          // the use id with the element's subscript (`r[0]`, `a2[1,0]`)
+  std::shared_ptr<const std::vector<extflat::PortEntry>> ports;  // the definition's port entries, shared by a use's elements
+  bool devices_absent = false;            // DEF_NODEVICES: absorbed, no call unless a stub
+  bool stub = false;                      // abstract or primitive with blackbox on
+};
+
+/// One section of hierarchical output: a definition's one-level netlist
+/// (`input.cell` is its name, `input.ports` its port entries), whether it
+/// is written as a black-box stub, whether it opens with a `.subckt` line
+/// (else `* Top level circuit`), and its calls in use order.
+struct HierSection {
+  SpiceInput input;
+  bool stub = false;
+  bool wrapped = true;
+  std::vector<HierCall> calls;
+};
+
+/// What the hierarchical file starts with: the header of `root`, and the
+/// `.global` card of the style's substrate names (`table`) and the power
+/// names.
+struct HierHead {
+  SpiceInput root;
+  std::vector<extract::DeviceInfo> table;
+  PowerNames power;
+};
+
+/// The hierarchical netlist (ext2spice.c CmdExtToSpice with `hierarchy
+/// on`): the header and `.global` card, then the sections in order
+/// (children first, the root last).
+[[nodiscard]] WriteResult write_hier(const HierHead& head, const std::vector<HierSection>& sections,
+                                     const SpiceSettings& settings, const RunFlags& flags,
+                                     const compat::CompatSettings& compat, extflat::NameFlags& names,
+                                     const NameConverter& convert = {});
 
 /// `name` with an `x` prefix when it does not start with a letter.
 [[nodiscard]] std::string subcircuit_name(std::string_view name);

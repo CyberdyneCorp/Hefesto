@@ -108,12 +108,12 @@ void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path
   }
 }
 
-diag::Outcome<std::string> read_text(CellIoContext& ctx, const platform::Path& file) {
+diag::Outcome<std::string> read_text(CellIoContext& ctx, const platform::Path& file, std::uint64_t max_inflated) {
   auto data = ctx.fs.read(file);
   if (!data) {
     return data.error();
   }
-  return maybe_decompress(std::move(data).value());
+  return maybe_decompress(std::move(data).value(), max_inflated);
 }
 
 /// "Path conflicts on explicit load and placement" (load): false when the
@@ -340,7 +340,7 @@ diag::Status read_cell(CellIoContext& ctx, db::CellDef& def, const ReadOptions& 
     report_missing(ctx, def, options);
     return diag::make(codes::kNotFound, "Cell " + def.name() + " couldn't be read");
   }
-  auto text = read_text(ctx, found->path);
+  auto text = read_text(ctx, found->path, options.max_inflated_bytes);
   if (!text) {
     report_missing(ctx, def, options);
     return text.error();

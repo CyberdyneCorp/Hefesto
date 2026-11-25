@@ -113,6 +113,7 @@ void add_to_existing(ReadState& st, Def& def, std::uint32_t entry, const NodeRec
 void add_alias(Def& def, std::uint32_t node, std::string_view name, bool never_preferred) {
   const std::uint32_t entry = def.graph.add_name(name_from_string(name), node);
   def.names[std::string{name}] = entry;
+  def.name_order.find_or_insert(std::string{name});
   const GraphNode& n = def.graph.node(node);
   const bool top_port = (n.flags & kFlagTopPort) != 0;
   if (n.head == kNil ||
@@ -696,6 +697,7 @@ void build_node(ReadState& st, Def& def, const NodeRecord& r) {
   const std::uint32_t id = def.graph.add_node(std::move(node));
   const std::uint32_t name = def.graph.add_name(name_from_string(r.name), id);
   def.names[std::string{r.name}] = name;
+  def.name_order.find_or_insert(std::string{r.name});
   def.graph.link_head(id, name);
 }
 

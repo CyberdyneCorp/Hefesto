@@ -1,0 +1,8 @@
+magic
+tech exttest
+timestamp 100
+<< poly >>
+tri 0 0 4 4 sw
+<< ndiff >>
+tri 0 0 4 4 ne
+<< end >>

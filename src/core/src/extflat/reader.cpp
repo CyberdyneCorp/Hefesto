@@ -112,6 +112,7 @@ class FileReader {
   void scale(const std::vector<std::string>& argv);
   void node(const std::vector<std::string>& argv, bool substrate);
   void rnode(const std::vector<std::string>& argv);
+  void port(const std::vector<std::string>& argv);
   void equiv(const std::vector<std::string>& argv);
   void resistor(const std::vector<std::string>& argv);
   void resistclasses(const std::vector<std::string>& argv);
@@ -178,10 +179,7 @@ void FileReader::record(Key key, const std::vector<std::string>& argv) {
     case Key::node: node(argv, false); break;
     case Key::substrate: node(argv, true); break;
     case Key::rnode: rnode(argv); break;
-    case Key::port:
-      def_.subcircuit = def_.subcircuit || dosubckt_;
-      build_port_node(st_, def_, argv[1], as_int(argv, 2), as_int(argv, 3), as_int(argv, 4), argv[7], toplevel_);
-      break;
+    case Key::port: port(argv); break;
     case Key::subcap: adjust_subcap(st_, def_, argv[1], scaled_cap(argv[2], cscale_)); break;
     case Key::killnode: def_.kills.push_back(argv[1]); break;
     case Key::use: use(argv); break;
@@ -283,6 +281,20 @@ void FileReader::note_res_name(const std::string& name) {
   if (st_.res_names) {
     st_.res_names->insert(name);
   }
+}
+
+// A port number past the cap fails the read in both modes: the netlisters
+// number ports past the highest one (Magic sizes an array by it), so a
+// hostile number could exhaust memory or overflow (design D21).
+void FileReader::port(const std::vector<std::string>& argv) {
+  const int index = as_int(argv, 2);
+  if (index > st_.options.limits.max_port_index) {
+    st_.fail(codes::kLimit, st_.file + ", line " + std::to_string(st_.line) + ": port number " + std::to_string(index) +
+                                " is larger than " + std::to_string(st_.options.limits.max_port_index));
+    return;
+  }
+  def_.subcircuit = def_.subcircuit || dosubckt_;
+  build_port_node(st_, def_, argv[1], index, as_int(argv, 3), as_int(argv, 4), argv[7], toplevel_);
 }
 
 void FileReader::rnode(const std::vector<std::string>& argv) {

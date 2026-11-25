@@ -5,12 +5,15 @@
 // hefesto-testing-strategy "Parser fuzzing"). Each input is read into a new
 // cell of a session on the tiny test technology (the technology check is
 // skipped so every input reaches the body), then written back, so the
-// writer also sees whatever the reader accepted.
+// writer also sees whatever the reader accepted. A gzip input is inflated
+// first, as a `.mag.gz` is (maybe_decompress), with the cap lowered to
+// 1 MiB (resource cap; the default is cell::kMaxInflatedCellBytes).
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "fuzz_common.hpp"
 #include "hefesto/cell/host.hpp"
@@ -56,9 +59,14 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   if (!created.ok()) {
     return 0;
   }
+  constexpr std::uint64_t kInflateCap = std::uint64_t{1} << 20U;
+  const auto text = cell::maybe_decompress(std::string{hefesto::fuzz::as_text(data, size)}, kInflateCap);
+  if (!text.ok()) {
+    return 0;
+  }
   cell::ReadOptions options;
   options.ignore_tech = true;
-  (void)cell::read_mag(ctx, *created.value(), hefesto::fuzz::as_text(data, size), options);
+  (void)cell::read_mag(ctx, *created.value(), text.value(), options);
   (void)cell::write_mag(ctx, *created.value());
   return 0;
 }

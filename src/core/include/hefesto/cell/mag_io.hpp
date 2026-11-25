@@ -38,6 +38,14 @@ namespace hefesto::cell {
 /// (hefesto-mag-extensions "Reserved property namespace"); their values
 /// start with a schema version token `v<N>:`.
 inline constexpr std::string_view kExtensionPrefix = "HEFESTO_";
+
+/// The most bytes a compressed cell file may inflate to (cell-file-format
+/// "Compressed cell input"; security.md "Gzip bombs", Q-CELL-48): 1 GiB,
+/// the floor of the GDS inflate cap and the `.ext` file cap. The whole text
+/// is held in memory, so the cap is fixed rather than a ratio of the
+/// compressed size. Magic has no cap; real cells are tens of MiB at most.
+inline constexpr std::uint64_t kMaxInflatedCellBytes = std::uint64_t{1} << 30U;
+
 /// The newest extension schema version this build understands.
 inline constexpr int kExtensionVersion = 1;
 
@@ -112,6 +120,9 @@ struct ReadOptions {
   /// database/DBio.c:1581-1660, dbwind/DBWprocs.c:312,494)
   enum class Verbosity : std::uint8_t { none, errors, warnings, all };
   Verbosity verbosity = Verbosity::all;
+  /// read_cell: the cap on a compressed file's inflated size (smaller in
+  /// tests).
+  std::uint64_t max_inflated_bytes = kMaxInflatedCellBytes;
 
   /// True when a message of `level` is printed.
   [[nodiscard]] bool prints(Verbosity level) const noexcept { return verbosity >= level; }
@@ -124,8 +135,11 @@ struct ReadOptions {
 [[nodiscard]] diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view text,
                                     const ReadOptions& options = {});
 
-/// Decompresses gzip data; plain data is returned unchanged.
-[[nodiscard]] diag::Outcome<std::string> maybe_decompress(std::string data);
+/// Decompresses gzip data; plain data is returned unchanged. Inflating
+/// stops as soon as the output would pass `max_output` bytes (concatenated
+/// members count together), which fails with CELL-READ-013.
+[[nodiscard]] diag::Outcome<std::string> maybe_decompress(std::string data,
+                                                          std::uint64_t max_output = kMaxInflatedCellBytes);
 
 /// DBCellRead: reads `def` from its file when it is not yet available
 /// (lookup order, read-only detection, locking, recorded path). The

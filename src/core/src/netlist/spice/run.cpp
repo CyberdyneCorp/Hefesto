@@ -8,8 +8,7 @@
 // EFFlatBuild's flags), the writer's input from the current extraction
 // style (ExtGetDevInfo through ExtStyle::device_info()), and the output
 // file. render() writes no file and leaves EditorState::netlist untouched.
-// Hierarchical output (`hierarchy on`, tasks.md 11.6) is CORE-NOTIMPL-008
-// until it lands.
+// Hierarchical output (`hierarchy on`) is hier_run.cpp's.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) ext2spice/ext2spice.c:821-1100
 // (runexttospice) and 1416-1508 (spcParseArgs), Copyright (C) 1985, 1990
@@ -26,11 +25,11 @@
 #include "netlist/spice/run_impl.hpp"
 
 #include "hefesto/app/settings_layers.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extflat/args.hpp"
 #include "hefesto/extflat/hierarchy.hpp"
+#include "hefesto/netlist/session.hpp"
 #include "hefesto/netlist/spice/run_args.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -43,6 +42,8 @@ namespace {
 
 // NETLIST-SPICE-001: no cell argument and no window.
 constexpr std::string_view kNoCell = "NETLIST-SPICE-001";
+// EXTFLAT-READ-001: EFReadFile found no `.ext` file.
+constexpr std::string_view kCannotRead = "EXTFLAT-READ-001";
 
 constexpr std::string_view kUsage =
     "Usage: ext2spice [-B] [-o spicefile] [-M|-m] [-J flat|hier]\n"
@@ -179,6 +180,10 @@ std::vector<std::string> global_nets(const editor::EditorState& editor) {
   return names;
 }
 
+}  // namespace
+
+namespace detail {
+
 extflat::FlatFlags flat_flags(const SpiceSettings& settings) {
   extflat::FlatFlags flags = extflat::FlatFlags::flat_nodes;
   if (!settings.global) {
@@ -203,17 +208,13 @@ void apply_style(SpiceInput& input, const editor::EditorState& editor) {
   }
 }
 
-// EFReadFile(inName, esDoHierarchy, esDoExtResis, FALSE, TRUE)
-// (ext2spice.c:888) with EFOutputFlags' short mode, and the style lookups
-// the read takes from the session: extGetDevType/DBNumTypes, which key the
-// device table, and ExtCompareStyle for a `style` record.
-extflat::ReadOptions spice_read_options(const editor::EditorState& editor, const SpiceSettings& settings) {
-  extflat::ReadOptions options;
-  options.subcircuits = settings.hierarchy;
-  options.resist_overlay = settings.extresist;
-  options.noscale = false;
-  options.spice = true;
-  options.shorts = static_cast<extflat::ReadOptions::PortShorts>(settings.shorts);
+}  // namespace detail
+
+namespace {
+
+// The style lookups the read takes from the session: extGetDevType and
+// DBNumTypes, which key the device table, and ExtCompareStyle.
+void add_style_lookups(extflat::ReadOptions& options, const editor::EditorState& editor) {
   if (editor.technology) {
     options.tile_type_count = static_cast<std::int32_t>(editor.technology->type_count());
   }
@@ -231,6 +232,39 @@ extflat::ReadOptions spice_read_options(const editor::EditorState& editor, const
     const auto style = editor.extract.styles.select(name);
     return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
   };
+}
+
+}  // namespace
+
+namespace detail {
+
+// EFReadFile(inName, esDoHierarchy, esDoExtResis, FALSE, TRUE)
+// (ext2spice.c:888) with EFOutputFlags' short mode, and the style lookups
+// the read takes from the session: extGetDevType/DBNumTypes, which key the
+// device table, and ExtCompareStyle for a `style` record.
+extflat::ReadOptions read_options(const editor::EditorState& editor, const SpiceSettings& settings,
+                                  const compat::CompatSettings& compat) {
+  extflat::ReadOptions options;
+  options.magic_compat = compat.magic_compat;
+  options.tech_name = editor.technology ? editor.technology->name() : std::string{};
+  options.global_nets = global_nets(editor);
+  options.search_path = settings.search_path;
+  options.cell_directory = [&editor](std::string_view name) -> std::optional<std::string> {
+    const db::CellDef* def = editor.cells.find(name);
+    if (def == nullptr || def->file_path().empty()) {
+      return std::nullopt;
+    }
+    return def->file_path().parent_path().string();
+  };
+  if (editor.extract.current != nullptr) {
+    options.units_per_lambda = editor.extract.current->units_per_lambda;
+  }
+  options.subcircuits = settings.hierarchy;
+  options.resist_overlay = settings.extresist;
+  options.noscale = false;
+  options.spice = true;
+  options.shorts = static_cast<extflat::ReadOptions::PortShorts>(settings.shorts);
+  add_style_lookups(options, editor);
   return options;
 }
 
@@ -247,7 +281,7 @@ extflat::FlattenOptions flatten_options(const editor::EditorState& editor, const
   return options;
 }
 
-}  // namespace
+}  // namespace detail
 
 std::optional<std::size_t> parse_spice_flag(std::span<const std::string> args, std::size_t flag, RunArgs& run) {
   const std::string& word = args[flag];
@@ -267,22 +301,7 @@ diag::Outcome<SpiceInput> read_input(editor::EditorState& editor, std::string_vi
                                      platform::FileSystem& fs, diag::DiagnosticSink& sink,
                                      const extflat::SymbolTable& symbols) {
   cell::LookupContext lookup{fs, editor.search_paths, editor.path_variables, sink};
-  extflat::ReadOptions options = spice_read_options(editor, settings);
-  options.magic_compat = compat.magic_compat;
-  options.tech_name = editor.technology ? editor.technology->name() : std::string{};
-  options.global_nets = global_nets(editor);
-  options.search_path = settings.search_path;
-  options.cell_directory = [&editor](std::string_view name) -> std::optional<std::string> {
-    const db::CellDef* def = editor.cells.find(name);
-    if (def == nullptr || def->file_path().empty()) {
-      return std::nullopt;
-    }
-    return def->file_path().parent_path().string();
-  };
-  if (editor.extract.current != nullptr) {
-    options.units_per_lambda = editor.extract.current->units_per_lambda;
-  }
-  auto hierarchy = extflat::read(lookup, cell, options);
+  auto hierarchy = extflat::read(lookup, cell, read_options(editor, settings, compat));
   if (!hierarchy.ok()) {
     return hierarchy.error();
   }
@@ -316,6 +335,27 @@ void apply_trim(extflat::NameFlags& names, const std::string& chars) {
   names.convert_equal = names.convert_equal || chars.find('=') != std::string::npos;
   names.convert_brackets = names.convert_brackets || chars.find_first_of("[]") != std::string::npos;
 }
+
+}  // namespace
+
+// The netlist of one run: flat, or hierarchical with `hierarchy on`.
+// EFArgs' -t is applied to the name flags before the read, in both paths,
+// as EFArgs sets EFOutputFlags while it parses: with magic-compat ON (the
+// session's flags) a `-t` survives a failed read.
+diag::Outcome<WriteResult> write_run(editor::EditorState& editor, std::string_view cell, const RunRequest& request,
+                                     platform::FileSystem& fs, diag::DiagnosticSink& sink, extflat::NameFlags& names) {
+  apply_trim(names, request.trim_chars);
+  if (request.settings.hierarchy) {
+    return write_hierarchy(editor, cell, request, fs, sink, names);
+  }
+  auto input = read_input(editor, cell, request.settings, request.compat, fs, sink, request.symbols);
+  if (!input.ok()) {
+    return input.error();
+  }
+  return write_flat(input.value(), request.settings, request.flags, request.compat, names);
+}
+
+namespace {
 
 // The run's cell: the argument, else the current window's root cell.
 std::optional<std::string> run_cell(const editor::EditorState& editor, const extflat::CommonArgs& args) {
@@ -351,46 +391,57 @@ cmd::CommandResult with_messages(cmd::CommandResult result, std::vector<diag::Di
 
 cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<std::string>& args,
                                const compat::CompatSettings& compat, platform::FileSystem& fs) {
-  SpiceSettings& session = editor.netlist.spice;
+  // Q-NETLIST-54 (compat): spcParseArgs' -M -m -f -B -d -J set Magic's
+  // globals, so they hold for later runs with magic-compat ON; with it OFF
+  // they change a copy for this run only.
+  SpiceSettings run_copy = editor.netlist.spice;
+  SpiceSettings& session = compat.magic_compat ? editor.netlist.spice : run_copy;
   RunArgs run{session, {}, {}};
   auto parsed = extflat::parse_common_args(
       args, [&run](std::span<const std::string> words, std::size_t flag) { return parse_spice_flag(words, flag, run); },
       extflat::ArgOptions{true, false, extflat::file_reader(fs)});
   std::vector<diag::Diagnostic> messages = to_diagnostics(run.messages);
   if (!parsed.ok()) {
+    editor.netlist.search_path.clear();  // EFDone
     return with_messages(cmd::CommandResult::failure(parsed.error()), std::move(messages));
   }
   const extflat::CommonArgs& common = parsed.value();
   messages.insert(messages.end(), common.messages.begin(), common.messages.end());
-  if (!common.search_path.empty()) {
-    session.search_path = common.search_path;
-  }
+  // Q-NETLIST-61: -p holds for this run only (EFDone frees EFSearchPath).
+  const std::vector<std::string> search_path = take_search_path(editor.netlist, common.search_path);
   const auto cell = run_cell(editor, common);
   if (!cell) {
+    if (compat.magic_compat) {
+      editor.netlist.search_path = search_path;  // Magic returns here without EFDone
+    }
     return with_messages(cmd::CommandResult::failure(diag::make(kNoCell, "Point to a window or specify a cell name.")),
                          std::move(messages));
-  }
-  if (session.hierarchy) {
-    return with_messages(cmd::m7_not_implemented("ext2spice hierarchy"), std::move(messages));
   }
   // Q-NETLIST-42 (fix): `-o` names this run's file only. EFArgs takes it
   // for ext2spice (ArgOptions::output), into this run's CommonArgs.
   const std::string output = common.output.value_or(*cell + (session.format == Dialect::cdl ? ".cdl" : ".spice"));
-  const SpiceSettings local = run_settings(session, common);
-  diag::CollectingSink sink;
-  auto input = read_input(editor, *cell, local, compat, fs, sink, common.symbols);
-  for (diag::Diagnostic& d : sink.take()) {
-    messages.push_back(std::move(d));
-  }
-  if (!input.ok()) {
-    return with_messages(cmd::CommandResult::failure(input.error()), std::move(messages));
-  }
+  SpiceSettings local = run_settings(session, common);
+  local.search_path = search_path;
   // Q-NETLIST-16: the session's flags with magic-compat ON, fresh ones per
   // run with it OFF.
   extflat::NameFlags fresh;
   extflat::NameFlags& names = compat.magic_compat ? editor.netlist.names : fresh;
-  apply_trim(names, common.trim_chars);
-  const WriteResult written = write_flat(input.value(), local, run.flags, compat, names);
+  diag::CollectingSink sink;
+  auto result = write_run(editor, *cell, RunRequest{local, run.flags, compat, common.symbols, common.trim_chars},
+                          fs, sink, names);
+  for (diag::Diagnostic& d : sink.take()) {
+    messages.push_back(std::move(d));
+  }
+  if (!result.ok()) {
+    // EFReadFile sets `Cannot read extract file <cell>.ext` as the Tcl
+    // result and the command succeeds: copied with magic-compat ON; with
+    // it OFF the run fails with the diagnostic.
+    if (compat.magic_compat && result.error().code == kCannotRead) {
+      return with_messages(cmd::CommandResult::success(result.error().text + "\n"), std::move(messages));
+    }
+    return with_messages(cmd::CommandResult::failure(result.error()), std::move(messages));
+  }
+  const WriteResult& written = result.value();
   if (!fs.write_atomic(output, written.text).ok()) {
     // A Tcl result in Magic, not a printed line.
     return with_messages(
@@ -408,20 +459,17 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
 
 diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view cell,
                                   const SpiceSettings& settings) {
-  const SpiceSettings local = settings;
-  if (local.hierarchy) {
-    return cmd::m7_not_implemented_diagnostic("ext2spice hierarchy");
-  }
   platform::LocalFileSystem fs;
   diag::CollectingSink sink;
   const compat::CompatSettings compat = session_compat(editor);
-  auto input = detail::read_input(editor, cell, local, compat, fs, sink, {});
-  if (!input.ok()) {
-    return input.error();
-  }
   // A fresh copy of the name flags: render never changes the session.
   extflat::NameFlags names = compat.magic_compat ? editor.netlist.names : extflat::NameFlags{};
-  return write_flat(input.value(), local, RunFlags{}, compat, names).text;
+  auto written = detail::write_run(editor, cell, detail::RunRequest{settings, RunFlags{}, compat, {}, {}}, fs, sink,
+                                   names);
+  if (!written.ok()) {
+    return written.error();
+  }
+  return written.value().text;
 }
 
 cmd::CommandResult run(editor::EditorState& editor, const SpiceRun& request) {

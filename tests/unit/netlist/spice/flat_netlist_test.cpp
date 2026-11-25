@@ -139,13 +139,17 @@ TEST_CASE("The subcircuit header renames a numeric cell and wraps at 80 columns"
 TEST_CASE("Implicit and duplicate ports are numbered as Magic does",
           "[cap:netlist-spice-options][req:Subcircuit header line]") {
   spice::SpiceInput in = nltest_input("cell");
-  in.nodes = {node("a"), node("b"), node("c")};
-  in.ports = {{"a", -1}, {"b", 0}, {"c", -1}, {"b", 3}};
+  in.nodes = {node("a"), node("b"), node("c"), node("d"), node("x")};
+  in.ports = {{"a", -1}, {"b", 0}, {"c", -1}, {"d", 3}};
+  // A node `x` with the alias `y`: both table entries name it, once.
+  in.nodes.back().aliases.push_back("y");
+  in.ports.push_back(spice::RootPort{"x", 1, {{"y", -1}}, std::nullopt});
+  in.ports.push_back(spice::RootPort{"y", -1, {}, extflat::PortName{"x", 1}});
   spice::SpiceSettings on;
   on.subckt_top = spice::TopSubckt::on;
-  // Implicit ports take 4 and 5 in reverse table order (c then a); the
-  // second `b` is a duplicate name and is not written.
-  CHECK(write(in, on).text.find(".subckt cell b c a\n") != std::string::npos);
+  // Implicit ports take 4 and 5 in reverse table order (c then a); `x` is
+  // written once although two entries name it.
+  CHECK(write(in, on).text.find(".subckt cell b x d c a\n") != std::string::npos);
 }
 
 TEST_CASE("Subcircuit calls use the instance path or a number", "[cap:netlist-spice-options][req:Subcircuit instance lines]") {
