@@ -500,10 +500,17 @@ void one_device(Context& ctx, const DeviceRegionTiles& reg) {
 
 DeviceResult find_devices(const DeviceInputs& inputs, std::vector<DeviceRegionTiles>& regions) {
   DeviceResult out;
+  // With magic-compat OFF each device type is its own device (EX-P03): the
+  // walks and boundaries use the split device connectivity.
+  std::optional<ExtStyle> split;
+  if (!inputs.compat.magic_compat) {
+    split = *inputs.style;
+    split->device_conn = device_detail::device_connectivity(inputs.style->device_conn, false);
+  }
   Context ctx{inputs,
               *inputs.cell,
               *inputs.technology,
-              *inputs.style,
+              split ? *split : *inputs.style,
               inputs.node_of ? inputs.node_of : client_slot_lookup(*inputs.cell),
               out,
               {}};

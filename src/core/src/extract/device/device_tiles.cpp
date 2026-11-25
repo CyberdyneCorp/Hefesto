@@ -316,6 +316,7 @@ std::vector<DeviceRegionTiles> find_device_regions(const db::CellDef& cell, cons
   std::vector<DeviceRegionTiles> found;
   device_detail::TileSet visited;
   const auto accept = [](tech::PlaneId, const db::TileView&) { return true; };
+  const std::vector<tech::TypeMask> conn = device_detail::device_connectivity(style.device_conn, style.magic_compat);
   for (std::size_t p = tech::kFirstUserPlane; p < cell.plane_count(); ++p) {
     const auto pnum = static_cast<tech::PlaneId>(p);
     (void)cell.plane(pnum).enumerate(db::whole_plane(), style.device_types, [&](const db::TileView& t) {
@@ -325,7 +326,7 @@ std::vector<DeviceRegionTiles> find_device_regions(const db::CellDef& cell, cons
       DeviceRegionTiles r;
       r.first = t;
       r.first_plane = pnum;
-      r.tiles = walk_region(cell, technology, style.device_conn, {pnum, t}, visited, accept);
+      r.tiles = walk_region(cell, technology, conn, {pnum, t}, visited, accept);
       bool first = true;
       for (const auto& [tp, tv] : r.tiles) {
         add_region_tile(r, tp, tv, first);
@@ -337,6 +338,21 @@ std::vector<DeviceRegionTiles> find_device_regions(const db::CellDef& cell, cons
   std::reverse(found.begin(), found.end());  // prepended to the region list
   return found;
 }
+
+namespace device_detail {
+
+std::vector<tech::TypeMask> device_connectivity(const std::vector<tech::TypeMask>& conn, bool magic_compat) {
+  if (magic_compat) {
+    return conn;
+  }
+  std::vector<tech::TypeMask> out = conn;
+  for (std::size_t t = 0; t < out.size(); ++t) {
+    out[t] = out[t] & tech::TypeMask::of(static_cast<tech::TileType>(t));
+  }
+  return out;
+}
+
+}  // namespace device_detail
 
 DeviceNodeLookup client_slot_lookup(const db::CellDef& cell) {
   return [&cell](tech::PlaneId plane, const db::TileView& t) -> std::optional<std::size_t> {
