@@ -1,0 +1,11 @@
+file mkdir out
+set status 0
+schematic pdk gf180mcuD
+schematic open pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+if {[catch {schematic netlist out/test_nfet_03v3.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk gf180mcuD
+schematic open pdk/gf180mcuD/libs.tech/xschem/tests/test_cap_mim_1f0fF.sch
+if {[catch {schematic netlist out/test_cap_mim_1f0fF.spice -force}]} {set status 10}
+schematic close -discard
+quit $status

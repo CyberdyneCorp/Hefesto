@@ -113,4 +113,10 @@ struct NetNaming {
 [[nodiscard]] std::string net_text(std::string_view net, const NetNaming& naming, std::string_view bus_replacement,
                                    BusBudget* budget = nullptr);
 
+/// The `@#<n>:net_name` text of `net` ("Format string substitution"): the
+/// net as named, not bus-expanded (`Z[6:0]`) and an automatic name with its
+/// `#` (`#net1`), golden cases SCHEM-NL-02, NL-04 and NL-06; `[`/`]` are
+/// replaced as in `net_text`.
+[[nodiscard]] std::string net_name(std::string_view net, std::string_view bus_replacement);
+
 }  // namespace hefesto::schem

@@ -19,3 +19,4 @@ HEFESTO_SCHEM_CODE("SCHEM-CMD-007", error, "The PDK named by `schematic pdk` has
 HEFESTO_SCHEM_CODE("SCHEM-CMD-008", error, "`xschem`: unsupported subcommand, `get` key or `set` variable.")
 HEFESTO_SCHEM_CODE("SCHEM-CMD-009", error, "`xschem set netlist_type`: only `spice` is supported.")
 HEFESTO_SCHEM_CODE("SCHEM-CMD-010", error, "`xschem place_symbol` needs the interactive editor.")
+HEFESTO_SCHEM_CODE("SCHEM-CMD-011", error, "`schematic netlist` or `check` was interrupted; no file is written.")

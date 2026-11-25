@@ -122,3 +122,35 @@ TEST_CASE("the desktop install root never comes from the working directory",
   CHECK(from_dot.empty());
   CHECK(from_bin.empty());
 }
+
+// Regression (round-4 open item): load_assets found the fonts and icons from
+// argv[0], so `hefesto` started from PATH looked in the working directory's
+// assets/. It now passes the folder the operating system reports for the
+// executable (platform_posix::executable_dir) to desktop_asset_dir, which
+// ignores a relative folder; the override and the source fallback stay.
+TEST_CASE("the desktop asset folder comes from the executable's folder",
+          "[cap:hefesto-design-system][req:Typography]") {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() / ("hefesto-assets-" + std::to_string(::getpid()));
+  const auto font = [](const std::filesystem::path& assets) {
+    std::filesystem::create_directories(assets / "fonts");
+    (void)hefesto::platform::LocalFileSystem{}.write_atomic(assets / "fonts/Inter-Regular.ttf", "font");
+  };
+  font(root / "bin/assets");
+  font(root / "cwd/assets");
+  font(root / "override");
+  const auto saved = std::filesystem::current_path();
+  std::filesystem::current_path(root / "cwd");
+  const auto from_exe = desktop_asset_dir({}, root / "bin", {});
+  const auto from_argv0 = desktop_asset_dir({}, Path{"hefesto"}.parent_path(), {});
+  const auto from_relative = desktop_asset_dir({}, Path{"."}, {});
+  const auto overridden = desktop_asset_dir(root / "override", root / "bin", {});
+  const auto source = desktop_asset_dir({}, Path{}, root / "override");
+  std::filesystem::current_path(saved);
+  std::filesystem::remove_all(root);
+  CHECK(from_exe == root / "bin/assets");
+  CHECK_FALSE(from_argv0.has_value());
+  CHECK_FALSE(from_relative.has_value());
+  CHECK(overridden == root / "override");
+  CHECK(source == root / "override");
+}

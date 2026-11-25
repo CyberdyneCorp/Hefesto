@@ -96,6 +96,10 @@ struct ElementContext {
   const PropertySource* parent_instance = nullptr;  // none at top level
   const PropertySource* parent_template = nullptr;  // the parent symbol's template
   std::vector<ElementPin> pins;
+  /// `@#<n>:net_name` per pin: the attached net as named (connectivity.hpp
+  /// net_name: `Z[6:0]`, `#net1`). A missing or empty entry gives the pin's
+  /// `net` text.
+  std::vector<std::string> net_names;
   std::size_t index = 0;    // instance index in its schematic (@index)
   std::string symref;       // symbol reference as written (@symref)
   /// `@symname` in place of the one derived from `symref`: the subcircuit

@@ -32,14 +32,21 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "hefesto/cmd/command.hpp"
 #include "hefesto/shell/command_sink.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
+
+namespace hefesto::editor {
+struct EditorState;
+}  // namespace hefesto::editor
 
 namespace hefesto::shell {
 
@@ -127,12 +134,21 @@ class NetHighlight {
   [[nodiscard]] static std::string clear_command(bool all);
   [[nodiscard]] static std::string list_command();
 
-  /// The result of list_command (a Tcl list of net names).
+  /// The result of list_command: a Tcl list of `{net <name> <colour>}` and
+  /// `{instance <name> <colour>}` elements (schematic-command "Subcommand
+  /// table", `hilight list`); an element that is not such a triple is a net
+  /// name with colour 0. Text that is not a Tcl list clears the set.
   void set_list(std::string_view output);
   [[nodiscard]] const std::set<std::string>& nets() const noexcept { return nets_; }
+  [[nodiscard]] const std::set<std::string>& instances() const noexcept { return instances_; }
+  /// The colour index (0..7, kHighlightColours) of a highlighted net or
+  /// instance; nullopt when it is not highlighted.
+  [[nodiscard]] std::optional<int> colour(std::string_view name, bool instance) const;
 
  private:
   std::set<std::string> nets_;
+  std::set<std::string> instances_;
+  std::map<std::pair<bool, std::string>, int, std::less<>> colours_;  // (instance, name) -> colour
 };
 
 // --- messages ------------------------------------------------------------------------------
@@ -147,6 +163,13 @@ struct Message {
 
 /// One diagnostic line of a CommandOutcome ("error: SCHEM-CMD-005: text").
 [[nodiscard]] Message parse_message(std::string_view line);
+
+/// A command's result as the panels see it, for a `schematic` command the
+/// view observes through the dispatcher (cmd::CommandObserver): failed
+/// when the command failed, its first error's text as the message, each
+/// diagnostic rendered as diag::format_text ("error: SCHEM-NET-004: text"),
+/// its value as the output. Debug diagnostics are left out.
+[[nodiscard]] CommandOutcome outcome_of(const cmd::CommandResult& result);
 
 class MessagesPanel {
  public:
@@ -188,9 +211,12 @@ class NetlistAction {
                                                  Clock::time_point now);
   /// The end of the run: its outcome (diagnostics go to `messages`).
   void finish(const CommandOutcome& outcome, MessagesPanel& messages);
-  /// Interrupt (the card's button, Ctrl-C): recorded for the card; the
-  /// window interrupts the command through the script interrupt.
-  void request_cancel() noexcept;
+  /// Interrupt (the card's button, Ctrl-C) while running: recorded for the
+  /// card. True the first time only: the window then issues the script
+  /// interrupt once (a second interrupt request is not sent again, as a
+  /// second Ctrl-C would mean more than a cancel).
+  bool request_cancel() noexcept;
+  [[nodiscard]] bool cancel_requested() const noexcept { return cancel_requested_; }
 
   [[nodiscard]] State state() const noexcept { return state_; }
   [[nodiscard]] bool enabled() const noexcept { return state_ != State::running; }
@@ -212,5 +238,13 @@ class NetlistAction {
   std::string status_;
   std::string text_;
 };
+
+/// The schematic tab's Interrupt (the card's button, Ctrl-C). While the
+/// netlist runs, the first press records the cancel and sets the editor's
+/// pending Interrupt (ui::request_interrupt), the flag the run polls between
+/// hierarchy levels and in every `tcleval` evaluation (SCHEM-CMD-011), and
+/// interrupts the console interpreter; true then. With no run, the press
+/// is the editor's ordinary Interrupt; false.
+bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor);
 
 }  // namespace hefesto::shell

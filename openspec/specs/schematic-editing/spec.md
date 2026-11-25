@@ -27,7 +27,7 @@ Open questions are in `docs/decisions/open-questions/SCHEM.md` (Q-SCHEM-n).
 ### Requirement: Document model
 Each open schematic or symbol SHALL be a document holding, in order lists: lines, boxes, arcs and polygons per layer, texts, wires and instances, plus the global property strings and header text of capability `schematic-file-format`. The order of each list SHALL be the creation order, except as changed by Requirement "Object order". Every editing operation SHALL go through the command API (capability `schematic-command`, decision X-3), so that it can be scripted, logged and replayed. A schematic and a symbol with the same base name SHALL be separate documents.
 
-Coordinates, angles and scales given to an editing operation SHALL be finite numbers; `inf`, `nan` or a number out of the `double` range (such as `1e999`) SHALL be refused as a usage error and change nothing, in both modes (review of the M8 round-4 editing code; standing rule). A rotation SHALL be 0 to 3 and a flip 0 or 1 for instances, labels and texts alike. The selection of a document SHALL only name objects that exist: when the document changes under it (for example by `schematic reload`), selected objects that no longer exist SHALL be dropped before the next operation runs.
+Coordinates, angles and scales given to an editing operation SHALL be finite numbers; `inf`, `nan` or a number out of the `double` range (such as `1e999`) SHALL be refused as a usage error and change nothing, in both modes (review of the M8 round-4 editing code; standing rule; proposed Q-SCHEM-48, awaiting the user). A rotation SHALL be 0 to 3 and a flip 0 or 1 for instances, labels and texts alike. The selection of a document SHALL only name objects that exist: when the document changes under it (for example by `schematic reload`), selected objects that no longer exist SHALL be dropped before the next operation runs.
 
 Compatibility: behavioral
 
@@ -163,7 +163,7 @@ The editor SHALL place net labels (`lab_pin.sym`, `lab_wire.sym`) and ports (`ip
 - **Make symbol from schematic**: generate `<name>.sym` with a box outline, one pin per port (inputs left, outputs right, inouts right), `type=subcircuit`, `format="@name @pinlist @symname"` and `template="name=x1"`. It SHALL NOT overwrite an existing symbol without confirmation.
 - **Make schematic from symbol**: generate `<name>.sch` with one port per symbol pin.
 
-A pin or port name with a blank or `;` SHALL be written quoted, so that the made file reads back the same name. Making a symbol or a schematic SHALL NOT write into the PDK store or the system library, even when overwriting was confirmed (Requirement "Read-only libraries").
+A pin or port name with a blank or `;` SHALL be written quoted, and a `"` or `\` in it escaped, so that the made file reads back the same name; so SHALL the `lab` of a placed label or port and the `lab` values a netlist run stores (capability `schematic-file-format`, Requirement "Property strings"). Making a symbol or a schematic SHALL NOT write into the PDK store or the system library, even when overwriting was confirmed (Requirement "Read-only libraries").
 
 Compatibility: behavioral
 
@@ -173,6 +173,10 @@ Compatibility: behavioral
 - **GIVEN** `amp.sch` with ports `INP` (ipin), `INM` (ipin), `OUT` (opin)
 - **WHEN** the user makes a symbol
 - **THEN** `amp.sym` SHALL have three pins `INP`, `INM`, `OUT` with `dir` `in`, `in`, `out`, and SHALL netlist as `x1 <nets> amp`
+
+#### Scenario: Label name with a quote
+- **WHEN** `schematic label 0 0 {a"b}` is executed and the schematic is saved and read again
+- **THEN** the label's decoded `lab` value SHALL be `a"b`
 
 ### Requirement: Bus editing
 Wires and labels SHALL accept the bus notation of capability `schematic-netlisting` (for example `DATA[7:0]`, `A,B,C`, `2*X`). A wire whose net name expands to more than one bit SHALL get `bus=1` and be drawn thick; when a net stops being a bus, `bus` SHALL be removed. Instance names MAY be vectors (`x1[3:0]`); each element is netlisted as a separate instance (capability `schematic-netlisting`, Requirement "Element line post-processing"). The editor SHALL warn when the widths of a pin, its instance vector and the attached net are inconsistent (net width not equal to pin width or to pin width × instance width).
@@ -219,6 +223,8 @@ Compatibility: behavioral
 ### Requirement: Object order
 The editor SHALL let the user change the position of a selected object in its list (xschem's "change element order"), which changes the file order, the netlist instance order and the automatic net and instance numbering.
 
+The command is `schematic order <index>` (capability `schematic-command`): the selected objects of each kind move, as one block keeping their order, to position `<index>` (from 0) of their kind's list, or to its end when `<index>` is past it; they stay selected. It is one undo step (none when nothing moves) and is refused on a read-only document (Requirement "Read-only libraries").
+
 Compatibility: behavioral
 
 (xschem ref: editprop.c:1818-1900, keys.help)
@@ -228,8 +234,17 @@ Compatibility: behavioral
 - **WHEN** `R2` is moved to index 0
 - **THEN** the saved file and the netlist SHALL list `R2` before `R1`
 
+#### Scenario: Reorder a block of wires
+- **GIVEN** wires 0 to 4 with wires 1 and 3 selected
+- **WHEN** `schematic order 99` is executed
+- **THEN** the former wires 1 and 3 SHALL be wires 3 and 4, in that order, and stay selected, and one `schematic undo` SHALL restore the former order
+
 ### Requirement: Clipboard
 Copy SHALL put the selected objects on the clipboard as text in the record format of capability `schematic-file-format` (a `v` record, the global records and the selected objects' records), with coordinates relative to the selection's anchor. Paste SHALL insert the records at the pointer, make instance names unique and select the pasted objects. Text from xschem's clipboard SHALL paste into Hefesto and the reverse. Merging a file SHALL insert its objects like a paste.
+
+The commands are `schematic clipboard copy`, `schematic clipboard [set <text>]`, `schematic paste <x> <y>` and `schematic merge <file> [<x> <y>]` (capability `schematic-command`). The selection's anchor SHALL be the lower-left corner of the selection's bounding box, snapped to the snap; copied instances SHALL carry their embedded symbols. The clipboard text is session state, exchanged with the system clipboard by the front end. Paste and merge SHALL take only the objects (and the embedded symbols the document does not have yet), not the global records, keep symbol references as written, select the inserted objects, be one undo step each and be refused on a read-only document; copying SHALL be allowed on any document. Pasting a clipboard that holds no schematic objects SHALL fail with `schematic: the clipboard holds no schematic objects`.
+
+An embedded symbol of the inserted objects SHALL NOT change the instances the document already has: when an instance of the document already uses the same symbol reference (from a library file or its own embedded block), the inserted block SHALL NOT be added and the inserted instances SHALL resolve that reference as the document's existing instances do, in both modes (proposed Q-SCHEM-51, recommendation: keep the document's symbol; awaiting the user).
 
 Compatibility: behavioral
 
@@ -239,6 +254,21 @@ Compatibility: behavioral
 - **GIVEN** the system clipboard holds the text of an xschem copy containing `C {res.sym} 0 0 0 0 {name=R1}`
 - **WHEN** the user pastes into a schematic that already has `R1`
 - **THEN** a resistor SHALL be inserted at the pointer and named `R2`
+
+#### Scenario: Copy and paste
+- **GIVEN** a wire, a resistor `R1` and a text selected in a schematic
+- **WHEN** `schematic clipboard copy` and then `schematic paste 500 500` are executed
+- **THEN** the clipboard text SHALL hold the three records with the anchor at the origin, the pasted copies SHALL be moved by (500, 500), the resistor SHALL be named `R2`, the copies SHALL be selected, and one `schematic undo` SHALL remove them
+
+#### Scenario: Pasted embedded symbol does not redefine the document's symbol
+- **GIVEN** a schematic with an instance of the library `res.sym`, and a clipboard holding an instance of `res.sym` with its embedded block
+- **WHEN** `schematic paste 0 0` is executed
+- **THEN** the document SHALL get no embedded block for `res.sym`, and every instance of `res.sym`, the existing one included, SHALL resolve to the library file (proposed Q-SCHEM-51)
+
+#### Scenario: Merge a file
+- **GIVEN** `part.sch` holding a wire and an instance `R1`, and a schematic that already has `R1`
+- **WHEN** `schematic merge part.sch 10 20` is executed
+- **THEN** the wire and the instance SHALL be inserted moved by (10, 20), the instance named `R2`, and both selected
 
 ### Requirement: Hierarchy navigation
 The user SHALL be able to:
@@ -282,7 +312,7 @@ Compatibility: behavioral
 - **THEN** the child net `A` SHALL be highlighted in the same colour
 
 ### Requirement: Undo and redo
-Every command that changes a document SHALL be one undo step; a compound gesture (for example a move with inserted wires) SHALL be one step. Undo and redo SHALL restore the full document state including properties, object order and the modified flag. Hefesto SHALL keep at least 80 undo steps per document (xschem's limit), up to 200, as long as the document states they hold take at most 512 MiB (`kUndoMaxBytes`); past that the oldest steps SHALL be dropped, and the newest step SHALL always be kept (Hefesto's bound, both modes; consecutive steps share the document state between them, so a history of n steps holds n + 1 states). Netlisting, highlighting, selection and view changes SHALL NOT create undo steps.
+Every command that changes a document SHALL be one undo step; a compound gesture (for example a move with inserted wires) SHALL be one step. Undo and redo SHALL restore the full document state including properties, object order and the modified flag. Hefesto SHALL keep at least 80 undo steps per document (xschem's limit), up to 200, as long as the document states they hold take at most 512 MiB (`kUndoMaxBytes`); past that the oldest steps SHALL be dropped, and the newest step SHALL always be kept (Hefesto's bound, both modes; consecutive steps share the document state between them, so a history of n steps holds n + 1 states; proposed Q-SCHEM-47, awaiting the user). Netlisting, highlighting, selection and view changes SHALL NOT create undo steps.
 
 In xschem the undo history is per window and is cleared when another schematic is loaded into it, including on descend, unless the `preserve_undo` setting is on (informative). Hefesto SHALL keep a separate undo history per open document for the whole session, so descending and ascending never lose undo history.
 

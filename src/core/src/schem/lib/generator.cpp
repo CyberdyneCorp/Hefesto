@@ -82,6 +82,7 @@ script::SandboxPolicy generator_policy(const GeneratorInput& input) {
   const std::string folder = input.document_folder.generic_string();
   policy.environment = {{"HOME", folder}, {"PWD", folder}};
   policy.limits.time_limit = input.time_limit;
+  policy.stdin_readable = false;  // S8-04: a read of stdin blocks, unlimited
   return policy;
 }
 

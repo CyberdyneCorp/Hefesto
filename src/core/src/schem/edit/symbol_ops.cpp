@@ -59,17 +59,10 @@ std::vector<Port> ports_of(EditContext& ec, const Document& doc) {
   return ports;
 }
 
-// `value` written so that get_token reads it back unchanged ("Property
-// strings"): `"` and `\` escaped, and quoted when it holds a separator
-// (review of PR #101: a port name with a blank gave malformed properties).
+// `value` written so that get_token reads it back unchanged (review of PR
+// #101: a port name with a blank gave malformed properties).
 std::string encoded(std::string_view value) {
-  std::string out;
-  for (const char c : value) {
-    if (c == '"' || c == '\\') out += '\\';
-    out += c;
-  }
-  if (value.find_first_of(" \t\n;") != std::string_view::npos) out = '"' + out + '"';
-  return out;
+  return cmdimpl::encoded_value(value);
 }
 
 BoxRecord pin_box(Point at, const Port& port) {

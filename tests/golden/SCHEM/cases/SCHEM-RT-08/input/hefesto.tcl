@@ -1,0 +1,13 @@
+file mkdir out
+schematic open input/a.sch
+schematic save out/a.sch
+schematic close -discard
+schematic open out/a.sch
+schematic save out/2-a.sch
+schematic close -discard
+schematic open input/b.sch
+schematic save out/b.sch
+schematic close -discard
+schematic open out/b.sch
+schematic save out/2-b.sch
+schematic close -discard

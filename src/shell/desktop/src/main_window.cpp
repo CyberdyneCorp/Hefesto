@@ -872,7 +872,10 @@ void MainWindow::show_schematic_tab(bool on) {
   schematic_tab_ = on;
   schematic_view_->widget().set_visible(on);
   canvas_->widget().set_visible(!on && !view3d_tab_);
-  if (on) schematic_view_->refresh();
+  if (on) {
+    schematic_view_->refresh();
+    schematic_view_->focus();
+  }
   if (view_tabs_widget_ != nullptr) view_tabs_widget_->invalidate();
   window_.request_redraw();
 }
@@ -1197,6 +1200,16 @@ bool MainWindow::on_shortcut(int key, std::uint8_t modifiers) {
   return false;
 }
 
+// The canvas focus region: the schematic view while the Schematic tab
+// replaces the layout canvas (M8, task 13.2).
+void MainWindow::focus_view() {
+  if (schematic_tab_) {
+    schematic_view_->focus();
+  } else {
+    canvas_->focus();
+  }
+}
+
 void MainWindow::cycle_focus(bool backward) {
   const FocusRegions shown{layers_visible_ || drc_visible_, inspector_visible_ && !pdk_visible_ && !color_visible_,
                            console_visible_};
@@ -1211,7 +1224,7 @@ void MainWindow::cycle_focus(bool backward) {
           left_->focus();
         }
         return;
-      case FocusRegion::canvas: canvas_->focus(); return;
+      case FocusRegion::canvas: focus_view(); return;
       case FocusRegion::inspector:
         if (inspector_->focus()) return;
         break;  // no action to focus: on to the next region

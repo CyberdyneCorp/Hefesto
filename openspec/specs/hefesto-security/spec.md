@@ -54,6 +54,7 @@ Scripts carried by schematic files and symbol libraries (capability `schematic-s
 - `tcleval(...)` attribute values, `@tcleval(...)` format tokens and symbol `drc` procedures SHALL always run in the sandbox of requirement "Script sandbox enforcement", without a prompt. A denied operation SHALL give the sandbox diagnostic and the value SHALL become `?` as `schematic-symbols-and-libraries` defines.
 - Launcher `tclcommand` scripts SHALL run in the same sandbox, and only after the user has confirmed them once for the document; the confirmation SHALL last for the session.
 - xschem's `xschem_execute_scripts` setting in an `xschemrc` SHALL be ignored, with a log line, so a PDK cannot turn the confirmation off.
+- The interpreters of schematic scripts (`tcleval` values, symbol generators, `xschemrc` files) SHALL NOT read the process's standard input: `gets`, `read`, `chan gets`, `chan read`, `fcopy` and `chan copy` from `stdin` SHALL be refused with `SCRIPT-SANDBOX-007`, in both modes of `xschem-compat`, because such a read waits for input inside one command, out of reach of the time limits and the Interrupt (security review finding S8-04). The console's project interpreter keeps reading it.
 
 Before M8 exits, a security review SHALL check this model against the sandbox (no process execution, sockets, native extensions, or file access outside granted folders) and record its sign-off in the M8 exit table.
 
@@ -65,6 +66,11 @@ Compatibility: native
 - **GIVEN** a symbol whose format is `tcleval([exec cat /etc/passwd])`
 - **WHEN** the schematic is netlisted
 - **THEN** the call SHALL be denied with a sandbox diagnostic naming the symbol, no process SHALL start, and the netlisted value SHALL be `?`
+
+#### Scenario: Schematic script reads stdin
+- **GIVEN** a symbol generator, a `tcleval` value or an `xschemrc` that runs `gets stdin`
+- **WHEN** it runs while the process's standard input has no data
+- **THEN** the read SHALL be refused with `SCRIPT-SANDBOX-007` at once, and the opening or netlist run SHALL not wait for input
 
 #### Scenario: Launcher confirmed once
 - **GIVEN** a testbench with two launchers
