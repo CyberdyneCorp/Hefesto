@@ -6,7 +6,7 @@
 // output operator" of mask-hints), with both magic-compat settings for
 // Q-MASK-410 and Q-MASK-411.
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

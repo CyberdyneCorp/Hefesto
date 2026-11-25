@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The desktop host of long GDS and CIF reads and writes (shell::MaskJobHost;
-// openspec/changes/m5-mask-gds-cif tasks.md 12.2, design D16): progress and
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks.md 12.2, design D16): progress and
 // the Interrupt card, and the `gds write` / `cif write` commands run through
 // the session's hosts exactly as the main window wires them (write_host:
 // the whole write on the command thread; emit_host: the emit on the

@@ -25,7 +25,7 @@
 #   tools/   TOOLS (M4)                     (always)
 #   gui/     GUIMGR (M4)                    (always)
 #   mask/ gds/ cif/  INTEGRATION (M5 shared tests); each subdirectory is
-#            owned by its workstream (openspec/changes/m5-mask-gds-cif
+#            owned by its workstream (openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 #            design.md D1/D2)              (always)
 #   lef/ def/ oasis/ extract/  INTEGRATION (M6 shared tests); each
 #            subdirectory is owned by its workstream; extflat/ EXTSUB
@@ -81,7 +81,7 @@ add_subdirectory(core)
 #   defined for fixtures. The M3 drc subdirectories use e.g.
 #   hefesto_add_area_tests(drc_rules DATA_DIR drc/rules). A directory without
 #   tests yet builds nothing (the M5 scaffold creates the M5 test directories
-#   before their workstreams add tests; openspec/changes/m5-mask-gds-cif D1).
+#   before their workstreams add tests; openspec/changes/archive/2026-11-24-m5-mask-gds-cif D1).
 function(hefesto_add_area_tests area)
   cmake_parse_arguments(PARSE_ARGV 1 ARG "" "DATA_DIR" "")
   if(NOT ARG_DATA_DIR)

@@ -1,7 +1,7 @@
 # Diagnostic codes: gds area
 
 Codes `GDS-<TOPIC>-<NNN>` emitted by `src/core/src/gds/` (GDSII stream read and write: the stream layer, the reader with read-only vendor views and content-hash timestamps, the writer and the `gds`/`calma` command;
-`openspec/changes/m5-mask-gds-cif/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/gds/codes.cpp` (owner:

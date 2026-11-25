@@ -4,7 +4,7 @@
 // Fixture of the mask/input unit tests: tests/data/mask/input/input.tech
 // with a test's own cifinput (and optionally cifoutput) section, read with
 // mask::read_input_styles, and a session to run the read engine in.
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

@@ -13,6 +13,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 #include "hefesto/cif/command/settings.hpp"
 #include "hefesto/gds/command/settings.hpp"
@@ -25,6 +26,10 @@
 #include "hefesto/util/libc_random.hpp"
 
 namespace hefesto::mask {
+
+/// The setting that pins the zone of GDS and CIF dates (Q-MASK-132), read
+/// into MaskSession::time_zone at startup, e.g. `--setting gds-time-zone=UTC0`.
+inline constexpr std::string_view kTimeZoneSetting = "gds-time-zone";
 
 struct MaskSession {
   // STYLES: the parsed cifoutput styles (one immutable object per style,
@@ -58,7 +63,8 @@ struct MaskSession {
   util::LibcRandom random;
   // INTEGRATION (Q-MASK-132): the time-zone override for GDS dates and the
   // CIF header date, a POSIX TZ string ("UTC0", "EST5EDT"); empty = the
-  // host local zone. Passed to GdsWriteOptions, GdsReadOptions and
+  // host local zone. Set at startup from the `gds-time-zone` setting
+  // (kTimeZoneSetting); passed to GdsWriteOptions, GdsReadOptions and
   // CifWriteOptions by the `gds` and `cif` commands.
   std::string time_zone;
   // INTEGRATION: the `cif statistics` counters (Magic's CIFTileOps and

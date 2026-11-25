@@ -5,7 +5,7 @@
 // read from a technology file (tests/data/mask/style/styles.tech) is
 // evaluated on painted layout, so a mismatch between the LayerOp layout of
 // mask/style and the one mask/ops reads shows up as wrong geometry.
-// Owner: INTEGRATION (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INTEGRATION (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

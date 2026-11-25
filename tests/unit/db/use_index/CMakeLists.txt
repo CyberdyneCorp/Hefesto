@@ -2,7 +2,7 @@
 # Copyright 2026 The Hefesto Authors
 #
 # Unit tests of the cell-use index (db/use_index*). Owner: INDEX
-# (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Every *_test.cpp here
+# (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Every *_test.cpp here
 # is compiled into hefesto_db_use_index_tests; extra libraries or definitions
 # go below.
 

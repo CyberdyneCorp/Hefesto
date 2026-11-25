@@ -11,7 +11,7 @@
 // limitations of hierarchical generation"), with both magic-compat
 // settings for each compat decision (Q-MASK-400, 402, 403, 405, 409).
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

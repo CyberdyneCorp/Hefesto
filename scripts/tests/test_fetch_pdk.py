@@ -117,7 +117,7 @@ class DataSetTable(unittest.TestCase):
 
 
 class GdsDataSets(unittest.TestCase):
-    """The library GDS sets of openspec/changes/m5-mask-gds-cif design D19 (task 1.2)."""
+    """The library GDS sets of openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D19 (task 1.2)."""
 
     GDS_SETS = ("sky130-gds", "gf180mcu-gds", "ihp-gds", "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc")
 

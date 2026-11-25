@@ -1,7 +1,7 @@
 # Diagnostic codes: cif area
 
 Codes `CIF-<TOPIC>-<NNN>` emitted by `src/core/src/cif/` (CIF read and write and the `cif` command;
-`openspec/changes/m5-mask-gds-cif/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/cif/codes.cpp` (owner:

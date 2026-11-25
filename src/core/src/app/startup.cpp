@@ -169,8 +169,9 @@ class Startup {
   }
 
   // Settings read once into editor state: the M1 `units` key (now the
-  // `units` command's cmd::UnitsState; m2 design "Migration Plan") and the
-  // undo history limit (layout-undo "History limit").
+  // `units` command's cmd::UnitsState; m2 design "Migration Plan"), the
+  // undo history limit (layout-undo "History limit") and the GDS/CIF date
+  // zone (gds-read "Host mechanisms used by the reader", Q-MASK-132).
   void apply_editor_settings() {
     if (const auto units = state_.settings.effective("units")) {
       for (const cmd::InputUnit unit : {cmd::InputUnit::default_units, cmd::InputUnit::internal,
@@ -184,6 +185,9 @@ class Startup {
       if (auto status = undo::set_history_limit(state_.undo, limit->value); !status) {
         sink_.emit(status.error());
       }
+    }
+    if (const auto zone = state_.settings.effective(mask::kTimeZoneSetting)) {
+      state_.mask.time_zone = zone->value;
     }
   }
 

@@ -384,6 +384,19 @@ TEST_CASE("the undo-history-limit setting sets the history limit", "[cap:layout-
   CHECK(low.editor.undo.limit() == 1000);  // below Magic's 1000: rejected, the default stays
 }
 
+TEST_CASE("the gds-time-zone setting pins the zone of GDS and CIF dates",
+          "[cap:gds-read][req:Host mechanisms used by the reader]") {
+  Session s;
+  app::StartupOptions options;
+  options.session_settings = {{"gds-time-zone", "UTC0"}};
+  REQUIRE(s.start(options).ok());
+  CHECK(s.editor.mask.time_zone == "UTC0");
+
+  Session host;
+  REQUIRE(host.start({}).ok());
+  CHECK(host.editor.mask.time_zone.empty());  // unset: the host local zone
+}
+
 // M4 (scripting-pdk-integration "Startup files are scripts"): startup files
 // are evaluated as Tcl; an error stops that file with Magic's text and the
 // variables it set before the error land in its setting layer.

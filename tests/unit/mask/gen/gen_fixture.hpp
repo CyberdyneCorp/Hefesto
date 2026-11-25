@@ -7,7 +7,7 @@
 // drc::interaction_area) and a hand-built output style, so the scenarios'
 // output units are exact (STYLES' reader would reduce the units).
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# Unit tests of gds/write. Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md
+# Unit tests of gds/write. Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 # D1/D2). Every *_test.cpp here is compiled into hefesto_gds_write_tests;
 # extra libraries or definitions go below.
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// File › Read GDS and Write GDS (openspec/changes/m5-mask-gds-cif tasks.md
+// File › Read GDS and Write GDS (openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks.md
 // 12.1, design D16): enabled in M5, each item issues its logged
 // `magic::promptload gds` / `magic::promptsave gds`, which asks the native
 // picker and runs `gds read` / `gds write`.

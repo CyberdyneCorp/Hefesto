@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // A small technology, a layout cell and a hand-built output style for the
-// operator kernel tests (openspec/changes/m5-mask-gds-cif/design.md D2: OPS
+// operator kernel tests (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2: OPS
 // works against a hand-built OutputStyle, not STYLES' parser).
 //
 // Owner: OPS.

@@ -1,7 +1,7 @@
 # Diagnostic codes: mask area
 
 Codes `MASK-<TOPIC>-<NNN>` emitted by `src/core/src/mask/` (mask generation: the mask planes, the cifoutput and cifinput readers, the operator kernels and flat and hierarchical generation;
-`openspec/changes/m5-mask-gds-cif/design.md` D1/D2). Conventions and the
+`openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md` D1/D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The area's table is assembled by `src/core/src/mask/codes.cpp` (owner:
