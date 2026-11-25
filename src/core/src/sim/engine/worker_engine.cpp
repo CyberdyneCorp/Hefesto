@@ -115,18 +115,27 @@ class WorkerEngine final : public Engine {
   // The job-log lines that came before any on_output (the hello's
   // confinement notes) are delivered to the first one.
   void set_callbacks(EngineCallbacks callbacks) override {
-    std::vector<std::string> backlog;
-    std::function<void(std::string_view)> sink;
+    std::vector<frames::Output> backlog;
+    EngineCallbacks sink;
     {
       std::lock_guard lock{mutex_};
       callbacks_ = std::move(callbacks);
       if (callbacks_.on_output) {
         backlog.swap(backlog_);
-        sink = callbacks_.on_output;
+        sink = callbacks_;
       }
     }
-    for (const std::string& line : backlog) {
-      sink(line);
+    for (const frames::Output& line : backlog) {
+      deliver(sink, line);
+    }
+  }
+
+  // Error-stream lines go to on_error when it is set, else to on_output.
+  static void deliver(const EngineCallbacks& c, const frames::Output& output) {
+    if (output.stream == frames::Stream::error && c.on_error) {
+      c.on_error(output.text);
+    } else if (c.on_output) {
+      c.on_output(output.text);
     }
   }
 
@@ -322,14 +331,12 @@ class WorkerEngine final : public Engine {
       }
       if (!callbacks_.on_output) {
         if (backlog_.size() < kBacklogLines) {
-          backlog_.push_back(output.text);
+          backlog_.push_back(output);
         }
         return;
       }
     }
-    if (const EngineCallbacks c = callbacks(); c.on_output) {
-      c.on_output(output.text);
-    }
+    deliver(callbacks(), output);
   }
 
   void handle(frames::Progress& progress) {
@@ -420,7 +427,7 @@ class WorkerEngine final : public Engine {
   Clock::time_point last_beat_ = Clock::now();
   std::deque<frames::Reply> replies_;
   std::deque<std::string> error_lines_;
-  std::vector<std::string> backlog_;  // output before the first on_output
+  std::vector<frames::Output> backlog_;  // output before the first on_output
   std::vector<PartialVector> partial_;
   bool bad_chunk_ = false;
   std::vector<Vector> results_;

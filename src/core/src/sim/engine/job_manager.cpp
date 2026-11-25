@@ -24,7 +24,6 @@ namespace hefesto::sim {
 namespace {
 
 constexpr std::size_t kMaxErrorLines = 50;  // "Cancellation and fault states": the last 50 lines
-constexpr std::string_view kStderrPrefix = "stderr ";
 
 std::string timestamp(std::chrono::system_clock::time_point when) {
   const std::time_t t = std::chrono::system_clock::to_time_t(when);
@@ -160,6 +159,9 @@ struct JobManager::Impl {
     callbacks.on_output = [queue_ptr, s, generation](std::string_view line) {
       queue_ptr->post(EngineEvent{s, generation, EngineEvent::Kind::output, std::string{line}, EngineState::idle});
     };
+    callbacks.on_error = [queue_ptr, s, generation](std::string_view line) {
+      queue_ptr->post(EngineEvent{s, generation, EngineEvent::Kind::error, std::string{line}, EngineState::idle});
+    };
     callbacks.on_state = [queue_ptr, s, generation](EngineState state) {
       queue_ptr->post(EngineEvent{s, generation, EngineEvent::Kind::state, {}, state});
     };
@@ -264,10 +266,9 @@ struct JobManager::Impl {
 
   // --- events ---
 
-  void on_output(Slot& slot, std::string line) {
+  void on_output(Slot& slot, std::string line, bool error) {
     JobRecord& rec = records[*slot.job];
-    if (line.starts_with(kStderrPrefix)) {
-      line.erase(0, kStderrPrefix.size());
+    if (error) {
       rec.errors.push_back(line);
       if (rec.errors.size() > kMaxErrorLines) {
         rec.errors.erase(rec.errors.begin());
@@ -312,8 +313,8 @@ struct JobManager::Impl {
       }
       return;
     }
-    if (event.kind == EngineEvent::Kind::output) {
-      on_output(slot, std::move(event.line));
+    if (event.kind != EngineEvent::Kind::state) {
+      on_output(slot, std::move(event.line), event.kind == EngineEvent::Kind::error);
     } else {
       on_state(event.slot, event.state);
     }

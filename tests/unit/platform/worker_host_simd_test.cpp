@@ -16,11 +16,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <mutex>
+#include <string_view>
+#include <thread>
 #include <string>
 #include <vector>
 
+#include "hefesto/sim/engine/job_manager.hpp"
 #include "worker_fixture.hpp"
 
 using hefesto::test::Recorder;
@@ -180,6 +185,60 @@ TEST_CASE("Error stream classification: error-stream lines reach the job log as 
   REQUIRE(engine->load({"* fake: stderr Error: unknown subckt: xinv"}).ok());
   const auto lines = recorder.output();
   CHECK(std::find(lines.begin(), lines.end(), "Error: unknown subckt: xinv") != lines.end());
+}
+
+TEST_CASE("Error stream classification: error-stream lines reach on_error, the rest on_output",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  const TempDir job{"simd-onerror"};
+  hefesto::cli::PosixWorkerHost host;
+  auto engine = hefesto::test::start_worker(host, fake(job));
+  REQUIRE(engine.ok());
+  std::mutex mutex;
+  std::vector<std::string> output;
+  std::vector<std::string> errors;
+  sim::EngineCallbacks callbacks;
+  callbacks.on_output = [&](std::string_view line) {
+    const std::lock_guard lock{mutex};
+    output.emplace_back(line);
+  };
+  callbacks.on_error = [&](std::string_view line) {
+    const std::lock_guard lock{mutex};
+    errors.emplace_back(line);
+  };
+  engine.value()->set_callbacks(std::move(callbacks));
+  REQUIRE(engine.value()->load({"* fake: stderr Error: unknown subckt: xinv"}).ok());
+  const std::lock_guard lock{mutex};
+  CHECK(errors == std::vector<std::string>{"Error: unknown subckt: xinv"});
+  CHECK(std::find(output.begin(), output.end(), "Error: unknown subckt: xinv") == output.end());
+}
+
+// Regression (M9 R1 integration): JobManager classified error-stream lines by
+// a `stderr ` prefix that WorkerEngine never sends, so an `Error` line of a
+// real worker left the job `completed`.
+TEST_CASE("Error stream classification: an Error line of a worker run fails the job in the job manager",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  const TempDir job{"simd-jobmanager"};
+  hefesto::cli::PosixWorkerHost host;
+  sim::JobManagerOptions options;
+  options.make_engine = [&host, &job]() { return hefesto::test::start_worker(host, fake(job)); };
+  sim::JobManager jobs(std::move(options));
+  sim::PreparedDeck deck;
+  deck.lines = {"* fake: stderr Error: unknown subckt: xinv", "* fake: points 5", "R1 a 0 1k"};
+  const auto id = jobs.submit(std::move(deck), sim::JobOptions{"tb", "tt", std::nullopt});
+  REQUIRE(id.ok());
+  const auto deadline = std::chrono::steady_clock::now() + 30s;
+  while (std::chrono::steady_clock::now() < deadline) {
+    jobs.poll();
+    const auto state = jobs.state(id.value());
+    if (state == sim::JobState::completed || state == sim::JobState::failed) {
+      break;
+    }
+    std::this_thread::sleep_for(10ms);
+  }
+  const sim::JobRecord* rec = jobs.record(id.value());
+  REQUIRE(rec != nullptr);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK(rec->errors == std::vector<std::string>{"Error: unknown subckt: xinv"});
 }
 
 TEST_CASE("Deck tries to reach the network: the confined worker cannot connect, spawn or write outside the job",

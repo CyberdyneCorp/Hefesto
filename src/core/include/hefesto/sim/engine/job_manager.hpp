@@ -21,8 +21,9 @@
 // on running; on_state(idle or loaded) after `running` ends the job
 // (`completed`, or `failed` when an error-stream line starts with `Error`,
 // or `cancelled` after cancel), and its vectors are copied with vectors().
-// on_output lines starting with `stderr ` are error-stream lines (the
-// prefix is removed), as the adapter receives them from SendChar.
+// EngineCallbacks::on_error lines are the error-stream lines (the adapter
+// has removed SendChar's `stderr ` prefix); on_output lines are the rest
+// of the job log.
 //
 // A fault is on_state(failed) (WorkerEngine reports a crash, a controlled
 // exit, a missed heartbeat, a malformed or oversize frame this way) or an

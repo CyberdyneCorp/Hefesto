@@ -65,19 +65,19 @@ class FakeEngine final : public sim::Engine {
       callbacks_.on_output("Note: no compatibility mode selected");
       callbacks_.on_state(sim::EngineState::loaded);
     } else if (script_ == "* warning") {
-      callbacks_.on_output("stderr Warning: singular matrix fixed");
+      callbacks_.on_error("Warning: singular matrix fixed");
       callbacks_.on_state(sim::EngineState::loaded);
     } else if (script_ == "* timestep") {
-      callbacks_.on_output("stderr Error: Timestep too small");
+      callbacks_.on_error("Error: Timestep too small");
       callbacks_.on_state(sim::EngineState::loaded);
     } else if (script_ == "* segv") {
       // The worker died: WorkerEngine reports it as failed. A late line of
       // the dead engine must not reach the next job.
       callbacks_.on_state(sim::EngineState::failed);
-      callbacks_.on_output("stderr Error: late line of a dead engine");
+      callbacks_.on_error("Error: late line of a dead engine");
     } else if (script_ == "* exit") {
-      callbacks_.on_output("stderr Error: unknown subckt: xinv");
-      callbacks_.on_output("stderr Error: ngspice.dll cannot recover");
+      callbacks_.on_error("Error: unknown subckt: xinv");
+      callbacks_.on_error("Error: ngspice.dll cannot recover");
       callbacks_.on_state(sim::EngineState::failed);
     } else if (script_ == "* thread") {
       std::thread other([this] {

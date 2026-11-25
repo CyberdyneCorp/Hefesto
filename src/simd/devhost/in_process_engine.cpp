@@ -96,9 +96,11 @@ class InProcessEngine final : public sim::Engine {
     std::lock_guard lock{self->mutex_};
     std::forward<Fn>(fn)(self->callbacks_);
   }
-  static void on_output(void* user, const char* text, std::size_t size, int /*is_error*/) {
+  static void on_output(void* user, const char* text, std::size_t size, int is_error) {
     with_callbacks(user, [&](const sim::EngineCallbacks& c) {
-      if (c.on_output) {
+      if (is_error != 0 && c.on_error) {
+        c.on_error(std::string_view{text, size});
+      } else if (c.on_output) {
         c.on_output(std::string_view{text, size});
       }
     });

@@ -44,7 +44,8 @@ using Script = std::function<void(const frames::Message& received, FakeChannel& 
 
 class FakeChannel final : public platform::WorkerChannel {
  public:
-  explicit FakeChannel(Script script) : script_(std::move(script)) {}
+  FakeChannel(Script script, std::shared_ptr<std::atomic<bool>> terminated)
+      : script_(std::move(script)), terminated_flag_(std::move(terminated)) {}
 
   hefesto::diag::Status send(std::span<const std::byte> frame) override {
     if (closed_) {
@@ -75,6 +76,7 @@ class FakeChannel final : public platform::WorkerChannel {
   void on_exit(ExitHandler handler) override { exit_handler_ = std::move(handler); }
   void terminate() override {
     terminated_ = true;
+    *terminated_flag_ = true;
     closed_ = true;
   }
   [[nodiscard]] std::int64_t process_id() const noexcept override { return 1; }
@@ -106,6 +108,7 @@ class FakeChannel final : public platform::WorkerChannel {
 
  private:
   Script script_;
+  std::shared_ptr<std::atomic<bool>> terminated_flag_;  // outlives the channel
   std::mutex mutex_;
   FrameHandler frame_handler_;
   ExitHandler exit_handler_;
@@ -122,7 +125,7 @@ class FakeHost final : public platform::WorkerHost {
   [[nodiscard]] bool supported() const noexcept override { return true; }
   hefesto::diag::Outcome<std::unique_ptr<platform::WorkerChannel>> start(const platform::WorkerSpec& spec) override {
     spec_ = spec;
-    auto channel = std::make_unique<FakeChannel>(script_);
+    auto channel = std::make_unique<FakeChannel>(script_, terminated);
     channel_ = channel.get();
     if (hello_) {
       channel->emit(frames::Hello{protocol_, "fake 1"});
@@ -130,7 +133,9 @@ class FakeHost final : public platform::WorkerHost {
     return std::unique_ptr<platform::WorkerChannel>{std::move(channel)};
   }
 
-  FakeChannel* channel_ = nullptr;
+  FakeChannel* channel_ = nullptr;  // dangles once the engine is gone
+  // Set by terminate(); readable after a failed make() destroyed the channel.
+  std::shared_ptr<std::atomic<bool>> terminated = std::make_shared<std::atomic<bool>>(false);
   platform::WorkerSpec spec_;
 
  private:
@@ -285,14 +290,14 @@ TEST_CASE("the handshake must arrive in time and speak this protocol",
     REQUIRE_FALSE(engine.ok());
     CHECK(engine.error().code == "SIM-ENGINE-002");
     CHECK(engine.error().text.starts_with("simulation engine terminated"));
-    CHECK(host.channel_->terminated_);
+    CHECK(*host.terminated);
   }
   SECTION("another protocol") {
     FakeHost host{healthy, true, frames::kProtocolVersion + 1};
     const auto engine = sim::worker::make(&host, {}, fast_limits());
     REQUIRE_FALSE(engine.ok());
     CHECK(engine.error().code == "SIM-ENGINE-003");
-    CHECK(host.channel_->terminated_);
+    CHECK(*host.terminated);
   }
 }
 
@@ -414,4 +419,22 @@ TEST_CASE("job-log lines sent before set_callbacks reach the first on_output",
   CHECK(recorder.output[0] == "confinement: applied");
   host.channel_->emit(frames::Output{frames::Stream::output, "later"});
   CHECK(recorder.output.size() == 2);
+}
+
+// Regression (M9 R1 integration): error-stream lines lost their stream on the
+// way to EngineCallbacks, so JobManager never saw an `Error` line of a worker.
+TEST_CASE("Error stream classification: error-stream frames reach on_error, also from the backlog",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  FakeHost host{healthy};
+  const auto engine = start(host);
+  host.channel_->emit(frames::Output{frames::Stream::error, "Error: early"});
+  std::vector<std::string> errors;
+  Recorder recorder;
+  sim::EngineCallbacks callbacks = recorder.callbacks();
+  callbacks.on_error = [&errors](std::string_view line) { errors.emplace_back(line); };
+  engine->set_callbacks(std::move(callbacks));
+  host.channel_->emit(frames::Output{frames::Stream::error, "Error: unknown subckt: xinv"});
+  host.channel_->emit(frames::Output{frames::Stream::output, "Note: plain"});
+  CHECK(errors == std::vector<std::string>{"Error: early", "Error: unknown subckt: xinv"});
+  CHECK(recorder.output == std::vector<std::string>{"Note: plain"});
 }

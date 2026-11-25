@@ -14,12 +14,14 @@
 #include <csignal>
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "hefesto/platform/services.hpp"
 #include "hefesto/platform/worker_host.hpp"
 #include "worker_host_posix.hpp"
 
@@ -102,6 +104,16 @@ TEST_CASE("No process creation: the core default worker host is unsupported",
   const auto channel = host.start(spec("echo"));
   REQUIRE_FALSE(channel.ok());
   CHECK(channel.error().code == "PLATFORM-UNSUPPORTED-001");
+}
+
+TEST_CASE("No process creation: PortableServices offers the unsupported host until one is installed",
+          "[cap:hefesto-architecture][req:Long-lived worker processes]") {
+  platform::PortableServices services(platform::PortableOptions{.storage_root = {}, .pdk_roots = {}, .in_memory = true});
+  CHECK_FALSE(services.view().workers.supported());
+  services.set_worker_host(std::make_unique<hefesto::cli::PosixWorkerHost>());
+  CHECK(services.view().workers.supported());
+  services.set_worker_host(nullptr);
+  CHECK_FALSE(services.view().workers.supported());
 }
 
 TEST_CASE("frames go to the worker and come back in order",

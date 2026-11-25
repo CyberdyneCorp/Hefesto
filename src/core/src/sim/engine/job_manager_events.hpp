@@ -22,11 +22,11 @@
 namespace hefesto::sim {
 
 struct EngineEvent {
-  enum class Kind : std::uint8_t { output, state };
+  enum class Kind : std::uint8_t { output, error, state };
   std::size_t slot = 0;
   std::uint64_t generation = 0;  // the engine that posted it
   Kind kind = Kind::output;
-  std::string line;              // output
+  std::string line;              // output, error
   EngineState state = EngineState::idle;  // state
 };
 
