@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3575 scenarios, 1041 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3576 scenarios, 1041 open questions.
 
 ## Hefesto product (native)
 
@@ -134,7 +134,7 @@ Open questions: [41](decisions/open-questions/EXTRACT.md) · Golden cases: [CASE
 | [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 19 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
 | [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 23 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
 | [`extract-file-format`](../openspec/specs/extract-file-format/spec.md) | 7 | 7 | Defines the `.ext` file written by the extractor for each cell: the complete grammar of every record the extractor writes, the exact number formatting, the order of records, and an… |
-| [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 13 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
+| [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 14 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
 | [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 18 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
 | [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 6 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
 | [`extract-substrate`](../openspec/specs/extract-substrate/spec.md) | 8 | 9 | Defines how the extractor represents the substrate: the global substrate node of each cell, isolated substrate regions (e.g., p-wells inside deep n-wells), substrate shielding type… |
