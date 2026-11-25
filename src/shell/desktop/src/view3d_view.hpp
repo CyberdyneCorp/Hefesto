@@ -141,8 +141,9 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   void toggle_section();
   void export_model();
   [[nodiscard]] bool export_registered() const;
-  /// Recomputes the cross-section of the drawn model along section_line_.
-  void update_section();
+  /// Recomputes the cross-section of the drawn model along section_line_
+  /// (hidden layers left out); `report` sends its diagnostics to the console.
+  void update_section(bool report);
   /// A click in the 3D view while the cross-section is on: A, then A'
   /// (on the z = 0 plane; needs view3d::ground_point).
   bool section_click(float x, float y);

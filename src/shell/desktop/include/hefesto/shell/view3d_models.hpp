@@ -645,6 +645,14 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// box; nullopt when the cell does not exist.
 [[nodiscard]] std::optional<db::Rect> section_area(const editor::EditorState& editor,
                                                    const view3d::WindowState& window);
+/// The 3D view's clipping plane for `line` (render::SectionPlane): the
+/// vertical plane through the line, keeping the side away from the
+/// isometric viewer (y >= c for a line along x, x >= c for one along y),
+/// so the cut faces the user.
+[[nodiscard]] render::SectionPlane section_clip_plane(const view3d::Segment& line) noexcept;
+/// A view3d::ground_point result back in root coordinates: it is in the
+/// renderer's coordinates, x and y times `xy_factor` (mask-layer mode, P1).
+[[nodiscard]] db::Point ground_to_root(db::Point ground, float xy_factor) noexcept;
 /// The line's length in µm (internal units x µm per unit).
 [[nodiscard]] double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept;
 

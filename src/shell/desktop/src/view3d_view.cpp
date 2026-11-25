@@ -19,9 +19,7 @@
 #include "hefesto/view3d/client/commands.hpp"
 #include "hefesto/view3d/client/scene.hpp"
 #include "hefesto/view3d/stack/ghost.hpp"
-#if __has_include("hefesto/view3d/stack/substrate.hpp")
 #include "hefesto/view3d/stack/substrate.hpp"
-#endif
 #include "screen_paint.hpp"
 #include "side_panels.hpp"
 
@@ -41,37 +39,6 @@ Rgba rgb_of(const std::array<float, 3>& c) {
 Rgba alpha_of(Rgba c, float a) {
   c.a *= a;
   return c;
-}
-
-// SECTION's round-5 interfaces (substrate slab, ground point), used when
-// they are present: the guards are templates, so a missing function or
-// field only turns the feature off (listed for integration).
-template <class Params, class Mesh, class Stack>
-constexpr bool kHaveSubstrate = requires(Params& p, const Mesh& m, const Stack& s) {
-  p.substrate = substrate_slab(m, s);  // view3d::substrate_slab, found through Mesh's namespace
-};
-
-template <class Params, class Mesh, class Stack>
-void set_substrate(Params& params, const Mesh& mesh, const Stack& stack, bool on) {
-  if constexpr (kHaveSubstrate<Params, Mesh, Stack>) {
-    if (on) params.substrate = substrate_slab(mesh, stack);
-  }
-}
-
-template <class View>
-constexpr bool kHaveGroundPoint = requires(const View& v) {
-  { ground_point(v, 0.0F, 0.0F, 1, 1) };  // view3d::ground_point(view, x, y, width, height)
-};
-
-template <class View>
-std::optional<db::Point> ground_at(const View& view, float x, float y, int width, int height) {
-  if constexpr (kHaveGroundPoint<View>) {
-    const auto p = ground_point(view, x, y, width, height);
-    if (!p) return std::nullopt;
-    return db::Point{static_cast<db::Coord>(std::lround(p->x)), static_cast<db::Coord>(std::lround(p->y))};
-  } else {
-    return std::nullopt;
-  }
 }
 
 }  // namespace
@@ -218,7 +185,7 @@ View3dControlState View3dView::control_state() const {
   s.net_isolated = picking_.net_isolated();
   s.section_on = section_line_.has_value();
   s.substrate_on = substrate_on_;
-  s.substrate_available = kHaveSubstrate<render::DrawParams, view3d::MeshModel, view3d::LayerStack>;
+  s.substrate_available = true;
   s.export_available = export_registered() && ctx_.editor().file_picker != nullptr;
   s.visibility_editable = w != nullptr && visibility_editable(*w);
   return s;
@@ -661,7 +628,7 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
   drawable_ = pending_drawable_;
   ghost_.drawn(*drawn_stack_, options_);
   picking_.model_changed();  // the isolated net follows the new ordinals
-  update_section();
+  update_section(false);
   highlight_dirty_ = true;
   dirty_ = true;
   refresh_rows();
@@ -781,7 +748,11 @@ void View3dView::draw_frame() {
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   render::DrawParams params =
       draw_params(FrameInputs{w, stack, styles, highlight_, &options_, view3d_background(ctx_.mode)});
-  if (uploaded_ && uploaded_stack_) set_substrate(params, *uploaded_, *uploaded_stack_, substrate_on_);
+  // The board's substrate slab and the cross-section's clipping plane (round 5).
+  if (substrate_on_ && uploaded_ && uploaded_stack_) {
+    params.substrate = view3d::substrate_slab(*uploaded_, *uploaded_stack_);
+  }
+  if (section_line_) params.section_plane = section_clip_plane(*section_line_);
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -1012,16 +983,17 @@ void View3dView::paint_section(ui::Painter& p, float w, float h) {
   constexpr float kStrip = 64.0F;
   p.fill(0.0F, 0.0F, w, h, 8.0F, t.surface2);
   p.text(TextRole::body_strong, 12.0F, 8.0F, "Cross-section A–A′", t.text_primary);
-  const double length = segment_length_um(*section_line_, stack->microns_per_unit());
   const SectionPanel panel =
-      section_panel(section_, *stack, length, w - 24.0F, kStrip, hidden_flags(*stack, *win));
+      section_panel(section_, *stack, section_.length_um, w - 24.0F, kStrip, hidden_flags(*stack, *win));
   section_paint_->set_accessible_name(panel.accessible_name);
   p.text(TextRole::meta, 12.0F, 24.0F, panel.summary, t.text_secondary);
   p.fill(12.0F, kTop, w - 24.0F, kStrip, 2.0F, t.surface0);
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   const std::vector<render::LayerPaint> paints = render::layer_paints(*stack, styles);
   for (const SectionBar& bar : panel.bars) {
-    const Rgba color = bar.layer < paints.size() ? rgb_of(paints[bar.layer].rgb) : t.text_secondary;
+    // In the style colour at the layer's transparency (ghosted wells stay faint).
+    const float alpha = bar.layer < options_.alpha.size() ? options_.alpha[bar.layer] : 1.0F;
+    const Rgba color = bar.layer < paints.size() ? alpha_of(rgb_of(paints[bar.layer].rgb), alpha) : t.text_secondary;
     p.fill(12.0F + bar.x, kTop + bar.y, std::max(1.0F, bar.w), std::max(1.0F, bar.h), 0.0F, color);
   }
   std::string foot = panel.bars.empty() ? "No layer crosses the line" : "A at left, A′ at right; height in µm";
@@ -1039,29 +1011,41 @@ void View3dView::toggle_section() {
     if (const std::optional<db::Rect> area = section_area(ctx_.editor(), *w)) section_line_ = box_cut_line(*area);
   }
   section_paint_->set_visible(section_line_.has_value());
-  update_section();
+  update_section(true);
+  dirty_ = true;  // the clipping plane
   repaint();
 }
 
-void View3dView::update_section() {
+void View3dView::update_section(bool report) {
   section_ = {};
-  if (section_line_ && model_ && drawn_stack_) section_ = view3d::section(*model_, *drawn_stack_, *section_line_);
+  const view3d::WindowState* w = window();
+  if (section_line_ && model_ && drawn_stack_ && w != nullptr) {
+    section_ = view3d::section(*model_, *drawn_stack_, *section_line_, hidden_flags(*drawn_stack_, *w));
+  }
+  // A new line's diagnostics (a refused line, layers without a height) go
+  // to the console once; a rebuilt model recomputes silently.
+  if (report) {
+    for (const diag::Diagnostic& d : section_.diagnostics) ctx_.core.dispatcher().report(d);
+  }
   section_paint_->invalidate();
 }
 
 bool View3dView::section_click(float x, float y) {
   const view3d::WindowState* w = window();
   if (!section_line_ || w == nullptr) return false;
-  const ui::Rect r = viewport_->rect();
-  const std::optional<db::Point> point =
-      ground_at(w->view, x, y, static_cast<int>(r.width), static_cast<int>(r.height));
-  if (!point) return false;  // no ground point (SECTION's interface): the click picks
+  const float ratio = pixel_ratio_ ? pixel_ratio_() : 1.0F;
+  const render::DrawParams params = draw_params(FrameInputs{w, nullptr, nullptr, nullptr, &options_});
+  const std::optional<db::Point> ground =
+      view3d::ground_point(w->view, params.projection, pixels_.first, pixels_.second, x * ratio, y * ratio);
+  if (!ground) return false;  // the plane is seen edge on (front, side): the click picks
+  const db::Point point = ground_to_root(*ground, xy_factor(*w));
   if (!section_first_) {
-    section_first_ = *point;
+    section_first_ = point;
   } else {
-    section_line_ = axis_aligned_line(*section_first_, *point);
+    section_line_ = axis_aligned_line(*section_first_, point);
     section_first_.reset();
-    update_section();
+    update_section(true);
+    dirty_ = true;
   }
   repaint();
   return true;

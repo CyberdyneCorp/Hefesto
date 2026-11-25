@@ -1279,3 +1279,47 @@ TEST_CASE("Cross-section: the section panel draws each interval from bottom to t
   CHECK(empty.summary == "A–A′ no µm scale · 0 layers");
   CHECK(empty.accessible_name == "Cross-section A–A′, length unknown, no layer crosses the line");
 }
+
+TEST_CASE("the cut line's clipping plane keeps the side away from the isometric viewer",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const hefesto::render::SectionPlane along_x = section_clip_plane(box_cut_line(db::Rect{0, 0, 100, 40}));
+  CHECK(along_x.axis == hefesto::render::SectionPlane::Axis::y);
+  CHECK(along_x.position == 20.0);
+  CHECK(along_x.keep_greater);
+  const hefesto::render::SectionPlane along_y = section_clip_plane(box_cut_line(db::Rect{-10, -30, 10, 70}));
+  CHECK(along_y.axis == hefesto::render::SectionPlane::Axis::x);
+  CHECK(along_y.position == 0.0);
+  CHECK(along_y.keep_greater);
+}
+
+TEST_CASE("a ground point in mask-layer mode is divided back to root coordinates",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  CHECK(ground_to_root(db::Point{100, -40}, 1.0F) == db::Point{100, -40});
+  CHECK(ground_to_root(db::Point{100, -40}, 10.0F) == db::Point{10, -4});
+  CHECK(ground_to_root(db::Point{100, -40}, 0.0F) == db::Point{100, -40});  // not a valid factor: unchanged
+}
+
+TEST_CASE("Cross-section on the tab's mesh: the panel shows the layers the line crosses",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // A real section (view3d::section, SECTION) of a one-layer model.
+  view3d::StackLayer met1;
+  met1.name = "MET1";
+  met1.height = 1.38F;
+  met1.thickness = 0.36F;
+  met1.source = view3d::ValueSource::render;
+  const view3d::LayerStack stack{view3d::Mode::mask_layer, {met1}, true, 0.01};
+  view3d::MeshModel mesh;
+  mesh.region = db::Rect{0, 0, 200, 100};
+  view3d::Chunk chunk;
+  chunk.area = mesh.region;
+  chunk.rects.push_back(view3d::RectInstance{50.0F, 0.0F, 150.0F, 100.0F, 0});
+  mesh.chunks.push_back(chunk);
+  const view3d::Segment line = box_cut_line(mesh.region);
+  const view3d::CrossSection cs = view3d::section(mesh, stack, line);
+  REQUIRE(cs.intervals.size() == 1);
+  const SectionPanel panel = section_panel(cs, stack, cs.length_um, 200.0F, 60.0F);
+  REQUIRE(panel.bars.size() == 1);
+  CHECK(panel.bars[0].x == Catch::Approx(50.0F).margin(1e-3));
+  CHECK(panel.bars[0].w == Catch::Approx(100.0F).margin(1e-3));
+  CHECK(panel.summary == "A–A′ 2.00 µm · 1 layer");
+}

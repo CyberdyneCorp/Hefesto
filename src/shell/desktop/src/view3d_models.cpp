@@ -808,6 +808,26 @@ std::optional<db::Rect> section_area(const editor::EditorState& editor, const vi
   return cell->bbox();
 }
 
+render::SectionPlane section_clip_plane(const view3d::Segment& line) noexcept {
+  render::SectionPlane plane;
+  if (line.a.y == line.b.y) {
+    plane.axis = render::SectionPlane::Axis::y;
+    plane.position = static_cast<double>(line.a.y);
+  } else {
+    plane.axis = render::SectionPlane::Axis::x;
+    plane.position = static_cast<double>(line.a.x);
+  }
+  plane.keep_greater = true;
+  return plane;
+}
+
+db::Point ground_to_root(db::Point ground, float xy_factor) noexcept {
+  if (!std::isfinite(xy_factor) || xy_factor <= 0.0F || xy_factor == 1.0F) return ground;
+  const double f = static_cast<double>(xy_factor);
+  return db::Point{static_cast<db::Coord>(std::lround(static_cast<double>(ground.x) / f)),
+                   static_cast<db::Coord>(std::lround(static_cast<double>(ground.y) / f))};
+}
+
 double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept {
   const double dx = static_cast<double>(line.b.x) - static_cast<double>(line.a.x);
   const double dy = static_cast<double>(line.b.y) - static_cast<double>(line.a.y);
