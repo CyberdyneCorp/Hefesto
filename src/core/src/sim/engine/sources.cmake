@@ -8,6 +8,7 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/job_manager.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/pool.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/pool.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/job_manager_events.hpp)
 # SIMD (task 5.4): the worker client behind make_worker_engine.
 target_sources(hefesto_core PRIVATE ${CMAKE_CURRENT_LIST_DIR}/worker_engine.cpp)

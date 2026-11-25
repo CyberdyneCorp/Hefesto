@@ -59,6 +59,23 @@ manager and the pool, task 5.5).
 - `SIM-ENGINE-011`: `engine busy`, a command other than a halt while the
   background analysis runs ("Engine threading model").
 - `SIM-ENGINE-012`: `vectors()` before any run has ended.
+- `SIM-ENGINE-030` `simulation engine terminated`: a fault of the job's
+  engine (a crash, a controlled exit, a missed heartbeat or a bad frame,
+  reported as `EngineState::failed`, or an error returned by an engine call).
+  The job fails, the engine is discarded, and the next job runs in a new one
+  (D-25 (a)). The cause and the job's error lines follow as further
+  diagnostics.
+- `SIM-ENGINE-031` `simulation engine unavailable: <reason>`: no engine could
+  be started for the job (no engine host, or the host failed).
+- `SIM-ENGINE-032`: one error-stream line of a failed job (ngspice's
+  `stderr ` lines, the last 50; for a completed run only those starting with
+  `Error`).
+- `SIM-ENGINE-033` `worker count <k> is above the maximum <N> of this host;
+  the pool keeps <N> workers`: a worker setting larger than the pool formula
+  allows is refused ("Setting cannot raise the pool").
+- `SIM-ENGINE-034` `no job <id>`; `SIM-ENGINE-035` `job <id> is not running`
+  (or `not paused`) for cancel, pause and resume; `SIM-ENGINE-036` `job <id>
+  already exists` for a run-set point id in use.
 
 ## SIMDECK
 
@@ -73,7 +90,17 @@ Codes of result storage, raw files, CSV export and waveform measurements
 ## SIMPROBE
 
 Codes of node naming, probes, operating-point annotation and the 3D feed
-(`sim/probe/`; capability simulation-ui-and-crossprobe). None yet.
+(`sim/probe/`; capability simulation-ui-and-crossprobe).
+
+- `SIM-PROBE-001` `Net <name> is not in the netlist of this run`: neither
+  the net-name map's `layout_name` index nor its points on the selected node
+  give an entry ("Probing a layout net", step 3).
+- `SIM-PROBE-002`: node naming was called without a root cell, a
+  technology or an extraction style.
+- `SIM-PROBE-003` `no instance <element> in cell <cell>`: an element of the
+  probe's use path does not exist.
+- `SIM-PROBE-004` `no paint at (<x>, <y>) in cell <cell>`: the probe point
+  lies on no paint.
 
 ## SIMCMD
 
@@ -117,4 +144,15 @@ fails when the two disagree.
 | `SIM-ENGINE-010` | error | The simulation engine rejected a command. |
 | `SIM-ENGINE-011` | error | Engine busy: the command is not accepted while the analysis runs. |
 | `SIM-ENGINE-012` | error | No result vectors are available: no run has ended. |
+| `SIM-ENGINE-030` | error | Simulation engine terminated: the job failed and the worker is replaced. |
+| `SIM-ENGINE-031` | error | Simulation engine unavailable: no engine could be started. |
+| `SIM-ENGINE-032` | error | An error-stream line of a failed job. |
+| `SIM-ENGINE-033` | error | Worker count above the pool maximum of this host refused. |
+| `SIM-ENGINE-034` | error | No job with this id. |
+| `SIM-ENGINE-035` | error | Job not in the state the command needs. |
+| `SIM-ENGINE-036` | error | Run-set point job id already in use. |
+| `SIM-PROBE-001` | error | Net is not in the netlist of this run. |
+| `SIM-PROBE-002` | error | Node naming needs a root cell, a technology and an extraction style. |
+| `SIM-PROBE-003` | error | Instance of the probe's use path not found. |
+| `SIM-PROBE-004` | error | No paint at the probe point. |
 <!-- END DIAGNOSTIC CODES -->

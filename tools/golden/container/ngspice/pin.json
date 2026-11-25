@@ -32,6 +32,7 @@
   "code_models": ["spice2poly", "analog", "digital", "xtradev"],
   "code_models_excluded": {
     "digital/d_cosim": "d_cosim loads arbitrary user code (feature table: d_cosim off)",
+    "digital/d_process": "d_process starts external processes (fork/exec, CreateProcess); the worker allows no process creation (design D9)",
     "table": "GPLv2+ (feature table: table off)",
     "xtraevt": "not in the feature table's code-model list",
     "tlines": "not in the feature table's code-model list"

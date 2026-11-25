@@ -67,12 +67,12 @@ any form: Hefesto's LVS engine is a clean-room implementation (design D2, Q-LVS-
 | Component | Version / pin | License | Shipped in | Source |
 |---|---|---|---|---|
 | ngspice | `47-hefesto1`: ngspice-47, commit `a80f6e3e95d51534905b1f23410a951802666656`, release archive `ngspice-47.tar.gz`, SHA-256 `894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f`, patched (`third_party/ngspice/patches/0001`-`0004`) | Modified BSD (BSD-3-Clause); GPL parts excluded | `libngspice-hefesto` (loaded by `hefesto-simd`) | https://sourceforge.net/projects/ngspice/ (https://git.code.sf.net/p/ngspice/ngspice) |
-| ↳ KLU, AMD, COLAMD, BTF, SuiteSparse_config (`src/maths/KLU`, in ngspice) | as bundled by ngspice-47 | LGPLv2 per ngspice's `COPYING`; COLAMD's files say LGPL-2.1-or-later; `UFconfig.h` says "no licensing restrictions" | `libngspice-hefesto` | https://github.com/DrTimothyAldenDavis/SuiteSparse |
+| ↳ KLU, AMD, COLAMD, BTF, SuiteSparse_config (`src/maths/KLU`, in ngspice) | as bundled by ngspice-47 | per file in `ngspice-manifest.json` (`file_licenses`): LGPLv2 per ngspice's `COPYING` for KLU, AMD and BTF; COLAMD's `colamd.c` LGPL-2.1-or-later, `colamd_global.c` LGPL-2.1, `colamd.h` its own permission notice; `UFconfig.h` "no licensing restrictions"; `klu-binding.h` is ngspice's own (Modified BSD) | `libngspice-hefesto` | https://github.com/DrTimothyAldenDavis/SuiteSparse |
 | ↳ numparam (in ngspice) | as bundled by ngspice-47 | LGPLv2 or later | `libngspice-hefesto` | ngspice `src/frontend/numparam` |
 | ↳ OSDI (`src/osdi`, in ngspice) | as bundled by ngspice-47 | MPL-2.0 | `libngspice-hefesto` | ngspice `src/osdi` |
 | ↳ cppduals (in ngspice, used by HICUM) | as bundled by ngspice-47 | MPL-2.0 | `libngspice-hefesto` | ngspice `src/include/cppduals` |
 | ↳ sparse (in ngspice) | as bundled by ngspice-47 | MIT-style (unnamed) | `libngspice-hefesto` | ngspice `src/maths/sparse` |
-| ↳ XSPICE code models `analog`, `digital` (without `d_cosim`), `spice2poly`, `xtradev` (in ngspice) | as bundled by ngspice-47 | public domain | `libngspice-hefesto` | ngspice `src/xspice/icm` |
+| ↳ XSPICE code models `analog`, `digital` (without `d_cosim` and `d_process`), `spice2poly`, `xtradev` (in ngspice) | as bundled by ngspice-47 | public domain | `libngspice-hefesto` | ngspice `src/xspice/icm` |
 | OpenVAF-reloaded | 20260616, upstream commit `44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7`, archive SHA-256 `bd4854a6e5b55f1c64a0b853d90216d1e3961d2f6d3ac572125597d28b867301` | GPL-3.0 | **not shipped** (build-time tool: golden capture image, and from task 5.2 the IHP OSDI modules) | https://github.com/arpadbuermen/OpenVAF |
 
 The source archive the LGPL and MPL terms require (every compiled file, all headers, the whole

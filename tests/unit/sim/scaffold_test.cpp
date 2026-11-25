@@ -74,16 +74,23 @@ TEST_CASE("make_worker_engine without a host reports SIM-ENGINE-001",
   CHECK_FALSE(is_not_implemented(engine));
 }
 
-TEST_CASE("scaffold job submission reports CORE-NOTIMPL-009",
+TEST_CASE("a default job manager queues a submitted job",
           "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  // Task 5.5 replaced the stub; tests/unit/sim/engine/ covers the manager.
   sim::JobManager jobs;
-  CHECK(is_not_implemented(jobs.submit(sim::PreparedDeck{}, sim::JobOptions{"tb", "tt", {}})));
+  const auto id = jobs.submit(sim::PreparedDeck{}, sim::JobOptions{"tb", "tt", {}});
+  REQUIRE(id.ok());
+  CHECK(jobs.state(id.value()) == sim::JobState::queued);
+  CHECK(jobs.workers() == 1);
 }
 
-TEST_CASE("scaffold worker_pool_size reports CORE-NOTIMPL-009",
+TEST_CASE("worker_pool_size implements the pool formula",
           "[cap:simulation-engine-embedding][req:Multiple simulations and corner parallelism]") {
+  // Task 5.5 replaced the stub; tests/unit/sim/engine/pool_test.cpp covers the scenarios.
   const sim::PoolInputs inputs{8, std::uint64_t{16} << 30, std::uint64_t{1} << 30, std::nullopt};
-  CHECK(is_not_implemented(sim::worker_pool_size(inputs)));
+  const auto n = sim::worker_pool_size(inputs);
+  REQUIRE(n.ok());
+  CHECK(n.value() == 4);
 }
 
 TEST_CASE("scaffold deck preparation reports CORE-NOTIMPL-009",
@@ -120,15 +127,19 @@ TEST_CASE("scaffold waveform measurement reports CORE-NOTIMPL-009",
   CHECK(is_not_implemented(store.measure_waveform(sim::Plot{}, sim::WaveformMeasure{"max", "v(out)", {}, {}})));
 }
 
-TEST_CASE("scaffold node_name reports CORE-NOTIMPL-009", "[cap:irsim-interface][req:Hierarchical node names]") {
-  CHECK(is_not_implemented(sim::node_name(sim::LayoutSelection{})));
+TEST_CASE("node_name needs a layout, a technology and a style", "[cap:irsim-interface][req:Hierarchical node names]") {
+  // Task 14.2 (naming portion) replaced the stub; tests/unit/sim/probe/ covers the naming.
+  const auto name = sim::node_name(sim::LayoutSelection{});
+  REQUIRE_FALSE(name.ok());
+  CHECK(name.error().code == "SIM-PROBE-002");
 }
 
-TEST_CASE("scaffold resolve_probe reports CORE-NOTIMPL-009",
-          "[cap:simulation-ui-and-crossprobe][req:Probing a layout net]") {
+TEST_CASE("resolve_probe falls back to connectivity", "[cap:simulation-ui-and-crossprobe][req:Probing a layout net]") {
   const sim::NetNameMap map{{sim::NetNameEntry{"out", "out__c1", "xdut.out__c1", {}, {}}}};
   const auto on_node = [](const sim::LayoutPoint& /*point*/) { return true; };
-  CHECK(is_not_implemented(sim::resolve_probe(map, sim::LayoutSelection{}, on_node)));
+  const auto entry = sim::resolve_probe(map, sim::LayoutSelection{}, on_node);
+  REQUIRE(entry.ok());
+  CHECK(entry.value().sim_name == "xdut.out__c1");
 }
 
 TEST_CASE("scaffold probe reports CORE-NOTIMPL-009", "[cap:simulation-ui-and-crossprobe][req:Probing device currents]") {

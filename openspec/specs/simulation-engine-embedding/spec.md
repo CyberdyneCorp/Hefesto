@@ -50,6 +50,7 @@ The ngspice build SHALL use this feature set on every platform:
 | XSPICE code models | analog, digital, spice2poly and xtradev libraries compiled in statically | no runtime `dlopen` on iPadOS, and the same registry on every platform |
 | `table` code model library | off | GPLv2+ license |
 | `d_cosim`, GHDL and Icarus co-simulation shims | off | load arbitrary user code |
+| `d_process` code model (in the `digital` library) | off | starts external processes |
 | OSDI | on | Verilog-A compact models (see Requirement "OSDI compact models") |
 | KLU sparse solver | on, bundled copy | solver performance |
 | CIDER, NDEV | off | not needed |

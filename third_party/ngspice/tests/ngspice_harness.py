@@ -121,7 +121,14 @@ def osdi_dynamic(path):
     return e, {}
 
 
-SCENARIOS = {f.__name__: f for f in (seed, trnoise_twice, spiceinit, codemodel, osdi_static_only, osdi_dynamic)}
+def devices(path):
+    e = Engine(path)
+    e.command("devhelp")
+    return e, {}
+
+
+SCENARIOS = {f.__name__: f for f in (seed, trnoise_twice, spiceinit, codemodel, osdi_static_only, osdi_dynamic,
+                                     devices)}
 
 
 def main(argv: list[str]) -> int:

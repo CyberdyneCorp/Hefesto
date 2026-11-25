@@ -97,6 +97,15 @@ class EnginePatchTest(unittest.TestCase):
         self.assertEqual(result["vectors"]["out"], [2.5])
         self.assertFalse([line for line in result["output"] if "couldn't be loaded" in line], result["output"])
 
+    def test_d_process_not_built_in(self):
+        """cap:simulation-engine-embedding req:ngspice build configuration and license hygiene.
+
+        The digital library is built in without d_process, which starts external
+        processes: `devhelp` lists d_inverter but not d_process (stock ngspice-47 has both)."""
+        out = "\n".join(run("devices")["output"])
+        self.assertIn("d_inverter", out)
+        self.assertNotIn("d_process", out)
+
     def test_osdi_static_only_refuses_unknown_module(self):
         """cap:simulation-engine-embedding req:OSDI compact models (patch 0001).
 
