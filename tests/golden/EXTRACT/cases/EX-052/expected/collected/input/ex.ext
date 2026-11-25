@@ -1,0 +1,9 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use hleaf I1 1 0 0 0 1 0
+node "metal1_20_4#" 0 0 20 4 m1
+merge "I1/metal1_10_4#" "metal1_20_4#" 0

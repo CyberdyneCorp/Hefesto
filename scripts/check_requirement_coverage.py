@@ -64,10 +64,6 @@ DEFERRED = {
     # Q-SCRIPT-30 (m4-scripting design D11): `mazeroute` arrives with
     # router-maze-iroute, and its requirement's test with it.
     ("scripting-auxiliary-tools", "Netlist maze-routing script"): "M10",
-    # m7-extraction task 7.7: the subcell parts need EXTHIER's interaction
-    # yanks and pass 1 (tasks 8.1-8.3).
-    ("extract-devices", "Subcell device priority"): "M7 R3b (task 7.7)",
-    ("extract-substrate", "Subcell substrate connections"): "M7 R3b (task 7.7)",
     # m8-schematic design D13 (task 11.2): these parts of
     # schematic-simulation-integration need the embedded simulator, its
     # results or the lvs-* capabilities, so their tests move to M9's plan.

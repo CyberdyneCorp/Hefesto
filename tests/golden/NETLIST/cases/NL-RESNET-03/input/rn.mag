@@ -1,0 +1,36 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 30 4
+rect 0 20 30 24
+rect 0 40 30 52
+rect 0 70 30 72
+<< metal2 >>
+rect 26 0 60 4
+rect 22 20 60 24
+rect 18 40 60 52
+rect 28 70 60 72
+<< via >>
+rect 26 0 30 4
+rect 22 20 30 24
+rect 18 40 30 52
+rect 28 70 30 72
+<< labels >>
+rlabel metal1 0 0 0 4 0 v1_0
+port 1 nsew
+rlabel metal2 60 0 60 4 0 v1_1
+port 2 nsew
+rlabel metal1 0 20 0 24 0 v2_0
+port 3 nsew
+rlabel metal2 60 20 60 24 0 v2_1
+port 4 nsew
+rlabel metal1 0 40 0 52 0 v3_0
+port 5 nsew
+rlabel metal2 60 40 60 52 0 v3_1
+port 6 nsew
+rlabel metal1 0 70 0 72 0 v4_0
+port 7 nsew
+rlabel metal2 60 70 60 72 0 v4_1
+port 8 nsew
+<< end >>

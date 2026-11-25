@@ -278,6 +278,26 @@ Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) and the R3 fix p
 | Q-NETLIST-61 | The `-p` search path holds for one run in both netlisters | compat-neutral (with one compat edge) | **compat-neutral**; ON keeps the path of an `ext2spice` run that names no cell | netlist-spice-options, netlist-sim (behaviour stated; the row is cited after approval) | R3 fix pass |
 | Q-NETLIST-62 | A cap on `.ext` port numbers (ReadLimits::max_port_index, 2^20) | bug (hardening) | **fix** (both modes) | ext-flattening-read "Use, port, cap, resist, attr and connect records" (behaviour stated; the row is cited after approval) | R3 fix pass |
 
+## Entries raised in round R4 (pending user decision)
+
+Raised by the R4 workstreams (EXTCMD, EXTHIER, RESNET, RESCMD, ANTENNA) for Magic behaviours no row covered and for both-modes fixes made by the standing rule; numbered at integration (the workstreams' Q-EXTRACT-37/38 collided with the withdrawn Q-EXTRACT-37 and with each other). All are implemented as their recommendation says, except Q-NETLIST-63, whose Magic crash is not located yet. None is cited by a spec as approved, so none blocks `check_milestone_readiness.py`. The spec edits each implies are written in its open-questions entry and are applied after approval.
+
+| ID | Question | Kind | Recommendation | Spec on approval | Implemented by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-38 | `extract do\|no unique <word>` with a word other than `notopports` applies DOUNIQUE as a bit mask | compat | **compat** | extract-commands "Extraction options" (scenario per mode) | EXTCMD (R4) |
+| Q-EXTRACT-39 | The line of a non-primitive `device` cell property has no newline | compat | **compat** | extract-devices "Device cell property" (scenario per mode) | EXTCMD (R4) |
+| Q-EXTRACT-40 | Unifying two hierarchical nodes drops one node's pass-2 adjustments | bug | **compat** | extract-hierarchy "Merge records and pass-2 adjustments" (as-landed note becomes the rule) | EXTHIER (R4) |
+| Q-EXTRACT-41 | Two device types touching in one device region make one device (probe EX-P03) | quirk | **compat** (confirm OFF for deliberate multi-type gate lines) | extract-devices "Device regions" (scenario per mode, as landed) | EXTHIER (R4) |
+| Q-NETLIST-63 | Magic's `extresist` crashes (exit 139) on nets with nfets (NL-RESNET-05, 10, 13) | bug | **fix** in both modes once located | extresist-network or extresist-command | not yet (crash not located) |
+| Q-NETLIST-64 | Undefined behaviour in the network construction (six cases) | bug | **fix** (both modes) | extresist-network ((a) stated) | RESNET (R4) |
+| Q-NETLIST-65 | A negative `threshold`, `minresist` or `mindelay` is stored | compat | **compat** | extresist-command "Command options" (scenario per mode) | RESCMD (R4) |
+| Q-NETLIST-66 | `extresist debug` and `stats` take any word | compat | **compat** | extresist-command "Command options" (scenario per mode) | RESCMD (R4) |
+| Q-NETLIST-67 | `extresist cell` runs on the box cell | compat | **compat** | extresist-command "Run flow" (scenario per mode) | RESCMD (R4) |
+| Q-NETLIST-68 | Crashes in the `.ext` read of `extresist` (three cases) | bug | **fix** (both modes) | extresist-output | RESCMD (R4) |
+| Q-NETLIST-69 | ResSortByGate orders by node address | bug (determinism) | **fix** (both modes) | extresist-command "Net selection and first cutoff" | RESCMD (R4) |
+| Q-MISC-92 | `antennacheck <cell>` with no layout window crashes | bug | **fix** (both modes) | antenna-check "Antenna check command" | ANTENNA (R4) |
+| Q-MISC-93 | antennacheck devices with no style device line or no terminals | bug | **fix** (both modes) | antenna-check | ANTENNA (R4) |
+
 ## Notable changes to the entries' original recommendations
 
 - **Q-EXTRACT-1**: replicate → compat.

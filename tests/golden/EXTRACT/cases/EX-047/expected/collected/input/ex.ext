@@ -1,0 +1,16 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use sc y 1 0 3 0 1 20
+use sc x[0:2:20][0:0:0] 1 0 3 0 1 0
+node "metal1_0_40#" 0 0 0 40 m1
+substrate "VSUB" 0 0 -1073741817 -1073741817 space
+merge "x[2]/VSUB" "x[1]/VSUB" 0
+merge "x[1]/VSUB" "x[0]/VSUB"
+merge "x[0]/VSUB" "y/VSUB"
+merge "y/VSUB" "VSUB"
+merge "x[2]/VSUB" "x[1]/VSUB" 0
+merge "x[1]/VSUB" "VSUB"

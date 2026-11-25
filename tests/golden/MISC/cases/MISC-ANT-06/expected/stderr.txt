@@ -1,0 +1,5 @@
+Cell: top
+Antenna violation detected at plane metal1 contact
+Effective antenna ratio 800 > limit 400
+Gate rect (0 0) to (2 10)
+Antenna rect (10 0) to (20 10)

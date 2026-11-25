@@ -1,0 +1,28 @@
+magic
+tech exttest
+timestamp 100
+<< ndiff >>
+rect 0 0 10 10
+rect 20 0 30 10
+rect 0 10 10 20
+rect 60 0 70 10
+rect 80 0 90 10
+rect 50 0 60 10
+<< nfet >>
+rect 10 0 20 10
+rect 70 0 80 10
+rect 50 10 60 20
+<< poly >>
+rect 10 10 20 16
+rect 10 -4 20 0
+rect 70 10 80 16
+rect 70 -4 80 0
+rect 50 20 60 24
+<< labels >>
+rlabel ndiff 0 20 10 20 0 d1
+port 1 nsew
+rlabel ndiff 50 0 50 10 0 d2
+port 2 nsew
+rlabel ndiff 90 0 90 10 0 d3
+port 3 nsew
+<< end >>

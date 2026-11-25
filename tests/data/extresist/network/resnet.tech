@@ -1,0 +1,63 @@
+tech
+    format 35
+    resnet
+end
+planes
+    well
+    active
+    metal1
+    metal2
+end
+types
+    well    pwell,pw
+    active  ndiff,nd
+    active  nfet
+    active  poly,p
+    active  pc
+    metal1  metal1,m1
+    metal1  via
+    metal2  metal2,m2
+end
+contact
+    pc   poly metal1
+    via  metal1 metal2
+end
+styles
+    styletype mos
+end
+compose
+end
+connect
+    poly    pc,nfet
+    metal1  pc,via
+    metal2  via
+end
+cifoutput
+style lambda
+    scalefactor 10
+    layer CVA via
+        squares 10 20 20
+        calma 10 0
+end
+cifinput
+end
+drc
+end
+extract
+style resnet
+    cscale 1
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    resist ndiff 1000
+    resist poly 5000
+    resist metal1 100
+    resist metal2 80
+    contact via 10000
+    areacap metal1 1
+    device mosfet nfet nfet ndiff pwell,space GND!
+end

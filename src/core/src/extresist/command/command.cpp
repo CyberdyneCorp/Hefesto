@@ -3,26 +3,32 @@
 //
 // The `extresist` command (extresist/command/command.hpp;
 // openspec/changes/m7-extraction/design.md D4, D16): Magic's option table,
-// the lookup with `Ambiguous option: <w>` and `Unknown option: <w>`, and
-// `help`. The run and every other option answer CORE-NOTIMPL-008 until
-// RESCMD lands them.
+// the lookup with `Ambiguous option: <w>` and `Unknown option: <w>`,
+// `help`, the setting options (extresist/command/options.cpp) and the
+// options that run (extresist/command/run.cpp). `box` prints a network,
+// which needs RESNET's network: it answers CORE-NOTIMPL-008 after its
+// window and type checks.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResRex.c CmdExtResis
 // (cmdExtresisCmd, the lookup, RES_HELP, RES_AMBIG and RES_BAD), Copyright
 // (C) 1985, 1990 Regents of the University of California (see
 // THIRD_PARTY_NOTICES.md).
 //
-// Owner: INTEGRATION (the registration and dispatcher); RESCMD (the option
-// parsers and run()).
+// Owner: INTEGRATION (the registration); RESCMD (the dispatcher, the
+// option parsers and run()).
 
 #include "hefesto/extresist/command/command.hpp"
 
 #include <array>
+#include <span>
 #include <string>
+#include <utility>
 
 #include "db/command_util.hpp"
+#include "extresist/command/options.hpp"
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/m7_stubs.hpp"
+#include "hefesto/editor/editor_state.hpp"
 
 namespace hefesto::extresist {
 
@@ -56,8 +62,6 @@ constexpr std::array<std::string_view, 21> kOptions{
     "help                 print this message",
 };
 
-constexpr std::size_t kHelp = 20;
-
 std::string option_name(std::string_view entry) {
   return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
 }
@@ -72,6 +76,73 @@ CommandResult help(const cu::Session& s) {
   return CommandResult::success();
 }
 
+// The words after the option.
+std::span<const std::string> option_args(const cmd::Invocation& invocation) {
+  return std::span<const std::string>{invocation.args}.subspan(1);
+}
+
+ResistRun run_request(const cu::Session& s, cmd::CommandContext& ctx) {
+  ResistRun request;
+  request.magic_compat = s.magic_compat;
+  request.files = &ctx.services().files;
+  request.emit = [&ctx](diag::Diagnostic d) { ctx.emit(d); };
+  return request;
+}
+
+// `box <type>`: the window and type checks; the network print is RESNET's.
+CommandResult box_option(const cu::Session& s, std::span<const std::string> args, const detail::Console& console) {
+  if (!s.editor->box || s.editor->box_root == nullptr) {
+    console.message("Sorry, the box must appear in one of the windows.");
+    return CommandResult::success();
+  }
+  if (args.size() != 1 || s.tech == nullptr) {
+    return CommandResult::success();
+  }
+  const auto type = s.tech->find_type(args.front());
+  if (!type.ok() || *type.id == tech::kSpace) {
+    console.message("Unrecognized layer (type) name \"" + args.front() + "\"");
+    return CommandResult::success();
+  }
+  return cmd::m7_not_implemented("extresist box");
+}
+
+// `cell`: the selected cell (CmdGetSelectedCell).
+CommandResult cell_option(const cu::Session& s, ResistRun request, const detail::Console& console) {
+  const db::CellUse* use = s.editor->selection.cycle.last_selected_use;
+  if (use == nullptr || use->def == nullptr) {
+    console.message("No cell selected");
+    return CommandResult::success();
+  }
+  s.editor->extresist.options.all = false;
+  request.cell = use->def->name();
+  return run(*s.editor, request, nullptr);
+}
+
+// The options that run (all, cell, fasthenry, geometry) and box.
+CommandResult run_option(const cu::Session& s, cmd::CommandContext& ctx, std::size_t option,
+                         std::span<const std::string> args, detail::OptionContext& octx) {
+  ResistRun request = run_request(s, ctx);
+  switch (option) {
+    case detail::kAll:
+      s.editor->extresist.options.all = true;
+      request.all = true;
+      return run(*s.editor, request, nullptr);
+    case detail::kGeometry:
+      request.geometry = true;
+      return run(*s.editor, request, nullptr);
+    case detail::kFasthenry:
+      detail::fasthenry_frequency(args, octx);
+      request.fasthenry = true;
+      return run(*s.editor, request, nullptr);
+    case detail::kCell:
+      return cell_option(s, request, octx.console);
+    case detail::kBox:
+      return box_option(s, args, octx.console);
+    default:
+      return cmd::m7_not_implemented("extresist " + option_name(kOptions.at(option)));
+  }
+}
+
 CommandResult extresist_command(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
   auto session = cu::session(ctx);
   if (!session) {
@@ -79,7 +150,8 @@ CommandResult extresist_command(cmd::CommandContext& ctx, const cmd::Invocation&
   }
   const cu::Session& s = session.value();
   if (invocation.args.empty()) {
-    return run(*s.editor, ResistRun{}, nullptr);
+    s.editor->extresist.options.all = false;  // RES_RUN
+    return run(*s.editor, run_request(s, ctx), nullptr);
   }
   const std::string& word = invocation.args.front();
   const cmd::LookupResult found = cmd::lookup(word, kOptions);
@@ -91,17 +163,18 @@ CommandResult extresist_command(cmd::CommandContext& ctx, const cmd::Invocation&
     cu::print(s, "Unknown option: " + word);
     return CommandResult::success();
   }
-  if (found.index == kHelp) {
+  if (found.index == detail::kHelp) {
     return help(s);
   }
-  return cmd::m7_not_implemented("extresist " + option_name(kOptions.at(found.index)));
+  detail::OptionContext octx{s.editor->extresist.options, s.tech, s.magic_compat,
+                             detail::Console{[&ctx](diag::Diagnostic d) { ctx.emit(d); }}};
+  if (std::optional<CommandResult> set = detail::setting_option(found.index, option_args(invocation), octx)) {
+    return std::move(*set);
+  }
+  return run_option(s, ctx, found.index, option_args(invocation), octx);
 }
 
 }  // namespace
-
-CommandResult run(editor::EditorState& /*editor*/, const ResistRun& /*request*/, const mask::Progress* /*progress*/) {
-  return cmd::m7_not_implemented("extresist run");
-}
 
 std::span<const std::string_view> extresist_options() noexcept {
   return kOptions;

@@ -1,0 +1,21 @@
+* SPICE3 file created from wire.ext - technology: restest
+
+.option scale=10n
+
+M1000 out.t1 in GND GND nfet w=4 l=2
++  ad=24p pd=20u as=24p ps=20u
+M1001 active_204_20# out.t3 active_196_20# GND nfet w=2 l=4
++  ad=8p pd=12u as=8p ps=12u
+M1002 active_404_20# out.t2 active_396_20# GND nfet w=2 l=4
++  ad=8p pd=12u as=8p ps=12u
+M1003 out.t0 in VDD well_n8_8# pfet w=4 l=2
++  ad=24p pd=20u as=24p ps=20u
+R0 out.t3 out.t2 22.3672
+R1 out.t1 out.t3 9.63383
+R2 out.t0 out.t1 1.1255
+C0 in 0 3.4f **FLOATING
+C1 VDD 0 3.2f **FLOATING
+C2 out.t2 0 13.0505f **FLOATING
+C3 out.t3 0 54.6397f **FLOATING
+C4 out.t1 0 25.2654f **FLOATING
+C5 out.t0 0 1.04444f **FLOATING

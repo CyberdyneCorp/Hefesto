@@ -36,7 +36,8 @@ q(x)     = '"' , x , '"' ;
 - **device fields**:
   - The geometry pair is area and perimeter for `fet`, and length and width for mosfet/asymmetric/bjt. Resistor, capacitor and caprev records depend on the `magic-compat` setting (Q-NETLIST-39, resolution: compat): with it ON (the default) they carry no value or L/W fields and are written with the gate, source and drain terminal layout above, as in Magic, so the reader rejects a resistor record (`… overlaps device with incompatible number of terminals …`) and its rewiring is lost; with it OFF they carry the leading fields the extractor writes (the value, or `L W` when the device has a model) and their two terminals in the extractor's layout (capability `extract-file-format`), so the overlay replaces the original device's terminals. Other classes carry no geometry pair in both settings. The reader is the same in both settings.
   - The substrate is the renamed substrate node if any, else the default substrate name, else `None`.
-  - The drain is written only if the device has more than one source/drain terminal.
+  - The drain is written only if the device's line declares more than one source/drain terminal (exts_deviceSDCount).
+  - With `magic-compat` OFF a resistor or capacitor record carries the `.ext` record's leading fields (the value, or `L W`) verbatim in place of the geometry pair.
   - An empty attribute is written as `0`.
 
 Each `.res.ext`, `.res.lump` and `.fh` file SHALL be written completely or not at all, in both `magic-compat` settings (Q-EXTRACT-27, resolution: fix), by the mechanism of `extract-commands` "Output path and file location": a temporary name in the directory of the resolved target, renamed over the target (a symbolic link's target when the target is a link) after the last record; on cancel or error the temporary file is removed and the previous file, if any, is left unchanged; if no temporary file can be created there, the file is written in place, as Magic does. Magic stops at the next net on interrupt and leaves a truncated `.res.ext` that is newer than the `.ext`, so `simulation-netlist-preparation` (mode `rc`) and `ext2spice extresist on` would trust it. An uninterrupted run SHALL give the same bytes as Magic.
@@ -146,7 +147,7 @@ Compatibility: exact
 - **AND** with `magic-compat` OFF the second net uses `N3`, `N4` and `E2`
 
 ### Requirement: Geometry centerlines
-With `geometry`, no file SHALL be written. For each non-contact resistor of each processed net, a line element SHALL be added to the layout window from the first node's location to the second node's location. It is named `N<n1>_<n2>`, where unnamed nodes take sequential ids, and drawn in the first yellow style. The node coordinates are first aligned to the resistor centerline: y for east-west resistors, x for north-south resistors, skipping diagonal ones. Without a layout window, nothing SHALL be drawn.
+With `geometry`, no file SHALL be written. For each non-contact resistor of each processed net, a line element SHALL be added to the layout window from the first node's location to the second node's location. It is named `N<n1>_<n2>`, where unnamed nodes take sequential ids (a new id at every visit of an unnamed node, as Magic assigns them), and drawn in the first yellow style. The element's ends are the corners of the canonical rectangle of the two node locations. The node coordinates are first aligned to the resistor centerline: y for east-west resistors, x for north-south resistors, skipping diagonal ones. Without a layout window, nothing SHALL be drawn.
 Compatibility: behavioral
 (Magic ref: resis/ResPrint.c:757-814, resis/ResRex.c:2034-2091)
 

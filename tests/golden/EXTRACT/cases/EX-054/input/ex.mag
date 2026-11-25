@@ -1,0 +1,10 @@
+magic
+tech exttest
+timestamp 100
+use pin c
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 4
+<< labels >>
+rlabel metal1 s 6 2 6 2 0 VDD
+<< end >>
