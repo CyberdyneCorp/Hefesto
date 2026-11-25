@@ -14,7 +14,9 @@
 #include <functional>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 
@@ -191,12 +193,24 @@ double depth_at(const Mat& c, double x, double y) {
   return w != 0.0 ? z / w : z;
 }
 
+/// The substrate slab's draw (DrawParams::substrate): one rectangle and its
+/// four side faces in a small buffer, on a layer entry past the stack's.
+struct SlabDraw {
+  bool active = false;
+  std::uint32_t layer = 0;  // its GpuLayer entry
+  FramePush push{};
+  GpuRect rect{};
+  std::array<GpuSide, 4> sides{};
+};
+
 struct Frame {
   std::vector<LayerDraw> layers;
   std::vector<GpuLayer> gpu_layers;
   std::vector<FramePush> push;         // per chunk
   std::vector<std::size_t> back_to_front;  // chunk indices, farthest first
   std::array<float, 4> clear{};
+  SlabDraw slab;
+  bool clipped = false;  // a section plane is set: the clipped pipelines
   bool any_transparent = false;
   int width = 0;
   int height = 0;
@@ -245,6 +259,49 @@ void prepare_layers(const DrawParams& p, const std::vector<view3d::DrawHeight>& 
   }
 }
 
+/// The section plane, when set and finite.
+std::optional<SectionPlane> plane_of(const DrawParams& p) {
+  if (!p.section_plane.has_value() || !std::isfinite(p.section_plane->position)) {
+    return std::nullopt;
+  }
+  return p.section_plane;
+}
+
+/// FramePush::clip for a chunk at (ox, oy): keep where s * (coordinate -
+/// position) >= 0, s = +1 to keep the greater side; (0, 0, 1) keeps all.
+std::array<float, 4> clip_of(const std::optional<SectionPlane>& plane, double ox, double oy) {
+  if (!plane.has_value()) {
+    return {0.0F, 0.0F, 1.0F, 0.0F};
+  }
+  const double s = plane->keep_greater ? 1.0 : -1.0;
+  const bool x = plane->axis == SectionPlane::Axis::x;
+  const double origin = x ? ox : oy;
+  return {x ? static_cast<float>(s) : 0.0F, x ? 0.0F : static_cast<float>(s),
+          static_cast<float>(s * (origin - plane->position)), 0.0F};
+}
+
+/// The slab's rectangle and side faces relative to its area's lower-left
+/// corner, counter-clockwise, so each side's outward normal is on its
+/// right (no side_flag::outward_left).
+void slab_geometry(const view3d::SubstrateSlab& slab, std::uint32_t layer, SlabDraw& out) {
+  const auto w = static_cast<float>(slab.area.width());
+  const auto h = static_cast<float>(slab.area.height());
+  out.rect = GpuRect{0.0F, 0.0F, w, h, layer, 0U};
+  const std::array<std::array<float, 4>, 4> segs{{{0, 0, w, 0}, {w, 0, w, h}, {w, h, 0, h}, {0, h, 0, 0}}};
+  for (std::size_t i = 0; i < 4; ++i) {
+    out.sides[i] = GpuSide{segs[i][0], segs[i][1], segs[i][2], segs[i][3], layer, 0.0F, 0.0F, 0U};
+  }
+}
+
+bool usable_slab(const DrawParams& p, std::size_t layer_count) {
+  if (!p.substrate.has_value()) {
+    return false;
+  }
+  const view3d::SubstrateSlab& s = *p.substrate;
+  return s.area.width() > 0 && s.area.height() > 0 && std::isfinite(s.height) && std::isfinite(s.thickness) &&
+         layer_count < 0xFFFFU;  // the side faces pack the layer in 16 bits
+}
+
 std::array<float, 4> clear_color(const DrawParams& p) {
   std::array<float, 3> bg = p.background.value_or(background_color(p.styles));
   for (float& c : bg) c = std::isfinite(c) ? std::clamp(c, 0.0F, 1.0F) : 0.0F;
@@ -266,6 +323,7 @@ struct VulkanMesh3dRenderer::Impl {
   VkDescriptorSet set = VK_NULL_HANDLE;
   vk::Buffer layer_buffer;
   vk::Buffer highlight_buffer;
+  vk::Buffer slab_buffer;  // the substrate slab's rectangle, then its four sides
 
   std::vector<GpuChunk> chunks;  // model order
   std::vector<std::uint32_t> bases;  // pick base of each chunk
@@ -313,6 +371,7 @@ struct VulkanMesh3dRenderer::Impl {
     chunks.clear();
     vk::destroy_buffer(device, layer_buffer);
     vk::destroy_buffer(device, highlight_buffer);
+    vk::destroy_buffer(device, slab_buffer);
     if (pool != VK_NULL_HANDLE) vkDestroyDescriptorPool(device, pool, nullptr);
     pool = VK_NULL_HANDLE;
   }
@@ -434,6 +493,8 @@ struct VulkanMesh3dRenderer::Impl {
     const std::array<float, 3> light = board_light(view.view_z);
     const std::uint32_t highlight = p.highlight != nullptr && !p.highlight->empty() ? 1U : 0U;
     const double scale = xy_scale_of(p);
+    const std::optional<SectionPlane> plane = plane_of(p);
+    f.clipped = plane.has_value();
     std::vector<double> depth(chunks.size());
     f.push.resize(chunks.size());
     for (std::size_t i = 0; i < chunks.size(); ++i) {
@@ -444,6 +505,7 @@ struct VulkanMesh3dRenderer::Impl {
       push.light = {light[0], light[1], light[2], kBoardAmbient};
       push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
       push.params = {bases[i], lighting, highlight, 0U};
+      push.clip = clip_of(plane, c.origin_x, c.origin_y);
       const double cx = (static_cast<double>(c.area.x0) + static_cast<double>(c.area.x1)) / 2.0 - c.origin_x;
       const double cy = (static_cast<double>(c.area.y0) + static_cast<double>(c.area.y1)) / 2.0 - c.origin_y;
       depth[i] = depth_at(cm, cx, cy);
@@ -452,7 +514,33 @@ struct VulkanMesh3dRenderer::Impl {
     std::iota(f.back_to_front.begin(), f.back_to_front.end(), std::size_t{0});
     std::stable_sort(f.back_to_front.begin(), f.back_to_front.end(),
                      [&](std::size_t a, std::size_t b) { return depth[a] > depth[b]; });
+    prepare_slab(view, p, m, f);
     return f;
+  }
+
+  /// The substrate slab (DrawParams::substrate): a layer entry after the
+  /// stack's, in its neutral colour, drawn with pick id 0 (kNoPick).
+  static void prepare_slab(const view3d::ViewState& view, const DrawParams& p, const view3d::Matrix4& m, Frame& f) {
+    if (!usable_slab(p, f.layers.size())) {
+      return;
+    }
+    const view3d::SubstrateSlab& slab = *p.substrate;
+    SlabDraw& d = f.slab;
+    d.active = true;
+    d.layer = static_cast<std::uint32_t>(f.layers.size());
+    f.gpu_layers.resize(static_cast<std::size_t>(d.layer) + 1U);
+    f.gpu_layers[d.layer] = GpuLayer{{slab.color[0], slab.color[1], slab.color[2], 1.0F},
+                                     {slab.height, slab.thickness, 0.0F, 0.0F}};
+    const double ox = slab.area.x0;
+    const double oy = slab.area.y0;
+    const Mat cm = chunk_matrix(m, ox, oy, xy_scale_of(p));
+    for (std::size_t k = 0; k < 16; ++k) d.push.mvp[k] = static_cast<float>(cm[k]);
+    const std::array<float, 3> light = board_light(view.view_z);
+    d.push.light = {light[0], light[1], light[2], kBoardAmbient};
+    d.push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
+    d.push.params = {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U};
+    d.push.clip = clip_of(plane_of(p), ox, oy);
+    slab_geometry(slab, d.layer, d);
   }
 
   void write_frame_buffers(const Frame& f, const DrawParams& p) {
@@ -471,6 +559,21 @@ struct VulkanMesh3dRenderer::Impl {
     }
     write_at(device, layer_buffer, 0, f.gpu_layers);
     write_at(device, highlight_buffer, 0, bits);
+    write_slab(f.slab);
+  }
+
+  static constexpr VkDeviceSize kSlabSidesOffset = (sizeof(GpuRect) + 15U) & ~VkDeviceSize{15U};
+
+  void write_slab(const SlabDraw& slab) {
+    if (!slab.active) {
+      return;
+    }
+    if (slab_buffer.buffer == VK_NULL_HANDLE) {
+      slab_buffer = vk::create_buffer(physical, device, kSlabSidesOffset + sizeof(slab.sides),
+                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, kHostMemory);
+    }
+    write_at(device, slab_buffer, 0, std::vector<GpuRect>{slab.rect});
+    write_at(device, slab_buffer, kSlabSidesOffset, std::vector<GpuSide>(slab.sides.begin(), slab.sides.end()));
   }
 
   /// Records draws, binding each pipeline once per run of draws.
@@ -488,17 +591,36 @@ struct VulkanMesh3dRenderer::Impl {
       vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r.pipelines.layout(), 0, 1, &r.set, 0, nullptr);
     }
 
+    void bind(Kind kind, Variant variant) {
+      const VkPipeline pipeline = r.pipelines.get(kind, variant, f.clipped);
+      if (pipeline != bound) {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        bound = pipeline;
+      }
+    }
+
+    /// The substrate slab, first in the opaque pass: depth written, pick
+    /// id 0, so every layer drawn after it wins on equal depth.
+    void slab(Variant variant) {
+      if (!f.slab.active) {
+        return;
+      }
+      vkCmdPushConstants(cmd, r.pipelines.layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FramePush), &f.slab.push);
+      for (const auto& [kind, offset, count] :
+           {std::tuple{Kind::rect, VkDeviceSize{0}, 1U}, std::tuple{Kind::side, kSlabSidesOffset, 4U}}) {
+        bind(kind, variant);
+        vkCmdBindVertexBuffers(cmd, 0, 1, &r.slab_buffer.buffer, &offset);
+        vkCmdDraw(cmd, mesh3d::vertices_per_instance(kind), count, 0, 0);
+      }
+    }
+
     void draw(std::size_t chunk, std::size_t layer, Kind kind, Variant variant) {
       const GpuChunk& c = r.chunks[chunk];
       const Range range = c.range(kind, layer);
       if (range.count == 0) {
         return;
       }
-      const VkPipeline pipeline = r.pipelines.get(kind, variant);
-      if (pipeline != bound) {
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-        bound = pipeline;
-      }
+      bind(kind, variant);
       const VkDeviceSize offset = c.offset[index_of(kind)];
       vkCmdBindVertexBuffers(cmd, 0, 1, &c.buffer.buffer, &offset);
       vkCmdPushConstants(cmd, r.pipelines.layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FramePush),
@@ -509,6 +631,7 @@ struct VulkanMesh3dRenderer::Impl {
     /// The opaque layers in stack order (the last style wins on coplanar
     /// faces, Q-MISC-77), every chunk of each.
     void opaque(Variant variant) {
+      slab(variant);
       for (std::size_t layer = 0; layer < f.layers.size(); ++layer) {
         if (f.layers[layer] != LayerDraw::opaque) {
           continue;
@@ -573,6 +696,9 @@ struct VulkanMesh3dRenderer::Impl {
 
   void draw(const view3d::ViewState& view, const DrawParams& p) {
     const Frame f = prepare(view, p);
+    if (f.clipped) {
+      pipelines.ensure_clipped();
+    }
     write_frame_buffers(f, p);
     const bool msaa = p.level >= 1 && pipelines.msaa();
     const FrameRecording frame = target->begin_frame(f.clear);

@@ -34,7 +34,12 @@
 //   and other non-conducting area layers at 20 %, view3d::ghosted_by_default),
 //   which a user's per-row choice overrides for the life of the window.
 //
-// Owner: SHELL (design D3; tasks 9.1, 9.2, 9.6, 13.2, 16.6-16.8, 16.10).
+// - the controls as a screen reader reads them (control_view), the layout
+//   that fits a 1280-px window (flow_rows, grid_cell_width), and the P2
+//   actions: Export glTF (export_request, export_command) and the
+//   cross-section panel (box_cut_line, section_panel).
+//
+// Owner: SHELL (design D3; tasks 9.1, 9.2, 9.6, 11.5, 13.2, 16.6-16.8, 16.10).
 
 #pragma once
 
@@ -60,7 +65,9 @@
 #include "hefesto/view3d/camera/view_state.hpp"
 #include "hefesto/view3d/client/session.hpp"
 #include "hefesto/view3d/mesh/worker.hpp"
+#include "hefesto/platform/file_picker.hpp"
 #include "hefesto/view3d/pick/pick.hpp"
+#include "hefesto/view3d/section/section.hpp"
 #include "hefesto/view3d/stack/layer_stack.hpp"
 
 namespace hefesto::db {
@@ -526,5 +533,154 @@ class FrameTimer {
   std::vector<double> samples_;
   std::size_t next_ = 0;
 };
+
+// --- controls and their screen-reader names (task 9.6) ---------------------------
+
+/// Every control of the 3D tab outside the layer rows: the P2 actions, the
+/// View, Inspect and toolbar controls (board docs/design/mockups/View3D.dc.html).
+enum class View3dControl : std::uint8_t {
+  cross_section,
+  export_model,
+  orthographic,
+  perspective,
+  isometric,
+  top,
+  front,
+  side,
+  substrate,
+  isolate_net,
+  span_connected_layers,
+  frame_time,
+  close_view,
+  show_all_layers,
+  mask_layers,
+  layout_layers,
+  level_down,
+  level_up,
+  cut_box,
+};
+inline constexpr std::size_t kView3dControlCount = 19;
+
+/// What the controls read: the window, the view options and the picking state.
+struct View3dControlState {
+  bool window_open = false;
+  bool mask_mode = false;
+  bool cut_box = false;
+  bool perspective = false;
+  bool span_connected_layers = false;
+  bool frame_time = false;
+  bool picked = false;
+  bool net_isolated = false;
+  bool section_on = false;
+  bool substrate_on = true;
+  bool substrate_available = false;  // the renderer takes a substrate slab
+  bool export_available = false;     // `export3d` is a registered command
+  bool visibility_editable = true;
+};
+
+/// One control as shown and as a screen reader reads it.
+struct View3dControlView {
+  std::string label;            // painted text
+  std::string accessible_name;  // a toggle's ends with ", on" or ", off"
+  std::optional<bool> on;       // a toggle's state; nullopt for a plain button
+  bool enabled = true;
+  std::string tooltip;
+
+  friend bool operator==(const View3dControlView&, const View3dControlView&) = default;
+};
+
+/// "<label>, on" / "<label>, off": a painted toggle's state in its name (a
+/// Raven painted widget exposes no checked state to the platform's screen
+/// reader, so the state is spoken with the name).
+[[nodiscard]] std::string view3d_toggle_name(std::string_view label, bool on);
+[[nodiscard]] View3dControlView control_view(View3dControl control, const View3dControlState& state);
+/// The Level stepper's value, a text widget: "Level 1".
+[[nodiscard]] std::string level_text(int level);
+
+// --- layout that fits the window (1280 x 800 and up) ----------------------------
+
+/// The side panel's width and inner padding.
+inline constexpr float kView3dSideWidth = 272.0F;
+inline constexpr float kView3dSidePad = 12.0F;
+/// Distance of the floating toolbar from the view's edges (the board's 12 px).
+inline constexpr float kView3dToolbarMargin = 12.0F;
+/// Space between the toolbar's groups and between its rows.
+inline constexpr float kView3dToolbarSpacing = 8.0F;
+
+/// The width the side panel's rows have: the panel less its padding.
+[[nodiscard]] constexpr float side_content_width() noexcept {
+  return kView3dSideWidth - 2.0F * kView3dSidePad;
+}
+/// The width of each cell of a `columns`-column button grid across `width`,
+/// `spacing` apart (the board's two-column camera grid).
+[[nodiscard]] float grid_cell_width(float width, int columns, float spacing) noexcept;
+
+/// A flow layout: items of `widths` left to right, `spacing` apart, starting
+/// a new row when the next item would pass `available`. Returns the row of
+/// each item; an item wider than `available` takes a row of its own.
+[[nodiscard]] std::vector<std::size_t> flow_rows(std::span<const float> widths, float available, float spacing);
+/// The width of the widest row of a flow_rows result.
+[[nodiscard]] float flow_width(std::span<const float> widths, const std::vector<std::size_t>& rows, float spacing);
+
+// --- export (task 11.5; design D14) ----------------------------------------------
+
+/// The save dialog of "Export glTF…": "<cell>.gltf" proposed, glTF, glTF
+/// binary and STL filters (export3d takes the format from the extension).
+[[nodiscard]] platform::FilePickerRequest export_request(const view3d::WindowState& window);
+/// `export3d <file>`, run on the window's path when export3d is a command
+/// of the 3D window's table (`on_window_table`), else as a plain command;
+/// the file is quoted as one Tcl word.
+[[nodiscard]] std::string export_command(std::string_view path, std::string_view file, bool on_window_table);
+
+// --- cross-section (task 11.5; design D10) ----------------------------------------
+
+/// The cut line of `area`: its long-axis centre line (axis-aligned), from the
+/// left (or bottom) edge to the right (or top) edge; a square cuts along x.
+[[nodiscard]] view3d::Segment box_cut_line(const db::Rect& area);
+/// Two points (two clicks on the ground plane) made axis-aligned along the
+/// longer of the two directions from `a`.
+[[nodiscard]] view3d::Segment axis_aligned_line(db::Point a, db::Point b);
+/// The rectangle the "Cross-section" button cuts: the layout box when it is
+/// in the rendered cell, else the window's cut box, else the cell's bounding
+/// box; nullopt when the cell does not exist.
+[[nodiscard]] std::optional<db::Rect> section_area(const editor::EditorState& editor,
+                                                   const view3d::WindowState& window);
+/// The 3D view's clipping plane for `line` (render::SectionPlane): the
+/// vertical plane through the line, keeping the side away from the
+/// isometric viewer (y >= c for a line along x, x >= c for one along y),
+/// so the cut faces the user.
+[[nodiscard]] render::SectionPlane section_clip_plane(const view3d::Segment& line) noexcept;
+/// A view3d::ground_point result back in root coordinates: it is in the
+/// renderer's coordinates, x and y times `xy_factor` (mask-layer mode, P1).
+[[nodiscard]] db::Point ground_to_root(db::Point ground, float xy_factor) noexcept;
+/// The line's length in µm (internal units x µm per unit).
+[[nodiscard]] double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept;
+
+/// One bar of the section panel, in panel units (x right, y down).
+struct SectionBar {
+  view3d::LayerId layer = 0;
+  float x = 0.0F;
+  float y = 0.0F;
+  float w = 0.0F;
+  float h = 0.0F;
+
+  friend bool operator==(const SectionBar&, const SectionBar&) = default;
+};
+/// The "Cross-section A–A′" panel: each interval from bottom_um to top_um
+/// over its span along the line, scaled to `width` x `height` (x 0 = A, the
+/// panel's bottom = 0 µm, its top = the highest top), the layers that have
+/// no height named, and the screen-reader text. Hidden layers (`hidden`,
+/// per stack entry) are left out.
+struct SectionPanel {
+  std::vector<SectionBar> bars;
+  std::vector<std::string> no_height;
+  double length_um = 0.0;
+  double top_um = 0.0;
+  std::string summary;  // "A–A′ 3.40 µm · 4 layers"
+  std::string accessible_name;
+};
+[[nodiscard]] SectionPanel section_panel(const view3d::CrossSection& section, const view3d::LayerStack& stack,
+                                         double length_um, float width, float height,
+                                         const std::vector<bool>& hidden = {});
 
 }  // namespace hefesto::shell

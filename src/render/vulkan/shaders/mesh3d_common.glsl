@@ -14,6 +14,7 @@ layout(push_constant) uniform Frame {
   vec4 light;    // xyz: the board light (unit, displayed scene); w: the ambient term
   vec4 zscale;   // x: s_z
   uvec4 params;  // x: pick base; y: lighting (0 board); z: highlight active
+  vec4 clip;     // the section plane, chunk-local: keep where dot(clip.xy, xy) + clip.z >= 0
 } frame;
 
 struct Layer {
@@ -32,6 +33,10 @@ layout(std430, set = 0, binding = 1) readonly buffer Highlight {
 
 layout(location = 0) flat out vec4 out_color;  // one color per face (flat shading)
 layout(location = 1) flat out uint out_pick;
+// The signed distance to the section plane (DrawParams::section_plane),
+// linear in the model, so it interpolates exactly; only the clipped
+// pipelines' fragment shaders read it.
+layout(location = 2) out float out_clip;
 
 // z_top = -h * s_z and z_bot = z_top - t * s_z (view-3d "Rendered geometry").
 vec2 z_range(vec2 ht) {
@@ -84,9 +89,11 @@ void emit(uint layer, vec3 local, vec3 normal, uint pick_local) {
   gl_Position = frame.mvp * vec4(local, 1.0);
   vec3 c = clamp(l.color.rgb * light(normal), 0.0, 1.0);
   uint pick = frame.params.x + pick_local;
-  if (frame.params.z != 0u && !highlighted(pick)) {
+  // Pick 0 is the substrate slab (no instance): never dimmed.
+  if (frame.params.z != 0u && pick != 0u && !highlighted(pick)) {
     c *= 0.35;  // not in the highlight set: dimmed
   }
   out_color = vec4(srgb_to_linear(c), l.color.a);
   out_pick = pick;
+  out_clip = dot(frame.clip.xy, local.xy) + frame.clip.z;
 }
