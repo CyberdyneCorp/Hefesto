@@ -12,7 +12,12 @@
 
 namespace hefesto::extract {
 
-diag::Status path_lengths(ExtractContext& /*ctx*/, const LengthLists& /*lists*/, ExtWriter& /*writer*/) {
+diag::Status path_lengths(ExtractContext& /*ctx*/, const LengthLists& lists, ExtWriter& /*writer*/) {
+  // extLength writes nothing without a driver (ExtLength.c:147-160); the
+  // flood itself is task 9.5.
+  if (lists.drivers.empty()) {
+    return diag::Done{};
+  }
   return cmd::m7_not_implemented_status("extract length");
 }
 

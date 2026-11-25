@@ -5,8 +5,8 @@
 // openspec/changes/m7-extraction/design.md D4, D12): Magic's option tables,
 // the leading `list`/`listall` word, the option lookup with Magic's
 // invalid-option message, the window check of every option but `style` and
-// `help`, the help listing and the wrong-argument message. Every other
-// option answers CORE-NOTIMPL-008 until EXTCMD lands it.
+// `help`, the help listing and the wrong-argument message; the options
+// themselves are EXTCMD's parsers (options.cpp, M7 R4).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) commands/CmdE.c CmdExtract (the
 // option tables, the lookup, the window check and the help), Copyright (C)
@@ -22,9 +22,9 @@
 #include <vector>
 
 #include "db/command_util.hpp"
+#include "extract/command/options.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
 
 namespace hefesto::extract {
@@ -98,13 +98,8 @@ constexpr std::array<std::string_view, 4> kUniqueOptions{
 // EXTALL .. EXTWARN (CmdE.c:1019-1032).
 enum Option : std::size_t { kHelp = 4, kStyle = 11 };
 
-std::string option_name(std::string_view entry) {
-  return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
-}
-
 CommandResult wrong_args(const cu::Session& s) {
-  cu::warn(s, "Wrong number of arguments in \"extract\" command.  Try \"extract help\" for help.");
-  return CommandResult::success();
+  return detail::wrong_args(s);
 }
 
 // EXTHELP.
@@ -134,7 +129,11 @@ CommandResult extract_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   }
   const cu::Session& s = session.value();
   std::vector<std::string> args = invocation.args;
+  bool dolist = false;
+  bool doforall = false;
   if (!args.empty() && args.front().starts_with("list")) {
+    dolist = true;
+    doforall = args.front().starts_with("listall");
     // `list`/`listall` select list-style results for `path` and `style`
     // and are removed before matching. Magic then looks up argv[1], a
     // NULL pointer when nothing follows, and crashes; Hefesto reports the
@@ -160,7 +159,8 @@ CommandResult extract_command(cmd::CommandContext& ctx, const cmd::Invocation& i
   if (option != kStyle && !has_window(s)) {
     return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
-  return cmd::m7_not_implemented(option ? "extract " + option_name(kOptions.at(*option)) : "extract");
+  detail::OptionArgs parsed{std::move(args), dolist, doforall};
+  return detail::run_option(ctx, s, option.value_or(detail::kIncremental), parsed);
 }
 
 }  // namespace

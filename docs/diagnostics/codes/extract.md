@@ -156,6 +156,37 @@ and the resistor terminal-count warnings) goes to the feedback list, not
 to a code, as Magic's DBWFeedbackAdd does. `EXTRACT-DEV-012` is an internal
 error of a caller that omits the cell, technology, style or node list.
 
+## CMD
+
+Codes of the `extract` command and its run driver (`src/core/src/extract/command/`,
+`extract_cell` in `src/core/src/extract/hier/extract_cell.cpp`; capability
+extract-commands; design D12). Owner: EXTCMD.
+
+`EXTRACT-CMD-001` is a call of `extract::extract_cell` without an extraction
+style or technology in its `ExtractContext`; nothing is written.
+`EXTRACT-CMD-002` is ExtCell's `Extracting <cell> into <file>:` and, after a
+cell with errors or warnings, `<cell>: N errors M warnings` (TxPrintf, the
+standard output); `EXTRACT-CMD-003` the run's totals `Total of N errors
+(check feedback entries).` and `Total of M warnings.`, and `extract unique`'s
+`N uncorrected errors (see the feedback info)` (TxError). `EXTRACT-CMD-004`
+is a run that does not start: `Please name the cell before extracting.`,
+`No cell selected`, `No extraction style set.`, `Failure to read entire
+subtree of cell.` with `Failed on cell <name>.`, and `extract all`'s
+`Warning:  There is nothing here to extract.`; `extract::ensure_extracted`
+fails with it. `EXTRACT-CMD-005` is `Cannot open output file.`: the cell is
+skipped and its substrate is not prepared. `EXTRACT-CMD-006` reports a
+`.ext` that cannot be produced, written or renamed over its target
+(Q-EXTRACT-27): the temporary file is removed and the previous file kept.
+The option usages and listings (`Usage: extract do option`, `The following
+are the extractor option settings:`, the style and path messages) are the
+command's report and warning text, as Magic prints them.
+
+## LEN
+
+Codes of path-length extraction (`src/core/src/extract/length/`). Owner:
+EXTCMD. None yet: ExtLength.c's flood is tasks.md 9.5; until it lands a run
+with an `extract length driver` reports `CORE-NOTIMPL-008`.
+
 ## Table
 
 The table below is generated from the fragments:
@@ -172,6 +203,12 @@ fails when the two disagree.
 |---|---|---|
 | `EXTRACT-CAP-001` | warning | Two port labels of different names are on one node (`Warning:  Ports "a" and "b" are electrically shorted.`, ExtBasic.c:815-838); suppressed per Q-EXTRACT-22: with magic-compat ON whenever lumped resistance is on, with it OFF only when extresist runs in the same pass. |
 | `EXTRACT-CAP-002` | error | A capacitance entry point was called without a cell, an extraction style or a technology; nothing is computed. |
+| `EXTRACT-CMD-001` | error | extract_cell was called without an extraction style or a technology; the cell is not extracted. |
+| `EXTRACT-CMD-002` | info | A cell's extraction starts (`Extracting <cell> into <file>:`), or its counts follow it (`<cell>: N errors M warnings`). |
+| `EXTRACT-CMD-003` | warning | The totals of a run (`Total of N errors (check feedback entries).`, `Total of M warnings.`). |
+| `EXTRACT-CMD-004` | warning | A run cannot start: the root is unnamed, nothing is selected, the subtree cannot be read, no style is set, or there is nothing to extract. |
+| `EXTRACT-CMD-005` | warning | A cell's `.ext` file cannot be opened for writing (`Cannot open output file.`); the cell is skipped. |
+| `EXTRACT-CMD-006` | error | A cell's `.ext` file cannot be produced or committed; the previous file is left unchanged. |
 | `EXTRACT-DEV-001` | warning | A device region matches no extraction record after terminal discovery (`Warning:  No matching extraction type for device at (x y)`); no device is written. |
 | `EXTRACT-DEV-002` | warning | A device has more terminals than any record of its type declares (`Warning:  Device has more terminals than defined for type!`); the record is kept. |
 | `EXTRACT-DEV-003` | error | The substrate layer under a device matches no record of its type (`No matching device for <type> with substrate layer <layer>`); no device is written. |
