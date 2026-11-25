@@ -291,6 +291,8 @@ ElementText NetlistRun::element(const Level& level, const Placed& p) {
     e.width = width_of(e.name);
     if (k < nets.size() && !nets[k].empty()) {
       e.net = net_text(nets[k], level.naming, options_.bus_replacement_char, &bus_budget_);
+      ctx.net_names.resize(k + 1);
+      ctx.net_names[k] = net_name(nets[k], options_.bus_replacement_char);
     }
     e.spice_ignore = is_true(get_token(pin.box.props, "spice_ignore").value_or(std::string{}));
     e.attributes = &p.pin_attributes[k];
@@ -351,7 +353,9 @@ bool NetlistRun::pininfo(const Level& level) const {
   return options_.lvs_netlist || (level.top && (options_.top_is_subckt || pininfo_top_));
 }
 
-/// Item 1 of "Subcircuit body": the port comments, or one `*.PININFO` line.
+/// Item 1 of "Subcircuit body": the port comments, or one `*.PININFO` line,
+/// which is an empty line when there is no port (golden case SCHEM-NL-10: an
+/// LVS netlist of a testbench).
 void NetlistRun::port_lines(const Level& level) {
   std::string info = "*.PININFO ";
   bool any = false;
@@ -368,6 +372,8 @@ void NetlistRun::port_lines(const Level& level) {
   }
   if (any) {
     emit(info + "\n");
+  } else if (pininfo(level)) {
+    emit("\n");
   }
 }
 
