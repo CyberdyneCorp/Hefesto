@@ -92,6 +92,7 @@ SymbolCache::SymbolCache(FlattenLimits limits, std::chrono::milliseconds generat
 
 void SymbolCache::clear() noexcept {
   symbols_.clear();
+  stamps_.clear();
   embedded_.clear();
   generated_.clear();
   warned_.clear();
@@ -104,6 +105,23 @@ void SymbolCache::forget(const platform::Path& file) {
   std::erase_if(generated_, [&](const auto& entry) { return entry.first.first == file; });
   // A schematic used as a symbol holds copies of the graphics it places.
   std::erase_if(symbols_, [](const auto& entry) { return is_schematic_file(entry.first); });
+  std::erase_if(stamps_, [this](const auto& entry) { return !symbols_.contains(entry.first); });
+}
+
+SymbolCache::FileStamp SymbolCache::stamp_of(platform::FileSystem& fs, const platform::Path& file) {
+  FileStamp stamp;
+  stamp.time = fs.modified_time(file);
+  if (const auto size = fs.size(file); size.ok()) stamp.size = size.value();
+  return stamp;
+}
+
+std::size_t SymbolCache::forget_changed(platform::FileSystem& fs) {
+  std::vector<platform::Path> changed;
+  for (const auto& [file, stamp] : stamps_) {
+    if (stamp_of(fs, file) != stamp) changed.push_back(file);
+  }
+  for (const platform::Path& file : changed) forget(file);
+  return changed.size();
 }
 
 const Symbol& SymbolCache::resolve(const Reference& reference, const Document& from, const ResolveContext& context) {
@@ -247,8 +265,10 @@ std::optional<Document> SymbolCache::read(const platform::Path& file, const std:
 const Symbol& SymbolCache::load(const platform::Path& file, const std::string& reference,
                                 const ResolveContext& context) {
   if (const auto it = symbols_.find(file); it != symbols_.end()) return it->second;
+  FileStamp stamp = stamp_of(context.fs, file);  // before reading: a change while reading shows next time
   auto document = read(file, reference, context);
   if (!document) return placeholder_;
+  stamps_.insert_or_assign(file, std::move(stamp));
   if (is_schematic_file(file)) return load_schematic(file, reference, std::move(*document), context);
   return symbols_.emplace(file, make_symbol(reference, file, std::move(*document))).first->second;
 }

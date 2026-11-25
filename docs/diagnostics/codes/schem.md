@@ -223,6 +223,10 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   instance counts its own line; nothing after the line that would pass the
   limit is written). What was written so far is kept and the run does not
   fail.
+- `SCHEM-NET-018` (error): `netlist run interrupted`: the caller's interrupt
+  check (`NetlistEnvironment::interrupted`, polled once per schematic level
+  placed) fired; the run returns no text and no computed labels. `schematic
+  netlist` and `check` report it as SCHEM-CMD-011.
 
 ## EDIT
 
@@ -259,6 +263,9 @@ The errors raise a script error and leave the document as it was
   -force"`, from `symbol make` without `-force` and `symbol toschematic` when
   the file to write exists ("Labels and ports": no overwrite without
   confirmation).
+- `SCHEM-EDIT-008`: `schematic: the clipboard holds no schematic objects`,
+  from `paste` when the clipboard is empty or its text has no object records
+  ("Clipboard").
 
 ## CMD
 
@@ -278,7 +285,8 @@ values and errors in scripts").
   flag, two of `-hier`/`-top`/`-flat`, a `-buschar` that is not two
   characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`.
 - `SCHEM-CMD-003`: `schematic: no schematic is open`, for every option
-  except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk` and `help`.
+  except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk`, `help`
+  and `clipboard` (but `clipboard copy` needs a document).
 - `SCHEM-CMD-004`: `schematic: unsaved changes`, from `close` without
   `-discard` and `open -window current` over a modified document.
 - `SCHEM-CMD-005`: the netlist run of `netlist` or `check` reported errors;
@@ -296,6 +304,11 @@ values and errors in scripts").
   "xschem compatibility command").
 - `SCHEM-CMD-009`: `xschem set netlist_type: only spice is supported`.
 - `SCHEM-CMD-010`: `xschem command 'place_symbol' needs the editor`.
+- `SCHEM-CMD-011`: `schematic: the netlist run was interrupted; no file is
+  written`, from `netlist` and `check` when the front end's Interrupt
+  (Ctrl-C, the Interrupt card) was pending before the run or was made during
+  it; no file is written and no computed label is stored ("Subcommand
+  table"). The dispatcher adds `[Interrupted]` after the command.
 
 ## SIMINT
 
@@ -303,7 +316,25 @@ Codes of the schematic circuit source and deck building, M8 part
 (`src/core/src/schem/sim/`; capability schematic-simulation-integration;
 design D13). Owner: SIMINT.
 
-No codes yet.
+- `SCHEM-SIM-001` (error): `Control command '<cmd>' is not allowed in
+  simulation decks` ("Control block translation"): a `.control` command of a
+  schematic-source deck is `shell`, `cd`, `load`, `source`, `codemodel`,
+  `osdi` or `pre_osdi`, or reaches one at run time (a `$variable` or
+  `!history` command word, an `alias` or backquoted command naming a refused
+  one; `<cmd>` is that word). No deck is built.
+- `SCHEM-SIM-002` (warning): ``Simulation deck: cannot find "<path>" of
+  `<line>`; kept as written`` ("Testbench code blocks"): a `.include` or
+  `.lib <file> <section>` path resolves to no file in the netlist folder, the
+  schematic's folder or the PDK store. ngspice may still find it at run time
+  (its `sourcepath`).
+- `SCHEM-SIM-003` (warning): `Launcher command skipped: <message>; the
+  launcher went on` ("Simulation launchers"): a confirmed launcher's `xschem`
+  command is not supported (`xschem command '<cmd>' is not supported`), or
+  `simulate`, `xschem raw_read` or `xschem annotate_op` needs simulation
+  results (`not implemented yet: ...`, until M9).
+- `SCHEM-SIM-004` (error): `Simulation deck not built: <first netlist
+  error>` ("Schematic circuit source"): the testbench failed to netlist
+  (for example a short, SCHEM-NET-001).
 
 ## Table
 
@@ -329,6 +360,7 @@ fails when the two disagree.
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
 | `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-CMD-011` | error | `schematic netlist` or `check` was interrupted; no file is written. |
 | `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
 | `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |
 | `SCHEM-EDIT-003` | error | Descending would pass the hierarchy depth limit of 40 levels. |
@@ -336,6 +368,7 @@ fails when the two disagree.
 | `SCHEM-EDIT-005` | warning | Bus width mismatch: the net on a pin is neither the pin width nor the pin width times the instance width. |
 | `SCHEM-EDIT-006` | error | The schematic or symbol file to descend into does not exist or cannot be read. |
 | `SCHEM-EDIT-007` | error | `schematic symbol make` or `toschematic` would overwrite an existing file (`make -force` overwrites). |
+| `SCHEM-EDIT-008` | error | `schematic paste`: the clipboard holds no schematic objects. |
 | `SCHEM-FILE-001` | warning | A record has a missing or non-numeric field and is skipped. |
 | `SCHEM-FILE-002` | warning | A graphic record has a missing or out-of-range layer and is skipped. |
 | `SCHEM-FILE-003` | warning | The file ends inside a brace string; the field is read as absent. |
@@ -373,6 +406,11 @@ fails when the two disagree.
 | `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
+| `SCHEM-NET-018` | error | The netlist run was interrupted (the environment's `interrupted` callback returned true); no netlist text is returned. |
+| `SCHEM-SIM-001` | error | A `.control` line of a schematic-source deck names a command that is not allowed in simulation decks (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, or one named only at run time). |
+| `SCHEM-SIM-002` | warning | A `.include` or `.lib` path of a schematic-source deck names no file in the netlist folder, the schematic's folder or the PDK store; it is kept as written. |
+| `SCHEM-SIM-003` | warning | A launcher's `xschem` command (or `simulate`) is not supported or not available until M9; it was skipped and the rest of the launcher ran. |
+| `SCHEM-SIM-004` | error | The testbench of a schematic circuit source could not be netlisted, so no simulation deck was built. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |

@@ -514,4 +514,8 @@ std::string net_text(std::string_view net, const NetNaming& naming, std::string_
   return replace_bus_chars(join_bits(bits, ","), bus_replacement);
 }
 
+std::string net_name(std::string_view net, std::string_view bus_replacement) {
+  return replace_bus_chars(net, bus_replacement);
+}
+
 }  // namespace hefesto::schem

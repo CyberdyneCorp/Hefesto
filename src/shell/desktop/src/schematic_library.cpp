@@ -13,6 +13,7 @@
 
 #include "hefesto/app/startup.hpp"
 #include "hefesto/pcell/framework/tcl_list.hpp"
+#include "hefesto/shell/assets.hpp"
 #include "hefesto/shell/manager_views.hpp"
 
 namespace hefesto::shell {
@@ -55,6 +56,14 @@ platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Pa
   // `assets/` must never become the system library or a sandbox root.
   const platform::Path exe_dir = executable_dir.is_absolute() ? executable_dir : platform::Path{};
   return app::resolve_install_root(cad_root_env, app::install_root_for_executable(fs, exe_dir));
+}
+
+std::optional<platform::Path> desktop_asset_dir(const platform::Path& override_dir,
+                                               const platform::Path& executable_dir,
+                                               const platform::Path& source_dir) {
+  // A relative folder would name `assets/` under the working directory.
+  const platform::Path exe_dir = executable_dir.is_absolute() ? executable_dir : platform::Path{};
+  return find_asset_dir(asset_search_dirs(override_dir, exe_dir, source_dir));
 }
 
 std::vector<platform::Path> parse_path_list(std::string_view output) {

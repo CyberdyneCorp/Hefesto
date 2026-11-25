@@ -11,7 +11,7 @@
 //   layers, its wires, and each instance's symbol graphics placed by the
 //   one orientation transform (FORMAT's transform.hpp), with the symbol
 //   looked up through a replaceable SymbolLookup (in the app: the session
-//   SymbolCache, session_symbol_lookup);
+//   resolver's symbols, resolved off the UI thread, schematic_symbols.hpp);
 // - SchematicViewport maps schematic coordinates to canvas pixels: pan,
 //   zoom about a point and zoom to fit, the view state only (no command,
 //   no undo step: "Undo and redo").
@@ -100,6 +100,7 @@ struct SceneInstance {
   std::string symbol;  // the reference as written
   SceneBox box;        // the placed symbol's graphics
   bool placeholder = false;  // the missing-symbol placeholder was drawn
+  bool pending = false;      // its symbol is still being resolved (schematic_symbols.hpp)
   bool highlighted = false;
 };
 
@@ -128,12 +129,18 @@ struct SceneHighlight {
   std::set<std::string> instances;
 };
 
+/// The scene of `document`. An instance whose lookup gives `pending` (the
+/// resolver's pending_symbol(), schematic_symbols.hpp) is marked pending:
+/// drawn with the placeholder until its symbol is resolved.
 [[nodiscard]] SchematicScene build_scene(const schem::Document& document, const SymbolLookup& lookup,
-                                         const SceneHighlight& highlight = {});
+                                         const SceneHighlight& highlight = {},
+                                         const schem::Symbol* pending = nullptr);
 
-/// The app's lookup: `session.symbols` resolving through the session's
+/// A lookup through `session.symbols`, resolving through the session's
 /// search path and file system (`session.files`), with the warnings to
-/// `warnings` (may be null). The session must outlive the lookup.
+/// `warnings` (may be null). The session must outlive the lookup. It may
+/// run Tcl generators: the desktop canvas never uses it on the UI thread
+/// (it draws through SchematicSymbolResolver, schematic_symbols.hpp).
 [[nodiscard]] SymbolLookup session_symbol_lookup(schem::Session& session, const schem::Document& document,
                                                  diag::DiagnosticSink* warnings);
 

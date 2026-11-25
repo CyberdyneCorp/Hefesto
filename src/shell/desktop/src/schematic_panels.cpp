@@ -7,11 +7,17 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
+#include <system_error>
 #include <utility>
 
+#include "hefesto/diag/format.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/schem/file/properties.hpp"
+#include "hefesto/script/interp.hpp"
 #include "hefesto/shell/manager_views.hpp"
+#include "hefesto/ui/state.hpp"
 
 namespace hefesto::shell {
 
@@ -40,6 +46,26 @@ std::size_t line_count(std::string_view text) {
   if (text.empty()) return 0;
   const auto lf = static_cast<std::size_t>(std::count(text.begin(), text.end(), '\n'));
   return text.back() == '\n' ? lf : lf + 1;
+}
+
+struct HighlightEntry {
+  std::string name;
+  bool instance = false;
+  int colour = 0;
+};
+
+// One element of `hilight list`: `{net OUT 0}`, `{instance R1 1}`; anything
+// else is a net name with colour 0.
+HighlightEntry highlight_entry(const std::string& element) {
+  const auto words = pcell::split_tcl_list(element);
+  if (words && words.value().size() == 3) {
+    const std::vector<std::string>& w = words.value();
+    int colour = 0;
+    const auto [end, ec] = std::from_chars(w[2].data(), w[2].data() + w[2].size(), colour);
+    const bool number = ec == std::errc{} && end == w[2].data() + w[2].size();
+    if (number && (w[0] == "net" || w[0] == "instance")) return HighlightEntry{w[1], w[0] == "instance", colour};
+  }
+  return HighlightEntry{element, false, 0};
 }
 
 }  // namespace
@@ -199,9 +225,20 @@ std::string NetHighlight::list_command() {
 
 void NetHighlight::set_list(std::string_view output) {
   nets_.clear();
-  auto words = pcell::split_tcl_list(output);
-  if (!words) return;
-  nets_.insert(words.value().begin(), words.value().end());
+  instances_.clear();
+  colours_.clear();
+  const auto elements = pcell::split_tcl_list(output);
+  if (!elements) return;
+  for (const std::string& element : elements.value()) {
+    const HighlightEntry entry = highlight_entry(element);
+    (entry.instance ? instances_ : nets_).insert(entry.name);
+    colours_.try_emplace({entry.instance, entry.name}, entry.colour);
+  }
+}
+
+std::optional<int> NetHighlight::colour(std::string_view name, bool instance) const {
+  const auto it = colours_.find(std::pair<bool, std::string>{instance, std::string{name}});
+  return it == colours_.end() ? std::nullopt : std::optional<int>{it->second};
 }
 
 // --- messages ------------------------------------------------------------------------------
@@ -224,6 +261,18 @@ Message parse_message(std::string_view line) {
   }
   m.text = std::string{rest};
   return m;
+}
+
+CommandOutcome outcome_of(const cmd::CommandResult& result) {
+  CommandOutcome out;
+  out.status = result.ok() ? OutcomeStatus::ok : OutcomeStatus::failed;
+  for (const diag::Diagnostic& d : result.diagnostics) {
+    if (d.severity == diag::Severity::debug) continue;
+    out.diagnostics.push_back(diag::format_text(d));
+    if (out.message.empty() && d.severity == diag::Severity::error) out.message = d.text;
+  }
+  out.output = result.value.to_string();
+  return out;
 }
 
 void MessagesPanel::add(const CommandOutcome& outcome) {
@@ -295,8 +344,20 @@ void NetlistAction::finish(const CommandOutcome& outcome, MessagesPanel& message
   status_ = "Netlist ready (" + plural(line_count(text_), "line") + ")";
 }
 
-void NetlistAction::request_cancel() noexcept {
-  if (state_ == State::running) cancel_requested_ = true;
+bool NetlistAction::request_cancel() noexcept {
+  if (state_ != State::running || cancel_requested_) return false;
+  cancel_requested_ = true;
+  return true;
+}
+
+bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor) {
+  if (action.request_cancel()) {
+    (void)::hefesto::ui::request_interrupt(editor);
+    if (script::Interpreter* interp = editor.script.interp.get()) interp->request_interrupt();
+    return true;
+  }
+  if (action.state() != NetlistAction::State::running) (void)::hefesto::ui::request_interrupt(editor);
+  return false;
 }
 
 std::optional<InterruptCardView> NetlistAction::card(Clock::time_point now) const {

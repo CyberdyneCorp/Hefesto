@@ -18,7 +18,8 @@
 //
 // It also holds the desktop app's install root (M8-D10, approved
 // 2026-11-23): CAD_ROOT when set, else the install root holding the
-// executable (app::install_root_for_executable).
+// executable (app::install_root_for_executable), and its asset folder, both
+// found from the folder the operating system reports for the executable.
 //
 // Raven-free and unit-tested in tests/unit/shell/schematic_library_test.cpp.
 // Owner: SHELL (openspec/changes/m8-schematic design D3, D15; task 13.2).
@@ -46,6 +47,18 @@ namespace hefesto::shell {
 /// from argv[0]), else empty. A relative `executable_dir` is ignored.
 [[nodiscard]] platform::Path desktop_install_root(platform::FileSystem& fs, const platform::Path& executable_dir,
                                                   const std::optional<std::string>& cad_root_env);
+
+/// The desktop app's asset folder (the bundled fonts and icons, assets.hpp):
+/// the first of asset_search_dirs(`override_dir`, `executable_dir`,
+/// `source_dir`) that holds the bundled UI font. `executable_dir` is the
+/// folder the operating system reports for the running executable
+/// (platform_posix::executable_dir(), as for desktop_install_root), never
+/// derived from argv[0], which is a bare name when the app is started from
+/// PATH; a relative or empty one adds no folder, the override and the
+/// source fallback still apply. nullopt when no folder holds the font.
+[[nodiscard]] std::optional<platform::Path> desktop_asset_dir(const platform::Path& override_dir,
+                                                              const platform::Path& executable_dir,
+                                                              const platform::Path& source_dir);
 
 /// The folders of `schematic path list`'s result (a Tcl list); empty when
 /// the text is not a list.

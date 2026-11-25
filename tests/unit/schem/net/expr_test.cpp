@@ -39,8 +39,15 @@ TEST_CASE("sky130 drain area", "[cap:schematic-netlisting][req:expr evaluation]"
   CHECK(run("expr('int((1 + 1)/2) * 1 / 1 * 0.29')").text == "0.29");
 }
 
+// Regression (SCHEM-NL-03 replay, M8 round 5): a quoted expression left
+// symbolic keeps its single quotes, as xschem writes it, in both modes; the
+// quotes were dropped.
 TEST_CASE("Parameter left symbolic", "[cap:schematic-netlisting][req:expr evaluation]") {
-  CHECK(run("expr('int((1 + 1)/2) * W_N / 1 * 0.29')").text == "int((1 + 1)/2) * W_N / 1 * 0.29");
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    CHECK(run("expr('int((1 + 1)/2) * W_N / 1 * 0.29')", compat).text == "'int((1 + 1)/2) * W_N / 1 * 0.29'");
+    CHECK(run("nrd=expr('0.29 / W_N ') x", compat).text == "nrd='0.29 / W_N ' x");
+  }
 }
 
 TEST_CASE("Minus inside a number, xschem-compat ON", "[cap:schematic-netlisting][req:expr evaluation]") {

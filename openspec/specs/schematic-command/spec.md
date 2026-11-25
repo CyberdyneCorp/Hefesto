@@ -49,8 +49,8 @@ The `schematic` options SHALL be:
 | `open` | `open <file> [-window new\|tab\|current]` | Open a `.sch` or `.sym`. Return the document id. |
 | `new` | `new schematic\|symbol [<file>]` | New empty document. Return the document id. |
 | `save` | `save [<file>] [-force]` | Save (capability `schematic-file-format`, Requirements "Canonical write order" and "Safe saving"). Return the absolute path. |
-| `close` | `close [-discard]` | Close the active document; fail with `schematic: unsaved changes` unless saved or `-discard`. |
-| `reload` | `reload` \| `reload_symbols` | Re-read the file, or the symbol files, from disk |
+| `close` | `close [-discard]` | Close the active document; fail with `schematic: unsaved changes` unless saved or `-discard`. Closing ends the document's selection, undo history and launcher confirmation. |
+| `reload` | `reload` \| `reload_symbols` | Re-read the file, or the symbol files, from disk. `reload` also drops the document's selection, the net highlights made in it, its undo and redo history and its launcher confirmation (capability `schematic-symbols-and-libraries`, Requirement "Script execution permission"), and re-reads the cached symbol files that changed on disk since they were read (modification time or size) |
 | `path` | `path [list\|set <paths>\|prepend <dir>]` | Show or change the library search path (capability `schematic-symbols-and-libraries`). Return the list. |
 | `resolve` | `resolve <reference>` | Return the absolute path of a symbol reference, or empty |
 | `place` | `place <symbol> <x> <y> [-rot 0..3] [-flip 0\|1] [-props <string>]` | Place an instance. Return its name. |
@@ -61,6 +61,10 @@ The `schematic` options SHALL be:
 | `selection` | `selection` | Return the selected objects as a list of `<kind> <index-or-name>` |
 | `delete` / `move` / `copy` / `rotate` / `flip` / `flipv` | `move <dx> <dy> [-stretch] [-insertwires]`; `copy <dx> <dy>`; `rotate [-inplace] [<x> <y>]`; `flip [-inplace] [<x> <y>]` | Edit the selection (capability `schematic-editing`) |
 | `align` | `align` | Snap the selection to the grid |
+| `order` | `order <index>` | Move the selected objects of each kind, as one block in their order, to position `<index>` (from 0) of their kind's list, or to its end when `<index>` is past it (capability `schematic-editing`, Requirement "Object order"). Return the selected objects. |
+| `clipboard` | `clipboard [copy\|set <text>]` | Without an argument, return the clipboard text; `copy` puts the selected objects on the clipboard and returns the text (with nothing selected the clipboard is unchanged and the result empty); `set` replaces the clipboard text (capability `schematic-editing`, Requirement "Clipboard"). Needs no open document, except `copy`. |
+| `paste` | `paste <x> <y>` | Insert the clipboard's objects with the anchor at (x, y), make instance names unique and select them. Return the selected objects. Fail with `schematic: the clipboard holds no schematic objects` when it holds none. |
+| `merge` | `merge <file> [<x> <y>]` | Insert the objects of a schematic file as `paste` does, moved by (x, y) (default 0 0). Return the selected objects. |
 | `getprop` | `getprop instance <name> [<key>]` \| `getprop symbol <name> [<key>]` \| `getprop wire <n> [<key>]` \| `getprop schematic [K\|G\|V\|S\|F\|E]` | Return a property string or one decoded value |
 | `setprop` | `setprop instance <name> <key> [<value>]` \| `setprop wire <n> <key> [<value>]` \| `setprop schematic <tag> <text>` | Set or remove (no value) an attribute (capability `schematic-file-format`, Requirement "Property strings") |
 | `replace` | `replace <instance> <symbol>` | Change an instance's symbol, keeping its properties |
@@ -71,7 +75,7 @@ The `schematic` options SHALL be:
 | `hierarchy` | `hierarchy [path\|list]` | Return the current path, or the list of schematics used |
 | `hilight` | `hilight net <name>\|selection\|instance <name>` \| `hilight clear [all]` \| `hilight list` | Net highlighting |
 | `undo` / `redo` | `undo [<n>]`, `redo [<n>]` | Undo or redo n steps (default 1) |
-| `netlist` | `netlist [<file>] [-hier\|-top\|-flat] [-lvs] [-topsubckt] [-lvsignore] [-noprefix] [-buschar <xy>] [-uppercase]` | Netlist the top of the active document's hierarchy (capability `schematic-netlisting`). Without `<file>`, return the text; with it, write the file. |
+| `netlist` | `netlist [<file>] [-hier\|-top\|-flat] [-lvs] [-topsubckt] [-lvsignore] [-noprefix] [-buschar <xy>] [-uppercase]` | Netlist the top of the active document's hierarchy (capability `schematic-netlisting`). Without `<file>`, return the text; with it, write the file. The front end's Interrupt (Ctrl-C, the Interrupt card) cancels the run: it fails with `schematic: the netlist run was interrupted; no file is written`, writes no file and stores no computed label; a `tcleval` value running when the Interrupt is made stops at once. `check` is cancelled the same way. |
 | `check` | `check` | Run connectivity checks only; return the list of errors and warnings |
 | `symbol` | `symbol make [-force]` \| `symbol pins` \| `symbol fromschematic` \| `symbol toschematic` | Symbol generation (capability `schematic-editing`, Requirement "Labels and ports") |
 | `simulate` | `simulate [-wait] [-corner <name>]` | Simulate the active testbench schematic (capability `schematic-simulation-integration`). Return the job id. |
@@ -91,6 +95,26 @@ Compatibility: native
 - **WHEN** the script `schematic new schematic div.sch; schematic place res.sym 0 0; schematic place res.sym 0 100; schematic wire 0 30 0 70; schematic label 0 -30 IN; schematic label 0 130 0; schematic netlist` is executed
 - **THEN** it SHALL return a netlist containing the lines `R1 IN net1 1k` and `R2 net1 0 1k` (the resistor's pins being P at (0,−30) and M at (0,30) relative to its origin)
 
+#### Scenario: Reload clears selection, highlights and undo history
+- **GIVEN** an open schematic with a selected wire, a highlighted net and an edit made after its last save
+- **WHEN** the file is changed on disk and `schematic reload` is executed
+- **THEN** `schematic selection` and `schematic hilight list` SHALL return empty results, and `schematic undo` SHALL undo nothing (return `0`) and leave the reloaded content
+
+#### Scenario: Reload forgets the launcher confirmation
+- **GIVEN** the user confirmed the launchers of an open schematic
+- **WHEN** `schematic reload` (or `schematic close`) is executed
+- **THEN** the next launcher of that document SHALL ask for confirmation again
+
+#### Scenario: Changed symbol file picked up on reload
+- **GIVEN** an open schematic placing `r.sym`, whose file is changed on disk after it was read
+- **WHEN** `schematic reload` is executed
+- **THEN** `schematic getprop symbol r.sym` SHALL return the new properties, and a symbol file that did not change SHALL NOT be read again
+
+#### Scenario: Interrupted netlist
+- **GIVEN** the user presses Interrupt while `schematic netlist out.spice` runs
+- **WHEN** the run ends
+- **THEN** the command SHALL fail with `schematic: the netlist run was interrupted; no file is written` and `out.spice` SHALL NOT be written
+
 ### Requirement: Return values and errors in scripts
 Each option SHALL return its result as a Tcl-compatible list in the scripting binding (capability `hefesto-scripting`) and as plain text in the command bar. Errors SHALL raise a script error with the message text, and SHALL NOT leave a partial edit: an option that fails SHALL undo its own changes. `schematic netlist` and `schematic check` SHALL raise an error when the netlist run reports failure (capability `schematic-netlisting`, Requirement "Errors and warnings"), with the error list as the message, after returning the text if `-force` was given.
 
@@ -105,6 +129,8 @@ Compatibility: native
 
 ### Requirement: Headless use
 The headless CLI (capability `hefesto-architecture`, Requirement "Headless command-line tool") SHALL run `schematic` commands without a display, including `open`, `netlist`, `simulate` (with `-wait`), `getprop`, `setprop` and `save`. A command-line form of the headless executable (`hefesto-cli`) SHALL netlist a schematic in one call: `hefesto-cli --netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]`, where `--lvs` turns on options `lvs_netlist` and `lvs_ignore` (capability `schematic-netlisting`). It SHALL exit with status 0 on success, 10 when the netlist run reports failure (as xschem's netlist exit code), and 1 on other errors.
+
+Hefesto SHALL NOT print xschem's own driver text (its start-up and `sourcing` lines, the `== <cell>` netlist banner); how the golden SCHEM cases compare their stdout and stderr with xschem's, which hold that text, is proposed Q-SCHEM-46 (awaiting the user).
 
 Compatibility: native
 

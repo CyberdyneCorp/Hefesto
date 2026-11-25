@@ -46,6 +46,15 @@ class LauncherPermission {
 /// Runs a launcher's `tclcommand` for `document` in `sandbox` (the `tcleval`
 /// interpreter) when `permission` allows it; otherwise fails with
 /// SCHEM-TCL-002 without evaluating anything.
+///
+/// capability schematic-simulation-integration "Simulation launchers"
+/// (SIMINT): while the script runs, `xschem <sub>` reaches the interpreter's
+/// `xschem` command (schem/cmd: `xschem netlist` is `schematic netlist`) and
+/// `simulate` is `schematic simulate`; a command that is not supported (or
+/// not available until M9, CORE-NOTIMPL) is skipped with warning
+/// SCHEM-SIM-003 and the rest of the script runs; changes to the `sim`
+/// array (xschem's simulator commands) are undone afterwards, because the
+/// simulator is embedded.
 [[nodiscard]] cmd::CommandResult run_launcher(script::Interpreter& sandbox, LauncherPermission& permission,
                                               DocumentId document, std::string_view tclcommand,
                                               const ConfirmLauncher& ask);

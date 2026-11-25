@@ -33,9 +33,16 @@ Open questions are in `docs/decisions/open-questions/SCHEM.md` (Q-SCHEM-n).
 ### Requirement: Schematic circuit source
 A simulation testbench SHALL accept the source `schematic <file>` in addition to the sources of capability `simulation-netlist-preparation` (Requirement "Circuit sources"). With this source, the schematic is the complete testbench, as in xschem: its netlist (capability `schematic-netlisting`, `hier` mode, not LVS mode) SHALL be the deck. Hefesto SHALL treat it like a raw deck, apply Requirement "Control block translation", resolve file references, and validate it. The deck SHALL be generated in memory (capability `schematic-netlisting`, Requirement "In-process netlisting"). The `sim dut` command SHALL accept `schematic <file>` (capability `simulation-command`); `schematic simulate` (capability `schematic-command`) SHALL be the shortcut. See Q-SCHEM-17 for the corresponding change to capability `simulation-netlist-preparation`.
 
+Until the embedded engine exists (M9), the deck SHALL be built in memory and handed to `simulation-netlist-preparation` validation through a validator that M9 provides (none before it). A testbench that fails to netlist (an error of capability `schematic-netlisting`, Requirement "Errors and warnings") SHALL build no deck (`SCHEM-SIM-004`).
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-12)
+
+#### Scenario: Deck handed to validation
+- **GIVEN** a testbench schematic with a resistor, a `GND` label and a `code.sym` block
+- **WHEN** its deck is built
+- **THEN** the deck SHALL be the testbench's `hier` netlist with its control blocks translated, and the validator of `simulation-netlist-preparation` SHALL receive it; a refusal by the validator SHALL fail the build with the validator's diagnostic
 
 #### Scenario: Simulate an IHP testbench
 - **GIVEN** IHP `sg13g2_tests/dc_lv_nmos.sch` open with the sg13g2 PDK active
@@ -48,9 +55,16 @@ Testbench text SHALL come from `netlist_commands` instances (for example `code.s
 2. relative paths against the netlist folder, then against the schematic's folder
 3. paths below the PDK root of the `xschemrc` variables (`PDK_ROOT`, `SKYWATER_MODELS`, `SG13G2_MODELS`, ...) mapped to the PDK store (capability `hefesto-files-and-pdks`)
 
+A resolved path SHALL be written into the deck as the absolute path of the file found. A path that resolves to no file SHALL be kept as written, with warning `SCHEM-SIM-002` naming it (ngspice may still find it at run time, for example through its `sourcepath`). `.lib <section>` with one argument (a section of a library file) names no file. Lines inside `.control` blocks are not resolved.
+
 Compatibility: behavioral
 
 (xschem ref: spice_netlist.c:328-350, spice_netlist.c:410-432, spice_netlist.c:578-612)
+
+#### Scenario: Unresolved include kept
+- **GIVEN** a code block `.include dc_lv_nmos.save` and no such file in the netlist folder or the schematic's folder
+- **WHEN** the deck is prepared
+- **THEN** the line SHALL be kept as written and warning `SCHEM-SIM-002` SHALL name `dc_lv_nmos.save`
 
 #### Scenario: Corner library from the PDK store
 - **GIVEN** sky130A installed in the PDK store and a testbench with `corner.sym` (`corner=ss`)
@@ -66,10 +80,22 @@ xschem testbenches drive ngspice from `.control` blocks that write raw files and
 | `set appendwrite` | Later `write` to the same name appends a plot, as in ngspice |
 | `wrdata <file> ...` | Capture like `write`; export as text only if the setting is on |
 | `quit`, `exit` | Removed |
-| `shell ...`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi` | Rejected with `Control command '<cmd>' is not allowed in simulation decks` |
+| `shell ...`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, and the commands that start programs: `edit`, `gnuplot`, `hardcopy`, `aspice`, `rspice` | Rejected with `Control command '<cmd>' is not allowed in simulation decks` |
 | `plot`, `print`, `meas`, `let`, `save`, analyses, `alter`, `alterparam`, `reset`, `remzerovec`, `foreach`, `if`, other commands | Passed through |
 
 `.control` blocks SHALL then be allowed for schematic-source decks without setting `allowControl`. Messages that ngspice prints from the control block SHALL appear in the job log.
+
+Each `;`-separated command of a control line SHALL be checked. In the deck, each `write` and `wrdata` command SHALL become a capture point, the line `echo hefesto-capture <n>`, where `<n>` indexes the deck's list of captures (the file name, the named vectors, whether it is `wrdata`, and whether `set appendwrite` is in effect); the job runner captures the plot when ngspice prints that line. A `write` without a file name captures under `rawspice.raw`. A command word that names no command until run time (a word starting with `$` or `!`), an `alias` whose command is a refused command, and a backquoted command that is refused SHALL be refused like the refused command itself, with the same message naming that word (`SCHEM-SIM-001`), in both modes of `xschem-compat`. As ngspice reads them, a command word SHALL be compared without its quote characters (`"shell"` and `'sh'ell` are `shell`), and a `+` continuation line inside a `.control` block SHALL be joined, with one space, to the control line before it before the check (the joined line is what the deck holds); a `+` line directly after `.control` has no line to join and SHALL be refused, naming `+`. Output redirection (`>`, `>>`, `<`) and `wrs2p` are passed through; where they may write is checked by the job runner (M9).
+
+#### Scenario: Quoted shell and continuation refused
+- **GIVEN** a code block holding, inside `.control`, `"shell" ls`, or the two lines `echo x ;` and `+ shell rm -f y`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `Control command 'shell' is not allowed in simulation decks`
+
+#### Scenario: Program-starting commands refused
+- **GIVEN** a code block containing `gnuplot out v(a)` inside `.control`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `Control command 'gnuplot' is not allowed in simulation decks`
 
 Compatibility: native
 
@@ -79,6 +105,11 @@ Compatibility: native
 - **GIVEN** a code block `.control` / `save all` / `op` / `write dc_lv_nmos.raw` / `set appendwrite` / `dc Vds 0 1.2 0.01 Vgs 0.3 1.0 0.1` / `write dc_lv_nmos.raw` / `.endc`
 - **WHEN** the testbench is simulated
 - **THEN** the job SHALL contain two plots under the name `dc_lv_nmos.raw`, an `op` plot and a `dc` plot, and no file SHALL be written with default settings
+
+#### Scenario: Shell through an alias refused
+- **GIVEN** a code block containing `alias sh shell` inside `.control`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `Control command 'shell' is not allowed in simulation decks`
 
 #### Scenario: Shell refused
 - **GIVEN** a code block containing `shell rm -f x.raw` inside `.control`
@@ -220,9 +251,16 @@ Compatibility: behavioral
 ### Requirement: Simulation launchers
 xschem testbenches often contain launcher instances whose `tclcommand` runs xschem Tcl commands (`xschem netlist`, `simulate`, `xschem raw_read <file> <type>`, `xschem annotate_op`, `xschem setprop ...`). Hefesto SHALL map these commands, run in the sandboxed Tcl interpreter, to its own operations: `xschem netlist` to `schematic netlist`, `simulate` to `schematic simulate`, `xschem raw_read` and `xschem annotate_op` to loading the named results and turning annotation on. Unsupported commands SHALL report `xschem command '<cmd>' is not supported` and SHALL NOT stop the rest of the script. Changes to the xschem simulator command variables (`sim(spice,...)`) SHALL be ignored, because the simulator is embedded.
 
+The launcher SHALL run only after the user confirmed launchers for its document (capability `schematic-symbols-and-libraries`, Requirement "Script execution permission"). A command that is not supported, or that needs simulation results before M9 (`simulate`, `xschem raw_read`, `xschem annotate_op`: `not implemented yet`), SHALL be reported as a warning (`SCHEM-SIM-003`) with its message, and the script SHALL go on; any other error SHALL stop the script as in Tcl. The `sim` array SHALL be as it was before the launcher ran.
+
 Compatibility: behavioral
 
 (xschem ref: scheduler.c:3780-3870, xschem.tcl:983-1043)
+
+#### Scenario: Unsupported command does not stop the launcher
+- **GIVEN** a confirmed launcher `tclcommand="xschem no_such_command; xschem netlist"`
+- **WHEN** it runs
+- **THEN** warning `SCHEM-SIM-003` SHALL report `xschem command 'no_such_command' is not supported`, and the netlist SHALL be written
 
 #### Scenario: IHP OP annotate launcher
 - **GIVEN** the launcher `descr="OP annotate" tclcommand="xschem annotate_op"` in an IHP testbench that has been simulated

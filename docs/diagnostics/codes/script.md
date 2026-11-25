@@ -80,7 +80,10 @@ absorbed and went on from has `caught` set and its diagnostic text ends with
   library does not provide and no script has provided (`package provide`).
 - `SCRIPT-SANDBOX-007`: another removed command, such as `exit` (scripts end
   the program with `quit`), and `encoding system` or `encoding dirs` with an
-  argument, which change process-wide state (security finding S-08).
+  argument, which change process-wide state (security finding S-08); `close`,
+  `chan close|pop|push`, `interp share|transfer` of a standard channel, and
+  in the interpreters of schematic scripts a read of `stdin` (`gets`,
+  `read`, `chan gets|read`, `fcopy`, `chan copy`; finding S8-04).
 - `SCRIPT-SANDBOX-008`: a command that changes which PDK scripts are
   trusted or what the PDK store holds, run by a script, a key macro or a
   plugin: `pdk trust`, `untrust`, `install`, `uninstall`, `enable`, `pin`,

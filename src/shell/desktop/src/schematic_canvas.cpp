@@ -146,9 +146,10 @@ void add_graphics(const Placer& placer, const schem::Document& document, const s
 }
 
 void add_instance(SchematicScene& scene, const schem::InstanceRecord& instance, std::size_t index,
-                  const SymbolLookup& lookup, const SceneHighlight& highlight) {
+                  const SymbolLookup& lookup, const SceneHighlight& highlight, const schem::Symbol* pending) {
   const schem::Symbol& symbol = lookup(instance);
-  SceneInstance shown{attribute(instance.props, "name"), instance.symbol, {}, symbol.placeholder, false};
+  SceneInstance shown{attribute(instance.props, "name"), instance.symbol, {}, symbol.placeholder, &symbol == pending,
+                      false};
   shown.highlighted = highlight.instances.contains(shown.name);
   const Placer placer{scene, schem::Placement{instance.origin, instance.rotation, instance.flip}, SceneSource::symbol,
                       index, &shown.box};
@@ -188,7 +189,7 @@ std::size_t SchematicScene::instance_at(Point p) const noexcept {
 }
 
 SchematicScene build_scene(const schem::Document& document, const SymbolLookup& lookup,
-                           const SceneHighlight& highlight) {
+                           const SceneHighlight& highlight, const schem::Symbol* pending) {
   SchematicScene scene;
   add_graphics(Placer{scene, {}, SceneSource::graphic, 0, nullptr}, document, nullptr);
   for (std::size_t i = 0; i < document.wires.size(); ++i) {
@@ -198,7 +199,7 @@ SchematicScene build_scene(const schem::Document& document, const SymbolLookup& 
     Placer{scene, {}, SceneSource::wire, i, nullptr}.segment(schem::LineRecord{0, wire.p1, wire.p2, {}}, lit);
   }
   for (std::size_t i = 0; i < document.instances.size(); ++i) {
-    add_instance(scene, document.instances[i], i, lookup, highlight);
+    add_instance(scene, document.instances[i], i, lookup, highlight, pending);
   }
   return scene;
 }

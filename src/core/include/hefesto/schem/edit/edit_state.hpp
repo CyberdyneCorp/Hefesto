@@ -29,6 +29,9 @@ namespace hefesto::schem {
 /// The same type as session.hpp's DocumentId (an alias may be repeated).
 using DocumentId = std::uint32_t;
 
+struct Session;            // hefesto/schem/session.hpp
+class LauncherPermission;  // hefesto/schem/tcl/permission.hpp
+
 // ---- Snap and grid -----------------------------------------------------------
 
 /// "Snap and grid": the snap (default 10) and the visible grid (default 20).
@@ -154,6 +157,27 @@ struct EditSession {
   /// The width warnings ("Bus editing") last reported per document, so an
   /// edit reports only new ones.
   std::map<DocumentId, std::set<std::string>> width_warnings;
+
+  /// "Clipboard": the text `schematic clipboard copy` made or `schematic
+  /// clipboard set` stored (records of schematic-file-format), which
+  /// `schematic paste` inserts. The front end exchanges it with the system
+  /// clipboard.
+  std::string clipboard;
+
+  /// The launcher confirmations of the front end that runs launchers
+  /// (schem/tcl/permission.hpp); a reload or close of a document ends its
+  /// confirmation (security review S8-06). Not owned; nullptr when no front
+  /// end runs launchers.
+  LauncherPermission* launchers = nullptr;
 };
+
+/// Document `id` was re-read from disk or is being closed (`schematic
+/// reload`, `schematic close`): drops its selection, its undo and redo
+/// history, the highlights made in the schematic it shows, its width
+/// warnings and its launcher confirmation (EditSession::launchers). The
+/// highlights dropped are those stored at the hierarchy paths that show
+/// document `id` (the active document's path when the descents do not lead
+/// to it).
+void forget_document_state(Session& session, DocumentId id);
 
 }  // namespace hefesto::schem

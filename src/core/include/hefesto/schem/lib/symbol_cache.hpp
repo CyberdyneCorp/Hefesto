@@ -11,6 +11,8 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <set>
@@ -81,6 +83,16 @@ class SymbolCache {
   /// made.
   void forget(const platform::Path& file);
 
+  /// Drops every symbol loaded from a file that changed on disk since it
+  /// was read ("Symbol cache and reload"): its modification time or its size
+  /// differs, or it no longer exists. A file whose time is unknown on both
+  /// reads (platform::FileSystem::modified_time) is compared by size only.
+  /// Unchanged files stay loaded (their references stay valid). The symbols
+  /// are not re-read here, so references returned earlier by resolve() stay
+  /// valid until this call; the next resolve() reads a dropped file again.
+  /// Returns the number of files that changed.
+  std::size_t forget_changed(platform::FileSystem& fs);
+
   [[nodiscard]] std::size_t size() const noexcept { return symbols_.size(); }
 
  private:
@@ -100,7 +112,17 @@ class SymbolCache {
                                            const ResolveContext& context);
   void warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic);
 
+  /// What a file looked like when it was read (forget_changed()).
+  struct FileStamp {
+    std::optional<std::filesystem::file_time_type> time;
+    std::optional<std::uint64_t> size;
+
+    friend bool operator==(const FileStamp&, const FileStamp&) = default;
+  };
+  [[nodiscard]] static FileStamp stamp_of(platform::FileSystem& fs, const platform::Path& file);
+
   std::map<platform::Path, Symbol> symbols_;
+  std::map<platform::Path, FileStamp> stamps_;  // one per entry of symbols_ read from a file
   // Embedded blocks by (document path, reference); one entry per distinct
   // block content, so unsaved documents (empty path) and edited blocks never
   // share a symbol. Map nodes keep returned references valid.

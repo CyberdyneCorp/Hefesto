@@ -218,6 +218,13 @@ diag::Outcome<std::uint64_t> SandboxedFileSystem::size(const platform::Path& pat
   return base_.size(path);
 }
 
+std::optional<std::filesystem::file_time_type> SandboxedFileSystem::modified_time(const platform::Path& path) {
+  if (refuse("modified_time", path, false)) {
+    return std::nullopt;
+  }
+  return base_.modified_time(path);
+}
+
 diag::Outcome<std::vector<platform::Path>> SandboxedFileSystem::list(const platform::Path& directory) {
   if (auto denied = refuse("list", directory, false)) {
     return *denied;

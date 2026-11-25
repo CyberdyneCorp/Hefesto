@@ -7,6 +7,9 @@ V1 A GND 1
 * ngspice block
 
 
+
+
+
 **** end user architecture code
 **.ends
 .GLOBAL GND

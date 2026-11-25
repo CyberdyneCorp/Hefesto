@@ -19,7 +19,7 @@ allow_nonzero_exit = true
 xschem_sets = ["sky130-xschem"]
 
 [hefesto]
-args = ["--no-log", "{input}/case.tcl"]
+args = ["--no-log", "{input}/hefesto.tcl"]
 requires_commands = ["xschem"]
 
 [[outputs]]

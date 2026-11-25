@@ -433,3 +433,11 @@ Every first-party source file starts with the SPDX header:
 (`#` instead of `//` in CMake and Python files.)
 
 Test labels, traceability tags, the golden suite, fuzzing and the CI checks are described in [`docs/contributing/README.md`](contributing/README.md).
+
+## Schematic capture (M8)
+
+The schematic editor and netlister (`src/core/src/schem/`, capabilities `schematic-*`) need no extra build option. Three things are specific to it:
+
+- **xschem data sets.** The PDK schematic tests, the PDK netlist digests (`tests/unit/schem/net/pdk_digest_test.cpp`, design D20 of `openspec/changes/m8-schematic`) and the SCHEM golden replay read the three xschem sets: `python3 scripts/fetch_pdk.py sky130-xschem gf180mcu-xschem ihp-xschem --cli build/<preset>/src/cli/hefesto-cli` (see "xschem data sets (M8)" above). Tests whose set is missing skip with a message; in CI the sets are restored on `linux-x64-gcc-11`, `linux-arm64-gcc` and `macos-arm64-xcode-oldest`, so the digests are checked on the three platforms. After an intended netlist change, regenerate the digest table with `HEFESTO_WRITE_PDK_DIGESTS=1 build/<preset>/tests/unit/schem/net/hefesto_schem_net_tests "PDK example netlists have the committed digests"` (all three sets fetched) and review the diff of `tests/unit/schem/net/pdk_netlist_digests.txt`.
+- **`CAD_ROOT` and the system library.** The clean-room system symbol library is `assets/schematic/xschem_library/devices/`, found as `${XSCHEM_SHAREDIR}/xschem_library/devices` with `XSCHEM_SHAREDIR` = `<CAD_ROOT>/assets/schematic`. When `CAD_ROOT` is not set, `hefesto-cli` and the desktop app use their install root (Q-SCHEM-45), so an installed Hefesto finds the library without it; a build tree sets `CAD_ROOT` to the source tree (or the install prefix) to use the library from there. The golden replay copies `assets/schematic` into its own `CAD_ROOT` for every SCHEM case.
+- **Benchmark.** `-DHEFESTO_BUILD_SCHEM_BENCH=ON` builds `bench/schem/hefesto-bench-schem` (core only); `python3 bench/schem/schem_bench.py --bench build/<preset>/bench/schem/hefesto-bench-schem --host <name>` runs the load, save, netlist and flat workloads (a generated 10,000-instance hierarchy and the largest PDK example schematics) against `bench/schem/baseline.json`. The `schem-bench` job of `.github/workflows/perf.yml` runs it on a Release build.
