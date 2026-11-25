@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -50,6 +51,10 @@ class FileSystem {
   [[nodiscard]] virtual diag::Status rename(const Path& from, const Path& to) = 0;
   /// Removes a file; removing a missing file succeeds.
   [[nodiscard]] virtual diag::Status remove(const Path& path) = 0;
+  /// The time the file was last modified, to notice that it changed since
+  /// it was read; nullopt when unknown (no such file, or a file system that
+  /// keeps no times: the default).
+  [[nodiscard]] virtual std::optional<std::filesystem::file_time_type> modified_time(const Path& path);
 };
 
 /// The portable default: std::filesystem and <fstream>.
@@ -65,6 +70,7 @@ class LocalFileSystem final : public FileSystem {
   diag::Status create_directories(const Path& directory) override;
   diag::Status rename(const Path& from, const Path& to) override;
   diag::Status remove(const Path& path) override;
+  std::optional<std::filesystem::file_time_type> modified_time(const Path& path) override;
 };
 
 /// In-memory file system for tests and sandboxed hosts. Directories are

@@ -36,6 +36,7 @@ inline constexpr std::string_view kNoPdkData = "SCHEM-CMD-007";
 inline constexpr std::string_view kXschemUnsupported = "SCHEM-CMD-008";
 inline constexpr std::string_view kXschemNetlistType = "SCHEM-CMD-009";
 inline constexpr std::string_view kXschemNeedsEditor = "SCHEM-CMD-010";
+inline constexpr std::string_view kNetlistInterrupted = "SCHEM-CMD-011";
 
 // ---- errors ----------------------------------------------------------------
 /// A failure that raises a script error (Requirement "Return values and
@@ -142,5 +143,11 @@ cmd::CommandResult option_check(cmd::CommandContext&, Session&, std::span<const 
 /// The value of `getprop` for one property string: the whole string without
 /// a key, else the decoded value of `key` (empty when absent).
 [[nodiscard]] std::string property_value(std::string_view props, const std::optional<std::string>& key);
+
+/// `value` as a stored attribute value that decodes back to `value`
+/// (schematic-file-format "Property strings"): `"` and `\` escaped, and
+/// enclosed in `"` when it holds a separator. For set_token(), which stores
+/// the value it is given as written.
+[[nodiscard]] std::string encoded_value(std::string_view value);
 
 }  // namespace hefesto::schem::cmdimpl

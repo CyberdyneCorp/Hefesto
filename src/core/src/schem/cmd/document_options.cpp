@@ -3,7 +3,9 @@
 //
 // The document options of `schematic` that CMD implements: open, new, save,
 // close, reload, reload_symbols, path, resolve and pdk (capability
-// schematic-command "Subcommand table"), and the evaluation of the
+// schematic-command "Subcommand table"; `reload` and `close` end the
+// document's editing state, schem/edit/edit_state.hpp
+// forget_document_state), and the evaluation of the
 // `xschemrc` files when a document is opened (capability
 // schematic-symbols-and-libraries "xschemrc as data").
 //
@@ -215,6 +217,7 @@ cmd::CommandResult option_close(cmd::CommandContext& /*ctx*/, Session& session, 
   if (active_document(session)->document.modified && !parsed.value().has(0)) {
     return fail(kUnsaved, "schematic: unsaved changes");
   }
+  forget_document_state(session, active_document(session)->id);
   session.documents.pop_back();
   return cmd::CommandResult::success();
 }
@@ -223,9 +226,16 @@ cmd::CommandResult option_reload(cmd::CommandContext& ctx, Session& session, std
   if (!args.empty()) return usage("reload");
   OpenDocument& active = *active_document(session);
   if (active.document.path.empty()) return fail(kNoObject, "schematic: the document has no file to reload");
-  auto loaded = load_document(ctx.services().files, active.document.path, read_options(ctx));
+  platform::FileSystem& fs = ctx.services().files;
+  auto loaded = load_document(fs, active.document.path, read_options(ctx));
   if (!loaded) return fail(loaded.error());
   active.document = std::move(loaded).value();
+  // Nothing that refers to the old content survives: selection, highlights,
+  // undo history, launcher confirmation (S8-06), the document's embedded
+  // symbols, and the cached symbols whose files changed on disk.
+  forget_document_state(session, active.id);
+  session.symbols.forget(active.document.path);
+  (void)session.symbols.forget_changed(fs);
   return cmd::CommandResult::success();
 }
 

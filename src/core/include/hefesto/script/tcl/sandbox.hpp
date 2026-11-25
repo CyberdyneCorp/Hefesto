@@ -145,6 +145,7 @@ class SandboxedFileSystem final : public platform::FileSystem {
   [[nodiscard]] diag::Status create_directories(const platform::Path& directory) override;
   [[nodiscard]] diag::Status rename(const platform::Path& from, const platform::Path& to) override;
   [[nodiscard]] diag::Status remove(const platform::Path& path) override;
+  [[nodiscard]] std::optional<std::filesystem::file_time_type> modified_time(const platform::Path& path) override;
 
  private:
   /// nullopt when `path` may be accessed (`write`: changed), else the refusal.

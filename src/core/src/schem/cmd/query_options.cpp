@@ -8,7 +8,8 @@
 // platform file system, the active PDK root, and a Tcl bridge over a
 // sandboxed interpreter holding the xschem procedures and the session's
 // `xschemrc` files, so `tcleval(...)` values are evaluated (capability
-// schematic-symbols-and-libraries "tcleval values").
+// schematic-symbols-and-libraries "tcleval values"). The front end's
+// Interrupt cancels a run (SCHEM-CMD-011).
 //
 // Owner: CMD.
 
@@ -24,6 +25,8 @@
 #include "hefesto/schem/lib/symbol_cache.hpp"
 #include "hefesto/schem/net/netlist.hpp"
 #include "hefesto/schem/tcl/tcl_environment.hpp"
+#include "hefesto/script/progress.hpp"
+#include "hefesto/ui/state.hpp"
 #include "internal.hpp"
 
 namespace hefesto::schem::cmdimpl {
@@ -111,7 +114,7 @@ void apply_labels(Session& session, const std::vector<ComputedLabel>& labels) {
   for (const ComputedLabel& label : labels) {
     for (OpenDocument& open : session.documents) {
       std::string* props = open.document.path == label.schematic ? label_props(open.document, label) : nullptr;
-      if (props != nullptr) *props = set_token(*props, "lab", label.lab);
+      if (props != nullptr) *props = set_token(*props, "lab", encoded_value(label.lab));
     }
   }
 }
@@ -167,18 +170,69 @@ std::unique_ptr<TclEnvironment> tcl_environment(cmd::CommandContext& ctx, const 
   return tcl;
 }
 
+// The front end's Interrupt (Ctrl-C or the Interrupt card,
+// ui::request_interrupt): the flag the dispatcher reports `[Interrupted]`
+// for after the command and then clears.
+bool interrupt_pending(const editor::EditorState* editor) {
+  return editor != nullptr && ui::state(*editor).interrupt_pending.load();
+}
+
+// While a netlist run lasts, a pending Interrupt stops the `tcleval` value
+// being evaluated (through the progress hook every evaluation of the run's
+// interpreter reports to, as the time limits of TclBridge do), so a value
+// that loops does not hold the run until its time limit.
+class InterruptHook {
+ public:
+  InterruptHook(editor::EditorState* editor, TclEnvironment* tcl) {
+    if (editor == nullptr || tcl == nullptr) return;
+    progress_ = &editor->script.progress;
+    saved_ = progress_->handler;
+    progress_->handler = [this, editor, tcl](const script::ScriptProgress& report) {
+      if (saved_) saved_(report);
+      if (!report.done && interrupt_pending(editor)) tcl->interpreter().request_interrupt();
+    };
+  }
+  ~InterruptHook() {
+    if (progress_ != nullptr) progress_->handler = std::move(saved_);
+  }
+  InterruptHook(const InterruptHook&) = delete;
+  InterruptHook& operator=(const InterruptHook&) = delete;
+
+ private:
+  script::ProgressReporting* progress_ = nullptr;
+  script::ProgressHandler saved_;
+};
+
+struct NetlistRun {
+  NetlistResult result;
+  bool interrupted = false;  // nothing is published, no file written
+};
+
 // Runs the netlister on the active document in the session's environment
-// and publishes its diagnostics.
-NetlistResult run_netlist(cmd::CommandContext& ctx, Session& session, const NetlistOptions& options) {
+// and publishes its diagnostics and computed labels. An Interrupt pending
+// before the run, or made during it, ends it without publishing anything.
+NetlistRun run_netlist(cmd::CommandContext& ctx, Session& session, const NetlistOptions& options) {
+  editor::EditorState* editor = ctx.editor();
+  if (interrupt_pending(editor)) return {{}, true};
   const Document& top = active_document(session)->document;
   const std::unique_ptr<TclEnvironment> tcl = tcl_environment(ctx, session, top.path.parent_path());
   const TclBridge bridge = tcl != nullptr ? tcl->bridge() : TclBridge{};
   const NetlistEnvironment environment{session.symbols, session.search_path, ctx.services().files,
                                        &bridge,         sandbox_env(ctx, "PDK_ROOT"), 4};
-  NetlistResult result = netlist(environment, top, options, ctx.project().compat);
-  for (const diag::Diagnostic& d : result.diagnostics) ctx.emit(d);
-  apply_labels(session, result.labels);
-  return result;
+  NetlistRun run;
+  {
+    const InterruptHook hook(editor, tcl.get());
+    run.result = netlist(environment, top, options, ctx.project().compat);
+  }
+  run.interrupted = interrupt_pending(editor);
+  if (run.interrupted) return run;
+  for (const diag::Diagnostic& d : run.result.diagnostics) ctx.emit(d);
+  apply_labels(session, run.result.labels);
+  return run;
+}
+
+cmd::CommandResult interrupted() {
+  return fail(kNetlistInterrupted, "schematic: the netlist run was interrupted; no file is written");
 }
 
 }  // namespace
@@ -217,7 +271,9 @@ cmd::CommandResult option_netlist(cmd::CommandContext& ctx, Session& session, st
   if (!parsed) return fail(parsed.error());
   const auto options = netlist_options(ctx, parsed.value());
   if (!options || parsed.value().positional.size() > 1) return usage("netlist");
-  const NetlistResult result = run_netlist(ctx, session, *options);
+  const NetlistRun run = run_netlist(ctx, session, *options);
+  if (run.interrupted) return interrupted();
+  const NetlistResult& result = run.result;
   const bool to_file = !parsed.value().positional.empty();
   if (to_file && (!result.failed || parsed.value().has(kForce))) {
     const auto written = ctx.services().files.write_atomic(absolute_path(parsed.value().positional.front()), result.text);
@@ -229,7 +285,9 @@ cmd::CommandResult option_netlist(cmd::CommandContext& ctx, Session& session, st
 
 cmd::CommandResult option_check(cmd::CommandContext& ctx, Session& session, std::span<const std::string> args) {
   if (!args.empty()) return usage("check");
-  const NetlistResult result = run_netlist(ctx, session, NetlistOptions{});
+  const NetlistRun run = run_netlist(ctx, session, NetlistOptions{});
+  if (run.interrupted) return interrupted();
+  const NetlistResult& result = run.result;
   if (result.failed) return fail(kNetlistFailed, error_list(result.diagnostics));
   cmd::Value::List list;
   for (const diag::Diagnostic& d : result.diagnostics) list.emplace_back(d.text);
