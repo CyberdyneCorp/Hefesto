@@ -81,6 +81,12 @@ OSDI tree, cppduals, the patches and the CMake wrapper) is produced by the build
 rebuild and replace the library. The compact models compiled into the library (task 5.2) get their
 rows here when they land.
 
+## Components in M10
+
+| Component | Version / pin | License | Shipped in | Source |
+|---|---|---|---|---|
+| cgltf | v1.15, commit `360db1a95480fe102ae9c69b27c5d101167ff5ba` | MIT | all packages (core, header-only; the 3D view's glTF export) | https://github.com/jkuhlmann/cgltf |
+
 ## libcurl
 
 The Linux CLI and desktop download PDK catalogs and assets over HTTPS with libcurl
@@ -771,6 +777,21 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
 SOFTWARE.
 ```
 
+## cgltf
+
+Used by the core to write glTF 2.0 files (`export3d`, hefesto-3d-visualization "3D export";
+decision D-13).
+
+```text
+Copyright (c) 2018-2021 Johannes Kuhlmann
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ## Components to be added in later milestones
 
 Each entry is filled in, with its pin and notice text, by the change that adds the component
@@ -781,7 +802,6 @@ networking and data formats" and "Bundled fonts and PDK data licensing" of `hefe
 |---|---|---|---|
 | Magic scmos tech files (including the scmos MOSIS notice) | UC Berkeley permissive notice + MOSIS notice | all, if bundled | M1 tests generate scmos.tech from build/ref/magic; not shipped |
 | ngspice compact models compiled in (IHP PSP103, `cap_cmomi`, `cap_cmomf`) | per model | `libngspice-hefesto` | M9 task 5.2; ngspice itself is under "Components in M9" |
-| cgltf (or tinygltf) | MIT | all | glTF writer |
 | libsodium (or Monocypher) | ISC (BSD-2-Clause or CC0-1.0) | Linux | |
 | libcurl | curl license (MIT-style) | Linux | |
 | OpenSSL 3.x | Apache-2.0 | Linux, where the package bundles it | libcurl's TLS library |

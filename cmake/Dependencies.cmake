@@ -17,6 +17,7 @@
 #                                   (Linux only; macOS uses URLSession, hefesto-licensing D-13)
 #   Catch2::Catch2WithMain          Catch2 v3.7.1             (HEFESTO_BUILD_TESTS)
 #   raven::raven                    Raven v0.2.3              (HEFESTO_BUILD_DESKTOP; desktop shell only)
+#   hefesto::cgltf                  cgltf v1.15, header-only (glTF writer of view3d/export)
 #
 # When adding a dependency, also add its notice to THIRD_PARTY_NOTICES.md
 # (capability hefesto-licensing).
@@ -190,3 +191,18 @@ if(HEFESTO_BUILD_DESKTOP)
   set(RAVEN_REBUILD_SHADERS OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(raven)
 endif()
+
+# --- cgltf v1.15 (MIT), header-only ---------------------------------------
+# The glTF 2.0 writer of view3d/export (hefesto-3d-visualization "3D export",
+# hefesto-licensing D-13; M10 design D14). The implementation is compiled
+# once, in src/core/src/view3d/export/cgltf_impl.cpp; the export tests read
+# the files back with cgltf_parse and cgltf_validate.
+FetchContent_Declare(hefesto_cgltf
+  GIT_REPOSITORY https://github.com/jkuhlmann/cgltf.git
+  GIT_TAG 360db1a95480fe102ae9c69b27c5d101167ff5ba # v1.15
+  GIT_PROGRESS FALSE
+  ${_hefesto_no_cmake})
+FetchContent_MakeAvailable(hefesto_cgltf)
+add_library(hefesto_cgltf INTERFACE)
+add_library(hefesto::cgltf ALIAS hefesto_cgltf)
+target_include_directories(hefesto_cgltf SYSTEM INTERFACE "$<BUILD_INTERFACE:${hefesto_cgltf_SOURCE_DIR}>")
