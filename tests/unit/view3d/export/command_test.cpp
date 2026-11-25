@@ -64,6 +64,15 @@ void typed_ok(ClientSession& s, std::string_view line) {
   REQUIRE(r.ok());
 }
 
+// Opens the 3D window on c3d in layout-layer mode (it opens in mask-layer
+// mode: an output style is current; since the mask-layer source landed,
+// that mode exports the mask layers).
+void open_layout(ClientSession& s) {
+  s.ok("specialopen wind3d c3d");
+  s.w3d("cif");
+  REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+}
+
 std::string error_code(const hefesto::cmd::CommandResult& r) {
   return r.diagnostics.empty() ? std::string{} : r.diagnostics.front().code;
 }
@@ -73,7 +82,7 @@ std::string error_code(const hefesto::cmd::CommandResult& r) {
 TEST_CASE("glTF export: `export3d inv.glb` writes a valid glTF 2.0 binary, one node per visible layer, in µm",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   const hefesto::cmd::CommandResult r = typed(s, "export3d /t/inv.glb");
   REQUIRE(r.ok());
   CHECK(r.value.to_string() == "/t/inv.glb");
@@ -98,7 +107,7 @@ TEST_CASE("glTF export: `export3d inv.glb` writes a valid glTF 2.0 binary, one n
 TEST_CASE("`export3d x.gltf` writes the JSON and x.bin beside it; -format overrides the extension",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   const hefesto::cmd::CommandResult r = typed(s, "export3d /t/inv.gltf");
   REQUIRE(r.ok());
   CHECK(r.value.to_string() == "/t/inv.bin /t/inv.gltf");
@@ -114,7 +123,7 @@ TEST_CASE("`export3d x.gltf` writes the JSON and x.bin beside it; -format overri
 TEST_CASE("`export3d` STL: one file per layer named <stem>_<layer>.stl, or one with -merged",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   const hefesto::cmd::CommandResult r = typed(s, "export3d /t/inv.stl");
   REQUIRE(r.ok());
   CHECK(r.value.to_string() == "/t/inv_metal1.stl /t/inv_metal2.stl");
@@ -133,9 +142,7 @@ TEST_CASE("`export3d` STL: one file per layer named <stem>_<layer>.stl, or one w
 TEST_CASE("`export3d` follows the window's visibility; -all writes the hidden layers too",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
-  s.w3d("cif");  // layout-layer mode: `see` acts on tile types
-  REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+  open_layout(s);  // layout-layer mode: `see` acts on tile types
   REQUIRE(s.w3d("see no metal2").ok());
   typed_ok(s, "export3d /t/v.glb");
   const ParsedGltf visible(file(s, "/t/v.glb"));
@@ -150,7 +157,7 @@ TEST_CASE("`export3d` follows the window's visibility; -all writes the hidden la
 
 TEST_CASE("`export3d` exports the window's cut box", "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   REQUIRE(s.w3d("cutbox 0 0 40 20").ok());
   typed_ok(s, "export3d /t/cut.glb");
   const ParsedGltf glb(file(s, "/t/cut.glb"));
@@ -168,7 +175,7 @@ TEST_CASE("`export3d` exports the window's cut box", "[cap:hefesto-3d-visualizat
 
 TEST_CASE("`export3d -zscale k` scales heights and records k", "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   typed_ok(s, "export3d /t/z1.glb");
   typed_ok(s, "export3d /t/z3.glb -zscale 3");
   const ParsedGltf one(file(s, "/t/z1.glb"));
@@ -188,7 +195,7 @@ TEST_CASE("`export3d` with no 3D window open fails with VIEW3D-EXPORT-001 and wr
 
 TEST_CASE("`export3d` argument errors are VIEW3D-EXPORT-002", "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   for (const char* line : {"export3d", "export3d /t/a.obj", "export3d /t/a.glb -zscale 0",
                            "export3d /t/a.glb -zscale -2", "export3d /t/a.glb -zscale x", "export3d /t/a.glb -zscale",
                            "export3d /t/a.glb -format obj", "export3d /t/a.glb -bogus", "export3d /t/a.glb /t/b.glb"}) {
@@ -203,9 +210,34 @@ TEST_CASE("`export3d` argument errors are VIEW3D-EXPORT-002", "[cap:hefesto-3d-v
 TEST_CASE("`export3d` on a window whose cell is gone fails with VIEW3D-EXPORT-004",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   Session s;
-  s.ok("specialopen wind3d c3d");
+  open_layout(s);
   s.window().cell = "no_such_cell";
   const hefesto::cmd::CommandResult r = typed(s, "export3d /t/gone.glb");
   CHECK(error_code(r) == "VIEW3D-EXPORT-004");
   CHECK_FALSE(exists(s, "/t/gone.glb"));
+}
+
+TEST_CASE("export3d in mask-layer mode writes the mask layers in µm: mask units divided by the scale factor",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  // Regression: the mask-layer mesh is in mask units (scalefactor 10: 0.01 µm
+  // each), so without MeshModel::units_per_root the export was 10 times too
+  // large. MET1 has `render MET1 metal1 1.376 0.36`; MET2 has no render
+  // height and is left out with VIEW3D-STACK-001. Same in both modes.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};  // no display styles: every mask layer counts as drawn
+    s.editor.styles.reset();
+    s.ok("specialopen wind3d c3d");
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    typed_ok(s, "export3d /t/mask.glb");
+    const ParsedGltf glb(file(s, "/t/mask.glb"));
+    REQUIRE(glb.validation == cgltf_result_success);
+    const cgltf_node& root = *glb.data().scene->nodes[0];
+    REQUIRE(root.children_count == 1);
+    CHECK(std::string{root.children[0]->name} == "MET1");
+    const cgltf_accessor* met1 = glb.positions("MET1");
+    CHECK(static_cast<double>(met1->max[0] - met1->min[0]) == Approx(10.0));  // 100 internal units
+    CHECK(static_cast<double>(met1->max[2] - met1->min[2]) == Approx(5.0));   // 50 internal units
+    CHECK(glb.thickness("MET1") == Approx(0.36).margin(1e-6));
+  }
 }

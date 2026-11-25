@@ -42,7 +42,9 @@
 
 namespace hefesto::view3d {
 
-/// An axis-aligned cut line in root coordinates (the board's A-A').
+/// An axis-aligned cut line (the board's A-A') in the mesh's coordinates:
+/// root coordinates times MeshModel::units_per_root (mask units in
+/// mask-layer mode).
 struct Segment {
   db::Point a;
   db::Point b;

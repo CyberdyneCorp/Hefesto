@@ -402,6 +402,38 @@ TEST_CASE("cross-section reports layers without a height (VIEW3D-STACK-001 in ma
   }
 }
 
+TEST_CASE("cross-section of a mask-layer mesh in mask units: positions in µm along the line",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: the mask-layer mesh is in mask units (internal units times
+  // the scale factor, MeshModel::units_per_root) while the stack's
+  // microns_per_unit is per internal unit, so positions came out f times
+  // too long. Same in both magic-compat modes.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << (magic_compat ? "ON" : "OFF"));
+    view3d::StackLayer met1;
+    met1.name = "MET1";
+    met1.mask_layer = 0;
+    met1.height = 1.0F;
+    met1.thickness = 0.36F;
+    met1.source = view3d::ValueSource::render;
+    // 0.05 µm per internal unit, scale factor 10: 0.005 µm per mask unit.
+    const view3d::LayerStack stack{view3d::Mode::mask_layer, {met1}, magic_compat, 0.05};
+    view3d::MeshModel mesh;
+    mesh.mode = view3d::Mode::mask_layer;
+    mesh.units_per_root = 10;
+    mesh.region = Rect{0, 0, 200, 100};
+    mesh.layer_heights = {stack.draw_height(0)};
+    view3d::Chunk c;
+    c.area = mesh.region;
+    c.rects = {view3d::RectInstance{0, 0, 100, 100, 0}};
+    mesh.chunks = {c};
+    const CrossSection s = view3d::section(mesh, stack, view3d::Segment{{0, 50}, {200, 50}});
+    check_intervals(s, {{0, 0.0, 0.5, 1.0, 1.36}});
+    CHECK_THAT(s.length_um, WithinAbs(1.0, 1e-9));
+    CHECK(s.diagnostics.empty());
+  }
+}
+
 TEST_CASE("cross-section in layout-layer mode without µm per unit names every layer it crosses (VIEW3D-SECTION-002)",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   const InvTech t = inverter_tech();

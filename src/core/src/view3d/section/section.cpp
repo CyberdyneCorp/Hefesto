@@ -244,7 +244,9 @@ CrossSection section(const MeshModel& mesh, const LayerStack& stack, const Segme
     return out;
   }
   const double mpu = microns_per_unit(stack);
-  out.length_um = (l->hi - l->lo) * mpu;
+  // µm per mesh unit along the line: mask-layer meshes are in mask units.
+  const double along = mpu / static_cast<double>(mesh.units_per_root > 0 ? mesh.units_per_root : 1);
+  out.length_um = (l->hi - l->lo) * along;
   const Pieces pieces = collect(mesh, *l);
   for (std::size_t i = 0; i < pieces.size(); ++i) {
     const auto layer = static_cast<LayerId>(i);
@@ -256,7 +258,7 @@ CrossSection section(const MeshModel& mesh, const LayerStack& stack, const Segme
       out.no_height.push_back(layer);
       continue;
     }
-    add_intervals(out, layer, merged(pieces[i]), *l, mpu, *h);
+    add_intervals(out, layer, merged(pieces[i]), *l, along, *h);
   }
   if (auto d = no_height_diagnostic(stack, out.no_height)) {
     out.diagnostics.push_back(std::move(*d));

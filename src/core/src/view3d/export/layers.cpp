@@ -156,12 +156,19 @@ double draw_to_um(const LayerStack& stack, float value) {
   return static_cast<double>(value) * stack.microns_per_unit();
 }
 
+double xy_unit_um(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options) {
+  if (options.xy_unit_um > 0.0) {
+    return options.xy_unit_um;
+  }
+  return stack.microns_per_unit() / static_cast<double>(mesh.units_per_root > 0 ? mesh.units_per_root : 1);
+}
+
 ExportModel build_export_model(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options,
                                diag::DiagnosticSink& sink) {
   ExportModel model;
   model.layers = export_layers(mesh, stack, options, sink);
   model.geometry = build_geometry(mesh, stack, options, model.layers);
-  const double unit = options.xy_unit_um > 0.0 ? options.xy_unit_um : stack.microns_per_unit();
+  const double unit = detail::xy_unit_um(mesh, stack, options);
   model.origin_x_um = static_cast<double>(mesh.region.x0) * unit;
   model.origin_y_um = static_cast<double>(mesh.region.y0) * unit;
   model.zscale = options.zscale.value_or(1.0);

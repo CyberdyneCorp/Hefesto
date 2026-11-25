@@ -197,6 +197,7 @@ std::optional<MeshModel> rebuild_flat(const MeshModel& previous, const LayerStac
   MeshModel model;
   model.mode = previous.mode;
   model.region = previous.region;
+  model.units_per_root = previous.units_per_root;
   model.version = next_version();
   const HeightTable heights(stack, ctx);
   model.layer_heights = heights.layers();

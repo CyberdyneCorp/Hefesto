@@ -46,6 +46,11 @@ struct ExportModel {
 /// holds the `render` values (µm) as stored (Q-MISC-72).
 [[nodiscard]] double draw_to_um(const LayerStack& stack, float value);
 
+/// µm per mesh x/y unit: ExportOptions::xy_unit_um when set, else the
+/// stack's microns_per_unit divided by the mesh's units_per_root (mask
+/// units in mask-layer mode).
+[[nodiscard]] double xy_unit_um(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options);
+
 /// The layers, with warnings to `sink`, and their geometry.
 [[nodiscard]] ExportModel build_export_model(const MeshModel& mesh, const LayerStack& stack,
                                              const ExportOptions& options, diag::DiagnosticSink& sink);

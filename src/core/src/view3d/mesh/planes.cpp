@@ -173,7 +173,11 @@ std::optional<MeshModel> build_mask(const LayerStack& stack, const db::CellDef& 
   const FlattenFn generate = [&](std::span<const db::Rect> /*mask_areas*/, FlatLayout& out) {
     return generate_snapshot(stack, cell, source, areas, ctx, out);
   };
-  return build_flat(stack, generate, clip, ctx, max_tiles);
+  std::optional<MeshModel> model = build_flat(stack, generate, clip, ctx, max_tiles);
+  if (model) {
+    model->units_per_root = scale_of(*source.style);  // mask units
+  }
+  return model;
 }
 
 std::optional<MeshModel> rebuild_mask(const MeshModel& previous, const LayerStack& stack, const db::CellDef& cell,

@@ -146,6 +146,27 @@ TEST_CASE("Physical heights with magic-compat OFF: the same bytes as with it ON 
   CHECK(stl(off.mesh, off.stack, {}).bytes == stl(met1_model(true).mesh, met1_model(true).stack, {}).bytes);
 }
 
+TEST_CASE("A mask-layer mesh in mask units is exported in µm: x and y divided by the scale factor",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  // Regression: the mask-layer mesh is in mask units (MeshModel::units_per_root
+  // = the scale factor) while the stack's µm scale is per internal unit, so
+  // x and y were exported f times too large. Heights are unaffected.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    MaskModel m = met1_model(magic_compat);  // 0.1 µm per internal unit
+    const ParsedGltf internal(gltf(m.mesh, m.stack, glb()).bytes);
+    REQUIRE(internal.validation == cgltf_result_success);
+    CHECK(internal.positions("MET1")->max[0] == Approx(4.0));  // 40 units x 0.1 µm
+    m.mesh.units_per_root = 10;  // the same box, now in mask units: 0.01 µm each
+    const ParsedGltf mask(gltf(m.mesh, m.stack, glb()).bytes);
+    REQUIRE(mask.validation == cgltf_result_success);
+    CHECK(mask.positions("MET1")->max[0] == Approx(0.4));
+    CHECK(mask.positions("MET1")->min[1] == Approx(1.376).margin(1e-6));
+    CHECK(mask.thickness("MET1") == Approx(0.36).margin(1e-6));
+    CHECK(mask.data().scene->nodes[0]->translation[0] == Approx(-0.1));  // region x0 = -10 mask units
+  }
+}
+
 TEST_CASE("glTF: one node per layer in layer order, µm relative to the origin in the root translation",
           "[cap:hefesto-3d-visualization][req:3D export]") {
   const LayoutModel m = two_layers();

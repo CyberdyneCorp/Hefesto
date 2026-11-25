@@ -149,7 +149,7 @@ class Builder {
   Builder(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options,
           std::span<const ExportLayer> layers)
       : stack_(stack), k_(options.zscale.value_or(1.0)),
-        at_(mesh, options.xy_unit_um > 0.0 ? options.xy_unit_um : stack.microns_per_unit()),
+        at_(mesh, detail::xy_unit_um(mesh, stack, options)),
         slot_(stack.size(), kNone), slabs_(layers.size()), out_(layers.size()) {
     for (std::size_t i = 0; i < layers.size(); ++i) {
       slot_[layers[i].layer] = i;
