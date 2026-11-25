@@ -49,7 +49,7 @@ The 3D view SHALL support the following:
 - **Cross-sections:** along an axis-aligned cut line or plane. Heights are in µm regardless of magic-compat (view-3d, Q-MISC-72); mask layers without a `render` height are reported, not given one. The section is read from the displayed 3D model (no re-flattening): for each visible layer, the intervals of the line it covers, in µm from the line's start, each drawn from the layer's height h to h + t in µm (a contact spanned by "Span connected layers" with its spanned values; a split-tile triangle with its own layer's values, in both magic-compat modes). Abutting or overlapping pieces of one layer are one interval. A line along a tile edge takes the material on its upper (or right) side, as a tile owns its bottom and left edges. Layers the line crosses that have no physical height are left out and listed, with a warning naming them (`VIEW3D-STACK-001` in mask-layer mode, `VIEW3D-SECTION-002` in layout-layer mode). A cut line that is not axis-aligned, or has zero length, gives an empty section and the error `VIEW3D-SECTION-001`. The 3D view MAY show the section with a vertical clipping plane through the line: everything on the removed side is not drawn and cannot be picked; the faces the plane cuts are not capped (the inside of a cut prism is open).
 - **Substrate slab:** the desktop 3D tab draws the board's substrate slab under the stack, with magic-compat ON and OFF (the board look, Q-MISC-84/85): a box over the model's region whose top is the bottom of the lowest drawn layer and whose thickness is 0.2 of the drawn stack's height, in a neutral colour, shaded per face like the layers. It is not layout: it cannot be picked (a click on it picks nothing), it is never exported and never in the face log, `see` and the visibility sets do not list it, and a flat stack (no height) has none. Windows opened by scripts or hefesto-cli draw no slab.
 - **Layer visibility:** per-layer show, hide, isolate and transparency, acting on the same per-mode visibility sets as `see` (capability `view-3d`, Q-MISC-71).
-- **Ghosted layers:** in the desktop 3D tab a non-conducting area layer is ghosted by default, with magic-compat ON and OFF (Q-MISC-85, approved 2026-11-24): drawn with alpha 0.2 (the transparency control's 20 % step) after the opaque faces, with no depth write and no pick id, so the material under it shows and a click picks that material. A layer of the layout-layer stack is non-conducting area when its tile type is not a contact type and lies on a plane that holds no residue of any contact type of the technology (the technology's `contact` section; a stacked contact counts with its full residue set); every other layer (diffusions, poly, local interconnect, metals, MiM caps, contacts and vias) is opaque. For sky130A this ghosts the dwell, well and comment planes; for gf180mcuD the dwell, well, poly and comment planes (gf180mcuD's `poly` plane holds only the non-conducting fill type `fillpoly`; poly itself is on the active plane). The user changes a layer with its transparency control (100 / 50 / 20 %); the value the user set is kept for the window across rebuilds, outside Magic's state, so `see` and the visibility sets are unaffected. In phase 1 the tab draws the layout-layer stack in both window modes (in mask-layer mode with x and y scaled by f), so the same layers are ghosted in mask-layer mode; a mask-layer stack (phase 2) has no planes and no layer of it is ghosted by default.
+- **Ghosted layers:** in the desktop 3D tab a non-conducting area layer is ghosted by default, with magic-compat ON and OFF (Q-MISC-85, approved 2026-11-24): drawn with alpha 0.2 (the transparency control's 20 % step) after the opaque faces, with no depth write and no pick id, so the material under it shows and a click picks that material. A layer of the layout-layer stack is non-conducting area when its tile type is not a contact type and lies on a plane that holds no residue of any contact type of the technology (the technology's `contact` section; a stacked contact counts with its full residue set); every other layer (diffusions, poly, local interconnect, metals, MiM caps, contacts and vias) is opaque. For sky130A this ghosts the dwell, well and comment planes; for gf180mcuD the dwell, well, poly and comment planes (gf180mcuD's `poly` plane holds only the non-conducting fill type `fillpoly`; poly itself is on the active plane). The user changes a layer with its transparency control (100 / 50 / 20 %); the value the user set is kept for the window across rebuilds, outside Magic's state, so `see` and the visibility sets are unaffected. In mask-layer mode the tab draws the mask-layer stack; a mask-layer stack has no planes and no layer of it is ghosted by default.
 - **Net highlighting:** highlight a selected net in 3D, using the connectivity of capability `layout-connectivity`.
 - **Picking:** selecting a solid SHALL select the corresponding layout material in the 2D view, and the reverse.
 
@@ -69,6 +69,11 @@ Compatibility: native
 #### Scenario: Cut line that is not axis-aligned
 - **WHEN** the user requests a cross-section along a diagonal line, or a line of zero length
 - **THEN** the section SHALL be empty and the error `VIEW3D-SECTION-001` SHALL be reported
+
+#### Scenario: Cross-section from the layout box
+- **GIVEN** the desktop 3D tab with a box in the rendered cell
+- **WHEN** the user presses Cross-section
+- **THEN** the cut line SHALL be the box's long-axis centre line, the 3D view SHALL be clipped at it, and the A–A′ panel SHALL show each crossed layer from h to h + t in µm; in mask-layer mode the line SHALL be scaled to the mask-layer mesh's units and the panel's positions SHALL be µm along the line
 
 #### Scenario: Clipping plane hides one side
 - **GIVEN** the 3D view of an inverter with a cross-section's clipping plane at x = 35 keeping x ≥ 35
@@ -92,8 +97,8 @@ Compatibility: native
 
 #### Scenario: Wells ghosted in mask-layer mode
 - **GIVEN** the desktop 3D tab on a sky130A cell with an nwell, opened in mask-layer mode (an output style is current)
-- **WHEN** the tab is drawn in phase 1
-- **THEN** the nwell is drawn with alpha 0.2 as in layout-layer mode, because the tab draws the layout-layer stack scaled by f, with magic-compat ON and OFF (Q-MISC-85)
+- **WHEN** the tab is drawn
+- **THEN** the tab draws the mask layers of the current output style in mask units, with no "phase 2" notice, and no mask layer (the well's NWELL included) is ghosted by default, with magic-compat ON and OFF (Q-MISC-85 classifies layout layers only)
 
 #### Scenario: Contact planes stay opaque
 - **GIVEN** the desktop 3D tab on a gf180mcuD cell with nwell, pdiff, poly, pdc and metal1
@@ -122,6 +127,8 @@ Hefesto SHALL export the current 3D model:
 
 Units SHALL be microns. Exported geometry SHALL equal the displayed model's geometry (layers, visibility, cut box) in physical microns (the desktop tab's synthetic substrate slab is not part of the model and is never exported), without the view's z exaggeration, unless a z scale is requested; the scale SHALL be recorded in the file (glTF `asset.extras`). Heights are in µm regardless of magic-compat (view-3d, Q-MISC-72); mask layers without a `render` height are reported, not given one.
 
+Exported layers SHALL be the displayed model's visible layers (all layers with `-all`) that have geometry and a physical height; a layer type drawn in two display styles SHALL be exported once. The `.gltf` form SHALL write its buffer to `<stem>.bin` beside the JSON. Per-layer STL SHALL write one file per exported layer named `<stem>_<layer>.stl` in the directory of the given file, characters other than letters, digits and `_-.+` in the layer name replaced by `_`; `-merged` SHALL write the given file. glTF positions SHALL be relative to the model's lower-left corner, held as the root node's translation, with +Y up (layout x, height, −layout y); STL SHALL keep layout axes (z up) relative to the same corner. A mask-layer model (in mask units) SHALL be exported in µm like a layout-layer one.
+
 glTF files SHALL be written with the cgltf writer (MIT; tinygltf, MIT, MAY replace it), on every platform (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13). STL is written by Hefesto's own code.
 
 Compatibility: native
@@ -131,6 +138,14 @@ Compatibility: native
 #### Scenario: glTF export
 - **WHEN** `export3d inv.glb` is run on a meshed cell
 - **THEN** a valid glTF 2.0 binary SHALL be written, with one node per visible layer, in micron units
+
+#### Scenario: Export without a 3D window
+- **WHEN** `export3d out.glb` is run while no 3D window is open
+- **THEN** the command SHALL fail with `VIEW3D-EXPORT-001` and write nothing
+
+#### Scenario: Per-layer STL
+- **WHEN** `export3d inv.stl` is run on a cell with metal1 and metal2
+- **THEN** `inv_metal1.stl` and `inv_metal2.stl` SHALL be written
 
 #### Scenario: Export without the view's exaggeration
 - **GIVEN** a metal1 layer of thickness 0.36 µm displayed with z scale 25

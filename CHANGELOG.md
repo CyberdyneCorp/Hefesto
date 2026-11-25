@@ -45,6 +45,24 @@ release notices.
 - **Script routing with magic-compat ON.** While a 3D window is open and
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.
+- **Mask layers in 3D (phase 2).** Mask-layer mode (`cif` in the 3D
+  window, the default when an output style is current) now draws the mask
+  layers the current output style generates for the cell, with their
+  `render` heights, instead of the layout layers under a "phase 2"
+  notice. An edit regenerates only the nearby mask geometry.
+- **Cross-sections.** The desktop 3D tab's "Cross-section" button cuts
+  A–A′ along the layout box (or two clicks in the view), clips the 3D
+  view at the line and shows each crossed layer from its height to its
+  top in µm in a "Cross-section A–A′" panel.
+- **glTF and STL export.** `export3d <file> [-format gltf|glb|stl]
+  [-merged] [-zscale k] [-visible|-all]` writes the 3D window's model in
+  µm (one glTF node or STL file per layer, or one merged STL); the
+  desktop tab's "Export glTF…" asks for the file. The output is
+  byte-identical on Linux and macOS.
+- **3D tab layout.** The view toolbar floats over the 3D view as on the
+  board, the side panel fits a 1280 × 800 window, a substrate slab is
+  drawn under the stack ("Substrate" toggle), and every control has a
+  screen-reader name and state.
 
 ## Unreleased (M9: LVS and simulation, in progress)
 
