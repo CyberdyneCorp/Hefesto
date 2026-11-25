@@ -231,7 +231,7 @@ void sort_terminals(Context& ctx, TransRec& tr, std::vector<GateLabel>& labels);
 /// int range and NaN as 0 (Q-EXTRACT-30).
 [[nodiscard]] std::int64_t mul_trunc(std::int64_t value, float by) noexcept;
 
-/// Q-row proposed in M7 round 4 (EX-P03, two device types touching in one
+/// Proposed Q-EXTRACT-41 (M7 round 4, EX-P03, two device types touching in one
 /// device region): with magic-compat OFF each device type is its own device,
 /// so the device connectivity keeps only a type's own tiles; ON returns the
 /// style's table unchanged (Magic's one region and one record).

@@ -109,7 +109,7 @@ struct CellResult {
   /// Added in M7 R4: with magic-compat ON, a record Magic writes without
   /// its newline (the line of a `device` cell property, ExtBasic.c:519-528,
   /// so the next record continues it); unterminate() applies it to the
-  /// finished text. Proposed Q-EXTRACT-38; OFF ends the line.
+  /// finished text. Proposed Q-EXTRACT-39; OFF ends the line.
   std::optional<std::string> unterminated;
 };
 

@@ -572,3 +572,66 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - As implemented (R3 fix pass), both modes: a `port` record whose number is above `ReadLimits::max_port_index` (2^20) fails the read with EXTFLAT-READ-009 `<file>, line <n>: port number <n> is larger than 1048576`; negative numbers are kept (they mean "no index"). The SPICE writers keep their port slots in a map, so the list is as long as the ports, not as the highest number. Tests: `tests/unit/extflat/hardening_test.cpp` "a port number past the cap fails the read with EXTFLAT-READ-009"; `tests/unit/netlist/spice/run_test.cpp` "Sparse port numbers keep their order; a number past the cap fails the read"; fuzz seeds `hostile-port-number-m00`, `-m04`.
 - Options: fix (the cap, as implemented) | no cap, sparse lists only (the implicit numbering then needs 64-bit indices)
 - Recommendation: fix. Real `.ext` files number ports from 0 up to the port count; 2^20 is far above any cell.
+
+### Q-NETLIST-63: Magic's `extresist` crashes on nets with nfets
+- Kind: bug
+- Status: pending user decision (proposed in M7 round R4 by RESNET, 2026-11-25; the crash is not located yet)
+- Magic behavior: `extresist all` on exttest.tech with `device mosfet nfet nfet ndiff,ndc pwell,space GND! 2 5` exits with a segmentation fault (exit 139) when a net touches an nfet (NL-RESNET-05, 10 and 13).
+- Evidence: golden-capture runs 45555921742 and 45555935130. Likely places: resis/ResRex.c ResFixUpConnections, resis/ResSimple.c ResCalculateChildCapacitance (`exts_device[t]`).
+- As implemented (round R4): Hefesto builds and reduces these nets (no crash); the three cases are authored without expected/.
+- Options: fix (both modes, the standing rule) | re-author the cases so Magic does not crash
+- Recommendation: once the crash is located, fix it in both modes and re-capture after re-authoring if needed. Spec on approval: `extresist-network` or `extresist-command`, depending on where it is.
+
+### Q-NETLIST-64: Undefined behaviour in Magic's resistance network construction
+- Kind: bug
+- Status: pending user confirmation (fixed in both modes in M7 round R4 by RESNET under the standing rule)
+- Magic behavior: (a) ResDoContacts reads CIFGetContactSize's unset `viawidth` when the output style has no cut for the type, and dereferences a null CIFCurStyle when there is none; (b) ResFindNewContactTiles writes past `cp_tile[4]`; (c) ResPreProcessDevices uses an uninitialised `pNum` for a contact device type with no device residue; (d) the int conversion of NaN from `sqrt(perimeter^2 - area)`; (e) ResNewTermDevice writes `rd_terminals[2+n]` past `rd_nterms`; (f) `exts_deviceSDTypes[i]` is read past the array.
+- Evidence: resis/ResMakeRes.c:856-900, cif/CIFtech.c:2327-2382 (a); resis/ResMain.c:589-700 (b); resis/ResUtils.c:887-940 (c), 1060-1075 (d); resis/ResJunct.c:51-110 (e); resis/ResBasic.c, ResUtils.c (f)
+- As implemented (round R4), both modes: (a) such a contact has no resistance; (b) capped at 4; (c) the type's home plane; (d) 0; (e) ignored; (f) an empty mask. Only (a) has a test (`tests/unit/extresist/network/`, one per mode; stated in `extresist-network`).
+- Options: fix (as implemented) | replicate (not possible for undefined behaviour)
+- Recommendation: fix.
+
+### Q-NETLIST-65: A negative `extresist threshold|minresist|mindelay` is stored
+- Kind: compat
+- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: a negative value prints the usage line, and the value is stored anyway.
+- Evidence: resis/ResRex.c:357-405
+- As implemented (round R4): magic-compat ON stores it; OFF keeps the previous value. Tests: `tests/unit/extresist/command/options_test.cpp`.
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat.
+
+### Q-NETLIST-66: `extresist debug` and `stats` take any word
+- Kind: compat
+- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: no value is checked for `debug` and `stats`, so any word turns them on.
+- Evidence: resis/ResRex.c:330-346, 438-470
+- As implemented (round R4): magic-compat ON copies this; OFF rejects the word with `Value must be either "on" or "off".` Tests: `tests/unit/extresist/command/options_test.cpp`.
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-67: `extresist cell` runs on the box cell
+- Kind: compat
+- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: ToolGetBox replaces the selected cell with the cell under the box, so `extresist cell <name>` extracts the box cell.
+- Evidence: resis/ResRex.c:686-694, 731
+- As implemented (round R4): magic-compat ON runs on the box cell; OFF on the named cell. Tests: `tests/unit/extresist/command/run_test.cpp`.
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-68: Crashes and undefined behaviour in the `.ext` read of `extresist`
+- Kind: bug
+- Status: pending user confirmation (fixed in both modes in M7 round R4 by RESCMD under the standing rule)
+- Magic behavior: a negative node R converts INFINITY to int; a device terminal on a net with no record dereferences NULL; a device whose model has no device line dereferences NULL.
+- Evidence: resis/ResReadExt.c:528-529, 790-792, 799-815, 832
+- As implemented (round R4), both modes: R is infinity; the net is created with no node record; the device has no type. Tests: `tests/unit/extresist/output/input_test.cpp`.
+- Options: fix (as implemented)
+- Recommendation: fix.
+
+### Q-NETLIST-69: ResSortByGate orders by node address
+- Kind: bug (determinism)
+- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: ResSortByGate's qsort compares node addresses, so the order of a node's devices can differ between runs and platforms.
+- Evidence: resis/ResRex.c:1891-1940
+- As implemented (round R4), both modes: the order in which the nets are first mentioned, with a stable sort. Tests: `tests/unit/extresist/command/` (`sort_by_gate`).
+- Options: fix (as implemented) | replicate (not reproducible)
+- Recommendation: fix.

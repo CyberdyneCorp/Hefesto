@@ -128,7 +128,7 @@ void set_all(ExtractOptions& o, bool on) {
 // `extract do unique X` with X not `notop...`: Magic prints the usage and
 // then applies the table index 11 (0xb) as a bit mask, which sets or clears
 // adjust, capacitance and lumped R (CmdE.c:1451-1461). magic-compat ON
-// replicates it; OFF changes nothing (proposed Q-EXTRACT-37).
+// replicates it; OFF changes nothing (proposed Q-EXTRACT-38).
 void unique_option(const cu::Session& s, ExtractOptions& o, const std::vector<std::string>& args, bool on) {
   if (args.size() != 3) {
     o.unique = on;

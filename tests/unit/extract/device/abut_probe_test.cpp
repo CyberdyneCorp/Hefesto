@@ -9,7 +9,7 @@
 // lower transistor is lost; with every record needing thkox and thkox over
 // the nfet only, it prints `No matching device for pfet with no ID layer`
 // and writes none, and `extract all` returns. magic-compat ON copies it;
-// OFF makes each device type its own device (Q-row proposed in M7 round 4).
+// OFF makes each device type its own device (proposed Q-EXTRACT-41).
 // Owner: EXTDEV (written by EXTHIER, M7 round 4).
 
 #include <catch2/catch_test_macros.hpp>

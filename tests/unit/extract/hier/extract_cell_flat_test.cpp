@@ -106,7 +106,7 @@ TEST_CASE("extract_cell reproduces the captured flat EX files", "[cap:extract-fi
   }
 }
 
-// Proposed Q-EXTRACT-38: Magic writes the line of a `device` property
+// Proposed Q-EXTRACT-39: Magic writes the line of a `device` property
 // without its newline (ExtBasic.c:519-528).
 TEST_CASE("a device property's line, magic-compat ON: unterminated as Magic writes it",
           "[cap:extract-commands][req:Cell properties affecting extraction]") {

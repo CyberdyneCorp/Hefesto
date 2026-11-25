@@ -101,7 +101,7 @@ TEST_CASE("unique notopports, resistance and local", "[cap:extract-commands][req
   CHECK(usage.starts_with("Usage: extract do option\n   or  extract no option\nwhere option is one of:\n  adjust"));
 }
 
-// Proposed Q-EXTRACT-37: Magic applies the table index of `unique` (11 =
+// Proposed Q-EXTRACT-38: Magic applies the table index of `unique` (11 =
 // 0xb) as a bit mask after the usage message.
 TEST_CASE("extract do unique with a bad modifier, magic-compat ON: Magic's bit-mask side effect",
           "[cap:extract-commands][req:Extraction options]") {

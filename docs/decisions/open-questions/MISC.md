@@ -79,6 +79,25 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Recommendation: compat; the spec text should say that the prefix match holds with magic-compat OFF.
 - Resolution: compat — as Q-NETLIST-13 and Q-NETLIST-49: with `magic-compat` ON `run` and any ambiguous first word are run arguments, so `antennacheck run` checks a cell named `run`, as Magic does; with it OFF the first word is matched by unique prefix against `run`, `debug` and `help`, `run` is a keyword and an ambiguous prefix prints `Ambiguous option: <w>`. In both modes a word that is not an option prefix is the cell name. Spec: `antenna-check` "Antenna check command". Approved 2026-11-22.
 
+### Q-MISC-92: `antennacheck <cell>` with no layout window
+- Kind: bug
+- Status: pending user confirmation (fixed in both modes in M7 round R4 by ANTENNA under the standing rule)
+- Magic behavior: CmdAntennaCheck dereferences the NULL window (`editUse = (CellUse *)w->w_surfaceID`) when a cell is named and no layout window exists: a crash.
+- Evidence: extflat/EFantenna.c:216-221
+- As implemented (round R4), both modes: Hefesto prints `Point to a window or specify a cell name.` Tests: `tests/unit/antenna/run_test.cpp`.
+- Options: fix (as implemented)
+- Recommendation: fix. Spec on approval: `antenna-check` "Antenna check command".
+
+### Q-MISC-93: antennacheck devices with no style device line or no terminals
+- Kind: bug
+- Status: pending user confirmation (fixed in both modes in M7 round R4 by ANTENNA under the standing rule)
+- Magic behavior: a device whose model names no style device line makes extGetDevType return -1, then DBPlane(-1) is read; a device with no terminals reads `dev_terms[0]`.
+- Evidence: extflat/EFantenna.c:251-255, 410, 427-430
+- As implemented (round R4), both modes: the device is skipped. Tests: `tests/unit/antenna/run_test.cpp`.
+- Options: fix (as implemented)
+- Recommendation: fix.
+
+
 ## mask-hints
 
 ### Q-MISC-10: Mask hints do not round-trip with `property compat false`
