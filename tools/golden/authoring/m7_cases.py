@@ -32,9 +32,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import antenna_cases  # noqa: E402
 import casegen  # noqa: E402
 import extract_cases  # noqa: E402
 import netlist_cases  # noqa: E402
+import rescmd_cases  # noqa: E402
+import resnet_cases  # noqa: E402
 import tclcase  # noqa: E402
 from goldenlib import deviations  # noqa: E402
 
@@ -45,10 +48,12 @@ END = "# --- END M7 deferrals ---"
 OWNER = {"EX": "the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3)",
          "NL-FLAT": "EXTFLAT (m7-extraction task 10)", "NL-SPICE": "SPICE (m7-extraction task 11)",
          "NL-HIER": "SPICE (m7-extraction task 11.6)", "NL-SIM": "SIM (m7-extraction task 12)",
-         "NL-CHK": "SIM (m7-extraction task 12.4)"}
+         "NL-CHK": "SIM (m7-extraction task 12.4)",
+         "NL-RES": "RESCMD (m7-extraction task 14) with EXTCMD's extract all and RESNET's network",
+         "NL-RESNET": "RESNET (m7-extraction task 13) with RESCMD's command (task 14)",
+         "MISC-ANT": "ANTENNA (m7-extraction task 15)"}
 PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
-         **{f"MISC-ANT-{n:02d}": "ANTENNA (task 17.3, R3)" for n in range(1, 10)},
          **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS},
          "LEFDEF-336": "extract all then def write on LEFDEF-317's layout (task 17.6)"}
 EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier milestones (task 17.5)
@@ -69,6 +74,13 @@ REPLAYED: set[str] = {
     # R4 EXTCMD (tasks 8.1, 9.2): the flat EX cases through extract_cell and the run driver. EX-060 waits for
     # the tech-load reset of fringehalo (editor/extract_hook.cpp); EX-024 keeps its Q-EXTRACT-6 deviation (DECIDED).
     *(f"EX-{n:03d}" for n in (*range(1, 24), *range(25, 43), 44, 45, 46, 48, 57, 58, 59, 61, 62, 63)),
+    # R4 integration: EX-060 with the tech-load reset of fringehalo (editor/extract_hook.cpp); MISC-ANT (task 15).
+    "EX-060", *(f"MISC-ANT-{n:02d}" for n in range(1, 10)),
+    # R4 integration: the hierarchical EX cases through extract_cell's extract_subtree call (tasks 8.1-8.5, 7.7),
+    # and the captured NL-RESNET cases through RESCMD's run on RESNET's network (tasks 13, 14). NL-RESNET-05, 10
+    # and 13 have no expected/ (Magic crashes, Q-NETLIST-63); NL-RES-01..08 wait for their capture.
+    *extract_cases.HIER_IDS,
+    *(f"NL-RESNET-{n:02d}" for n in (1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 14, 15)),
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
@@ -90,7 +102,8 @@ HAND_DERIVED: dict[str, str] = {netlist_cases.CHK_ID: netlist_cases.CHK_HAND_DER
 
 
 def tcl_cases() -> list[tclcase.TclCase]:
-    return [*extract_cases.cases(), *netlist_cases.cases()]
+    return [*extract_cases.cases(), *netlist_cases.cases(), *resnet_cases.cases(), *rescmd_cases.cases(),
+            *antenna_cases.cases()]
 
 
 def authored_ids() -> list[str]:
@@ -142,6 +155,8 @@ def deviation_block() -> str:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
         reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
+        if case_id.startswith(("NL-RES-", "NL-RESNET-")):
+            reason = f"authored in R4 (m7-extraction task 17.3), expected/ not captured yet; replays once {owner(case_id)} lands"
         if case_id in HAND_DERIVED:
             reason = f"expected/ hand-derived (design R7 option (a), M7-9); replays once {owner(case_id)} lands"
         decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
