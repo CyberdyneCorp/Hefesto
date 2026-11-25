@@ -126,13 +126,17 @@ StitchTile StitchEditor::split_x(StitchTile t, Coord x, bool magic_compat) {
 }
 
 bool StitchEditor::join_y(StitchTile keep, StitchTile gone) {
+  return join_y(keep, gone, false);
+}
+
+bool StitchEditor::join_y(StitchTile keep, StitchTile gone, bool magic_compat) {
   detail::TilePlane& tiles = plane_->impl_->tiles;
   if (!keep || !gone || keep == gone || tiles.is_outside(tile_of(keep)) || tiles.is_outside(tile_of(gone))) {
     return false;
   }
   detail::Tile* k = tile_of(keep);
   detail::Tile* g = tile_of(gone);
-  if (detail::is_split(k->body) || detail::is_split(g->body)) {
+  if (!magic_compat && (detail::is_split(k->body) || detail::is_split(g->body))) {
     return false;
   }
   const bool stacked = k->rt == g || g->rt == k;

@@ -5,11 +5,15 @@
 // area enumeration over the scratch plane, the four concave-corner cases
 // of ResCheckConcavity, the walks and ResSplitX, on db::StitchEditor.
 // Split tiles at a cut (Q-NETLIST-53, compat): with magic-compat ON the
-// tile is made Manhattan with its left type and then cut (what ResSplitX's
-// TiGetType gives the new tile); with it OFF a split tile is never cut.
+// tile is cut as ResSplitX cuts it: TiSplitX leaves the left part a
+// narrower split tile with the whole body, the new right part gets the
+// left type, and the TiJoinY1 joins that follow join split tiles too;
+// with it OFF a split tile is never cut nor joined.
 // (Magic ref: resis/ResFract.c:43-493)
 //
 // Owner: RESNET (openspec/changes/m7-extraction design D3).
+
+#include <optional>
 
 #include "hefesto/db/plane_stitch.hpp"
 #include "hefesto/extresist/network/network.hpp"
@@ -56,15 +60,9 @@ class Fracturer {
       if (type(src_) != tech::kSpace) {
         process();
       }
-      StitchTile next = ed_.stitch(src_, Stitch::tr);
-      if (next && left(next) < r.x1) {
-        while (next && bottom(next) >= r.y1) {
-          next = ed_.stitch(next, Stitch::lb);
-        }
-        if (next && (bottom(next) >= bottom(src_) || bottom(src_) <= r.y0)) {
-          src_ = next;
-          continue;
-        }
+      if (const StitchTile next = next_in_row(r)) {
+        src_ = next;
+        continue;
       }
       if (!back_left(r)) {
         return false;
@@ -73,6 +71,21 @@ class Fracturer {
         return true;
       }
     }
+  }
+
+  /// The tile right of src_ the enumeration moves to, or none.
+  [[nodiscard]] StitchTile next_in_row(const db::Rect& r) const {
+    StitchTile next = ed_.stitch(src_, Stitch::tr);
+    if (!next || left(next) >= r.x1) {
+      return {};
+    }
+    while (next && bottom(next) >= r.y1) {
+      next = ed_.stitch(next, Stitch::lb);
+    }
+    if (next && (bottom(next) >= bottom(src_) || bottom(src_) <= r.y0)) {
+      return next;
+    }
+    return {};
   }
 
   /// Returns one tile further left; sets resumed_ when the enumeration
@@ -188,17 +201,69 @@ class Fracturer {
     }
   }
 
+  // The walks. Each stops at the first other-type tile along the edge it
+  // follows (the left edge for the vertical walks, the bottom edge for the
+  // horizontal ones); the stops are the helpers below.
+
+  /// walk_up's stop: the bottom of the first other-type tile left of
+  /// `tile` above y.
+  [[nodiscard]] std::optional<db::Coord> stop_up(StitchTile tile, tech::TileType tt, db::Coord y) const {
+    StitchTile tp = ed_.stitch(tile, Stitch::bl);
+    while (tp && top(tp) <= y) {
+      tp = ed_.stitch(tp, Stitch::rt);
+    }
+    for (; tp && bottom(tp) < top(tile); tp = ed_.stitch(tp, Stitch::rt)) {
+      if (type(tp) != tt) {
+        return bottom(tp);
+      }
+    }
+    return std::nullopt;
+  }
+
+  /// walk_down's stop: the top of the last other-type tile left of `tile`
+  /// below y.
+  [[nodiscard]] std::optional<db::Coord> stop_down(StitchTile tile, tech::TileType tt, db::Coord y) const {
+    std::optional<db::Coord> end;
+    for (StitchTile tp = ed_.stitch(tile, Stitch::bl); tp && bottom(tp) < top(tile); tp = ed_.stitch(tp, Stitch::rt)) {
+      if (type(tp) != tt && bottom(tp) < y) {
+        end = top(tp);
+      }
+    }
+    return end;
+  }
+
+  /// walk_right's stop: the left of the first other-type tile below `tile`
+  /// right of x.
+  [[nodiscard]] std::optional<db::Coord> stop_right(StitchTile tile, tech::TileType tt, db::Coord x) const {
+    StitchTile tp = ed_.stitch(tile, Stitch::lb);
+    while (tp && left(tp) < x) {
+      tp = ed_.stitch(tp, Stitch::tr);
+    }
+    for (; tp && left(tp) < right(tile); tp = ed_.stitch(tp, Stitch::tr)) {
+      if (type(tp) != tt) {
+        return left(tp);
+      }
+    }
+    return std::nullopt;
+  }
+
+  /// walk_left's stop: the right of the last other-type tile below `tile`
+  /// left of x.
+  [[nodiscard]] std::optional<db::Coord> stop_left(StitchTile tile, tech::TileType tt, db::Coord x) const {
+    std::optional<db::Coord> end;
+    for (StitchTile tp = ed_.stitch(tile, Stitch::lb); tp && left(tp) < right(tile); tp = ed_.stitch(tp, Stitch::tr)) {
+      if (type(tp) != tt && left(tp) < x) {
+        end = right(tp);
+      }
+    }
+    return end;
+  }
+
   db::Coord walk_up(StitchTile tile, tech::TileType tt, db::Coord x, db::Coord y, bool split) {
     while (tile && type(tile) == tt) {
       if (x == left(tile)) {
-        StitchTile tp = ed_.stitch(tile, Stitch::bl);
-        while (tp && top(tp) <= y) {
-          tp = ed_.stitch(tp, Stitch::rt);
-        }
-        for (; tp && bottom(tp) < top(tile); tp = ed_.stitch(tp, Stitch::rt)) {
-          if (type(tp) != tt) {
-            return bottom(tp);
-          }
+        if (const auto stop = stop_up(tile, tt, y)) {
+          return *stop;
         }
       } else if (split) {
         tile = split_x(tile, x);
@@ -211,15 +276,8 @@ class Fracturer {
   db::Coord walk_down(StitchTile tile, tech::TileType tt, db::Coord x, db::Coord y, bool split) {
     while (tile && type(tile) == tt) {
       if (x == left(tile)) {
-        StitchTile end;
-        for (StitchTile tp = ed_.stitch(tile, Stitch::bl); tp && bottom(tp) < top(tile);
-             tp = ed_.stitch(tp, Stitch::rt)) {
-          if (type(tp) != tt && bottom(tp) < y) {
-            end = tp;
-          }
-        }
-        if (end) {
-          return top(end);
+        if (const auto stop = stop_down(tile, tt, y)) {
+          return *stop;
         }
       } else if (split) {
         tile = split_x(tile, x);
@@ -232,14 +290,8 @@ class Fracturer {
   db::Coord walk_right(StitchTile tile, tech::TileType tt, db::Coord x, db::Coord y) {
     while (tile && type(tile) == tt) {
       if (y == bottom(tile)) {
-        StitchTile tp = ed_.stitch(tile, Stitch::lb);
-        while (tp && left(tp) < x) {
-          tp = ed_.stitch(tp, Stitch::tr);
-        }
-        for (; tp && left(tp) < right(tile); tp = ed_.stitch(tp, Stitch::tr)) {
-          if (type(tp) != tt) {
-            return left(tp);
-          }
+        if (const auto stop = stop_right(tile, tt, x)) {
+          return *stop;
         }
       }
       tile = at(right(tile), y, tile);
@@ -250,15 +302,8 @@ class Fracturer {
   db::Coord walk_left(StitchTile tile, tech::TileType tt, db::Coord x, db::Coord y) {
     while (tile && type(tile) == tt) {
       if (y == bottom(tile)) {
-        StitchTile end;
-        for (StitchTile tp = ed_.stitch(tile, Stitch::lb); tp && left(tp) < right(tile);
-             tp = ed_.stitch(tp, Stitch::tr)) {
-          if (type(tp) != tt && left(tp) < x) {
-            end = tp;
-          }
-        }
-        if (end) {
-          return right(end);
+        if (const auto stop = stop_left(tile, tt, x)) {
+          return *stop;
         }
       }
       tile = at(left(tile) - 1, y, tile);
@@ -266,20 +311,39 @@ class Fracturer {
     return tile ? right(tile) : -db::kInfinity;
   }
 
-  /// TiJoinY1 of `gone` into `keep` when `other` is a same-type tile with
-  /// the same LEFT and RIGHT as `tile`.
+  /// ResSplitX's join test: `other` has type `tt` (TiGetType, the left
+  /// type of a split tile) and the same LEFT and RIGHT as `tile`. With
+  /// magic-compat OFF split tiles are never joined.
   [[nodiscard]] bool joinable(StitchTile other, StitchTile tile, tech::TileType tt) const {
-    return other && type(other) == tt && left(other) == left(tile) && right(other) == right(tile);
+    if (!other || type(other) != tt || left(other) != left(tile) || right(other) != right(tile)) {
+      return false;
+    }
+    return compat_ || (!ed_.view(other).split && !ed_.view(tile).split);
   }
 
-  /// ResSplitX.
+  /// TiJoinY1 of `tile` and its joinable neighbour `tp2`, keeping src_
+  /// alive and dropping top_ when it goes; returns the tile left.
+  StitchTile join_pair(StitchTile tile, StitchTile tp2) {
+    if (tp2 == src_) {
+      if (top_ == tile) {
+        top_ = StitchTile{};
+      }
+      ed_.join_y(tp2, tile, compat_);
+      return tp2;
+    }
+    if (top_ == tp2) {
+      top_ = StitchTile{};
+    }
+    ed_.join_y(tile, tp2, compat_);
+    return tile;
+  }
+
+  /// ResSplitX: TiSplitX, the new right part gets the left type, then the
+  /// joins above and below each part.
   StitchTile split_x(StitchTile tile, db::Coord x) {
     const tech::TileType tt = type(tile);
-    if (ed_.view(tile).split) {
-      if (!compat_) {
-        return tile;  // Q-NETLIST-53 OFF: a split tile is never cut
-      }
-      ed_.set_type(tile, tt);  // Q-NETLIST-53 ON: Manhattan, its left type
+    if (ed_.view(tile).split && !compat_) {
+      return tile;  // Q-NETLIST-53 OFF: a split tile is never cut
     }
     StitchTile tp = ed_.split_x(tile, x, compat_);
     if (!tp) {
@@ -288,30 +352,18 @@ class Fracturer {
     ed_.set_type(tp, tt);
     for (const Stitch s : {Stitch::rt, Stitch::lb}) {
       const StitchTile tp2 = ed_.stitch(tile, s);
-      if (!joinable(tp2, tile, tt)) {
-        continue;
-      }
-      if (tp2 == src_) {
-        if (top_ == tile) {
-          top_ = StitchTile{};
-        }
-        ed_.join_y(tp2, tile);
-        tile = tp2;
-      } else {
-        if (top_ == tp2) {
-          top_ = StitchTile{};
-        }
-        ed_.join_y(tile, tp2);
+      if (joinable(tp2, tile, tt)) {
+        tile = join_pair(tile, tp2);
       }
     }
-    StitchTile above = ed_.stitch(tp, Stitch::rt);
+    const StitchTile above = ed_.stitch(tp, Stitch::rt);
     if (joinable(above, tp, tt)) {
-      ed_.join_y(above, tp);
+      ed_.join_y(above, tp, compat_);
       tp = above;
     }
     const StitchTile below = ed_.stitch(tp, Stitch::lb);
     if (joinable(below, tp, tt)) {
-      ed_.join_y(below, tp);
+      ed_.join_y(below, tp, compat_);
     }
     return tile;
   }

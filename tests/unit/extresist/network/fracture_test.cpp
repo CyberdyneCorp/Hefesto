@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <ostream>
 #include <tuple>
 #include <vector>
 
@@ -33,6 +34,11 @@ struct Piece {
 
   friend bool operator==(const Piece&, const Piece&) = default;
 };
+
+std::ostream& operator<<(std::ostream& os, const Piece& x) {
+  return os << "[" << x.rect.x0 << "," << x.rect.y0 << "," << x.rect.x1 << "," << x.rect.y1
+            << (x.split ? " split " : " ") << x.left << "]";
+}
 
 std::vector<Piece> pieces(const db::Plane& p) {
   std::vector<Piece> out;
@@ -118,12 +124,18 @@ db::Plane split_under_branch() {
 
 }  // namespace
 
-TEST_CASE("a split tile at a cut becomes its left type with magic-compat ON", FRACTURE) {
-  // Q-NETLIST-53 (compat): Manhattan with the left type, then cut and joined.
+// Regression (review of PR #119): the split tile was made Manhattan before
+// the cut, which is not what Magic does.
+TEST_CASE("a split tile at a cut is cut as ResSplitX cuts it with magic-compat ON", FRACTURE) {
+  // Q-NETLIST-53 (compat): TiSplitX leaves the left part [0,30]x[0,10] a
+  // split tile with the whole body, the new right part [30,40]x[0,10] gets
+  // the left type (metal1), and TiJoinY1 joins the branch above into the
+  // split tile (the branch is not resSrTile), stretching the diagonal
+  // over [0,30]x[0,100] (resis/ResFract.c:436-490, tiles/tile.c:251-300).
   db::Plane p = split_under_branch();
   const tech::TileType m1 = env().type("metal1");
   fracture(p, true);
-  CHECK(pieces(p) == std::vector<Piece>{{{0, 0, 30, 100}, false, m1}, {{30, 0, 40, 10}, false, m1}});
+  CHECK(pieces(p) == std::vector<Piece>{{{0, 0, 30, 100}, true, m1}, {{30, 0, 40, 10}, false, m1}});
 }
 
 TEST_CASE("a split tile at a cut is kept whole with magic-compat OFF", FRACTURE) {
