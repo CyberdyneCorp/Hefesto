@@ -66,11 +66,23 @@ REPLAYED: set[str] = {
     # R3 NETLIST: hierarchical output (task 11.6)
     *(f"NL-HIER-{n:02d}" for n in range(1, 7)), "NL-FLAT-11",
     *(f"NL-SPICE-{n:02d}" for n in (1, 4, 8, 13)),
+    # R4 EXTCMD (tasks 8.1, 9.2): the flat EX cases through extract_cell and the run driver. EX-060 waits for
+    # the tech-load reset of fringehalo (editor/extract_hook.cpp); EX-024 keeps its Q-EXTRACT-6 deviation (DECIDED).
+    *(f"EX-{n:03d}" for n in (*range(1, 24), *range(25, 43), 44, 45, 46, 48, 57, 58, 59, 61, 62, 63)),
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
 DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS}
+
+# Replayed cases whose remaining difference is an approved both-modes fix (design D21): written to the block
+# with their decisions and only the differing outputs, without a deferral.
+DECIDED: dict[str, tuple[list[str], str]] = {
+    "EX-024": (["ex.dounique.mag"],
+               "extract do unique reverts the temporary _uqN labels of every extracted cell, the top cell included, "
+               "and restores its modified flag, so the saved ex keeps vdd! and net1 and its timestamp (Q-EXTRACT-6, "
+               "fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"),
+}
 
 # Cases whose expected/ is hand-derived instead of captured, with the approved decision that allows it
 # (design R7 option (a), m7-decision-table M7-9): capture.py never runs them, --exit-check lists them.
@@ -120,6 +132,12 @@ def owner(case_id: str) -> str:
 def deviation_block() -> str:
     entries = []
     for case_id in authored_ids():
+        if case_id in DECIDED:
+            outputs, why = DECIDED[case_id]
+            outs = ", ".join(f'"{name}"' for name in outputs)
+            entries.append(f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\n'
+                           f'outputs = [{outs}]\nreason = "{why}"\n')
+            continue
         if case_id in REPLAYED:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
