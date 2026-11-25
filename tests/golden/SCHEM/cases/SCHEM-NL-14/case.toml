@@ -18,7 +18,7 @@ argv = ["sh", "/work/input/run.sh"]
 allow_nonzero_exit = true
 
 [hefesto]
-args = ["--no-log", "{input}/hefesto.hef"]
+args = ["--no-log", "{input}/replay.hef"]
 requires_commands = ["schematic"]
 
 [[outputs]]

@@ -157,17 +157,73 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertIn('decisions = ["Q-SCHEM-30"]', entry)
         self.assertIn('outputs = ["stdout.txt", "stderr.txt"]', entry)
         self.assertFalse(any(line.startswith("deferred") for line in entry))
-        self.assertEqual(rt01, [])
+        # A replayed case without a decision keeps only xschem's driver text, deferred to M8 (Q-SCHEM-46).
+        self.assertIn('deferred = "M8"', rt01)
+        self.assertIn('outputs = ["stdout.txt", "stderr.txt"]', rt01)
+        self.assertTrue(any("Q-SCHEM-46" in line for line in rt01))
 
     def test_simulation_and_lvs_results_deferred_to_m9(self):
         for case_id in ("SCHEM-SIM-01", "SCHEM-SIM-02", "SCHEM-LVS-01"):
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
                 self.assertIn('deferred = "M9"', entry)
-                # Q-SCHEM-39: M8 keeps checking the LVS case's netlist output.
+                # Q-SCHEM-39: M8 checks the LVS case's netlist output (replayed: not listed at all) and,
+                # once Q-SCHEM-46 is decided, its driver text.
                 per_output = [line for line in entry if line.startswith("deferred_outputs")]
-                self.assertEqual(per_output, ['deferred_outputs = { "inv_1.spice" = "M8" }']
+                self.assertEqual(per_output, ['deferred_outputs = { "stdout.txt" = "M8", "stderr.txt" = "M8" }']
                                  if case_id == "SCHEM-LVS-01" else [])
+        lvs = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
+        self.assertIn('outputs = ["layout.spice", "lvs.out", "stdout.txt", "stderr.txt"]', lvs)
+        with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
+            before = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
+        self.assertIn('deferred_outputs = { "inv_1.spice" = "M8" }', before)
+
+    def test_replayed_cases_keep_their_open_outputs(self):
+        nl09 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-09"))
+        self.assertIn('outputs = ["exitcode.txt", "stdout.txt", "stderr.txt"]', nl09)
+        for case_id in schem_cases.REPLAYED:
+            with self.subTest(case=case_id):
+                entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
+                outputs = next(line for line in entry if line.startswith("outputs = "))
+                self.assertIn('"stdout.txt"', outputs)
+
+    def test_hefesto_side_paths_are_relative_to_the_work_folder(self):
+        for spec in self.specs:
+            for name in ("replay.hef", "hefesto.tcl"):
+                path = schem_cases.CASES_DIR / spec.id / "input" / name
+                if path.is_file():
+                    with self.subTest(case=spec.id, file=name):
+                        text = path.read_text(encoding="utf-8")
+                        self.assertTrue(text.startswith("file mkdir out\n"))
+                        self.assertNotIn("/work/", text)
+                        self.assertNotIn("/pdk/", text)
+
+
+class ReplaySideTest(unittest.TestCase):
+    """replay.py's SCHEM staging (M8 round 5): the xschem sets and the system library are copies, not links,
+    so the script sandbox reads them under the PDK root and CAD_ROOT; <work>/pdk is written as /pdk."""
+
+    def setUp(self):
+        sys.path.insert(0, str(GOLDEN))
+        import replay  # noqa: PLC0415
+        self.replay = replay
+        self.case = load_case(schem_cases.CASES_DIR / "SCHEM-NL-11")
+
+    def test_system_library_is_copied_into_cad_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            self.replay.stage_schem_system_library(self.case, work)
+            devices = self.replay.cad_root(work) / "assets" / "schematic" / "xschem_library" / "devices"
+            self.assertTrue((devices / "res.sym").is_file())
+            self.assertFalse(devices.parent.parent.is_symlink())
+
+    def test_pdk_folder_written_as_the_capture_mount(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            text = f"{work}/pdk/sky130A/x.lib {work}/out".encode()
+            self.assertEqual(self.replay.with_container_work(text, work), b"/work/pdk/sky130A/x.lib /work/out")
+            (work / "pdk").mkdir()
+            self.assertEqual(self.replay.with_container_work(text, work), b"/pdk/sky130A/x.lib /work/out")
 
 
 class ContainerfileTest(unittest.TestCase):

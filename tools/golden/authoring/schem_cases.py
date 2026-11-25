@@ -18,10 +18,12 @@ the library path, ``xschem_execute_scripts`` on). Each case captures its output 
 stdout and stderr, and the exit status (output source ``exitcode``). Netlists are compared after the
 ``schem-paths`` mask (Q-SCHEM-13); the flat netlist of SCHEM-NL-21 by ``spice-canonical`` (D10).
 
-Hefesto replays a case from ``input/hefesto.hef`` (the ``schematic`` command of capability
-``schematic-command``) or, for the Tcl cases, from ``input/case.tcl`` through the ``xschem``
-compatibility command; until the schematic workstreams land, ``deviations.toml`` defers every case
-to M8 (the block ``--deviations`` writes).
+Hefesto replays a netlist case from ``input/replay.hef`` (the ``schematic`` command of capability
+``schematic-command``: the scenario ``input/hefesto.hef`` as a driver like run.sh) and a Tcl case from
+``input/hefesto.tcl`` (the steps of ``input/case.tcl``, a load/saveas through ``schematic open``/``save``),
+both with the capture's ``/work/`` and ``/pdk/`` paths relative to the replay's work folder. The block
+``--deviations`` writes keeps a case deferred to M8 until it is in ``REPLAYED``; a replayed case keeps only
+xschem's driver text on stdout/stderr (proposed Q-SCHEM-46) and what ``REPLAYED_OPEN`` lists.
 
     python3 tools/golden/authoring/schem_cases.py                # write the cases (never expected/)
     python3 tools/golden/authoring/schem_cases.py --list         # case ids
@@ -155,6 +157,8 @@ class Spec:
     shell: str | None = None                             # other drivers (input/run.sh, written as is)
     outputs: list[tuple[str, str, str, list[str]]] = field(default_factory=list)  # name, source, comparator, masks
     hefesto: str = ""                                    # input/hefesto.hef (empty for Tcl cases)
+    hefesto_tcl: str = ""                                # Tcl cases: input/hefesto.tcl when it is not case.tcl
+    replay: str = ""                                     # netlist cases: input/replay.hef when not the default
     timeout_s: int | None = None
     externals: list[dict] = field(default_factory=list)
 
@@ -225,33 +229,43 @@ def netlist_spec(id_: str, capability: str, requirements: list[str], description
                 outputs=outputs, hefesto=hefesto)
 
 
+def netlist_flags(run: Run) -> list[str]:
+    """The ``schematic netlist`` flags equal to a capture run's xschem options."""
+    options = " ".join(run.options)
+    flags = [flag for setting, flag in (("lvs_netlist 1", "-lvs"), ("lvs_ignore 1", "-lvsignore"),
+                                        ("top_is_subckt 1", "-topsubckt"), ("uppercase_subckt 1", "-uppercase"))
+             if setting in options]
+    return flags + (["-flat"] if "-f" in run.options else [])
+
+
+def run_lines(run: Run, netlist: str) -> list[str]:
+    """The ``schematic pdk``/``open``/``close`` lines of one capture run around ``netlist`` (the line given the
+    netlist file and flags)."""
+    path = run.file.replace("/pdk/", "pdk/", 1).replace("/work/", "", 1)
+    lines = [f"schematic pdk {run.pdk or path.split('/')[1]}"] if run.pdk or path.startswith("pdk/") else []
+    out = f"out/{run.out or run.cell + '.spice'}{''.join(' ' + f for f in netlist_flags(run))}"
+    return lines + [f"schematic open {path}", netlist.format(out=out), "schematic close -discard"]
+
+
 def default_hefesto(runs: list[Run]) -> str:
     """The Hefesto command script equal to the capture's runs (capability schematic-command)."""
-    lines = []
+    return "\n".join(line for run in runs for line in run_lines(run, "schematic netlist {out}")) + "\n"
+
+
+def default_replay(runs: list[Run]) -> str:
+    """The replay driver of a netlist case: like run.sh it writes each netlist also when netlisting reports an
+    error (``-force``; xschem writes it and exits 10) and ends with status 10 when one did, else 0."""
+    lines = ["set status 0"]
     for run in runs:
-        path = run.file.replace("/pdk/", "pdk/", 1).replace("/work/", "", 1)
-        if run.pdk or path.startswith("pdk/"):
-            lines.append(f"schematic pdk {run.pdk or path.split('/')[1]}")
-        lines.append(f"schematic open {path}")
-        flags = []
-        if "lvs_netlist 1" in " ".join(run.options):
-            flags.append("-lvs")
-        if "lvs_ignore 1" in " ".join(run.options):
-            flags.append("-lvsignore")
-        if "top_is_subckt 1" in " ".join(run.options):
-            flags.append("-topsubckt")
-        if "-f" in run.options:
-            flags.append("-flat")
-        lines.append(f"schematic netlist out/{run.out or run.cell + '.spice'}{''.join(' ' + f for f in flags)}")
-        lines.append("schematic close -discard")
-    return "\n".join(lines) + "\n"
+        lines += run_lines(run, "if {{[catch {{schematic netlist {out} -force}}]}} {{set status 10}}")
+    return "\n".join(lines + ["quit $status"]) + "\n"
 
 
 def tcl_spec(id_: str, capability: str, requirements: list[str], description: str, script: str,
              outputs: list[tuple[str, str, str, list[str]]], sets: list[str] | None = None,
-             provenance: list[str] | None = None, files: dict | None = None) -> Spec:
+             provenance: list[str] | None = None, files: dict | None = None, hefesto: str = "") -> Spec:
     return Spec(id_, capability, requirements, description, provenance or ["hefesto"], sets or [], files or {},
-                script=script, outputs=outputs + STREAMS)
+                script=script, outputs=outputs + STREAMS, hefesto_tcl=hefesto)
 
 
 def tcl_roundtrip(pairs: list[tuple[str, str, str]]) -> str:
@@ -261,6 +275,25 @@ def tcl_roundtrip(pairs: list[tuple[str, str, str]]) -> str:
     for path, name, kind in pairs:
         lines += [f"xschem load {path}", f"xschem saveas /work/out/{name} {kind}",
                   f"xschem load /work/out/{name}", f"xschem saveas /work/out/2-{name} {kind}"]
+    return "\n".join(lines) + "\n"
+
+
+def rt_spec(id_: str, capability: str, requirements: list[str], description: str,
+            pairs: list[tuple[str, str, str]], outputs: list[tuple[str, str, str, list[str]]],
+            sets: list[str] | None = None, provenance: list[str] | None = None, files: dict | None = None) -> Spec:
+    """A round-trip case: xschem's load/saveas script and the same round trip through ``schematic``."""
+    return tcl_spec(id_, capability, requirements, description, tcl_roundtrip(pairs), outputs, sets, provenance,
+                    files, hefesto=hefesto_roundtrip(pairs))
+
+
+def hefesto_roundtrip(pairs: list[tuple[str, str, str]]) -> str:
+    """The Hefesto side of ``tcl_roundtrip``: the same loads and saves through the ``schematic`` command
+    (capability schematic-command; ``saveas`` is not one of the ``xschem`` subcommands Hefesto provides)."""
+    lines = []
+    for path, name, _kind in pairs:
+        for source, target in ((path, f"out/{name}"), (f"out/{name}", f"out/2-{name}")):
+            lines += [f"schematic open {hefesto_paths(source)}", f"schematic save {target}",
+                      "schematic close -discard"]
     return "\n".join(lines) + "\n"
 
 
@@ -538,7 +571,12 @@ NL19_FILES = {"tap.sym": TAP_SYM, "nl19.sch": NL19}
 # SCHEM-NL-20: top-level port order ("Port order from symbol").
 INV_SCH = sch(lab(0, 0, "p1", "Y", "opin.sym"), lab(0, 100, "p2", "A", "ipin.sym"), wire(0, 0, 0, 20),
               wire(0, 80, 0, 100), res(0, 50, "name=R1 value=1k"))
-NL20_FILES = {"with/inv.sch": INV_SCH, "with/inv.sym": subckt_symbol(["A", "Y"]), "without/inv.sch": INV_SCH}
+# xschem reads the case's rc file (--rcfile) for every schematic; Hefesto reads the xschemrc of each schematic's
+# folder, so the two subfolders get the library path of input/xschemrc without a PDK (xschem never reads them).
+FORWARD_RC = ("# Hefesto side only: the library path of the case's rc file.\n"
+              "set XSCHEM_LIBRARY_PATH ${XSCHEM_SHAREDIR}/xschem_library/devices\n")
+NL20_FILES = {"with/inv.sch": INV_SCH, "with/inv.sym": subckt_symbol(["A", "Y"]), "without/inv.sch": INV_SCH,
+              "with/xschemrc": FORWARD_RC, "without/xschemrc": FORWARD_RC}
 
 # SCHEM-SIM-03: simulator vector names through a hierarchy (xschem resolved_net).
 SIM03_FILES = {
@@ -621,6 +659,24 @@ close $differs
 close $changed
 '''
 
+RT02_XSCHEM_STEPS = """      xschem load $f
+      xschem saveas $first $kind
+      xschem load $first
+      xschem saveas $second $kind
+"""
+RT02_HEFESTO_STEPS = """      schematic open $f
+      schematic save $first
+      schematic close -discard
+      schematic open $first
+      schematic save $second
+      schematic close -discard
+"""
+
+
+def rt02_hefesto() -> str:
+    """The Hefesto side of SCHEM-RT-02: the same walk, each load and save through the schematic command."""
+    return hefesto_paths(RT02).replace(RT02_XSCHEM_STEPS, RT02_HEFESTO_STEPS)
+
 
 def specs() -> list[Spec]:
     S, G, I = "sky130-xschem", "gf180mcu-xschem", "ihp-xschem"
@@ -628,33 +684,33 @@ def specs() -> list[Spec]:
 
     # --- schematic-file-format: round trips -----------------------------------------------------------
     rel = "sky130_tests/not.sch"
-    out.append(tcl_spec("SCHEM-RT-01", FILE_FORMAT, ["Round-trip guarantee", "Canonical write order"],
+    out.append(rt_spec("SCHEM-RT-01", FILE_FORMAT, ["Round-trip guarantee", "Canonical write order"],
                         "sky130 sky130_tests/not.sch loaded and saved, then the saved file loaded and saved again.",
-                        tcl_roundtrip([(pdk_path(S, rel), "not.sch", "schematic")]),
+                        [(pdk_path(S, rel), "not.sch", "schematic")],
                         [file_out("not.sch"), file_out("2-not.sch")], [S], [pdk_prov(S, rel)]))
     out.append(Spec("SCHEM-RT-02", FILE_FORMAT, ["Round-trip guarantee", "Brace strings", "Numeric fields"],
                     "Every .sch and .sym of the three PDK xschem trees loaded and saved twice; the files whose "
                     "second save differs are listed.",
                     [f"pdk:{s}:{VARIANT[s]}/libs.tech/xschem" for s in (S, G, I)]
                     + [f"pdk:{I}:ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem"],
-                    [S, G, I], script=RT02, timeout_s=3600,
+                    [S, G, I], script=RT02, timeout_s=3600, hefesto_tcl=rt02_hefesto(),
                     outputs=[("differs.txt", "out/differs.txt", "bytes", []),
                              ("changed.txt", "out/changed.txt", "bytes", []),
                              ("first.digest", "derived:digest:out/first/**/*", "bytes", []),
                              ("second.digest", "derived:digest:out/second/**/*", "bytes", [])] + STREAMS))
-    out.append(tcl_spec("SCHEM-RT-03", FILE_FORMAT,
+    out.append(rt_spec("SCHEM-RT-03", FILE_FORMAT,
                         ["File kinds and character handling", "Line, box, arc and polygon records", "Numeric fields"],
                         "Hand-written file with CR-LF line ends, unordered line endpoints and box corners, and "
-                        "re-formatted numbers.", tcl_roundtrip([("/work/input/crlf.sch", "crlf.sch", "schematic")]),
+                        "re-formatted numbers.", [("/work/input/crlf.sch", "crlf.sch", "schematic")],
                         [file_out("crlf.sch"), file_out("2-crlf.sch")], files={"crlf.sch": RT03}))
-    out.append(tcl_spec("SCHEM-RT-04", FILE_FORMAT, ["Global property records"],
+    out.append(rt_spec("SCHEM-RT-04", FILE_FORMAT, ["Global property records"],
                         "Pre-1.2 symbol whose only property record is G {type=subcircuit ...}.",
-                        tcl_roundtrip([("/work/input/old.sym", "old.sym", "symbol")]),
+                        [("/work/input/old.sym", "old.sym", "symbol")],
                         [file_out("old.sym"), file_out("2-old.sym")], files={"old.sym": RT04}))
-    out.append(tcl_spec("SCHEM-RT-05", FILE_FORMAT, ["Embedded symbols"],
+    out.append(rt_spec("SCHEM-RT-05", FILE_FORMAT, ["Embedded symbols"],
                         "Hefesto-authored schematic with an embedded symbol (lines, boxes, arcs, polygons, texts), "
                         "a schematic used as a symbol marked embed=true, and a plain instance of each.",
-                        tcl_roundtrip([("/work/input/embed.sch", "embed.sch", "schematic")]),
+                        [("/work/input/embed.sch", "embed.sch", "schematic")],
                         [file_out("embed.sch"), file_out("2-embed.sch")],
                         files={"embed.sch": RT05, "shape.sym": SHAPE_SYM, "block.sch": BLOCK_SCH}))
     out.append(tcl_spec("SCHEM-RT-06", FILE_FORMAT, ["Record grammar", "Malformed input", "Layers"],
@@ -662,17 +718,18 @@ def specs() -> list[Spec]:
                         "truncated wire, an out-of-range layer and an unterminated brace string at the end.",
                         "xschem load /work/input/bad.sch\nputs \"wires [xschem get wires]\"\n"
                         "puts \"instances [xschem get instances]\"\nxschem saveas /work/out/bad.sch schematic\n",
-                        [file_out("bad.sch")], files={"bad.sch": RT06}))
+                        [file_out("bad.sch")], files={"bad.sch": RT06},
+                        hefesto="schematic open input/bad.sch\nschematic save out/bad.sch\n"))
     rel7 = "sky130_fd_pr/nfet_01v8.sym"
-    out.append(tcl_spec("SCHEM-RT-07", FILE_FORMAT, ["Version record and header text"],
+    out.append(rt_spec("SCHEM-RT-07", FILE_FORMAT, ["Version record and header text"],
                         "sky130 sky130_fd_pr/nfet_01v8.sym, whose version record carries a license header.",
-                        tcl_roundtrip([(pdk_path(S, rel7), "nfet_01v8.sym", "symbol")]),
+                        [(pdk_path(S, rel7), "nfet_01v8.sym", "symbol")],
                         [file_out("nfet_01v8.sym"), file_out("2-nfet_01v8.sym")], [S], [pdk_prov(S, rel7)]))
-    out.append(tcl_spec("SCHEM-RT-08", FILE_FORMAT, ["Version record and header text"],
+    out.append(rt_spec("SCHEM-RT-08", FILE_FORMAT, ["Version record and header text"],
                         "Files with no version record: (a) first record K {}, (b) first record an instance "
                         "(Q-SCHEM-3).",
-                        tcl_roundtrip([("/work/input/a.sch", "a.sch", "schematic"),
-                                       ("/work/input/b.sch", "b.sch", "schematic")]),
+                        [("/work/input/a.sch", "a.sch", "schematic"),
+                                       ("/work/input/b.sch", "b.sch", "schematic")],
                         [file_out("a.sch"), file_out("2-a.sch"), file_out("b.sch"), file_out("2-b.sch")],
                         files={"a.sch": RT08A, "b.sch": RT08B}))
 
@@ -806,7 +863,10 @@ def specs() -> list[Spec]:
                         "The SCHEM-NL-11 schematic netlisted, then saved: lab= on the wires (Q-SCHEM-29).",
                         "xschem load /work/input/nl11.sch\nputs \"netlist [xschem netlist]\"\n"
                         "xschem saveas /work/out/nl11-saved.sch schematic\n",
-                        [file_out("nl11-saved.sch")], files={"nl11.sch": NL11}))
+                        [file_out("nl11-saved.sch")], files={"nl11.sch": NL11},
+                        hefesto="set status 0\nschematic open input/nl11.sch\n"
+                                "if {[catch {schematic netlist}]} {set status 10}\n"
+                                "schematic save out/nl11-saved.sch\nquit $status\n"))
     nl23 = "sky130_tests/test_generators.sch"
     out.append(pdk_netlist("SCHEM-NL-23", ["Symbol generators"],
                            "sky130 sky130_tests/test_generators.sch (Q-SCHEM-11).", S, [nl23], SYMBOLS))
@@ -833,7 +893,10 @@ def specs() -> list[Spec]:
                     "Hefesto runs the divider script of the Subcommand table scenario; the reference is xschem's "
                     "netlist of the same circuit drawn as div.sch.", ["hefesto"], [], {"div.sch": CMD01},
                     [Run("div", "/work/input/div.sch", "div")],
-                    outputs=[netlist_out("div.spice")] + STREAMS, hefesto=CMD01_HEF))
+                    outputs=[netlist_out("div.spice")] + STREAMS, hefesto=CMD01_HEF,
+                    # The replay places div.sch in input/, as the capture's div.sch, so that input/xschemrc gives
+                    # the library path and the sch_path line matches.
+                    replay=CMD01_HEF.replace("schematic new schematic div.sch", "schematic new schematic input/div.sch")))
     return out
 
 
@@ -931,11 +994,11 @@ def _toml_list(values: list[str]) -> str:
 def manifest(spec: Spec) -> str:
     if spec.script is not None:
         argv = [*XSCHEM, "--script", "/work/input/case.tcl"]
-        hefesto_args = ["--no-log", "{input}/case.tcl"]
+        hefesto_args = ["--no-log", "{input}/hefesto.tcl"]
         requires = ["xschem"]
     else:
         argv = ["sh", "/work/input/run.sh"]
-        hefesto_args = ["--no-log", "{input}/hefesto.hef"]
+        hefesto_args = ["--no-log", "{input}/replay.hef"]
         requires = ["schematic"]
     provenance = spec.provenance[0] if len(spec.provenance) == 1 else spec.provenance
     lines = [
@@ -973,16 +1036,30 @@ def manifest(spec: Spec) -> str:
     return "\n".join(lines) + "\n"
 
 
+# The Hefesto side of a case runs in the replay's work folder (replay.py): the capture's container paths
+# /work/<x> and /pdk/<variant> are <x> and pdk/<variant> there (the xschem sets are linked as pdk/), and out/,
+# which the capture's xschemrc and run.sh create, is made first.
+HEFESTO_PROLOGUE = "file mkdir out\n"
+
+
+def hefesto_paths(text: str) -> str:
+    """``text`` with the container paths of the capture made relative to the replay's work folder."""
+    return text.replace("/work/", "").replace("/pdk/", "pdk/")
+
+
 def input_files(spec: Spec) -> dict[str, str | bytes]:
     files: dict[str, str | bytes] = {"xschemrc": HARNESS_RC.read_text(encoding="utf-8"), **spec.files}
     if spec.script is not None:
         files["case.tcl"] = spec.script
+        files["hefesto.tcl"] = HEFESTO_PROLOGUE + (spec.hefesto_tcl or hefesto_paths(spec.script))
     elif spec.shell is not None:
         files["run.sh"] = spec.shell
     else:
         files["run.sh"] = run_script(spec)
-    if spec.hefesto:
+    if spec.hefesto:  # the scenario script (other tests read it); replay.hef is what the replay runs
         files["hefesto.hef"] = spec.hefesto
+        files["replay.hef"] = HEFESTO_PROLOGUE + (spec.replay or (default_replay(spec.runs) if spec.runs
+                                                                  else spec.hefesto))
     return files
 
 
@@ -1038,25 +1115,79 @@ LATER_OUTPUTS: dict[str, dict[str, str]] = {
 
 M8_REASON = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
 
+# A replayed case's stdout.txt and stderr.txt keep xschem's driver text, which Hefesto never prints. Until the
+# user decides proposed Q-SCHEM-46 they stay deferred to M8 on every replayed case without a decision, so the
+# file outputs and exitcode.txt are compared (replay.py --milestone M8 makes them due).
+DRIVER_OUTPUTS = ("stdout.txt", "stderr.txt")
+DRIVER_REASON = ("stdout.txt and stderr.txt hold xschem's driver text (start-up and sourcing lines, the "
+                 "'== <cell>' banners of run.sh), which Hefesto does not print; comparing them waits for proposed "
+                 "Q-SCHEM-46 (awaiting the user)")
+
+UNDRIVEN_REASON = ("xschem exits 10 after its 'Error: undriven node' check (a net with only input pins), which "
+                   "the schematic-netlisting spec does not define yet (spec issue, M8 round 5); the netlist is equal")
+
+# Replayed cases whose other outputs still differ: case id -> (milestone, outputs, reason).
+REPLAYED_OPEN: dict[str, tuple[str, list[str], str]] = {
+    "SCHEM-NL-09": ("M8", ["exitcode.txt"], UNDRIVEN_REASON),
+    "SCHEM-NL-10": ("M8", ["exitcode.txt"], UNDRIVEN_REASON),
+    "SCHEM-LVS-01": ("M9", ["layout.spice", "lvs.out"], LATER["SCHEM-LVS-01"][1]),
+    "SCHEM-RT-06": ("M8", [], "stdout.txt also holds the case's 'xschem get wires' and 'xschem get instances' "
+                              "results, subcommands the schematic-command spec does not list (CMD)"),
+}
+
+# Why a case not yet replayed still differs (M8 round 5 replay); the others keep M8_REASON.
+PENDING: dict[str, str] = {
+    "SCHEM-NL-05": "sky130_tests/top.sch places test_generators.sch, whose generators xschem could not run in the "
+                   "capture ('Permission denied': the PDK's .tcl generators are not executable in the read-only "
+                   "mount) while Hefesto runs them in the sandbox (Q-SCHEM-11); its ** sym_path lines of system "
+                   "symbols name the install folders (/opt/ref/share/xschem vs <CAD_ROOT>/assets/schematic), which "
+                   "the schem-paths mask does not cover; a pre_osdi path from $USER_CONF_DIR differs",
+    "SCHEM-NL-21": "flat mode: xschem drops the blanks inside quoted expressions (ad='int((1+1)/2)*wn/1*0.29'), "
+                   "Hefesto keeps them, which the spice-canonical comparator (design D10) counts as a difference; "
+                   "top-flat.spice also contains the generator instances of SCHEM-NL-05",
+    "SCHEM-NL-23": "xschem could not run the PDK's .tcl generators in the capture ('Permission denied', not "
+                   "executable in the read-only mount) while Hefesto runs them in the sandbox (Q-SCHEM-11)",
+    "SCHEM-RT-05": "block.sch places system symbols (res.sym, ipin.sym, opin.sym), whose graphics xschem copies "
+                   "into the embedded block and Hefesto's clean-room library draws differently (J-3); an embed=true "
+                   "instance whose symbol is not embedded in the file is not yet written from the symbol cache",
+    "SCHEM-PR-01": "the result is printed on stdout with xschem's driver text (proposed Q-SCHEM-46)",
+    "SCHEM-PR-02": "needs xschem get instances, clear, instance, copy and paste, which the schematic-command spec "
+                   "does not list (CMD); its result is printed with xschem's driver text (proposed Q-SCHEM-46)",
+    "SCHEM-PR-04": "needs xschem get instances, which the schematic-command spec does not list (CMD); its result "
+                   "is printed with xschem's driver text (proposed Q-SCHEM-46)",
+    "SCHEM-SIM-03": "simulator vector names of a descended testbench (SIMINT)",
+}
+
 
 def deviation_entry(spec: Spec) -> list[str]:
-    """The deviations.toml lines of one case; none once it is replayed and has no decision."""
+    """The deviations.toml lines of one case."""
     all_outputs = [o[0] for o in spec.outputs]
     decisions, outputs, reason = DECIDED.get(spec.id, ([], all_outputs, ""))
-    deferred, later_reason = LATER.get(spec.id, ("M8", M8_REASON))
-    if spec.id in REPLAYED:
-        deferred = ""
+    deferred, later_reason = LATER.get(spec.id, ("M8", PENDING.get(spec.id, M8_REASON)))
+    per_output = LATER_OUTPUTS.get(spec.id, {})
+    if spec.id in REPLAYED and decisions:
+        deferred, per_output = "", {}  # the decision alone covers what still differs
+    elif spec.id in REPLAYED:
+        deferred, outputs, reason, per_output = replayed_deviation(spec.id, all_outputs)
     else:  # not replayed yet: every output differs, for the decision and for the missing feature
         outputs, reason = all_outputs, "; ".join(r for r in (reason, later_reason) if r)
-    if not decisions and not deferred:
-        return []
     lines = [f"[{spec.id}]"]
     if decisions:
         lines.append(f"decisions = {_toml_list(decisions)}")
     if deferred:
         lines.append(f'deferred = "{deferred}"')
-        lines += _deferred_outputs_line(LATER_OUTPUTS.get(spec.id, {}))
+        lines += _deferred_outputs_line(per_output)
     return lines + [f"outputs = {_toml_list(outputs)}", f"reason = {_toml_str(reason)}", ""]
+
+
+def replayed_deviation(case_id: str, all_outputs: list[str]) -> tuple[str, list[str], str, dict[str, str]]:
+    """(deferred, outputs, reason, deferred_outputs) of a replayed case without a decision: the driver text of
+    Q-SCHEM-46, deferred to M8, plus the outputs REPLAYED_OPEN still lists."""
+    milestone, open_outputs, open_reason = REPLAYED_OPEN.get(case_id, ("M8", [], ""))
+    driver = [name for name in DRIVER_OUTPUTS if name in all_outputs]
+    per_output = {name: "M8" for name in driver} if milestone != "M8" else {}
+    reason = "; ".join(r for r in (open_reason, DRIVER_REASON) if r)
+    return milestone, open_outputs + driver, reason, per_output
 
 
 def _deferred_outputs_line(per_output: dict[str, str]) -> list[str]:
@@ -1068,18 +1199,27 @@ def _deferred_outputs_line(per_output: dict[str, str]) -> list[str]:
 
 def deviation_block(all_specs: list[Spec]) -> str:
     lines = [DEVIATION_BEGIN,
-             "# Every SCHEM case waits for the schematic workstreams of M8 (openspec/changes/m8-schematic,",
-             "# sections 6-11); a workstream whose implementation replays a case removes it from this block",
-             "# (schem_cases.REPLAYED) and re-runs --deviations. SCHEM-PR-05 keeps its approved decision",
-             "# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER),",
-             "# except SCHEM-LVS-01's inv_1.spice, which M8 checks (schem_cases.LATER_OUTPUTS, Q-SCHEM-39).", ""]
+             "# A SCHEM case waits for the schematic workstreams of M8 (openspec/changes/m8-schematic,",
+             "# sections 6-11) until its file outputs replay (schem_cases.REPLAYED); a replayed case keeps only",
+             "# its stdout.txt/stderr.txt, xschem's driver text, deferred to M8 until proposed Q-SCHEM-46 is",
+             "# decided, and what schem_cases.REPLAYED_OPEN lists. SCHEM-PR-05 keeps its approved decision",
+             "# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER);",
+             "# M8 checks SCHEM-LVS-01's inv_1.spice (Q-SCHEM-39).", ""]
     for spec in all_specs:
         lines += deviation_entry(spec)
     lines.append(DEVIATION_END)
     return "\n".join(lines) + "\n"
 
 
-REPLAYED: frozenset[str] = frozenset()
+# Cases whose file outputs and exit status match the capture (M8 round 5, tasks 8.4-8.6 and 10.1).
+REPLAYED: frozenset[str] = frozenset({
+    "SCHEM-CMD-01", "SCHEM-LVS-01",
+    "SCHEM-NL-01", "SCHEM-NL-02", "SCHEM-NL-03", "SCHEM-NL-04", "SCHEM-NL-06", "SCHEM-NL-07", "SCHEM-NL-08",
+    "SCHEM-NL-09", "SCHEM-NL-10", "SCHEM-NL-11", "SCHEM-NL-12", "SCHEM-NL-13", "SCHEM-NL-14", "SCHEM-NL-15",
+    "SCHEM-NL-16", "SCHEM-NL-17", "SCHEM-NL-18", "SCHEM-NL-19", "SCHEM-NL-20", "SCHEM-NL-22",
+    "SCHEM-PR-03",
+    "SCHEM-RT-01", "SCHEM-RT-02", "SCHEM-RT-03", "SCHEM-RT-04", "SCHEM-RT-06", "SCHEM-RT-07", "SCHEM-RT-08",
+})
 
 
 def write_deviations(all_specs: list[Spec], path: Path = DEVIATIONS) -> None:

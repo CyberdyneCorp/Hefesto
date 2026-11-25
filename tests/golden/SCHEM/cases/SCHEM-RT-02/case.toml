@@ -20,7 +20,7 @@ xschem_sets = ["sky130-xschem", "gf180mcu-xschem", "ihp-xschem"]
 timeout_s = 3600
 
 [hefesto]
-args = ["--no-log", "{input}/case.tcl"]
+args = ["--no-log", "{input}/hefesto.tcl"]
 requires_commands = ["xschem"]
 timeout_s = 3600
 
