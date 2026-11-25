@@ -246,6 +246,7 @@ extflat::ReadOptions read_options(const editor::EditorState& editor, const Spice
                                   const compat::CompatSettings& compat) {
   extflat::ReadOptions options;
   options.magic_compat = compat.magic_compat;
+  options.limits = editor.netlist.read_limits;
   options.tech_name = editor.technology ? editor.technology->name() : std::string{};
   options.global_nets = global_nets(editor);
   options.search_path = settings.search_path;

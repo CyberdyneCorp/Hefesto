@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "hefesto/extflat/names.hpp"
+#include "hefesto/extflat/read.hpp"
 #include "hefesto/netlist/sim/sim.hpp"
 #include "hefesto/netlist/spice/settings.hpp"
 
@@ -32,6 +33,10 @@ struct NetlistSession {
   // (no cell named and no window), with magic-compat ON only; the next run
   // of either netlister uses it when it gives no `-p` (Q-NETLIST-61).
   std::vector<std::string> search_path;
+  // EXTFLAT: the `.ext` resource caps (M6-S8, both modes) of an
+  // `ext2spice` run's read, flat and hierarchical; the approved defaults.
+  // Not a user option: tests lower it to reach a cap cheaply.
+  extflat::ReadLimits read_limits;
 };
 
 /// The `.ext` search path of one run (Q-NETLIST-61, compat-neutral): the
