@@ -131,7 +131,7 @@ diag::Status SpiceReader::check_tokens(const FileState& file, const Tokens& toke
   for (const auto& token : tokens) {
     std::size_t high = 0;
     for (const char c : token) {
-      high += is_high(c) ? 1 : 0;
+      high += is_high(c) ? std::size_t{1} : std::size_t{0};
     }
     if (high > 0 && token.size() < 4 * high) {
       return error(file, codes::kBinary, "Input file \"" + file.name + "\" appears to be binary. . . bailing out");
