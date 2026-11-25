@@ -159,6 +159,16 @@ void NetlistDb::rename_cell(CellId id, std::string name) {
   cells[id].name = std::move(name);
 }
 
+void NetlistDb::truncate_cells(std::size_t count) {
+  if (count < cells.size()) {
+    cells.erase(cells.begin() + static_cast<std::ptrdiff_t>(count), cells.end());
+  }
+  cell_index_.clear();
+  for (std::size_t id = 0; id < cells.size(); ++id) {
+    cell_index_[name_key(cells[id].name)].push_back(static_cast<CellId>(id));
+  }
+}
+
 std::uint64_t NetlistDb::instance_count() const noexcept {
   std::uint64_t count = 0;
   for (const auto& cell : cells) {

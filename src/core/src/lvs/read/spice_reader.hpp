@@ -30,6 +30,12 @@ using Tokens = std::vector<std::string>;
 /// depth limit, which would otherwise read 2^depth files.
 inline constexpr std::size_t kMaxIncludes = 65536;
 
+/// The bytes all .INCLUDE reads of one read_netlist call may lex, as a
+/// multiple of ReadLimits::logical_line (1 GiB with the defaults): a few
+/// large files included many times would otherwise lex terabytes below
+/// kMaxIncludes.
+inline constexpr std::uint64_t kIncludeBytesPerLogicalLine = 64;
+
 /// The file being read: its name (as diagnostics and includes see it), the
 /// current line and its warning count.
 struct FileState {
@@ -102,6 +108,7 @@ class SpiceReader {
   std::optional<CellId> last_top_definition_;
   std::size_t include_depth_ = 1;
   std::size_t includes_ = 0;  // .INCLUDE reads so far (kMaxIncludes)
+  std::uint64_t include_bytes_ = 0;  // bytes of those reads (kIncludeBytesPerLogicalLine)
   std::size_t library_skip_ = 0;  // nesting of a skipped .SUBCKT body (readlib)
   std::uint64_t devices_ = 0;
   CellId first_new_cell_ = 0;

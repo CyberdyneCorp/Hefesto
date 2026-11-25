@@ -177,6 +177,9 @@ struct NetlistDb {
   [[nodiscard]] std::optional<CellId> find_cell_exact(std::string_view name, FileNumber file) const;
   /// Renames a cell and keeps the index current.
   void rename_cell(CellId id, std::string name);
+  /// Added in M9 R1: drops the cells from `count` on and rebuilds the name
+  /// index (the rollback of a failed read).
+  void truncate_cells(std::size_t count);
   /// The number of instances in all cells.
   [[nodiscard]] std::uint64_t instance_count() const noexcept;
 

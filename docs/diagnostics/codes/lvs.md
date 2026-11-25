@@ -55,7 +55,9 @@ Verilog, `.sim` and `.ext` readers (tasks.md 6.3) still fail with
   its default (`-022`). Each diagnostic names the limit, the file and the
   line. `-025` is a Hefesto guard outside Q-LVS-36: more than 65536
   `.INCLUDE` reads in one read (a file tree in which each file includes the
-  next one twice would otherwise read 2^depth files).
+  next one twice would otherwise read 2^depth files), or more include bytes
+  than 64 times the logical-line limit (1 GiB by default; a large file
+  included many times would otherwise be lexed for hours).
 - **Warnings** carry netgen's message text and are counted per file: after
   100 the reader prints `-006` once and reports no more, and a file read
   with warnings ends with the summary `-008`. They cover skipped cards
@@ -137,5 +139,5 @@ fails when the two disagree.
 | `LVS-READ-022` | error | A read limit setting is zero or above twice its default (Q-LVS-36). |
 | `LVS-READ-023` | warning | An `.INCLUDE` file cannot be read; the line is skipped. |
 | `LVS-READ-024` | error | A path cannot be read: no file service was given, or a `~user` prefix cannot be expanded on this platform (Q-LVS-14). |
-| `LVS-READ-025` | error | One read performs more than 65536 `.INCLUDE` reads (an include tree that multiplies, below the depth limit); the read stops. |
+| `LVS-READ-025` | error | One read performs more than 65536 `.INCLUDE` reads, or its includes hold more than 64 times the logical-line limit in bytes (an include tree that multiplies, below the depth limit); the read stops. |
 <!-- END DIAGNOSTIC CODES -->

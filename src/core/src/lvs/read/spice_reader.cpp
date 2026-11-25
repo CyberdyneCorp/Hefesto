@@ -14,8 +14,10 @@
 
 #include "lvs/read/spice_reader.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <utility>
+#include <vector>
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/lvs/net/codes.hpp"
@@ -360,6 +362,59 @@ void read_header(Cell& definition, const Tokens& tokens) {
   }
 }
 
+// The global nets of the enclosing cell that `definition` lacks are added
+// to it.
+void inherit_globals(Cell& definition, const Cell& enclosing) {
+  for (const auto& net : enclosing.nets) {
+    if (net.global && definition.find_net(net.name) == kNoNet) {
+      definition.add_net(net.name, true);
+    }
+  }
+}
+
+// A port without a net takes the net of an earlier port of the same name; a
+// proxy port gets a new unnamed net.
+void bind_port_nets(Cell& definition) {
+  for (auto& port : definition.ports) {
+    if (port.proxy) {
+      port.net = definition.add_net("");
+      continue;
+    }
+    if (port.net != kNoNet) {
+      continue;
+    }
+    for (const auto& other : definition.ports) {
+      if (other.net != kNoNet && names_equal(other.name, port.name, definition.flags.case_insensitive)) {
+        port.net = other.net;
+        break;
+      }
+    }
+  }
+}
+
+// The nets to keep: every non-global net, and the global nets that a port or
+// an instance connects.
+std::vector<bool> kept_nets(const Cell& definition) {
+  std::vector<bool> used(definition.nets.size(), false);
+  const auto mark = [&used](NetId net) {
+    if (net != kNoNet && net <= used.size()) {
+      used[net - 1] = true;
+    }
+  };
+  for (const auto& port : definition.ports) {
+    mark(port.net);
+  }
+  for (const auto& instance : definition.instances) {
+    for (const NetId net : instance.connections) {
+      mark(net);
+    }
+  }
+  for (std::size_t i = 0; i < used.size(); ++i) {
+    used[i] = used[i] || !definition.nets[i].global;
+  }
+  return used;
+}
+
 }  // namespace
 
 diag::Status SpiceReader::subckt(FileState& file, const Tokens& tokens) {
@@ -386,11 +441,7 @@ diag::Status SpiceReader::subckt(FileState& file, const Tokens& tokens) {
   read_header(definition, tokens);
   const std::optional<CellId> enclosing = open_.empty() ? file_cell_ : std::optional{open_.back()};
   if (enclosing) {
-    for (const auto& net : cell(*enclosing).nets) {
-      if (net.global && definition.find_net(net.name) == kNoNet) {
-        definition.add_net(net.name, true);
-      }
-    }
+    inherit_globals(definition, cell(*enclosing));
   }
   if (options_.library) {
     finish_ports(definition);
@@ -423,41 +474,9 @@ void SpiceReader::close_definition(CellId id) {
 }
 
 void SpiceReader::finish_ports(Cell& definition) {
-  for (auto& port : definition.ports) {
-    if (port.proxy) {
-      port.net = definition.add_net("");
-      continue;
-    }
-    if (port.net != kNoNet) {
-      continue;
-    }
-    for (const auto& other : definition.ports) {
-      if (other.net != kNoNet && names_equal(other.name, port.name, definition.flags.case_insensitive)) {
-        port.net = other.net;
-        break;
-      }
-    }
-  }
-  std::vector<bool> used(definition.nets.size(), false);
-  const auto mark = [&used](NetId net) {
-    if (net != kNoNet && net <= used.size()) {
-      used[net - 1] = true;
-    }
-  };
-  for (const auto& port : definition.ports) {
-    mark(port.net);
-  }
-  for (const auto& instance : definition.instances) {
-    for (const NetId net : instance.connections) {
-      mark(net);
-    }
-  }
-  bool drop = false;
-  for (std::size_t i = 0; i < used.size(); ++i) {
-    used[i] = used[i] || !definition.nets[i].global;
-    drop = drop || !used[i];
-  }
-  if (drop) {
+  bind_port_nets(definition);
+  const std::vector<bool> used = kept_nets(definition);
+  if (std::find(used.begin(), used.end(), false) != used.end()) {
     definition.compact_nets(used);
   }
 }
@@ -570,6 +589,13 @@ diag::Status SpiceReader::include(FileState& file, const Tokens& tokens) {
   if (!bytes) {
     warn(file, codes::kIncludeUnreadable, "Cannot open include file '" + path.value() + "'.");
     return diag::Done{};
+  }
+  const std::uint64_t byte_limit = kIncludeBytesPerLogicalLine * options_.limits.logical_line;
+  include_bytes_ += bytes.value().size();
+  if (include_bytes_ > byte_limit) {
+    return error(file, codes::kIncludeCount,
+                 "more than " + std::to_string(byte_limit) + " bytes of include files in one netlist at " +
+                     file.name + " line " + std::to_string(file.line));
   }
   FileState inner{std::move(path).value()};
   ++include_depth_;

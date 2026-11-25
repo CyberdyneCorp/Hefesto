@@ -578,6 +578,42 @@ TEST_CASE("a multiplying include tree stops", "[cap:lvs-netlist-input][req:Input
   CHECK(read.error().code == codes::kIncludeCount);
 }
 
+TEST_CASE("a failed read leaves nothing that a later read returns", "[cap:lvs-netlist-input][req:Format selection]") {
+  // Regression (M9 R1 review): the cells of a failed read stayed in the
+  // database, so reading the file again returned its partial top cell.
+  Reading r;
+  r.options.limits.include_depth = 1;
+  r.add_file("/w/top.sp", "R1 a b 1k\n.include leaf.sp\n");
+  r.add_file("/w/leaf.sp", "R2 b c 2k\n");
+  REQUIRE_FALSE(r.read_file("/w/top.sp").ok());
+  CHECK(r.db.cells.empty());
+  CHECK(r.db.next_file == 0);
+  CHECK(r.db.parameters.empty());
+  r.options.limits.include_depth = 2;
+  const auto again = r.read_file("/w/top.sp");
+  REQUIRE(again.ok());
+  CHECK(r.db.cells.at(again.value()).instances.size() == 2);
+  CHECK(r.db.cells.at(again.value()).file == 0);
+}
+
+TEST_CASE("a large file that includes itself twice stops on the include bytes",
+          "[cap:lvs-netlist-input][req:Input limits]") {
+  // Regression (M9 R1 review): the include count alone let a large file
+  // included many times below it lex terabytes. With a 16 KiB logical-line
+  // limit the include bytes stop at 64 x 16 KiB = 1 MiB.
+  Reading r;
+  r.options.limits.logical_line = std::size_t{16} << 10;
+  std::string text = ".include self.sp\n.include self.sp\n";
+  while (text.size() < (std::size_t{256} << 10)) {
+    text += "* a comment line that only adds bytes to the file\n";
+  }
+  r.add_file("/w/self.sp", text);
+  const auto read = r.read_file("/w/self.sp");
+  REQUIRE_FALSE(read.ok());
+  CHECK(read.error().code == codes::kIncludeCount);
+  CHECK(read.error().text.starts_with("more than 1048576 bytes of include files in one netlist at /w/self.sp"));
+}
+
 TEST_CASE("logical line limit", "[cap:lvs-netlist-input][req:Input limits]") {
   // Regression: unbounded continuation lines grew one line without limit.
   Reading r;

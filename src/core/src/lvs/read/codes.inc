@@ -33,4 +33,4 @@ HEFESTO_LVS_CODE("LVS-READ-021", error, "A name exceeds the name-length limit (d
 HEFESTO_LVS_CODE("LVS-READ-022", error, "A read limit setting is zero or above twice its default (Q-LVS-36).")
 HEFESTO_LVS_CODE("LVS-READ-023", warning, "An `.INCLUDE` file cannot be read; the line is skipped.")
 HEFESTO_LVS_CODE("LVS-READ-024", error, "A path cannot be read: no file service was given, or a `~user` prefix cannot be expanded on this platform (Q-LVS-14).")
-HEFESTO_LVS_CODE("LVS-READ-025", error, "One read performs more than 65536 `.INCLUDE` reads (an include tree that multiplies, below the depth limit); the read stops.")
+HEFESTO_LVS_CODE("LVS-READ-025", error, "One read performs more than 65536 `.INCLUDE` reads, or its includes hold more than 64 times the logical-line limit in bytes (an include tree that multiplies, below the depth limit); the read stops.")

@@ -121,7 +121,7 @@ Case-insensitive name equality SHALL hold when both of these are true:
 
 A null name SHALL never be equal to anything.
 
-Case-sensitive equality SHALL be byte equality. Looking up a cell by name SHALL fold letter case only, not brackets (see Q-LVS-3).
+Case-sensitive equality SHALL be byte equality. Looking up a cell or a net by name SHALL use the same equality, brackets included, so a lookup finds every name the equality calls equal (Hefesto decision Q-LVS-3: fix; netgen's lookup folds letter case only).
 Compatibility: exact
 (netgen ref: base/objlist.c:181-282, base/hash.c:116-174, base/spice.c:2025-2035, base/netcmp.c:3921-3933)
 
@@ -129,6 +129,11 @@ Compatibility: exact
 - **GIVEN** both netlists are SPICE
 - **WHEN** layout net `data[3]` is compared with schematic net `DATA<3>`
 - **THEN** the names SHALL be equal
+
+#### Scenario: Lookup folds brackets
+- **GIVEN** a case-insensitive netlist with a cell named `reg{0}` and a net named `a[1]`
+- **WHEN** the cell `REG[0]` and the net `A<1>` are looked up
+- **THEN** the lookups SHALL find `reg{0}` and `a[1]`
 
 #### Scenario: Mixed sensitivity
 - **GIVEN** circuit 1 is Verilog and circuit 2 is SPICE
