@@ -377,7 +377,11 @@ diag::Status write_gltf(const MeshModel& mesh, const LayerStack& stack, const Ex
   Document document(model, bin);
   if (options.format == ExportFormat::glb) {
     document.set_buffer(nullptr);
-    return out.write(glb(document.json(), bin.bytes()));
+    const std::string json = document.json();
+    if (!detail::glb_fits(json.size(), bin.bytes().size())) {
+      return detail::too_large("GLB over 4 GiB");
+    }
+    return out.write(glb(json, bin.bytes()));
   }
   if (options.bin_out != nullptr) {
     document.set_buffer(&options.bin_uri);

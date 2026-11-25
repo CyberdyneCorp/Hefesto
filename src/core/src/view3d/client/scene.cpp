@@ -47,16 +47,13 @@ std::vector<bool> layout_hidden(const LayerStack& stack, const WindowState& wind
 // Q-MISC-71's mask set, and with magic-compat OFF the temporary layers.
 std::vector<bool> mask_hidden(const editor::EditorState& editor, const LayerStack& stack, const WindowState& window,
                               bool magic_compat) {
-  const mask::OutputStyle* style = detail::current_style(editor);
   const std::vector<bool>& set = window.visibility.mask_hidden;
-  std::vector<bool> hidden(stack.size(), false);
+  std::vector<bool> hidden = excluded_layers(editor, stack, magic_compat);
   for (std::size_t i = 0; i < stack.size(); ++i) {
     const std::optional<std::size_t> index = stack.layers()[i].mask_layer;
-    if (!index) {
-      continue;
+    if (index && *index < set.size() && set[*index]) {
+      hidden[i] = true;
     }
-    const bool temporary = style != nullptr && *index < style->layers.size() && style->layers[*index].temporary;
-    hidden[i] = (*index < set.size() && set[*index]) || (!magic_compat && temporary);
   }
   return hidden;
 }
@@ -138,6 +135,19 @@ db::Rect mask_generation_area(const editor::EditorState& editor, const WindowSta
   compat::CompatSettings settings = editor.drc.compat_settings();
   settings.magic_compat = false;
   return db::expand(def->bbox(), static_cast<db::Coord>(mask::generation_radius(*style, settings)));
+}
+
+std::vector<bool> excluded_layers(const editor::EditorState& editor, const LayerStack& stack, bool magic_compat) {
+  std::vector<bool> excluded(stack.size(), false);
+  const mask::OutputStyle* style = detail::current_style(editor);
+  if (magic_compat || stack.mode() != Mode::mask_layer || style == nullptr) {
+    return excluded;
+  }
+  for (std::size_t i = 0; i < stack.size(); ++i) {
+    const std::optional<std::size_t> index = stack.layers()[i].mask_layer;
+    excluded[i] = index && *index < style->layers.size() && style->layers[*index].temporary;
+  }
+  return excluded;
 }
 
 std::vector<bool> hidden_layers(const editor::EditorState& editor, const LayerStack& stack, const WindowState& window,

@@ -13,3 +13,4 @@ HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-001", error, "`export3d` was run while no 3D 
 HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-002", error, "`export3d` was given the wrong arguments (no file, an unknown option or format, or a z scale that is not a positive number); nothing is written.")
 HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-003", warning, "Layout-layer layers with geometry have no physical height (no extract-style height, or no µm scale without an output style), so they are left out of the export (names the layers).")
 HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-004", error, "The 3D window has no model to export (its cell no longer exists); nothing is written.")
+HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-005", error, "The model is too large for the format (a GLB over 4 GiB, or an STL with more than 4294967295 triangles, sizes the format stores in 32 bits); nothing is written.")

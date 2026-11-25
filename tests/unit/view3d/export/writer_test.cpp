@@ -22,6 +22,7 @@
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "reference_data.hpp"
+#include "view3d/export/model.hpp"
 
 namespace view3d = hefesto::view3d;
 namespace diag = hefesto::diag;
@@ -397,5 +398,39 @@ TEST_CASE("Faces are counter-clockwise seen from outside: each triangle's windin
     INFO("triangle " << t);
     CHECK(dot > 0.0);
     CHECK(std::hypot(v[0][0], v[0][1], v[0][2]) == Approx(1.0));
+  }
+}
+
+// Review of PR #122 (finding 2): the GLB lengths and the STL triangle count
+// are 32-bit fields; they were cast without a check, so a model over 4 GiB
+// was written as a corrupt file. The size checks run before any byte is
+// written (tested at the limits rather than with a 4 GiB model).
+TEST_CASE("GLB and STL sizes over their 32-bit fields fail with VIEW3D-EXPORT-005 instead of wrapping",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  constexpr std::size_t kMax = 0xFFFFFFFFU;
+  // 12-byte header, 8 per chunk header, chunks padded to 4 bytes.
+  CHECK(view3d::detail::glb_fits(kMax - 23, 0));        // padded to kMax - 20
+  CHECK_FALSE(view3d::detail::glb_fits(kMax - 19, 0));  // padded to kMax - 16: over
+  CHECK(view3d::detail::glb_fits(100, kMax - 20 - 100 - 8 - 3));
+  CHECK_FALSE(view3d::detail::glb_fits(100, kMax - 20 - 100 - 8 + 1));
+  CHECK_FALSE(view3d::detail::glb_fits(0, std::size_t{1} << 33U));
+  CHECK(view3d::detail::stl_fits(kMax));
+  CHECK_FALSE(view3d::detail::stl_fits(kMax + 1));
+  const diag::Diagnostic error = view3d::detail::too_large("GLB over 4 GiB");
+  CHECK(error.code == "VIEW3D-EXPORT-005");
+}
+
+TEST_CASE("Excluded layers are left out with -visible and with -all",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  const LayoutModel m = two_layers();
+  for (const bool visible_only : {true, false}) {
+    INFO("visible_only " << visible_only);
+    view3d::ExportOptions options;
+    options.visible_only = visible_only;
+    options.excluded = {true, false};
+    diag::NullSink quiet;
+    const std::vector<view3d::ExportLayer> layers = view3d::export_layers(m.mesh, m.stack, options, quiet);
+    REQUIRE(layers.size() == 1);
+    CHECK(layers[0].name == "metal1");
   }
 }

@@ -349,7 +349,9 @@ struct BuildKey {
   bool clipped = false;
   bool span_connected_layers = false;
   const void* technology = nullptr;   // compared, never dereferenced
-  const void* mask_style = nullptr;   // MaskSource::style; compared, never dereferenced
+  /// MaskSource::style, compared by address and held: a reloaded style can
+  /// then never reuse the address of the one this key was built from.
+  std::shared_ptr<const void> mask_style;
   view3d::Mode mode = view3d::Mode::layout_layer;
   std::vector<view3d::StackLayer> layers;
   bool magic_compat = true;
@@ -361,6 +363,10 @@ struct BuildKey {
 /// The key of the window's build inputs (view3d::window_build: the stack
 /// of its mode, the clip area of Q-MISC-70 or mask_clip, the mask source).
 [[nodiscard]] BuildKey build_key(const view3d::BuildInputs& window_inputs, bool span_connected_layers);
+
+/// Whether a model the worker delivered is of the last build the view
+/// started (BuildInputs::build_id); an older one is ignored.
+[[nodiscard]] bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept;
 
 /// The MeshWorker inputs: view3d::window_build's inputs of the window
 /// (null cell when it does not exist; the layout-layer or mask-layer
@@ -459,7 +465,10 @@ class PickResolver {
   void set_scope(const view3d::PickContext& scope) noexcept { scope_ = scope; }
   [[nodiscard]] const view3d::PickContext& scope() const noexcept { return scope_; }
   [[nodiscard]] virtual std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& mesh, view3d::PickId id);
-  [[nodiscard]] virtual diag::Status select(editor::EditorState& editor, const view3d::PickTarget& target);
+  /// Selects `target` in 2D (3D -> 2D link); false when nothing was
+  /// selected (a mask-layer target has no tile type, or the source tile is
+  /// gone), and the selection is then unchanged.
+  [[nodiscard]] virtual bool select(editor::EditorState& editor, const view3d::PickTarget& target);
   [[nodiscard]] virtual view3d::HighlightSet from_selection(const view3d::MeshModel& mesh,
                                                             const editor::EditorState& editor);
   [[nodiscard]] virtual view3d::HighlightSet net(const view3d::MeshModel& mesh, const editor::EditorState& editor,
@@ -478,7 +487,8 @@ class View3dPicking {
   /// A click read `id` from the pick image: resolves it and selects the
   /// target in 2D (3D -> 2D link). Returns the caption ("metal1 · picked ·
   /// selected in 2D"), or nullopt for the background or a stale id (the
-  /// picked target is cleared).
+  /// picked target is cleared). The caption says "selected in 2D" only
+  /// when the 2D selection was changed (selected_in_2d()).
   std::optional<std::string> click(const view3d::MeshModel* mesh, view3d::PickId id, editor::EditorState& editor,
                                    const view3d::LayerStack& stack);
   /// "Isolate selected net": the net of the picked target; false when
@@ -489,6 +499,8 @@ class View3dPicking {
   /// selection's instances (2D -> 3D link). Null when empty.
   const view3d::HighlightSet* highlight(const view3d::MeshModel* mesh, const editor::EditorState& editor);
   [[nodiscard]] const std::optional<view3d::PickTarget>& picked() const noexcept { return picked_; }
+  /// The last click changed the 2D selection.
+  [[nodiscard]] bool selected_in_2d() const noexcept { return selected_in_2d_; }
   /// A new model replaced the drawn one: its pick ids are other ordinals,
   /// so the isolated net is recomputed from the picked target against the
   /// model the next highlight() is given. The picked target (a tile, not
@@ -500,6 +512,7 @@ class View3dPicking {
  private:
   PickResolver& resolver_;
   std::optional<view3d::PickTarget> picked_;
+  bool selected_in_2d_ = false;
   std::optional<view3d::HighlightSet> net_;
   bool net_stale_ = false;
   view3d::HighlightSet shown_;
@@ -649,8 +662,6 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// MeshModel::units_per_root), as view3d::section and the clipping plane
 /// take it.
 [[nodiscard]] view3d::Segment segment_in_mesh(const view3d::Segment& line, std::int32_t units_per_root) noexcept;
-/// The line's length in µm (internal units x µm per unit).
-[[nodiscard]] double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept;
 
 /// One bar of the section panel, in panel units (x right, y down).
 struct SectionBar {

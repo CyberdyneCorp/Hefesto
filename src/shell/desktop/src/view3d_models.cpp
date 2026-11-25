@@ -382,7 +382,7 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
   key.span_connected_layers = span_connected_layers;
   key.technology = in.technology;
   // A new output style (even with the same layers) is a new mask source: a full build.
-  key.mask_style = in.mask ? in.mask->style.get() : nullptr;
+  key.mask_style = in.mask ? std::shared_ptr<const void>{in.mask->style} : nullptr;
   if (in.stack != nullptr) {
     key.mode = in.stack->mode();
     key.layers.assign(in.stack->layers().begin(), in.stack->layers().end());
@@ -390,6 +390,10 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
     key.microns_per_unit = in.stack->microns_per_unit();
   }
   return key;
+}
+
+bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept {
+  return model.build_id == build_id;
 }
 
 view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInputs window_inputs,
@@ -518,8 +522,8 @@ std::optional<view3d::PickTarget> PickResolver::resolve(const view3d::MeshModel&
   return view3d::resolve(mesh, scope_, id);
 }
 
-diag::Status PickResolver::select(editor::EditorState& editor, const view3d::PickTarget& target) {
-  return view3d::to_selection(editor, target);
+bool PickResolver::select(editor::EditorState& editor, const view3d::PickTarget& target) {
+  return view3d::link_to_2d(editor, target).has_value();
 }
 
 view3d::HighlightSet PickResolver::from_selection(const view3d::MeshModel& mesh, const editor::EditorState& editor) {
@@ -543,11 +547,12 @@ std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerSt
 std::optional<std::string> View3dPicking::click(const view3d::MeshModel* mesh, view3d::PickId id,
                                                 editor::EditorState& editor, const view3d::LayerStack& stack) {
   picked_.reset();
+  selected_in_2d_ = false;
   if (mesh == nullptr || id == view3d::kNoPick) return std::nullopt;
   picked_ = resolver_.resolve(*mesh, id);
   if (!picked_) return std::nullopt;
-  const diag::Status selected = resolver_.select(editor, *picked_);
-  return pick_caption(*picked_, stack) + (selected.ok() ? " · selected in 2D" : "");
+  selected_in_2d_ = resolver_.select(editor, *picked_);
+  return pick_caption(*picked_, stack) + (selected_in_2d_ ? " · selected in 2D" : "");
 }
 
 bool View3dPicking::toggle_isolate_net(const view3d::MeshModel* mesh, const editor::EditorState& editor) {
@@ -576,6 +581,7 @@ const view3d::HighlightSet* View3dPicking::highlight(const view3d::MeshModel* me
 
 void View3dPicking::reset() {
   picked_.reset();
+  selected_in_2d_ = false;
   net_.reset();
   net_stale_ = false;
   shown_ = {};
@@ -816,12 +822,6 @@ view3d::Segment segment_in_mesh(const view3d::Segment& line, std::int32_t units_
     return db::Point{clamp(std::int64_t{p.x} * units_per_root), clamp(std::int64_t{p.y} * units_per_root)};
   };
   return view3d::Segment{scale(line.a), scale(line.b)};
-}
-
-double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept {
-  const double dx = static_cast<double>(line.b.x) - static_cast<double>(line.a.x);
-  const double dy = static_cast<double>(line.b.y) - static_cast<double>(line.a.y);
-  return std::hypot(dx, dy) * microns_per_unit;
 }
 
 namespace {

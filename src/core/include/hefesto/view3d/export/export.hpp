@@ -14,10 +14,11 @@
 // every platform. Mask layers without a physical height are left out with
 // VIEW3D-STACK-001.
 //
-// Exported layers (export_layers): the stack entries that are visible
-// (`-visible`, the default: not flagged in ExportOptions::hidden; `-all`:
-// every entry), drawn (a solid or stippled display style, as the renderer
-// draws; every entry without a style set), that have a physical height and
+// Exported layers (export_layers): the stack entries that are not excluded
+// (ExportOptions::excluded), visible (`-visible`, the default: not flagged
+// in ExportOptions::hidden; `-all`: every entry), drawn (a solid or
+// stippled display style, as the renderer draws; every entry without a
+// style set), that have a physical height and
 // geometry in the mesh. A type in two display styles (Q-MISC-77) is the
 // same geometry twice: it is exported once, as its last drawn entry (the
 // style that wins on coplanar faces in the view).
@@ -65,6 +66,10 @@ struct ExportOptions {
   /// Per stack layer: hidden in the window (Scene::hidden); `-visible`
   /// leaves these out. Missing entries are visible.
   std::vector<bool> hidden;
+  /// Per stack layer: never exported, whatever `visible_only` (`-all`
+  /// included): with magic-compat OFF the temporary mask layers, which are
+  /// no masks (excluded_layers). Missing entries are exported.
+  std::vector<bool> excluded;
   /// Mask-layer mode: the output style the stack was built from, so that
   /// VIEW3D-STACK-001 names only its non-temporary layers (as cross-sections
   /// do); nullptr names every mask layer without a `render` height.

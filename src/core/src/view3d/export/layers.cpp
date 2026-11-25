@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
@@ -24,9 +25,20 @@ namespace hefesto::view3d {
 namespace {
 
 constexpr std::string_view kNoPhysicalHeight = "VIEW3D-EXPORT-003";
+constexpr std::string_view kTooLarge = "VIEW3D-EXPORT-005";
+constexpr std::uint64_t kMaxU32 = 0xFFFFFFFFU;
 
+constexpr std::uint64_t padded4(std::uint64_t size) noexcept {
+  return (size + 3U) & ~std::uint64_t{3U};
+}
+
+bool flagged(const std::vector<bool>& flags, std::size_t layer) {
+  return layer < flags.size() && flags[layer];
+}
+
+// Excluded layers are left out whatever the visibility option (`-all`).
 bool visible(const ExportOptions& options, std::size_t layer) {
-  return !options.visible_only || layer >= options.hidden.size() || !options.hidden[layer];
+  return !flagged(options.excluded, layer) && (!options.visible_only || !flagged(options.hidden, layer));
 }
 
 // Only solid and stippled styles are drawn (the renderer's rule, N3).
@@ -197,6 +209,25 @@ std::string safe_file_part(std::string_view text) {
     }
   }
   return out;
+}
+
+bool glb_fits(std::size_t json_size, std::size_t bin_size) noexcept {
+  constexpr std::uint64_t kHeader = 12;
+  constexpr std::uint64_t kChunkHeader = 8;
+  std::uint64_t total = kHeader + kChunkHeader + padded4(json_size);
+  if (bin_size > 0) {
+    total += kChunkHeader + padded4(bin_size);
+  }
+  return total <= kMaxU32;
+}
+
+bool stl_fits(std::size_t triangles) noexcept {
+  return static_cast<std::uint64_t>(triangles) <= kMaxU32;
+}
+
+diag::Diagnostic too_large(std::string_view what) {
+  return diag::make(kTooLarge, "export3d: the model is too large for the format (" + std::string{what} +
+                                   "); nothing is written");
 }
 
 void put_u16(std::vector<std::byte>& out, std::uint16_t value) {

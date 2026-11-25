@@ -470,7 +470,7 @@ bool View3dView::magic_compat() const {
 }
 
 std::int32_t View3dView::mesh_units() const noexcept {
-  return model_ ? model_->units_per_root : 1;
+  return uploaded_ ? uploaded_->units_per_root : 1;  // the drawn geometry's units
 }
 
 void View3dView::run(const std::string& line) {
@@ -617,6 +617,7 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
   ghost_.building(*build_stack_, view3d::ghosted_by_default(*build_stack_, *ctx_.editor().technology), drawing,
                   options_);
   if (key.cell == nullptr) {
+    ++build_id_;  // a model of an earlier build is stale now
     worker_->cancel();
     return;
   }
@@ -625,15 +626,18 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
     const std::lock_guard lock(shared_->mutex);
     shared_->progress = 0.0;
   }
-  worker_->build(build_inputs(ctx_.editor(), std::move(inputs), options_.span_connected_layers));
+  view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), options_.span_connected_layers);
+  in.build_id = ++build_id_;
+  worker_->build(std::move(in));
 }
 
 void View3dView::take_model(const view3d::MeshHandle& model) {
   if (worker_->idle() && held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
   if (!model || !build_stack_ || !window_open()) return;
-  // A model of an earlier stack (a build finishing as a new one started):
-  // its layer ids do not match the current stack; the next one replaces it.
-  if (!model->layer_heights.empty() && model->layer_heights.size() != build_stack_->size()) return;
+  // A model of an earlier build (one finishing as a new one started, posted
+  // before or after start_build): its stack, mode, units or style differ
+  // from build_stack_'s, even with as many layers; the next one replaces it.
+  if (!model_is_current(*model, build_id_)) return;
   model_ = model;
   drawn_stack_ = build_stack_;
   drawable_ = pending_drawable_;
@@ -851,7 +855,7 @@ void View3dView::pick_at(float x, float y) {
   highlight_dirty_ = true;
   dirty_ = true;
   repaint();
-  if (caption && selection_changed_) selection_changed_();
+  if (picking_.selected_in_2d() && selection_changed_) selection_changed_();
 }
 
 void View3dView::update_pick_scope(const view3d::LayerStack* stack) {

@@ -164,13 +164,17 @@ the window builds it (its stack and cut box), in physical µm without the
 view's z exaggeration; `-zscale k` multiplies the heights and k is
 recorded in the glTF `asset.extras.hefesto.zscale`. The format follows the
 extension (`.gltf`, `.glb`, `.stl`, any case) unless `-format` names one.
-`.gltf` writes the JSON and `<stem>.bin` beside it; STL writes one file per
+`.gltf` writes the JSON and, when there is geometry, `<stem>.bin` beside it
+(an export with no layer writes the JSON only); STL writes one file per
 exported layer, `<stem>_<layer>.stl` in the same directory (characters other
-than letters, digits and `_-.+` become `_`), or with `-merged` one file. The
-result is the list of files written; each is replaced atomically. A layer is
-exported when it is visible (`-visible`, the default; `-all` takes every
-layer), drawn (a solid or stippled style) and has a physical height and
-geometry; a type in two display styles is exported once. The desktop's
+than letters, digits and `_-.+` become `_`; a name equal to an earlier one
+ignoring case gets `_2`, `_3`, ... before `.stl`), or with `-merged` one
+file. The result is the list of files written; each is replaced atomically.
+A layer is exported when it is visible (`-visible`, the default; `-all`
+takes every layer), drawn (a solid or stippled style) and has a physical
+height and geometry; a type in two display styles is exported once. With
+magic-compat OFF the temporary mask layers are never exported, with `-all`
+as well. The desktop's
 synthetic substrate slab is never exported. The writers and the file layout
 are described in `src/core/include/hefesto/view3d/export/export.hpp` and
 `command.hpp`.
@@ -190,6 +194,10 @@ are described in `src/core/include/hefesto/view3d/export/export.hpp` and
   reported with `VIEW3D-STACK-001` instead (Q-MISC-72).
 - `VIEW3D-EXPORT-004` (error): `export3d: the 3D window has no model (cell
   "<name>" not found)`. Nothing is written.
+- `VIEW3D-EXPORT-005` (error): `export3d: the model is too large for the
+  format (GLB over 4 GiB)` or `(STL with <n> triangles (at most
+  4294967295))`: GLB stores its lengths and STL its triangle count in 32
+  bits. Checked before writing; nothing is written.
 
 Errors of the file system (a directory that does not exist, no permission)
 are reported with their own codes, and the files written before the error
@@ -227,6 +235,7 @@ fails when the two disagree.
 | `VIEW3D-EXPORT-002` | error | `export3d` was given the wrong arguments (no file, an unknown option or format, or a z scale that is not a positive number); nothing is written. |
 | `VIEW3D-EXPORT-003` | warning | Layout-layer layers with geometry have no physical height (no extract-style height, or no µm scale without an output style), so they are left out of the export (names the layers). |
 | `VIEW3D-EXPORT-004` | error | The 3D window has no model to export (its cell no longer exists); nothing is written. |
+| `VIEW3D-EXPORT-005` | error | The model is too large for the format (a GLB over 4 GiB, or an STL with more than 4294967295 triangles, sizes the format stores in 32 bits); nothing is written. |
 | `VIEW3D-SECTION-001` | error | The cross-section's cut line is not axis-aligned or has zero length; the section is empty. |
 | `VIEW3D-SECTION-002` | warning | Layers crossed by the cut line have no physical height in layout-layer mode (no extract style, or no µm per internal unit); they are left out of the cross-section (names the layers). |
 | `VIEW3D-STACK-001` | warning | Mask layers of the output style have no `render` height, so they have no physical height and are left out of µm-based output (names the layers; Q-MISC-72). |

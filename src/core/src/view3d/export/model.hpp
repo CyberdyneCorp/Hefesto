@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/view3d/export/export.hpp"
 
 namespace hefesto::view3d::detail {
@@ -59,6 +60,21 @@ struct ExportModel {
 [[nodiscard]] std::vector<LayerGeometry> build_geometry(const MeshModel& mesh, const LayerStack& stack,
                                                         const ExportOptions& options,
                                                         std::span<const ExportLayer> layers);
+
+/// GLB and STL store sizes in 32 bits: a GLB's total length (header,
+/// padded JSON chunk and padded BIN chunk) and an STL's triangle count.
+/// The writers check these before writing and fail with
+/// VIEW3D-EXPORT-005 rather than wrap them.
+[[nodiscard]] bool glb_fits(std::size_t json_size, std::size_t bin_size) noexcept;
+[[nodiscard]] bool stl_fits(std::size_t triangles) noexcept;
+/// The diagnostic of an export too large for its format.
+[[nodiscard]] diag::Diagnostic too_large(std::string_view what);
+
+/// Writes `model` as binary STL: every layer, or with
+/// ExportOptions::stl_layer that layer only. `write_stl` builds the model
+/// and calls it; `export3d` builds the model once and calls it per layer.
+[[nodiscard]] diag::Status write_stl_model(const ExportModel& model, const ExportOptions& options,
+                                           gds::ByteSink& out);
 
 /// A name made safe for a JSON string or a file name: characters outside
 /// printable ASCII other than UTF-8 bytes, quotes, backslashes and, for

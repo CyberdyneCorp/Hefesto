@@ -110,6 +110,11 @@ Compatibility: native
 - **WHEN** the user drags with one finger in the 3D view
 - **THEN** the camera SHALL orbit, and a two-finger pinch SHALL zoom
 
+#### Scenario: A mask-layer pick selects nothing in 2D
+- **GIVEN** the desktop 3D tab in mask-layer mode, with magic-compat ON or OFF
+- **WHEN** the user clicks a mask-layer solid, which has no layout material to select
+- **THEN** the solid SHALL be picked and named in the caption, the 2D selection SHALL be unchanged, and the caption SHALL NOT say "selected in 2D"
+
 #### Scenario: A selection in another cell highlights nothing in 3D
 - **GIVEN** a 3D view of cell `top` and a 2D selection whose root is another cell
 - **WHEN** the 3D view draws the 2D selection's highlight
@@ -127,7 +132,7 @@ Hefesto SHALL export the current 3D model:
 
 Units SHALL be microns. Exported geometry SHALL equal the displayed model's geometry (layers, visibility, cut box) in physical microns (the desktop tab's synthetic substrate slab is not part of the model and is never exported), without the view's z exaggeration, unless a z scale is requested; the scale SHALL be recorded in the file (glTF `asset.extras`). Heights are in µm regardless of magic-compat (view-3d, Q-MISC-72); mask layers without a `render` height are reported, not given one.
 
-Exported layers SHALL be the displayed model's visible layers (all layers with `-all`) that have geometry and a physical height; a layer type drawn in two display styles SHALL be exported once. The `.gltf` form SHALL write its buffer to `<stem>.bin` beside the JSON. Per-layer STL SHALL write one file per exported layer named `<stem>_<layer>.stl` in the directory of the given file, characters other than letters, digits and `_-.+` in the layer name replaced by `_`; `-merged` SHALL write the given file. glTF positions SHALL be relative to the model's lower-left corner, held as the root node's translation, with +Y up (layout x, height, −layout y); STL SHALL keep layout axes (z up) relative to the same corner. A mask-layer model (in mask units) SHALL be exported in µm like a layout-layer one.
+Exported layers SHALL be the displayed model's visible layers (all layers with `-all`) that have geometry and a physical height; a layer type drawn in two display styles SHALL be exported once. With magic-compat OFF, the temporary mask layers (`templayer`), which are not masks, SHALL NOT be exported, with `-all` as well; with it ON they are exported like any drawn layer, as Magic draws every CIF layer. The `.gltf` form SHALL write its buffer to `<stem>.bin` beside the JSON when there is geometry; an export with no layer SHALL write the JSON only, with no buffer. Per-layer STL SHALL write one file per exported layer named `<stem>_<layer>.stl` in the directory of the given file, characters other than letters, digits and `_-.+` in the layer name replaced by `_`; two layers whose names would give the same file name ignoring case SHALL get distinct files, the later one suffixed `_2`, `_3`, ... before `.stl`; `-merged` SHALL write the given file. A GLB larger than 4 GiB or an STL with more than 4294967295 triangles (sizes these formats store in 32 bits) SHALL fail with `VIEW3D-EXPORT-005` and write nothing. glTF positions SHALL be relative to the model's lower-left corner, held as the root node's translation, with +Y up (layout x, height, −layout y); STL SHALL keep layout axes (z up) relative to the same corner. A mask-layer model (in mask units) SHALL be exported in µm like a layout-layer one.
 
 glTF files SHALL be written with the cgltf writer (MIT; tinygltf, MIT, MAY replace it), on every platform (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13). STL is written by Hefesto's own code.
 
@@ -146,6 +151,31 @@ Compatibility: native
 #### Scenario: Per-layer STL
 - **WHEN** `export3d inv.stl` is run on a cell with metal1 and metal2
 - **THEN** `inv_metal1.stl` and `inv_metal2.stl` SHALL be written
+
+#### Scenario: Per-layer STL names that differ only in case
+- **GIVEN** exported layers `a/b` and `a_b`, or `MET1` and `met1`
+- **WHEN** `export3d inv.stl` is run
+- **THEN** `inv_a_b.stl` and `inv_a_b_2.stl` (`inv_MET1.stl` and `inv_met1_2.stl`) SHALL be written, so that no file replaces another on a case-insensitive file system
+
+#### Scenario: A .gltf export with no layer
+- **GIVEN** a 3D window whose layers are all hidden
+- **WHEN** `export3d x.gltf` is run
+- **THEN** only `x.gltf` SHALL be written, with no buffer, and no `x.bin`
+
+#### Scenario: Temporary layers with -all, magic-compat OFF
+- **GIVEN** mask-layer mode with an output style whose temporary layer has a `render` height, and magic-compat OFF
+- **WHEN** `export3d x.glb -all` is run
+- **THEN** the temporary layer SHALL NOT be exported
+
+#### Scenario: Temporary layers with -all, magic-compat ON
+- **GIVEN** the same window with magic-compat ON
+- **WHEN** `export3d x.glb -all` is run
+- **THEN** the temporary layer SHALL be exported, as it is drawn
+
+#### Scenario: An export too large for its format
+- **GIVEN** a model whose GLB would exceed 4 GiB, or whose STL would have more than 4294967295 triangles
+- **WHEN** it is exported in that format
+- **THEN** the command SHALL fail with `VIEW3D-EXPORT-005` and write nothing
 
 #### Scenario: Export without the view's exaggeration
 - **GIVEN** a metal1 layer of thickness 0.36 µm displayed with z scale 25

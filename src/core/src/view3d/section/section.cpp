@@ -30,11 +30,12 @@ constexpr std::string_view kBadLine = "VIEW3D-SECTION-001";
 constexpr std::string_view kNoHeightLayout = "VIEW3D-SECTION-002";
 constexpr std::string_view kNoRenderHeight = "VIEW3D-STACK-001";
 
-// Pieces closer than this (root units) along the line are one interval:
+// Pieces closer than this (mesh units) along the line are one interval:
 // triangle cuts are computed in double from float corners.
 constexpr double kMergeGap = 1e-6;
 
-/// The cut line in root coordinates, along one axis.
+/// The cut line in mesh units (root coordinates times
+/// MeshModel::units_per_root), along one axis.
 struct Line {
   bool horizontal = true;  // along x at y = level; otherwise along y at x = level
   double level = 0.0;
@@ -62,7 +63,7 @@ std::optional<Line> line_of(const Segment& s) {
   return l;
 }
 
-/// A root-coordinate point as (along the line, across it).
+/// A point in mesh units as (along the line, across it).
 struct Local {
   double along = 0.0;
   double across = 0.0;
@@ -72,7 +73,7 @@ Local local(const Line& l, double x, double y) {
   return l.horizontal ? Local{x, y} : Local{y, x};
 }
 
-using Range = std::pair<double, double>;  // along the line, root coordinates
+using Range = std::pair<double, double>;  // along the line, mesh units
 using Pieces = std::vector<std::vector<Range>>;  // per LayerId
 
 void add_piece(Pieces& pieces, LayerId layer, const Line& l, double from, double to) {

@@ -137,6 +137,7 @@ struct MeshWorker::State {
         parked.insert(parked.end(), job.dirty.begin(), job.dirty.end());
       }
       if (!dropped) {
+        model->build_id = job.inputs.build_id;  // a rebuild's inputs are the current model's
         done = std::make_shared<const MeshModel>(std::move(*model));
         current = done;
         if (!job.previous) {

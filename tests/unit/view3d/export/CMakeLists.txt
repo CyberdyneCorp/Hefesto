@@ -11,4 +11,6 @@ hefesto_add_area_tests(view3d_export DATA_DIR view3d/export)
 # (compiled once into hefesto_core, view3d/export/cgltf_impl.cpp).
 if(TARGET hefesto_view3d_export_tests)
   target_link_libraries(hefesto_view3d_export_tests PRIVATE hefesto::cgltf)
+  # The size checks of src/core/src/view3d/export/model.hpp (GLB, STL).
+  target_include_directories(hefesto_view3d_export_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
 endif()

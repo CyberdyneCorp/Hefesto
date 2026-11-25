@@ -57,12 +57,15 @@ void put_triangles(std::vector<std::byte>& out, const detail::LayerGeometry& g) 
 
 }  // namespace
 
-diag::Status write_stl(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options,
-                       gds::ByteSink& out, diag::DiagnosticSink& sink) {
-  const detail::ExportModel model = detail::build_export_model(mesh, stack, options, sink);
+namespace detail {
+
+diag::Status write_stl_model(const ExportModel& model, const ExportOptions& options, gds::ByteSink& out) {
   std::size_t triangles = 0;
   for (std::size_t i = 0; i < model.layers.size(); ++i) {
     triangles += written(options, model.layers[i]) ? model.geometry[i].triangle_count() : 0;
+  }
+  if (!stl_fits(triangles)) {
+    return too_large("STL with " + std::to_string(triangles) + " triangles (at most 4294967295)");
   }
   std::vector<std::byte> bytes;
   bytes.reserve(kHeaderSize + 4 + (50 * triangles));
@@ -70,13 +73,20 @@ diag::Status write_stl(const MeshModel& mesh, const LayerStack& stack, const Exp
   for (const char c : header) {
     bytes.push_back(static_cast<std::byte>(c));
   }
-  detail::put_u32(bytes, static_cast<std::uint32_t>(triangles));
+  put_u32(bytes, static_cast<std::uint32_t>(triangles));
   for (std::size_t i = 0; i < model.layers.size(); ++i) {
     if (written(options, model.layers[i])) {
       put_triangles(bytes, model.geometry[i]);
     }
   }
   return out.write(bytes);
+}
+
+}  // namespace detail
+
+diag::Status write_stl(const MeshModel& mesh, const LayerStack& stack, const ExportOptions& options,
+                       gds::ByteSink& out, diag::DiagnosticSink& sink) {
+  return detail::write_stl_model(detail::build_export_model(mesh, stack, options, sink), options, out);
 }
 
 }  // namespace hefesto::view3d

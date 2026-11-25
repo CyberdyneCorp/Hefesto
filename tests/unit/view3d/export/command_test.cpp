@@ -17,6 +17,7 @@
 
 #include "../client/client_fixture.hpp"
 #include "export_fixture.hpp"
+#include "hefesto/view3d/export/command.hpp"
 
 namespace view3d = hefesto::view3d;
 using Catch::Approx;
@@ -71,6 +72,15 @@ void open_layout(ClientSession& s) {
   s.ok("specialopen wind3d c3d");
   s.w3d("cif");
   REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+}
+
+bool has_code(const hefesto::cmd::CommandResult& r, std::string_view code) {
+  for (const hefesto::diag::Diagnostic& d : r.diagnostics) {
+    if (d.code == code) {
+      return true;
+    }
+  }
+  return false;
 }
 
 std::string error_code(const hefesto::cmd::CommandResult& r) {
@@ -229,7 +239,9 @@ TEST_CASE("export3d in mask-layer mode writes the mask layers in µm: mask units
     s.editor.styles.reset();
     s.ok("specialopen wind3d c3d");
     REQUIRE(s.window().mode == view3d::Mode::mask_layer);
-    typed_ok(s, "export3d /t/mask.glb");
+    const hefesto::cmd::CommandResult r = typed(s, "export3d /t/mask.glb");
+    REQUIRE(r.ok());
+    CHECK(has_code(r, "VIEW3D-STACK-001"));
     const ParsedGltf glb(file(s, "/t/mask.glb"));
     REQUIRE(glb.validation == cgltf_result_success);
     const cgltf_node& root = *glb.data().scene->nodes[0];
@@ -239,5 +251,73 @@ TEST_CASE("export3d in mask-layer mode writes the mask layers in µm: mask units
     CHECK(static_cast<double>(met1->max[0] - met1->min[0]) == Approx(10.0));  // 100 internal units
     CHECK(static_cast<double>(met1->max[2] - met1->min[2]) == Approx(5.0));   // 50 internal units
     CHECK(glb.thickness("MET1") == Approx(0.36).margin(1e-6));
+  }
+}
+
+// Review of PR #122 (finding 4): `.gltf` writes <stem>.bin only when there
+// is geometry; with no exported layer it writes the JSON alone.
+TEST_CASE("`export3d x.gltf` with no exported layer writes the JSON only, with no buffer and no x.bin",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  Session s;
+  open_layout(s);
+  REQUIRE(s.w3d("see no metal1").ok());
+  REQUIRE(s.w3d("see no metal2").ok());
+  const hefesto::cmd::CommandResult r = typed(s, "export3d /t/empty.gltf");
+  REQUIRE(r.ok());
+  CHECK(r.value.to_string() == "/t/empty.gltf");
+  CHECK_FALSE(exists(s, "/t/empty.bin"));
+  const ParsedGltf json(file(s, "/t/empty.gltf"));
+  REQUIRE(json.validation == cgltf_result_success);
+  CHECK(json.data().buffers_count == 0);
+  CHECK(json.data().scene->nodes[0]->children_count == 0);
+}
+
+// Review of PR #122 (finding 3): names were made safe after the duplicate
+// check, so `a/b` and `a_b` (and, on a case-insensitive file system, `MET1`
+// and `met1`) were written to one file, the later replacing the earlier.
+TEST_CASE("`export3d` STL per-layer file names are unique ignoring case",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  const std::vector<std::string> files =
+      view3d::layer_file_names("inv", {"a/b", "a_b", "MET1", "met1", "a_b_2", "metal2"});
+  CHECK(files == std::vector<std::string>{"inv_a_b.stl", "inv_a_b_2.stl", "inv_MET1.stl", "inv_met1_2.stl",
+                                          "inv_a_b_2_2.stl", "inv_metal2.stl"});
+}
+
+namespace {
+
+// The WIND3D technology with a temporary layer HALO (metal1 grown by 5)
+// that has a `render` height, so that only the temporary-layer rule can
+// leave it out of an export.
+std::string halo_tech() {
+  std::string tech{view3d::test::kTech};
+  const std::string anchor = "    render MET1 metal1 1.376 0.36\n";
+  const std::size_t at = tech.find(anchor);
+  REQUIRE(at != std::string::npos);
+  tech.insert(at + anchor.size(), "    templayer HALO m1\n        grow 5\n    render HALO metal1 0.5 0.1\n");
+  return tech;
+}
+
+}  // namespace
+
+// Review of PR #122 (finding 5): with magic-compat OFF the temporary layers
+// were left out through the window's hidden flags, which `-all` ignores, so
+// `export3d -all` wrote them. They are no masks: never exported OFF; ON
+// draws and exports them, as Magic draws every CIF layer.
+TEST_CASE("`export3d -all` in mask-layer mode: temporary layers are exported with magic-compat ON only",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat, halo_tech()};
+    s.editor.styles.reset();
+    s.ok("specialopen wind3d c3d");
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    typed_ok(s, "export3d /t/all.glb -all");
+    typed_ok(s, "export3d /t/visible.glb");
+    const ParsedGltf all(file(s, "/t/all.glb"));
+    REQUIRE(all.validation == cgltf_result_success);
+    CHECK(all.node("MET1") != nullptr);
+    CHECK((all.node("HALO") != nullptr) == compat);
+    const ParsedGltf visible(file(s, "/t/visible.glb"));
+    CHECK((visible.node("HALO") != nullptr) == compat);
   }
 }

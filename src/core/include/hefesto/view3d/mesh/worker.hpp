@@ -72,6 +72,10 @@ struct BuildInputs {
   db::DatabaseLock* lock = nullptr;              // the session's database lock, or null
   std::size_t max_chunk_tiles = 65536;           // chunk size of the first build (tests use small ones)
   std::optional<MaskSource> mask;                // mask-layer mode: generated layers; `clip` is then mask_clip(*mask)
+  /// The host's tag of this build: every model built or rebuilt from these
+  /// inputs carries it (MeshModel::build_id), so that a model of an earlier
+  /// build delivered after a new build() can be told apart and ignored.
+  std::uint64_t build_id = 0;
 };
 
 /// One build of `inputs` on the calling thread (what the worker runs for a

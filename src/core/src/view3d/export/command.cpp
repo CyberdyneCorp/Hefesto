@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -144,6 +145,25 @@ std::string uri_of(std::string_view name) {
   return out;
 }
 
+}  // namespace
+
+std::vector<std::string> layer_file_names(std::string_view stem, const std::vector<std::string>& layers) {
+  std::vector<std::string> files;
+  files.reserve(layers.size());
+  std::set<std::string> taken;  // case-folded: one file on a case-insensitive file system
+  for (const std::string& layer : layers) {
+    const std::string base = std::string{stem} + "_" + detail::safe_file_part(layer);
+    std::string file = base + ".stl";
+    for (int n = 2; !taken.insert(lower(file)).second; ++n) {
+      file = base + "_" + std::to_string(n) + ".stl";
+    }
+    files.push_back(std::move(file));
+  }
+  return files;
+}
+
+namespace {
+
 class Exporter {
  public:
   Exporter(const Scene& scene, ExportOptions options, platform::FileSystem& fs, diag::DiagnosticSink& sink)
@@ -153,7 +173,7 @@ class Exporter {
     if (options_.format != ExportFormat::stl) {
       return gltf(path);
     }
-    return options_.merged ? stl(path, sink_) : stl_per_layer(path);
+    return options_.merged ? stl(path) : stl_per_layer(path);
   }
 
   [[nodiscard]] cmd::Value::List written() const { return written_; }
@@ -187,22 +207,31 @@ class Exporter {
     return save(path, main.bytes());
   }
 
-  diag::Status stl(const platform::Path& path, diag::DiagnosticSink& sink) {
+  diag::Status stl(const platform::Path& path) {
     gds::MemorySink out;
-    if (diag::Status s = write_stl(*scene_.mesh, scene_.stack, options_, out, sink); !s.ok()) {
+    if (diag::Status s = write_stl(*scene_.mesh, scene_.stack, options_, out, sink_); !s.ok()) {
       return s;
     }
     return save(path, out.bytes());
   }
 
-  // One file per layer; the layers' warnings are emitted once.
+  // One file per layer, written from one export model (its warnings are
+  // emitted once).
   diag::Status stl_per_layer(const platform::Path& path) {
-    diag::NullSink quiet;
-    const std::string stem = path.stem().string();
-    for (const ExportLayer& layer : export_layers(*scene_.mesh, scene_.stack, options_, sink_)) {
-      options_.stl_layer = layer.layer;
-      const platform::Path file = path.parent_path() / (stem + "_" + detail::safe_file_part(layer.name) + ".stl");
-      if (diag::Status s = stl(file, quiet); !s.ok()) {
+    const detail::ExportModel model = detail::build_export_model(*scene_.mesh, scene_.stack, options_, sink_);
+    std::vector<std::string> names;
+    names.reserve(model.layers.size());
+    for (const ExportLayer& layer : model.layers) {
+      names.push_back(layer.name);
+    }
+    const std::vector<std::string> files = layer_file_names(path.stem().string(), names);
+    for (std::size_t i = 0; i < model.layers.size(); ++i) {
+      options_.stl_layer = model.layers[i].layer;
+      gds::MemorySink out;
+      if (diag::Status s = detail::write_stl_model(model, options_, out); !s.ok()) {
+        return s;
+      }
+      if (diag::Status s = save(path.parent_path() / files[i], out.bytes()); !s.ok()) {
         return s;
       }
     }
@@ -216,7 +245,7 @@ class Exporter {
   cmd::Value::List written_;
 };
 
-ExportOptions options_for(const editor::EditorState& editor, const Scene& scene, const Request& r) {
+ExportOptions options_for(const editor::EditorState& editor, const Scene& scene, const Request& r, bool magic_compat) {
   ExportOptions options;
   options.format = *r.format;
   options.merged = r.merged;
@@ -224,6 +253,7 @@ ExportOptions options_for(const editor::EditorState& editor, const Scene& scene,
   options.visible_only = r.visible_only;
   options.styles = editor.styles ? &*editor.styles : nullptr;
   options.hidden = scene.hidden;
+  options.excluded = excluded_layers(editor, scene.stack, magic_compat);
   if (scene.stack.mode() == Mode::mask_layer) {
     options.output_style = editor.mask.output_styles.current_style();
   }
@@ -244,12 +274,13 @@ cmd::CommandResult export3d_cmd(cmd::CommandContext& ctx, const cmd::Invocation&
     return cmd::CommandResult::failure(diag::make(kNoWindow, "export3d: no 3D window is open"));
   }
   BuildContext build;
-  const Scene scene = build_scene(state, *state.view3d.window, ctx.project().compat.magic_compat, build);
+  const bool magic_compat = ctx.project().compat.magic_compat;
+  const Scene scene = build_scene(state, *state.view3d.window, magic_compat, build);
   if (!scene.mesh) {
     return cmd::CommandResult::failure(diag::make(
         kNoModel, "export3d: the 3D window has no model (cell \"" + state.view3d.window->cell + "\" not found)"));
   }
-  Exporter exporter(scene, options_for(state, scene, request.value()), ctx.services().files, ctx.sink());
+  Exporter exporter(scene, options_for(state, scene, request.value(), magic_compat), ctx.services().files, ctx.sink());
   if (diag::Status s = exporter.run(platform::Path{request.value().file}); !s.ok()) {
     return cmd::CommandResult::failure(s.error());
   }

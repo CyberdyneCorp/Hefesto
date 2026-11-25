@@ -114,6 +114,7 @@ struct MeshModel {
   /// microns_per_unit divided by it.
   std::int32_t units_per_root = 1;
   std::uint64_t version = 0;  // of the whole model (process-wide, fresh on each build or rebuild)
+  std::uint64_t build_id = 0;  // BuildInputs::build_id of the build (or rebuild) that made it
   std::vector<Chunk> chunks;  // in Morton order
   /// Per LayerId: the h and t the layer's rectangles and plain side faces
   /// are drawn with (the stack's draw_height, or the spanned values of a

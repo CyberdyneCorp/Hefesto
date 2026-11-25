@@ -229,6 +229,7 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   BuildKey key_;
   bool have_key_ = false;
   std::shared_ptr<const view3d::LayerStack> build_stack_;  // of the build in progress or done last
+  std::uint64_t build_id_ = 0;  // BuildInputs::build_id of the last start_build
   std::shared_ptr<const view3d::LayerStack> drawn_stack_;  // of model_
   view3d::MeshHandle model_;
   view3d::MeshHandle uploaded_;                               // the model the renderer draws (pick ids decode against it)

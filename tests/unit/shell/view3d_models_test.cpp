@@ -91,9 +91,9 @@ struct FakeResolver final : PickResolver {
   std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& /*mesh*/, view3d::PickId id) override {
     return id == 42 ? target : std::nullopt;
   }
-  hefesto::diag::Status select(hefesto::editor::EditorState& /*editor*/, const view3d::PickTarget& /*t*/) override {
+  bool select(hefesto::editor::EditorState& /*editor*/, const view3d::PickTarget& /*t*/) override {
     ++selects;
-    return hefesto::diag::Done{};
+    return true;
   }
   view3d::HighlightSet from_selection(const view3d::MeshModel& /*mesh*/,
                                       const hefesto::editor::EditorState& /*editor*/) override {
@@ -306,6 +306,24 @@ TEST_CASE("mask-layer mode builds the mask layers in mask units and draws them u
   }
 }
 
+// Review of PR #122 (finding 7): the key held the output style's raw
+// address, so a reloaded style allocated at the same address (same layers
+// and scale, other rules) compared equal and no full build ran. The key
+// now holds the style, so its address cannot be reused while compared.
+TEST_CASE("the build key holds the output style it was made from",
+          "[cap:hefesto-3d-visualization][req:Magic 3D view parity]") {
+  view3d::BuildInputs in;
+  in.mask.emplace();
+  in.mask->style = std::make_shared<const hefesto::mask::OutputStyle>();
+  const std::weak_ptr<const hefesto::mask::OutputStyle> style = in.mask->style;
+  const BuildKey key = build_key(in, false);
+  in.mask->style.reset();
+  CHECK_FALSE(style.expired());
+  CHECK(key.mask_style.get() == style.lock().get());
+  const BuildKey other = build_key(in, false);
+  CHECK_FALSE(other == key);
+}
+
 TEST_CASE("a cut line in root coordinates is scaled to the mask-layer mesh's units",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   const view3d::Segment line{db::Point{0, 25}, db::Point{100, 25}};
@@ -487,6 +505,7 @@ TEST_CASE("a click picks a target, selects it in 2D and isolates its net",
   const auto caption = picking.click(&mesh, 42, s.editor, stack);
   REQUIRE(caption);
   CHECK(*caption == stack.layers()[0].name + " · picked in inv_1 · selected in 2D");
+  CHECK(picking.selected_in_2d());
   CHECK(resolver.selects == 1);
   // Isolate selected net: the net's instances, until toggled off.
   CHECK(picking.toggle_isolate_net(&mesh, s.editor));
@@ -516,9 +535,7 @@ TEST_CASE("an isolated net follows a rebuilt model's ids",
     std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& /*mesh*/, view3d::PickId /*id*/) override {
       return target;
     }
-    hefesto::diag::Status select(hefesto::editor::EditorState& /*e*/, const view3d::PickTarget& /*t*/) override {
-      return hefesto::diag::Done{};
-    }
+    bool select(hefesto::editor::EditorState& /*e*/, const view3d::PickTarget& /*t*/) override { return true; }
     view3d::HighlightSet net(const view3d::MeshModel& mesh, const hefesto::editor::EditorState& /*e*/,
                              const view3d::PickTarget& /*seed*/) override {
       return &mesh == rebuilt_model ? view3d::HighlightSet{{17, 18}} : view3d::HighlightSet{{7, 8}};
@@ -564,6 +581,56 @@ TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile t
   CHECK(scoped == view3d::resolve(*mesh, scope, id));
   CHECK(scoped->cell == s.cell);
   CHECK(scoped->type.has_value());
+}
+
+// Review of PR #122 (finding 1): the caption said "selected in 2D" and the
+// view announced a selection change for every click, although a mask-layer
+// target has no tile type and link_to_2d selects nothing.
+TEST_CASE("a mask-layer pick leaves the 2D selection unchanged and does not say selected in 2D",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open(s);
+    tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+    REQUIRE(in.stack != nullptr);
+    view3d::MeshWorker worker;
+    worker.build(in);
+    REQUIRE(worker.wait_idle(10000));
+    const view3d::MeshHandle mesh = worker.current();
+    REQUIRE(mesh != nullptr);
+    const view3d::PickId id = view3d::encode_pick(*mesh, view3d::PickRef{0, view3d::PickKind::rect, 0});
+    REQUIRE(id != view3d::kNoPick);
+    PickResolver resolver;
+    resolver.set_scope(view3d::PickContext{in.stack.get(), s.cell, compat});
+    View3dPicking picking{resolver};
+    REQUIRE(s.editor.selection.empty());
+    const db::CellDef* root_before = s.editor.selection.root();
+    const auto caption = picking.click(mesh.get(), id, s.editor, *in.stack);
+    REQUIRE(caption.has_value());
+    CHECK(caption->find("picked") != std::string::npos);
+    CHECK(caption->find("selected in 2D") == std::string::npos);
+    CHECK_FALSE(picking.selected_in_2d());
+    CHECK(picking.picked().has_value());
+    CHECK(s.editor.selection.empty());
+    CHECK(s.editor.selection.root() == root_before);
+  }
+}
+
+// Review of PR #122 (finding 6): a model of an earlier build, posted after
+// a mode, style or compat change, was drawn with the new stack when its
+// layer count matched; the view now checks the build it came from.
+TEST_CASE("a model of an earlier build is not the current one, even with as many layers",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  view3d::MeshModel stale;
+  stale.build_id = 3;
+  stale.layer_heights.resize(2);
+  view3d::MeshModel fresh = stale;
+  fresh.build_id = 4;
+  CHECK_FALSE(model_is_current(stale, 4));
+  CHECK(model_is_current(fresh, 4));
 }
 
 TEST_CASE("the frame's highlight is passed as DrawParams::highlight",
@@ -1275,7 +1342,6 @@ TEST_CASE("the cut line follows the layout box's long axis and two clicks make a
   CHECK(line.a == db::Point{5, 5});
   CHECK(line.b == db::Point{60, 5});
   CHECK(axis_aligned_line(db::Point{5, 5}, db::Point{8, -40}).b == db::Point{5, -40});
-  CHECK(segment_length_um(wide, 0.01) == Catch::Approx(1.0));
 }
 
 TEST_CASE("the cross-section cuts the layout box in the rendered cell, else the cell",

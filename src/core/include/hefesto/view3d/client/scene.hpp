@@ -71,6 +71,14 @@ struct Scene {
 [[nodiscard]] db::Rect mask_generation_area(const editor::EditorState& editor, const WindowState& window,
                                             bool magic_compat);
 
+/// Per stack layer, whether it is never drawn nor exported whatever the
+/// visibility: with magic-compat OFF in mask-layer mode, the temporary
+/// layers (`templayer`) of the current output style, which are no masks;
+/// otherwise none. Kept apart from the user's hidden flags so that
+/// `export3d -all` still leaves them out.
+[[nodiscard]] std::vector<bool> excluded_layers(const editor::EditorState& editor, const LayerStack& stack,
+                                                bool magic_compat);
+
 /// Per stack layer, whether it is hidden: in layout-layer mode by the
 /// layout visibility set (tile types); in mask-layer mode by the mask set
 /// (mask layer indexes of the current output style, Q-MISC-71) and, with
