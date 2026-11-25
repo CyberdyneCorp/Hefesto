@@ -17,10 +17,16 @@ in developer builds. Three rules:
    `nm`.
 2. plugin: in a release build no binary other than `hefesto-simd` (and the
    plugin itself) references `hefesto-ngspice-adapter`, as a library it links
-   or a name it loads. Test and benchmark binaries (under `tests/` and
-   `bench/` of the build tree) are not release binaries. `--developer-build`
-   turns this rule off (Q-SIM-22: the developer desktop host loads the
-   plugin into the editor).
+   or a name it loads, or names the plugin's entry point `hefesto_engine_v1`
+   (which a binary must look up to use the plugin even when it builds the
+   plugin's file name at run time). Test and benchmark binaries (under
+   `tests/` and `bench/` of the build tree) are not release binaries. The
+   rule is off for a developer build (Q-SIM-22: the developer desktop host
+   loads the plugin into the editor): a build tree whose `CMakeCache.txt`
+   sets `HEFESTO_DEVELOPER_BUILD` ON, or, for a tree without a cache,
+   `--developer-build`. `--developer-build` on a tree whose cache sets
+   `HEFESTO_DEVELOPER_BUILD` OFF is a usage error, so a release tree cannot
+   be checked as a developer one.
 3. header: no source file outside `src/simd/adapter/` includes
    `sharedspice.h`. ngspice's own tree (`third_party/ngspice/`) and the build
    and cache trees are not scanned.
@@ -32,7 +38,7 @@ and `_deps` trees of a build directory are skipped.
 Usage:
     check_engine_boundary.py                                # rule 3 only
     check_engine_boundary.py --build-dir build/ci-linux     # rules 1-3
-    check_engine_boundary.py --build-dir build/dev --developer-build
+    check_engine_boundary.py --build-dir build/dev --developer-build   # a tree without CMakeCache.txt
 
 Exits 1 when a rule is violated, 2 on a usage error or when `nm` fails.
 """
@@ -53,6 +59,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ENGINE_SYMBOL = b"ngSpice_"
 ENGINE_SYMBOL_RE = re.compile(r"\b_?(ngSpice_\w+)")
 ADAPTER = "hefesto-ngspice-adapter"
+ENTRY_POINT = b"hefesto_engine_v1"
+DEVELOPER_OPTION_RE = re.compile(r"^HEFESTO_DEVELOPER_BUILD(?::[A-Z]+)?=(.*)$", re.M)
+CMAKE_TRUE = {"1", "ON", "YES", "TRUE", "Y"}
 LIBRARY = "libngspice-hefesto"
 WORKER = "hefesto-simd"
 
@@ -172,7 +181,30 @@ def check_plugin(binaries: list[Path], build_dir: Path) -> list[Violation]:
             continue
         if contains(path, ADAPTER.encode()):
             violations.append(Violation(path, "plugin", f"release binary other than {WORKER} references {ADAPTER}"))
+        elif contains(path, ENTRY_POINT):
+            violations.append(Violation(path, "plugin", f"release binary other than {WORKER} names the plugin entry "
+                                                        f"point {ENTRY_POINT.decode()}"))
     return violations
+
+
+def developer_option(build_dir: Path) -> bool | None:
+    """HEFESTO_DEVELOPER_BUILD as the tree's CMakeCache.txt sets it; None without a cache or the entry."""
+    cache = build_dir / "CMakeCache.txt"
+    if not cache.is_file():
+        return None
+    match = DEVELOPER_OPTION_RE.search(cache.read_text(encoding="utf-8", errors="replace"))
+    return None if match is None else match.group(1).strip().upper() in CMAKE_TRUE
+
+
+class UsageError(RuntimeError):
+    """The options contradict the build tree."""
+
+
+def is_developer_build(build_dir: Path, flag: bool) -> bool:
+    option = developer_option(build_dir)
+    if option is False and flag:
+        raise UsageError(f"{build_dir}: --developer-build, but its CMakeCache.txt sets HEFESTO_DEVELOPER_BUILD OFF")
+    return flag if option is None else option
 
 
 def is_skipped_source_dir(relative: Path) -> bool:
@@ -212,7 +244,7 @@ def check(root: Path, build_dirs: list[Path], developer_build: bool, nm: list[st
     for build_dir in build_dirs:
         binaries = build_binaries(build_dir)
         violations += check_symbols(binaries, nm)
-        if not developer_build:
+        if not is_developer_build(build_dir, developer_build):
             violations += check_plugin(binaries, build_dir)
     return violations
 
@@ -223,7 +255,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--build-dir", type=Path, action="append", default=[],
                         help="build tree to scan for rules 1 and 2 (repeatable)")
     parser.add_argument("--developer-build", action="store_true",
-                        help="the build has the in-process engine (Q-SIM-22): skip rule 2")
+                        help="a build tree without CMakeCache.txt has the in-process engine (Q-SIM-22): skip "
+                             "rule 2 (a tree with a cache is classified by its HEFESTO_DEVELOPER_BUILD)")
     parser.add_argument("--nm", default=os.environ.get("NM", "nm"), help="the nm command (default: $NM or nm)")
     return parser.parse_args(argv)
 
@@ -236,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         violations = check(args.root, args.build_dir, args.developer_build, shlex.split(args.nm))
-    except NmError as error:
+    except (NmError, UsageError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
     for violation in violations:
