@@ -44,6 +44,8 @@ inline constexpr std::string_view kPlatformNotFound = "PLATFORM-IO-004";
 inline constexpr std::string_view kPlatformProcess = "PLATFORM-PROCESS-001";
 inline constexpr std::string_view kPlatformTechNotFound = "PLATFORM-PDK-001";
 inline constexpr std::string_view kPlatformLog = "PLATFORM-LOG-001";
+inline constexpr std::string_view kPlatformWorkerFrame = "PLATFORM-WORKER-001";
+inline constexpr std::string_view kPlatformWorkerClosed = "PLATFORM-WORKER-002";
 // Project settings
 inline constexpr std::string_view kSettingsName = "SETTINGS-NAME-001";
 inline constexpr std::string_view kSettingsValue = "SETTINGS-VALUE-001";
