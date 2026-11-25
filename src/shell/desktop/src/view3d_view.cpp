@@ -469,6 +469,10 @@ bool View3dView::magic_compat() const {
   return ctx_.core.project().compat.magic_compat;
 }
 
+std::int32_t View3dView::mesh_units() const noexcept {
+  return model_ ? model_->units_per_root : 1;
+}
+
 void View3dView::run(const std::string& line) {
   if (ctx_.run) ctx_.run(line);
 }
@@ -581,19 +585,26 @@ void View3dView::sync() {
   sync_pending_ = false;
   const view3d::WindowState* w = window();
   if (w == nullptr || !ctx_.editor().technology) return;
-  view3d::LayerStack stack = tab_stack(ctx_.editor(), magic_compat());
-  const BuildKey key = build_key(ctx_.editor(), *w, stack, options_.span_connected_layers);
-  if (!have_key_ || !(key == key_)) start_build(key, stack);
+  // The stack and source of the window's mode: layout layers, or the mask
+  // layers of the current output style (MASKSRC, task 10.2).
+  diag::CollectingSink stack_diagnostics;
+  view3d::WindowBuild wb = view3d::window_build(ctx_.editor(), *w, magic_compat(), stack_diagnostics);
+  const BuildKey key = build_key(wb.inputs, options_.span_connected_layers);
+  if (!have_key_ || !(key == key_)) {
+    // A `render` statement whose style does not resolve, once per build (decision J2).
+    for (const diag::Diagnostic& d : stack_diagnostics.take()) ctx_.core.dispatcher().report(d);
+    start_build(key, std::move(wb.inputs));
+  }
   refresh_rows();
   repaint();
   dirty_ = true;
   viewport_->invalidate();
 }
 
-void View3dView::start_build(const BuildKey& key, const view3d::LayerStack& stack) {
+void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
   key_ = key;
   have_key_ = true;
-  build_stack_ = std::make_shared<const view3d::LayerStack>(stack);
+  build_stack_ = inputs.stack;
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   // The rows and frames keep the drawn stack's flags until this build's
   // model is drawn (take_model): the two stacks' layer ids may differ.
@@ -614,7 +625,7 @@ void View3dView::start_build(const BuildKey& key, const view3d::LayerStack& stac
     const std::lock_guard lock(shared_->mutex);
     shared_->progress = 0.0;
   }
-  worker_->build(build_inputs(ctx_.editor(), *window(), build_stack_, options_.span_connected_layers));
+  worker_->build(build_inputs(ctx_.editor(), std::move(inputs), options_.span_connected_layers));
 }
 
 void View3dView::take_model(const view3d::MeshHandle& model) {
@@ -746,13 +757,14 @@ void View3dView::draw_frame() {
     highlight_dirty_ = false;
   }
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
+  const std::vector<bool> hidden = view3d::hidden_layers(ctx_.editor(), *stack, *w, magic_compat());
   render::DrawParams params =
-      draw_params(FrameInputs{w, stack, styles, highlight_, &options_, view3d_background(ctx_.mode)});
+      draw_params(FrameInputs{w, stack, styles, highlight_, &options_, view3d_background(ctx_.mode), &hidden});
   // The board's substrate slab and the cross-section's clipping plane (round 5).
   if (substrate_on_ && uploaded_ && uploaded_stack_) {
     params.substrate = view3d::substrate_slab(*uploaded_, *uploaded_stack_);
   }
-  if (section_line_) params.section_plane = section_clip_plane(*section_line_);
+  if (section_line_) params.section_plane = section_clip_plane(segment_in_mesh(*section_line_, mesh_units()));
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -884,12 +896,6 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
          42.0F, 6.0F, alpha_of(t.surface0, 0.85F));
   p.text(TextRole::cell_title, 18.0F, 13.0F, header.title, t.text_primary);
   p.text(TextRole::cell_subtitle, 18.0F, 31.0F, header.subtitle, t.text_secondary);
-  if (const auto notice = mask_mode_notice(*win)) {
-    const float nw = p.text_width(TextRole::body_strong, *notice) + 24.0F;
-    p.fill((w - nw) / 2.0F, 12.0F, nw, 30.0F, 6.0F, t.surface0);
-    p.fill((w - nw) / 2.0F, 12.0F, nw, 30.0F, 6.0F, alpha_of(t.warning, 0.2F));
-    p.text_centered_y(TextRole::body_strong, (w - nw) / 2.0F + 12.0F, 27.0F, *notice, t.warning_text);
-  }
   // The gizmo and the pick caption sit above the floating toolbar.
   const float bottom = h - toolbar_cover();
   paint_gizmo(p, bottom);
@@ -984,7 +990,8 @@ void View3dView::paint_section(ui::Painter& p, float w, float h) {
   p.fill(0.0F, 0.0F, w, h, 8.0F, t.surface2);
   p.text(TextRole::body_strong, 12.0F, 8.0F, "Cross-section A–A′", t.text_primary);
   const SectionPanel panel =
-      section_panel(section_, *stack, section_.length_um, w - 24.0F, kStrip, hidden_flags(*stack, *win));
+      section_panel(section_, *stack, section_.length_um, w - 24.0F, kStrip,
+                    view3d::hidden_layers(ctx_.editor(), *stack, *win, magic_compat()));
   section_paint_->set_accessible_name(panel.accessible_name);
   p.text(TextRole::meta, 12.0F, 24.0F, panel.summary, t.text_secondary);
   p.fill(12.0F, kTop, w - 24.0F, kStrip, 2.0F, t.surface0);
@@ -1020,7 +1027,8 @@ void View3dView::update_section(bool report) {
   section_ = {};
   const view3d::WindowState* w = window();
   if (section_line_ && model_ && drawn_stack_ && w != nullptr) {
-    section_ = view3d::section(*model_, *drawn_stack_, *section_line_, hidden_flags(*drawn_stack_, *w));
+    section_ = view3d::section(*model_, *drawn_stack_, segment_in_mesh(*section_line_, model_->units_per_root),
+                               view3d::hidden_layers(ctx_.editor(), *drawn_stack_, *w, magic_compat()));
   }
   // A new line's diagnostics (a refused line, layers without a height) go
   // to the console once; a rebuilt model recomputes silently.
@@ -1038,7 +1046,7 @@ bool View3dView::section_click(float x, float y) {
   const std::optional<db::Point> ground =
       view3d::ground_point(w->view, params.projection, pixels_.first, pixels_.second, x * ratio, y * ratio);
   if (!ground) return false;  // the plane is seen edge on (front, side): the click picks
-  const db::Point point = ground_to_root(*ground, xy_factor(*w));
+  const db::Point point = ground_to_root(*ground, static_cast<float>(mesh_units()));
   if (!section_first_) {
     section_first_ = point;
   } else {

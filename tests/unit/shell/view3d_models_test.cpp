@@ -76,6 +76,13 @@ void open(ClientSession& s) {
   REQUIRE(s.window().mode == view3d::Mode::layout_layer);
 }
 
+/// The build inputs of the open window in its mode, as the tab takes them
+/// (view3d::window_build).
+view3d::BuildInputs tab_inputs(ClientSession& s) {
+  hefesto::diag::NullSink quiet;
+  return view3d::window_build(s.editor, s.window(), s.project.compat.magic_compat, quiet).inputs;
+}
+
 struct FakeResolver final : PickResolver {
   std::optional<view3d::PickTarget> target;
   int selects = 0;
@@ -253,24 +260,62 @@ TEST_CASE("the level stepper, the mode toggle and the cut box run the window's c
   CHECK_FALSE(s.editor.view3d.has_window());
 }
 
-TEST_CASE("mask-layer mode shows the phase-2 notice and draws the layout mesh scaled by f",
+TEST_CASE("mask-layer mode builds the mask layers in mask units and draws them unscaled",
           "[cap:hefesto-3d-visualization][req:Magic 3D view parity]") {
-  ClientSession s;
-  open(s);
-  CHECK_FALSE(mask_mode_notice(s.window()).has_value());
-  CHECK(xy_factor(s.window()) == 1.0F);
-  CHECK(visibility_editable(s.window()));
-  tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
-  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
-  CHECK(mask_mode_notice(s.window()) == "Mask layers arrive in phase 2");
-  CHECK(xy_factor(s.window()) == s.window().applied_factor);
-  CHECK_FALSE(visibility_editable(s.window()));
-  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
-  for (const bool h : hidden_flags(stack, s.window())) CHECK_FALSE(h);  // the mask set applies to P2's layers
-  const View3dOptions options;
-  const hefesto::render::DrawParams params = draw_params(FrameInputs{&s.window(), &stack, nullptr, nullptr, &options});
-  CHECK(params.level == s.window().level);
-  CHECK(params.stack == &stack);
+  // Regression: the tab built the layout-layer stack in both modes and drew
+  // it with x and y scaled by f, under a "Mask layers arrive in phase 2"
+  // notice; the mask-layer source (MASKSRC) is now what the tab builds.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open(s);
+    CHECK(visibility_editable(s.window()));
+    CHECK(tab_inputs(s).stack->mode() == view3d::Mode::layout_layer);
+    tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    CHECK_FALSE(visibility_editable(s.window()));
+    const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+    REQUIRE(in.stack != nullptr);
+    CHECK(in.stack->mode() == view3d::Mode::mask_layer);
+    REQUIRE(in.mask.has_value());
+    CHECK(in.lock == &s.editor.database_lock);
+    view3d::MeshWorker worker;
+    worker.build(in);
+    REQUIRE(worker.wait_idle(10000));
+    REQUIRE(worker.current() != nullptr);
+    const view3d::MeshModel& mesh = *worker.current();
+    CHECK(mesh.mode == view3d::Mode::mask_layer);
+    CHECK(mesh.units_per_root == 10);  // gdsii's scalefactor: the mesh is in mask units
+    CHECK(mesh.region.x1 >= 1000);     // c3d's bbox (x1 = 100) in mask units
+    CHECK(rectangle_count(mesh) > 0);
+    // Drawn as built: no xy scale in either mode.
+    const View3dOptions options;
+    const std::vector<bool> hidden = view3d::hidden_layers(s.editor, *in.stack, s.window(), compat);
+    const hefesto::render::DrawParams params =
+        draw_params(FrameInputs{&s.window(), in.stack.get(), nullptr, nullptr, &options, std::nullopt, &hidden});
+    CHECK(params.level == s.window().level);
+    CHECK(params.stack == in.stack.get());
+    CHECK(params.xy_scale == 1.0F);
+    CHECK(params.hidden == hidden);
+    // An output-style change is a new mask source: a full build.
+    const BuildKey key = build_key(tab_inputs(s), false);
+    CHECK(key.mode == view3d::Mode::mask_layer);
+    CHECK(key.mask_style != nullptr);
+    tcl(s, "cif ostyle coarse");
+    CHECK_FALSE(build_key(tab_inputs(s), false) == key);
+  }
+}
+
+TEST_CASE("a cut line in root coordinates is scaled to the mask-layer mesh's units",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::Segment line{db::Point{0, 25}, db::Point{100, 25}};
+  CHECK(segment_in_mesh(line, 1).a == line.a);
+  CHECK(segment_in_mesh(line, 1).b == line.b);
+  const view3d::Segment scaled = segment_in_mesh(line, 10);
+  CHECK(scaled.a == db::Point{0, 250});
+  CHECK(scaled.b == db::Point{1000, 250});
+  // And back from a ground point in mesh units.
+  CHECK(ground_to_root(scaled.b, 10.0F) == line.b);
 }
 
 TEST_CASE("the header names the cell, mode, level and what opened the tab",
@@ -497,9 +542,10 @@ TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile t
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   ClientSession s;
   open(s);
-  const auto stack = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  const std::shared_ptr<const view3d::LayerStack> stack = in.stack;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), stack, false));
+  worker.build(in);
   REQUIRE(worker.wait_idle(10000));
   const view3d::MeshHandle mesh = worker.current();
   REQUIRE(mesh != nullptr);
@@ -536,8 +582,7 @@ TEST_CASE("the worker builds the window's mesh under the session's lock; the J1 
           "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
   ClientSession s;
   open(s);
-  const auto stack = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
-  const view3d::BuildInputs in = build_inputs(s.editor, s.window(), stack, false);
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
   CHECK(in.lock == &s.editor.database_lock);
   CHECK(in.cell == s.cell);
   CHECK(in.technology == s.editor.technology.get());
@@ -549,15 +594,17 @@ TEST_CASE("the worker builds the window's mesh under the session's lock; the J1 
   REQUIRE(worker.current() != nullptr);
   CHECK(rectangle_count(*worker.current()) > 0);
   // What decides a full build: the J1 option, the clip area, the stack.
-  const BuildKey base = build_key(s.editor, s.window(), *stack, false);
-  CHECK(build_key(s.editor, s.window(), *stack, false) == base);
-  CHECK_FALSE(build_key(s.editor, s.window(), *stack, true) == base);
+  const BuildKey base = build_key(tab_inputs(s), false);
+  CHECK(build_key(tab_inputs(s), false) == base);
+  CHECK_FALSE(build_key(tab_inputs(s), true) == base);
+  CHECK(base.mask_style == nullptr);
   tcl(s, ".magic3d cutbox 0 0 40 20");
-  const BuildKey clipped = build_key(s.editor, s.window(), *stack, false);
+  const BuildKey clipped = build_key(tab_inputs(s), false);
   CHECK_FALSE(clipped == base);
   CHECK(clipped.clipped);
-  CHECK(clip_area(*s.cell, s.window()).area == db::Rect{0, 0, 40, 20});
-  CHECK_FALSE(build_key(s.editor, s.window(), view3d::layout_stack(s.editor, false), false) == clipped);
+  CHECK(clipped.clip == db::Rect{0, 0, 40, 20});
+  s.project.compat.magic_compat = false;  // a stack of the other Q-MISC-72 setting
+  CHECK_FALSE(build_key(tab_inputs(s), false) == clipped);
 }
 
 TEST_CASE("a layout window's change areas for the rendered cell feed the worker",
@@ -678,30 +725,25 @@ TEST_CASE("User makes a ghosted layer opaque: the choice survives a rebuild of t
   CHECK(find_row(ghost_panel(s, options), "metal1")->alpha == 0.2F);
 }
 
-TEST_CASE("Wells ghosted in mask-layer mode too: the P1 tab draws the layout stack there",
+TEST_CASE("mask-layer mode draws the mask-layer stack, which ghosts nothing",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
-  // Regression: the docs said mask-layer mode ghosts nothing, but the P1 tab
-  // builds the layout-layer stack in both window modes (tab_stack), so the
-  // wells it draws are ghosted as in layout-layer mode.
+  // The P1 tab drew the layout-layer stack in both window modes, so its
+  // wells were ghosted in mask-layer mode too; the tab now builds the mask
+  // layers there (MASKSRC), and no layer of a mask-layer stack is ghosted.
   for (const bool compat : {true, false}) {
     INFO("magic-compat " << compat);
     ClientSession s{compat, ghost_tech()};
     paint_ghost(s);
     s.ok("specialopen wind3d c3d");
     REQUIRE(s.window().mode == view3d::Mode::mask_layer);  // an output style is current
-    const view3d::LayerStack stack = tab_stack(s.editor, compat);
-    CHECK(stack.mode() == view3d::Mode::layout_layer);
-    const std::vector<bool> ghosted = view3d::ghosted_by_default(stack, *s.editor.technology);
+    const std::shared_ptr<const view3d::LayerStack> stack = tab_inputs(s).stack;
+    REQUIRE(stack != nullptr);
+    CHECK(stack->mode() == view3d::Mode::mask_layer);
+    const std::vector<bool> ghosted = view3d::ghosted_by_default(*stack, *s.editor.technology);
     View3dOptions options;
-    apply_default_alpha(options, stack, ghosted);
-    const std::vector<View3dLayerRow> rows = layer_rows(stack, s.window(), options.alpha, {}, ghosted);
-    const View3dLayerRow* nwell = find_row(rows, "nwell");
-    REQUIRE(nwell != nullptr);
-    CHECK(nwell->ghosted);
-    CHECK(nwell->alpha == kGhostAlpha);
-    const View3dLayerRow* metal1 = find_row(rows, "metal1");
-    REQUIRE(metal1 != nullptr);
-    CHECK_FALSE(metal1->ghosted);
+    apply_default_alpha(options, *stack, ghosted);
+    for (const bool g : ghosted) CHECK_FALSE(g);
+    for (const float a : options.alpha) CHECK(a == 1.0F);
   }
 }
 
@@ -822,7 +864,7 @@ TEST_CASE("Board look with magic-compat ON: per-face board shading and the canva
   ClientSession s{true};
   open(s);
   tcl(s, preset_command(".magic3d", view3d::Preset::isometric));
-  const view3d::LayerStack stack = tab_stack(s.editor, true);
+  const view3d::LayerStack stack = *tab_inputs(s).stack;
   REQUIRE(stack.magic_compat());
   const View3dOptions options;
   check_board_look(board_frame(s, stack, options));
@@ -836,8 +878,8 @@ TEST_CASE("Board look with magic-compat OFF: the same frame as with it ON",
   open(off);
   tcl(on, preset_command(".magic3d", view3d::Preset::isometric));
   tcl(off, preset_command(".magic3d", view3d::Preset::isometric));
-  const view3d::LayerStack on_stack = tab_stack(on.editor, true);
-  const view3d::LayerStack off_stack = tab_stack(off.editor, false);
+  const view3d::LayerStack on_stack = *tab_inputs(on).stack;
+  const view3d::LayerStack off_stack = *tab_inputs(off).stack;
   REQUIRE_FALSE(off_stack.magic_compat());
   const View3dOptions options;
   const BoardFrame a = board_frame(on, on_stack, options);
@@ -858,9 +900,10 @@ struct DrawnMesh {
 };
 DrawnMesh build_mesh(ClientSession& s) {
   DrawnMesh d;
-  d.stack = std::make_shared<const view3d::LayerStack>(tab_stack(s.editor, s.project.compat.magic_compat));
+  view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  d.stack = in.stack;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), d.stack, false));
+  worker.build(std::move(in));
   REQUIRE(worker.wait_idle(10000));
   d.mesh = worker.current();
   REQUIRE(d.mesh != nullptr);
@@ -927,7 +970,7 @@ TEST_CASE("Isometric default in mask-layer mode keeps the heights in proportion:
   ClientSession s;
   open_from_desktop(s);
   REQUIRE(s.window().mode == view3d::Mode::mask_layer);
-  const float f = xy_factor(s.window());
+  const float f = s.window().applied_factor;
   REQUIRE(f > 1.0F);
   CHECK(board_scale_z(s.window()) == kBoardScaleZ * f);
   const DrawnMesh d = build_mesh(s);
@@ -960,10 +1003,11 @@ TEST_CASE("presets frame the drawn layers: view, scroll and zoom report frame_vi
           "[cap:view-3d][req:Viewing transform and shading]") {
   ClientSession s;
   open(s);
-  const auto shared = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  const std::shared_ptr<const view3d::LayerStack> shared = in.stack;
   const view3d::LayerStack& stack = *shared;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), shared, false));
+  worker.build(in);
   REQUIRE(worker.wait_idle(10000));
   REQUIRE(worker.current() != nullptr);
   const view3d::MeshModel& mesh = *worker.current();

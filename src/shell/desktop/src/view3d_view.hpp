@@ -32,6 +32,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <memory>
@@ -155,7 +156,9 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   void ensure_window_hook();
   void ensure_path_command();
   void sync();
-  void start_build(const BuildKey& key, const view3d::LayerStack& stack);
+  void start_build(const BuildKey& key, view3d::BuildInputs inputs);
+  /// Mesh units per root unit of the drawn model (MeshModel::units_per_root; 1 without one).
+  [[nodiscard]] std::int32_t mesh_units() const noexcept;
   void take_model(const view3d::MeshHandle& model);
   void refresh_rows();
   /// Rebuilds rows_ and row_colors_ from the drawn (or building) stack.

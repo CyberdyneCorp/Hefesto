@@ -22,7 +22,7 @@
 // - picking through a replaceable resolver (view3d/pick: INSPECT), the
 //   highlight set handed to the renderer and "Isolate selected net";
 // - the DrawParams of a frame, the MeshWorker inputs and when a full build
-//   is due, the mesh status, the mask-layer notice and the frame-time
+//   is due, the mesh status and the frame-time
 //   readout;
 // - the board look of the desktop tab in both magic-compat modes
 //   (Q-MISC-84, approved 2026-11-24): the theme's canvas token as the
@@ -128,8 +128,8 @@ struct View3dLayerRow {
 [[nodiscard]] std::string alpha_button_name(const View3dLayerRow& row);
 
 /// The hidden flags of `stack` for the renderer: the window's layout-layer
-/// set in layout-layer mode; none in mask-layer mode (P1 draws the layout
-/// mesh there and the mask set applies to the mask layers of P2).
+/// set in layout-layer mode; none in mask-layer mode (the view takes the
+/// mask set there from view3d::hidden_layers, FrameInputs::hidden).
 [[nodiscard]] std::vector<bool> hidden_flags(const view3d::LayerStack& stack, const view3d::WindowState& window);
 
 /// Whether the panel's visibility controls act: in layout-layer mode only
@@ -209,13 +209,6 @@ void set_row_alpha(View3dOptions& options, const View3dLayerRow& row, float alph
 /// (view3d::ghosted_by_default), else opaque.
 void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack, const std::vector<bool>& ghosted);
 
-/// The stack the tab builds and draws (P1): the layout-layer stack
-/// (view3d::layout_stack) in both window modes; in mask-layer mode the P1
-/// tab draws that layout mesh with x and y scaled by f (xy_factor), so its
-/// layers, and the ghosted defaults, are the layout layers'. A mask-layer
-/// stack arrives in phase 2.
-[[nodiscard]] view3d::LayerStack tab_stack(const editor::EditorState& editor, bool magic_compat);
-
 /// The ghosted flags and the per-entry alpha of the stack that is drawn
 /// (Q-MISC-85). The view builds a new stack's mesh while it still draws the
 /// previous one, whose layer ids differ (a magic-compat toggle, a styles or
@@ -289,7 +282,7 @@ struct CameraFrame {
 [[nodiscard]] bool frame_ready(const CameraFrame& frame) noexcept;
 
 /// The commands that apply the camera preset `which` framed to the layers
-/// the mesh draws (view3d::frame_view, x and y scaled by xy_factor in
+/// the mesh draws (view3d::frame_view, in the mesh's units: mask units in
 /// mask-layer mode), with `scale_z` when given, else the window's: `view`,
 /// `scroll` and `zoom` (camera_commands). A frame that is not ready gives
 /// the preset's plain `view` (preset_command); no window gives nothing.
@@ -303,9 +296,10 @@ struct CameraFrame {
 [[nodiscard]] bool desktop_opened(const view3d::WindowState& window) noexcept;
 
 /// The board z scale of `window`: kBoardScaleZ in layout-layer mode and
-/// kBoardScaleZ x f in mask-layer mode (f = xy_factor): Magic's rescale
-/// multiplies s_z by f there, and the P1 tab draws x and y scaled by f, so
-/// the heights keep their proportion to the widths in both modes.
+/// kBoardScaleZ x f in mask-layer mode (f = WindowState::applied_factor):
+/// Magic's rescale multiplies s_z by f there, and the mask-layer mesh is in
+/// mask units (x and y times f), so the heights keep their proportion to
+/// the widths in both modes.
 [[nodiscard]] float board_scale_z(const view3d::WindowState& window) noexcept;
 
 /// The desktop tab's opening camera (Q-MISC-84): the isometric preset
@@ -326,8 +320,8 @@ struct AxisArrow {
 [[nodiscard]] std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view);
 
 /// The frame's DrawParams: projection, level, stack, styles, hidden flags,
-/// alpha, highlight, the P1 mask-layer xy scale (Scene::xy_factor, as
-/// DrawParams::xy_scale), the background and the board lighting in both
+/// alpha, highlight (xy scale 1: the mesh is in its own units in both
+/// modes, view3d::Scene::xy_factor), the background and the board lighting in both
 /// magic-compat modes (Q-MISC-84: Magic's GL lighting is never used by the
 /// desktop tab).
 struct FrameInputs {
@@ -338,23 +332,25 @@ struct FrameInputs {
   const View3dOptions* options = nullptr;
   /// The background (view3d_background); nullopt leaves the renderer's.
   std::optional<std::array<float, 3>> background = std::nullopt;
+  /// Per stack layer hidden flags (view3d::hidden_layers, both modes);
+  /// null takes hidden_flags (the layout visibility set).
+  const std::vector<bool>* hidden = nullptr;
 };
 [[nodiscard]] render::DrawParams draw_params(const FrameInputs& in);
-
-/// The xy scale the P1 placeholder draws mask-layer mode with: the f applied
-/// on entering the mode, 1 in layout-layer mode (view3d::Scene::xy_factor).
-[[nodiscard]] float xy_factor(const view3d::WindowState& window) noexcept;
 
 // --- mesh builds -----------------------------------------------------------------
 
 /// What a full build reads; a change of any of these runs MeshWorker::build
-/// (the stack, the clip area, the rendered cell, the J1 option).
+/// (the stack and its mode, the clip area, the rendered cell, the output
+/// style of a mask-layer build, the J1 option).
 struct BuildKey {
   const db::CellDef* cell = nullptr;  // compared, never dereferenced
   db::Rect clip;
   bool clipped = false;
   bool span_connected_layers = false;
   const void* technology = nullptr;   // compared, never dereferenced
+  const void* mask_style = nullptr;   // MaskSource::style; compared, never dereferenced
+  view3d::Mode mode = view3d::Mode::layout_layer;
   std::vector<view3d::StackLayer> layers;
   bool magic_compat = true;
   double microns_per_unit = 0.0;
@@ -362,18 +358,15 @@ struct BuildKey {
   friend bool operator==(const BuildKey&, const BuildKey&) = default;
 };
 
-/// The rendered cell's clip area (Q-MISC-70): the cut box, or the cell's
-/// bounding box grown by 1.
-[[nodiscard]] view3d::ClipArea clip_area(const db::CellDef& cell, const view3d::WindowState& window);
+/// The key of the window's build inputs (view3d::window_build: the stack
+/// of its mode, the clip area of Q-MISC-70 or mask_clip, the mask source).
+[[nodiscard]] BuildKey build_key(const view3d::BuildInputs& window_inputs, bool span_connected_layers);
 
-[[nodiscard]] BuildKey build_key(const editor::EditorState& editor, const view3d::WindowState& window,
-                                 const view3d::LayerStack& stack, bool span_connected_layers);
-
-/// The MeshWorker inputs of `window` (null cell when it does not exist):
-/// the session's database lock, the technology's residues for the J1
-/// option, and the clip area's centre for the progressive order.
-[[nodiscard]] view3d::BuildInputs build_inputs(editor::EditorState& editor, const view3d::WindowState& window,
-                                               std::shared_ptr<const view3d::LayerStack> stack,
+/// The MeshWorker inputs: view3d::window_build's inputs of the window
+/// (null cell when it does not exist; the layout-layer or mask-layer
+/// source, the clip area and its centre) with the session's database lock
+/// and the J1 option.
+[[nodiscard]] view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInputs window_inputs,
                                                bool span_connected_layers);
 
 /// The change areas of a layout window for the 3D view (in root
@@ -406,8 +399,6 @@ struct View3dHeader {
   std::string subtitle;
 };
 [[nodiscard]] View3dHeader view3d_header(const view3d::WindowState& window);
-/// "Mask layers arrive in phase 2" in mask-layer mode (design D1), else nullopt.
-[[nodiscard]] std::optional<std::string> mask_mode_notice(const view3d::WindowState& window);
 
 // --- gestures (hefesto/view3d/camera/input.hpp) ----------------------------------
 
@@ -651,8 +642,13 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// so the cut faces the user.
 [[nodiscard]] render::SectionPlane section_clip_plane(const view3d::Segment& line) noexcept;
 /// A view3d::ground_point result back in root coordinates: it is in the
-/// renderer's coordinates, x and y times `xy_factor` (mask-layer mode, P1).
+/// mesh's units, x and y times `xy_factor` (MeshModel::units_per_root:
+/// the output style's scale factor in mask-layer mode).
 [[nodiscard]] db::Point ground_to_root(db::Point ground, float xy_factor) noexcept;
+/// A cut line in root coordinates in the mesh's units (times
+/// MeshModel::units_per_root), as view3d::section and the clipping plane
+/// take it.
+[[nodiscard]] view3d::Segment segment_in_mesh(const view3d::Segment& line, std::int32_t units_per_root) noexcept;
 /// The line's length in µm (internal units x µm per unit).
 [[nodiscard]] double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept;
 

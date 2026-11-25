@@ -227,10 +227,6 @@ void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack
   }
 }
 
-view3d::LayerStack tab_stack(const editor::EditorState& editor, bool magic_compat) {
-  return view3d::layout_stack(editor, magic_compat);
-}
-
 void GhostDefaults::building(const view3d::LayerStack& stack, std::vector<bool> ghosted, bool drawing,
                              View3dOptions& options) {
   pending_ = std::move(ghosted);
@@ -317,12 +313,8 @@ std::vector<std::string> preset_camera_commands(const CameraFrame& frame, view3d
   for (std::size_t i = 0; i < framed.size() && i < frame.drawable.size(); ++i) {
     framed[i] = framed[i] && frame.drawable[i];
   }
-  view3d::Extent3 box = stack_extent(frame.mesh->region, *frame.stack, framed);
-  const auto f = static_cast<double>(xy_factor(*frame.window));  // mask-layer mode draws x and y scaled by f
-  box.x0 *= f;
-  box.y0 *= f;
-  box.x1 *= f;
-  box.y1 *= f;
+  // The mesh's own units (mask units in mask-layer mode), as the renderer draws them.
+  const view3d::Extent3 box = stack_extent(frame.mesh->region, *frame.stack, framed);
   return camera_commands(path, view3d::frame_view(camera, box, frame.width_px, frame.height_px));
 }
 
@@ -331,7 +323,7 @@ bool desktop_opened(const view3d::WindowState& window) noexcept {
 }
 
 float board_scale_z(const view3d::WindowState& window) noexcept {
-  return kBoardScaleZ * xy_factor(window);
+  return window.mode == view3d::Mode::mask_layer ? kBoardScaleZ * window.applied_factor : kBoardScaleZ;
 }
 
 std::vector<std::string> default_camera_commands(const CameraFrame& frame) {
@@ -355,10 +347,6 @@ std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view) {
   return {arrow('x', 0, 1.0F), arrow('y', 1, 1.0F), arrow('z', 2, 1.0F)};
 }
 
-float xy_factor(const view3d::WindowState& window) noexcept {
-  return window.mode == view3d::Mode::mask_layer ? window.applied_factor : 1.0F;
-}
-
 render::DrawParams draw_params(const FrameInputs& in) {
   render::DrawParams params;
   if (in.options != nullptr) {
@@ -373,45 +361,41 @@ render::DrawParams draw_params(const FrameInputs& in) {
   params.lighting = render::Lighting::board;
   if (in.window != nullptr) {
     params.level = in.window->level;
-    params.xy_scale = xy_factor(*in.window);
-    if (in.stack != nullptr) params.hidden = hidden_flags(*in.stack, *in.window);
+    if (in.hidden != nullptr) {
+      params.hidden = *in.hidden;
+    } else if (in.stack != nullptr) {
+      params.hidden = hidden_flags(*in.stack, *in.window);
+    }
   }
   return params;
 }
 
 // --- mesh builds -----------------------------------------------------------------
 
-view3d::ClipArea clip_area(const db::CellDef& cell, const view3d::WindowState& window) {
-  if (window.cut_box) return view3d::ClipArea{*window.cut_box, true, 0};
-  const db::Rect& b = cell.bbox();
-  return view3d::ClipArea{db::Rect{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1}, false, 0};
-}
-
-BuildKey build_key(const editor::EditorState& editor, const view3d::WindowState& window,
-                   const view3d::LayerStack& stack, bool span_connected_layers) {
+BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
   BuildKey key;
-  key.cell = editor.cells.find(window.cell);
+  key.cell = in.cell;
   if (key.cell != nullptr) {
-    const view3d::ClipArea clip = clip_area(*key.cell, window);
-    key.clip = clip.area;
-    key.clipped = clip.cut_box;
+    key.clip = in.clip.area;
+    key.clipped = in.clip.cut_box;
   }
   key.span_connected_layers = span_connected_layers;
-  key.technology = editor.technology.get();
-  key.layers.assign(stack.layers().begin(), stack.layers().end());
-  key.magic_compat = stack.magic_compat();
-  key.microns_per_unit = stack.microns_per_unit();
+  key.technology = in.technology;
+  // A new output style (even with the same layers) is a new mask source: a full build.
+  key.mask_style = in.mask ? in.mask->style.get() : nullptr;
+  if (in.stack != nullptr) {
+    key.mode = in.stack->mode();
+    key.layers.assign(in.stack->layers().begin(), in.stack->layers().end());
+    key.magic_compat = in.stack->magic_compat();
+    key.microns_per_unit = in.stack->microns_per_unit();
+  }
   return key;
 }
 
-view3d::BuildInputs build_inputs(editor::EditorState& editor, const view3d::WindowState& window,
-                                 std::shared_ptr<const view3d::LayerStack> stack, bool span_connected_layers) {
-  view3d::BuildInputs in;
-  in.stack = std::move(stack);
-  in.cell = editor.cells.find(window.cell);
-  if (in.cell != nullptr) in.clip = clip_area(*in.cell, window);
+view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInputs window_inputs,
+                                 bool span_connected_layers) {
+  view3d::BuildInputs in = std::move(window_inputs);
   in.span_connected_layers = span_connected_layers;
-  in.technology = editor.technology.get();
   in.lock = &editor.database_lock;
   return in;
 }
@@ -456,11 +440,6 @@ View3dHeader view3d_header(const view3d::WindowState& window) {
     h.subtitle += " · " + window.toolkit_path;
   }
   return h;
-}
-
-std::optional<std::string> mask_mode_notice(const view3d::WindowState& window) {
-  if (window.mode != view3d::Mode::mask_layer) return std::nullopt;
-  return std::string{"Mask layers arrive in phase 2"};
 }
 
 // --- gestures --------------------------------------------------------------------
@@ -695,7 +674,7 @@ std::optional<View3dControlView> panel_control(View3dControl control, const View
 View3dControlView toolbar_control(View3dControl control, const View3dControlState& s) {
   switch (control) {
     case View3dControl::mask_layers:
-      return toggle("Mask layers", s.mask_mode, s.window_open, "Mask-layer mode (cif); mask layers arrive in phase 2");
+      return toggle("Mask layers", s.mask_mode, s.window_open, "Mask-layer mode (cif): the mask layers of the current output style");
     case View3dControl::layout_layers:
       return toggle("Layout layers", !s.mask_mode, s.window_open, "Layout-layer mode (cif)");
     case View3dControl::level_down: {
@@ -826,6 +805,17 @@ db::Point ground_to_root(db::Point ground, float xy_factor) noexcept {
   const double f = static_cast<double>(xy_factor);
   return db::Point{static_cast<db::Coord>(std::lround(static_cast<double>(ground.x) / f)),
                    static_cast<db::Coord>(std::lround(static_cast<double>(ground.y) / f))};
+}
+
+view3d::Segment segment_in_mesh(const view3d::Segment& line, std::int32_t units_per_root) noexcept {
+  if (units_per_root <= 1) return line;
+  const auto scale = [units_per_root](db::Point p) {
+    const auto clamp = [](std::int64_t v) {
+      return static_cast<db::Coord>(std::clamp<std::int64_t>(v, db::kPlaneMin, db::kPlaneMax));
+    };
+    return db::Point{clamp(std::int64_t{p.x} * units_per_root), clamp(std::int64_t{p.y} * units_per_root)};
+  };
+  return view3d::Segment{scale(line.a), scale(line.b)};
 }
 
 double segment_length_um(const view3d::Segment& line, double microns_per_unit) noexcept {
