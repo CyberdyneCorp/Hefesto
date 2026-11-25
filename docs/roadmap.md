@@ -301,6 +301,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **LVS:** built-in LVS compatible with netgen, implemented clean-room from the specs. Reports in `comp.out` and JSON formats, and cross-probing between the report and the layout.
 - **Simulation:** embedded ngspice in a worker process, a waveform viewer, and probing from the layout.
 - **Schematic simulation results (from M8):** the golden cases SCHEM-SIM-01 (IHP `dc_lv_nmos.sch` simulation results) and SCHEM-SIM-02 (sky130 `test_inv.sch` operating-point annotation), deferred from M8 on 2026-11-18, pass.
+- **Schematic simulation integration (from M8, `m8-schematic` design D13):** running the schematic deck (`schem::build_deck`, its validation hand-off and capture points), operating-point annotation, embedded graphs, waveform and schematic-to-layout cross-probing, the schematic-driven LVS command and results interchange with xschem (`schematic-simulation-integration`).
 - **Advanced analog simulation:** sweeps, corner matrix, Monte Carlo and mismatch with reproducible seeds, measurements, specs and yield statistics.
 
 **Desktop Beta:** the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS.

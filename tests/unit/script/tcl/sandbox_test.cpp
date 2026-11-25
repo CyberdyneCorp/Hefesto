@@ -8,6 +8,9 @@
 // `cd` within the granted roots (D-33) and the synthesized `env` (D-31).
 
 #include <catch2/catch_test_macros.hpp>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -106,6 +109,46 @@ TEST_CASE("exit is not available (quit is the engine's exit path)", SANDBOXED) {
   SandboxedProject p;
   require_denied(p, "exit 1", "exit", "SCRIPT-SANDBOX-007");
   CHECK(error_text(p.run("exit")) == "exit: not available in the script sandbox (use quit)");
+}
+
+// Regression (m8-schematic review 12.1, S8-04): the standard channels are
+// the host process's, shared by every interpreter of the thread; `close
+// stdout` closed file descriptor 1. Refused in both compat modes (the
+// sandbox does not read the mode).
+TEST_CASE("the standard channels cannot be closed, popped, pushed onto or moved", ENFORCED "[regression]") {
+  SandboxedProject p;
+  const int saved = ::dup(1);
+  for (const char* channel : {"stdin", "stdout", "stderr"}) {
+    INFO(channel);
+    const std::string name{channel};
+    require_denied(p, "close " + name, "close", "SCRIPT-SANDBOX-007");
+    require_denied(p, "chan close " + name, "chan close", "SCRIPT-SANDBOX-007");
+    require_denied(p, "chan pop " + name, "chan pop", "SCRIPT-SANDBOX-007");
+    require_denied(p, "chan push " + name + " ::t", "chan push", "SCRIPT-SANDBOX-007");
+    require_denied(p, "interp create -safe s; interp transfer {} " + name + " s", "interp transfer",
+                   "SCRIPT-SANDBOX-007");
+    require_denied(p, "interp share {} " + name + " s", "interp share", "SCRIPT-SANDBOX-007");
+    REQUIRE(p.run("interp delete s").ok());
+  }
+  CHECK(::fcntl(1, F_GETFD) != -1);
+  if (::fcntl(1, F_GETFD) == -1) ::dup2(saved, 1);
+  ::close(saved);
+  CHECK(error_text(p.run("close stdout")) ==
+        "close: the standard channel \"stdout\" belongs to the host process; not permitted in the script sandbox");
+  // Other channels close as before.
+  const auto file = p.project.write("f.txt", "x");
+  CHECK(p.run("close [open " + file.string() + "]").ok());
+}
+
+TEST_CASE("chan puts is puts", ENFORCED "[regression]") {
+  SandboxedProject p;
+  REQUIRE(p.run("rename ::puts ::hefesto_tcl_puts; proc ::puts args { lappend ::seen $args }").ok());
+  REQUIRE(p.run("chan puts stdout hello; chan puts -nonewline stderr x").ok());
+  CHECK(p.value("set ::seen") == "{stdout hello} {-nonewline stderr x}");
+  REQUIRE(p.run("rename ::puts {}; rename ::hefesto_tcl_puts ::puts").ok());
+  const auto file = p.project.write("out.txt", "");
+  CHECK(p.run("set f [open " + file.string() + " w]; chan puts $f written; close $f").ok());
+  CHECK(p.value("set f [open " + file.string() + "]; set t [read $f]; close $f; set t") == "written\n");
 }
 
 TEST_CASE("only safe interpreters can be created, and their hidden commands stay hidden", SANDBOXED) {

@@ -312,7 +312,25 @@ Codes of the schematic circuit source and deck building, M8 part
 (`src/core/src/schem/sim/`; capability schematic-simulation-integration;
 design D13). Owner: SIMINT.
 
-No codes yet.
+- `SCHEM-SIM-001` (error): `Control command '<cmd>' is not allowed in
+  simulation decks` ("Control block translation"): a `.control` command of a
+  schematic-source deck is `shell`, `cd`, `load`, `source`, `codemodel`,
+  `osdi` or `pre_osdi`, or reaches one at run time (a `$variable` or
+  `!history` command word, an `alias` or backquoted command naming a refused
+  one; `<cmd>` is that word). No deck is built.
+- `SCHEM-SIM-002` (warning): ``Simulation deck: cannot find "<path>" of
+  `<line>`; kept as written`` ("Testbench code blocks"): a `.include` or
+  `.lib <file> <section>` path resolves to no file in the netlist folder, the
+  schematic's folder or the PDK store. ngspice may still find it at run time
+  (its `sourcepath`).
+- `SCHEM-SIM-003` (warning): `Launcher command skipped: <message>; the
+  launcher went on` ("Simulation launchers"): a confirmed launcher's `xschem`
+  command is not supported (`xschem command '<cmd>' is not supported`), or
+  `simulate`, `xschem raw_read` or `xschem annotate_op` needs simulation
+  results (`not implemented yet: ...`, until M9).
+- `SCHEM-SIM-004` (error): `Simulation deck not built: <first netlist
+  error>` ("Schematic circuit source"): the testbench failed to netlist
+  (for example a short, SCHEM-NET-001).
 
 ## Table
 
@@ -384,6 +402,10 @@ fails when the two disagree.
 | `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
+| `SCHEM-SIM-001` | error | A `.control` line of a schematic-source deck names a command that is not allowed in simulation decks (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, or one named only at run time). |
+| `SCHEM-SIM-002` | warning | A `.include` or `.lib` path of a schematic-source deck names no file in the netlist folder, the schematic's folder or the PDK store; it is kept as written. |
+| `SCHEM-SIM-003` | warning | A launcher's `xschem` command (or `simulate`) is not supported or not available until M9; it was skipped and the rest of the launcher ran. |
+| `SCHEM-SIM-004` | error | The testbench of a schematic circuit source could not be netlisted, so no simulation deck was built. |
 | `SCHEM-SYM-001` | warning | Pins of a symbol share a `sim_pinnumber`; they keep their file order (Q-SCHEM-5). |
 | `SCHEM-SYM-002` | warning | A displayed-text token is undefined while an identifier prefix of it is defined: a token ends only before a blank, `@` or `%` (Q-SCHEM-26). |
 | `SCHEM-TCL-001` | error | A procedure provided to `tcleval` values (`abs_sym_path`, `write_data`, ...) was called with the wrong arguments or refused. |

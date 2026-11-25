@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3574 scenarios, 1006 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3578 scenarios, 1006 open questions.
 
 ## Hefesto product (native)
 
@@ -215,7 +215,7 @@ Open questions: [45](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.
 | [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 30 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
 | [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 50 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
 | [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 68 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
-| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 15 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
+| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 19 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
 | [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 56 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
 
 ## Tapeout readiness (TAPEOUT)

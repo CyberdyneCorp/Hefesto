@@ -68,6 +68,17 @@ DEFERRED = {
     # yanks and pass 1 (tasks 8.1-8.3).
     ("extract-devices", "Subcell device priority"): "M7 R3b (task 7.7)",
     ("extract-substrate", "Subcell substrate connections"): "M7 R3b (task 7.7)",
+    # m8-schematic design D13 (task 11.2): these parts of
+    # schematic-simulation-integration need the embedded simulator, its
+    # results or the lvs-* capabilities, so their tests move to M9's plan.
+    # M8 keeps only their data model and drawing hooks (`spice_get_*` tokens
+    # show nothing, graph boxes are kept byte for byte, vector_name()).
+    ("schematic-simulation-integration", "Operating-point annotation"): "M9",
+    ("schematic-simulation-integration", "Embedded graphs"): "M9",
+    ("schematic-simulation-integration", "Waveform cross-probing"): "M9",
+    ("schematic-simulation-integration", "Schematic to layout cross-probing"): "M9",
+    ("schematic-simulation-integration", "Schematic-driven LVS command"): "M9",
+    ("schematic-simulation-integration", "Results interchange with xschem"): "M9",
 }
 
 REQUIREMENT_HEADING = re.compile(r"^### Requirement:\s*(.+?)\s*$")
