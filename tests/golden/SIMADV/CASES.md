@@ -1,7 +1,7 @@
 # Golden cases — SIMADV area
 
 The SIMADV capabilities are `native`: they have no Magic counterpart. References come from:
-- **Reference ngspice.** A stock ngspice executable built from the same pinned source as Hefesto's engine (`7aa47164`), with the same portable-seed patch (capability `simulation-monte-carlo`, Requirement "Portable random numbers"; Q-SIMADV-6), run in batch mode. Seeds are set with `setseed <n>` in a `.control` block before the deck is sourced.
+- **Reference ngspice.** An ngspice executable built from the same pinned source and patch series as Hefesto's engine (ngspice-47 `a80f6e3e`, `47-hefesto1`, Q-SIM-7, Q-SIM-23), so with the same portable-seed patch (capability `simulation-monte-carlo`, Requirement "Portable random numbers"; Q-SIMADV-6), run in batch mode. Seeds are set with `setseed <n>` in a `.control` block before the deck is sourced.
 - **Computed values.** Seeds, DOE rows, statistics and costs are computed by an independent script (Python, binary64) from the formulas in the specs.
 - **Hefesto on several platforms.** Linux x86_64 is the reference platform. Results from other platforms are compared with the tolerances of capability `simulation-engine-embedding`, Requirement "Cross-platform result consistency".
 

@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Tests of scripts/check_cleanroom.py (openspec/changes/m8-schematic task 1.3): one fixture tree per
-failure, a clean fixture tree, and a clean run on this repository."""
+"""Tests of scripts/check_cleanroom.py (openspec/changes/m8-schematic task 1.3, openspec/changes/
+m9-lvs-simulation task 2.3): one fixture tree per failure, a clean fixture tree, and a clean run on this
+repository."""
 from __future__ import annotations
 
 import io
@@ -18,6 +19,10 @@ import check_cleanroom as cc  # noqa: E402
 PART_OF = "* This file is part of " + "XSCHEM,\n"
 COPYRIGHT = "* Copyright (C) 1998-2024 Stefan Frederik " + "Schippers\n"
 TRACE = "// (xschem" + " ref: netlist.c:1)\n"
+# netgen's header lines (netgen 1.5.327), assembled the same way.
+NETGEN_TOOL = "/* \"NET" + "GEN\", a netlist-specification tool for VLSI\n"
+NETGEN_COPYRIGHT = "   Copyright (C) 1989, 1990   Massimo A. " + "Sivilotti\n"
+NETGEN_TRACE = "// (netgen" + " ref: base/netcmp.c:1)\n"
 
 
 def write(root: Path, rel: str, text: str) -> None:
@@ -107,6 +112,96 @@ class Fixtures(unittest.TestCase):
         write(self.root, "tests/data/big.bin", "x")
         (self.root / "tests/data/big.bin").write_bytes(b"\0" + PART_OF.encode())
         self.assertEqual(cc.check(self.root), [])
+
+
+class NetgenFixtures(unittest.TestCase):
+    """The netgen rules of m9-lvs-simulation design D2: header, `netgen ref:` traces, LVS provenance."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        clean_tree(self.root)
+        write(self.root, "src/core/src/lvs/cmp/partition.cpp", "// SPDX-License-Identifier: Apache-2.0\nint p();\n")
+        write(self.root, "tests/golden/LVS/cases/NG-ALG-01/case.toml", 'id = "NG-ALG-01"\nprovenance = "hefesto"\n')
+        write(self.root, "tests/golden/LVS/cases/NG-PDK-03/case.toml",
+              'provenance = ["pdk:ihp-netgen:ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl", "hefesto"]\n')
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_clean_tree_with_lvs_cases_passes(self):
+        self.assertEqual(cc.check(self.root), [])
+
+    def test_tree_without_lvs_directory_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            clean_tree(Path(tmp))
+            self.assertFalse((Path(tmp) / "tests/golden/LVS").exists())
+            self.assertEqual(cc.check(Path(tmp)), [])
+
+    def test_netgen_header_first_line_fails(self):
+        write(self.root, "third_party/lvs/netcmp.c", NETGEN_TOOL + "*/\nint x;\n")
+        self.assertEqual(cc.check(self.root),
+                         ["third_party/lvs/netcmp.c: carries netgen's GPL header; netgen files are never committed"])
+
+    def test_netgen_copyright_line_alone_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-ALG-01/input/a.spice", "* x\n" + NETGEN_COPYRIGHT)
+        findings = cc.check(self.root)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("carries netgen's GPL header", findings[0])
+
+    def test_netgen_trace_under_src_fails(self):
+        write(self.root, "src/core/src/lvs/cmp/refine.cpp", "int r();\n" + NETGEN_TRACE)
+        self.assertEqual(cc.check(self.root),
+                         ["src/core/src/lvs/cmp/refine.cpp:2: source trace in implementation code; "
+                          "work from the spec text only"])
+
+    def test_netgen_trace_under_tests_fails(self):
+        write(self.root, "tests/core/lvs/test_refine.cpp", NETGEN_TRACE)
+        self.assertEqual(len(cc.check(self.root)), 1)
+
+    def test_netgen_trace_in_lvs_capture_or_doc_is_allowed(self):
+        write(self.root, "tests/golden/LVS/cases/NG-ALG-01/expected/comp.out", NETGEN_TRACE)
+        write(self.root, "tests/golden/LVS/CASES.md", NETGEN_TRACE)
+        self.assertEqual(cc.check(self.root), [])
+
+    def test_lvs_case_without_provenance_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-RED-01/case.toml", 'id = "NG-RED-01"\n')
+        self.assertEqual(cc.check(self.root),
+                         ['tests/golden/LVS/cases/NG-RED-01/case.toml: '
+                          'no provenance ("hefesto" or "pdk:<set>:<path>")'])
+
+    def test_lvs_case_from_netgen_distribution_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-RED-02/case.toml", 'provenance = "netgen:tests/inv.spice"\n')
+        findings = cc.check(self.root)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("names netgen's distribution", findings[0])
+
+    def test_lvs_case_from_capture_image_source_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-RED-03/case.toml",
+              'provenance = "pdk:sky130-xschem:/opt/src/netgen/tech/x.tcl"\n')
+        self.assertIn("names netgen's distribution", cc.check(self.root)[0])
+
+    def test_lvs_case_with_an_xschem_only_set_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-PDK-04/case.toml",
+              'provenance = "pdk:ihp-xschem:ihp-sg13g2/libs.tech/xschem/x.sch"\n')
+        self.assertIn("is not \"hefesto\"", cc.check(self.root)[0])
+
+    def test_schematic_case_may_not_use_a_netgen_set(self):
+        write(self.root, "tests/golden/SCHEM/cases/SCHEM-LVS-02/case.toml",
+              'provenance = "pdk:ihp-netgen:ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl"\n')
+        self.assertEqual(len(cc.check(self.root)), 1)
+
+    def test_lvs_case_with_unreadable_manifest_fails(self):
+        write(self.root, "tests/golden/LVS/cases/NG-RED-04/case.toml", "provenance = \n")
+        self.assertIn("unreadable manifest", cc.check(self.root)[0])
+
+    def test_main_reports_a_netgen_finding(self):
+        write(self.root, "src/core/src/lvs/net/db.cpp", NETGEN_TRACE)
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cc.main(["--root", str(self.root)])
+        self.assertEqual(code, 1)
+        self.assertIn("src/core/src/lvs/net/db.cpp:1: source trace", err.getvalue())
 
 
 class Repository(unittest.TestCase):

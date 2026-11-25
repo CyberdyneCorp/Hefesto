@@ -257,6 +257,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** confirm with a reference run (X-6) | redesign the overrides so that they do not depend on order.
 - **Recommendation:** run the reference deck before M9 starts. This is a verification decision, not a product decision.
 - **Priority:** blocks M9.
+- **Status:** approved as a verification rule (2026-11-22, `docs/decisions/m9-decision-table.md`): Q-SIMADV-3, -4 and -9 carry conditional `Resolution:` lines that name the option for each outcome; one reference deck per PDK runs on the patched capture image before gate G2-SIM (task 3.3 of `openspec/changes/m9-lvs-simulation`), which adds a `Verified` line under each entry. A result that no branch covers goes back to the user.
 
 ### D-23: sg13g2 `mm_ok=1` for extracted devices (rest of Q-SIMADV-5)
 
@@ -265,6 +266,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) simulation preparation adds it for sg13g2 extracted DUTs (no change to Magic-compatible SPICE output); (b) the netlister writes it (diverges from Magic); (c) keep the warning.
 - **Recommendation:** (a).
 - **Priority:** blocks M9.
+- **Status:** resolved (2026-11-22, `docs/decisions/m9-decision-table.md`): option (a). Simulation preparation adds `mm_ok=1` to extracted sg13g2 device instances when the Monte Carlo mode includes mismatch, inside the deck only; `ext2spice` output does not change (`simulation-netlist-preparation` "sg13g2 mismatch flag on extracted devices"; Q-SIMADV-5).
 
 ### D-24: A `measured` waveform-retention mode (Q-SIMADV-11)
 
@@ -273,6 +275,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** keep the current defaults | add `measured` as an option | make it the default above 100 points.
 - **Recommendation:** add it, and make it the default once its storage cost has been measured.
 - **Priority:** blocks M9.
+- **Status:** resolved (2026-11-22, `docs/decisions/m9-decision-table.md`): the `measured` mode is added (`simulation-sweeps` "Measured waveform retention"); it becomes the default above 100 points only after `sim-bench` has measured its storage cost and the user approves (Q-SIMADV-11).
 
 ### D-25: Engine recovery after an ngspice fault (Q-SIM-11)
 
@@ -281,6 +284,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** reset everywhere | replace the worker on desktop, reset on iPad.
 - **Recommendation:** replace the worker on desktop, and reset on iPad with fuzz tests.
 - **Priority:** blocks M9.
+- **Status:** resolved (2026-11-22, `docs/decisions/m9-decision-table.md`): on desktop the worker is replaced after any fault and `ngSpice_Reset` is never used; on iPadOS the engine is reset, with fuzz tests (`simulation-engine-embedding` "Crash containment on desktop", "Cancellation and fault states"; Q-SIM-11).
 
 ### D-26: sky130 descriptor details (Q-SIM-8, Q-SIMADV-2)
 
@@ -289,6 +293,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** keep both as specified | drop `ng_nomodcheck` and scan `combined`.
 - **Recommendation:** scan `combined` (the bundled descriptor already uses it), and decide `ng_nomodcheck` with a reference run.
 - **Priority:** blocks M9.
+- **Status:** approved as a verification rule (2026-11-22, `docs/decisions/m9-decision-table.md`): the descriptor generator scans `libs.tech/combined`; `ng_nomodcheck` is set only if the reference run without it fails on `combined` (Q-SIM-8's conditional `Resolution:`); task 3.3 adds the `Verified` line.
 
 ### D-27: gf180 compatibility mode `hs` or `hsa` (Q-SIMADV-4)
 
@@ -297,6 +302,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** follow the PDK (`hs`) | keep `hsa`.
 - **Recommendation:** follow the PDK, unless a reference run shows a difference that `hsa` fixes.
 - **Priority:** blocks M9.
+- **Status:** approved as a verification rule (2026-11-22, `docs/decisions/m9-decision-table.md`): follow the PDK (`hs`) unless the reference run of task 3.3 shows a difference that `hsa` fixes, then `hsa` (Q-SIMADV-4's conditional `Resolution:`).
 
 ### D-28: Linking ngspice's LGPL and MPL parts (Q-SIM-1)
 
@@ -305,6 +311,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) static linking, with object files and relink instructions on request; (b) an embedded, signed dynamic framework; (c) build without KLU and ask upstream to relicense numparam; (d) legal review first.
 - **Recommendation:** (d), then (b) if legal review agrees, otherwise (a). Exclude the GPL `table` code models in all cases.
 - **Priority:** blocks M9 (must be settled before M14).
+- **Status:** resolved for desktop, iPadOS part kept before M14 (2026-11-22, `docs/decisions/m9-decision-table.md`; Q-SIM-20, Q-SIM-26). Desktop: a shared `libngspice-hefesto` behind the `hefesto-ngspice-adapter` plugin, loaded only by the sandboxed worker `hefesto-simd` in release builds and replaceable by the user; this desktop linking question was decided in M9 round R0 and goes through this decision's legal review before the Desktop Beta. iPadOS: the choice between an embedded signed framework and static linking with a relink offer is made after the same legal review, before M14, as before. The GPL `table` code models are excluded in every case.
 
 ### D-29: Native and Tcl PCells, byte-identical `.mag` and the timestamp line
 

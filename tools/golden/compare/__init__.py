@@ -229,3 +229,42 @@ def compare_collected(entries, name: str, expected: bytes, actual: bytes) -> str
         return "no [[collect]] pattern matches it"
     result = compare_bytes(expected, actual, entry.comparator, entry.masks)
     return "" if result.equal else result.detail
+
+
+# The M9 comparators (m9-lvs-simulation design D19, task 3.4); their rules are in each module's docstring:
+# ``lvs-canonical`` (comp.out and comp.json, lvs_canonical.py), ``raw-tolerance`` (ngspice raw files within the
+# cross-platform tolerances, pairwise, raw_tolerance.py) and ``meas-table[:<col>=<rel>/<abs>,...]``
+# (measurement and statistics tables with per-column tolerances, pairwise, meas_table.py).
+from . import lvs_canonical, meas_table, raw_tolerance  # noqa: E402
+
+
+class _Pairwise(dict):
+    """The pairwise table; a name with an argument (``meas-table:tpd=1e-3/0``) resolves through its module."""
+
+    PARAMETRIZED: dict[str, Callable[[str], Callable[[bytes, bytes], str | None] | None]] = {
+        meas_table.NAME: meas_table.pairwise,
+    }
+
+    def _resolve(self, name: object) -> Callable[[bytes, bytes], str | None] | None:
+        if not isinstance(name, str) or ":" not in name:
+            return None
+        factory = self.PARAMETRIZED.get(name.split(":", 1)[0])
+        return factory(name) if factory is not None else None
+
+    def __contains__(self, name: object) -> bool:
+        return super().__contains__(name) or self._resolve(name) is not None
+
+    def __missing__(self, name: str) -> Callable[[bytes, bytes], str | None]:
+        compare = self._resolve(name)
+        if compare is None:
+            raise KeyError(name)
+        return compare
+
+
+COMPARATORS[lvs_canonical.NAME] = lvs_canonical.canonicalize
+COMPARATORS[raw_tolerance.NAME] = raw_tolerance.canonicalize
+COMPARATORS[meas_table.NAME] = meas_table.canonicalize
+_Comparators.PARAMETRIZED[meas_table.NAME] = meas_table.parametrized
+PAIRWISE = _Pairwise(PAIRWISE)
+PAIRWISE[raw_tolerance.NAME] = raw_tolerance.compare
+PAIRWISE[meas_table.NAME] = meas_table.pairwise(meas_table.NAME)

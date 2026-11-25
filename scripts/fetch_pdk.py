@@ -57,6 +57,16 @@ xschem data sets (openspec/changes/m8-schematic design D17), same pins, under th
 ``ihp-xschem``       ihp-sg13g2/libs.tech/xschem and ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem
                      441 MB downloaded (common 434 MB, sg13g2_stdcell 6.4 MB), 3.2 MB kept, 362 files
 
+netgen and ngspice data sets (openspec/changes/m9-lvs-simulation design D19, task 3.1), same pins, under
+their own PDK roots ``<root>/netgen/`` and ``<root>/ngspice/``:
+
+``gf180mcu-netgen``   gf180mcuD/libs.tech/netgen (170 MB downloaded, 2 files kept)
+``ihp-netgen``        ihp-sg13g2/libs.tech/netgen (ihp-sg13g2_setup.tcl; 435 MB downloaded, 1 file kept)
+``sky130-ngspice``    sky130A/libs.tech/combined, sky130A/libs.tech/ngspice and the
+                      sky130A/libs.ref/sky130_fd_pr/spice files they include (20 MB downloaded, 55 MB kept)
+``gf180mcu-ngspice``  gf180mcuD/libs.tech/ngspice (170 MB downloaded, 1.6 MB kept)
+``ihp-ngspice``       ihp-sg13g2/libs.tech/ngspice and ihp-sg13g2/libs.tech/verilog-a (435 MB downloaded, 1.2 MB kept)
+
 After an install the set's tree digest (SHA-256 over the sorted
 "path NUL sha256 LF" records of every file in its subset, paths relative to the
 version directory) must equal the set's pinned digest.
@@ -74,7 +84,8 @@ Usage:
     scripts/fetch_pdk.py --print-digest [SET]   digest of an installed set (default sky130)
     scripts/fetch_pdk.py --cache-info           GitHub Actions outputs: <set>_key, <set>_path
                                                 ("-" in a set name becomes "_": sky130_gds_key)
-Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS, LEF and xschem sets only when named. ``pdk`` is an
+Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS, LEF, xschem, netgen and ngspice sets only when
+named. ``pdk`` is an
 alias of ``sky130``.
 hefesto-cli comes from --cli, $HEFESTO_CLI, or build/macos-debug/src/cli/hefesto-cli.
 The PDK steps need network access (GITHUB_TOKEN, when set, raises the GitHub
@@ -239,6 +250,38 @@ DATA_SETS.update({
     "ihp-xschem": xschem_set("ihp-xschem", DATA_SETS["ihp"], "sg13g2_stdcell",
                              ("ihp-sg13g2/libs.tech/xschem", "ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem"),
                              "a38b0850a131fbe4f169b7332541da0012281765419523d7fad255af6a36498b"),
+})
+
+
+def tool_set(name: str, tech: DataSet, library: str, subset: tuple[str, ...], digest: str, pdk_dir: str) -> DataSet:
+    """A tool data set of openspec/changes/m9-lvs-simulation design D19 (task 3.1): ``libs.tech`` trees of the
+    same ciel release as ``tech``, under their own PDK root ``<root>/<pdk_dir>`` (``netgen`` or ``ngspice``).
+    The trees come from the release's common archive; ``library`` is the one `-lib` that `pdk install` needs
+    (the smallest archive of the variant)."""
+    return DataSet(name, tech.family, tech.variant, tech.version, (library,), subset, digest, pdk_dir)
+
+
+# The netgen setup files and the ngspice model trees of the M5 releases (m9-lvs-simulation design D19,
+# task 3.1). sky130's netgen setup file is already in sky130-xschem (the third setup file of Q-LVS-31).
+# sky130-ngspice holds the continuous models (libs.tech/combined, Q-SIMADV-2) beside libs.tech/ngspice, and
+# libs.ref/sky130_fd_pr/spice, which both trees `.include` (1154 includes; without it no sky130 corner loads).
+# ihp-ngspice holds libs.tech/verilog-a, the Verilog-A sources the capture image compiles to OSDI (Q-SIM-23).
+DATA_SETS.update({
+    "gf180mcu-netgen": tool_set("gf180mcu-netgen", DATA_SETS["gf180mcu"], "gf180mcu_fd_pr",
+                                ("gf180mcuD/libs.tech/netgen",),
+                                "91b3dffaffe8abcb23b3343fe6089e28e33e5a2416787525e642662d9e26d005", "netgen"),
+    "ihp-netgen": tool_set("ihp-netgen", DATA_SETS["ihp"], "sg13g2_pr", ("ihp-sg13g2/libs.tech/netgen",),
+                           "7f6cf90b9540018dbde5931a4b922caed6e76e21246b29df31051fd2ce72b080", "netgen"),
+    "sky130-ngspice": tool_set("sky130-ngspice", DATA_SETS["sky130"], "sky130_fd_pr",
+                               ("sky130A/libs.tech/combined", "sky130A/libs.tech/ngspice",
+                                "sky130A/libs.ref/sky130_fd_pr/spice"),
+                               "a4e109d0323a049a4f86662a49f9a8b57896c416dfcfd90fb5eb14810a4bb93e", "ngspice"),
+    "gf180mcu-ngspice": tool_set("gf180mcu-ngspice", DATA_SETS["gf180mcu"], "gf180mcu_fd_pr",
+                                 ("gf180mcuD/libs.tech/ngspice",),
+                                 "31ead4717ee917971f1fc5a74381e5b1adcfc664c005d4b69e03268ec84e3783", "ngspice"),
+    "ihp-ngspice": tool_set("ihp-ngspice", DATA_SETS["ihp"], "sg13g2_pr",
+                            ("ihp-sg13g2/libs.tech/ngspice", "ihp-sg13g2/libs.tech/verilog-a"),
+                            "89ad3139194e79c84db1b02bdc5b11ac4920551e8330396b5b5cd678c73dfa0d", "ngspice"),
 })
 ALIASES = {"pdk": "sky130"}
 

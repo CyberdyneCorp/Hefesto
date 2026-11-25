@@ -29,6 +29,33 @@ release notices.
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.
 
+## Unreleased (M9: LVS and simulation, in progress)
+
+### Added
+
+- **M9 decisions (G0).** The M9 decision table (LVS, simulation, advanced
+  simulation) is approved and its spec changes are in `openspec/specs/`.
+  The simulation engine is pinned to ngspice-47 (`a80f6e3e`) and every
+  ngspice trace of the specs was re-checked against it. SCHEM-LVS-01 is
+  deferred to M9.
+- **netgen clean room.** `docs/contributing/cleanroom.md` extends the
+  two-team process to LVS; `scripts/check_cleanroom.py` rejects netgen's
+  GPL header, `netgen ref:` traces and LVS golden cases without a valid
+  `provenance`; the pull-request template has the LVS items.
+- **netgen and ngspice data sets.** `scripts/fetch_pdk.py` installs
+  `gf180mcu-netgen`, `ihp-netgen`, `sky130-ngspice`, `gf180mcu-ngspice` and
+  `ihp-ngspice`, pinned and digest-checked.
+- **Golden comparators** `lvs-canonical`, `raw-tolerance` and `meas-table`.
+- **`lvs` and `sim` core areas.** The area-contract headers are in place;
+  the `lvs` command exists and answers CORE-NOTIMPL-009 until the LVS
+  engine lands. `scripts/check_engine_boundary.py` (run in CI) keeps
+  ngspice behind its adapter plugin.
+- **Simulation engine library.** `libngspice-hefesto` is built from
+  ngspice-47 with the Hefesto patch series (static OSDI and code-model
+  registries, portable seeding, deterministic initialisation) behind the
+  `HEFESTO_BUILD_NGSPICE` option (default OFF). The golden capture image
+  uses the same ngspice (`47-hefesto1`) and adds OpenVAF-reloaded.
+
 ## Unreleased (M8: schematic capture, in progress)
 
 ### Added
