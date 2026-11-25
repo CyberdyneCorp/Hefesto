@@ -136,15 +136,17 @@ def load_gate(x: int) -> list[tuple[str, tuple[int, ...]]]:
 
 
 SHAPES = [
-    # the inverter: nfet and pfet on one poly gate, drains on ndc/pdc, sources on ndc/pdc
-    rect("nfet", 0, 0, 2, 4), rect("ndc", -4, 0, 0, 4), rect("ndc", 2, 0, 6, 4),
-    rect("pfet", 0, 10, 2, 14), rect("pdc", -4, 10, 0, 14), rect("pdc", 2, 10, 6, 14),
-    rect("nwell", -6, 8, 8, 16),
+    # the inverter: nfet and pfet on one poly gate, ndiff/pdiff on both sides, then the contacts
+    rect("nfet", 0, 0, 2, 4), rect("ndiff", -2, 0, 0, 4), rect("ndiff", 2, 0, 4, 4),
+    rect("ndc", -6, 0, -2, 4), rect("ndc", 4, 0, 8, 4),
+    rect("pfet", 0, 10, 2, 14), rect("pdiff", -2, 10, 0, 14), rect("pdiff", 2, 10, 4, 14),
+    rect("pdc", -6, 10, -2, 14), rect("pdc", 4, 10, 8, 14),
+    rect("nwell", -8, 8, 10, 16),
     rect("poly", 0, 4, 2, 10), rect("poly", 0, -4, 2, 0), rect("pc", -1, -8, 3, -4),
     rect("metal1", -1, -8, 3, -4),
-    rect("metal1", -4, -2, 0, 4), rect("metal1", -4, 10, 0, 18),
+    rect("metal1", -6, -2, -2, 4), rect("metal1", -6, 10, -2, 18),
     # the output and its 400 x 2 wire
-    rect("metal1", 2, 0, 6, 14), rect("metal1", 6, 6, 406, 8),
+    rect("metal1", 4, 0, 8, 14), rect("metal1", 8, 6, 406, 8),
     *load_gate(200), *load_gate(400),
 ]
 
@@ -160,8 +162,8 @@ def mag(extra: list[tuple[str, tuple[int, ...]]] = (), labels: list[str] = (), p
     out.append("<< labels >>")
     port = (lambda n, d: [f"port {n} nsew signal {d}"]) if ports else (lambda n, d: [])
     out += ["rlabel metal1 0 -8 0 -8 0 in", *port(1, "input"), "rlabel metal1 300 6 300 6 0 out",
-            *port(2, "output"), "rlabel metal1 -4 -2 -4 -2 0 GND!", *port(3, "inout"),
-            "rlabel metal1 -4 18 -4 18 0 VDD!", *labels]
+            *port(2, "output"), "rlabel metal1 -6 -2 -6 -2 0 GND!", *port(3, "inout"),
+            "rlabel metal1 -6 18 -6 18 0 VDD!", *labels]
     out.append("<< end >>")
     return "\n".join(out) + "\n"
 
@@ -211,7 +213,7 @@ def cases() -> list[TclCase]:
              "the VDD! source line extended by a long metal1 wire: node names with the trailing bang removed, "
              "killnode and the renamed device terminals",
              [p("extresist all")],
-             layout=mag(extra=[rect("metal1", -4, 18, 300, 20)])),
+             layout=mag(extra=[rect("metal1", -6, 18, 300, 20)])),
         case(6, "extresist-output", ["Consumption by netlisters"],
              "ext2spice extresist on after extresist: the netlist's overlay resistors (Q-NETLIST-12, the 0.0005 "
              "ohm offset)",
