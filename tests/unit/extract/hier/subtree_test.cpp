@@ -7,6 +7,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <atomic>
+#include <limits>
 #include <string>
 
 #include "hefesto/extract/hier/interact.hpp"
@@ -54,6 +56,76 @@ TEST_CASE("EX-055: a cell spanning three step squares has an interaction in each
     CHECK(s.square.x1 - s.square.x0 == 20);
   }
   CHECK(interactions == 3);
+}
+
+// Regression (review of PR #119): every step square was built up front,
+// empty ones included, so a small step on a large cell needed memory for
+// (W/step)*(H/step) squares; the walk now hands them over one at a time.
+TEST_CASE("the step squares are visited one at a time and the walk can stop",
+          "[cap:extract-hierarchy][req:Interaction halo and step squares]") {
+  HierCase c("EX-055", true);
+  db::CellDef& top = c.cell("ex");
+  std::size_t visited = 0;
+  // The walk's result is taken outside CHECK: a CHECK inside a CHECK's
+  // lambda shadows Catch2's assertion handler (GCC -Wshadow).
+  const bool walked_all = extract::for_each_square(top, 2, 5, true, [&](const extract::InteractionSquare& s) {
+    CHECK(s.kind != extract::SquareKind::none);
+    ++visited;
+    return true;
+  });
+  CHECK(walked_all);
+  CHECK(visited > 3);
+  visited = 0;
+  CHECK_FALSE(extract::for_each_square(top, 20, 5, true, [&](const extract::InteractionSquare&) {
+    ++visited;
+    return false;
+  }));
+  CHECK(visited == 1);
+}
+
+// Regression (review of PR #119): x + step wrapped the int32 square edge
+// for a large `extract stepsize`.
+TEST_CASE("a step square past the plane is clamped to its infinity",
+          "[cap:extract-hierarchy][req:Interaction halo and step squares]") {
+  HierCase c("EX-055", true);
+  db::CellDef& leaf = c.cell("lleaf");
+  db::CellDef far("far", c.tech().plane_count());
+  const auto m1 = c.tech().find_type("metal1");
+  REQUIRE(m1.ok());
+  REQUIRE(db::paint(far, c.tech(), db::Rect{1000, 0, 1060, 2}, *m1.id).ok());
+  db::PlaceOptions o;
+  o.id = "c1";
+  o.transform = db::Transform{1, 0, 1000, 0, 1, 0};
+  REQUIRE(db::place(far, leaf, o).ok());
+  db::recompute_bbox(far);
+  std::size_t visited = 0;
+  extract::for_each_square(far, std::numeric_limits<std::int32_t>::max(), 5, true,
+                           [&](const extract::InteractionSquare& s) {
+                             CHECK(s.square.x0 == 1000);
+                             CHECK(s.square.x1 == db::kInfinity);
+                             CHECK(s.square.y1 == db::kInfinity);
+                             ++visited;
+                             return true;
+                           });
+  CHECK(visited == 1);
+}
+
+// Regression (review of PR #119): the hierarchical pass never looked at
+// the cancel flag (Magic checks SigInterruptPending at every square).
+TEST_CASE("a cancelled hierarchical pass stops before the step squares",
+          "[cap:extract-hierarchy][req:Interaction halo and step squares]") {
+  HierCase c("EX-055", true);
+  const auto whole = c.run("ex");
+  CHECK_FALSE(whole.result.cancelled);
+  CHECK(lines_with(whole.text, "cap ").size() == 3U);  // one per step square
+  HierCase cancelled("EX-055", true);
+  std::atomic<bool> stop{true};
+  mask::Progress progress;
+  progress.cancel = &stop;
+  cancelled.progress = &progress;
+  const auto stopped = cancelled.run("ex");
+  CHECK(stopped.result.cancelled);
+  CHECK(lines_with(stopped.text, "cap ").empty());
 }
 
 TEST_CASE("EX-050: a parent wire crossing a child is an interaction area with the halo",

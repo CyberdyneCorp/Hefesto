@@ -12,8 +12,11 @@
 //
 // Owner: RESNET (openspec/changes/m7-extraction design D3).
 
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -282,7 +285,36 @@ std::pair<std::optional<tech::PlaneId>, tech::TypeMask> port_plane(const tech::T
   return {std::nullopt, mask};
 }
 
+/// A zero-width side of a sink is widened by one on each side.
+db::Rect widen_sink(db::Rect rect) {
+  if (rect.x0 == rect.x1) {
+    --rect.x0;
+    ++rect.x1;
+  }
+  if (rect.y0 == rect.y1) {
+    --rect.y0;
+    ++rect.y1;
+  }
+  return rect;
+}
+
 }  // namespace
+
+bool Builder::has_editor(std::optional<tech::PlaneId> plane) const {
+  return plane && *plane < def.plane_count() && editors_[*plane] != nullptr;
+}
+
+void Builder::add_port(tech::PlaneId plane, const db::Rect& rect, const tech::TypeMask& mask, const Port& port) {
+  search(plane, rect, mask, [&](const TileRef& t, bool side) {  // ResAddPortFunc, ResAddLabelFunc
+    const Id ti = info(t);
+    const TileTypes ty = types(t);
+    if (ti != kNil && !(ty.split && ty.left != tech::kSpace && ty.right != tech::kSpace && side)) {
+      auto& ports = g.tiles[ti].ports;
+      ports.insert(ports.begin(), port);
+    }
+    return false;
+  });
+}
 
 void Builder::make_ports() {
   for (std::size_t i = 0; i < input.ports.size(); ++i) {
@@ -291,29 +323,11 @@ void Builder::make_ports() {
       g.message("Warning:  Label \"" + port.name + "\" is unconnected.");
       continue;
     }
-    db::Rect rect = port.rect;
-    if (port.sink && rect.x0 == rect.x1) {
-      --rect.x0;
-      ++rect.x1;
-    }
-    if (port.sink && rect.y0 == rect.y1) {
-      --rect.y0;
-      ++rect.y1;
-    }
+    const db::Rect rect = port.sink ? widen_sink(port.rect) : port.rect;
     const auto [plane, mask] = port_plane(tech_, port.type);
-    if (!plane || *plane >= def.plane_count() || editors_[*plane] == nullptr) {
-      continue;
+    if (has_editor(plane)) {
+      add_port(*plane, rect, mask, Port{port.name, db::Point{rect.x0, rect.y0}, i});
     }
-    search(*plane, rect, mask, [&](const TileRef& t, bool side) {  // ResAddPortFunc
-      const Id ti = info(t);
-      const TileTypes ty = types(t);
-      if (ti == kNil || (ty.split && ty.left != tech::kSpace && ty.right != tech::kSpace && side)) {
-        return false;
-      }
-      auto& ports = g.tiles[ti].ports;
-      ports.insert(ports.begin(), Port{port.name, db::Point{rect.x0, rect.y0}, i});
-      return false;
-    });
   }
 }
 
@@ -330,20 +344,37 @@ void Builder::make_label_ports() {
       start_type = lab.type;
     }
     const auto [plane, mask] = port_plane(tech_, lab.type);
-    if (!plane || *plane >= def.plane_count() || editors_[*plane] == nullptr) {
-      continue;
+    if (has_editor(plane)) {
+      add_port(*plane, lab.rect, mask, Port{lab.text, db::Point{lab.rect.x0, lab.rect.y0}, input.ports.size()});
     }
-    search(*plane, lab.rect, mask, [&](const TileRef& t, bool side) {  // ResAddLabelFunc
-      const Id ti = info(t);
-      const TileTypes ty = types(t);
-      if (ti == kNil || (ty.split && ty.left != tech::kSpace && ty.right != tech::kSpace && side)) {
-        return false;
-      }
-      auto& ports = g.tiles[ti].ports;
-      ports.insert(ports.begin(), Port{lab.text, db::Point{lab.rect.x0, lab.rect.y0}, input.ports.size()});
-      return false;
-    });
   }
+}
+
+tech::TypeMask Builder::contact_mask(tech::TileType type) const {
+  tech::TypeMask mask = tech_.full_residues(type);
+  if (style_.substrate.plane) {
+    mask |= tech_.connects_to(type) & tech_.plane_types(*style_.substrate.plane);
+  }
+  return mask;
+}
+
+void Builder::attach_contact(Id ci, tech::PlaneId p, const tech::TypeMask& mask) {
+  Contact& c = g.contacts[ci];
+  const TileRef tile = goto_point(p, c.center);
+  const TileTypes ty = types(tile);
+  bool hit = (ty.split && mask.test(ty.right)) || mask.test(ty.left);
+  if (!hit && !ty.split && tech_.is_contact(ty.left)) {
+    hit = tech_.contact(ty.left)->residues.intersects(mask);
+  }
+  const Id ti = info(tile);
+  // At most four tiles per contact (LAYERS_PER_CONTACT; Magic writes past
+  // the array beyond that).
+  if (!hit || ti == kNil || c.current >= 4) {
+    return;
+  }
+  c.tile[static_cast<std::size_t>(c.current)] = ti;
+  ++c.current;
+  g.push(g.tiles[ti].contacts, ci);
 }
 
 void Builder::find_new_contact_tiles() {
@@ -351,34 +382,16 @@ void Builder::find_new_contact_tiles() {
   tech::TypeMask mask;
   const std::optional<tech::PlaneId> subs_plane = style_.substrate.plane;
   for (std::size_t ci = 0; ci < g.contacts.size(); ++ci) {
-    Contact& c = g.contacts[ci];
-    if (c.type != last) {
-      last = c.type;
-      mask = tech_.full_residues(c.type);
-      if (subs_plane) {
-        mask |= tech_.connects_to(c.type) & tech_.plane_types(*subs_plane);
-      }
+    const tech::TileType type = g.contacts[ci].type;
+    if (type != last) {
+      last = type;
+      mask = contact_mask(type);
     }
-    const tech::PlaneMask pmask = tech_.type_planes(c.type);
+    const tech::PlaneMask pmask = tech_.type_planes(type);
     for (const tech::PlaneId p : user_planes()) {
-      if ((pmask & tech::plane_bit(p)) == 0 && (!subs_plane || p != *subs_plane)) {
-        continue;
+      if ((pmask & tech::plane_bit(p)) != 0 || (subs_plane && p == *subs_plane)) {
+        attach_contact(static_cast<Id>(ci), p, mask);
       }
-      const TileRef tile = goto_point(p, c.center);
-      const TileTypes ty = types(tile);
-      bool hit = (ty.split && mask.test(ty.right)) || mask.test(ty.left);
-      if (!hit && !ty.split && tech_.is_contact(ty.left)) {
-        hit = tech_.contact(ty.left)->residues.intersects(mask);
-      }
-      const Id ti = info(tile);
-      // At most four tiles per contact (LAYERS_PER_CONTACT; Magic writes past
-      // the array beyond that).
-      if (!hit || ti == kNil || c.current >= 4) {
-        continue;
-      }
-      c.tile[static_cast<std::size_t>(c.current)] = ti;
-      ++c.current;
-      g.push(g.tiles[ti].contacts, static_cast<Id>(ci));
     }
   }
 }
@@ -398,83 +411,96 @@ tech::PlaneMask planes_of(const tech::Technology& tech, const tech::TypeMask& ma
 
 }  // namespace
 
-void Builder::preprocess_devices() {
-  for (const DevTile& dt : dev_tiles) {
-    std::optional<tech::PlaneId> plane = tech_.home_plane(dt.type);
-    if (tech_.is_contact(dt.type)) {
-      const tech::TypeMask res = tech_.full_residues(dt.type);
-      for (tech::TileType r = tech::kFirstUserType; r < tech_.user_type_end(); ++r) {
-        if (res.test(r) && style_.device_types.test(r)) {
-          plane = tech_.home_plane(r);
-          break;
-        }
+void device_dimensions(Device& d) {
+  const std::int64_t width = d.perim;
+  const std::int64_t length = d.length;
+  if (length != 0) {
+    d.length = static_cast<std::int64_t>(static_cast<float>(length) / static_cast<float>(d.tiles << 1));
+    d.width = (width - length) >> 1;
+    return;
+  }
+  const double perimeter = static_cast<double>(d.perim) / 4.0;
+  const double w = perimeter + std::sqrt(perimeter * perimeter - static_cast<double>(d.area));
+  // A NaN (the area exceeds the square of a quarter perimeter) is undefined
+  // in Magic's int conversion; it gives 0 here.
+  d.width = std::isfinite(w) ? static_cast<std::int64_t>(w) : 0;
+  d.length = (d.perim - 2 * d.width) >> 1;
+}
+
+std::optional<tech::PlaneId> Builder::device_plane(const DevTile& dt) const {
+  std::optional<tech::PlaneId> plane = tech_.home_plane(dt.type);
+  if (tech_.is_contact(dt.type)) {
+    const tech::TypeMask res = tech_.full_residues(dt.type);
+    for (tech::TileType r = tech::kFirstUserType; r < tech_.user_type_end(); ++r) {
+      if (res.test(r) && style_.device_types.test(r)) {
+        return tech_.home_plane(r);
       }
-    }
-    if (!plane || *plane >= def.plane_count() || editors_[*plane] == nullptr) {
-      continue;
-    }
-    const db::Point ll{dt.area.x0, dt.area.y0};
-    const TileRef tile = goto_point(*plane, ll);
-    const TileTypes ty = types(tile);
-    tech::TileType tt = ty.left;
-    bool isdev = style_.device_types.test(tt);
-    if (ty.split && !isdev) {
-      tt = ty.right;
-      isdev = style_.device_types.test(tt);
-    }
-    const Id ti = info(tile);
-    if (ti == kNil || g.tiles[ti].device == kNil || !isdev) {
-      g.message("Bad Device Location at " + std::to_string(ll.x) + "," + std::to_string(ll.y));
-      continue;
-    }
-    if ((g.tiles[ti].status & kTileMark) != 0) {
-      continue;
-    }
-    g.tiles[ti].status |= kTileMark;
-    Device& rd = g.devices[g.tiles[ti].device];
-    rd.perim += dt.perim;
-    rd.length += dt.overlap;
-    rd.area += (dt.area.x1 - dt.area.x0) * (dt.area.y1 - dt.area.y0);
-    rd.tiles++;
-    const auto record_terms = [&](tech::TypeMask mask, std::int32_t term) {
-      mask.clear_type(tech::kSpace);
-      const tech::PlaneMask pmask = planes_of(tech_, mask);
-      const auto home = tech_.home_plane(tt);
-      if (pmask == 0 || (home && (pmask & tech::plane_bit(*home)) != 0)) {
-        return;
-      }
-      for (const tech::PlaneId p : user_planes()) {
-        if ((pmask & tech::plane_bit(p)) == 0) {
-          continue;
-        }
-        const TileRef tp = goto_point(p, ll);
-        if (tp && mask.test(types(tp).left)) {
-          auto& list = dev_nodes[tp.tile.tile];
-          list.insert(list.begin(), DevTerm{term, tile});
-        }
-      }
-    };
-    record_terms(dt.record->substrate_types, -1);
-    for (std::int32_t i = 0; i < dt.record->terminal_count; ++i) {
-      record_terms(sd_types(*dt.record, i), i);
     }
   }
-  for (Device& d : g.devices) {
-    const std::int32_t width = d.perim;
-    const std::int32_t length = d.length;
-    if (d.tiles == 0) {
+  return plane;
+}
+
+void Builder::record_terms(const TileRef& tile, tech::TileType tt, db::Point ll, tech::TypeMask mask,
+                           std::int32_t term) {
+  mask.clear_type(tech::kSpace);
+  const tech::PlaneMask pmask = planes_of(tech_, mask);
+  const auto home = tech_.home_plane(tt);
+  if (pmask == 0 || (home && (pmask & tech::plane_bit(*home)) != 0)) {
+    return;
+  }
+  for (const tech::PlaneId p : user_planes()) {
+    if ((pmask & tech::plane_bit(p)) == 0) {
       continue;
     }
-    if (length != 0) {
-      d.length = static_cast<std::int32_t>(static_cast<float>(length) / static_cast<float>(d.tiles << 1));
-      d.width = (width - length) >> 1;
-    } else {
-      const double perimeter = d.perim / 4.0;
-      const double w = perimeter + std::sqrt(perimeter * perimeter - static_cast<double>(d.area));
-      // A NaN (the area exceeds the square of a quarter perimeter) is
-      // undefined in Magic's int conversion; it gives 0 here.
-      d.width = std::isfinite(w) ? static_cast<std::int32_t>(w) : 0;
-      d.length = (d.perim - 2 * d.width) >> 1;
+    const TileRef tp = goto_point(p, ll);
+    if (tp && mask.test(types(tp).left)) {
+      auto& list = dev_nodes[tp.tile.tile];
+      list.insert(list.begin(), DevTerm{term, tile});
+    }
+  }
+}
+
+void Builder::preprocess_device_tile(const DevTile& dt) {
+  const std::optional<tech::PlaneId> plane = device_plane(dt);
+  if (!plane || *plane >= def.plane_count() || editors_[*plane] == nullptr) {
+    return;
+  }
+  const db::Point ll{dt.area.x0, dt.area.y0};
+  const TileRef tile = goto_point(*plane, ll);
+  const TileTypes ty = types(tile);
+  tech::TileType tt = ty.left;
+  bool isdev = style_.device_types.test(tt);
+  if (ty.split && !isdev) {
+    tt = ty.right;
+    isdev = style_.device_types.test(tt);
+  }
+  const Id ti = info(tile);
+  if (ti == kNil || g.tiles[ti].device == kNil || !isdev) {
+    g.message("Bad Device Location at " + std::to_string(ll.x) + "," + std::to_string(ll.y));
+    return;
+  }
+  if ((g.tiles[ti].status & kTileMark) != 0) {
+    return;
+  }
+  g.tiles[ti].status |= kTileMark;
+  Device& rd = g.devices[g.tiles[ti].device];
+  rd.perim += dt.perim;
+  rd.length += dt.overlap;
+  rd.area += static_cast<std::int64_t>(dt.area.x1 - dt.area.x0) * (dt.area.y1 - dt.area.y0);
+  rd.tiles++;
+  record_terms(tile, tt, ll, dt.record->substrate_types, -1);
+  for (std::int32_t i = 0; i < dt.record->terminal_count; ++i) {
+    record_terms(tile, tt, ll, sd_types(*dt.record, i), i);
+  }
+}
+
+void Builder::preprocess_devices() {
+  for (const DevTile& dt : dev_tiles) {
+    preprocess_device_tile(dt);
+  }
+  for (Device& d : g.devices) {
+    if (d.tiles != 0) {
+      device_dimensions(d);
     }
   }
 }

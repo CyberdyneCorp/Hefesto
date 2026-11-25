@@ -144,13 +144,23 @@ class Cut {
 
 /// The distance from the device breakpoint to its neighbours along one
 /// axis, in the list's current (sorted) order.
+/// The distance along `axis` from `at` to breakpoint `b` (to its contact
+/// rectangle when it has one).
+std::int64_t gap_to(const Graph& g, const Breakpoint& b, db::Coord at, Axis axis) {
+  if (b.crect == kNil) {
+    return std::abs(static_cast<std::int64_t>(at) - axis.of(b.loc));
+  }
+  const db::Rect& c = g.contacts[b.crect].rect;
+  if (axis.lo(c) > at) {
+    return static_cast<std::int64_t>(axis.lo(c)) - at;
+  }
+  return axis.hi(c) < at ? static_cast<std::int64_t>(at) - axis.hi(c) : 0;
+}
+
 std::int64_t device_gap(const Graph& g, const std::vector<Breakpoint>& list, Axis axis) {
   std::size_t p1 = 0;
   std::size_t p2 = list.size();
-  for (; p1 < list.size(); ++p1) {
-    if (is_device(g, list[p1])) {
-      break;
-    }
+  for (; p1 < list.size() && !is_device(g, list[p1]); ++p1) {
     if (p1 + 1 < list.size() && list[p1].loc != list[p1 + 1].loc) {
       p2 = p1;
     }
@@ -159,16 +169,7 @@ std::int64_t device_gap(const Graph& g, const std::vector<Breakpoint>& list, Axi
     return kInfinity;
   }
   const db::Coord at = axis.of(list[p1].loc);
-  const auto distance = [&](const Breakpoint& b) -> std::int64_t {
-    if (b.crect == kNil) {
-      return std::abs(static_cast<std::int64_t>(at) - axis.of(b.loc));
-    }
-    const db::Rect& c = g.contacts[b.crect].rect;
-    if (axis.lo(c) > at) {
-      return axis.lo(c) - at;
-    }
-    return axis.hi(c) < at ? at - axis.hi(c) : 0;
-  };
+  const auto distance = [&](const Breakpoint& b) { return gap_to(g, b, at, axis); };
   std::int64_t delta = kInfinity;
   std::size_t p3 = p1 + 1;
   while (p3 < list.size() && list[p3].loc == list[p1].loc) {
@@ -234,6 +235,24 @@ bool Builder::calc_tile_resistance(Id tile) {
   return Cut(*this, tile, Axis{max_y - min_y <= max_x - min_x}).run();
 }
 
+namespace {
+
+/// The tile edge a breakpoint lies on (left, right, top, bottom first), or 0.
+std::uint32_t edge_of(db::Point p, const db::Rect& r) {
+  if (p.x == r.x0) {
+    return kLeftEdge;
+  }
+  if (p.x == r.x1) {
+    return kRightEdge;
+  }
+  if (p.y == r.y1) {
+    return kTopEdge;
+  }
+  return p.y == r.y0 ? kBottomEdge : 0U;
+}
+
+}  // namespace
+
 bool Builder::near_device(Id tile) {
   auto& breaks = g.tiles[tile].breaks;
   const db::Rect r = area(tile_of(tile));
@@ -248,20 +267,17 @@ bool Builder::near_device(Id tile) {
   int count = 0;
   std::uint32_t edges = 0;
   for (const Breakpoint& b : breaks) {
-    if (!is_device(g, b)) {
-      continue;
-    }
-    ++count;
-    if (b.loc.x == r.x0) {
-      edges |= kLeftEdge;
-    } else if (b.loc.x == r.x1) {
-      edges |= kRightEdge;
-    } else if (b.loc.y == r.y1) {
-      edges |= kTopEdge;
-    } else if (b.loc.y == r.y0) {
-      edges |= kBottomEdge;
+    if (is_device(g, b)) {
+      ++count;
+      edges |= edge_of(b.loc, r);
     }
   }
+  return cut_near_device(tile, count, edges);
+}
+
+bool Builder::cut_near_device(Id tile, int count, std::uint32_t edges) {
+  auto& breaks = g.tiles[tile].breaks;
+  const db::Rect r = area(tile_of(tile));
   const auto one_edge = [&](std::uint32_t e) {
     return (edges & e) == edges;
   };

@@ -98,5 +98,33 @@ TEST_CASE("Unifying two nodes with adjustments: magic-compat OFF sums them",
   CHECK(t.node(kept).classes[0] == extract::ClassArea{-4, -2});
 }
 
+// Q-EXTRACT-40 through extract_subtree (review of PR #119: the two tests
+// above call unify directly and would pass with the mode miswired). The
+// child's wires a and b are each joined to a parent wire (p1, p2) in an
+// earlier step square, so both nodes carry adjustments when p3 joins them
+// in the last square (tests/data/extract/hier/unify, EX-050's areacap 10).
+namespace {
+
+std::string unify_merge(bool magic_compat) {
+  HierCase c("EX-050", magic_compat, std::string{HEFESTO_TEST_DATA_DIR} + "/unify/");
+  const auto run = c.run("ex");
+  const auto merges = lines_with(run.text, "merge ");
+  REQUIRE(merges.size() == 4);
+  return merges.front();
+}
+
+}  // namespace
+
+TEST_CASE("Unifying two adjusted nodes in a later step square: magic-compat ON keeps the survivor's only",
+          "[cap:extract-hierarchy][req:Merge records and pass-2 adjustments]") {
+  // One node's -400 is dropped with the freed node.
+  CHECK(unify_merge(true) == "merge \"c1/b\" \"p2\" -820");
+}
+
+TEST_CASE("Unifying two adjusted nodes in a later step square: magic-compat OFF sums them",
+          "[cap:extract-hierarchy][req:Merge records and pass-2 adjustments]") {
+  CHECK(unify_merge(false) == "merge \"c1/b\" \"p2\" -1220");
+}
+
 }  // namespace
 }  // namespace hefesto::test::exthier

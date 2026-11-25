@@ -52,9 +52,9 @@ class HierNodeTable {
   /// `added` (the new subtree's): when the first has fewer names its names
   /// go after the first name of the second, otherwise the names of the
   /// second go before those of the first. Returns the surviving node.
-  /// Magic keeps only the survivor's adjustments; `keep_values` (proposed
+  /// Magic keeps only the survivor's adjustments; `sum_values` (proposed
   /// Q-EXTRACT-40, magic-compat OFF) adds the other node's to it.
-  std::size_t unify(std::size_t cumulative, std::size_t added, bool keep_values);
+  std::size_t unify(std::size_t cumulative, std::size_t added, bool sum_values);
 
   [[nodiscard]] HierNode& node(std::size_t index) { return nodes_[index]; }
   [[nodiscard]] const HierNode& node(std::size_t index) const { return nodes_[index]; }

@@ -156,6 +156,28 @@ TEST_CASE("two transistors sharing a gate are checked once", "[cap:antenna-check
   CHECK(s.editor.feedback.areas().size() == 3);
 }
 
+// Regression (Q-MISC-93, both modes): Magic indexes the plane table with
+// extGetDevType's -1 for a model with no style device line; without the
+// guard Hefesto dereferences the empty type (a libc++ hardening abort). The
+// device is skipped; the violating nfet is still checked.
+TEST_CASE("a device whose model has no style device line is skipped",
+          "[cap:antenna-check][req:Gate nets visited once]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(tech_text(partial_rules()), compat);
+    violating_gate(s);
+    s.ext("top", ext_header() +
+                     "node \"g\" 0 0 0 0 poly\nnode \"h\" 0 0 0 0 poly\nnode \"s\" 0 0 0 0 ndiff\n"
+                     "node \"d\" 0 0 0 0 ndiff\nnode \"gnd!\" 0 0 0 0 pwell\n"
+                     "device mosfet nostyle 0 0 1 1 2 10 \"gnd!\" \"h\" 4 0 \"s\" 10 0 \"d\" 10 0\n"
+                     "device mosfet nfet 0 0 1 1 2 10 \"gnd!\" \"g\" 4 0 \"s\" 10 0 \"d\" 10 0\n");
+    std::vector<std::string> lines;
+    REQUIRE(s.check({}, lines, false, compat).ok());
+    CHECK(has(lines, "antennacheck finished."));
+    CHECK(s.editor.feedback.areas().size() == 3);
+  }
+}
+
 TEST_CASE("the progress line every 100 distinct gate nets", "[cap:antenna-check][req:Gate nets visited once]") {
   Session s;
   std::string text = ext_header() + "node \"gnd!\" 0 0 0 0 pwell\nnode \"s\" 0 0 0 0 ndiff\n";

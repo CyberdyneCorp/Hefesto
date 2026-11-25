@@ -490,6 +490,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: compat (ON: make the tile Manhattan through `set_type` with its left type, then split; OFF: keep split tiles whole and never cut them) | replicate
 - Recommendation: compat. With `magic-compat` ON RESNET first makes a split tile Manhattan with `set_type` (the left type, as ResSplitX assigns), then splits it, which gives Magic's tiles; with it OFF a split tile is never cut, so the network keeps the net's geometry. Implemented when RESNET lands (task 13.1).
 - Resolution: compat — with `magic-compat` ON ResFracture makes a split tile Manhattan via `set_type` with its left type and then splits it, as Magic's result is; with it OFF a split tile is kept whole. Implemented when RESNET lands (task 13.1). Spec: `extresist-network` "Tile fracturing". Approved 2026-11-22.
+- Correction (2026-11-25, review of PR #119; needs the user's acknowledgement): the "Magic behavior" text and the ON branch above are wrong about Magic. ResSplitX (resis/ResFract.c:436-446) calls TiSplitX, which only rewires the stitches: the left part keeps its whole body, diagonal included, over the narrower rectangle, and only the new right tile gets `TiGetType` (the left type); TiJoinY1 then joins split tiles like any other (the kept tile's body spans the result). The R4 code made the tile Manhattan first, so the ON branch of Q-EXTRACT-29 was never reached. The fix pass makes ON copy Magic (no `set_type` before the cut; `StitchEditor::join_y(keep, gone, magic_compat)` joins split tiles with ON); OFF is unchanged. Test: `tests/unit/extresist/network/fracture_test.cpp` "a split tile at a cut is cut as ResSplitX cuts it with magic-compat ON" (`[0,30]×[0,100]` split plus `[30,40]×[0,10]` metal1), `tests/unit/db/plane_stitch_test.cpp` "join_y of a split tile copies TiJoinY with magic-compat ON". Spec: `extresist-network` "Tile fracturing" (corrected).
 
 ### Q-NETLIST-54: Netlister run flags persist across runs (ext2spice and ext2sim)
 - Kind: quirk
@@ -587,7 +588,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Status: pending user confirmation (fixed in both modes in M7 round R4 by RESNET under the standing rule)
 - Magic behavior: (a) ResDoContacts reads CIFGetContactSize's unset `viawidth` when the output style has no cut for the type, and dereferences a null CIFCurStyle when there is none; (b) ResFindNewContactTiles writes past `cp_tile[4]`; (c) ResPreProcessDevices uses an uninitialised `pNum` for a contact device type with no device residue; (d) the int conversion of NaN from `sqrt(perimeter^2 - area)`; (e) ResNewTermDevice writes `rd_terminals[2+n]` past `rd_nterms`; (f) `exts_deviceSDTypes[i]` is read past the array.
 - Evidence: resis/ResMakeRes.c:856-900, cif/CIFtech.c:2327-2382 (a); resis/ResMain.c:589-700 (b); resis/ResUtils.c:887-940 (c), 1060-1075 (d); resis/ResJunct.c:51-110 (e); resis/ResBasic.c, ResUtils.c (f)
-- As implemented (round R4), both modes: (a) such a contact has no resistance; (b) capped at 4; (c) the type's home plane; (d) 0; (e) ignored; (f) an empty mask. Only (a) has a test (`tests/unit/extresist/network/`, one per mode; stated in `extresist-network`).
+- As implemented (round R4), both modes: (a) such a contact has no resistance; (b) capped at 4; (c) the type's home plane; (d) 0; (e) ignored; (f) an empty mask. Tests: (a) in `tests/unit/extresist/network/` (one per mode; stated in `extresist-network`); (b), (c), (d) and (f) added in the R4 fix pass in `tests/unit/extresist/network/build_test.cpp` ("a contact is recorded on at most four tiles", "a contact device type with no device residue uses its home plane", "a device whose area exceeds its quarter perimeter squared has width 0", "an S/D class past the device's list has no types"). (e) has no test: it is reached only when a tile type has two device records with different S/D class counts, which the test technology does not have.
 - Options: fix (as implemented) | replicate (not possible for undefined behaviour)
 - Recommendation: fix.
 
@@ -623,7 +624,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Status: pending user confirmation (fixed in both modes in M7 round R4 by RESCMD under the standing rule)
 - Magic behavior: a negative node R converts INFINITY to int; a device terminal on a net with no record dereferences NULL; a device whose model has no device line dereferences NULL.
 - Evidence: resis/ResReadExt.c:528-529, 790-792, 799-815, 832
-- As implemented (round R4), both modes: R is infinity; the net is created with no node record; the device has no type. Tests: `tests/unit/extresist/output/input_test.cpp`.
+- As implemented (round R4), both modes: R is infinity; the net is created with no node record; the device has no type. Tests: `tests/unit/extresist/output/input_test.cpp` ((a) "node resistance and capacitance scaling", (b) "device records: terminals and W/L", (c) "a device whose model has no device line has no type", added in the R4 fix pass).
 - Options: fix (as implemented)
 - Recommendation: fix.
 
@@ -632,6 +633,6 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
 - Magic behavior: ResSortByGate's qsort compares node addresses, so the order of a node's devices can differ between runs and platforms.
 - Evidence: resis/ResRex.c:1891-1940
-- As implemented (round R4), both modes: the order in which the nets are first mentioned, with a stable sort. Tests: `tests/unit/extresist/command/` (`sort_by_gate`).
+- As implemented (round R4), both modes: the order in which the nets are first mentioned, with a stable sort. Tests: `tests/unit/extresist/command/cutoff_test.cpp` (added in the R4 fix pass: ties keep their order, gate entries last).
 - Options: fix (as implemented) | replicate (not reproducible)
 - Recommendation: fix.

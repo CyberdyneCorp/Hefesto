@@ -182,20 +182,19 @@ std::unordered_map<Id, std::size_t> node_indices(const Graph& g) {
 
 }  // namespace
 
+Id Builder::device_at(db::Point p, tech::TileType type) {
+  const auto plane = tech_.home_plane(type);
+  if (!has_editor(plane)) {
+    return kNil;
+  }
+  const TileRef t = goto_point(*plane, p);
+  const TileTypes ty = types(t);
+  const bool device = style_.device_types.test(ty.left) || (ty.split && style_.device_types.test(ty.right));
+  const Id ti = info(t);
+  return device && ti != kNil ? g.tiles[ti].device : kNil;
+}
+
 Network Builder::finish() {
-  // ResGetDevice: the device record of the tile at a location.
-  const auto device_at = [&](db::Point p, tech::TileType type) -> Id {
-    const auto plane = tech_.home_plane(type);
-    if (!plane || *plane >= def.plane_count() || editors_[*plane] == nullptr) {
-      return kNil;
-    }
-    const TileRef t = goto_point(*plane, p);
-    const TileTypes ty = types(t);
-    const bool device = ty.split ? style_.device_types.test(ty.left) || style_.device_types.test(ty.right)
-                                 : style_.device_types.test(ty.left);
-    const Id ti = info(t);
-    return device && ti != kNil ? g.tiles[ti].device : kNil;
-  };
   Network out = g.to_network();
   const auto dev_index = [&](Id d) -> std::optional<std::size_t> {
     if (d == kNil) {

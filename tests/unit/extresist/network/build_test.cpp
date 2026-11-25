@@ -10,6 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -140,6 +141,33 @@ TEST_CASE("a device driver starts at its S/D edge",
   CHECK(net.driver_source == std::size_t{0});
 }
 
+// Regression (review of PR #119): the device area was a 32-bit product
+// summed into a 32-bit field, which overflowed (undefined behaviour) for a
+// device tile over about 46341 units square.
+TEST_CASE("a device larger than the 32-bit area range keeps its area", "[cap:extresist-network][req:Device annotation]") {
+  constexpr db::Coord kS = 60000;
+  auto src = cell({Box{"ndiff", {0, 0, 10, kS}}, Box{"nfet", {10, 0, 10 + kS, kS}},
+                   Box{"ndiff", {10 + kS, 0, 20 + kS, kS}}, Box{"poly", {10, -5, 10 + kS, 0}},
+                   Box{"poly", {10, kS, 10 + kS, kS + 5}}});
+  Run run;
+  run.start = {2, 5};
+  run.type = "ndiff";
+  run.driver = extresist::NetDriver{{10, 0}, env().type("nfet"), false};
+  extresist::NetDevice dev;
+  dev.model = "nfet";
+  dev.location = {10, 0};
+  dev.type = env().type("nfet");
+  run.devices.devices = {dev};
+  const auto net = build(*src, run);
+  REQUIRE(net.devices.size() == 1);
+  const auto& d = net.devices[0];
+  CHECK(d.area == std::int64_t{kS} * kS);  // 3.6e9 > INT32_MAX
+  CHECK(d.perimeter == 4 * std::int64_t{kS});
+  // overlap with the gate poly 2*kS: L = 2*kS/2, W = (4*kS - 2*kS)/2.
+  CHECK(d.length == kS);
+  CHECK(d.width == kS);
+}
+
 TEST_CASE("a missing wire at the drive point fails the net", "[cap:extresist-network][req:Start tile and origin]") {
   auto src = cell({Box{"metal1", {0, 0, 10, 10}}});
   Run run = wire_run({2, 2}, "metal1", {8, 8, 9, 9});
@@ -243,6 +271,61 @@ TEST_CASE("a lone device breakpoint keeps the tile area with magic-compat OFF",
   CHECK_FALSE(t.b->calc_tile_resistance(t.tile));
   CHECK(t.b->g.nodes[d].area == 200.0F);
   CHECK(t.b->g.res.empty());
+}
+
+// Q-NETLIST-64 (b)-(d), (f): Magic's undefined behaviour, fixed in both
+// modes (regressions; the review of PR #119 found them untested).
+
+TEST_CASE("a contact is recorded on at most four tiles", "[cap:extresist-network][req:Contact resistors]") {
+  // (b) ResFindNewContactTiles writes past cp_tile[4]; tile[4] would land
+  // on cnode[0].
+  for (const bool compat : {true, false}) {
+    NearDevice t(compat);
+    const auto& e = env();
+    const tech::TileType nd = e.type("ndiff");
+    detail::Contact c;
+    c.center = {5, 5};
+    c.type = nd;
+    t.b->g.contacts.push_back(c);
+    for (int i = 0; i < 6; ++i) {
+      t.b->attach_contact(0, *e.technology->home_plane(nd), tech::TypeMask::of(nd));
+    }
+    const detail::Contact& got = t.b->g.contacts[0];
+    CHECK(got.current == 4);
+    CHECK(got.cnode == std::array<detail::Id, 4>{detail::kNil, detail::kNil, detail::kNil, detail::kNil});
+  }
+}
+
+TEST_CASE("a contact device type with no device residue uses its home plane",
+          "[cap:extresist-network][req:Device annotation]") {
+  // (c) ResPreProcessDevices reads an uninitialised pNum here.
+  NearDevice t(true);
+  const auto& e = env();
+  detail::DevTile dt;
+  dt.type = e.type("via");
+  REQUIRE(e.technology->is_contact(dt.type));
+  CHECK(t.b->device_plane(dt) == e.technology->home_plane(dt.type));
+}
+
+TEST_CASE("a device whose area exceeds its quarter perimeter squared has width 0",
+          "[cap:extresist-network][req:Device annotation]") {
+  // (d) Magic converts the NaN of sqrt(p^2 - area) to int.
+  detail::Device d;
+  d.perim = 4;
+  d.area = 100;
+  d.tiles = 1;
+  detail::device_dimensions(d);
+  CHECK(d.width == 0);
+  CHECK(d.length == 2);
+}
+
+TEST_CASE("an S/D class past the device's list has no types", "[cap:extresist-network][req:Device annotation]") {
+  // (f) exts_deviceSDTypes[i] read past the array.
+  hefesto::extract::DevicePattern d;
+  d.terminals = {tech::TypeMask::of(env().type("ndiff"))};
+  CHECK(detail::Builder::sd_types(d, 0) == d.terminals[0]);
+  CHECK(detail::Builder::sd_types(d, 1).empty());
+  CHECK(detail::Builder::sd_types(d, -1).empty());
 }
 
 TEST_CASE("a device on the right edge cuts the tile east-west", "[cap:extresist-network][req:Near-device cutting]") {

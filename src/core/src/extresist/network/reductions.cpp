@@ -35,22 +35,18 @@ int list_length_capped(const Graph& g, Id head) {
 
 }  // namespace
 
-void Graph::done_with_node(Id node) {
-  nodes[node].status |= kStatusTrue;
-  if (nodes[node].re == kNil || geometry) {
-    return;
-  }
+bool Graph::drop_trivial_resistor(Id node) {
   for (Id c = nodes[node].re; c != kNil; c = next(c)) {
     const Id r = item(c);
-    if (res[r].node[0] == res[r].node[1]) {
+    if (res[r].node[0] == res[r].node[1]) {  // a loop
       delete_res_pointer(node, r);
       delete_res_pointer(node, r);
       nodes[node].area += res[r].area;
       eliminate_resistor(r);
       done_with_node(node);
-      return;
+      return true;
     }
-    if (res[r].value == 0.0F) {
+    if (res[r].value == 0.0F) {  // a short: the nodes merge
       delete_res_pointer(res[r].node[0], r);
       delete_res_pointer(res[r].node[1], r);
       const Id other = other_end(r, node);
@@ -61,8 +57,16 @@ void Graph::done_with_node(Id node) {
         nodes[other].status &= ~kStatusTrue;
         done_with_node(other);
       }
-      return;
+      return true;
     }
+  }
+  return false;
+}
+
+void Graph::done_with_node(Id node) {
+  nodes[node].status |= kStatusTrue;
+  if (nodes[node].re == kNil || geometry || drop_trivial_resistor(node)) {
+    return;
   }
   int status = kUntouched;
   if (nodes[node].te == kNil && !protected_node(node)) {

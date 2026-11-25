@@ -197,6 +197,9 @@ void extract_arrays(Hier& h) {
   h.naming = Naming::array;
   h.cap_class = CapClass::array;
   for (const db::CellUse* use : uses_in(*h.parent, db::whole_plane())) {
+    if (h.env.cancelled()) {
+      break;  // extArrayFunc's SigInterruptPending (ExtArray.c:295, 309)
+    }
     array_func(h, *use);
   }
   h.table.write(*h.writer, MergeClass::array, h.env.style->cscale);

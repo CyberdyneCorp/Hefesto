@@ -25,6 +25,7 @@
 #include "hefesto/extract/hier/subtree.hpp"
 #include "hefesto/extract/node/regions.hpp"
 #include "hefesto/extract/tech/style.hpp"
+#include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::extract::hier {
@@ -37,8 +38,10 @@ struct Env {
   const compat::CompatSettings* compat = nullptr;
   std::int32_t halo = 1;
   std::optional<std::int32_t> side_halo;  // the `extract halo` override
+  const mask::Progress* progress = nullptr;  // SigInterruptPending
 
   [[nodiscard]] bool couple_adjust() const { return options->coupling && options->adjust; }
+  [[nodiscard]] bool cancelled() const { return progress != nullptr && progress->cancelled(); }
 };
 
 /// A tile side in a plane (Magic's Tile * with its dinfo).

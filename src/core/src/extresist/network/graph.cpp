@@ -12,7 +12,9 @@
 // Owner: RESNET (openspec/changes/m7-extraction design D3).
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -256,40 +258,41 @@ void Graph::clean_node(Id node, bool info) {
   n.alive = false;
 }
 
-void Graph::fix_breakpoint(Id tile, Id orig, Id replacement) {
-  auto& breaks = tiles[tile].breaks;
-  std::size_t present = breaks.size();
-  for (std::size_t i = 0; i < breaks.size(); ++i) {
-    if (breaks[i].node == replacement) {
-      present = i;
-      break;
+namespace {
+
+/// bp4 (the first breakpoint of `replacement`) inherits the first deleted
+/// contact rectangle when it has none.
+void inherit_crect(std::vector<Breakpoint>& kept, Id replacement, Id inherited) {
+  for (Breakpoint& b : kept) {
+    if (b.node == replacement) {
+      if (b.crect == kNil) {
+        b.crect = inherited;
+      }
+      return;
     }
   }
+}
+
+}  // namespace
+
+void Graph::fix_breakpoint(Id tile, Id orig, Id replacement) {
+  auto& breaks = tiles[tile].breaks;
+  const bool present =
+      std::any_of(breaks.begin(), breaks.end(), [&](const Breakpoint& b) { return b.node == replacement; });
   std::vector<Breakpoint> kept;
   kept.reserve(breaks.size());
   Id inherited = kNil;
   for (const Breakpoint& b : breaks) {
     if (b.node != orig) {
       kept.push_back(b);
-      continue;
-    }
-    if (present == breaks.size()) {
+    } else if (!present) {
       kept.push_back(Breakpoint{replacement, b.loc, b.crect});
     } else if (b.crect != kNil && inherited == kNil) {
       inherited = b.crect;
     }
   }
-  // bp4 (the first breakpoint of `replacement`) inherits the first deleted
-  // contact rectangle when it has none.
-  if (present != breaks.size() && inherited != kNil) {
-    for (Breakpoint& b : kept) {
-      if (b.node == replacement) {
-        if (b.crect == kNil) {
-          b.crect = inherited;
-        }
-        break;
-      }
-    }
+  if (present && inherited != kNil) {
+    inherit_crect(kept, replacement, inherited);
   }
   breaks = std::move(kept);
 }
@@ -324,9 +327,78 @@ void Graph::add_resistor_to_list(Id r, Id& list) {
   }
 }
 
+namespace {
+
+using IndexMap = std::unordered_map<Id, std::size_t>;
+
+std::size_t index_or_none(const IndexMap& index, Id id) {
+  const auto it = index.find(id);
+  return it == index.end() ? kNoNode : it->second;
+}
+
+std::int32_t clamp32(std::int64_t v) {
+  return static_cast<std::int32_t>(
+      std::clamp<std::int64_t>(v, std::numeric_limits<std::int32_t>::min(), std::numeric_limits<std::int32_t>::max()));
+}
+
+NetResistor net_resistor(const Resistor& x, const IndexMap& node_index) {
+  NetResistor nr;
+  nr.a = index_or_none(node_index, x.node[0]);
+  nr.b = index_or_none(node_index, x.node[1]);
+  nr.resistance = static_cast<double>(x.value);
+  nr.status = x.status;
+  nr.area = static_cast<double>(x.area);
+  nr.centerline = x.cl;
+  nr.width = x.width;
+  nr.type = x.tt;
+  return nr;
+}
+
+NetDevice net_device(const Device& d, const IndexMap& node_index) {
+  NetDevice nd;
+  for (const Id t : d.terms) {
+    nd.terminals.push_back(index_or_none(node_index, t));
+  }
+  nd.type = d.devtype;
+  nd.inside = d.inside;
+  nd.location = db::Point{d.inside.x0, d.inside.y0};
+  nd.length = clamp32(d.length);
+  nd.width = clamp32(d.width);
+  nd.perimeter = d.perim;
+  nd.area = d.area;
+  nd.tiles = d.tiles;
+  nd.gate_cap = d.gate_cap;
+  nd.sd_cap = d.sd_cap;
+  return nd;
+}
+
+}  // namespace
+
+NetNode Graph::net_node(Id n, const std::unordered_map<Id, std::size_t>& res_index,
+                        const std::unordered_map<Id, std::size_t>& dev_index) const {
+  const Node& x = nodes[n];
+  NetNode nn;
+  nn.location = x.loc;
+  nn.name = x.name;
+  nn.named = x.named;
+  nn.cap = static_cast<double>(x.area);
+  nn.kind = x.why;
+  nn.status = x.status;
+  nn.path_resistance = x.noderes;
+  for (Id c = x.re; c != kNil; c = cells[c].next) {
+    if (res_index.contains(cells[c].item)) {
+      nn.resistors.push_back(res_index.at(cells[c].item));
+    }
+  }
+  for (Id c = x.te; c != kNil; c = cells[c].next) {
+    nn.devices.push_back(dev_index.at(cells[c].item));
+  }
+  return nn;
+}
+
 Network Graph::to_network() const {
   Network out;
-  std::unordered_map<Id, std::size_t> node_index;
+  IndexMap node_index;
   std::vector<Id> order;
   for (const Id head : {done, pending}) {
     for (Id n = head; n != kNil; n = nodes[n].more) {
@@ -334,60 +406,18 @@ Network Graph::to_network() const {
       order.push_back(n);
     }
   }
-  std::unordered_map<Id, std::size_t> res_index;
+  IndexMap res_index;
   for (Id r = res_list; r != kNil; r = res[r].next) {
     res_index.emplace(r, out.resistors.size());
-    const Resistor& x = res[r];
-    NetResistor nr;
-    nr.a = node_index.contains(x.node[0]) ? node_index.at(x.node[0]) : kNoNode;
-    nr.b = node_index.contains(x.node[1]) ? node_index.at(x.node[1]) : kNoNode;
-    nr.resistance = static_cast<double>(x.value);
-    nr.status = x.status;
-    nr.area = static_cast<double>(x.area);
-    nr.centerline = x.cl;
-    nr.width = x.width;
-    nr.type = x.tt;
-    out.resistors.push_back(nr);
+    out.resistors.push_back(net_resistor(res[r], node_index));
   }
-  std::unordered_map<Id, std::size_t> dev_index;
+  IndexMap dev_index;
   for (std::size_t i = devices.size(); i-- > 0;) {
     dev_index.emplace(static_cast<Id>(i), out.devices.size());
-    const Device& d = devices[i];
-    NetDevice nd;
-    for (const Id t : d.terms) {
-      nd.terminals.push_back(node_index.contains(t) ? node_index.at(t) : kNoNode);
-    }
-    nd.type = d.devtype;
-    nd.inside = d.inside;
-    nd.location = db::Point{d.inside.x0, d.inside.y0};
-    nd.length = d.length;
-    nd.width = d.width;
-    nd.perimeter = d.perim;
-    nd.area = d.area;
-    nd.tiles = d.tiles;
-    nd.gate_cap = d.gate_cap;
-    nd.sd_cap = d.sd_cap;
-    out.devices.push_back(std::move(nd));
+    out.devices.push_back(net_device(devices[i], node_index));
   }
   for (const Id n : order) {
-    const Node& x = nodes[n];
-    NetNode nn;
-    nn.location = x.loc;
-    nn.name = x.name;
-    nn.named = x.named;
-    nn.cap = static_cast<double>(x.area);
-    nn.kind = x.why;
-    nn.status = x.status;
-    nn.path_resistance = x.noderes;
-    for (Id c = x.re; c != kNil; c = cells[c].next) {
-      if (res_index.contains(cells[c].item)) {
-        nn.resistors.push_back(res_index.at(cells[c].item));
-      }
-    }
-    for (Id c = x.te; c != kNil; c = cells[c].next) {
-      nn.devices.push_back(dev_index.at(cells[c].item));
-    }
-    out.nodes.push_back(std::move(nn));
+    out.nodes.push_back(net_node(n, res_index, dev_index));
   }
   if (origin != kNil && node_index.contains(origin)) {
     out.origin = node_index.at(origin);
@@ -414,57 +444,76 @@ void append_cells(Graph& g, Id& head, const std::vector<std::size_t>& items, boo
   }
 }
 
+Resistor working_resistor(const NetResistor& nr) {
+  Resistor r;
+  r.node = {to_id(nr.a), to_id(nr.b)};
+  r.value = static_cast<float>(nr.resistance);
+  r.status = nr.status;
+  r.area = static_cast<float>(nr.area);
+  r.cl = nr.centerline;
+  r.width = nr.width;
+  r.tt = nr.type;
+  return r;
+}
+
+Device working_device(const NetDevice& nd) {
+  Device d;
+  for (const std::size_t t : nd.terminals) {
+    d.terms.push_back(to_id(t));
+  }
+  d.devtype = nd.type;
+  d.inside = nd.inside;
+  d.length = nd.length;
+  d.width = nd.width;
+  d.perim = nd.perimeter;
+  d.area = nd.area;
+  d.tiles = nd.tiles;
+  d.gate_cap = nd.gate_cap;
+  d.sd_cap = nd.sd_cap;
+  return d;
+}
+
+Node working_node(const NetNode& nn) {
+  Node n;
+  n.loc = nn.location;
+  n.name = nn.name;
+  n.named = nn.named;
+  n.area = static_cast<float>(nn.cap);
+  n.why = nn.kind;
+  n.status = nn.status;
+  n.noderes = nn.path_resistance;
+  return n;
+}
+
+/// The neighbours of entry i in a list linked in index order.
+Id prev_id(std::size_t i) {
+  return i == 0 ? kNil : static_cast<Id>(i - 1);
+}
+Id next_id(std::size_t i, std::size_t size) {
+  return i + 1 == size ? kNil : static_cast<Id>(i + 1);
+}
+
 }  // namespace
 
 Graph Graph::from_network(const Network& network) {
   Graph g;
   for (const NetResistor& nr : network.resistors) {
-    Resistor r;
-    r.node = {to_id(nr.a), to_id(nr.b)};
-    r.value = static_cast<float>(nr.resistance);
-    r.status = nr.status;
-    r.area = static_cast<float>(nr.area);
-    r.cl = nr.centerline;
-    r.width = nr.width;
-    r.tt = nr.type;
-    g.res.push_back(r);
+    g.res.push_back(working_resistor(nr));
   }
   for (std::size_t i = 0; i < g.res.size(); ++i) {
-    g.res[i].last = i == 0 ? kNil : static_cast<Id>(i - 1);
-    g.res[i].next = i + 1 == g.res.size() ? kNil : static_cast<Id>(i + 1);
+    g.res[i].last = prev_id(i);
+    g.res[i].next = next_id(i, g.res.size());
   }
   g.res_list = g.res.empty() ? kNil : 0;
   // Network::devices is ResDevList order; the working list keeps creation
   // order (the reverse).
   for (std::size_t i = network.devices.size(); i-- > 0;) {
-    const NetDevice& nd = network.devices[i];
-    Device d;
-    for (const std::size_t t : nd.terminals) {
-      d.terms.push_back(to_id(t));
-    }
-    d.devtype = nd.type;
-    d.inside = nd.inside;
-    d.length = nd.length;
-    d.width = nd.width;
-    d.perim = nd.perimeter;
-    d.area = nd.area;
-    d.tiles = nd.tiles;
-    d.gate_cap = nd.gate_cap;
-    d.sd_cap = nd.sd_cap;
-    g.devices.push_back(std::move(d));
+    g.devices.push_back(working_device(network.devices[i]));
   }
   for (std::size_t i = 0; i < network.nodes.size(); ++i) {
-    const NetNode& nn = network.nodes[i];
-    Node n;
-    n.loc = nn.location;
-    n.name = nn.name;
-    n.named = nn.named;
-    n.area = static_cast<float>(nn.cap);
-    n.why = nn.kind;
-    n.status = nn.status;
-    n.noderes = nn.path_resistance;
-    n.less = i == 0 ? kNil : static_cast<Id>(i - 1);
-    n.more = i + 1 == network.nodes.size() ? kNil : static_cast<Id>(i + 1);
+    Node n = working_node(network.nodes[i]);
+    n.less = prev_id(i);
+    n.more = next_id(i, network.nodes.size());
     g.nodes.push_back(std::move(n));
   }
   for (std::size_t i = 0; i < network.nodes.size(); ++i) {

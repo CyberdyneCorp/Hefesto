@@ -138,16 +138,22 @@ void substrate_only(Hier& h, const db::Rect& square) {
   }
 }
 
-void run_squares(Hier& h, std::int32_t step) {
-  for (const InteractionSquare& s : interaction_squares(*h.parent, step, h.env.halo, h.env.compat->magic_compat)) {
+// The step squares; false when the pass was cancelled (Magic checks
+// SigInterruptPending before each square, ExtSubtree.c:251).
+bool run_squares(Hier& h, std::int32_t step) {
+  return for_each_square(*h.parent, step, h.env.halo, h.env.compat->magic_compat, [&](const InteractionSquare& s) {
+    if (h.env.cancelled()) {
+      return false;
+    }
     if (s.kind == SquareKind::interaction) {
       h.inter_area = s.area;
       h.clip_area = s.clip;
       interaction(h);
-    } else if (s.kind == SquareKind::substrate) {
+    } else {
       substrate_only(h, s.square);
     }
-  }
+    return true;
+  });
 }
 
 }  // namespace
@@ -162,7 +168,7 @@ diag::Outcome<SubtreeResult> extract_subtree(ExtractContext& ctx, db::CellDef& c
   SubtreeResult result;
   hier::Hier h;
   h.env = hier::Env{ctx.style.get(), inputs.technology, &ctx.options, &ctx.compat,
-                    hier_halo(*ctx.style, ctx.options, ctx.overrides), ctx.overrides.halo};
+                    hier_halo(*ctx.style, ctx.options, ctx.overrides), ctx.overrides.halo, ctx.progress};
   h.parent = &cell;
   h.inputs = &inputs;
   h.writer = &writer;
@@ -175,10 +181,15 @@ diag::Outcome<SubtreeResult> extract_subtree(ExtractContext& ctx, db::CellDef& c
   ctx.yank.cumulative->set_plane_count(cell.plane_count());
   h.cum.def = ctx.yank.cumulative.get();
 
-  hier::run_squares(h, hier_step(*ctx.style, ctx.overrides));
+  // A cancelled pass still writes the merges found so far (Magic's done:
+  // label) and skips extArray (ExtCell.c:523-524).
+  result.cancelled = !hier::run_squares(h, hier_step(*ctx.style, ctx.overrides));
   h.table.write(writer, MergeClass::subcell, ctx.style->cscale);
   h.sub_extracted.clear();
-  hier::extract_arrays(h);
+  if (!result.cancelled) {
+    hier::extract_arrays(h);
+    result.cancelled = h.env.cancelled();
+  }
   return result;
 }
 

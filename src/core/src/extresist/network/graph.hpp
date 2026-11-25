@@ -18,6 +18,7 @@
 #include <limits>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -96,10 +97,12 @@ struct Device {
   std::vector<Id> terms;
   tech::TileType devtype = 0;
   db::Rect inside;
-  std::int32_t length = 0;
-  std::int32_t width = 0;
-  std::int32_t perim = 0;
-  std::int32_t area = 0;
+  /// 64 bits, so the sums over a large device do not overflow; the
+  /// Network gets length and width clamped into int32.
+  std::int64_t length = 0;
+  std::int64_t width = 0;
+  std::int64_t perim = 0;
+  std::int64_t area = 0;
   std::int32_t tiles = 0;
   /// The gate and S/D capacitance of exts_device[t] for the type of the
   /// device's tile (ResCalculateChildCapacitance).
@@ -204,6 +207,10 @@ class Graph {
                   bool info);                             // ResCleanNode(node, info, done, pending)
   void fix_breakpoint(Id tile, Id orig, Id replacement);  // ResFixBreakPoint
   void done_with_node(Id node);                           // ResDoneWithNode (reductions.cpp)
+  /// done_with_node's first step: a loop resistor or a zero-value one on
+  /// `node` is removed (the latter merging its two nodes) and the walk
+  /// restarts; true when one was found.
+  bool drop_trivial_resistor(Id node);
 
   [[nodiscard]] Id other_end(Id r, Id node) const { return res[r].node[0] == node ? res[r].node[1] : res[r].node[0]; }
   [[nodiscard]] bool protected_node(Id node) const { return (nodes[node].why & (kNodeOrigin | kNodeSink)) != 0; }
@@ -216,6 +223,9 @@ class Graph {
 
   // --- conversion ---
   [[nodiscard]] Network to_network() const;
+  /// One node of to_network, its resistor and device lists remapped.
+  [[nodiscard]] NetNode net_node(Id n, const std::unordered_map<Id, std::size_t>& res_index,
+                                 const std::unordered_map<Id, std::size_t>& dev_index) const;
   static Graph from_network(const Network& network);
 
  private:

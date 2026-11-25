@@ -115,6 +115,14 @@ class StitchEditor {
   /// are not compared otherwise (ResSplitX checks the types first).
   bool join_y(StitchTile keep, StitchTile gone);
 
+  /// join_y with the magic-compat setting (the Q-EXTRACT-29 rule applied
+  /// to TiJoinY). With `magic_compat` OFF it is join_y above. With it ON a
+  /// split tile is joined as Magic's TiJoinY joins it: `keep` keeps its
+  /// whole body over the taller rectangle (a split `keep` stretches its
+  /// triangle, a split `gone` loses its diagonal). The stacking and the
+  /// LEFT/RIGHT checks hold in both modes.
+  bool join_y(StitchTile keep, StitchTile gone, bool magic_compat);
+
   /// Frees the tiles the joins removed (TiFreeIf); handles to them become
   /// invalid.
   void release() noexcept;

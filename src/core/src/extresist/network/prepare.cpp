@@ -140,10 +140,10 @@ struct DeviceCopy {
 
   void perim_overlap(const db::Plane& plane, const db::TileView& tile, DevTile& dev) const {
     const db::Rect& r = tile.area;
-    dev.perim = (r.y1 - r.y0 - r.x0 + r.x1) << 1;
+    dev.perim = (static_cast<std::int64_t>(r.y1) - r.y0 - r.x0 + r.x1) * 2;
     const tech::TileType t1 = tile.split ? tile.left_type : tile.type;
     const tech::TypeMask omask = t1 < b.style_.node_conn.size() ? b.style_.node_conn[t1] : tech::TypeMask{};
-    std::int32_t overlap = 0;
+    std::int64_t overlap = 0;
     std::vector<db::TileView> nbrs;
     for (const db::Side side : {db::Side::left, db::Side::right, db::Side::top, db::Side::bottom}) {
       const auto [lo, hi] = side_range(r, side);
@@ -153,8 +153,8 @@ struct DeviceCopy {
         if (!omask.test(facing_type(n, side))) {
           continue;
         }
-        overlap += vertical ? std::min(r.y1, n.area.y1) - std::max(r.y0, n.area.y0)
-                            : std::min(r.x1, n.area.x1) - std::max(r.x0, n.area.x0);
+        overlap += vertical ? std::int64_t{std::min(r.y1, n.area.y1)} - std::max(r.y0, n.area.y0)
+                            : std::int64_t{std::min(r.x1, n.area.x1)} - std::max(r.x0, n.area.x0);
       }
     }
     dev.overlap += overlap;
@@ -191,35 +191,49 @@ struct DeviceCopy {
     }
   }
 
-  void flood(const db::Plane& plane, const db::TileView& start, DevTile& dev) const {
-    std::unordered_set<const void*> seen{start.tile};
-    std::vector<db::TileView> stack{start};
+  /// The device side of a split tile and its hypotenuse-adjacent sides
+  /// (the edges the flood ignores); {0, false} for a Manhattan tile.
+  [[nodiscard]] std::pair<std::uint32_t, bool> split_sides(const db::TileView& tp, tech::TileType device) const {
+    if (!tp.split) {
+      return {0U, false};
+    }
+    const bool dir = tp.diagonal == db::Diagonal::nw_se;
+    const bool right_side = !part_of(tp.left_type, device);
+    const std::uint32_t ignore =
+        right_side ? (kLeftEdge | (dir ? kBottomEdge : kTopEdge)) : (kRightEdge | (dir ? kTopEdge : kBottomEdge));
+    return {ignore, right_side};
+  }
+
+  struct Flood {
+    std::unordered_set<const void*> seen;
+    std::vector<db::TileView> stack;
     std::vector<db::TileView> nbrs;
-    while (!stack.empty()) {
-      const db::TileView tp = stack.back();
-      stack.pop_back();
-      std::uint32_t ignore = 0;  // the hypotenuse-adjacent sides of a split tile
-      bool right_side = false;
-      if (tp.split) {
-        const bool dir = tp.diagonal == db::Diagonal::nw_se;
-        right_side = !part_of(tp.left_type, dev.type);
-        ignore =
-            right_side ? (kLeftEdge | (dir ? kBottomEdge : kTopEdge)) : (kRightEdge | (dir ? kTopEdge : kBottomEdge));
+  };
+
+  /// Pushes the unseen device tiles across `side` of `tp`.
+  void spread(const db::Plane& plane, const db::TileView& tp, db::Side side, tech::TileType device, Flood& f) const {
+    const auto [lo, hi] = side_range(tp.area, side);
+    plane.neighbors(tp, side, lo, hi, f.nbrs);
+    for (const db::TileView& n : f.nbrs) {
+      if (!f.seen.contains(n.tile) && part_of(facing_type(n, side), device)) {
+        f.seen.insert(n.tile);
+        f.stack.push_back(n);
       }
+    }
+  }
+
+  void flood(const db::Plane& plane, const db::TileView& start, DevTile& dev) const {
+    Flood f{{start.tile}, {start}, {}};
+    while (!f.stack.empty()) {
+      const db::TileView tp = f.stack.back();
+      f.stack.pop_back();
+      const auto [ignore, right_side] = split_sides(tp, dev.type);
       paint(tp, right_side, dev);
       perim_overlap(plane, tp, dev);
       for (const auto& [side, edge] : {std::pair{db::Side::top, kTopEdge}, std::pair{db::Side::bottom, kBottomEdge},
                                       std::pair{db::Side::right, kRightEdge}, std::pair{db::Side::left, kLeftEdge}}) {
-        if ((ignore & edge) != 0) {
-          continue;
-        }
-        const auto [lo, hi] = side_range(tp.area, side);
-        plane.neighbors(tp, side, lo, hi, nbrs);
-        for (const db::TileView& n : nbrs) {
-          if (!seen.contains(n.tile) && part_of(facing_type(n, side), dev.type)) {
-            seen.insert(n.tile);
-            stack.push_back(n);
-          }
+        if ((ignore & edge) == 0) {
+          spread(plane, tp, side, dev.type, f);
         }
       }
     }
@@ -257,21 +271,25 @@ void Builder::copy_devices() {
 
 // --- contacts: shaving, finding, dissolving ---
 
-void Builder::shave_contacts() {
-  const tech::TypeMask mask = all_but_space();
-  for (const tech::PlaneId p : user_planes()) {
-    std::vector<std::pair<db::Rect, tech::TileType>> found;
-    def.plane(p).enumerate(bbox, mask, [&](const db::TileView& v) {
-      if (v.split && v.left_type != tech::kSpace && v.right_type != tech::kSpace && v.right_side) {
-        return true;
-      }
-      const tech::TileType t = v.split ? (v.right_side ? v.right_type : v.left_type) : v.type;
-      if (tech_.is_contact(t)) {
-        found.emplace_back(v.area, t);
-      }
+std::vector<std::pair<db::Rect, tech::TileType>> Builder::contact_tiles(tech::PlaneId p) const {
+  std::vector<std::pair<db::Rect, tech::TileType>> found;
+  def.plane(p).enumerate(bbox, all_but_space(), [&](const db::TileView& v) {
+    if (v.split && v.left_type != tech::kSpace && v.right_type != tech::kSpace && v.right_side) {
       return true;
-    });
-    for (const auto& [rect, t] : found) {
+    }
+    const tech::TileType t = v.split ? (v.right_side ? v.right_type : v.left_type) : v.type;
+    if (tech_.is_contact(t)) {
+      found.emplace_back(v.area, t);
+    }
+    return true;
+  });
+  return found;
+}
+
+void Builder::shave_contacts() {
+  for (const tech::PlaneId p : user_planes()) {
+    for (const auto& [rect, t] : contact_tiles(p)) {
+      // Erased from every plane of the contact but the lowest.
       const tech::PlaneMask pmask = tech_.type_planes(t);
       bool first = true;
       for (const tech::PlaneId q : user_planes()) {
@@ -386,30 +404,18 @@ class ContactWalk {
     const tech::TileType type = side_type(t, side);
     const tech::TypeMask& mask = conn_[type];
     const TileTypes ty = b_.types(t);
-    const bool split = ty.split;
-    const int sd = side ? 1 : 0;
-    if (!(split && (sd ^ ty.direction) != 0)) {
-      b_.each_top(t, [&](const TileRef& tp) {
-        const TileTypes n = b_.types(tp);
-        offer(tp, n.split ? n.direction == 0 : false, n.split ? n.bottom() : n.left, mask);
-        return false;
-      });
+    // A split tile skips the sides its hypotenuse faces.
+    const bool diag_top = ty.split && ((side ? 1 : 0) ^ ty.direction) != 0;
+    if (!ty.split || !diag_top) {
+      b_.each_top(t, [&](const TileRef& tp) { return offer_top(tp, mask); });
     }
-    if (!(split && side)) {
-      b_.each_left(t, [&](const TileRef& tp) {
-        const TileTypes n = b_.types(tp);
-        offer(tp, n.split, n.split ? n.right : n.left, mask);
-        return false;
-      });
+    if (!ty.split || !side) {
+      b_.each_left(t, [&](const TileRef& tp) { return offer_left(tp, mask); });
     }
-    if (!(split && (sd ^ ty.direction) == 0)) {
-      b_.each_bottom(t, [&](const TileRef& tp) {
-        const TileTypes n = b_.types(tp);
-        offer(tp, n.split ? n.direction != 0 : false, n.split ? n.top() : n.left, mask);
-        return false;
-      });
+    if (!ty.split || diag_top) {
+      b_.each_bottom(t, [&](const TileRef& tp) { return offer_bottom(tp, mask); });
     }
-    if (!(split && !side)) {
+    if (!ty.split || side) {
       b_.each_right(t, [&](const TileRef& tp) {
         offer(tp, false, b_.types(tp).left, mask);
         return false;
@@ -417,6 +423,24 @@ class ContactWalk {
     }
     each(t, side);
     other_planes(t, side, type, mask);
+  }
+
+  // The neighbour sides facing the visited tile, as ExtFindNeighbors
+  // reads them; each returns false to keep walking.
+  bool offer_top(const TileRef& tp, const tech::TypeMask& mask) {
+    const TileTypes n = b_.types(tp);
+    offer(tp, n.split && n.direction == 0, n.split ? n.bottom() : n.left, mask);
+    return false;
+  }
+  bool offer_left(const TileRef& tp, const tech::TypeMask& mask) {
+    const TileTypes n = b_.types(tp);
+    offer(tp, n.split, n.split ? n.right : n.left, mask);
+    return false;
+  }
+  bool offer_bottom(const TileRef& tp, const tech::TypeMask& mask) {
+    const TileTypes n = b_.types(tp);
+    offer(tp, n.split && n.direction != 0, n.split ? n.top() : n.left, mask);
+    return false;
   }
 
   void offer(const TileRef& tp, bool side, tech::TileType t, const tech::TypeMask& mask) {
@@ -436,29 +460,30 @@ class ContactWalk {
       }
     }
     const tech::PlaneMask cross = b_.tech_.cross_planes(type);
-    if (cross == 0) {
-      return;
-    }
-    const db::Rect bigger{r.x0 - 1, r.y0 - 1, r.x1 + 1, r.y1 + 1};
     for (const tech::PlaneId q : b_.user_planes()) {
-      if (q == t.plane || (cross & tech::plane_bit(q)) == 0) {
-        continue;
+      if (q != t.plane && (cross & tech::plane_bit(q)) != 0) {
+        cross_plane(q, r, mask);
       }
-      b_.search(q, bigger, mask, [&](const TileRef& tp, bool s) {
-        if (region(tp, s) != db::kClientDefault) {
-          return false;
-        }
-        db::Rect c = b_.area(tp);
-        if (!db::overlap(c, r)) {
-          c = db::Rect{std::max(c.x0, r.x0), std::max(c.y0, r.y0), std::min(c.x1, r.x1), std::min(c.y1, r.y1)};
-          if (c.x0 >= c.x1 && c.y0 >= c.y1) {
-            return false;
-          }
-        }
-        push(tp, s);
-        return false;
-      });
     }
+  }
+
+  /// The tiles of `mask` on plane `q` touching `r` (not only at a corner).
+  void cross_plane(tech::PlaneId q, const db::Rect& r, const tech::TypeMask& mask) {
+    const db::Rect bigger{r.x0 - 1, r.y0 - 1, r.x1 + 1, r.y1 + 1};
+    b_.search(q, bigger, mask, [&](const TileRef& tp, bool s) {
+      if (region(tp, s) == db::kClientDefault && touches(b_.area(tp), r)) {
+        push(tp, s);
+      }
+      return false;
+    });
+  }
+
+  [[nodiscard]] static bool touches(const db::Rect& a, const db::Rect& r) {
+    if (db::overlap(a, r)) {
+      return true;
+    }
+    const db::Rect c{std::max(a.x0, r.x0), std::max(a.y0, r.y0), std::min(a.x1, r.x1), std::min(a.y1, r.y1)};
+    return !(c.x0 >= c.x1 && c.y0 >= c.y1);
   }
 
   void contact_plane(tech::PlaneId q, db::Point ll, bool split, bool side, const tech::TypeMask& mask) {
@@ -487,26 +512,35 @@ class ContactWalk {
 
 }  // namespace
 
+namespace {
+
+/// ResInitializeConn for one device record: its S/D and substrate types
+/// connect to the device type.
+void connect_record(std::vector<tech::TypeMask>& conn, tech::TileType dev, const extract::DevicePattern& d) {
+  for (tech::TileType t = tech::kFirstUserType; t < tech::kMaxTileTypes; ++t) {
+    for (const tech::TypeMask& sd : d.terminals) {
+      if (sd.empty()) {
+        break;
+      }
+      if (sd.test(t)) {
+        conn[t].set(dev);
+      }
+    }
+    if (d.substrate_types.test(t)) {
+      conn[t].set(dev);
+    }
+  }
+}
+
+}  // namespace
+
 void Builder::find_contacts() {
   // ResInitializeConn: S/D and substrate types connect to their devices.
   std::vector<tech::TypeMask> conn(tech::kMaxTileTypes);
   for (tech::TileType dev = tech::kFirstUserType; dev < tech::kMaxTileTypes; ++dev) {
     for (const extract::DevicePattern* d : records(dev)) {
-      if (d->model.empty() || d->model == "None") {
-        continue;
-      }
-      for (tech::TileType t = tech::kFirstUserType; t < tech::kMaxTileTypes; ++t) {
-        for (const tech::TypeMask& sd : d->terminals) {
-          if (sd.empty()) {
-            break;
-          }
-          if (sd.test(t)) {
-            conn[t].set(dev);
-          }
-        }
-        if (d->substrate_types.test(t)) {
-          conn[t].set(dev);
-        }
+      if (!d->model.empty() && d->model != "None") {
+        connect_record(conn, dev, *d);
       }
     }
     conn[dev] |= tech_.connects_to(dev);

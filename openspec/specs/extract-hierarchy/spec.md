@@ -31,10 +31,17 @@ As landed (M7 round 4): the interaction area is DRCFindInteractions' with the DR
 
 (Magic ref: extract/ExtSubtree.c:120-284)
 
+As landed (M7 R4 fix pass): the step squares are classified one at a time (only those with an interaction or a subcell substrate are acted on; none is kept), a square edge past the plane's infinity is clamped to it (a large `extract stepsize` would wrap the int32 edge), and a cancelled pass (the progress cancel flag, Magic's SigInterruptPending) stops before the next square, still writes the merges found so far, and skips the array pass.
+
 #### Scenario: Halo without coupling
 - **GIVEN** `sidehalo 4` and `extract no coupling`
 - **WHEN** a cell is extracted
 - **THEN** interactions are searched with halo 1
+
+#### Scenario: A cancelled pass stops at the step squares
+- **GIVEN** a cell whose hierarchical pass has three interaction squares and a cancelled progress flag
+- **WHEN** the subtree pass runs
+- **THEN** no square is processed, no coupling is written and the pass reports that it was cancelled
 
 ### Requirement: Interaction area
 
