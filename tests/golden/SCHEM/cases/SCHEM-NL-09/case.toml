@@ -19,7 +19,7 @@ allow_nonzero_exit = true
 xschem_sets = ["gf180mcu-xschem"]
 
 [hefesto]
-args = ["--no-log", "{input}/hefesto.hef"]
+args = ["--no-log", "{input}/replay.hef"]
 requires_commands = ["schematic"]
 
 [[outputs]]

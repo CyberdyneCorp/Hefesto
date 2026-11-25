@@ -136,7 +136,7 @@ Every row is approved (2026-11-13; Q-SCHEM-30 and the Q-SCHEM-21 amendment 2026-
 
 Total: 31 rows: the 30 of 2026-11-13, of which 25 were open (24 Q-SCHEM plus D-21) and 5 already resolved, and Q-SCHEM-30, added and approved 2026-11-18. IDs are given without the `Q-` prefix. Kinds follow D-21 (a). If D-21 takes (b), the six compat rows become replicate, except Q-SCHEM-14 and Q-SCHEM-21, which become fix (warn and produce valid SPICE).
 
-These counts cover the decision table above only. The later sections add Q-SCHEM-31 to -38 and -40 to -45 (Q-SCHEM-39 is raised by the M9 plan and listed in `m9-decision-table.md`): approved are Q-SCHEM-31 and -33 (other) and Q-SCHEM-32 (platform) on 2026-11-21, Q-SCHEM-38 and -40 to -42 (platform) on 2026-11-22, Q-SCHEM-43 to -45 (platform) on 2026-11-23, with the confirmation of Q-SCHEM-30 and clarifications of Q-SCHEM-10 and -42 the same day; Q-SCHEM-34 to -37 (fix) are still proposed and Q-SCHEM-39 is pending.
+These counts cover the decision table above only. The later sections add Q-SCHEM-31 to -38 and -40 to -45 (Q-SCHEM-39 is raised by the M9 plan and listed in `m9-decision-table.md`): approved are Q-SCHEM-31 and -33 (other) and Q-SCHEM-32 (platform) on 2026-11-21, Q-SCHEM-38 and -40 to -42 (platform) on 2026-11-22, Q-SCHEM-43 to -45 (platform) on 2026-11-23, with the confirmation of Q-SCHEM-30 and clarifications of Q-SCHEM-10 and -42 the same day; Q-SCHEM-34 to -37 (fix) are still proposed and Q-SCHEM-39 is pending. Q-SCHEM-46 to -50 (two other, three platform) were proposed on 2026-11-24 and await the user.
 
 ## Changes to the entries' original recommendations
 
@@ -252,3 +252,15 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **schematic-command:** no change beyond the Q-SCHEM-10 inventory test.
 - **tests/golden/SCHEM/CASES.md:** replace the SCHEM-RT-05 input with a Hefesto-authored embedded-symbol schematic (J-1).
 - **docs/glossary.md:** update the `xschem-compat` row from "proposed" to the decision.
+
+## Proposed 2026-11-24 (awaiting the user)
+
+Drafted by the M8 round-5 GOLDEN workstream, recorded in `SCHEM.md` with `Status: proposed 2026-11-24 (awaiting the user)` and no `Resolution:` line. Q-SCHEM-46 is new (the SCHEM golden replays need it); Q-SCHEM-47 to -50 are the round-4 review choices (PR #101) that are implemented on main as recommended and stay as they are until the user decides. `check_milestone_readiness.py --milestone M8` lists them as blocking until then, like Q-SCHEM-34 to -37.
+
+| ID | Question | Kind | Recommendation | Alternatives | Rationale | Caps | Src |
+|---|---|---|---|---|---|---|---|
+| Q-SCHEM-46 | xschem driver text in SCHEM `stdout.txt`/`stderr.txt` | **other** | (b) recapture with the harness filtering xschem's driver text (start-up and `sourcing` lines, `== <cell>` banners); the cases' own stdout/stderr lines stay compared | (a) approved deviation for both outputs on the file-result SCHEM cases; (c) Hefesto prints the same lines in `xschem-compat` ON | the driver text is xschem's program banner, not schematic behaviour; (a) would stop comparing warnings and `puts` results; until decided the two outputs stay deferred per case (`schem_cases.LATER_OUTPUTS`) | scmd, golden harness | [G] SCHEM-CMD-01 |
+| Q-SCHEM-47 | Undo history bounded by memory | **platform** | 512 MiB (`kUndoMaxBytes`) as well as 200 steps per document, oldest steps dropped first, newest always kept, both modes (implemented) | steps only (as xschem) | a step-only bound lets a large document exhaust memory | sed | test "Undo history byte bound" |
+| Q-SCHEM-48 | Non-finite numbers in `schematic` options | **platform** | refused as invalid arguments (`inf`, `nan`, `1e999`), both modes (implemented) | accepted (as xschem) | a non-finite coordinate cannot be saved as a valid value and breaks later geometry | sed, scmd | test "Non-finite coordinate refused" |
+| Q-SCHEM-49 | Read-only sandbox roots of the install root | **platform** | only `<root>/assets` and `<root>/magic` (implemented) | the whole install root | since Q-SCHEM-45 the install root defaults to the install prefix, which must not become readable as a whole | app-startup, hefesto-scripting | test "Install prefix not readable by scripts" |
+| Q-SCHEM-50 | Time units of the `SCHEM-TCL-003` texts | **other** | whole seconds: `10 s` per value, `60 s` per run (implemented) | milliseconds, like `SCHEM-LIB-012` | diagnostics only; the limits are whole seconds | ssl | test "the tcleval limit texts print whole seconds in s" |

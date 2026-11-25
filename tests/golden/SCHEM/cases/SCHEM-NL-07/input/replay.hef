@@ -1,0 +1,15 @@
+file mkdir out
+set status 0
+schematic pdk ihp-sg13g2
+schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_lv_nmos.sch
+if {[catch {schematic netlist out/dc_lv_nmos.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk ihp-sg13g2
+schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_res_temp.sch
+if {[catch {schematic netlist out/dc_res_temp.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk ihp-sg13g2
+schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/tran_cap_cmomi.sch
+if {[catch {schematic netlist out/tran_cap_cmomi.spice -force}]} {set status 10}
+schematic close -discard
+quit $status

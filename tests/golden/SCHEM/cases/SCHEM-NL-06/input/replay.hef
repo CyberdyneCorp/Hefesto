@@ -1,0 +1,27 @@
+file mkdir out
+set status 0
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
+if {[catch {schematic netlist out/test_lvs_ignore-lvs_ignore0.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
+if {[catch {schematic netlist out/test_lvs_ignore-lvs_ignore1.spice -lvsignore -force}]} {set status 10}
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
+if {[catch {schematic netlist out/test_short_option-lvs_ignore0.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
+if {[catch {schematic netlist out/test_short_option-lvs_ignore1.spice -lvsignore -force}]} {set status 10}
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
+if {[catch {schematic netlist out/test_format_override-lvs_ignore0.spice -force}]} {set status 10}
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
+if {[catch {schematic netlist out/test_format_override-lvs_ignore1.spice -lvsignore -force}]} {set status 10}
+schematic close -discard
+quit $status

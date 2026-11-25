@@ -313,7 +313,7 @@ Token values:
 | `@<key>` | The value of `key` (Requirement "Hierarchical parameters"), then `expr` evaluation. If unresolved, nothing. `@name` and `@lab` values are bus-expanded. |
 | `%<key>` | As `@key`, but if `key` is defined nowhere, the text `<key>` |
 
-After the whole line is built: if it begins with `tcleval(`, it SHALL be Tcl-evaluated; then `expr` evaluation SHALL be applied to the whole line. The text one instance produces (one line, or several with continuation lines) is one **element**; its spice prefix applies to that element only.
+After the whole line is built: if it begins with `tcleval(`, it SHALL be Tcl-evaluated, and the line's terminating LF SHALL be appended after the result (so a format `tcleval( @value )` gives the result, blanks included, then LF; golden cases SCHEM-NL-07 and NL-08, clarified 2026-11-24 from the capture); then `expr` evaluation SHALL be applied to the whole line. The text one instance produces (one line, or several with continuation lines) is one **element**; its spice prefix applies to that element only.
 
 Compatibility: exact
 
@@ -378,7 +378,7 @@ Text SHALL be scanned for the markers `expr(`, `expr_eng(` and `expr_eng4(`. Tex
 - **nesting**: parentheses, function calls and unary operators SHALL nest at most **200** levels (`kMaxExprDepth`), in both modes (input limit approved by the user on 2026-11-21, Q-SCHEM-32). Deeper input SHALL fail like a syntax error (the errors rule below) and SHALL report the warning `expr nested deeper than 200 levels; text copied without evaluation` (`SCHEM-NET-006`)
 - **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists (proposed Q-SCHEM-36, recommendation: always `nan`, so netlists are identical on every platform, D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
 - **result**: `expr` prints with C `%.15g`; `expr_eng` prints in engineering notation with the `ev_precision` setting (default 4) significant digits; `expr_eng4` with 4. Engineering notation divides by 1e12, 1e9, 1e6 or 1e3 for |x| above 0.999999 times that power (suffix `T`, `G`, `MEG`, `k`), keeps the value for |x| > 0.0999999, else multiplies by 1e3 ... 1e18 (suffix `m`, `u`, `n`, `p`, `f`, `a`); |x| < 0.999999e-23 prints `0`.
-- **errors**: on a syntax error or an unknown identifier, the rest of the text from the failing expression on SHALL be copied with every `expr(`, `expr_eng(` or `expr_eng4(` marker and its matching `)` removed.
+- **errors**: on a syntax error or an unknown identifier, the rest of the text from the failing expression on SHALL be copied with every `expr(`, `expr_eng(` or `expr_eng4(` marker and its matching `)` removed; the single quotes of `expr('...')` are kept.
 
 Compatibility: exact
 
@@ -392,7 +392,7 @@ Compatibility: exact
 #### Scenario: Parameter left symbolic
 - **GIVEN** the same template with `W=W_N`
 - **WHEN** `@ad` is substituted
-- **THEN** it SHALL give `int((1 + 1)/2) * W_N / 1 * 0.29`
+- **THEN** it SHALL give `'int((1 + 1)/2) * W_N / 1 * 0.29'`: the marker and its `)` are removed and the single quotes are kept (errors rule above; golden case SCHEM-NL-03, corrected 2026-11-24 from the capture)
 
 #### Scenario: Minus inside a number, xschem-compat ON
 - **GIVEN** `xschem-compat` ON
@@ -452,7 +452,7 @@ An element line whose name list is empty SHALL be written as an empty line.
 
 **Renames.** On an element line starting with `g` or `G`, the first ` value=` (case-insensitive) SHALL become ` cur=`; with `e` or `E` it becomes ` vol=`; with `r` or `R`, ` r=`; with `c` or `C`, ` c=`. On a line starting with `D`, the first `PERI` followed by optional spaces and `=` SHALL become `PJ=`.
 
-**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces next to the parentheses are removed.
+**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker (a field that is one, or a field `<t>(?<w>` whose width marker follows its `(`, as `spice_probe_vdiff.sym` writes: golden case SCHEM-NL-05, clarified 2026-11-24) SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces inside the parentheses (after a `(`, before a `)`) are removed; a space after a `)` still separates two fields.
 
 **Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) and does not start with `*` SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing. A commented top line such as `**.subckt T A[1],A[0]` is a comment line and keeps its commas (golden case SCHEM-NL-17).
 
@@ -493,7 +493,7 @@ Finally, long lines SHALL be wrapped with SPICE continuation lines. This is xsch
 - These lines SHALL NOT be wrapped: the lines of architecture code blocks (Requirement "Element line post-processing", "User-code blocks"), including their begin and end lines, lines whose first field in lower case contains a match of `\.inc(lude)?|\.lib|\.title|\.save|\.write` (unanchored), and lines matching `^\*\* ..._path:`. Header code lines are wrapped like other lines.
 - A wrap SHALL insert LF and `+` (or `*+` when the line starts with `*`) directly before the whitespace that precedes a field, so the continuation line starts with `+` followed by that whitespace.
 - **Field rule.** A line with no `{`, `}` or `'`, read while no quote is open (below), SHALL be wrapped before a field when the length of the current segment, counted up to the end of that field, exceeds 130 characters. A segment's length counts each field with the whitespace before it, except the field that starts a continuation segment (the field written after the `+`), which counts as zero.
-- **Quote rule.** A line that contains `{`, `}` or `'`, or that starts while a quote is open, SHALL instead be read character by character. Each `{`, `}` and `'` opens a quote when none is open and closes it otherwise (there is no nesting, and the three characters are interchangeable); a quote left open at the end of a line stays open for the following lines. Lines that are not wrapped are read for quotes too; empty lines are not. The line SHALL be wrapped before a space or tab when no quote is open and the segment, counted in characters from its start to that space or tab, is longer than 130 characters; the next segment is counted from zero.
+- **Quote rule.** A line that contains `{`, `}` or `'`, or that starts while a quote is open, SHALL instead be read character by character. Each `{`, `}` and `'` opens a quote when none is open and closes it otherwise (there is no nesting, and the three characters are interchangeable); a quote left open at the end of a line stays open for the following lines. Lines that are not wrapped are read for quotes too; empty lines are not. The line SHALL be wrapped before a space or tab when no quote is open and the segment, counted in characters from its start to that space or tab, is 130 characters or longer (golden case SCHEM-NL-05, corrected 2026-11-24 from the capture: a blank right after 130 characters wraps); the next segment is counted from the character after that space or tab, so the blank written after the `+` does not count.
 
 Compatibility: exact
 
@@ -536,7 +536,7 @@ Compatibility: exact
 
 ### Requirement: Subcircuit body
 The body of one schematic SHALL be written as:
-1. For each non-ignored port instance (`ipin`, `opin`, `iopin`) in instance order: its element text (for the system symbols, `*.ipin <lab>`, `*.opin <lab>`, `*.iopin <lab>`). In LVS netlist mode or with `top_is_subckt`, instead one line `*.PININFO ` followed by `<lab>:<d> ` per port, with d = `I`, `O` or `B` for `ipin`, `opin`, `iopin`.
+1. For each non-ignored port instance (`ipin`, `opin`, `iopin`) in instance order: its element text (for the system symbols, `*.ipin <lab>`, `*.opin <lab>`, `*.iopin <lab>`). In LVS netlist mode or with `top_is_subckt`, instead one line `*.PININFO ` followed by `<lab>:<d> ` per port, with d = `I`, `O` or `B` for `ipin`, `opin`, `iopin`; with no port, that line is an empty line (golden case SCHEM-NL-10, clarified 2026-11-24 from the capture).
 2. For each other non-ignored, non-shorted instance in instance order, skipping labels:
    - at top level, `netlist_commands` instances are skipped here (they are written per Requirement "Netlist file structure")
    - below top level, instances with `only_toplevel` true are skipped

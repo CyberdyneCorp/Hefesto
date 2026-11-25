@@ -1,0 +1,9 @@
+file mkdir out
+set status 0
+schematic open input/with/inv.sch
+if {[catch {schematic netlist out/inv-with-symbol.spice -topsubckt -force}]} {set status 10}
+schematic close -discard
+schematic open input/without/inv.sch
+if {[catch {schematic netlist out/inv-without-symbol.spice -topsubckt -force}]} {set status 10}
+schematic close -discard
+quit $status
