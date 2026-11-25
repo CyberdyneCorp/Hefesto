@@ -126,6 +126,26 @@ TEST_CASE("Large deck load: heartbeats continue while the engine loads",
   CHECK(std::find(states.begin(), states.end(), sim::EngineState::failed) == states.end());
 }
 
+// The scenario at full length with the default limits (2 s heartbeat, 10 s
+// timeout). Hidden from ctest because it takes 25 s; run it by name.
+TEST_CASE("Large deck load: a 25 s load with the default limits keeps the worker",
+          "[.][slow][cap:simulation-engine-embedding][req:Worker channel limits]") {
+  const TempDir job{"simd-large-full"};
+  hefesto::cli::PosixWorkerHost host;
+  Recorder recorder;
+  WorkerOptions options;
+  options.adapter = HEFESTO_FAKE_ADAPTER;
+  options.job_dir = job.path().string();
+  const auto engine = start(host, options, recorder);
+  const auto started = std::chrono::steady_clock::now();
+  REQUIRE(engine->load({"* big deck", "* fake: sleep-load 25000"}).ok());
+  CHECK(std::chrono::steady_clock::now() - started >= 25s);
+  REQUIRE(engine->run().ok());
+  REQUIRE(recorder.wait_for(sim::EngineState::loaded));
+  const auto states = recorder.states();
+  CHECK(std::find(states.begin(), states.end(), sim::EngineState::failed) == states.end());
+}
+
 TEST_CASE("Stuck worker: a stopped worker misses its heartbeat and the next job runs in a new one",
           "[cap:simulation-engine-embedding][req:Worker channel limits]") {
   const TempDir job{"simd-stuck"};
