@@ -68,6 +68,11 @@ Compatibility: exact
 - **WHEN** the cell is extracted
 - **THEN** the record uses model `nfet_hv`; an nfet without `thkox` uses model `nfet`
 
+#### Scenario: Two device types touching in one device region (as landed, M7 round 4; Q-row proposed)
+- **GIVEN** `device mosfet cmos nfet,pfet ndiff,pdiff None GND!` (so the device connectivity joins nfet and pfet), then `device mosfet nmos nfet ndiff None GND!` and `device mosfet pmos pfet pdiff None VDD!`, and an nfet (0,0)-(2,4) under a pfet (0,4)-(2,8), each between its own diffusion and with its own gate poly
+- **WHEN** the cell is extracted
+- **THEN** with magic-compat ON one device is written, `device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" ...`, from the type and node of the region's representative tile (the pfet), and the nfet is not a device (as Magic, EX-P03); with magic-compat OFF each device type is its own device (`nmos` with `g1`, `s1`, `d1` and `pmos` with `g2`, `s2`, `d2`)
+
 ### Requirement: Terminals off the device plane
 
 After the perimeter scan, for each terminal index k < the record's terminal count not yet found, whose mask contains no type on the device's reference plane or contains space: search under the representative tile (expanded by 1) for a node of a mask type, then (if the region has more area than that tile) under every tile of the region; if none and the mask contains space, the terminal SHALL be the cell's substrate node; if none otherwise, the next candidate record SHALL be tried. A found terminal's length SHALL be 0, its area and perimeter SHALL be those of the connected same-plane material of mask types found under the device (0,0 for the substrate), and its sharing count 1. A mask with only types on the device plane that is not found SHALL also cause the next candidate to be tried. A record whose remaining terminal masks are empty while terminals remain unfound (e.g., tied source/drain) SHALL be accepted.
