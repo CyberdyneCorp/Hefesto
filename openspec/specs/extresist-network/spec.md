@@ -38,6 +38,10 @@ For a selected net, the extractor SHALL build a private copy of the geometry as 
    - its type (either side of a split tile) is in the contact's full residue mask, extended with the substrate-plane types that connect to the contact; or
    - it is itself a contact type whose residues intersect that mask.
 
+   A contact point holds at most four tiles (LAYERS_PER_CONTACT); a fifth match is ignored in both `magic-compat` settings (Magic writes past its array: undefined behaviour, fixed by the standing rule).
+
+As landed (M7 R4): the contact points of step 3 are found with ExtFindRegions over the scratch cell exactly as Magic runs it, including its region marker: the marker is the head of the contact list, which is null until the first contact is found, so a region that starts on a non-contact tile before then is not expanded. This fixes the order of the contact list (each tile's contact list is that order reversed), which decides the order in which contact nodes are made. The devices of step 2 are found and painted from the net's own cell (a device in a subcell is not painted; tasks.md 13.1).
+
 Compatibility: behavioral
 
 (Magic ref: resis/ResMain.c:1243-1580, resis/ResMain.c:589-700, resis/ResUtils.c:48-100)
@@ -126,6 +130,8 @@ splitX(t, x): split t at x into t=[L,x] and n=[x,R] (same type);
   join n with the tile above, then below, under the same condition; return the surviving left tile.
   If a join removes the tile u of process(), u becomes none.
 ```
+
+As landed (M7 R4): a join takes Manhattan tiles only; a split tile next to a cut is not joined (db::StitchEditor::join_y refuses it, Magic's TiJoinY1 would merge it).
 
 The resulting tiling is generally not the maximal-horizontal-strip form. Resistor extraction uses it as is.
 
@@ -389,7 +395,7 @@ dist(p, b) along axis: if b has a contact rectangle C: (C.lo > p ? C.lo - p : C.
 ### Requirement: Contact resistors
 When the first of a contact point's tiles is processed, the contact point SHALL be turned into nodes and resistors as follows, for contact type t.
 
-**No resistance.** If the via resistance of t is 0 or the CIF via size is 0, create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
+**No resistance.** If the via resistance of t is 0, or the CIF via size is 0, or the CIF output style has no cut for t (Magic then reads an unset cut size, and with no output style dereferences a null style: undefined behaviour, fixed in both `magic-compat` settings by the standing rule), create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
 
 **Via count.** Otherwise, let `c` be the CIF scale factor, `minside` the CIF cut size plus twice the border, `via` the cut size and `spacing` the cut separation.
 - If `width·c < minside` or `height·c < minside`, then `nx = ny = 1`. A once-per-session warning `Warning: <type> at <x> <y> smaller than extract section allows` is printed.
@@ -409,6 +415,11 @@ Compatibility: exact
 - **WHEN** it is processed
 - **THEN** nx = (int)(40/40) + 1 = 2 and ny = (int)(0/40) + 1 = 1
 - **AND** one resistor of 5000 mΩ joins the two plane nodes
+
+#### Scenario: Contact type without a CIF cut
+- **GIVEN** a via resistance of 10000 mΩ and a CIF output style with no cut for the via type (or no output style)
+- **WHEN** the contact is processed, with `magic-compat` ON or OFF
+- **THEN** one contact-kind node joins the two plane tiles and no resistor is made
 
 ### Requirement: Node merging
 Merging node D into node K SHALL have these effects, in order:
@@ -473,7 +484,7 @@ finishNode(N):
 
 **triangle(N).** Look for neighbours n1 (reached via r1) and n2 (via r2) that are joined by a resistor r3.
 - With fewer than 10 resistors: r1 in list order, r2 after r1, r3 in n1's list order.
-- With 10 or more: n1 is taken in the hash-table iteration order of N's neighbours (Q-NETLIST-45), and r3 in n1's list order, skipping r1 and loops.
+- With 10 or more: n1 is taken in resistor-list order of N's neighbours, each reached through its first resistor (in both `magic-compat` settings; Q-NETLIST-45, resolution: fix; Magic uses the iteration order of a hash table keyed by node addresses), and r3 in n1's list order, skipping r1 and loops; r2 is the first resistor of N to the other end of r3.
 - On a match, with S = R1+R2+R3, replace the triangle by a star around a new node X at N's location. X is flagged finished, ready and marked, and is prepended to the done list.
   - `r1 = R1·R2/S + h` now joins N and X.
   - `r2 = R2·R3/S + h` now joins n2 and X.
@@ -663,7 +674,7 @@ After the simplification queue empties, the remaining under-tolerance resistors 
 Compatibility: exact
 
 **Sorting.** The resistor list is first sorted by ascending value.
-- With 10 or more resistors, an unstable array sort is used (Q-NETLIST-26).
+- With 10 or more resistors, the list is sorted with a stable sort in both `magic-compat` settings (Q-NETLIST-26, resolution: fix; Magic uses qsort, whose order of equal values depends on the C library).
 - Otherwise, the list is rebuilt by inserting each resistor, from head to tail, before the first resistor whose value is ≥ its own. Equal values therefore end up in the reverse of their previous order (Q-NETLIST-47).
 
 **Elimination loop.**
@@ -687,12 +698,24 @@ while cur and cur.value < tol:
   cur = head
 ```
 
+The resistor `work` that cur is folded into must exist and must not be the head of the list. If either fails, cur is skipped (cur = cur.next) in both `magic-compat` settings (Q-NETLIST-47, resolution: fix): Magic dereferences a null pointer, either `work` itself or the predecessor it unlinks `work` through.
+
 (Magic ref: resis/ResSimple.c:419-446, resis/ResSimple.c:448-658, resis/ResSimple.c:660-714)
 
 #### Scenario: Port-to-port resistor kept
 - **GIVEN** a 10 mΩ resistor whose ends are two port nodes
 - **WHEN** the final pass runs
 - **THEN** the resistor remains in the network
+
+#### Scenario: Resistor with no neighbour is skipped
+- **GIVEN** tol 1000 and two separate resistors A–B 10 and C–D 20, none of whose ends is protected
+- **WHEN** the final pass runs
+- **THEN** both resistors are skipped and remain, in both `magic-compat` settings
+
+#### Scenario: Fold target at the list head is skipped
+- **GIVEN** tol 1000, ports P1 and P2 joined by 5 mΩ, and P1–A 20 mΩ with A not protected
+- **WHEN** the final pass reaches P1–A, whose smallest neighbour P1–P2 heads the sorted list
+- **THEN** P1–A is skipped and both resistors remain, in both `magic-compat` settings
 
 #### Scenario: Short-list ordering of equal values
 - **GIVEN** a resistor list (head first) a = 5, b = 5, c = 3

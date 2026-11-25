@@ -342,3 +342,39 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:832-847
 - As implemented (round R3): neither EXTNODE's record writer nor EXTCAP's warning builder changes a label; the names are compared on copies, in both modes. The output is the same as Magic's.
 - Resolution: none needed. The R3 row said Magic leaves the labels cut; the review of PR #100 read the same lines as cutting the later `equiv` names. Both missed the restore at ExtBasic.c:846-847, so there is no difference to decide.
+
+### Q-EXTRACT-38: `extract do|no unique <word>` with a word other than `notopports`
+- Kind: compat
+- Status: pending user decision (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: when the word after `unique` does not start with `notop`, CmdExtract prints `Usage:  extract do unique [notopports]` and then applies the table index of `unique` (DOUNIQUE = 11 = 0xb) as an ExtOptions bit mask, so it sets (`do`) or clears (`no`) adjust, capacitance and lumped resistance.
+- Evidence: commands/CmdE.c:1451-1461
+- As implemented (round R4): magic-compat ON prints the usage and replicates the side effect; OFF prints the usage and changes nothing. Tests: `tests/unit/extract/command/options_test.cpp` (one per mode).
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat. Spec edit on approval: `extract-commands` "Extraction options" gains one sentence and a scenario per mode.
+
+### Q-EXTRACT-39: The line of a non-primitive `device` cell property has no newline
+- Kind: compat
+- Status: pending user decision (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule)
+- Magic behavior: extBasic writes the verbatim tokens of a `device` property that is not `primitive` and no newline, so the `.ext` of such a cell ends without one (EX-042 `dev2.ext`), and in a hierarchical cell the next record is joined onto the same line.
+- Evidence: extract/ExtBasic.c:519-528; EX-042
+- As implemented (round R4): magic-compat ON writes no newline (EX-042 replays byte for byte; `CellResult::unterminated`); OFF ends the line. Tests: `tests/unit/extract/hier/extract_cell_flat_test.cpp` (one per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat. Spec edit on approval: `extract-devices` "Device cell property" (or `extract-commands` "Cell properties affecting extraction") gains the rule and a scenario per mode.
+
+### Q-EXTRACT-40: Unifying two hierarchical nodes drops one node's pass-2 adjustments
+- Kind: bug
+- Status: pending user decision (proposed in M7 round R4 by EXTHIER, 2026-11-25; implemented per the standing rule)
+- Magic behavior: extHierConnectFunc2/3 and extHierSubstrate unify two Node records by moving the names and freeing one node; the freed node's `node_cap` and `node_pa` are discarded ("We don't need to update node_cap since it hasn't been computed yet"). That holds within one interaction only: when a later step square unifies two nodes that already received adjustments (extSubtreeAdjustInit), the merge record loses one node's correction.
+- Evidence: extract/ExtHier.c:300-345, 740-845; extract/ExtSubtree.c:582-612
+- As implemented (round R4): magic-compat ON keeps the survivor's values only; OFF adds the freed node's capacitance and per-class area and perimeter to the survivor (`HierNodeTable::unify` `keep_values`). Tests: `tests/unit/extract/hier/subcell_test.cpp` "Unifying two nodes with adjustments" (one per mode). The behaviour is stated in `extract-hierarchy` (as-landed note).
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat. The OFF sum is the intended adjustment (the merged node minus its pieces, summed over the interactions); ON keeps the golden output.
+
+### Q-EXTRACT-41: Two device types touching in one device region make one device
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R4 by EXTHIER from probe EX-P03, 2026-11-25; implemented per the standing rule)
+- Magic behavior: a device line that lists two gate types (`device mosfet cmos nfet,pfet ...`) joins them in exts_deviceConn, so an nfet touching a pfet is one device region. extOutputDevices walks only the tiles of the representative tile's gate node and selects the record from that tile's type: one device is written for the pfet (`device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" 2 0 "s2" 4 12,14 "d2" 4 12,14`) and the nfet half is lost. extDevFindMatch's endless walk (Q-EXTRACT-36 (f)) did not occur: with `thkox` over the nfet only, Magic printed `No matching device for pfet with no ID layer`, wrote no device, and `extract all` returned.
+- Evidence: extract/ExtTech.c:2929; extract/ExtBasic.c:236-283; probe EX-P03 (`tests/data/extract/device/abut_probe`), golden-capture run 45553746645, `abut.ext` and `abutrev.ext`
+- As implemented (round R4): ON matches the capture; OFF splits the device connectivity per type (`device_detail::device_connectivity`), so each type is its own device (`nmos` g1/s1/d1 and `pmos` g2/s2/d2). Tests: `tests/unit/extract/device/abut_probe_test.cpp` (ON pinned to the capture, OFF two devices, the ID-layer case in both modes). Scenario: `extract-devices` "Two device types touching in one device region".
+- Options: compat (as implemented) | replicate
+- Recommendation: compat. Losing a transistor is never intended. OFF also splits deliberate multi-type gate lines (e.g. sky130 `nfet,scnfet`) into one device per type, which is right only when the types are distinct devices: confirm, or restrict OFF to lines whose types have separate records.

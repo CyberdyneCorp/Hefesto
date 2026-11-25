@@ -1,0 +1,14 @@
+magic
+tech exttest
+timestamp 100
+<< mimcap >>
+rect 0 0 10 10
+<< metal2 >>
+rect -1 -1 11 11
+use cap c1
+timestamp 100
+transform 1 0 0 0 1 0
+box -1 -1 11 11
+<< labels >>
+rlabel metal2 0 0 0 0 0 pb
+<< end >>

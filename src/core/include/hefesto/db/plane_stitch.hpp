@@ -95,6 +95,19 @@ class StitchEditor {
   /// move the triangle (ResFracture works on Manhattan tiles only).
   StitchTile split_x(StitchTile t, Coord x);
 
+  /// split_x with the magic-compat setting (Q-EXTRACT-29, approved
+  /// 2026-11-22). With `magic_compat` OFF it is split_x above: a split tile
+  /// is refused. With it ON a split (diagonal) tile is cut as Magic's
+  /// TiSplitX cuts it: `t` keeps its whole body (both types and the
+  /// diagonal and direction bits) over [LEFT, x), so its triangle now spans
+  /// the narrower rectangle, and the new right part over [x, RIGHT) is a
+  /// plain space tile (body 0). Invariants kept in both modes: the corner
+  /// stitches stay consistent (the cut is the same stitch rewiring as for a
+  /// Manhattan tile), LEFT < x < RIGHT is required, boundary tiles are
+  /// refused, and only the moved triangle changes the plane's geometry,
+  /// which is why only scratch planes may be edited.
+  StitchTile split_x(StitchTile t, Coord x, bool magic_compat);
+
   /// TiJoinY: merges `gone` into `keep`, which must be internal Manhattan
   /// tiles stacked one directly on the other with the same LEFT and RIGHT.
   /// `gone` stays readable until release(). Returns false, and nothing

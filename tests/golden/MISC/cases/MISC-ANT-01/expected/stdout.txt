@@ -1,0 +1,32 @@
+
+Magic 8.3 revision 694 - Compiled on Wed Nov 25 05:46:43 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Cell top read from path input
+0 {}
+Reading extract file.
+Building flattened netlist.
+Running antenna checks.
+antennacheck finished.
+0 {}
+0 3
+Feedback #1: Antenna error at plane metal1
+
+0 {}
+0 {0 0 2 10}
+Feedback #2: Antenna error at plane metal1
+
+0 {}
+0 {6 0 10 10}
+Feedback #3: Antenna error at plane metal1
+
+0 {}
+0 {10 0 110 100}

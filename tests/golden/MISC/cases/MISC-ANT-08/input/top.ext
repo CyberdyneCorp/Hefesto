@@ -1,0 +1,358 @@
+timestamp 100
+version 8.3
+tech anttest
+style anttest
+scale 1 1 1
+resistclasses
+node "s" 0 0 0 -1 ndiff
+node "gnd!" 0 0 0 -5 pwell
+node "g0" 0 0 0 0 poly
+node "g1" 0 0 0 0 poly
+node "g2" 0 0 0 0 poly
+node "g3" 0 0 0 0 poly
+node "g4" 0 0 0 0 poly
+node "g5" 0 0 0 0 poly
+node "g6" 0 0 0 0 poly
+node "g7" 0 0 0 0 poly
+node "g8" 0 0 0 0 poly
+node "g9" 0 0 0 0 poly
+node "g10" 0 0 0 0 poly
+node "g11" 0 0 0 0 poly
+node "g12" 0 0 0 0 poly
+node "g13" 0 0 0 0 poly
+node "g14" 0 0 0 0 poly
+node "g15" 0 0 0 0 poly
+node "g16" 0 0 0 0 poly
+node "g17" 0 0 0 0 poly
+node "g18" 0 0 0 0 poly
+node "g19" 0 0 0 0 poly
+node "g20" 0 0 0 0 poly
+node "g21" 0 0 0 0 poly
+node "g22" 0 0 0 0 poly
+node "g23" 0 0 0 0 poly
+node "g24" 0 0 0 0 poly
+node "g25" 0 0 0 0 poly
+node "g26" 0 0 0 0 poly
+node "g27" 0 0 0 0 poly
+node "g28" 0 0 0 0 poly
+node "g29" 0 0 0 0 poly
+node "g30" 0 0 0 0 poly
+node "g31" 0 0 0 0 poly
+node "g32" 0 0 0 0 poly
+node "g33" 0 0 0 0 poly
+node "g34" 0 0 0 0 poly
+node "g35" 0 0 0 0 poly
+node "g36" 0 0 0 0 poly
+node "g37" 0 0 0 0 poly
+node "g38" 0 0 0 0 poly
+node "g39" 0 0 0 0 poly
+node "g40" 0 0 0 0 poly
+node "g41" 0 0 0 0 poly
+node "g42" 0 0 0 0 poly
+node "g43" 0 0 0 0 poly
+node "g44" 0 0 0 0 poly
+node "g45" 0 0 0 0 poly
+node "g46" 0 0 0 0 poly
+node "g47" 0 0 0 0 poly
+node "g48" 0 0 0 0 poly
+node "g49" 0 0 0 0 poly
+node "g50" 0 0 0 0 poly
+node "g51" 0 0 0 0 poly
+node "g52" 0 0 0 0 poly
+node "g53" 0 0 0 0 poly
+node "g54" 0 0 0 0 poly
+node "g55" 0 0 0 0 poly
+node "g56" 0 0 0 0 poly
+node "g57" 0 0 0 0 poly
+node "g58" 0 0 0 0 poly
+node "g59" 0 0 0 0 poly
+node "g60" 0 0 0 0 poly
+node "g61" 0 0 0 0 poly
+node "g62" 0 0 0 0 poly
+node "g63" 0 0 0 0 poly
+node "g64" 0 0 0 0 poly
+node "g65" 0 0 0 0 poly
+node "g66" 0 0 0 0 poly
+node "g67" 0 0 0 0 poly
+node "g68" 0 0 0 0 poly
+node "g69" 0 0 0 0 poly
+node "g70" 0 0 0 0 poly
+node "g71" 0 0 0 0 poly
+node "g72" 0 0 0 0 poly
+node "g73" 0 0 0 0 poly
+node "g74" 0 0 0 0 poly
+node "g75" 0 0 0 0 poly
+node "g76" 0 0 0 0 poly
+node "g77" 0 0 0 0 poly
+node "g78" 0 0 0 0 poly
+node "g79" 0 0 0 0 poly
+node "g80" 0 0 0 0 poly
+node "g81" 0 0 0 0 poly
+node "g82" 0 0 0 0 poly
+node "g83" 0 0 0 0 poly
+node "g84" 0 0 0 0 poly
+node "g85" 0 0 0 0 poly
+node "g86" 0 0 0 0 poly
+node "g87" 0 0 0 0 poly
+node "g88" 0 0 0 0 poly
+node "g89" 0 0 0 0 poly
+node "g90" 0 0 0 0 poly
+node "g91" 0 0 0 0 poly
+node "g92" 0 0 0 0 poly
+node "g93" 0 0 0 0 poly
+node "g94" 0 0 0 0 poly
+node "g95" 0 0 0 0 poly
+node "g96" 0 0 0 0 poly
+node "g97" 0 0 0 0 poly
+node "g98" 0 0 0 0 poly
+node "g99" 0 0 0 0 poly
+node "g100" 0 0 0 0 poly
+node "g101" 0 0 0 0 poly
+node "g102" 0 0 0 0 poly
+node "g103" 0 0 0 0 poly
+node "g104" 0 0 0 0 poly
+node "g105" 0 0 0 0 poly
+node "g106" 0 0 0 0 poly
+node "g107" 0 0 0 0 poly
+node "g108" 0 0 0 0 poly
+node "g109" 0 0 0 0 poly
+node "g110" 0 0 0 0 poly
+node "g111" 0 0 0 0 poly
+node "g112" 0 0 0 0 poly
+node "g113" 0 0 0 0 poly
+node "g114" 0 0 0 0 poly
+node "g115" 0 0 0 0 poly
+node "g116" 0 0 0 0 poly
+node "g117" 0 0 0 0 poly
+node "g118" 0 0 0 0 poly
+node "g119" 0 0 0 0 poly
+node "g120" 0 0 0 0 poly
+node "g121" 0 0 0 0 poly
+node "g122" 0 0 0 0 poly
+node "g123" 0 0 0 0 poly
+node "g124" 0 0 0 0 poly
+node "g125" 0 0 0 0 poly
+node "g126" 0 0 0 0 poly
+node "g127" 0 0 0 0 poly
+node "g128" 0 0 0 0 poly
+node "g129" 0 0 0 0 poly
+node "g130" 0 0 0 0 poly
+node "g131" 0 0 0 0 poly
+node "g132" 0 0 0 0 poly
+node "g133" 0 0 0 0 poly
+node "g134" 0 0 0 0 poly
+node "g135" 0 0 0 0 poly
+node "g136" 0 0 0 0 poly
+node "g137" 0 0 0 0 poly
+node "g138" 0 0 0 0 poly
+node "g139" 0 0 0 0 poly
+node "g140" 0 0 0 0 poly
+node "g141" 0 0 0 0 poly
+node "g142" 0 0 0 0 poly
+node "g143" 0 0 0 0 poly
+node "g144" 0 0 0 0 poly
+node "g145" 0 0 0 0 poly
+node "g146" 0 0 0 0 poly
+node "g147" 0 0 0 0 poly
+node "g148" 0 0 0 0 poly
+node "g149" 0 0 0 0 poly
+device mosfet nfet 1000 0 1001 1 2 10 "gnd!" "g0" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1010 0 1011 1 2 10 "gnd!" "g1" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1020 0 1021 1 2 10 "gnd!" "g2" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1030 0 1031 1 2 10 "gnd!" "g3" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1040 0 1041 1 2 10 "gnd!" "g4" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1050 0 1051 1 2 10 "gnd!" "g5" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1060 0 1061 1 2 10 "gnd!" "g6" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1070 0 1071 1 2 10 "gnd!" "g7" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1080 0 1081 1 2 10 "gnd!" "g8" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1090 0 1091 1 2 10 "gnd!" "g9" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1100 0 1101 1 2 10 "gnd!" "g10" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1110 0 1111 1 2 10 "gnd!" "g11" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1120 0 1121 1 2 10 "gnd!" "g12" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1130 0 1131 1 2 10 "gnd!" "g13" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1140 0 1141 1 2 10 "gnd!" "g14" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1150 0 1151 1 2 10 "gnd!" "g15" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1160 0 1161 1 2 10 "gnd!" "g16" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1170 0 1171 1 2 10 "gnd!" "g17" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1180 0 1181 1 2 10 "gnd!" "g18" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1190 0 1191 1 2 10 "gnd!" "g19" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1200 0 1201 1 2 10 "gnd!" "g20" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1210 0 1211 1 2 10 "gnd!" "g21" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1220 0 1221 1 2 10 "gnd!" "g22" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1230 0 1231 1 2 10 "gnd!" "g23" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1240 0 1241 1 2 10 "gnd!" "g24" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1250 0 1251 1 2 10 "gnd!" "g25" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1260 0 1261 1 2 10 "gnd!" "g26" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1270 0 1271 1 2 10 "gnd!" "g27" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1280 0 1281 1 2 10 "gnd!" "g28" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1290 0 1291 1 2 10 "gnd!" "g29" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1300 0 1301 1 2 10 "gnd!" "g30" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1310 0 1311 1 2 10 "gnd!" "g31" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1320 0 1321 1 2 10 "gnd!" "g32" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1330 0 1331 1 2 10 "gnd!" "g33" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1340 0 1341 1 2 10 "gnd!" "g34" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1350 0 1351 1 2 10 "gnd!" "g35" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1360 0 1361 1 2 10 "gnd!" "g36" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1370 0 1371 1 2 10 "gnd!" "g37" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1380 0 1381 1 2 10 "gnd!" "g38" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1390 0 1391 1 2 10 "gnd!" "g39" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1400 0 1401 1 2 10 "gnd!" "g40" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1410 0 1411 1 2 10 "gnd!" "g41" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1420 0 1421 1 2 10 "gnd!" "g42" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1430 0 1431 1 2 10 "gnd!" "g43" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1440 0 1441 1 2 10 "gnd!" "g44" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1450 0 1451 1 2 10 "gnd!" "g45" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1460 0 1461 1 2 10 "gnd!" "g46" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1470 0 1471 1 2 10 "gnd!" "g47" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1480 0 1481 1 2 10 "gnd!" "g48" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1490 0 1491 1 2 10 "gnd!" "g49" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1500 0 1501 1 2 10 "gnd!" "g50" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1510 0 1511 1 2 10 "gnd!" "g51" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1520 0 1521 1 2 10 "gnd!" "g52" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1530 0 1531 1 2 10 "gnd!" "g53" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1540 0 1541 1 2 10 "gnd!" "g54" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1550 0 1551 1 2 10 "gnd!" "g55" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1560 0 1561 1 2 10 "gnd!" "g56" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1570 0 1571 1 2 10 "gnd!" "g57" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1580 0 1581 1 2 10 "gnd!" "g58" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1590 0 1591 1 2 10 "gnd!" "g59" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1600 0 1601 1 2 10 "gnd!" "g60" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1610 0 1611 1 2 10 "gnd!" "g61" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1620 0 1621 1 2 10 "gnd!" "g62" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1630 0 1631 1 2 10 "gnd!" "g63" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1640 0 1641 1 2 10 "gnd!" "g64" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1650 0 1651 1 2 10 "gnd!" "g65" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1660 0 1661 1 2 10 "gnd!" "g66" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1670 0 1671 1 2 10 "gnd!" "g67" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1680 0 1681 1 2 10 "gnd!" "g68" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1690 0 1691 1 2 10 "gnd!" "g69" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1700 0 1701 1 2 10 "gnd!" "g70" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1710 0 1711 1 2 10 "gnd!" "g71" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1720 0 1721 1 2 10 "gnd!" "g72" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1730 0 1731 1 2 10 "gnd!" "g73" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1740 0 1741 1 2 10 "gnd!" "g74" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1750 0 1751 1 2 10 "gnd!" "g75" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1760 0 1761 1 2 10 "gnd!" "g76" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1770 0 1771 1 2 10 "gnd!" "g77" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1780 0 1781 1 2 10 "gnd!" "g78" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1790 0 1791 1 2 10 "gnd!" "g79" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1800 0 1801 1 2 10 "gnd!" "g80" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1810 0 1811 1 2 10 "gnd!" "g81" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1820 0 1821 1 2 10 "gnd!" "g82" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1830 0 1831 1 2 10 "gnd!" "g83" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1840 0 1841 1 2 10 "gnd!" "g84" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1850 0 1851 1 2 10 "gnd!" "g85" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1860 0 1861 1 2 10 "gnd!" "g86" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1870 0 1871 1 2 10 "gnd!" "g87" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1880 0 1881 1 2 10 "gnd!" "g88" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1890 0 1891 1 2 10 "gnd!" "g89" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1900 0 1901 1 2 10 "gnd!" "g90" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1910 0 1911 1 2 10 "gnd!" "g91" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1920 0 1921 1 2 10 "gnd!" "g92" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1930 0 1931 1 2 10 "gnd!" "g93" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1940 0 1941 1 2 10 "gnd!" "g94" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1950 0 1951 1 2 10 "gnd!" "g95" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1960 0 1961 1 2 10 "gnd!" "g96" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1970 0 1971 1 2 10 "gnd!" "g97" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1980 0 1981 1 2 10 "gnd!" "g98" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 1990 0 1991 1 2 10 "gnd!" "g99" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2000 0 2001 1 2 10 "gnd!" "g100" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2010 0 2011 1 2 10 "gnd!" "g101" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2020 0 2021 1 2 10 "gnd!" "g102" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2030 0 2031 1 2 10 "gnd!" "g103" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2040 0 2041 1 2 10 "gnd!" "g104" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2050 0 2051 1 2 10 "gnd!" "g105" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2060 0 2061 1 2 10 "gnd!" "g106" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2070 0 2071 1 2 10 "gnd!" "g107" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2080 0 2081 1 2 10 "gnd!" "g108" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2090 0 2091 1 2 10 "gnd!" "g109" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2100 0 2101 1 2 10 "gnd!" "g110" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2110 0 2111 1 2 10 "gnd!" "g111" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2120 0 2121 1 2 10 "gnd!" "g112" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2130 0 2131 1 2 10 "gnd!" "g113" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2140 0 2141 1 2 10 "gnd!" "g114" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2150 0 2151 1 2 10 "gnd!" "g115" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2160 0 2161 1 2 10 "gnd!" "g116" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2170 0 2171 1 2 10 "gnd!" "g117" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2180 0 2181 1 2 10 "gnd!" "g118" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2190 0 2191 1 2 10 "gnd!" "g119" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2200 0 2201 1 2 10 "gnd!" "g120" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2210 0 2211 1 2 10 "gnd!" "g121" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2220 0 2221 1 2 10 "gnd!" "g122" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2230 0 2231 1 2 10 "gnd!" "g123" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2240 0 2241 1 2 10 "gnd!" "g124" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2250 0 2251 1 2 10 "gnd!" "g125" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2260 0 2261 1 2 10 "gnd!" "g126" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2270 0 2271 1 2 10 "gnd!" "g127" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2280 0 2281 1 2 10 "gnd!" "g128" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2290 0 2291 1 2 10 "gnd!" "g129" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2300 0 2301 1 2 10 "gnd!" "g130" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2310 0 2311 1 2 10 "gnd!" "g131" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2320 0 2321 1 2 10 "gnd!" "g132" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2330 0 2331 1 2 10 "gnd!" "g133" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2340 0 2341 1 2 10 "gnd!" "g134" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2350 0 2351 1 2 10 "gnd!" "g135" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2360 0 2361 1 2 10 "gnd!" "g136" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2370 0 2371 1 2 10 "gnd!" "g137" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2380 0 2381 1 2 10 "gnd!" "g138" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2390 0 2391 1 2 10 "gnd!" "g139" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2400 0 2401 1 2 10 "gnd!" "g140" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2410 0 2411 1 2 10 "gnd!" "g141" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2420 0 2421 1 2 10 "gnd!" "g142" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2430 0 2431 1 2 10 "gnd!" "g143" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2440 0 2441 1 2 10 "gnd!" "g144" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2450 0 2451 1 2 10 "gnd!" "g145" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2460 0 2461 1 2 10 "gnd!" "g146" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2470 0 2471 1 2 10 "gnd!" "g147" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2480 0 2481 1 2 10 "gnd!" "g148" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2490 0 2491 1 2 10 "gnd!" "g149" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2500 0 2501 1 2 10 "gnd!" "g0" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2510 0 2511 1 2 10 "gnd!" "g1" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2520 0 2521 1 2 10 "gnd!" "g2" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2530 0 2531 1 2 10 "gnd!" "g3" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2540 0 2541 1 2 10 "gnd!" "g4" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2550 0 2551 1 2 10 "gnd!" "g5" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2560 0 2561 1 2 10 "gnd!" "g6" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2570 0 2571 1 2 10 "gnd!" "g7" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2580 0 2581 1 2 10 "gnd!" "g8" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2590 0 2591 1 2 10 "gnd!" "g9" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2600 0 2601 1 2 10 "gnd!" "g10" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2610 0 2611 1 2 10 "gnd!" "g11" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2620 0 2621 1 2 10 "gnd!" "g12" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2630 0 2631 1 2 10 "gnd!" "g13" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2640 0 2641 1 2 10 "gnd!" "g14" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2650 0 2651 1 2 10 "gnd!" "g15" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2660 0 2661 1 2 10 "gnd!" "g16" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2670 0 2671 1 2 10 "gnd!" "g17" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2680 0 2681 1 2 10 "gnd!" "g18" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2690 0 2691 1 2 10 "gnd!" "g19" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2700 0 2701 1 2 10 "gnd!" "g20" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2710 0 2711 1 2 10 "gnd!" "g21" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2720 0 2721 1 2 10 "gnd!" "g22" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2730 0 2731 1 2 10 "gnd!" "g23" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2740 0 2741 1 2 10 "gnd!" "g24" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2750 0 2751 1 2 10 "gnd!" "g25" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2760 0 2761 1 2 10 "gnd!" "g26" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2770 0 2771 1 2 10 "gnd!" "g27" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2780 0 2781 1 2 10 "gnd!" "g28" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2790 0 2791 1 2 10 "gnd!" "g29" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2800 0 2801 1 2 10 "gnd!" "g30" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2810 0 2811 1 2 10 "gnd!" "g31" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2820 0 2821 1 2 10 "gnd!" "g32" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2830 0 2831 1 2 10 "gnd!" "g33" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2840 0 2841 1 2 10 "gnd!" "g34" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2850 0 2851 1 2 10 "gnd!" "g35" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2860 0 2861 1 2 10 "gnd!" "g36" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2870 0 2871 1 2 10 "gnd!" "g37" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2880 0 2881 1 2 10 "gnd!" "g38" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2890 0 2891 1 2 10 "gnd!" "g39" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2900 0 2901 1 2 10 "gnd!" "g40" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2910 0 2911 1 2 10 "gnd!" "g41" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2920 0 2921 1 2 10 "gnd!" "g42" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2930 0 2931 1 2 10 "gnd!" "g43" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2940 0 2941 1 2 10 "gnd!" "g44" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2950 0 2951 1 2 10 "gnd!" "g45" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2960 0 2961 1 2 10 "gnd!" "g46" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2970 0 2971 1 2 10 "gnd!" "g47" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2980 0 2981 1 2 10 "gnd!" "g48" 4 0 "s" 10 0 "s" 10 0
+device mosfet nfet 2990 0 2991 1 2 10 "gnd!" "g49" 4 0 "s" 10 0 "s" 10 0

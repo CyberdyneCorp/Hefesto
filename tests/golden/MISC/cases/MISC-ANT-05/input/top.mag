@@ -1,0 +1,16 @@
+magic
+tech anttest
+timestamp 100
+<< nfet >>
+rect 0 0 2 10
+<< poly >>
+rect 2 0 6 10
+<< pc >>
+rect 6 0 10 10
+<< metal1 >>
+rect 10 0 20 10
+<< via1 >>
+rect 20 0 30 10
+<< metal2 >>
+rect 30 -100 200 100
+<< end >>

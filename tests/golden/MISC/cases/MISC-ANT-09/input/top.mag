@@ -1,0 +1,23 @@
+magic
+tech anttest
+timestamp 100
+<< nfet >>
+rect 0 0 2 10
+rect 20 0 22 10
+<< poly >>
+rect 2 0 20 10
+<< pc >>
+rect 8 10 14 16
+<< metal1 >>
+rect 8 16 14 40
+rect 40 16 46 40
+<< ndc >>
+rect 40 10 46 16
+<< ndiff >>
+rect 40 0 46 10
+<< labels >>
+rlabel metal1 8 30 14 40 0 A
+port 1 nsew signal input
+rlabel metal1 40 30 46 40 0 Y
+port 2 nsew signal output
+<< end >>

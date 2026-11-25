@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "case": "NL-RES-02",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:b45635d4570787597f0d25ee217ed399c3d38bc0c2b04313cc9b0d153fec09ae",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-25T06:30:48Z",
+  "outputs": {
+    "collected/input/wire.ext": "ec5277d3ba767fae747cec526411098da27e2a258400b329a0deff324b973000",
+    "collected/wire.all.res.ext": "1c917775412ce65b006f220fa8c168959d68812b8b554e377a1883db38dc9320",
+    "collected/wire.force.res.ext": "2cddd552db7578c199a6ef014f6ac859b40bb8465e5598c741aa957156eeb79a",
+    "collected/wire.ignore.res.ext": "9321ed3981c5323f15fd707627480418d337f154582337647e36b82792307b41",
+    "collected/wire.include.res.ext": "7b3ddb0d4662a981750673e13ef666a16adc21f5abe2d25368efcb88b23f2806",
+    "collected/wire.t0.res.ext": "9e7367df44aa517d912c61c4a964ecff5fb6e443f07f7c68eb742639c1df4ff5",
+    "stderr.txt": "3e88166065deb8cd57af4dfc4eb0bbe17b70e94e9ad4e2b7dea0b2d44adbdd06",
+    "stdout.txt": "6f6550b97c2aa4fad16b2790a10252f4cb026bc07594c62f0a531a1a5492a1b2"
+  }
+}

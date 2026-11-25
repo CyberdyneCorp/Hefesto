@@ -1,0 +1,11 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use lleaf c1 1 0 0 0 1 0
+node "p" 0 0 0 0 m1
+cap "c1/c" "p" 400
+cap "c1/c" "p" 400
+cap "c1/c" "p" 400

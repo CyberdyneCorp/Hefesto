@@ -6,3 +6,8 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(extresist_network DATA_DIR extresist/network)
+# The working network's units (graph, heap, reducer, builder) are tested
+# through their private headers.
+if(TARGET hefesto_extresist_network_tests)
+  target_include_directories(hefesto_extresist_network_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
+endif()

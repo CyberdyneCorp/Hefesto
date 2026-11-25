@@ -1,0 +1,11 @@
+scale 1 1 1
+killnode "l_1"
+rnode "l_0" 0 9493.24 0 5 0
+rnode "l_1.n0" 0 9506.76 95 100 0
+resist "l_1.n0" "l_0" 1850
+killnode "par_1"
+rnode "par_0" 0 8000 200 30 0
+rnode "par_1.n0" 0 8000 270 30 0
+resist "par_1.n0" "par_0" 1810
+resist "par_1.n0" "par_0" 1810
+rnode "tri_0" 0 0 300 0 0
