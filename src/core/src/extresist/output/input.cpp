@@ -84,7 +84,17 @@ class Reader {
     }
   }
 
-  InputModel take() { return std::move(model_); }
+  // The lists are appended to while reading (a prepend per record would
+  // make a net with N terminals cost O(N^2)); Magic prepends, so they are
+  // reversed once here into its newest-first order.
+  InputModel take() {
+    for (InputNode& n : model_.nodes) {
+      std::reverse(n.drive_points.begin(), n.drive_points.end());
+      std::reverse(n.sink_points.begin(), n.sink_points.end());
+      std::reverse(n.devices.begin(), n.devices.end());
+    }
+    return std::move(model_);
+  }
 
  private:
   void message(std::string text) const {
@@ -236,7 +246,7 @@ class Reader {
     } else if (text.starts_with("res:drive") && options_.signal) {
       n.status.drive_located = true;
       const db::Point p{xt::c_atoi(t[2]), xt::c_atoi(t[3])};
-      n.drive_points.insert(n.drive_points.begin(), ConnectPoint{db::Rect{p.x, p.y, p.x, p.y}, type_of(t[6], true)});
+      n.drive_points.push_back(ConnectPoint{db::Rect{p.x, p.y, p.x, p.y}, type_of(t[6], true)});
     }
   }
 
@@ -267,7 +277,7 @@ class Reader {
   void port(const std::vector<std::string>& t) {
     InputNode& n = model_.nodes[net(t[1])];
     const ConnectPoint p{rect_at(t, 3), type_of(t[7], true)};
-    n.drive_points.insert(n.drive_points.begin(), p);
+    n.drive_points.push_back(p);
     n.status.force = n.status.drive_located = n.status.port = true;
     debug_point("port", p.rect);
   }
@@ -288,7 +298,7 @@ class Reader {
     }
     InputNode& n = model_.nodes[*i];
     const ConnectPoint p{rect_at(t, 1), type};
-    n.sink_points.insert(n.sink_points.begin(), p);
+    n.sink_points.push_back(p);
     n.status.force = n.status.drive_located = true;
     debug_point("sink", p.rect);
   }
@@ -328,7 +338,7 @@ class Reader {
     }
     InputNode& n = model_.nodes[*i];
     const ConnectPoint p{db::apply(use->second, rect_at(t, 1)), type};
-    n.drive_points.insert(n.drive_points.begin(), p);
+    n.drive_points.push_back(p);
     n.status.force = n.status.drive_located = true;
     debug_point("driver", p.rect);
   }
@@ -356,7 +366,7 @@ class Reader {
   // One terminal (net, length, attribute) of a device record.
   std::size_t terminal(std::size_t device, const std::string& name, Terminal role) {
     const std::size_t i = net(name);
-    model_.nodes[i].devices.insert(model_.nodes[i].devices.begin(), NodeDevice{device, role});
+    model_.nodes[i].devices.push_back(NodeDevice{device, role});
     return i;
   }
 

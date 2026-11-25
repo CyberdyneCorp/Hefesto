@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <string>
 
@@ -147,10 +148,78 @@ TEST_CASE("connections from a parent become drive points", "[cap:extresist-comma
   CHECK(a.status.drive_located);
 }
 
+// Regression (Q-NETLIST-68 (c), both modes): Magic dereferences NULL for a
+// device whose model has no device line in the style.
+TEST_CASE("a device whose model has no device line has no type", "[cap:extresist-command][req:Input model]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    const auto m = read_model(s,
+                              "node \"g\" 0 0 0 0 poly\nnode \"s\" 0 0 0 0 ndiff\n"
+                              "device mosfet nostyle 10 20 11 21 2 8 \"GND\" \"g\" 4 0 \"s\" 6 0 \"s\" 8 0\n",
+                              compat);
+    REQUIRE(m.ok());
+    REQUIRE(m.value().devices.size() == 1);
+    const extresist::InputDevice& d = m.value().devices[0];
+    CHECK_FALSE(d.tile_type.has_value());
+    CHECK_FALSE(d.style_class.has_value());
+    CHECK(d.sd_count == 2);  // the default: no style line to set it
+    CHECK(d.gate.has_value());
+  }
+}
+
 TEST_CASE("an unreadable .ext file fails the read", "[cap:extresist-command][req:Input model]") {
   extresist::InputOptions options;
   const auto m = extresist::read_input("nosuch", options);
   REQUIRE_FALSE(m.ok());
   CHECK(m.error().code == "EXTRESIST-OUT-001");
   CHECK(m.error().text == "Cannot open file nosuch.ext");
+}
+
+TEST_CASE("terminals, drive and sink points are kept newest first", "[cap:extresist-command][req:Input model]") {
+  // Magic prepends each to the node's list.
+  Session s;
+  const auto m = read_model(s,
+                            "node \"a\" 0 0 0 0 poly\nnode \"b\" 0 0 0 0 metal1\n"
+                            "device mosfet nfet 1 0 2 1 2 8 \"GND\" \"a\" 4 0 \"b\" 6 0 \"b\" 8 0\n"
+                            "device mosfet nfet 2 0 3 1 2 8 \"GND\" \"a\" 4 0 \"b\" 6 0 \"b\" 8 0\n"
+                            "port \"a\" 0 1 1 2 2 poly\nport \"a\" 0 3 3 4 4 poly\n"
+                            "connect 5 5 6 6 metal1 \"b\" \"u1/x\"\nconnect 7 7 8 8 metal1 \"b\" \"u1/y\"\n");
+  REQUIRE(m.ok());
+  const extresist::InputNode& a = m.value().nodes[0];
+  REQUIRE(a.devices.size() == 2);
+  CHECK(a.devices[0].device == 1U);
+  CHECK(a.devices[1].device == 0U);
+  REQUIRE(a.drive_points.size() == 2);
+  CHECK(a.drive_points[0].rect == db::Rect{3, 3, 4, 4});
+  CHECK(a.drive_points[1].rect == db::Rect{1, 1, 2, 2});
+  const extresist::InputNode& b = m.value().nodes[1];
+  REQUIRE(b.devices.size() == 4);
+  CHECK(b.devices[0].device == 1U);
+  CHECK(b.devices[0].terminal == extresist::Terminal::drain);
+  CHECK(b.devices[1].terminal == extresist::Terminal::source);
+  CHECK(b.devices[3].device == 0U);
+  REQUIRE(b.sink_points.size() == 2);
+  CHECK(b.sink_points[0].rect == db::Rect{7, 7, 8, 8});
+}
+
+// Regression (review of PR #119): every terminal was inserted at the front
+// of its net's list, so a net with N terminals took O(N^2) moves and a
+// supply net of a large layout hung the read.
+TEST_CASE("a net with many terminals is read in linear time", "[cap:extresist-command][req:Input model]") {
+  Session s;
+  std::string text = "node \"GND\" 0 0 0 0 ndiff\n";
+  constexpr int kDevices = 100000;
+  for (int i = 0; i < kDevices; ++i) {
+    text += "device mosfet nfet " + std::to_string(i) + " 0 1 1 2 8 \"GND\" \"GND\" 4 0 \"GND\" 6 0 \"GND\" 8 0\n";
+  }
+  const auto start = std::chrono::steady_clock::now();
+  const auto m = read_model(s, text);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  REQUIRE(m.ok());
+  const extresist::InputNode& gnd = m.value().nodes[0];
+  REQUIRE(gnd.devices.size() == 4U * kDevices);
+  CHECK(gnd.devices.front().device == kDevices - 1U);
+  CHECK(gnd.devices.back().device == 0U);
+  CHECK(elapsed < std::chrono::seconds{20});  // quadratic: about 8e10 element moves
 }
