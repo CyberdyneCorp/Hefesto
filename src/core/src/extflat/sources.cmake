@@ -18,6 +18,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/hierarchy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/model.cpp
   ${CMAKE_CURRENT_LIST_DIR}/names.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/ports.cpp
   ${CMAKE_CURRENT_LIST_DIR}/read.cpp
   ${CMAKE_CURRENT_LIST_DIR}/reader.cpp
   ${CMAKE_CURRENT_LIST_DIR}/text.cpp)

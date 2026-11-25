@@ -283,43 +283,141 @@ bool wraps(const FlatWriter& w) {
   return false;
 }
 
-// Implicit ports take one past the maximum, in reverse node-table order
-// (Magic prepends them to a list), unless the root is a black box.
-std::vector<int> port_indices(const FlatWriter& w) {
-  std::vector<int> indices;
-  int portmax = -1;
-  for (const RootPort& port : w.in.ports) {
-    indices.push_back(port.index);
-    portmax = std::max(portmax, port.index);
-  }
-  if (w.settings.blackbox && w.in.root_abstract) {
-    return indices;
-  }
-  for (std::size_t i = indices.size(); i-- > 0;) {
-    if (indices[i] < 0) {
-      indices[i] = ++portmax;
+// topVisit's port numbering and order (ext2spice.c:1897-2060). The entries
+// are the root's node-name table entries whose node is a port, in hash
+// order; each name's port index is kept by name, as Magic keeps it in the
+// EFNodeName shared by the entries.
+class PortSorter {
+ public:
+  explicit PortSorter(FlatWriter& w) : w_(w) {
+    for (const RootPort& p : w.in.ports) {
+      port_of_.emplace(p.node, p.index);
+      for (const extflat::PortName& n : p.rest) {
+        port_of_.emplace(n.name, n.index);
+      }
+      if (p.canonical) {
+        port_of_.emplace(p.canonical->name, p.canonical->index);
+      }
     }
   }
-  return indices;
-}
 
-std::vector<std::string> sorted_ports(FlatWriter& w) {
-  const std::vector<int> indices = port_indices(w);
-  const int portmax = indices.empty() ? -1 : *std::max_element(indices.begin(), indices.end());
-  std::vector<std::string> sorted(static_cast<std::size_t>(portmax + 1));
-  std::map<std::string, int, std::less<>> seen;
-  for (std::size_t i = 0; i < indices.size(); ++i) {
-    const auto node = w.find_node(w.in.ports[i].node);
-    if (indices[i] < 0 || !node || !sorted[static_cast<std::size_t>(indices[i])].empty()) {
-      continue;
+  [[nodiscard]] const std::map<std::string, int, std::less<>>& ports() const { return port_of_; }
+
+  std::vector<std::string> sorted() {
+    number_implicit();
+    sorted_.clear();
+    for (const RootPort& p : w_.in.ports) {
+      if (!place_canonical(p)) {
+        place_from_chain(p);
+      }
     }
-    std::string name = w.in.root_abstract ? w.converted_name(*node) : w.spice_name(*node);
-    if (seen.emplace(name, indices[i]).second) {
-      sorted[static_cast<std::size_t>(indices[i])] = std::move(name);
+    std::vector<std::string> out;
+    out.reserve(sorted_.size());
+    for (auto& [index, name] : sorted_) {
+      out.push_back(std::move(name));
+    }
+    return out;
+  }
+
+ private:
+  static const std::string& canonical(const RootPort& p) { return p.canonical ? p.canonical->name : p.node; }
+
+  // First pass: the highest index, and the entries with none in their
+  // chain or on the canonical name, numbered past it in reverse table
+  // order (Magic prepends them to a list) unless the root is a black box.
+  void number_implicit() {
+    std::vector<const RootPort*> implicit;
+    for (const RootPort& p : w_.in.ports) {
+      bool explicit_port = see(port_of_[canonical(p)]);
+      explicit_port = see(port_of_[p.node]) || explicit_port;
+      for (const extflat::PortName& n : p.rest) {
+        explicit_port = see(port_of_[n.name]) || explicit_port;
+      }
+      if (!explicit_port) {
+        implicit.push_back(&p);
+      }
+    }
+    if (w_.settings.blackbox && w_.in.root_abstract) {
+      return;
+    }
+    for (auto it = implicit.rbegin(); it != implicit.rend(); ++it) {
+      port_of_[(*it)->node] = ++portmax_;
     }
   }
-  return sorted;
-}
+
+  bool see(int index) {
+    portmax_ = std::max(portmax_, index);
+    return index != -1;
+  }
+
+  // The canonical name's index: the port named by the node (or, for an
+  // abstract root, by the entry's own name).
+  bool place_canonical(const RootPort& p) {
+    const int index = port_of_[canonical(p)];
+    if (index < 0 || sorted_.contains(index)) {
+      return false;
+    }
+    const auto node = w_.find_node(canonical(p));
+    if (!w_.in.root_abstract && !node) {
+      return false;
+    }
+    std::string name = w_.in.root_abstract ? p.node : w_.spice_name(*node);
+    if (const auto seen = names_.find(name); seen != names_.end()) {
+      port_of_[canonical(p)] = seen->second;  // a repeat of an earlier port
+    } else {
+      names_.emplace(name, index);
+      sorted_[index] = std::move(name);
+    }
+    return true;
+  }
+
+  // No index on the canonical name: the first name of the entry's chain
+  // that has one.
+  void place_from_chain(const RootPort& p) {
+    std::vector<std::string> chain{p.node};
+    for (const extflat::PortName& n : p.rest) {
+      chain.push_back(n.name);
+    }
+    for (const std::string& alias : chain) {
+      if (place_alias(p, alias)) {
+        return;
+      }
+    }
+  }
+
+  bool place_alias(const RootPort& p, const std::string& alias) {
+    const int index = port_of_[alias];
+    if (index < 0) {
+      return false;
+    }
+    const auto node = w_.find_node(w_.in.root_abstract ? alias : canonical(p));
+    if (!node) {
+      w_.info("Note:  Port " + alias + " was optimized out of " + w_.in.cell);
+      return false;
+    }
+    std::string name = w_.in.root_abstract ? alias : w_.spice_name(w_.find_node(alias).value_or(*node));
+    if (const auto seen = names_.find(name); seen != names_.end()) {
+      port_of_[alias] = seen->second;
+      return false;
+    }
+    names_.emplace(name, index);
+    if (sorted_.contains(index)) {
+      return false;
+    }
+    sorted_[index] = std::move(name);
+    return true;
+  }
+
+  FlatWriter& w_;
+  std::map<std::string, int, std::less<>> port_of_;
+  std::map<std::string, int, std::less<>> names_;  // portNameTable
+  // Sparse: the indices come from the `.ext` file's port records, so a
+  // list sized by the highest one could be huge. ReadLimits::max_port_index
+  // bounds them, so numbering the implicit ports past portmax_ cannot
+  // overflow.
+  std::map<int, std::string> sorted_;
+  int portmax_ = -1;
+};
 
 // Appends ` <word>` with Magic's 80-column continuation.
 void continued(std::string& out, std::size_t& tchars, const std::string& word) {
@@ -331,11 +429,12 @@ void continued(std::string& out, std::size_t& tchars, const std::string& word) {
   tchars += word.size() + 1;
 }
 
-void write_wrapper(FlatWriter& w) {
+std::map<std::string, int, std::less<>> write_wrapper(FlatWriter& w) {
   const std::string name = subcircuit_name(w.in.cell);
   w.out += ".subckt " + name;
   std::size_t tchars = 8 + name.size();
-  for (const std::string& port : sorted_ports(w)) {
+  PortSorter sorter{w};
+  for (const std::string& port : sorter.sorted()) {
     if (!port.empty()) {
       continued(w.out, tchars, port);
     }
@@ -347,12 +446,14 @@ void write_wrapper(FlatWriter& w) {
     }
   }
   w.out += "\n";
+  return sorter.ports();
 }
 
+// spccapVisit, or spccapHierVisit, which compares |C| (Q-NETLIST-19).
 void write_caps(FlatWriter& w) {
   for (const extflat::FlatCap& c : w.in.caps) {
     const double cap = static_cast<double>(static_cast<float>(c.cap)) / 1000;
-    if (cap <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
+    if ((w.hier ? std::fabs(cap) : cap) <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
       continue;
     }
     // Arguments evaluated right to left, as Magic's GCC build does.
@@ -399,11 +500,17 @@ double visit_cap(const FlatWriter& w, std::size_t index) {
 // device terminal or a resistor).
 bool connected(const FlatWriter& w, std::size_t index) {
   const detail::NodeClient& client = w.clients[index];
-  if (!w.compat.magic_compat) {
+  if (!w.compat.magic_compat && !w.hier) {
     return client.connected;
   }
   if (!client.exists) {
     return false;
+  }
+  if (w.hier) {
+    // spcnodeHierVisit: any terminal or resistor touched the node.
+    return w.settings.distributed_junctions
+               ? !client.widths.empty()
+               : std::any_of(client.visited.begin(), client.visited.end(), [](bool b) { return b; });
   }
   if (w.settings.distributed_junctions) {
     return !client.widths.empty();
@@ -425,6 +532,22 @@ void write_node_attrs(FlatWriter& w, const InputNode& node, const std::string& n
   w.out += "\n";
 }
 
+// The node's capacitance line, compared as |C| in hierarchical output
+// (Q-NETLIST-19).
+void write_node_cap(FlatWriter& w, std::size_t index, const std::string& nsn, const std::string& cap_node,
+                    bool is_connected) {
+  const double cap = (w.hier ? detail::dbl(w.node_caps[index]) : visit_cap(w, index)) / 1000;
+  if ((w.hier ? std::fabs(cap) : cap) <= detail::dbl(static_cast<float>(w.settings.cthresh))) {
+    return;
+  }
+  w.out += "C" + std::to_string(w.cap_num++) + " " + nsn + " " + cap_node + " " +
+           detail::si(static_cast<float>(1.0E-15 * cap));
+  if (!is_connected) {
+    w.out += std::string{w.settings.format == Dialect::ngspice ? " ;" : ""} + " **FLOATING";
+  }
+  w.out += "\n";
+}
+
 void write_node(FlatWriter& w, std::size_t index, const std::string& cap_node) {
   bool is_connected = connected(w, index);
   if (!is_connected && w.flags.device_nodes_only) {
@@ -439,15 +562,7 @@ void write_node(FlatWriter& w, std::size_t index, const std::string& cap_node) {
   if (w.settings.format == Dialect::spice2 || (w.settings.format == Dialect::hspice && nsn.starts_with("z@"))) {
     w.out += std::string{ng ? "; " : ""} + "** " + w.converted_name(index) + " == " + nsn + "\n";
   }
-  const double cap = visit_cap(w, index) / 1000;
-  if (cap > detail::dbl(static_cast<float>(w.settings.cthresh))) {
-    w.out += "C" + std::to_string(w.cap_num++) + " " + nsn + " " + cap_node + " " +
-             detail::si(static_cast<float>(1.0E-15 * cap));
-    if (!is_connected) {
-      w.out += std::string{ng ? " ;" : ""} + " **FLOATING";
-    }
-    w.out += "\n";
-  }
+  write_node_cap(w, index, nsn, cap_node, is_connected);
   write_node_attrs(w, node, nsn);
 }
 
@@ -500,7 +615,7 @@ WriteResult FlatWriter::run() {
   apply_run_flags(names, settings.format);
   const bool wrapper = wraps(*this);
   if (wrapper) {
-    write_wrapper(*this);
+    (void)write_wrapper(*this);
   }
   write_devices(*this);
   if (finite_cap(settings.cthresh)) {
@@ -515,6 +630,36 @@ WriteResult FlatWriter::run() {
     write_dictionary(*this);
   }
   return WriteResult{std::move(out), std::move(messages)};
+}
+
+void FlatWriter::write_file_header() {
+  write_header(*this);
+  apply_run_flags(names, settings.format);
+}
+
+std::map<std::string, int, std::less<>> FlatWriter::write_subckt_line() { return write_wrapper(*this); }
+
+// esHierVisit after the calls: devices, resistors, couplings (always
+// visited; |C| against the threshold), and the node lines, which follow
+// Q-NETLIST-20: with magic-compat ON only when a `substrate` record was
+// read (EFCompat FALSE), with it OFF always.
+void FlatWriter::write_section_body() {
+  write_devices(*this);
+  write_resists(*this);
+  write_caps(*this);
+  if (in.compat_substrate && compat.magic_compat) {
+    return;
+  }
+  std::string cap_node = "0";
+  for (std::size_t i = 0; i < in.nodes.size(); ++i) {
+    if (in.nodes[i].substrate) {
+      cap_node = spice_name(i);
+      break;
+    }
+  }
+  for (std::size_t i = 0; i < in.nodes.size(); ++i) {
+    write_node(*this, i, cap_node);
+  }
 }
 
 }  // namespace detail

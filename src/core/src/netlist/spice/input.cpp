@@ -182,10 +182,15 @@ SpiceInput from_netlist(const extflat::Netlist& netlist, std::string_view cell) 
   copy_params(netlist, input);
   netlist.visit_nodes([&](const extflat::FlatNode& flat) {
     input.nodes.push_back(node_of(flat));
-    if (flat.top_port) {
-      input.ports.push_back(RootPort{flat.name, -1});
-    }
   });
+  for (const extflat::PortEntry& entry : netlist.root_ports) {
+    RootPort port{entry.chain.front().name, entry.chain.front().index};
+    port.rest.assign(entry.chain.begin() + 1, entry.chain.end());
+    if (entry.canonical.name != port.node) {
+      port.canonical = entry.canonical;
+    }
+    input.ports.push_back(std::move(port));
+  }
   netlist.visit_devices([&](const extflat::FlatDevice& flat) {
     input.devices.push_back(device_of(flat));
     add_type_name(input, flat.model);

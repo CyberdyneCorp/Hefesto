@@ -87,6 +87,10 @@ struct ExtSession : Session {
     REQUIRE(services.files().write_atomic(hefesto::platform::Path{"/w/inv.ext"}, inv).ok());
   }
   bool exists(const std::string& name) { return services.files().exists(hefesto::platform::Path{name}); }
+  std::string file(const std::string& name) {
+    auto text = services.files().read(hefesto::platform::Path{name});
+    return text.ok() ? text.value() : std::string{};
+  }
 };
 
 }  // namespace
@@ -102,7 +106,7 @@ TEST_CASE("The output file name is per run", "[cap:netlist-spice-options][req:Ru
     CHECK(s.exists("custom.spice"));
     CHECK_FALSE(s.exists("inv.spice"));
     REQUIRE(s.services.files().remove(hefesto::platform::Path{"custom.spice"}).ok());
-    REQUIRE(s.run("ext2spice inv").ok());
+    REQUIRE(s.run("ext2spice -p /w inv").ok());
     CHECK(s.exists("inv.spice"));
     CHECK_FALSE(s.exists("custom.spice"));
   }
@@ -115,7 +119,7 @@ TEST_CASE("The run's cap threshold reaches the flattening",
   ExtSession s{"node a 0 0 0 0 m1\ncap a nosuch 1000\n"};
   REQUIRE(s.run("ext2spice -p /w inv").ok());
   CHECK(s.take_printed().find("cap(2): no such node nosuch") == std::string::npos);
-  REQUIRE(s.run("ext2spice -c 0 inv").ok());
+  REQUIRE(s.run("ext2spice -p /w -c 0 inv").ok());
   CHECK(s.take_printed().find("cap(2): no such node nosuch\n") != std::string::npos);
 }
 
@@ -138,9 +142,9 @@ TEST_CASE("ext2spice -h prints both usage texts; -T is unrecognized",
 TEST_CASE("The run reaches EFArgs with the run arguments", "[cap:netlist-spice-options][req:Run arguments and output file]") {
   Session s;
   const auto r = spice::run(s.state, spice::SpiceRun{{"-F", "inv"}});
-  REQUIRE_FALSE(r.ok());
+  REQUIRE(r.ok());
   // EFArgs took `-F` and the cell `inv`; the read finds no inv.ext here.
-  CHECK(r.diagnostics.back().text == "Cannot read extract file inv.ext");
+  CHECK(r.value.to_string() == "Cannot read extract file inv.ext\n");
   CHECK_FALSE(s.state.netlist.spice.no_attributes);
 }
 
@@ -151,10 +155,11 @@ TEST_CASE("render leaves the session's settings untouched", "[cap:netlist-spice-
   s.state.netlist.names.trim_local = true;
   const spice::SpiceSettings before = s.state.netlist.spice;
   const extflat::NameFlags names = s.state.netlist.names;
-  // The `lvs` preset is hierarchical (tasks.md 11.6, R3).
+  // The `lvs` preset is hierarchical: it reaches the read, which finds no
+  // inv.ext here (hier_test.cpp renders it on a golden case's files).
   const auto lvs = spice::render(s.state, "inv", spice::SpiceSettings::lvs(before));
   REQUIRE_FALSE(lvs.ok());
-  CHECK(lvs.error().code == "CORE-NOTIMPL-008");
+  CHECK(lvs.error().code == "EXTFLAT-READ-001");
   // Simulation overrides: flat, ngspice, every parasitic.
   spice::SpiceSettings sim = before;
   sim.format = spice::Dialect::ngspice;
@@ -182,4 +187,140 @@ TEST_CASE("Rendering a value never changes the caller's flags", "[cap:netlist-sp
   CHECK(spice::write_flat(in, sim, {}, compat, again, kMagicNames).text == first);
   CHECK(names == before);
   CHECK(copy.trim_local);  // the run's flags went to the copy
+}
+
+// Q-NETLIST-54 (compat, M7-14): spcParseArgs' -M -m -f -B -d -J are Magic
+// globals, so with magic-compat ON they hold for later runs.
+TEST_CASE("Run flags persist for later runs with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+  REQUIRE(s.run("ext2spice -p /w -f hspice -B -d -m -J hier inv").ok());
+  CHECK(s.state.netlist.spice.format == spice::Dialect::hspice);
+  CHECK(s.state.netlist.spice.no_attributes);
+  CHECK(s.state.netlist.spice.distributed_junctions);
+  CHECK(s.state.netlist.spice.merge == spice::MergeMode::conservative);
+  CHECK(s.state.netlist.spice.hier_ap);
+  REQUIRE(s.run("ext2spice -p /w inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* HSPICE file created from inv.ext"));
+}
+
+// Q-NETLIST-54 (compat, M7-14): with magic-compat OFF the flags apply to
+// the run that names them and leave the session's settings unchanged.
+// Regression: ext2spice kept them in both modes.
+TEST_CASE("Run flags apply to one run with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+  const spice::SpiceSettings before = s.state.netlist.spice;
+  REQUIRE(s.run("ext2spice -p /w -f hspice -B -d -m -J hier inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* HSPICE file created from inv.ext"));
+  CHECK(s.state.netlist.spice.format == before.format);
+  CHECK(s.state.netlist.spice.no_attributes == before.no_attributes);
+  CHECK(s.state.netlist.spice.distributed_junctions == before.distributed_junctions);
+  CHECK(s.state.netlist.spice.merge == before.merge);
+  CHECK(s.state.netlist.spice.hier_ap == before.hier_ap);
+  CHECK(s.state.netlist.spice.scale == before.scale);
+  REQUIRE(s.run("ext2spice -p /w inv").ok());
+  CHECK(s.file("inv.spice").starts_with("* SPICE3 file created from inv.ext"));
+}
+
+// Regression (tasks.md 11.3, NL-SPICE-05): the root's ports were all
+// numbered as implicit, in reverse node order, because the flattened
+// netlist did not carry the `port` records' indices.
+TEST_CASE("The subcircuit wrapper lists the root's ports by their indices",
+          "[cap:netlist-spice-options][req:Subcircuit header line]") {
+  ExtSession s{"port in 0 0 0 1 1 m1\nport out 1 0 10 1 11 m1\nnode in 0 0 0 0 m1\nnode out 0 0 0 10 m1\n"
+               "node mid 0 0 0 20 m1\n"};
+  REQUIRE(s.run("ext2spice subcircuits top on").ok());
+  REQUIRE(s.run("ext2spice -p /w inv").ok());
+  CHECK(s.file("inv.spice").find(".subckt inv in out\n") != std::string::npos);
+}
+
+// Q-NETLIST-61 (compat-neutral): Magic's EFDone frees EFSearchPath at the
+// end of every run, so `-p` holds for the run that names it. Regression:
+// ext2spice kept it for later runs (ext2sim did not).
+TEST_CASE("ext2spice -p holds for one run", "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", compat ? "on" : "off").ok());
+    REQUIRE(s.run("ext2spice -p /w inv").ok());
+    REQUIRE(s.services.files().remove(hefesto::platform::Path{"inv.spice"}).ok());
+    const auto again = s.run("ext2spice inv");
+    CHECK(again.ok() == compat);  // Q-NETLIST-59: a missing .ext is the result with magic-compat ON
+    CHECK_FALSE(s.exists("inv.spice"));
+  }
+}
+
+// Q-NETLIST-61: a run that stops at "Point to a window" returns before
+// EFDone in Magic, so its -p is left for the next run (magic-compat ON).
+TEST_CASE("ext2spice -p of a run without a cell is left for the next run with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+  CHECK_FALSE(s.run("ext2spice -p /w").ok());
+  REQUIRE(s.run("ext2spice inv").ok());
+  CHECK(s.exists("inv.spice"));
+}
+
+TEST_CASE("ext2spice -p of a run without a cell is dropped with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+  CHECK_FALSE(s.run("ext2spice -p /w").ok());
+  CHECK_FALSE(s.run("ext2spice inv").ok());
+  CHECK_FALSE(s.exists("inv.spice"));
+}
+
+// Regression: the flat path applied EFArgs' -t after the read, so with
+// magic-compat ON a failed read dropped it; Magic sets EFOutputFlags while
+// parsing, and the hierarchical path already did.
+TEST_CASE("A failed read keeps -t with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+  REQUIRE_FALSE(s.state.netlist.names.trim_local);
+  REQUIRE(s.run("ext2spice -p /w -t # nosuch").ok());
+  CHECK(s.state.netlist.names.trim_local);
+}
+
+TEST_CASE("A -t never reaches the session's flags with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+  CHECK_FALSE(s.run("ext2spice -p /w -t # nosuch").ok());
+  CHECK_FALSE(s.state.netlist.names.trim_local);
+}
+
+// Regression (both modes): the wrapper sized its port list by the highest
+// port number of the `.ext` file; the list is sparse now, and the read
+// caps the number (EXTFLAT-READ-009).
+TEST_CASE("Sparse port numbers keep their order; a number past the cap fails the read",
+          "[cap:netlist-spice-options][req:Subcircuit header line]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ExtSession s{"port in 1048576 0 0 1 1 m1\nport out 7 0 10 1 11 m1\nnode in 0 0 0 0 m1\nnode out 0 0 0 10 m1\n"};
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", compat ? "on" : "off").ok());
+    REQUIRE(s.run("ext2spice subcircuits top on").ok());
+    REQUIRE(s.run("ext2spice -p /w inv").ok());
+    CHECK(s.file("inv.spice").find(".subckt inv out in\n") != std::string::npos);
+    ExtSession hostile{"port in 2147483647 0 0 1 1 m1\nnode in 0 0 0 0 m1\n"};
+    REQUIRE(hefesto::settings::set(hostile.project, "magic-compat", compat ? "on" : "off").ok());
+    const auto r = hostile.run("ext2spice -p /w inv");
+    REQUIRE_FALSE(r.ok());
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == "EXTFLAT-READ-009");
+  }
+}
+
+// Q-NETLIST-61: EFSearchPath is shared by both tools, so the path an
+// ext2spice run without a cell left is read by the next ext2sim run.
+TEST_CASE("ext2sim reads with the -p left by ext2spice without a cell (magic-compat ON)",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  ExtSession s;
+  REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+  CHECK_FALSE(s.run("ext2spice -p /w").ok());
+  REQUIRE(s.run("ext2sim inv").ok());
+  CHECK(s.exists("inv.sim"));
 }

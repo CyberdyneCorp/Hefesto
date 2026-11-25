@@ -89,21 +89,38 @@ An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell
 - SPICE2 node numbers start at 10
 - all other counters start at 0
 
-The flags `-M`, `-m`, `-f`, `-B`, `-d` and `-J` SHALL change the session's settings, as Magic's globals do, so they hold for later runs; `-F` and `-o` SHALL apply to one run only.
+The flags `-M`, `-m`, `-f`, `-B`, `-d` and `-J` set Magic globals; how long they hold depends on the `magic-compat` setting (Q-NETLIST-54, resolution: compat, the same rule as `ext2sim`'s in capability `netlist-sim`): with it ON (the default) they SHALL change the session's settings, so they hold for later runs, as in Magic; with it OFF they SHALL apply to the run that names them and leave the session's settings unchanged. `-F` and `-o` SHALL apply to one run only in both settings.
+
+The `.ext` search path `-p` of capability `ext-flattening-hierarchy` SHALL apply to the run that names it only, in both settings, as Magic's EFDone frees it at the end of every run. One exception follows Magic: with `magic-compat` ON, a run that names no cell when no window is open fails with `Point to a window or specify a cell name.` and returns before EFDone, so its `-p` path SHALL be used by the next run of `ext2spice` or `ext2sim` that gives no `-p` of its own; with it OFF that path SHALL be dropped. `default` SHALL clear such a path. EFArgs' `-t` SHALL be applied to the name-conversion flags before the `.ext` read, as EFArgs sets them while parsing, so with `magic-compat` ON a `-t` holds even when the read fails.
 
 On completion, the informative message `exttospice finished.` SHALL be printed.
 Compatibility: behavioral
-(Magic ref: ext2spice/ext2spice.c:824-880, ext2spice/ext2spice.c:1416-1508)
+(Magic ref: ext2spice/ext2spice.c:824-880, ext2spice/ext2spice.c:1416-1508, extflat/EFdef.c:179-184)
+
+#### Scenario: The search path holds for one run
+- **GIVEN** `/w/inv.ext` and no `inv.ext` in the current directory
+- **WHEN** `ext2spice -p /w inv` runs, then `ext2spice inv`
+- **THEN** the first run writes `inv.spice` and the second cannot read `inv.ext`
+
+#### Scenario: A failed read keeps -t with magic-compat ON
+- **GIVEN** `magic-compat` ON and no `nosuch.ext`
+- **WHEN** `ext2spice -t # nosuch` runs
+- **THEN** the session's name flags trim `#` for later runs
 
 #### Scenario: CDL file name
 - **GIVEN** format cdl and cell `amp`
 - **WHEN** the netlister runs without `-o`
 - **THEN** it writes `amp.cdl`
 
-#### Scenario: Run flags that persist
-- **GIVEN** format spice3
+#### Scenario: Run flags that persist with magic-compat ON
+- **GIVEN** format spice3 and `magic-compat` ON
 - **WHEN** a run is given `-f hspice -F` and a second run is given no flags
 - **THEN** the second run writes HSPICE format and lists floating nodes again
+
+#### Scenario: Run flags for one run with magic-compat OFF
+- **GIVEN** format spice3 and `magic-compat` OFF
+- **WHEN** a run is given `-f hspice -B` and a second run is given no flags
+- **THEN** the first run writes HSPICE format without attribute comments, the session's format stays spice3, and the second run writes SPICE3 format
 
 ### Requirement: File header and scale card
 The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × S_out / 100`, where `S_out` is the global output scale of capability `ext-flattening-read`. If scale mode is off, the output length unit SHALL be `S_out / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.

@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+
+#
+# EX-P01: capture-only probe of Open Question 3 (openspec/changes/m7-extraction
+# tasks.md 6.4). It lives outside tests/golden so replay.py never runs it: the
+# Hefesto side is tests/unit/extract/cap/cr_atan_test.cpp, and the captured
+# atan_probe.out is checked with tests/data/extract/cap/atan_probe/compare_atan_probe.py.
+# input/args.txt is a copy of ../../../../args.txt (gen_args.py).
+# Capture: gh workflow run golden-capture.yml -f mode=capture
+#            -f cases="tests/data/extract/cap/atan_probe/EXTRACT/cases/EX-P01"
+
+schema = 1
+id = "EX-P01"
+area = "EXTRACT"
+capability = "extract-capacitance"
+requirements = ["Fringe-halo sideoverlap"]
+tool = "magic"
+description = "glibc atan and the %g text of 0.6366*atan(x) on the capture image for 3701 arguments (Open Question 3 probe)"
+
+[reference]
+script = "input/atan_probe.tcl"
+argv = ["magic", "-dnull", "-noconsole", "-norc", "input/atan_probe.tcl"]
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/atan_probe.tcl"]
+requires_commands = []
+
+[[outputs]]
+name = "atan_probe.out"
+source = "atan_probe.out"
+comparator = "bytes"
+masks = []

@@ -115,11 +115,15 @@ struct ParamDecl {
   int offset = 0;
 };
 
-/// A port node of the root cell in its node-table iteration order, with
-/// the port index of its canonical name (-1: implicit).
+/// One entry of the root cell's node-name table whose node is a port, in
+/// the table's iteration order (extflat::PortEntry): the entry's name and
+/// port index (-1: none given), the names after it in the node's list, and
+/// the node's canonical name when it is another name.
 struct RootPort {
-  std::string node;  // a node alias
+  std::string node;  // the entry's name, a node alias
   int index = -1;
+  std::vector<extflat::PortName> rest{};
+  std::optional<extflat::PortName> canonical{};
 };
 
 /// Per device type: esFetInfo (ExtGetDevInfo through ExtStyle::device_info()).
