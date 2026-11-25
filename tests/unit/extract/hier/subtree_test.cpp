@@ -11,6 +11,7 @@
 
 #include "hefesto/extract/hier/interact.hpp"
 #include "hefesto/extract/hier/node_table.hpp"
+#include "hefesto/extract/hier/yank.hpp"
 #include "hier_fixture.hpp"
 
 namespace hefesto::test::exthier {
@@ -151,6 +152,55 @@ TEST_CASE("EX-055: the hierarchical caps over the step squares sum to the sidewa
   c.options.fringehalo = false;
   const auto run = c.run("ex");
   CHECK(cap_sum(run.text, "c1/c", "p") == 1200.0);
+}
+
+TEST_CASE("A label two levels down is yanked with the instance path", "[cap:extract-hierarchy][req:Hierarchical label names]") {
+  HierCase c("EX-049", true);
+  db::CellLibrary lib;
+  const auto metal1 = c.tech().find_type("metal1");
+  REQUIRE(metal1.ok());
+  db::CellDef& bit = *lib.create("bit", c.tech().plane_count()).value();
+  REQUIRE(db::paint(bit, c.tech(), db::Rect{0, 0, 4, 4}, *metal1.id).ok());
+  db::Label q;
+  q.type = *metal1.id;
+  q.rect = {2, 2, 2, 2};
+  q.text = "q";
+  bit.labels().push_back(q);
+  db::recompute_bbox(bit);
+  db::CellDef& mid = *lib.create("mid", c.tech().plane_count()).value();
+  db::PlaceOptions array;
+  array.id = "R";
+  array.array = db::ArrayInfo{0, 0, 0, 3, 0, 10};
+  REQUIRE(db::place(mid, bit, array).ok());
+  db::recompute_bbox(mid);
+  db::CellDef& top = *lib.create("top", c.tech().plane_count()).value();
+  db::PlaceOptions one;
+  one.id = "X1";
+  auto use = db::place(top, mid, one);
+  REQUIRE(use.ok());
+  db::recompute_bbox(top);
+
+  auto target = extract::new_yank_cell("__T__", c.tech().plane_count());
+  extract::yank_use(*use.value(), db::Rect{0, 20, 4, 24}, *target, c.tech(), true);
+  REQUIRE(target->labels().size() == 1);
+  CHECK(target->labels()[0].text == "X1/R[2]/q");
+  CHECK(target->labels()[0].rect == db::Rect{2, 22, 2, 22});
+  CHECK(target->plane(c.tech().home_plane(*metal1.id).value()).type_at({1, 21}) == *metal1.id);
+}
+
+TEST_CASE("Hierarchical caps come before the merges in the file",
+          "[cap:extract-hierarchy][req:Hierarchical section order in the file]") {
+  HierCase c("EX-050", true);
+  db::CellDef& top = c.cell("ex");
+  const auto metal1 = c.tech().find_type("metal1");
+  REQUIRE(metal1.ok());
+  REQUIRE(db::paint(top, c.tech(), db::Rect{8, 0, 10, 4}, *metal1.id).ok());
+  const auto run = c.run("ex");
+  const std::size_t cap = run.text.find("\ncap ");
+  const std::size_t merge = run.text.find("\nmerge ");
+  REQUIRE(cap != std::string::npos);
+  REQUIRE(merge != std::string::npos);
+  CHECK(cap < merge);
 }
 
 }  // namespace
