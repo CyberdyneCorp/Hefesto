@@ -384,26 +384,24 @@ void Pipelines::ensure_clipped() {
   try {
     create_table(true, clipped_);
   } catch (...) {
-    for (auto& row : clipped_) {
-      for (VkPipeline& p : row) {
-        if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
-        p = VK_NULL_HANDLE;
-      }
-    }
+    destroy_table(clipped_);
     throw;
   }
   have_clipped_ = true;
 }
 
-void Pipelines::destroy() noexcept {
-  for (Table* table : {&pipelines_, &clipped_}) {
-    for (auto& row : *table) {
-      for (VkPipeline& p : row) {
-        if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
-        p = VK_NULL_HANDLE;
-      }
+void Pipelines::destroy_table(Table& table) noexcept {
+  for (auto& row : table) {
+    for (VkPipeline& p : row) {
+      if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
+      p = VK_NULL_HANDLE;
     }
   }
+}
+
+void Pipelines::destroy() noexcept {
+  destroy_table(pipelines_);
+  destroy_table(clipped_);
   have_clipped_ = false;
   if (msaa_pass_ != VK_NULL_HANDLE) vkDestroyRenderPass(device_, msaa_pass_, nullptr);
   if (layout_ != VK_NULL_HANDLE) vkDestroyPipelineLayout(device_, layout_, nullptr);

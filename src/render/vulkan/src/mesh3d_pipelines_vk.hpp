@@ -105,6 +105,7 @@ class Pipelines {
   using Table = std::array<std::array<VkPipeline, kVariantCount>, kKindCount>;
   void create(VkRenderPass target_pass);
   void create_table(bool clipped, Table& out);
+  void destroy_table(Table& table) noexcept;
   void destroy() noexcept;
 
   VkPhysicalDevice physical_ = VK_NULL_HANDLE;
