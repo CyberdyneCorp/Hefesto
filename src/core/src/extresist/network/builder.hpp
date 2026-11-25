@@ -57,8 +57,8 @@ struct DevTile {
   db::Rect area;
   tech::TileType type = 0;
   const extract::DevicePattern* record = nullptr;
-  std::int32_t perim = 0;
-  std::int32_t overlap = 0;
+  std::int64_t perim = 0;
+  std::int64_t overlap = 0;
 };
 
 /// A resDevTerm of the device-node table.
@@ -66,6 +66,11 @@ struct DevTerm {
   std::int32_t term = -1;  // -1: substrate
   TileRef device_tile;
 };
+
+/// ResPreProcessDevices' length and width of a device from its summed
+/// perimeter, gate overlap and area (a NaN width, which Magic converts to
+/// int, is 0; Q-NETLIST-64 (d)).
+void device_dimensions(Device& d);
 
 class Builder {
  public:
@@ -76,6 +81,8 @@ class Builder {
   /// say why).
   bool run();
   [[nodiscard]] Network finish();
+  /// ResGetDevice: the device record of the tile at a location, or kNil.
+  [[nodiscard]] Id device_at(db::Point p, tech::TileType type);
 
   // --- the scratch planes (builder.cpp) ---
   db::StitchEditor& ed(tech::PlaneId plane) { return *editors_[plane]; }
@@ -111,6 +118,9 @@ class Builder {
   // --- prepare.cpp: devices, contacts, dissolving, fracturing ---
   void copy_devices();
   void shave_contacts();
+  /// The contact tiles of plane `p` in the bounding box (a split tile with
+  /// two non-space sides once, by its left side).
+  [[nodiscard]] std::vector<std::pair<db::Rect, tech::TileType>> contact_tiles(tech::PlaneId p) const;
   void find_contacts();
   void dissolve_contacts();
   bool fracture_planes();
@@ -120,12 +130,21 @@ class Builder {
   void make_ports();
   void make_label_ports();
   void find_new_contact_tiles();
+  [[nodiscard]] bool has_editor(std::optional<tech::PlaneId> plane) const;
+  void add_port(tech::PlaneId plane, const db::Rect& rect, const tech::TypeMask& mask, const Port& port);
+  [[nodiscard]] tech::TypeMask contact_mask(tech::TileType type) const;
+  void attach_contact(Id ci, tech::PlaneId p, const tech::TypeMask& mask);
   void preprocess_devices();
+  [[nodiscard]] std::optional<tech::PlaneId> device_plane(const DevTile& dt) const;
+  void preprocess_device_tile(const DevTile& dt);
+  void record_terms(const TileRef& tile, tech::TileType tt, db::Point ll, tech::TypeMask mask, std::int32_t term);
   // --- tiles.cpp: the queue ---
   bool process_tiles();
   // --- resistors.cpp ---
   bool calc_tile_resistance(Id tile);
   bool near_device(Id tile);
+  /// near_device's cut once the device breakpoints are counted.
+  bool cut_near_device(Id tile, int count, std::uint32_t edges);
   void do_contacts(Id contact);
   /// The cut counts of a contact (squares x and y), 1 x 1 with the
   /// once-per-session warning when it is smaller than a cut allows.

@@ -213,16 +213,7 @@ class StartFinder {
           found = tp;
           return true;
         }
-        const Id ti = b_.info(tp);
-        if (ti != kNil && (b_.g.tiles[ti].status & kTileDev) != 0) {
-          if (complex != nullptr) {
-            *complex = true;
-          }
-          if (push != nullptr && (b_.g.tiles[ti].status & kTilePushed) == 0) {
-            b_.g.tiles[ti].status |= kTilePushed;
-            push->push_back(tp);
-          }
-        }
+        note_device_tile(tp, complex, push);
         return false;
       });
       if (found) {
@@ -230,6 +221,21 @@ class StartFinder {
       }
     }
     return {};
+  }
+
+  /// A device-tile neighbour: sets *complex and pushes it once.
+  void note_device_tile(const TileRef& tp, bool* complex, std::vector<TileRef>* push) {
+    const Id ti = b_.info(tp);
+    if (ti == kNil || (b_.g.tiles[ti].status & kTileDev) == 0) {
+      return;
+    }
+    if (complex != nullptr) {
+      *complex = true;
+    }
+    if (push != nullptr && (b_.g.tiles[ti].status & kTilePushed) == 0) {
+      b_.g.tiles[ti].status |= kTilePushed;
+      push->push_back(tp);
+    }
   }
 
   /// The depth-first search over the device's tiles. Magic leaves `tile`
@@ -257,22 +263,29 @@ class StartFinder {
     for (const tech::PlaneId p : b_.user_planes()) {
       TileRef found;
       b_.search(p, r, mask, [&](const TileRef& t, bool side) {
-        const TileTypes ty = b_.types(t);
-        if (ty.split && ty.left != tech::kSpace && ty.right != tech::kSpace && side) {
+        if (!non_space_side(b_.types(t), side)) {
           return false;
         }
-        const tech::TileType tt = ty.split ? (side ? ty.right : ty.left) : ty.left;
-        if (tt != tech::kSpace) {
-          found = t;
-          return true;
-        }
-        return false;
+        found = t;
+        return true;
       });
       if (found) {
         return found;
       }
     }
     return {};
+  }
+
+  /// ResGetTileFunc's test: the side is not space, and a split tile with
+  /// two non-space sides counts once (by its left side).
+  [[nodiscard]] static bool non_space_side(const TileTypes& ty, bool side) {
+    if (!ty.split) {
+      return ty.left != tech::kSpace;
+    }
+    if (ty.left != tech::kSpace && ty.right != tech::kSpace) {
+      return !side;
+    }
+    return (side ? ty.right : ty.left) != tech::kSpace;
   }
 
   Builder& b_;

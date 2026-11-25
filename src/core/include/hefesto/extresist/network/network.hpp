@@ -162,10 +162,12 @@ struct NetDevice {
   db::Point location;
   tech::TileType type = 0;
   db::Rect inside;
+  /// length and width are clamped into int32; perimeter and area are
+  /// summed in 64 bits (a device tile can exceed 46341 units square).
   std::int32_t length = 0;
   std::int32_t width = 0;
-  std::int32_t perimeter = 0;
-  std::int32_t area = 0;
+  std::int64_t perimeter = 0;
+  std::int64_t area = 0;
   std::int32_t tiles = 0;
   double gate_cap = 0.0;
   double sd_cap = 0.0;
@@ -287,8 +289,9 @@ struct BuildInput {
 /// magic-compat ON.
 [[nodiscard]] diag::Status fracture(db::StitchEditor& editor, const db::Rect& area);
 /// Added in M7 R4: ResFracture with the magic-compat setting
-/// (Q-NETLIST-53: ON makes a split tile Manhattan with its left type before
-/// cutting it, OFF never cuts a split tile).
+/// (Q-NETLIST-53: ON cuts a split tile as ResSplitX does, the left part
+/// keeping its diagonal and the new part getting the left type, and joins
+/// split tiles; OFF never cuts nor joins a split tile).
 [[nodiscard]] diag::Status fracture(db::StitchEditor& editor, const db::Rect& area, bool magic_compat);
 /// The scaffold form has no technology and fails with EXTRESIST-NET-001.
 [[nodiscard]] diag::Outcome<Network> build_network(const NetGeometry& geometry, const extract::ExtStyle& style,
