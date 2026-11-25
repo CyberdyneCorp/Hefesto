@@ -18,19 +18,34 @@
 //
 // Engine events, per worker: EngineCallbacks::on_state(running) moves the
 // job from `loading` to `running`; on_state(paused) to `paused` and back
-// on running; on_state(idle or loaded) after `running` ends the job
-// (`completed`, or `failed` when an error-stream line starts with `Error`,
-// or `cancelled` after cancel), and its vectors are copied with vectors().
+// on running; on_state(idle or loaded) after `running` ends the job, and
+// so does on_state(paused) after cancel (the adapter halts a cancelled run
+// the way it pauses one). The job ends `cancelled` after cancel, `failed`
+// when any error-stream line started with `Error` (SIM-ENGINE-032) or the
+// run left no vectors (SIM-ENGINE-037), and `completed` otherwise; its
+// vectors are copied with vectors(). Cancelling a job that is already
+// paused ends it at once with the vectors of the pause.
 // EngineCallbacks::on_error lines are the error-stream lines (the adapter
 // has removed SendChar's `stderr ` prefix); on_output lines are the rest
-// of the job log.
+// of the job log. Each engine's events carry the job they belong to, so a
+// late event of an ended job never reaches the next one.
 //
 // A fault is on_state(failed) (WorkerEngine reports a crash, a controlled
 // exit, a missed heartbeat, a malformed or oversize frame this way) or an
-// error returned by any Engine call. The job fails with SIM-ENGINE-030
-// `simulation engine terminated` followed by its last 50 error-stream lines
-// (SIM-ENGINE-032), the engine is destroyed, and the next job on that
-// worker starts in a new engine from the factory.
+// error returned by an Engine call other than a refusal of a healthy
+// engine. The job fails with SIM-ENGINE-030 `simulation engine terminated`,
+// the cause (the engine's own diagnostic, first line), and its last 50
+// error-stream lines (SIM-ENGINE-032); the engine is destroyed, and the
+// next job on that worker starts in a new engine from the factory. The
+// refusals are SIM-ENGINE-009 (deck rejected: the job fails with the
+// refusal and its error lines, the engine is kept), and SIM-ENGINE-010 or
+// 011 on pause or resume (returned to the caller; the job is unchanged).
+//
+// Threading: poll() runs the factory (the worker's handshake) and
+// Engine::load synchronously, so a slow worker start or deck load holds
+// the owning thread, which must therefore not be the UI thread; cancel()
+// of a job that is loading waits for the load (design.md, SIMENG as
+// landed).
 //
 // Owner: SIMENG.
 
@@ -77,12 +92,27 @@ struct JobManagerOptions {
   std::function<std::chrono::system_clock::time_point()> now;
 };
 
+/// Added in M9 R1: one job-log line and its stream (log.txt writes error
+/// lines with `E ` and the others with `O `).
+struct LogLine {
+  bool error = false;
+  std::string text;
+  friend bool operator==(const LogLine&, const LogLine&) = default;
+};
+
+/// Added in M9 R1: the job log kept in memory per job; later lines are
+/// counted in JobRecord::log_dropped instead.
+inline constexpr std::size_t kMaxJobLogBytes = std::size_t{64} << 20;
+
 /// Added in M9 R1: what the manager keeps of one job.
 struct JobRecord {
   Job job;
   JobOptions options;
-  std::vector<std::string> log;                // output and error-stream lines, in order
+  std::vector<LogLine> log;                    // output and error-stream lines, in order
+  std::size_t log_bytes = 0;                   // text bytes in `log`
+  std::uint64_t log_dropped = 0;               // lines not kept (kMaxJobLogBytes, or a flooded event queue)
   std::vector<std::string> errors;             // the error-stream lines (prefix removed), the last 50
+  std::optional<std::string> first_error;      // the first error-stream line that starts with `Error`
   std::vector<diag::Diagnostic> diagnostics;   // set when the job failed
   std::vector<Vector> vectors;                 // the final (or partial) vectors
   std::uint64_t engine = 0;                    // which engine ran it (1 = the first engine started)

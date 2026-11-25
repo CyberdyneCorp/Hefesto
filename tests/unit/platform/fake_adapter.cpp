@@ -16,6 +16,14 @@
 //   crash             abort() in run                      (Crash containment)
 //   exit              the controlled-exit path in run     (Controlled exit)
 //   stop              SIGSTOP itself in run               (Stuck worker)
+//   hold              run computes its points, then waits for a halt
+//                     (Cancel a transient run)
+//
+// pause, resume and cancel behave like the ngspice adapter's: a halt
+// (pause, or cancel of a running analysis) ends the analysis thread and
+// reports `paused`; pause with no analysis running is refused with
+// "no analysis is running"; cancel with none running succeeds and reports
+// nothing; resume restarts a held analysis.
 //
 // The results depend on the deck, on the generator seeded by `setseed`, and
 // on the circuits and plots left over from earlier jobs, so a worker that
@@ -35,6 +43,7 @@
 #include <atomic>
 #include <cerrno>
 #include <chrono>
+#include <condition_variable>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
@@ -59,6 +68,10 @@ struct hefesto_engine {
   std::vector<double> out;
   std::thread runner;
   std::string error;
+  std::mutex mutex;
+  std::condition_variable changed;
+  bool running = false;  // under mutex: the analysis thread is between running and its end
+  bool halt = false;     // under mutex
 };
 
 namespace {
@@ -181,6 +194,52 @@ void compute(hefesto_engine* e) {
   }
 }
 
+// The analysis thread: like ngspice's bg_run, the state callbacks come from
+// it. A held run waits for a halt and then reports `paused`.
+void analysis(hefesto_engine* e, bool hold) {
+  state(e, HEFESTO_ENGINE_RUNNING);
+  if (e->callbacks.on_progress != nullptr) {
+    e->callbacks.on_progress(e->callbacks.user, "tran", 4, 50.0);
+  }
+  compute(e);
+  bool halted = false;
+  {
+    std::unique_lock lock{e->mutex};
+    if (hold) {
+      e->changed.wait(lock, [e] { return e->halt; });
+    }
+    halted = e->halt;
+    e->running = false;
+  }
+  e->changed.notify_all();
+  state(e, halted ? HEFESTO_ENGINE_PAUSED : HEFESTO_ENGINE_LOADED);
+}
+
+void start_analysis(hefesto_engine* e) {
+  join(e);
+  {
+    std::lock_guard lock{e->mutex};
+    e->running = true;
+    e->halt = false;
+  }
+  e->runner = std::thread([e, hold = has_directive(e, "hold")] { analysis(e, hold); });
+}
+
+bool running(hefesto_engine* e) {
+  std::lock_guard lock{e->mutex};
+  return e->running;
+}
+
+int halt(hefesto_engine* e) {
+  {
+    std::lock_guard lock{e->mutex};
+    e->halt = true;
+  }
+  e->changed.notify_all();
+  join(e);
+  return HEFESTO_ENGINE_OK;
+}
+
 // --- hefesto_engine_v1 ---------------------------------------------------------
 
 hefesto_engine* api_create(const hefesto_engine_callbacks* callbacks) {
@@ -194,7 +253,7 @@ hefesto_engine* api_create(const hefesto_engine_callbacks* callbacks) {
 }
 
 void api_destroy(hefesto_engine* e) {
-  join(e);
+  halt(e);  // a held analysis ends; a finished one is joined
   delete e;  // NOLINT(cppcoreguidelines-owning-memory)
 }
 
@@ -234,20 +293,33 @@ int api_run(hefesto_engine* e) {
     state(e, HEFESTO_ENGINE_FAILED);
     return HEFESTO_ENGINE_OK;
   }
-  // Like ngspice's bg_run: the analysis runs on another thread and the
-  // state callbacks come from it.
-  e->runner = std::thread([e] {
-    state(e, HEFESTO_ENGINE_RUNNING);
-    if (e->callbacks.on_progress != nullptr) {
-      e->callbacks.on_progress(e->callbacks.user, "tran", 4, 50.0);
-    }
-    compute(e);
-    state(e, HEFESTO_ENGINE_LOADED);
-  });
+  start_analysis(e);
   return HEFESTO_ENGINE_OK;
 }
 
-int api_ok(hefesto_engine* /*e*/) { return HEFESTO_ENGINE_OK; }
+int api_pause(hefesto_engine* e) {
+  e->error.clear();
+  if (!running(e)) {
+    e->error = "no analysis is running";
+    return HEFESTO_ENGINE_ERROR;
+  }
+  return halt(e);
+}
+
+int api_resume(hefesto_engine* e) {
+  e->error.clear();
+  if (running(e)) {
+    e->error = "engine busy";
+    return HEFESTO_ENGINE_BUSY;
+  }
+  start_analysis(e);
+  return HEFESTO_ENGINE_OK;
+}
+
+int api_cancel(hefesto_engine* e) {
+  e->error.clear();
+  return running(e) ? halt(e) : HEFESTO_ENGINE_OK;
+}
 
 int api_clear(hefesto_engine* e) {
   join(e);
@@ -271,8 +343,8 @@ int api_vectors(hefesto_engine* e, void* user, hefesto_engine_vector_sink sink) 
 const char* api_last_error(hefesto_engine* e) { return e->error.c_str(); }
 
 const hefesto_engine_api kApi = {
-    HEFESTO_ENGINE_ABI_VERSION, "fake 1", api_create, api_destroy, api_command, api_load, api_run, api_ok,
-    api_ok,                     api_ok,   api_clear,  api_vectors, api_last_error,
+    HEFESTO_ENGINE_ABI_VERSION, "fake 1",   api_create, api_destroy, api_command,   api_load, api_run, api_pause,
+    api_resume,                 api_cancel, api_clear,  api_vectors, api_last_error,
 };
 
 }  // namespace

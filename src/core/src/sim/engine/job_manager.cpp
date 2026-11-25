@@ -42,6 +42,22 @@ bool is_active(JobState state) noexcept {
   return state == JobState::loading || state == JobState::running || state == JobState::paused;
 }
 
+// The refusals of a healthy engine (worker_engine.cpp): the deck was
+// rejected, a command was rejected, or the engine was busy. Every other
+// error of an Engine call is a fault.
+bool is_fault(const diag::Diagnostic& error) noexcept {
+  return error.code != "SIM-ENGINE-009" && error.code != "SIM-ENGINE-010" && error.code != "SIM-ENGINE-011";
+}
+
+// The first line of a diagnostic: WorkerEngine appends the engine's last
+// error-stream lines, which the job record already holds.
+diag::Diagnostic first_line(diag::Diagnostic d) {
+  if (const std::size_t nl = d.text.find('\n'); nl != std::string::npos) {
+    d.text.resize(nl);
+  }
+  return d;
+}
+
 }  // namespace
 
 struct JobManager::Impl {
@@ -52,6 +68,7 @@ struct JobManager::Impl {
     std::optional<std::size_t> job;
     bool saw_running = false;
     bool cancel_requested = false;
+    bool halted = false;  // the engine reported `paused` and was not resumed since
   };
 
   JobManagerOptions options;
@@ -147,7 +164,6 @@ struct JobManager::Impl {
       return false;
     }
     slot.engine = std::move(made.value());
-    slot.generation = ++generations;
     slot.engine_number = ++engines;
     return true;
   }
@@ -178,21 +194,40 @@ struct JobManager::Impl {
     slot.job = job;
     slot.saw_running = false;
     slot.cancel_requested = false;
+    slot.halted = false;
+    slot.generation = ++generations;  // per job: late events of the last job are dropped
     rec.engine = slot.engine_number;
     connect(s);
     set_state(rec, JobState::preparing);
     set_state(rec, JobState::loading);
     const std::vector<std::string> lines = std::move(decks[job].lines);
     decks[job] = PreparedDeck{};
-    diag::Status loaded = slot.engine->load(lines);
-    if (!loaded.ok()) {
-      fault(s, loaded.error());
+    diag::Status status = slot.engine->load(lines);
+    if (status.ok()) {
+      status = slot.engine->run();
+    }
+    if (!status.ok()) {
+      start_failed(s, job, status.error());
+    }
+  }
+
+  /// A load or run call failed. The job's queued lines (and any fault the
+  /// engine reported first) are applied before the job ends, so its
+  /// diagnostic carries them and none reach the worker's next job.
+  void start_failed(std::size_t s, std::size_t job, diag::Diagnostic error) {
+    apply_events();
+    if (slots[s].job != job) {
+      return;  // a fault event ended it
+    }
+    if (is_fault(error)) {
+      fault(s, std::move(error));
       return;
     }
-    diag::Status ran = slot.engine->run();
-    if (!ran.ok()) {
-      fault(s, ran.error());
-    }
+    JobRecord& rec = records[job];
+    rec.diagnostics.push_back(first_line(std::move(error)));
+    append_error_lines(rec, false);
+    set_state(rec, JobState::failed);
+    slots[s].job.reset();  // the engine refused the deck but is healthy: reused
   }
 
   std::size_t start_jobs() {
@@ -216,7 +251,7 @@ struct JobManager::Impl {
 
   // --- ending jobs ---
 
-  void append_error_lines(JobRecord& rec, bool only_errors) {
+  static void append_error_lines(JobRecord& rec, bool only_errors) {
     for (const std::string& line : rec.errors) {
       if (!only_errors || line.starts_with("Error")) {
         rec.diagnostics.push_back(diag::make("SIM-ENGINE-032", line));
@@ -225,14 +260,20 @@ struct JobManager::Impl {
   }
 
   /// D-25 (a): the job fails, the engine is discarded and the worker gets a
-  /// new engine for its next job.
+  /// new engine for its next job. Without a cause, the engine's own
+  /// diagnostic (WorkerEngine keeps the fault) is the cause.
   void fault(std::size_t s, std::optional<diag::Diagnostic> cause) {
     Slot& slot = slots[s];
+    if (!cause && slot.engine) {
+      if (auto vectors = slot.engine->vectors(); !vectors.ok()) {
+        cause = vectors.error();
+      }
+    }
     if (slot.job) {
       JobRecord& rec = records[*slot.job];
       rec.diagnostics.push_back(diag::make("SIM-ENGINE-030", "simulation engine terminated"));
       if (cause) {
-        rec.diagnostics.push_back(std::move(*cause));
+        rec.diagnostics.push_back(first_line(std::move(*cause)));
       }
       append_error_lines(rec, false);
       set_state(rec, JobState::failed);
@@ -251,17 +292,28 @@ struct JobManager::Impl {
       return;
     }
     rec.vectors = std::move(vectors.value());
-    const bool error_line = std::any_of(rec.errors.begin(), rec.errors.end(),
-                                        [](const std::string& line) { return line.starts_with("Error"); });
-    if (slot.cancel_requested) {
-      set_state(rec, JobState::cancelled);
-    } else if (error_line) {
-      append_error_lines(rec, true);
-      set_state(rec, JobState::failed);
-    } else {
-      set_state(rec, JobState::completed);
-    }
+    set_state(rec, outcome(rec, slot.cancel_requested));
     slot.job.reset();  // a healthy engine is reused
+  }
+
+  /// "Job lifecycle": completed only with a plot and no `Error` line.
+  static JobState outcome(JobRecord& rec, bool cancelled) {
+    if (cancelled) {
+      return JobState::cancelled;
+    }
+    if (rec.first_error) {
+      // The window of 50 lines may have lost the first Error line.
+      if (std::find(rec.errors.begin(), rec.errors.end(), *rec.first_error) == rec.errors.end()) {
+        rec.diagnostics.push_back(diag::make("SIM-ENGINE-032", *rec.first_error));
+      }
+      append_error_lines(rec, true);
+      return JobState::failed;
+    }
+    if (rec.vectors.empty()) {
+      rec.diagnostics.push_back(diag::make("SIM-ENGINE-037", "the run produced no plot"));
+      return JobState::failed;
+    }
+    return JobState::completed;
   }
 
   // --- events ---
@@ -269,12 +321,28 @@ struct JobManager::Impl {
   void on_output(Slot& slot, std::string line, bool error) {
     JobRecord& rec = records[*slot.job];
     if (error) {
+      if (!rec.first_error && line.starts_with("Error")) {
+        rec.first_error = line;
+      }
       rec.errors.push_back(line);
       if (rec.errors.size() > kMaxErrorLines) {
         rec.errors.erase(rec.errors.begin());
       }
     }
-    rec.log.push_back(std::move(line));
+    if (rec.log_bytes + line.size() > kMaxJobLogBytes) {
+      ++rec.log_dropped;
+      return;
+    }
+    rec.log_bytes += line.size();
+    rec.log.push_back(LogLine{error, std::move(line)});
+  }
+
+  void on_dropped(Slot& slot, const EngineEvent& event) {
+    JobRecord& rec = records[*slot.job];
+    rec.log_dropped += event.dropped;
+    if (!rec.first_error && !event.line.empty()) {
+      rec.first_error = event.line;
+    }
   }
 
   void on_state(std::size_t s, EngineState state) {
@@ -283,10 +351,14 @@ struct JobManager::Impl {
     switch (state) {
       case EngineState::running:
         slot.saw_running = true;
+        slot.halted = false;
         set_state(rec, JobState::running);
         break;
       case EngineState::paused:
-        if (rec.job.state == JobState::running) {
+        slot.halted = true;
+        if (slot.cancel_requested) {
+          finish(s);  // the adapter halts a cancelled run as it pauses one
+        } else if (rec.job.state == JobState::running) {
           set_state(rec, JobState::paused);
         }
         break;
@@ -313,10 +385,10 @@ struct JobManager::Impl {
       }
       return;
     }
-    if (event.kind != EngineEvent::Kind::state) {
-      on_output(slot, std::move(event.line), event.kind == EngineEvent::Kind::error);
-    } else {
-      on_state(event.slot, event.state);
+    switch (event.kind) {
+      case EngineEvent::Kind::state: on_state(event.slot, event.state); break;
+      case EngineEvent::Kind::dropped: on_dropped(slot, event); break;
+      default: on_output(slot, std::move(event.line), event.kind == EngineEvent::Kind::error); break;
     }
   }
 
@@ -348,8 +420,11 @@ struct JobManager::Impl {
       return diag::make("SIM-ENGINE-035", "job " + id + " is not " + (required == JobState::paused ? "paused" : "running"));
     }
     diag::Status status = (slots[*s].engine.get()->*call)();
-    if (!status.ok()) {
-      fault(*s, status.error());
+    if (status.ok() && required == JobState::paused) {
+      slots[*s].halted = false;  // resumed: a `paused` event follows a new halt only
+    }
+    if (!status.ok() && is_fault(status.error())) {
+      fault(*s, status.error());  // a refusal (the run just ended, say) leaves the job alone
     }
     return status;
   }
@@ -370,10 +445,20 @@ struct JobManager::Impl {
     if (!s) {
       return diag::make("SIM-ENGINE-035", "job " + id + " is not running");
     }
-    slots[*s].cancel_requested = true;
-    diag::Status status = slots[*s].engine->cancel();
+    Slot& slot = slots[*s];
+    const bool halted = slot.halted;  // paused: the adapter sends no new event
+    slot.cancel_requested = true;
+    diag::Status status = slot.engine->cancel();
     if (!status.ok()) {
-      fault(*s, status.error());
+      if (is_fault(status.error())) {
+        fault(*s, status.error());
+      } else {
+        slot.cancel_requested = false;
+      }
+      return status;
+    }
+    if (halted) {
+      finish(*s);  // the partial vectors are those of the pause
     }
     return status;
   }

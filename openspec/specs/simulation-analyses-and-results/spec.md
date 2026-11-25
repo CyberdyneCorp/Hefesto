@@ -60,6 +60,16 @@ Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7)
 
+#### Scenario: Error line followed by many warnings
+- **GIVEN** a run whose error stream has one line starting with `Error` followed by 60 lines starting with `Warning`
+- **WHEN** the run ends
+- **THEN** the job SHALL be `failed`, and its diagnostic SHALL include the `Error` line
+
+#### Scenario: Run without a plot
+- **GIVEN** a deck that loads and runs but produces no result vectors
+- **WHEN** the run ends without an `Error` line
+- **THEN** the job SHALL be `failed` with a diagnostic saying that the run produced no plot
+
 #### Scenario: Convergence failure
 - **GIVEN** a deck whose transient analysis ends with `Error: Timestep too small`
 - **WHEN** the job ends

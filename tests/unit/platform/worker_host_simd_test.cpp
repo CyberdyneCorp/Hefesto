@@ -368,3 +368,76 @@ TEST_CASE("a vector longer than one frame arrives in chunks",
   REQUIRE(vectors[0].real.size() == 2500000);
   CHECK(vectors[0].real[2499999] == 2499999 * 1e-9);
 }
+
+namespace {
+
+// Polls `jobs` until job `id` is in `state` or 30 s passed.
+bool poll_until(sim::JobManager& jobs, const sim::JobId& id, sim::JobState state) {
+  const auto deadline = std::chrono::steady_clock::now() + 30s;
+  while (std::chrono::steady_clock::now() < deadline) {
+    jobs.poll();
+    if (jobs.state(id) == state) {
+      return true;
+    }
+    std::this_thread::sleep_for(10ms);
+  }
+  return false;
+}
+
+sim::JobId submit_hold(sim::JobManager& jobs) {
+  sim::PreparedDeck deck;
+  deck.lines = {"* fake: hold", "* fake: points 5", "R1 a 0 1k"};
+  auto id = jobs.submit(std::move(deck), sim::JobOptions{"tb", "tt", std::nullopt});
+  REQUIRE(id.ok());
+  return id.value();
+}
+
+}  // namespace
+
+// Regression (M9 R1 review): the adapter halts a cancelled run and reports
+// `paused`, and cancelling a paused job reports nothing; in both cases the
+// job stayed `paused` and kept its worker.
+TEST_CASE("Cancel a transient run: a running or paused worker job ends as cancelled with its partial result",
+          "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
+  const TempDir job{"simd-cancel"};
+  hefesto::cli::PosixWorkerHost host;
+  sim::JobManagerOptions options;
+  options.make_engine = [&host, &job]() { return hefesto::test::start_worker(host, fake(job)); };
+  sim::JobManager jobs(std::move(options));
+
+  const sim::JobId running = submit_hold(jobs);
+  REQUIRE(poll_until(jobs, running, sim::JobState::running));
+  REQUIRE(jobs.cancel(running).ok());
+  REQUIRE(poll_until(jobs, running, sim::JobState::cancelled));
+  REQUIRE(jobs.record(running)->vectors.size() == 2);
+  CHECK(jobs.record(running)->vectors[1].real.size() == 5);
+
+  const sim::JobId paused = submit_hold(jobs);
+  REQUIRE(poll_until(jobs, paused, sim::JobState::running));
+  REQUIRE(jobs.pause(paused).ok());
+  REQUIRE(poll_until(jobs, paused, sim::JobState::paused));
+  REQUIRE(jobs.cancel(paused).ok());
+  CHECK(jobs.state(paused) == sim::JobState::cancelled);
+  CHECK(jobs.record(paused)->vectors.size() == 2);
+  CHECK(jobs.active() == 0);
+  CHECK(jobs.engines_started() == 1);  // the worker stayed healthy
+}
+
+// Pause and resume through the worker: resume restarts the held run.
+TEST_CASE("Pause and resume a worker job",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  const TempDir job{"simd-pause"};
+  hefesto::cli::PosixWorkerHost host;
+  sim::JobManagerOptions options;
+  options.make_engine = [&host, &job]() { return hefesto::test::start_worker(host, fake(job)); };
+  sim::JobManager jobs(std::move(options));
+  const sim::JobId id = submit_hold(jobs);
+  REQUIRE(poll_until(jobs, id, sim::JobState::running));
+  REQUIRE(jobs.pause(id).ok());
+  REQUIRE(poll_until(jobs, id, sim::JobState::paused));
+  REQUIRE(jobs.resume(id).ok());
+  REQUIRE(poll_until(jobs, id, sim::JobState::running));
+  REQUIRE(jobs.cancel(id).ok());
+  REQUIRE(poll_until(jobs, id, sim::JobState::cancelled));
+  CHECK(jobs.engines_started() == 1);
+}

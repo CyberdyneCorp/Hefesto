@@ -210,6 +210,16 @@ Compatibility: native
 - **WHEN** the user cancels it
 - **THEN** the job SHALL end as `cancelled`, and its partial result SHALL hold the time points up to about 300 µs
 
+#### Scenario: Cancel a paused job
+- **GIVEN** a transient run that the user paused, so its background thread has ended
+- **WHEN** the user cancels it
+- **THEN** the job SHALL end as `cancelled` at once, with the partial result of the pause, and its engine SHALL take the next job
+
+#### Scenario: Pause as the run ends
+- **GIVEN** a run whose background thread ends just before the user's pause reaches the engine
+- **WHEN** the engine refuses the pause because no analysis is running
+- **THEN** the refusal SHALL be reported to the user, the job SHALL end as it would have without the pause, and the engine SHALL NOT be treated as faulted
+
 #### Scenario: Unrecoverable error
 - **GIVEN** a deck that makes ngspice call its controlled-exit path
 - **WHEN** the job runs on Linux or macOS

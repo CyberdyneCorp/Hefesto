@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <deque>
 #include <functional>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -39,6 +40,7 @@ constexpr std::string_view kDeckRejected = "SIM-ENGINE-009";
 constexpr std::string_view kCommandRejected = "SIM-ENGINE-010";
 constexpr std::string_view kBusy = "SIM-ENGINE-011";
 constexpr std::string_view kNoVectors = "SIM-ENGINE-012";
+constexpr std::string_view kOverBudget = "SIM-ENGINE-013";
 
 constexpr std::string_view kTerminatedText = "simulation engine terminated";
 constexpr std::size_t kKeptErrorLines = 50;
@@ -65,6 +67,15 @@ struct PartialVector {
   Vector vector;
   std::uint64_t length = 0;
 };
+
+// What a vector of `length` points costs against the result budget: its
+// values and a fixed overhead per vector (so empty vectors count too).
+std::uint64_t result_bytes(const frames::VecChunk& chunk) {
+  constexpr std::uint64_t kPerVector = 64;
+  const std::uint64_t per_point = chunk.complex ? 2 * sizeof(double) : sizeof(double);
+  const std::uint64_t cap = std::numeric_limits<std::uint64_t>::max() / per_point;
+  return kPerVector + chunk.name.size() + chunk.type.size() + std::min(chunk.length, cap) * per_point;
+}
 
 class WorkerEngine final : public Engine {
  public:
@@ -113,8 +124,10 @@ class WorkerEngine final : public Engine {
   }
 
   // The job-log lines that came before any on_output (the hello's
-  // confinement notes) are delivered to the first one.
+  // confinement notes) are delivered to the first one, before any later
+  // line: the reader waits on delivery_mutex_ meanwhile.
   void set_callbacks(EngineCallbacks callbacks) override {
+    std::lock_guard delivery{delivery_mutex_};
     std::vector<frames::Output> backlog;
     EngineCallbacks sink;
     {
@@ -321,6 +334,7 @@ class WorkerEngine final : public Engine {
   }
 
   void handle(frames::Output& output) {
+    std::lock_guard delivery{delivery_mutex_};
     {
       std::lock_guard lock{mutex_};
       if (output.stream == frames::Stream::error) {
@@ -350,6 +364,7 @@ class WorkerEngine final : public Engine {
       fail(kTerminated, "the engine faulted");
       return;
     }
+    std::lock_guard delivery{delivery_mutex_};  // after the backlog's lines
     if (const EngineCallbacks c = callbacks(); c.on_state) {
       c.on_state(static_cast<EngineState>(change.state));
     }
@@ -364,8 +379,16 @@ class WorkerEngine final : public Engine {
   }
 
   void handle(frames::VecChunk& chunk) {
-    std::lock_guard lock{mutex_};
+    std::unique_lock lock{mutex_};
     if (chunk.offset == 0) {
+      const std::uint64_t cost = result_bytes(chunk);
+      if (cost > limits_.max_result_bytes - std::min(partial_bytes_, limits_.max_result_bytes)) {
+        const std::uint64_t budget = limits_.max_result_bytes;
+        lock.unlock();
+        fail(kOverBudget, "the worker sent more result data than the budget of " + std::to_string(budget) + " bytes");
+        return;
+      }
+      partial_bytes_ += cost;
       partial_.emplace_back();
       partial_.back().vector.name = std::move(chunk.name);
       partial_.back().vector.type = std::move(chunk.type);
@@ -396,6 +419,7 @@ class WorkerEngine final : public Engine {
         results_ready_ = true;
       }
       partial_.clear();
+      partial_bytes_ = 0;
       bad_chunk_ = false;
     }
     if (!consistent) {
@@ -416,6 +440,7 @@ class WorkerEngine final : public Engine {
   Limits limits_;
   std::thread watchdog_;
   std::mutex request_mutex_;  // one request at a time
+  std::mutex delivery_mutex_;  // orders the backlog before later callbacks
   bool job_loaded_ = false;   // under request_mutex_
 
   mutable std::mutex mutex_;  // everything below
@@ -429,6 +454,7 @@ class WorkerEngine final : public Engine {
   std::deque<std::string> error_lines_;
   std::vector<frames::Output> backlog_;  // output before the first on_output
   std::vector<PartialVector> partial_;
+  std::uint64_t partial_bytes_ = 0;  // result_bytes of partial_
   bool bad_chunk_ = false;
   std::vector<Vector> results_;
   bool results_ready_ = false;
@@ -444,6 +470,7 @@ Limits clamped(const Limits& limits) {
   out.handshake = std::clamp(limits.handshake, one, defaults.handshake);
   out.heartbeat_timeout = std::clamp(limits.heartbeat_timeout, one, defaults.heartbeat_timeout);
   out.watchdog_period = std::clamp(limits.watchdog_period, one, defaults.watchdog_period);
+  out.max_result_bytes = std::clamp(limits.max_result_bytes, std::uint64_t{1}, defaults.max_result_bytes);
   return out;
 }
 

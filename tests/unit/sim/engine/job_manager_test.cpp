@@ -6,7 +6,10 @@
 // policy (every fault replaces the engine). The fake runs the deck's first
 // line as a script; the real worker faults (crash, controlled exit, missed
 // heartbeat, oversize frame) reach the manager as on_state(failed), which is
-// what the fake sends.
+// what the fake sends. Pause, resume and cancel behave like the adapter's
+// (src/simd/adapter/ngspice_adapter.cpp): a halt reports `paused`, also for
+// cancel; pause with nothing running is refused (SIM-ENGINE-010); cancel
+// with nothing running succeeds and reports nothing.
 //
 // Owner: SIMENG.
 
@@ -15,6 +18,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -36,12 +40,21 @@ struct FakeHost {
   std::uint64_t alive = 0;
   std::vector<std::uint64_t> loads;  // the engine number of each load, in order
   std::uint64_t cancels = 0;
+  class FakeEngine* last = nullptr;  // the engine started last
 };
 
 class FakeEngine final : public sim::Engine {
  public:
-  FakeEngine(FakeHost& host, std::uint64_t number) : host_(host), number_(number) { ++host_.alive; }
-  ~FakeEngine() override { --host_.alive; }
+  FakeEngine(FakeHost& host, std::uint64_t number) : host_(host), number_(number) {
+    ++host_.alive;
+    host_.last = this;
+  }
+  ~FakeEngine() override {
+    --host_.alive;
+    if (host_.last == this) {
+      host_.last = nullptr;
+    }
+  }
   FakeEngine(const FakeEngine&) = delete;
   FakeEngine& operator=(const FakeEngine&) = delete;
   FakeEngine(FakeEngine&&) = delete;
@@ -52,8 +65,16 @@ class FakeEngine final : public sim::Engine {
   diag::Status load(const std::vector<std::string>& deck) override {
     host_.loads.push_back(number_);
     script_ = deck.empty() ? std::string{} : deck.front();
-    if (script_ == "* load-error") {
-      return diag::make("SIM-ENGINE-030", "load failed");
+    if (script_ == "* load-reject") {
+      callbacks_.on_error("Error: unknown subckt: xinv");
+      return diag::make("SIM-ENGINE-009", "the deck was not loaded\nError: unknown subckt: xinv");
+    }
+    if (script_ == "* load-crash") {
+      callbacks_.on_error("Error: last words");
+      fault_ = diag::make("SIM-ENGINE-008", "simulation engine terminated: the worker was killed by signal 11\n"
+                                            "Error: last words");
+      callbacks_.on_state(sim::EngineState::failed);
+      return *fault_;
     }
     callbacks_.on_state(sim::EngineState::loaded);
     return diag::Done{};
@@ -61,6 +82,7 @@ class FakeEngine final : public sim::Engine {
 
   diag::Status run() override {
     callbacks_.on_state(sim::EngineState::running);
+    running_ = script_ == "* hold";
     if (script_ == "* ok") {
       callbacks_.on_output("Note: no compatibility mode selected");
       callbacks_.on_state(sim::EngineState::loaded);
@@ -70,6 +92,20 @@ class FakeEngine final : public sim::Engine {
     } else if (script_ == "* timestep") {
       callbacks_.on_error("Error: Timestep too small");
       callbacks_.on_state(sim::EngineState::loaded);
+    } else if (script_ == "* error-then-warnings") {
+      callbacks_.on_error("Error: Timestep too small");
+      for (int i = 0; i < 60; ++i) {
+        callbacks_.on_error("Warning: timestep reduced " + std::to_string(i));
+      }
+      callbacks_.on_state(sim::EngineState::loaded);
+    } else if (script_ == "* noplot") {
+      callbacks_.on_output("Note: no analysis in the deck");
+      callbacks_.on_state(sim::EngineState::loaded);
+    } else if (script_ == "* killed") {
+      callbacks_.on_error("Error: last words");
+      fault_ = diag::make("SIM-ENGINE-008", "simulation engine terminated: the worker was killed by signal 11\n"
+                                            "Error: last words");
+      callbacks_.on_state(sim::EngineState::failed);
     } else if (script_ == "* segv") {
       // The worker died: WorkerEngine reports it as failed. A late line of
       // the dead engine must not reach the next job.
@@ -91,29 +127,65 @@ class FakeEngine final : public sim::Engine {
   }
 
   diag::Status pause() override {
-    callbacks_.on_state(sim::EngineState::paused);
+    if (!running_) {
+      return diag::make("SIM-ENGINE-010", "no analysis is running");
+    }
+    halt();
     return diag::Done{};
   }
   diag::Status resume() override {
+    if (running_) {
+      return diag::make("SIM-ENGINE-011", "engine busy");
+    }
+    running_ = true;
     callbacks_.on_state(sim::EngineState::running);
     return diag::Done{};
   }
   diag::Status cancel() override {
     ++host_.cancels;
-    callbacks_.on_state(sim::EngineState::loaded);
+    if (running_) {
+      halt();
+    }
     return diag::Done{};
   }
 
+  /// The held analysis ends by itself (its `loaded` event is queued).
+  void end_run() {
+    running_ = false;
+    callbacks_.on_state(sim::EngineState::loaded);
+  }
+
   diag::Outcome<std::vector<sim::Vector>> vectors() const override {
+    if (fault_) {
+      return *fault_;
+    }
+    if (script_ == "* noplot") {
+      return std::vector<sim::Vector>{};
+    }
     return std::vector<sim::Vector>{sim::Vector{"v(out)", "voltage", false, {1.0, 2.0}, {}}};
   }
 
  private:
   FakeHost& host_;
   std::uint64_t number_;
+  void halt() {
+    running_ = false;
+    callbacks_.on_state(sim::EngineState::paused);
+  }
+
   sim::EngineCallbacks callbacks_;
   std::string script_;
+  bool running_ = false;
+  std::optional<diag::Diagnostic> fault_;
 };
+
+std::size_t count_text(const sim::JobRecord& rec, std::string_view text) {
+  std::size_t n = 0;
+  for (const diag::Diagnostic& d : rec.diagnostics) {
+    n += d.text.find(text) != std::string::npos ? 1 : 0;
+  }
+  return n;
+}
 
 sim::JobManagerOptions options(FakeHost& host, sim::PoolInputs pool = {}) {
   sim::JobManagerOptions o;
@@ -163,7 +235,7 @@ TEST_CASE("A job goes queued, loading, running, completed and keeps its vectors"
   CHECK(rec->job.state == sim::JobState::completed);
   REQUIRE(rec->vectors.size() == 1);
   CHECK(rec->vectors[0].name == "v(out)");
-  CHECK(rec->log == std::vector<std::string>{"Note: no compatibility mode selected"});
+  CHECK(rec->log == std::vector<sim::LogLine>{{false, "Note: no compatibility mode selected"}});
   CHECK(rec->diagnostics.empty());
 }
 
@@ -211,6 +283,38 @@ TEST_CASE("A Warning line is logged and does not fail the job",
   const sim::JobRecord* rec = jobs.record(id);
   CHECK(rec->job.state == sim::JobState::completed);
   CHECK(rec->errors == std::vector<std::string>{"Warning: singular matrix fixed"});
+  // Regression: the log kept no stream, so log.txt could not write `E `.
+  CHECK(rec->log == std::vector<sim::LogLine>{{true, "Warning: singular matrix fixed"}});
+}
+
+// Regression: only the last 50 error-stream lines were searched for `Error`,
+// so 60 warnings after an Error line left the job `completed`.
+TEST_CASE("An Error line followed by more than 50 warnings still fails the job",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* error-then-warnings");
+  jobs.poll();
+  const sim::JobRecord* rec = jobs.record(id);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK(rec->errors.size() == 50);
+  CHECK(has_code(*rec, "SIM-ENGINE-032", "Error: Timestep too small"));
+  CHECK(rec->log.size() == 61);
+}
+
+// Regression: a run that produced no plot was `completed`.
+TEST_CASE("A run that produces no plot fails the job",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* noplot");
+  const sim::JobId next = submit(jobs, "* ok");
+  jobs.poll();
+  const sim::JobRecord* rec = jobs.record(id);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK(has_code(*rec, "SIM-ENGINE-037", "the run produced no plot"));
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.started == 1);  // not a fault
 }
 
 TEST_CASE("Second job waits until the first reaches a final state",
@@ -293,18 +397,73 @@ TEST_CASE("Unrecoverable error: failed with the error lines, next job in a new w
   CHECK(host.alive == 1);
 }
 
-TEST_CASE("An engine call that fails is a fault and replaces the engine",
+TEST_CASE("An engine call that fails with a fault replaces the engine and keeps its cause once",
           "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
   FakeHost host;
   sim::JobManager jobs(options(host));
-  const sim::JobId failed = submit(jobs, "* load-error");
+  const sim::JobId failed = submit(jobs, "* load-crash");
   const sim::JobId next = submit(jobs, "* ok");
   jobs.poll();
   const sim::JobRecord* rec = jobs.record(failed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
-  CHECK(has_code(*rec, "SIM-ENGINE-030", "load failed"));
+  CHECK(has_code(*rec, "SIM-ENGINE-008", "simulation engine terminated: the worker was killed by signal 11"));
+  CHECK(count_text(*rec, "Error: last words") == 1);  // regression: listed twice
   CHECK(jobs.record(next)->engine == 2);
+  CHECK(jobs.record(next)->errors.empty());
+}
+
+// Regression: on_state(failed) faulted the job without the engine's own
+// diagnostic, so the reason (signal, heartbeat, bad frame) was lost.
+TEST_CASE("A fault event keeps the engine's reason",
+          "[cap:simulation-engine-embedding][req:Crash containment on desktop]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId failed = submit(jobs, "* killed");
+  jobs.poll();
+  const sim::JobRecord* rec = jobs.record(failed);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK(has_code(*rec, "SIM-ENGINE-008", "simulation engine terminated: the worker was killed by signal 11"));
+  CHECK(has_code(*rec, "SIM-ENGINE-032", "Error: last words"));
+  CHECK(count_text(*rec, "Error: last words") == 1);
+}
+
+// Regression: a deck the engine refused (SIM-ENGINE-009) was reported as a
+// crash and the healthy worker was replaced.
+TEST_CASE("A rejected deck fails the job with its error lines and keeps the engine",
+          "[cap:simulation-engine-embedding][req:Crash containment on desktop]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId failed = submit(jobs, "* load-reject");
+  const sim::JobId next = submit(jobs, "* ok");
+  jobs.poll();
+  const sim::JobRecord* rec = jobs.record(failed);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK_FALSE(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
+  CHECK(has_code(*rec, "SIM-ENGINE-009", "the deck was not loaded"));
+  CHECK(has_code(*rec, "SIM-ENGINE-032", "Error: unknown subckt: xinv"));
+  CHECK(count_text(*rec, "Error: unknown subckt: xinv") == 1);
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(jobs.record(next)->errors.empty());  // the rejected deck's line stayed with its job
+  CHECK(host.started == 1);
+}
+
+// Regression: a pause refused because the run had just ended was a fault, so
+// a finished job became `failed` and its worker was replaced.
+TEST_CASE("Pause after the run ended is refused and the job completes",
+          "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* hold");
+  jobs.poll();
+  REQUIRE(jobs.state(id) == sim::JobState::running);
+  host.last->end_run();  // its `loaded` event is not applied yet
+  const diag::Status paused = jobs.pause(id);
+  REQUIRE_FALSE(paused.ok());
+  CHECK(paused.error().code == "SIM-ENGINE-010");
+  jobs.poll();
+  CHECK(jobs.state(id) == sim::JobState::completed);
+  CHECK(jobs.engines_started() == 1);
 }
 
 TEST_CASE("No engine host: the job fails as unavailable",
@@ -343,6 +502,43 @@ TEST_CASE("Cancel, pause and resume follow the job states",
   CHECK(jobs.cancel(running).error().code == "SIM-ENGINE-035");
   CHECK(jobs.cancel("nope").error().code == "SIM-ENGINE-034");
   CHECK(host.loads.size() == 1);  // the cancelled queued job never reached the engine
+  CHECK(jobs.active() == 0);
+}
+
+// Regression: the adapter halts a cancelled run and reports `paused`; the job
+// stayed `paused` for ever and kept its worker.
+TEST_CASE("Cancel a transient run: the halt ends the job as cancelled and frees the worker",
+          "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* hold");
+  const sim::JobId next = submit(jobs, "* ok");
+  jobs.poll();
+  REQUIRE(jobs.cancel(id).ok());
+  jobs.poll();
+  CHECK(jobs.state(id) == sim::JobState::cancelled);
+  CHECK(jobs.record(id)->vectors.size() == 1);
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.started == 1);
+}
+
+// Regression: cancelling a paused job sent no event, so it stayed `paused`.
+TEST_CASE("Cancel a paused job: it ends at once as cancelled with the vectors of the pause",
+          "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* hold");
+  const sim::JobId next = submit(jobs, "* ok");
+  jobs.poll();
+  REQUIRE(jobs.pause(id).ok());
+  jobs.poll();
+  REQUIRE(jobs.state(id) == sim::JobState::paused);
+  REQUIRE(jobs.cancel(id).ok());
+  CHECK(jobs.state(id) == sim::JobState::cancelled);
+  CHECK(jobs.record(id)->vectors.size() == 1);
+  jobs.poll();
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.started == 1);
 }
 
 TEST_CASE("Five corners on an 8-core Mac: three jobs at once, the next when one finishes",
@@ -442,5 +638,5 @@ TEST_CASE("Events posted from another thread are applied by poll",
   const sim::JobId id = submit(jobs, "* thread");
   jobs.poll();
   CHECK(jobs.state(id) == sim::JobState::completed);
-  CHECK(jobs.record(id)->log == std::vector<std::string>{"from the engine thread"});
+  CHECK(jobs.record(id)->log == std::vector<sim::LogLine>{{false, "from the engine thread"}});
 }

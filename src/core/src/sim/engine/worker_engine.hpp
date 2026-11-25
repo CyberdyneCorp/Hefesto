@@ -45,6 +45,9 @@ struct Limits {
   std::chrono::milliseconds handshake{10000};
   std::chrono::milliseconds heartbeat_timeout{10000};
   std::chrono::milliseconds watchdog_period{250};
+  /// The result budget of one run (Q-SIM-25 default 4 GiB): the vectors a
+  /// worker sends before VectorsDone; more is a fault (SIM-ENGINE-013).
+  std::uint64_t max_result_bytes = std::uint64_t{4} << 30;
 };
 
 /// The limits with every value at most its default (and at least 1).

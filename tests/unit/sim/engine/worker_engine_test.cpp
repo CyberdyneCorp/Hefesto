@@ -438,3 +438,59 @@ TEST_CASE("Error stream classification: error-stream frames reach on_error, also
   CHECK(errors == std::vector<std::string>{"Error: early", "Error: unknown subckt: xinv"});
   CHECK(recorder.output == std::vector<std::string>{"Note: plain"});
 }
+
+// Regression: vector chunks before VectorsDone were kept without limit, so a
+// faulty worker could grow the core's memory without bound.
+TEST_CASE("Result vectors beyond the result budget are a fault",
+          "[cap:simulation-engine-embedding][req:Crash containment on desktop]") {
+  FakeHost host{healthy};
+  sim::worker::Limits limits;
+  limits.max_result_bytes = 1024;
+  const auto engine = start(host, limits);
+  Recorder recorder;
+  engine->set_callbacks(recorder.callbacks());
+  host.channel_->emit(frames::VecChunk{"time", "time", false, 64, 0, {0.0}, {}});  // 64 + 8 + 512 bytes
+  CHECK_FALSE(host.channel_->terminated_);
+  host.channel_->emit(frames::VecChunk{"v(out)", "voltage", false, 64, 0, {0.0}, {}});
+  CHECK(host.channel_->terminated_);
+  CHECK(recorder.saw(sim::EngineState::failed));
+  CHECK(engine->vectors().error().code == "SIM-ENGINE-013");
+  sim::worker::Limits high;
+  high.max_result_bytes = std::uint64_t{1} << 40;
+  CHECK(sim::worker::clamped(high).max_result_bytes == std::uint64_t{4} << 30);
+}
+
+// Regression: set_callbacks published the callbacks before it delivered the
+// backlog, so a line the reader delivered meanwhile came before older ones.
+TEST_CASE("Backlog lines reach on_output before any later line",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  FakeHost host{healthy};
+  const auto engine = start(host);
+  host.channel_->emit(frames::Output{frames::Stream::output, "note 1"});
+  host.channel_->emit(frames::Output{frames::Stream::output, "note 2"});
+  std::mutex mutex;
+  std::vector<std::string> lines;
+  std::thread reader;
+  std::atomic<bool> sent{false};
+  sim::EngineCallbacks callbacks;
+  callbacks.on_output = [&](std::string_view line) {
+    {
+      std::lock_guard lock{mutex};
+      lines.emplace_back(line);
+    }
+    if (line == "note 1") {
+      // The reader thread sends a new line while the backlog is delivered.
+      reader = std::thread([&host, &sent] {
+        host.channel_->emit(frames::Output{frames::Stream::output, "live"});
+        sent = true;
+      });
+      for (int i = 0; i < 20 && !sent; ++i) {
+        std::this_thread::sleep_for(10ms);
+      }
+    }
+  };
+  engine->set_callbacks(std::move(callbacks));
+  reader.join();
+  std::lock_guard lock{mutex};
+  CHECK(lines == std::vector<std::string>{"note 1", "note 2", "live"});
+}
