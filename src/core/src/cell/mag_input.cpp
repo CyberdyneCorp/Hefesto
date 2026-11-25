@@ -2,14 +2,17 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Input primitives of the .mag reader (mag_input.hpp) and gzip input
-// (cell-file-format "Compressed cell input").
+// (cell-file-format "Compressed cell input"; the inflated text is capped at
+// kMaxInflatedCellBytes, security.md "Gzip bombs").
 
 #include "mag_input.hpp"
 
 #include <zlib.h>
 
 #include <cctype>
+#include <cstdint>
 #include <limits>
+#include <string>
 
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cell/mag_io.hpp"
@@ -144,14 +147,52 @@ std::string_view chomp(std::string_view line) noexcept {
 
 }  // namespace detail
 
-diag::Outcome<std::string> maybe_decompress(std::string data) {
+namespace {
+
+/// Owns a zlib inflate stream for gzip input (inflateInit2(15 + 32)).
+class GzipInflater {
+ public:
+  GzipInflater() noexcept : ok_(inflateInit2(&zs_, 15 + 32) == Z_OK) {}
+  GzipInflater(const GzipInflater&) = delete;
+  GzipInflater& operator=(const GzipInflater&) = delete;
+  ~GzipInflater() {
+    if (ok_) {
+      inflateEnd(&zs_);
+    }
+  }
+
+  [[nodiscard]] bool ok() const noexcept { return ok_; }
+  [[nodiscard]] z_stream& stream() noexcept { return zs_; }
+
+ private:
+  z_stream zs_{};
+  bool ok_ = false;
+};
+
+/// `bytes` in the largest unit that divides it: "1 GiB", "1 MiB", "100 bytes".
+std::string limit_text(std::uint64_t bytes) {
+  constexpr std::uint64_t kGiB = std::uint64_t{1} << 30U;
+  constexpr std::uint64_t kMiB = std::uint64_t{1} << 20U;
+  if (bytes != 0 && bytes % kGiB == 0) {
+    return std::to_string(bytes / kGiB) + " GiB";
+  }
+  if (bytes != 0 && bytes % kMiB == 0) {
+    return std::to_string(bytes / kMiB) + " MiB";
+  }
+  return std::to_string(bytes) + " bytes";
+}
+
+}  // namespace
+
+diag::Outcome<std::string> maybe_decompress(std::string data, std::uint64_t max_output) {
   if (data.size() < 2 || static_cast<unsigned char>(data[0]) != 0x1fU || static_cast<unsigned char>(data[1]) != 0x8bU) {
     return data;
   }
-  z_stream zs{};
-  if (inflateInit2(&zs, 15 + 32) != Z_OK) {
+  GzipInflater inflater;
+  if (!inflater.ok()) {
     return diag::make(codes::kCompressed, "cannot initialize gzip decoding");
   }
+  z_stream& zs = inflater.stream();
   std::string out;
   char buffer[65536];
   zs.next_in = reinterpret_cast<Bytef*>(data.data());
@@ -161,12 +202,18 @@ diag::Outcome<std::string> maybe_decompress(std::string data) {
     zs.next_out = reinterpret_cast<Bytef*>(buffer);
     zs.avail_out = sizeof buffer;
     rc = inflate(&zs, Z_NO_FLUSH);
-    out.append(buffer, sizeof buffer - zs.avail_out);
+    const std::size_t produced = sizeof buffer - zs.avail_out;
+    // Checked per chunk, before the text grows: a gzip bomb never holds
+    // more than the cap (out.size() never passes max_output).
+    if (produced > max_output - out.size()) {
+      return diag::make(codes::kCompressed,
+                        "compressed cell file inflates past the " + limit_text(max_output) + " limit");
+    }
+    out.append(buffer, produced);
     if (rc == Z_STREAM_END && zs.avail_in > 0) {
       rc = inflateReset(&zs);  // concatenated gzip members
     }
   }
-  inflateEnd(&zs);
   if (rc != Z_STREAM_END) {
     return diag::make(codes::kCompressed, "corrupt gzip data");
   }

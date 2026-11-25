@@ -51,7 +51,9 @@ constexpr std::array kCellCodes = {
     CodeInfo{"CELL-READ-009", info, "Informational message while reading a cell (identifiers assigned, scaling)."},
     CodeInfo{"CELL-READ-010", info, "A use block was adjusted or ignored (circular use, degenerate box)."},
     CodeInfo{"CELL-READ-011", warning, "The cell has a zero timestamp and should be written out."},
-    CodeInfo{"CELL-READ-013", error, "A compressed cell file could not be decompressed."},
+    CodeInfo{"CELL-READ-013", error,
+             "A compressed cell file could not be decompressed: corrupt gzip data, or it inflates past the 1 GiB "
+             "cap."},
     CodeInfo{"CELL-READ-014", warning, "Two uses in a cell file share an instance identifier; one is renamed."},
     CodeInfo{"CELL-STAMP-001", info, "Timestamp mismatches were processed."},
 };

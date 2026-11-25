@@ -394,3 +394,11 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate | compat (7 characters with `magic-compat` ON, the whole line with it OFF) | fix
 - Recommendation: compat.
 - Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON the answer keeps its first 7 characters, as in Magic; with it OFF the whole line is the name (X-2 tier 2). `cmd-hierarchy` "Save command" updated. Approved 2026-11-12.
+
+### Q-CELL-48: Inflate cap on compressed cell files
+- Kind: bug
+- Status: proposed (drafted 2026-11-25 from the M5 open item, security.md M5-S9; code and tests landed as a fix in both modes, awaiting the user)
+- Magic behavior: a `.mag.gz` is opened with `gzopen` (PaZOpen) and read line by line with no limit on the inflated size; Magic's memory grows with the cell it builds. Hefesto inflated the whole file into one string first (`cell::maybe_decompress`), so a few KiB of gzip data could ask for many GiB and exhaust memory.
+- Evidence: utils/path.c:832-935 (PaZOpen, gzopen with no limit), database/DBio.c:1259 (dbReadOpen)
+- Options: replicate (no cap) | fix (cap the inflated text and fail the read with a diagnostic)
+- Recommendation: fix in both modes (X-2 tier 1, the resource rule: an out-of-memory crash has no Magic output to match). Inflating stops as soon as the output would pass 1 GiB (`cell::kMaxInflatedCellBytes`, checked per 64 KiB chunk, concatenated members counted together); the load fails with CELL-READ-013 `compressed cell file inflates past the 1 GiB limit` and no geometry is read into the cell. 1 GiB is the floor of the GDS inflate cap (Q-MASK-416) and the `.ext` file cap (M6-S8); the cap is fixed rather than a ratio because the whole text is held in memory, and real cells (tens of MiB at most) are far below it. Plain `.mag` files are not capped: their size is not amplified. cell-file-format "Compressed cell input" states it; regression tests in `tests/unit/cell/mag_io_test.cpp`.
