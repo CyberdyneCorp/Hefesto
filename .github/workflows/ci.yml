@@ -862,7 +862,9 @@ jobs:
   asan:
     name: linux-asan (Clang, ASan + UBSan)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The suite takes about 28 minutes on a fast runner and passed 45 on slow
+    # ones (6,600+ tests at ~1 s each under ASan); 75 leaves headroom.
+    timeout-minutes: 75
     env:
       CC: clang-18
       CXX: clang++-18
