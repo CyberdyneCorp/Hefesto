@@ -222,7 +222,7 @@ bool glb_fits(std::size_t json_size, std::size_t bin_size) noexcept {
 }
 
 bool stl_fits(std::size_t triangles) noexcept {
-  return static_cast<std::uint64_t>(triangles) <= kMaxU32;
+  return triangles <= kMaxU32;  // size_t and uint64_t are both unsigned; no cast (GCC -Wuseless-cast)
 }
 
 diag::Diagnostic too_large(std::string_view what) {
