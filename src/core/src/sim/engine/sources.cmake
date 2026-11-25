@@ -8,4 +8,5 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/job_manager.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/pool.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/pool.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/job_manager_events.hpp)
