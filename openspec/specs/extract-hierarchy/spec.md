@@ -27,6 +27,8 @@ Compatibility: exact
 2. Otherwise the interaction area I SHALL be computed (Requirement: Interaction area). Every label of the cell that overlaps or touches r SHALL extend I by the label rectangle clipped to `rb` (when I was empty it becomes that rectangle, widened by one unit on each side in any zero-width dimension).
 3. If I is non-empty, the interaction SHALL be processed with clip area `C = I ∩ r` (Requirement: Interaction processing). Otherwise the substrate of every subcell overlapping r SHALL still be connected (see `extract-substrate`).
 
+As landed (M7 round 4): the interaction area is DRCFindInteractions' with the DRC engine's Q-MASK-400 branch (magic-compat ON: a use with no sibling nearby still adds the halo square round the origin when it lies in the use's halo area). A square that only a label turns into an interaction area processes the uses overlapping that area, which may be none: the substrate of the uses near the square is then not connected from that square.
+
 (Magic ref: extract/ExtSubtree.c:120-284)
 
 #### Scenario: Halo without coupling
@@ -68,9 +70,9 @@ Node names in this step: a cumulative-area tile SHALL be named by the first name
 (Magic ref: extract/ExtSubtree.c:441-718, extract/ExtHier.c:397-860, extract/ExtSubtree.c:762-880)
 
 #### Scenario: Overlap of non-connecting types
-- **GIVEN** a parent `poly` rectangle overlapping a child `metal1` rectangle on the same plane under a tech where poly and metal1 share a plane but do not connect
+- **GIVEN** a parent `poly` rectangle overlapping a child `ndiff` rectangle on the same plane under a tech where poly and ndiff share a plane but do not connect
 - **WHEN** the parent is extracted
-- **THEN** the error `Illegal overlap between poly and metal1 (types do not connect)` is reported
+- **THEN** the error `Illegal overlap between ndiff and poly (types do not connect)` is reported (the new subtree's type first, the cumulative area's second), over the overlap of the two tiles
 
 ### Requirement: Name unification order
 
@@ -90,6 +92,13 @@ At the end of a cell's subcell (and separately array) processing, for every hier
 Compatibility: exact (values and name pairs); behavioral (record order, see Q-EXTRACT-7; Hefesto uses the deterministic order of capability `hefesto-output-determinism`)
 
 When `adjust` is on, for each interaction the cumulative area SHALL be re-extracted within C (nodes, labels, and coupling when `coupling` is on); for each cumulative node whose name is a hierarchical node, its capacitance and per-class area and perimeter SHALL be added to that node; then for each subtree (parent included) and each of its nodes that maps (by its reference point) to a cumulative node with a name in the table, the subtree node's values SHALL be subtracted. Thus the adjustment equals (value of the merged geometry) − (sum of values of the separately extracted pieces), restricted to C and summed over all interactions.
+
+When a later interaction unifies two hierarchical nodes that both hold adjustments, Magic keeps only the values of the node that survives the unification (the other node's are dropped). With `magic-compat` ON Hefesto does the same; with it OFF the two nodes' values are added (as-landed in M7 round 4; Q-row proposed, pending).
+
+#### Scenario: Unifying two adjusted nodes
+- **GIVEN** hierarchical nodes `a` (C −10) and `b` (C −5, class area −4, perimeter −2), `a` with at least as many names as `b`
+- **WHEN** `a` and `b` are unified
+- **THEN** the node keeps C −10 and 0 0 with magic-compat ON, and has C −15 and −4 −2 with it OFF
 
 (Magic ref: extract/ExtSubtree.c:514-580, extract/ExtSubtree.c:582-612, extract/ExtHier.c:1014-1180)
 

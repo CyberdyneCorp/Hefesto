@@ -27,6 +27,8 @@ Compatibility: exact
 
 (Magic ref: extract/ExtBasic.c:251-283, extract/ExtBasic.c:173-182)
 
+As landed (M7 round 4): `disable_subcell_devices` marks such regions (`DeviceRegionTiles::disabled`) after `find_device_regions`; the representative tile is the region's first tile (Magic's treg_tile) and the device types searched are those of the region's reference plane.
+
 #### Scenario: Capacitor split across hierarchy
 - **GIVEN** a parent cell painting `mimcap` exactly over a child instance that also contains `mimcap` at the same location
 - **WHEN** the parent is extracted
