@@ -8,7 +8,9 @@ G {}
 K {type=netlist_commands
 format="tcleval([if \{![catch \{sim_is_@simulator \} hefesto_sim_selected] && $hefesto_sim_selected\} \{return \{
 
-@value\\\\\}\} else \{return \{\}\}])"
+@value
+\}\} else \{return \{
+\}\}])"
 template="name=COMMANDS
 simulator=ngspice
 only_toplevel=false 
