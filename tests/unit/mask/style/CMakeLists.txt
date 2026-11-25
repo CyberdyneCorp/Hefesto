@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# Unit tests of mask/style. Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md
+# Unit tests of mask/style. Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 # D1/D2). Every *_test.cpp here is compiled into hefesto_mask_style_tests;
 # extra libraries or definitions go below.
 

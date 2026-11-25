@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// M5 scaffold (openspec/changes/m5-mask-gds-cif tasks.md 2.2-2.4): the
+// M5 scaffold (openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks.md 2.2-2.4): the
 // mask, gds and cif code areas exist; `gds`, `calma` and `cif` are
 // registered with Magic's option tables (every option is implemented by
 // round 4) and the M4 `cif` queries keep working; the shared interfaces of design D4 exist with their stubs; the

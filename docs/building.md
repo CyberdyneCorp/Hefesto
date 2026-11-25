@@ -154,7 +154,7 @@ build/macos-debug/src/cli/hefesto-cli --no-log --pdk-root=$V -T $V/sky130A/libs.
 
 The library cells carry `GDS_FILE` (a vendor view): a write copies such a cell from the library GDS, which the `sky130` set does not include, and the window's own vendor cell is then skipped without a message, as in Magic, leaving an empty library. `property GDS_FILE {}` removes the property, so the write generates the masks from the cell's paint. `--pdk-root` makes `$V` trusted, so the `load` of a path under it works; reading the file back into the same session warns that the cell already existed.
 
-- **Dates and the time zone.** GDS BGNLIB/BGNSTR dates and the CIF header date are written in the host's local time zone, as Magic does (Q-MASK-203), so `gds nodatestamp` or `cellname timestamp <cell> 0` output is reproducible only under a fixed zone. Set `TZ` (for example `TZ=UTC0`) for reproducible files; the golden replay and the unit tests pin the zone the same way. The `gds-time-zone` setting of decision Q-MASK-132 is not available yet (the settings store holds booleans only); until it lands, `TZ` is the way to pin the zone.
+- **Dates and the time zone.** GDS BGNLIB/BGNSTR dates and the CIF header date are written in the host's local time zone, as Magic does (Q-MASK-203), so `gds nodatestamp` or `cellname timestamp <cell> 0` output is reproducible only under a fixed zone. Pin the zone with the setting `gds-time-zone` (decision Q-MASK-132), a POSIX TZ string read at startup, for example `--setting gds-time-zone=UTC0` or a `gds-time-zone` key in the project or preferences file; it applies to `gds read`, `gds write` and `cif write`, and when it is unset or empty the host zone (`TZ`) is used. The golden replay and the unit tests pin the zone the same way.
 - **Compressed input.** `gds read` opens `<name>.gds`, `.gds.gz`, `.gds2`, `.strm` or the name itself. A `.gz` file inflates to at most 256 times its compressed size (at least 1 GiB) before the read stops with `GDS-STREAM-006`.
 - **Desktop.** File > Read GDS and Write GDS issue `promptload gds` and `promptsave gds`. A long read or write keeps the window drawing and shows the Interrupt card ("Writing chip.gds · N s", "Completed N%"); Interrupt stops it without leaving an output file.
 
@@ -203,7 +203,7 @@ Each PDK data set is a subset of one ciel release, installed into `.cache/pdks/c
 
 ### Library GDS data sets (M5)
 
-The M5 library round trips (`MASK-RT-*`), the GDS benchmark and the GDS read tests use the library GDS files of the same three releases (design D19 of `openspec/changes/m5-mask-gds-cif`). They come in six more data sets, fetched only when named (a bare `fetch_pdk.py` does not fetch them):
+The M5 library round trips (`MASK-RT-*`), the GDS benchmark and the GDS read tests use the library GDS files of the same three releases (design D19 of `openspec/changes/archive/2026-11-24-m5-mask-gds-cif`). They come in six more data sets, fetched only when named (a bare `fetch_pdk.py` does not fetch them):
 
 | Set | Libraries (`<variant>/libs.ref/<lib>/gds/`) | Downloaded | Kept (cached) | Peak disk |
 |---|---|---|---|---|

@@ -6,7 +6,7 @@
 // "Generation statistics"; cif-format-io "cif see, paint, coverage and
 // statistics options").
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

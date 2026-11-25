@@ -26,7 +26,7 @@ PDK data sets, each a subset of one ciel release installed into
               435 MB downloaded (common 434 MB, sg13g2_pr 0.2 MB), 0.8 MB kept. sg13g2_pr has no
               mag/ directory: the sg13g2 fixed devices build their cells with the PDK's cell scripts.
 
-Library GDS sets (openspec/changes/m5-mask-gds-cif design D19), same pins, installed under their own
+Library GDS sets (openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D19), same pins, installed under their own
 PDK root ``<root>/gds/`` (``<root>/gds/ciel/<family>/versions/<pin>/``). Each holds
 ``<variant>/libs.ref/<lib>/gds/`` of every library that has one for that variant:
 

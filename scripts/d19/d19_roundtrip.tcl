@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# The library round trip of openspec/changes/m5-mask-gds-cif/design.md D19, timed (task 1.1).
+# The library round trip of openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D19, timed (task 1.1).
 # Run in a fresh session with the PDK's rc, e.g.
 #   PDK_ROOT=<version dir> D19_IN=<lib>.gds D19_OUT=out.gds \
 #     magic -dnull -noconsole -rcfile <variant>.magicrc d19_roundtrip.tcl

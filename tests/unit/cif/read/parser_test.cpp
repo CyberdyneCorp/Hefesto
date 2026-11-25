@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The CIF parser against a recording target (capability cif-format-io;
-// openspec/changes/m5-mask-gds-cif tasks.md 11.1). Coordinates are in read
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks.md 11.1). Coordinates are in read
 // units: the engine converts them (capability mask-input-styles). Owner: CIF.
 
 #include <catch2/catch_test_macros.hpp>

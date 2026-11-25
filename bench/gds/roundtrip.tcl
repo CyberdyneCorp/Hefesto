@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# One pass of the library round trip of openspec/changes/m5-mask-gds-cif/design.md D19, timed, for the
+# One pass of the library round trip of openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D19, timed, for the
 # equivalence report of bench/gds/gds_equivalence.py (perf.yml gds-roundtrip). Run in a fresh session
 # with the PDK's rc. The driver writes a script that sets the Tcl variables rt_in, rt_out and rt_first
 # (hefesto-cli gives scripts a synthesized `env`, so they are not passed in the environment) followed by

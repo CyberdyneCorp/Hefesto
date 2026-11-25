@@ -54,7 +54,7 @@ target_sources(hefesto_shell_tests PRIVATE
   panels_layout_test.cpp
   wiring_hud_test.cpp)
 # M5 GDS menu items and the host of long GDS/CIF reads and writes
-# (openspec/changes/m5-mask-gds-cif tasks 12.1, 12.2, SHELL).
+# (openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks 12.1, 12.2, SHELL).
 target_sources(hefesto_shell_tests PRIVATE
   m5_gds_menu_test.cpp
   m5_mask_job_test.cpp)

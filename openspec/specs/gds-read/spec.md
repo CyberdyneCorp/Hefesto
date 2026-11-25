@@ -1151,7 +1151,7 @@ Each GDS read error is prefixed `Error while reading cell "<cell>" (byte positio
 - **AND** nothing is printed on the console
 
 ### Requirement: Host mechanisms used by the reader
-Magic resolves PDK path variables through Tcl global variables and the home directory through `$HOME`, and opens files through zlib. Hefesto SHALL resolve `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT` from the Tcl global variables of the project's interpreter (Tcl is embedded on every platform), seeded from the settings store on iPadOS; SHALL take the home directory for `~` from the platform services; and SHALL bundle zlib so gzip input works on all platforms. Local-time conversion of GDS dates uses the host time zone by default; a time-zone override setting (for example UTC) replaces it, and golden captures and CI SHALL run with the zone pinned (Q-MASK-132, resolution: platform).
+Magic resolves PDK path variables through Tcl global variables and the home directory through `$HOME`, and opens files through zlib. Hefesto SHALL resolve `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT` from the Tcl global variables of the project's interpreter (Tcl is embedded on every platform), seeded from the settings store on iPadOS; SHALL take the home directory for `~` from the platform services; and SHALL bundle zlib so gzip input works on all platforms. Local-time conversion of GDS dates uses the host time zone by default; a time-zone override setting (`gds-time-zone`, a POSIX TZ string such as `UTC0`) replaces it, and golden captures and CI SHALL run with the zone pinned (Q-MASK-132, resolution: platform).
 
 Compatibility: informative
 
