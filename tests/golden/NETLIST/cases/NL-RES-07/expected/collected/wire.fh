@@ -1,0 +1,22 @@
+* FastHenry output for magic cell wire
+
+.Units um
+.Default rho=0.02 nhinc=3 nwinc=3 rh=2 rw=2
+
+* Reference plane (substrate, ground)
+Gsub x1=-0.80 y1=-0.80 z1=0 x2=40.80 y2=-0.80 z2=0
++ x3=40.80 y3=2.40 z3=0
++ thick=0.1 seg1=20 seg2=4
++ Ngp (-0.80,-0.80,0)
+
+Nsub x=-0.80 y=-0.80 z=0
+.Equiv Nsub Ngp
+
+.freq fmin=1e+09 fmax=1e+09
+
+* Order of arguments to SPICE subcircuit call:
+* 1 in
+* 2 out
+* 3 GND!
+
+.end

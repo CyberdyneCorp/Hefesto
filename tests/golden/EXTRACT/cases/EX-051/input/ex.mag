@@ -1,0 +1,12 @@
+magic
+tech exttest
+timestamp 100
+<< poly >>
+rect 4 -2 6 6
+use nleaf c1
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 4
+<< labels >>
+rlabel poly 5 5 5 5 0 p
+<< end >>

@@ -1,0 +1,90 @@
+tech
+    format 35
+    restest
+end
+
+planes
+    well
+    active
+    metal1
+    metal2
+end
+
+types
+    well    pwell,pw
+    well    nwell,nw
+    active  ndiff,nd
+    active  pdiff,pd
+    active  nfet
+    active  pfet
+    active  poly,p
+    active  ndc
+    active  pdc
+    active  pc
+    metal1  metal1,m1
+    metal1  via
+    metal2  metal2,m2
+end
+
+contact
+    ndc   ndiff  metal1
+    pdc   pdiff  metal1
+    pc    poly   metal1
+    via   metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    poly    nfet,pfet,pc
+    ndiff   ndc
+    pdiff   pdc
+    metal1  ndc,pdc,pc,via
+    metal2  via
+end
+
+cifoutput
+style lambda
+    scalefactor 10
+    layer CM1 metal1,ndc,pdc,pc,via
+        calma 1 0
+    layer CV via
+        squares 10 20 20
+        calma 2 0
+    layer CM2 metal2,via
+        calma 3 0
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style restest
+    cscale 1
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    resist ndiff,pdiff 1000
+    resist poly 5000
+    resist metal1 100
+    resist metal2 50
+    areacap metal1 100
+    areacap metal2 50
+    areacap poly 50
+    height metal1 1.0 0.5
+    height metal2 2.0 0.8
+    device mosfet nfet nfet ndiff pwell,space GND!
+    device mosfet pfet pfet pdiff nwell VDD!
+end

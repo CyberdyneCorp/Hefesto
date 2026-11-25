@@ -1,0 +1,13 @@
+timestamp 100
+version 8.3
+tech exttest
+style probe
+scale 1 1 1
+resistclasses
+node "d1" 0 0 2 0 nd
+node "g1" 0 0 0 -2 p
+node "s1" 0 0 -3 0 nd
+node "d2" 0 0 2 4 pd
+node "s2" 0 0 -3 4 pd
+node "g2" 0 0 0 4 pfet
+device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" 2 0 "s2" 4 12,14 "d2" 4 12,14

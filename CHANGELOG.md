@@ -128,6 +128,18 @@ release notices.
 
 ## Unreleased (M7: extraction and netlisting, in progress)
 
+### Added
+
+- **Circuit extraction.** `extract all`, `extract cell`, `extract parents`,
+  `extract showparents`, `extract unique` and the `do`/`no`, `warn`,
+  `style`, `halo`, `stepsize` and `path` options write Magic's `.ext`
+  files, flat and hierarchical (interactions, `merge` records,
+  hierarchical coupling, hard-way names, arrays), with subcell device
+  priority. A cancelled or failed run keeps the previous `.ext` files.
+- **`extresist`** builds and reduces each net's resistor network and
+  writes `.res.ext` and `.res.lump`; **`antennacheck`** checks gate
+  antenna ratios against the style's rules.
+
 ### Changed
 
 - **`extract`, `ext`, `ext2spice`, `exttospice`, `ext2sim`, `exttosim`,

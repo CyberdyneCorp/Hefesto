@@ -1,0 +1,5 @@
+scale 1 1 1
+killnode "h_11"
+rnode "h_0" 0 26821.7 100 120 0
+rnode "h_11.n0" 0 1318.26 230 131 0
+resist "h_11.n0" "h_0" 4600
