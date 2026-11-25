@@ -1,0 +1,9 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use pin c 1 0 0 0 1 0
+node "VDD" 0 0 6 2 m1
+merge "c/vdd" "VDD" 0

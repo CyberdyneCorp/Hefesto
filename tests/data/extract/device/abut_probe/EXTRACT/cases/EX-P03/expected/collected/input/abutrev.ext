@@ -1,0 +1,13 @@
+timestamp 100
+version 8.3
+tech exttest
+style probe
+scale 1 1 1
+resistclasses
+node "d1" 0 0 2 0 pd
+node "g1" 0 0 0 -2 p
+node "s1" 0 0 -3 0 pd
+node "d2" 0 0 2 4 nd
+node "s2" 0 0 -3 4 nd
+node "g2" 0 0 0 4 nfet
+device mosfet nmos 0 0 1 1 2 4 "GND!" "g2" 2 0 "s2" 4 12,14 "d2" 4 12,14

@@ -58,11 +58,17 @@ TEST_CASE("EX-047: each array element's substrate merges with the parent's",
   CHECK(run.text.find("\"VSUB\"") != std::string::npos);
 }
 
-TEST_CASE("EX-047: a labelled square becomes an interaction area without uses, so no substrate is merged",
+TEST_CASE("EX-047: a labelled square becomes an interaction area without uses, so x[0] and y are not merged",
           "[cap:extract-substrate][req:Subcell substrate connections]") {
   HierCase c("EX-047", true);
   const auto run = c.run("exw");
-  CHECK(lines_with(run.text, "merge ").empty());
+  // Captured: only the array pass's x[2]/x[1] group, which Hefesto does not
+  // reproduce yet (tasks.md 8.5 follow-up).
+  const std::string captured = captured_ext("EX-047", "exw");
+  CHECK(captured.find("\"x[0]/VSUB\"") == std::string::npos);
+  CHECK(captured.find("\"y/VSUB\"") == std::string::npos);
+  CHECK(run.text.find("\"x[0]/VSUB\"") == std::string::npos);
+  CHECK(run.text.find("\"y/VSUB\"") == std::string::npos);
 }
 
 TEST_CASE("Unifying two nodes with adjustments: magic-compat ON keeps the survivor's only",
