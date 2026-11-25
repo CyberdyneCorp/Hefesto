@@ -426,10 +426,10 @@ TEST_CASE("job-log lines sent before set_callbacks reach the first on_output",
 TEST_CASE("Error stream classification: error-stream frames reach on_error, also from the backlog",
           "[cap:simulation-engine-embedding][req:Callback contract]") {
   FakeHost host{healthy};
-  const auto engine = start(host);
-  host.channel_->emit(frames::Output{frames::Stream::error, "Error: early"});
   std::vector<std::string> errors;
   Recorder recorder;
+  const auto engine = start(host);
+  host.channel_->emit(frames::Output{frames::Stream::error, "Error: early"});
   sim::EngineCallbacks callbacks = recorder.callbacks();
   callbacks.on_error = [&errors](std::string_view line) { errors.emplace_back(line); };
   engine->set_callbacks(std::move(callbacks));

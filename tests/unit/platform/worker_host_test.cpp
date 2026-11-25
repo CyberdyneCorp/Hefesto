@@ -120,9 +120,9 @@ TEST_CASE("frames go to the worker and come back in order",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
   CHECK(host.supported());
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("echo"));
   CHECK(channel->process_id() > 0);
-  Collector collector;
   collector.attach(*channel);
   REQUIRE(channel->send(text_frame("one")).ok());
   REQUIRE(channel->send(text_frame("two")).ok());
@@ -138,10 +138,10 @@ TEST_CASE("frames go to the worker and come back in order",
 TEST_CASE("frames sent before the handler is set wait for it",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("echo"));
   REQUIRE(channel->send(text_frame("early")).ok());
   std::this_thread::sleep_for(100ms);
-  Collector collector;
   collector.attach(*channel);
   REQUIRE(collector.wait_frames(1));
   CHECK(as_text(collector.frames()[0]) == "early");
@@ -150,8 +150,8 @@ TEST_CASE("frames sent before the handler is set wait for it",
 TEST_CASE("Worker exits: the exit status arrives and later sends fail without blocking",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("exit=3"));
-  Collector collector;
   collector.attach(*channel);
   const auto exit = collector.wait_exit();
   REQUIRE(exit.has_value());
@@ -168,8 +168,8 @@ TEST_CASE("Worker exits: the exit status arrives and later sends fail without bl
 TEST_CASE("a worker that exits while frames are in flight reports its status",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("exit-after"));
-  Collector collector;
   collector.attach(*channel);
   REQUIRE(channel->send(text_frame("last")).ok());
   const auto exit = collector.wait_exit();
@@ -185,8 +185,8 @@ TEST_CASE("a worker that exits while frames are in flight reports its status",
 TEST_CASE("a crashing worker reports its signal",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("crash"));
-  Collector collector;
   collector.attach(*channel);
   REQUIRE(channel->send(text_frame("boom")).ok());
   const auto exit = collector.wait_exit();
@@ -198,8 +198,8 @@ TEST_CASE("a crashing worker reports its signal",
 TEST_CASE("terminate ends a hung worker",
           "[cap:hefesto-architecture][req:Long-lived worker processes]") {
   hefesto::cli::PosixWorkerHost host;
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, spec("hang"));
-  Collector collector;
   collector.attach(*channel);
   CHECK_FALSE(collector.wait_exit(200ms).has_value());
   channel->terminate();
@@ -225,8 +225,8 @@ TEST_CASE("an oversize or empty frame from the worker ends it as a frame error",
           "[cap:simulation-engine-embedding][req:Worker channel limits]") {
   for (const char* mode : {"oversize", "empty"}) {
     hefesto::cli::PosixWorkerHost host;
+    Collector collector;  // outlives the channel: its reader thread calls the handlers
     const auto channel = start(host, spec(mode));
-    Collector collector;
     collector.attach(*channel);
     const auto exit = collector.wait_exit();
     REQUIRE(exit.has_value());
@@ -256,8 +256,8 @@ TEST_CASE("the worker runs in the job directory with the confinement arguments a
   platform::WorkerSpec s = spec("describe");
   s.job_dir = job.string();
   s.readonly_roots = {"/pdk/a", "/pdk/b"};
+  Collector collector;  // outlives the channel: its reader thread calls the handlers
   const auto channel = start(host, s);
-  Collector collector;
   collector.attach(*channel);
   REQUIRE(collector.wait_frames(1));
   const std::string text = as_text(collector.frames()[0]);

@@ -191,11 +191,11 @@ TEST_CASE("Error stream classification: error-stream lines reach on_error, the r
           "[cap:simulation-engine-embedding][req:Callback contract]") {
   const TempDir job{"simd-onerror"};
   hefesto::cli::PosixWorkerHost host;
-  auto engine = hefesto::test::start_worker(host, fake(job));
-  REQUIRE(engine.ok());
-  std::mutex mutex;
+  std::mutex mutex;  // declared before the engine, whose reader thread calls the callbacks
   std::vector<std::string> output;
   std::vector<std::string> errors;
+  auto engine = hefesto::test::start_worker(host, fake(job));
+  REQUIRE(engine.ok());
   sim::EngineCallbacks callbacks;
   callbacks.on_output = [&](std::string_view line) {
     const std::lock_guard lock{mutex};
