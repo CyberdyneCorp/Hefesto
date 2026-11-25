@@ -490,3 +490,85 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: compat (ON: make the tile Manhattan through `set_type` with its left type, then split; OFF: keep split tiles whole and never cut them) | replicate
 - Recommendation: compat. With `magic-compat` ON RESNET first makes a split tile Manhattan with `set_type` (the left type, as ResSplitX assigns), then splits it, which gives Magic's tiles; with it OFF a split tile is never cut, so the network keeps the net's geometry. Implemented when RESNET lands (task 13.1).
 - Resolution: compat — with `magic-compat` ON ResFracture makes a split tile Manhattan via `set_type` with its left type and then splits it, as Magic's result is; with it OFF a split tile is kept whole. Implemented when RESNET lands (task 13.1). Spec: `extresist-network` "Tile fracturing". Approved 2026-11-22.
+
+### Q-NETLIST-54: Netlister run flags persist across runs (ext2spice and ext2sim)
+- Kind: quirk
+- Status: approved 2026-11-23 (user decision M7-14, raised in M7 round R2, 2026-11-22; approved with the recommended option)
+- Magic behavior: spcParseArgs and simParseArgs store their switches in globals, so a flag given to one run holds for every later run of the session: `-M -m -f -B -d -J` for `ext2spice` (esMergeDevsA/C, esFormat, esNoAttrs, esDistrJunct, esHierAP) and `-A -B -F -L -M -m -f -J` for `ext2sim` (esNoAlias, esNoAttrs, esDevNodesOnly, esNoLabels, esMergeDevsA/C, esFormat, esHierAP). Only `-F` of `ext2spice`, and `-o -a -l`, apply to one run (Q-NETLIST-42, Q-NETLIST-52).
+- Evidence: ext2spice/ext2spice.c:1416-1508 (spcParseArgs), :824-880; ext2sim/ext2sim.c:870-970 (simParseArgs); Q-NETLIST-16, Q-NETLIST-42; netlist-spice-options "Run arguments and output file", netlist-sim "Command options and defaults"
+- As implemented (round R2): `ext2sim` already split per mode; `ext2spice` kept its flags in the session in both modes.
+- Options: compat (one rule for both tools: ON keeps the flags for later runs, OFF applies them to one run) | replicate (both modes keep them) | fix (one run in both modes)
+- Recommendation: compat.
+- Resolution: compat — one rule for `ext2spice` and `ext2sim`: with `magic-compat` ON the flags `-M -m -f -B -d -J` (`ext2spice`) and `-A -B -F -L -M -m -f -J` (`ext2sim`) change the session's settings and hold for later runs, as Magic's globals do; with it OFF they apply to the run that names them and leave the session's settings unchanged, as Q-NETLIST-16 and Q-NETLIST-42 do for the name flags and `-o`. `ext2spice -F` and `-o`, and `ext2sim -o -a -l`, apply to one run in both modes. Spec: `netlist-spice-options` "Run arguments and output file", `netlist-sim` "Command options and defaults". Tests: `tests/unit/netlist/spice/run_test.cpp` "Run flags persist for later runs with magic-compat ON", "Run flags apply to one run with magic-compat OFF"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim run flags persist for later runs with magic-compat ON", "ext2sim run flags apply to one run with magic-compat OFF". Approved 2026-11-23.
+
+### Q-NETLIST-55: `-h` runs the tool's own flag parser before the common usage text
+- Kind: compat-neutral
+- Status: approved 2026-11-23 (user decision M7-16: a Magic behaviour implemented in round R2 with no Q-row, recorded as the same in both modes)
+- Magic behavior: EFArgs' `-h` first calls the tool's argument procedure with the `-h` word, then prints the common usage text and fails. spcParseArgs answers `-h` with its own usage text; simParseArgs has no `-h` and prints `Unrecognized flag: -h` and its usage text first.
+- Evidence: extflat/EFargs.c:278-282; ext2spice/ext2spice.c:1492-1494 (spcParseArgs `case 'h'`); ext2sim/ext2sim.c:870-970 (simParseArgs' default branch); ext-flattening-hierarchy "Common netlister arguments"
+- Options: compat-neutral (as Magic in both modes) | fix (only the common usage text)
+- Recommendation: compat-neutral: the output is help text, harmless and documented.
+- Resolution: compat-neutral — in both modes `-h` is passed to the tool's own flag parser first (`ext2spice` prints its usage text; `ext2sim` prints `Unrecognized flag: -h` and its usage text), then the common usage text is printed and the command fails, as in Magic. Spec: `ext-flattening-hierarchy` "Common netlister arguments" (scenario "-h runs the tool's parser first"). Tests: `tests/unit/extflat/args_names_test.cpp` "EFArgs -h calls the tool's flag parser before failing"; `tests/unit/netlist/spice/run_test.cpp` "ext2spice -h prints both usage texts; -T is unrecognized"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim -h and -T go to simParseArgs". Approved 2026-11-23.
+
+### Q-NETLIST-56: Which tools accept `-o` and `-T`
+- Kind: compat-neutral
+- Status: approved 2026-11-23 (user decision M7-16: a Magic behaviour implemented in round R2 with no Q-row, recorded as the same in both modes)
+- Magic behavior: `-o` is a flag of spcParseArgs and simParseArgs, not of EFArgs, so the standalone extcheck (EFArgs alone) answers it with the usage text. `-T` is an EFArgs flag only in builds without Tcl (`#ifndef MAGIC_WRAPPER`): the standalone programs accept it, and the embedded `ext2spice`/`ext2sim` pass it to their own parser, which answers `Unrecognized flag: -T`.
+- Evidence: extflat/EFargs.c:234-239; ext2spice/ext2spice.c:1451-1455; ext2sim/ext2sim.c:906-910; extcheck/extcheck.c; ext-flattening-hierarchy "Common netlister arguments"
+- Options: compat-neutral (as Magic in both modes) | fix (accept both everywhere)
+- Recommendation: compat-neutral.
+- Resolution: compat-neutral — in both modes `-o` is accepted by `ext2spice` and `ext2sim` only (`hefesto-extcheck` prints its usage text and exits with status 1), and `-T` by `hefesto-extcheck` only (`ext2spice` and `ext2sim` answer `Unrecognized flag: -T`), as in Magic. Spec: `ext-flattening-hierarchy` "Common netlister arguments" (scenario "-o and -T per tool"). Tests: `tests/unit/extflat/args_names_test.cpp` "EFArgs -o and -T only for the tools that take them"; `tests/unit/netlist/extcheck/extcheck_test.cpp` "extcheck rejects -o and accepts -T"; the `-T` checks of the `-h` tests (Q-NETLIST-55). Approved 2026-11-23.
+
+### Q-NETLIST-57: EFArgs prints its own messages
+- Kind: compat-neutral
+- Status: approved 2026-11-23 (user decision M7-16: a Magic behaviour implemented in round R2 with no Q-row, recorded as the same in both modes)
+- Magic behavior: EFArgs prints its messages while it parses, before the run: `Warning: multiple input files specified; ignoring "<name>"` for a second root cell, `-<c> requires a following <what>` for a flag without its value, `Watching node '<name>'` for `-n`/`-N`, the symbol messages of efSymAdd and efSymAddFile (`Error at line <n> of <file>` after a rejected line), and the error text of a `-N` or `-S` file that cannot be opened.
+- Evidence: extflat/EFargs.c:179-183, :240-262, :329-338 (ArgStr and usage); extflat/EFsym.c:80-170; ext-flattening-hierarchy "Common netlister arguments"
+- Options: compat-neutral (printed as Magic prints them, in both modes) | fix (collected into one error)
+- Recommendation: compat-neutral.
+- Resolution: compat-neutral — in both modes the netlisters print EFArgs' messages as Magic does, before the run's own output, through the console's warning and error streams (`hefesto-extcheck` on its error stream). The text for an unreadable `-S` file is Q-NETLIST-58. Spec: `ext-flattening-hierarchy` "Common netlister arguments". Tests: `tests/unit/extflat/args_names_test.cpp` "a later root cell replaces an earlier one with a warning; .ext is removed", "an unknown flag prints the usage text and fails; a tool flag is accepted"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim passes the run's threshold and symbols to the flattening". Approved 2026-11-23.
+
+### Q-NETLIST-58: The message for a `-S` symbol file that cannot be read
+- Kind: compat-neutral
+- Status: approved 2026-11-23 (user decision M7-17; accepted difference, kept for now)
+- Magic behavior: efSymAddFile calls `perror(name)` when `fopen` fails, so the message is `<file>: <the OS error text>` (`No such file or directory`, `Permission denied`, `Is a directory`, ...), and the parse goes on.
+- Evidence: extflat/EFsym.c:104-108; Hefesto `src/core/src/extflat/args.cpp` (`ArgParser::add_symbol_file`), `platform::FileSystem::read`
+- As implemented (round R2): Hefesto prints `<file>: No such file or directory` for any file it cannot read, because the read goes through `platform::FileSystem::read`, whose failure does not carry the OS error text.
+- Options: accept the difference now and pass the real error text through `FileSystem::read` later | change `FileSystem` now
+- Recommendation: accept now; the missing-file case, the only one the golden cases use, matches Magic.
+- Resolution: compat-neutral, accepted difference — in both modes an unreadable `-S` file is reported as `<file>: No such file or directory` and the parse goes on; Magic prints the OS error text, which differs for a file that exists but cannot be read (permissions, a directory). Passing the real error text through `FileSystem::read` is a later improvement (`openspec/changes/m7-extraction/tasks.md` 10.6). Spec: `ext-flattening-hierarchy` "Common netlister arguments". Test: `tests/unit/extflat/args_names_test.cpp` "EFArgs -S reads a symbol file in argument order" (`nope: No such file or directory`). Approved 2026-11-23.
+
+### Q-NETLIST-59: A missing `.ext` file in ext2spice and ext2sim
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for both tools per the standing rule: ext2spice in R3, ext2sim in the R3 fix pass)
+- Magic behavior: EFReadFile sets `Cannot read extract file <cell>.ext` (with a newline) as the Tcl result and the command returns OK.
+- Evidence: extflat/EFread.c:207-216; NL-SPICE-01
+- As implemented (round R3 and its fix pass): with magic-compat ON both tools return the text as the command's result and succeed (NL-SPICE-01 replays); with it OFF they fail with EXTFLAT-READ-001. Tests: `tests/unit/core/m7_scaffold_test.cpp` (the three magic-compat ON ext2spice reads); `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim with a missing .ext file and magic-compat ON returns the message", "ext2sim with a missing .ext file and magic-compat OFF fails".
+- Options: compat (ON: the text is the result and the command succeeds; OFF: EXTFLAT-READ-001) | replicate
+- Recommendation: compat, for both tools.
+
+### Q-NETLIST-60: The name of a shorted-port device's anonymous terminal-0 node (Q-NETLIST-31 with magic-compat OFF)
+- Kind: compat-neutral
+- Status: pending user decision (raised in M7 round R3 by NETLIST, 2026-11-24)
+- Magic behavior: n/a. With magic-compat ON Magic's `dummy` path is used (implemented; NL-FLAT-06 and NL-HIER-06 replay). Q-NETLIST-31's OFF branch gives each shorted-port device its own anonymous terminal-0 node, and the spec does not say what name a resistor-tee midpoint prints for it.
+- Evidence: Q-NETLIST-31; `netlist-spice-devices`; `openspec/changes/m7-extraction/tasks.md` 11.5
+- Options: a generated name the reader can never produce, `dummy#<n>` numbered per cell | another scheme
+- Recommendation: `dummy#<n>` numbered per cell, with one spec sentence. Q-NETLIST-31's OFF branch stays unimplemented until this is decided.
+
+### Q-NETLIST-61: The `-p` search path holds for one run (ext2spice and ext2sim)
+- Kind: compat-neutral, with one compat edge
+- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule)
+- Magic behavior: EFArgs stores `-p` in the global EFSearchPath (EFargs.c:200), and EFDone frees it at the end of every run ("EFSearchPath does not persist beyond the command that set it", EFdef.c:179-184), so the path holds for the run that names it, in both tools. One exception: when `ext2spice` names no cell and no window is open it prints `Point to a window or specify a cell name.` and returns without EFDone (ext2spice.c:861-865), so that run's path stays set for the next run of either tool; `ext2sim` calls EFDone on the same path (ext2sim.c:548-552). `ext2spice default` and `ext2sim default` free it (ext2spice.c:803-807, ext2sim.c:502-506).
+- Evidence: as cited; Hefesto `src/core/src/netlist/spice/run.cpp`, `src/core/src/netlist/sim/run.cpp`, `netlist::take_search_path` (`hefesto/netlist/session.hpp`)
+- As implemented (R3 fix pass): in both modes and both tools `-p` holds for its run only (before, `ext2spice` kept it for later runs in both modes and `ext2sim` used it once). With magic-compat ON an `ext2spice` run that names no cell leaves its path in `NetlistSession::search_path` for the next run of either tool, which consumes it; with it OFF that path is dropped. Both `default` options clear it. Tests: `tests/unit/netlist/spice/run_test.cpp` "ext2spice -p holds for one run", "ext2spice -p of a run without a cell is left for the next run with magic-compat ON", "ext2spice -p of a run without a cell is dropped with magic-compat OFF", "ext2sim reads with the -p left by ext2spice without a cell (magic-compat ON)"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim -p holds for one run", "ext2sim -p of a run without a cell is dropped", "ext2sim reads with the -p an ext2spice run without a cell left".
+- Options: compat (as implemented) | compat-neutral without the edge (the no-cell path drops `-p` in both modes) | keep `-p` for later runs in both tools (a session setting, as `ext2spice` did)
+- Recommendation: compat. The rule matches Magic in both modes; only the no-cell leftover differs by mode.
+
+### Q-NETLIST-62: A cap on `.ext` port numbers
+- Kind: bug (hardening)
+- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule: crashes and undefined behaviour are fixed in both modes)
+- Magic behavior: efBuildPortNode stores a `port` record's number as given, and ext2spice's topVisit sizes its port array by the highest one (`portmax + 1`) and numbers the implicit ports past it (`++portmax`), so `port a 1000000000 ...` allocates gigabytes and `port a 2147483647 ...` overflows a signed int (undefined behaviour).
+- Evidence: extflat/EFbuild.c (efBuildPortNode); ext2spice/ext2spice.c:1649-1685 (topVisit: EFGetPortMax, `portmax++`, the `portmax + 1` array); Hefesto `src/core/src/extflat/reader.cpp` (`FileReader::port`), `src/core/src/netlist/spice/flat_writer.cpp` (`PortSorter`), `hier_writer.cpp` (`call_ports`)
+- As implemented (R3 fix pass), both modes: a `port` record whose number is above `ReadLimits::max_port_index` (2^20) fails the read with EXTFLAT-READ-009 `<file>, line <n>: port number <n> is larger than 1048576`; negative numbers are kept (they mean "no index"). The SPICE writers keep their port slots in a map, so the list is as long as the ports, not as the highest number. Tests: `tests/unit/extflat/hardening_test.cpp` "a port number past the cap fails the read with EXTFLAT-READ-009"; `tests/unit/netlist/spice/run_test.cpp` "Sparse port numbers keep their order; a number past the cap fails the read"; fuzz seeds `hostile-port-number-m00`, `-m04`.
+- Options: fix (the cap, as implemented) | no cap, sparse lists only (the implicit numbering then needs 64-bit indices)
+- Recommendation: fix. Real `.ext` files number ports from 0 up to the port count; 2^20 is far above any cell.

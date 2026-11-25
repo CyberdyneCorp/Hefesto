@@ -305,7 +305,7 @@ void subcircuit(Dev& d) {
     d.out_term(d.dev.terminals[i]);
   }
   (void)subckt_tail(d);
-  if (d.cls == DeviceClass::rsubckt && d.w.settings.resistor_tee && !d.w.compat.magic_compat) {
+  if (d.cls == DeviceClass::rsubckt && d.w.settings.resistor_tee && (!d.w.compat.magic_compat || d.w.hier)) {
     rsubckt_second_half(d);
   }
 }
@@ -468,6 +468,9 @@ void FlatWriter::device(std::size_t index) {
   InputDevice& dev = devices[index];
   if (dev.terminals.empty() || (merging() && killed[index])) {
     return;
+  }
+  if (hier && dev.terminals.size() <= 1) {
+    return;  // spcdevHierVisit skips a device with at most one terminal
   }
   Dev d{*this, dev, dev.device_class, pick_terminals(dev)};
   d.l = dev.length;

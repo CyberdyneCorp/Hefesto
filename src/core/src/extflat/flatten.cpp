@@ -105,6 +105,12 @@ class Flattener {
   [[nodiscard]] std::vector<FlatCap> visit_caps() const;
 
   void mark_nodevices(std::uint32_t def) { nodevices_[def] = 1; }
+  void set_nodevices(const std::vector<char>& marks) {
+    for (std::size_t i = 0; i < marks.size() && i < nodevices_.size(); ++i) {
+      nodevices_[i] = marks[i];
+    }
+  }
+  [[nodiscard]] const std::vector<char>& nodevices_marks() const { return nodevices_; }
   [[nodiscard]] bool nodevices(std::uint32_t def) const { return nodevices_[def] != 0; }
   [[nodiscard]] bool failed() const { return ctx_.fatal.has_value(); }
   // Each traversal of the hierarchy counts its instances and expanded
@@ -577,6 +583,19 @@ std::string Flattener::local_key(const Def& def, std::uint32_t local) const {
   return head == kNil ? std::string{} : g.name(head).key;
 }
 
+// efnode_pa of a definition's own node (not the flat node).
+std::vector<std::pair<std::int32_t, std::int32_t>> local_area_perim(const Def& def, std::uint32_t local) {
+  std::uint32_t id = local;
+  while (!def.graph.live(id)) {
+    id = def.graph.node(id).parent;
+  }
+  std::vector<std::pair<std::int32_t, std::int32_t>> out;
+  for (const PerimArea& pa : def.graph.node(id).pa) {
+    out.emplace_back(pa.area, pa.perim);
+  }
+  return out;
+}
+
 // efDevKilled: a terminal whose node (instance path + its canonical local
 // name) is killed; an unresolved name is reported as "kill".
 bool Flattener::device_killed(const HierContext& hc, const Def& def, const Device& dev) {
@@ -601,6 +620,8 @@ FlatTerminal Flattener::terminal_out(const std::string& prefix, const Def& def, 
     t.node = name_to_string(key);
   }
   t.length = length;
+  t.local_node = def.name + "/" + local_key(def, local);
+  t.local_area_perim = local_area_perim(def, local);
   if (attrs) {
     t.attribute_text = *attrs;
     t.attributes = split_attrs(*attrs);
@@ -622,6 +643,7 @@ FlatDevice Flattener::device_out(const HierContext& hc, const Def& def, const De
     out.substrate = subs.node;
     out.substrate_index = subs.node_index;
     out.substrate_local = name_to_string(local_key(def, dev.subs));
+    out.substrate_area_perim = subs.local_area_perim;
   }
   out.params = dev.params;
   out.hier_prefix = name_to_string(hc.prefix);
@@ -990,8 +1012,9 @@ Netlist flatten_full(FlatContext& ctx, std::uint32_t root, const FlatPlan& plan)
   return netlist;
 }
 
-Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& plan, bool& nodevices) {
+Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& plan, std::vector<char>& nodevices) {
   Flattener f{ctx, plan, def_id, false};
+  f.set_nodevices(nodevices);
   const HierContext top{def_id, {}, Transform{}};
   const Def& def = ctx.defs.at(def_id);
   f.full_nodes(top, 0, kHier);
@@ -1004,7 +1027,7 @@ Netlist flatten_level(FlatContext& ctx, std::uint32_t def_id, const FlatPlan& pl
   if (usecount == 0 && def.devices.empty()) {
     f.mark_nodevices(def_id);
   }
-  nodevices = f.nodevices(def_id);
+  nodevices = f.nodevices_marks();
   if (!f.failed()) {
     f.begin_pass();
     f.flat_kills(top, 0);

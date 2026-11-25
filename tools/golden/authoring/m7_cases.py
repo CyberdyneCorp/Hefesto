@@ -61,6 +61,11 @@ REPLAYED: set[str] = {
     *(f"NL-FLAT-{n:02d}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18)),  # 16: R2 fix pass (-s symbols)
     *(f"NL-SIM-{n:02d}" for n in (1, 3, 4, 5)),
     *(f"NL-SPICE-{n:02d}" for n in (2, 3, 7, 9, 10, 11, 12, 14)),
+    # R3 NETLIST: 05/06 with the root's port indices (task 11.3), SIM-02 with the bipolar L and W (task 12.1)
+    "NL-SPICE-05", "NL-SPICE-06", "NL-SIM-02",
+    # R3 NETLIST: hierarchical output (task 11.6)
+    *(f"NL-HIER-{n:02d}" for n in range(1, 7)), "NL-FLAT-11",
+    *(f"NL-SPICE-{n:02d}" for n in (1, 4, 8, 13)),
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
