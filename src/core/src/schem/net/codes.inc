@@ -27,3 +27,4 @@ HEFESTO_SCHEM_CODE("SCHEM-NET-014", warning, "A symbol has no `type` attribute."
 HEFESTO_SCHEM_CODE("SCHEM-NET-015", warning, "Every pin of an instance is unconnected.")
 HEFESTO_SCHEM_CODE("SCHEM-NET-016", warning, "Two identical instances of one symbol overlap.")
 HEFESTO_SCHEM_CODE("SCHEM-NET-017", warning, "The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail.")
+HEFESTO_SCHEM_CODE("SCHEM-NET-018", error, "The netlist run was interrupted (the environment's `interrupted` callback returned true); no netlist text is returned.")

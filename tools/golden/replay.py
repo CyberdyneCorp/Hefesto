@@ -76,7 +76,7 @@ from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage, xschem_set_tree
 from goldenlib import rawkeep
 from goldenlib.rawkeep import RawKeep
-from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
+from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_PDK_ROOT, CONTAINER_WORK, ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TIMEOUT_S = 300
@@ -122,26 +122,40 @@ def hefesto_argv(cli: Path, case: Case, work: Path, args: list[str] | None = Non
 
 def stage_xschem_sets(case: Case, work: Path) -> dict[str, str]:
     """The replay side of ``[reference] xschem_sets`` (m8-schematic design D16): each set's PDK directory
-    linked as ``<work>/pdk/<variant>`` (the capture mounts it read-only as ``/pdk/<variant>``), and the
-    environment ``PDK_ROOT=<work>/pdk`` (plus ``PDK`` for a single set). ExternalUnavailable when a set
-    is not installed."""
+    copied to ``<work>/pdk/<variant>`` (the capture mounts it read-only as ``/pdk/<variant>``), and the
+    environment ``PDK_ROOT=<work>/pdk`` (plus ``PDK`` for a single set). A copy, not a link: Hefesto's
+    script sandbox resolves links, and the cache a link points to is outside the PDK root it may read.
+    ExternalUnavailable when a set is not installed."""
     variants = []
     for name in case.reference.get("xschem_sets", []):
         tree, variant = xschem_set_tree(name)
-        link = work / "pdk" / variant
-        link.parent.mkdir(exist_ok=True)
-        if not link.is_symlink():
-            link.symlink_to(tree, target_is_directory=True)
+        target = work / "pdk" / variant
+        target.parent.mkdir(exist_ok=True)
+        if not target.exists():
+            shutil.copytree(tree, target)
         variants.append(variant)
     if not variants:
         return {}
     return {"PDK_ROOT": str(work / "pdk"), **({"PDK": variants[0]} if len(variants) == 1 else {})}
 
 
+def stage_schem_system_library(case: Case, work: Path) -> None:
+    """A SCHEM case (tool xschem) finds Hefesto's system symbol library as an install does, under
+    ``<CAD_ROOT>/assets/schematic`` (Q-SCHEM-10, -45): the repository's ``assets/schematic`` is copied
+    into the replay's hermetic CAD_ROOT (a copy, not a link: the script sandbox reads only below
+    ``<CAD_ROOT>/assets``), as the capture image provides xschem's own."""
+    if case.tool != "xschem":
+        return
+    target = cad_root(work) / "assets" / "schematic"
+    if not target.exists():
+        shutil.copytree(REPO_ROOT / "assets" / "schematic", target)
+
+
 def run_hefesto(cli: Path, case: Case, work: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
     """hefesto-cli in ``work`` (its input/ already staged) with the case's arguments, or ``args``
     (gds_rt_report.py's second pass); the case's ``[hefesto] timeout_s`` bounds the run."""
     # Hermetic: Magic's system files come only from the case's magic-sys inputs.
+    stage_schem_system_library(case, work)
     env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **stage_xschem_sets(case, work),
            **substitute_env(case.env, str(work))}
     stdin = (work / case.hefesto["stdin"]).read_bytes() if "stdin" in case.hefesto else b""
@@ -205,9 +219,13 @@ def with_container_work(data: bytes, work: Path) -> bytes:
     path a case prints (``path search``, ``info script``, a PDK_ROOT under ``{work}``) differs
     only by that prefix. The replay's CAD_ROOT (``cad_root(work)``) is first written as the
     image's (``/opt/ref/lib``): a case that lists the cell path prints Magic's library
-    directories under it. Both spellings of each directory are rewritten (macOS resolves
-    ``/var`` to ``/private/var``); nothing else changes."""
-    for root, spelled in ((cad_root(work), CONTAINER_CAD_ROOT), (work, CONTAINER_WORK)):
+    directories under it, and the xschem data sets of a SCHEM case (``<work>/pdk``,
+    ``stage_xschem_sets``) as the capture's read-only mount ``/pdk``. Both spellings of each
+    directory are rewritten (macOS resolves ``/var`` to ``/private/var``); nothing else changes."""
+    roots = [(cad_root(work), CONTAINER_CAD_ROOT), (work, CONTAINER_WORK)]
+    if (work / "pdk").is_dir():  # only a SCHEM case with xschem_sets has one
+        roots.insert(1, (work / "pdk", CONTAINER_PDK_ROOT))
+    for root, spelled in roots:
         for spelling in sorted({str(root.resolve()), str(root)}, key=len, reverse=True):
             data = data.replace(spelling.encode(), spelled.encode())
     return data

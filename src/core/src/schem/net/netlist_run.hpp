@@ -138,6 +138,8 @@ class NetlistRun {
   void top_user_code(const Level& top, std::string_view place);
   void end_block(const Level& top);
   void globals_block();
+  void emit_header(const Level& top);
+  NetlistResult finish_text();
   std::string place_of(const Placed& instance) const;
   [[nodiscard]] std::string path_text(const platform::Path& file) const;
   void warn(diag::Diagnostic diagnostic);
@@ -145,6 +147,7 @@ class NetlistRun {
 
   // level.cpp
   Level place(const Document& document, Parents parents, bool top);
+  static NetlistResult interrupted_result();
   void place_one(Level& level, std::size_t index);
   void connect(Level& level);
   NetInstance net_instance(const Level& level, const Placed& instance);
@@ -198,6 +201,7 @@ class NetlistRun {
   BusBudget bus_budget_;  // Q-SCHEM-41: the expanded bus text of this run
 
   NetlistResult result_;
+  bool stopped_ = false;  // the environment's interrupted() fired
   std::vector<NetlistChunk> chunks_;
   ElementRunState element_state_;
   DeviceModels models_;

@@ -61,10 +61,14 @@ class ElementBuilder {
     detail::scan_format(
         *format, true, [&](char c) { text += c; },
         [&](char sigil, std::string key, std::string_view source) { text += token(sigil, key, source); });
-    text += '\n';
+    // A line in tcleval(...) form is evaluated before its LF is appended, so
+    // the LF follows the result (golden cases SCHEM-NL-07, NL-08: a format
+    // `tcleval( @value )` ends its user code with the result's own blanks,
+    // then the LF).
     if (text.starts_with("tcleval(")) {
       text = evaluate_tcl(text, false);
     }
+    text += '\n';
     out_.text = expr(text);
     return std::move(out_);
   }
@@ -171,7 +175,7 @@ class ElementBuilder {
   std::string pin_attribute(std::size_t i, std::string_view attr) {
     const ElementPin& pin = ctx_.pins[i];
     if (attr == "net_name") {
-      return pin.net;
+      return i < ctx_.net_names.size() && !ctx_.net_names[i].empty() ? ctx_.net_names[i] : pin.net;
     }
     const std::string by_name = std::string{attr} + "(" + pin.name + ")";
     const std::string by_index = std::string{attr} + "(" + std::to_string(i) + ")";

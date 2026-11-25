@@ -269,6 +269,25 @@ TEST_CASE("SCHEM-NL-19 netlist", "[cap:schematic-netlisting][req:Bus taps]") {
   CHECK(r.text == expected("SCHEM-NL-19", "nl19.spice"));
 }
 
+// Regression (SCHEM-NL-02, NL-04 and NL-06 replay, M8 round 5): `@#n:net_name`
+// gives the net as named: a bus net is not expanded (`Z[1:0]`, not
+// `Z[1],Z[0]`) and an automatic net keeps its `#`, in both modes.
+TEST_CASE("net_name of a bus net and of an automatic net", "[cap:schematic-netlisting][req:Format string substitution]") {
+  MemoryProject p;
+  p.put("t.sch", std::string{kHeader} +
+                     "N 0 0 100 0 {}\nC {lab_pin.sym} 0 0 0 0 {name=l1 lab=Z[1:0]}\n"
+                     "C {bus_tap.sym} 100 0 0 0 {name=l2 lab=[0]}\nN 110 -10 200 -10 {}\n"
+                     "C {res.sym} 200 20 0 0 {name=R1 value=1}\n"
+                     "N 300 0 500 0 {}\nC {noconn.sym} 300 0 0 0 {name=l3}\n"
+                     "C {res.sym} 500 30 0 0 {name=R2 value=1}\n");
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const auto r = p.netlist("t.sch", {}, on);
+    CHECK(r.text.find("* tap: Z[1:0] --> Z[0]\n") != std::string::npos);
+    CHECK(r.text.find("* noconn #net") != std::string::npos);
+  }
+}
+
 TEST_CASE("SCHEM-NL-20 netlists", "[cap:schematic-netlisting][req:Top-level port order]") {
   schem::NetlistOptions options;
   options.top_is_subckt = true;
@@ -443,6 +462,22 @@ TEST_CASE("LVS inverter", "[cap:schematic-netlisting][req:LVS netlist mode]") {
   CHECK(r.text == "** sch_path: /p/inv.sch\n.subckt inv A Y\n*.PININFO A:I Y:O\nXM1 Y A VSS VSS nfet_01v8 L=0.15 W=1\n"
                   ".ends\n");
   CHECK(r.text.find(".end\n") == std::string::npos);
+}
+
+// Regression (SCHEM-NL-10 replay, M8 round 5): in LVS mode a level with no
+// port writes its `*.PININFO` line as an empty line, as xschem does; it
+// wrote nothing. Both modes.
+TEST_CASE("LVS netlist of a schematic with no ports", "[cap:schematic-netlisting][req:Subcircuit body]") {
+  MemoryProject p;
+  p.put("tb.sch", std::string{kHeader} + "N 0 -30 0 -60 {lab=A}\nC {res.sym} 0 0 0 0 {name=R1 value=1}\n"
+                                         "N 0 30 0 60 {lab=B}\n");
+  schem::NetlistOptions options;
+  options.lvs_netlist = true;
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const auto r = p.netlist("tb.sch", options, on);
+    CHECK(r.text.find(".subckt tb\n\nR1 ") != std::string::npos);
+  }
 }
 
 TEST_CASE("Flattened inverter chain", "[cap:schematic-netlisting][req:Flat netlist]") {
@@ -830,5 +865,36 @@ TEST_CASE("the .subckt header template is built in linear time",
     REQUIRE(inside.size() == 1);  // k1 twice in the template: one warning
     CHECK(inside.front()->text.find("template key k1 of ") == 0);
     CHECK(inside.front()->text.size() < 200);
+  }
+}
+
+TEST_CASE("Interrupted netlist run", "[cap:schematic-netlisting][req:In-process netlisting]") {
+  MemoryProject p;
+  two_pin_cell(p, "cell", "type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"name=x1\"", "1k");
+  p.put("t.sch", std::string{kHeader} + "C {cell.sym} 0 0 0 0 {name=x1}\n");
+  const schem::SearchPath search{std::vector<Path>{kDevices, p.folder}};
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    schem::ReadOptions read;
+    read.xschem_compat = on;
+    auto document = schem::load_document(p.fs, p.folder / "t.sch", read);
+    REQUIRE(document);
+    schem::SymbolCache symbols;
+    schem::NetlistEnvironment environment{symbols, search, p.fs, nullptr, {}, 4};
+    int polls = 0;
+    // The top level is placed twice (before and after the options); the
+    // interrupt fires before the subcircuit's schematic is placed.
+    environment.interrupted = [&polls] { return ++polls > 2; };
+    const auto r = schem::netlist(environment, document.value(), schem::NetlistOptions{}, compat(on));
+    CHECK(polls > 2);
+    CHECK(r.failed);
+    CHECK(r.text.empty());
+    CHECK(r.labels.empty());
+    CHECK(has_code(r, hefesto::schem::net_codes::kInterrupted));
+
+    environment.interrupted = [] { return false; };
+    const auto whole = schem::netlist(environment, document.value(), schem::NetlistOptions{}, compat(on));
+    CHECK_FALSE(whole.failed);
+    CHECK(whole.text.find(".subckt cell A Y") != std::string::npos);
   }
 }

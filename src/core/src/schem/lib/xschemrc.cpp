@@ -215,6 +215,7 @@ script::SandboxPolicy xschemrc_policy(const XschemrcInput& input) {
   const std::string folder = input.document_folder.generic_string();
   policy.environment.try_emplace("HOME", folder);
   policy.environment.try_emplace("PWD", folder);
+  policy.stdin_readable = false;  // S8-04: a read of stdin blocks, unlimited
   return policy;
 }
 

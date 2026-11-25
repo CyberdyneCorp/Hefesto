@@ -152,7 +152,8 @@ TEST_CASE("the option table holds every option of the Subcommand table", kTable)
       "open",      "new",       "save",    "close",    "reload",  "reload_symbols", "path",    "resolve",
       "place",     "wire",      "line",    "box",      "arc",     "polygon",        "text",    "label",
       "select",    "selection", "delete",  "move",     "copy",    "rotate",         "flip",    "flipv",
-      "align",     "getprop",   "setprop", "replace",  "instances", "nets",         "net",     "descend",
+      "align",     "order",     "clipboard", "paste",  "merge",   "getprop",        "setprop", "replace",
+      "instances", "nets",      "net",     "descend",
       "ascend",    "hierarchy", "hilight", "undo",     "redo",    "netlist",        "check",   "symbol",
       "simulate",  "annotate",  "probe",   "export",   "pdk",     "help"};
   CHECK(names == expected);

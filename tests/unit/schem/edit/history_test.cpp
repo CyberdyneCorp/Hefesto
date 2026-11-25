@@ -304,7 +304,10 @@ TEST_CASE("an editing session's instance names take from the session bus budget"
 // Regression: `schematic reload` replaced the document under the same id
 // and kept the selection, so `delete`, `move` and `copy` indexed wires that
 // no longer existed (out-of-bounds access, both modes). Every editing and
-// viewing option now first drops selected objects that do not exist.
+// viewing option now first drops selected objects that do not exist. Since
+// round 5 `reload` clears the selection itself ("Reload clears selection,
+// highlights and undo history"), so the stale selection is put back here to
+// keep the guard covered.
 TEST_CASE("Selection after reload", kModel) {
   for (const std::string option : {"delete", "move", "copy", "selection", "rotate"}) {
     INFO(option);
@@ -317,6 +320,9 @@ TEST_CASE("Selection after reload", kModel) {
     s.folder().write("top.sch", "v {xschem version=3.4.8RC file_version=1.3}\nN 0 0 5 0 {}\nN 0 10 5 10 {}\n");
     run(s, {"reload"});
     REQUIRE(active(s).wires.size() == 2);
+    auto& stale = s.schem().edit.selections[schem::active_document(s.schem())->id];
+    CHECK(stale.empty());
+    stale = {{schem::ObjectKind::wire, 1}, {schem::ObjectKind::wire, 9}};
     std::vector<std::string> args{option};
     if (option == "move" || option == "copy") args = {option, "10", "0"};
     const std::string value = run(s, args);

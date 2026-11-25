@@ -17,10 +17,21 @@
 
 namespace hefesto::schem {
 
+namespace {
+
+// The policy of a schematic-script interpreter: `policy` without reads of
+// stdin, which block out of reach of the time limits (S8-04).
+script::SandboxPolicy without_stdin(script::SandboxPolicy policy) {
+  policy.stdin_readable = false;
+  return policy;
+}
+
+}  // namespace
+
 TclEnvironment::TclEnvironment(editor::EditorState& editor, script::SandboxPolicy policy, platform::FileSystem& fs,
                                ProcedureHooks hooks)
     : editor_(editor),
-      policy_(std::make_unique<script::SandboxPolicy>(std::move(policy))),
+      policy_(std::make_unique<script::SandboxPolicy>(without_stdin(std::move(policy)))),
       fs_(fs),
       files_(std::make_unique<script::SandboxedFileSystem>(fs_, *policy_)),
       interp_(script::create_project_interpreter(editor_, *policy_)) {

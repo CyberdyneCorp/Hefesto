@@ -187,6 +187,7 @@ class MainWindow {
   /// F6 / Shift-F6 and ^R in the command bar (the window's key hook).
   bool on_shortcut(int key, std::uint8_t modifiers);
   void cycle_focus(bool backward);
+  void focus_view();
   void refresh_keys();
   void refresh_color_panel();
   /// The right dock shows the PDK manager, else the color window, else the Inspector.

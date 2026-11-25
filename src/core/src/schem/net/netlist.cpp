@@ -244,25 +244,27 @@ void NetlistRun::globals_block() {
   emit(std::move(text));
 }
 
+/// The result of a run the environment interrupted: no text, no labels,
+/// failed with SCHEM-NET-018.
+NetlistResult NetlistRun::interrupted_result() {
+  NetlistResult result;
+  result.failed = true;
+  result.diagnostics.push_back(diag::make(net_codes::kInterrupted, "netlist run interrupted"));
+  return result;
+}
+
 NetlistResult NetlistRun::run() {
   Level top = place(top_, Parents{}, true);
   apply_options_instances(top);
   top_subckt_ = options_.lvs_netlist || options_.top_is_subckt;
   // Options may change what is ignored (lvs_ignore): place again with them.
   top = place(top_, Parents{}, true);
+  if (stopped_) {
+    return interrupted_result();
+  }
   connect(top);
 
-  emit("** sch_path: " + path_text(top_.path) + "\n");
-  compat::CompatSettings settings;
-  settings.xschem_compat = compat_;
-  if (const std::string line = compat::xschem_compat_netlist_line(settings); !line.empty()) {
-    emit(line + "\n");
-  }
-  for (const Placed& p : top.instances) {
-    if (!p.ignored && !p.shorted && p.type == "netlist_commands" && place_of(p) == "header") {
-      emit(element(top, p).text, {}, true);
-    }
-  }
+  emit_header(top);
   if (options_.hierarchy != Hierarchy::top) {
     add_used(top);
     plan_definitions();
@@ -280,6 +282,28 @@ NetlistResult NetlistRun::run() {
   if (!top_subckt_) {
     emit(".end\n");
   }
+  return stopped_ ? interrupted_result() : finish_text();
+}
+
+/// The lines before the top schematic: its path, the compatibility line
+/// and the `netlist_commands` placed in the header.
+void NetlistRun::emit_header(const Level& top) {
+  emit("** sch_path: " + path_text(top_.path) + "\n");
+  compat::CompatSettings settings;
+  settings.xschem_compat = compat_;
+  if (const std::string line = compat::xschem_compat_netlist_line(settings); !line.empty()) {
+    emit(line + "\n");
+  }
+  for (const Placed& p : top.instances) {
+    if (!p.ignored && !p.shorted && p.type == "netlist_commands" && place_of(p) == "header") {
+      emit(element(top, p).text, {}, true);
+    }
+  }
+}
+
+/// The text of a run that was not interrupted: the resolve warnings, the
+/// postprocessed (and, for -flat, flattened) lines, broken for SPICE.
+NetlistResult NetlistRun::finish_text() {
   for (diag::Diagnostic& d : resolve_warnings_.take()) {
     warn(std::move(d));
   }

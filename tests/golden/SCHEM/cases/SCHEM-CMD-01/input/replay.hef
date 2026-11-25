@@ -1,0 +1,8 @@
+file mkdir out
+schematic new schematic input/div.sch
+schematic place res.sym 0 0
+schematic place res.sym 0 100
+schematic wire 0 30 0 70
+schematic label 0 -30 IN
+schematic label 0 130 0
+schematic netlist out/div.spice

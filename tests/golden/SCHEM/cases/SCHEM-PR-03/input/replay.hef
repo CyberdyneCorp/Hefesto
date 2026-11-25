@@ -1,0 +1,6 @@
+file mkdir out
+set status 0
+schematic open input/pr03.sch
+if {[catch {schematic netlist out/pr03.spice -force}]} {set status 10}
+schematic close -discard
+quit $status

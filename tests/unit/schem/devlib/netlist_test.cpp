@@ -46,7 +46,9 @@ TEST_CASE("an IHP-style bench netlists with the system library", kSystemLibrary)
 TEST_CASE("simulator_commands emits its block only for the embedded simulator", kSystemLibrary) {
   // Interface note: LF, LF, the value, LF when sim_is_<simulator> returns
   // true; a single LF when it returns false or fails (sim_is_spectre does
-  // not exist).
+  // not exist). The netlister adds the tcleval line's own LF after each
+  // result (schematic-netlisting "tcleval values"; SCHEM-NL-02 and -07/08
+  // captures), so a true block ends in two LFs and a false one is two LFs.
   dl::NetlistBench bench(dl::folder_input(kBench), {});
   const schem::NetlistResult result = bench.netlist(kBench / "sim_commands.sch");
   CHECK_FALSE(result.failed);

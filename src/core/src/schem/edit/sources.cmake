@@ -6,12 +6,15 @@
 # Owner: EDIT (openspec/changes/m8-schematic/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/clipboard.cpp
   ${CMAKE_CURRENT_LIST_DIR}/context.cpp
   ${CMAKE_CURRENT_LIST_DIR}/geometry.cpp
   ${CMAKE_CURRENT_LIST_DIR}/hierarchy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/hilight.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/lifecycle.cpp
   ${CMAKE_CURRENT_LIST_DIR}/nets.cpp
   ${CMAKE_CURRENT_LIST_DIR}/operations.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/order.cpp
   ${CMAKE_CURRENT_LIST_DIR}/palette.cpp
   ${CMAKE_CURRENT_LIST_DIR}/place.cpp
   ${CMAKE_CURRENT_LIST_DIR}/props.cpp

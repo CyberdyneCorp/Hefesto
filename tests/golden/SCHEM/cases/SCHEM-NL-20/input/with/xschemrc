@@ -1,0 +1,2 @@
+# Hefesto side only: the library path of the case's rc file.
+set XSCHEM_LIBRARY_PATH ${XSCHEM_SHAREDIR}/xschem_library/devices

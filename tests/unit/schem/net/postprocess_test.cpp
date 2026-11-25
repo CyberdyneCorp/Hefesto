@@ -129,10 +129,27 @@ TEST_CASE("post-processing: parametric vector names", "[cap:schematic-netlisting
   CHECK(finish({element("R[hi:lo] ?1 a 1k\n"), element(".param hi=1 lo=0\n")}) == "R[hi:lo] a 1k\n.param hi=1 lo=0\n");
 }
 
+// Regression (SCHEM-NL-05 replay, M8 round 5): the `#<p>#` notation applies
+// to the element's name list (its first field) too, as
+// sky130_tests/nand2_noschematic.sym writes `#xa#@name`; it was written
+// literally on the first line.
+TEST_CASE("post-processing: a prefixed name list", "[cap:schematic-netlisting][req:Element line post-processing]") {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    CHECK(finish({element("#xa#x1[1],x1[0] ?1 ZZ[1],ZZ[0] VCC PCH w=2\n")}, compat) ==
+          "xax1[1] ZZ[1] VCC PCH w=2\nxax1[0] ZZ[0] VCC PCH w=2\n");
+    CHECK(finish({element("##R1 a b 1\n")}, compat) == "R1 a b 1\n");
+  }
+}
+
 TEST_CASE("post-processing: save lines", "[cap:schematic-netlisting][req:Element line post-processing]") {
   CHECK(finish({element(".SAVE ?2 V( a,b )\n")}) == ".save v(a)\n.save v(b)\n");
   CHECK(finish({element(".print ?1 I( r1 )\n")}) == ".print i(r1)\n");
   CHECK(finish({element(".save all\n")}) == ".save all\n");
+  // Regression (SCHEM-NL-05 replay, M8 round 5): a width marker right after
+  // the `(` (spice_probe_vdiff.sym, `v(@@p\)`) makes a save line too; the
+  // line was written as is.
+  CHECK(finish({element(".save v(?1 E1 ) v(?1 net1 )\n")}) == ".save v(e1)\n.save v(net1)\n");
 }
 
 TEST_CASE("post-processing: subcircuit lines", "[cap:schematic-netlisting][req:Element line post-processing]") {
@@ -189,6 +206,26 @@ TEST_CASE("line breaking: the quote rule carries its state across lines", "[cap:
   const std::string wrapped = schem::break_lines(std::vector<schem::ProcessedLine>{{quoted, false}});
   CHECK(wrapped.find("\n+ ") != std::string::npos);
   CHECK(wrapped.find('\n') > 130);
+}
+
+// Regression (SCHEM-NL-05 replay, M8 round 5): the quote rule wraps before
+// a blank when the segment before it is 130 characters or longer; a blank
+// right after 130 characters did not wrap. Both modes (the rule has no
+// branch point; break_lines takes no mode).
+TEST_CASE("line breaking: the quote rule wraps at a segment of exactly 130 characters",
+          "[cap:schematic-netlisting][req:Line breaking]") {
+  const std::string head = "XM43 w='5.0 * 1 ' " + std::string(130 - 18, 'a');  // 130 characters
+  REQUIRE(head.size() == 130);
+  const std::string out = schem::break_lines(std::vector<schem::ProcessedLine>{{head + " nrs=1 sa=0", false}});
+  CHECK(out == head + "\n+ nrs=1 sa=0\n");
+  const std::string shorter = head.substr(0, 129);
+  CHECK(schem::break_lines(std::vector<schem::ProcessedLine>{{shorter + " nrs=1", false}}) == shorter + " nrs=1\n");
+  // The blank after the `+` does not count: a continuation segment of 129
+  // characters after it does not wrap, one of 130 does.
+  const std::string tail129 = "x='a b' " + std::string(129 - 8, 'c');
+  const std::string out2 =
+      schem::break_lines(std::vector<schem::ProcessedLine>{{head + " " + tail129 + " d " + std::string(140, 'e'), false}});
+  CHECK(out2 == head + "\n+ " + tail129 + " d\n+ " + std::string(140, 'e') + "\n");
 }
 
 // Regression (review of PR #80, point 1): the field after a width marker

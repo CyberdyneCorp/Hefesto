@@ -1,0 +1,9 @@
+file mkdir out
+set status 0
+schematic open input/nl17.sch
+if {[catch {schematic netlist out/nl17-options.spice -force}]} {set status 10}
+schematic close -discard
+schematic open input/nl17.sch
+if {[catch {schematic netlist out/nl17-uppercase.spice -uppercase -force}]} {set status 10}
+schematic close -discard
+quit $status

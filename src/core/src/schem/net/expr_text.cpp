@@ -92,8 +92,9 @@ Extent find_extent(std::string_view text, const Matches& match, std::size_t open
   return {open_end, close, close, false};
 }
 
-/// `text` with every marker, the quotes of `expr('...')` and each marker's
-/// matching `)` removed.
+/// `text` with every marker and each marker's matching `)` removed; the
+/// quotes of `expr('...')` stay (golden case SCHEM-NL-03: a sky130 `ad`
+/// left symbolic is written `'int((1 + 1)/2) * WN / 1 * 0.29'`).
 std::string strip_markers(std::string_view text) {
   const Matches match = match_parens(text);
   std::vector<bool> drop(text.size(), false);
@@ -106,10 +107,6 @@ std::string strip_markers(std::string_view text) {
       continue;
     }
     drop[e.close] = true;
-    if (e.quoted) {
-      drop[open_end] = true;
-      drop[e.inner_end] = true;
-    }
   }
   std::string out;
   out.reserve(text.size());
