@@ -630,8 +630,9 @@ def hier_device_specs() -> list[ExSpec]:
     mim = Cell([("mimcap", 0, 0, 10, 10), ("metal2", -1, -1, 11, 11)], [lab("mimcap", 5, 5, "t"), lab("metal2", 0, 0, "b")])
     top = Cell([("mimcap", 0, 0, 10, 10), ("metal2", -1, -1, 11, 11)], [lab("metal2", 0, 0, "pb")], uses=[Use("cap", "c1")])
     sc = device_cell(nfet_2x4())
-    cells = Cell([("metal1", 0, 40, 10, 44)], [lab("metal1", 5, 42, "w")],
-                 uses=[Use("sc", "x", 3, 0, (0, 2, 20, 0, 0, 0)), Use("sc", "y", 3, 20)])
+    uses = [Use("sc", "x", 3, 0, (0, 2, 20, 0, 0, 0)), Use("sc", "y", 3, 20)]
+    cells = Cell([("metal1", 0, 40, 10, 44)], uses=uses)
+    labelled = Cell([("metal1", 0, 40, 10, 44)], [lab("metal1", 5, 42, "w")], uses=uses)
     return [
         ExSpec("EX-043", DEV, ["Subcell device priority"],
                "device capacitor None mimcap metal2 10 2; the parent paints mimcap and metal2 exactly over a child "
@@ -639,8 +640,10 @@ def hier_device_specs() -> list[ExSpec]:
                {"ex": top, "cap": mim}, rules="device capacitor None mimcap metal2 10 2"),
         ExSpec("EX-047", SUB, ["Subcell substrate connections"],
                "substrate space well VSUB; a top with a 1-D array x (3 elements) and an instance y of a cell holding a "
-               "2x4 nfet: the merge of each element's and y's substrate with the top's VSUB",
-               {"ex": cells, "sc": sc}, rules="substrate space well VSUB\n" + NFET_RULE),
+               "2x4 nfet: the merge of each element's and y's substrate with the top's VSUB; then exw, the same top "
+               "with a label w on its wire, whose square becomes an interaction area that holds no use",
+               {"ex": cells, "exw": labelled, "sc": sc}, rules="substrate space well VSUB\n" + NFET_RULE,
+               roots=["ex", "exw"]),
     ]
 
 
