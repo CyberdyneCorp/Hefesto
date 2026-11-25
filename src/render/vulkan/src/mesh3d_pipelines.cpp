@@ -285,6 +285,7 @@ struct PipelineSpec {
   VkShaderModule vert;
   VkShaderModule frag;
   VkRenderPass pass;
+  bool clipped;  // the fragment shader's specialization constant 0 (kClip)
 };
 
 VkPipeline make_pipeline(VkDevice device, VkPipelineLayout layout, const PipelineSpec& spec) {
@@ -298,6 +299,10 @@ VkPipeline make_pipeline(VkDevice device, VkPipelineLayout layout, const Pipelin
   stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
   stages[1].module = spec.frag;
   stages[1].pName = "main";
+  const VkBool32 clip = spec.clipped ? VK_TRUE : VK_FALSE;
+  const VkSpecializationMapEntry clip_entry{0, 0, sizeof(VkBool32)};
+  const VkSpecializationInfo specialization{1, &clip_entry, sizeof(clip), &clip};
+  stages[1].pSpecializationInfo = &specialization;
   VkGraphicsPipelineCreateInfo info{};
   info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
   info.stageCount = static_cast<std::uint32_t>(stages.size());
@@ -354,6 +359,11 @@ void Pipelines::create(VkRenderPass target_pass) {
   if (supports_msaa(physical_)) {
     msaa_pass_ = create_msaa_pass(device_);
   }
+  target_pass_ = target_pass;
+  create_table(false, pipelines_);
+}
+
+void Pipelines::create_table(bool clipped, Table& out) {
   for (std::size_t k = 0; k < kKindCount; ++k) {
     for (std::size_t v = 0; v < kVariantCount; ++v) {
       const auto variant = static_cast<Variant>(v);
@@ -361,19 +371,40 @@ void Pipelines::create(VkRenderPass target_pass) {
         continue;
       }
       const PipelineSpec spec{static_cast<Kind>(k), variant, vert_[k], is_msaa(variant) ? msaa_frag_ : frag_,
-                              is_msaa(variant) ? msaa_pass_ : target_pass};
-      pipelines_[k][v] = make_pipeline(device_, layout_, spec);
+                              is_msaa(variant) ? msaa_pass_ : target_pass_, clipped};
+      out[k][v] = make_pipeline(device_, layout_, spec);
     }
   }
 }
 
+void Pipelines::ensure_clipped() {
+  if (have_clipped_) {
+    return;
+  }
+  try {
+    create_table(true, clipped_);
+  } catch (...) {
+    for (auto& row : clipped_) {
+      for (VkPipeline& p : row) {
+        if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
+        p = VK_NULL_HANDLE;
+      }
+    }
+    throw;
+  }
+  have_clipped_ = true;
+}
+
 void Pipelines::destroy() noexcept {
-  for (auto& row : pipelines_) {
-    for (VkPipeline& p : row) {
-      if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
-      p = VK_NULL_HANDLE;
+  for (Table* table : {&pipelines_, &clipped_}) {
+    for (auto& row : *table) {
+      for (VkPipeline& p : row) {
+        if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
+        p = VK_NULL_HANDLE;
+      }
     }
   }
+  have_clipped_ = false;
   if (msaa_pass_ != VK_NULL_HANDLE) vkDestroyRenderPass(device_, msaa_pass_, nullptr);
   if (layout_ != VK_NULL_HANDLE) vkDestroyPipelineLayout(device_, layout_, nullptr);
   if (set_layout_ != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(device_, set_layout_, nullptr);
@@ -388,8 +419,9 @@ void Pipelines::destroy() noexcept {
   vert_ = {};
 }
 
-VkPipeline Pipelines::get(Kind kind, Variant variant) const noexcept {
-  return pipelines_[static_cast<std::size_t>(kind)][static_cast<std::size_t>(variant)];
+VkPipeline Pipelines::get(Kind kind, Variant variant, bool clipped) const noexcept {
+  const Table& table = clipped ? clipped_ : pipelines_;
+  return table[static_cast<std::size_t>(kind)][static_cast<std::size_t>(variant)];
 }
 
 // --- MsaaImages ------------------------------------------------------------
