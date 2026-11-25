@@ -57,7 +57,7 @@ the specs quote them.
 | `CELL-READ-009` | info | Informational message while reading a cell (identifiers assigned, scaling). |
 | `CELL-READ-010` | info | A use block was adjusted or ignored (circular use, degenerate box). |
 | `CELL-READ-011` | warning | The cell has a zero timestamp and should be written out. |
-| `CELL-READ-013` | error | A compressed cell file could not be decompressed. |
+| `CELL-READ-013` | error | A compressed cell file could not be decompressed: corrupt gzip data, or it inflates past the 1 GiB cap. |
 | `CELL-READ-014` | warning | Two uses in a cell file share an instance identifier; one is renamed. |
 | `CELL-STAMP-001` | info | Timestamp mismatches were processed. |
 <!-- END DIAGNOSTIC CODES -->

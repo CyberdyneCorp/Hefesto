@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3554 scenarios, 1003 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3555 scenarios, 1004 open questions.
 
 ## Hefesto product (native)
 
@@ -52,11 +52,11 @@ Open questions: [33](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 
 ## Cell files (.mag) (CELL)
 
-Open questions: [47](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
+Open questions: [48](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 53 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
+| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 54 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
 | [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 16 | 24 | Defines the safety rules around reading and writing cell files: |
 | [`cell-library-resolution`](../openspec/specs/cell-library-resolution/spec.md) | 15 | 26 | Defines how Hefesto maps a cell name, or an instance's recorded path, to a cell file. It covers: |
 | [`cell-timestamps`](../openspec/specs/cell-timestamps/spec.md) | 8 | 11 | Defines the timestamp carried by every cell definition and by every instance record in a parent. The hierarchical design-rule checker uses these timestamps to detect children that … |
