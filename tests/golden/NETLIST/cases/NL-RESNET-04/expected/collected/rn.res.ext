@@ -1,0 +1,9 @@
+scale 1 1 1
+killnode "pp_1"
+rnode "pp_0" 0 60 0 40 0
+rnode "pp_1.n0" 0 60 3 40 0
+resist "pp_1.n0" "pp_0" 75
+killnode "c_1"
+rnode "c_0" 0 2499.2 0 0 0
+rnode "c_1.n0" 0 2140.8 100 16 0
+resist "c_1.n0" "c_0" 2500
