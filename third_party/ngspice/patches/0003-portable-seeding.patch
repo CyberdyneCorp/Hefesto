@@ -1,0 +1,114 @@
+Subject: [PATCH 0003] Portable generator seeding
+
+Seed the Tausworthe/LCG states from SplitMix64 of the seed instead of the C
+library's rand(), whose sequence differs between platforms (capability
+simulation-monte-carlo, "Portable random numbers"). Justification:
+patches/series.
+
+--- a/src/maths/misc/randnumb.c
++++ b/src/maths/misc/randnumb.c
+@@ -67,7 +67,26 @@
+ void rgauss(double* py1, double* py2);
+ static bool seedinfo = FALSE;
+ 
++/* Hefesto patch 0003: the seed of the next TausSeed(), set by PortableSeed()
++ * where the stock code calls srand(). */
++static unsigned long long portable_seed = 1;
+ 
++void PortableSeed(unsigned int seed)
++{
++   portable_seed = seed;
++}
++
++/* v_t of the Hefesto random stream (SplitMix64; capability simulation-sweeps,
++   Requirement "Design of experiments") for seed s. */
++static unsigned long long SplitMix64(unsigned long long s, unsigned int t)
++{
++   unsigned long long z = s + (unsigned long long)(t + 1) * 0x9E3779B97F4A7C15ULL;
++   z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
++   z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
++   return z ^ (z >> 31);
++}
++
++
+ /* Check if a seed has been set by the command 'set rndseed=value'
+    in spinit, .spiceinit or in a .control section
+    with integer value > 0. If available, call srand(value).
+@@ -81,7 +100,7 @@
+ /*   printf("Enter checkseed()\n"); */
+    if (cp_getvar("rndseed", CP_NUM, &newseed, 0)) {
+       if ((newseed > 0) && (oldseed != newseed)) {
+-         srand((unsigned int)newseed);
++         PortableSeed((unsigned int)newseed);
+          TausSeed();
+          if (oldseed > 0) /* no printout upon start-up */
+              printf("Seed value for random number generator is set to %d\n", newseed);
+@@ -102,17 +121,18 @@
+ {    
+    /* The Tausworthe initial states should be greater than 128.
+       We restrict the values up to 32767. 
+-      Here we use the standard random functions srand, called in main.c
+-      upon ngspice startup or later in fcn checkseed(),
+-      rand() and the maximum return value RAND_MAX*/
+-   CombState1 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState2 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState3 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState4 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState5 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState6 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState7 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
+-   CombState8 = (unsigned int)((double)rand()/(double)RAND_MAX * 32638.) + 129;
++      Hefesto patch 0003: the states come from the seed of PortableSeed()
++      through SplitMix64 instead of rand(), whose sequence differs between
++      C libraries: state_k = 129 + (v_{k-1}(s) mod 32639), k = 1 ... 8
++      (capability simulation-monte-carlo, "Portable random numbers"). */
++   CombState1 = 129 + (unsigned int)(SplitMix64(portable_seed, 0) % 32639ULL);
++   CombState2 = 129 + (unsigned int)(SplitMix64(portable_seed, 1) % 32639ULL);
++   CombState3 = 129 + (unsigned int)(SplitMix64(portable_seed, 2) % 32639ULL);
++   CombState4 = 129 + (unsigned int)(SplitMix64(portable_seed, 3) % 32639ULL);
++   CombState5 = 129 + (unsigned int)(SplitMix64(portable_seed, 4) % 32639ULL);
++   CombState6 = 129 + (unsigned int)(SplitMix64(portable_seed, 5) % 32639ULL);
++   CombState7 = 129 + (unsigned int)(SplitMix64(portable_seed, 6) % 32639ULL);
++   CombState8 = 129 + (unsigned int)(SplitMix64(portable_seed, 7) % 32639ULL);
+ 
+ #ifdef HVDEBUG
+    printf("\nTausworthe Double generator init states: %d, %d, %d, %d\n", 
+@@ -299,7 +319,7 @@
+             newseed = getpid();
+             cp_vset("rndseed", CP_NUM, &newseed);
+         }
+-        srand((unsigned int)newseed);
++        PortableSeed((unsigned int)newseed);
+         TausSeed();
+     }
+     else if ((sscanf(wl->wl_word, " %d ", &newseed) != 1) ||
+@@ -312,7 +332,7 @@
+         return;
+     }
+     else {
+-        srand((unsigned int)newseed);
++        PortableSeed((unsigned int)newseed);
+         TausSeed();
+         cp_vset("rndseed", CP_NUM, &newseed);
+     }
+--- a/src/include/ngspice/randnumb.h
++++ b/src/include/ngspice/randnumb.h
+@@ -16,6 +16,7 @@
+ extern double exprand(double);
+ 
+ extern void TausSeed(void);
++extern void PortableSeed(unsigned int seed); /* Hefesto patch 0003 */
+ extern unsigned int CombLCGTausInt(void);
+ extern unsigned int CombLCGTausInt2(void);
+ 
+--- a/src/frontend/trannoise/wallace.c
++++ b/src/frontend/trannoise/wallace.c
+@@ -80,7 +80,7 @@
+     unsigned int coa;
+ 
+     /* initialize the uniform generator */
+-    srand((unsigned int) getpid());
++    PortableSeed((unsigned int) getpid());
+     // srand(17);
+     TausSeed();
+ 

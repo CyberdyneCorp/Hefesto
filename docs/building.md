@@ -45,6 +45,7 @@ ctest --preset linux-debug
 | `HEFESTO_WARNINGS_AS_ERRORS` | OFF | `-Werror` for first-party code |
 | `HEFESTO_SANITIZERS` | empty | comma list for `-fsanitize=`, applied to all targets |
 | `HEFESTO_TEST_DESKTOP_WINDOW` | OFF | registers the window smoke tests (labels `desktop-window-x11`, `desktop-window-wayland`): each starts `hefesto --smoke-frames 30` through Raven and needs a display |
+| `HEFESTO_BUILD_NGSPICE` | OFF | builds the simulation engine library `libngspice-hefesto` from the pinned ngspice-47 (`third_party/ngspice/`, M9); see [Simulation engine library](#simulation-engine-library-m9) |
 
 Pass options after the preset, e.g. `cmake --preset macos-debug -DHEFESTO_BUILD_DESKTOP=OFF`.
 
@@ -282,6 +283,30 @@ python3 scripts/fetch_pdk.py sky130-xschem gf180mcu-xschem ihp-xschem --cli buil
 python3 scripts/fetch_pdk.py --print-digest ihp-xschem
 ```
 
+### netgen and ngspice data sets (M9)
+
+LVS and simulation (M9: the LVS NG-PDK cases, the SIM and SIMADV captures, the capture image's OSDI build) use the netgen setup files and the ngspice model trees of the same three releases (design D19 of `openspec/changes/m9-lvs-simulation`). They come in five more data sets, fetched only when named:
+
+| Set | Trees | Downloaded | Kept |
+|---|---|---|---|
+| `gf180mcu-netgen` | `gf180mcuD/libs.tech/netgen` (`gf180mcuD_setup.tcl`, `setup.tcl`) | 170 MB (`common`) | 0.04 MB, 2 files |
+| `ihp-netgen` | `ihp-sg13g2/libs.tech/netgen` (`ihp-sg13g2_setup.tcl`, Q-LVS-31) | 435 MB (`common` 434 MB, `sg13g2_pr` 0.2 MB) | 0.01 MB, 1 file |
+| `sky130-ngspice` | `sky130A/libs.tech/combined` (the continuous models, Q-SIMADV-2), `sky130A/libs.tech/ngspice` and `sky130A/libs.ref/sky130_fd_pr/spice`, which both model trees `.include` | 20 MB (`common` 6.6 MB, `sky130_fd_pr` 13.9 MB) | 55 MB, 1065 files |
+| `gf180mcu-ngspice` | `gf180mcuD/libs.tech/ngspice` | 170 MB (`common`) | 1.6 MB, 8 files |
+| `ihp-ngspice` | `ihp-sg13g2/libs.tech/ngspice` and `ihp-sg13g2/libs.tech/verilog-a` (the Verilog-A sources of PSP103, `r3_cmc`, `mosvar`, `cap_cmom*`, compiled to OSDI by the capture image, Q-SIM-23) | 435 MB (`common` 434 MB, `sg13g2_pr` 0.2 MB) | 1.2 MB, 74 files |
+
+The sky130 netgen setup file (`sky130A/libs.tech/netgen/sky130A_setup.tcl`) is in `sky130-xschem`; with the two netgen sets it makes the three setup files of the NG-PDK cases (Q-LVS-31).
+
+- **Root.** The netgen sets install under `.cache/pdks/netgen/`, the ngspice sets under `.cache/pdks/ngspice/` (`.cache/pdks/<root>/ciel/<family>/versions/<pin>/`), for the reason given for the GDS sets. Each `pdk install` names the variant's smallest library (`gf180mcu_fd_pr`, `sg13g2_pr`, `sky130_fd_pr`), because the command needs one; only the subset is kept.
+- **Cache keys.** `pdk-gf180mcu-netgen-5740c4a81c42-91b3dffaffe8abcb`, `pdk-ihp-netgen-5e6d592e4002-7f6cf90b9540018d`, `pdk-sky130-ngspice-5740c4a81c42-a4e109d0323a049a`, `pdk-gf180mcu-ngspice-5740c4a81c42-31ead4717ee91797`, `pdk-ihp-ngspice-5e6d592e4002-89ad3139194e79c8` (`--cache-info`: `gf180mcu_netgen_key`, `gf180mcu_netgen_path`, ...).
+- **Tests.** `tests/unit/common/reference_data.hpp` gives the paths: `pinned_tool_file(kGf180mcuNetgenSetup)`, `kIhpNetgenSetup`, `kSky130NetgenSetup` (from `sky130-xschem`), `kSky130NgspiceLib`, `kSky130CombinedLib`, `kGf180mcuNgspiceLib`, `kIhpNgspiceMosLib` and `kIhpPsp103Source`; a test whose file is missing skips.
+
+```sh
+python3 scripts/fetch_pdk.py gf180mcu-netgen ihp-netgen sky130-ngspice gf180mcu-ngspice ihp-ngspice \
+    --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py --print-digest sky130-ngspice
+```
+
 Run some steps only by naming them; every step is a no-op once its data is present and verified:
 
 ```sh
@@ -291,7 +316,7 @@ python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an insta
 python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
 ```
 
-The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets, the three LEF sets and the three xschem sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`, the LEF sets into `DIR/lef`, the xschem sets into `DIR/xschem`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets, the three LEF sets, the three xschem sets and the five netgen and ngspice sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`, the LEF sets into `DIR/lef`, the xschem sets into `DIR/xschem`, the netgen and ngspice sets into `DIR/netgen` and `DIR/ngspice`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 
@@ -305,6 +330,58 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 ```
 
 `--jobs N` sets how many `hefesto-cli` sessions run at a time (default: the CPU count; a full run takes about 7 minutes with 6 jobs on an M-series Mac), `--chunk N` the cases per session, `--work DIR` keeps the two runs' files (`native/` and `tcl/` per chunk, with `console.txt`). The exit status is 0 when every case agrees, 1 on a difference, 3 when a data set is missing. The console lines of the two runs are compared too and only reported: the framework prints its own diagnostics when the `gencell` command returns, so their order may differ.
+
+## Simulation engine library (M9)
+
+`libngspice-hefesto` is ngspice-47 (`a80f6e3e`) with Hefesto's patch series
+(`third_party/ngspice/patches/`), built by a Hefesto-written CMake wrapper
+(Q-SIM-7, Q-SIM-20). Only the simulation worker `hefesto-simd` loads it; the
+editor, `hefesto-cli` and the core never link it, and
+`scripts/check_engine_boundary.py` checks that in CI. It is off by default:
+
+```sh
+cmake --preset macos-debug -DHEFESTO_BUILD_NGSPICE=ON
+cmake --build --preset macos-debug --target ngspice-hefesto
+# or on its own, as .github/workflows/ngspice.yml and the capture image do:
+cmake -S third_party/ngspice -B build/ngspice -G Ninja -DCMAKE_BUILD_TYPE=Release [-DHEFESTO_NGSPICE_EXECUTABLE=ON]
+cmake --build build/ngspice -j4
+cmake --build build/ngspice --target ngspice_hefesto_source_archive
+```
+
+It needs Python 3 and `patch`; the first configure downloads the pinned
+`ngspice-47.tar.gz` (SHA-256 checked) and applies `patches/series`. Outputs:
+`libngspice-hefesto`, `ngspice-manifest.json` (source, patches, configure line,
+features, code models and licences; the build fails if a compiled file carries a
+GPL notice) and, from the target `ngspice_hefesto_source_archive`, the source
+archive the LGPL and MPL terms require. `third_party/ngspice/README.md` has the
+details, including how to update the pin.
+
+### Replacing the ngspice library
+
+The library is replaceable by the user (`hefesto-licensing`; design D2 of
+`openspec/changes/m9-lvs-simulation`):
+
+1. Unpack the source archive shipped with the release
+   (`ngspice-hefesto-<version>-src.tar.gz`: every compiled ngspice file as
+   patched, all headers, the whole `src/osdi` tree, cppduals, the code-model
+   inputs, the patches and the wrapper), or start from the pinned tarball and
+   `third_party/ngspice/patches/`.
+2. Make your change and build as above. Keep the exported C API (`ngSpice_*`,
+   `ngGet_*`, `ngCM_Input_Path`) unchanged.
+3. Put the new library into the install's `lib/` directory, replacing the
+   installed files: the versioned file (`libngspice-hefesto.47.<level>.dylib`
+   on macOS, `libngspice-hefesto.so.47.<level>` on Linux) and its links
+   `libngspice-hefesto.47.dylib` / `libngspice-hefesto.so.47` (the name the
+   adapter records) and `libngspice-hefesto.dylib` / `.so`. The worker
+   `hefesto-simd` in `bin/` finds it through its install-relative run path
+   (`$ORIGIN/../lib` on Linux, `@loader_path/../lib` on macOS).
+4. macOS: sign the rebuilt library ad hoc, naming the versioned file, not a
+   link: `codesign --force -s - lib/libngspice-hefesto.47.<level>.dylib`. Only `hefesto-simd`
+   carries `com.apple.security.cs.disable-library-validation`, so a notarized
+   Hefesto loads an ad-hoc-signed library in the worker and nowhere else.
+
+The desktop linking (a replaceable library loaded only by the sandboxed
+worker) goes through a legal review before the Desktop Beta (D-28, task 20.1).
 
 ## Golden capture
 

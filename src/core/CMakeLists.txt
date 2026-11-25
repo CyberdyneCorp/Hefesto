@@ -94,9 +94,16 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       netlist/spice SPICE, netlist/{sim,extcheck} SIM, extresist/network
 #       RESNET, extresist/{command,output} RESCMD)   extflat/ EXTFLAT
 #       antenna/ ANTENNA
+#   M9 (openspec/changes/m9-lvs-simulation/design.md D3): lvs/, sim/
+#       SCAFFOLD (shared files; each subdirectory has its own sources.cmake
+#       owned by its workstream: lvs/{net,read} LVSREAD, lvs/setup LVSSETUP,
+#       lvs/cmp LVSALG, lvs/reduce LVSRED, lvs/prop LVSPROP, lvs/hier
+#       LVSHIER, lvs/report LVSREP, lvs/cmd LVSCMD, sim/engine SIMENG,
+#       sim/deck SIMDECK, sim/result SIMRES, sim/probe SIMPROBE, sim/cmd
+#       SIMCMD, sim/runset SIMADV, sim/meas SIMMEAS)
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
                        script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d
-                       netlist extresist antenna)
+                       netlist extresist antenna lvs sim)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

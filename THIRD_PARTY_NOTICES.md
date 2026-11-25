@@ -53,6 +53,34 @@ bundled: they are read at run time from a Magic installation (`$CAD_ROOT/magic/s
 | Tcl | 8.6.16, release archive `tcl8.6.16-src.tar.gz`, SHA-256 `91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5`, patched (see [Tcl](#tcl)) | Tcl/Tk license (BSD-style, TCL) | all packages (core) | https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz (https://www.tcl-lang.org) |
 | ↳ LibTomMath (in Tcl) | as bundled by Tcl 8.6.16 | Unlicense (public domain) | all packages (core) | https://github.com/libtom/libtommath |
 
+## Components in M9
+
+The simulation engine library `libngspice-hefesto` is built from the pinned ngspice release by
+`third_party/ngspice/` (option `HEFESTO_BUILD_NGSPICE`, default OFF; see
+`third_party/ngspice/README.md`). Only `hefesto-simd` loads it (decision D-28, Q-SIM-20). Its
+`ngspice-manifest.json` lists every compiled file with the licence ngspice's `COPYING` gives it and
+the notice the file carries; the build fails if a compiled file carries a GPL notice. Where
+`COPYING` and a file's notice differ (KLU's parts), both are recorded; the SPDX identifiers below
+are settled by the legal review of task 20.1 before the Desktop Beta. netgen is not included in
+any form: Hefesto's LVS engine is a clean-room implementation (design D2, Q-LVS-30).
+
+| Component | Version / pin | License | Shipped in | Source |
+|---|---|---|---|---|
+| ngspice | `47-hefesto1`: ngspice-47, commit `a80f6e3e95d51534905b1f23410a951802666656`, release archive `ngspice-47.tar.gz`, SHA-256 `894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f`, patched (`third_party/ngspice/patches/0001`-`0004`) | Modified BSD (BSD-3-Clause); GPL parts excluded | `libngspice-hefesto` (loaded by `hefesto-simd`) | https://sourceforge.net/projects/ngspice/ (https://git.code.sf.net/p/ngspice/ngspice) |
+| ↳ KLU, AMD, COLAMD, BTF, SuiteSparse_config (`src/maths/KLU`, in ngspice) | as bundled by ngspice-47 | LGPLv2 per ngspice's `COPYING`; COLAMD's files say LGPL-2.1-or-later; `UFconfig.h` says "no licensing restrictions" | `libngspice-hefesto` | https://github.com/DrTimothyAldenDavis/SuiteSparse |
+| ↳ numparam (in ngspice) | as bundled by ngspice-47 | LGPLv2 or later | `libngspice-hefesto` | ngspice `src/frontend/numparam` |
+| ↳ OSDI (`src/osdi`, in ngspice) | as bundled by ngspice-47 | MPL-2.0 | `libngspice-hefesto` | ngspice `src/osdi` |
+| ↳ cppduals (in ngspice, used by HICUM) | as bundled by ngspice-47 | MPL-2.0 | `libngspice-hefesto` | ngspice `src/include/cppduals` |
+| ↳ sparse (in ngspice) | as bundled by ngspice-47 | MIT-style (unnamed) | `libngspice-hefesto` | ngspice `src/maths/sparse` |
+| ↳ XSPICE code models `analog`, `digital` (without `d_cosim`), `spice2poly`, `xtradev` (in ngspice) | as bundled by ngspice-47 | public domain | `libngspice-hefesto` | ngspice `src/xspice/icm` |
+| OpenVAF-reloaded | 20260616, upstream commit `44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7`, archive SHA-256 `bd4854a6e5b55f1c64a0b853d90216d1e3961d2f6d3ac572125597d28b867301` | GPL-3.0 | **not shipped** (build-time tool: golden capture image, and from task 5.2 the IHP OSDI modules) | https://github.com/arpadbuermen/OpenVAF |
+
+The source archive the LGPL and MPL terms require (every compiled file, all headers, the whole
+OSDI tree, cppduals, the patches and the CMake wrapper) is produced by the build target
+`ngspice_hefesto_source_archive`; `docs/building.md` "Replacing the ngspice library" says how to
+rebuild and replace the library. The compact models compiled into the library (task 5.2) get their
+rows here when they land.
+
 ## libcurl
 
 The Linux CLI and desktop download PDK catalogs and assets over HTTPS with libcurl
@@ -752,10 +780,7 @@ networking and data formats" and "Bundled fonts and PDK data licensing" of `hefe
 | Component | Expected license | Where | Notes |
 |---|---|---|---|
 | Magic scmos tech files (including the scmos MOSIS notice) | UC Berkeley permissive notice + MOSIS notice | all, if bundled | M1 tests generate scmos.tech from build/ref/magic; not shipped |
-| ngspice | modified BSD | all | GPL parts excluded |
-| ↳ KLU, numparam | LGPLv2 / LGPLv2+ | all | static linking on iPadOS: Q-SIM-1 |
-| ↳ OSDI | MPL-2.0 | all | plus each compact model compiled in (Q-SIM-2) |
-| ↳ sparse | per ngspice | all | capability `simulation-engine-embedding` |
+| ngspice compact models compiled in (IHP PSP103, `cap_cmomi`, `cap_cmomf`) | per model | `libngspice-hefesto` | M9 task 5.2; ngspice itself is under "Components in M9" |
 | cgltf (or tinygltf) | MIT | all | glTF writer |
 | libsodium (or Monocypher) | ISC (BSD-2-Clause or CC0-1.0) | Linux | |
 | libcurl | curl license (MIT-style) | Linux | |

@@ -29,7 +29,7 @@
 - [ ] New first-party files carry the `SPDX-License-Identifier: Apache-2.0` header (`scripts/check_license_headers.py`).
 - [ ] New third-party code, data or fonts are pinned in `cmake/Dependencies.cmake` (or vendored with their license) and listed in `THIRD_PARTY_NOTICES.md` with a license compatible with Apache-2.0 and App Store distribution.
 - [ ] No code was copied, translated or closely paraphrased from a GPL-licensed project. Behavior that must match netgen, KLayout or xschem was implemented only from the Hefesto specifications.
-- [ ] If this pull request adds or changes **LVS / netlist-comparison** code: no netgen source was used as an implementation reference.
+- [ ] If this pull request adds or changes **LVS** code, tests or golden inputs (`src/core/src/lvs/`, `src/shell/desktop/src/lvs_*`, `tests/golden/LVS/`, the schematic-driven LVS of `schem/`): I have not read netgen's source; I worked from the `lvs-*` specs only, and followed no `Evidence:` line or `(netgen ref: ...)` trace (netgen clean room: `docs/contributing/cleanroom.md`).
 - [ ] If this pull request adds or changes **schematic** code, tests or golden inputs (`src/core/src/schem/`, `assets/schematic/`, `src/shell/desktop/src/schematic_*`, `tests/golden/SCHEM/`): I have not read xschem's source; I worked from the specs only, and followed no `Evidence:` line or `(xschem ref: ...)` trace (clean-room process: `docs/contributing/cleanroom.md`).
 - [ ] If this pull request adds or changes **OASIS** code: no KLayout source was used as an implementation reference, and KLayout is not linked or bundled (it may only be run as a separate, user-installed program on desktop).
 - [ ] Not applicable: this pull request touches none of the areas above.
@@ -38,3 +38,5 @@
 
 - [ ] Schematic code, tests or golden inputs: the author is not on the M8 spec team (roster in `docs/contributing/cleanroom.md`). A pull request implementing a `schematic-*` capability whose author is on the spec team is rejected.
 - [ ] Golden inputs under `tests/golden/SCHEM/` are Hefesto-authored or taken from the PDK data sets, each case declares its `provenance`, and none comes from xschem's own distribution (`scripts/check_cleanroom.py` passes).
+- [ ] LVS code, tests or golden inputs: the author is not on the M9 LVS spec team (LVS roster in `docs/contributing/cleanroom.md`); for `lvs-command` (LVSCMD) or the schematic-driven LVS of task 16.3, the author has never read netgen's source (roster rule).
+- [ ] Golden inputs under `tests/golden/LVS/` are Hefesto-authored or taken from the PDK data sets, each case declares its `provenance`, and none comes from netgen's distribution or the capture image's `/opt/src/netgen` (`scripts/check_cleanroom.py` passes).

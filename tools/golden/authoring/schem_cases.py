@@ -1024,6 +1024,16 @@ LATER: dict[str, tuple[str, str]] = {
                            "by SCHEM-NL-07's dc_lv_nmos.spice"),
     "SCHEM-SIM-02": ("M9", "operating-point annotation (annotate_op, @spice_get_* values) needs the embedded simulator "
                            "and the sky130 models (M9); the captured texts with no simulation loaded are kept"),
+    # Q-SCHEM-39, approved 2026-11-22.
+    "SCHEM-LVS-01": ("M9", "schematic-driven LVS (lvs.out, the match result and the cross-probe map) needs the lvs-* "
+                           "capabilities, which m8-schematic design D13 places in M9 (Q-SCHEM-39, approved 2026-11-22); "
+                           "the captures are kept; M8 checks inv_1.spice (deferred_outputs)"),
+}
+
+# Outputs of a LATER case that an earlier milestone already checks: case id -> {output: milestone}.
+# Q-SCHEM-39 (approved 2026-11-22): M8 keeps checking SCHEM-LVS-01's inv_1.spice netlist output.
+LATER_OUTPUTS: dict[str, dict[str, str]] = {
+    "SCHEM-LVS-01": {"inv_1.spice": "M8"},
 }
 
 M8_REASON = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
@@ -1045,7 +1055,15 @@ def deviation_entry(spec: Spec) -> list[str]:
         lines.append(f"decisions = {_toml_list(decisions)}")
     if deferred:
         lines.append(f'deferred = "{deferred}"')
+        lines += _deferred_outputs_line(LATER_OUTPUTS.get(spec.id, {}))
     return lines + [f"outputs = {_toml_list(outputs)}", f"reason = {_toml_str(reason)}", ""]
+
+
+def _deferred_outputs_line(per_output: dict[str, str]) -> list[str]:
+    if not per_output:
+        return []
+    pairs = ", ".join(f"{_toml_str(name)} = {_toml_str(milestone)}" for name, milestone in per_output.items())
+    return [f"deferred_outputs = {{ {pairs} }}"]
 
 
 def deviation_block(all_specs: list[Spec]) -> str:
@@ -1053,7 +1071,8 @@ def deviation_block(all_specs: list[Spec]) -> str:
              "# Every SCHEM case waits for the schematic workstreams of M8 (openspec/changes/m8-schematic,",
              "# sections 6-11); a workstream whose implementation replays a case removes it from this block",
              "# (schem_cases.REPLAYED) and re-runs --deviations. SCHEM-PR-05 keeps its approved decision",
-             "# (schem_cases.DECIDED); SCHEM-SIM-01/02 are deferred to M9 (schem_cases.LATER).", ""]
+             "# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER),",
+             "# except SCHEM-LVS-01's inv_1.spice, which M8 checks (schem_cases.LATER_OUTPUTS, Q-SCHEM-39).", ""]
     for spec in all_specs:
         lines += deviation_entry(spec)
     lines.append(DEVIATION_END)

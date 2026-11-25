@@ -336,6 +336,83 @@ class XschemDataSets(unittest.TestCase):
         self.assertIn("already present and verified", out)
 
 
+class ToolDataSets(unittest.TestCase):
+    """The netgen and ngspice data sets of openspec/changes/m9-lvs-simulation design D19 (task 3.1)."""
+
+    TOOL_SETS = {"gf180mcu-netgen": "netgen", "ihp-netgen": "netgen", "sky130-ngspice": "ngspice",
+                 "gf180mcu-ngspice": "ngspice", "ihp-ngspice": "ngspice"}
+
+    def test_tool_sets_use_the_m5_releases_and_their_own_pdk_root(self):
+        for name, pdk_dir in self.TOOL_SETS.items():
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                tech = fetch.DATA_SETS[name.split("-")[0]]
+                self.assertEqual((data.family, data.variant, data.version), (tech.family, tech.variant, tech.version))
+                self.assertEqual(data.pdk_dir, pdk_dir)
+                self.assertEqual(data.version_dir(Path("/r")),
+                                 Path("/r") / pdk_dir / "ciel" / tech.family / "versions" / tech.version)
+                self.assertEqual(len(data.install_commands()), 1)
+                self.assertEqual(len(data.libraries), 1)
+
+    def test_subsets_of_design_d19(self):
+        subsets = {name: fetch.DATA_SETS[name].subset for name in self.TOOL_SETS}
+        self.assertEqual(subsets, {
+            "gf180mcu-netgen": ("gf180mcuD/libs.tech/netgen",),
+            "ihp-netgen": ("ihp-sg13g2/libs.tech/netgen",),
+            # libs.ref/sky130_fd_pr/spice: both model trees `.include` it.
+            "sky130-ngspice": ("sky130A/libs.tech/combined", "sky130A/libs.tech/ngspice",
+                               "sky130A/libs.ref/sky130_fd_pr/spice"),
+            "gf180mcu-ngspice": ("gf180mcuD/libs.tech/ngspice",),
+            # The Verilog-A sources the capture image compiles to OSDI (Q-SIM-23).
+            "ihp-ngspice": ("ihp-sg13g2/libs.tech/ngspice", "ihp-sg13g2/libs.tech/verilog-a"),
+        })
+
+    def test_pinned_digests_of_task_3_1(self):
+        self.assertEqual({name: fetch.DATA_SETS[name].tree_sha256 for name in self.TOOL_SETS}, {
+            "gf180mcu-netgen": "91b3dffaffe8abcb23b3343fe6089e28e33e5a2416787525e642662d9e26d005",
+            "ihp-netgen": "7f6cf90b9540018dbde5931a4b922caed6e76e21246b29df31051fd2ce72b080",
+            "sky130-ngspice": "a4e109d0323a049a4f86662a49f9a8b57896c416dfcfd90fb5eb14810a4bb93e",
+            "gf180mcu-ngspice": "31ead4717ee917971f1fc5a74381e5b1adcfc664c005d4b69e03268ec84e3783",
+            "ihp-ngspice": "89ad3139194e79c84db1b02bdc5b11ac4920551e8330396b5b5cd678c73dfa0d"})
+
+    def test_cache_keys_and_paths(self):
+        info = dict(line.split("=", 1) for line in fetch.cache_info(fetch.REPO / ".cache" / "pdks"))
+        self.assertEqual(info["ihp_ngspice_key"], "pdk-ihp-ngspice-5e6d592e4002-89ad3139194e79c8")
+        self.assertEqual(info["gf180mcu_netgen_key"], "pdk-gf180mcu-netgen-5740c4a81c42-91b3dffaffe8abcb")
+        self.assertEqual(info["sky130_ngspice_path"],
+                         f".cache/pdks/ngspice/ciel/sky130/versions/{fetch.OPEN_PDKS_PIN}")
+        self.assertEqual(info["ihp_netgen_path"], f".cache/pdks/netgen/ciel/ihp-sg13/versions/{fetch.IHP_PIN}")
+
+    def test_tool_sets_are_steps_only_when_named(self):
+        for name in self.TOOL_SETS:
+            self.assertNotIn(name, fetch.selected_steps([]))
+        self.assertEqual(fetch.selected_steps(["ihp-ngspice", "gf180mcu-netgen", "sky130"]),
+                         ["sky130", "gf180mcu-netgen", "ihp-ngspice"])
+        self.assertEqual(fetch.parse_args(["--print-digest", "sky130-ngspice"]).print_digest, "sky130-ngspice")
+
+    def test_install_and_second_run_no_op(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shape = dict(pdk_dir="ngspice", subset=("toyA/libs.tech/ngspice", "toyA/libs.tech/verilog-a"))
+            populate(make_set(**shape), Path(tmp) / "scratch")
+            data = make_set(**shape, tree_sha256=fetch.set_digest(make_set(**shape), Path(tmp) / "scratch"))
+            root, cli = Path(tmp) / "pdks", Path(tmp) / "hefesto-cli"
+            cli.write_text("")
+            calls = []
+
+            def run(argv, check):
+                calls.append(argv)
+                self.assertEqual(argv[2], f"--pdk-root={root / 'ngspice'}")
+                populate(data, root)
+                return subprocess.CompletedProcess(argv, 0)
+
+            with mock.patch.object(fetch.subprocess, "run", side_effect=run):
+                first, _, _ = quiet(fetch.fetch_set, data, cli, root)
+                second, out, _ = quiet(fetch.fetch_set, data, cli, root)
+        self.assertTrue(first and second)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("already present and verified", out)
+
+
 class TreeDigest(unittest.TestCase):
     def test_digest_covers_only_the_subset_and_is_order_independent(self):
         data = make_set()

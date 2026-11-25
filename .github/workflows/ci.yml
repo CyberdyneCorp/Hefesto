@@ -657,6 +657,12 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      # Licence boundary of the simulation engine (openspec/changes/m9-lvs-simulation design D2): no ngSpice_
+      # symbol outside the adapter plugin and libngspice-hefesto, no release binary but hefesto-simd loading the
+      # plugin, and sharedspice.h only under src/simd/adapter/.
+      - name: Check the simulation engine boundary
+        run: python3 scripts/check_engine_boundary.py --build-dir build/${{ matrix.preset }}
+
       # Uses the hefesto-cli just built (its own `pdk install`); a no-op when every restored set verifies.
       - name: Verify the pinned PDK data sets
         env:

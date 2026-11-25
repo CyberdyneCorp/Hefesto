@@ -8,17 +8,21 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-1: Legacy `.ext` reader drops modern device records
 - Kind: doc-mismatch
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: netgen's `readnet ext`/`extflat` parses `device` records but creates no device. Only obsolete `fet` records become transistors, so a current Magic `.ext` file loads as nets with no devices. The documented flow is `ext2spice` to SPICE and then netgen.
 - Evidence: base/ext.c:239-308, base/ext.c:310-362
 - Options: replicate (support the reader with the same gap) | fix (map `device` records to devices) | omit (do not offer `readnet ext`)
 - Recommendation: omit from the GUI. Keep `readnet ext` for script compatibility and replicate it. LVS layout input always goes through the internal `ext2spice lvs` path (capability `lvs-command`).
+- Resolution: other — keep `readnet ext` for script compatibility and replicate its gap in both `netgen-compat` modes (`device` records create no device; only obsolete `fet` records become transistors); it has no GUI entry, and LVS layout input always goes through the internal `ext2spice lvs` path (`lvs-command`). Approved by the user 2026-11-22.
 
 ### Q-LVS-2: Report order inherits netgen hash and partition order
 - Kind: quirk
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: several orders come from internal lists that are reshuffled by refinement, or from hash iteration. This affects pin table rows, mismatch fragment groups, `Contents of circuit` class lists, the indices of properties of interest, and property-error blocks.
 - Evidence: base/netcmp.c:7703-7895, base/netcmp.c:1615-2100, base/query.c:820-830, base/netcmp.c:4970-4990
 - Options: replicate (emulate the hash tables and partition lists exactly) | fix (deterministic order, compared order-insensitively)
 - Recommendation: fix, following decision X-1. Compare these sections as sets (capability `lvs-reports`, Requirement "Canonical golden comparison").
+- Resolution: fix — every report section is written in one deterministic order on every platform (X-1); the hash- and partition-ordered sections (pin table rows, mismatch fragment groups, `Contents of circuit` class lists, property indices, property-error blocks) are compared as sets (`lvs-reports` "Canonical golden comparison"). Approved by the user 2026-11-22.
 
 ### Q-LVS-3: Case-insensitive matching versus hashing; high bytes
 - Kind: bug
@@ -30,10 +34,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-4: Hash collisions and pseudo-random labels
 - Kind: ambiguity
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: classes are separated by 64-bit wrap-around sums of pseudo-random labels (a `ran2`-style generator). A collision can merge distinct classes, which may cause false symmetries or mask a mismatch. netgen does not detect collisions.
 - Evidence: base/netcmp.c:3018-3021, base/netcmp.c:4125-4155, base/pdutils.c:39-114
 - Options: replicate (reproduce the generator and seeds bit for bit) | fix (any deterministic generator, plus a collision check that splits classes by an exact structural signature)
 - Recommendation: fix. The results are equal except on collisions, which are vanishingly rare. Label values are not observable.
+- Resolution: fix — the pseudo-random choices use a seeded deterministic generator, and a structural-signature check splits classes whose hashes collide; the same inputs give the same partitions and labels on every run and platform (`lvs-comparison-algorithm` "Single-threaded comparison per pair"). Approved by the user 2026-11-22.
 
 ### Q-LVS-5: `permute forget <cell>` leaves a dangling pair list
 - Kind: bug
@@ -45,12 +51,14 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-6: `property add` single-word and `{key tol}` parsing
 - Kind: quirk
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior:
   - A single-word spec is typed by testing whether the *key text* is a number: numeric key → double, otherwise string with tolerance 0. So `property c add w` creates a **string** property `w`, compared exactly.
   - In `{key tol}`, a non-numeric `tol` that is not a type keyword passes an uninitialized tolerance.
 - Evidence: tcltk/tclnetgen.c:3800-3846
 - Options: replicate | fix (single word → string; non-numeric tol → error)
 - Recommendation: replicate the single-word rule, since PDK files may depend on it. Fix the uninitialized tolerance by raising an error (tier 1).
+- Resolution: replicate, with a tier-1 fix — netgen's single-word `property add` rule is copied in both modes; a `{key tol}` tolerance that is not a number raises an error in both modes instead of using an uninitialised value (X-2 tier 1). Approved by the user 2026-11-22.
 
 ### Q-LVS-7: Relative tolerance for zero or negative values
 - Kind: quirk
@@ -83,17 +91,21 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-10: Property comparison failure is reported as a property error
 - Kind: ambiguity
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: a pair whose properties cannot be compared (class-identity mismatch, malformed records) sets the property state to "failure" (−1). `verify unique` then returns −3, exactly as for property errors. Later pairs are still checked.
 - Evidence: base/netcmp.c:6510-6522, tcltk/tclnetgen.c:2705-2712
 - Options: replicate | fix (a distinct status)
 - Recommendation: replicate in the netgen-compatible codes. Expose a distinct `property-check-failed` detail in Hefesto's structured result.
+- Resolution: replicate — a property comparison failure keeps netgen's codes and texts in both modes; Hefesto's structured result also carries the detail `property-check-failed`. Approved by the user 2026-11-22.
 
 ### Q-LVS-11: Pre-match flattening heuristic
 - Kind: ambiguity
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: the decision to flatten a subcircuit before matching depends on instance counts adjusted in hash order, with three asymmetric cases. Results can depend on the order in which classes are visited.
 - Evidence: base/flatten.c:1673-1960
 - Options: replicate (exact emulation including order) | fix (an order-independent rule that agrees on all golden cases)
 - Recommendation: behavioral compatibility, validated by the NG-HIER golden cases. Record any divergence as a new entry.
+- Resolution: replicate (behavioural) — the pre-match flattening heuristic matches netgen's observable behaviour, validated by the NG-HIER golden cases; any divergence found is recorded as a new entry. Approved by the user 2026-11-22.
 
 ### Q-LVS-12: Report text used as a printf format
 - Kind: bug
@@ -105,6 +117,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-13: JSON file naming and escaping
 - Kind: bug
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior:
   - **Naming.** The JSON name replaces the log name from its last `.`; a name with no `.` becomes `.json`. A `nolog` log name still produces a JSON file derived from it.
   - **Escaping.** Only backslashes are escaped. Quotes and control characters in names produce invalid JSON.
@@ -112,13 +125,16 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/netgen.tcl.in:32-110
 - Options: replicate | fix (append `.json` when there is no extension; full JSON escaping; valid empty lists)
 - Recommendation: fix the escaping and empty lists (invalid output is data loss for consumers). Replicate the naming for names that have an extension, and append `.json` otherwise.
+- Resolution: fix — JSON output uses full JSON string escaping and valid empty lists in both modes; the file name keeps netgen's rule when the given name has an extension, and `.json` is appended otherwise. Approved by the user 2026-11-22.
 
 ### Q-LVS-14: `.include` home-directory expansion [platform]
 - Kind: platform
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: `~/` uses `$HOME` and `~user/` uses the password database.
 - Evidence: base/spice.c:800-835
 - Options: platform alternative (map `~` to the user's Hefesto documents root; reject `~user`)
 - Recommendation: platform alternative on iPadOS. Desktop keeps netgen behavior.
+- Resolution: platform — on iPadOS a leading `~` in an `.include` path maps to the user's Hefesto documents root and `~user` is rejected with a diagnostic; desktop keeps netgen's home-directory expansion (X-4). Approved by the user 2026-11-22.
 
 ### Q-LVS-15: Environment variables in setup files [platform]
 - Kind: platform
@@ -140,10 +156,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-17: Pin-match results −1 and −2 are never produced
 - Kind: quirk
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: the pin matcher returns only 2, 1 or 0. The `lvs` branch that flattens a subcell on a −1 pin result, and the message `Attempt to match empty cell to non-empty cell.`, are unreachable.
 - Evidence: base/netcmp.c:7636-8525, tcltk/netgen.tcl.in:672-686, tcltk/tclnetgen.c:3180-3186
 - Options: replicate
 - Recommendation: replicate (dead behavior). Document it in capability `lvs-hierarchy`.
+- Resolution: replicate — pin-match results −1 and −2 are never produced; `lvs-hierarchy` documents them as dead values. Approved by the user 2026-11-22.
 
 ### Q-LVS-18: Missing double property takes a garbage default during merging
 - Kind: bug
@@ -155,10 +173,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-19: List/JSON value for value-type and expression properties
 - Kind: bug
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: in `-list`/`-json` property entries, a circuit-1 value of type `value` or `expression`, or a circuit-2 value of type `value`, is not converted. The previous list element (the key) is appended again.
 - Evidence: base/netcmp.c:5447-5500
 - Options: fix (write the numeric value, or `(unresolved expression)`)
 - Recommendation: fix. It affects only structured output.
+- Resolution: fix — list and JSON outputs write the numeric value of a value-type or expression property, or `(unresolved expression)`; only the structured outputs change, `comp.out` keeps netgen's text. Approved by the user 2026-11-22.
 
 ### Q-LVS-20: Symmetry result missing from the log
 - Kind: quirk
@@ -170,10 +190,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-21: Extra `.` line after a unique match
 - Kind: quirk
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: `verify only` prints `Circuits match uniquely.` and then a separate line `.` when there are no property errors. Downstream scripts grep for this.
 - Evidence: tcltk/tclnetgen.c:2710-2715
 - Options: replicate
 - Recommendation: replicate (exact format; tools depend on it).
+- Resolution: replicate — the extra `.` line after a unique match is kept exactly, in both modes. Approved by the user 2026-11-22.
 
 ### Q-LVS-22: `ignore` without a keyword
 - Kind: bug
@@ -209,10 +231,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-26: No-connect pins merged as one net for parallel detection
 - Kind: ambiguity
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: in non-top cells, all single-connection nets are treated as the same net (`_nc`) when finding parallel devices. Devices whose open pins are unrelated can merge. Top cells are excluded.
 - Evidence: base/netgen.c:3252-3300
 - Options: replicate | fix
 - Recommendation: replicate. It is intended behavior (`property parallel connected` disables it).
+- Resolution: replicate — no-connect pins are merged as one net for parallel detection, as netgen intends; `property parallel connected` turns the merge off. Approved by the user 2026-11-22.
 
 ### Q-LVS-27: Running PDK setup scripts on iPadOS [platform]
 - Kind: platform
@@ -232,14 +256,16 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-29: `equate classes -unique` uses a random suffix
 - Kind: quirk
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
 - Magic behavior: a fresh class identity is made by hashing the name plus a pseudo-random uppercase letter. The letter depends on the generator state, which depends on everything compared before.
 - Evidence: base/netcmp.c:7290-7312
 - Options: replicate | fix (a deterministic unique identity)
 - Recommendation: fix. The identity is not observable except through collisions (see Q-LVS-4).
+- Resolution: fix — `equate classes -unique` uses a deterministic unique identity drawn from the seeded generator of Q-LVS-4 instead of a random suffix. Approved by the user 2026-11-22.
 
 ### Q-LVS-30: How the two-team clean-room process applies to the `lvs-*` specs
 - Kind: platform
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D2)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan, `openspec/changes/m9-lvs-simulation` design D2; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: n/a, because this is a Hefesto process question. The header of this file says that the entries' "Evidence" cites netgen source, so the eight `lvs-*` specs were written by reading GPL source. netgen's `Copying` file is GNU GPL version 1 text. The approved requirement "Two-team clean-room process for specs written from GPL source" in `hefesto-licensing` already applies: it covers any Hefesto spec "written by reading GPL source". Its "Today this covers" list, its `(xschem ref: ...)` rule and its scenarios name only xschem, so the question is how it is applied to netgen, not whether.
 - Evidence: this file's header; `openspec/specs/hefesto-licensing/spec.md` (Requirements "Clean-room rule for GPL-sourced behavior" and "Two-team clean-room process for specs written from GPL source"); `docs/contributing/cleanroom.md`; `docs/decisions/m8-decision-table.md` (J-1)
 - Options:
@@ -253,10 +279,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (b) Rewrite the `lvs-*` specs using only netgen's public reference manual and black-box runs, so that the requirement no longer applies to them.
   - A single team working from the specs is not an option: it would break the approved requirement.
 - Recommendation: (a). The LVS specs were written from source in the same way as the schematic specs, and the M8 process and checks already exist. (b) would discard work that has already been reviewed.
+- Resolution: other — option (a), the M8 two-team process applied to netgen: an LVS spec team and an LVS implementation team (roles, not names, for agents); the MODIFIED `hefesto-licensing` requirement "Two-team clean-room process for specs written from GPL source" adds the eight `lvs-*` capabilities, this file and the `(netgen ref: ...)` traces; roster rule: a session that read netgen source is on the LVS spec team for the whole milestone and never takes the LVS command (LVSCMD, task 12) or schematic-driven LVS (SCHEMSIM task 16.3); a paraphrase review of the eight `lvs-*` specs and this file before LVS implementation starts; `check_cleanroom.py` extended to netgen's GPL header and `netgen ref:` traces; Hefesto-authored golden inputs only; the counsel review joins the Desktop 1.0 item. Approved by the user 2026-11-22.
 
 ### Q-LVS-31: The IHP netgen setup file is `ihp-sg13g2_setup.tcl`
 - Kind: doc-mismatch
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: n/a (PDK data).
   - IHP-Open-PDK @ `5e6d592e` installs `ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl`.
   - The "Purpose" section of `lvs-setup-file` names `sg13g2_setup.tcl` instead, and `tests/golden/LVS/CASES.md` refers to an "sg13g2" setup file.
@@ -264,10 +291,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: GitHub contents API for `IHP-GmbH/IHP-Open-PDK` `ihp-sg13g2/libs.tech/netgen` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6`; `openspec/specs/lvs-setup-file/spec.md` (Purpose); `openspec/specs/lvs-command/spec.md` (Requirement "Setup file and input resolution")
 - Options: (a) correct the spec and golden texts to `ihp-sg13g2_setup.tcl`, and add a bare-name scenario for `ihp-sg13g2`; (b) also accept `sg13g2` as an alias of the PDK name when looking up the setup file; (c) leave the text as it is.
 - Recommendation: (a). The file name comes from the PDK. An alias would be a name that exists only in Hefesto and that netgen users do not type.
+- Resolution: fix (doc) — option (a): the spec and golden texts name the installed file `ihp-sg13g2_setup.tcl`, and `lvs-command` gains a bare-name scenario for PDK `ihp-sg13g2`; no `sg13g2` alias is added. Approved by the user 2026-11-22.
 
 ### Q-LVS-32: Layout side of `lvs -layout` extracts incrementally
 - Kind: ambiguity
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: n/a.
   - Step 1 of the `lvs-command` requirement "Layout netlist from extraction" extracts "as `extract all` would".
   - Design D18 of the M7 plan gives M9 `extract::ensure_extracted` instead. It re-extracts only stale or missing cells and their parents, as Magic's `extract` does. Magic's `extract all` ignores timestamps.
@@ -275,10 +303,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - Magic's incremental check (`extTimestampMisMatch`, `extract/ExtMain.c:968-990`) compares only the `timestamp` line of the `.ext` file with the cell's timestamp. A `.ext` file written under another extract style or technology therefore looks current, although its `tech` and `style` lines (`extract/ExtCell.c:573-582`) say otherwise.
 - Options: (a) extract incrementally with `ensure_extracted`, treating a `.ext` file as stale when it is missing, when its timestamp differs, or when its `tech` or `style` line differs from the current ones (an open item against M7's `ensure_extracted`); the netlist equals the `extract all` netlist whenever the `.ext` files are current; (b) always run `extract all`; (c) a setting, defaulting to incremental.
 - Recommendation: (a). For an up-to-date hierarchy the result is the same, and LVS reruns on large layouts become fast. The header check closes the one case in which Magic's timestamp check would accept a file that `extract all` would not produce. A user who wants a full re-extraction can run `extract all` first.
+- Resolution: other — option (a): `lvs -layout` extracts incrementally through `extract::ensure_extracted` (m7-extraction D18); a `.ext` file is stale when it is missing, when its timestamp differs, or when its `tech` or `style` line differs from the current ones (an open item against M7's `ensure_extracted`); with current `.ext` files the netlist equals the `extract all` netlist. Approved by the user 2026-11-22.
 
 ### Q-LVS-33: Name map from the layout netlist back to layout objects
 - Kind: platform
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: n/a.
   - Three requirements need a map from every device instance and net name in the generated SPICE back to the layout objects: "Layout netlist from extraction" and "Cross-probing" in `lvs-command`, and "Net name map" in `simulation-netlist-preparation`.
   - M7's `netlist::spice::render` returns only the text (`src/core/include/hefesto/netlist/spice/spice.hpp:44-45`).
@@ -294,10 +323,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (b) M9 rebuilds the map by flattening the `.ext` files again with `extflat` and matching the names.
   - (c) Parse the names back out of the SPICE text.
 - Recommendation: (a). The netlister is the only place that knows why a name was chosen (renumbering, `global` merges, case collisions). (b) would duplicate that logic, and (c) cannot recover positions.
+- Resolution: platform — option (a): additive entry points `netlist::spice::render_with_map` and a `NameMap` field in `schem::NetlistResult` (`NetlistResult::names`), filled by the code that chooses the names; each net name maps to a hierarchical node with one layout point or schematic wire, each device name to a use path and device location or a schematic instance; the existing `render` is unchanged. They are written by the MAPS workstream (design Open Question 4 (a)). Approved by the user 2026-11-22.
 
 ### Q-LVS-34: LVS threading
 - Kind: platform
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: netgen compares one cell pair at a time on one thread. The `lvs-command` requirement "Execution model" requires a background worker. The `hefesto-architecture` requirement "Concurrency model" requires parallel results to equal single-threaded results.
 - Evidence: `openspec/specs/lvs-command/spec.md` (Requirement "Execution model"); `openspec/specs/hefesto-architecture/spec.md` (Requirement "Concurrency model"); netgen reference manual (http://opencircuitdesign.com/netgen/reference.html)
 - Options:
@@ -305,10 +335,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (b) Compare the independent pairs of one hierarchy level in parallel, and write the reports in queue order.
   - (c) Parallel refinement inside a pair.
 - Recommendation: (a) in M9. The report order and the pseudo-random choices of Q-LVS-4 and Q-LVS-29 stay deterministic without extra work. (b) is a later optimisation that needs no format change.
+- Resolution: platform — option (a): one background worker per LVS run; each cell pair is compared single-threaded in queue order, and the comparison state holds no globals, so pairs can run in parallel later without a format change. Approved by the user 2026-11-22.
 
 ### Q-LVS-35: LVS performance target
 - Kind: platform
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: n/a. The `hefesto-performance` requirement "Batch throughput relative to Magic" has no LVS line, and netgen is the reference tool for LVS.
 - Evidence: `openspec/specs/hefesto-performance/spec.md` (Requirement "Batch throughput relative to Magic"); `tools/golden/container/Containerfile` (netgen is built in the capture image)
 - Options:
@@ -319,10 +350,11 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (b) Wall time against netgen, reported for information only.
   - (c) Absolute wall-time targets on the M3 Pro.
 - Recommendation: (a). The requirement already uses this method for DRC, GDS and extraction. Running the netgen binary to measure it does not involve its source.
+- Resolution: platform — option (a): Callgrind instruction counts on the x86_64 runner, at most netgen 1.5.327's count on the three reference workloads (`sky130_fd_sc_hd` cell by cell, a 50k-device flat block, a hierarchical 1M-device block), then at most the recorded baseline + 2 %; netgen runs only as a subprocess in the benchmark job. Approved by the user 2026-11-22.
 
 ### Q-LVS-36: LVS input and run limits
 - Kind: bug
-- Status: pending user decision (proposed 2026-11-22 by the M9 plan)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
 - Magic behavior: the netgen manual states no limits. Deep `.include` chains, very long continuation lines and deep hierarchies are bounded only by memory and stack. A crash or hang must be fixed in both `netgen-compat` modes (X-2 tier 1).
 - Evidence: `openspec/specs/lvs-netlist-input/spec.md` (Requirements "SPICE lexical structure" and "Globals, includes and parameters"); `openspec/specs/lvs-hierarchy/spec.md`; decision X-2
 - Options:
@@ -335,3 +367,4 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (b) Memory-only limits: the run fails when an allocation fails.
   - (c) Configurable limits, with (a)'s values as defaults.
 - Recommendation: (c) with (a)'s defaults. Every PDK and golden input is far below these limits, and hostile inputs fail with a message instead of a stack overflow.
+- Resolution: fix — option (c): configurable limits in both modes, with option (a)'s values as defaults (include depth 64; one logical line 16 MiB; one name 4 KiB; hierarchy depth 256 with iterative traversal; 50 million devices per run); each has its own diagnostic, and exceeding one ends the run as `error`. Approved by the user 2026-11-22.

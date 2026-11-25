@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Clean-room checks of the schematic editor (openspec/changes/m8-schematic design D2, task 1.3).
+"""Clean-room checks of the schematic editor and of LVS (openspec/changes/m8-schematic design D2, task 1.3;
+openspec/changes/m9-lvs-simulation design D2, task 2.3).
 
 Capability hefesto-licensing, Requirement "Two-team clean-room process for specs written from GPL
-source"; the process is docs/contributing/cleanroom.md. The check fails when:
+source"; the process is docs/contributing/cleanroom.md. For each GPL tool whose behaviour a Hefesto spec
+was written from (xschem for M8, netgen for M9) the check fails when:
 
-1. a committed file carries xschem's GPL header (the line that says the file is part of xschem, or its
-   copyright line naming xschem's author);
-2. a golden case under tests/golden/SCHEM/ (a directory holding a ``case.toml``) declares no
-   ``provenance``, or declares one that is neither ``"hefesto"`` nor ``"pdk:<set>:<path>"`` with an
-   xschem data set of scripts/fetch_pdk.py, or names xschem's own distribution;
-3. a file under src/ or tests/ contains an ``xschem ref:`` trace. Excluded: captured xschem output
-   (``expected/`` directories of the golden cases under tests/golden/SCHEM/) and Markdown documents.
+1. a committed file carries the tool's GPL header (xschem: the line that says the file is part of xschem,
+   or its copyright line naming xschem's author; netgen: the first line of netgen's header, naming it a
+   netlist-specification tool, or its copyright line naming netgen's original author);
+2. a golden case under the tool's golden directory (tests/golden/SCHEM/ for xschem, tests/golden/LVS/ for
+   netgen; a directory holding a ``case.toml``) declares no ``provenance``, or declares one that is neither
+   ``"hefesto"`` nor ``"pdk:<set>:<path>"`` with an allowed data set of scripts/fetch_pdk.py, or names the
+   tool's own distribution. The LVS directory may not exist yet; then there is nothing to check;
+3. a file under src/ or tests/ contains a ``<tool> ref:`` trace. Excluded: captured tool output
+   (``expected/`` directories of the golden cases) and Markdown documents.
 
 The files checked are those git tracks under --root (every file below --root when it is not a git
 work tree, as for the test fixtures).
@@ -28,21 +32,59 @@ import re
 import subprocess
 import sys
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-# Built from parts so that this file does not match its own patterns.
-GPL_HEADER = (
-    re.compile(r"this\s+file\s+is\s+part\s+of\s+" + "xsch" + "em", re.IGNORECASE),
-    re.compile(r"copyright\s*\(c\)\s*[0-9 ,\-]*stefan\s+frederik\s+" + "schip" + "pers", re.IGNORECASE),
-)
-TRACE = re.compile(r"xsch" + r"em\s+ref\s*:", re.IGNORECASE)
-GOLDEN_DIR = "tests/golden/SCHEM"
-PDK_SETS = ("sky130-xschem", "gf180mcu-xschem", "ihp-xschem")
-PROVENANCE = re.compile(r"^(hefesto|pdk:(" + "|".join(re.escape(s) for s in PDK_SETS) + r"):[^:\s][^\s]*)$")
-# xschem's own files: a provenance that starts with the tool's name, or a path into its library.
-XSCHEM_DISTRIBUTION = re.compile(r"^xsch" + r"em\b|xschem_library", re.IGNORECASE)
 MAX_BYTES = 4 * 1024 * 1024  # larger files are data (GDS and the like), never a source with a header
+
+
+@dataclass(frozen=True)
+class CleanRoomTool:
+    """One GPL tool under the two-team clean room: what marks its files, traces and golden cases."""
+
+    name: str
+    gpl_header: tuple[re.Pattern, ...]
+    golden_dir: str
+    pdk_sets: tuple[str, ...]
+    distribution: re.Pattern  # a provenance that names the tool's own files
+
+    @property
+    def trace(self) -> re.Pattern:
+        return re.compile(re.escape(self.name) + r"\s+ref\s*:", re.IGNORECASE)
+
+    @property
+    def provenance(self) -> re.Pattern:
+        sets = "|".join(re.escape(s) for s in self.pdk_sets)
+        return re.compile(r"^(hefesto|pdk:(" + sets + r"):[^:\s][^\s]*)$")
+
+
+# Patterns are built from parts so that this file does not match its own patterns.
+XSCHEM = CleanRoomTool(
+    "xsch" + "em",
+    (re.compile(r"this\s+file\s+is\s+part\s+of\s+" + "xsch" + "em", re.IGNORECASE),
+     re.compile(r"copyright\s*\(c\)\s*[0-9 ,\-]*stefan\s+frederik\s+" + "schip" + "pers", re.IGNORECASE)),
+    "tests/golden/SCHEM",
+    ("sky130-xschem", "gf180mcu-xschem", "ihp-xschem"),
+    # xschem's own files: a provenance that starts with the tool's name, or a path into its library.
+    re.compile(r"^xsch" + r"em\b|xschem_library", re.IGNORECASE),
+)
+NETGEN = CleanRoomTool(
+    "net" + "gen",
+    # netgen base/netgen.c, lines 1-2, fetched by the LVS spec team at the git tag 1.5.327 (commit 8df5f0d9...),
+    # which is not the spec pin 93dcda14 of tools/golden/pins.toml; to be re-checked at 93dcda14 by the spec team.
+    (re.compile(r'"' + "NET" + r'GEN",\s+a\s+netlist-specification\s+tool', re.IGNORECASE),
+     re.compile(r"copyright\s*\(c\)\s*[0-9 ,\-]*massimo\s+a\.?\s+" + "sivil" + "otti", re.IGNORECASE)),
+    "tests/golden/LVS",
+    # The netgen setup files (sky130's is in sky130-xschem, Q-LVS-31), the layouts of the tech/.mag and GDS
+    # sets, and the ngspice model trees.
+    ("sky130-xschem", "gf180mcu-netgen", "ihp-netgen", "sky130", "gf180mcu", "ihp", "sky130-gds", "gf180mcu-gds",
+     "ihp-gds", "sky130-ngspice", "gf180mcu-ngspice", "ihp-ngspice"),
+    # netgen's own files: a provenance that starts with the tool's name (its repository, its tech/ or
+    # tests/ directories, or the capture image's /opt/src/netgen).
+    re.compile(r"^net" + r"gen\b|/opt/src/net" + r"gen", re.IGNORECASE),
+)
+TOOLS = (XSCHEM, NETGEN)
 
 
 def tracked_files(root: Path) -> list[Path]:
@@ -67,16 +109,21 @@ def header_findings(root: Path, files: list[Path]) -> list[str]:
     findings = []
     for path in files:
         text = read_text(path)
-        if text and any(pattern.search(text) for pattern in GPL_HEADER):
-            findings.append(f"{path.relative_to(root)}: carries xschem's GPL header; xschem files are never committed")
+        if not text:
+            continue
+        for tool in TOOLS:
+            if any(pattern.search(text) for pattern in tool.gpl_header):
+                findings.append(f"{path.relative_to(root)}: carries {tool.name}'s GPL header; "
+                                f"{tool.name} files are never committed")
     return findings
 
 
 def trace_checked(rel: Path) -> bool:
-    """Whether ``rel`` is implementation code or a test, where no ``xschem ref:`` trace may appear."""
+    """Whether ``rel`` is implementation code or a test, where no ``<tool> ref:`` trace may appear."""
     if rel.parts[:1] not in (("src",), ("tests",)) or rel.suffix.lower() == ".md":
         return False
-    is_capture = rel.as_posix().startswith(GOLDEN_DIR + "/") and "expected" in rel.parts
+    posix = rel.as_posix()
+    is_capture = "expected" in rel.parts and any(posix.startswith(t.golden_dir + "/") for t in TOOLS)
     return not is_capture
 
 
@@ -88,7 +135,7 @@ def trace_findings(root: Path, files: list[Path]) -> list[str]:
             continue
         text = read_text(path) or ""
         for number, line in enumerate(text.splitlines(), 1):
-            if TRACE.search(line):
+            if any(tool.trace.search(line) for tool in TOOLS):
                 findings.append(f"{rel}:{number}: source trace in implementation code; work from the spec text only")
     return findings
 
@@ -102,11 +149,31 @@ def provenance_values(manifest: dict) -> list[str] | None:
     return None
 
 
+def provenance_findings(rel: Path, tool: CleanRoomTool, values: list[str]) -> list[str]:
+    findings = []
+    for value in values:
+        if tool.distribution.search(value):
+            findings.append(f"{rel}: provenance {value!r} names {tool.name}'s distribution; inputs must be "
+                            "Hefesto-authored or PDK data")
+        elif not tool.provenance.match(value):
+            findings.append(f"{rel}: provenance {value!r} is not \"hefesto\" or \"pdk:<set>:<path>\" "
+                            f"with a set of {', '.join(tool.pdk_sets)}")
+    return findings
+
+
+def case_tool(rel: Path) -> CleanRoomTool | None:
+    """The tool whose golden directory holds manifest ``rel``, or None when it is no clean-room case."""
+    if rel.name != "case.toml":
+        return None
+    return next((t for t in TOOLS if rel.as_posix().startswith(t.golden_dir + "/")), None)
+
+
 def case_findings(root: Path, files: list[Path]) -> list[str]:
     findings = []
     for path in files:
         rel = path.relative_to(root)
-        if path.name != "case.toml" or not rel.as_posix().startswith(GOLDEN_DIR + "/"):
+        tool = case_tool(rel)
+        if tool is None:
             continue
         try:
             manifest = tomllib.loads(path.read_text(encoding="utf-8"))
@@ -117,13 +184,7 @@ def case_findings(root: Path, files: list[Path]) -> list[str]:
         if values is None:
             findings.append(f"{rel}: no provenance (\"hefesto\" or \"pdk:<set>:<path>\")")
             continue
-        for value in values:
-            if XSCHEM_DISTRIBUTION.search(value):
-                findings.append(f"{rel}: provenance {value!r} names xschem's distribution; inputs must be "
-                                "Hefesto-authored or PDK data")
-            elif not PROVENANCE.match(value):
-                findings.append(f"{rel}: provenance {value!r} is not \"hefesto\" or \"pdk:<set>:<path>\" "
-                                f"with a set of {', '.join(PDK_SETS)}")
+        findings += provenance_findings(rel, tool, values)
     return findings
 
 

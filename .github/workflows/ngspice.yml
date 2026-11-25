@@ -1,0 +1,150 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# libngspice-hefesto (openspec/changes/m9-lvs-simulation task 5.1, design D2 and D9): builds
+# the pinned ngspice-47 with the Hefesto patch series through third_party/ngspice/CMakeLists.txt
+# on the three CI legs of ci.yml (Linux x86_64, Linux arm64, macOS arm64), then checks
+#   - the patch regression tests (third_party/ngspice/tests) on the built library and executable;
+#   - ngspice-manifest.json: version <release>-hefesto<n>, the patch list with the portable-seeding
+#     patch, the licences, and no GPL file compiled (simulation-engine-embedding scenarios
+#     "No GPL code linked" and "Patch list in the manifest");
+#   - that the library exports only the ngspice C API (ngSpice_*, ngGet_*, ngCM_*);
+#   - the source archive (every built file, the whole OSDI tree, the patches);
+#   - that cmake/sources.cmake is what tools/gen_sources.py derives from the pinned tree (Linux x86_64);
+#   - the one-line top-level integration (HEFESTO_BUILD_NGSPICE=ON) on Linux x86_64, with the
+#     engine boundary check (scripts/check_engine_boundary.py) run on a build tree that holds
+#     libngspice-hefesto (ci.yml's legs build with HEFESTO_BUILD_NGSPICE=OFF).
+
+name: ngspice
+
+on:
+  pull_request:
+    paths:
+      - third_party/ngspice/**
+      - .github/workflows/ngspice.yml
+      - CMakeLists.txt
+  push:
+    branches: [main]
+    paths:
+      - third_party/ngspice/**
+      - .github/workflows/ngspice.yml
+      - CMakeLists.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  CMAKE_VERSION: "3.31.6"
+  NINJA_VERSION: "1.11.1.4"
+
+jobs:
+  build:
+    name: ngspice ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x64, os: ubuntu-24.04, lib: libngspice-hefesto.so, sources_check: true }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, lib: libngspice-hefesto.so }
+          - { name: macos-arm64, os: macos-15, lib: libngspice-hefesto.dylib }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps/ngspice
+          key: ngspice-src-${{ matrix.name }}-${{ hashFiles('third_party/ngspice/pin.json', 'third_party/ngspice/patches/**') }}
+
+      - name: Configure
+        run: >
+          cmake -S third_party/ngspice -B build/ngspice -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DHEFESTO_NGSPICE_EXECUTABLE=ON -DFETCHCONTENT_BASE_DIR="$PWD/.cache/deps/ngspice"
+      - name: Build
+        run: cmake --build build/ngspice -j4
+      - name: Source archive
+        run: cmake --build build/ngspice --target ngspice_hefesto_source_archive
+
+      - name: Version line
+        shell: bash
+        run: |
+          build/ngspice/ngspice -v | tee version.txt
+          version="$(python3 -c "import json; p = json.load(open('third_party/ngspice/pin.json')); print(p['release'] + '-hefesto' + str(p['hefesto_level']))")"
+          grep -q "ngspice-${version} " version.txt
+          echo "::notice::ngspice version ${version} (${{ matrix.name }})"
+
+      - name: Patch regression tests
+        env:
+          HEFESTO_NGSPICE_LIB: ${{ github.workspace }}/build/ngspice/${{ matrix.lib }}
+          HEFESTO_NGSPICE_EXE: ${{ github.workspace }}/build/ngspice/ngspice
+        run: python3 -m unittest discover -s third_party/ngspice/tests -v
+
+      - name: Manifest (no GPL code linked, patch list)
+        run: |
+          python3 third_party/ngspice/tools/ngspice_manifest.py check --manifest build/ngspice/ngspice-manifest.json
+          python3 - <<'EOF'
+          import json
+          m = json.load(open("build/ngspice/ngspice-manifest.json"))
+          print("version", m["version"])
+          print("patches", ", ".join(p["file"] for p in m["patches"]))
+          for c in m["licenses"]:
+              print(f"licence {c['component']}: {c['license']} ({len(c['files'])} files)")
+          print("scanned", m["license_check"]["scanned_files"], "gpl", m["license_check"]["gpl_files"])
+          EOF
+
+      - name: Exported symbols are the ngspice API only
+        shell: bash
+        run: |
+          lib="build/ngspice/${{ matrix.lib }}"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            syms="$(nm -gU "$lib" | awk '{print $3}' | sed 's/^_//')"
+          else
+            syms="$(nm -D --defined-only "$lib" | awk '$2 ~ /[TDBR]/ {print $3}')"
+          fi
+          bad="$(grep -Ev '^(ngSpice_|ngGet_|ngCM_|_init$|_fini$)' <<< "$syms" || true)"
+          if [ -n "$bad" ]; then echo "unexpected exports:"; echo "$bad"; exit 1; fi
+          grep -c '^ngSpice_' <<< "$syms"
+
+      - name: sources.cmake matches the pinned tree
+        if: matrix.sources_check
+        run: >
+          python3 third_party/ngspice/tools/gen_sources.py --check
+          --src .cache/deps/ngspice/hefesto_ngspice-src --work "$RUNNER_TEMP/ngspice-gen"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ngspice-${{ matrix.name }}
+          path: |
+            build/ngspice/ngspice-manifest.json
+            build/ngspice/ngspice-hefesto-*-src.tar.gz
+          retention-days: 14
+
+  top-level:
+    name: ngspice through the top-level build (HEFESTO_BUILD_NGSPICE=ON)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake, Ninja and the OpenSSL headers
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      - name: Configure and build libngspice-hefesto only
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake --preset ci-linux -DHEFESTO_BUILD_NGSPICE=ON -DHEFESTO_BUILD_TESTS=OFF
+          cmake --build --preset ci-linux --target ngspice-hefesto -j4
+      - name: Check the simulation engine boundary (release rules, library present)
+        run: python3 scripts/check_engine_boundary.py --build-dir build/ci-linux

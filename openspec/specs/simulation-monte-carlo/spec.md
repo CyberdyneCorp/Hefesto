@@ -13,7 +13,7 @@ Defines Monte Carlo analysis in Hefesto (decision P-19):
 
 Hefesto does not model variation itself: process and mismatch variation come only from the PDK's statistical models (or from parameters the user writes), evaluated by ngspice. Run sets, point decks and storage are defined in capability `simulation-sweeps`. Corners are in capability `simulation-corners`. Statistics over the samples (histograms, mean, sigma, yield, Cpk, correlation) are in capability `simulation-measurements-and-statistics`. The engine, its workers and its iPadOS constraints are in capability `simulation-engine-embedding`.
 
-ngspice reference: SourceForge `ngspice` master @ `7aa47164` (after ngspice-47). `(ngspice ref: ...)` paths are relative to that tree. PDK sources are those listed in capability `simulation-corners`. Open questions: `docs/decisions/open-questions/SIMADV.md` (Q-SIMADV-n).
+ngspice reference: release ngspice-47, SourceForge `ngspice` tag commit `a80f6e3e` (Q-SIM-7; re-checked 2026-11-22, the specs were first written from master `7aa47164`). `(ngspice ref: ...)` paths are relative to that tree. PDK sources are those listed in capability `simulation-corners`. Open questions: `docs/decisions/open-questions/SIMADV.md` (Q-SIMADV-n).
 
 ## Requirements
 
@@ -26,12 +26,12 @@ The specification SHALL record how ngspice evaluates statistical functions, for 
   - `limit(nom, abs)` = `nom + abs` if `r > 0`, else `nom − abs`
 - **Generator.** Draws come from a combined Tausworthe/LCG generator whose eight state words are seeded from the C library `rand()` after `srand(seed)`. The normal draw uses the polar Box–Muller method and keeps one of the two values per pass.
 - **Seeding.** `setseed <n>` and `.option seed=<n>` reseed immediately. `set rndseed=<n>` only sets a variable, which numparam's statistical functions do not read. The shared-library initialisation seeds the generator from the process id.
-- **When values are drawn.** A top-level `.param` with a statistical function is drawn once per circuit load, so every reference shares one value (global process variation). A `.param` inside a `.subckt` is drawn once per subcircuit instance (device mismatch). Statistical functions in `B` source lines are replaced by one value each after subcircuit expansion. The variable `stat_param_as_func` restores the behaviour of ngspice 29 to 47, in which such parameters become functions re-evaluated at every reference.
+- **When values are drawn.** A top-level `.param` with a statistical function is drawn once per circuit load, so every reference shares one value (global process variation). A `.param` inside a `.subckt` is drawn once per subcircuit instance (device mismatch). Statistical functions in `B` source lines are replaced by one value each after subcircuit expansion. The variable `stat_param_as_func` restores the behaviour of ngspice 29 to 47, in which such parameters become functions re-evaluated at every reference. This draw-once behaviour is upstream development after ngspice-47 (master `7aa47164`); the pinned release ngspice-47 still re-evaluates such a parameter at every reference and has no `stat_param_as_func` (re-check of 2026-11-22, `docs/decisions/m9-decision-table.md` "Trace re-check against ngspice-47").
 - **Re-drawing.** `reset` and `mc_source` reload the circuit from the stored deck, so every statistical function is drawn again from the current generator state.
 
 Compatibility: informative
 
-(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/frontend/numparam/xpressn.c:45-85, src/maths/misc/randnumb.c:101-116, src/maths/misc/randnumb.c:220-235, src/maths/misc/randnumb.c:287-330, src/frontend/com_option.c:142-152, src/sharedspice.c:930-936, src/frontend/inpcom.c:8380-8405, src/frontend/inp.c:1030-1042, src/frontend/runcoms2.c:173-185, src/frontend/inp.c:1729-1735) (See Q-SIMADV-6, Q-SIMADV-7.)
+(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/frontend/numparam/xpressn.c:45-85, src/maths/misc/randnumb.c:101-116, src/maths/misc/randnumb.c:220-235, src/maths/misc/randnumb.c:286-322, src/frontend/inp.c:426-470, src/sharedspice.c:930-935, src/frontend/inpcom.c:8226-8238, src/frontend/inp.c:940-952, src/frontend/runcoms2.c:173-185, src/frontend/inp.c:1639-1645) (See Q-SIMADV-6, Q-SIMADV-7.)
 
 #### Scenario: agauss with zero sigma
 - **GIVEN** the deck line `.param p = 'agauss(1.0, 0.1, 0)'`
@@ -112,7 +112,7 @@ In a Monte Carlo deck, Hefesto SHALL remove every top-level `.option`/`.options`
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/maths/misc/randnumb.c:287-330, src/frontend/com_option.c:142-152, src/sharedspice.c:930-936) (See Q-SIMADV-6, Q-SIMADV-7.)
+(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/maths/misc/randnumb.c:286-322, src/frontend/inp.c:426-470, src/sharedspice.c:930-935) (See Q-SIMADV-6, Q-SIMADV-7.)
 
 #### Scenario: Seeds for base seed 1
 - **GIVEN** base seed 1
@@ -253,3 +253,26 @@ Compatibility: native
 #### Scenario: Invalid run count
 - **WHEN** `sim mc set -mode process -runs 0` is executed
 - **THEN** it SHALL fail with `sim mc: runs must be between 1 and 100000`, and the testbench SHALL be unchanged
+
+### Requirement: Sample independence from worker assignment
+The result of Monte Carlo sample `k` SHALL depend only on the deck, the base seed and `k`. It SHALL NOT depend on which worker ran the sample, on how many workers ran, or on which samples a worker ran before. A sample MAY run in a worker that ran other jobs before. Before each sample is loaded, the worker SHALL have cleared the previous circuit and repeated the per-load initialisation with the sample's own seed, as capability `simulation-engine-embedding` specifies (Requirements "Crash containment on desktop" and "Deterministic engine initialisation").
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-19) (See Q-SIMADV-13.)
+
+#### Scenario: Same sample on different workers
+- **GIVEN** a 200-sample run of the sky130 inverter with base seed 42
+- **WHEN** it runs once on one worker and once on four workers
+- **THEN** sample 137 SHALL have bit-identical stored vectors and measurements in both runs
+
+### Requirement: Sample count limit
+A Monte Carlo run SHALL have at most 100 000 samples, and a run set at most 100 000 points in total. The limit is a setting that can be lowered. A larger request SHALL be refused before any job starts, with a diagnostic that gives the limit.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-19) (See Q-SIM-25.)
+
+#### Scenario: Too many samples
+- **WHEN** `sim mc set -mode process -runs 200000` is executed
+- **THEN** the command SHALL fail with the sample-limit diagnostic, and no job SHALL be queued

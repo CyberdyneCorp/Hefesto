@@ -12,7 +12,7 @@ Defines how Hefesto turns simulation results into numbers and verdicts, and how 
 
 Measurements are computed by Hefesto from the final stored vectors of each job (capability `simulation-analyses-and-results`, Requirement "Final vector retrieval"), not by ngspice, so the same definition gives the same value whether the job ran on Linux, macOS or iPadOS, and whether its waveforms were kept. Run sets come from capabilities `simulation-sweeps`, `simulation-corners` and `simulation-monte-carlo`. Charts are drawn with the rendering stack of capability `hefesto-rendering` and the viewer conventions of capability `simulation-ui-and-crossprobe`.
 
-ngspice reference: SourceForge `ngspice` master @ `7aa47164` (after ngspice-47). Open questions: `docs/decisions/open-questions/SIMADV.md` (Q-SIMADV-n).
+ngspice reference: release ngspice-47, SourceForge `ngspice` tag commit `a80f6e3e` (Q-SIM-7; re-checked 2026-11-22, the specs were first written from master `7aa47164`). Open questions: `docs/decisions/open-questions/SIMADV.md` (Q-SIMADV-n).
 
 ## Requirements
 
@@ -75,7 +75,7 @@ The analysis word (`tran`, `ac`, `dc`, `op`, `noise`) selects the plot. `CROSS=L
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/frontend/com_measure2.c:55-62, src/frontend/com_measure2.c:215-262) (See Q-SIMADV-10.)
+(Hefesto decision: docs/decisions/product.md#P-19) (ngspice ref: src/frontend/com_measure2.c:51-57, src/frontend/com_measure2.c:207-257) (See Q-SIMADV-10.)
 
 #### Scenario: IHP testbench measure
 - **GIVEN** a schematic `.control` block containing `meas ac gain_passband_dB max gain_dB` and `let gain_dB = vdb(inv_out)`
@@ -281,3 +281,27 @@ Compatibility: native
 - **GIVEN** a completed Monte Carlo run set `rs` of 100 counted samples with 95 passes
 - **WHEN** a script evaluates `sim stats yield rs`
 - **THEN** it SHALL receive the list `yield 0.94999999999999996 lo 0.88824953076808078 hi 0.97845632084563194`
+
+### Requirement: ngspice measure cross-check in debug builds
+Hefesto's measurement value SHALL be the authoritative result in every build. In debug builds, when a testbench also contains an equivalent ngspice `.meas` statement, Hefesto SHALL capture ngspice's value too. It SHALL log a warning naming the measurement and both values when they differ by more than the measurement's tolerance. Release builds SHALL NOT run the cross-check.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-19) (See Q-SIMADV-10.)
+
+#### Scenario: Rise time differs
+- **GIVEN** a debug build and a testbench with Hefesto measurement `trise` and an equivalent `.meas tran trise ...`
+- **WHEN** the two values differ by more than the tolerance
+- **THEN** the job log SHALL contain a warning with both values, and the result table SHALL show Hefesto's value
+
+### Requirement: Platform-independent statistics
+Descriptive statistics, yield and process capability SHALL be computed in binary64, summing in point-index order with compensated summation. The same measurement table SHALL give bit-identical statistics on every supported platform and for every worker count.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-19, docs/decisions/cross-cutting.md#X-1)
+
+#### Scenario: Mean on two platforms
+- **GIVEN** the same 10 000-sample measurement table on Linux x86_64 and macOS arm64
+- **WHEN** the mean and standard deviation are computed
+- **THEN** both platforms SHALL report bit-identical values
