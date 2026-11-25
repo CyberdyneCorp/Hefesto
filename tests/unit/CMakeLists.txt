@@ -120,3 +120,9 @@ if(HEFESTO_BUILD_DESKTOP)
     endif()
   endforeach()
 endif()
+
+# platform/: PLATFORM and SIMD (m9-lvs-simulation tasks 5.3, 5.4): the POSIX
+# worker host of hefesto-cli and hefesto-simd through it.
+if(TARGET hefesto_cli_lib)
+  add_subdirectory(platform)
+endif()

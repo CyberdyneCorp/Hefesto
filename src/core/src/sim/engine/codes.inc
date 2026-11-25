@@ -9,3 +9,18 @@
 // and describe the codes in its SIMENG section.
 //
 // Owner: SIMENG (openspec/changes/m9-lvs-simulation/design.md D3).
+
+// SIM-ENGINE-001..029: SIMD's worker client (sim/engine/worker_engine.cpp,
+// src/simd/devhost); 030..059 belong to SIMENG.
+HEFESTO_SIM_CODE("SIM-ENGINE-001", error, "No worker host or engine plugin is available on this platform; simulation is unavailable.")
+HEFESTO_SIM_CODE("SIM-ENGINE-002", error, "Simulation engine terminated: the worker did not complete its version handshake in time.")
+HEFESTO_SIM_CODE("SIM-ENGINE-003", error, "Simulation engine terminated: the worker speaks another protocol version.")
+HEFESTO_SIM_CODE("SIM-ENGINE-004", error, "Simulation engine terminated: the worker sent a malformed frame.")
+HEFESTO_SIM_CODE("SIM-ENGINE-005", error, "Simulation engine terminated: the worker sent a frame larger than the frame limit.")
+HEFESTO_SIM_CODE("SIM-ENGINE-006", error, "Simulation engine terminated: the worker sent a frame of an unknown kind.")
+HEFESTO_SIM_CODE("SIM-ENGINE-007", error, "Simulation engine terminated: the worker missed its heartbeat.")
+HEFESTO_SIM_CODE("SIM-ENGINE-008", error, "Simulation engine terminated: the worker crashed, exited, or its engine faulted.")
+HEFESTO_SIM_CODE("SIM-ENGINE-009", error, "The simulation engine rejected the deck.")
+HEFESTO_SIM_CODE("SIM-ENGINE-010", error, "The simulation engine rejected a command.")
+HEFESTO_SIM_CODE("SIM-ENGINE-011", error, "Engine busy: the command is not accepted while the analysis runs.")
+HEFESTO_SIM_CODE("SIM-ENGINE-012", error, "No result vectors are available: no run has ended.")

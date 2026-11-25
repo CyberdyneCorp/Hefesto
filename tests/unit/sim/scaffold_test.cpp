@@ -61,11 +61,17 @@ TEST_CASE("EditorState carries an empty simulation session",
   CHECK(state.sim.engine_reason.empty());
 }
 
-TEST_CASE("scaffold make_worker_engine reports CORE-NOTIMPL-009",
+// make_worker_engine is implemented (SIMD, task 5.4): without a worker host
+// simulation is unavailable (SIM-ENGINE-001), not "not implemented".
+// tests/unit/sim/engine/worker_engine_test.cpp covers the engine itself.
+TEST_CASE("make_worker_engine without a host reports SIM-ENGINE-001",
           "[cap:simulation-engine-embedding][req:Crash containment on desktop]") {
   const sim::WorkerEngineOptions options;
   CHECK(options.program == "hefesto-simd");
-  CHECK(is_not_implemented(sim::make_worker_engine(nullptr, options)));
+  const auto engine = sim::make_worker_engine(nullptr, options);
+  REQUIRE_FALSE(engine.ok());
+  CHECK(engine.error().code == "SIM-ENGINE-001");
+  CHECK_FALSE(is_not_implemented(engine));
 }
 
 TEST_CASE("scaffold job submission reports CORE-NOTIMPL-009",

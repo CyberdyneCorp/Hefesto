@@ -134,5 +134,14 @@ if(HEFESTO_BUILD_SCHEM_BENCH AND NOT HEFESTO_IS_IOS)
   add_subdirectory(bench/schem)  # PERF, m8-schematic task 14.1
 endif()
 
+# hefesto-simd, the simulation worker, and the hefesto-ngspice-adapter plugin
+# (SIMD, m9-lvs-simulation task 5.4; the plugin needs HEFESTO_BUILD_NGSPICE).
+# HEFESTO_DEVELOPER_BUILD alone builds the in-process developer engine host
+# (Q-SIM-22 (a)); scripts/check_engine_boundary.py reads it from CMakeCache.txt.
+option(HEFESTO_DEVELOPER_BUILD "Developer build: also build the in-process engine host (never for release)" OFF)
+if(NOT HEFESTO_IS_IOS)
+  add_subdirectory(src/simd)
+endif()
+
 message(STATUS "Hefesto ${PROJECT_VERSION}: desktop=${HEFESTO_BUILD_DESKTOP} tests=${HEFESTO_BUILD_TESTS} "
                "fuzz=${HEFESTO_BUILD_FUZZ} bench=${HEFESTO_BUILD_BENCH} sanitizers='${HEFESTO_SANITIZERS}'")
