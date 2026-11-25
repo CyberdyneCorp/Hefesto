@@ -2,7 +2,7 @@
 
 ### Requirement: Plot command and plotted region
 
-The system SHALL provide `plot <option> ...` where `<option>` is matched by unique prefix against `postscript`, `pnm`, `svg`, `parameters` and `help` (informative: Magic offers `svg` only when an SVG-capable display is built in, and `versatec`, `gremlin` and `pixels` only in builds that include those devices, which the default build does not; Hefesto offers `svg` with every display and none of the raster devices, see Q-MISC-51); no option prints the help list ("The "plot" commands are:" followed by one line per option); an unknown option reports ""<x>" isn't a valid plot option." and prints the help. For every output option the plotted window is the layout window under the pointer or the only layout window ("The cursor must be over a layout window to plot." otherwise); the plotted area is the box if the box lies in that window's root cell, else the root cell's bounding box; the default layer set is the window's visible layers, plus labels when the window displays labels, plus subcell outlines; an explicit layer-list argument replaces that set (special names `labels` and `subcell` select labels and unexpanded-subcell outlines). Hierarchy is plotted according to the window's expansion state: paint and labels of expanded cells, bounding boxes of unexpanded subcells.
+The system SHALL provide `plot <option> ...` where `<option>` is matched by unique prefix against `postscript`, `pnm`, `svg`, `parameters` and `help` (informative: Magic 8.3.694's default build also offers `versatec`, and adds `svg` only when built with Cairo and the Tcl wrapper; `gremlin` and `pixels` are compiled out. Hefesto deviates as a platform decision, in both `magic-compat` settings: it offers `svg` with every display and does not offer `versatec`, see Q-MISC-51); no option prints the help list ("The "plot" commands are:" followed by one line per option); an unknown option reports ""<x>" isn't a valid plot option." and prints the help. For every output option the plotted window is the layout window under the pointer or the only layout window ("The cursor must be over a layout window to plot." otherwise); the plotted area is the box if the box lies in that window's root cell, else the root cell's bounding box; the default layer set is the window's visible layers, plus labels when the window displays labels, plus subcell outlines; an explicit layer-list argument replaces that set (special names `labels` and `subcell` select labels and unexpanded-subcell outlines). Hierarchy is plotted according to the window's expansion state: paint and labels of expanded cells, bounding boxes of unexpanded subcells.
 
 Compatibility: behavioral
 
@@ -25,9 +25,9 @@ param_cmd  = "parameters" , [ ws , name , ws , value ] ;
 - **WHEN** the user runs `plot foo`
 - **THEN** ""foo" isn't a valid plot option." is reported followed by the option list
 
-#### Scenario: No raster printer device
-- **WHEN** the user runs `plot versatec`
-- **THEN** ""versatec" isn't a valid plot option." is reported followed by the option list `postscript`, `pnm`, `svg`, `parameters`, `help`
+#### Scenario: No raster printer device (Hefesto deviates)
+- **WHEN** the user runs `plot versatec`, with `magic-compat` ON or OFF
+- **THEN** ""versatec" isn't a valid plot option." is reported followed by the option list `postscript`, `pnm`, `svg`, `parameters`, `help` (Magic rasterises the area and spools it to a printer; Q-MISC-51)
 
 ### Requirement: Plot parameters
 
@@ -54,7 +54,7 @@ Compatibility: behavioral
 
 The printed listing (informative) groups parameters under "General plotting parameters are:", "Postscript plotting parameters are:" and "PNM plotting parameters are:", e.g. `    PS_width:       612 (8.500 in)`.
 
-Informative: builds of Magic with raster printing also offer `cellidfont`, `cellnamefont`, `labelfont`, `directory`, `dotsperinch`, `printer`, `spoolcommand`, `swathheight`, `width`, `plottype` and `pnmplotRTL`, listed under "HP/Versatec plotting parameters are:". The default Magic build and Hefesto do not (see Q-MISC-51); in Hefesto these names are unknown parameters.
+Hefesto deviates (Q-MISC-51, platform, both `magic-compat` settings): Magic's default build also has `cellidfont`, `cellnamefont`, `labelfont`, `directory`, `dotsperinch`, `printer`, `spoolcommand`, `swathheight`, `width` and `plottype`, listed under "HP/Versatec plotting parameters are:", and `pnmplotRTL`, listed as the last line of the PNM group. Hefesto neither lists nor accepts them; in Hefesto these names are unknown parameters. The golden cases that print the listing (MISC-PLOT-05, MISC-PLOT-17) carry these lines as a documented deviation.
 
 (Magic ref: plot/plotMain.c:300-650, plot/plotPS.c:120-140, plot/plotPNM.c:60-75, plot/plotVers.c:95-140) (See Q-MISC-49, Q-MISC-51.)
 
@@ -63,8 +63,8 @@ Informative: builds of Magic with raster printing also offer `cellidfont`, `cell
 - **THEN** "PS_labelSize must be an integer greater than zero." is reported and the size stays 12
 
 #### Scenario: Plot type sets resolution
-- **WHEN** the user runs `plot parameters plottype hpgl2`
-- **THEN** ""plottype" isn't a valid plot parameter." is reported and all parameters are printed (informative: a Magic build with raster printing sets dotsperinch to 300 and width to 10650)
+- **WHEN** the user runs `plot parameters plottype hpgl2`, with `magic-compat` ON or OFF
+- **THEN** ""plottype" isn't a valid plot parameter." is reported and all parameters are printed (Magic sets dotsperinch to 300 and width to 10650; Q-MISC-51)
 
 ### Requirement: PostScript labels
 
@@ -86,7 +86,7 @@ Compatibility: exact
 
 ### Requirement: SVG plot
 
-`plot svg <file>` SHALL write an SVG 1.2 document of the current layout window's visible contents (window frame decorations and the box cursor excluded) at the window's pixel size, appending `.svg` when the name has no extension (the extension test follows requirement "Plot behaviour with magic-compat off" for `magic-compat` OFF). Hefesto SHALL provide `plot svg` with every display and in headless sessions, where the window has its headless frame (512 × 484 pixels, Magic's null-display screen). The document is produced by the view export of capability `hefesto-rendering` (requirement "View export to SVG and PNG"): its root element has `width` and `height` equal to the window's screen area in pixels and a `viewBox` of the same size, and it contains the layers, labels and cell outlines the window draws. Informative: Magic writes SVG only when it runs with the Cairo display ("Must be running in mode "-d XR" (CAIRO) to get SVG output."), and the drawing inside the file is Cairo's rendering of the display; only the file name, the size and the document type are compared with Magic (see Q-MISC-52).
+`plot svg <file>` SHALL write an SVG 1.2 document of the current layout window's visible contents (window frame decorations and the box cursor excluded) at the window's pixel size, appending `.svg` when the name has no extension (the extension test follows requirement "Plot behaviour with magic-compat off" for `magic-compat` OFF). Hefesto SHALL provide `plot svg` with every display and in headless sessions, where the window has its headless frame (512 × 484 pixels, Magic's null-display screen). The document is produced by the view export of capability `hefesto-rendering` (requirement "View export to SVG and PNG"): its root element has `width` and `height` equal to the window's screen area in pixels and a `viewBox` of the same size, and it contains the layers, labels and cell outlines the window draws. Hefesto deviates with `magic-compat` ON as well (platform decision, Q-MISC-52): Magic writes SVG only when it is built with Cairo and the Tcl wrapper and runs with the Cairo display; with another display it reports `Must be running in mode "-d XR" (CAIRO) to get SVG output.` and writes nothing, and without Cairo `svg` is not a plot option. Informative: the drawing inside Magic's file is Cairo's rendering of the display, with `width` and `height` written in points (`512pt` for a 512-pixel window); only the file name, the numeric width and height and the document type are compared with Magic (see Q-MISC-52).
 
 Compatibility: behavioral
 
@@ -103,24 +103,28 @@ Compatibility: behavioral
 
 ### Requirement: Raster printer and legacy plot devices
 
-The `versatec`, `colorversatec`, `gremlin` and `pixels` styles of the technology `plot` section SHALL be accepted for technology-file compatibility and ignored: no error is reported for their lines, whatever they contain, and no output uses them. Hefesto SHALL NOT provide `plot versatec`, `plot gremlin`, `plot pixels`, PNM output to HP RTL/HPGL2 plotters or printer spooling (see Q-MISC-51, Q-MISC-44), as the default Magic build does not. Informative: in Magic builds with these devices the style-line grammar is: `versatec`: `<types> X|B` or `<types>` followed by 16 hexadecimal stipple words ("\"versatec\" lines must have either 2 or 17 fields."); `colorversatec`: `<types> X|B` or `<types> <color> w1 … wn` with color one of `black cyan magenta yellow K C M Y` and n ∈ {1, 2, 4, 8, 16} words repeated to 16; `gremlin`: `<types> X|B|<integer>`; `pixels`: lines ignored; raster plots are written to a temporary file in the `directory` parameter and printed by running the `spoolcommand` with the printer and file names.
+The `versatec`, `colorversatec`, `gremlin` and `pixels` styles of the technology `plot` section SHALL be accepted for technology-file compatibility and ignored: no error is reported for their lines, whatever they contain, and no output uses them. Hefesto SHALL NOT provide `plot versatec`, `plot gremlin`, `plot pixels`, PNM output to HP RTL/HPGL2 plotters or printer spooling (see Q-MISC-51, Q-MISC-44). For `gremlin` and `pixels` this is what Magic's default build does (both devices are compiled out). For Versatec and HP RTL Hefesto deviates, as a platform decision in both `magic-compat` settings: Magic's default build parses the `versatec` and `colorversatec` lines (reporting malformed ones), provides `plot versatec` and spools raster plots. Informative: Magic's style-line grammar is: `versatec`: `<types> X|B` or `<types>` followed by 16 hexadecimal stipple words ("\"versatec\" lines must have either 2 or 17 fields."); `colorversatec`: `<types> X|B` or `<types> <color> w1 … wn` with color one of `black cyan magenta yellow K C M Y` and n ∈ {1, 2, 4, 8, 16} words repeated to 16; `gremlin`: `<types> X|B|<integer>`; `pixels`: lines ignored; raster plots are written to a temporary file in the `directory` parameter and printed by running the `spoolcommand` with the printer and file names.
 
 Compatibility: behavioral
 
-(Magic ref: plot/plotVers.c:241-498, plot/plotVers.c:1063-1490, plot/plotGremln.c:131-217, plot/plotPixels.c:149-183, plot/plotInt.h:28, plot/plotPNM.c:700-760, plot/Makefile.in:19-22) (See Q-MISC-44, Q-MISC-45, Q-MISC-51.)
+(Magic ref: plot/plotInt.h:28, plot/plotVers.c:241-498, plot/plotVers.c:1063-1490, plot/plotGremln.c:131-217, plot/plotPixels.c:149-183, plot/plotPNM.c:700-760) (See Q-MISC-44, Q-MISC-45, Q-MISC-51.)
 
 #### Scenario: Versatec lines accepted
 - **GIVEN** a `style versatec` block with `m1 X` and a line `m2 1 2 3`
 - **WHEN** the technology is loaded
-- **THEN** no error is reported and no plot uses the lines
+- **THEN** no error is reported and no plot uses the lines (Magic reports ""versatec" lines must have either 2 or 17 fields." for the second line; Q-MISC-51)
 
 ### Requirement: Platform mechanism of plot output
 
-Magic locates `magicps.pro` and display-style and colour-map files on its system library path and spools raster plots through an external command in a temporary directory (see Q-MISC-44). Hefesto SHALL embed the PostScript prologue text of Magic 8.3.694 byte-for-byte and SHALL bundle the colour-map and display-style files the PNM defaults name for the `mos` display-style type (`mos.7bit.mraster.cmap`, `mos.7bit.mraster_dstyle`), with their notices. A PostScript plot SHALL always contain the embedded prologue; a `magicps.pro` file on disk is not read. The PNM `color` and `dstyle` lines SHALL search the current directory, then the technology's directory, then the bundled resources. Hefesto SHALL NOT start a process to print a plot on any platform.
+Magic locates `magicps.pro` and display-style and colour-map files on its system library path and spools raster plots through an external command in a temporary directory (see Q-MISC-44). Hefesto SHALL embed the PostScript prologue text of Magic 8.3.694 byte-for-byte; a PostScript plot SHALL always contain the embedded prologue, and a `magicps.pro` file on disk is not read. The PNM colours come from two sources, as in Magic:
+- **`default` and `draw <type>`** blend the colours of the display styles that draw each type, from the display style table and colour map the session loaded for its display (Magic's `GrStyleTable` and colour map, loaded by `styletype`). A headless session uses the `7bit` display class for this, as Magic's null display does (`mos.7bit.dstyle` and `mos.7bit.std.cmap` for the `mos` style type). When the session has no display style set loaded (a headless session without display files, or iPadOS with no Magic installation), the plot loads the `7bit` files of the technology's style type from the display search path, then from Hefesto's bundled resources.
+- **`color` and `dstyle` lines** load a plot-only colour map and style table (default names `<style type>.7bit.mraster.cmap` and `<style type>.7bit.mraster_dstyle`), used by `draw <type> <style>` and discarded at the end of the section. They SHALL search the current directory, then the technology's directory, then the bundled resources.
+
+Hefesto SHALL bundle, unmodified and with Magic's notice, `mos.7bit.mraster.cmap` and `mos.7bit.mraster_dstyle` (for `color` and `dstyle` lines without a file name) and `mos.7bit.dstyle` and `mos.7bit.std.cmap` (for the `default` colours when no display style set is loaded), unless Hefesto's display assets already carry the last two. Hefesto SHALL NOT start a process to print a plot on any platform.
 
 Compatibility: informative
 
-(Magic ref: plot/plotPS.c:1180-1192, plot/plotPS.c:1221-1232, plot/plotPNM.c:1380-1400, plot/plotPNM.c:1456-1507, plot/plotVers.c:1475-1485) (See Q-MISC-44.)
+(Magic ref: plot/plotPS.c:1180-1192, plot/plotPS.c:1221-1232, plot/plotPNM.c:1033-1060, plot/plotPNM.c:1150-1165, plot/plotPNM.c:1261-1279, plot/plotPNM.c:1305-1318, plot/plotPNM.c:1360-1400, plot/plotPNM.c:1456-1507, dbwind/DBWdisplay.c:1750-1765, graphics/grMain.c:215-216, plot/plotVers.c:1475-1485) (See Q-MISC-44.)
 
 #### Scenario: Prologue embedded
 - **GIVEN** no `magicps.pro` file on disk
@@ -128,9 +132,9 @@ Compatibility: informative
 - **THEN** the output contains the standard prologue rather than `postscript_prolog_is_missing`
 
 #### Scenario: Default PNM colours on an iPad
-- **GIVEN** the sky130A technology, whose `style pnm` has `default` and no `color` or `dstyle` line, on iPadOS with no Magic installation
+- **GIVEN** the sky130A technology, whose `style pnm` has `default` and no `color` or `dstyle` line, on iPadOS with no Magic installation and no display style set loaded
 - **WHEN** the user runs `plot pnm inv 200`
-- **THEN** the image is written with the colours of the bundled `mos.7bit.mraster` files
+- **THEN** the image is written with the blended colours of the display styles in the bundled `mos.7bit.dstyle` and `mos.7bit.std.cmap`, the same as a headless Magic run (`-dnull`) writes; the `mos.7bit.mraster` files are not used
 
 ## ADDED Requirements
 
@@ -195,7 +199,7 @@ Compatibility: native
 
 ### Requirement: Plot export from the desktop
 
-The desktop app SHALL offer File > "Export Image…", which plots the current layout window as PostScript, PNM, SVG or PNG. The dialog SHALL offer the plotted area (box or whole cell, as requirement "Plot command and plotted region" chooses), the layers (the window's visible layers by default), the PNM width and the PNG size, and SHALL run the same command as the console (`plot postscript`, `plot pnm`, `plot svg`; PNG through the view export of capability `hefesto-rendering`), so the console shows the command and its messages. The plot runs with the progress and cancel controls of long operations. On iPadOS the same action is in the document menu, and the file goes to the share sheet.
+The desktop app SHALL offer File > "Export Image…", which plots the current layout window as PostScript, PNM, SVG or PNG. For PostScript and PNM the dialog SHALL offer the plotted area (box or whole cell, as requirement "Plot command and plotted region" chooses) and the layers (the window's visible layers by default), and for PNM the width. SVG and PNG export what the window shows, as `plot svg` does, so for them the dialog offers no area or layer choice; PNG offers the image size. The dialog SHALL run the same command as the console (`plot postscript`, `plot pnm`, `plot svg`; PNG through the view export of capability `hefesto-rendering`), so the console shows the command and its messages. The plot runs with the progress and cancel controls of long operations. On iPadOS the same action is in the document menu, and the file goes to the share sheet.
 
 Compatibility: native
 

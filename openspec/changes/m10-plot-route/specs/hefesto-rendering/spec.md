@@ -5,7 +5,7 @@ Hefesto SHALL export the contents of a layout view as an SVG 1.2 document or a P
 - **SVG.** The root element has `width` and `height` equal to the exported pixel size and a `viewBox` of the same size. Stipples are SVG patterns, one per stipple used. Layer geometry is written as merged rectangles and polygons per (layer, style), in display-style order. Text is SVG `text`. The document uses no scripting and no external references.
 - **PNG.** 8-bit RGB (RGBA when a transparent background is asked), non-interlaced, deflate-compressed with the zlib library already in the build, at the view's pixel size or a requested size of at most 16 384 pixels per side.
 
-Both outputs SHALL be byte-identical for the same inputs on Linux x86_64, Linux aarch64 and macOS arm64. `plot svg` (capability `plot-output`) and the image export of `reliability-visualization` use this export.
+SVG output SHALL be byte-identical for the same inputs on Linux x86_64, Linux aarch64 and macOS arm64: coordinates are integer pixels and a label's rotation is written as its integer angle, so no floating-point or math-library result reaches the file. PNG output SHALL be byte-identical for the same inputs on the same platform. Across the three platforms it SHALL be byte-identical for scenes without rotated labels; the glyph outlines of a rotated label use the platform's sine and cosine (`display/font.cpp`), so their edge pixels may differ between platforms. The export's rasteriser uses integer arithmetic only, and the export and font sources are compiled without floating-point contraction. `plot svg` (capability `plot-output`) and the image export of `reliability-visualization` use this export.
 
 Compatibility: native
 

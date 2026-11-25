@@ -62,7 +62,7 @@ Compatibility: native
 - **THEN** `Need irouter style in mzrouter section of technology file to use irouter.` is reported
 
 ### Requirement: Route timeout
-`iroute route -timeout <n>` SHALL end the search after n seconds of wall-clock time as an interrupt does (the results of requirement "Route results" for an interrupt). The deadline SHALL belong to the one command: it is removed when the command ends on any path, including an option error after `-timeout` (Magic leaves its timer armed there; see Q-LEGACY-41), so no later command is interrupted by it. Golden cases and tests that need a time limit use the engine's bloom budget (capability `router-maze`, "Maze router engine interface") instead of `-timeout`.
+`iroute route -timeout <n>` SHALL end the search after n seconds of wall-clock time as an interrupt does (the results of requirement "Route results" for an interrupt). The deadline SHALL belong to the one command: it is removed when the command ends on any path, including an option error after `-timeout` (Magic leaves its timer armed there; see Q-LEGACY-41), so no later command is interrupted by it. Golden cases and tests whose result would otherwise depend on the clock set `iroute wizard bloomLimit <n>` (in Magic and in Hefesto alike), whose stop is deterministic (capability `router-maze`, "Maze router engine interface"); `mazeroute` keeps Magic's `-timeout 3`, and its golden case (SCRIPT-AUX-02) routes so little that the deadline is never reached.
 
 Compatibility: behavioral
 

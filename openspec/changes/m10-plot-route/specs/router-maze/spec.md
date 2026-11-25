@@ -85,13 +85,13 @@ Compatibility: native
 - **THEN** the width printed is 4; with `magic-compat` ON it is 3
 
 ### Requirement: Maze router engine interface
-The engine SHALL be callable without global state, so that several editor sessions (including an agent's scratch sessions) can route at the same time. A route request SHALL carry the style parameters (a value copy), the start terms, the destination areas, the expansion mask and reference area of the layout it sees, and these run controls: a cancellation token (set by an interrupt or by `-timeout`), an optional budget in blooms, and the search memory limit. The result SHALL carry:
+The engine SHALL be callable without global state, so that several editor sessions (including an agent's scratch sessions) can route at the same time. A route request SHALL carry the style parameters (a value copy, including the bloom limit of requirement "Style defaults and lookup"), the start terms, the destination areas, the expansion mask and reference area of the layout it sees, and these run controls: a cancellation token (set by an interrupt or by `-timeout`) and the search memory limit. The result SHALL carry:
 - the result code: success, best before interrupt, failure, unroutable, interrupted or already routed;
 - the path as a list of points with their route types, and the paint it converts to (requirement "Path to paint conversion");
 - the path's cost, the initial cost estimate, and the counts of blooms and points processed;
-- the reason the search ended (complete, bloom limit, budget, cancellation, memory limit).
+- the reason the search ended (complete, bloom limit, cancellation, memory limit).
 
-The engine SHALL NOT modify the layout: painting the result into the edit cell, the undo record, the selection and the redisplay belong to the caller. A budget ends the search exactly as an interrupt does at the same bloom, so a route with a budget gives the same result on every machine. For the same request the engine SHALL return the same result whatever other sessions are routing.
+The engine SHALL NOT modify the layout: painting the result into the edit cell, the undo record, the selection and the redisplay belong to the caller. The bloom limit is the engine's only work budget and keeps Magic's meaning (requirement "Windowed bloom search"): when it is nonzero and the bloom count exceeds it, the search stops quietly ("Bloom limit (%d) hit." at verbosity 1 or more) and returns the cheapest complete path found with result code success, or failure when there is none; it is not an interrupt. Because the bloom count does not depend on the machine, a route with a bloom limit gives the same result on every machine; callers that need a deterministic bound (the M11 agent, tests, golden cases through `iroute wizard bloomLimit`) set it in the request's style copy. For the same request the engine SHALL return the same result whatever other sessions are routing.
 
 Compatibility: native
 
@@ -102,17 +102,17 @@ Compatibility: native
 - **WHEN** the second session routes
 - **THEN** both return the same result code, path and cost as a route run alone
 
-#### Scenario: Budget ends the search deterministically
-- **GIVEN** a route request whose search needs more than 50 blooms, with a budget of 50 blooms
+#### Scenario: Bloom limit ends the search deterministically
+- **GIVEN** a route request whose search needs more than 51 blooms, with bloom limit 50 in its style
 - **WHEN** it is run on Linux x86_64 and on macOS arm64
-- **THEN** both runs end at bloom 50 with the same result code and, if a complete path existed, the same path
+- **THEN** both runs stop at the first bloom selection after the 51st bloom (the count first exceeds the limit there) with "Bloom limit (50) hit.", the same result code (success with the cheapest complete path found, or failure) and, on success, the same path
 
 ### Requirement: Maze search safety and limits
 In both `magic-compat` settings the maze router SHALL NOT crash, hang or leave the editor in a changed state after a route:
 - **Undo (Q-LEGACY-38).** Undo recording is restored on every path out of start registration and of the route, including the start-points-on-both-sides-of-a-fence case, errors and cancellation.
 - **Search memory (Q-LEGACY-48).** When the memory of path records, hash entries and blockage planes of one route exceeds the setting `router.max-search-memory` (default 1 GiB on desktop, 256 MiB on iPadOS), the search ends as an interrupt does ("Search Interrupted!" and "Using best path found prior to interrupt." with a complete path, otherwise "Route Interrupted!") and the limit is reported.
 - **Arithmetic (Q-LEGACY-90).** Cost, estimate and adjusted-cost arithmetic saturates instead of overflowing.
-- **Penalty (Q-LEGACY-47).** A penalty whose stored mantissa floor(p × 2) does not fit in 32 bits is rejected with `Penalty value out of range: %s` and the penalty is unchanged.
+- **Penalty (Q-LEGACY-47).** At both places a penalty is set, the technology `search` statement and `iroute wizard penalty`, a penalty whose stored mantissa floor(p × 2) does not fit in 32 bits is rejected with `Penalty value out of range: %s` and the penalty is unchanged; a `search` statement with such a penalty defines nothing (whole-statement validation).
 
 Compatibility: native
 

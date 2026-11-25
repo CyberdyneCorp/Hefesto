@@ -316,7 +316,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Plotting and routing (2026-11-24): planned, decisions pending (change `openspec/changes/m10-plot-route`, decision table `docs/decisions/m10-plot-route-decision-table.md`).**
 - Scope: `plot-output` (PostScript and PNM byte-identical to Magic, Hefesto's SVG), view export to SVG and PNG in `hefesto-rendering` (D-37, D-38), `router-maze` and `router-maze-iroute` (a session-scoped engine the M11 agent can call), and `mazeroute` deferred from M4 (Q-SCRIPT-30).
-- Gate G0: 19 blocking entries for these capabilities, D-37 and D-38, and 20 new entries (Q-MISC-48..55, Q-LEGACY-37..48). Golden cases MISC-PLOT-01..20 and LEG-MZ-01..31 are captured before implementation.
+- Gate G0: 19 blocking entries for these capabilities, D-37 and D-38, and 22 new entries (Q-MISC-48..55, Q-LEGACY-37..49, Q-LEGACY-54). Golden cases MISC-PLOT-01..20 and LEG-MZ-01..31 are captured before implementation.
 - Collaboration and diff, the reliability capabilities and the digital flow are later M10 changes; they are not started.
 
 **Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`, `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results`, `digital-flow-mixed-signal`, `reliability-em-rules`, `reliability-ir-drop`, `reliability-em-check`, `reliability-visualization`
