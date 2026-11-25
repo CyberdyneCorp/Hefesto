@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // GenerationContext (capability mask-hierarchical-generation;
-// openspec/changes/m5-mask-gds-cif/design.md D4 "Generation", D8, D14): the
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "Generation", D8, D14): the
 // scratch planes, progress callback, cancel token and statistics of one
 // caller. Generation has no globals, so one context per caller (the command
 // thread, each DRC worker) makes it reentrant.

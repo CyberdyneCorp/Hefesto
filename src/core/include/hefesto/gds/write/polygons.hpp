@@ -3,7 +3,7 @@
 //
 // Boundary output of one mask layer of a GDS structure (capability
 // gds-write "Unmerged boundary output", "Merged polygon output";
-// openspec/changes/m5-mask-gds-cif/design.md D12). The structure body
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12). The structure body
 // writer calls, for each written non-label mask layer in style order:
 // - emit_tile_boundaries with `gds merge no`: one BOUNDARY per solid tile
 //   (each solid side of a split tile) in the plane's area enumeration order

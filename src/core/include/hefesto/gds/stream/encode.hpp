@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // GDSII value encodings (capabilities gds-read, gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D10, D22):
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D10, D22):
 // - the eight-byte excess-64 real (gds-write "Eight-byte real encoding";
 //   the MASK-GW-040 vectors are its unit test), written with explicit
 //   double operations in Magic's order;

@@ -3,7 +3,7 @@
 //
 // The shared LEF/DEF via table (capabilities lef-read "LEF VIA and VIARULE
 // definitions", "Via redefinition", def-read "Rectangle-based DEF vias",
-// "Via redefinition"; openspec/changes/m6-lef-def-oasis/design.md D4, D6,
+// "Via redefinition"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D6,
 // D8): starting a VIA, VIARULE or DEF VIAS definition in
 // lef::LefSession::vias, redefinition (LefRedefined, Q-LEFDEF-8 fixed) and
 // adding a via rectangle (LefAddViaGeometry).

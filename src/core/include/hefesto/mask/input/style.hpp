@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Input styles (capability mask-input-styles;
-// openspec/changes/m5-mask-gds-cif/design.md D4, D9): the parsed cifinput
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D9): the parsed cifinput
 // styles (CIFReadStyle) and the style list (cifReadStyleList).
 //
 // One InputStyle is the result of one load pass over the `cifinput` section

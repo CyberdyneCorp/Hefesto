@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/mask.md with `hefesto-cli --diagnostic-codes=mask`
 // and describe the codes in its OPS section.
 //
-// Owner: OPS (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: OPS (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_MASK_CODE("MASK-OPER-001", warning, "Mask generation: a bloat-min or bloat-max tile was inverted by shrink.")
 HEFESTO_MASK_CODE("MASK-OPER-002", warning, "Mask generation: no room for contact cuts in a contact strip.")

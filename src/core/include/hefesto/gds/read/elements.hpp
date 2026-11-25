@@ -4,7 +4,7 @@
 // The pure element arithmetic of the GDS reader (capability gds-read
 // "Structure reference transforms", "Magnified instances", "PATH
 // elements", "Path-to-polygon conversion", "TEXT element parsing";
-// openspec/changes/m5-mask-gds-cif/design.md D11, D22): the Manhattan
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D11, D22): the Manhattan
 // rounding of SREF/AREF angles and their transform, the continued-fraction
 // magnification and the magnified copy's name, path end extensions, the
 // path outline (CIFPaintWirePath with the GDS end-cap flag and the

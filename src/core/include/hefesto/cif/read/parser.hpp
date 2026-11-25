@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The CIF parser (capability cif-format-io; openspec/changes/m5-mask-gds-cif
+// The CIF parser (capability cif-format-io; openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D13; Magic's cif/CIFrdutils.c, CIFrdcl.c, CIFrdpt.c): a
 // table-driven dispatcher over the commands DS, DF, DD, C, L, B, R, P, W, E,
 // comments and the user extensions 9, 91, 94 and 95. It drives a
@@ -21,7 +21,7 @@
 // usable plane is ignored with DB-GEOM-001, comments nest without
 // recursion, and the number of symbols per read is capped (CIF-READ-006).
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D2, D13).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, D13).
 
 #pragma once
 

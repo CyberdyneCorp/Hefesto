@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/gds.md with `hefesto-cli --diagnostic-codes=gds`
 // and describe the codes in its GDSR section.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_GDS_CODE("GDS-STREAM-001", error, "The GDS stream ends inside a record's data bytes.")
 HEFESTO_GDS_CODE("GDS-STREAM-002", error, "The gzip-compressed GDS stream is corrupt or cut off.")

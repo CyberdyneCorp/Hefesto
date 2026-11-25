@@ -66,12 +66,12 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       (shared files; tcl/ TCL, binding/ BINDING, pdk/ PDKINT each with its
 #       own sources.cmake)   pcell/ INTEGRATION (framework/, native/ PCELL)
 #       tools/ TOOLS   gui/ GUIMGR
-#   M5 (openspec/changes/m5-mask-gds-cif/design.md D1/D2): mask/, gds/, cif/
+#   M5 (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2): mask/, gds/, cif/
 #       INTEGRATION (shared files; each subdirectory has its own
 #       sources.cmake owned by its workstream: mask/{plane,ops} OPS,
 #       mask/style STYLES, mask/input INPUT, mask/gen GEN, gds/{stream,read}
 #       GDSR, gds/{write,command} GDSW, cif/* CIF)
-#   M6 (openspec/changes/m6-lef-def-oasis/design.md D1/D2): lef/, def/,
+#   M6 (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2): lef/, def/,
 #       oasis/, extract/ INTEGRATION (shared files; each subdirectory has its
 #       own sources.cmake owned by its workstream: lef/lex LEFR, lef/tech
 #       LEFTECH, lef/via LEFVIA, lef/read LEFR, lef/write LEFW, lef/command

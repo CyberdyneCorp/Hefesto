@@ -3,8 +3,8 @@
 #
 # Sources of the def area (DEF read and write),
 # included by src/core/CMakeLists.txt. The area builds with -ffp-contract=off
-# (set PUBLIC on hefesto_core; openspec/changes/m6-lef-def-oasis/design.md D3).
-# Owner: INTEGRATION (openspec/changes/m6-lef-def-oasis/design.md D1/D2): this
+# (set PUBLIC on hefesto_core; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3).
+# Owner: INTEGRATION (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2): this
 # file lists the shared files and includes one sources.cmake per
 # subdirectory, each owned by its workstream:
 #   read/  DEFR

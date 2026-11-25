@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // LEF number output (capability lef-write "Output scale and LEF database
-// units", "Distance number formatting"; openspec/changes/m6-lef-def-oasis/
+// units", "Distance number formatting"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/
 // design.md D7, Q-LEFDEF-34, Q-LEFDEF-45): Magic's lefPrint
 // (lefWrite.c:89-127), CIFGetOutputScale(1000) (CIFmain.c:139-146) and the
 // LEFdbUnits computation of lefWriteHeader (lefWrite.c:274-292).

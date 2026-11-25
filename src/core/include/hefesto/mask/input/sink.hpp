@@ -3,7 +3,7 @@
 //
 // ReadSink: the interface between the format parsers (CIF, GDS) and the
 // shared read engine (capability mask-input-styles;
-// openspec/changes/m5-mask-gds-cif/design.md D4 "Input", D9). The CIF and
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "Input", D9). The CIF and
 // GDS parsers drive it in file order; ReadEngine implements it (read
 // planes, scale, rescale, paint-current); tests use a recording sink.
 // Coordinates are in the parser's read units, already multiplied by the

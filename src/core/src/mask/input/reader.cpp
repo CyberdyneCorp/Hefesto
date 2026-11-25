@@ -26,7 +26,7 @@
 // a `grow`, `grow-grid` or `shrink` distance (Q-MASK-36; Magic's grow
 // arithmetic overflows on it).
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "mask/input/reader.hpp"
 

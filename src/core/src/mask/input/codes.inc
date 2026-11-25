@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/mask.md with `hefesto-cli --diagnostic-codes=mask`
 // and describe the codes in its INPUT section.
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_MASK_CODE("MASK-INPUT-001", error, "Error in a `cifinput` section line (Magic's message); the statement is skipped or its value reset.")
 HEFESTO_MASK_CODE("MASK-INPUT-002", warning, "Input style name that is a strict prefix of an earlier one (Q-MASK-302); native only.")

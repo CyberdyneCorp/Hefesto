@@ -15,7 +15,7 @@
 // the copyup copy of calmaElementSref), Copyright (C) 1985, 1990 Regents of
 // the University of California (see THIRD_PARTY_NOTICES.md).
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/mask/input/engine.hpp"
 

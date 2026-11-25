@@ -3,7 +3,7 @@
 //
 // Content-hash timestamps of read-only OASIS cells (capability oasis-read
 // "Content-hash timestamps for read-only OASIS cells";
-// openspec/changes/m6-lef-def-oasis/design.md D12): the FNV-1a 64 hash of
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D12): the FNV-1a 64 hash of
 // each cell's decompressed bytes (CBLOCKs inflated), then gds-read's
 // memoized stamp(s) procedure, so a read-only OASIS cell gets a timestamp
 // that changes only when its content does. The table has the gds::StampTable

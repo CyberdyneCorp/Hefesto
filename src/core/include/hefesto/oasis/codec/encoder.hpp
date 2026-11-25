@@ -5,7 +5,7 @@
 // of oasis-write "File layout", "Reference numbers and name tables",
 // "Modal field omission", "CBLOCK compression", "Strict and non-strict
 // modes", "Standard properties", "END record and validation";
-// openspec/changes/m6-lef-def-oasis/design.md D4, D11):
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D11):
 // - minimal integers (Q-OASIS-1) and the narrowest real form;
 // - modal field omission (coordinates always absolute);
 // - strict mode: CELL, PLACEMENT, TEXT, PROPERTY names and string values by

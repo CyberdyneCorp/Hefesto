@@ -3,7 +3,7 @@
 //
 // OASIS PROPERTY values and the standard property names (capability
 // oasis-format "PROPERTY records", "Standard properties";
-// openspec/changes/m6-lef-def-oasis/design.md D11).
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D11).
 //
 // Owner: OASFMT (design D2).
 

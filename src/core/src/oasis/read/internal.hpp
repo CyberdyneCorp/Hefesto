@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // OASR-private: the pieces of oasis::read (capability oasis-read;
-// openspec/changes/m6-lef-def-oasis/design.md D12).
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D12).
 //
 // The reader is GDS-equivalent by construction. Pass 1 (index.cpp) decodes
 // the whole file with the oasis-format Decoder and indexes the name

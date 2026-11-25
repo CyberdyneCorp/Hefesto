@@ -8,7 +8,7 @@
 // Regents of the University of California, BSD-style licence (see
 // THIRD_PARTY_NOTICES.md).
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/lef/via/store.hpp"
 

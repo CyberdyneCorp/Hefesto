@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // LEF read entry point (capability lef-read;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D6, D14): `lef read
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D6, D14): `lef read
 // <file> [-import] [-annotate]`, the CLI and the shell all call
 // lef::read. It is a single-phase command under the exclusive database
 // lock and reports progress through mask::ProgressHost (LefEstimate,

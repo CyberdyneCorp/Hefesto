@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// CIF write (capability cif-format-io; openspec/changes/m5-mask-gds-cif
+// CIF write (capability cif-format-io; openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D4 "Commands and progress", D7, D13): split in two phases as the
 // GDS writer (gds/write/write.hpp):
 // - prepare_write, on the command thread under the exclusive database lock

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// oasis::read (capability oasis-read; openspec/changes/m6-lef-def-oasis/
+// oasis::read (capability oasis-read; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/
 // design.md D4, D12): pass 1 (index.cpp), pass 2 (transcode*.cpp), then
 // gds::read of the GDS-equivalent stream with the session's shared read
 // settings (internal.hpp says why). After it:
@@ -14,7 +14,7 @@
 // The whole read holds the exclusive database lock and records no undo
 // events ("Read command and file lookup").
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/oasis/read/read.hpp"
 

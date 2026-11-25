@@ -8,7 +8,7 @@
 // platform::FilePicker requests (the desktop's native dialog, a scripted
 // picker in tests); a null picker or a cancelled request does nothing, as
 // an empty answer of Tk's file dialog. The `gds` and `cif` kinds
-// (openspec/changes/m5-mask-gds-cif/design.md D16) read the chosen file's
+// (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D16) read the chosen file's
 // root name (`gds read`, and `cif read` into the temporary cell `cif_temp`),
 // write `cif write <root name>` (Q-MASK-320) and `gds write <file>`
 // (Q-MASK-210 keeps its extension).

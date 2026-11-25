@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Diagnostic codes of the "mask" area (see diag/area_codes.hpp), assembled
-// from one fragment per workstream (openspec/changes/m5-mask-gds-cif/design.md
+// from one fragment per workstream (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D1):
 //
 //   mask/plane/codes.inc       MASK-OPER-*     OPS

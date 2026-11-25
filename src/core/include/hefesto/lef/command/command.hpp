@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `lef` and `def` commands (capabilities lef-read, lef-write, def-read,
-// def-write; openspec/changes/m6-lef-def-oasis/design.md D3, D14): one
+// def-write; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D14): one
 // dispatcher for both, as Magic's CmdLef (lef/lefCmd.c:50-562). Both
 // commands look their option up in the `lef` table (cmdLefOption), so `def
 // nocheck` and `def datestamp` are found; the `def` table (cmdDefOption,

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Output styles (capability mask-output-styles;
-// openspec/changes/m5-mask-gds-cif/design.md D4, D5): the immutable IR of
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D5): the immutable IR of
 // one cifoutput style (CIFStyle): its layers in order, each a list of
 // operators with typed operands, the scale (scale factor, expander,
 // reducer), the label map, the GDS layer map, the options, the halo radius

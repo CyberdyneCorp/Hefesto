@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // ReadEngine: the one read engine behind both parsers (capability
-// mask-input-styles; openspec/changes/m5-mask-gds-cif/design.md D9; Magic's
+// mask-input-styles; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D9; Magic's
 // CIFrdcl.c, CIFrdutils.c, CIFrdpt.c, CIFrdpoly.c). It keeps per-cell read
 // planes and the scale, rescales mid-read (CIFScalePlanes,
 // CIFInputRescale), paints the current cell through evaluate_layer

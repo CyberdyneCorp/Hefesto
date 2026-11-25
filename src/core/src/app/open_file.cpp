@@ -4,7 +4,7 @@
 // The generic open path (see hefesto/app/open_file.hpp; capability
 // oasis-command "Format recognition on open").
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2, D15).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2, D15).
 
 #include "hefesto/app/open_file.hpp"
 

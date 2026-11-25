@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The desktop's open paths (openspec/changes/m6-lef-def-oasis design D16,
+// The desktop's open paths (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D16,
 // tasks.md 14.1; capability oasis-command "Format recognition on open"):
 // the File > Open picker and files dropped on the window both go through
 // the generic open path (app::open_command), which reads each file's first

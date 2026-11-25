@@ -4,7 +4,7 @@
 // The commands of the binding area (openspec/changes/m4-scripting/design.md
 // D3/D6): `tag` (scripting-api "Command tag callbacks"). Called by
 // cmd::register_all_commands. The M4 `cif` command moved to cif/command/
-// with the M5 scaffold (openspec/changes/m5-mask-gds-cif/design.md D3).
+// with the M5 scaffold (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3).
 //
 // Owner: BINDING (design D2).
 

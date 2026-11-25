@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // StyleView (capability extract-tech-section, the subset that `lef write`
-// and `def write` read; openspec/changes/m6-lef-def-oasis/design.md D4, D7,
+// and `def write` read; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D7,
 // D9, D10; Open Question 2, decided (a)): the current extraction style's
 // device classes per type, antenna tie-down types (exts_antennaTieTypes),
 // substrate types and active types, as a view over the tables of the one

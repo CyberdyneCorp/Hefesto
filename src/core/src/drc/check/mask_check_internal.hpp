@@ -11,7 +11,7 @@
 // tile containing the unit square the spec names. Arithmetic on distances
 // is 64-bit and clamped to the plane, so hostile rule values cannot wrap.
 //
-// Owner: DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: DRCCIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

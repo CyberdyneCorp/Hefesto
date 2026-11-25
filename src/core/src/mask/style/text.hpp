@@ -5,7 +5,7 @@
 // reader needs (atoi, StrIsInt, FindGCF, strncmp prefix tests, the comma
 // list loop), with saturating arithmetic where C overflows.
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

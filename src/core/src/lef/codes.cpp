@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Diagnostic codes of the "lef" area (see diag/area_codes.hpp), assembled
-// from one fragment per workstream (openspec/changes/m6-lef-def-oasis/design.md
+// from one fragment per workstream (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md
 // D1):
 //
 //   lef/lex/codes.inc           LEF-LEX-*         LEFR

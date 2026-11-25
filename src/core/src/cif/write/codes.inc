@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/cif.md with `hefesto-cli --diagnostic-codes=cif`
 // and describe the codes in its CIF section.
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_CIF_CODE("CIF-WRITE-001", error, "No CIF output style is set: nothing is written.")
 HEFESTO_CIF_CODE("CIF-WRITE-002", error, "Failure to read in entire subtree of the cell: a cell under the root cannot be read; the file is left empty.")

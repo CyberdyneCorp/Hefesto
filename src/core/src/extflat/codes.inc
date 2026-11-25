@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/extflat.md with `hefesto-cli --diagnostic-codes=extflat`
 // and describe the codes in its READ section.
 //
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D1/D2, D10).
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2, D10).
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-001", error, "An `.ext` file of the hierarchy cannot be found or read, so the read fails (`Cannot read extract file <name>.ext`).")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-002", warning, "A `.ext` read message (Magic's efReadError text, with its `<file>, line <n>: ` prefix).")
 HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-003", error, "A `tech` record names another technology than the loaded one; the read fails.")

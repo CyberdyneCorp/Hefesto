@@ -3,7 +3,7 @@
 #
 # Sources of mask/input (the cifinput reader, InputStyle and the read engine behind ReadSink),
 # included by src/core/src/mask/sources.cmake.
-# Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/current.cpp

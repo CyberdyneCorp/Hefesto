@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/oasis.md with `hefesto-cli --diagnostic-codes=oasis`
 // and describe the codes in its CODEC section.
 //
-// Owner: OASFMT (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: OASFMT (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 
 HEFESTO_OASIS_CODE("OASIS-CODEC-001", error, "Not an OASIS file: the first 13 bytes are not the OASIS magic bytes; nothing is read.")
 HEFESTO_OASIS_CODE("OASIS-CODEC-002", error, "Unexpected end of file: the stream ends before the END record is complete, or no END record is in the last 256 bytes.")

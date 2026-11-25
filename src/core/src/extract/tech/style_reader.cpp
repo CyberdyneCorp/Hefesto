@@ -3,7 +3,7 @@
 //
 // The extraction-style subset of the `extract` section reader (see
 // style_reader.hpp).
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10); the
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D10); the
 // height subset (`lambda`, `units`, `planeorder`, `noplaneordering`,
 // `height`, finish_heights): TECH (openspec/changes/m10-3d-view/design.md D5).
 // The full read (Subset::all, load_styles) and the keyword handlers it

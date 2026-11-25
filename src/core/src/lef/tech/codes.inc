@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/lef.md with `hefesto-cli --diagnostic-codes=lef`
 // and describe the codes in its TECH section.
 //
-// Owner: LEFTECH (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: LEFTECH (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 
 HEFESTO_LEF_CODE("LEF-TECH-001", error, "Unknown or ambiguous keyword in the tech lef section; the line is ignored.")
 HEFESTO_LEF_CODE("LEF-TECH-002", error, "A lef section line names no LEF layer; the line is ignored.")

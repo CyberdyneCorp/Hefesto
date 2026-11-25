@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Format recognition on open (capability oasis-command "Format recognition
-// on open"; openspec/changes/m6-lef-def-oasis/design.md D15): the generic
+// on open"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D15): the generic
 // open path (the desktop picker, drag and drop, the iPadOS Files request and
 // the scripting open) reads the first bytes of a file, after gzip
 // decompression, and dispatches on them whatever the extension: OASIS by

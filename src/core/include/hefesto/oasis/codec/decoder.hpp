@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The OASIS record decoder (capability oasis-format;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D11): reads records over
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D11): reads records over
 // a gds::ByteSource and yields them typed, never touching the database:
 // - integers, reals, strings, deltas, point lists, repetitions, intervals;
 // - ModalState with the reset rules (Q-OASIS-5);

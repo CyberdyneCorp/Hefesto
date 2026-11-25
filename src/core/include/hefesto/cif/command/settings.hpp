@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// CifSettings (capability cif-format-io; openspec/changes/m5-mask-gds-cif
+// CifSettings (capability cif-format-io; openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D4, D13): the session state of the `cif` options, held per open
 // project in editor::EditorState::mask.cif, as Magic keeps them in session
 // globals (cif/CIFmain.c, CIFhier.c, CIFrdutils.c, CIFwrite.c). `cif

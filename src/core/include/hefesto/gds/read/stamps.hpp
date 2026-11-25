@@ -3,7 +3,7 @@
 //
 // Content-hash timestamps of read-only vendor cells (capability gds-read
 // "When content-hash timestamps are assigned", cell-timestamps;
-// openspec/changes/m5-mask-gds-cif/design.md D11): the structure table of a
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D11): the structure table of a
 // GDS byte span and the FNV-1a stamp of each structure, as a pure function
 // so it can be unit-tested with the spec's three vectors (143581310,
 // 1837575894, 1595775465) and fuzzed. cell/timestamps.cpp's M1 hook calls

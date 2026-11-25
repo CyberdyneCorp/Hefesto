@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The DEF reader's state and section handlers (private to def/read;
-// capability def-read, openspec/changes/m6-lef-def-oasis/design.md D8).
+// capability def-read, openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D8).
 // Reader::run (top_level.cpp) is DefRead's loop; each section has its own
 // file: vias.cpp (DefReadVias), components.cpp (DefReadComponents,
 // DefReadLocation), pins.cpp (DefReadPins), nets.cpp (DefReadNets),

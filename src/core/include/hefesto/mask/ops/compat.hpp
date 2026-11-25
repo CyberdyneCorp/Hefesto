@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The compat branch points of the operator kernels and their pinned float
-// paths (capability mask-output-operators; openspec/changes/m5-mask-gds-cif/
+// paths (capability mask-output-operators; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/
 // design.md D6 "Compat branch points", D22). Each magic-compat decision is
 // one small helper: the ON path is Magic's arithmetic, the OFF path the
 // intended one, so both are testable on their own. The float helpers use

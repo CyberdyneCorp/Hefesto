@@ -4,7 +4,7 @@
 // Read-only vendor views and their content-hash timestamps (capability
 // gds-read "Read-only vendor views", "Content-hash timestamps for read-only
 // cells", "When content-hash timestamps are assigned";
-// openspec/changes/m5-mask-gds-cif/design.md D11; Q-MASK-128, 129):
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D11; Q-MASK-128, 129):
 // - the units check of a read-only read;
 // - the GDS_FILE value of a path (PDK-variable and `~` substitution);
 // - the stamp of a read-only cell from a stamp table (calmaStampLookup),

@@ -28,7 +28,7 @@
 // the property). The `gds maskhints` comparison at the end of
 // CIFPaintCurrent belongs to the GDS reader (hints::gds_maskhints_region).
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <utility>
 

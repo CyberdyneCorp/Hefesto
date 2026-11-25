@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/gds.md with `hefesto-cli --diagnostic-codes=gds`
 // and describe the codes in its GDSR section.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_GDS_CODE("GDS-READ-001", error, "Unexpected record type in input: the GDS record found is not the one the grammar expects.")
 HEFESTO_GDS_CODE("GDS-READ-002", error, "Unexpected EOF: the GDS stream ends before the record the grammar expects.")

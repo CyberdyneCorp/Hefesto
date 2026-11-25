@@ -4,7 +4,7 @@
 // The library level of the GDS reader (capability gds-read "Library
 // grammar and header processing", "Units and input scale", "Coordinate
 // conversion and automatic rescaling", "Structure timestamps";
-// openspec/changes/m5-mask-gds-cif/design.md D11): the header records up to
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D11): the header records up to
 // UNITS, the library cell name, the read scale num/den, the conversion of
 // XY values to input units with automatic rescaling, the BGNSTR creation
 // date and the ENDLIB check. The structure and element handlers of the

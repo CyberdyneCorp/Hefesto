@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The desktop's open paths (see hefesto/shell/open_files.hpp).
-// Owner: SHELL (openspec/changes/m6-lef-def-oasis design D16).
+// Owner: SHELL (openspec/changes/archive/2026-11-22-m6-lef-def-oasis design D16).
 
 #include "hefesto/shell/open_files.hpp"
 

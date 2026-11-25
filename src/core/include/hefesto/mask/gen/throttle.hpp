@@ -14,7 +14,7 @@
 //   terminated file, Q-MASK-226 ON) and removed when it is cancelled, so a
 //   cancelled write leaves no file.
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2); the writers
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2); the writers
 // (GDSW, CIF) and the shell host them.
 
 #pragma once

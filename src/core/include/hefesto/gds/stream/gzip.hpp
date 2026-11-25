@@ -3,7 +3,7 @@
 //
 // Gzip streams of the GDS stream layer (capabilities gds-read "Read command
 // and file lookup", gds-write "Compressed output";
-// openspec/changes/m5-mask-gds-cif/design.md D3, D10; Q-MASK-223).
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3, D10; Q-MASK-223).
 //
 // The source inflates gzip data as zlib's gzread does: concatenated members
 // are read in turn, and bytes after the last member that do not start

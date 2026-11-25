@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The boundary rings of merged polygon output (capability gds-write
-// "Merged polygon output"; openspec/changes/m5-mask-gds-cif/design.md D12,
+// "Merged polygon output"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12,
 // Q-MASK-217 replicate). A line-for-line port of Magic 8.3.694
 // calma/CalmaWrite.c calmaAddSegment, calmaMergeSegments,
 // calmaRemoveDegenerate and calmaRemoveColinear: point order and polygon
@@ -25,7 +25,7 @@
 // side meets several neighbours is therefore merged, not written as a
 // plain rectangle). A segment that matches no node returns -1.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

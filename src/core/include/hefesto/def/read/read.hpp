@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // DEF read entry point (capability def-read;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D8, D14): `def read
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D8, D14): `def read
 // <file> [-labels] [-annotate] [-noblockage]`, the CLI and the shell all
 // call def::read. Single-phase command under the exclusive database lock,
 // with progress through mask::ProgressHost (the caller passes the

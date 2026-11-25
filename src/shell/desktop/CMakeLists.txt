@@ -80,12 +80,12 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/wiring_hud.cpp
   src/wiring_hud_view.cpp)
 
-# M5 (openspec/changes/m5-mask-gds-cif task 12.2, SHELL): the host of long
+# M5 (openspec/changes/archive/2026-11-24-m5-mask-gds-cif task 12.2, SHELL): the host of long
 # GDS and CIF reads and writes (progress, Interrupt, the deep-stack emit worker).
 target_sources(hefesto_shell_desktop PRIVATE
   src/mask_job_host.cpp)
 
-# M6 (openspec/changes/m6-lef-def-oasis tasks 14.1-14.3, SHELL): File > Open
+# M6 (openspec/changes/archive/2026-11-22-m6-lef-def-oasis tasks 14.1-14.3, SHELL): File > Open
 # and drag and drop through the generic open path (format by content).
 target_sources(hefesto_shell_desktop PRIVATE
   src/open_files.cpp)

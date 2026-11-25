@@ -68,10 +68,10 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = pcell::register_pcell_commands(registry) && ok;
   ok = tools::register_tools_commands(registry) && ok;
   ok = gui::register_gui_commands(registry) && ok;
-  // M5 (openspec/changes/m5-mask-gds-cif/design.md D3).
+  // M5 (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3).
   ok = gds::register_gds_command(registry) && ok;
   ok = cif::register_cif_command(registry) && ok;
-  // M6 (openspec/changes/m6-lef-def-oasis/design.md D3, D14, D15).
+  // M6 (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D14, D15).
   ok = lef::register_lef_def_commands(registry) && ok;
   ok = oasis::register_oasis_command(registry) && ok;
   // M8 (openspec/changes/m8-schematic/design.md D12): `schematic`.

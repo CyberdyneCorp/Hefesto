@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `oasis` command (capability oasis-command;
-// openspec/changes/m6-lef-def-oasis/design.md D3, D15): `oasis`, `oasis
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D15): `oasis`, `oasis
 // read <file>`, `oasis write <file>`, `oasis help` and one option per row of
 // "Options shared with the gds command" and "OASIS-only options". A bare
 // `oasis` writes the root cell of the current window. `oasis` has no alias.

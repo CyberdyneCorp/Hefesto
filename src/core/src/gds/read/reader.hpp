@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // GDSR-private: the GDS reader's state and handlers (capability gds-read;
-// openspec/changes/m5-mask-gds-cif/design.md D11). One Reader is one
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D11). One Reader is one
 // CalmaReadFile: the library header, the structures (post-order reading,
 // duplicates, cells already in memory, flattening, magnified copies) and
 // their elements, and the end-of-read cleanup. Magic's session globals of a

@@ -15,7 +15,7 @@
 // slots data a second time as bloat data (undefined behavior in Magic);
 // products saturate at the int range instead of overflowing.
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <cstdlib>

@@ -15,9 +15,9 @@
 // (drc/<sub>/codes.inc; openspec/changes/m3-drc design.md D1); the script and
 // pcell tables likewise from script/<sub>/codes.inc and pcell/<sub>/codes.inc
 // (openspec/changes/m4-scripting/design.md D1), and the mask, gds and cif
-// tables from <area>/<sub>/codes.inc (openspec/changes/m5-mask-gds-cif
+// tables from <area>/<sub>/codes.inc (openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D1), the lef, def, oasis and extract tables likewise and the
-// extflat table from extflat/codes.inc (openspec/changes/m6-lef-def-oasis
+// extflat table from extflat/codes.inc (openspec/changes/archive/2026-11-22-m6-lef-def-oasis
 // design.md D1), the schem table from schem/<sub>/codes.inc
 // (openspec/changes/m8-schematic design.md D3), and the view3d table from
 // view3d/<sub>/codes.inc (openspec/changes/m10-3d-view/design.md D2), the
@@ -55,11 +55,11 @@ namespace hefesto::diag::area_codes {
 [[nodiscard]] std::span<const CodeInfo> pcell() noexcept;
 [[nodiscard]] std::span<const CodeInfo> tools() noexcept;
 [[nodiscard]] std::span<const CodeInfo> gui() noexcept;
-// M5 areas (openspec/changes/m5-mask-gds-cif/design.md D1).
+// M5 areas (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1).
 [[nodiscard]] std::span<const CodeInfo> mask() noexcept;
 [[nodiscard]] std::span<const CodeInfo> gds() noexcept;
 [[nodiscard]] std::span<const CodeInfo> cif() noexcept;
-// M6 areas (openspec/changes/m6-lef-def-oasis/design.md D1).
+// M6 areas (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1).
 [[nodiscard]] std::span<const CodeInfo> lef() noexcept;
 [[nodiscard]] std::span<const CodeInfo> def() noexcept;
 [[nodiscard]] std::span<const CodeInfo> oasis() noexcept;

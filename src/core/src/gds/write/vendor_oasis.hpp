@@ -3,7 +3,7 @@
 //
 // Internal to the GDS writer (src/core/src/gds/write/): read-only OASIS
 // cells in GDS output (capability gds-write "Read-only OASIS vendor cells";
-// openspec/changes/m6-lef-def-oasis/design.md D13, Q-OASIS-35 (a)). `gds
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D13, Q-OASIS-35 (a)). `gds
 // write` of a hierarchy holding a read-only OASIS cell (OASIS_FILE and
 // OASIS_CELL) transcodes the cell from its OASIS file instead of
 // generating it from its abstract layout. A layer or datatype above 32767,

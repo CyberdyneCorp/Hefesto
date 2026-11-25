@@ -8,4 +8,4 @@
 // docs/diagnostics/codes/lef.md with `hefesto-cli --diagnostic-codes=lef`
 // and describe the codes in its CMD section.
 //
-// Owner: LEFR, LEFW (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: LEFR, LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).

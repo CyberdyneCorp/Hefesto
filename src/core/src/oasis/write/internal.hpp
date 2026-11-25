@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Internal to the OASIS writer (src/core/src/oasis/write/; capability
-// oasis-write; openspec/changes/m6-lef-def-oasis/design.md D13). An OASIS
+// oasis-write; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D13). An OASIS
 // write translates the GDS element stream that gds-write produces for the
 // same layout, record by record ("GDS-consistent content"):
 // - gds_elements.cpp reads that stream (or a vendor GDS structure) as

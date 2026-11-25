@@ -15,7 +15,7 @@
 // usable plane are refused (Q-MASK-30, Q-MASK-35; Magic's int arithmetic
 // overflows on them).
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <array>
 #include <string>

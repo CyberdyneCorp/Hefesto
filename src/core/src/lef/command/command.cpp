@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The `lef` and `def` commands (openspec/changes/m6-lef-def-oasis/design.md
+// The `lef` and `def` commands (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md
 // D3, D14): Magic's two option tables, the lookup of both commands in the
 // `lef` table, the window check of every option but `help`, `def read` and
 // `def write` (Q-LEFDEF-86), the help listing, `def writeall`'s refusal and
