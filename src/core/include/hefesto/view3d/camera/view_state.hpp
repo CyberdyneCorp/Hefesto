@@ -24,7 +24,9 @@
 // - preset: the absolute `view` angles of top, isometric, front and side;
 // - frame_view: the translation and scale_xy that frame a 3D box under the
 //   current angles (Q-MISC-84), as `scroll`/`zoom` values;
-// - exit_mask_factor / change_output_style: the Q-MISC-78 rule.
+// - exit_mask_factor / change_output_style: the Q-MISC-78 rule;
+// - ground_point: the point of the z = 0 plane under a pixel (M10 round 5,
+//   SECTION: the two clicks of a cut line drawn in the 3D view).
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3); CAMERA fills in
 // src/core/src/view3d/camera/ (design D3, section 4) and owns the
@@ -35,6 +37,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/view3d/mode.hpp"
@@ -181,5 +184,22 @@ inline constexpr double kFrameFill = 0.9;
 /// the window records: f_old with ON (the view still carries it), f_new
 /// with OFF.
 float change_output_style(ViewState& view, bool magic_compat, float f_old, float f_new);
+
+/// The point of the z = 0 plane (h = 0) under the pixel (px, py) of a
+/// width_px x height_px view, as the renderer draws it (M10 round 5,
+/// SECTION; design.md "As-landed: round 5 SECTION"): CAMERA's matrix
+/// applied to the displayed scene (the model mirrored in z, which leaves
+/// the plane z = 0 in place), x from the left and y from the top in
+/// pixels, (0, 0) the top-left corner of the top-left pixel (its centre is
+/// (0.5, 0.5)). The result is rounded to the nearest internal unit, in the
+/// coordinates CAMERA's matrix takes: root coordinates, or root coordinates
+/// times render::DrawParams::xy_scale when the renderer scales x and y
+/// (mask-layer mode in phase 1; divide by it to get root coordinates).
+/// Nullopt when the view's ray is parallel to the plane (the front and
+/// side presets see it edge on), when the plane point is behind the eye
+/// (perspective), for a size that is not positive, or when the point is
+/// not finite or outside the coordinate range.
+[[nodiscard]] std::optional<db::Point> ground_point(const ViewState& view, const ProjectionParams& projection,
+                                                    int width_px, int height_px, float px, float py);
 
 }  // namespace hefesto::view3d

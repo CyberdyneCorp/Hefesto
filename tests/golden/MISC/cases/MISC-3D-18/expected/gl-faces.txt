@@ -1,0 +1,26 @@
+file gl.log
+gl-faces 1
+face pale_highlights 0 +z 0 120 0 0 400 400
+face pale_highlights 0 +z 1020 1120 0 0 400 400
+face pale_highlights 0 +z 120 200 0 0 120 120
+face pale_highlights 0 +z 200 280 0 0 150 150
+face pale_highlights 0 +z 280 340 0 0 150 150
+face pale_highlights 0 +z 280 340 180 180 400 400
+face pale_highlights 0 +z 340 500 0 0 150 150
+face pale_highlights 0 +z 340 500 180 180 400 240
+face pale_highlights 0 +z 500 520 0 0 120 120
+face pale_highlights 0 +z 500 520 180 180 240 220
+face pale_highlights 0 +z 520 620 0 0 120 120
+face pale_highlights 0 +z 700 900 0 0 300 300
+face pale_highlights 0 -z 0 120 0 0 400 400
+face pale_highlights 0 -z 1020 1120 0 0 400 400
+face pale_highlights 0 -z 120 200 0 0 120 120
+face pale_highlights 0 -z 200 280 0 0 150 150
+face pale_highlights 0 -z 280 340 0 0 150 150
+face pale_highlights 0 -z 280 340 180 180 400 400
+face pale_highlights 0 -z 340 500 0 0 150 150
+face pale_highlights 0 -z 340 500 180 180 400 240
+face pale_highlights 0 -z 500 520 0 0 120 120
+face pale_highlights 0 -z 500 520 180 180 240 220
+face pale_highlights 0 -z 520 620 0 0 120 120
+face pale_highlights 0 -z 700 900 0 0 300 300

@@ -9,6 +9,10 @@
 //              gaps until the region holds at least --rects rectangles;
 //              heights and thicknesses are sky130's (diff, poly, metal1,
 //              metal2), set by hand, so it needs no PDK.
+//   mask       the synthetic region with an output style (one mask layer
+//              per type with sky130's `render` values, and a grown NWELL),
+//              built in mask-layer mode: mask::generate_flat over the
+//              bounding box, then the mask-layer mesh (task 13.3).
 //   array      the 100 x 100 array of sky130_fd_sc_hd__dfxtp_1 (the M2 and
 //              DRC benchmark array), under sky130A.
 //   block      every sky130_fd_sc_hd cell placed once, in rows of 40,000
@@ -31,13 +35,14 @@
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/tech/technology.hpp"
+#include "hefesto/view3d/mesh/build.hpp"
 #include "hefesto/view3d/stack/layer_stack.hpp"
 
 namespace hefesto::bench_view3d {
 
 struct WorkloadOptions {
-  std::string name = "synthetic";       // synthetic | array | block
-  std::uint64_t rects = 1'000'000;      // synthetic: minimum meshed rectangles
+  std::string name = "synthetic";       // synthetic | mask | array | block
+  std::uint64_t rects = 1'000'000;      // synthetic, mask: minimum layout rectangles
   std::filesystem::path pdk_root;       // the sky130A variant directory
   std::vector<std::filesystem::path> style_dirs;  // where mos.OpenGL.dstyle, its cmap and color.glyphs are
 };
@@ -50,6 +55,8 @@ class Workload {
   [[nodiscard]] virtual const db::CellDef& cell() const = 0;
   /// A line describing the workload for the report.
   [[nodiscard]] virtual std::string description() const = 0;
+  /// The mask-layer source (build_from_mask), or null for the layout layers.
+  [[nodiscard]] virtual const view3d::MaskSource* mask_source() const { return nullptr; }
 };
 
 /// Loads the named workload, or returns nullptr with `error` set.

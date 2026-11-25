@@ -470,7 +470,8 @@ class ThirdPartyNoticesTest(unittest.TestCase):
     def test_repository_notices_cover_every_cmake_module(self):
         code, output = run_quiet(notices.main, [])
         self.assertEqual(code, 0, output)
-        self.assertIn("8 dependencies checked", output)
+        # 9 since cgltf (M10 task 11.2): a module that goes missing fails here.
+        self.assertIn("9 dependencies checked, 0 problems", output)
 
 
 if __name__ == "__main__":

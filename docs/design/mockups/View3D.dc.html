@@ -35,8 +35,8 @@ a{color:#FF8A3D}a:hover{color:#FFA866}
       </span>
     </div>
     <div style="flex-grow: 1"></div>
-    <button type="button" aria-disabled="true" title="Cross-sections arrive in phase 2" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #2F343D; background: #1A1D22; color: #6B727D; font: 500 13px Inter, sans-serif; display: inline-flex; align-items: center">Cross-section<span style="margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid #3D434E; color: #A4ABB6; font: 600 10px 'JetBrains Mono', monospace">P2</span></button>
-    <button type="button" aria-disabled="true" title="glTF and STL export arrive in phase 2" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #2F343D; background: #1A1D22; color: #6B727D; font: 500 13px Inter, sans-serif; display: inline-flex; align-items: center">Export glTF…<span style="margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid #3D434E; color: #A4ABB6; font: 600 10px 'JetBrains Mono', monospace">P2</span></button>
+    <button type="button" aria-pressed="false" title="Cut A–A′ along the layout box; two clicks in the view set the line" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #2F343D; background: #1A1D22; color: #E6E9EE; font: 500 13px Inter, sans-serif; display: inline-flex; align-items: center">Cross-section</button>
+    <button type="button" title="Export the 3D model as glTF, GLB or STL" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #2F343D; background: #1A1D22; color: #E6E9EE; font: 500 13px Inter, sans-serif; display: inline-flex; align-items: center">Export glTF…</button>
   </header>
 
   <div style="flex-grow: 1; display: flex; min-height: 0">
@@ -78,7 +78,7 @@ a{color:#FF8A3D}a:hover{color:#FFA866}
         <span style="flex-grow: 1"></span>
         <span role="status" style="height: 32px; padding: 0 10px; border-radius: 8px; background: #15181C; border: 1px solid #2F343D; display: flex; align-items: center; gap: 8px; color: #A4ABB6"><span style="width: 8px; height: 8px; border-radius: 4px; background: #5FD3A0"></span>Mesh ready · 1,248 rectangles</span>
       </div>
-      <p role="note" style="position: absolute; right: 12px; top: 12px; z-index: 1; margin: 0; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #15181C; border: 1px solid #2F343D; font-size: 11px; line-height: 1.5; color: #8A919D">In mask-layer mode phase 1 draws a placeholder and says “Mask layers arrive in phase 2”; the mode and the values of <code style="font-family: 'JetBrains Mono', monospace">view</code>, <code style="font-family: 'JetBrains Mono', monospace">scroll</code> and <code style="font-family: 'JetBrains Mono', monospace">zoom</code> still follow Magic.</p>
+      <p role="note" style="position: absolute; right: 12px; top: 12px; z-index: 1; margin: 0; max-width: 300px; padding: 8px 10px; border-radius: 8px; background: #15181C; border: 1px solid #2F343D; font-size: 11px; line-height: 1.5; color: #8A919D">In mask-layer mode the view draws the mask layers of the current output style, in mask units; the mode and the values of <code style="font-family: 'JetBrains Mono', monospace">view</code>, <code style="font-family: 'JetBrains Mono', monospace">scroll</code> and <code style="font-family: 'JetBrains Mono', monospace">zoom</code> still follow Magic.</p>
       <svg width="908" height="852" viewBox="0 0 908 852" role="img" aria-label="Isometric 3D view of the inverter layer stack in the display styles' colors">
         <g transform="translate(40,70)">
           <polygon points="170.2,450.0 533.9,660.0 533.9,690.0 170.2,480.0" fill="#1E2127" stroke="#3D434E" stroke-width="0.8"></polygon>
@@ -132,9 +132,9 @@ a{color:#FF8A3D}a:hover{color:#FFA866}
       <label for="ov" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Overlay</label>
       <select id="ov" disabled title="Overlays arrive in phase 3, after M7 extraction" style="height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid #2F343D; background: #15181C; color: #6B727D; font: 400 12px Inter, sans-serif"><option>None</option><option>Node capacitance (extraction)</option><option>Coupling capacitance</option><option>Resistance network</option><option>Current density (simulation)</option></select>
       <span style="font-size: 11px; line-height: 1.5; color: #6B727D">Parasitic and field overlays arrive in phase 3, after M7 extraction; the legend then shows here with units and range.</span>
-      <div aria-disabled="true" title="Cross-sections arrive in phase 2" style="margin-top: auto; padding: 12px; border-radius: 8px; background: #1A1D22; border: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px; opacity: 0.55">
-        <span style="font-size: 12px; font-weight: 600; display: flex; align-items: center">Cross-section A–A′<span style="margin-left: 6px; padding: 1px 5px; border-radius: 4px; border: 1px solid #3D434E; color: #A4ABB6; font: 600 10px 'JetBrains Mono', monospace">P2</span></span>
-        <svg width="254" height="70" viewBox="0 0 254 70" role="img" aria-label="Cross-section strip showing diff, poly, local interconnect and metal1 layers stacked (phase 2)">
+      <div title="Cross-section along A–A′" style="margin-top: auto; padding: 12px; border-radius: 8px; background: #1A1D22; border: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; font-weight: 600; display: flex; align-items: center">Cross-section A–A′</span>
+        <svg width="254" height="70" viewBox="0 0 254 70" role="img" aria-label="Cross-section strip showing diff, poly, local interconnect and metal1 layers stacked">
           <rect x="0" y="58" width="254" height="12" fill="#2A2F37"></rect>
           <rect x="20" y="52" width="80" height="6" fill="#3BB273"></rect><rect x="150" y="52" width="80" height="6" fill="#3BB273"></rect>
           <rect x="112" y="40" width="26" height="12" fill="#E0524F"></rect>

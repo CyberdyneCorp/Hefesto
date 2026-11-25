@@ -62,8 +62,9 @@
 #   view3d-bench The 3D mesh benchmark (openspec/changes/m10-3d-view design D6, D17, task 13.1;
 #                hefesto-performance "Interactive frame rate"): a Release build of
 #                bench/view3d/hefesto-bench-view3d builds the layout-layer mesh of a synthetic
-#                1M-rectangle region and of the sky130 reference layouts (the 100 x 100 dfxtp_1
-#                array and the all-cells block). bench/view3d/view3d_gate.py gates the median
+#                1M-rectangle region, of the same region in mask-layer mode (workload mask,
+#                task 13.3: mask generation plus mesh) and of the sky130 reference layouts (the
+#                100 x 100 dfxtp_1 array and the all-cells block). bench/view3d/view3d_gate.py gates the median
 #                build time and the model's memory per rectangle (bench/view3d/gates.json); the GPU
 #                size estimate and the peak resident set are recorded for information. The frame
 #                time of the synthetic mesh (task 13.2, bench/view3d/frame.cpp) is measured on
@@ -1341,6 +1342,9 @@ jobs:
           # One process per workload, so each peak resident set is its own.
           VK_DRIVER_FILES="$icd" "$bench" --workload synthetic --rects 1000000 --repeat 5 --frames 10 \
             --json view3d-bench/synthetic.json > /dev/null
+          # The same region in mask-layer mode (task 13.3): generation plus mesh, then frames on lavapipe.
+          VK_DRIVER_FILES="$icd" "$bench" --workload mask --rects 1000000 --repeat 5 --frames 10 \
+            --json view3d-bench/mask.json > /dev/null
           for w in array block; do
             "$bench" --workload "$w" --repeat 5 --frames 0 --pdk-root "$pdk" --style-dir build/ref/magic/scmos \
               --style-dir build/ref/magic/graphics --json "view3d-bench/$w.json" > /dev/null
@@ -1354,28 +1358,32 @@ jobs:
             echo
             echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
           } >> "$GITHUB_STEP_SUMMARY"
-          python3 bench/view3d/view3d_gate.py view3d-bench/synthetic.json view3d-bench/array.json \
-            view3d-bench/block.json --summary "$GITHUB_STEP_SUMMARY"
+          python3 bench/view3d/view3d_gate.py view3d-bench/synthetic.json view3d-bench/mask.json \
+            view3d-bench/array.json view3d-bench/block.json --summary "$GITHUB_STEP_SUMMARY"
 
-      - name: Frame time of the synthetic mesh on lavapipe (recorded, not gated)
+      - name: Frame time of the synthetic and mask meshes on lavapipe (recorded, not gated)
         if: always()
         shell: bash
         run: |
-          python3 - view3d-bench/synthetic.json >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          python3 - view3d-bench/synthetic.json view3d-bench/mask.json >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           import json, sys
-          r = json.load(open(sys.argv[1]))["results"][0]
-          f = r.get("frame")
-          print("\n### Frame time (task 13.2, recorded, not gated)\n")
-          if not f:
-              print(f"not measured: {r.get('frame_time_note', '')}")
-              sys.exit(0)
-          print(f"{f['device']}, {f['width']} x {f['height']}, {f['view']}; upload {f['upload_s']:.3f} s, "
-                f"upload plus first frame {f['first_frame_ms']:.0f} ms\n")
-          print("| Level | Median | p95 | fps (median) |\n|---|---|---|---|")
-          for level in ("level0", "level1", "level0_ghost", "level1_ghost"):
-              l = f.get(level)
-              if l:
-                  print(f"| {level[5:]} | {l['median_ms']:.1f} ms | {l['p95_ms']:.1f} ms | {l['fps']:.2f} |")
+          for path in sys.argv[1:]:
+              try:
+                  r = json.load(open(path))["results"][0]
+              except OSError:
+                  continue
+              f = r.get("frame")
+              print(f"\n### Frame time, {r['workload']} (tasks 13.2, 13.3, recorded, not gated)\n")
+              if not f:
+                  print(f"not measured: {r.get('frame_time_note', '')}")
+                  continue
+              print(f"{f['device']}, {f['width']} x {f['height']}, {f['view']}; upload {f['upload_s']:.3f} s, "
+                    f"upload plus first frame {f['first_frame_ms']:.0f} ms\n")
+              print("| Level | Median | p95 | fps (median) |\n|---|---|---|---|")
+              for level in ("level0", "level1", "level0_ghost", "level1_ghost"):
+                  l = f.get(level)
+                  if l:
+                      print(f"| {level[5:]} | {l['median_ms']:.1f} ms | {l['p95_ms']:.1f} ms | {l['fps']:.2f} |")
           EOF
 
       - uses: actions/upload-artifact@v4

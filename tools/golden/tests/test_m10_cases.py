@@ -46,7 +46,7 @@ def misc_3d_rows() -> list[str]:
 class M10CaseSpecTest(unittest.TestCase):
     def test_every_row_is_authored(self):
         self.assertEqual([s.id for s in SPECS], misc_3d_rows())
-        self.assertEqual(misc_3d_rows(), [f"MISC-3D-{n:02d}" for n in range(1, 17)])
+        self.assertEqual(misc_3d_rows(), [f"MISC-3D-{n:02d}" for n in range(1, 20)])
 
     def test_requirements_are_view_3d_headings(self):
         headings = spec_headings("view-3d")
@@ -169,13 +169,17 @@ class M10CommandCaseTest(unittest.TestCase):
         self.assertEqual(body[close + 2], "probe {specialopen wind3d c3d .render.magic}")
 
 
+MASK_LAYER_CASES = {"MISC-3D-17", "MISC-3D-18", "MISC-3D-19"}
+
+
 class M10GeometryCaseTest(unittest.TestCase):
     """Task 12.4: the geometry cases run Magic with the shim and compare the reduced faces."""
 
     GEOMETRY = [s for s in SPECS if s.gl_capture]
 
-    def test_four_geometry_cases(self):
-        self.assertEqual([s.id for s in self.GEOMETRY], ["MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16"])
+    def test_geometry_cases(self):
+        # 13-16: layout-layer mode (task 12.4); 17-19: mask-layer mode (task 12.5, round 5).
+        self.assertEqual([s.id for s in self.GEOMETRY], [f"MISC-3D-{n}" for n in range(13, 20)])
 
     def test_manifest(self):
         for spec in self.GEOMETRY:
@@ -186,7 +190,10 @@ class M10GeometryCaseTest(unittest.TestCase):
                 self.assertIn('source = "derived:gl-faces:gl.log"', text)
                 self.assertNotIn('source = "stdout"', text)
                 self.assertEqual(spec.requirements, ["Rendered geometry"])
-                self.assertIn("probe {.render.magic cif}", spec.body)  # layout-layer mode
+                if spec.id in MASK_LAYER_CASES:
+                    self.assertNotIn("probe {.render.magic cif}", spec.body)  # opens in mask-layer mode
+                else:
+                    self.assertIn("probe {.render.magic cif}", spec.body)  # layout-layer mode
 
     def test_container_argv_preloads_the_shim_into_magic_only(self):
         with tempfile.TemporaryDirectory() as tmp:

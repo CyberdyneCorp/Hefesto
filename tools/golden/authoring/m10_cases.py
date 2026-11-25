@@ -31,6 +31,15 @@ layout-layer mode, and the compared output is the reduced face form of the last 
 (``derived:gl-faces:gl.log``, tools/golden/gl_capture/faces.py). hefesto-cli is to write the same log
 to the file named by ``HEFESTO_GL_CAPTURE`` (WIND3D); until it does, the geometry cases stay deferred.
 
+Task 12.5 (P2, MASKSRC) adds the mask-layer geometry cases MISC-3D-17..19: the window stays in mask-layer
+mode, so Magic draws the CIF planes W3DCIFredisplay generates (graphics/W3Dmain.c:1726-1784), in mask units.
+The PDKs are not in the capture image, so two small techs stand in for them: ``input/m3r.tech`` has
+``render`` statements as sky130A does (MET1 ``metal1 1.376 0.36`` as sky130A's MET1, MET2), a temporary
+layer and a layer grown from it (a halo radius above 0); ``input/m3n.tech`` is the same without any
+``render`` statement, as gf180mcuD (every layer flat in the pale-highlight style, no side faces).
+MISC-3D-17 is the whole cell with ``render``, 18 the same cell without, 19 a cut box whose grown layer
+reaches into it from metal outside it (the halo).
+
     python3 tools/golden/authoring/m10_cases.py               # write the cases (never expected/)
     python3 tools/golden/authoring/m10_cases.py --list        # print the case ids
     python3 tools/golden/authoring/m10_cases.py --deviations  # rewrite the generated block of deviations.toml
@@ -73,7 +82,8 @@ NO_STYLE_REASON = ("with no output style the window opens in layout-layer mode, 
 # deferral in the generated block.
 REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04", "MISC-3D-05", "MISC-3D-06",
                       "MISC-3D-07", "MISC-3D-08", "MISC-3D-09", "MISC-3D-10", "MISC-3D-11", "MISC-3D-12",
-                      "MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16"}
+                      "MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16", "MISC-3D-17", "MISC-3D-18",
+                      "MISC-3D-19"}
 
 # Captured cases that do not replay yet, with the reason (the deferral stays until the gap is closed).
 # MISC-3D-05 and 10 replay since N1 (Q-MISC-82): with magic-compat ON a script command goes to the 3D
@@ -289,6 +299,87 @@ end
 """
 
 
+# The mask-layer geometry cases (task 12.5): stand-ins for sky130A (``render`` statements) and gf180mcuD
+# (none). NWELL is metal1 grown by 20 mask units through the temporary layer M1BIG, so the style's halo
+# radius is above 0 and the grown layer crosses the cell's edge (Magic clips it to the bounding box).
+M3R_TECH = """\
+tech
+    format 35
+    m3r
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly
+    metal1  metal1,m1
+    metal2  metal2,m2
+end
+
+styles
+    styletype mos
+    poly 1
+    metal1 20
+    metal2 21
+end
+
+contact
+end
+
+compose
+end
+
+connect
+    poly    poly
+    metal1  metal1
+    metal2  metal2
+end
+
+cifoutput
+style gdsii
+    scalefactor 10
+    layer POLY poly
+        calma 66 20
+    layer MET1 m1
+        calma 68 20
+    layer MET2 m2
+        calma 69 20
+    templayer M1BIG m1
+        grow 20
+    layer NWELL M1BIG
+        calma 64 20
+    render MET1 metal1 1.376 0.36
+    render MET2 metal2 2.0 0.5
+    render POLY 1 0.5 0.2
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style default
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder active 0
+    planeorder metal1 1
+    planeorder metal2 2
+    height poly 0.2 0.1
+    height metal1 0.5 0.3
+    height metal2 1.0 0.3
+end
+"""
+M3N_TECH = "\n".join(line for line in M3R_TECH.replace("    m3r\n", "    m3n\n").split("\n")
+                     if not line.startswith("    render "))
+
+
 def mag(tech: str, sections: dict[str, list[str]], uses: str = "") -> str:
     """A .mag file: one section per type, then the uses."""
     body = "".join(f"<< {name} >>\n" + "".join(f"{record}\n" for record in records)
@@ -318,6 +409,15 @@ GA_MAG = mag("g3d", {"metal1": ["rect 0 0 40 20", "rect 40 0 50 5", "rect 40 15 
 GB_MAG = mag("g3d", {"metal1": ["rect 60 0 100 20", "rect 50 0 60 5", "rect 50 15 60 20"],
                      "m2contact": ["rect 50 5 60 15"], "metal2": ["rect 70 5 90 15"]})
 GTOP_MAG = mag("g3d", {}, use("ga", "0 0 50 20") + use("gb", "50 0 100 20"))
+# MISC-3D-17..19: an L of metal1, metal2 over it, poly, a metal1 triangle (a split tile in the CIF
+# planes), and metal1 at x = 104..112, outside the cut box of MISC-3D-19 but inside its halo.
+def m3_mag(tech: str) -> str:
+    return mag(tech, {"polysilicon": ["rect 70 0 90 30"],
+                      "metal1": ["rect 0 0 60 10", "rect 0 10 10 40", "tri 30 20 50 40 sw", "rect 104 0 112 40"],
+                      "metal2": ["rect 20 5 50 15"]})
+
+
+MASK_CUT = "5 5 100 35"
 # The cut box of MISC-3D-16 crosses tiles away from their edges (no tile edge lies on a cut side).
 GEOMETRY_CUT = "25 5 75 35"
 
@@ -369,6 +469,17 @@ def geometry_case(cid: str, description: str, cell: str, cells: dict[str, str], 
     return case(cid, ["Rendered geometry"], description, body,
                 files={"g3d.tech": G3D_TECH, **{f"{name}.mag": text for name, text in cells.items()}},
                 head=prelude("g3d", cell, "0 0 10 10"), gl_capture=True, streams=False,
+                env={"HEFESTO_GL_CAPTURE": "{work}/" + GL_LOG}, outputs=[GL_FACES],
+                output_names={GL_FACES: "gl-faces.txt"})
+
+
+def mask_geometry_case(cid: str, description: str, tech: str, *extra: str) -> TclCase:
+    """A mask-layer geometry case: the window stays in mask-layer mode (the CIF planes, in mask units)."""
+    body = lines(p(open3d("m3c")), w3d(*extra, "refresh"))
+    text = M3R_TECH if tech == "m3r" else M3N_TECH
+    return case(cid, ["Rendered geometry"], description, body,
+                files={f"{tech}.tech": text, "m3c.mag": m3_mag(tech)},
+                head=prelude(tech, "m3c", "0 0 10 10"), gl_capture=True, streams=False,
                 env={"HEFESTO_GL_CAPTURE": "{work}/" + GL_LOG}, outputs=[GL_FACES],
                 output_names={GL_FACES: "gl-faces.txt"})
 
@@ -480,8 +591,22 @@ def geometry_specs() -> list[TclCase]:
     ]
 
 
+def mask_geometry_specs() -> list[TclCase]:
+    """Task 12.5: MISC-3D-17..19, the mask-layer source compared through the reduced face form."""
+    return [
+        mask_geometry_case("MISC-3D-17", "mask-layer mode with render statements (sky130A stand-in): MET1, MET2 "
+                           "and POLY prisms, a split tile, the temporary layer and NWELL (no render: flat) "
+                           "clipped to the bounding box", "m3r"),
+        mask_geometry_case("MISC-3D-18", "mask-layer mode without render statements (gf180mcuD stand-in): every "
+                           "layer flat in the pale-highlight style, no side faces", "m3n"),
+        mask_geometry_case("MISC-3D-19", f"mask-layer mode with render statements under cutbox {MASK_CUT}: the "
+                           "layers clipped to the box, NWELL grown into it from metal1 outside it (the halo)",
+                           "m3r", f"cutbox {MASK_CUT}"),
+    ]
+
+
 def specs() -> list[TclCase]:
-    return [*opening_specs(), *command_specs(), *geometry_specs()]
+    return [*opening_specs(), *command_specs(), *geometry_specs(), *mask_geometry_specs()]
 
 
 def output_names(spec: TclCase) -> list[str]:
