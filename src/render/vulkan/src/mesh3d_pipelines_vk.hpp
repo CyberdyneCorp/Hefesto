@@ -63,8 +63,12 @@ struct FramePush {
   std::array<float, 4> light;          // the board light (unit, displayed scene); ambient
   std::array<float, 4> zscale;         // s_z; 0; 0; 0
   std::array<std::uint32_t, 4> params;  // pick base; lighting; highlight active; 0
+  /// The section plane (DrawParams::section_plane) in chunk-local
+  /// coordinates: a fragment is kept when clip.x * x + clip.y * y + clip.z
+  /// >= 0 (read only by the clipped pipelines); w unused.
+  std::array<float, 4> clip;
 };
-static_assert(sizeof(FramePush) == 112);  // within the 128 bytes every device offers
+static_assert(sizeof(FramePush) == 128);  // the 128 bytes every device offers
 
 /// Vertices per instance of each kind, drawn as one triangle strip: the
 /// face of a rectangle or a triangle toward the viewer (the shader picks
@@ -83,7 +87,13 @@ class Pipelines {
   Pipelines& operator=(const Pipelines&) = delete;
 
   /// VK_NULL_HANDLE for the msaa variants when the device lacks 4x MSAA.
-  [[nodiscard]] VkPipeline get(Kind kind, Variant variant) const noexcept;
+  /// `clipped`: the variant whose fragment shader discards the fragments
+  /// on the removed side of the section plane (specialization constant 0);
+  /// VK_NULL_HANDLE until ensure_clipped() made them.
+  [[nodiscard]] VkPipeline get(Kind kind, Variant variant, bool clipped = false) const noexcept;
+  /// Builds the clipped variants on the first frame with a section plane,
+  /// so a view that never clips pays neither their creation nor a discard.
+  void ensure_clipped();
   [[nodiscard]] VkPipelineLayout layout() const noexcept { return layout_; }
   [[nodiscard]] VkDescriptorSetLayout set_layout() const noexcept { return set_layout_; }
   /// The multisampled color pass: 4x color and depth, resolved into the
@@ -92,7 +102,10 @@ class Pipelines {
   [[nodiscard]] bool msaa() const noexcept { return msaa_pass_ != VK_NULL_HANDLE; }
 
  private:
+  using Table = std::array<std::array<VkPipeline, kVariantCount>, kKindCount>;
   void create(VkRenderPass target_pass);
+  void create_table(bool clipped, Table& out);
+  void destroy_table(Table& table) noexcept;
   void destroy() noexcept;
 
   VkPhysicalDevice physical_ = VK_NULL_HANDLE;
@@ -103,7 +116,10 @@ class Pipelines {
   VkDescriptorSetLayout set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout layout_ = VK_NULL_HANDLE;
   VkRenderPass msaa_pass_ = VK_NULL_HANDLE;
-  std::array<std::array<VkPipeline, kVariantCount>, kKindCount> pipelines_{};
+  VkRenderPass target_pass_ = VK_NULL_HANDLE;
+  Table pipelines_{};
+  Table clipped_{};
+  bool have_clipped_ = false;
 };
 
 /// The multisampled color and depth images of one size (transient).

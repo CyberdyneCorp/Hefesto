@@ -126,7 +126,31 @@ empty.
 
 ## SECTION
 
-Codes of cross-sections (design D10, P2). Owner: INSPECT.
+Codes of cross-sections (design D10, P2). Owner: INSPECT (M10 round 5:
+SECTION, task 11.1). `view3d::section` returns its diagnostics in
+`CrossSection::diagnostics`; the caller (the desktop's section panel)
+reports them.
+
+- `VIEW3D-SECTION-001` (native error): the cut line is not axis-aligned,
+  or both its ends are the same point. The section is empty (no
+  intervals, no layers listed). The desktop draws cut lines with two
+  clicks snapped to an axis, so it only reaches this for a zero-length
+  line.
+- `VIEW3D-SECTION-002` (native warning): in layout-layer mode, layers the
+  line crosses have no physical height (no extract style, or no µm per
+  internal unit because there is no `cifoutput` scale); they are left out
+  of the section and named. In mask-layer mode the same case is
+  `VIEW3D-STACK-001`, which the section emits naming only the mask layers
+  the line crosses.
+
+Positions and heights are µm in both magic-compat modes (Q-MISC-72); a
+line outside the model gives an empty section without a diagnostic.
+
+The renderer's section clipping plane and the board's substrate slab
+(`render::DrawParams::section_plane`, `render::DrawParams::substrate`,
+`view3d::substrate_slab`; RENDER3D and SECTION, round 5) report nothing:
+a non-finite plane position clips nothing, and a slab with an empty area,
+non-finite heights or no layer index left is not drawn.
 
 ## EXPORT
 
@@ -161,6 +185,8 @@ fails when the two disagree.
 | `VIEW3D-CLIENT-007` | error | A command sent to the 3D window is not one of its commands (Magic's `Unknown command:`, followed by the command on standard output). |
 | `VIEW3D-CLIENT-008` | info | Output of a 3D window command printed on standard output (`help`, the command echoed after `Unknown command:`). |
 | `VIEW3D-CLIENT-009` | error | A 3D window command was run while no 3D window is open. |
+| `VIEW3D-SECTION-001` | error | The cross-section's cut line is not axis-aligned or has zero length; the section is empty. |
+| `VIEW3D-SECTION-002` | warning | Layers crossed by the cut line have no physical height in layout-layer mode (no extract style, or no µm per internal unit); they are left out of the cross-section (names the layers). |
 | `VIEW3D-STACK-001` | warning | Mask layers of the output style have no `render` height, so they have no physical height and are left out of µm-based output (names the layers; Q-MISC-72). |
 | `VIEW3D-STACK-002` | error | A `render` statement's style is neither a display style number nor a long name (Magic's `Error:  Bad render style for CIF layer.`); the statement is ignored. |
 <!-- END DIAGNOSTIC CODES -->
