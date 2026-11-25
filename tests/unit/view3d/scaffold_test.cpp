@@ -65,7 +65,7 @@ TEST_CASE("the MESH, INSPECT, EXPORT and OVERLAY stubs answer empty results", "[
   CHECK(view3d::section(*mesh, stack, view3d::Segment{}).intervals.empty());
   hefesto::gds::MemorySink out;
   CHECK(view3d::write_stl(*mesh, stack, {}, out, sink).ok());
-  CHECK(out.position() == 0);
+  CHECK(out.position() == 84);  // EXPORT (task 11.4): an empty binary STL is its header and count
   CHECK(view3d::overlay::color_of({}, 1.0, 0.0, 2.0) == view3d::overlay::Rgb{0, 0, 0});
 }
 

@@ -1,0 +1,160 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Byte stability and validity of exported 3D files (openspec/changes/m10-3d-view
+# design D14, tasks 11.3 and 11.4; hefesto-3d-visualization "3D export",
+# hefesto-testing-strategy "Cross-platform determinism checks").
+#
+# Each leg (Linux x86_64, Linux aarch64, macOS arm64) builds only the
+# view3d/export unit tests and runs them: the digest test compares the
+# reference files' SHA-256 digests with tests/data/view3d/export/digests.txt
+# and writes the files (HEFESTO_EXPORT3D_OUT). The compare job checks that the
+# three legs wrote the same bytes and runs the Khronos glTF-Validator (pinned
+# release binary) on the glTF files; any error or warning fails the job.
+
+name: export3d determinism
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/core/**/view3d/**"
+      - "tests/unit/view3d/export/**"
+      - "tests/data/view3d/export/**"
+      - "cmake/Dependencies.cmake"
+      - ".github/workflows/export3d-determinism.yml"
+  pull_request:
+    paths:
+      - "src/core/**/view3d/**"
+      - "tests/unit/view3d/export/**"
+      - "tests/data/view3d/export/**"
+      - "cmake/Dependencies.cmake"
+      - ".github/workflows/export3d-determinism.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "3.31.6"
+  NINJA_VERSION: "1.11.1.4"
+  PYTHON_VERSION: "3.12"
+  # Khronos glTF-Validator, release 2.0.0-dev.3.10 (Apache-2.0; a CI tool, not shipped).
+  GLTF_VALIDATOR_URL: https://github.com/KhronosGroup/glTF-Validator/releases/download/2.0.0-dev.3.10/gltf_validator-2.0.0-dev.3.10-linux64.tar.xz
+  GLTF_VALIDATOR_SHA256: 168eba887964125abe17ae97899b38d0b3cfd73c266c78424c194929ddcbc522
+
+jobs:
+  write:
+    name: write (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x64, os: ubuntu-24.04, preset: ci-linux }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, preset: ci-linux }
+          - { name: macos-arm64, os: macos-latest, preset: ci-macos }
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+
+      - name: Install the OpenSSL headers for libcurl
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: export3d-deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: export3d-deps-${{ matrix.name }}-
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DHEFESTO_BUILD_DESKTOP=OFF
+
+      - name: Build the export tests
+        run: cmake --build --preset ${{ matrix.preset }} --target hefesto_view3d_export_tests
+
+      - name: Run the export tests and write the reference files
+        shell: bash
+        env:
+          HEFESTO_EXPORT3D_OUT: ${{ github.workspace }}/export3d-out
+        run: |
+          test_bin="build/${{ matrix.preset }}/tests/unit/view3d/export/hefesto_view3d_export_tests"
+          "$test_bin" --reporter console
+          ls -l export3d-out
+          # Sorted by file name in byte order: glob order follows the runner's locale (macOS differs).
+          (cd export3d-out && shasum -a 256 -- * | LC_ALL=C sort -k2 | tee ../export3d-digests.txt) >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: export3d-${{ matrix.name }}
+          path: |
+            export3d-out
+            export3d-digests.txt
+          if-no-files-found: ignore
+
+  compare:
+    name: compare legs and validate glTF
+    needs: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: export3d-*
+          path: legs
+
+      - name: Same bytes on every leg
+        shell: bash
+        run: |
+          reference=legs/export3d-linux-x64/export3d-digests.txt
+          status=0
+          legs=(legs/export3d-*)
+          for leg in "${legs[@]}"; do
+            echo "== ${leg#legs/}" | tee -a "$GITHUB_STEP_SUMMARY"
+            tee -a "$GITHUB_STEP_SUMMARY" < "$leg/export3d-digests.txt"
+            if ! diff -u "$reference" "$leg/export3d-digests.txt"; then
+              echo "::error::${leg#legs/} wrote different bytes than linux-x64"
+              status=1
+            fi
+          done
+          test "${#legs[@]}" -eq 3 || { echo "::error::a leg is missing"; status=1; }
+          exit "$status"
+
+      - name: Install the glTF-Validator
+        run: |
+          curl -sSL -o validator.tar.xz "$GLTF_VALIDATOR_URL"
+          echo "${GLTF_VALIDATOR_SHA256}  validator.tar.xz" | sha256sum -c -
+          mkdir validator && tar xf validator.tar.xz -C validator
+
+      - name: Validate the glTF files
+        shell: bash
+        run: |
+          status=0
+          for file in legs/export3d-linux-x64/export3d-out/*.glb legs/export3d-linux-x64/export3d-out/*.gltf; do
+            report="$file.report.json"
+            validator/gltf_validator -o "$file" > "$report" || true
+            python3 - "$file" "$report" <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY" || status=1
+          import json, sys
+          name, path = sys.argv[1], sys.argv[2]
+          issues = json.load(open(path))["issues"]
+          print(f"{name}: {issues['numErrors']} errors, {issues['numWarnings']} warnings, "
+                f"{issues['numInfos']} infos, {issues['numHints']} hints")
+          for message in issues["messages"]:
+              print(f"  {message['severity']} {message['code']}: {message['message']} ({message.get('pointer', '')})")
+          sys.exit(1 if issues["numErrors"] or issues["numWarnings"] else 0)
+          EOF
+          done
+          exit "$status"

@@ -9,3 +9,7 @@
 // and describe the codes in its EXPORT section.
 //
 // Owner: EXPORT (P2) (openspec/changes/m10-3d-view/design.md D2/D3).
+HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-001", error, "`export3d` was run while no 3D window is open; nothing is written.")
+HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-002", error, "`export3d` was given the wrong arguments (no file, an unknown option or format, or a z scale that is not a positive number); nothing is written.")
+HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-003", warning, "Layout-layer layers with geometry have no physical height (no extract-style height, or no µm scale without an output style), so they are left out of the export (names the layers).")
+HEFESTO_VIEW3D_CODE("VIEW3D-EXPORT-004", error, "The 3D window has no model to export (its cell no longer exists); nothing is written.")
