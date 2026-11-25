@@ -505,3 +505,88 @@ TEST_CASE("frame_view keeps the view when the framed camera would not be finite"
   const view3d::ViewState wide = preset_default(view3d::Preset::top);
   CHECK(view3d::frame_view(wide, view3d::Extent3{-1e300, 0, 1e300 * 0.5, 10, 0, 1}, 500, 500) == wide);
 }
+
+// --- ground_point (M10 round 5, SECTION: cut lines drawn in the 3D view) ----
+
+namespace {
+
+constexpr int kGroundW = 800;
+constexpr int kGroundH = 500;
+
+view3d::ViewState ground_view(view3d::Preset p) {
+  view3d::ViewState v = view3d::default_view(Rect{0, 0, 100, 50}, view3d::Mode::layout_layer, 1.0F);
+  view3d::apply(v, view3d::Gesture{view3d::Gesture::Kind::preset, 0, 0, 1, false, p});
+  return v;
+}
+
+// The pixel (x from the left, y from the top) where the renderer draws the
+// plane point (x, y, 0): CAMERA's matrix (the z mirror leaves z = 0 alone),
+// then the y-down viewport.
+std::array<float, 2> pixel_of(const view3d::ViewState& v, const view3d::ProjectionParams& proj, double x, double y) {
+  const view3d::Matrix4 m = view3d::matrix(v, kGroundW, kGroundH, proj);
+  const auto e = [&](std::size_t i) { return static_cast<double>(m[i]); };
+  const double cx = (e(0) * x) + (e(4) * y) + e(12);
+  const double cy = (e(1) * x) + (e(5) * y) + e(13);
+  const double cw = (e(3) * x) + (e(7) * y) + e(15);
+  return {static_cast<float>(((cx / cw) + 1.0) * 0.5 * kGroundW),
+          static_cast<float>((1.0 - (cy / cw)) * 0.5 * kGroundH)};
+}
+
+}  // namespace
+
+TEST_CASE("ground_point finds the plane point under a pixel in the top and isometric presets",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  for (const auto kind : {view3d::Projection::orthographic, view3d::Projection::perspective}) {
+    const view3d::ProjectionParams proj{kind, 45.0F};
+    for (const view3d::Preset p : {view3d::Preset::top, view3d::Preset::isometric}) {
+      const view3d::ViewState v = ground_view(p);
+      for (const auto& [x, y] : std::array<std::array<int, 2>, 4>{{{0, 0}, {10, 10}, {90, 40}, {50, 25}}}) {
+        INFO("projection " << static_cast<int>(kind) << ", preset " << static_cast<int>(p) << ", point " << x
+                           << "," << y);
+        const auto px = pixel_of(v, proj, x, y);
+        const auto g = view3d::ground_point(v, proj, kGroundW, kGroundH, px[0], px[1]);
+        REQUIRE(g.has_value());
+        CHECK(g->x == x);
+        CHECK(g->y == y);
+      }
+    }
+  }
+}
+
+TEST_CASE("ground_point maps the screen's top to larger y in the top view (y-down pixels)",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::ViewState v = ground_view(view3d::Preset::top);
+  const auto top = view3d::ground_point(v, {}, kGroundW, kGroundH, 400.0F, 50.0F);
+  const auto bottom = view3d::ground_point(v, {}, kGroundW, kGroundH, 400.0F, 450.0F);
+  REQUIRE(top.has_value());
+  REQUIRE(bottom.has_value());
+  CHECK(top->y > bottom->y);
+  CHECK(top->x == bottom->x);
+  // The window centre shows the view's centre, the cell's centre (50, 25).
+  const auto centre = view3d::ground_point(v, {}, kGroundW, kGroundH, 400.0F, 250.0F);
+  REQUIRE(centre.has_value());
+  CHECK(centre->x == 50);
+  CHECK(centre->y == 25);
+}
+
+TEST_CASE("ground_point is nullopt where the view's ray is parallel to the plane (front and side presets)",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  for (const view3d::Preset p : {view3d::Preset::front, view3d::Preset::side}) {
+    INFO("preset " << static_cast<int>(p));
+    const view3d::ViewState v = ground_view(p);
+    // Orthographic: every ray is parallel to the plane.
+    CHECK_FALSE(view3d::ground_point(v, {}, kGroundW, kGroundH, 100.0F, 100.0F).has_value());
+    CHECK_FALSE(view3d::ground_point(v, {}, kGroundW, kGroundH, 400.0F, 250.0F).has_value());
+    // Perspective: the centre ray is parallel to it.
+    const view3d::ProjectionParams persp{view3d::Projection::perspective, 45.0F};
+    CHECK_FALSE(view3d::ground_point(v, persp, kGroundW, kGroundH, 400.0F, 250.0F).has_value());
+  }
+}
+
+TEST_CASE("ground_point refuses a size that is not positive and a non-finite pixel",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::ViewState v = ground_view(view3d::Preset::top);
+  CHECK_FALSE(view3d::ground_point(v, {}, 0, kGroundH, 1.0F, 1.0F).has_value());
+  CHECK_FALSE(view3d::ground_point(v, {}, kGroundW, -1, 1.0F, 1.0F).has_value());
+  CHECK_FALSE(view3d::ground_point(v, {}, kGroundW, kGroundH, NAN, 1.0F).has_value());
+}
