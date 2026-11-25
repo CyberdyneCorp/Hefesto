@@ -445,54 +445,60 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 
 ### Q-SCHEM-46: xschem driver text in SCHEM stdout/stderr
 - Kind: other
-- Status: proposed 2026-11-24 (awaiting the user; drafted by the M8 round-5 GOLDEN workstream)
+- Status: approved 2026-11-25 (proposed 2026-11-24, awaiting the user; drafted by the M8 round-5 GOLDEN workstream; user decision of 2026-11-25)
 - xschem behavior: the SCHEM captures run xschem as a program (`xschem -n -s -q --no_x ...` or `--script`), so each case's `stdout.txt` and `stderr.txt` hold xschem's own driver text around the result: start-up and `sourcing ...` lines from the `xschemrc` and its Tcl files, and the per-netlist banner (`== div`, the cell netlisted). Hefesto replays the same case through `hefesto-cli` and the `schematic`/`xschem` command, which never print those lines, so `stdout.txt`/`stderr.txt` differ on every SCHEM case even when the netlist or saved file is byte-identical.
 - Evidence: `tests/golden/SCHEM/cases/SCHEM-CMD-01/expected/stdout.txt` and `stderr.txt` (capture of golden-capture.yml); round-4 integration note of task 10.1 in `openspec/changes/m8-schematic/tasks.md` (SCHEM-CMD-01 replays `div.spice` in process, `tests/unit/schem/cmd/edit_scripts_test.cpp`); round 5: 30 SCHEM cases replay their file outputs (`tools/golden/authoring/schem_cases.py` `REPLAYED`), and each keeps `stdout.txt`/`stderr.txt` deferred to M8 with this question as the reason (`DRIVER_OUTPUTS`, `tests/golden/deviations.toml` SCHEM block); SCHEM-PR-01, PR-02 and PR-04 print their result on stdout, so they cannot replay before this is decided.
 - Options: (a) an approved deviation for `stdout.txt` and `stderr.txt` of the SCHEM cases whose result is a file (the file outputs and `exitcode.txt` must still match; the Tcl query cases, whose result is printed with `puts`, keep stdout compared) | (b) recapture with the harness filtering xschem's driver text (a capture-side mask of the start-up, `sourcing` and `== <cell>` lines, so stdout/stderr keep only what the case itself prints) | (c) Hefesto prints the same lines in `xschem-compat` ON
 - Recommendation: (b). The driver text is xschem's program banner, not schematic behaviour, and (b) keeps every other stdout/stderr line compared (warnings, `puts` results), which (a) gives up; (c) would make Hefesto print paths and file names of another program's installation. Until decided, the outputs stay deferred to M8 per case (not an exit blocker only once decided).
 - Spec effect: (a) `tests/golden/deviations.toml` entries with the decision; (b) `tools/golden/harness/schem/` and a mask in `tests/golden/SCHEM/CASES.md` "Normalisation", then a recapture of the affected cases; (c) `schematic-command` "Headless use".
+- Resolution: other: (b). The driver text is xschem's program banner, not schematic behaviour, and (b) keeps every other stdout/stderr line compared (warnings, `puts` results), which (a) gives up; (c) would make Hefesto print paths and file names of another program's installation. Until decided, the outputs stay deferred to M8 per case (not an exit blocker only once decided). Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-47: Undo history bounded by memory as well as steps
 - Kind: platform
-- Status: proposed 2026-11-24 (awaiting the user; implemented by the M8 round-4 review fix pass, PR #101)
+- Status: approved 2026-11-25 (proposed 2026-11-24, awaiting the user; implemented by the M8 round-4 review fix pass, PR #101; user decision of 2026-11-25)
 - xschem behavior: the undo history keeps a fixed number of steps; their size is not bounded, so a few edits of a very large schematic can hold many copies of it.
 - Evidence: `src/core/include/hefesto/schem/edit/edit_state.hpp` (`kUndoMaxBytes` = 512 MiB, `EditSession::undo_max_bytes`); test "Undo history byte bound" (`tests/unit/schem/edit/history_test.cpp`); task 9.2 round-4 review note.
 - Options: bound each document's history to 512 MiB (536,870,912 bytes) as well as 200 steps, dropping the oldest steps first and always keeping the newest, both modes (as implemented) | bound by steps only (as xschem)
 - Recommendation: the 512 MiB and 200-step bound, both modes (as implemented): a step-only bound lets a large document exhaust memory, and the bound only drops old steps.
 - Spec effect: `schematic-editing` "Undo and redo" (the byte bound).
+- Resolution: platform: the 512 MiB and 200-step bound, both modes (as implemented): a step-only bound lets a large document exhaust memory, and the bound only drops old steps. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-48: Non-finite numbers in `schematic` options
 - Kind: platform
-- Status: proposed 2026-11-24 (awaiting the user; implemented by the M8 round-4 review fix pass, PR #101)
+- Status: approved 2026-11-25 (proposed 2026-11-24, awaiting the user; implemented by the M8 round-4 review fix pass, PR #101; user decision of 2026-11-25)
 - xschem behavior: coordinates, angles and scales given to its commands are read with the C library; `inf`, `nan` or `1e999` are accepted and put non-finite coordinates into the document.
 - Evidence: `src/core/src/schem/edit/context.cpp` (numbers read for coordinates, angles and scales must be finite), `src/core/src/schem/edit/geometry.cpp` (snap and scale); test "Non-finite coordinate refused" (`tests/unit/schem/edit/editing_test.cpp`).
 - Options: refuse a non-finite number (`inf`, `nan`, an overflow such as `1e999`) as an invalid argument of the option, both modes (as implemented) | accept it (as xschem)
 - Recommendation: refuse, both modes (as implemented): a non-finite coordinate cannot be written back as a valid file value and breaks every geometric operation after it.
 - Spec effect: `schematic-editing` "Document model" (scenario "Non-finite coordinate refused").
+- Resolution: platform: refuse, both modes (as implemented): a non-finite coordinate cannot be written back as a valid file value and breaks every geometric operation after it. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-49: Script sandbox read-only roots of the install root
 - Kind: platform
-- Status: proposed 2026-11-24 (awaiting the user; implemented by the M8 round-4 review fix pass, PR #101)
+- Status: approved 2026-11-25 (proposed 2026-11-24, awaiting the user; implemented by the M8 round-4 review fix pass, PR #101; user decision of 2026-11-25)
 - xschem behavior: n/a (xschem scripts run without a sandbox).
 - Evidence: `src/core/src/app/startup.cpp` (only `<root>/assets` and `<root>/magic` of the install root are read-only sandbox roots); tests "the install root and the PDK store are read-only roots of the script sandbox" and "Install prefix not readable by scripts" (`tests/unit/app/startup_run_test.cpp`); task 13.2 round-4 review note. Since Q-SCHEM-45 the install root defaults to the install prefix (`/usr/local`, `/opt/homebrew`), which must not become readable as a whole.
 - Options: of the install root only `<root>/assets` (the schematic system library) and `<root>/magic` (Magic's system files) are read-only roots (as implemented) | the whole install root is a read-only root
 - Recommendation: only `<root>/assets` and `<root>/magic` (as implemented).
 - Spec effect: `app-startup` "Installation root and search paths" (the script sandbox roots).
+- Resolution: platform: only `<root>/assets` and `<root>/magic` (as implemented). Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-50: Time units in the `SCHEM-TCL-003` texts
 - Kind: other
-- Status: proposed 2026-11-24 (awaiting the user; implemented by the M8 round-4 review fix pass, PR #101)
+- Status: approved 2026-11-25 (proposed 2026-11-24, awaiting the user; implemented by the M8 round-4 review fix pass, PR #101; user decision of 2026-11-25)
 - xschem behavior: n/a (xschem has no `tcleval` time limit).
 - Evidence: `src/core/src/schem/tcl/tcl_bridge.cpp` (`tcleval value stopped after 10 s`, `tcleval values ran for their total of 60 s; no further value is evaluated in this run`); test "the tcleval limit texts print whole seconds in s" (`tests/unit/schem/security/tcleval_sandbox_test.cpp`); `docs/diagnostics/codes/schem.md` `SCHEM-TCL-003`. The generator limit `SCHEM-LIB-012` of Q-SCHEM-43 gives its total in ms (`60000 ms`).
 - Options: whole seconds, `10 s` per value and `60 s` per run (a limit that is not whole seconds in ms), as implemented | milliseconds (`10000 ms`, `60000 ms`), like `SCHEM-LIB-012`
 - Recommendation: whole seconds (as implemented); the texts are diagnostics only.
 - Spec effect: `schematic-symbols-and-libraries` "tcleval values" (paragraph "Run time and denials", the `SCHEM-TCL-003` texts); `docs/diagnostics/codes/schem.md`.
+- Resolution: other: whole seconds (as implemented); the texts are diagnostics only. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-51: Pasted or merged embedded symbol vs the document's symbol
 - Kind: platform
-- Status: proposed 2026-11-25 (awaiting the user; raised by the review of PR #120, implemented as recommended by its fix pass)
+- Status: approved 2026-11-25 (proposed 2026-11-25, awaiting the user; raised by the review of PR #120, implemented as recommended by its fix pass; user decision of 2026-11-25)
 - xschem behavior: not established (clean room: not read from xschem's source; no capture covers it).
 - Evidence: `src/core/src/schem/edit/clipboard.cpp` `insert_objects`; `SymbolCache::embedded` resolves an embedded block by its reference for the whole document, so pasting an embedded `res.sym` instance into a document whose other instances use the library `res.sym` changed the drawing and netlist of all of them; test "Pasted embedded symbol does not redefine the document's symbol" (`tests/unit/schem/edit/arrange_test.cpp`).
 - Options: (a) keep the document's symbol: the inserted block is not added when an instance of the document already uses the reference, and the inserted instances resolve it as the existing ones do, both modes (as implemented) | (b) add the block whenever the document has none (the round-5 behaviour; redefines the existing instances) | (c) give the inserted instances a new reference (for example `res_1.sym`) with the block, so both drawings are kept
 - Recommendation: (a): a paste never changes objects the user did not touch, and it needs no new reference names; (c) keeps the pasted drawing but invents references that xschem files would then carry.
 - Spec effect: `schematic-editing` "Clipboard" (paragraph on embedded symbols; scenario "Pasted embedded symbol does not redefine the document's symbol").
+- Resolution: platform: (a): a paste never changes objects the user did not touch, and it needs no new reference names; (c) keeps the pasted drawing but invents references that xschem files would then carry. Approved by the user 2026-11-25 with the recommended option.

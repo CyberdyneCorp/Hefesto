@@ -253,9 +253,9 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **tests/golden/SCHEM/CASES.md:** replace the SCHEM-RT-05 input with a Hefesto-authored embedded-symbol schematic (J-1).
 - **docs/glossary.md:** update the `xschem-compat` row from "proposed" to the decision.
 
-## Proposed 2026-11-24 (awaiting the user)
+## Proposed 2026-11-24 and 2026-11-25, approved 2026-11-25
 
-Drafted by the M8 round-5 GOLDEN workstream, recorded in `SCHEM.md` with `Status: proposed 2026-11-24 (awaiting the user)` and no `Resolution:` line. Q-SCHEM-46 is new (the SCHEM golden replays need it); Q-SCHEM-47 to -50 are the round-4 review choices (PR #101) that are implemented on main as recommended and stay as they are until the user decides. Q-SCHEM-51 was raised by the review of PR #120 and is implemented as recommended. Each is cited by the spec section of its "Spec effect" (Q-SCHEM-46 by `schematic-command` "Headless use", Q-SCHEM-49 by `schematic-symbols-and-libraries` "System library", not by the M1 capability `app-startup`, whose development gate it would block), so `check_milestone_readiness.py --milestone M8` lists Q-SCHEM-46 to -51 as blocking until the user decides, like Q-SCHEM-34 to -37.
+Drafted by the M8 round-5 GOLDEN workstream, approved by the user on 2026-11-25 with the recommended option (each row in `SCHEM.md` now has `Status: approved 2026-11-25` and a `Resolution:` line). Q-SCHEM-46 is new (the SCHEM golden replays need it); Q-SCHEM-47 to -50 are the round-4 review choices (PR #101) that are implemented on main as recommended and stay as they are until the user decides. Q-SCHEM-51 was raised by the review of PR #120 and is implemented as recommended. Each is cited by the spec section of its "Spec effect" (Q-SCHEM-46 by `schematic-command` "Headless use", Q-SCHEM-49 by `schematic-symbols-and-libraries` "System library", not by the M1 capability `app-startup`, whose development gate it would block), so `check_milestone_readiness.py --milestone M8` lists Q-SCHEM-46 to -51 as blocking until the user decides, like Q-SCHEM-34 to -37.
 
 | ID | Question | Kind | Recommendation | Alternatives | Rationale | Caps | Src |
 |---|---|---|---|---|---|---|---|
