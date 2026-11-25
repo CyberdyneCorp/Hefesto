@@ -18,6 +18,7 @@
 #include "hefesto/lef/write/macro.hpp"
 
 
+#include "hefesto/antenna/antenna.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/property.hpp"
 #include "hefesto/extract/tech/style_view.hpp"
@@ -105,10 +106,12 @@ void MacroBuilder::type_sets() {
       sets.boundary.set(r.type);
     }
   });
-  // Without an extraction style G and D are empty (Q-LEFDEF-40).
+  // G and D are the antenna check's sets (antenna::RuleView, M7 design D17,
+  // D20); without an extraction style they are empty (Q-LEFDEF-40).
   if (m.ctx.style != nullptr) {
-    sets.gate = m.ctx.style->gate_types().value_or(tech::TypeMask{});
-    sets.diffusion = m.ctx.style->diff_types().value_or(tech::TypeMask{});
+    const antenna::RuleView rules = antenna::RuleView::from_view(*m.ctx.style);
+    sets.gate = rules.gate_types();
+    sets.diffusion = rules.tiedown_types();
   }
   // Labels on space and tech-file oddities never make space a routing type.
   sets.route.clear_type(tech::kSpace);

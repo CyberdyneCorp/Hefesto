@@ -87,7 +87,9 @@ Compatibility: behavioral
 - `help` prints the option summary and does nothing else.
 - `debug` only arms diagnostic output for the next run and returns without checking; the flag is cleared at the end of the next run.
 - `run` accepts the standard flattening options (`-R`, `-C`, `-r rthresh`, `-c cthresh`, `-v`, `-p searchpath`, `-s sym=value`, `-S symfile`, `-t trimchars`, `-h`); any other flag letter is an error "Unrecognized flag: ..." followed by "Usage: antennacheck". The capacitance and resistance thresholds are forced to infinity before options are parsed.
-- The root cell is the named cell, or else the root cell of the window under the pointer (or the only layout window); with no such window the error "Point to a window or specify a cell name." is reported. Feedback is always attached to the root cell of that window.
+- The root cell is the named cell, or else the root cell of the window under the pointer (or the only layout window); with no such window the error "Point to a window or specify a cell name." is reported. Feedback is always attached to the root cell of that window, and the nets are traced in that cell. With a cell named and no layout window the same error is reported and nothing is checked, in both `magic-compat` settings (Magic dereferences the missing window).
+- A device whose model names no device line of the style, or that has no terminal, is skipped in both settings (Magic indexes its type table with -1 or reads past the terminal list).
+- The `debug` flag is cleared when a run reaches "antennacheck finished."; a run that stops earlier (no plane order, no window, a flag error, an unreadable `.ext` file) leaves it armed for the next run, as in Magic.
 - If the extract style declared `noplaneordering`, the command reports "No planeorder specified for this process:  Cannot run antenna checks!" and does nothing.
 - The check consumes previously generated extraction files for the root cell and its hierarchy (it does not re-extract); devices are taken from the flattened `.ext` netlist, the geometry from the cell database.
 - Progress messages (informative): "Reading extract file.", "Building flattened netlist.", "Running antenna checks.", "   <n> gates analyzed." after every 100 distinct gate nets, and "antennacheck finished.".
@@ -110,6 +112,11 @@ Compatibility: behavioral
 - **WHEN** the user runs `antennacheck debug`
 - **THEN** no check is performed
 - **AND** the subsequent `antennacheck` prints per-violation diagnostics and then clears the debug flag
+
+#### Scenario: A cell named without a window
+- **GIVEN** no layout window is open
+- **WHEN** the user runs `antennacheck inv`, in either `magic-compat` setting
+- **THEN** the error "Point to a window or specify a cell name." is reported and no check is performed
 
 #### Scenario: Unknown flag
 - **WHEN** the user runs `antennacheck run -x`
@@ -138,7 +145,7 @@ For a gate whose tile type lies on plane G, the system SHALL evaluate the antenn
 4. Compute per-type antenna areas a[t] over the traced tiles of every plane whose plane order is ≤ k (cumulative model), or of plane P_k only (partial model), using the per-type measurement of requirement "Antenna area measurement".
 5. Apply the ratio test of requirement "Antenna ratio test".
 
-All areas are in internal units squared and are accumulated in 64-bit integers. If no plane has order k, Magic reuses the previous check plane (see Q-MISC-6). The modes of step 1 differ in gf180mcuD, whose metal4 plane declares `mimcc` before `via4`: with `magic-compat` ON only `mimcc` is restricted at the metal4 check, so metal4 reached through metal5 jumpers is counted.
+All areas are in internal units squared and are accumulated in 64-bit integers. If no plane has order k, that order is skipped in both `magic-compat` settings (Q-MISC-6, resolution: fix); Magic reuses the previous check plane, or an uninitialised one for the first order. The end-of-style plane-order check of capability `extract-tech-section` makes the order of a loaded style a permutation, so the gap arises only in a style built otherwise. The modes of step 1 differ in gf180mcuD, whose metal4 plane declares `mimcc` before `via4`: with `magic-compat` ON only `mimcc` is restricted at the metal4 check, so metal4 reached through metal5 jumpers is counted.
 
 Compatibility: exact
 
@@ -148,6 +155,11 @@ Compatibility: exact
 - **GIVEN** planeorder well 0, active 1, metal1 2, metal2 3, metal3 4, and an nfet gate type on plane active
 - **WHEN** `antennacheck` evaluates that gate
 - **THEN** it evaluates the rule three times, with check planes metal1, metal2 and metal3 in that order
+
+#### Scenario: Gap in the plane order
+- **GIVEN** a style whose plane orders are active 1, metal1 2, metal2 4 and metal3 5 (no plane has order 3), and a gate on plane active
+- **WHEN** `antennacheck` evaluates that gate, in either `magic-compat` setting
+- **THEN** it evaluates the rule three times, with check planes metal1, metal2 and metal3, and never metal1 twice
 
 #### Scenario: Trace stops at the check plane
 - **GIVEN** a gate connected through poly contact to metal1 and through via1 to a large metal2 plate
@@ -166,7 +178,7 @@ Compatibility: exact
 For each traced tile of type t on the searched plane, the system SHALL add to a[·] according to t's calculation type; types with no calculation type contribute nothing:
 
 - SURFACE, non-contact tile: a[t] += width × height (halved with integer division for a split tile).
-- SURFACE, contact tile of width w and height h: let (s, sep, b) be the cut size, separation and border of the first cifoutput `squares`/`slots` operator generating the contact type (values in output-style units) and f = s / scalefactor (float). The cut count and area depend on the `magic-compat` setting (Q-MISC-4, resolution: compat): with it ON (the default), as in Magic, nx = trunc((w − 2b)/(s + sep)) mixing internal units (w, h) with output units (s, sep, b), ny likewise with h, and C = nx·ny × trunc(f²); with it OFF, w, h and b are in the same units, nx = trunc((w·scalefactor − 2b)/(s + sep)), ny likewise with h, and C = trunc(nx·ny·f²), with f² not truncated. In both modes nx and ny are replaced by 1 when they are less than 1. C is added to every residue type of the contact that lies on the searched plane; then, for a user-visible contact type, C is also added to a[contact]; for a stacked contact type, C is added once more to the first of its residues on the searched plane.
+- SURFACE, contact tile of width w and height h: let (s, sep, b) be the cut size, separation and border of the first cifoutput `squares`/`slots` operator generating the contact type (values in output-style units) and f = s / scalefactor (float). The cut count and area depend on the `magic-compat` setting (Q-MISC-4, resolution: compat): with it ON (the default), as in Magic, nx = trunc((w − 2b)/(s + sep)) mixing internal units (w, h) with output units (s, sep, b), ny likewise with h, and C = nx·ny × trunc(f²); with it OFF, w, h and b are in the same units, nx = trunc((w·scalefactor − 2b)/(s + sep)), ny likewise with h, and C = trunc(nx·ny·f²), with f² not truncated. In both modes nx and ny are replaced by 1 when they are less than 1 (Magic replaces only 0; a negative count, from a tile narrower than twice the border, would give a negative area there). C is added to every residue type of the contact that lies on the searched plane; then, for a user-visible contact type, C is also added to a[contact]; for a stacked contact type, C is added once more to the first of its residues on the searched plane.
 - In both modes, a contact type with no cifoutput style, or no `squares`/`slots` operator generating it, contributes cut area 0 (and cut perimeter 0), and s + sep = 0 counts one cut in each direction; Magic reads uninitialised values or divides by zero in these cases.
 - SIDEWALL, non-contact tile: perimeter p = total length of the tile's boundary segments that abut space-type tiles on the same plane; a[t] += trunc(p × thick[t]).
 - SIDEWALL, contact tile: cperim = trunc(nx·ny·4·s / scalefactor) (integer arithmetic); for each residue r on the searched plane a[r] += trunc(cperim × thick[r]); additionally, only in the cumulative model, a[contact] (user contact) or a[first residue on plane] (stacked contact) += trunc(cperim × thick).
