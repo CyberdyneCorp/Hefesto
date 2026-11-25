@@ -13,6 +13,8 @@
 //   heights.cpp  the h and t each layer is drawn with (J1 "Span connected
 //                layers", task 6.5)
 //   mesh.cpp     full builds, incremental rebuilds and progressive order
+//   planes.cpp   the mask-layer source: generated planes as flat layers
+//                (MASKSRC, P2)
 //   worker.cpp   the background worker (MeshWorker)
 //
 // Owner: MESH (design D3).
@@ -29,7 +31,9 @@
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
+#include "hefesto/db/lock.hpp"
 #include "hefesto/db/plane.hpp"
+#include "hefesto/mask/gen/generate.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/tech/types.hpp"
 #include "hefesto/view3d/mesh/build.hpp"
@@ -101,6 +105,18 @@ struct FlatLayout {
 [[nodiscard]] bool flatten_snapshot(const LayerStack& stack, const db::CellDef& cell, std::span<const db::Rect> areas,
                                     const BuildContext& ctx, FlatLayout& out);
 
+/// Waits while a writer waits for `lock` (a command is about to run) and
+/// this thread does not hold it, or until `progress` is cancelled.
+void wait_for_writers(const db::DatabaseLock& lock, const mask::Progress& progress);
+
+/// The flat layers of the mask-layer source: stack layer i takes the plane
+/// of its mask layer (StackLayer::mask_layer), with only mask::kMaskSolid
+/// and space; a layer whose mask layer has no plane gets none (-1).
+/// copy_planes copies each plane; take_planes moves them out of `planes`
+/// (left empty).
+void copy_planes(const LayerStack& stack, const mask::LayerPlanes& planes, FlatLayout& out);
+void take_planes(const LayerStack& stack, mask::LayerPlanes& planes, FlatLayout& out);
+
 /// The h and t each layer and tile type is drawn with in one build: the
 /// stack's, except the contact types spanned by the J1 option (task 6.5).
 class HeightTable {
@@ -171,6 +187,39 @@ void emit_layer(const FlatType& flat, LayerId layer, const HeightTable& heights,
 /// across builds and rebuilds (the renderer's upload cache keys on it).
 /// Thread-safe (MeshWorker threads build concurrently).
 [[nodiscard]] std::uint64_t next_version() noexcept;
+
+/// The flatten step of one source: fills `out` with the flat layers over
+/// `areas` (root coordinates of the mesh); false when cancelled.
+using FlattenFn = std::function<bool(std::span<const db::Rect> areas, FlatLayout& out)>;
+
+/// A full build of any source over `clip`: flatten, plan, emit.
+[[nodiscard]] std::optional<MeshModel> build_flat(const LayerStack& stack, const FlattenFn& flatten,
+                                                  const ClipArea& clip, BuildContext& ctx, std::size_t max_tiles);
+
+/// rebuild_chunks of any source: the chunks of `previous` meeting `dirty`
+/// (mesh coordinates) grown by 1 are rebuilt from `flatten` over their
+/// areas and the dirty areas, each grown by 1.
+[[nodiscard]] std::optional<MeshModel> rebuild_flat(const MeshModel& previous, const LayerStack& stack,
+                                                    const FlattenFn& flatten, std::span<const db::Rect> dirty,
+                                                    BuildContext& ctx, std::size_t max_tiles);
+
+/// build_from_mask and rebuild_mask_chunks with a chosen chunk size.
+[[nodiscard]] std::optional<MeshModel> build_mask(const LayerStack& stack, const db::CellDef& cell,
+                                                  const MaskSource& source, const ClipArea& clip, BuildContext& ctx,
+                                                  std::size_t max_tiles);
+[[nodiscard]] std::optional<MeshModel> rebuild_mask(const MeshModel& previous, const LayerStack& stack,
+                                                    const db::CellDef& cell, const MaskSource& source,
+                                                    std::span<const db::Rect> dirty, BuildContext& ctx,
+                                                    std::size_t max_tiles);
+
+/// The mask-unit areas a layout change marks (internal units): each grown
+/// by `halo` (the generation radius) and scaled by `scale_factor`.
+[[nodiscard]] std::vector<db::Rect> mask_dirty(std::span<const db::Rect> dirty, std::int32_t scale_factor,
+                                               std::int64_t halo);
+
+/// The internal-unit area that covers `area` (mask units), rounded
+/// outward, within `limit`.
+[[nodiscard]] db::Rect internal_area(const db::Rect& area, std::int32_t scale_factor, const db::Rect& limit);
 
 /// build_from_layout with a chosen chunk size (the tests use small ones).
 [[nodiscard]] std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell,

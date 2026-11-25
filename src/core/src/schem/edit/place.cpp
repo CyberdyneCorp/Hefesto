@@ -104,7 +104,9 @@ std::string add_instance(EditContext& ec, const NewInstance& request) {
   InstanceNamer names(doc, &ec.session().bus_budget);
   std::string props =
       request.props ? names.unique_properties(*request.props) : new_instance_properties(symbol, names);
-  if (request.lab) props = set_token(props, "lab", *request.lab);
+  // The net name as typed: escaped so that it reads back unchanged (a `"`
+  // or `\` was stored raw and changed or broke the property string).
+  if (request.lab) props = set_token(props, "lab", cmdimpl::encoded_value(*request.lab));
   InstanceRecord record;
   record.symbol = written_reference(ec, symbol, request.reference);
   record.origin = request.origin;

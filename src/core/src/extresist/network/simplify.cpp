@@ -141,8 +141,8 @@ float Reducer::child_capacitance(Id me) {
     const Device& dev = g_.devices[g_.item(c)];
     if (!dev.terms.empty() && dev.terms[0] == me) {
       // Q-NETLIST-24: two gate-diffusion edges of length W.
-      const double load = static_cast<double>(dev.length) * dev.width * dev.gate_cap +
-                          static_cast<double>(dev.width + dev.width) * dev.sd_cap;
+      const double load = static_cast<double>(dev.length) * static_cast<double>(dev.width) * dev.gate_cap +
+                          2.0 * static_cast<double>(dev.width) * dev.sd_cap;
       g_.delays[d].cdown = static_cast<float>(static_cast<double>(g_.delays[d].cdown) + load);
     }
   }

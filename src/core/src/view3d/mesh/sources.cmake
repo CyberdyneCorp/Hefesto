@@ -11,4 +11,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
   ${CMAKE_CURRENT_LIST_DIR}/heights.cpp
   ${CMAKE_CURRENT_LIST_DIR}/mesh.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/planes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/worker.cpp)

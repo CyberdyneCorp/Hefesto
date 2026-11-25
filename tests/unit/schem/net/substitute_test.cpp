@@ -19,7 +19,10 @@
 
 #include "hefesto/schem/net/codes.hpp"
 #include "hefesto/schem/net/connectivity.hpp"
+#include "hefesto/editor/editor_state.hpp"
+#include "hefesto/platform/file_system.hpp"
 #include "hefesto/schem/net/substitute.hpp"
+#include "hefesto/schem/tcl/tcl_environment.hpp"
 
 namespace schem = hefesto::schem;
 namespace net_codes = hefesto::schem::net_codes;
@@ -180,9 +183,30 @@ TEST_CASE("format substitution: spiceprefix and savecurrent", "[cap:schematic-ne
 TEST_CASE("format substitution: tcleval fails without a permitted interpreter",
           "[cap:schematic-netlisting][req:Format string substitution]") {
   const schem::PropertyMap instance{{"name", "C1"}, {"format", "tcleval(.lib @name )"}};
-  CHECK(build(resistor(instance, "A", "B")).text == "?\n");
+  CHECK(build(resistor(instance, "A", "B")).text == "?\n\n");  // the failure text, then the line's LF
   const schem::PropertyMap token{{"name", "C1"}, {"format", "x @tcleval(1)"}};
   CHECK(build(resistor(token, "A", "B")).text == "x ?\n\n");
+}
+
+// Regression (SCHEM-NL-07/NL-08 replay, M8 round 5): a format line in
+// tcleval(...) form is evaluated before its LF is appended. The LF was
+// appended first and then removed with the blanks after the last `)`, so
+// the IHP model block `tcleval( @value )` ran into the next netlist line.
+TEST_CASE("format substitution: a tcleval line gets its LF after the result",
+          "[cap:schematic-netlisting][req:Format string substitution]") {
+  hefesto::editor::EditorState editor;
+  hefesto::platform::LocalFileSystem files;
+  schem::TclEnvironment tcl(editor, {}, files, {});
+  const schem::TclBridge bridge = tcl.bridge();
+  schem::ElementOptions options;
+  options.tcl = &bridge;
+  const schem::PropertyMap instance{{"name", "MODEL"}, {"value", "\n.lib x.lib cap_typ\n"},
+                                    {"format", "tcleval( @value )"}};
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    options.xschem_compat = compat;
+    CHECK(build(resistor(instance, "A", "B"), options).text == " \n.lib x.lib cap_typ\n \n");
+  }
 }
 
 TEST_CASE("format substitution: expr in values and on the whole line",

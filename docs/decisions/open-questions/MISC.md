@@ -93,7 +93,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Status: pending user confirmation (fixed in both modes in M7 round R4 by ANTENNA under the standing rule)
 - Magic behavior: a device whose model names no style device line makes extGetDevType return -1, then DBPlane(-1) is read; a device with no terminals reads `dev_terms[0]`.
 - Evidence: extflat/EFantenna.c:251-255, 410, 427-430
-- As implemented (round R4), both modes: the device is skipped. Tests: `tests/unit/antenna/run_test.cpp`.
+- As implemented (round R4), both modes: the device is skipped. Tests: `tests/unit/antenna/run_test.cpp` "a device whose model has no style device line is skipped" (added in the R4 fix pass; without the guard it aborts under libc++ hardening). The no-terminal guard has no test: Hefesto's `.ext` reader gives every fet, mosfet and asymmetric device at least one terminal (the record needs 11 tokens and whole terminal triples), so no input reaches it; it stays as a defensive check.
 - Options: fix (as implemented)
 - Recommendation: fix.
 

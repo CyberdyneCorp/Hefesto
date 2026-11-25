@@ -85,6 +85,9 @@ struct SubtreeResult {
   /// The feedback entries (Illegal overlap, Cannot find the name of this
   /// node, the labels warning), in the order Magic adds them.
   std::vector<NodeFeedback> feedback;
+  /// The pass stopped at a step square or an array use because
+  /// ExtractContext::progress was cancelled.
+  bool cancelled = false;
 };
 
 /// extSubtree then extArray for `cell`. Fails only when a required input

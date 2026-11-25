@@ -472,6 +472,7 @@ diag::Status write_subtree(ExtractContext& ctx, ExtWriter& writer, db::CellDef& 
   }
   result.errors += hier.value().errors;
   result.warnings += hier.value().warnings;
+  result.cancelled = result.cancelled || hier.value().cancelled;
   for (const NodeFeedback& f : hier.value().feedback) {
     result.feedback.push_back(CellFeedback{f.area, f.text, f.medium});
   }

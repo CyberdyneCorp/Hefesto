@@ -20,6 +20,16 @@
 //                   have answered (`file exists` → 0).
 //   children    a safe child interpreter's object command is guarded the
 //               same way, so its hidden commands stay unreachable.
+//   standard    the process's stdin, stdout and stderr (shared by every
+//   channels    interpreter of the thread) cannot be closed, popped, pushed
+//               onto, shared or transferred (`close`, `chan close|pop|push`,
+//               `interp share|transfer`; SCRIPT-SANDBOX-007), and `chan
+//               puts` is forwarded to the current `::puts`, so a host's
+//               replacement of `puts` sees every write (security review
+//               of task 12.1 of m8-schematic, finding S8-04). Where the
+//               policy says so (the schematic-script interpreters), stdin
+//               is not read either (`gets`, `read`, `chan gets|read`,
+//               `fcopy`, `chan copy`): such a read blocks, unlimited.
 //
 // Every refusal is reported by SandboxSession::refuse (diagnostic with the
 // script file and line, DeniedOperation event).
@@ -34,6 +44,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "hefesto/script/tcl/embedded_library.hpp"
 #include "script/tcl/sandbox_runtime.hpp"
@@ -388,6 +399,120 @@ bool creates_safe(int objc, Tcl_Obj* const objv[]) {
   return false;
 }
 
+// ---- standard channels (S8-04) ------------------------------------------------------
+
+// True when `name` names one of the thread's standard channels, which every
+// interpreter of the thread shares with the host process: one of the three
+// standard names (also when this interpreter does not have it), or a name
+// that resolves to the same channel.
+bool is_standard_channel(Tcl_Interp* interp, Tcl_Obj* name) {
+  const std::string_view text = as_view(name);
+  if (text == "stdin" || text == "stdout" || text == "stderr") {
+    return true;
+  }
+  int mode = 0;
+  Tcl_Channel channel = Tcl_GetChannel(interp, Tcl_GetString(name), &mode);
+  Tcl_ResetResult(interp);
+  if (channel == nullptr) {
+    return false;
+  }
+  const std::string_view found = Tcl_GetChannelName(channel);
+  for (const int type : {TCL_STDIN, TCL_STDOUT, TCL_STDERR}) {
+    Tcl_Channel standard = Tcl_GetStdChannel(type);
+    if (standard != nullptr && found == Tcl_GetChannelName(standard)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Refusal standard_channel_refusal(const std::string& operation, Tcl_Obj* name) {
+  const std::string channel{as_view(name)};
+  return Refusal{kRemovedDenied, operation, channel,
+                 operation + ": the standard channel \"" + channel +
+                     "\" belongs to the host process; not permitted in the script sandbox"};
+}
+
+// `close`, `chan close`, `chan pop` and `chan push` of a standard channel:
+// closing (or popping the base of) the process's stdin, stdout or stderr
+// frees its file descriptor for the next file the host opens; a pushed
+// transform would run this interpreter's script on the host's output.
+std::optional<Refusal> check_channel_operand(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  if (objc >= 2 && is_standard_channel(guard.session->interp(), objv[1])) {
+    return standard_channel_refusal(guard.operation, objv[1]);
+  }
+  return std::nullopt;
+}
+
+// True when `name` names the process's stdin, by its name or by a name that
+// resolves to the same channel.
+bool is_stdin(Tcl_Interp* interp, Tcl_Obj* name) {
+  if (as_view(name) == "stdin") {
+    return true;
+  }
+  Tcl_Channel standard = Tcl_GetStdChannel(TCL_STDIN);
+  if (standard == nullptr) {
+    return false;
+  }
+  int mode = 0;
+  Tcl_Channel channel = Tcl_GetChannel(interp, Tcl_GetString(name), &mode);
+  Tcl_ResetResult(interp);
+  return channel != nullptr && std::string_view{Tcl_GetChannelName(channel)} == Tcl_GetChannelName(standard);
+}
+
+// `gets`, `read`, `chan gets|read`, `fcopy` and `chan copy` from stdin in a
+// schematic-script interpreter (SandboxPolicy::stdin_readable false): the
+// read blocks until input arrives, inside one command, where no time limit
+// or Interrupt reaches it (S8-04). `read ?-nonewline? channel ...`.
+std::optional<Refusal> check_stdin_read(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  int at = 1;
+  if (objc > 2 && as_view(objv[1]) == "-nonewline") {
+    at = 2;
+  }
+  if (objc > at && is_stdin(guard.session->interp(), objv[at])) {
+    const std::string channel{as_view(objv[at])};
+    return Refusal{kRemovedDenied, guard.operation, channel,
+                   guard.operation + ": reading the standard channel \"" + channel +
+                       "\" would wait for input no time limit interrupts; not permitted in this interpreter"};
+  }
+  return std::nullopt;
+}
+
+// `interp share|transfer srcPath channel destPath` of a standard channel:
+// a transferred one could then be closed by the child.
+std::optional<Refusal> refuse_channel_move(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  const std::string_view sub = as_view(objv[1]);
+  for (const std::string_view name : {"share", "transfer"}) {
+    if (abbreviates(sub, name, 2) && objc >= 4 && is_standard_channel(guard.session->interp(), objv[3])) {
+      return standard_channel_refusal("interp " + std::string{name}, objv[3]);
+    }
+  }
+  return std::nullopt;
+}
+
+// `chan puts` is `puts`: the call goes to whatever `::puts` is now, so a host
+// that replaces `puts` (a symbol generator's bounded capture) sees every
+// write; Tcl's own `::tcl::chan::puts` would bypass it.
+int forward_to_puts(ClientData /*data*/, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
+  std::vector<Tcl_Obj*> words(objv, objv + objc);
+  Tcl_Obj* name = Tcl_NewStringObj("::puts", -1);
+  Tcl_IncrRefCount(name);
+  words[0] = name;
+  const int code = Tcl_EvalObjv(interp, objc, words.data(), 0);
+  Tcl_DecrRefCount(name);
+  return code;
+}
+
+void forward_chan_puts(Tcl_Interp* interp) {
+  Tcl_CmdInfo info;
+  if (Tcl_GetCommandInfo(interp, "::tcl::chan::puts", &info) == 0) {
+    return;
+  }
+  info.objProc = forward_to_puts;
+  info.objClientData = nullptr;
+  Tcl_SetCommandInfo(interp, "::tcl::chan::puts", &info);
+}
+
 // S-07: Tcl's default recursion limit; a higher one lets recursion through a
 // command without NRE support (`lsort -command`) overflow the C stack.
 constexpr Tcl_WideInt kMaxRecursionLimit = 1000;
@@ -414,9 +539,12 @@ std::optional<Refusal> check_child(Guard& guard, int objc, Tcl_Obj* const objv[]
   return refuse_hidden_access(guard.operation, as_view(objv[1]));
 }
 
-std::optional<Refusal> check_interp(Guard& /*guard*/, int objc, Tcl_Obj* const objv[]) {
+std::optional<Refusal> check_interp(Guard& guard, int objc, Tcl_Obj* const objv[]) {
   if (objc < 2) {
     return std::nullopt;
+  }
+  if (auto refusal = refuse_channel_move(guard, objc, objv)) {
+    return refusal;
   }
   const std::string_view sub = as_view(objv[1]);
   if (abbreviates(sub, "create") && !creates_safe(objc, objv)) {
@@ -542,6 +670,24 @@ void install_sandbox_commands(SandboxSession& session, const SandboxPolicy& poli
   guard_command(session, "::tcl::file::tempfile", Guard{nullptr, {}, "file tempfile", check_tempfile, nullptr, false});
   guard_command(session, "::tcl::file::link", Guard{nullptr, {}, "file link", check_link, nullptr, false, true});
   guard_command(session, "encoding", Guard{nullptr, {}, "encoding", check_encoding, nullptr, false});
+  // S8-04: the standard channels belong to the host process.
+  guard_command(session, "close", Guard{nullptr, {}, "close", check_channel_operand, nullptr, false});
+  for (const char* sub : {"close", "pop", "push"}) {
+    guard_command(session, std::string{"::tcl::chan::"} + sub,
+                  Guard{nullptr, {}, std::string{"chan "} + sub, check_channel_operand, nullptr, false});
+  }
+  forward_chan_puts(interp);
+  if (!policy.stdin_readable) {
+    for (const auto& [name, operation] : std::array<std::pair<const char*, const char*>, 6>{
+             {{"gets", "gets"},
+              {"read", "read"},
+              {"fcopy", "fcopy"},
+              {"::tcl::chan::gets", "chan gets"},
+              {"::tcl::chan::read", "chan read"},
+              {"::tcl::chan::copy", "chan copy"}}}) {
+      guard_command(session, name, Guard{nullptr, {}, operation, check_stdin_read, nullptr, false});
+    }
+  }
   for (const char* sub : kFileAccess) {
     guard_command(session, std::string{"::tcl::file::"} + sub,
                   Guard{nullptr, {}, std::string{"file "} + sub, write_check(sub), nullptr, false,

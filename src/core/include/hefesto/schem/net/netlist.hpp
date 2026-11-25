@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -128,6 +129,9 @@ struct NetlistEnvironment {
   std::uint64_t bus_budget = kMaxBusTotalBytes;
   /// The limits of the flat netlist (Q-SCHEM-42).
   FlatLimits flat_limits{};
+  /// Polled once per placed schematic level; when it returns true the run
+  /// stops, returns no text and fails with SCHEM-NET-018. Empty: never.
+  std::function<bool()> interrupted{};
 };
 
 /// Netlists `top` in memory ("In-process netlisting"): never writes a file,

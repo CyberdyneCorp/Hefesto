@@ -1900,6 +1900,32 @@ void Widget::place_top_center(float top) {
   Rslot_set_padding(id_, 0.0F, top, 0.0F, 0.0F);
 }
 
+void Widget::place_bottom_center(float bottom) {
+  Rslot_set_halign(id_, R_HALIGN_CENTER);
+  Rslot_set_valign(id_, R_VALIGN_BOTTOM);
+  Rslot_set_padding(id_, 0.0F, 0.0F, 0.0F, bottom);
+}
+
+void Widget::place_bottom_left(float left, float bottom) {
+  Rslot_set_halign(id_, R_HALIGN_LEFT);
+  Rslot_set_valign(id_, R_VALIGN_BOTTOM);
+  Rslot_set_padding(id_, left, 0.0F, 0.0F, bottom);
+}
+
+void Widget::place_bottom_right(float right, float bottom) {
+  Rslot_set_halign(id_, R_HALIGN_RIGHT);
+  Rslot_set_valign(id_, R_VALIGN_BOTTOM);
+  Rslot_set_padding(id_, 0.0F, 0.0F, right, bottom);
+}
+
+void Widget::set_accessible_hidden(bool hidden) {
+  Rwidget_set_accessible_hidden(id_, hidden ? kTrue : kFalse);
+}
+
+void set_container_role(const Widget& widget, Role role) {
+  Rwidget_set_accessible_role(widget.id(), to_role(role));
+}
+
 void Toast::place_bottom_center() {
   Rslot_set_halign(id_, R_HALIGN_CENTER);
   Rslot_set_valign(id_, R_VALIGN_BOTTOM);

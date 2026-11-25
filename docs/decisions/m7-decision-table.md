@@ -206,7 +206,7 @@ Raised by the R1 workstreams and the R1 integration for Magic behaviours no row 
 | Q-NETLIST-51 (M7-4) | `device vsource` reads an uninitialised token count | **fix** | both modes: parse with `ac = 7` | ext-flattening-read "Device records" | EXTFLAT (task 10.1) |
 | Q-NETLIST-50 (M7-5) | standalone extcheck dereferences an unset extraction style on a `scale` line | **fix** | both modes: `hefesto-extcheck` reads the record with the reader's own unit and never crashes | netlist-extcheck "Invocation" | SIM (task 12.4) |
 | Q-EXTRACT-29 (M7-6) | TiSplitX on a split (diagonal) tile moves its triangle | **compat** | ON: copy Magic's cut; OFF: refuse. `StitchEditor::split_x` refuses in both modes today; the ON branch lands with RESNET (R4) | none (db-internal; design D6, D16) | RESNET with the MODEL review (R4) |
-| Q-NETLIST-53 (M7-7) | ResFracture on a split (diagonal) tile | **compat** | ON: make the tile Manhattan via `set_type` (its left type), then split; OFF: keep it whole | extresist-network "Tile fracturing" | RESNET (task 13.1) |
+| Q-NETLIST-53 (M7-7) | ResFracture on a split (diagonal) tile | **compat** | ON: cut it as ResSplitX does (corrected 2026-11-25: TiSplitX keeps the left part's diagonal, the new part gets the left type, the joins take split tiles; the approved text said "make it Manhattan first", which is not Magic); OFF: keep it whole | extresist-network "Tile fracturing" | RESNET (task 13.1) |
 | Q-NETLIST-52 (M7-8) | ext2sim reuses a closed `.al`/`.nodes` stream after `alias off`/`labels off` (double free) | **fix** | both modes: a run writes `.al`/`.nodes` only when its option is on and never touches a previous run's stream | netlist-sim "Command options and defaults" | SIM (task 12.1) |
 
 ### Plan items
@@ -280,7 +280,7 @@ Raised by the R3 workstreams (EXTNODE, EXTCAP, EXTDEV, NETLIST) and the R3 fix p
 
 ## Entries raised in round R4 (pending user decision)
 
-Raised by the R4 workstreams (EXTCMD, EXTHIER, RESNET, RESCMD, ANTENNA) for Magic behaviours no row covered and for both-modes fixes made by the standing rule; numbered at integration (the workstreams' Q-EXTRACT-37/38 collided with the withdrawn Q-EXTRACT-37 and with each other). All are implemented as their recommendation says, except Q-NETLIST-63, whose Magic crash is not located yet. None is cited by a spec as approved, so none blocks `check_milestone_readiness.py`. The spec edits each implies are written in its open-questions entry and are applied after approval.
+Raised by the R4 workstreams (EXTCMD, EXTHIER, RESNET, RESCMD, ANTENNA) for Magic behaviours no row covered and for both-modes fixes made by the standing rule; numbered at integration (the workstreams' Q-EXTRACT-37/38 collided with the withdrawn Q-EXTRACT-37 and with each other). All are implemented as their recommendation says, except Q-NETLIST-63, whose Magic crash is not located yet. None is cited by a spec as approved, so none blocks `check_milestone_readiness.py`. The specs already state the as-landed behaviour of each (`extresist-command` for Q-NETLIST-65, 66, 67 and 69, `extract-commands` for Q-EXTRACT-38, `extract-devices` for Q-EXTRACT-39 and 41, `extract-hierarchy` for Q-EXTRACT-40, `antenna-check` for Q-MISC-92 and 93, `extresist-output` for Q-NETLIST-68, `extresist-network` for Q-NETLIST-64 (a)), without citing a Q-row as approved; on approval only the Q-row citation is added, and a different answer changes the code and the spec together.
 
 | ID | Question | Kind | Recommendation | Spec on approval | Implemented by |
 |---|---|---|---|---|---|

@@ -243,3 +243,26 @@ TEST_CASE("split_x with magic-compat ON still refuses a cut outside the tile", S
   CHECK_FALSE(ed.split_x(split, 10, true));
   CHECK_FALSE(ed.split_x({}, 4, true));
 }
+
+TEST_CASE("join_y of a split tile copies TiJoinY with magic-compat ON", SPLITX) {
+  // The joins ResSplitX makes after a cut: keep keeps its whole body over
+  // the taller rectangle; with magic-compat OFF the join is refused.
+  db::Plane p;
+  REQUIRE(p.paint_triangle({0, 0, 10, 10}, db::Diagonal::ne_sw, false, paint_row_of(kM1), true, nullptr,
+                           db::PaintMerge::none)
+              .ok());
+  REQUIRE(p.paint({0, 10, 10, 20}, paint_row_of(kM1)).ok());
+  db::StitchEditor ed(p);
+  const StitchTile split = ed.tile_at({0, 0});
+  const StitchTile above = ed.tile_at({0, 10});
+  const db::TileView before = ed.view(split);
+  CHECK_FALSE(ed.join_y(split, above, false));
+  REQUIRE(ed.join_y(split, above, true));
+  ed.release();
+  const db::TileView after = ed.view(split);
+  CHECK(after.split);
+  CHECK(after.area == Rect{0, 0, 10, 20});
+  CHECK(after.left_type == before.left_type);
+  CHECK(after.right_type == before.right_type);
+  CHECK(after.diagonal == before.diagonal);
+}

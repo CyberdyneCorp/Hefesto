@@ -129,6 +129,17 @@ class Widget {
   void place_fill();
   /// In an Overlay: centred across, `top` logical units from the top edge.
   void place_top_center(float top);
+  /// In an Overlay: centred across, `bottom` logical units from the bottom
+  /// edge (as Toast::place_bottom_center; M10 3D view floating toolbar).
+  void place_bottom_center(float bottom);
+  /// In an Overlay: anchored to the bottom-left corner, `left` and `bottom`
+  /// logical units from the edges, at its own size.
+  void place_bottom_left(float left, float bottom);
+  /// In an Overlay: anchored to the bottom-right corner, `right` and
+  /// `bottom` logical units from the edges, at its own size.
+  void place_bottom_right(float right, float bottom);
+  /// Hidden from screen readers with what it contains (a decoration).
+  void set_accessible_hidden(bool hidden);
 
  protected:
   explicit Widget(WidgetId id) noexcept : id_(id) {}
@@ -231,6 +242,11 @@ enum class Role : std::uint8_t { none, group, text, heading, button, toggle_butt
 
 /// Has a screen reader read `text`; `assertive` interrupts what it is reading.
 void announce(std::string_view text, bool assertive);
+
+/// The role a screen reader announces for a container (a Box or Panel that
+/// groups controls: Role::group, Role::toolbar); Painted::set_role is the
+/// same for a painted widget (M10 3D view, task 9.6).
+void set_container_role(const Widget& widget, Role role);
 
 /// Runs `task` on the UI thread during the next frame and wakes the event
 /// loop (Rtask_post). Thread-safe: the background DRC worker's ready

@@ -29,5 +29,6 @@ inline constexpr std::string_view kNoType = "SCHEM-NET-014";
 inline constexpr std::string_view kAllPinsUnconnected = "SCHEM-NET-015";
 inline constexpr std::string_view kOverlapping = "SCHEM-NET-016";
 inline constexpr std::string_view kFlatStopped = "SCHEM-NET-017";
+inline constexpr std::string_view kInterrupted = "SCHEM-NET-018";
 
 }  // namespace hefesto::schem::net_codes

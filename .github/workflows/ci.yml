@@ -502,13 +502,14 @@ jobs:
             preset: ci-linux-desktop
             desktop: true
           # Linux aarch64 with GCC and Clang (roadmap M0; unsigned `char` matters for the signed-byte hash rule).
-          - { name: linux-arm64-gcc, os: ubuntu-24.04-arm, cc: gcc, cxx: g++, preset: ci-linux }
+          # Also restores the xschem sets: the PDK netlist digests (m8 design D20, task 8.6) run on the three platforms.
+          - { name: linux-arm64-gcc, os: ubuntu-24.04-arm, cc: gcc, cxx: g++, preset: ci-linux, xschem: true }
           - { name: linux-arm64-clang, os: ubuntu-24.04-arm, cc: clang-18, cxx: clang++-18, preset: ci-linux }
           # Oldest Apple Clang available on hosted runners and the newest runner image. GitHub retired the
           # macos-14 image, and macos-15 has no Xcode 15, so the oldest leg selects the oldest Xcode installed
           # on macos-15 (deviation from hefesto-platform-targets "Supported toolchains", design D12). The newest also builds the
           # desktop shell against MoltenVK (the macOS platform of the Raven go/no-go).
-          - { name: macos-arm64-xcode-oldest, os: macos-15, cc: clang, cxx: clang++, preset: ci-macos, xcode: oldest, ipados: true }
+          - { name: macos-arm64-xcode-oldest, os: macos-15, cc: clang, cxx: clang++, preset: ci-macos, xcode: oldest, ipados: true, xschem: true }
           - name: macos-arm64-latest
             os: macos-latest
             cc: clang

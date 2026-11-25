@@ -25,7 +25,11 @@
 //     level), null with frame_time_note otherwise. Recorded, not gated.
 // bench/view3d/view3d_gate.py checks the gated numbers against gates.json.
 //
-//   hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]
+// The mask workload (task 13.3) builds in mask-layer mode instead: the
+// timed build is mask::generate_flat over the bounding box plus the mesh
+// (build_from_mask), clipped to that box in mask units.
+//
+//   hefesto-bench-view3d [--workload synthetic|mask|array|block] [--rects N] [--repeat N]
 //                        [--frames N] [--pdk-root DIR] [--style-dir DIR ...] [--json FILE]
 //   --frames 0 skips the frame workload (default 30).
 
@@ -60,7 +64,7 @@ struct Options {
 };
 
 void usage() {
-  std::cerr << "usage: hefesto-bench-view3d [--workload synthetic|array|block] [--rects N] [--repeat N]\n"
+  std::cerr << "usage: hefesto-bench-view3d [--workload synthetic|mask|array|block] [--rects N] [--repeat N]\n"
                "                            [--frames N] [--pdk-root DIR] [--style-dir DIR]... [--json FILE]\n";
 }
 
@@ -135,13 +139,24 @@ double per_rect(std::uint64_t bytes, std::uint64_t rects) {
   return rects == 0 ? 0.0 : static_cast<double>(bytes) / static_cast<double>(rects);
 }
 
-/// One timed build; nullopt when the builder returned no model.
-std::optional<view3d::MeshModel> timed_build(const bench::Workload& w, double& seconds) {
+/// The clip area of a build: the bounding box grown by 1 (layout layers),
+/// or the mask source's box in mask units (mask_clip).
+view3d::ClipArea clip_of(const bench::Workload& w) {
+  if (const view3d::MaskSource* source = w.mask_source()) {
+    return view3d::mask_clip(*source, false);
+  }
   const hefesto::db::Rect b = w.cell().bbox();
-  const view3d::ClipArea clip{hefesto::db::Rect{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1}, false, 0};
+  return view3d::ClipArea{hefesto::db::Rect{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1}, false, 0};
+}
+
+/// One timed build (for the mask workload: generation and mesh); nullopt
+/// when the builder returned no model.
+std::optional<view3d::MeshModel> timed_build(const bench::Workload& w, double& seconds) {
+  const view3d::ClipArea clip = clip_of(w);
   view3d::BuildContext ctx;
   const auto start = std::chrono::steady_clock::now();
-  auto model = view3d::build_from_layout(w.stack(), w.cell(), clip, ctx);
+  auto model = w.mask_source() != nullptr ? view3d::build_from_mask(w.stack(), w.cell(), *w.mask_source(), clip, ctx)
+                                          : view3d::build_from_layout(w.stack(), w.cell(), clip, ctx);
   seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
   return model;
 }
@@ -183,9 +198,7 @@ void add_frames(json& j, const Options& o, const bench::Workload& w, const view3
     j["frame_time_note"] = "not measured: --frames 0";
     return;
   }
-  const hefesto::db::Rect b = w.cell().bbox();
-  const hefesto::db::Rect region{b.x0 - 1, b.y0 - 1, b.x1 + 1, b.y1 + 1};
-  json frame = bench::measure_frames(model, w.stack(), region, bench::FrameOptions{o.frames, 1280, 800});
+  json frame = bench::measure_frames(model, w.stack(), clip_of(w).area, bench::FrameOptions{o.frames, 1280, 800});
   if (frame.contains("error")) {
     j["frame_time_ms"] = nullptr;
     j["frame_time_note"] = frame["error"];

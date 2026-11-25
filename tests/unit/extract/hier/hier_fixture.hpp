@@ -21,6 +21,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/compat/compat_settings.hpp"
@@ -38,6 +39,7 @@
 #include "hefesto/extract/node/names.hpp"
 #include "hefesto/extract/node/regions.hpp"
 #include "hefesto/extract/tech/style.hpp"
+#include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/tech/loader.hpp"
@@ -109,7 +111,11 @@ inline extract::ExtStyle first_style(const tech::Technology& t, bool magic_compa
 /// One hierarchical EX case: its technology, style and cells.
 class HierCase {
  public:
-  HierCase(std::string_view id, bool magic_compat) : dir_(case_root(id) + "input/") {
+  HierCase(std::string_view id, bool magic_compat) : HierCase(id, magic_compat, case_root(id) + "input/") {}
+
+  /// The technology of case `id` with the cells read from `cells_dir`.
+  HierCase(std::string_view id, bool magic_compat, std::string cells_dir)
+      : dir_(case_root(id) + "input/"), cells_dir_(std::move(cells_dir)) {
     platform::MemoryFileSystem fs;
     diag::CollectingSink sink;
     auto loaded = tech::load_technology_text(read_file(dir_ + "exttest.tech"), "/t/exttest.tech", fs,
@@ -125,6 +131,7 @@ class HierCase {
   [[nodiscard]] std::shared_ptr<const extract::ExtStyle> style_ptr() const { return style_; }
   [[nodiscard]] const compat::CompatSettings& compat() const { return compat_; }
   extract::ExtractOptions options;
+  const mask::Progress* progress = nullptr;  // ExtractContext::progress of run()
 
   /// The cell `name` read from input/<name>.mag with its subcells.
   db::CellDef& cell(const std::string& name) {
@@ -134,7 +141,7 @@ class HierCase {
     auto created = lib_.create(name, tech_->plane_count());
     REQUIRE(created.ok());
     db::CellDef& def = *created.value();
-    read_mag(def, read_file(dir_ + name + ".mag"));
+    read_mag(def, read_file(cells_dir_ + name + ".mag"));
     db::recompute_bbox(def);
     return def;
   }
@@ -169,6 +176,7 @@ class HierCase {
     ctx.style = style_;
     ctx.options = options;
     ctx.compat = compat_;
+    ctx.progress = progress;
     extract::SubtreeInputs in;
     in.technology = tech_.get();
     in.parent = extract::ParentNodes{&finder, nodes.size(), names, substrate};
@@ -273,6 +281,7 @@ class HierCase {
   }
 
   std::string dir_;
+  std::string cells_dir_;
   std::shared_ptr<const tech::Technology> tech_;
   std::shared_ptr<const extract::ExtStyle> style_;
   compat::CompatSettings compat_;

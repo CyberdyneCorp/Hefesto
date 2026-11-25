@@ -79,12 +79,16 @@ std::string field_rule(std::string_view line) {
 }
 
 /// The quote rule: read character by character; wrap before a blank when
-/// no quote is open and the segment before it is longer than kMaxSegment.
+/// no quote is open and the segment before it is kMaxSegment characters or
+/// longer; the next segment starts after that blank (golden case SCHEM-NL-05:
+/// a sky130 line of exactly 130 characters before a blank wraps there, and a
+/// continuation line of `+`, the blank and 129 characters does not).
 std::string quote_rule(std::string_view line, bool wrap, bool& quote_open) {
   std::string out;
   std::size_t segment = 0;
   for (const char c : line) {
-    if (wrap && is_blank(c) && !quote_open && segment > kMaxSegment) {
+    const bool wraps = wrap && is_blank(c) && !quote_open && segment >= kMaxSegment;
+    if (wraps) {
       out += continuation(line);
       segment = 0;
     }
@@ -92,7 +96,7 @@ std::string quote_rule(std::string_view line, bool wrap, bool& quote_open) {
       quote_open = !quote_open;
     }
     out += c;
-    ++segment;
+    segment += wraps ? 0 : 1;
   }
   return out;
 }

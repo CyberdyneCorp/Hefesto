@@ -93,7 +93,7 @@ class GateTest(unittest.TestCase):
         for name, entry in gates.items():
             if name.startswith("_"):
                 continue
-            self.assertIn(name, ("synthetic", "array", "block"))
+            self.assertIn(name, ("synthetic", "mask", "array", "block"))
             self.assertTrue(set(entry) <= {"min_rects", "max_build_s", "max_model_bytes_per_rect"})
 
 

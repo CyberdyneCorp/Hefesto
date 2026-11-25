@@ -25,6 +25,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/extract/command/session.hpp"
+#include "hefesto/util/function_ref.hpp"
 
 namespace hefesto::extract {
 
@@ -61,9 +62,18 @@ struct InteractionSquare {
                                                                       std::int32_t radius, bool magic_compat);
 
 /// extSubtree's step squares of `cell` (rows bottom to top, squares left
-/// to right, from the bounding box's lower-left corner), each with what
-/// DRCFindInteractions and the cell's labels make of it. A step below 1
-/// makes one square of the whole bounding box.
+/// to right, from the bounding box's lower-left corner), each classified
+/// with what DRCFindInteractions and the cell's labels make of it, and
+/// handed to `visit` one at a time unless it is SquareKind::none (nothing
+/// is kept, so a small step on a large cell costs no memory). `visit`
+/// returns false to stop (a cancelled pass). A step below 1 makes one
+/// square of the whole bounding box. A square edge past the plane's
+/// infinity is clamped to it. Returns false when `visit` stopped the walk.
+bool for_each_square(const db::CellDef& cell, std::int32_t step, std::int32_t halo, bool magic_compat,
+                     util::FunctionRef<bool(const InteractionSquare&)> visit);
+
+/// The squares of for_each_square that are not SquareKind::none, in its
+/// order.
 [[nodiscard]] std::vector<InteractionSquare> interaction_squares(const db::CellDef& cell, std::int32_t step,
                                                                  std::int32_t halo, bool magic_compat);
 

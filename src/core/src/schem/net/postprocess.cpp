@@ -264,6 +264,20 @@ std::vector<Field> read_fields(std::span<const std::string_view> raw) {
   return out;
 }
 
+/// The name list of an element (its first field) with the `##` and
+/// `#<p>#<rest>` notations applied: `#xa#x1[3],x1[2]` gives `xax1[3],xax1[2]`
+/// (golden case SCHEM-NL-05, sky130_tests/nand2_noschematic.sym).
+std::string name_list(std::string_view field) {
+  if (field.starts_with("##")) {
+    return std::string{field.substr(2)};
+  }
+  const std::size_t second = field.size() > 1 && field[0] == '#' ? field.find('#', 1) : std::string_view::npos;
+  if (second == std::string_view::npos) {
+    return std::string{field};
+  }
+  return prefix_items(field.substr(1, second - 1), field.substr(second + 1));
+}
+
 std::vector<std::string_view> split_items(std::string_view text) {
   std::vector<std::string_view> items;
   std::size_t at = 0;
@@ -422,26 +436,41 @@ bool is_width_marker(std::string_view field) {
   return second != std::string_view::npos && parse_marker(field.substr(second + 1)).has_value();
 }
 
-/// The fields after the first that are not width markers, each followed by
+/// For a save-line field `<t>(?<w>` (a width marker right after the `(`, as
+/// `spice_probe_vdiff.sym` writes `v(@@p\)`; golden case SCHEM-NL-05), the
+/// length of its `<t>(` part; npos for any other field.
+std::size_t paren_marker(std::string_view field) {
+  const std::size_t open = field.rfind('(');
+  return open != std::string_view::npos && parse_marker(field.substr(open + 1)) ? open + 1 : std::string_view::npos;
+}
+
+bool is_save_marker(std::string_view field) {
+  return is_width_marker(field) || paren_marker(field) != std::string_view::npos;
+}
+
+/// The fields after the first without their width markers, each followed by
 /// a space.
 std::string save_operands(std::span<const std::string_view> fields) {
   std::string rest;
   for (std::size_t i = 1; i < fields.size(); ++i) {
-    if (!is_width_marker(fields[i])) {
-      rest += fields[i];
-      rest += ' ';
+    if (is_width_marker(fields[i])) {
+      continue;
     }
+    rest += fields[i].substr(0, paren_marker(fields[i]));
+    rest += ' ';
   }
   return rest;
 }
 
-/// `rest` without the spaces before or after a parenthesis.
+/// `rest` without the spaces before a `(` or `)` and after a `(`; the space
+/// after a `)` separates two operands (`v(e1) v(net1)`, golden case
+/// SCHEM-NL-05).
 std::string tighten_parens(std::string_view rest) {
   std::string tight;
   for (std::size_t i = 0; i < rest.size(); ++i) {
     const bool space = rest[i] == ' ';
     const bool next_paren = i + 1 < rest.size() && (rest[i + 1] == '(' || rest[i + 1] == ')');
-    const bool prev_paren = !tight.empty() && (tight.back() == '(' || tight.back() == ')');
+    const bool prev_paren = !tight.empty() && tight.back() == '(';
     if (space && (next_paren || prev_paren)) {
       continue;
     }
@@ -591,7 +620,7 @@ class PostProcessor {
       return;
     }
     if ((iequals(fields[0], ".save") || iequals(fields[0], ".print")) &&
-        std::any_of(fields.begin() + 1, fields.end(), is_width_marker)) {
+        std::any_of(fields.begin() + 1, fields.end(), is_save_marker)) {
       for (std::string& line : expand_save(fields)) {
         emit(std::move(line));
       }
@@ -602,7 +631,8 @@ class PostProcessor {
 
   void element(std::span<const std::string_view> fields, std::string_view prefix, const std::string& text) {
     const std::vector<Field> rest = read_fields(fields.subspan(1));
-    std::vector<std::string_view> names = split_items(fields[0]);
+    const std::string first = name_list(fields[0]);
+    std::vector<std::string_view> names = split_items(first);
     if (repeats_first_field(fields[0])) {
       const std::size_t count = fields.size() > 2 ? split_items(fields[2]).size() : 0;
       names.assign(count, fields[0]);

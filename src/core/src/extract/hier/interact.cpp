@@ -14,6 +14,7 @@
 
 #include "hefesto/extract/hier/interact.hpp"
 
+#include <algorithm>
 #include <functional>
 
 #include "hefesto/extract/tech/style.hpp"
@@ -220,19 +221,42 @@ std::optional<std::optional<db::Rect>> find_interaction(const db::CellDef& cell,
   return std::optional<db::Rect>{found};
 }
 
-std::vector<InteractionSquare> interaction_squares(const db::CellDef& cell, std::int32_t step, std::int32_t halo,
-                                                   bool magic_compat) {
-  std::vector<InteractionSquare> out;
+namespace {
+
+/// A square edge: x + step, clamped to the plane's infinity (nothing lies
+/// past it; a large `extract stepsize` would otherwise wrap the int32 edge,
+/// and the halo added to it later must not overflow either).
+db::Coord square_edge(std::int64_t v) {
+  return static_cast<db::Coord>(std::min<std::int64_t>(v, db::kInfinity));
+}
+
+}  // namespace
+
+bool for_each_square(const db::CellDef& cell, std::int32_t step, std::int32_t halo, bool magic_compat,
+                     util::FunctionRef<bool(const InteractionSquare&)> visit) {
   const db::Rect b = cell.bbox();
   const std::int64_t sx = step > 0 ? step : std::max<std::int64_t>(b.width(), 1);
   const std::int64_t sy = step > 0 ? step : std::max<std::int64_t>(b.height(), 1);
   for (std::int64_t y = b.y0; y < b.y1; y += sy) {
     for (std::int64_t x = b.x0; x < b.x1; x += sx) {
-      const db::Rect square{static_cast<db::Coord>(x), static_cast<db::Coord>(y), static_cast<db::Coord>(x + sx),
-                            static_cast<db::Coord>(y + sy)};
-      out.push_back(classify(cell, square, halo, magic_compat));
+      const db::Rect square{static_cast<db::Coord>(x), static_cast<db::Coord>(y), square_edge(x + sx),
+                            square_edge(y + sy)};
+      const InteractionSquare s = classify(cell, square, halo, magic_compat);
+      if (s.kind != SquareKind::none && !visit(s)) {
+        return false;
+      }
     }
   }
+  return true;
+}
+
+std::vector<InteractionSquare> interaction_squares(const db::CellDef& cell, std::int32_t step, std::int32_t halo,
+                                                   bool magic_compat) {
+  std::vector<InteractionSquare> out;
+  for_each_square(cell, step, halo, magic_compat, [&](const InteractionSquare& s) {
+    out.push_back(s);
+    return true;
+  });
   return out;
 }
 

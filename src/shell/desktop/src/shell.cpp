@@ -217,19 +217,16 @@ platform::PortableOptions core_options() {
 
 /// Loads Inter and JetBrains Mono (OFL-1.1) and the icons from assets/
 /// ("Typography", "Icons"); Raven's own fonts stand in when they are missing.
+/// The folder is found from the one the operating system reports for the
+/// executable (as the install root, M8-D10), never from argv[0]: started
+/// from PATH, argv[0] is a bare name whose folder is the working directory.
 void load_assets(ui::Runtime& runtime, const ShellOptions& options) {
-  std::error_code ec;
-  std::filesystem::path exe_dir;
-  if (!options.program.empty()) {
-    exe_dir = std::filesystem::weakly_canonical(std::filesystem::path(options.program), ec).parent_path();
-  }
 #ifdef HEFESTO_SOURCE_ASSET_DIR
   const std::filesystem::path source_dir = HEFESTO_SOURCE_ASSET_DIR;
 #else
   const std::filesystem::path source_dir;
 #endif
-  const auto dirs = asset_search_dirs(options.asset_dir, exe_dir, source_dir);
-  const auto found = find_asset_dir(dirs);
+  const auto found = desktop_asset_dir(options.asset_dir, platform_posix::executable_dir(), source_dir);
   if (!found || !runtime.load_assets(*found)) {
     std::fprintf(stderr, "hefesto: the bundled fonts (assets/fonts/Inter-*.ttf, JetBrainsMono-*.ttf) were not found%s; "
                          "using Raven's fonts\n",

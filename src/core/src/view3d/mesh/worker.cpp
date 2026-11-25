@@ -7,6 +7,8 @@
 // under the mutex when a job is taken, and set under it by build() and
 // cancel(), so a request never cancels the job that follows it. A job that
 // finishes while the flag is set is dropped like a cancelled one.
+// With BuildInputs::mask the jobs build and rebuild the mask-layer source
+// (planes.cpp); `clip` is then the mask-unit clip area (mask_clip).
 //
 // Owner: MESH (design D3).
 
@@ -23,6 +25,28 @@
 #include "internal.hpp"
 
 namespace hefesto::view3d {
+
+namespace {
+
+void take_inputs(const BuildInputs& in, BuildContext& ctx) {
+  ctx.span_connected_layers = in.span_connected_layers;
+  ctx.technology = in.technology;
+  ctx.centre = in.centre;
+  ctx.lock = in.lock;
+}
+
+}  // namespace
+
+std::optional<MeshModel> build_once(const BuildInputs& in, BuildContext& ctx) {
+  if (!in.stack || in.cell == nullptr) {
+    return std::nullopt;
+  }
+  take_inputs(in, ctx);
+  if (in.mask) {
+    return detail::build_mask(*in.stack, *in.cell, *in.mask, in.clip, ctx, in.max_chunk_tiles);
+  }
+  return detail::build_layout(*in.stack, *in.cell, in.clip, ctx, in.max_chunk_tiles);
+}
 
 struct MeshWorker::State {
   WorkerCallbacks callbacks;
@@ -84,21 +108,21 @@ struct MeshWorker::State {
 
   std::optional<MeshModel> execute(const Job& job) {
     const BuildInputs& in = job.inputs;
-    if (!in.stack || in.cell == nullptr) {
-      return std::nullopt;
-    }
     BuildContext ctx;
     ctx.progress.cancel = &cancel;
     ctx.progress.report = callbacks.on_progress;
     ctx.on_chunk = callbacks.on_chunk;
-    ctx.span_connected_layers = in.span_connected_layers;
-    ctx.technology = in.technology;
-    ctx.centre = in.centre;
-    ctx.lock = in.lock;
-    if (job.previous) {
-      return detail::rebuild_layout(*job.previous, *in.stack, *in.cell, job.dirty, ctx, in.max_chunk_tiles);
+    if (!job.previous) {
+      return build_once(in, ctx);
     }
-    return detail::build_layout(*in.stack, *in.cell, in.clip, ctx, in.max_chunk_tiles);
+    if (!in.stack || in.cell == nullptr) {
+      return std::nullopt;
+    }
+    take_inputs(in, ctx);
+    if (in.mask) {
+      return detail::rebuild_mask(*job.previous, *in.stack, *in.cell, *in.mask, job.dirty, ctx, in.max_chunk_tiles);
+    }
+    return detail::rebuild_layout(*job.previous, *in.stack, *in.cell, job.dirty, ctx, in.max_chunk_tiles);
   }
 
   // `running` stays true until on_done has returned, so wait_idle() and
@@ -113,6 +137,7 @@ struct MeshWorker::State {
         parked.insert(parked.end(), job.dirty.begin(), job.dirty.end());
       }
       if (!dropped) {
+        model->build_id = job.inputs.build_id;  // a rebuild's inputs are the current model's
         done = std::make_shared<const MeshModel>(std::move(*model));
         current = done;
         if (!job.previous) {

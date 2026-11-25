@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <optional>
 
 #include "hefesto/view3d/camera/view_state.hpp"
 
@@ -321,6 +322,75 @@ float change_output_style(ViewState& view, bool magic_compat, float f_old, float
   }
   rescale(view, f_new / f_old);
   return f_new;
+}
+
+// --- ground_point (M10 round 5, SECTION) -------------------------------------
+
+namespace {
+
+using Vec3 = std::array<double, 3>;
+
+// Row r of `m` taken at the columns of x, y and `last` (2 for the ray
+// direction, 3 for a point of the plane z = 0).
+Vec3 row_of(const Matrix4& m, int r, int last) {
+  return {static_cast<double>(at(m, r, 0)), static_cast<double>(at(m, r, 1)), static_cast<double>(at(m, r, last))};
+}
+
+// row_i - n * row_3: zero at every point (x, y, z, 1) that the pixel's
+// normalized coordinate n covers.
+Vec3 pixel_plane(const Matrix4& m, int r, double n, int last) {
+  const Vec3 a = row_of(m, r, last);
+  const Vec3 w = row_of(m, 3, last);
+  return {a[0] - (n * w[0]), a[1] - (n * w[1]), a[2] - (n * w[2])};
+}
+
+// Below this sine of the angle between the ray and the plane z = 0 the ray
+// counts as parallel (float rounding of a 90 degree rotation gives ~4e-8).
+constexpr double kParallelSine = 1e-6;
+
+bool parallel_to_ground(const Matrix4& m, double nx, double ny) {
+  const Vec3 a = pixel_plane(m, 0, nx, 2);
+  const Vec3 b = pixel_plane(m, 1, ny, 2);
+  const Vec3 d{(a[1] * b[2]) - (a[2] * b[1]), (a[2] * b[0]) - (a[0] * b[2]), (a[0] * b[1]) - (a[1] * b[0])};
+  const double length = std::sqrt((d[0] * d[0]) + (d[1] * d[1]) + (d[2] * d[2]));
+  return !(length > 0.0) || std::fabs(d[2]) <= kParallelSine * length;
+}
+
+std::optional<db::Coord> to_coord(double v) {
+  if (!std::isfinite(v) || std::fabs(v) > static_cast<double>(db::kPlaneMax)) {
+    return std::nullopt;
+  }
+  return static_cast<db::Coord>(std::llround(v));
+}
+
+}  // namespace
+
+std::optional<db::Point> ground_point(const ViewState& view, const ProjectionParams& projection, int width_px,
+                                      int height_px, float px, float py) {
+  if (width_px <= 0 || height_px <= 0 || !std::isfinite(px) || !std::isfinite(py)) {
+    return std::nullopt;
+  }
+  const Matrix4 m = matrix(view, width_px, height_px, projection);
+  const double nx = (2.0 * static_cast<double>(px) / width_px) - 1.0;
+  const double ny = 1.0 - (2.0 * static_cast<double>(py) / height_px);  // y down on the screen, up in the view
+  if (parallel_to_ground(m, nx, ny)) {
+    return std::nullopt;
+  }
+  const Vec3 a = pixel_plane(m, 0, nx, 3);
+  const Vec3 b = pixel_plane(m, 1, ny, 3);
+  const double det = (a[0] * b[1]) - (a[1] * b[0]);
+  const double x = ((a[1] * b[2]) - (a[2] * b[1])) / det;
+  const double y = ((a[2] * b[0]) - (a[0] * b[2])) / det;
+  const Vec3 w = row_of(m, 3, 3);
+  if (!((w[0] * x) + (w[1] * y) + w[2] > 0.0)) {  // behind the eye
+    return std::nullopt;
+  }
+  const auto cx = to_coord(x);
+  const auto cy = to_coord(y);
+  if (!cx || !cy) {
+    return std::nullopt;
+  }
+  return db::Point{*cx, *cy};
 }
 
 }  // namespace hefesto::view3d

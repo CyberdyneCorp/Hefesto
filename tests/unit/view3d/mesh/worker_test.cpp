@@ -11,6 +11,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -214,6 +215,42 @@ TEST_CASE("a change event rebuilds the affected chunks of the current model in t
   CHECK(kept > 0);
   CHECK(kept < after->chunks.size());
   CHECK(view3d::test::face_area(*after, 0) == view3d::test::face_area(*before, 0) + 4.0);
+}
+
+// Review of PR #122 (finding 6): the desktop told a stale model (a build
+// finishing as a new one started) from the current one by its layer count
+// only. Every model now carries the build_id of the inputs it was built
+// from, a rebuild that of the current model's build.
+TEST_CASE("every model carries the build_id of its build; a rebuild keeps the current model's",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  Grid g;
+  std::mutex mutex;
+  std::vector<std::uint64_t> delivered;
+  view3d::WorkerCallbacks cb;
+  cb.on_done = [&](const view3d::MeshHandle& model) {
+    const std::lock_guard lock(mutex);
+    delivered.push_back(model->build_id);
+  };
+  view3d::MeshWorker worker(cb);
+  view3d::BuildInputs first = g.inputs();
+  first.build_id = 7;
+  worker.build(first);
+  REQUIRE(worker.wait_idle(kWaitMs));
+  REQUIRE(worker.current() != nullptr);
+  CHECK(worker.current()->build_id == 7);
+  const Rect dirty{16, 11, 18, 13};
+  view3d::test::paint(g.root, g.tech, dirty, g.tech.metal1);
+  const std::vector<Rect> areas{dirty};
+  worker.changed(areas);
+  REQUIRE(worker.wait_idle(kWaitMs));
+  CHECK(worker.current()->build_id == 7);
+  view3d::BuildInputs second = g.inputs();
+  second.build_id = 8;
+  worker.build(second);
+  REQUIRE(worker.wait_idle(kWaitMs));
+  CHECK(worker.current()->build_id == 8);
+  const std::lock_guard lock(mutex);
+  CHECK(delivered == std::vector<std::uint64_t>{7, 7, 8});
 }
 
 TEST_CASE("a cancelled rebuild's areas are rebuilt by the next change event",

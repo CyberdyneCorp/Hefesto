@@ -45,6 +45,24 @@ release notices.
 - **Script routing with magic-compat ON.** While a 3D window is open and
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.
+- **Mask layers in 3D (phase 2).** Mask-layer mode (`cif` in the 3D
+  window, the default when an output style is current) now draws the mask
+  layers the current output style generates for the cell, with their
+  `render` heights, instead of the layout layers under a "phase 2"
+  notice. An edit regenerates only the nearby mask geometry.
+- **Cross-sections.** The desktop 3D tab's "Cross-section" button cuts
+  A–A′ along the layout box (or two clicks in the view), clips the 3D
+  view at the line and shows each crossed layer from its height to its
+  top in µm in a "Cross-section A–A′" panel.
+- **glTF and STL export.** `export3d <file> [-format gltf|glb|stl]
+  [-merged] [-zscale k] [-visible|-all]` writes the 3D window's model in
+  µm (one glTF node or STL file per layer, or one merged STL); the
+  desktop tab's "Export glTF…" asks for the file. The output is
+  byte-identical on Linux and macOS.
+- **3D tab layout.** The view toolbar floats over the 3D view as on the
+  board, the side panel fits a 1280 × 800 window, a substrate slab is
+  drawn under the stack ("Substrate" toggle), and every control has a
+  screen-reader name and state.
 
 ## Unreleased (M9: LVS and simulation, in progress)
 
@@ -102,6 +120,22 @@ release notices.
   action and xschem-style key bindings.
 - **`schem-bench`** times loading, saving and netlisting of a generated
   10,000-device hierarchy and of PDK testbenches (`bench/schem`).
+- **Schematic object order and clipboard.** `schematic order <index>`,
+  `clipboard [copy|set <text>]`, `paste <x> <y>` and `merge <file>
+  [<x> <y>]`; each paste, merge or order is one undo step
+  (`SCHEM-EDIT-001` on a read-only document; `SCHEM-EDIT-008` when the
+  clipboard holds no schematic objects). A pasted or merged embedded
+  symbol does not redefine a symbol the document's instances already use
+  (proposed Q-SCHEM-51).
+- **Schematic simulation decks.** The schematic deck is built from the
+  netlist with its `.control` blocks translated: `write`/`wrdata` become
+  capture points, `quit`/`exit` are removed and host commands (`shell`,
+  `cd`, `load`, `source`, ...) are refused (`SCHEM-SIM-001` to `-004`).
+  Running the deck arrives with M9.
+- **Desktop Schematic tab panels.** Library browser, properties,
+  breadcrumb, messages and netlist bar with Interrupt; pan, zoom and
+  click-to-select; net highlights drawn in their colours. Symbols are
+  resolved off the UI thread and shown as placeholders until ready.
 
 ### Changed
 
@@ -125,6 +159,22 @@ release notices.
 - **Unknown commands in an `xschemrc` file are Tcl errors**
   (`SCHEM-LIB-006`, earlier settings kept), except the GUI-only commands
   the sky130, GF180MCU and IHP `xschemrc` files call, which do nothing.
+- **`schematic reload` and `close` drop the document's editing state**:
+  selection, net highlights, undo history and launcher confirmation;
+  `reload` also re-reads changed symbol files.
+- **`schematic netlist` and `check` can be interrupted** (`SCHEM-CMD-011`,
+  no file written).
+- **Netlister fixes found by the SCHEM golden replay**: `@#n:net_name`,
+  the `expr` error text, the `tcleval` line end, `#<p>#` name lists, save
+  lines, the 130-character quote rule and empty `*.PININFO` lines now
+  match xschem.
+
+### Fixed
+
+- **`schematic label` with a quote or backslash** in the name is escaped
+  and reads back unchanged; so are the net labels a netlist run stores.
+- **Schematic scripts cannot close or move the standard channels**
+  (`SCRIPT-SANDBOX-007`).
 
 ## Unreleased (M7: extraction and netlisting, in progress)
 

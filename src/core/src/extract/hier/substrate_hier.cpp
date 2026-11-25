@@ -154,21 +154,17 @@ bool connect_elements(Hier& h, const db::CellUse& use) {
   if (a.xhi == a.xlo && a.yhi == a.ylo) {
     return connect_substrate(h, use, -1, -1);
   }
+  // A one-dimensional array names its elements with one index (-1 for the
+  // other axis).
+  const bool x_single = a.xhi == a.xlo && a.yhi > a.ylo;
+  const bool y_single = a.xhi > a.xlo && a.yhi == a.ylo;
+  const std::int32_t x0 = x_single ? -1 : a.xlo;
+  const std::int32_t x1 = x_single ? -1 : a.xhi;
+  const std::int32_t y0 = y_single ? -1 : a.ylo;
+  const std::int32_t y1 = y_single ? -1 : a.yhi;
   bool ok = false;
-  if (a.xhi == a.xlo && a.yhi > a.ylo) {
-    for (std::int32_t y = a.ylo; y <= a.yhi; ++y) {
-      ok = connect_substrate(h, use, -1, y) || ok;
-    }
-    return ok;
-  }
-  if (a.xhi > a.xlo && a.yhi == a.ylo) {
-    for (std::int32_t x = a.xlo; x <= a.xhi; ++x) {
-      ok = connect_substrate(h, use, x, -1) || ok;
-    }
-    return ok;
-  }
-  for (std::int32_t x = a.xlo; x <= a.xhi; ++x) {
-    for (std::int32_t y = a.ylo; y <= a.yhi; ++y) {
+  for (std::int32_t x = x0; x <= x1; ++x) {
+    for (std::int32_t y = y0; y <= y1; ++y) {
       ok = connect_substrate(h, use, x, y) || ok;
     }
   }

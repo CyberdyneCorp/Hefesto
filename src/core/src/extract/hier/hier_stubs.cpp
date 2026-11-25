@@ -19,11 +19,12 @@ diag::Outcome<InteractionAreas> interactions(const db::CellDef& cell, const ExtS
                                              const Overrides& overrides) {
   InteractionAreas out;
   const std::int32_t halo = hier_halo(style, ExtractOptions{}, overrides);
-  for (const InteractionSquare& s : interaction_squares(cell, hier_step(style, overrides), halo, style.magic_compat)) {
+  for_each_square(cell, hier_step(style, overrides), halo, style.magic_compat, [&](const InteractionSquare& s) {
     if (s.kind == SquareKind::interaction) {
       out.areas.push_back(s.area);
     }
-  }
+    return true;
+  });
   return out;
 }
 
