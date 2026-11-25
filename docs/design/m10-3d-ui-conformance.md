@@ -195,4 +195,13 @@ Mask-layer mode (task 13.3), new workload `mask` of `bench/view3d`: the syntheti
 | 0 with a ghosted full-region well | 12.15 ms | 12.29 ms | 82.3 | met |
 | 1 with a ghosted full-region well | 23.57 ms | 24.05 ms | 42.4 | met |
 
-Upload 0.079 s, upload plus the first frame 142 ms. The mesh has 1.5 times the rectangles of the layout-layer one (the temporary layer and NWELL add flat faces over the diffusions), and the frame costs about 14 % more. The peak resident set is about 2.5 times the layout-layer build's: the generation's scratch cell and planes stay alive until the faces are emitted. The `perf.yml` `view3d-bench` job now runs the `mask` workload too (lavapipe frames recorded, not gated); its numbers and the gates set from them are below.
+Upload 0.079 s, upload plus the first frame 142 ms. The mesh has 1.5 times the rectangles of the layout-layer one (the temporary layer and NWELL add flat faces over the diffusions), and the frame costs about 14 % more. The peak resident set is about 2.5 times the layout-layer build's: the generation's scratch cell and planes stay alive until the faces are emitted. The `perf.yml` `view3d-bench` job now runs the `mask` workload too (lavapipe frames recorded, not gated). First CI run (perf run 45559018286, ubuntu-24.04, Release):
+
+| Workload, CI | Rectangles | Sides | Median build | Model (CPU) | GPU estimate | Peak RSS | lavapipe frame, level 0 / level 1 |
+|---|---|---|---|---|---|---|---|
+| synthetic | 1,004,944 | 3,760,676 | 0.854 s (runs 0.799–0.877 s) | 155.5 B/rect | 94.8 B/rect | 400 MiB | 1100 ms / 2573 ms |
+| mask (generation plus mesh) | 1,520,248 | 3,764,164 | 1.169 s (runs 1.156–1.280 s) | 118.4 B/rect | 69.5 B/rect | 554 MiB | 1289 ms / 2668 ms |
+| array | 8,827,796 | 30,701,344 | 23.95 s | 149.0 B/rect | 89.6 B/rect | 3.2 GiB | not measured |
+| block | 289,535 | 1,015,220 | 0.122 s | 172.9 B/rect | 90.1 B/rect | 188 MiB | not measured |
+
+Gates of the `mask` workload, set from this run (`bench/view3d/gates.json`): at least 1,400,000 rectangles, median build ≤ 1.75 s (about 50 % over the run), model ≤ 130 B/rect. The lavapipe frame times are information only (D17).

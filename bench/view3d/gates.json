@@ -6,7 +6,8 @@
     "rectangles) median 0.167 s, 172.9 B/rect (perf run 44972505292: 0.122 s). Time gates allow about 50 % over",
     "the first run (block: 0.25 s, PR #81 review; it was 0.5 s); the memory gates",
     "stay above the measured values while the D6 target of 64 B/rect is missed (docs/design/m10-3d-ui-conformance.md",
-    "'Performance')."
+    "'Performance').",
+    "Mask workload (task 13.3, M10 round 5), first CI numbers (perf run 45559018286): 1,520,248 rectangles, median build 1.17 s (generation plus mesh), 118.4 B/rect; gates about 50 % over the build and above the memory."
   ],
   "synthetic": {
     "min_rects": 1000000,
@@ -22,5 +23,10 @@
     "min_rects": 250000,
     "max_build_s": 0.25,
     "max_model_bytes_per_rect": 190
+  },
+  "mask": {
+    "min_rects": 1400000,
+    "max_build_s": 1.75,
+    "max_model_bytes_per_rect": 130
   }
 }
