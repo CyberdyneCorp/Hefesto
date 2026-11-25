@@ -753,7 +753,7 @@ Compatibility: behavioral
 - **THEN** the netlist SHALL be produced and the command SHALL return a failure status
 
 ### Requirement: In-process netlisting
-Hefesto SHALL generate the netlist in memory, on every platform, without temporary files or external programs. It SHALL write the netlist to a file only when asked: by default `<netlist folder>/<top cell>.spice`, where the netlist folder is a Hefesto setting (default: a `simulation` folder beside the schematic, inside the document's granted folder on iPadOS). The output SHALL be identical on every platform for the same inputs and the same resolved absolute paths. Netlisting SHALL NOT change the document's undo history.
+Hefesto SHALL generate the netlist in memory, on every platform, without temporary files or external programs. It SHALL write the netlist to a file only when asked: by default `<netlist folder>/<top cell>.spice`, where the netlist folder is a Hefesto setting (default: a `simulation` folder beside the schematic, inside the document's granted folder on iPadOS). The output SHALL be identical on every platform for the same inputs and the same resolved absolute paths. Netlisting SHALL NOT change the document's undo history. A run SHALL be interruptible: the caller's interrupt check SHALL be polled at least once per schematic level placed, and an interrupted run SHALL return no netlist text and no computed labels and SHALL fail with error SCHEM-NET-018 (in both xschem-compat modes).
 
 Compatibility: native
 
@@ -763,3 +763,8 @@ Compatibility: native
 - **GIVEN** a testbench open on iPadOS
 - **WHEN** a simulation starts from it
 - **THEN** the netlist SHALL be passed to the simulation engine in memory and no `.spice` file SHALL be created
+
+#### Scenario: Interrupted netlist run
+- **GIVEN** a hierarchical testbench whose run is interrupted after its top level is placed
+- **WHEN** the netlister polls the interrupt check before placing a subcircuit's schematic
+- **THEN** the run SHALL stop, return no netlist text and no computed labels, and fail with SCHEM-NET-018

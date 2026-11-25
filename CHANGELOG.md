@@ -102,6 +102,19 @@ release notices.
   action and xschem-style key bindings.
 - **`schem-bench`** times loading, saving and netlisting of a generated
   10,000-device hierarchy and of PDK testbenches (`bench/schem`).
+- **Schematic object order and clipboard.** `schematic order <index>`,
+  `clipboard [copy|set <text>]`, `paste <x> <y>` and `merge <file>
+  [<x> <y>]`; each paste, merge or order is one undo step
+  (`SCHEM-EDIT-008` on a read-only document).
+- **Schematic simulation decks.** The schematic deck is built from the
+  netlist with its `.control` blocks translated: `write`/`wrdata` become
+  capture points, `quit`/`exit` are removed and host commands (`shell`,
+  `cd`, `load`, `source`, ...) are refused (`SCHEM-SIM-001` to `-004`).
+  Running the deck arrives with M9.
+- **Desktop Schematic tab panels.** Library browser, properties,
+  breadcrumb, messages and netlist bar with Interrupt; pan, zoom and
+  click-to-select; net highlights drawn in their colours. Symbols are
+  resolved off the UI thread and shown as placeholders until ready.
 
 ### Changed
 
@@ -125,6 +138,22 @@ release notices.
 - **Unknown commands in an `xschemrc` file are Tcl errors**
   (`SCHEM-LIB-006`, earlier settings kept), except the GUI-only commands
   the sky130, GF180MCU and IHP `xschemrc` files call, which do nothing.
+- **`schematic reload` and `close` drop the document's editing state**:
+  selection, net highlights, undo history and launcher confirmation;
+  `reload` also re-reads changed symbol files.
+- **`schematic netlist` and `check` can be interrupted** (`SCHEM-CMD-011`,
+  no file written).
+- **Netlister fixes found by the SCHEM golden replay**: `@#n:net_name`,
+  the `expr` error text, the `tcleval` line end, `#<p>#` name lists, save
+  lines, the 130-character quote rule and empty `*.PININFO` lines now
+  match xschem.
+
+### Fixed
+
+- **`schematic label` with a quote or backslash** in the name is escaped
+  and reads back unchanged; so are the net labels a netlist run stores.
+- **Schematic scripts cannot close or move the standard channels**
+  (`SCRIPT-SANDBOX-007`).
 
 ## Unreleased (M7: extraction and netlisting, in progress)
 

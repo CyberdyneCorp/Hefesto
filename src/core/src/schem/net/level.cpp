@@ -144,6 +144,10 @@ Level NetlistRun::place(const Document& document, Parents parents, bool top) {
   level.document = &document;
   level.parents = parents;
   level.top = top;
+  if (stopped_ || (env_.interrupted && env_.interrupted())) {
+    stopped_ = true;  // an interrupted run places nothing more
+    return level;
+  }
   level.instances.reserve(document.instances.size());
   for (std::size_t i = 0; i < document.instances.size(); ++i) {
     place_one(level, i);

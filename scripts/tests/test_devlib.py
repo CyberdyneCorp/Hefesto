@@ -115,7 +115,10 @@ class FileText(unittest.TestCase):
         fmt = gen.NOTE_PROPERTIES["simulator_commands.sym"]["format"]
         self.assertTrue(fmt.startswith("tcleval("))
         self.assertIn("sim_is_@simulator ", fmt)  # the token ends at the blank
-        self.assertIn("{\n\n@value\n}", fmt)
+        # The tcleval line gets its LF after the result (schematic-netlisting
+        # "tcleval values"), so the block itself ends with the value.
+        self.assertIn("{\n\n@value\\}", fmt)  # the escaped brace ends the token
+        self.assertIn("else {return {}}", fmt)
         self.assertEqual(fmt.count("{"), fmt.count("}"))
 
     def test_every_interface_symbol_has_a_drawing(self) -> None:

@@ -217,8 +217,9 @@ NetlistRun run_netlist(cmd::CommandContext& ctx, Session& session, const Netlist
   const Document& top = active_document(session)->document;
   const std::unique_ptr<TclEnvironment> tcl = tcl_environment(ctx, session, top.path.parent_path());
   const TclBridge bridge = tcl != nullptr ? tcl->bridge() : TclBridge{};
-  const NetlistEnvironment environment{session.symbols, session.search_path, ctx.services().files,
-                                       &bridge,         sandbox_env(ctx, "PDK_ROOT"), 4};
+  NetlistEnvironment environment{session.symbols, session.search_path, ctx.services().files,
+                                 &bridge,         sandbox_env(ctx, "PDK_ROOT"), 4};
+  environment.interrupted = [editor] { return interrupt_pending(editor); };
   NetlistRun run;
   {
     const InterruptHook hook(editor, tcl.get());

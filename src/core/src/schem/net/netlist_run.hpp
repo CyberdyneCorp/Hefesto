@@ -145,6 +145,7 @@ class NetlistRun {
 
   // level.cpp
   Level place(const Document& document, Parents parents, bool top);
+  static NetlistResult interrupted_result();
   void place_one(Level& level, std::size_t index);
   void connect(Level& level);
   NetInstance net_instance(const Level& level, const Placed& instance);
@@ -198,6 +199,7 @@ class NetlistRun {
   BusBudget bus_budget_;  // Q-SCHEM-41: the expanded bus text of this run
 
   NetlistResult result_;
+  bool stopped_ = false;  // the environment's interrupted() fired
   std::vector<NetlistChunk> chunks_;
   ElementRunState element_state_;
   DeviceModels models_;

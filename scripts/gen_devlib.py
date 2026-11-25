@@ -47,9 +47,12 @@ PIN_KEY_ORDER = ("propag", "pinnumber", "verilog_type", "goto")
 # The `format` of the two simulator_commands symbols, written from the interface note: the netlist text is
 # LF, LF, the instance's value, LF when `sim_is_<simulator>` runs without error and returns true, and a
 # single LF otherwise. Tokens end at the blank or LF that follows them ("Format string substitution").
+# The escaped brace ends the @value token (schematic-netlisting "Format string
+# substitution") and is written unescaped; the tcleval line gets its LF after
+# the result, so the block ends with the value.
 SIMULATOR_COMMANDS_FORMAT = (
     "tcleval([if {![catch {sim_is_@simulator } hefesto_sim_selected] && $hefesto_sim_selected} "
-    "{return {\n\n@value\n}} else {return {\n}}])"
+    "{return {\n\n@value\\}} else {return {}}])"
 )
 NOTE_PROPERTIES = {
     "simulator_commands.sym": {"format": SIMULATOR_COMMANDS_FORMAT},

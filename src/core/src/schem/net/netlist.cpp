@@ -244,12 +244,24 @@ void NetlistRun::globals_block() {
   emit(std::move(text));
 }
 
+/// The result of a run the environment interrupted: no text, no labels,
+/// failed with SCHEM-NET-018.
+NetlistResult NetlistRun::interrupted_result() {
+  NetlistResult result;
+  result.failed = true;
+  result.diagnostics.push_back(diag::make(net_codes::kInterrupted, "netlist run interrupted"));
+  return result;
+}
+
 NetlistResult NetlistRun::run() {
   Level top = place(top_, Parents{}, true);
   apply_options_instances(top);
   top_subckt_ = options_.lvs_netlist || options_.top_is_subckt;
   // Options may change what is ignored (lvs_ignore): place again with them.
   top = place(top_, Parents{}, true);
+  if (stopped_) {
+    return interrupted_result();
+  }
   connect(top);
 
   emit("** sch_path: " + path_text(top_.path) + "\n");
@@ -279,6 +291,9 @@ NetlistResult NetlistRun::run() {
   top_user_code(top, "end");
   if (!top_subckt_) {
     emit(".end\n");
+  }
+  if (stopped_) {
+    return interrupted_result();
   }
   for (diag::Diagnostic& d : resolve_warnings_.take()) {
     warn(std::move(d));

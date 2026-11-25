@@ -867,3 +867,34 @@ TEST_CASE("the .subckt header template is built in linear time",
     CHECK(inside.front()->text.size() < 200);
   }
 }
+
+TEST_CASE("Interrupted netlist run", "[cap:schematic-netlisting][req:In-process netlisting]") {
+  MemoryProject p;
+  two_pin_cell(p, "cell", "type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"name=x1\"", "1k");
+  p.put("t.sch", std::string{kHeader} + "C {cell.sym} 0 0 0 0 {name=x1}\n");
+  const schem::SearchPath search{std::vector<Path>{kDevices, p.folder}};
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    schem::ReadOptions read;
+    read.xschem_compat = on;
+    auto document = schem::load_document(p.fs, p.folder / "t.sch", read);
+    REQUIRE(document);
+    schem::SymbolCache symbols;
+    schem::NetlistEnvironment environment{symbols, search, p.fs, nullptr, {}, 4};
+    int polls = 0;
+    // The top level is placed twice (before and after the options); the
+    // interrupt fires before the subcircuit's schematic is placed.
+    environment.interrupted = [&polls] { return ++polls > 2; };
+    const auto r = schem::netlist(environment, document.value(), schem::NetlistOptions{}, compat(on));
+    CHECK(polls > 2);
+    CHECK(r.failed);
+    CHECK(r.text.empty());
+    CHECK(r.labels.empty());
+    CHECK(has_code(r, hefesto::schem::net_codes::kInterrupted));
+
+    environment.interrupted = [] { return false; };
+    const auto whole = schem::netlist(environment, document.value(), schem::NetlistOptions{}, compat(on));
+    CHECK_FALSE(whole.failed);
+    CHECK(whole.text.find(".subckt cell A Y") != std::string::npos);
+  }
+}

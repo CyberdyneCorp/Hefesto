@@ -223,6 +223,10 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   instance counts its own line; nothing after the line that would pass the
   limit is written). What was written so far is kept and the run does not
   fail.
+- `SCHEM-NET-018` (error): `netlist run interrupted`: the caller's interrupt
+  check (`NetlistEnvironment::interrupted`, polled once per schematic level
+  placed) fired; the run returns no text and no computed labels. `schematic
+  netlist` and `check` report it as SCHEM-CMD-011.
 
 ## EDIT
 
@@ -402,6 +406,7 @@ fails when the two disagree.
 | `SCHEM-NET-015` | warning | Every pin of an instance is unconnected. |
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
+| `SCHEM-NET-018` | error | The netlist run was interrupted (the environment's `interrupted` callback returned true); no netlist text is returned. |
 | `SCHEM-SIM-001` | error | A `.control` line of a schematic-source deck names a command that is not allowed in simulation decks (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, or one named only at run time). |
 | `SCHEM-SIM-002` | warning | A `.include` or `.lib` path of a schematic-source deck names no file in the netlist folder, the schematic's folder or the PDK store; it is kept as written. |
 | `SCHEM-SIM-003` | warning | A launcher's `xschem` command (or `simulate`) is not supported or not available until M9; it was skipped and the rest of the launcher ran. |
