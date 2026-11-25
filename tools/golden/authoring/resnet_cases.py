@@ -96,12 +96,20 @@ def body(spec: ResnetSpec) -> str:
     return lines(*parts)
 
 
+# The nets with nfets make Magic's extresist exit with SIGSEGV (139) in both captures (runs 45555921742,
+# 45555935130); proposed Q-NETLIST-63. capture.py skips them until the crash is located.
+CAPTURE_BLOCKED = {case_id: "Magic's extresist exits 139 (SIGSEGV) on this net with an nfet in golden-capture runs "
+                            "45555921742 and 45555935130; proposed Q-NETLIST-63"
+                   for case_id in ("NL-RESNET-05", "NL-RESNET-10", "NL-RESNET-13")}
+
+
 def to_case(spec: ResnetSpec) -> TclCase:
     files: dict[str, str | bytes] = {"exttest.tech": tech_text(), "rn.mag": mag(spec.cell)}
     notes = ["Layout in input/rn.mag on authoring/exttest.tech with resnet_cases.RULES and contact cuts "
              "(design D21); extract all, then extresist in a fresh session (Q-NETLIST-46).", *spec.notes]
     return TclCase(spec.id, CAPABILITY, spec.requirements, spec.description, body(spec), files=files,
-                   collect=COLLECT, driver=DRIVER, notes=notes, golden_area="NETLIST")
+                   collect=COLLECT, driver=DRIVER, notes=notes, golden_area="NETLIST",
+                   capture_blocked=CAPTURE_BLOCKED.get(spec.id, ""))
 
 
 # --- layouts -------------------------------------------------------------------------------------

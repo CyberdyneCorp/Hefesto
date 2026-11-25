@@ -14,6 +14,7 @@ capability = "extresist-network"
 requirements = ["Near-device cutting", "Device annotation", "Start tile and origin"]
 tool = "magic"
 description = "diffusion next to transistors: one edge, two edges, a device on top and bottom"
+capture_blocked = "Magic's extresist exits 139 (SIGSEGV) on this net with an nfet in golden-capture runs 45555921742 and 45555935130; proposed Q-NETLIST-63"
 
 [reference]
 script = "input/commands.tcl"
