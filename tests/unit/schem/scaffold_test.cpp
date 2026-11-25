@@ -111,9 +111,11 @@ TEST_CASE("the EDIT, CMD and SIMINT stubs answer their documented values", "[m8-
   CHECK(registry.find("schematic") != nullptr);
   CHECK(schem::register_schematic_command(registry).has_value());  // duplicate
 
+  // SIMINT's deck and vector names are implemented (task 11.1; tests in
+  // tests/unit/schem/sim/).
   const schem::Session session;
   const auto deck = schem::build_deck(session, schem::Document{});
-  REQUIRE_FALSE(deck.ok());
-  CHECK(deck.error().code == kNotImplemented);
-  CHECK(schem::vector_name(session, schem::HierPath{{"x1"}}, "net1") == "net1");
+  REQUIRE(deck.ok());
+  CHECK(deck.value().text == "** sch_path:\n**.subckt untitled\n**.ends\n.end\n");
+  CHECK(schem::vector_name(session, schem::HierPath{{"x1"}}, "net1") == "x1.net1");
 }
