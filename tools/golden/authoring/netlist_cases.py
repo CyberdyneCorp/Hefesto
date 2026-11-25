@@ -841,5 +841,5 @@ def cases() -> list[TclCase]:
 
 ROW_IDS = ([f"NL-FLAT-{n:02d}" for n in range(1, 19)] + [f"NL-SPICE-{n:02d}" for n in range(1, 15)]
            + [f"NL-HIER-{n:02d}" for n in range(1, 7)] + [f"NL-SIM-{n:02d}" for n in range(1, 6)] + ["NL-CHK-01"])
-LATER = {**{f"NL-RES-{n:02d}": "layouts extracted in the case; RESCMD (task 17.3, R4)" for n in range(1, 9)},
-         **{f"NL-RESNET-{n:02d}": "layouts extracted in the case; RESNET (task 17.3, R4)" for n in range(1, 16)}}
+# NL-RES (rescmd_cases.py) and NL-RESNET (resnet_cases.py) are authored since M7 R4.
+LATER: dict[str, str] = {}

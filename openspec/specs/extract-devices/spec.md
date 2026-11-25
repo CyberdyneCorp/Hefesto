@@ -27,6 +27,8 @@ Compatibility: exact
 
 (Magic ref: extract/ExtBasic.c:251-283, extract/ExtBasic.c:173-182)
 
+As landed (M7 round 4): `disable_subcell_devices` marks such regions (`DeviceRegionTiles::disabled`) after `find_device_regions`; the representative tile is the region's first tile (Magic's treg_tile) and the device types searched are those of the region's reference plane.
+
 #### Scenario: Capacitor split across hierarchy
 - **GIVEN** a parent cell painting `mimcap` exactly over a child instance that also contains `mimcap` at the same location
 - **WHEN** the parent is extracted
@@ -65,6 +67,11 @@ Compatibility: exact
 - **GIVEN** `device mosfet nfet nfet ndiff pwell VSUB` declared before `device mosfet nfet_hv nfet ndiff pwell VSUB +thkox`, and an nfet covered by `thkox`
 - **WHEN** the cell is extracted
 - **THEN** the record uses model `nfet_hv`; an nfet without `thkox` uses model `nfet`
+
+#### Scenario: Two device types touching in one device region (as landed, M7 round 4; Q-row proposed)
+- **GIVEN** `device mosfet cmos nfet,pfet ndiff,pdiff None GND!` (so the device connectivity joins nfet and pfet), then `device mosfet nmos nfet ndiff None GND!` and `device mosfet pmos pfet pdiff None VDD!`, and an nfet (0,0)-(2,4) under a pfet (0,4)-(2,8), each between its own diffusion and with its own gate poly
+- **WHEN** the cell is extracted
+- **THEN** with magic-compat ON one device is written, `device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" ...`, from the type and node of the region's representative tile (the pfet), and the nfet is not a device (as Magic, EX-P03); with magic-compat OFF each device type is its own device (`nmos` with `g1`, `s1`, `d1` and `pmos` with `g2`, `s2`, `d2`)
 
 ### Requirement: Terminals off the device plane
 

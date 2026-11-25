@@ -106,15 +106,20 @@ void StitchEditor::set_client(StitchTile t, std::uintptr_t value) noexcept {
 }
 
 StitchTile StitchEditor::split_x(StitchTile t, Coord x) {
+  return split_x(t, x, false);
+}
+
+StitchTile StitchEditor::split_x(StitchTile t, Coord x, bool magic_compat) {
   detail::TilePlane& tiles = plane_->impl_->tiles;
   if (!t || tiles.is_outside(tile_of(t))) {
     return {};
   }
   detail::Tile* tile = tile_of(t);
   // A split tile keeps its diagonal body over whatever rectangle it is
-  // left with, so cutting it would move the triangle (ResFracture works on
-  // Manhattan tiles only).
-  if (detail::is_split(tile->body) || x <= detail::left(tile) || x >= detail::right(tile)) {
+  // left with, so cutting it moves the triangle: Magic's TiSplitX does
+  // exactly that, so it is copied with magic-compat ON and refused with it
+  // OFF (Q-EXTRACT-29).
+  if ((detail::is_split(tile->body) && !magic_compat) || x <= detail::left(tile) || x >= detail::right(tile)) {
     return {};
   }
   return handle_of(tiles.split_x(tile, x));

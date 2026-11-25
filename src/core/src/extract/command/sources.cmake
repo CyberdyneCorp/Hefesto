@@ -7,4 +7,5 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/run_stubs.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/options.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/run.cpp)

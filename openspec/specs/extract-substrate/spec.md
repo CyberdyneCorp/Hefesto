@@ -92,6 +92,8 @@ Compatibility: exact
 
 (Magic ref: extract/ExtHier.c:208-395, extract/ExtSubtree.c:670-700, extract/ExtSubtree.c:720-760)
 
+As landed (M7 round 4): the connection is made while a step square's interaction is processed (for each use the interaction area overlaps) or, for a square with subcells near it and no interaction, for each use overlapping the square; a use whose array indices run downwards (`xlo > xhi` or `ylo > yhi`) has no element visited, as in Magic. A shielded child (or one whose substrate is not extracted) is retried in a later square.
+
 #### Scenario: Standard cell substrate merge
 - **GIVEN** `substrate space well VSUB`, a top cell with substrate node `VSUB` and an instance `x1` of a cell whose substrate node is also `VSUB`
 - **WHEN** the top is extracted

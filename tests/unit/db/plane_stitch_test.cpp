@@ -181,3 +181,65 @@ TEST_CASE("split tiles are neither split nor joined", GEO) {
   ed.release();
   CHECK(db::test::tiles(p, tech::TypeMask::all()) == before);
 }
+
+// Q-EXTRACT-29 (compat, approved 2026-11-22): split_x on a split tile.
+#define SPLITX "[cap:extresist-network][req:Tile fracturing]"
+
+namespace {
+
+db::Plane diagonal_square() {
+  db::Plane p;
+  REQUIRE(p.paint_triangle({0, 0, 10, 10}, db::Diagonal::ne_sw, false, paint_row_of(kM1), true, nullptr,
+                           db::PaintMerge::none)
+              .ok());
+  return p;
+}
+
+}  // namespace
+
+TEST_CASE("split_x of a split tile copies TiSplitX with magic-compat ON", SPLITX) {
+  db::Plane p = diagonal_square();
+  db::StitchEditor ed(p);
+  const StitchTile split = ed.tile_at({0, 0});
+  REQUIRE(ed.view(split).split);
+  const db::TileView before = ed.view(split);
+  const StitchTile right = ed.split_x(split, 4, true);
+  REQUIRE(right);
+  // The left part keeps the whole body: both types and the diagonal, now
+  // over the narrower rectangle (the triangle moved, as in Magic).
+  const db::TileView left = ed.view(split);
+  CHECK(left.split);
+  CHECK(left.area == Rect{0, 0, 4, 10});
+  CHECK(left.left_type == before.left_type);
+  CHECK(left.right_type == before.right_type);
+  CHECK(left.diagonal == before.diagonal);
+  // The new right part is a plain space tile.
+  CHECK_FALSE(ed.view(right).split);
+  CHECK(ed.type(right) == tech::kSpace);
+  CHECK(ed.area(right) == Rect{4, 0, 10, 10});
+  CHECK(ed.stitch(split, db::Stitch::tr) == right);
+  CHECK(ed.stitch(right, db::Stitch::bl) == split);
+}
+
+TEST_CASE("split_x of a split tile is refused with magic-compat OFF", SPLITX) {
+  db::Plane p = diagonal_square();
+  const auto before = db::test::tiles(p, tech::TypeMask::all());
+  {
+    db::StitchEditor ed(p);
+    const StitchTile split = ed.tile_at({0, 0});
+    REQUIRE(ed.view(split).split);
+    CHECK_FALSE(ed.split_x(split, 4, false));
+    CHECK_FALSE(ed.split_x(split, 4));
+    CHECK(ed.area(split) == Rect{0, 0, 10, 10});
+  }
+  CHECK(db::test::tiles(p, tech::TypeMask::all()) == before);
+}
+
+TEST_CASE("split_x with magic-compat ON still refuses a cut outside the tile", SPLITX) {
+  db::Plane p = diagonal_square();
+  db::StitchEditor ed(p);
+  const StitchTile split = ed.tile_at({0, 0});
+  CHECK_FALSE(ed.split_x(split, 0, true));
+  CHECK_FALSE(ed.split_x(split, 10, true));
+  CHECK_FALSE(ed.split_x({}, 4, true));
+}

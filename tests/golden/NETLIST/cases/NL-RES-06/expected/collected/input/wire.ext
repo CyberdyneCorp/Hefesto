@@ -1,0 +1,19 @@
+timestamp 100
+version 8.3
+tech restest
+style restest
+scale 1000 1 1
+resistclasses 1000 5000 100 50
+node "GND!" 2 2400 -6 0 ndc 24 20 0 0 24 20 0 0
+node "in" 45 3400 -1 -8 pc 0 0 36 40 16 16 0 0
+node "VDD!" 2 3200 -6 10 pdc 24 20 0 0 32 24 0 0
+node "active_404_20#" 2 0 404 20 nd 8 12 0 0 0 0 0 0
+node "active_396_20#" 2 0 396 20 nd 8 12 0 0 0 0 0 0
+node "active_204_20#" 2 0 204 20 nd 8 12 0 0 0 0 0 0
+node "active_196_20#" 2 0 196 20 nd 8 12 0 0 0 0 0 0
+node "out" 102 94000 2 0 nd 48 40 112 88 884 848 0 0
+node "well_n8_8#" 0 0 -8 8 nw 0 0 0 0 0 0 0 0
+device mosfet nfet 0 0 1 1 2 4 "GND!" "in" 4 0 "GND!" 4 24,20 "out" 4 24,20
+device mosfet pfet 0 10 1 11 2 4 "well_n8_8#" "in" 2 0 "VDD!" 4 24,20 "out" 4 24,20
+device mosfet nfet 400 20 401 21 4 2 "GND!" "out" 8 0 "active_396_20#" 2 8,12 "active_404_20#" 2 8,12
+device mosfet nfet 200 20 201 21 4 2 "GND!" "out" 8 0 "active_196_20#" 2 8,12 "active_204_20#" 2 8,12

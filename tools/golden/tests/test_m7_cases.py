@@ -33,7 +33,9 @@ from goldenlib import deviations  # noqa: E402
 from goldenlib import external_command  # noqa: E402
 from goldenlib.case import load_case  # noqa: E402
 
-CASES = m7_cases.tcl_cases()
+# The EX and NL catalogue rows authored by extract_cases.py and netlist_cases.py (the NL-RES, NL-RESNET and
+# MISC-ANT generators of R4 write their own inputs and are only registered by m7_cases.py).
+CASES = [c for c in m7_cases.tcl_cases() if c.id.startswith("EX-") or (c.id.startswith("NL-") and not c.id.startswith("NL-RES"))]
 FAKE = Path(__file__).resolve().parent / "fake_magic_m7.tcl"
 READER_RECORDS = frozenset(("timestamp", "version", "tech", "style", "scale", "resistclasses", "parameters", "use",
                             "abstract", "port", "node", "substrate", "attr", "equiv", "cap", "fet", "device",
@@ -58,11 +60,15 @@ def collected_names(case) -> list[str]:
 
 class CatalogueTest(unittest.TestCase):
     def test_r1_rows_are_authored(self):
-        ids = [c.id for c in CASES]
-        self.assertEqual(sorted(i for i in ids if i.startswith("EX-")), extract_cases.FLAT_IDS)
+        ids = [c.id for c in m7_cases.tcl_cases()]
+        self.assertEqual(sorted(i for i in ids if i.startswith("EX-")),
+                         sorted(extract_cases.FLAT_IDS + extract_cases.HIER_IDS))
         self.assertEqual(len(extract_cases.FLAT_IDS), 53)
-        self.assertEqual(sorted([i for i in ids if i.startswith("NL-")] + [netlist_cases.CHK_ID]),
-                         sorted(netlist_cases.ROW_IDS))
+        r1 = [i for i in ids if i.startswith("NL-") and not i.startswith("NL-RES")]
+        self.assertEqual(sorted(r1 + [netlist_cases.CHK_ID]), sorted(netlist_cases.ROW_IDS))
+        self.assertEqual(sum(i.startswith("NL-RES-") for i in ids), 8)
+        self.assertEqual(sum(i.startswith("NL-RESNET-") for i in ids), 15)
+        self.assertEqual(sum(i.startswith("MISC-ANT-") for i in ids), 9)
         self.assertEqual(len(netlist_cases.ROW_IDS), 44)
 
     def test_catalogue_counts_155_and_not_authored_names_the_rest(self):
@@ -235,7 +241,7 @@ class WrittenCaseTest(unittest.TestCase):
         self.assertIn(m7_cases.deviation_block(), text)
         known = deviations.load(REPO / "tests" / "golden")
         for case_id in m7_cases.authored_ids():
-            if case_id not in m7_cases.REPLAYED:
+            if case_id not in m7_cases.REPLAYED and case_id not in m7_cases.DECIDED:
                 with self.subTest(case=case_id):
                     self.assertEqual(known[case_id].deferred, "M7")
                     self.assertEqual(list(known[case_id].outputs), m7_cases.output_names(case_id))

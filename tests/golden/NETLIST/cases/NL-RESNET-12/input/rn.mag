@@ -1,0 +1,14 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 60 6
+rect 0 6 6 54
+rect 54 6 60 54
+rect 0 54 60 60
+<< labels >>
+rlabel metal1 0 0 0 6 0 r_0
+port 1 nsew
+rlabel metal1 54 60 60 60 0 r_1
+port 2 nsew
+<< end >>

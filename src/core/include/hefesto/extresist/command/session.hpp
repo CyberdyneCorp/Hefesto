@@ -48,6 +48,9 @@ struct ResistSession {
   // RESNET: the path-resistance heap kept across nets with magic-compat
   // ON (Q-NETLIST-46).
   HeapState heap;
+  // RESNET: ResDoContacts' once-per-session undersized-contact warning
+  // (BuildInput::small_contact_warned).
+  bool small_contact_warned = false;
 };
 
 }  // namespace hefesto::extresist

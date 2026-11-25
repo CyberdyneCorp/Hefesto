@@ -1,0 +1,21 @@
+scale 1000 1 1
+killnode "out"
+rnode "out.t3" 0 3192.45 202 21 0
+rnode "out.t2" 0 13050.5 402 21 0
+rnode "out.n0" 0 51447.2 202 10 0
+rnode "out.t0" 0 1044.44 2 2 0
+rnode "out.n1" 0 24220.9 8 7 0
+rnode "out.t1" 0 1044.44 2 12 0
+resist "out.t1" "out.n1" 1.125
+resist "out.n1" "out.t0" 1.125
+resist "out.n1" "out.n0" 9.63333
+resist "out.n0" "out.t3" 12.5
+resist "out.n0" "out.t2" 22.3667
+killnode "VDD!"
+rnode "VDD.t0" 0 3200 0 12 0
+rnode "GND.t0" 0 0 0 2 0
+resist "GND!" "GND.t0" 0.0
+device mosfet nfet 200 20 201 21  4 2 "GND!" "out.t3" 8 0 "active_196_20#" 2 8,12 "active_204_20#" 2 8,12
+device mosfet nfet 400 20 401 21  4 2 "GND!" "out.t2" 8 0 "active_396_20#" 2 8,12 "active_404_20#" 2 8,12
+device mosfet pfet 0 10 1 11  1 5 "well_n8_8#" "in" 2 0 "VDD.t0" 5 24,20 "out.t1" 5 24,20
+device mosfet nfet 0 0 1 1  2 4 "GND!" "in" 4 0 "GND.t0" 4 24,20 "out.t0" 4 24,20
