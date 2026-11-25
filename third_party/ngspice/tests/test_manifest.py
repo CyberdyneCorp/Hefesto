@@ -79,10 +79,17 @@ class GplCheckTest(unittest.TestCase):
 
 
 def good_manifest() -> dict:
+    licenses = []
+    for c in nm.REQUIRED_COMPONENTS:
+        row = {"component": c, "license": "x"}
+        if c in nm.PER_FILE_COMPONENTS:
+            row.update({"license": "LGPL-2.0-only", "files": [f"{c}.c"],
+                        "file_licenses": [{"file": f"{c}.c", "spdx": "LGPL-2.0-only"}]})
+        licenses.append(row)
     return {
         "version": "47-hefesto1",
         "patches": [{"file": "0003-portable-seeding.patch"}],
-        "licenses": [{"component": c, "license": "x"} for c in nm.REQUIRED_COMPONENTS],
+        "licenses": licenses,
         "license_check": {"gpl_files": []},
     }
 
@@ -113,6 +120,77 @@ class CheckManifestTest(unittest.TestCase):
         m = good_manifest()
         m["version"] = "47"
         self.assertTrue(nm.check_manifest(m))
+
+
+class CodeModelExclusionTest(unittest.TestCase):
+    """d_process starts external processes: it is excluded from the build, the feature table and the manifest."""
+
+    def test_d_process_is_excluded_and_named_in_the_feature_table(self):
+        pin = json.loads((ROOT / "pin.json").read_text(encoding="utf-8"))
+        self.assertIn("process", pin["code_models_excluded"]["digital/d_process"])
+        self.assertIn("d_process", nm.FEATURES["XSPICE code models"])
+        self.assertIn("without d_cosim and d_process", nm.FEATURES["XSPICE code models"])
+
+    def test_compiled_d_process_fails_the_check(self):
+        m = good_manifest()
+        m["code_models"] = {"models": [{"model": "digital/d_and", "function": "cm_d_and"}]}
+        self.assertEqual(nm.check_manifest(m), [])
+        for model in ("digital/d_process", "digital/d_cosim", "table/table2D"):
+            m["code_models"] = {"models": [{"model": model, "function": "cm_x"}]}
+            self.assertIn(f"code model {model} must not be compiled in", nm.check_manifest(m))
+
+    def test_wrapper_reads_the_exclusions_from_the_pin(self):
+        text = (ROOT / "cmake" / "CodeModels.cmake").read_text(encoding="utf-8")
+        self.assertIn('string(JSON excluded GET "${pin}" code_models_excluded)', text)
+
+
+LGPL21_PLUS = ("modify it under the terms of the GNU Lesser General Public License as published by the Free "
+               "Software Foundation; either version 2.1 of the License, or (at your option) any later version.")
+
+
+class PerFileLicenceTest(unittest.TestCase):
+    """KLU and the SuiteSparse parts: a licence per file, not one group licence."""
+
+    def test_file_notice_wins_over_copying(self):
+        self.assertEqual(nm.file_licence("src/maths/KLU/colamd.c", LGPL21_PLUS)["spdx"], "LGPL-2.1-or-later")
+        only = "See License.txt for the Version 2.1 of the GNU Lesser General Public License"
+        self.assertEqual(nm.file_licence("src/maths/KLU/colamd_global.c", only)["spdx"], "LGPL-2.1-only")
+        free = "Copyright (c) 2007, University of Florida.  No licensing restrictions apply to this file"
+        row = nm.file_licence("src/include/ngspice/UFconfig.h", free)
+        self.assertEqual(row["spdx"], "LicenseRef-SuiteSparse-no-restrictions")
+        permission = ("Permission is hereby granted to use, copy, modify, and/or distribute this program, provided "
+                      "that the Copyright, this License, and the Availability")
+        self.assertEqual(nm.file_licence("src/include/ngspice/colamd.h", permission)["spdx"],
+                         "LicenseRef-COLAMD-permission-notice")
+
+    def test_copying_statement_without_a_notice(self):
+        row = nm.file_licence("src/maths/KLU/klu_factor.c", "/* KLU factor */")
+        self.assertEqual(row["spdx"], "LGPL-2.0-only")
+        self.assertIn("COPYING", row["basis"])
+        self.assertEqual(nm.file_licence("src/include/ngspice/btf.h", "")["spdx"], "LGPL-2.0-only")
+        self.assertEqual(nm.file_licence("src/include/ngspice/klu-binding.h", "")["spdx"], "BSD-3-Clause")
+
+    def test_component_licence_is_the_set_of_file_licences(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp)
+            (src / "src/maths/KLU").mkdir(parents=True)
+            (src / "src/maths/KLU/colamd.c").write_text(LGPL21_PLUS)
+            (src / "src/maths/KLU/colamd_global.c").write_text("/* COLAMD globals */")
+            comp = ("COLAMD", "LGPLv2", None, ["src/maths/KLU/colamd*.c"])
+            built = {"src/maths/KLU/colamd.c", "src/maths/KLU/colamd_global.c"}
+            entry = nm.component_entry(src, "", comp, built)
+        self.assertEqual(entry["license"], "LGPL-2.0-only AND LGPL-2.1-or-later")
+        self.assertEqual([r["file"] for r in entry["file_licenses"]], sorted(built))
+        self.assertEqual(nm.per_file_errors(entry), [])
+
+    def test_check_requires_a_licence_for_every_file(self):
+        m = good_manifest()
+        klu = next(c for c in m["licenses"] if c["component"] == "KLU")
+        klu.update({"files": ["src/maths/KLU/klu.c", "src/maths/KLU/klu_solve.c"], "license": "LGPL-2.0-only",
+                    "file_licenses": [{"file": "src/maths/KLU/klu.c", "spdx": "LGPL-2.0-only"}]})
+        self.assertIn("KLU: no licence for src/maths/KLU/klu_solve.c", nm.check_manifest(m))
+        klu["file_licenses"] = []
+        self.assertIn("KLU: no per-file licences", nm.check_manifest(m))
 
 
 def _patch(old: str, new: str) -> str:
@@ -174,6 +252,7 @@ class PinTest(unittest.TestCase):
         self.assertRegex(pin["archive"]["sha256"], r"^[0-9a-f]{64}$")
         self.assertNotIn("table", pin["code_models"])
         self.assertIn("digital/d_cosim", pin["code_models_excluded"])
+        self.assertIn("digital/d_process", pin["code_models_excluded"])
         self.assertIn("--disable-openmp", pin["configure"]["features"])
         self.assertIn("--with-fftw3=no", pin["configure"]["features"])
 

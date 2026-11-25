@@ -59,10 +59,52 @@ COMPONENTS = [
 NOTICE_RE = re.compile(r"(Lesser\s+General\s+Public\s+License[^\n]*|Mozilla[\s*/]+Public[\s*/]+License[^\n]*|"
                        r"No\s+licensing\s+restrictions[^\n]*|See\s+\S+\s+for\s+License[^\n]*|"
                        r"public\s+domain[^\n]*)", re.IGNORECASE)
+# KLU and the SuiteSparse parts it brings get a licence per file (task 5.1 follow-up): the
+# file's own notice when it has one, otherwise the COPYING statement for src/maths/KLU, and for
+# the headers ngspice moved to src/include/ngspice from SuiteSparse-3.7.0 (src/maths/KLU/
+# SuiteSparse.org) the licence of the directory they came with. A file of these components
+# that is ngspice's own and outside src/maths/KLU has ngspice's licence. The SPDX identifiers
+# are proposals until the legal review of task 20.1 (THIRD_PARTY_NOTICES.md).
+PER_FILE_COMPONENTS = ("KLU", "AMD", "COLAMD", "BTF", "SuiteSparse_config")
+SUITESPARSE_HEADERS = tuple(f"src/include/ngspice/{h}" for h in ("colamd.h", "amd.h", "btf.h", "klu.h", "UFconfig.h"))
+LGPL21_PLUS_RE = re.compile(r"Lesser\s+General\s+Public\s+License.{0,200}?version\s+2\.1.{0,80}?any\s+later\s+version",
+                            re.IGNORECASE | re.DOTALL)
+LGPL21_ONLY_RE = re.compile(r"Version\s+2\.1\s+of\s+the\s+GNU\s+Lesser\s+General\s+Public\s+License", re.IGNORECASE)
+PERMISSION_RE = re.compile(r"Permission\s+is\s+hereby\s+granted\s+to\s+use,\s+copy,\s+modify,\s+and/or\s+distribute",
+                           re.IGNORECASE)
+NO_RESTRICTIONS_RE = re.compile(r"No\s+licensing\s+restrictions", re.IGNORECASE)
+KLU_COPYING = "COPYING: all files in ngspice/src/maths/KLU: LGPLv2"
+
+
+def file_licence(path: str, text: str) -> dict:
+    """The licence of one KLU-family file, with the evidence it rests on."""
+    if NO_RESTRICTIONS_RE.search(text):
+        return {"file": path, "spdx": "LicenseRef-SuiteSparse-no-restrictions",
+                "basis": "file notice: No licensing restrictions"}
+    if LGPL21_PLUS_RE.search(text):
+        return {"file": path, "spdx": "LGPL-2.1-or-later", "basis": "file notice: LGPL version 2.1 or later"}
+    if LGPL21_ONLY_RE.search(text):
+        return {"file": path, "spdx": "LGPL-2.1-only", "basis": "file notice: LGPL version 2.1"}
+    if PERMISSION_RE.search(text):
+        return {"file": path, "spdx": "LicenseRef-COLAMD-permission-notice",
+                "basis": "file notice: permission to use, copy, modify and distribute with the notice kept"}
+    if path.startswith("src/maths/KLU/"):
+        return {"file": path, "spdx": "LGPL-2.0-only", "basis": KLU_COPYING}
+    if path in SUITESPARSE_HEADERS:
+        return {"file": path, "spdx": "LGPL-2.0-only",
+                "basis": KLU_COPYING + " (header moved from src/maths/KLU, see src/maths/KLU/SuiteSparse.org)"}
+    return {"file": path, "spdx": "BSD-3-Clause", "basis": "COPYING: the Modified BSD licence of ngspice"}
+
+
+def spdx_expression(rows: list[dict]) -> str:
+    return " AND ".join(sorted({r["spdx"] for r in rows}))
+
+
 FEATURES = {
     "shared-library API (SHARED_MODULE)": "on: libngspice-hefesto",
     "XSPICE": "on",
-    "XSPICE code models": "analog, digital (without d_cosim), spice2poly, xtradev; compiled in statically",
+    "XSPICE code models": ("analog, digital (without d_cosim and d_process), spice2poly, xtradev; "
+                           "compiled in statically"),
     "table code model library": "off",
     "d_cosim, GHDL and Icarus co-simulation shims": "off",
     "OSDI": "on; built-in registry (patch 0001)",
@@ -156,11 +198,18 @@ def component_entry(src: Path, copying: str, comp: tuple, built: set[str]) -> di
     if statement and statement not in copying:
         raise SystemExit(f"ngspice_manifest: COPYING no longer says '{statement}' ({name})")
     notices = set()
+    per_file = []
     for f in files:
-        found = NOTICE_RE.findall((src / f).read_text(errors="replace"))
-        notices.update(" ".join(n.split()) for n in found)
-    return {"component": name, "license": licence, "copying_statement": statement,
-            "file_notices": sorted(notices), "files": files}
+        text = (src / f).read_text(errors="replace")
+        notices.update(" ".join(n.split()) for n in NOTICE_RE.findall(text))
+        if name in PER_FILE_COMPONENTS:
+            per_file.append(file_licence(f, text))
+    entry = {"component": name, "license": licence, "copying_statement": statement,
+             "file_notices": sorted(notices), "files": files}
+    if per_file:
+        entry["license"] = spdx_expression(per_file)
+        entry["file_licenses"] = per_file
+    return entry
 
 
 def licences(src: Path, built: list[str]) -> list[dict]:
@@ -244,6 +293,19 @@ def write_archive(args) -> None:
 REQUIRED_COMPONENTS = ("ngspice", "KLU", "AMD", "COLAMD", "BTF", "SuiteSparse_config", "numparam",
                        "OSDI", "sparse", "XSPICE code models")
 FORBIDDEN_COMPONENTS = ("fftw", "table", "readline")
+# XSPICE code models that must never be compiled in (feature table; d_process spawns processes).
+FORBIDDEN_CODE_MODELS = ("digital/d_cosim", "digital/d_process", "table/")
+
+
+def per_file_errors(component: dict) -> list[str]:
+    name = component["component"]
+    rows = {r.get("file"): r for r in component.get("file_licenses", [])}
+    errors = [f"{name}: no licence for {f}" for f in component.get("files", []) if not rows.get(f, {}).get("spdx")]
+    if not component.get("file_licenses"):
+        errors.append(f"{name}: no per-file licences")
+    elif component.get("license") != spdx_expression(list(rows.values())):
+        errors.append(f"{name}: licence {component.get('license')!r} is not the per-file licences")
+    return errors
 
 
 def check_manifest(manifest: dict) -> list[str]:
@@ -257,6 +319,11 @@ def check_manifest(manifest: dict) -> list[str]:
     errors += [f"licence of {c} not listed" for c in REQUIRED_COMPONENTS if c not in names]
     errors += [f"{n} must not be listed" for n in names if n.lower().startswith(FORBIDDEN_COMPONENTS)]
     errors += [f"no licence for {c['component']}" for c in manifest.get("licenses", []) if not c.get("license")]
+    for c in manifest.get("licenses", []):
+        if c["component"] in PER_FILE_COMPONENTS:
+            errors += per_file_errors(c)
+    models = [m["model"] for m in manifest.get("code_models", {}).get("models", [])]
+    errors += [f"code model {m} must not be compiled in" for m in models if m.startswith(FORBIDDEN_CODE_MODELS)]
     if manifest.get("license_check", {}).get("gpl_files"):
         errors.append("GPL files compiled: " + ", ".join(manifest["license_check"]["gpl_files"]))
     return errors

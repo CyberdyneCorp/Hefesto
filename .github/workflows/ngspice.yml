@@ -13,7 +13,9 @@
 #   - that cmake/sources.cmake is what tools/gen_sources.py derives from the pinned tree (Linux x86_64);
 #   - the one-line top-level integration (HEFESTO_BUILD_NGSPICE=ON) on Linux x86_64, with the
 #     engine boundary check (scripts/check_engine_boundary.py) run on a build tree that holds
-#     libngspice-hefesto (ci.yml's legs build with HEFESTO_BUILD_NGSPICE=OFF).
+#     libngspice-hefesto (ci.yml's legs build with HEFESTO_BUILD_NGSPICE=OFF);
+#   - (task 5.2) OpenVAF-reloaded built from source on macOS arm64 and Linux arm64, and the IHP
+#     OSDI modules compiled with it and checked for OSDI 0.4 (job `openvaf`).
 
 name: ngspice
 
@@ -148,3 +150,111 @@ jobs:
           cmake --build --preset ci-linux --target ngspice-hefesto -j4
       - name: Check the simulation engine boundary (release rules, library present)
         run: python3 scripts/check_engine_boundary.py --build-dir build/ci-linux
+
+  # Task 5.2 (R1 attempt): OpenVAF-reloaded built from source where no upstream binary exists
+  # (macOS arm64, Linux arm64; the release offers linux_x64 and win_x64 only), at the pin of
+  # tools/golden/pins.toml [tools.openvaf], cached by commit and runner. It compiles the IHP
+  # sg13g2 Verilog-A modules the static OSDI registry needs (PSP103, cap_cmomi, cap_cmomf) from
+  # IHP-Open-PDK at the ihp-ngspice pin (scripts/fetch_pdk.py IHP_PIN) and checks that each .osdi
+  # declares OSDI 0.4. OpenVAF is a GPL-3.0 build-time tool: it is never linked or shipped.
+  # Registering the modules statically in libngspice-hefesto is not done yet (tasks.md 5.2).
+  openvaf:
+    name: OpenVAF from source and IHP OSDI modules (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-15 }
+          - { name: linux-arm64, os: ubuntu-24.04-arm }
+    env:
+      OPENVAF_REPO: https://github.com/arpadbuermen/OpenVAF
+      OPENVAF_COMMIT: 44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7
+      IHP_REPO: https://github.com/IHP-GmbH/IHP-Open-PDK
+      IHP_COMMIT: 5e6d592e4002946a4616f798c357f0f3c06cf3b6
+    steps:
+      - uses: actions/checkout@v5
+      - name: Pins agree with tools/golden/pins.toml and scripts/fetch_pdk.py
+        run: |
+          grep -q "upstream_commit = \"${OPENVAF_COMMIT}\"" tools/golden/pins.toml
+          grep -q "IHP_PIN = \"${IHP_COMMIT}\"" scripts/fetch_pdk.py
+      - uses: actions/cache@v4
+        id: openvaf-cache
+        with:
+          path: .cache/openvaf/bin
+          key: openvaf-${{ matrix.name }}-${{ env.OPENVAF_COMMIT }}-llvm18
+      - name: Install LLVM 18
+        if: steps.openvaf-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew install llvm@18
+            prefix="$(brew --prefix llvm@18)"
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends llvm-18 llvm-18-dev libclang-18-dev clang-18 lld-18 \
+              libzstd-dev zlib1g-dev
+            prefix=/usr/lib/llvm-18
+          fi
+          echo "LLVM_SYS_181_PREFIX=${prefix}" >> "$GITHUB_ENV"
+          echo "${prefix}/bin" >> "$GITHUB_PATH"
+      - name: Build OpenVAF-reloaded
+        if: steps.openvaf-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          git init -q "$RUNNER_TEMP/openvaf"
+          cd "$RUNNER_TEMP/openvaf"
+          git fetch -q --depth 1 "$OPENVAF_REPO" "$OPENVAF_COMMIT"
+          git checkout -q FETCH_HEAD
+          rustup show active-toolchain || rustup default stable
+          cargo build --release --features llvm18
+          ls target/release
+          mkdir -p "$GITHUB_WORKSPACE/.cache/openvaf/bin"
+          install -m 0755 target/release/openvaf-r "$GITHUB_WORKSPACE/.cache/openvaf/bin/openvaf-r"
+      - name: OpenVAF version
+        run: .cache/openvaf/bin/openvaf-r --version | head -n 1
+      - name: Fetch the IHP Verilog-A sources at the pin
+        shell: bash
+        run: |
+          git init -q "$RUNNER_TEMP/ihp"
+          cd "$RUNNER_TEMP/ihp"
+          git remote add origin "$IHP_REPO"
+          git config core.sparseCheckout true
+          echo "ihp-sg13g2/libs.tech/verilog-a/" > .git/info/sparse-checkout
+          git fetch -q --depth 1 --filter=blob:none origin "$IHP_COMMIT"
+          git checkout -q FETCH_HEAD
+          find ihp-sg13g2/libs.tech/verilog-a -name '*.va' | sort
+      - name: Compile PSP103, cap_cmomi and cap_cmomf to OSDI
+        shell: bash
+        run: |
+          va="$RUNNER_TEMP/ihp/ihp-sg13g2/libs.tech/verilog-a"
+          out="$PWD/build/osdi"
+          mkdir -p "$out"
+          for module in psp103 psp103_nqs cap_cmomi cap_cmomf; do
+            src="$(find "$va" -name "${module}.va" | head -n 1)"
+            if [ -z "$src" ]; then echo "::error::no ${module}.va in the IHP tree"; exit 1; fi
+            (cd "$(dirname "$src")" && "$GITHUB_WORKSPACE/.cache/openvaf/bin/openvaf-r" "$(basename "$src")" \
+              -o "$out/${module}.osdi")
+          done
+          ls -l "$out"
+      - name: Each module declares OSDI 0.4
+        run: |
+          python3 - <<'PY'
+          import ctypes, pathlib, sys
+          bad = []
+          for path in sorted(pathlib.Path("build/osdi").glob("*.osdi")):
+              lib = ctypes.CDLL(str(path.resolve()))
+              major = ctypes.c_uint32.in_dll(lib, "OSDI_VERSION_MAJOR").value
+              minor = ctypes.c_uint32.in_dll(lib, "OSDI_VERSION_MINOR").value
+              count = ctypes.c_uint32.in_dll(lib, "OSDI_NUM_DESCRIPTORS").value
+              print(f"{path.name}: OSDI {major}.{minor}, {count} descriptor(s)")
+              if (major, minor) != (0, 4) or count < 1:
+                  bad.append(path.name)
+          sys.exit(1 if bad else 0)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ihp-osdi-${{ matrix.name }}
+          path: build/osdi/*.osdi
+          retention-days: 14
