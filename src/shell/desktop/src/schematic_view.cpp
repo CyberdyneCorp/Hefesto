@@ -398,11 +398,13 @@ void SchematicView::on_command(const cmd::Invocation& invocation, const cmd::Com
 }
 
 // The session cache changes the canvas's resolver mirrors ("Symbol cache
-// and reload"): reload_symbols starts again, a save forgets the file.
+// and reload"): reload_symbols starts again, reload drops the files changed
+// on disk, a save forgets the file.
 void SchematicView::note_symbol_changes(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
   if (invocation.args.empty() || !result.ok()) return;
   const std::string& option = invocation.args.front();
   if (option == "reload_symbols") resolver_.reload_symbols();
+  if (option == "reload") resolver_.forget_changed();
   const schem::Session& session = ctx_.editor().schem;
   if (option == "save" && !session.documents.empty()) resolver_.forget_file(session.documents.back().document.path);
 }
@@ -473,13 +475,7 @@ void SchematicView::tick_netlist() {
 }
 
 void SchematicView::interrupt() {
-  if (netlist_.request_cancel()) {
-    // The netlist run polls the script interrupt (CMD); sent once.
-    if (script::Interpreter* interp = ctx_.editor().script.interp.get()) interp->request_interrupt();
-    netlist_bar_->invalidate();
-    return;
-  }
-  if (netlist_.state() != NetlistAction::State::running) (void)::hefesto::ui::request_interrupt(ctx_.editor());
+  if (interrupt_schematic(netlist_, ctx_.editor())) netlist_bar_->invalidate();
 }
 
 void SchematicView::place(std::size_t row) {

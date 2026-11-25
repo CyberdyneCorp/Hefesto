@@ -487,3 +487,12 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: whole seconds, `10 s` per value and `60 s` per run (a limit that is not whole seconds in ms), as implemented | milliseconds (`10000 ms`, `60000 ms`), like `SCHEM-LIB-012`
 - Recommendation: whole seconds (as implemented); the texts are diagnostics only.
 - Spec effect: `schematic-symbols-and-libraries` "tcleval values" (paragraph "Run time and denials", the `SCHEM-TCL-003` texts); `docs/diagnostics/codes/schem.md`.
+
+### Q-SCHEM-51: Pasted or merged embedded symbol vs the document's symbol
+- Kind: platform
+- Status: proposed 2026-11-25 (awaiting the user; raised by the review of PR #120, implemented as recommended by its fix pass)
+- xschem behavior: not established (clean room: not read from xschem's source; no capture covers it).
+- Evidence: `src/core/src/schem/edit/clipboard.cpp` `insert_objects`; `SymbolCache::embedded` resolves an embedded block by its reference for the whole document, so pasting an embedded `res.sym` instance into a document whose other instances use the library `res.sym` changed the drawing and netlist of all of them; test "Pasted embedded symbol does not redefine the document's symbol" (`tests/unit/schem/edit/arrange_test.cpp`).
+- Options: (a) keep the document's symbol: the inserted block is not added when an instance of the document already uses the reference, and the inserted instances resolve it as the existing ones do, both modes (as implemented) | (b) add the block whenever the document has none (the round-5 behaviour; redefines the existing instances) | (c) give the inserted instances a new reference (for example `res_1.sym`) with the block, so both drawings are kept
+- Recommendation: (a): a paste never changes objects the user did not touch, and it needs no new reference names; (c) keeps the pasted drawing but invents references that xschem files would then carry.
+- Spec effect: `schematic-editing` "Clipboard" (paragraph on embedded symbols; scenario "Pasted embedded symbol does not redefine the document's symbol").

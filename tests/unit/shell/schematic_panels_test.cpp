@@ -12,7 +12,9 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/shell/schematic_panels.hpp"
+#include "hefesto/ui/state.hpp"
 
 using namespace hefesto::shell;
 using namespace std::chrono_literals;
@@ -166,6 +168,25 @@ TEST_CASE("the messages panel keeps each command's diagnostics",
   CHECK(panel.messages().size() == MessagesPanel::kMaxMessages);
   panel.clear();
   CHECK(panel.messages().empty());
+}
+
+// Regression: the card's Interrupt only cancelled the console interpreter,
+// so the netlist run (which polls the editor's pending Interrupt) went on
+// and wrote its file.
+TEST_CASE("the netlist Interrupt sets the editor's pending Interrupt the run polls",
+          "[cap:schematic-command][req:Subcommand table]") {
+  hefesto::editor::EditorState editor;
+  NetlistAction action;
+  CHECK_FALSE(interrupt_schematic(action, editor));  // no run: the ordinary Interrupt
+  CHECK(hefesto::ui::state(editor).interrupt_pending.exchange(false));
+
+  (void)action.start({}, "inv.sch", NetlistAction::Clock::now());
+  CHECK(interrupt_schematic(action, editor));
+  CHECK(action.cancel_requested());
+  CHECK(hefesto::ui::state(editor).interrupt_pending.load());
+  hefesto::ui::state(editor).interrupt_pending = false;
+  CHECK_FALSE(interrupt_schematic(action, editor));  // sent once
+  CHECK_FALSE(hefesto::ui::state(editor).interrupt_pending.load());
 }
 
 TEST_CASE("the netlist action: command, Interrupt card and result", "[cap:schematic-command][req:Subcommand table]") {

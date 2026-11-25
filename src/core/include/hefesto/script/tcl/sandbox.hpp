@@ -79,6 +79,13 @@ struct SandboxPolicy {
   /// PDK store and settings. It is the whole `env` array; writes stay local
   /// to the interpreter and never reach the process environment.
   std::map<std::string, std::string, std::less<>> environment;
+  /// False for the interpreters of schematic scripts (`tcleval` values,
+  /// symbol generators, `xschemrc` files): reading the process's stdin
+  /// (`gets`, `read`, `chan gets|read`, `fcopy`, `chan copy`) is refused
+  /// with SCRIPT-SANDBOX-007, as it would block inside one command, out of
+  /// reach of the time limit and the Interrupt (security review S8-04). The
+  /// console's project interpreter keeps it.
+  bool stdin_readable = true;
 };
 
 /// The verdict on one path operation.

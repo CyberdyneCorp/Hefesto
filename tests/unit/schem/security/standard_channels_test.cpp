@@ -19,6 +19,7 @@
 #include <array>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/diag/sink.hpp"
@@ -29,6 +30,7 @@
 #include "hefesto/schem/lib/xschemrc.hpp"
 #include "hefesto/schem/tcl/tcl_bridge.hpp"
 #include "hefesto/schem/tcl/tcl_environment.hpp"
+#include "hefesto/script/tcl/tcl_interpreter.hpp"
 #include "security_support.hpp"
 
 namespace schem = hefesto::schem;
@@ -102,6 +104,42 @@ const std::vector<std::string>& channel_escapes() {
       "chan push stdout ::hefesto_transform",
       "interp create -safe s; interp transfer {} stdout s; s eval {close stdout}",
       "interp create -safe s; interp share {} stderr s",
+  };
+  return scripts;
+}
+
+/// Puts a pipe holding "typed\n" (then end of file) on the process's
+/// descriptor 0 while it lives, so a read of stdin that is not refused
+/// returns at once with that text instead of waiting.
+class TypedStdin {
+ public:
+  TypedStdin() : saved_(::dup(0)) {
+    std::array<int, 2> ends{-1, -1};
+    if (::pipe(ends.data()) != 0) return;
+    constexpr std::string_view kTyped = "typed\n";
+    (void)!::write(ends[1], kTyped.data(), kTyped.size());
+    ::close(ends[1]);
+    ::dup2(ends[0], 0);
+    ::close(ends[0]);
+  }
+  ~TypedStdin() {
+    if (saved_ >= 0) {
+      ::dup2(saved_, 0);
+      ::close(saved_);
+    }
+  }
+  TypedStdin(const TypedStdin&) = delete;
+  TypedStdin& operator=(const TypedStdin&) = delete;
+
+ private:
+  int saved_;
+};
+
+/// The reads of stdin a schematic script is refused (SCRIPT-SANDBOX-007).
+const std::vector<std::string>& stdin_reads() {
+  static const std::vector<std::string> scripts = {
+      "gets stdin",       "read stdin 5",        "read -nonewline stdin",  "chan gets stdin",
+      "chan read stdin 5", "fcopy stdin stdout -size 1", "chan copy stdin stdout -size 1",
   };
   return scripts;
 }
@@ -187,4 +225,66 @@ TEST_CASE("S8-04: chan puts in a generator is captured and bounded", sec::kPermi
   CHECK_FALSE(flooded.text.has_value());
   REQUIRE_FALSE(flooded.diagnostics.empty());
   CHECK(flooded.diagnostics[0].text.ends_with("it printed more than 1048576 bytes"));
+}
+
+// Regression (review 12.1, S8-04): `gets stdin` (or `read stdin`) in a
+// schematic script waited for input inside one command, where neither the
+// time limit nor the Interrupt reaches, so opening a schematic or listing a
+// symbol could hang with no prompt. Refused in all three interpreters.
+TEST_CASE("S8-04: a symbol generator cannot read stdin", sec::kSandbox) {
+  for (const std::string& read : stdin_reads()) {
+    INFO(read);
+    const TypedStdin typed;
+    const QuietStdout quiet;
+    platform::MemoryFileSystem fs;
+    REQUIRE(fs.write_atomic("/lib/gen.tcl", read + "\nputs {v {xschem version=3.4.8RC file_version=1.2}}\n").ok());
+    const auto output = schem::run_tcl_generator(fs, {"/lib/gen.tcl", {}, "/w"});
+    CHECK_FALSE(output.text.has_value());
+    CHECK(removed_denials(output.diagnostics).size() == 1);
+  }
+}
+
+TEST_CASE("S8-04: a tcleval value cannot read stdin", sec::kSandbox) {
+  for (const std::string& read : stdin_reads()) {
+    INFO(read);
+    const TypedStdin typed;
+    const QuietStdout quiet;
+    hefesto::editor::EditorState editor;
+    platform::MemoryFileSystem files;
+    schem::TclEnvironment tcl(editor, script::SandboxPolicy{}, files);
+    diag::CollectingSink sink;
+    tcl.set_diagnostics(&sink);
+    schem::TclContext context;
+    context.owner = "instance R1 (evil.sym)";
+    CHECK(tcl.bridge().evaluate("tcleval([" + read + "])", context) == "?\n");
+    CHECK(removed_denials(sink.take()).size() == 1);
+  }
+}
+
+TEST_CASE("S8-04: an xschemrc cannot read stdin", sec::kSandbox) {
+  for (const std::string& read : stdin_reads()) {
+    INFO(read);
+    const TypedStdin typed;
+    const QuietStdout quiet;
+    sec::TempFolder document;
+    document.write("xschemrc", "catch {set READ [" + read + "]}\nset AFTER 1\n");
+    platform::LocalFileSystem fs;
+    schem::XschemrcInput input;
+    input.document_folder = document.path();
+    const schem::XschemrcResult result = schem::SearchPath::from_xschemrc(fs, input);
+    CHECK(result.variables.count("AFTER") == 1);
+    CHECK(result.variables.count("READ") == 0);
+    CHECK(removed_denials(result.diagnostics).size() == 1);
+  }
+}
+
+// The console's project interpreter is the user's own: it keeps stdin.
+TEST_CASE("S8-04: the project interpreter still reads stdin", sec::kSandbox) {
+  const TypedStdin typed;
+  hefesto::editor::EditorState editor;
+  auto interp = script::create_project_interpreter(editor, script::SandboxPolicy{});
+  const auto result = interp->evaluate("gets stdin");
+  REQUIRE(result.ok());
+  CHECK(result.value.to_string() == "typed");
+  interp.reset();
 }

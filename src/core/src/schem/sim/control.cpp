@@ -6,13 +6,18 @@
 // translated line by line before validation. `write` and `wrdata` become
 // capture points (kCaptureEcho), `quit` and `exit` are removed, the commands
 // that reach the host (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`,
-// `pre_osdi`) fail with SCHEM-SIM-001, and every other line is kept.
+// `pre_osdi`, and the ones that start programs: `edit`, `gnuplot`,
+// `hardcopy`, `aspice`, `rspice`) fail with SCHEM-SIM-001, and every other
+// line is kept.
 //
-// Each `;`-separated command of a line is checked. A command word that the
-// deck text cannot name statically (a `$variable` or `!history` word) is
-// refused too, as is an `alias` or a backquoted command whose own command
-// word is refused: either would reach a refused command at run time
-// (hardening; both modes of `xschem-compat`).
+// Each `;`-separated command of a line is checked, after the `+`
+// continuation lines that follow it are joined to it (ngspice joins them
+// before running the block). A command word is compared without its quotes
+// (ngspice's lexer removes them). A command word that the deck text cannot
+// name statically (a `$variable` or `!history` word) is refused too, as is
+// an `alias` or a backquoted command whose own command word is refused:
+// either would reach a refused command at run time (hardening; both modes
+// of `xschem-compat`).
 //
 // Owner: SIMINT.
 
@@ -33,17 +38,27 @@ namespace {
 
 constexpr std::string_view kRefusedCode = "SCHEM-SIM-001";
 
-constexpr std::array<std::string_view, 7> kRefused = {"shell", "cd", "load", "source", "codemodel", "osdi",
-                                                      "pre_osdi"};
+constexpr std::array<std::string_view, 12> kRefused = {"shell",    "cd",      "load",  "source",
+                                                       "codemodel", "osdi",    "pre_osdi", "edit",
+                                                       "gnuplot",  "hardcopy", "aspice", "rspice"};
+
+// The command a word names: lower case, without the quotes ngspice's lexer
+// removes (`"shell"`, `'sh'ell`).
+std::string command_name(std::string_view word) {
+  std::string name = sim_text::lower(word);
+  std::erase_if(name, [](char c) { return c == '"' || c == '\''; });
+  return name;
+}
 
 bool refused_name(std::string_view word) {
-  const std::string name = sim_text::lower(word);
+  const std::string name = command_name(word);
   return std::find(kRefused.begin(), kRefused.end(), name) != kRefused.end();
 }
 
 // A command word whose command is only known at run time.
 bool indirect(std::string_view word) {
-  return !word.empty() && (word.front() == '$' || word.front() == '!');
+  const std::string name = command_name(word);
+  return !name.empty() && (name.front() == '$' || name.front() == '!');
 }
 
 std::optional<std::string> refused_command(std::string_view command);
@@ -66,9 +81,10 @@ std::optional<std::string> refused_command(std::string_view command) {
   const std::vector<std::string_view> words = sim_text::words(command);
   if (words.empty()) return std::nullopt;
   const std::string_view first = words.front();
-  if (refused_name(first) || indirect(first)) return sim_text::lower(first);
-  if (sim_text::lower(first) == "alias" && words.size() >= 3 && (refused_name(words[2]) || indirect(words[2]))) {
-    return sim_text::lower(words[2]);
+  if (first.front() == '+') return std::string{"+"};  // a continuation with no line to join
+  if (refused_name(first) || indirect(first)) return command_name(first);
+  if (command_name(first) == "alias" && words.size() >= 3 && (refused_name(words[2]) || indirect(words[2]))) {
+    return command_name(words[2]);
   }
   return refused_backquote(command);
 }
@@ -131,13 +147,39 @@ class Translator {
   std::optional<diag::Diagnostic> error_;
 };
 
+bool continues(std::string_view line) {
+  const std::string_view body = sim_text::trim_left(line);
+  return !body.empty() && body.front() == '+';
+}
+
+// The lines of `text` with each `+` continuation line inside a `.control`
+// block joined to the control line before it, as ngspice reads them; a
+// continuation of the `.control` line itself is kept as a line of its own
+// (and refused by the translator: `+` is no command).
+std::vector<std::string> joined_lines(std::string_view text) {
+  std::vector<std::string> out;
+  bool inside = false;
+  bool joinable = false;  // the last line is a control line
+  for (const std::string_view line : sim_text::lines(text)) {
+    if (inside && joinable && continues(line)) {
+      out.back().append(" ").append(sim_text::trim_left(sim_text::trim_left(line).substr(1)));
+      continue;
+    }
+    const std::string keyword = sim_text::lower(sim_text::first_word(line));
+    joinable = inside && keyword != ".endc";
+    if (!inside || keyword == ".endc") inside = inside ? false : keyword == ".control";
+    out.emplace_back(line);
+  }
+  return out;
+}
+
 }  // namespace
 
 diag::Outcome<Deck> translate_control(std::string_view text) {
   Deck deck;
   Translator translator(deck);
   bool inside = false;
-  for (const std::string_view line : sim_text::lines(text)) {
+  for (const std::string& line : joined_lines(text)) {
     const std::string keyword = sim_text::lower(sim_text::first_word(line));
     if (!inside || keyword == ".endc") {
       inside = inside ? false : keyword == ".control";

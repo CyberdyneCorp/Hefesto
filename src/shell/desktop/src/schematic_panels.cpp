@@ -12,9 +12,12 @@
 #include <utility>
 
 #include "hefesto/diag/format.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/schem/file/properties.hpp"
+#include "hefesto/script/interp.hpp"
 #include "hefesto/shell/manager_views.hpp"
+#include "hefesto/ui/state.hpp"
 
 namespace hefesto::shell {
 
@@ -345,6 +348,16 @@ bool NetlistAction::request_cancel() noexcept {
   if (state_ != State::running || cancel_requested_) return false;
   cancel_requested_ = true;
   return true;
+}
+
+bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor) {
+  if (action.request_cancel()) {
+    (void)::hefesto::ui::request_interrupt(editor);
+    if (script::Interpreter* interp = editor.script.interp.get()) interp->request_interrupt();
+    return true;
+  }
+  if (action.state() != NetlistAction::State::running) (void)::hefesto::ui::request_interrupt(editor);
+  return false;
 }
 
 std::optional<InterruptCardView> NetlistAction::card(Clock::time_point now) const {

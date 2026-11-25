@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <array>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -110,10 +111,21 @@ std::size_t object_total(const Document& doc) {
   return total;
 }
 
+// The symbol references the instances of `doc` use.
+std::set<std::string, std::less<>> used_references(const Document& doc) {
+  std::set<std::string, std::less<>> used;
+  for (const InstanceRecord& instance : doc.instances) used.insert(instance.symbol);
+  return used;
+}
+
 // Appends the objects of `source` to the active document moved by `at`,
-// with unique instance names, and selects them.
+// with unique instance names, and selects them. An embedded block of
+// `source` is added only for a reference no instance of the document used
+// before: an embedded block resolves its reference document-wide, so it
+// would redefine the existing instances' symbol (proposed Q-SCHEM-51).
 cmd::CommandResult insert_objects(EditContext& ec, const Document& source, Point at) {
   Document& doc = ec.doc();
+  const std::set<std::string, std::less<>> used = used_references(doc);
   const Motion motion{Motion::Kind::translate, at, {}};
   InstanceNamer names(doc, &ec.session().bus_budget);
   Selection inserted;
@@ -124,7 +136,7 @@ cmd::CommandResult insert_objects(EditContext& ec, const Document& source, Point
       if (kind == ObjectKind::instance) {
         InstanceRecord& instance = doc.instances[ref.index];
         instance.props = names.unique_properties(instance.props);
-        add_embedded(source, instance.symbol, doc);
+        if (!used.contains(instance.symbol)) add_embedded(source, instance.symbol, doc);
       }
       inserted.insert(ref);
     }

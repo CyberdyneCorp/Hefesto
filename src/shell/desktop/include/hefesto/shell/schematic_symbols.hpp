@@ -109,6 +109,11 @@ class SchematicSymbolResolver {
   /// `schematic save` wrote `file`: its symbol and the embedded ones are
   /// resolved again (the session cache's forget()).
   void forget_file(const platform::Path& file);
+  /// `schematic reload` re-read the symbol files changed on disk (the
+  /// session cache's forget_changed()): the worker's cache drops them too
+  /// before its next job, and every symbol shown is resolved again (the
+  /// unchanged ones from the worker's cache).
+  void forget_changed();
 
   /// Merges a finished job's symbols (UI thread); true when a job had
   /// finished (the scene should be rebuilt, and show() called again for

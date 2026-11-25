@@ -233,6 +233,38 @@ TEST_CASE("the worker resolves through a symbol cache of its own",
   CHECK(resolver.take_warnings().empty());
 }
 
+// Regression: `schematic reload` re-read changed symbol files in the session
+// cache, but the canvas worker's own cache kept drawing the old ones.
+TEST_CASE("schematic reload makes the worker read changed symbol files again",
+          "[cap:schematic-symbols-and-libraries][req:Symbol cache and reload]") {
+  auto fs = std::make_shared<platform::MemoryFileSystem>();
+  REQUIRE(fs->create_directories("/lib").ok());
+  REQUIRE(fs->create_directories("/work").ok());
+  const auto write_symbol = [&fs](const std::string& length) {
+    REQUIRE(fs->write_atomic("/lib/r.sym", "v {xschem version=3.4.5 file_version=1.2}\nK {type=resistor}\nL 4 0 0 " +
+                                               length + " 0 {}\n")
+                .ok());
+  };
+  const auto drawn_length = [](SchematicSymbolResolver& resolver, const schem::Document& doc) {
+    resolver.wait();
+    REQUIRE(resolver.take_finished());
+    const SchematicScene scene = build_scene(doc, resolver.lookup(), {}, &resolver.pending_symbol());
+    REQUIRE(scene.segments.size() == 1);
+    return scene.segments[0].b.x;
+  };
+  write_symbol("40");
+  SchematicSymbolResolver resolver({fs, {}, {}});
+  const schem::Document doc = document_with({"r.sym"});
+  REQUIRE(resolver.show(1, doc, kLib, true));
+  CHECK(drawn_length(resolver, doc) == 40.0);
+
+  write_symbol("1200");  // another size: the cache sees the change
+  resolver.forget_changed();
+  CHECK(resolver.pending_count() == 1);
+  REQUIRE(resolver.show(1, doc, kLib, true));
+  CHECK(drawn_length(resolver, doc) == 1200.0);
+}
+
 TEST_CASE("a Tcl generator runs on the worker, never on the UI thread",
           "[cap:schematic-symbols-and-libraries][req:Symbol generators]") {
   auto fs = std::make_shared<platform::MemoryFileSystem>();

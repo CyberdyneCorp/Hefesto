@@ -105,7 +105,10 @@ release notices.
 - **Schematic object order and clipboard.** `schematic order <index>`,
   `clipboard [copy|set <text>]`, `paste <x> <y>` and `merge <file>
   [<x> <y>]`; each paste, merge or order is one undo step
-  (`SCHEM-EDIT-008` on a read-only document).
+  (`SCHEM-EDIT-001` on a read-only document; `SCHEM-EDIT-008` when the
+  clipboard holds no schematic objects). A pasted or merged embedded
+  symbol does not redefine a symbol the document's instances already use
+  (proposed Q-SCHEM-51).
 - **Schematic simulation decks.** The schematic deck is built from the
   netlist with its `.control` blocks translated: `write`/`wrdata` become
   capture points, `quit`/`exit` are removed and host commands (`shell`,

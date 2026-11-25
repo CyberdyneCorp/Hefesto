@@ -184,6 +184,42 @@ TEST_CASE("indirect commands are refused too", CONTROL) {
   CHECK(schem::translate_control("* shell is a word here\n").ok());
 }
 
+// Regression (review of round 5, finding 9): a quoted command word and a `+`
+// continuation line passed the check, but ngspice removes the quotes and
+// joins the continuation to the line before it.
+TEST_CASE("quoted command words and continuation lines are checked as ngspice reads them", CONTROL) {
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {"\"shell\" ls", "shell"},
+      {"'shell' ls", "shell"},
+      {"sh\"ell\" ls", "shell"},
+      {"alias s \"shell\"", "shell"},
+      {"echo x ;\n+ shell rm -f y", "shell"},
+      {"alias s\n+ shell", "shell"},
+      {"+ shell rm -f y", "+"},  // right after .control: no control line to join
+  };
+  for (const auto& [line, refused] : cases) {
+    INFO(line);
+    const auto deck = schem::translate_control(".control\n" + line + "\n.endc\n");
+    REQUIRE_FALSE(deck.ok());
+    CHECK(deck.error().text == "Control command '" + refused + "' is not allowed in simulation decks");
+  }
+  // A harmless continuation is joined; outside .control `+` lines stay.
+  const auto deck = schem::translate_control("R1 a b\n+ 1k\n.control\nop\nprint v(a)\n+ v(b)\n.endc\n");
+  REQUIRE(deck.ok());
+  CHECK(deck.value().text == "R1 a b\n+ 1k\n.control\nop\nprint v(a) v(b)\n.endc\n");
+}
+
+// The commands that start other programs reach the host like `shell`
+// (review of round 5, finding 10).
+TEST_CASE("commands that start programs are refused", CONTROL) {
+  for (const std::string command : {"edit", "gnuplot", "hardcopy", "aspice", "rspice"}) {
+    INFO(command);
+    const auto deck = schem::translate_control(".control\nop\n" + command + " x v(a)\n.endc\n");
+    REQUIRE_FALSE(deck.ok());
+    CHECK(deck.error().text == "Control command '" + command + "' is not allowed in simulation decks");
+  }
+}
+
 TEST_CASE("include and lib paths resolve against the netlist folder, the schematic folder and the PDK store",
           CODE_BLOCKS) {
   hefesto::test::TempFolder folder;

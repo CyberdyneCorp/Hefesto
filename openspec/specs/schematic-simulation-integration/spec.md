@@ -80,12 +80,22 @@ xschem testbenches drive ngspice from `.control` blocks that write raw files and
 | `set appendwrite` | Later `write` to the same name appends a plot, as in ngspice |
 | `wrdata <file> ...` | Capture like `write`; export as text only if the setting is on |
 | `quit`, `exit` | Removed |
-| `shell ...`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi` | Rejected with `Control command '<cmd>' is not allowed in simulation decks` |
+| `shell ...`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, and the commands that start programs: `edit`, `gnuplot`, `hardcopy`, `aspice`, `rspice` | Rejected with `Control command '<cmd>' is not allowed in simulation decks` |
 | `plot`, `print`, `meas`, `let`, `save`, analyses, `alter`, `alterparam`, `reset`, `remzerovec`, `foreach`, `if`, other commands | Passed through |
 
 `.control` blocks SHALL then be allowed for schematic-source decks without setting `allowControl`. Messages that ngspice prints from the control block SHALL appear in the job log.
 
-Each `;`-separated command of a control line SHALL be checked. In the deck, each `write` and `wrdata` command SHALL become a capture point, the line `echo hefesto-capture <n>`, where `<n>` indexes the deck's list of captures (the file name, the named vectors, whether it is `wrdata`, and whether `set appendwrite` is in effect); the job runner captures the plot when ngspice prints that line. A `write` without a file name captures under `rawspice.raw`. A command word that names no command until run time (a word starting with `$` or `!`), an `alias` whose command is a refused command, and a backquoted command that is refused SHALL be refused like the refused command itself, with the same message naming that word (`SCHEM-SIM-001`), in both modes of `xschem-compat`.
+Each `;`-separated command of a control line SHALL be checked. In the deck, each `write` and `wrdata` command SHALL become a capture point, the line `echo hefesto-capture <n>`, where `<n>` indexes the deck's list of captures (the file name, the named vectors, whether it is `wrdata`, and whether `set appendwrite` is in effect); the job runner captures the plot when ngspice prints that line. A `write` without a file name captures under `rawspice.raw`. A command word that names no command until run time (a word starting with `$` or `!`), an `alias` whose command is a refused command, and a backquoted command that is refused SHALL be refused like the refused command itself, with the same message naming that word (`SCHEM-SIM-001`), in both modes of `xschem-compat`. As ngspice reads them, a command word SHALL be compared without its quote characters (`"shell"` and `'sh'ell` are `shell`), and a `+` continuation line inside a `.control` block SHALL be joined, with one space, to the control line before it before the check (the joined line is what the deck holds); a `+` line directly after `.control` has no line to join and SHALL be refused, naming `+`. Output redirection (`>`, `>>`, `<`) and `wrs2p` are passed through; where they may write is checked by the job runner (M9).
+
+#### Scenario: Quoted shell and continuation refused
+- **GIVEN** a code block holding, inside `.control`, `"shell" ls`, or the two lines `echo x ;` and `+ shell rm -f y`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `Control command 'shell' is not allowed in simulation decks`
+
+#### Scenario: Program-starting commands refused
+- **GIVEN** a code block containing `gnuplot out v(a)` inside `.control`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `Control command 'gnuplot' is not allowed in simulation decks`
 
 Compatibility: native
 

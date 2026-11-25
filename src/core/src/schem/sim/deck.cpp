@@ -43,18 +43,23 @@ bool is_under(const platform::Path& path, const platform::Path& root) {
   return !root.empty();
 }
 
+// An absolute `written` path as it is, or through the first PDK path
+// mapping under which the file exists; nullopt when none does.
+std::optional<platform::Path> mapped_pdk_path(const platform::Path& written, platform::FileSystem& fs,
+                                              const DeckOptions& options) {
+  if (fs.exists(written)) return written;
+  for (const PdkPathMapping& mapping : options.pdk_paths) {
+    if (!is_under(written, mapping.from)) continue;
+    const platform::Path mapped = mapping.to / written.lexically_relative(mapping.from);
+    if (fs.exists(mapped)) return mapped;
+  }
+  return std::nullopt;
+}
+
 // "Testbench code blocks" steps 1-3: the file `written` names, or nullopt.
 std::optional<platform::Path> resolve_path(const platform::Path& written, platform::FileSystem& fs,
                                            const platform::Path& schematic_folder, const DeckOptions& options) {
-  if (written.is_absolute()) {
-    if (fs.exists(written)) return written;
-    for (const PdkPathMapping& mapping : options.pdk_paths) {
-      if (!is_under(written, mapping.from)) continue;
-      const platform::Path mapped = mapping.to / written.lexically_relative(mapping.from);
-      if (fs.exists(mapped)) return mapped;
-    }
-    return std::nullopt;
-  }
+  if (written.is_absolute()) return mapped_pdk_path(written, fs, options);
   for (const platform::Path& folder : {options.netlist_folder, schematic_folder}) {
     if (folder.empty()) continue;
     const platform::Path candidate = (folder / written).lexically_normal();

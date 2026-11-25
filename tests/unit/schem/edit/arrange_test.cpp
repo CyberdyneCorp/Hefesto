@@ -171,6 +171,33 @@ TEST_CASE("the clipboard carries the embedded symbols of the copied instances", 
   CHECK(name_of(active(s).instances[1]) == "x2");
 }
 
+// Regression (review of round 5, finding 11): the pasted block was added
+// whenever the document had none, and an embedded block resolves its
+// reference document-wide, so the existing library instance changed too.
+TEST_CASE("Pasted embedded symbol does not redefine the document's symbol", kClipboard) {
+  SchemSession s;
+  s.folder().write("emb.sch",
+                   "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+                   "C {res.sym} 0 0 0 0 {name=R9 embed=true}\n"
+                   "[\nv {xschem version=3.4.8RC file_version=1.3}\nK {type=resistor\nformat=\"@name @pinlist "
+                   "EMBEDDED\"}\nL 4 0 0 10 0 {}\n]\n");
+  run(s, {"open", s.folder().str("emb.sch")});
+  run(s, {"select", "all"});
+  (void)run(s, {"clipboard", "copy"});
+  new_schematic(s, "other.sch");
+  run(s, {"place", "res.sym", "0", "0", "-props", "name=R1 value=1k"});
+  const std::string before = run(s, {"getprop", "symbol", "res.sym", "format"});
+  run(s, {"paste", "200", "0"});
+  CHECK(active(s).instances.size() == 2);
+  CHECK(active(s).embedded.empty());
+  CHECK(run(s, {"getprop", "symbol", "res.sym", "format"}) == before);
+  // Into a document that does not use the reference, the block still comes along.
+  new_schematic(s, "third.sch");
+  run(s, {"paste", "0", "0"});
+  REQUIRE(active(s).embedded.size() == 1);
+  CHECK(active(s).embedded[0].reference == "res.sym");
+}
+
 TEST_CASE("Merging a file inserts its objects like a paste", kClipboard) {
   SchemSession s;
   new_schematic(s);

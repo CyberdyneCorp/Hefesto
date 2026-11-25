@@ -138,6 +138,8 @@ class NetlistRun {
   void top_user_code(const Level& top, std::string_view place);
   void end_block(const Level& top);
   void globals_block();
+  void emit_header(const Level& top);
+  NetlistResult finish_text();
   std::string place_of(const Placed& instance) const;
   [[nodiscard]] std::string path_text(const platform::Path& file) const;
   void warn(diag::Diagnostic diagnostic);

@@ -214,6 +214,38 @@ TEST_CASE("an Interrupt during the run stops a looping tcleval value and cancels
   CHECK_FALSE(std::filesystem::exists(s.folder().path() / "w/top.spice"));
 }
 
+// The run itself polls the Interrupt once per schematic level (not only the
+// `tcleval` values): after the Interrupt made during the top level's first
+// placement, no further level is placed, so no other value is evaluated.
+// Counted by the evaluations that reported progress (one `done` each).
+TEST_CASE("an Interrupt during the run stops it at the next schematic level", kTable) {
+  SchemSession s;
+  hefesto::test::write_cell(s, "w/sub");
+  const std::string loop = "value=\"tcleval([while 1 \\{\\}])\"";
+  s.folder().write("w/r.sym", symbol_text("1k"));
+  s.folder().write("w/sub.sch", std::string{kHeader} + "C {ipin.sym} -100 0 0 0 {name=p1 lab=A}\n" +
+                                    "C {opin.sym} 100 0 0 0 {name=p2 lab=Y}\n" + "C {r.sym} 0 0 0 0 {name=R2 " +
+                                    loop + "}\n");
+  s.folder().write("w/top.sch", std::string{kHeader} + "N 0 -100 0 -200 {}\n" + "C {r.sym} 0 0 0 0 {name=R1 " +
+                                    loop + "}\n" + "C {sub.sym} 200 0 0 0 {name=x1}\n");
+  run(s, {"open", s.folder().str("w/top.sch")});
+  hefesto::editor::EditorState& editor = s.editor();
+  int evaluations = 0;
+  editor.script.progress.handler = [&editor, &evaluations](const hefesto::script::ScriptProgress& report) {
+    if (report.done) {
+      ++evaluations;
+    } else {
+      (void)hefesto::ui::request_interrupt(editor);
+    }
+  };
+  const auto result = s.schematic({"netlist", s.folder().str("w/top.spice")});
+  editor.script.progress.handler = {};
+  CHECK(code_of(result) == "SCHEM-CMD-011");
+  CHECK(evaluations == 1);  // R1's value once: neither placed again nor R2's level
+  CHECK_FALSE(std::filesystem::exists(s.folder().path() / "w/top.spice"));
+  CHECK(schem::get_token(active(s).wires[0].props, "lab").value_or("").empty());  // no computed label applied
+}
+
 // ---- computed labels are stored escaped --------------------------------------------------
 
 // Regression: the `lab` a netlist run computes for a wire was stored as the

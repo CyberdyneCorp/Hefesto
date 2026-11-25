@@ -57,6 +57,7 @@ struct SchematicSymbolResolver::Worker {
   std::vector<diag::Diagnostic> result_warnings;
   bool clear_queued = false;                // reload_symbols: the cache starts again
   std::vector<platform::Path> forget_queue;  // files saved since the last job
+  bool forget_changed_queued = false;        // schematic reload: drop files changed on disk
 
   std::atomic<std::uint64_t> generation{0};  // a job of an older generation stops early
   std::atomic<bool> cancelled{false};
@@ -81,14 +82,17 @@ struct SchematicSymbolResolver::Worker {
   // Worker thread: applies what the UI thread queued for the cache.
   void apply_cache_changes() {
     bool clear = false;
+    bool changed = false;
     std::vector<platform::Path> forget;
     {
       const std::lock_guard guard(mutex);
       clear = std::exchange(clear_queued, false);
+      changed = std::exchange(forget_changed_queued, false);
       forget.swap(forget_queue);
     }
     if (clear) cache.clear();
     for (const platform::Path& file : forget) cache.forget(file);
+    if (changed && files) (void)cache.forget_changed(*files);
   }
 
   void run(const SymbolRequest& request, std::uint64_t job_generation) {
@@ -171,6 +175,15 @@ void SchematicSymbolResolver::forget_file(const platform::Path& file) {
   }
   worker_->generation.store(++generation_);
   std::erase_if(symbols_, [&file](const auto& entry) { return entry.second.file == file || entry.second.embedded; });
+}
+
+void SchematicSymbolResolver::forget_changed() {
+  {
+    const std::lock_guard guard(worker_->mutex);
+    worker_->forget_changed_queued = true;
+  }
+  worker_->generation.store(++generation_);  // a running job may have read an old file
+  symbols_.clear();
 }
 
 bool SchematicSymbolResolver::start_job(const schem::Document& document, const schem::SearchPath& search_path) {

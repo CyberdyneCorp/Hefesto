@@ -44,6 +44,10 @@
 #include "hefesto/shell/command_sink.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 
+namespace hefesto::editor {
+struct EditorState;
+}  // namespace hefesto::editor
+
 namespace hefesto::shell {
 
 // --- properties ----------------------------------------------------------------------------
@@ -234,5 +238,13 @@ class NetlistAction {
   std::string status_;
   std::string text_;
 };
+
+/// The schematic tab's Interrupt (the card's button, Ctrl-C). While the
+/// netlist runs, the first press records the cancel and sets the editor's
+/// pending Interrupt (ui::request_interrupt), the flag the run polls between
+/// hierarchy levels and in every `tcleval` evaluation (SCHEM-CMD-011), and
+/// interrupts the console interpreter; true then. With no run, the press
+/// is the editor's ordinary Interrupt; false.
+bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor);
 
 }  // namespace hefesto::shell

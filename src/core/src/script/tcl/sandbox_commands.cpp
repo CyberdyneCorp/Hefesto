@@ -26,7 +26,10 @@
 //               `interp share|transfer`; SCRIPT-SANDBOX-007), and `chan
 //               puts` is forwarded to the current `::puts`, so a host's
 //               replacement of `puts` sees every write (security review
-//               of task 12.1 of m8-schematic, finding S8-04).
+//               of task 12.1 of m8-schematic, finding S8-04). Where the
+//               policy says so (the schematic-script interpreters), stdin
+//               is not read either (`gets`, `read`, `chan gets|read`,
+//               `fcopy`, `chan copy`): such a read blocks, unlimited.
 //
 // Every refusal is reported by SandboxSession::refuse (diagnostic with the
 // script file and line, DeniedOperation event).
@@ -441,6 +444,40 @@ std::optional<Refusal> check_channel_operand(Guard& guard, int objc, Tcl_Obj* co
   return std::nullopt;
 }
 
+// True when `name` names the process's stdin, by its name or by a name that
+// resolves to the same channel.
+bool is_stdin(Tcl_Interp* interp, Tcl_Obj* name) {
+  if (as_view(name) == "stdin") {
+    return true;
+  }
+  Tcl_Channel standard = Tcl_GetStdChannel(TCL_STDIN);
+  if (standard == nullptr) {
+    return false;
+  }
+  int mode = 0;
+  Tcl_Channel channel = Tcl_GetChannel(interp, Tcl_GetString(name), &mode);
+  Tcl_ResetResult(interp);
+  return channel != nullptr && std::string_view{Tcl_GetChannelName(channel)} == Tcl_GetChannelName(standard);
+}
+
+// `gets`, `read`, `chan gets|read`, `fcopy` and `chan copy` from stdin in a
+// schematic-script interpreter (SandboxPolicy::stdin_readable false): the
+// read blocks until input arrives, inside one command, where no time limit
+// or Interrupt reaches it (S8-04). `read ?-nonewline? channel ...`.
+std::optional<Refusal> check_stdin_read(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  int at = 1;
+  if (objc > 2 && as_view(objv[1]) == "-nonewline") {
+    at = 2;
+  }
+  if (objc > at && is_stdin(guard.session->interp(), objv[at])) {
+    const std::string channel{as_view(objv[at])};
+    return Refusal{kRemovedDenied, guard.operation, channel,
+                   guard.operation + ": reading the standard channel \"" + channel +
+                       "\" would wait for input no time limit interrupts; not permitted in this interpreter"};
+  }
+  return std::nullopt;
+}
+
 // `interp share|transfer srcPath channel destPath` of a standard channel:
 // a transferred one could then be closed by the child.
 std::optional<Refusal> refuse_channel_move(Guard& guard, int objc, Tcl_Obj* const objv[]) {
@@ -640,6 +677,17 @@ void install_sandbox_commands(SandboxSession& session, const SandboxPolicy& poli
                   Guard{nullptr, {}, std::string{"chan "} + sub, check_channel_operand, nullptr, false});
   }
   forward_chan_puts(interp);
+  if (!policy.stdin_readable) {
+    for (const auto& [name, operation] : std::array<std::pair<const char*, const char*>, 6>{
+             {{"gets", "gets"},
+              {"read", "read"},
+              {"fcopy", "fcopy"},
+              {"::tcl::chan::gets", "chan gets"},
+              {"::tcl::chan::read", "chan read"},
+              {"::tcl::chan::copy", "chan copy"}}}) {
+      guard_command(session, name, Guard{nullptr, {}, operation, check_stdin_read, nullptr, false});
+    }
+  }
   for (const char* sub : kFileAccess) {
     guard_command(session, std::string{"::tcl::file::"} + sub,
                   Guard{nullptr, {}, std::string{"file "} + sub, write_check(sub), nullptr, false,

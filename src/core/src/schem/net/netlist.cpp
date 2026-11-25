@@ -264,17 +264,7 @@ NetlistResult NetlistRun::run() {
   }
   connect(top);
 
-  emit("** sch_path: " + path_text(top_.path) + "\n");
-  compat::CompatSettings settings;
-  settings.xschem_compat = compat_;
-  if (const std::string line = compat::xschem_compat_netlist_line(settings); !line.empty()) {
-    emit(line + "\n");
-  }
-  for (const Placed& p : top.instances) {
-    if (!p.ignored && !p.shorted && p.type == "netlist_commands" && place_of(p) == "header") {
-      emit(element(top, p).text, {}, true);
-    }
-  }
+  emit_header(top);
   if (options_.hierarchy != Hierarchy::top) {
     add_used(top);
     plan_definitions();
@@ -292,9 +282,28 @@ NetlistResult NetlistRun::run() {
   if (!top_subckt_) {
     emit(".end\n");
   }
-  if (stopped_) {
-    return interrupted_result();
+  return stopped_ ? interrupted_result() : finish_text();
+}
+
+/// The lines before the top schematic: its path, the compatibility line
+/// and the `netlist_commands` placed in the header.
+void NetlistRun::emit_header(const Level& top) {
+  emit("** sch_path: " + path_text(top_.path) + "\n");
+  compat::CompatSettings settings;
+  settings.xschem_compat = compat_;
+  if (const std::string line = compat::xschem_compat_netlist_line(settings); !line.empty()) {
+    emit(line + "\n");
   }
+  for (const Placed& p : top.instances) {
+    if (!p.ignored && !p.shorted && p.type == "netlist_commands" && place_of(p) == "header") {
+      emit(element(top, p).text, {}, true);
+    }
+  }
+}
+
+/// The text of a run that was not interrupted: the resolve warnings, the
+/// postprocessed (and, for -flat, flattened) lines, broken for SPICE.
+NetlistResult NetlistRun::finish_text() {
   for (diag::Diagnostic& d : resolve_warnings_.take()) {
     warn(std::move(d));
   }
