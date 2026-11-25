@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <random>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -71,10 +72,14 @@ inline std::string use(std::string_view def, std::string_view id, int x = 0, int
 }
 
 /// A fresh directory under the current directory (local-disk sessions).
+/// ctest runs each test case in its own process, in parallel, so the name
+/// carries a per-process random part as well as the counter.
 inline std::filesystem::path fresh_directory(std::string_view tag) {
   static std::atomic<int> counter{0};
-  const std::filesystem::path dir = std::filesystem::current_path() /
-                                    ("extract_cmd_" + std::string{tag} + "_" + std::to_string(counter++));
+  static const std::string process = std::to_string(std::random_device{}());
+  const std::filesystem::path dir =
+      std::filesystem::current_path() /
+      ("extract_cmd_" + std::string{tag} + "_" + process + "_" + std::to_string(counter++));
   std::filesystem::remove_all(dir);
   std::filesystem::create_directories(dir);
   return dir;
