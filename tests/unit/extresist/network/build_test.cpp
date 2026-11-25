@@ -268,3 +268,36 @@ TEST_CASE("device breakpoints on the top and bottom edges cut north-south",
   CHECK((t.b->g.res[0].status & extresist::kStatusNS) != 0);
   CHECK(t.b->g.res[0].value == 1000.0F * 10.0F / 20.0F);
 }
+
+TEST_CASE("a contact without a CIF cut joins its planes without resistance",
+          "[cap:extresist-network][req:Contact resistors]") {
+  // Standing rule (undefined behaviour fixed in both modes): Magic's
+  // ResDoContacts reads CIFGetContactSize's unset cut size when the output
+  // style has no cut for the type (and the scale factor of a missing
+  // style). Without a cut the contact is one node on both planes.
+  auto src = cell({Box{"metal1", {0, 0, 48, 4}}, Box{"metal2", {40, 0, 100, 4}}, Box{"via", {40, 0, 48, 4}}});
+  const auto& e = env();
+  extresist::YankRequest req;
+  req.area = {0, 0, 4, 4};
+  req.start_types = e.technology->connects_to(e.type("metal1"));
+  for (const bool compat : {true, false}) {
+    auto geometry = extresist::yank_net(*src, *e.technology, req);
+    REQUIRE(geometry.ok());
+    extresist::BuildInput input;
+    input.technology = e.technology.get();
+    input.cif = nullptr;
+    input.start = {0, 2};
+    input.driver = extresist::NetDriver{{0, 2}, e.type("metal1"), true};
+    input.ports = {extresist::NetPort{"out", {99, 1, 100, 3}, e.type("metal2"), false}};
+    input.geometry = true;
+    input.magic_compat = compat;
+    const auto net = extresist::build_network(geometry.value(), e.style, {}, input);
+    REQUIRE(net.ok());
+    CHECK(between(net.value(), {44, 2}, {44, 2}) == nullptr);
+    std::size_t contact_nodes = 0;
+    for (const auto& n : net.value().nodes) {
+      contact_nodes += n.kind == extresist::kNodeContact ? 1U : 0U;
+    }
+    CHECK(contact_nodes == 1);
+  }
+}
