@@ -214,7 +214,7 @@ Yes/no words SHALL use unique-prefix matching:
 | Combine word | Series effect | Parallel effect |
 |---|---|---|
 | `none` | Clears the series rule and disables series combination | Clears the parallel rule and disables parallel combination |
-| `par` | Sets series-par (replaces other series bits) | Adds parallel-par |
+| `par` | Sets series-par (replaces the other series settings) | Adds parallel-par |
 | `add` | Adds series-add | Adds parallel-add |
 | `critical` | Adds series-critical | Adds parallel-critical |
 
@@ -240,7 +240,7 @@ Combination SHALL be enabled for every word except `none`. A malformed pair SHAL
 | `ser`, `serial` or `series` | series-add |
 | `ser_critical`, `serial_critical` or `series_critical` | series-add + legacy series-critical |
 
-`merge` SHALL replace all merge bits of the key.
+`merge` SHALL replace the whole merge rule of the key.
 Compatibility: exact
 (netgen ref: tcltk/tclnetgen.c:3567-3603, tcltk/tclnetgen.c:3684-3790, tcltk/tclnetgen.c:3986-4049, base/netgen.c:901-945)
 

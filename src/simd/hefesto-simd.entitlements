@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Copyright 2026 The Hefesto Authors -->
+<!-- hefesto-simd only (openspec/changes/m9-lvs-simulation design D2
+     "Replaceability"): lets the worker load a user-rebuilt, ad-hoc signed
+     libngspice-hefesto under the hardened runtime. No other Hefesto binary
+     carries this entitlement. The worker's sandbox (design D9) bounds what it
+     exposes. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>

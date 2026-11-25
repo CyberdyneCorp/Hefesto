@@ -17,6 +17,7 @@
 #include "hefesto/platform/process_runner.hpp"
 #include "hefesto/platform/storage.hpp"
 #include "hefesto/platform/task_executor.hpp"
+#include "hefesto/platform/worker_host.hpp"
 
 namespace hefesto::platform {
 
@@ -29,6 +30,7 @@ struct PlatformServices {
   Logger& logger;
   TaskExecutor& tasks;
   ProcessRunner& processes;
+  WorkerHost& workers;  // long-lived workers (hefesto-architecture; m9 design D9)
 };
 
 struct PortableOptions {
@@ -41,7 +43,8 @@ struct PortableOptions {
 /// Owns the portable default services. The logger starts as a NullLogger;
 /// a host replaces it with set_logger() (e.g. a RotatingFileLogger).
 /// The process runner starts as UnsupportedProcessRunner; hosts that can
-/// spawn processes install their own with set_process_runner().
+/// spawn processes install their own with set_process_runner(). The worker
+/// host starts as UnsupportedWorkerHost; set_worker_host() replaces it.
 /// view() holds references: configure the services before taking a view.
 class PortableServices {
  public:
@@ -51,6 +54,7 @@ class PortableServices {
 
   void set_logger(std::unique_ptr<Logger> logger);
   void set_process_runner(std::unique_ptr<ProcessRunner> runner);
+  void set_worker_host(std::unique_ptr<WorkerHost> host);
   /// Replaces the PDK store (front ends install pdk::make_managed_pdk_store,
   /// hefesto-files-and-pdks). nullptr restores the directory store with no
   /// roots. Like the other setters, call it before taking view(): a view
@@ -68,6 +72,7 @@ class PortableServices {
   std::unique_ptr<Logger> logger_;
   std::unique_ptr<TaskExecutor> tasks_;
   std::unique_ptr<ProcessRunner> processes_;
+  std::unique_ptr<WorkerHost> workers_;
 };
 
 }  // namespace hefesto::platform

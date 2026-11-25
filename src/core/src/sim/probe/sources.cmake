@@ -7,5 +7,7 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/net_name_map.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/node_name.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/node_search.hpp
   ${CMAKE_CURRENT_LIST_DIR}/overlay_feed.cpp
   ${CMAKE_CURRENT_LIST_DIR}/probe.cpp)

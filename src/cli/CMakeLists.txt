@@ -35,3 +35,7 @@ add_custom_command(TARGET hefesto-cli POST_BUILD
           "${PROJECT_SOURCE_DIR}/assets/schematic" "$<TARGET_FILE_DIR:hefesto-cli>/assets/schematic"
   VERBATIM)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/assets/schematic" DESTINATION assets)
+
+# PLATFORM (m9-lvs-simulation task 5.3): the POSIX worker host
+# (platform::WorkerHost; hefesto-architecture "Long-lived worker processes").
+target_sources(hefesto_cli_lib PRIVATE worker_host_posix.cpp)

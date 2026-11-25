@@ -50,6 +50,7 @@ The ngspice build SHALL use this feature set on every platform:
 | XSPICE code models | analog, digital, spice2poly and xtradev libraries compiled in statically | no runtime `dlopen` on iPadOS, and the same registry on every platform |
 | `table` code model library | off | GPLv2+ license |
 | `d_cosim`, GHDL and Icarus co-simulation shims | off | load arbitrary user code |
+| `d_process` code model (in the `digital` library) | off | starts external processes |
 | OSDI | on | Verilog-A compact models (see Requirement "OSDI compact models") |
 | KLU sparse solver | on, bundled copy | solver performance |
 | CIDER, NDEV | off | not needed |
@@ -208,6 +209,16 @@ Compatibility: native
 - **GIVEN** a transient run from 0 to 1 ms that has reached 300 µs
 - **WHEN** the user cancels it
 - **THEN** the job SHALL end as `cancelled`, and its partial result SHALL hold the time points up to about 300 µs
+
+#### Scenario: Cancel a paused job
+- **GIVEN** a transient run that the user paused, so its background thread has ended
+- **WHEN** the user cancels it
+- **THEN** the job SHALL end as `cancelled` at once, with the partial result of the pause, and its engine SHALL take the next job
+
+#### Scenario: Pause as the run ends
+- **GIVEN** a run whose background thread ends just before the user's pause reaches the engine
+- **WHEN** the engine refuses the pause because no analysis is running
+- **THEN** the refusal SHALL be reported to the user, the job SHALL end as it would have without the pause, and the engine SHALL NOT be treated as faulted
 
 #### Scenario: Unrecoverable error
 - **GIVEN** a deck that makes ngspice call its controlled-exit path

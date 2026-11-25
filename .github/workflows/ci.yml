@@ -862,7 +862,9 @@ jobs:
   asan:
     name: linux-asan (Clang, ASan + UBSan)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # The suite takes about 28 minutes on a fast runner and passed 45 on slow
+    # ones (6,600+ tests at ~1 s each under ASan); 75 leaves headroom.
+    timeout-minutes: 75
     env:
       CC: clang-18
       CXX: clang++-18
@@ -1004,3 +1006,48 @@ jobs:
           name: fuzz-crashes
           path: fuzz-artifacts/
           if-no-files-found: ignore
+
+  # m9-lvs-simulation task 5.4 (design D2; Q-SIM-20, Q-SIM-22): a release build that holds hefesto-simd, the
+  # hefesto-ngspice-adapter plugin and libngspice-hefesto, checked as a release tree (no --developer-build:
+  # scripts/check_engine_boundary.py reads HEFESTO_DEVELOPER_BUILD=OFF from CMakeCache.txt). The worker tests
+  # then run hefesto-simd with the real plugin, confined (seccomp, and Landlock where the kernel has it).
+  engine-boundary-release:
+    name: engine boundary (linux-x64 release, ngspice, hefesto-simd)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-release-ngspice
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-release-ngspice-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**', 'third_party/ngspice/pin.json') }}
+          restore-keys: deps-linux-release-ngspice-
+      # Warnings are errors here too, so the adapter plugin and hefesto-simd
+      # are built with -Werror at -O3. Only -Warray-bounds stays a warning:
+      # GCC 13 at -O3 may report it for std::vector::resize in
+      # drc/rules/cif_catalog.cpp (unchanged from main), which this job does
+      # not own; the log shows whether it does.
+      - name: Configure (release, HEFESTO_BUILD_NGSPICE=ON, HEFESTO_DEVELOPER_BUILD=OFF)
+        run: >-
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_CXX_FLAGS=-Wno-error=array-bounds
+          -DHEFESTO_BUILD_NGSPICE=ON -DHEFESTO_DEVELOPER_BUILD=OFF
+      - name: Build hefesto-simd, the adapter plugin, hefesto-cli and the worker tests
+        run: >-
+          cmake --build --preset linux-release
+          --target hefesto-simd hefesto-ngspice-adapter ngspice-hefesto hefesto-cli hefesto_platform_tests
+      - name: Check the simulation engine boundary (release rules)
+        run: python3 scripts/check_engine_boundary.py --build-dir build/linux-release
+      - name: Worker tests with the real adapter (confinement, reuse, determinism)
+        run: ctest --test-dir build/linux-release -R 'hefesto_platform_tests' --output-on-failure

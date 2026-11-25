@@ -32,7 +32,8 @@ PortableServices::PortableServices(PortableOptions options)
       autosave_(std::make_unique<FileAutosaveService>(*files_, options.storage_root / "autosave")),
       logger_(std::make_unique<NullLogger>()),
       tasks_(make_tasks(options.inline_tasks)),
-      processes_(std::make_unique<UnsupportedProcessRunner>()) {}
+      processes_(std::make_unique<UnsupportedProcessRunner>()),
+      workers_(std::make_unique<UnsupportedWorkerHost>()) {}
 
 PlatformServices PortableServices::view() noexcept {
   return PlatformServices{
@@ -43,6 +44,7 @@ PlatformServices PortableServices::view() noexcept {
       .logger = *logger_,
       .tasks = *tasks_,
       .processes = *processes_,
+      .workers = *workers_,
   };
 }
 
@@ -52,6 +54,10 @@ void PortableServices::set_logger(std::unique_ptr<Logger> logger) {
 
 void PortableServices::set_process_runner(std::unique_ptr<ProcessRunner> runner) {
   processes_ = runner ? std::move(runner) : std::make_unique<UnsupportedProcessRunner>();
+}
+
+void PortableServices::set_worker_host(std::unique_ptr<WorkerHost> host) {
+  workers_ = host ? std::move(host) : std::make_unique<UnsupportedWorkerHost>();
 }
 
 void PortableServices::set_pdk_store(std::unique_ptr<PdkStore> store) {

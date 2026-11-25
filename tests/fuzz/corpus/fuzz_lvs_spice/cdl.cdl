@@ -1,0 +1,8 @@
+*.GLOBAL VDD VSS
+.SUBCKT buf A Y PARAMS: w=1 l=2
+R1 A n1 2k $[rpoly] m=2
+C1 n1 Y 1p
+X1 n1 Y / inv
+.ENDS
+.subckt buf A Y
+.ends

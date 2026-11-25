@@ -93,14 +93,19 @@ TEST_CASE("lvs cancel token follows its flag",
   CHECK(token.requested());
 }
 
-TEST_CASE("scaffold read_netlist reports CORE-NOTIMPL-009", "[cap:lvs-netlist-input][req:Netlist database model]") {
+TEST_CASE("read_netlist reads a SPICE source into the database",
+          "[cap:lvs-netlist-input][req:Netlist database model]") {
+  // LVSREAD replaced the scaffold stub (tasks.md 6.1, 6.2); Verilog, .sim
+  // and .ext still report CORE-NOTIMPL-009 until 6.3.
   lvs::NetlistDb db;
-  CHECK(is_not_implemented(lvs::read_netlist(db, spice("R1 a b 1k\n"), lvs::Format::spice, {})));
-  CHECK(db.cells.empty());
+  const auto top = lvs::read_netlist(db, spice("R1 a b 1k\n"), lvs::Format::spice, {});
+  REQUIRE(top.ok());
+  CHECK(db.cells.at(top.value()).name == "in.spice");
+  CHECK(is_not_implemented(lvs::read_netlist(db, spice("module a; endmodule\n"), lvs::Format::verilog, {})));
 }
 
-TEST_CASE("scaffold detect_format reports CORE-NOTIMPL-009", "[cap:lvs-netlist-input][req:Format selection]") {
-  CHECK(is_not_implemented(lvs::detect_format(spice(".subckt a x\n.ends\n"))));
+TEST_CASE("detect_format detects a SPICE source", "[cap:lvs-netlist-input][req:Format selection]") {
+  CHECK(lvs::detect_format(spice(".subckt a x\n.ends\n")).value() == lvs::Format::spice);
 }
 
 TEST_CASE("scaffold evaluate_setup reports CORE-NOTIMPL-009", "[cap:lvs-setup-file][req:Setup file evaluation]") {

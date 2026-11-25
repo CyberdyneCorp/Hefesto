@@ -48,6 +48,9 @@ struct Vector {
 /// and never blocks (Q-SIM-15).
 struct EngineCallbacks {
   std::function<void(std::string_view line)> on_output;
+  /// Error-stream lines (ngspice's `stderr ` prefix already removed). When
+  /// unset, they go to on_output like any other job-log line.
+  std::function<void(std::string_view line)> on_error;
   std::function<void(std::string_view status, double point)> on_progress;
   std::function<void(EngineState state)> on_state;
 };

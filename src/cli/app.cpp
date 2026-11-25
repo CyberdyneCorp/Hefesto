@@ -43,6 +43,7 @@
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/version.hpp"
+#include "worker_host_posix.hpp"
 #include "hefesto/view3d/client/face_log.hpp"
 #include "interactive.hpp"
 #include "options.hpp"
@@ -254,6 +255,7 @@ class Session {
         magic_console_(out, err) {
     log_warning_ = open_log();
     services_.set_process_runner(std::make_unique<platform_posix::PosixProcessRunner>());
+    services_.set_worker_host(std::make_unique<cli::PosixWorkerHost>());
     install_pdk_store();
     // cell-io-safety: POSIX locks and the crash-backup file host, before any command.
     editor_.locks = platform_posix::make_lock_service();

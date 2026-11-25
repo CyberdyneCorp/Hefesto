@@ -294,7 +294,8 @@ CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation&
   const platform::PlatformServices services =
       script_files_ != nullptr && !may_reach_host(invocation.origin)
           ? platform::PlatformServices{*script_files_,     services_.pdks,  services_.autosave, services_.clock,
-                                       services_.logger,   services_.tasks, services_.processes}
+                                       services_.logger,   services_.tasks, services_.processes,
+                                       services_.workers}
           : services_;
   CommandContext context{services, project_, session_, sink, registry_, editor_};
   std::string saved_client;

@@ -57,10 +57,17 @@ Tests:
 ## Build configuration
 
 - Feature line (simulation-engine-embedding feature table): KLU on (bundled),
-  OSDI on, XSPICE on with the `analog`, `digital` (without `d_cosim`),
-  `spice2poly` and `xtradev` code models compiled in and registered statically;
-  `table`, `xtraevt`, `tlines`, FFTW3, CIDER/NDEV, `d_cosim` and its Icarus/GHDL
-  shims, readline/editline, X11 and OpenMP off.
+  OSDI on, XSPICE on with the `analog`, `digital` (without `d_cosim` and
+  `d_process`), `spice2poly` and `xtradev` code models compiled in and
+  registered statically; `table`, `xtraevt`, `tlines`, FFTW3, CIDER/NDEV,
+  `d_cosim` and its Icarus/GHDL shims, `d_process` (it starts external
+  processes, which the worker's confinement forbids), readline/editline, X11
+  and OpenMP off.
+- Licences: `ngspice-manifest.json` records a licence per component and, for
+  KLU, AMD, COLAMD, BTF and SuiteSparse_config, one per file
+  (`file_licenses`: the file's own notice, else ngspice's `COPYING`);
+  `ngspice_manifest.py check` fails when a file of those components has none
+  or a forbidden code model (`d_cosim`, `d_process`, `table`) is compiled in.
 - `-ffp-contract=off` on every ngspice object (Q-SIM-10); no `-ffast-math`.
 - `-fvisibility=hidden`: the library exports only the ngspice C API
   (`ngSpice_*`, `ngGet_*`, `ngCM_Input_Path`).
