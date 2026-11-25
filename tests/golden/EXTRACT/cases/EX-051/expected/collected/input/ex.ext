@@ -1,0 +1,8 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use nleaf c1 1 0 0 0 1 0
+node "p" 0 0 4 -2 p

@@ -156,6 +156,10 @@ and the resistor terminal-count warnings) goes to the feedback list, not
 to a code, as Magic's DBWFeedbackAdd does. `EXTRACT-DEV-012` is an internal
 error of a caller that omits the cell, technology, style or node list.
 
+Subcell device priority (task 7.7, `disable_subcell_devices`) drops a
+parent device whose region a subcell device covers; it reports nothing, as
+Magic does.
+
 ## CMD
 
 Codes of the `extract` command and its run driver (`src/core/src/extract/command/`,
@@ -186,6 +190,21 @@ command's report and warning text, as Magic prints them.
 Codes of path-length extraction (`src/core/src/extract/length/`). Owner:
 EXTCMD. None yet: ExtLength.c's flood is tasks.md 9.5; until it lands a run
 with an `extract length driver` reports `CORE-NOTIMPL-008`.
+
+## HIER
+
+Codes of hierarchical extraction (`src/core/src/extract/hier/`; capability
+extract-hierarchy; design D11). Owner: EXTHIER.
+
+No code is declared. What Magic reports during the hierarchical passes it
+adds as feedback (DBWFeedbackAdd), and `extract_subtree` returns it the
+same way (`SubtreeResult::feedback`, with the error and warning counts):
+`Illegal overlap between <t1> and <t2> (types do not connect)` and `Cannot
+find the name of this node (probable extractor error)` (errors), `Warning:
+node labels should be inside overlap area` (with `extract warn labels`),
+and `System error: expected array element but none found`. A caller that
+omits the technology or the style gets the internal error
+`CMD-INTERNAL-001`.
 
 ## Table
 

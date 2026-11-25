@@ -1,0 +1,9 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses 80
+use leaf c1 1 0 0 0 1 0
+node "b" 200 1760 0 0 m1 40 28
+merge "c1/a" "b" -1760 -40 -28

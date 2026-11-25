@@ -1,0 +1,8 @@
+magic
+tech exttest
+timestamp 100
+<< ndiff >>
+rect 0 0 10 4
+<< labels >>
+rlabel ndiff 2 2 2 2 0 n
+<< end >>

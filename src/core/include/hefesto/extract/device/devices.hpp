@@ -87,6 +87,14 @@ struct DeviceRegionTiles {
                                                                  const tech::Technology& technology,
                                                                  const ExtStyle& style);
 
+/// Added in M7 R4 (task 7.7, "Subcell device priority"; ExtBasic.c:251-283):
+/// disables every region for which a subcell, at any depth, has a device
+/// type of the region's reference plane in the 1x1 square at the lower-left
+/// corner of the region's representative tile, so the subcell's device is
+/// the one written.
+void disable_subcell_devices(const db::CellDef& cell, std::vector<DeviceRegionTiles>& regions,
+                             const tech::Technology& technology, const ExtStyle& style);
+
 /// One terminal of a recognised device, with the values written for it.
 struct DeviceTerminal {
   /// Index into the cell's NodeRegionList; nullopt is written `(none)`
