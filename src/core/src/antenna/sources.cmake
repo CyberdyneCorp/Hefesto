@@ -8,4 +8,8 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/antenna.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/evaluate.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/measure.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/rules.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/run.cpp
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp)

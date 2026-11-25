@@ -346,12 +346,13 @@ TEST_CASE("extresist has Magic's option table and messages", "[m7-scaffold]") {
     expected += std::string{entry} + "\n";
   }
   CHECK(s.take_printed() == expected);
-  check_not_implemented(s.run("extresist"), "extresist run");
+  // RESCMD landed the options and the run (tasks.md 14.1): without a box
+  // cell every option answers without CORE-NOTIMPL-008.
+  REQUIRE(s.run("extresist").ok());
   for (const std::string_view entry : hefesto::extresist::extresist_options()) {
     const std::string name = option_name(entry);
-    if (name != "help") {
-      check_not_implemented(s.run("extresist " + name), "extresist " + name);
-    }
+    INFO(name);
+    CHECK(s.run("extresist " + name).ok());
   }
 }
 
@@ -366,7 +367,7 @@ TEST_CASE("antennacheck has Magic's option table and help", "[m7-scaffold]") {
         "    [run] [options]\trun antennacheck on current cell\n\t\t\tuse \"run -help\" to get standard options\n"
         "    debug\t\t\tprint detailed information about each error\n"
         "    help\t\t\tprint help information\n");
-  check_not_implemented(s.run("antennacheck debug"), "antennacheck debug");
+  REQUIRE(s.run("antennacheck debug").ok());  // ANTENNA landed debug (tasks.md 15.2)
 }
 
 // Q-MISC-91 (compat, as Q-NETLIST-13): ON, the word `run` is a run argument
@@ -380,8 +381,9 @@ TEST_CASE("antennacheck first word run with magic-compat ON", "[cap:antenna-chec
   const std::vector<std::string> d{"d"};
   CHECK(netlist::classify_first_word(d, hefesto::antenna::antennacheck_options(), true).kind ==
         netlist::FirstWord::option);
-  check_not_implemented(s.run("antennacheck"), "antennacheck run");
-  check_not_implemented(s.run("antennacheck run -x"), "antennacheck run");
+  // ANTENNA landed the run (tasks.md 15.2): no extraction style, no plane order.
+  REQUIRE(s.run("antennacheck").ok());
+  REQUIRE(s.run("antennacheck run -x").ok());
 }
 
 // OFF: `run` is a keyword whose following words are the run arguments; an
@@ -395,8 +397,8 @@ TEST_CASE("antennacheck first word run with magic-compat OFF", "[cap:antenna-che
   CHECK(off.run_args == std::vector<std::string>{"inv"});
   const std::vector<std::string> inv{"inv"};
   CHECK(netlist::classify_first_word(inv, hefesto::antenna::antennacheck_options(), false).run_args == inv);
-  check_not_implemented(s.run("antennacheck run inv"), "antennacheck run");
-  check_not_implemented(s.run("antennacheck inv"), "antennacheck run");
+  REQUIRE(s.run("antennacheck run inv").ok());
+  REQUIRE(s.run("antennacheck inv").ok());
 }
 
 // --- tasks.md 3.3/3.5: the area-contract stubs ------------------------------
@@ -437,7 +439,7 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());
   CHECK(rendered.error().code == "EXTFLAT-READ-001");
-  check_not_implemented(hefesto::extresist::run(s.state, {}, nullptr), "extresist run");
+  CHECK(hefesto::extresist::run(s.state, {}, nullptr).ok());  // RESCMD landed the run: no box cell
   // EXTCAP landed fringe_fraction (tasks.md 6.4): tests/unit/extract/cap/cr_atan_test.cpp.
   const std::vector<std::string> parts{"x1", "n1"};
   extflat::NameFlags flags;
