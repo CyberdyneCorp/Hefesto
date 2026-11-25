@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import extract_cases  # noqa: E402
 import tclcase  # noqa: E402
-from extract_cases import Cell, Label, lab, mag  # noqa: E402
+from extract_cases import Cell, Label, mag  # noqa: E402
 from goldenlib.collect import Collect  # noqa: E402
 from tclcase import TclCase, lines, p  # noqa: E402
 
