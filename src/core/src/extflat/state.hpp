@@ -94,7 +94,9 @@ struct ReadState {
     }
   }
 
-  [[nodiscard]] bool is_global(std::string_view leaf) const { return globals.count(std::string{leaf}) != 0; }
+  [[nodiscard]] bool is_global(std::string_view leaf) const {
+    return (options.bang_globals && !leaf.empty() && leaf.back() == '!') || globals.count(std::string{leaf}) != 0;
+  }
 
   /// efReadError: "<file>, line <n>: <text>".
   void read_error(std::string_view text);

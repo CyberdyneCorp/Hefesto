@@ -6,6 +6,12 @@ release notices.
 
 ## Unreleased (M10: 3D view, phase 1)
 
+### Fixed
+
+- **3D view upside down in tilted views.** The isometric, front and side
+  views showed the stack from below (wells on top, metals at the
+  bottom); every tilted view now looks from above.
+
 ### Added
 
 - **3D view of the layout layers.** `specialopen wind3d [cell]` (and the
@@ -25,6 +31,17 @@ release notices.
   box. Clicking a face picks it: the 2D view selects the material (or
   the subcell use) under it, a 2D selection highlights its faces, and
   "Isolate selected net" highlights the picked net and dims the rest.
+- **Board look in the desktop 3D tab.** The tab now draws the approved
+  board look in both magic-compat modes: dark theme background, flat
+  per-face shading (tops lighter than sides), opening on a framed
+  isometric view from above with an x/y/z axis gizmo, and wells,
+  implants and other non-conducting area layers ghosted at 20 % (each
+  row can be changed). Mode, level, cut box and mesh status sit in a
+  toolbar under the view.
+  The isometric opening applies to the window the tab opens (`render3d`);
+  a `specialopen wind3d` window keeps the top-down view. In mask-layer
+  mode the opening z scale follows the output scale factor, so the stack
+  keeps its proportions.
 - **Script routing with magic-compat ON.** While a 3D window is open and
   current, the layout commands a script runs go to it, as in Magic; with
   magic-compat OFF they go to the layout window.

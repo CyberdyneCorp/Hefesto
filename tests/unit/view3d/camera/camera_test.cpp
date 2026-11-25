@@ -372,3 +372,136 @@ TEST_CASE("the Q-MISC-78 branch point picks the factor per mode", "[cap:view-3d]
   CHECK(view3d::change_output_style(v, false, 0.0F, 5.0F) == 0.0F);
   CHECK(v == before);
 }
+
+// --- Q-MISC-84: framing a 3D box (task 16.5) --------------------------------
+
+namespace {
+
+// A sky130 standard cell's bbox in internal units with heights up to 6.63
+// (metal5's top in the stack's draw units).
+const view3d::Extent3 kCellBox{-19.0, -24.0, 755.0, 296.0, 0.0, 6.63};
+
+// The clip-space |x| and |y| bound of the box's corners and its centre,
+// as the renderer draws it (z = +h * scale_z).
+struct ClipBox {
+  double extent = 0.0;
+  double cx = 0.0;
+  double cy = 0.0;
+};
+
+ClipBox clip_box(const view3d::ViewState& v, const view3d::Extent3& b, int w, int h) {
+  const view3d::Matrix4 m = view3d::matrix(v, w, h, {});
+  std::array<double, 2> lo{1e30, 1e30};
+  std::array<double, 2> hi{-1e30, -1e30};
+  for (unsigned c = 0; c < 8U; ++c) {
+    const double x = (c & 1U) != 0U ? b.x1 : b.x0;
+    const double y = (c & 2U) != 0U ? b.y1 : b.y0;
+    const double z = ((c & 4U) != 0U ? b.z1 : b.z0) * static_cast<double>(v.scale_z);
+    for (std::size_t r = 0; r < 2; ++r) {
+      const auto e = [&](std::size_t i) { return static_cast<double>(m[i]); };
+      const double p = (e(r) * x) + (e(4 + r) * y) + (e(8 + r) * z) + e(12 + r);
+      lo[r] = std::fmin(lo[r], p);
+      hi[r] = std::fmax(hi[r], p);
+    }
+  }
+  ClipBox out;
+  out.extent = std::fmax(std::fmax(-lo[0], hi[0]), std::fmax(-lo[1], hi[1]));
+  out.cx = 0.5 * (lo[0] + hi[0]);
+  out.cy = 0.5 * (lo[1] + hi[1]);
+  return out;
+}
+
+// A square cell (the inverter demo's shape) with a 10-unit stack.
+const view3d::Extent3 kSquareBox{0.0, 0.0, 1000.0, 1000.0, 0.0, 10.0};
+
+view3d::ViewState preset_default(view3d::Preset p, const Rect& bbox = Rect{-19, -24, 755, 296}) {
+  auto v = view3d::default_view(bbox, view3d::Mode::layout_layer, 1.0F);
+  view3d::Gesture g;
+  g.kind = view3d::Gesture::Kind::preset;
+  g.preset = p;
+  view3d::apply(v, g);
+  return v;
+}
+
+constexpr std::array<std::array<int, 2>, 3> kSizes{{{500, 500}, {800, 500}, {500, 800}}};
+
+}  // namespace
+
+TEST_CASE("frame_view centres the cell's 3D box and fills 90% of the limiting dimension",
+          "[cap:view-3d][req:Default view]") {
+  for (const auto& [w, h] : kSizes) {
+    for (const view3d::Preset p :
+         {view3d::Preset::top, view3d::Preset::isometric, view3d::Preset::front, view3d::Preset::side}) {
+      INFO(w << " x " << h << ", preset " << static_cast<int>(p));
+      const view3d::ViewState v = preset_default(p);
+      const view3d::ViewState framed = view3d::frame_view(v, kCellBox, w, h);
+      // The angles and z scales are kept; only scroll/zoom values change.
+      CHECK(framed.view_x == v.view_x);
+      CHECK(framed.view_y == v.view_y);
+      CHECK(framed.view_z == v.view_z);
+      CHECK(framed.scale_z == v.scale_z);
+      CHECK(framed.prescale_z == v.prescale_z);
+      const ClipBox b = clip_box(framed, kCellBox, w, h);
+      CHECK_THAT(b.extent, WithinAbs(view3d::kFrameFill, 1e-4));
+      CHECK_THAT(b.cx, WithinAbs(0.0, 1e-4));
+      CHECK_THAT(b.cy, WithinAbs(0.0, 1e-4));
+    }
+  }
+}
+
+TEST_CASE("an isometric view right after render3d fits the window once framed",
+          "[cap:view-3d][req:Default view]") {
+  // Round-3 open item: the default view fits the cell's x/y extent in the
+  // top view; turned to the isometric preset, a square cell's diagonal and
+  // the stack's height overflow a square window.
+  const view3d::ViewState v = preset_default(view3d::Preset::isometric, Rect{0, 0, 1000, 1000});
+  CHECK(clip_box(v, kSquareBox, 500, 500).extent > 1.0);
+  for (const auto& [w, h] : kSizes) {
+    INFO(w << " x " << h);
+    const view3d::ViewState framed = view3d::frame_view(v, kSquareBox, w, h);
+    CHECK_THAT(clip_box(framed, kSquareBox, w, h).extent, WithinAbs(view3d::kFrameFill, 1e-4));
+  }
+}
+
+TEST_CASE("frame_view's result is what absolute scroll and zoom commands set",
+          "[cap:view-3d][req:3D view commands]") {
+  const view3d::ViewState v = preset_default(view3d::Preset::isometric);
+  const view3d::ViewState framed = view3d::frame_view(v, kCellBox, 800, 500);
+  // `scroll tx ty tz` and `zoom s_xy s_z` (absolute) replace exactly these.
+  view3d::ViewState commanded = v;
+  commanded.trans_x = framed.trans_x;
+  commanded.trans_y = framed.trans_y;
+  commanded.trans_z = framed.trans_z;
+  commanded.scale_xy = framed.scale_xy;
+  commanded.scale_z = framed.scale_z;
+  CHECK(commanded == framed);
+  CHECK(framed.trans_x == -368.0F);
+  CHECK(framed.trans_y == -136.0F);
+  CHECK(framed.trans_z == static_cast<float>(-0.5 * 6.63 * 25.0));
+}
+
+TEST_CASE("frame_view leaves the view unchanged for a box it cannot frame",
+          "[cap:view-3d][req:Default view]") {
+  const view3d::ViewState v = preset_default(view3d::Preset::isometric);
+  CHECK(view3d::frame_view(v, view3d::Extent3{0, 0, std::nan(""), 1, 0, 1}, 500, 500) == v);
+  // A point keeps the scale and is centred.
+  const view3d::ViewState p = view3d::frame_view(v, view3d::Extent3{10, 20, 10, 20, 0, 0}, 500, 500);
+  CHECK(p.scale_xy == v.scale_xy);
+  CHECK(p.trans_x == -10.0F);
+  CHECK(p.trans_y == -20.0F);
+  CHECK(view3d::frame_view(v, kCellBox, 0, 0).scale_xy > 0.0F);  // a non-positive size is square
+}
+
+TEST_CASE("frame_view keeps the view when the framed camera would not be finite",
+          "[cap:view-3d][req:Default view]") {
+  // Regression: `zoom 1 3e38` then a preset made trans_z = -0.5 (z0 + z1)
+  // s_z overflow float, and `scroll ... inf` turned the view into NaN.
+  view3d::ViewState v = preset_default(view3d::Preset::isometric);
+  v.scale_z = 3e38F;  // finite; -0.5 * (z0 + z1) * s_z is not
+  const view3d::ViewState framed = view3d::frame_view(v, kCellBox, 500, 500);
+  CHECK(framed == v);
+  CHECK(std::isfinite(framed.trans_z));
+  // A box beyond float range in x is refused the same way.
+  const view3d::ViewState wide = preset_default(view3d::Preset::top);
+  CHECK(view3d::frame_view(wide, view3d::Extent3{-1e300, 0, 1e300 * 0.5, 10, 0, 1}, 500, 500) == wide);
+}

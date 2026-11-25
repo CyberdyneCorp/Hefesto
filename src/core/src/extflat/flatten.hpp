@@ -39,7 +39,9 @@ struct FlatContext {
   const LayerNames& layers;
   std::optional<diag::Diagnostic> fatal;  // a cap or a cycle: the flattening stops
 
-  [[nodiscard]] bool is_global(std::string_view leaf) const { return globals.count(std::string{leaf}) != 0; }
+  [[nodiscard]] bool is_global(std::string_view leaf) const {
+    return (options.bang_globals && !leaf.empty() && leaf.back() == '!') || globals.count(std::string{leaf}) != 0;
+  }
   void message(std::string_view code, std::string text) const;
   /// Records the first fatal condition (later ones are not reported).
   void fail(std::string_view code, std::string text);
@@ -63,8 +65,9 @@ struct FlatPlan {
 [[nodiscard]] Netlist flatten_full(FlatContext& ctx, std::uint32_t root, const FlatPlan& plan);
 
 /// EFFlatBuildOneLevel of `def` and the EFHierVisit* visits; `nodevices`
-/// receives DEF_NODEVICES of `def`.
-[[nodiscard]] Netlist flatten_level(FlatContext& ctx, std::uint32_t def, const FlatPlan& plan, bool& nodevices);
+/// holds DEF_NODEVICES per def across flattenings, as Magic's def flags do.
+[[nodiscard]] Netlist flatten_level(FlatContext& ctx, std::uint32_t def, const FlatPlan& plan,
+                                    std::vector<char>& nodevices);
 
 /// EFNodeResist over area/perimeter pairs and the class resistances.
 [[nodiscard]] std::int32_t node_resistance(const std::vector<PerimArea>& pa, const std::vector<std::int32_t>& resists);

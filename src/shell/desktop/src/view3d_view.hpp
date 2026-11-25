@@ -2,7 +2,8 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The desktop's 3D view (the editor-view tab "3D"; openspec/changes/
-// m10-3d-view/design.md D8, D9, D10, D12, tasks 9.1, 9.2, 9.6, 13.2; board
+// m10-3d-view/design.md D8, D9, D10, D12, tasks 9.1, 9.2, 9.6, 13.2,
+// 16.6-16.8, 16.10; Q-MISC-84 board look, Q-MISC-85 ghosted layers; board
 // docs/design/mockups/View3D.dc.html): a second Raven viewport, like
 // LayoutCanvas, in texture mode, showing the render::VulkanOffscreenTarget
 // that render::VulkanMesh3dRenderer draws into, with the layer stack panel
@@ -93,7 +94,20 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   void build_side();
   void build_layer_section(ui::Box& box);
   void build_view_section(ui::Box& box);
-  void build_parity_section(ui::Box& box);
+  /// The view toolbar along the bottom of the 3D view (board, task 16.10):
+  /// Mask / Layout layers, the Level stepper, Cut box and the mesh status.
+  void build_toolbar();
+  void paint_status(ui::Painter& p, float w, float h);
+  void paint_gizmo(ui::Painter& p, float h);
+  /// Runs `which`'s angles framed to the cell (`view`, `scroll`, `zoom`;
+  /// Q-MISC-84), with `scale_z` when given; only the angles while no model
+  /// or size is known.
+  void apply_camera(view3d::Preset which, std::optional<float> scale_z = std::nullopt);
+  /// The isometric default once per window the desktop opened (Q-MISC-84,
+  /// default_camera_commands).
+  void apply_default_camera();
+  /// The camera frame of the drawn mesh (CameraFrame).
+  [[nodiscard]] CameraFrame camera_frame() const;
   void build_inspect_section(ui::Box& box);
   ui::Painted& add_button(ui::Box& box, Control control, std::function<void()> click, std::string_view tooltip,
                           float width = -1.0F);
@@ -137,7 +151,11 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   std::mutex& queue_mutex_;
   std::function<float()> pixel_ratio_;
   ui::Box root_ = ui::Box::horizontal();
+  ui::Box stage_column_ = ui::Box::vertical();
   ui::Overlay stage_ = ui::Overlay::create();
+  ui::Panel toolbar_panel_ = ui::Panel::create(Rgba{});
+  ui::Box toolbar_ = ui::Box::horizontal();
+  std::unique_ptr<ui::Painted> status_paint_;
   std::unique_ptr<ui::Viewport> viewport_;
   std::unique_ptr<ui::Painted> stage_paint_;
   ui::Panel side_panel_ = ui::Panel::create(Rgba{});
@@ -176,7 +194,10 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   View3dOptions options_;
   std::vector<View3dLayerRow> rows_;  // display order: top layer first
   std::vector<Rgba> row_colors_;      // swatches, per row
-  std::vector<bool> drawable_;
+  std::vector<bool> drawable_;          // per stack entry of the drawn stack (or of the first build)
+  std::vector<bool> pending_drawable_;  // of build_stack_, until its model is drawn
+  GhostDefaults ghost_;                 // Q-MISC-85, per stack entry like drawable_
+  DefaultCameraLatch camera_latch_;
   PickResolver resolver_;
   View3dPicking picking_{resolver_};
   const view3d::HighlightSet* highlight_ = nullptr;

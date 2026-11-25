@@ -18,6 +18,7 @@
 #include "hefesto/ui/input.hpp"
 #include "hefesto/view/window.hpp"
 #include "hefesto/view3d/camera/input.hpp"
+#include "hefesto/view3d/client/scene.hpp"
 
 namespace hefesto::shell {
 
@@ -63,6 +64,17 @@ std::string format_float(float v) {
   return buf;
 }
 
+// Every digit a `float` needs to read back as the same value.
+std::string exact_float(float v) {
+  char buf[32];
+  std::snprintf(buf, sizeof buf, "%.9g", static_cast<double>(v));
+  return buf;
+}
+
+int percent(float alpha) {
+  return static_cast<int>(alpha * 100.0F + 0.5F);
+}
+
 bool pans(PointerButton button, std::uint8_t modifiers) {
   if (button == PointerButton::middle || button == PointerButton::right) return true;
   return button == PointerButton::left && (modifiers & (kModAlt | kModShift)) != 0;
@@ -80,7 +92,8 @@ std::string micron_range(const std::optional<view3d::PhysicalHeight>& height) {
 }
 
 std::vector<View3dLayerRow> layer_rows(const view3d::LayerStack& stack, const view3d::WindowState& window,
-                                       std::span<const float> alpha, const std::vector<bool>& drawable) {
+                                       std::span<const float> alpha, const std::vector<bool>& drawable,
+                                       const std::vector<bool>& ghosted) {
   std::vector<View3dLayerRow> rows;
   std::map<std::string, std::size_t, std::less<>> by_name;
   for (view3d::LayerId id = 0; id < stack.size(); ++id) {
@@ -89,12 +102,28 @@ std::vector<View3dLayerRow> layer_rows(const view3d::LayerStack& stack, const vi
     if (added) {
       rows.push_back(new_row(stack, id, window));
       rows.back().alpha = id < alpha.size() ? alpha[id] : 1.0F;
+      rows.back().ghosted = id < ghosted.size() && ghosted[id];
     }
     rows[it->second].layers.push_back(id);
   }
   std::stable_sort(rows.begin(), rows.end(),
                    [](const View3dLayerRow& a, const View3dLayerRow& b) { return a.bottom < b.bottom; });
   return rows;
+}
+
+std::string row_accessible_name(const View3dLayerRow& row) {
+  std::string name = row.name;
+  if (!row.range_um.empty()) name += ", " + row.range_um + " µm";
+  name += row.visible ? ", shown" : ", hidden";
+  if (row.alpha < 1.0F) {
+    name += (row.ghosted ? ", ghosted, " : ", ") + std::to_string(percent(row.alpha)) + " percent opaque";
+  }
+  return name;
+}
+
+std::string alpha_button_name(const View3dLayerRow& row) {
+  return "Transparency of " + row.name + ", " + std::to_string(percent(row.alpha)) + " percent" +
+         (row.ghosted ? ", ghosted by default" : "");
 }
 
 std::vector<bool> hidden_flags(const view3d::LayerStack& stack, const view3d::WindowState& window) {
@@ -131,6 +160,14 @@ std::string show_all_command(std::string_view path) {
 std::string preset_command(std::string_view path, view3d::Preset preset) {
   const view3d::Angles a = view3d::preset(preset);
   return window_command(path, "view " + format_float(a.x) + " " + format_float(a.y) + " " + format_float(a.z));
+}
+
+std::vector<std::string> camera_commands(std::string_view path, const view3d::ViewState& camera) {
+  return {window_command(path, "view " + exact_float(camera.view_x) + " " + exact_float(camera.view_y) + " " +
+                                   exact_float(camera.view_z)),
+          window_command(path, "scroll " + exact_float(camera.trans_x) + " " + exact_float(camera.trans_y) + " " +
+                                   exact_float(camera.trans_z)),
+          window_command(path, "zoom " + exact_float(camera.scale_xy) + " " + exact_float(camera.scale_z))};
 }
 
 std::string level_command(std::string_view path, int step) {
@@ -173,6 +210,147 @@ void set_row_alpha(View3dOptions& options, const View3dLayerRow& row, float alph
   for (const view3d::LayerId id : row.layers) {
     if (id < options.alpha.size()) options.alpha[id] = alpha;
   }
+  options.alpha_override.insert_or_assign(row.name, alpha);
+}
+
+void apply_default_alpha(View3dOptions& options, const view3d::LayerStack& stack, const std::vector<bool>& ghosted) {
+  options.alpha.assign(stack.size(), 1.0F);
+  for (std::size_t i = 0; i < stack.size(); ++i) {
+    const auto user = options.alpha_override.find(stack.layers()[i].name);
+    if (user != options.alpha_override.end()) {
+      options.alpha[i] = user->second;
+    } else if (i < ghosted.size() && ghosted[i]) {
+      options.alpha[i] = kGhostAlpha;
+    }
+  }
+}
+
+view3d::LayerStack tab_stack(const editor::EditorState& editor, bool magic_compat) {
+  return view3d::layout_stack(editor, magic_compat);
+}
+
+void GhostDefaults::building(const view3d::LayerStack& stack, std::vector<bool> ghosted, bool drawing,
+                             View3dOptions& options) {
+  pending_ = std::move(ghosted);
+  if (!drawing) {
+    ghosted_ = pending_;
+    apply_default_alpha(options, stack, ghosted_);
+  }
+}
+
+void GhostDefaults::drawn(const view3d::LayerStack& stack, View3dOptions& options) {
+  ghosted_ = pending_;
+  apply_default_alpha(options, stack, ghosted_);  // the user's per-row values win
+}
+
+void GhostDefaults::clear() noexcept {
+  pending_.clear();
+  ghosted_.clear();
+}
+
+// --- the board look --------------------------------------------------------------
+
+std::array<float, 3> view3d_background(ThemeMode mode) noexcept {
+  const Rgba& c = theme_tokens(mode).canvas;
+  return {c.r, c.g, c.b};
+}
+
+bool DefaultCameraLatch::take(bool open) noexcept {
+  if (!open) {
+    applied_ = false;
+    return false;
+  }
+  if (applied_) return false;
+  applied_ = true;
+  return true;
+}
+
+view3d::Extent3 stack_extent(const db::Rect& area, const view3d::LayerStack& stack,
+                             const std::vector<bool>& drawable) {
+  view3d::Extent3 box{static_cast<double>(area.x0), static_cast<double>(area.y0), static_cast<double>(area.x1),
+                      static_cast<double>(area.y1), 0.0, 0.0};
+  bool any = false;
+  for (view3d::LayerId id = 0; id < stack.size(); ++id) {
+    if (!entry_drawn(drawable, id)) continue;
+    const view3d::DrawHeight h = stack.draw_height(id);
+    const auto bottom = static_cast<double>(h.height);
+    const double top = bottom + static_cast<double>(h.thickness);
+    box.z0 = any ? std::min(box.z0, bottom) : bottom;
+    box.z1 = any ? std::max(box.z1, top) : top;
+    any = true;
+  }
+  return box;
+}
+
+std::vector<bool> layers_present(const view3d::MeshModel& mesh, std::size_t stack_size) {
+  std::vector<bool> present(stack_size, false);
+  const auto mark = [&present](view3d::LayerId id) {
+    if (id < present.size()) present[id] = true;
+  };
+  for (const view3d::Chunk& chunk : mesh.chunks) {
+    for (const view3d::RectInstance& r : chunk.rects) mark(r.layer);
+    for (const view3d::Triangle& t : chunk.triangles) mark(t.layer);
+  }
+  return present;
+}
+
+bool frame_ready(const CameraFrame& frame) noexcept {
+  return frame.window != nullptr && frame.mesh != nullptr && frame.stack != nullptr && frame.width_px > 0 &&
+         frame.height_px > 0;
+}
+
+std::vector<std::string> preset_camera_commands(const CameraFrame& frame, view3d::Preset which,
+                                                std::optional<float> scale_z) {
+  if (frame.window == nullptr) return {};
+  const std::string& path = frame.window->toolkit_path;
+  if (!frame_ready(frame)) return {preset_command(path, which)};
+  view3d::ViewState camera = frame.window->view;
+  const view3d::Angles angles = view3d::preset(which);
+  camera.view_x = angles.x;
+  camera.view_y = angles.y;
+  camera.view_z = angles.z;
+  if (scale_z) camera.scale_z = *scale_z;
+  // The layers the mesh draws (not the whole technology), in its region.
+  std::vector<bool> framed = layers_present(*frame.mesh, frame.stack->size());
+  for (std::size_t i = 0; i < framed.size() && i < frame.drawable.size(); ++i) {
+    framed[i] = framed[i] && frame.drawable[i];
+  }
+  view3d::Extent3 box = stack_extent(frame.mesh->region, *frame.stack, framed);
+  const auto f = static_cast<double>(xy_factor(*frame.window));  // mask-layer mode draws x and y scaled by f
+  box.x0 *= f;
+  box.y0 *= f;
+  box.x1 *= f;
+  box.y1 *= f;
+  return camera_commands(path, view3d::frame_view(camera, box, frame.width_px, frame.height_px));
+}
+
+bool desktop_opened(const view3d::WindowState& window) noexcept {
+  return window.toolkit_path == view3d::kRender3dToolkitPath;
+}
+
+float board_scale_z(const view3d::WindowState& window) noexcept {
+  return kBoardScaleZ * xy_factor(window);
+}
+
+std::vector<std::string> default_camera_commands(const CameraFrame& frame) {
+  if (!frame_ready(frame) || !desktop_opened(*frame.window)) return {};
+  return preset_camera_commands(frame, view3d::Preset::isometric, board_scale_z(*frame.window));
+}
+
+std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view) {
+  view3d::ViewState rotation;
+  rotation.view_x = view.view_x;
+  rotation.view_y = view.view_y;
+  rotation.view_z = view.view_z;
+  const view3d::Matrix4 m = view3d::matrix(rotation, 1, 1, view3d::ProjectionParams{});
+  // Column-major: the image of axis j of the displayed scene is column j;
+  // the screen's y is the negated clip y (the renderer draws clip y up). The
+  // scene is the model mirrored in z, so its +z points to the higher layers.
+  const auto arrow = [&m](char name, int column, float sign) {
+    return AxisArrow{name, sign * m[static_cast<std::size_t>(column * 4)],
+                     -sign * m[static_cast<std::size_t>(column * 4 + 1)]};
+  };
+  return {arrow('x', 0, 1.0F), arrow('y', 1, 1.0F), arrow('z', 2, 1.0F)};
 }
 
 float xy_factor(const view3d::WindowState& window) noexcept {
@@ -188,6 +366,9 @@ render::DrawParams draw_params(const FrameInputs& in) {
   params.stack = in.stack;
   params.styles = in.styles;
   params.highlight = in.highlight;
+  // The board look in both magic-compat modes (Q-MISC-84).
+  if (in.background) params.background = in.background;
+  params.lighting = render::Lighting::board;
   if (in.window != nullptr) {
     params.level = in.window->level;
     params.xy_scale = xy_factor(*in.window);

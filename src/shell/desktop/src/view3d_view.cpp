@@ -17,6 +17,7 @@
 #include "hefesto/view3d/camera/view_state.hpp"
 #include "hefesto/view3d/client/commands.hpp"
 #include "hefesto/view3d/client/scene.hpp"
+#include "hefesto/view3d/stack/ghost.hpp"
 #include "screen_paint.hpp"
 #include "side_panels.hpp"
 
@@ -87,6 +88,7 @@ View3dView::View3dView(ScreenContext& ctx, std::mutex& queue_mutex, std::functio
         s2->progress_posted = false;
       }
       stage_paint_->invalidate();
+      if (status_paint_) status_paint_->invalidate();
     });
   };
   callbacks.on_done = [alive, this](const view3d::MeshHandle& model) {
@@ -127,7 +129,10 @@ void View3dView::build_stage() {
     dirty_ = true;
   });
   viewport_->on_input([this](const CanvasInput& input) { return handle_input(input); });
-  root_.add(stage_, 1.0F);
+  stage_column_.add(stage_, 1.0F);
+  build_toolbar();
+  stage_column_.add(toolbar_panel_);
+  root_.add(stage_column_, 1.0F);
 }
 
 void View3dView::build_side() {
@@ -141,7 +146,6 @@ void View3dView::build_side() {
   side_.set_spacing(6.0F);
   build_layer_section(side_);
   build_view_section(side_);
-  build_parity_section(side_);
   build_inspect_section(side_);
   side_scroll_.add(side_);
   side_panel_.set_child(side_scroll_);
@@ -233,14 +237,18 @@ void View3dView::build_view_section(ui::Box& box) {
     const std::string label = entry.first;
     const view3d::Preset which = entry.second;
     add_button(presets, {nullptr, [label] { return label; }, nullptr, [this] { return window() != nullptr; }},
-               [this, which] { run(preset_command(path(), which)); },
-               "Camera preset " + label + ": view with the preset's angles");
+               [this, which] { apply_camera(which); },
+               "Camera preset " + label + ": view with the preset's angles, then scroll and zoom to frame the cell");
   }
   box.add(presets);
 }
 
-void View3dView::build_parity_section(ui::Box& box) {
-  add_section(box, "Magic 3D");
+void View3dView::build_toolbar() {
+  toolbar_panel_.set_fill(ctx_.tokens().bar);
+  toolbar_panel_.set_accessible_name("3D view toolbar");
+  toolbar_.set_padding(kPad, 6.0F, kPad, 6.0F);
+  toolbar_.set_spacing(10.0F);
+  ui::Box& box = toolbar_;
   ui::Box& mode = boxes_.emplace_back(ui::Box::horizontal());
   mode.set_spacing(4.0F);
   const auto is_mask = [this] { return window() != nullptr && window()->mode == view3d::Mode::mask_layer; };
@@ -275,6 +283,14 @@ void View3dView::build_parity_section(ui::Box& box) {
              [this] { run(cutbox_command(path(), !(window() != nullptr && window()->cut_box.has_value()))); },
              "Clip to the layout box: cutbox box / cutbox none");
   box.add(cut);
+  status_paint_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
+    paint_status(p, w, h);
+  });
+  status_paint_->set_size(-1.0F, kControlHeight);
+  status_paint_->set_role(ui::Role::text);
+  status_paint_->set_accessible_name("Mesh status");
+  box.add(*status_paint_, 1.0F);
+  toolbar_panel_.set_child(toolbar_);
 }
 
 void View3dView::build_inspect_section(ui::Box& box) {
@@ -455,6 +471,7 @@ void View3dView::on_frame() {
   }
   if (!open) return;
   if (sync_pending_) sync();
+  apply_default_camera();
   if (dirty_) draw_frame();
 }
 
@@ -468,15 +485,22 @@ void View3dView::reset_window_state() {
   highlight_ = nullptr;
   pick_caption_.clear();
   rows_.clear();
+  ghost_.clear();
+  drawable_.clear();
+  pending_drawable_.clear();
+  options_.alpha.clear();
+  options_.alpha_override.clear();  // a new window starts from the ghosted defaults
+  (void)camera_latch_.take(false);  // and from the default camera
   refresh_rows();
   stage_paint_->invalidate();
+  if (status_paint_) status_paint_->invalidate();
 }
 
 void View3dView::sync() {
   sync_pending_ = false;
   const view3d::WindowState* w = window();
   if (w == nullptr || !ctx_.editor().technology) return;
-  view3d::LayerStack stack = view3d::layout_stack(ctx_.editor(), magic_compat());
+  view3d::LayerStack stack = tab_stack(ctx_.editor(), magic_compat());
   const BuildKey key = build_key(ctx_.editor(), *w, stack, options_.span_connected_layers);
   if (!have_key_ || !(key == key_)) start_build(key, stack);
   refresh_rows();
@@ -490,8 +514,16 @@ void View3dView::start_build(const BuildKey& key, const view3d::LayerStack& stac
   have_key_ = true;
   build_stack_ = std::make_shared<const view3d::LayerStack>(stack);
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
-  drawable_.clear();
-  for (const render::LayerPaint& paint : render::layer_paints(*build_stack_, styles)) drawable_.push_back(paint.drawable);
+  // The rows and frames keep the drawn stack's flags until this build's
+  // model is drawn (take_model): the two stacks' layer ids may differ.
+  pending_drawable_.clear();
+  for (const render::LayerPaint& paint : render::layer_paints(*build_stack_, styles)) {
+    pending_drawable_.push_back(paint.drawable);
+  }
+  const bool drawing = drawn_stack_ != nullptr;
+  if (!drawing) drawable_ = pending_drawable_;
+  ghost_.building(*build_stack_, view3d::ghosted_by_default(*build_stack_, *ctx_.editor().technology), drawing,
+                  options_);
   if (key.cell == nullptr) {
     worker_->cancel();
     return;
@@ -512,11 +544,14 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
   if (!model->layer_heights.empty() && model->layer_heights.size() != build_stack_->size()) return;
   model_ = model;
   drawn_stack_ = build_stack_;
+  drawable_ = pending_drawable_;
+  ghost_.drawn(*drawn_stack_, options_);
   picking_.model_changed();  // the isolated net follows the new ordinals
   highlight_dirty_ = true;
   dirty_ = true;
   refresh_rows();
   stage_paint_->invalidate();
+  if (status_paint_) status_paint_->invalidate();
   viewport_->invalidate();
 }
 
@@ -534,7 +569,7 @@ void View3dView::refresh_rows() {
 }
 
 void View3dView::rebuild_rows(const view3d::WindowState& window, const view3d::LayerStack& stack) {
-  rows_ = layer_rows(stack, window, options_.alpha, drawable_);
+  rows_ = layer_rows(stack, window, options_.alpha, drawable_, ghost_.ghosted());
   std::reverse(rows_.begin(), rows_.end());  // the panel lists the top layer first
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   const std::vector<render::LayerPaint> paints = render::layer_paints(stack, styles);
@@ -546,12 +581,10 @@ void View3dView::rebuild_rows(const view3d::WindowState& window, const view3d::L
 }
 
 void View3dView::update_row(Row& row, const View3dLayerRow& r, bool editable) {
-  row.label->set_accessible_name(r.name + (r.range_um.empty() ? "" : ", " + r.range_um + " µm") +
-                                 (r.visible ? ", shown" : ", hidden"));
+  row.label->set_accessible_name(row_accessible_name(r));
   row.hide->set_accessible_name((r.visible ? "Hide " : "Show ") + r.name);
   row.isolate->set_accessible_name("Isolate " + r.name);
-  row.alpha->set_accessible_name("Transparency of " + r.name + ", " +
-                                 std::to_string(static_cast<int>(r.alpha * 100.0F + 0.5F)) + " percent");
+  row.alpha->set_accessible_name(alpha_button_name(r));
   row.hide->set_enabled(editable);
   row.isolate->set_enabled(editable);
   row.label->invalidate();
@@ -565,6 +598,7 @@ void View3dView::repaint() {
     c.widget->invalidate();
   }
   stage_paint_->invalidate();
+  if (status_paint_) status_paint_->invalidate();
 }
 
 // --- rows ----------------------------------------------------------------------------
@@ -623,7 +657,8 @@ void View3dView::draw_frame() {
     highlight_dirty_ = false;
   }
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
-  const render::DrawParams params = draw_params(FrameInputs{w, stack, styles, highlight_, &options_});
+  const render::DrawParams params =
+      draw_params(FrameInputs{w, stack, styles, highlight_, &options_, view3d_background(ctx_.mode)});
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -636,6 +671,7 @@ void View3dView::draw_frame() {
   viewport_->show_vulkan_image(shown.view, shown.width, shown.height);
   dirty_ = false;
   stage_paint_->invalidate();
+  if (status_paint_) status_paint_->invalidate();
 }
 
 // --- input ---------------------------------------------------------------------------
@@ -716,6 +752,25 @@ void View3dView::update_pick_scope(const view3d::LayerStack* stack) {
   resolver_.set_scope(view3d::PickContext{stack, cell, magic_compat()});
 }
 
+// --- camera (Q-MISC-84) --------------------------------------------------------------
+
+CameraFrame View3dView::camera_frame() const {
+  return CameraFrame{window(), model_.get(), drawn_stack_.get(), drawable_, pixels_.first, pixels_.second};
+}
+
+void View3dView::apply_camera(view3d::Preset which, std::optional<float> scale_z) {
+  for (const std::string& line : preset_camera_commands(camera_frame(), which, scale_z)) run(line);
+}
+
+void View3dView::apply_default_camera() {
+  // Waits for the first model, so the camera frames what is drawn.
+  const CameraFrame frame = camera_frame();
+  if (!frame_ready(frame)) return;
+  if (camera_latch_.take(window_open())) {
+    for (const std::string& line : default_camera_commands(frame)) run(line);
+  }
+}
+
 // --- painting ------------------------------------------------------------------------
 
 void View3dView::paint_stage(ui::Painter& p, float w, float h) {
@@ -738,6 +793,16 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
     p.fill((w - nw) / 2.0F, 12.0F, nw, 30.0F, 6.0F, alpha_of(t.warning, 0.2F));
     p.text_centered_y(TextRole::body_strong, (w - nw) / 2.0F + 12.0F, 27.0F, *notice, t.warning_text);
   }
+  paint_gizmo(p, h);
+  if (!pick_caption_.empty()) {
+    const float cw = p.text_width(TextRole::body, pick_caption_) + 20.0F;
+    p.fill(w - cw - 8.0F, h - 34.0F, cw, 26.0F, 6.0F, alpha_of(t.surface0, 0.85F));
+    p.text_centered_y(TextRole::body, w - cw + 2.0F, h - 21.0F, pick_caption_, t.text_primary);
+  }
+}
+
+void View3dView::paint_status(ui::Painter& p, float w, float h) {
+  const ThemeTokens& t = ctx_.tokens();
   MeshStatus status;
   {
     const std::lock_guard lock(shared_->mutex);
@@ -749,12 +814,31 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
   std::string line = mesh_status_text(status);
   if (options_.show_frame_time) line += "   ·   frame " + timer_.text();
   if (!renderer_error_.empty()) line = renderer_error_;
-  p.fill(8.0F, h - 34.0F, p.text_width(TextRole::mono_small, line) + 20.0F, 26.0F, 6.0F, alpha_of(t.surface0, 0.85F));
-  p.text_centered_y(TextRole::mono_small, 18.0F, h - 21.0F, line, t.text_primary);
-  if (!pick_caption_.empty()) {
-    const float cw = p.text_width(TextRole::body, pick_caption_) + 20.0F;
-    p.fill(w - cw - 8.0F, h - 34.0F, cw, 26.0F, 6.0F, alpha_of(t.surface0, 0.85F));
-    p.text_centered_y(TextRole::body, w - cw + 2.0F, h - 21.0F, pick_caption_, t.text_primary);
+  status_paint_->set_accessible_name(line);
+  const float tw = p.text_width(TextRole::mono_small, line);
+  const float x = std::max(0.0F, w - tw - 30.0F);
+  p.fill(x, 0.0F, tw + 30.0F, h, 8.0F, t.surface1);
+  const Rgba dot = !renderer_error_.empty() ? t.danger : (status.building ? t.warning : t.success);
+  p.fill(x + 10.0F, h / 2.0F - 4.0F, 8.0F, 8.0F, 4.0F, dot);
+  p.text_centered_y(TextRole::mono_small, x + 24.0F, h / 2.0F, line, t.text_secondary);
+}
+
+// The x/y/z axis gizmo at the bottom left of the view (board colours).
+void View3dView::paint_gizmo(ui::Painter& p, float h) {
+  const view3d::WindowState* win = window();
+  if (win == nullptr) return;
+  constexpr float kLength = 40.0F;
+  const float ox = 48.0F;
+  const float oy = h - 48.0F;
+  const Rgba colors[3] = {Rgba::hex(0xFF6B6B), Rgba::hex(0x5FD3A0), Rgba::hex(0x5AA9F0)};
+  const std::array<AxisArrow, 3> arrows = axis_gizmo(win->view);
+  for (std::size_t i = 0; i < arrows.size(); ++i) {
+    const float x = ox + arrows[i].dx * kLength;
+    const float y = oy + arrows[i].dy * kLength;
+    p.line(ox, oy, x, y, 2.0F, colors[i]);
+    const float label_x = x + (arrows[i].dx >= 0.0F ? 4.0F : -12.0F);
+    p.text_centered_y(TextRole::mono_small, label_x, y, std::string(1, arrows[i].name),
+                      ctx_.tokens().text_secondary);
   }
 }
 

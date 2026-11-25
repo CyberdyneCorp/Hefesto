@@ -198,6 +198,8 @@ def hostile_ext() -> dict[str, bytes]:
         "deep-chain": b"use c0 u 1 0 0 0 1 0\n" + chain,
         "merge-chain": b"tech lefdef\nscale 1000 1 1\n" + merges,
         "array-use": b"use leaf l[0:100000:1][0:100000:1] 1 0 0 0 1 0\n@@ leaf\nnode \"a\" 1 0 0 0 metal1\n",
+        # Port numbers past ReadLimits::max_port_index (the netlisters number ports past the highest).
+        "port-number": b"port a 2147483647 0 0 1 1 metal1\nport b 1000000000 0 0 1 1 metal1\n",
     }
 
 

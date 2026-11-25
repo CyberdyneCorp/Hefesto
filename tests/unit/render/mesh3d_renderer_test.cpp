@@ -343,9 +343,15 @@ bool near_rgb(const std::array<int, 3>& a, const std::array<float, 3>& expected,
   return true;
 }
 
-/// Directional lighting (magic-compat OFF): every interior pixel has the lit
+/// The board intensity of a face with displayed normal `normal` in view `v`.
+float board(const view3d::ViewState& v, const std::array<float, 3>& normal) {
+  return render::light_intensity(render::Lighting::board, render::board_light(v.view_z), normal);
+}
+
+/// Board lighting (both modes, Q-MISC-84): every interior pixel has the lit
 /// color of the face its pick id names, and the background elsewhere.
-void check_colors(const Scene& s, const display::StyleSet& styles, const render::TargetReadback& r) {
+void check_colors(const Scene& s, const display::StyleSet& styles, const render::TargetReadback& r,
+                  const view3d::ViewState& v) {
   const auto paints = render::layer_paints(s.stack, &styles);
   const auto bg = render::background_color(&styles);
   int checked = 0;
@@ -354,9 +360,7 @@ void check_colors(const Scene& s, const display::StyleSet& styles, const render:
       if (!interior(r, x, y)) continue;
       const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, x, y)]);
       const std::array<float, 3> expected =
-          ref.has_value() ? render::lit_color(paints[layer_of(s.mesh, *ref)].rgb,
-                                              render::light_intensity(render::Lighting::directional, {0, 0, 0},
-                                                                      face_normal(s.mesh, *ref)))
+          ref.has_value() ? render::lit_color(paints[layer_of(s.mesh, *ref)].rgb, board(v, face_normal(s.mesh, *ref)))
                           : bg;
       INFO("pixel (" << x << ", " << y << ")");
       CHECK(near_rgb(rgb_of(r.color[pixel(r, x, y)]), expected, 2));
@@ -366,24 +370,27 @@ void check_colors(const Scene& s, const display::StyleSet& styles, const render:
   CHECK(checked > kWidth * kHeight / 2);
 }
 
-/// The pixel where the root point (x, y, z) lands.
+/// The pixel where the model point (x, y, z) (z = -h * s_z) lands: CAMERA's
+/// matrix applied to the displayed scene, the model mirrored in z
+/// (Q-MISC-84).
 std::pair<int, int> project(const view3d::ViewState& v, double x, double y, double z) {
   const view3d::Matrix4 m = view3d::matrix(v, kWidth, kHeight, view3d::ProjectionParams{});
   const auto at = [&](std::size_t i) { return static_cast<double>(m[i]); };
-  const double cx = (at(0) * x) + (at(4) * y) + (at(8) * z) + at(12);
-  const double cy = (at(1) * x) + (at(5) * y) + (at(9) * z) + at(13);
+  const double cx = (at(0) * x) + (at(4) * y) - (at(8) * z) + at(12);
+  const double cy = (at(1) * x) + (at(5) * y) - (at(9) * z) + at(13);
   const double px = (cx + 1.0) * 0.5 * kWidth;
   const double py = (1.0 - cy) * 0.5 * kHeight;  // y up in the view, down in the image
   return {static_cast<int>(px), static_cast<int>(py)};
 }
 
-/// The Vulkan depth of root point (x, y, z) in the renderer's mapping: the
-/// mirrored (w + z') / 2 of R1 (Q-MISC-81), higher layers nearer.
+/// The Vulkan depth of model point (x, y, z) in the renderer's mapping:
+/// (w - z') / 2 of the displayed (z-mirrored) scene (Q-MISC-81, Q-MISC-84),
+/// higher layers nearer.
 float depth_of(const view3d::ViewState& v, double x, double y, double z) {
   const view3d::Matrix4 m = view3d::matrix(v, kWidth, kHeight, view3d::ProjectionParams{});
   const auto at = [&](std::size_t i) { return static_cast<double>(m[i]); };
-  const double cz = (at(2) * x) + (at(6) * y) + (at(10) * z) + at(14);
-  return static_cast<float>(0.5 * (1.0 + cz));
+  const double cz = (at(2) * x) + (at(6) * y) - (at(10) * z) + at(14);
+  return static_cast<float>(0.5 * (1.0 - cz));
 }
 
 /// The model z of the face at a layer's h + t end, the one the top view
@@ -447,13 +454,6 @@ TEST_CASE("3D colors: style colors, only solid and stippled styles drawn, the tr
   CHECK_FALSE(paints[1].drawable);
   CHECK(paints[2].drawable);
   CHECK(render::background_color(&styles) == std::array<float, 3>{40.0F / 255.0F, 40.0F / 255.0F, 40.0F / 255.0F});
-  // Magic: ambient 0.2 + 0.4 and the light at (50, 50, 50) on the normal
-  // (0, 0, 1) of every face; directly under the light the diffuse term is 1.
-  CHECK(render::light_intensity(render::Lighting::magic, {50, 50, 0}, {1, 0, 0}) == 1.6F);
-  CHECK(render::light_intensity(render::Lighting::magic, {50, 50, 100}, {0, 0, 1}) == 0.6F);
-  // Directional (OFF): ambient 0.4 and the light from (1, 1, 1).
-  CHECK(std::abs(render::light_intensity(render::Lighting::directional, {}, {0, 0, 1}) - 0.97735F) < 1e-5F);
-  CHECK(render::light_intensity(render::Lighting::directional, {}, {-1, 0, 0}) == 0.4F);
   const auto lit = render::lit_color({0.5F, 0.8F, 0.1F}, 1.6F);  // clamped to 1
   CHECK(std::abs(lit[0] - 0.8F) < 1e-6F);
   CHECK(lit[1] == 1.0F);
@@ -469,7 +469,7 @@ TEST_CASE("3D renderer top view matches its reference image",
   const view3d::ViewState v = view_of(s, view3d::Preset::top);
   const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("top", pick_map(s.mesh, r));
-  check_colors(s, f.styles, r);
+  check_colors(s, f.styles, r, v);
   // Higher layers are in front (R1, Q-MISC-81): metal1 covers ndiff and
   // poly where they overlap.
   CHECK(picked_layer(s, pick_at(f, v, 20, 30, 0)) == kMetal);
@@ -545,9 +545,10 @@ TEST_CASE("3D renderer isometric view matches its reference image",
           "[cap:view-3d][req:Viewing transform and shading]") {
   Fixture f;
   const Scene s = basic_scene();
-  const render::TargetReadback r = f.draw(s, view_of(s, view3d::Preset::isometric), f.params(s.stack));
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("isometric", pick_map(s.mesh, r));
-  check_colors(s, f.styles, r);
+  check_colors(s, f.styles, r, v);
 }
 
 TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
@@ -575,7 +576,8 @@ TEST_CASE("3D renderer draws a split tile's triangle at its own type's height wi
           "[cap:view-3d][req:Layer height and thickness for the layout-layer view]") {
   Fixture f;
   const Scene s = split_scene(false);
-  check_colors(s, f.styles, f.draw(s, view_of(s, view3d::Preset::isometric), f.params(s.stack)));
+  const view3d::ViewState iso = view_of(s, view3d::Preset::isometric);
+  check_colors(s, f.styles, f.draw(s, iso, f.params(s.stack)), iso);
   const view3d::ViewState top = view_of(s, view3d::Preset::top);
   const render::TargetReadback rt = f.draw(s, top, f.params(s.stack));
   const auto [px, py] = project(top, 85, 10, 0);  // inside the poly triangle (right side)
@@ -592,9 +594,10 @@ TEST_CASE("3D renderer draws a split tile's triangle at its own type's height wi
 TEST_CASE("3D renderer closes the faces cut by the cut box", "[cap:view-3d][req:Rendered geometry]") {
   Fixture f;
   const Scene s = cutbox_scene();
-  const render::TargetReadback r = f.draw(s, view_of(s, view3d::Preset::isometric), f.params(s.stack));
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
   check_reference("cutbox", pick_map(s.mesh, r));
-  check_colors(s, f.styles, r);
+  check_colors(s, f.styles, r, v);
 }
 
 TEST_CASE("3D renderer: a type in two styles shows the last style's color on its top face (Q-MISC-77)",
@@ -615,38 +618,38 @@ TEST_CASE("3D renderer: a type in two styles shows the last style's color on its
     const render::TargetReadback r = f.draw(s, v, f.params(s.stack, level));
     const auto [px, py] = project(v, 20, 10, 0);
     CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == view3d::LayerId{1});
-    const auto yellow = render::lit_color(render::layer_paints(s.stack, &f.styles)[1].rgb,
-                                          render::light_intensity(render::Lighting::directional, {}, {0, 0, 1}));
+    const auto yellow = render::lit_color(render::layer_paints(s.stack, &f.styles)[1].rgb, board(v, {0, 0, 1}));
     CHECK(near_rgb(rgb_of(r.color[pixel(r, px, py)]), yellow, 2));
   }
 }
 
-TEST_CASE("3D renderer: Magic's lighting with magic-compat ON", "[cap:view-3d][req:Viewing transform and shading]") {
+TEST_CASE("3D renderer draws the same board-shaded frame with magic-compat ON and OFF (Q-MISC-84)",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Q-MISC-84 (V1, approved 2026-11-24, both modes): Magic's GL-state
+  // lighting (normal (0, 0, 1), positional light at (50, 50, 50), per
+  // vertex) is no longer drawn; the metal1 face the top view shows is in
+  // its style color (I = 1), flat, with magic-compat ON as with it OFF.
   Fixture f;
-  const Scene s = basic_scene(true);
-  const view3d::ViewState v = view_of(s, view3d::Preset::top);
-  const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
-  // The metal1 face the top view shows (R1: at h + t, z = -1.5 * s_z):
-  // Gouraud-interpolated between the intensities at its corners, with
-  // Magic's normal (0, 0, 1).
-  const auto paints = render::layer_paints(s.stack, &f.styles);
-  float lo = 10.0F;
-  float hi = 0.0F;
-  for (const double x : {10.0, 80.0}) {
-    for (const double y : {20.0, 40.0}) {
-      const float i = render::light_intensity(render::Lighting::magic, {x, y, far_end_z(v, 1.0F, 0.5F)}, {0, 0, 1});
-      lo = std::min(lo, i);
-      hi = std::max(hi, i);
+  const Scene on = basic_scene(true);
+  const Scene off = basic_scene(false);
+  for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+    for (const int level : {0, 1}) {
+      INFO("preset " << static_cast<int>(preset) << ", level " << level);
+      const view3d::ViewState v = view_of(on, preset);
+      const render::TargetReadback a = f.draw(on, v, f.params(on.stack, level));
+      const render::TargetReadback b = f.draw(off, v, f.params(off.stack, level));
+      CHECK(a.color == b.color);
+      CHECK(a.pick == b.pick);
     }
   }
-  const auto [px, py] = project(v, 70, 30, 0);
-  REQUIRE(picked_layer(s, r.pick[pixel(r, px, py)]) == kMetal);
-  const auto c = rgb_of(r.color[pixel(r, px, py)]);
-  const auto lo_c = render::lit_color(paints[kMetal].rgb, lo);
-  const auto hi_c = render::lit_color(paints[kMetal].rgb, hi);
-  for (std::size_t i = 0; i < 3; ++i) {
-    CHECK(c[i] >= static_cast<int>(std::lround(std::min(lo_c[i], hi_c[i]) * 255.0F)) - 2);
-    CHECK(c[i] <= static_cast<int>(std::lround(std::max(lo_c[i], hi_c[i]) * 255.0F)) + 2);
+  const view3d::ViewState v = view_of(on, view3d::Preset::top);
+  const render::TargetReadback r = f.draw(on, v, f.params(on.stack));
+  const auto metal = render::layer_paints(on.stack, &f.styles)[kMetal].rgb;
+  for (const auto& [x, y] : {std::pair{12.0, 22.0}, std::pair{78.0, 38.0}, std::pair{70.0, 30.0}}) {
+    const auto [px, py] = project(v, x, y, 0);
+    INFO("pixel (" << px << ", " << py << ")");
+    REQUIRE(picked_layer(on, r.pick[pixel(r, px, py)]) == kMetal);
+    CHECK(near_rgb(rgb_of(r.color[pixel(r, px, py)]), metal, 1));  // Magic's light varied across the face
   }
 }
 
@@ -817,11 +820,8 @@ TEST_CASE("3D renderer draws a translucent style opaque in its plain colour, mag
       CHECK(r.color[pixel(r, x, y)] == plain.color[pixel(plain, x, y)]);
       CHECK((r.color[pixel(r, x, y)] >> 24U) == 0xFFU);  // opaque
     }
-    if (!magic_compat) {
-      const auto lit = render::lit_color(paints[kMetal].rgb,
-                                         render::light_intensity(render::Lighting::directional, {}, {0, 0, 1}));
-      CHECK(near_rgb(rgb_of(r.color[pixel(r, mx, my)]), lit, 2));
-    }
+    const auto lit = render::lit_color(paints[kMetal].rgb, board(v, {0, 0, 1}));
+    CHECK(near_rgb(rgb_of(r.color[pixel(r, mx, my)]), lit, 2));
   }
 }
 
@@ -864,7 +864,7 @@ TEST_CASE("3D pick sees through a transparent layer and skips hidden ones",
     r = f.draw(s, v, p);
     CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kPoly);
     const auto paints = render::layer_paints(s.stack, &f.styles);
-    const float top = render::light_intensity(render::Lighting::directional, {}, {0, 0, 1});
+    const float top = board(v, {0, 0, 1});
     const auto poly = render::lit_color(paints[kPoly].rgb, top);
     const auto metal = render::lit_color(paints[kMetal].rgb, top);
     const auto blended = rgb_of(r.color[pixel(r, px, py)]);
@@ -929,4 +929,271 @@ TEST_CASE("3D renderer rejects another target", "[cap:view-3d][req:Platform mech
   render::VulkanOffscreenTarget other(f.canvas->vulkan_device(), 8, 8);
   const view3d::LayerStack stack;
   CHECK_THROWS_AS(f.renderer.draw(view3d::ViewState{}, f.params(stack), other), std::invalid_argument);
+}
+
+// --- round 4: the board look (Q-MISC-84, Q-MISC-85; tasks 16.2-16.4) ---------
+
+TEST_CASE("board lighting: top faces in the style color, the two visible sides darker and distinct",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Q-MISC-84 (V1, both modes): flat per-face directional shading on the
+  // face's own normal in the displayed scene; never lighter than the style.
+  const auto iso = render::board_light(45.0F);
+  const auto at = [&](std::array<float, 3> n) { return render::light_intensity(render::Lighting::board, iso, n); };
+  CHECK(at({0, 0, 1}) == 1.0F);
+  const float left = at({-1, 0, 0});  // the -x faces, screen left in the isometric preset
+  const float right = at({0, -1, 0});  // the -y faces, screen right
+  CHECK(std::abs(left - 0.73F) < 1e-4F);
+  CHECK(std::abs(right - 0.64F) < 1e-4F);
+  CHECK(left - right > 0.05F);
+  CHECK(at({1, 0, 0}) == render::kBoardAmbient);
+  CHECK(at({0, 1, 0}) == render::kBoardAmbient);
+  CHECK(at({0, 0, -1}) == render::kBoardAmbient);
+  CHECK(at({0, 0, 0}) == render::kBoardAmbient);
+  // The light turns with the camera's azimuth: tops stay at 1 and the faces
+  // toward the screen's left stay the lighter side.
+  for (float view_z = 0.0F; view_z < 360.0F; view_z += 30.0F) {
+    INFO("view_z " << view_z);
+    const auto l = render::board_light(view_z);
+    CHECK(std::abs(render::light_intensity(render::Lighting::board, l, {0, 0, 1}) - 1.0F) < 1e-6F);
+    CHECK(std::abs((l[0] * l[0]) + (l[1] * l[1]) + (l[2] * l[2]) - 1.0F) < 1e-5F);
+  }
+  // Orbited 90 degrees (view_z 135), the viewer is toward (-1, 1, 1): the +y
+  // faces are on the screen left, the -x faces on the right.
+  const auto turned = render::board_light(135.0F);
+  CHECK(std::abs(render::light_intensity(render::Lighting::board, turned, {0, 1, 0}) - left) < 1e-5F);
+  CHECK(std::abs(render::light_intensity(render::Lighting::board, turned, {-1, 0, 0}) - right) < 1e-5F);
+}
+
+namespace {
+
+/// The interior pixels of `r` whose pick decodes to a face of `layer` with
+/// outward normal `normal` (a rect or triangle top: (0, 0, 1)).
+std::vector<std::uint32_t> face_pixels(const Scene& s, const render::TargetReadback& r, view3d::LayerId layer,
+                                       const std::array<float, 3>& normal) {
+  std::vector<std::uint32_t> out;
+  for (int y = 0; y < r.height; ++y) {
+    for (int x = 0; x < r.width; ++x) {
+      if (!interior(r, x, y)) continue;
+      const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, x, y)]);
+      if (!ref.has_value() || layer_of(s.mesh, *ref) != layer) continue;
+      const auto n = face_normal(s.mesh, *ref);
+      if (std::abs(n[0] - normal[0]) + std::abs(n[1] - normal[1]) + std::abs(n[2] - normal[2]) < 1e-3F) {
+        out.push_back(r.color[pixel(r, x, y)]);
+      }
+    }
+  }
+  return out;
+}
+
+/// The mean pixel row of the faces of `layer` of kind `kind`.
+double mean_row(const Scene& s, const render::TargetReadback& r, view3d::LayerId layer, render::PickKind kind) {
+  double sum = 0.0;
+  int n = 0;
+  for (int y = 0; y < r.height; ++y) {
+    for (int x = 0; x < r.width; ++x) {
+      const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, x, y)]);
+      if (ref.has_value() && ref->kind == kind && layer_of(s.mesh, *ref) == layer) {
+        sum += y;
+        ++n;
+      }
+    }
+  }
+  REQUIRE(n > 0);
+  return sum / n;
+}
+
+}  // namespace
+
+TEST_CASE("3D renderer shades a prism flat per face in the isometric preset, top lighter than its sides",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << (magic_compat ? "ON" : "OFF"));
+    const Scene s = basic_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+    const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
+    const auto top = face_pixels(s, r, kMetal, {0, 0, 1});
+    const auto left = face_pixels(s, r, kMetal, {-1, 0, 0});
+    const auto right = face_pixels(s, r, kMetal, {0, -1, 0});
+    REQUIRE(top.size() > 10);
+    REQUIRE(!left.empty());
+    REQUIRE(right.size() > 10);
+    // Flat: every pixel of a face has one color.
+    for (const auto* face : {&top, &left, &right}) {
+      CHECK(std::all_of(face->begin(), face->end(), [&](std::uint32_t c) { return c == face->front(); }));
+    }
+    const auto t = rgb_of(top.front());
+    const auto metal = render::layer_paints(s.stack, &f.styles)[kMetal].rgb;
+    CHECK(near_rgb(t, metal, 1));  // the style color: nothing washed to white
+    for (const auto* face : {&left, &right}) {
+      const auto c = rgb_of(face->front());
+      // Darker in every channel, by one factor (the same hue).
+      std::array<double, 3> ratio{};
+      for (std::size_t i = 0; i < 3; ++i) {
+        CHECK(c[i] < t[i]);
+        ratio[i] = static_cast<double>(c[i]) / static_cast<double>(t[i]);
+      }
+      CHECK(std::abs(ratio[0] - ratio[2]) < 0.04);
+      CHECK(std::abs(ratio[1] - ratio[2]) < 0.04);
+    }
+    CHECK(rgb_of(left.front())[2] - rgb_of(right.front())[2] > 10);  // two distinct side shades
+    for (const int c : t) CHECK(c < 255);
+  }
+}
+
+TEST_CASE("3D renderer isometric preset looks from above, metal1 above poly, magic-compat ON and OFF",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Regression (Q-MISC-84): round 3 mirrored only the depth, so depth put
+  // the viewer above while the projection still looked from Magic's
+  // underside: tilted views were drawn upside down, the lowest layers at
+  // the top of the screen. The model is now drawn mirrored in z.
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = basic_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+    for (const int level : {0, 1}) {
+      INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", level " << level);
+      const render::TargetReadback r = f.draw(s, v, f.params(s.stack, level));
+      // metal1's top face (h + t 1.5) lies higher on the screen than poly's
+      // (0.5), though its footprint's x + y is about the same.
+      CHECK(mean_row(s, r, kMetal, render::PickKind::rect) + 3.0 <
+            mean_row(s, r, kPoly, render::PickKind::rect));
+      // The faces shown are the h + t ones, where the projection puts them.
+      const double metal_top = far_end_z(v, 1.0F, 0.5F);
+      const auto [mx, my] = project(v, 70, 30, metal_top);
+      const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, mx, my)]);
+      REQUIRE(ref.has_value());
+      CHECK(ref->kind == render::PickKind::rect);
+      CHECK(layer_of(s.mesh, *ref) == kMetal);
+      CHECK(std::abs(r.depth[pixel(r, mx, my)] - depth_of(v, 70, 30, metal_top)) < 1e-4F);
+      const double poly_top = far_end_z(v, 0.3F, 0.2F);
+      const auto [px, py] = project(v, 55, 5, poly_top);  // poly alone, in front of metal1
+      CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kPoly);
+      CHECK(std::abs(r.depth[pixel(r, px, py)] - depth_of(v, 55, 5, poly_top)) < 1e-4F);
+    }
+  }
+}
+
+TEST_CASE("3D renderer front and side presets show the higher layers up",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  for (const view3d::Preset preset : {view3d::Preset::front, view3d::Preset::side}) {
+    INFO("preset " << static_cast<int>(preset));
+    const render::TargetReadback r = f.draw(s, view_of(s, preset), f.params(s.stack));
+    CHECK(mean_row(s, r, kMetal, render::PickKind::side) < mean_row(s, r, kNdiff, render::PickKind::side));
+  }
+}
+
+TEST_CASE("3D renderer clears to DrawParams::background", "[cap:view-3d][req:Viewing transform and shading]") {
+  // Q-MISC-84: the desktop tab passes its theme token; unset, the
+  // transparent style's color (Magic's w3dClear).
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  for (const int level : {0, 1}) {
+    INFO("level " << level);
+    render::DrawParams p = f.params(s.stack, level);
+    const render::TargetReadback plain = f.draw(s, v, p);
+    REQUIRE(plain.pick[pixel(plain, 0, 0)] == view3d::kNoPick);
+    CHECK(rgb_of(plain.color[pixel(plain, 0, 0)]) == std::array<int, 3>{40, 40, 40});
+    p.background = std::array<float, 3>{0.1F, 0.4F, 0.7F};  // display (sRGB) values
+    const render::TargetReadback r = f.draw(s, v, p);
+    CHECK(near_rgb(rgb_of(r.color[pixel(r, 0, 0)]), *p.background, 1));
+    CHECK(near_rgb(rgb_of(r.color[pixel(r, kWidth - 1, kHeight - 1)]), *p.background, 1));
+    CHECK(r.pick == plain.pick);
+  }
+}
+
+namespace {
+
+constexpr view3d::LayerId kDiff = 0;  // green, h 0, t 0.2
+constexpr view3d::LayerId kWell = 1;  // blue, h -0.2, t 0.6: encloses the diff
+
+/// A diff inside a well that covers the whole cell (Q-MISC-85).
+Scene well_scene(bool magic_compat) {
+  Scene s;
+  std::vector<view3d::StackLayer> layers{view3d::test::layer("pdiff", s.tech.ndiff, 0.0F, 0.2F, kGreen),
+                                         view3d::test::layer("nwell", s.tech.metal1, -0.2F, 0.6F, kBlue)};
+  s.stack = view3d::LayerStack{view3d::Mode::layout_layer, std::move(layers), magic_compat, 0.01};
+  db::CellDef cell("well", s.tech.tech->plane_count());
+  view3d::test::paint(cell, s.tech, Rect{20, 20, 40, 40}, s.tech.ndiff);
+  view3d::test::paint(cell, s.tech, Rect{0, 0, 60, 60}, s.tech.metal1);
+  finish(s, cell, Rect{-1, -1, 61, 61}, false);
+  return s;
+}
+
+}  // namespace
+
+TEST_CASE("a ghosted well shows the diff inside it, blended, and passes its pick through",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Q-MISC-85 (V2): wells and other non-conducting area layers are ghosted
+  // (alpha < 1): drawn after the opaque layers without depth writes or
+  // pick ids, from every side.
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = well_scene(magic_compat);
+    const auto paints = render::layer_paints(s.stack, &f.styles);
+    for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+      const view3d::ViewState v = view_of(s, preset);
+      for (const int level : {0, 1}) {
+        INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", preset " << static_cast<int>(preset)
+                             << ", level " << level);
+        render::DrawParams p = f.params(s.stack, level);
+        p.alpha = {1.0F, 0.2F};
+        const render::TargetReadback r = f.draw(s, v, p);
+        const double diff_top = far_end_z(v, 0.0F, 0.2F);
+        const auto [px, py] = project(v, 30, 30, diff_top);
+        CHECK(picked_layer(s, r.pick[pixel(r, px, py)]) == kDiff);
+        CHECK(std::abs(r.depth[pixel(r, px, py)] - depth_of(v, 30, 30, diff_top)) < 1e-4F);
+        // The well's top face over the diff's: 0.2 of the well, in linear light.
+        const auto c = rgb_of(r.color[pixel(r, px, py)]);
+        for (std::size_t i = 0; i < 3; ++i) {
+          const float lin = (0.2F * render::srgb_to_linear(paints[kWell].rgb[i])) +
+                            (0.8F * render::srgb_to_linear(paints[kDiff].rgb[i]));
+          CHECK(std::abs(c[i] - static_cast<int>(std::lround(render::linear_to_srgb(lin) * 255.0F))) <= 2);
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE("a ghosted well's side faces write no depth and no pick id",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = well_scene(false);
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  // A point on the well's -y side face with nothing opaque behind it.
+  const auto [px, py] = project(v, 30, 0, -0.1 * static_cast<double>(v.scale_z));
+  render::DrawParams p = f.params(s.stack);
+  const render::TargetReadback opaque = f.draw(s, v, p);
+  const auto ref = render::decode_pick(s.mesh, opaque.pick[pixel(opaque, px, py)]);
+  REQUIRE(ref.has_value());
+  REQUIRE(ref->kind == render::PickKind::side);
+  REQUIRE(layer_of(s.mesh, *ref) == kWell);
+  p.alpha = {1.0F, 0.2F};
+  const render::TargetReadback ghost = f.draw(s, v, p);
+  CHECK(ghost.pick[pixel(ghost, px, py)] == view3d::kNoPick);
+  CHECK(ghost.depth[pixel(ghost, px, py)] == 1.0F);
+  CHECK(ghost.color[pixel(ghost, px, py)] != opaque.color[pixel(opaque, px, py)]);
+}
+
+TEST_CASE("a ghosted layer never hides an opaque one, in every preset",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // The pick image and the depth are those of the scene without the ghost.
+  Fixture f;
+  const Scene s = well_scene(true);
+  for (const view3d::Preset preset :
+       {view3d::Preset::top, view3d::Preset::isometric, view3d::Preset::front, view3d::Preset::side}) {
+    INFO("preset " << static_cast<int>(preset));
+    const view3d::ViewState v = view_of(s, preset);
+    render::DrawParams p = f.params(s.stack);
+    p.hidden = {false, true};
+    const render::TargetReadback without = f.draw(s, v, p);
+    p.hidden = {};
+    p.alpha = {1.0F, 0.2F};
+    const render::TargetReadback ghost = f.draw(s, v, p);
+    CHECK(ghost.pick == without.pick);
+    CHECK(ghost.depth == without.depth);
+  }
 }

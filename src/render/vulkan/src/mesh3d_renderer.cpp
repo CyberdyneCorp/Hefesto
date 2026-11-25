@@ -147,19 +147,26 @@ enum class LayerDraw : std::uint8_t { skip, opaque, transparent };
 
 using Mat = std::array<double, 16>;  // column-major
 
-/// clip = m * S(s, s, 1) * T(ox, oy, 0) (s: DrawParams::xy_scale), then GL
-/// clip -> Vulkan clip: y down and depth (w + z) / 2. CAMERA's z' grows
-/// toward the side where Magic's faces put the viewer, the physical
-/// underside (z = -h * s_z); mirroring the depth puts the viewer on the side
-/// of the higher layers instead, so they are in front where layers overlap
-/// (R1, Q-MISC-81, both modes). x and y, hence the projected picture, are
-/// unchanged; the pipelines cull the other winding (mesh3d_pipelines.cpp).
+/// clip = m * S(s, s, 1) * T(ox, oy, 0) * diag(1, 1, -1) (s:
+/// DrawParams::xy_scale), then GL clip -> Vulkan clip: y down and depth
+/// (w - z') / 2 (z' grows toward the viewer, CAMERA). Magic's model has
+/// z = -h * s_z, so Magic's viewer sees the physical underside; CAMERA's
+/// matrix is applied to the model mirrored in z (the displayed scene, z
+/// growing with the height), so projection and depth agree that the viewer
+/// is on the side of the higher layers (R1, Q-MISC-81; Q-MISC-84, both
+/// modes): the top view shows higher layers in front with the picture
+/// unchanged, and a tilted view such as the isometric preset looks from
+/// above with the upper layers higher on the screen. Round 3 mirrored only
+/// the depth, which in tilted views drew the scene upside down. The mirror
+/// reverses every winding, so the pipelines' front faces are the clockwise
+/// ones (mesh3d_pipelines.cpp).
 Mat chunk_matrix(const view3d::Matrix4& m, double ox, double oy, double s) {
   Mat c{};
   for (std::size_t i = 0; i < 16; ++i) c[i] = static_cast<double>(m[i]);
   for (std::size_t r = 0; r < 4; ++r) {
     c[r] *= s;
     c[4 + r] *= s;
+    c[8 + r] = -c[8 + r];
     c[12 + r] = (c[r] * ox) + (c[4 + r] * oy) + c[12 + r];
   }
   for (std::size_t col = 0; col < 4; ++col) {
@@ -167,7 +174,7 @@ Mat chunk_matrix(const view3d::Matrix4& m, double ox, double oy, double s) {
     const double z = c[(col * 4) + 2];
     const double w = c[(col * 4) + 3];
     c[(col * 4) + 1] = -y;
-    c[(col * 4) + 2] = 0.5 * (w + z);
+    c[(col * 4) + 2] = 0.5 * (w - z);
   }
   return c;
 }
@@ -239,7 +246,8 @@ void prepare_layers(const DrawParams& p, const std::vector<view3d::DrawHeight>& 
 }
 
 std::array<float, 4> clear_color(const DrawParams& p) {
-  const std::array<float, 3> bg = background_color(p.styles);
+  std::array<float, 3> bg = p.background.value_or(background_color(p.styles));
+  for (float& c : bg) c = std::isfinite(c) ? std::clamp(c, 0.0F, 1.0F) : 0.0F;
   return {srgb_to_linear(bg[0]), srgb_to_linear(bg[1]), srgb_to_linear(bg[2]), 1.0F};
 }
 
@@ -422,7 +430,8 @@ struct VulkanMesh3dRenderer::Impl {
     prepare_layers(p, heights, count, f);
     f.clear = clear_color(p);
     const view3d::Matrix4 m = view3d::matrix(view, f.width, f.height, p.projection);
-    const std::uint32_t lighting = p.stack == nullptr || p.stack->magic_compat() ? 0U : 1U;
+    const std::uint32_t lighting = static_cast<std::uint32_t>(p.lighting);
+    const std::array<float, 3> light = board_light(view.view_z);
     const std::uint32_t highlight = p.highlight != nullptr && !p.highlight->empty() ? 1U : 0U;
     const double scale = xy_scale_of(p);
     std::vector<double> depth(chunks.size());
@@ -432,8 +441,8 @@ struct VulkanMesh3dRenderer::Impl {
       const Mat cm = chunk_matrix(m, c.origin_x, c.origin_y, scale);
       FramePush& push = f.push[i];
       for (std::size_t k = 0; k < 16; ++k) push.mvp[k] = static_cast<float>(cm[k]);
-      push.origin_sz = {static_cast<float>(c.origin_x), static_cast<float>(c.origin_y), view.scale_z,
-                        static_cast<float>(scale)};
+      push.light = {light[0], light[1], light[2], kBoardAmbient};
+      push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
       push.params = {bases[i], lighting, highlight, 0U};
       const double cx = (static_cast<double>(c.area.x0) + static_cast<double>(c.area.x1)) / 2.0 - c.origin_x;
       const double cy = (static_cast<double>(c.area.y0) + static_cast<double>(c.area.y1)) / 2.0 - c.origin_y;

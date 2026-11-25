@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -42,6 +43,12 @@ struct FlatTerminal {
   std::size_t node_index = kNoNode;
   /// The attribute list as the `.ext` file gives it; empty for "0".
   std::string attribute_text{};
+  /// The terminal's node in its own definition (dterm_node): a key unique
+  /// per definition and node, and that node's area and perimeter per
+  /// resistance class (efnode_pa), as the hierarchical area/perimeter and
+  /// the bipolar L and W of ext2sim read them.
+  std::string local_node{};
+  std::vector<std::pair<std::int32_t, std::int32_t>> local_area_perim{};
 
   friend bool operator==(const FlatTerminal&, const FlatTerminal&) = default;
 };
@@ -84,6 +91,9 @@ struct FlatDevice {
   /// that name joined to the instance path and resolved when it is a flat
   /// name (an implicit global substrate is flat under its bare name only).
   std::string substrate_local{};
+  /// The substrate's local node (dev_subsnode) area and perimeter per
+  /// resistance class (efnode_pa): ext2sim's bipolar L and W.
+  std::vector<std::pair<std::int32_t, std::int32_t>> substrate_area_perim{};
 
   friend bool operator==(const FlatDevice&, const FlatDevice&) = default;
 };

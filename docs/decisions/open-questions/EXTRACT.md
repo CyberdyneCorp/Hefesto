@@ -273,9 +273,72 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-30: Out-of-range float-to-int conversions in the extract section
 - Kind: bug
-- Status: decided by the standing rule (undefined behaviour is fixed in both modes); raised in the M7 round R2 review, 2026-11-22, reported for confirmation
+- Status: approved 2026-11-23 (user decision M7-15; decided by the standing rule in round R2, 2026-11-22: undefined behaviour is fixed in both modes; confirmed with the recommended option)
 - Magic behavior: the extract-section reader converts doubles to `int` with no range check: `(int)(0.5 + dval * 1000)` for a device limit (`l<=1e10`) and offset (`l=l+1e10`), then `ival + 1` / `ival - 1` in int; `step` as `(int)atof`; `sidehalo` as `(int)(d * 1000.0)`; ExtTechScale's `scalen * scalen` in int and its `int *= float` conversions. A value past the int range, or a NaN (`nan` is accepted by `sscanf("%lf")`), is undefined behaviour in C.
 - Evidence: extract/ExtTech.c:2505-2520 and :2600-2620 (device parameter offsets and limits), :3365-3372 (sidehalo), :3444-3451 (step), :3973-3976 (micron conversion of step and halo), :4022-4130 (ExtTechScale); Hefesto `src/core/src/extract/tech/device_rules.cpp`, `scale_rules.cpp`, `conversion.cpp`
 - Options: fix (saturate to the int range, NaN as 0, in both modes) | replicate (not possible: undefined)
 - Recommendation: fix.
-- Resolution: fix — in both modes every such conversion saturates to the int range and a NaN becomes 0 (`detail::saturate_int32`), and ExtTechScale squares its factors in float. Real technology files never reach these values, so no golden case changes. Spec: `extract-tech-section` "Step size and side halo parsing". Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "a huge or NaN step and halo saturate instead of overflowing", "huge or NaN device limits and offsets saturate", `ext_style_scale_test.cpp` "rescale by a factor past the int range clamps instead of overflowing"; fuzz seed `tests/fuzz/corpus/fuzz_tech_file/extract-hostile-numbers.tech`.
+- Resolution: fix — in both modes every such conversion saturates to the int range and a NaN becomes 0 (`detail::saturate_int32`), and ExtTechScale squares its factors in float. Real technology files never reach these values, so no golden case changes. Spec: `extract-tech-section` "Step size and side halo parsing". Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "a huge or NaN step and halo saturate instead of overflowing", "huge or NaN device limits and offsets saturate", `ext_style_scale_test.cpp` "rescale by a factor past the int range clamps instead of overflowing"; fuzz seed `tests/fuzz/corpus/fuzz_tech_file/extract-hostile-numbers.tech`. Approved 2026-11-23.
+
+### Q-EXTRACT-31: The second side of a two-sided split tile is never a region seed
+- Kind: bug
+- Status: pending user decision (proposed in M7 round R3 by EXTNODE, 2026-11-24; implemented per the standing rule: magic-compat ON copies Magic, OFF does the intended thing)
+- Magic behavior: DBSrPaintClient checks a split tile's single `ti_client` before it calls extNodeAreaFunc or extRegionAreaFunc for each side. Once the left side belongs to a region, the right side is skipped as a seed. When nothing else connects to the right side (for example poly on the left and ndiff on the right of one diagonal), its material is in no node and is missing from the `.ext`.
+- Evidence: database/DBtiles.c:719-767 (DBSrPaintClient); extract/ExtBasic.c:5440-5448; extract/ExtRegion.c:142-209; Hefesto `src/core/src/extract/node/regions.cpp`; capture-only probe EX-P02 (`tests/data/extract/node/split_probe/EXTRACT/cases/EX-P02`, golden-capture run 45473246056, Magic 8.3.694 at fc5daa9e): a split tile with poly (sw) and ndiff (ne) and nothing else gives only `node "active_0_0#" 0 0 0 0 p`, so the ndiff side is missing from the `.ext`, as read from the code
+- As implemented (round R3): with magic-compat ON the right side is skipped as Magic does; with it OFF a region starts at any side still unvisited, so every active-type tile side belongs to exactly one node (`extract-nodes-and-labels` "Node connectivity"). Tests: `tests/unit/extract/node/regions_test.cpp` "Second side of a split tile as a seed: magic-compat ON skips it" and "Second side of a split tile as a seed: magic-compat OFF gives it its node".
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat.
+
+### Q-EXTRACT-32: Per-class area and perimeter are stored only with lumped resistance on
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented per the standing rule)
+- Magic behavior: extSetResist is the only writer of `nreg_pa` and runs only with `EXT_DORESISTANCE`, so with `extract no resistance` every node record shows `0 0` per resistance class. The spec text (`extract-resistance-lumped` "Per-class area and perimeter of a node") says the values are stored even when lumped resistance is off.
+- Evidence: extract/ExtBasic.c:5205, :5477 (the extSetResist calls); Hefesto `src/core/src/extract/cap/`, `src/core/src/extract/node/regions.cpp` (`NodePassOptions::resistance`)
+- As implemented (round R3): with magic-compat ON the values are 0 unless lumped resistance is on; with it OFF they are always stored. Tests: `tests/unit/extract/cap/` "class values with magic-compat ON are 0 when lumped resistance is off" and "class values with magic-compat OFF are kept when lumped resistance is off".
+- Options: compat (as implemented; the requirement gets one sentence and a scenario per mode) | fix (always stored)
+- Recommendation: compat. Spec edit on approval: replace "These values SHALL be stored even when lumped resistance is disabled." with "With magic-compat ON, as in Magic, the values are stored only when lumped resistance is on, and are 0 otherwise. With it OFF they are always stored."
+
+### Q-EXTRACT-33: Corner coupling and fringe-halo shield pieces follow Q-EXTRACT-17's quirk
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented under Q-EXTRACT-17's compat resolution)
+- Magic behavior: extCornerOverlap and extSubtractCornerOverlap sum the shielded substrate fraction per rule, only between different nodes, and use the unreduced inside type, the quirk Q-EXTRACT-17 decided for sideoverlap. In the fringe-halo shield pieces the coupling fraction also uses the unreduced inside type (ExtCouple.c:740), where the spec text says m(a,b) of the residue.
+- Evidence: extract/ExtCouple.c:740 and the corner functions (extCornerOverlap, extSubtractCornerOverlap); Q-EXTRACT-17; Hefesto `src/core/src/extract/cap/corners.cpp`, `sideoverlap.cpp`, `compat_branches.cpp`
+- As implemented (round R3): Q-EXTRACT-17's branch covers both: with magic-compat ON summed per rule, between different nodes only, with the unreduced inside type; with it OFF once per tile with the residue.
+- Options: compat (Q-EXTRACT-17 extended to corners and to the coupling fraction, as implemented) | a separate decision for corners
+- Recommendation: compat. Spec edits on approval: `extract-capacitance` "Corner fringe coupling" gains the sentence "The shielded fractions follow Q-EXTRACT-17's resolution"; "Fringe-halo sideoverlap" says that with magic-compat ON the coupling fraction uses the unreduced inside type.
+
+### Q-EXTRACT-34: A device parameter range with only a lower limit is never checked
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule)
+- Magic behavior: a `device` line limit such as `l>=5` sets `pl_minimum` and leaves `pl_maximum` at -1; extDevFindParamMatch skips any range with minimum > maximum, so a lower-only limit never selects a model. EX-037 shows it: both gates come out as `nlong`.
+- Evidence: extract/ExtTech.c:2575-2611; extract/ExtBasic.c:2088; EX-037
+- As implemented (round R3): ON skips the range as Magic does; OFF applies the lower limit (EX-037's short gate becomes `nshort`). Tests: `tests/unit/extract/device/` "EX-037 with magic-compat ON: a lower limit alone is never checked, both gates are nlong" and "EX-037 with magic-compat OFF: the lower limit applies, the short gate is nshort".
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat. Spec edit on approval: `extract-devices` "Model selection by parameter ranges" gets one scenario per mode.
+
+### Q-EXTRACT-35: Parameter range matching falls back to the last record tried
+- Kind: quirk
+- Status: pending user decision (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule)
+- Magic behavior: when no compatible record's ranges pass, extDevFindParamMatch returns the last record it tried (`newdevptr = devptr`), not the starting one, and prints `Device parameters do not match any extraction model.`
+- Evidence: extract/ExtBasic.c:2160-2196
+- As implemented (round R3): ON uses the last record tried; OFF uses the starting record, as the spec text says ("the original record SHALL be used"). Test: `tests/unit/extract/device/` "Range matching returns the last record tried (ON) or the first (OFF) when none passes".
+- Options: compat (as implemented) | replicate | fix
+- Recommendation: compat. Spec edit on approval: `extract-devices` "Model selection by parameter ranges" states the ON behaviour, with a scenario per mode.
+
+### Q-EXTRACT-36: Crashes, hangs and undefined behaviour in the node, capacitance and device passes
+- Kind: bug
+- Status: pending user confirmation (fixed in both modes in M7 round R3 by the standing rule: crashes, hangs and undefined behaviour are fixed in both modes)
+- Magic behavior: (a) the split-tile diagonal `w*w+h*h` is an int product that overflows for sides past 46340 units (extNodeAreaFunc; ExtBasic.c:5574, ExtPerim.c:115); (b) ExtLabelRegions dereferences CLIENTDEFAULT for a label whose probe tile is a two-sided split tile with an unvisited left side; (c) overlap and sideoverlap areas (`o_area`, `areaTotal`, `so_clip`) overflow int past 2^31 square units; (d) `resnew` converts +inf to int when the perimeter P rounds to S in single precision (a division by zero); (e) an edge whose inside tile has no node writes through a CLIENTDEFAULT region; (f) extDevFindMatch loops forever when the current record is not in the tile type's list (two device types in one region; ExtBasic.c:3457-3475); (g) a terminal index past MAXSD writes out of bounds (ExtBasic.c:4040-4060); (h) the resistor branch reads a stale or uninitialised W when no boundary estimate exists (ExtBasic.c:2988-3060); (i) `r` with a zero device perimeter is an integer division by zero (ExtBasic.c:1985-1995).
+- Evidence: as listed; Hefesto `src/core/src/extract/{node,cap,device}/`
+- As implemented (round R3), both modes: (a) a 64-bit product; (b) the label is dropped; (c) 64-bit areas; (d) a saturating conversion (Q-EXTRACT-30's rule); (e) the edge subtracts nothing; (f) one full turn of the record list ends the search; (g) the tile is not a terminal; (h) W is 0; (i) r = 0 (Q-EXTRACT-15's intent).
+- Tests (R3 fix pass; each fails without its fix, (e) and (g) by crashing): (a) `tests/unit/extract/cap/substrate_caps_test.cpp` "a split tile past 46340 units forms its diagonal in 64 bits" (capacitance) and `tests/unit/extract/node/regions_test.cpp` "Q-EXTRACT-36 (a): a split tile past 46340 units adds its diagonal to the class perimeter in 64 bits" (node pass); (b) `tests/unit/extract/node/labels_test.cpp` "Q-EXTRACT-36 (b): a label on the unvisited side of a two-sided split tile is dropped"; (c) `tests/unit/extract/cap/lumped_test.cpp` "a total past the int range keeps the previous value"; (d) `lumped_test.cpp` "a perimeter whose S rounds to P saturates instead of dividing by zero"; (e) `tests/unit/extract/cap/sideoverlap_test.cpp` "Q-EXTRACT-36 (e): an edge whose inside tile has no node subtracts no substrate capacitance"; (g) `tests/unit/extract/device/devices_test.cpp` "Q-EXTRACT-36 (g): a terminal past MAXSD is not a terminal". No test for (f), (h) and (i), because no input reaches them in Hefesto: (f) Magic keeps one record per tile type, so a record of a two-type line belongs to one type's list and the walk from it never comes back; Hefesto keeps one record per `device` line, listed under each of its types, and the boundary walk of a region classifies one tile type, so `find_match` is never called with a record outside the type's list (the bound stays as a guard); (h) Magic's `width` is a local that keeps an earlier device's value when extComputeEffectiveLW fails; Hefesto's L and W are fresh per device and start at 0, so there is no stale value to regress against; (i) every device region has a boundary on its own plane that counts toward its perimeter, so the perimeter is never 0 (the guard stays).
+- Options: fix (as implemented) | replicate (not possible for undefined behaviour)
+- Recommendation: fix. Real layouts never reach (a), (c) or (d); (b) and (e)-(i) change no captured case.
+
+### Q-EXTRACT-37: The shorted-ports warning truncates the cell's port labels
+- Kind: compat-neutral
+- Status: withdrawn in the M7 R3 fix pass, 2026-11-24 (no decision needed; raised in round R3 by EXTCAP)
+- Magic behavior: to compare the two names, extOutputNodes writes `'\0'` at `_uq` inside the label texts (ExtBasic.c:838-839), prints the warning, and then writes the `_` back (ExtBasic.c:846-847), at fc5daa9e. The cut lasts for the comparison only: no label changes, and the node's later `equiv` lines print the full names.
+- Evidence: extract/ExtBasic.c:832-847
+- As implemented (round R3): neither EXTNODE's record writer nor EXTCAP's warning builder changes a label; the names are compared on copies, in both modes. The output is the same as Magic's.
+- Resolution: none needed. The R3 row said Magic leaves the labels cut; the review of PR #100 read the same lines as cutting the later `equiv` names. Both missed the restore at ExtBasic.c:846-847, so there is no difference to decide.

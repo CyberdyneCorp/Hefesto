@@ -9,6 +9,8 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/device_lines.cpp
   ${CMAKE_CURRENT_LIST_DIR}/device_params.cpp
   ${CMAKE_CURRENT_LIST_DIR}/flat_writer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/hier_run.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/hier_writer.cpp
   ${CMAKE_CURRENT_LIST_DIR}/input.cpp
   ${CMAKE_CURRENT_LIST_DIR}/merge.cpp
   ${CMAKE_CURRENT_LIST_DIR}/numbers.cpp

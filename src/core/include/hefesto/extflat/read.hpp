@@ -50,6 +50,7 @@ struct ReadLimits {
   std::uint64_t max_instances = std::uint64_t{1} << 22;   // flattened instances (array elements count)
   std::uint64_t max_flat_names = std::uint64_t{1} << 24;  // flat node names
   std::uint64_t max_connections = std::uint64_t{1} << 24; // merge-record elements (array subscripts expanded)
+  std::int32_t max_port_index = std::int32_t{1} << 20;    // a `port` record's number (the netlisters number past it)
 };
 
 /// The options of one read.
@@ -75,6 +76,10 @@ struct ReadOptions {
   /// make a node global (ext-flattening-names "Global and ground
   /// detection").
   std::vector<std::string> global_nets;
+  /// EFHNIsGlob of a build without Tcl (Magic's standalone programs): every
+  /// leaf name ending in `!` is global, besides `global_nets`. Set by
+  /// `hefesto-extcheck`; the embedded netlisters use the Tcl rule.
+  bool bang_globals = false;
   /// The current extraction style's units per lambda (exts_unitsPerLambda),
   /// against which the `scale` record's lscale is compared. Nullopt: the
   /// file's lscale is taken as the style's (no coordinate rescale).
@@ -174,6 +179,26 @@ struct FlatNode {
   bool device_terminal_only = false;
 };
 
+/// One name of a port entry (EFNodeName): its text and its port index
+/// (efnn_port, -1 when the `port` record gave none).
+struct PortName {
+  std::string name;
+  std::int32_t index = -1;
+
+  friend bool operator==(const PortName&, const PortName&) = default;
+};
+
+/// One entry of a cell's node-name table (def_nodes) whose node is a port
+/// (EF_PORT), as topVisit walks it: the entry's own name followed by the
+/// names after it in the node's list, and the node's canonical name
+/// (efnode_name) with its port index.
+struct PortEntry {
+  std::vector<PortName> chain;
+  PortName canonical;
+
+  friend bool operator==(const PortEntry&, const PortEntry&) = default;
+};
+
 /// The timestamp of one `.ext` file read (its `timestamp` record).
 struct FileStamp {
   std::string cell;
@@ -224,6 +249,10 @@ class Netlist {
   std::vector<FlatResist> resists;
   /// EFVisitSubcircuits' calls in its order (M7 round 2).
   std::vector<FlatSubcircuit> subcircuits;
+  /// The root cell's port entries in def_nodes iteration order (topVisit's
+  /// walk of efFlatRootDef; M7 round 3). Filled by flatten() and
+  /// flatten_one_level() (for the definition flattened).
+  std::vector<PortEntry> root_ports;
 
   /// The style a `style` record selected (ExtCompareStyle loads it in
   /// Magic, a session side effect the caller applies), if any.

@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -18,10 +21,41 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/gds/stream/gzip.hpp"
 
 namespace cell = hefesto::cell;
 namespace db = hefesto::db;
 using cell::test::CellIo;
+
+namespace {
+
+/// One gzip member holding `text` (deflate level 9).
+std::string gzip(std::string_view text) {
+  auto memory = std::make_unique<hefesto::gds::MemorySink>();
+  const hefesto::gds::MemorySink* inner = memory.get();
+  auto sink = hefesto::gds::make_gzip_sink(std::move(memory), 9);
+  REQUIRE(sink.ok());
+  REQUIRE(sink.value()->write(std::as_bytes(std::span{text.data(), text.size()})).ok());
+  REQUIRE(sink.value()->finish().ok());
+  std::string out;
+  for (const std::byte b : inner->bytes()) {
+    out.push_back(static_cast<char>(b));
+  }
+  return out;
+}
+
+/// A valid cell of at least `size` bytes: one metal1 rectangle, repeated.
+std::string big_cell(std::size_t size) {
+  std::string text = "magic\ntech tiny\ntimestamp 1\n<< metal1 >>\n";
+  do {
+    text += "rect 0 0 4 4\n";
+  } while (text.size() < size);
+  return text + "<< end >>\n";
+}
+
+constexpr std::uint64_t kTestCap = std::uint64_t{1} << 20U;  // 1 MiB
+
+}  // namespace
 
 TEST_CASE("a malformed bounding-box property message has no line end with magic-compat ON only",
           "[cap:cell-file-format][req:Properties section records]") {
@@ -262,6 +296,84 @@ TEST_CASE("gzip cell data is decompressed; plain data passes through",
   CHECK(plain.value() == "magic\ntech tiny\ntimestamp 7\n<< end >>\n");
   CHECK(cell::maybe_decompress("magic\n").value() == "magic\n");
   CHECK_FALSE(cell::maybe_decompress(data.substr(0, 20)).ok());
+}
+
+// Regression (M5 open item, security.md M5-S9, Q-CELL-48): a .mag.gz was
+// inflated without a size limit, so a few KiB could exhaust memory. The
+// inflate now stops at the cap, in both magic-compat modes, with
+// CELL-READ-013.
+TEST_CASE("security fix: a compressed cell is inflated only up to the size cap",
+          "[cap:cell-file-format][req:Compressed cell input]") {
+  STATIC_REQUIRE(cell::kMaxInflatedCellBytes == std::uint64_t{1} << 30U);
+  CHECK(cell::ReadOptions{}.max_inflated_bytes == cell::kMaxInflatedCellBytes);
+
+  const std::size_t bomb_text = std::size_t{4} << 20U;  // 4 MiB of text, a few KiB packed
+  const std::string bomb = gzip(big_cell(bomb_text));
+  REQUIRE(bomb.size() * 256 < bomb_text);
+  SECTION("one member past the cap") {
+    const auto out = cell::maybe_decompress(bomb, kTestCap);
+    REQUIRE_FALSE(out.ok());
+    CHECK(out.error().code == cell::codes::kCompressed);
+    CHECK(out.error().text == "compressed cell file inflates past the 1 MiB limit");
+  }
+  SECTION("concatenated members count together") {
+    const std::string member = gzip(std::string(std::size_t{600} << 10U, '#'));
+    REQUIRE(cell::maybe_decompress(member, kTestCap).ok());
+    const auto out = cell::maybe_decompress(member + member, kTestCap);
+    REQUIRE_FALSE(out.ok());
+    CHECK(out.error().code == cell::codes::kCompressed);
+  }
+  SECTION("output exactly at the cap is read") {
+    const auto out = cell::maybe_decompress(gzip(std::string(kTestCap, '#')), kTestCap);
+    REQUIRE(out.ok());
+    CHECK(out.value().size() == kTestCap);
+  }
+  SECTION("loading the cell fails and leaves the other cells unchanged") {
+    for (const bool on : {true, false}) {
+      INFO("magic-compat " << (on ? "ON" : "OFF"));
+      CellIo io;
+      io.ctx.magic_compat = on;
+      REQUIRE(io.ctx.fs.create_directories("/lib").ok());
+      REQUIRE(io.ctx.fs.write_atomic("/lib/top.mag", big_cell(0)).ok());
+      REQUIRE(io.ctx.fs.write_atomic("/lib/bomb.mag.gz", bomb).ok());
+      io.paths.path = {"/lib"};
+      auto top = cell::load_cell(io.ctx, "top");
+      REQUIRE(top.ok());
+      CHECK(top.value()->bbox() == db::Rect{0, 0, 4, 4});
+      cell::ReadOptions options;
+      options.max_inflated_bytes = kTestCap;
+      const auto loaded = cell::load_cell(io.ctx, "bomb", options);
+      REQUIRE_FALSE(loaded.ok());
+      CHECK(loaded.error().code == cell::codes::kCompressed);
+      const db::CellDef* def = io.library.find("bomb");
+      REQUIRE(def != nullptr);  // the placeholder any failed load leaves
+      CHECK_FALSE(def->flags().available);
+      CHECK(def->labels().empty());
+      CHECK(def->uses().empty());
+      auto fresh = io.library.create("fresh", io.ctx.tech->plane_count());
+      REQUIRE(fresh.ok());
+      CHECK(def->bbox() == fresh.value()->bbox());  // nothing was painted
+      CHECK(io.library.find("top")->bbox() == db::Rect{0, 0, 4, 4});
+    }
+  }
+}
+
+TEST_CASE("a compressed cell under the size cap still reads", "[cap:cell-file-format][req:Compressed cell input]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    CellIo io;
+    io.ctx.magic_compat = on;
+    REQUIRE(io.ctx.fs.create_directories("/lib").ok());
+    REQUIRE(io.ctx.fs.write_atomic("/lib/c.mag.gz", gzip(big_cell(std::size_t{64} << 10U))).ok());
+    io.paths.path = {"/lib"};
+    cell::ReadOptions options;
+    options.max_inflated_bytes = kTestCap;
+    auto loaded = cell::load_cell(io.ctx, "c", options);
+    REQUIRE(loaded.ok());
+    CHECK(loaded.value()->flags().available);
+    CHECK(loaded.value()->bbox() == db::Rect{0, 0, 4, 4});
+    CHECK_FALSE(io.has_code(cell::codes::kCompressed));
+  }
 }
 
 TEST_CASE("a coarser file reports its scaling", "[cap:cell-file-format][req:Coordinate scaling on read]") {
