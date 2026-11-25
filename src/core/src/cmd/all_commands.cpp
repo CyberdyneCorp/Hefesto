@@ -34,6 +34,7 @@
 #include "hefesto/undo/commands.hpp"
 #include "hefesto/view/commands.hpp"
 #include "hefesto/view3d/client/commands.hpp"
+#include "hefesto/view3d/export/command.hpp"
 #include "hefesto/wiring/commands.hpp"
 
 namespace hefesto::cmd {
@@ -83,6 +84,7 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = antenna::register_antenna_command(registry) && ok;
   // M10 (openspec/changes/m10-3d-view/design.md D9): the wind3d client.
   ok = view3d::register_wind3d_commands(registry) && ok;
+  ok = view3d::register_export3d_command(registry) && ok;
   // M9 (openspec/changes/m9-lvs-simulation design.md "Area contracts" LVSCMD).
   ok = lvs::register_lvs_commands(registry) && ok;
   return ok;

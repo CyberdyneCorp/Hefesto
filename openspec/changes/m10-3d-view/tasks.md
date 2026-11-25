@@ -120,9 +120,12 @@ How this plan runs:
 ## 11. INSPECT and EXPORT (P2)
 
 - [ ] 11.1 (INSPECT) Implement cross-sections: the cut line in 2D or 3D, the section panel in µm, the 3D clipping plane. Verify `[req:Interactive 3D inspection]` "Cross-section" on an inverter: intervals and heights match the layer stack.
-- [ ] 11.2 (EXPORT) Add cgltf to `cmake/Dependencies.cmake` (pinned commit, MIT) and its entry in `THIRD_PARTY_NOTICES.md`. Verify that `scripts/check_third_party_notices.py` passes.
-- [ ] 11.3 (EXPORT) Implement `export3d` and the glTF writer (design D14, J2): one node per visible layer in layer order, materials from display styles, µm, `-zscale` recorded in `asset.extras`. Verify `[req:3D export]` "glTF export" with a validator check of the output (glTF-Validator in CI), physical heights, and an export from mask-layer mode on gf180mcuD that warns `VIEW3D-STACK-001`.
+- [x] 11.2 (EXPORT) Add cgltf to `cmake/Dependencies.cmake` (pinned commit, MIT) and its entry in `THIRD_PARTY_NOTICES.md`. Verify that `scripts/check_third_party_notices.py` passes.
+  As landed (round 5, EXPORT): cgltf v1.15, commit `360db1a9`, `hefesto::cgltf`; notice under "Components in M10"; the check passes (9 dependencies, 0 problems).
+- [x] 11.3 (EXPORT) Implement `export3d` and the glTF writer (design D14, J2): one node per visible layer in layer order, materials from display styles, µm, `-zscale` recorded in `asset.extras`. Verify `[req:3D export]` "glTF export" with a validator check of the output (glTF-Validator in CI), physical heights, and an export from mask-layer mode on gf180mcuD that warns `VIEW3D-STACK-001`.
+  As landed (round 5, EXPORT): `write_gltf`, `export_layers` and `export3d` (design "As-landed: round 5 EXPORT"); codes VIEW3D-EXPORT-001..004. Tests `tests/unit/view3d/export/{writer,command}_test.cpp` (cgltf_parse + cgltf_validate on every file; both Q-MISC-72 modes; hidden layers, `-all`, cut box, `-zscale`, errors); the gf180mcuD case uses gf180mcuD's own mask stack with a hand-built mesh, since the mask-layer mesh (MASKSRC, 10.1) is not on main. glTF-Validator 2.0.0-dev.3.10 in `export3d-determinism.yml`: 0 errors, 0 warnings, 6 hints (`BUFFER_VIEW_TARGET_MISSING`: cgltf writes no `target`).
 - [ ] 11.4 (EXPORT) Implement the binary STL writer, per layer or merged. Make glTF and STL output byte-stable: C locale, fixed triangulation, a cross-platform digest test on Linux x86_64, Linux aarch64 and macOS arm64; pin cgltf's number formatting if the digests differ. Verify that the digests are equal on every leg.
+  As landed (round 5, EXPORT): `write_stl` (per layer: `<stem>_<layer>.stl`; `-merged`: one file); digest test `tests/unit/view3d/export/digest_test.cpp` against `tests/data/view3d/export/digests.txt` (CI_EVIDENCE).
 - [ ] 11.5 (SHELL) Enable Cross-section and Export glTF on the screen with the file picker. Verify view-model tests and the conformance review.
 
 ## 12. GOLDEN (P1, P2)

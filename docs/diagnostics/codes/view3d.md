@@ -133,6 +133,44 @@ Codes of cross-sections (design D10, P2). Owner: INSPECT.
 Codes of `export3d` and the glTF and STL writers (design D14, P2). Owner:
 EXPORT.
 
+`export3d <file> [-format gltf|glb|stl] [-merged] [-zscale k]
+[-visible|-all]` is a Hefesto command (not Magic's; listed by `help` only
+with magic-compat off). It exports the open 3D window's current model, as
+the window builds it (its stack and cut box), in physical µm without the
+view's z exaggeration; `-zscale k` multiplies the heights and k is
+recorded in the glTF `asset.extras.hefesto.zscale`. The format follows the
+extension (`.gltf`, `.glb`, `.stl`, any case) unless `-format` names one.
+`.gltf` writes the JSON and `<stem>.bin` beside it; STL writes one file per
+exported layer, `<stem>_<layer>.stl` in the same directory (characters other
+than letters, digits and `_-.+` become `_`), or with `-merged` one file. The
+result is the list of files written; each is replaced atomically. A layer is
+exported when it is visible (`-visible`, the default; `-all` takes every
+layer), drawn (a solid or stippled style) and has a physical height and
+geometry; a type in two display styles is exported once. The desktop's
+synthetic substrate slab is never exported. The writers and the file layout
+are described in `src/core/include/hefesto/view3d/export/export.hpp` and
+`command.hpp`.
+
+- `VIEW3D-EXPORT-001` (error): `export3d: no 3D window is open`. Nothing is
+  written.
+- `VIEW3D-EXPORT-002` (error): the usage line `Usage: export3d file [-format
+  gltf|glb|stl] [-merged] [-zscale k] [-visible|-all]` for no file, two
+  files, an unknown option, an unknown `-format` value or a `-zscale` value
+  that is not a positive number; `export3d: cannot tell the format of
+  "<file>"; ...` for a file whose extension is not `.gltf`, `.glb` or `.stl`
+  without `-format`. Nothing is written.
+- `VIEW3D-EXPORT-003` (native warning): `No physical height for layer(s):
+  <names>; they are left out of the export (...)` names the layout-layer
+  layers with geometry whose height has no source (no extract style) or no
+  µm scale (no output style). Mask layers without a `render` height are
+  reported with `VIEW3D-STACK-001` instead (Q-MISC-72).
+- `VIEW3D-EXPORT-004` (error): `export3d: the 3D window has no model (cell
+  "<name>" not found)`. Nothing is written.
+
+Errors of the file system (a directory that does not exist, no permission)
+are reported with their own codes, and the files written before the error
+stay.
+
 ## OVERLAY
 
 Codes of the overlay datasets and color maps (design D16, P3). Owner:
@@ -161,6 +199,10 @@ fails when the two disagree.
 | `VIEW3D-CLIENT-007` | error | A command sent to the 3D window is not one of its commands (Magic's `Unknown command:`, followed by the command on standard output). |
 | `VIEW3D-CLIENT-008` | info | Output of a 3D window command printed on standard output (`help`, the command echoed after `Unknown command:`). |
 | `VIEW3D-CLIENT-009` | error | A 3D window command was run while no 3D window is open. |
+| `VIEW3D-EXPORT-001` | error | `export3d` was run while no 3D window is open; nothing is written. |
+| `VIEW3D-EXPORT-002` | error | `export3d` was given the wrong arguments (no file, an unknown option or format, or a z scale that is not a positive number); nothing is written. |
+| `VIEW3D-EXPORT-003` | warning | Layout-layer layers with geometry have no physical height (no extract-style height, or no µm scale without an output style), so they are left out of the export (names the layers). |
+| `VIEW3D-EXPORT-004` | error | The 3D window has no model to export (its cell no longer exists); nothing is written. |
 | `VIEW3D-STACK-001` | warning | Mask layers of the output style have no `render` height, so they have no physical height and are left out of µm-based output (names the layers; Q-MISC-72). |
 | `VIEW3D-STACK-002` | error | A `render` statement's style is neither a display style number nor a long name (Magic's `Error:  Bad render style for CIF layer.`); the statement is ignored. |
 <!-- END DIAGNOSTIC CODES -->
