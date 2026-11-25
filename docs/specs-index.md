@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3579 scenarios, 1011 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3579 scenarios, 1033 open questions.
 
 ## Hefesto product (native)
 
@@ -307,7 +307,7 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [47](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [55](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -319,7 +319,7 @@ Open questions: [47](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 
-Open questions: [60](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
+Open questions: [74](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
