@@ -8,6 +8,10 @@ release notices.
 
 ### Fixed
 
+- **Huge `.ext` arrays fail at once.** A `use` array (or arrayed
+  `merge`) larger than what is left of the 4 Mi instance (16 Mi merge
+  element) cap now fails with EXTFLAT-READ-009 before any element is
+  flattened, instead of flattening elements for seconds until the cap.
 - **3D view upside down in tilted views.** The isometric, front and side
   views showed the stack from below (wells on top, metals at the
   bottom); every tilted view now looks from above.
