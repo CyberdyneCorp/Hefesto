@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Hefesto patch series for ngspice-47 (a80f6e3e), applied in this order with
+# `patch -p1` by cmake/ApplyPatchSeries.cmake and by
+# tools/golden/container/build_ngspice.sh. Each line is one patch file; the
+# comment block above it is its justification (openspec/changes/m9-lvs-simulation
+# design D9, tasks 5.1). The patch level of the version string
+# `<release>-hefesto<n>` is `hefesto_level` in ../pin.json: raise it whenever
+# this list or any patch changes. tools/ngspice_manifest.py copies these
+# justifications into ngspice-manifest.json.
+#
+# Numerical behaviour: 0001 and 0002 change no result (they change where code
+# is found, not what it computes). 0003 and 0004 change the random draws of
+# every deck that uses agauss/aunif/sgauss/trnoise/trrandom with a given seed,
+# relative to stock ngspice-47, on purpose: stock draws differ between C
+# libraries and between processes. Decks without random functions are not
+# affected.
+
+# 0001 Static OSDI registry.
+# Requirement "OSDI compact models" and "No runtime loading of executable
+# code on iPadOS" (simulation-engine-embedding): `osdi`/`pre_osdi` resolve a
+# built-in module by basename on every platform, so results never depend on
+# .osdi files on the host, and other files load only while the ngspice
+# variable `hefesto_osdi_static_only` is unset (the adapter sets it unless the
+# user allows external OSDI models). Only osdiregistry.c's file lookup and
+# symbol lookup change; the descriptor handling is untouched.
+0001-static-osdi-registry.patch
+
+# 0002 Static code-model registration.
+# Feature table "XSPICE code models: compiled in statically": the analog,
+# digital (without d_cosim), spice2poly and xtradev code models are compiled
+# into libngspice-hefesto and registered when the device table is created,
+# so no .cm file is ever dlopen'ed (no runtime loading on iPadOS; the same
+# registry on every platform; works with ngSpice_nospinit()). The core
+# functions the code models call are the same ones the dynamic coreInfo
+# table points to (xspice/cm/cmexport.c).
+0002-static-code-model-registration.patch
+
+# 0003 Portable generator seeding.
+# simulation-monte-carlo "Portable random numbers": the stock TausSeed() takes
+# its state from rand(), whose sequence differs between glibc, macOS libc and
+# the iPadOS libc, so the same seed gave different Monte Carlo samples per
+# platform. The eight state words become 129 + (SplitMix64_k(seed) mod 32639);
+# the generator itself is unchanged. The scenario "Generator state for seed 1"
+# (29963, 3443, 21757, 5511, 10925, 11052, 26345, 26017) is checked by
+# tests/test_portable_seed.py.
+0003-portable-seeding.patch
+
+# 0004 Deterministic initialisation.
+# simulation-engine-embedding "Deterministic engine initialisation":
+# - initw() seeded the Gaussian pool of trnoise/trrandom from getpid(), so two
+#   engines differed even after the same `setseed`; it now restarts from the
+#   last seed;
+# - `setseed <n>` refills that pool, so a worker reused between jobs (design
+#   D9) draws exactly as a fresh worker after the same `setseed`;
+# - on hosts with pwd.h (Linux, macOS) ngSpice_Init read ./.spiceinit or
+#   ~/.spiceinit even after ngSpice_nospiceinit(); the call is now honoured
+#   there as it already was on the other branch;
+# - ngSpice_nospinit()/ngSpice_nospiceinit(), which must be called before
+#   ngSpice_Init(), dereferenced the not yet created simulator (if_option ->
+#   ft_find_analysis) and crashed; if_option() now treats any variable as a
+#   plain front-end variable while there is no simulator.
+0004-deterministic-initialisation.patch

@@ -18,6 +18,7 @@
 #include "hefesto/gds/command/command.hpp"
 #include "hefesto/gui/commands.hpp"
 #include "hefesto/lef/command/command.hpp"
+#include "hefesto/lvs/cmd/commands.hpp"
 #include "hefesto/netlist/sim/sim.hpp"
 #include "hefesto/netlist/spice/spice.hpp"
 #include "hefesto/oasis/command/command.hpp"
@@ -82,6 +83,8 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = antenna::register_antenna_command(registry) && ok;
   // M10 (openspec/changes/m10-3d-view/design.md D9): the wind3d client.
   ok = view3d::register_wind3d_commands(registry) && ok;
+  // M9 (openspec/changes/m9-lvs-simulation design.md "Area contracts" LVSCMD).
+  ok = lvs::register_lvs_commands(registry) && ok;
   return ok;
 }
 

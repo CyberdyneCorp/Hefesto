@@ -93,5 +93,5 @@ Hefesto runs each case through `hefesto-cli` with the same inputs.
 | NG-REP-05 | lvs-reports | `log file x.log; log start; log put hello; log echo off; log end`; error cases | file contents, messages | Log and console routing |
 | NG-PDK-01 | lvs-hierarchy | sky130A `sky130A_setup.tcl`, Magic-extracted `inv` (`ext2spice lvs`) vs xschem netlist | full comp.out, JSON | all lvs-* (integration) |
 | NG-PDK-02 | lvs-hierarchy | gf180mcuD setup, standard-cell block with fill/decap cells | full comp.out | ignore command; Compare queue construction |
-| NG-PDK-03 | lvs-hierarchy | sg13g2 setup, resistor/capacitor PCells with series/parallel segments | full comp.out | Series/parallel network reconciliation |
+| NG-PDK-03 | lvs-hierarchy | `ihp-sg13g2_setup.tcl` (Q-LVS-31), resistor/capacitor PCells with series/parallel segments | full comp.out | Series/parallel network reconciliation |
 | NG-CMD-01 | lvs-command | Hefesto only: `lvs -layout inv inv.spice sky130A` vs netgen on the `ext2spice lvs` file | equality of result and canonical comp.out | Layout netlist from extraction |

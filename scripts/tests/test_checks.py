@@ -439,10 +439,38 @@ class ThirdPartyNoticesTest(unittest.TestCase):
         self.assertEqual(len(found), 2)
         self.assertTrue(any("tcl8.6.16-src.tar.gz not listed" in f for f in found))
 
+    def test_third_party_pin_json_is_named_by_file_and_hash(self):
+        sha = "ab" * 32
+        pin = ('{"name": "ngspice", "archive": {"urls": '
+               '["https://downloads.example/ng/47/ngspice-47.tar.gz"], "sha256": "' + sha + '"}}')
+        self.assertEqual(notices.pin_declarations([pin]), [("ngspice", "ngspice-47.tar.gz", sha)])
+        self.assertEqual(notices.problems("", f"`ngspice-47.tar.gz` SHA-256 `{sha}`", [pin]), [])
+        found = notices.problems("", "ngspice 46", [pin])
+        self.assertEqual(len(found), 2)
+        self.assertTrue(any("ngspice-47.tar.gz not listed" in f for f in found))
+
+    def test_pin_json_problems_name_the_file_and_the_commit(self):
+        # Regression: a bad pin.json was reported as a cmake/ problem or raised a traceback,
+        # and the pinned commit was not checked.
+        sha, commit = "ab" * 32, "c" * 40
+        pin = ('{"name": "ngspice", "commit": "' + commit + '", "archive": {"urls": '
+               '["https://downloads.example/ng/47/ngspice-47.tar.gz"], "sha256": "' + sha + '"}}')
+        listed = f"`ngspice-47.tar.gz` SHA-256 `{sha}`"
+        self.assertEqual(notices.problems("", f"{listed} commit `{commit}`", [pin]), [])
+        self.assertEqual(notices.problems("", listed, [pin]),
+                         [f"ngspice: commit {commit} not listed in THIRD_PARTY_NOTICES.md"])
+        found = notices.problems("", listed, ["{ not json"], ["third_party/ngspice/pin.json"])
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0].startswith("third_party/ngspice/pin.json: not a valid pin"), found)
+        found = notices.problems("", listed, ['{"name": "ngspice", "archive": {}}'], ["p.json"])
+        self.assertEqual(found, ["p.json: ngspice: no archive URL or SHA-256"])
+        self.assertFalse(any("cmake/" in f for f in found))
+        self.assertEqual(len(notices.problems("", listed, ["[]"])), 1)
+
     def test_repository_notices_cover_every_cmake_module(self):
         code, output = run_quiet(notices.main, [])
         self.assertEqual(code, 0, output)
-        self.assertIn("7 dependencies checked", output)
+        self.assertIn("8 dependencies checked", output)
 
 
 if __name__ == "__main__":

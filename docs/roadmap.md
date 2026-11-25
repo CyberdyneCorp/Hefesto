@@ -14,7 +14,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 1. **The core never depends on the UI.** Raven is confined to the desktop shell (`hefesto-architecture`). The CLI and every test run headless.
 2. **Verification drives each milestone.** Before work on a milestone starts:
    - Its open questions are resolved (`Resolution:` lines, per `hefesto-magic-compat-mode`; an entry whose `Status:` is pending user confirmation is not resolved yet). `scripts/check_milestone_readiness.py --milestone M<n>` lists the entries its capabilities cite that are still unresolved; CI runs it with `--through M1`, the gate for starting development.
-   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164, xschem @ 4142e6d6 (for the schematic cases).
+   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice-47 @ a80f6e3e (the engine's pin, Q-SIM-7 and Q-SIM-23; the M0 image built master @ 7aa47164 until M9 task 3.2 moves it), xschem @ 4142e6d6 (for the schematic cases).
 3. **Exit criteria are the same for every milestone:**
    - The area's golden cases pass under the canonical comparison of `hefesto-output-determinism`.
    - Unit, property and fuzz tests are green (`hefesto-testing-strategy`).
@@ -275,12 +275,12 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Exit criteria**
 - The common exit criteria.
-- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics. SCHEM-SIM-01/02 are deferred to M9 (their simulation results need the embedded simulator; decided 2026-11-18), and SCHEM-PR-05 differs only by the approved fix Q-SCHEM-30.
+- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics. SCHEM-SIM-01/02 are deferred to M9 (their simulation results need the embedded simulator; decided 2026-11-18), as is SCHEM-LVS-01 (its LVS result needs the `lvs-*` capabilities; Q-SCHEM-39, decided 2026-11-22) except its `inv_1.spice` netlist output, which the M8 exit checks (`deferred_outputs`, `replay.py --milestone M8`), and SCHEM-PR-05 differs only by the approved fix Q-SCHEM-30.
 - A `hefesto-security` review signs off the schematic script permission model (Q-SCHEM-25).
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
 
-**Status (2026-11-22): plan drafted, with no decision approved yet.**
+**Status (2026-11-22): plan drafted; every decision approved by the user on 2026-11-22 (G0 recorded on branch `m9-round0-decide`).**
 - The plan is OpenSpec change [`openspec/changes/m9-lvs-simulation`](../openspec/changes/m9-lvs-simulation/README.md).
 - Its decisions are in [`docs/decisions/m9-decision-table.md`](decisions/m9-decision-table.md). They cover:
   - the 34 entries that `check_milestone_readiness.py --milestone M9` reports as blocking;
@@ -293,7 +293,7 @@ Depends on `mask-hints`, which is completed in M3.
   - ngspice runs in the worker `hefesto-simd`, which alone loads a shared `libngspice-hefesto`. That worker is the licence and crash boundary on desktop (Q-SIM-20, -21).
   - D-28 is split: the desktop part is decided in M9, the iPad part before M14 (Q-SIM-26).
   - Desktop Beta is signed off on one inverter flow per PDK (Q-SIM-27).
-- Implementation starts after gate G0, once the user has approved the table.
+- Implementation starts after gate G0. The four verify rows (Q-SIM-8, Q-SIMADV-3, -4, -9) are approved as conditional rules; their `Verified` lines come from task 3.3.
 
 **Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`, `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`
 
@@ -305,7 +305,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Desktop Beta:** the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS.
 
-**Early de-risking:** legal review of how ngspice's LGPL (KLU, numparam) and MPL (OSDI) parts are linked. This must be decided before M14 (Q-SIM).
+**Early de-risking:** legal review of how ngspice's LGPL (KLU, numparam) and MPL (OSDI) parts are linked. This must be decided before M14 (Q-SIM). The desktop linking question (Q-SIM-20: a replaceable shared `libngspice-hefesto` loaded only by the sandboxed worker `hefesto-simd`) was decided in M9 round R0 on 2026-11-22 and goes through the same legal review before the Desktop Beta; the iPadOS deadline (before M14) is unchanged (Q-SIM-26, D-28).
 
 ## M10 — 3D, plotting, diff, routing, EM/IR, digital flow
 
@@ -361,7 +361,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **Accessibility and localization:** completed.
 - **Packaging:** an AppImage and a native Linux package, and a signed, notarized macOS app with MoltenVK bundled.
 - **Release gates:** license and acknowledgements checks. Every open question is resolved for the shipped scope.
-- **Clean-room counsel review (exit item):** legal counsel has reviewed the two-team clean-room process of the schematic editor and the system-library interface table, and the review is recorded (J-1, Q-SCHEM-10; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", scenario "Counsel review before Desktop 1.0"; early de-risking schedule, "Before Desktop 1.0"). Desktop 1.0 does not ship the xschem-compatible system symbol library without it.
+- **Clean-room counsel review (exit item):** legal counsel has reviewed the two-team clean-room processes of the schematic editor (xschem) and of LVS (netgen, Q-LVS-30) and the system-library interface table, and the review is recorded (J-1, Q-SCHEM-10, Q-LVS-30; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", scenario "Counsel review before Desktop 1.0"; early de-risking schedule, "Before Desktop 1.0"). Desktop 1.0 does not ship the xschem-compatible system symbol library without it.
 
 **Desktop 1.0:** release on Linux and macOS, ready to take a design to a shuttle.
 
@@ -403,5 +403,5 @@ Desktop-only at first: the digital flow, the legacy tools, `shell` and git integ
 | M8 | SCHEM golden capture from xschem 3.4.8RC with gawk | The exact texts of Q-SCHEM-14, -21, -22, -27 and -28, and the start of M8 implementation |
 | M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
 | M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |
-| Before Desktop 1.0 | Counsel review of the two-team clean-room process and the system-library interface table (J-1, Q-SCHEM-10); an M13 exit item | Whether the xschem-derived specs and symbol interface may ship |
+| Before Desktop 1.0 | Counsel review of the two-team clean-room process for xschem and for netgen (LVS, Q-LVS-30) and of the system-library interface table (J-1, Q-SCHEM-10); an M13 exit item | Whether the xschem- and netgen-derived specs and the symbol interface may ship |
 | Before the M14 iPad scope freeze | Usability test of finger vs Pencil wire drawing (Q-SCHEM-24) | The final iPad schematic gesture set |

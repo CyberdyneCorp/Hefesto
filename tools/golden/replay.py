@@ -60,6 +60,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -388,6 +389,14 @@ def exit_code(reports: list[CaseReport], skip_code: int) -> int:
     return skip_code if statuses & {"skip", "deviation"} else 0
 
 
+def at_milestone(known: dict, milestone: str | None) -> dict:
+    """The deviations as they stand at the exit of ``milestone`` (all of them when None)."""
+    if milestone is None:
+        return known
+    staged = {case_id: dev.at_milestone(milestone) for case_id, dev in known.items()}
+    return {case_id: dev for case_id, dev in staged.items() if dev is not None}
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("cases", nargs="*", type=Path, help="case directories (default: all captured)")
@@ -402,8 +411,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="fail, not skip, when these cases miss an external input (repeatable)")
     parser.add_argument("--hefesto-extcheck", type=Path, default=os.environ.get("HEFESTO_EXTCHECK"),
                         help="hefesto-extcheck for external-command cases (default: next to hefesto-cli)")
+    parser.add_argument("--milestone", metavar="M<n>",
+                        help="check the exit of this roadmap milestone: outputs deferred to it or earlier must match")
     rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
+    if args.milestone is not None and not re.fullmatch(r"M\d+", args.milestone):
+        parser.error("--milestone must be a milestone such as M8")
     args.raw = rawkeep.from_args(args, parser)
     if args.hefesto_cli is None:
         parser.error("hefesto-cli not given (use --hefesto-cli or set HEFESTO_CLI)")
@@ -418,7 +431,7 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     args.hefesto_cli = args.hefesto_cli.resolve()  # cases run in scratch directories
     try:
-        known = deviations.load(args.root)
+        known = at_milestone(deviations.load(args.root), args.milestone)
     except (deviations.DeviationError, ValueError) as error:
         print(f"replay.py: {error}", file=sys.stderr)
         return 2
