@@ -1,0 +1,134 @@
+# Tasks
+
+How this plan runs:
+- **Section 1 comes first.** No decision this plan cites is approved yet (`docs/decisions/m10-plot-route-decision-table.md`). The tasks below follow the recommended options. If the user picks another option, the affected tasks are revised in section 1 before gate G0 passes.
+- Gates and rounds follow design D1:
+  - G0: section 1 is done.
+  - G1-PLOT: the MISC-PLOT capture (section 2). The plot implementation waits only for it.
+  - G1-ROUTE: the LEG-MZ and SCRIPT-AUX-02 capture (section 2). The route implementation waits only for it.
+  
+  Each section names its round, its gate and the tasks it waits for (`after …`).
+- Each task ends with how it is verified.
+- Workstreams edit only what design D3 assigns them. Shared-file needs go to INTEGRATION as open items.
+- Unit tests carry `[cap:<capability>][req:<exact requirement heading>]`. Requirements that cite a `Resolution: compat` entry get one test per `magic-compat` mode (design D5 lists the branch points).
+- The last task of each capability workstream runs `scripts/check_requirement_coverage.py --capability <cap>`. The target is every exact and behavioral requirement of `plot-output`, `router-maze` and `router-maze-iroute` after the task 1.2 sync, the two ADDED requirements of `hefesto-rendering` and `hefesto-performance`, and `scripting-auxiliary-tools` "Netlist maze-routing script".
+- Every function stays at cognitive complexity 15 or below (25 for a reader's statement switch), measured with the cognitive-complexity skill. Irreducible functions are flagged in the pull request.
+- Unimplemented paths return `CORE-NOTIMPL-010` until their workstream lands. No such path remains at exit.
+- Golden expected outputs are captured in CI only, from Magic 8.3.694 at fc5daa9e.
+
+## 1. DECIDE: decisions (R0; gate G0)
+
+- [ ] 1.1 (INTEGRATION) Present `docs/decisions/m10-plot-route-decision-table.md` to the user and record the answers:
+  - `Status:`/`Resolution:` lines on the 19 blocking entries (Q-MISC-41..44, Q-LEGACY-6, -31..33, -85..89, -91..96) and on Q-MISC-45, Q-MISC-47 and the 22 entries this plan raises (Q-MISC-48..55, Q-LEGACY-37..49, Q-LEGACY-54);
+  - for the verify rows Q-LEGACY-40 and Q-LEGACY-44, conditional resolutions naming the option for each outcome of LEG-MZ-28 and LEG-MZ-11;
+  - D-37 and D-38 in `docs/decisions/audit/DECISIONS.md`;
+  - judgement items J1–J6 and the design's Open Questions 1–3.
+  
+  Verify with `check_milestone_readiness.py --milestone M10` (no `plot-output`, `router-maze` or `router-maze-iroute` entry left) and `openspec validate --all --strict`.
+- [ ] 1.2 (DECIDE) Sync this change's `specs/` deltas into `openspec/specs/` (Open Question 1 (a)), then set `skip_specs: true` in `.openspec.yaml`. Revise any delta whose answer differs from the recommendation. Verify `openspec validate --all --strict`, a dry-run `openspec archive m10-plot-route` that reports no spec change, and the "Spec changes" section of the decision table listing each edit.
+- [ ] 1.3 (DECIDE) Check the `(Magic ref: …)` traces of `plot-output`, `router-maze` and `router-maze-iroute` against fc5daa9e while syncing, and correct moved line numbers. Verify with the list of traces checked in the decision table.
+
+## 2. GOLDEN: capture image variant, authoring, comparators, captures (R1; gates G1-PLOT and G1-ROUTE)
+
+- [ ] 2.1 Check that the main capture image installs `magicps.pro` where Magic's `SysLibPath` finds it, and that `mos.7bit.mraster.cmap`, `mos.7bit.mraster_dstyle`, `mos.7bit.dstyle` and `mos.7bit.std.cmap` are installed (the last two are what a `-dnull` run loads for the PNM `default` colours). Verify with a one-off `plot postscript` run in the image whose output contains `%%BeginResource` and not `postscript_prolog_is_missing`.
+- [ ] 2.2 The `magic-cairo` image variant (`--build-arg WITH_CAIRO=1`): Magic at the pinned commit with `--with-cairo` and the Tcl wrapper, run under Xvfb with `-d XR`; manifest key `image = "magic-cairo"`; the workflow step that builds it when a manifest asks; replay skips its cases with a note when it is absent (design D19, Q-MISC-52). Verify a manual `golden-capture` run that captures MISC-PLOT-12 and -13 three times with identical results.
+- [ ] 2.3 Comparators `ps_text`, `pnm_image` and `svg_shape` in `tools/golden/compare/`, registered in `__main__.py`, with unit tests on hand-made pairs (identical, one byte off, one pixel off, different size). Verify `python3 -m tools.golden.compare --self-test` and the tests.
+- [ ] 2.4 Plot inputs: `tools/golden/authoring/plottest.tech` (a minimal Hefesto-authored technology with `style postscript` and `style pnm` blocks) and MISC-PLOT-01..20 in `m10_cases.py` (design D19), with `tests/golden/MISC/CASES.md` updated. Verify that the authoring script regenerates the case directories with no diff.
+- [ ] 2.5 Route inputs: `tools/golden/authoring/legacy_cases.py` generating LEG-MZ-01..31 on scmos (and LEG-MZ-27 on sky130A), with `tests/golden/LEGACY/CASES.md` updated and an "Authoring status" line. Verify that the script regenerates the case directories with no diff.
+- [ ] 2.6 Capture MISC-PLOT-01..20 (after 2.1–2.4). Verify that every expected file is present, the PostScript files contain the prologue, and the three runs of the capture are identical.
+- [ ] 2.7 Capture LEG-MZ-01..31 and re-capture SCRIPT-AUX-02 (after 2.5). LEG-MZ-28 runs under `timeout -s KILL 120`, so a Magic that blocks on the prompt is recorded as the outcome "hang" (exit status 137) instead of stalling the job. Add the `Verified` lines of Q-LEGACY-40 (LEG-MZ-28) and Q-LEGACY-44 (LEG-MZ-11) to `LEGACY.md` with the run id. Verify that every expected file is present, that the capture job finished within its time limit, and that a verify outcome no approved branch covers goes back to the user before G1-ROUTE.
+- [ ] 2.8 The optional `plot-validate` mode of `golden-capture.yml`: Ghostscript (`gs -dNOPAUSE -dBATCH -sDEVICE=ppmraw`) on every `.ps`, resvg on every Hefesto `.svg`, both pinned in `tools/golden/pins.toml` with their licences (design D2). Verify a run on the captured MISC-PLOT files with no PostScript error.
+
+## 3. SCAFFOLD (R1; after G0)
+
+- [ ] 3.1 Module skeletons of design D3 (`plot/{tech,params,cmd,io,ps,pnm}`, `display/export`, `route/{tech,maze,iroute,diag}`) with `sources.cmake`, `codes.inc` and the area-contract headers of design "Area contracts"; `docs/diagnostics/codes/plot.md` and `route.md`; the `CORE-NOTIMPL-010` row; the `plot`, `iroute`, `*iroute` and `*mzroute` commands registered and answering `CORE-NOTIMPL-010`. Verify the build on the three CI platforms, `check_core_includes.py`, and the codes docs check.
+
+## 4. PLOTTECH: the `plot` section (R1; after 3)
+
+- [ ] 4.1 The section state machine and the `postscript` handler (Q-MISC-50 (2)), with the reversed lists and the type-list expansion. Verify the "Technology plot section structure" and "PostScript style lines" scenarios and the MISC-PLOT-20 tech-load messages as unit tests (texts from Magic's source); the MISC-PLOT-20 golden replay after 2.6.
+- [ ] 4.2 The `pnm` handler (design D6): `default` and `draw <type>` from the session's display style set (the `7bit` class headless, loaded for the plot when none is loaded); `color` and `dstyle` with the bundled `assets/plot/mos.7bit.mraster*` files and their search order; `assets/plot/mos.7bit.dstyle` and `mos.7bit.std.cmap` bundled unless Hefesto's display assets already carry them (check first and record which); all copied unmodified from Magic's `scmos/`; the blend formula, `map` (Q-MISC-50 (1)), `init_failed`; the device styles accepted and ignored (Q-MISC-51). Verify "PNM style lines", "Raster printer and legacy plot devices" and "Platform mechanism of plot output" scenarios (the iPad one with no display style set loaded), and that sky130A, gf180mcuD and ihp-sg13g2 load with no new message.
+- [ ] 4.3 `tech/loader.cpp` hand-off and the `tech_file_test.cpp` assertions; `fuzz_plot_section` and `fuzz_pnm_cmap_dstyle`. Verify the tech tests and a 10-minute local fuzz run.
+
+## 5. PLOTCMD: command, parameters, region, files (R2; after G1-PLOT and 4)
+
+- [ ] 5.1 `plot` dispatch with the Q-MISC-51 option set, argument checks and messages; the region and layer mask. Verify "Plot command and plotted region" scenarios and MISC-PLOT-13 and -17 (stdout and stderr parts, with the Q-MISC-51 masks of design D19).
+- [ ] 5.2 `plot parameters` with Magic's printed names, groups and constraint messages, and the `pnmmaxmem` range (Q-MISC-49). Verify "Plot parameters" scenarios and MISC-PLOT-05 (with its Q-MISC-51 mask).
+- [ ] 5.3 `plot/io/AtomicFile` and `with_default_extension` (Q-MISC-53, Q-MISC-55 both modes). Verify unit tests for commit, interrupt, write error (a full temporary filesystem on Linux), an existing target left unchanged, and the extension rule in both modes.
+
+## 6. PS: PostScript writer (R2; after 5.1)
+
+- [ ] 6.1 Header, scale, margins (Q-MISC-43 both modes, Q-MISC-48), the embedded prologue with its SHA-256 test, procedures, colours, patterns, page setup and trailer; float formatting (Q-MISC-54). Verify "PostScript file layout" and "PostScript label margins" scenarios and MISC-PLOT-01.
+- [ ] 6.2 Paint: hierarchical enumeration, merge buffer, line buffer, split tiles, boundary segments, line-width state, the outline-rectangle rule (Q-MISC-41 both modes), undefined-reference check (Q-MISC-50 (3)). Verify "PostScript paint output" scenarios, MISC-PLOT-02, -04 and -10 (PS part).
+- [ ] 6.3 Cell outlines and labels with text escaping (Q-MISC-42). Verify "PostScript cell outlines" and "PostScript labels" scenarios, MISC-PLOT-03 (with its documented deviation) and MISC-PLOT-11 (PS part). Run `check_requirement_coverage.py --capability plot-output` for the PS requirements.
+
+## 7. PNM: rasteriser and file (R2; after 5.1)
+
+- [ ] 7.1 `tools/golden/gen_lanczos_table.py`, run in the capture image, and the committed `plot/pnm/lanczos_table.inc`; the plot sources built with `-ffp-contract=off` (Q-MISC-54). Verify that the table's header names the glibc version and that the platform-recompute test reports its differences without failing.
+- [ ] 7.2 Bounding box, scale, strips, forced downsampling and its messages (Q-MISC-47), 64-bit memory arithmetic and the minimum strip (Q-MISC-49), blending, contacts once, split tiles, sampling, antialiasing, the `P6` file, progress and interrupt. Verify "PNM rasterisation and file format" scenarios, MISC-PLOT-06..11 and -19, the strip-halo scenario of "Plot output safety and limits", and the byte identity of the PNM goldens on the three CI platforms.
+- [ ] 7.3 PDK cases MISC-PLOT-14..16 and MISC-PLOT-18 (Q-MISC-55, ON). Verify replay and `check_requirement_coverage.py --capability plot-output`.
+
+## 8. EXPORT: view export to SVG and PNG (R2; after 3; D-37, D-38)
+
+- [ ] 8.1 `display::export_svg` from `LayoutScene` (design D10), deterministic element order, integer coordinates, stipple patterns, labels and cell outlines; the element cap. Verify the "View export to SVG and PNG" scenarios as unit tests, a well-formedness check of every SVG they write with Python's `xml.etree` in the test harness (`tests/unit/display/export/check_svg.py`, run by CTest; no new C++ dependency, D2), and byte identity on the three platforms.
+- [ ] 8.2 `display::export_png`: the integer-only CPU scan-converter, glyphs from the font rasteriser, PNG chunks through zlib with filter 0; the size cap; `-ffp-contract=off` on `display/export/` and `display/font.cpp` (design D20). Verify the PNG scenario as a unit test on hand-computed pixels, byte identity on each platform across runs, and byte identity across the three platforms for scenes without rotated labels. For information only, compare with the Vulkan headless renderer (`src/render/vulkan/src/headless.cpp`) for the same scene and report the number of differing pixels inside the layers; the result depends on the GPU or lavapipe and is not a gate.
+- [ ] 8.3 `plot svg` on `export_svg` with the window's pixel size (headless `kNullScreen`) and the extension rule (after 5.3), with `magic-compat` ON as well (the Q-MISC-52 ON-mode deviation). Verify "SVG plot" scenarios and MISC-PLOT-12 through `svg_shape` (both windows 512 × 484; width and height compared as numbers with Cairo's `pt` removed).
+
+## 9. MZTECH: the `mzrouter` section and styles (R1; after 3)
+
+- [ ] 9.1 Statement parsers with full validation before registration (Q-LEGACY-31, -39), the `search` penalty range check (Q-LEGACY-47), style defaults, file order. Verify "mzrouter section grammar" and "Style defaults and lookup" scenarios and the penalty bullet of "Maze search safety and limits" as unit tests (R1); the LEG-MZ-02 replay after 2.7 (G1-ROUTE).
+- [ ] 9.2 DRC derivation of widths, lengths and spacings, explicit spacings, SUBCELL maxima, defined types only (Q-LEGACY-35), the `width` rule in both modes (Q-LEGACY-33); re-run on `scalegrid`. Verify "Width and spacing derivation from DRC" scenarios as unit tests (R1); LEG-MZ-01's widths and spacings after 2.7 (G1-ROUTE).
+- [ ] 9.3 The derived `irouter` style (Q-LEGACY-37) from the `lef` section, OFF only. Verify the "Derived irouter style" scenarios on sky130A, gf180mcuD and ihp-sg13g2 and on scmos with its style removed, in both modes; `fuzz_mzrouter_section`.
+
+## 10. MZ: the maze engine (R2; after G1-ROUTE and 9.1–9.2)
+
+- [ ] 10.1 Types and the interface of design D4 (`RouteRequest`, `RouteResult`, `RunControls`), the per-call arena and memory limit (Q-LEGACY-48), cancellation, and the style's `bloomLimit` with Magic's stop rule. Verify unit tests for the memory limit, the bloom limit's determinism and its stop count, and two concurrent calls giving identical results ("Maze router engine interface" scenarios).
+- [ ] 10.2 Derived search quantities, blockage planes and lazy blockage generation, hint, fence and rotate layers, start and destination registration (Q-LEGACY-38: undo untouched; the fence message returned), destination areas. Verify the matching `router-maze` scenarios as unit tests.
+- [ ] 10.3 Cost estimation (corner Dijkstra, straight-shot estimators; Q-LEGACY-90, -96). Verify "Cost estimation" scenarios and LEG-MZ-13's estimate dump.
+- [ ] 10.4 Initial paths (Q-LEGACY-85 both modes, Q-LEGACY-92), path records and the hashed-best rule (Q-LEGACY-86), the segment cost model, heaps ported from `utils/heap.c` (Q-LEGACY-6). Verify the matching scenarios and LEG-MZ-16 and -18.
+- [ ] 10.5 Interesting points in four directions from one template (Q-LEGACY-87 both modes, Q-LEGACY-94), contact extension (Q-LEGACY-91), walk extension, the blockage painting rules (Q-LEGACY-88, -89 both modes). Verify the matching scenarios and LEG-MZ-04, -15 and -17.
+- [ ] 10.6 The windowed bloom search (Q-LEGACY-32, -95), termination, path to paint conversion. Verify "Windowed bloom search", "Heap ordering" and "Path to paint conversion" scenarios, LEG-MZ-03..08, -12, -14, -19, -20, and `check_requirement_coverage.py --capability router-maze`; `fuzz_maze_route`.
+
+## 11. IROUTE: the command (R2 for parameters, R3 for routes)
+
+- [ ] 11.1 (R2; after 9.1) Dispatch, help, version, verbosity, `contacts`, `layers`, `search`, `wizard` (Q-LEGACY-36, -46, -47), `spacings`, `saveParameters` (Q-LEGACY-43 both modes). Verify the matching `router-maze-iroute` scenarios as unit tests (after 9.1); the LEG-MZ-01, -09, -21..23 and -30 replays after 2.7 (G1-ROUTE).
+- [ ] 11.2 (R3; after 10) `route` options and errors (Q-LEGACY-45 both modes), endpoints and the prompt-host rule (Q-LEGACY-40), `-timeout` on the cancel token (Q-LEGACY-41), result handling (paint into the edit cell as one undo group, selection, redisplay, DRC queue; Q-LEGACY-42 both modes), the Tcl results, the verbosity-2 statistics. Verify "iroute route options", "Route context and endpoints", "Route results", "Route timeout" and "iroute behaviour with magic-compat off" scenarios, LEG-MZ-10, -11, -24..29.
+- [ ] 11.3 (R3) `*iroute` and `*mzroute` diagnostics. Verify LEG-MZ-31 (informative) and the "diagnostics have no layout effect" scenarios.
+- [ ] 11.4 (R3) The Q-LEGACY-44 outcome: if the verify row resolved compat, the scripting layer's leading-`:` acceptance with `magic-compat` OFF; otherwise accepted in both modes. The edit to `script::source_line_prefix` is IROUTE's named ownership exception (design D3), signed off on the round PR. Verify the "Round trip" scenario of "saveParameters file format" in both modes and `check_requirement_coverage.py --capability router-maze-iroute`; `fuzz_iroute_commands`.
+
+## 12. MAZETOOL: `mazeroute` (R3; after 11.2)
+
+- [ ] 12.1 `mazeroute` in `tools/` with the `.net` fallback and the chain order through the command layer; retire `TOOLS-MAZE-001` (codes, header comments, docs) and replace the stub test. Verify the "Chain routing order" scenario, SCRIPT-AUX-02 replay with no deferral, and `check_requirement_coverage.py --capability scripting-auxiliary-tools`.
+
+## 13. DESIGN and SHELL: desktop (R3 boards, R4 screens; design Open Question 3)
+
+- [ ] 13.1 (DESIGN) `docs/design/mockups/PlotExport.dc.html` and `MazeHelper.dc.html` with the forge components, and `docs/design/m10-plot-route-ui-conformance.md`. Verify design review sign-off recorded in the conformance doc.
+- [ ] 13.2 (SHELL; after 6, 7, 8) File > "Export Image…": view model (headless, tested) and dialog; the command echoed in the console; progress and cancel. Verify the "Export as PostScript" scenario on Linux and macOS and the view-model tests.
+- [ ] 13.3 (SHELL; after 12) The maze helper panel from Options > Maze Router: lists, route, rip up, verify, save and load of failed nets; a net with fewer than two pins stays unrouted with a note (Q-LEGACY-49); no parameter window (Q-LEGACY-54). Verify view-model tests driving a scmos netlist (including the "Helper net with one pin" scenario), and a manual run on Linux and macOS recorded in the conformance doc.
+
+## 14. PERF (R4)
+
+- [ ] 14.1 `plot-bench` in `bench/plot/` and `perf.yml`: callgrind counts against Magic by subtraction for `plot postscript` and `plot pnm … 4000` on the `block` workload of `bench/drc/drc_bench.py`, and peak memory. Gate: at most Magic's count, then the recorded baseline + 2 %; peak memory within `pnmmaxmem` + 64 MiB. Verify the "PostScript plot against Magic" scenario on the x86_64 runner with a run id, and the recorded baselines.
+- [ ] 14.2 `route-bench` in `bench/route/` and `perf.yml`: the routed LEG-MZ cases and the 20-net scmos `mazeroute` workload against Magic (at most Magic's count, then the baseline + 2 %); the `agent-route` workload (two labels placed 200 µm apart across the rows of the same `block`, derived style, `magic-compat` OFF): at most 2 s on the M3 Pro and peak search memory under 256 MiB. M1 Mac and iPad times recorded when those runs happen, not gated. Verify the "Maze route after the baseline is recorded" and "Agent route time and memory" scenarios with run ids.
+
+## 15. INTEGRATION (every round; exit in R5)
+
+- [ ] 15.1 Licensing: `THIRD_PARTY_NOTICES.md` rows for the ported `plot/`, `mzrouter/`, `irouter/` and `mazeroute.tcl` logic and the three bundled Magic data files; Ghostscript and resvg recorded as CI-only in `pins.toml` (design D2). Verify `check_third_party_notices.py`.
+- [ ] 15.2 Close-out of deferrals (design D22): SCRIPT-AUX-02 deferral removed; UI-G-005 reason without the M10 names; new deviations for MISC-PLOT-03, the masked parts of MISC-PLOT-05, -13 and -17 (Q-MISC-51), and LEG-MZ-29, with their decisions; the M4 entry in `check_requirement_coverage.py` removed; the M4 follow-up noted in `m4-decision-table.md`. Verify the golden harness and the coverage script.
+- [ ] 15.3 Docs: `docs/diagnostics/codes/{plot,route}.md` complete; `docs/contributing/` (areas, the `magic-cairo` variant, fuzz targets, the Lanczos generator); CHANGELOG; roadmap M10 status. Verify the docs checks.
+- [ ] 15.4 Exit check (design D24): goldens on the three platforms, coverage, both-mode tests, fuzz, `plot-validate`, PERF, `TOOLS-MAZE-001` and `CORE-NOTIMPL-010` retired, notices, `openspec validate --all --strict`. Verify each item in an exit table in the roadmap's M10 section with run ids.
+- [ ] 15.5 Archive the change with `openspec archive m10-plot-route`. The deltas were synced at G0 and `skip_specs: true` is set (task 1.2), so the archive moves the change folder only. Verify that `git diff --stat openspec/specs/` is empty after the archive and `openspec validate --all --strict`.
+
+## Parallel workstreams per round
+
+| Round | In parallel | Order inside the round |
+|---|---|---|
+| R0 | DECIDE (1.1–1.3) | 1.1 → 1.2 → 1.3 |
+| R1 | GOLDEN (2), SCAFFOLD (3), PLOTTECH (4), MZTECH (9) | 3 → 4, 9; plot: 2.1–2.4 → 2.6 (G1-PLOT); route: 2.5 → 2.7 (G1-ROUTE); 2.8 after 2.6; the golden-replay checks of 4.1, 9.1 and 9.2 wait for 2.6 or 2.7 |
+| R2 | PLOTCMD (5), PS (6), PNM (7), EXPORT (8.1–8.2) · MZ (10), IROUTE parameters (11.1) | plot after G1-PLOT: 5.1 → 6, 7; route after G1-ROUTE: 10.1 → 10.2 → 10.3 → 10.4 → 10.5 → 10.6; 11.1's unit tests need only 9.1, its replays G1-ROUTE; EXPORT needs neither gate |
+| R3 | `plot svg` (8.3) · IROUTE routes (11.2–11.4), MAZETOOL (12) · DESIGN (13.1) | 5.3 and 8.1 → 8.3; 10 → 11.2 → 12; 13.1 any time in R3 |
+| R4 | SHELL (13.2, 13.3), PERF (14), fuzz runs | 13.2 after 6–8; 13.3 after 12 |
+| R5 | INTEGRATION exit (15) | 15.1–15.3 → 15.4 → 15.5 |
+
+## Exit check
+
+The plotting and routing part of M10 is done when every item of design D24 is checked with its run id: the MISC-PLOT-01..20, LEG-MZ-01..31 and SCRIPT-AUX-02 goldens replay on Linux x86_64, Linux aarch64 and macOS arm64 with only the documented deviations of design D19 (MISC-PLOT-03; the masked parts of MISC-PLOT-05, -13 and -17; LEG-MZ-29); the coverage target above is met; every branch point of design D5 has a test per mode; the fuzz targets and `plot-validate` are green; the PERF gates of design D21 are met (an unmet gate blocks the exit; the M1 Mac and iPad times are recorded only); `TOOLS-MAZE-001` and `CORE-NOTIMPL-010` are gone; and `openspec validate --all --strict` passes.
