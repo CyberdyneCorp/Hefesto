@@ -301,7 +301,7 @@ TEST_CASE("mask-layer mode builds the mask layers in mask units and draws them u
     const BuildKey key = build_key(tab_inputs(s), false);
     CHECK(key.mode == view3d::Mode::mask_layer);
     CHECK(key.mask_style != nullptr);
-    tcl(s, "cif ostyle coarse");
+    s.ok("cif ostyle coarse");
     CHECK_FALSE(build_key(tab_inputs(s), false) == key);
   }
 }
