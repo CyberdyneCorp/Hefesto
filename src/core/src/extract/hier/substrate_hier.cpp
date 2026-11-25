@@ -145,27 +145,40 @@ bool connect_substrate(Hier& h, const db::CellUse& use, std::int32_t x, std::int
   return true;
 }
 
-void connect_use_substrate(Hier& h, const db::CellUse& use, bool mark_always) {
+namespace {
+
+// The element loops of extSubtreeFunc / extSubstrateFunc: true when some
+// element's substrate was extracted.
+bool connect_elements(Hier& h, const db::CellUse& use) {
   const db::ArrayInfo& a = use.array;
-  bool ok = false;
   if (a.xhi == a.xlo && a.yhi == a.ylo) {
-    ok = connect_substrate(h, use, -1, -1);
-  } else if (a.xhi == a.xlo && a.yhi > a.ylo) {
+    return connect_substrate(h, use, -1, -1);
+  }
+  bool ok = false;
+  if (a.xhi == a.xlo && a.yhi > a.ylo) {
     for (std::int32_t y = a.ylo; y <= a.yhi; ++y) {
       ok = connect_substrate(h, use, -1, y) || ok;
     }
-  } else if (a.xhi > a.xlo && a.yhi == a.ylo) {
+    return ok;
+  }
+  if (a.xhi > a.xlo && a.yhi == a.ylo) {
     for (std::int32_t x = a.xlo; x <= a.xhi; ++x) {
       ok = connect_substrate(h, use, x, -1) || ok;
     }
-  } else {
-    for (std::int32_t x = a.xlo; x <= a.xhi; ++x) {
-      for (std::int32_t y = a.ylo; y <= a.yhi; ++y) {
-        ok = connect_substrate(h, use, x, y) || ok;
-      }
+    return ok;
+  }
+  for (std::int32_t x = a.xlo; x <= a.xhi; ++x) {
+    for (std::int32_t y = a.ylo; y <= a.yhi; ++y) {
+      ok = connect_substrate(h, use, x, y) || ok;
     }
   }
-  if (ok || mark_always) {
+  return ok;
+}
+
+}  // namespace
+
+void connect_use_substrate(Hier& h, const db::CellUse& use, bool mark_always) {
+  if (connect_elements(h, use) || mark_always) {
     h.sub_extracted.insert(&use);
   }
 }
