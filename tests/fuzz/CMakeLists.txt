@@ -48,6 +48,7 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_schem_props      # property strings and brace strings (schematic-file-format; m8 design D19)
   fuzz_schem_bus        # bus and vector notation, net naming (schematic-netlisting; m8 design D19)
   fuzz_schem_expr       # expr evaluation and format substitution (schematic-netlisting; m8 design D19)
+  fuzz_lvs_spice        # LVS SPICE/CDL netlists and includes (lvs-netlist-input; m9 design D20)
 )
 
 if(HEFESTO_BUILD_FUZZ)
