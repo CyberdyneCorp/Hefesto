@@ -470,7 +470,8 @@ class ThirdPartyNoticesTest(unittest.TestCase):
     def test_repository_notices_cover_every_cmake_module(self):
         code, output = run_quiet(notices.main, [])
         self.assertEqual(code, 0, output)
-        self.assertIn("8 dependencies checked", output)
+        # The count grows with each pinned dependency (9 since cgltf, M10 task 11.2).
+        self.assertRegex(output, r"\b\d+ dependencies checked, 0 problems")
 
 
 if __name__ == "__main__":

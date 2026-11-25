@@ -86,13 +86,15 @@ jobs:
         run: cmake --build --preset ${{ matrix.preset }} --target hefesto_view3d_export_tests
 
       - name: Run the export tests and write the reference files
+        shell: bash
         env:
           HEFESTO_EXPORT3D_OUT: ${{ github.workspace }}/export3d-out
         run: |
-          test_bin="$(find build/${{ matrix.preset }} -type f -name hefesto_view3d_export_tests | head -n 1)"
+          test_bin="build/${{ matrix.preset }}/tests/unit/view3d/export/hefesto_view3d_export_tests"
           "$test_bin" --reporter console
           ls -l export3d-out
-          (cd export3d-out && shasum -a 256 * | tee ../export3d-digests.txt) >> "$GITHUB_STEP_SUMMARY"
+          # Sorted by file name in byte order: glob order follows the runner's locale (macOS differs).
+          (cd export3d-out && shasum -a 256 -- * | LC_ALL=C sort -k2 | tee ../export3d-digests.txt) >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -115,6 +117,7 @@ jobs:
           path: legs
 
       - name: Same bytes on every leg
+        shell: bash
         run: |
           reference=legs/export3d-linux-x64/export3d-digests.txt
           status=0
@@ -137,6 +140,7 @@ jobs:
           mkdir validator && tar xf validator.tar.xz -C validator
 
       - name: Validate the glTF files
+        shell: bash
         run: |
           status=0
           for file in legs/export3d-linux-x64/export3d-out/*.glb legs/export3d-linux-x64/export3d-out/*.gltf; do
