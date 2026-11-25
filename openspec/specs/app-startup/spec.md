@@ -116,7 +116,7 @@ The search paths SHALL be:
 
 Hefesto SHALL let the user or the PDK configuration designate an installation root containing `magic/sys`. On iPadOS this root SHALL be inside the app's sandbox (see Q-UI-26).
 
-The script sandbox (capability `hefesto-scripting`) SHALL make only `<root>/assets` and `<root>/magic` readable (never writable) to project scripts, not the whole installation root: with the default of step 3 the root is an install prefix such as `/usr/local` or `/opt/homebrew`, whose other contents scripts SHALL NOT read (review of the M8-D10 change; both modes; proposed Q-SCHEM-49, awaiting the user).
+The script sandbox (capability `hefesto-scripting`) SHALL make only `<root>/assets` and `<root>/magic` readable (never writable) to project scripts, not the whole installation root: with the default of step 3 the root is an install prefix such as `/usr/local` or `/opt/homebrew`, whose other contents scripts SHALL NOT read (review of the M8-D10 change; both modes).
 
 Compatibility: behavioral (host mechanics informative)
 (Magic ref: utils/path.c:193-388, utils/paths.h:30-73, utils/main.c:557-834, tcltk/tclmagic.c:1663-1669)
