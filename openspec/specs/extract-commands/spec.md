@@ -44,10 +44,15 @@ Compatibility: behavioral
 
 ### Requirement: Extract all, cell, parents and showparents
 
-`extract all` SHALL extract every cell of the root's tree regardless of timestamps (root must be named). `extract cell NAME` SHALL extract only the currently selected cell into the file `NAME.ext` (children are not extracted but their substrates are prepared; path-length extraction is not done), followed by full R-C extraction of that cell when option `extresist` is on; with no selection it SHALL report `No cell selected`. `extract parents` SHALL extract the selected cell and every cell that uses it directly or indirectly (selected cell first, then parents depth-first). `extract showparents` SHALL print, without extracting, the names of the cells `parents` would extract, comma-separated.
+`extract all` SHALL extract every cell of the root's tree regardless of timestamps (root must be named). `extract cell NAME` SHALL extract only the currently selected cell into the file `NAME.ext` (children are not extracted but their substrates are prepared; path-length extraction is not done), followed by full R-C extraction of that cell when option `extresist` is on; with no selection it SHALL report `No cell selected`. `extract parents` SHALL extract the selected cell and every cell that uses it directly or indirectly: the cells are collected depth-first from the selected cell through its parents and processed in Magic's stack order, last collected first, so the topmost parent comes first and the selected cell last; the children of the selected cell are not extracted but their substrates are prepared. `extract showparents` SHALL print, without extracting, the names of the cells `parents` would extract, comma-separated, in that order.
 Compatibility: behavioral
 
 (Magic ref: commands/CmdE.c:1220-1310, extract/ExtMain.c:250-460, extract/ExtMain.c:620-700)
+
+#### Scenario: Show the parents of a leaf
+- **GIVEN** a cell `top` that uses a cell `leaf`, and an instance of `leaf` selected
+- **WHEN** `extract showparents` runs
+- **THEN** it prints `top, leaf` and writes no file
 
 #### Scenario: Extract a single cell into a named file
 - **GIVEN** a selected instance of cell `inv`
@@ -111,7 +116,7 @@ Compatibility: behavioral
 
 ### Requirement: Style, halo and step size
 
-`extract style` SHALL print the current style (with `listall`, all styles); `extract style NAME` SHALL select the unique style whose name has NAME as prefix (`Extraction style "<n>" is ambiguous.` / `"<n>" is not one of the extraction styles Magic knows.` otherwise) and reload it (see `extract-tech-section`). `extract halo [D]` SHALL print the side halo in internal units or set it to D (any distance syntax of `cmd-coordinates-and-units`, must be ≥ 0); `extract stepsize [D]` likewise for the step size (must be > 0). These overrides SHALL change the loaded style in place, in both `magic-compat` settings (Q-EXTRACT-25, resolution: replicate): a grid rescale SHALL scale them like any other style value, and selecting or reloading a style, or loading a technology, SHALL restore the tech-file values.
+`extract style` SHALL print the current style (with `listall`, all styles); `extract style NAME` SHALL select the unique style whose name has NAME as prefix (`Extraction style "<n>" is ambiguous.` / `"<n>" is not one of the extraction styles Magic knows.` otherwise) and reload it (see `extract-tech-section`). `extract halo [D]` SHALL print the side halo in internal units or set it to D (any distance syntax of `cmd-coordinates-and-units`, must be ≥ 0); `extract stepsize [D]` likewise for the step size (must be > 0). These overrides SHALL change the loaded style in place (the session's current style is replaced by a copy with the new value), in both `magic-compat` settings (Q-EXTRACT-25, resolution: replicate): a grid rescale SHALL scale them like any other style value, and selecting or reloading a style, or loading a technology, SHALL restore the tech-file values.
 Compatibility: behavioral
 
 (Magic ref: commands/CmdE.c:1241-1300, extract/ExtTech.c:770-806, extract/ExtTech.c:1084-1109, extract/ExtTech.c:4038-4039)
