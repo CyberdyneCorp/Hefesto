@@ -1003,3 +1003,42 @@ jobs:
           name: fuzz-crashes
           path: fuzz-artifacts/
           if-no-files-found: ignore
+
+  # m9-lvs-simulation task 5.4 (design D2; Q-SIM-20, Q-SIM-22): a release build that holds hefesto-simd, the
+  # hefesto-ngspice-adapter plugin and libngspice-hefesto, checked as a release tree (no --developer-build:
+  # scripts/check_engine_boundary.py reads HEFESTO_DEVELOPER_BUILD=OFF from CMakeCache.txt). The worker tests
+  # then run hefesto-simd with the real plugin, confined (seccomp, and Landlock where the kernel has it).
+  engine-boundary-release:
+    name: engine boundary (linux-x64 release, ngspice, hefesto-simd)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-release-ngspice
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-release-ngspice-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**', 'third_party/ngspice/pin.json') }}
+          restore-keys: deps-linux-release-ngspice-
+      - name: Configure (release, HEFESTO_BUILD_NGSPICE=ON, HEFESTO_DEVELOPER_BUILD=OFF)
+        run: >-
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_WARNINGS_AS_ERRORS=ON
+          -DHEFESTO_BUILD_NGSPICE=ON -DHEFESTO_DEVELOPER_BUILD=OFF
+      - name: Build hefesto-simd, the adapter plugin, hefesto-cli and the worker tests
+        run: >-
+          cmake --build --preset linux-release
+          --target hefesto-simd hefesto-ngspice-adapter ngspice-hefesto hefesto-cli hefesto_platform_tests
+      - name: Check the simulation engine boundary (release rules)
+        run: python3 scripts/check_engine_boundary.py --build-dir build/linux-release
+      - name: Worker tests with the real adapter (confinement, reuse, determinism)
+        run: ctest --test-dir build/linux-release -R 'hefesto_platform_tests' --output-on-failure

@@ -46,6 +46,8 @@ constexpr std::array kTable = {
     CodeInfo{"PLATFORM-PDK-001", error, "A technology was not found in any PDK or technology root."},
     CodeInfo{"PLATFORM-PROCESS-001", error, "An external process could not be started or waited for."},
     CodeInfo{"PLATFORM-UNSUPPORTED-001", error, "The requested platform service is not available on this platform."},
+    CodeInfo{"PLATFORM-WORKER-001", error, "A frame for a worker channel is empty or larger than the channel's frame limit; it was not sent."},
+    CodeInfo{"PLATFORM-WORKER-002", error, "A worker channel is closed (the worker exited or was terminated); the frame was not sent."},
     CodeInfo{"SETTINGS-FILE-001", error, "A project settings file is malformed."},
     CodeInfo{"SETTINGS-NAME-001", error, "Unknown project setting name."},
     CodeInfo{"SETTINGS-VALUE-001", error, "Invalid value for a project setting."},

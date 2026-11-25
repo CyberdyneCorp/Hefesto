@@ -112,6 +112,8 @@ between the markers below. Area codes follow the same steps in the area's
 | `PLATFORM-PDK-001` | error | A technology was not found in any PDK or technology root. |
 | `PLATFORM-PROCESS-001` | error | An external process could not be started or waited for. |
 | `PLATFORM-UNSUPPORTED-001` | error | The requested platform service is not available on this platform. |
+| `PLATFORM-WORKER-001` | error | A frame for a worker channel is empty or larger than the channel's frame limit; it was not sent. |
+| `PLATFORM-WORKER-002` | error | A worker channel is closed (the worker exited or was terminated); the frame was not sent. |
 | `SETTINGS-FILE-001` | error | A project settings file is malformed. |
 | `SETTINGS-NAME-001` | error | Unknown project setting name. |
 | `SETTINGS-VALUE-001` | error | Invalid value for a project setting. |

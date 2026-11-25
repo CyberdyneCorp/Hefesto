@@ -121,6 +121,38 @@ class Fixtures(unittest.TestCase):
         code, err = self.run_check("--developer-build")
         self.assertEqual(code, 0, err)
 
+    def test_release_binary_naming_the_entry_point_fails(self):
+        # The plugin's file name built at run time evades the name check; the entry point it must look up does not.
+        write(self.root, "build/ci/src/shell/desktop/hefesto", fake_binary("main", text="dlsym hefesto_engine_v1"))
+        code, err = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("src/shell/desktop/hefesto: plugin:", err)
+        self.assertIn("entry point", err)
+
+    def test_worker_naming_the_entry_point_passes(self):
+        write(self.root, "build/ci/src/simd/hefesto-simd", fake_binary(text="hefesto_engine_v1 hefesto-ngspice-adapter"))
+        code, err = self.run_check()
+        self.assertEqual(code, 0, err)
+
+    def test_developer_build_is_read_from_the_cmake_cache(self):
+        write(self.root, "build/ci/src/shell/desktop/hefesto", fake_binary("main", text="hefesto-ngspice-adapter.dylib"))
+        write(self.root, "build/ci/CMakeCache.txt", "HEFESTO_DEVELOPER_BUILD:BOOL=ON\n")
+        code, err = self.run_check()
+        self.assertEqual(code, 0, err)
+
+    def test_release_cache_with_the_plugin_in_the_editor_fails(self):
+        write(self.root, "build/ci/src/shell/desktop/hefesto", fake_binary("main", text="hefesto-ngspice-adapter.dylib"))
+        write(self.root, "build/ci/CMakeCache.txt", "CMAKE_BUILD_TYPE:STRING=Release\nHEFESTO_DEVELOPER_BUILD:BOOL=OFF\n")
+        code, err = self.run_check()
+        self.assertEqual(code, 1)
+        self.assertIn("plugin:", err)
+
+    def test_developer_flag_on_a_release_cache_is_a_usage_error(self):
+        write(self.root, "build/ci/CMakeCache.txt", "HEFESTO_DEVELOPER_BUILD:BOOL=OFF\n")
+        code, err = self.run_check("--developer-build")
+        self.assertEqual(code, 2)
+        self.assertIn("HEFESTO_DEVELOPER_BUILD OFF", err)
+
     def test_sharedspice_include_outside_the_adapter_fails(self):
         write(self.root, "src/core/src/sim/engine/worker_engine.cpp", '#  include <ngspice/sharedspice.h>\n')
         code, err = self.run_check()

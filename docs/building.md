@@ -46,6 +46,7 @@ ctest --preset linux-debug
 | `HEFESTO_SANITIZERS` | empty | comma list for `-fsanitize=`, applied to all targets |
 | `HEFESTO_TEST_DESKTOP_WINDOW` | OFF | registers the window smoke tests (labels `desktop-window-x11`, `desktop-window-wayland`): each starts `hefesto --smoke-frames 30` through Raven and needs a display |
 | `HEFESTO_BUILD_NGSPICE` | OFF | builds the simulation engine library `libngspice-hefesto` from the pinned ngspice-47 (`third_party/ngspice/`, M9); see [Simulation engine library](#simulation-engine-library-m9) |
+| `HEFESTO_DEVELOPER_BUILD` | OFF | developer build: also builds the in-process engine host `hefesto_simd_devhost` (Q-SIM-22 (a)); never for a release. `scripts/check_engine_boundary.py` reads it from `CMakeCache.txt`; see [The simulation worker](#the-simulation-worker-hefesto-simd) |
 
 Pass options after the preset, e.g. `cmake --preset macos-debug -DHEFESTO_BUILD_DESKTOP=OFF`.
 
@@ -383,6 +384,59 @@ The library is replaceable by the user (`hefesto-licensing`; design D2 of
 The desktop linking (a replaceable library loaded only by the sandboxed
 worker) goes through a legal review before the Desktop Beta (D-28, task 20.1).
 
+### The simulation worker (`hefesto-simd`)
+
+Simulations run in a separate, confined process (design D2 and D9 of
+`openspec/changes/m9-lvs-simulation`; capability
+`simulation-engine-embedding`). Three pieces, all in `src/simd/`:
+
+| Target | Built | What |
+|---|---|---|
+| `hefesto-simd` | always on Linux and macOS | the worker executable: frame server on stdin/stdout, a heartbeat thread (a `beat` frame every 2 s that never waits for the engine), confinement, then loading the plugin; no ngspice symbol |
+| `hefesto-ngspice-adapter` | with `HEFESTO_BUILD_NGSPICE=ON` | the engine plugin, a shared module that alone includes `sharedspice.h`, links `libngspice-hefesto` and exports the C ABI `hefesto_engine_v1` (`src/simd/abi/hefesto_engine_v1.h`) |
+| `hefesto_simd_devhost` | with `HEFESTO_DEVELOPER_BUILD=ON` | the in-process developer host: the same plugin behind `sim::Engine` in the calling process, for debugging only |
+
+```sh
+cmake --preset macos-debug -DHEFESTO_BUILD_NGSPICE=ON
+cmake --build --preset macos-debug --target hefesto-simd hefesto-ngspice-adapter hefesto_platform_tests
+build/macos-debug/tests/unit/platform/hefesto_platform_tests
+```
+
+Install layout: `bin/hefesto-simd`, `lib/hefesto-ngspice-adapter.{so,dylib}`,
+`lib/libngspice-hefesto.*`. The worker looks for the plugin in `<bin>/../lib`
+and then next to itself (the build tree puts both in `src/simd/`); the plugin
+finds `libngspice-hefesto` through its run path (`$ORIGIN`, `@loader_path`).
+`hefesto-simd --adapter=<path>` loads another plugin (the tests load the
+stand-in `tests/unit/platform/fake_adapter.cpp`); `--heartbeat-ms=<n>` lowers
+the heartbeat interval. The core starts the worker through
+`platform::WorkerHost` (`src/cli/worker_host_posix.hpp` on Linux and macOS),
+which adds `--job-dir=<dir>` and one `--readonly-root=<dir>` per read-only
+root, runs it in the job directory and gives it an empty environment.
+
+Confinement is applied before the plugin is loaded:
+
+- macOS: a `sandbox_init` profile that denies the network, sockets, process
+  creation, and writes outside the job directory (the read-only roots stay
+  read-only even inside it). The build signs `hefesto-simd` ad hoc with
+  `src/simd/hefesto-simd.entitlements`
+  (`com.apple.security.cs.disable-library-validation`; no other binary has it).
+- Linux: `PR_SET_NO_NEW_PRIVS`, a seccomp filter (sockets other than
+  `AF_UNIX`, `fork`, `vfork`, `clone` without `CLONE_THREAD`, `clone3`,
+  `execve`, `execveat` are refused), and a Landlock ruleset that allows writes
+  only under the job directory. Without Landlock (an older kernel) the worker
+  runs with the seccomp filter alone and says so in the job log.
+
+The worker reports what it applied as job-log lines starting with
+`confinement:`. A release tree is checked with
+`python3 scripts/check_engine_boundary.py --build-dir build/<preset>`: no
+binary other than the plugin and the library has an `ngSpice_` symbol, and no
+release binary other than `hefesto-simd` names the plugin or its entry point
+`hefesto_engine_v1`. A tree whose `CMakeCache.txt` sets
+`HEFESTO_DEVELOPER_BUILD=ON` is checked as a developer build (the plugin rule
+is off); `--developer-build` on a release tree is refused. CI's
+`engine-boundary-release` leg builds a release tree with the plugin and runs
+the check and the worker tests.
+
 ## Golden capture
 
 Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), normally in CI through `golden-capture.yml`; `tools/golden/README.md` also documents local container runs (and the `local` and `model` runners of the hash harness) and is the full guide; the image holds:
@@ -415,6 +469,7 @@ cmake --build --preset macos-debug
 | `src/cli/` | `hefesto-cli`, the headless tool used by batch flows and golden tests |
 | `src/platform_posix/` | `hefesto_platform_posix`: POSIX host services the core must not contain (file locks, crash-backup file host, process runner); linked by the CLI and the desktop on Linux and macOS |
 | `src/platform_net/` | `hefesto_platform_net`: the in-process HTTPS Fetcher of the PDK manager (URLSession bridge in Objective-C++ on macOS, libcurl on Linux; hefesto-licensing D-13); linked by the CLI and the desktop |
+| `src/simd/` | `hefesto-simd`, the confined simulation worker, and the `hefesto-ngspice-adapter` plugin (the only code that includes ngspice's API header); see [The simulation worker](#the-simulation-worker-hefesto-simd) |
 | `src/render/vulkan/` | `hefesto_render_vk`, the Vulkan canvas renderer (desktop) |
 | `src/shell/desktop/` | `hefesto_shell_desktop` and the `hefesto` app; the only code that uses Raven |
 | `tests/unit/` | Catch2 unit tests, tagged with the capability and requirement they cover |
