@@ -112,8 +112,12 @@ struct JobManager::Impl {
   }
 
   void set_state(JobRecord& rec, JobState state) {
-    active -= is_active(rec.job.state) ? 1 : 0;
-    active += is_active(state) ? 1 : 0;
+    if (is_active(rec.job.state)) {
+      --active;
+    }
+    if (is_active(state)) {
+      ++active;
+    }
     rec.job.state = state;
     peak = std::max(peak, active);
   }
