@@ -37,7 +37,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 
 A negative `threshold`, `minresist` or `mindelay` value SHALL print `Usage:  extresist threshold|minres|mindelay [value]`. The value is then stored with `magic-compat` ON, as Magic does, and the previous value is kept with it OFF. `force`, `ignore` and `include` without a name list the names, each followed by a space, in the order of Magic's string hash table.
 
-Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any other value prints `Value must be either "on" or "off".`. `geometry` and `fasthenry` SHALL do the following for that run only, restoring the previous settings afterwards:
+Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any other value prints `Value must be either "on" or "off".` and changes nothing. Exception, with `magic-compat` ON only: Magic checks no value for `debug` and `stats`, so any other word turns them on, as in Magic. `geometry` and `fasthenry` SHALL do the following for that run only, restoring the previous settings afterwards:
 - turn on "all"
 - turn off `.res.ext`, `.res.lump` and simplification
 

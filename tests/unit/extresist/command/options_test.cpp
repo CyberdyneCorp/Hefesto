@@ -56,15 +56,33 @@ TEST_CASE("extresist on/off settings", "[cap:extresist-command][req:Command opti
   CHECK(s.editor.extresist.options.lumped);
   REQUIRE(s.run("extresist extout off").ok());
   CHECK_FALSE(s.editor.extresist.options.extout);
-  for (const char* line : {"extresist silent maybe", "extresist debug maybe", "extresist stats o"}) {
+  REQUIRE(s.run("extresist silent maybe").ok());
+  CHECK(s.take() == std::vector<std::string>{"Value must be either \"on\" or \"off\"."});
+  CHECK_FALSE(s.editor.extresist.options.silent);
+  REQUIRE(s.run("extresist blackbox on").ok());
+  CHECK(s.editor.extresist.options.blackbox);
+}
+
+// Magic checks no value for debug and stats: any other word turns them on.
+TEST_CASE("extresist debug and stats with magic-compat ON take any word", "[cap:extresist-command][req:Command options]") {
+  Session s;
+  REQUIRE(s.run("extresist debug maybe").ok());
+  REQUIRE(s.run("extresist stats o").ok());  // ambiguous: on as well
+  CHECK(s.take().empty());
+  CHECK(s.editor.extresist.options.debug);
+  CHECK(s.editor.extresist.options.stats);
+}
+
+TEST_CASE("extresist debug and stats with magic-compat OFF reject other words",
+          "[cap:extresist-command][req:Command options]") {
+  Session s(false);
+  for (const char* line : {"extresist debug maybe", "extresist stats o"}) {
     INFO(line);
     REQUIRE(s.run(line).ok());
     CHECK(s.take() == std::vector<std::string>{"Value must be either \"on\" or \"off\"."});
   }
   CHECK_FALSE(s.editor.extresist.options.debug);
   CHECK_FALSE(s.editor.extresist.options.stats);
-  REQUIRE(s.run("extresist blackbox on").ok());
-  CHECK(s.editor.extresist.options.blackbox);
 }
 
 // Q-NETLIST-23 (fix, both modes): a comma list; a bad type changes nothing.

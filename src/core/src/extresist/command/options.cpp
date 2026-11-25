@@ -11,9 +11,10 @@
 //   bad one).
 // - Q-NETLIST-28 (replicate): `mindelay` is given and queried in ps.
 // - Q-NETLIST-21 (fix): the FastHenry frequency defaults to 10 MHz.
-// - Every on/off option rejects a value other than a prefix of `on` or
-//   `off` (the spec's rule; Magic checks only simplify, extout, lumped,
-//   silent and blackbox and turns debug and stats on for any other word).
+// - An on/off option takes a prefix of `on` or `off`. Another word prints
+//   `Value must be either "on" or "off".` and changes nothing, except for
+//   debug and stats with magic-compat ON, which Magic does not check: any
+//   other word turns them on (Lookup's -1 is true).
 // - A negative threshold, minresist or mindelay prints the usage line;
 //   with magic-compat ON the value is stored, as Magic does, with it OFF
 //   the previous value is kept.
@@ -66,13 +67,18 @@ bool* flag(ResistOptions& o, std::size_t option) {
   }
 }
 
-cmd::CommandResult on_off(bool& value, std::span<const std::string> args, const Console& console) {
+// `unchecked`: debug and stats with magic-compat ON (no value check).
+cmd::CommandResult on_off(bool& value, std::span<const std::string> args, const Console& console, bool unchecked) {
   if (args.empty()) {
     console.report(value ? "on" : "off");
     return cmd::CommandResult::success();
   }
   const cmd::LookupResult found = cmd::lookup(args.front(), kOnOff);
   if (found.match != cmd::Match::found) {
+    if (unchecked) {
+      value = true;  // Magic: `if (value)` with Lookup's -1
+      return cmd::CommandResult::success();
+    }
     console.message("Value must be either \"on\" or \"off\".");
     return cmd::CommandResult::success();
   }
@@ -193,7 +199,8 @@ void fasthenry_frequency(std::span<const std::string> args, OptionContext& ctx) 
 std::optional<cmd::CommandResult> setting_option(std::size_t option, std::span<const std::string> args,
                                                  OptionContext& ctx) {
   if (bool* f = flag(ctx.options, option)) {
-    return on_off(*f, args, ctx.console);
+    const bool unchecked = ctx.magic_compat && (option == kDebug || option == kStats);
+    return on_off(*f, args, ctx.console, unchecked);
   }
   switch (option) {
     case kThreshold:
