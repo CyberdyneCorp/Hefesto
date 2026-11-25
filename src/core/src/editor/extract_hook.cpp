@@ -54,6 +54,9 @@ void install_extract_styles(EditorState& editor, diag::DiagnosticSink& sink) {
   if (first == nullptr) {
     return;
   }
+  // ExtTech.c:3574-3587: a tech load resets option fringehalo from the
+  // first style's tech format (an `extract style` change does not).
+  session.options.fringehalo = first->fringe_model == extract::FringeModel::fringe_halo;
   extract::ExtStyle style = first->micron_convert(editor.mask.output_styles.current_style(), sink);
   // TechLoad's post-load ExtTechScale(DBLambda[0], DBLambda[1]): distances
   // grow by internal/lambda.

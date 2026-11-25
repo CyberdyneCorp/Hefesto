@@ -95,15 +95,6 @@ std::vector<std::string> option_names(std::span<const std::string_view> table) {
   return names;
 }
 
-// The option was reached and is a CORE-NOTIMPL-008 stub naming `what`.
-void check_not_implemented(const cmd::CommandResult& result, const std::string& what) {
-  INFO(what);
-  REQUIRE_FALSE(result.ok());
-  REQUIRE_FALSE(result.diagnostics.empty());
-  CHECK(result.diagnostics.front().code == kNotImplemented);
-  CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
-}
-
 // The run reached EXTFLAT's read of `<cell>.ext` (no such file here); the
 // failure is the last diagnostic, after EFArgs' messages.
 void check_reads(const cmd::CommandResult& result, const std::string& cell) {
@@ -221,8 +212,7 @@ TEST_CASE("extract list and listall with no option print the argument-count mess
   }
 }
 
-TEST_CASE("extract options need a window except style and help, then fail with CORE-NOTIMPL-008",
-          "[m7-scaffold]") {
+TEST_CASE("extract options other than style and help need a window", "[m7-scaffold]") {
   Session s;
   for (const auto* line : {"extract", "extract all", "extract do capacitance"}) {
     INFO(line);
@@ -230,18 +220,6 @@ TEST_CASE("extract options need a window except style and help, then fail with C
     REQUIRE_FALSE(result.ok());
     CHECK(result.diagnostics.front().code == kNoWindow);
     CHECK(result.diagnostics.front().text == "Point to a window first");
-  }
-  check_not_implemented(s.run("extract style"), "extract style");
-  check_not_implemented(s.run("extract listall style"), "extract style");
-  s.state.command_point = cmd::PointerState{};
-  check_not_implemented(s.run("extract"), "extract");
-  for (const std::string_view entry : extract::extract_options()) {
-    const std::string name = option_name(entry);
-    if (name == "help") {
-      continue;
-    }
-    check_not_implemented(s.run("extract " + name), "extract " + name);
-    check_not_implemented(s.run("ext " + name), "extract " + name);
   }
 }
 
@@ -429,12 +407,10 @@ TEST_CASE("StyleBuilder builds ExtStyle fixtures", "[m7-scaffold]") {
   CHECK_FALSE(rules.rules(7).has_value());
 }
 
-TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
+TEST_CASE("the M7 entry points: landed runs and the remaining stubs", "[m7-scaffold]") {
   Session s;
-  check_not_implemented(extract::run(s.state, extract::RunRequest{}, nullptr), "extract run");
-  const auto ensured = extract::ensure_extracted(s.state, "top", nullptr);
-  REQUIRE_FALSE(ensured.ok());
-  CHECK(ensured.error().code == kNotImplemented);
+  CHECK(extract::run(s.state, extract::RunRequest{}, nullptr).ok());  // EXTCMD landed the run driver
+  CHECK_FALSE(extract::ensure_extracted(s.state, "top", nullptr).ok());
   check_no_cell(netlist::spice::run(s.state, {}));  // SPICE landed the run (tasks.md 11.1)
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());

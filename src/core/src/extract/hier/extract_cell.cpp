@@ -16,7 +16,7 @@
 //   5. the `device` cell property, `parameters`, `abstract`, the node
 //      records with their final R and C, the coupling `cap` records (no
 //      `device` property) and the device records;
-//   6. EXTHIER's subtree and array passes (one call site, below);
+//   6. EXTHIER's subtree and array passes (extract_subtree);
 //   7. the slots reset (ExtResetTiles), then path length for the root.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) extract/ExtCell.c (extCellFile,
@@ -41,6 +41,7 @@
 #include "hefesto/extract/cap/caps.hpp"
 #include "hefesto/extract/device/devices.hpp"
 #include "hefesto/extract/file/writer.hpp"
+#include "hefesto/extract/hier/subtree.hpp"
 #include "hefesto/extract/length/length.hpp"
 #include "hefesto/extract/node/labels.hpp"
 #include "hefesto/extract/node/names.hpp"
@@ -454,10 +455,34 @@ void write_basic(ExtractContext& ctx, ExtWriter& writer, const db::CellDef& cell
   write_device_section(ctx, writer, cell, b, result);
 }
 
+// extSubtree and extArray (EXTHIER: pass 1 and pass 2, hierarchical
+// coupling, merges), while the node slots of the flat pass are still kept.
+diag::Status write_subtree(ExtractContext& ctx, ExtWriter& writer, db::CellDef& cell, const Basic& b,
+                           CellResult& result) {
+  SubtreeInputs in;
+  in.technology = ctx.technology;
+  in.parent = ParentNodes{&b.finder, b.nodes.size(), b.names, b.substrate};
+  if (!ctx.style->substrate.node_name.empty()) {
+    in.substrate_name = substrate_name(ctx.style->substrate.node_name, ctx.variable);
+  }
+  in.dont_use = [&ctx](const db::CellDef& def) { return ctx.dont_use.contains(&def); };
+  auto hier = extract_subtree(ctx, cell, writer, in);
+  if (!hier.ok()) {
+    return hier.error();
+  }
+  result.errors += hier.value().errors;
+  result.warnings += hier.value().warnings;
+  for (const NodeFeedback& f : hier.value().feedback) {
+    result.feedback.push_back(CellFeedback{f.area, f.text, f.medium});
+  }
+  return diag::Done{};
+}
+
 // extBasic: false when the pass was cancelled.
 diag::Outcome<bool> extract_basic(ExtractContext& ctx, db::CellDef& cell, ExtWriter& writer, CellResult& result) {
   Basic b;
   b.regions = find_device_regions(cell, *ctx.technology, *ctx.style);
+  disable_subcell_devices(cell, b.regions, *ctx.technology, *ctx.style);
   if (cancelled(ctx)) {
     return false;
   }
@@ -474,10 +499,9 @@ diag::Outcome<bool> extract_basic(ExtractContext& ctx, db::CellDef& cell, ExtWri
     return false;
   }
   write_basic(ctx, writer, cell, b, result);
-  // EXTHIER: extSubtree and extArray (pass 1 and pass 2, hierarchical
-  // coupling, merges) run here, while the node slots are still kept:
-  //   extract_subtree(ctx, cell, b.nodes, writer)   // extract/hier/subtree.hpp
-  // (integration step; the flat cells of R4 have no subcell interactions).
+  if (diag::Status s = write_subtree(ctx, writer, cell, b, result); !s.ok()) {
+    return s.error();
+  }
   return true;
 }
 
