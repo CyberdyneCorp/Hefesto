@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Mask generation (capability mask-hierarchical-generation;
-// openspec/changes/m5-mask-gds-cif/design.md D8):
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D8):
 // - generate_area: CIFGen, the layers of a style over an area of one cell's
 //   own paint (no flattening); DRC's mask-layer check (D14) calls it on its
 //   yank cell, the writers on each cell ("Own-paint generation area");

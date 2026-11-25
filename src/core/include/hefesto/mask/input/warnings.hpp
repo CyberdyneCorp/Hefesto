@@ -5,7 +5,7 @@
 // `cif warning` and `gds warning` both set: Magic keeps one global for both
 // readers (cif/CIFrdutils.c, commands/CmdCD.c), so Hefesto keeps one value
 // per open project, editor::EditorState::mask.warnings
-// (openspec/changes/m5-mask-gds-cif/design.md D4 "As-landed scaffold
+// (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "As-landed scaffold
 // contracts"). Q-MASK-331 (the CIF error limit and redirect) and Q-MASK-130
 // (`gds rescale no` sets `limit` under ON) act on it.
 //

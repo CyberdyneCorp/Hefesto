@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // GDSII records (capabilities gds-read, gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D4 "GDS", D10): the record
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "GDS", D10): the record
 // reader with one-record look-ahead (CalmaRdio.c's READRH/UNREADRH), which
 // reports each record's offset in the decompressed stream, and the record
 // writer (CalmaWrite.c's calmaOutRH and friends), which buffers 64 KB.

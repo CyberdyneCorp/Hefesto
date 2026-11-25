@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/lef.md with `hefesto-cli --diagnostic-codes=lef`
 // and describe the codes in its WRITE section.
 //
-// Owner: LEFW (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: LEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 HEFESTO_LEF_CODE("LEF-WRITE-001", info, "LEF write progress: `Generating LEF output <file> for cell <name>:` and the `Diagnostic:` lines.")
 HEFESTO_LEF_CODE("LEF-WRITE-002", error, "LEF write: the output file cannot be opened; nothing is written.")
 HEFESTO_LEF_CODE("LEF-WRITE-003", error, "lef writeall: a cell of the subtree cannot be read; nothing is written.")

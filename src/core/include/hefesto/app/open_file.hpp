@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The generic open path (capability oasis-command "Format recognition on
-// open"; openspec/changes/m6-lef-def-oasis/design.md D15, D16): a layout
+// open"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D15, D16): a layout
 // file opened by any means other than the `gds` or `oasis` commands (the
 // desktop File > Open picker, drag and drop, the iPadOS Files "Open in"
 // request) is recognised by its content, after gzip decompression,

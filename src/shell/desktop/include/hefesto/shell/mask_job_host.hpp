@@ -3,7 +3,7 @@
 //
 // The desktop host of long GDS and CIF reads and writes (capability
 // mask-hierarchical-generation "Progress reporting and interruptibility",
-// Q-MASK-414; openspec/changes/m5-mask-gds-cif/design.md D4, D16; tasks.md
+// Q-MASK-414; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D16; tasks.md
 // 12.2). It reuses the long-running script pattern of m4 D5 (the Tcl
 // console's running header, the canvas Interrupt card after 2 s), so no new
 // board is needed:
@@ -33,7 +33,7 @@
 // ScriptInputBlock while it draws, as for scripts). Toolkit-free and
 // unit-tested; the worker never touches Raven.
 //
-// Owner: SHELL (openspec/changes/m5-mask-gds-cif/design.md D2, "the progress
+// Owner: SHELL (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, "the progress
 // card's GDS/CIF host").
 
 #pragma once

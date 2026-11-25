@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Format recognition on open (capability oasis-command "Format recognition
-// on open"; openspec/changes/m6-lef-def-oasis/design.md D15): the first
+// on open"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D15): the first
 // bytes of the (already gzip-inflated) stream decide the format, whatever
 // the file name says:
 // - OASIS: the 13 magic bytes `%SEMI-OASIS\r\n` (oasis-format "File

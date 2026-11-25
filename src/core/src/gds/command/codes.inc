@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/gds.md with `hefesto-cli --diagnostic-codes=gds`
 // and describe the codes in its GDSW section.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_GDS_CODE("GDS-CMD-001", error, "Wrong number of arguments, or an unrecognized argument, in a `gds` command.")
 HEFESTO_GDS_CODE("GDS-CMD-002", error, "`gds compress` with a value outside 0 to 9; the setting is kept.")

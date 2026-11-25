@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // CBLOCK compression (capability oasis-format "CBLOCK";
-// openspec/changes/m6-lef-def-oasis/design.md D3, D11, D13): a CBLOCK of
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D11, D13): a CBLOCK of
 // comp-type 0 holds raw DEFLATE data (zlib inflateInit2/deflateInit2 with
 // window bits -15, from the bundled zlib 1.3.1). Inflation stops at the
 // declared uncompressed size and at the inflate cap (256 times the

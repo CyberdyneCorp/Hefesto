@@ -9,7 +9,7 @@
 // decoding error leaves the cell in progress, and every later one, out of
 // the read (rule 2).
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <algorithm>
 #include <unordered_set>

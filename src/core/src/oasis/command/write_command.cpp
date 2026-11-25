@@ -12,7 +12,7 @@
 // write host (MaskSession::write_host, design D16) when there is one, as
 // `gds write` does.
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/write/subtree.hpp"

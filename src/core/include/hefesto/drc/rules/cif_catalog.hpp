@@ -10,7 +10,7 @@
 // (drcGetContactBorder) and by the default step size (6400 / cifScale).
 //
 // Since M5 the catalog is a view over the mask-output-styles reader
-// (mask::read_output_styles, openspec/changes/m5-mask-gds-cif/design.md D5):
+// (mask::read_output_styles, openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D5):
 // each style is the mask::OutputStyle Magic loads when it becomes the
 // current output style (CIFTechLine, CIFTechFinal), and rescale() is
 // CIFTechOutputScale on it, so the scalefactor and squares borders are
@@ -22,7 +22,7 @@
 // drcGetContactBorder)
 //
 // Owner: RULES (openspec/changes/m3-drc/design.md D2); the re-sourcing onto
-// mask::OutputStyle: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// mask::OutputStyle: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

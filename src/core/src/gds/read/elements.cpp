@@ -18,7 +18,7 @@
 // an extension of a single-point path is ignored (Magic dereferences the
 // missing second point).
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/gds/read/elements.hpp"
 

@@ -5,7 +5,7 @@
 // finalisation (CIFTechFinal) and the unit normalisation
 // (CIFTechOutputScale), shared by the files of src/core/src/mask/style/.
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // DEF write entry point (capability def-write;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D9, D14): `def write
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D9, D14): `def write
 // [filename] [-units value] [-allspecial] [-anal]`, the CLI and the shell
 // all call def::write (the command's parser is def/write/command.hpp).
 // Single-phase command under the exclusive database lock. The nets come

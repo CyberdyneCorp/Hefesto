@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// GDS read (capability gds-read; openspec/changes/m5-mask-gds-cif/design.md
+// GDS read (capability gds-read; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D4 "Commands and progress", D11): `gds read`, the CLI and the shell call
 // gds::read. find_gds_file looks the file up as `gds read` does (the
 // extensions .gds, .gds.gz, .gds2, .strm and none, along the cell search

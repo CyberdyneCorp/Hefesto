@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/lef.md with `hefesto-cli --diagnostic-codes=lef`
 // and describe the codes in its VIA section.
 //
-// Owner: LEFVIA (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: LEFVIA (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 
 HEFESTO_LEF_CODE("LEF-VIA-001", warning, "A LEF VIA redefines a via or layer name (Cut type redefined).")
 HEFESTO_LEF_CODE("LEF-VIA-002", warning, "A DEF VIAS definition redefines a via or layer name (Composite via redefined).")

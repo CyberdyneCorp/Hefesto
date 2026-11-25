@@ -6,7 +6,7 @@
 // on Linux on every host (CMDEDIT-MISC-05). One generator per open project
 // (editor::EditorState::mask.random), shared by the `random` command and,
 // with magic-compat ON, the GDS full-dump prefix (Q-MASK-211;
-// openspec/changes/m5-mask-gds-cif/design.md D4, D15). Moved from
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D15). Moved from
 // db/commands_misc.cpp by the M5 scaffold.
 //
 // Owner: INTEGRATION.

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The DEF writer's private interfaces (capability def-write;
-// openspec/changes/m6-lef-def-oasis/design.md D9): the session state one
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D9): the session state one
 // write reads (Context), Magic's single LefInfo table from the layer
 // table's shared key order and the via records (InfoEntry, info_order;
 // "Table enumeration order", Q-LEFDEF-135), the magic-to-LEF layer map (LayerMap, defMakeInverseLayerMap),

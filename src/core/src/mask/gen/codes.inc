@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/mask.md with `hefesto-cli --diagnostic-codes=mask`
 // and describe the codes in its GEN section.
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 
 HEFESTO_MASK_CODE("MASK-GEN-001", error, "A CIF layer name does not exist in the current output style.")
 HEFESTO_MASK_CODE("MASK-GEN-002", error, "No CIF output style is set.")

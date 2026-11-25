@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/lef.md with `hefesto-cli --diagnostic-codes=lef`
 // and describe the codes in its READ section.
 //
-// Owner: LEFR (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: LEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 
 HEFESTO_LEF_CODE("LEF-READ-001", error, "LEF read error (Magic's LefError text): unknown layer, bad LAYER statement, layer reclassification, missing or misplaced END, malformed RECT, POLYGON, SIZE, ORIGIN or FOREIGN, improper DIRECTION, USE or SHAPE.")
 HEFESTO_LEF_CODE("LEF-READ-002", warning, "LEF read warning (Magic's LefError text): unknown layer TYPE, duplicate NONDEFAULTRULE or macro renamed, macro without SIZE.")

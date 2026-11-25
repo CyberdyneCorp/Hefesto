@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The OASIS modal variables (capability oasis-format "Modal variables and
-// reset rules"; openspec/changes/m6-lef-def-oasis/design.md D4, D11,
+// reset rules"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D11,
 // Q-OASIS-5): the state a record's omitted fields are taken from. The
 // decoder and the encoder each keep one. Both reset it at START, at every
 // CELL record and at every name record (Q-OASIS-5, as the KLayout reader

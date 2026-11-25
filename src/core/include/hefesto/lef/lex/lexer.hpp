@@ -3,7 +3,7 @@
 //
 // The LEF/DEF tokenizer and message reporting (capability lef-read
 // "LEF/DEF tokenizer", "LEF/DEF message reporting";
-// openspec/changes/m6-lef-def-oasis/design.md D4, D6):
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D6):
 // - Lexer: LefNextToken and LefEstimate (lefRead.c) over a byte source:
 //   2048-character line reads, `#` comments, quoted strings, `;` glued to a
 //   number kept in its token, the end-of-line token of END matching, and

@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/oasis.md with `hefesto-cli --diagnostic-codes=oasis`
 // and describe the codes in its WRITE section.
 //
-// Owner: OASW (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: OASW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 HEFESTO_OASIS_CODE("OASIS-WRITE-001", error, "The OASIS output file cannot be created or written; nothing is written.")
 HEFESTO_OASIS_CODE("OASIS-WRITE-002", warning, "Font labels were written as OASIS TEXT without font, size, rotation or justification (once per write, with the count; Q-OASIS-32).")
 HEFESTO_OASIS_CODE("OASIS-WRITE-003", warning, "A cell name is already used in the OASIS file; the later cell is written as XXXXX<n> (Q-OASIS-61).")

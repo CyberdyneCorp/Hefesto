@@ -6,7 +6,7 @@
 // connections"; Q-LEFDEF-95, 96, 97): defNetGeometryFunc with its DefData
 // state, defCheckForBreak, defWriteCoord and defWriteRouteWidth.
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

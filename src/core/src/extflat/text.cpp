@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Text helpers of the `.ext` reader (see text.hpp).
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10).
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D10).
 
 #include "text.hpp"
 

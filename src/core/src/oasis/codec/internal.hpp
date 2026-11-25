@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Private helpers of the OASIS codec (capability oasis-format;
-// openspec/changes/m6-lef-def-oasis/design.md D11): the byte input the
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D11): the byte input the
 // primitive decoders read from, the error that stops decoding, the
 // collector of the error that drops one element, and checked coordinate
 // arithmetic. Inside the codec, an error that stops decoding is thrown as

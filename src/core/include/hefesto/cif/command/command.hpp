@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `cif` command (capability cif-format-io "cif command dispatch";
-// openspec/changes/m5-mask-gds-cif/design.md D3, D13). Called by
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3, D13). Called by
 // cmd::register_all_commands.
 //
 // Owner: INTEGRATION (this header, created by the M5 scaffold); CIF owns the

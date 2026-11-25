@@ -17,7 +17,7 @@
 // views. Each view reports only the messages of its own subset, so reading
 // both never reports a line twice.
 //
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10); the
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D10); the
 // height subset: TECH (openspec/changes/m10-3d-view/design.md D3).
 
 #pragma once

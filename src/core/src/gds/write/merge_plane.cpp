@@ -13,7 +13,7 @@
 // length always equals the tile's starting corner count, so the reuse is not
 // observable and each tile gets a fresh ring here.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/gds/write/merge_plane.hpp"
 

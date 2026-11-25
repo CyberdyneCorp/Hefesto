@@ -13,7 +13,7 @@
 // matches instead of reading before the name (tier 1); a scale with ten or
 // more decimal places keeps 10^9 as its denominator instead of overflowing.
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/mask/style/core.hpp"
 

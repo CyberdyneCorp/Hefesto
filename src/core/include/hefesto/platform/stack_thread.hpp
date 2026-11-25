@@ -3,7 +3,7 @@
 //
 // A thread with a chosen stack size, for work whose recursion follows the
 // cell hierarchy (capability hefesto-architecture "Concurrency model";
-// openspec/changes/m5-mask-gds-cif/design.md D16). The mask generators and
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D16). The mask generators and
 // the GDS/CIF writers recurse once per hierarchy level, up to their depth
 // limits (gds::kMaxSubtreeDepth, the generators' 1024 levels); a
 // std::thread's default stack (512 KiB for a secondary thread on macOS) is

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// LEF file lookup (capability lef-read; openspec/changes/m6-lef-def-oasis
+// LEF file lookup (capability lef-read; openspec/changes/archive/2026-11-22-m6-lef-def-oasis
 // design.md D6 "Files and dates"): `lef read <name>` tries the name as
 // given, then `<name>.lef`, along the cell search path through
 // cell::search_file (Q-LEFDEF-24, platform: the search path on the desktop,

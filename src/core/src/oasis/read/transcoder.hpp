@@ -7,7 +7,7 @@
 // the GDS record builder, transcode_shapes.cpp the geometry and TEXT
 // elements, transcode_placements.cpp the PLACEMENT elements.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

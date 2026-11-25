@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Cut growing (capability lef-read "Cut growing";
-// openspec/changes/m6-lef-def-oasis/design.md D6, Q-LEFDEF-17): a LEF or DEF
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D6, Q-LEFDEF-17): a LEF or DEF
 // via cut on a contact type is resized about its centre to the contact size
 // of the current output style (mask::OutputStyle::contact_cut,
 // CIFGetContactSize), with Magic's warnings when its size differs from the

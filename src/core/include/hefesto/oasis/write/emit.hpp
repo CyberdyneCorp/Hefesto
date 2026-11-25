@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The emit phase of OASIS write (capability oasis-write;
-// openspec/changes/m6-lef-def-oasis/design.md D4 "Commands and progress",
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4 "Commands and progress",
 // D13). OASIS write reuses M5's three-phase write unchanged:
 // gds::prepare_write (exclusive lock), then this emit (shared lock:
 // generation through mask::generate_hierarchical, then OASIS encoding

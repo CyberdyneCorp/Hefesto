@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `cif` command (capability cif-format-io "cif command dispatch";
-// openspec/changes/m5-mask-gds-cif/design.md D3, D13), moved here from
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3, D13), moved here from
 // script/binding/ by the M5 scaffold with Magic's whole option table. The
 // M4 answers keep working (capability scripting-api "Result formats of
 // commands used by scripts"; Q-SCRIPT-7, resolution: compat):
@@ -24,7 +24,7 @@
 // statements, Copyright (C) 1985, 1990 Regents of the University of
 // California (see THIRD_PARTY_NOTICES.md).
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/cif/command/command.hpp"
 

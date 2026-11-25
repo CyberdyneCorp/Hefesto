@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Byte sources and sinks of the GDS stream layer (capabilities gds-read,
-// gds-write; openspec/changes/m5-mask-gds-cif/design.md D4 "GDS", D10):
+// gds-write; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "GDS", D10):
 // plain files, gzip files and memory. Positions are offsets in the
 // decompressed stream, so GDS_START/GDS_END and the Q-MASK-126 seek count
 // decompressed bytes for `.gds` and `.gds.gz` alike. Seeking back in a gzip

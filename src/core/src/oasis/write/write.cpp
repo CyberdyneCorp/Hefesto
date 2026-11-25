@@ -4,7 +4,7 @@
 // OASIS write: the prepare-option mapping (INTEGRATION), the file naming
 // and the three phases (oasis-write "Write command and output file
 // naming", "Write result and error propagation";
-// openspec/changes/m6-lef-def-oasis/design.md D4): gds::prepare_write
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4): gds::prepare_write
 // (exclusive lock), oasis::emit (on the session's emit host when it has
 // one) and gds::finish_write.
 //

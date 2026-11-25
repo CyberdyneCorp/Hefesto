@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/cif.md with `hefesto-cli --diagnostic-codes=cif`
 // and describe the codes in its CIF section.
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 HEFESTO_CIF_CODE("CIF-READ-001", error, "CIF read error (Magic's CIFReadError text, with its line prefix).")
 HEFESTO_CIF_CODE("CIF-READ-002", warning, "CIF read warning (Magic's CIFReadWarning text, with its line prefix).")
 HEFESTO_CIF_CODE("CIF-READ-003", warning, "The CIF read error or warning limit was reached; later ones are not printed.")

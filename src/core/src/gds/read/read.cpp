@@ -3,7 +3,7 @@
 //
 // gds::read and the file lookup of `gds read` (capability gds-read "Read
 // command and file lookup", "Read diagnostics", "Host mechanisms used by
-// the reader"; openspec/changes/m5-mask-gds-cif/design.md D4, D11). Ported
+// the reader"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D11). Ported
 // from Magic 8.3.694 commands/CmdCD.c (CALMA_READ's extension loop) and
 // calma/CalmaRead.c (CalmaReadFile's set-up: undo disabled, the redirect
 // file); Magic is (c) the Regents of the University of California,
@@ -14,7 +14,7 @@
 // duration (UndoDisable). The `gds warning redirect <file>` text is written
 // to the file at the end of the read.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/gds/read/read.hpp"
 

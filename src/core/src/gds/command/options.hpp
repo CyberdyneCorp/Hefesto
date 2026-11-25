@@ -6,7 +6,7 @@
 // yes/no and allow/disallow tables, the Tcl boolean result) and the read
 // side of the option table (read_options.cpp: every read option, `warning`,
 // `rescale` and `read`).
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

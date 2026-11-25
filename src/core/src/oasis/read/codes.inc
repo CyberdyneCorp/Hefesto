@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/oasis.md with `hefesto-cli --diagnostic-codes=oasis`
 // and describe the codes in its READ section.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 HEFESTO_OASIS_CODE("OASIS-READ-001", error, "No cifinput style: nothing in the \"cifinput\" section of the technology file; nothing is read.")
 HEFESTO_OASIS_CODE("OASIS-READ-002", error, "The OASIS file cannot be opened or read.")
 HEFESTO_OASIS_CODE("OASIS-READ-003", error, "Decoding stopped (a fatal oasis-format error); only the cells complete before it are read.")

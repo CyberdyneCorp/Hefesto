@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// OasisSettings (capability oasis-command; openspec/changes/m6-lef-def-oasis
+// OasisSettings (capability oasis-command; openspec/changes/archive/2026-11-22-m6-lef-def-oasis
 // design.md D4, D15): the `oasis` options that are stored apart from the
 // `gds` ones (oasis-command "Settings shared with the gds command"), with
 // the defaults of "Options shared with the gds command" and "OASIS-only

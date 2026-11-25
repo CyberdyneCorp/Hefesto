@@ -9,7 +9,7 @@
 // keeps unfused (design D3). Every platform therefore computes the same
 // bits, and the octants are exact mirror images of each other.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/oasis/read/circle.hpp"
 

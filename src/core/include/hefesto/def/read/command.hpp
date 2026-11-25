@@ -3,7 +3,7 @@
 //
 // The `def read` option of the shared `lef`/`def` dispatcher (capability
 // def-read "def read command", "Command context", "DEF file lookup";
-// openspec/changes/m6-lef-def-oasis/design.md D14): its arguments, the
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D14): its arguments, the
 // file lookup, the read through the session's progress host, and the load
 // of the design into the only layout window. It needs no window, box or
 // selection (Q-LEFDEF-86), so the dispatcher calls it before its window

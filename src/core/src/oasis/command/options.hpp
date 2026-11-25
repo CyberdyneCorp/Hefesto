@@ -5,7 +5,7 @@
 // indices, the error codes and the option handlers (capability
 // oasis-command "Option syntax", "Options shared with the gds command",
 // "OASIS-only options", "Settings shared with the gds command";
-// openspec/changes/m6-lef-def-oasis/design.md D15).
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D15).
 //
 // The option table keeps the `gds` table's order for its first 29 entries,
 // so the read settings shared with `gds` (MaskSession::stream_read, the
@@ -14,7 +14,7 @@
 // one setting with it; every other option reads and writes
 // MaskSession::oasis.
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

@@ -35,7 +35,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/property.cpp
   ${CMAKE_CURRENT_LIST_DIR}/tile_plane.cpp
   ${CMAKE_CURRENT_LIST_DIR}/transform.cpp
-  # M5 INDEX (openspec/changes/m5-mask-gds-cif/design.md D2): the cell-use index.
+  # M5 INDEX (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2): the cell-use index.
   ${CMAKE_CURRENT_LIST_DIR}/use_index.cpp
   ${CMAKE_CURRENT_LIST_DIR}/use_index_bins.cpp
   ${CMAKE_CURRENT_LIST_DIR}/use_index_enum.cpp)

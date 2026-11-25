@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Internals of mask generation (capability mask-hierarchical-generation;
-// openspec/changes/m5-mask-gds-cif/design.md D8): the hierarchy search
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D8): the hierarchy search
 // (DBCellSrArea, DBArrayOverlap), the flattening into scratch cells
 // (DBTreeSrTiles with cifHierCopyFunc, CIFCopyMaskHints) and the generation
 // error report of the hierarchical passes.

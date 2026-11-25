@@ -8,7 +8,7 @@
 // the Regents of the University of California, distributed under its
 // permissive license (THIRD_PARTY_NOTICES.md).
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/gds/write/labels_text.hpp"
 

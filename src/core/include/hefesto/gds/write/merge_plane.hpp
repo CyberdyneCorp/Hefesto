@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Merged polygon output of one mask plane (capability gds-write "Merged
-// polygon output", `gds merge yes`; openspec/changes/m5-mask-gds-cif/design.md
+// polygon output", `gds merge yes`; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D12, Q-MASK-217 replicate). A port of Magic 8.3.694 calmaMergePaintFunc
 // (calma/CalmaWrite.c:2394-2700) driven by the plane's area enumeration
 // (DBSrPaintArea over CIFSolidBits), and of calmaProcessBoundary's and
@@ -23,7 +23,7 @@
 // units without the closing point. The writers multiply by the paint scale
 // (calmaPaintScale) and repeat the first point (write_boundary).
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

@@ -3,7 +3,7 @@
 //
 // GDSII record payload values (capabilities gds-read "Record framing and
 // primitive data types", gds-write "Record encoding", "String records and
-// character mapping"; openspec/changes/m5-mask-gds-cif/design.md D10):
+// character mapping"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D10):
 // big-endian I2/I4 and R8 fields of a record payload, the string value of a
 // record (up to the first NUL), and the encoding of a string record payload
 // with the character table, the `lower` setting and the output style's

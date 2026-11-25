@@ -215,7 +215,7 @@ struct EditorState {
   // owned). nullptr: `promptload`/`promptsave` act as a cancelled dialog.
   platform::FilePicker* file_picker = nullptr;
 
-  // ---- M5 (openspec/changes/m5-mask-gds-cif/design.md D4) ----
+  // ---- M5 (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4) ----
 
   // STYLES / INPUT / GDSR / GDSW / CIF / INTEGRATION: the mask session
   // (mask/session.hpp; each member's owner is named there): the output and
@@ -223,7 +223,7 @@ struct EditorState {
   // shared `random` generator.
   mask::MaskSession mask;
 
-  // ---- M6 (openspec/changes/m6-lef-def-oasis/design.md D4) ----
+  // ---- M6 (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4) ----
 
   // LEFTECH / LEFVIA / LEFR / LEFW / DEFW: the LEF/DEF session
   // (lef/session.hpp; each member's owner is named there): the LEF layer

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Mask planes (capability mask-output-operators "Geometric model of mask
-// planes"; openspec/changes/m5-mask-gds-cif/design.md D4, D6): a mask plane
+// planes"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D6): a mask plane
 // is a db::Plane painted with Magic's CIF paint and erase tables
 // (CIFPaintTable, CIFEraseTable: one mask type on space), so painting order
 // and tile structure follow Magic. Planes come from a PlanePool that is

@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // OASIS read entry point (capability oasis-read;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D12): `oasis read`, the
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D12): `oasis read`, the
 // CLI, the shell and the generic open path (D15 format recognition) all
 // call oasis::read. Like gds::read it runs on the command thread under the
 // exclusive database lock, with progress and cancel through `progress`.

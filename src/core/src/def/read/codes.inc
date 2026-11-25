@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/def.md with `hefesto-cli --diagnostic-codes=def`
 // and describe the codes in its READ section.
 //
-// Owner: DEFR (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: DEFR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 
 HEFESTO_DEF_CODE("DEF-READ-001", error, "DEF read error (Magic's LefError DEF_ERROR text): unknown layer or via in a route, bad coordinates, unknown pin class, a section END missing.")
 HEFESTO_DEF_CODE("DEF-READ-002", warning, "DEF read warning (Magic's LefError DEF_WARNING text): section count mismatch, technology name mismatch, converted instance name, unplaced component.")

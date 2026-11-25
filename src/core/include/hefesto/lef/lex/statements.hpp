@@ -3,7 +3,7 @@
 //
 // Statement helpers shared by the LEF and DEF readers (capability lef-read
 // "LEF/DEF tokenizer", "END statement matching", "LEF/DEF message
-// reporting"; openspec/changes/m6-lef-def-oasis/design.md D6):
+// reporting"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D6):
 // LookupFull, the `%f` number parse, LefEndStatement, LefParseEndStatement
 // and LefSkipSection, and MessageTarget, which sends LefError messages
 // tagged with the lexer's line.

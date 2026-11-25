@@ -89,11 +89,11 @@ const std::array<CodeArea, 34>& areas() noexcept {
       CodeArea{"pcell", "PCELL", "docs/diagnostics/codes/pcell.md", area_codes::pcell()},
       CodeArea{"tools", "TOOLS", "docs/diagnostics/codes/tools.md", area_codes::tools()},
       CodeArea{"gui", "GUI", "docs/diagnostics/codes/gui.md", area_codes::gui()},
-      // M5 areas (openspec/changes/m5-mask-gds-cif/design.md D1).
+      // M5 areas (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1).
       CodeArea{"mask", "MASK", "docs/diagnostics/codes/mask.md", area_codes::mask()},
       CodeArea{"gds", "GDS", "docs/diagnostics/codes/gds.md", area_codes::gds()},
       CodeArea{"cif", "CIF", "docs/diagnostics/codes/cif.md", area_codes::cif()},
-      // M6 areas (openspec/changes/m6-lef-def-oasis/design.md D1).
+      // M6 areas (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1).
       CodeArea{"lef", "LEF", "docs/diagnostics/codes/lef.md", area_codes::lef()},
       CodeArea{"def", "DEF", "docs/diagnostics/codes/def.md", area_codes::def()},
       CodeArea{"oasis", "OASIS", "docs/diagnostics/codes/oasis.md", area_codes::oasis()},

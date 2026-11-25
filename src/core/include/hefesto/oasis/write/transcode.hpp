@@ -3,7 +3,7 @@
 //
 // Read-only cells in OASIS output (capability oasis-write "Read-only GDS
 // vendor cells", "Read-only OASIS vendor cells";
-// openspec/changes/m6-lef-def-oasis/design.md D13), as standalone
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D13), as standalone
 // functions over one cell:
 // - transcode_gds_cell: a GDS structure is transcoded element by element
 //   (Q-OASIS-63: an odd-width path is an error naming the cell, the round

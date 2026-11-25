@@ -26,7 +26,7 @@
 // the templayers of the cifinput style replace them (the read engine clears
 // its planes after paint_current).
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <utility>

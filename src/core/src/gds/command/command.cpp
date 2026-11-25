@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `gds` and `calma` commands (capabilities gds-read, gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D3, D15): Magic's option
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3, D15): Magic's option
 // table and lookup, the window check of `read` and `write`, `gds help`,
 // `write` (and a bare `gds`) with the output file naming of Q-MASK-210,
 // and the write options (gds-write "Write option settings and defaults").
@@ -15,7 +15,7 @@
 // University of California (see THIRD_PARTY_NOTICES.md). The option
 // queries answer as Magic's Tcl build does (Tcl_SetObjResult).
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/gds/command/command.hpp"
 

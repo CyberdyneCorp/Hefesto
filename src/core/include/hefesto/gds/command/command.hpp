@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `gds` and `calma` commands (capabilities gds-read, gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D3, D15): Magic's CmdCalma
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D3, D15): Magic's CmdCalma
 // (commands/CmdCD.c:81-1600) with its option table; a bare `gds` writes.
 // Called by cmd::register_all_commands.
 //

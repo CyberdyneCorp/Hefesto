@@ -21,7 +21,7 @@
 // definitions; "used but not defined" is reported in creation order (Magic's
 // hash order is not specified).
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "gds/read/reader.hpp"
 

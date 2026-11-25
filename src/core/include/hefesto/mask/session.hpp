@@ -2,10 +2,10 @@
 // Copyright 2026 The Hefesto Authors
 //
 // MaskSession: the M5 session state of one open project,
-// editor::EditorState::mask (openspec/changes/m5-mask-gds-cif/design.md D4).
+// editor::EditorState::mask (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4).
 // INTEGRATION owns the struct; each member belongs to the named workstream.
 // The M6 scaffold split the read settings that `gds` and `oasis` share out
-// of `gds` into `stream_read` (openspec/changes/m6-lef-def-oasis/design.md
+// of `gds` into `stream_read` (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md
 // D4, D15).
 //
 // Owner: INTEGRATION.

@@ -13,7 +13,7 @@
 // ON and the absolute canonical path with it OFF, then substituted, as
 // GDS_FILE is (Q-MASK-128, Q-MASK-129).
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <filesystem>
 #include <system_error>

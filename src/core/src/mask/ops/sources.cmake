@@ -3,7 +3,7 @@
 #
 # Sources of mask/ops (the operator kernels and evaluate_layer),
 # included by src/core/src/mask/sources.cmake.
-# Owner: OPS (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: OPS (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/bloat.cpp

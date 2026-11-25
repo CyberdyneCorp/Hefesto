@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Shape repetition detection (capability oasis-write "Shape repetition
-// detection"; openspec/changes/m6-lef-def-oasis/design.md D13, Q-OASIS-67):
+// detection"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D13, Q-OASIS-67):
 // with `oasis repetitions yes` (the default) the shapes of one mask layer
 // with the same key (RECTANGLE size, or POLYGON point list) are grouped
 // into repetitions, which reorders the elements of the layer (so OASIS-052

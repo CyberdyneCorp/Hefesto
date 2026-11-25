@@ -3,7 +3,7 @@
 //
 // Label layers and label TEXT records (capability gds-write "Label layers",
 // "Label TEXT records", "Structure body order" steps 3 and 4;
-// openspec/changes/m5-mask-gds-cif/design.md D12). A port of Magic 8.3.694
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12). A port of Magic 8.3.694
 // calmaPaintLabelFunc, calmaWriteLabelFunc and the label part of
 // calmaOutFunc (calma/CalmaWrite.c:1514-1606, 2829-3048).
 //
@@ -28,7 +28,7 @@
 // setting gates emit_cell_labels, never emit_label_layer) and supplies the
 // scales the structure uses.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

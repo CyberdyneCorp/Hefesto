@@ -22,7 +22,7 @@
 // type as a device (Hefesto has no extraction style yet, Magic's
 // ExtCurStyle device mask), so covering types are ranked by plane only.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <cmath>

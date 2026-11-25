@@ -15,7 +15,7 @@
 // its top and right edges. Lists are pushed at the head, so every walk
 // sees Magic's order.
 //
-// Owner: INDEX (openspec/changes/m5-mask-gds-cif/design.md D2, D7).
+// Owner: INDEX (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, D7).
 
 #pragma once
 

@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/oasis.md with `hefesto-cli --diagnostic-codes=oasis`
 // and describe the codes in its CMD section.
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 HEFESTO_OASIS_CODE("OASIS-CMD-001", error, "Wrong number of arguments, or an unrecognized value, in an `oasis` command; nothing changes.")
 HEFESTO_OASIS_CODE("OASIS-CMD-002", error, "`oasis compress` outside 0 to 9 or `oasis circlepoints` outside 8 to 4096; the setting is kept.")
 HEFESTO_OASIS_CODE("OASIS-CMD-003", error, "`oasis contacts yes`: the option is accepted and does nothing, as for `gds`.")
