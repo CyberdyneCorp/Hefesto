@@ -140,7 +140,7 @@ struct DeviceCopy {
 
   void perim_overlap(const db::Plane& plane, const db::TileView& tile, DevTile& dev) const {
     const db::Rect& r = tile.area;
-    dev.perim = static_cast<std::int32_t>((r.y1 - r.y0 - r.x0 + r.x1) << 1);
+    dev.perim = (r.y1 - r.y0 - r.x0 + r.x1) << 1;
     const tech::TileType t1 = tile.split ? tile.left_type : tile.type;
     const tech::TypeMask omask = t1 < b.style_.node_conn.size() ? b.style_.node_conn[t1] : tech::TypeMask{};
     std::int32_t overlap = 0;
@@ -208,7 +208,7 @@ struct DeviceCopy {
       }
       paint(tp, right_side, dev);
       perim_overlap(plane, tp, dev);
-      for (const auto [side, edge] : {std::pair{db::Side::top, kTopEdge}, std::pair{db::Side::bottom, kBottomEdge},
+      for (const auto& [side, edge] : {std::pair{db::Side::top, kTopEdge}, std::pair{db::Side::bottom, kBottomEdge},
                                       std::pair{db::Side::right, kRightEdge}, std::pair{db::Side::left, kLeftEdge}}) {
         if ((ignore & edge) != 0) {
           continue;
