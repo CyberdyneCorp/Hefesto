@@ -28,7 +28,7 @@
 #                "drc-profile".
 #   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
 #                Release build, timed. They also replay on every CI leg (ci.yml, golden replay).
-#   gds-bench    The GDS throughput gate (openspec/changes/m5-mask-gds-cif design D20, Open
+#   gds-bench    The GDS throughput gate (openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D20, Open
 #                Question 2 decided (a)): a GCC 14 Release build of hefesto-cli and Magic 8.3.694
 #                (reference image) run the base and op scripts of bench/gds/gds_bench.py (read
 #                sky130_fd_sc_hd.gds; write the all-cells block with `gds merge no` and `yes`)

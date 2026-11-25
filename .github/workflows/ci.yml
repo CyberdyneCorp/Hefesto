@@ -97,7 +97,7 @@ jobs:
         run: |
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint -color
-      # M5 exit gate (openspec/changes/m5-mask-gds-cif tasks.md 15.6): fails while a case in
+      # M5 exit gate (openspec/changes/archive/2026-11-24-m5-mask-gds-cif tasks.md 15.6): fails while a case in
       # tests/golden/deviations.toml is still deferred to M5 (m5_cases.BLOCKERS and the hand-written
       # MASK-UO entries) or an open question cited by an M5 capability has no Resolution line
       # (scripts/check_milestone_readiness.py --milestone M5). Last, so the other checks still run.
@@ -111,7 +111,7 @@ jobs:
   # c6df28c1, and IHP 5e6d592e). This job fetches the sets that are not cached yet, once (about 0.9 GB
   # downloaded on a cold cache), and saves them; the build legs only restore. A warm run fetches nothing, and
   # changing one set's pin or digest refetches that set alone. The three standard-cell GDS sets
-  # (sky130-gds-sc, gf180mcu-gds-sc, ihp-gds-sc; openspec/changes/m5-mask-gds-cif design D19) are cached the
+  # (sky130-gds-sc, gf180mcu-gds-sc, ihp-gds-sc; openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D19) are cached the
   # same way, under .cache/pdks/gds, for the MASK-RT cases the golden legs replay (about 0.9 GB more on a cold
   # cache, 6 MB kept); the full GDS sets are fetched only by the jobs that use them (golden-capture.yml, perf.yml).
   # The three xschem sets (sky130-xschem, gf180mcu-xschem, ihp-xschem; openspec/changes/m8-schematic design D17)

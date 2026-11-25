@@ -5,7 +5,7 @@
 // generation "Non-manhattan merge option"): DBMergeNMTiles on each layer
 // CIFGen generates (cif/CIFgen.c:5784-5786).
 //
-// Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

@@ -3,7 +3,7 @@
 //
 // Fixture of the mask/style unit tests: tests/data/mask/style/styles.tech
 // with a test's own cifoutput section, read with mask::read_output_styles.
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

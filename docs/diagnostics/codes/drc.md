@@ -99,7 +99,7 @@ returns `CheckOutcome::cancelled` for the engine to retry, not a diagnostic.
 
 ## DRCCIF
 
-The mask-layer check (`drc-cif-rules`; `openspec/changes/m5-mask-gds-cif/design.md`
+The mask-layer check (`drc-cif-rules`; `openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md`
 D14), run at the end of each basic check when the DRC style's `cifstyle`
 binds a cifoutput style. Its errors go to `drc::ErrorSink` like every other
 DRC error; the codes here report what the mapping to layout coordinates did

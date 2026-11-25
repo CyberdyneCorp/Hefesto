@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# Unit tests of the mask area (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+# Unit tests of the mask area (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).
 # Owner: INTEGRATION (this file and the shared tests here). Each
 # subdirectory is owned by its workstream and builds its own executable once
 # it has a *_test.cpp:

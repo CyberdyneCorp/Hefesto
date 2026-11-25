@@ -293,7 +293,7 @@ The review of task 12.1 of `openspec/changes/m8-schematic` (design D14) checked 
 
 ## Layout input: GDS, CIF and the mask sections (M5 review, 2026-11-15)
 
-GDS and CIF files come from foundries, IP vendors and other tools, so their readers treat every byte as hostile (hefesto-security "Untrusted input handling", design R9 of `openspec/changes/m5-mask-gds-cif/design.md`). The `cifoutput` and `cifinput` technology sections come with a PDK and get the same parser hardening, but a PDK is trusted to describe sensible operators (see "Accepted limits" below). The review covered `src/core/src/gds/` (stream, read, write), `src/core/src/cif/` (read, write) and `src/core/src/mask/` (style and input readers, generation), task 15.3.
+GDS and CIF files come from foundries, IP vendors and other tools, so their readers treat every byte as hostile (hefesto-security "Untrusted input handling", design R9 of `openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md`). The `cifoutput` and `cifinput` technology sections come with a PDK and get the same parser hardening, but a PDK is trusted to describe sensible operators (see "Accepted limits" below). The review covered `src/core/src/gds/` (stream, read, write), `src/core/src/cif/` (read, write) and `src/core/src/mask/` (style and input readers, generation), task 15.3.
 
 ### Bounds in place
 

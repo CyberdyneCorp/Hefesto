@@ -9,7 +9,7 @@
 // The technology's output style `mask` has scalefactor 10 (σ = 10), so
 // layout [a,b] is mask [10a,10b]; `shrink 3` gives sub-unit mask shapes.
 //
-// Owner: DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: DRCCIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
 

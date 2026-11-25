@@ -45,7 +45,7 @@ dates, so the gate compares the same work. --outputs DIR keeps each tool's
 last output there for diagnosis.
 
 Exit status: 0 when the counts agree and every write produced the same
-output, 1 otherwise, 2 on a setup error. Owner: PERF (openspec/changes/m5-mask-gds-cif design D2).
+output, 1 otherwise, 2 on a setup error. Owner: PERF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D2).
 """
 
 from __future__ import annotations

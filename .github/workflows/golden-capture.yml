@@ -22,7 +22,7 @@
 #                   d19-timing runs only the d19-magic-timing job below; modes ext-inputs
 #                   and oasis-validate run only their own jobs (m6-lef-def-oasis, below).
 #
-# The MASK-RT-* library round trips (openspec/changes/m5-mask-gds-cif design D19) need the
+# The MASK-RT-* library round trips (openspec/changes/archive/2026-11-24-m5-mask-gds-cif design D19) need the
 # large library GDS data sets and Magic's time on big libraries, so they never run in the
 # 120-minute `capture` job: `plan` splits the cases, and `capture-gds-rt` verifies and
 # captures them in shards (scripts/gds_rt_shards.py: one per PDK, the I/O and SRAM

@@ -19,7 +19,7 @@
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
 // set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15, and
-// openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2, and
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, D19, openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2, and
 // openspec/changes/m8-schematic/design.md D17, openspec/changes/m7-extraction/design.md D21); the device
 // libraries were added by NATIVE in M4 round 2, the standard-cell helpers of the M7 PDK cases in M7 round 1.
 
@@ -121,7 +121,7 @@ inline std::optional<std::filesystem::path> pinned_ihp_sg13g2() { return pinned_
 /// The pinned ihp-sg13g2.tech, if fetched.
 inline std::optional<std::filesystem::path> pinned_ihp_sg13g2_tech() { return pinned_tech(kIhpSg13g2); }
 
-// The library GDS data sets (openspec/changes/m5-mask-gds-cif/design.md D19): `libs.ref/<library>/gds/`
+// The library GDS data sets (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D19): `libs.ref/<library>/gds/`
 // of the same pins, installed under their own PDK root `.cache/pdks/gds/` (fetch_pdk.py `pdk_dir`), so
 // they never share a version directory or a CI cache path with the tech/.mag sets above. The full sets
 // (sky130-gds, gf180mcu-gds, ihp-gds) hold every library; the *-gds-sc sets hold one standard-cell

@@ -12,7 +12,7 @@ document, so parallel work never edits the same table
 `openspec/changes/m2-interactive-editing/design.md` D1; the M3 areas:
 `openspec/changes/m3-drc/design.md` D1; the M4 areas:
 `openspec/changes/m4-scripting/design.md` D1; the M5 areas:
-`openspec/changes/m5-mask-gds-cif/design.md` D1; the M6 areas:
+`openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md` D1; the M6 areas:
 `openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md` D1; the M8 area:
 `openspec/changes/m8-schematic/design.md` D3; the M10 area:
 `openspec/changes/m10-3d-view/design.md` D2; the M7 areas:

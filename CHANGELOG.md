@@ -152,7 +152,7 @@ release notices.
 - **`CORE-NOTIMPL-006` is retired.** Every `lef` and `def` option is
   implemented, and the code is never reused.
 
-## Unreleased (M5: mask generation, GDS and CIF)
+## Unreleased (M5: mask generation, GDS and CIF, complete)
 
 ### Added
 
@@ -194,6 +194,9 @@ release notices.
   (a three-word `cif unfracture yes` only warns, Q-MASK-413) and the merge
   covers Magic's internal-unit search area; with it OFF `cif unfracture
   yes` sets it and the whole generated layer is merged (Q-MASK-415).
+- **`gds-time-zone` setting.** A POSIX TZ string (for example
+  `--setting gds-time-zone=UTC0`) pins the zone of GDS dates and the CIF
+  header date; unset, the host zone is used, as in Magic (Q-MASK-132).
 
 ### Changed
 
