@@ -387,8 +387,10 @@ jobs:
             --gl-image "${{ steps.gl.outputs.image }}" --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
           # Collect the new expected/ directories, keeping their tests/golden/... paths. The pathspec's `*`
           # also matches `/`, so the expected/collected/<path> files of [[collect]] cases (M7) are included.
+          # The capture-only probes (EX-P01 atan, m7-extraction task 6.4; EX-P02 split tile, Q-EXTRACT-31) live under tests/data.
           mkdir -p golden-expected
-          git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
+          git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' \
+            'tests/data/extract/*/cases/*/expected/*' > new-files.txt
           if [ -s new-files.txt ]; then
             tar -cf - -T new-files.txt | tar -xf - -C golden-expected
             echo "::notice::captured $(grep -c 'captured' capture.log) case(s); download the golden-expected artifact and commit it"

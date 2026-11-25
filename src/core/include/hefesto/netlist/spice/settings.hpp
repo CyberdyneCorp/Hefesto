@@ -55,9 +55,10 @@ struct SpiceSettings {
   bool no_attributes = false;
   bool distributed_junctions = false;
   bool hier_ap = false;
-  /// The `-p` search path and `-T` technology of the last run that gave
-  /// them (EFSearchPath, EFArgTech persist across runs); `default` clears
-  /// them.
+  /// The `.ext` search path of a read (EFSearchPath): a run sets it from its
+  /// own `-p` (Q-NETLIST-61: one run only; netlist::take_search_path), and
+  /// render() reads with the given settings' path. The `-T` technology of
+  /// the last run that gave it. `default` clears both.
   std::vector<std::string> search_path;
   std::optional<std::string> tech;
 

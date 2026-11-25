@@ -6,3 +6,7 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(extract_cap DATA_DIR extract/cap)
+if(TARGET hefesto_extract_cap_tests)
+  # util/cr_atan.hpp, the private header of the correctly rounded atan.
+  target_include_directories(hefesto_extract_cap_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
+endif()

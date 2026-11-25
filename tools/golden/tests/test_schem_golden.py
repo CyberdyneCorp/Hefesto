@@ -159,11 +159,15 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertFalse(any(line.startswith("deferred") for line in entry))
         self.assertEqual(rt01, [])
 
-    def test_simulation_results_deferred_to_m9(self):
-        for case_id in ("SCHEM-SIM-01", "SCHEM-SIM-02"):
+    def test_simulation_and_lvs_results_deferred_to_m9(self):
+        for case_id in ("SCHEM-SIM-01", "SCHEM-SIM-02", "SCHEM-LVS-01"):
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
                 self.assertIn('deferred = "M9"', entry)
+                # Q-SCHEM-39: M8 keeps checking the LVS case's netlist output.
+                per_output = [line for line in entry if line.startswith("deferred_outputs")]
+                self.assertEqual(per_output, ['deferred_outputs = { "inv_1.spice" = "M8" }']
+                                 if case_id == "SCHEM-LVS-01" else [])
 
 
 class ContainerfileTest(unittest.TestCase):

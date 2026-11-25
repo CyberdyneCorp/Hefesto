@@ -798,6 +798,8 @@ This comparator is not a strict weak order: a proper prefix compares greater tha
 ### Requirement: Compressed cell input
 
 Hefesto SHALL read cell files compressed with gzip, under the names `<name>.mag.gz`, using the same grammar as uncompressed files. Any file opened through the cell reader MAY be either compressed or plain, and its content decides which. Hefesto SHALL NOT write compressed cell files: every save writes a plain `.mag` file.
+
+The inflated text of a compressed cell file SHALL be at most 1 GiB in both `magic-compat` modes (hefesto-security "Untrusted input handling"; Magic has no cap, `utils/path.c` PaZOpen). The cap is checked while inflating, so a gzip bomb never allocates past it; a file past it is not read (`CELL-READ-013`). It is fixed rather than a ratio of the compressed size because the whole text is held in memory, and it equals the floor of the GDS inflate cap and the `.ext` file cap; real cells are far below it.
 Compatibility: behavioral
 
 The order in which `.mag` and `.mag.gz` candidates are tried, and the names recorded afterwards, are defined in capability `cell-library-resolution`.
@@ -808,6 +810,12 @@ The order in which `.mag` and `.mag.gz` candidates are tried, and the names reco
 - **GIVEN** only `inv.mag.gz` exists, containing a valid gzip-compressed cell
 - **WHEN** cell `inv` is loaded
 - **THEN** its content SHALL be read as if from an uncompressed `.mag` file
+
+#### Scenario: A compressed cell past the inflate cap is refused
+- **GIVEN** only `bomb.mag.gz` exists, a few KiB of gzip data (one or several concatenated members) that inflate to more than 1 GiB (`kMaxInflatedCellBytes`, 1,073,741,824 bytes)
+- **WHEN** cell `bomb` is loaded, with `magic-compat` ON or OFF
+- **THEN** inflating SHALL stop as soon as the output would pass 1 GiB, without holding more than 1 GiB of inflated text
+- **AND** the load SHALL fail with `CELL-READ-013` (`compressed cell file inflates past the 1 GiB limit`), no geometry SHALL be read into `bomb`, and the other cells SHALL be unchanged
 
 ### Requirement: Command-script save variant
 

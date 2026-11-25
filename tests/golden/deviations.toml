@@ -426,7 +426,8 @@ reason = "cellname list allcells sorts inv before inv_1 (the total natural order
 # Every SCHEM case waits for the schematic workstreams of M8 (openspec/changes/m8-schematic,
 # sections 6-11); a workstream whose implementation replays a case removes it from this block
 # (schem_cases.REPLAYED) and re-runs --deviations. SCHEM-PR-05 keeps its approved decision
-# (schem_cases.DECIDED); SCHEM-SIM-01/02 are deferred to M9 (schem_cases.LATER).
+# (schem_cases.DECIDED); SCHEM-SIM-01/02 and SCHEM-LVS-01 are deferred to M9 (schem_cases.LATER),
+# except SCHEM-LVS-01's inv_1.spice, which M8 checks (schem_cases.LATER_OUTPUTS, Q-SCHEM-39).
 
 [SCHEM-RT-01]
 deferred = "M8"
@@ -625,9 +626,10 @@ outputs = ["tb.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
 reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
 
 [SCHEM-LVS-01]
-deferred = "M8"
+deferred = "M9"
+deferred_outputs = { "inv_1.spice" = "M8" }
 outputs = ["inv_1.spice", "layout.spice", "lvs.out", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
+reason = "schematic-driven LVS (lvs.out, the match result and the cross-probe map) needs the lvs-* capabilities, which m8-schematic design D13 places in M9 (Q-SCHEM-39, approved 2026-11-22); the captures are kept; M8 checks inv_1.spice (deferred_outputs)"
 
 [SCHEM-CMD-01]
 deferred = "M8"
@@ -1105,75 +1107,5 @@ reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRAC
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
-
-[NL-FLAT-11]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTFLAT (m7-extraction task 10) lands"
-
-[NL-HIER-01]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-HIER-02]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-HIER-03]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-HIER-04]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-HIER-05]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-HIER-06]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11.6) lands"
-
-[NL-SIM-02]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SIM (m7-extraction task 12) lands"
-
-[NL-SPICE-01]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-04]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-05]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-06]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-08]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
-
-[NL-SPICE-13]
-deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once SPICE (m7-extraction task 11) lands"
 
 # --- END M7 deferrals ---

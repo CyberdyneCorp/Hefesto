@@ -11,7 +11,7 @@
 # How each pin was resolved (2026-11-07):
 #   git ls-remote https://github.com/RTimothyEdwards/magic   -> refs/tags/8.3.694^{} = fc5daa9e...
 #   git ls-remote https://github.com/RTimothyEdwards/netgen  -> refs/heads/master    = 93dcda14...
-#   ngspice short SHA 7aa47164 is not a ref tip, so ls-remote cannot expand it:
+#   ngspice_stock short SHA 7aa47164 is not a ref tip, so ls-remote cannot expand it:
 #     git clone --bare https://git.code.sf.net/p/ngspice/ngspice ngspice.git
 #     git -C ngspice.git rev-parse 7aa47164            -> 7aa4716494c0...
 #     git -C ngspice.git branch --contains 7aa47164    -> pre-master-48, ga_dev
@@ -42,13 +42,43 @@ commit = "93dcda14d36349d0b0ca63168d3cbbab20fe2ece"
 # The specs pin netgen by commit. The git tag 1.5.327 points to a different
 # commit (8df5f0d912ee...); the tag is NOT used.
 
+# ngspice, the simulation reference (Q-SIM-23 (a), approved 2026-11-22; m9-lvs-simulation design D19,
+# task 3.2): the engine's own pin (Q-SIM-7: ngspice-47 @ a80f6e3e) with the Hefesto patch series and the
+# spec's feature table, built by the same CMake wrapper as libngspice-hefesto, as the `ngspice`
+# executable and the shared library. The pin and the series live in third_party/ngspice/ (pin.json,
+# patches/series); container/ngspice/ is the build context's copy of it (tests/test_pins.py checks both).
+# Resolved 2026-11-24: ls-remote of refs/tags/ngspice-47 -> a80f6e3e...; archive_sha256 of the release
+# tarball.
 [tools.ngspice]
+repo = "https://git.code.sf.net/p/ngspice/ngspice"
+version = "47-hefesto1"
+tag = "ngspice-47"
+commit = "a80f6e3e95d51534905b1f23410a951802666656"
+archive_url = "https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz"
+archive_sha256 = "894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f"
+patch_series = "third_party/ngspice/patches/series"
+
+# The stock ngspice build of the M0 image, kept only for the --with-ngshared smoke test (Q-SIM-23 (a)).
+# Installed under /opt/ngspice-stock, off PATH. Not on master: pre-master branches are rebased; if the
+# commit disappears upstream, the image build fails loudly at checkout (it verifies the SHA).
+[tools.ngspice_stock]
 repo = "https://git.code.sf.net/p/ngspice/ngspice"
 version = "ngspice-47+ (pre-master-48)"
 branch = "pre-master-48"
 commit = "7aa4716494c01ac1d3120211316e898539a6cb4c"
-# Not on master. pre-master branches are rebased; if the commit disappears
-# upstream, the capture workflow fails loudly at checkout (it verifies the SHA).
+
+# OpenVAF-reloaded (GPL-3.0), a build-time tool of the capture image only: it compiles the IHP Verilog-A
+# sources to OSDI 0.4 objects (Q-SIM-23 (a)). Never linked, shipped or run by Hefesto. Pinned by the
+# upstream binary release (linux_x64 only) and its SHA-256; upstream_commit is the tag _20260616
+# (GitHub tags API of arpadbuermen/OpenVAF, 2026-11-24).
+[tools.openvaf]
+repo = "https://github.com/arpadbuermen/OpenVAF"
+version = "20260616"
+upstream_commit = "44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7"
+source = "binary"
+url = "https://fides.fe.uni-lj.si/openvaf/download/openvaf-reloaded-20260616-linux_x64.tar.gz"
+sha256 = "bd4854a6e5b55f1c64a0b853d90216d1e3961d2f6d3ac572125597d28b867301"
+binary = "openvaf-r"
 
 [tools.xschem]
 repo = "https://github.com/StefanSchippers/xschem"

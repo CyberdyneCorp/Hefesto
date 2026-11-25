@@ -49,6 +49,16 @@ class FlatWriter {
 
   WriteResult run();
 
+  // --- hierarchical output: one section per definition (esHierVisit) ----
+  /// The file header and scale card, and the run's EFOutputFlags.
+  void write_file_header();
+  /// topVisit: the `.subckt` line with the ports numbered; returns the
+  /// port index of each name after the numbering, which the parent's
+  /// calls read (Magic keeps it in the definition's names).
+  std::map<std::string, int, std::less<>> write_subckt_line();
+  /// The section's devices, resistors, couplings and node lines.
+  void write_section_body();
+
   // --- flat_writer.cpp: names, nodes, parasitics -------------------------
   [[nodiscard]] std::optional<std::size_t> find_node(std::string_view alias) const;
   /// nodeSpiceName: the node's SPICE name, created on first use.
@@ -104,6 +114,7 @@ class FlatWriter {
   std::size_t used_bit = 0;              // efNumResistClasses
   bool init_used = false;                // initMask has the used bit (device phase)
   float es_scale = 0.0F;                 // esScale: < 0 in scale mode
+  bool hier = false;                     // a section of hierarchical output
 
   int cap_num = 0;
   int volt_num = 0;

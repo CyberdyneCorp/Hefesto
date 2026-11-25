@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// lvs::Session: the LVS state of one session, editor::EditorState::lvs
+// (openspec/changes/m9-lvs-simulation design.md D4).
+//
+// Owner: SCAFFOLD owns the struct; each member belongs to the named
+// workstream.
+
+#pragma once
+
+#include <atomic>
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+
+#include "hefesto/lvs/hier/run.hpp"
+
+namespace hefesto::netlist {
+struct NameMap;  // netlist/name_map.hpp (MAPS)
+}
+
+namespace hefesto::lvs {
+
+struct Session {
+  // LVSCMD: the last result per document (keyed by the layout cell or the
+  // schematic path of circuit 1), for the browser and the status chip.
+  std::map<std::string, LvsResult, std::less<>> last_results;
+
+  // LVSCMD: the document of the run in progress (nullopt when idle) and its
+  // cancel flag (read through CancelToken).
+  std::optional<std::string> running;
+  std::shared_ptr<std::atomic<bool>> cancel = std::make_shared<std::atomic<bool>>(false);
+
+  // LVSCMD: the name maps of the two circuits of the last run (nullptr for
+  // a netlist file), for cross-probing.
+  std::shared_ptr<const netlist::NameMap> names1;
+  std::shared_ptr<const netlist::NameMap> names2;
+};
+
+}  // namespace hefesto::lvs

@@ -250,7 +250,9 @@ The image is reproducible in four ways:
 |---|---|---|
 | Magic 8.3.694 | `fc5daa9e2856b89a0a3056f296ded1fd4474e39e` | `git ls-remote`: `refs/tags/8.3.694^{}` |
 | netgen 1.5.327 | `93dcda14d36349d0b0ca63168d3cbbab20fe2ece` | `git ls-remote`: `refs/heads/master`. The tag `1.5.327` is a *different* commit and is not used. |
-| ngspice | `7aa4716494c01ac1d3120211316e898539a6cb4c` | Not a ref tip. Resolved with `git clone --bare` + `git rev-parse 7aa47164`; it is on branch `pre-master-48`. |
+| ngspice (engine pin, `[tools.ngspice]`) | ngspice-47 `a80f6e3e95d51534905b1f23410a951802666656`, release tarball SHA-256 `894e6496…`, built as `47-hefesto1` with the patch series from `container/ngspice/` (a generated copy of `third_party/ngspice/`) | `git ls-remote`: `refs/tags/ngspice-47` (Q-SIM-7). This is `/opt/ref/bin/ngspice` and `/opt/ref/lib/libngspice-hefesto.so`. |
+| ngspice stock (`[tools.ngspice_stock]`) | `7aa4716494c01ac1d3120211316e898539a6cb4c` | Not a ref tip. Resolved with `git clone --bare` + `git rev-parse 7aa47164`; it is on branch `pre-master-48`. Installed in `/opt/ngspice-stock`, off `PATH`. |
+| OpenVAF-reloaded 20260616 | `openvaf-reloaded-20260616-linux_x64.tar.gz`, SHA-256 `bd4854a6…`, upstream commit `44cfee3b` | Upstream binary release; build-time only (`/opt/ref/bin/openvaf-r`). |
 | xschem | `4142e6d6f1eb5cd0e271bb183f14202af374ce27` | Full SHA taken from the specs. Not a ref tip, so `fetch_commit` verifies it at build time. |
 | base | `debian:trixie-20261020-slim@sha256:62bd423a…` | Docker Hub registry API |
 | KLayout 0.30.0 | Debian `klayout 0.30.0-1+b1`, `.deb` SHA-256 `421e473f…` | The Packages index of trixie/main amd64 at the APT snapshot. KLayout publishes no Debian 13 `.deb`. |
@@ -258,7 +260,7 @@ The image is reproducible in four ways:
 
 A short SHA can only be expanded from a clone, because `git ls-remote` lists ref tips only. To expand one, run `git clone --bare <repo> x.git && git -C x.git rev-parse <short>`.
 
-The `pre-master-*` branches of ngspice are rebased. If upstream drops `7aa47164`, the image build fails at checkout instead of silently building something else.
+The `pre-master-*` branches of ngspice are rebased. If upstream drops `7aa47164` (the stock build only), the image build fails at checkout instead of silently building something else. The engine pin is a release tag and its tarball is SHA-256 checked.
 
 ## Capturing
 
@@ -342,6 +344,8 @@ deferred = "M5"
 outputs = ["stdout.txt", "top.mag"]
 reason = "cifwidth errors come from the mask-layer check of the generated MET1 layer, which arrives with mask generation"
 ```
+
+An entry with `deferred` may give single outputs their own milestone with `deferred_outputs`, a table from output name to milestone (each key one of `outputs`); the other outputs keep `deferred`. SCHEM-LVS-01 is `deferred = "M9"` with `deferred_outputs = { "inv_1.spice" = "M8" }` (Q-SCHEM-39): M8 checks the netlist, M9 the LVS result. `replay.py --milestone M<n>` checks the state at the exit of milestone n: an output deferred to n or earlier is no longer covered by its entry and must match (a decided deviation keeps its decision and loses only its deferral).
 
 A case authored before its capture (the M5 MASK cases, whose `expected/` golden-capture.yml writes later) may be listed with `deferred` while it has no `expected/`: replay reports it as `DEVIATION` ("not captured yet") when named, and the default selection never runs it. An uncaptured case without such an entry is an error when named.
 

@@ -196,3 +196,27 @@ TEST_CASE("merge records expanding to exactly max_connections connections flatte
   options.limits.max_connections = 10;
   CHECK(f.flat("top", ExtFixture::netlister_flags(), {}, options).ok());
 }
+
+// Regression (both modes): a `port` record's number was never bounded, and
+// the SPICE writer sized its port list by the highest one: `port a
+// 1000000000` allocated about 32 GB of strings, and 2147483647 overflowed
+// the implicit numbering past it.
+TEST_CASE("a port number past the cap fails the read with EXTFLAT-READ-009",
+          "[cap:ext-flattening-read][req:Use, port, cap, resist, attr and connect records]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    extflat::ReadOptions options;
+    options.magic_compat = compat;
+    for (const char* number : {"2147483647", "1000000000", "1048577"}) {
+      ExtFixture f;
+      f.file("top", std::string{"port a "} + number + " 0 0 1 1 m1\n");
+      const auto n = f.read("top", options);
+      REQUIRE_FALSE(n.ok());
+      CHECK(n.error().code == "EXTFLAT-READ-009");
+      CHECK(n.error().text == std::string{"/w/top.ext, line 1: port number "} + number + " is larger than 1048576");
+    }
+    ExtFixture at;
+    at.file("top", "port a 1048576 0 0 1 1 m1\nport b -5 0 0 1 1 m1\n");
+    CHECK(at.read("top", options).ok());
+  }
+}

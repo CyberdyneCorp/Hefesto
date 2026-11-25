@@ -10,7 +10,7 @@
 // area prefix declared in diag/codes.cpp (TECH-, DB-, CELL-, DISPLAY-, VIEW-,
 // PDK-, APP-, UNDO-, SELECT-, CONNECT-, UI-, WIRE-, DRC-, HINTS-, SCRIPT-,
 // PCELL-, TOOLS-, GUI-, MASK-, GDS-, CIF-, LEF-, DEF-, OASIS-, EXTFLAT-,
-// EXTRACT-, SCHEM-, VIEW3D-, NETLIST-, EXTRESIST-, ANTENNA-). The drc area's table is assembled by
+// EXTRACT-, SCHEM-, VIEW3D-, NETLIST-, EXTRESIST-, ANTENNA-, LVS-, SIM-). The drc area's table is assembled by
 // src/core/src/drc/codes.cpp from one fragment per workstream
 // (drc/<sub>/codes.inc; openspec/changes/m3-drc design.md D1); the script and
 // pcell tables likewise from script/<sub>/codes.inc and pcell/<sub>/codes.inc
@@ -73,5 +73,8 @@ namespace hefesto::diag::area_codes {
 [[nodiscard]] std::span<const CodeInfo> netlist() noexcept;
 [[nodiscard]] std::span<const CodeInfo> extresist() noexcept;
 [[nodiscard]] std::span<const CodeInfo> antenna() noexcept;
+// M9 areas (openspec/changes/m9-lvs-simulation/design.md D3).
+[[nodiscard]] std::span<const CodeInfo> lvs() noexcept;
+[[nodiscard]] std::span<const CodeInfo> sim() noexcept;
 
 }  // namespace hefesto::diag::area_codes

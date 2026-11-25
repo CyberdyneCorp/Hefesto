@@ -67,6 +67,7 @@ struct HierDef {
   bool abstract = false;    // the `abstract` record
   bool primitive = false;   // the `primitive` record
   std::size_t devices = 0;  // the number of device records kept
+  std::size_t uses = 0;     // the number of uses (HashGetNumEntries(&def_uses))
 };
 
 /// One `use` of a definition inside another (EFUse).
@@ -107,7 +108,19 @@ class Hierarchy {
   std::vector<HierUse> uses;
   /// The circuit model flatten() works on; null for a default-constructed
   /// hierarchy, which flattens to an empty netlist.
-  std::shared_ptr<const detail::HierModel> model{};
+  /// The hierarchical netlister's port promotion and absorbed cells change
+  /// it (make_ports, clear_ports), as Magic changes its Defs.
+  std::shared_ptr<detail::HierModel> model{};
+};
+
+/// The ports of one definition as the hierarchical netlister reads them:
+/// its port entries (topVisit's walk; see Netlist::root_ports), whether a
+/// node is a port or a substrate port (EF_PORT | EF_SUBS_PORT), and whether
+/// a node that is no port is a substrate port.
+struct DefPorts {
+  std::vector<PortEntry> entries;
+  bool any_port = false;
+  bool substrate_port = false;
 };
 
 /// Reads `<root>.ext` and every file it uses (EFReadFile). Read messages
@@ -154,6 +167,25 @@ struct FlattenOptions {
 [[nodiscard]] diag::Outcome<Netlist> flatten_one_level(const Hierarchy& hierarchy, std::string_view def,
                                                        FlatFlags flags, const FlattenOptions& options,
                                                        diag::DiagnosticSink& sink, bool* devices_absent = nullptr);
+
+/// esMakePorts over every definition, children first (EFHierSrDefs;
+/// netlist-spice-hierarchy "Port promotion"): each net of a child that a
+/// parent's `merge` reaches, or a coupling whose |C| is at least
+/// `cap_threshold` fF, becomes a port of the child with no index; a
+/// substrate net reaching no device is not promoted by a merge while
+/// `cap_infinite`; EF_SUBS_PORT propagates from child to parent net.
+void make_ports(Hierarchy& hierarchy, bool cap_infinite, double cap_threshold);
+
+/// The ports of definition `def` (empty for an unknown name).
+[[nodiscard]] DefPorts def_ports(const Hierarchy& hierarchy, std::string_view def);
+
+/// Clears EF_PORT and EF_SUBS_PORT on every node of `def` (esHierVisit's
+/// absorbed cell).
+void clear_ports(Hierarchy& hierarchy, std::string_view def);
+
+/// DEF_NODEVICES of `def`, as the one-level flattenings so far set it
+/// (each flatten_one_level marks the absorbed device-less cells too).
+[[nodiscard]] bool devices_absent(const Hierarchy& hierarchy, std::string_view def);
 
 /// One record of a `.res.ext` overlay (`rnode`, `resist`, `device`
 /// rewrites), kept as its tokens.

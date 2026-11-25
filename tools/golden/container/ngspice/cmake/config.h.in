@@ -1,0 +1,66 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2026 The Hefesto Authors
+ *
+ * ngspice/config.h of libngspice-hefesto, written by the Hefesto CMake
+ * wrapper (third_party/ngspice/CMakeLists.txt) in place of ngspice's
+ * configure. The feature macros follow the feature line of pin.json
+ * (simulation-engine-embedding, "ngspice build configuration and license
+ * hygiene"); the HAVE_ macros are probed by CMake as configure probes them.
+ * Variant: @NGSPICE_VARIANT@.
+ */
+#ifndef HEFESTO_NGSPICE_CONFIG_H
+#define HEFESTO_NGSPICE_CONFIG_H
+
+/* ---- Package and version ------------------------------------------------ */
+#define PACKAGE "ngspice"
+#define PACKAGE_NAME "ngspice"
+#define PACKAGE_TARNAME "ngspice"
+#define PACKAGE_BUGREPORT "http://ngspice.sourceforge.net/bugrep.html"
+#define PACKAGE_URL ""
+/* <release>-hefesto<patch level> (simulation-engine-embedding, "ngspice
+ * embedded as a library", scenario "Version reporting"). */
+#define PACKAGE_VERSION "@NGSPICE_VERSION@"
+#define PACKAGE_STRING "ngspice @NGSPICE_VERSION@"
+#define VERSION "@NGSPICE_VERSION@"
+/* Empty: the build date would make two builds of the same source differ. */
+#define NGSPICEBUILDDATE ""
+#define NGSPICEBINDIR "@NGSPICE_BINDIR@"
+#define NGSPICEDATADIR "@NGSPICE_DATADIR@"
+#define NGSPICELIBDIR "@NGSPICE_LIBDIR@"
+#define OS_COMPILED @NGSPICE_OS_COMPILED@
+
+/* ---- Features (pin.json "configure.features") --------------------------- */
+#cmakedefine SHARED_MODULE 1
+#define XSPICE 1
+#define OSDI 1
+#define KLU /**/
+#define RFSPICE 1
+#define IPC_UNIX_SOCKETS 1
+#define NOINTHELP 1
+#define X_DISPLAY_MISSING 1
+/* Not defined: CIDER, NDEV, WITH_PSS, USE_OMP (OpenMP off, Q-SIM-12),
+ * HAVE_LIBFFTW3 (built-in FFT), HAVE_GNUREADLINE, HAVE_BSDEDITLINE,
+ * HAVE_LIBGC, TCL_MODULE, HAS_WINGUI, the debug switches. */
+
+/* Hefesto patches 0001 and 0002: built-in OSDI and code-model registries. */
+#define HEFESTO_STATIC_OSDI 1
+#define HEFESTO_STATIC_CODEMODELS 1
+
+/* ---- Host probes --------------------------------------------------------- */
+#define STDC_HEADERS 1
+#define YYTEXT_POINTER 1
+#define SELECT_TYPE_ARG1 int
+#define SELECT_TYPE_ARG234 (fd_set *)
+#define SELECT_TYPE_ARG5 (struct timeval *)
+#cmakedefine HAVE_SIGSETJMP /**/
+#cmakedefine HAVE_SIG_T 1
+#cmakedefine HAVE_SIGHANDLER_T 1
+#cmakedefine HAVE___SIGHANDLER_T 1
+#cmakedefine HAVE__PROC_MEMINFO 1
+#cmakedefine HAVE_DECL_ISINF 1
+#cmakedefine HAVE_DECL_ISNAN 1
+#cmakedefine HAVE_STRUCT_TM_TM_ZONE 1
+#cmakedefine HAVE_TM_ZONE 1
+#cmakedefine HAVE__BOOL 1
+@NGSPICE_HAVE_DEFINES@
+#endif /* HEFESTO_NGSPICE_CONFIG_H */

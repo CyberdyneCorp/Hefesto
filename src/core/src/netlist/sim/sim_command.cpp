@@ -166,11 +166,12 @@ CommandResult merge(const OptionCall& c) {
 }
 
 // EXTTOSIM_DEFAULT: the thresholds and the output flags (EFOutputFlags = 0).
-// EFScale, -T and -p are not session state in Hefesto: each run takes its
-// own (design D15, as landed).
+// EFScale and -T are not session state in Hefesto: each run takes its own
+// (design D15, as landed); a left-over -p path (Q-NETLIST-61) is cleared.
 CommandResult reset(editor::EditorState& editor, SimSettings& settings) {
   settings.cthresh = 2.0;
   settings.rthresh = 10;
+  editor.netlist.search_path.clear();
   editor.netlist.names = extflat::NameFlags{false, false, false, false, false};
   return CommandResult::success();
 }

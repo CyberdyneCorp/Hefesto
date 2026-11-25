@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1996 requirements, 3507 scenarios, 989 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3566 scenarios, 1006 open questions.
 
 ## Hefesto product (native)
 
@@ -13,7 +13,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 |---|---|---|---|
 | [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 15 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
 | [`hefesto-app-ux`](../openspec/specs/hefesto-app-ux/spec.md) | 8 | 14 | Defines the information architecture of Hefesto's modern GUI: the main window, panels, browsers and multi-window behavior on desktop and iPad. Magic's Tk wrapper GUI is specified s… |
-| [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 7 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
+| [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 7 | 9 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
 | [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 9 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
@@ -21,13 +21,13 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 5 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 6 | 17 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
 | [`hefesto-ipad-feature-scope`](../openspec/specs/hefesto-ipad-feature-scope/spec.md) | 4 | 4 | Defines which features the first iPadOS release includes and which stay desktop-only (decision P-13). This list is authoritative: a capability not listed as desktop-only here SHALL… |
-| [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 6 | 12 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
+| [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 7 | 18 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
 | [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |
 | [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 6 | 11 | Implements decision X-2, generalized by decision D-2 to every reference tool that Hefesto must match. Hefesto always fixes the reference tools' crashes, undefined behavior and data… |
 | [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
 | [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 5 | 8 | Implements decision X-1 (as amended on 2026-11-06). Hefesto reproduces Magic's ordering wherever that ordering is a deterministic function of the input: Magic's canonical tile deco… |
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
-| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 7 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
+| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 5 | 9 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 6 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-product-operations`](../openspec/specs/hefesto-product-operations/spec.md) | 5 | 5 | Defines how Hefesto runs as a shipped product (decision P-22): - opt-in crash reporting and usage telemetry that never collect design data - signed desktop updates with stable and … |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
@@ -52,11 +52,11 @@ Open questions: [33](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 
 ## Cell files (.mag) (CELL)
 
-Open questions: [47](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
+Open questions: [48](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 53 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
+| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 54 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
 | [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 16 | 24 | Defines the safety rules around reading and writing cell files: |
 | [`cell-library-resolution`](../openspec/specs/cell-library-resolution/spec.md) | 15 | 26 | Defines how Hefesto maps a cell name, or an instance's recorded path, to a cell file. It covers: |
 | [`cell-timestamps`](../openspec/specs/cell-timestamps/spec.md) | 8 | 11 | Defines the timestamp carried by every cell definition and by every instance record in a parent. The hierarchical design-rule checker uses these timestamps to detect children that … |
@@ -126,7 +126,7 @@ Open questions: [133](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 
 ## Circuit extraction (EXTRACT)
 
-Open questions: [30](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
+Open questions: [37](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -142,21 +142,21 @@ Open questions: [30](decisions/open-questions/EXTRACT.md) · Golden cases: [CASE
 
 ## Netlists and extresist (NETLIST)
 
-Open questions: [53](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+Open questions: [62](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 17 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
-| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 28 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
+| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 29 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 11 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 29 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 10 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 4 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
-| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 17 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 18 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 21 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 10 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
-| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 24 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 27 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
 
 ## LVS (netgen-compatible) (LVS)
 
@@ -164,14 +164,14 @@ Open questions: [36](decisions/open-questions/LVS.md) · Golden cases: [CASES.md
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`lvs-command`](../openspec/specs/lvs-command/spec.md) | 8 | 8 | Defines Hefesto's LVS entry points: - the netgen-compatible `lvs` command and its arguments - the lower-level netgen command set exposed to scripts - obtaining the layout netlist f… |
-| [`lvs-comparison-algorithm`](../openspec/specs/lvs-comparison-algorithm/spec.md) | 13 | 14 | Defines how two flat views of a cell pair (circuit 1 and circuit 2) are compared for graph isomorphism. It covers: - the bipartite device/net graph - the initial partition - iterat… |
-| [`lvs-device-reduction`](../openspec/specs/lvs-device-reduction/spec.md) | 8 | 10 | Defines how devices are reduced before and during LVS comparison: - combining parallel devices into one device with several property records - combining series devices into one dev… |
-| [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 9 | 12 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
-| [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 14 | 23 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
-| [`lvs-property-matching`](../openspec/specs/lvs-property-matching/spec.md) | 9 | 12 | Defines how the properties of matched devices are compared: - which properties are compared (properties of interest) - value types and promotion between them - tolerance rules for … |
-| [`lvs-reports`](../openspec/specs/lvs-reports/spec.md) | 11 | 12 | Defines the outputs of LVS: - which messages go to the comparison log (`comp.out`) and which go only to the console - the two-column side-by-side layout - the exact text of each re… |
-| [`lvs-setup-file`](../openspec/specs/lvs-setup-file/spec.md) | 15 | 16 | Defines the LVS setup file and the commands that PDK setup files use to configure a comparison. Examples of such files are `sky130A_setup.tcl`, `gf180mcuD_setup.tcl` and `sg13g2_se… |
+| [`lvs-command`](../openspec/specs/lvs-command/spec.md) | 9 | 13 | Defines Hefesto's LVS entry points: - the netgen-compatible `lvs` command and its arguments - the lower-level netgen command set exposed to scripts - obtaining the layout netlist f… |
+| [`lvs-comparison-algorithm`](../openspec/specs/lvs-comparison-algorithm/spec.md) | 14 | 15 | Defines how two flat views of a cell pair (circuit 1 and circuit 2) are compared for graph isomorphism. It covers: - the bipartite device/net graph - the initial partition - iterat… |
+| [`lvs-device-reduction`](../openspec/specs/lvs-device-reduction/spec.md) | 9 | 11 | Defines how devices are reduced before and during LVS comparison: - combining parallel devices into one device with several property records - combining series devices into one dev… |
+| [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 10 | 13 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
+| [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 16 | 25 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
+| [`lvs-property-matching`](../openspec/specs/lvs-property-matching/spec.md) | 10 | 13 | Defines how the properties of matched devices are compared: - which properties are compared (properties of interest) - value types and promotion between them - tolerance rules for … |
+| [`lvs-reports`](../openspec/specs/lvs-reports/spec.md) | 12 | 13 | Defines the outputs of LVS: - which messages go to the comparison log (`comp.out`) and which go only to the console - the two-column side-by-side layout - the exact text of each re… |
+| [`lvs-setup-file`](../openspec/specs/lvs-setup-file/spec.md) | 17 | 18 | Defines the LVS setup file and the commands that PDK setup files use to configure a comparison. Examples of such files are `sky130A_setup.tcl`, `gf180mcuD_setup.tcl` and `ihp-sg13g… |
 
 ## Embedded simulation (ngspice) (SIM)
 
@@ -179,16 +179,16 @@ Open questions: [28](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 11 | 16 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
-| [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 7 | 13 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
-| [`simulation-corners`](../openspec/specs/simulation-corners/spec.md) | 8 | 10 | Defines corner analysis in Hefesto (decision P-19): - the corner definitions and corner sets held by each PDK's simulation model descriptor in the PDK store - the bundled corner ta… |
-| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 15 | 27 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
-| [`simulation-measurements-and-statistics`](../openspec/specs/simulation-measurements-and-statistics/spec.md) | 11 | 17 | Defines how Hefesto turns simulation results into numbers and verdicts, and how it summarises many runs (decision P-19): - named measurements on stored vectors, extending the wavef… |
-| [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 10 | 17 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
-| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 24 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 13 | 18 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
+| [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 8 | 14 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
+| [`simulation-corners`](../openspec/specs/simulation-corners/spec.md) | 9 | 11 | Defines corner analysis in Hefesto (decision P-19): - the corner definitions and corner sets held by each PDK's simulation model descriptor in the PDK store - the bundled corner ta… |
+| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 17 | 40 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
+| [`simulation-measurements-and-statistics`](../openspec/specs/simulation-measurements-and-statistics/spec.md) | 13 | 19 | Defines how Hefesto turns simulation results into numbers and verdicts, and how it summarises many runs (decision P-19): - named measurements on stored vectors, extending the wavef… |
+| [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 12 | 19 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
+| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 16 | 27 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
 | [`simulation-optimization-hooks`](../openspec/specs/simulation-optimization-hooks/spec.md) | 7 | 8 | Defines an optional evaluation interface through which optimisation loops drive simulation (decision P-19). The main client is the AI agent (decision P-10): its sizing and post-lay… |
-| [`simulation-sweeps`](../openspec/specs/simulation-sweeps/spec.md) | 9 | 17 | Defines how Hefesto runs one testbench many times with different values (decision P-19): - run sets, the batch object shared by sweeps, corners (capability `simulation-corners`) an… |
-| [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 12 | 14 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
+| [`simulation-sweeps`](../openspec/specs/simulation-sweeps/spec.md) | 11 | 19 | Defines how Hefesto runs one testbench many times with different values (decision P-19): - run sets, the batch object shared by sweeps, corners (capability `simulation-corners`) an… |
+| [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 14 | 17 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
 
 ## AI layout agent (AGENT)
 

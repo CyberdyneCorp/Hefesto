@@ -1,12 +1,12 @@
 # Proposal: M9 LVS, simulation and advanced analog simulation (Desktop Beta)
 
-> **Status: plan drafted 2026-11-22, with nothing approved yet.** The user approved planning M9 on 2026-11-22. The decisions the plan depends on are open:
+> **Status: plan drafted 2026-11-22; decisions approved 2026-11-22 (gate G0, tasks 1.1–1.4).** The user approved planning M9 on 2026-11-22, and on the same day approved every decision below with its recommended option; the four verify rows are approved as conditional rules whose `Verified` lines come from task 3.3. The decisions were:
 > - the 34 entries reported by `check_milestone_readiness.py --milestone M9`;
 > - audit decisions D-22 to D-28;
 > - 18 entries this plan raises;
 > - design Open Questions 1–4.
 >
-> `docs/decisions/m9-decision-table.md` lists each one with a recommended option. Gate G0 (design D1) passes only when the user has approved them and the readiness check reports "ready".
+> `docs/decisions/m9-decision-table.md` lists each one with its approved option, and `check_milestone_readiness.py --milestone M9` reports "ready".
 
 ## Why
 
@@ -106,7 +106,7 @@ None.
 
 M9 implements the existing requirements of its 17 capabilities. Unlike M7 and M8, which applied approved decisions to the living specs before their change was created (`skip_specs: true`), this change carries spec deltas, because M9's decisions are not approved yet. Design Open Question 1 asks whether to keep that approach.
 
-The deltas under `specs/` record the changes the recommended answers imply:
+The deltas under `specs/` recorded the changes the recommended answers imply. They were approved and synced into `openspec/specs/` at G0 (task 1.2, design Open Question 1 (a)) and then removed from the change, which now sets `skip_specs: true`:
 - `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`: limits (Q-LVS-36), in-memory sources, determinism and threading (Q-LVS-34), the IHP setup file (Q-LVS-31), incremental extraction and the name map (Q-LVS-32, -33), layout references in results, and the LVS status chip.
 - `simulation-engine-embedding`: the desktop shared library and worker (Q-SIM-20, -21, -22, D-25) and the IPC limits (Q-SIM-25).
 - `simulation-netlist-preparation`: `mm_ok=1` for extracted sg13g2 devices (D-23) and deck limits.

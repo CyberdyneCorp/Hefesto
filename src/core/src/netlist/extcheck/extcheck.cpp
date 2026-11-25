@@ -130,23 +130,6 @@ diag::Outcome<extflat::Netlist> read_and_flatten(const std::string& cell, const 
   return flatten_reporting(hierarchy.value(), flatten, sink);
 }
 
-// The leaf names that end in `!` in a flattened netlist. Magic's standalone
-// extcheck is a non-Tcl build, whose EFHNIsGlob makes exactly those names
-// global; extflat takes its globals as a list of leaves (the Tcl rule,
-// capability ext-flattening-names "Global and ground detection"), so the
-// run reads twice: once to find them, once with them as the globals.
-std::vector<std::string> bang_leaves(const extflat::Netlist& netlist) {
-  std::vector<std::string> leaves;
-  netlist.visit_nodes([&leaves](const extflat::FlatNode& node) {
-    for (const std::vector<std::string>& name : node.names) {
-      if (is_global(name) && std::find(leaves.begin(), leaves.end(), name.back()) == leaves.end()) {
-        leaves.push_back(name.back());
-      }
-    }
-  });
-  return leaves;
-}
-
 // The run's arguments, or the exit status after the usage text.
 struct Parsed {
   extflat::CommonArgs args;
@@ -297,14 +280,11 @@ int run(std::span<const std::string> args, std::ostream& out, std::ostream& err,
   extflat::FlattenOptions flatten;
   flatten.cap_threshold = limits.cap;
   flatten.symbols = parsed.args.symbols;
-  // The first pass finds the global names; its messages are dropped.
-  diag::CollectingSink first_sink;
-  auto first = read_and_flatten(*parsed.args.cell, options, flatten, first_sink);
-  if (first.ok()) {
-    options.global_nets = bang_leaves(first.value());
-  }
+  // Magic's standalone extcheck is a build without Tcl, whose EFHNIsGlob
+  // makes every leaf ending in `!` global.
+  options.bang_globals = true;
   diag::CollectingSink sink;
-  auto flat = first.ok() ? read_and_flatten(*parsed.args.cell, options, flatten, sink) : first;
+  auto flat = read_and_flatten(*parsed.args.cell, options, flatten, sink);
   print_messages(sink.take(), out, err);
   if (!flat.ok()) {
     err << program << ": " << diag::format_text(flat.error()) << '\n';

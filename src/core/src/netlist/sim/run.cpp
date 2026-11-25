@@ -33,6 +33,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/app/settings_layers.hpp"
@@ -41,6 +42,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extflat/args.hpp"
 #include "hefesto/extflat/hierarchy.hpp"
+#include "hefesto/netlist/session.hpp"
 #include "hefesto/netlist/sim/sim.hpp"
 #include "hefesto/netlist/sim/writer.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -53,6 +55,8 @@ namespace {
 using cmd::CommandResult;
 using console::message;
 using console::report;
+
+constexpr std::string_view kCannotRead = "EXTFLAT-READ-001";
 
 constexpr const char* kUsage =
     "Usage: ext2sim [-a aliasfile] [-A] [-B] [-l labelfile] [-L]\n"
@@ -364,6 +368,16 @@ CommandResult write_files(platform::FileSystem& fs, const FileNames& names, cons
   return CommandResult::success();
 }
 
+// Q-NETLIST-59 (compat): EFReadFile sets `Cannot read extract file
+// <cell>.ext` as the Tcl result and the command succeeds; copied with
+// magic-compat ON. With it OFF the run fails with the diagnostic.
+CommandResult read_failure(const diag::Diagnostic& error, bool magic_compat) {
+  if (magic_compat && error.code == kCannotRead) {
+    return CommandResult::success(error.text + "\n");
+  }
+  return CommandResult::failure(error);
+}
+
 struct Parsed {
   extflat::CommonArgs args;
   RunFlags run;
@@ -462,10 +476,15 @@ CommandResult run(editor::EditorState& editor, const SimRun& request, const SimS
   auto args = extflat::parse_common_args(request.args, sim_flags(settings, parsed.run, request.emit),
                                          extflat::ArgOptions{true, false, extflat::file_reader(fs)});
   if (!args.ok()) {
+    editor.netlist.search_path.clear();  // EFDone
     return CommandResult::failure(args.error());
   }
   parsed.args = std::move(args).value();
   emit_all(request.emit, parsed.args.messages);
+  // Q-NETLIST-61: -p holds for this run only (EFDone frees EFSearchPath,
+  // also when no cell is named: ext2sim.c:548-552), or the path an
+  // ext2spice run without a cell left.
+  parsed.args.search_path = take_search_path(editor.netlist, parsed.args.search_path);
   const std::string cell = parsed.args.cell.value_or(request.window_cell);
   if (cell.empty()) {
     message(request.emit, "Point to a window or specify a cell name.");
@@ -479,7 +498,7 @@ CommandResult run(editor::EditorState& editor, const SimRun& request, const SimS
   auto input = source(ReadRequest{cell, read_options(editor, parsed.args, settings.extresist, request.magic_compat),
                                   setup.flags, flatten_options(editor, setup.write, parsed.args)});
   if (!input.ok()) {
-    return CommandResult::failure(input.error());
+    return read_failure(input.error(), request.magic_compat);
   }
   return write_run(editor, request, setup.write, input.value(), names,
                    file_names(cell, settings.extresist, parsed.args, parsed.run));
