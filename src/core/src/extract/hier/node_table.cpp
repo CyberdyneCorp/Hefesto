@@ -42,7 +42,7 @@ std::optional<std::size_t> HierNodeTable::find(const std::string& name) const {
   return names_[*entry->value].node;
 }
 
-std::size_t HierNodeTable::unify(std::size_t cumulative, std::size_t added, bool keep_values) {
+std::size_t HierNodeTable::unify(std::size_t cumulative, std::size_t added, bool sum_values) {
   if (cumulative == added) {
     return cumulative;
   }
@@ -62,7 +62,7 @@ std::size_t HierNodeTable::unify(std::size_t cumulative, std::size_t added, bool
     // n2's names go before n1's.
     keep.names.insert(keep.names.begin(), gone.names.begin(), gone.names.end());
   }
-  if (keep_values) {
+  if (sum_values) {
     keep.cap += gone.cap;
     for (std::size_t c = 0; c < keep.classes.size() && c < gone.classes.size(); ++c) {
       keep.classes[c].area += gone.classes[c].area;
