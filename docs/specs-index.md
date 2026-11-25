@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3555 scenarios, 1004 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3566 scenarios, 1006 open questions.
 
 ## Hefesto product (native)
 
@@ -11,7 +11,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 11 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
+| [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 15 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
 | [`hefesto-app-ux`](../openspec/specs/hefesto-app-ux/spec.md) | 8 | 14 | Defines the information architecture of Hefesto's modern GUI: the main window, panels, browsers and multi-window behavior on desktop and iPad. Magic's Tk wrapper GUI is specified s… |
 | [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 7 | 9 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
@@ -307,7 +307,7 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [45](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [47](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -315,7 +315,7 @@ Open questions: [45](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
 | [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
 | [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
-| [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 38 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
+| [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 45 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 

@@ -45,9 +45,10 @@ Compatibility: native
 
 ### Requirement: Interactive 3D inspection
 The 3D view SHALL support the following:
-- **Camera:** orbit, pan, zoom and preset views (top, isometric, front, side), driven by mouse, trackpad, keyboard or touch gestures.
+- **Camera:** orbit, pan, zoom and preset views (top, isometric, front, side), driven by mouse, trackpad, keyboard or touch gestures. The desktop 3D tab opens on the isometric preset seen from above, framed to the cell, and shows an x/y/z axis gizmo (view-3d "Viewing transform and shading", Q-MISC-84).
 - **Cross-sections:** along an axis-aligned cut line or plane. Heights are in µm regardless of magic-compat (view-3d, Q-MISC-72); mask layers without a `render` height are reported, not given one.
 - **Layer visibility:** per-layer show, hide, isolate and transparency, acting on the same per-mode visibility sets as `see` (capability `view-3d`, Q-MISC-71).
+- **Ghosted layers:** in the desktop 3D tab a non-conducting area layer is ghosted by default, with magic-compat ON and OFF (Q-MISC-85, approved 2026-11-24): drawn with alpha 0.2 (the transparency control's 20 % step) after the opaque faces, with no depth write and no pick id, so the material under it shows and a click picks that material. A layer of the layout-layer stack is non-conducting area when its tile type is not a contact type and lies on a plane that holds no residue of any contact type of the technology (the technology's `contact` section; a stacked contact counts with its full residue set); every other layer (diffusions, poly, local interconnect, metals, MiM caps, contacts and vias) is opaque. For sky130A this ghosts the dwell, well and comment planes; for gf180mcuD the dwell, well, poly and comment planes (gf180mcuD's `poly` plane holds only the non-conducting fill type `fillpoly`; poly itself is on the active plane). The user changes a layer with its transparency control (100 / 50 / 20 %); the value the user set is kept for the window across rebuilds, outside Magic's state, so `see` and the visibility sets are unaffected. In phase 1 the tab draws the layout-layer stack in both window modes (in mask-layer mode with x and y scaled by f), so the same layers are ghosted in mask-layer mode; a mask-layer stack (phase 2) has no planes and no layer of it is ghosted by default.
 - **Net highlighting:** highlight a selected net in 3D, using the connectivity of capability `layout-connectivity`.
 - **Picking:** selecting a solid SHALL select the corresponding layout material in the 2D view, and the reverse.
 
@@ -58,6 +59,26 @@ Compatibility: native
 #### Scenario: Cross-section
 - **WHEN** a user draws a cut line across an inverter and requests a cross-section
 - **THEN** the view SHALL show the layer stack along that line, with correct heights and thicknesses
+
+#### Scenario: Wells ghosted by default
+- **GIVEN** the desktop 3D tab on a sky130A cell with an nwell over a pmos device
+- **WHEN** the tab is drawn and the user clicks the nwell area over the device
+- **THEN** the nwell is drawn with alpha 0.2, the pmos diffusion is visible through it, and the click picks the device's material below the nwell, with magic-compat ON and OFF (Q-MISC-85)
+
+#### Scenario: User makes a ghosted layer opaque
+- **GIVEN** the same cell with the nwell ghosted
+- **WHEN** the user sets the nwell row's transparency to 100 %
+- **THEN** the nwell is drawn opaque, writes depth and is picked by a click on it, and it stays opaque after the mesh is rebuilt; `see` output is unchanged (Q-MISC-85)
+
+#### Scenario: Wells ghosted in mask-layer mode
+- **GIVEN** the desktop 3D tab on a sky130A cell with an nwell, opened in mask-layer mode (an output style is current)
+- **WHEN** the tab is drawn in phase 1
+- **THEN** the nwell is drawn with alpha 0.2 as in layout-layer mode, because the tab draws the layout-layer stack scaled by f, with magic-compat ON and OFF (Q-MISC-85)
+
+#### Scenario: Contact planes stay opaque
+- **GIVEN** the desktop 3D tab on a gf180mcuD cell with nwell, pdiff, poly, pdc and metal1
+- **WHEN** the tab is drawn
+- **THEN** only the nwell is ghosted; pdiff, poly, pdc and metal1, whose planes hold contact residues or which are contacts, are opaque and pickable (Q-MISC-85)
 
 #### Scenario: Touch orbit
 - **GIVEN** an iPad

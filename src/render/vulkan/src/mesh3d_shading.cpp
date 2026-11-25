@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 #include "hefesto/display/scene.hpp"
 #include "hefesto/render/mesh3d_shading.hpp"
@@ -35,16 +36,25 @@ std::array<float, 3> background_color(const display::StyleSet* styles) {
   return {s.r, s.g, s.b};
 }
 
-float light_intensity(Lighting lighting, const std::array<double, 3>& model, const std::array<float, 3>& normal) {
-  if (lighting == Lighting::magic) {
-    const double lx = 50.0 - model[0];
-    const double ly = 50.0 - model[1];
-    const double lz = 50.0 - model[2];
-    const double len = std::sqrt((lx * lx) + (ly * ly) + (lz * lz));
-    return 0.6F + (len > 0.0 ? static_cast<float>(std::max(lz / len, 0.0)) : 1.0F);
-  }
-  constexpr float kInvSqrt3 = 0.57735027F;
-  return 0.4F + std::max((normal[0] + normal[1] + normal[2]) * kInvSqrt3, 0.0F);
+std::array<float, 3> board_light(float view_z_deg) {
+  // normalize(-0.4, -0.2, 1) at the isometric azimuth (45 degrees), turned
+  // with the camera around z.
+  constexpr double kX = -0.4;
+  constexpr double kY = -0.2;
+  constexpr double kZ = 1.0;
+  constexpr double kIsometricAzimuth = 45.0;
+  const double len = std::sqrt((kX * kX) + (kY * kY) + (kZ * kZ));
+  const double turn = (kIsometricAzimuth - static_cast<double>(std::isfinite(view_z_deg) ? view_z_deg : 45.0F)) *
+                      std::numbers::pi / 180.0;
+  const double c = std::cos(turn);
+  const double s = std::sin(turn);
+  return {static_cast<float>(((kX * c) - (kY * s)) / len), static_cast<float>(((kX * s) + (kY * c)) / len),
+          static_cast<float>(kZ / len)};
+}
+
+float light_intensity(Lighting /*lighting*/, const std::array<float, 3>& light, const std::array<float, 3>& normal) {
+  const float diffuse = std::max((normal[0] * light[0]) + (normal[1] * light[1]) + (normal[2] * light[2]), 0.0F);
+  return std::min(kBoardAmbient + ((1.0F - kBoardAmbient) * diffuse / light[2]), 1.0F);
 }
 
 std::array<float, 3> lit_color(const std::array<float, 3>& rgb, float intensity) {

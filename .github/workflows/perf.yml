@@ -1372,9 +1372,10 @@ jobs:
           print(f"{f['device']}, {f['width']} x {f['height']}, {f['view']}; upload {f['upload_s']:.3f} s, "
                 f"upload plus first frame {f['first_frame_ms']:.0f} ms\n")
           print("| Level | Median | p95 | fps (median) |\n|---|---|---|---|")
-          for level in ("level0", "level1"):
-              l = f[level]
-              print(f"| {level[-1]} | {l['median_ms']:.1f} ms | {l['p95_ms']:.1f} ms | {l['fps']:.2f} |")
+          for level in ("level0", "level1", "level0_ghost", "level1_ghost"):
+              l = f.get(level)
+              if l:
+                  print(f"| {level[5:]} | {l['median_ms']:.1f} ms | {l['p95_ms']:.1f} ms | {l['fps']:.2f} |")
           EOF
 
       - uses: actions/upload-artifact@v4

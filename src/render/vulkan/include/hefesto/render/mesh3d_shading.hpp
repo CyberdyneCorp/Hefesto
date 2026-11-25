@@ -15,28 +15,32 @@
 //   is drawn in c itself.
 // - Only solid and stippled styles are drawn (W3Dmain.c:406, :439);
 //   stippled ones solid (design D8).
-// - Background: the color of the transparent style (Magic's w3dClear,
-//   W3Dmain.c:449-466).
-// - Lighting, magic-compat ON (Magic's GL state, W3Dmain.c:471-523): every
-//   transform is in the projection matrix and Magic never sets a normal, so
-//   each face has the normal (0, 0, 1) and the positional white light at
-//   (50, 50, 50) is in model coordinates (root units, z = -h * s_z ...):
-//   I = 0.2 (GL's global ambient) + 0.4 (light 0) + max(0, n . l), per
-//   vertex. OFF: the light Magic's comment calls directional, from
-//   (1, 1, 1), on each face's own outward normal in the displayed scene,
-//   with the spec's ambient 0.4. The displayed scene is the model mirrored
-//   in z (R1, Q-MISC-81: the viewer on the side of the higher layers), so
-//   the face at a layer's h + t end, the one the top view shows, has the
-//   displayed normal (0, 0, 1).
+// - Background: DrawParams::background when set (the desktop tab passes its
+//   theme token, Q-MISC-84), else the color of the transparent style
+//   (Magic's w3dClear, W3Dmain.c:449-466).
+// - Lighting: the board look in both magic-compat modes (Q-MISC-84, V1,
+//   approved 2026-11-24): flat per-face directional shading on each face's
+//   own outward normal in the displayed scene (the model mirrored in z, z
+//   growing with the height, R1/Q-MISC-81). The light keeps its direction
+//   relative to the camera's azimuth (view_z), so the two side orientations
+//   a view shows always get distinct factors: I = a + (1 - a) * max(n . l,
+//   0) / l_z, at most 1, with a = 0.55: a top face is drawn in its style
+//   color (I = 1), side faces darker, a bottom face at a. Magic's GL state
+//   (normal (0, 0, 1) on every face, positional light at (50, 50, 50),
+//   per-vertex) is no longer drawn: Magic's pixels are informative
+//   (view-3d "Viewing transform and shading"), and no test or golden face
+//   log needs it.
 // - Translucent styles are drawn opaque in their plain colour, in both
 //   modes (R3, approved 2026-11-22).
-//   The lit color is clamp(c * I, 0, 1) (Magic's GL_COLOR_MATERIAL).
+//   The lit color is clamp(c * I, 0, 1); I <= 1, so a face is never lighter
+//   than its style color.
 //
 // Owner: RENDER3D.
 
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <vector>
 
 #include "hefesto/display/styles.hpp"
@@ -52,22 +56,36 @@ struct LayerPaint {
   friend bool operator==(const LayerPaint&, const LayerPaint&) = default;
 };
 
+/// The lighting of a frame (DrawParams::lighting). Only the board look
+/// remains (Q-MISC-84); the enum keeps the parameter for later looks.
 enum class Lighting : std::uint8_t {
-  magic,        // magic-compat ON
-  directional,  // magic-compat OFF
+  board,  // flat per-face directional shading, both magic-compat modes
 };
+
+/// The board lighting's ambient term: the factor of a face turned away from
+/// the light (a bottom face; a side face away from it).
+inline constexpr float kBoardAmbient = 0.55F;
 
 /// The paint of every layer of `stack`. Without a style set every layer is
 /// drawable and white.
 [[nodiscard]] std::vector<LayerPaint> layer_paints(const view3d::LayerStack& stack, const display::StyleSet* styles);
 
-/// The background (display values); black without a style set.
+/// The transparent style's color (display values), Magic's background;
+/// black without a style set. DrawParams::background overrides it.
 [[nodiscard]] std::array<float, 3> background_color(const display::StyleSet* styles);
 
-/// The light intensity at model point (x, y, z) (z = -h * s_z) of a face
-/// with outward normal (nx, ny, nz) in the displayed scene (the model
-/// normal with z negated; unit length, or zero).
-[[nodiscard]] float light_intensity(Lighting lighting, const std::array<double, 3>& model,
+/// The board light's direction (unit, toward the light) in the displayed
+/// scene for a camera at azimuth `view_z_deg` (ViewState::view_z): from
+/// above, over the viewer's left shoulder. In the isometric preset it is
+/// about (-0.37, -0.18, 0.91), so the -x side faces (screen left) get about
+/// 0.73 and the -y side faces (screen right) 0.64.
+[[nodiscard]] std::array<float, 3> board_light(float view_z_deg);
+
+/// The intensity of a face with outward normal `normal` in the displayed
+/// scene (unit length, or zero) under the light `light` (board_light):
+/// kBoardAmbient + (1 - kBoardAmbient) * max(n . l, 0) / l_z, at most 1. A
+/// face whose normal is +z gets exactly 1. Flat: one value per face.
+[[nodiscard]] float light_intensity(Lighting lighting, const std::array<float, 3>& light,
                                     const std::array<float, 3>& normal);
 
 /// clamp(c * intensity, 0, 1) per channel (display values).
