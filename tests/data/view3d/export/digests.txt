@@ -1,0 +1,9 @@
+# SHA-256 digests of the reference export files (tests/unit/view3d/export/digest_test.cpp),
+# equal on Linux x86_64, Linux aarch64 and macOS arm64 (M10 design D14, task 11.4).
+8fb83b9186e21e3ff503c50929f7e70d9dd40a597c60370b3b6a75f472603ecf  embedded.gltf
+6f3b00a4c4628d4d87d49c7bcd1a93dc7a47344968f5834b5677be94017bbac7  merged.stl
+bfa3ec12f9c0d29926c5f18470a331471cde9f849424cb38e0b5f36aa9cab646  reference.bin
+94ed53341966a272d4963c80065f5e3b2fe7a82c383969835abf84a52fda00f4  reference.glb
+6fb97753f24cf21119822c1539af666af20eaba305c76cbe14dcaf78d2714fbb  reference.gltf
+e309f2ec094778ae23744afbf90f24ab7eafa33ffa2dbe509635fecdb68d82f1  reference_li1.stl
+24307c19d9a4c2cb4f51a1b127cecb481a31c1cac40d70b3d45ba1d4ac464f05  reference_met1.stl

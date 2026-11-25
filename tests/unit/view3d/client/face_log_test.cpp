@@ -113,6 +113,7 @@ TEST_CASE("only solid and stippled styles are in the face log in both modes (N3)
     s.editor.view3d.display = &log;
     s.ok("specialopen wind3d c3d");
     CHECK(s.display.redraws == 1);  // forwarded
+    s.w3d("cif");                   // the layout layers (the window opens in mask-layer mode)
     const auto text = s.services.view().files.read("/t/gl.log");
     REQUIRE(text.ok());
     CHECK(text.value().starts_with("gl-capture 1\npoly "));

@@ -130,16 +130,6 @@ TEST_CASE("the scene holds the layout-layer stack, mesh and hidden flags", "[cap
   CHECK(clipped.clip == hefesto::db::Rect{0, 0, 40, 20});
 }
 
-TEST_CASE("mask-layer mode draws the layout mesh scaled by f until phase 2", "[cap:view-3d][req:Rendered geometry]") {
-  ClientSession s;
-  s.ok("specialopen wind3d c3d");
-  view3d::BuildContext ctx;
-  const view3d::Scene scene = view3d::build_scene(s.editor, s.window(), true, ctx);
-  CHECK(scene.xy_factor == 10.0F);
-  REQUIRE(scene.mesh != nullptr);
-  CHECK(scene.mesh->mode == Mode::layout_layer);
-}
-
 TEST_CASE("the mask stack carries the render command's values", "[cap:view-3d][req:Rendered geometry]") {
   ClientSession s;
   s.ok("specialopen wind3d c3d");

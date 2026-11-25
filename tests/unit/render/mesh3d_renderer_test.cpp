@@ -1197,3 +1197,232 @@ TEST_CASE("a ghosted layer never hides an opaque one, in every preset",
     CHECK(ghost.depth == without.depth);
   }
 }
+
+// --- round 5: the section plane and the substrate slab (SECTION) ------------
+
+namespace {
+
+/// The image column where model x lands in the top view (independent of y and z).
+int column_of(const view3d::ViewState& v, double x) {
+  return project(v, x, 0.0, 0.0).first;
+}
+
+render::SectionPlane plane_x(double position, bool keep_greater) {
+  return render::SectionPlane{render::SectionPlane::Axis::x, position, keep_greater};
+}
+
+/// The largest x (root coordinates) of the instance a pick id names.
+double instance_x1(const view3d::MeshModel& mesh, const render::PickRef& ref) {
+  const view3d::Chunk& c = mesh.chunks[ref.chunk];
+  switch (ref.kind) {
+    case render::PickKind::rect:
+      return c.origin_x + static_cast<double>(std::max(c.rects[ref.index].x0, c.rects[ref.index].x1));
+    case render::PickKind::side:
+      return c.origin_x + static_cast<double>(std::max(c.sides[ref.index].x0, c.sides[ref.index].x1));
+    case render::PickKind::triangle: {
+      const auto& t = c.triangles[ref.index];
+      return c.origin_x + static_cast<double>(std::max({t.x[0], t.x[1], t.x[2]}));
+    }
+  }
+  return 0.0;
+}
+
+}  // namespace
+
+TEST_CASE("clipping plane hides one side in the color, pick and depth images, magic-compat ON and OFF",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = basic_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::top);
+    const int cut = column_of(v, 35.0);
+    for (const int level : {0, 1}) {
+      INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", level " << level);
+      render::DrawParams p = f.params(s.stack, level);
+      const render::TargetReadback whole = f.draw(s, v, p);
+      p.section_plane = plane_x(35.0, true);
+      const render::TargetReadback clipped = f.draw(s, v, p);
+      const auto bg = rgb_of(clipped.color[pixel(clipped, 0, 0)]);
+      int removed = 0;
+      int mismatched = 0;
+      for (int y = 0; y < kHeight; ++y) {
+        for (int x = 0; x < kWidth; ++x) {
+          const std::size_t i = pixel(clipped, x, y);
+          if (x < cut - 1) {
+            mismatched += clipped.pick[i] != view3d::kNoPick || clipped.depth[i] != 1.0F ||
+                                  rgb_of(clipped.color[i]) != bg
+                              ? 1
+                              : 0;
+            removed += whole.pick[i] != view3d::kNoPick ? 1 : 0;
+          } else if (x > cut + 1) {
+            mismatched += clipped.pick[i] != whole.pick[i] || clipped.depth[i] != whole.depth[i] ||
+                                  clipped.color[i] != whole.color[i]
+                              ? 1
+                              : 0;
+          }
+        }
+      }
+      CHECK(mismatched == 0);
+      CHECK(removed > 100);  // ndiff and the left of metal1 were there
+      // read_pick agrees: the left part of metal1 picks nothing, its right part metal1.
+      CHECK(pick_at(f, v, 20, 30, far_end_z(v, 1.0F, 0.5F)) == view3d::kNoPick);
+      CHECK(picked_layer(s, pick_at(f, v, 70, 30, far_end_z(v, 1.0F, 0.5F))) == kMetal);
+    }
+  }
+}
+
+TEST_CASE("clipping plane keeps the lesser side and works along y",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  render::DrawParams p = f.params(s.stack);
+  p.section_plane = plane_x(35.0, false);
+  f.draw(s, v, p);
+  CHECK(picked_layer(s, pick_at(f, v, 5, 5, far_end_z(v, 0.0F, 0.2F))) == kNdiff);
+  CHECK(pick_at(f, v, 50, 5, far_end_z(v, 0.3F, 0.2F)) == view3d::kNoPick);
+  p.section_plane = render::SectionPlane{render::SectionPlane::Axis::y, 30.0, true};
+  f.draw(s, v, p);
+  CHECK(pick_at(f, v, 50, 5, far_end_z(v, 0.3F, 0.2F)) == view3d::kNoPick);
+  CHECK(picked_layer(s, pick_at(f, v, 50, 50, far_end_z(v, 0.3F, 0.2F))) == kPoly);
+  CHECK(picked_layer(s, pick_at(f, v, 50, 35, far_end_z(v, 1.0F, 0.5F))) == kMetal);
+}
+
+TEST_CASE("clipping plane in the isometric view: nothing drawn lies wholly on the removed side, cut faces open",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = basic_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+    for (const int level : {0, 1}) {
+      INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", level " << level);
+      render::DrawParams p = f.params(s.stack, level);
+      const render::TargetReadback whole = f.draw(s, v, p);
+      p.section_plane = plane_x(45.0, true);
+      const render::TargetReadback r = f.draw(s, v, p);
+      int before = 0;
+      int after = 0;
+      int wholly_removed = 0;
+      bool poly_through_metal = false;
+      for (std::size_t i = 0; i < r.pick.size(); ++i) {
+        before += whole.pick[i] != view3d::kNoPick ? 1 : 0;
+        if (r.pick[i] == view3d::kNoPick) continue;
+        ++after;
+        const auto ref = render::decode_pick(s.mesh, r.pick[i]);
+        REQUIRE(ref.has_value());
+        wholly_removed += instance_x1(s.mesh, *ref) < 45.0 ? 1 : 0;
+        // Not capped: where metal1 was cut away, the poly under it shows.
+        poly_through_metal = poly_through_metal ||
+                             (layer_of(s.mesh, *ref) == kPoly && picked_layer(s, whole.pick[i]) == kMetal);
+      }
+      CHECK(wholly_removed == 0);
+      CHECK(after < before);
+      CHECK(poly_through_metal);
+    }
+  }
+}
+
+TEST_CASE("clipping plane also clips the ghosted layers of the transparency pass",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = well_scene(magic_compat);
+    const view3d::ViewState v = view_of(s, view3d::Preset::top);
+    for (const int level : {0, 1}) {
+      INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", level " << level);
+      render::DrawParams p = f.params(s.stack, level);
+      p.alpha = {1.0F, 0.2F};
+      p.section_plane = plane_x(10.0, true);
+      const render::TargetReadback r = f.draw(s, v, p);
+      const auto bg = rgb_of(r.color[pixel(r, 0, 0)]);
+      const auto [lx, ly] = project(v, 5, 30, 0);
+      const auto [rx, ry] = project(v, 15, 30, 0);
+      CHECK(rgb_of(r.color[pixel(r, lx, ly)]) == bg);  // the well's removed side: nothing drawn
+      CHECK(rgb_of(r.color[pixel(r, rx, ry)]) != bg);  // its kept side: the ghost over the background
+    }
+  }
+}
+
+TEST_CASE("substrate slab under the stack in the isometric preset: no pick id, the same in both modes",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  for (const int level : {0, 1}) {
+    std::vector<std::vector<std::uint32_t>> images;
+    for (const bool magic_compat : {true, false}) {
+      INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", level " << level);
+      const Scene s = basic_scene(magic_compat);
+      const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+      render::DrawParams p = f.params(s.stack, level);
+      const render::TargetReadback without = f.draw(s, v, p);
+      p.substrate = view3d::substrate_slab(s.mesh, s.stack);
+      REQUIRE(p.substrate.has_value());
+      const render::TargetReadback with = f.draw(s, v, p);
+      // Nothing picks the slab, and from above it hides nothing.
+      CHECK(with.pick == without.pick);
+      double slab_rows = 0.0;
+      int slab_pixels = 0;
+      for (int y = 0; y < kHeight; ++y) {
+        for (int x = 0; x < kWidth; ++x) {
+          const std::size_t i = pixel(with, x, y);
+          if (with.pick[i] == view3d::kNoPick && with.depth[i] < 1.0F) {
+            slab_rows += y;
+            ++slab_pixels;
+          }
+        }
+      }
+      REQUIRE(slab_pixels > 50);
+      // Under the stack: lower on the screen than metal1's top faces.
+      CHECK(slab_rows / slab_pixels > mean_row(s, with, kMetal, render::PickKind::rect));
+      // Its top face in its own colour (board top factor 1), where the slab
+      // shows beside the layers (model (75, 5): no layer there).
+      const double top = far_end_z(v, p.substrate->height, p.substrate->thickness);
+      const auto [sx, sy] = project(v, 75, 5, top);
+      CHECK(with.pick[pixel(with, sx, sy)] == view3d::kNoPick);
+      CHECK(near_rgb(rgb_of(with.color[pixel(with, sx, sy)]), view3d::kSubstrateColor, 2));
+      CHECK(std::abs(with.depth[pixel(with, sx, sy)] - depth_of(v, 75, 5, top)) < 1e-4F);
+      images.push_back(with.color);
+    }
+    CHECK(images[0] == images[1]);
+  }
+}
+
+TEST_CASE("substrate slab is shaded per face, not dimmed by a highlight, and clipped by the section plane",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  render::DrawParams p = f.params(s.stack);
+  p.substrate = view3d::substrate_slab(s.mesh, s.stack);
+  REQUIRE(p.substrate.has_value());
+  const render::TargetReadback plain = f.draw(s, v, p);
+  const double mid = static_cast<double>(p.substrate->height) + (0.5 * static_cast<double>(p.substrate->thickness));
+  // A point on the slab's -y side face (screen right in the isometric preset).
+  const auto [sx, sy] = project(v, 40, s.mesh.region.y0, -mid * static_cast<double>(v.scale_z));
+  CHECK(plain.pick[pixel(plain, sx, sy)] == view3d::kNoPick);
+  CHECK(plain.depth[pixel(plain, sx, sy)] < 1.0F);
+  const std::array<float, 3> expected = render::lit_color(view3d::kSubstrateColor, board(v, {0, -1, 0}));
+  CHECK(near_rgb(rgb_of(plain.color[pixel(plain, sx, sy)]), expected, 2));
+
+  view3d::HighlightSet set{{1}};
+  p.highlight = &set;
+  const render::TargetReadback lit = f.draw(s, v, p);
+  CHECK(lit.color[pixel(lit, sx, sy)] == plain.color[pixel(plain, sx, sy)]);
+
+  p.highlight = nullptr;
+  p.section_plane = plane_x(60.0, true);
+  const render::TargetReadback cut = f.draw(s, v, p);
+  CHECK(cut.depth[pixel(cut, sx, sy)] == 1.0F);  // x 40 is on the removed side
+}
+
+TEST_CASE("no substrate slab unless DrawParams::substrate is set",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  const render::TargetReadback r = f.draw(s, v, f.params(s.stack));
+  int stray = 0;
+  for (std::size_t i = 0; i < r.pick.size(); ++i) {
+    stray += r.pick[i] == view3d::kNoPick && r.depth[i] != 1.0F ? 1 : 0;
+  }
+  CHECK(stray == 0);
+}

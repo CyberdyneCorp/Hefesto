@@ -8,16 +8,19 @@
 // the mesh status and the frame-time readout. Headless: no GPU, no Raven.
 // The `wind3d` client session is WIND3D's test fixture. Owner: SHELL.
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "../view3d/client/client_fixture.hpp"
 #include "hefesto/gui/wrapper.hpp"
+#include "hefesto/platform/file_picker.hpp"
 #include "hefesto/render/mesh3d_shading.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
@@ -73,6 +76,13 @@ void open(ClientSession& s) {
   REQUIRE(s.window().mode == view3d::Mode::layout_layer);
 }
 
+/// The build inputs of the open window in its mode, as the tab takes them
+/// (view3d::window_build).
+view3d::BuildInputs tab_inputs(ClientSession& s) {
+  hefesto::diag::NullSink quiet;
+  return view3d::window_build(s.editor, s.window(), s.project.compat.magic_compat, quiet).inputs;
+}
+
 struct FakeResolver final : PickResolver {
   std::optional<view3d::PickTarget> target;
   int selects = 0;
@@ -81,9 +91,9 @@ struct FakeResolver final : PickResolver {
   std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& /*mesh*/, view3d::PickId id) override {
     return id == 42 ? target : std::nullopt;
   }
-  hefesto::diag::Status select(hefesto::editor::EditorState& /*editor*/, const view3d::PickTarget& /*t*/) override {
+  bool select(hefesto::editor::EditorState& /*editor*/, const view3d::PickTarget& /*t*/) override {
     ++selects;
-    return hefesto::diag::Done{};
+    return true;
   }
   view3d::HighlightSet from_selection(const view3d::MeshModel& /*mesh*/,
                                       const hefesto::editor::EditorState& /*editor*/) override {
@@ -250,24 +260,80 @@ TEST_CASE("the level stepper, the mode toggle and the cut box run the window's c
   CHECK_FALSE(s.editor.view3d.has_window());
 }
 
-TEST_CASE("mask-layer mode shows the phase-2 notice and draws the layout mesh scaled by f",
+TEST_CASE("mask-layer mode builds the mask layers in mask units and draws them unscaled",
           "[cap:hefesto-3d-visualization][req:Magic 3D view parity]") {
-  ClientSession s;
-  open(s);
-  CHECK_FALSE(mask_mode_notice(s.window()).has_value());
-  CHECK(xy_factor(s.window()) == 1.0F);
-  CHECK(visibility_editable(s.window()));
-  tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
-  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
-  CHECK(mask_mode_notice(s.window()) == "Mask layers arrive in phase 2");
-  CHECK(xy_factor(s.window()) == s.window().applied_factor);
-  CHECK_FALSE(visibility_editable(s.window()));
-  const view3d::LayerStack stack = view3d::layout_stack(s.editor, true);
-  for (const bool h : hidden_flags(stack, s.window())) CHECK_FALSE(h);  // the mask set applies to P2's layers
-  const View3dOptions options;
-  const hefesto::render::DrawParams params = draw_params(FrameInputs{&s.window(), &stack, nullptr, nullptr, &options});
-  CHECK(params.level == s.window().level);
-  CHECK(params.stack == &stack);
+  // Regression: the tab built the layout-layer stack in both modes and drew
+  // it with x and y scaled by f, under a "Mask layers arrive in phase 2"
+  // notice; the mask-layer source (MASKSRC) is now what the tab builds.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open(s);
+    CHECK(visibility_editable(s.window()));
+    CHECK(tab_inputs(s).stack->mode() == view3d::Mode::layout_layer);
+    tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    CHECK_FALSE(visibility_editable(s.window()));
+    const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+    REQUIRE(in.stack != nullptr);
+    CHECK(in.stack->mode() == view3d::Mode::mask_layer);
+    REQUIRE(in.mask.has_value());
+    CHECK(in.lock == &s.editor.database_lock);
+    view3d::MeshWorker worker;
+    worker.build(in);
+    REQUIRE(worker.wait_idle(10000));
+    REQUIRE(worker.current() != nullptr);
+    const view3d::MeshModel& mesh = *worker.current();
+    CHECK(mesh.mode == view3d::Mode::mask_layer);
+    CHECK(mesh.units_per_root == 10);  // gdsii's scalefactor: the mesh is in mask units
+    CHECK(mesh.region.x1 >= 1000);     // c3d's bbox (x1 = 100) in mask units
+    CHECK(rectangle_count(mesh) > 0);
+    // Drawn as built: no xy scale in either mode.
+    const View3dOptions options;
+    const std::vector<bool> hidden = view3d::hidden_layers(s.editor, *in.stack, s.window(), compat);
+    const hefesto::render::DrawParams params =
+        draw_params(FrameInputs{&s.window(), in.stack.get(), nullptr, nullptr, &options, std::nullopt, &hidden});
+    CHECK(params.level == s.window().level);
+    CHECK(params.stack == in.stack.get());
+    CHECK(params.xy_scale == 1.0F);
+    CHECK(params.hidden == hidden);
+    // An output-style change is a new mask source: a full build.
+    const BuildKey key = build_key(tab_inputs(s), false);
+    CHECK(key.mode == view3d::Mode::mask_layer);
+    CHECK(key.mask_style != nullptr);
+    s.ok("cif ostyle coarse");
+    CHECK_FALSE(build_key(tab_inputs(s), false) == key);
+  }
+}
+
+// Review of PR #122 (finding 7): the key held the output style's raw
+// address, so a reloaded style allocated at the same address (same layers
+// and scale, other rules) compared equal and no full build ran. The key
+// now holds the style, so its address cannot be reused while compared.
+TEST_CASE("the build key holds the output style it was made from",
+          "[cap:hefesto-3d-visualization][req:Magic 3D view parity]") {
+  view3d::BuildInputs in;
+  in.mask.emplace();
+  in.mask->style = std::make_shared<const hefesto::mask::OutputStyle>();
+  const std::weak_ptr<const hefesto::mask::OutputStyle> style = in.mask->style;
+  const BuildKey key = build_key(in, false);
+  in.mask->style.reset();
+  CHECK_FALSE(style.expired());
+  CHECK(key.mask_style.get() == style.lock().get());
+  const BuildKey other = build_key(in, false);
+  CHECK_FALSE(other == key);
+}
+
+TEST_CASE("a cut line in root coordinates is scaled to the mask-layer mesh's units",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::Segment line{db::Point{0, 25}, db::Point{100, 25}};
+  CHECK(segment_in_mesh(line, 1).a == line.a);
+  CHECK(segment_in_mesh(line, 1).b == line.b);
+  const view3d::Segment scaled = segment_in_mesh(line, 10);
+  CHECK(scaled.a == db::Point{0, 250});
+  CHECK(scaled.b == db::Point{1000, 250});
+  // And back from a ground point in mesh units.
+  CHECK(ground_to_root(scaled.b, 10.0F) == line.b);
 }
 
 TEST_CASE("the header names the cell, mode, level and what opened the tab",
@@ -439,6 +505,7 @@ TEST_CASE("a click picks a target, selects it in 2D and isolates its net",
   const auto caption = picking.click(&mesh, 42, s.editor, stack);
   REQUIRE(caption);
   CHECK(*caption == stack.layers()[0].name + " · picked in inv_1 · selected in 2D");
+  CHECK(picking.selected_in_2d());
   CHECK(resolver.selects == 1);
   // Isolate selected net: the net's instances, until toggled off.
   CHECK(picking.toggle_isolate_net(&mesh, s.editor));
@@ -468,9 +535,7 @@ TEST_CASE("an isolated net follows a rebuilt model's ids",
     std::optional<view3d::PickTarget> resolve(const view3d::MeshModel& /*mesh*/, view3d::PickId /*id*/) override {
       return target;
     }
-    hefesto::diag::Status select(hefesto::editor::EditorState& /*e*/, const view3d::PickTarget& /*t*/) override {
-      return hefesto::diag::Done{};
-    }
+    bool select(hefesto::editor::EditorState& /*e*/, const view3d::PickTarget& /*t*/) override { return true; }
     view3d::HighlightSet net(const view3d::MeshModel& mesh, const hefesto::editor::EditorState& /*e*/,
                              const view3d::PickTarget& /*seed*/) override {
       return &mesh == rebuilt_model ? view3d::HighlightSet{{17, 18}} : view3d::HighlightSet{{7, 8}};
@@ -494,9 +559,10 @@ TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile t
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   ClientSession s;
   open(s);
-  const auto stack = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  const std::shared_ptr<const view3d::LayerStack> stack = in.stack;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), stack, false));
+  worker.build(in);
   REQUIRE(worker.wait_idle(10000));
   const view3d::MeshHandle mesh = worker.current();
   REQUIRE(mesh != nullptr);
@@ -517,6 +583,56 @@ TEST_CASE("the pick resolver with a scope maps a picked layer back to its tile t
   CHECK(scoped->type.has_value());
 }
 
+// Review of PR #122 (finding 1): the caption said "selected in 2D" and the
+// view announced a selection change for every click, although a mask-layer
+// target has no tile type and link_to_2d selects nothing.
+TEST_CASE("a mask-layer pick leaves the 2D selection unchanged and does not say selected in 2D",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open(s);
+    tcl(s, ".magic3d cif");  // an output style is current: mask-layer mode
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+    REQUIRE(in.stack != nullptr);
+    view3d::MeshWorker worker;
+    worker.build(in);
+    REQUIRE(worker.wait_idle(10000));
+    const view3d::MeshHandle mesh = worker.current();
+    REQUIRE(mesh != nullptr);
+    const view3d::PickId id = view3d::encode_pick(*mesh, view3d::PickRef{0, view3d::PickKind::rect, 0});
+    REQUIRE(id != view3d::kNoPick);
+    PickResolver resolver;
+    resolver.set_scope(view3d::PickContext{in.stack.get(), s.cell, compat});
+    View3dPicking picking{resolver};
+    REQUIRE(s.editor.selection.empty());
+    const db::CellDef* root_before = s.editor.selection.root();
+    const auto caption = picking.click(mesh.get(), id, s.editor, *in.stack);
+    REQUIRE(caption.has_value());
+    CHECK(caption->find("picked") != std::string::npos);
+    CHECK(caption->find("selected in 2D") == std::string::npos);
+    CHECK_FALSE(picking.selected_in_2d());
+    CHECK(picking.picked().has_value());
+    CHECK(s.editor.selection.empty());
+    CHECK(s.editor.selection.root() == root_before);
+  }
+}
+
+// Review of PR #122 (finding 6): a model of an earlier build, posted after
+// a mode, style or compat change, was drawn with the new stack when its
+// layer count matched; the view now checks the build it came from.
+TEST_CASE("a model of an earlier build is not the current one, even with as many layers",
+          "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
+  view3d::MeshModel stale;
+  stale.build_id = 3;
+  stale.layer_heights.resize(2);
+  view3d::MeshModel fresh = stale;
+  fresh.build_id = 4;
+  CHECK_FALSE(model_is_current(stale, 4));
+  CHECK(model_is_current(fresh, 4));
+}
+
 TEST_CASE("the frame's highlight is passed as DrawParams::highlight",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   ClientSession s;
@@ -533,8 +649,7 @@ TEST_CASE("the worker builds the window's mesh under the session's lock; the J1 
           "[cap:hefesto-3d-visualization][req:Mesh generation from layout]") {
   ClientSession s;
   open(s);
-  const auto stack = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
-  const view3d::BuildInputs in = build_inputs(s.editor, s.window(), stack, false);
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
   CHECK(in.lock == &s.editor.database_lock);
   CHECK(in.cell == s.cell);
   CHECK(in.technology == s.editor.technology.get());
@@ -546,15 +661,17 @@ TEST_CASE("the worker builds the window's mesh under the session's lock; the J1 
   REQUIRE(worker.current() != nullptr);
   CHECK(rectangle_count(*worker.current()) > 0);
   // What decides a full build: the J1 option, the clip area, the stack.
-  const BuildKey base = build_key(s.editor, s.window(), *stack, false);
-  CHECK(build_key(s.editor, s.window(), *stack, false) == base);
-  CHECK_FALSE(build_key(s.editor, s.window(), *stack, true) == base);
+  const BuildKey base = build_key(tab_inputs(s), false);
+  CHECK(build_key(tab_inputs(s), false) == base);
+  CHECK_FALSE(build_key(tab_inputs(s), true) == base);
+  CHECK(base.mask_style == nullptr);
   tcl(s, ".magic3d cutbox 0 0 40 20");
-  const BuildKey clipped = build_key(s.editor, s.window(), *stack, false);
+  const BuildKey clipped = build_key(tab_inputs(s), false);
   CHECK_FALSE(clipped == base);
   CHECK(clipped.clipped);
-  CHECK(clip_area(*s.cell, s.window()).area == db::Rect{0, 0, 40, 20});
-  CHECK_FALSE(build_key(s.editor, s.window(), view3d::layout_stack(s.editor, false), false) == clipped);
+  CHECK(clipped.clip == db::Rect{0, 0, 40, 20});
+  s.project.compat.magic_compat = false;  // a stack of the other Q-MISC-72 setting
+  CHECK_FALSE(build_key(tab_inputs(s), false) == clipped);
 }
 
 TEST_CASE("a layout window's change areas for the rendered cell feed the worker",
@@ -675,30 +792,25 @@ TEST_CASE("User makes a ghosted layer opaque: the choice survives a rebuild of t
   CHECK(find_row(ghost_panel(s, options), "metal1")->alpha == 0.2F);
 }
 
-TEST_CASE("Wells ghosted in mask-layer mode too: the P1 tab draws the layout stack there",
+TEST_CASE("mask-layer mode draws the mask-layer stack, which ghosts nothing",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
-  // Regression: the docs said mask-layer mode ghosts nothing, but the P1 tab
-  // builds the layout-layer stack in both window modes (tab_stack), so the
-  // wells it draws are ghosted as in layout-layer mode.
+  // The P1 tab drew the layout-layer stack in both window modes, so its
+  // wells were ghosted in mask-layer mode too; the tab now builds the mask
+  // layers there (MASKSRC), and no layer of a mask-layer stack is ghosted.
   for (const bool compat : {true, false}) {
     INFO("magic-compat " << compat);
     ClientSession s{compat, ghost_tech()};
     paint_ghost(s);
     s.ok("specialopen wind3d c3d");
     REQUIRE(s.window().mode == view3d::Mode::mask_layer);  // an output style is current
-    const view3d::LayerStack stack = tab_stack(s.editor, compat);
-    CHECK(stack.mode() == view3d::Mode::layout_layer);
-    const std::vector<bool> ghosted = view3d::ghosted_by_default(stack, *s.editor.technology);
+    const std::shared_ptr<const view3d::LayerStack> stack = tab_inputs(s).stack;
+    REQUIRE(stack != nullptr);
+    CHECK(stack->mode() == view3d::Mode::mask_layer);
+    const std::vector<bool> ghosted = view3d::ghosted_by_default(*stack, *s.editor.technology);
     View3dOptions options;
-    apply_default_alpha(options, stack, ghosted);
-    const std::vector<View3dLayerRow> rows = layer_rows(stack, s.window(), options.alpha, {}, ghosted);
-    const View3dLayerRow* nwell = find_row(rows, "nwell");
-    REQUIRE(nwell != nullptr);
-    CHECK(nwell->ghosted);
-    CHECK(nwell->alpha == kGhostAlpha);
-    const View3dLayerRow* metal1 = find_row(rows, "metal1");
-    REQUIRE(metal1 != nullptr);
-    CHECK_FALSE(metal1->ghosted);
+    apply_default_alpha(options, *stack, ghosted);
+    for (const bool g : ghosted) CHECK_FALSE(g);
+    for (const float a : options.alpha) CHECK(a == 1.0F);
   }
 }
 
@@ -819,7 +931,7 @@ TEST_CASE("Board look with magic-compat ON: per-face board shading and the canva
   ClientSession s{true};
   open(s);
   tcl(s, preset_command(".magic3d", view3d::Preset::isometric));
-  const view3d::LayerStack stack = tab_stack(s.editor, true);
+  const view3d::LayerStack stack = *tab_inputs(s).stack;
   REQUIRE(stack.magic_compat());
   const View3dOptions options;
   check_board_look(board_frame(s, stack, options));
@@ -833,8 +945,8 @@ TEST_CASE("Board look with magic-compat OFF: the same frame as with it ON",
   open(off);
   tcl(on, preset_command(".magic3d", view3d::Preset::isometric));
   tcl(off, preset_command(".magic3d", view3d::Preset::isometric));
-  const view3d::LayerStack on_stack = tab_stack(on.editor, true);
-  const view3d::LayerStack off_stack = tab_stack(off.editor, false);
+  const view3d::LayerStack on_stack = *tab_inputs(on).stack;
+  const view3d::LayerStack off_stack = *tab_inputs(off).stack;
   REQUIRE_FALSE(off_stack.magic_compat());
   const View3dOptions options;
   const BoardFrame a = board_frame(on, on_stack, options);
@@ -855,9 +967,10 @@ struct DrawnMesh {
 };
 DrawnMesh build_mesh(ClientSession& s) {
   DrawnMesh d;
-  d.stack = std::make_shared<const view3d::LayerStack>(tab_stack(s.editor, s.project.compat.magic_compat));
+  view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  d.stack = in.stack;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), d.stack, false));
+  worker.build(std::move(in));
   REQUIRE(worker.wait_idle(10000));
   d.mesh = worker.current();
   REQUIRE(d.mesh != nullptr);
@@ -924,7 +1037,7 @@ TEST_CASE("Isometric default in mask-layer mode keeps the heights in proportion:
   ClientSession s;
   open_from_desktop(s);
   REQUIRE(s.window().mode == view3d::Mode::mask_layer);
-  const float f = xy_factor(s.window());
+  const float f = s.window().applied_factor;
   REQUIRE(f > 1.0F);
   CHECK(board_scale_z(s.window()) == kBoardScaleZ * f);
   const DrawnMesh d = build_mesh(s);
@@ -957,10 +1070,11 @@ TEST_CASE("presets frame the drawn layers: view, scroll and zoom report frame_vi
           "[cap:view-3d][req:Viewing transform and shading]") {
   ClientSession s;
   open(s);
-  const auto shared = std::make_shared<const view3d::LayerStack>(view3d::layout_stack(s.editor, true));
+  const view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  const std::shared_ptr<const view3d::LayerStack> shared = in.stack;
   const view3d::LayerStack& stack = *shared;
   view3d::MeshWorker worker;
-  worker.build(build_inputs(s.editor, s.window(), shared, false));
+  worker.build(in);
   REQUIRE(worker.wait_idle(10000));
   REQUIRE(worker.current() != nullptr);
   const view3d::MeshModel& mesh = *worker.current();
@@ -1057,4 +1171,265 @@ TEST_CASE("the mesh status and the frame-time readout",
   for (int i = 0; i < 40; ++i) timer.add(5.0);
   CHECK(timer.samples() == FrameTimer::kWindow);
   CHECK(timer.average_ms() == 5.0);
+}
+
+// --- round 5: controls, layout at 1280 px, P2 actions (tasks 9.6, 11.5) ------------
+
+namespace {
+
+const View3dControl kAllControls[] = {
+    View3dControl::cross_section, View3dControl::export_model,    View3dControl::orthographic,
+    View3dControl::perspective,   View3dControl::isometric,       View3dControl::top,
+    View3dControl::front,         View3dControl::side,            View3dControl::substrate,
+    View3dControl::isolate_net,   View3dControl::span_connected_layers, View3dControl::frame_time,
+    View3dControl::close_view,    View3dControl::show_all_layers, View3dControl::mask_layers,
+    View3dControl::layout_layers, View3dControl::level_down,      View3dControl::level_up,
+    View3dControl::cut_box};
+static_assert(std::size(kAllControls) == kView3dControlCount);
+
+bool ends_with(const std::string& s, std::string_view tail) {
+  return s.size() >= tail.size() && s.compare(s.size() - tail.size(), tail.size(), tail) == 0;
+}
+
+/// Two mask layers with `render` heights in µm (mask-layer mode: physical = as
+/// stored) and one with no height.
+view3d::LayerStack two_layer_stack() {
+  view3d::StackLayer poly;
+  poly.name = "POLY";
+  poly.height = 0.33F;
+  poly.thickness = 0.18F;
+  poly.source = view3d::ValueSource::render;
+  view3d::StackLayer met1;
+  met1.name = "MET1";
+  met1.height = 1.38F;
+  met1.thickness = 0.36F;
+  met1.source = view3d::ValueSource::render;
+  view3d::StackLayer flat;
+  flat.name = "NOHEIGHT";
+  return view3d::LayerStack{view3d::Mode::mask_layer, {poly, met1, flat}, true, 0.01};
+}
+
+}  // namespace
+
+TEST_CASE("every 3D tab control has a screen-reader name and toggles announce their state",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  for (const bool on : {false, true}) {
+    View3dControlState s;
+    s.window_open = true;
+    s.mask_mode = on;
+    s.cut_box = on;
+    s.perspective = on;
+    s.span_connected_layers = on;
+    s.frame_time = on;
+    s.picked = true;
+    s.net_isolated = on;
+    s.section_on = on;
+    s.substrate_on = on;
+    s.substrate_available = true;
+    s.export_available = true;
+    for (const View3dControl c : kAllControls) {
+      const View3dControlView v = control_view(c, s);
+      INFO("control " << static_cast<int>(c) << " label " << v.label);
+      CHECK_FALSE(v.label.empty());
+      CHECK_FALSE(v.accessible_name.empty());
+      CHECK_FALSE(v.tooltip.empty());
+      if (v.on) {
+        CHECK(v.accessible_name == view3d_toggle_name(v.label, *v.on));
+      } else {
+        CHECK_FALSE((ends_with(v.accessible_name, ", on") || ends_with(v.accessible_name, ", off")));
+      }
+    }
+  }
+  View3dControlState s;
+  s.window_open = true;
+  s.section_on = true;
+  CHECK(control_view(View3dControl::cross_section, s).accessible_name == "Cross-section, on");
+  CHECK(control_view(View3dControl::level_down, s).accessible_name == "Level down");  // the label is "−"
+  CHECK(control_view(View3dControl::level_up, s).accessible_name == "Level up");
+  CHECK(control_view(View3dControl::layout_layers, s).accessible_name == "Layout layers, on");
+  CHECK(control_view(View3dControl::mask_layers, s).accessible_name == "Mask layers, off");
+  CHECK(level_text(2) == "Level 2");
+}
+
+TEST_CASE("controls are disabled, and exposed so, when they cannot act",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  const View3dControlState closed;  // no window
+  for (const View3dControl c : {View3dControl::cross_section, View3dControl::export_model, View3dControl::isometric,
+                                View3dControl::side, View3dControl::close_view, View3dControl::cut_box,
+                                View3dControl::level_up, View3dControl::mask_layers}) {
+    CHECK_FALSE(control_view(c, closed).enabled);
+  }
+  View3dControlState open;
+  open.window_open = true;
+  CHECK_FALSE(control_view(View3dControl::export_model, open).enabled);  // export3d not registered
+  open.export_available = true;
+  CHECK(control_view(View3dControl::export_model, open).enabled);
+  CHECK_FALSE(control_view(View3dControl::isolate_net, open).enabled);  // nothing picked
+  // Without the renderer's substrate slab the toggle is off and disabled.
+  CHECK_FALSE(control_view(View3dControl::substrate, open).enabled);
+  CHECK(control_view(View3dControl::substrate, open).accessible_name == "Substrate, off");
+  open.substrate_available = true;
+  CHECK(control_view(View3dControl::substrate, open).accessible_name == "Substrate, on");  // default on
+  open.visibility_editable = false;
+  CHECK_FALSE(control_view(View3dControl::show_all_layers, open).enabled);
+}
+
+// Regression (round-4 Linux X11 capture at 1280 x 800, also seen on macOS):
+// the four presets in one row ran past the side panel ("Side" clipped), and
+// the toolbar strip was wider than the view (Cut box and the status cut off).
+TEST_CASE("the side panel's button grid and the floating toolbar fit a 1280-px-wide window",
+          "[cap:hefesto-design-system][req:Screen patterns follow the reference mockups]") {
+  // Side panel: two columns, as the board's camera grid.
+  constexpr float kGap = 6.0F;
+  const float cell = grid_cell_width(side_content_width(), 2, kGap);
+  CHECK(2.0F * cell + kGap <= side_content_width());
+  // Widths measured in the round-4 1280 x 800 captures (logical px): the
+  // four presets in one row with 4 px gaps took 264 px of the 248 available.
+  CHECK(86.0F + 52.0F + 61.0F + 53.0F + 3.0F * 4.0F > side_content_width());
+  for (const float label : {86.0F, 52.0F, 61.0F, 53.0F, 100.0F /* Orthographic */, 105.0F /* Close 3D view */}) {
+    CHECK(label <= cell);
+  }
+  // Toolbar groups (mode pair, level stepper, cut box, status), measured in
+  // the same captures; the 3D view of a 1280-px window is 430 px wide.
+  const std::vector<float> groups{218.0F, 130.0F, 80.0F, 214.0F};
+  constexpr float kStageAt1280 = 430.0F;
+  const float available = kStageAt1280 - 2.0F * kView3dToolbarMargin;
+  CHECK(218.0F + 130.0F + 80.0F + 214.0F + 3.0F * kView3dToolbarSpacing > available);  // one strip did not fit
+  const std::vector<std::size_t> rows = flow_rows(groups, available, kView3dToolbarSpacing);
+  CHECK(flow_width(groups, rows, kView3dToolbarSpacing) <= available);
+  CHECK(rows == std::vector<std::size_t>{0, 0, 1, 1});
+  // One row at 1600 px (the view is about 750 px wide).
+  CHECK(flow_rows(groups, 750.0F - 2.0F * kView3dToolbarMargin, kView3dToolbarSpacing) ==
+        std::vector<std::size_t>{0, 0, 0, 0});
+  // A group wider than the view takes a row of its own.
+  CHECK(flow_rows(std::vector<float>{50.0F, 500.0F, 50.0F}, 300.0F, 8.0F) == std::vector<std::size_t>{0, 1, 2});
+  CHECK(flow_rows(std::vector<float>{}, 300.0F, 8.0F).empty());
+}
+
+TEST_CASE("Export glTF asks for a file and runs export3d on the window",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  view3d::WindowState window;
+  window.cell = "inv_1";
+  const hefesto::platform::FilePickerRequest request = export_request(window);
+  CHECK(request.mode == hefesto::platform::FilePickerRequest::Mode::save);
+  CHECK(request.initial_file == "inv_1.gltf");
+  REQUIRE(request.file_types.size() == 3);
+  CHECK(request.file_types[0].second == "*.gltf");
+  CHECK(request.file_types[1].second == "*.glb");
+  CHECK(request.file_types[2].second == "*.stl");
+  CHECK(export_command(".render.magic", "/tmp/inv.glb", true) == ".render.magic export3d /tmp/inv.glb");
+  CHECK(export_command(".render.magic", "/tmp/inv.glb", false) == "export3d /tmp/inv.glb");
+  // A path with spaces or Tcl characters stays one word.
+  CHECK(export_command(".render.magic", "/tmp/my cells/inv [1].gltf", true) ==
+        ".render.magic export3d {/tmp/my cells/inv [1].gltf}");
+  // The picker answers through the shell's plumbing (platform::FilePicker).
+  hefesto::platform::ScriptedFilePicker picker;
+  picker.push_answer(hefesto::platform::Path{"/tmp/out.stl"});
+  const auto file = picker.pick(request);
+  REQUIRE(file);
+  CHECK(export_command(".render.magic", file->string(), true) == ".render.magic export3d /tmp/out.stl");
+}
+
+TEST_CASE("the cut line follows the layout box's long axis and two clicks make an axis-aligned line",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::Segment wide = box_cut_line(db::Rect{0, 0, 100, 40});
+  CHECK(wide.a == db::Point{0, 20});
+  CHECK(wide.b == db::Point{100, 20});
+  const view3d::Segment tall = box_cut_line(db::Rect{-10, -30, 10, 70});
+  CHECK(tall.a == db::Point{0, -30});
+  CHECK(tall.b == db::Point{0, 70});
+  const view3d::Segment line = axis_aligned_line(db::Point{5, 5}, db::Point{60, 12});
+  CHECK(line.a == db::Point{5, 5});
+  CHECK(line.b == db::Point{60, 5});
+  CHECK(axis_aligned_line(db::Point{5, 5}, db::Point{8, -40}).b == db::Point{5, -40});
+}
+
+TEST_CASE("the cross-section cuts the layout box in the rendered cell, else the cell",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s;
+  open(s);
+  REQUIRE(s.editor.box);  // the fixture boxes c3d
+  const std::optional<db::Rect> boxed = section_area(s.editor, s.window());
+  REQUIRE(boxed);
+  CHECK(*boxed == *s.editor.box);
+  s.editor.box.reset();
+  s.window().cut_box.reset();
+  const std::optional<db::Rect> whole = section_area(s.editor, s.window());
+  REQUIRE(whole);
+  CHECK(*whole == s.editor.cells.find(s.window().cell)->bbox());
+}
+
+TEST_CASE("Cross-section: the section panel draws each interval from bottom to top in microns",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::LayerStack stack = two_layer_stack();
+  view3d::CrossSection cs;
+  cs.intervals = {{0, 0.5, 1.0, 0.33, 0.51}, {1, 0.0, 2.0, 1.38, 1.74}, {0, 1.5, 2.0, 0.33, 0.51}};
+  cs.no_height = {2};
+  const SectionPanel panel = section_panel(cs, stack, 2.0, 200.0F, 87.0F);
+  REQUIRE(panel.bars.size() == 3);
+  // x: 100 px per µm; y: 87 px for the highest top, 1.74 µm (50 px per µm).
+  CHECK(panel.bars[0].layer == 0);
+  CHECK(panel.bars[0].x == Catch::Approx(50.0F));
+  CHECK(panel.bars[0].w == Catch::Approx(50.0F));
+  CHECK(panel.bars[0].h == Catch::Approx(0.18F * 50.0F).margin(1e-3));
+  CHECK(panel.bars[0].y + panel.bars[0].h == Catch::Approx(87.0F - 0.33F * 50.0F).margin(1e-3));
+  CHECK(panel.bars[1].y == Catch::Approx(0.0F).margin(1e-3));  // metal1's top is the panel's top
+  CHECK(panel.no_height == std::vector<std::string>{"NOHEIGHT"});
+  CHECK(panel.summary == "A–A′ 2.00 µm · 2 layers");
+  CHECK(panel.accessible_name ==
+        "Cross-section A–A′, 2.00 µm long; POLY 0.33–0.51 µm, 2 intervals; MET1 1.38–1.74 µm, 1 interval; "
+        "no height: NOHEIGHT");
+  // A hidden layer is left out of the panel.
+  const SectionPanel hidden = section_panel(cs, stack, 2.0, 200.0F, 87.0F, {false, true, false});
+  CHECK(hidden.bars.size() == 2);
+  CHECK(hidden.top_um == Catch::Approx(0.51));
+  // Nothing crosses the line and no µm scale.
+  const SectionPanel empty = section_panel(view3d::CrossSection{}, stack, 0.0, 200.0F, 87.0F);
+  CHECK(empty.bars.empty());
+  CHECK(empty.summary == "A–A′ no µm scale · 0 layers");
+  CHECK(empty.accessible_name == "Cross-section A–A′, length unknown, no layer crosses the line");
+}
+
+TEST_CASE("the cut line's clipping plane keeps the side away from the isometric viewer",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const hefesto::render::SectionPlane along_x = section_clip_plane(box_cut_line(db::Rect{0, 0, 100, 40}));
+  CHECK(along_x.axis == hefesto::render::SectionPlane::Axis::y);
+  CHECK(along_x.position == 20.0);
+  CHECK(along_x.keep_greater);
+  const hefesto::render::SectionPlane along_y = section_clip_plane(box_cut_line(db::Rect{-10, -30, 10, 70}));
+  CHECK(along_y.axis == hefesto::render::SectionPlane::Axis::x);
+  CHECK(along_y.position == 0.0);
+  CHECK(along_y.keep_greater);
+}
+
+TEST_CASE("a ground point in mask-layer mode is divided back to root coordinates",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  CHECK(ground_to_root(db::Point{100, -40}, 1.0F) == db::Point{100, -40});
+  CHECK(ground_to_root(db::Point{100, -40}, 10.0F) == db::Point{10, -4});
+  CHECK(ground_to_root(db::Point{100, -40}, 0.0F) == db::Point{100, -40});  // not a valid factor: unchanged
+}
+
+TEST_CASE("Cross-section on the tab's mesh: the panel shows the layers the line crosses",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // A real section (view3d::section, SECTION) of a one-layer model.
+  view3d::StackLayer met1;
+  met1.name = "MET1";
+  met1.height = 1.38F;
+  met1.thickness = 0.36F;
+  met1.source = view3d::ValueSource::render;
+  const view3d::LayerStack stack{view3d::Mode::mask_layer, {met1}, true, 0.01};
+  view3d::MeshModel mesh;
+  mesh.region = db::Rect{0, 0, 200, 100};
+  view3d::Chunk chunk;
+  chunk.area = mesh.region;
+  chunk.rects.push_back(view3d::RectInstance{50.0F, 0.0F, 150.0F, 100.0F, 0});
+  mesh.chunks.push_back(chunk);
+  const view3d::Segment line = box_cut_line(mesh.region);
+  const view3d::CrossSection cs = view3d::section(mesh, stack, line);
+  REQUIRE(cs.intervals.size() == 1);
+  const SectionPanel panel = section_panel(cs, stack, cs.length_um, 200.0F, 60.0F);
+  REQUIRE(panel.bars.size() == 1);
+  CHECK(panel.bars[0].x == Catch::Approx(50.0F).margin(1e-3));
+  CHECK(panel.bars[0].w == Catch::Approx(100.0F).margin(1e-3));
+  CHECK(panel.summary == "A–A′ 2.00 µm · 1 layer");
 }

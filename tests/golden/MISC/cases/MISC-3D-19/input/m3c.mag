@@ -1,0 +1,13 @@
+magic
+tech m3r
+timestamp 0
+<< polysilicon >>
+rect 70 0 90 30
+<< metal1 >>
+rect 0 0 60 10
+rect 0 10 10 40
+tri 30 20 50 40 sw
+rect 104 0 112 40
+<< metal2 >>
+rect 20 5 50 15
+<< end >>

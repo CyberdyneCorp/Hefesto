@@ -18,7 +18,9 @@
 // side of the higher layers in projection and depth alike (R1, Q-MISC-81;
 // Q-MISC-84); the board's flat per-face shading in both magic-compat modes
 // (Q-MISC-84, mesh3d_shading.hpp); MSAA 4x at level >= 1. Redraws on
-// demand only.
+// demand only. Round 5 (SECTION): an optional vertical clipping plane for
+// cross-sections (DrawParams::section_plane) and the board's substrate
+// slab (DrawParams::substrate), both off unless the caller sets them.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3, interface only); RENDER3D
 // implements it in src/render/vulkan/src/mesh3d_*.cpp (design D3, section 5):
@@ -39,6 +41,7 @@
 #include "hefesto/view3d/mesh/mesh_model.hpp"
 #include "hefesto/view3d/pick/pick.hpp"
 #include "hefesto/view3d/stack/layer_stack.hpp"
+#include "hefesto/view3d/stack/substrate.hpp"
 
 namespace hefesto::render {
 
@@ -57,6 +60,25 @@ class OffscreenTarget {
   [[nodiscard]] virtual int height() const noexcept = 0;
   /// Resizes every image (the viewport's resize callback).
   virtual void resize(int width, int height) = 0;
+};
+
+/// A vertical clipping plane x = position or y = position (M10 round 5,
+/// cross-sections; design D10 "an optional clipping plane in the 3D
+/// view"): fragments on the removed side are discarded in every pass
+/// (opaque, transparent, pick and depth, and the substrate slab), so the
+/// pick and depth images agree with the picture. The cut faces are not
+/// capped: the inside of a prism the plane cuts is open, and what lies
+/// behind it shows through. `position` is in root coordinates, as the
+/// mesh and view3d::Segment (DrawParams::xy_scale applies to it as to the
+/// mesh); points on the plane are kept.
+struct SectionPlane {
+  enum class Axis : std::uint8_t { x, y };
+  Axis axis = Axis::x;
+  double position = 0.0;
+  /// Keep x (or y) >= position; false: keep x (or y) <= position.
+  bool keep_greater = true;
+
+  friend bool operator==(const SectionPlane&, const SectionPlane&) = default;
 };
 
 /// Everything a frame needs besides the view state and the mesh.
@@ -85,6 +107,14 @@ struct DrawParams {
   /// mesh with view3d::Scene::xy_factor (task 9.1). A value that is not a
   /// positive finite number draws at 1.
   float xy_scale = 1.0F;
+  /// The cross-section's clipping plane; unset: nothing is clipped.
+  std::optional<SectionPlane> section_plane;
+  /// The board's substrate slab (view3d::substrate_slab; Q-MISC-84/85,
+  /// task 16.11), drawn in the opaque pass with depth writes and pick id
+  /// view3d::kNoPick (a click on it picks nothing), shaded per face like
+  /// the layers, never dimmed by a highlight. Unset (the default, script
+  /// and hefesto-cli windows): no slab. Only the desktop tab sets it.
+  std::optional<view3d::SubstrateSlab> substrate;
 };
 
 class Mesh3dRenderer {
