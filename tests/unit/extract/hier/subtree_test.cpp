@@ -66,11 +66,14 @@ TEST_CASE("the step squares are visited one at a time and the walk can stop",
   HierCase c("EX-055", true);
   db::CellDef& top = c.cell("ex");
   std::size_t visited = 0;
-  CHECK(extract::for_each_square(top, 2, 5, true, [&](const extract::InteractionSquare& s) {
+  // The walk's result is taken outside CHECK: a CHECK inside a CHECK's
+  // lambda shadows Catch2's assertion handler (GCC -Wshadow).
+  const bool walked_all = extract::for_each_square(top, 2, 5, true, [&](const extract::InteractionSquare& s) {
     CHECK(s.kind != extract::SquareKind::none);
     ++visited;
     return true;
-  }));
+  });
+  CHECK(walked_all);
   CHECK(visited > 3);
   visited = 0;
   CHECK_FALSE(extract::for_each_square(top, 20, 5, true, [&](const extract::InteractionSquare&) {
