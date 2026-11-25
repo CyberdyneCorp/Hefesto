@@ -7,14 +7,15 @@
 // `Unknown option: <w>`, `help`, and the run. run() is also M9's entry for
 // `rc` simulation netlists.
 //
-// Scaffold state (tasks.md 3.3, 3.5): every option but `help` and the run
-// fail with CORE-NOTIMPL-008 until RESCMD lands them.
+// The options and the run flow are RESCMD's (tasks.md 14.1-14.3); the
+// network of each net is RESNET's (extresist/network/network.hpp).
 //
 // Owner: INTEGRATION (this header and the registration); RESCMD (the
 // option parsers and run()).
 
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -22,12 +23,16 @@
 
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/diag/diagnostic.hpp"
 
 namespace hefesto::editor {
 struct EditorState;
 }
 namespace hefesto::mask {
 struct Progress;
+}
+namespace hefesto::platform {
+class FileSystem;
 }
 
 namespace hefesto::extresist {
@@ -38,6 +43,13 @@ struct ResistRun {
   std::optional<std::string> cell;  // `extresist cell`: the selected cell
   bool geometry = false;
   bool fasthenry = false;
+  // Added by RESCMD (M7 R4): the run's environment.
+  bool magic_compat = true;
+  /// Where `.ext` files are read and the outputs written; nullptr: the
+  /// local file system.
+  platform::FileSystem* files = nullptr;
+  /// The console (TxPrintf and TxError lines); unset: silent.
+  std::function<void(diag::Diagnostic)> emit;
 };
 
 [[nodiscard]] cmd::CommandResult run(editor::EditorState& editor, const ResistRun& request,

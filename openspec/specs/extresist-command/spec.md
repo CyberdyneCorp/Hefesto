@@ -33,7 +33,9 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 | `fasthenry [freq]` | Run with FastHenry output only | — |
 | `help` | List the options | — |
 
-`skip` SHALL accept a comma-separated list of types, as documented, in both `magic-compat` settings (Q-NETLIST-23, resolution: fix; Magic accepts one type and writes out of bounds on a list or a bad name). A single type behaves exactly as in Magic. An unknown or ambiguous type reports an error and leaves the masks unchanged.
+`skip` SHALL accept a comma-separated list of types, as documented, in both `magic-compat` settings (Q-NETLIST-23, resolution: fix; Magic accepts one type and writes out of bounds on a list or a bad name). A single type behaves exactly as in Magic. An unknown or ambiguous type reports `Unrecognized layer (type) name "<t>"` or `Ambiguous layer (type) name "<t>"` and leaves the masks unchanged.
+
+A negative `threshold`, `minresist` or `mindelay` value SHALL print `Usage:  extresist threshold|minres|mindelay [value]`. The value is then stored with `magic-compat` ON, as Magic does, and the previous value is kept with it OFF. `force`, `ignore` and `include` without a name list the names, each followed by a space, in the order of Magic's string hash table.
 
 Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any other value prints `Value must be either "on" or "off".`. `geometry` and `fasthenry` SHALL do the following for that run only, restoring the previous settings afterwards:
 - turn on "all"
@@ -58,6 +60,11 @@ Compatibility: behavioral
 - **WHEN** `extresist skip mcon,via1` is issued
 - **THEN** both types are removed from every net-copy connectivity mask and their own masks are cleared
 
+#### Scenario: Negative threshold
+- **WHEN** `extresist threshold -5` is issued
+- **THEN** `Usage:  extresist threshold [value]` is printed
+- **AND** with `magic-compat` ON the threshold becomes -5, as in Magic; with it OFF it keeps its previous value
+
 #### Scenario: Skip with an unknown type
 - **WHEN** `extresist skip mcon,nosuchtype` is issued
 - **THEN** an error is reported and no connectivity mask changes
@@ -77,7 +84,9 @@ For each processed cell:
 5. Append the device records.
 6. Print `Total Nets: <t>\nNets extracted: <e> (<e/t %f>)\nNets output: <o> (<o/t %f>)`, or `Total Nodes: 0`. This message is informative.
 
-Nets SHALL be processed in reverse order of their first mention while reading the `.ext` file. A run SHALL stop processing nets when interrupted. FastHenry output for a non-subcircuit cell SHALL skip net processing.
+Nets SHALL be processed in reverse order of their first mention while reading the `.ext` file. A run SHALL stop processing nets when interrupted; the interrupted cell's `.res.ext` and `.res.lump` are then not written (capability `extresist-output`, Q-EXTRACT-27). FastHenry output for a non-subcircuit cell SHALL skip net processing.
+
+With `magic-compat` ON `extresist cell` runs on the cell under the box, as Magic does (its box lookup replaces the selected cell); with it OFF it runs on the selected cell. A cell whose `.ext` file cannot be opened prints `Cannot open file <cell>.ext` and the run goes on.
 Compatibility: behavioral
 (Magic ref: resis/ResRex.c:700-800, resis/ResRex.c:86-200, resis/ResRex.c:1323-1467, resis/ResReadExt.c:1078-1109)
 
@@ -98,6 +107,8 @@ Compatibility: behavioral
   - `res:force` marks it forced.
   - `res:min=<v>` sets a minimum.
   - `res:drive` adds a drive point at the attribute location.
+
+In both settings, beyond Magic: a negative node resistance is infinite (Magic converts INFINITY to an integer); a device terminal naming a net with no earlier record creates the net, which has no node record (Magic dereferences a null net); a device whose model the style does not declare has no tile type and drives nothing (Magic dereferences a null device line).
 
 The `.ext` files of all parent cells SHALL be read for `connect` records into this cell. Those connection rectangles are transformed into this cell's coordinates and added as drive points, flagging the net forced and drive-located.
 Compatibility: exact
@@ -127,6 +138,8 @@ The driver location SHALL be chosen as follows:
 2. If the net is drive-located, use its first drive point instead, or failing that its first sink point.
 3. If there is still no driver, use the first drive point, else the first sink point.
 4. If there is still no driver, skip the net. A forced net reports an error.
+
+The devices of a net are ordered as ResSortByGate orders them: entries on a source or drain first, grouped by gate net and then by the other source or drain net, entries on a gate last. Magic compares net addresses; Hefesto compares the order in which the nets were first mentioned, with a stable sort, so the order is the same on every platform.
 
 The net SHALL be processed when any of the following holds:
 - "all" is on.

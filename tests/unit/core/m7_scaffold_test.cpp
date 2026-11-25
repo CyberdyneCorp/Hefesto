@@ -346,12 +346,13 @@ TEST_CASE("extresist has Magic's option table and messages", "[m7-scaffold]") {
     expected += std::string{entry} + "\n";
   }
   CHECK(s.take_printed() == expected);
-  check_not_implemented(s.run("extresist"), "extresist run");
+  // RESCMD landed the options and the run (tasks.md 14.1): without a box
+  // cell every option answers without CORE-NOTIMPL-008.
+  REQUIRE(s.run("extresist").ok());
   for (const std::string_view entry : hefesto::extresist::extresist_options()) {
     const std::string name = option_name(entry);
-    if (name != "help") {
-      check_not_implemented(s.run("extresist " + name), "extresist " + name);
-    }
+    INFO(name);
+    CHECK(s.run("extresist " + name).ok());
   }
 }
 
@@ -438,7 +439,7 @@ TEST_CASE("the M7 entry points are CORE-NOTIMPL-008 stubs", "[m7-scaffold]") {
   const auto rendered = netlist::spice::render(s.state, "top", netlist::spice::SpiceSettings{});
   REQUIRE_FALSE(rendered.ok());
   CHECK(rendered.error().code == "EXTFLAT-READ-001");
-  check_not_implemented(hefesto::extresist::run(s.state, {}, nullptr), "extresist run");
+  CHECK(hefesto::extresist::run(s.state, {}, nullptr).ok());  // RESCMD landed the run: no box cell
   // EXTCAP landed fringe_fraction (tasks.md 6.4): tests/unit/extract/cap/cr_atan_test.cpp.
   const std::vector<std::string> parts{"x1", "n1"};
   extflat::NameFlags flags;
