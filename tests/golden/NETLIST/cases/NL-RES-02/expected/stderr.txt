@@ -1,0 +1,10 @@
+Missing substrate connection of device at (0 0) on net GND
+Missing substrate connection of device at (0 0) on net GND
+Missing substrate connection of device at (400 20) on net GND
+Missing substrate connection of device at (200 20) on net GND
+Warning:  Orphaned node "GND!" arbitrarily attached to "GND.t0"
+Missing substrate connection of device at (0 0) on net GND
+Missing substrate connection of device at (0 0) on net GND
+Missing substrate connection of device at (400 20) on net GND
+Missing substrate connection of device at (200 20) on net GND
+Warning:  Orphaned node "GND!" arbitrarily attached to "GND.t0"
