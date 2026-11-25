@@ -246,6 +246,8 @@ TEST_CASE("SCHEM-NL-07: the deck of IHP dc_lv_nmos.sch", SOURCE CONTROL) {
   CHECK(deck.value().captures[1].append);
   CHECK(lines_with(actual, "echo hefesto-capture").size() == 2);
   std::size_t unresolved = 0;
-  for (const auto& d : deck.value().diagnostics) unresolved += d.code == "SCHEM-SIM-002" ? 1 : 0;
+  for (const auto& d : deck.value().diagnostics) {
+    if (d.code == "SCHEM-SIM-002") ++unresolved;
+  }
   CHECK(unresolved == 2);
 }

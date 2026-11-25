@@ -40,7 +40,9 @@ struct Launcher {
 
 std::size_t count_code(const hefesto::cmd::CommandResult& result, std::string_view code) {
   std::size_t n = 0;
-  for (const auto& d : result.diagnostics) n += d.code == code ? 1 : 0;
+  for (const auto& d : result.diagnostics) {
+    if (d.code == code) ++n;
+  }
   return n;
 }
 
