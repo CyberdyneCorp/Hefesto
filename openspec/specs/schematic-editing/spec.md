@@ -163,7 +163,7 @@ The editor SHALL place net labels (`lab_pin.sym`, `lab_wire.sym`) and ports (`ip
 - **Make symbol from schematic**: generate `<name>.sym` with a box outline, one pin per port (inputs left, outputs right, inouts right), `type=subcircuit`, `format="@name @pinlist @symname"` and `template="name=x1"`. It SHALL NOT overwrite an existing symbol without confirmation.
 - **Make schematic from symbol**: generate `<name>.sch` with one port per symbol pin.
 
-A pin or port name with a blank or `;` SHALL be written quoted, so that the made file reads back the same name. Making a symbol or a schematic SHALL NOT write into the PDK store or the system library, even when overwriting was confirmed (Requirement "Read-only libraries").
+A pin or port name with a blank or `;` SHALL be written quoted, and a `"` or `\` in it escaped, so that the made file reads back the same name; so SHALL the `lab` of a placed label or port and the `lab` values a netlist run stores (capability `schematic-file-format`, Requirement "Property strings"). Making a symbol or a schematic SHALL NOT write into the PDK store or the system library, even when overwriting was confirmed (Requirement "Read-only libraries").
 
 Compatibility: behavioral
 
@@ -173,6 +173,10 @@ Compatibility: behavioral
 - **GIVEN** `amp.sch` with ports `INP` (ipin), `INM` (ipin), `OUT` (opin)
 - **WHEN** the user makes a symbol
 - **THEN** `amp.sym` SHALL have three pins `INP`, `INM`, `OUT` with `dir` `in`, `in`, `out`, and SHALL netlist as `x1 <nets> amp`
+
+#### Scenario: Label name with a quote
+- **WHEN** `schematic label 0 0 {a"b}` is executed and the schematic is saved and read again
+- **THEN** the label's decoded `lab` value SHALL be `a"b`
 
 ### Requirement: Bus editing
 Wires and labels SHALL accept the bus notation of capability `schematic-netlisting` (for example `DATA[7:0]`, `A,B,C`, `2*X`). A wire whose net name expands to more than one bit SHALL get `bus=1` and be drawn thick; when a net stops being a bus, `bus` SHALL be removed. Instance names MAY be vectors (`x1[3:0]`); each element is netlisted as a separate instance (capability `schematic-netlisting`, Requirement "Element line post-processing"). The editor SHALL warn when the widths of a pin, its instance vector and the attached net are inconsistent (net width not equal to pin width or to pin width × instance width).
@@ -219,6 +223,8 @@ Compatibility: behavioral
 ### Requirement: Object order
 The editor SHALL let the user change the position of a selected object in its list (xschem's "change element order"), which changes the file order, the netlist instance order and the automatic net and instance numbering.
 
+The command is `schematic order <index>` (capability `schematic-command`): the selected objects of each kind move, as one block keeping their order, to position `<index>` (from 0) of their kind's list, or to its end when `<index>` is past it; they stay selected. It is one undo step (none when nothing moves) and is refused on a read-only document (Requirement "Read-only libraries").
+
 Compatibility: behavioral
 
 (xschem ref: editprop.c:1818-1900, keys.help)
@@ -228,8 +234,15 @@ Compatibility: behavioral
 - **WHEN** `R2` is moved to index 0
 - **THEN** the saved file and the netlist SHALL list `R2` before `R1`
 
+#### Scenario: Reorder a block of wires
+- **GIVEN** wires 0 to 4 with wires 1 and 3 selected
+- **WHEN** `schematic order 99` is executed
+- **THEN** the former wires 1 and 3 SHALL be wires 3 and 4, in that order, and stay selected, and one `schematic undo` SHALL restore the former order
+
 ### Requirement: Clipboard
 Copy SHALL put the selected objects on the clipboard as text in the record format of capability `schematic-file-format` (a `v` record, the global records and the selected objects' records), with coordinates relative to the selection's anchor. Paste SHALL insert the records at the pointer, make instance names unique and select the pasted objects. Text from xschem's clipboard SHALL paste into Hefesto and the reverse. Merging a file SHALL insert its objects like a paste.
+
+The commands are `schematic clipboard copy`, `schematic clipboard [set <text>]`, `schematic paste <x> <y>` and `schematic merge <file> [<x> <y>]` (capability `schematic-command`). The selection's anchor SHALL be the lower-left corner of the selection's bounding box, snapped to the snap; copied instances SHALL carry their embedded symbols. The clipboard text is session state, exchanged with the system clipboard by the front end. Paste and merge SHALL take only the objects (and the embedded symbols the document does not have yet), not the global records, keep symbol references as written, select the inserted objects, be one undo step each and be refused on a read-only document; copying SHALL be allowed on any document. Pasting a clipboard that holds no schematic objects SHALL fail with `schematic: the clipboard holds no schematic objects`.
 
 Compatibility: behavioral
 
@@ -239,6 +252,16 @@ Compatibility: behavioral
 - **GIVEN** the system clipboard holds the text of an xschem copy containing `C {res.sym} 0 0 0 0 {name=R1}`
 - **WHEN** the user pastes into a schematic that already has `R1`
 - **THEN** a resistor SHALL be inserted at the pointer and named `R2`
+
+#### Scenario: Copy and paste
+- **GIVEN** a wire, a resistor `R1` and a text selected in a schematic
+- **WHEN** `schematic clipboard copy` and then `schematic paste 500 500` are executed
+- **THEN** the clipboard text SHALL hold the three records with the anchor at the origin, the pasted copies SHALL be moved by (500, 500), the resistor SHALL be named `R2`, the copies SHALL be selected, and one `schematic undo` SHALL remove them
+
+#### Scenario: Merge a file
+- **GIVEN** `part.sch` holding a wire and an instance `R1`, and a schematic that already has `R1`
+- **WHEN** `schematic merge part.sch 10 20` is executed
+- **THEN** the wire and the instance SHALL be inserted moved by (10, 20), the instance named `R2`, and both selected
 
 ### Requirement: Hierarchy navigation
 The user SHALL be able to:

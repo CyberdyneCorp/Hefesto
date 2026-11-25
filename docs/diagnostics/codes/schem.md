@@ -259,6 +259,9 @@ The errors raise a script error and leave the document as it was
   -force"`, from `symbol make` without `-force` and `symbol toschematic` when
   the file to write exists ("Labels and ports": no overwrite without
   confirmation).
+- `SCHEM-EDIT-008`: `schematic: the clipboard holds no schematic objects`,
+  from `paste` when the clipboard is empty or its text has no object records
+  ("Clipboard").
 
 ## CMD
 
@@ -278,7 +281,8 @@ values and errors in scripts").
   flag, two of `-hier`/`-top`/`-flat`, a `-buschar` that is not two
   characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`.
 - `SCHEM-CMD-003`: `schematic: no schematic is open`, for every option
-  except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk` and `help`.
+  except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk`, `help`
+  and `clipboard` (but `clipboard copy` needs a document).
 - `SCHEM-CMD-004`: `schematic: unsaved changes`, from `close` without
   `-discard` and `open -window current` over a modified document.
 - `SCHEM-CMD-005`: the netlist run of `netlist` or `check` reported errors;
@@ -296,6 +300,11 @@ values and errors in scripts").
   "xschem compatibility command").
 - `SCHEM-CMD-009`: `xschem set netlist_type: only spice is supported`.
 - `SCHEM-CMD-010`: `xschem command 'place_symbol' needs the editor`.
+- `SCHEM-CMD-011`: `schematic: the netlist run was interrupted; no file is
+  written`, from `netlist` and `check` when the front end's Interrupt
+  (Ctrl-C, the Interrupt card) was pending before the run or was made during
+  it; no file is written and no computed label is stored ("Subcommand
+  table"). The dispatcher adds `[Interrupted]` after the command.
 
 ## SIMINT
 
@@ -329,6 +338,7 @@ fails when the two disagree.
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
 | `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-CMD-011` | error | `schematic netlist` or `check` was interrupted; no file is written. |
 | `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
 | `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |
 | `SCHEM-EDIT-003` | error | Descending would pass the hierarchy depth limit of 40 levels. |
@@ -336,6 +346,7 @@ fails when the two disagree.
 | `SCHEM-EDIT-005` | warning | Bus width mismatch: the net on a pin is neither the pin width nor the pin width times the instance width. |
 | `SCHEM-EDIT-006` | error | The schematic or symbol file to descend into does not exist or cannot be read. |
 | `SCHEM-EDIT-007` | error | `schematic symbol make` or `toschematic` would overwrite an existing file (`make -force` overwrites). |
+| `SCHEM-EDIT-008` | error | `schematic paste`: the clipboard holds no schematic objects. |
 | `SCHEM-FILE-001` | warning | A record has a missing or non-numeric field and is skipped. |
 | `SCHEM-FILE-002` | warning | A graphic record has a missing or out-of-range layer and is skipped. |
 | `SCHEM-FILE-003` | warning | The file ends inside a brace string; the field is read as absent. |

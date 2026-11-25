@@ -36,6 +36,7 @@ inline constexpr std::string_view kAtTop = "SCHEM-EDIT-004";
 inline constexpr std::string_view kWidthMismatch = "SCHEM-EDIT-005";
 inline constexpr std::string_view kNoSchematic = "SCHEM-EDIT-006";
 inline constexpr std::string_view kExists = "SCHEM-EDIT-007";
+inline constexpr std::string_view kEmptyClipboard = "SCHEM-EDIT-008";
 
 using cmdimpl::fail;
 using cmdimpl::usage;
@@ -216,5 +217,9 @@ cmd::CommandResult op_ascend(cmd::CommandContext&, const cmd::Invocation&);
 cmd::CommandResult op_hierarchy(cmd::CommandContext&, const cmd::Invocation&);
 cmd::CommandResult op_hilight(cmd::CommandContext&, const cmd::Invocation&);
 cmd::CommandResult op_symbol(cmd::CommandContext&, const cmd::Invocation&);
+cmd::CommandResult op_order(cmd::CommandContext&, const cmd::Invocation&);
+cmd::CommandResult op_clipboard(cmd::CommandContext&, const cmd::Invocation&);
+cmd::CommandResult op_paste(cmd::CommandContext&, const cmd::Invocation&);
+cmd::CommandResult op_merge(cmd::CommandContext&, const cmd::Invocation&);
 
 }  // namespace hefesto::schem::editimpl

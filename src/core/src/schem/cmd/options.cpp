@@ -50,6 +50,10 @@ constexpr std::array kOptions{
     SchematicOption{"flip", "flip [-inplace] [<x> <y>]"},
     SchematicOption{"flipv", "flipv [-inplace] [<x> <y>]"},
     SchematicOption{"align", "align"},
+    SchematicOption{"order", "order <index>"},
+    SchematicOption{"clipboard", "clipboard [copy|set <text>]", false},
+    SchematicOption{"paste", "paste <x> <y>"},
+    SchematicOption{"merge", "merge <file> [<x> <y>]"},
     SchematicOption{"getprop", "getprop instance|symbol <name> [<key>] | getprop wire <n> [<key>] | "
                                "getprop schematic [K|G|V|S|F|E]"},
     SchematicOption{"setprop", "setprop instance <name> <key> [<value>] | setprop wire <n> <key> [<value>] | "
@@ -247,6 +251,17 @@ platform::Path absolute_path(const platform::Path& path) {
 std::string property_value(std::string_view props, const std::optional<std::string>& key) {
   if (!key) return std::string{props};
   return get_token(props, *key).value_or(std::string{});
+}
+
+std::string encoded_value(std::string_view value) {
+  std::string out;
+  out.reserve(value.size() + 2);
+  for (const char c : value) {
+    if (c == '"' || c == '\\') out += '\\';
+    out += c;
+  }
+  if (value.find_first_of(" \t\n;") != std::string_view::npos) out = '"' + out + '"';
+  return out;
 }
 
 }  // namespace cmdimpl

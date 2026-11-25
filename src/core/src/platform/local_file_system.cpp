@@ -128,6 +128,10 @@ diag::Outcome<std::string> FileSystem::read_at_most(const Path& path, std::size_
   return text;
 }
 
+std::optional<fs::file_time_type> FileSystem::modified_time(const Path& /*path*/) {
+  return std::nullopt;
+}
+
 diag::Outcome<std::string> LocalFileSystem::read_at_most(const Path& path, std::size_t max_bytes) {
   std::ifstream in;
   if (auto error = open_regular(path, in)) {
@@ -239,6 +243,15 @@ diag::Status LocalFileSystem::remove(const Path& path) {
     return io_error(codes::kPlatformDirectory, "cannot remove", path, ec);
   }
   return Done{};
+}
+
+std::optional<fs::file_time_type> LocalFileSystem::modified_time(const Path& path) {
+  std::error_code ec;
+  const fs::file_time_type time = fs::last_write_time(path, ec);
+  if (ec) {
+    return std::nullopt;
+  }
+  return time;
 }
 
 }  // namespace hefesto::platform
