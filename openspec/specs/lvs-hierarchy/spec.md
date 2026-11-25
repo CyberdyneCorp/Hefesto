@@ -127,26 +127,25 @@ Compatibility: exact
 - **THEN** `Y1` and `Y2` SHALL be permutable, and neither SHALL be removed
 
 ### Requirement: lvs per-pair flow
-For each pair popped from the queue, the `lvs` command SHALL run this procedure:
-1. `run converge`.
-2. Set `equatePins` to true if this is the top pair (the queue is now empty), otherwise false. Set `forceMatch` to false.
-3. **If `verify equivalent` is true:**
-   - Run `run resolve`, then `u ← verify unique`.
-   - **u = 0** (symmetries remain): log `   Networks match locally but not globally.`, `   Probably connections are swapped.` and `   Check the end of logfile <log> for implicated nodes.`, then run `verify nodes` and set `checkFlatten`.
-   - **Any other u:** set `equatePins`. Then:
-     - u = −1 (black box): set `forceMatch`.
-     - u = −3: record the pair in the property-error list.
-     - u = −2: set `checkFlatten`.
-     - u = −4: record the property error and set `checkFlatten`.
-4. **Otherwise:** set `checkFlatten`.
-5. **If `checkFlatten` and this is not the top pair:**
-   - If neither cell is in the no-flatten list, set `doFlatten`.
-   - Otherwise log `  Continuing with black-boxed subcircuits <a> <b>`, add `<a>(<f1>)` and `<b>(<f2>)` to the failed-subcell list, prohibit flattening of both, and set `equatePins`, `childMismatch` and `forceMatch`.
-6. **If `equatePins`:** run pin matching, forced if `forceMatch`. If the result is ≥ 0, run `equate classes` on the pair. Then:
-   - A result of 0 on the top pair SHALL set `pinMismatch`.
-   - A result ≥ 0 that is not that case SHALL clear `doFlatten`.
-7. **If `doFlatten`:** log `  Flattening non-matched subcircuits <a> <b>` and flatten all instances of `<a>` in netlist 1 and of `<b>` in netlist 2 (`flatten class`).
-8. Pop the next pair. Stop when the queue is empty.
+For each pair popped from the queue, the `lvs` command SHALL run `run converge` and then act on the result as stated below, with its log output in the order of the items below. The top pair is the last pair; when it is popped, the queue is empty.
+
+**Outcome.**
+- If `verify equivalent` is false, the pair is *not equivalent*.
+- Otherwise the command SHALL run `run resolve`, and the pair's outcome u is the result of `verify unique` after it:
+  - **u = 0** (symmetries remain): log `   Networks match locally but not globally.`, `   Probably connections are swapped.` and `   Check the end of logfile <log> for implicated nodes.`, then run `verify nodes`.
+  - **u = −3 or u = −4**: record the pair in the property-error list.
+
+**Mismatched pair.** A pair is mismatched when it is not equivalent, or when u is 0, −2 or −4. A mismatched pair that is not the top pair SHALL be handled as follows:
+- If neither cell is in the no-flatten list, the pair is to be flattened (item "Flattening").
+- Otherwise log `  Continuing with black-boxed subcircuits <a> <b>`, add `<a>(<f1>)` and `<b>(<f2>)` to the failed-subcell list, and prohibit flattening of both cells. The pair is then *black-boxed*.
+
+**Pin matching.** Pin matching (Requirement "Pin matching") SHALL run for the top pair, for every equivalent pair whose u is not 0, and for every black-boxed pair. It SHALL be forced when u = −1 (black box) and for a black-boxed pair, and not forced otherwise. If its result is ≥ 0, the command SHALL run `equate classes` on the pair. Then:
+- A result of 0 on the top pair SHALL count as a top-level pin mismatch (Requirement "Final result").
+- Any other result ≥ 0 SHALL cancel the flattening of the pair.
+
+**Flattening.** A pair that is still to be flattened SHALL log `  Flattening non-matched subcircuits <a> <b>` and flatten all instances of `<a>` in netlist 1 and of `<b>` in netlist 2 (`flatten class`).
+
+The command SHALL then pop the next pair, and stop when the queue is empty.
 
 After the last pair, the final result SHALL be determined by Requirement "Final result".
 Compatibility: exact

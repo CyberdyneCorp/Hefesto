@@ -146,14 +146,14 @@ When both devices of a pair have property records and either has more than one, 
 - A maximal run of `D` characters is a parallel group.
 - A run of `D`s joined by `+D` is a series group.
 
-**Reconciliation loop.** The loop SHALL repeat while anything changes. Each iteration SHALL do the following:
+**Reconciliation rounds.** Reconciliation SHALL proceed in rounds and end after a round that changes nothing. Each round SHALL do the following, in this order:
 1. Remove group markers that no longer enclose series devices.
-2. If both devices have fewer than 2 records, stop.
+2. If both devices have fewer than 2 records, end reconciliation.
 3. **Parallel step.** For the longest parallel group on each side (if longer than 1), merge records whose non-M properties match within tolerance by summing `M`.
    - If merging is impossible because of strict topology, and that side has the larger group, try reducing `S` instead (step 6 rule).
-   - If anything changed, restart the loop.
+   - If anything changed, the round ends here and a new round starts.
 4. Sort each such parallel group with the sort rule below.
-5. **Series step.** For the longest series group on each side, merge by summing `S`, with the same fallback to `M`. If anything changed, restart the loop.
+5. **Series step.** For the longest series group on each side, merge by summing `S`, with the same fallback to `M`. If anything changed, the round ends here and a new round starts.
 6. Sort each such series group with the sort rule below.
 
 **Merging with comb.** When merging must also fold multiplicity ("comb"), the engine SHALL fold `M` (or `S`) into the additive properties and set the multiplier to 1:
@@ -164,7 +164,7 @@ When both devices of a pair have property records and either has more than one, 
 It SHALL then collapse consecutive records that have equal critical values:
 - add-type values are summed
 - par-type values are combined as x·y/(x+y)
-- the absorbed records are marked with multiplier 0 and removed
+- the absorbed records are removed
 
 **Sort rule.** Sort by the critical value with tolerance. Among values equal within tolerance, sort by a secondary key:
 
@@ -176,11 +176,11 @@ It SHALL then collapse consecutive records that have equal critical values:
 
 Equality within tolerance SHALL use |a − b| ≤ t for integers and |a − b| / |a + b| ≤ t for reals. The sort SHALL be stable (see Q-LVS-8).
 
-**Missing values.** A record missing a property takes the definition's default. For double-typed defaults, netgen reads the wrong field (see Q-LVS-18).
+**Missing values.** A record missing a property takes the definition's default. For double-typed defaults, netgen uses a meaningless value instead of the definition's default (see Q-LVS-18).
 
 **Retry.** If a one-to-one comparison of records then fails because of an `M` mismatch (or an `S` mismatch), both sides SHALL be folded to `M` = 1 (or `S` = 1) with comb, and compared again. A difference in record counts SHALL be reported as `Circuit 1 parallel/series network does not match Circuit 2` (or the mirror), followed by a dump of both networks.
 
-**Completion.** When more than one iteration ran, the engine SHALL print `No more changes can be made to series/parallel networks.` (console only).
+**Completion.** When more than one round ran, the engine SHALL print `No more changes can be made to series/parallel networks.` (console only).
 Compatibility: exact
 (netgen ref: base/netcmp.c:4220-4640, base/netcmp.c:4640-4925, base/netcmp.c:4943-5420, base/netcmp.c:6200-6345)
 

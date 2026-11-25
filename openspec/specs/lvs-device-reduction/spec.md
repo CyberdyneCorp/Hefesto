@@ -24,11 +24,11 @@ Other capabilities own related parts:
 ## Requirements
 
 ### Requirement: Combination flags
-Every device class SHALL carry two flags:
+Every device class SHALL have two combination settings:
 - **parallel-allowed.** It defaults to true for every class, including subcircuit and module classes. A class defined while `property parallel none` is in force SHALL start with it false.
 - **series-allowed.** It defaults to false. `property default` sets it to true for resistor, capacitor and inductor classes, and `property <c> series …` can set it on any class.
 
-Every property of interest SHALL carry a merge rule: a set of bits drawn from parallel-add, parallel-par, parallel-critical, series-add, series-par and series-critical. Two legacy "critical" bits are also accepted. "add" and "par" are mutually exclusive within one direction.
+Every property of interest SHALL have a merge rule: any combination of parallel-add, parallel-par, parallel-critical, series-add, series-par and series-critical. Two legacy "critical" settings are also accepted. "add" and "par" are mutually exclusive within one direction.
 Compatibility: exact
 (netgen ref: base/objlist.h:95-120, base/objlist.h:236-240, base/netgen.c:54-55, base/netgen.c:1315)
 
@@ -38,11 +38,11 @@ Compatibility: exact
 - **THEN** they SHALL be combined into one `buf` device with two property records
 
 ### Requirement: Reduction schedule
-Before the comparison graph of a cell pair is built (capability `lvs-comparison-algorithm`), each circuit's cell SHALL be reduced on its own, in this exact loop:
-1. Run one parallel pass.
-2. Run series passes repeatedly until a series pass merges nothing.
-3. Stop if the series loop did nothing on its first pass.
-4. Otherwise run another parallel pass. Stop if it merged nothing (on any parallel pass after the first). Otherwise repeat from step 2.
+Before the comparison graph of a cell pair is built (capability `lvs-comparison-algorithm`), each circuit's cell SHALL be reduced on its own, alternating parallel passes and series phases:
+- Reduction SHALL start with one parallel pass, followed by a series phase.
+- A series phase is a sequence of series passes that ends with the first pass that merges nothing.
+- When a series phase merges nothing at all, reduction SHALL end.
+- Otherwise another parallel pass SHALL follow. When that parallel pass merges nothing, reduction SHALL end; otherwise another series phase follows. (Only the first parallel pass never ends reduction.)
 
 If either circuit was modified, the engine SHALL print `Circuit was modified by parallel/series device merging.`, then `New circuit summary:`, then each circuit's contents (console only).
 Compatibility: exact
@@ -56,22 +56,22 @@ Compatibility: exact
 ### Requirement: Parallel combination
 A parallel pass SHALL combine devices of the same class that have identical pin connections. Only classes with parallel-allowed SHALL take part.
 
-**Signature.** Each device's signature SHALL be its class name followed by, for each pin in order, `_<net number>`. A pin's net is written as `_nc` instead when all of these hold:
+**Identical connections.** Two devices of the same class SHALL have identical pin connections when, pin by pin in pin order, both pins are on the same net. For this test, every no-connect net SHALL count as one and the same net (each pin is still compared with the pin at the same position) when all of these hold:
 - "open" mode is on (the default; `property parallel open`)
 - the cell is not a top cell
 - the net is connected to exactly one pin in the whole cell (a no-connect)
 
-Such a no-connect net SHALL be flagged no-connect. Treating every no-connect as one net can combine devices whose open pins are unrelated (see Q-LVS-26).
+Such a net SHALL be treated as a no-connect net of the cell. Treating every no-connect as one net can combine devices whose open pins are unrelated (see Q-LVS-26).
 
-**Permutations.** If the class has permutable pins, a second signature SHALL also be registered, with the nets of the first declared pair exchanged. Only the first declared pair is used (see Q-LVS-9).
+**Permutations.** If the class has permutable pins, a device SHALL also have identical connections with an earlier device when the two are identical after the nets of the class's first declared permutable pair are exchanged on one of them. Only the first declared pair is used (see Q-LVS-9).
 
-**Merging.** When a device's signature matches an earlier device:
+**Merging.** When a device has identical connections with an earlier device:
 1. The later device SHALL be removed.
-2. Its property records SHALL be appended to the earlier device's list of property records.
-3. If either device had no property record, a record `{M = 1}` (integer) SHALL be created for it first.
-4. The engine SHALL maintain series-group markers (see Requirement "Series combination").
+2. The earlier device SHALL keep its own property records, followed by the later device's records.
+3. A device that had no property record SHALL contribute one record `{M = 1}` (integer) in its place.
+4. The series-group markers of the records (`_tag`, Requirement "Series combination") SHALL be maintained so that each device's series groups stay identifiable.
 
-Property values SHALL NOT be part of the signature. Devices with different properties are combined, and their records are reconciled at property-matching time.
+Property values SHALL NOT be part of the test of identical connections. Devices with different properties are combined, and their records are reconciled at property-matching time.
 
 **Message.** Each pass that merges n > 0 devices of cell c in netlist f SHALL print `Class <c> (<f>):  Merged <n> parallel devices.`
 Compatibility: exact
@@ -103,7 +103,7 @@ The two devices SHALL be merged:
 
 **Topology marker.** The appended records SHALL carry a string marker `_tag`. Its value is `+` for a record that had no marker; a record that already had one gets `S` prepended to its marker. The records are inserted at the front if the device had no records.
 
-**Chains.** References in other candidate nets to the removed device SHALL be redirected to the surviving device. A candidate net whose two devices become the same device SHALL be dropped.
+**Chains.** Within one pass, a merged device SHALL take part in later merges of the same pass in place of the two devices it replaced, so a chain of series devices can reduce to one device in one pass. A net whose two pins come to be on one device through earlier merges of the pass SHALL NOT be merged.
 
 **Message.** Each pass that merges n > 0 devices SHALL print `Class <c> (<f>):  Merged <n> series devices.`
 Compatibility: exact

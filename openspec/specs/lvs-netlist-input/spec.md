@@ -36,7 +36,7 @@ The LVS engine SHALL keep a single database of cell definitions. Each cell SHALL
 - a device class
 - a property-definition table, also called the "properties of interest" (see capability `lvs-property-matching`)
 - a list of permutable pin pairs
-- flags: top, placeholder, case-insensitive, duplicate, matched, verilog, series-combinable, no-parallel
+- its flags, which say whether it is a file's top cell, a placeholder, read case-insensitively, a renamed duplicate (Requirement "SPICE subcircuit definitions"), paired for comparison (capability `lvs-hierarchy`), read from Verilog, series-combinable, or excluded from parallel combination (capability `lvs-device-reduction`)
 
 Each instance SHALL record:
 - its class (cell) name
@@ -44,7 +44,7 @@ Each instance SHALL record:
 - one connection per port of the class, in port order
 - zero or more property records, each an ordered list of key/value pairs
 
-Nets SHALL be identified by positive integers. An unconnected port SHALL have no net. The cell that represents a whole file SHALL carry the file's name and the top flag.
+Nets SHALL be identified by positive integers. An unconnected port SHALL have no net. The cell that represents a whole file SHALL carry the file's name and be its top cell. This model states what the engine represents and what the other `lvs-*` requirements refer to, not how it is stored.
 Compatibility: behavioral
 (netgen ref: base/objlist.h:126-245, base/objlist.c:386)
 
@@ -121,7 +121,7 @@ Case-insensitive name equality SHALL hold when both of these are true:
 
 A null name SHALL never be equal to anything.
 
-Case-sensitive equality SHALL be byte equality. Hash keys used to find cells by name SHALL fold only letters, not brackets (see Q-LVS-3).
+Case-sensitive equality SHALL be byte equality. Looking up a cell by name SHALL fold letter case only, not brackets (see Q-LVS-3).
 Compatibility: exact
 (netgen ref: base/objlist.c:181-282, base/hash.c:116-174, base/spice.c:2025-2035, base/netcmp.c:3921-3933)
 
