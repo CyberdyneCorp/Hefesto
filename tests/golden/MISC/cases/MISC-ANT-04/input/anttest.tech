@@ -1,0 +1,86 @@
+tech
+    format 35
+    anttest
+end
+
+planes
+    well
+    active
+    metal1
+    metal2
+    metal3
+end
+
+types
+    well    pwell,pw
+    active  ndiff,nd
+    active  poly,p
+    active  nfet
+    active  pc
+    active  ndc
+    metal1  metal1,m1
+    metal1  via1,v1
+    metal2  metal2,m2
+    metal2  via2,v2
+    metal3  metal3,m3
+end
+
+contact
+    pc    poly   metal1
+    ndc   ndiff  metal1
+    via1  metal1 metal2
+    via2  metal2 metal3
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+    pwell   ndiff
+    poly    nfet,pc
+    ndiff   ndc
+    metal1  pc,ndc,via1
+    metal2  via1,via2
+    metal3  via2
+end
+
+cifoutput
+style lambda
+    scalefactor 10
+    layer CM1 metal1,pc,ndc,via1
+        calma 1 0
+    layer CV1 via1
+        squares 10 20 20
+        calma 2 0
+    layer CM2 metal2,via1,via2
+        calma 3 0
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+style anttest
+    cscale 1
+    rscale 1
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    planeorder metal3 4
+    units microns
+    model partial
+    height metal1 1.0 0.36
+    antenna metal1 sidewall 10 none
+    device mosfet nfet nfet ndiff pwell,space gnd!
+end
