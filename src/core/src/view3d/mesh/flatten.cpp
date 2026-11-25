@@ -128,14 +128,13 @@ void finish_splits(FlatLayout& out) {
   }
 }
 
-// Waits while a writer waits for the lock (a command is about to run).
+}  // namespace
+
 void wait_for_writers(const db::DatabaseLock& lock, const mask::Progress& progress) {
   while (lock.writer_waiting() && !lock.held_exclusively_by_this_thread() && !progress.cancelled()) {
     std::this_thread::sleep_for(std::chrono::microseconds(200));
   }
 }
-
-}  // namespace
 
 bool flatten_layout(const LayerStack& stack, const db::CellDef& cell, std::span<const db::Rect> areas,
                     const std::function<bool()>& stop, FlatLayout& out) {

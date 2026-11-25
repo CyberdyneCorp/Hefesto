@@ -27,6 +27,10 @@
 // over space is therefore flat and has no side faces, as in Magic. With
 // it OFF each triangle takes its own layer's h and t and side faces
 // (Q-MISC-79).
+// Mask-layer planes (planes.cpp) hold one mask layer each and record no
+// source types: a split tile takes its layer's h and t, and its cut on
+// the clip edge follows the triangle in both settings, as Magic draws the
+// already clipped CIF planes without a clip rectangle (W3Dmain.c:441).
 // Layer heights come from the build's HeightTable (the stack's, or a
 // contact spanned by the J1 option).
 // A boundary segment on the clip edge is emitted once, as a clip-edge face.
@@ -306,7 +310,9 @@ class Emitter {
   // The diagonal piece and the clip-edge pieces of a clipped triangle
   // (`piece`: its bounding rectangle in this chunk).
   void polygon_edges(const Polygon& poly, const db::Rect& piece) {
-    const bool magic_cut = heights_.stack().magic_compat();
+    // Mask-layer mode: W3DCIFredisplay draws already clipped planes with no
+    // clip rectangle, so the cut follows the triangle in both settings.
+    const bool magic_cut = heights_.stack().magic_compat() && heights_.stack().mode() == Mode::layout_layer;
     Vec2 centre;
     for (const Vec2& v : poly) {
       centre.x += v.x / static_cast<double>(poly.size());

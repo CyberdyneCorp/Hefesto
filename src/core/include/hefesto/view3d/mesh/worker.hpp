@@ -34,6 +34,12 @@
 // again when the stack, the clip area, the rendered cell or the J1 option
 // change.
 //
+// Mask-layer mode (P2, design D15): with BuildInputs::mask set, a full
+// build generates the mask layers (build_from_mask) and a change
+// regenerates only the chunks within the halo of the edit
+// (rebuild_mask_chunks). A change of output style is a new stack and
+// source: the host calls build() (a full rebuild).
+//
 // Owner: MESH (design D3).
 
 #pragma once
@@ -65,7 +71,13 @@ struct BuildInputs {
   std::optional<db::Point> centre;               // progressive order
   db::DatabaseLock* lock = nullptr;              // the session's database lock, or null
   std::size_t max_chunk_tiles = 65536;           // chunk size of the first build (tests use small ones)
+  std::optional<MaskSource> mask;                // mask-layer mode: generated layers; `clip` is then mask_clip(*mask)
 };
+
+/// One build of `inputs` on the calling thread (what the worker runs for a
+/// full build): ctx's progress, on_chunk and cancellation, the inputs' J1
+/// option, technology, centre and lock.
+[[nodiscard]] std::optional<MeshModel> build_once(const BuildInputs& inputs, BuildContext& ctx);
 
 /// Worker-thread callbacks; each may be empty.
 struct WorkerCallbacks {

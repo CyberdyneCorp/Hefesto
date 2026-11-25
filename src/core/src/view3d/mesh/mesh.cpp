@@ -19,8 +19,9 @@
 // planned where changed paint fell outside every chunk; rebuilt chunks
 // left empty are dropped. Untouched chunks are kept as they were, with
 // their versions; rebuilt and new ones and the model take a fresh version.
-// build_from_planes (MASKSRC, P2) is still the scaffold stub: an empty
-// model over the clip area.
+// Both steps take the source's flatten step (FlattenFn): the layout
+// flatten (flatten.cpp) or the mask-layer generation (planes.cpp), so the
+// two sources share the chunks, faces, versions and progressive order.
 //
 // Owner: MESH (design D3).
 
@@ -158,13 +159,13 @@ std::uint64_t next_version() noexcept {
   return counter.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
-std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell, const ClipArea& clip,
-                                      BuildContext& ctx, std::size_t max_tiles) {
+std::optional<MeshModel> build_flat(const LayerStack& stack, const FlattenFn& flatten, const ClipArea& clip,
+                                    BuildContext& ctx, std::size_t max_tiles) {
   MeshModel model = empty_model(stack, clip);
   model.version = next_version();
   FlatLayout flat;
   const std::array<db::Rect, 1> areas{clip.area};
-  if (!flatten_snapshot(stack, cell, areas, ctx, flat)) {
+  if (!flatten(areas, flat)) {
     return std::nullopt;
   }
   const HeightTable heights(stack, ctx);
@@ -176,15 +177,15 @@ std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef
   return model;
 }
 
-std::optional<MeshModel> rebuild_layout(const MeshModel& previous, const LayerStack& stack, const db::CellDef& cell,
-                                        std::span<const db::Rect> dirty, BuildContext& ctx, std::size_t max_tiles) {
+std::optional<MeshModel> rebuild_flat(const MeshModel& previous, const LayerStack& stack, const FlattenFn& flatten,
+                                      std::span<const db::Rect> dirty, BuildContext& ctx, std::size_t max_tiles) {
   const std::vector<db::Rect> changed = grown_dirty(dirty, previous.region);
   if (changed.empty()) {
     return previous;
   }
   const RebuildPlan plan = affected_chunks(previous, changed);
   FlatLayout flat;
-  if (!flatten_snapshot(stack, cell, plan.flatten_areas, ctx, flat)) {
+  if (!flatten(plan.flatten_areas, flat)) {
     return std::nullopt;
   }
   std::vector<ChunkCell> cells = plan_new_chunks(flat, previous.region, plan.existing, changed, max_tiles);
@@ -217,6 +218,22 @@ std::optional<MeshModel> rebuild_layout(const MeshModel& previous, const LayerSt
   return model;
 }
 
+std::optional<MeshModel> build_layout(const LayerStack& stack, const db::CellDef& cell, const ClipArea& clip,
+                                      BuildContext& ctx, std::size_t max_tiles) {
+  const FlattenFn flatten = [&](std::span<const db::Rect> areas, FlatLayout& out) {
+    return flatten_snapshot(stack, cell, areas, ctx, out);
+  };
+  return build_flat(stack, flatten, clip, ctx, max_tiles);
+}
+
+std::optional<MeshModel> rebuild_layout(const MeshModel& previous, const LayerStack& stack, const db::CellDef& cell,
+                                        std::span<const db::Rect> dirty, BuildContext& ctx, std::size_t max_tiles) {
+  const FlattenFn flatten = [&](std::span<const db::Rect> areas, FlatLayout& out) {
+    return flatten_snapshot(stack, cell, areas, ctx, out);
+  };
+  return rebuild_flat(previous, stack, flatten, dirty, ctx, max_tiles);
+}
+
 }  // namespace detail
 
 std::optional<MeshModel> build_from_layout(const LayerStack& stack, const db::CellDef& cell, const ClipArea& clip,
@@ -224,12 +241,24 @@ std::optional<MeshModel> build_from_layout(const LayerStack& stack, const db::Ce
   return detail::build_layout(stack, cell, clip, ctx, detail::kMaxChunkTiles);
 }
 
-std::optional<MeshModel> build_from_planes(const LayerStack& stack, const mask::LayerPlanes& /*planes*/,
+std::optional<MeshModel> build_from_planes(const LayerStack& stack, const mask::LayerPlanes& planes,
                                            const ClipArea& clip, BuildContext& ctx) {
-  MeshModel model = empty_model(stack, clip);
-  model.version = detail::next_version();
-  model.layer_heights = detail::HeightTable(stack, ctx).layers();
-  return model;
+  const detail::FlattenFn copy = [&](std::span<const db::Rect> /*areas*/, detail::FlatLayout& out) {
+    detail::copy_planes(stack, planes, out);
+    return !ctx.progress.cancelled();
+  };
+  return detail::build_flat(stack, copy, clip, ctx, detail::kMaxChunkTiles);
+}
+
+std::optional<MeshModel> build_from_mask(const LayerStack& stack, const db::CellDef& cell, const MaskSource& source,
+                                         const ClipArea& clip, BuildContext& ctx) {
+  return detail::build_mask(stack, cell, source, clip, ctx, detail::kMaxChunkTiles);
+}
+
+std::optional<MeshModel> rebuild_mask_chunks(const MeshModel& previous, const LayerStack& stack,
+                                             const db::CellDef& cell, const MaskSource& source,
+                                             std::span<const db::Rect> dirty, BuildContext& ctx) {
+  return detail::rebuild_mask(previous, stack, cell, source, dirty, ctx, detail::kMaxChunkTiles);
 }
 
 std::optional<MeshModel> rebuild_chunks(const MeshModel& previous, const LayerStack& stack, const db::CellDef& cell,
