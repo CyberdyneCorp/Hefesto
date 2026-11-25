@@ -26,6 +26,13 @@ Round 4 (branch `m8-round4-shell`, 2026-11-24). The shell drives the schematic e
 
 The Schematic tab itself is live: clicking it shows `schematic_view.cpp`, which draws the session's active document (the last opened) read-only and fitted, with the breadcrumb above it; a click on an instance issues `schematic select instance <name>`. No capture was taken in this round: the screenshots come from the CI desktop legs (macOS and Linux), so no row is **done** yet.
 
+Round 5 (branch `m8-round5-shell`, 2026-11-24). The view is laid out in Raven as the board's three columns: the symbol library browser on the left (240 px, `surface1`), the breadcrumb, canvas, netlist bar and messages panel in the centre, the properties panel on the right (260 px, `surface1`). New view models, tested headless:
+
+- `schematic_symbols.hpp`: symbols are resolved off the UI thread (round-4 open item). `SchematicSymbolResolver` hands a snapshot of the document's references (its folder and embedded blocks, the search path, xschem-compat) to one worker thread, which resolves them through a `SymbolCache` and a `LocalFileSystem` of its own (the session's cache, used by netlisting and the commands, is never touched from two threads). The canvas draws each instance whose symbol is not resolved yet with the placeholder in the tertiary text color, with "Resolving N symbols…" in the corner; the worker posts the result to the UI thread (`ui::post_task`), which merges it and repaints. A result is dropped when the document shown changed meanwhile (another document, its file or on-disk content, the search path, xschem-compat, `schematic reload_symbols`, a save), and a reference the document no longer uses is not merged. Closing the window cancels between references; a generator already running finishes first (at most 10 s, `kGeneratorTimeLimit`). Tests: `tests/unit/shell/schematic_symbols_test.cpp` (also run under ThreadSanitizer).
+- `schematic_input.hpp`: the canvas input (a Raven viewport under the painted canvas takes the events, as the layout canvas does): the wheel and a pinch zoom about the pointer, a trackpad scroll, an Option-drag or a middle-drag pans (view only, no command), a left click selects the instance under the pointer, and keys run the `schematic` bindings once a click gave the canvas the key focus. `w`, `m` and `c` put `schematic wire `, `schematic move `, `schematic copy ` in the command bar (their coordinates are typed), `e` descends into the instance last clicked, `q` shows its properties, `Insert` focuses the symbol search, Ctrl-C interrupts. Tests: `tests/unit/shell/schematic_input_test.cpp`.
+
+The view reads `schematic hilight list`, `schematic hierarchy path` and the properties' `getprop` with origin `internal` (not replayed, no command count) after any command changed the session, and observes the dispatcher for the results of `schematic` commands (the messages panel, the netlist run). The round-4 model read `hilight list` as a plain list of net names, while the command returns `{net <name> <colour>}` and `{instance <name> <colour>}` triples: fixed with a regression test (`schematic_panels_test.cpp`).
+
 ## Board review (DESIGN + SHELL, task 13.1)
 
 Reviewed on 2026-11-24 against the M8 scope (D13, D15; `schematic-editing` "Desktop and touch interaction"; Q-SCHEM-24). The board predates the M8/M9 split: it draws one testbench session with simulation results. What it shows, and what M8 needs from it:
@@ -57,50 +64,59 @@ Board note: the board changes above are DESIGN items (open item for DESIGN: redr
 |---|---|---|
 | Schematic tab enabled (no longer "arrives in M8") | `deferred_view_tabs()` tooltip "Schematic editor: xschem-compatible schematics (M8)"; the segmented control's enabled mask includes it; a click shows the schematic view instead of the canvas (`MainWindow::show_schematic_tab`) | partial: needs the CI capture |
 | Waveforms tab disabled, "Waveforms: arrive in M9" | `deferred_view_tabs()`; the tab list's accessible name and tooltip name M9 | partial: needs the CI capture |
-| "Netlist" button | not in the top bar yet: the action is the `n` binding and the `schematic netlist` command; the view model is `NetlistAction` | model |
-| Simulate, Corner | the M1 "Simulate" stays disabled ("Simulation: arrives in M9"); no corner selector | later (M9) |
+| "Netlist" button | the netlist bar under the canvas ("Netlist", primary) and the `n` binding run `NetlistAction`; the top bar belongs to the main window | partial: the board puts it in the top bar next to Simulate; moving it is a main-window edit (open item) |
+| Simulate, Corner | the M1 "Simulate" stays disabled ("Simulation: arrives in M9"); the netlist bar shows "Simulate · arrives in M9" in tertiary text; no corner selector | later (M9) |
 
 ## Canvas
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| The active schematic drawn read-only: graphics, wires, placed symbols, texts with `@name`/`@symname`/`@<attribute>` | `build_scene` over the session's active document; `schematic_view.cpp` paints it fitted, wires in the info color, symbols in success, pins in danger, highlights in the accent | partial: the colors are placeholders until DESIGN fixes the schematic palette (the board uses the layer colors of xschem's dark scheme); text substitution is the display subset (attributes only, no `@pinlist`, no `tcleval`) |
-| Pan and zoom | `SchematicViewport` (pan by pixels, zoom about the pointer, fit, zoom clamped to 1/64…64) | model: Raven's painted widget has no wheel or drag input here yet, so the view always fits |
-| Selection by click | `schematic select instance <name>` for the instance under the pointer | blocked on EDIT's `select` option |
-| Net highlighting drawn | wires whose `lab` (written by netlisting, Q-SCHEM-29) is in `schematic hilight list`, instances by name | model: the view does not read `hilight list` yet; colors per highlight (the cycle) are EDIT's |
+| The active schematic drawn read-only: graphics, wires, placed symbols, texts with `@name`/`@symname`/`@<attribute>` | `build_scene` over the session's active document; `schematic_view.cpp` paints it, wires in the info color, symbols in success, pins in danger | partial: the colors are placeholders until DESIGN fixes the schematic palette (the board uses the layer colors of xschem's dark scheme); text substitution is the display subset (attributes only, no `@pinlist`, no `tcleval`); needs the CI capture |
+| Symbols resolved off the UI thread | `SchematicSymbolResolver` (worker thread, own cache); pending instances drawn with the placeholder in tertiary text and "Resolving N symbols…" until the worker's result is posted back | partial: needs the CI capture; no board element (the placeholder look is a DESIGN item with the schematic palette) |
+| Pan and zoom | `SchematicCanvasInput` over `SchematicViewport`: wheel and pinch zoom about the pointer, trackpad scroll, Option-drag and middle-drag pan; the view fits the document until the user pans or zooms, and again for another document | partial: needs the CI capture |
+| Selection by click | `schematic select instance <name>` for the instance under the pointer; the properties panel then shows that instance | partial: needs the CI capture (EDIT's `select` landed in round 4) |
+| Net highlighting drawn | the view reads `schematic hilight list` after each command; wires whose `lab` (written by netlisting, Q-SCHEM-29) is a highlighted net and highlighted instances are drawn in their highlight colour (the 8-colour cycle mapped to forge tokens), highlighted wires twice as thick (state is not color only) | partial: a wire shows its net's highlight only once a netlist run wrote its `lab`; needs the CI capture |
 
 ## Symbol library browser
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| "Symbols · <library>" title, "Search symbols" field, rows | `SymbolLibraryBrowser` (folders = `schematic path list`, then the system library; case-insensitive filter) | model |
-| Place a symbol | `schematic place <name> <x> <y>` (Insert binding opens the browser) | model; blocked on EDIT's `place` |
+| "Symbols · <library>" title, "Search symbols" field, rows | the left panel: section title, the search field, a scrolled list of `.sym` rows with their folder; `SymbolLibraryBrowser` (folders = the session's search path, the document folder for `.`, then the system library; case-insensitive filter) | partial: needs the CI capture; no symbol preview yet (the board shows names only) |
+| Place a symbol | a click on a row issues `schematic place <name> <x> <y>` at the view's centre snapped to 10; `Insert` focuses the search field | partial: no drag-to-place yet; needs the CI capture |
 
 ## Properties panel
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Rows of the selected instance or wire (W, L, …) | `PropertiesPanel`: `schematic getprop instance\|wire ...`, rows from FORMAT's `parse_properties`, decoded values | model; `getprop` is CMD's (implemented) |
-| Edit a value, remove an attribute | `schematic setprop instance\|wire <n> <key> [<value>]` | model; blocked on EDIT's `setprop` |
+| Rows of the selected instance or wire (W, L, …) | the right panel "Properties · XM2": key and value rows of the instance last clicked (`q` too), read with `schematic getprop instance <name>` (origin internal) after each command | partial: needs the CI capture; wires are not picked yet (instances only) |
+| Edit a value, remove an attribute | a click on a row puts `schematic setprop instance <n> <key> <value>` in the command bar to edit | partial: no in-place field yet |
+| "Operating point (back-annotated)" | a tertiary "Operating point · arrives in M9" line at the panel's foot | later (M9) |
 
 ## Hierarchy breadcrumb
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| "top.sch › x1 › xinv[2]" above the canvas | `HierarchyBreadcrumb` from `schematic hierarchy path`; drawn by `schematic_view.cpp` (top only until the path is read) | partial: missing from the board (DESIGN) |
-| Descend (`e`), ascend (`Ctrl+e`), click a crumb | `schematic descend <instance>`, one `schematic ascend` per level | model; blocked on EDIT's `descend`/`ascend` |
+| "top.sch › x1 › xinv[2]" above the canvas | `HierarchyBreadcrumb` from `schematic hierarchy path` (read after each command); parents in `accent_soft`, the current level in primary text | partial: missing from the board (DESIGN) |
+| Descend (`e`), ascend (`Ctrl+e`), click a crumb | `schematic descend <instance last clicked>`, `schematic ascend`; a click on a crumb issues one `schematic ascend` per level below it | partial: needs the CI capture |
 
 ## Netlist action and messages
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| Netlist (`n`) with progress and Interrupt | `NetlistAction`: `schematic netlist [<file>] -hier\|-top\|-flat [-lvs]`, the Interrupt card "Netlisting inv.sch · 3 s" after `kLongRunning`, "Stopping: no file is written" | model: the core netlist run does not poll the script interrupt yet (open item for NETLIST/CMD), so Interrupt only marks the card |
-| Messages | `MessagesPanel`: each command's diagnostics with severity and code, "2 errors · 1 warning", at most 1000 kept | model; missing from the board |
+| Netlist (`n`) with progress and Interrupt | the netlist bar: "Netlist" runs `NetlistAction` (`schematic netlist -hier`, the text returned); after `kLongRunning` the bar shows the Interrupt card "Netlisting inv.sch · 3 s" with "Interrupt ⌃C" (the frames the script progress pumps repaint it); Interrupt or Ctrl-C on the canvas sends the script interrupt once (`Interpreter::request_interrupt`), the button then reads "Stopping…" and the detail "Stopping: no file is written"; the result line "● Netlist ready (12 lines)" / "■ Netlist failed: …" | partial: the netlist run polls the interrupt in the CMD workstream's round-5 change; needs the CI capture |
+| Messages | the bottom panel (120 px, `surface0`): "MESSAGES · 2 errors · 1 warning", the newest diagnostics of every `schematic` command and of symbol resolution, each with its shape (■ ▲ ●), code and text; a click clears it | partial: missing from the board (DESIGN); needs the CI capture |
 
 ## Key bindings
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| xschem-style defaults: w wire, m move, c copy, R rotate, F flip, e descend, Ctrl+e ascend, q properties, k highlight, u undo, U redo, Insert place, n netlist | `schematic_default_bindings()` in the macro table `schematic`; Delete deletes the selection (Hefesto addition) | model: the schematic view does not take key focus yet |
+| xschem-style defaults: w wire, m move, c copy, R rotate, F flip, e descend, Ctrl+e ascend, q properties, k highlight, u undo, U redo, Insert place, n netlist | `schematic_default_bindings()` in the macro table `schematic`, run by `SchematicCanvasInput` once a click gave the canvas the key focus; Delete deletes the selection (Hefesto addition) | partial: F6 and the tab switch do not move the focus to the schematic canvas yet (main-window edit, open item) |
 | Rebinding through the key-binding sheet (M2-Key-Bindings) | the sheet's `macro schematic KEY "TEXT"` lines applied by `SchematicKeyMap::apply`; Reset table restores the defaults | model: the core `macro` command has no `schematic` client, so the lines are applied by the shell (open item for the core's ui clients) |
 | Optional tool palette (Q-SCHEM-24) | not built | todo (DESIGN board first) |
+
+## Packaging
+
+| Element | Implemented as | Status / gap |
+|---|---|---|
+| Asset folder of the desktop app | `load_assets` finds the fonts and icons with `desktop_asset_dir` from the folder the operating system reports for the executable (`platform_posix::executable_dir()`), never argv[0]; the `--asset-dir` override and the source-tree fallback stay | partial: regression test in `schematic_library_test.cpp`; the CI desktop captures load the bundled fonts through it |
+| Install tree | `src/shell/desktop/CMakeLists.txt` installs `hefesto` in `<prefix>/bin`, the fonts and icons in `<prefix>/share/hefesto/assets` and the schematic system library in `<prefix>/assets/schematic` (the install root of `<prefix>/bin`, M8-D10) | partial: the rules were checked with `cmake --install` of a stand-in executable locally (no Vulkan SDK on the round's Mac); a `cmake --install` step of the real desktop build in the CI desktop legs is an open item (ci.yml is shared) |

@@ -99,6 +99,45 @@ TEST_CASE("net highlighting commands and the highlighted set", "[cap:schematic-e
   CHECK(lit.nets().empty());
 }
 
+// Regression (round 5): `schematic hilight list` returns `{net <name>
+// <colour>}` and `{instance <name> <colour>}` triples; the panel took each
+// triple for one net name, so no wire was ever drawn highlighted.
+TEST_CASE("the highlighted set is read from hilight list's triples", "[cap:schematic-editing][req:Net highlighting]") {
+  NetHighlight lit;
+  lit.set_list("{net OUT 0} {net {data[3:0]} 2} {instance R1 1}");
+  CHECK(lit.nets() == std::set<std::string>{"OUT", "data[3:0]"});
+  CHECK(lit.instances() == std::set<std::string>{"R1"});
+  CHECK(lit.colour("OUT", false) == 0);
+  CHECK(lit.colour("data[3:0]", false) == 2);
+  CHECK(lit.colour("R1", true) == 1);
+  CHECK_FALSE(lit.colour("R1", false).has_value());
+  lit.set_list("{net}");  // not a triple: a net name
+  CHECK(lit.nets() == std::set<std::string>{"net"});
+  lit.set_list("{unbalanced");  // not a list
+  CHECK(lit.nets().empty());
+  CHECK(lit.instances().empty());
+}
+
+TEST_CASE("a command result becomes the panels' outcome", "[cap:schematic-command][req:Return values and errors in scripts]") {
+  hefesto::cmd::CommandResult failed;
+  failed.status = hefesto::cmd::Status::failed;
+  failed.diagnostics.push_back(hefesto::diag::Diagnostic{hefesto::diag::Severity::warning, "SCHEM-NET-002", "w", {}, {}});
+  failed.diagnostics.push_back(hefesto::diag::Diagnostic{hefesto::diag::Severity::error, "SCHEM-NET-004", "short", {}, {}});
+  failed.diagnostics.push_back(hefesto::diag::Diagnostic{hefesto::diag::Severity::debug, "X-Y-1", "d", {}, {}});
+  const CommandOutcome out = outcome_of(failed);
+  CHECK_FALSE(out.ok());
+  CHECK(out.message == "short");
+  CHECK(out.diagnostics == std::vector<std::string>{"warning: SCHEM-NET-002: w", "error: SCHEM-NET-004: short"});
+  MessagesPanel messages;
+  messages.add(out);
+  CHECK(messages.summary() == "1 error · 1 warning");
+
+  hefesto::cmd::CommandResult ok;
+  ok.value = hefesto::cmd::Value{"R1 a b 1k"};
+  CHECK(outcome_of(ok).ok());
+  CHECK(outcome_of(ok).output == "R1 a b 1k");
+}
+
 TEST_CASE("the messages panel keeps each command's diagnostics",
           "[cap:schematic-command][req:Return values and errors in scripts]") {
   const Message m = parse_message("error: SCHEM-NET-004: net OUT shorted to IN");
@@ -148,7 +187,9 @@ TEST_CASE("the netlist action: command, Interrupt card and result", "[cap:schema
   CHECK(card->title == "Netlisting inv.sch · 3 s");
   CHECK(card->detail == "schematic netlist inv.spice -hier");
   CHECK(card->action == "Interrupt");
-  action.request_cancel();
+  CHECK(action.request_cancel());        // the window issues the script interrupt
+  CHECK_FALSE(action.request_cancel());  // once: a second press sends nothing
+  CHECK(action.cancel_requested());
   CHECK(action.card(t0 + 4s)->detail == "Stopping: no file is written");
 
   CommandOutcome ok;

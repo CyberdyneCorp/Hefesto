@@ -100,12 +100,15 @@ target_sources(hefesto_shell_desktop PRIVATE
 # M8 (openspec/changes/m8-schematic tasks 13.1, 13.2, SHELL): the schematic
 # editor's view models (canvas, symbol library browser, properties,
 # hierarchy breadcrumb, net highlighting, netlist action, messages, the
-# xschem-style key bindings) and the desktop install root (M8-D10).
+# xschem-style key bindings, canvas input, symbol resolution off the UI
+# thread) and the desktop install root (M8-D10).
 target_sources(hefesto_shell_desktop PRIVATE
   src/schematic_bindings.cpp
   src/schematic_canvas.cpp
+  src/schematic_input.cpp
   src/schematic_library.cpp
   src/schematic_panels.cpp
+  src/schematic_symbols.cpp
   src/schematic_view.cpp)
 
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
@@ -162,3 +165,15 @@ add_custom_command(TARGET hefesto POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${PROJECT_SOURCE_DIR}/assets/schematic" "$<TARGET_FILE_DIR:hefesto>/assets/schematic"
   VERBATIM)
+
+# Install tree (M8 task 13.2; M8-D10): the desktop app next to hefesto-cli
+# in <prefix>/bin, the fonts and icons where load_assets finds them from the
+# executable's folder (<prefix>/share/hefesto/assets, assets.hpp), and the
+# schematic system library under <prefix>/assets/schematic, the install root
+# app::install_root_for_executable gives for <prefix>/bin (src/cli installs
+# the same folder for hefesto-cli; installing it twice is harmless).
+include(GNUInstallDirs)
+install(TARGETS hefesto RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/assets/fonts" "${PROJECT_SOURCE_DIR}/assets/icons"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/hefesto/assets)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/assets/schematic" DESTINATION assets)
