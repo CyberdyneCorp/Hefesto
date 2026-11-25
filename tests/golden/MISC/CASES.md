@@ -46,6 +46,9 @@ Cases to be captured by running Magic (fc5daa9e) headless. "minimal tech" means 
 | MISC-3D-14 | view-3d | split tiles: left half, right half only (left type space, J3), poly/ndiff in one tile, a triangle abutting a rectangle | reduced faces (gl_capture) | Rendered geometry |
 | MISC-3D-15 | view-3d | two abutting subcells (identity transforms) with metal1 and a contact in two display styles | reduced faces (gl_capture) | Rendered geometry |
 | MISC-3D-16 | view-3d | the flat cell of MISC-3D-13 under `cutbox 25 5 75 35` | reduced faces (gl_capture) | Rendered geometry |
+| MISC-3D-17 | view-3d | mask-layer mode with `render` statements (sky130A stand-in tech `m3r`): prisms, a split tile, a temporary layer and a grown layer clipped to the bounding box | reduced faces (gl_capture) | Rendered geometry |
+| MISC-3D-18 | view-3d | mask-layer mode without `render` statements (gf180mcuD stand-in tech `m3n`): every layer flat in the pale-highlight style | reduced faces (gl_capture) | Rendered geometry |
+| MISC-3D-19 | view-3d | mask-layer mode (`m3r`) under `cutbox 5 5 100 35`: the grown layer reaches into the box from metal outside it (halo) | reduced faces (gl_capture) | Rendered geometry |
 | MISC-PLOT-01 | plot-output | plot section `style postscript` with `m1 10 S`, colour `10 0 0 0 255`; one m1 box (0,0)-(10,10); `box 0 0 10 10; plot postscript a.ps m1` | full a.ps file | PostScript file layout; PostScript paint output |
 | MISC-PLOT-02 | plot-output | same tech; pattern style `poly 12 5`, X style for contacts; multi-tile L-shaped poly | full .ps file | PostScript style lines; PostScript paint output (merging) |
 | MISC-PLOT-03 | plot-output | layout with unexpanded subcell array and labels of all justifications, area not at origin | full .ps file | PostScript cell outlines; PostScript labels; PostScript label margins (Q-MISC-43) |
