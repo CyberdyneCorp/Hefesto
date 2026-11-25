@@ -170,3 +170,29 @@ Frame rate with the board look (M10 round 4, task 16.9 / 13.2 follow-up), measur
 | 1 with a ghosted full-region well | 26.2–27.2 ms | 31.7–33.4 ms | 36.8–38.2 | met |
 
 The ghosted well costs under 1 ms per frame, within the noise of the two runs: one large blended rectangle is cheap next to the 1M-rectangle opaque pass. The board lighting is cheaper per vertex than Magic's positional light. Against round 3 (Release, load about 6.5: level 1 at 46 fps), the difference comes from the Debug build, the machine load and the framed view, which shows the whole region larger than round 3's default view. A Release run on an idle machine is still to be recorded. Upload 0.77–1.25 s and upload plus first frame 0.83–1.30 s in this Debug build (mesh copy and upload are unoptimised code; round 3's Release numbers stand for D6's 200 ms). The `perf.yml` `view3d-bench` job (lavapipe, information only) also records `level0_ghost` and `level1_ghost` in its JSON artifact and lists them in its summary table next to levels 0 and 1. The M1 and reference-hardware runs remain open.
+
+Frame rate in a Release build (M10 round 5, task 13.2 follow-up), measured 2026-11-25 on the same Apple M3 Pro (12 cores) with MoltenVK, `hefesto-bench-view3d --workload synthetic --repeat 1 --frames 60` (macos-bench preset, Release, `HEFESTO_BUILD_VIEW3D_BENCH=ON`, `HEFESTO_BUILD_TESTS=OFF`; only the benchmark target was built, with the Vulkan renderer, not the desktop app). Idle-machine note: no compiler or build was running on the machine during the run (checked with `ps` before and after); other agents' sessions were open but idle, and the load average was 4.05 (1 min) / 5.09 (5 min) before and 3.59 / 4.93 after, from earlier builds of the parallel workflows decaying, so the machine was quiet but not fully idle. One run:
+
+| Level | Median frame | p95 frame | fps (median) | ≥ 30 fps gate (D19) |
+|---|---|---|---|---|
+| 0 | 10.56 ms | 10.81 ms | 94.7 | met |
+| 1 (MSAA 4x, the default) | 20.78 ms | 21.07 ms | 48.1 | met |
+| 0 with a ghosted full-region well | 10.55 ms | 10.85 ms | 94.8 | met |
+| 1 with a ghosted full-region well | 20.71 ms | 20.91 ms | 48.3 | met |
+
+Upload 0.057 s, upload plus the first frame 105 ms (D6 200 ms met); build 0.67 s; peak RSS 262 MB. With the board look and the framed view, the Release numbers match round 3's (level 1 about 46–48 fps), so round 4's lower numbers came from its Debug build and the load. The M1 and reference-hardware runs remain open.
+
+Mask-layer mode (task 13.3), new workload `mask` of `bench/view3d`: the synthetic region (the same 87 × 86 array, 1,004,944 layout rectangles) with an output style of `scalefactor 1` (mask units = internal units), one mask layer per type with sky130's `render` values (DIFF, POLY, MET1, MET2) and NWELL, ndiff grown by 6 through a temporary layer (no `render`: drawn flat), so the generation has a halo. The timed build is the whole mask-layer path: `mask::generate_flat` over the bounding box, then the mesh (`build_from_mask`). Same run conditions as above (`--rects 1000000 --repeat 3 --frames 60`, Release, M3 Pro):
+
+| Workload | Rectangles | Sides | Chunks | Median build (generation + mesh) | Model (CPU) | GPU estimate | Peak RSS |
+|---|---|---|---|---|---|---|---|
+| mask (6 mask layers) | 1,520,248 | 3,764,164 | 69 | 0.824 s (runs 0.823–0.838 s) | 118.4 B/rect | 69.5 B/rect | 649 MB |
+
+| Level | Median frame | p95 frame | fps (median) | ≥ 30 fps gate (D19) |
+|---|---|---|---|---|
+| 0 | 12.14 ms | 12.29 ms | 82.4 | met |
+| 1 (MSAA 4x, the default) | 23.63 ms | 23.99 ms | 42.3 | met |
+| 0 with a ghosted full-region well | 12.15 ms | 12.29 ms | 82.3 | met |
+| 1 with a ghosted full-region well | 23.57 ms | 24.05 ms | 42.4 | met |
+
+Upload 0.079 s, upload plus the first frame 142 ms. The mesh has 1.5 times the rectangles of the layout-layer one (the temporary layer and NWELL add flat faces over the diffusions), and the frame costs about 14 % more. The peak resident set is about 2.5 times the layout-layer build's: the generation's scratch cell and planes stay alive until the faces are emitted. The `perf.yml` `view3d-bench` job now runs the `mask` workload too (lavapipe frames recorded, not gated); its numbers and the gates set from them are below.
