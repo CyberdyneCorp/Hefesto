@@ -832,21 +832,6 @@ decisions = ["Q-MISC-73"]
 outputs = ["stdout.txt", "stderr.txt", "exit.txt"]
 reason = "with no output style the window opens in layout-layer mode, cif keeps it and render reports 'No CIF output style set!', where Magic dereferences the missing style when the window opens (Set3DDefaults) and crashes"
 
-[MISC-3D-17]
-deferred = "M10"
-outputs = ["gl-faces.txt"]
-reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli does not write the HEFESTO_GL_CAPTURE log yet: the deferral is dropped when it does (tasks 8.1-8.4, 12.4)"
-
-[MISC-3D-18]
-deferred = "M10"
-outputs = ["gl-faces.txt"]
-reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli does not write the HEFESTO_GL_CAPTURE log yet: the deferral is dropped when it does (tasks 8.1-8.4, 12.4)"
-
-[MISC-3D-19]
-deferred = "M10"
-outputs = ["gl-faces.txt"]
-reason = "captured in the magic-gl image with the polygon-recording shim (m10-3d-view design D13, task 12.4); hefesto-cli does not write the HEFESTO_GL_CAPTURE log yet: the deferral is dropped when it does (tasks 8.1-8.4, 12.4)"
-
 # --- END M10 deferrals ---
 
 # M7 capture smoke cases (tools/golden/authoring/m7_smoke_cases.py, m7-extraction task 2.3).

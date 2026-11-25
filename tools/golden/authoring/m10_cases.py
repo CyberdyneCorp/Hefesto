@@ -82,7 +82,8 @@ NO_STYLE_REASON = ("with no output style the window opens in layout-layer mode, 
 # deferral in the generated block.
 REPLAYED: set[str] = {"MISC-3D-01", "MISC-3D-02", "MISC-3D-03", "MISC-3D-04", "MISC-3D-05", "MISC-3D-06",
                       "MISC-3D-07", "MISC-3D-08", "MISC-3D-09", "MISC-3D-10", "MISC-3D-11", "MISC-3D-12",
-                      "MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16"}
+                      "MISC-3D-13", "MISC-3D-14", "MISC-3D-15", "MISC-3D-16", "MISC-3D-17", "MISC-3D-18",
+                      "MISC-3D-19"}
 
 # Captured cases that do not replay yet, with the reason (the deferral stays until the gap is closed).
 # MISC-3D-05 and 10 replay since N1 (Q-MISC-82): with magic-compat ON a script command goes to the 3D

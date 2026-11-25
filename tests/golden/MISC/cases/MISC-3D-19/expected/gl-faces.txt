@@ -1,0 +1,52 @@
+file gl.log
+gl-faces 1
+face metal1 -344 +z 100 300 50 50 100 100
+face metal1 -344 +z 300 350 200 200 350 350
+face metal1 -344 +z 300 350 50 50 100 100
+face metal1 -344 +z 350 500 200 200 350 200
+face metal1 -344 +z 350 500 50 50 100 100
+face metal1 -344 +z 50 100 50 50 350 350
+face metal1 -344 +z 500 600 50 50 100 100
+face metal1 -434 -z 100 300 50 50 100 100
+face metal1 -434 -z 300 350 200 200 350 350
+face metal1 -434 -z 300 350 50 50 100 100
+face metal1 -434 -z 350 500 200 200 350 200
+face metal1 -434 -z 350 500 50 50 100 100
+face metal1 -434 -z 50 100 50 50 350 350
+face metal1 -434 -z 500 600 50 50 100 100
+face metal2 -500 +z 200 500 50 50 150 150
+face metal2 -625 -z 200 500 50 50 150 150
+face pale_highlights 0 +z 120 280 50 50 120 120
+face pale_highlights 0 +z 280 390 180 180 350 350
+face pale_highlights 0 +z 280 390 50 50 120 120
+face pale_highlights 0 +z 390 520 180 180 350 220
+face pale_highlights 0 +z 390 520 50 50 120 120
+face pale_highlights 0 +z 50 120 50 50 350 350
+face pale_highlights 0 +z 520 620 50 50 120 120
+face pale_highlights 0 -z 120 280 50 50 120 120
+face pale_highlights 0 -z 280 390 180 180 350 350
+face pale_highlights 0 -z 280 390 50 50 120 120
+face pale_highlights 0 -z 390 520 180 180 350 220
+face pale_highlights 0 -z 390 520 50 50 120 120
+face pale_highlights 0 -z 50 120 50 50 350 350
+face pale_highlights 0 -z 520 620 50 50 120 120
+face polysilicon -125 +z 700 900 50 50 300 300
+face polysilicon -175 -z 700 900 50 50 300 300
+side metal1 -344 -434 100 100 100 350
+side metal1 -344 -434 100 350 50 350
+side metal1 -344 -434 300 200 500 200
+side metal1 -344 -434 300 350 300 200
+side metal1 -344 -434 350 350 300 350
+side metal1 -344 -434 50 350 50 50
+side metal1 -344 -434 50 50 600 50
+side metal1 -344 -434 500 200 350 350
+side metal1 -344 -434 600 100 100 100
+side metal1 -344 -434 600 50 600 100
+side metal2 -500 -625 200 150 200 50
+side metal2 -500 -625 200 50 500 50
+side metal2 -500 -625 500 150 200 150
+side metal2 -500 -625 500 50 500 150
+side polysilicon -125 -175 700 300 700 50
+side polysilicon -125 -175 700 50 900 50
+side polysilicon -125 -175 900 300 700 300
+side polysilicon -125 -175 900 50 900 300
