@@ -12,11 +12,6 @@
 
 namespace hefesto::extract {
 
-diag::Outcome<CellResult> extract_cell(ExtractContext& /*ctx*/, db::CellDef& /*cell*/, ExtWriter& /*writer*/,
-                                       bool /*is_top*/) {
-  return cmd::m7_not_implemented_diagnostic("extract cell pipeline");
-}
-
 diag::Outcome<InteractionAreas> interactions(const db::CellDef& /*cell*/, const ExtStyle& /*style*/,
                                              const Overrides& /*overrides*/) {
   return cmd::m7_not_implemented_diagnostic("extract interactions");

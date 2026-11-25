@@ -7,3 +7,4 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/hier_stubs.cpp)
+target_sources(hefesto_core PRIVATE ${CMAKE_CURRENT_LIST_DIR}/extract_cell.cpp)
