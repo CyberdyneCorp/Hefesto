@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <utility>
 
@@ -18,6 +19,9 @@
 #include "hefesto/view3d/client/commands.hpp"
 #include "hefesto/view3d/client/scene.hpp"
 #include "hefesto/view3d/stack/ghost.hpp"
+#if __has_include("hefesto/view3d/stack/substrate.hpp")
+#include "hefesto/view3d/stack/substrate.hpp"
+#endif
 #include "screen_paint.hpp"
 #include "side_panels.hpp"
 
@@ -25,11 +29,10 @@ namespace hefesto::shell {
 
 namespace {
 
-constexpr float kSideWidth = 272.0F;
 constexpr float kRowHeight = 36.0F;
+constexpr float kScrollBarRoom = 8.0F;
 constexpr float kRowButtonWidth = 44.0F;
 constexpr float kControlHeight = 28.0F;
-constexpr float kPad = 12.0F;
 
 Rgba rgb_of(const std::array<float, 3>& c) {
   return Rgba{c[0], c[1], c[2], 1.0F};
@@ -40,8 +43,35 @@ Rgba alpha_of(Rgba c, float a) {
   return c;
 }
 
-std::string toggle_name(const std::string& label, bool on) {
-  return label + (on ? ", on" : ", off");
+// SECTION's round-5 interfaces (substrate slab, ground point), used when
+// they are present: the guards are templates, so a missing function or
+// field only turns the feature off (listed for integration).
+template <class Params, class Mesh, class Stack>
+constexpr bool kHaveSubstrate = requires(Params& p, const Mesh& m, const Stack& s) {
+  p.substrate = substrate_slab(m, s);  // view3d::substrate_slab, found through Mesh's namespace
+};
+
+template <class Params, class Mesh, class Stack>
+void set_substrate(Params& params, const Mesh& mesh, const Stack& stack, bool on) {
+  if constexpr (kHaveSubstrate<Params, Mesh, Stack>) {
+    if (on) params.substrate = substrate_slab(mesh, stack);
+  }
+}
+
+template <class View>
+constexpr bool kHaveGroundPoint = requires(const View& v) {
+  { ground_point(v, 0.0F, 0.0F, 1, 1) };  // view3d::ground_point(view, x, y, width, height)
+};
+
+template <class View>
+std::optional<db::Point> ground_at(const View& view, float x, float y, int width, int height) {
+  if constexpr (kHaveGroundPoint<View>) {
+    const auto p = ground_point(view, x, y, width, height);
+    if (!p) return std::nullopt;
+    return db::Point{static_cast<db::Coord>(std::lround(p->x)), static_cast<db::Coord>(std::lround(p->y))};
+  } else {
+    return std::nullopt;
+  }
 }
 
 }  // namespace
@@ -116,6 +146,7 @@ View3dView::~View3dView() {
 void View3dView::build_stage() {
   stage_paint_ = ui::Painted::create(ctx_.runtime, [this](ui::Painter& p, float w, float h) { paint_stage(p, w, h); });
   stage_paint_->set_hit_testable(false);
+  stage_paint_->set_role(ui::Role::text);  // the header chip; the gizmo is decoration
   viewport_->set_accessible_name("3D view");
   viewport_->set_tooltip(
       "3D view: drag orbits; Option-drag, right-drag or two-finger scroll pans; wheel or pinch zooms; click picks; "
@@ -129,26 +160,37 @@ void View3dView::build_stage() {
     dirty_ = true;
   });
   viewport_->on_input([this](const CanvasInput& input) { return handle_input(input); });
-  stage_column_.add(stage_, 1.0F);
   build_toolbar();
-  stage_column_.add(toolbar_panel_);
-  root_.add(stage_column_, 1.0F);
+  stage_.add(toolbar_);
+  toolbar_.place_bottom_left(kView3dToolbarMargin, kView3dToolbarMargin);  // floats over the view, as the board
+  root_.add(stage_, 1.0F);
 }
 
 void View3dView::build_side() {
   auto edge = make_separator(ctx_, true);
+  edge->set_accessible_hidden(true);
   root_.add(*edge);
   painted_.push_back(std::move(edge));
   side_panel_.set_fill(ctx_.tokens().surface1);
-  side_panel_.set_size(kSideWidth, -1.0F);
+  side_panel_.set_size(kView3dSideWidth, -1.0F);
   side_panel_.set_accessible_name("3D view controls");
-  side_.set_padding(kPad, kPad, kPad, kPad);
+  ui::set_container_role(side_panel_, ui::Role::pane);
+  side_column_.set_padding(kView3dSidePad, kView3dSidePad, kView3dSidePad, kView3dSidePad);
+  side_column_.set_spacing(6.0F);
+  build_actions(side_column_);
+  // The layer stack scrolls (sky130A has 349 rows); View and Inspect stay
+  // shown below it, as the board pins projection and presets to the bottom.
   side_.set_spacing(6.0F);
+  side_.set_padding(0.0F, 0.0F, kScrollBarRoom, 0.0F);  // the rows end before the scroll bar
   build_layer_section(side_);
-  build_view_section(side_);
-  build_inspect_section(side_);
   side_scroll_.add(side_);
-  side_panel_.set_child(side_scroll_);
+  side_column_.add(side_scroll_, 1.0F);
+  side_bottom_.set_spacing(6.0F);
+  build_view_section(side_bottom_);
+  build_inspect_section(side_bottom_);
+  build_section_panel(side_bottom_);
+  side_column_.add(side_bottom_);
+  side_panel_.set_child(side_column_);
   root_.add(side_panel_);
 }
 
@@ -163,35 +205,75 @@ void View3dView::add_section(ui::Box& box, std::string_view title) {
   painted_.push_back(std::move(label));
 }
 
-ui::Painted& View3dView::add_button(ui::Box& box, Control control, std::function<void()> click,
-                                    std::string_view tooltip, float width) {
-  const std::function<std::string()> label = control.label;
-  const std::function<bool()> on = control.on;
-  const std::function<bool()> enabled = control.enabled;
-  control.widget = make_interactive(
-      ctx_, [label, on, enabled](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hovered, bool focused) {
-        const bool active = on && on();
-        const bool usable = !enabled || enabled();
-        paint::button(p, w, h, label(), "", active ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary,
-                      paint::WidgetState{hovered, focused, usable, active}, t);
-      });
+View3dControlState View3dView::control_state() const {
+  const view3d::WindowState* w = window();
+  View3dControlState s;
+  s.window_open = w != nullptr;
+  s.mask_mode = w != nullptr && w->mode == view3d::Mode::mask_layer;
+  s.cut_box = w != nullptr && w->cut_box.has_value();
+  s.perspective = options_.perspective;
+  s.span_connected_layers = options_.span_connected_layers;
+  s.frame_time = options_.show_frame_time;
+  s.picked = picking_.picked().has_value();
+  s.net_isolated = picking_.net_isolated();
+  s.section_on = section_line_.has_value();
+  s.substrate_on = substrate_on_;
+  s.substrate_available = kHaveSubstrate<render::DrawParams, view3d::MeshModel, view3d::LayerStack>;
+  s.export_available = export_registered() && ctx_.editor().file_picker != nullptr;
+  s.visibility_editable = w != nullptr && visibility_editable(*w);
+  return s;
+}
+
+ui::Painted& View3dView::add_button(ui::Box& box, View3dControl id, std::function<void()> click, float width) {
+  Control control{make_interactive(ctx_,
+                                   [this, id](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hovered,
+                                              bool focused) {
+                                     const View3dControlView v = control_view(id, control_state());
+                                     const bool active = v.on.value_or(false);
+                                     paint::button(p, w, h, v.label, "",
+                                                   active ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary,
+                                                   paint::WidgetState{hovered, focused, v.enabled, active}, t);
+                                   }),
+                  id};
+  const View3dControlView v = control_view(id, control_state());
   ui::Painted& widget = *control.widget;
-  widget.set_size(width > 0.0F ? width : paint::button_width(ctx_.runtime, label(), false), kControlHeight);
-  widget.set_role(on ? ui::Role::toggle_button : ui::Role::button);
-  widget.set_accessible_name(on ? toggle_name(label(), on()) : label());
-  widget.set_tooltip(tooltip);
-  widget.on_click([click, enabled](float, float) {
-    if (!enabled || enabled()) click();
+  widget.set_size(width > 0.0F ? width : paint::button_width(ctx_.runtime, v.label, false), kControlHeight);
+  widget.set_role(v.on ? ui::Role::toggle_button : ui::Role::button);
+  widget.set_accessible_name(v.accessible_name);
+  widget.set_tooltip(v.tooltip);
+  widget.on_click([this, id, click = std::move(click)](float, float) {
+    if (control_view(id, control_state()).enabled) click();
   });
   box.add(widget);
   controls_.push_back(std::move(control));
   return widget;
 }
 
+void View3dView::add_pair(ui::Box& box, std::string_view group_name,
+                          std::pair<View3dControl, std::function<void()>> left,
+                          std::pair<View3dControl, std::function<void()>> right) {
+  constexpr float kGap = 6.0F;
+  const float cell = grid_cell_width(side_content_width(), 2, kGap);
+  ui::Box& line = boxes_.emplace_back(ui::Box::horizontal());
+  line.set_spacing(kGap);
+  line.set_accessible_name(group_name);
+  ui::set_container_role(line, ui::Role::group);
+  add_button(line, left.first, std::move(left.second), cell);
+  add_button(line, right.first, std::move(right.second), cell);
+  box.add(line);
+}
+
+void View3dView::build_actions(ui::Box& box) {
+  // The board's header actions (Cross-section, Export glTF…), P2.
+  add_pair(box, "3D actions", {View3dControl::cross_section, [this] { toggle_section(); }},
+           {View3dControl::export_model, [this] { export_model(); }});
+}
+
 void View3dView::build_layer_section(ui::Box& box) {
   add_section(box, "Layer stack");
   rows_box_.set_spacing(2.0F);
   rows_box_.set_accessible_name("Layer stack, top layer first");
+  ui::set_container_role(rows_box_, ui::Role::list);
   box.add(rows_box_);
   auto note = make_painted(ctx_, [](ui::Painter& p, float, float h, const ThemeTokens& t) {
     p.text_centered_y(TextRole::meta, 0.0F, h / 2.0F, "Heights from the tech file, in microns.", t.text_secondary);
@@ -202,136 +284,163 @@ void View3dView::build_layer_section(ui::Box& box) {
   box.add(*note);
   painted_.push_back(std::move(note));
   ui::Box& line = boxes_.emplace_back(ui::Box::horizontal());
-  add_button(line, {nullptr, [] { return std::string{"Show all layers"}; }, nullptr,
-                    [this] { return window() != nullptr && visibility_editable(*window()); }},
-             [this] { run(show_all_command(path())); }, "Show every layer: see *");
+  add_button(line, View3dControl::show_all_layers, [this] { run(show_all_command(path())); });
   box.add(line);
 }
 
 void View3dView::build_view_section(ui::Box& box) {
   add_section(box, "View");
-  ui::Box& projection = boxes_.emplace_back(ui::Box::horizontal());
-  projection.set_spacing(4.0F);
-  add_button(projection, {nullptr, [] { return std::string{"Orthographic"}; }, [this] { return !options_.perspective; }, {}},
-             [this] {
-               options_.perspective = false;
-               dirty_ = true;
-               repaint();
-             },
-             "Orthographic projection (Magic's)");
-  add_button(projection, {nullptr, [] { return std::string{"Perspective"}; }, [this] { return options_.perspective; }, {}},
-             [this] {
-               options_.perspective = true;
-               dirty_ = true;
-               repaint();
-             },
-             "Perspective projection (a Hefesto view option)");
-  box.add(projection);
-  ui::Box& presets = boxes_.emplace_back(ui::Box::horizontal());
-  presets.set_spacing(4.0F);
-  const std::pair<const char*, view3d::Preset> kPresets[] = {{"Isometric", view3d::Preset::isometric},
-                                                             {"Top", view3d::Preset::top},
-                                                             {"Front", view3d::Preset::front},
-                                                             {"Side", view3d::Preset::side}};
-  for (const auto& entry : kPresets) {
-    const std::string label = entry.first;
-    const view3d::Preset which = entry.second;
-    add_button(presets, {nullptr, [label] { return label; }, nullptr, [this] { return window() != nullptr; }},
-               [this, which] { apply_camera(which); },
-               "Camera preset " + label + ": view with the preset's angles, then scroll and zoom to frame the cell");
-  }
-  box.add(presets);
-}
-
-void View3dView::build_toolbar() {
-  toolbar_panel_.set_fill(ctx_.tokens().bar);
-  toolbar_panel_.set_accessible_name("3D view toolbar");
-  toolbar_.set_padding(kPad, 6.0F, kPad, 6.0F);
-  toolbar_.set_spacing(10.0F);
-  ui::Box& box = toolbar_;
-  ui::Box& mode = boxes_.emplace_back(ui::Box::horizontal());
-  mode.set_spacing(4.0F);
-  const auto is_mask = [this] { return window() != nullptr && window()->mode == view3d::Mode::mask_layer; };
-  add_button(mode, {nullptr, [] { return std::string{"Mask layers"}; }, is_mask, {}},
-             [this, is_mask] {
-               if (!is_mask()) run(mode_command(path()));
-             },
-             "Mask-layer mode (cif); mask layers arrive in phase 2");
-  add_button(mode, {nullptr, [] { return std::string{"Layout layers"}; }, [is_mask] { return !is_mask(); }, {}},
-             [this, is_mask] {
-               if (is_mask()) run(mode_command(path()));
-             },
-             "Layout-layer mode (cif)");
-  box.add(mode);
-  ui::Box& level = boxes_.emplace_back(ui::Box::horizontal());
-  level.set_spacing(4.0F);
-  add_button(level, {nullptr, [] { return std::string{"−"}; }, nullptr, {}}, [this] { run(level_command(path(), -1)); },
-             "Level down (level down)", 32.0F)
-      .set_accessible_name("Level down");
-  add_button(level,
-             {nullptr, [this] { return "Level " + std::to_string(window() != nullptr ? window()->level : 1); }, nullptr,
-              {}},
-             [] {}, "Rendering level (level): MSAA at level 1 and above", 88.0F);
-  add_button(level, {nullptr, [] { return std::string{"+"}; }, nullptr, {}}, [this] { run(level_command(path(), 1)); },
-             "Level up (level up)", 32.0F)
-      .set_accessible_name("Level up");
-  box.add(level);
-  ui::Box& cut = boxes_.emplace_back(ui::Box::horizontal());
-  add_button(cut,
-             {nullptr, [] { return std::string{"Cut box"}; },
-              [this] { return window() != nullptr && window()->cut_box.has_value(); }, {}},
-             [this] { run(cutbox_command(path(), !(window() != nullptr && window()->cut_box.has_value()))); },
-             "Clip to the layout box: cutbox box / cutbox none");
-  box.add(cut);
-  status_paint_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
-    paint_status(p, w, h);
-  });
-  status_paint_->set_size(-1.0F, kControlHeight);
-  status_paint_->set_role(ui::Role::text);
-  status_paint_->set_accessible_name("Mesh status");
-  box.add(*status_paint_, 1.0F);
-  toolbar_panel_.set_child(toolbar_);
+  const auto projection = [this](bool perspective) {
+    return [this, perspective] {
+      options_.perspective = perspective;
+      dirty_ = true;
+      repaint();
+    };
+  };
+  add_pair(box, "Projection", {View3dControl::orthographic, projection(false)},
+           {View3dControl::perspective, projection(true)});
+  // The board's two-column camera grid: fits the panel at any window width
+  // (in one row, "Side" ran past the panel at 1280 x 800).
+  const auto preset = [this](view3d::Preset which) { return [this, which] { apply_camera(which); }; };
+  add_pair(box, "Camera", {View3dControl::isometric, preset(view3d::Preset::isometric)},
+           {View3dControl::top, preset(view3d::Preset::top)});
+  add_pair(box, "Camera", {View3dControl::front, preset(view3d::Preset::front)},
+           {View3dControl::side, preset(view3d::Preset::side)});
 }
 
 void View3dView::build_inspect_section(ui::Box& box) {
   add_section(box, "Inspect");
   ui::Box& net = boxes_.emplace_back(ui::Box::horizontal());
-  add_button(net,
-             {nullptr, [] { return std::string{"Isolate selected net"}; }, [this] { return picking_.net_isolated(); },
-              [this] { return picking_.picked().has_value() || picking_.net_isolated(); }},
-             [this] {
-               if (picking_.toggle_isolate_net(uploaded_.get(), ctx_.editor())) {
-                 highlight_dirty_ = true;
-                 dirty_ = true;
-                 repaint();
-               }
-             },
-             "Highlight the picked target's net and dim the rest");
+  add_button(net, View3dControl::isolate_net, [this] {
+    if (picking_.toggle_isolate_net(uploaded_.get(), ctx_.editor())) {
+      highlight_dirty_ = true;
+      dirty_ = true;
+      repaint();
+    }
+  });
   box.add(net);
   ui::Box& span = boxes_.emplace_back(ui::Box::horizontal());
-  add_button(span,
-             {nullptr, [] { return std::string{"Span connected layers"}; },
-              [this] { return options_.span_connected_layers; }, {}},
-             [this] {
-               options_.span_connected_layers = !options_.span_connected_layers;
-               sync_pending_ = true;  // a full build with the J1 option
-               repaint();
-             },
-             "Off: contacts and vias use their tech height and thickness, as Magic. On: each spans from the lower "
-             "layer's top to the upper layer's bottom.");
+  add_button(span, View3dControl::span_connected_layers, [this] {
+    options_.span_connected_layers = !options_.span_connected_layers;
+    sync_pending_ = true;  // a full build with the J1 option
+    repaint();
+  });
   box.add(span);
+  add_pair(box, "View options",
+           {View3dControl::substrate,
+            [this] {
+              substrate_on_ = !substrate_on_;
+              dirty_ = true;
+              repaint();
+            }},
+           {View3dControl::frame_time, [this] {
+              options_.show_frame_time = !options_.show_frame_time;
+              dirty_ = true;
+              repaint();
+            }});
   ui::Box& tools = boxes_.emplace_back(ui::Box::horizontal());
-  tools.set_spacing(4.0F);
-  add_button(tools, {nullptr, [] { return std::string{"Frame time"}; }, [this] { return options_.show_frame_time; }, {}},
-             [this] {
-               options_.show_frame_time = !options_.show_frame_time;
-               dirty_ = true;
-               repaint();
-             },
-             "Show the 3D frame's draw time and frame rate");
-  add_button(tools, {nullptr, [] { return std::string{"Close 3D view"}; }, nullptr, [this] { return window() != nullptr; }},
-             [this] { run(close_command(path())); }, "Close the 3D window: closewindow");
+  add_button(tools, View3dControl::close_view, [this] { run(close_command(path())); });
   box.add(tools);
+}
+
+void View3dView::build_section_panel(ui::Box& box) {
+  section_paint_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
+    paint_section(p, w, h);
+  });
+  section_paint_->set_size(-1.0F, 132.0F);
+  section_paint_->set_role(ui::Role::image);
+  section_paint_->set_accessible_name("Cross-section A–A′");
+  section_paint_->set_visible(false);
+  box.add(*section_paint_);
+}
+
+void View3dView::build_toolbar() {
+  toolbar_.set_spacing(kView3dToolbarSpacing);
+  toolbar_.set_accessible_name("3D view toolbar");
+  ui::set_container_role(toolbar_, ui::Role::toolbar);
+  for (int i = 0; i < 4; ++i) {
+    ui::Box& row = toolbar_rows_.emplace_back(ui::Box::horizontal());
+    row.set_spacing(kView3dToolbarSpacing);
+    toolbar_.add(row);
+  }
+  ui::Box& mode = boxes_.emplace_back(ui::Box::horizontal());
+  mode.set_spacing(4.0F);
+  mode.set_accessible_name("Layer source (cif)");
+  ui::set_container_role(mode, ui::Role::group);
+  const auto is_mask = [this] { return window() != nullptr && window()->mode == view3d::Mode::mask_layer; };
+  add_button(mode, View3dControl::mask_layers, [this, is_mask] {
+    if (!is_mask()) run(mode_command(path()));
+  });
+  add_button(mode, View3dControl::layout_layers, [this, is_mask] {
+    if (is_mask()) run(mode_command(path()));
+  });
+  toolbar_groups_.push_back({&mode, paint::button_width(ctx_.runtime, "Mask layers", false) +
+                                        paint::button_width(ctx_.runtime, "Layout layers", false) + 4.0F});
+  ui::Box& level = boxes_.emplace_back(ui::Box::horizontal());
+  level.set_spacing(4.0F);
+  level.set_accessible_name("Rendering level");
+  ui::set_container_role(level, ui::Role::group);
+  constexpr float kStep = 30.0F;
+  add_button(level, View3dControl::level_down, [this] { run(level_command(path(), -1)); }, kStep);
+  level_paint_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
+    paint_level(p, w, h);
+  });
+  const float level_width = std::ceil(ctx_.runtime.text_width(TextRole::body, level_text(8)) + 20.0F);
+  level_paint_->set_size(level_width, kControlHeight);
+  level_paint_->set_role(ui::Role::text);
+  level_paint_->set_accessible_name(level_text(1));
+  level_paint_->set_tooltip("Rendering level (level): MSAA at level 1 and above");
+  level.add(*level_paint_);
+  add_button(level, View3dControl::level_up, [this] { run(level_command(path(), 1)); }, kStep);
+  toolbar_groups_.push_back({&level, 2.0F * kStep + level_width + 8.0F});
+  ui::Box& cut = boxes_.emplace_back(ui::Box::horizontal());
+  add_button(cut, View3dControl::cut_box,
+             [this] { run(cutbox_command(path(), !(window() != nullptr && window()->cut_box.has_value()))); });
+  toolbar_groups_.push_back({&cut, paint::button_width(ctx_.runtime, "Cut box", false)});
+  status_paint_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
+    paint_status(p, w, h);
+  });
+  status_paint_->set_size(160.0F, kControlHeight);
+  status_paint_->set_role(ui::Role::status_bar);
+  status_paint_->set_accessible_name("Mesh status");
+  toolbar_groups_.push_back({status_paint_.get(), 160.0F});
+  layout_toolbar(0.0F);
+}
+
+void View3dView::layout_toolbar(float width) {
+  toolbar_width_ = width;
+  std::vector<float> widths;
+  widths.reserve(toolbar_groups_.size());
+  for (const ToolbarGroup& g : toolbar_groups_) widths.push_back(g.width);
+  // Before the first layout (width 0) every group goes on one row.
+  const float available = width > 0.0F ? width - 2.0F * kView3dToolbarMargin : 1.0e9F;
+  const std::vector<std::size_t> rows = flow_rows(widths, available, kView3dToolbarSpacing);
+  std::vector<bool> used(toolbar_rows_.size(), false);
+  for (std::size_t i = 0; i < toolbar_groups_.size(); ++i) {
+    const std::size_t row = std::min(rows[i], toolbar_rows_.size() - 1);
+    toolbar_rows_[row].add(*toolbar_groups_[i].widget);  // moves it from its previous row
+    used[row] = true;
+  }
+  for (std::size_t r = 0; r < toolbar_rows_.size(); ++r) toolbar_rows_[r].set_visible(used[r]);
+}
+
+void View3dView::fit_toolbar() {
+  ToolbarGroup& status = toolbar_groups_.back();
+  const float needed = std::ceil(ctx_.runtime.text_width(TextRole::mono_small, status_line()) + 34.0F);
+  bool relayout = false;
+  if (std::abs(needed - status.width) > 0.5F) {
+    status.width = needed;
+    status_paint_->set_size(needed, kControlHeight);
+    relayout = true;
+  }
+  const float width = stage_.rect().width;
+  if (width > 0.0F && std::abs(width - toolbar_width_) > 0.5F) relayout = true;
+  if (relayout) layout_toolbar(width);
+}
+
+float View3dView::toolbar_cover() const {
+  const ui::Rect r = toolbar_.rect();
+  return r.height > 0.0F ? r.height + kView3dToolbarMargin : 0.0F;
 }
 
 View3dView::Row& View3dView::row_widgets(std::size_t index) {
@@ -469,6 +578,7 @@ void View3dView::on_frame() {
     sync_pending_ = open;
     if (open_changed_) open_changed_(open);
   }
+  fit_toolbar();
   if (!open) return;
   if (sync_pending_) sync();
   apply_default_camera();
@@ -490,6 +600,10 @@ void View3dView::reset_window_state() {
   pending_drawable_.clear();
   options_.alpha.clear();
   options_.alpha_override.clear();  // a new window starts from the ghosted defaults
+  section_line_.reset();
+  section_first_.reset();
+  section_ = {};
+  section_paint_->set_visible(false);
   (void)camera_latch_.take(false);  // and from the default camera
   refresh_rows();
   stage_paint_->invalidate();
@@ -547,6 +661,7 @@ void View3dView::take_model(const view3d::MeshHandle& model) {
   drawable_ = pending_drawable_;
   ghost_.drawn(*drawn_stack_, options_);
   picking_.model_changed();  // the isolated net follows the new ordinals
+  update_section();
   highlight_dirty_ = true;
   dirty_ = true;
   refresh_rows();
@@ -593,12 +708,19 @@ void View3dView::update_row(Row& row, const View3dLayerRow& r, bool editable) {
 }
 
 void View3dView::repaint() {
+  const View3dControlState state = control_state();
   for (Control& c : controls_) {
-    if (c.on) c.widget->set_accessible_name(toggle_name(c.label(), c.on()));
+    const View3dControlView v = control_view(c.id, state);
+    c.widget->set_accessible_name(v.accessible_name);
+    c.widget->set_enabled(v.enabled);
     c.widget->invalidate();
   }
+  const view3d::WindowState* w = window();
+  level_paint_->set_accessible_name(level_text(w != nullptr ? w->level : 1));
+  level_paint_->invalidate();
   stage_paint_->invalidate();
   if (status_paint_) status_paint_->invalidate();
+  section_paint_->invalidate();
 }
 
 // --- rows ----------------------------------------------------------------------------
@@ -657,8 +779,9 @@ void View3dView::draw_frame() {
     highlight_dirty_ = false;
   }
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
-  const render::DrawParams params =
+  render::DrawParams params =
       draw_params(FrameInputs{w, stack, styles, highlight_, &options_, view3d_background(ctx_.mode)});
+  if (uploaded_ && uploaded_stack_) set_substrate(params, *uploaded_, *uploaded_stack_, substrate_on_);
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -718,7 +841,9 @@ bool View3dView::handle_pointer(const CanvasInput& input) {
     if (auto g = pointer_.move(x, y, static_cast<int>(r.width), static_cast<int>(r.height))) apply_gesture(*g);
     return pointer_.pressed();
   }
-  if (auto click = pointer_.release(x, y)) pick_at(click->first, click->second);
+  if (auto click = pointer_.release(x, y)) {
+    if (!section_click(click->first, click->second)) pick_at(click->first, click->second);
+  }
   return true;
 }
 
@@ -782,6 +907,7 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
     return;
   }
   const View3dHeader header = view3d_header(*win);
+  stage_paint_->set_accessible_name(header.title + ", " + header.subtitle);
   p.fill(8.0F, 8.0F, std::max(p.text_width(TextRole::cell_subtitle, header.subtitle),
                               p.text_width(TextRole::cell_title, header.title)) + 20.0F,
          42.0F, 6.0F, alpha_of(t.surface0, 0.85F));
@@ -793,16 +919,20 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
     p.fill((w - nw) / 2.0F, 12.0F, nw, 30.0F, 6.0F, alpha_of(t.warning, 0.2F));
     p.text_centered_y(TextRole::body_strong, (w - nw) / 2.0F + 12.0F, 27.0F, *notice, t.warning_text);
   }
-  paint_gizmo(p, h);
-  if (!pick_caption_.empty()) {
-    const float cw = p.text_width(TextRole::body, pick_caption_) + 20.0F;
-    p.fill(w - cw - 8.0F, h - 34.0F, cw, 26.0F, 6.0F, alpha_of(t.surface0, 0.85F));
-    p.text_centered_y(TextRole::body, w - cw + 2.0F, h - 21.0F, pick_caption_, t.text_primary);
+  // The gizmo and the pick caption sit above the floating toolbar.
+  const float bottom = h - toolbar_cover();
+  paint_gizmo(p, bottom);
+  std::string caption = pick_caption_;
+  if (caption.empty() && section_line_ && section_first_) caption = "A placed · click A′";
+  if (!caption.empty()) {
+    const float cw = p.text_width(TextRole::body, caption) + 20.0F;
+    p.fill(w - cw - 8.0F, bottom - 34.0F, cw, 26.0F, 6.0F, alpha_of(t.surface0, 0.85F));
+    p.text_centered_y(TextRole::body, w - cw + 2.0F, bottom - 21.0F, caption, t.text_primary);
   }
 }
 
-void View3dView::paint_status(ui::Painter& p, float w, float h) {
-  const ThemeTokens& t = ctx_.tokens();
+std::string View3dView::status_line() const {
+  if (!renderer_error_.empty()) return renderer_error_;
   MeshStatus status;
   {
     const std::lock_guard lock(shared_->mutex);
@@ -812,13 +942,19 @@ void View3dView::paint_status(ui::Painter& p, float w, float h) {
   status.have_model = model_ != nullptr;
   status.rectangles = model_ ? rectangle_count(*model_) : 0;
   std::string line = mesh_status_text(status);
-  if (options_.show_frame_time) line += "   ·   frame " + timer_.text();
-  if (!renderer_error_.empty()) line = renderer_error_;
+  if (options_.show_frame_time) line += " · frame " + timer_.text();
+  return line;
+}
+
+void View3dView::paint_status(ui::Painter& p, float w, float h) {
+  const ThemeTokens& t = ctx_.tokens();
+  const std::string line = status_line();
+  const bool building = !worker_->idle();
   status_paint_->set_accessible_name(line);
   const float tw = p.text_width(TextRole::mono_small, line);
   const float x = std::max(0.0F, w - tw - 30.0F);
   p.fill(x, 0.0F, tw + 30.0F, h, 8.0F, t.surface1);
-  const Rgba dot = !renderer_error_.empty() ? t.danger : (status.building ? t.warning : t.success);
+  const Rgba dot = !renderer_error_.empty() ? t.danger : (building ? t.warning : t.success);
   p.fill(x + 10.0F, h / 2.0F - 4.0F, 8.0F, 8.0F, 4.0F, dot);
   p.text_centered_y(TextRole::mono_small, x + 24.0F, h / 2.0F, line, t.text_secondary);
 }
@@ -855,6 +991,95 @@ void View3dView::paint_row(ui::Painter& p, float w, float h, std::size_t index, 
     p.text_centered_y(TextRole::mono_small, 22.0F, h * 0.74F, row.range_um + " \u00b5m", t.text_secondary);
   }
   p.pop_clip();
+}
+
+void View3dView::paint_level(ui::Painter& p, float w, float h) {
+  const ThemeTokens& t = ctx_.tokens();
+  const view3d::WindowState* win = window();
+  p.fill(0.0F, 0.0F, w, h, 6.0F, t.surface1);
+  const std::string text = level_text(win != nullptr ? win->level : 1);
+  p.text_centered_y(TextRole::body, (w - p.text_width(TextRole::body, text)) / 2.0F, h / 2.0F, text, t.text_primary);
+}
+
+// The board's "Cross-section A–A′" panel: each layer's intervals from h to
+// h + t in µm along the line, in the display style's colour.
+void View3dView::paint_section(ui::Painter& p, float w, float h) {
+  const ThemeTokens& t = ctx_.tokens();
+  const view3d::LayerStack* stack = drawn_stack_.get();
+  const view3d::WindowState* win = window();
+  if (!section_line_ || stack == nullptr || win == nullptr) return;
+  constexpr float kTop = 40.0F;
+  constexpr float kStrip = 64.0F;
+  p.fill(0.0F, 0.0F, w, h, 8.0F, t.surface2);
+  p.text(TextRole::body_strong, 12.0F, 8.0F, "Cross-section A–A′", t.text_primary);
+  const double length = segment_length_um(*section_line_, stack->microns_per_unit());
+  const SectionPanel panel =
+      section_panel(section_, *stack, length, w - 24.0F, kStrip, hidden_flags(*stack, *win));
+  section_paint_->set_accessible_name(panel.accessible_name);
+  p.text(TextRole::meta, 12.0F, 24.0F, panel.summary, t.text_secondary);
+  p.fill(12.0F, kTop, w - 24.0F, kStrip, 2.0F, t.surface0);
+  const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
+  const std::vector<render::LayerPaint> paints = render::layer_paints(*stack, styles);
+  for (const SectionBar& bar : panel.bars) {
+    const Rgba color = bar.layer < paints.size() ? rgb_of(paints[bar.layer].rgb) : t.text_secondary;
+    p.fill(12.0F + bar.x, kTop + bar.y, std::max(1.0F, bar.w), std::max(1.0F, bar.h), 0.0F, color);
+  }
+  std::string foot = panel.bars.empty() ? "No layer crosses the line" : "A at left, A′ at right; height in µm";
+  if (!panel.no_height.empty()) foot = "No height: " + panel.no_height.front() + (panel.no_height.size() > 1 ? " …" : "");
+  p.text_centered_y(TextRole::meta, 12.0F, kTop + kStrip + 14.0F, foot, t.text_secondary);
+}
+
+// --- P2 actions (task 11.5) ----------------------------------------------------------
+
+void View3dView::toggle_section() {
+  section_first_.reset();
+  if (section_line_) {
+    section_line_.reset();
+  } else if (const view3d::WindowState* w = window()) {
+    if (const std::optional<db::Rect> area = section_area(ctx_.editor(), *w)) section_line_ = box_cut_line(*area);
+  }
+  section_paint_->set_visible(section_line_.has_value());
+  update_section();
+  repaint();
+}
+
+void View3dView::update_section() {
+  section_ = {};
+  if (section_line_ && model_ && drawn_stack_) section_ = view3d::section(*model_, *drawn_stack_, *section_line_);
+  section_paint_->invalidate();
+}
+
+bool View3dView::section_click(float x, float y) {
+  const view3d::WindowState* w = window();
+  if (!section_line_ || w == nullptr) return false;
+  const ui::Rect r = viewport_->rect();
+  const std::optional<db::Point> point =
+      ground_at(w->view, x, y, static_cast<int>(r.width), static_cast<int>(r.height));
+  if (!point) return false;  // no ground point (SECTION's interface): the click picks
+  if (!section_first_) {
+    section_first_ = *point;
+  } else {
+    section_line_ = axis_aligned_line(*section_first_, *point);
+    section_first_.reset();
+    update_section();
+  }
+  repaint();
+  return true;
+}
+
+bool View3dView::export_registered() const {
+  const cmd::CommandRegistry& registry = ctx_.core.registry();
+  return registry.find("export3d", view3d::kWind3dClient) != nullptr || registry.find("export3d") != nullptr;
+}
+
+void View3dView::export_model() {
+  const view3d::WindowState* w = window();
+  platform::FilePicker* picker = ctx_.editor().file_picker;
+  if (w == nullptr || picker == nullptr) return;
+  const std::optional<platform::Path> file = picker->pick(export_request(*w));
+  if (!file) return;
+  const bool on_window = ctx_.core.registry().find("export3d", view3d::kWind3dClient) != nullptr;
+  run(export_command(path(), file->string(), on_window));
 }
 
 }  // namespace hefesto::shell

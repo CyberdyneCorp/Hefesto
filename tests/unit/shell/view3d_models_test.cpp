@@ -8,16 +8,19 @@
 // the mesh status and the frame-time readout. Headless: no GPU, no Raven.
 // The `wind3d` client session is WIND3D's test fixture. Owner: SHELL.
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cmath>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "../view3d/client/client_fixture.hpp"
 #include "hefesto/gui/wrapper.hpp"
+#include "hefesto/platform/file_picker.hpp"
 #include "hefesto/render/mesh3d_shading.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
@@ -1057,4 +1060,222 @@ TEST_CASE("the mesh status and the frame-time readout",
   for (int i = 0; i < 40; ++i) timer.add(5.0);
   CHECK(timer.samples() == FrameTimer::kWindow);
   CHECK(timer.average_ms() == 5.0);
+}
+
+// --- round 5: controls, layout at 1280 px, P2 actions (tasks 9.6, 11.5) ------------
+
+namespace {
+
+const View3dControl kAllControls[] = {
+    View3dControl::cross_section, View3dControl::export_model,    View3dControl::orthographic,
+    View3dControl::perspective,   View3dControl::isometric,       View3dControl::top,
+    View3dControl::front,         View3dControl::side,            View3dControl::substrate,
+    View3dControl::isolate_net,   View3dControl::span_connected_layers, View3dControl::frame_time,
+    View3dControl::close_view,    View3dControl::show_all_layers, View3dControl::mask_layers,
+    View3dControl::layout_layers, View3dControl::level_down,      View3dControl::level_up,
+    View3dControl::cut_box};
+static_assert(std::size(kAllControls) == kView3dControlCount);
+
+bool ends_with(const std::string& s, std::string_view tail) {
+  return s.size() >= tail.size() && s.compare(s.size() - tail.size(), tail.size(), tail) == 0;
+}
+
+/// Two mask layers with `render` heights in µm (mask-layer mode: physical = as
+/// stored) and one with no height.
+view3d::LayerStack two_layer_stack() {
+  view3d::StackLayer poly;
+  poly.name = "POLY";
+  poly.height = 0.33F;
+  poly.thickness = 0.18F;
+  poly.source = view3d::ValueSource::render;
+  view3d::StackLayer met1;
+  met1.name = "MET1";
+  met1.height = 1.38F;
+  met1.thickness = 0.36F;
+  met1.source = view3d::ValueSource::render;
+  view3d::StackLayer flat;
+  flat.name = "NOHEIGHT";
+  return view3d::LayerStack{view3d::Mode::mask_layer, {poly, met1, flat}, true, 0.01};
+}
+
+}  // namespace
+
+TEST_CASE("every 3D tab control has a screen-reader name and toggles announce their state",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  for (const bool on : {false, true}) {
+    View3dControlState s;
+    s.window_open = true;
+    s.mask_mode = on;
+    s.cut_box = on;
+    s.perspective = on;
+    s.span_connected_layers = on;
+    s.frame_time = on;
+    s.picked = true;
+    s.net_isolated = on;
+    s.section_on = on;
+    s.substrate_on = on;
+    s.substrate_available = true;
+    s.export_available = true;
+    for (const View3dControl c : kAllControls) {
+      const View3dControlView v = control_view(c, s);
+      INFO("control " << static_cast<int>(c) << " label " << v.label);
+      CHECK_FALSE(v.label.empty());
+      CHECK_FALSE(v.accessible_name.empty());
+      CHECK_FALSE(v.tooltip.empty());
+      if (v.on) {
+        CHECK(v.accessible_name == view3d_toggle_name(v.label, *v.on));
+      } else {
+        CHECK_FALSE((ends_with(v.accessible_name, ", on") || ends_with(v.accessible_name, ", off")));
+      }
+    }
+  }
+  View3dControlState s;
+  s.window_open = true;
+  s.section_on = true;
+  CHECK(control_view(View3dControl::cross_section, s).accessible_name == "Cross-section, on");
+  CHECK(control_view(View3dControl::level_down, s).accessible_name == "Level down");  // the label is "−"
+  CHECK(control_view(View3dControl::level_up, s).accessible_name == "Level up");
+  CHECK(control_view(View3dControl::layout_layers, s).accessible_name == "Layout layers, on");
+  CHECK(control_view(View3dControl::mask_layers, s).accessible_name == "Mask layers, off");
+  CHECK(level_text(2) == "Level 2");
+}
+
+TEST_CASE("controls are disabled, and exposed so, when they cannot act",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  const View3dControlState closed;  // no window
+  for (const View3dControl c : {View3dControl::cross_section, View3dControl::export_model, View3dControl::isometric,
+                                View3dControl::side, View3dControl::close_view, View3dControl::cut_box,
+                                View3dControl::level_up, View3dControl::mask_layers}) {
+    CHECK_FALSE(control_view(c, closed).enabled);
+  }
+  View3dControlState open;
+  open.window_open = true;
+  CHECK_FALSE(control_view(View3dControl::export_model, open).enabled);  // export3d not registered
+  open.export_available = true;
+  CHECK(control_view(View3dControl::export_model, open).enabled);
+  CHECK_FALSE(control_view(View3dControl::isolate_net, open).enabled);  // nothing picked
+  // Without the renderer's substrate slab the toggle is off and disabled.
+  CHECK_FALSE(control_view(View3dControl::substrate, open).enabled);
+  CHECK(control_view(View3dControl::substrate, open).accessible_name == "Substrate, off");
+  open.substrate_available = true;
+  CHECK(control_view(View3dControl::substrate, open).accessible_name == "Substrate, on");  // default on
+  open.visibility_editable = false;
+  CHECK_FALSE(control_view(View3dControl::show_all_layers, open).enabled);
+}
+
+// Regression (round-4 Linux X11 capture at 1280 x 800, also seen on macOS):
+// the four presets in one row ran past the side panel ("Side" clipped), and
+// the toolbar strip was wider than the view (Cut box and the status cut off).
+TEST_CASE("the side panel's button grid and the floating toolbar fit a 1280-px-wide window",
+          "[cap:hefesto-design-system][req:Screen patterns follow the reference mockups]") {
+  // Side panel: two columns, as the board's camera grid.
+  constexpr float kGap = 6.0F;
+  const float cell = grid_cell_width(side_content_width(), 2, kGap);
+  CHECK(2.0F * cell + kGap <= side_content_width());
+  // Widths measured in the round-4 1280 x 800 captures (logical px): the
+  // four presets in one row with 4 px gaps took 264 px of the 248 available.
+  CHECK(86.0F + 52.0F + 61.0F + 53.0F + 3.0F * 4.0F > side_content_width());
+  for (const float label : {86.0F, 52.0F, 61.0F, 53.0F, 100.0F /* Orthographic */, 105.0F /* Close 3D view */}) {
+    CHECK(label <= cell);
+  }
+  // Toolbar groups (mode pair, level stepper, cut box, status), measured in
+  // the same captures; the 3D view of a 1280-px window is 430 px wide.
+  const std::vector<float> groups{218.0F, 130.0F, 80.0F, 214.0F};
+  constexpr float kStageAt1280 = 430.0F;
+  const float available = kStageAt1280 - 2.0F * kView3dToolbarMargin;
+  CHECK(218.0F + 130.0F + 80.0F + 214.0F + 3.0F * kView3dToolbarSpacing > available);  // one strip did not fit
+  const std::vector<std::size_t> rows = flow_rows(groups, available, kView3dToolbarSpacing);
+  CHECK(flow_width(groups, rows, kView3dToolbarSpacing) <= available);
+  CHECK(rows == std::vector<std::size_t>{0, 0, 1, 1});
+  // One row at 1600 px (the view is about 750 px wide).
+  CHECK(flow_rows(groups, 750.0F - 2.0F * kView3dToolbarMargin, kView3dToolbarSpacing) ==
+        std::vector<std::size_t>{0, 0, 0, 0});
+  // A group wider than the view takes a row of its own.
+  CHECK(flow_rows(std::vector<float>{50.0F, 500.0F, 50.0F}, 300.0F, 8.0F) == std::vector<std::size_t>{0, 1, 2});
+  CHECK(flow_rows(std::vector<float>{}, 300.0F, 8.0F).empty());
+}
+
+TEST_CASE("Export glTF asks for a file and runs export3d on the window",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  view3d::WindowState window;
+  window.cell = "inv_1";
+  const hefesto::platform::FilePickerRequest request = export_request(window);
+  CHECK(request.mode == hefesto::platform::FilePickerRequest::Mode::save);
+  CHECK(request.initial_file == "inv_1.gltf");
+  REQUIRE(request.file_types.size() == 3);
+  CHECK(request.file_types[0].second == "*.gltf");
+  CHECK(request.file_types[1].second == "*.glb");
+  CHECK(request.file_types[2].second == "*.stl");
+  CHECK(export_command(".render.magic", "/tmp/inv.glb", true) == ".render.magic export3d /tmp/inv.glb");
+  CHECK(export_command(".render.magic", "/tmp/inv.glb", false) == "export3d /tmp/inv.glb");
+  // A path with spaces or Tcl characters stays one word.
+  CHECK(export_command(".render.magic", "/tmp/my cells/inv [1].gltf", true) ==
+        ".render.magic export3d {/tmp/my cells/inv [1].gltf}");
+  // The picker answers through the shell's plumbing (platform::FilePicker).
+  hefesto::platform::ScriptedFilePicker picker;
+  picker.push_answer(hefesto::platform::Path{"/tmp/out.stl"});
+  const auto file = picker.pick(request);
+  REQUIRE(file);
+  CHECK(export_command(".render.magic", file->string(), true) == ".render.magic export3d /tmp/out.stl");
+}
+
+TEST_CASE("the cut line follows the layout box's long axis and two clicks make an axis-aligned line",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::Segment wide = box_cut_line(db::Rect{0, 0, 100, 40});
+  CHECK(wide.a == db::Point{0, 20});
+  CHECK(wide.b == db::Point{100, 20});
+  const view3d::Segment tall = box_cut_line(db::Rect{-10, -30, 10, 70});
+  CHECK(tall.a == db::Point{0, -30});
+  CHECK(tall.b == db::Point{0, 70});
+  const view3d::Segment line = axis_aligned_line(db::Point{5, 5}, db::Point{60, 12});
+  CHECK(line.a == db::Point{5, 5});
+  CHECK(line.b == db::Point{60, 5});
+  CHECK(axis_aligned_line(db::Point{5, 5}, db::Point{8, -40}).b == db::Point{5, -40});
+  CHECK(segment_length_um(wide, 0.01) == Catch::Approx(1.0));
+}
+
+TEST_CASE("the cross-section cuts the layout box in the rendered cell, else the cell",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  ClientSession s;
+  open(s);
+  REQUIRE(s.editor.box);  // the fixture boxes c3d
+  const std::optional<db::Rect> boxed = section_area(s.editor, s.window());
+  REQUIRE(boxed);
+  CHECK(*boxed == *s.editor.box);
+  s.editor.box.reset();
+  s.window().cut_box.reset();
+  const std::optional<db::Rect> whole = section_area(s.editor, s.window());
+  REQUIRE(whole);
+  CHECK(*whole == s.editor.cells.find(s.window().cell)->bbox());
+}
+
+TEST_CASE("Cross-section: the section panel draws each interval from bottom to top in microns",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const view3d::LayerStack stack = two_layer_stack();
+  view3d::CrossSection cs;
+  cs.intervals = {{0, 0.5, 1.0, 0.33, 0.51}, {1, 0.0, 2.0, 1.38, 1.74}, {0, 1.5, 2.0, 0.33, 0.51}};
+  cs.no_height = {2};
+  const SectionPanel panel = section_panel(cs, stack, 2.0, 200.0F, 87.0F);
+  REQUIRE(panel.bars.size() == 3);
+  // x: 100 px per µm; y: 87 px for the highest top, 1.74 µm (50 px per µm).
+  CHECK(panel.bars[0].layer == 0);
+  CHECK(panel.bars[0].x == Catch::Approx(50.0F));
+  CHECK(panel.bars[0].w == Catch::Approx(50.0F));
+  CHECK(panel.bars[0].h == Catch::Approx(0.18F * 50.0F).margin(1e-3));
+  CHECK(panel.bars[0].y + panel.bars[0].h == Catch::Approx(87.0F - 0.33F * 50.0F).margin(1e-3));
+  CHECK(panel.bars[1].y == Catch::Approx(0.0F).margin(1e-3));  // metal1's top is the panel's top
+  CHECK(panel.no_height == std::vector<std::string>{"NOHEIGHT"});
+  CHECK(panel.summary == "A–A′ 2.00 µm · 2 layers");
+  CHECK(panel.accessible_name ==
+        "Cross-section A–A′, 2.00 µm long; POLY 0.33–0.51 µm, 2 intervals; MET1 1.38–1.74 µm, 1 interval; "
+        "no height: NOHEIGHT");
+  // A hidden layer is left out of the panel.
+  const SectionPanel hidden = section_panel(cs, stack, 2.0, 200.0F, 87.0F, {false, true, false});
+  CHECK(hidden.bars.size() == 2);
+  CHECK(hidden.top_um == Catch::Approx(0.51));
+  // Nothing crosses the line and no µm scale.
+  const SectionPanel empty = section_panel(view3d::CrossSection{}, stack, 0.0, 200.0F, 87.0F);
+  CHECK(empty.bars.empty());
+  CHECK(empty.summary == "A–A′ no µm scale · 0 layers");
+  CHECK(empty.accessible_name == "Cross-section A–A′, length unknown, no layer crosses the line");
 }
