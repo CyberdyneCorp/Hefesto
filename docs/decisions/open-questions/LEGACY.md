@@ -149,6 +149,110 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Recommendation: fix (suppress the message when no value was supplied).
 - Resolution: fix — print no error when the boolean helper is called only to display a value, instead of formatting a null value (X-2 tier 1, 2026-11-07).
 
+### Q-LEGACY-37: The supported PDKs have no `irouter` style
+- Kind: platform
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`)
+- Magic behavior: `iroute` needs a maze-router style named `irouter`. The Magic technology files of sky130A, gf180mcuD and ihp-sg13g2 at the pinned commits all have an empty `mzrouter` section, so every `iroute` and every `mazeroute` reports "Need irouter style in mzrouter section of technology file to use irouter." on all three PDKs. The M11 agent's routing tools wrap `iroute` (`agent-schematic-driven-layout`), so without a style they cannot route on any supported PDK.
+- Evidence: irouter/irMain.c:136-160 (IRAfterTech, `MZFindStyle("irouter")`), irouter/irCommand.c:2580-2585; sky130A.tech:704-705, gf180mcuD.tech (empty `mzrouter … end`), ihp-sg13g2.tech:643
+- Options: (a) none: both modes report Magic's error, and users or PDKs add a style | (b) native only: with `magic-compat` OFF and no `irouter` style, Hefesto derives one from the technology; with it ON Magic's error | (c) Hefesto ships a hand-written `mzrouter` overlay per PDK, read in both modes | (d) the derived style of (b) in both modes
+- Recommendation: (b). With `magic-compat` OFF and no style named `irouter`, Hefesto derives one when the technology is loaded: route layers are the types of the `lef` section's `routing` lines in order (bottom first), each active with hCost/vCost 32/64 on even positions and 64/32 on odd ones (scmos's `irouter` costs), jogCost 256, hintCost 1, overCost 1; contacts are the types of the `cut` lines whose two residues are both derived route layers, cost 1024; widths and spacings come from DRC exactly as for a written style (`router-maze` "Width and spacing derivation from DRC"). A technology with fewer than one `routing` line gets no style and keeps Magic's error. The first `iroute` of a session prints `ROUTE-STYLE-001` naming the derived style once. With `magic-compat` ON nothing is derived (golden behaviour on the PDKs is Magic's error). A style named `irouter` in the technology always wins. This makes `iroute` work on all three PDKs for the agent (whose scratch sessions run with `magic-compat` OFF unless the user chooses otherwise) without data that has to track PDK releases.
+
+### Q-LEGACY-38: Start points on both sides of a fence leave undo disabled
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: `MZAddStart` disables undo while it registers a start, and on the path that prints "Start points on both sides of fence. Arbitrarily choosing those %s fence." it returns without re-enabling it. Undo disabling is a counter, so undo stays off for the rest of the session: every later edit is unrecorded.
+- Evidence: mzrouter/mzMain.c:590-620 (the early return at 609-615), utils/undo.c:409-436 (UndoDisable/UndoEnable count)
+- Options: replicate | fix (re-enable undo on every path)
+- Recommendation: fix in both modes (X-2 tier 1: corrupted editor state). The message and the start choice are Magic's; undo is restored on every path, including errors and cancellation. A unit test routes across a fence and then undoes an unrelated edit.
+
+### Q-LEGACY-39: Malformed `mzrouter` statements leave half-built route types
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: (1) a bare `style` line copies `argv[1]`, which is NULL. (2) A `layer` line that fails a check after its route type was created (a duplicate plane, a type on two planes, a non-positive cost) leaves the half-filled route layer in the style's route-type list, as Q-LEGACY-31 describes for `contact`. (3) Copying a style for `iroute` (`MZCopyParms`) keeps a pointer it cannot translate shared with the original, so the copy can reach freed memory after a reload.
+- Evidence: mzrouter/mzTech.c:418 (bare `style`), :586-740 (`layer` checks after `mzInitRouteType`), :1136-1215 (`contact`), mzrouter/mzMain.c:243-251 (`ADDR_TBL` keeps untranslated pointers), mzrouter/mzStart.c:337-355 (dereference of the other layer)
+- Options: replicate (not possible: crashes) | fix (validate the whole line before registering anything)
+- Recommendation: fix in both modes (X-2 tier 1), together with Q-LEGACY-31. Every `mzrouter` statement is validated in full before anything is registered; a failing statement reports Magic's message and is ignored whole. A bare `style` reports `"style" lines need a style name` and the lines up to the next `style` are skipped. Hefesto's styles are values, so copying one shares nothing.
+
+### Q-LEGACY-40: Choosing among several endpoint nodes when the session cannot ask
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: when several route layers or contacts touch the start point (or a destination point), `irChooseEndPtLayers` prints "Multiple nodes present at %s point:" and asks "Connect to %s? [yes] " for each candidate with `TxGetLine`; an empty answer is yes and the last candidate is taken without asking. In a batch run there is no console line to read, so the command blocks or reads whatever stdin holds. An agent session has no console at all.
+- Evidence: irouter/irRoute.c:918-1192 (the prompts at 1114 and 1154)
+- Options: replicate (block or read stdin) | fix (when the session cannot ask, take the default answer)
+- Recommendation: fix in both modes (X-2 tier 1: a hang). A session that can ask (the desktop console, an interactive terminal) prompts as Magic does. A session that cannot ask (a script host, `-dnull` batch, an agent scratch session) prints the same lines and takes the empty answer, yes, so the first candidate is connected, as Q-SCRIPT-48 treats confirmations that cannot be asked. LEG-MZ-28 captures Magic in batch with stdin at end of file, under a `timeout -s KILL 120` guard so a blocked Magic cannot stall the capture job. If Magic also takes the first candidate there, this row is replicate; if it connects another candidate, fails, or hangs (killed by the guard, exit status 137), the fix stands as written.
+
+### Q-LEGACY-41: `iroute route -timeout` uses wall-clock time and can stay armed
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: `-timeout n` arms a SIGALRM timer of n seconds that interrupts the search, which then ends as "best before interrupt" or "interrupted". A parse error after `-timeout` jumps past the code that clears the timer, so a later command can be interrupted by it. The result of a timed route depends on machine speed, so `mazeroute` (which always passes `-timeout 3`) can route differently on different machines.
+- Evidence: irouter/irCommand.c:1683-1696 and the `leaveClean` path, utils/signals.c:145-198, tcltk/mazeroute.tcl:11-33
+- Options: replicate | fix the leak only | fix the leak and add a second, interrupt-style work budget to the engine
+- Recommendation: fix the leak only, in both modes (X-2 tier 1: an interrupt of an unrelated command). `-timeout` keeps Magic's syntax, messages and meaning: a wall-clock deadline that ends the search like an interrupt; the deadline lives in the route's cancellation token and dies with the command on every path. No new budget is added: Magic already has a deterministic one, the style's `bloomLimit` (`iroute wizard bloomLimit`, irouter/irCommand.c:584-589, :2242), which stops the search quietly once the bloom count exceeds the limit ("Bloom limit (%d) hit." at verbosity ≥ 1) and keeps the cheapest complete path found (result success, else failure; mzrouter/mzSearch.c:208, :409-418, :688-706). The engine honours it as Magic does, the agent sets it in its request's style copy, and golden cases that need a limit run `iroute wizard bloomLimit N` in both Magic and Hefesto. SCRIPT-AUX-02 replays `mazeroute` with Magic's `-timeout 3`; its routes take milliseconds in both tools, so the clock does not decide them.
+
+### Q-LEGACY-42: An already-routed endpoint prints "Route Failed."
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: when the start already connects to the destination, `MZRoute` returns no path with the code "already routed"; `irRoute` sees no path and prints "Route Failed." (an error, shown even at verbosity 0), while the script result is "Route already routed".
+- Evidence: mzrouter/mzMain.c:724-875 (`MZ_ALREADY_ROUTED`), irouter/irRoute.c:360-470
+- Options: replicate | compat (ON as Magic; OFF prints an accurate message)
+- Recommendation: compat (standing rule: printed output differs). With `magic-compat` ON, "Route Failed." is printed as Magic; with it OFF, "Already routed." is printed as information (suppressed at verbosity 0). The script result is "Route already routed" in both modes.
+
+### Q-LEGACY-43: `saveParameters` writes spacings in internal units that `source` reads as lambda
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: `iroute saveParameters` writes each spacing as the internal-unit integer, while `iroute spacings` parses values with the standard coordinate parser, which reads a bare number in the current units (lambda by default). After `scalegrid`, or with `units` set to something else, sourcing the file sets different spacings from the ones saved.
+- Evidence: irouter/irCommand.c:2420-2432 (write), :1856-2120 (`cmdParseCoord` on read)
+- Options: replicate | compat (ON as Magic; OFF write the value with the `i` suffix, so it reads back in internal units under any `units` setting)
+- Recommendation: compat (standing rule: the file is a compatibility surface). With `magic-compat` ON the bare integer is written, as Magic; with it OFF the value carries the `i` suffix (`:iroute spacings metal2 metal2 4i`), as `feedback save` does (Q-UI-24). Both read back unchanged in Hefesto when internal units equal lambda.
+
+### Q-LEGACY-44: Sourcing a `saveParameters` file in a Tcl session
+- Kind: ambiguity
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: every command line of the file starts with `:` (`:iroute verbosity 0`). Magic's own command reader strips a leading `:`, so Magic's `source` of the file works; whether a Tcl-level `source` (Magic's Tcl build, Hefesto's scripting layer) accepts a command named `:iroute` is not visible from the C source and was not run.
+- Evidence: textio/txCommands.c:1414-1416 (leading `:` stripped), irouter/irCommand.c:2356-2500
+- Options: verify (LEG-MZ-11 captures `source p.ir` in Magic's Tcl build)
+- Recommendation: verify: if the capture shows the parameters restored, Hefesto's `source` accepts a leading `:` on a command line in both modes (replicate); if Magic's Tcl `source` fails, replicate the failure with `magic-compat` ON and accept the `:` with it OFF (compat). The file content stays Magic's in both cases.
+
+### Q-LEGACY-45: `iroute route` coordinates reject unit suffixes and `-dRect` is not normalised
+- Kind: quirk
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: each `-sPoint` and `-dRect` value must pass a plain-number test before the coordinate parser sees it, so `10um` or `5i` is rejected ("Nonnumeric coordinate: %s"; the first `-dRect` field says "Non coordinate: %s"), although every other command accepts suffixed coordinates. `-dRect` takes the corners as given, so `-dRect 10 10 0 0` gives an inverted destination rectangle.
+- Evidence: irouter/irCommand.c:1580-1650 (`StrIsNumeric` before `cmdParseCoord`), irouter/irRoute.c:629-750
+- Options: replicate | compat (ON as Magic; OFF accept every coordinate form and normalise the rectangle)
+- Recommendation: compat (standing rule: the command's result differs). With `magic-compat` ON the values are rejected as Magic and the rectangle is used as given; with it OFF any value the standard coordinate parser accepts is taken and `-dRect` is normalised (lower-left, upper-right). The agent's typed wrapper always passes plain internal-unit integers, so it behaves the same in both modes.
+
+### Q-LEGACY-46: `iroute` parameter and message quirks
+- Kind: quirk
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: (1) values given to `iroute layers`/`contacts` with `*` wrap around the list, then warn. (2) `iroute spacings` stops at a value below −1 but skips other bad values, so a set can apply in part; an odd argument count prints a usage line naming `*iroute spacing`. (3) `iroute layers <type>` reports a non-route type with the contact wording, and the error for an unknown layer says "route layer or contact". (4) `iroute help route` omits `-timeout`. (5) Repeated `-sLayers`/`-dLayers` append duplicates. (6) The comment of `irSetNoisyAutoInt` promises a `(FILE*)1` mode that only the layer and contact setters have. (7) The `-list` option of `layers`/`contacts` is honoured only by the all-types form.
+- Evidence: irouter/irCommand.c:795-799 (NEXTVALUE), :1856-2120 (spacings), :1177-1428 (layers), :1072-1130 (help), :1500-1560 (layer lists), :99-196 (irSetNoisyAutoInt)
+- Options: replicate | compat | fix
+- Recommendation: replicate in both modes. These are Magic's texts and parameter semantics that scripts and saved files depend on; none is a crash or corrupt output, and duplicates in a layer list do not change the route. (6) has no observable effect.
+
+### Q-LEGACY-47: The maze-router penalty is unchecked
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: the penalty is stored as an integer mantissa floor(p × 2) with exponent 1 (Q-LEGACY-32). `iroute wizard penalty` has no range check: a negative penalty makes the adjusted cost grow as paths approach the destination, and a value whose mantissa does not fit in an `int` is an undefined float-to-int conversion. The technology statement `search <rate> <width> <penalty>` rejects negative values ("Bad penalty value") but makes the same unchecked `(int)(value * 2)` conversion for large ones.
+- Evidence: irouter/irCommand.c:620-656, mzrouter/mzTech.c:987-1008, mzrouter/mzSearch.c:519-524
+- Options: replicate | fix the overflow only | fix both
+- Recommendation: fix the overflow in both modes (X-2 tier 1), at both entry points: a value with |p × 2| ≥ 2^31 is rejected with "Penalty value out of range: %s" and the penalty is unchanged (for `search`, the whole statement defines nothing, by the whole-statement validation of Q-LEGACY-31 and -39). Replicate negative values for `wizard penalty` in both modes (they are legal in Magic and only change the search order; the adjusted-cost arithmetic is saturating, Q-LEGACY-90); the `search` statement keeps Magic's rejection of negative values.
+
+### Q-LEGACY-48: Maze search memory is unbounded
+- Kind: platform
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: the search allocates path records, hash entries and blockage tiles until it finishes or the user interrupts; with `bloomLimit 0` (the default) a long route over a large, congested area can exhaust memory and abort Magic.
+- Evidence: mzrouter/mzSearch.c:182-720, mzrouter/mzMain.c:724-875, mzrouter/mzBlock.c
+- Options: (a) a memory budget per route that ends the search like an interrupt | (b) no limit, as Magic
+- Recommendation: (a), in both modes. A route whose search memory exceeds the budget (setting `router.max-search-memory`, default 1 GiB; 256 MiB on iPadOS) ends as an interrupt does ("Search Interrupted!" with the best complete path, otherwise "Route Interrupted!"), and prints `ROUTE-MZ-002` naming the budget. Golden routes stay far below it.
+
+### Q-LEGACY-49: The maze helper routes a net with fewer than two pins
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: the maze helper's Route action (`routenet` in `mazeroute.tcl`) routes each selected net as a chain over its pins. For a net with one pin the chain loop does not run, so the variable that holds the route result is never set, and the next test stops the helper with Tcl's "can't read "rresult": no such variable" (if an earlier net set it, that net's result is reused instead). `scripting-auxiliary-tools` "Netlist maze-routing script" says the helper is reproduced but does not mention this case.
+- Evidence: tcltk/mazeroute.tcl:477-541 (the loop at 500-517, the test at 520)
+- Options: replicate (stop with the error) | fix (a net with fewer than two pins is left in the unrouted list, with a note in the console, and the next selected net is routed)
+- Recommendation: fix in both modes. A Tcl error that aborts the action, or a result carried over from another net, is a defect of the helper with no behaviour to keep. The `mazeroute` command (the golden surface, SCRIPT-AUX-02) is not affected: its chain over one terminal routes nothing, as Magic's. The m10-plot-route change carries the rule as a MODIFIED delta of `scripting-auxiliary-tools` "Netlist maze-routing script", synced only if this row is approved.
+
 ### Q-LEGACY-50: Plowing of non-Manhattan (split) tiles
 - Kind: ambiguity
 - Magic behavior: The plow algorithm works on corner-stitched edges and was written before split (diagonal) tiles existed; its handling of split tiles is not specified by Magic and is untested.
@@ -179,6 +283,14 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Options: replicate text | fix text
 - Recommendation: fix the message (informative text).
 - Resolution: fix — evidence corrected (the usage text is at commands/CmdTZ.c:2036-2037; the `wire help` table at commands/CmdTZ.c:1718 already says `x1 y1 x2 y2`), and the message is informative text that no script parses (verified against commands/CmdTZ.c:CmdWire on 2026-11-09; approved 2026-11-09).
+
+### Q-LEGACY-54: The maze helper's parameter window cannot open
+- Kind: bug
+- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Magic behavior: the maze helper's Params button runs `genmazeparams`, which fills each route-layer row from `$contact`, a variable not yet set in that loop (Tcl error), and creates its Active cells with `checkbox`, which is not a Tk widget (`checkbutton` is). The window therefore fails before it shows anything, and it has no apply action even if it opened. `scripting-auxiliary-tools` "Netlist maze-routing script" lists the helper's lists and actions but not this window.
+- Evidence: tcltk/mazeroute.tcl:65 (the button), :101-145 (`genmazeparams`: `$contact` at 129, `checkbox` at 127 and 140)
+- Options: (a) not provided: the helper has no Params button; the route parameters stay reachable through `iroute layers`, `iroute contacts`, `iroute spacings` and `iroute wizard` | (b) a working parameter panel showing `iroute layers -list` and `iroute contacts -list` and applying edits through those commands
+- Recommendation: (a). Magic's window never worked, so there is no behaviour to reproduce, and a new parameter editor is native UI that belongs with the M11 routing UI if it is wanted. The m10-plot-route delta of "Netlist maze-routing script" states that the helper has no parameter window.
 
 ### Q-LEGACY-70: Netlist write order depends on platform word size and char signedness
 - Kind: quirk

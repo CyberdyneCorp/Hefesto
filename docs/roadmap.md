@@ -309,11 +309,16 @@ Depends on `mask-hints`, which is completed in M3.
 
 ## M10 — 3D, plotting, diff, routing, EM/IR, digital flow
 
-**Status (2026-11-22): 3D view phase 1 in review (change `openspec/changes/m10-3d-view`, round-3 integration on branch `m10-3d-round3`, PR #86); the other M10 workstreams are not started.**
+**Status (2026-11-22): 3D view phase 1 in review (change `openspec/changes/m10-3d-view`, round-3 integration on branch `m10-3d-round3`, PR #86); plotting and routing are planned (below); the other M10 workstreams are not started.**
 - P1 (layout-layer 3D view, `wind3d` and Magic's 3D commands, the desktop 3D tab, picking and net highlighting) meets its exit criteria (design D19): `view-3d` and `hefesto-3d-visualization` P1 requirements covered 7 of 7, MISC-3D-01..16 replay (MISC-3D-11 is the documented Q-MISC-73 deviation), the 3D tab works on Linux (X11, Wayland) and macOS, and 1M rectangles draw at about 46 fps at level 1 on the M3 Pro (gate ≥ 30 fps).
 - Round 4 (2026-11-24, branch `m10-3d-round4`): the desktop 3D tab uses the board look in both modes (Q-MISC-84) with non-conducting area layers ghosted by default (Q-MISC-85); tilted views no longer show the stack from below; bottom toolbar strip added (tasks 16.1-16.10).
 - Open: the VoiceOver pass (task 9.6), the toolbar floating over the view as on the board, the reference-hardware frame-rate runs (13.2), the 64 B/rect memory target (kept at the 170 B/rect gate, decision M2).
 - Next: P2 (mask-layer source, cross-sections, glTF/STL export), then P3 (overlays) after M7 extraction and M9 results.
+
+**Plotting and routing (2026-11-24): planned, decisions pending (change `openspec/changes/m10-plot-route`, decision table `docs/decisions/m10-plot-route-decision-table.md`).**
+- Scope: `plot-output` (PostScript and PNM byte-identical to Magic, Hefesto's SVG), view export to SVG and PNG in `hefesto-rendering` (D-37, D-38), `router-maze` and `router-maze-iroute` (a session-scoped engine the M11 agent can call), and `mazeroute` deferred from M4 (Q-SCRIPT-30).
+- Gate G0: 19 blocking entries for these capabilities, D-37 and D-38, and 22 new entries (Q-MISC-48..55, Q-LEGACY-37..49, Q-LEGACY-54). Golden cases MISC-PLOT-01..20 and LEG-MZ-01..31 are captured before implementation.
+- Collaboration and diff, the reliability capabilities and the digital flow are later M10 changes; they are not started.
 
 **Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`, `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results`, `digital-flow-mixed-signal`, `reliability-em-rules`, `reliability-ir-drop`, `reliability-em-check`, `reliability-visualization`
 
