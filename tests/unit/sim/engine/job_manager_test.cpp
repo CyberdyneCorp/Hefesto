@@ -182,7 +182,9 @@ class FakeEngine final : public sim::Engine {
 std::size_t count_text(const sim::JobRecord& rec, std::string_view text) {
   std::size_t n = 0;
   for (const diag::Diagnostic& d : rec.diagnostics) {
-    n += d.text.find(text) != std::string::npos ? 1 : 0;
+    if (d.text.find(text) != std::string::npos) {
+      ++n;
+    }
   }
   return n;
 }
