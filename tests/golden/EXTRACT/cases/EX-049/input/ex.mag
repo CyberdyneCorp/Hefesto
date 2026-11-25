@@ -1,0 +1,12 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 10 4
+use leaf c1
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 4
+<< labels >>
+rlabel metal1 8 2 8 2 0 b
+<< end >>

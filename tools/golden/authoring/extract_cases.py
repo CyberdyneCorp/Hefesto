@@ -3,7 +3,8 @@
 """The flat EXTRACT golden cases (tests/golden/EXTRACT/CASES.md; m7-extraction design D21, task 2.6).
 
 The 53 EX rows whose layout has no subcell and that need no command driver beyond ``extract all``
-on one cell: EX-001..042, EX-044..046, EX-048 and EX-057..063. Each case is a
+on one cell: EX-001..042, EX-044..046, EX-048 and EX-057..063, and the hierarchical rows of task 17.1
+(EX-043, EX-047, EX-049..056; a cell's ``uses`` are written as ``use`` blocks). Each case is a
 :class:`tclcase.TclCase` that Magic and ``hefesto-cli --magic`` both run:
 
 * ``input/exttest.tech`` is ``authoring/exttest.tech`` with the case's rule lines appended to the
@@ -80,6 +81,17 @@ def lab(layer: str, x: int, y: int, text: str, port: int | None = None, x2: int 
     return Label(layer, (x, y, x if x2 is None else x2, y if y2 is None else y2), text, port)
 
 
+@dataclass(frozen=True)
+class Use:
+    """A ``use`` block: child ``cell`` placed as ``uid`` at offset (dx, dy) (a translation), arrayed
+    ``(xlo, xhi, xsep, ylo, yhi, ysep)`` when ``array`` is set."""
+    cell: str
+    uid: str
+    dx: int = 0
+    dy: int = 0
+    array: tuple[int, int, int, int, int, int] | None = None
+
+
 @dataclass
 class Cell:
     """A .mag file: ``paint`` items are ``(layer, x1, y1, x2, y2)`` or, for split tiles,
@@ -87,10 +99,34 @@ class Cell:
     paint: list[tuple] = field(default_factory=list)
     labels: list[Label] = field(default_factory=list)
     props: list[tuple[str, str]] = field(default_factory=list)
+    uses: list[Use] = field(default_factory=list)
 
 
-def mag(cell: Cell, tech_name: str = "exttest") -> str:
-    """The .mag text: paint grouped by layer in first-use order, then labels and properties."""
+def cell_bbox(cell: Cell, cells: dict[str, Cell]) -> tuple[int, int, int, int]:
+    """The paint bounding box of ``cell`` and its uses ((0, 0, 1, 1) when empty, as Magic's)."""
+    boxes = [tuple(item[1:5]) for item in cell.paint] + [use_bbox(u, cells) for u in cell.uses]
+    if not boxes:
+        return (0, 0, 1, 1)
+    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def use_bbox(use: Use, cells: dict[str, Cell]) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = cell_bbox(cells[use.cell], cells)
+    xlo, xhi, xsep, ylo, yhi, ysep = use.array or (0, 0, 0, 0, 0, 0)
+    xs, ys = (xhi - xlo) * xsep, (yhi - ylo) * ysep
+    return (x1 + use.dx + min(0, xs), y1 + use.dy + min(0, ys), x2 + use.dx + max(0, xs), y2 + use.dy + max(0, ys))
+
+
+def _use_lines(use: Use, cells: dict[str, Cell]) -> list[str]:
+    out = [f"use {use.cell} {use.uid}"]
+    if use.array:
+        out.append("array " + " ".join(str(v) for v in use.array))
+    box = " ".join(str(v) for v in use_bbox(use, cells))
+    return out + ["timestamp 100", f"transform 1 0 {use.dx} 0 1 {use.dy}", f"box {box}"]
+
+
+def mag(cell: Cell, tech_name: str = "exttest", cells: dict[str, Cell] | None = None) -> str:
+    """The .mag text: paint grouped by layer in first-use order, the uses, then labels and properties."""
     groups: dict[str, list[str]] = {}
     for item in cell.paint:
         layer, *coords = item
@@ -99,6 +135,8 @@ def mag(cell: Cell, tech_name: str = "exttest") -> str:
     out = ["magic", f"tech {tech_name}", "timestamp 100"]
     for layer, rows in groups.items():
         out += [f"<< {layer} >>", *rows]
+    for use in cell.uses:
+        out += _use_lines(use, cells or {})
     if cell.labels:
         out.append("<< labels >>")
         for label in cell.labels:
@@ -189,7 +227,7 @@ def ext_files(spec: ExSpec) -> list[str]:
 
 def to_case(spec: ExSpec) -> TclCase:
     files: dict[str, str | bytes] = {"exttest.tech": tech(spec.rules, spec.section)}
-    files.update({f"{name}.mag": mag(cell) for name, cell in spec.cells.items()})
+    files.update({f"{name}.mag": mag(cell, cells=spec.cells) for name, cell in spec.cells.items()})
     files.update(spec.extra_files)
     outs = list(spec.extra_outputs)
     names = {o: o.split("/")[-1] for o in outs}
@@ -579,9 +617,132 @@ def fringe_default_spec() -> ExSpec:
                   extra_files={"exttest33.tech": old, "ex33.mag": mag(metal1_rect(), "exttest33")})
 
 
+HIER = "extract-hierarchy"
+LEAF_WIRE = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 2, 2, "a")])
+
+
+def sticky(layer: str, x: int, y: int, text: str) -> Label:
+    return Label(layer, (x, y, x, y), text, sticky=True)
+
+
+def hier_device_specs() -> list[ExSpec]:
+    """EX-043 and EX-047: the subcell parts of extract-devices and extract-substrate (task 7.7)."""
+    mim = Cell([("mimcap", 0, 0, 10, 10), ("metal2", -1, -1, 11, 11)], [lab("mimcap", 5, 5, "t"), lab("metal2", 0, 0, "b")])
+    top = Cell([("mimcap", 0, 0, 10, 10), ("metal2", -1, -1, 11, 11)], [lab("metal2", 0, 0, "pb")], uses=[Use("cap", "c1")])
+    sc = device_cell(nfet_2x4())
+    cells = Cell([("metal1", 0, 40, 10, 44)], [lab("metal1", 5, 42, "w")],
+                 uses=[Use("sc", "x", 3, 0, (0, 2, 20, 0, 0, 0)), Use("sc", "y", 3, 20)])
+    return [
+        ExSpec("EX-043", DEV, ["Subcell device priority"],
+               "device capacitor None mimcap metal2 10 2; the parent paints mimcap and metal2 exactly over a child "
+               "instance c1 that holds the same capacitor: the parent writes no device record, the child's .ext has it",
+               {"ex": top, "cap": mim}, rules="device capacitor None mimcap metal2 10 2"),
+        ExSpec("EX-047", SUB, ["Subcell substrate connections"],
+               "substrate space well VSUB; a top with a 1-D array x (3 elements) and an instance y of a cell holding a "
+               "2x4 nfet: the merge of each element's and y's substrate with the top's VSUB",
+               {"ex": cells, "sc": sc}, rules="substrate space well VSUB\n" + NFET_RULE),
+    ]
+
+
+def hier_specs() -> list[ExSpec]:
+    """EX-049..056: extract-hierarchy (tasks 8.1-8.5)."""
+    merge = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 8, 2, "b")], uses=[Use("leaf", "c1")])
+    cross = Cell([("metal2", 4, -6, 6, 10)], [lab("metal2", 5, 8, "p")], uses=[Use("leaf", "c1")])
+    ndiff_leaf = Cell([("ndiff", 0, 0, 10, 4)], [lab("ndiff", 2, 2, "n")])
+    overlap = Cell([("poly", 4, -2, 6, 6)], [lab("poly", 5, 5, "p")], uses=[Use("nleaf", "c1")])
+    hard_leaf = Cell([("metal1", 10, 4, 20, 8)])
+    hard = Cell([("metal1", 20, 4, 30, 8)], uses=[Use("hleaf", "I1")])
+    bit = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 5, 2, "n")])
+    bit2 = Cell([("metal1", 0, 0, 12, 12)], [lab("metal1", 6, 6, "m")])
+    arrays = Cell([("metal1", -10, 0, -6, 4)], [lab("metal1", -8, 2, "w")],
+                  uses=[Use("bit", "A", 0, 0, (0, 3, 10, 0, 0, 0)), Use("bit2", "B", 0, 40, (0, 1, 10, 0, 1, 10))])
+    pin = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 2, 2, "vdd")])
+    labelled = Cell([], [sticky("metal1", 6, 2, "VDD")], uses=[Use("pin", "c")])
+    long_leaf = Cell([("metal1", 0, 4, 60, 6)], [lab("metal1", 30, 5, "c")])
+    squares = Cell([("metal1", 0, 0, 60, 2)], [lab("metal1", 30, 1, "p")], uses=[Use("lleaf", "c1")])
+    empty = Cell([], [lab("metal1", 2, 2, "x")])
+    tree = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 5, 2, "t")], uses=[Use("empty", "e1", 20, 0), Use("empty", "e2", 40, 0)])
+    area = "areacap metal1 30\nperimc metal1 space 20\nresist metal1 80"
+    return [
+        ExSpec("EX-049", HIER, ["Merge records and pass-2 adjustments", "Name unification order"],
+               "areacap metal1 30, perimc metal1 space 20, resist metal1 80; parent metal1 (0,0)-(10,4) labeled b over an "
+               "identical child c1 wire labeled a: merge \"c1/a\" \"b\" -1760 -40 -28", {"ex": merge, "leaf": LEAF_WIRE},
+               rules=area),
+        ExSpec("EX-050", HIER, ["Hierarchical coupling records"],
+               "areacap metal2 10, overlap metal2 metal1 20; a parent metal2 wire p crossing child c1's metal1 wire a: "
+               "the hierarchical cap record", {"ex": cross, "leaf": LEAF_WIRE}, rules="areacap metal2 10\noverlap metal2 metal1 20"),
+        ExSpec("EX-051", HIER, ["Interaction processing and connections (pass 1)"],
+               "a parent poly wire over child c1's ndiff (one plane, types that do not connect): the Illegal overlap "
+               "feedback and its count", {"ex": overlap, "nleaf": ndiff_leaf}, runs=[Run("", after=(p("feedback count"),))]),
+        ExSpec("EX-052", HIER, ["Hard-way node names"],
+               "an unlabeled child metal1 node at (10,4) in instance I1 touched by an unlabeled parent wire: the merge "
+               "names I1/metal1_10_4#", {"ex": hard, "hleaf": hard_leaf}),
+        ExSpec("EX-053", HIER, ["Array interactions"],
+               "a 1x4 array A (pitch 10) of abutting metal1 cells labeled n, and a 2x2 array B (pitch 10) of 12x12 "
+               "metal1 cells labeled m overlapping diagonally: the array merge names with ranges",
+               {"ex": arrays, "bit": bit, "bit2": bit2}),
+        ExSpec("EX-054", HIER, ["Sticky labels across the hierarchy"],
+               "extract do labelcheck; a sticky parent label VDD over empty parent area above child c's metal1 "
+               "labeled vdd: merge of VDD and c/vdd", {"ex": labelled, "pin": pin}, setup=("extract do labelcheck",)),
+        ExSpec("EX-055", HIER, ["Interaction halo and step squares", "Interaction area"],
+               "step 20, sidehalo 4, sidewall metal1 space space metal1 40, extract no fringehalo; a parent metal1 wire "
+               "(0,0)-(60,2) beside child c1's wire (0,4)-(60,6): the hierarchical cap records over three squares",
+               {"ex": squares, "lleaf": long_leaf}, rules=SIDEWALL + "\nsidehalo 4\nstep 20", setup=("extract no fringehalo",)),
+        ExSpec("EX-056", HIER, ["Bottom-up extraction order"],
+               "a top with metal1 and two uses of a label-only cell empty: no empty.ext and no use record for it",
+               {"ex": tree, "empty": empty}),
+    ]
+
+
+# --- EX-P03: capture-only probe of two device types abutting in one device region --------------
+
+PROBE_DIR = HERE.parents[2] / "tests" / "data" / "extract" / "device" / "abut_probe"
+PROBE_DEVICES = ("device mosfet cmos nfet,pfet ndiff,pdiff None GND!{id}\n"
+                 "device mosfet nmos nfet ndiff None GND!{id}\ndevice mosfet pmos pfet pdiff None VDD!{id}")
+
+
+def _stack(bottom: str, top: str, idlayer: bool = False) -> Cell:
+    """A ``bottom`` gate (0,0)-(2,4) under a ``top`` gate (0,4)-(2,8), each between its diffusion and
+    with its own poly; the gates touch along y = 4. ``idlayer``: thkox over the bottom gate only."""
+    diff = {"nfet": "ndiff", "pfet": "pdiff"}
+    paint = [(bottom, 0, 0, 2, 4), (diff[bottom], -3, 0, 0, 4), (diff[bottom], 2, 0, 5, 4),
+             (top, 0, 4, 2, 8), (diff[top], -3, 4, 0, 8), (diff[top], 2, 4, 5, 8),
+             ("poly", 0, -2, 2, 0), ("poly", 0, 8, 2, 10)] + ([("thkox", -3, -2, 5, 3)] if idlayer else [])
+    labels = [lab(diff[bottom], -2, 2, "s1"), lab(diff[bottom], 3, 2, "d1"), lab(diff[top], -2, 6, "s2"),
+              lab(diff[top], 3, 6, "d2"), lab("poly", 1, -1, "g1"), lab("poly", 1, 9, "g2")]
+    return Cell(paint, labels)
+
+
+def probe_case() -> TclCase:
+    """EX-P03: an nfet and a pfet touching in one device region (cmos lists both gate types, so the
+    device connectivity joins them). Style probe: nfet below pfet (abut), pfet below nfet (abutrev).
+    Style probeid: every record needs thkox, which covers the lower (nfet) gate only (abutid), the
+    input of extDevFindMatch's endless walk (Q-EXTRACT-36 (f)); the run is killed after 120 s and the
+    console shows whether ``extract all`` returned."""
+    section = (style("probe", PROBE_DEVICES.format(id="")) + style("probeid", PROBE_DEVICES.format(id=" +thkox")))
+    cells = {"abut": _stack("nfet", "pfet"), "abutrev": _stack("pfet", "nfet"), "abutid": _stack("nfet", "pfet", True)}
+    files: dict[str, str | bytes] = {"exttest.tech": tech(section=section)}
+    files.update({f"{name}.mag": mag(cell) for name, cell in cells.items()})
+    script = ["tech load input/exttest -noprompt", "drc off"]
+    for name in ("abut", "abutrev"):
+        script += [f"load {name}", "box 0 0 1 1", p("extract all")]
+    script += [p("extract style probeid"), "load abutid", "box 0 0 1 1", "puts {extract abutid: start}", "flush stdout",
+               p("extract all"), "puts {extract abutid: returned}"]
+    return TclCase("EX-P03", DEV, ["Device record selection", "Device regions"],
+                   "an nfet and a pfet touching in one device region (Round-3 follow-up probe): records, terminals and "
+                   "whether the ID-layer walk ends", lines(*script), files=files, outputs=["exitcode"],
+                   output_sources={"exitcode": "exitcode"}, output_names={"exitcode": "exitcode.txt"},
+                   collect=COLLECT, driver="extract_cases.py --probe", timeout=120, run_timeout=300,
+                   golden_area="EXTRACT",
+                   notes=["Capture-only (outside tests/golden, so replay.py never runs it); the Hefesto side is "
+                          "tests/unit/extract/device/abut_probe_test.cpp.",
+                          "Capture: gh workflow run golden-capture.yml -f mode=capture "
+                          "-f cases=tests/data/extract/device/abut_probe/EXTRACT/cases/EX-P03"])
+
+
 def specs() -> list[ExSpec]:
     return [*file_format_specs(), *capacitance_specs(), *resistance_specs(), *node_specs(), *device_specs(),
-            *substrate_specs(), *tech_section_specs()]
+            *substrate_specs(), *tech_section_specs(), *hier_device_specs(), *hier_specs()]
 
 
 def cases() -> list[TclCase]:
@@ -589,5 +750,13 @@ def cases() -> list[TclCase]:
 
 
 FLAT_IDS = [f"EX-{n:03d}" for n in [*range(1, 43), 44, 45, 46, 48, *range(57, 64)]]
-LATER = {f"EX-{n:03d}": "needs hierarchy or the command options (task 17.1, R2-R3)"
-         for n in [43, 47, *range(49, 57), *range(64, 71)]}
+HIER_IDS = [f"EX-{n:03d}" for n in [43, 47, *range(49, 57)]]
+LATER = {f"EX-{n:03d}": "needs the command options (task 17.1, R3-R4)" for n in range(64, 71)}
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] != ["--probe"]:
+        sys.exit("usage: extract_cases.py --probe   (writes EX-P03 under tests/data/extract/device/abut_probe)")
+    import tclcase  # noqa: E402
+
+    print(tclcase.write(probe_case(), PROBE_DIR))
