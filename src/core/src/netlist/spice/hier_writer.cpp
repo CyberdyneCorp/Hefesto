@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/extflat/names.hpp"
 #include "netlist/spice/flat_writer.hpp"
 #include "netlist/spice/numbers.hpp"
 
@@ -58,8 +59,22 @@ int index_of(const PortIndex& ports, const std::string& name) {
   return it == ports.end() ? -1 : it->second;
 }
 
-// subcktVisit's port list: by the canonical name's index, else the first
-// name of the entry's chain that has one.
+// One port slot of subcktVisit's list for a name of an entry's chain:
+// taken when free, or when EFHNBest prefers the name to the slot's holder.
+bool claim_slot(std::map<int, std::string>& slots, int index, const std::string& name) {
+  const auto [it, inserted] = slots.try_emplace(index, name);
+  if (inserted) {
+    return true;
+  }
+  if (extflat::prefer_name(name, it->second)) {
+    it->second = name;
+    return true;
+  }
+  return false;
+}
+
+// subcktVisit's port list: by the canonical name's index when that slot is
+// free, else the first name of the entry's chain that claims a slot.
 // The slots are kept sparse: port numbers come from the `.ext` file, so a
 // list sized by the highest one could be huge (both modes).
 std::vector<std::string> call_ports(const HierCall& call, const PortIndex& ports) {
@@ -71,7 +86,7 @@ std::vector<std::string> call_ports(const HierCall& call, const PortIndex& ports
     }
     for (const extflat::PortName& n : e.chain) {
       const int index = index_of(ports, n.name);
-      if (index >= 0 && slots.try_emplace(index, n.name).second) {
+      if (index >= 0 && claim_slot(slots, index, n.name)) {
         break;
       }
     }

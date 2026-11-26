@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "case": "NL-P01",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:4d0458958d5d4f8d086d922e8fd1dffe6effcb8cd193ad9d3fca993f084c0617",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-26T16:41:23Z",
+  "outputs": {
+    "collected/LEFDEF-317.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-317.nodes": "25bb6b5bcfb3bc651e7cd4bb4f88d91e5ced433a3a22e7f358eae5cbcb63ac00",
+    "collected/LEFDEF-318.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-318.nodes": "25bb6b5bcfb3bc651e7cd4bb4f88d91e5ced433a3a22e7f358eae5cbcb63ac00",
+    "collected/LEFDEF-319.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-319.nodes": "8ffa915485efa34a8a4cec157b6bacc11269cf88ede35ef7e64bd8bc14f5c3c5",
+    "collected/LEFDEF-320.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-320.nodes": "7acac7f2d2dbd17727c5db275fe0fe3109b313703a64affdaeaa4e91ee4a773c",
+    "collected/LEFDEF-321.al": "672fe43922800f593b3a6d8bab91ba7a99955815ae3d0ac9c909bb3ced44442e",
+    "collected/LEFDEF-321.nodes": "12e4a9ea4b2dfc89cbd22cb031960f07d7f3a0d3c635ddfeabdb4fabc0dc8dbd",
+    "collected/LEFDEF-322.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-322.nodes": "539041c4ca29f37cb9ecfde31d11a5bff9f4fcfaa8672fb289dd0e5cb51040ec",
+    "collected/LEFDEF-323.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-323.nodes": "6f3f455813cb58881f610f268df43c47a6fda0672bc8b9c7df6f840896320fcb",
+    "collected/LEFDEF-324.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-324.nodes": "6bba5c92bfee818096a6179a6be956e669a3d6f76a9ed1d20115310ee786f74f",
+    "collected/LEFDEF-325.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-325.nodes": "860ff25439af16130712d544dede9b88eb21acba4a20b54a76088a7cdc3ce771",
+    "collected/LEFDEF-326.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-326.nodes": "f79efa171e004da546fff2d0ceb4001ca23383e18087041ee48ebdcb30e6ae09",
+    "collected/LEFDEF-327.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-327.nodes": "6f3f455813cb58881f610f268df43c47a6fda0672bc8b9c7df6f840896320fcb",
+    "collected/LEFDEF-328.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-328.nodes": "1233c73f51f561248ecf0f9b7cab9ba35ab9f4eb333f0db646b83c53f71eb4dd",
+    "collected/LEFDEF-330.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-330.nodes": "a07430255f8a5567fd321dd127bb98a3db104414403c09fc8c9314f354a77244",
+    "collected/LEFDEF-331.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-331.nodes": "d141229198c289cba206405444650981250a03fe7b678e435641fd4bd8b54ed8",
+    "collected/LEFDEF-332.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-332.nodes": "ade1bc98bea927e2069f2a7f24047b9ad6f5013711ff13ec89452a4cb63df20c",
+    "collected/LEFDEF-333.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-333.nodes": "f6602b501fefbf5deca8fe2dc2e69e203bc9161b8298188886a191e245063a56",
+    "collected/LEFDEF-334.al": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "collected/LEFDEF-334.nodes": "2c5f715edafbcefda3dba48a0a1315a2254f16a1bcae554950a8bf31179b9a7c",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "248d92ab7726dcbef2405dc48fda1a7a0de65168c4efcaed5240308759402651"
+  }
+}

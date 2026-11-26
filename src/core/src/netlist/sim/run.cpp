@@ -274,6 +274,9 @@ extflat::ReadOptions read_options(const editor::EditorState& editor, const extfl
   ext2sim_read(options, extresist);
   device_types(options, editor);
   options.magic_compat = magic_compat;
+  // EFOutputFlags' short bits are one session-wide setting in Magic, set by
+  // `ext2spice short` and read by both netlisters (EFbuild.c efBuildEquiv).
+  options.shorts = static_cast<extflat::ReadOptions::PortShorts>(editor.netlist.spice.shorts);
   if (editor.extract.current) {
     options.units_per_lambda = editor.extract.current->units_per_lambda;  // ExtCurStyle (EFread.c:252-259)
   }

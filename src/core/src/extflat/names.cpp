@@ -9,6 +9,8 @@
 
 #include "hefesto/extflat/names.hpp"
 
+#include "hier_name.hpp"
+
 namespace hefesto::extflat {
 
 namespace {
@@ -194,6 +196,10 @@ NameFlags sim_run_flags(NameFlags& session, std::string_view trim_chars,
   NameFlags run = no_name_flags();
   add_trim_chars(run, trim_chars);
   return run;
+}
+
+bool prefer_name(std::string_view a, std::string_view b) {
+  return detail::prefer_name(detail::name_from_string(a), detail::name_from_string(b));
 }
 
 }  // namespace hefesto::extflat
