@@ -9,14 +9,17 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 #include <cstdio>
 #include <limits>
 #include <map>
 #include <numeric>
 #include <utility>
 
+#include "hefesto/db/plane.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/binding/tags.hpp"
+#include "hefesto/select/selection.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/view/window.hpp"
@@ -396,7 +399,6 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
     key.clip = in.clip.area;
     key.clipped = in.clip.cut_box;
   }
-  key.span_connected_layers = span_connected_layers;
   key.technology = in.technology;
   // A new output style (even with the same layers) is a new mask source: a full build.
   key.mask_style = in.mask ? std::shared_ptr<const void>{in.mask->style} : nullptr;
@@ -406,6 +408,9 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
     key.magic_compat = in.stack->magic_compat();
     key.microns_per_unit = in.stack->microns_per_unit();
   }
+  // A mask-layer build ignores the J1 option: toggling it there needs no
+  // new build (nor a new report of the generation errors).
+  key.span_connected_layers = span_connected_layers && key.mode == view3d::Mode::layout_layer;
   return key;
 }
 
@@ -428,20 +433,30 @@ view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInput
   return in;
 }
 
-diag::DiagnosticSink* BuildErrorRelay::open(std::uint64_t build_id) {
-  sinks_.emplace_back(build_id, std::make_unique<diag::CollectingSink>());
-  return sinks_.back().second.get();
+void BuildErrorRelay::attach(view3d::BuildInputs& in, const BuildKey& key) {
+  Entry& e = sinks_.emplace_back();
+  e.build_id = in.build_id;
+  e.key = key;
+  e.sink = std::make_unique<diag::CollectingSink>();
+  in.sink = e.sink.get();
 }
 
-std::vector<diag::Diagnostic> BuildErrorRelay::take(std::uint64_t build_id) {
-  for (auto& [id, sink] : sinks_) {
-    if (id == build_id) return sink->take();
+std::vector<diag::Diagnostic> BuildErrorRelay::deliver(const view3d::MeshModel* model, std::uint64_t current,
+                                                       bool worker_idle) {
+  if (worker_idle) {
+    std::erase_if(sinks_, [current](const Entry& e) { return e.build_id < current; });
   }
-  return {};
-}
-
-void BuildErrorRelay::release_before(std::uint64_t build_id) {
-  std::erase_if(sinks_, [build_id](const auto& entry) { return entry.first < build_id; });
+  if (model == nullptr || !model_is_current(*model, current)) return {};
+  const auto it =
+      std::find_if(sinks_.begin(), sinks_.end(), [current](const Entry& e) { return e.build_id == current; });
+  if (it == sinks_.end()) return {};
+  std::vector<diag::Diagnostic> errors = it->sink->take();
+  if (it->delivered) return errors;  // an incremental rebuild's
+  it->delivered = true;
+  const bool repeat = last_full_ && last_full_->key == it->key && last_full_->errors == errors;
+  last_full_ = Reported{it->key, errors};
+  if (repeat) errors.clear();
+  return errors;
 }
 
 std::optional<ChangeAreas> change_areas(const view::LayoutWindow& window, const db::CellDef* rendered) {
@@ -463,7 +478,10 @@ std::string mesh_status_text(const MeshStatus& status) {
     return "Building mesh · " + std::to_string(percent) + " %";
   }
   if (!status.have_model) return "No mesh";
-  return "Mesh ready · " + grouped(status.rectangles) + (status.rectangles == 1 ? " rectangle" : " rectangles");
+  std::string text =
+      "Mesh ready · " + grouped(status.rectangles) + (status.rectangles == 1 ? " rectangle" : " rectangles");
+  if (status.overlay_truncated) text += " · net overlay cut at " + grouped(view3d::kMaxNetOverlayPrisms) + " boxes";
+  return text;
 }
 
 std::size_t rectangle_count(const view3d::MeshModel& mesh) noexcept {
@@ -582,6 +600,51 @@ view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor:
   if (mesh == nullptr || window.mode != view3d::Mode::mask_layer || mesh->mode != view3d::Mode::mask_layer) return {};
   return view3d::net_overlay(*mesh, editor, window, editor.selection,
                              view3d::NetOptions{view3d::NetScope::hierarchical, magic_compat, nullptr});
+}
+
+std::uint64_t selection_fingerprint(const select::Selection& selection) {
+  // FNV-1a over the root's address and each selected tile.
+  std::uint64_t h = 1469598103934665603ULL;
+  const auto mix = [&h](std::uint64_t v) {
+    h ^= v;
+    h *= 1099511628211ULL;
+  };
+  mix(static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(selection.root())));
+  const db::CellDef* def = selection.def();
+  if (def == nullptr) return h;
+  tech::TypeMask types = tech::TypeMask::all();
+  types.clear_type(tech::kSpace);
+  for (std::size_t p = tech::kFirstUserPlane; p < def->plane_count(); ++p) {
+    (void)def->plane(static_cast<tech::PlaneId>(p)).enumerate(db::whole_plane(), types, [&](const db::TileView& t) {
+      mix(p);
+      mix(static_cast<std::uint64_t>(t.type));
+      for (const db::Coord c : {t.area.x0, t.area.y0, t.area.x1, t.area.y1}) {
+        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(c)));
+      }
+      return true;
+    });
+  }
+  return h;
+}
+
+void NetOverlayCache::selection_maybe_changed(const select::Selection& selection) {
+  if (!dirty_ && selection_fingerprint(selection) != fingerprint_) dirty_ = true;
+}
+
+const view3d::NetOverlay& NetOverlayCache::overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                                   const view3d::WindowState& window, bool magic_compat) {
+  if (dirty_) {
+    overlay_ = mask_net_overlay(mesh, editor, window, magic_compat);
+    fingerprint_ = selection_fingerprint(editor.selection);
+    dirty_ = false;
+    ++computations_;
+  }
+  return overlay_;
+}
+
+void NetOverlayCache::reset() {
+  overlay_ = {};
+  dirty_ = true;
 }
 
 std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack) {

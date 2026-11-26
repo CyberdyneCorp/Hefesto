@@ -45,14 +45,6 @@ Rgba alpha_of(Rgba c, float a) {
   return c;
 }
 
-/// Converts `overlay` to the renderer's prisms, held by `storage`, and
-/// points `params.net_overlay` at them (task 10.4).
-void set_net_overlay(render::DrawParams& params, const view3d::NetOverlay& overlay,
-                     std::vector<render::OverlayPrism>& storage) {
-  storage = overlay_prisms<render::OverlayPrism>(overlay);
-  params.net_overlay = storage;
-}
-
 }  // namespace
 
 /// What the worker's callbacks reach (through tasks posted to the UI loop).
@@ -500,6 +492,8 @@ std::string View3dView::route_typed(const std::string& line) const {
 
 void View3dView::refresh() {
   highlight_dirty_ = true;
+  // The net overlay's search runs again only when the selection changed.
+  net_overlay_.selection_maybe_changed(ctx_.editor().selection);
   dirty_ = true;
 }
 
@@ -517,6 +511,7 @@ void View3dView::on_window_changed(view::WindowId id, view::Change change) {
   if (layout == nullptr) return;
   const std::optional<ChangeAreas> areas = change_areas(*layout, key_.cell);
   if (!areas) return;
+  net_overlay_.invalidate();  // the rendered cell changed, and its nets may have
   if (areas->all) {
     have_key_ = false;  // a full build on the next frame
   } else {
@@ -573,8 +568,10 @@ void View3dView::reset_window_state() {
   have_key_ = false;
   picking_.reset();
   highlight_ = nullptr;
-  net_overlay_ = {};
+  net_overlay_.reset();
   overlay_storage_.clear();
+  overlay_converted_ = 0;
+  overlay_truncated_ = false;
   pick_caption_.clear();
   rows_.clear();
   ghost_.clear();
@@ -639,27 +636,27 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
   }
   view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), key.span_connected_layers);
   in.build_id = ++build_id_;
-  in.sink = build_errors_.open(in.build_id);
+  build_errors_.attach(in, key);
   worker_->build(std::move(in));
 }
 
 void View3dView::take_model(const view3d::MeshHandle& model) {
-  if (worker_->idle()) {
-    if (held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
-    build_errors_.release_before(build_id_);
-  }
+  const bool idle = worker_->idle();
+  if (idle && held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
+  // The build's mask generation errors, once (Q-MISC-89; ON only, CORE).
+  const std::vector<diag::Diagnostic> errors = build_errors_.deliver(model.get(), build_id_, idle);
   if (!model || !build_stack_ || !window_open()) return;
   // A model of an earlier build (one finishing as a new one started, posted
   // before or after start_build): its stack, mode, units or style differ
   // from build_stack_'s, even with as many layers; the next one replaces it.
   if (!model_is_current(*model, build_id_)) return;
-  // The build's mask generation errors, once (Q-MISC-89; ON only, CORE).
-  for (const diag::Diagnostic& d : build_errors_.take(model->build_id)) ctx_.core.dispatcher().report(d);
+  for (const diag::Diagnostic& d : errors) ctx_.core.dispatcher().report(d);
   model_ = model;
   drawn_stack_ = build_stack_;
   drawable_ = pending_drawable_;
   ghost_.drawn(*drawn_stack_, options_);
   picking_.model_changed();  // the isolated net follows the new ordinals
+  net_overlay_.invalidate();  // searched against the new model (its units and z range)
   update_section(false);
   highlight_dirty_ = true;
   dirty_ = true;
@@ -777,10 +774,9 @@ void View3dView::draw_frame() {
   if (highlight_dirty_) {
     update_pick_scope(uploaded_stack_.get());
     highlight_ = picking_.highlight(uploaded_.get(), ctx_.editor());
-    // Mask-layer mode: the selected layout nets over the mask geometry (10.4).
-    net_overlay_ = mask_net_overlay(uploaded_.get(), ctx_.editor(), *w, magic_compat());
     highlight_dirty_ = false;
   }
+  update_net_overlay(*w);
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   const std::vector<bool> hidden = view3d::hidden_layers(ctx_.editor(), *stack, *w, magic_compat());
   render::DrawParams params =
@@ -790,7 +786,8 @@ void View3dView::draw_frame() {
     params.substrate = view3d::substrate_slab(*uploaded_, *uploaded_stack_);
   }
   if (section_line_) params.section_plane = section_clip_plane(segment_in_mesh(*section_line_, mesh_units()));
-  set_net_overlay(params, net_overlay_, overlay_storage_);
+  params.net_overlay = overlay_storage_;
+  params.overlay_origin = overlay_origin_;
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -862,6 +859,19 @@ void View3dView::apply_gesture(const view3d::Gesture& gesture) {
   view3d::apply(w->view, gesture);  // as the matching `view`/`scroll`/`zoom` would
   dirty_ = true;
   shown_viewport().invalidate();
+}
+
+// Mask-layer mode: the selected layout nets over the mask geometry (10.4),
+// searched again only when the cache is stale (NetOverlayCache) and
+// converted to the renderer's prisms once per search.
+void View3dView::update_net_overlay(const view3d::WindowState& window) {
+  const view3d::NetOverlay& overlay = net_overlay_.overlay(uploaded_.get(), ctx_.editor(), window, magic_compat());
+  if (net_overlay_.computations() == overlay_converted_) return;
+  overlay_converted_ = net_overlay_.computations();
+  overlay_storage_ = overlay_prisms<render::OverlayPrism>(overlay);
+  overlay_origin_ = {overlay.origin_x, overlay.origin_y};
+  overlay_truncated_ = overlay.truncated;
+  if (status_paint_) status_paint_->invalidate();
 }
 
 void View3dView::pick_at(float x, float y) {
@@ -950,6 +960,7 @@ std::string View3dView::status_line() const {
   status.building = !worker_->idle();
   status.have_model = model_ != nullptr;
   status.rectangles = model_ ? rectangle_count(*model_) : 0;
+  status.overlay_truncated = overlay_truncated_ || (renderer_ && renderer_->overlay_truncated());
   std::string line = mesh_status_text(status);
   if (options_.show_frame_time) line += " · frame " + timer_.text();
   return line;
@@ -1143,7 +1154,12 @@ void View3dView::connect_viewport(ui::Viewport& viewport, bool separate) {
     if (target_) target_->resize(width, height);
     dirty_ = true;
   });
-  viewport.on_input([this](const CanvasInput& input) { return handle_input(input); });
+  viewport.on_input([this, separate](const CanvasInput& input) {
+    // Only the viewport that shows the frames takes input (the tab's blank
+    // stage while "Detach view" is on takes none).
+    if (!viewport_takes_input(separate, separate_window_ != nullptr)) return false;
+    return handle_input(input);
+  });
 }
 
 ui::Viewport& View3dView::shown_viewport() const {

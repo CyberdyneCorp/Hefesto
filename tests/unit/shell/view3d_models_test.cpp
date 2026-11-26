@@ -1307,6 +1307,8 @@ TEST_CASE("the mesh status and the frame-time readout",
   CHECK(mesh_status_text(MeshStatus{true, 0.42, 0, false}) == "Building mesh · 42 %");
   CHECK(mesh_status_text(MeshStatus{false, 1.0, 1248, true}) == "Mesh ready · 1,248 rectangles");
   CHECK(mesh_status_text(MeshStatus{false, 1.0, 1, true}) == "Mesh ready · 1 rectangle");
+  CHECK(mesh_status_text(MeshStatus{false, 1.0, 1248, true, true}) ==
+        "Mesh ready · 1,248 rectangles · net overlay cut at 65,536 boxes");
   FrameTimer timer;
   CHECK(timer.text() == "—");
   timer.add(10.0);
@@ -1760,12 +1762,12 @@ void check_net_overlay(bool compat) {
   s.ok("select area metal1");
   const view3d::NetOverlay overlay = mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat);
   REQUIRE_FALSE(overlay.empty());
-  float x1 = 0.0F;
+  double x1 = 0.0;
   for (const view3d::NetOverlayPrism& p : overlay.prisms) {
     CHECK(p.z_top >= p.z_bottom);
-    x1 = std::max(x1, p.x1);
+    x1 = std::max(x1, overlay.origin_x + static_cast<double>(p.x1));
   }
-  CHECK(x1 == Catch::Approx(100.0F * f));  // metal1 (0,0)-(100,50) in the mesh's mask units
+  CHECK(x1 == Catch::Approx(100.0 * static_cast<double>(f)));  // metal1 (0,0)-(100,50) in the mesh's mask units
   // Field by field into the renderer's prism type.
   const std::vector<TestPrism> prisms = overlay_prisms<TestPrism>(overlay);
   REQUIRE(prisms.size() == overlay.prisms.size());
@@ -1855,44 +1857,146 @@ std::size_t no_room_count(const std::vector<hefesto::diag::Diagnostic>& ds) {
       ds.begin(), ds.end(), [](const hefesto::diag::Diagnostic& d) { return d.code == "MASK-OPER-004"; }));
 }
 
-/// The tab's build of the mask-layer window through its relay: the
-/// MASK-OPER-004 errors of the build's first take, and the size of a
-/// second take.
-std::pair<std::size_t, std::size_t> tab_build_errors(bool compat) {
+/// The steps of the tab's error relay (BuildErrorRelay, as start_build and
+/// take_model use it) on the mask-layer window: the MASK-OPER-004 count
+/// reported for each step.
+struct RelaySteps {
+  std::size_t first = 0;         // the first model of a full build
+  std::size_t again = 0;         // the same model delivered again
+  std::size_t stale = 0;         // a model of an earlier build
+  std::size_t same_key = 0;      // a second full build with the same key (the tab's double build on opening)
+  std::size_t rebuilt = 0;       // an incremental rebuild of that build
+  std::size_t other_key = 0;     // a full build with another key
+  std::size_t sinks_after = 0;   // sinks left once idle
+};
+
+RelaySteps tab_relay_steps(bool compat) {
   ClientSession s(compat, kGenErrTech);
   s.ok("specialopen wind3d c3d");
   REQUIRE(s.window().mode == view3d::Mode::mask_layer);
   BuildErrorRelay relay;
-  view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
-  in.build_id = 1;
-  in.sink = relay.open(in.build_id);
   view3d::MeshWorker worker;
-  worker.build(in);
+  std::uint64_t id = 0;
+  const auto build = [&](const view3d::BuildInputs& window_inputs) {
+    view3d::BuildInputs in = build_inputs(s.editor, window_inputs, false);
+    in.build_id = ++id;
+    in.max_chunk_tiles = 2;
+    relay.attach(in, build_key(window_inputs, false));
+    REQUIRE(in.sink != nullptr);  // start_build passes the build its sink
+    worker.build(in);
+    REQUIRE(worker.wait_idle(20000));
+    REQUIRE(worker.current());
+    return worker.current();
+  };
+  RelaySteps out;
+  const view3d::MeshHandle one = build(tab_inputs(s));
+  out.first = no_room_count(relay.deliver(one.get(), id, true));
+  out.again = relay.deliver(one.get(), id, true).size();
+  const view3d::MeshHandle two = build(tab_inputs(s));
+  out.stale = relay.deliver(one.get(), id, true).size();
+  out.same_key = no_room_count(relay.deliver(two.get(), id, true));
+  const std::array<hefesto::db::Rect, 1> dirty{hefesto::db::Rect{70, 5, 90, 20}};
+  worker.changed(dirty);
   REQUIRE(worker.wait_idle(20000));
-  REQUIRE(worker.current());
-  CHECK(relay.take(2).empty());  // another build's errors are not this one's
-  const std::size_t first = no_room_count(relay.take(in.build_id));
-  const std::size_t second = relay.take(in.build_id).size();
+  REQUIRE(worker.current() != two);
+  out.rebuilt = no_room_count(relay.deliver(worker.current().get(), id, true));
+  REQUIRE(s.w3d("cutbox 0 0 60 50").ok());
+  const view3d::MeshHandle three = build(tab_inputs(s));
+  out.other_key = no_room_count(relay.deliver(three.get(), id, true));
+  out.sinks_after = relay.size();
+  CHECK(relay.deliver(nullptr, id, true).empty());
   CHECK(s.editor.feedback.size() == 0);  // never as feedback
-  relay.release_before(2);
-  CHECK(relay.size() == 0);
-  return {first, second};
+  return out;
 }
 
 }  // namespace
 
 TEST_CASE("the 3D tab reports a mask-layer build's generation errors once with magic-compat ON",
           "[cap:view-3d][req:Rendered geometry]") {
-  // Regression: the tab passed no BuildInputs::sink, so with magic-compat
-  // ON the desktop never reported the errors (Q-MISC-89).
-  const auto [first, second] = tab_build_errors(true);
-  CHECK(first == 1);
-  CHECK(second == 0);
+  // Regressions: the tab passed no BuildInputs::sink, so with magic-compat
+  // ON the desktop never reported the errors (Q-MISC-89); the tab's second
+  // full build on opening (same key) printed every error twice.
+  const RelaySteps r = tab_relay_steps(true);
+  CHECK(r.first == 1);
+  CHECK(r.again == 0);
+  CHECK(r.stale == 0);
+  CHECK(r.same_key == 0);
+  CHECK(r.rebuilt == 1);    // an incremental rebuild is a build: its area's errors once
+  CHECK(r.other_key == 1);  // a full build of other inputs reports again
+  CHECK(r.sinks_after == 1);
 }
 
 TEST_CASE("the 3D tab reports no mask-layer generation errors with magic-compat OFF",
           "[cap:view-3d][req:Rendered geometry]") {
-  const auto [first, second] = tab_build_errors(false);
-  CHECK(first == 0);
-  CHECK(second == 0);
+  const RelaySteps r = tab_relay_steps(false);
+  CHECK(r.first == 0);
+  CHECK(r.same_key == 0);
+  CHECK(r.rebuilt == 0);
+  CHECK(r.other_key == 0);
+}
+
+TEST_CASE("only the viewport that shows the 3D frames takes input",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: with "Detach view" on, clicks on the tab's blank stage
+  // reached the 3D input handler, which read the pick image at the
+  // separate window's pixel and could change the 2D selection.
+  CHECK(viewport_takes_input(false, false));       // the tab, nothing detached
+  CHECK_FALSE(viewport_takes_input(false, true));  // the tab while detached
+  CHECK(viewport_takes_input(true, true));         // the separate window
+  CHECK_FALSE(viewport_takes_input(true, false));  // a separate viewport being closed
+}
+
+TEST_CASE("Span connected layers needs no new build in mask-layer mode",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: the build key held the J1 flag in mask-layer mode, which
+  // ignores it, so toggling it regenerated the masks (and, with
+  // magic-compat ON, reported their errors again).
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    bind_styles(s);
+    s.ok("specialopen wind3d c3d");
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    CHECK(build_key(tab_inputs(s), true) == build_key(tab_inputs(s), false));
+    s.w3d("cif");
+    REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+    CHECK_FALSE(build_key(tab_inputs(s), true) == build_key(tab_inputs(s), false));
+  }
+}
+
+TEST_CASE("the net overlay is searched again only when the selection, the model or the layout changed",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: every command's refresh searched every selected net again
+  // on the UI thread (a block's power net: a hang per command).
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open_from_desktop(s);
+    const DrawnMesh d = build_mesh(s);
+    NetOverlayCache cache;
+    CHECK(cache.overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+    CHECK(cache.computations() == 1);
+    s.ok("select area metal1");
+    cache.selection_maybe_changed(s.editor.selection);
+    const std::size_t prisms = cache.overlay(d.mesh.get(), s.editor, s.window(), compat).prisms.size();
+    CHECK(prisms > 0);
+    CHECK(cache.computations() == 2);
+    // A command that leaves the selection as it was: no new search.
+    const std::uint64_t before = selection_fingerprint(s.editor.selection);
+    s.ok("select area metal1");
+    CHECK(selection_fingerprint(s.editor.selection) == before);
+    cache.selection_maybe_changed(s.editor.selection);
+    (void)cache.overlay(d.mesh.get(), s.editor, s.window(), compat);
+    CHECK(cache.computations() == 2);
+    // A new model or a layout change: searched again.
+    cache.invalidate();
+    CHECK(cache.overlay(d.mesh.get(), s.editor, s.window(), compat).prisms.size() == prisms);
+    CHECK(cache.computations() == 3);
+    // Nothing selected any more: searched again, empty.
+    s.ok("select clear");
+    CHECK(selection_fingerprint(s.editor.selection) != before);
+    cache.selection_maybe_changed(s.editor.selection);
+    CHECK(cache.overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+    CHECK(cache.computations() == 4);
+  }
 }

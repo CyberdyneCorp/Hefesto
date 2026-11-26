@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -194,6 +195,7 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   bool handle_input(const CanvasInput& input);
   bool handle_pointer(const CanvasInput& input);
   void apply_gesture(const view3d::Gesture& gesture);
+  void update_net_overlay(const view3d::WindowState& window);
   void pick_at(float x, float y);
   /// Points the resolver at `stack` (the drawn model's), the rendered cell and the compat flag.
   void update_pick_scope(const view3d::LayerStack* stack);
@@ -268,11 +270,14 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   PickResolver resolver_;
   View3dPicking picking_{resolver_};
   const view3d::HighlightSet* highlight_ = nullptr;
-  // Task 10.4: the layout-net overlay in mask-layer mode (mask_net_overlay),
-  // recomputed with the highlight against the uploaded model, and its
+  // Task 10.4: the layout-net overlay in mask-layer mode (mask_net_overlay)
+  // against the uploaded model, searched again only when stale, and its
   // prisms in the renderer's type (kept alive for DrawParams::net_overlay).
-  view3d::NetOverlay net_overlay_;
+  NetOverlayCache net_overlay_;
   std::vector<render::OverlayPrism> overlay_storage_;
+  std::array<double, 2> overlay_origin_{0.0, 0.0};
+  std::uint64_t overlay_converted_ = 0;  // the NetOverlayCache::computations() overlay_storage_ holds
+  bool overlay_truncated_ = false;
   std::string pick_caption_;
   std::optional<view3d::Segment> section_line_;  // the cut line while the cross-section is on
   std::optional<db::Point> section_first_;       // the first of two clicks

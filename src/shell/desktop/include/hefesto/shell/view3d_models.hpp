@@ -398,28 +398,52 @@ struct BuildKey {
                                                bool span_connected_layers);
 
 /// The tab's sinks for the mask generation errors of its builds
-/// (Q-MISC-89, view-3d "Rendered geometry"): one CollectingSink per build,
-/// written on the build thread (BuildInputs::sink), drained on the UI loop
-/// when a model of that build is taken, so each full build reports its
-/// errors once (CORE reports only with magic-compat ON, and never from an
-/// incremental rebuild). The sinks of builds that delivered no current
-/// model are dropped unread.
+/// (Q-MISC-89, view-3d "Rendered geometry"): View3dView::start_build
+/// attaches one CollectingSink per build (BuildInputs::sink, written on the
+/// build thread) and take_model asks deliver() what to report for each
+/// model the worker delivers (CORE reports only with magic-compat ON).
 class BuildErrorRelay {
  public:
-  /// A new sink for build `build_id`; it stays valid until
-  /// release_before() drops it.
-  [[nodiscard]] diag::DiagnosticSink* open(std::uint64_t build_id);
-  /// The errors build `build_id` reported that were not taken yet (none
-  /// for a build without a sink).
-  [[nodiscard]] std::vector<diag::Diagnostic> take(std::uint64_t build_id);
-  /// Drops the sinks of builds before `build_id`; called only while no
-  /// build runs (the worker is idle).
-  void release_before(std::uint64_t build_id);
+  /// Gives `in`, a build of `key` tagged with its BuildInputs::build_id, a
+  /// sink of its own; it stays valid while that build or a later one
+  /// runs.
+  void attach(view3d::BuildInputs& in, const BuildKey& key);
+  /// The errors to report for `model` (null: none), delivered while
+  /// `current` is the last build started; `worker_idle`: no build runs,
+  /// so the sinks of earlier builds are dropped unread. A model of an
+  /// earlier build reports nothing. The first model of a build reports its
+  /// full build's errors, unless they equal the errors of the last full
+  /// build reported for the same key (the tab builds twice on opening);
+  /// each later model of the build (an incremental rebuild) reports what
+  /// that rebuild found.
+  [[nodiscard]] std::vector<diag::Diagnostic> deliver(const view3d::MeshModel* model, std::uint64_t current,
+                                                      bool worker_idle);
   [[nodiscard]] std::size_t size() const noexcept { return sinks_.size(); }
 
  private:
-  std::vector<std::pair<std::uint64_t, std::unique_ptr<diag::CollectingSink>>> sinks_;
+  struct Entry {
+    std::uint64_t build_id = 0;
+    BuildKey key;
+    std::unique_ptr<diag::CollectingSink> sink;
+    bool delivered = false;  // its full build's errors were taken
+  };
+  struct Reported {
+    BuildKey key;
+    std::vector<diag::Diagnostic> errors;
+  };
+
+  std::vector<Entry> sinks_;
+  std::optional<Reported> last_full_;
 };
+
+/// Whether a viewport of the tab takes input: the one that shows the
+/// frames, the separate window's while it is open (`separate_open`),
+/// otherwise the tab's. The other (the tab's blank stage while "Detach
+/// view" is on) takes none: its clicks would read the pick image at the
+/// separate window's pixel and could change the 2D selection.
+[[nodiscard]] constexpr bool viewport_takes_input(bool separate_viewport, bool separate_open) noexcept {
+  return separate_viewport == separate_open;
+}
 
 /// The change areas of a layout window for the 3D view (in root
 /// coordinates): nullopt when the window does not show `rendered` as its
@@ -431,12 +455,15 @@ struct ChangeAreas {
 [[nodiscard]] std::optional<ChangeAreas> change_areas(const view::LayoutWindow& window, const db::CellDef* rendered);
 
 /// The toolbar's mesh status: "Building mesh · 42 %" while a build runs,
-/// "Mesh ready · 1,248 rectangles" after, "No mesh" before the first.
+/// "Mesh ready · 1,248 rectangles" after, "No mesh" before the first;
+/// " · net overlay cut at 65,536 boxes" is added when the net overlay was
+/// cut at its limit (view3d::kMaxNetOverlayPrisms, or the renderer's).
 struct MeshStatus {
   bool building = false;
   double progress = 0.0;
   std::size_t rectangles = 0;
   bool have_model = false;
+  bool overlay_truncated = false;
 };
 [[nodiscard]] std::string mesh_status_text(const MeshStatus& status);
 [[nodiscard]] std::size_t rectangle_count(const view3d::MeshModel& mesh) noexcept;
@@ -574,8 +601,40 @@ class View3dPicking {
 [[nodiscard]] view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
                                                   const view3d::WindowState& window, bool magic_compat);
 
+/// A fingerprint of the 2D selection's paint (its root and every selected
+/// tile on its home plane): equal for the same selection, so the tab
+/// recomputes the net overlay only when the selection changed, not after
+/// every command.
+[[nodiscard]] std::uint64_t selection_fingerprint(const select::Selection& selection);
+
+/// When the tab's net overlay (mask_net_overlay) is computed: once, then
+/// again only after invalidate() (a new model drawn, a layout change of
+/// the rendered cell) or when the 2D selection changed
+/// (selection_maybe_changed after a command). A net search over a block's
+/// power net is not repeated on every refresh.
+class NetOverlayCache {
+ public:
+  void invalidate() noexcept { dirty_ = true; }
+  /// Marks the overlay stale when the selection differs from the one it
+  /// was computed for.
+  void selection_maybe_changed(const select::Selection& selection);
+  /// The overlay of `mesh` (recomputed if stale).
+  const view3d::NetOverlay& overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                    const view3d::WindowState& window, bool magic_compat);
+  /// How many times the overlay was computed.
+  [[nodiscard]] std::uint64_t computations() const noexcept { return computations_; }
+  void reset();
+
+ private:
+  bool dirty_ = true;
+  std::uint64_t fingerprint_ = 0;
+  std::uint64_t computations_ = 0;
+  view3d::NetOverlay overlay_;
+};
+
 /// The overlay's prisms in the renderer's type (render::OverlayPrism, the
-/// same fields), copied field by field.
+/// same fields), copied field by field; relative to the overlay's origin
+/// (view3d::NetOverlay::origin_x, origin_y: DrawParams::overlay_origin).
 template <typename Prism>
 [[nodiscard]] std::vector<Prism> overlay_prisms(const view3d::NetOverlay& overlay) {
   std::vector<Prism> out;
