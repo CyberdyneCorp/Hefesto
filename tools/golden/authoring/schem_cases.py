@@ -23,7 +23,7 @@ Hefesto replays a netlist case from ``input/replay.hef`` (the ``schematic`` comm
 ``input/hefesto.tcl`` (the steps of ``input/case.tcl``, a load/saveas through ``schematic open``/``save``),
 both with the capture's ``/work/`` and ``/pdk/`` paths relative to the replay's work folder. The block
 ``--deviations`` writes keeps a case deferred to M8 until it is in ``REPLAYED``; a replayed case keeps only
-xschem's driver text on stdout/stderr (proposed Q-SCHEM-46) and what ``REPLAYED_OPEN`` lists.
+what ``REPLAYED_OPEN`` lists (xschem's driver text is dropped at capture, Q-SCHEM-46, approved 2026-11-25).
 
     python3 tools/golden/authoring/schem_cases.py                # write the cases (never expected/)
     python3 tools/golden/authoring/schem_cases.py --list         # case ids

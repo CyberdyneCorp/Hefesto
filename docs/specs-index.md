@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3646 scenarios, 1052 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3646 scenarios, 1055 open questions.
 
 ## Hefesto product (native)
 
@@ -207,7 +207,7 @@ Open questions: [6](decisions/open-questions/AGENT.md) · Golden cases: [CASES.m
 
 ## Schematic capture (xschem-compatible) (SCHEM)
 
-Open questions: [54](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
+Open questions: [57](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|

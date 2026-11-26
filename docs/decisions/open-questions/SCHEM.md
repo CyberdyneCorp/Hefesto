@@ -533,3 +533,30 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: (a) no shell processing: `argv` is the argument text split at `(`, `)`, `,`, spaces and tabs, empty words dropped, every word kept as written (backslashes included), both modes | (b) apply POSIX shell word rules to the argument text (quotes, backslash escapes) before building `argv`
 - Recommendation: (a). Hefesto runs only Tcl generators in its sandbox and never a shell; (b) would need a shell parser for no PDK benefit (no pinned PDK generator argument holds a quote or a meaningful backslash).
 - Spec effect: `schematic-symbols-and-libraries` "Symbol generators" (paragraph "Arguments", scenario "Generator arguments are not substituted").
+
+### Q-SCHEM-60: Diagnostics in the SCHEM golden `stderr.txt`
+- Kind: other
+- Status: proposed (drafted 2026-11-26 at the M8 round-6 integration from the GOLDEN round-6 replay; numbers 55 to 59 are not used; awaiting the user)
+- xschem behavior (black box, golden captures): after the Q-SCHEM-46 filter, `stderr.txt` holds xschem's ERC and loader lines (`Warning: open net: <net>`, `Error: undriven node: <net>`, `-----------<schematic>`, `l_s_d(): Symbol not found: ...`, `load_schematic(): unable to open file ...`, `Error: Symbol ...: Unmatched subcircuit schematic pin direction`, `WARNING:  missing fields for WIRE object, ignoring`). Hefesto prints coded diagnostics with other wording, adds its own warnings (`SCHEM-NET-015`, `SCHEM-NET-009/010/011`, `SCHEM-LIB-006`) and does not print the open-net or undriven-node lines yet.
+- Evidence: golden cases SCHEM-NL-02, 03, 05, 06, 09, 10, 11, 12, 13, 14, 16, 18, 20, 21, 22, RT-02, RT-06 (`replay.py --milestone M8`, round 6).
+- Options: (a) approved deviation for `stderr.txt` of the SCHEM cases; files, exit status and `puts` results stay compared, and message texts are covered by the "Errors and warnings" and "Malformed input" unit tests | (b) a diagnostics comparator that strips `<severity>: <CODE>: `, ` at <file>:<line>` and xschem's `Warning:`/`Error:` prefixes, with per-case lists of Hefesto-only and xschem-only messages as approved deviations | (c) with `xschem-compat` ON, Hefesto prints xschem's message texts only
+- Recommendation: (a). The diagnostics are Hefesto's coded contract; (b) is a large comparator for little gain and (c) duplicates every message path.
+- Spec effect: `schematic-command` (golden comparison paragraph); `tests/golden/deviations.toml` SCHEM block.
+
+### Q-SCHEM-61: Result of `xschem netlist` after a run that reports an error
+- Kind: other
+- Status: proposed (drafted 2026-11-26 at the M8 round-6 integration from the GOLDEN round-6 replay; awaiting the user)
+- xschem behavior (black box): after a netlist run that reports an error, `xschem netlist` returns `1` and the script goes on (SCHEM-NL-22 prints `netlist 1` and exits 10; SCHEM-SIM-03 still writes `tb.spice`). Hefesto's `xschem netlist` raises, as `schematic netlist` does.
+- Evidence: golden cases SCHEM-NL-22 (`stdout.txt`), SCHEM-SIM-03.
+- Options: (a) with `xschem-compat` ON, `xschem netlist` returns xschem's value without raising and the exit status stays 10; `schematic netlist` keeps raising; GOLDEN adds a success-path capture to pin the value | (b) keep raising, and record an approved deviation for SCHEM-NL-22 `stdout.txt` and SCHEM-SIM-03
+- Recommendation: (a): the `xschem` command set exists to run xschem scripts unchanged.
+- Spec effect: `schematic-command` xschem table (`netlist` row).
+
+### Q-SCHEM-62: Third argument of `xschem get_tok`
+- Kind: other
+- Status: proposed (drafted 2026-11-26 at the M8 round-6 integration from the GOLDEN round-6 replay; awaiting the user)
+- xschem behavior (black box, SCHEM-PR-01): with a third argument `1` xschem keeps the quotes of a quoted value (`"tantalium capacitor"`); with `2` it strips them; for unquoted values both give the plain value. Hefesto raises `wrong number of arguments`.
+- Evidence: golden case SCHEM-PR-01 (`stdout.txt`).
+- Options: (a) accept the optional third argument with the captured behaviour, both modes | (b) leave it unsupported and record SCHEM-PR-01 as a deviation
+- Recommendation: (a).
+- Spec effect: `schematic-command` xschem table (`get_tok` row).

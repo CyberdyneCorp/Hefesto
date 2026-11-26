@@ -145,6 +145,15 @@ release notices.
   breadcrumb, messages and netlist bar with Interrupt; pan, zoom and
   click-to-select; net highlights drawn in their colours. Symbols are
   resolved off the UI thread and shown as placeholders until ready.
+- **Schematic tab: Netlist button, system clipboard, rebindable keys.**
+  The top bar's Netlist button shows the Schematic tab and runs the
+  netlist. Copy and Paste (Command-C/V on macOS, Ctrl-C/V elsewhere)
+  go through the system clipboard; clipboard text above 16 MiB is
+  refused. `macro schematic KEY "TEXT"` lines of the key-binding sheet
+  now reach the table the canvas reads.
+- **Embedded symbols on save.** `schematic save` writes the block of
+  each `embed=true` symbol the file does not embed yet, taken from the
+  symbol library.
 
 ### Changed
 
@@ -180,6 +189,14 @@ release notices.
 
 ### Fixed
 
+- **Out-of-range numbers in schematic files (Q-SCHEM-34 to -37, both
+  `xschem-compat` modes).** A record whose rotation or flip is outside
+  16 bits is skipped; zero or negative bus counts are syntax errors and
+  a stepped range with equal ends gives one element; `%` by zero gives
+  `nan`; a `Bus tap` short is reported only when the tap's name differs
+  from its pin's, naming the tap first. Nested instances whose symbol
+  is a file next to the schematic are no longer dropped on open,
+  reload or descend.
 - **`schematic label` with a quote or backslash** in the name is escaped
   and reads back unchanged; so are the net labels a netlist run stores.
 - **Schematic scripts cannot close or move the standard channels**

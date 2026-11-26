@@ -497,6 +497,9 @@ jobs:
             cxx: g++-14
             preset: ci-linux-desktop
             desktop: true
+            # The golden reference leg (GOLDEN_REFERENCE_LEG) restores the xschem sets too, so the SCHEM cases
+            # with PDK inputs write outputs here as on the other xschem legs (cross-platform determinism).
+            xschem: true
           - name: linux-x64-clang-latest
             os: ubuntu-24.04
             cc: clang-18
