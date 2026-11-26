@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3616 scenarios, 1047 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3617 scenarios, 1048 open questions.
 
 ## Hefesto product (native)
 
@@ -63,7 +63,7 @@ Open questions: [48](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 ## Layout data model (MODEL)
 
-Open questions: [37](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
+Open questions: [38](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -97,7 +97,7 @@ Open questions: [160](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 | [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 91 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
 | [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 78 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 48 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
-| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 49 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
+| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 50 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 50 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
 | [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 41 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |
 

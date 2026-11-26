@@ -280,11 +280,12 @@ void ReadEngine::adjust_labels(db::CellDef& cell) {
 
 namespace {
 
-// DBNMPaintPlane with at most min(kPieces, pool) pieces, taken from the pool.
+// DBNMPaintPlane with at most min(kPieces, pool) pieces, taken from the pool,
+// and kSteps stitch steps.
 void paint_budgeted(MaskPlane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
                     bool magic_compat, ReadTriangleBudget& budget) {
   const std::size_t granted = std::min(ReadTriangleBudget::kPieces, budget.pool);
-  db::NMBudget pieces{granted};
+  db::NMBudget pieces{granted, ReadTriangleBudget::kSteps};
   (void)plane.paint_triangle(area, diagonal, right_side, magic_compat, &pieces);
   budget.pool -= granted - pieces.pieces;
 }

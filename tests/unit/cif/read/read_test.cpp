@@ -10,12 +10,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "../cif_fixture.hpp"
 #include "hefesto/cif/read/read.hpp"
+#include "hefesto/pdk/sha256.hpp"
 
 namespace {
 
@@ -285,4 +287,34 @@ TEST_CASE("a read without rescaling allowed snaps off-grid input",
   const cmd::CommandResult r = cif::read_text(f.ed, "DS 1 1 1;\n9 odd;\nL CMF;\nB 40 20 25 10;\nDF;\nE\n", options);
   REQUIRE(r.ok());
   CHECK(any_ends_with(texts(r), "Input off lambda grid by 1/2; snapped to grid."));
+}
+
+// The stitch budget of read triangles and the merge that keeps the tile
+// with more side neighbours (security.md M5-S10) leave ordinary
+// non-Manhattan input as before: a 45-degree triangle beside a nearly
+// parallel one 3 internal units off (a chain of pieces, as in
+// gf180mcu_fd_io's POWER_RAIL_COR_1) and a 45-degree wire read into the
+// tiles they read into before the fix (count and SHA-256 of the tile list).
+TEST_CASE("nearly parallel 45-degree polygons and a 45-degree wire read as before the stitch budget",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  REQUIRE(read(f, "DS 1 1 1;\n9 diag;\nL CMF;\nP 0 0 4000 0 0 4000;\nP 30 4000 4030 0 4030 4000;\n"
+                  "W 200 6000 0 9000 3000 12000 0;\nDF;\nC 1;\nE\n")
+              .ok());
+  const db::CellDef* diag = f.ed.cells.find("diag");
+  REQUIRE(diag != nullptr);
+  const std::vector<TileText> tiles = tiles_of(f, *diag, "metal1");
+  hefesto::pdk::Sha256 digest;
+  std::size_t split = 0;
+  for (const TileText& t : tiles) {
+    split += t.split ? 1 : 0;
+    digest.update(std::to_string(t.area.x0) + " " + std::to_string(t.area.y0) + " " + std::to_string(t.area.x1) +
+                  " " + std::to_string(t.area.y1) + (t.split ? " 1\n" : " 0\n"));
+  }
+  // Captured with the step budget off and TiJoinY's order unchanged.
+  CHECK(tiles.size() == 605);
+  CHECK(split == 327);
+  CHECK(digest.finish_hex() == "5bef829ef86d168b9fb21ce90f352abf48cf1fd20258627db3cfea41d4524eea");
 }
