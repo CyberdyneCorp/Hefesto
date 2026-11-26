@@ -1808,7 +1808,8 @@ TEST_CASE("a net overlay with more than 65,535 top faces is drawn",
   // Regression: the 16-bit limit on the side faces' layer entry was checked
   // against the number of top faces, so such an overlay drew nothing. It
   // takes one layer entry per z range.
-  const std::vector<render::OverlayPrism> grid = strip_grid(300, 0.25F, 0.05F);
+  // Strips 0.2 wide with 0.05 gaps: wide enough to cover pixels in the top view.
+  const std::vector<render::OverlayPrism> grid = strip_grid(300, 0.25F, 0.2F);
   const render::OverlayFaces faces = render::overlay_faces(grid);
   REQUIRE(faces.tops.size() > 0xFFFFU);
   REQUIRE_FALSE(faces.truncated);
