@@ -478,7 +478,9 @@ jobs:
     name: ${{ matrix.name }}
     needs: reference-data
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    # macOS legs build, test and replay the golden cases in 18-50 minutes
+    # depending on runner load; 90 leaves headroom as the suite grows.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
