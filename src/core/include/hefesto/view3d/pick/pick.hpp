@@ -35,6 +35,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -164,12 +165,13 @@ struct NetOptions {
 /// One box of the layout-net overlay (task 10.4), Vulkan-free plain data:
 /// the front end copies it field by field into the renderer's overlay type
 /// (render::OverlayPrism).
-/// - x0, y0, x1, y1: the tile's rectangle in MESH units, absolute: root
-///   coordinates times MeshModel::units_per_root (mask units in mask-layer
-///   mode), the space the chunk origins are in (a chunk instance's point
-///   is Chunk::origin + its chunk-relative offset), so the renderer draws
-///   a prism with the chunk transform of origin (0, 0). float32 holds
-///   every coordinate of a mesh within +-2^24 mesh units exactly.
+/// - x0, y0, x1, y1: the tile's rectangle in MESH units (root coordinates
+///   times MeshModel::units_per_root: mask units in mask-layer mode, the
+///   space the chunk origins are in), RELATIVE to NetOverlay::origin_x and
+///   origin_y (doubles), as a chunk's instances are to Chunk::origin: a
+///   prism's absolute x is origin_x + x0. float32 then holds every offset
+///   of a net within +-2^24 mesh units of its origin exactly, wherever the
+///   net lies on a large die.
 /// - z_bottom, z_top: draw heights as MeshModel::layer_heights holds them
 ///   (unscaled by s_z; a layer of draw height (h, t) is drawn from h to
 ///   h + t): the drawn stack's full range, the lowest h and the highest
@@ -190,10 +192,17 @@ struct NetOverlayPrism {
 /// The overlay of one net: its tiles (on their types' home planes, so a
 /// contact appears once), merged as the paint of each type is (maximal
 /// horizontal strips), clipped to the window's cut box when it has one.
-/// A split tile is drawn as its bounding box.
+/// A split tile is drawn as its bounding box. At most kMaxNetOverlayPrisms
+/// prisms: a larger net (a block's power net selected in 2D) is cut there
+/// and `truncated` is set, so the front end can say so (the standing
+/// crafted-input limit rule of 2026-11-25, recommended value).
+inline constexpr std::size_t kMaxNetOverlayPrisms = 65536;
 struct NetOverlay {
   std::vector<NetOverlayPrism> prisms;
   std::vector<tech::TileType> types;  // parallel to `prisms`: the layout type of each
+  double origin_x = 0.0;  // mesh units: the prisms' x and y are relative to this point
+  double origin_y = 0.0;
+  bool truncated = false;  // the net had more than kMaxNetOverlayPrisms prisms
 
   [[nodiscard]] bool empty() const noexcept { return prisms.empty(); }
 };

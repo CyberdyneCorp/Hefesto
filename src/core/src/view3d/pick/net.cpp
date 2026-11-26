@@ -7,7 +7,8 @@
 // root coordinates (NetPaint); the overlay reads that cell back, one
 // prism per tile of each type on its home plane (a contact's images on
 // its other planes are skipped), clipped to the cut box and scaled to the
-// mesh's units.
+// mesh's units relative to the first prism's corner, at most
+// kMaxNetOverlayPrisms prisms.
 //
 // Owner: CORE (M10 round 6; the search moved here from highlight.cpp).
 
@@ -91,7 +92,9 @@ tech::TypeMask painted_types() {
   return mask;
 }
 
-/// Reads the net paint back as prisms in mesh units.
+/// Reads the net paint back as prisms in mesh units, relative to the first
+/// prism's lower-left corner (NetOverlay::origin_x, origin_y), at most
+/// kMaxNetOverlayPrisms of them.
 class OverlayWriter {
  public:
   OverlayWriter(const MeshModel& mesh, const std::optional<db::Rect>& cut_box)
@@ -103,32 +106,44 @@ class OverlayWriter {
     const tech::Technology& tech = net.technology();
     const db::CellDef& cell = net.cell();
     const tech::TypeMask types = painted_types();
-    for (std::size_t p = tech::kFirstUserPlane; p < cell.plane_count(); ++p) {
+    for (std::size_t p = tech::kFirstUserPlane; p < cell.plane_count() && !out_.truncated; ++p) {
       const auto plane = static_cast<tech::PlaneId>(p);
       (void)cell.plane(plane).enumerate(clip_, types, [&](const db::TileView& tile) {
-        if (tech.home_plane(tile.type) == plane) {
-          add(tile);
-        }
-        return true;
+        return tech.home_plane(tile.type) != plane || add(tile);
       });
     }
     return std::move(out_);
   }
 
  private:
-  void add(const db::TileView& tile) {
+  /// False once the overlay is full (the tile is then left out).
+  bool add(const db::TileView& tile) {
     const db::Rect r{std::max(tile.area.x0, clip_.x0), std::max(tile.area.y0, clip_.y0),
                      std::min(tile.area.x1, clip_.x1), std::min(tile.area.y1, clip_.y1)};
     if (r.x0 >= r.x1 || r.y0 >= r.y1) {
-      return;
+      return true;
     }
-    out_.prisms.push_back(NetOverlayPrism{to_mesh(r.x0), to_mesh(r.y0), to_mesh(r.x1), to_mesh(r.y1), z_.bottom,
+    if (out_.prisms.size() >= kMaxNetOverlayPrisms) {
+      out_.truncated = true;
+      return false;
+    }
+    if (out_.prisms.empty()) {
+      out_.origin_x = to_mesh(r.x0);
+      out_.origin_y = to_mesh(r.y0);
+    }
+    out_.prisms.push_back(NetOverlayPrism{relative(r.x0, out_.origin_x), relative(r.y0, out_.origin_y),
+                                          relative(r.x1, out_.origin_x), relative(r.y1, out_.origin_y), z_.bottom,
                                           z_.top});
     out_.types.push_back(tile.type);
+    return true;
   }
 
-  [[nodiscard]] float to_mesh(db::Coord v) const noexcept {
-    return static_cast<float>(static_cast<double>(v) * static_cast<double>(scale_));
+  [[nodiscard]] double to_mesh(db::Coord v) const noexcept {
+    return static_cast<double>(v) * static_cast<double>(scale_);
+  }
+
+  [[nodiscard]] float relative(db::Coord v, double origin) const noexcept {
+    return static_cast<float>(to_mesh(v) - origin);
   }
 
   std::int32_t scale_;

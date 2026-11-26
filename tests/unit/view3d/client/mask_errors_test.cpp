@@ -4,8 +4,10 @@
 // Generation errors of a 3D mask-layer build (R5 item 20, approved
 // 2026-11-26; view-3d "Rendered geometry"): with magic-compat ON a full
 // build reports them once to its sink (never as feedback; Magic's
-// W3DCIFredisplay adds feedback on every redraw); incremental chunk
-// rebuilds report nothing; with magic-compat OFF nothing is reported.
+// W3DCIFredisplay adds feedback on every redraw), and an incremental
+// rebuild reports those of the areas it regenerates once (Q-MISC-89: "a
+// full build or an incremental rebuild"); with magic-compat OFF nothing is
+// reported.
 // Owner: CORE (round 6).
 
 #include <catch2/catch_test_macros.hpp>
@@ -17,6 +19,7 @@
 
 #include "client_fixture.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/view3d/client/face_log.hpp"
 #include "hefesto/view3d/client/scene.hpp"
 #include "hefesto/view3d/mesh/worker.hpp"
 
@@ -105,6 +108,16 @@ struct ErrSession : ClientSession {
     return sink.take();
   }
 
+  // A redraw of a script or hefesto-cli window (HEFESTO_GL_CAPTURE's face
+  // log, the only display those windows build for) with an error sink.
+  std::vector<diag::Diagnostic> face_log_errors() {
+    diag::CollectingSink sink;
+    view3d::FaceLogDisplay log{services.view().files, "/t/gl.log", nullptr, &sink};
+    log.redraw(editor, window());
+    REQUIRE(services.view().files.exists("/t/gl.log"));
+    return sink.take();
+  }
+
   // A worker build, a local edit rebuilt incrementally, then a new full
   // build: the errors reported after each step.
   std::array<std::vector<diag::Diagnostic>, 3> worker_errors() {
@@ -142,11 +155,22 @@ TEST_CASE("Mask generation errors reported once per build with magic-compat ON",
     CHECK(count_code(s.scene_errors(), kNoRoom) == 1);
     CHECK(s.editor.feedback.size() == 0);  // never as feedback
   }
-  SECTION("the worker's full builds report; the incremental rebuild does not repeat it") {
+  SECTION("the worker's full builds and its incremental rebuild each report once") {
+    // Regression: the incremental rebuild reported nothing, so the errors
+    // of the area an edit regenerates were not printed until a later full
+    // build.
     const auto steps = s.worker_errors();
     CHECK(count_code(steps[0], kNoRoom) == 1);
-    CHECK(steps[1].empty());
+    // The regenerated area around the edit, once although the rebuild
+    // generates it in two pieces (each reports the same message).
+    CHECK(count_code(steps[1], kNoRoom) == 1);
     CHECK(count_code(steps[2], kNoRoom) == 1);
+  }
+  SECTION("a script or hefesto-cli window's redraw reports to the display's sink") {
+    // Regression: FaceLogDisplay built with no sink, so those windows never
+    // reported the errors.
+    CHECK(count_code(s.face_log_errors(), kNoRoom) == 1);
+    CHECK(s.editor.feedback.size() == 0);
   }
 }
 
@@ -159,5 +183,8 @@ TEST_CASE("Mask generation errors not reported with magic-compat OFF", "[cap:vie
     for (const auto& step : s.worker_errors()) {
       CHECK(step.empty());
     }
+  }
+  SECTION("a script or hefesto-cli window's redraw") {
+    CHECK(s.face_log_errors().empty());
   }
 }

@@ -99,6 +99,18 @@ class StreamSink final : public diag::DiagnosticSink {
   std::mutex mutex_;
 };
 
+/// Reports each diagnostic through the dispatcher (its sinks and logger):
+/// the 3D face log's mask generation errors (Q-MISC-89), raised outside a
+/// command's own result.
+class DispatcherSink final : public diag::DiagnosticSink {
+ public:
+  explicit DispatcherSink(cmd::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
+  void emit(const diag::Diagnostic& diagnostic) override { dispatcher_.report(diagnostic); }
+
+ private:
+  cmd::Dispatcher& dispatcher_;
+};
+
 /// Counts the commands that failed and remembers the last error text that
 /// was reported, so the CLI can fail the run on a quiet command failure
 /// (Magic's convention: the script goes on) and print a Tcl error only when
@@ -283,7 +295,8 @@ class Session {
     // m10 task 12.4: HEFESTO_GL_CAPTURE names the 3D window's face log, as
     // the GL capture shim writes it for Magic (tools/golden/gl_capture/).
     if (const auto path = install_host_->environment("HEFESTO_GL_CAPTURE"); path && !path->empty()) {
-      face_log_ = std::make_unique<view3d::FaceLogDisplay>(services_.files(), *path);
+      face_log_errors_ = std::make_unique<DispatcherSink>(*dispatcher_);
+      face_log_ = std::make_unique<view3d::FaceLogDisplay>(services_.files(), *path, nullptr, face_log_errors_.get());
       editor_.view3d.display = face_log_.get();
     }
   }
@@ -722,6 +735,7 @@ class Session {
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
   bool wrapper_display_ = false;  // -d names a display other than NULL (wrapper mode)
   std::unique_ptr<platform::FilePicker> file_picker_;  // wrapper mode: Tk's file dialogs
+  std::unique_ptr<DispatcherSink> face_log_errors_;    // the face log's builds report through the dispatcher
   std::unique_ptr<view3d::FaceLogDisplay> face_log_;   // HEFESTO_GL_CAPTURE: the 3D window's face log
 };
 

@@ -12,6 +12,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include <cmath>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -225,8 +226,8 @@ TEST_CASE("Net highlighted over mask-layer geometry", "[cap:hefesto-3d-visualiza
       CHECK(expected.count(s.type("poly")) == 0);
       // Right of the gate (OFF also reaches the drain diffusion, x >= 18).
       for (const view3d::NetOverlayPrism& p : overlay.prisms) {
-        CHECK(p.x0 >= static_cast<float>(10 * (kX + 18)));
-        CHECK(p.x1 <= static_cast<float>(10 * (kX + 30)));
+        CHECK(overlay.origin_x + static_cast<double>(p.x0) >= 10.0 * (kX + 18));
+        CHECK(overlay.origin_x + static_cast<double>(p.x1) <= 10.0 * (kX + 30));
       }
     }
     SECTION("the prisms span the drawn mask stack: Q-MISC-72 heights per mode") {
@@ -247,8 +248,8 @@ TEST_CASE("Net highlighted over mask-layer geometry", "[cap:hefesto-3d-visualiza
       const Rect box{200, 0, 225, 30};
       CHECK(overlay_area(overlay, 10) == expected_area(s, out, box));
       for (const view3d::NetOverlayPrism& p : overlay.prisms) {
-        CHECK(p.x1 <= 2250.0F);
-        CHECK(p.y1 <= 300.0F);
+        CHECK(overlay.origin_x + static_cast<double>(p.x1) <= 2250.0);
+        CHECK(overlay.origin_y + static_cast<double>(p.y1) <= 300.0);
       }
     }
     SECTION("the 2D selection seeds the overlay; nothing selected gives none") {
@@ -275,4 +276,47 @@ TEST_CASE("Net highlighted over mask-layer geometry", "[cap:hefesto-3d-visualiza
       CHECK(overlay_area(overlay, 10) == expected_area(s, out));
     }
   }
+}
+
+TEST_CASE("Net overlay of a large net: capped, with coordinates relative to its origin",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression (crafted-input limit, standing rule of 2026-11-25): a net
+  // of more than kMaxNetOverlayPrisms tiles (a block's power net selected
+  // in 2D) was returned whole, and the renderer's per-frame face pass grew
+  // with its square. Far from the origin (beyond 2^24 mask units) the
+  // prisms kept absolute float32 coordinates and lost their precision.
+  const bool compat = GENERATE(true, false);
+  INFO("magic-compat " << compat);
+  InvSession s(compat);
+  const view3d::MeshHandle mesh = s.mesh();
+  REQUIRE(mesh->units_per_root == 10);
+  // A comb far out: a metal1 spine and more teeth than the cap, each tooth
+  // its own tile (maximal horizontal strips cannot merge them).
+  constexpr db::Coord kFar = 5'000'000;  // 5e7 mask units, past 2^25 (float32 steps of 4 there)
+  const std::size_t teeth = view3d::kMaxNetOverlayPrisms + 100;
+  const auto metal1 = s.type("metal1");
+  const auto n = static_cast<db::Coord>(teeth);
+  REQUIRE(db::paint(*s.cell, *s.editor.technology, Rect{kFar, 0, kFar + (2 * n), 1}, metal1).ok());
+  for (db::Coord i = 0; i < n; ++i) {
+    REQUIRE(db::paint(*s.cell, *s.editor.technology, Rect{kFar + (2 * i), 1, kFar + (2 * i) + 1, 3}, metal1).ok());
+  }
+  db::recompute_bbox(*s.cell);
+  const view3d::PickTarget spine = s.seed("metal1", Rect{kFar, 0, kFar + 1, 1});
+  const view3d::NetOverlay overlay = view3d::net_overlay(*mesh, s.editor, s.window(), spine, s.options());
+  CHECK(overlay.truncated);
+  CHECK(overlay.prisms.size() == view3d::kMaxNetOverlayPrisms);
+  CHECK(overlay.types.size() == overlay.prisms.size());
+  // Every edge is a whole internal unit (10 mask units) from the origin,
+  // exactly: a tooth is 10 mask units wide, not 8 or 12 (float32 at 5e7).
+  CHECK(overlay.origin_x >= 10.0 * kFar);
+  std::size_t not_whole = 0;
+  for (const view3d::NetOverlayPrism& p : overlay.prisms) {
+    not_whole += std::fmod(static_cast<double>(p.x0), 10.0) == 0.0 && std::fmod(static_cast<double>(p.x1), 10.0) == 0.0
+                     ? 0U
+                     : 1U;
+  }
+  CHECK(not_whole == 0);
+  // A small net is not cut.
+  const view3d::PickTarget out = s.seed("metal1", InvSession::at(Rect{20, 0, 30, 50}));
+  CHECK_FALSE(view3d::net_overlay(*mesh, s.editor, s.window(), out, s.options()).truncated);
 }
