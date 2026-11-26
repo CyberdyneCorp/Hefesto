@@ -1,0 +1,4 @@
+node "w" 1 1 0 0 metal1
+@@ parent
+use top t0 2000000000 0 2000000000 0 1 0
+connect 0 0 1 1 metal1 w t0/w

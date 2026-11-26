@@ -171,6 +171,29 @@ TEST_CASE("render leaves the session's settings untouched", "[cap:netlist-spice-
   CHECK(s.result("ext2spice format") == "cdl");
 }
 
+// Regression (security review M7-S4, both modes): render() read through the
+// local file system, so a sandboxed session's files were never reached.
+TEST_CASE("render reads through the file system it is given", "[cap:netlist-spice-options][req:Command options]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", compat ? "on" : "off").ok());
+    REQUIRE(s.services.files()
+                .write_atomic(hefesto::platform::Path{"/w/m7s4.ext"},
+                              "scale 1000 1000 5\nresistclasses 1000 5000 100\n"
+                              "node \"a\" 0 2 0 0 metal1 0 0 0 0 0 0\n")
+                .ok());
+    const auto in_session = spice::render(s.state, s.services.files(), "/w/m7s4", spice::SpiceSettings{});
+    INFO((in_session.ok() ? std::string{} : in_session.error().code + " " + in_session.error().text));
+    REQUIRE(in_session.ok());
+    CHECK(in_session.value().find("m7s4") != std::string::npos);
+    // The local file system has no /w/m7s4.ext.
+    const auto local = spice::render(s.state, "/w/m7s4", spice::SpiceSettings{});
+    REQUIRE_FALSE(local.ok());
+    CHECK(local.error().code == "EXTFLAT-READ-001");
+  }
+}
+
 TEST_CASE("Rendering a value never changes the caller's flags", "[cap:netlist-spice-options][req:Command options]") {
   // render()'s writer step: the settings are a value and the name flags a
   // copy, so the same input renders the same text twice.

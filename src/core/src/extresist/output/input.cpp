@@ -11,7 +11,11 @@
 // a negative node resistance is +infinity (Magic converts INFINITY to an
 // int); a device terminal naming a net with no record yet creates the net
 // (Magic dereferences a null net); a device whose model the style does not
-// declare has no tile type (Magic dereferences a null device line).
+// declare has no tile type (Magic dereferences a null device line); a
+// `substrate` record with fewer than 7 fields and a parent `connect` with
+// fewer than 8 are ignored (Magic reads past argv); a parent `use` whose
+// 2x2 part is not Manhattan is ignored, and its transform is inverted and
+// applied in 64 bits, saturated to 32 (Magic's int arithmetic overflows).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResReadExt.c, Copyright (C)
 // 1985, 1990 Regents of the University of California (see
@@ -21,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <string>
@@ -59,6 +64,40 @@ bool is_numeric(const std::string& s) {
   char* end = nullptr;
   (void)std::strtod(s.c_str(), &end);
   return end != nullptr && *end == '\0';
+}
+
+// Minimum field counts beyond the shared token table (Magic reads past argv).
+constexpr std::size_t kSubstrateFields = 7;
+constexpr std::size_t kParentConnectFields = 8;
+
+std::int32_t sat32(std::int64_t v) {
+  return static_cast<std::int32_t>(std::clamp<std::int64_t>(v, std::numeric_limits<std::int32_t>::min(),
+                                                            std::numeric_limits<std::int32_t>::max()));
+}
+
+bool unit(std::int32_t v) { return v == 1 || v == -1; }
+
+// The 2x2 part is a rotation or reflection by a multiple of 90 degrees.
+bool manhattan(const db::Transform& t) {
+  return (t.b == 0 && t.d == 0 && unit(t.a) && unit(t.e)) || (t.a == 0 && t.e == 0 && unit(t.b) && unit(t.d));
+}
+
+// db::invert in 64 bits, saturated.
+db::Transform invert_saturated(const db::Transform& t) {
+  const std::int64_t c = -(std::int64_t{t.a} * t.c + std::int64_t{t.d} * t.f);
+  const std::int64_t f = -(std::int64_t{t.b} * t.c + std::int64_t{t.e} * t.f);
+  return db::Transform{t.a, t.d, sat32(c), t.b, t.e, sat32(f)};
+}
+
+db::Point apply_saturated(const db::Transform& t, std::int64_t x, std::int64_t y) {
+  return db::Point{sat32(t.a * x + t.b * y + t.c), sat32(t.d * x + t.e * y + t.f)};
+}
+
+// db::apply on a rectangle in 64 bits, saturated.
+db::Rect apply_saturated(const db::Transform& t, const db::Rect& r) {
+  const db::Point p0 = apply_saturated(t, r.x0, r.y0);
+  const db::Point p1 = apply_saturated(t, r.x1, r.y1);
+  return db::canonical(db::Rect{p0.x, p0.y, p1.x, p1.y});
 }
 
 class Reader {
@@ -144,8 +183,14 @@ class Reader {
         port(t);
         break;
       case xt::Key::node:
-      case xt::Key::substrate:
         current_ = node(t);
+        break;
+      case xt::Key::substrate:
+        if (t.size() < kSubstrateFields) {
+          read_error("Not enough tokens for substrate line");
+        } else {
+          current_ = node(t);
+        }
         break;
       case xt::Key::attr:
         attribute(t);
@@ -162,8 +207,10 @@ class Reader {
     const std::optional<xt::Key> k = key(t);
     if (k == xt::Key::use) {
       use(t);
-    } else if (k == xt::Key::connect) {
+    } else if (k == xt::Key::connect && t.size() >= kParentConnectFields) {
       drive_point(t);
+    } else if (k == xt::Key::connect) {
+      read_error("Not enough tokens for connect line");
     }
   }
 
@@ -310,7 +357,9 @@ class Reader {
     }
     const db::Transform tr{xt::c_atoi(t[3]), xt::c_atoi(t[4]), xt::c_atoi(t[5]),
                            xt::c_atoi(t[6]), xt::c_atoi(t[7]), xt::c_atoi(t[8])};
-    uses_[t[2]] = db::invert(tr);
+    if (manhattan(tr)) {
+      uses_[t[2]] = invert_saturated(tr);
+    }
   }
 
   // ResReadDrivePoint: "<use>/<node>" of a connection into this cell.
@@ -337,7 +386,7 @@ class Reader {
       return;
     }
     InputNode& n = model_.nodes[*i];
-    const ConnectPoint p{db::apply(use->second, rect_at(t, 1)), type};
+    const ConnectPoint p{apply_saturated(use->second, rect_at(t, 1)), type};
     n.drive_points.push_back(p);
     n.status.force = n.status.drive_located = true;
     debug_point("driver", p.rect);
