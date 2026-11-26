@@ -20,6 +20,10 @@ release notices.
 - **3D view upside down in tilted views.** The isometric, front and side
   views showed the stack from below (wells on top, metals at the
   bottom); every tilted view now looks from above.
+- **`antennacheck debug` belongs to its session.** The debug flag was
+  shared by every session of the process, so one session's
+  `antennacheck debug` printed diagnostics in another session's next
+  run; it is now armed per session.
 
 ### Added
 

@@ -242,6 +242,8 @@ Depends on `mask-hints`, which is completed in M3.
 
 ## M7 — Extraction and netlisting
 
+**Status (2026-11-26): in progress (implementation round 5).** Every M7 decision row is approved (the R3 and R4 rows on 2026-11-25, with the standing rule for crafted-input resource limits; `docs/decisions/m7-decision-table.md`), and the specs cite them. The four M7 fuzz targets, the security review (M7-S1..S8) and the EXTRACT and NETLIST areas of the determinism job have landed. Requirement coverage is 100 % for all 21 capabilities. `m7_cases.py --exit-check` still reports work left: EX-064..070, the six PDK standard-cell cases (task 17.4), LEFDEF-336, NETLIST-SMOKE-01 and NL-RES-01..08 deferred, NL-RESNET-05, 10 and 13 blocked by Magic's `extresist` crash (Q-NETLIST-63); the benches (18.x) and the desktop Extract button (16.1) are open.
+
 **Capabilities:** `extract-tech-section`, `extract-nodes-and-labels`, `extract-capacitance`, `extract-resistance-lumped`, `extract-devices`, `extract-hierarchy`, `extract-substrate`, `extract-file-format`, `extract-commands`, `ext-flattening-read`, `ext-flattening-hierarchy`, `ext-flattening-names`, `netlist-spice-options`, `netlist-spice-devices`, `netlist-spice-hierarchy`, `netlist-sim`, `netlist-extcheck`, `extresist-command`, `extresist-network`, `extresist-output`, `antenna-check`
 
 **Deliverables**

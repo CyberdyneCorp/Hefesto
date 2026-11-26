@@ -278,7 +278,7 @@ The user approved on 2026-11-25, as a standing rule: **a new resource limit on c
 | `fuzz_extract_section` input size | 64 KiB per input, as `fuzz_tech_file` | `tests/fuzz/fuzz_extract_section.cpp` | input ignored (harness only) | R5 (task 19.2) |
 | `fuzz_ext_netlist` input size and flattening | 64 KiB per input; `ReadLimits` with 4096 instances, 64 Ki nodes, depth 16 | `tests/fuzz/fuzz_ext_netlist.cpp` | the read fails with the reader's own EXTFLAT-READ code (harness only) | R5 (task 19.2) |
 | `fuzz_res_ext_reader` input size | 64 KiB per input | `tests/fuzz/fuzz_res_ext_reader.cpp` | input ignored (harness only) | R5 (task 19.2) |
-| `fuzz_extract_layout` layout size | at most 64 rectangles and 8 labels per cell, coordinates within ±256 lambda | `tests/fuzz/fuzz_extract_layout.cpp` | the decoder stops (harness only) | R5 (task 19.2) |
+| `fuzz_extract_layout` layout size | at most 64 rectangles and 8 labels per cell, coordinates within -128..159 lambda | `tests/fuzz/fuzz_extract_layout.cpp` | the decoder stops (harness only) | R5 (task 19.2) |
 
 The fuzz harness caps are harness parameters, not product limits: they bound what one fuzz input can build so that a timeout is a real hang (design D22), and change nothing a user sees. They are recorded here so that every cap added in M7 is listed in one place.
 
