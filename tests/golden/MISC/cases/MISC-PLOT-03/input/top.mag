@@ -1,0 +1,24 @@
+magic
+tech plottest
+timestamp 0
+<< metal1 >>
+rect 100 140 200 190
+use sub sub_0
+array 0 2 15 0 1 15
+timestamp 0
+transform 1 0 100 0 1 100
+box 0 0 10 10
+<< labels >>
+rlabel metal1 110 160 110 160 0 L0
+rlabel metal1 120 160 120 160 1 L1
+rlabel metal1 130 160 130 160 2 L2
+rlabel metal1 140 160 140 160 3 L3
+rlabel metal1 150 160 150 160 4 L4
+rlabel metal1 160 160 160 160 5 L5
+rlabel metal1 170 160 170 160 6 L6
+rlabel metal1 180 160 180 160 7 L7
+rlabel metal1 190 160 190 160 8 L8
+rlabel metal1 90 150 90 150 7 left_edge
+rlabel metal1 200 190 200 190 2 top_right
+rlabel metal1 150 180 150 180 0 lab(1
+<< end >>
