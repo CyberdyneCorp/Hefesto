@@ -992,7 +992,7 @@ reason = "Q-MISC-51 (a): Versatec and HP RTL plotting are dropped (platform devi
 
 [MISC-PLOT-18]
 deferred = "M10"
-outputs = ["stdout.txt", "stderr.txt", "out.pnm", "out2", "sub.d/out3"]
+outputs = ["stdout.txt", "stderr.txt", "out.pnm", "out2", "sub.d__out3"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for plot until PLOTCMD, PS, PNM and EXPORT land (tasks 5-8): the owning workstream drops this deferral when the case replays"
 
 [MISC-PLOT-19]

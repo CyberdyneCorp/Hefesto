@@ -80,6 +80,8 @@ class PlotCaseSpecTest(unittest.TestCase):
             for output in spec.outputs:
                 with self.subTest(case=spec.id, output=output):
                     expected = {".ps": "ps-text", ".svg": "svg-shape"}.get(Path(output).suffix, "pnm-image")
+                    if output == "exitcode":
+                        expected = "bytes"
                     self.assertEqual(spec.output_comparators[output], expected)
 
     def test_postscript_cases_load_plottest(self):

@@ -314,7 +314,7 @@ Open questions: [57](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 | [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 25 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
 | [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
-| [`plot-output`](../openspec/specs/plot-output/spec.md) | 17 | 33 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
+| [`plot-output`](../openspec/specs/plot-output/spec.md) | 17 | 33 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `parameters` and `help`; Magic's `versatec`, `gremlin` and `pixels` are… |
 | [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 46 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
