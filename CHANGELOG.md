@@ -8,6 +8,10 @@ release notices.
 
 ### Fixed
 
+- **Huge `.ext` arrays fail at once.** A `use` array (or arrayed
+  `merge`) larger than what is left of the 4 Mi instance (16 Mi merge
+  element) cap now fails with EXTFLAT-READ-009 before any element is
+  flattened, instead of flattening elements for seconds until the cap.
 - **Huge arrays in hierarchical SPICE fail at once.** `ext2spice` with
   `hierarchy on` now fails with EXTFLAT-READ-009 when a `use` array has
   more elements than what is left of the 4 Mi instance cap, before any
