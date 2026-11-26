@@ -51,6 +51,10 @@ struct ResistSession {
   // RESNET: ResDoContacts' once-per-session undersized-contact warning
   // (BuildInput::small_contact_warned).
   bool small_contact_warned = false;
+  // RESCMD (M7 R5): rg_Tdi as the last net that computed it left it (the
+  // second cutoff of a run that neither simplifies nor writes the lump
+  // file reads it with magic-compat ON); 0 until then, as ResInit sets it.
+  double last_tdi = 0.0;
 };
 
 }  // namespace hefesto::extresist

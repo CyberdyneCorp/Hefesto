@@ -30,6 +30,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/compat/compat_settings.hpp"
@@ -40,7 +41,13 @@
 #include "hefesto/extresist/network/network.hpp"
 #include "hefesto/tech/technology.hpp"
 
+namespace hefesto::mask {
+class OutputStyle;
+}
+
 namespace hefesto::extresist {
+
+struct FastHenryIds;
 
 /// A drive or sink point (ResConnect): its rectangle and tile type
 /// (nullopt when the record names no known type).
@@ -71,6 +78,9 @@ struct NodeStatus {
   bool minsize = false;        // MINSIZE: `res:min=`
   bool drive_located = false;  // DRIVELOC
   bool port = false;           // PORTNODE
+  /// Added in M7 R5: REDUNDANT, set when a FastHenry node list names the
+  /// net (ResPrintFHNodes); the net is not processed afterwards.
+  bool redundant = false;
 
   friend bool operator==(const NodeStatus&, const NodeStatus&) = default;
 };
@@ -91,6 +101,19 @@ struct InputNode {
   std::vector<ConnectPoint> drive_points;  // newest first (Magic prepends)
   std::vector<ConnectPoint> sink_points;   // newest first
   std::vector<NodeDevice> devices;         // newest first
+};
+
+/// Added in M7 R5: the layout device a device record was matched to
+/// (RDev layout): rd_inside's lower-left corner, rd_length, rd_width,
+/// rd_perim and rd_area, which the overlay's device records print.
+struct LayoutRecord {
+  db::Point location;
+  std::int32_t length = 0;
+  std::int32_t width = 0;
+  std::int64_t perimeter = 0;
+  std::int64_t area = 0;
+
+  friend bool operator==(const LayoutRecord&, const LayoutRecord&) = default;
 };
 
 /// One device record (RDev).
@@ -117,6 +140,14 @@ struct InputDevice {
   std::optional<extract::DeviceClass> style_class;
   /// exts_deviceSDCount of that line (2 without one).
   std::int32_t sd_count = 2;
+  /// Added in M7 R5: ResFixUpConnections' doPermute (more than one S/D
+  /// terminal, the second class empty or equal to the first).
+  bool permute_sd = false;
+  /// Added in M7 R5: RDev status TRUE (an output net fixed up one of its
+  /// terminals, so the overlay rewrites the record) and the layout record
+  /// of the first net that did.
+  bool touched = false;
+  std::optional<LayoutRecord> layout;
 };
 
 /// ResReadExt's view of a cell's `.ext` file.
@@ -168,56 +199,104 @@ struct GeometryElement {
 [[nodiscard]] std::string res_ext_scale(const extract::ExtStyle& style);
 /// The lump line `R <net> <ohms>`.
 [[nodiscard]] std::string lump_line(std::string_view net, std::int32_t ohms);
-/// One overlay device record (ResPrintExtDev) with the device's terminal
-/// nets renamed by `names` (an empty name keeps the input net's name);
-/// `default_substrate` is the style's substrate node name for the model.
+/// One overlay device record (ResPrintExtDev): the class, the model, the
+/// layout record's corner and dimensions (the input record's when the
+/// device has none), the current terminal nets (renamed by
+/// fix_up_connections) and the attributes; `default_substrate` is the
+/// style's substrate node name for the model.
 [[nodiscard]] std::string format_device(const InputModel& input, const InputDevice& device,
-                                        const std::vector<std::string>& names, std::string_view default_substrate,
-                                        const compat::CompatSettings& compat);
+                                        std::string_view default_substrate, const compat::CompatSettings& compat);
 
-/// A device terminal on a processed net and the network node it lands on.
-struct TerminalNode {
-  std::size_t device = 0;  // InputModel::devices index
-  Terminal terminal = Terminal::gate;
-  std::size_t node = 0;  // Network::nodes index
-};
+/// Added in M7 R5: ResFixUpConnections over the devices of an output net
+/// (extresist-output "Naming of network nodes"). Each device of `net` (in
+/// the net's device order, sorted by ResSortByGate) that has a layout
+/// device (Network::input_devices) gets the network node of each of its
+/// terminals on the net named `<net'>.t<k>` (k from 0, the counter going
+/// back one step when the node already has a name, as Magic's resNodeNum
+/// does), and its terminal moved to the input net of that name, which is
+/// created when missing. A symmetric device (InputDevice::permute_sd) whose
+/// source and drain are both on the net shares one node between them; a
+/// layout device whose two S/D nodes differ while only one ext terminal is
+/// on the net has them merged first. A terminal with no layout node prints
+/// `Missing <role> connection of device at (x y) on net <net'>` and marks
+/// the net DONTKILL. Returns DONTKILL; the messages are appended.
+[[nodiscard]] bool fix_up_connections(InputModel& input, std::size_t net, Network& network,
+                                      const compat::CompatSettings& compat, std::vector<std::string>& messages);
+
+/// One net block of the overlay (ResPrintExtNode and ResPrintExtRes): the
+/// `killnode` line unless a network node keeps the net's exact name or the
+/// net is DONTKILL, an `rnode` line per network node (unnamed nodes named
+/// `<net'>.n<k>` in node order; the node keeping the net, or with an
+/// orphan patch the first node, has the net's own capacitance subtracted),
+/// the orphan patch `resist "<net>" "<first node>" 0.0` with its warning
+/// when a DONTKILL net would have been killed, then the `resist` lines.
+[[nodiscard]] std::string net_block(const InputNode& node, Network& network, bool dont_kill,
+                                    const extract::ExtStyle& style, std::vector<std::string>& messages);
 
 /// One processed net that is output: its InputModel index, its reduced
-/// network, its device terminals in gate-sorted order, and its lumped
-/// resistance for `.res.lump`.
+/// network, its overlay block (net_block) and its lumped resistance.
 struct OutputNet {
   std::size_t net = 0;
   Network network;
-  std::vector<TerminalNode> terminals;
+  std::string block;
   std::int32_t lump_ohms = 0;
 };
 
-/// "Naming of network nodes": names the unnamed nodes of `net` (terminal
-/// nodes `<net'>.t<k>` in `terminals` order, then `<net'>.n<k>` in node
-/// order) and returns whether the original net is killed (no node keeps
-/// its exact name).
-[[nodiscard]] bool name_nodes(std::string_view net, Network& network, const std::vector<TerminalNode>& terminals);
-
-/// One net block of the overlay (killnode, rnode and resist lines) of a
-/// network already named; `node_cap` is the net's `node` record capacitance.
-[[nodiscard]] std::string net_block(std::string_view net, const Network& network, bool kill, double node_cap,
-                                    const extract::ExtStyle& style);
-
-/// The `.res.ext` text: the scale line, the net blocks (naming each
-/// network), then the device records of the devices whose terminals were
-/// renamed, in reverse read order (Q-NETLIST-39 per mode).
-[[nodiscard]] diag::Outcome<std::string> write_res_ext(const InputModel& input, std::vector<OutputNet>& nets,
+/// The `.res.ext` text: the scale line, the net blocks, then the device
+/// records of the touched devices in reverse read order (ResRDevList;
+/// Q-NETLIST-39 per mode).
+[[nodiscard]] diag::Outcome<std::string> write_res_ext(const InputModel& input, const std::vector<OutputNet>& nets,
                                                        const extract::ExtStyle& style,
                                                        const compat::CompatSettings& compat);
 /// The `.res.lump` text: `R <net> <ohms>` per output net.
 [[nodiscard]] std::string write_res_lump(const InputModel& input, const std::vector<OutputNet>& nets);
-[[nodiscard]] diag::Outcome<std::string> write_fasthenry(const InputModel& input, const std::vector<OutputNet>& nets,
-                                                         double frequency, const compat::CompatSettings& compat);
-/// ResCreateCenterlines: one element per resistor, named from its end
-/// nodes (an unnamed end takes the next id of `next_id`, at every visit, as
-/// Magic does). The network does not mark contact resistors yet, so none
-/// is skipped.
-[[nodiscard]] std::vector<GeometryElement> geometry_elements(const Network& net, std::int32_t& next_id);
+/// ResCreateCenterlines: one element per non-contact resistor (contacts
+/// are skipped when `technology` is given), named from its end nodes (an
+/// unnamed end takes the next id of `next_id`, at every visit, as Magic
+/// does), its rectangle the canonical one between the two node locations.
+[[nodiscard]] std::vector<GeometryElement> geometry_elements(const Network& net, std::int32_t& next_id,
+                                                             const tech::Technology* technology = nullptr);
+
+/// Added in M7 R5: what the FastHenry and geometry writers read besides the
+/// network: the contact types and planes, the heights, thicknesses and
+/// plane order of the extraction style, and the CIF output style's scale
+/// and contact cuts (nullptr: none, a cut of size 0).
+struct GeometryContext {
+  const tech::Technology* technology = nullptr;
+  const extract::ExtStyle* style = nullptr;
+  const mask::OutputStyle* cif = nullptr;
+  bool magic_compat = true;
+};
+
+/// Added in M7 R5: ResAlignNodes. A node at either end of an east-west
+/// (north-south) resistor moves to the resistor's centerline y (x); moving
+/// a node twice prints `Warning: contention over node Y position` (X).
+/// Diagonal resistors are skipped. With magic-compat ON the last resistor
+/// of the list is skipped too, as Magic's loop stops before it; with it OFF
+/// every resistor is aligned (proposed Q-row R5-RES-5).
+void align_nodes(Network& net, bool magic_compat, std::vector<std::string>& messages);
+
+/// Added in M7 R5: one net's node list of the FastHenry file
+/// (ResPrintFHNodes up to `.external`): `N<name>` (or `N<id>` from
+/// `ids.node` for an unnamed node) with x, y and z in microns, z the
+/// height of the node's last non-contact resistor's type (with
+/// magic-compat OFF its first: proposed Q-row R5-RES-3), or 0.1 times its
+/// plane order when the type has no height; a node that touches only
+/// contacts takes the contact's upper residue's height (Q-NETLIST-27) and
+/// a node with no resistor height 0. A node on a contact with more than
+/// one cut lists each cut as `N<name>_<i>_<j>` and an `.equiv` line.
+/// `node_ids` receives each node's id (-1 when named) for the segments.
+[[nodiscard]] std::string fasthenry_nodes(const Network& net, const GeometryContext& ctx, FastHenryIds& ids,
+                                          std::vector<std::int32_t>& node_ids);
+/// Added in M7 R5: the segments of one net (ResPrintFHRects): `E<k>`
+/// between the two end nodes with w and h in microns (a contact: its cut
+/// edge, one segment per cut when it has several; a cut the CIF style does
+/// not define has edge 0 in both modes, an uninitialised read in Magic).
+[[nodiscard]] std::string fasthenry_segments(const Network& net, const GeometryContext& ctx, FastHenryIds& ids,
+                                             const std::vector<std::int32_t>& node_ids);
+/// Added in M7 R5: the file's end: `.freq`, the comment lines of the port
+/// order (`* <port index> <text>` per port label) and `.end`.
+[[nodiscard]] std::string fasthenry_trailer(double frequency, const std::vector<std::pair<std::uint32_t, std::string>>& ports);
 
 /// The FastHenry header and reference plane (ResPrintReference) of a cell
 /// named `cell` with bounding box `bbox`, at `oscale` microns per unit.

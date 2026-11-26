@@ -150,4 +150,22 @@ diag::Status reduce(Network& network, const Tolerances& tolerances, HeapState& h
   return diag::Done{};
 }
 
+void merge_nodes(Network& network, std::size_t keep, std::size_t gone, const compat::CompatSettings& compat) {
+  if (keep == gone || keep >= network.nodes.size() || gone >= network.nodes.size()) {
+    return;
+  }
+  detail::Graph g = detail::Graph::from_network(network);
+  g.magic_compat = compat.magic_compat;
+  g.merge_nodes(static_cast<detail::Id>(keep), static_cast<detail::Id>(gone));
+  g.done_with_node(static_cast<detail::Id>(keep));
+  Network out = g.to_network();
+  out.node_cap = network.node_cap;
+  out.max_resistance = network.max_resistance;
+  out.tdi = network.tdi;
+  out.input_devices = std::move(network.input_devices);
+  out.added_sinks = std::move(network.added_sinks);
+  out.breakpoints = std::move(network.breakpoints);
+  network = std::move(out);
+}
+
 }  // namespace hefesto::extresist

@@ -358,6 +358,9 @@ class Reader {
       if (line.model == d.model) {
         d.style_class = line.device_class;
         d.sd_count = line.terminal_count;
+        // doPermute: exts_deviceSDTypes[1] empty or equal to [0].
+        d.permute_sd = line.terminal_count > 1 &&
+                       (line.terminals.size() < 2 || line.terminals[1].empty() || line.terminals[1] == line.terminals[0]);
         break;
       }
     }
