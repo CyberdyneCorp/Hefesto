@@ -1,0 +1,9 @@
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_generators.sch
+**.subckt test_generators
+R1 VDD VSS 1k
+C1 net1 VSS 1p
+C2 VDD VSS 1p
+R2 VDD net1 100
+* shorted: R3  VDD <--> VDD 0.1
+**.ends
+.end

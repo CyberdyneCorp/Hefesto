@@ -1,0 +1,5 @@
+descend: 1
+sch_path: .x1.
+resolved_net MID -> [x1.MID]
+resolved_net A -> [IN]
+resolved_net Y -> [OUT]

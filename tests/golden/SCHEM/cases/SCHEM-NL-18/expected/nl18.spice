@@ -1,0 +1,17 @@
+** sch_path: /work/input/nl18.sch
+**.subckt nl18
+R1 net1 net2 1
+R2 net3 net4 1
+R3 net5 net6 1
+R4 net7 net8 1
+R5 net9 net10 1
+R6 net11 net12 1
+**.ends
+**** begin user architecture code
+.subckt zz a b
+.model NMA NMOS (level=1)
+.model DA D (Is=7n)
+.model QN NPN (bf=100)
+.model PMA PMOS (level=1)
+**** end user architecture code
+.end

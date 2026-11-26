@@ -1,0 +1,4 @@
+load_schematic(): unable to open file: /work/input/missing.sch, ffname=/work/input/missing.sch
+get_additional_symbols(): inst 0 (p1): no symbol
+get_additional_symbols(): inst 1 (p2): no symbol
+get_additional_symbols(): inst 2 (R1): no symbol

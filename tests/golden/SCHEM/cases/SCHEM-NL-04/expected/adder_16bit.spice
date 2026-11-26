@@ -1,0 +1,107 @@
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/adder_16bit.sch
+**.subckt adder_16bit A[15],A[14],A[13],A[12],A[11],A[10],A[9],A[8],A[7],A[6],A[5],A[4],A[3],A[2],A[1],A[0]
+*+ S[15],S[14],S[13],S[12],S[11],S[10],S[9],S[8],S[7],S[6],S[5],S[4],S[3],S[2],S[1],S[0] B[15],B[14],B[13],B[12],B[11],B[10],B[9],B[8],B[7],B[6],B[5],B[4],B[3],B[2],B[1],B[0] COUT SG CIN SP
+*.ipin A[15],A[14],A[13],A[12],A[11],A[10],A[9],A[8],A[7],A[6],A[5],A[4],A[3],A[2],A[1],A[0]
+*.ipin B[15],B[14],B[13],B[12],B[11],B[10],B[9],B[8],B[7],B[6],B[5],B[4],B[3],B[2],B[1],B[0]
+*.ipin CIN
+*.opin S[15],S[14],S[13],S[12],S[11],S[10],S[9],S[8],S[7],S[6],S[5],S[4],S[3],S[2],S[1],S[0]
+*.opin SP
+*.opin SG
+*.opin COUT
+xadd4[3] A[15] A[14] A[13] A[12] S[15] S[14] S[13] S[12] B[15] B[14] B[13] B[12] net1 G[3] C3 P[3] adder_4bit
+xadd4[2] A[11] A[10] A[9] A[8] S[11] S[10] S[9] S[8] B[11] B[10] B[9] B[8] net1 G[2] C2 P[2] adder_4bit
+xadd4[1] A[7] A[6] A[5] A[4] S[7] S[6] S[5] S[4] B[7] B[6] B[5] B[4] net1 G[1] C1 P[1] adder_4bit
+xadd4[0] A[3] A[2] A[1] A[0] S[3] S[2] S[1] S[0] B[3] B[2] B[1] B[0] net1 G[0] CIN P[0] adder_4bit
+xcla SG SP C1 P[3] P[2] P[1] P[0] C2 G[3] G[2] G[1] G[0] C3 COUT CIN cla_4bits
+* noconn #net1
+**.ends
+
+* expanding   symbol:  sky130_tests/adder_4bit.sym # of pins=7
+** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/adder_4bit.sym
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/adder_4bit.sch
+.subckt adder_4bit A[3] A[2] A[1] A[0] S[3] S[2] S[1] S[0] B[3] B[2] B[1] B[0] COUT SG CIN SP
+*.ipin A[3],A[2],A[1],A[0]
+*.ipin B[3],B[2],B[1],B[0]
+*.ipin CIN
+*.opin S[3],S[2],S[1],S[0]
+*.opin SP
+*.opin SG
+*.opin COUT
+xadd1[3] S[3] A[3] B[3] G[3] C3 P[3] adder_1bit
+xadd1[2] S[2] A[2] B[2] G[2] C2 P[2] adder_1bit
+xadd1[1] S[1] A[1] B[1] G[1] C1 P[1] adder_1bit
+xadd1[0] S[0] A[0] B[0] G[0] CIN P[0] adder_1bit
+xcla SG SP C1 P[3] P[2] P[1] P[0] C2 G[3] G[2] G[1] G[0] C3 COUT CIN cla_4bits
+.ends
+
+
+* expanding   symbol:  sky130_tests/cla_4bits.sym # of pins=9
+** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/cla_4bits.sym
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/cla_4bits.sch
+.subckt cla_4bits SG SP C1 P[3] P[2] P[1] P[0] C2 G[3] G[2] G[1] G[0] C3 C4 C0
+*.ipin P[3],P[2],P[1],P[0]
+*.ipin G[3],G[2],G[1],G[0]
+*.ipin C0
+*.opin C4
+*.opin C3
+*.opin C2
+*.opin C1
+*.opin SG
+*.opin SP
+x1 P[0] VSS VSS VCC VCC net4 sky130_fd_sc_hd__inv_1
+x2 net5 VSS VSS VCC VCC C1 sky130_fd_sc_hd__inv_1
+x3 P[1] VSS VSS VCC VCC net2 sky130_fd_sc_hd__inv_1
+x4 net8 VSS VSS VCC VCC C3 sky130_fd_sc_hd__inv_1
+x5 G[1] VSS VSS VCC VCC net3 sky130_fd_sc_hd__inv_1
+x6 net12 VSS VSS VCC VCC net13 sky130_fd_sc_hd__inv_1
+x7 G[1] P[2] G[2] VSS VSS VCC VCC net12 sky130_fd_sc_hd__a21oi_1
+x8 P[3] net13 G[3] VSS VSS VCC VCC net14 sky130_fd_sc_hd__a21oi_1
+x9 C0 P[0] G[0] VSS VSS VCC VCC net5 sky130_fd_sc_hd__a21oi_1
+x10 P[2] C2 G[2] VSS VSS VCC VCC net8 sky130_fd_sc_hd__a21oi_1
+x11 G[0] VSS VSS VCC VCC net1 sky130_fd_sc_hd__inv_1
+x12 net2 net5 net3 VSS VSS VCC VCC C2 sky130_fd_sc_hd__o21ai_1
+x13 net5 net10 net14 VSS VSS VCC VCC C4 sky130_fd_sc_hd__o21ai_1
+x14 net1 net10 net14 VSS VSS VCC VCC SG sky130_fd_sc_hd__o21ai_1
+x15 net4 net10 VSS VSS VCC VCC SP sky130_fd_sc_hd__nor2_1
+x16 P[1] P[2] P[3] VSS VSS VCC VCC net10 sky130_fd_sc_hd__nand3_1
+C2 net4 0 5f
+C1 net10 0 5f
+C3 net1 0 5f
+C4 net14 0 5f
+C5 net2 0 5f
+C6 net5 0 5f
+C7 net3 0 5f
+C8 net8 0 5f
+C9 net13 0 5f
+C10 net12 0 5f
+C19[3] P[3] 0 5f
+C19[2] P[2] 0 5f
+C19[1] P[1] 0 5f
+C19[0] P[0] 0 5f
+C18[3] G[3] 0 5f
+C18[2] G[2] 0 5f
+C18[1] G[1] 0 5f
+C18[0] G[0] 0 5f
+C17 C0 0 5f
+.ends
+
+
+* expanding   symbol:  sky130_tests/adder_1bit.sym # of pins=6
+** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/adder_1bit.sym
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/adder_1bit.sch
+.subckt adder_1bit S A B G CIN P
+*.ipin A
+*.ipin B
+*.ipin CIN
+*.opin S
+*.opin P
+*.opin G
+x4 A B VSS VSS VCC VCC G sky130_fd_sc_hd__and2_1
+x2 A B VSS VSS VCC VCC P sky130_fd_sc_hd__xor2_1
+x3 P CIN VSS VSS VCC VCC S sky130_fd_sc_hd__xor2_1
+C17 A 0 5f
+C4 B 0 5f
+C5 CIN 0 5f
+.ends
+
+.end

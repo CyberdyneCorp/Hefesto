@@ -1,0 +1,6 @@
+-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+Error: undriven node: B
+Warning: open net: D
+Error: undriven node: G
+Warning: open net: S
+-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch

@@ -1,0 +1,9 @@
+tier node=VDD
+tier node=VSS
+res value=|100|
+tier node=VDD
+tier node=VSS
+res value=|100|
+tier node=VDD
+tier node=VSS
+res value=|100|

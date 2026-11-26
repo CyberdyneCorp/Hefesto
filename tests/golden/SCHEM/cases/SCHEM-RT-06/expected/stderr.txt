@@ -1,0 +1,3 @@
+WARNING:  missing fields for WIRE object, ignoring
+WARNING: Wrong or missing layer number for LINE object, ignoring
+EOF reached, malformed {...} string input, missing close brace

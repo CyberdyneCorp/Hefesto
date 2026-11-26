@@ -1,0 +1,6 @@
+Error: Symbol /work/input/with/inv.sym: Unmatched subcircuit schematic pin direction: Y
+    opin <--> inout
+Error: Symbol /work/input/with/inv.sym: Unmatched subcircuit schematic pin direction: A
+    ipin <--> inout
+-----------/work/input/with/inv.sch
+-----------/work/input/with/inv.sch
