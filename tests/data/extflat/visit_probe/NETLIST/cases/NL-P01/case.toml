@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+
+#
+# NL-P01: capture-only probe (m7-extraction task 10.4), written by
+# tests/data/extflat/visit_probe/gen_visit_probe.py; do not edit by hand.
+# ext2sim writes .nodes and .al in EFVisitNodes order.
+# It lives outside tests/golden, so replay.py never runs it.
+
+schema = 1
+id = "NL-P01"
+area = "NETLIST"
+capability = "ext-flattening-hierarchy"
+requirements = ["Visit orders for output"]
+tool = "magic"
+description = "Magic's node visit order on the 17 DEF-write .ext inputs: ext2sim .nodes and .al per target"
+
+[reference]
+script = "input/commands.tcl"
+argv = ["magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+requires_commands = []
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[collect]]
+pattern = "*.nodes"
+comparator = "bytes"
+masks = []
+
+[[collect]]
+pattern = "*.al"
+comparator = "bytes"
+masks = []

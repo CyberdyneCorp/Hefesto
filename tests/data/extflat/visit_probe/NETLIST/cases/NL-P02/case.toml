@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+
+#
+# NL-P02: capture-only probe (m7-extraction task 10.4), written by
+# tests/data/extflat/visit_probe/gen_visit_probe.py; do not edit by hand.
+# Does ext2sim read the short mode of ext2spice short (shared EFOutputFlags)?
+# It lives outside tests/golden, so replay.py never runs it.
+
+schema = 1
+id = "NL-P02"
+area = "NETLIST"
+capability = "netlist-sim"
+requirements = ["Command options and defaults"]
+tool = "magic"
+description = "ext2sim after ext2spice short resistor/voltage and after ext2sim default: one cell with two shorted port pairs"
+
+[reference]
+script = "input/commands.tcl"
+argv = ["magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
+requires_commands = []
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+masks = ["magic-stamp-note", "magic-tech-sections"]
+
+[[collect]]
+pattern = "*.sim"
+comparator = "bytes"
+masks = []
+
+[[collect]]
+pattern = "*.nodes"
+comparator = "bytes"
+masks = []

@@ -96,6 +96,16 @@ std::int64_t use_count(const Def& def) {
   return n;
 }
 
+// The canonical name entry of a definition's own node (kNil when it has
+// none), following the merges.
+std::uint32_t local_head(const NodeGraph& g, std::uint32_t local) {
+  std::uint32_t id = local;
+  while (!g.live(id)) {
+    id = g.node(id).parent;
+  }
+  return g.node(id).head;
+}
+
 std::vector<std::string> split_attrs(const std::string& text) {
   std::vector<std::string> out;
   std::size_t start = 0;
@@ -170,6 +180,8 @@ class Flattener {
                     bool warn);
   [[nodiscard]] std::uint32_t lookup(const std::string& prefix, const std::string& name, const char* what);
   [[nodiscard]] std::uint32_t lookup_key(const std::string& key, const char* what);
+  [[nodiscard]] std::uint32_t lookup_local(const std::string& prefix, const Def& def, std::uint32_t local,
+                                           const char* what);
   void flat_single_cap(const HierContext& hc, const Conn& conn, const std::string& name1, const std::string& name2);
   [[nodiscard]] bool device_killed(const HierContext& hc, const Def& def, const Device& dev);
   [[nodiscard]] FlatDevice device_out(const HierContext& hc, const Def& def, const Device& dev);
@@ -187,6 +199,9 @@ class Flattener {
   bool clear_root_;
   NodeGraph flat_;
   std::unordered_map<std::string, std::uint32_t> table_;  // efNodeHashTable
+  /// The flat names of anonymous nodes (NameEntry::anonymous): only the
+  /// devices of their own definition look them up.
+  std::unordered_map<std::string, std::uint32_t> anon_table_;
   std::map<std::pair<std::uint32_t, std::uint32_t>, float> cap_table_;  // efCapHashTable
   std::vector<char> on_stack_;
   std::vector<char> nodevices_;             // DEF_NODEVICES
@@ -452,7 +467,8 @@ void Flattener::add_node_names(const HierContext& hc, const Def& def, std::uint3
     }
     const std::string& key_local = def.graph.name(n).key;
     std::string key = bare ? key_local : concat_names(hc.prefix, key_local);
-    if (const auto it = table_.find(key); it != table_.end()) {
+    auto& table = def.graph.name(n).anonymous ? anon_table_ : table_;
+    if (const auto it = table.find(key); it != table.end()) {
       const std::uint32_t old = flat_.node_of(it->second);
       current = flat_.find(current);
       current = old != current ? flat_.merge(old, current) : old;
@@ -465,7 +481,7 @@ void Flattener::add_node_names(const HierContext& hc, const Def& def, std::uint3
     }
     current = flat_.find(current);
     const std::uint32_t entry = flat_.add_name(key, current);
-    table_.emplace(std::move(key), entry);
+    table.emplace(std::move(key), entry);
     flat_.link_after_head(current, entry);
   });
 }
@@ -488,6 +504,19 @@ std::uint32_t Flattener::lookup_key(const std::string& key, const char* what) {
     return kNil;
   }
   return flat_.node_of(it->second);
+}
+
+// The flat node of a definition's own node, through the table its
+// canonical name is in.
+std::uint32_t Flattener::lookup_local(const std::string& prefix, const Def& def, std::uint32_t local,
+                                      const char* what) {
+  const std::string key = concat_names(prefix, local_key(def, local));
+  const std::uint32_t head = local_head(def.graph, local);
+  if (head == kNil || !def.graph.name(head).anonymous) {
+    return lookup_key(key, what);
+  }
+  const auto it = anon_table_.find(key);
+  return it == anon_table_.end() ? kNil : flat_.node_of(it->second);
 }
 
 // EFHNLook, with a message when the name is not flat and `what` is given.
@@ -634,13 +663,8 @@ void Flattener::flat_caps(const HierContext& hc, std::size_t depth, bool devicel
 }
 
 std::string Flattener::local_key(const Def& def, std::uint32_t local) const {
-  const NodeGraph& g = def.graph;
-  std::uint32_t id = local;
-  while (!g.live(id)) {
-    id = g.node(id).parent;
-  }
-  const std::uint32_t head = g.node(id).head;
-  return head == kNil ? std::string{} : g.name(head).key;
+  const std::uint32_t head = local_head(def.graph, local);
+  return head == kNil ? std::string{} : def.graph.name(head).key;
 }
 
 // efnode_pa of a definition's own node (not the flat node).
@@ -660,7 +684,7 @@ std::vector<std::pair<std::int32_t, std::int32_t>> local_area_perim(const Def& d
 // name) is killed; an unresolved name is reported as "kill".
 bool Flattener::device_killed(const HierContext& hc, const Def& def, const Device& dev) {
   for (const DevTerm& term : dev.terms) {
-    const std::uint32_t node = lookup_key(concat_names(hc.prefix, local_key(def, term.node)), "kill");
+    const std::uint32_t node = lookup_local(hc.prefix, def, term.node, "kill");
     if (node != kNil && (flat_.node(node).flags & kFlagKilled) != 0) {
       return true;
     }
@@ -672,7 +696,7 @@ FlatTerminal Flattener::terminal_out(const std::string& prefix, const Def& def, 
                                      std::int32_t length, const std::optional<std::string>& attrs) {
   FlatTerminal t;
   const std::string key = concat_names(prefix, local_key(def, local));
-  const std::uint32_t node = lookup_key(key, nullptr);
+  const std::uint32_t node = lookup_local(prefix, def, local, nullptr);
   if (node != kNil) {
     t.node = name_to_string(flat_.name(flat_.node(node).head).key);
     t.node_index = output_index_[node];
