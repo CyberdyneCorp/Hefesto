@@ -1569,8 +1569,7 @@ bool near_int(const std::array<int, 3>& a, const std::array<int, 3>& b, int tole
 }
 
 /// basic_scene in the top view with the ndiff's prism as the net overlay:
-/// blended over ndiff alone and over metal1 above the ndiff (still picked);
-/// poly, metal1 off the net and the background unchanged.
+/// blended over ndiff alone and over metal1 above the ndiff (still picked).
 void check_ndiff_overlay(const Scene& s, const view3d::ViewState& v, const render::TargetReadback& plain,
                          const render::TargetReadback& r) {
   for (const auto& [x, y] : {std::pair{5.0, 5.0}, std::pair{20.0, 30.0}}) {
@@ -1581,6 +1580,11 @@ void check_ndiff_overlay(const Scene& s, const view3d::ViewState& v, const rende
   }
   const auto [mx, my] = project(v, 20, 30, 0);
   CHECK(picked_layer(s, r.pick[pixel(r, mx, my)]) == kMetal);
+}
+
+/// Poly, metal1 off the net and the background: unchanged by the overlay.
+void check_off_net_unchanged(const view3d::ViewState& v, const render::TargetReadback& plain,
+                             const render::TargetReadback& r) {
   for (const auto& [x, y] : {std::pair{50.0, 50.0}, std::pair{70.0, 30.0}, std::pair{35.0, 50.0}}) {
     const auto [px, py] = project(v, x, y, 0);
     CHECK(r.color[pixel(r, px, py)] == plain.color[pixel(plain, px, py)]);
@@ -1617,6 +1621,7 @@ TEST_CASE("Net highlighted over mask-layer geometry: blended over every layer, t
         }
         if (level == 0) by_mode.push_back(r);
         check_ndiff_overlay(s, v, plain, r);
+        check_off_net_unchanged(v, plain, r);
       }
     }
   }
