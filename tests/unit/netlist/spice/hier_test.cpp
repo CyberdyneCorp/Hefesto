@@ -133,6 +133,59 @@ TEST_CASE("Array uses are called once per element, x outer and y inner (NL-HIER-
   CHECK(c.netlist("ext2spice -p /w top", "top.spice") == expected("NL-HIER-05", "top.renumon.spice"));
 }
 
+// Regression (M6-S8, both modes): add_calls stored one call per array
+// element with no cap, so a 10^10-element array ran out of memory. An
+// array larger than what is left of the instance cap is now refused
+// before its first call, and no netlist is written.
+TEST_CASE("A hierarchical array use larger than the instance cap is refused before any call",
+          "[cap:netlist-spice-hierarchy][req:Subcircuit calls in hierarchical mode]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    HierCase c{"NL-HIER-05", compat};
+    c.ext("top.ext", "tech nltest\nstyle nltest\nscale 1000 1000 5\nresistclasses 1000 5000 100\n"
+          "use inv l[0:100000:1][0:100000:1] 1 0 0 0 1 0\n");
+    const auto r = c.run("ext2spice -p /w top");
+    REQUIRE_FALSE(r.ok());
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == "EXTFLAT-READ-009");
+    CHECK(r.diagnostics.back().text == "the flattened .ext hierarchy has more than 4194304 instances");
+    CHECK_FALSE(c.services.files().exists(hefesto::platform::Path{"top.spice"}));
+
+    // Both ranges at their widest: the element count saturates.
+    c.ext("top.ext", "tech nltest\nstyle nltest\nscale 1000 1000 5\nresistclasses 1000 5000 100\n"
+          "use inv l[-2147483648:2147483647:1][-2147483648:2147483647:1] 1 0 0 0 1 0\n");
+    const auto wide = c.run("ext2spice -p /w top");
+    REQUIRE_FALSE(wide.ok());
+    CHECK(wide.diagnostics.back().code == "EXTFLAT-READ-009");
+    CHECK_FALSE(c.services.files().exists(hefesto::platform::Path{"top.spice"}));
+  }
+}
+
+// NL-HIER-05 has 3 + 4 = 7 calls: a cap of 7 writes what the default cap
+// writes (Magic's golden with magic-compat ON), 6 fails.
+TEST_CASE("Hierarchical calls exactly filling the instance cap are written and one past it is refused",
+          "[cap:netlist-spice-hierarchy][req:Subcircuit calls in hierarchical mode]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    HierCase c{"NL-HIER-05", compat};
+    REQUIRE(c.run("ext2spice renumber off").ok());
+    const std::string uncapped = c.netlist("ext2spice -p /w top", "top.spice");
+    if (compat) {
+      CHECK(uncapped == expected("NL-HIER-05", "top.renumoff.spice"));
+    }
+    REQUIRE(c.services.files().remove(hefesto::platform::Path{"top.spice"}).ok());
+    c.state.netlist.read_limits.max_instances = 7;
+    CHECK(c.netlist("ext2spice -p /w top", "top.spice") == uncapped);
+    REQUIRE(c.services.files().remove(hefesto::platform::Path{"top.spice"}).ok());
+    c.state.netlist.read_limits.max_instances = 6;
+    const auto r = c.run("ext2spice -p /w top");
+    REQUIRE_FALSE(r.ok());
+    CHECK(r.diagnostics.back().code == "EXTFLAT-READ-009");
+    CHECK(r.diagnostics.back().text == "the flattened .ext hierarchy has more than 6 instances");
+    CHECK_FALSE(c.services.files().exists(hefesto::platform::Path{"top.spice"}));
+  }
+}
+
 // Q-NETLIST-35 and Q-NETLIST-19 with magic-compat ON: Magic's text.
 TEST_CASE("Hierarchical tee rsubckt, negative couplings and shorted ports with magic-compat ON (NL-HIER-06)",
           "[cap:netlist-spice-hierarchy][req:Hierarchical device and parasitic differences]") {

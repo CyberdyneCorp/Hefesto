@@ -94,6 +94,8 @@ Each use of the definition SHALL produce a call, one per element for arrays, in 
 - The used cell is a stub.
 
 A device-less used cell that is not a stub SHALL produce no call. The line format and port order SHALL be those of capability `netlist-spice-options`. The instance name is the converted instance path, which for one level is the use id with an array suffix such as `u1[2]`. The path is converted with only convert-comma active. Under `renumber on` or SPICE2, the name is `X<n>` instead.
+
+Resource limit (M6-S8, both settings of `magic-compat`; `docs/contributing/security.md`): the calls of one run, each array element counting one, SHALL count against the read's instance limit `ReadLimits::max_instances` (4,194,304), the limit of capability `ext-flattening-read`. A use whose element count (the product of its two ranges, computed without overflow) is larger than what is left of the limit SHALL fail the run with EXTFLAT-READ-009 `the flattened .ext hierarchy has more than <n> instances` before the definition holding it is flattened or its first call is kept, and no netlist file SHALL be written. Magic keeps no limit and visits every element.
 Compatibility: exact
 (Magic ref: ext2spice/ext2hier.c:591-660, extflat/EFhier.c:324-354)
 
@@ -101,6 +103,17 @@ Compatibility: exact
 - **GIVEN** a use `b[0:1]` of cell `bit` with port `q` and renumber off
 - **WHEN** calls are written
 - **THEN** the lines `Xb[0] … bit` and `Xb[1] … bit` are written
+
+#### Scenario: Array use larger than the instance limit
+- **GIVEN** `top.ext` contains `use inv l[0:100000:1][0:100000:1] 1 0 0 0 1 0` (10^10 elements) and `hierarchy on`
+- **WHEN** `ext2spice top` runs, with `magic-compat` ON or OFF
+- **THEN** the run fails at once with EXTFLAT-READ-009 `the flattened .ext hierarchy has more than 4194304 instances`
+- **AND** no `top.spice` is written
+
+#### Scenario: Calls exactly at the instance limit
+- **GIVEN** uses `r[0:2]` and `a2[0:1][0:1]` (seven calls) and an instance limit of 7
+- **WHEN** `ext2spice top` runs with `hierarchy on`
+- **THEN** the seven calls are written as without a limit; with a limit of 6 the run fails with EXTFLAT-READ-009 and writes no file
 
 ### Requirement: Hierarchical device and parasitic differences
 Hierarchical output SHALL follow the flat formats of capability `netlist-spice-devices`, with these exact differences:
