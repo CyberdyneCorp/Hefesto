@@ -47,9 +47,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "verify (captured cases), capture (cases without expected/), both, d19-timing (m5 task 1.1), ext-inputs or oasis-validate (m6 tasks 1.6, 1.7)"
+        description: "verify (captured cases), capture (cases without expected/), both, d19-timing (m5 task 1.1), ext-inputs or oasis-validate (m6 tasks 1.6, 1.7), sim-refruns (m9 task 3.3)"
         type: choice
-        options: [both, verify, capture, d19-timing, ext-inputs, oasis-validate]
+        options: [both, verify, capture, d19-timing, ext-inputs, oasis-validate, sim-refruns]
         default: both
       cases:
         description: "Space-separated case directories (e.g. tests/golden/TECH/cases/TECH-G01); empty = all"
@@ -95,6 +95,10 @@ env:
   # 1.4). "true" makes `capture` restore them, fetch the missing ones and save them. On since the M6 round 3:
   # the LEFDEF-RT-<lib> cases and LEFDEF-240 of task 15.5 read them as `[[external]] set` inputs.
   FETCH_LEF_SETS: "true"
+  # The five M9 data sets (gf180mcu-netgen, ihp-netgen, sky130-ngspice, gf180mcu-ngspice, ihp-ngspice;
+  # openspec/changes/m9-lvs-simulation tasks 3.1 and 3.7): "true" makes `capture` restore them, fetch the
+  # missing ones and save them, for the LVS, SIM and SIMADV cases. `sim-refruns` uses the three ngspice sets.
+  FETCH_M9_SETS: "true"
 
 jobs:
   # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
@@ -117,7 +121,8 @@ jobs:
         id: plan
         shell: bash
         run: |
-          if [ "$MODE" = "d19-timing" ] || [ "$MODE" = "ext-inputs" ] || [ "$MODE" = "oasis-validate" ]; then
+          if [ "$MODE" = "d19-timing" ] || [ "$MODE" = "ext-inputs" ] || [ "$MODE" = "oasis-validate" ] ||
+             [ "$MODE" = "sim-refruns" ]; then
             { echo "regular=0"; echo "rt_any=false"; echo 'rt_matrix={"include":[]}'; echo 'rt_sets={"include":[]}'; } \
               >> "$GITHUB_OUTPUT"
             exit 0
@@ -235,6 +240,42 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_xschem_path }}
           key: ${{ steps.keys.outputs.ihp_xschem_key }}
+      # The M9 netgen and ngspice sets (m9-lvs-simulation tasks 3.1, 3.7), only with FETCH_M9_SETS.
+      - name: Restore gf180mcu-netgen
+        id: gf180mcu_netgen
+        if: env.FETCH_M9_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_netgen_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_netgen_key }}
+      - name: Restore ihp-netgen
+        id: ihp_netgen
+        if: env.FETCH_M9_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_netgen_path }}
+          key: ${{ steps.keys.outputs.ihp_netgen_key }}
+      - name: Restore sky130-ngspice
+        id: sky130_ngspice
+        if: env.FETCH_M9_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_ngspice_path }}
+          key: ${{ steps.keys.outputs.sky130_ngspice_key }}
+      - name: Restore gf180mcu-ngspice
+        id: gf180mcu_ngspice
+        if: env.FETCH_M9_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_ngspice_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_ngspice_key }}
+      - name: Restore ihp-ngspice
+        id: ihp_ngspice
+        if: env.FETCH_M9_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_ngspice_path }}
+          key: ${{ steps.keys.outputs.ihp_ngspice_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ steps.keys.outputs.magic_ref_path }}
@@ -251,7 +292,10 @@ jobs:
           steps.ihp.outputs.cache-hit != 'true' || steps.sky130_xschem.outputs.cache-hit != 'true' ||
           steps.gf180mcu_xschem.outputs.cache-hit != 'true' || steps.ihp_xschem.outputs.cache-hit != 'true' ||
           (env.FETCH_LEF_SETS == 'true' && (steps.sky130_lef.outputs.cache-hit != 'true' ||
-          steps.gf180mcu_lef.outputs.cache-hit != 'true' || steps.ihp_lef.outputs.cache-hit != 'true'))
+          steps.gf180mcu_lef.outputs.cache-hit != 'true' || steps.ihp_lef.outputs.cache-hit != 'true')) ||
+          (env.FETCH_M9_SETS == 'true' && (steps.gf180mcu_netgen.outputs.cache-hit != 'true' ||
+          steps.ihp_netgen.outputs.cache-hit != 'true' || steps.sky130_ngspice.outputs.cache-hit != 'true' ||
+          steps.gf180mcu_ngspice.outputs.cache-hit != 'true' || steps.ihp_ngspice.outputs.cache-hit != 'true'))
         env:
           CC: gcc-14
           CXX: g++-14
@@ -267,8 +311,10 @@ jobs:
         run: |
           lef_sets=()
           [ "$FETCH_LEF_SETS" != "true" ] || lef_sets=(sky130-lef gf180mcu-lef ihp-lef)
+          m9_sets=()
+          [ "$FETCH_M9_SETS" != "true" ] || m9_sets=(gf180mcu-netgen ihp-netgen sky130-ngspice gf180mcu-ngspice ihp-ngspice)
           python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-xschem gf180mcu-xschem ihp-xschem "${lef_sets[@]}" \
-            --cli build/linux-release/src/cli/hefesto-cli
+            "${m9_sets[@]}" --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Save sky130
         if: steps.sky130.outputs.cache-hit != 'true'
@@ -324,6 +370,36 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_xschem_path }}
           key: ${{ steps.keys.outputs.ihp_xschem_key }}
+      - name: Save gf180mcu-netgen
+        if: env.FETCH_M9_SETS == 'true' && steps.gf180mcu_netgen.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_netgen_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_netgen_key }}
+      - name: Save ihp-netgen
+        if: env.FETCH_M9_SETS == 'true' && steps.ihp_netgen.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_netgen_path }}
+          key: ${{ steps.keys.outputs.ihp_netgen_key }}
+      - name: Save sky130-ngspice
+        if: env.FETCH_M9_SETS == 'true' && steps.sky130_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_ngspice_path }}
+          key: ${{ steps.keys.outputs.sky130_ngspice_key }}
+      - name: Save gf180mcu-ngspice
+        if: env.FETCH_M9_SETS == 'true' && steps.gf180mcu_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_ngspice_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_ngspice_key }}
+      - name: Save ihp-ngspice
+        if: env.FETCH_M9_SETS == 'true' && steps.ihp_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_ngspice_path }}
+          key: ${{ steps.keys.outputs.ihp_ngspice_key }}
 
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
@@ -862,3 +938,102 @@ jobs:
           path: oasis-validate/
           if-no-files-found: ignore
           retention-days: 30
+
+  # Reference runs of openspec/changes/m9-lvs-simulation task 3.3 (decision table "Verification runs
+  # needed before G2"): D-22 `.param` precedence (one deck per PDK), D-26 sky130 `ng_nomodcheck` and the
+  # Q-SIM-8 descriptor loads, D-27 gf180mcu `hs` against `hsa`. Hefesto-authored decks
+  # (tools/golden/refruns/decks/) run by the image's ngspice (47-hefesto2, with patch 0005) on the three
+  # pinned ngspice sets; the IHP OSDI modules are compiled in the job with the image's OpenVAF-reloaded.
+  # The summary names the branch of each conditional rule, or "OUTSIDE THE RULE" (job fails).
+  sim-refruns:
+    name: M9 simulation reference runs (task 3.3)
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'sim-refruns'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests of the branch selection
+        run: python3 -m unittest discover -s tools/golden/refruns -v
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130-ngspice
+        id: sky130_ngspice
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_ngspice_path }}
+          key: ${{ steps.keys.outputs.sky130_ngspice_key }}
+      - name: Restore gf180mcu-ngspice
+        id: gf180mcu_ngspice
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_ngspice_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_ngspice_key }}
+      - name: Restore ihp-ngspice
+        id: ihp_ngspice
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_ngspice_path }}
+          key: ${{ steps.keys.outputs.ihp_ngspice_key }}
+      - name: Build hefesto-cli for the PDK install (cache miss only)
+        if: >-
+          steps.sky130_ngspice.outputs.cache-hit != 'true' || steps.gf180mcu_ngspice.outputs.cache-hit != 'true' ||
+          steps.ihp_ngspice.outputs.cache-hit != 'true'
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+      - name: Fetch the pinned ngspice sets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          python3 scripts/fetch_pdk.py sky130-ngspice gf180mcu-ngspice ihp-ngspice
+          --cli build/linux-release/src/cli/hefesto-cli
+      - name: Save sky130-ngspice
+        if: steps.sky130_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_ngspice_path }}
+          key: ${{ steps.keys.outputs.sky130_ngspice_key }}
+      - name: Save gf180mcu-ngspice
+        if: steps.gf180mcu_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_ngspice_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_ngspice_key }}
+      - name: Save ihp-ngspice
+        if: steps.ihp_ngspice.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_ngspice_path }}
+          key: ${{ steps.keys.outputs.ihp_ngspice_key }}
+      - name: Build reference-tool image
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+      - name: Run the reference decks
+        shell: bash
+        run: |
+          docker run --rm hefesto-golden:ci /opt/ref/bin/ngspice -v | tee ngspice-version.txt
+          status=0
+          docker run --rm --network=none -v "$PWD:/work" -w /work --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e TZ=UTC -e LC_ALL=C hefesto-golden:ci \
+            python3 -I tools/golden/refruns/run_refruns.py --ngspice /opt/ref/bin/ngspice \
+              --openvaf /opt/ref/bin/openvaf-r --label "golden-capture run ${GITHUB_RUN_ID}" \
+              --sky130 "${{ steps.keys.outputs.sky130_ngspice_path }}" \
+              --gf180mcu "${{ steps.keys.outputs.gf180mcu_ngspice_path }}" \
+              --ihp "${{ steps.keys.outputs.ihp_ngspice_path }}" --out refruns || status=$?
+          { cat ngspice-version.txt; cat refruns/summary.md; } >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sim-refruns
+          path: refruns/
+          if-no-files-found: ignore
+          retention-days: 90

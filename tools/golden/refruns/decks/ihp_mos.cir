@@ -1,0 +1,23 @@
+* SPDX-License-Identifier: Apache-2.0
+* Copyright 2026 The Hefesto Authors
+* Hefesto-authored reference deck (openspec/changes/m9-lvs-simulation task 3.3; D-22).
+* IHP sg13g2: section mos_tt of cornerMOSlv.lib defines sg13g2_lv_nmos_muew = 0.85, then the
+* optional top-level override of the run. The PSP103 OSDI module is loaded by the run's
+* .spiceinit (compiled from the ihp-ngspice set's Verilog-A source).
+.lib "@IHP@/ihp-sg13g2/libs.tech/ngspice/models/cornerMOSlv.lib" mos_tt
+@OVERRIDE@
+Vp p 0 {sg13g2_lv_nmos_muew}
+Rp p 0 1k
+Vdd d 0 1.2
+Vgg g 0 1.2
+Vm1 d d1 0
+XM1 d1 g 0 0 sg13_lv_nmos w=1u l=0.13u ng=1
+.control
+set numdgt=12
+op
+let pv = v(p)
+let i1 = i(Vm1)
+echo "HREF switch=$&pv"
+echo "HREF i1=$&i1"
+.endc
+.end
