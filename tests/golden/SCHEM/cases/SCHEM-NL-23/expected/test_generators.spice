@@ -1,7 +1,0 @@
-** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_generators.sch
-**.subckt test_generators
-R1 net2 net1 1k
-C1 net3 net5 1p
-C2 net4 net6 1p
-**.ends
-.end

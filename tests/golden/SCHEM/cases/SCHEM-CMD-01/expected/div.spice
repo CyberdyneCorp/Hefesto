@@ -1,6 +1,0 @@
-** sch_path: /work/input/div.sch
-**.subckt div
-R1 IN net1 1k
-R2 net1 0 1k
-**.ends
-.end

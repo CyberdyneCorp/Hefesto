@@ -1,9 +1,0 @@
-== not
-
-== not: exit 0
-== dc_logic_not
-
-== dc_logic_not: exit 0
-== test_nfet_03v3
-
-== test_nfet_03v3: exit 10

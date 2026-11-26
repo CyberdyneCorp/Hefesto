@@ -26,7 +26,7 @@ requires_commands = ["schematic"]
 name = "top.spice"
 source = "out/top.spice"
 comparator = "bytes"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-user-conf"]
 
 [[outputs]]
 name = "stdout.txt"

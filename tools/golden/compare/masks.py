@@ -76,7 +76,13 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     (openspec/changes/m8-schematic design D16, Q-SCHEM-13: they name files on the netlisting host). A path
     inside a PDK tree (``.../<pdk>/libs.tech/...`` or ``.../<pdk>/libs.ref/...`` with ``<pdk>`` one of
     ``sky130A``, ``gf180mcuD``, ``ihp-sg13g2``) becomes ``$PDK_ROOT/<pdk>/...``; a path under the work
-    directory ``/work/`` becomes relative to it; the rest of the line is kept.
+    directory ``/work/`` becomes relative to it; a path of the system symbol library (``.../xschem_library/...``:
+    xschem's ``/opt/ref/share/xschem``, Hefesto's ``<CAD_ROOT>/assets/schematic``, Q-SCHEM-45) becomes
+    ``$XSCHEM_SHAREDIR/xschem_library/...``; the rest of the line is kept.
+``schem-user-conf``
+    The user configuration folder in a SCHEM netlist (a PDK symbol's ``pre_osdi $USER_CONF_DIR/...`` line):
+    an absolute path ending in ``/.xschem`` (xschem's ``~/.xschem`` of the capture user, Hefesto's
+    ``<document folder>/.xschem``) becomes ``$USER_CONF_DIR``.
 ``schem-version``
     The ``version=<v>`` value of a ``v {xschem version=<v> ...}`` record (the first record of a ``.sch`` or
     ``.sym`` file, Q-SCHEM-1): the value becomes ``<masked>``. For a file written by another xschem version
@@ -268,6 +274,9 @@ def mask_magic_tech_menu_order(data: bytes) -> bytes:
 _SCHEM_PATH_LINE = re.compile(rb"^(\*\* s(?:ch|ym)_path: )(\S[^\n]*?)(\r?)$", re.MULTILINE)
 _SCHEM_PDK_PATH = re.compile(rb"^.*?/((?:sky130A|gf180mcuD|ihp-sg13g2)/libs\.(?:tech|ref)/.*)$")
 _SCHEM_WORK = b"/work/"
+# The system symbol library: xschem's /opt/ref/share/xschem/xschem_library/... in the capture image, Hefesto's
+# <CAD_ROOT>/assets/schematic/xschem_library/... (Q-SCHEM-10, -45) in the replay.
+_SCHEM_SYSTEM_PATH = re.compile(rb"^/.*?/(xschem_library/.*)$")
 
 
 def _schem_relative(path: bytes) -> bytes:
@@ -276,6 +285,9 @@ def _schem_relative(path: bytes) -> bytes:
         return b"$PDK_ROOT/" + pdk.group(1)
     if path.startswith(_SCHEM_WORK):
         return path[len(_SCHEM_WORK):]
+    system = _SCHEM_SYSTEM_PATH.match(path)
+    if system:
+        return b"$XSCHEM_SHAREDIR/" + system.group(1)
     return path
 
 
@@ -285,6 +297,15 @@ def mask_schem_paths(data: bytes) -> bytes:
 
 # Q-SCHEM-1: the writer's version string in the version record.
 _SCHEM_VERSION = re.compile(rb"^(v \{xschem version=)[^\s}]+", re.MULTILINE)
+
+
+# The user configuration folder in a netlist (a PDK symbol's `pre_osdi $USER_CONF_DIR/...` line): xschem's
+# ~/.xschem of the capture user, Hefesto's <document folder>/.xschem.
+_SCHEM_USER_CONF = re.compile(rb"(?<![^\s'\"=])/[^\s'\"]*?/\.xschem(?=/)")
+
+
+def mask_schem_user_conf(data: bytes) -> bytes:
+    return _SCHEM_USER_CONF.sub(b"$USER_CONF_DIR", data)
 
 
 def mask_schem_version(data: bytes) -> bytes:
@@ -350,6 +371,7 @@ _NAMED: dict[str, Mask] = {
     "magic-tech-menu-order": mask_magic_tech_menu_order,
     "schem-paths": mask_schem_paths,
     "schem-version": mask_schem_version,
+    "schem-user-conf": mask_schem_user_conf,
     "ext-times": mask_ext_times,
     "extcheck-memory": mask_extcheck_memory,
     "prog-name": mask_prog_name,

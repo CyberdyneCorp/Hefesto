@@ -1,2 +1,0 @@
-netlist 1
-

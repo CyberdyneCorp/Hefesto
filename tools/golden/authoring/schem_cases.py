@@ -161,6 +161,46 @@ class Spec:
     replay: str = ""                                     # netlist cases: input/replay.hef when not the default
     timeout_s: int | None = None
     externals: list[dict] = field(default_factory=list)
+    prepare: list[str] = field(default_factory=list)     # netlist cases: run.sh lines before the first run
+
+
+# The sky130 symbol generators (Q-SCHEM-11) of sky130_tests/test_generators.sch, placed by SCHEM-NL-05, NL-21
+# and NL-23. The read-only PDK mount keeps them non-executable ('Permission denied' in the round-5 captures),
+# so run.sh copies them executable to the same relative path under /work/gen (the schem-paths mask reduces
+# both spellings to $PDK_ROOT/sky130A/...), gives their '#!/bin/sh ... exec tclsh' header a tclsh on PATH
+# (the image has tclsh8.6 only), and input/case.xschemrc puts the copy first on the library path. Capture
+# side only: the replay never sets HEFESTO_CAPTURE_GENERATORS and runs the PDK files in its sandbox.
+GENERATORS = ("sky130_tests/tier.tcl", "sky130_tests/res.tcl")
+GENERATOR_ROOT = "/work/gen/sky130A/libs.tech/xschem"
+GENERATOR_PREPARE = [
+    "# The PDK's symbol generators, executable, first on the library path (input/case.xschemrc).",
+    f"mkdir -p {GENERATOR_ROOT}/sky130_tests /work/gen/bin",
+    *(f"cp /pdk/sky130A/libs.tech/xschem/{g} {GENERATOR_ROOT}/{g} && chmod 755 {GENERATOR_ROOT}/{g}"
+      for g in GENERATORS),
+    'ln -sf "$(command -v tclsh || command -v tclsh8.6)" /work/gen/bin/tclsh',
+    'PATH=/work/gen/bin:$PATH; export PATH',
+    f"HEFESTO_CAPTURE_GENERATORS={GENERATOR_ROOT}; export HEFESTO_CAPTURE_GENERATORS",
+]
+GENERATOR_RC = ("# Capture side only (input/run.sh exports HEFESTO_CAPTURE_GENERATORS): the executable copy of the\n"
+                "# PDK's symbol generators first on the library path.\n"
+                "if {[info exists env(HEFESTO_CAPTURE_GENERATORS)]} {\n"
+                "  set XSCHEM_LIBRARY_PATH $env(HEFESTO_CAPTURE_GENERATORS):$XSCHEM_LIBRARY_PATH\n"
+                "}\n")
+
+
+def with_generators(spec: "Spec") -> "Spec":
+    """``spec`` with the capture-side generator copy of GENERATOR_PREPARE and GENERATOR_RC."""
+    spec.prepare = list(GENERATOR_PREPARE)
+    spec.files = {**spec.files, "case.xschemrc": GENERATOR_RC}
+    return spec
+
+
+def with_user_conf_mask(spec: "Spec") -> "Spec":
+    """``spec`` with mask ``schem-user-conf`` on its netlists: sky130_tests/top.sch places diff_amp.sym, whose
+    ``pre_osdi $USER_CONF_DIR/...`` line names the netlisting user's configuration folder."""
+    spec.outputs = [(name, source, comparator, masks + ["schem-user-conf"]) if source.startswith("out/") else
+                    (name, source, comparator, masks) for name, source, comparator, masks in spec.outputs]
+    return spec
 
 
 def pdk_path(pdk_set: str, rel: str) -> str:
@@ -199,6 +239,7 @@ def run_script(spec: Spec) -> str:
         '  echo "== $label: exit $rc"',
         '  if [ "$rc" -ne 0 ]; then status=$rc; fi',
         "}",
+        *spec.prepare,
     ]
     for run in spec.runs:
         env = ["env", f"PDK={run.pdk}"] if run.pdk else []
@@ -323,9 +364,22 @@ SHAPE_BODY = ("K {type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=
               "P 4 4 -30 -20 -40 0 -30 20 -30 -20 {}\nP 9 3 30 -20 40 0 30 20 {bezier=true}\n"
               "T {@symname} -20 -35 0 0 0.2 0.2 {}\nT {@name} -20 25 0 0 0.2 0.2 {layer=13}\n")
 SHAPE_SYM = VERSION + SHAPE_BODY
-BLOCK_SCH = sch(lab(0, 0, "p1", "IN", "ipin.sym"), lab(200, 0, "p2", "OUT", "opin.sym"),
+# block.sch places Hefesto-drawn pin and resistor symbols of the case (M8 round 6): with xschem's system
+# symbols the embedded block held xschem's graphics, which Hefesto's clean-room library draws differently (J-3).
+PORT_SYM = ('G {{}}\nK {{type={kind}\nformat="*.{kind} @lab"\ntemplate="name=p1 lab={lab}"}}\nV {{}}\n'
+            'S {{}}\nF {{}}\nE {{}}\nB 5 -2.5 -2.5 2.5 2.5 {{name=p dir={dir}}}\nL 4 -20 0 0 0 {{}}\n'
+            'P 4 4 -30 -5 -20 0 -30 5 -30 -5 {{}}\nT {{@lab}} -35 -4 0 1 0.2 0.2 {{}}\n')
+RES_SYM = (VERSION + 'G {}\nK {type=resistor\nformat="@name @pinlist @value"\ntemplate="name=R1 value=1k"}\n'
+           'V {}\nS {}\nF {}\nE {}\nL 4 0 -30 0 -20 {}\nL 4 0 20 0 30 {}\nB 4 -5 -20 5 20 {}\n'
+           'B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}\nB 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}\n'
+           'T {@name} 10 -10 0 0 0.2 0.2 {}\nT {@value} 10 0 0 0 0.2 0.2 {}\n')
+BLOCK_SYMBOLS = {"block_in.sym": VERSION + PORT_SYM.format(kind="ipin", lab="IN", dir="in"),
+                 "block_out.sym": VERSION + PORT_SYM.format(kind="opin", lab="OUT", dir="out"),
+                 "block_res.sym": RES_SYM}
+BLOCK_SCH = sch(lab(0, 0, "p1", "IN", "block_in.sym"), lab(200, 0, "p2", "OUT", "block_out.sym"),
                 wire(0, 0, 100, 0, "lab=IN"), wire(100, 0, 100, -30), wire(100, 30, 100, 60, "lab=OUT"),
-                wire(100, 60, 200, 60), wire(200, 60, 200, 0, "lab=OUT"), res(100, 0, "name=R1 value=1k"),
+                wire(100, 60, 200, 60), wire(200, 60, 200, 0, "lab=OUT"),
+                inst("block_res.sym", 100, 0, "name=R1 value=1k"),
                 k="type=subcircuit\nformat=\"@name @pinlist @symname\"\ntemplate=\"name=x1\"")
 RT05 = sch(inst("shape.sym", 0, 0, "name=x1 embed=true") + "\n[\n" + VERSION + SHAPE_BODY + "]",
            inst("shape.sym", 200, 0, "name=x2"),
@@ -712,7 +766,8 @@ def specs() -> list[Spec]:
                         "a schematic used as a symbol marked embed=true, and a plain instance of each.",
                         [("/work/input/embed.sch", "embed.sch", "schematic")],
                         [file_out("embed.sch"), file_out("2-embed.sch")],
-                        files={"embed.sch": RT05, "shape.sym": SHAPE_SYM, "block.sch": BLOCK_SCH}))
+                        files={"embed.sch": RT05, "shape.sym": SHAPE_SYM, "block.sch": BLOCK_SCH,
+                               **BLOCK_SYMBOLS}))
     out.append(tcl_spec("SCHEM-RT-06", FILE_FORMAT, ["Record grammar", "Malformed input", "Layers"],
                         "Hand-written malformed file: unknown record with a two-line brace string, a comment, a "
                         "truncated wire, an out-of-range layer and an unterminated brace string at the end.",
@@ -773,9 +828,9 @@ def specs() -> list[Spec]:
     out.append(pdk_netlist("SCHEM-NL-04", ["Bus and vector notation", "Element line post-processing", "Unnamed nets"],
                            "sky130 sky130_tests/adder_16bit.sch (buses and vector instances).",
                            S, ["sky130_tests/adder_16bit.sch"]))
-    out.append(pdk_netlist("SCHEM-NL-05", ["Subcircuit definitions"],
+    out.append(with_user_conf_mask(with_generators(pdk_netlist("SCHEM-NL-05", ["Subcircuit definitions"],
                            "sky130 sky130_tests/top.sch, hierarchical (order of the expanding symbol blocks).",
-                           S, ["sky130_tests/top.sch"]))
+                           S, ["sky130_tests/top.sch"]))))
     nl06 = ["sky130_tests/test_lvs_ignore.sch", "sky130_tests/test_short_option.sch",
             "sky130_tests/test_format_override.sch"]
     runs06 = []
@@ -851,14 +906,14 @@ def specs() -> list[Spec]:
                              Run("without-symbol", "/work/input/without/inv.sch", "inv",
                                  ["--tcl", "set top_is_subckt 1"], out="inv-without-symbol.spice")],
                             [], ["hefesto"], NL20_FILES))
-    out.append(netlist_spec("SCHEM-NL-21", NETLISTING, ["Flat netlist"],
+    out.append(with_user_conf_mask(with_generators(netlist_spec("SCHEM-NL-21", NETLISTING, ["Flat netlist"],
                             "sky130 sky130_tests/top.sch in flat mode (-f), compared electrically (Q-SCHEM-15); also "
                             "gain_stage.sch (passgate.sym inside), whose flat netlist has devices.",
                             [Run("top-flat", pdk_path(S, "sky130_tests/top.sch"), "top", ["-f"], out="top-flat.spice"),
                              Run("gain_stage-flat", pdk_path(S, "sky130_tests/gain_stage.sch"), "gain_stage", ["-f"],
                                  out="gain_stage-flat.spice")],
                             [S], [pdk_prov(S, "sky130_tests/top.sch"), pdk_prov(S, "sky130_tests/gain_stage.sch")],
-                            comparator="spice-canonical"))
+                            comparator="spice-canonical"))))
     out.append(tcl_spec("SCHEM-NL-22", NETLISTING, ["Net naming order"],
                         "The SCHEM-NL-11 schematic netlisted, then saved: lab= on the wires (Q-SCHEM-29).",
                         "xschem load /work/input/nl11.sch\nputs \"netlist [xschem netlist]\"\n"
@@ -868,8 +923,8 @@ def specs() -> list[Spec]:
                                 "if {[catch {schematic netlist}]} {set status 10}\n"
                                 "schematic save out/nl11-saved.sch\nquit $status\n"))
     nl23 = "sky130_tests/test_generators.sch"
-    out.append(pdk_netlist("SCHEM-NL-23", ["Symbol generators"],
-                           "sky130 sky130_tests/test_generators.sch (Q-SCHEM-11).", S, [nl23], SYMBOLS))
+    out.append(with_generators(pdk_netlist("SCHEM-NL-23", ["Symbol generators"],
+                           "sky130 sky130_tests/test_generators.sch (Q-SCHEM-11).", S, [nl23], SYMBOLS)))
 
     # --- simulation integration ------------------------------------------------------------------------
     sim01 = "sg13g2_tests/dc_lv_nmos.sch"

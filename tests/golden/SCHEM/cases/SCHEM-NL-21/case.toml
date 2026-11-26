@@ -26,13 +26,13 @@ requires_commands = ["schematic"]
 name = "top-flat.spice"
 source = "out/top-flat.spice"
 comparator = "spice-canonical"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-user-conf"]
 
 [[outputs]]
 name = "gain_stage-flat.spice"
 source = "out/gain_stage-flat.spice"
 comparator = "spice-canonical"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-user-conf"]
 
 [[outputs]]
 name = "stdout.txt"
