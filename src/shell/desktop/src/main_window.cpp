@@ -304,6 +304,13 @@ void MainWindow::build_top_bar() {
                  "Open a layout file: a Magic cell, GDS or OASIS (by content)", [this] { open_file(); });
   add_top_button(row, "PDKs", "pdk", paint::ButtonStyle::secondary, "PDK manager: install, enable and pin PDKs",
                  [this] { toggle_pdk_manager(); });
+  // M8 (task 13.2): the board's "Netlist" next to Simulate; it shows the
+  // Schematic tab and runs the same netlist action as the netlist bar.
+  add_top_button(row, "Netlist", "", paint::ButtonStyle::secondary,
+                 "Netlist the active schematic (schematic netlist -hier); shows the Schematic tab", [this] {
+                   show_schematic_tab(true);
+                   schematic_view_->start_netlist();
+                 });
   for (const DeferredControl& c : deferred_actions()) {
     const bool agent = c.label == "Ask agent";
     const TopButton b = add_top_button(row, c.label, agent ? "agent" : "",

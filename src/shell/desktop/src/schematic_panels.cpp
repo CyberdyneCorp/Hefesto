@@ -350,6 +350,37 @@ bool NetlistAction::request_cancel() noexcept {
   return true;
 }
 
+NetlistButtonView netlist_button(const NetlistAction& action, bool has_document) {
+  NetlistButtonView view;
+  view.label = "Netlist";
+  view.enabled = has_document && action.enabled();
+  view.tooltip = !has_document          ? "Netlist the active schematic: no schematic open (schematic open <file.sch>)"
+                 : action.enabled() ? "Netlist the active schematic (n): schematic netlist -hier"
+                                    : "A netlist run is going on: Interrupt (Ctrl-C) stops it";
+  return view;
+}
+
+bool run_netlist(NetlistAction& action, bool has_document, std::string label,
+                 const std::function<void(const std::string&)>& run, MessagesPanel& messages) {
+  if (!has_document) {
+    CommandOutcome none;
+    none.status = OutcomeStatus::failed;
+    none.message = "netlist: no schematic open";
+    messages.add(none);
+    return false;
+  }
+  const auto line = action.start(NetlistRequest{}, std::move(label), NetlistAction::Clock::now());
+  if (!line) return false;
+  if (run) run(*line);  // the observer finishes the action with the result
+  if (action.state() == NetlistAction::State::running) {
+    CommandOutcome failed;
+    failed.status = OutcomeStatus::failed;
+    failed.message = "the netlist command did not run";
+    action.finish(failed, messages);
+  }
+  return true;
+}
+
 bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor) {
   if (action.request_cancel()) {
     (void)::hefesto::ui::request_interrupt(editor);

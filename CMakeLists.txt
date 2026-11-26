@@ -102,6 +102,8 @@ endif()
 if(HEFESTO_BUILD_DESKTOP)
   add_subdirectory(src/render/vulkan)
   add_subdirectory(src/shell/desktop)
+elseif(NOT HEFESTO_IS_IOS)
+  add_subdirectory(src/shell/desktop/schematic_models)  # M8 task 13.2: Vulkan-free schematic view models
 endif()
 
 if(HEFESTO_BUILD_TESTS AND NOT HEFESTO_IS_IOS)

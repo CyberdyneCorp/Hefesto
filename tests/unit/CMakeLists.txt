@@ -119,6 +119,8 @@ if(HEFESTO_BUILD_DESKTOP)
       add_subdirectory(${_area})
     endif()
   endforeach()
+elseif(TARGET hefesto_shell_schematic_models)
+  add_subdirectory(shell/schematic_models)  # M8 task 13.2: the schematic view-model tests without Vulkan
 endif()
 
 # platform/: PLATFORM and SIMD (m9-lvs-simulation tasks 5.3, 5.4): the POSIX

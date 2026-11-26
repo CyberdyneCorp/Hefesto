@@ -32,6 +32,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <set>
@@ -238,6 +239,25 @@ class NetlistAction {
   std::string status_;
   std::string text_;
 };
+
+/// The top bar's "Netlist" button (board: next to Simulate; M8 task 13.2):
+/// the same action as the netlist bar and the `n` binding.
+struct NetlistButtonView {
+  std::string label;
+  std::string tooltip;
+  bool enabled = false;
+};
+[[nodiscard]] NetlistButtonView netlist_button(const NetlistAction& action, bool has_document);
+
+/// Runs one netlist action through `run` (the window's command sink; the
+/// view's dispatcher observer calls `action.finish` with the result): the
+/// top bar's button, the netlist bar and the `n` binding all come here.
+/// With no document, a message says so; while a run is going on, nothing
+/// happens. A run the sink did not finish (the command never reached the
+/// dispatcher) ends as failed "the netlist command did not run". False
+/// when no run started.
+bool run_netlist(NetlistAction& action, bool has_document, std::string label,
+                 const std::function<void(const std::string&)>& run, MessagesPanel& messages);
 
 /// The schematic tab's Interrupt (the card's button, Ctrl-C). While the
 /// netlist runs, the first press records the cancel and sets the editor's

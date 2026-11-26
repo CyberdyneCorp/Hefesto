@@ -33,6 +33,14 @@ Round 5 (branch `m8-round5-shell`, 2026-11-24). The view is laid out in Raven as
 
 The view reads `schematic hilight list`, `schematic hierarchy path` and the properties' `getprop` with origin `internal` (not replayed, no command count) after any command changed the session, and observes the dispatcher for the results of `schematic` commands (the messages panel, the netlist run). The round-4 model read `hilight list` as a plain list of net names, while the command returns `{net <name> <colour>}` and `{instance <name> <colour>}` triples: fixed with a regression test (`schematic_panels_test.cpp`).
 
+Round 6 (branch `m8-round6-shell`, 2026-11-26):
+
+- The top bar has the board's "Netlist" button next to Simulate: it shows the Schematic tab and runs the same netlist action as the netlist bar and the `n` binding (`SchematicView::start_netlist`, the headless `run_netlist` and `netlist_button` of `schematic_panels.hpp`).
+- The key bindings live in the editor's macro table `schematic`: the core `macro` command has a `schematic` client (`src/core/src/ui/macro_commands.cpp`), so the key-binding sheet's `macro schematic KEY "TEXT"` lines, a startup file and scripts edit the table the canvas reads (`SchematicKeyMap::attach` adds the xschem-style defaults for keys not yet bound). Before, the core silently ignored those lines (no such client).
+- Copy and Paste link the schematic clipboard with the system clipboard (`schematic_clipboard.hpp`): Command-C / Command-V on macOS (Ctrl-C stays the interrupt), Ctrl-C / Ctrl-V elsewhere (Ctrl-C interrupts while a netlist runs, and copies otherwise). Copy runs `schematic clipboard copy` and puts the text on the system clipboard; Paste runs `schematic clipboard set <text>` and `schematic paste <x> <y>` at the pointer, snapped to 10. A system clipboard text above 16 MiB is refused with a message (crafted-input limit).
+- The view models build without Raven and Vulkan (`src/shell/desktop/schematic_models`, target `hefesto_shell_schematic_models`, tests `hefesto_shell_schematic_tests` in builds with `HEFESTO_BUILD_DESKTOP=OFF`), so the linux-tsan CI job runs them under ThreadSanitizer.
+- CI desktop legs: a "Capture the Schematic tab" step (the product app opens `tests/data/schem/devlib/tb/ihp_style_tb.sch` and an `--input` click on the Schematic tab; artifact `schematic-captures-<leg>`) and a `cmake --install` check of the install tree.
+
 ## Board review (DESIGN + SHELL, task 13.1)
 
 Reviewed on 2026-11-24 against the M8 scope (D13, D15; `schematic-editing` "Desktop and touch interaction"; Q-SCHEM-24). The board predates the M8/M9 split: it draws one testbench session with simulation results. What it shows, and what M8 needs from it:
@@ -64,7 +72,7 @@ Board note: the board changes above are DESIGN items (open item for DESIGN: redr
 |---|---|---|
 | Schematic tab enabled (no longer "arrives in M8") | `deferred_view_tabs()` tooltip "Schematic editor: xschem-compatible schematics (M8)"; the segmented control's enabled mask includes it; a click shows the schematic view instead of the canvas (`MainWindow::show_schematic_tab`) | partial: needs the CI capture |
 | Waveforms tab disabled, "Waveforms: arrive in M9" | `deferred_view_tabs()`; the tab list's accessible name and tooltip name M9 | partial: needs the CI capture |
-| "Netlist" button | the netlist bar under the canvas ("Netlist", primary) and the `n` binding run `NetlistAction`; the top bar belongs to the main window | partial: the board puts it in the top bar next to Simulate; moving it is a main-window edit (open item) |
+| "Netlist" button | the top bar's "Netlist" (secondary, before Simulate, as the board) shows the Schematic tab and runs `NetlistAction` through `run_netlist`, as the netlist bar under the canvas ("Netlist", primary) and the `n` binding do | partial: needs the CI capture (the capture shows the Schematic tab, not a netlist run) |
 | Simulate, Corner | the M1 "Simulate" stays disabled ("Simulation: arrives in M9"); the netlist bar shows "Simulate · arrives in M9" in tertiary text; no corner selector | later (M9) |
 
 ## Canvas
@@ -110,13 +118,14 @@ Board note: the board changes above are DESIGN items (open item for DESIGN: redr
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| xschem-style defaults: w wire, m move, c copy, R rotate, F flip, e descend, Ctrl+e ascend, q properties, k highlight, u undo, U redo, Insert place, n netlist | `schematic_default_bindings()` in the macro table `schematic`, run by `SchematicCanvasInput` once a click gave the canvas the key focus; Delete deletes the selection (Hefesto addition) | partial: F6 and the tab switch do not move the focus to the schematic canvas yet (main-window edit, open item) |
-| Rebinding through the key-binding sheet (M2-Key-Bindings) | the sheet's `macro schematic KEY "TEXT"` lines applied by `SchematicKeyMap::apply`; Reset table restores the defaults | model: the core `macro` command has no `schematic` client, so the lines are applied by the shell (open item for the core's ui clients) |
-| Optional tool palette (Q-SCHEM-24) | not built | todo (DESIGN board first) |
+| xschem-style defaults: w wire, m move, c copy, R rotate, F flip, e descend, Ctrl+e ascend, q properties, k highlight, u undo, U redo, Insert place, n netlist | `schematic_default_bindings()` in the macro table `schematic`, run by `SchematicCanvasInput` once a click gave the canvas the key focus; Delete deletes the selection (Hefesto addition) | partial: F6 and the tab switch focus the schematic canvas (round-5 integration); needs the CI capture |
+| Rebinding through the key-binding sheet (M2-Key-Bindings) | the sheet's `macro schematic KEY "TEXT"` lines run through the core `macro` command, whose `schematic` client edits the editor's table the canvas reads (`SchematicKeyMap::attach`); `SchematicKeyMap::reset_commands` gives the lines that restore the defaults | partial: the sheet's Reset table button uses `reset_table_commands` (the core's startup bindings), which has no schematic defaults: for the `schematic` table it should issue `SchematicKeyMap::reset_commands` (open item for CARRY, `key_bindings_view.cpp`) |
+| Copy and Paste with the system clipboard | Command-C / Command-V (macOS) or Ctrl-C / Ctrl-V on the canvas: `schematic clipboard copy` and its text to the system clipboard; the system clipboard to `schematic clipboard set <text>` and `schematic paste <x> <y>` at the pointer (`schematic_clipboard.hpp`, Raven's clipboard) | partial: no board element (an edit action); off macOS Ctrl-C copies unless a netlist runs (proposed Q-SCHEM-66) |
+| Optional tool palette (Q-SCHEM-24) | not built | later: deferred until DESIGN redraws `Schematic.dc.html` with the palette (round 6 keeps it out) |
 
 ## Packaging
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
 | Asset folder of the desktop app | `load_assets` finds the fonts and icons with `desktop_asset_dir` from the folder the operating system reports for the executable (`platform_posix::executable_dir()`), never argv[0]; the `--asset-dir` override and the source-tree fallback stay | partial: regression test in `schematic_library_test.cpp`; the CI desktop captures load the bundled fonts through it |
-| Install tree | `src/shell/desktop/CMakeLists.txt` installs `hefesto` in `<prefix>/bin`, the fonts and icons in `<prefix>/share/hefesto/assets` and the schematic system library in `<prefix>/assets/schematic` (the install root of `<prefix>/bin`, M8-D10) | partial: the rules were checked with `cmake --install` of a stand-in executable locally (no Vulkan SDK on the round's Mac); a `cmake --install` step of the real desktop build in the CI desktop legs is an open item (ci.yml is shared) |
+| Install tree | `src/shell/desktop/CMakeLists.txt` installs `hefesto` in `<prefix>/bin`, the fonts and icons in `<prefix>/share/hefesto/assets` and the schematic system library in `<prefix>/assets/schematic` (the install root of `<prefix>/bin`, M8-D10) | partial: the CI desktop legs run `cmake --install` of the real desktop build and check `bin/hefesto`, `bin/hefesto-cli`, the fonts and icons and `assets/schematic` ("Check the desktop install tree", round 6) |

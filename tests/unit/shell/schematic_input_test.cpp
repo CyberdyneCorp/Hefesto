@@ -9,9 +9,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <vector>
 
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/schematic_input.hpp"
+#include "hefesto/ui/commands.hpp"
 
 using namespace hefesto::shell;
 namespace schem = hefesto::schem;
@@ -161,10 +164,60 @@ TEST_CASE("keys on the schematic canvas run the xschem-style bindings",
   (void)f.send(pointer(InputKind::pointer_down, 100, 50));
   CHECK(f.send(key('E')).line == "schematic descend R1");
 
-  CHECK(f.send(key('C', kModCtrl)).interrupt);  // Ctrl-C
+  f.input.set_running(true);
+  CHECK(f.send(key('C', kModCtrl)).interrupt);  // Ctrl-C while a netlist runs
+  f.input.set_running(false);
   CHECK_FALSE(f.send(key('Z')).consumed);       // unbound
 
-  // A rebinding through the key-binding sheet applies at once.
-  REQUIRE(f.input.keys().apply(R"(macro schematic z "schematic zoom_full")"));
+  // A rebinding through the core's `macro schematic ...` (the key-binding
+  // sheet's lines) applies at once to the editor's table the canvas reads.
+  hefesto::editor::EditorState editor;
+  f.input.keys().attach(editor.macros);
+  const std::vector<std::string> args{"schematic", "z", "schematic zoom_full"};
+  REQUIRE(hefesto::ui::macro_command(editor, args, false, "layout").ok());
   CHECK(f.send(key('Z')).line == "schematic zoom_full");
+}
+
+TEST_CASE("Copy and Paste on the schematic canvas use the platform's chord",
+          "[cap:schematic-editing][req:Clipboard]") {
+  SECTION("Linux: Ctrl-C copies unless a netlist runs, Ctrl-V pastes at the pointer") {
+    Fixture f;
+    const SchematicInputResult copy = f.send(key('C', kModCtrl));
+    CHECK(copy.copy);
+    CHECK_FALSE(copy.interrupt);
+    f.input.set_running(true);
+    const SchematicInputResult stop = f.send(key('C', kModCtrl));
+    CHECK(stop.interrupt);
+    CHECK_FALSE(stop.copy);
+    f.input.set_running(false);
+
+    // Before the pointer came in: the view's centre.
+    const SchematicInputResult centre = f.send(key('V', kModCtrl));
+    REQUIRE(centre.paste_at.has_value());
+    CHECK(centre.paste_at->x == Approx(f.viewport.centre().x));
+    CHECK(centre.paste_at->y == Approx(f.viewport.centre().y));
+    // Then where the pointer last was.
+    CanvasInput move = pointer(InputKind::pointer_move, 150, 20);
+    (void)f.send(move);
+    const SchematicInputResult at = f.send(key('V', kModCtrl));
+    REQUIRE(at.paste_at.has_value());
+    const Point expected = f.viewport.to_schematic(CanvasPoint{150, 20});
+    CHECK(at.paste_at->x == Approx(expected.x));
+    CHECK(at.paste_at->y == Approx(expected.y));
+
+    // Command-C is no copy off macOS; Ctrl-Shift-C is no copy either.
+    CHECK_FALSE(f.send(key('C', kModSuper)).copy);
+    CHECK_FALSE(f.send(key('C', kModCtrl | kModShift)).copy);
+  }
+  SECTION("macOS: Command-C copies and Command-V pastes; Ctrl-C stays the interrupt") {
+    SchematicScene scene;
+    SchematicViewport viewport;
+    viewport.set_size(200, 100);
+    SchematicCanvasInput input{true};
+    CHECK(input.handle(key('C', kModSuper), viewport, scene).copy);
+    CHECK(input.handle(key('V', kModSuper), viewport, scene).paste_at.has_value());
+    const SchematicInputResult ctrl_c = input.handle(key('C', kModCtrl), viewport, scene);
+    CHECK(ctrl_c.interrupt);
+    CHECK_FALSE(ctrl_c.copy);
+  }
 }
