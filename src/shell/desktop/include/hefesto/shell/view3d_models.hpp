@@ -60,6 +60,7 @@
 #include "hefesto/render/mesh3d_renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
+#include "hefesto/shell/view_models.hpp"
 #include "hefesto/tech/types.hpp"
 #include "hefesto/ui/macros.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
@@ -646,13 +647,9 @@ inline constexpr float kView3dRowTextX = 22.0F;
   return side_content_width() - kView3dScrollBarRoom - 3.0F * (kView3dRowButtonWidth + kView3dRowSpacing) -
          kView3dRowTextX - 4.0F;
 }
-/// Measures a text's width (the painter's or the runtime's, for a role).
-using TextMeasure = std::function<float(std::string_view)>;
-/// `text` cut to fit `width` with a trailing "…" (at a UTF-8 character
-/// boundary); unchanged when it fits; "…" alone when not even one
-/// character does. The row's tooltip and screen-reader name keep the full
-/// text (row_tooltip, row_accessible_name).
-[[nodiscard]] std::string ellipsize(std::string_view text, float width, const TextMeasure& measure);
+/// The painted row cuts its name and range to row_text_width() with
+/// shell::ellipsize (view_models.hpp); the row's tooltip and screen-reader
+/// name keep the full text (row_tooltip, row_accessible_name).
 /// A row's tooltip: "mrdlcontact, 6.63–7.26 µm" (the full name and range,
 /// which the painted row may ellipsize).
 [[nodiscard]] std::string row_tooltip(const View3dLayerRow& row);

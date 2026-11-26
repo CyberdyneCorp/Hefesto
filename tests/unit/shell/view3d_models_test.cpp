@@ -13,7 +13,6 @@
 
 #include <array>
 #include <cmath>
-#include <filesystem>
 #include <limits>
 #include <iterator>
 #include <memory>
@@ -27,6 +26,7 @@
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
 #include "hefesto/shell/view3d_models.hpp"
+#include "hefesto/ui/line.hpp"
 #include "hefesto/view/window.hpp"
 #include "hefesto/view3d/client/scene.hpp"
 #include "hefesto/view3d/stack/ghost.hpp"
@@ -1055,11 +1055,18 @@ TEST_CASE("Isometric default in mask-layer mode keeps the heights in proportion:
 
 namespace {
 
-/// The drawn z range (draw heights times s_z) of the layers the mesh draws.
+/// MET1's displayed bottom and top (its draw height and thickness times
+/// s_z): the fixture's one mask layer with a `render` height.
 std::pair<double, double> drawn_z(const DrawnMesh& d, float scale_z) {
-  const view3d::Extent3 box = stack_extent(d.mesh->region, *d.stack, layers_present(*d.mesh, d.stack->size()));
   const auto s = static_cast<double>(scale_z);
-  return {static_cast<double>(box.z0) * s, static_cast<double>(box.z1) * s};
+  for (view3d::LayerId id = 0; id < d.stack->size(); ++id) {
+    if (d.stack->layers()[id].name != "MET1") continue;
+    const view3d::DrawHeight h = d.stack->draw_height(id);
+    REQUIRE(h.height > 0.0F);
+    return {static_cast<double>(h.height) * s, static_cast<double>(h.height + h.thickness) * s};
+  }
+  FAIL("no MET1 in the mask-layer stack");
+  return {};
 }
 
 /// Opens c3d from the desktop in mask-layer mode, builds its mesh and runs
@@ -1067,6 +1074,10 @@ std::pair<double, double> drawn_z(const DrawnMesh& d, float scale_z) {
 DrawnMesh open_mask_board(ClientSession& s) {
   open_from_desktop(s);
   REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+  // MET1's `render` height in the metal1 style the fixture binds (the
+  // tech file names a style this headless session does not have).
+  s.w3d("render MET1 1.376 0.36 " +
+        std::to_string(view3d::render_style_position(hefesto::display::kFixedStyleCount + 20)));
   DrawnMesh d = build_mesh(s);
   REQUIRE(d.stack->mode() == view3d::Mode::mask_layer);
   for (const std::string& line : default_camera_commands(frame_of(s, d))) tcl(s, line);
@@ -1101,11 +1112,12 @@ TEST_CASE("Mask-layer board view in proportion with magic-compat ON",
   REQUIRE(off_z1 - off_z0 > 0.0);
   CHECK(on_z1 - on_z0 == Catch::Approx(off_z1 - off_z0).epsilon(1e-4));
   CHECK(on_z1 == Catch::Approx(off_z1).epsilon(1e-4));
-  const double on_ratio = (on_z1 - on_z0) / static_cast<double>(d_on.mesh->region.width());
-  const double off_ratio = (off_z1 - off_z0) / static_cast<double>(d_off.mesh->region.width());
-  // The OFF generation area is the box grown by the style's radius, so the
-  // widths may differ by that halo; the height-to-width ratio stays close.
-  CHECK(on_ratio == Catch::Approx(off_ratio).epsilon(0.25));
+  // MET1 (1.376 µm up, 0.36 µm thick) is drawn at its µm values in mask units,
+  // so the height-to-width ratio is the OFF picture's, and physical.
+  const double mask_unit_um = microns / static_cast<double>(f);
+  CHECK(on_z0 * mask_unit_um == Catch::Approx(1.376).epsilon(1e-4));
+  CHECK(on_z1 * mask_unit_um == Catch::Approx(1.736).epsilon(1e-4));
+  CHECK(off_z0 * mask_unit_um == Catch::Approx(1.376).epsilon(1e-4));
   // Magic's own s_z is untouched: `defaults` returns to 25 x f.
   tcl(on, ".render.magic defaults");
   CHECK(on.window().view.scale_z == Catch::Approx(25.0F * f));
@@ -1607,16 +1619,19 @@ TEST_CASE("Export from the tab runs export3d with the chosen format and writes i
   // (EXPORT's export3d): one merged STL file, and a GLB whatever the name.
   ClientSession s;
   open(s);
-  const std::filesystem::path dir = std::filesystem::temp_directory_path() / "hefesto-view3d-export-r6";
-  std::filesystem::remove_all(dir);
-  std::filesystem::create_directories(dir);
-  const std::string merged = (dir / "merged.stl").string();
-  tcl(s, export_command(s.window().toolkit_path, merged, false, View3dExportFormat::stl_merged));
-  CHECK(std::filesystem::exists(merged));
-  const std::string glb = (dir / "model.data").string();
-  tcl(s, export_command(s.window().toolkit_path, glb, false, View3dExportFormat::glb));
-  CHECK(std::filesystem::exists(glb));  // an unknown extension, written as GLB
-  std::filesystem::remove_all(dir);
+  auto& files = s.services.view().files;
+  // As the shell runs it (a typed line, not a sandboxed script).
+  const auto typed = [&s](const std::string& line) {
+    for (const hefesto::cmd::CommandResult& r :
+         hefesto::ui::run_command_line(*s.dispatcher, line, hefesto::cmd::Origin::cli)) {
+      INFO(line << " -> " << (r.diagnostics.empty() ? std::string{} : r.diagnostics.back().text));
+      REQUIRE(r.ok());
+    }
+  };
+  typed(export_command(s.window().toolkit_path, "/t/merged.stl", false, View3dExportFormat::stl_merged));
+  CHECK(files.exists("/t/merged.stl"));
+  typed(export_command(s.window().toolkit_path, "/t/model.data", false, View3dExportFormat::glb));
+  CHECK(files.exists("/t/model.data"));  // an unknown extension, written as GLB
 }
 
 TEST_CASE("long layer names are ellipsized to the row and keep their full name for tooltips and screen readers",

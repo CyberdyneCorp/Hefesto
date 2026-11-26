@@ -738,23 +738,6 @@ std::string level_text(int level) {
 
 // --- layout ------------------------------------------------------------------------
 
-std::string ellipsize(std::string_view text, float width, const TextMeasure& measure) {
-  if (!measure || measure(text) <= width) return std::string{text};
-  static constexpr std::string_view kEllipsis = "\u2026";
-  // Longest prefix (at a UTF-8 lead byte) that fits with the ellipsis.
-  std::size_t keep = 0;
-  for (std::size_t end = 1; end < text.size(); ++end) {
-    if ((static_cast<unsigned char>(text[end]) & 0xC0U) == 0x80U) continue;  // inside a character
-    std::string candidate{text.substr(0, end)};
-    candidate += kEllipsis;
-    if (measure(candidate) > width) break;
-    keep = end;
-  }
-  std::string out{text.substr(0, keep)};
-  out += kEllipsis;
-  return out;
-}
-
 std::string row_tooltip(const View3dLayerRow& row) {
   return row.range_um.empty() ? row.name : row.name + ", " + row.range_um + " \u00b5m";
 }
