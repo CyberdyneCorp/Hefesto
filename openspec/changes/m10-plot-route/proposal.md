@@ -1,6 +1,6 @@
 # Proposal: M10 plotting and maze routing (plot-output, router-maze, router-maze-iroute)
 
-> **Status: plan drafted 2026-11-24. No decision is approved yet.** `check_milestone_readiness.py --milestone M10` reports 19 blocking entries for these three capabilities (Q-MISC-41..44; Q-LEGACY-6, -31..33, -85..89, -91..96). Audit decisions D-37 and D-38 ("blocks M10") are open. This plan raises 22 new entries (Q-MISC-48..55, Q-LEGACY-37..49, Q-LEGACY-54) and six judgement items. All of them, each with a recommended option, are in `docs/decisions/m10-plot-route-decision-table.md`. Nothing in sections 2–15 of `tasks.md` starts before gate G0 (design D1).
+> **Status: plan drafted 2026-11-24; decisions approved 2026-11-25; gate G0 passed 2026-11-26.** The user approved every row of `docs/decisions/m10-plot-route-decision-table.md` with the recommended option: the 19 entries that blocked these three capabilities (Q-MISC-41..44; Q-LEGACY-6, -31..33, -85..89, -91..96), the 22 entries this plan raised (Q-MISC-48..55, Q-LEGACY-37..49, Q-LEGACY-54), Q-MISC-45 and -47, audit decisions D-37 (option (c)) and D-38, the six judgement items and design Open Questions 1–3. Each entry has a `Resolution:` line (Q-LEGACY-40 and -44 as conditional rules settled by the LEG-MZ-28 and LEG-MZ-11 captures), the spec deltas are synced into the living specs, and `check_milestone_readiness.py --milestone M10` reports no `plot-output`, `router-maze` or `router-maze-iroute` entry. Sections 2–15 of `tasks.md` may start (design D1).
 
 ## Why
 
@@ -35,7 +35,7 @@ What exists today (main at 54fbc6d4):
 
 - The rest of M10, each a later M10 change: `hefesto-collaboration-and-diff` (structural and visual diff, git helpers, sync); the reliability capabilities `reliability-em-rules`, `reliability-ir-drop`, `reliability-em-check` and `reliability-visualization` (this change only provides the PNG export they will use, and re-points one sentence of `reliability-visualization` to it); the digital flow `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results` and `digital-flow-mixed-signal`. The 3D view is its own change, `m10-3d-view`.
 - The M12 routers and tools: `router-channel`, `router-gate-array` (its maze stems use this change's engine when M12 comes), `router-net2ir` and `netlist-window`.
-- Raster printer devices and printer spooling (Q-MISC-51, Q-MISC-44). Magic's default build has `plot versatec` and HP RTL output; leaving them out is a platform deviation the user decides (Q-MISC-51), with masked parts in MISC-PLOT-05, -13 and -17. `gremlin` and `pixels` are compiled out of Magic too.
+- Raster printer devices and printer spooling (Q-MISC-51, Q-MISC-44). Magic's default build has `plot versatec` and HP RTL output; leaving them out is a platform deviation the user approved on 2026-11-25 (Q-MISC-51 (a)), with masked parts in MISC-PLOT-05, -13 and -17. `gremlin` and `pixels` are compiled out of Magic too.
 - Analog routing constraints and the agent's routing tools (M11, Q-AGENT-1). M10 provides the engine interface they need (design D23).
 - The iPadOS screens of the export dialog (M14); M10 builds their view models.
 - Pixel identity with Magic's Cairo SVG (Q-MISC-52).
@@ -48,7 +48,7 @@ None.
 
 ### Modified Capabilities
 
-This change implements the existing requirements of `plot-output`, `router-maze` and `router-maze-iroute`, and the deferred "Netlist maze-routing script" of `scripting-auxiliary-tools`. Like M9, it carries spec deltas, because its decisions are not approved yet; they are synced into the living specs at G0 (design Open Question 1).
+This change implements the existing requirements of `plot-output`, `router-maze` and `router-maze-iroute`, and the deferred "Netlist maze-routing script" of `scripting-auxiliary-tools`. Like M9, it carried spec deltas until its decisions were approved; they were synced into the living specs at G0 on 2026-11-26 and the change now has `skip_specs: true` (design Open Question 1 (a)). The list below records what the deltas changed.
 
 The deltas under `specs/` record the changes the recommended answers imply:
 - `plot-output`: MODIFIED "Plot command and plotted region", "Plot parameters" and "Raster printer and legacy plot devices" (Hefesto's device set, a deviation from Magic's default build, Q-MISC-51), "PostScript labels" (escaping, Q-MISC-42), "SVG plot" (native export, headless size, Q-MISC-52) and "Platform mechanism of plot output" (embedded prologue, bundled colour files, no spooling, Q-MISC-44); ADDED "Plot behaviour with magic-compat off" (Q-MISC-41, -43, -55), "Plot output safety and limits" (Q-MISC-48, -49, -50, -53, -54) and "Plot export from the desktop".

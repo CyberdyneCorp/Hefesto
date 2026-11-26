@@ -4,10 +4,9 @@ M10 plotting and maze routing, the next M10 workstreams after the 3D view (`open
 
 Collaboration and diff, the EM/IR reliability capabilities and the digital flow are later M10 changes and are not part of this one; the M12 routers stay in M12.
 
-**Status: plan drafted 2026-11-24. No decision is approved yet.**
-- `check_milestone_readiness.py --milestone M10` reports 19 blocking entries for these capabilities (Q-MISC-41..44; Q-LEGACY-6, -31..33, -85..89, -91..96).
-- Audit decisions D-37 and D-38 are open.
-- This plan proposes 22 new entries: Q-MISC-48 to -55, Q-LEGACY-37 to -49 and Q-LEGACY-54.
-- Judgement items J1–J6 and design Open Questions 1–3 are open.
+**Status: plan drafted 2026-11-24; decisions approved 2026-11-25; gate G0 passed 2026-11-26.**
+- The user approved every row of `docs/decisions/m10-plot-route-decision-table.md` with the recommended option on 2026-11-25: the 19 entries that blocked these capabilities (Q-MISC-41..44; Q-LEGACY-6, -31..33, -85..89, -91..96), the 22 new entries (Q-MISC-48 to -55, Q-LEGACY-37 to -49 and Q-LEGACY-54), Q-MISC-45 and -47, audit decisions D-37 (option (c)) and D-38, judgement items J1–J6 and design Open Questions 1–3.
+- Every entry has a `Resolution:` line; Q-LEGACY-40 and -44 are conditional rules whose `Verified` lines come from the LEG-MZ-28 and LEG-MZ-11 captures (task 2.7).
+- The spec deltas are synced into the living specs and `skip_specs: true` is set; `check_milestone_readiness.py --milestone M10` reports no `plot-output`, `router-maze` or `router-maze-iroute` entry.
 
-All of these, each with a recommended option, are in `docs/decisions/m10-plot-route-decision-table.md`. Nothing in sections 2–15 of `tasks.md` starts before gate G0 (design D1).
+Sections 2–15 of `tasks.md` may start (design D1).
