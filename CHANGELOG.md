@@ -80,14 +80,16 @@ release notices.
   board, the side panel fits a 1280 × 800 window, a substrate slab is
   drawn under the stack ("Substrate" toggle), and every control has a
   screen-reader name and state.
-- **Phase 2 of the 3D view complete.** In mask-layer mode a net selected
+- **Phase 2 features of the 3D view landed (exit check pending).** In mask-layer mode a net selected
   in 2D is drawn as an overlay over the mask layers. "Span connected
   layers" is a property of the 3D window, so `export3d` exports a spanned
   view spanned. The Export menu offers glTF, GLB, STL per layer and STL
   merged. "Detach view" moves the 3D view into its own window. Long layer
   names are ellipsized, with the full name in the tooltip. With
   magic-compat ON, mask generation errors found while building the 3D
-  view are printed once per build (never as feedback areas).
+  view are printed once per build (never as feedback areas). The net
+  overlay is drawn for at most 65,536 boxes (the status says when a net
+  was cut) and is computed once per selection, not on every frame.
 
 ## Unreleased (M9: LVS and simulation, in progress)
 

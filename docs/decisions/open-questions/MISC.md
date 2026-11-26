@@ -535,6 +535,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Options: replicate (feedback on every redraw) | compat (ON report the errors once per build to the console; OFF not reported)
 - Recommendation: compat. Copying feedback on every redraw duplicates feedback entries without bound, which no user wants, and feedback from a view would mix with `cif` feedback; the errors themselves are Magic's output, so ON reports them once per build.
 - Resolution: compat (X-2 tier 2) — with `magic-compat` ON the generation errors of a 3D mask-layer build (a full build or an incremental rebuild) are reported once per build to the console, with the generator's messages, and are not added as feedback; with it OFF they are not reported (as built in round 5). Magic adds them as feedback on every redraw. CORE implements the ON report in round 6 (view-3d "Rendered geometry", scenarios "Mask generation errors reported once per build with magic-compat ON" and "Mask generation errors not reported with magic-compat OFF"). Approved 2026-11-26.
+- As built (round 6 review fix of PR #133): an incremental rebuild reports the errors of the areas it regenerates (scenario "Mask generation errors of an incremental rebuild reported with magic-compat ON"); the same message from the pieces of one regenerated area counts once (items C2, C3 below, proposed); hefesto-cli's 3D face log (HEFESTO_GL_CAPTURE) reports through the dispatcher, as the desktop tab does.
 
 ### Round-2 decisions without a Q row (approved 2026-11-21)
 
@@ -667,6 +668,18 @@ Items reported to the user by M10 round 5 (PR #122) as standing-rule or SHELL/SE
 - **B21: the Release frame-rate bench.**
   - Status: approved 2026-11-26 (round 5 MASKSRC/RENDER).
   - Resolution: accepted — a Release frame-rate run may build only the bench target with the desktop ON configured; the numbers are recorded in `docs/design/m10-3d-ui-conformance.md` "Performance" with an idle-machine note.
+
+Items of the round-6 review fix pass (PR #133). C1 falls under the standing user rule of 2026-11-25 (crafted-input resource limits in both modes, the recommended value); C2 and C3 are proposed and reported to the user.
+
+- **C1: limits of the mask-layer net overlay.**
+  - Status: approved 2026-11-25 (standing rule for crafted-input limits; round-6 review fix).
+  - Resolution: in both modes — `view3d::net_overlay` returns at most 65,536 prisms (`kMaxNetOverlayPrisms`), the renderer reads at most 65,536 prisms and spends at most 2^24 interval visits and 2^20 faces on the overlay's faces; when a limit cuts the overlay the desktop's mesh status adds "net overlay cut at 65,536 boxes" (hefesto-3d-visualization "Interactive 3D inspection", scenario "Net overlay of a very large net").
+- **C2: the desktop tab does not repeat identical errors of a repeated full build.**
+  - Status: proposed (round-6 review fix; recommendation: approve).
+  - Resolution (proposed): with magic-compat ON, a full build of the same inputs (`BuildKey`) as the last full build the tab reported, with identical errors, prints nothing; this removes the duplicate print of the tab's double build on opening. A full build of other inputs, and every incremental rebuild, report as usual.
+- **C3: a message repeated by the pieces of one regenerated area counts once.**
+  - Status: proposed (round-6 review fix; recommendation: approve).
+  - Resolution (proposed): an incremental rebuild that regenerates an area in several pieces reports each distinct message as often as the one piece that has it most, so a region the pieces split is reported once, as a full build reports it.
 
 ## Scope
 
