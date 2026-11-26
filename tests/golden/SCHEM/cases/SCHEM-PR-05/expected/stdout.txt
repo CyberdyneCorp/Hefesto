@@ -10,4 +10,3 @@ x.sym -> abs /work/input/libB/x.sym rel lib/x.sym
 ./x.sym -> abs /work/x.sym rel x.sym
 lib/missing.sym -> abs /work/input/libB/missing.sym rel lib/missing.sym
 //lib//./x.sym -> abs //lib//./x.sym rel //lib//./x.sym
-

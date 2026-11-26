@@ -1,25 +1,3 @@
-== not
-Created /tmp/.xschem dir with template xschemrc
-Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
-Sourcing /opt/ref/share/xschem/xschemrc init file
-Sourcing /work/input/xschemrc init file
-open_pdks installation: using /pdk
-SKYWATER_MODELS: /pdk/sky130A/libs.tech/combined
-SKYWATER_STDCELLS: /pdk/sky130A/libs.ref/sky130_fd_sc_hd/spice
-setup_tcp_bespice: success : listening to TCP port: 2022
-== dc_logic_not
-Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
-Sourcing /opt/ref/share/xschem/xschemrc init file
-Sourcing /work/input/xschemrc init file
-MODELS_NGSPICE: /pdk/ihp-sg13g2/libs.tech/ngspice/models
-MODELS_XYCE: /pdk/ihp-sg13g2/libs.tech/xyce/models
-== test_nfet_03v3
-Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
-Sourcing /opt/ref/share/xschem/xschemrc init file
-Sourcing /work/input/xschemrc init file
-pdk installation: using /pdk
-180MCU_MODELS: /pdk/gf180mcuD/libs.tech/ngspice
-setup_tcp_bespice: success : listening to TCP port: 2022
 -----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
 Error: undriven node: B
 Warning: open net: D

@@ -91,12 +91,28 @@ class Netlist:
 
 
 def normalize_value(value: str) -> str:
-    """A field value as compared: a number to 12 significant digits, else lower-case text."""
+    """A field value as compared: a number to 12 significant digits, else lower-case text in which the
+    blanks inside a ``'...'`` or ``{...}`` expression are dropped (SPICE reads an expression the same with
+    or without them: ``'int((1 + 1)/2) * wn'`` is ``'int((1+1)/2)*wn'``); a ``"..."`` string keeps them."""
     low = value.lower()
     match = _NUMBER.match(low)
     if match:
         return format(float(match.group(1)) * _SCALE[match.group(2)], ".12g")
-    return low
+    return _squeeze_expressions(low)
+
+
+def _squeeze_expressions(text: str) -> str:
+    """``text`` without the whitespace inside its ``'...'`` and ``{...}`` expressions."""
+    out, closer = [], None
+    for char in text:
+        if closer is None and char in "'{":
+            closer = "'" if char == "'" else "}"
+        elif char == closer:
+            closer = None
+        elif closer is not None and char.isspace():
+            continue
+        out.append(char)
+    return "".join(out)
 
 
 def split_fields(line: str) -> list[str]:

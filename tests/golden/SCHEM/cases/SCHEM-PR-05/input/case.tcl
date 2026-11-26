@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-PR-05: abs_sym_path and rel_sym_path of library references, from a schematic in input/sub.
 xschem load /work/input/sub/top.sch
 puts "XSCHEM_LIBRARY_PATH: $XSCHEM_LIBRARY_PATH"

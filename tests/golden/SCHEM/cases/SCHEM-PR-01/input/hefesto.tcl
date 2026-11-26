@@ -1,4 +1,5 @@
 file mkdir out
+if 1 {
 # SCHEM-PR-01: xschem get_tok / subst_tok on property strings. One line per call: the call, then the
 # result between brackets.
 proc show {args} {
@@ -33,3 +34,5 @@ show xschem subst_tok {name=x1 value=1 m=2} value {}
 show xschem subst_tok {k name=x1} k 5
 show xschem subst_tok {a=1;b=2} b 3
 show xschem subst_tok "name=x1\nvalue=1" value 2
+list
+}

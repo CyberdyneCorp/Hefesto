@@ -1,6 +1,0 @@
-== with-symbol
-
-== with-symbol: exit 10
-== without-symbol
-
-== without-symbol: exit 0

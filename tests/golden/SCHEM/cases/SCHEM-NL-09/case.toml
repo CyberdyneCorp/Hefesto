@@ -38,13 +38,13 @@ masks = ["schem-paths"]
 name = "stdout.txt"
 source = "stdout"
 comparator = "bytes"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-hefesto-driver"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "bytes"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-hefesto-driver"]
 
 [[outputs]]
 name = "exitcode.txt"

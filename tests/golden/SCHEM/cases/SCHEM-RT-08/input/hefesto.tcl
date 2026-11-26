@@ -1,4 +1,5 @@
 file mkdir out
+if 1 {
 schematic open input/a.sch
 schematic save out/a.sch
 schematic close -discard
@@ -11,3 +12,5 @@ schematic close -discard
 schematic open out/b.sch
 schematic save out/2-b.sch
 schematic close -discard
+list
+}
