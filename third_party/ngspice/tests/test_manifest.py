@@ -42,6 +42,19 @@ class SeriesTest(unittest.TestCase):
             self.assertGreater(len(p["justification"]), 80, p["file"])
         self.assertTrue(any("portable-seeding" in p["file"] for p in patches))
 
+    def test_backport_names_its_upstream_commit_and_licence(self):
+        """cap:simulation-monte-carlo req:Statistical functions in ngspice (informative) (patch 0005).
+
+        Decision F1 (a): the statistical .param patch is upstream 940bb50f, and the manifest
+        records the commit and the licence of the file it changes."""
+        patches = {p["file"]: p for p in nm.read_series(ROOT / "patches" / "series")}
+        backport = patches["0005-stat-param-once-per-load.patch"]
+        self.assertEqual(backport["upstream_commit"], "940bb50fab46de3c2618508735f1db208064d3be")
+        self.assertEqual(backport["license"], "BSD-3-Clause")
+        self.assertNotIn("upstream_commit", patches["0003-portable-seeding.patch"])
+        text = (ROOT / "patches" / backport["file"]).read_text(encoding="utf-8")
+        self.assertIn('cp_getvar("stat_param_as_func"', text)
+
     def test_portable_seed_formula_matches_the_spec_scenario(self):
         """cap:simulation-monte-carlo req:Portable random numbers: "Generator state for seed 1"."""
         states = [129 + splitmix(1, k) % 32639 for k in range(8)]
@@ -54,7 +67,7 @@ class SeriesTest(unittest.TestCase):
         allowed = {"src/osdi/osdiregistry.c", "src/spicelib/devices/dev.c", "src/xspice/icm/dlmain.c",
                    "src/maths/misc/randnumb.c", "src/include/ngspice/randnumb.h",
                    "src/frontend/trannoise/wallace.c", "src/include/ngspice/wallace.h", "src/sharedspice.c",
-                   "src/frontend/spiceif.c"}
+                   "src/frontend/spiceif.c", "src/frontend/inpcom.c"}
         for patch in (ROOT / "patches").glob("*.patch"):
             touched = set(re.findall(r"^\+\+\+ b/(\S+)", patch.read_text(encoding="utf-8"), re.MULTILINE))
             self.assertTrue(touched and touched <= allowed, (patch.name, touched))

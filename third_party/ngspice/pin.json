@@ -13,7 +13,7 @@
     "sha256": "894e649651f1838a14095e5a5439e7d3aa63e87ede14d283173fda4fcdef675f",
     "top_dir": "ngspice-47"
   },
-  "hefesto_level": 1,
+  "hefesto_level": 2,
   "configure": {
     "comment": "The feature line of simulation-engine-embedding 'ngspice build configuration and license hygiene' in ngspice's own configure terms. tools/gen_sources.py runs configure with it to list the compiled files; the CMake wrapper writes the matching config.h itself. --with-ngshared is added for the shared library.",
     "features": [

@@ -93,6 +93,26 @@ def trnoise_twice(path):
     return e, {"first": runs[0], "second": runs[1]}
 
 
+STAT_PARAM = ["* statistical .param referenced twice", ".param aga = agauss(1, 2, 3)",
+              "Va a 0 {aga}", "Ra a 0 1k", "Vb b 0 {aga}", "Rb b 0 1k", ".op", ".end"]
+
+
+def stat_param(path):
+    """One load with the default semantics, one with `set stat_param_as_func` (patch 0005)."""
+    e = Engine(path)
+    loads = {}
+    for name in ("once", "as_func"):
+        if name == "as_func":
+            e.command("set stat_param_as_func")
+        e.command("setseed 1")
+        e.circuit(STAT_PARAM)
+        e.command("run")
+        loads[name] = e.vector("a") + e.vector("b")
+        e.command("remcirc")
+        e.command("destroy all")
+    return e, loads
+
+
 def spiceinit(path):
     e = Engine(path, spiceinit=False)
     e.command("echo probe=$?hefesto_probe")
@@ -128,7 +148,7 @@ def devices(path):
 
 
 SCENARIOS = {f.__name__: f for f in (seed, trnoise_twice, spiceinit, codemodel, osdi_static_only, osdi_dynamic,
-                                     devices)}
+                                     devices, stat_param)}
 
 
 def main(argv: list[str]) -> int:

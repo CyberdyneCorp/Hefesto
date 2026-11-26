@@ -76,7 +76,7 @@ Tests:
   glue in `src/` is compiled with `-Wall -Wextra -Werror`.
 - `config.h` is written by the wrapper (`cmake/config.h.in`), with the host
   probes of `cmake/NgspiceProbes.cmake`. The version string is
-  `<release>-hefesto<level>` (now `47-hefesto1`), the build date is empty.
+  `<release>-hefesto<level>` (now `47-hefesto2`), the build date is empty.
 
 ## The patch series
 
@@ -86,6 +86,7 @@ Tests:
 | 0002 static code-model registration | code models compiled in, registered when the device table is created; `codemodel` of a built-in library opens no file | no |
 | 0003 portable seeding | the Tausworthe states come from SplitMix64 of the seed, not from the C library's `rand()` | yes, every random draw (on purpose) |
 | 0004 deterministic initialisation | Gaussian pool seeded from the last seed, not the pid; `setseed` refills it; `ngSpice_nospiceinit()` honoured on hosts with `pwd.h`; no crash when `ngSpice_nospinit()`/`ngSpice_nospiceinit()` run before `ngSpice_Init()` | yes, trnoise/trrandom draws (on purpose) |
+| 0005 statistical `.param` once per load | backport of upstream `940bb50f` (after ngspice-47, decision F1 (a)): a top-level `.param` with `agauss`/`gauss`/`aunif`/`unif`/`limit` that can be evaluated at top level is drawn once per circuit load, one inside a `.subckt` once per instance; only the rest becomes a `.func`; `set stat_param_as_func` restores ngspice-47 | yes, decks with statistical `.param` lines (on purpose; matches upstream after 47) |
 
 Raise `hefesto_level` in `pin.json` whenever the series changes. A cached,
 patched tree records the series it carries (`.hefesto-patch-series`) and keeps

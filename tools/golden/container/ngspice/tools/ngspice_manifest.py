@@ -121,6 +121,25 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+UPSTREAM_RE = re.compile(r"backport of upstream commit\s+([0-9a-f]{40})", re.IGNORECASE)
+PATCH_LICENSE_RE = re.compile(r"License:\s+(\S+)")
+
+
+def series_entry(file: str, comment: list[str], series_dir: Path) -> dict:
+    """One patch of the series; a backport names its upstream commit and licence in its comment."""
+    title = comment[0] if comment else ""
+    justification = " ".join(c for c in comment[1:] if c)
+    entry = {"file": file, "title": re.sub(r"^\d{4} ", "", title).rstrip("."),
+             "justification": justification, "sha256": sha256(series_dir / file)}
+    upstream = UPSTREAM_RE.search(justification)
+    if upstream:
+        entry["upstream_commit"] = upstream.group(1)
+    licence = PATCH_LICENSE_RE.search(justification)
+    if licence:
+        entry["license"] = licence.group(1)
+    return entry
+
+
 def read_series(series: Path) -> list[dict]:
     """Patches in order, each with the comment block above it as justification."""
     patches, comment = [], []
@@ -128,10 +147,7 @@ def read_series(series: Path) -> list[dict]:
         if line.startswith("#"):
             comment.append(line[1:].strip())
         elif line.strip():
-            title = comment[0] if comment else ""
-            patches.append({"file": line.strip(), "title": re.sub(r"^\d{4} ", "", title).rstrip("."),
-                            "justification": " ".join(c for c in comment[1:] if c),
-                            "sha256": sha256(series.parent / line.strip())})
+            patches.append(series_entry(line.strip(), comment, series.parent))
             comment = []
         else:
             comment = []
