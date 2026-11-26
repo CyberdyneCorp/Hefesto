@@ -176,8 +176,8 @@ std::optional<CellId> SpiceReader::defining() const noexcept {
 diag::Status SpiceReader::add_device(const FileState& file) {
   if (++devices_ > options_.limits.devices) {
     return error(file, net_codes::kDeviceLimit,
-                 "the devices-per-run limit of " + std::to_string(options_.limits.devices) + " is exceeded in " +
-                     file.name + " line " + std::to_string(file.line));
+                 "the device limit of " + std::to_string(options_.limits.devices) +
+                     " per netlist database is exceeded in " + file.name + " line " + std::to_string(file.line));
   }
   return diag::Done{};
 }

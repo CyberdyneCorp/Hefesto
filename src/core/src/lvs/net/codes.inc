@@ -9,4 +9,4 @@
 // and describe the codes in its LVSREAD section.
 //
 // Owner: LVSREAD (openspec/changes/m9-lvs-simulation/design.md D3).
-HEFESTO_LVS_CODE("LVS-NET-001", error, "A read would exceed the devices-per-run limit (default 50 million, Q-LVS-36); the read stops and the run is an input error.")
+HEFESTO_LVS_CODE("LVS-NET-001", error, "A read would make its netlist database hold more devices than the device limit (default 50 million, Q-LVS-36; counted per netlist database, decision LVS-READ-025); the read stops and the run is an input error.")

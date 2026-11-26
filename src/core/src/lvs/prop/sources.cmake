@@ -6,4 +6,6 @@
 # Owner: LVSPROP (openspec/changes/m9-lvs-simulation/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/properties.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/network.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/properties.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/records.cpp)

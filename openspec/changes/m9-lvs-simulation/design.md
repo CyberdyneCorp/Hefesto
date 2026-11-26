@@ -743,6 +743,42 @@ The four round-1 branches (`m9-round1-lvsspec`, `-lvsread`, `-simworker`, `-simc
 - **Node naming and concurrency (SIMPROBE).** `sim::node_name` writes into the per-cell extraction client slots (it keeps the clients, then resets them), so it must run while the database is read-only (D4) or on a private copy if extraction for LVS or simulation could run on another thread. SHELL and SIMPROBE integration in R4b must respect this.
 - **Still open for SIMENG (`engine.hpp`).** `Engine::load` takes no PDK init commands or seed (the worker client sends `setseed 1`), and `EngineCallbacks` has no streamed-data callback. Proposed edits: `struct LoadOptions { std::vector<std::string> init_commands; std::uint32_t seed = 1; }` as a second parameter of `load`; `on_data(std::string_view vector, double value)` with an event frame kind. Both are needed only by SIMDECK descriptors (13.2) and live plotting (14.x), so they wait for round 2.
 
+### As landed (LVSALG, LVSRED, LVSPROP; M9 R2)
+
+Branch `m9-round2-lvs`, LVS implementation team (Q-LVS-30 clean room: written from the living `lvs-*` specs, the `Resolution:` lines of `docs/decisions/open-questions/LVS.md` and the public netgen manual; no netgen source). Contract changes against the R0 headers above:
+- **`compare_pair(const NetlistDb&, CellId, const NetlistDb&, CellId, const CompareOptions&)`.** Instances name their class by `CellId`, so the comparison takes the databases. `CompareOptions` gained `strict_topology`, `equated_classes` (the `equate classes` pairs) and `key_mask` (a test hook that forces key collisions). `PairResult` gained `verify` (−1, −2, k, 0), `property_state`, `property_errors` and `log` (`LogLine {text, console_only}`). `lvs::Comparison` holds the state of one pair for the stepping commands: `converge`, `resolve`, `result`, `iterate`, `restart`, `exhaustive`, `symmetries`, `symmetry_command`, `summary`, `verify(VerifyOption, list)`, `equate_nodes`, `equate_elements`, `matching`. `parse_verify_option` does the unique-prefix match. The Q-LVS-20 branch point is `symmetry_verdict_in_log(netgen_compat)`.
+- **`reduce(NetlistDb&, CellId, const ReduceOptions&)`** replaces `reduce(Cell&, const SetupState&)`. `ReduceOptions {netgen_compat, parallel_open, cancel}`. `ReductionSummary` gained `cancelled` and `log`. Also new: `parallel_pass`, `series_pass`, `remove_zero_valued(db1, cell1, db2, cell2, queue_top)`, `declare_shorted_ports`, `class_counts` and `format_class_count`.
+- **`check_device_pair(DeviceSide, DeviceSide, PropertySettings) -> PairCheck`** replaces `check_properties(const Matching&, const SetupState&)`. `properties.hpp` no longer includes `cmp/compare.hpp`; `cmp` calls `prop`. Also new: `PropertyState`, `kPropertyCheckFailed`, `relative_delta` and `within_relative_tolerance` (the Q-LVS-7 branch point), and `format_g`.
+- **Setup inputs (for LVSSETUP, task 7).** The setup runtime writes into the database, and the engine reads the result. Per class: `PropertyDef::merge` (`merge_rule::k*` bits) and `PropertyDef::pin` (`associate`), `Cell::permutes`, and `CellFlags::no_parallel` and `series_combinable`. Global settings: `ReduceOptions::parallel_open`, `CompareOptions::strict_topology` and `equated_classes`. `Instance` gained `merged` (the names of the combined instances) and `open_pins` (per pin: `none`, `no_connects` or `tied_together`). `lvs/net/permute.hpp` resolves the pin pairs, and `permute_groups` makes the chains.
+- **Algorithm.**
+  - Labels come from SplitMix64, seeded with `CompareOptions::seed`.
+  - A class identity is FNV-1a of the canonical class name (folded when matching is case-insensitive, with `equated_classes` mapped to one name), finished by the SplitMix64 mixer. A pin label mixes the identity with the root of the pin's permutation group.
+  - Initial device classes group by the interned canonical name, so two identities can never collide.
+  - A split sorts the class by (new key, vertex). Each run of equal keys has its signatures compared: the sorted pairs of (pin label, neighbour class). A run whose signatures differ is split by signature (the Q-LVS-4 fix, in both modes).
+  - New classes go to the end of class order. The first group keeps the class's slot.
+  - Illegal classes are combined first in class order on every round.
+  - The round guard is 2 × vertices + 16 rounds (`LVS-CMP-003`). Cancellation is polled between rounds (`LVS-CMP-002`).
+- **Choices where the spec is silent** (raised to the LVS spec team):
+  - `Circuit <c> contains no ...` names the cell.
+  - `verify` prints `Netlists do not match.` only for `only` and `properties`.
+  - A pair is property-checked once per partner, and a failed pair is not checked again, so errors are not duplicated.
+  - `restart` clears the remembered property results.
+  - In parallel reduction, a port's net is never a no-connect. Parallel merges append records without changing `_tag` markers. A device without records contributes `{M=1}` to a series merge as well.
+  - Zero-valued removal keeps the port net when only one terminal net is a port, else pin 0's net.
+  - A fold (comb) keeps M (or S) on a record that has no additive numeric value to absorb it.
+  - Two records collapse when every value that is not folded matches.
+  - The open-pin flag prints as `1` (no connects) or `2` (tied together).
+  - The network dump lists `key=value` per record.
+  - A type mismatch prints ` <key> (property type mismatch)`.
+  - Records are ordered by exact values (a proper three-way order, Q-LVS-8). Values equal within tolerance but not exactly are ordered by the primary value.
+- **Decision LVS-READ-025.** The round-1 reader already did what the decision says:
+  - a read stops at the 65537th include read and at more than 64 × `logical_line` bytes of includes;
+  - the depth limit counts the top file;
+  - the device count starts from `NetlistDb::instance_count()`.
+
+  Tests now pin each boundary in both modes. The only change is the device-limit text, which now names the netlist database.
+- **Cognitive complexity.** Every new function is at most 15 (clang-tidy `readability-function-cognitive-complexity`). Nothing is flagged as irreducible.
+
 ## Risks / Trade-offs
 
 - **R1. M7 and M8 slip.** Mitigation: R1–R3 need neither (D1), and their sources are SPICE files and decks. The layout and schematic sources come last.
