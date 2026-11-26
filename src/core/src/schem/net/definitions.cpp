@@ -376,6 +376,7 @@ const Document* NetlistRun::load_schematic(const platform::Path& file) {
     read.xschem_compat = compat_;
     read.warnings = &resolve_warnings_;
     read.source_name = file.generic_string();
+    read.symbol_file_exists = symbol_file_finder(file.parent_path(), env_.search_path, env_.fs);
     auto loaded = load_document(env_.fs, file, read);
     if (loaded) {
       document = std::make_unique<Document>(std::move(loaded).value());
