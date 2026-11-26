@@ -842,6 +842,46 @@ decisions = ["Q-EXTRACT-6"]
 outputs = ["ex.dounique.mag"]
 reason = "extract do unique reverts the temporary _uqN labels of every extracted cell, the top cell included, and restores its modified flag, so the saved ex keeps vdd! and net1 and its timestamp (Q-EXTRACT-6, fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"
 
+[EX-064]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-065]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-066]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-067]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-068]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-069]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[EX-070]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once the EXTRACT workstreams through EXTCMD's driver (m7-extraction tasks 4-9; replay from R3) lands"
+
+[LEFDEF-336]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "top.def", "collected/*"]
+reason = "captured in R1 (m7-extraction tasks 2.5, 2.6); replays once EXTCMD's extract all feeding M6's def write (m7-extraction task 17.6) lands"
+
 [NL-RES-01]
 deferred = "M7"
 outputs = ["stdout.txt", "stderr.txt", "collected/*"]

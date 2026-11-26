@@ -51,11 +51,11 @@ OWNER = {"EX": "the EXTRACT workstreams through EXTCMD's driver (m7-extraction t
          "NL-CHK": "SIM (m7-extraction task 12.4)",
          "NL-RES": "RESCMD (m7-extraction task 14) with EXTCMD's extract all and RESNET's network",
          "NL-RESNET": "RESNET (m7-extraction task 13) with RESCMD's command (task 14)",
-         "MISC-ANT": "ANTENNA (m7-extraction task 15)"}
+         "MISC-ANT": "ANTENNA (m7-extraction task 15)",
+         "LEFDEF": "EXTCMD's extract all feeding M6's def write (m7-extraction task 17.6)"}
 PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
-         **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS},
-         "LEFDEF-336": "extract all then def write on LEFDEF-317's layout (task 17.6)"}
+         **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS}}
 EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier milestones (task 17.5)
 CATALOGUE_TOTAL = 155  # design D21
 
@@ -103,7 +103,7 @@ HAND_DERIVED: dict[str, str] = {netlist_cases.CHK_ID: netlist_cases.CHK_HAND_DER
 
 def tcl_cases() -> list[tclcase.TclCase]:
     return [*extract_cases.cases(), *netlist_cases.cases(), *resnet_cases.cases(), *rescmd_cases.cases(),
-            *antenna_cases.cases()]
+            *antenna_cases.cases(), extract_cases.lefdef_336_case()]
 
 
 def authored_ids() -> list[str]:
