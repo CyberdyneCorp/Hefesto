@@ -315,8 +315,14 @@ struct PublishInput {
 // rules are installed and after every rescale (route::refresh_session_styles).
 void read_plot_and_route(const std::shared_ptr<Data>& data, const PublishInput& in) {
   const Technology view{data};
+  // The `color` and `dstyle` files: the current directory, then the
+  // technology's directory, then the bundled copies (design D6).
   plot::StyleSource styles;
   styles.files = &in.fs;
+  styles.search_dirs = {platform::Path{"."}};
+  if (!data->file_name.empty()) {
+    styles.search_dirs.push_back(platform::Path{data->file_name}.parent_path());
+  }
   data->plot = std::make_shared<const plot::PlotTech>(
       plot::read_plot_section(last_raw_section(*data, "plot"), view, styles, in.sink));
   data->maze_styles = std::make_shared<const route::MazeStyles>(

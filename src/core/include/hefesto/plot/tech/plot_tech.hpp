@@ -39,7 +39,7 @@ namespace hefesto::plot {
 /// A 9-field `postscript` line: a stipple pattern (Magic's PSPattern).
 struct PsPattern {
   int index = 0;
-  std::array<std::uint32_t, 8> rows{};  // `%08lx` fields, top row first
+  std::array<std::uint64_t, 8> rows{};  // `%08lx` fields (unsigned long), top row first
 };
 
 /// A 5-field `postscript` line: a CMYK colour (Magic's PSColor).

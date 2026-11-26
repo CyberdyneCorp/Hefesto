@@ -6,3 +6,9 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(plot_tech DATA_DIR plot/tech)
+
+# The private reader parts (plot/tech/reader.hpp, namespace
+# hefesto::plot::detail) and the PDK helpers (reference_data.hpp).
+if(TARGET hefesto_plot_tech_tests)
+  target_include_directories(hefesto_plot_tech_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
+endif()
