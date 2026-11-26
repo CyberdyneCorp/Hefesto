@@ -265,6 +265,11 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   PickResolver resolver_;
   View3dPicking picking_{resolver_};
   const view3d::HighlightSet* highlight_ = nullptr;
+  // Task 10.4: the layout-net overlay in mask-layer mode (mask_net_overlay),
+  // recomputed with the highlight against the uploaded model, and its
+  // prisms in the renderer's type (kept alive for DrawParams::net_overlay).
+  view3d::NetOverlay net_overlay_;
+  std::shared_ptr<void> overlay_storage_;
   std::string pick_caption_;
   std::optional<view3d::Segment> section_line_;  // the cut line while the cross-section is on
   std::optional<db::Point> section_first_;       // the first of two clicks

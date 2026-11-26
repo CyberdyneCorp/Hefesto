@@ -9,6 +9,8 @@
 #include <chrono>
 #include <cmath>
 #include <exception>
+#include <type_traits>
+#include <vector>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
@@ -42,6 +44,28 @@ Rgba rgb_of(const std::array<float, 3>& c) {
 Rgba alpha_of(Rgba c, float a) {
   c.a *= a;
   return c;
+}
+
+/// RENDER's overlay fields (render::DrawParams::net_overlay, a span of
+/// render::OverlayPrism): checked at compile time until the RENDER branch
+/// of round 6 is merged; without them the overlay is computed and not drawn.
+template <typename Params>
+concept DrawsNetOverlay = requires(Params p) { p.net_overlay; };
+
+/// Converts `overlay` to the renderer's prisms, held by `storage`, and
+/// points `params.net_overlay` at them.
+template <typename Params>
+void set_net_overlay(Params& params, const view3d::NetOverlay& overlay, std::shared_ptr<void>& storage) {
+  if constexpr (DrawsNetOverlay<Params>) {
+    using Prism = std::remove_cv_t<typename decltype(params.net_overlay)::element_type>;
+    auto prisms = std::make_shared<std::vector<Prism>>(overlay_prisms<Prism>(overlay));
+    params.net_overlay = *prisms;
+    storage = std::move(prisms);
+  } else {
+    (void)params;
+    (void)overlay;
+    storage.reset();
+  }
 }
 
 }  // namespace
@@ -176,7 +200,7 @@ View3dControlState View3dView::control_state() const {
   s.mask_mode = w != nullptr && w->mode == view3d::Mode::mask_layer;
   s.cut_box = w != nullptr && w->cut_box.has_value();
   s.perspective = options_.perspective;
-  s.span_connected_layers = options_.span_connected_layers;
+  s.span_connected_layers = w != nullptr && w->span_connected_layers;
   s.frame_time = options_.show_frame_time;
   s.picked = picking_.picked().has_value();
   s.net_isolated = picking_.net_isolated();
@@ -287,8 +311,8 @@ void View3dView::build_inspect_section(ui::Box& box) {
   box.add(net);
   ui::Box& span = boxes_.emplace_back(ui::Box::horizontal());
   add_button(span, View3dControl::span_connected_layers, [this] {
-    options_.span_connected_layers = !options_.span_connected_layers;
-    sync_pending_ = true;  // a full build with the J1 option
+    // The window's J1 flag (export3d reads it too); the build key follows it.
+    if (toggle_span_connected_layers(ctx_.editor().view3d, path())) sync_pending_ = true;
     repaint();
   });
   box.add(span);
@@ -564,6 +588,8 @@ void View3dView::reset_window_state() {
   have_key_ = false;
   picking_.reset();
   highlight_ = nullptr;
+  net_overlay_ = {};
+  overlay_storage_.reset();
   pick_caption_.clear();
   rows_.clear();
   ghost_.clear();
@@ -589,7 +615,7 @@ void View3dView::sync() {
   // layers of the current output style (MASKSRC, task 10.2).
   diag::CollectingSink stack_diagnostics;
   view3d::WindowBuild wb = view3d::window_build(ctx_.editor(), *w, magic_compat(), stack_diagnostics);
-  const BuildKey key = build_key(wb.inputs, options_.span_connected_layers);
+  const BuildKey key = build_key(wb.inputs, w->span_connected_layers);
   if (!have_key_ || !(key == key_)) {
     // A `render` statement whose style does not resolve, once per build (decision J2).
     for (const diag::Diagnostic& d : stack_diagnostics.take()) ctx_.core.dispatcher().report(d);
@@ -626,7 +652,7 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
     const std::lock_guard lock(shared_->mutex);
     shared_->progress = 0.0;
   }
-  view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), options_.span_connected_layers);
+  view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), key.span_connected_layers);
   in.build_id = ++build_id_;
   worker_->build(std::move(in));
 }
@@ -760,6 +786,8 @@ void View3dView::draw_frame() {
   if (highlight_dirty_) {
     update_pick_scope(uploaded_stack_.get());
     highlight_ = picking_.highlight(uploaded_.get(), ctx_.editor());
+    // Mask-layer mode: the selected layout nets over the mask geometry (10.4).
+    net_overlay_ = mask_net_overlay(uploaded_.get(), ctx_.editor(), *w, magic_compat());
     highlight_dirty_ = false;
   }
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
@@ -771,6 +799,7 @@ void View3dView::draw_frame() {
     params.substrate = view3d::substrate_slab(*uploaded_, *uploaded_stack_);
   }
   if (section_line_) params.section_plane = section_clip_plane(segment_in_mesh(*section_line_, mesh_units()));
+  set_net_overlay(params, net_overlay_, overlay_storage_);
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);

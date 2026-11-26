@@ -1682,3 +1682,111 @@ TEST_CASE("Open in separate window is a toggle, disabled with a reason where the
   s.window_open = false;
   CHECK_FALSE(control_view(View3dControl::separate_window, s).enabled);
 }
+
+// --- round 6: span option as window state, net overlay (tasks 17.3, 10.4) -----------
+
+TEST_CASE("the Span connected layers toggle sets the window's flag, which the build and export3d read",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  // Task 17.3 (decision B17, approved 2026-11-26): the toggle used to set
+  // only View3dOptions, so `export3d` from the tab exported unspanned.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open_from_desktop(s);
+    s.w3d("cif");
+    REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+    const BuildKey before = build_key(tab_inputs(s), s.window().span_connected_layers);
+    REQUIRE_FALSE(s.window().span_connected_layers);
+    CHECK(toggle_span_connected_layers(s.editor.view3d, s.window().toolkit_path) == std::optional<bool>{true});
+    CHECK(s.window().span_connected_layers);
+    // The build key follows it: a full build.
+    const view3d::BuildInputs in = tab_inputs(s);
+    CHECK(in.span_connected_layers);  // window_build, which export3d's build_scene uses too
+    const BuildKey after = build_key(in, s.window().span_connected_layers);
+    CHECK_FALSE(after == before);
+    CHECK(build_inputs(s.editor, in, after.span_connected_layers).span_connected_layers);
+    // export3d (the Export menu's command) builds the window as shown.
+    hefesto::diag::NullSink quiet;
+    view3d::BuildContext ctx;
+    const view3d::Scene scene = view3d::build_scene(s.editor, s.window(), compat, ctx);
+    REQUIRE(scene.mesh != nullptr);
+    for (const hefesto::cmd::CommandResult& r : hefesto::ui::run_command_line(
+             *s.dispatcher, export_command(s.window().toolkit_path, "/t/span.glb", false, View3dExportFormat::glb),
+             hefesto::cmd::Origin::cli)) {
+      REQUIRE(r.ok());
+    }
+    CHECK(s.services.view().files.exists("/t/span.glb"));
+    // Toggling again turns it off; another path or no window changes nothing.
+    CHECK(toggle_span_connected_layers(s.editor.view3d, s.window().toolkit_path) == std::optional<bool>{false});
+    CHECK_FALSE(toggle_span_connected_layers(s.editor.view3d, ".other").has_value());
+    CHECK_FALSE(s.window().span_connected_layers);
+    // The control reads the window's flag.
+    View3dControlState state;
+    state.window_open = true;
+    state.span_connected_layers = true;
+    CHECK(control_view(View3dControl::span_connected_layers, state).accessible_name == "Span connected layers, on");
+  }
+  view3d::Session none;
+  CHECK_FALSE(toggle_span_connected_layers(none, ".render.magic").has_value());
+}
+
+namespace {
+
+struct TestPrism {
+  float x0 = 0.0F;
+  float y0 = 0.0F;
+  float x1 = 0.0F;
+  float y1 = 0.0F;
+  float z_bottom = 0.0F;
+  float z_top = 0.0F;
+};
+
+void check_net_overlay(bool compat) {
+  INFO("magic-compat " << compat);
+  ClientSession s{compat};
+  open_from_desktop(s);
+  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+  const DrawnMesh d = build_mesh(s);
+  REQUIRE(d.mesh->mode == view3d::Mode::mask_layer);
+  const auto f = static_cast<float>(d.mesh->units_per_root);
+  REQUIRE(f > 1.0F);
+  // Nothing selected: no overlay.
+  CHECK(mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+  // The user selects the metal1 net in 2D: it is drawn over the mask layers.
+  s.ok("select area metal1");
+  const view3d::NetOverlay overlay = mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat);
+  REQUIRE_FALSE(overlay.empty());
+  float x1 = 0.0F;
+  for (const view3d::NetOverlayPrism& p : overlay.prisms) {
+    CHECK(p.z_top >= p.z_bottom);
+    x1 = std::max(x1, p.x1);
+  }
+  CHECK(x1 == Catch::Approx(100.0F * f));  // metal1 (0,0)-(100,50) in the mesh's mask units
+  // Field by field into the renderer's prism type.
+  const std::vector<TestPrism> prisms = overlay_prisms<TestPrism>(overlay);
+  REQUIRE(prisms.size() == overlay.prisms.size());
+  CHECK(prisms.front().x0 == overlay.prisms.front().x0);
+  CHECK(prisms.front().y1 == overlay.prisms.front().y1);
+  CHECK(prisms.front().z_top == overlay.prisms.front().z_top);
+  // No mesh drawn yet: no overlay.
+  CHECK(mask_net_overlay(nullptr, s.editor, s.window(), compat).empty());
+  // Layout-layer mode keeps the instance highlight: no overlay, also for
+  // the stale mask-layer model still drawn while the new one builds.
+  s.w3d("cif");
+  REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+  CHECK(mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+  const DrawnMesh layout = build_mesh(s);
+  CHECK(mask_net_overlay(layout.mesh.get(), s.editor, s.window(), compat).empty());
+}
+
+}  // namespace
+
+TEST_CASE("Net highlighted over mask-layer geometry with magic-compat ON",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  check_net_overlay(true);
+}
+
+TEST_CASE("Net highlighted over mask-layer geometry with magic-compat OFF",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  check_net_overlay(false);
+}

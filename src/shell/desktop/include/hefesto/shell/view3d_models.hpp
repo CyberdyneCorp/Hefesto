@@ -186,7 +186,6 @@ using IsWindowCommand = std::function<bool(std::string_view word)>;
 
 struct View3dOptions {
   bool perspective = false;            // the Orthographic / Perspective toggle (D7)
-  bool span_connected_layers = false;  // J1 "Span connected layers"
   bool show_frame_time = false;        // the frame-time readout (task 13.2)
   std::vector<float> alpha;            // per stack entry; empty = opaque
   /// The user's per-row transparency, by layer name: it overrides the
@@ -377,6 +376,14 @@ struct BuildKey {
 /// of its mode, the clip area of Q-MISC-70 or mask_clip, the mask source).
 [[nodiscard]] BuildKey build_key(const view3d::BuildInputs& window_inputs, bool span_connected_layers);
 
+/// The "Span connected layers" toggle (J1; task 17.3, decision B17,
+/// approved 2026-11-26): flips the open window's
+/// view3d::WindowState::span_connected_layers on `path`
+/// (view3d::set_span_connected_layers), so `export3d` and every build of
+/// the window read it; the tab's build key follows it (a full build).
+/// Returns the new value, or nullopt when no window is open on `path`.
+[[nodiscard]] std::optional<bool> toggle_span_connected_layers(view3d::Session& session, std::string_view path);
+
 /// Whether a model the worker delivered is of the last build the view
 /// started (BuildInputs::build_id); an older one is ignored.
 [[nodiscard]] bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept;
@@ -530,6 +537,35 @@ class View3dPicking {
   bool net_stale_ = false;
   view3d::HighlightSet shown_;
 };
+
+/// The layout-net overlay of a frame (task 10.4; design D10;
+/// hefesto-3d-visualization "Net highlighted over mask-layer geometry"):
+/// in mask-layer mode the nets of the 2D selection's paint
+/// (view3d::net_overlay of the selection, hierarchical search, the session's
+/// compat flag), against `mesh`, the model the renderer draws (its pick ids
+/// and units); empty in layout-layer mode, which keeps the instance
+/// highlight, and without a mesh.
+[[nodiscard]] view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                                  const view3d::WindowState& window, bool magic_compat);
+
+/// The overlay's prisms in the renderer's type (render::OverlayPrism, the
+/// same fields), copied field by field.
+template <typename Prism>
+[[nodiscard]] std::vector<Prism> overlay_prisms(const view3d::NetOverlay& overlay) {
+  std::vector<Prism> out;
+  out.reserve(overlay.prisms.size());
+  for (const view3d::NetOverlayPrism& p : overlay.prisms) {
+    Prism q{};
+    q.x0 = p.x0;
+    q.y0 = p.y0;
+    q.x1 = p.x1;
+    q.y1 = p.y1;
+    q.z_bottom = p.z_bottom;
+    q.z_top = p.z_top;
+    out.push_back(q);
+  }
+  return out;
+}
 
 /// "metal1 · picked" (the layer name of the target's stack entry).
 [[nodiscard]] std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack);

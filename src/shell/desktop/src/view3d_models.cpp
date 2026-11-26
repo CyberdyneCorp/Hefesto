@@ -409,6 +409,13 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
   return key;
 }
 
+std::optional<bool> toggle_span_connected_layers(view3d::Session& session, std::string_view path) {
+  if (!session.window || session.window->toolkit_path != path) return std::nullopt;
+  const bool on = !session.window->span_connected_layers;
+  if (!view3d::set_span_connected_layers(session, path, on)) return std::nullopt;
+  return on;
+}
+
 bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept {
   return model.build_id == build_id;
 }
@@ -552,6 +559,13 @@ view3d::HighlightSet PickResolver::net(const view3d::MeshModel& mesh, const edit
   if (scope_.stack == nullptr) return view3d::net_highlight(mesh, editor, seed);
   return view3d::net_highlight(mesh, editor, seed,
                                view3d::NetOptions{view3d::NetScope::hierarchical, scope_.magic_compat, scope_.stack});
+}
+
+view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                    const view3d::WindowState& window, bool magic_compat) {
+  if (mesh == nullptr || window.mode != view3d::Mode::mask_layer || mesh->mode != view3d::Mode::mask_layer) return {};
+  return view3d::net_overlay(*mesh, editor, window, editor.selection,
+                             view3d::NetOptions{view3d::NetScope::hierarchical, magic_compat, nullptr});
 }
 
 std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack) {
