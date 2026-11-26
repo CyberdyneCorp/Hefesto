@@ -9,7 +9,6 @@
 #include <chrono>
 #include <cmath>
 #include <exception>
-#include <type_traits>
 #include <vector>
 #include <utility>
 
@@ -46,26 +45,12 @@ Rgba alpha_of(Rgba c, float a) {
   return c;
 }
 
-/// RENDER's overlay fields (render::DrawParams::net_overlay, a span of
-/// render::OverlayPrism): checked at compile time until the RENDER branch
-/// of round 6 is merged; without them the overlay is computed and not drawn.
-template <typename Params>
-concept DrawsNetOverlay = requires(Params p) { p.net_overlay; };
-
 /// Converts `overlay` to the renderer's prisms, held by `storage`, and
-/// points `params.net_overlay` at them.
-template <typename Params>
-void set_net_overlay(Params& params, const view3d::NetOverlay& overlay, std::shared_ptr<void>& storage) {
-  if constexpr (DrawsNetOverlay<Params>) {
-    using Prism = std::remove_cv_t<typename decltype(params.net_overlay)::element_type>;
-    auto prisms = std::make_shared<std::vector<Prism>>(overlay_prisms<Prism>(overlay));
-    params.net_overlay = *prisms;
-    storage = std::move(prisms);
-  } else {
-    (void)params;
-    (void)overlay;
-    storage.reset();
-  }
+/// points `params.net_overlay` at them (task 10.4).
+void set_net_overlay(render::DrawParams& params, const view3d::NetOverlay& overlay,
+                     std::vector<render::OverlayPrism>& storage) {
+  storage = overlay_prisms<render::OverlayPrism>(overlay);
+  params.net_overlay = storage;
 }
 
 }  // namespace
@@ -589,7 +574,7 @@ void View3dView::reset_window_state() {
   picking_.reset();
   highlight_ = nullptr;
   net_overlay_ = {};
-  overlay_storage_.reset();
+  overlay_storage_.clear();
   pick_caption_.clear();
   rows_.clear();
   ghost_.clear();
