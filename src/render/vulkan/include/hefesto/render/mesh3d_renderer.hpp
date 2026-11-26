@@ -101,6 +101,26 @@ struct OverlayPrism {
   friend bool operator==(const OverlayPrism&, const OverlayPrism&) = default;
 };
 
+/// The faces the renderer draws for DrawParams::net_overlay: for each z
+/// range (prisms with equal z_bottom and z_top), the union of its prisms'
+/// rectangles as disjoint top rectangles (`tops`, corners ordered) and the
+/// side faces on the union's boundary only (`sides`, the outside on the
+/// right of (x0, y0) -> (x1, y1)), so prisms that overlap or abut (the
+/// merged strips of a net on several layers) blend once where they are
+/// seen, with no seam on a shared edge. Prisms with a non-finite field or
+/// an empty rectangle are left out. Vulkan-free (tests, other backends).
+struct OverlayFaces {
+  struct Side {
+    float x0, y0, x1, y1;
+    float z_bottom, z_top;
+
+    friend bool operator==(const Side&, const Side&) = default;
+  };
+  std::vector<OverlayPrism> tops;
+  std::vector<Side> sides;
+};
+[[nodiscard]] OverlayFaces overlay_faces(std::span<const OverlayPrism> prisms);
+
 /// Everything a frame needs besides the view state and the mesh.
 /// Layers past the end of `hidden` are visible, past the end of `alpha`
 /// opaque. A layer with alpha < 1 is drawn in the transparency pass (after
@@ -141,9 +161,10 @@ struct DrawParams {
   /// kOverlayAlpha; no pick id (a click picks the mask geometry under it);
   /// clipped by `section_plane`; never dimmed by `highlight`. The caller
   /// keeps the prisms alive for the draw call. Empty (the default): nothing
-  /// drawn and no overlay pipeline created. Each prism blends once where it
-  /// is seen (back faces culled); prisms that overlap on the screen blend
-  /// once each.
+  /// drawn and no overlay pipeline created. Drawn as overlay_faces(): the
+  /// union of the prisms of each z range blends once where it is seen (back
+  /// faces culled); prisms of different z ranges that overlap on the screen
+  /// blend once each.
   std::span<const OverlayPrism> net_overlay;
   /// The overlay's colour, display (sRGB-encoded) values 0..1.
   std::array<float, 3> overlay_color = kOverlayColor;

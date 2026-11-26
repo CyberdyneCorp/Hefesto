@@ -1662,3 +1662,89 @@ TEST_CASE("no net overlay: nothing drawn and no overlay pipeline built",
   CHECK_FALSE(f.renderer.overlay_ready());
   CHECK((r.color == plain.color && r.pick == plain.pick));
 }
+
+namespace {
+
+double tops_area(const render::OverlayFaces& faces) {
+  double a = 0.0;
+  for (const auto& t : faces.tops) a += static_cast<double>(t.x1 - t.x0) * static_cast<double>(t.y1 - t.y0);
+  return a;
+}
+
+/// Pairs of top rectangles that overlap (share interior).
+int overlapping_tops(const render::OverlayFaces& faces) {
+  int n = 0;
+  for (std::size_t i = 0; i < faces.tops.size(); ++i) {
+    for (std::size_t j = i + 1; j < faces.tops.size(); ++j) {
+      const auto& a = faces.tops[i];
+      const auto& b = faces.tops[j];
+      n += a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1 ? 1 : 0;
+    }
+  }
+  return n;
+}
+
+double sides_length(const render::OverlayFaces& faces) {
+  double len = 0.0;
+  for (const auto& e : faces.sides) len += std::hypot(static_cast<double>(e.x1 - e.x0), static_cast<double>(e.y1 - e.y0));
+  return len;
+}
+
+}  // namespace
+
+TEST_CASE("net overlay faces: the union of each z range, its boundary sides only",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // CORE's overlay of a net is the merged strips of every layer it lies on,
+  // all over the same z range: abutting strips and a metal strip over a
+  // poly strip must not blend twice or leave a seam where they meet.
+  const std::vector<render::OverlayPrism> net{{0.0F, 0.0F, 10.0F, 4.0F, 0.0F, 2.0F},   // a strip
+                                              {0.0F, 4.0F, 4.0F, 10.0F, 0.0F, 2.0F},   // abutting above it
+                                              {2.0F, 2.0F, 8.0F, 6.0F, 2.0F, 0.0F}};  // overlapping both, z swapped
+  const render::OverlayFaces faces = render::overlay_faces(net);
+  // The union: 40 + 24 + the part of the third outside them (4 x 2) = 72, perimeter 10+4+6+2+... = 40.
+  CHECK(tops_area(faces) == 72.0);
+  CHECK(sides_length(faces) == 40.0);
+  CHECK(overlapping_tops(faces) == 0);
+  CHECK(std::all_of(faces.tops.begin(), faces.tops.end(),
+                    [](const render::OverlayPrism& t) { return t.z_bottom == 0.0F && t.z_top == 2.0F; }));
+}
+
+TEST_CASE("net overlay faces: one union per z range, empty and non-finite prisms left out",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const float inf = std::numeric_limits<float>::infinity();
+  const std::vector<render::OverlayPrism> mixed{{0.0F, 0.0F, 10.0F, 4.0F, 0.0F, 2.0F},
+                                                {0.0F, 0.0F, 10.0F, 4.0F, 3.0F, 4.0F},
+                                                {5.0F, 5.0F, 5.0F, 9.0F, 0.0F, 2.0F},
+                                                {0.0F, 0.0F, inf, 4.0F, 0.0F, 2.0F}};
+  const render::OverlayFaces two = render::overlay_faces(mixed);
+  CHECK(two.tops.size() == 2);
+  CHECK(tops_area(two) == 80.0);
+  CHECK(sides_length(two) == 56.0);
+}
+
+TEST_CASE("net overlay blends once where its prisms overlap or abut",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const std::vector<render::OverlayPrism> whole{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  const std::vector<render::OverlayPrism> pieces{{10.0F, 20.0F, 45.0F, 40.0F, 0.0F, 1.5F},
+                                                 {45.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F},
+                                                 {30.0F, 25.0F, 60.0F, 35.0F, 0.0F, 1.5F}};
+  for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+    const view3d::ViewState v = view_of(s, preset);
+    for (const int level : {0, 1}) {
+      INFO("preset " << static_cast<int>(preset) << ", level " << level);
+      render::DrawParams p = f.params(s.stack, level);
+      p.net_overlay = whole;
+      const render::TargetReadback one = f.draw(s, v, p);
+      p.net_overlay = pieces;
+      const render::TargetReadback many = f.draw(s, v, p);
+      int differing = 0;
+      for (std::size_t i = 0; i < one.color.size(); ++i) {
+        const auto a = rgb_of(one.color[i]);
+        differing += near_int(a, rgb_of(many.color[i]), 1) ? 0 : 1;
+      }
+      CHECK(differing == 0);
+    }
+  }
+}
