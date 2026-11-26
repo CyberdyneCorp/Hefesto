@@ -8,7 +8,7 @@ Defines the lumped resistance estimate written for every node of a `.ext` file, 
 
 ### Requirement: Per-class area and perimeter of a node
 
-For each node and each resistance class i, the extractor SHALL accumulate `area_i` = sum of the (clipped) areas of the node's tiles whose type (residue for contacts) belongs to class i (split tiles: clipped area divided by 2, integer division), and `perim_i` = sum, over the same tiles, of the lengths of boundary segments (and, for split tiles, the integer diagonal length `(int)sqrt(w²+h²)`) whose neighbor type (residue) is not in class i. Space and types of no class count as "not in class i". Types without a class contribute to no class. These values SHALL be stored even when lumped resistance is disabled.
+For each node and each resistance class i, the extractor SHALL accumulate `area_i` = sum of the (clipped) areas of the node's tiles whose type (residue for contacts) belongs to class i (split tiles: clipped area divided by 2, integer division), and `perim_i` = sum, over the same tiles, of the lengths of boundary segments (and, for split tiles, the integer diagonal length `(int)sqrt(w²+h²)`) whose neighbor type (residue) is not in class i. Space and types of no class count as "not in class i". Types without a class contribute to no class. Whether they are stored depends on the `magic-compat` setting (Q-EXTRACT-32, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the values are stored only when lumped resistance is on, and are 0 otherwise (extSetResist, their only writer, runs only with `EXT_DORESISTANCE`); with it OFF they SHALL always be stored.
 Compatibility: exact
 
 (Magic ref: extract/ExtBasic.c:5544-5582, extract/ExtBasic.c:5643-5645, extract/ExtTech.c:3669-3677)
@@ -17,6 +17,16 @@ Compatibility: exact
 - **GIVEN** classes 0 = {poly}, 1 = {metal1, m1c-residue metal1} and a metal1 wire (0,0)-(10,2) with no other material
 - **WHEN** the cell is extracted
 - **THEN** the node record ends with `0 0 20 24` (class 0 area 0 perimeter 0, class 1 area 20 perimeter 24)
+
+#### Scenario: Class values without lumped resistance, magic-compat ON
+- **GIVEN** `magic-compat` ON, `extract no resistance` and the same wire
+- **WHEN** the cell is extracted
+- **THEN** the node record ends with `0 0 0 0` (Q-EXTRACT-32)
+
+#### Scenario: Class values without lumped resistance, magic-compat OFF
+- **GIVEN** `magic-compat` OFF, `extract no resistance` and the same wire
+- **WHEN** the cell is extracted
+- **THEN** the node record ends with `0 0 20 24` (Q-EXTRACT-32)
 
 ### Requirement: Lumped resistance formula
 

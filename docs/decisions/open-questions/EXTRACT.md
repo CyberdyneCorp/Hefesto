@@ -282,58 +282,64 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-31: The second side of a two-sided split tile is never a region seed
 - Kind: bug
-- Status: pending user decision (proposed in M7 round R3 by EXTNODE, 2026-11-24; implemented per the standing rule: magic-compat ON copies Magic, OFF does the intended thing)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by EXTNODE, 2026-11-24; implemented per the standing rule: magic-compat ON copies Magic, OFF does the intended thing; approved with the recommended option)
 - Magic behavior: DBSrPaintClient checks a split tile's single `ti_client` before it calls extNodeAreaFunc or extRegionAreaFunc for each side. Once the left side belongs to a region, the right side is skipped as a seed. When nothing else connects to the right side (for example poly on the left and ndiff on the right of one diagonal), its material is in no node and is missing from the `.ext`.
 - Evidence: database/DBtiles.c:719-767 (DBSrPaintClient); extract/ExtBasic.c:5440-5448; extract/ExtRegion.c:142-209; Hefesto `src/core/src/extract/node/regions.cpp`; capture-only probe EX-P02 (`tests/data/extract/node/split_probe/EXTRACT/cases/EX-P02`, golden-capture run 45473246056, Magic 8.3.694 at fc5daa9e): a split tile with poly (sw) and ndiff (ne) and nothing else gives only `node "active_0_0#" 0 0 0 0 p`, so the ndiff side is missing from the `.ext`, as read from the code
 - As implemented (round R3): with magic-compat ON the right side is skipped as Magic does; with it OFF a region starts at any side still unvisited, so every active-type tile side belongs to exactly one node (`extract-nodes-and-labels` "Node connectivity"). Tests: `tests/unit/extract/node/regions_test.cpp` "Second side of a split tile as a seed: magic-compat ON skips it" and "Second side of a split tile as a seed: magic-compat OFF gives it its node".
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON the second side of a two-sided split tile is skipped as a region seed once its first side belongs to a region, as Magic's DBSrPaintClient does (EX-P02: the ndiff side is in no node); with it OFF a region starts at any unvisited side, so every active-type tile side belongs to exactly one node. Spec: `extract-nodes-and-labels` "Node connectivity" (a scenario per mode). Tests: `tests/unit/extract/node/regions_test.cpp` (one per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-32: Per-class area and perimeter are stored only with lumped resistance on
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: extSetResist is the only writer of `nreg_pa` and runs only with `EXT_DORESISTANCE`, so with `extract no resistance` every node record shows `0 0` per resistance class. The spec text (`extract-resistance-lumped` "Per-class area and perimeter of a node") says the values are stored even when lumped resistance is off.
 - Evidence: extract/ExtBasic.c:5205, :5477 (the extSetResist calls); Hefesto `src/core/src/extract/cap/`, `src/core/src/extract/node/regions.cpp` (`NodePassOptions::resistance`)
 - As implemented (round R3): with magic-compat ON the values are 0 unless lumped resistance is on; with it OFF they are always stored. Tests: `tests/unit/extract/cap/` "class values with magic-compat ON are 0 when lumped resistance is off" and "class values with magic-compat OFF are kept when lumped resistance is off".
 - Options: compat (as implemented; the requirement gets one sentence and a scenario per mode) | fix (always stored)
 - Recommendation: compat. Spec edit on approval: replace "These values SHALL be stored even when lumped resistance is disabled." with "With magic-compat ON, as in Magic, the values are stored only when lumped resistance is on, and are 0 otherwise. With it OFF they are always stored."
+- Resolution: compat — with `magic-compat` ON per-class area and perimeter are stored only with lumped resistance on, and are 0 otherwise, as Magic; with it OFF they are always stored. Spec: `extract-resistance-lumped` "Per-class area and perimeter of a node" (the sentence of the Recommendation, a scenario per mode). Tests: `tests/unit/extract/cap/` (one per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-33: Corner coupling and fringe-halo shield pieces follow Q-EXTRACT-17's quirk
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented under Q-EXTRACT-17's compat resolution)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by EXTCAP, 2026-11-24; implemented under Q-EXTRACT-17's compat resolution; approved with the recommended option)
 - Magic behavior: extCornerOverlap and extSubtractCornerOverlap sum the shielded substrate fraction per rule, only between different nodes, and use the unreduced inside type, the quirk Q-EXTRACT-17 decided for sideoverlap. In the fringe-halo shield pieces the coupling fraction also uses the unreduced inside type (ExtCouple.c:740), where the spec text says m(a,b) of the residue.
 - Evidence: extract/ExtCouple.c:740 and the corner functions (extCornerOverlap, extSubtractCornerOverlap); Q-EXTRACT-17; Hefesto `src/core/src/extract/cap/corners.cpp`, `sideoverlap.cpp`, `compat_branches.cpp`
 - As implemented (round R3): Q-EXTRACT-17's branch covers both: with magic-compat ON summed per rule, between different nodes only, with the unreduced inside type; with it OFF once per tile with the residue.
 - Options: compat (Q-EXTRACT-17 extended to corners and to the coupling fraction, as implemented) | a separate decision for corners
 - Recommendation: compat. Spec edits on approval: `extract-capacitance` "Corner fringe coupling" gains the sentence "The shielded fractions follow Q-EXTRACT-17's resolution"; "Fringe-halo sideoverlap" says that with magic-compat ON the coupling fraction uses the unreduced inside type.
+- Resolution: compat — Q-EXTRACT-17's resolution extends to the corner functions and to the coupling fraction of fringe-halo shield pieces: with `magic-compat` ON summed per rule, between different nodes only, with the unreduced inside type; with it OFF once per tile with the residue. Spec: `extract-capacitance` "Corner fringe coupling" (the sentence of the Recommendation, a scenario per mode) and "Fringe-halo sideoverlap" (the coupling fraction per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-34: A device parameter range with only a lower limit is never checked
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: a `device` line limit such as `l>=5` sets `pl_minimum` and leaves `pl_maximum` at -1; extDevFindParamMatch skips any range with minimum > maximum, so a lower-only limit never selects a model. EX-037 shows it: both gates come out as `nlong`.
 - Evidence: extract/ExtTech.c:2575-2611; extract/ExtBasic.c:2088; EX-037
 - As implemented (round R3): ON skips the range as Magic does; OFF applies the lower limit (EX-037's short gate becomes `nshort`). Tests: `tests/unit/extract/device/` "EX-037 with magic-compat ON: a lower limit alone is never checked, both gates are nlong" and "EX-037 with magic-compat OFF: the lower limit applies, the short gate is nshort".
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat. Spec edit on approval: `extract-devices` "Model selection by parameter ranges" gets one scenario per mode.
+- Resolution: compat — with `magic-compat` ON a range with only a lower limit is skipped, as Magic (EX-037: both gates `nlong`); with it OFF the lower limit applies (the short gate is `nshort`). Spec: `extract-devices` "Model selection by parameter ranges" (a scenario per mode). Tests: `tests/unit/extract/device/` (one per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-35: Parameter range matching falls back to the last record tried
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by EXTDEV, 2026-11-24; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: when no compatible record's ranges pass, extDevFindParamMatch returns the last record it tried (`newdevptr = devptr`), not the starting one, and prints `Device parameters do not match any extraction model.`
 - Evidence: extract/ExtBasic.c:2160-2196
 - As implemented (round R3): ON uses the last record tried; OFF uses the starting record, as the spec text says ("the original record SHALL be used"). Test: `tests/unit/extract/device/` "Range matching returns the last record tried (ON) or the first (OFF) when none passes".
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat. Spec edit on approval: `extract-devices` "Model selection by parameter ranges" states the ON behaviour, with a scenario per mode.
+- Resolution: compat — when no compatible record's ranges pass, with `magic-compat` ON the last record tried is used, as Magic; with it OFF the starting record. Both print `Device parameters do not match any extraction model.` Spec: `extract-devices` "Model selection by parameter ranges" (a scenario per mode). Test: `tests/unit/extract/device/` "Range matching returns the last record tried (ON) or the first (OFF) when none passes". Approved 2026-11-25.
 
 ### Q-EXTRACT-36: Crashes, hangs and undefined behaviour in the node, capacitance and device passes
 - Kind: bug
-- Status: pending user confirmation (fixed in both modes in M7 round R3 by the standing rule: crashes, hangs and undefined behaviour are fixed in both modes)
+- Status: approved 2026-11-25 (fixed in both modes in M7 round R3 by the standing rule: crashes, hangs and undefined behaviour are fixed in both modes; approved with the recommended option)
 - Magic behavior: (a) the split-tile diagonal `w*w+h*h` is an int product that overflows for sides past 46340 units (extNodeAreaFunc; ExtBasic.c:5574, ExtPerim.c:115); (b) ExtLabelRegions dereferences CLIENTDEFAULT for a label whose probe tile is a two-sided split tile with an unvisited left side; (c) overlap and sideoverlap areas (`o_area`, `areaTotal`, `so_clip`) overflow int past 2^31 square units; (d) `resnew` converts +inf to int when the perimeter P rounds to S in single precision (a division by zero); (e) an edge whose inside tile has no node writes through a CLIENTDEFAULT region; (f) extDevFindMatch loops forever when the current record is not in the tile type's list (two device types in one region; ExtBasic.c:3457-3475); (g) a terminal index past MAXSD writes out of bounds (ExtBasic.c:4040-4060); (h) the resistor branch reads a stale or uninitialised W when no boundary estimate exists (ExtBasic.c:2988-3060); (i) `r` with a zero device perimeter is an integer division by zero (ExtBasic.c:1985-1995).
 - Evidence: as listed; Hefesto `src/core/src/extract/{node,cap,device}/`
 - As implemented (round R3), both modes: (a) a 64-bit product; (b) the label is dropped; (c) 64-bit areas; (d) a saturating conversion (Q-EXTRACT-30's rule); (e) the edge subtracts nothing; (f) one full turn of the record list ends the search; (g) the tile is not a terminal; (h) W is 0; (i) r = 0 (Q-EXTRACT-15's intent).
 - Tests (R3 fix pass; each fails without its fix, (e) and (g) by crashing): (a) `tests/unit/extract/cap/substrate_caps_test.cpp` "a split tile past 46340 units forms its diagonal in 64 bits" (capacitance) and `tests/unit/extract/node/regions_test.cpp` "Q-EXTRACT-36 (a): a split tile past 46340 units adds its diagonal to the class perimeter in 64 bits" (node pass); (b) `tests/unit/extract/node/labels_test.cpp` "Q-EXTRACT-36 (b): a label on the unvisited side of a two-sided split tile is dropped"; (c) `tests/unit/extract/cap/lumped_test.cpp` "a total past the int range keeps the previous value"; (d) `lumped_test.cpp` "a perimeter whose S rounds to P saturates instead of dividing by zero"; (e) `tests/unit/extract/cap/sideoverlap_test.cpp` "Q-EXTRACT-36 (e): an edge whose inside tile has no node subtracts no substrate capacitance"; (g) `tests/unit/extract/device/devices_test.cpp` "Q-EXTRACT-36 (g): a terminal past MAXSD is not a terminal". No test for (f), (h) and (i), because no input reaches them in Hefesto: (f) Magic keeps one record per tile type, so a record of a two-type line belongs to one type's list and the walk from it never comes back; Hefesto keeps one record per `device` line, listed under each of its types, and the boundary walk of a region classifies one tile type, so `find_match` is never called with a record outside the type's list (the bound stays as a guard); (h) Magic's `width` is a local that keeps an earlier device's value when extComputeEffectiveLW fails; Hefesto's L and W are fresh per device and start at 0, so there is no stale value to regress against; (i) every device region has a boundary on its own plane that counts toward its perimeter, so the perimeter is never 0 (the guard stays).
 - Options: fix (as implemented) | replicate (not possible for undefined behaviour)
 - Recommendation: fix. Real layouts never reach (a), (c) or (d); (b) and (e)-(i) change no captured case.
+- Resolution: fix — in both modes, (a) to (i) as implemented in round R3. Tests exist for (a), (b), (c), (d), (e) and (g); m7-round5-extract adds regression tests for (f), (h) and (i) where an input reaches them (the entry says why none did in R3). No spec change: real layouts never reach these inputs. Approved 2026-11-25.
 
 ### Q-EXTRACT-37: The shorted-ports warning truncates the cell's port labels
 - Kind: compat-neutral
@@ -345,36 +351,40 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-38: `extract do|no unique <word>` with a word other than `notopports`
 - Kind: compat
-- Status: pending user decision (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: when the word after `unique` does not start with `notop`, CmdExtract prints `Usage:  extract do unique [notopports]` and then applies the table index of `unique` (DOUNIQUE = 11 = 0xb) as an ExtOptions bit mask, so it sets (`do`) or clears (`no`) adjust, capacitance and lumped resistance.
 - Evidence: commands/CmdE.c:1451-1461
 - As implemented (round R4): magic-compat ON prints the usage and replicates the side effect; OFF prints the usage and changes nothing. Tests: `tests/unit/extract/command/options_test.cpp` (one per mode).
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat. Spec edit on approval: `extract-commands` "Extraction options" gains one sentence and a scenario per mode.
+- Resolution: compat — with `magic-compat` ON a word other than `notop…` after `unique` prints the usage line and applies DOUNIQUE as a bit mask, as Magic; with it OFF it prints the usage line and changes nothing. Spec: `extract-commands` "Extraction options" (a sentence and a scenario per mode). Tests: `tests/unit/extract/command/options_test.cpp` (one per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-39: The line of a non-primitive `device` cell property has no newline
 - Kind: compat
-- Status: pending user decision (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by EXTCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: extBasic writes the verbatim tokens of a `device` property that is not `primitive` and no newline, so the `.ext` of such a cell ends without one (EX-042 `dev2.ext`), and in a hierarchical cell the next record is joined onto the same line.
 - Evidence: extract/ExtBasic.c:519-528; EX-042
 - As implemented (round R4): magic-compat ON writes no newline (EX-042 replays byte for byte; `CellResult::unterminated`); OFF ends the line. Tests: `tests/unit/extract/hier/extract_cell_flat_test.cpp` (one per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat. Spec edit on approval: `extract-devices` "Device cell property" (or `extract-commands` "Cell properties affecting extraction") gains the rule and a scenario per mode.
+- Resolution: compat — with `magic-compat` ON the line of a non-primitive `device` cell property ends without a newline, as Magic (EX-042); with it OFF it ends with one. Spec: `extract-devices` "Device cell property" (the rule and a scenario per mode). Tests: `tests/unit/extract/hier/extract_cell_flat_test.cpp` (one per mode). Approved 2026-11-25.
 
 ### Q-EXTRACT-40: Unifying two hierarchical nodes drops one node's pass-2 adjustments
 - Kind: bug
-- Status: pending user decision (proposed in M7 round R4 by EXTHIER, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by EXTHIER, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: extHierConnectFunc2/3 and extHierSubstrate unify two Node records by moving the names and freeing one node; the freed node's `node_cap` and `node_pa` are discarded ("We don't need to update node_cap since it hasn't been computed yet"). That holds within one interaction only: when a later step square unifies two nodes that already received adjustments (extSubtreeAdjustInit), the merge record loses one node's correction.
 - Evidence: extract/ExtHier.c:300-345, 740-845; extract/ExtSubtree.c:582-612
 - As implemented (round R4): magic-compat ON keeps the survivor's values only; OFF adds the freed node's capacitance and per-class area and perimeter to the survivor (`HierNodeTable::unify` `sum_values`, renamed from `keep_values` in the R4 fix pass). Tests: `tests/unit/extract/hier/subcell_test.cpp` "Unifying two nodes with adjustments" (one per mode, on the table) and "Unifying two adjusted nodes in a later step square" (one per mode through `extract_subtree`: `merge "c1/b" "p2" -820` ON, `-1220` OFF; layout in `tests/data/extract/hier/unify/`). The behaviour is stated in `extract-hierarchy` (as-landed note).
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat. The OFF sum is the intended adjustment (the merged node minus its pieces, summed over the interactions); ON keeps the golden output.
+- Resolution: compat — with `magic-compat` ON unifying two hierarchical nodes keeps only the survivor's adjustments, as Magic; with it OFF the freed node's capacitance and per-class area and perimeter are added to the survivor. The as-landed note of `extract-hierarchy` "Merge records and pass-2 adjustments" is now the rule, with a scenario per mode (`merge "c1/b" "p2" -820` ON, `-1220` OFF). Tests: `tests/unit/extract/hier/subcell_test.cpp` (one per mode, table and `extract_subtree`). Approved 2026-11-25.
 
 ### Q-EXTRACT-41: Two device types touching in one device region make one device
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R4 by EXTHIER from probe EX-P03, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by EXTHIER from probe EX-P03, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: a device line that lists two gate types (`device mosfet cmos nfet,pfet ...`) joins them in exts_deviceConn, so an nfet touching a pfet is one device region. extOutputDevices walks only the tiles of the representative tile's gate node and selects the record from that tile's type: one device is written for the pfet (`device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" 2 0 "s2" 4 12,14 "d2" 4 12,14`) and the nfet half is lost. extDevFindMatch's endless walk (Q-EXTRACT-36 (f)) did not occur: with `thkox` over the nfet only, Magic printed `No matching device for pfet with no ID layer`, wrote no device, and `extract all` returned.
 - Evidence: extract/ExtTech.c:2929; extract/ExtBasic.c:236-283; probe EX-P03 (`tests/data/extract/device/abut_probe`), golden-capture run 45553746645, `abut.ext` and `abutrev.ext`
 - As implemented (round R4): ON matches the capture; OFF splits the device connectivity per type (`device_detail::device_connectivity`), so each type is its own device (`nmos` g1/s1/d1 and `pmos` g2/s2/d2). Tests: `tests/unit/extract/device/abut_probe_test.cpp` (ON pinned to the capture, OFF two devices, the ID-layer case in both modes). Scenario: `extract-devices` "Two device types touching in one device region".
 - Options: compat (as implemented) | replicate
 - Recommendation: compat. Losing a transistor is never intended. OFF also splits deliberate multi-type gate lines (e.g. sky130 `nfet,scnfet`) into one device per type, which is right only when the types are distinct devices: confirm, or restrict OFF to lines whose types have separate records.
+- Resolution: compat, as implemented — with `magic-compat` ON a region of two touching gate types is one device, selected from the representative tile's type and node (EX-P03); with it OFF the device connectivity is split per type, so each type is its own device. OFF also splits deliberate multi-type gate lines (for example sky130's `nfet,scnfet`) into one device per type wherever two of the types touch; the user approved that as is, with no restriction to lines whose types have separate records. Spec: `extract-devices` "Device regions" (the rule) and its scenario "Two device types touching in one device region" (one THEN per mode). Tests: `tests/unit/extract/device/abut_probe_test.cpp`. Approved 2026-11-25.

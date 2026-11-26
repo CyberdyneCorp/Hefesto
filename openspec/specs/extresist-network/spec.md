@@ -396,7 +396,7 @@ dist(p, b) along axis: if b has a contact rectangle C: (C.lo > p ? C.lo - p : C.
 ### Requirement: Contact resistors
 When the first of a contact point's tiles is processed, the contact point SHALL be turned into nodes and resistors as follows, for contact type t.
 
-**No resistance.** If the via resistance of t is 0, or the CIF via size is 0, or the CIF output style has no cut for t (Magic then reads an unset cut size, and with no output style dereferences a null style: undefined behaviour, fixed in both `magic-compat` settings by the standing rule), create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
+**No resistance.** If the via resistance of t is 0, or the CIF via size is 0, or the CIF output style has no cut for t (Magic then reads an unset cut size, and with no output style dereferences a null style: undefined behaviour, fixed in both `magic-compat` settings; Q-NETLIST-64 (a), resolution: fix, approved 2026-11-25), create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
 
 **Via count.** Otherwise, let `c` be the CIF scale factor, `minside` the CIF cut size plus twice the border, `via` the cut size and `spacing` the cut separation.
 - If `width·c < minside` or `height·c < minside`, then `nx = ny = 1`. A once-per-session warning `Warning: <type> at <x> <y> smaller than extract section allows` is printed.
@@ -409,7 +409,9 @@ When the first of a contact point's tiles is processed, the contact point SHALL 
 
 Compatibility: exact
 
-(Magic ref: resis/ResMakeRes.c:856-1011, cif/CIFtech.c:2306-2365)
+The other undefined behaviour of Magic's network construction SHALL be fixed in both `magic-compat` settings (Q-NETLIST-64 (b)-(f), resolution: fix, approved 2026-11-25): a contact is recorded on at most four tiles (Magic writes past `cp_tile[4]`); a contact device type with no device residue uses the type's home plane (Magic reads an uninitialised plane number); a device whose area exceeds its quarter perimeter squared has width 0 (Magic converts a NaN square root to int); a terminal past the device's terminal count is ignored; and an S/D class past the device's list has no types (Magic reads past `exts_deviceSDTypes`).
+
+(Magic ref: resis/ResMakeRes.c:856-1011, cif/CIFtech.c:2306-2365, resis/ResMain.c:589-700, resis/ResUtils.c:887-940, resis/ResUtils.c:1060-1075, resis/ResJunct.c:51-110)
 
 #### Scenario: Two-via contact
 - **GIVEN** a via resistance of 10000 mΩ, CIF scale factor 10, cut size 20, border 10 and separation 20 (so minside = 40), and an 8×4 contact spanning two planes

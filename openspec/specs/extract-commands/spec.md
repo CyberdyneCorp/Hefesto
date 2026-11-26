@@ -73,7 +73,7 @@ Compatibility: exact
 
 ### Requirement: Extraction options
 
-`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
+`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. Any other word after `unique` SHALL print `Usage:  extract do unique [notopports]`; what follows depends on the `magic-compat` setting (Q-EXTRACT-38, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the table index of `unique` (DOUNIQUE = 11 = 0xb) is then applied as an option bit mask, so `do` sets and `no` clears adjust, capacitance and lumped resistance; with it OFF nothing else changes. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
 Compatibility: behavioral
 
 See Q-EXTRACT-14.
@@ -89,6 +89,16 @@ See Q-EXTRACT-14.
 - **GIVEN** the command `extract do corners 0.8`
 - **WHEN** it is executed
 - **THEN** corner extraction is on with factor 0.8
+
+#### Scenario: A bad word after unique with magic-compat ON
+- **GIVEN** `magic-compat` ON and the default options
+- **WHEN** the user runs `extract no unique foo`
+- **THEN** `Usage:  extract do unique [notopports]` is printed and adjust, capacitance and lumped resistance are off (Q-EXTRACT-38)
+
+#### Scenario: A bad word after unique with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the default options
+- **WHEN** the user runs `extract no unique foo`
+- **THEN** the usage line is printed and every option keeps its value (Q-EXTRACT-38)
 
 ### Requirement: Option defaults
 

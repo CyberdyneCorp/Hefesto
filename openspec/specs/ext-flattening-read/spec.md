@@ -274,7 +274,7 @@ Compatibility: exact
 ### Requirement: Use, port, cap, resist, attr and connect records
 The reader SHALL handle these records as follows:
 - **`use`**: `use <def> <id> <a> <b> <c> <d> <e> <f>` SHALL create an instance with transform `(a b c / d e f)`. If `<id>` contains `[` followed by `%d:%d:%d][%d:%d:%d`, it SHALL be an array with x range `xlo:xhi:xsep` and y range `ylo:yhi:ysep`. The id is cut at the `[`. Any other bracket text SHALL be kept in the id verbatim, with no array. A repeated id SHALL warn and replace the earlier use.
-- **`port`**: `port <name> <idx> <llx> <lly> <urx> <ury> <layer>` SHALL mark the node as a port with index `idx`. The node is created if needed. A port in the root file is also a top-level port. Port records SHALL mark the definition as a subcircuit, but only when subcircuit processing was requested for this read. Subcircuit processing is disabled for the children of a definition that has itself been marked as a subcircuit, unless that definition is the root. A port number above 1048576 (2^20) SHALL fail the read, in both settings of `magic-compat`, with `<file>, line <n>: port number <idx> is larger than 1048576` (EXTFLAT-READ-009): the netlisters number ports past the highest one, and Magic sizes an array by it. Negative numbers are kept.
+- **`port`**: `port <name> <idx> <llx> <lly> <urx> <ury> <layer>` SHALL mark the node as a port with index `idx`. The node is created if needed. A port in the root file is also a top-level port. Port records SHALL mark the definition as a subcircuit, but only when subcircuit processing was requested for this read. Subcircuit processing is disabled for the children of a definition that has itself been marked as a subcircuit, unless that definition is the root. A port number above 1048576 (2^20) SHALL fail the read, in both settings of `magic-compat`, with `<file>, line <n>: port number <idx> is larger than 1048576` (EXTFLAT-READ-009; Q-NETLIST-62, resolution: fix, approved 2026-11-25 as a crafted-input resource limit): the netlisters number ports past the highest one, and Magic sizes an array by it, so `port a 2147483647 …` overflows a signed int there. Negative numbers are kept.
 - **`cap`**: `cap <a> <b> <C>` SHALL record a coupling of `C × cscale` aF.
 - **`resist`**: `resist <a> <b> <R>` SHALL record a floating-point resistor value with no truncation, which depends on the `magic-compat` setting (Q-NETLIST-12, resolution: compat): with it ON (the default) the value is `(float)(0.5 + rscale × atof(R))`, as in Magic; with it OFF it is `(float)(rscale × atof(R))`.
 - **Array ranges in names**: in `cap`, `resist` and `merge`, names may contain array ranges `[lo:hi]` or `[lo:hi,lo:hi]`, with at most 2 ranges. Both names SHALL have the same number of ranges with equal spans. Otherwise the record is rejected with `Number of subscripts doesn't match` or `Subscript <n> range mismatch`. A range with lo > hi is rejected.
@@ -289,6 +289,7 @@ Compatibility: exact
 - **GIVEN** the record `port a 2147483647 0 0 1 1 m1`
 - **WHEN** it is read
 - **THEN** the read fails with EXTFLAT-READ-009
+- **AND** the same holds with `magic-compat` ON and OFF, and `port a 1048576 0 0 1 1 m1` is read (Q-NETLIST-62)
 
 #### Scenario: Array use
 - **GIVEN** `use inv u1[0:3:10][0:0:0] 1 0 0 0 1 0`
