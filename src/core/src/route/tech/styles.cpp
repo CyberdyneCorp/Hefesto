@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Scaffold stubs (m10-plot-route tasks.md 3.1): read_mzrouter_section
-// returns no style and derive_after_load changes nothing until MZTECH
-// (tasks 9.1-9.3) lands them; find_style is final.
+// Style lookup (capability router-maze "Style defaults and lookup"): styles
+// are found by exact name. The reader is in reader.cpp, the DRC derivation
+// in derive.cpp and the derived `irouter` style in derived_style.cpp.
 //
 // Owner: MZTECH.
 
@@ -12,14 +12,6 @@
 #include <algorithm>
 
 namespace hefesto::route {
-
-MazeStyles read_mzrouter_section(const tech::RawSection* /*section*/, const tech::Technology& /*tech*/,
-                                 diag::DiagnosticSink& /*sink*/) {
-  return MazeStyles{};
-}
-
-void derive_after_load(MazeStyles& /*styles*/, const tech::Technology& /*tech*/, const drc::RuleSet* /*rules*/,
-                       const lef::LayerTable& /*lef_layers*/, bool /*magic_compat*/, diag::DiagnosticSink& /*sink*/) {}
 
 const MazeStyle* find_style(const MazeStyles& styles, std::string_view name) {
   const auto it =
