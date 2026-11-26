@@ -301,9 +301,21 @@ struct CameraFrame {
 /// mask units (x and y times f), so the heights keep their proportion to
 /// the widths in both modes.
 [[nodiscard]] float board_scale_z(const view3d::WindowState& window) noexcept;
+/// The board z scale of `window` drawing `stack` (task 17.2, approved
+/// 2026-11-26): board_scale_z(window), and in mask-layer mode with
+/// magic-compat ON (the stack's flag) additionally divided by the stack's µm
+/// per internal unit (LayerStack::microns_per_unit). With it ON the
+/// mask-layer heights are the `render` values as stored (µm, Q-MISC-72)
+/// while x and y are in mask units, so this draws the stack in the same
+/// proportion as with it OFF, where the heights are already converted. A
+/// µm per unit that is zero, negative or not finite (or a result that is
+/// not finite) keeps board_scale_z(window). Desktop tab only: Magic's s_z
+/// (`defaults`, script windows) is untouched; the tab sets it with `zoom`.
+[[nodiscard]] float board_scale_z(const view3d::WindowState& window, const view3d::LayerStack& stack) noexcept;
 
 /// The desktop tab's opening camera (Q-MISC-84): the isometric preset
-/// framed to the drawn layers at board_scale_z when the desktop opened the
+/// framed to the drawn layers at board_scale_z (of the window and the
+/// frame's stack) when the desktop opened the
 /// window (desktop_opened) and the frame is ready; nothing otherwise (a
 /// window opened elsewhere keeps the top-down default view).
 [[nodiscard]] std::vector<std::string> default_camera_commands(const CameraFrame& frame);
@@ -562,8 +574,9 @@ enum class View3dControl : std::uint8_t {
   level_down,
   level_up,
   cut_box,
+  separate_window,  // round 6: the tab menu's "Open in separate window"
 };
-inline constexpr std::size_t kView3dControlCount = 19;
+inline constexpr std::size_t kView3dControlCount = 20;
 
 /// What the controls read: the window, the view options and the picking state.
 struct View3dControlState {
@@ -580,6 +593,8 @@ struct View3dControlState {
   bool substrate_available = false;  // the renderer takes a substrate slab
   bool export_available = false;     // `export3d` is a registered command
   bool visibility_editable = true;
+  bool separate_window = false;            // the view is shown in its own window
+  bool separate_window_available = false;  // the host can open a second window
 };
 
 /// One control as shown and as a screen reader reads it.
@@ -619,6 +634,29 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// `spacing` apart (the board's two-column camera grid).
 [[nodiscard]] float grid_cell_width(float width, int columns, float spacing) noexcept;
 
+/// A layer row: its three buttons (Hide, Solo, transparency), the room
+/// left for the scroll bar, and where the row's text starts (after the swatch).
+inline constexpr float kView3dRowButtonWidth = 44.0F;
+inline constexpr float kView3dRowSpacing = 2.0F;
+inline constexpr float kView3dScrollBarRoom = 8.0F;
+inline constexpr float kView3dRowTextX = 22.0F;
+/// The width a row's name and µm range have before the row's buttons (the
+/// side panel's width is fixed, so it is the same at 1280 x 800 and up).
+[[nodiscard]] constexpr float row_text_width() noexcept {
+  return side_content_width() - kView3dScrollBarRoom - 3.0F * (kView3dRowButtonWidth + kView3dRowSpacing) -
+         kView3dRowTextX - 4.0F;
+}
+/// Measures a text's width (the painter's or the runtime's, for a role).
+using TextMeasure = std::function<float(std::string_view)>;
+/// `text` cut to fit `width` with a trailing "…" (at a UTF-8 character
+/// boundary); unchanged when it fits; "…" alone when not even one
+/// character does. The row's tooltip and screen-reader name keep the full
+/// text (row_tooltip, row_accessible_name).
+[[nodiscard]] std::string ellipsize(std::string_view text, float width, const TextMeasure& measure);
+/// A row's tooltip: "mrdlcontact, 6.63–7.26 µm" (the full name and range,
+/// which the painted row may ellipsize).
+[[nodiscard]] std::string row_tooltip(const View3dLayerRow& row);
+
 /// A flow layout: items of `widths` left to right, `spacing` apart, starting
 /// a new row when the next item would pass `available`. Returns the row of
 /// each item; an item wider than `available` takes a row of its own.
@@ -635,6 +673,25 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// of the 3D window's table (`on_window_table`), else as a plain command;
 /// the file is quoted as one Tcl word.
 [[nodiscard]] std::string export_command(std::string_view path, std::string_view file, bool on_window_table);
+
+/// The formats the Export button's menu offers (round 6): `export3d`'s
+/// `-format gltf|glb|stl`, and STL as one merged file (`-merged`) or one
+/// file per layer (export3d's default for STL).
+enum class View3dExportFormat : std::uint8_t { gltf, glb, stl_per_layer, stl_merged };
+inline constexpr std::array<View3dExportFormat, 4> kView3dExportFormats{
+    View3dExportFormat::gltf, View3dExportFormat::glb, View3dExportFormat::stl_per_layer,
+    View3dExportFormat::stl_merged};
+/// The menu item of `format`: "glTF (.gltf)…", "glTF binary (.glb)…",
+/// "STL, one file per layer…", "STL, merged into one file…".
+[[nodiscard]] std::string export_format_label(View3dExportFormat format);
+/// The save dialog for `format`: its one filter and "<cell>.<ext>" proposed.
+[[nodiscard]] platform::FilePickerRequest export_request(const view3d::WindowState& window,
+                                                         View3dExportFormat format);
+/// `export3d <file> -format <gltf|glb|stl> [-merged]` (the format is given,
+/// so a file named with another extension is still written in the chosen
+/// format), on the window's path as export_command.
+[[nodiscard]] std::string export_command(std::string_view path, std::string_view file, bool on_window_table,
+                                         View3dExportFormat format);
 
 // --- cross-section (task 11.5; design D10) ----------------------------------------
 

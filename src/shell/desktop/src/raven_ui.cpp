@@ -1190,6 +1190,15 @@ std::size_t PopupMenu::size() const noexcept {
   return state_->slots.size();
 }
 
+bool PopupMenu::open_below(const Widget& anchor) {
+  if (state_->slots.empty()) return false;
+  const Rid window = Rwidget_get_window(anchor.id());
+  if (window == kNoWidget) return false;
+  const Rect r = anchor.rect();
+  Rmenu_open(state_->menu, window, r.x, r.y + r.height);
+  return true;
+}
+
 // --- Popup -------------------------------------------------------------------
 
 struct Popup::State {
