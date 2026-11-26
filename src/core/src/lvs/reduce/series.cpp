@@ -49,7 +49,9 @@ class SeriesPass {
         summary_.cancelled = true;
         break;
       }
-      merged += try_merge(net) ? 1 : 0;
+      if (try_merge(net)) {
+        ++merged;
+      }
     }
     finish(merged);
     return merged;
