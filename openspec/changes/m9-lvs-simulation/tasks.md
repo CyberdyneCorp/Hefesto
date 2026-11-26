@@ -3,6 +3,12 @@
 How this plan runs:
 - **Section 1 comes first.** The user approved every decision this plan cites on 2026-11-22, each with its recommended option (`docs/decisions/m9-decision-table.md`), so the tasks below stand as written.
 - **Round 2 (2026-11-26).** The user approved F1 (patch 0005, which unblocks task 3.3), F2 (patch 0004), the Q-SIM-27 layout amendment (task 20.2), the Q-SIM-22 enforcement gap, the `SIM-ENGINE-033` refusal, the NGBUILD licence items, and, under the standing rule for crafted-input limits, the Q-LVS-36 addition `LVS-READ-025` (decision table "Round 2 decisions"). Still with the user: the clean-room roster attestation, the outside reviewer of the licensing mapping table, and the round-1 items listed there.
+  INTEGRATION (branch `m9-round2`): the four round-2 branches are merged. Task 3.3 is ticked (run 45859754101). Items left open, each with its owner:
+  - LVS spec team: the 12 choices the implementation team made where the spec is silent (design "As landed (LVSALG, LVSRED, LVSPROP; M9 R2)") are to be confirmed or written into the `lvs-*` specs, together with OI-4 (task 3.8).
+  - PLATFORM/SIMD: `tests/unit/platform/fake_adapter.cpp` should call the ABI-2 `on_data` callback in `api_run`, and a `worker_host_simd` test should check that `on_data` arrives. Until then, `hefesto-simd`'s `SendData` forwarding and decimation are exercised only by `ngspice.yml` with the real adapter.
+  - NGBUILD: `check_manifest` in `third_party/ngspice/tools/ngspice_manifest.py` is at cognitive complexity 17 and needs a refactor. This round did not change it.
+  - SPEC: the upstream report of the gf180mcu `design.ngspice` comment mismatch (Q-SIMADV-4).
+  - The scenarios added this round in `simulation-engine-embedding` ("Per-file licenses of the SuiteSparse parts", "Reused engine repeats trnoise") and `simulation-monte-carlo` ("Top-level statistical parameter drawn once per load") are covered by the Python checks of `third_party/ngspice/` (`tests/test_manifest.py`, `tests/test_engine.py`). C++ tests tagged to those requirements come with NGBUILD 5.2 and SIMADV 15.3.
 - Gates and rounds follow design D1:
   - G0: section 1 is done.
   - G1: the LVS clean room, section 2.
