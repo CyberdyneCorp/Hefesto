@@ -83,6 +83,12 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     The user configuration folder in a SCHEM netlist (a PDK symbol's ``pre_osdi $USER_CONF_DIR/...`` line):
     an absolute path ending in ``/.xschem`` (xschem's ``~/.xschem`` of the capture user, Hefesto's
     ``<document folder>/.xschem``) becomes ``$USER_CONF_DIR``.
+``schem-hefesto-driver``
+    hefesto-cli's own text in the streams of a SCHEM replay (the Hefesto side of Q-SCHEM-46): the start-up
+    line ``info: APP-TECH-002: Using technology "<name>", version <v>`` and the note ``info: SCHEM-LIB-007:
+    xschem_execute_scripts yes in <rc file> ignored: ...`` on the capture setting of the harness or PDK rc
+    and the lines an ``xschemrc`` prints while it is read (``info: SCHEM-LIB-008: xschemrc: <line>``, the
+    lines the capture drops on the xschem side) are dropped.
 ``schem-version``
     The ``version=<v>`` value of a ``v {xschem version=<v> ...}`` record (the first record of a ``.sch`` or
     ``.sym`` file, Q-SCHEM-1): the value becomes ``<masked>``. For a file written by another xschem version
@@ -308,6 +314,20 @@ def mask_schem_user_conf(data: bytes) -> bytes:
     return _SCHEM_USER_CONF.sub(b"$USER_CONF_DIR", data)
 
 
+# The Hefesto side of Q-SCHEM-46: hefesto-cli's own text around a SCHEM replay. Its start-up line (Magic's
+# "Using technology" banner), the note on the harness rc's `set xschem_execute_scripts yes` (a capture setting
+# that Hefesto ignores: Q-SCHEM-11's sandbox always runs tcleval values) and the lines an xschemrc prints while
+# it is read (SCHEM-LIB-008), which the capture drops on the xschem side (goldenlib/schem_driver.py).
+_SCHEM_HEFESTO_DRIVER = re.compile(
+    rb'^info: APP-TECH-002: Using technology "[^"\n]*", version [^\n]*\n'
+    rb"|^info: SCHEM-LIB-007: xschem_execute_scripts yes in \S*xschemrc ignored: [^\n]*\n"
+    rb"|^info: SCHEM-LIB-008: xschemrc: [^\n]*\n", re.MULTILINE)
+
+
+def mask_schem_hefesto_driver(data: bytes) -> bytes:
+    return _SCHEM_HEFESTO_DRIVER.sub(b"", data)
+
+
 def mask_schem_version(data: bytes) -> bytes:
     return _SCHEM_VERSION.sub(rb"\1<masked>", data)
 
@@ -372,6 +392,7 @@ _NAMED: dict[str, Mask] = {
     "schem-paths": mask_schem_paths,
     "schem-version": mask_schem_version,
     "schem-user-conf": mask_schem_user_conf,
+    "schem-hefesto-driver": mask_schem_hefesto_driver,
     "ext-times": mask_ext_times,
     "extcheck-memory": mask_extcheck_memory,
     "prog-name": mask_prog_name,

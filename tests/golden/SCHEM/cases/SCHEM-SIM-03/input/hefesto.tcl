@@ -1,4 +1,5 @@
 file mkdir out
+if 1 {
 # SCHEM-SIM-03: from inside x1, the resolved names of an internal net and of a port net.
 xschem load input/tb.sch
 xschem netlist
@@ -11,3 +12,5 @@ foreach net {MID A Y} {
   puts "resolved_net $net -> \[$r\]"
 }
 xschem go_back
+list
+}

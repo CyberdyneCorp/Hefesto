@@ -1,7 +1,10 @@
 file mkdir out
+if 1 {
 set status 0
 schematic pdk sky130A
 schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_generators.sch
 if {[catch {schematic netlist out/test_generators.spice -force}]} {set status 10}
 schematic close -discard
 quit $status
+list
+}

@@ -47,6 +47,24 @@ class MaskTest(unittest.TestCase):
         self.assertEqual(apply_masks(data, ["schem-version"]),
                          b"v {xschem version=<masked> file_version=1.2\n* header\n}\nT {version=1} 0 0 0 0 1 1 {}\n")
 
+    def test_schem_hefesto_driver_drops_only_hefesto_cli_text(self):
+        data = (b'info: APP-TECH-002: Using technology "minimum", version 0.0\n'
+                b"info: SCHEM-LIB-008: xschemrc: SKYWATER_MODELS: /x/pdk/sky130A/libs.tech/combined\n"
+                b"info: SCHEM-LIB-007: xschem_execute_scripts yes in /w/input/xschemrc ignored: always run\n"
+                b"warning: SCHEM-NET-015: instance R1 (res.sym): all pins unconnected\n"
+                b"descend: 1\n")
+        self.assertEqual(apply_masks(data, ["schem-hefesto-driver"]),
+                         b"warning: SCHEM-NET-015: instance R1 (res.sym): all pins unconnected\ndescend: 1\n")
+        # The note on another file than an xschemrc, and an indented line, are kept.
+        kept = b"info: SCHEM-LIB-007: xschem_execute_scripts yes in /w/rc.tcl ignored: x\n  info: SCHEM-LIB-008: x\n"
+        self.assertEqual(apply_masks(kept, ["schem-hefesto-driver"]), kept)
+
+    def test_schem_user_conf_masks_the_configuration_folder(self):
+        data = b"pre_osdi /tmp/.xschem/xschem_library/diff_amp.osdi\npre_osdi /w/pdk/x/.xschem/lib/d.osdi\n"
+        self.assertEqual(apply_masks(data, ["schem-user-conf"]),
+                         b"pre_osdi $USER_CONF_DIR/xschem_library/diff_amp.osdi\n"
+                         b"pre_osdi $USER_CONF_DIR/lib/d.osdi\n")
+
 
 class RunnerTest(unittest.TestCase):
     def _case(self, root: Path, reference: str) -> Path:
@@ -157,35 +175,56 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertIn('decisions = ["Q-SCHEM-30"]', entry)
         self.assertIn('outputs = ["stdout.txt", "stderr.txt"]', entry)
         self.assertFalse(any(line.startswith("deferred") for line in entry))
-        # A replayed case without a decision keeps only xschem's driver text, deferred to M8 (Q-SCHEM-46).
-        self.assertIn('deferred = "M8"', rt01)
-        self.assertIn('outputs = ["stdout.txt", "stderr.txt"]', rt01)
-        self.assertTrue(any("Q-SCHEM-46" in line for line in rt01))
+        # A replayed case without a decision or open output has no entry: since Q-SCHEM-46 its streams hold
+        # only what the case prints, so they are compared.
+        self.assertEqual(rt01, [])
 
     def test_simulation_and_lvs_results_deferred_to_m9(self):
-        for case_id in ("SCHEM-SIM-01", "SCHEM-SIM-02", "SCHEM-LVS-01"):
+        for case_id in ("SCHEM-SIM-02", "SCHEM-LVS-01"):
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
                 self.assertIn('deferred = "M9"', entry)
-                # Q-SCHEM-39: M8 checks the LVS case's netlist output (replayed: not listed at all) and,
-                # once Q-SCHEM-46 is decided, its driver text.
-                per_output = [line for line in entry if line.startswith("deferred_outputs")]
-                self.assertEqual(per_output, ['deferred_outputs = { "stdout.txt" = "M8", "stderr.txt" = "M8" }']
-                                 if case_id == "SCHEM-LVS-01" else [])
+                # Q-SCHEM-39: M8 checks the LVS case's netlist output (replayed: not listed at all).
+                self.assertFalse(any(line.startswith("deferred_outputs") for line in entry))
         lvs = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
         self.assertIn('outputs = ["layout.spice", "lvs.out", "stdout.txt", "stderr.txt"]', lvs)
         with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
             before = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
         self.assertIn('deferred_outputs = { "inv_1.spice" = "M8" }', before)
 
+    def test_replayed_deck_of_a_later_case_has_no_entry(self):
+        # SCHEM-SIM-01 captures only the deck, which replays; its simulation results stay M9's (LATER).
+        sim01 = next(s for s in self.specs if s.id == "SCHEM-SIM-01")
+        self.assertIn("SCHEM-SIM-01", schem_cases.REPLAYED)
+        self.assertEqual(schem_cases.deviation_entry(sim01), [])
+
     def test_replayed_cases_keep_their_open_outputs(self):
         nl09 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-09"))
-        self.assertIn('outputs = ["exitcode.txt", "stdout.txt", "stderr.txt"]', nl09)
+        self.assertIn('outputs = ["exitcode.txt", "stderr.txt"]', nl09)
         for case_id in schem_cases.REPLAYED:
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
-                outputs = next(line for line in entry if line.startswith("outputs = "))
-                self.assertIn('"stdout.txt"', outputs)
+                open_outputs = schem_cases.REPLAYED_OPEN.get(case_id, ("", [], ""))[1]
+                if case_id in schem_cases.DECIDED:
+                    continue
+                self.assertEqual(entry == [], not open_outputs)
+                if open_outputs:
+                    self.assertIn(f"outputs = {schem_cases._toml_list(open_outputs)}", entry)
+
+    def test_diagnostic_streams_cite_the_proposed_question(self):
+        for case_id in schem_cases.DIAG_ONLY:
+            with self.subTest(case=case_id):
+                self.assertIn(case_id, schem_cases.REPLAYED)
+                self.assertEqual(schem_cases.REPLAYED_OPEN[case_id][1], ["stderr.txt"])
+                self.assertIn("Q-SCHEM-60", schem_cases.REPLAYED_OPEN[case_id][2])
+
+    def test_hefesto_script_prints_only_what_the_case_writes(self):
+        script = schem_cases.hefesto_script("puts x\nset a 1")
+        self.assertEqual(script, "file mkdir out\nif 1 {\nputs x\nset a 1\nlist\n}\n")
+        with self.assertRaises(ValueError):
+            schem_cases.hefesto_script("puts {")
+        self.assertTrue(schem_cases._braces_balanced("puts \\{"))
+        self.assertFalse(schem_cases._braces_balanced("} {"))
 
     def test_hefesto_side_paths_are_relative_to_the_work_folder(self):
         for spec in self.specs:

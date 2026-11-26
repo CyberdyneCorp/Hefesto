@@ -86,7 +86,7 @@ masks = ["schem-paths", "regex:(?i)compiled on [^\\n]*", "regex:rlim_cur=\\d+"]
 name = "stderr.txt"
 source = "stderr"
 comparator = "bytes"
-masks = ["schem-paths"]
+masks = ["schem-paths", "schem-hefesto-driver"]
 
 [[outputs]]
 name = "exitcode.txt"

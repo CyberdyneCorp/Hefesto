@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-SIM-03: from inside x1, the resolved names of an internal net and of a port net.
 xschem load /work/input/tb.sch
 xschem netlist
