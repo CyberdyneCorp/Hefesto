@@ -10,8 +10,8 @@
 // cell, the mode (per window, Q-MISC-76 fix), the f applied on entering
 // mask-layer mode (Q-MISC-78 compat), level, ViewState (D7), the cut box,
 // the two visibility sets (one per mode, Q-MISC-71 fix), the current mesh
-// handle, the toolkit path the window was opened with and the output style
-// it last saw.
+// handle, the toolkit path the window was opened with, the output style
+// it last saw and the J1 view option "Span connected layers".
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3); WIND3D fills in
 // src/core/src/view3d/client/ (design D3, section 8).
@@ -25,6 +25,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -104,6 +105,13 @@ struct WindowState {
   MeshHandle mesh;
   // WIND3D: the output style this window last saw (Q-MISC-71, 78).
   OutputStyleKey style_key;
+  // J1 "Span connected layers" (design D10, R5 item 17, approved
+  // 2026-11-26): a window option, not Magic state (Magic has no command
+  // for it). window_build passes it to the mesh build (layout-layer mode
+  // only; a mask-layer build ignores it) and `export3d` exports the window
+  // spanned when it is set. A new window starts unspanned; front ends set
+  // it with set_span_connected_layers.
+  bool span_connected_layers = false;
 
   /// The f that `cif` back to layout-layer mode divides by (Q-MISC-78
   /// branch point): `current_factor` (the current output style's f) with
@@ -153,5 +161,14 @@ struct Session {
 
   [[nodiscard]] bool has_window() const noexcept { return window.has_value(); }
 };
+
+/// Sets the J1 option "Span connected layers" of the open 3D window
+/// (WindowState::span_connected_layers). `toolkit_path` names the window:
+/// empty for the open window whatever its path, else its toolkit path
+/// (`.magic3d`, `.render.magic`, ...). Returns false, changing nothing,
+/// when no 3D window is open or its path differs. The caller rebuilds the
+/// window's mesh afterwards (window_build, then MeshWorker::build): the
+/// option is a full-build input. No redraw is requested here.
+bool set_span_connected_layers(Session& session, std::string_view toolkit_path, bool on);
 
 }  // namespace hefesto::view3d
