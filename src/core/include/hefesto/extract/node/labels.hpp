@@ -81,6 +81,11 @@ struct NodeFeedback {
 struct SubstrateName {
   std::optional<std::size_t> node;  // list index
   std::string name;
+  /// Added in M7 R5: whether that node is also the cell's substrate node
+  /// (glob_subsnode), written as the `substrate` record. False for an
+  /// abstract view's node at -infinity, which extMakeNodeNumPrint names
+  /// with extSubsName but extOutputNodes writes as a plain `node`.
+  bool record = true;
 };
 
 struct NodeRecordOptions {

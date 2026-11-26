@@ -226,18 +226,6 @@ struct CouplingRecord {
 /// The values of the `resistclasses` header line, in class order.
 [[nodiscard]] std::vector<std::int64_t> resistance_class_header(const ExtStyle& style);
 
-/// The shorted-ports warning of extOutputNodes (ExtBasic.c:815-838) for
-/// a node named `node_name` (its first port) carrying another port label
-/// `label` whose text differs: EXTRACT-CAP-001, `Warning:  Ports "<a>" and
-/// "<b>" are electrically shorted.`, with each name cut at its first `_uq`
-/// (the names `extract unique` generates); nullopt when the cut names are
-/// equal or Q-EXTRACT-22 suppresses the warning (magic-compat ON: whenever
-/// lumped resistance is on; OFF: only when extresist runs in the pass).
-[[nodiscard]] std::optional<diag::Diagnostic> shorted_ports_warning(std::string_view node_name,
-                                                                    std::string_view label,
-                                                                    const ExtractOptions& options,
-                                                                    const compat::CompatSettings& compat);
-
 /// 0.6366 * atan(mult * d) with a correctly rounded atan on every
 /// platform (Open Question 3 (a), design D22).
 [[nodiscard]] double fringe_fraction(double mult, double d);

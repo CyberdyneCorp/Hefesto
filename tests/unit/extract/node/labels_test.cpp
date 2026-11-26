@@ -165,6 +165,25 @@ TEST_CASE("Node records in list order with their attribute records and class val
   CHECK(read_back("ex", flat.text).empty());
 }
 
+TEST_CASE("The substrate name without the substrate record names a plain node (an abstract view's node)",
+          "[cap:extract-nodes-and-labels][req:Node and attribute records]") {
+  // extMakeNodeNumPrint names the node at -infinity with extSubsName even
+  // when glob_subsnode is NULL (an abstract view); extOutputNodes then
+  // writes it as `node`, not `substrate`.
+  const auto t = case_tech("EX-025");
+  const extract::ExtStyle style = first_style(*t);
+  for (const bool record : {true, false}) {
+    auto cell = case_cell("EX-025", *t);
+    extract::NodeRecordOptions options;
+    options.substrate = extract::SubstrateName{0, "SUBX", record};
+    Flat flat;
+    extract_flat(flat, *cell, *t, style, true, options);
+    INFO("record " << record);
+    CHECK(lines_with(flat.text, "substrate \"SUBX\"").size() == (record ? 1U : 0U));
+    CHECK(lines_with(flat.text, "node \"SUBX\"").size() == (record ? 0U : 1U));
+  }
+}
+
 TEST_CASE("Aliases off: non-port aliases are not written and are marked",
           "[cap:extract-nodes-and-labels][req:Alias output]") {
   Metal m;

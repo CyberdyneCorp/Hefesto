@@ -283,29 +283,13 @@ bool load_tree(const State& st, db::CellDef& root, const RunRequest& request) {
   return true;
 }
 
-// AtomicOutput's search skips a search-path entry that expands to nothing
-// (`.`), so the current directory is never tried through it (open item for
-// EXTNODE: extract/file/atomic_output.cpp append_entries). Until that is
-// fixed the driver hands it the current directory spelled out and shows
-// the target relative to it again, as PaOpen's realName.
-struct OutputPaths {
-  cell::SearchPaths paths;
-  std::string cwd;
-};
-
-OutputPaths output_paths(const cell::LookupContext& lookup, const OutputLocation& where) {
-  OutputPaths out{lookup.paths, where.current_directory};
-  if (out.cwd.empty()) {
-    std::error_code ec;
-    out.cwd = std::filesystem::current_path(ec).string();
+// The directory a relative target is shown against (PaOpen's realName).
+std::string working_directory(const OutputLocation& where) {
+  if (!where.current_directory.empty()) {
+    return where.current_directory;
   }
-  for (std::string& entry : out.paths.path) {
-    const std::optional<std::string> dir = cell::expand_entry(entry, lookup.vars);
-    if (dir && dir->empty() && !out.cwd.empty()) {
-      entry = out.cwd;
-    }
-  }
-  return out;
+  std::error_code ec;
+  return std::filesystem::current_path(ec).string();
 }
 
 std::string shown_name(const std::string& target, const std::string& cwd) {
@@ -317,17 +301,18 @@ std::string shown_name(const std::string& target, const std::string& cwd) {
 void open_output(Job& job, cell::LookupContext& lookup, const OutputLocation& where,
                  const std::optional<std::string>& out_name) {
   BufferSink buffer;
-  const OutputPaths paths = output_paths(lookup, where);
-  cell::LookupContext ctx{lookup.fs, paths.paths, lookup.vars, buffer};
+  const std::string cwd = working_directory(where);
+  cell::LookupContext ctx{lookup.fs, lookup.paths, lookup.vars, buffer};
   // `extract cell NAME` opens NAME.ext: the name stands in for the cell's.
   const db::CellDef named(out_name.value_or(std::string{}), 0);
   const db::CellDef& target = out_name ? named : *job.cell;
   OutputLocation at = where;
+  at.current_directory = cwd;  // the target is absolute; it is shown relative to cwd
   if (out_name) {
     at.local_path.reset();
   }
   auto opened = AtomicOutput::open(ctx, target, ".ext", at);
-  const std::string shown = opened.ok() ? shown_name(opened.value().target(), paths.cwd)
+  const std::string shown = opened.ok() ? shown_name(opened.value().target(), cwd)
                                         : ext_base_name(target, at.local_path) + ".ext";
   buffer.emit(diag::make(kCodeCell, "Extracting " + job.cell->name() + " into " + shown + ":"));
   if (opened.ok()) {
@@ -458,8 +443,19 @@ void prepare_stack(State& st, editor::EditorState& editor, const Stack& stack, c
   st.totals = true;
 }
 
+// extDefListFunc reads every cell it enumerates (DBCellEnum's DBCellRead),
+// so ExtractOneCell and extParents read the whole subtree of the selected
+// cell first, without DBFixMismatch (EX-065: `Cell leaf read from path`
+// before `Extracting myinv`, and myinv's `use` record of leaf).
+void read_below(const State& st, db::CellDef& def, const RunRequest& request) {
+  gds::SubtreeLoader loader = request.loader;
+  loader.fix_mismatches = {};
+  (void)gds::load_area(def, def.bbox(), loader, false, st.ctx.compat);
+}
+
 // ExtractOneCell / extParents: the children's substrates, then the cells.
 void prepare_selected(State& st, editor::EditorState& editor, db::CellDef& def, const RunRequest& request) {
+  read_below(st, def, request);
   for (db::CellDef* child : children_below(st, def)) {
     prepare_substrate(st, *child);
   }

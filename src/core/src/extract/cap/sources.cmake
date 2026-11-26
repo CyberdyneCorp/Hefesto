@@ -14,7 +14,6 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/lumped.cpp
   ${CMAKE_CURRENT_LIST_DIR}/node_caps.cpp
   ${CMAKE_CURRENT_LIST_DIR}/overlap.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/ports.cpp
   ${CMAKE_CURRENT_LIST_DIR}/sideoverlap.cpp)
 
 # The correctly rounded atan of Open Question 3 (a) is EXTCAP's file in
