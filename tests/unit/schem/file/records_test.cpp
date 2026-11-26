@@ -277,21 +277,52 @@ TEST_CASE("hostile input is read in bounded work", "[cap:schematic-file-format][
   CHECK(codes(polygon.warnings).front() == "SCHEM-FILE-001");
 }
 
-TEST_CASE("polygon counts", "[cap:schematic-file-format][req:Record grammar]") {
-  const auto r = read_text("P 4 0 {}\nP 4 -1 {}\nP 4 2 0 0 1 1 {}\n");
-  REQUIRE(r.doc.polygons.size() == 2);
-  CHECK(r.doc.polygons[0].points.empty());
-  REQUIRE(r.warnings.size() == 1);
-  CHECK(r.warnings[0].text == "missing fields for POLYGON object, ignoring");
-  CHECK(schem::write_document(r.doc) == std::string{kEmptyHeader} + "P 4 0 {}\nP 4 2 0 0 1 1 {}\n");
+// Q-SCHEM-34 (approved 2026-11-25): identical in both modes.
+TEST_CASE("Polygon counts", "[cap:schematic-file-format][req:Record grammar]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    const auto r = read_text("P 4 0 {}\nP 4 -1 {}\nP 4 2 0 0 1 1 {}\n", schem::FileKind::schematic, compat);
+    REQUIRE(r.doc.polygons.size() == 2);
+    CHECK(r.doc.polygons[0].points.empty());
+    REQUIRE(r.warnings.size() == 1);
+    CHECK(r.warnings[0].text == "missing fields for POLYGON object, ignoring");
+    CHECK(schem::write_document(r.doc) == std::string{kEmptyHeader} + "P 4 0 {}\nP 4 2 0 0 1 1 {}\n");
+  }
 }
 
-TEST_CASE("integer that does not fit", "[cap:schematic-file-format][req:Record grammar]") {
-  const auto r = read_text("L 99999999999 0 0 1 1 {}\nP 4 99999999999 0 0 {}\nN 0 0 1 0 {}\n");
-  CHECK(r.doc.lines.empty());
-  CHECK(r.doc.polygons.empty());
-  CHECK(r.doc.wires.size() == 1);
-  CHECK(r.warnings.size() == 2);
+// Regression (Q-SCHEM-34, approved 2026-11-25): a rotation or flip outside
+// xschem's 16-bit range was kept (40000 read as 40000); it now makes the
+// record skipped as a missing field, in both modes.
+TEST_CASE("Integer that does not fit", "[cap:schematic-file-format][req:Record grammar]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    const auto r = read_text("L 99999999999 0 0 1 1 {}\nC {res.sym} 0 0 40000 0 {name=R1}\nN 0 0 1 0 {}\n",
+                             schem::FileKind::schematic, compat);
+    CHECK(r.doc.lines.empty());
+    CHECK(r.doc.instances.empty());
+    CHECK(r.doc.wires.size() == 1);
+    CHECK(r.warnings.size() == 2);
+  }
+}
+
+TEST_CASE("out-of-range counts, rotations and flips skip the record",
+          "[cap:schematic-file-format][req:Record grammar]") {
+  for (const bool compat : {true, false}) {
+    INFO("xschem-compat " << compat);
+    const auto r = read_text(
+        "P 4 99999999999 0 0 {}\nC {a.sym} 0 0 0 -32769 {}\nC {b.sym} 0 0 2147483648 0 {}\n"
+        "T {t} 0 0 32768 0 1 1 {}\nT {u} 0 0 0 99999999999 1 1 {}\n"
+        "C {c.sym} 0 0 32767 -32768 {}\nT {v} 0 0 -32768 32767 1 1 {}\n",
+        schem::FileKind::schematic, compat);
+    CHECK(r.doc.polygons.empty());
+    REQUIRE(r.doc.instances.size() == 1);  // the limits themselves are kept
+    CHECK(r.doc.instances[0].rotation == 32767);
+    CHECK(r.doc.instances[0].flip == -32768);
+    REQUIRE(r.doc.texts.size() == 1);
+    CHECK(r.doc.texts[0].rotation == -32768);
+    CHECK(r.doc.texts[0].flip == 32767);
+    CHECK(r.warnings.size() == 5);
+  }
 }
 
 TEST_CASE("end of file before the opening brace", "[cap:schematic-file-format][req:Malformed input]") {
