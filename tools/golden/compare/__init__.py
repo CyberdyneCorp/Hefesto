@@ -268,3 +268,15 @@ _Comparators.PARAMETRIZED[meas_table.NAME] = meas_table.parametrized
 PAIRWISE = _Pairwise(PAIRWISE)
 PAIRWISE[raw_tolerance.NAME] = raw_tolerance.compare
 PAIRWISE[meas_table.NAME] = meas_table.pairwise(meas_table.NAME)
+
+# The M10 plot comparators (m10-plot-route design D19, task 2.3); their rules are in each module's docstring:
+# ``ps-text`` (PostScript byte for byte, the difference named by file section, ps_text.py), ``pnm-image`` (PNM
+# exact, the difference as a pixel count, box and first pixel, pnm_image.py), both pairwise, and ``svg-shape``
+# (the root element and the numeric width and height of an SVG file, svg_shape.py).
+from . import pnm_image, ps_text, svg_shape  # noqa: E402
+
+COMPARATORS[ps_text.NAME] = ps_text.canonicalize
+COMPARATORS[pnm_image.NAME] = pnm_image.canonicalize
+COMPARATORS[svg_shape.NAME] = svg_shape.canonicalize
+PAIRWISE[ps_text.NAME] = ps_text.compare
+PAIRWISE[pnm_image.NAME] = pnm_image.compare

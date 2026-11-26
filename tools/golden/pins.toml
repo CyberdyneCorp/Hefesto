@@ -131,3 +131,12 @@ files = [
 [image_variants.magic-gl]
 build_args = { WITH_OPENGL = "1" }
 display_type = "OGL"
+
+# magic-cairo (openspec/changes/m10-plot-route design D19, Q-MISC-52 (a)) builds the pinned Magic commit
+# again with Cairo (libcairo2-dev of the APT snapshot) for the cases whose case.toml sets
+# `[reference] image = "magic-cairo"` (MISC-PLOT-12 and -13 only): Magic's Tk wrapper on `-d XR` under
+# Xvfb. capture.py runs those cases in the image given by --cairo-image ($HEFESTO_GOLDEN_CAIRO_IMAGE).
+# Cairo is never part of Hefesto (design D2, P-3).
+[image_variants.magic-cairo]
+build_args = { WITH_CAIRO = "1" }
+display_type = "XR"

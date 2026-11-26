@@ -1,0 +1,13 @@
+magic
+tech scmos
+timestamp 0
+<< metal1 >>
+rect 0 0 4 4
+rect 100 0 104 4
+<< metal2 >>
+rect 0 0 4 4
+<< labels >>
+rlabel metal1 0 0 4 4 0 X
+rlabel metal2 0 0 4 4 0 Y
+rlabel metal1 100 0 104 4 0 B
+<< end >>

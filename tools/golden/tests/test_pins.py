@@ -83,7 +83,7 @@ class PinsTest(unittest.TestCase):
     def test_image_variants_are_build_args_of_the_containerfile(self):
         """magic-gl (m10-3d-view design D13): a build argument whose default (0) is the plain image."""
         variants = self.pins["image_variants"]
-        self.assertEqual(sorted(variants), ["magic-gl"])
+        self.assertEqual(sorted(variants), ["magic-cairo", "magic-gl"])
         for name, variant in variants.items():
             with self.subTest(variant=name):
                 for arg in variant["build_args"]:
@@ -92,6 +92,24 @@ class PinsTest(unittest.TestCase):
         text = CONTAINERFILE.read_text(encoding="utf-8")
         self.assertIn("--with-opengl --with-cairo=no", text)
         self.assertIn("container/magic_gl_smoke.tcl", text)
+
+    def test_cairo_variant_builds_the_same_commit_with_cairo(self):
+        """magic-cairo (m10-plot-route design D19, Q-MISC-52 (a)): the main configure line plus Cairo."""
+        variant = self.pins["image_variants"]["magic-cairo"]
+        self.assertEqual(variant["build_args"], {"WITH_CAIRO": "1"})
+        self.assertEqual(variant["display_type"], "XR")
+        text = CONTAINERFILE.read_text(encoding="utf-8")
+        self.assertIn("--with-opengl=no --with-cairo; \\", text)
+        self.assertIn("container/magic_cairo_smoke.tcl", text)
+        self.assertLess(text.index("ARG WITH_OPENGL=0"), text.index("ARG WITH_CAIRO=0"))
+
+    def test_main_image_checks_the_plot_files(self):
+        """Task 2.1 (Q-MISC-44): magicps.pro and the mos.7bit files are where Magic's SysLibPath finds them."""
+        text = CONTAINERFILE.read_text(encoding="utf-8")
+        for name in ("magicps.pro", "mos.7bit.dstyle", "mos.7bit.std.cmap", "mos.7bit.mraster_dstyle",
+                     "mos.7bit.mraster.cmap"):
+            self.assertIn(name, text)
+        self.assertIn('test -s "${PREFIX}/lib/magic/sys/${f}"', text)
 
     def test_ngspice_is_the_engine_pin_with_the_patch_series(self):
         """Q-SIM-23 (a): the image builds the engine's pin (third_party/ngspice/pin.json, Q-SIM-7) with its
