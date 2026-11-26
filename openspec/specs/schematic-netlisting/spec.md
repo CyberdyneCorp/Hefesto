@@ -176,7 +176,9 @@ For an instance of type `bus_tap` with at least two pins, pin 1 connects to a bu
 
 An empty or missing `lab` gives no tap name: pin 0 stays unnamed and later gets an automatic name (step 3 of Requirement "Net naming order"). A tap name spreads from pin 0.
 
-When pin 0 already has a non-automatic name, that name SHALL be kept and pin 0 SHALL NOT be renamed. xschem then reports `Error: Bus tap shorted: <bus> - <pin 0 name>` whenever the two texts differ, which is almost always (a bus name is not a bit name). Hefesto SHALL instead report the `Bus tap` short only when the tap name computed from `lab` differs from the name pin 0 already has, naming those two, in both modes (proposed Q-SCHEM-37, recommendation `fix`: the netlist text is the same either way, only the diagnostic and the exit status differ; awaiting the user).
+When pin 0 already has a non-automatic name, that name SHALL be kept and pin 0 SHALL NOT be renamed. The `Bus tap` short SHALL be reported only when the tap name computed from `lab` differs from the name pin 0 already has, as `Error: Bus tap shorted: <tap name> - <pin 0 name>`, naming those two, in both modes (Q-SCHEM-37, `Resolution: fix`, approved by the user 2026-11-25). An empty or missing `lab` gives no tap name and so no `Bus tap` short. Like every short, it fails the netlist run (Q-SCHEM-16). The netlist text does not depend on this rule; only the diagnostic and the exit status do.
+
+Informative: xschem reports `Error: Bus tap shorted: <bus> - <pin 0 name>` whenever the bus net and the name pin 0 already has differ, which is almost always (a bus name is not a bit name), so it reports correct schematics as shorted. Hefesto does not replicate this in either mode.
 
 Compatibility: exact
 
@@ -195,7 +197,7 @@ Compatibility: exact
 #### Scenario: Tap side already named
 - **GIVEN** a bus tap with `lab=[3]` whose pin 1 is on net `DATA[3:0]` and whose pin 0 wire carries a label `DATA[3]` that comes before the bus label in instance order, and a second such tap with `lab=[2]` whose pin 0 wire carries a label `X`
 - **WHEN** the schematic is netlisted
-- **THEN** the pin 0 nets SHALL be `DATA[3]` and `X`, and exactly one short SHALL be reported, `Error: Bus tap shorted: DATA[2] - X` (proposed Q-SCHEM-37)
+- **THEN** the pin 0 nets SHALL be `DATA[3]` and `X`, and exactly one short SHALL be reported, `Error: Bus tap shorted: DATA[2] - X`, with `xschem-compat` ON or OFF (Q-SCHEM-37)
 
 ### Requirement: Bus and vector notation
 Net names, pin names and instance names SHALL be expanded into comma-separated lists of single names by this grammar. A string that contains none of `*`, `,`, `.` and `:`, or that starts with `$`, SHALL be returned unchanged with width 1.
@@ -227,7 +229,7 @@ Lexical rules:
 - **Trailer** (`item-suffix`): characters right after `]` that are not `*`, `,` or `)` start a trailer, a run of name characters, blanks, `(`, `)` and `*`; it is appended to every element (`A[1:0]_n` is `A[1]_n,A[0]_n`).
 - **Precedence.** `*` binds tighter than `,`, and both group from the left: `2*a,b` is `a,a,b` and `a,b*2` is `a,b,b`; parentheses group explicitly.
 
-Values that xschem does not handle (it loops forever, reads undefined memory or gives an empty list) SHALL be syntax errors, in both modes (proposed Q-SCHEM-35, recommendation `fix`, awaiting the user): a repetition count of 0 or below (`a*0`, `0*a`, `a*-1`; xschem gives an empty list of width 0 for 0), a `step` of 0 or below, and a `rep` of 0 or below. A stepped range `i:j:step` or `i..j..step` with i = j is the single element i (xschem loops forever; same proposed row).
+Values that xschem does not handle (it loops forever, reads undefined memory or gives an empty list) SHALL be syntax errors, in both modes (Q-SCHEM-35, `Resolution: fix`, approved by the user 2026-11-25): a repetition count of 0 or below (`a*0`, `0*a`, `a*-1`; xschem gives an empty list of width 0 for 0), a `step` of 0 or below, and a `rep` of 0 or below. A stepped range `i:j:step` or `i..j..step` with i = j is the single element i, in both modes (xschem loops forever; Q-SCHEM-35).
 
 **Input limits** (approved by the user on 2026-11-21, Q-SCHEM-32; both modes): one expansion SHALL give at most 1,048,576 (2^20) names (`kMaxBusBits`) and at most 67,108,864 bytes (64 MiB, `kMaxBusBytes`) of expanded text, commas included; parentheses SHALL nest at most 256 deep; index and count arithmetic SHALL NOT overflow. Input past a limit SHALL be used unchanged with unknown width, like a syntax error, and SHALL report the warning `bus expansion of <string> exceeds a limit (1048576 names, 67108864 bytes or 256 nested parentheses); used unchanged` (`SCHEM-NET-006`), where `<string>` is cut to its first 80 bytes followed by `...` when longer.
 
@@ -257,11 +259,11 @@ Compatibility: exact
 
 #### Scenario: Zero and negative counts are syntax errors
 - **WHEN** `a*0`, `0*a`, `D[7:0:0]`, `D[7:0:-2]` and `D[3:0:1:0]` are expanded, with `xschem-compat` ON or OFF
-- **THEN** each SHALL report `syntax error in <string>` and SHALL be used unchanged with unknown width (proposed Q-SCHEM-35)
+- **THEN** each SHALL report `syntax error in <string>` and SHALL be used unchanged with unknown width (Q-SCHEM-35)
 
 #### Scenario: Stepped range with equal ends
-- **WHEN** `D[3:3:2]` is expanded
-- **THEN** the result SHALL be `D[3]` with width 1
+- **WHEN** `D[3:3:2]` and `Q[3..3..2]` are expanded, with `xschem-compat` ON or OFF
+- **THEN** the results SHALL be `D[3]` and `Q3`, each with width 1 (Q-SCHEM-35)
 
 #### Scenario: Expansion past the limits
 - **WHEN** `A[1048576:0]`, a 128-byte name followed by `[1048575:0]` (more than 64 MiB of text) and a name inside 300 nested parentheses are expanded, with `xschem-compat` ON or OFF
@@ -374,9 +376,9 @@ Text SHALL be scanned for the markers `expr(`, `expr_eng(` and `expr_eng4(`. Tex
 - **functions** of one argument: `int` (truncate toward zero, in floating point: no integer conversion, so any finite value works), `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log` (base 10), `ln`, `exp`, `sqrt`, `round6`, `round1` (round to 6 or 1 significant digits), `round`
 - **rounding**: `round(x)` rounds half away from zero, computed as floor(x + 0.5) for x > 0 and ceil(x − 0.5) for x < 0 (so 2.5 gives 3, −2.5 gives −3, and 0.49999999999999994 gives 1, as the addition rounds up); 0, −0, NaN and infinities are returned unchanged. `round6(x)` and `round1(x)` (n = 6 or 1) return x unchanged when x is 0; otherwise they take s = 10^(ceil(log10(|x|)) − n) and return round(x / s) · s, so −123 with n = 2 would give −120 and 9.96 gives 10. NaN gives NaN, and an infinite x gives NaN
 - **operators**, lowest to highest precedence: `?:` (right-assoc), `==` and `!=`, `<` `>` `<=` `>=`, `+` and `-`, `*` `/` `%`, unary minus, `^` (power by C `pow`, right-assoc), parentheses
-- **`%`** truncates both operands toward zero and gives the remainder with the sign of the left operand (`7 % 3` is 1, `-7.9 % 2` is −1, `7 % 0.5` uses 0 as the right operand). xschem converts the operands to C `int`, so a right operand that truncates to 0, or an operand outside the 32-bit range, is undefined (a crash on most hosts). Hefesto SHALL compute fmod(trunc(a), trunc(b)) in binary64, which equals C's `%` for every pair xschem handles, gives NaN when trunc(b) is 0, and is exact for operands up to 2^53, in both modes (proposed Q-SCHEM-36, recommendation `fix`, awaiting the user)
+- **`%`** truncates both operands toward zero and gives the remainder with the sign of the left operand (`7 % 3` is 1, `-7.9 % 2` is −1, `7 % 0.5` uses 0 as the right operand). xschem converts the operands to C `int`, so a right operand that truncates to 0, or an operand outside the 32-bit range, is undefined (a crash on most hosts). Hefesto SHALL compute fmod(trunc(a), trunc(b)) in binary64, which equals C's `%` for every pair xschem handles, gives NaN when trunc(b) is 0, and is exact for operands up to 2^53, in both modes (Q-SCHEM-36, `Resolution: fix` option (a), approved by the user 2026-11-25)
 - **nesting**: parentheses, function calls and unary operators SHALL nest at most **200** levels (`kMaxExprDepth`), in both modes (input limit approved by the user on 2026-11-21, Q-SCHEM-32). Deeper input SHALL fail like a syntax error (the errors rule below) and SHALL report the warning `expr nested deeper than 200 levels; text copied without evaluation` (`SCHEM-NET-006`)
-- **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists (proposed Q-SCHEM-36, recommendation: always `nan`, so netlists are identical on every platform, D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
+- **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists; Hefesto SHALL always print `nan`, in both modes, so netlists are identical on every platform (Q-SCHEM-36 option (a), D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
 - **result**: `expr` prints with C `%.15g`; `expr_eng` prints in engineering notation with the `ev_precision` setting (default 4) significant digits; `expr_eng4` with 4. Engineering notation divides by 1e12, 1e9, 1e6 or 1e3 for |x| above 0.999999 times that power (suffix `T`, `G`, `MEG`, `k`), keeps the value for |x| > 0.0999999, else multiplies by 1e3 ... 1e18 (suffix `m`, `u`, `n`, `p`, `f`, `a`); |x| < 0.999999e-23 prints `0`.
 - **errors**: on a syntax error or an unknown identifier, the rest of the text from the failing expression on SHALL be copied with every `expr(`, `expr_eng(` or `expr_eng4(` marker and its matching `)` removed; the single quotes of `expr('...')` are kept.
 
@@ -411,7 +413,7 @@ Compatibility: exact
 #### Scenario: Remainder by zero and NaN text
 - **GIVEN** `xschem-compat` ON or OFF
 - **WHEN** `expr(7%3)`, `expr(-7.9%2)`, `expr(7%0.5)`, `expr(0/0)` and `expr_eng(0/0)` are evaluated
-- **THEN** they SHALL give `1`, `-1`, `nan` (no crash), `nan` and `nana`, on every platform (proposed Q-SCHEM-36)
+- **THEN** they SHALL give `1`, `-1`, `nan` (no crash), `nan` and `nana`, on every platform (Q-SCHEM-36)
 
 #### Scenario: Nesting past 200 levels
 - **GIVEN** `xschem-compat` ON or OFF
@@ -452,7 +454,7 @@ An element line whose name list is empty SHALL be written as an empty line.
 
 **Renames.** On an element line starting with `g` or `G`, the first ` value=` (case-insensitive) SHALL become ` cur=`; with `e` or `E` it becomes ` vol=`; with `r` or `R`, ` r=`; with `c` or `C`, ` c=`. On a line starting with `D`, the first `PERI` followed by optional spaces and `=` SHALL become `PJ=`.
 
-**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker (a field that is one, or a field `<t>(?<w>` whose width marker follows its `(`, as `spice_probe_vdiff.sym` writes: golden case SCHEM-NL-05, clarified 2026-11-24) SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces inside the parentheses (after a `(`, before a `)`) are removed; a space after a `)` still separates two fields.
+**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker (a field that is one, or a field `<t>(?<w>` whose width marker follows its `(`, as `spice_probe_vdiff.sym` writes: golden case SCHEM-NL-05, clarified 2026-11-24; more exactly, the line contains `?`, an optional `-` and a digit anywhere, and each `?<w>` is removed together with the spaces on both sides of it: paraphrase review of 2026-11-26) SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces inside the parentheses (after a `(`, before a `)`) are removed; a space after a `)` still separates two fields.
 
 **Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) and does not start with `*` SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing. A commented top line such as `**.subckt T A[1],A[0]` is a comment line and keeps its commas (golden case SCHEM-NL-17).
 
@@ -739,18 +741,65 @@ Netlisting SHALL report, without stopping:
 - instances with all pins unconnected, overlapping identical instances, and pin mismatches between a symbol and its schematic
 - bus expansion syntax errors
 - subcircuit schematics that do not exist (Requirement "Schematic resolution"); this is a warning
+- the findings of the net driver check below
 - the warnings that the rules above give in both modes of `xschem-compat`: duplicate `sim_pinnumber` values (Q-SCHEM-5), two subcircuits with one cell name (Q-SCHEM-14), template keys found in `extra` only as substrings (Q-SCHEM-19), templates with LFs (Q-SCHEM-21), numbers whose reading depends on `xschem-compat` (Q-SCHEM-12), and undefined tokens with a defined identifier prefix (Q-SCHEM-26)
 
-A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. The message wording is informative.
+A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. Except where this requirement gives an exact text, the message wording is informative.
+
+**Net driver check.** For each schematic level that a run netlists (the top level and each subcircuit schematic written), every net name of that level SHALL be checked, in both modes of `xschem-compat`, after the level's nets are named. Automatic names (`#net<N>`) and each bit of a bus are checked like other names; global net names (Requirement "Global nets") are not checked. For each name, the pins that carry it SHALL be counted by the `dir` value of the symbol pin: `in`, `out` and `inout` (exact, lower case). Pins of ordinary instances and of `ipin`, `opin` and `iopin` port instances count by the `dir` of their symbol pin (so a port whose pin is `dir=out` drives the net); labels (`lab_pin`, `lab_wire` and other `label` types) and pins with any other or no `dir` count nothing. A name that a short gave to no pin (the name that lost the short, Requirement "Net naming order") carries no pins. Then, taking the first case that applies:
+1. no `out` and no `inout` pin (whatever the number of `in` pins, none included): the error `Error: undriven node: <net>`; the run SHALL fail
+2. exactly one pin in total: the warning `Warning: open net: <net>`; it fails the run only when the `xschemrc` sets the Tcl variable `erc_open_net_is_error` to a true value
+3. two or more `out` pins: the warning `Warning: shorted output node: <net>`; it fails the run only when the `xschemrc` sets `erc_shorted_output_is_error` to a true value
+
+Whether a run that fails only by case 1 (or by cases 2 and 3 made errors) still builds a simulation deck is proposed Q-SCHEM-53 (capability `schematic-simulation-integration`, Requirement "Schematic circuit source").
+
+**Report order of the driver check.** With `xschem-compat` ON, the names of one level SHALL be reported in xschem's order: ascending by a key computed from the name's bytes, where h starts at 5381 and, for each byte c of the name in turn, becomes (33 · h + c) modulo 2^32, and the key is h modulo 31627; names with equal keys in the order the level first gave them. With `xschem-compat` OFF, they SHALL be reported in byte order of the names (standing rule for xschem behaviour no Q-row covers: ON copies xschem, OFF gives the order a user can read; reported to the user 2026-11-26).
+
+**Report text on stderr (xschem-compat ON).** xschem collects these findings in its information window and prints it on stderr only when the run fails. With `xschem-compat` ON, the headless netlist command (`hefesto-cli --netlist`, `schematic netlist` in a script run without the editor) SHALL print the report on stderr only when the run fails, in this layout: for each level in the order its definition is written (the top level first, then each subcircuit schematic in the order of its `.subckt`), a separator line of eleven `-` characters directly followed by the absolute path of the level's schematic (`-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`), then that level's findings in the order above, together with the other messages of this requirement found while that level is netlisted (for example `Warning: Symbol: <symbol>: no type attribute set`); after the last level, the top level's separator line again, followed by the short errors (`Error: Net shorted: <a> - <b>`, Requirement "Net naming order"). Pin-mismatch errors between a symbol and its schematic come before the separator of the level that found them. With `xschem-compat` OFF, every finding SHALL be reported through Hefesto's diagnostics as it is found, whether or not the run fails, with no separator lines (standing rule; reported to the user 2026-11-26).
 
 Compatibility: behavioral
 
-(xschem ref: netlist.c:1430-1460, netlist.c:1791-1990, spice_netlist.c:636-641)
+(xschem ref: netlist.c:1430-1460, netlist.c:1791-1990, spice_netlist.c:636-641, node_hash.c (net driver check), token.c (name key))
 
 #### Scenario: Netlist with a short
 - **GIVEN** a schematic where labels `A` and `B` are on one wire
 - **WHEN** it is netlisted from a script
 - **THEN** the netlist SHALL be produced and the command SHALL return a failure status
+
+#### Scenario: Undriven gate and open drain of a gf180 testbench
+- **GIVEN** the gf180mcu testbench `tests/test_nfet_03v3.sch` (an `nfet_03v3` whose pins `D`, `G`, `S` and `B` are on nets `D`, `G`, `S` and `B` carried only by labels; the symbol pins `G` and `B` are `dir=in`, `D` and `S` are `dir=inout`), with `xschem-compat` ON
+- **WHEN** `hefesto-cli --netlist` netlists it
+- **THEN** the netlist SHALL be written as captured, the exit status SHALL be 10, and stderr SHALL hold, after any driver text, exactly the lines `-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`, `Error: undriven node: B`, `Warning: open net: D`, `Error: undriven node: G`, `Warning: open net: S`, `-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch` (golden cases SCHEM-NL-09 and SCHEM-NL-10)
+
+#### Scenario: Undriven gate, xschem-compat OFF
+- **GIVEN** the same testbench with `xschem-compat` OFF
+- **WHEN** it is netlisted
+- **THEN** the run SHALL fail with the two `undriven node` errors (`B`, then `G`) and SHALL report the two `open net` warnings (`D`, then `S`), and no separator line SHALL be printed
+
+#### Scenario: Report order follows xschem's key
+- **GIVEN** a failing run whose top level has the driver findings for the names `#net2`, `B`, `#net10` and `net1`, with `xschem-compat` ON
+- **WHEN** the report is printed
+- **THEN** they SHALL be in the order `#net10`, `B`, `#net2`, `net1` (keys 2496, 19504, 21787 and 27468; golden case SCHEM-NL-11); with `xschem-compat` OFF the order SHALL be `#net10`, `#net2`, `B`, `net1`
+
+#### Scenario: Open net alone does not fail the run
+- **GIVEN** a schematic whose only driver findings are `open net` warnings (for example a resistor whose two pins, both `dir=inout`, are each alone on their net), with no `erc_open_net_is_error` setting
+- **WHEN** it is netlisted with `hefesto-cli --netlist`
+- **THEN** the exit status SHALL be 0; with `xschem-compat` ON nothing of the report SHALL be printed on stderr, and with `xschem-compat` OFF the `open net` warnings SHALL be reported
+
+#### Scenario: Open net made an error
+- **GIVEN** the same schematic and an `xschemrc` that sets `erc_open_net_is_error` to 1
+- **WHEN** it is netlisted
+- **THEN** the run SHALL fail (exit status 10) and the warning text SHALL stay `Warning: open net: <net>`
+
+#### Scenario: Driving port and global net
+- **GIVEN** a net `IN` carried by an `ipin` (symbol pin `dir=out`) and a gate pin `dir=in`, and a net `VDD` declared global and carried only by `dir=in` pins
+- **WHEN** the level is checked
+- **THEN** neither `IN` nor `VDD` SHALL be reported
+
+#### Scenario: Two outputs on one net
+- **GIVEN** a net carried by the `dir=out` pins of two gates and one `dir=in` pin, with no `erc_shorted_output_is_error` setting
+- **WHEN** the level is checked
+- **THEN** the warning `Warning: shorted output node: <net>` SHALL be reported and the run SHALL NOT fail because of it
 
 ### Requirement: In-process netlisting
 Hefesto SHALL generate the netlist in memory, on every platform, without temporary files or external programs. It SHALL write the netlist to a file only when asked: by default `<netlist folder>/<top cell>.spice`, where the netlist folder is a Hefesto setting (default: a `simulation` folder beside the schematic, inside the document's granted folder on iPadOS). The output SHALL be identical on every platform for the same inputs and the same resolved absolute paths. Netlisting SHALL NOT change the document's undo history. A run SHALL be interruptible: the caller's interrupt check SHALL be polled at least once per schematic level placed, and an interrupted run SHALL return no netlist text and no computed labels and SHALL fail with error SCHEM-NET-018 (in both xschem-compat modes).

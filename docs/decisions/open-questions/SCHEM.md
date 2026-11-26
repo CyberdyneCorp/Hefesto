@@ -6,7 +6,7 @@ The reference is xschem, not Magic: `StefanSchippers/xschem` @ `4142e6d6f1eb5cd0
 
 xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they carry the GPL header). The PDK symbol libraries are Apache-2.0. Hefesto is implemented clean-room from the specs.
 
-**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18"). Q-SCHEM-31 (drafted 2026-11-20), Q-SCHEM-32 (input limits) and Q-SCHEM-33 (fuzzing) were approved by the user on 2026-11-21; Q-SCHEM-34 to -38 were drafted by the spec team on 2026-11-21 from the round-1 spec issues; Q-SCHEM-34 to -37 await the user (decision table, "Decisions of 2026-11-21" and "Proposed 2026-11-21"). Q-SCHEM-38 (option (a)) and Q-SCHEM-42, -40 and -41 (input limits M8-D1, M8-D2 and M8-D3, proposed by round 2) were approved by the user on 2026-11-22 (decision table, "Decisions of 2026-11-22"). On 2026-11-23 the user confirmed Q-SCHEM-30 (M8-D4), approved Q-SCHEM-43 (generator time and script size limits, M8-D5 and M8-D6), Q-SCHEM-44 (absolute-path generators, M8-D7) and Q-SCHEM-45 (default `CAD_ROOT`, M8-D10), and recorded clarifications of Q-SCHEM-42 (M8-D8) and Q-SCHEM-10 (M8-D9) (decision table, "Decisions of 2026-11-23").
+**Clean-room process (J-1, approved 2026-11-13).** The `Evidence:` lines below and the `(xschem ref: ...)` traces in the specs were written by the spec side of a two-team process and exist for traceability only. Implementers SHALL NOT follow them into xschem's source, and no xschem source tree is reachable from implementation sessions (capability `hefesto-licensing`, Requirement "Clean-room rule for GPL-sourced behavior"). All 29 entries were decided on 2026-11-13 in `docs/decisions/m8-decision-table.md`. Q-SCHEM-30 was added on 2026-11-18 from a golden capture and approved by the user the same day, together with the amendment of Q-SCHEM-21 (decision table, "Decisions of 2026-11-18"). Q-SCHEM-31 (drafted 2026-11-20), Q-SCHEM-32 (input limits) and Q-SCHEM-33 (fuzzing) were approved by the user on 2026-11-21; Q-SCHEM-34 to -38 were drafted by the spec team on 2026-11-21 from the round-1 spec issues; Q-SCHEM-34 to -37 were approved by the user on 2026-11-25 with the recommended option, in both modes (decision table, "Decisions of 2026-11-25 (Q-SCHEM-34 to -37)"). Q-SCHEM-38 (option (a)) and Q-SCHEM-42, -40 and -41 (input limits M8-D1, M8-D2 and M8-D3, proposed by round 2) were approved by the user on 2026-11-22 (decision table, "Decisions of 2026-11-22"). On 2026-11-23 the user confirmed Q-SCHEM-30 (M8-D4), approved Q-SCHEM-43 (generator time and script size limits, M8-D5 and M8-D6), Q-SCHEM-44 (absolute-path generators, M8-D7) and Q-SCHEM-45 (default `CAD_ROOT`, M8-D10), and recorded clarifications of Q-SCHEM-42 (M8-D8) and Q-SCHEM-10 (M8-D9) (decision table, "Decisions of 2026-11-23"). Q-SCHEM-46 to -51 (proposed 2026-11-24 and 2026-11-25) were approved by the user on 2026-11-25 (decision table, "Proposed 2026-11-24 and 2026-11-25, approved 2026-11-25"). Q-SCHEM-52 to -54 were drafted by the spec team on 2026-11-26 (M8 round 6) and await the user (decision table, "Proposed 2026-11-26 (awaiting the user)").
 
 **Compatibility setting (D-21, approved 2026-11-13).** Entries in this file that record `Resolution: compat` are governed by the `xschem-compat` setting (default ON) of capability `hefesto-magic-compat-mode`, not by `magic-compat`.
 
@@ -157,7 +157,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: replicate | fix (always report)
 - Recommendation: fix: always report shorts; the netlist text is unaffected.
 - Resolution: fix — shorts are always reported, including top-level shorts on the first pass and in `-nohier` runs. The netlist text is unchanged; only diagnostics differ. Approved 2026-11-13.
-- Answered 2026-11-21 (round-1 spec issue N5, from xschem's source by the spec team): the six short tags and the situation each one names are tabled in `schematic-netlisting` "Net naming order". The `Bus tap` tag is the subject of proposed Q-SCHEM-37. The `Resolution:` is unchanged.
+- Answered 2026-11-21 (round-1 spec issue N5, from xschem's source by the spec team): the six short tags and the situation each one names are tabled in `schematic-netlisting` "Net naming order". The `Bus tap` tag is the subject of Q-SCHEM-37 (approved 2026-11-25). The `Resolution:` is unchanged.
 
 ### Q-SCHEM-17: Simulation preparation must accept schematic decks
 - Kind: doc-mismatch
@@ -323,39 +323,43 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 
 ### Q-SCHEM-34: Out-of-range integers in schematic files
 - Kind: quirk
-- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issues F5 and Y1; awaiting the user)
+- Status: approved 2026-11-25 (drafted 2026-11-21 by the spec team from round-1 spec issues F5 and Y1; user decision of 2026-11-25)
 - xschem behavior: layer, polygon count, rotation and flip are read with C's integer scan (rotation and flip into 16-bit integers), and `sim_pinnumber` with `atoi`; a value that does not fit is undefined behaviour in C. A negative polygon count is passed to the allocator, which is undefined too. Values that fit are stored as read: flip 2 and rotation 5 are kept and written back.
 - Evidence: save.c (instance, text and polygon readers; pin sorting on save); xschem.h (16-bit rotation and flip fields).
 - Options: fix (a layer, count, rotation or flip that does not fit a signed 32-bit integer, a rotation or flip outside -32768..32767, and a negative polygon count make the record skipped as a missing field; a `sim_pinnumber` value outside the 32-bit range is clamped) | replicate glibc's wrap-around for 16-bit fields (not portable, platform-dependent)
 - Recommendation: fix, in both modes. xschem has no defined result to match (the standing rule for undefined input), the records concerned are hostile or corrupt, and skipping them is the existing malformed-field rule.
 - Spec effect: `schematic-file-format` "Record grammar" (rules "Out-of-range integers" and "Polygon count", scenarios "Polygon counts", "Integer that does not fit"); `schematic-symbols-and-libraries` "Pin order" (the integer value of `sim_pinnumber`).
+- Resolution: fix, both modes: a layer, polygon count, rotation or flip that does not fit a signed 32-bit integer, a rotation or flip outside -32768..32767, and a negative polygon count make the record skipped as a missing field (the existing malformed-field rule); a `sim_pinnumber` value outside the 32-bit range is clamped to it. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-35: Bus notation counts that xschem does not handle
 - Kind: quirk
-- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N1; awaiting the user)
+- Status: approved 2026-11-25 (drafted 2026-11-21 by the spec team from round-1 spec issue N1; user decision of 2026-11-25)
 - xschem behavior: a repetition count of 0 (`a*0`, `0*a`) gives an empty list of width 0; a negative count reads undefined memory; a range `step` of 0 or below, or a stepped range whose ends are equal, loops forever; a `rep` of 0 or below leaves an undefined index list.
 - Evidence: expandlabel.y (multiplier and range actions); parselabel.l (integers may be negative). Round-1 CI fuzzing found that an empty expansion crashed Hefesto's naming stage.
 - Options: fix (all of these are syntax errors, the string is used unchanged with unknown width, except that a stepped range with equal ends gives its one element) | replicate the defined case (`a*0` and `0*a` give an empty list of width 0) and fix the undefined ones
 - Recommendation: fix, in both modes. An empty net or pin name has no SPICE meaning, no PDK uses a count of 0, and the undefined cases have no xschem result.
 - Spec effect: `schematic-netlisting` "Bus and vector notation" (scenarios "Zero and negative counts are syntax errors", "Stepped range with equal ends").
+- Resolution: fix, both modes: a repetition count of 0 or below, a range `step` of 0 or below and a `rep` of 0 or below are syntax errors (the string is used unchanged, with unknown width); a stepped range with equal ends is its one element. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-36: `%` with a zero divisor and the text of NaN in `expr`
 - Kind: quirk
-- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N2; awaiting the user)
+- Status: approved 2026-11-25 (drafted 2026-11-21 by the spec team from round-1 spec issue N2; user decision of 2026-11-25)
 - xschem behavior: `%` converts both operands to C `int`; a right operand that truncates to 0 is an integer division by zero (a crash on most hosts), and operands outside the 32-bit range are undefined. A NaN result is printed by the C library: `nan`, or `-nan` on the GNU C library when the sign bit is set, and whether 0/0 sets it depends on the processor. `expr_eng` prints NaN as `nana` or `-nana` and infinity as `infT`.
 - Evidence: eval_expr.y (`%`, result printing); editprop.c (engineering formatter).
 - Options: (a) fix: `%` is fmod(trunc(a), trunc(b)) in binary64 (C's `%` wherever xschem has a result; NaN for a zero divisor), and NaN always prints `nan` (`nana` with `expr_eng`) | (b) as (a), but print `-nan` when the sign bit is set and define the sign of every NaN Hefesto makes, matching x86-64 Linux | (c) make a zero divisor an `expr` error (text copied without the marker)
 - Recommendation: (a), in both modes. No PDK uses either case, and (a) gives the same netlist on every platform (D20).
 - Spec effect: `schematic-netlisting` "expr evaluation" (the `%` and NaN bullets, scenario "Remainder by zero and NaN text").
+- Resolution: fix (a), both modes: `%` is fmod(trunc(a), trunc(b)) in binary64 (C's `%` wherever xschem has a result; NaN for a zero divisor), and NaN always prints `nan` (`nana` with `expr_eng`). Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-37: `Bus tap` shorts when the tap side is already named
 - Kind: quirk
-- Status: proposed (drafted 2026-11-21 by the spec team from round-1 spec issue N4; awaiting the user)
+- Status: approved 2026-11-25 (drafted 2026-11-21 by the spec team from round-1 spec issue N4; user decision of 2026-11-25)
 - xschem behavior: when the tap pin of a `bus_tap` already has a non-automatic name, it is kept, and xschem reports `Error: Bus tap shorted: <bus net> - <tap pin name>` whenever the two texts differ. A bus name and a bit name nearly always differ, so a tap whose bit wire carries the matching label (`DATA[3]` on a tap `[3]` of `DATA[3:0]`) is reported as a short.
 - Evidence: netlist.c (`bus_tap` branch of the instance check).
 - Options: fix (report the `Bus tap` short only when the tap name computed from `lab` differs from the name the tap pin already has, naming those two) | replicate (report whenever the bus net and the tap pin name differ)
 - Recommendation: fix, in both modes. The netlist text is the same either way; Q-SCHEM-16 makes every short fail the run, so the replicated report would fail correct schematics.
 - Spec effect: `schematic-netlisting` "Bus taps" (scenario "Tap side already named").
+- Resolution: fix, both modes: the `Bus tap` short is reported only when the tap name computed from `lab` differs from the name the tap pin already has, and the message names those two. Approved by the user 2026-11-25 with the recommended option.
 
 ### Q-SCHEM-38: Environment, relative library elements and unknown commands in `xschemrc`
 - Kind: platform
@@ -502,3 +506,30 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Recommendation: (a): a paste never changes objects the user did not touch, and it needs no new reference names; (c) keeps the pasted drawing but invents references that xschem files would then carry.
 - Spec effect: `schematic-editing` "Clipboard" (paragraph on embedded symbols; scenario "Pasted embedded symbol does not redefine the document's symbol").
 - Resolution: platform: (a): a paste never changes objects the user did not touch, and it needs no new reference names; (c) keeps the pasted drawing but invents references that xschem files would then carry. Approved by the user 2026-11-25 with the recommended option.
+
+### Q-SCHEM-52: Default library search path of a document without an `xschemrc`
+- Kind: platform
+- Status: proposed (drafted 2026-11-26 by the spec team, M8 round 6 DECIDE, from the round-5 CMD note of task 10.1; awaiting the user)
+- xschem behavior: before any `xschemrc` is evaluated, `XSCHEM_LIBRARY_PATH` holds a built-in value: the user library `~/.xschem/xschem_library`, the system library `${XSCHEM_SHAREDIR}/xschem_library/devices`, then eleven example folders of the installed documentation (`examples`, `ngspice`, `ngspice_verilog_cosim`, `logic`, `xschem_simulator`, `generators`, `inst_sch_select`, `binto7seg`, `pcb`, `rom8k`, `analyses`). The system `xschemrc` leaves it alone (its own lines are commented out); an `xschemrc` that sets the variable replaces it, one that appends to it keeps it. So a schematic in a folder without an `xschemrc` finds the `devices` symbols. The spec said the path is then the document's folder only, so `res.sym` is a missing symbol in Hefesto (SCHEM-CMD-01 works around it with an input `xschemrc`).
+- Evidence: the build configuration's default library path and the start-up code that sets it before the rc files are sourced; `xschemrc` (system rc, commented-out block); task 10.1 round-5 integration note.
+- Options: (a) before the `xschemrc` files run, `XSCHEM_LIBRARY_PATH` is `${XSCHEM_SHAREDIR}/xschem_library/devices` only, both modes | (b) as xschem: also `~/.xschem/xschem_library` first (under the synthetic `env(HOME)` of Q-SCHEM-38 that is `<document folder>/.xschem/xschem_library`) and the documentation folders (Hefesto ships none, so they are dropped as missing) | (c) keep the current spec: the document's folder only when nothing sets the path
+- Recommendation: (a), both modes. The system library is found as in xschem; (b) adds only folders that are always missing or hidden in the document's folder; (c) leaves every placed system symbol missing in a plain folder.
+- Spec effect: `schematic-symbols-and-libraries` "Library search path" (paragraph "Default value", scenarios "Default search path without an xschemrc", "xschemrc replaces the default search path").
+
+### Q-SCHEM-53: Net driver check errors and the simulation deck
+- Kind: other
+- Status: proposed (drafted 2026-11-26 by the spec team, M8 round 6 DECIDE, while specifying xschem's net driver check from SCHEM-NL-09/NL-10; awaiting the user)
+- xschem behavior: the net driver check reports `Error: undriven node: <net>` for a net with no `out` or `inout` pin, which makes the netlist run fail (exit status 10), but the netlist file is still written, so a simulator can still be run on it. PDK testbenches whose gate nets are driven only by sources in a code block (gf180 `tests/test_nfet_03v3.sch`: `vg g 0 0`) fail this check.
+- Evidence: golden cases SCHEM-NL-09, SCHEM-NL-10 (`exitcode.txt` 10, netlist written); the net driver check (traces in `schematic-netlisting` "Errors and warnings").
+- Options: (a) a run whose only errors are driver-check findings still builds the simulation deck, with the findings as warnings of the deck build; `schematic netlist`, `schematic check` and `hefesto-cli --netlist` still fail (exit status 10), both modes | (b) every error stops the deck (`SCHEM-SIM-004`, the current rule), so such testbenches cannot be simulated | (c) the driver check never fails a run in Hefesto (warnings only), both modes, and SCHEM-NL-09/NL-10 get an approved deviation for `exitcode.txt`
+- Recommendation: (a): the netlist status stays xschem's (golden exit status 10), and PDK testbenches whose netlist xschem writes can still be simulated.
+- Spec effect: `schematic-simulation-integration` "Schematic circuit source" (scenario "Undriven node does not block the deck"); `schematic-netlisting` "Errors and warnings" (paragraph "Net driver check").
+
+### Q-SCHEM-54: Shell processing of symbol generator arguments
+- Kind: platform
+- Status: proposed (drafted 2026-11-26 by the spec team, M8 round 6 DECIDE, from the spec issue of task 7.4 on `tier.tcl(@lab\)`; awaiting the user)
+- xschem behavior: the text between the parentheses of a generator reference is not substituted when the symbol is loaded (`@lab` stays `@lab`); `(`, `)`, `,` and spaces become spaces, and the program path plus the rest of the text is run as a shell command line, so the shell splits the words and treats a backslash as an escape character. In the SCHEM golden captures the sky130 generators `tier.tcl` and `res.tcl` were not executable, so the shell refused them (`Permission denied`) and every such instance is a symbol with no `type`.
+- Evidence: the generator reference handling of the symbol loader; golden cases SCHEM-NL-05, NL-21, NL-23 (`stderr.txt`: `Permission denied`, `Warning: Symbol: sky130_tests/tier.tcl(@lab\): no type attribute set`).
+- Options: (a) no shell processing: `argv` is the argument text split at `(`, `)`, `,`, spaces and tabs, empty words dropped, every word kept as written (backslashes included), both modes | (b) apply POSIX shell word rules to the argument text (quotes, backslash escapes) before building `argv`
+- Recommendation: (a). Hefesto runs only Tcl generators in its sandbox and never a shell; (b) would need a shell parser for no PDK benefit (no pinned PDK generator argument holds a quote or a meaningful backslash).
+- Spec effect: `schematic-symbols-and-libraries` "Symbol generators" (paragraph "Arguments", scenario "Generator arguments are not substituted").
