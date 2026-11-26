@@ -639,16 +639,22 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
   }
   view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), key.span_connected_layers);
   in.build_id = ++build_id_;
+  in.sink = build_errors_.open(in.build_id);
   worker_->build(std::move(in));
 }
 
 void View3dView::take_model(const view3d::MeshHandle& model) {
-  if (worker_->idle() && held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
+  if (worker_->idle()) {
+    if (held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
+    build_errors_.release_before(build_id_);
+  }
   if (!model || !build_stack_ || !window_open()) return;
   // A model of an earlier build (one finishing as a new one started, posted
   // before or after start_build): its stack, mode, units or style differ
   // from build_stack_'s, even with as many layers; the next one replaces it.
   if (!model_is_current(*model, build_id_)) return;
+  // The build's mask generation errors, once (Q-MISC-89; ON only, CORE).
+  for (const diag::Diagnostic& d : build_errors_.take(model->build_id)) ctx_.core.dispatcher().report(d);
   model_ = model;
   drawn_stack_ = build_stack_;
   drawable_ = pending_drawable_;

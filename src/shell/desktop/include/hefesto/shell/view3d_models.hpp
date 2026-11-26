@@ -53,9 +53,11 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/render/mesh3d_renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
@@ -394,6 +396,30 @@ struct BuildKey {
 /// and the J1 option.
 [[nodiscard]] view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInputs window_inputs,
                                                bool span_connected_layers);
+
+/// The tab's sinks for the mask generation errors of its builds
+/// (Q-MISC-89, view-3d "Rendered geometry"): one CollectingSink per build,
+/// written on the build thread (BuildInputs::sink), drained on the UI loop
+/// when a model of that build is taken, so each full build reports its
+/// errors once (CORE reports only with magic-compat ON, and never from an
+/// incremental rebuild). The sinks of builds that delivered no current
+/// model are dropped unread.
+class BuildErrorRelay {
+ public:
+  /// A new sink for build `build_id`; it stays valid until
+  /// release_before() drops it.
+  [[nodiscard]] diag::DiagnosticSink* open(std::uint64_t build_id);
+  /// The errors build `build_id` reported that were not taken yet (none
+  /// for a build without a sink).
+  [[nodiscard]] std::vector<diag::Diagnostic> take(std::uint64_t build_id);
+  /// Drops the sinks of builds before `build_id`; called only while no
+  /// build runs (the worker is idle).
+  void release_before(std::uint64_t build_id);
+  [[nodiscard]] std::size_t size() const noexcept { return sinks_.size(); }
+
+ private:
+  std::vector<std::pair<std::uint64_t, std::unique_ptr<diag::CollectingSink>>> sinks_;
+};
 
 /// The change areas of a layout window for the 3D view (in root
 /// coordinates): nullopt when the window does not show `rendered` as its

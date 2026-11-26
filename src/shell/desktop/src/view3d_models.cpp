@@ -428,6 +428,22 @@ view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInput
   return in;
 }
 
+diag::DiagnosticSink* BuildErrorRelay::open(std::uint64_t build_id) {
+  sinks_.emplace_back(build_id, std::make_unique<diag::CollectingSink>());
+  return sinks_.back().second.get();
+}
+
+std::vector<diag::Diagnostic> BuildErrorRelay::take(std::uint64_t build_id) {
+  for (auto& [id, sink] : sinks_) {
+    if (id == build_id) return sink->take();
+  }
+  return {};
+}
+
+void BuildErrorRelay::release_before(std::uint64_t build_id) {
+  std::erase_if(sinks_, [build_id](const auto& entry) { return entry.first < build_id; });
+}
+
 std::optional<ChangeAreas> change_areas(const view::LayoutWindow& window, const db::CellDef* rendered) {
   if (rendered == nullptr || window.root() != rendered) return std::nullopt;
   const view::Redisplay& pending = window.pending_redisplay();

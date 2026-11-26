@@ -11,12 +11,16 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <iterator>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "../view3d/client/client_fixture.hpp"
@@ -1789,4 +1793,106 @@ TEST_CASE("Net highlighted over mask-layer geometry with magic-compat ON",
 TEST_CASE("Net highlighted over mask-layer geometry with magic-compat OFF",
           "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
   check_net_overlay(false);
+}
+
+namespace {
+
+// A technology whose output style cuts contacts too large for any metal1
+// area: generating its CUT layer reports "no room for contacts in area!"
+// (MASK-OPER-004), as in CORE's mask_errors_test.cpp.
+constexpr std::string_view kGenErrTech = R"(tech
+    format 35
+    v3derr
+end
+planes
+    metal1,m1
+    metal2,m2
+end
+types
+    metal1  metal1,m1
+    metal2  metal2,m2
+end
+styles
+    styletype mos
+    metal1 20
+    metal2 21
+end
+contact
+end
+compose
+end
+connect
+    metal1  metal1
+    metal2  metal2
+end
+cifoutput
+style gdsii
+    scalefactor 10
+    layer MET1 m1
+        calma 68 20
+    layer CUT m1
+        squares 0 100000 100
+        calma 70 20
+    render MET1 metal1 1.0 0.5
+end
+cifinput
+end
+drc
+end
+extract
+style default
+    lambda 1
+    step 100
+    sidehalo 0
+    planeorder metal1 0
+    planeorder metal2 1
+    height metal1 0.5 0.3
+end
+)";
+
+std::size_t no_room_count(const std::vector<hefesto::diag::Diagnostic>& ds) {
+  return static_cast<std::size_t>(std::count_if(
+      ds.begin(), ds.end(), [](const hefesto::diag::Diagnostic& d) { return d.code == "MASK-OPER-004"; }));
+}
+
+/// The tab's build of the mask-layer window through its relay: the
+/// MASK-OPER-004 errors of the build's first take, and the size of a
+/// second take.
+std::pair<std::size_t, std::size_t> tab_build_errors(bool compat) {
+  ClientSession s(compat, kGenErrTech);
+  s.ok("specialopen wind3d c3d");
+  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+  BuildErrorRelay relay;
+  view3d::BuildInputs in = build_inputs(s.editor, tab_inputs(s), false);
+  in.build_id = 1;
+  in.sink = relay.open(in.build_id);
+  view3d::MeshWorker worker;
+  worker.build(in);
+  REQUIRE(worker.wait_idle(20000));
+  REQUIRE(worker.current());
+  CHECK(relay.take(2).empty());  // another build's errors are not this one's
+  const std::size_t first = no_room_count(relay.take(in.build_id));
+  const std::size_t second = relay.take(in.build_id).size();
+  CHECK(s.editor.feedback.size() == 0);  // never as feedback
+  relay.release_before(2);
+  CHECK(relay.size() == 0);
+  return {first, second};
+}
+
+}  // namespace
+
+TEST_CASE("the 3D tab reports a mask-layer build's generation errors once with magic-compat ON",
+          "[cap:view-3d][req:Rendered geometry]") {
+  // Regression: the tab passed no BuildInputs::sink, so with magic-compat
+  // ON the desktop never reported the errors (Q-MISC-89).
+  const auto [first, second] = tab_build_errors(true);
+  CHECK(first == 1);
+  CHECK(second == 0);
+}
+
+TEST_CASE("the 3D tab reports no mask-layer generation errors with magic-compat OFF",
+          "[cap:view-3d][req:Rendered geometry]") {
+  const auto [first, second] = tab_build_errors(false);
+  CHECK(first == 0);
+  CHECK(second == 0);
 }

@@ -236,6 +236,9 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   std::unique_ptr<render::VulkanOffscreenTarget> target_;
   std::unique_ptr<render::VulkanMesh3dRenderer> renderer_;
   std::string renderer_error_;
+  // Mask generation errors of each build (Q-MISC-89); declared before the
+  // worker so that it outlives every build writing to it.
+  BuildErrorRelay build_errors_;
   std::unique_ptr<view3d::MeshWorker> worker_;
   std::shared_ptr<Shared> shared_;
   // Technologies a build may still read (kept alive until the worker is idle).
