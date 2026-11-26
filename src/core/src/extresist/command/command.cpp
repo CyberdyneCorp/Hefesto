@@ -5,9 +5,10 @@
 // openspec/changes/m7-extraction/design.md D4, D16): Magic's option table,
 // the lookup with `Ambiguous option: <w>` and `Unknown option: <w>`,
 // `help`, the setting options (extresist/command/options.cpp) and the
-// options that run (extresist/command/run.cpp). `box` prints a network,
-// which needs RESNET's network: it answers CORE-NOTIMPL-008 after its
-// window and type checks.
+// options that run (extresist/command/run.cpp). `box <type>` builds the
+// network of the net under the box's lower-left corner on `type` (RESNET's
+// yank_net and build_network, driven from that point, with no devices and
+// no reduction) and prints its resistors.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResRex.c CmdExtResis
 // (cmdExtresisCmd, the lookup, RES_HELP, RES_AMBIG and RES_BAD), Copyright
@@ -20,6 +21,7 @@
 #include "hefesto/extresist/command/command.hpp"
 
 #include <array>
+#include <cstdio>
 #include <span>
 #include <string>
 #include <utility>
@@ -27,7 +29,6 @@
 #include "db/command_util.hpp"
 #include "extresist/command/options.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
 
 namespace hefesto::extresist {
@@ -62,10 +63,6 @@ constexpr std::array<std::string_view, 21> kOptions{
     "help                 print this message",
 };
 
-std::string option_name(std::string_view entry) {
-  return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
-}
-
 // RES_HELP: each entry on its own line, unindented.
 CommandResult help(const cu::Session& s) {
   std::string text;
@@ -89,7 +86,74 @@ ResistRun run_request(const cu::Session& s, cmd::CommandContext& ctx) {
   return request;
 }
 
-// `box <type>`: the window and type checks; the network print is RESNET's.
+// C's "%.2f" of a float.
+std::string fixed2(double value) {
+  std::array<char, 64> buffer{};
+  (void)std::snprintf(buffer.data(), buffer.size(), "%.2f", value);
+  return buffer.data();
+}
+
+// RES_BOX's failure return leaves ResOptionsFlags at ResOpt_DoSubstrate |
+// ResOpt_Signal | ResOpt_Box: every on/off setting reads off afterwards
+// (magic-compat ON; with it OFF the settings are kept; proposed Q-row
+// R5-RES-6).
+void box_failed(ResistOptions& options, bool magic_compat) {
+  if (!magic_compat) {
+    return;
+  }
+  options.all = options.simplify = options.extout = options.lumped = false;
+  options.silent = options.debug = options.stats = options.blackbox = false;
+}
+
+// ResExtractNet of the net at the box's lower-left corner (a node record
+// with that location and type and, unlike Magic's uninitialised stack
+// record, no devices or drive points), then ResPrintResistorList. Magic's
+// ResPrintDeviceList prints ResRDevList, which is empty outside a run.
+CommandResult box_network(const cu::Session& s, tech::TileType type, const detail::Console& console) {
+  editor::EditorState& editor = *s.editor;
+  if (!editor.extract.current) {
+    console.message("No extraction style: extresist cannot run.");
+    return CommandResult::success();
+  }
+  const db::Point at{editor.box->x0, editor.box->y0};
+  YankRequest yank;
+  yank.area = db::Rect{at.x - 2, at.y - 2, at.x + 2, at.y + 2};
+  yank.start_types = s.tech->connects_to(type);
+  yank.skip = editor.extresist.options.skip;
+  yank.magic_compat = s.magic_compat;
+  BuildInput in;
+  in.technology = s.tech;
+  in.cif = editor.mask.output_styles.current_style();
+  in.start = at;
+  in.driver = NetDriver{at, type, true};
+  in.small_contact_warned = &editor.extresist.small_contact_warned;
+  in.magic_compat = s.magic_compat;
+  auto geometry = yank_net(*editor.box_root, *s.tech, yank);
+  auto built = geometry.ok() ? build_network(geometry.value(), *editor.extract.current, DeviceAnnotations{}, in)
+                             : diag::Outcome<Network>{geometry.error()};
+  if (!built.ok()) {
+    console.message(built.error().text);
+    box_failed(editor.extresist.options, s.magic_compat);
+    return CommandResult::success();
+  }
+  for (const std::string& m : built.value().messages) {
+    console.message(m);
+  }
+  if (built.value().failed) {
+    box_failed(editor.extresist.options, s.magic_compat);
+    return CommandResult::success();
+  }
+  const Network& net = built.value();
+  for (const NetResistor& r : net.resistors) {
+    const db::Point a = net.nodes.at(r.a).location;
+    const db::Point b = net.nodes.at(r.b).location;
+    console.report("r (" + std::to_string(a.x) + "," + std::to_string(a.y) + ") (" + std::to_string(b.x) + "," +
+                   std::to_string(b.y) + ") r=" + fixed2(static_cast<double>(static_cast<float>(r.resistance))));
+  }
+  return CommandResult::success();
+}
+
+// `box <type>`: the window and type checks, then the network print.
 CommandResult box_option(const cu::Session& s, std::span<const std::string> args, const detail::Console& console) {
   if (!s.editor->box || s.editor->box_root == nullptr) {
     console.message("Sorry, the box must appear in one of the windows.");
@@ -103,7 +167,7 @@ CommandResult box_option(const cu::Session& s, std::span<const std::string> args
     console.message("Unrecognized layer (type) name \"" + args.front() + "\"");
     return CommandResult::success();
   }
-  return cmd::m7_not_implemented("extresist box");
+  return box_network(s, *type.id, console);
 }
 
 // `cell`: the selected cell (CmdGetSelectedCell).
@@ -139,7 +203,7 @@ CommandResult run_option(const cu::Session& s, cmd::CommandContext& ctx, std::si
     case detail::kBox:
       return box_option(s, args, octx.console);
     default:
-      return cmd::m7_not_implemented("extresist " + option_name(kOptions.at(option)));
+      return CommandResult::success();  // setting_option handled every other option
   }
 }
 

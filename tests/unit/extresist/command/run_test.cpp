@@ -62,7 +62,7 @@ TEST_CASE("a run with every net passed over writes only the scale line", "[cap:e
   CHECK(s.file("top.res.ext") == extresist::res_ext_scale(*s.editor.extract.current));
 }
 
-// With magic-compat ON `extresist cell` runs on the box cell, as Magic's
+// Q-NETLIST-67 (compat): with magic-compat ON `extresist cell` runs on the box cell, as Magic's
 // ToolGetBox replaces the selected cell; with it OFF on the selected cell.
 TEST_CASE("extresist cell with magic-compat ON runs on the box cell", "[cap:extresist-command][req:Run flow]") {
   Session s;
@@ -202,6 +202,111 @@ TEST_CASE("the driver is the widest group of parallel devices", "[cap:extresist-
   REQUIRE(driver.has_value());
   CHECK_FALSE(driver->drive_only);
   CHECK((driver->location == db::Point{10, 0} || driver->location == db::Point{20, 0}));
+}
+
+namespace {
+
+// A net driven only by narrow devices: W/L 2/8 = 0.25 each, in parallel.
+const char* const kNarrow =
+    "node \"out\" 0 0 0 0 ndiff\nnode \"g\" 0 0 0 0 poly\nnode \"x\" 0 0 0 0 ndiff\n"
+    "device mosfet nfet 10 0 11 1 8 2 \"GND\" \"g\" 8 0 \"out\" 2 0 \"x\" 2 0\n"
+    "device mosfet nfet 20 0 21 1 8 2 \"GND\" \"g\" 8 0 \"out\" 2 0 \"x\" 2 0\n";
+
+}  // namespace
+
+// Standing rule (proposed Q-row R5-RES-1, compat): Magic sums W/L in its
+// int totWL, so a group of devices below W/L 1 drives nothing (NL-RES-02:
+// the active_* nets are never extracted), and the driver of a group that
+// runs to the end of the list is its last-but-one device.
+TEST_CASE("narrow devices drive nothing with magic-compat ON",
+          "[cap:extresist-command][req:Net selection and first cutoff]") {
+  Session s;
+  const auto m = read_model(s, kNarrow);
+  REQUIRE(m.ok());
+  CHECK_FALSE(extresist::choose_driver(m.value(), *m.value().find("out"), true).has_value());
+}
+
+TEST_CASE("narrow devices drive their net with magic-compat OFF",
+          "[cap:extresist-command][req:Net selection and first cutoff]") {
+  Session s(false);
+  const auto m = read_model(s, kNarrow);
+  REQUIRE(m.ok());
+  const auto driver = extresist::choose_driver(m.value(), *m.value().find("out"), false);
+  REQUIRE(driver.has_value());
+  // The group's last device in the net's list (newest first: the first record).
+  CHECK(driver->location == db::Point{10, 0});
+}
+
+TEST_CASE("a parallel group at the end of the list drives from its last-but-one device with magic-compat ON",
+          "[cap:extresist-command][req:Net selection and first cutoff]") {
+  Session s;
+  // Two parallel devices of W/L 2 each; the net's list is newest first.
+  const auto m = read_model(s,
+                            "node \"out\" 0 0 0 0 ndiff\nnode \"g\" 0 0 0 0 poly\nnode \"x\" 0 0 0 0 ndiff\n"
+                            "device mosfet nfet 10 0 11 1 2 4 \"GND\" \"g\" 2 0 \"out\" 4 0 \"x\" 4 0\n"
+                            "device mosfet nfet 20 0 21 1 2 4 \"GND\" \"g\" 2 0 \"out\" 4 0 \"x\" 4 0\n");
+  REQUIRE(m.ok());
+  const std::size_t out = *m.value().find("out");
+  const auto on = extresist::choose_driver(m.value(), out, true);
+  const auto off = extresist::choose_driver(m.value(), out, false);
+  REQUIRE(on.has_value());
+  REQUIRE(off.has_value());
+  CHECK(on->location == db::Point{20, 0});   // t1 of the last step: the list's first entry
+  CHECK(off->location == db::Point{10, 0});  // the group's last entry
+}
+
+// Q-NETLIST-63 (fix, both modes): Magic's ResReadDevice adds a device to
+// the node of its substrate terminal without checking that the node exists,
+// and a global substrate name with no node record crashes extresist
+// (resis/ResReadExt.c:819-820, :725). Hefesto creates the net, which is
+// counted but has no record, and the run completes.
+TEST_CASE("a substrate terminal on a net with no node record does not stop the run",
+          "[cap:extresist-command][req:Input model]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    REQUIRE(s.files()
+                .write_atomic("top.ext",
+                              "timestamp 0\nversion 8.3\ntech restest\nstyle restest\nscale 1 1 1\n"
+                              "node \"s\" 10 100 0 0 ndiff\nnode \"g\" 10 100 10 10 poly\n"
+                              "device mosfet nfet 10 0 11 1 10 10 \"GND!\" \"g\" 20 0 \"s\" 10 0 \"s\" 10 0\n")
+                .ok());
+    extresist::ResistRun r = request(s);
+    r.magic_compat = compat;
+    r.all = true;
+    s.editor.extresist.options.all = true;
+    REQUIRE(extresist::run(s.editor, r, nullptr).ok());
+    const std::vector<std::string> printed = s.take();
+    for (const std::string& line : printed) {
+      UNSCOPED_INFO(line);
+    }
+    CHECK(has_prefix(printed, "Total Nets: 2\n"));
+    CHECK(s.file("top.res.ext") != "<none>");
+  }
+}
+
+TEST_CASE("a net named by a FastHenry node list is not processed", "[cap:extresist-command][req:Run flow]") {
+  extresist::ResistOptions o;
+  extresist::InputNode n;
+  n.name = "out";
+  n.status.node_record = true;
+  n.status.redundant = true;
+  CHECK(extresist::net_skip(n, o, true) == extresist::NetSkip::redundant);
+}
+
+// Regression (NL-RES-03): PaOpen(<cell>, "w", ".res.lump", ".") writes in
+// the current directory only; the cell search path is not tried.
+TEST_CASE("the lump file is written in the current directory", "[cap:extresist-command][req:Lumped resistance file]") {
+  Session s;
+  REQUIRE(s.files().write_atomic("top.ext", kTwoNets).ok());
+  REQUIRE(s.files().create_directories(platform::Path{"sub"}).ok());
+  s.editor.search_paths.path = {"sub", "."};
+  s.editor.extresist.options.lumped = true;
+  REQUIRE(s.run("extresist").ok());
+  CHECK(s.files().exists(platform::Path{"top.res.lump"}));
+  CHECK_FALSE(s.files().exists(platform::Path{"sub/top.res.lump"}));
+  CHECK(s.files().exists(platform::Path{"top.res.ext"}));
+  CHECK_FALSE(s.files().exists(platform::Path{"sub/top.res.ext"}));
 }
 
 TEST_CASE("a drive-located net is driven from its drive point", "[cap:extresist-command][req:Net selection and first cutoff]") {

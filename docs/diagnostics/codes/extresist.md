@@ -15,10 +15,9 @@ workstream. The rows are sorted while compiling
 | `src/core/src/extresist/command/codes.inc` | `EXTRESIST-CMD-*` | RESCMD |
 | `src/core/src/extresist/output/codes.inc` | `EXTRESIST-OUT-*` | RESCMD |
 
-The M7 scaffold (tasks.md 3.2, 3.3) declared no code. While M7 is in
-progress, a command option or function the scaffold declared before its
-workstream implemented it fails with the core code `CORE-NOTIMPL-008`
-([../codes.md](../codes.md)); INTEGRATION retires it at M7 exit.
+The M7 scaffold (tasks.md 3.2, 3.3) declared no code. Since M7 round 5 no
+`extresist` option or function answers the core code `CORE-NOTIMPL-008`
+([../codes.md](../codes.md)): `box`, `geometry` and `fasthenry` run.
 
 ## NET
 
@@ -38,7 +37,10 @@ Codes of the `extresist` command, input model and cutoffs. Owner: RESCMD.
   `include` without a name, in Magic's hash-table order), `Extracting
   <net>` (with ` (Rnode = <r>ohm ; Rthresh = <t>ohm)` under `debug`),
   `Not adding <net> (maxres = <r>ohm)` under `debug`, and the statistics
-  (`Total Nets: ...` or `Total Nodes: 0`).
+  (`Total Nets: ...` or `Total Nodes: 0`), `Writing FastHenry-format
+  geometry file "<cell>.fh"`, `Port <p> reassigned index <i>`
+  (`fasthenry`), and the resistors of `extresist box <type>`
+  (`r (<x1>,<y1>) (<x2>,<y2>) r=<milliohms>`).
 - `EXTRESIST-CMD-002` (warning): a line on the error stream, as Magic's
   TxError: `Value must be either "on" or "off".`, `Usage:  extresist
   threshold|minres|mindelay [value]`, `Unrecognized layer (type) name
@@ -46,11 +48,17 @@ Codes of the `extresist` command, input model and cutoffs. Owner: RESCMD.
   changes, Q-NETLIST-23), the `tolerance` deprecation note, the FastHenry
   frequency notes, `No cell selected`, `Couldn't find def corresponding to
   box`, `Couldn't open output file`, `Node <n> has force label but no
-  drive point or driving device` and `Error in extracting node <n>`.
+  drive point or driving device`, `Error in extracting node <n>`, an output
+  net's `Missing <gate|substrate|source|drain|terminal> connection of
+  device at (<x> <y>) on net <n'>` and `Warning:  Orphaned node "<n>"
+  arbitrarily attached to "<node>"` (ResFixUpConnections and the orphan
+  patch), `Warning: contention over node X|Y position` (FastHenry and
+  geometry node alignment) and `Put the cursor in a layout window.`
+  (`geometry` with no layout window).
 - `EXTRESIST-CMD-003` (error): an output file could not be written or
   committed through extract::AtomicOutput; the previous file is kept.
-- `EXTRESIST-CMD-004` (warning): the run was cancelled; no `.res.ext` or
-  `.res.lump` of the cell was written (Q-EXTRACT-27).
+- `EXTRESIST-CMD-004` (warning): the run was cancelled; no `.res.ext`,
+  `.res.lump` or `.fh` of the cell was written (Q-EXTRACT-27).
 
 ## OUT
 

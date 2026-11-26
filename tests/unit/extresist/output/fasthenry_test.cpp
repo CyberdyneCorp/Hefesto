@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The FastHenry reference plane and counters, and the geometry
-// centerlines (capability extresist-output "FastHenry geometry file",
-// "Geometry centerlines"; tasks.md 14.4, the parts that do not need the
-// network's widths and heights). Owner: RESCMD.
+// The FastHenry reference plane, counters, node alignment, nodes, segments
+// and file end, and the geometry centerlines (capability extresist-output
+// "FastHenry geometry file", "Geometry centerlines"; tasks.md 14.4).
+// Owner: RESCMD.
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
 #include <utility>
 
+#include <vector>
+
+#include "hefesto/extract/tech/style.hpp"
 #include "hefesto/extresist/output/output.hpp"
 
 namespace db = hefesto::db;
 namespace extresist = hefesto::extresist;
+namespace tech = hefesto::tech;
 
 namespace {
 
@@ -89,4 +93,70 @@ TEST_CASE("a centerline element between unnamed nodes", "[cap:extresist-output][
   // A named end keeps its name.
   net.nodes[1].name = "out";
   CHECK(extresist::geometry_elements(net, next)[0].name == "N3_out");
+}
+
+namespace {
+
+// An east-west resistor of type `t` between "a" at (0, 0) and an unnamed
+// node at (100, 2), centerline y = 2, width 4.
+extresist::Network ew_net(tech::TileType t) {
+  extresist::Network net;
+  net.nodes = {net_node(db::Point{0, 0}, "a", 0), net_node(db::Point{100, 2}, "", 0)};
+  net.nodes[0].named = true;
+  net.nodes[0].resistors = {0};
+  net.nodes[1].resistors = {0};
+  extresist::NetResistor r = net_resistor(0, 1, 10.0);
+  r.status = extresist::kStatusEW;
+  r.centerline = 2;
+  r.width = 4;
+  r.type = t;
+  net.resistors = {r};
+  return net;
+}
+
+}  // namespace
+
+// Standing rule (proposed Q-row R5-RES-5, compat): ResAlignNodes' loop
+// stops before the last resistor of the list.
+TEST_CASE("node alignment skips the last resistor with magic-compat ON",
+          "[cap:extresist-output][req:FastHenry geometry file]") {
+  extresist::Network net = ew_net(5);
+  std::vector<std::string> messages;
+  extresist::align_nodes(net, true, messages);
+  CHECK(net.nodes[0].location == db::Point{0, 0});
+}
+
+TEST_CASE("node alignment moves the ends of every resistor with magic-compat OFF",
+          "[cap:extresist-output][req:FastHenry geometry file]") {
+  extresist::Network net = ew_net(5);
+  std::vector<std::string> messages;
+  extresist::align_nodes(net, false, messages);
+  CHECK(net.nodes[0].location == db::Point{0, 2});
+  CHECK(net.nodes[1].location == db::Point{100, 2});
+  CHECK(messages.empty());
+}
+
+TEST_CASE("a net's FastHenry nodes and segments", "[cap:extresist-output][req:FastHenry geometry file]") {
+  hefesto::extract::ExtStyle style;
+  style.heights[5].height = 1.5F;
+  style.heights[5].thickness = 0.2F;
+  const extresist::GeometryContext ctx{nullptr, &style, nullptr, true};
+  const extresist::Network net = ew_net(5);
+  extresist::FastHenryIds ids;
+  std::vector<std::int32_t> node_ids;
+  CHECK(extresist::fasthenry_nodes(net, ctx, ids, node_ids) ==
+        "\n* List of nodes in network\nNa x=0.00 y=0.00 z=1.50\nN1 x=100.00 y=2.00 z=1.50\n");
+  CHECK(node_ids == std::vector<std::int32_t>{-1, 1});
+  CHECK(extresist::fasthenry_segments(net, ctx, ids, node_ids) ==
+        "* Segments connecting nodes in network\nE1 Na N1 w=4.00 h=0.20\n");
+  CHECK(ids.node == 2);
+  CHECK(ids.segment == 2);
+}
+
+// Q-NETLIST-21 (fix): the frequency defaults to 10 MHz (the run passes it);
+// the port order comment lines and the end.
+TEST_CASE("the FastHenry file's end", "[cap:extresist-output][req:FastHenry geometry file]") {
+  CHECK(extresist::fasthenry_trailer(1e9, {{1, "in"}, {2, "out"}}) ==
+        "\n.freq fmin=1e+09 fmax=1e+09\n\n* Order of arguments to SPICE subcircuit call:\n* 1 in\n* 2 out\n\n.end\n");
+  CHECK(extresist::fasthenry_trailer(10e6, {}).starts_with("\n.freq fmin=1e+07 fmax=1e+07\n"));
 }

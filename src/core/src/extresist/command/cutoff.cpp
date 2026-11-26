@@ -13,6 +13,7 @@
 #include "hefesto/extresist/command/cutoff.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <string>
 
@@ -72,30 +73,114 @@ std::optional<Driver> point_driver(const InputNode& node) {
   return Driver{db::Point{p->rect.x0, p->rect.y0}, p->type, true};
 }
 
+// One group of consecutive parallel devices from sorted[i]: its summed W/L
+// and the device Magic takes as the driver (t1).
+struct Group {
+  float wl = 0.0F;
+  const InputDevice* driver = nullptr;
+  std::size_t last = 0;  // index of the group's last entry in `sorted`
+};
+
+// ResProcessNode's inner loop. With magic-compat ON the sum is Magic's int
+// totWL (each step truncated toward zero), and t1 is the device before the
+// last one when the group runs to the end of the list (the loop exits on
+// ptr->nextDev == NULL with t1 from the previous step). With it OFF the
+// sum is a float and the driver is the group's last device.
+Group parallel_group(const InputModel& input, const std::vector<NodeDevice>& sorted, std::size_t i, bool magic_compat) {
+  const InputDevice* first = &input.devices[sorted[i].device];
+  Group g{first->wl, first, i};
+  if (magic_compat) {
+    g.wl = static_cast<float>(static_cast<std::int32_t>(first->wl));
+  }
+  const InputDevice* t1 = first;
+  while (g.last + 1 < sorted.size()) {
+    t1 = &input.devices[sorted[g.last].device];
+    const InputDevice& t2 = input.devices[sorted[g.last + 1].device];
+    if (!parallel(*t1, t2)) {
+      break;
+    }
+    g.wl = magic_compat ? static_cast<float>(static_cast<std::int32_t>(g.wl + t2.wl)) : g.wl + t2.wl;
+    ++g.last;
+  }
+  g.driver = magic_compat ? t1 : &input.devices[sorted[g.last].device];
+  return g;
+}
+
 // The device with the largest summed W/L among the leading non-gate entries.
-std::optional<Driver> device_driver(const InputModel& input, const std::vector<NodeDevice>& sorted) {
+std::optional<Driver> device_driver(const InputModel& input, const std::vector<NodeDevice>& sorted, bool magic_compat) {
   std::optional<Driver> best;
   float max_wl = 0.0F;
   for (std::size_t i = 0; i < sorted.size(); ++i) {
-    const InputDevice& first = input.devices[sorted[i].device];
-    if (!driver_class(first) || sorted[i].terminal == Terminal::subs) {
+    if (!driver_class(input.devices[sorted[i].device]) || sorted[i].terminal == Terminal::subs) {
       continue;
     }
     if (sorted[i].terminal == Terminal::gate) {
       break;
     }
-    float total = first.wl;
-    const InputDevice* last = &first;
-    while (i + 1 < sorted.size() && parallel(*last, input.devices[sorted[i + 1].device])) {
-      last = &input.devices[sorted[++i].device];
-      total += last->wl;
-    }
-    if (total > max_wl) {
-      max_wl = total;
-      best = Driver{last->location, last->tile_type, false};
+    const Group g = parallel_group(input, sorted, i, magic_compat);
+    i = g.last;
+    if (g.wl > max_wl) {
+      max_wl = g.wl;
+      best = Driver{g.driver->location, g.driver->tile_type, false};
     }
   }
   return best;
+}
+
+// devSortFunc as Magic writes it, with a net's address replaced by its
+// reverse first-mention order (a net mentioned later compares lower: the
+// order Magic's captures of NL-RES-01, 05 and 06 show; Magic's real order
+// follows its heap and is not reproducible, Q-NETLIST-69). It is not a
+// strict weak order: a gate entry compares greater than every entry,
+// another gate entry included, so the result depends on the sort algorithm.
+int dev_sort_func(const InputModel& input, const NodeDevice& a, const NodeDevice& b) {
+  if (a.terminal == Terminal::gate) {
+    return 1;
+  }
+  if (b.terminal == Terminal::gate) {
+    return -1;
+  }
+  const InputDevice& da = input.devices[a.device];
+  const InputDevice& db = input.devices[b.device];
+  if (gate_of(da) < gate_of(db)) {
+    return 1;
+  }
+  const auto sd = [](Terminal t) { return t == Terminal::source || t == Terminal::drain; };
+  if (gate_of(da) == gate_of(db) && sd(a.terminal) && sd(b.terminal)) {
+    const std::size_t oa = other_terminal(da, a.terminal);
+    const std::size_t ob = other_terminal(db, b.terminal);
+    if (oa != ob) {
+      return oa < ob ? 1 : -1;
+    }
+    return 0;
+  }
+  return -1;
+}
+
+// glibc's qsort (msort_with_tmp, glibc 2.39 and later, the Debian image
+// Magic's captures run in): a top-down merge sort that takes the left entry
+// when the comparison is <= 0. With devSortFunc this reverses runs of gate
+// entries, so the order of Magic's captures is reproduced on every platform.
+void merge_sort(const InputModel& input, std::vector<NodeDevice>& v, std::vector<NodeDevice>& tmp, std::size_t lo,
+                std::size_t n) {
+  if (n <= 1) {
+    return;
+  }
+  const std::size_t n1 = n / 2;
+  merge_sort(input, v, tmp, lo, n1);
+  merge_sort(input, v, tmp, lo + n1, n - n1);
+  std::size_t i = lo;
+  std::size_t j = lo + n1;
+  const std::size_t mid = lo + n1;
+  const std::size_t end = lo + n;
+  std::size_t k = 0;
+  while (i < mid && j < end) {
+    tmp[k++] = dev_sort_func(input, v[i], v[j]) <= 0 ? v[i++] : v[j++];
+  }
+  while (i < mid) {
+    tmp[k++] = v[i++];
+  }
+  std::copy(tmp.begin(), tmp.begin() + static_cast<std::ptrdiff_t>(k), v.begin() + static_cast<std::ptrdiff_t>(lo));
 }
 
 }  // namespace
@@ -115,6 +200,9 @@ NetSkip net_skip(const InputNode& node, const ResistOptions& options, bool all) 
   if (!node.status.node_record) {
     return NetSkip::no_record;
   }
+  if (node.status.redundant) {
+    return NetSkip::redundant;
+  }
   if (node.status.skip && !all) {
     return NetSkip::skipped;
   }
@@ -123,25 +211,14 @@ NetSkip net_skip(const InputNode& node, const ResistOptions& options, bool all) 
 
 std::vector<NodeDevice> sort_by_gate(const InputModel& input, const std::vector<NodeDevice>& devices) {
   std::vector<NodeDevice> out = devices;
-  std::stable_sort(out.begin(), out.end(), [&](const NodeDevice& a, const NodeDevice& b) {
-    const bool ga = a.terminal == Terminal::gate;
-    const bool gb = b.terminal == Terminal::gate;
-    if (ga || gb) {
-      return !ga && gb;  // gate entries last
-    }
-    const InputDevice& da = input.devices[a.device];
-    const InputDevice& db = input.devices[b.device];
-    if (gate_of(da) != gate_of(db)) {
-      return gate_of(da) < gate_of(db);
-    }
-    return other_terminal(da, a.terminal) < other_terminal(db, b.terminal);
-  });
+  std::vector<NodeDevice> tmp(out.size());
+  merge_sort(input, out, tmp, 0, out.size());
   return out;
 }
 
-std::optional<Driver> choose_driver(const InputModel& input, std::size_t net) {
+std::optional<Driver> choose_driver(const InputModel& input, std::size_t net, bool magic_compat) {
   const InputNode& node = input.nodes.at(net);
-  std::optional<Driver> driver = device_driver(input, sort_by_gate(input, node.devices));
+  std::optional<Driver> driver = device_driver(input, sort_by_gate(input, node.devices), magic_compat);
   if (node.status.drive_located) {
     if (std::optional<Driver> located = point_driver(node)) {
       driver = located;

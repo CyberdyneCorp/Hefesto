@@ -35,7 +35,9 @@ std::vector<std::size_t> order(const std::vector<extresist::NodeDevice>& devices
 }  // namespace
 
 // Regression (Q-NETLIST-69): Magic's qsort compares node addresses; the
-// order is the nets' first-mention order (their index), with a stable sort.
+// order is the nets' reverse first-mention order (a higher index first),
+// sorted as glibc's merge sort sorts with devSortFunc (M7 R5: NL-RES-01's
+// `out.t2` is the nfet at x 400, the later gate entry of the list).
 TEST_CASE("sort_by_gate groups by gate net, then the other S/D net, gate entries last",
           "[cap:extresist-command][req:Net selection and first cutoff]") {
   using extresist::Terminal;
@@ -54,9 +56,9 @@ TEST_CASE("sort_by_gate groups by gate net, then the other S/D net, gate entries
       {1, Terminal::source}, {4, Terminal::source}, {3, Terminal::drain},
   };
   const auto sorted = extresist::sort_by_gate(m, on_net);
-  // Gate 1 (devices 1 and 4 tie on other net 4 and keep their order, then
-  // 3 with other net 5), gate 2 (device 0), then the gate entries 5 and 2
-  // in their order.
-  CHECK(order(sorted) == std::vector<std::size_t>{1, 4, 3, 0, 5, 2});
-  CHECK(sorted[2].terminal == Terminal::drain);
+  // Gate 2 (device 0), gate 1 (3 with other net 5, then devices 1 and 4,
+  // which tie on other net 4 and keep their order), then the gate entries 5
+  // and 2 reversed (devSortFunc says a gate entry is greater than another).
+  CHECK(order(sorted) == std::vector<std::size_t>{0, 3, 1, 4, 2, 5});
+  CHECK(sorted[1].terminal == Terminal::drain);
 }
