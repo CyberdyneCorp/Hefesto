@@ -113,6 +113,21 @@ class TilePlane {
   Tile* split_y(Tile* tile, Coord y);  // TiSplitY: returns the new top tile
   void join_x(Tile* keep, Tile* gone);  // TiJoinX (+ delayed free)
   void join_y(Tile* keep, Tile* gone);  // TiJoinY (+ delayed free)
+  /// TiJoinY of `a` and `b` (in either order) that keeps whichever has
+  /// more tiles along its left and right sides, and returns it. The merged
+  /// tile is the same either way; only its address differs. TiJoinY
+  /// re-stitches every side neighbour of the tile it frees, so painting a
+  /// column of strips that merge one by one into the tile above them cost
+  /// the square of the column (security.md M5-S10); this costs twice the
+  /// smaller side count.
+  Tile* join_y_cheap(Tile* a, Tile* b);
+
+  /// The neighbours the splits, joins and paint merges have re-stitched or
+  /// stepped over so far (never reset). A paint's work grows with the tiles
+  /// along the edges it cuts, not with the tiles it paints; non-Manhattan
+  /// read paints are bounded by it (NMBudget::steps).
+  [[nodiscard]] std::uint64_t stitch_steps() const noexcept { return stitch_steps_; }
+  void add_stitch_steps(std::uint64_t n) noexcept { stitch_steps_ += n; }
 
   /// Releases the tiles freed during the operation.
   void end_operation();
@@ -156,6 +171,7 @@ class TilePlane {
   Tile* bottom_ = nullptr;
   Tile* infinity_ = nullptr;
   std::atomic<Tile*> hint_{nullptr};
+  std::uint64_t stitch_steps_ = 0;
   std::vector<SplitEdit>* split_log_ = nullptr;
   bool may_have_split_ = false;
 };

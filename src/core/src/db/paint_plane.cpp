@@ -228,10 +228,10 @@ class Painter {
     }
     tile->body = new_;
     if ((flags_ & kMrgTop) != 0 && can_merge_y(tile, tile->rt)) {
-      plane_.join_y(tile, tile->rt);
+      tile = plane_.join_y_cheap(tile, tile->rt);
     }
     if ((flags_ & kMrgBottom) != 0 && can_merge_y(tile, tile->lb)) {
-      plane_.join_y(tile, tile->lb);
+      tile = plane_.join_y_cheap(tile, tile->lb);
     }
     return tile;
   }
@@ -240,6 +240,7 @@ class Painter {
   bool needs_side_merge(const Tile* tile) {
     if ((flags_ & kMrgLeft) != 0) {
       for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
+        plane_.add_stitch_steps(1);
         if (tp->body == new_) {
           return true;
         }
@@ -248,6 +249,7 @@ class Painter {
     }
     if ((flags_ & kMrgRight) != 0) {
       for (const Tile* tp = tile->tr; top(tp) > bottom(tile); tp = tp->lb) {
+        plane_.add_stitch_steps(1);
         if (tp->body == new_) {
           return true;
         }
@@ -261,6 +263,7 @@ class Painter {
   Coord left_split_point(const Tile* tile, Coord ysplit) {
     const Tile* last = nullptr;
     for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
+      plane_.add_stitch_steps(1);
       if (tp->body == new_) {
         last = tp;
       }
@@ -283,6 +286,7 @@ class Painter {
     }
     do {
       tp = tp->lb;
+      plane_.add_stitch_steps(1);
     } while (tp->body != new_ && top(tp) > ysplit);
     flags_ &= ~kMrgRight;
     return std::max(ysplit, top(tp));
@@ -322,10 +326,10 @@ class Painter {
       merge_side(tile, tile->tr);
     }
     if ((flags_ & kMrgTop) != 0 && can_merge_y(tile->rt, tile)) {
-      plane_.join_y(tile, tile->rt);
+      tile = plane_.join_y_cheap(tile, tile->rt);
     }
     if ((flags_ & kMrgBottom) != 0 && can_merge_y(tile->lb, tile)) {
-      plane_.join_y(tile, tile->lb);
+      tile = plane_.join_y_cheap(tile, tile->lb);
     }
     return tile;
   }
