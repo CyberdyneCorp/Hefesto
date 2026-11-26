@@ -67,6 +67,12 @@ inline constexpr std::string_view kExtractNotImplemented = "CORE-NOTIMPL-008";
 // or function the M9 scaffold declared before its workstream implemented it
 // (lvs/not_implemented.hpp, sim/not_implemented.hpp). Retired at M9 exit.
 inline constexpr std::string_view kM9NotImplemented = "CORE-NOTIMPL-009";
+// Scaffold stubs of the M10 areas plot and route (and display/export)
+// (openspec/changes/m10-plot-route/design.md D22, tasks.md 3.1): a command
+// or function the M10 plot/route scaffold declared before its workstream
+// implemented it (plot/not_implemented.hpp, route/not_implemented.hpp).
+// Retired at M10 exit.
+inline constexpr std::string_view kPlotRouteNotImplemented = "CORE-NOTIMPL-010";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option

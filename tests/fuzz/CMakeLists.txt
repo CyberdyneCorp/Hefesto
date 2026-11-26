@@ -50,6 +50,9 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_schem_expr       # expr evaluation and format substitution (schematic-netlisting; m8 design D19)
   fuzz_lvs_spice        # LVS SPICE/CDL netlists and includes (lvs-netlist-input; m9 design D20)
   fuzz_sim_frames       # simulation worker frames and WorkerEngine (simulation-engine-embedding; m9 design D9, D20)
+  fuzz_plot_section     # the technology `plot` section (plot-output; m10-plot-route design D20)
+  fuzz_pnm_cmap_dstyle  # PNM colour-map and display-style files (plot-output; m10-plot-route design D20)
+  fuzz_mzrouter_section # the technology `mzrouter` section (router-maze; m10-plot-route design D20)
 )
 
 if(HEFESTO_BUILD_FUZZ)

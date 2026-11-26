@@ -20,6 +20,8 @@
 #include <utility>
 
 #include "hefesto/mask/style/style.hpp"
+#include "hefesto/plot/tech/plot_tech.hpp"
+#include "hefesto/route/tech/styles.hpp"
 #include "tech/build_state.hpp"
 #include "tech/reader.hpp"
 
@@ -289,10 +291,43 @@ std::optional<CifGridInfo> first_style_grid(const Technology& tech) {
                      style->has_option(mask::style_option::minimum_grid)};
 }
 
-std::shared_ptr<const Technology> publish(Data d) {
+// The last occurrence of the raw section `name` (a repeated section is
+// read again from its start, as the readers' init procedures run again),
+// or nullptr when the file has none.
+const RawSection* last_raw_section(const Data& d, std::string_view name) {
+  const auto it = std::find_if(d.raw_sections.rbegin(), d.raw_sections.rend(),
+                               [name](const RawSection& raw) { return raw.name == name; });
+  return it == d.raw_sections.rend() ? nullptr : &*it;
+}
+
+// What publish hands to the section readers of M10 plot/route.
+struct PublishInput {
+  platform::FileSystem& fs;     // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+  diag::DiagnosticSink& sink;   // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
+};
+
+// M10 plot/route hand-offs (openspec/changes/m10-plot-route/design.md D4,
+// D6, D22): the `plot` section to plot::read_plot_section (PLOTTECH) and
+// the `mzrouter` section to route::read_mzrouter_section (MZTECH), once
+// the types and contacts are final. Their messages come after the whole
+// file is read. The DRC-dependent part of the router styles
+// (route::derive_after_load) runs on the session's copy, after the DRC
+// rules are installed and after every rescale (route::refresh_session_styles).
+void read_plot_and_route(const std::shared_ptr<Data>& data, const PublishInput& in) {
+  const Technology view{data};
+  plot::StyleSource styles;
+  styles.files = &in.fs;
+  data->plot = std::make_shared<const plot::PlotTech>(
+      plot::read_plot_section(last_raw_section(*data, "plot"), view, styles, in.sink));
+  data->maze_styles = std::make_shared<const route::MazeStyles>(
+      route::read_mzrouter_section(last_raw_section(*data, "mzrouter"), view, in.sink));
+}
+
+std::shared_ptr<const Technology> publish(Data d, const PublishInput& in) {
   publish_contacts(d);
   auto data = std::make_shared<Data>(std::move(d));
   data->cif_grid = first_style_grid(Technology{data});
+  read_plot_and_route(data, in);
   return std::make_shared<const Technology>(std::move(data));
 }
 
@@ -375,7 +410,7 @@ diag::Outcome<std::shared_ptr<const Technology>> load_technology_text(std::strin
     result.data.fringe_halo = result.data.format_version >= 34;  // Q-TECH-32, magic-compat OFF
   }
   result.data.file_name = file_name.string();
-  return publish(std::move(result.data));
+  return publish(std::move(result.data), PublishInput{fs, sink});
 }
 
 diag::Outcome<std::shared_ptr<const Technology>> load_technology(platform::FileSystem& fs, const platform::Path& path,
@@ -427,7 +462,7 @@ diag::Outcome<std::shared_ptr<const Technology>> reload_sections(platform::FileS
   if (!result.ok) {
     return load_failure(path);
   }
-  return publish(std::move(result.data));
+  return publish(std::move(result.data), PublishInput{fs, sink});
 }
 
 GridScale apply_post_load(const Technology& tech, GridScale grid, diag::DiagnosticSink& sink) {
@@ -459,7 +494,7 @@ std::shared_ptr<const Technology> builtin_technology() {
     const platform::Path file{"minimum.tech"};
     RunResult result = run_load(RunInput{kMinimumTech, file, fs, LoadOptions{}, sink}, std::move(start));
     result.data.file_name.clear();  // the bootstrap does not count as a user choice
-    return publish(std::move(result.data));
+    return publish(std::move(result.data), PublishInput{fs, sink});
   }();
   return minimum;
 }

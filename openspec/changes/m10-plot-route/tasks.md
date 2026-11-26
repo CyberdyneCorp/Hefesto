@@ -41,7 +41,8 @@ How this plan runs:
 
 ## 3. SCAFFOLD (R1; after G0)
 
-- [ ] 3.1 Module skeletons of design D3 (`plot/{tech,params,cmd,io,ps,pnm}`, `display/export`, `route/{tech,maze,iroute,diag}`) with `sources.cmake`, `codes.inc` and the area-contract headers of design "Area contracts"; `docs/diagnostics/codes/plot.md` and `route.md`; the `CORE-NOTIMPL-010` row; the `plot`, `iroute`, `*iroute` and `*mzroute` commands registered and answering `CORE-NOTIMPL-010`. Verify the build on the three CI platforms, `check_core_includes.py`, and the codes docs check.
+- [x] 3.1 Module skeletons of design D3 (`plot/{tech,params,cmd,io,ps,pnm}`, `display/export`, `route/{tech,maze,iroute,diag}`) with `sources.cmake`, `codes.inc` and the area-contract headers of design "Area contracts"; `docs/diagnostics/codes/plot.md` and `route.md`; the `CORE-NOTIMPL-010` row; the `plot`, `iroute`, `*iroute` and `*mzroute` commands registered and answering `CORE-NOTIMPL-010`. Verify the build on the three CI platforms, `check_core_includes.py`, and the codes docs check.
+  - As landed (base commit "Scaffold the plot and route areas"): the areas, headers and stubs of design "As-landed scaffold contracts"; `Technology::plot()` and `Technology::maze_styles()` read in the loader's publish step; `EditorState::plot` and `EditorState::iroute`; the derived router styles in the session through `route::refresh_session_styles`, called after a technology load, `scalegrid` and a finer-grid `.mag` read; the three section fuzz targets registered; UI-G-005's reason no longer names the four commands. Verified locally (macOS, `-Werror`): `[m10-plot-route-scaffold]` tests, the codes docs test, `check_core_includes.py`; the Linux legs run in CI.
 
 ## 4. PLOTTECH: the `plot` section (R1; after 3)
 

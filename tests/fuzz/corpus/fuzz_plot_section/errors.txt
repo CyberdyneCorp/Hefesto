@@ -1,0 +1,23 @@
+metal1 12 S
+style
+style postscript extra
+style nosuch
+metal1 12 S
+style postscript
+metal1 1 2 3
+metal1 x S
+metal1 12 Q
+style versatec
+metal1 1
+metal1 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+style colorversatec
+style gremlin
+metal1 9
+style pixels
+style pnm
+color nosuch.cmap
+dstyle nosuch.dstyle
+draw nosuch
+draw metal1 nosuch_style
+map nosuch metal1
+map metal1

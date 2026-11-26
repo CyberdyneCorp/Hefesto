@@ -34,6 +34,7 @@
 #include "hefesto/lef/tech/lifecycle.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
+#include "hefesto/route/iroute/session.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/wiring/wiring.hpp"
 #include "tech/build_state.hpp"
@@ -468,6 +469,8 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     drc::rescale_rules(ed, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b));
     // scale_layout ran LefTechScale; magic-compat OFF refills from the rescaled rules.
     lef::refill_layer_table(ed, ed.drc.compat_settings());
+    // CmdScaleGrid's MZAfterTech + IRAfterTech, after DRCTechScale (M10 plot/route D4).
+    route::refresh_session_styles(ed, ctx.sink());
     const mask::RescaleStep step = mask::rescale_output_styles(
         ed.mask.output_styles, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b), ed.drc.compat_settings());
     for (const diag::Diagnostic& d : step.messages) {
@@ -590,6 +593,8 @@ void install_technology(editor::EditorState& editor, platform::FileSystem& files
   reload_display_styles(editor, files, magic_compat);
   // M7: the session's extraction style (editor/extract_hook.hpp, M7 design D7, D20).
   hefesto::editor::install_extract_styles(editor, sink);
+  // M10: TechLoad's MZAfterTech + IRAfterTech (route/iroute/session.hpp, M10 plot/route design D4).
+  route::refresh_session_styles(editor, sink);
 }
 
 }  // namespace

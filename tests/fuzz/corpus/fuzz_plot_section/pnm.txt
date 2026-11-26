@@ -1,0 +1,10 @@
+style pnm
+draw metal1
+draw metal2
+draw polysilicon
+draw ndiffusion
+map polycontact polysilicon metal1
+map m2contact metal1 metal2
+map m3contact metal2 metal3
+draw metal3 metal3
+default
