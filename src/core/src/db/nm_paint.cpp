@@ -432,10 +432,21 @@ struct PaintFrame {
 // the unit and golden suites). Once the budget is spent a piece still on
 // the diagonal is filled as a rectangle and reported off grid, as Magic
 // does for a piece it cannot quarter (Q-MODEL-4).
+//
+// The pieces do not bound the work: each re-stitches every tile along the
+// edges it cuts, and beside the chains of earlier paints a tall tile has
+// tens of thousands of them, so the 1024 pieces of one read triangle took
+// 3.9 x 10^8 steps (fuzz_cif_reader, security.md M5-S10). A budget with
+// `steps` (read paints) stops the paint once it has spent them and fills
+// the rest of the triangle's area as a rectangle (Q-MODEL-38).
 class NMPainter {
  public:
   NMPainter(TilePlane& plane, Body exact, const ResultRow& row, bool magic_compat, NMBudget& budget)
-      : plane_(plane), row_(row), compat_(magic_compat), budget_(budget) {
+      : plane_(plane),
+        row_(row),
+        compat_(magic_compat),
+        budget_(budget),
+        start_steps_(plane.stitch_steps()) {
     d_.row = &row;
     d_.dir = (exact & kDirectionBit) != 0 ? 1 : 0;
     d_.side = (exact & kSideBit) != 0 ? 1 : 0;
@@ -448,6 +459,10 @@ class NMPainter {
   bool run(const Rect& area) {
     enter(area);
     while (!frames_.empty()) {
+      if (plane_.stitch_steps() - start_steps_ >= budget_.steps) {
+        fill_rest(area);
+        break;
+      }
       PaintFrame& f = frames_.back();  // deque: stays valid while children are pushed
       if (f.next == f.rects.end()) {
         frames_.pop_back();
@@ -475,6 +490,15 @@ class NMPainter {
       return;
     }
     f.next = f.rects.begin();
+  }
+
+  // The paint spent its stitch steps (NMBudget::steps): what is left of the
+  // triangle is filled with the triangle's whole area, in one rectangle
+  // paint, as a piece past the piece budget is filled with its own.
+  void fill_rest(const Rect& area) {
+    frames_.clear();
+    paint_plane(plane_, area, row_);
+    off_grid_ = true;
   }
 
   // The one-tile case; returns true when painting is complete.
@@ -629,6 +653,7 @@ class NMPainter {
   const bool compat_;
   DiagInfo d_;
   NMBudget& budget_;
+  const std::uint64_t start_steps_;  // the plane's stitch steps when the paint started
   std::deque<PaintFrame> frames_;
   bool off_grid_ = false;  // DBNMPaintPlane0's result, OR-ed over every level
 };

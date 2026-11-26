@@ -78,8 +78,18 @@ namespace hefesto::mask {
 /// database paint. The pool bounds the pieces of a whole read, so the
 /// read's non-Manhattan work stays below kPieces * (kPool + kPerTriangle *
 /// triangles): about 1.05M tile steps per triangle read, at most.
+///
+/// That n^2 holds over a plane of large tiles only. A piece re-stitches
+/// every tile along the edges it cuts, so a tall triangle cut beside the
+/// chains of earlier paints pays for all of their tiles at every piece:
+/// 3.9 x 10^8 steps for one triangle of an 18 KiB CIF file (security.md
+/// M5-S10). A read paint therefore also stops after kSteps stitch steps
+/// (db::NMBudget::steps, Q-MODEL-38, proposed) and fills the rest of its
+/// triangle's area as a rectangle; a gf180mcu_fd_io chain of 910 pieces
+/// spends about 10^4.
 struct ReadTriangleBudget {
   static constexpr std::size_t kPieces = 1024;
+  static constexpr std::uint64_t kSteps = std::uint64_t{kPieces} * kPieces;
   static constexpr std::size_t kPool = std::size_t{1} << 16;
   static constexpr std::size_t kPerTriangle = 1024;
   static constexpr std::size_t kPolygonGrant = std::size_t{1} << 16;
