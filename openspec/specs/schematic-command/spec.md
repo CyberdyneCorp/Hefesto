@@ -130,7 +130,7 @@ Compatibility: native
 ### Requirement: Headless use
 The headless CLI (capability `hefesto-architecture`, Requirement "Headless command-line tool") SHALL run `schematic` commands without a display, including `open`, `netlist`, `simulate` (with `-wait`), `getprop`, `setprop` and `save`. A command-line form of the headless executable (`hefesto-cli`) SHALL netlist a schematic in one call: `hefesto-cli --netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]`, where `--lvs` turns on options `lvs_netlist` and `lvs_ignore` (capability `schematic-netlisting`). It SHALL exit with status 0 on success, 10 when the netlist run reports failure (as xschem's netlist exit code), and 1 on other errors.
 
-Hefesto SHALL NOT print xschem's own driver text (its start-up and `sourcing` lines, the `== <cell>` netlist banner); how the golden SCHEM cases compare their stdout and stderr with xschem's, which hold that text, is proposed Q-SCHEM-46 (awaiting the user).
+Hefesto SHALL NOT print xschem's own driver text (its start-up and `sourcing` lines, the `== <cell>` netlist banner); how the golden SCHEM cases compare their stdout and stderr with xschem's, which hold that text, is Q-SCHEM-46 (approved by the user 2026-11-25, option (b)): the capture harness filters xschem's driver text out of the captured stdout and stderr, and every other line the case prints stays compared.
 
 Compatibility: native
 

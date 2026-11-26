@@ -176,7 +176,9 @@ For an instance of type `bus_tap` with at least two pins, pin 1 connects to a bu
 
 An empty or missing `lab` gives no tap name: pin 0 stays unnamed and later gets an automatic name (step 3 of Requirement "Net naming order"). A tap name spreads from pin 0.
 
-When pin 0 already has a non-automatic name, that name SHALL be kept and pin 0 SHALL NOT be renamed. xschem then reports `Error: Bus tap shorted: <bus> - <pin 0 name>` whenever the two texts differ, which is almost always (a bus name is not a bit name). Hefesto SHALL instead report the `Bus tap` short only when the tap name computed from `lab` differs from the name pin 0 already has, naming those two, in both modes (proposed Q-SCHEM-37, recommendation `fix`: the netlist text is the same either way, only the diagnostic and the exit status differ; awaiting the user).
+When pin 0 already has a non-automatic name, that name SHALL be kept and pin 0 SHALL NOT be renamed. The `Bus tap` short SHALL be reported only when the tap name computed from `lab` differs from the name pin 0 already has, as `Error: Bus tap shorted: <tap name> - <pin 0 name>`, naming those two, in both modes (Q-SCHEM-37, `Resolution: fix`, approved by the user 2026-11-25). An empty or missing `lab` gives no tap name and so no `Bus tap` short. Like every short, it fails the netlist run (Q-SCHEM-16). The netlist text does not depend on this rule; only the diagnostic and the exit status do.
+
+Informative: xschem reports `Error: Bus tap shorted: <bus> - <pin 0 name>` whenever the bus net and the name pin 0 already has differ, which is almost always (a bus name is not a bit name), so it reports correct schematics as shorted. Hefesto does not replicate this in either mode.
 
 Compatibility: exact
 
@@ -195,7 +197,7 @@ Compatibility: exact
 #### Scenario: Tap side already named
 - **GIVEN** a bus tap with `lab=[3]` whose pin 1 is on net `DATA[3:0]` and whose pin 0 wire carries a label `DATA[3]` that comes before the bus label in instance order, and a second such tap with `lab=[2]` whose pin 0 wire carries a label `X`
 - **WHEN** the schematic is netlisted
-- **THEN** the pin 0 nets SHALL be `DATA[3]` and `X`, and exactly one short SHALL be reported, `Error: Bus tap shorted: DATA[2] - X` (proposed Q-SCHEM-37)
+- **THEN** the pin 0 nets SHALL be `DATA[3]` and `X`, and exactly one short SHALL be reported, `Error: Bus tap shorted: DATA[2] - X`, with `xschem-compat` ON or OFF (Q-SCHEM-37)
 
 ### Requirement: Bus and vector notation
 Net names, pin names and instance names SHALL be expanded into comma-separated lists of single names by this grammar. A string that contains none of `*`, `,`, `.` and `:`, or that starts with `$`, SHALL be returned unchanged with width 1.
@@ -227,7 +229,7 @@ Lexical rules:
 - **Trailer** (`item-suffix`): characters right after `]` that are not `*`, `,` or `)` start a trailer, a run of name characters, blanks, `(`, `)` and `*`; it is appended to every element (`A[1:0]_n` is `A[1]_n,A[0]_n`).
 - **Precedence.** `*` binds tighter than `,`, and both group from the left: `2*a,b` is `a,a,b` and `a,b*2` is `a,b,b`; parentheses group explicitly.
 
-Values that xschem does not handle (it loops forever, reads undefined memory or gives an empty list) SHALL be syntax errors, in both modes (proposed Q-SCHEM-35, recommendation `fix`, awaiting the user): a repetition count of 0 or below (`a*0`, `0*a`, `a*-1`; xschem gives an empty list of width 0 for 0), a `step` of 0 or below, and a `rep` of 0 or below. A stepped range `i:j:step` or `i..j..step` with i = j is the single element i (xschem loops forever; same proposed row).
+Values that xschem does not handle (it loops forever, reads undefined memory or gives an empty list) SHALL be syntax errors, in both modes (Q-SCHEM-35, `Resolution: fix`, approved by the user 2026-11-25): a repetition count of 0 or below (`a*0`, `0*a`, `a*-1`; xschem gives an empty list of width 0 for 0), a `step` of 0 or below, and a `rep` of 0 or below. A stepped range `i:j:step` or `i..j..step` with i = j is the single element i, in both modes (xschem loops forever; Q-SCHEM-35).
 
 **Input limits** (approved by the user on 2026-11-21, Q-SCHEM-32; both modes): one expansion SHALL give at most 1,048,576 (2^20) names (`kMaxBusBits`) and at most 67,108,864 bytes (64 MiB, `kMaxBusBytes`) of expanded text, commas included; parentheses SHALL nest at most 256 deep; index and count arithmetic SHALL NOT overflow. Input past a limit SHALL be used unchanged with unknown width, like a syntax error, and SHALL report the warning `bus expansion of <string> exceeds a limit (1048576 names, 67108864 bytes or 256 nested parentheses); used unchanged` (`SCHEM-NET-006`), where `<string>` is cut to its first 80 bytes followed by `...` when longer.
 
@@ -257,11 +259,11 @@ Compatibility: exact
 
 #### Scenario: Zero and negative counts are syntax errors
 - **WHEN** `a*0`, `0*a`, `D[7:0:0]`, `D[7:0:-2]` and `D[3:0:1:0]` are expanded, with `xschem-compat` ON or OFF
-- **THEN** each SHALL report `syntax error in <string>` and SHALL be used unchanged with unknown width (proposed Q-SCHEM-35)
+- **THEN** each SHALL report `syntax error in <string>` and SHALL be used unchanged with unknown width (Q-SCHEM-35)
 
 #### Scenario: Stepped range with equal ends
-- **WHEN** `D[3:3:2]` is expanded
-- **THEN** the result SHALL be `D[3]` with width 1
+- **WHEN** `D[3:3:2]` and `Q[3..3..2]` are expanded, with `xschem-compat` ON or OFF
+- **THEN** the results SHALL be `D[3]` and `Q3`, each with width 1 (Q-SCHEM-35)
 
 #### Scenario: Expansion past the limits
 - **WHEN** `A[1048576:0]`, a 128-byte name followed by `[1048575:0]` (more than 64 MiB of text) and a name inside 300 nested parentheses are expanded, with `xschem-compat` ON or OFF
@@ -374,9 +376,9 @@ Text SHALL be scanned for the markers `expr(`, `expr_eng(` and `expr_eng4(`. Tex
 - **functions** of one argument: `int` (truncate toward zero, in floating point: no integer conversion, so any finite value works), `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log` (base 10), `ln`, `exp`, `sqrt`, `round6`, `round1` (round to 6 or 1 significant digits), `round`
 - **rounding**: `round(x)` rounds half away from zero, computed as floor(x + 0.5) for x > 0 and ceil(x − 0.5) for x < 0 (so 2.5 gives 3, −2.5 gives −3, and 0.49999999999999994 gives 1, as the addition rounds up); 0, −0, NaN and infinities are returned unchanged. `round6(x)` and `round1(x)` (n = 6 or 1) return x unchanged when x is 0; otherwise they take s = 10^(ceil(log10(|x|)) − n) and return round(x / s) · s, so −123 with n = 2 would give −120 and 9.96 gives 10. NaN gives NaN, and an infinite x gives NaN
 - **operators**, lowest to highest precedence: `?:` (right-assoc), `==` and `!=`, `<` `>` `<=` `>=`, `+` and `-`, `*` `/` `%`, unary minus, `^` (power by C `pow`, right-assoc), parentheses
-- **`%`** truncates both operands toward zero and gives the remainder with the sign of the left operand (`7 % 3` is 1, `-7.9 % 2` is −1, `7 % 0.5` uses 0 as the right operand). xschem converts the operands to C `int`, so a right operand that truncates to 0, or an operand outside the 32-bit range, is undefined (a crash on most hosts). Hefesto SHALL compute fmod(trunc(a), trunc(b)) in binary64, which equals C's `%` for every pair xschem handles, gives NaN when trunc(b) is 0, and is exact for operands up to 2^53, in both modes (proposed Q-SCHEM-36, recommendation `fix`, awaiting the user)
+- **`%`** truncates both operands toward zero and gives the remainder with the sign of the left operand (`7 % 3` is 1, `-7.9 % 2` is −1, `7 % 0.5` uses 0 as the right operand). xschem converts the operands to C `int`, so a right operand that truncates to 0, or an operand outside the 32-bit range, is undefined (a crash on most hosts). Hefesto SHALL compute fmod(trunc(a), trunc(b)) in binary64, which equals C's `%` for every pair xschem handles, gives NaN when trunc(b) is 0, and is exact for operands up to 2^53, in both modes (Q-SCHEM-36, `Resolution: fix` option (a), approved by the user 2026-11-25)
 - **nesting**: parentheses, function calls and unary operators SHALL nest at most **200** levels (`kMaxExprDepth`), in both modes (input limit approved by the user on 2026-11-21, Q-SCHEM-32). Deeper input SHALL fail like a syntax error (the errors rule below) and SHALL report the warning `expr nested deeper than 200 levels; text copied without evaluation` (`SCHEM-NET-006`)
-- **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists (proposed Q-SCHEM-36, recommendation: always `nan`, so netlists are identical on every platform, D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
+- **NaN and infinity**: an infinite result prints `inf` or `-inf` with `expr`; a NaN result prints `nan` whatever its sign bit, on every host. xschem prints the C library's text, which on the GNU C library is `-nan` when the sign bit is set, and whether an invalid operation such as 0/0 sets it depends on the processor, so no single xschem text exists; Hefesto SHALL always print `nan`, in both modes, so netlists are identical on every platform (Q-SCHEM-36 option (a), D20). With `expr_eng` and `expr_eng4`, xschem's engineering formatter sends infinities to the `T` branch and NaN to the `a` branch: Hefesto SHALL print `infT`, `-infT` and `nana`
 - **result**: `expr` prints with C `%.15g`; `expr_eng` prints in engineering notation with the `ev_precision` setting (default 4) significant digits; `expr_eng4` with 4. Engineering notation divides by 1e12, 1e9, 1e6 or 1e3 for |x| above 0.999999 times that power (suffix `T`, `G`, `MEG`, `k`), keeps the value for |x| > 0.0999999, else multiplies by 1e3 ... 1e18 (suffix `m`, `u`, `n`, `p`, `f`, `a`); |x| < 0.999999e-23 prints `0`.
 - **errors**: on a syntax error or an unknown identifier, the rest of the text from the failing expression on SHALL be copied with every `expr(`, `expr_eng(` or `expr_eng4(` marker and its matching `)` removed; the single quotes of `expr('...')` are kept.
 
@@ -411,7 +413,7 @@ Compatibility: exact
 #### Scenario: Remainder by zero and NaN text
 - **GIVEN** `xschem-compat` ON or OFF
 - **WHEN** `expr(7%3)`, `expr(-7.9%2)`, `expr(7%0.5)`, `expr(0/0)` and `expr_eng(0/0)` are evaluated
-- **THEN** they SHALL give `1`, `-1`, `nan` (no crash), `nan` and `nana`, on every platform (proposed Q-SCHEM-36)
+- **THEN** they SHALL give `1`, `-1`, `nan` (no crash), `nan` and `nana`, on every platform (Q-SCHEM-36)
 
 #### Scenario: Nesting past 200 levels
 - **GIVEN** `xschem-compat` ON or OFF
