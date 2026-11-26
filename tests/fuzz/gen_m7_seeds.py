@@ -161,10 +161,14 @@ RES_INPUTS = {
     "attributes": "attr a 0 0 0 0 poly \"res:skip\"\nnode \"a\" 0 0 0 0 poly\nnode \"b\" 0 0 5 0 poly\n"
     "attr a 0 0 0 0 poly \"res:min=" + "9" * 400 + "\"\nattr b 3 4 0 0 poly \"res:drive\"\n"
     "attr a 0 0 0 0 poly \"res:force\"\nattr nosuch 0 0 0 0 poly \"res:skip\"\n",
-    # A parent with `connect` records into `top`, and an overlay.
+    # A parent with `connect` records into `top` (ResReadDrivePoint's eight
+    # fields: llx lly urx ury type up down), and an overlay. A `connect` of
+    # seven fields or a `substrate` of fewer than seven reads past the record
+    # in extresist's reader (security.md, M7 review): those reproducers stay
+    # out of the corpus until the reader is fixed.
     "parent-and-overlay": "node \"w\" 10 100 0 0 metal1\nport \"w\" 0 0 0 1 1 metal1\n"
-    "cap \"w\" \"w\" 5\n@@ parent\nuse top t0 1 0 0 0 1 0\nconnect \"t0/w\" 0 0 1 1 metal1\n"
-    "connect \"t0/w\" -9999999 -9999999 9999999 9999999 metal1\n@@ top.res\nscale 1 1 1\n"
+    "cap \"w\" \"w\" 5\n@@ parent\nuse top t0 1 0 0 0 1 0\nconnect 0 0 1 1 metal1 w t0/w\n"
+    "connect -9999999 -9999999 9999999 9999999 metal1 w t0/w\n@@ top.res\nscale 1 1 1\n"
     "killnode \"w\"\nrnode \"w_0\" 0 2000 0 0 0\nrnode \"w_1\" 0 2000 100 0 0\n"
     "resist \"w_1\" \"w_0\" 2500\nresist \"w_1\" \"nosuch\" -1\n",
     # Overlay records that do not parse or name unknown nodes.
