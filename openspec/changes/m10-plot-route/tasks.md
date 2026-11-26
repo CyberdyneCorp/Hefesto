@@ -1,7 +1,7 @@
 # Tasks
 
 How this plan runs:
-- **Section 1 comes first.** No decision this plan cites is approved yet (`docs/decisions/m10-plot-route-decision-table.md`). The tasks below follow the recommended options. If the user picks another option, the affected tasks are revised in section 1 before gate G0 passes.
+- **Section 1 came first.** Every decision it cites was approved on 2026-11-25 (`docs/decisions/m10-plot-route-decision-table.md`), and the tasks below follow the approved options. G0 passed on 2026-11-26.
 - Gates and rounds follow design D1:
   - G0: section 1 is done.
   - G1-PLOT: the MISC-PLOT capture (section 2). The plot implementation waits only for it.

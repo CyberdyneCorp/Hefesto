@@ -14,6 +14,7 @@ The contents of most sections are owned by other capabilities:
 - `extract`: see the `extract-*` capabilities.
 - `lef`: see the `lef-*` capabilities.
 - `mzrouter`, `router`, `wiring`, `plowing` and `plot`: see the router, wiring, plow and plot capabilities.
+  The `plot` and `mzrouter` sections are interpreted (capabilities `plot-output` and `router-maze`), not only kept as raw lines; their raw lines stay available to the readers.
 
 How files are located, loaded, reloaded and scaled is specified in capability `tech-loading-and-scaling`.
 

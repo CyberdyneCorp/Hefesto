@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`), the plot parameters, the technology-file `plot` section with its per-device styles, and the exact content of the generated PostScript (encapsulated PostScript using the Magic prologue) and PNM (binary P6) files. Printer spooling and obsolete raster devices are documented informatively.
+Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `parameters` and `help`; Magic's `versatec`, `gremlin` and `pixels` are described for reference only, since Hefesto drops the Versatec and HP RTL devices as a platform deviation, Q-MISC-51 (a)), the plot parameters, the technology-file `plot` section with its per-device styles, and the exact content of the generated PostScript (encapsulated PostScript using the Magic prologue) and PNM (binary P6) files. Printer spooling and obsolete raster devices are documented informatively.
 
 Related capabilities (referenced, not duplicated): `tech-file-format` (section syntax, type-list syntax), `display-style-files` (display style table, colour map and `.dstyle` files), `cmd-paint-erase` (layer-list arguments including `labels`/`subcell`, unique-prefix keyword matching), `ui-windows-and-views` (layout window, box tool, expansion state), `layout-geometry-model` (tile planes, canonical tile decomposition and hierarchical enumeration order), `router-channel` (wire widths used for label offsets).
 

@@ -110,7 +110,7 @@ TEST_CASE("find_style and reset_from pick the irouter style", "[m10-plot-route-s
   CHECK_FALSE(session.irouter.has_value());
 }
 
-TEST_CASE("the MZTECH stubs read and derive nothing", "[m10-plot-route-scaffold]") {
+TEST_CASE("an empty mzrouter section reads no style and derive keeps the given one", "[m10-plot-route-scaffold]") {
   const auto tech = hefesto::tech::builtin_technology();
   diag::CollectingSink sink;
   const hefesto::tech::RawSection section{"mzrouter", {}};
