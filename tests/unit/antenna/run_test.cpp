@@ -210,3 +210,21 @@ TEST_CASE("antennacheck debug survives a run that stops early", "[cap:antenna-ch
   REQUIRE(s.run("antennacheck").ok());
   CHECK(has(s.take(), "Cell: top"));
 }
+
+// `debug` belongs to the session that armed it (EditorState::antenna_debug):
+// with a process-wide flag the second session's run printed the first
+// session's debug lines and cleared its flag.
+TEST_CASE("antennacheck debug is armed per session", "[cap:antenna-check][req:Antenna check command]") {
+  Session armed;
+  violating_gate(armed);
+  Session other;
+  violating_gate(other);
+  REQUIRE(armed.run("antennacheck debug").ok());
+  CHECK(armed.editor.antenna_debug);
+  REQUIRE(other.run("antennacheck").ok());
+  CHECK_FALSE(has(other.take(), "Cell: top"));
+  CHECK(armed.editor.antenna_debug);  // still armed
+  REQUIRE(armed.run("antennacheck").ok());
+  CHECK(has(armed.take(), "Cell: top"));
+  CHECK_FALSE(armed.editor.antenna_debug);
+}
