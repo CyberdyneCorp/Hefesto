@@ -8,5 +8,6 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/highlight.cpp
   ${CMAKE_CURRENT_LIST_DIR}/link.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/net.cpp
   ${CMAKE_CURRENT_LIST_DIR}/pick.cpp
   ${CMAKE_CURRENT_LIST_DIR}/pick_id.cpp)

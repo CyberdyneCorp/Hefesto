@@ -5,7 +5,8 @@
 // tasks.md 9.4, 9.5): the instances of a mesh lying over some paint held in
 // root coordinates, per layer. The paint is the selection's cell (2D -> 3D
 // link) or a scratch cell the net's tiles are painted into (net
-// highlighting through connect::search_flat or search_hierarchical). An
+// highlighting through connect::search_flat or search_hierarchical,
+// detail::search_net in net.cpp). An
 // instance is highlighted when paint of its layer's tile type overlaps its
 // probe area (detail::probe_rect): its rectangle, a triangle's bounding
 // box, or the unit strip inside a side face.
@@ -91,29 +92,6 @@ HighlightSet overlapping(const MeshModel& mesh, const db::CellDef& paint, const 
   return out;
 }
 
-/// Collects a net into a scratch cell in root coordinates.
-class NetPaint final : public connect::NetVisitor {
- public:
-  explicit NetPaint(const tech::Technology& tech) : tech_(&tech), cell_("(3d net)", tech.plane_count()) {}
-
-  bool on_tile(const connect::NetTile& t) override {
-    db::Plane& plane = cell_.plane(t.plane);
-    const db::PaintRow row = db::paint_row(*tech_, t.plane, t.tile.type);
-    if (t.tile.split) {
-      (void)plane.paint_triangle(t.tile.area, t.tile.diagonal, t.tile.right_side, row);
-    } else {
-      (void)plane.paint(t.tile.area, row);
-    }
-    return true;
-  }
-
-  [[nodiscard]] const db::CellDef& cell() const noexcept { return cell_; }
-
- private:
-  const tech::Technology* tech_;
-  db::CellDef cell_;
-};
-
 }  // namespace
 
 HighlightSet from_selection(const MeshModel& mesh, const select::Selection& selection) {
@@ -143,20 +121,11 @@ HighlightSet net_highlight(const MeshModel& mesh, const editor::EditorState& edi
 
 HighlightSet net_highlight(const MeshModel& mesh, const editor::EditorState& editor, const PickTarget& seed,
                            const NetOptions& options) {
-  const bool flat = options.scope == NetScope::flat;
-  if (!seed.type.has_value() || seed.cell == nullptr || seed.material.is_null() || (flat && !seed.use_path.empty())) {
+  if (!detail::usable_seed(seed, options)) {
     return HighlightSet{};
   }
-  const tech::Technology& tech = *editor.technology;
-  connect::SearchStart start;
-  start.area = seed.material;
-  start.types = tech::TypeMask::of(*seed.type);
-  connect::SearchOptions search;
-  search.magic_compat = options.magic_compat;
-  NetPaint net(tech);
-  const diag::Status status = flat ? connect::search_flat(*seed.cell, tech, start, search, net)
-                                   : connect::search_hierarchical(*seed.cell, tech, start, search, net);
-  if (!status.ok()) {
+  detail::NetPaint net(*editor.technology);
+  if (!detail::search_net(*seed.cell, seed.material, *seed.type, options, net)) {
     return HighlightSet{};
   }
   if (options.stack != nullptr) {

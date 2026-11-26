@@ -122,6 +122,8 @@ How this plan runs:
   As landed (round 5): `rebuild_mask_chunks` / `MeshWorker::changed` in mask-layer mode regenerate only the chunks within the halo of an edit (the edit grown by the radius, in mask units, grown by 1); an output-style change is a new source (full build). Test: `mask_source_test.cpp` "a local edit regenerates only the mask-layer chunks within the halo of it" (versions of untouched chunks kept; geometry equal to a fresh build).
 - [ ] 10.4 Net highlighting in mask-layer mode as a layout-net overlay (design D10). Verify the inverter net drawn over mask geometry.
 
+  As landed (round 6, CORE; data part): `view3d::net_overlay` (seed or 2D selection) gives the layout net as `NetOverlayPrism`s in mesh units over the drawn stack's z range, clipped to the cut box (design "As-landed: round 6 CORE"). Test `tests/unit/view3d/pick/net_overlay_test.cpp` "Net highlighted over mask-layer geometry" (both modes: areas equal `connect::search_flat`'s times units_per_root², z per Q-MISC-72, cut box, selection, empty cases). Open: RENDER's `DrawParams::net_overlay` and SHELL's wiring (desktop part).
+
 ## 11. INSPECT and EXPORT (P2)
 
 - [x] 11.1 (INSPECT) Implement cross-sections: the cut line in 2D or 3D, the section panel in µm, the 3D clipping plane. Verify `[req:Interactive 3D inspection]` "Cross-section" on an inverter: intervals and heights match the layer stack.
