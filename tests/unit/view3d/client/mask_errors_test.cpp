@@ -85,7 +85,7 @@ constexpr std::string_view kNoRoom = "MASK-OPER-004";
 std::size_t count_code(const std::vector<diag::Diagnostic>& ds, std::string_view code) {
   std::size_t n = 0;
   for (const diag::Diagnostic& d : ds) {
-    n += d.code == code ? 1 : 0;
+    n += d.code == code ? 1U : 0U;
   }
   return n;
 }
