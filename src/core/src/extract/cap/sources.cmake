@@ -14,5 +14,4 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/lumped.cpp
   ${CMAKE_CURRENT_LIST_DIR}/node_caps.cpp
   ${CMAKE_CURRENT_LIST_DIR}/overlap.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/ports.cpp
   ${CMAKE_CURRENT_LIST_DIR}/sideoverlap.cpp)

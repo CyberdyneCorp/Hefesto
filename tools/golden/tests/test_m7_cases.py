@@ -37,6 +37,36 @@ from goldenlib.case import load_case  # noqa: E402
 # MISC-ANT generators of R4 write their own inputs and are only registered by m7_cases.py).
 CASES = [c for c in m7_cases.tcl_cases() if c.id.startswith("EX-") or (c.id.startswith("NL-") and not c.id.startswith("NL-RES"))]
 FAKE = Path(__file__).resolve().parent / "fake_magic_m7.tcl"
+# The command forms of EX-064..070 on top of fake_magic_m7.tcl: bare extract (incremental) and extract
+# all write the .ext file of the loaded cell and of every cell below it (ExtAll, ExtIncremental),
+# extract path moves them, extract cell writes <name>.ext (ExtractOneCell, ExtFileOpen), and the
+# select and paint commands change nothing the scripts read.
+FAKE_COMMANDS = r"""
+namespace eval fake { variable path input }
+proc select {args} {}
+proc paint {args} {}
+proc fake::tree {cell} {
+    set out [list $cell]
+    if {![file exists input/$cell.mag]} { return $out }
+    set f [open input/$cell.mag]
+    set text [read $f]
+    close $f
+    foreach {- child} [regexp -all -inline -line {^use (\S+) } $text] {
+        foreach c [fake::tree $child] { if {$c ni $out} { lappend out $c } }
+    }
+    return $out
+}
+proc extract {args} {
+    set sub [lindex $args 0]
+    if {$sub eq "path"} {
+        if {[llength $args] > 1} { set fake::path [string trimright [lindex $args 1] /]; file mkdir $fake::path }
+    } elseif {$sub eq "cell"} {
+        fake::touch [lindex $args 1].ext
+    } elseif {$sub eq "all" || [llength $args] == 0} {
+        foreach c [fake::tree $fake::cell] { fake::touch $fake::path/$c.ext }
+    }
+}
+"""
 READER_RECORDS = frozenset(("timestamp", "version", "tech", "style", "scale", "resistclasses", "parameters", "use",
                             "abstract", "port", "node", "substrate", "attr", "equiv", "cap", "fet", "device",
                             "primitive", "merge", "connect", "distance", "killnode", "resist", "subcap", "rnode"))
@@ -62,7 +92,7 @@ class CatalogueTest(unittest.TestCase):
     def test_r1_rows_are_authored(self):
         ids = [c.id for c in m7_cases.tcl_cases()]
         self.assertEqual(sorted(i for i in ids if i.startswith("EX-")),
-                         sorted(extract_cases.FLAT_IDS + extract_cases.HIER_IDS))
+                         sorted(extract_cases.FLAT_IDS + extract_cases.HIER_IDS + extract_cases.COMMAND_IDS))
         self.assertEqual(len(extract_cases.FLAT_IDS), 53)
         r1 = [i for i in ids if i.startswith("NL-") and not i.startswith("NL-RES")]
         self.assertEqual(sorted(r1 + [netlist_cases.CHK_ID]), sorted(netlist_cases.ROW_IDS))
@@ -84,6 +114,25 @@ class CatalogueTest(unittest.TestCase):
             with self.subTest(case=case_id):
                 self.assertTrue((m7_cases.case_dir(case_id) / "case.toml").is_file())
                 self.assertIn(case_id, m7_cases.catalogue_rows())
+
+    def test_every_ex_row_is_authored(self):
+        """Task 17.1: --not-authored lists no EX row once EX-064..070 exist."""
+        self.assertFalse([row for row in m7_cases.not_authored() if row.startswith("EX-")])
+        self.assertNotIn("LEFDEF-336", m7_cases.not_authored())
+
+    def test_lefdef_336_matches_the_generator_and_lefdef_317(self):
+        """Task 17.6: LEFDEF-317's layout and technology, extract all, then def write."""
+        case = extract_cases.lefdef_336_case()
+        root = m7_cases.case_dir(case.id)
+        self.assertEqual((root / "case.toml").read_text(encoding="utf-8"), tclcase.case_toml(case))
+        self.assertEqual((root / "input" / "commands.tcl").read_text(encoding="utf-8"), tclcase.script(case))
+        source = m7_cases.case_dir("LEFDEF-317") / "input"
+        for name in ("lefdef.tech", "top.mag"):
+            self.assertEqual((root / "input" / name).read_text(encoding="utf-8"),
+                             (source / name).read_text(encoding="utf-8"), name)
+        self.assertFalse((root / "input" / "top.ext").exists())
+        body = case.body
+        self.assertLess(body.index("probe {extract all}"), body.index("probe {def write}"))
 
     def test_exit_check_fails_while_work_is_left(self):
         self.assertEqual(m7_cases.main(["--exit-check"]), 1)
@@ -285,7 +334,8 @@ class ScriptRunTest(unittest.TestCase):
                 root = tclcase.write(case, work / "golden")
                 shutil.copytree(root / "input", work / "input")
                 driver = work / "run.tcl"
-                driver.write_text(f"source {{{FAKE}}}\nsource input/commands.tcl\n", encoding="utf-8")
+                driver.write_text(f"source {{{FAKE}}}\n{FAKE_COMMANDS}\nsource input/commands.tcl\n",
+                                  encoding="utf-8")
                 run = subprocess.run(["tclsh", str(driver)], cwd=work, capture_output=True, text=True, timeout=60)
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertNotIn("script-error", run.stdout)

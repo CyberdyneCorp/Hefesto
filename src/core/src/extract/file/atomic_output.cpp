@@ -123,7 +123,8 @@ std::string base_name(cell::LookupContext& ctx, const db::CellDef& cell, const O
         return join(current_dir(where), cell.name());
       }
     }
-    return join(dir, cell.name());
+    // sprintf("%s/%s"): `extract path ext/` gives ext//<cell> (EX-066).
+    return dir + "/" + cell.name();
   }
   const fs::path file = cell.file_path();
   if (!file.empty()) {
@@ -137,14 +138,15 @@ bool is_direct(const std::string& name) {
          name.starts_with("../");
 }
 
-/// `file` in each expanded entry of a search path (`.` is the current
-/// directory).
+/// `file` in each expanded entry of a search path. An entry that expands to
+/// nothing (`.` and `./` strip to an empty name) or to `.` is the current
+/// directory, as PaOpen reads it.
 void append_entries(std::vector<std::string>& out, cell::LookupContext& ctx, const std::vector<std::string>& entries,
                     const std::string& file, const OutputLocation& where) {
   for (const std::string& entry : entries) {
     const std::optional<std::string> dir = cell::expand_entry(entry, ctx.vars);
-    if (dir && !dir->empty()) {
-      out.push_back(join(*dir == "." ? current_dir(where) : *dir, file));
+    if (dir) {
+      out.push_back(join(dir->empty() || *dir == "." ? current_dir(where) : *dir, file));
     }
   }
 }
