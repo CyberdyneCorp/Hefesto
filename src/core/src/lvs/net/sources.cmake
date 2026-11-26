@@ -10,4 +10,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/expression.cpp
   ${CMAKE_CURRENT_LIST_DIR}/names.cpp
   ${CMAKE_CURRENT_LIST_DIR}/netlist_db.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/permute.cpp
   ${CMAKE_CURRENT_LIST_DIR}/si_value.cpp)

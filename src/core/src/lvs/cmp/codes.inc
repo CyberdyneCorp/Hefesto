@@ -9,3 +9,6 @@
 // and describe the codes in its LVSALG section.
 //
 // Owner: LVSALG (openspec/changes/m9-lvs-simulation/design.md D3).
+HEFESTO_LVS_CODE("LVS-CMP-001", error, "A compared circuit has no devices or no nets (`Circuit <c> contains no devices.`, `... no nets.`); the comparison stops.")
+HEFESTO_LVS_CODE("LVS-CMP-002", warning, "The comparison was cancelled between refinement rounds; the partition is kept, so reports can still be written, and the result is marked cancelled.")
+HEFESTO_LVS_CODE("LVS-CMP-003", warning, "Refinement stopped at its round limit (twice the vertex count) without converging; the partition is kept (a Hefesto guard against a cycling partition).")

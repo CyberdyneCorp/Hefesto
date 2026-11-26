@@ -9,3 +9,4 @@
 // and describe the codes in its LVSRED section.
 //
 // Owner: LVSRED (openspec/changes/m9-lvs-simulation/design.md D3).
+HEFESTO_LVS_CODE("LVS-REDUCE-001", warning, "A permutable pair of a class names a pin the class does not have (`Class <c> does not have pin <p>.`); no permutation of that class is applied.")

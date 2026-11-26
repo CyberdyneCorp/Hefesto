@@ -35,14 +35,18 @@ class FileSystem;
 
 namespace hefesto::lvs {
 
-/// The reader caps of design D18 (Q-LVS-36): each a setting that may be
-/// lowered, never raised past twice the default. They apply in both
-/// netgen-compat modes.
+/// The reader caps of design D18 (Q-LVS-36, decision LVS-READ-025): each a
+/// setting that may be lowered, never raised past twice the default. They
+/// apply in both netgen-compat modes. The include depth counts the top file
+/// (64: the top file and 63 nested includes); the device limit counts the
+/// instances of the whole netlist database, over every read into it. A read
+/// also stops with LVS-READ-025 after 65536 .INCLUDE reads or after 64 x
+/// `logical_line` bytes of included files.
 struct ReadLimits {
   std::size_t include_depth = 64;                    // files open at once, the top file included
   std::size_t logical_line = std::size_t{16} << 20;  // 16 MiB
   std::size_t name_length = 4096;                    // 4 KiB
-  std::uint64_t devices = kMaxDevicesPerRun;         // instances in the database
+  std::uint64_t devices = kMaxDevicesPerRun;         // instances in the netlist database
 };
 
 /// LVS-READ-022 when a limit is zero or above twice its default.

@@ -6,4 +6,7 @@
 # Owner: LVSRED (openspec/changes/m9-lvs-simulation/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/reduce.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/parallel.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/reduce.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/series.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/zero_valued.cpp)
