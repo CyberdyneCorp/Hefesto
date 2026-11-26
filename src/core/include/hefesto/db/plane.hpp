@@ -149,9 +149,19 @@ enum class PaintMerge : std::uint8_t { split_tiles, none };
 /// gets a fresh one; a cell paint shares one between its planes and the
 /// contact images it repaints, so the image repaints cannot multiply the
 /// work of one paint (Q-MODEL-34, Q-MODEL-36).
+///
+/// `steps` bounds the work of each paint drawing from the budget, not of
+/// the budget: a paint that has spent that many stitch steps (tiles its
+/// splits, joins and merges re-stitched or stepped over) stops descending
+/// and fills the rest of its triangle's area as a rectangle. A piece's work
+/// grows with the tiles along the edges it cuts, which earlier paints may
+/// have left by the hundred thousand, so the pieces alone do not bound it.
+/// Unlimited by default; read paints set it (mask::ReadTriangleBudget).
 struct NMBudget {
   static constexpr std::size_t kPieces = 512;
+  static constexpr std::uint64_t kUnlimitedSteps = ~std::uint64_t{0};
   std::size_t pieces = kPieces;
+  std::uint64_t steps = kUnlimitedSteps;
 };
 
 class Plane {

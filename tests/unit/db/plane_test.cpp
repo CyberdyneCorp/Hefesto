@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <vector>
 
@@ -460,4 +461,38 @@ TEST_CASE("repainting a huge triangle over crossed triangles stays within the wo
   // 7500 edits in one paint and 15600 tiles.
   CHECK(most < 2 * 512);
   CHECK(p.tile_count() < 8 * 512);
+}
+
+TEST_CASE("security fix M5-S10: a paint over a column of strips merges them in linear time",
+          GEO "[req:Canonical maximal-horizontal-strip decomposition][regression]") {
+  // fuzz_cif_reader timeout (CI run 45720998038): a comb of n teeth cuts the
+  // space beside it into 2n strips. Painting a rectangle over them changes
+  // the strips top-down and merges each into the tile above it, which by
+  // then has every tooth above it along its left side; TiJoinY re-stitched
+  // those for every strip, about n^2 steps. The merge now keeps the tile
+  // with more side neighbours (the same geometry), so the paint costs about
+  // what painting the comb cost.
+  constexpr int n = 20000;
+  using Clock = std::chrono::steady_clock;
+  db::Plane p;
+  const auto comb_start = Clock::now();
+  for (int i = 0; i < n; ++i) {
+    paint(p, {0, 2 * i, 1, 2 * i + 1});
+  }
+  const auto comb = Clock::now() - comb_start;
+  const auto column_start = Clock::now();
+  paint(p, {1, 0, 2, 2 * n}, kM2);
+  const auto column = Clock::now() - column_start;
+  std::vector<db::TileView> painted;
+  for (const auto& t : db::test::tiles(p)) {
+    if (t.type == kM2) {
+      painted.push_back(t);
+    }
+  }
+  REQUIRE(painted.size() == 1);
+  CHECK(painted[0].area == Rect{1, 0, 2, 2 * n});
+  CHECK(p.type_at({0, 2 * (n - 1)}) == kM1);
+  // Linear: below the comb's n paints; the quadratic merge took hundreds
+  // of times more.
+  CHECK(column < comb + std::chrono::milliseconds{200});
 }

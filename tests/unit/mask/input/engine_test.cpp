@@ -679,3 +679,70 @@ TEST_CASE("a rescale or flatten copy repaints read-plane triangles with the read
   CHECK(tiling(repainted) == tiling(exact));
   CHECK(budget.pool > mask::ReadTriangleBudget::kPool);  // the repaint's grant was added first
 }
+
+namespace {
+
+/// Replays the `tri` and `rect` ops of data file `name` (the format of
+/// gf180_pplus_chain.txt) into `plane` as the read engine paints them.
+void replay_read_ops(const std::string& name, mask::MaskPlane& plane, mask::ReadTriangleBudget& budget) {
+  std::ifstream in(std::filesystem::path{HEFESTO_TEST_DATA_DIR} / name);
+  REQUIRE(in.good());
+  std::string word;
+  while (in >> word) {
+    if (word == "#") {
+      std::getline(in, word);
+      continue;
+    }
+    db::Rect r;
+    in >> r.x0 >> r.y0 >> r.x1 >> r.y1;
+    if (word == "rect") {
+      REQUIRE(plane.paint(r).ok());
+      continue;
+    }
+    int dir = 0;
+    int side = 0;
+    in >> dir >> side;
+    const db::TriangleSide tri{dir != 0 ? db::Diagonal::nw_se : db::Diagonal::ne_sw, side != 0};
+    budget.add_polygon(std::size_t{1});
+    mask::paint_read_triangle(plane, db::PolygonPiece{r, tri}, true, budget);
+  }
+}
+
+}  // namespace
+
+// Regression (fuzz_cif_reader timeout, CI fuzz run 45720998038; security.md
+// M5-S10): 170 chains of 45-degree triangles beside nearly parallel
+// diagonals leave about 25,000 tiles, then a triangle 10,838 units wide and
+// 1.8M tall is painted beside them. Each of its pieces re-stitches the tiles
+// along the tall tiles it cuts, so its 1024 pieces took 3.9 x 10^8 stitch
+// steps (the whole read more than 3 s in a debug build, over 10 s in the
+// fuzzer). A read paint now stops after ReadTriangleBudget::kSteps stitch
+// steps and fills the rest of the triangle's area as a rectangle: the corner
+// across the diagonal, space in an exact paint, is filled.
+TEST_CASE("security fix M5-S10: a read triangle beside the tiles of many chains stops at the stitch budget",
+          "[cap:mask-input-styles][req:Polygon to region conversion][regression]") {
+  mask::MaskPlane plane;
+  mask::ReadTriangleBudget budget;
+  replay_read_ops("tall_triangle_beside_chains.txt", plane, budget);
+  // The last op is the left side of a `\` split of 667392 223250 678230
+  // 2022358: its lower-left corner is painted either way, its upper-right
+  // corner only by the rectangle fill.
+  CHECK(plane.plane().type_at({667392, 223250}) != tech::kSpace);
+  CHECK(plane.plane().type_at({678229, 2022357}) != tech::kSpace);
+}
+
+// The stitch budget leaves ordinary read triangles as Magic paints them:
+// the 800 pieces over the comb spend far fewer steps than kSteps, and the
+// plane is the one an unbounded paint leaves (the gf180mcu_fd_io chain
+// above is the other check).
+TEST_CASE("the stitch budget leaves a read triangle over a comb as an unbounded paint tiles it",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  const db::Rect area{1, 0, 1001, 800};
+  mask::MaskPlane unbounded = comb();
+  db::NMBudget pieces{mask::ReadTriangleBudget::kPieces};  // no step bound
+  (void)unbounded.paint_triangle(area, db::Diagonal::ne_sw, false, true, &pieces);
+  mask::MaskPlane bounded = comb();
+  mask::ReadTriangleBudget budget;
+  mask::repaint_read_triangle(bounded, area, db::Diagonal::ne_sw, false, true, budget);
+  CHECK(tiling(bounded) == tiling(unbounded));
+}
