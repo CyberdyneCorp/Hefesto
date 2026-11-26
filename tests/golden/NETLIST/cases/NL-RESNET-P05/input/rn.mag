@@ -1,0 +1,31 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 200 4
+rect 60 4 64 30
+rect 140 4 144 30
+rect -20 -20 -16 -16
+<< m1c >>
+rect 58 30 66 38
+rect 138 30 146 38
+<< poly >>
+rect 58 38 66 44
+rect 138 38 146 44
+rect 58 54 66 58
+rect 138 54 146 58
+<< ndiff >>
+rect 50 44 58 54
+rect 66 44 74 54
+rect 130 44 138 54
+rect 146 44 154 54
+<< nfet >>
+rect 58 44 66 54
+rect 138 44 146 54
+<< labels >>
+rlabel metal1 0 0 0 4 0 in
+port 1 nsew
+rlabel metal1 200 0 200 4 0 far
+port 2 nsew
+rlabel metal1 -20 -20 -16 -16 0 GND!
+<< end >>
