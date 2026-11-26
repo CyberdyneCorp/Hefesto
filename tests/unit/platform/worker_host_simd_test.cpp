@@ -441,3 +441,26 @@ TEST_CASE("Pause and resume a worker job",
   REQUIRE(poll_until(jobs, id, sim::JobState::cancelled));
   CHECK(jobs.engines_started() == 1);
 }
+
+// M9 R2: the load's initialisation commands and seed reach the engine, in
+// order, before the deck (the worker client used to send `setseed 1` only).
+TEST_CASE("PDK initialisation commands and the job seed precede the deck in the worker",
+          "[cap:simulation-engine-embedding][req:Deterministic engine initialisation]") {
+  const TempDir job{"simd-init"};
+  hefesto::cli::PosixWorkerHost host;
+  Recorder recorder;
+  const auto engine = start(host, fake(job), recorder);
+  REQUIRE(engine->load(job_deck(3), sim::LoadOptions{{"set ngbehavior=hsa", "set ng_nomodcheck"}, 99}).ok());
+  const auto lines = recorder.output();
+  const auto first = std::find(lines.begin(), lines.end(), "cmd: set ngbehavior=hsa");
+  const auto second = std::find(lines.begin(), lines.end(), "cmd: set ng_nomodcheck");
+  const auto seed = std::find(lines.begin(), lines.end(), "cmd: setseed 99");
+  const auto loaded = std::find_if(lines.begin(), lines.end(), [](const std::string& l) { return l.starts_with("loaded "); });
+  REQUIRE(first != lines.end());
+  REQUIRE(second != lines.end());
+  REQUIRE(seed != lines.end());
+  REQUIRE(loaded != lines.end());
+  CHECK(first < second);
+  CHECK(second < seed);
+  CHECK(seed < loaded);
+}

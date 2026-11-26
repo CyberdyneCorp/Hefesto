@@ -18,6 +18,11 @@
 // one) clears the circuit and every plot; the first load frame's init
 // commands and `setseed <seed>` are sent before the deck.
 //
+// Streamed points (the adapter's on_data, ABI 2) are decimated: at most one
+// point per kDataInterval is sent as a `data` event, in frames of at most
+// frames::kMaxDataValues values; the stored results come from the final
+// vectors, so a skipped point loses nothing.
+//
 // Exit statuses: 0 quit or end of input, 3 engine fault, 5 protocol error.
 //
 // Owner: SIMD.
@@ -42,6 +47,8 @@ inline constexpr int kExitOk = 0;
 inline constexpr int kExitFault = 3;
 inline constexpr int kExitStartup = 4;
 inline constexpr int kExitProtocol = 5;
+/// The shortest time between two forwarded data points (100 per second).
+inline constexpr std::chrono::milliseconds kDataInterval{10};
 
 class Server {
  public:
@@ -60,6 +67,7 @@ class Server {
   static void on_output(void* user, const char* text, std::size_t size, int is_error);
   static void on_progress(void* user, const char* status, std::size_t size, double point);
   static void on_state(void* user, int state);
+  static void on_data(void* user, const hefesto_engine_value* values, std::size_t count);
 
   void post(Task task);
   void engine_loop();
@@ -83,6 +91,9 @@ class Server {
   std::condition_variable wake_;
   std::deque<Task> tasks_;
   bool stopping_ = false;
+
+  std::mutex data_mutex_;
+  std::chrono::steady_clock::time_point last_data_{};  // under data_mutex_
 
   // Engine thread only.
   bool loaded_ = false;

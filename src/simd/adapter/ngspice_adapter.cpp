@@ -28,6 +28,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "abi/hefesto_engine_v1.h"
@@ -124,9 +125,36 @@ int ng_exit(int /*status*/, NG_BOOL /*immediate*/, NG_BOOL /*quit*/, int /*id*/,
   return 0;
 }
 
-// The live stream is not forwarded by ABI v1; the callbacks are registered
-// because the initialisation requires non-null callbacks.
-int ng_data(pvecvaluesall /*values*/, int /*count*/, int /*id*/, void* /*user*/) { return 0; }
+// The live stream (ABI 2): one point, every vector's real part, the scale
+// first. Copied before the call returns; hefesto-simd decimates it.
+int ng_data(pvecvaluesall values, int /*count*/, int /*id*/, void* user) {
+  hefesto_engine* engine = self(user);
+  if (engine->callbacks.on_data == nullptr || values == nullptr || values->vecsa == nullptr || values->veccount <= 0) {
+    return 0;
+  }
+  const auto count = static_cast<std::size_t>(values->veccount);
+  std::vector<std::string> names;
+  std::vector<hefesto_engine_value> point;
+  names.reserve(count);
+  point.reserve(count);
+  for (std::size_t i = 0; i < count; ++i) {
+    const pvecvalues v = values->vecsa[i];
+    if (v == nullptr) {
+      continue;
+    }
+    names.emplace_back(v->name != nullptr ? v->name : "");
+    point.push_back(hefesto_engine_value{nullptr, v->creal});
+    if (v->is_scale && point.size() > 1) {
+      std::swap(names.front(), names.back());
+      std::swap(point.front(), point.back());
+    }
+  }
+  for (std::size_t i = 0; i < point.size(); ++i) {
+    point[i].name = names[i].c_str();
+  }
+  engine->callbacks.on_data(engine->callbacks.user, point.data(), point.size());
+  return 0;
+}
 int ng_init_data(pvecinfoall /*info*/, int /*id*/, void* /*user*/) { return 0; }
 
 // ngspice passes `true` when the background thread has ended.

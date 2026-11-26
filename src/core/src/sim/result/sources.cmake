@@ -6,4 +6,10 @@
 # Owner: SIMRES (openspec/changes/m9-lvs-simulation/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/result_store.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/result_store.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/progress.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/raw_write.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/raw_read.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/csv.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/measure.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/analysis.cpp)

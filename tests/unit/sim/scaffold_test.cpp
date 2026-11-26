@@ -95,9 +95,11 @@ TEST_CASE("worker_pool_size implements the pool formula",
 
 TEST_CASE("scaffold deck preparation reports CORE-NOTIMPL-009",
           "[cap:simulation-netlist-preparation][req:Circuit sources]") {
+  // Task 13.1 (M9 R2) implemented the spice and raw sources
+  // (tests/unit/sim/deck/); the layout source waits for task 13.4.
   sim::Testbench testbench;
   testbench.name = "tb";
-  testbench.dut = sim::CircuitSource{sim::CircuitSource::Kind::spice, "inv.spice", sim::ParasiticMode::none};
+  testbench.dut = sim::CircuitSource{sim::CircuitSource::Kind::layout, "inv", sim::ParasiticMode::none};
   CHECK(is_not_implemented(sim::prepare(testbench, sim::DeckContext{})));
 }
 
@@ -106,25 +108,26 @@ TEST_CASE("scaffold model descriptor reports CORE-NOTIMPL-009",
   CHECK(is_not_implemented(sim::ModelDescriptor::load("sky130A")));
 }
 
-TEST_CASE("scaffold raw writer reports CORE-NOTIMPL-009", "[cap:simulation-analyses-and-results][req:Raw file format]") {
+TEST_CASE("the raw writer needs a file system", "[cap:simulation-analyses-and-results][req:Raw file format]") {
   const sim::ResultStore store;
-  CHECK(is_not_implemented(store.write_raw("20261124-120000-tb-tt", sim::Plot{})));
+  CHECK(store.write_raw("20261124-120000-tb-tt", sim::Plot{}).error().code == "SIM-RESULT-009");  // task 13.3 (M9 R2)
 }
 
-TEST_CASE("scaffold raw import reports CORE-NOTIMPL-009", "[cap:simulation-analyses-and-results][req:Raw file import]") {
+TEST_CASE("raw import needs a file system", "[cap:simulation-analyses-and-results][req:Raw file import]") {
   const sim::ResultStore store;
-  CHECK(is_not_implemented(store.read_raw("tb.raw")));
+  CHECK(store.read_raw("tb.raw").error().code == "SIM-RESULT-009");  // task 13.3 (M9 R2)
 }
 
-TEST_CASE("scaffold CSV export reports CORE-NOTIMPL-009", "[cap:simulation-analyses-and-results][req:CSV export]") {
+TEST_CASE("CSV export needs a file system", "[cap:simulation-analyses-and-results][req:CSV export]") {
   const sim::ResultStore store;
-  CHECK(is_not_implemented(store.export_csv(sim::Plot{}, "tb.csv")));
+  CHECK(store.export_csv(sim::Plot{}, "tb.csv").error().code == "SIM-RESULT-009");  // task 13.3 (M9 R2)
 }
 
-TEST_CASE("scaffold waveform measurement reports CORE-NOTIMPL-009",
+TEST_CASE("a waveform measurement of an empty plot fails",
           "[cap:simulation-analyses-and-results][req:Waveform measurements]") {
   const sim::ResultStore store;
-  CHECK(is_not_implemented(store.measure_waveform(sim::Plot{}, sim::WaveformMeasure{"max", "v(out)", {}, {}})));
+  CHECK(store.measure_waveform(sim::Plot{}, sim::WaveformMeasure{"max", "v(out)", {}, {}, {}}).error().code ==
+        "SIM-RESULT-005");  // task 13.3 (M9 R2)
 }
 
 TEST_CASE("node_name needs a layout, a technology and a style", "[cap:irsim-interface][req:Hierarchical node names]") {

@@ -53,6 +53,18 @@ struct EngineCallbacks {
   std::function<void(std::string_view line)> on_error;
   std::function<void(std::string_view status, double point)> on_progress;
   std::function<void(EngineState state)> on_state;
+  /// Added in M9 R2: one streamed point of a vector (ngspice's SendData),
+  /// for live display and progress only; stored results come from
+  /// vectors() ("Final vector retrieval"). Unset: the stream is not sent.
+  std::function<void(std::string_view vector, double value)> on_data;
+};
+
+/// Added in M9 R2: what a load sends before the deck ("Deterministic engine
+/// initialisation", "PDK initialisation commands"): the descriptor's
+/// initialisation commands in order, then `setseed <seed>`.
+struct LoadOptions {
+  std::vector<std::string> init_commands;
+  std::uint32_t seed = 1;
 };
 
 class Engine {
@@ -60,7 +72,11 @@ class Engine {
   virtual ~Engine() = default;
 
   virtual void set_callbacks(EngineCallbacks callbacks) = 0;
-  [[nodiscard]] virtual diag::Status load(const std::vector<std::string>& deck) = 0;
+  /// M9 R2: the options are a second parameter (previously the worker
+  /// client sent `setseed 1` and no initialisation commands).
+  [[nodiscard]] virtual diag::Status load(const std::vector<std::string>& deck, const LoadOptions& options) = 0;
+  /// The default options: no initialisation commands, seed 1.
+  [[nodiscard]] diag::Status load(const std::vector<std::string>& deck) { return load(deck, LoadOptions{}); }
   [[nodiscard]] virtual diag::Status run() = 0;
   [[nodiscard]] virtual diag::Status pause() = 0;
   [[nodiscard]] virtual diag::Status resume() = 0;

@@ -16,8 +16,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
@@ -34,22 +36,50 @@ namespace {
 constexpr std::uint64_t kGiB = std::uint64_t{1} << 30;
 constexpr std::uint64_t kMiB = std::uint64_t{1} << 20;
 
-/// What the fake engines did, shared by every engine of one factory.
+/// What the fake engines did, shared by every engine of one factory. Since
+/// M9 R2 the factory, load and run run on the manager's loader threads, so
+/// the counters are guarded; the tests read them after settle().
 struct FakeHost {
+  std::mutex mutex;
   std::uint64_t started = 0;
   std::uint64_t alive = 0;
   std::vector<std::uint64_t> loads;  // the engine number of each load, in order
   std::uint64_t cancels = 0;
+  std::uint64_t runs = 0;
   class FakeEngine* last = nullptr;  // the engine started last
+  sim::LoadOptions last_options;     // of the last load
+  // `* slow-load` and `* slow-run` (and the factory when block_factory is
+  // set before the first submit) wait until the gate opens.
+  std::condition_variable gate_changed;
+  bool gate_open = true;
+  bool block_factory = false;
+
+  void wait_gate() {
+    std::unique_lock lock{mutex};
+    gate_changed.wait(lock, [this] { return gate_open; });
+  }
+  void close_gate() {
+    const std::lock_guard lock{mutex};
+    gate_open = false;
+  }
+  void open_gate() {
+    {
+      const std::lock_guard lock{mutex};
+      gate_open = true;
+    }
+    gate_changed.notify_all();
+  }
 };
 
 class FakeEngine final : public sim::Engine {
  public:
   FakeEngine(FakeHost& host, std::uint64_t number) : host_(host), number_(number) {
+    const std::lock_guard lock{host_.mutex};
     ++host_.alive;
     host_.last = this;
   }
   ~FakeEngine() override {
+    const std::lock_guard lock{host_.mutex};
     --host_.alive;
     if (host_.last == this) {
       host_.last = nullptr;
@@ -62,9 +92,16 @@ class FakeEngine final : public sim::Engine {
 
   void set_callbacks(sim::EngineCallbacks callbacks) override { callbacks_ = std::move(callbacks); }
 
-  diag::Status load(const std::vector<std::string>& deck) override {
-    host_.loads.push_back(number_);
+  diag::Status load(const std::vector<std::string>& deck, const sim::LoadOptions& options) override {
+    {
+      const std::lock_guard lock{host_.mutex};
+      host_.loads.push_back(number_);
+      host_.last_options = options;
+    }
     script_ = deck.empty() ? std::string{} : deck.front();
+    if (script_ == "* slow-load") {
+      host_.wait_gate();  // a deck load of tens of seconds
+    }
     if (script_ == "* load-reject") {
       callbacks_.on_error("Error: unknown subckt: xinv");
       return diag::make("SIM-ENGINE-009", "the deck was not loaded\nError: unknown subckt: xinv");
@@ -81,9 +118,16 @@ class FakeEngine final : public sim::Engine {
   }
 
   diag::Status run() override {
+    {
+      const std::lock_guard lock{host_.mutex};
+      ++host_.runs;
+    }
     callbacks_.on_state(sim::EngineState::running);
-    running_ = script_ == "* hold";
-    if (script_ == "* ok") {
+    running_ = script_ == "* hold" || script_ == "* slow-run" || script_ == "* progress";
+    if (script_ == "* slow-run") {
+      host_.wait_gate();  // the run started; the loader has not returned yet
+    }
+    if (script_ == "* ok" || script_ == "* slow-load") {
       callbacks_.on_output("Note: no compatibility mode selected");
       callbacks_.on_state(sim::EngineState::loaded);
     } else if (script_ == "* warning") {
@@ -115,6 +159,19 @@ class FakeEngine final : public sim::Engine {
       callbacks_.on_error("Error: unknown subckt: xinv");
       callbacks_.on_error("Error: ngspice.dll cannot recover");
       callbacks_.on_state(sim::EngineState::failed);
+    } else if (script_ == "* flood" || script_ == "* flood-fail") {
+      // A hostile worker: 200000 state frames in one run.
+      for (int i = 0; i < 100000; ++i) {
+        callbacks_.on_state(sim::EngineState::paused);
+        callbacks_.on_state(sim::EngineState::running);
+        if (i == 50000 && script_ == "* flood-fail") {
+          callbacks_.on_state(sim::EngineState::failed);
+        }
+      }
+      callbacks_.on_state(sim::EngineState::loaded);
+    } else if (script_ == "* progress") {
+      callbacks_.on_progress("op", -1.0);
+      callbacks_.on_progress("tran", 50.0);
     } else if (script_ == "* thread") {
       std::thread other([this] {
         callbacks_.on_output("from the engine thread");
@@ -192,11 +249,31 @@ std::size_t count_text(const sim::JobRecord& rec, std::string_view text) {
 sim::JobManagerOptions options(FakeHost& host, sim::PoolInputs pool = {}) {
   sim::JobManagerOptions o;
   o.make_engine = [&host]() -> diag::Outcome<std::unique_ptr<sim::Engine>> {
-    return std::unique_ptr<sim::Engine>(std::make_unique<FakeEngine>(host, ++host.started));
+    if (host.block_factory) {
+      host.wait_gate();  // a worker handshake of up to 10 s
+    }
+    std::uint64_t number = 0;
+    {
+      const std::lock_guard lock{host.mutex};
+      number = ++host.started;
+    }
+    return std::unique_ptr<sim::Engine>(std::make_unique<FakeEngine>(host, number));
   };
   o.pool = pool;
   o.now = [] { return std::chrono::system_clock::time_point{} + std::chrono::hours(24 * 365 * 50); };
   return o;
+}
+
+/// Polls until no job is loading and nothing is left to apply (M9 R2: the
+/// loads run on loader threads).
+void settle(sim::JobManager& jobs) {
+  for (int i = 0; i < 4000; ++i) {
+    jobs.poll_for(std::chrono::milliseconds(5));
+    if (jobs.loading() == 0 && jobs.poll() == 0) {
+      return;
+    }
+  }
+  FAIL("the job manager did not settle");
 }
 
 sim::PreparedDeck deck(std::string script) {
@@ -231,7 +308,7 @@ TEST_CASE("A job goes queued, loading, running, completed and keeps its vectors"
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* ok");
   CHECK(jobs.state(id) == sim::JobState::queued);
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id);
   REQUIRE(rec != nullptr);
   CHECK(rec->job.state == sim::JobState::completed);
@@ -266,7 +343,7 @@ TEST_CASE("Convergence failure: an Error line fails the job and keeps the partia
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* timestep");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-032", "Error: Timestep too small"));
@@ -281,7 +358,7 @@ TEST_CASE("A Warning line is logged and does not fail the job",
   FakeHost host;
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* warning");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id);
   CHECK(rec->job.state == sim::JobState::completed);
   CHECK(rec->errors == std::vector<std::string>{"Warning: singular matrix fixed"});
@@ -296,7 +373,7 @@ TEST_CASE("An Error line followed by more than 50 warnings still fails the job",
   FakeHost host;
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* error-then-warnings");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(rec->errors.size() == 50);
@@ -311,7 +388,7 @@ TEST_CASE("A run that produces no plot fails the job",
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* noplot");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-037", "the run produced no plot"));
@@ -326,11 +403,11 @@ TEST_CASE("Second job waits until the first reaches a final state",
   REQUIRE(jobs.workers() == 1);
   const sim::JobId a = submit(jobs, "* hold");
   const sim::JobId b = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(a) == sim::JobState::running);
   CHECK(jobs.state(b) == sim::JobState::queued);
   REQUIRE(jobs.cancel(a).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(a) == sim::JobState::cancelled);
   CHECK(jobs.state(b) == sim::JobState::completed);
   CHECK(host.started == 1);  // a healthy engine is reused
@@ -343,7 +420,7 @@ TEST_CASE("Healthy engines are reused for later jobs",
   for (int i = 0; i < 10; ++i) {
     submit(jobs, "* ok");
   }
-  jobs.poll();
+  settle(jobs);
   CHECK(host.started == 1);
   CHECK(host.loads == std::vector<std::uint64_t>(10, 1));
 }
@@ -354,7 +431,7 @@ TEST_CASE("ngspice segmentation fault: the job fails and the next job runs in a 
   sim::JobManager jobs(options(host));
   const sim::JobId crashed = submit(jobs, "* segv");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(crashed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
@@ -374,7 +451,7 @@ TEST_CASE("Controlled exit replaces the worker and keeps the error lines",
   sim::JobManager jobs(options(host));
   const sim::JobId failed = submit(jobs, "* exit");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(failed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
@@ -390,7 +467,7 @@ TEST_CASE("Unrecoverable error: failed with the error lines, next job in a new w
   sim::JobManager jobs(options(host));
   const sim::JobId failed = submit(jobs, "* exit");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(failed) == sim::JobState::failed);
   CHECK(has_code(*jobs.record(failed), "SIM-ENGINE-032", "Error: unknown subckt: xinv"));
   CHECK(jobs.state(next) == sim::JobState::completed);
@@ -405,7 +482,7 @@ TEST_CASE("An engine call that fails with a fault replaces the engine and keeps 
   sim::JobManager jobs(options(host));
   const sim::JobId failed = submit(jobs, "* load-crash");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(failed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
@@ -422,7 +499,7 @@ TEST_CASE("A fault event keeps the engine's reason",
   FakeHost host;
   sim::JobManager jobs(options(host));
   const sim::JobId failed = submit(jobs, "* killed");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(failed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK(has_code(*rec, "SIM-ENGINE-008", "simulation engine terminated: the worker was killed by signal 11"));
@@ -438,7 +515,7 @@ TEST_CASE("A rejected deck fails the job with its error lines and keeps the engi
   sim::JobManager jobs(options(host));
   const sim::JobId failed = submit(jobs, "* load-reject");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(failed);
   CHECK(rec->job.state == sim::JobState::failed);
   CHECK_FALSE(has_code(*rec, "SIM-ENGINE-030", "simulation engine terminated"));
@@ -457,13 +534,13 @@ TEST_CASE("Pause after the run ended is refused and the job completes",
   FakeHost host;
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* hold");
-  jobs.poll();
+  settle(jobs);
   REQUIRE(jobs.state(id) == sim::JobState::running);
   host.last->end_run();  // its `loaded` event is not applied yet
   const diag::Status paused = jobs.pause(id);
   REQUIRE_FALSE(paused.ok());
   CHECK(paused.error().code == "SIM-ENGINE-010");
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(id) == sim::JobState::completed);
   CHECK(jobs.engines_started() == 1);
 }
@@ -473,7 +550,7 @@ TEST_CASE("No engine host: the job fails as unavailable",
   sim::JobManager jobs;
   auto id = jobs.submit(deck("* ok"), sim::JobOptions{"tb", "tt", std::nullopt});
   REQUIRE(id.ok());
-  jobs.poll();
+  settle(jobs);
   const sim::JobRecord* rec = jobs.record(id.value());
   CHECK(rec->job.state == sim::JobState::failed);
   REQUIRE_FALSE(rec->diagnostics.empty());
@@ -487,18 +564,18 @@ TEST_CASE("Cancel, pause and resume follow the job states",
   sim::JobManager jobs(options(host));
   const sim::JobId running = submit(jobs, "* hold");
   const sim::JobId queued = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   REQUIRE(jobs.pause(running).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(running) == sim::JobState::paused);
   CHECK(jobs.pause(running).error().code == "SIM-ENGINE-035");
   REQUIRE(jobs.resume(running).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(running) == sim::JobState::running);
   REQUIRE(jobs.cancel(queued).ok());
   CHECK(jobs.state(queued) == sim::JobState::cancelled);
   REQUIRE(jobs.cancel(running).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(running) == sim::JobState::cancelled);
   CHECK(jobs.record(running)->vectors.size() == 1);  // the partial result
   CHECK(jobs.cancel(running).error().code == "SIM-ENGINE-035");
@@ -515,9 +592,9 @@ TEST_CASE("Cancel a transient run: the halt ends the job as cancelled and frees 
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* hold");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   REQUIRE(jobs.cancel(id).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(id) == sim::JobState::cancelled);
   CHECK(jobs.record(id)->vectors.size() == 1);
   CHECK(jobs.state(next) == sim::JobState::completed);
@@ -531,14 +608,14 @@ TEST_CASE("Cancel a paused job: it ends at once as cancelled with the vectors of
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* hold");
   const sim::JobId next = submit(jobs, "* ok");
-  jobs.poll();
+  settle(jobs);
   REQUIRE(jobs.pause(id).ok());
-  jobs.poll();
+  settle(jobs);
   REQUIRE(jobs.state(id) == sim::JobState::paused);
   REQUIRE(jobs.cancel(id).ok());
   CHECK(jobs.state(id) == sim::JobState::cancelled);
   CHECK(jobs.record(id)->vectors.size() == 1);
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(next) == sim::JobState::completed);
   CHECK(host.started == 1);
 }
@@ -552,11 +629,11 @@ TEST_CASE("Five corners on an 8-core Mac: three jobs at once, the next when one 
   for (const char* corner : {"tt", "ff", "ss", "fs", "sf"}) {
     ids.push_back(submit(jobs, "* hold", corner));
   }
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.active() == 3);
   CHECK(jobs.state(ids[3]) == sim::JobState::queued);
   REQUIRE(jobs.cancel(ids[0]).ok());
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.active() == 3);
   CHECK(jobs.state(ids[3]) == sim::JobState::running);
   CHECK(jobs.state(ids[4]) == sim::JobState::queued);
@@ -578,7 +655,7 @@ TEST_CASE("Setting cannot raise the pool: refused with the maximum, at most 3 jo
   for (int i = 0; i < 8; ++i) {
     submit(jobs, "* hold");
   }
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.active() == 3);
   CHECK(jobs.peak_active() == 3);
   CHECK(host.started == 3);
@@ -596,7 +673,7 @@ TEST_CASE("Worker setting of zero: one job at a time, all complete",
   for (int i = 0; i < 5; ++i) {
     ids.push_back(submit(jobs, "* ok"));
   }
-  jobs.poll();
+  settle(jobs);
   for (const sim::JobId& id : ids) {
     CHECK(jobs.state(id) == sim::JobState::completed);
   }
@@ -614,7 +691,7 @@ TEST_CASE("Single-core host: a 10-point sweep runs on one worker and completes",
     REQUIRE(id.ok());
     ids.push_back(id.value());
   }
-  jobs.poll();
+  settle(jobs);
   for (const sim::JobId& id : ids) {
     CHECK(jobs.state(id) == sim::JobState::completed);
   }
@@ -629,7 +706,7 @@ TEST_CASE("Large post-layout deck limits the pool: the points run one at a time"
   for (int i = 0; i < 4; ++i) {
     submit(jobs, "* hold");
   }
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.active() == 1);
 }
 
@@ -638,7 +715,153 @@ TEST_CASE("Events posted from another thread are applied by poll",
   FakeHost host;
   sim::JobManager jobs(options(host));
   const sim::JobId id = submit(jobs, "* thread");
-  jobs.poll();
+  settle(jobs);
   CHECK(jobs.state(id) == sim::JobState::completed);
   CHECK(jobs.record(id)->log == std::vector<sim::LogLine>{{false, "from the engine thread"}});
+}
+
+// --- M9 R2 ---------------------------------------------------------------------------
+
+// Regression (security, M9 R1 follow-up): state events were queued without a
+// count limit, so a worker flooding state frames grew the queue until the
+// next poll without bound (200000 events here).
+TEST_CASE("A worker flooding state frames cannot grow the event queue and the job completes",
+          "[cap:simulation-engine-embedding][req:Worker channel limits]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* flood");
+  const sim::JobId next = submit(jobs, "* ok");
+  settle(jobs);
+  CHECK(jobs.peak_queued_events() <= sim::kMaxQueuedStateEvents + 8);
+  CHECK(jobs.state(id) == sim::JobState::completed);
+  CHECK(jobs.record(id)->vectors.size() == 1);
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.started == 1);
+}
+
+TEST_CASE("A fault inside a flood of state frames still replaces the worker",
+          "[cap:simulation-engine-embedding][req:Worker channel limits]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* flood-fail");
+  const sim::JobId next = submit(jobs, "* ok");
+  settle(jobs);
+  CHECK(jobs.peak_queued_events() <= sim::kMaxQueuedStateEvents + 8);
+  CHECK(jobs.state(id) == sim::JobState::failed);
+  CHECK(has_code(*jobs.record(id), "SIM-ENGINE-030", "simulation engine terminated"));
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.started == 2);
+}
+
+// M9 R1 follow-up: poll() ran the factory (the worker handshake) and the
+// load on the owning thread, so a slow start blocked every other job.
+TEST_CASE("A slow worker handshake does not block poll()",
+          "[cap:simulation-engine-embedding][req:Engine threading model]") {
+  FakeHost host;
+  host.block_factory = true;
+  host.close_gate();
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* ok");
+  const auto before = std::chrono::steady_clock::now();
+  jobs.poll();
+  jobs.poll_for(std::chrono::milliseconds(20));
+  CHECK(std::chrono::steady_clock::now() - before < std::chrono::seconds(5));
+  CHECK(jobs.state(id) == sim::JobState::loading);
+  CHECK(jobs.loading() == 1);
+  host.open_gate();
+  settle(jobs);
+  CHECK(jobs.state(id) == sim::JobState::completed);
+  CHECK(jobs.engines_started() == 1);
+}
+
+TEST_CASE("A slow deck load does not hold back a job on another worker",
+          "[cap:simulation-engine-embedding][req:Engine threading model]") {
+  FakeHost host;
+  host.close_gate();
+  sim::JobManager jobs(options(host, kThreeWorkers));
+  const sim::JobId slow = submit(jobs, "* slow-load");
+  const sim::JobId quick = submit(jobs, "* ok");
+  for (int i = 0; i < 2000 && jobs.state(quick) != sim::JobState::completed; ++i) {
+    jobs.poll_for(std::chrono::milliseconds(5));
+  }
+  CHECK(jobs.state(quick) == sim::JobState::completed);
+  CHECK(jobs.state(slow) == sim::JobState::loading);
+  host.open_gate();
+  settle(jobs);
+  CHECK(jobs.state(slow) == sim::JobState::completed);
+}
+
+TEST_CASE("Cancel during a load returns at once and the job ends cancelled without running",
+          "[cap:simulation-analyses-and-results][req:Pause, resume and cancel]") {
+  FakeHost host;
+  host.close_gate();
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* slow-load");
+  const sim::JobId next = submit(jobs, "* ok");
+  jobs.poll();
+  REQUIRE(jobs.state(id) == sim::JobState::loading);
+  CHECK(jobs.pause(id).error().code == "SIM-ENGINE-035");
+  REQUIRE(jobs.cancel(id).ok());  // the gate is closed: it cannot have waited for the load
+  host.open_gate();
+  settle(jobs);
+  CHECK(jobs.state(id) == sim::JobState::cancelled);
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(host.runs == 1);     // only the next job ran
+  CHECK(host.started == 1);  // the healthy engine was kept
+}
+
+TEST_CASE("Cancel after the run started but before the loader returned cancels the run",
+          "[cap:simulation-engine-embedding][req:Cancellation and fault states]") {
+  FakeHost host;
+  host.close_gate();
+  sim::JobManager jobs(options(host));
+  const sim::JobId id = submit(jobs, "* slow-run");
+  jobs.poll();
+  for (int i = 0; i < 2000; ++i) {  // until the loader has called run()
+    {
+      const std::lock_guard lock{host.mutex};
+      if (host.runs == 1) {
+        break;
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  REQUIRE(jobs.cancel(id).ok());
+  host.open_gate();
+  settle(jobs);
+  CHECK(jobs.state(id) == sim::JobState::cancelled);
+  CHECK(jobs.record(id)->vectors.size() == 1);  // the partial result
+  CHECK(host.cancels == 1);
+  CHECK(jobs.active() == 0);
+}
+
+TEST_CASE("The job's seed and the descriptor's initialisation commands reach Engine::load",
+          "[cap:simulation-engine-embedding][req:Deterministic engine initialisation]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  sim::PreparedDeck d = deck("* ok");
+  d.descriptor.init_commands = {"set ngbehavior=hsa"};
+  auto id = jobs.submit(std::move(d), sim::JobOptions{"tb", "tt", std::nullopt, 42});
+  REQUIRE(id.ok());
+  settle(jobs);
+  CHECK(jobs.state(id.value()) == sim::JobState::completed);
+  CHECK(host.last_options.seed == 42);
+  CHECK(host.last_options.init_commands == std::vector<std::string>{"set ngbehavior=hsa"});
+}
+
+TEST_CASE("Two analyses: op completed and tran at 50 percent is 0.75",
+          "[cap:simulation-analyses-and-results][req:Progress reporting]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  sim::PreparedDeck d;
+  d.lines = {"* progress", ".op", ".tran 1n 10n", ".end"};
+  auto id = jobs.submit(std::move(d), sim::JobOptions{"tb", "tt", std::nullopt});
+  REQUIRE(id.ok());
+  settle(jobs);
+  const sim::JobRecord* rec = jobs.record(id.value());
+  CHECK(rec->job.state == sim::JobState::running);
+  CHECK(rec->progress == 0.75);
+  CHECK(rec->status == "tran");
+  REQUIRE(jobs.cancel(id.value()).ok());
+  settle(jobs);
 }

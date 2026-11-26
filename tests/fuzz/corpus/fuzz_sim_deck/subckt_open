@@ -1,0 +1,5 @@
+* t
+.subckt a x
+R1 x 0 1
+.op
+.end
