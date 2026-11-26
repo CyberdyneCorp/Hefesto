@@ -41,10 +41,12 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-6: Net ordering ties depend on heap implementation
 - Kind: ambiguity
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Nets are ordered by bounding box half-perimeter via a binary heap; equal keys come out in an order determined by Magic's heap algorithm, not by netlist order.
 - Evidence: utils/netlist.c:306-341, utils/heap.c
 - Options: replicate Magic's heap exactly | define stable order (netlist order on ties)
 - Recommendation: replicate Magic's heap (sift-up/down) to keep golden results; record in implementation notes.
+- Resolution: replicate — Hefesto ports Magic's binary heap (`utils/heap.c`: sift-up, sift-down and its lazy ordering), so equal keys come out in Magic's order in both modes; the maze router's heaps use it (`router-maze` "Heap ordering"; approved 2026-11-25).
 
 ### Q-LEGACY-7: Global router penalties scaled only once per session
 - Kind: quirk
@@ -106,24 +108,30 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-31: Malformed mzrouter contact line leaves a half-registered contact
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: A `contact` line whose second layer or cost is invalid has already been added to the first layer's contact list (and the route-type list) before the error, so a partially defined contact can be used by the search.
 - Evidence: mzrouter/mzTech.c:725-790
 - Options: replicate | fix (validate all fields before registering)
 - Recommendation: fix; report the error and ignore the whole line.
+- Resolution: fix — every `mzrouter` statement, `contact` included, is validated in full before anything is registered; a failing statement reports Magic's message and defines nothing, in both `magic-compat` settings (X-2 tier 1, with Q-LEGACY-39; approved 2026-11-25).
 
 ### Q-LEGACY-32: Maze penalty stored with 0.5 resolution
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: The penalty factor is stored as integer mantissa with exponent 1, i.e. floor(p*2)/2; `search ... 1.3` yields 1.0.
 - Evidence: mzrouter/mzTech.c:640-660, irouter/irCommand.c:620-655, mzrouter/mzInternal.h:67-68
 - Options: replicate | fix (store as double)
 - Recommendation: replicate (affects search order and therefore routes).
+- Resolution: replicate — the penalty is stored as the mantissa floor(p × 2) with exponent 1 (0.5 resolution) in both modes, because it decides the search order (approved 2026-11-25).
 
 ### Q-LEGACY-33: mzrouter `width` statement is overridden by DRC-derived width
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Widths/lengths from `width` lines are overwritten when widths are re-derived from DRC rules after the tech file is read, so the statement has no lasting effect.
 - Evidence: mzrouter/mzTech.c:150-170, mzrouter/mzTech.c:660-710
 - Options: replicate | fix (explicit width overrides DRC like explicit spacing)
 - Recommendation: fix with an explicit-override rule, but log a compatibility note; existing PDKs rarely use `width`.
+- Resolution: compat — with `magic-compat` ON the DRC-derived width and length replace a `width` statement's values, as in Magic; with it OFF an explicit `width` statement overrides the derived values, as an explicit `spacing` does (J5; branch point `route::tech::apply_width_statements`; approved 2026-11-25).
 
 ### Q-LEGACY-34: Documented `iroute route node_name` and `expandDests` do not exist
 - Kind: doc-mismatch
@@ -151,107 +159,120 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-37: The supported PDKs have no `irouter` style
 - Kind: platform
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `iroute` needs a maze-router style named `irouter`. The Magic technology files of sky130A, gf180mcuD and ihp-sg13g2 at the pinned commits all have an empty `mzrouter` section, so every `iroute` and every `mazeroute` reports "Need irouter style in mzrouter section of technology file to use irouter." on all three PDKs. The M11 agent's routing tools wrap `iroute` (`agent-schematic-driven-layout`), so without a style they cannot route on any supported PDK.
 - Evidence: irouter/irMain.c:136-160 (IRAfterTech, `MZFindStyle("irouter")`), irouter/irCommand.c:2580-2585; sky130A.tech:704-705, gf180mcuD.tech (empty `mzrouter … end`), ihp-sg13g2.tech:643
 - Options: (a) none: both modes report Magic's error, and users or PDKs add a style | (b) native only: with `magic-compat` OFF and no `irouter` style, Hefesto derives one from the technology; with it ON Magic's error | (c) Hefesto ships a hand-written `mzrouter` overlay per PDK, read in both modes | (d) the derived style of (b) in both modes
 - Recommendation: (b). With `magic-compat` OFF and no style named `irouter`, Hefesto derives one when the technology is loaded: route layers are the types of the `lef` section's `routing` lines in order (bottom first), each active with hCost/vCost 32/64 on even positions and 64/32 on odd ones (scmos's `irouter` costs), jogCost 256, hintCost 1, overCost 1; contacts are the types of the `cut` lines whose two residues are both derived route layers, cost 1024; widths and spacings come from DRC exactly as for a written style (`router-maze` "Width and spacing derivation from DRC"). A technology with fewer than one `routing` line gets no style and keeps Magic's error. The first `iroute` of a session prints `ROUTE-STYLE-001` naming the derived style once. With `magic-compat` ON nothing is derived (golden behaviour on the PDKs is Magic's error). A style named `irouter` in the technology always wins. This makes `iroute` work on all three PDKs for the agent (whose scratch sessions run with `magic-compat` OFF unless the user chooses otherwise) without data that has to track PDK releases.
+- Resolution: platform — option (b): with `magic-compat` OFF and no style named `irouter`, Hefesto derives one from the technology's `lef` section (`routing` lines as route layers with scmos's alternating 32/64 costs, `cut` lines whose two residues are both route layers as contacts, widths and spacings from DRC); with it ON nothing is derived and Magic's missing-style error stands; a technology `irouter` style always wins (J2; approved 2026-11-25).
 
 ### Q-LEGACY-38: Start points on both sides of a fence leave undo disabled
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `MZAddStart` disables undo while it registers a start, and on the path that prints "Start points on both sides of fence. Arbitrarily choosing those %s fence." it returns without re-enabling it. Undo disabling is a counter, so undo stays off for the rest of the session: every later edit is unrecorded.
 - Evidence: mzrouter/mzMain.c:590-620 (the early return at 609-615), utils/undo.c:409-436 (UndoDisable/UndoEnable count)
 - Options: replicate | fix (re-enable undo on every path)
 - Recommendation: fix in both modes (X-2 tier 1: corrupted editor state). The message and the start choice are Magic's; undo is restored on every path, including errors and cancellation. A unit test routes across a fence and then undoes an unrelated edit.
+- Resolution: fix — undo recording is restored on every path out of start registration and out of the route (the start-points-on-both-sides-of-a-fence case, errors and cancellation), in both modes; the message and the start choice stay Magic's, and LEG-MZ-29 is a documented deviation (X-2 tier 1; approved 2026-11-25).
 
 ### Q-LEGACY-39: Malformed `mzrouter` statements leave half-built route types
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: (1) a bare `style` line copies `argv[1]`, which is NULL. (2) A `layer` line that fails a check after its route type was created (a duplicate plane, a type on two planes, a non-positive cost) leaves the half-filled route layer in the style's route-type list, as Q-LEGACY-31 describes for `contact`. (3) Copying a style for `iroute` (`MZCopyParms`) keeps a pointer it cannot translate shared with the original, so the copy can reach freed memory after a reload.
 - Evidence: mzrouter/mzTech.c:418 (bare `style`), :586-740 (`layer` checks after `mzInitRouteType`), :1136-1215 (`contact`), mzrouter/mzMain.c:243-251 (`ADDR_TBL` keeps untranslated pointers), mzrouter/mzStart.c:337-355 (dereference of the other layer)
 - Options: replicate (not possible: crashes) | fix (validate the whole line before registering anything)
 - Recommendation: fix in both modes (X-2 tier 1), together with Q-LEGACY-31. Every `mzrouter` statement is validated in full before anything is registered; a failing statement reports Magic's message and is ignored whole. A bare `style` reports `"style" lines need a style name` and the lines up to the next `style` are skipped. Hefesto's styles are values, so copying one shares nothing.
+- Resolution: fix — every `mzrouter` statement is validated in full before it takes effect, a bare `style` reports `"style" lines need a style name` and the lines up to the next `style` are skipped, and styles are values so a copy shares nothing, in both modes (X-2 tier 1, with Q-LEGACY-31; approved 2026-11-25).
 
 ### Q-LEGACY-40: Choosing among several endpoint nodes when the session cannot ask
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 as a conditional verify rule (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`, design D19; approved by the user with the recommended option); the `Verified` line is added by task 2.7 from the LEG-MZ-28 capture
 - Magic behavior: when several route layers or contacts touch the start point (or a destination point), `irChooseEndPtLayers` prints "Multiple nodes present at %s point:" and asks "Connect to %s? [yes] " for each candidate with `TxGetLine`; an empty answer is yes and the last candidate is taken without asking. In a batch run there is no console line to read, so the command blocks or reads whatever stdin holds. An agent session has no console at all.
 - Evidence: irouter/irRoute.c:918-1192 (the prompts at 1114 and 1154)
 - Options: replicate (block or read stdin) | fix (when the session cannot ask, take the default answer)
 - Recommendation: fix in both modes (X-2 tier 1: a hang). A session that can ask (the desktop console, an interactive terminal) prompts as Magic does. A session that cannot ask (a script host, `-dnull` batch, an agent scratch session) prints the same lines and takes the empty answer, yes, so the first candidate is connected, as Q-SCRIPT-48 treats confirmations that cannot be asked. LEG-MZ-28 captures Magic in batch with stdin at end of file, under a `timeout -s KILL 120` guard so a blocked Magic cannot stall the capture job. If Magic also takes the first candidate there, this row is replicate; if it connects another candidate, fails, or hangs (killed by the guard, exit status 137), the fix stands as written.
+- Resolution: verify — conditional on LEG-MZ-28 (a batch run with stdin at end of file, under `timeout -s KILL 120`): if Magic connects the first candidate, replicate (a session that cannot ask takes the empty answer, so the first candidate, in both modes); if Magic connects another candidate, if the command fails, or if Magic hangs and the guard kills it (exit status 137), fix in both modes as recommended: a session that cannot ask prints the same prompt lines, takes the empty answer (the first candidate) and never waits for input. A session that can ask prompts as Magic in every branch; an outcome no branch covers goes back to the user before G1-ROUTE (approved 2026-11-25).
 
 ### Q-LEGACY-41: `iroute route -timeout` uses wall-clock time and can stay armed
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `-timeout n` arms a SIGALRM timer of n seconds that interrupts the search, which then ends as "best before interrupt" or "interrupted". A parse error after `-timeout` jumps past the code that clears the timer, so a later command can be interrupted by it. The result of a timed route depends on machine speed, so `mazeroute` (which always passes `-timeout 3`) can route differently on different machines.
 - Evidence: irouter/irCommand.c:1683-1696 and the `leaveClean` path, utils/signals.c:145-198, tcltk/mazeroute.tcl:11-33
 - Options: replicate | fix the leak only | fix the leak and add a second, interrupt-style work budget to the engine
 - Recommendation: fix the leak only, in both modes (X-2 tier 1: an interrupt of an unrelated command). `-timeout` keeps Magic's syntax, messages and meaning: a wall-clock deadline that ends the search like an interrupt; the deadline lives in the route's cancellation token and dies with the command on every path. No new budget is added: Magic already has a deterministic one, the style's `bloomLimit` (`iroute wizard bloomLimit`, irouter/irCommand.c:584-589, :2242), which stops the search quietly once the bloom count exceeds the limit ("Bloom limit (%d) hit." at verbosity ≥ 1) and keeps the cheapest complete path found (result success, else failure; mzrouter/mzSearch.c:208, :409-418, :688-706). The engine honours it as Magic does, the agent sets it in its request's style copy, and golden cases that need a limit run `iroute wizard bloomLimit N` in both Magic and Hefesto. SCRIPT-AUX-02 replays `mazeroute` with Magic's `-timeout 3`; its routes take milliseconds in both tools, so the clock does not decide them.
+- Resolution: fix, the timeout leak only — the `-timeout` deadline lives in the command's cancellation token and is removed on every exit path, option errors included, in both modes; `-timeout` keeps Magic's syntax, messages and wall-clock meaning, and no second work budget is added: the style's `bloomLimit` is the deterministic bound (J4; approved 2026-11-25).
 
 ### Q-LEGACY-42: An already-routed endpoint prints "Route Failed."
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: when the start already connects to the destination, `MZRoute` returns no path with the code "already routed"; `irRoute` sees no path and prints "Route Failed." (an error, shown even at verbosity 0), while the script result is "Route already routed".
 - Evidence: mzrouter/mzMain.c:724-875 (`MZ_ALREADY_ROUTED`), irouter/irRoute.c:360-470
 - Options: replicate | compat (ON as Magic; OFF prints an accurate message)
 - Recommendation: compat (standing rule: printed output differs). With `magic-compat` ON, "Route Failed." is printed as Magic; with it OFF, "Already routed." is printed as information (suppressed at verbosity 0). The script result is "Route already routed" in both modes.
+- Resolution: compat — with `magic-compat` ON an already-routed endpoint prints the error `Route Failed.`, as Magic; with it OFF it prints `Already routed.` as information (suppressed at verbosity 0); the script result is `Route already routed` in both settings (branch point `route::iroute::report_already_routed`; approved 2026-11-25).
 
 ### Q-LEGACY-43: `saveParameters` writes spacings in internal units that `source` reads as lambda
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `iroute saveParameters` writes each spacing as the internal-unit integer, while `iroute spacings` parses values with the standard coordinate parser, which reads a bare number in the current units (lambda by default). After `scalegrid`, or with `units` set to something else, sourcing the file sets different spacings from the ones saved.
 - Evidence: irouter/irCommand.c:2420-2432 (write), :1856-2120 (`cmdParseCoord` on read)
 - Options: replicate | compat (ON as Magic; OFF write the value with the `i` suffix, so it reads back in internal units under any `units` setting)
 - Recommendation: compat (standing rule: the file is a compatibility surface). With `magic-compat` ON the bare integer is written, as Magic; with it OFF the value carries the `i` suffix (`:iroute spacings metal2 metal2 4i`), as `feedback save` does (Q-UI-24). Both read back unchanged in Hefesto when internal units equal lambda.
+- Resolution: compat — with `magic-compat` ON `saveParameters` writes each spacing as the bare internal-unit integer, as Magic; with it OFF the value carries the `i` suffix (precedent Q-UI-24) (branch point `route::iroute::format_saved_spacing`; approved 2026-11-25).
 
 ### Q-LEGACY-44: Sourcing a `saveParameters` file in a Tcl session
 - Kind: ambiguity
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 as a conditional verify rule (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`, design D19; approved by the user with the recommended option); the `Verified` line is added by task 2.7 from the LEG-MZ-11 capture
 - Magic behavior: every command line of the file starts with `:` (`:iroute verbosity 0`). Magic's own command reader strips a leading `:`, so Magic's `source` of the file works; whether a Tcl-level `source` (Magic's Tcl build, Hefesto's scripting layer) accepts a command named `:iroute` is not visible from the C source and was not run.
 - Evidence: textio/txCommands.c:1414-1416 (leading `:` stripped), irouter/irCommand.c:2356-2500
 - Options: verify (LEG-MZ-11 captures `source p.ir` in Magic's Tcl build)
 - Recommendation: verify: if the capture shows the parameters restored, Hefesto's `source` accepts a leading `:` on a command line in both modes (replicate); if Magic's Tcl `source` fails, replicate the failure with `magic-compat` ON and accept the `:` with it OFF (compat). The file content stays Magic's in both cases.
+- Resolution: verify — conditional on LEG-MZ-11 (`source p.ir` in Magic's Tcl build): if Magic's Tcl `source` fails on the leading `:` of the `saveParameters` lines, compat — with `magic-compat` ON Hefesto's `source` fails as Magic does, and with it OFF `script::source_line_prefix` accepts the leading `:`; otherwise (Magic restores the parameters) replicate — the leading `:` is accepted in both modes. The file content stays Magic's in every branch (approved 2026-11-25).
 
 ### Q-LEGACY-45: `iroute route` coordinates reject unit suffixes and `-dRect` is not normalised
 - Kind: quirk
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: each `-sPoint` and `-dRect` value must pass a plain-number test before the coordinate parser sees it, so `10um` or `5i` is rejected ("Nonnumeric coordinate: %s"; the first `-dRect` field says "Non coordinate: %s"), although every other command accepts suffixed coordinates. `-dRect` takes the corners as given, so `-dRect 10 10 0 0` gives an inverted destination rectangle.
 - Evidence: irouter/irCommand.c:1580-1650 (`StrIsNumeric` before `cmdParseCoord`), irouter/irRoute.c:629-750
 - Options: replicate | compat (ON as Magic; OFF accept every coordinate form and normalise the rectangle)
 - Recommendation: compat (standing rule: the command's result differs). With `magic-compat` ON the values are rejected as Magic and the rectangle is used as given; with it OFF any value the standard coordinate parser accepts is taken and `-dRect` is normalised (lower-left, upper-right). The agent's typed wrapper always passes plain internal-unit integers, so it behaves the same in both modes.
+- Resolution: compat — with `magic-compat` ON `-sPoint` and `-dRect` values must be plain numbers and the rectangle is used as given, as Magic; with it OFF every coordinate form the standard parser accepts is taken and `-dRect` is normalised (branch point `route::iroute::parse_route_coord`; approved 2026-11-25).
 
 ### Q-LEGACY-46: `iroute` parameter and message quirks
 - Kind: quirk
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: (1) values given to `iroute layers`/`contacts` with `*` wrap around the list, then warn. (2) `iroute spacings` stops at a value below −1 but skips other bad values, so a set can apply in part; an odd argument count prints a usage line naming `*iroute spacing`. (3) `iroute layers <type>` reports a non-route type with the contact wording, and the error for an unknown layer says "route layer or contact". (4) `iroute help route` omits `-timeout`. (5) Repeated `-sLayers`/`-dLayers` append duplicates. (6) The comment of `irSetNoisyAutoInt` promises a `(FILE*)1` mode that only the layer and contact setters have. (7) The `-list` option of `layers`/`contacts` is honoured only by the all-types form.
 - Evidence: irouter/irCommand.c:795-799 (NEXTVALUE), :1856-2120 (spacings), :1177-1428 (layers), :1072-1130 (help), :1500-1560 (layer lists), :99-196 (irSetNoisyAutoInt)
 - Options: replicate | compat | fix
 - Recommendation: replicate in both modes. These are Magic's texts and parameter semantics that scripts and saved files depend on; none is a crash or corrupt output, and duplicates in a layer list do not change the route. (6) has no observable effect.
+- Resolution: replicate — the seven `iroute` parameter and message quirks are kept as Magic's in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-47: The maze-router penalty is unchecked
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: the penalty is stored as an integer mantissa floor(p × 2) with exponent 1 (Q-LEGACY-32). `iroute wizard penalty` has no range check: a negative penalty makes the adjusted cost grow as paths approach the destination, and a value whose mantissa does not fit in an `int` is an undefined float-to-int conversion. The technology statement `search <rate> <width> <penalty>` rejects negative values ("Bad penalty value") but makes the same unchecked `(int)(value * 2)` conversion for large ones.
 - Evidence: irouter/irCommand.c:620-656, mzrouter/mzTech.c:987-1008, mzrouter/mzSearch.c:519-524
 - Options: replicate | fix the overflow only | fix both
 - Recommendation: fix the overflow in both modes (X-2 tier 1), at both entry points: a value with |p × 2| ≥ 2^31 is rejected with "Penalty value out of range: %s" and the penalty is unchanged (for `search`, the whole statement defines nothing, by the whole-statement validation of Q-LEGACY-31 and -39). Replicate negative values for `wizard penalty` in both modes (they are legal in Magic and only change the search order; the adjusted-cost arithmetic is saturating, Q-LEGACY-90); the `search` statement keeps Magic's rejection of negative values.
+- Resolution: fix, for `iroute wizard penalty` and the technology `search` statement — at both entry points a penalty whose mantissa |p × 2| is 2^31 or more is rejected with `Penalty value out of range: %s` and the penalty is unchanged (a `search` statement with it defines nothing), in both modes; negative values stay as Magic: accepted by `wizard penalty`, rejected by `search` (X-2 tier 1; approved 2026-11-25).
 
 ### Q-LEGACY-48: Maze search memory is unbounded
 - Kind: platform
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: the search allocates path records, hash entries and blockage tiles until it finishes or the user interrupts; with `bloomLimit 0` (the default) a long route over a large, congested area can exhaust memory and abort Magic.
 - Evidence: mzrouter/mzSearch.c:182-720, mzrouter/mzMain.c:724-875, mzrouter/mzBlock.c
 - Options: (a) a memory budget per route that ends the search like an interrupt | (b) no limit, as Magic
 - Recommendation: (a), in both modes. A route whose search memory exceeds the budget (setting `router.max-search-memory`, default 1 GiB; 256 MiB on iPadOS) ends as an interrupt does ("Search Interrupted!" with the best complete path, otherwise "Route Interrupted!"), and prints `ROUTE-MZ-002` naming the budget. Golden routes stay far below it.
+- Resolution: platform — option (a): a per-route search memory limit, setting `router.max-search-memory` (1 GiB on desktop, 256 MiB on iPadOS), ends the search as an interrupt does and reports `ROUTE-MZ-002`, in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-49: The maze helper routes a net with fewer than two pins
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: the maze helper's Route action (`routenet` in `mazeroute.tcl`) routes each selected net as a chain over its pins. For a net with one pin the chain loop does not run, so the variable that holds the route result is never set, and the next test stops the helper with Tcl's "can't read "rresult": no such variable" (if an earlier net set it, that net's result is reused instead). `scripting-auxiliary-tools` "Netlist maze-routing script" says the helper is reproduced but does not mention this case.
 - Evidence: tcltk/mazeroute.tcl:477-541 (the loop at 500-517, the test at 520)
 - Options: replicate (stop with the error) | fix (a net with fewer than two pins is left in the unrouted list, with a note in the console, and the next selected net is routed)
 - Recommendation: fix in both modes. A Tcl error that aborts the action, or a result carried over from another net, is a defect of the helper with no behaviour to keep. The `mazeroute` command (the golden surface, SCRIPT-AUX-02) is not affected: its chain over one terminal routes nothing, as Magic's. The m10-plot-route change carries the rule as a MODIFIED delta of `scripting-auxiliary-tools` "Netlist maze-routing script", synced only if this row is approved.
+- Resolution: fix — in the maze helper, a net with fewer than two pins stays in the unrouted list with a console note and the next selected net is routed, in both modes; the `mazeroute` command is unchanged (approved 2026-11-25).
 
 ### Q-LEGACY-50: Plowing of non-Manhattan (split) tiles
 - Kind: ambiguity
@@ -286,11 +307,12 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-54: The maze helper's parameter window cannot open
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: the maze helper's Params button runs `genmazeparams`, which fills each route-layer row from `$contact`, a variable not yet set in that loop (Tcl error), and creates its Active cells with `checkbox`, which is not a Tk widget (`checkbutton` is). The window therefore fails before it shows anything, and it has no apply action even if it opened. `scripting-auxiliary-tools` "Netlist maze-routing script" lists the helper's lists and actions but not this window.
 - Evidence: tcltk/mazeroute.tcl:65 (the button), :101-145 (`genmazeparams`: `$contact` at 129, `checkbox` at 127 and 140)
 - Options: (a) not provided: the helper has no Params button; the route parameters stay reachable through `iroute layers`, `iroute contacts`, `iroute spacings` and `iroute wizard` | (b) a working parameter panel showing `iroute layers -list` and `iroute contacts -list` and applying edits through those commands
 - Recommendation: (a). Magic's window never worked, so there is no behaviour to reproduce, and a new parameter editor is native UI that belongs with the M11 routing UI if it is wanted. The m10-plot-route delta of "Netlist maze-routing script" states that the helper has no parameter window.
+- Resolution: other — option (a): the maze helper has no parameter window; route parameters stay on `iroute layers`, `iroute contacts`, `iroute spacings` and `iroute wizard` (approved 2026-11-25).
 
 ### Q-LEGACY-70: Netlist write order depends on platform word size and char signedness
 - Kind: quirk
@@ -404,38 +426,48 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-85: Initial LR contact uses an inverted length test
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: When creating initial paths, an LR (horizontal-plane) contact at the start point is offered only when the free run to the right is NOT long enough (`xtop - x <= length - width`); the UD (vertical) variant uses the correct test (`ytop - y > length - width`). The in-search contact extension uses the correct test for both.
 - Evidence: mzrouter/mzStart.c:330-350 vs mzrouter/mzStart.c:355-370, mzrouter/mzSearch.c:880-885
 - Options: replicate | fix (use `>` like the other three sites)
 - Recommendation: replicate for golden compatibility; consider a fix behind a compatibility flag.
+- Resolution: compat — with `magic-compat` ON the initial left-right contact is offered when `xtop − x <= length − width`, as Magic; with it OFF when `xtop − x > length − width`, as at the other three sites (J5; branch point `route::maze::initial_lr_contact_fits`; approved 2026-11-25).
 
 ### Q-LEGACY-86: Same-node zero-cost rule overwrites the parent path's estimated total
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: After choosing an extension end point that lies in same-node area, if the origin path has no predecessor or its predecessor's estimated total is 0, the origin path's stored estimated total (cost so far + estimate) is overwritten with 0. The new path's total is then computed from 0 minus the origin's estimate-to-go, and the origin's hash entry now holds total 0, so any later path to that key is rejected.
 - Evidence: mzrouter/mzXtndRght.c:555-560, mzXtndLeft.c:560-565, mzXtndUp.c:553-558, mzXtndDown.c:557-562, mzSearch.c:1290-1310
 - Options: replicate | fix (track a separate "cost so far" and zero only that)
 - Recommendation: replicate; it determines which start-node point routes leave from.
+- Resolution: replicate — the same-node zero-cost rule overwrites the origin path's estimated total as Magic does, in both modes; it decides which start-node point routes leave from (approved 2026-11-25).
 
 ### Q-LEGACY-87: Upward extension ignores closer stop points in the free case
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: In the upward extension, when the next blockage tile is free and space is not constricting, the end point is unconditionally set to that tile's bottom after pruning, overriding a closer bounds edge, without updating the reason set. Right/left/down do not do this.
 - Evidence: mzrouter/mzXtndUp.c:230-236
 - Options: replicate | fix (remove the unconditional assignment)
 - Recommendation: replicate; it changes routes and can run past generated blockage.
+- Resolution: compat — with `magic-compat` ON the upward extension sets the end point to the free tile's bottom unconditionally, as Magic; with it OFF the end point is the nearest pruned candidate, as in the other three directions (J5; branch point `route::maze::extend_up_end_point`; approved 2026-11-25).
 
 ### Q-LEGACY-88: Same-node paint of a contact onto its own route type blocks half of it
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: When start/destination material of a contact type c is painted as same-node into route type c itself, the first of the two same-node rectangles is painted same-node but the second is painted `blocked`.
 - Evidence: mzrouter/mzBlock.c:410-450
 - Options: replicate | fix (paint both same-node)
 - Recommendation: replicate; document as Magic behavior.
+- Resolution: replicate — the second same-node rectangle of a contact painted onto its own route type is painted blocked, as Magic, in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-89: Contact same-node exemption tests the wrong tile
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: When painting blocked material into a contact route type over same-node area, the code looks up the layer plane tile but tests the contact plane tile again, so the exemption applies whenever the material type is either layer of the first contact (contact order) of that type, regardless of the layer plane.
 - Evidence: mzrouter/mzBlock.c:380-405
 - Options: replicate | fix (test the layer plane tile)
 - Recommendation: replicate the effective rule (as specified).
+- Resolution: compat — with `magic-compat` ON the exemption tests the contact-plane tile (Magic's effective rule, as specified); with it OFF it tests the layer-plane tile (J5; branch point `route::maze::contact_same_node_exempt`; approved 2026-11-25).
 
 ### Q-LEGACY-90: Integer overflow in estimate and adjusted-cost arithmetic
 - Kind: bug
@@ -447,45 +479,57 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 
 ### Q-LEGACY-91: Contact-to-contact spacing checked only within one contact class
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: LR contact placement checks spacing only against the most recent LR contact ('O') and UD placement only against the most recent UD contact ('X'); interesting-point pruning also considers inactive contacts of the layer.
 - Evidence: mzrouter/mzSearch.c:830-845, 1060-1075; mzrouter/mzXtndRght.c:425-445
 - Options: replicate | fix (check the most recent contact of either class; skip inactive)
 - Recommendation: replicate.
+- Resolution: replicate — contact-to-contact spacing is checked only against the most recent contact of the same class, as Magic, in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-92: Start point is the lower-left of the first enumerated start tile
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: The initial point of a start term is the lower-left corner of the first same-node/walk/destination tile found in the layer's horizontal blockage plane within the term rectangle grown by 1 at left/bottom; that corner can lie outside the term (merged tiles) and depends on corner-stitched enumeration order (upper-left first).
 - Evidence: mzrouter/mzStart.c:60-66, 160-180
 - Options: replicate (including tile enumeration order) | define a canonical point
 - Recommendation: replicate; specify enumeration order in the tile-plane capability.
+- Resolution: replicate — the start point is the lower-left corner of the first enumerated start tile, with the canonical tile enumeration order of `layout-geometry-model`, in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-93: Destination contact-walk passes run with an invalid argument
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Destination-area building runs the LR/UD contact-walk callbacks once directly over the destination-area cell with a tree-search context in place of the route type; no route type ever matches so the passes are no-ops. The effective contact walks come from the nested pass.
 - Evidence: mzrouter/mzBlock.c:870-880, 1291-1330
 - Options: replicate (no-op) | remove
 - Recommendation: remove; no observable effect.
+- Resolution: fix (remove) — the destination contact-walk passes with the invalid argument are not written; they have no observable effect (approved 2026-11-25).
 
 ### Q-LEGACY-94: Vertical extensions use horizontal-strip contact blockage
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Contact-related interesting points are computed from each contact's horizontal-strip blockage plane in all four directions, so vertical moves stop at every horizontal strip boundary of contact blockage; layer planes use the strip form perpendicular to the move.
 - Evidence: mzrouter/mzXtndUp.c:434, mzXtndDown.c:437
 - Options: replicate | fix (use vertical-strip plane for vertical moves)
 - Recommendation: replicate; it affects the set of interesting points and thus routes.
+- Resolution: replicate — vertical extensions use the horizontal-strip contact blockage, as Magic, in both modes (approved 2026-11-25).
 
 ### Q-LEGACY-95: Stale paths still consume blooms
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: A path taken from a heap to start a bloom increments the bloom counter (which drives the window offset) before the hashed-best check; if it is stale it is then discarded with no extension.
 - Evidence: mzrouter/mzSearch.c:595-680, 166-200, 700-712
 - Options: replicate | fix (check staleness before blooming)
 - Recommendation: replicate; the window position depends on the bloom count.
+- Resolution: replicate — a stale path consumes a bloom before the hashed-best check, as Magic, in both modes; the window position depends on the bloom count (approved 2026-11-25).
 
 ### Q-LEGACY-96: Straight-shot estimators follow corner-neighbour chains only
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: A straight-shot estimator looks for a destination only along the chain of neighbours at one corner of the tile (e.g. right neighbours at the top-right corner), so a destination reachable straight across from another part of the edge is missed.
 - Evidence: mzrouter/mzEstimate.c:1080-1200
 - Options: replicate | fix (search the whole edge)
 - Recommendation: replicate; estimates steer the search order.
+- Resolution: replicate — straight-shot estimators follow the corner-neighbour chains only, as Magic, in both modes; estimates steer the search order (approved 2026-11-25).
 
 ### Q-LEGACY-97: Plowed subcells use a truncated "unset move" sentinel
 - Kind: bug

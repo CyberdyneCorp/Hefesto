@@ -24,13 +24,14 @@ rate, width_int = positive_int ;  penalty = nonnegative_decimal ;
 ```
 
 Rules:
-- Every statement other than `style` requires a preceding `style` line; otherwise `Missing style line.` is reported. Each `style` line starts a new style with default parameters (next requirement); the previous style is closed. Unknown keywords report `Unrecognized keyword: "%s"`.
+- Every statement other than `style` requires a preceding `style` line; otherwise `Missing style line.` is reported. Each `style` line starts a new style with default parameters (next requirement); the previous style is closed. A `style` line without a name reports `"style" lines need a style name` and the statements up to the next `style` line are skipped (Magic dereferences a missing argument; see Q-LEGACY-39). Unknown keywords report `Unrecognized keyword: "%s"`.
+- Every statement SHALL be validated in full before any of it takes effect: a statement that reports an error defines nothing, in both `magic-compat` settings (Magic leaves a half-registered route layer or contact; see Q-LEGACY-31, Q-LEGACY-39).
 - `layer`: 4 to 7 fields; the type must be valid and on a plane not already used by another route layer of the style (`Attempt to define two route layers on same plane:  %s and %s`). Optional costs default to 1. Any non-numeric or non-positive cost aborts the line (the layer is not defined).
-- `contact`: exactly 5 fields; both layer types must already be route layers of the style (`route layer must be declared before used in contact.`); cost must be a positive integer. See Q-LEGACY-31 for partially-applied contacts.
+- `contact`: exactly 5 fields; both layer types must already be route layers of the style (`route layer must be declared before used in contact.`); cost must be a positive integer.
 - `notactive`: marks listed route layers/contacts inactive by default (unknown ones report `Unrecognized route type: "%.20s"`).
 - `spacing`: even field count >= 4; the second word of each pair may be any type, or a case-insensitive prefix of `subcell`; values are non-negative integers or the literal `NIL` (= no restriction, stored as -1). Explicit spacings are applied after the DRC-derived values (see derivation).
 - `search`: exactly 4 fields; sets window rate and window width (positive integers) and the penalty factor (stored as the integer `floor(p * 2)` interpreted as `/2`, i.e. 0.5 resolution; see Q-LEGACY-32).
-- `width`: sets route-type width and optional minimum length (default = width) — overridden later by DRC derivation (see Q-LEGACY-33).
+- `width`: sets route-type width and optional minimum length (default = width). With `magic-compat` ON it is overridden later by DRC derivation, as in Magic; with it OFF it overrides the derived values (requirement "Maze router behaviour with magic-compat off"; see Q-LEGACY-33).
 - Route layers, contacts and types are kept in the order they appear in the file.
 
 Example (scmos):
@@ -52,7 +53,7 @@ end
 ```
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:180-260, mzrouter/mzTech.c:300-800, scmos/scmos.tech.in mzrouter section)
+(Magic ref: mzrouter/mzTech.c:334-1113, mzrouter/mzTech.c:1136-1281, scmos/scmos.tech.in mzrouter section) (See Q-LEGACY-31, Q-LEGACY-33, Q-LEGACY-39.)
 
 #### Scenario: Layer defaults
 - **GIVEN** `layer m2 32 64` inside a style
@@ -64,11 +65,16 @@ Compatibility: exact
 - **WHEN** the section is read
 - **THEN** `Missing style line.` is reported and nothing is defined
 
+#### Scenario: Contact with an undeclared layer defines nothing
+- **GIVEN** a style with route layer metal1 only and the line `contact m2contact metal1 metal2 1024`
+- **WHEN** the section is read and `iroute contacts` is run
+- **THEN** `route layer must be declared before used in contact.` is reported, and m2contact is neither a route contact nor attached to metal1
+
 ### Requirement: Style defaults and lookup
 Each style SHALL start with: penalty 1024.0, window rate 500, window width 10000, bloom delta cost 1, bounds increment AUTOMATIC, estimate on, expand endpoints on, top-level hints only off, max walk length (penetration) AUTOMATIC, no bounds hint, verbosity 1, bloom limit 0 (unlimited). Styles are looked up by exact name; the interactive router uses a private copy of style `irouter`, the gate-array router a copy of `garouter`. Changing the copy (via `iroute` subcommands) does not alter the technology style.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:262-300, mzrouter/mzInternal.h:60-120, mzrouter/mzMain.c:272-440, irouter/irMain.c:120-160)
+(Magic ref: mzrouter/mzTech.c:517-562, mzrouter/mzInternal.h:60-120, mzrouter/mzMain.c:272-440, irouter/irMain.c:120-160)
 
 #### Scenario: Default window width
 - **GIVEN** a style with no `search` line
@@ -85,7 +91,7 @@ After the technology (including DRC) is loaded or the grid rescaled, the engine 
 Spacing semantics: -1 = no restriction; 0 = may not overlap; s > 0 = must be at least s away.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:150-228, drc/DRCtech.c:4620-4745)
+(Magic ref: mzrouter/mzTech.c:235-302, mzrouter/mzTech.c:1393-1409, drc/DRCtech.c:4620-4722)
 
 #### Scenario: Width from DRC
 - **GIVEN** a DRC rule `width allMetal2 3` and route layer metal2
@@ -197,7 +203,7 @@ extendBounds(R):
 Generation is triggered: (a) once at each start term's lower-left corner before the search; (b) for every destination-area rectangle before destination labels are painted; (c) when a path is popped for extension and its end point lies in a non-generated h-bounds tile or on that tile's left or right edge, or on the bottom or top edge of the v-bounds tile containing it; (d) during extension (see "Interesting points") until the blockage tile containing the start point is covered. Because bounds-tile edges are themselves interesting points, Hefesto MUST reproduce this generation schedule exactly.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzBlock.c:651-840, mzrouter/mzSearch.c:236-280, mzrouter/mzMain.c:820-850)
+(Magic ref: mzrouter/mzBlock.c:651-799, mzrouter/mzSearch.c:302-339, mzrouter/mzMain.c:803-813)
 
 #### Scenario: First generation window (verify against Magic)
 - **GIVEN** bounds increment 180, no bounds hint, and a start term with lower-left (0,0)
@@ -284,7 +290,7 @@ Pruning: process T's estimators in list order (most recently created first: stra
 Estimate at point p: `min over estimators of T(p) with finite costs of hcost×|p.x−x0| + vcost×|p.y−y0| + cost0` in 64-bit arithmetic, or COST_MAX if none.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzEstimate.c:20-1530, mzrouter/mzEstimate.c:1530-1900, mzrouter/mzEstimate.c:1900-1960)
+(Magic ref: mzrouter/mzEstimate.c:201-1568, mzrouter/mzEstimate.c:1591-1915, mzrouter/mzEstimate.c:1934-2038)
 
 #### Scenario: Open-field estimate
 - **GIVEN** no obstacles, one active layer with hCost 1 and vCost 2, destination point (100, 50)
@@ -333,7 +339,7 @@ initialContacts(L, p): for C in contacts of L (active, other layer active):
 See Q-LEGACY-92 for the choice of p. After all terms, `initialEstimate` = the minimum estimated total of all initial paths actually added (COST_MAX if none), `minToGo0 = initialEstimate`, `maxToGo0 = initialEstimate + windowWidth`.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzStart.c:60-416, mzrouter/mzMain.c:800-850)
+(Magic ref: mzrouter/mzStart.c:62-415, mzrouter/mzMain.c:801-830)
 
 #### Scenario: Start on route layer
 - **GIVEN** start term metal1 (10,10)-(20,20), metal1 width 3 spacing 3, no obstacles
@@ -360,7 +366,7 @@ create path; hash[key] = path; dispatch it (Windowed bloom search, step 5)
 All arithmetic is signed 64-bit. Older paths for the same key are not removed from stacks or heaps; they are skipped when popped from a stack because they are no longer the hashed path for their key. Orientation 'O' marks a layer change through an LR-checked contact, 'X' through a UD-checked contact.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzSearch.c:1211-1350, mzrouter/mzSearch.c:166-200)
+(Magic ref: mzrouter/mzSearch.c:1211-1443, mzrouter/mzSearch.c:266-300)
 
 #### Scenario: Hash rejection on equal cost
 - **GIVEN** a path stored for key ((50,10), metal1, H) with E = 900
@@ -384,7 +390,7 @@ c = d × (rot ? other-direction cost : overroute ? overCost(R) : this-direction 
 `overroute` is set during interesting-point computation (a contact type of R is `blocked`, not merely walk/destination, at the first step). Walk moves use the same formula without overroute. Contact moves cost the contact's `cost`. Hint cost for a horizontal move: iterate over the vertical-strip magnet tiles q from the left end of the segment (lowPt) to its right end; for each non-magnet q containing lowPt: `up = q.ytop − y` if the tile adjoining q's top edge at its right end is magnet else −1; `down = y − q.ybot` if the tile adjoining q's bottom edge at its left end is magnet else −1; `delta` = the smaller non-negative one (0 if both −1); add `(min(q.xtop, rightEnd) − lowPt.x) × hintCost(R) × delta` when delta > 0; continue at `q.xtop`. Vertical moves use the horizontal-strip magnet plane with right (top end) and left (bottom end) neighbours symmetrically. After pNew is chosen, if R's blockage at pNew is `same-node` and (the origin path has no predecessor or its predecessor's E is 0), the origin path's stored E is overwritten with 0 before the new point is added (see Q-LEGACY-86).
 
 Compatibility: exact
-(Magic ref: mzrouter/mzXtndRght.c:550-634, mzrouter/mzXtndLeft.c, mzrouter/mzXtndUp.c, mzrouter/mzXtndDown.c, mzrouter/mzWalk.c:60-430)
+(Magic ref: mzrouter/mzXtndRght.c:550-634, mzrouter/mzXtndLeft.c, mzrouter/mzXtndUp.c, mzrouter/mzXtndDown.c, mzrouter/mzWalk.c:57-515)
 
 #### Scenario: Rotate swaps costs
 - **GIVEN** route layer m2 with hCost 32 and vCost 64 and a horizontal segment of length 10 starting inside rotate paint
@@ -529,7 +535,7 @@ Dispatch of a new non-complete path N created while extending a path popped from
 The penalty is `m = floor(p × 2)`, `e = 1` (see Q-LEGACY-32). Result: the top of the complete heap (cheapest E) with code success (or "best before interrupt"), else failure / interrupted. See Q-LEGACY-95 for blooms of stale paths.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzSearch.c:60-730, mzrouter/mzSearch.c:1350-1490, mzrouter/mzTech.c:985-1010, mzrouter/mzInternal.h:60-70)
+(Magic ref: mzrouter/mzSearch.c:182-710, mzrouter/mzSearch.c:1462-1473, mzrouter/mzTech.c:985-1010, mzrouter/mzInternal.h:60-70)
 
 #### Scenario: Window sweep termination
 - **GIVEN** initial estimate 1000, window width 10000, rate 500
@@ -569,7 +575,7 @@ add(k):   n += 1; A[n] = k
 Entries added before the first `top`/`removeTop` are not ordered until then. See Q-LEGACY-6.
 
 Compatibility: exact
-(Magic ref: utils/heap.c:60-420)
+(Magic ref: utils/heap.c:114-518)
 
 #### Scenario: Equal keys before first removal
 - **GIVEN** an empty min-heap and adds a(5), b(3), c(5) with no removal in between
@@ -601,3 +607,95 @@ Compatibility: informative
 #### Scenario: Diagnostics have no layout effect
 - **WHEN** `*mzroute parms` is executed
 - **THEN** maze parameters are printed and the layout is unchanged
+
+### Requirement: Maze router behaviour with magic-compat off
+With `magic-compat` OFF, the maze router SHALL differ from Magic in exactly these points; with it ON, each is as the other requirements of this capability state. Each point has one branch point in the engine.
+- **Explicit width (Q-LEGACY-33).** A `width` statement's width and length replace the DRC-derived width and length of that route type (as explicit `spacing` statements replace derived spacings).
+- **Initial left-right contact (Q-LEGACY-85).** An initial path through a contact at the start point in the left-right direction is offered when `tile.xtop − p.x > length(C) − width(C)`, the test the up-down direction and the in-search contact extension use.
+- **Upward extension (Q-LEGACY-87).** In the upward extension, a free next blockage tile does not override a closer stop point; the end point is the nearest of the pruned candidates, as in the other three directions.
+- **Contact same-node exemption (Q-LEGACY-89).** When blocked material is painted into a contact route type over same-node area, the exemption tests the layer-plane tile, so it applies only where the layer plane itself is same-node.
+
+Routes found with `magic-compat` OFF are still deterministic and identical on every platform.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-2) (See Q-LEGACY-33, Q-LEGACY-85, Q-LEGACY-87, Q-LEGACY-89.)
+
+#### Scenario: Width statement honoured
+- **GIVEN** `magic-compat` OFF, a DRC width of 3 for metal2 and the statement `width m2 4` in style `irouter`
+- **WHEN** the technology is loaded and `iroute layers metal2 width` is run
+- **THEN** the width printed is 4; with `magic-compat` ON it is 3, as Magic
+
+#### Scenario: Initial left-right contact with magic-compat off
+- **GIVEN** `magic-compat` OFF, a start point p on metal1 inside a tile whose free run to the right satisfies `tile.xtop − p.x > length(C) − width(C)` for the active contact C between metal1 and metal2
+- **WHEN** the initial paths are created
+- **THEN** an initial path through C in the left-right direction is created
+
+#### Scenario: Initial left-right contact with magic-compat on
+- **GIVEN** `magic-compat` ON and the same start point, tile and contact
+- **WHEN** the initial paths are created
+- **THEN** no initial left-right path through C is created, because Magic offers it only when `tile.xtop − p.x <= length(C) − width(C)`
+
+#### Scenario: Upward extension with magic-compat off
+- **GIVEN** `magic-compat` OFF, an upward extension from p whose next blockage tile is free and does not constrict, and a bounds edge between p and that tile's bottom
+- **WHEN** the path is extended upward
+- **THEN** the end point is the bounds edge, the nearest of the pruned candidates
+
+#### Scenario: Upward extension with magic-compat on
+- **GIVEN** `magic-compat` ON and the same extension
+- **WHEN** the path is extended upward
+- **THEN** the end point is the free tile's bottom, past the closer bounds edge, as Magic
+
+#### Scenario: Contact same-node exemption with magic-compat off
+- **GIVEN** `magic-compat` OFF, a contact route type C between metal1 and metal2, and blocked metal2 material painted into C over an area that is same-node on C's contact plane but not on the metal2 layer plane
+- **WHEN** the blockage planes are built
+- **THEN** the area is blocked for C
+
+#### Scenario: Contact same-node exemption with magic-compat on
+- **GIVEN** `magic-compat` ON and the same material and area
+- **WHEN** the blockage planes are built
+- **THEN** the area is exempt (not blocked) for C, because Magic tests the contact-plane tile again
+
+### Requirement: Maze router engine interface
+The engine SHALL be callable without global state, so that several editor sessions (including the scratch sessions of the M11 agent's routing tools, capability `agent-schematic-driven-layout`) can route at the same time. A route request SHALL carry the style parameters (a value copy, including the bloom limit of requirement "Style defaults and lookup"), the start terms, the destination areas, the expansion mask and reference area of the layout it sees, and these run controls: a cancellation token (set by an interrupt or by `-timeout`) and the search memory limit. The result SHALL carry:
+- the result code: success, best before interrupt, failure, unroutable, interrupted or already routed;
+- the path as a list of points with their route types, and the paint it converts to (requirement "Path to paint conversion");
+- the path's cost, the initial cost estimate, and the counts of blooms and points processed;
+- the reason the search ended (complete, bloom limit, cancellation, memory limit).
+
+The engine SHALL NOT modify the layout: painting the result into the edit cell, the undo record, the selection and the redisplay belong to the caller. The bloom limit is the engine's only work budget and keeps Magic's meaning (requirement "Windowed bloom search"): when it is nonzero and the bloom count exceeds it, the search stops quietly ("Bloom limit (%d) hit." at verbosity 1 or more) and returns the cheapest complete path found with result code success, or failure when there is none; it is not an interrupt. Because the bloom count does not depend on the machine, a route with a bloom limit gives the same result on every machine; callers that need a deterministic bound (the M11 agent, tests, golden cases through `iroute wizard bloomLimit`) set it in the request's style copy. For the same request the engine SHALL return the same result whatever other sessions are routing.
+
+Compatibility: native
+
+(Hefesto decisions: docs/decisions/product.md#P-13, docs/decisions/cross-cutting.md#X-1) (See Q-LEGACY-41.)
+
+#### Scenario: Two sessions route at once
+- **GIVEN** two editor sessions with the same layout and the same route request, one of them already routing
+- **WHEN** the second session routes
+- **THEN** both return the same result code, path and cost as a route run alone
+
+#### Scenario: Bloom limit ends the search deterministically
+- **GIVEN** a route request whose search needs more than 51 blooms, with bloom limit 50 in its style
+- **WHEN** it is run on Linux x86_64 and on macOS arm64
+- **THEN** both runs stop at the first bloom selection after the 51st bloom (the count first exceeds the limit there) with "Bloom limit (50) hit.", the same result code (success with the cheapest complete path found, or failure) and, on success, the same path
+
+### Requirement: Maze search safety and limits
+In both `magic-compat` settings the maze router SHALL NOT crash, hang or leave the editor in a changed state after a route:
+- **Undo (Q-LEGACY-38).** Undo recording is restored on every path out of start registration and of the route, including the start-points-on-both-sides-of-a-fence case, errors and cancellation.
+- **Search memory (Q-LEGACY-48).** When the memory of path records, hash entries and blockage planes of one route exceeds the setting `router.max-search-memory` (default 1 GiB on desktop, 256 MiB on iPadOS), the search ends as an interrupt does ("Search Interrupted!" and "Using best path found prior to interrupt." with a complete path, otherwise "Route Interrupted!") and the limit is reported.
+- **Arithmetic (Q-LEGACY-90).** Cost, estimate and adjusted-cost arithmetic saturates instead of overflowing.
+- **Penalty (Q-LEGACY-47).** At both places a penalty is set, the technology `search` statement and `iroute wizard penalty`, a penalty whose stored mantissa floor(p × 2) does not fit in 32 bits is rejected with `Penalty value out of range: %s` and the penalty is unchanged; a `search` statement with such a penalty defines nothing (whole-statement validation).
+
+Compatibility: native
+
+(Hefesto decisions: docs/decisions/cross-cutting.md#X-2, docs/decisions/cross-cutting.md#X-4) (See Q-LEGACY-38, Q-LEGACY-47, Q-LEGACY-48, Q-LEGACY-90.)
+
+#### Scenario: Undo after a fence route
+- **GIVEN** start points on both sides of fence paint
+- **WHEN** the route runs, printing `Start points on both sides of fence. Arbitrarily choosing those inside fence.`, and the user then paints a box and runs `undo`
+- **THEN** the painted box is removed
+
+#### Scenario: Memory limit reached
+- **GIVEN** `router.max-search-memory` set to 1 MiB and a route over a large congested area
+- **WHEN** the route runs
+- **THEN** the search ends with "Search Interrupted!" or "Route Interrupted!" and a message naming the limit, and the editor stays responsive
