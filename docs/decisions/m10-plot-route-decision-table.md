@@ -115,11 +115,11 @@ The **Kind** column is the kind of the recommendation, as X-2 (`docs/decisions/c
 | Q-LEGACY-37 | The supported PDKs have no `irouter` style | **platform** | (b) Derived from the `lef` section with `magic-compat` OFF only (J2). | approved 2026-11-25: platform (b) |
 | Q-LEGACY-38 | Fence start points leave undo disabled for the session | **fix** | Undo restored on every path; message and start choice kept. LEG-MZ-29 is a documented deviation. | approved 2026-11-25: fix |
 | Q-LEGACY-39 | Bare `style`, half-built `layer` lines, shared pointers in style copies | **fix** | Whole-statement validation; a bare `style` reports and skips to the next `style`; styles are values. | approved 2026-11-25: fix |
-| Q-LEGACY-40 | Several endpoint nodes when the session cannot ask | **verify** / **fix** | Take the empty answer (yes, first candidate) and never block; LEG-MZ-28 shows whether Magic does the same (then replicate). | approved 2026-11-25: conditional on LEG-MZ-28 (replicate if Magic connects the first candidate; otherwise fix) |
+| Q-LEGACY-40 | Several endpoint nodes when the session cannot ask | **verify** / **fix** | Take the empty answer (yes, first candidate) and never block; LEG-MZ-28 shows whether Magic does the same (then replicate). | approved 2026-11-25: conditional on LEG-MZ-28 (replicate if Magic connects the first candidate; otherwise fix); verified 2026-11-26 by LEG-MZ-28 (run 45817717718): Magic connected the first candidate (metal2), exit 0 — **replicate** |
 | Q-LEGACY-41 | `-timeout` is wall-clock and can stay armed | **fix** | The deadline lives in the command's cancel token (no leak). No new budget: the style's `bloomLimit` (Magic's quiet stop) is the deterministic bound for the agent, tests and goldens (`iroute wizard bloomLimit N` in both tools). | approved 2026-11-25: fix (the timeout leak only) |
 | Q-LEGACY-42 | Already routed prints "Route Failed." | **compat** | ON: `Route Failed.` OFF: `Already routed.` (information). Script result unchanged. | approved 2026-11-25: compat |
 | Q-LEGACY-43 | Saved spacings in internal units read back as lambda | **compat** | ON: bare integer. OFF: the `i` suffix (precedent Q-UI-24). | approved 2026-11-25: compat |
-| Q-LEGACY-44 | Sourcing a `saveParameters` file in a Tcl session | **verify** | Replicate if Magic's Tcl `source` restores the parameters (LEG-MZ-11); otherwise compat (OFF accepts the leading `:`). | approved 2026-11-25: conditional on LEG-MZ-11 (compat if Magic fails on the leading `:`; otherwise replicate) |
+| Q-LEGACY-44 | Sourcing a `saveParameters` file in a Tcl session | **verify** | Replicate if Magic's Tcl `source` restores the parameters (LEG-MZ-11); otherwise compat (OFF accepts the leading `:`). | approved 2026-11-25: conditional on LEG-MZ-11 (compat if Magic fails on the leading `:`; otherwise replicate); verified 2026-11-26 by LEG-MZ-11 (run 45817717718): `invalid command name ":iroute"` — **compat** |
 | Q-LEGACY-45 | Route coordinates reject unit suffixes; `-dRect` not normalised | **compat** | ON: Magic. OFF: any coordinate form, rectangle normalised. | approved 2026-11-25: compat |
 | Q-LEGACY-46 | `iroute` parameter and message quirks | **replicate** | Value cycling, partial spacing sets, Magic's texts and help as they are. | approved 2026-11-25: replicate |
 | Q-LEGACY-47 | The maze-router penalty is unchecked | **fix** / **replicate** | Reject values whose mantissa overflows 32 bits, in `iroute wizard penalty` and in the technology `search` statement; keep negative values for `wizard penalty`. | approved 2026-11-25: fix (`wizard penalty` and the `search` statement) |
@@ -184,6 +184,8 @@ Edits that deltas cannot express: the `tech-file-format` note that the `plot` an
 |---|---|---|
 | Q-LEGACY-40 | LEG-MZ-28 | Does Magic in a batch run with stdin at end of file connect the first candidate, another one, fail, or hang? The case runs under `timeout -s KILL 120`, so a hang is recorded (exit status 137) instead of stalling the job. |
 | Q-LEGACY-44 | LEG-MZ-11 | Does `source p.ir` in Magic's Tcl build restore the parameters despite the leading `:`? |
+
+Both answered by golden-capture run 45817717718 on 2026-11-26; the `Verified` lines are in `docs/decisions/open-questions/LEGACY.md`. Q-LEGACY-40 is replicate (the first candidate), Q-LEGACY-44 is compat.
 
 ## Spec changes
 
