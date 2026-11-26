@@ -4,7 +4,7 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
-## Unreleased (M10: 3D view, phase 1)
+## Unreleased (M10: 3D view, phases 1 and 2)
 
 ### Fixed
 
@@ -20,6 +20,14 @@ release notices.
 - **3D view upside down in tilted views.** The isometric, front and side
   views showed the stack from below (wells on top, metals at the
   bottom); every tilted view now looks from above.
+- **Layers at the same height flicker in 3D.** Faces of two layers at
+  the same height (common in mask-layer mode) showed through each other
+  in speckles that moved with the camera; the later layer in the stack
+  now wins at every pixel, in both magic-compat modes.
+- **Flat mask-layer 3D view with magic-compat ON.** In the desktop 3D
+  tab, mask-layer mode now keeps the stack in proportion with
+  magic-compat ON, as it already did with it OFF; Magic's own z scale
+  (`defaults`, script windows) is unchanged.
 
 ### Added
 
@@ -72,6 +80,14 @@ release notices.
   board, the side panel fits a 1280 × 800 window, a substrate slab is
   drawn under the stack ("Substrate" toggle), and every control has a
   screen-reader name and state.
+- **Phase 2 of the 3D view complete.** In mask-layer mode a net selected
+  in 2D is drawn as an overlay over the mask layers. "Span connected
+  layers" is a property of the 3D window, so `export3d` exports a spanned
+  view spanned. The Export menu offers glTF, GLB, STL per layer and STL
+  merged. "Detach view" moves the 3D view into its own window. Long layer
+  names are ellipsized, with the full name in the tooltip. With
+  magic-compat ON, mask generation errors found while building the 3D
+  view are printed once per build (never as feedback areas).
 
 ## Unreleased (M9: LVS and simulation, in progress)
 
