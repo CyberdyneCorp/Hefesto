@@ -47,7 +47,7 @@ end
 ```
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:180-260, mzrouter/mzTech.c:300-800, mzrouter/mzTech.c:1136-1215, scmos/scmos.tech.in mzrouter section) (See Q-LEGACY-31, Q-LEGACY-33, Q-LEGACY-39.)
+(Magic ref: mzrouter/mzTech.c:334-1113, mzrouter/mzTech.c:1136-1281, scmos/scmos.tech.in mzrouter section) (See Q-LEGACY-31, Q-LEGACY-33, Q-LEGACY-39.)
 
 #### Scenario: Layer defaults
 - **GIVEN** `layer m2 32 64` inside a style
@@ -82,10 +82,40 @@ Compatibility: native
 #### Scenario: Width statement honoured
 - **GIVEN** `magic-compat` OFF, a DRC width of 3 for metal2 and the statement `width m2 4` in style `irouter`
 - **WHEN** the technology is loaded and `iroute layers metal2 width` is run
-- **THEN** the width printed is 4; with `magic-compat` ON it is 3
+- **THEN** the width printed is 4; with `magic-compat` ON it is 3, as Magic
+
+#### Scenario: Initial left-right contact with magic-compat off
+- **GIVEN** `magic-compat` OFF, a start point p on metal1 inside a tile whose free run to the right satisfies `tile.xtop − p.x > length(C) − width(C)` for the active contact C between metal1 and metal2
+- **WHEN** the initial paths are created
+- **THEN** an initial path through C in the left-right direction is created
+
+#### Scenario: Initial left-right contact with magic-compat on
+- **GIVEN** `magic-compat` ON and the same start point, tile and contact
+- **WHEN** the initial paths are created
+- **THEN** no initial left-right path through C is created, because Magic offers it only when `tile.xtop − p.x <= length(C) − width(C)`
+
+#### Scenario: Upward extension with magic-compat off
+- **GIVEN** `magic-compat` OFF, an upward extension from p whose next blockage tile is free and does not constrict, and a bounds edge between p and that tile's bottom
+- **WHEN** the path is extended upward
+- **THEN** the end point is the bounds edge, the nearest of the pruned candidates
+
+#### Scenario: Upward extension with magic-compat on
+- **GIVEN** `magic-compat` ON and the same extension
+- **WHEN** the path is extended upward
+- **THEN** the end point is the free tile's bottom, past the closer bounds edge, as Magic
+
+#### Scenario: Contact same-node exemption with magic-compat off
+- **GIVEN** `magic-compat` OFF, a contact route type C between metal1 and metal2, and blocked metal2 material painted into C over an area that is same-node on C's contact plane but not on the metal2 layer plane
+- **WHEN** the blockage planes are built
+- **THEN** the area is blocked for C
+
+#### Scenario: Contact same-node exemption with magic-compat on
+- **GIVEN** `magic-compat` ON and the same material and area
+- **WHEN** the blockage planes are built
+- **THEN** the area is exempt (not blocked) for C, because Magic tests the contact-plane tile again
 
 ### Requirement: Maze router engine interface
-The engine SHALL be callable without global state, so that several editor sessions (including an agent's scratch sessions) can route at the same time. A route request SHALL carry the style parameters (a value copy, including the bloom limit of requirement "Style defaults and lookup"), the start terms, the destination areas, the expansion mask and reference area of the layout it sees, and these run controls: a cancellation token (set by an interrupt or by `-timeout`) and the search memory limit. The result SHALL carry:
+The engine SHALL be callable without global state, so that several editor sessions (including the scratch sessions of the M11 agent's routing tools, capability `agent-schematic-driven-layout`) can route at the same time. A route request SHALL carry the style parameters (a value copy, including the bloom limit of requirement "Style defaults and lookup"), the start terms, the destination areas, the expansion mask and reference area of the layout it sees, and these run controls: a cancellation token (set by an interrupt or by `-timeout`) and the search memory limit. The result SHALL carry:
 - the result code: success, best before interrupt, failure, unroutable, interrupted or already routed;
 - the path as a list of points with their route types, and the paint it converts to (requirement "Path to paint conversion");
 - the path's cost, the initial cost estimate, and the counts of blooms and points processed;
@@ -95,7 +125,7 @@ The engine SHALL NOT modify the layout: painting the result into the edit cell, 
 
 Compatibility: native
 
-(Hefesto decisions: docs/decisions/product.md#P-13, docs/decisions/cross-cutting.md#X-1) (See Q-LEGACY-41, Q-AGENT-1.)
+(Hefesto decisions: docs/decisions/product.md#P-13, docs/decisions/cross-cutting.md#X-1) (See Q-LEGACY-41.)
 
 #### Scenario: Two sessions route at once
 - **GIVEN** two editor sessions with the same layout and the same route request, one of them already routing

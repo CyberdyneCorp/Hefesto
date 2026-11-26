@@ -22,10 +22,10 @@ Start: `-spoint` coordinates transformed from edit to root coordinates; cursor p
 
 Destination: box (`Can not use box for dest:  No Box.`, `...box not in route cell.`), rectangle, label (same search, rectangle = label rectangle, analogous messages with `Destination`), or selection (a destination area for each selected tile of a type connecting to each permitted active layer). For a label destination only the first active route layer connected to the label type is used; otherwise every permitted active layer.
 
-Start layers when not determined by a label: from the permitted active layers, find route contacts (both layers active) and layers touching the start point. No layer present → all permitted active layers; exactly one layer → that layer; exactly one contact → its two layers; otherwise print `Multiple nodes present at start point:` with the candidates and ask `Connect to %s? [yes] ` for each (empty answer = yes; the last candidate is taken automatically). A session that cannot ask (a script host, a headless batch run, an agent session) SHALL print the same lines and take the empty answer, in both `magic-compat` settings, so the first candidate is connected and the command never waits for input (see Q-LEGACY-40).
+Start layers when not determined by a label: from the permitted active layers, find route contacts (both layers active) and layers touching the start point. No layer present → all permitted active layers; exactly one layer → that layer; exactly one contact → its two layers; otherwise print `Multiple nodes present at start point:` with the candidates and ask `Connect to %s? [yes] ` for each (empty answer = yes; the last candidate is taken automatically). A session that cannot ask (a script host, a headless batch run, an agent session) SHALL print the same lines and take the empty answer, in both `magic-compat` settings, so the first candidate is connected and the command never waits for input (see Q-LEGACY-40: a conditional rule settled by the LEG-MZ-28 capture; this behaviour holds in every approved branch, as a replicate if Magic also connects the first candidate, as a fix otherwise).
 
 Compatibility: behavioral
-(Magic ref: irouter/irRoute.c:95-470, irouter/irRoute.c:505-760, irouter/irRoute.c:900-1192) (See Q-LEGACY-40.)
+(Magic ref: irouter/irRoute.c:95-480, irouter/irRoute.c:500-862, irouter/irRoute.c:884-1192) (See Q-LEGACY-40.)
 
 #### Scenario: Label not found
 - **WHEN** `iroute route -slabel nosuch` is executed
@@ -49,7 +49,7 @@ A technology with no `routing` line gets no derived style and keeps the missing-
 
 Compatibility: native
 
-(Hefesto decisions: docs/decisions/cross-cutting.md#X-2, docs/decisions/product.md#P-13) (See Q-LEGACY-37, Q-AGENT-1.)
+(Hefesto decisions: docs/decisions/cross-cutting.md#X-2, docs/decisions/product.md#P-13) (See Q-LEGACY-37.)
 
 #### Scenario: sky130A with magic-compat off
 - **GIVEN** the sky130A technology, whose `mzrouter` section is empty, and `magic-compat` OFF
@@ -62,11 +62,11 @@ Compatibility: native
 - **THEN** `Need irouter style in mzrouter section of technology file to use irouter.` is reported
 
 ### Requirement: Route timeout
-`iroute route -timeout <n>` SHALL end the search after n seconds of wall-clock time as an interrupt does (the results of requirement "Route results" for an interrupt). The deadline SHALL belong to the one command: it is removed when the command ends on any path, including an option error after `-timeout` (Magic leaves its timer armed there; see Q-LEGACY-41), so no later command is interrupted by it. Golden cases and tests whose result would otherwise depend on the clock set `iroute wizard bloomLimit <n>` (in Magic and in Hefesto alike), whose stop is deterministic (capability `router-maze`, "Maze router engine interface"); `mazeroute` keeps Magic's `-timeout 3`, and its golden case (SCRIPT-AUX-02) routes so little that the deadline is never reached.
+`iroute route -timeout <n>` SHALL end the search after n seconds of wall-clock time as an interrupt does (the results of requirement "Route results" for an interrupt). The deadline SHALL belong to the one command: it is removed when the command ends on any path, including an option error after `-timeout` (Magic leaves its timer armed there; see Q-LEGACY-41), so no later command is interrupted by it. Only this leak is fixed: `-timeout` keeps Magic's syntax, messages and wall-clock meaning, and no other work budget is added. Golden cases and tests whose result would otherwise depend on the clock set `iroute wizard bloomLimit <n>` (in Magic and in Hefesto alike), whose stop is deterministic (capability `router-maze`, "Maze router engine interface"); `mazeroute` keeps Magic's `-timeout 3`, and its golden case (SCRIPT-AUX-02) routes so little that the deadline is never reached.
 
 Compatibility: behavioral
 
-(Magic ref: irouter/irCommand.c:1683-1696, utils/signals.c:145-198) (See Q-LEGACY-41.)
+(Magic ref: irouter/irCommand.c:1664-1678, irouter/irCommand.c:1695, irouter/irCommand.c:1721-1725, utils/signals.c:124-199) (See Q-LEGACY-41.)
 
 #### Scenario: Option error after a timeout
 - **GIVEN** `iroute route -timeout 1 -foo`
@@ -78,18 +78,38 @@ With `magic-compat` OFF, `iroute` SHALL differ from Magic in exactly these point
 - **Already routed (Q-LEGACY-42).** When the start already connects to the destination, `Already routed.` is printed as information instead of the error `Route Failed.`; the scripting result is `Route already routed` in both settings.
 - **Saved spacings (Q-LEGACY-43).** `saveParameters` writes each spacing value with the `i` suffix (internal units), e.g. `:iroute spacings metal2 metal2 4i`, so the file restores the same spacings under any `units` setting and after `scalegrid`.
 - **Coordinates (Q-LEGACY-45).** `-spoint` and `-drect` accept every coordinate form of the standard coordinate parser (unit suffixes included), and the `-drect` rectangle is normalised to lower-left and upper-right corners.
-- **Sourcing saved files (Q-LEGACY-44).** If the LEG-MZ-11 capture shows that Magic's Tcl `source` does not accept the leading `:` of `saveParameters` lines, the scripting layer accepts it with `magic-compat` OFF; if the capture shows that it does, it is accepted in both settings and this point is void.
+- **Sourcing saved files (Q-LEGACY-44).** If the LEG-MZ-11 capture shows that Magic's Tcl `source` does not accept the leading `:` of `saveParameters` lines, the scripting layer accepts it with `magic-compat` OFF (`script::source_line_prefix`) and `source` fails as Magic's with it ON; if the capture shows that it does, it is accepted in both settings and this point is void.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-2) (See Q-LEGACY-42, Q-LEGACY-43, Q-LEGACY-44, Q-LEGACY-45.)
 
-#### Scenario: Suffixed coordinates
+#### Scenario: Suffixed coordinates in both settings
 - **GIVEN** `magic-compat` OFF and an `irouter` style
 - **WHEN** `iroute route -spoint 1um 1um -drect 10um 10um 2um 2um` is executed
 - **THEN** the route starts at (1 µm, 1 µm) and ends in the rectangle (2 µm, 2 µm)-(10 µm, 10 µm); with `magic-compat` ON `Nonnumeric coordinate: 1um` is reported and nothing is routed
 
-#### Scenario: Saved spacings after scalegrid
+#### Scenario: Saved spacings after scalegrid with magic-compat off
 - **GIVEN** `magic-compat` OFF, `scalegrid 1 2`, and a metal2-to-metal2 spacing of 8 internal units
 - **WHEN** `iroute saveParameters p.ir` is run, the technology is reloaded with the same grid, and `source p.ir` is executed
 - **THEN** `iroute spacings metal2 metal2` prints `	8`
+
+#### Scenario: Saved spacings with magic-compat on
+- **GIVEN** `magic-compat` ON and a metal2-to-metal2 spacing of 4 internal units
+- **WHEN** `iroute saveParameters p.ir` is run
+- **THEN** the file contains the line `:iroute spacings metal2 metal2 4`, the bare integer, as Magic; with `magic-compat` OFF the line is `:iroute spacings metal2 metal2 4i`
+
+#### Scenario: Already routed with magic-compat off
+- **GIVEN** `magic-compat` OFF, verbosity 1, and a start point on material already connected to the destination
+- **WHEN** `iroute route -slabel a -dlabel b` is executed
+- **THEN** `Already routed.` is printed as information, nothing is painted, and the scripting result is `Route already routed`
+
+#### Scenario: Already routed with magic-compat on
+- **GIVEN** `magic-compat` ON and the same layout
+- **WHEN** `iroute route -slabel a -dlabel b` is executed
+- **THEN** the error `Route Failed.` is reported, as Magic, nothing is painted, and the scripting result is `Route already routed`
+
+#### Scenario: Sourcing a saved file with magic-compat off
+- **GIVEN** `magic-compat` OFF and a file written by `iroute saveParameters p.ir`
+- **WHEN** `source p.ir` is executed in a Tcl session
+- **THEN** every `:iroute` line is run and the parameters are restored, whatever the LEG-MZ-11 capture shows; with `magic-compat` ON the result is Magic's as that capture records it

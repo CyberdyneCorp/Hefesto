@@ -14,7 +14,7 @@ svg_cmd    = "svg" , ws , file ;
 param_cmd  = "parameters" , [ ws , name , ws , value ] ;
 ```
 
-(Magic ref: plot/plotCmd.c:50-362, commands/CmdSubrs.c:486-590) (See Q-MISC-51.)
+(Magic ref: plot/plotCmd.c:89-361, commands/CmdSubrs.c:485-640) (See Q-MISC-51.)
 
 #### Scenario: Box outside the root cell
 - **GIVEN** a layout window showing cell TOP whose bounding box is (0,0)-(200,100), and the box tool in a different window's cell
@@ -56,7 +56,7 @@ The printed listing (informative) groups parameters under "General plotting para
 
 Hefesto deviates (Q-MISC-51, platform, both `magic-compat` settings): Magic's default build also has `cellidfont`, `cellnamefont`, `labelfont`, `directory`, `dotsperinch`, `printer`, `spoolcommand`, `swathheight`, `width` and `plottype`, listed under "HP/Versatec plotting parameters are:", and `pnmplotRTL`, listed as the last line of the PNM group. Hefesto neither lists nor accepts them; in Hefesto these names are unknown parameters. The golden cases that print the listing (MISC-PLOT-05, MISC-PLOT-17) carry these lines as a documented deviation.
 
-(Magic ref: plot/plotMain.c:300-650, plot/plotPS.c:120-140, plot/plotPNM.c:60-75, plot/plotVers.c:95-140) (See Q-MISC-49, Q-MISC-51.)
+(Magic ref: plot/plotMain.c:280-650, plot/plotPS.c:123-135, plot/plotPNM.c:77-82, plot/plotVers.c:108-142) (See Q-MISC-49, Q-MISC-51.)
 
 #### Scenario: Reject zero label size
 - **WHEN** the user runs `plot parameters ps_labelsize 0`
@@ -72,7 +72,7 @@ When labels are selected, the system SHALL (a) for each label in hierarchical or
 
 Compatibility: exact
 
-(Magic ref: plot/plotPS.c:760-1000, plot/plotPS.c:1150-1160, plot/plotPS.c:1291-1312, dbwind/DBWdisplay.c:121-122) (See Q-MISC-42.)
+(Magic ref: plot/plotPS.c:761-1030, plot/plotPS.c:1170-1177, plot/plotPS.c:1304-1324, dbwind/DBWdisplay.c:121-122) (See Q-MISC-42.)
 
 #### Scenario: North-justified point label
 - **GIVEN** d = 1, plotted area origin (0,0), and a point label "vdd" at (5,5) with justification N
@@ -90,7 +90,7 @@ Compatibility: exact
 
 Compatibility: behavioral
 
-(Magic ref: graphics/grTCairo1.c:354-404, plot/plotCmd.c:265-282) (See Q-MISC-52, Q-MISC-55.)
+(Magic ref: graphics/grTCairo1.c:354-406, plot/plotCmd.c:270-287) (See Q-MISC-52, Q-MISC-55.)
 
 #### Scenario: Extension appended
 - **WHEN** the user runs `plot svg view`
@@ -107,7 +107,7 @@ The `versatec`, `colorversatec`, `gremlin` and `pixels` styles of the technology
 
 Compatibility: behavioral
 
-(Magic ref: plot/plotInt.h:28, plot/plotVers.c:241-498, plot/plotVers.c:1063-1490, plot/plotGremln.c:131-217, plot/plotPixels.c:149-183, plot/plotPNM.c:700-760) (See Q-MISC-44, Q-MISC-45, Q-MISC-51.)
+(Magic ref: plot/plotInt.h:28, plot/plotVers.c:212-498, plot/plotVers.c:1063-1493, plot/plotGremln.c:131-217, plot/plotPixels.c:149-181, plot/plotPNM.c:745-818, plot/plotPNM.c:895-954) (See Q-MISC-44, Q-MISC-45, Q-MISC-51.)
 
 #### Scenario: Versatec lines accepted
 - **GIVEN** a `style versatec` block with `m1 X` and a line `m2 1 2 3`
@@ -124,7 +124,7 @@ Hefesto SHALL bundle, unmodified and with Magic's notice, `mos.7bit.mraster.cmap
 
 Compatibility: informative
 
-(Magic ref: plot/plotPS.c:1180-1192, plot/plotPS.c:1221-1232, plot/plotPNM.c:1033-1060, plot/plotPNM.c:1150-1165, plot/plotPNM.c:1261-1279, plot/plotPNM.c:1305-1318, plot/plotPNM.c:1360-1400, plot/plotPNM.c:1456-1507, dbwind/DBWdisplay.c:1750-1765, graphics/grMain.c:215-216, plot/plotVers.c:1475-1485) (See Q-MISC-44.)
+(Magic ref: plot/plotPS.c:1221-1232, plot/plotPNM.c:1033-1060, plot/plotPNM.c:1150-1165, plot/plotPNM.c:1261-1279, plot/plotPNM.c:1305-1318, plot/plotPNM.c:1360-1400, plot/plotPNM.c:1456-1507, dbwind/DBWdisplay.c:1750-1765, graphics/grMain.c:215-216, plot/plotVers.c:1474-1483) (See Q-MISC-44.)
 
 #### Scenario: Prologue embedded
 - **GIVEN** no `magicps.pro` file on disk
@@ -142,27 +142,42 @@ Compatibility: informative
 
 With `magic-compat` OFF, plotting SHALL differ from Magic in exactly these points; with it ON, each is as the other requirements of this capability state:
 - **Rectangles that start outside the area (Q-MISC-41).** An `X` or `B` style tile and an unexpanded-cell outline are written when any part of them overlaps the plotted area, not only when the lower-left corner lies inside it. PostScript's clipping (`rectclip`) trims them.
-- **Label margins (Q-MISC-43).** The label overhang of requirement "PostScript label margins" uses urx = trunc((x − X)/s0) and ury = trunc((y − Y)/s0), with x and y relative to the area origin as the other bounds are, so the margins do not depend on where the area lies.
+- **Label margins (Q-MISC-43).** The label overhang of requirement "PostScript label margins" uses urx = trunc((x − X)/s0), ury = trunc((y − Y)/s0), llx = trunc(−x/s0) and lly = trunc(−y/s0), where X and Y are the area's width and height: every bound is relative to the area origin, as the anchor (x, y) is, so the margins do not depend on where the area lies.
 - **File extension (Q-MISC-55).** `plot pnm` and `plot svg` append their extension when the file name after the last `/` has no `.`, instead of testing the whole path.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-2) (See Q-MISC-41, Q-MISC-43, Q-MISC-55.)
 
-#### Scenario: Cell outline across the left edge
+#### Scenario: Cell outline across the left edge with magic-compat off
 - **GIVEN** `magic-compat` OFF, an unexpanded instance whose root bounding box is (−10,0)-(20,30), and a plotted area (0,0)-(100,100)
 - **WHEN** a PostScript plot with subcell outlines is written
-- **THEN** the output contains `-10 0 30 30 mr`, which Magic and `magic-compat` ON omit
+- **THEN** the output contains `-10 0 30 30 mr`
 
-#### Scenario: Margins away from the origin
+#### Scenario: Cell outline across the left edge with magic-compat on
+- **GIVEN** `magic-compat` ON, an unexpanded instance whose root bounding box is (−10,0)-(20,30), and a plotted area (0,0)-(100,100)
+- **WHEN** a PostScript plot with subcell outlines is written
+- **THEN** no `mr` line is written for that outline, as Magic
+
+#### Scenario: Margins away from the origin with magic-compat off
 - **GIVEN** `magic-compat` OFF and the same labels plotted once with the area (0,0)-(100,100) and once with the area (1000,1000)-(1100,1100) shifted with them
 - **WHEN** both plots are written
 - **THEN** both files have the same `%%BoundingBox` and scale
 
-#### Scenario: Dot in a directory name
+#### Scenario: Margins away from the origin with magic-compat on
+- **GIVEN** `magic-compat` ON and a point label at the centre of the area (1000,1000)-(1100,1100)
+- **WHEN** a PostScript plot with labels is written
+- **THEN** the left and bottom margins are computed as Magic does, llx = trunc((1000 − 50)/s0) and lly = trunc((1000 − 50)/s0) from the absolute area corner and the relative anchor (50, 50), so the `%%BoundingBox` and scale differ from those of the same plot with the area at (0,0)-(100,100)
+
+#### Scenario: Dot in a directory name with magic-compat off
 - **GIVEN** `magic-compat` OFF
 - **WHEN** the user runs `plot pnm dir.v2/out 100`
-- **THEN** the file `dir.v2/out.pnm` is written; with `magic-compat` ON the file is `dir.v2/out`
+- **THEN** the file `dir.v2/out.pnm` is written
+
+#### Scenario: Dot in a directory name with magic-compat on
+- **GIVEN** `magic-compat` ON
+- **WHEN** the user runs `plot pnm dir.v2/out 100`
+- **THEN** the file `dir.v2/out` is written, with no extension, as Magic
 
 ### Requirement: Plot output safety and limits
 
