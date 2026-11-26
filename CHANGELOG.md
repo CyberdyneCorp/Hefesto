@@ -99,6 +99,17 @@ release notices.
   registries, portable seeding, deterministic initialisation) behind the
   `HEFESTO_BUILD_NGSPICE` option (default OFF). The golden capture image
   uses the same ngspice (`47-hefesto1`) and adds OpenVAF-reloaded.
+- **Statistical `.param` drawn once per load.** Patch 0005 backports the
+  upstream ngspice change after release 47: a top-level `.param` with
+  `agauss` and similar functions is drawn once per circuit load (one draw per
+  die), not at every reference. Engine and capture image are now
+  `47-hefesto2`.
+- **Simulation reference runs** (`golden-capture.yml` mode `sim-refruns`):
+  `.param` precedence per PDK, sky130 `ng_nomodcheck` and the descriptor
+  loads, gf180mcu `hs` against `hsa`.
+- **Desktop Beta layout cell.** `beta_inv` is drawn with its own transistors
+  for sky130, gf180mcu and IHP, DRC-clean with each PDK's Magic tech file and
+  written to GDS (ctest `e2e.beta.<pdk>.layout`).
 
 ## Unreleased (M8: schematic capture, in progress)
 
