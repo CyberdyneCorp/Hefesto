@@ -81,12 +81,13 @@ The G2-SIM critical path is 5.1 → 3.2 → 3.3 and 3.6 → 3.7 (SIM, SIMADV) �
   Verify the CI image build and a log line reporting `<release>-hefesto<n>`.
 
   As landed (branch `m9-round0-ngbuild`): `tools/golden/container/build_ngspice.sh` builds `third_party/ngspice` (copied into the build context as `container/ngspice/` by `third_party/ngspice/tools/sync_image_copy.py`; `test_pins.py` checks the copy) as `/opt/ref/bin/ngspice` and `/opt/ref/lib/libngspice-hefesto.so`, then installs OpenVAF-reloaded 20260616 (`/opt/ref/bin/openvaf-r`, SHA-256 checked). The stock pre-master-48 build moved to `/opt/ngspice-stock` (`[tools.ngspice_stock]`). golden-capture run 45411226446 logged `hefesto-golden: ngspice 47-hefesto1` and `OpenVAF-Reloaded 20260616-0-g44cfee3b`.
-- [ ] 3.3 (GOLDEN, with SPEC; after 3.1, 3.2, and after the F1 decision) Reference runs on the image, each recorded as a `Verified` line under the conditional `Resolution:` line approved at G0:
+- [x] 3.3 (GOLDEN, with SPEC; after 3.1, 3.2, and after the F1 decision) Reference runs on the image, each recorded as a `Verified` line under the conditional `Resolution:` line approved at G0:
   - D-22, `.param` precedence: one deck per PDK, with the result recorded in `SIMADV.md` under Q-SIMADV-3, -4 and -9 (after the F1 decision of `docs/decisions/m9-decision-table.md`: a later F1 patch changes `.param` evaluation and would invalidate these runs);
   - D-26, sky130 `ng_nomodcheck`, recorded in `SIM.md` under Q-SIM-8;
   - D-27, gf180mcu `hs` against `hsa`.
   
   Verify that each entry has a `Verified` line with the run id that names the branch of the rule it selects. If a result falls outside every branch of the approved rule, raise it to the user before G2-SIM.
+  **As landed (M9 R2, 2026-11-26):** harness `tools/golden/refruns/run_refruns.py` with Hefesto-authored decks, `golden-capture.yml` mode `sim-refruns`, image `ngspice-47-hefesto2` (patch 0005 in). Run 45818789172 failed every IHP run on a harness bug (relative OSDI paths; fixed with regression test `test_osdi_lines_are_absolute_when_out_is_relative`); rerun **45859754101** succeeded on all 38 runs. `Verified` lines: Q-SIMADV-3 (a), Q-SIMADV-4 D-22 (a) and D-27 (a) `hs`, Q-SIMADV-9 (b) (last definition wins in all three PDKs), Q-SIM-8 descriptors (a) and `ng_nomodcheck` (b). No result fell outside a branch. `simulation-netlist-preparation` descriptor table amended (sky130 without `ng_nomodcheck`, gf180mcu `hs`; scenario "Bundled init commands"). The upstream report of the gf180mcu `design.ngspice` comment mismatch (Q-SIMADV-4) is still to be filed.
 - [x] 3.4 (GOLDEN) Comparators `tools/golden/compare/lvs_canonical.py`, `raw_tolerance.py` and `meas_table.py` (design D19), registered with the case tool, with tests on hand-written equal and unequal inputs:
   - a reordered hash section passes and a changed device count fails;
   - a `Date:`-only difference passes and a 1 % voltage error fails;

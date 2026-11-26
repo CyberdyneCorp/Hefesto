@@ -241,12 +241,12 @@ Every PDK entry in the PDK store (capability `hefesto-files-and-pdks`) that supp
 - the ngspice initialisation commands
 - the OSDI modules required
 
-Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The full corner tables, the additional section variables and the rule that emits a model line only when its file is used are owned by capability `simulation-corners`, Requirement "Bundled corner tables"; where the two differ, that requirement wins. The remaining files and section names are to be verified against open_pdks (Q-SIM-8):
+Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The full corner tables, the additional section variables and the rule that emits a model line only when its file is used are owned by capability `simulation-corners`, Requirement "Bundled corner tables"; where the two differ, that requirement wins. The files, section names, init commands and OSDI modules below were verified against the pinned PDK sets by the task 3.3 reference run (Q-SIM-8, D-26, D-27; golden-capture run 45859754101): sky130 on `combined` needs no `ng_nomodcheck`, and gf180mcu uses `hs`, as the PDK's own `.spiceinit` sets, because `hsa` changes nothing on the PDK device test:
 
 | PDK | Model lines | Process sections | Init commands | OSDI |
 |---|---|---|---|---|
-| sky130A/B | `.lib sky130.lib.spice <proc>`, model root `libs.tech/combined` | `tt ff ss sf fs` | `set ngbehavior=hsa`, `set ng_nomodcheck` | none |
-| gf180mcuC/D | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hsa` | none |
+| sky130A/B | `.lib sky130.lib.spice <proc>`, model root `libs.tech/combined` | `tt ff ss sf fs` | `set ngbehavior=hsa` | none |
+| gf180mcuC/D | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hs` | none |
 | sg13g2 | `.lib cornerMOSlv.lib <mos>`, `.lib cornerMOShv.lib <moshv>`, `.lib cornerHBT.lib <hbt>`, `.lib cornerRES.lib <res>`, `.lib cornerCAP.lib <cap>` | mos: `mos_tt mos_ff mos_ss mos_sf mos_fs`; others from the PDK | `set ngbehavior=hsa` | `psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf` |
 
 A user MAY add or edit descriptors. On Linux and macOS, a descriptor MAY be generated from a PDK's `libs.tech/ngspice` directory found by the PDK store's search rules.
@@ -259,6 +259,13 @@ Compatibility: native
 - **GIVEN** sky130A installed with its bundled descriptor
 - **WHEN** a testbench is created with no corner selected
 - **THEN** the deck SHALL contain `.lib "<store>/sky130A/libs.tech/combined/sky130.lib.spice" tt` and `.temp 27`
+
+#### Scenario: Bundled init commands
+- **GIVEN** the bundled descriptors
+- **WHEN** a job is prepared for each PDK
+- **THEN** the sky130A init commands SHALL be `set ngbehavior=hsa` only, with no `set ng_nomodcheck`
+- **AND** the gf180mcuC init commands SHALL be `set ngbehavior=hs`
+- **AND** the sg13g2 descriptor SHALL require the OSDI modules `psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi` and `cap_cmomf`
 
 ### Requirement: Model library resolution
 Hefesto SHALL resolve every file reference in a deck to an absolute path before passing the deck to ngspice. This covers `.lib` and `.include` lines in model templates, in imported netlists and in raw decks, applied recursively to included files. ngspice SHALL never need to search for a file or expand an environment variable. A reference `f` found in a file whose directory is `d` resolves as follows; the first rule that applies wins:

@@ -69,7 +69,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-8: PDK simulation model descriptors need verification
 - Kind: doc-mismatch
-- Status: approved 2026-11-22 as a conditional verify rule (design D1 of `openspec/changes/m9-lvs-simulation`; `docs/decisions/m9-decision-table.md`); the `Verified` line is added by task 3.3 from the reference run
+- Status: approved 2026-11-22 as a conditional verify rule (design D1 of `openspec/changes/m9-lvs-simulation`; `docs/decisions/m9-decision-table.md`); `Verified` 2026-11-26 by task 3.3 (M9 R2)
 - ngspice behavior: not applicable. The descriptor contents come from open_pdks and the IHP repository. The values in the spec are from memory:
   - sky130: `sky130.lib.spice` sections `tt ff ss sf fs`, plus `.spiceinit` with `set ngbehavior=hsa` and `set ng_nomodcheck`
   - gf180mcu: `design.ngspice`, plus `sm141064.ngspice` sections `typical ff ss fs sf`
@@ -78,6 +78,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Options: verify against open_pdks and IHP-Open-PDK at the pinned versions; generate descriptors automatically from `libs.tech/ngspice/.spiceinit` and the corner files.
 - Recommendation: verify (cross-cutting X-6 already requires the open_pdks sources). Also confirm the section names for HBT, RES and CAP in sg13g2, and whether sky130 still needs `ng_nomodcheck`.
 - Resolution: verify — the descriptors are those this entry lists, with the sky130 model root `libs.tech/combined` (Q-SIMADV-2), each checked by the D-26 reference run against the pinned PDK sets: (a) if the run confirms a value (file name, section name, `.spiceinit` command, OSDI module, including the sg13g2 HBT, RES and CAP sections), it stays; otherwise (b) it is corrected to what the pinned PDK files define, in `simulation-netlist-preparation`. sky130 `ng_nomodcheck`: (a) if the run without it fails on `combined`, the descriptor sets it; otherwise (b) the descriptor does not set it. A result that neither branch covers goes back to the user before gate G2-SIM. Approved by the user 2026-11-22.
+- Verified 2026-11-26: descriptors (a), sky130 `ng_nomodcheck` (b). golden-capture run 45859754101 (mode `sim-refruns`, image `ngspice-47-hefesto2`, harness `tools/golden/refruns/run_refruns.py`): every listed model line and section loads cleanly against the pinned sets: sky130 `combined` `tt ff ss sf fs`; gf180mcu `design.ngspice` and `sm141064.ngspice` `typical ff ss fs sf`; sg13g2 `cornerMOSlv.lib` and `cornerMOShv.lib` `mos_tt mos_ff mos_ss mos_sf mos_fs`, `cornerHBT.lib` `hbt_typ hbt_bcs hbt_wcs`, `cornerRES.lib` `res_typ res_bcs res_wcs`, `cornerCAP.lib` `cap_typ cap_bcs cap_wcs`. The pinned sg13g2 `.spiceinit` loads six OSDI modules (`psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf`), which is the set `simulation-netlist-preparation` already lists since Q-SIMADV-5; the three-module list in this entry is superseded. sky130 on `combined` without `ng_nomodcheck` loads and runs with no warning (run `sky130-d26-without`), so the descriptor does not set it (`simulation-netlist-preparation` table amended).
 
 ### Q-SIM-9: `.control` sections and the `shell` command
 - Kind: platform
