@@ -1,0 +1,28 @@
+* SPDX-License-Identifier: Apache-2.0
+* Copyright 2026 The Hefesto Authors
+* Hefesto-authored reference deck (openspec/changes/m9-lvs-simulation task 3.3; D-22, D-26).
+* sky130 continuous models (libs.tech/combined, Q-SIMADV-2), section @SECTION@, then the
+* optional top-level override of the run. Two identical nfet_01v8 instances: with mismatch
+* on they differ, with it off they are equal (one process draw per die, patch 0005).
+.lib "@SKY130@/sky130A/libs.tech/combined/sky130.lib.spice" @SECTION@
+@OVERRIDE@
+Vsw sw 0 {MC_MM_SWITCH}
+Rsw sw 0 1k
+Vdd d 0 1.8
+Vgg g 0 1.8
+Vm1 d d1 0
+Vm2 d d2 0
+X1 d1 g 0 0 sky130_fd_pr__nfet_01v8 w=1 l=0.15
+X2 d2 g 0 0 sky130_fd_pr__nfet_01v8 w=1 l=0.15
+.control
+set numdgt=12
+op
+let swv = v(sw)
+let i1 = i(Vm1)
+let i2 = i(Vm2)
+let rel = abs(i1 - i2) / abs(i1)
+echo "HREF switch=$&swv"
+echo "HREF i1=$&i1"
+echo "HREF spread=$&rel"
+.endc
+.end

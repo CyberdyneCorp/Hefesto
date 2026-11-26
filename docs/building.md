@@ -357,6 +357,14 @@ GPL notice) and, from the target `ngspice_hefesto_source_archive`, the source
 archive the LGPL and MPL terms require. `third_party/ngspice/README.md` has the
 details, including how to update the pin.
 
+The patch series (version `47-hefesto2`): 0001 static OSDI registry, 0002
+static code-model registration, 0003 portable seeding, 0004 deterministic
+initialisation, and 0005 statistical `.param` drawn once per circuit load (a
+backport of upstream ngspice `940bb50f`, decision F1 (a); `set
+stat_param_as_func` restores the ngspice-47 behaviour). The golden capture
+image builds the same series from its synced copy
+(`tools/golden/container/ngspice/`).
+
 ### Replacing the ngspice library
 
 The library is replaceable by the user (`hefesto-licensing`; design D2 of

@@ -126,3 +126,6 @@ endif()
 if(TARGET hefesto_cli_lib)
   add_subdirectory(platform)
 endif()
+
+# Desktop Beta end-to-end tests (m9-lvs-simulation task 20.2, Q-SIM-27): tests/e2e/beta.
+add_subdirectory(${PROJECT_SOURCE_DIR}/tests/e2e/beta ${CMAKE_BINARY_DIR}/tests/e2e/beta)

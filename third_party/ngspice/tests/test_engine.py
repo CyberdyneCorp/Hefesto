@@ -76,6 +76,21 @@ class EnginePatchTest(unittest.TestCase):
         self.assertEqual(a["first"], b["first"])  # stock: the Gaussian pool is seeded by the pid
         self.assertEqual(a["first"], a["second"])  # stock: setseed does not refill the pool
 
+    def test_stat_param_drawn_once_per_load(self):
+        """cap:simulation-monte-carlo req:Statistical functions in ngspice (informative) (patch 0005).
+
+        A top-level `.param aga = agauss(1, 2, 3)` referenced by two sources is drawn
+        once per circuit load, so both sources see one value; stock ngspice-47 turns it
+        into a .func and draws again at each reference. `set stat_param_as_func`
+        restores that per-reference behaviour."""
+        loads = run("stat_param")["vectors"]
+        once, as_func = loads["once"], loads["as_func"]
+        self.assertEqual(len(once), 2, loads)
+        self.assertEqual(once[0], once[1])  # stock: two draws, two values
+        self.assertNotEqual(once[0], 1.0)  # drawn, not the mean
+        self.assertEqual(len(as_func), 2, loads)
+        self.assertNotEqual(as_func[0], as_func[1])
+
     def test_nospiceinit_honoured_with_pwd_h(self):
         """cap:simulation-engine-embedding req:Deterministic engine initialisation (patch 0004).
 

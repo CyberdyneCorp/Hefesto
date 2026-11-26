@@ -1,0 +1,33 @@
+* SPDX-License-Identifier: Apache-2.0
+* Copyright 2026 The Hefesto Authors
+* Hefesto-authored reference deck (openspec/changes/m9-lvs-simulation task 3.3; D-22, D-26).
+* gf180mcu: design.ngspice (sw_stat_global = sw_stat_mismatch = 0), section @SECTION@ of
+* sm141064.ngspice (its fets_mm devices use agauss * sw_stat_mismatch), then the optional
+* top-level override of the run. Two identical nfet_03v3 instances.
+.include "@GF180@/gf180mcuD/libs.tech/ngspice/design.ngspice"
+.lib "@GF180@/gf180mcuD/libs.tech/ngspice/sm141064.ngspice" @SECTION@
+@OVERRIDE@
+Vsg sg 0 {sw_stat_global}
+Rsg sg 0 1k
+Vsw sw 0 {sw_stat_mismatch}
+Rsw sw 0 1k
+Vdd d 0 3.3
+Vgg g 0 3.3
+Vm1 d d1 0
+Vm2 d d2 0
+X1 d1 g 0 0 nfet_03v3 w=1u l=0.28u
+X2 d2 g 0 0 nfet_03v3 w=1u l=0.28u
+.control
+set numdgt=12
+op
+let sgv = v(sg)
+let swv = v(sw)
+let i1 = i(Vm1)
+let i2 = i(Vm2)
+let rel = abs(i1 - i2) / abs(i1)
+echo "HREF global=$&sgv"
+echo "HREF switch=$&swv"
+echo "HREF i1=$&i1"
+echo "HREF spread=$&rel"
+.endc
+.end

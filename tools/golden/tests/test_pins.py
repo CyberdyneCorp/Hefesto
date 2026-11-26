@@ -109,6 +109,9 @@ class PinsTest(unittest.TestCase):
         sync = subprocess.run([sys.executable, "-I", str(NGSPICE_DIR / "tools" / "sync_image_copy.py"), "--check"],
                               capture_output=True, text=True, check=False)
         self.assertEqual(sync.returncode, 0, sync.stderr)
+        # Decision F1 (a): the reference ngspice carries the statistical .param patch as the engine does.
+        series = (NGSPICE_COPY / "patches" / "series").read_text(encoding="utf-8").split()
+        self.assertIn("0005-stat-param-once-per-load.patch", series)
         text = CONTAINERFILE.read_text(encoding="utf-8")
         self.assertIn("COPY container/ngspice /opt/src/hefesto-ngspice", text)
         self.assertIn("build_ngspice.sh", text)
