@@ -108,6 +108,12 @@ if(TARGET fuzz_drc_section)
     HEFESTO_SCMOS_TECH="${CMAKE_BINARY_DIR}/tests/unit/tech/magic-tech/scmos.tech")
 endif()
 
+# fuzz_pnm_cmap_dstyle reads the private PNM file parsers
+# (src/core/src/plot/tech/reader.hpp, namespace hefesto::plot::detail).
+if(TARGET fuzz_pnm_cmap_dstyle)
+  target_include_directories(fuzz_pnm_cmap_dstyle PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
+endif()
+
 # The cifoutput, cifinput and lef section targets also read the pinned PDK
 # technologies (tests/unit/common/reference_data.hpp) as bases.
 foreach(target IN ITEMS fuzz_cifoutput_section fuzz_cifinput_section fuzz_lef_section)

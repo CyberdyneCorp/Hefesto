@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/plot/tech/plot_tech.hpp"
+#include "hefesto/route/tech/styles.hpp"
 #include "hefesto/tech/tech_file.hpp"
 #include "tech_fixture.hpp"
 
@@ -440,4 +442,30 @@ TEST_CASE("the annotated example loads with the stated results",
   // The `#` in the first, invalid tech section is a token: 6 tokens.
   CHECK(load(with(tiny(), "    format 35\n", "    format 35                     # sets format version 35\n"))
             .says("Badly formed technology name"));
+}
+
+TEST_CASE("the plot section is kept raw and parsed for plotting",
+          "[cap:tech-file-format][req:Section registry and prerequisites]") {
+  // M10 plot/route (tasks.md 4.3): the loader keeps the raw `plot` section
+  // as before and hands it to the plot-output reader (Technology::plot()).
+  const std::string section = "plot\n  style postscript\n    10 0 0 0 255\n    m1 10 S\n  style pnm\n    draw m1\nend\n";
+  auto run = load(tiny() + section);
+  REQUIRE(run.ok());
+  bool raw_kept = false;
+  for (const auto& raw : run.t().raw_sections()) {
+    raw_kept = raw_kept || (raw.name == "plot" && raw.lines.size() == 5);
+  }
+  CHECK(raw_kept);
+  const auto& plot = run.t().plot();
+  CHECK(plot.has_section);
+  REQUIRE(plot.ps_colors.size() == 1);
+  CHECK(plot.ps_colors[0].index == 10);
+  REQUIRE(plot.ps_styles.size() == 1);
+  CHECK(plot.ps_styles[0].types.test(tech::test::type_of(run.t(), "metal1")));
+  CHECK(plot.pnm_paint.size() == run.t().user_type_end());
+
+  auto none = load(tiny());
+  REQUIRE(none.ok());
+  CHECK_FALSE(none.t().plot().has_section);
+  CHECK(none.t().maze_styles().styles.empty());
 }
