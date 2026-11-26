@@ -104,7 +104,7 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       SIMCMD, sim/runset SIMADV, sim/meas SIMMEAS)
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
                        script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d
-                       netlist extresist antenna lvs sim)
+                       netlist extresist antenna lvs sim plot route)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

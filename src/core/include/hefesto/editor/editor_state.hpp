@@ -11,7 +11,8 @@
 // openspec/changes/m4-scripting/design.md D4 for the M4 member;
 // openspec/changes/m8-schematic/design.md D4 for the M8 member;
 // openspec/changes/m7-extraction/design.md D5 for the M7 members;
-// openspec/changes/m9-lvs-simulation/design.md D4 for the M9 members).
+// openspec/changes/m9-lvs-simulation/design.md D4 for the M9 members;
+// openspec/changes/m10-plot-route/design.md D4 for the plot/route members).
 // Areas request new members through their open items instead of editing it.
 
 #pragma once
@@ -40,6 +41,8 @@
 #include "hefesto/netlist/session.hpp"
 #include "hefesto/schem/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
+#include "hefesto/plot/params/params.hpp"
+#include "hefesto/route/iroute/session.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/select/selection.hpp"
 #include "hefesto/sim/session.hpp"
@@ -270,6 +273,16 @@ struct EditorState {
   // (sim/session.hpp): the testbenches, the jobs, the run sets, the result
   // store index and the engine status.
   sim::Session sim;
+
+  // ---- M10 plot/route (openspec/changes/m10-plot-route/design.md D4) ----
+
+  // PLOTCMD: the plot parameters (plot/params/params.hpp), set to Magic's
+  // defaults at start-up only (kept across technology loads).
+  plot::Params plot;
+  // MZTECH / IROUTE: the router styles derived for this session and the
+  // `iroute` session copy (route/iroute/session.hpp), rebuilt by
+  // route::refresh_session_styles after every technology load and rescale.
+  route::IrouteSession iroute;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed

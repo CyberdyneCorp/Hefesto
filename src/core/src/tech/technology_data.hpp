@@ -18,6 +18,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -108,6 +109,9 @@ struct Technology::Data {
   StylesSection styles;
   std::vector<RawSection> raw_sections;
   std::optional<CifGridInfo> cif_grid;
+  // M10 plot/route: set by the loader's publish step (never null after it).
+  std::shared_ptr<const plot::PlotTech> plot;
+  std::shared_ptr<const route::MazeStyles> maze_styles;
   bool fringe_halo = false;
 
   Data();

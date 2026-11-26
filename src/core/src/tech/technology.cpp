@@ -16,6 +16,8 @@
 #include <map>
 #include <utility>
 
+#include "hefesto/plot/tech/plot_tech.hpp"
+#include "hefesto/route/tech/styles.hpp"
 #include "hefesto/tech/loader.hpp"
 
 #include "tech/build_state.hpp"
@@ -262,6 +264,16 @@ const StylesSection& Technology::styles() const noexcept { return data_->styles;
 const std::vector<RawSection>& Technology::raw_sections() const noexcept { return data_->raw_sections; }
 
 const std::optional<CifGridInfo>& Technology::cif_output_grid() const noexcept { return data_->cif_grid; }
+
+const plot::PlotTech& Technology::plot() const noexcept {
+  static const hefesto::plot::PlotTech kNone;
+  return data_->plot != nullptr ? *data_->plot : kNone;
+}
+
+const route::MazeStyles& Technology::maze_styles() const noexcept {
+  static const route::MazeStyles kNone;
+  return data_->maze_styles != nullptr ? *data_->maze_styles : kNone;
+}
 
 // --- runtime locking -------------------------------------------------------
 

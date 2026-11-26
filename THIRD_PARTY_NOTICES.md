@@ -86,6 +86,7 @@ rows here when they land.
 | Component | Version / pin | License | Shipped in | Source |
 |---|---|---|---|---|
 | cgltf | v1.15, commit `360db1a95480fe102ae9c69b27c5d101167ff5ba` | MIT | all packages (core, header-only; the 3D view's glTF export) | https://github.com/jkuhlmann/cgltf |
+| Magic scmos display-style and colour-map files (`mos.7bit.dstyle`, `mos.7bit.std.cmap`, `mos.7bit.mraster.cmap`, `mos.7bit.mraster_dstyle`) | Magic 8.3.694, commit `fc5daa9e2856b89a0a3056f296ded1fd4474e39e`, `scmos/`, unmodified | UC Berkeley permissive notice (Magic) and, for `mos.7bit.dstyle`, the MOSIS/USC notice kept in the file's header | all packages (`assets/plot/`, embedded in the core for the PNM plot colours; plot-output "Platform mechanism of plot output", Q-MISC-44) | https://github.com/RTimothyEdwards/magic |
 
 ## libcurl
 

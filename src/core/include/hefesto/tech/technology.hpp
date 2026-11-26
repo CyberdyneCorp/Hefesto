@@ -28,6 +28,14 @@
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/tech/types.hpp"
 
+namespace hefesto::plot {
+struct PlotTech;
+}
+
+namespace hefesto::route {
+struct MazeStyles;
+}
+
 namespace hefesto::tech {
 
 /// Result of a unique-prefix name lookup ("Name lookup by unique prefix").
@@ -206,6 +214,15 @@ class Technology {
   /// The first `cifoutput` style's grid values; std::nullopt when the
   /// technology has no output style (the grid-limit check then passes).
   [[nodiscard]] const std::optional<CifGridInfo>& cif_output_grid() const noexcept;
+
+  // --- parsed sections of M10 plot/route (openspec/changes/m10-plot-route D4) ---
+  /// The `plot` section as read by plot::read_plot_section
+  /// (hefesto/plot/tech/plot_tech.hpp); empty without one.
+  [[nodiscard]] const plot::PlotTech& plot() const noexcept;
+  /// The `mzrouter` styles as written, read by route::read_mzrouter_section
+  /// (hefesto/route/tech/styles.hpp); the session derives its working copy
+  /// from them (route::refresh_session_styles).
+  [[nodiscard]] const route::MazeStyles& maze_styles() const noexcept;
 
   [[nodiscard]] const Data& data() const noexcept { return *data_; }
 
