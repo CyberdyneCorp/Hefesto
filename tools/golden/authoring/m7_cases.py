@@ -81,6 +81,9 @@ REPLAYED: set[str] = {
     # and 13 have no expected/ (Magic crashes, Q-NETLIST-63); NL-RES-01..08 wait for their capture.
     *extract_cases.HIER_IDS,
     *(f"NL-RESNET-{n:02d}" for n in (1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 14, 15)),
+    # R5 EXTCMD (tasks 9.5, 17.1, 17.6): EX-064..070 through the run driver (EX-068 with ExtLength.c's
+    # flood), LEFDEF-336's extract all feeding def write.
+    *(f"EX-{n:03d}" for n in range(64, 71)), "LEFDEF-336",
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic

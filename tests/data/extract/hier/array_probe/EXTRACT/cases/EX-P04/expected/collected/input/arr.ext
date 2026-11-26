@@ -1,0 +1,21 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use bit2 B[0:1:10][0:1:10] 1 0 0 0 1 40
+use bit A[0:3:10][0:0:0] 1 0 0 0 1 0
+node "w" 0 0 -10 0 m1
+substrate "VSUB" 0 0 -1073741817 -1073741817 space
+merge "B[1,1]/VSUB" "B[0,1]/VSUB" 0
+merge "B[0,1]/VSUB" "B[1,0]/VSUB"
+merge "B[1,0]/VSUB" "B[0,0]/VSUB"
+merge "B[0,0]/VSUB" "VSUB"
+merge "A[3]/VSUB" "A[2]/VSUB" 0
+merge "A[2]/VSUB" "A[1]/VSUB"
+merge "A[1]/VSUB" "B[0,1]/VSUB"
+merge "B[0,1]/VSUB" "B[1,1]/VSUB"
+merge "B[1,1]/VSUB" "B[1,0]/VSUB"
+merge "B[1,0]/VSUB" "VSUB"
+merge "A[1:3]/n" "A[0:2]/n" 0

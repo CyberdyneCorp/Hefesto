@@ -1,0 +1,12 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use rleaf c1 1 0 76 0 1 0
+node "d" 0 0 0 0 m1
+equiv "d" "r"
+equiv "d" "d2"
+distance d2 r 51 51
+distance d r 66 66
