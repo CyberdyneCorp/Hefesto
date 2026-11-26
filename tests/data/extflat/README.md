@@ -18,3 +18,7 @@ The targets are `smoke` and every authored DEF-write net case (LEFDEF-317..328 a
 1. Run `python3 tools/golden/authoring/lefdef_cases.py` after a change to the probe or the smoke layout.
 2. Run the probe in CI: `gh workflow run golden-capture.yml --ref <branch> -f mode=ext-inputs` (optionally `-f cases="<case dirs>"`; `smoke` always runs). The job summary lists every target and the cases skipped because they are not authored yet.
 3. Download the `ext-inputs` artifact and run `python3 tools/golden/authoring/lefdef_cases.py --sync-ext <artifact dir>`. It refuses a target whose run did not finish, printed an error, left feedback, or wrote an incomplete `.ext` file (`tools/golden/goldenlib/extfile.py`), and copies the others here and into the cases' `input/`.
+
+## Visit-order probe
+
+`visit_probe/` holds two capture-only cases of m7-extraction task 10.4, written by `visit_probe/gen_visit_probe.py` (run it from the repository root after a change to the targets): NL-P01 runs Magic's `ext2sim` with labels and aliases on over the 17 targets above, so its `.nodes` and `.al` files give Magic's node visit order (`tests/unit/netlist/sim/visit_order_test.cpp` compares Hefesto's); NL-P02 shows that `ext2sim` builds the short devices of `ext2spice short`. Capture with `gh workflow run golden-capture.yml -f mode=capture -f cases="<case dirs>"` and commit the `golden-expected` artifact's `expected/` directories.

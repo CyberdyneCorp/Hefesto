@@ -11,6 +11,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 
 #include "../spice/spice_fixture.hpp"
@@ -72,7 +75,15 @@ TEST_CASE("ext2sim writes the shared short node dummy with magic-compat ON",
           "[cap:netlist-sim][req:Device lines]") {
   ShortSim s{true};
   REQUIRE(s.run("ext2spice short voltage").ok());
-  CHECK(has(s.sim(), "N dummy A B 0 0 0 0\nN dummy C D 0 0 0 0\n"));
+  const std::string text = s.sim();
+  CHECK(has(text, "N dummy A B 0 0 0 0\nN dummy C D 0 0 0 0\n"));
+  // Magic's text (capture-only probe NL-P02, golden-capture run 45861111906).
+  std::ifstream in{std::filesystem::path{HEFESTO_SOURCE_DIR} /
+                       "tests/data/extflat/visit_probe/NETLIST/cases/NL-P02/expected/collected/top.voltage.sim",
+                   std::ios::binary};
+  std::ostringstream magic;
+  magic << in.rdbuf();
+  CHECK(text == magic.str());
 }
 
 // Q-NETLIST-60. Regression: both devices took `dummy`.
