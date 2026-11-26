@@ -70,6 +70,16 @@ class SymbolCache {
   [[nodiscard]] const Symbol& resolve(const Reference& reference, const Document& from,
                                       const ResolveContext& context);
 
+  /// The symbol `reference` names, as an embedded block writes it
+  /// (schematic-file-format "Embedded symbols", on writing): resolve()'s
+  /// symbol, with the graphics of the instances its document still holds
+  /// added in place as a schematic used as a symbol places them (nested
+  /// layer-5 boxes on layer 7, the limits of FlattenLimits), so the result
+  /// holds no instance. An instance inside an embedded symbol sees the
+  /// embedded blocks of `from`. nullopt when the reference gives the
+  /// missing-symbol placeholder.
+  [[nodiscard]] std::optional<Document> block_document(const Reference& reference, const Document& from,
+                                                       const ResolveContext& context);
   /// The missing-symbol placeholder ("Missing symbols").
   [[nodiscard]] const Symbol& placeholder() const noexcept { return placeholder_; }
 
@@ -111,6 +121,11 @@ class SymbolCache {
                                            std::vector<std::string> args, const platform::Path& folder,
                                            const ResolveContext& context);
   void warn_once(const ResolveContext& context, const std::string& key, diag::Diagnostic diagnostic);
+  /// SCHEM-LIB-005 and SCHEM-LIB-009 for the limits `report` reached while
+  /// flattening `reference` (keyed by `file`, or by the reference of an
+  /// embedded symbol).
+  void warn_flattened(const FlattenReport& report, const std::string& file, const std::string& reference,
+                      const ResolveContext& context);
 
   /// What a file looked like when it was read (forget_changed()).
   struct FileStamp {

@@ -10,6 +10,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
 
@@ -58,5 +59,16 @@ struct ResolvedReference {
 /// document folder, else the absolute path.
 [[nodiscard]] std::string shortest_reference(const platform::Path& file, const platform::Path& document_folder,
                                              const SearchPath& search_path);
+
+/// The schematic-file-format ReadOptions::symbol_file_exists of a file read
+/// from `folder` ("Embedded symbols": a nested block defines an instance's
+/// symbol in place only when the symbol is not found as a file): true when
+/// `reference` resolves from `folder` (steps 1 to 8 of "Symbol references")
+/// to an existing absolute file. A web reference and an empty one are never
+/// found. `search_path` and `fs` are held by reference and must outlive the
+/// returned function.
+[[nodiscard]] std::function<bool(std::string_view reference)> symbol_file_finder(platform::Path folder,
+                                                                                   const SearchPath& search_path,
+                                                                                   platform::FileSystem& fs);
 
 }  // namespace hefesto::schem
