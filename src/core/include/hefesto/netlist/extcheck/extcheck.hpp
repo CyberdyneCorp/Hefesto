@@ -8,8 +8,8 @@
 // The standalone `hefesto-extcheck` (src/cli/extcheck/, Open Question 6
 // (a)) calls it with its argv.
 //
-// Scaffold state (tasks.md 3.5): run() prints CORE-NOTIMPL-008's text to
-// `err` and returns 1 until SIM lands it.
+// SIM implements run() (task 12.4); the scaffold's CORE-NOTIMPL-008 text
+// is retired (task 19.5).
 //
 // Owner: INTEGRATION (this header); SIM (the implementation).
 

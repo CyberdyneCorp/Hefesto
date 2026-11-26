@@ -15,9 +15,9 @@ workstream. The rows are sorted while compiling
 | `src/core/src/extresist/command/codes.inc` | `EXTRESIST-CMD-*` | RESCMD |
 | `src/core/src/extresist/output/codes.inc` | `EXTRESIST-OUT-*` | RESCMD |
 
-The M7 scaffold (tasks.md 3.2, 3.3) declared no code. Since M7 round 5 no
-`extresist` option or function answers the core code `CORE-NOTIMPL-008`
-([../codes.md](../codes.md)): `box`, `geometry` and `fasthenry` run.
+The M7 scaffold (tasks.md 3.2, 3.3) declared no code. Every option and function the M7 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-008` is retired (M7 round 5, tasks.md 19.5;
+[../codes.md](../codes.md)).
 
 ## NET
 

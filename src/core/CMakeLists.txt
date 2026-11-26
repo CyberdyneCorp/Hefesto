@@ -21,7 +21,6 @@ add_library(hefesto_core STATIC
   src/cmd/dispatcher.cpp
   src/cmd/host_access.cpp
   src/cmd/keywords.cpp
-  src/cmd/m7_stubs.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/quit_policy.cpp

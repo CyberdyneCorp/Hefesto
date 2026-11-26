@@ -21,10 +21,9 @@ workstream. The rows are sorted while compiling
 | `src/core/src/extract/length/codes.inc` | `EXTRACT-LEN-*` | EXTCMD |
 
 The M7 subdirectories (`openspec/changes/m7-extraction/design.md` D2/D3)
-were added by the M7 scaffold (tasks.md 3.2) with no code; while M7 is in
-progress, an `extract` option or extractor function the M7 scaffold
-declared before its workstream implemented it fails with the core code
-`CORE-NOTIMPL-008` ([../codes.md](../codes.md)).
+were added by the M7 scaffold (tasks.md 3.2) with no code. Every option and function the M7 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-008` is retired (M7 round 5, tasks.md 19.5;
+[../codes.md](../codes.md)).
 
 Every option and function the M6 scaffold declared is implemented; its stub
 code `CORE-NOTIMPL-006` is retired ([../codes.md](../codes.md)).
