@@ -5,7 +5,7 @@
 
 Task 2.2 of `openspec/changes/m9-lvs-simulation` (design D2, "Paraphrase review"; gate G1; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", rule "Spec review for paraphrase", applied to netgen by Q-LVS-30). The eight `lvs-*` specs and `docs/decisions/open-questions/LVS.md` were written by reading netgen's GPL source. Before the LVS implementation team writes golden inputs (task 3.5) or code, their text must describe behaviour, not code.
 
-This record has the first spec-team signature. A second spec-team session (round 2) checks it and signs below; task 2.2 is ticked only then.
+This record has both spec-team signatures: the first review (round 1) and, in "Second review (round 2)", an independent second review by a different spec-team session.
 
 ## Scope and method
 
@@ -109,9 +109,47 @@ No `Resolution:` line changed. No requirement heading changed, so no `[req:<head
 
 This session is on the LVS spec team (Q-LVS-30). To check OI-2 it read one netgen file, `base/netgen.c` at the spec pin `93dcda14d36349d0b0ca63168d3cbbab20fe2ece`, through a single web fetch of the raw file. Nothing was cloned, downloaded or saved to disk. The answer is recorded above only as the existence of a gap, not as netgen's code.
 
+## Second review (round 2)
+
+This section is the second spec-team signature. It was made by a session of the LVS spec team that did not take part in the first review (round 1, branch `m9-round1-lvsspec`), on branch `m9-round2-decide`, 2026-11-26. It reviewed the eight `lvs-*` specs and every entry of `LVS.md` as on `main` at `6e48a02f`, again starting with `lvs-comparison-algorithm` and `lvs-device-reduction`, and repeated the mechanical search above on its own before reading the first review's tables. It applied the same three kinds and the same rule for each rewrite (no normative change, no heading, scenario or `Resolution:` change).
+
+### Concurrence with LPR-1 to LPR-29
+
+Concurs with all 29. Each rewrite was checked against the original kind and against the rule; none changes a result, a message, a scenario or a decision:
+- LPR-1 to LPR-7 (`lvs-comparison-algorithm`): the refinement keys are stated as definitions, which is the least that keeps the exact partition observable; "Partition legality", "Match verification" and "Symmetry resolution" describe the partition, not storage. Concur.
+- LPR-8 to LPR-11 (`lvs-device-reduction`): the reduction schedule as alternation was checked case by case against the old step list (first parallel pass merges nothing; a series phase that merges nothing; a later parallel pass that merges nothing) and is equivalent; "identical connections" keeps the three no-connect conditions. Concur.
+- LPR-12 to LPR-17: concur; LPR-17 was checked against both `lvs-hierarchy` scenarios.
+- LPR-18 to LPR-29 (`LVS.md` "Magic behavior" fields): concur. They describe defects by effect (out-of-range read, use after free, undefined data), which is enough for an implementer to avoid them without netgen's code.
+- "Reviewed and kept": concur with every row, in particular the key arithmetic of "Iterative refinement" and the `_tag` marker rule, which are observable.
+- OI-1 (closed in round 1) and OI-2: concur. OI-3: the proposed wordings mean the same as the recorded `Resolution:` lines; this review adds no wording of its own and does not apply them, because a `Resolution:` change needs the user (still pending).
+
+### New findings
+
+Residues of the patterns the first review rewrote elsewhere (cell attributes as "flags", hashing as storage), found by the independent search. Kinds as above.
+
+| ID | Where | Original wording (summary) | Kind | Why it is a risk | Rewritten behaviour |
+|---|---|---|---|---|---|
+| LPR-30 | `lvs-netlist-input` "SPICE subcircuit calls and placeholders", "Undefined cells" | "the placeholder flag" | 1, 2 | The name of a cell flag (as LPR-12). | "marked as a placeholder (Requirement "Netlist database model")". |
+| LPR-31 | `lvs-netlist-input` "Structural Verilog input" | "a placeholder with the verilog flag" | 1, 2 | The name of a cell flag (as LPR-12). | "a placeholder marked as read from Verilog". |
+| LPR-32 | `lvs-netlist-input` "Name matching and case sensitivity" | "A null name SHALL never be equal to anything." | 1 | "null" is the C null pointer, not a name the user sees. | "An absent name SHALL never be equal to any name, not even to another absent name." Same meaning: "never equal to anything" already excluded two absent names. |
+| LPR-33 | `lvs-device-reduction` Purpose | "the per-class enable flags for combination"; "the commands that set the flags" | 2 | Residue of LPR-8's bit-set wording in the Purpose. | "the per-class settings that allow combination"; "the commands that change these settings". |
+| LPR-34 | `LVS.md` Q-LVS-9 | "only the first declared pin permutation produces an alternate parallel signature" | 2 | The parallel "signature" is netgen's internal key, removed from the spec by LPR-10. | "when looking for parallel devices, netgen tries only the first declared pin permutation, so devices that are parallel only under another permutable pair are not merged". The heading (`Parallel signature uses only the first permutable pair`), `Options:` and `Resolution:` lines are unchanged. |
+| LPR-35 | `LVS.md` Q-LVS-2 | "orders come from internal lists that are reshuffled by refinement, or from hash iteration" | 2 | Names netgen's lists and hash-table iteration. | "several orders are not stable: they change as refinement splits classes, or they follow from how names hash". |
+| LPR-36 | `LVS.md` Q-LVS-11 | "instance counts adjusted in hash order" | 2 | Hash-table iteration order. | "instance counts adjusted in an order that follows how names hash". |
+
+Left as they are: the entry headings of Q-LVS-5 ("dangling pair list"), Q-LVS-8 ("sort comparators"), Q-LVS-9 ("Parallel signature") and Q-LVS-24 ("logical instead of bitwise AND"), because headings are not changed in this review; with OI-3 they are candidates for the user's rewording. The `Options:` lines of Q-LVS-9 ("generate signatures") and Q-LVS-24 ("test the placeholder flag") likewise stay, as the first review decided for `Options:` lines.
+
+### New open item
+
+- **OI-4. The value printed as `(<flag>)`.** `lvs-property-matching` "When properties are checked" prints `Circuit1 instance <i> pin <n> connections are tied together|no connects (<flag>)`. The message is user-visible and stays, but the spec does not say what `<flag>` prints. Stating it is new normative text, so it is a fidelity gap for task 3.8 (capture-fixed texts), with an NG-PROP case whose parallel instances disagree on a no-connect pin, not a paraphrase rewrite.
+
+### Source consulted in this review
+
+This session is on the LVS spec team (Q-LVS-30) and never edits `src/core/**/lvs/**`, `tests/unit/lvs/**` or the inputs of `tests/golden/LVS/**`. It read one netgen file, for the header re-check of task 2.3: `base/netgen.c` at `93dcda14d36349d0b0ca63168d3cbbab20fe2ece`, through one web fetch of the pinned raw URL, reading only its header lines. Nothing was cloned, downloaded or saved to disk. The paraphrase review itself used no netgen source.
+
 ## Sign-off
 
 | Role | Session or person | Date | Result |
 |---|---|---|---|
 | LVS spec team, first reviewer (findings and rewrites) | LVS spec-team agent session of M9 round 1 (branch `m9-round1-lvsspec`) | 2026-11-25 | done: 29 findings rewritten (LPR-1 to LPR-29), 3 open items |
-| LVS spec team, second reviewer | a later LVS spec-team session (round 2), assigned by the maintainer | *pending* | — |
+| LVS spec team, second reviewer | LVS spec-team agent session of M9 round 2 (branch `m9-round2-decide`), not the first reviewer | 2026-11-26 | signed: concurs with LPR-1 to LPR-29, OI-1 and OI-2; 7 new findings rewritten (LPR-30 to LPR-36); new open item OI-4; OI-3 left for the user |

@@ -257,7 +257,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** confirm with a reference run (X-6) | redesign the overrides so that they do not depend on order.
 - **Recommendation:** run the reference deck before M9 starts. This is a verification decision, not a product decision.
 - **Priority:** blocks M9.
-- **Status:** approved as a verification rule (2026-11-22, `docs/decisions/m9-decision-table.md`): Q-SIMADV-3, -4 and -9 carry conditional `Resolution:` lines that name the option for each outcome; one reference deck per PDK runs on the patched capture image before gate G2-SIM (task 3.3 of `openspec/changes/m9-lvs-simulation`), which adds a `Verified` line under each entry. A result that no branch covers goes back to the user.
+- **Status:** approved as a verification rule (2026-11-22, `docs/decisions/m9-decision-table.md`): Q-SIMADV-3, -4 and -9 carry conditional `Resolution:` lines that name the option for each outcome; one reference deck per PDK runs on the patched capture image before gate G2-SIM (task 3.3 of `openspec/changes/m9-lvs-simulation`), which adds a `Verified` line under each entry. A result that no branch covers goes back to the user. The runs waited for finding F1 (ngspice-47 re-evaluates a top-level statistical `.param` at every reference); the user approved F1 (a) on 2026-11-25, so the engine and the capture image carry the upstream fix as patch 0005 and task 3.3 can run.
 
 ### D-23: sg13g2 `mm_ok=1` for extracted devices (rest of Q-SIMADV-5)
 

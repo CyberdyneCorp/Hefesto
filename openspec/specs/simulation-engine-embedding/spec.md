@@ -61,7 +61,9 @@ The ngspice build SHALL use this feature set on every platform:
 
 Hefesto SHALL ship the license texts of every ngspice component it links, including the Modified BSD license of ngspice and the separately licensed parts it contains: KLU together with the SuiteSparse parts it brings (AMD, COLAMD, BTF, SuiteSparse_config), numparam (LGPLv2 or newer), OSDI (MPL 2.0), sparse (MIT-style) and the XSPICE code-model libraries, each with the license its files carry in the pinned tree. No GPL-licensed ngspice component SHALL be linked. How the LGPL parts are linked on iPadOS (an embedded signed framework, or static linking with object files and relink instructions offered) is settled by decision D-28 before M14 (Q-SIM-1).
 
-The build manifest SHALL list every Hefesto patch applied to ngspice, including at least the static OSDI registry (Requirement "OSDI compact models"), the static code-model registration, and the portable generator seeding of capability `simulation-monte-carlo`, Requirement "Portable random numbers".
+The build manifest SHALL list every Hefesto patch applied to ngspice, including at least the static OSDI registry (Requirement "OSDI compact models"), the static code-model registration, the portable generator seeding of capability `simulation-monte-carlo`, Requirement "Portable random numbers", the deterministic initialisation of Requirement "Deterministic engine initialisation" (patch 0004) and the once-per-load draw of top-level statistical `.param` lines of capability `simulation-monte-carlo`, Requirement "Statistical functions in ngspice (informative)" (patch 0005, finding F1).
+
+The license manifest SHALL record, for KLU, AMD, COLAMD, BTF and SuiteSparse_config, the license of each file as an SPDX expression (`file_licenses`), and each component's license SHALL be the set of its files' licenses.
 
 Compatibility: native
 
@@ -73,7 +75,11 @@ Compatibility: native
 
 #### Scenario: Patch list in the manifest
 - **WHEN** the build manifest of a release build is generated
-- **THEN** its ngspice entry SHALL name the portable-seeding patch among the Hefesto patches
+- **THEN** its ngspice entry SHALL name the portable-seeding patch, `0004-deterministic-initialisation.patch` and `0005-stat-param-once-per-load.patch` among the Hefesto patches
+
+#### Scenario: Per-file licenses of the SuiteSparse parts
+- **WHEN** the license manifest of a release build is generated
+- **THEN** every compiled file of KLU, AMD, COLAMD, BTF and SuiteSparse_config SHALL have an SPDX license expression in `file_licenses`, and each of these components' license SHALL be the set of its files' expressions
 
 #### Scenario: Built-in FFT
 - **GIVEN** a build without FFTW3
@@ -109,7 +115,7 @@ Before calling `ngSpice_Init`, the adapter SHALL call `ngSpice_nospinit` and `ng
 2. `set nomoremode`
 3. `set filetype=binary`
 
-Before each deck is loaded, it SHALL send the per-PDK initialisation commands of capability `simulation-netlist-preparation` (Requirement "PDK initialisation commands"), followed by `setseed <s>`, where `s` is 1 for ordinary jobs and the sample seed `s_i` for Monte Carlo samples (capability `simulation-monte-carlo`, Requirement "Sample seeds"). `setseed <n>` reseeds ngspice's generator immediately, including the pool used by `trnoise` and `trrandom` sources (stock ngspice-47's `setseed` reseeds only the main generator, and its `trnoise` pool is seeded from the process id at initialisation; Hefesto's patch 0004 makes `setseed` refill the pool and removes the process-id seed. Finding F2 is carried by patch 0004, pending approval; see `docs/decisions/m9-decision-table.md` "Trace re-check against ngspice-47"); `set rndseed=<n>` only sets a variable and SHALL NOT be relied on, because the shared-library initialisation seeds the generator from the process id. Simulation results SHALL NOT depend on environment variables, the current directory, the user's home directory or the process id, on any platform.
+Before each deck is loaded, it SHALL send the per-PDK initialisation commands of capability `simulation-netlist-preparation` (Requirement "PDK initialisation commands"), followed by `setseed <s>`, where `s` is 1 for ordinary jobs and the sample seed `s_i` for Monte Carlo samples (capability `simulation-monte-carlo`, Requirement "Sample seeds"). `setseed <n>` reseeds ngspice's generator immediately, including the pool used by `trnoise` and `trrandom` sources (stock ngspice-47's `setseed` reseeds only the main generator, and its `trnoise` pool is seeded from the process id at initialisation; Hefesto's patch 0004 makes `setseed` refill the pool and removes the process-id seed. Finding F2, carried by patch 0004, approved by the user 2026-11-25; see `docs/decisions/m9-decision-table.md` "Trace re-check against ngspice-47"); `set rndseed=<n>` only sets a variable and SHALL NOT be relied on, because the shared-library initialisation seeds the generator from the process id. Simulation results SHALL NOT depend on environment variables, the current directory, the user's home directory or the process id, on any platform.
 
 Compatibility: native
 
@@ -124,6 +130,11 @@ Compatibility: native
 - **GIVEN** a deck with a `trnoise` source and a top-level `.param p = 'agauss(1, 0.1, 1)'`, and no seed setting
 - **WHEN** it is simulated twice in fresh engine instances (different process ids) on the same machine
 - **THEN** `setseed 1` SHALL have been sent before each load, and both runs SHALL produce bit-identical vectors and the same value of `p`
+
+#### Scenario: Reused engine repeats trnoise
+- **GIVEN** a deck with a `trnoise` source and no seed setting
+- **WHEN** it is simulated twice in one reused engine instance, and once in a fresh instance
+- **THEN** the three runs SHALL produce bit-identical `trnoise` vectors, because `setseed 1` before each load also refills the `trnoise` pool (patch 0004)
 
 ### Requirement: Single engine instance per address space
 ngspice keeps its simulator state in process-wide globals. Hefesto SHALL therefore create at most one ngspice engine instance per process, and SHALL serialise all API calls to it. Jobs SHALL go through one FIFO job queue per engine instance. At most one job SHALL be loaded or running in an instance at a time. When a job's results have been copied out (see capability `simulation-analyses-and-results`), the adapter SHALL send `remcirc` and `destroy all`. This keeps the instance's memory from growing from job to job. Hefesto SHALL NOT load several copies of the ngspice library into one process.
@@ -317,7 +328,7 @@ Compatibility: native
 #### Scenario: Setting cannot raise the pool
 - **GIVEN** a host on which the formula gives `N = 3`
 - **WHEN** the user sets the worker count to 8
-- **THEN** the setting SHALL be refused with a diagnostic that gives the maximum 3, and at most 3 jobs SHALL run at once
+- **THEN** the setting SHALL be refused with `SIM-ENGINE-033`, whose message gives the maximum 3, and at most 3 jobs SHALL run at once
 
 #### Scenario: Large post-layout deck limits the pool
 - **GIVEN** a Linux host with 10 physical cores and 16 GiB of memory, and a 4-point sweep of a post-layout deck whose jobs each have the default 4 GiB result budget plus a 300 MiB prepared deck

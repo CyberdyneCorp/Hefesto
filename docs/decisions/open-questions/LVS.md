@@ -18,7 +18,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 ### Q-LVS-2: Report order inherits netgen hash and partition order
 - Kind: quirk
 - Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
-- Magic behavior: several orders come from internal lists that are reshuffled by refinement, or from hash iteration. This affects pin table rows, mismatch fragment groups, `Contents of circuit` class lists, the indices of properties of interest, and property-error blocks.
+- Magic behavior: several orders are not stable: they change as refinement splits classes, or they follow from how names hash. This affects pin table rows, mismatch fragment groups, `Contents of circuit` class lists, the indices of properties of interest, and property-error blocks.
 - Evidence: base/netcmp.c:7703-7895, base/netcmp.c:1615-2100, base/query.c:820-830, base/netcmp.c:4970-4990
 - Options: replicate (emulate the hash tables and partition lists exactly) | fix (deterministic order, compared order-insensitively)
 - Recommendation: fix, following decision X-1. Compare these sections as sets (capability `lvs-reports`, Requirement "Canonical golden comparison").
@@ -83,7 +83,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-9: Parallel signature uses only the first permutable pair
 - Kind: quirk
-- Magic behavior: only the first declared pin permutation produces an alternate parallel signature, so devices with several permutable pairs may not merge. If the pin names are not found on an instance, netgen's behaviour is undefined (uninitialised data).
+- Magic behavior: when looking for parallel devices, netgen tries only the first declared pin permutation, so devices that are parallel only under another permutable pair are not merged. If the pin names are not found on an instance, netgen's behaviour is undefined (uninitialised data).
 - Evidence: base/netgen.c:3335-3384
 - Options: replicate | fix (generate signatures for all permutation-equivalent pin orders)
 - Recommendation: replicate the single pair behind the `netgen-compat` setting, because merging more changes the device counts that are reported. Fix the uninitialized use (tier 1).
@@ -101,7 +101,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 ### Q-LVS-11: Pre-match flattening heuristic
 - Kind: ambiguity
 - Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
-- Magic behavior: the decision to flatten a subcircuit before matching depends on instance counts adjusted in hash order, with three asymmetric cases. Results can depend on the order in which classes are visited.
+- Magic behavior: the decision to flatten a subcircuit before matching depends on instance counts adjusted in an order that follows how names hash, with three asymmetric cases. Results can depend on the order in which classes are visited.
 - Evidence: base/flatten.c:1673-1960
 - Options: replicate (exact emulation including order) | fix (an order-independent rule that agrees on all golden cases)
 - Recommendation: behavioral compatibility, validated by the NG-HIER golden cases. Record any divergence as a new entry.
@@ -354,7 +354,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-36: LVS input and run limits
 - Kind: bug
-- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`); addition `LVS-READ-025` approved 2026-11-26 (raised by LVSREAD in round 1; approved under the user's standing rule for crafted-input resource limits in both modes, with the recommended values)
 - Magic behavior: the netgen manual states no limits. Deep `.include` chains, very long continuation lines and deep hierarchies are bounded only by memory and stack. A crash or hang must be fixed in both `netgen-compat` modes (X-2 tier 1).
 - Evidence: `openspec/specs/lvs-netlist-input/spec.md` (Requirements "SPICE lexical structure" and "Globals, includes and parameters"); `openspec/specs/lvs-hierarchy/spec.md`; decision X-2
 - Options:
@@ -368,3 +368,4 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
   - (c) Configurable limits, with (a)'s values as defaults.
 - Recommendation: (c) with (a)'s defaults. Every PDK and golden input is far below these limits, and hostile inputs fail with a message instead of a stack overflow.
 - Resolution: fix — option (c): configurable limits in both modes, with option (a)'s values as defaults (include depth 64; one logical line 16 MiB; one name 4 KiB; hierarchy depth 256 with iterative traversal; 50 million devices per run); each has its own diagnostic, and exceeding one ends the run as `error`. Approved by the user 2026-11-22.
+- Resolution (addition, approved 2026-11-26): fix, in both modes — one read also stops with `LVS-READ-025` after 65,536 `.INCLUDE` reads, and once the files it includes hold more than 64 times the logical-line limit in bytes (1 GiB with the default limit), so an include tree that multiplies below the depth limit cannot make a read run for hours; these two guards follow from the limits above and are not separate settings. The include depth counts the top file (the top file is depth 1, so the default allows 63 nested includes). The device limit counts every instance of the netlist database the read adds to (all files read into it), not the instances of one file. `lvs-netlist-input` "Input limits" states this with four scenarios. Approved under the user's standing rule 2026-11-26.

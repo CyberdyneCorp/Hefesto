@@ -464,7 +464,7 @@ Each cap has its own diagnostic and ends the run as `error` (LVS) or `failed` (s
 | | sky130 | gf180mcu | IHP sg13g2 |
 |---|---|---|---|
 | Schematic | `beta_inv.sch`, drawn in Hefesto by the flow's script (`tests/e2e/beta/sky130/`), one `nfet_01v8` and one `pfet_01v8_hvt` with the sizes of `sky130_fd_sc_hd__inv_1` | `beta_inv.sch`, drawn the same way, with the devices and sizes of `gf180mcu_fd_sc_mcu7t5v0__inv_1` | `beta_inv.sch`, drawn the same way, with the devices and sizes of `sg13g2_inv_1`; the PDK's own `sg13g2_inv_1.sch` is used only as a cross-check netlist |
-| Layout | cell `beta_inv`, drawn in Hefesto by the script: an instance of the PDK inverter cell plus Hefesto-drawn metal1 pin shapes and labels `A`, `Y`, power and ground | as sky130, with `gf180mcu_fd_sc_mcu7t5v0__inv_1` | as sky130, with `sg13g2_inv_1` |
+| Layout | cell `beta_inv`, drawn in Hefesto by the script (`tests/e2e/beta/sky130/`): the two transistors with the devices and sizes of `sky130_fd_sc_hd__inv_1`, their diffusion, poly, contacts and metal1, and metal1 pin shapes and labels `A`, `Y`, power and ground; no instance of the PDK inverter cell (Q-SIM-27 amendment, approved 2026-11-25) | as sky130, with the devices and sizes of `gf180mcu_fd_sc_mcu7t5v0__inv_1` | as sky130, with the devices and sizes of `sg13g2_inv_1` |
 | DRC | Hefesto's DRC with the PDK's Magic tech file (M3); zero errors | the same | the same |
 | Authors | GOLDEN, from the specs (no xschem or netgen source); the user redraws both by hand for the sign-off | the same | the same |
 
@@ -801,12 +801,18 @@ The options as drafted:
 | Q-LVS-35, Q-SIM-28 performance | (a) | D21 |
 | Q-LVS-36, Q-SIM-25 limits | configurable, the proposed defaults | D18 |
 | Q-SIM-24 node naming | (a) naming forward, no `getnode` | D13 |
-| Q-SIM-27 Beta sign-off | (a) three PDK flows, CI plus user | D19, D25 |
+| Q-SIM-27 Beta sign-off | (a) three PDK flows, CI plus user; amended 2026-11-25: the `beta_inv` layout is drawn in Hefesto down to transistors, diffusion, poly, contacts and metal1, with no instance of the PDK cell | D19, D25 |
 | Q-SCHEM-39 SCHEM-LVS-01 | (a) defer to M9 | D17, D19 |
 | D-22, D-26, D-27 | reference runs | D11, D14, D19 |
 | D-23 `mm_ok` | (a) simulation preparation adds it | D11 |
 | D-24 `measured` retention | add it, default once measured | D14 |
 | The 34 blocking Q-LVS, Q-SIM and Q-SIMADV entries | as `m9-decision-table.md` | D6–D16 |
+| F1 statistical `.param` (approved 2026-11-25) | (a) upstream fix carried as patch `0005-stat-param-once-per-load.patch` in the engine and the capture image; engine version `47-hefesto2`; task 3.3 unblocked | D9, D14, D19 |
+| F2 `setseed` and the `trnoise` pool (approved 2026-11-25) | patch 0004 kept (pool refilled by `setseed`, no `getpid` seed) | D9, D14 |
+| Q-SIM-22 enforcement gap (approved 2026-11-25) | accepted until SIMD 5.4's release-configuration leg | D2, D9 |
+| Worker count above the pool limit (approved 2026-11-25) | refused with `SIM-ENGINE-033` | D10, D14 |
+| NGBUILD licence items (approved 2026-11-25) | `d_process` excluded; KLU, AMD, COLAMD, BTF, SuiteSparse_config licensed per file (`file_licenses`); cppduals (MPL-2.0) named in D2; OpenVAF built from source in CI for macOS arm64 (`ngspice.yml` job `openvaf`); the synced capture-image copy kept with its CI check | D2, D9, D19 |
+| Q-LVS-36 addition (approved 2026-11-26, standing rule) | `LVS-READ-025` (65,536 include reads, 64 × the logical-line limit of included bytes); include depth counts the top file; device limit per netlist database | D18 |
 
 
 **Review fixes (M9 R1 fix pass, branch `m9-round1`).** These amend the SIMENG, SIMD and LVSREAD notes above:

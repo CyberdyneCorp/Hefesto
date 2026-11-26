@@ -208,12 +208,13 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-22: In-process simulation on desktop
 - Kind: platform
-- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`); enforcement-gap amendment approved 2026-11-25 (user decision of 2026-11-25)
 - ngspice behavior: n/a. The `simulation-engine-embedding` requirement "Crash containment on desktop" says "A setting MAY select in-process execution on desktop, for debugging". Under Q-SIM-20 (a), the editor never links ngspice.
 - Evidence: `openspec/specs/simulation-engine-embedding/spec.md` (Requirement "Crash containment on desktop")
 - Options: (a) developer builds only: the developer desktop host loads the same `hefesto-ngspice-adapter` plugin that `hefesto-simd` loads (Q-SIM-20 (a)), so no adapter code and no `sharedspice.h` include is compiled into the editor, and release builds neither offer the setting nor load the plugin; (b) keep it as a user setting in release builds; (c) drop it on desktop.
 - Recommendation: (a). Developers keep a debuggable path that matches the iPadOS in-process engine, the licence boundary check stays "only the worker, or the developer host, loads the adapter plugin", and users cannot lose unsaved layout work to an engine crash.
 - Resolution: platform — option (a): in-process simulation on desktop exists only in developer builds, which load the same `hefesto-ngspice-adapter` plugin that `hefesto-simd` loads; release builds neither offer the setting nor load the plugin into the editor. Approved by the user 2026-11-22.
+- Resolution (amendment, approved 2026-11-25): the enforcement gap of `scripts/check_engine_boundary.py` recorded under m9 task 4.3 (no tool checks yet that release builds do not offer the setting; the plugin rule finds only the literal plugin name) is accepted until SIMD task 5.4's release-configuration CI leg (`HEFESTO_DEVELOPER_BUILD` OFF, `HEFESTO_BUILD_NGSPICE=ON`, `hefesto-simd` built) runs the check without `--developer-build`. Approved by the user 2026-11-25.
 
 ### Q-SIM-23: Reference ngspice build for the SIM and SIMADV captures
 - Kind: doc-mismatch
@@ -283,7 +284,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-27: Desktop Beta sign-off
 - Kind: platform
-- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`); layout amendment approved 2026-11-25 (user decision of 2026-11-25)
 - ngspice behavior: n/a. The roadmap defines Desktop Beta as "the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS". No checklist exists, unlike the Desktop Alpha checklist of M4 (`docs/roadmap.md`, M4 status, task 13.6 of m4-scripting).
 - Evidence: `docs/roadmap.md` (M4 and M9 sections); `openspec/changes/m4-scripting/tasks.md` 13.6
 - Options:
@@ -299,6 +300,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
   - (c) CI only, with no user sign-off.
 - Recommendation: (a). All three PDKs are first-class from M1 on, the inverters exist in every library, every roadmap step runs inside Hefesto, and the 30 % band with a fixed FO4 load catches a broken parasitic path without becoming a timing sign-off. An unloaded output would let parasitics alone move the delay by more than 30 %.
 - Resolution: other — option (a): Desktop Beta is signed off on one flow per PDK (sky130 `inv_1`, gf180mcu `gf180mcu_fd_sc_mcu7t5v0__inv_1`, IHP `sg13g2_inv_1`) on Linux x86_64 and macOS arm64: an inverter schematic `beta_inv.sch` drawn in Hefesto and simulated in a shared testbench with a fixed FO4 load (`tran`, `tpd` the mean of the 50 %–50 % rise and fall delays); a layout cell `beta_inv` drawn in Hefesto, clean under Hefesto's DRC with the PDK's Magic tech file and written to GDS (KLayout sign-off is not part of Beta); extraction; an LVS match against `beta_inv.sch`; post-layout `rc` simulation in the same testbench with `tpd` within 30 % of the schematic run. Each flow is an end-to-end CI case, followed by the user's sign-off on real input. Approved by the user 2026-11-22.
+- Resolution (amendment, approved 2026-11-25): the layout cell `beta_inv` is drawn entirely in Hefesto: its two transistors, with the devices and sizes of the library inverter, and its diffusion, poly, contacts and metal1, plus the metal1 pins and labels `A`, `Y`, power and ground; it holds no instance of the PDK inverter cell. This replaces "an instance of the library inverter" in option (a) step 2. SIMREF draws the cells under `tests/e2e/beta/<pdk>/` (m9 design D19 "Beta flow inputs", task 20.2). Approved by the user 2026-11-25.
 
 ### Q-SIM-28: Simulation performance gate
 - Kind: platform

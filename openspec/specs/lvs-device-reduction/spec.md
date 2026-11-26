@@ -5,7 +5,7 @@ Defines how devices are reduced before and during LVS comparison:
 - combining parallel devices into one device with several property records
 - combining series devices into one device
 - permutable pins and the effect of `permute` on matching
-- the per-class enable flags for combination
+- the per-class settings that allow combination
 - removing zero-valued shorting devices
 - how merged-device counts are reported
 
@@ -19,7 +19,7 @@ Traces use `(netgen ref: path/file.c:line)`. They are for traceability only (cap
 
 Other capabilities own related parts:
 - reconciling the combined property records: `lvs-property-matching`
-- the commands that set the flags: `lvs-setup-file`
+- the commands that change these settings: `lvs-setup-file`
 
 ## Requirements
 

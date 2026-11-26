@@ -19,7 +19,8 @@ import check_cleanroom as cc  # noqa: E402
 PART_OF = "* This file is part of " + "XSCHEM,\n"
 COPYRIGHT = "* Copyright (C) 1998-2024 Stefan Frederik " + "Schippers\n"
 TRACE = "// (xschem" + " ref: netlist.c:1)\n"
-# netgen's header lines (netgen 1.5.327), assembled the same way.
+# netgen's header lines (netgen 1.5.327; identical at the tag 8df5f0d9 and at the spec pin 93dcda14, re-checked
+# 2026-11-26), assembled the same way.
 NETGEN_TOOL = "/* \"NET" + "GEN\", a netlist-specification tool for VLSI\n"
 NETGEN_COPYRIGHT = "   Copyright (C) 1989, 1990   Massimo A. " + "Sivilotti\n"
 NETGEN_TRACE = "// (netgen" + " ref: base/netcmp.c:1)\n"
@@ -142,6 +143,13 @@ class NetgenFixtures(unittest.TestCase):
         write(self.root, "third_party/lvs/netcmp.c", NETGEN_TOOL + "*/\nint x;\n")
         self.assertEqual(cc.check(self.root),
                          ["third_party/lvs/netcmp.c: carries netgen's GPL header; netgen files are never committed"])
+
+    def test_netgen_header_as_at_spec_pin_fails(self):
+        # base/netgen.c at the spec pin 93dcda14 opens with the same two lines as at the tag (task 2.3 re-check).
+        write(self.root, "third_party/lvs/netgen.c",
+              NETGEN_TOOL + NETGEN_COPYRIGHT + "   Author's address: (omitted);\n*/\nint y;\n")
+        self.assertEqual(cc.check(self.root),
+                         ["third_party/lvs/netgen.c: carries netgen's GPL header; netgen files are never committed"])
 
     def test_netgen_copyright_line_alone_fails(self):
         write(self.root, "tests/golden/LVS/cases/NG-ALG-01/input/a.spice", "* x\n" + NETGEN_COPYRIGHT)

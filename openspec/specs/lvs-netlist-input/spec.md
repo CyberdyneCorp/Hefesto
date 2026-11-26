@@ -119,7 +119,7 @@ Case-insensitive name equality SHALL hold when both of these are true:
 1. The strings are equal after mapping each byte through a fold table. The table maps `a`–`z` to `A`–`Z`. It maps `[`, `{` and `<` to `<`, and `]`, `}` and `>` to `>`. So `a[3]`, `A<3>` and `a{3}` are equal.
 2. A leading backslash on exactly one of the names is ignored, together with one trailing space after the compared text (Verilog escaped names).
 
-A null name SHALL never be equal to anything.
+An absent name SHALL never be equal to any name, not even to another absent name.
 
 Case-sensitive equality SHALL be byte equality. Looking up a cell or a net by name SHALL use the same equality, brackets included, so a lookup finds every name the equality calls equal (Hefesto decision Q-LVS-3: fix; netgen's lookup folds letter case only).
 Compatibility: exact
@@ -282,7 +282,7 @@ An `X` card SHALL be read as `X<name> n1 … nk cell [key=value …]`. The parsi
 
 **Undefined cells.** A call to an undefined cell SHALL print `Call to undefined subcircuit <c>` and `Creating placeholder cell definition.` It SHALL then create a placeholder cell with:
 - class module
-- the placeholder flag
+- marked as a placeholder (Requirement "Netlist database model")
 - ports named `1` … `k` (or one proxy port if k = 0)
 - property of interest `M` (integer, tolerance 0, default 1)
 
@@ -391,7 +391,7 @@ The Verilog reader SHALL accept the structural subset used for gate-level and an
 
 `primitive`…`endprimitive`, `reg`, `always`, `initial`, `specify` blocks and other backtick directives SHALL be skipped.
 
-Bus bits SHALL be named `name[i]`. Matching SHALL be case-sensitive. A module instanced before it is defined SHALL become a placeholder with the verilog flag. An escaped identifier `\name ` SHALL keep its backslash and trailing space, and SHALL match the unescaped name under the rule in Requirement "Name matching and case sensitivity".
+Bus bits SHALL be named `name[i]`. Matching SHALL be case-sensitive. A module instanced before it is defined SHALL become a placeholder marked as read from Verilog. An escaped identifier `\name ` SHALL keep its backslash and trailing space, and SHALL match the unescaped name under the rule in Requirement "Name matching and case sensitivity".
 Compatibility: behavioral
 (netgen ref: base/verilog.c:1092-2300, base/verilog.c:3004-3110, base/netfile.c:740-760)
 
@@ -450,10 +450,12 @@ Compatibility: native
 
 ### Requirement: Input limits
 The readers SHALL enforce these limits in both `netgen-compat` modes:
-- include depth 64;
+- include depth 64, counting the top file (`LVS-READ-019`);
 - one logical line, after continuation lines are joined, 16 MiB;
 - one name 4 KiB;
-- 50 million devices per run.
+- 50 million devices in the netlist database, counted over every file read into it (`LVS-NET-001`).
+
+Two guards follow from these limits and are not separate settings: one read SHALL stop with `LVS-READ-025` when it would perform more than 65,536 `.INCLUDE` reads, or when the files it includes hold more than 64 times the logical-line limit in bytes (1 GiB with the default limit), counting a file again each time it is included (Q-LVS-36, addition of 2026-11-26).
 
 Each limit SHALL be a setting that can be lowered, and SHALL NOT be raised above twice its default. Exceeding a limit SHALL stop the read with a diagnostic that names the limit, the file and the line, and SHALL classify the run as an input error. A reader SHALL NOT crash, recurse without bound or hang on any input.
 
@@ -465,3 +467,23 @@ Compatibility: native
 - **GIVEN** `a.spice` includes `b.spice` and `b.spice` includes `a.spice`
 - **WHEN** `a.spice` is read
 - **THEN** the read SHALL stop at include depth 64 with the include-depth diagnostic naming `b.spice`, and the process SHALL keep running
+
+#### Scenario: Include depth counts the top file
+- **GIVEN** a chain `f1.spice` … `f65.spice` in which each file includes the next, and the default limits
+- **WHEN** `f1.spice` is read
+- **THEN** `f1.spice` to `f64.spice` SHALL be read, and the read SHALL stop at the include of `f65.spice` with `LVS-READ-019` naming `f64.spice` and its line; the same chain ending at `f64.spice` SHALL be read without a limit diagnostic
+
+#### Scenario: Include count cap
+- **GIVEN** `top.spice` includes `mid.spice` 300 times and `mid.spice` includes an empty `leaf.spice` 300 times (90,300 include reads, depth 3)
+- **WHEN** `top.spice` is read
+- **THEN** the read SHALL stop with `LVS-READ-025` when the 65,537th include read is attempted, the run SHALL be classified as an input error, and the process SHALL keep running
+
+#### Scenario: Include byte cap
+- **GIVEN** the logical-line limit is lowered to 1 MiB, and `top.spice` includes a 1,000,000-byte file `blk.spice` 100 times
+- **WHEN** `top.spice` is read
+- **THEN** the read SHALL stop with `LVS-READ-025` at the include that would take the included bytes past 64 MiB (the 68th), and the run SHALL be classified as an input error
+
+#### Scenario: Device limit counts the whole database
+- **GIVEN** the device limit is lowered to 1,000, and `a.spice` and `b.spice` hold 600 devices each
+- **WHEN** `a.spice` and then `b.spice` are read into the same netlist database
+- **THEN** the read of `a.spice` SHALL succeed, and the read of `b.spice` SHALL stop with `LVS-NET-001`
