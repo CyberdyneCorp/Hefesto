@@ -927,8 +927,9 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
   const View3dHeader header = view3d_header(*win);
   stage_paint_->set_accessible_name(header.title + ", " + header.subtitle);
   if (separate_window_) {
-    p.text_centered_y(TextRole::body, 24.0F, h / 2.0F,
-                      "Shown in a separate window: close it, or turn off Separate window, to bring it back",
+    // Two short lines: one line was cut off by the side panel at 1280 px.
+    p.text_centered_y(TextRole::body, 24.0F, h / 2.0F - 12.0F, "Shown in a separate window.", t.text_secondary);
+    p.text_centered_y(TextRole::body, 24.0F, h / 2.0F + 12.0F, "Close it, or turn off Detach view, to bring it back.",
                       t.text_secondary);
   }
   p.fill(8.0F, 8.0F, std::max(p.text_width(TextRole::cell_subtitle, header.subtitle),

@@ -1676,9 +1676,9 @@ TEST_CASE("Open in separate window is a toggle, disabled with a reason where the
   s.separate_window_available = true;
   v = control_view(View3dControl::separate_window, s);
   CHECK(v.enabled);
-  CHECK(v.accessible_name == "Separate window, off");
+  CHECK(v.accessible_name == "Detach view, off");  // the label fits its grid cell at 1280 px
   s.separate_window = true;
-  CHECK(control_view(View3dControl::separate_window, s).accessible_name == "Separate window, on");
+  CHECK(control_view(View3dControl::separate_window, s).accessible_name == "Detach view, on");
   s.window_open = false;
   CHECK_FALSE(control_view(View3dControl::separate_window, s).enabled);
 }

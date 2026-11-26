@@ -703,7 +703,8 @@ std::optional<View3dControlView> panel_control(View3dControl control, const View
       return toggle("Frame time", s.frame_time, true, "Show the 3D frame's draw time and frame rate");
     case View3dControl::close_view: return plain("Close 3D view", s.window_open, "Close the 3D window: closewindow");
     case View3dControl::separate_window:
-      return toggle("Separate window", s.separate_window, s.window_open && s.separate_window_available,
+      // "Detach view": "Separate window" was cut off in its grid cell at 1280 px.
+      return toggle("Detach view", s.separate_window, s.window_open && s.separate_window_available,
                     s.separate_window_available
                         ? "Open the 3D view in a separate window; closing that window returns it to the tab"
                         : "Open in separate window: not available on this system");
