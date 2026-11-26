@@ -44,7 +44,7 @@ std::vector<std::string> route_messages(const diag::CollectingSink& sink) {
 TEST_CASE("layer defaults", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m2 32 64", sink, tech);
+  const auto styles = read("style irouter\nlayer m2 32 64", sink, tech);
   REQUIRE(styles.styles.size() == 1);
   const route::MazeStyle& style = styles.styles[0];
   REQUIRE(style.layers.size() == 1);
@@ -62,7 +62,7 @@ TEST_CASE("layer defaults", "[cap:router-maze][req:mzrouter section grammar]") {
 TEST_CASE("a statement before any style line", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("layer m1 64 32", sink, tech);
+  const auto styles = read("layer m1 64 32", sink, tech);
   CHECK(styles.styles.empty());
   CHECK(route_messages(sink) == std::vector<std::string>{"Missing style line."});
 }
@@ -72,7 +72,7 @@ TEST_CASE("a contact with an undeclared layer defines nothing", "[cap:router-maz
   // route-type list when the second layer fails.
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m1 64 32\ncontact m2contact metal1 metal2 1024", sink, tech);
+  const auto styles = read("style irouter\nlayer m1 64 32\ncontact m2contact metal1 metal2 1024", sink, tech);
   REQUIRE(styles.styles.size() == 1);
   const route::MazeStyle& style = styles.styles[0];
   CHECK(style.contacts.empty());
@@ -83,7 +83,7 @@ TEST_CASE("a contact with an undeclared layer defines nothing", "[cap:router-maz
 TEST_CASE("a contact with a bad cost defines nothing", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read(
+  const auto styles = read(
       "style irouter\nlayer m1 64 32\nlayer m2 32 64\ncontact m2c m1 m2 x\ncontact m2c m1 m2 0\ncontact m2c m1 m2",
       sink, tech);
   CHECK(styles.styles[0].contacts.empty());
@@ -98,7 +98,7 @@ TEST_CASE("a layer that fails a check defines nothing", "[cap:router-maze][req:m
   // route-type list.
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\n"
+  const auto styles = read("style irouter\n"
                             "layer m1 64 32\n"
                             "layer m2c 1 1\n"     // m2contact's home plane is metal1
                             "layer m2 0 64\n"     // hCost
@@ -128,7 +128,7 @@ TEST_CASE("a bare style line skips to the next style", "[cap:router-maze][req:mz
   // Q-LEGACY-39 (1): Magic copies the missing argument (NULL).
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style\nlayer m1 64 32\nbogus\nstyle irouter\nlayer m2 32 64", sink, tech);
+  const auto styles = read("style\nlayer m1 64 32\nbogus\nstyle irouter\nlayer m2 32 64", sink, tech);
   REQUIRE(styles.styles.size() == 1);
   CHECK(styles.styles[0].name == "irouter");
   CHECK(styles.styles[0].layers.size() == 1);
@@ -145,7 +145,7 @@ TEST_CASE("unknown keywords are reported", "[cap:router-maze][req:mzrouter secti
 TEST_CASE("notactive marks route types inactive", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m1 64 32\nlayer poly 128 128\ncontact pc m1 poly 2056\n"
+  const auto styles = read("style irouter\nlayer m1 64 32\nlayer poly 128 128\ncontact pc m1 poly 2056\n"
                             "notactive poly pcontact\nnotactive m1 metal3\nnotactive",
                             sink, tech);
   const route::MazeStyle& style = styles.styles[0];
@@ -160,7 +160,7 @@ TEST_CASE("notactive marks route types inactive", "[cap:router-maze][req:mzroute
 TEST_CASE("spacing statements are kept in file order", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m1 64 32\nlayer m2 32 64\n"
+  const auto styles = read("style irouter\nlayer m1 64 32\nlayer m2 32 64\n"
                             "spacing m1 poly 5 SUB 7\n"
                             "spacing m2 m3 NIL\n"
                             "spacing m2 nosuch 1 m1 2\n"  // an unknown type: reported, the line defines nothing
@@ -190,7 +190,7 @@ TEST_CASE("spacing statements are kept in file order", "[cap:router-maze][req:mz
 TEST_CASE("width statements are kept", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m2 32 64\nwidth m2 4\nwidth m2 5 9\nwidth m2 0\nwidth m2 5 x\n"
+  const auto styles = read("style irouter\nlayer m2 32 64\nwidth m2 4\nwidth m2 5 9\nwidth m2 0\nwidth m2 5 x\n"
                             "width m2",
                             sink, tech);
   const route::MazeStyle& style = styles.styles[0];
@@ -209,7 +209,7 @@ TEST_CASE("the search statement and its penalty resolution", "[cap:router-maze][
   // Q-LEGACY-32: the penalty is stored as floor(p * 2) with exponent 1.
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style a\nsearch 200 4000 1.3\nstyle b\nsearch 0 x 2\nstyle c\nsearch 1 1", sink, tech);
+  const auto styles = read("style a\nsearch 200 4000 1.3\nstyle b\nsearch 0 x 2\nstyle c\nsearch 1 1", sink, tech);
   REQUIRE(styles.styles.size() == 3);
   CHECK(styles.styles[0].window_rate == 200);
   CHECK(styles.styles[0].window_width == 4000);
@@ -228,7 +228,7 @@ TEST_CASE("the search statement and its penalty resolution", "[cap:router-maze][
 TEST_CASE("a negative or non-numeric search penalty is rejected", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style a\nsearch 200 4000 -1\nsearch 200 4000 abc", sink, tech);
+  const auto styles = read("style a\nsearch 200 4000 -1\nsearch 200 4000 abc", sink, tech);
   CHECK(styles.styles[0].window_rate == 500);
   CHECK(styles.styles[0].penalty.mantissa == 2048);
   CHECK(route_messages(sink) ==
@@ -242,7 +242,7 @@ TEST_CASE("an out-of-range search penalty defines nothing", "[cap:router-maze][r
   // is ignored.
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style a\nsearch 200 4000 1073741824\nsearch 300 5000 1e30\nsearch 400 6000 nan\n"
+  const auto styles = read("style a\nsearch 200 4000 1073741824\nsearch 300 5000 1e30\nsearch 400 6000 nan\n"
                             "search 7 8 1073741760",
                             sink, tech);
   const route::MazeStyle& style = styles.styles[0];
@@ -257,7 +257,7 @@ TEST_CASE("an out-of-range search penalty defines nothing", "[cap:router-maze][r
 TEST_CASE("route types are kept in file order per style", "[cap:router-maze][req:mzrouter section grammar]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m2 32 64 256 1\nlayer m1 64 32 256 1\nlayer poly 128 128 512 1\n"
+  const auto styles = read("style irouter\nlayer m2 32 64 256 1\nlayer m1 64 32 256 1\nlayer poly 128 128 512 1\n"
                             "contact m2contact metal1 metal2 1024\ncontact pcontact metal1 poly 2056\n"
                             "style garouter\nlayer m2 32 64 256 1\nlayer m1 64 32 256 1\n"
                             "contact m2contact metal1 metal2 1024",
@@ -286,7 +286,7 @@ TEST_CASE("route types are kept in file order per style", "[cap:router-maze][req
 TEST_CASE("a style starts with Magic's defaults", "[cap:router-maze][req:Style defaults and lookup]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m1 64 32", sink, tech);
+  const auto styles = read("style irouter\nlayer m1 64 32", sink, tech);
   const route::MazeStyle& style = styles.styles[0];
   CHECK(style.window_rate == 500);
   CHECK(style.window_width == 10000);
@@ -306,7 +306,7 @@ TEST_CASE("a style starts with Magic's defaults", "[cap:router-maze][req:Style d
 TEST_CASE("styles are looked up by exact name", "[cap:router-maze][req:Style defaults and lookup]") {
   diag::CollectingSink sink;
   std::shared_ptr<const hefesto::tech::Technology> tech;
-  const auto& styles = read("style irouter\nlayer m1 64 32\nstyle garouter\nlayer m2 32 64", sink, tech);
+  const auto styles = read("style irouter\nlayer m1 64 32\nstyle garouter\nlayer m2 32 64", sink, tech);
   REQUIRE(route::find_style(styles, "irouter") != nullptr);
   CHECK(route::find_style(styles, "irouter")->layers[0].route.type == type_named(*tech, "metal1"));
   CHECK(route::find_style(styles, "garouter") == &styles.styles[1]);
