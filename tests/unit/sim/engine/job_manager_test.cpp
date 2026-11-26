@@ -265,9 +265,12 @@ sim::JobManagerOptions options(FakeHost& host, sim::PoolInputs pool = {}) {
 }
 
 /// Polls until no job is loading and nothing is left to apply (M9 R2: the
-/// loads run on loader threads).
+/// loads run on loader threads). Bounded by time, not by poll count: a
+/// flooding engine thread keeps every poll busy, and under ThreadSanitizer
+/// its 200 000 frames take longer than a fixed number of polls.
 void settle(sim::JobManager& jobs) {
-  for (int i = 0; i < 4000; ++i) {
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  while (std::chrono::steady_clock::now() < deadline) {
     jobs.poll_for(std::chrono::milliseconds(5));
     if (jobs.loading() == 0 && jobs.poll() == 0) {
       return;
