@@ -128,7 +128,7 @@ Compatibility: behavioral
   - `res:min=<v>` sets a minimum.
   - `res:drive` adds a drive point at the attribute location.
 
-In both settings, beyond Magic (Q-NETLIST-68, resolution: fix, approved 2026-11-25): a negative node resistance is infinite (Magic converts INFINITY to an integer); a device terminal naming a net with no earlier record creates the net, which has no node record (Magic dereferences a null net); a device whose model the style does not declare has no tile type and drives nothing (Magic dereferences a null device line).
+In both settings, beyond Magic (Q-NETLIST-68, resolution: fix, approved 2026-11-25): a negative node resistance is infinite (Magic converts INFINITY to an integer); a device terminal naming a net with no earlier record creates the net, which has no node record (Magic dereferences a null net); a device whose model the style does not declare has no tile type and drives nothing (Magic dereferences a null device line). Likewise (Q-NETLIST-63, resolution: fix, approved 2026-11-25): a device whose substrate terminal names a net with no node record, such as a global `GND!` that no `node` record declares, creates that net, which has no node record, and the run continues (Magic adds the device to a null node and `extresist` crashes).
 
 The `.ext` files of all parent cells SHALL be read for `connect` records into this cell. Those connection rectangles are transformed into this cell's coordinates and added as drive points, flagging the net forced and drive-located.
 Compatibility: exact
@@ -138,6 +138,11 @@ Compatibility: exact
 - **GIVEN** an extraction style with resistScale 1000 and the record `node n 25 3000 0 0 m1`
 - **WHEN** it is read
 - **THEN** net `n` has a resistance of 25000 mΩ and a capacitance of 3000 aF
+
+#### Scenario: Substrate terminal on a net with no node record
+- **GIVEN** `top.ext` with the nodes `s` and `g` and the record `device mosfet nfet … "GND!" "g" … "s" … "s" …`, and no `node` record for `GND!`
+- **WHEN** `extresist all` runs, with `magic-compat` ON or OFF
+- **THEN** the run completes and writes `top.res.ext`, and the summary line is `Total Nets: 2`, as decided by Q-NETLIST-63
 
 #### Scenario: Attribute for an earlier node
 - **GIVEN** the records `node a …`, `node b …` and then `attr a 0 0 0 0 m1 "res:skip"`

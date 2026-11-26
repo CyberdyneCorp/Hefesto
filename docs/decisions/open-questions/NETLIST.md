@@ -580,13 +580,14 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 
 ### Q-NETLIST-63: Magic's `extresist` crashes on nets with nfets
 - Kind: bug
-- Status: approved 2026-11-25 (proposed in M7 round R4 by RESNET, 2026-11-25; the crash is not located yet; approved with the recommended option)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESNET, 2026-11-25; approved with the recommended option; located in round R5 by m7-round5-res)
 - Magic behavior: `extresist all` on exttest.tech with `device mosfet nfet nfet ndiff,ndc pwell,space GND! 2 5` exits with a segmentation fault (exit 139) when a net touches an nfet (NL-RESNET-05, 10 and 13).
 - Evidence: golden-capture runs 45555921742 and 45555935130. Likely places: resis/ResRex.c ResFixUpConnections, resis/ResSimple.c ResCalculateChildCapacitance (`exts_device[t]`).
 - As implemented (round R4): Hefesto builds and reduces these nets (no crash); the three cases are authored without expected/.
+- Located (round R5, m7-round5-res): ResReadDevice (resis/ResReadExt.c:819-820, :725) adds the device to the device list of its substrate terminal's node without checking that the node exists. The device lines of NL-RESNET-05, 10 and 13 name the global `GND!`, which has no `node` record in those layouts, so `extresist` dereferences NULL. Hefesto creates the net (no node record) in both modes. NL-RESNET-05, 10 and 13 are re-authored with a labelled metal1 square named `GND!` (a node record that is never extracted) and captured twice (runs 45816834270, 45816842269).
 - Options: fix (both modes, the standing rule) | re-author the cases so Magic does not crash
 - Recommendation: once the crash is located, fix it in both modes and re-capture after re-authoring if needed. Spec on approval: `extresist-network` or `extresist-command`, depending on where it is.
-- Resolution: fix in both modes once located. The crash is not located yet (m7-round5-res locates it); until then Hefesto builds and reduces these nets without crashing in both modes, and NL-RESNET-05, 10 and 13 stay `capture_blocked`. The spec sentence is added to `extresist-network` or `extresist-command` once the location is known (pending location). Approved 2026-11-25.
+- Resolution: fix — in both modes a `device` record whose substrate terminal names a net with no node record creates that net (it has no node record), and the run continues; Magic dereferences a null node (resis/ResReadExt.c:819-820). Spec: `extresist-command` "Input model" (sentence and scenario "Substrate terminal on a net with no node record"). Test: `tests/unit/extresist/command/run_test.cpp` "a substrate terminal on a net with no node record does not stop the run" (both modes; m7-round5-res). NL-RESNET-05, 10 and 13 are re-authored so that Magic does not crash and are replayed. Approved 2026-11-25; located 2026-11-26.
 
 ### Q-NETLIST-64: Undefined behaviour in Magic's resistance network construction
 - Kind: bug
