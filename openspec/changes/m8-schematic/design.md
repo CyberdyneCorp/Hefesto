@@ -192,6 +192,30 @@ Same output on Linux x86_64, Linux aarch64 and macOS arm64: number parsing and p
 - `check_cleanroom.py` passes and every schematic pull request carries the clean-room checkbox.
 - `openspec validate --all --strict` passes.
 
+M8 exit table (round 6, GOLDEN, 2026-11-26; branch `m8-round6-golden` on origin/main 6e48a02f, before the round's DECIDE and CORE branches merge; task 14.3):
+
+| Item | Result | Evidence | Holds | Owner of what is open |
+|---|---|---|---|---|
+| Golden suite as CI runs it (`replay.py`, deviations honoured) | SCHEM: 15 pass, 0 fail, 1 skip, 25 deviation | local replay of the 41 SCHEM cases; ci.yml run 45865084980 (99c1d1c1): `golden: 1030 pass, 0 fail, 0 skip, 147 deviation` on `linux-x64-gcc-11` (job 140065890228), `linux-arm64-gcc` (140065890326) and `macos-arm64-xcode-oldest` (140065890487) | yes | — |
+| Golden suite at the exit (`replay.py --milestone M8`) | SCHEM: 15 pass, 23 fail, 1 skip (SCHEM-LVS-01: `sky130A.tech` not fetched locally), 2 deviation (SCHEM-PR-05 by Q-SCHEM-30, SCHEM-SIM-02 deferred to M9) | local replay; the failing outputs are the `deferred = "M8"` entries of the SCHEM block of `tests/golden/deviations.toml` | no | see the blocker rows |
+| Blocker: diagnostics text in `stderr.txt` (NL-02, 03, 06, 09, 10, 11, 12, 13, 14, 16, 18, 20, 22, RT-02, RT-06) | Hefesto's coded `SCHEM-*` warnings against xschem's ERC and loader lines | proposed Q-SCHEM-60 | no | the user (decision), then GOLDEN or CORE |
+| Blocker: `xschem netlist` result after a failed run (NL-22 stdout, SIM-03) | xschem returns `1` and goes on, Hefesto raises | proposed Q-SCHEM-61 | no | the user, then DECIDE and CMD |
+| Blocker: `xschem get_tok` third argument (PR-01) | Hefesto raises `wrong number of arguments` | proposed Q-SCHEM-62 | no | the user, then DECIDE and CMD |
+| Blocker: `xschem get wires/instances`, `clear`, `instance`, `copy`, `paste` (PR-02, PR-04, RT-06 stdout) and the undriven-node check (NL-09, NL-10 exit status) | not in the specs on main | DECIDE rows of round 6 | no | DECIDE (round 6), CORE (round 7) |
+| Blocker: symbol generators (NL-05, NL-21, NL-23) | R3 of `test_generators.sch` gets R2's generated symbol; generator stderr dropped | `schem_cases.PENDING` | no | CORE |
+| Blocker: netlister (NL-05, NL-21) | NL-05: one empty line in a subcircuit's `user architecture code` block where xschem writes two, none before the closing marker after the last `device_model`; NL-21: flat mode prefixes the tokens of quoted expressions and the model name with the instance path, and `top-flat.spice` differs from xschem's | `schem_cases.PENDING` | no | CORE (NETLIST) |
+| Blocker: SCHEM-RT-05 embedded block of an `embed=true` instance | written without the `[`...`]` block on origin/main | expected to pass after `m8-round6-core` merges | no | CORE |
+| Blocker: SCHEM-PR-05 replay (`XSCHEM_LIBRARY_PATH` in the project interpreter) | `can't read "XSCHEM_LIBRARY_PATH"` | CORE item e of round 6; then Q-SCHEM-30 covers its streams | no | CORE |
+| Blocker: SCHEM-SIM-03 | `xschem descend` returns `.x1.` where xschem returns `1`; `xschem resolved_net` is not in the spec; `xschem netlist` raises (Q-SCHEM-61) | `schem_cases.PENDING` | no | SIMINT and DECIDE |
+| Coverage of the six capabilities | file-format 20/20, symbols-and-libraries 17/17, netlisting 23/23, editing 16/16, command 1/1, simulation-integration 3/3 | `check_requirement_coverage.py --capability <c>` | yes | — |
+| Three-platform identity (D20, task 8.6) | `PDK example netlists have the committed digests` passed (not skipped, xschem sets restored) on `linux-x64-gcc-11`, `linux-arm64-gcc`, `macos-arm64-xcode-oldest`; `cross-platform determinism` passed | ci.yml run 45818476042 (jobs 139904376782, 139904376556, 139904376621, 139964123901); again in run 45865084980 (jobs 140065890228, 140065890326, 140065890487), whose SCHEM golden outputs are byte-identical on the three legs; its `cross-platform determinism` job (140108250406) fails only because the reference leg `linux-x64-gcc-latest` does not restore the xschem sets, so the 6 PDK-input SCHEM cases that now pass are "unexpected" there (ci.yml fix: `xschem: true` on that leg) | yes (the ci.yml fix is open) | INTEGRATION (ci.yml) |
+| Both-mode tests | the compat branch points of `schem/file/reader.cpp`, `schem/net/expr.cpp` and `schem/net/definitions.cpp` are tested with `xschem-compat` ON and OFF (`tests/unit/schem/net/expr_test.cpp`, `postprocess_test.cpp`, `netlist_test.cpp`, `file/version_test.cpp`); `compat_isolation_test.cpp` for layout output | unit tests in the CI legs above | yes | — |
+| Security sign-off (D14) | signed off 2026-11-25 (row above) | CI runs 45549311734, 45613328729 | yes | — |
+| `check_cleanroom.py` | `check_cleanroom: clean` | local, 2026-11-26 | yes | — |
+| `openspec validate --all --strict` | 179 passed, 0 failed | local, 2026-11-26 | yes | — |
+| `check_milestone_readiness.py --milestone M8` | 4 blocking: unresolved Q-SCHEM-34, 35, 36, 37 | local, on origin/main; DECIDE records the decisions of 2026-11-25 this round | no | DECIDE |
+| Gate G1 (outside reviewer of `cleanroom.md`, second spec signature) | signatures of 2026-11-20 recorded in tasks 1.1 and 1.2 | `tasks.md` | recorded | the user |
+
 ## Area contracts
 
 ### FORMAT: `hefesto/schem/file/`
