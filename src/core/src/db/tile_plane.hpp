@@ -113,6 +113,17 @@ class TilePlane {
   Tile* split_y(Tile* tile, Coord y);  // TiSplitY: returns the new top tile
   void join_x(Tile* keep, Tile* gone);  // TiJoinX (+ delayed free)
   void join_y(Tile* keep, Tile* gone);  // TiJoinY (+ delayed free)
+  /// The same, counting stitch steps or not as `kCount` says rather than
+  /// as counts_steps() does: the rectangle painter picks the variant once
+  /// per paint instead of once per split or join.
+  template <bool kCount>
+  Tile* split_x_counted(Tile* tile, Coord x);
+  template <bool kCount>
+  Tile* split_y_counted(Tile* tile, Coord y);
+  template <bool kCount>
+  void join_x_counted(Tile* keep, Tile* gone);
+  template <bool kCount>
+  void join_y_counted(Tile* keep, Tile* gone);
   /// TiJoinY of `a` and `b` (in either order) that keeps whichever has
   /// more tiles along its left and right sides, and returns it. The merged
   /// tile is the same either way; only its address differs. TiJoinY
@@ -120,7 +131,9 @@ class TilePlane {
   /// column of strips that merge one by one into the tile above them cost
   /// the square of the column (security.md M5-S10); this costs twice the
   /// smaller side count. A `b` with few side neighbours is freed as
-  /// TiJoinY would free it, without comparing the two.
+  /// TiJoinY would free it, without comparing the two. `kCount` as for
+  /// join_y_counted.
+  template <bool kCount>
   Tile* join_y_cheap(Tile* a, Tile* b);
 
   /// The neighbours the splits, joins and paint merges have re-stitched or
@@ -171,21 +184,13 @@ class TilePlane {
  private:
   Tile* alloc();
   void free_later(Tile* t) { pending_.push_back(t); }
-  // The split and join loops, with (kCount) or without the step count.
+  // One step of a split or join loop, counted only by the kCount variant.
   template <bool kCount>
   void step() noexcept {
     if constexpr (kCount) {
       ++stitch_steps_;
     }
   }
-  template <bool kCount>
-  Tile* split_x_impl(Tile* tile, Coord x);
-  template <bool kCount>
-  Tile* split_y_impl(Tile* tile, Coord y);
-  template <bool kCount>
-  void join_x_impl(Tile* keep, Tile* gone);
-  template <bool kCount>
-  void join_y_impl(Tile* keep, Tile* gone);
 
   std::deque<Tile> storage_;
   std::vector<Tile*> free_;

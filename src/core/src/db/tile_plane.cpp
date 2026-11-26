@@ -76,7 +76,7 @@ TilePlane::TilePlane() {
 }
 
 template <bool kCount>
-Tile* TilePlane::split_x_impl(Tile* tile, Coord x) {
+Tile* TilePlane::split_x_counted(Tile* tile, Coord x) {
   Tile* nt = alloc();
   nt->body = 0;
   nt->x = x;
@@ -109,7 +109,7 @@ Tile* TilePlane::split_x_impl(Tile* tile, Coord x) {
 }
 
 template <bool kCount>
-Tile* TilePlane::split_y_impl(Tile* tile, Coord y) {
+Tile* TilePlane::split_y_counted(Tile* tile, Coord y) {
   Tile* nt = alloc();
   nt->body = 0;
   nt->x = tile->x;
@@ -142,7 +142,7 @@ Tile* TilePlane::split_y_impl(Tile* tile, Coord y) {
 }
 
 template <bool kCount>
-void TilePlane::join_x_impl(Tile* keep, Tile* gone) {
+void TilePlane::join_x_counted(Tile* keep, Tile* gone) {
   Tile* tp = nullptr;
   for (tp = gone->rt; tp->lb == gone; tp = tp->bl) {
     tp->lb = keep;
@@ -175,7 +175,7 @@ void TilePlane::join_x_impl(Tile* keep, Tile* gone) {
 }
 
 template <bool kCount>
-void TilePlane::join_y_impl(Tile* keep, Tile* gone) {
+void TilePlane::join_y_counted(Tile* keep, Tile* gone) {
   Tile* tp = nullptr;
   for (tp = gone->tr; tp->bl == gone; tp = tp->lb) {
     tp->bl = keep;
@@ -208,19 +208,19 @@ void TilePlane::join_y_impl(Tile* keep, Tile* gone) {
 }
 
 Tile* TilePlane::split_x(Tile* tile, Coord x) {
-  return counting_ ? split_x_impl<true>(tile, x) : split_x_impl<false>(tile, x);
+  return counting_ ? split_x_counted<true>(tile, x) : split_x_counted<false>(tile, x);
 }
 
 Tile* TilePlane::split_y(Tile* tile, Coord y) {
-  return counting_ ? split_y_impl<true>(tile, y) : split_y_impl<false>(tile, y);
+  return counting_ ? split_y_counted<true>(tile, y) : split_y_counted<false>(tile, y);
 }
 
 void TilePlane::join_x(Tile* keep, Tile* gone) {
-  counting_ ? join_x_impl<true>(keep, gone) : join_x_impl<false>(keep, gone);
+  counting_ ? join_x_counted<true>(keep, gone) : join_x_counted<false>(keep, gone);
 }
 
 void TilePlane::join_y(Tile* keep, Tile* gone) {
-  counting_ ? join_y_impl<true>(keep, gone) : join_y_impl<false>(keep, gone);
+  counting_ ? join_y_counted<true>(keep, gone) : join_y_counted<false>(keep, gone);
 }
 
 namespace {
@@ -279,26 +279,44 @@ bool few_side_neighbours(const Tile* t) noexcept {
 
 }  // namespace
 
+template <bool kCount>
 Tile* TilePlane::join_y_cheap(Tile* a, Tile* b) {
   if (few_side_neighbours(b)) {
-    join_y(a, b);  // TiJoinY's own order, at a bounded cost
+    join_y_counted<kCount>(a, b);  // TiJoinY's own order, at a bounded cost
     return a;
   }
   SideCursor side_a(a);
   SideCursor side_b(b);
   std::uint64_t walked = 0;
+  bool free_b = false;  // b runs out of side neighbours first
   while (side_a.next()) {
     ++walked;
     if (!side_b.next()) {
-      add_stitch_steps(2 * walked);
-      join_y(a, b);
-      return a;
+      free_b = true;
+      break;
     }
   }
-  add_stitch_steps(2 * walked);
-  join_y(b, a);
+  if constexpr (kCount) {
+    stitch_steps_ += 2 * walked;
+  }
+  if (free_b) {
+    join_y_counted<kCount>(a, b);
+    return a;
+  }
+  join_y_counted<kCount>(b, a);
   return b;
 }
+
+template Tile* TilePlane::split_x_counted<false>(Tile*, Coord);
+template Tile* TilePlane::split_x_counted<true>(Tile*, Coord);
+template Tile* TilePlane::split_y_counted<false>(Tile*, Coord);
+template Tile* TilePlane::split_y_counted<true>(Tile*, Coord);
+template void TilePlane::join_x_counted<false>(Tile*, Tile*);
+template void TilePlane::join_x_counted<true>(Tile*, Tile*);
+template void TilePlane::join_y_counted<false>(Tile*, Tile*);
+template void TilePlane::join_y_counted<true>(Tile*, Tile*);
+template Tile* TilePlane::join_y_cheap<false>(Tile*, Tile*);
+template Tile* TilePlane::join_y_cheap<true>(Tile*, Tile*);
 
 void TilePlane::for_each_tile(util::FunctionRef<void(const Tile*)> visit) const {
   const Rect all = whole_plane();
