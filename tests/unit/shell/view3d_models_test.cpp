@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -25,6 +26,7 @@
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
 #include "hefesto/shell/view3d_models.hpp"
+#include "hefesto/ui/line.hpp"
 #include "hefesto/view/window.hpp"
 #include "hefesto/view3d/client/scene.hpp"
 #include "hefesto/view3d/stack/ghost.hpp"
@@ -1033,8 +1035,10 @@ TEST_CASE("Isometric default in mask-layer mode keeps the heights in proportion:
           "[cap:view-3d][req:Default view]") {
   // Regression: the opening camera set s_z = 1 in mask-layer mode, where x
   // and y are drawn scaled by f, so the stack was drawn f times flatter
-  // than in layout-layer mode (sky130A opens in mask-layer mode).
-  ClientSession s;
+  // than in layout-layer mode (sky130A opens in mask-layer mode). With
+  // magic-compat OFF the heights are converted to internal units, so f is
+  // the whole board scale (round 6: ON also divides by µm per unit, below).
+  ClientSession s{false};
   open_from_desktop(s);
   REQUIRE(s.window().mode == view3d::Mode::mask_layer);
   const float f = s.window().applied_factor;
@@ -1047,6 +1051,143 @@ TEST_CASE("Isometric default in mask-layer mode keeps the heights in proportion:
   view3d::WindowState layout = s.window();
   layout.mode = view3d::Mode::layout_layer;
   CHECK(board_scale_z(layout) == kBoardScaleZ);
+}
+
+namespace {
+
+/// MET1's displayed bottom and top (its draw height and thickness times
+/// s_z): the fixture's one mask layer with a `render` height.
+std::pair<double, double> drawn_z(const DrawnMesh& d, float scale_z) {
+  const auto s = static_cast<double>(scale_z);
+  for (view3d::LayerId id = 0; id < d.stack->size(); ++id) {
+    if (d.stack->layers()[id].name != "MET1") continue;
+    const view3d::DrawHeight h = d.stack->draw_height(id);
+    REQUIRE(h.height > 0.0F);
+    return {static_cast<double>(h.height) * s, static_cast<double>(h.height + h.thickness) * s};
+  }
+  FAIL("no MET1 in the mask-layer stack");
+  return {};
+}
+
+/// Opens c3d from the desktop in mask-layer mode, builds its mesh and runs
+/// the default camera; returns the mesh.
+DrawnMesh open_mask_board(ClientSession& s) {
+  open_from_desktop(s);
+  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+  // MET1's `render` height in the metal1 style the fixture binds (the
+  // tech file names a style this headless session does not have).
+  s.w3d("render MET1 1.376 0.36 " +
+        std::to_string(view3d::render_style_position(hefesto::display::kFixedStyleCount + 20)));
+  DrawnMesh d = build_mesh(s);
+  REQUIRE(d.stack->mode() == view3d::Mode::mask_layer);
+  for (const std::string& line : default_camera_commands(frame_of(s, d))) tcl(s, line);
+  check_isometric(s.window().view);
+  return d;
+}
+
+}  // namespace
+
+TEST_CASE("Mask-layer board view in proportion with magic-compat ON",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Task 17.2 (approved 2026-11-26). With magic-compat ON the mask-layer
+  // heights are the `render` values as stored (µm, Q-MISC-72) while x and y
+  // are in mask units, so s_z = f drew sky130A's stack almost flat. The
+  // desktop tab's opening s_z is also divided by µm per internal unit.
+  ClientSession on{true};
+  const DrawnMesh d_on = open_mask_board(on);
+  const float f = on.window().applied_factor;
+  const double microns = d_on.stack->microns_per_unit();
+  REQUIRE(f > 1.0F);
+  REQUIRE(microns > 0.0);
+  REQUIRE(microns != 1.0);
+  const float expected = static_cast<float>(static_cast<double>(kBoardScaleZ * f) / microns);
+  CHECK(board_scale_z(on.window(), *d_on.stack) == expected);
+  CHECK(on.window().view.scale_z == Catch::Approx(expected).epsilon(1e-6));  // `zoom` reports it
+  CHECK(on.window().view.scale_z != Catch::Approx(kBoardScaleZ * f));     // not the round-5 value
+  // The drawn stack's heights are those of the magic-compat OFF picture.
+  ClientSession off{false};
+  const DrawnMesh d_off = open_mask_board(off);
+  const auto [on_z0, on_z1] = drawn_z(d_on, on.window().view.scale_z);
+  const auto [off_z0, off_z1] = drawn_z(d_off, off.window().view.scale_z);
+  REQUIRE(off_z1 - off_z0 > 0.0);
+  CHECK(on_z1 - on_z0 == Catch::Approx(off_z1 - off_z0).epsilon(1e-4));
+  CHECK(on_z1 == Catch::Approx(off_z1).epsilon(1e-4));
+  // MET1 (1.376 µm up, 0.36 µm thick) is drawn at its µm values in mask units,
+  // so the height-to-width ratio is the OFF picture's, and physical.
+  const double mask_unit_um = microns / static_cast<double>(f);
+  CHECK(on_z0 * mask_unit_um == Catch::Approx(1.376).epsilon(1e-4));
+  CHECK(on_z1 * mask_unit_um == Catch::Approx(1.736).epsilon(1e-4));
+  CHECK(off_z0 * mask_unit_um == Catch::Approx(1.376).epsilon(1e-4));
+  // Magic's own s_z is untouched: `defaults` returns to 25 x f.
+  tcl(on, ".render.magic defaults");
+  CHECK(on.window().view.scale_z == Catch::Approx(25.0F * f));
+}
+
+TEST_CASE("Mask-layer board view with magic-compat OFF",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // OFF converts the heights to internal units already: s_z stays f.
+  ClientSession off{false};
+  const DrawnMesh d = open_mask_board(off);
+  const float f = off.window().applied_factor;
+  CHECK(board_scale_z(off.window(), *d.stack) == kBoardScaleZ * f);
+  CHECK(off.window().view.scale_z == kBoardScaleZ * f);
+  // Layout-layer mode keeps s_z = 1 in both settings.
+  for (const bool compat : {true, false}) {
+    ClientSession s{compat};
+    open_from_desktop(s);
+    s.w3d("cif");
+    REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+    const DrawnMesh layout = build_mesh(s);
+    CHECK(board_scale_z(s.window(), *layout.stack) == kBoardScaleZ);
+  }
+}
+
+// Regression: an output style whose µm per unit is zero or not finite gave
+// a NaN or infinite s_z (and a `zoom` with it) with magic-compat ON.
+TEST_CASE("the mask-layer board z scale ignores a µm per unit that is zero or not finite",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  view3d::WindowState window;
+  window.mode = view3d::Mode::mask_layer;
+  window.applied_factor = 10.0F;
+  view3d::StackLayer met1;
+  met1.name = "MET1";
+  met1.height = 1.38F;
+  met1.thickness = 0.36F;
+  met1.source = view3d::ValueSource::render;
+  for (const double microns : {0.0, -0.1, std::nan(""), std::numeric_limits<double>::infinity(), 1.0e-300}) {
+    INFO("microns per unit " << microns);
+    const view3d::LayerStack stack{view3d::Mode::mask_layer, {met1}, true, microns};
+    const float z = board_scale_z(window, stack);
+    CHECK(std::isfinite(z));
+    CHECK(z == kBoardScaleZ * 10.0F);
+  }
+  const view3d::LayerStack good{view3d::Mode::mask_layer, {met1}, true, 0.1};
+  CHECK(board_scale_z(window, good) == Catch::Approx(100.0F));
+  // A layout-layer window keeps kBoardScaleZ whatever stack it is given.
+  const view3d::WindowState layout;
+  CHECK(board_scale_z(layout, good) == kBoardScaleZ);
+}
+
+TEST_CASE("Magic's z scale unchanged outside the desktop tab in mask-layer mode",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    // A window opened by specialopen keeps Magic's s_z = 25 x f.
+    ClientSession s{compat};
+    bind_styles(s);
+    s.ok("specialopen wind3d c3d");
+    REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+    const float f = s.window().applied_factor;
+    const DrawnMesh d = build_mesh(s);
+    CHECK(default_camera_commands(frame_of(s, d)).empty());
+    CHECK(s.window().view.scale_z == Catch::Approx(25.0F * f));
+    // `defaults` in a desktop-opened window returns to Magic's value.
+    ClientSession desk{compat};
+    const DrawnMesh dd = open_mask_board(desk);
+    REQUIRE(desk.window().view.scale_z == Catch::Approx(board_scale_z(desk.window(), *dd.stack)));
+    tcl(desk, ".render.magic defaults");
+    CHECK(desk.window().view.scale_z == Catch::Approx(25.0F * f));
+  }
 }
 
 TEST_CASE("the default camera applies once per opened window",
@@ -1184,7 +1325,7 @@ const View3dControl kAllControls[] = {
     View3dControl::isolate_net,   View3dControl::span_connected_layers, View3dControl::frame_time,
     View3dControl::close_view,    View3dControl::show_all_layers, View3dControl::mask_layers,
     View3dControl::layout_layers, View3dControl::level_down,      View3dControl::level_up,
-    View3dControl::cut_box};
+    View3dControl::cut_box,       View3dControl::separate_window};
 static_assert(std::size(kAllControls) == kView3dControlCount);
 
 bool ends_with(const std::string& s, std::string_view tail) {
@@ -1227,6 +1368,8 @@ TEST_CASE("every 3D tab control has a screen-reader name and toggles announce th
     s.substrate_on = on;
     s.substrate_available = true;
     s.export_available = true;
+    s.separate_window = on;
+    s.separate_window_available = true;
     for (const View3dControl c : kAllControls) {
       const View3dControlView v = control_view(c, s);
       INFO("control " << static_cast<int>(c) << " label " << v.label);
@@ -1432,4 +1575,218 @@ TEST_CASE("Cross-section on the tab's mesh: the panel shows the layers the line 
   CHECK(panel.bars[0].x == Catch::Approx(50.0F).margin(1e-3));
   CHECK(panel.bars[0].w == Catch::Approx(100.0F).margin(1e-3));
   CHECK(panel.summary == "A–A′ 2.00 µm · 1 layer");
+}
+
+// --- round 6: export formats, row text, separate window (tasks 9.6, 11.5) -----------
+
+TEST_CASE("Export offers glTF, GLB and STL per layer or merged as export3d's -format and -merged",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  view3d::WindowState window;
+  window.cell = "inv_1";
+  REQUIRE(kView3dExportFormats.size() == 4);
+  struct Expected {
+    View3dExportFormat format;
+    const char* file;
+    const char* pattern;
+    const char* command;
+  };
+  const Expected expected[] = {
+      {View3dExportFormat::gltf, "inv_1.gltf", "*.gltf", ".render.magic export3d /tmp/inv.gltf -format gltf"},
+      {View3dExportFormat::glb, "inv_1.glb", "*.glb", ".render.magic export3d /tmp/inv.gltf -format glb"},
+      {View3dExportFormat::stl_per_layer, "inv_1.stl", "*.stl", ".render.magic export3d /tmp/inv.gltf -format stl"},
+      {View3dExportFormat::stl_merged, "inv_1.stl", "*.stl",
+       ".render.magic export3d /tmp/inv.gltf -format stl -merged"},
+  };
+  for (const Expected& e : expected) {
+    INFO(export_format_label(e.format));
+    CHECK_FALSE(export_format_label(e.format).empty());
+    const hefesto::platform::FilePickerRequest request = export_request(window, e.format);
+    CHECK(request.mode == hefesto::platform::FilePickerRequest::Mode::save);
+    CHECK(request.initial_file == e.file);
+    REQUIRE(request.file_types.size() == 1);
+    CHECK(request.file_types[0].second == e.pattern);
+    // The format is explicit, so the file's own extension does not choose it.
+    CHECK(export_command(".render.magic", "/tmp/inv.gltf", true, e.format) == e.command);
+  }
+  CHECK(export_format_label(View3dExportFormat::stl_merged) != export_format_label(View3dExportFormat::stl_per_layer));
+  CHECK(export_command(".render.magic", "/tmp/my cells/a.stl", false, View3dExportFormat::stl_merged) ==
+        "export3d {/tmp/my cells/a.stl} -format stl -merged");
+}
+
+TEST_CASE("Export from the tab runs export3d with the chosen format and writes it",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  // The command lines the Export menu runs, evaluated in the session
+  // (EXPORT's export3d): one merged STL file, and a GLB whatever the name.
+  ClientSession s;
+  open(s);
+  auto& files = s.services.view().files;
+  // As the shell runs it (a typed line, not a sandboxed script).
+  const auto typed = [&s](const std::string& line) {
+    for (const hefesto::cmd::CommandResult& r :
+         hefesto::ui::run_command_line(*s.dispatcher, line, hefesto::cmd::Origin::cli)) {
+      INFO(line << " -> " << (r.diagnostics.empty() ? std::string{} : r.diagnostics.back().text));
+      REQUIRE(r.ok());
+    }
+  };
+  typed(export_command(s.window().toolkit_path, "/t/merged.stl", false, View3dExportFormat::stl_merged));
+  CHECK(files.exists("/t/merged.stl"));
+  typed(export_command(s.window().toolkit_path, "/t/model.data", false, View3dExportFormat::glb));
+  CHECK(files.exists("/t/model.data"));  // an unknown extension, written as GLB
+}
+
+TEST_CASE("long layer names are ellipsized to the row and keep their full name for tooltips and screen readers",
+          "[cap:hefesto-design-system][req:Screen patterns follow the reference mockups]") {
+  // Regression (round-5 1280 x 800 captures): "mrdlcontact" and its µm range
+  // were cut off by the row's three buttons.
+  const TextMeasure seven_px = [](std::string_view t) {
+    // Characters, not bytes (… and µ take two or three bytes).
+    float n = 0.0F;
+    for (const char c : t) n += ((static_cast<unsigned char>(c) & 0xC0U) == 0x80U) ? 0.0F : 1.0F;
+    return 7.0F * n;
+  };
+  const float width = row_text_width();
+  CHECK(width > 0.0F);
+  CHECK(width + kView3dRowTextX + 3.0F * (kView3dRowButtonWidth + kView3dRowSpacing) + kView3dScrollBarRoom <=
+        side_content_width());
+  const std::string name = "mrdlcontact_extended_name";
+  REQUIRE(seven_px(name) > width);
+  const std::string shown = ellipsize(name, width, seven_px);
+  CHECK(seven_px(shown) <= width);
+  CHECK(shown.size() < name.size());
+  CHECK(shown.substr(shown.size() - 3) == "\u2026");
+  CHECK(name.rfind(shown.substr(0, shown.size() - 3), 0) == 0);  // a prefix of the name
+  CHECK(ellipsize("met1", width, seven_px) == "met1");            // fits: unchanged
+  CHECK(ellipsize("abc", 1.0F, seven_px) == "\u2026");           // nothing fits
+  // A multi-byte character is never cut in half.
+  CHECK(ellipsize("\u00b5\u00b5\u00b5\u00b5", 7.0F * 3.0F, seven_px) == "\u00b5\u00b5\u2026");
+  View3dLayerRow row;
+  row.name = name;
+  row.range_um = "6.63\u20137.26";
+  CHECK(row_tooltip(row) == name + ", 6.63\u20137.26 \u00b5m");
+  CHECK(row_accessible_name(row).rfind(name + ", 6.63\u20137.26 \u00b5m", 0) == 0);
+}
+
+TEST_CASE("Open in separate window is a toggle, disabled with a reason where the host cannot open one",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  View3dControlState s;
+  s.window_open = true;
+  View3dControlView v = control_view(View3dControl::separate_window, s);
+  CHECK_FALSE(v.enabled);
+  CHECK(v.tooltip.find("not available") != std::string::npos);
+  s.separate_window_available = true;
+  v = control_view(View3dControl::separate_window, s);
+  CHECK(v.enabled);
+  CHECK(v.accessible_name == "Detach view, off");  // the label fits its grid cell at 1280 px
+  s.separate_window = true;
+  CHECK(control_view(View3dControl::separate_window, s).accessible_name == "Detach view, on");
+  s.window_open = false;
+  CHECK_FALSE(control_view(View3dControl::separate_window, s).enabled);
+}
+
+// --- round 6: span option as window state, net overlay (tasks 17.3, 10.4) -----------
+
+TEST_CASE("the Span connected layers toggle sets the window's flag, which the build and export3d read",
+          "[cap:hefesto-3d-visualization][req:3D export]") {
+  // Task 17.3 (decision B17, approved 2026-11-26): the toggle used to set
+  // only View3dOptions, so `export3d` from the tab exported unspanned.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ClientSession s{compat};
+    open_from_desktop(s);
+    s.w3d("cif");
+    REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+    const BuildKey before = build_key(tab_inputs(s), s.window().span_connected_layers);
+    REQUIRE_FALSE(s.window().span_connected_layers);
+    CHECK(toggle_span_connected_layers(s.editor.view3d, s.window().toolkit_path) == std::optional<bool>{true});
+    CHECK(s.window().span_connected_layers);
+    // The build key follows it: a full build.
+    const view3d::BuildInputs in = tab_inputs(s);
+    CHECK(in.span_connected_layers);  // window_build, which export3d's build_scene uses too
+    const BuildKey after = build_key(in, s.window().span_connected_layers);
+    CHECK_FALSE(after == before);
+    CHECK(build_inputs(s.editor, in, after.span_connected_layers).span_connected_layers);
+    // export3d (the Export menu's command) builds the window as shown.
+    hefesto::diag::NullSink quiet;
+    view3d::BuildContext ctx;
+    const view3d::Scene scene = view3d::build_scene(s.editor, s.window(), compat, ctx);
+    REQUIRE(scene.mesh != nullptr);
+    for (const hefesto::cmd::CommandResult& r : hefesto::ui::run_command_line(
+             *s.dispatcher, export_command(s.window().toolkit_path, "/t/span.glb", false, View3dExportFormat::glb),
+             hefesto::cmd::Origin::cli)) {
+      REQUIRE(r.ok());
+    }
+    CHECK(s.services.view().files.exists("/t/span.glb"));
+    // Toggling again turns it off; another path or no window changes nothing.
+    CHECK(toggle_span_connected_layers(s.editor.view3d, s.window().toolkit_path) == std::optional<bool>{false});
+    CHECK_FALSE(toggle_span_connected_layers(s.editor.view3d, ".other").has_value());
+    CHECK_FALSE(s.window().span_connected_layers);
+    // The control reads the window's flag.
+    View3dControlState state;
+    state.window_open = true;
+    state.span_connected_layers = true;
+    CHECK(control_view(View3dControl::span_connected_layers, state).accessible_name == "Span connected layers, on");
+  }
+  view3d::Session none;
+  CHECK_FALSE(toggle_span_connected_layers(none, ".render.magic").has_value());
+}
+
+namespace {
+
+struct TestPrism {
+  float x0 = 0.0F;
+  float y0 = 0.0F;
+  float x1 = 0.0F;
+  float y1 = 0.0F;
+  float z_bottom = 0.0F;
+  float z_top = 0.0F;
+};
+
+void check_net_overlay(bool compat) {
+  INFO("magic-compat " << compat);
+  ClientSession s{compat};
+  open_from_desktop(s);
+  REQUIRE(s.window().mode == view3d::Mode::mask_layer);
+  const DrawnMesh d = build_mesh(s);
+  REQUIRE(d.mesh->mode == view3d::Mode::mask_layer);
+  const auto f = static_cast<float>(d.mesh->units_per_root);
+  REQUIRE(f > 1.0F);
+  // Nothing selected: no overlay.
+  CHECK(mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+  // The user selects the metal1 net in 2D: it is drawn over the mask layers.
+  s.ok("select area metal1");
+  const view3d::NetOverlay overlay = mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat);
+  REQUIRE_FALSE(overlay.empty());
+  float x1 = 0.0F;
+  for (const view3d::NetOverlayPrism& p : overlay.prisms) {
+    CHECK(p.z_top >= p.z_bottom);
+    x1 = std::max(x1, p.x1);
+  }
+  CHECK(x1 == Catch::Approx(100.0F * f));  // metal1 (0,0)-(100,50) in the mesh's mask units
+  // Field by field into the renderer's prism type.
+  const std::vector<TestPrism> prisms = overlay_prisms<TestPrism>(overlay);
+  REQUIRE(prisms.size() == overlay.prisms.size());
+  CHECK(prisms.front().x0 == overlay.prisms.front().x0);
+  CHECK(prisms.front().y1 == overlay.prisms.front().y1);
+  CHECK(prisms.front().z_top == overlay.prisms.front().z_top);
+  // No mesh drawn yet: no overlay.
+  CHECK(mask_net_overlay(nullptr, s.editor, s.window(), compat).empty());
+  // Layout-layer mode keeps the instance highlight: no overlay, also for
+  // the stale mask-layer model still drawn while the new one builds.
+  s.w3d("cif");
+  REQUIRE(s.window().mode == view3d::Mode::layout_layer);
+  CHECK(mask_net_overlay(d.mesh.get(), s.editor, s.window(), compat).empty());
+  const DrawnMesh layout = build_mesh(s);
+  CHECK(mask_net_overlay(layout.mesh.get(), s.editor, s.window(), compat).empty());
+}
+
+}  // namespace
+
+TEST_CASE("Net highlighted over mask-layer geometry with magic-compat ON",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  check_net_overlay(true);
+}
+
+TEST_CASE("Net highlighted over mask-layer geometry with magic-compat OFF",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  check_net_overlay(false);
 }

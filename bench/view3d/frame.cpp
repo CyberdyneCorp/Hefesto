@@ -13,6 +13,7 @@
 #include <vector>
 
 #ifdef HEFESTO_VIEW3D_BENCH_FRAME
+#include <array>
 #include <exception>
 #include <memory>
 
@@ -140,6 +141,18 @@ json measure(const view3d::MeshModel& mesh, const view3d::LayerStack& stack, con
   j["ghost_well"] = "one rectangle over the whole region on its own layer, alpha 0.2 (transparency pass)";
   j["level0_ghost"] = time_level(renderer, target, view, params, 0, o.frames);
   j["level1_ghost"] = time_level(renderer, target, view, params, 1, o.frames);
+
+  // The mesh again with a net overlay over the whole region (task 10.4):
+  // one prism, the stack's full height, the overlay's fill-rate worst case.
+  renderer.upload(mesh);
+  params.alpha.clear();
+  const std::array<render::OverlayPrism, 1> overlay{
+      render::OverlayPrism{static_cast<float>(box.x0), static_cast<float>(box.y0), static_cast<float>(box.x1),
+                           static_cast<float>(box.y1), static_cast<float>(box.z0), static_cast<float>(box.z1)}};
+  params.net_overlay = overlay;
+  j["net_overlay"] = "one prism over the whole region, the stack's full height (no depth test, blended)";
+  j["level0_overlay"] = time_level(renderer, target, view, params, 0, o.frames);
+  j["level1_overlay"] = time_level(renderer, target, view, params, 1, o.frames);
   return j;
 }
 

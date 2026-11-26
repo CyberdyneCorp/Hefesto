@@ -277,6 +277,14 @@ bool close_wind3d(editor::EditorState& editor) {
   return true;
 }
 
+bool set_span_connected_layers(Session& session, std::string_view toolkit_path, bool on) {
+  if (!session.window || (!toolkit_path.empty() && toolkit_path != session.window->toolkit_path)) {
+    return false;
+  }
+  session.window->span_connected_layers = on;
+  return true;
+}
+
 std::vector<diag::Diagnostic> unknown_command_messages(const std::vector<std::string>& words) {
   diag::Diagnostic unknown = diag::make(detail::kUnknownCommand, "Unknown command:");
   unknown.no_newline = true;

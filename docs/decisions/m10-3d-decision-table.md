@@ -24,6 +24,8 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 **Round 4 decisions, approved 2026-11-24.** After the round-3 desktop capture the user asked for the desktop 3D tab to look like the approved board and approved two decisions with the recommended option on 2026-11-24 (section "Round 4 decisions" below): Q-MISC-84 (V1, platform, both modes: the desktop tab renders the board look, with flat per-face shading, the theme's canvas background and the isometric preset on opening, in both magic-compat modes; amends R2 for the desktop tab) and Q-MISC-85 (V2, platform, both modes: non-conducting area layers ghosted by default in the desktop tab). Both carry `Status: approved 2026-11-24` and a `Resolution:` line.
 
+**Round 5 and 6 decisions, approved 2026-11-25 and 2026-11-26.** The items the round-3 review fix pass (PR #91) and round 4 (PR #102) left for the user were approved with the recommended option on 2026-11-25 (set A: a new entry Q-MISC-86 for `setpoint` naming the 3D window, compat, with the numeric window ID as a known gap; the PR #91 ownership exceptions; the round-4 z scale, z mirror, isometric opening and ghosting readings, recorded as 2026-11-25 amendments of Q-MISC-84 and Q-MISC-85). The items round 5 (PR #122) reported were approved with the recommended option on 2026-11-26 (set B: three new compat entries, Q-MISC-87 generation area without a cut box, Q-MISC-88 temporary mask layers and Q-MISC-89 generation errors of a 3D mask-layer build; the board z scale in mask-layer mode with magic-compat ON, the substrate slab, cross-section and export choices, and J1's option in the window state, without a Q row). Section "Round 5 and 6 decisions" below. The standing user rule of 2026-11-25 for crafted-input resource limits (both modes, the recommended value; recorded with Q-MODEL-38 in `docs/decisions/open-questions/MODEL.md`) applies to the 3D code too.
+
 ## Judgement items
 
 **Decided 2026-11-13: the user chose option (a) for J1, J2 and design Open Questions 3 and 4.** The options are kept for the record.
@@ -91,23 +93,35 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MISC-84 | the desktop 3D tab uses Magic's GL-state lighting and a top-down default (V1) | **platform** | both modes: the desktop tab renders the board look (theme canvas background, flat per-face shading on each face's own normal, saturated style colours, isometric preset from above on opening with axis gizmo); Magic's GL lighting is not used by the desktop tab; `defaults`, scripts and golden cases keep the top-down default; amends R2 for the desktop tab |
 | Q-MISC-85 | wells, implants and other non-conducting area layers hide the devices (V2) | **platform** | both modes: in the desktop tab a layer whose type is not a contact and whose plane holds no contact residue is drawn at alpha 0.2, no depth write, no pick id; the row's transparency control changes it and the user's value is kept for the window |
 
+### New entries of rounds 5 and 6 (cited by view-3d; Q-MISC-86 approved 2026-11-25, Q-MISC-87..89 approved 2026-11-26)
+
+| ID | Question | Kind | Decision |
+|---|---|---|---|
+| Q-MISC-86 | `setpoint x y <window>` naming the 3D window (A1, A2) | **compat** | ON: makes the 3D window current, so later script layout commands go there, as Magic's TxSetPoint (windCmdSZ.c:286); OFF: never routes to the 3D window; a numeric 3D window ID is unsupported in both modes (known gap); already implemented (PR #91) |
+| Q-MISC-87 | generation area of the 3D mask layers without a cut box (B18) | **compat** | ON: the cell bounding box (W3Dmain.c:1744), a grown layer cut at the edge; OFF: the box grown by the output style's interaction radius; already implemented |
+| Q-MISC-88 | temporary (`templayer`) mask layers in the 3D view (B19) | **compat** | ON: drawn, as Magic draws every CIF layer (W3Dmain.c:1767); OFF: left out, also from `export3d -all`; already implemented |
+| Q-MISC-89 | generation errors of a 3D mask-layer build (B20) | **compat** | Magic adds feedback on every redraw; ON: reported once per build to the console, no feedback; OFF: not reported (as built); CORE implements ON in round 6 |
+
 ## Counts
 
 | Kind | Rows |
 |---|---|
 | fix | 6 (Q-MISC-70, 71, 74, 76, 77, 81; Q-MISC-74's aspect amended and approved 2026-11-21) |
-| compat | 5 (Q-MISC-72, 78, 79, 82, 83) |
+| compat | 9 (Q-MISC-72, 78, 79, 82, 83; Q-MISC-86 approved 2026-11-25; Q-MISC-87, 88, 89 approved 2026-11-26) |
 | replicate | 1 (Q-MISC-80, revised after the MISC-3D-12 capture, approved 2026-11-22) |
 | fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
-| platform (product, desktop tab) | 2 (Q-MISC-84, 85; approved 2026-11-24) |
+| platform (product, desktop tab) | 2 (Q-MISC-84, 85; approved 2026-11-24; amended 2026-11-25 and 2026-11-26) |
 
-Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22, Q-MISC-84 and 85 since 2026-11-24. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions"; they add no row here.
+Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22, Q-MISC-84 and 85 since 2026-11-24 (with amendments of 2026-11-25 and 2026-11-26), Q-MISC-86 since 2026-11-25 and Q-MISC-87 to 89 since 2026-11-26. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions", and the round-5 and round-6 items without a Q row (A3-A9, B1-B17, B21) in "Round 5 and 6 decisions"; they add no row here.
 
 ## Notable changes to the entries' original recommendations
 
 - **Q-MISC-72**: from "replicate numerically for now; revisit with visual comparison" to compat. Magic draws mask-layer mode 100 times flatter than layout-layer mode for sky130, and the factor depends on the internal grid; OFF makes both modes physical.
 - **Q-MISC-70**: still fix, but the behaviour statement was wrong: the bug shows without a cut box whenever a subcell's placement moves its tiles outside the window area expressed in child coordinates, and `render3d` sets a cut box only when a box exists in the rendered cell.
+- **Q-MISC-84** (amended 2026-11-26, B1): the board z scale in mask-layer mode was f in both modes as approved on 2026-11-25 (A4); with magic-compat ON it is now f / (µm per internal unit), because Q-MISC-72 keeps the `render` heights as stored there.
+- **Q-MISC-85** (amended 2026-11-26, B2): the phase-1 ghosting of layout layers in mask-layer mode (A7) is superseded: a mask-layer stack ghosts nothing.
+- **Q-MISC-89**: Magic's behaviour (feedback on every redraw) is not copied with magic-compat ON; ON reports the same errors once per build to the console instead, since feedback repeated on every redraw piles up duplicates.
 - **Q-MISC-73**: the resolution covered only the toggle; a window opened with no output style crashes before any toggle (Set3DDefaults), and the first redraw and `render` dereference the style too. The amendment, approved 2026-11-13, replaced the `Resolution:` line.
 
 ## Evidence corrections
@@ -219,7 +233,7 @@ The user's request of 2026-11-24, after the round-3 desktop capture (`sky130_fd_
 
 Workstreams of round 4 (design.md "Round 4 decisions"; tasks.md section 16): RENDER (`m10-3d-round4-render`) and SHELL (`m10-3d-round4-shell`).
 
-Round-4 FIX (review of PR #102): the opening isometric camera applies only to a window the desktop opened with `render3d` (toolkit path `.render.magic`; the 3D tab and Options > 3D Display), so `specialopen wind3d` windows keep the top-down view, as the Q-MISC-84 Resolution says; its s_z is 1 in layout-layer mode and f in mask-layer mode. Two round-4 choices are not part of the Q-MISC-84 Resolution and are marked pending the user's confirmation in view-3d: the opening s_z = 1 (f in mask-layer mode) and the z mirror of the displayed scene (tz along the displayed height).
+Round-4 FIX (review of PR #102): the opening isometric camera applies only to a window the desktop opened with `render3d` (toolkit path `.render.magic`; the 3D tab and Options > 3D Display), so `specialopen wind3d` windows keep the top-down view, as the Q-MISC-84 Resolution says; its s_z is 1 in layout-layer mode and f in mask-layer mode. Two round-4 choices were not part of the Q-MISC-84 Resolution: the opening s_z = 1 (f in mask-layer mode) and the z mirror of the displayed scene (tz along the displayed height). The user approved both on 2026-11-25 (A4, A5; "Round 5 and 6 decisions"), and B1 (2026-11-26) amended the mask-layer z scale with magic-compat ON.
 
 ### Spec changes of round 4 (applied with the decisions)
 
@@ -232,3 +246,59 @@ Round-4 FIX (review of PR #102): the opening isometric camera applies only to a 
 
 - **V2 / Q-MISC-85**, "Interactive 3D inspection", Layer visibility: the ghosting default and the layer-class rule; new scenarios "Wells ghosted by default", "User makes a ghosted layer opaque" and "Contact planes stay opaque".
 - **V1 / Q-MISC-84**, "Interactive 3D inspection", Camera: the desktop tab opens on the isometric preset with an axis gizmo.
+
+## Round 5 and 6 decisions (approved 2026-11-25 and 2026-11-26)
+
+Set A: the items the round-3 review fix pass (PR #91) and round 4 (PR #102) left for the user, approved with the recommended option on 2026-11-25. Set B: the items M10 round 5 (PR #122) reported, approved with the recommended option on 2026-11-26. Each is recorded in `docs/decisions/open-questions/MISC.md` with `Status: approved <date>` and a `- Resolution:` line: on its Q entry, as an amendment of Q-MISC-84 or Q-MISC-85, or under "Round-5 decisions without a Q row" (set A) and "Round-6 decisions without a Q row" (set B). The standing user rule of 2026-11-25 (crafted-input resource limits in both modes, with the recommended value; Q-MODEL-38) applies to the 3D code and is not recorded again.
+
+| Item | Question | Decision | Where recorded |
+|---|---|---|---|
+| A1 | `setpoint x y <window>` naming the 3D window's toolkit path | approved 2026-11-25; compat: ON makes it current so later script layout commands go to the 3D window, as Magic's TxSetPoint (windCmdSZ.c:286); OFF never routes to the 3D window; already implemented (PR #91), tests in `routing_test.cpp` and `tools_test.cpp`; the `setpoint` trigger of Q-MISC-82's route | Q-MISC-86 (new) |
+| A2 | a numeric window ID naming the 3D window | approved 2026-11-25; unsupported in both modes, a known gap (the ID names no window; script commands go to the layout window) | Q-MISC-86; view-3d "3D view commands" |
+| A3 | ownership exceptions of PR #91 (round 3 and its review fix pass) | approved 2026-11-25; signed off as listed | MISC.md, without a Q row; design.md "As-landed: round 3 integration" |
+| A4 | opening z scale of the desktop tab | approved 2026-11-25; s_z = 1 in layout-layer mode, f in mask-layer mode (`kBoardScaleZ`); amended by B1 | Q-MISC-84 amendment; MISC.md, without a Q row |
+| A5 | the z mirror of the displayed scene | approved 2026-11-25; the renderer applies CAMERA's matrix to the model mirrored in z, tz along the displayed height; Magic's `view`/`scroll`/`zoom` outputs and the face log unchanged | Q-MISC-84 amendment; MISC.md, without a Q row |
+| A6 | which windows open isometric | approved 2026-11-25; any window the desktop opens with `render3d` (`.render.magic`); `specialopen wind3d`, scripts and hefesto-cli keep top-down | Q-MISC-84 amendment; MISC.md, without a Q row |
+| A7 | ghosting in mask-layer mode in phase 1 | approved 2026-11-25 (historic): the P1 tab ghosted the layout layers it drew in mask-layer mode; superseded by B2 | Q-MISC-85 amendment; MISC.md, without a Q row |
+| A8 | gf180mcuD's `poly` plane (only `fillpoly`) | approved 2026-11-25; ghosted by the class rule | Q-MISC-85 amendment; MISC.md, without a Q row |
+| A9 | a technology with no contact types | approved 2026-11-25; ghosts nothing | Q-MISC-85 amendment; MISC.md, without a Q row |
+| B1 | sky130A's mask-layer stack drawn almost flat with magic-compat ON | approved 2026-11-26; desktop tab only, mask-layer mode, ON: board z scale × 1 / (µm per internal unit); OFF unchanged (`kBoardScaleZ` × f); Magic's own s_z values untouched; SHELL implements | Q-MISC-84 amendment; MISC.md, without a Q row |
+| B2 | ghosting in mask-layer mode | approved 2026-11-26; nothing is ghosted (replaces A7) | Q-MISC-85 amendment; MISC.md, without a Q row |
+| B3 | substrate slab default | approved 2026-11-26; on by default in the desktop tab, both modes | Q-MISC-85 amendment; MISC.md, without a Q row |
+| B4 | side a cross-section clips | approved 2026-11-26; keeps y ≥ c or x ≥ c, the side away from the isometric viewer | MISC.md, without a Q row |
+| B5 | toggle state for screen readers | approved 2026-11-26; ", on" / ", off" in the name until Raven has a checked state (interim) | MISC.md, without a Q row |
+| B6 | place of the A–A′ section panel | approved 2026-11-26; in the side panel under Inspect, not a right aside | MISC.md, without a Q row |
+| B7 | substrate slab parameters | approved 2026-11-26; 0.2 of the drawn stack height, #2A2F37, not pickable, never exported, none for a flat stack | MISC.md, without a Q row |
+| B8 | split-tile triangle in a cross-section | approved 2026-11-26; its own layer's µm height in both modes (Magic's window uses the left type's under ON, Q-MISC-79) | MISC.md, without a Q row |
+| B9 | cut line on a tile edge | approved 2026-11-26; takes the material above or to the right (Magic's tile convention) | MISC.md, without a Q row |
+| B10 | per-layer STL names | approved 2026-11-26; `<stem>_<layer>.stl`, unsafe characters → `_`, names unique ignoring case (`_2`, `_3`) | MISC.md, without a Q row |
+| B11 | `.gltf` buffer | approved 2026-11-26; `<stem>.bin` beside it when there is geometry (PR #122 review) | MISC.md, without a Q row |
+| B12 | `export3d` with no 3D window | approved 2026-11-26; VIEW3D-EXPORT-001, writes nothing, no edit-cell fallback | MISC.md, without a Q row |
+| B13 | glTF axes and units | approved 2026-11-26; +Y up, µm, units and zscale in `asset.extras` | MISC.md, without a Q row |
+| B14 | a type in two display styles; undrawn styles | approved 2026-11-26; exported once (last drawn entry); non-solid, non-stippled styles skipped | MISC.md, without a Q row |
+| B15 | per-layer STL files written | approved 2026-11-26; only layers with geometry; the command returns the files written | MISC.md, without a Q row |
+| B16 | substrate slab in exports | approved 2026-11-26; never exported | MISC.md, without a Q row |
+| B17 | J1 "Span connected layers" and `export3d` | approved 2026-11-26; the option moves into `view3d::WindowState`, so a spanned view exports spanned; CORE and SHELL implement | MISC.md, without a Q row |
+| B18 | generation area without a cut box | approved 2026-11-26; compat: ON the cell bounding box (W3Dmain.c:1744), OFF grown by the interaction radius; already implemented | Q-MISC-87 (new) |
+| B19 | temporary (`templayer`) mask layers | approved 2026-11-26; compat: ON drawn (W3Dmain.c:1767), OFF left out (also from `export3d -all`); already implemented | Q-MISC-88 (new) |
+| B20 | generation errors of a 3D mask-layer build | approved 2026-11-26; compat: ON reported once per build to the console, not as feedback; OFF not reported; CORE implements | Q-MISC-89 (new) |
+| B21 | Release frame-rate bench built with only the bench target, desktop ON configured | approved 2026-11-26; accepted | MISC.md, without a Q row |
+
+Workstreams of round 6 (design.md "Round 5 and 6 decisions"; tasks.md section 17): DECIDE (`m10-3d-round6-decide`), CORE (`m10-3d-round6-core`), RENDER (`m10-3d-round6-render`) and SHELL (`m10-3d-round6-shell`).
+
+### Spec changes of rounds 5 and 6 (applied with the decisions)
+
+`openspec/specs/view-3d/spec.md` (no requirement heading renamed):
+
+- **A4, B1 / Q-MISC-84**, "Default view": the opening z scale per mode; the "pending the user's confirmation" wording removed.
+- **A2 / Q-MISC-86**, "3D view commands": the numeric window ID sentence and the Q reference; scenario "setpoint names the window script commands go to" gains its OFF clause.
+- **Q-MISC-87, 88, 89**, "Rendered geometry": Q references and the generation-error rule; new scenarios "Temporary mask layer drawn with magic-compat ON", "Temporary mask layer left out with magic-compat OFF", "Mask generation errors reported once per build with magic-compat ON", "Mask generation errors not reported with magic-compat OFF".
+- **A5, A4, B1**, "Viewing transform and shading": the z mirror approved (pending wording removed); the board z scale per mode; scenario "Isometric default in mask-layer mode" amended per mode; new scenarios "Mask-layer board view in proportion with magic-compat ON", "Mask-layer board view with magic-compat OFF", "Magic's z scale unchanged outside the desktop tab in mask-layer mode".
+
+`openspec/specs/hefesto-3d-visualization/spec.md`:
+
+- **B4, B6, B8, B9**, "Interactive 3D inspection", Cross-sections: the clipped side, the panel's place, the split-tile height and the tile-edge rule with their decisions; scenario "Clipping plane hides one side" extended; new scenario "Cross-section of a split tile and of a tile edge".
+- **B3, B7**, Substrate slab: on by default, colour; scenario "Substrate slab under the stack" extended.
+- **B2, A8, A9**, Ghosted layers: references.
+- **Task 10.4**, Net highlighting: the overlay in mask-layer mode; new scenario "Net highlighted over mask-layer geometry".
+- **B12-B15, B17**, "3D export": spanned contacts exported spanned, `asset.extras` units, the two-style and undrawn-style rules, no window, the result; new scenario "Export of a spanned view keeps the span"; "Export without a 3D window" and "Per-layer STL" extended. B10, B11 and B16 were already in the text (scenarios "Per-layer STL names that differ only in case" and "A .gltf export with no layer").
