@@ -7,13 +7,13 @@
 // xschem-style by default and rebindable; hefesto-input-and-touch;
 // openspec/changes/m8-schematic design D15).
 //
-// The binding set is the macro table `schematic` of a ui::MacroTables the
-// editor holds, so the key-binding sheet (key_bindings_sheet.hpp) edits it
-// unchanged: its `macro schematic KEY "TEXT"` lines are applied to this
-// table (SchematicKeyMap::apply), and Reset table restores the defaults
-// below. The core's `macro` command has no `schematic` client yet, so the
-// lines are applied by the shell, not by the core (open item for the
-// core's ui clients).
+// The binding set is the macro table `schematic` of the editor's
+// ui::MacroTables (EditorState::macros; SchematicKeyMap::attach), so the
+// key-binding sheet (key_bindings_sheet.hpp) edits it unchanged: its
+// `macro schematic KEY "TEXT"` lines run through the core's `macro`
+// command, whose `schematic` client selects this table (M8 round 6), and
+// Reset table restores the defaults below. A map not attached to an editor
+// keeps a table of its own (tests).
 //
 // A binding's text is either an editor action (one word of
 // kSchematicActions: an interactive tool or a panel the editor opens) or a
@@ -34,7 +34,6 @@
 #include <string_view>
 #include <vector>
 
-#include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/macros.hpp"
 
@@ -68,25 +67,31 @@ struct BoundAction {
 
 class SchematicKeyMap {
  public:
+  /// A table of its own, with the defaults.
   SchematicKeyMap();
+  SchematicKeyMap(const SchematicKeyMap&) = delete;
+  SchematicKeyMap& operator=(const SchematicKeyMap&) = delete;
+  ~SchematicKeyMap() = default;
 
-  [[nodiscard]] const ::hefesto::ui::MacroTables& tables() const noexcept { return tables_; }
+  /// Reads the bindings from `tables` (the editor's macro tables, which the
+  /// core's `macro schematic ...` edits) from now on; adds each default
+  /// whose key the `schematic` table does not bind yet (a binding a startup
+  /// file made stays). `tables` must outlive the map.
+  void attach(::hefesto::ui::MacroTables& tables);
+
+  [[nodiscard]] const ::hefesto::ui::MacroTables& tables() const noexcept { return *tables_; }
 
   /// The binding of `key`; nullopt when the table does not bind it.
   [[nodiscard]] std::optional<BoundAction> lookup(const ::hefesto::ui::Key& key) const;
   /// The binding of a key event (`macos`: Command and Option are Meta).
   [[nodiscard]] std::optional<BoundAction> lookup(const ::hefesto::ui::KeyEvent& event, bool macos) const;
 
-  /// Applies one line of the key-binding sheet for the `schematic` table:
-  /// `macro schematic KEY "TEXT" ?HELP?` (an empty text deletes) or the
-  /// `imacro` form. False, with a diagnostic, for any other line.
-  bool apply(std::string_view line, std::vector<diag::Diagnostic>* diagnostics = nullptr);
-
   /// The sheet's Reset table for `schematic`: the lines that restore the defaults.
   [[nodiscard]] std::vector<std::string> reset_commands() const;
 
  private:
-  ::hefesto::ui::MacroTables tables_;
+  ::hefesto::ui::MacroTables own_;
+  ::hefesto::ui::MacroTables* tables_ = &own_;
 };
 
 }  // namespace hefesto::shell

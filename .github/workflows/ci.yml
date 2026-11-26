@@ -737,6 +737,54 @@ jobs:
             build/${{ matrix.preset }}/tests/unit/shell/view3d-tab-*.ppm
           if-no-files-found: ignore
 
+      # m8-schematic task 13.2: the Schematic tab of the product app, for the rows of
+      # docs/design/m8-ui-conformance.md. The app opens a test bench of the system library
+      # (tests/data/schem/devlib/tb/ihp_style_tb.sch: its symbols resolve from the assets/schematic copy next
+      # to the executable) and the --input script clicks the Schematic segment of the top bar's view tabs
+      # (window point 455,24 at 1280 x 800: the tabs start at x 330, Schematic follows Layout), then waits for
+      # the symbol worker. Linux under Xvfb; macOS on the runner's window server (not gating until a capture
+      # has been seen there).
+      - name: Capture the Schematic tab
+        if: matrix.desktop || matrix.moltenvk
+        continue-on-error: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: |
+          mkdir -p schematic-captures
+          capture="schematic-captures/schematic-tab-${{ matrix.name }}.ppm"
+          app="build/${{ matrix.preset }}/src/shell/desktop/hefesto"
+          args=(--width 1280 --height 800 --run "schematic open tests/data/schem/devlib/tb/ihp_style_tb.sch"
+                --input "wait 500; down 455,24; up 455,24; wait 2000"
+                --capture "$capture" --capture-frames 60 --no-vsync)
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}"
+          else
+            "$app" "${args[@]}"
+          fi
+          test -s "$capture"
+
+      - name: Upload the Schematic tab capture
+        if: always() && (matrix.desktop || matrix.moltenvk)
+        uses: actions/upload-artifact@v4
+        with:
+          name: schematic-captures-${{ matrix.name }}
+          path: schematic-captures/
+          if-no-files-found: ignore
+
+      # m8-schematic task 13.2 (M8-D10): the install tree of the desktop build: hefesto and hefesto-cli in
+      # <prefix>/bin, the fonts and icons in <prefix>/share/hefesto/assets, the schematic system library in
+      # <prefix>/assets/schematic (the install root of <prefix>/bin).
+      - name: Check the desktop install tree
+        if: matrix.desktop || matrix.moltenvk
+        shell: bash
+        run: |
+          prefix="$RUNNER_TEMP/hefesto-install"
+          cmake --install "build/${{ matrix.preset }}" --prefix "$prefix"
+          test -x "$prefix/bin/hefesto"
+          test -x "$prefix/bin/hefesto-cli"
+          test -f "$prefix/share/hefesto/assets/fonts/Inter-Regular.ttf"
+          test -d "$prefix/share/hefesto/assets/icons"
+          test -f "$prefix/assets/schematic/xschem_library/devices/res.sym"
+
       # hefesto-architecture "Platform-independent core": the core builds for iPadOS without UI (design D5).
       - name: Configure iPadOS (core only)
         if: matrix.ipados

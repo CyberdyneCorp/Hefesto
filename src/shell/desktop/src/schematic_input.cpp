@@ -23,6 +23,11 @@ SchematicInputResult consumed(bool repaint = false) {
   return r;
 }
 
+// Copy (C) and Paste (V) with the platform's clipboard modifier alone.
+bool clipboard_chord(const CanvasInput& input, bool macos, int letter) {
+  return input.native_key == letter && input.modifiers == (macos ? kModSuper : kModCtrl);
+}
+
 bool pans(const CanvasInput& input) {
   return input.button == PointerButton::middle || (input.modifiers & kModAlt) != 0;
 }
@@ -37,6 +42,9 @@ void SchematicCanvasInput::reset_view() noexcept {
 
 SchematicInputResult SchematicCanvasInput::handle(const CanvasInput& input, SchematicViewport& viewport,
                                                   const SchematicScene& scene) {
+  if (input.kind == InputKind::pointer_move || input.kind == InputKind::pointer_down) {
+    pointer_ = CanvasPoint{input.x, input.y};
+  }
   switch (input.kind) {
     case InputKind::pointer_down: return pointer_down(input, viewport, scene);
     case InputKind::pointer_up: {
@@ -59,7 +67,7 @@ SchematicInputResult SchematicCanvasInput::handle(const CanvasInput& input, Sche
       viewport.pan_by(input.dx, input.dy);
       user_view_ = true;
       return consumed(true);
-    case InputKind::key_down: return key(input);
+    case InputKind::key_down: return key(input, viewport);
     case InputKind::other: break;
   }
   return {};
@@ -93,7 +101,8 @@ SchematicInputResult SchematicCanvasInput::wheel(const CanvasInput& input, Schem
   return consumed(true);
 }
 
-SchematicInputResult SchematicCanvasInput::key(const CanvasInput& input) {
+SchematicInputResult SchematicCanvasInput::key(const CanvasInput& input, const SchematicViewport& viewport) {
+  if (SchematicInputResult clip = clipboard_key(input, viewport); clip.consumed) return clip;
   const auto event = key_event_for(input.native_key, input.modifiers);
   if (!event) return {};
   if (ui::is_interrupt_key(*event)) {
@@ -103,6 +112,19 @@ SchematicInputResult SchematicCanvasInput::key(const CanvasInput& input) {
   }
   const auto action = keys_.lookup(*event, macos_);
   return action ? bound(*action) : SchematicInputResult{};
+}
+
+SchematicInputResult SchematicCanvasInput::clipboard_key(const CanvasInput& input,
+                                                         const SchematicViewport& viewport) const {
+  if (clipboard_chord(input, macos_, 'C') && (macos_ || !running_)) {
+    SchematicInputResult r = consumed();
+    r.copy = true;
+    return r;
+  }
+  if (!clipboard_chord(input, macos_, 'V')) return {};
+  SchematicInputResult r = consumed();
+  r.paste_at = pointer_ ? viewport.to_schematic(*pointer_) : viewport.centre();
+  return r;
 }
 
 SchematicInputResult SchematicCanvasInput::bound(const BoundAction& action) const {

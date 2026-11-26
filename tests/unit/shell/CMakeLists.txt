@@ -72,6 +72,7 @@ target_sources(hefesto_shell_tests PRIVATE
 target_sources(hefesto_shell_tests PRIVATE
   schematic_bindings_test.cpp
   schematic_canvas_test.cpp
+  schematic_clipboard_test.cpp
   schematic_input_test.cpp
   schematic_library_test.cpp
   schematic_panels_test.cpp

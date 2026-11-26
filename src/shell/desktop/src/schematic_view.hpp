@@ -15,7 +15,10 @@
 // - a Raven viewport under the painted canvas takes the input
 //   (schematic_input.hpp): wheel, pinch and drag pan and zoom, a click
 //   selects, and with the key focus (a click focuses it) keys run the
-//   `schematic` bindings;
+//   `schematic` bindings, which live in the editor's macro table
+//   `schematic` (the core's `macro schematic ...` edits them); Copy and
+//   Paste link the schematic clipboard with the system clipboard
+//   (schematic_clipboard.hpp);
 // - the symbol library browser, the properties panel, the netlist action
 //   with the M4/M5 Interrupt card and the messages panel show the view
 //   models of schematic_library.hpp and schematic_panels.hpp.
@@ -38,6 +41,7 @@
 
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/shell/schematic_canvas.hpp"
+#include "hefesto/shell/schematic_clipboard.hpp"
 #include "hefesto/shell/schematic_input.hpp"
 #include "hefesto/shell/schematic_library.hpp"
 #include "hefesto/shell/schematic_panels.hpp"
@@ -62,6 +66,9 @@ class SchematicView final : public cmd::CommandObserver {
   /// (a click on the canvas focuses it too). For the window's F6 cycle and
   /// the tab switch.
   void focus() { input_viewport_->focus(); }
+  /// The netlist action (run_netlist): the netlist bar's button, the `n`
+  /// binding and the top bar's "Netlist" button (main_window.cpp).
+  void start_netlist();
 
   /// cmd::CommandObserver: the results of `schematic` commands.
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) override;
@@ -91,8 +98,9 @@ class SchematicView final : public cmd::CommandObserver {
   bool canvas_input(const CanvasInput& input);
   void apply(const SchematicInputResult& result);
   void run(const std::string& line);
-  void start_netlist();
   void interrupt();
+  void copy_selection();
+  void paste(schem::Point at);
   void tick_netlist();
   void place(std::size_t row);
   void edit_property(std::size_t row);
@@ -150,6 +158,8 @@ class SchematicView final : public cmd::CommandObserver {
   MessagesPanel messages_;
   NetlistAction netlist_;
   SymbolLibraryBrowser library_;
+  std::unique_ptr<ClipboardHost> clipboard_host_;  // Raven's system clipboard
+  SchematicClipboardLink clipboard_;
   platform::Path install_root_;
   std::vector<platform::Path> library_dirs_;  // the folders the browser lists
   bool library_loaded_ = false;
