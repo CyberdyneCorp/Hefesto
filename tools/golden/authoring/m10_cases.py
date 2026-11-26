@@ -63,9 +63,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import casegen  # noqa: E402
 import tclcase  # noqa: E402
+from goldenlib.collect import Collect  # noqa: E402
 from tclcase import TclCase, lines, p  # noqa: E402
 
 MILESTONE = "M10"
@@ -734,6 +736,8 @@ def top_mag(sections: dict[str, list[str]], uses: str = "", labels: list[str] | 
 
 
 def plot_comparator(output: str) -> str:
+    if output == "exitcode":
+        return "bytes"
     return next((name for suffix, name in PLOT_COMPARATORS.items() if output.endswith(suffix)), "pnm-image")
 
 
@@ -861,10 +865,16 @@ def plot_pnm_specs() -> list[TclCase]:
                   lines("box 0 0 60 20", p("plot postscript split.ps", "plot pnm split 60")),
                   outputs=("split.ps", "split.pnm"), cells={"top": SPLIT_MAG}),
         plot_case("MISC-PLOT-11", ["Technology plot section structure"],
-                  "a technology with no plot section; plot pnm x and plot postscript x.ps (the warning, then the "
-                  "default PNM styles and an empty PostScript drawing)",
-                  lines("box 0 0 100 100", p("plot pnm x", "plot postscript x.ps")), outputs=("x.pnm", "x.ps"),
-                  cells={"top": TWO_M1}, tech="noplot", tech_text=plot_section(None)),
+                  "a technology with no plot section; plot postscript x.ps, then plot pnm x (the warning, then the "
+                  "default PNM styles); Magic's exit status is recorded because its first capture ended in SIGSEGV "
+                  "(exit 139) right after the PNM warning",
+                  lines("box 0 0 100 100", p("plot postscript x.ps", "plot pnm x")),
+                  outputs=("exitcode",), output_names={"exitcode": "exit.txt"}, allow_nonzero_exit=True,
+                  collect=(Collect("x.ps", "ps-text"), Collect("x.pnm", "pnm-image")),
+                  cells={"top": TWO_M1}, tech="noplot", tech_text=plot_section(None),
+                  notes=["Capture run 45816703069: Magic exited 139 (SIGSEGV) after 'Warning:  No plot section in "
+                         "techfile, using defaults.' in plot pnm (plot/plotPNM.c:600-604, default styles on -dnull). "
+                         "Crash fixed in both modes (standing rule); the files are collected only when written."]),
     ]
 
 

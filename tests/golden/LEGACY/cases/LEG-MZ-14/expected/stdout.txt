@@ -1,0 +1,57 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Cell top read from path input
+Processing timestamp mismatches.
+Cell blk read from path input
+Timestamp mismatches found in these cells: blk.
+	2 (Lots of statistics)
+0 {}
+  estimate=     YES 
+0 {}
+Initial Cost Estimate:   4928
+  Blms:17(17)  Wndw:6928(54%)  Pts:154(358)  Blkgen: 15x269870(821/icst)
+PATH #1  cst:520, (<est)
+  Blms:17(17)  Wndw:6928(54%)  Pts:155(362)  Blkgen: 15x269870(821/icst)
+PATH #2  cst:744, (<est)
+  Blms:20(20)  Wndw:5428(64%)  Pts:167(386)  Blkgen: 17x271352(936/icst)
+PATH #3  cst:230, (<est)
+  Blms:21(21)  Wndw:4928(67%)  Pts:179(407)  Blkgen: 20x270270(1097/icst)
+PATH #4  cst:620, (<est)
+  Blms:21(21)  Wndw:4928(67%)  Pts:179(409)  Blkgen: 20x270270(1097/icst)
+PATH #5  cst:332, (<est)
+  Blms:30(30)  Wndw:0(100%)  Pts:191(421)  Blkgen: 23x269644(1258/icst)
+Done Routing.
+0 {Route success}
+0 {}
+Cell top2 read from path input
+Processing timestamp mismatches.
+Timestamp mismatches found in these cells: blk.
+  estimate=      NO 
+0 {}
+Initial Cost Estimate:   3104
+  Blms:7(7)  Wndw:10104(23%)  Pts:97(246)  Blkgen: 5x279779(451/icst)
+PATH #1  cst:1770, (<est)
+  Blms:14(14)  Wndw:6604(50%)  Pts:131(309)  Blkgen: 7x276022(622/icst)
+PATH #2  cst:1902, (<est)
+  Blms:27(27)  Wndw:0(100%)  Pts:193(435)  Blkgen: 14x270660(1221/icst)
+Done Routing.
+0 {Route success}
+0 {}

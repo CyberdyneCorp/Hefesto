@@ -1,4 +1,4 @@
-# LEG-MZ-15: destination label B on a small part of a larger same-net metal1 area; expandEndpoints on
+# LEG-MZ-15: destination label B on a small part of a larger same-net metal1 area; expandEndpoints on; Magic's exit status is recorded because its first capture ended in SIGSEGV (exit 139)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

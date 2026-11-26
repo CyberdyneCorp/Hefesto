@@ -265,8 +265,14 @@ def search_specs() -> list[TclCase]:
                    routed("iroute wizard estimate off", ab, name="r2")),
              cells={"top": SUBCELL, "top2": SUBCELL, "blk": BLOCK}, outputs=("r1.mag", "r2.mag")),
         case("LEG-MZ-15", MAZE, ["Destination areas", "Walk extension"],
-             "destination label B on a small part of a larger same-net metal1 area; expandEndpoints on",
-             routed("iroute wizard expandEndpoints on", ab), cells={"top": DEST_AREA}, outputs=(ROUTED,)),
+             "destination label B on a small part of a larger same-net metal1 area; expandEndpoints on; Magic's "
+             "exit status is recorded because its first capture ended in SIGSEGV (exit 139)",
+             routed("iroute wizard expandEndpoints on", ab), cells={"top": DEST_AREA}, allow_nonzero_exit=True,
+             outputs=("exitcode",), output_names={"exitcode": "exit.txt"},
+             collect=(Collect(ROUTED, "bytes", ("mag-timestamp",)),),
+             notes=["Capture run 45817717718: Magic exited 139 (SIGSEGV) during the route. Crash fixed in both "
+                    "modes (standing rule); stdout shows the last probe that finished, and routed.mag is collected "
+                    "only when written."]),
         case("LEG-MZ-16", MAZE, ["Initial paths", "Contact extension"],
              "start A on an m2contact terminal, destination B on metal2 (initial contact use, Q-LEGACY-85)",
              routed(ab), cells={"top": CONTACT_START}, outputs=(ROUTED,)),
@@ -293,8 +299,12 @@ def command_specs() -> list[TclCase]:
     """LEG-MZ-10, -21..26: the iroute subcommands, route options and results."""
     return [
         case("LEG-MZ-10", IROUTE, ["iroute route options", "Route results"],
-             "iroute route -foo; -slabel nosuch; start already connected to the destination",
-             p("iroute route -foo", route("nosuch", "B"), route("A", "B")), cells={"top": CONNECTED}),
+             "iroute route -foo; -slabel nosuch; start already connected to the destination; Magic's exit "
+             "status is recorded because its first capture ended in SIGSEGV (exit 139)",
+             p("iroute route -foo", route("nosuch", "B"), route("A", "B")), cells={"top": CONNECTED},
+             allow_nonzero_exit=True, outputs=("exitcode",), output_names={"exitcode": "exit.txt"},
+             notes=["Capture run 45817717718: Magic exited 139 (SIGSEGV) after \"Start label 'nosuch' not found.\". "
+                    "Crash fixed in both modes (standing rule); stdout shows the last probe that finished."]),
         case("LEG-MZ-21", IROUTE, ["iroute availability and dispatch", "iroute help",
                                    "Search, verbosity, version and wizard parameters"],
              "iroute help, help route, version, verbosity, verbosity 0 and 2, an unknown and an ambiguous "

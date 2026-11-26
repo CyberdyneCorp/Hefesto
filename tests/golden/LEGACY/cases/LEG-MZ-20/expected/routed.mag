@@ -1,0 +1,20 @@
+magic
+tech scmos
+timestamp 1795695986
+<< checkpaint >>
+rect -14 -21 117 18
+<< metal1 >>
+rect 0 0 4 4
+rect 0 -3 3 0
+rect 50 -40 54 44
+rect 100 0 104 4
+rect 57 -3 103 0
+<< metal2 >>
+rect 4 -7 57 -4
+<< m2contact >>
+rect 0 -7 4 -3
+rect 57 -7 61 -3
+<< labels >>
+rlabel metal1 0 0 4 4 0 A
+rlabel metal1 100 0 104 4 0 B
+<< end >>

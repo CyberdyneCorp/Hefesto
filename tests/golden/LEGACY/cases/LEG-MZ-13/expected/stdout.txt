@@ -1,0 +1,32 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Cell top read from path input
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  224.000 x 24.000  (-10.000, -10.000), ( 214.000,  14.000)  5376.000  
+lambda:      224 x 24      (   -10, -10   ), (   214,  14   )  5376      
+Done Routing.
+0 {Route success}
+No estimate plane!
+(Must ``:*ir deb noclean true'' and do a route first.)
+0 {}
+0 {}

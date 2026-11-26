@@ -1,0 +1,52 @@
+Use openwrapper to create a new GUI-based layout window
+Use closewrapper to remove a new GUI-based layout window
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:34 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+New windows will not have a title caption.
+New windows will not have scroll bars.
+New windows will not have a border.
+Handling file entry input/commands.tcl extension .tcl
+The "plot" commands are:
+    plot postscript file [layers]    generate PostScript file for what's
+                                     underneath the box
+    plot pnm file [width [layers]]   generate PNM file for what's
+		                     underneath the box
+    plot svg file		     generate SVG file for the whole window
+    plot versatec [scale [layers]]    generate plot for selected printer;
+		                     scale is multiplying factor for parameter
+		                     lambda, for layers underneath the box
+    plot parameters [name value]     set or print out plotting parameters
+    plot help                        print this help information
+0 {}
+The "plot" commands are:
+    plot postscript file [layers]    generate PostScript file for what's
+                                     underneath the box
+    plot pnm file [width [layers]]   generate PNM file for what's
+		                     underneath the box
+    plot svg file		     generate SVG file for the whole window
+    plot versatec [scale [layers]]    generate plot for selected printer;
+		                     scale is multiplying factor for parameter
+		                     lambda, for layers underneath the box
+    plot parameters [name value]     set or print out plotting parameters
+    plot help                        print this help information
+0 {}
+The "plot" commands are:
+    plot postscript file [layers]    generate PostScript file for what's
+                                     underneath the box
+    plot pnm file [width [layers]]   generate PNM file for what's
+		                     underneath the box
+    plot svg file		     generate SVG file for the whole window
+    plot versatec [scale [layers]]    generate plot for selected printer;
+		                     scale is multiplying factor for parameter
+		                     lambda, for layers underneath the box
+    plot parameters [name value]     set or print out plotting parameters
+    plot help                        print this help information
+0 {}

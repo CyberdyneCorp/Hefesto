@@ -1,4 +1,4 @@
-# LEG-MZ-10: iroute route -foo; -slabel nosuch; start already connected to the destination
+# LEG-MZ-10: iroute route -foo; -slabel nosuch; start already connected to the destination; Magic's exit status is recorded because its first capture ended in SIGSEGV (exit 139)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

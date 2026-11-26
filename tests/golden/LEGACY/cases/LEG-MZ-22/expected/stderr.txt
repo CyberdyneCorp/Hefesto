@@ -1,0 +1,22 @@
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off
+Noninteger value for integer parameter ("x") ignored.
+Unrecognized boolean value: "maybe"
+Valid values are:   yes no true false 1 0 on off
+Bad penalty value: x
+Bad argument: "x"
+Argument must be 'COMMAND', '.', or a nonneg. integer
+Unrecognized parameter: nosuch
+Valid wizard parameters are:   bloom bloomLimit boundsIncrement estimate expandEndpoints penalty penetration window
+Ambiguous parameter: "b"
+Too many args on 'iroute wizard'
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off
+Unrecognized boolean value: "(null)"
+Valid values are:   yes no true false 1 0 on off

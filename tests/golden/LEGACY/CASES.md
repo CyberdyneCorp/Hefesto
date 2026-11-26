@@ -48,12 +48,12 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless (
 | LEG-MZ-07 | router-maze | start inside `fence` paint, dest outside | stdout result | Blockage model (fence parity) |
 | LEG-MZ-08 | router-maze | `iroute wizard window 0`, `wizard penalty 1.3`, `wizard bloomLimit 5`, then route 04 | stdout, `.mag` | Windowed bloom search; Search, verbosity, version and wizard parameters |
 | LEG-MZ-09 | router-maze-iroute | `iroute layers`, `iroute layers * hCost`, `iroute contacts m2contact cost 99`, `iroute spacings`, `iroute spacings CLEAR` | stdout | Layer and contact parameter tables; Spacings subcommand |
-| LEG-MZ-10 | router-maze-iroute | `iroute route -foo`; `-slabel nosuch`; start already connected to dest | stderr; Tcl result | iroute route options; Route results |
+| LEG-MZ-10 | router-maze-iroute | `iroute route -foo`; `-slabel nosuch`; start already connected to dest (Magic exited 139 in the first capture) | stderr; Tcl result; exit status | iroute route options; Route results |
 | LEG-MZ-11 | router-maze-iroute | modify params, `saveParameters`, reload tech, `source` file, `iroute layers` | stdout | saveParameters file format |
 | LEG-MZ-12 | router-maze | `route` estimation off (`iroute wizard estimate no`) vs on for 04 | `.mag` | Cost estimation |
 | LEG-MZ-13 | router-maze | scmos; empty cell; `iroute route` between two metal1 labels 200 apart horizontally, then `*mzroute dumpEstimates` over the area | estimate dump text; resulting `.mag` paint | Cost estimation; Path to paint conversion |
 | LEG-MZ-14 | router-maze | scmos; opaque unexpanded subcell between start and destination (estimation on vs off via `iroute search`/`iroute estimate`) | routed paint; `iroute` statistics (blooms, points processed) | Cost estimation; Windowed bloom search |
-| LEG-MZ-15 | router-maze | scmos; destination metal1 box inside a larger same-net metal1 area (expand endpoints on); `iroute route` | routed paint end point | Destination areas; Walk extension |
+| LEG-MZ-15 | router-maze | scmos; destination metal1 box inside a larger same-net metal1 area (expand endpoints on); `iroute route` (Magic exited 139 in the first capture) | routed paint end point when written; exit status | Destination areas; Walk extension |
 | LEG-MZ-16 | router-maze | scmos; start on m2contact terminal; route to metal2 label | routed paint (initial contact use) | Initial paths; Contact extension (Q-LEGACY-85) |
 | LEG-MZ-17 | router-maze | scmos; route that must jog upward past a narrow gap; compare to mirrored downward case | routed paint (asymmetry) | Interesting points (Q-LEGACY-87) |
 | LEG-MZ-18 | router-maze | scmos; two equal-cost alternative routes (symmetric obstacle) | routed paint (tie choice) | Heap ordering; Windowed bloom search |
