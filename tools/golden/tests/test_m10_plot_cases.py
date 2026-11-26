@@ -154,8 +154,11 @@ class PlotDeviationBlockTest(unittest.TestCase):
         block = m10_cases.plot_deviation_block()
         self.assertTrue(block.startswith(m10_cases.PLOT_BEGIN))
         for spec in SPECS:
-            self.assertIn(f"[{spec.id}]\n", block)
-        self.assertEqual(block.count('deferred = "M10"'), 20)
+            if spec.id in m10_cases.PLOT_REPLAYED:
+                self.assertNotIn(f"[{spec.id}]\n", block)
+            else:
+                self.assertIn(f"[{spec.id}]\n", block)
+        self.assertEqual(block.count('deferred = "M10"'), 20 - len(m10_cases.PLOT_REPLAYED))
 
     def test_decisions(self):
         entry = m10_cases.plot_deviation_entry(SPECS[2])

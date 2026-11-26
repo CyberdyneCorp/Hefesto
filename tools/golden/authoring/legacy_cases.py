@@ -383,7 +383,8 @@ def specs() -> list[TclCase]:
 
 def output_names(spec: TclCase) -> list[str]:
     streams = ["stdout.txt", "stderr.txt"] if spec.streams else []
-    return streams + [spec.output_names.get(key, key.replace("/", "__")) for key in spec.outputs]
+    collected = ["collected/*"] if spec.collect else []
+    return streams + [spec.output_names.get(key, key.replace("/", "__")) for key in spec.outputs] + collected
 
 
 def _toml_strings(values: list[str]) -> str:

@@ -955,7 +955,7 @@ reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli a
 
 [MISC-PLOT-11]
 deferred = "M10"
-outputs = ["stdout.txt", "stderr.txt", "exit.txt"]
+outputs = ["stdout.txt", "stderr.txt", "exit.txt", "collected/*"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for plot until PLOTCMD, PS, PNM and EXPORT land (tasks 5-8): the owning workstream drops this deferral when the case replays"
 
 [MISC-PLOT-12]
@@ -998,11 +998,6 @@ reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli a
 [MISC-PLOT-19]
 deferred = "M10"
 outputs = ["stdout.txt", "stderr.txt", "bg.pnm", "ds.pnm"]
-reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for plot until PLOTCMD, PS, PNM and EXPORT land (tasks 5-8): the owning workstream drops this deferral when the case replays"
-
-[MISC-PLOT-20]
-deferred = "M10"
-outputs = ["stdout.txt", "stderr.txt"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for plot until PLOTCMD, PS, PNM and EXPORT land (tasks 5-8): the owning workstream drops this deferral when the case replays"
 
 # --- END M10 plot deferrals ---
@@ -1081,7 +1076,7 @@ reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli a
 
 [LEG-MZ-15]
 deferred = "M10"
-outputs = ["stdout.txt", "stderr.txt", "exit.txt"]
+outputs = ["stdout.txt", "stderr.txt", "exit.txt", "collected/*"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for iroute until MZTECH, MZ and IROUTE land (tasks 9-11): the owning workstream drops this deferral when the case replays"
 
 [LEG-MZ-16]
@@ -1146,7 +1141,7 @@ reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli a
 
 [LEG-MZ-28]
 deferred = "M10"
-outputs = ["stdout.txt", "stderr.txt", "exit.txt"]
+outputs = ["stdout.txt", "stderr.txt", "exit.txt", "collected/*"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for iroute until MZTECH, MZ and IROUTE land (tasks 9-11): the owning workstream drops this deferral when the case replays"
 
 [LEG-MZ-29]
