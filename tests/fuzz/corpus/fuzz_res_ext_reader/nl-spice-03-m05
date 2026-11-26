@@ -1,0 +1,25 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "g" 0 0 0 50 metal1 0 0 0 0 0 0
+node "s" 0 0 0 60 metal1 0 0 0 0 0 0
+node "d" 0 0 0 70 metal1 0 0 0 0 0 0
+device devcap None 0 0 1 1 0 "c0" 0 0 "gnd!" 0 0
+device devcap None 10 0 11 1 0.0001 "c1" 0 0 "gnd!" 0 0
+device devcap None 20 0 21 1 99.99 "c2" 0 0 "gnd!" 0 0
+device devcap None 30 0 31 1 100 "c3" 0 0 "gnd!" 0 0
+device devcap None 40 0 41 1 100010 "c4" 0 0 "gnd!" 0 0
+device devcap None 50 0 51 1 1e+08 "c5" 0 0 "gnd!" 0 0
+device devcap None 60 0 61 1 1e+13 "c6" 0 0 "gnd!" 0 0
+device devcap None 70 0 71 1 9.999e+17 "c7" 0 0 "gnd!" 0 0
+device devcap None 80 0 81 1 1e+18 "c8" 0 0 "gnd!" 0 0
+device devcap None 90 0 91 1 1e+24 "c9" 0 0 "gnd!" 0 0
+device mosfet nfet 200 0 202 1 2 1 "GND!" "g" 2 0 "s" 1 0 "d" 1 0
+device mosfet nfet 210 0 212 2 2 2 "GND!" "g" 4 0 "s" 2 0 "d" 2 0
+device mosfet nfet 220 0 222 20 2 20 "GND!" "g" 40 0 "s" 20 0 "d" 20 0
+device mosfet nfet 230 0 232 200 2 200 "GND!" "g" 400 0 "s" 200 0 "d" 200 0
+device mosfet nfet 240 0 242 2000 2 2000 "GND!" "g" 4000 0 "s" 2000 0 "d" 2000 0
+device mosfet nfet 250 0 252 20000 2 20000 "GND!" "g" 40000 0 "s" 20000 0 "d" 20000 0

@@ -1,0 +1,8 @@
+node "w" 1 1 0 0 metal1
+@@ top.res
+killnode
+rnode "x"
+resist "a" "b"
+device mosfet nfet 0 0 1 1 2 4 "GND!" "w" 4 0
+killnode "w"
+killnode "w"

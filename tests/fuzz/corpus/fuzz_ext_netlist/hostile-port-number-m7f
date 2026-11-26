@@ -1,0 +1,4 @@
+port "a" 2147483647 0 0 1 1 metal1
+port "b" 1048576 0 0 1 1 metal1
+port "c" -5 0 0 1 1 metal1
+node "a" 0 0 0 0 metal1

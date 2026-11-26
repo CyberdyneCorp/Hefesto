@@ -1,0 +1,14 @@
+node "w" 10 100 0 0 metal1
+port "w" 0 0 0 1 1 metal1
+cap "w" "w" 5
+@@ parent
+use top t0 1 0 0 0 1 0
+connect "t0/w" 0 0 1 1 metal1
+connect "t0/w" -9999999 -9999999 9999999 9999999 metal1
+@@ top.res
+scale 1 1 1
+killnode "w"
+rnode "w_0" 0 2000 0 0 0
+rnode "w_1" 0 2000 100 0 0
+resist "w_1" "w_0" 2500
+resist "w_1" "nosuch" -1

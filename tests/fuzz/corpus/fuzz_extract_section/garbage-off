@@ -1,0 +1,16 @@
+Zbogus 1
+style
+style e
+device
+device mosfet
+resist
+contact via
+substrate
+antenna metal1
+antenna metal1 surface 1 2 3 4
+model partial cumulative
+tiedown ndiff
+planeorder nosuch 9
+noplaneordering
+height metal1
+fringeshieldhalo -5
