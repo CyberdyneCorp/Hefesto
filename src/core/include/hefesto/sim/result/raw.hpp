@@ -66,4 +66,12 @@ struct CsvOptions {
 /// dir is 1 rise, -1 fall, 0 either.
 [[nodiscard]] diag::Outcome<double> measure(const Plot& plot, const WaveformMeasure& measure);
 
+/// Added in the M9 R2 fix pass: `min` and `max` with the first x where the
+/// extreme occurs (the spec table's "and the first x").
+struct Extreme {
+  double value = 0.0;
+  double x = 0.0;
+};
+[[nodiscard]] diag::Outcome<Extreme> measure_extreme(const Plot& plot, const WaveformMeasure& measure);
+
 }  // namespace hefesto::sim

@@ -9,6 +9,7 @@
 // Owner: LVSALG.
 
 #include <algorithm>
+#include <optional>
 #include <unordered_map>
 
 #include "hefesto/lvs/net/names.hpp"
@@ -45,12 +46,22 @@ Vertices take_matching(const Comparison::State& s, std::uint32_t reference, cons
 /// Stage (a) for one symmetric device class: the devices whose properties
 /// match the first unassigned circuit-1 device form a class of their own,
 /// with equally many devices from each circuit.
+/// Polls the cancel token: true (and the comparison cancelled) when the run
+/// should stop. The resolution stages poll it per class and per reference
+/// vertex, as their work can grow with the square of a class's size.
+bool stop(Comparison::State& s) {
+  if (s.options.cancel.requested()) {
+    s.cancelled = true;
+  }
+  return s.cancelled;
+}
+
 bool resolve_class_by_property(Comparison::State& s, std::size_t c) {
   bool changed = false;
   const auto [one, two] = sides(s.devices, c);
   std::vector<bool> used1(one.size(), false);
   std::vector<bool> used2(two.size(), false);
-  for (std::size_t i = 0; i < one.size(); ++i) {
+  for (std::size_t i = 0; i < one.size() && !stop(s); ++i) {
     if (used1[i]) {
       continue;
     }
@@ -67,9 +78,46 @@ bool resolve_class_by_property(Comparison::State& s, std::size_t c) {
 bool resolve_by_property(Comparison::State& s) {
   bool changed = false;
   const std::size_t count = s.devices.classes.size();
-  for (std::size_t c = 0; c < count; ++c) {
+  for (std::size_t c = 0; c < count && !stop(s); ++c) {
     if (s.devices.symmetric(c)) {
       changed = resolve_class_by_property(s, c) || changed;
+    }
+  }
+  return changed;
+}
+
+/// The first unused candidate (a position in `two`) that pairs with
+/// circuit-1 net `a` by name.
+std::optional<std::size_t> name_partner(const Comparison::State& s, std::uint32_t a, const Vertices& two,
+                                        const std::vector<std::size_t>& candidates, const std::vector<bool>& used,
+                                        bool ports_only) {
+  for (const auto j : candidates) {
+    const auto b = two[j];
+    const bool port = s.graph.net_port[a] || s.graph.net_port[b];
+    if (!used[j] && (!ports_only || port) && names_equal(s.net_name(a), s.net_name(b), s.case_insensitive)) {
+      return j;
+    }
+  }
+  return std::nullopt;
+}
+
+/// Stages (b) and (c) for one symmetric net class. `used` is indexed by the
+/// position in the class's circuit-2 side, so the work is linear in the
+/// class's size, not in the number of nets.
+bool resolve_class_by_name(Comparison::State& s, std::size_t c, bool ports_only) {
+  bool changed = false;
+  const auto [one, two] = sides(s.nets, c);
+  std::unordered_map<std::string, std::vector<std::size_t>> by_name;
+  for (std::size_t j = 0; j < two.size(); ++j) {
+    by_name[name_key(s.net_name(two[j]))].push_back(j);
+  }
+  std::vector<bool> used(two.size(), false);
+  for (std::size_t i = 0; i < one.size() && !stop(s); ++i) {
+    const auto it = by_name.find(name_key(s.net_name(one[i])));
+    const auto j = it == by_name.end() ? std::nullopt : name_partner(s, one[i], two, it->second, used, ports_only);
+    if (j) {
+      used[*j] = true;
+      changed = s.nets.split_out({one[i], two[*j]}, s.rng.next()) || changed;
     }
   }
   return changed;
@@ -81,30 +129,9 @@ bool resolve_by_property(Comparison::State& s) {
 bool resolve_by_name(Comparison::State& s, bool ports_only) {
   bool changed = false;
   const std::size_t count = s.nets.classes.size();
-  for (std::size_t c = 0; c < count; ++c) {
-    if (!s.nets.symmetric(c)) {
-      continue;
-    }
-    auto [one, two] = sides(s.nets, c);
-    std::unordered_map<std::string, Vertices> by_name;
-    for (const auto n : two) {
-      by_name[name_key(s.net_name(n))].push_back(n);
-    }
-    std::vector<bool> used(s.graph.nets, false);
-    for (const auto a : one) {
-      const auto it = by_name.find(name_key(s.net_name(a)));
-      if (it == by_name.end()) {
-        continue;
-      }
-      for (const auto b : it->second) {
-        const bool port = s.graph.net_port[a] || s.graph.net_port[b];
-        if (used[b] || (ports_only && !port) || !names_equal(s.net_name(a), s.net_name(b), s.case_insensitive)) {
-          continue;
-        }
-        used[b] = true;
-        changed = s.nets.split_out({a, b}, s.rng.next()) || changed;
-        break;
-      }
+  for (std::size_t c = 0; c < count && !stop(s); ++c) {
+    if (s.nets.symmetric(c)) {
+      changed = resolve_class_by_name(s, c, ports_only) || changed;
     }
   }
   return changed;

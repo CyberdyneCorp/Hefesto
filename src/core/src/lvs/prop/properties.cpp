@@ -132,20 +132,25 @@ class Checker {
     const bool first_has = !one.empty();
     const Network& present = first_has ? one : two;
     const DeviceSide& side = first_has ? first_ : second_;
+    const std::string head = std::string{"Circuit "} + (first_has ? "1 " : "2 ") + side.klass->name + " instance " +
+                             std::string{printed_name(side.name)} + " property \"";
+    const std::string tail = std::string{"\" has no match in circuit "} + (first_has ? "2." : "1.");
     std::vector<bool> reported(keys_.list.size(), false);
     for (const auto& record : present) {
       for (std::size_t i = 0; i < keys_.list.size(); ++i) {
-        const bool counts = i == Keys::kM || i == Keys::kS;
-        if (!record.values[i].present || reported[i] || (counts && prop::count_of(record, i) == 1)) {
-          continue;
+        if (!reported[i] && unmatched_value(record, i)) {
+          reported[i] = true;
+          mismatch(head + keys_.list[i].name + tail, keys_.list[i].name);
         }
-        reported[i] = true;
-        mismatch(std::string{"Circuit "} + (first_has ? "1 " : "2 ") + side.klass->name + " instance " +
-                     std::string{printed_name(side.name)} + " property \"" + keys_.list[i].name +
-                     "\" has no match in circuit " + (first_has ? "2." : "1."),
-                 keys_.list[i].name);
       }
     }
+  }
+
+  /// A value of key `i` that a missing record cannot match: present, and
+  /// for M and S other than 1.
+  [[nodiscard]] static bool unmatched_value(const Record& record, std::size_t i) {
+    const bool counts = i == Keys::kM || i == Keys::kS;
+    return record.values[i].present && !(counts && prop::count_of(record, i) == 1);
   }
 
   // ------------------------------------------------------- one to one

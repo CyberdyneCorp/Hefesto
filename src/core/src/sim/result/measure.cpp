@@ -2,7 +2,9 @@
 // Copyright 2026 The Hefesto Authors
 //
 // "Waveform measurements": y(x) piecewise linear between samples, binary64.
-// Owner: SIMRES. See raw.hpp.
+// The scale may ascend or descend (a `.dc` sweep from high to low, M9 R2
+// review): value_at, avg and rms work on the range between the first and
+// the last x; cross keeps the sweep order. Owner: SIMRES. See raw.hpp.
 
 #include <algorithm>
 #include <cmath>
@@ -81,13 +83,19 @@ diag::Outcome<Wave> wave_of(const Plot& plot, const std::string& name, const std
   return w;
 }
 
+// True when x0 lies between a and b, in either order.
+bool between(double x0, double a, double b) {
+  return std::min(a, b) <= x0 && x0 <= std::max(a, b);
+}
+
 diag::Outcome<double> value_at(const Wave& w, double x0) {
   const Samples& x = *w.x;
-  if (x0 < x.front() || x0 > x.back()) {
-    return bad("value_at " + number(x0) + " is outside [" + number(x.front()) + ", " + number(x.back()) + "]");
+  if (!between(x0, x.front(), x.back())) {
+    return bad("value_at " + number(x0) + " is outside [" + number(std::min(x.front(), x.back())) + ", " +
+               number(std::max(x.front(), x.back())) + "]");
   }
   for (std::size_t i = 1; i < x.size(); ++i) {
-    if (x0 <= x[i]) {
+    if (between(x0, x[i - 1], x[i])) {
       const double dx = x[i] - x[i - 1];
       return dx == 0.0 ? w.y[i] : w.y[i - 1] + (w.y[i] - w.y[i - 1]) * (x0 - x[i - 1]) / dx;
     }
@@ -95,9 +103,9 @@ diag::Outcome<double> value_at(const Wave& w, double x0) {
   return w.y.back();
 }
 
-double extreme(const Wave& w, bool maximum) {
+Extreme extreme(const Wave& w, bool maximum) {
   const auto it = maximum ? std::max_element(w.y.begin(), w.y.end()) : std::min_element(w.y.begin(), w.y.end());
-  return *it;
+  return Extreme{*it, (*w.x)[static_cast<std::size_t>(it - w.y.begin())]};
 }
 
 // The integral of y (or y squared) over [a, b], by segments.
@@ -105,8 +113,8 @@ double integral(const Wave& w, double a, double b, bool squared) {
   const Samples& x = *w.x;
   double sum = 0.0;
   for (std::size_t i = 1; i < x.size(); ++i) {
-    const double lo = std::max(a, x[i - 1]);
-    const double hi = std::min(b, x[i]);
+    const double lo = std::max(a, std::min(x[i - 1], x[i]));
+    const double hi = std::min(b, std::max(x[i - 1], x[i]));
     if (hi <= lo || x[i] == x[i - 1]) {
       continue;
     }
@@ -119,8 +127,8 @@ double integral(const Wave& w, double a, double b, bool squared) {
 }
 
 diag::Outcome<double> average(const Wave& w, const std::vector<double>& args, bool rms) {
-  const double a = args.size() >= 2 ? args[0] : w.x->front();
-  const double b = args.size() >= 2 ? args[1] : w.x->back();
+  const double a = args.size() >= 2 ? args[0] : std::min(w.x->front(), w.x->back());
+  const double b = args.size() >= 2 ? args[1] : std::max(w.x->front(), w.x->back());
   if (!(b > a)) {
     return bad("the range must have b > a");
   }
@@ -234,7 +242,7 @@ diag::Outcome<double> measure(const Plot& plot, const WaveformMeasure& m) {
     return m.arguments.empty() ? diag::Outcome<double>{bad("value_at needs x0")} : value_at(w, m.arguments[0]);
   }
   if (f == "min" || f == "max") {
-    return extreme(w, f == "max");
+    return extreme(w, f == "max").value;
   }
   if (f == "avg" || f == "rms") {
     return average(w, m.arguments, f == "rms");
@@ -249,6 +257,17 @@ diag::Outcome<double> measure(const Plot& plot, const WaveformMeasure& m) {
     return risetime(w, m.arguments);
   }
   return diag::make("SIM-RESULT-008", "unknown measurement " + f);
+}
+
+diag::Outcome<Extreme> measure_extreme(const Plot& plot, const WaveformMeasure& m) {
+  if (m.function != "min" && m.function != "max") {
+    return bad("measure_extreme needs min or max, not " + m.function);
+  }
+  auto wave = wave_of(plot, m.vector, m.part);
+  if (!wave.ok()) {
+    return wave.error();
+  }
+  return extreme(wave.value(), m.function == "max");
 }
 
 }  // namespace hefesto::sim

@@ -47,7 +47,7 @@ Compatibility: native
 - **THEN** the error `ac: fstart must be > 0 for dec sweep` SHALL be reported
 
 ### Requirement: Job lifecycle
-Every simulation run SHALL be a job with a unique id `<YYYYMMDD>-<HHMMSS>-<testbench>-<corner>`, using local time. If two jobs would get the same id, the second SHALL get the suffix `-2`, the third `-3`, and so on. A job that is a point of a run set SHALL instead take the id `<run set id>-p<index>` defined in capability `simulation-sweeps`, Requirement "Run sets".
+Every simulation run SHALL be a job with a unique id `<YYYYMMDD>-<HHMMSS>-<testbench>-<corner>`, using local time. If two jobs would get the same id, the second SHALL get the suffix `-2`, the third `-3`, and so on. A job that is a point of a run set SHALL instead take the id `<run set id>-p<index>` defined in capability `simulation-sweeps`, Requirement "Run sets". Because a job id names the job's folder in the result store, it SHALL be one path component of at most 255 bytes, not `.` or `..`, without `/`, `\`, `:` or control characters; a job whose id would not be SHALL be refused with `job id '<id>' is not a single safe path component`.
 
 A job SHALL pass through these states in this order: `queued` → `preparing` (netlisting, resolution, validation) → `loading` (deck sent to ngspice) → `running` → one final state. The final state SHALL be one of:
 - `completed`
@@ -264,11 +264,16 @@ Compatibility: native
 - **THEN** that row SHALL hold `db(v(out))` = 0 and `ph(v(out))` = 180
 
 ### Requirement: Raw file import
-Hefesto SHALL import raw files produced by any ngspice version since 30, including files from Magic/xschem flows, as an "imported" job. The job has state `completed`, no deck, and `netMap` null. Imported plots SHALL be viewable and exportable exactly as simulated ones. If the import is linked to a layout cell, probing SHALL fall back to matching vector names case-insensitively (capability `simulation-ui-and-crossprobe`). A malformed file SHALL be rejected with the line number and expected token, for example `result.raw:7: expected "No. Points:"`.
+Hefesto SHALL import raw files produced by any ngspice version since 30, including files from Magic/xschem flows, as an "imported" job. The job has state `completed`, no deck, and `netMap` null. Imported plots SHALL be viewable and exportable exactly as simulated ones. If the import is linked to a layout cell, probing SHALL fall back to matching vector names case-insensitively (capability `simulation-ui-and-crossprobe`). A malformed file SHALL be rejected with the line number and expected token, for example `result.raw:7: expected "No. Points:"`. A file whose plots would take more than the result budget once loaded SHALL be rejected before they are allocated; the budget counts each variable's vector, name and type as well as its values, so a header with many variables and no points is rejected too.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7)
+
+#### Scenario: Many variables and no points
+- **GIVEN** a raw file declaring 100 000 000 variables and 0 points
+- **WHEN** it is imported with the default 4 GiB budget
+- **THEN** the import SHALL fail with `<file>: 100000000 variables of 0 points exceed the result budget of 4294967296 bytes`
 
 #### Scenario: Truncated binary
 - **GIVEN** a binary raw file declaring 100 points but holding data for 60
@@ -280,9 +285,9 @@ Hefesto SHALL compute these measurements on stored real vectors `y(x)`, where `x
 
 | Measurement | Definition |
 |---|---|
-| `value_at x0` | linear interpolation of `y` at `x0`; an error if `x0` is outside `[x_first, x_last]` |
+| `value_at x0` | linear interpolation of `y` at `x0`; an error if `x0` is not between `x_first` and `x_last` (the scale may ascend or descend) |
 | `min`, `max` | extreme sample value and the first `x` where it occurs |
-| `avg from a to b` | `(1/(b−a)) ∫ y dx` by the trapezoidal rule, interpolating at `a` and `b`; default `a`, `b` = the scale range |
+| `avg from a to b` | `(1/(b−a)) ∫ y dx` by the trapezoidal rule, interpolating at `a` and `b`; default `a`, `b` = the scale range (its smaller and larger end) |
 | `rms from a to b` | `sqrt((1/(b−a)) ∫ y² dx)`, with `y²` integrated exactly over each linear segment |
 | `cross level k dir` | `x` of the k-th crossing (k ≥ 1) of `level` in direction `rise`, `fall` or `either`, by linear interpolation. A sample exactly equal to `level` counts once, in the direction of the next differing sample. |
 | `delay trig targ` | `cross(targ) − cross(trig)`, each given as `(vector, level, k, dir)` |
@@ -298,6 +303,11 @@ Compatibility: native
 - **GIVEN** `x` = [0, 1, 2] and `y` = [0, 2, 0]
 - **WHEN** `cross 1 1 rise`, `cross 1 1 fall`, `avg` and `max` are measured
 - **THEN** the results SHALL be 0.5, 1.5, 1.0 and 2 (at x = 1)
+
+#### Scenario: Descending sweep
+- **GIVEN** `x` = [2, 1, 0] (a `.dc` sweep from 2 down to 0) and `y` = [0, 2, 0]
+- **WHEN** `value_at 1.75`, `avg`, `max` and `cross 1 1 rise` are measured
+- **THEN** the results SHALL be 0.5, 1.0, 2 (at x = 1) and 1.5, `cross` counting crossings in sweep order
 
 #### Scenario: RC rise time
 - **GIVEN** `y(t) = 1 − e^(−t/τ)` with τ = 1 ns, sampled every 1 ps from 0 to 10 ns

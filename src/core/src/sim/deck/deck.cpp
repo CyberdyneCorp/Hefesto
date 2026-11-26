@@ -13,6 +13,7 @@
 #include <array>
 #include <filesystem>
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include "hefesto/pdk/sha256.hpp"
@@ -187,13 +188,22 @@ struct Composer {
   }
 };
 
-deck::IncludeContext include_context(const DeckContext& context, std::string source) {
-  return deck::IncludeContext{context.files, context.base_dir, clamped(context.limits), std::move(source)};
+/// The include context of a raw deck (its first line a title, itself the
+/// first level) or of a spice source's DUT include line (not a file: the
+/// DUT file is the first level).
+deck::IncludeContext include_context(const DeckContext& context, std::string source, bool raw) {
+  return deck::IncludeContext{context.files, context.base_dir, context.limits, std::move(source),
+                              context.pdk_store, raw, raw ? std::size_t{1} : std::size_t{0}};
 }
 
 /// Sanitises, validates and delivers `lines` into `out`.
 diag::Outcome<PreparedDeck> finish(std::vector<std::string> lines, bool raw, bool allow_control, PreparedDeck out,
                                    const DeckLimits& limits) {
+  // M9 R2 review: a line holding a line break would pass sanitisation as
+  // one line and still be hashed like the lines it holds.
+  if (diag::Status breaks = deck::check_line_breaks(lines); !breaks.ok()) {
+    return breaks.error();
+  }
   if (diag::Status clean = deck::sanitise(lines, allow_control, out.diagnostics); !clean.ok()) {
     return clean.error();
   }
@@ -215,11 +225,11 @@ diag::Outcome<PreparedDeck> finish(std::vector<std::string> lines, bool raw, boo
 }
 
 diag::Outcome<PreparedDeck> prepare_raw(const Testbench& tb, const DeckContext& context) {
-  auto lines = deck::inline_includes(tb.lines, include_context(context, "raw deck"));
+  auto lines = deck::inline_includes(tb.lines, include_context(context, "raw deck", true));
   if (!lines.ok()) {
     return lines.error();
   }
-  return finish(std::move(lines.value()), true, tb.allow_control, PreparedDeck{}, clamped(context.limits));
+  return finish(std::move(lines.value()), true, tb.allow_control, PreparedDeck{}, context.limits);
 }
 
 diag::Outcome<PreparedDeck> prepare_spice(const Testbench& tb, const DeckContext& context) {
@@ -228,7 +238,7 @@ diag::Outcome<PreparedDeck> prepare_spice(const Testbench& tb, const DeckContext
     file = std::filesystem::path{context.base_dir} / file;
   }
   const std::string include = ".include \"" + file.lexically_normal().generic_string() + "\"";
-  auto dut = deck::inline_includes({include}, include_context(context, tb.name));
+  auto dut = deck::inline_includes({include}, include_context(context, tb.name, false));
   if (!dut.ok()) {
     return dut.error();
   }
@@ -243,15 +253,25 @@ diag::Outcome<PreparedDeck> prepare_spice(const Testbench& tb, const DeckContext
   if (diag::Status s = composer.instance(*ports); !s.ok()) {
     return s.error();
   }
-  return finish(std::move(composer.lines), false, tb.allow_control, std::move(out), clamped(context.limits));
+  return finish(std::move(composer.lines), false, tb.allow_control, std::move(out), context.limits);
 }
 
 }  // namespace
 
-DeckLimits clamped(const DeckLimits& limits) {
+diag::Status check_limits(const DeckLimits& limits) {
   const DeckLimits defaults;
-  return DeckLimits{std::clamp<std::size_t>(limits.max_deck_bytes, 1, defaults.max_deck_bytes),
-                    std::clamp<std::size_t>(limits.max_include_depth, 1, defaults.max_include_depth)};
+  const std::array<std::tuple<const char*, std::size_t, std::size_t>, 3> settings = {{
+      {"deck size", limits.max_deck_bytes, defaults.max_deck_bytes},
+      {"include depth", limits.max_include_depth, defaults.max_include_depth},
+      {"include count", limits.max_includes, defaults.max_includes},
+  }};
+  for (const auto& [name, value, fallback] : settings) {
+    if (value == 0 || value > 2 * fallback) {
+      return diag::make("SIM-DECK-017", std::string{name} + " limit " + std::to_string(value) +
+                                            " is zero or above twice its default " + std::to_string(fallback));
+    }
+  }
+  return diag::Done{};
 }
 
 diag::Outcome<std::string> stimulus_line(const Stimulus& s) {
@@ -289,6 +309,9 @@ diag::Outcome<PreparedDeck> prepare(const Testbench& testbench, const DeckContex
   }
   if (context.files == nullptr) {
     return diag::make("SIM-DECK-013", "deck preparation needs a file system");
+  }
+  if (diag::Status limits = check_limits(context.limits); !limits.ok()) {
+    return limits.error();
   }
   return testbench.dut.kind == Kind::raw ? prepare_raw(testbench, context) : prepare_spice(testbench, context);
 }

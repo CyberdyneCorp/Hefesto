@@ -25,6 +25,17 @@
 // sources (task 13.4) and ModelDescriptor::load (task 13.2) still fail with
 // CORE-NOTIMPL-009.
 //
+// M9 R2 fix pass (review of PR #132): a raw deck's first line is its title
+// and is neither inlined nor sanitised (ngspice never parses it); a deck
+// line holding a newline, carriage return or NUL is refused (SIM-DECK-015)
+// before sanitisation, so the deck hash covers what the engine parses; a
+// relative `.lib <file> <section>` is made absolute against the directory
+// of the file that holds it, and a `.lib` file outside the PDK store is
+// refused (SIM-DECK-016) until task 13.2 inlines and sanitises libraries;
+// includes are counted (SIM-DECK-014); a comment line longer than the
+// delivery limit is cut, not continued; the limits are checked
+// (SIM-DECK-017: zero or above twice the default) instead of clamped.
+//
 // Owner: SIMDECK.
 
 #pragma once
@@ -55,18 +66,25 @@ namespace hefesto::sim {
 /// raised past twice the default.
 inline constexpr std::size_t kMaxPreparedDeckBytes = std::size_t{256} << 20;  // 256 MiB
 inline constexpr std::size_t kMaxDeckIncludeDepth = 32;
+/// Added in the M9 R2 fix pass: files one deck may include in all, as
+/// LVS-READ-025 counts them (standing rule on crafted-input limits).
+inline constexpr std::size_t kMaxDeckIncludes = 65536;
 
 enum class ParasiticMode : std::uint8_t { none, c, rc };
 
-/// Added in M9 R2: the deck caps in use. Each may be lowered; a larger value
-/// is clamped to the default.
+/// Added in M9 R2: the deck caps in use. Each may be lowered, or raised up
+/// to twice its default (design D18).
 struct DeckLimits {
   std::size_t max_deck_bytes = kMaxPreparedDeckBytes;
-  std::size_t max_include_depth = kMaxDeckIncludeDepth;  // nested includes below the deck
+  /// Levels of files, the top file (the raw deck, or a spice source's DUT
+  /// file) being level 1, as LVS counts them.
+  std::size_t max_include_depth = kMaxDeckIncludeDepth;
+  std::size_t max_includes = kMaxDeckIncludes;  // Added in the M9 R2 fix pass
 };
 
-/// The limits with every value at most its default (and at least 1).
-[[nodiscard]] DeckLimits clamped(const DeckLimits& limits);
+/// Added in the M9 R2 fix pass (replaces `clamped`): SIM-DECK-017 when a
+/// limit is zero or above twice its default.
+[[nodiscard]] diag::Status check_limits(const DeckLimits& limits);
 
 /// Added in M9 R2: "Testbench composition": DUT port `port` is bound to
 /// testbench node `node`.

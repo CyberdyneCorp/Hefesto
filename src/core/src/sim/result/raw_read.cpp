@@ -5,7 +5,9 @@
 // header lines in any order up to `Variables:`, unknown header lines
 // ignored, `Binary:` and `Values:`, padded and unpadded, several plots.
 // Nothing is allocated for a plot before its declared size is checked
-// against the budget. Owner: SIMRES. See raw.hpp.
+// against the budget, which counts every Vector object and its name and
+// type strings as well as the values (M9 R2 review: a header of many
+// variables and 0 points passed the check). Owner: SIMRES. See raw.hpp.
 
 #include <bit>
 #include <cstring>
@@ -157,37 +159,54 @@ class RawReader {
     } else if (!h.points) {
       status = error("expected \"No. Points:\"");
     } else if (over_budget(*h.variables, *h.points, h.complex)) {
-      status = diag::make("SIM-RESULT-003", std::string{name_} + ": " + std::to_string(*h.variables) +
-                                                " variables of " + std::to_string(*h.points) +
-                                                " points exceed the result budget of " + std::to_string(budget_) +
-                                                " bytes");
+      status = budget_error(std::to_string(*h.variables) + " variables of " + std::to_string(*h.points) + " points");
     }
     ++line_;
     return status;
   }
 
+  diag::Diagnostic budget_error(const std::string& what) const {
+    return diag::make("SIM-RESULT-003", std::string{name_} + ": " + what + " exceed the result budget of " +
+                                            std::to_string(budget_) + " bytes");
+  }
+
+  [[nodiscard]] std::uint64_t room() const { return budget_ - std::min(used_, budget_); }
+
+  /// Charges each variable's Vector and its values; its name and type are
+  /// charged as they are read (charge()).
   bool over_budget(std::uint64_t variables, std::uint64_t points, bool complex) {
     const std::uint64_t per_value = complex ? 16 : 8;
-    const std::uint64_t room = budget_ - std::min(used_, budget_);
-    if (variables > room / per_value) {
+    if (points > room() / per_value) {
       return true;
     }
-    const std::uint64_t per_point = variables * per_value;
-    if (points > room / per_point) {
+    const std::uint64_t per_variable = sizeof(Vector) + points * per_value;
+    if (variables > room() / per_variable) {
       return true;
     }
-    used_ += per_point * points;
+    used_ += variables * per_variable;
     return false;
+  }
+
+  bool charge(std::uint64_t bytes) {
+    if (bytes > room()) {
+      return false;
+    }
+    used_ += bytes;
+    return true;
   }
 
   // --- variables and data ---
 
   diag::Status read_variables(Plot& plot, std::uint64_t count) {
+    plot.vectors.reserve(static_cast<std::size_t>(count));  // charged by over_budget
     for (std::uint64_t i = 0; i < count; ++i) {
       const auto line = next_line();
       const std::vector<std::string> tokens = line ? words(*line) : std::vector<std::string>{};
       if (tokens.size() < 3) {
         return error("expected variable " + std::to_string(i));
+      }
+      if (!charge(tokens[1].size() + tokens[2].size())) {
+        return budget_error("the names of " + std::to_string(i + 1) + " variables");
       }
       Vector v;
       v.name = tokens[1];

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3626 scenarios, 1049 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3632 scenarios, 1049 open questions.
 
 ## Hefesto product (native)
 
@@ -179,13 +179,13 @@ Open questions: [28](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 13 | 20 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
+| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 13 | 22 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
 | [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 8 | 14 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
 | [`simulation-corners`](../openspec/specs/simulation-corners/spec.md) | 9 | 11 | Defines corner analysis in Hefesto (decision P-19): - the corner definitions and corner sets held by each PDK's simulation model descriptor in the PDK store - the bundled corner ta… |
-| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 17 | 44 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
+| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 17 | 45 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
 | [`simulation-measurements-and-statistics`](../openspec/specs/simulation-measurements-and-statistics/spec.md) | 13 | 19 | Defines how Hefesto turns simulation results into numbers and verdicts, and how it summarises many runs (decision P-19): - named measurements on stored vectors, extending the wavef… |
 | [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 12 | 20 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
-| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 16 | 28 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 16 | 31 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
 | [`simulation-optimization-hooks`](../openspec/specs/simulation-optimization-hooks/spec.md) | 7 | 8 | Defines an optional evaluation interface through which optimisation loops drive simulation (decision P-19). The main client is the AI agent (decision P-10): its sizing and post-lay… |
 | [`simulation-sweeps`](../openspec/specs/simulation-sweeps/spec.md) | 11 | 19 | Defines how Hefesto runs one testbench many times with different values (decision P-19): - run sets, the batch object shared by sweeps, corners (capability `simulation-corners`) an… |
 | [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 14 | 17 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |

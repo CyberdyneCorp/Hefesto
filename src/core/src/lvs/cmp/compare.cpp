@@ -9,6 +9,7 @@
 
 #include "hefesto/lvs/cmp/compare.hpp"
 
+#include <cstdint>
 #include <utility>
 
 #include "hefesto/lvs/net/names.hpp"
@@ -77,25 +78,35 @@ std::string Comparison::exhaustive(std::optional<bool> on) {
   return state_->exhaustive ? "Exhaustive subdivision ENABLED." : "Exhaustive subdivision DISABLED.";
 }
 
+namespace {
+
+/// Appends the members of every symmetric class of `partition`, each named
+/// `(1)<name>` or `(2)<name>` by its circuit.
+template <typename IsFirst, typename NameOf>
+void append_symmetric(const cmp::Partition& partition, const IsFirst& first, const NameOf& name_of,
+                      std::vector<std::vector<std::string>>& out) {
+  for (std::size_t c = 0; c < partition.classes.size(); ++c) {
+    if (!partition.symmetric(c)) {
+      continue;
+    }
+    auto& names = out.emplace_back();
+    for (const auto v : partition.classes[c].members) {
+      names.push_back((first(v) ? "(1)" : "(2)") + name_of(v));
+    }
+  }
+}
+
+}  // namespace
+
 std::vector<std::vector<std::string>> Comparison::symmetries() const {
   const State& s = *state_;
   std::vector<std::vector<std::string>> result;
-  for (std::size_t c = 0; c < s.devices.classes.size(); ++c) {
-    if (s.devices.symmetric(c)) {
-      auto& names = result.emplace_back();
-      for (const auto d : s.devices.classes[c].members) {
-        names.push_back((s.graph.first_device(d) ? "(1)" : "(2)") + s.device_name(d));
-      }
-    }
-  }
-  for (std::size_t c = 0; c < s.nets.classes.size(); ++c) {
-    if (s.nets.symmetric(c)) {
-      auto& names = result.emplace_back();
-      for (const auto n : s.nets.classes[c].members) {
-        names.push_back((s.graph.first_net(n) ? "(1)" : "(2)") + s.net_name(n));
-      }
-    }
-  }
+  append_symmetric(
+      s.devices, [&](std::uint32_t d) { return s.graph.first_device(d); },
+      [&](std::uint32_t d) { return s.device_name(d); }, result);
+  append_symmetric(
+      s.nets, [&](std::uint32_t n) { return s.graph.first_net(n); }, [&](std::uint32_t n) { return s.net_name(n); },
+      result);
   return result;
 }
 

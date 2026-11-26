@@ -126,31 +126,28 @@ int ng_exit(int /*status*/, NG_BOOL /*immediate*/, NG_BOOL /*quit*/, int /*id*/,
 }
 
 // The live stream (ABI 2): one point, every vector's real part, the scale
-// first. Copied before the call returns; hefesto-simd decimates it.
+// first. The names point into ngspice's own strings, valid for the call;
+// hefesto-simd copies the points it keeps and decimates the rest. M9 R2
+// review: the names were copied for every point, at the full simulation
+// rate, although hefesto-simd keeps one point per 10 ms; the buffer is now
+// reused per thread and nothing is copied here.
 int ng_data(pvecvaluesall values, int /*count*/, int /*id*/, void* user) {
   hefesto_engine* engine = self(user);
   if (engine->callbacks.on_data == nullptr || values == nullptr || values->vecsa == nullptr || values->veccount <= 0) {
     return 0;
   }
+  thread_local std::vector<hefesto_engine_value> point;
+  point.clear();
   const auto count = static_cast<std::size_t>(values->veccount);
-  std::vector<std::string> names;
-  std::vector<hefesto_engine_value> point;
-  names.reserve(count);
-  point.reserve(count);
   for (std::size_t i = 0; i < count; ++i) {
     const pvecvalues v = values->vecsa[i];
     if (v == nullptr) {
       continue;
     }
-    names.emplace_back(v->name != nullptr ? v->name : "");
-    point.push_back(hefesto_engine_value{nullptr, v->creal});
+    point.push_back(hefesto_engine_value{v->name != nullptr ? v->name : "", v->creal});
     if (v->is_scale && point.size() > 1) {
-      std::swap(names.front(), names.back());
       std::swap(point.front(), point.back());
     }
-  }
-  for (std::size_t i = 0; i < point.size(); ++i) {
-    point[i].name = names[i].c_str();
   }
   engine->callbacks.on_data(engine->callbacks.user, point.data(), point.size());
   return 0;

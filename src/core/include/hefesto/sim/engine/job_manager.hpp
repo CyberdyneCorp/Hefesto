@@ -60,7 +60,10 @@
 // kMaxQueuedStateEvents state events between two polls; a worker that
 // floods state frames has its later states coalesced (see
 // job_manager_events.hpp), and progress events are superseded by later
-// ones, so no worker can grow the queue without bound.
+// ones, so no worker can grow the queue without bound. Since the M9 R2 fix
+// pass one poll() applies at most kMaxPollPasses batches, so no worker can
+// hold the owning thread in poll() either; job ids must be one safe path
+// component (SIM-ENGINE-038).
 //
 // Owner: SIMENG.
 
@@ -107,6 +110,10 @@ struct JobManagerOptions {
   PoolInputs pool;
   /// The clock of the job ids (local time); empty: the system clock.
   std::function<std::chrono::system_clock::time_point()> now;
+  /// Added in the M9 R2 fix pass, for tests: called on the owning thread
+  /// after poll() takes each batch of events (a stand-in for a worker that
+  /// sends while the batch is applied).
+  std::function<void()> on_events_taken;
 };
 
 /// Added in M9 R1: one job-log line and its stream (log.txt writes error
@@ -124,6 +131,11 @@ inline constexpr std::size_t kMaxJobLogBytes = std::size_t{64} << 20;
 /// Added in M9 R2: state events queued between two polls before a
 /// connection's later states are coalesced.
 inline constexpr std::size_t kMaxQueuedStateEvents = 4096;
+
+/// Added in M9 R2 (fix pass): event batches one poll() applies at most.
+/// A worker that keeps sending frames cannot hold the owning thread in
+/// poll(): what arrives after the last batch waits for the next poll.
+inline constexpr std::size_t kMaxPollPasses = 4;
 
 /// Added in M9 R1: what the manager keeps of one job.
 struct JobRecord {
@@ -157,7 +169,9 @@ class JobManager {
 
   /// Added in M9 R1: applies the queued engine events and starts queued
   /// jobs on free workers. Returns the number of events applied plus jobs
-  /// started (0: nothing happened).
+  /// started (0: nothing happened). Since the M9 R2 fix pass it takes at
+  /// most kMaxPollPasses batches of events, so it returns while a worker
+  /// is still sending.
   std::size_t poll();
 
   /// Added in M9 R2: waits up to `timeout` for an engine event or the end

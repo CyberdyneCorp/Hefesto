@@ -46,6 +46,28 @@ PairCheck check_pair(const Comparison::State& state, std::uint32_t a, std::uint3
   return check_device_pair(first, second, property_settings(state));
 }
 
+/// Folds one pair's check into the comparison's property state and logs.
+void record_check(Comparison::State& s, PairCheck check) {
+  if (check.outcome == PropertyOutcome::failure) {
+    // Q-LVS-10 (replicate): netgen's texts and codes are kept; the
+    // structured result carries the detail property-check-failed.
+    if (s.property_state == PropertyState::none) {
+      s.property_state = PropertyState::failure;
+    }
+  } else if (check.outcome == PropertyOutcome::mismatch) {
+    s.property_state = PropertyState::errors;
+  }
+  for (auto& line : check.report) {
+    s.property_report.push_back(std::move(line));
+  }
+  for (auto& line : check.console) {
+    s.log.push_back(LogLine{std::move(line), true});
+  }
+  for (auto& error : check.errors) {
+    s.property_errors.push_back(std::move(error));
+  }
+}
+
 }  // namespace
 
 bool Comparison::State::properties_match(std::uint32_t a, std::uint32_t b) const {
@@ -64,25 +86,7 @@ void Comparison::State::check_properties() {
       continue;  // each pair is checked once
     }
     it->second = b;
-    PairCheck check = check_pair(*this, a, b);
-    if (check.outcome == PropertyOutcome::failure) {
-      // Q-LVS-10 (replicate): netgen's texts and codes are kept; the
-      // structured result carries the detail property-check-failed.
-      if (property_state == PropertyState::none) {
-        property_state = PropertyState::failure;
-      }
-    } else if (check.outcome == PropertyOutcome::mismatch) {
-      property_state = PropertyState::errors;
-    }
-    for (auto& line : check.report) {
-      property_report.push_back(std::move(line));
-    }
-    for (auto& line : check.console) {
-      log.push_back(LogLine{std::move(line), true});
-    }
-    for (auto& error : check.errors) {
-      property_errors.push_back(std::move(error));
-    }
+    record_check(*this, check_pair(*this, a, b));
   }
 }
 
@@ -115,13 +119,12 @@ std::vector<std::string> disconnected_ports(const Cell& cell, const std::set<Net
   return names;
 }
 
-}  // namespace
-
-bool Comparison::State::port_errors() const {
-  for (std::size_t c = 0; c < nets.classes.size(); ++c) {
+/// True when a net class holds unequally many ports of the two circuits.
+bool port_counts_differ(const cmp::Partition& nets, const cmp::Graph& graph) {
+  for (const cmp::Class& cls : nets.classes) {
     std::size_t ports1 = 0;
     std::size_t ports2 = 0;
-    for (const auto n : nets.classes[c].members) {
+    for (const auto n : cls.members) {
       if (graph.net_port[n]) {
         (graph.first_net(n) ? ports1 : ports2) += 1;
       }
@@ -130,23 +133,31 @@ bool Comparison::State::port_errors() const {
       return true;
     }
   }
-  if (real_ports(*cell1) != real_ports(*cell2)) {
-    return true;
-  }
+  return false;
+}
+
+/// True when a disconnected port of circuit 1 has no same-named
+/// disconnected port in circuit 2.
+bool unpaired_disconnected_port(const Comparison::State& s) {
   std::set<NetId> nets1;
   std::set<NetId> nets2;
-  for (std::uint32_t n = 0; n < graph.nets; ++n) {
-    (graph.first_net(n) ? nets1 : nets2).insert(graph.net_id[n]);
+  for (std::uint32_t n = 0; n < s.graph.nets; ++n) {
+    (s.graph.first_net(n) ? nets1 : nets2).insert(s.graph.net_id[n]);
   }
-  const auto open2 = disconnected_ports(*cell2, nets2);
-  for (const auto& name : disconnected_ports(*cell1, nets1)) {
-    const bool found = std::any_of(open2.begin(), open2.end(),
-                                   [&](const std::string& other) { return names_equal(name, other, case_insensitive); });
-    if (!found) {
-      return true;
-    }
-  }
-  return false;
+  const auto open2 = disconnected_ports(*s.cell2, nets2);
+  const auto has_partner = [&](const std::string& name) {
+    return std::any_of(open2.begin(), open2.end(),
+                       [&](const std::string& other) { return names_equal(name, other, s.case_insensitive); });
+  };
+  const auto open1 = disconnected_ports(*s.cell1, nets1);
+  return !std::all_of(open1.begin(), open1.end(), has_partner);
+}
+
+}  // namespace
+
+bool Comparison::State::port_errors() const {
+  return port_counts_differ(nets, graph) || real_ports(*cell1) != real_ports(*cell2) ||
+         unpaired_disconnected_port(*this);
 }
 
 int Comparison::State::classify() {

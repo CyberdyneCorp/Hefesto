@@ -10,6 +10,7 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 #include "hefesto/lvs/net/expression.hpp"
@@ -124,26 +125,48 @@ Key key_from(const PropertyDef& definition) {
   return key;
 }
 
+/// The pin position of each key (nullopt: no pin, or a pin `klass` lacks).
+using PinPositions = std::vector<std::optional<std::uint32_t>>;
+
+/// The last key associated with pin position `pin`, if any.
+std::optional<std::size_t> last_key_at(const PinPositions& positions, std::uint32_t pin) {
+  for (std::size_t j = positions.size(); j-- > 0;) {
+    if (positions[j] == pin) {
+      return j;
+    }
+  }
+  return std::nullopt;
+}
+
+/// The key on the other pin of the last permutable pair holding `pin` that
+/// has one, if any.
+template <typename Pairs>
+std::optional<std::size_t> swap_partner_of(std::uint32_t pin, const Pairs& pairs, const PinPositions& positions) {
+  std::optional<std::size_t> found;
+  for (const auto& [a, b] : pairs) {
+    if (pin != a && pin != b) {
+      continue;
+    }
+    if (const auto partner = last_key_at(positions, pin == a ? b : a)) {
+      found = partner;
+    }
+  }
+  return found;
+}
+
 /// Links each pin-associated key to the key associated with the other pin
 /// of its permutable pair ("Pin-associated properties").
 void link_swap_partners(Keys& keys, const Cell& klass) {
   const auto pairs = permute_pairs(klass).pairs;
-  for (auto& key : keys.list) {
-    const auto pin = key.pin.empty() ? std::nullopt : port_position(klass, key.pin);
-    if (!pin) {
-      continue;
-    }
-    for (const auto& [a, b] : pairs) {
-      if (*pin != a && *pin != b) {
-        continue;
-      }
-      const std::uint32_t other = *pin == a ? b : a;
-      for (std::size_t j = 0; j < keys.list.size(); ++j) {
-        const auto partner = keys.list[j].pin.empty() ? std::nullopt : port_position(klass, keys.list[j].pin);
-        if (partner && *partner == other) {
-          key.swap_partner = j;
-        }
-      }
+  PinPositions positions;
+  positions.reserve(keys.list.size());
+  for (const auto& key : keys.list) {
+    positions.push_back(key.pin.empty() ? std::nullopt : port_position(klass, key.pin));
+  }
+  for (std::size_t k = 0; k < keys.list.size(); ++k) {
+    const auto partner = positions[k] ? swap_partner_of(*positions[k], pairs, positions) : std::nullopt;
+    if (partner) {
+      keys.list[k].swap_partner = *partner;
     }
   }
 }

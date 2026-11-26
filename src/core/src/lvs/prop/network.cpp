@@ -222,36 +222,45 @@ bool collapsible(const Record& a, const Record& b, const Keys& keys, const Direc
   return true;
 }
 
+/// Folds the record's multiplier into its additive values. A record with
+/// no additive value to absorb the multiplier keeps it, so an M (or S)
+/// difference stays a difference (Hefesto choice where the spec is silent).
+void absorb_count(Record& record, const Keys& keys, const Direction& dir) {
+  bool absorbed = false;
+  const std::int64_t m = count_of(record, dir.count);
+  for (std::size_t i = 2; i < keys.list.size(); ++i) {
+    if (foldable(keys.list[i], dir) && record.values[i].numeric()) {
+      record.values[i] = scaled(record.values[i], m, (keys.list[i].merge & dir.par) != 0);
+      absorbed = true;
+    }
+  }
+  if (absorbed) {
+    set_count(record, dir.count, 1);
+  }
+}
+
+/// Combines the additive values of `record` into `into`.
+void combine_into(Record& into, const Record& record, const Keys& keys, const Direction& dir) {
+  for (std::size_t i = 2; i < keys.list.size(); ++i) {
+    if (foldable(keys.list[i], dir)) {
+      into.values[i] = combine(into.values[i], record.values[i], (keys.list[i].merge & dir.par) != 0);
+    }
+  }
+}
+
 }  // namespace
 
 void fold(Network& network, const Keys& keys, bool series, const PropertySettings& settings) {
   const Direction dir = direction(series);
   for (auto& record : network) {
-    // A record with no additive value to absorb the multiplier keeps it,
-    // so an M (or S) difference stays a difference (Hefesto choice where
-    // the spec is silent).
-    bool absorbed = false;
-    const std::int64_t m = count_of(record, dir.count);
-    for (std::size_t i = 2; i < keys.list.size(); ++i) {
-      if (foldable(keys.list[i], dir) && record.values[i].numeric()) {
-        record.values[i] = scaled(record.values[i], m, (keys.list[i].merge & dir.par) != 0);
-        absorbed = true;
-      }
-    }
-    if (absorbed) {
-      set_count(record, dir.count, 1);
-    }
+    absorb_count(record, keys, dir);
   }
   Network out;
   for (auto& record : network) {
     if (out.empty() || !collapsible(out.back(), record, keys, dir, settings)) {
       out.push_back(std::move(record));
-      continue;
-    }
-    for (std::size_t i = 2; i < keys.list.size(); ++i) {
-      if (foldable(keys.list[i], dir)) {
-        out.back().values[i] = combine(out.back().values[i], record.values[i], (keys.list[i].merge & dir.par) != 0);
-      }
+    } else {
+      combine_into(out.back(), record, keys, dir);
     }
   }
   network = std::move(out);

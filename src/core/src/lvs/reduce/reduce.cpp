@@ -9,6 +9,7 @@
 
 #include "hefesto/lvs/reduce/reduce.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <map>
 #include <utility>
@@ -102,6 +103,31 @@ std::string file_label(const Cell& cell) {
 
 }  // namespace reduce_detail
 
+namespace {
+
+/// True when `a` and `b`, in either order, are a declared permutable pair.
+bool permute_declared(const Cell& cell, const std::string& a, const std::string& b) {
+  const bool fold = cell.flags.case_insensitive;
+  return std::any_of(cell.permutes.begin(), cell.permutes.end(), [&](const PinPair& pair) {
+    const bool same = names_equal(pair.first, a, fold) && names_equal(pair.second, b, fold);
+    const bool swapped = names_equal(pair.first, b, fold) && names_equal(pair.second, a, fold);
+    return same || swapped;
+  });
+}
+
+/// The real ports of `cell` by the net they are on, in port order.
+std::map<NetId, std::vector<std::size_t>> ports_by_net(const Cell& cell) {
+  std::map<NetId, std::vector<std::size_t>> by_net;
+  for (std::size_t i = 0; i < cell.ports.size(); ++i) {
+    if (cell.ports[i].net != kNoNet && !cell.ports[i].proxy) {
+      by_net[cell.ports[i].net].push_back(i);
+    }
+  }
+  return by_net;
+}
+
+}  // namespace
+
 ReductionSummary reduce(NetlistDb& db, CellId cell, const ReduceOptions& options) {
   ReductionSummary summary;
   parallel_pass(db, cell, options, summary);
@@ -124,29 +150,11 @@ ReductionSummary reduce(NetlistDb& db, CellId cell, const ReduceOptions& options
 std::vector<std::string> declare_shorted_ports(NetlistDb& db, CellId id) {
   Cell& cell = db.cells.at(id);
   std::vector<std::string> messages;
-  std::map<NetId, std::vector<std::size_t>> by_net;
-  for (std::size_t i = 0; i < cell.ports.size(); ++i) {
-    if (cell.ports[i].net != kNoNet && !cell.ports[i].proxy) {
-      by_net[cell.ports[i].net].push_back(i);
-    }
-  }
-  const auto declared = [&cell](const std::string& a, const std::string& b) {
-    for (const auto& pair : cell.permutes) {
-      const bool same = names_equal(pair.first, a, cell.flags.case_insensitive) &&
-                        names_equal(pair.second, b, cell.flags.case_insensitive);
-      const bool swapped = names_equal(pair.first, b, cell.flags.case_insensitive) &&
-                           names_equal(pair.second, a, cell.flags.case_insensitive);
-      if (same || swapped) {
-        return true;
-      }
-    }
-    return false;
-  };
-  for (const auto& [net, ports] : by_net) {
+  for (const auto& [net, ports] : ports_by_net(cell)) {
     for (std::size_t k = 1; k < ports.size(); ++k) {
       const std::string& a = cell.ports[ports[k - 1]].name;
       const std::string& b = cell.ports[ports[k]].name;
-      if (names_equal(a, b, cell.flags.case_insensitive) || declared(a, b)) {
+      if (names_equal(a, b, cell.flags.case_insensitive) || permute_declared(cell, a, b)) {
         continue;
       }
       cell.permutes.push_back(PinPair{a, b});

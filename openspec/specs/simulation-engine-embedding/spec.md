@@ -433,9 +433,16 @@ The worker SHALL send its heartbeat from a thread that does not call the engine 
 
 Each limit SHALL be a setting that can be lowered. A violation SHALL be handled as a fault (Requirement "Crash containment on desktop"). The core SHALL parse every frame defensively: no frame content, however malformed, SHALL crash the core or make it read outside the frame.
 
+A worker SHALL NOT be able to grow the core's memory or hold the core's thread by the number of frames it sends: the events queued between two applications on the owning thread SHALL be bounded, and one application SHALL handle a bounded number of event batches and return, leaving later events for the next one.
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-21, Q-SIM-25.)
+
+#### Scenario: Flooding worker
+- **GIVEN** a worker that keeps sending state frames while its job runs
+- **WHEN** the core applies the queued events
+- **THEN** the application SHALL return while the worker is still sending, and the event queue SHALL stay within its bound
 
 #### Scenario: Stuck worker
 - **GIVEN** a worker that stops sending heartbeats while a job runs

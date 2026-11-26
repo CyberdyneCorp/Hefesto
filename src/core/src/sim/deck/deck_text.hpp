@@ -44,20 +44,28 @@ struct IncludeContext {
   std::string base_dir;   // relative paths of the top-level lines
   DeckLimits limits;
   std::string source;     // the name of the top-level text in diagnostics
+  // Added in the M9 R2 fix pass:
+  std::string pdk_store;  // `.lib` files must lie below it (until task 13.2)
+  bool title = false;     // the first top-level line is a deck title: kept as is
+  std::size_t depth = 1;  // the level of the top-level lines (0: they are not a file)
 };
 
 /// Replaces every `.include` / `.inc` line by the file's lines (resolved
 /// against the including file's directory; the top level against
 /// `base_dir`), recursively. SIM-DECK-001 for a file that cannot be read,
 /// SIM-DECK-002 past the include depth (an include loop ends there),
-/// SIM-DECK-003 when the result passes the deck size limit.
+/// SIM-DECK-003 when the result passes the deck size limit, SIM-DECK-014
+/// past the include count. A `.lib <file> <section>` line with a relative
+/// file is rewritten with the absolute path, quoted; SIM-DECK-016 when the
+/// file is not below the PDK store.
 [[nodiscard]] diag::Outcome<std::vector<std::string>> inline_includes(const std::vector<std::string>& lines,
                                                                       const IncludeContext& context);
 
 /// Q-SIM-9: rejects a `.control` section that holds a forbidden command
 /// (SIM-DECK-004) and, unless `allow_control`, removes the others with the
 /// warning SIM-DECK-005 `Removed .control section (lines <a>-<b>)` (1-based
-/// line numbers of `lines`).
+/// line numbers of `lines`). The first line is the deck's title and is
+/// kept as is.
 [[nodiscard]] diag::Status sanitise(std::vector<std::string>& lines, bool allow_control,
                                     std::vector<diag::Diagnostic>& warnings);
 
@@ -70,8 +78,13 @@ struct IncludeContext {
 
 /// "Deck delivery": lines longer than kMaxDeliveredLine split with `+`
 /// continuation lines at a space boundary (a line without one is split
-/// at the limit).
+/// at the limit). The title line and comment lines are cut at the limit
+/// instead: ngspice would join a `+` line to the previous card.
 [[nodiscard]] std::vector<std::string> split_long_lines(const std::vector<std::string>& lines);
+
+/// SIM-DECK-015 when a line holds a newline, carriage return or NUL: the
+/// lines would not be the lines the engine parses.
+[[nodiscard]] diag::Status check_line_breaks(const std::vector<std::string>& lines);
 
 /// The deck's size as text: every line and its newline.
 [[nodiscard]] std::size_t deck_bytes(const std::vector<std::string>& lines);

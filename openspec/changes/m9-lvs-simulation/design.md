@@ -777,7 +777,7 @@ Branch `m9-round2-lvs`, LVS implementation team (Q-LVS-30 clean room: written fr
   - the device count starts from `NetlistDb::instance_count()`.
 
   Tests now pin each boundary in both modes. The only change is the device-limit text, which now names the netlist database.
-- **Cognitive complexity.** Every new function is at most 15 (clang-tidy `readability-function-cognitive-complexity`). Nothing is flagged as irreducible.
+- **Cognitive complexity.** As first landed, eight new functions were above 15 (clang-tidy `readability-function-cognitive-complexity`, measured by the R2 review): `link_swap_partners` 26, `resolve_by_name` 21, `symmetries` 20, `port_errors` 19, `check_missing_records` 19, `declare_shorted_ports` 19, `check_properties` 18 and `fold` 18. The R2 fix pass split each into helpers with the same behaviour; every function in `src/core/src/lvs/` and `src/core/src/sim/` changed by the round is now at most 15, and none is flagged as irreducible.
 
 ### As landed (SIMENG, SIMDECK, SIMRES; M9 R2)
 
@@ -805,6 +805,19 @@ Branch `m9-round2-simcore`. Team: neither LVS team (the simulation specs come fr
 - `ResultStore`: `write_raw` writes `<root>/<job id>/result.raw`; `read_raw` refuses files above 4 GiB (`kMaxRawImportBytes`) and imports within `kDesktopResultBudget`; `export_csv`; `measure_waveform`. Codes `SIM-RESULT-001`..`010`. `WaveformMeasure::target` added for `delay`.
 - `fuzz_sim_raw`: parse with a 1 MiB budget, then every plot written as binary must read back bit for bit; ASCII, CSV and two measurements run on it.
 - Open (13.3): `deck.spice`, `log.txt` and `job.json` of "Result storage" (the job store), saved-vector modes and the streaming budget cancel of "Saved vectors and memory budget" (needs the `.save` composition and the Q-SIM-25 budget decision), the `partial` marking of cancelled results, the 10 Hz UI throttle, and the SIM-RES and SIM-RUN golden cases.
+
+**Review fixes (M9 R2 fix pass, branch `m9-round2`).** These amend the SIMENG, SIMDECK, SIMRES and LVS notes above. Every fix has a regression test named in the round report.
+- SIMENG: `poll()` takes at most `kMaxPollPasses` (4) batches of events, so a worker that keeps sending frames can no longer hold the owning thread inside `poll()` (the R2 state-event bound limited the queue, not the time). In practice the owning thread drained the queue faster than a sender filled it, so the regression test uses a test seam, `JobManagerOptions::on_events_taken`, to send a line after every taken batch (1001 batches in one `poll()` before the fix, 4 after). Job ids must be one safe path component (1 to 255 bytes, not `.` or `..`, no `/`, backslash, `:` or control character; `is_safe_job_id` in `job.hpp`), because an id names the job's folder in the result store: `SIM-ENGINE-038` from `submit`, and `SIM-RESULT-009` from `ResultStore::write_raw`.
+- SIMD: the adapter no longer copies every vector name of every `SendData` point; the point refers to ngspice's own names for the call and reuses one buffer per thread, and `hefesto-simd` copies only the points it keeps.
+- SIMDECK:
+  - A deck line holding a newline, carriage return or NUL is refused (`SIM-DECK-015`) before sanitisation, so a testbench string cannot carry a `.control` section past Q-SIM-9 and the deck hash covers the lines the engine parses.
+  - A raw deck's first line is its title: it is neither inlined nor sanitised, and it is cut, not continued, when it is too long.
+  - Includes are counted (`SIM-DECK-014`, 65 536 reads per deck, `DeckLimits::max_includes`), as `LVS-READ-025` counts them (standing rule on crafted-input limits): files that each include the next twice no longer make the work grow exponentially below the depth limit.
+  - Limits: a setting of zero or above twice its default is refused (`SIM-DECK-017`, the D18 rule; `check_limits` replaces `clamped`, which silently clamped any raise). The include depth counts the top file (the raw deck, or the DUT file of a `spice` source) as level 1 for both sources, as LVS does.
+  - `.lib`: a relative `.lib <file> <section>` is made absolute (quoted) against the directory of the file that holds it, so a library line of an inlined file still resolves where it did. Until task 13.2 inlines and sanitises library files, a `.lib` file outside `DeckContext::pdk_store` is refused (`SIM-DECK-016`): its `.control` sections would otherwise reach the engine unchecked. **Deviation** from "Deck validation and sanitisation": a deck with a `.lib` line skips the undefined-subcircuit check for every call, not only for names defined in PDK libraries, because the names a PDK library defines are not known before task 13.2 reads it.
+  - A comment line longer than the delivery limit is cut, not continued with `+` (ngspice would join the continuation to the previous card).
+- SIMRES: raw import charges each variable's `Vector` object and its name and type against the result budget, not only its values (a header of many variables and 0 points passed the check before). Measurements accept a descending scale (`value_at`, `avg`, `rms` work on the range between the first and the last x; `cross` keeps the sweep order), and `measure_extreme` returns `min` and `max` with the first x where they occur.
+- LVSALG: the symmetry-resolution stages poll the cancel token per class and per reference vertex, and stage (b)/(c) sizes its `used` marks by the class, not by the number of nets. Stage (a) stays quadratic in the size of a class whose properties differ, because property matching with a tolerance is not an equivalence relation and cannot be grouped by a key; the device-count limit and the cancel token bound it.
 
 ## Risks / Trade-offs
 

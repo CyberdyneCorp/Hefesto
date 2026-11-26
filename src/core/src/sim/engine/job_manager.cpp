@@ -142,14 +142,19 @@ struct JobManager::Impl {
   }
 
   [[nodiscard]] diag::Outcome<JobId> make_id(const JobOptions& opts) const {
-    if (opts.run_set_point) {
-      if (index.contains(*opts.run_set_point)) {
-        return diag::make("SIM-ENGINE-036", "job " + *opts.run_set_point + " already exists");
-      }
-      return *opts.run_set_point;
+    JobId id = opts.run_set_point.value_or(timestamp(now()) + "-" + opts.testbench + "-" + opts.corner);
+    // M9 R2 review: the id becomes a folder name of the result store (with
+    // room for a collision suffix).
+    if (!is_safe_job_id(id) || !is_safe_job_id(id + "-99999")) {
+      return diag::make("SIM-ENGINE-038", "job id '" + id + "' is not a single safe path component");
     }
-    const JobId base = timestamp(now()) + "-" + opts.testbench + "-" + opts.corner;
-    JobId id = base;
+    if (opts.run_set_point) {
+      if (index.contains(id)) {
+        return diag::make("SIM-ENGINE-036", "job " + id + " already exists");
+      }
+      return id;
+    }
+    const JobId base = id;
     for (std::size_t n = 2; index.contains(id); ++n) {
       id = base + "-" + std::to_string(n);
     }
@@ -584,6 +589,9 @@ struct JobManager::Impl {
 
   std::size_t apply_events() {
     std::vector<EngineEvent> batch = events.take();
+    if (options.on_events_taken) {
+      options.on_events_taken();
+    }
     for (EngineEvent& event : batch) {
       apply(std::move(event));
     }
@@ -695,13 +703,14 @@ std::size_t JobManager::poll_for(std::chrono::milliseconds timeout) {
 
 std::size_t JobManager::poll() {
   std::size_t total = 0;
-  for (;;) {
+  for (std::size_t pass = 0; pass < kMaxPollPasses; ++pass) {
     const std::size_t n = impl_->apply_events() + impl_->start_jobs();
     if (n == 0) {
-      return total;
+      break;
     }
     total += n;
   }
+  return total;
 }
 
 diag::Status JobManager::cancel(const JobId& id) {

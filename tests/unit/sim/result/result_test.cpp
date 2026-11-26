@@ -134,10 +134,34 @@ TEST_CASE("Raw import stays within the result budget before allocating",
   const auto plots = sim::parse_raw(text, "huge.raw");
   REQUIRE_FALSE(plots.ok());
   CHECK(plots.error().code == "SIM-RESULT-003");
+  // The budget counts the Vector, its name and type, and its values.
   sim::Plot small{"p", {real("time", "time", {0, 1, 2, 3})}};
   const std::string ok = sim::render_raw({small}, fixed(true)).value();
-  CHECK(sim::parse_raw(ok, "r.raw", 32).ok());
-  CHECK(sim::parse_raw(ok, "r.raw", 31).error().code == "SIM-RESULT-003");
+  const std::uint64_t need = sizeof(sim::Vector) + 4 + 4 + 32;
+  CHECK(sim::parse_raw(ok, "r.raw", need).ok());
+  CHECK(sim::parse_raw(ok, "r.raw", need - 1).error().code == "SIM-RESULT-003");
+}
+
+// Regression (M9 R2 review): only values were counted, so `No. Points: 0`
+// let any number of variables through, each a Vector of about 100 bytes
+// built from about 7 bytes of input.
+TEST_CASE("Raw import counts each variable against the result budget, also with no points",
+          "[cap:simulation-analyses-and-results][req:Raw file import]") {
+  const std::string many =
+      "Title: t\nPlotname: p\nFlags: real\nNo. Variables: 100000000\nNo. Points: 0\nVariables:\n";
+  const auto plots = sim::parse_raw(many, "many.raw");
+  REQUIRE_FALSE(plots.ok());
+  CHECK(plots.error().code == "SIM-RESULT-003");
+  CHECK(plots.error().text == "many.raw: 100000000 variables of 0 points exceed the result budget of 4294967296 bytes");
+  // Long names are charged as they are read.
+  const std::string names = "Title: t\nPlotname: p\nFlags: real\nNo. Variables: 2\nNo. Points: 0\nVariables:\n"
+                            "\t0\ttime\ttime\n\t1\t" +
+                            std::string(4096, 'n') + "\tvoltage\nValues:\n";
+  const auto long_names = sim::parse_raw(names, "names.raw", 2 * sizeof(sim::Vector) + 4096);
+  REQUIRE_FALSE(long_names.ok());
+  CHECK(long_names.error().text == "names.raw: the names of 2 variables exceed the result budget of " +
+                                       std::to_string(2 * sizeof(sim::Vector) + 4096) + " bytes");
+  CHECK(sim::parse_raw(names, "names.raw", 2 * sizeof(sim::Vector) + 4096 + 15).ok());
 }
 
 TEST_CASE("ResultStore writes result.raw per job and imports it",
@@ -153,6 +177,21 @@ TEST_CASE("ResultStore writes result.raw per job and imports it",
   REQUIRE(store.export_csv(dc_plot(), "/proj/out.csv").ok());
   CHECK(files.read("/proj/out.csv").value() == "v(in),v(out)\n0,0\n1,0.5\n");
   CHECK(sim::ResultStore{}.write_raw("j", dc_plot()).error().code == "SIM-RESULT-009");
+}
+
+// Regression (M9 R2 review): the folder was `root / job` with an unchecked
+// job id, so `../x` or an absolute id escaped the result store.
+TEST_CASE("ResultStore refuses a job id that is not one path component",
+          "[cap:simulation-analyses-and-results][req:Result storage]") {
+  platform::MemoryFileSystem files;
+  REQUIRE(files.create_directories("/proj/simulations/tb").ok());
+  const sim::ResultStore store{&files, "/proj/simulations/tb"};
+  for (const char* id : {"../../x", "/etc", "..", "a/b", "a\\b", ""}) {
+    const auto written = store.write_raw(id, dc_plot());
+    REQUIRE_FALSE(written.ok());
+    CHECK(written.error().code == "SIM-RESULT-009");
+  }
+  CHECK_FALSE(files.exists("/proj/x"));
 }
 
 TEST_CASE("Transient CSV", "[cap:simulation-analyses-and-results][req:CSV export]") {
@@ -195,6 +234,29 @@ TEST_CASE("Triangle wave", "[cap:simulation-analyses-and-results][req:Waveform m
   CHECK(store.measure_waveform(plot, {"value_at", "y", {5}, {}, {}}).error().code == "SIM-RESULT-006");
   CHECK(store.measure_waveform(plot, {"median", "y", {}, {}, {}}).error().code == "SIM-RESULT-008");
   CHECK(store.measure_waveform(plot, {"max", "z", {}, {}, {}}).error().code == "SIM-RESULT-005");
+}
+
+// Regression (M9 R2 review): value_at, avg and rms assumed an ascending
+// scale, so a `.dc V1 1 0 -0.1` sweep failed them all; min and max did not
+// give the x of the extreme the spec table asks for.
+TEST_CASE("Measurements on a descending sweep, and the x of min and max",
+          "[cap:simulation-analyses-and-results][req:Waveform measurements]") {
+  const sim::Plot plot{"dc1", {real("v-sweep", "voltage", {2, 1, 0}), real("y", "notype", {0, 2, 0})}};
+  const sim::ResultStore store;
+  CHECK(store.measure_waveform(plot, {"value_at", "y", {1.75}, {}, {}}).value() == 0.5);
+  CHECK(store.measure_waveform(plot, {"avg", "y", {}, {}, {}}).value() == 1.0);
+  CHECK(store.measure_waveform(plot, {"avg", "y", {0.5, 1.5}, {}, {}}).value() == 1.5);
+  CHECK_THAT(store.measure_waveform(plot, {"rms", "y", {}, {}, {}}).value(), WithinRel(std::sqrt(4.0 / 3.0), 1e-12));
+  CHECK(store.measure_waveform(plot, {"value_at", "y", {3}, {}, {}}).error().text == "value_at 3 is outside [0, 2]");
+  // cross keeps the sweep order: y rises first as the sweep goes from 2 to 1.
+  CHECK(store.measure_waveform(plot, {"cross", "y", {1, 1, 1}, {}, {}}).value() == 1.5);
+  const auto max = sim::measure_extreme(plot, {"max", "y", {}, {}, {}});
+  REQUIRE(max.ok());
+  CHECK(max.value().value == 2.0);
+  CHECK(max.value().x == 1.0);
+  const auto min = sim::measure_extreme(plot, {"min", "y", {}, {}, {}});
+  CHECK(min.value().x == 2.0);  // the first x where it occurs
+  CHECK(sim::measure_extreme(plot, {"avg", "y", {}, {}, {}}).error().code == "SIM-RESULT-006");
 }
 
 TEST_CASE("A sample equal to the level counts once, in the direction of the next differing sample",

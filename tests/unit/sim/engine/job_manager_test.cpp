@@ -206,6 +206,9 @@ class FakeEngine final : public sim::Engine {
     return diag::Done{};
   }
 
+  /// One output line of the running job, as its worker sends it.
+  void send_line(std::string_view line) { callbacks_.on_output(line); }
+
   /// The held analysis ends by itself (its `loaded` event is queued).
   void end_run() {
     running_ = false;
@@ -754,6 +757,56 @@ TEST_CASE("A fault inside a flood of state frames still replaces the worker",
   CHECK(has_code(*jobs.record(id), "SIM-ENGINE-030", "simulation engine terminated"));
   CHECK(jobs.state(next) == sim::JobState::completed);
   CHECK(host.started == 2);
+}
+
+// Regression (security, M9 R2 review): poll() applied event batches until
+// one pass found nothing, so a worker that kept sending frames held the
+// owning thread inside poll() for as long as it sent.
+TEST_CASE("poll() returns while a worker is still sending",
+          "[cap:simulation-engine-embedding][req:Worker channel limits]") {
+  FakeHost host;
+  sim::JobManagerOptions o = options(host);
+  // A worker that always has sent more by the time a batch is taken: each
+  // taken batch is followed by a new line from the running job's engine.
+  // Bounded at 1000 lines, so that a poll() without its own bound ends.
+  std::size_t taken = 0;
+  bool sending = false;
+  o.on_events_taken = [&] {
+    ++taken;
+    if (sending && taken < 1000) {
+      host.last->send_line("Note: still sending");
+    }
+  };
+  sim::JobManager jobs(std::move(o));
+  const sim::JobId id = submit(jobs, "* hold");
+  settle(jobs);
+  REQUIRE(jobs.state(id) == sim::JobState::running);
+  sending = true;
+  taken = 0;
+  host.last->send_line("Note: first");
+  jobs.poll();
+  CHECK(taken == sim::kMaxPollPasses);
+  sending = false;
+  settle(jobs);
+  REQUIRE(jobs.cancel(id).ok());
+  settle(jobs);
+  CHECK(jobs.state(id) == sim::JobState::cancelled);
+}
+
+// Regression (M9 R2 review): job ids were not checked, and a job id names
+// the job's folder in the result store.
+TEST_CASE("A job id that is not one safe path component is refused",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  const auto bad_bench = jobs.submit(deck("* ok"), sim::JobOptions{"../../x", "tt", std::nullopt});
+  REQUIRE_FALSE(bad_bench.ok());
+  CHECK(bad_bench.error().code == "SIM-ENGINE-038");
+  const auto bad_point = jobs.submit(deck("* ok"), sim::JobOptions{"tb", "tt", std::string{".."}});
+  CHECK(bad_point.error().code == "SIM-ENGINE-038");
+  const auto absolute = jobs.submit(deck("* ok"), sim::JobOptions{"tb", "tt", std::string{"/tmp/x"}});
+  CHECK(absolute.error().code == "SIM-ENGINE-038");
+  CHECK(jobs.submit(deck("* ok"), sim::JobOptions{"tb", "tt", std::string{"rs1-p0"}}).ok());
 }
 
 // M9 R1 follow-up: poll() ran the factory (the worker handshake) and the

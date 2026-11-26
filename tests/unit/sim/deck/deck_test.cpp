@@ -41,6 +41,7 @@ struct Fixture {
     REQUIRE(files.write_atomic("/proj/inv.spice", kInv).ok());
     context.files = &files;
     context.base_dir = "/proj";
+    context.pdk_store = "/pdk";
   }
 
   void write(const std::string& path, const std::string& text) { REQUIRE(files.write_atomic(path, text).ok()); }
@@ -278,9 +279,134 @@ TEST_CASE("Deck limits can be lowered, never raised", "[cap:simulation-netlist-p
   f.write("/proj/two.inc", "R1 a 0 1\n");
   CHECK(sim::prepare(raw_bench({"* t", ".include one.inc", ".op", ".end"}), f.context).error().code ==
         "SIM-DECK-002");
-  const sim::DeckLimits raised = sim::clamped(sim::DeckLimits{std::size_t{1} << 40, 1000});
-  CHECK(raised.max_deck_bytes == sim::kMaxPreparedDeckBytes);
-  CHECK(raised.max_include_depth == sim::kMaxDeckIncludeDepth);
+}
+
+// Regression (M9 R2 review): a raise was silently clamped to the default,
+// while design D18 allows up to twice the default and LVS refuses more
+// (LVS-READ-022).
+TEST_CASE("A deck limit may be raised up to twice its default, not further",
+          "[cap:simulation-netlist-preparation][req:Deck limits]") {
+  Fixture f;
+  const sim::Testbench tb = raw_bench({"* t", "R1 a 0 1", ".op", ".end"});
+  f.context.limits = sim::DeckLimits{2 * sim::kMaxPreparedDeckBytes, 2 * sim::kMaxDeckIncludeDepth,
+                                     2 * sim::kMaxDeckIncludes};
+  CHECK(sim::prepare(tb, f.context).ok());
+  f.context.limits.max_include_depth = 2 * sim::kMaxDeckIncludeDepth + 1;
+  const auto deeper = sim::prepare(tb, f.context);
+  REQUIRE_FALSE(deeper.ok());
+  CHECK(deeper.error().code == "SIM-DECK-017");
+  CHECK(deeper.error().text == "include depth limit 65 is zero or above twice its default 32");
+  f.context.limits = sim::DeckLimits{};
+  f.context.limits.max_includes = 0;
+  CHECK(sim::prepare(tb, f.context).error().code == "SIM-DECK-017");
+}
+
+// Regression (M9 R2 review): a raw deck's top file was level 0 while a
+// spice source's DUT file was level 1. Both are level 1 now, as in LVS.
+TEST_CASE("The include depth counts the top file for raw and spice sources alike",
+          "[cap:simulation-netlist-preparation][req:Deck limits]") {
+  Fixture f;
+  f.context.limits.max_include_depth = 2;
+  f.write("/proj/one.inc", ".include two.inc\n");
+  f.write("/proj/two.inc", "R1 a 0 1\n");
+  const auto raw_two = sim::prepare(raw_bench({"* t", ".include two.inc", ".op", ".end"}), f.context);
+  CHECK(raw_two.ok());
+  const auto raw_three = sim::prepare(raw_bench({"* t", ".include one.inc", ".op", ".end"}), f.context);
+  REQUIRE_FALSE(raw_three.ok());
+  CHECK(raw_three.error().text == "include depth limit 2 exceeded by /proj/two.inc (/proj/one.inc:1)");
+  f.write("/proj/inv.spice", std::string{kInv} + ".include two.inc\n");
+  CHECK(sim::prepare(inverter_bench(), f.context).ok());
+  f.write("/proj/inv.spice", std::string{kInv} + ".include one.inc\n");
+  const auto spice_three = sim::prepare(inverter_bench(), f.context);
+  REQUIRE_FALSE(spice_three.ok());
+  CHECK(spice_three.error().text == "include depth limit 2 exceeded by /proj/two.inc (/proj/one.inc:1)");
+}
+
+// Regression (M9 R2 review, standing rule on crafted-input limits): files
+// that each include the next twice grew the work exponentially below the
+// depth limit; only the 256 MiB output cap stopped it, after millions of
+// reads.
+TEST_CASE("Deck includes are counted", "[cap:simulation-netlist-preparation][req:Deck limits]") {
+  Fixture f;
+  for (int level = 0; level < 20; ++level) {
+    const std::string next = "f" + std::to_string(level + 1) + ".inc";
+    f.write("/proj/f" + std::to_string(level) + ".inc", ".include " + next + "\n.include " + next + "\n");
+  }
+  f.write("/proj/f20.inc", "R1 a 0 1\n");
+  const auto deck = sim::prepare(raw_bench({"* t", ".include f0.inc", ".op", ".end"}), f.context);
+  REQUIRE_FALSE(deck.ok());
+  CHECK(deck.error().code == "SIM-DECK-014");
+  CHECK(deck.error().text.starts_with("include count limit 65536 exceeded by /proj/f"));
+}
+
+// Regression (M9 R2 review): testbench strings were copied into deck lines
+// unchecked, so one entry could carry a `.control` section past Q-SIM-9's
+// line-by-line sanitisation, and the deck hash was that of the split text.
+TEST_CASE("A deck line holding a line break is refused",
+          "[cap:simulation-netlist-preparation][req:Deck validation and sanitisation]") {
+  Fixture f;
+  sim::Testbench tb = inverter_bench();
+  tb.saves = {"v(out)\n.control\nshell rm -rf ~\n.endc"};
+  const auto deck = sim::prepare(tb, f.context);
+  REQUIRE_FALSE(deck.ok());
+  CHECK(deck.error().code == "SIM-DECK-015");
+  tb = inverter_bench();
+  tb.name = "inv\r.control";
+  CHECK(sim::prepare(tb, f.context).error().code == "SIM-DECK-015");
+  const auto raw = sim::prepare(raw_bench({"* t", std::string{"R1 a 0 1\0x", 10}, ".op", ".end"}), f.context);
+  REQUIRE_FALSE(raw.ok());
+  CHECK(raw.error().text == "line 2 of the deck holds a newline, carriage return or NUL character");
+}
+
+// Regression (M9 R2 review): `.lib` lines of an inlined file kept their
+// relative path, which then resolved against the deck's folder; and a user
+// `.lib` file was never sanitised.
+TEST_CASE("Relative .lib paths become absolute, and .lib files must lie in the PDK store",
+          "[cap:simulation-netlist-preparation][req:Model library resolution]") {
+  Fixture f;
+  f.write("/pdk/sky130A/models/corner.inc", ".lib ../libs/models.lib tt\n");
+  const auto deck = sim::prepare(
+      raw_bench({"* t", ".include /pdk/sky130A/models/corner.inc", "X1 a b nfet", ".op", ".end"}), f.context);
+  REQUIRE(deck.ok());
+  CHECK(contains(deck.value().lines, ".lib \"/pdk/sky130A/libs/models.lib\" tt"));
+  const auto user = sim::prepare(raw_bench({"* t", ".lib mine.lib tt", ".op", ".end"}), f.context);
+  REQUIRE_FALSE(user.ok());
+  CHECK(user.error().code == "SIM-DECK-016");
+  CHECK(user.error().text == ".lib file /proj/mine.lib is outside the PDK store (raw deck:2)");
+  const auto escape = sim::prepare(raw_bench({"* t", ".lib /pdk/../etc/x.lib tt", ".op", ".end"}), f.context);
+  CHECK(escape.error().code == "SIM-DECK-016");
+  // `.lib <section>` opens a section of a library file: kept as it is.
+  f.write("/proj/sections.inc", ".lib tt\n.endl\n");
+  CHECK(sim::prepare(raw_bench({"* t", ".include sections.inc", "R1 a 0 1", ".op", ".end"}), f.context).ok());
+}
+
+// Regression (M9 R2 review): a comment longer than the delivery limit was
+// split into `*...` and `+...`, and ngspice joins a `+` line to the
+// previous card.
+TEST_CASE("A comment line longer than 65535 bytes is cut, not continued",
+          "[cap:simulation-netlist-preparation][req:Deck delivery]") {
+  Fixture f;
+  const std::string comment = "* " + std::string(70000, 'c') + " x";
+  const auto deck = sim::prepare(raw_bench({"* t", "R1 a 0 1", comment, ".op", ".end"}), f.context);
+  REQUIRE(deck.ok());
+  const std::vector<std::string>& l = deck.value().lines;
+  REQUIRE(l.size() == 5);
+  CHECK(l[2] == comment.substr(0, 65535));
+  CHECK(l[3] == ".op");
+}
+
+// Regression (M9 R2 review): ngspice never parses a deck's first line, but
+// it was inlined and sanitised as a card.
+TEST_CASE("A raw deck's title line is kept as it is",
+          "[cap:simulation-netlist-preparation][req:Raw decks]") {
+  Fixture f;
+  const auto include = sim::prepare(raw_bench({".include nope.spice", "R1 a 0 1", ".op", ".end"}), f.context);
+  REQUIRE(include.ok());
+  CHECK(include.value().lines.front() == ".include nope.spice");
+  const auto control = sim::prepare(raw_bench({".control", "R1 a 0 1", ".op", ".end"}), f.context);
+  REQUIRE(control.ok());
+  CHECK(control.value().lines.front() == ".control");
+  CHECK(control.value().diagnostics.empty());
 }
 
 TEST_CASE("Re-run is identical", "[cap:simulation-netlist-preparation][req:Deck delivery]") {

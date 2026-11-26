@@ -25,6 +25,9 @@ diag::Status ResultStore::write_raw(const JobId& job, const Plot& plot) const {
   if (files == nullptr) {
     return no_files();
   }
+  if (!is_safe_job_id(job)) {  // M9 R2 review: `root / job` must stay below root
+    return diag::make("SIM-RESULT-009", "job id '" + job + "' is not a single path component");
+  }
   RawWriteOptions options;
   options.title = job;
   auto text = render_raw({plot}, options);
