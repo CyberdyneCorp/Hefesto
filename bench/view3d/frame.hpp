@@ -10,7 +10,8 @@
 // the desktop tab frames it), orbiting the camera around z before each
 // frame, at level 0 and at level 1 (MSAA 4x: the geometry is drawn twice),
 // then again with a ghosted well (alpha 0.2) over the whole region
-// (Q-MISC-85).
+// (Q-MISC-85), and with a net overlay prism over the whole region (task
+// 10.4).
 //
 // Built only when the Vulkan renderer is (HEFESTO_BUILD_DESKTOP=ON, which
 // defines HEFESTO_VIEW3D_BENCH_FRAME); otherwise measure_frames reports why
@@ -34,7 +35,7 @@ struct FrameOptions {
 
 /// {"device", "width", "height", "upload_s", "first_frame_ms",
 ///  "level0": {"median_ms", "p95_ms", "min_ms", "fps", "runs_ms"}, "level1": {...},
-///  "level0_ghost": {...}, "level1_ghost": {...}},
+///  "level0_ghost": {...}, "level1_ghost": {...}, "level0_overlay": {...}, "level1_overlay": {...}},
 /// or {"error": "..."} when no Vulkan device or renderer is available.
 /// `bbox`: the region the default view fits.
 [[nodiscard]] nlohmann::json measure_frames(const view3d::MeshModel& mesh, const view3d::LayerStack& stack,
