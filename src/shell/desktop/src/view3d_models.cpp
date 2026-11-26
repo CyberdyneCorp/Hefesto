@@ -609,7 +609,7 @@ std::uint64_t selection_fingerprint(const select::Selection& selection) {
     h ^= v;
     h *= 1099511628211ULL;
   };
-  mix(static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(selection.root())));
+  mix(reinterpret_cast<std::uintptr_t>(selection.root()));
   const db::CellDef* def = selection.def();
   if (def == nullptr) return h;
   tech::TypeMask types = tech::TypeMask::all();
