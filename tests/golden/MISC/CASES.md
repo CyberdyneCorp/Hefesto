@@ -59,7 +59,7 @@ Cases to be captured by running Magic (fc5daa9e) headless. "minimal tech" means 
 | MISC-PLOT-08 | plot-output | `plot parameters pnmmaxmem 64` on a large region | messages, .pnm bytes (strips, forced downsampling) | PNM rasterisation (strips/downsampling) |
 | MISC-PLOT-09 | plot-output | pnm `draw m1 metal2` and `map m2 m1 poly` lines | .pnm pixel colours | PNM style lines (blending) |
 | MISC-PLOT-10 | plot-output | diagonal (split) tiles in PS and PNM | `tb` lines; pixel pattern | PostScript paint output; PNM rasterisation |
-| MISC-PLOT-11 | plot-output | tech without plot section; `plot postscript x.ps`, then `plot pnm x` (Magic exited 139 after the PNM warning in the first capture) | warning text, exit status, outputs when written | Technology plot section structure |
+| MISC-PLOT-11 | plot-output | tech without plot section; `plot postscript x.ps`, then `plot pnm x` (Magic exits 139 in both plots: no plot section) | warning text, exit status, outputs when written | Technology plot section structure |
 | MISC-PLOT-12 | plot-output | `plot svg v` under Cairo display | v.svg exists, dimensions | SVG plot |
 | MISC-PLOT-13 | plot-output | `plot`, `plot help`, `plot foo` in the Cairo variant (`plot versatec` is not run: Magic would rasterise and spool through `lp`) | stdout, stderr | Plot command and plotted region (Q-MISC-51: the `versatec` help lines are masked) |
 | MISC-PLOT-14 | plot-output | sky130A, `sky130_fd_sc_hd__inv_1`, `plot pnm inv` | inv.pnm, stdout | PNM rasterisation and file format; PNM style lines (`default`, `draw ... no_color_at_all`) |

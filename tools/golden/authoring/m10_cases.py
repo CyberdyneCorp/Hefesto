@@ -876,7 +876,9 @@ def plot_pnm_specs() -> list[TclCase]:
                   cells={"top": TWO_M1}, tech="noplot", tech_text=plot_section(None),
                   notes=["Capture run 45816703069: Magic exited 139 (SIGSEGV) after 'Warning:  No plot section in "
                          "techfile, using defaults.' in plot pnm (plot/plotPNM.c:600-604, default styles on -dnull). "
-                         "Crash fixed in both modes (standing rule); the files are collected only when written."]),
+                         "Capture run 45865742204 (PostScript first): plot postscript also exits 139, leaving an "
+                         "empty x.ps. Crash fixed in both modes (standing rule); the files are collected only when "
+                         "written."]),
     ]
 
 

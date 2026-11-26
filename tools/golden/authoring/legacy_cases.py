@@ -270,9 +270,9 @@ def search_specs() -> list[TclCase]:
              routed("iroute wizard expandEndpoints on", ab), cells={"top": DEST_AREA}, allow_nonzero_exit=True,
              outputs=("exitcode",), output_names={"exitcode": "exit.txt"},
              collect=(Collect(ROUTED, "bytes", ("mag-timestamp",)),),
-             notes=["Capture run 45817717718: Magic exited 139 (SIGSEGV) during the route. Crash fixed in both "
-                    "modes (standing rule); stdout shows the last probe that finished, and routed.mag is collected "
-                    "only when written."]),
+             notes=["Capture runs 45817717718 and 45865742204: Magic exits 139 (SIGSEGV) in iroute route with "
+                    "expandEndpoints on; routed.mag is never written. Crash fixed in both modes (standing rule); "
+                    "routed.mag is collected only when written."]),
         case("LEG-MZ-16", MAZE, ["Initial paths", "Contact extension"],
              "start A on an m2contact terminal, destination B on metal2 (initial contact use, Q-LEGACY-85)",
              routed(ab), cells={"top": CONTACT_START}, outputs=(ROUTED,)),
@@ -303,8 +303,9 @@ def command_specs() -> list[TclCase]:
              "status is recorded because its first capture ended in SIGSEGV (exit 139)",
              p("iroute route -foo", route("nosuch", "B"), route("A", "B")), cells={"top": CONNECTED},
              allow_nonzero_exit=True, outputs=("exitcode",), output_names={"exitcode": "exit.txt"},
-             notes=["Capture run 45817717718: Magic exited 139 (SIGSEGV) after \"Start label 'nosuch' not found.\". "
-                    "Crash fixed in both modes (standing rule); stdout shows the last probe that finished."]),
+             notes=["Capture runs 45817717718 and 45865742204: Magic exits 139 (SIGSEGV) in the third probe (start "
+                    "already connected to the destination), after \"Start label 'nosuch' not found.\". Crash fixed in "
+                    "both modes (standing rule); stdout shows the last probe that finished."]),
         case("LEG-MZ-21", IROUTE, ["iroute availability and dispatch", "iroute help",
                                    "Search, verbosity, version and wizard parameters"],
              "iroute help, help route, version, verbosity, verbosity 0 and 2, an unknown and an ambiguous "
