@@ -281,6 +281,8 @@ Depends on `mask-hints`, which is completed in M3.
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
 
 **Status (2026-11-22): plan drafted; every decision approved by the user on 2026-11-22 (G0 recorded on branch `m9-round0-decide`).**
+
+**Status (2026-11-26): in progress (implementation rounds 1 and 2).** Round 1 landed the worker `hefesto-simd`, the engine library and the SPICE/CDL LVS reader. Round 2 adds the LVS comparison, device reduction and property matching engines (library only; the `lvs` command waits for the hierarchy, report and setup layers), SPICE and raw deck preparation, raw results, CSV and waveform measurements, bounded worker events and off-thread loads, ngspice patch 0005 (`47-hefesto2`), the task 3.3 reference runs (Q-SIM-8, Q-SIMADV-3, -4, -9 verified), the second paraphrase signature and the Desktop Beta layout cell `beta_inv` per PDK. Open: the outside reviewer and the clean-room roster attestation (task 2.1), the LVS and SIM golden captures, the `lvs` and `sim` commands, model descriptors, layout/schematic sources, advanced analog and the desktop UI. Progress per task: `openspec/changes/m9-lvs-simulation/tasks.md`.
 - The plan is OpenSpec change [`openspec/changes/m9-lvs-simulation`](../openspec/changes/m9-lvs-simulation/README.md).
 - Its decisions are in [`docs/decisions/m9-decision-table.md`](decisions/m9-decision-table.md). They cover:
   - the 34 entries that `check_milestone_readiness.py --milestone M9` reports as blocking;
