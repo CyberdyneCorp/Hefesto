@@ -183,6 +183,12 @@ VertexInput input_for(Kind kind) {
                        {3, 0, kVec2, offsetof(GpuTriangle, height)},
                        {4, 0, kUint, offsetof(GpuTriangle, pick)}};
       break;
+    case Kind::overlay:
+      in.binding.stride = sizeof(GpuPrism);
+      in.attributes = {{0, 0, kVec4, offsetof(GpuPrism, x0)},
+                       {1, 0, kVec2, offsetof(GpuPrism, height)},
+                       {2, 0, kUint, offsetof(GpuPrism, layer)}};
+      break;
   }
   return in;
 }
@@ -194,6 +200,7 @@ struct VariantState {
   bool pick = true;
   bool blend = false;
   bool depth_write = true;
+  bool depth_test = true;
 };
 
 VariantState variant_state(Variant v) {
@@ -208,6 +215,10 @@ VariantState variant_state(Variant v) {
       return {true, true, false, false, true};
     case Variant::msaa_transparent:
       return {true, true, false, true, false};
+    case Variant::overlay:
+      return {false, true, false, true, false, false};
+    case Variant::msaa_overlay:
+      return {true, true, false, true, false, false};
   }
   return {};
 }
@@ -228,7 +239,9 @@ VkPipelineColorBlendAttachmentState color_blend(const VariantState& s) {
 }
 
 /// The fixed-function state of one pipeline: depth test LESS_OR_EQUAL
-/// (Q-MISC-77), back faces culled. The depth is mirrored so the viewer sits
+/// (Q-MISC-77; the overlay variants test nothing) with a dynamic depth bias
+/// that the renderer sets per layer (coplanar_bias, task 17.5; not on the
+/// overlay), back faces culled. The depth is mirrored so the viewer sits
 /// on the side of the higher layers (R1, Q-MISC-81), which reverses the
 /// screen winding of the faces it sees: they are the clockwise ones.
 struct FixedState {
@@ -241,7 +254,8 @@ struct FixedState {
   VkPipelineDepthStencilStateCreateInfo depth{};
   std::array<VkPipelineColorBlendAttachmentState, 2> blend_attachments{};
   VkPipelineColorBlendStateCreateInfo blend{};
-  std::array<VkDynamicState, 2> dynamic_states{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+  std::array<VkDynamicState, 3> dynamic_states{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
+                                               VK_DYNAMIC_STATE_DEPTH_BIAS};
   VkPipelineDynamicStateCreateInfo dynamic{};
 
   FixedState(Kind kind, const VariantState& s) : input(input_for(kind)) {
@@ -251,19 +265,21 @@ struct FixedState {
     vertex_input.vertexAttributeDescriptionCount = static_cast<std::uint32_t>(input.attributes.size());
     vertex_input.pVertexAttributeDescriptions = input.attributes.data();
     assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;  // one strip per instance
+    // One strip per instance; an overlay prism is a list of five faces.
+    assembly.topology = kind == Kind::overlay ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
     viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport.viewportCount = 1;
     viewport.scissorCount = 1;
     raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.cullMode = VK_CULL_MODE_BACK_BIT;
+    raster.depthBiasEnable = kind == Kind::overlay ? VK_FALSE : VK_TRUE;
     raster.frontFace = VK_FRONT_FACE_CLOCKWISE;  // the z-mirrored scene (R1, Q-MISC-84): faces toward the viewer above
     raster.lineWidth = 1.0F;
     multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisample.rasterizationSamples = s.msaa ? kMsaaSamples : VK_SAMPLE_COUNT_1_BIT;
     depth.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depth.depthTestEnable = VK_TRUE;
+    depth.depthTestEnable = s.depth_test ? VK_TRUE : VK_FALSE;
     depth.depthWriteEnable = s.depth_write ? VK_TRUE : VK_FALSE;
     depth.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;  // Q-MISC-77: the last coplanar style wins
     blend_attachments[kColorAttachment] = color_blend(s);
@@ -272,7 +288,7 @@ struct FixedState {
     blend.attachmentCount = s.msaa ? 1U : 2U;
     blend.pAttachments = blend_attachments.data();
     dynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamic.dynamicStateCount = static_cast<std::uint32_t>(dynamic_states.size());
+    dynamic.dynamicStateCount = kind == Kind::overlay ? 2U : static_cast<std::uint32_t>(dynamic_states.size());
     dynamic.pDynamicStates = dynamic_states.data();
   }
   FixedState(const FixedState&) = delete;
@@ -324,7 +340,7 @@ VkPipeline make_pipeline(VkDevice device, VkPipelineLayout layout, const Pipelin
 }
 
 bool is_msaa(Variant v) {
-  return v == Variant::msaa_opaque || v == Variant::msaa_transparent;
+  return v == Variant::msaa_opaque || v == Variant::msaa_transparent || v == Variant::msaa_overlay;
 }
 
 }  // namespace
@@ -390,6 +406,45 @@ void Pipelines::ensure_clipped() {
   have_clipped_ = true;
 }
 
+void Pipelines::ensure_overlay(bool clipped) {
+  auto& row = overlay_[clipped ? 1U : 0U];
+  if (row[0] != VK_NULL_HANDLE) {
+    return;
+  }
+  if (overlay_vert_ == VK_NULL_HANDLE) {
+    overlay_vert_ = make_shader(device_, spv::kMesh3dOverlayVertSpv, sizeof(spv::kMesh3dOverlayVertSpv));
+  }
+  try {
+    row[0] = make_pipeline(device_, layout_,
+                           PipelineSpec{Kind::overlay, Variant::overlay, overlay_vert_, frag_, target_pass_, clipped});
+    if (msaa_pass_ != VK_NULL_HANDLE) {
+      row[1] = make_pipeline(device_, layout_, PipelineSpec{Kind::overlay, Variant::msaa_overlay, overlay_vert_,
+                                                            msaa_frag_, msaa_pass_, clipped});
+    }
+  } catch (...) {
+    for (VkPipeline& p : row) {
+      if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
+      p = VK_NULL_HANDLE;
+    }
+    throw;
+  }
+}
+
+VkPipeline Pipelines::overlay(bool msaa, bool clipped) const noexcept {
+  return overlay_[clipped ? 1U : 0U][msaa ? 1U : 0U];
+}
+
+void Pipelines::destroy_overlay() noexcept {
+  for (auto& row : overlay_) {
+    for (VkPipeline& p : row) {
+      if (p != VK_NULL_HANDLE) vkDestroyPipeline(device_, p, nullptr);
+      p = VK_NULL_HANDLE;
+    }
+  }
+  if (overlay_vert_ != VK_NULL_HANDLE) vkDestroyShaderModule(device_, overlay_vert_, nullptr);
+  overlay_vert_ = VK_NULL_HANDLE;
+}
+
 void Pipelines::destroy_table(Table& table) noexcept {
   for (auto& row : table) {
     for (VkPipeline& p : row) {
@@ -403,6 +458,7 @@ void Pipelines::destroy() noexcept {
   destroy_table(pipelines_);
   destroy_table(clipped_);
   have_clipped_ = false;
+  destroy_overlay();
   if (msaa_pass_ != VK_NULL_HANDLE) vkDestroyRenderPass(device_, msaa_pass_, nullptr);
   if (layout_ != VK_NULL_HANDLE) vkDestroyPipelineLayout(device_, layout_, nullptr);
   if (set_layout_ != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(device_, set_layout_, nullptr);

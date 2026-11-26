@@ -16,9 +16,11 @@
 
 namespace hefesto::render::mesh3d {
 
-/// The three instanced pipelines.
-enum class Kind : std::uint8_t { rect, side, triangle };
-inline constexpr std::size_t kKindCount = 3;
+/// The three instanced pipelines of the mesh, and the net overlay's
+/// (DrawParams::net_overlay), which is not in the pipeline table: it is
+/// built on the first frame with an overlay.
+enum class Kind : std::uint8_t { rect, side, triangle, overlay };
+inline constexpr std::size_t kKindCount = 3;  // the mesh kinds (the table)
 
 /// The passes a pipeline is built for.
 enum class Variant : std::uint8_t {
@@ -27,8 +29,10 @@ enum class Variant : std::uint8_t {
   pick,              // target pass at level >= 1: pick and depth only
   msaa_opaque,       // multisampled color pass: color, depth writes
   msaa_transparent,  // multisampled color pass: blended color, no depth writes
+  overlay,           // target pass: blended color, no pick, no depth test or writes (Kind::overlay only)
+  msaa_overlay,      // multisampled color pass: the same
 };
-inline constexpr std::size_t kVariantCount = 5;
+inline constexpr std::size_t kVariantCount = 5;  // the table's variants (not the overlay's)
 
 inline constexpr VkSampleCountFlagBits kMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
 
@@ -49,6 +53,13 @@ struct GpuTriangle {
   std::uint32_t layer;
   float height, thickness;
   std::uint32_t pick;
+};
+
+/// One net-overlay prism (Kind::overlay), relative to the overlay's origin.
+struct GpuPrism {
+  float x0, y0, x1, y1;
+  float height, thickness;  // z_bottom, z_top - z_bottom (stack draw heights)
+  std::uint32_t layer;      // the overlay's GpuLayer entry
 };
 
 /// One entry of the layer storage buffer (std430).
@@ -72,9 +83,19 @@ static_assert(sizeof(FramePush) == 128);  // the 128 bytes every device offers
 
 /// Vertices per instance of each kind, drawn as one triangle strip: the
 /// face of a rectangle or a triangle toward the viewer (the shader picks
-/// the top or the bottom face), a side face's quad.
+/// the top or the bottom face), a side face's quad; an overlay prism is a
+/// triangle list (its face toward the viewer and four side faces).
 [[nodiscard]] constexpr std::uint32_t vertices_per_instance(Kind kind) noexcept {
-  return kind == Kind::triangle ? 3U : 4U;
+  switch (kind) {
+    case Kind::rect:
+    case Kind::side:
+      return 4U;
+    case Kind::triangle:
+      return 3U;
+    case Kind::overlay:
+      return 30U;
+  }
+  return 0U;
 }
 
 /// Shader modules, layouts, the multisampled pass and every pipeline.
@@ -94,6 +115,13 @@ class Pipelines {
   /// Builds the clipped variants on the first frame with a section plane,
   /// so a view that never clips pays neither their creation nor a discard.
   void ensure_clipped();
+  /// The net overlay's pipeline for the target pass or (`msaa`) the
+  /// multisampled pass, unclipped or clipped; VK_NULL_HANDLE until
+  /// ensure_overlay(clipped) made it (and for `msaa` without 4x MSAA).
+  [[nodiscard]] VkPipeline overlay(bool msaa, bool clipped) const noexcept;
+  /// Builds the overlay's shader and pipelines of one clip state on the
+  /// first frame that needs them, so a view without an overlay pays nothing.
+  void ensure_overlay(bool clipped);
   [[nodiscard]] VkPipelineLayout layout() const noexcept { return layout_; }
   [[nodiscard]] VkDescriptorSetLayout set_layout() const noexcept { return set_layout_; }
   /// The multisampled color pass: 4x color and depth, resolved into the
@@ -106,6 +134,7 @@ class Pipelines {
   void create(VkRenderPass target_pass);
   void create_table(bool clipped, Table& out);
   void destroy_table(Table& table) noexcept;
+  void destroy_overlay() noexcept;
   void destroy() noexcept;
 
   VkPhysicalDevice physical_ = VK_NULL_HANDLE;
@@ -120,6 +149,8 @@ class Pipelines {
   Table pipelines_{};
   Table clipped_{};
   bool have_clipped_ = false;
+  VkShaderModule overlay_vert_ = VK_NULL_HANDLE;
+  std::array<std::array<VkPipeline, 2>, 2> overlay_{};  // [clipped][msaa]
 };
 
 /// The multisampled color and depth images of one size (transient).

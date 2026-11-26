@@ -32,6 +32,7 @@ OUTPUTS = {
         ("mesh3d_rect.vert", "kMesh3dRectVertSpv"),
         ("mesh3d_side.vert", "kMesh3dSideVertSpv"),
         ("mesh3d_tri.vert", "kMesh3dTriVertSpv"),
+        ("mesh3d_overlay.vert", "kMesh3dOverlayVertSpv"),
         ("mesh3d.frag", "kMesh3dFragSpv"),
         ("mesh3d_msaa.frag", "kMesh3dMsaaFragSpv"),
     ),
