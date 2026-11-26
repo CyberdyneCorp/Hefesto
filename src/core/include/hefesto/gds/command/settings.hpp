@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // GdsSettings (capabilities gds-read, gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D4, D11, D15): every `gds`
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D11, D15): every `gds`
 // option and its default, held per open project in
 // editor::EditorState::mask.gds, as Magic keeps them in session globals
 // (calma/CalmaRead.c:68-109, CalmaRdpt.c:54-58, CalmaWrite.c:76-88). The
@@ -12,7 +12,7 @@
 // (mask/input/warnings.hpp, EditorState::mask.warnings). The read options
 // that `oasis` shares (Q-OASIS-90 (a)) are stream::StreamReadSettings
 // (mask/stream_read.hpp, EditorState::mask.stream_read), split out by the
-// M6 scaffold (openspec/changes/m6-lef-def-oasis/design.md D15).
+// M6 scaffold (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D15).
 //
 // Owner: INTEGRATION (this header, created by the M5 scaffold); GDSW owns
 // the write options and the command, GDSR the read options (design D2/D4).

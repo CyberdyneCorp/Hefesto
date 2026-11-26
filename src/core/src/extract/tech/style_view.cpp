@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // StyleView over the extraction-style subset of the `extract` section
-// reader (openspec/changes/m6-lef-def-oasis/design.md D4, D10).
+// reader (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D10).
 // Owner: EXTSUB (design D2).
 
 #include "hefesto/extract/tech/style_view.hpp"

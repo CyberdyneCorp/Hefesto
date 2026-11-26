@@ -25,7 +25,7 @@
 // (see scan_cell()).
 //
 // Owner: ENGINE (openspec/changes/m3-drc/design.md D2); the use-index
-// searches and Q-MASK-400 OFF: INDEX (openspec/changes/m5-mask-gds-cif
+// searches and Q-MASK-400 OFF: INDEX (openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D2, D17).
 
 #include <vector>

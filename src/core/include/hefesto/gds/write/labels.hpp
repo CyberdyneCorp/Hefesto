@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // TEXT output of a GDS structure (capability gds-write "Label layers",
-// "Label TEXT records"; openspec/changes/m5-mask-gds-cif/design.md D12).
+// "Label TEXT records"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12).
 // The structure body writer calls:
 // - emit_label_layer for each written `labellayer` mask layer, in style
 //   order among the other mask layers, whatever `gds labels` says: one TEXT

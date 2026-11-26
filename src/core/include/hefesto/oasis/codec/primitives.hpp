@@ -4,7 +4,7 @@
 // The OASIS primitive encodings (capability oasis-format "Unsigned and
 // signed integers", "Real numbers", "Strings and character sets", "Delta
 // encodings", "Point lists", "Repetitions", "Intervals";
-// openspec/changes/m6-lef-def-oasis/design.md D11), over byte spans. The
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D11), over byte spans. The
 // decoder uses the same code over its record stream; these entry points
 // serve the writer's transcoders, the tests and the fuzz targets.
 //

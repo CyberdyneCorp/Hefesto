@@ -23,7 +23,7 @@
 // "Error:  Bad render style for CIF layer." then (view-3d "Render statement
 // in the cifoutput section"; the stored values are Magic's).
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2); render_line:
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2); render_line:
 // M10 TECH (openspec/changes/m10-3d-view/design.md D5, D18).
 
 #include <algorithm>

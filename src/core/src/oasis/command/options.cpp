@@ -11,7 +11,7 @@
 // settings go to the `gds` command's handlers, so they are one setting
 // with `gds`; the others are MaskSession::oasis.
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <array>
 #include <cstdlib>

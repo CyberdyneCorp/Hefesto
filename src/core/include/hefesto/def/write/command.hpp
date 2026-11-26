@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // `def write` (capability def-write "def write command", "def command
-// argument validation"; openspec/changes/m6-lef-def-oasis/design.md D14):
+// argument validation"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D14):
 // the argument parser the shared `lef`/`def` dispatcher calls for `def
 // write`, which finds its own target cell as CmdLef does.
 //

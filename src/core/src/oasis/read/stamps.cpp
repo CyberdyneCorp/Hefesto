@@ -31,7 +31,7 @@
 // mask), shared through gds::stamp_entries (gds/read/stamps.hpp, design
 // D17), and the hash is gds::stamp_hash.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/oasis/read/stamps.hpp"
 

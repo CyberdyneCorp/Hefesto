@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/gds.md with `hefesto-cli --diagnostic-codes=gds`
 // and describe the codes in its GDSW section.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Ranges:
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Ranges:
 // 001-019 the writer core, 020-039 the merged-polygon and label emitters,
 // 040 on verbatim copy, full dump, addendum and abstract views, 052 on
 // read-only OASIS cells (OASW, gds/write/vendor_oasis.cpp).

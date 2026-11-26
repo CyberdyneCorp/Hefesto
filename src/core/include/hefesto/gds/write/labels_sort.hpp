@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The order of port labels in a GDS structure (capability gds-write "Label
-// TEXT records"; openspec/changes/m5-mask-gds-cif/design.md D12, D22,
+// TEXT records"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12, D22,
 // Q-MASK-205 replicate). Magic's calmaOutFunc pushes each port label on the
 // head of a list while it walks the cell's labels, copies the list (now in
 // reverse label order) into an array and qsorts it by port index. The
@@ -13,7 +13,7 @@
 // on the host C library (macOS qsort is not stable) and is the same on every
 // leg.
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

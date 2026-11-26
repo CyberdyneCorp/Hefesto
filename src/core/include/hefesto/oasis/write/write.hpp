@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // OASIS write entry point (capability oasis-write;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D13): `oasis write`, the
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D13): `oasis write`, the
 // CLI and the shell all call oasis::write. It reuses the M5 three-phase
 // write unchanged: gds::prepare_write (exclusive lock), oasis::emit
 // (oasis/write/emit.hpp, shared lock) and gds::finish_write. The prepare

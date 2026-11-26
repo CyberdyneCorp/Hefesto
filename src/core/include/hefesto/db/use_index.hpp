@@ -3,7 +3,7 @@
 //
 // The cell-use index: Magic's bplane emulation (capability gds-write
 // "Structure ordering", Q-MASK-204, Q-MASK-323;
-// openspec/changes/m5-mask-gds-cif/design.md D4 "Use order", D7). Each
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4 "Use order", D7). Each
 // CellDef owns one (CellDef::use_index(), Magic's cd_cellPlane). It models
 // Magic's bplane state: the unbinned LIFO in-box list, the bins with
 // recursive sub-binning and the oversized lists, the "bins exist" flag and

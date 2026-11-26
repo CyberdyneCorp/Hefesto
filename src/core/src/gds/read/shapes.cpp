@@ -23,7 +23,7 @@
 // usable plane when painted; the OFF savepaths conversion divides by S with
 // floor and never subdivides the grid.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <cstdio>

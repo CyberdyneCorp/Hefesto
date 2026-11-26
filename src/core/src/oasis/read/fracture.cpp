@@ -18,7 +18,7 @@
 // a GDS-equivalent element anyway), or a recursion deeper than kMaxDepth
 // is not fractured.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <algorithm>
 #include <cstdint>

@@ -3,7 +3,7 @@
 //
 // Subtree loading of the writers' prepare phase (capabilities gds-write
 // "Write preconditions and subtree loading", "Structure ordering";
-// cif-format-io, its CIF counterpart; openspec/changes/m5-mask-gds-cif/
+// cif-format-io, its CIF counterpart; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/
 // design.md D4, D7). Both writers start as Magic's CalmaWrite.c:316-327 and
 // CIFwrite.c:137-145 do:
 //

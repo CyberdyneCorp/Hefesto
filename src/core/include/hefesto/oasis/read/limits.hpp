@@ -9,7 +9,7 @@
 // A file that needs more is read up to the cap (OASIS-READ-007). oasis::read
 // uses the defaults; tests and the fuzz target may pass smaller caps.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #pragma once
 

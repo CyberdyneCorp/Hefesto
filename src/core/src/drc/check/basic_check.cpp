@@ -13,7 +13,7 @@
 // (Magic ref: drc/DRCbasic.c DRCBasicCheck, drcTile)
 //
 // Owner: CHECK (openspec/changes/m3-drc/design.md D2); the mask-layer step:
-// DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// DRCCIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/drc/check/basic_check.hpp"
 

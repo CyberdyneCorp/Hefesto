@@ -8,4 +8,4 @@
 // docs/diagnostics/codes/mask.md with `hefesto-cli --diagnostic-codes=mask`
 // and describe the codes in its OPS section.
 //
-// Owner: OPS (the plane codes share the MASK-OPER topic; list them in ops/codes.inc and keep this fragment empty) (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+// Owner: OPS (the plane codes share the MASK-OPER topic; list them in ops/codes.inc and keep this fragment empty) (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2).

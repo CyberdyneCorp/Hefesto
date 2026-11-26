@@ -3,7 +3,7 @@
 #
 # Sources of mask/gen (flat and hierarchical generation, see, paint, coverage, statistics, the interaction finder),
 # included by src/core/src/mask/sources.cmake.
-# Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: GEN (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/arrays.cpp

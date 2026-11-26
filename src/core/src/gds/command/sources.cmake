@@ -3,7 +3,7 @@
 #
 # Sources of gds/command (the `gds`/`calma` command and GdsSettings),
 # included by src/core/src/gds/sources.cmake.
-# Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/command.cpp

@@ -3,7 +3,7 @@
 //
 // The DEF-write side of the via generator (capability def-write "Contact
 // region identification", "Generated via definitions", "VIAS section
-// content"; openspec/changes/m6-lef-def-oasis/design.md D9): the contact
+// content"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D9): the contact
 // regions of a cell that DEF write emits as vias (defCountVias,
 // defCountViaFunc, defWrite.c:1661-2040), the generated via of each region
 // with its name (Q-LEFDEF-105, 106), their registration in the via table,

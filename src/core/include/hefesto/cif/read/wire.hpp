@@ -11,7 +11,7 @@
 // prepended, the other appended), because the polygon conversion paints
 // in that order.
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D2, D13).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, D13).
 
 #pragma once
 

@@ -4,7 +4,7 @@
 // The read side of the `gds`/`calma` command (capability gds-read "Read
 // option syntax and defaults", "Text magnification scale option", "Grid
 // subdivision option", "Read command and file lookup", "Read
-// diagnostics"; openspec/changes/m5-mask-gds-cif/design.md D15): drccheck,
+// diagnostics"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D15): drccheck,
 // flatten, flatglob, magscale, maskhints, noduplicates, ordering, readonly,
 // rescale (Q-MASK-130), savepaths, warning, polygon subcells, path
 // subcells, unique and `read`. Queries answer as Magic's Tcl build does
@@ -22,7 +22,7 @@
 // Copyright (C) 1985, 1990 Regents of the University of California (see
 // THIRD_PARTY_NOTICES.md).
 //
-// Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSW (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <cstdlib>

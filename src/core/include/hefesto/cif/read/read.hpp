@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// CIF read (capability cif-format-io; openspec/changes/m5-mask-gds-cif
+// CIF read (capability cif-format-io; openspec/changes/archive/2026-11-24-m5-mask-gds-cif
 // design.md D4 "Commands and progress", D13): a table-driven lexer and
 // command dispatcher (DS, DF, DD, C, L, B, R, P, W, E and the user
 // extensions 9, 91, 94, 95) driving the shared read engine through

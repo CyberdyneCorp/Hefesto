@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The operator kernels (capability mask-output-operators;
-// openspec/changes/m5-mask-gds-cif/design.md D6), one per operator, each a
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D6), one per operator, each a
 // function of the operator's operands, the input planes, the area, the
 // context and the layer's current plane (ported from CIFgen.c in four
 // groups: boolean and grow; contact cuts; bridge and bloat; topology). Each

@@ -4,7 +4,7 @@
 // Read-only OASIS cells (OASIS_FILE and OASIS_CELL, capability oasis-read
 // "Read-only OASIS vendor views") in OASIS and GDS output (oasis-write
 // "Read-only OASIS vendor cells", gds-write "Read-only OASIS vendor cells";
-// openspec/changes/m6-lef-def-oasis/design.md D13, Q-OASIS-35, Q-OASIS-40):
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D13, Q-OASIS-35, Q-OASIS-40):
 // - decode_vendor_library decodes the cells a write needs from a vendor
 //   OASIS file, names resolved, for both outputs;
 // - VendorCells serves one OASIS write. While its Scope is alive on a

@@ -5,7 +5,7 @@
 // ReadSink operations, cells, calls, labels), scale.cpp (CIFScaleCoord, the
 // grid subdivision, CIFInputRescale) and current.cpp (CIFPaintCurrent).
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

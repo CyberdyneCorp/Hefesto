@@ -12,6 +12,11 @@ release notices.
   `merge`) larger than what is left of the 4 Mi instance (16 Mi merge
   element) cap now fails with EXTFLAT-READ-009 before any element is
   flattened, instead of flattening elements for seconds until the cap.
+- **Huge arrays in hierarchical SPICE fail at once.** `ext2spice` with
+  `hierarchy on` now fails with EXTFLAT-READ-009 when a `use` array has
+  more elements than what is left of the 4 Mi instance cap, before any
+  call is stored and without writing a netlist, instead of running out
+  of memory.
 - **3D view upside down in tilted views.** The isometric, front and side
   views showed the stack from below (wells on top, metals at the
   bottom); every tilted view now looks from above.

@@ -12,7 +12,7 @@
 // THIRD_PARTY_NOTICES.md).
 //
 // Owner: RULES (openspec/changes/m3-drc/design.md D2); the re-sourcing onto
-// mask::OutputStyle: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// mask::OutputStyle: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/drc/rules/cif_catalog.hpp"
 

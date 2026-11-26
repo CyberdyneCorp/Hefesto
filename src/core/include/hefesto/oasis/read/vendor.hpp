@@ -3,7 +3,7 @@
 //
 // Read-only OASIS vendor views (capability oasis-read "Read-only OASIS
 // vendor views", "Content-hash timestamps for read-only OASIS cells";
-// openspec/changes/m6-lef-def-oasis/design.md D12, D17): the stamp of a
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D12, D17): the stamp of a
 // read-only OASIS cell is the content stamp of the cell named by its
 // OASIS_CELL in the file named by its OASIS_FILE. cell/timestamps.cpp
 // restamps such cells through VendorStamper, as it restamps read-only GDS

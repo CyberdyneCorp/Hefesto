@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The LEF layer table, via table and non-default rules (capability
-// lef-tech-section; openspec/changes/m6-lef-def-oasis/design.md D4, D5):
+// lef-tech-section; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D5):
 // - LayerTable: the records of the tech `lef` section (route, cut/via,
 //   masterslice, overlap, bound, ignore and obstruction entries, aliases
 //   and canonical names), keyed by LEF name in a util::MagicHashTable so

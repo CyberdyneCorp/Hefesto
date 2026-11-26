@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The `oasis` command (capability oasis-command "Command name and forms",
-// "Option syntax"; openspec/changes/m6-lef-def-oasis/design.md D3, D15):
+// "Option syntax"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D15):
 // the option table, the unique-prefix lookup (an unknown or ambiguous
 // option is an error and nothing changes), the window check of `read`,
 // `write` and a bare `oasis` (as for `gds`), `oasis help`, and the
@@ -10,7 +10,7 @@
 // write_command.cpp), the read settings shared with `gds` and the `oasis`
 // settings (options.cpp). The help text is informative.
 //
-// Owner: OASCMD (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASCMD (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include "hefesto/oasis/command/command.hpp"
 

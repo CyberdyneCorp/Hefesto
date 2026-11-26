@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // DRC on generated mask layers (capability drc-cif-rules;
-// openspec/changes/m5-mask-gds-cif/design.md D14): Magic's drcCifCheck.
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D14): Magic's drcCifCheck.
 //
 // basic_check calls mask_layer_check after its paint planes. When the DRC
 // style's `cifstyle` names a cifoutput style the rules were compiled
@@ -26,7 +26,7 @@
 // when set; otherwise from a context local to the call. The compiled rules
 // come from CheckInput::mask_rules the same way.
 //
-// Owner: DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: DRCCIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

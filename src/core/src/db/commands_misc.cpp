@@ -176,7 +176,7 @@ CommandResult cmd_xor(CommandContext& ctx, const Invocation& inv) {
 
 // The generator: glibc's random() (util/libc_random.hpp), one per open
 // project in EditorState::mask.random, shared with the GDS full-dump prefix
-// (Q-MASK-211; openspec/changes/m5-mask-gds-cif/design.md D4). A context
+// (Q-MASK-211; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4). A context
 // without an editor uses a process-wide one.
 util::LibcRandom& generator(CommandContext& ctx) {
   if (editor::EditorState* editor = ctx.editor(); editor != nullptr) {

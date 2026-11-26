@@ -3,7 +3,7 @@
 //
 // Diagnostic codes of the "extflat" area (see diag/area_codes.hpp), assembled
 // from the fragment extflat/codes.inc (EXTFLAT-READ-*, EXTSUB;
-// openspec/changes/m6-lef-def-oasis/design.md D1). The rows are sorted while
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1). The rows are sorted while
 // compiling (diag/sorted_codes.hpp). A fragment line reads
 //   HEFESTO_EXTFLAT_CODE("EXTFLAT-READ-001", error, "One-line summary.")
 // Never renumber or reuse a code once released. After a change regenerate

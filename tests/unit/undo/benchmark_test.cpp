@@ -9,11 +9,15 @@
 // within 50 ms). The database work (edit + recording + replay + bounding
 // boxes) is timed; the view update itself is VIEW/SHELL's. Timings are
 // reported with WARN; the 50 ms check runs only in optimized builds
-// (NDEBUG). Skips without the pinned sky130A cache.
+// (NDEBUG). On shared CI runners (the CI environment variable is set) the
+// wall-clock ceiling is 150 ms: a busy runner exceeded 50 ms on unchanged
+// code, while a 3x ceiling still catches a real regression. Skips without
+// the pinned sky130A cache.
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -33,6 +37,12 @@ namespace db = hefesto::db;
 namespace fs = std::filesystem;
 
 namespace {
+
+// The "Edit latency" target, or a 3x ceiling on shared CI runners.
+double latency_ceiling_ms() {
+  const char* ci = std::getenv("CI");
+  return ci != nullptr && *ci != '\0' ? 150.0 : 50.0;
+}
 
 double millis(const std::function<void()>& work) {
   const auto start = std::chrono::steady_clock::now();
@@ -159,10 +169,11 @@ TEST_CASE("paint, erase, undo and redo of 10,000 rectangles over a 100x100 dfxtp
                                               << undo_paint_ms << ", paint over 10k " << cover_ms
                                               << ", undo it " << undo_cover_ms);
 #ifdef NDEBUG
-  CHECK(cover_ms < 50.0);
-  CHECK(undo_cover_ms < 50.0);
-  CHECK(erase_ms < 50.0);
-  CHECK(undo_ms < 50.0);
-  CHECK(redo_ms < 50.0);
+  const double ceiling = latency_ceiling_ms();
+  CHECK(cover_ms < ceiling);
+  CHECK(undo_cover_ms < ceiling);
+  CHECK(erase_ms < ceiling);
+  CHECK(undo_ms < ceiling);
+  CHECK(redo_ms < ceiling);
 #endif
 }

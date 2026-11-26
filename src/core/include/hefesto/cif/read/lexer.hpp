@@ -13,7 +13,7 @@
 // malformed file cannot overflow them; the parser range-checks every value
 // it scales (design D21 resource caps).
 //
-// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D2, D13).
+// Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2, D13).
 
 #pragma once
 

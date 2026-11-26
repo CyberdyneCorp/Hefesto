@@ -12,7 +12,7 @@
 // "Rewinding input" error are dropped: the pass 1 index replaces the file
 // search, so an OASIS read never rewinds.
 //
-// Owner: OASR (openspec/changes/m6-lef-def-oasis/design.md D2).
+// Owner: OASR (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D2).
 
 #include <algorithm>
 

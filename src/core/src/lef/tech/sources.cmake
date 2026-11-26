@@ -4,7 +4,7 @@
 # Sources of lef/tech (the tech `lef` section, the LEF layer table, via table
 # and non-default rules),
 # included by src/core/src/lef/sources.cmake.
-# Owner: LEFTECH (openspec/changes/m6-lef-def-oasis/design.md D1/D2). Add new files here.
+# Owner: LEFTECH (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/lifecycle.cpp

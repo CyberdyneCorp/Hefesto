@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The element stream of one GDS structure (capability gds-write;
-// openspec/changes/m5-mask-gds-cif/design.md D12): what the structure body
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D12): what the structure body
 // writer and the element emitters (gds/write/polygons.hpp,
 // gds/write/labels.hpp) write through. An ElementWriter wraps the write's
 // RecordWriter with the structure's context (cell, output style, `gds`

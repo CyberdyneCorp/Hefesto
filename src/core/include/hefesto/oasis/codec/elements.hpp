@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The decoded OASIS geometry vocabulary (capability oasis-format;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D11), shared by the
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D11), shared by the
 // reader, the writer's transcoders and gds/write/vendor_oasis.cpp:
 // - Point64: OASIS coordinates, which are 64-bit signed in the file; the
 //   reader range-checks them against the database's 32-bit grid;

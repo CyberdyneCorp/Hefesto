@@ -3,7 +3,7 @@
 //
 // GDSII date fields and the time zone they are converted in (capabilities
 // gds-read "Structure timestamps", "Host mechanisms used by the reader",
-// gds-write "Date records"; openspec/changes/m5-mask-gds-cif/design.md
+// gds-write "Date records"; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D10, D12; Q-MASK-132, 134, 203).
 //
 // Magic converts with localtime() and mktime() in the host's zone. Hefesto

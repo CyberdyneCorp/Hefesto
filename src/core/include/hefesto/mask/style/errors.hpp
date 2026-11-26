@@ -13,7 +13,7 @@
 // (Magic ref: cif/CIFmain.c:418-437 CIFError, dbwind/DBWfdback.c
 // DBWFeedbackAdd)
 //
-// Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: STYLES (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #pragma once
 

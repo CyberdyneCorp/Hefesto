@@ -19,7 +19,7 @@
 // (X-2 tier 1, Q-MASK-36); an exact name wins over prefix matches in
 // selection (Q-MASK-303, fix).
 //
-// Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: INPUT (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/mask/input/style.hpp"
 

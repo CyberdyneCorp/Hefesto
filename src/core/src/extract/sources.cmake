@@ -4,8 +4,8 @@
 # Sources of the extract area (the `extract` tech section reader and
 # ExtStyle, and the extractor), included by src/core/CMakeLists.txt. The
 # area builds with -ffp-contract=off (set PUBLIC on hefesto_core;
-# openspec/changes/m6-lef-def-oasis/design.md D3, openspec/changes/m7-extraction/design.md D4).
-# Owner: INTEGRATION (openspec/changes/m6-lef-def-oasis/design.md D1/D2;
+# openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, openspec/changes/m7-extraction/design.md D4).
+# Owner: INTEGRATION (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2;
 # openspec/changes/m7-extraction/design.md D2/D3): this file lists the shared files and includes one
 # sources.cmake per subdirectory, each owned by its workstream (tech/ was
 # EXTSUB's in M6 and is EXTTECH's in M7):

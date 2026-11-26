@@ -3,7 +3,7 @@
 //
 // Layer evaluation (capability mask-output-operators "Layer evaluation
 // pipeline for an area", "Hierarchical-mode truncation";
-// openspec/changes/m5-mask-gds-cif/design.md D4, D6): evaluate_layer is the
+// openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D6): evaluate_layer is the
 // CIFGenLayer equivalent. It runs the operators of one output (or input)
 // layer in order over an area and returns the resulting mask plane.
 // evaluate_area is CIFGen's per-area part: every requested layer in style

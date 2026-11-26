@@ -3,7 +3,7 @@
 //
 // read_flat: EFReadFile, then EFFlatBuild(EF_FLATNODES | EF_NOFLATSUBCKT)
 // and EFVisitNodes, as `def write` calls them (defWrite.c:251-293;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D10).
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D10).
 //
 // Owner: EXTSUB (design D2).
 

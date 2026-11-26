@@ -20,7 +20,7 @@
 // areaCifCheck, drcCheckCifArea, drcCheckCifMaxwidth), Copyright (C) 1985,
 // 1990 Regents of the University of California (see THIRD_PARTY_NOTICES.md).
 //
-// Owner: DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: DRCCIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 

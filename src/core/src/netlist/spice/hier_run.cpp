@@ -11,6 +11,13 @@
 // one-level netlist of each written definition and its calls. The writing
 // is hier_writer.cpp's.
 //
+// Resource limit (M6-S8, both modes): the calls of one run count against
+// the read's instance cap, each array element one, as the flattening's
+// instances do; an array use with more elements than what is left of the
+// cap fails with EXTFLAT-READ-009 before the definition is flattened or
+// its first call stored (a 10^10-element array stored one call per element
+// until memory ran out).
+//
 // Ported from Magic 8.3.694 (fc5daa9e) ext2spice/ext2hier.c:71-105
 // (ESGenerateHierarchy) and 2300-2400 (esHierVisit), Copyright (C) 1985,
 // 1990 Regents of the University of California (see THIRD_PARTY_NOTICES.md).
@@ -21,10 +28,12 @@
 #include <array>
 #include <cstdint>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -75,11 +84,36 @@ std::pair<std::int64_t, std::int64_t> bounds(const std::array<std::int32_t, 3>& 
   return {std::min(range[0], range[1]), std::max(range[0], range[1])};
 }
 
+// The number of indices of an array range, in either order.
+std::uint64_t span(const std::array<std::int32_t, 3>& range) {
+  const auto [lo, hi] = bounds(range);
+  return static_cast<std::uint64_t>(hi - lo) + 1U;
+}
+
+// a * b, saturated at the largest value (two 32-bit spans can reach 2^64).
+std::uint64_t saturating_product(std::uint64_t a, std::uint64_t b) {
+  constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+  return b != 0 && a > kMax / b ? kMax : a * b;
+}
+
+// The number of elements of a use (one for a use that is not arrayed).
+std::uint64_t element_count(const extflat::HierUse& use) {
+  return saturating_product(span(use.x_range), span(use.y_range));
+}
+
+// a + b, saturated at the largest value.
+std::uint64_t saturating_sum(std::uint64_t a, std::uint64_t b) {
+  return a > std::numeric_limits<std::uint64_t>::max() - b ? std::numeric_limits<std::uint64_t>::max() : a + b;
+}
+
+// The flattening's instance-cap diagnostic (extflat/flatten.cpp).
+constexpr std::string_view kLimit = "EXTFLAT-READ-009";
+
 class HierRun {
  public:
   HierRun(editor::EditorState& editor, const RunRequest& request, diag::DiagnosticSink& sink,
-          extflat::Hierarchy& hierarchy)
-      : editor_(editor), request_(request), sink_(sink), h_(hierarchy) {
+          extflat::Hierarchy& hierarchy, std::uint64_t max_instances)
+      : editor_(editor), request_(request), sink_(sink), h_(hierarchy), max_instances_(max_instances) {
     for (const extflat::HierDef& def : h_.defs) {
       defs_.emplace(def.name, def);
     }
@@ -133,6 +167,10 @@ class HierRun {
     if (def.primitive || absorbed(def)) {
       return std::optional<HierSection>{};
     }
+    if (!fits(call_count(def))) {
+      return diag::make(kLimit, "the flattened .ext hierarchy has more than " + std::to_string(max_instances_) +
+                                    " instances");
+    }
     bool nodevices = false;
     auto netlist = extflat::flatten_one_level(h_, def.name, flat_flags(settings()),
                                               flatten_options(editor_, settings(), request_.symbols), sink_,
@@ -157,10 +195,22 @@ class HierRun {
     return std::optional<HierSection>{std::move(section)};
   }
 
+  // The calls of `def`: one per use, one per element of an array use.
+  [[nodiscard]] std::uint64_t call_count(const extflat::HierDef& def) const {
+    std::uint64_t count = 0;
+    h_.visit_uses(def.name, [&](const extflat::HierUse& use) { count = saturating_sum(count, element_count(use)); });
+    return count;
+  }
+
+  // Whether `count` more calls stay within the instance cap (checked
+  // before the one-level flattening, which would walk every element).
+  [[nodiscard]] bool fits(std::uint64_t count) const { return count <= max_instances_ - calls_; }
+
   // EFHierVisitSubcircuits: each use in use-table order, each array
   // element with x outer and y inner.
   void add_calls(const extflat::HierDef& def, HierSection& section) {
     h_.visit_uses(def.name, [&](const extflat::HierUse& use) {
+      calls_ += element_count(use);
       const extflat::HierDef& child = defs_.at(use.def);
       HierCall call;
       call.cell = use.def;
@@ -183,6 +233,8 @@ class HierRun {
   const RunRequest& request_;
   diag::DiagnosticSink& sink_;
   extflat::Hierarchy& h_;
+  std::uint64_t max_instances_;
+  std::uint64_t calls_ = 0;  // the calls stored so far, each array element one (never above the cap)
   std::map<std::string, extflat::HierDef, std::less<>> defs_;
   SpiceInput head_;
 };
@@ -193,12 +245,13 @@ diag::Outcome<WriteResult> write_hierarchy(editor::EditorState& editor, std::str
                                            const RunRequest& request, platform::FileSystem& fs,
                                            diag::DiagnosticSink& sink, extflat::NameFlags& names) {
   cell::LookupContext lookup{fs, editor.search_paths, editor.path_variables, sink};
-  auto hierarchy = extflat::read(lookup, cell, read_options(editor, request.settings, request.compat));
+  const extflat::ReadOptions options = read_options(editor, request.settings, request.compat);
+  auto hierarchy = extflat::read(lookup, cell, options);
   if (!hierarchy.ok()) {
     return hierarchy.error();
   }
   extflat::make_ports(hierarchy.value(), infinite_cap(request.settings.cthresh), request.settings.cthresh);
-  HierRun run{editor, request, sink, hierarchy.value()};
+  HierRun run{editor, request, sink, hierarchy.value(), options.limits.max_instances};
   auto sections = run.sections();
   if (!sections.ok()) {
     return sections.error();

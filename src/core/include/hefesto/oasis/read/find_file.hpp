@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // OASIS file lookup (capability oasis-read "Read command and file lookup";
-// openspec/changes/m6-lef-def-oasis/design.md D12): the file `oasis read
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D12): the file `oasis read
 // <name>` opens, along the cell search path, as gds::find_gds_file does for
 // `gds read` (with the OASIS extensions and a gzip-compressed counterpart).
 //

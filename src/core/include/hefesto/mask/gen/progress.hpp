@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Progress and cancellation of a long generation, read or write
-// (Q-MASK-414; openspec/changes/m5-mask-gds-cif/design.md D4, D8, D16),
+// (Q-MASK-414; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D8, D16),
 // and the generation statistics (`cif statistics`, DrcStatistics::cif_tiles).
 // The commands, the CLI and the shell pass a Progress to gds::read/write,
 // cif::read/write and the generators; nullptr means no reporting and no

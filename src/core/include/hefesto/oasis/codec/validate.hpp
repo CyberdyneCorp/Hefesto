@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // OASIS file validation (capability oasis-format "Validation signature";
-// openspec/changes/m6-lef-def-oasis/design.md D11, Q-OASIS-2 (a)): the END
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D11, Q-OASIS-2 (a)): the END
 // record's validation scheme and signature. CRC32 uses zlib's crc32 and
 // CHECKSUM32 is the byte sum, over the bytes gdstk covers (from the first
 // magic byte up to and including the validation-scheme byte), stored least

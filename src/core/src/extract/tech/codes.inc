@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/extract.md with `hefesto-cli --diagnostic-codes=extract`
 // and describe the codes in its STYLE section.
 //
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D1/D2);
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2);
 // EXTRACT-STYLE-003..006 (the 3D height subset, reported by HeightView):
 // M10 TECH (openspec/changes/m10-3d-view/design.md D5); EXTRACT-STYLE-007..020
 // (the full reader of load_styles): EXTTECH (openspec/changes/m7-extraction/design.md D7).

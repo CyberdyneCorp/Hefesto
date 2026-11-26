@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The cell-use index (gds-write "Structure ordering", Q-MASK-204,
-// Q-MASK-323; openspec/changes/m5-mask-gds-cif/design.md D4, D7). Ported
+// Q-MASK-323; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D4, D7). Ported
 // from Magic VLSI 8.3.694 (fc5daa9e) bplane/bpMain.c (BPNew, BPAdd,
 // BPDelete), database/DBexpand.c (DBCellReadArea, dbReadAreaFunc),
 // database/DBcellsrch.c (dbCellSrFunc, DBMoveCell's fresh plane) and

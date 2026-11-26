@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Polygon painting for the LEF and DEF readers
-// (openspec/changes/m6-lef-def-oasis/design.md D4): db::decompose_polygon
+// (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4): db::decompose_polygon
 // plus the port labels a pin polygon carries, shared by LEF POLYGON
 // (Q-LEFDEF-23: one decomposition, identical on every plane), DEF pin
 // polygons (Q-LEFDEF-66 OFF) and DEF route polygons (Q-LEFDEF-70 OFF).

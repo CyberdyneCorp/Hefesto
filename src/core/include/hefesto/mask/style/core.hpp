@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The shared style/variant/scale core of the cifoutput and cifinput readers
-// (capability mask-output-styles; openspec/changes/m5-mask-gds-cif/design.md
+// (capability mask-output-styles; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D5 "Shared core"): Magic's `style` / `variant` state machine (CIFTechLine,
 // CIFReadTechLine) and CIFParseScale, written once and used by STYLES and
 // INPUT.

@@ -8,7 +8,7 @@
 // (Magic ref: extflat/EFread.c:770-885, extflat/extparse.h:31-62,
 // utils/lookup.c:166-230)
 //
-// Owner: EXTSUB (openspec/changes/m6-lef-def-oasis/design.md D10).
+// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D10).
 
 #pragma once
 

@@ -24,7 +24,7 @@
 // tile paints of flatten copies (copies times the source's solid tiles);
 // coordinates are clamped to the usable plane.
 //
-// Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
+// Owner: GDSR (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <array>

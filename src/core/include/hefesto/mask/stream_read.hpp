@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // StreamReadSettings (capabilities gds-read, oasis-command "Settings shared
-// with the gds command"; openspec/changes/m6-lef-def-oasis/design.md D4,
+// with the gds command"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4,
 // D15, Q-OASIS-90 (a)): the read settings that `gds` and `oasis` share, held
 // per open project in editor::EditorState::mask.stream_read. Magic keeps
 // them in the Calma session globals (calma/CalmaRead.c:68-109,

@@ -8,7 +8,7 @@
 // docs/diagnostics/codes/def.md with `hefesto-cli --diagnostic-codes=def`
 // and describe the codes in its WRITE section.
 //
-// Owner: DEFW (openspec/changes/m6-lef-def-oasis/design.md D1/D2).
+// Owner: DEFW (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D1/D2).
 HEFESTO_DEF_CODE("DEF-WRITE-001", info, "DEF write report line: `Generating DEF output <file> for cell <c>:`, the `Diagnostic:` progress lines and the special-net notes (`Node <n> matches VDD variable definition!`).")
 HEFESTO_DEF_CODE("DEF-WRITE-002", error, "DEF write: the output file cannot be opened (`Cannot open output file <name> (<reason>).`); nothing is written.")
 HEFESTO_DEF_CODE("DEF-WRITE-003", error, "DEF write: the cell is unnamed (`Please name the cell before generating DEF.`); nothing is written.")

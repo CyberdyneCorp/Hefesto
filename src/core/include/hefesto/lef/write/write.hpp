@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // LEF write entry points (capability lef-write;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D7, D14): `lef write
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D7, D14): `lef write
 // [filename] [-tech] [-hide [distance]] [-pinonly [distance]] [-toplayer]
 // [-nomaster]` calls lef::write, `lef writeall [-notop] [-all] ...` calls
 // lef::write_all (lefCmd.c:283-425). Single-phase commands under the

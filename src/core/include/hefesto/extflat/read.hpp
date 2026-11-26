@@ -3,7 +3,7 @@
 //
 // The `.ext` read-and-flatten subset that `def write` needs (capabilities
 // ext-flattening-read, ext-flattening-hierarchy, ext-flattening-names;
-// openspec/changes/m6-lef-def-oasis/design.md D4, D9, D10; Open Question 1,
+// openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D9, D10; Open Question 1,
 // decided (a)): EFReadFile from the root cell down through its `use`
 // records, then EFFlatBuild with EF_FLATNODES | EF_NOFLATSUBCKT, unscaled,
 // with resistance unused. The result is the flat node list with each node's

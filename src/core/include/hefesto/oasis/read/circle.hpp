@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The CIRCLE approximation of the OASIS reader (capability oasis-read
-// "CIRCLE elements"; openspec/changes/m6-lef-def-oasis/design.md D3, D12,
+// "CIRCLE elements"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D3, D12,
 // Q-OASIS-31): a regular N-gon whose vertex k is
 // (round(r cos(2 pi k / N)), round(r sin(2 pi k / N))), computed from IEEE
 // basic operations only (no libm), so every platform gets the same

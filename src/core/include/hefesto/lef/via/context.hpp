@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // What the LEF/DEF via code reads besides its arguments
-// (openspec/changes/m6-lef-def-oasis/design.md D4, D6, D8): the technology
+// (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D6, D8): the technology
 // (contact types and residues), the current output style (cut growing,
 // Q-LEFDEF-17: CIFCurStyle, not the input style), the compat settings and
 // where the messages go. The LEF and DEF readers pass a sink that adds

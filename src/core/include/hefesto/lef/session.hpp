@@ -2,7 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 //
 // LefSession: the M6 LEF/DEF state of one open project,
-// editor::EditorState::lefdef (openspec/changes/m6-lef-def-oasis/design.md
+// editor::EditorState::lefdef (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md
 // D4). It changes only on tech load, `scalegrid` and finer-grid reads, and
 // on `lef read`, `def read` and `def write`, all under the exclusive
 // database lock, so it needs no copy-on-write object.

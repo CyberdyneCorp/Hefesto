@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// GDS write (capability gds-write; openspec/changes/m5-mask-gds-cif/design.md
+// GDS write (capability gds-write; openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md
 // D4 "Commands and progress", D7, D12). Magic's write mutates the database
 // before it generates anything, so a write has two phases:
 // - prepare_write, on the command thread under the exclusive database lock:

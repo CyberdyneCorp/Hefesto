@@ -3,7 +3,7 @@
 //
 // The shared via geometry generator (capabilities lef-read "Generated via
 // geometry", "LEF VIA and VIARULE definitions", def-read "Generated DEF
-// vias"; openspec/changes/m6-lef-def-oasis/design.md D4, D6, D8 and the
+// vias"; openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D4, D6, D8 and the
 // decision table's "Shared generators" note): the shapes of a via given by
 // VIARULE parameters (CUTSIZE, LAYERS, CUTSPACING, ENCLOSURE, ROWCOL, and
 // with magic-compat OFF also ORIGIN, OFFSET and PATTERN, Q-LEFDEF-62), with

@@ -3,7 +3,7 @@
 #
 # Sources of cif/read (the CIF lexer, parser, symbol table and read session),
 # included by src/core/src/cif/sources.cmake.
-# Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
+# Owner: CIF (openspec/changes/archive/2026-11-24-m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/lexer.cpp
