@@ -454,7 +454,7 @@ An element line whose name list is empty SHALL be written as an empty line.
 
 **Renames.** On an element line starting with `g` or `G`, the first ` value=` (case-insensitive) SHALL become ` cur=`; with `e` or `E` it becomes ` vol=`; with `r` or `R`, ` r=`; with `c` or `C`, ` c=`. On a line starting with `D`, the first `PERI` followed by optional spaces and `=` SHALL become `PJ=`.
 
-**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker (a field that is one, or a field `<t>(?<w>` whose width marker follows its `(`, as `spice_probe_vdiff.sym` writes: golden case SCHEM-NL-05, clarified 2026-11-24) SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces inside the parentheses (after a `(`, before a `)`) are removed; a space after a `)` still separates two fields.
+**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker (a field that is one, or a field `<t>(?<w>` whose width marker follows its `(`, as `spice_probe_vdiff.sym` writes: golden case SCHEM-NL-05, clarified 2026-11-24; more exactly, the line contains `?`, an optional `-` and a digit anywhere, and each `?<w>` is removed together with the spaces on both sides of it: paraphrase review of 2026-11-26) SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces inside the parentheses (after a `(`, before a `)`) are removed; a space after a `)` still separates two fields.
 
 **Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) and does not start with `*` SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing. A commented top line such as `**.subckt T A[1],A[0]` is a comment line and keeps its commas (golden case SCHEM-NL-17).
 
@@ -741,18 +741,65 @@ Netlisting SHALL report, without stopping:
 - instances with all pins unconnected, overlapping identical instances, and pin mismatches between a symbol and its schematic
 - bus expansion syntax errors
 - subcircuit schematics that do not exist (Requirement "Schematic resolution"); this is a warning
+- the findings of the net driver check below
 - the warnings that the rules above give in both modes of `xschem-compat`: duplicate `sim_pinnumber` values (Q-SCHEM-5), two subcircuits with one cell name (Q-SCHEM-14), template keys found in `extra` only as substrings (Q-SCHEM-19), templates with LFs (Q-SCHEM-21), numbers whose reading depends on `xschem-compat` (Q-SCHEM-12), and undefined tokens with a defined identifier prefix (Q-SCHEM-26)
 
-A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. The message wording is informative.
+A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. Except where this requirement gives an exact text, the message wording is informative.
+
+**Net driver check.** For each schematic level that a run netlists (the top level and each subcircuit schematic written), every net name of that level SHALL be checked, in both modes of `xschem-compat`, after the level's nets are named. Automatic names (`#net<N>`) and each bit of a bus are checked like other names; global net names (Requirement "Global nets") are not checked. For each name, the pins that carry it SHALL be counted by the `dir` value of the symbol pin: `in`, `out` and `inout` (exact, lower case). Pins of ordinary instances and of `ipin`, `opin` and `iopin` port instances count by the `dir` of their symbol pin (so a port whose pin is `dir=out` drives the net); labels (`lab_pin`, `lab_wire` and other `label` types) and pins with any other or no `dir` count nothing. A name that a short gave to no pin (the name that lost the short, Requirement "Net naming order") carries no pins. Then, taking the first case that applies:
+1. no `out` and no `inout` pin (whatever the number of `in` pins, none included): the error `Error: undriven node: <net>`; the run SHALL fail
+2. exactly one pin in total: the warning `Warning: open net: <net>`; it fails the run only when the `xschemrc` sets the Tcl variable `erc_open_net_is_error` to a true value
+3. two or more `out` pins: the warning `Warning: shorted output node: <net>`; it fails the run only when the `xschemrc` sets `erc_shorted_output_is_error` to a true value
+
+Whether a run that fails only by case 1 (or by cases 2 and 3 made errors) still builds a simulation deck is proposed Q-SCHEM-53 (capability `schematic-simulation-integration`, Requirement "Schematic circuit source").
+
+**Report order of the driver check.** With `xschem-compat` ON, the names of one level SHALL be reported in xschem's order: ascending by a key computed from the name's bytes, where h starts at 5381 and, for each byte c of the name in turn, becomes (33 · h + c) modulo 2^32, and the key is h modulo 31627; names with equal keys in the order the level first gave them. With `xschem-compat` OFF, they SHALL be reported in byte order of the names (standing rule for xschem behaviour no Q-row covers: ON copies xschem, OFF gives the order a user can read; reported to the user 2026-11-26).
+
+**Report text on stderr (xschem-compat ON).** xschem collects these findings in its information window and prints it on stderr only when the run fails. With `xschem-compat` ON, the headless netlist command (`hefesto-cli --netlist`, `schematic netlist` in a script run without the editor) SHALL print the report on stderr only when the run fails, in this layout: for each level in the order its definition is written (the top level first, then each subcircuit schematic in the order of its `.subckt`), a separator line of eleven `-` characters directly followed by the absolute path of the level's schematic (`-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`), then that level's findings in the order above, together with the other messages of this requirement found while that level is netlisted (for example `Warning: Symbol: <symbol>: no type attribute set`); after the last level, the top level's separator line again, followed by the short errors (`Error: Net shorted: <a> - <b>`, Requirement "Net naming order"). Pin-mismatch errors between a symbol and its schematic come before the separator of the level that found them. With `xschem-compat` OFF, every finding SHALL be reported through Hefesto's diagnostics as it is found, whether or not the run fails, with no separator lines (standing rule; reported to the user 2026-11-26).
 
 Compatibility: behavioral
 
-(xschem ref: netlist.c:1430-1460, netlist.c:1791-1990, spice_netlist.c:636-641)
+(xschem ref: netlist.c:1430-1460, netlist.c:1791-1990, spice_netlist.c:636-641, node_hash.c (net driver check), token.c (name key))
 
 #### Scenario: Netlist with a short
 - **GIVEN** a schematic where labels `A` and `B` are on one wire
 - **WHEN** it is netlisted from a script
 - **THEN** the netlist SHALL be produced and the command SHALL return a failure status
+
+#### Scenario: Undriven gate and open drain of a gf180 testbench
+- **GIVEN** the gf180mcu testbench `tests/test_nfet_03v3.sch` (an `nfet_03v3` whose pins `D`, `G`, `S` and `B` are on nets `D`, `G`, `S` and `B` carried only by labels; the symbol pins `G` and `B` are `dir=in`, `D` and `S` are `dir=inout`), with `xschem-compat` ON
+- **WHEN** `hefesto-cli --netlist` netlists it
+- **THEN** the netlist SHALL be written as captured, the exit status SHALL be 10, and stderr SHALL hold, after any driver text, exactly the lines `-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`, `Error: undriven node: B`, `Warning: open net: D`, `Error: undriven node: G`, `Warning: open net: S`, `-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch` (golden cases SCHEM-NL-09 and SCHEM-NL-10)
+
+#### Scenario: Undriven gate, xschem-compat OFF
+- **GIVEN** the same testbench with `xschem-compat` OFF
+- **WHEN** it is netlisted
+- **THEN** the run SHALL fail with the two `undriven node` errors (`B`, then `G`) and SHALL report the two `open net` warnings (`D`, then `S`), and no separator line SHALL be printed
+
+#### Scenario: Report order follows xschem's key
+- **GIVEN** a failing run whose top level has the driver findings for the names `#net2`, `B`, `#net10` and `net1`, with `xschem-compat` ON
+- **WHEN** the report is printed
+- **THEN** they SHALL be in the order `#net10`, `B`, `#net2`, `net1` (keys 2496, 19504, 21787 and 27468; golden case SCHEM-NL-11); with `xschem-compat` OFF the order SHALL be `#net10`, `#net2`, `B`, `net1`
+
+#### Scenario: Open net alone does not fail the run
+- **GIVEN** a schematic whose only driver findings are `open net` warnings (for example a resistor whose two pins, both `dir=inout`, are each alone on their net), with no `erc_open_net_is_error` setting
+- **WHEN** it is netlisted with `hefesto-cli --netlist`
+- **THEN** the exit status SHALL be 0; with `xschem-compat` ON nothing of the report SHALL be printed on stderr, and with `xschem-compat` OFF the `open net` warnings SHALL be reported
+
+#### Scenario: Open net made an error
+- **GIVEN** the same schematic and an `xschemrc` that sets `erc_open_net_is_error` to 1
+- **WHEN** it is netlisted
+- **THEN** the run SHALL fail (exit status 10) and the warning text SHALL stay `Warning: open net: <net>`
+
+#### Scenario: Driving port and global net
+- **GIVEN** a net `IN` carried by an `ipin` (symbol pin `dir=out`) and a gate pin `dir=in`, and a net `VDD` declared global and carried only by `dir=in` pins
+- **WHEN** the level is checked
+- **THEN** neither `IN` nor `VDD` SHALL be reported
+
+#### Scenario: Two outputs on one net
+- **GIVEN** a net carried by the `dir=out` pins of two gates and one `dir=in` pin, with no `erc_shorted_output_is_error` setting
+- **WHEN** the level is checked
+- **THEN** the warning `Warning: shorted output node: <net>` SHALL be reported and the run SHALL NOT fail because of it
 
 ### Requirement: In-process netlisting
 Hefesto SHALL generate the netlist in memory, on every platform, without temporary files or external programs. It SHALL write the netlist to a file only when asked: by default `<netlist folder>/<top cell>.spice`, where the netlist folder is a Hefesto setting (default: a `simulation` folder beside the schematic, inside the document's granted folder on iPadOS). The output SHALL be identical on every platform for the same inputs and the same resolved absolute paths. Netlisting SHALL NOT change the document's undo history. A run SHALL be interruptible: the caller's interrupt check SHALL be polled at least once per schematic level placed, and an interrupted run SHALL return no netlist text and no computed labels and SHALL fail with error SCHEM-NET-018 (in both xschem-compat modes).

@@ -64,9 +64,9 @@ Selection SHALL behave as follows:
 - Clicking an object SHALL select it and clear the previous selection; adding a modifier (Shift on desktop) SHALL add it instead.
 - Clicking empty space SHALL clear the selection.
 - Dragging a rectangle SHALL select every object entirely inside it. If the "select touched" setting is on (default on), dragging right-to-left SHALL also select objects that the rectangle only touches.
-- Hefesto SHALL be able to remove one object or a rectangle of objects from the selection.
+- Hefesto SHALL be able to remove one object or a rectangle of objects from the selection (Ctrl-click or a Ctrl-drag on desktop; `schematic select ... -remove` in scripts). A `schematic select` without `-remove` adds to the selection; `schematic select clear` empties it.
 - "Select all" SHALL select every object.
-- "Select connected" SHALL select every wire, label and port on the net of the selected wire, label or pin, across junctions; a variant SHALL stop at wire junctions.
+- "Select connected" SHALL select every wire, label and port on the net of the selected wire, label or pin, across junctions; a variant (`schematic select connected -stopjunction`) SHALL stop at wire junctions: starting from the selected objects it adds the wires that touch them end to end and stops at any point where three or more wire ends meet or a wire end meets another wire's interior, without adding the wires beyond it.
 - A selected instance SHALL optionally bring its floater texts (capability `schematic-symbols-and-libraries`) into the selection.
 - Only objects on visible layers SHALL be selectable.
 
@@ -75,6 +75,11 @@ Hit testing on desktop SHALL use a tolerance of a few screen pixels around the p
 Compatibility: behavioral
 
 (xschem ref: select.c:93-200, select.c:1387-1500, keys.help)
+
+#### Scenario: Select connected stops at a junction
+- **GIVEN** wires W1 (0,0)-(50,0), W2 (50,0)-(100,0) and W3 (50,0)-(50,50), with W1 selected
+- **WHEN** `schematic select connected -stopjunction` and, after `schematic select clear` and selecting W1 again, `schematic select connected` are executed
+- **THEN** the first SHALL leave only W1 selected, and the second SHALL select W1, W2 and W3
 
 #### Scenario: Right-to-left touch selection
 - **GIVEN** a wire from (0,0) to (100,0) and the "select touched" setting on
@@ -140,7 +145,7 @@ Compatibility: behavioral
 - **THEN** the wire SHALL become (0,−100)-(20,−30) or be re-routed orthogonally, and SHALL still touch the pin
 
 ### Requirement: Rotate and flip
-Rotation SHALL turn the selected objects by 90° clockwise on screen around the snapped pointer position (pivot). A variant SHALL rotate each object around its own anchor (instance origin, text anchor, wire or line first point, box corner). Horizontal flip SHALL mirror around the vertical line through the pivot; vertical flip SHALL be a horizontal flip combined with two rotation steps. For an instance, rotating SHALL add 1 (mod 4) to its rotation when its flip is 0, and SHALL change it consistently with the transform of capability `schematic-file-format` when its flip is 1, so that the drawn result turns clockwise; the origin SHALL be rotated around the pivot.
+Rotation SHALL turn the selected objects by 90° clockwise on screen around the snapped pointer position (pivot). A command that names a pivot (`schematic rotate <x> <y>`, `schematic flip <x> <y>`) SHALL use that point. A command that names none and is not `-inplace` SHALL use the snapped pointer position in the editor; in a run with no pointer (a script without the editor, the headless CLI) xschem uses its last snapped pointer position, which is the origin (0, 0) when no pointer event has happened, and Hefesto SHALL do the same with `xschem-compat` ON, and SHALL use the centre of the selection's bounding box, snapped, with `xschem-compat` OFF (standing rule for xschem behaviour no Q-row covers; reported to the user 2026-11-26). A variant SHALL rotate each object around its own anchor (instance origin, text anchor, wire or line first point, box corner). Horizontal flip SHALL mirror around the vertical line through the pivot; vertical flip SHALL be a horizontal flip combined with two rotation steps. For an instance, rotating SHALL add 1 (mod 4) to its rotation when its flip is 0, and SHALL change it consistently with the transform of capability `schematic-file-format` when its flip is 1, so that the drawn result turns clockwise; the origin SHALL be rotated around the pivot.
 
 Compatibility: exact
 
@@ -155,6 +160,11 @@ Compatibility: exact
 - **GIVEN** a wire (0,0)-(10,0) and the pointer at (0,0)
 - **WHEN** it is rotated
 - **THEN** it SHALL become (0,0)-(0,10)
+
+#### Scenario: Script rotation without a pivot
+- **GIVEN** a script run with no editor, and a selected wire (100,100)-(120,100)
+- **WHEN** `schematic rotate` is executed
+- **THEN** with `xschem-compat` ON the pivot SHALL be (0,0) and the wire SHALL become (-100,100)-(-100,120); with `xschem-compat` OFF the pivot SHALL be (110,100) and the wire SHALL become (110,90)-(110,110)
 
 ### Requirement: Labels and ports
 The editor SHALL place net labels (`lab_pin.sym`, `lab_wire.sym`) and ports (`ipin.sym`, `opin.sym`, `iopin.sym`) from the system library with a `lab` value entered by the user. It SHALL provide:
@@ -210,11 +220,16 @@ Compatibility: behavioral
 - **THEN** both property strings SHALL have `value=10k` and keep their other attributes
 
 ### Requirement: Graphics and text
-The editor SHALL draw lines, boxes, polygons (ended by placing the last point on the first, or by a double click / double tap), arcs and circles on the current layer, and texts with size, rotation, alignment and the text attributes of capability `schematic-file-format`. Symbol documents SHALL add pins as boxes on layer 5 with `name` and `dir`. Images and graphs embedded as boxes SHALL be preserved and drawn (graphs: capability `schematic-simulation-integration`).
+The editor SHALL draw lines, boxes, polygons (ended by placing the last point on the first, or by a double click / double tap), arcs and circles on the current layer (default 4, as in xschem; changed by the layer chooser or `schematic layer`, and used by `schematic line`/`box`/`arc`/`polygon` when `-layer` is not given), and texts with size, rotation, alignment and the text attributes of capability `schematic-file-format`. Symbol documents SHALL add pins as boxes on layer 5 with `name` and `dir`. Images and graphs embedded as boxes SHALL be preserved and drawn (graphs: capability `schematic-simulation-integration`).
 
 Compatibility: behavioral
 
 (xschem ref: keys.help)
+
+#### Scenario: Default current layer
+- **GIVEN** a new document whose current layer was never changed
+- **WHEN** `schematic line 0 0 10 0` is executed
+- **THEN** the line SHALL be on layer 4
 
 #### Scenario: Closed polygon
 - **WHEN** the user places points (0,0), (20,0), (20,20) and then (0,0)

@@ -60,7 +60,7 @@ A symbol's netlisting rules SHALL be its symbol property: the `K` record, or the
 | `spice_ignore`, `lvs_ignore`, `spectre_ignore`, `verilog_ignore`, `vhdl_ignore`, `tedax_ignore` | `true` or `open`: the symbol is left out of that netlist; `short`: all its pins are shorted together |
 | `highlight` | true: nets attached to the symbol are highlighted with it |
 | `hide` | true: draw only the bounding box |
-| `drc` | Script called by the symbol check, informative (see Q-SCHEM-6) |
+| `drc` | Script called by xschem's interactive symbol check, informative (see Q-SCHEM-6): Hefesto SHALL keep the attribute and write it back unchanged, and SHALL NOT evaluate it, in netlisting, on load or in any `schematic` command (no symbol check runs it in M8) |
 
 Compatibility: exact
 
@@ -449,6 +449,8 @@ The search path SHALL be an ordered list of folders built from the value of `XSC
 - the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
+**Default value** (proposed Q-SCHEM-52, recommendation below; awaiting the user). xschem gives `XSCHEM_LIBRARY_PATH` a built-in value before it evaluates any `xschemrc`: the user library `~/.xschem/xschem_library`, then the system library `${XSCHEM_SHAREDIR}/xschem_library/devices`, then eleven example folders of its documentation (`examples`, `ngspice`, `ngspice_verilog_cosim`, `logic`, `xschem_simulator`, `generators`, `inst_sch_select`, `binto7seg`, `pcb`, `rom8k`, `analyses`); an `xschemrc` that sets the variable replaces it (the three PDK files do), and one that does not leaves it. So a document in a folder without an `xschemrc`, with no PDK active, finds the `devices` symbols. Recommendation (both modes): before the `xschemrc` files are evaluated, Hefesto SHALL set `XSCHEM_LIBRARY_PATH` to `${XSCHEM_SHAREDIR}/xschem_library/devices`, the system library (Requirement "System library"), and nothing else: the user library would be `<document folder>/.xschem/xschem_library` under the synthetic `env(HOME)` of Q-SCHEM-38, and Hefesto ships no documentation example folders (both would be dropped as missing folders anyway). The search path setting of capability `hefesto-settings` is still prepended.
+
 Hefesto SHALL build `XSCHEM_LIBRARY_PATH` from the active PDK's `xschemrc` (Requirement "xschemrc as data"), and SHALL also accept a search path set in Hefesto settings (capability `hefesto-settings`) that is prepended to it.
 
 Compatibility: behavioral
@@ -474,6 +476,16 @@ Compatibility: behavioral
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `lib:../shared`, the schematic `/w/s/top.sch` with the instances `y.sym` and `z.sym`, the files `/w/s/lib/y.sym` and `/w/shared/z.sym`, no `lib` or `shared` folder in the folder Hefesto was started in, with `xschem-compat` ON or OFF
 - **WHEN** the instances are resolved
 - **THEN** their symbols SHALL be `/w/s/lib/y.sym` and `/w/shared/z.sym`, whatever folder Hefesto was started in, and the warning `SCHEM-LIB-001` SHALL be reported for `y.sym` and for `z.sym` (Q-SCHEM-38)
+
+#### Scenario: Default search path without an xschemrc
+- **GIVEN** no active PDK, the new schematic `/w/s/div.sch` in a folder with no `xschemrc`, and an instance `res.sym`
+- **WHEN** the instance is resolved, with `xschem-compat` ON or OFF
+- **THEN** the search path SHALL be the system library folder `<install root>/assets/schematic/xschem_library/devices` and the symbol SHALL be the system library's `res.sym` (proposed Q-SCHEM-52)
+
+#### Scenario: xschemrc replaces the default search path
+- **GIVEN** an `xschemrc` in the document's folder that runs `set XSCHEM_LIBRARY_PATH /w/lib`, where `/w/lib` exists
+- **WHEN** the search path is built
+- **THEN** it SHALL be `/w/lib` only; an `xschemrc` that runs `append XSCHEM_LIBRARY_PATH :/w/lib` instead SHALL give the system library folder followed by `/w/lib` (proposed Q-SCHEM-52)
 
 #### Scenario: Dot element is the schematic folder
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
@@ -870,7 +882,9 @@ Compatibility: behavioral
 ### Requirement: Symbol generators
 A symbol reference of the form `name(args)` (matching `^[^ \t()]+\([^()]*\)[ \t]*$`) is a symbol generator in xschem: the program `name` found on the search path is run with the arguments split at `(`, `)`, `,` and spaces, and its standard output is read as a `.sym` file. A generator reference in a `schematic` attribute works the same way. The symbol name used in netlists SHALL be the reference with every run of ` . ( ) ,` and surrounding spaces replaced by `_`, and a trailing `_` removed.
 
-Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text. Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
+Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text.
+
+**Arguments.** The text between the parentheses is not substituted when the symbol is loaded: `@` tokens are passed as written (the sky130 example `sky130_tests/tier.tcl(@lab\)` runs `tier.tcl` with the argument text `@lab\`). A backslash is ordinary text for the generator pattern, so `\)` does not escape the closing parenthesis. xschem hands the program name and the argument text to a shell, which then splits and unescapes the text by its own rules. Proposed Q-SCHEM-54 (recommendation, both modes): Hefesto SHALL NOT apply any shell processing; `argv` SHALL be the argument text split at `(`, `)`, `,`, spaces and tabs, empty words dropped, each word kept as written, backslashes included (`tier.tcl(@lab\)` gives `argv` = `{@lab\}`). The symbol name used in netlists keeps its backslash too, and `@symname` of such an instance is the netlist name with the instance's tokens substituted (capability `schematic-netlisting`, Requirement "Format string substitution"). Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
 
 **Limits** (both modes of `xschem-compat`; xschem bounds none of them; approved by the user on 2026-11-23, Q-SCHEM-43, decisions M8-D5 and M8-D6). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
 - A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A generator file larger than 268,435,456 bytes (256 MiB, `kMaxGeneratorScriptBytes`, the bound of a flattened symbol, Q-SCHEM-40), whatever its name, SHALL NOT be read (not even to check its first line) and SHALL NOT be run: the reference is a missing symbol and `SCHEM-LIB-012` (`Symbol <reference>: the generator <file> is larger than 268435456 bytes; it is neither read nor run`) SHALL be reported once (M8-D6).
@@ -888,6 +902,11 @@ Compatibility: behavioral
 - **GIVEN** an instance with reference `ramdec(4, 8)`
 - **WHEN** its `@symname` is netlisted
 - **THEN** it SHALL print `ramdec_4_8`
+
+#### Scenario: Generator arguments are not substituted
+- **GIVEN** the Tcl generator `tier.tcl` on the search path, which prints `argv` into a `T` record of the symbol it writes, and an instance with reference `tier.tcl(@lab\)` and `lab=A`
+- **WHEN** the reference is resolved, with `xschem-compat` ON or OFF
+- **THEN** the generator SHALL run once with `argv` = `{@lab\}` (proposed Q-SCHEM-54), not with `A`
 
 #### Scenario: Endless generators share the total time limit
 - **GIVEN** a schematic with 10,000 instances `loop.tcl(1)` to `loop.tcl(10000)` of a Tcl generator that never ends, with `xschem-compat` ON or OFF
