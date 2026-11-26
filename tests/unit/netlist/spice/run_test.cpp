@@ -324,3 +324,37 @@ TEST_CASE("ext2sim reads with the -p left by ext2spice without a cell (magic-com
   REQUIRE(s.run("ext2sim inv").ok());
   CHECK(s.exists("inv.sim"));
 }
+
+// Q-NETLIST-59 (compat): EFReadFile leaves `Cannot read extract file
+// <cell>.ext` as the Tcl result and ext2spice returns OK in Magic
+// (NL-SPICE-01); with magic-compat OFF the run fails with EXTFLAT-READ-001.
+// Flat and hierarchical runs alike; no netlist is written.
+TEST_CASE("ext2spice of a missing .ext returns the message and succeeds with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  for (const char* hierarchy : {"off", "on"}) {
+    INFO("hierarchy " << hierarchy);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+    REQUIRE(s.run(std::string{"ext2spice hierarchy "} + hierarchy).ok());
+    const auto r = s.run("ext2spice -p /w nosuch");
+    REQUIRE(r.ok());
+    CHECK(r.value.to_string() == "Cannot read extract file nosuch.ext\n");
+    CHECK_FALSE(s.exists("nosuch.spice"));
+  }
+}
+
+TEST_CASE("ext2spice of a missing .ext fails with EXTFLAT-READ-001 with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  for (const char* hierarchy : {"off", "on"}) {
+    INFO("hierarchy " << hierarchy);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+    REQUIRE(s.run(std::string{"ext2spice hierarchy "} + hierarchy).ok());
+    const auto r = s.run("ext2spice -p /w nosuch");
+    REQUIRE_FALSE(r.ok());
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == "EXTFLAT-READ-001");
+    CHECK(r.diagnostics.back().text == "Cannot read extract file nosuch.ext");
+    CHECK_FALSE(s.exists("nosuch.spice"));
+  }
+}

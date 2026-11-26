@@ -254,6 +254,25 @@ bool Flattener::fits_connections(std::uint64_t count) {
   return true;
 }
 
+namespace {
+
+// One axis of an array use, walked from its lower index; the separation
+// changes sign when the range is written high to low.
+struct AxisRange {
+  std::int64_t lo;
+  std::int64_t hi;
+  std::int64_t sep;
+};
+
+AxisRange axis_range(std::int32_t from, std::int32_t to, std::int32_t sep) {
+  if (from <= to) {
+    return AxisRange{from, to, std::int64_t{sep}};
+  }
+  return AxisRange{to, from, -std::int64_t{sep}};
+}
+
+}  // namespace
+
 // The elements of an array use, x outer and y inner, each from its lower
 // index (efHierSrUses). An array larger than what is left of the instance
 // cap is refused before its first element.
@@ -262,17 +281,13 @@ void Flattener::for_each_element(const HierContext& hc, const Use& use, F&& visi
   if (!fits_instances(element_count(use))) {
     return;
   }
-  const bool x_up = use.xlo <= use.xhi;
-  const bool y_up = use.ylo <= use.yhi;
-  const std::int64_t xlo = x_up ? use.xlo : use.xhi;
-  const std::int64_t xhi = x_up ? use.xhi : use.xlo;
-  const std::int64_t xsep = x_up ? std::int64_t{use.xsep} : -std::int64_t{use.xsep};
-  const std::int64_t ylo = y_up ? use.ylo : use.yhi;
-  const std::int64_t yhi = y_up ? use.yhi : use.ylo;
-  const std::int64_t ysep = y_up ? std::int64_t{use.ysep} : -std::int64_t{use.ysep};
+  const AxisRange xr = axis_range(use.xlo, use.xhi, use.xsep);
+  const AxisRange yr = axis_range(use.ylo, use.yhi, use.ysep);
+  const std::int64_t xsep = xr.sep;
+  const std::int64_t ysep = yr.sep;
   const Transform t = compose(use.trans, hc.trans);
-  for (std::int64_t x = xlo; x <= xhi; ++x) {
-    for (std::int64_t y = ylo; y <= yhi; ++y) {
+  for (std::int64_t x = xr.lo; x <= xr.hi; ++x) {
+    for (std::int64_t y = yr.lo; y <= yr.hi; ++y) {
       if (!count_instance()) {
         return;
       }
