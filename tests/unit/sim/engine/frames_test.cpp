@@ -56,6 +56,8 @@ TEST_CASE("every frame kind survives encode and decode",
       frames::VectorsDone{2},
       vec,
       frames::Beat{42},
+      frames::Data{{{"time", 1e-9}, {"v(out)", -0.5}}},
+      frames::Data{},
   };
   for (const frames::Message& message : messages) {
     CHECK(round_trip(message) == message);
@@ -109,6 +111,9 @@ TEST_CASE("malformed and unknown frames are errors, never reads outside the fram
   CHECK(frames::decode(bytes({4, 1, 2, 0, 0, 0, 0})).error == frames::Error::malformed);
   CHECK(frames::decode(bytes({4, 3, 5})).error == frames::Error::malformed);
   CHECK(frames::decode(bytes({2, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})).error == frames::Error::malformed);
+  // M9 R2: a data event whose count the body cannot hold fails before allocating.
+  CHECK(frames::decode(bytes({4, 6, 0xFF, 0xFF, 0xFF, 0xFF})).error == frames::Error::malformed);
+  CHECK(frames::decode(bytes({4, 6, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3})).error == frames::Error::malformed);
 }
 
 TEST_CASE("a vec chunk must fit its vector",

@@ -1,0 +1,6 @@
+* rc
+.control
+shell ls
+.endc
+.op
+.end

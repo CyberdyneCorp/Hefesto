@@ -28,7 +28,8 @@
 extern "C" {
 #endif
 
-#define HEFESTO_ENGINE_ABI_VERSION 1u
+/* 2 (M9 R2): hefesto_engine_callbacks gained on_data. */
+#define HEFESTO_ENGINE_ABI_VERSION 2u
 #define HEFESTO_ENGINE_ENTRY "hefesto_engine_v1"
 
 /* Engine states, in sim::EngineState's order. */
@@ -50,6 +51,13 @@ enum hefesto_engine_status {
 
 typedef struct hefesto_engine hefesto_engine; /* opaque */
 
+/* One value of a streamed point (ngspice's SendData), valid only during the
+ * on_data call: the vector's name and its real part. */
+typedef struct hefesto_engine_value {
+  const char* name;
+  double value;
+} hefesto_engine_value;
+
 typedef struct hefesto_engine_callbacks {
   void* user;
   /* is_error: the line came on ngspice's error stream ("stderr " removed). */
@@ -57,6 +65,9 @@ typedef struct hefesto_engine_callbacks {
   /* point: percent done, or -1 when the status carries none. */
   void (*on_progress)(void* user, const char* status, size_t size, double point);
   void (*on_state)(void* user, int state);
+  /* ABI 2: one streamed point, every vector's value at it (scale first when
+   * the engine marks one). NULL: the plugin does not forward the stream. */
+  void (*on_data)(void* user, const hefesto_engine_value* values, size_t count);
 } hefesto_engine_callbacks;
 
 /* One final vector, valid only during the sink call. */

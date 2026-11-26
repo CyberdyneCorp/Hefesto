@@ -152,7 +152,7 @@ class WorkerEngine final : public Engine {
     }
   }
 
-  diag::Status load(const std::vector<std::string>& deck) override {
+  diag::Status load(const std::vector<std::string>& deck, const LoadOptions& options) override {
     std::lock_guard request_lock{request_mutex_};
     if (job_loaded_) {
       if (diag::Status reset = command(frames::Command::reset); !reset) {
@@ -165,7 +165,7 @@ class WorkerEngine final : public Engine {
       results_ready_ = false;
     }
     job_loaded_ = true;
-    for (const frames::Load& chunk : frames::load_chunks(deck, 1, {})) {
+    for (const frames::Load& chunk : frames::load_chunks(deck, options.seed, options.init_commands)) {
       if (diag::Status sent = send(chunk); !sent) {
         return sent;
       }
@@ -356,6 +356,14 @@ class WorkerEngine final : public Engine {
   void handle(frames::Progress& progress) {
     if (const EngineCallbacks c = callbacks(); c.on_progress) {
       c.on_progress(progress.status, progress.point);
+    }
+  }
+
+  void handle(frames::Data& data) {
+    if (const EngineCallbacks c = callbacks(); c.on_data) {
+      for (const frames::DataValue& value : data.values) {
+        c.on_data(value.name, value.value);
+      }
     }
   }
 

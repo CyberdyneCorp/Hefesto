@@ -25,6 +25,8 @@
 //            state         u8 state (sim::EngineState's order)
 //            reply         u8 request (0 load, else the command), u8 ok, str message
 //            vectors_done  u32 vector count
+//            data          u32 count, then count times: str name, f64 value
+//                          (one streamed point; added in M9 R2)
 //   vec    worker -> core  str name, str type, u8 complex, u64 length, u64
 //                          offset, u32 count, f64[count] real, f64[count] imag
 //                          when complex; a vector longer than one frame is
@@ -65,7 +67,7 @@ inline constexpr std::size_t kLoadChunkBytes = 32U * 1024U * 1024U;
 
 enum class Kind : std::uint8_t { hello = 1, load = 2, cmd = 3, event = 4, vec = 5, beat = 6 };
 enum class Command : std::uint8_t { run = 1, pause = 2, resume = 3, cancel = 4, reset = 5, quit = 6 };
-enum class EventKind : std::uint8_t { output = 1, progress = 2, state = 3, reply = 4, vectors_done = 5 };
+enum class EventKind : std::uint8_t { output = 1, progress = 2, state = 3, reply = 4, vectors_done = 5, data = 6 };
 enum class Stream : std::uint8_t { output = 0, error = 1 };
 /// sim::EngineState in the same order (the core checks the range).
 enum class State : std::uint8_t { idle = 0, loaded = 1, running = 2, paused = 3, failed = 4 };
@@ -129,8 +131,21 @@ struct Beat {
   std::uint64_t sequence = 0;
   friend bool operator==(const Beat&, const Beat&) = default;
 };
+/// Added in M9 R2: one value of a streamed point.
+struct DataValue {
+  std::string name;
+  double value = 0.0;
+  friend bool operator==(const DataValue&, const DataValue&) = default;
+};
+/// Added in M9 R2: one streamed point (ngspice's SendData), the scale first;
+/// the worker sends at most kMaxDataValues values per frame.
+struct Data {
+  std::vector<DataValue> values;
+  friend bool operator==(const Data&, const Data&) = default;
+};
+inline constexpr std::size_t kMaxDataValues = 1U << 16U;
 
-using Message = std::variant<Hello, Load, Cmd, Output, Progress, StateChange, Reply, VectorsDone, VecChunk, Beat>;
+using Message = std::variant<Hello, Load, Cmd, Output, Progress, StateChange, Reply, VectorsDone, VecChunk, Beat, Data>;
 
 enum class Error : std::uint8_t { none, malformed, unknown_kind, oversize };
 
@@ -250,6 +265,14 @@ struct EncodeVisitor {
   void operator()(const Beat& m) const {
     w.u8(static_cast<std::uint8_t>(Kind::beat));
     w.u64(m.sequence);
+  }
+  void operator()(const Data& m) const {
+    encode_event_kind(w, EventKind::data);
+    w.u32(static_cast<std::uint32_t>(m.values.size()));
+    for (const DataValue& v : m.values) {
+      w.str(v.name);
+      w.f64(v.value);
+    }
   }
 };
 
@@ -446,6 +469,22 @@ inline Decoded decode_reply(Reader& r) {
   return finish(r, std::move(m), "reply event");
 }
 
+/// Each value takes at least 12 bytes, so a count the rest of the body
+/// cannot hold fails before anything is allocated.
+inline Decoded decode_data(Reader& r) {
+  const std::uint32_t count = r.u32();
+  if (r.failed() || count > r.remaining() / 12) {
+    return malformed("data event has more values than its frame holds");
+  }
+  Data m;
+  m.values.reserve(count);
+  for (std::uint32_t i = 0; i < count && !r.failed(); ++i) {
+    std::string name = r.str();
+    m.values.push_back(DataValue{std::move(name), r.f64()});
+  }
+  return finish(r, std::move(m), "data event");
+}
+
 inline Decoded decode_event(Reader& r) {
   switch (static_cast<EventKind>(r.u8())) {
     case EventKind::output: return decode_output(r);
@@ -458,6 +497,7 @@ inline Decoded decode_event(Reader& r) {
     case EventKind::state: return decode_state(r);
     case EventKind::reply: return decode_reply(r);
     case EventKind::vectors_done: return finish(r, VectorsDone{r.u32()}, "vectors_done event");
+    case EventKind::data: return decode_data(r);
   }
   return malformed("event frame has an unknown event kind");
 }

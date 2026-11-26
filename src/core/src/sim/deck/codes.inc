@@ -9,3 +9,18 @@
 // and describe the codes in its SIMDECK section.
 //
 // Owner: SIMDECK (openspec/changes/m9-lvs-simulation/design.md D3).
+
+// M9 R2 (task 13.1): the spice and raw sources.
+HEFESTO_SIM_CODE("SIM-DECK-001", error, "A file the deck includes cannot be read.")
+HEFESTO_SIM_CODE("SIM-DECK-002", error, "Deck include depth limit exceeded.")
+HEFESTO_SIM_CODE("SIM-DECK-003", error, "Prepared deck size limit exceeded.")
+HEFESTO_SIM_CODE("SIM-DECK-004", error, "A forbidden command in a .control section of a simulation deck.")
+HEFESTO_SIM_CODE("SIM-DECK-005", warning, "A .control section was removed from the deck.")
+HEFESTO_SIM_CODE("SIM-DECK-006", error, "A .subckt without its .ends, or an .ends without its .subckt.")
+HEFESTO_SIM_CODE("SIM-DECK-007", error, "An instance calls an undefined subcircuit.")
+HEFESTO_SIM_CODE("SIM-DECK-008", error, "Deck has no analysis.")
+HEFESTO_SIM_CODE("SIM-DECK-009", error, "Raw deck does not end with .end.")
+HEFESTO_SIM_CODE("SIM-DECK-010", error, "Invalid stimulus source.")
+HEFESTO_SIM_CODE("SIM-DECK-011", error, "Unknown DUT port in a binding.")
+HEFESTO_SIM_CODE("SIM-DECK-012", warning, "A DUT port was left unconnected.")
+HEFESTO_SIM_CODE("SIM-DECK-013", error, "The DUT netlist or the deck context is missing.")

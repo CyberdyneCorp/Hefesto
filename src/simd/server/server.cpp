@@ -94,6 +94,29 @@ void Server::on_state(void* user, int state) {
   }
 }
 
+void Server::on_data(void* user, const hefesto_engine_value* values, std::size_t count) {
+  auto* server = static_cast<Server*>(user);
+  {
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard lock{server->data_mutex_};
+    if (now - server->last_data_ < kDataInterval) {
+      return;
+    }
+    server->last_data_ = now;
+  }
+  frames::Data data;
+  for (std::size_t i = 0; i < count; ++i) {
+    data.values.push_back(frames::DataValue{values[i].name != nullptr ? values[i].name : "", values[i].value});
+    if (data.values.size() == frames::kMaxDataValues) {
+      server->out_.write(data);
+      data.values.clear();
+    }
+  }
+  if (!data.values.empty()) {
+    server->out_.write(data);
+  }
+}
+
 // --- threads ---------------------------------------------------------------------------
 
 void Server::post(Task task) {
@@ -131,7 +154,7 @@ void Server::heartbeat_loop() {
 }
 
 int Server::run(int in_fd, const std::vector<std::string>& notes) {
-  const hefesto_engine_callbacks callbacks{this, on_output, on_progress, on_state};
+  const hefesto_engine_callbacks callbacks{this, on_output, on_progress, on_state, on_data};
   engine_ = api_.create(&callbacks);
   if (engine_ == nullptr) {
     out_.write(frames::Output{frames::Stream::error, "the simulation engine could not be initialised"});

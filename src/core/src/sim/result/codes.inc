@@ -9,3 +9,15 @@
 // and describe the codes in its SIMRES section.
 //
 // Owner: SIMRES (openspec/changes/m9-lvs-simulation/design.md D3).
+
+// M9 R2 (task 13.3): raw files, CSV export and waveform measurements.
+HEFESTO_SIM_CODE("SIM-RESULT-001", error, "Malformed raw file: a line does not hold the expected token.")
+HEFESTO_SIM_CODE("SIM-RESULT-002", error, "Truncated raw file: the binary data ends before the declared points.")
+HEFESTO_SIM_CODE("SIM-RESULT-003", error, "Raw import above the import limit or the result budget.")
+HEFESTO_SIM_CODE("SIM-RESULT-004", error, "A plot cannot be written: no vectors, or vectors of different lengths.")
+HEFESTO_SIM_CODE("SIM-RESULT-005", error, "No such vector in the plot.")
+HEFESTO_SIM_CODE("SIM-RESULT-006", error, "Invalid waveform measurement arguments.")
+HEFESTO_SIM_CODE("SIM-RESULT-007", error, "No crossing of the level for the measurement.")
+HEFESTO_SIM_CODE("SIM-RESULT-008", error, "Unknown waveform measurement.")
+HEFESTO_SIM_CODE("SIM-RESULT-009", error, "A result file cannot be read or written.")
+HEFESTO_SIM_CODE("SIM-RESULT-010", error, "Invalid analysis parameter.")

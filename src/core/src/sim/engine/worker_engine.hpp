@@ -19,8 +19,11 @@
 // replaces the engine (D-25 (a)).
 //
 // Between jobs the worker is reused: a load after a loaded job first sends
-// `reset` (remcirc, destroy all), and every load sends `setseed 1` before
-// the deck ("Deterministic engine initialisation").
+// `reset` (remcirc, destroy all), and every load sends the LoadOptions'
+// initialisation commands and seed with the deck; the worker runs them,
+// then `setseed <seed>`, before the deck ("Deterministic engine
+// initialisation"; M9 R2: previously always `setseed 1` and no commands).
+// Streamed points (`data` events) reach EngineCallbacks::on_data.
 //
 // Owner: SIMD (the worker client of SIMENG's sim::Engine; task 5.4).
 

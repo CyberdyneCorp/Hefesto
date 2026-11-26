@@ -40,6 +40,8 @@ struct WaveformMeasure {
   std::string vector;
   std::vector<double> arguments;
   std::optional<std::string> part;  // re, im, db or ph for a complex vector
+  /// Added in M9 R2: `delay`'s target vector (nullopt: `vector`).
+  std::optional<std::string> target;
 };
 
 struct ResultStore {
