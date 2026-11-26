@@ -157,7 +157,11 @@ def execute(run: Run, roots: dict[str, Path], tools: dict, out: Path) -> Result:
 
 
 def compile_osdi(openvaf: str, va_root: Path, out: Path) -> tuple[tuple[str, ...], list[str]]:
-    """Compiles the six IHP modules; returns the `osdi` init lines and the failures."""
+    """Compiles the six IHP modules; returns the `osdi` init lines and the failures.
+
+    The lines name absolute paths: ngspice runs in each run's own directory, so a path relative to
+    the caller's directory would not resolve there."""
+    out = out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     lines, failures = [], []
     for module in OSDI_MODULES:
@@ -324,6 +328,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--only", default="", help="run only the runs whose name starts with this prefix")
     args = ap.parse_args(argv)
     roots = {k: v.resolve() for k, v in (("sky130", args.sky130), ("gf180mcu", args.gf180mcu), ("ihp", args.ihp)) if v}
+    args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
     tools, facts = {"ngspice": args.ngspice}, {}
     if "ihp" in roots and args.openvaf:

@@ -6,7 +6,10 @@
 """
 from __future__ import annotations
 
+import os
+import stat
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -100,6 +103,26 @@ class DeckTest(unittest.TestCase):
         self.assertEqual(values, {"i1": 0.0004})
         self.assertEqual(errors, ["Error: no such variable"])
         self.assertEqual(warnings, 1)
+
+
+class OsdiTest(unittest.TestCase):
+    def test_osdi_lines_are_absolute_when_out_is_relative(self):
+        """Regression (golden-capture run 45818789172): `--out refruns` gave `osdi refruns/osdi/x.osdi`,
+        which ngspice, running in the run's own directory, could not open."""
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / "openvaf"
+            fake.write_text('#!/bin/sh\nwhile [ "$1" != "-o" ]; do shift; done\ntouch "$2"\n', encoding="utf-8")
+            fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+            cwd = os.getcwd()
+            os.chdir(tmp)
+            try:
+                lines, failures = rr.compile_osdi(str(fake), Path(tmp) / "va", Path("refruns") / "osdi")
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(failures, [])
+        self.assertEqual(len(lines), len(rr.OSDI_MODULES))
+        for line in lines:
+            self.assertTrue(Path(line.removeprefix("osdi ")).is_absolute(), line)
 
 
 if __name__ == "__main__":
