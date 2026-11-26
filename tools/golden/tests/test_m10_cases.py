@@ -306,7 +306,7 @@ class ImageVariantValidationTest(unittest.TestCase):
             self.assertEqual(case.reference["image"], "magic-gl")
 
     def test_rejected(self):
-        for reference, tool in (('display = "xvfb"\nimage = "magic-cairo"', "magic"),
+        for reference, tool in (('display = "xvfb"\nimage = "magic-vulkan"', "magic"),
                                 ('image = "magic-gl"', "magic"),
                                 ('display = "xvfb"\nimage = "magic-gl"', "netgen")):
             with self.subTest(reference=reference, tool=tool), tempfile.TemporaryDirectory() as tmp:
