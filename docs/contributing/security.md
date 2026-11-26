@@ -228,7 +228,7 @@ The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the sa
 ### Proposed caps (need a user decision)
 
 - **`.ext` read limits (M6-S8).** Approved 2026-11-21 (G5) as implemented, in both modes, with one change made in round 6: a line over 128 tokens is ignored with a warning every console shows, never silently. No longer pending.
-- **DEF generated via cap (M6-S2, Q-LEFDEF-153).** Proposed 2026-11-25, implemented in both modes, awaiting the user: at most 65,536 cuts and 4,096 rows or columns per generated via (was 1,000,000 cuts, Q-LEFDEF-117). See the bounds table above.
+- **DEF generated via cap (M6-S2, Q-LEFDEF-153).** Approved by the user 2026-11-25, implemented in both modes: at most 65,536 cuts and 4,096 rows or columns per generated via (was 1,000,000 cuts, Q-LEFDEF-117). See the bounds table above.
 
 ### Fuzz targets
 
