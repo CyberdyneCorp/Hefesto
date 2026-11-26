@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3646 scenarios, 1055 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3647 scenarios, 1055 open questions.
 
 ## Hefesto product (native)
 
@@ -34,7 +34,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 6 | 12 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 5 | 11 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
 | [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 5 | 7 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
-| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 6 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
+| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 7 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
 
 ## Technology files (TECH)
 

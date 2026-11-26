@@ -907,8 +907,10 @@ jobs:
           # The M4 areas must stay in the comparison (m4-scripting task 13.6), and MASK
           # once its expected outputs exist (m5-mask-gds-cif task 15.4), and LEFDEF and OASIS
           # (m6-lef-def-oasis task 17.4).
+          # The SCHEM cases with xschem PDK inputs run only on the legs that restore the xschem sets
+          # (matrix `xschem`, the reference leg among them); the other legs skip them as whole cases.
           python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP --require-area MASK \
-            --require-area LEFDEF --require-area OASIS \
+            --require-area LEFDEF --require-area OASIS --may-skip 'SCHEM/*' \
             "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 

@@ -82,7 +82,7 @@ Compatibility: native
 - **THEN** Hefesto SHALL report a format error and SHALL NOT crash
 
 ### Requirement: Cross-platform determinism checks
-CI SHALL run the golden suite on Linux x86_64, Linux aarch64 and macOS arm64, and on the iPadOS simulator from the start of the iPadOS milestone (capability `hefesto-build-and-distribution`). It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields. Cases deferred to a later milestone in `tests/golden/deviations.toml` are left out of the comparison: their feature is missing, so their output is not yet Hefesto's.
+CI SHALL run the golden suite on Linux x86_64, Linux aarch64 and macOS arm64, and on the iPadOS simulator from the start of the iPadOS milestone (capability `hefesto-build-and-distribution`). It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields. Cases deferred to a later milestone in `tests/golden/deviations.toml` are left out of the comparison: their feature is missing, so their output is not yet Hefesto's. A case whose external input (a PDK data set that only some legs restore, such as the xschem sets) is unavailable on a leg is skipped there as a whole and compared among the legs that ran it, the Linux x86_64 reference leg among them; the files of a case that both legs ran SHALL match exactly.
 
 Compatibility: native
 
@@ -91,6 +91,10 @@ Compatibility: native
 #### Scenario: Platform drift
 - **WHEN** a change makes the SPICE output on aarch64 differ from x86_64
 - **THEN** CI SHALL fail
+
+#### Scenario: Case skipped for a missing PDK data set
+- **WHEN** a SCHEM case reads an xschem PDK set that the linux-arm64-clang leg does not restore, so that leg skips it, while the reference leg runs it
+- **THEN** the comparison lists the case as not run on that leg and does not fail on it
 
 ### Requirement: Performance benchmarks
 CI SHALL run the reference workloads of capability `hefesto-performance` on dedicated runners, and SHALL flag any regression larger than 10% against the main-branch baseline.
