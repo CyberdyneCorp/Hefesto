@@ -48,6 +48,7 @@ add_library(hefesto_core STATIC
   src/platform/task_executor.cpp
   src/platform/worker_host.cpp
   src/settings/project_settings.cpp
+  src/util/cr_atan.cpp
   src/util/libc_random.cpp
   src/util/record_order.cpp)
 add_library(hefesto::core ALIAS hefesto_core)
