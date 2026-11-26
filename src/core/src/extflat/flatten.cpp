@@ -10,6 +10,7 @@
 #include <climits>
 #include <cmath>
 #include <functional>
+#include <limits>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -59,6 +60,34 @@ using GlobalTable = util::MagicHashTable<std::uint32_t, util::MagicClientKey<std
 
 constexpr std::size_t kGlobalTableSize = 1024;  // INITFLATSIZE
 constexpr std::size_t kGlobalNamesShown = 10;
+
+// The number of indices from `lo` to `hi` inclusive, in either order.
+std::uint64_t span(std::int64_t lo, std::int64_t hi) {
+  return static_cast<std::uint64_t>(lo <= hi ? hi - lo : lo - hi) + 1U;
+}
+
+// a * b, saturated at the largest value (two 32-bit spans can reach 2^64).
+std::uint64_t saturating_product(std::uint64_t a, std::uint64_t b) {
+  constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+  return b != 0 && a > kMax / b ? kMax : a * b;
+}
+
+// The number of elements of an array use.
+std::uint64_t element_count(const Use& use) {
+  return saturating_product(span(use.xlo, use.xhi), span(use.ylo, use.yhi));
+}
+
+// The number of element pairs an arrayed connection expands to (both
+// names have the same ranges; efConnInitSubs checked them).
+std::uint64_t pair_count(const ConnName& name) {
+  const std::uint64_t first = span(name.subs[0].lo, name.subs[0].hi);
+  return name.nsubs == 2 ? saturating_product(first, span(name.subs[1].lo, name.subs[1].hi)) : first;
+}
+
+// What is left of `limit` once `used` of it is spent.
+std::uint64_t remaining(std::uint64_t used, std::uint64_t limit) {
+  return used >= limit ? 0 : limit - used;
+}
 
 // HashGetNumEntries(&def->def_uses).
 std::int64_t use_count(const Def& def) {
@@ -132,6 +161,8 @@ class Flattener {
   void expand_conn(const Conn& conn, F& visit);
   [[nodiscard]] bool subckt(std::uint32_t def) const;
   bool count_instance();
+  bool fits_instances(std::uint64_t count);
+  bool fits_connections(std::uint64_t count);
   void add_nodes(const HierContext& hc, unsigned pass);
   void add_node_names(const HierContext& hc, const Def& def, std::uint32_t local, std::uint32_t flat);
   void add_conns(const HierContext& hc, unsigned pass);
@@ -178,7 +209,19 @@ bool Flattener::subckt(std::uint32_t def) const {
 }
 
 bool Flattener::count_instance() {
-  if (++instances_ > ctx_.options.limits.max_instances) {
+  if (!fits_instances(1)) {
+    return false;
+  }
+  ++instances_;
+  return true;
+}
+
+// Whether `count` more instances stay within the cap. Each one is still
+// counted as it is visited; an array too large for what is left of the cap
+// fails here, before any element is visited (the walk would reach the cap
+// anyway, after flattening as many elements as the cap allows).
+bool Flattener::fits_instances(std::uint64_t count) {
+  if (count > remaining(instances_, ctx_.options.limits.max_instances)) {
     ctx_.fail(codes::kLimit, "the flattened .ext hierarchy has more than " +
                                  std::to_string(ctx_.options.limits.max_instances) + " instances");
     return false;
@@ -186,10 +229,24 @@ bool Flattener::count_instance() {
   return true;
 }
 
+// The same for the element pairs of an arrayed connection.
+bool Flattener::fits_connections(std::uint64_t count) {
+  if (count > remaining(connections_, ctx_.options.limits.max_connections)) {
+    ctx_.fail(codes::kLimit, "the .ext merge records expand to more than " +
+                                 std::to_string(ctx_.options.limits.max_connections) + " connections");
+    return false;
+  }
+  return true;
+}
+
 // The elements of an array use, x outer and y inner, each from its lower
-// index (efHierSrUses).
+// index (efHierSrUses). An array larger than what is left of the instance
+// cap is refused before its first element.
 template <typename F>
 void Flattener::for_each_element(const HierContext& hc, const Use& use, F&& visit_child) {
+  if (!fits_instances(element_count(use))) {
+    return;
+  }
   const bool x_up = use.xlo <= use.xhi;
   const bool y_up = use.ylo <= use.yhi;
   const std::int64_t xlo = x_up ? use.xlo : use.xhi;
@@ -262,21 +319,24 @@ void Flattener::for_each_conn(const HierContext& hc, const std::vector<Conn>& co
 }
 
 // One arrayed connection: each element pair of its subscript ranges,
-// counted against the connection limit.
+// counted against the connection limit. A connection with more pairs than
+// what is left of the limit is refused before its first pair.
 template <typename F>
 void Flattener::expand_conn(const Conn& conn, F& visit) {
   const ConnName& c1 = conn.name1;
   const ConnName& c2 = conn.name2;
+  if (!fits_connections(pair_count(c1))) {
+    return;
+  }
   const bool two = c1.nsubs == 2;
   const std::int64_t jlo = two ? c1.subs[1].lo : 0;
   const std::int64_t jhi = two ? c1.subs[1].hi : 0;
   for (std::int64_t i = c1.subs[0].lo; i <= c1.subs[0].hi && !ctx_.fatal; ++i) {
     for (std::int64_t j = jlo; j <= jhi; ++j) {
-      if (++connections_ > ctx_.options.limits.max_connections) {
-        ctx_.fail(codes::kLimit, "the .ext merge records expand to more than " +
-                                     std::to_string(ctx_.options.limits.max_connections) + " connections");
+      if (!fits_connections(1)) {
         return;
       }
+      ++connections_;
       const std::int64_t i2 = i - c1.subs[0].lo + c2.subs[0].lo;
       const std::int64_t j2 = two ? j - jlo + c2.subs[1].lo : 0;
       visit(conn, c1.element(i, j), c2.element(i2, j2));

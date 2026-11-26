@@ -15,6 +15,8 @@ The reader SHALL open `<name>.ext` for the root cell. It SHALL try the following
 3. The editor's cell search path, but only if no `-p` path was given.
 
 A trailing `.ext` on the root name given by the user SHALL be removed before the search. After reading a file completely, including its `.res.ext` overlay when that applies, the reader SHALL read every subcell definition named by a `use` record that has not been read yet, using the same three locations. Subcells SHALL be read in the iteration order of the parent's use table (see Requirement "Container iteration order" in capability `ext-flattening-hierarchy`). Each definition SHALL be read at most once per run. If a file cannot be opened, the read SHALL fail with the message `Cannot read extract file <name>.ext` (informative). Errors in subcells SHALL make the overall result a failure, but reading SHALL continue.
+
+Resource limits (M6-S8, both settings of `magic-compat`; `docs/contributing/security.md`): each pass of the flattening over the hierarchy SHALL count its flattened instances, each array element counting one, against `ReadLimits::max_instances` (4,194,304), and its expanded connection elements against `ReadLimits::max_connections` (16,777,216). Past either the read SHALL fail with EXTFLAT-READ-009 (`the flattened .ext hierarchy has more than <n> instances`, `the .ext merge records expand to more than <n> connections`). An array use whose element count (the product of its two ranges, computed without overflow) is larger than what is left of the instance limit, and an arrayed connection whose element pairs are more than what is left of the connection limit, SHALL fail with the same diagnostic before its first element is visited: the walk would reach the limit anyway, and visiting elements up to it costs seconds (Magic walks every element).
 Compatibility: behavioral
 (Magic ref: extflat/EFread.c:120-200, extflat/EFread.c:704-760, extflat/EFargs.c:330-345)
 
@@ -27,6 +29,17 @@ Compatibility: behavioral
 - **GIVEN** `top.ext` contains `use inv u1 ...` and `use inv u2 ...`
 - **WHEN** the tree is read
 - **THEN** `inv.ext` is opened exactly once
+
+#### Scenario: Array use larger than the instance limit
+- **GIVEN** `top.ext` contains `use leaf l[0:100000:1][0:100000:1] 1 0 0 0 1 0` (10^10 elements) and `leaf.ext` has merge records naming nodes it does not have
+- **WHEN** it is read and flattened, with `magic-compat` ON or OFF
+- **THEN** the read fails at once with EXTFLAT-READ-009 `the flattened .ext hierarchy has more than 4194304 instances`
+- **AND** no element is flattened: no `no such node` warning (EXTFLAT-READ-007) is reported
+
+#### Scenario: Array use exactly at the instance limit
+- **GIVEN** `use leaf l[0:9:1][0:9:1] 1 0 0 0 1 0` and an instance limit of 100
+- **WHEN** it is read and flattened
+- **THEN** the 100 elements flatten; with a limit of 99 the read fails with EXTFLAT-READ-009 before the first element
 
 ### Requirement: Line tokenization
 The reader SHALL split each physical line into tokens as follows:

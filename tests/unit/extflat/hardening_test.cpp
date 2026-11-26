@@ -220,3 +220,90 @@ TEST_CASE("a port number past the cap fails the read with EXTFLAT-READ-009",
     CHECK(at.read("top", options).ok());
   }
 }
+
+// Regression (both modes; fuzz seed regress-timeout-08653c19...): an array
+// use was walked element by element until the instance cap, each element
+// flattening its cell and warning about its merges, so a 10^10-element
+// array took seconds to fail. An array larger than what is left of the
+// cap is now refused before its first element.
+TEST_CASE("an array use larger than the instance cap is refused before any element", CAP_REQ) {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ExtFixture f;
+    f.file("top", "use leaf l[0:100000:1][0:100000:1] 1 0 0 0 1 0\n");
+    f.file("leaf", "node a 1 0 0 0 m1\nmerge x/A y/A\nmerge y/A a\n");
+    extflat::ReadOptions options;
+    options.magic_compat = compat;
+    const auto n = f.read("top", options);
+    REQUIRE_FALSE(n.ok());
+    CHECK(n.error().code == "EXTFLAT-READ-009");
+    CHECK(n.error().text == "the flattened .ext hierarchy has more than 4194304 instances");
+    CHECK(f.texts("EXTFLAT-READ-007").empty());  // no element was flattened
+
+    ExtFixture full;  // both ranges at their widest: the count saturates
+    full.file("top", "use leaf l[-2147483648:2147483647:1][-2147483648:2147483647:1] 1 0 0 0 1 0\n");
+    full.file("leaf", "node a 1 0 0 0 m1\n");
+    const auto wide = full.read("top", options);
+    REQUIRE_FALSE(wide.ok());
+    CHECK(wide.error().code == "EXTFLAT-READ-009");
+  }
+}
+
+TEST_CASE("an array use exactly filling the instance cap flattens and one past it is refused", CAP_REQ) {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    extflat::ReadOptions options;
+    options.magic_compat = compat;
+    options.limits.max_instances = 100;
+    ExtFixture f;
+    f.file("top", "use leaf l[0:9:1][0:9:1] 1 0 0 0 1 0\n");
+    f.file("leaf", "node a 1 0 0 0 m1\nmerge x/A a\n");
+    const auto at = f.read("top", options);
+    REQUIRE(at.ok());
+    CHECK(names(at.value()).size() == 100);
+
+    ExtFixture g;
+    g.file("top", "use leaf l[0:9:1][0:9:1] 1 0 0 0 1 0\n");
+    g.file("leaf", "node a 1 0 0 0 m1\nmerge x/A a\n");
+    options.limits.max_instances = 99;
+    const auto over = g.read("top", options);
+    REQUIRE_FALSE(over.ok());
+    CHECK(over.error().text == "the flattened .ext hierarchy has more than 99 instances");
+    CHECK(g.texts("EXTFLAT-READ-007").empty());
+  }
+}
+
+TEST_CASE("an array inside an array is refused once the outer elements spend the cap", CAP_REQ) {
+  ExtFixture f;
+  f.file("top", "use mid m[0:3:1][0:0:0] 1 0 0 0 1 0\n");
+  f.file("mid", "use leaf l[0:9:1][0:0:0] 1 0 0 0 1 0\n");
+  f.file("leaf", "node a 1 0 0 0 m1\n");
+  extflat::ReadOptions options;
+  options.limits.max_instances = 44;  // 4 + 4 * 10
+  CHECK(f.read("top", options).ok());
+  options.limits.max_instances = 43;
+  const auto over = f.read("top", options);
+  REQUIRE_FALSE(over.ok());
+  CHECK(over.error().code == "EXTFLAT-READ-009");
+}
+
+TEST_CASE("an arrayed merge past the connection cap is refused before any pair", CAP_REQ) {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    extflat::ReadOptions options;
+    options.magic_compat = compat;
+    options.limits.max_connections = 9;
+    ExtFixture f;
+    f.file("top", "node a 0 0 0 0 m1\nmerge x[0:9] y[0:9]\n");
+    const auto n = f.read("top", options);
+    REQUIRE_FALSE(n.ok());
+    CHECK(n.error().text == "the .ext merge records expand to more than 9 connections");
+    CHECK(f.texts("EXTFLAT-READ-007").empty());  // no pair was looked up
+
+    ExtFixture g;
+    g.file("top", "node a 0 0 0 0 m1\nmerge x[0:2,0:2] y[0:2,0:2]\n");
+    CHECK(g.read("top", options).ok());
+    options.limits.max_connections = 8;
+    CHECK_FALSE(g.read("top", options).ok());
+  }
+}
