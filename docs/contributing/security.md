@@ -226,7 +226,7 @@ The M6 readers (`src/core/src/lef/`, `def/`, `oasis/`, `extflat/`) follow the sa
 
 ### Proposed caps (need a user decision)
 
-- **Read-plane triangle stitch budget (M5-S10, Q-MODEL-38).** Proposed 2026-11-25, implemented in both modes, awaiting the user: a GDS or CIF read paint stops after 1024^2 stitch steps and paints the rest of its triangle's area as a rectangle. See the M5 bounds and findings tables.
+- **Read-plane triangle stitch budget (M5-S10, Q-MODEL-38).** Approved 2026-11-25 (standing approval for crafted-input limits), implemented in both modes: a GDS or CIF read paint stops after 1024^2 stitch steps and paints the rest of its triangle's area as a rectangle. See the M5 bounds and findings tables.
 - **`.ext` read limits (M6-S8).** Approved 2026-11-21 (G5) as implemented, in both modes, with one change made in round 6: a line over 128 tokens is ignored with a warning every console shows, never silently. No longer pending.
 
 ### Fuzz targets
