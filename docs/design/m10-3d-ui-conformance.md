@@ -231,3 +231,26 @@ Upload 0.079 s, upload plus the first frame 142 ms. The mesh has 1.5 times the r
 | block | 289,535 | 1,015,220 | 0.122 s | 172.9 B/rect | 90.1 B/rect | 188 MiB | not measured |
 
 Gates of the `mask` workload, set from this run (`bench/view3d/gates.json`): at least 1,400,000 rectangles, median build ≤ 1.75 s (about 50 % over the run), model ≤ 130 B/rect. The lavapipe frame times are information only (D17).
+
+Frame rate in a Release build with the round-6 renderer (M10 round 6 RENDER, task 13.2 follow-up), measured 2026-11-26 13:24 on the same Apple M3 Pro (12 cores) with MoltenVK. Command: `hefesto-bench-view3d --frames 60 --repeat 1`, workloads `synthetic` and `mask` (`--rects 1000000`). Build: macos-bench preset, Release, `HEFESTO_BUILD_DESKTOP=ON`; only the benchmark target was built. This renderer adds the per-layer coplanar depth bias (task 17.5) and the net overlay pass (task 10.4). The frame workload adds `level0_overlay` and `level1_overlay`: the mesh again with one net-overlay prism over the whole region, covering the stack's full height. That prism is drawn without a depth test and blended, which is the overlay's fill-rate worst case.
+
+Idle-machine note: no idle window came. I waited about 30 minutes for one (load checked every 3 minutes). Three other workflows were building (M7, M8 and M9 Debug builds, `clang` and test links). The 1-minute load average stayed between 44 and 130, dipped to 11.3 at 13:14, rose to 77 again, then fell to 7.5–7.8. The run was taken at that point: 1/5/15-minute load averages were 7.82 / 25.56 / 51.44 before and 7.31 / 24.58 / 50.64 after. During the run, two `clang` compiles (about 90 % and 65 % of a core) and another worktree's `hefesto-cli` (about 95 %) were running, alongside `fseventsd`; the compiles had finished by the end. The machine was therefore busy on 2–3 of its 12 cores. These are not idle-machine numbers, but the GPU-bound frame times match round 5's quiet-machine run within 2 %.
+
+| Workload, level | Median frame | p95 frame | fps (median) | ≥ 30 fps gate (D19) |
+|---|---|---|---|---|
+| synthetic, 0 | 10.81 ms | 11.50 ms | 92.5 | met |
+| synthetic, 1 (MSAA 4x, the default) | 21.27 ms | 21.69 ms | 47.0 | met |
+| synthetic, 0 with a ghosted full-region well | 10.67 ms | 11.38 ms | 93.7 | met |
+| synthetic, 1 with a ghosted full-region well | 21.31 ms | 21.81 ms | 46.9 | met |
+| synthetic, 0 with a full-region net overlay | 10.70 ms | 11.43 ms | 93.5 | met |
+| synthetic, 1 with a full-region net overlay | 21.24 ms | 21.73 ms | 47.1 | met |
+| mask, 0 | 11.71 ms | 12.46 ms | 85.4 | met |
+| mask, 1 | 23.27 ms | 23.44 ms | 43.0 | met |
+| mask, 0 with a ghosted well | 11.82 ms | 12.94 ms | 84.6 | met |
+| mask, 1 with a ghosted well | 23.19 ms | 24.48 ms | 43.1 | met |
+| mask, 0 with a full-region net overlay | 11.63 ms | 12.20 ms | 86.0 | met |
+| mask, 1 with a full-region net overlay | 23.16 ms | 23.30 ms | 43.2 | met |
+
+The P1 gate is met: level 1 runs at 47.0 fps at 1M rectangles (43.0 fps on the 1.5M-rectangle mask mesh). The coplanar depth bias costs nothing measurable, since it is fixed-function state set once per layer (round 5: 48.1 and 42.3 fps). The full-region overlay is within run-to-run noise: it is a few large blended faces next to the 1M-rectangle opaque pass.
+
+Synthetic upload took 0.067 s and upload plus the first frame 144 ms, which meets D6's 200 ms. For mask, upload took 0.169 s and upload plus the first frame 277 ms, over 200 ms; round 5's quieter run measured 142 ms. The mesh build medians were 0.545 s (synthetic) and 1.33 s (mask, generation plus mesh; round 5 measured 0.824 s). Both CPU-side numbers follow the compiles that shared the CPU, so they are recorded here but not taken as a regression. The perf.yml `view3d-bench` job also records the overlay levels in its summary (lavapipe, information only; perf run 45863386121, branch `m10-3d-round6-render`). The M1 and reference-hardware runs remain open.
