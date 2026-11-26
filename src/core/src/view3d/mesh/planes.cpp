@@ -87,11 +87,13 @@ void unite_into(mask::LayerPlanes& into, mask::LayerPlanes& from) {
   }
 }
 
-// generate_flat over each of `areas` (internal units), united.
+// generate_flat over each of `areas` (internal units), united. The
+// generation errors go to `gen.sink` when it is set (never as feedback:
+// gen.problems is not read).
 bool generate_areas(const db::CellDef& cell, const MaskSource& source, std::span<const db::Rect> areas,
                     mask::GenerationContext& gen, mask::LayerPlanes& out) {
   mask::GenerateOptions options;
-  options.report_errors = false;  // the 3D view adds no feedback (reported, round 5)
+  options.report_errors = gen.sink != nullptr;
   for (const db::Rect& area : areas) {
     if (gen.cancelled()) {
       return false;
@@ -107,11 +109,14 @@ bool generate_areas(const db::CellDef& cell, const MaskSource& source, std::span
 
 // The generation of `areas` under ctx.lock held shared when it is set
 // (generate_flat reads the database while it flattens the cell), then the
-// flat layers of `stack`. False when cancelled.
+// flat layers of `stack`. The generation errors go to `report` (null: not
+// reported). False when cancelled.
 bool generate_snapshot(const LayerStack& stack, const db::CellDef& cell, const MaskSource& source,
-                       std::span<const db::Rect> areas, const BuildContext& ctx, FlatLayout& out) {
+                       std::span<const db::Rect> areas, const BuildContext& ctx, diag::DiagnosticSink* report,
+                       FlatLayout& out) {
   mask::GenerationContext gen;
   gen.progress = &ctx.progress;
+  gen.sink = report;
   mask::LayerPlanes planes;
   bool done = false;
   if (ctx.lock == nullptr) {
@@ -170,8 +175,12 @@ std::optional<MeshModel> build_mask(const LayerStack& stack, const db::CellDef& 
     return std::nullopt;
   }
   const std::array<db::Rect, 1> areas{source.area};
+  // R5 item 20 (approved 2026-11-26): with magic-compat ON the errors of a
+  // full build are reported once, to the build's sink (W3DCIFredisplay adds
+  // them as feedback on every redraw); OFF reports none.
+  diag::DiagnosticSink* report = source.generation.compat.magic_compat ? ctx.sink : nullptr;
   const FlattenFn generate = [&](std::span<const db::Rect> /*mask_areas*/, FlatLayout& out) {
-    return generate_snapshot(stack, cell, source, areas, ctx, out);
+    return generate_snapshot(stack, cell, source, areas, ctx, report, out);
   };
   std::optional<MeshModel> model = build_flat(stack, generate, clip, ctx, max_tiles);
   if (model) {
@@ -194,7 +203,7 @@ std::optional<MeshModel> rebuild_mask(const MeshModel& previous, const LayerStac
     for (const db::Rect& a : mask_areas) {
       areas.push_back(internal_area(a, f, source.area));
     }
-    return generate_snapshot(stack, cell, source, areas, ctx, out);
+    return generate_snapshot(stack, cell, source, areas, ctx, nullptr, out);  // reported by the full build
   };
   return rebuild_flat(previous, stack, generate, mask_dirty(dirty, f, halo), ctx, max_tiles);
 }

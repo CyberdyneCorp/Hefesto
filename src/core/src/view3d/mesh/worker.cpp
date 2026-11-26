@@ -33,6 +33,7 @@ void take_inputs(const BuildInputs& in, BuildContext& ctx) {
   ctx.technology = in.technology;
   ctx.centre = in.centre;
   ctx.lock = in.lock;
+  ctx.sink = in.sink;
 }
 
 }  // namespace

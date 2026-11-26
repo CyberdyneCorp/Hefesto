@@ -166,6 +166,7 @@ WindowBuild window_build(const editor::EditorState& editor, const WindowState& w
   BuildInputs& in = out.inputs;
   in.stack = out.stack;
   in.technology = editor.technology.get();
+  in.span_connected_layers = window.span_connected_layers;
   in.cell = editor.cells.find(window.cell);
   if (in.cell == nullptr) {
     return out;
@@ -191,7 +192,9 @@ Scene build_scene(const editor::EditorState& editor, const WindowState& window, 
   }
   scene.clip = build.inputs.clip.area;
   scene.clipped = build.inputs.clip.cut_box;
-  if (std::optional<MeshModel> mesh = build_once(build.inputs, ctx)) {
+  BuildInputs inputs = build.inputs;
+  inputs.sink = ctx.sink;  // build_once takes the inputs' sink
+  if (std::optional<MeshModel> mesh = build_once(inputs, ctx)) {
     scene.mesh = std::make_shared<const MeshModel>(std::move(*mesh));
   }
   return scene;
