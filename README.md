@@ -140,9 +140,9 @@ xschem-compatible schematic with PDK symbols, a testbench code block, ngspice wa
 ![Schematic and waveforms](docs/images/ui/schematic.png)
 
 ### 3D inspection
-The 3D tab (M10 phase 1, macOS capture): the layout of `sky130_fd_sc_hd__dfxtp_1` drawn from the layer stack built from the tech file, with the layer stack panel (micron ranges, hide, solo, transparency) beside the view. A current-density overlay from simulation, with the electromigration limit taken from PDK data, arrives in phase 3.
+The 3D tab (M10, macOS capture): `sky130_fd_sc_hd__dfxtp_1` built from the layer stack in the tech file and seen isometrically from above, on the app's dark theme, with flat shading in the layers' own colors (top faces lighter than sides). Wells, implants and other non-conducting layers are ghosted so the devices show through, and a substrate slab sits under the stack. The floating toolbar switches between layout and mask layers, steps the level and sets the cut box; the side panel has the layer stack (micron ranges, hide, solo, transparency), the Orthographic/Perspective and Isometric/Top/Front/Side views, net isolation, and a cross-section A-A' along the box. Models export to glTF and STL. The look is the same with magic-compat on or off; Magic's own 3D commands and their text output are unchanged. A current-density overlay from simulation arrives in phase 3.
 
-![3D inspection](docs/images/ui/view3d-macos.png)
+![3D inspection](docs/images/ui/view3d-section-dfxtp1-macos.png)
 
 ### DRC results browser
 The approved M3 board: errors grouped by why-text with counts, `#k of n` stepping on the canvas, the error-area inspector, ignored rules and the style selector, and the DRC status chip. The measured value against the required value, nets, a suggested fix and the sign-off summary arrive in later milestones.
@@ -185,10 +185,10 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 | M4 | Scripting and PDK integration (complete; Desktop Alpha sign-off pending) | Desktop Alpha |
 | M5 | Mask generation, GDS and CIF (complete) | |
 | M6 | LEF/DEF and OASIS (complete) | |
-| M7 | Extraction and netlisting | |
-| M8 | Schematic capture | |
-| M9 | LVS and simulation, including advanced analog | Desktop Beta |
-| M10–M12 | 3D, EM/IR, digital flow, AI agent, legacy tools | |
+| M7 | Extraction and netlisting (in progress) | |
+| M8 | Schematic capture (in progress) | |
+| M9 | LVS and simulation, including advanced analog (in progress) | Desktop Beta |
+| M10–M12 | 3D (in progress), plotting, routing, EM/IR, digital flow, AI agent, legacy tools | |
 | M13 | Tapeout readiness, plugins, operations | Desktop 1.0 |
 | M14 | iPad app | iPad 1.0 |
 
