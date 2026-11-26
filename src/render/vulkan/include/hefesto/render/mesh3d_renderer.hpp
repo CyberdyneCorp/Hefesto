@@ -34,6 +34,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -89,7 +90,9 @@ struct SectionPlane {
 /// One prism of the net overlay (task 10.4, design D10: a layout net drawn
 /// over mask-layer geometry; view3d::NetOverlayPrism has the same fields).
 /// x and y are in the mesh's units, as the instances of the uploaded
-/// MeshModel (DrawParams::xy_scale applies to them as to the mesh);
+/// MeshModel (DrawParams::xy_scale applies to them as to the mesh),
+/// relative to DrawParams::overlay_origin (as a chunk's instances are to
+/// its origin, so float32 keeps a net's precision far out on a large die);
 /// z_bottom and z_top are stack draw heights, as h and h + t of a layer
 /// (LayerStack::draw_height): the renderer scales them by s_z and mirrors z
 /// as for the layers. Corners in either order; z_top below z_bottom is
@@ -109,6 +112,15 @@ struct OverlayPrism {
 /// merged strips of a net on several layers) blend once where they are
 /// seen, with no seam on a shared edge. Prisms with a non-finite field or
 /// an empty rectangle are left out. Vulkan-free (tests, other backends).
+/// The work grows with the slabs of distinct x times the prisms crossing
+/// each, not with all prisms per slab, and is bounded (the standing
+/// crafted-input limit rule of 2026-11-25): the first kMaxOverlayPrisms
+/// prisms are read, at most kMaxOverlayWork interval visits are spent and
+/// kMaxOverlayFaces faces (tops and sides) emitted; `truncated` is set
+/// when a limit cut the overlay.
+inline constexpr std::size_t kMaxOverlayPrisms = 65536;
+inline constexpr std::size_t kMaxOverlayWork = std::size_t{1} << 24U;
+inline constexpr std::size_t kMaxOverlayFaces = std::size_t{1} << 20U;
 struct OverlayFaces {
   struct Side {
     float x0, y0, x1, y1;
@@ -118,6 +130,7 @@ struct OverlayFaces {
   };
   std::vector<OverlayPrism> tops;
   std::vector<Side> sides;
+  bool truncated = false;
 };
 [[nodiscard]] OverlayFaces overlay_faces(std::span<const OverlayPrism> prisms);
 
@@ -164,8 +177,11 @@ struct DrawParams {
   /// drawn and no overlay pipeline created. Drawn as overlay_faces(): the
   /// union of the prisms of each z range blends once where it is seen (back
   /// faces culled); prisms of different z ranges that overlap on the screen
-  /// blend once each.
+  /// blend once each. The renderer computes the faces once per change of
+  /// the prisms (or of the layer entries before them), not per frame.
   std::span<const OverlayPrism> net_overlay;
+  /// The point (mesh units, x and y) the overlay's prisms are relative to.
+  std::array<double, 2> overlay_origin{0.0, 0.0};
   /// The overlay's colour, display (sRGB-encoded) values 0..1.
   std::array<float, 3> overlay_color = kOverlayColor;
 };

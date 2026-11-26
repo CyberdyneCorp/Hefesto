@@ -75,6 +75,13 @@ class VulkanMesh3dRenderer final : public Mesh3dRenderer {
   /// Whether a frame with a net overlay (DrawParams::net_overlay) built the
   /// overlay's pipelines; a renderer that never drew one has none.
   [[nodiscard]] bool overlay_ready() const noexcept;
+  /// How many times the net overlay's faces were computed (overlay_faces):
+  /// once per change of DrawParams::net_overlay, its origin or the layer
+  /// entries before it, not once per frame.
+  [[nodiscard]] std::uint64_t overlay_face_builds() const noexcept;
+  /// Whether the last net overlay drawn was cut at the overlay limits
+  /// (OverlayFaces::truncated).
+  [[nodiscard]] bool overlay_truncated() const noexcept;
 
  private:
   struct Impl;

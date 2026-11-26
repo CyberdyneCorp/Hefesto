@@ -205,15 +205,40 @@ struct SlabDraw {
   std::array<GpuSide, 4> sides{};
 };
 
-/// The net overlay's draw (DrawParams::net_overlay): overlay_faces() as
-/// rectangles and side faces relative to the first top's corner, one layer
-/// entry per z range after the stack's (and the slab's).
+/// The net overlay's draw (DrawParams::net_overlay): the counts of the
+/// cached rectangles and side faces (OverlayCache) in the overlay buffer,
+/// one layer entry per z range after the stack's (and the slab's).
 struct OverlayDraw {
   FramePush push{};
+  std::size_t rects = 0;
+  std::size_t sides = 0;
+
+  [[nodiscard]] bool empty() const noexcept { return rects == 0; }
+};
+
+/// overlay_faces() of the last overlay drawn, as GPU rectangles and side
+/// faces relative to the first top's corner (`origin`, mesh units), kept
+/// until the prisms, their origin or the first layer entry change: the face
+/// pass runs once per overlay, not per frame (an orbit drag draws many).
+struct OverlayCache {
+  std::vector<OverlayPrism> input;
+  std::array<double, 2> input_origin{0.0, 0.0};
+  std::uint32_t base = 0;  // the first overlay layer entry
+  bool valid = false;
+  std::array<double, 2> origin{0.0, 0.0};
+  std::vector<std::array<float, 2>> ranges;  // h and t of the layer entries base, base + 1, ...
   std::vector<GpuRect> rects;
   std::vector<GpuSide> sides;
+  bool written = false;    // the overlay buffer holds rects and sides
+  bool truncated = false;  // OverlayFaces::truncated
+  std::uint64_t builds = 0;
 
-  [[nodiscard]] bool empty() const noexcept { return rects.empty(); }
+  [[nodiscard]] bool holds(std::span<const OverlayPrism> prisms, const std::array<double, 2>& at,
+                           std::uint32_t first) const {
+    // Bitwise, so a prism with a NaN field (skipped when drawn) still matches itself.
+    const auto same = [](const OverlayPrism& a, const OverlayPrism& b) { return std::memcmp(&a, &b, sizeof a) == 0; };
+    return valid && base == first && input_origin == at && std::ranges::equal(input, prisms, same);
+  }
 };
 
 struct Frame {
@@ -342,119 +367,7 @@ std::array<float, 4> clear_color(const DrawParams& p) {
   return {srgb_to_linear(bg[0]), srgb_to_linear(bg[1]), srgb_to_linear(bg[2]), 1.0F};
 }
 
-/// One z range's prisms as y intervals per column of x (Column::ys sorted,
-/// merged, abutting ones joined); consecutive slabs with the same intervals
-/// share a column.
-struct Column {
-  float x0 = 0.0F;
-  float x1 = 0.0F;
-  std::vector<std::pair<float, float>> ys;
-};
-using Intervals = std::vector<std::pair<float, float>>;
-
-Intervals merged(Intervals v) {
-  std::sort(v.begin(), v.end());
-  Intervals out;
-  for (const auto& [lo, hi] : v) {
-    if (!out.empty() && lo <= out.back().second) {
-      out.back().second = std::max(out.back().second, hi);
-    } else {
-      out.emplace_back(lo, hi);
-    }
-  }
-  return out;
-}
-
-/// The pieces of [lo, hi) not covered by `b` (sorted, merged).
-void subtract(float lo, float hi, const Intervals& b, Intervals& out) {
-  float cur = lo;
-  for (const auto& [blo, bhi] : b) {
-    if (bhi <= cur || blo >= hi) {
-      continue;
-    }
-    if (blo > cur) {
-      out.emplace_back(cur, blo);
-    }
-    cur = std::max(cur, bhi);
-  }
-  if (cur < hi) {
-    out.emplace_back(cur, hi);
-  }
-}
-
-Intervals minus(const Intervals& a, const Intervals& b) {
-  Intervals out;
-  for (const auto& [lo, hi] : a) subtract(lo, hi, b, out);
-  return out;
-}
-
-std::vector<Column> columns_of(const std::vector<OverlayPrism>& group) {
-  std::vector<float> xs;
-  for (const OverlayPrism& p : group) {
-    xs.push_back(p.x0);
-    xs.push_back(p.x1);
-  }
-  std::sort(xs.begin(), xs.end());
-  xs.erase(std::unique(xs.begin(), xs.end()), xs.end());
-  std::vector<Column> out;
-  for (std::size_t k = 0; k + 1 < xs.size(); ++k) {
-    Intervals ys;
-    for (const OverlayPrism& p : group) {
-      if (p.x0 <= xs[k] && p.x1 >= xs[k + 1]) ys.emplace_back(p.y0, p.y1);
-    }
-    ys = merged(std::move(ys));
-    if (!out.empty() && out.back().ys == ys) {
-      out.back().x1 = xs[k + 1];
-    } else {
-      out.push_back(Column{xs[k], xs[k + 1], std::move(ys)});
-    }
-  }
-  return out;
-}
-
-/// The tops and boundary side faces of one z range's columns, each side
-/// with the outside on the right of (x0, y0) -> (x1, y1).
-void emit_columns(const std::vector<Column>& cols, float zb, float zt, OverlayFaces& out) {
-  static const Intervals kNone;
-  for (std::size_t c = 0; c < cols.size(); ++c) {
-    const Column& col = cols[c];
-    for (const auto& [lo, hi] : col.ys) {
-      out.tops.push_back(OverlayPrism{col.x0, lo, col.x1, hi, zb, zt});
-      out.sides.push_back(OverlayFaces::Side{col.x0, lo, col.x1, lo, zb, zt});  // -y
-      out.sides.push_back(OverlayFaces::Side{col.x1, hi, col.x0, hi, zb, zt});  // +y
-    }
-    for (const auto& [lo, hi] : minus(col.ys, c > 0 ? cols[c - 1].ys : kNone)) {
-      out.sides.push_back(OverlayFaces::Side{col.x0, hi, col.x0, lo, zb, zt});  // -x
-    }
-    for (const auto& [lo, hi] : minus(col.ys, c + 1 < cols.size() ? cols[c + 1].ys : kNone)) {
-      out.sides.push_back(OverlayFaces::Side{col.x1, lo, col.x1, hi, zb, zt});  // +x
-    }
-  }
-}
-
-/// A prism with its corners and z range ordered; nullopt when a field is
-/// not finite or its rectangle is empty.
-std::optional<OverlayPrism> normalized(const OverlayPrism& o) {
-  const bool finite = std::isfinite(o.x0) && std::isfinite(o.y0) && std::isfinite(o.x1) && std::isfinite(o.y1) &&
-                      std::isfinite(o.z_bottom) && std::isfinite(o.z_top);
-  if (!finite || o.x0 == o.x1 || o.y0 == o.y1) {
-    return std::nullopt;
-  }
-  return OverlayPrism{std::min(o.x0, o.x1), std::min(o.y0, o.y1), std::max(o.x0, o.x1),
-                      std::max(o.y0, o.y1), std::min(o.z_bottom, o.z_top), std::max(o.z_bottom, o.z_top)};
-}
-
 }  // namespace
-
-OverlayFaces overlay_faces(std::span<const OverlayPrism> prisms) {
-  std::map<std::pair<float, float>, std::vector<OverlayPrism>> groups;  // by z range
-  for (const OverlayPrism& o : prisms) {
-    if (const auto n = normalized(o)) groups[{n->z_bottom, n->z_top}].push_back(*n);
-  }
-  OverlayFaces out;
-  for (const auto& [z, group] : groups) emit_columns(columns_of(group), z.first, z.second, out);
-  return out;
-}
 
 // --- Impl ------------------------------------------------------------------------
 
@@ -471,6 +384,7 @@ struct VulkanMesh3dRenderer::Impl {
   vk::Buffer highlight_buffer;
   vk::Buffer slab_buffer;  // the substrate slab's rectangle, then its four sides
   vk::Buffer overlay_buffer;  // the net overlay's rectangles, then its side faces (grown, kept)
+  OverlayCache overlay_cache;
 
   std::vector<GpuChunk> chunks;  // model order
   std::vector<std::uint32_t> bases;  // pick base of each chunk
@@ -643,7 +557,7 @@ struct VulkanMesh3dRenderer::Impl {
     return push;
   }
 
-  Frame prepare(const view3d::ViewState& view, const DrawParams& p) const {
+  Frame prepare(const view3d::ViewState& view, const DrawParams& p) {
     Frame f;
     f.width = owner->width();
     f.height = owner->height();
@@ -691,40 +605,79 @@ struct VulkanMesh3dRenderer::Impl {
     slab_geometry(slab, d.layer, d);
   }
 
-  /// The net overlay (DrawParams::net_overlay): overlay_faces() of the
-  /// prisms, one layer entry per z range after the stack's and the slab's,
-  /// in the overlay colour at kOverlayAlpha, pick base 0 (never dimmed; its
-  /// pipelines write no pick id).
-  static void prepare_overlay(const view3d::ViewState& view, const DrawParams& p, const view3d::Matrix4& m, Frame& f) {
+  /// The net overlay (DrawParams::net_overlay): the cached faces of the
+  /// prisms (update_overlay_cache), one layer entry per z range after the
+  /// stack's and the slab's, in the overlay colour at kOverlayAlpha, pick
+  /// base 0 (never dimmed; its pipelines write no pick id).
+  void prepare_overlay(const view3d::ViewState& view, const DrawParams& p, const view3d::Matrix4& m, Frame& f) {
     if (p.net_overlay.empty()) {
+      overlay_cache.valid = false;  // no overlay now: nothing cached is shown
+      overlay_cache.truncated = false;
       return;
     }
-    const OverlayFaces faces = overlay_faces(p.net_overlay);
-    if (faces.tops.empty() || f.gpu_layers.size() + faces.tops.size() >= 0xFFFFU) {
-      return;  // nothing to draw (or more layer entries than side faces can name)
+    const OverlayCache& c = update_overlay_cache(p, static_cast<std::uint32_t>(f.gpu_layers.size()));
+    if (c.rects.empty()) {
+      return;
     }
+    const std::array<float, 3> rgb = overlay_rgb(p);
+    for (const std::array<float, 2>& ht : c.ranges) {
+      f.gpu_layers.push_back(GpuLayer{{rgb[0], rgb[1], rgb[2], kOverlayAlpha}, {ht[0], ht[1], 0.0F, 0.0F}});
+    }
+    f.overlay.rects = c.rects.size();
+    f.overlay.sides = c.sides.size();
+    f.overlay.push =
+        push_for(view, p, m, c.origin[0], c.origin[1], {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U});
+  }
+
+  /// The cache of DrawParams::net_overlay with its layer entries from
+  /// `base`: rebuilt only when the prisms, their origin or `base` changed.
+  /// Left empty when the overlay's z ranges would take layer entries past
+  /// what a side face can name (16 bits).
+  const OverlayCache& update_overlay_cache(const DrawParams& p, std::uint32_t base) {
+    OverlayCache& c = overlay_cache;
+    if (c.holds(p.net_overlay, p.overlay_origin, base)) {
+      return c;
+    }
+    const std::uint64_t builds = c.builds + 1U;
+    c = OverlayCache{};
+    c.input.assign(p.net_overlay.begin(), p.net_overlay.end());
+    c.input_origin = p.overlay_origin;
+    c.base = base;
+    c.valid = true;
+    c.builds = builds;
+    const OverlayFaces faces = overlay_faces(p.net_overlay);
+    c.truncated = faces.truncated;
+    std::map<std::array<float, 2>, std::uint32_t> layers;  // z range -> its layer entry
+    for (const OverlayPrism& t : faces.tops) layers.emplace(overlay_ht(t.z_bottom, t.z_top), 0U);
+    if (faces.tops.empty() || std::size_t{base} + layers.size() >= 0xFFFFU) {
+      return c;  // nothing to draw (or more layer entries than side faces can name)
+    }
+    for (auto& [ht, entry] : layers) {
+      entry = base + static_cast<std::uint32_t>(c.ranges.size());
+      c.ranges.push_back(ht);
+    }
+    fill_overlay_cache(faces, layers, c);
+    return c;
+  }
+
+  /// The faces relative to the first top's corner, which becomes the cache's origin.
+  static void fill_overlay_cache(const OverlayFaces& faces, const std::map<std::array<float, 2>, std::uint32_t>& layers,
+                                 OverlayCache& c) {
     const auto ox = static_cast<double>(faces.tops.front().x0);
     const auto oy = static_cast<double>(faces.tops.front().y0);
+    c.origin = {c.input_origin[0] + ox, c.input_origin[1] + oy};
     const auto rel = [](float v, double origin) { return static_cast<float>(static_cast<double>(v) - origin); };
-    const std::array<float, 3> rgb = overlay_rgb(p);
-    std::map<std::array<float, 2>, std::uint32_t> layers;  // z range -> GpuLayer entry
-    const auto layer_of = [&](float z_bottom, float z_top) {
-      const std::array<float, 2> ht = overlay_ht(z_bottom, z_top);
-      const auto [it, added] = layers.emplace(ht, static_cast<std::uint32_t>(f.gpu_layers.size()));
-      if (added) {
-        f.gpu_layers.push_back(GpuLayer{{rgb[0], rgb[1], rgb[2], kOverlayAlpha}, {ht[0], ht[1], 0.0F, 0.0F}});
-      }
-      return it->second;
-    };
+    const auto layer_of = [&layers](float z_bottom, float z_top) { return layers.at(overlay_ht(z_bottom, z_top)); };
+    c.rects.reserve(faces.tops.size());
     for (const OverlayPrism& t : faces.tops) {
-      f.overlay.rects.push_back(
+      c.rects.push_back(
           GpuRect{rel(t.x0, ox), rel(t.y0, oy), rel(t.x1, ox), rel(t.y1, oy), layer_of(t.z_bottom, t.z_top), 0U});
     }
+    c.sides.reserve(faces.sides.size());
     for (const OverlayFaces::Side& e : faces.sides) {
-      f.overlay.sides.push_back(GpuSide{rel(e.x0, ox), rel(e.y0, oy), rel(e.x1, ox), rel(e.y1, oy),
-                                        layer_of(e.z_bottom, e.z_top), 0.0F, 0.0F, 0U});
+      c.sides.push_back(GpuSide{rel(e.x0, ox), rel(e.y0, oy), rel(e.x1, ox), rel(e.y1, oy),
+                                layer_of(e.z_bottom, e.z_top), 0.0F, 0.0F, 0U});
     }
-    f.overlay.push = push_for(view, p, m, ox, oy, {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U});
   }
 
   void write_frame_buffers(const Frame& f, const DrawParams& p) {
@@ -747,19 +700,22 @@ struct VulkanMesh3dRenderer::Impl {
     write_overlay(f.overlay);
   }
 
+  /// Writes the cached overlay to its buffer once per cache rebuild.
   void write_overlay(const OverlayDraw& overlay) {
-    if (overlay.empty()) {
+    OverlayCache& c = overlay_cache;
+    if (overlay.empty() || c.written) {
       return;
     }
-    const VkDeviceSize sides_at = align16(overlay.rects.size() * sizeof(GpuRect));
-    const VkDeviceSize bytes = sides_at + (overlay.sides.size() * sizeof(GpuSide));
+    const VkDeviceSize sides_at = align16(c.rects.size() * sizeof(GpuRect));
+    const VkDeviceSize bytes = sides_at + (c.sides.size() * sizeof(GpuSide));
     if (overlay_buffer.buffer == VK_NULL_HANDLE || overlay_buffer.size < bytes) {
       vk::destroy_buffer(device, overlay_buffer);
       overlay_buffer = vk::create_buffer(physical, device, std::bit_ceil(bytes), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                          kHostMemory);
     }
-    write_at(device, overlay_buffer, 0, overlay.rects);
-    write_at(device, overlay_buffer, sides_at, overlay.sides);
+    write_at(device, overlay_buffer, 0, c.rects);
+    write_at(device, overlay_buffer, sides_at, c.sides);
+    c.written = true;
   }
 
   static constexpr VkDeviceSize kSlabSidesOffset = (sizeof(GpuRect) + 15U) & ~VkDeviceSize{15U};
@@ -864,10 +820,9 @@ struct VulkanMesh3dRenderer::Impl {
       }
       vkCmdPushConstants(cmd, r.pipelines.layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FramePush),
                          &f.overlay.push);
-      const VkDeviceSize sides_at = align16(f.overlay.rects.size() * sizeof(GpuRect));
-      for (const auto& [kind, offset, count] :
-           {std::tuple{Kind::rect, VkDeviceSize{0}, f.overlay.rects.size()},
-            std::tuple{Kind::side, sides_at, f.overlay.sides.size()}}) {
+      const VkDeviceSize sides_at = align16(f.overlay.rects * sizeof(GpuRect));
+      for (const auto& [kind, offset, count] : {std::tuple{Kind::rect, VkDeviceSize{0}, f.overlay.rects},
+                                                std::tuple{Kind::side, sides_at, f.overlay.sides}}) {
         if (count == 0) {
           continue;
         }
@@ -994,6 +949,14 @@ std::uint64_t VulkanMesh3dRenderer::chunk_uploads() const noexcept {
 
 bool VulkanMesh3dRenderer::multisampling() const noexcept {
   return impl_->pipelines.msaa();
+}
+
+std::uint64_t VulkanMesh3dRenderer::overlay_face_builds() const noexcept {
+  return impl_->overlay_cache.builds;
+}
+
+bool VulkanMesh3dRenderer::overlay_truncated() const noexcept {
+  return impl_->overlay_cache.valid && impl_->overlay_cache.truncated;
 }
 
 bool VulkanMesh3dRenderer::overlay_ready() const noexcept {

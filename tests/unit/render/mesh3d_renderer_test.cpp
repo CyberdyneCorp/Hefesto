@@ -1753,3 +1753,122 @@ TEST_CASE("net overlay blends once where its prisms overlap or abut",
     }
   }
 }
+
+namespace {
+
+/// `n` disjoint unit prisms in a row, one unit apart.
+std::vector<render::OverlayPrism> prism_row(int n) {
+  std::vector<render::OverlayPrism> row;
+  for (int i = 0; i < n; ++i) {
+    const auto x = static_cast<float>(2 * i);
+    row.push_back({x, 0.0F, x + 1.0F, 1.0F, 0.0F, 1.0F});
+  }
+  return row;
+}
+
+/// `n` horizontal and `n` vertical strips `pitch` apart over [0, n * pitch]:
+/// their union's column decomposition has about n * n top rectangles.
+std::vector<render::OverlayPrism> strip_grid(int n, float pitch, float width) {
+  std::vector<render::OverlayPrism> g;
+  const float extent = static_cast<float>(n) * pitch;
+  for (int i = 0; i < n; ++i) {
+    const float at = static_cast<float>(i) * pitch;
+    g.push_back({0.0F, at, extent, at + width, 0.0F, 1.5F});
+    g.push_back({at, 0.0F, at + width, extent, 0.0F, 1.5F});
+  }
+  return g;
+}
+
+}  // namespace
+
+TEST_CASE("net overlay faces of a large net: a sweep over the edges, bounded by the overlay limits",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: every x slab scanned every prism, so a net of N prisms
+  // cost N * 2N per call (65,536 disjoint prisms: about 8.6e9 steps, run on
+  // every frame), and nothing bounded the prisms read or the faces emitted
+  // (standing crafted-input limit rule of 2026-11-25).
+  const auto limit = static_cast<int>(render::kMaxOverlayPrisms);
+  const render::OverlayFaces row = render::overlay_faces(prism_row(limit));
+  CHECK(row.tops.size() == render::kMaxOverlayPrisms);
+  CHECK(row.sides.size() == 4U * render::kMaxOverlayPrisms);
+  CHECK_FALSE(row.truncated);
+  // Past the prism limit: the first kMaxOverlayPrisms are drawn.
+  const render::OverlayFaces cut = render::overlay_faces(prism_row(limit + 10));
+  CHECK(cut.tops.size() == render::kMaxOverlayPrisms);
+  CHECK(cut.truncated);
+  // A crafted grid whose union has about 1e9 pieces: cut at the limits.
+  const render::OverlayFaces grid = render::overlay_faces(strip_grid(32768, 4.0F, 1.0F));
+  CHECK(grid.truncated);
+  CHECK(grid.tops.size() + grid.sides.size() <= render::kMaxOverlayFaces);
+  CHECK_FALSE(grid.tops.empty());
+}
+
+TEST_CASE("a net overlay with more than 65,535 top faces is drawn",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: the 16-bit limit on the side faces' layer entry was checked
+  // against the number of top faces, so such an overlay drew nothing. It
+  // takes one layer entry per z range.
+  const std::vector<render::OverlayPrism> grid = strip_grid(300, 0.25F, 0.05F);
+  const render::OverlayFaces faces = render::overlay_faces(grid);
+  REQUIRE(faces.tops.size() > 0xFFFFU);
+  REQUIRE_FALSE(faces.truncated);
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  render::DrawParams p = f.params(s.stack, 0);
+  const render::TargetReadback plain = f.draw(s, v, p);
+  p.net_overlay = grid;
+  const render::TargetReadback r = f.draw(s, v, p);
+  CHECK(r.color != plain.color);
+  CHECK(r.pick == plain.pick);
+  CHECK(f.renderer.overlay_ready());
+}
+
+TEST_CASE("net overlay faces are computed once per overlay, not per frame",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: overlay_faces ran in every frame's prepare, each frame of
+  // an orbit drag included.
+  Fixture f;
+  const Scene s = basic_scene();
+  render::DrawParams p = f.params(s.stack, 0);
+  const std::vector<render::OverlayPrism> net{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  p.net_overlay = net;
+  view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  const render::TargetReadback first = f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  for (int i = 0; i < 3; ++i) {
+    v.view_z += 5.0F;  // an orbit: new frames, the same overlay
+    (void)f.draw(s, v, p);
+  }
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  // The same prisms in another vector are the same overlay.
+  const std::vector<render::OverlayPrism> copy = net;
+  p.net_overlay = copy;
+  (void)f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  // A new overlay is computed again.
+  const std::vector<render::OverlayPrism> other{{0.0F, 0.0F, 30.0F, 60.0F, 0.0F, 1.5F}};
+  p.net_overlay = other;
+  (void)f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 2);
+  CHECK_FALSE(first.color.empty());
+}
+
+TEST_CASE("net overlay prisms relative to DrawParams::overlay_origin draw as the absolute ones",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // The overlay's coordinates are offsets from a double origin (as a
+  // chunk's), so a net far out on a large die keeps its precision.
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  render::DrawParams p = f.params(s.stack, 0);
+  const std::vector<render::OverlayPrism> absolute{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  p.net_overlay = absolute;
+  const render::TargetReadback a = f.draw(s, v, p);
+  const std::vector<render::OverlayPrism> relative{{0.0F, 0.0F, 70.0F, 20.0F, 0.0F, 1.5F}};
+  p.net_overlay = relative;
+  p.overlay_origin = {10.0, 20.0};
+  const render::TargetReadback b = f.draw(s, v, p);
+  CHECK(a.color == b.color);
+  CHECK(f.renderer.overlay_face_builds() == 2);
+}
