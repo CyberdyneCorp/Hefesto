@@ -457,6 +457,10 @@ class NMPainter {
   /// the DRC flattening to flag an off-grid overlap), or a piece had to be
   /// filled because the budget was spent.
   bool run(const Rect& area) {
+    std::optional<StepCounting> counting;  // only a bounded paint pays for the count
+    if (budget_.steps != NMBudget::kUnlimitedSteps) {
+      counting.emplace(plane_);
+    }
     enter(area);
     while (!frames_.empty()) {
       if (plane_.stitch_steps() - start_steps_ >= budget_.steps) {

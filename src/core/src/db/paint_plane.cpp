@@ -22,6 +22,9 @@ namespace {
 
 enum : unsigned { kMrgTop = 0x01U, kMrgLeft = 0x02U, kMrgRight = 0x04U, kMrgBottom = 0x08U };
 
+// kCountSteps: the merge walks add to the plane's stitch steps (a
+// step-bounded paint, TilePlane::counts_steps); off, they cost nothing extra.
+template <bool kCountSteps>
 class Painter {
  public:
   Painter(TilePlane& plane, const Rect& area, const ResultRow& row) : plane_(plane), area_(area), row_(row) {}
@@ -38,6 +41,12 @@ class Painter {
 
  private:
   enum class Step { next, paint_done, clip_done };
+
+  void count_step() noexcept {
+    if constexpr (kCountSteps) {
+      plane_.add_stitch_steps(1);
+    }
+  }
 
   [[nodiscard]] Body result_of(Body old) const noexcept {
     if (!is_split(old)) {
@@ -240,7 +249,7 @@ class Painter {
   bool needs_side_merge(const Tile* tile) {
     if ((flags_ & kMrgLeft) != 0) {
       for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
-        plane_.add_stitch_steps(1);
+        count_step();
         if (tp->body == new_) {
           return true;
         }
@@ -249,7 +258,7 @@ class Painter {
     }
     if ((flags_ & kMrgRight) != 0) {
       for (const Tile* tp = tile->tr; top(tp) > bottom(tile); tp = tp->lb) {
-        plane_.add_stitch_steps(1);
+        count_step();
         if (tp->body == new_) {
           return true;
         }
@@ -263,7 +272,7 @@ class Painter {
   Coord left_split_point(const Tile* tile, Coord ysplit) {
     const Tile* last = nullptr;
     for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
-      plane_.add_stitch_steps(1);
+      count_step();
       if (tp->body == new_) {
         last = tp;
       }
@@ -286,7 +295,7 @@ class Painter {
     }
     do {
       tp = tp->lb;
-      plane_.add_stitch_steps(1);
+      count_step();
     } while (tp->body != new_ && top(tp) > ysplit);
     flags_ &= ~kMrgRight;
     return std::max(ysplit, top(tp));
@@ -348,7 +357,11 @@ void paint_plane(TilePlane& plane, const Rect& area, const ResultRow& row) {
   if (area.x1 <= area.x0 || area.y1 <= area.y0) {
     return;
   }
-  Painter(plane, area, row).run();
+  if (plane.counts_steps()) {
+    Painter<true>(plane, area, row).run();
+  } else {
+    Painter<false>(plane, area, row).run();
+  }
 }
 
 }  // namespace hefesto::db::detail
