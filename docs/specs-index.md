@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3617 scenarios, 1048 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3618 scenarios, 1049 open questions.
 
 ## Hefesto product (native)
 
@@ -114,11 +114,11 @@ Open questions: [53](decisions/open-questions/OASIS.md) · Golden cases: [CASES.
 
 ## LEF / DEF (LEFDEF)
 
-Open questions: [133](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
+Open questions: [134](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 69 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
+| [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 70 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
 | [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 55 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |

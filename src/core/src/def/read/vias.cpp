@@ -55,11 +55,15 @@ constexpr std::array<std::string_view, 12> kProperties{
 
 constexpr std::size_t kMagicProperties = kOrigin;
 
-// The most cuts one generated via may have (ROWCOL rows x columns; user
-// decision D1 of 2026-11-19, Q-LEFDEF-117, security.md M6-S2): above it the
-// via is refused in both modes, where Magic allocates every cut and runs
-// out of memory on a hostile `+ ROWCOL 100000 100000`.
-constexpr std::int64_t kMaxGeneratedCuts = 1'000'000;
+// The most cuts one generated via may have (ROWCOL rows x columns), and the
+// most rows or columns: above either the via is refused in both modes
+// (Q-LEFDEF-117, Q-LEFDEF-153 proposed, security.md M6-S2). Magic
+// allocates every cut and runs out of memory on a hostile `+ ROWCOL 100000
+// 100000`; painting a via costs the square of its rows (each enclosure
+// clip re-stitches the column beside the cuts, as Magic's DBPaintPlane
+// does), so a 21000 x 3 via took 21 s in a release build.
+constexpr std::int64_t kMaxGeneratedCuts = 65536;
+constexpr std::int32_t kMaxGeneratedSide = 4096;
 
 constexpr std::array<std::string_view, 2> kStatementKeys{"-", "END"};
 
@@ -209,7 +213,8 @@ class ViaDefinitionReader {
     if (generated_ && too_many_cuts()) {
       r_.fix_error("Via \"" + name_ + "\": ROWCOL " + std::to_string(params_.rows) + " " +
                    std::to_string(params_.columns) + " gives more than " + std::to_string(kMaxGeneratedCuts) +
-                   " cuts; the via is not generated.");
+                   " cuts or more than " + std::to_string(kMaxGeneratedSide) +
+                   " rows or columns; the via is not generated.");
     } else if (generated_) {
       lef::ViaParamSet given = params_;
       given.scale = r_.oscale();
@@ -230,7 +235,10 @@ class ViaDefinitionReader {
   }
 
   [[nodiscard]] bool too_many_cuts() const {
-    return params_.rows > 0 && params_.columns > 0 &&
+    if (params_.rows <= 0 || params_.columns <= 0) {
+      return false;
+    }
+    return params_.rows > kMaxGeneratedSide || params_.columns > kMaxGeneratedSide ||
            std::int64_t{params_.rows} * std::int64_t{params_.columns} > kMaxGeneratedCuts;
   }
 

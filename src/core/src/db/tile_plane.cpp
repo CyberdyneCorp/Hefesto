@@ -282,6 +282,7 @@ void TilePlane::copy_from(const TilePlane& other) {
     dst->rt = map.at(boundary->rt);
   }
   set_hint(map.at(tiles.front()));
+  may_have_split_ = other.may_have_split_;
 }
 
 namespace {

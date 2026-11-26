@@ -334,6 +334,55 @@ TEST_CASE("two collinear triangles merge into one", NM "[req:Split tile merging]
   CHECK(db::triangle_corner(s[0].diagonal, s[0].right_side) == db::TriangleCorner::nw);
 }
 
+TEST_CASE("a clone keeps merging the split tiles it copied", NM "[req:Split tile merging]") {
+  // Merging skips planes that never had a split tile (security fix M6-S2,
+  // below); a clone of a plane that had one must still merge them.
+  db::Plane p;
+  const db::TriangleSide nw = db::triangle_side(db::TriangleCorner::nw);
+  REQUIRE(p.paint_triangle({0, 0, 5, 5}, nw.diagonal, nw.right_side, paint_row_of(kM1), true, nullptr,
+                           db::PaintMerge::none)
+              .ok());
+  REQUIRE(p.paint_triangle({5, 5, 10, 10}, nw.diagonal, nw.right_side, paint_row_of(kM1), true, nullptr,
+                           db::PaintMerge::none)
+              .ok());
+  REQUIRE(p.paint({0, 5, 5, 10}, paint_row_of(kM1), db::PaintMerge::none).ok());
+  db::Plane c = p.clone();
+  REQUIRE(split_tiles(c).size() == 2);
+  c.merge_split_tiles({0, 0, 10, 10});
+  const auto s = split_tiles(c);
+  REQUIRE(s.size() == 1);
+  CHECK(s[0].area == Rect{0, 0, 10, 10});
+}
+
+TEST_CASE("security fix M6-S2: paints beside a long row of tiles do not walk the row",
+          NM "[req:Split tile merging][regression]") {
+  // fuzz_def_reader timeout (CI run 45720998038): a DEF via of 3 x 21000
+  // cuts. Each cell paint runs DBMergeNMTiles over its area grown by one
+  // unit; the walk enters the row below the strip over the area at the
+  // row's left end and crosses every tile before the area, so repainting
+  // n tiles of a row cost about n^2 steps (the read took 79 s in a debug
+  // build). A plane that never had a split tile has nothing to merge and
+  // is no longer walked: the repaints cost what the bare paints cost.
+  constexpr int n = 40000;
+  using Clock = std::chrono::steady_clock;
+  db::Plane p;
+  const auto bare_start = Clock::now();
+  for (int i = 0; i < n; ++i) {
+    REQUIRE(p.paint({20 * i, 0, 20 * i + 10, 10}, paint_row_of(kM1), db::PaintMerge::none).ok());
+  }
+  const auto bare = Clock::now() - bare_start;
+  const auto merged_start = Clock::now();
+  for (int i = 0; i < n; ++i) {
+    REQUIRE(p.paint({20 * i, 0, 20 * i + 10, 10}, paint_row_of(kM2)).ok());
+  }
+  const auto merged = Clock::now() - merged_start;
+  CHECK(p.tile_count() == 2 * static_cast<std::size_t>(n) + 3);
+  CHECK(p.type_at({20 * (n - 1), 0}) == kM2);
+  // Linear: a small multiple of the bare paints (about 1x); the walk made
+  // it thousands of times more.
+  CHECK(merged < 10 * bare + std::chrono::milliseconds{200});
+}
+
 TEST_CASE("enumeration reports a split tile once per matching side", GEO "[req:Tile enumeration order]") {
   db::Plane p;
   tri(p, {0, 0, 10, 10}, db::TriangleCorner::sw, kM1);

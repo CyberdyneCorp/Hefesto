@@ -24,8 +24,9 @@
 // technology tests/fuzz/data/lefdef_fuzz.tech.
 //
 // Resource caps: the reader's own (declared counts are never allocated
-// from the file; a generated via above 1,000,000 cuts is refused,
-// Q-LEFDEF-117; undefined values are clipped, Q-LEFDEF-130; M6-S2).
+// from the file; a generated via above 65536 cuts or 4096 rows or
+// columns is refused, Q-LEFDEF-117, Q-LEFDEF-153; undefined values are
+// clipped, Q-LEFDEF-130; M6-S2).
 //
 // Owner: INTEGRATION (tests/fuzz/, design D2), written by the FUZZSEC
 // workstream.
