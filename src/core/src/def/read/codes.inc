@@ -16,5 +16,5 @@ HEFESTO_DEF_CODE("DEF-READ-003", info, "DEF read message (Magic's LefError DEF_I
 HEFESTO_DEF_CODE("DEF-READ-004", info, "DEF read report line: `Reading DEF data from file ...`, `Processed N ... total.`, `DEF read: Processed N lines.`, `DEF read: Design has no contents.`.")
 HEFESTO_DEF_CODE("DEF-READ-005", error, "The DEF file cannot be opened: `Cannot open input file <name> (<reason>).`.")
 HEFESTO_DEF_CODE("DEF-READ-006", warning, "Annotation: `Label \"<net>\" did not land on any existing net geometry.`; the label goes on the last route rectangle.")
-HEFESTO_DEF_CODE("DEF-READ-007", error, "Hefesto-only DEF read error where Magic crashes or reads an undefined value: RECT without a reference point, pin without placement, a generated via above 1000000 cuts.")
+HEFESTO_DEF_CODE("DEF-READ-007", error, "Hefesto-only DEF read error where Magic crashes or reads an undefined value: RECT without a reference point, pin without placement, a generated via above 65536 cuts or 4096 rows or columns.")
 HEFESTO_DEF_CODE("DEF-READ-008", warning, "Hefesto-only DEF read warning: duplicate instance renamed, repeated UNITS replaced, unknown NONDEFAULTRULE layer, placement blockage not painted.")

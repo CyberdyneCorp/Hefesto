@@ -136,6 +136,13 @@ class TilePlane {
   /// (`join` true, the merged tile) of split tile `body` over `area`.
   void note_split(bool join, const Rect& area, Body body);
 
+  /// Whether a split tile may exist: set by the first non-Manhattan paint
+  /// and kept by copy_from(), never cleared. A Manhattan paint keeps a
+  /// tile split only when it was split before, so a plane without the flag
+  /// has no split tile and DBMergeNMTiles has nothing to merge in it.
+  [[nodiscard]] bool may_have_split_tiles() const noexcept { return may_have_split_; }
+  void note_split_tiles() noexcept { may_have_split_ = true; }
+
  private:
   Tile* alloc();
   void free_later(Tile* t) { pending_.push_back(t); }
@@ -150,6 +157,7 @@ class TilePlane {
   Tile* infinity_ = nullptr;
   std::atomic<Tile*> hint_{nullptr};
   std::vector<SplitEdit>* split_log_ = nullptr;
+  bool may_have_split_ = false;
 };
 
 /// The view of internal tile `t` as the plane reports it: `dinfo` is 0,

@@ -4,7 +4,8 @@
 // def-read "Generated DEF vias": a DEF via naming a LEF VIARULE GENERATE
 // takes the values it omits from the rule (Q-LEFDEF-61 fix, tasks.md 4.3),
 // the generated-via cut cap (Q-LEFDEF-117, user decision D1 of
-// 2026-11-19, security.md M6-S2), and via redefinition of one alias of a
+// 2026-11-19; Q-LEFDEF-153 proposed; security.md M6-S2), the painted
+// geometry of a routed generated via, and via redefinition of one alias of a
 // shared tech `lef` record (Q-LEFDEF-8 fix, tasks.md 4.1) through
 // `lef read` and `def read`.
 //
@@ -12,8 +13,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "def_fixture.hpp"
 
@@ -123,7 +127,7 @@ TEST_CASE("a VIARULE that names no known rule leaves omitted values 0", "[cap:de
   CHECK(s.said("Via \"VX\": ENCLOSURE not given; using 0."));
 }
 
-TEST_CASE("regression: a generated via above 1000000 cuts is refused (Q-LEFDEF-117)",
+TEST_CASE("regression: a generated via above the cut cap is refused (Q-LEFDEF-117, Q-LEFDEF-153)",
           "[cap:def-read][req:Generated DEF vias]") {
   // `+ ROWCOL 100000 100000` made the generator build 10^10 cuts (Magic runs
   // out of memory). Refused in both modes, with no generated geometry.
@@ -133,14 +137,47 @@ TEST_CASE("regression: a generated via above 1000000 cuts is refused (Q-LEFDEF-1
     REQUIRE(s.read(vias("- VBIG + CUTSIZE 1 1 + LAYERS met1 via1 met2 + CUTSPACING 1 1 + ENCLOSURE 0 0 0 0 "
                         "+ ROWCOL 100000 100000 ;\n"
                         "- VEDGE + CUTSIZE 1 1 + LAYERS met1 via1 met2 + CUTSPACING 1 1 + ENCLOSURE 0 0 0 0 "
-                        "+ ROWCOL 1001 1000 ;",
+                        "+ ROWCOL 257 256 ;",
                         2))
                 .ok());
-    CHECK(s.said("Via \"VBIG\": ROWCOL 100000 100000 gives more than 1000000 cuts; the via is not generated."));
-    CHECK(s.said("Via \"VEDGE\": ROWCOL 1001 1000 gives more than 1000000 cuts; the via is not generated."));
+    CHECK(s.said("Via \"VBIG\": ROWCOL 100000 100000 gives more than 65536 cuts or more than 4096 rows or columns; "
+                 "the via is not generated."));
+    CHECK(s.said("Via \"VEDGE\": ROWCOL 257 256 gives more than 65536 cuts or more than 4096 rows or columns; the "
+                 "via is not generated."));
     CHECK_FALSE(via(s, "VBIG").generated);
     CHECK(via(s, "VBIG").shapes.empty());
     CHECK_FALSE(via(s, "VEDGE").generated);
+  }
+}
+
+TEST_CASE("security fix M6-S2: a generated via of more than 4096 rows or columns is refused (Q-LEFDEF-153)",
+          "[cap:def-read][req:Generated DEF vias][regression]") {
+  // fuzz_def_reader timeout (CI run 45720998038, seed
+  // regress-timeout-50730d90...): a net routed through a via of 3 x 21000
+  // cuts took 79 s to read in a debug build. Its paint walked the row of
+  // cuts for every cut (fixed in db and lef write, see the plane test
+  // "security fix M6-S2: paints beside a long row of tiles do not walk the
+  // row"), but painting a via still costs the square of its rows, as in
+  // Magic: 21000 x 3 took 21 s in a release build. Each side is capped.
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    REQUIRE(s.read(vias("- VTALL + CUTSIZE 1 1 + LAYERS met1 via1 met2 + CUTSPACING 1 1 + ENCLOSURE 0 0 0 0 "
+                        "+ ROWCOL 4097 1 ;\n"
+                        "- VWIDE + CUTSIZE 1 1 + LAYERS met1 via1 met2 + CUTSPACING 1 1 + ENCLOSURE 0 0 0 0 "
+                        "+ ROWCOL 3 21000 ;\n"
+                        "- VCAP + CUTSIZE 1 1 + LAYERS met1 via1 met2 + CUTSPACING 1 1 + ENCLOSURE 0 0 0 0 "
+                        "+ ROWCOL 16 4096 ;",
+                        3))
+                .ok());
+    CHECK(s.said("Via \"VTALL\": ROWCOL 4097 1 gives more than 65536 cuts or more than 4096 rows or columns; the "
+                 "via is not generated."));
+    CHECK(s.said("Via \"VWIDE\": ROWCOL 3 21000 gives more than 65536 cuts or more than 4096 rows or columns; the "
+                 "via is not generated."));
+    CHECK_FALSE(via(s, "VTALL").generated);
+    CHECK_FALSE(via(s, "VWIDE").generated);
+    CHECK(via(s, "VCAP").generated);
+    CHECK(via(s, "VCAP").shapes.size() == 65537U);  // 65536 cuts and the bottom rectangle
   }
 }
 
@@ -152,6 +189,33 @@ TEST_CASE("a generated via within the cut cap is generated", "[cap:def-read][req
   CHECK_FALSE(s.said("the via is not generated."));
   CHECK(via(s, "VOK").generated);
   CHECK(via(s, "VOK").shapes.size() == 1001U);  // 1000 cuts and the bottom rectangle
+}
+
+// A net routed through a generated via of 2 x 3 cuts at (1000, 1000).
+constexpr std::string_view kRoutedVia =
+    "DESIGN top ;\nVIAS 1 ;\n- VR + CUTSIZE 100 100 + LAYERS met1 via1 met2 + CUTSPACING 100 100 "
+    "+ ENCLOSURE 50 20 20 50 + ROWCOL 2 3 ;\nEND VIAS\nNETS 1 ;\n- n + ROUTED met1 ( 1000 1000 ) VR ;\nEND NETS\n"
+    "END DESIGN\n";
+
+TEST_CASE("a route through a generated via paints each cut and both enclosures",
+          "[cap:def-read][req:Generated DEF vias]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << (on ? "ON" : "OFF"));
+    Session s{on};
+    REQUIRE(s.read(kRoutedVia).ok());
+    std::vector<db::Rect> cuts = s.painted("top", "m2c");
+    std::sort(cuts.begin(), cuts.end(), [](const db::Rect& a, const db::Rect& b) {
+      return std::pair{a.y0, a.x0} < std::pair{b.y0, b.x0};
+    });
+    CHECK(cuts == std::vector<db::Rect>{{750, 850, 850, 950},
+                                        {950, 850, 1050, 950},
+                                        {1150, 850, 1250, 950},
+                                        {750, 1050, 850, 1150},
+                                        {950, 1050, 1050, 1150},
+                                        {1150, 1050, 1250, 1150}});
+    CHECK(s.extent("top", "metal1") == db::Rect{700, 830, 1300, 1170});
+    CHECK(s.extent("top", "metal2") == db::Rect{730, 800, 1270, 1200});
+  }
 }
 
 // --- Via redefinition of one alias of a shared tech lef record (Q-LEFDEF-8) ------------

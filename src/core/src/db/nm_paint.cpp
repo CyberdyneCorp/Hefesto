@@ -636,7 +636,12 @@ class NMPainter {
 }  // namespace
 
 void merge_nm_tiles(TilePlane& plane, const Rect& area) {
-  NMMerger(plane, area).run();
+  // Without a split tile there is nothing to merge, and the walk alone
+  // costs a crossing of every tile left of the area in the row below it
+  // (quadratic over a long row of contact images, security.md M6-S2).
+  if (plane.may_have_split_tiles()) {
+    NMMerger(plane, area).run();
+  }
 }
 
 bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat,
@@ -645,6 +650,7 @@ bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const Result
     paint_plane(plane, area, row);
     return false;
   }
+  plane.note_split_tiles();
   return NMPainter(plane, exact, row, magic_compat, budget).run(area);
 }
 
