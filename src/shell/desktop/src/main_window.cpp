@@ -305,12 +305,19 @@ void MainWindow::build_top_bar() {
   add_top_button(row, "PDKs", "pdk", paint::ButtonStyle::secondary, "PDK manager: install, enable and pin PDKs",
                  [this] { toggle_pdk_manager(); });
   // M8 (task 13.2): the board's "Netlist" next to Simulate; it shows the
-  // Schematic tab and runs the same netlist action as the netlist bar.
-  add_top_button(row, "Netlist", "", paint::ButtonStyle::secondary,
-                 "Netlist the active schematic (schematic netlist -hier); shows the Schematic tab", [this] {
-                   show_schematic_tab(true);
-                   schematic_view_->start_netlist();
-                 });
+  // Schematic tab and runs the same netlist action as the netlist bar. It
+  // gives way with the deferred actions, before the view tabs: counted as
+  // always shown, it pushed the tabs out of a 1280 px bar.
+  const TopButton netlist = add_top_button(
+      row, "Netlist", "", paint::ButtonStyle::secondary,
+      "Netlist the active schematic (schematic netlist -hier); shows the Schematic tab", [this] {
+        show_schematic_tab(true);
+        schematic_view_->start_netlist();
+      });
+  top_items_width_ -= netlist.width;
+  --top_item_count_;
+  deferred.width += netlist.width;
+  deferred.widgets.push_back(netlist.widget);
   for (const DeferredControl& c : deferred_actions()) {
     const bool agent = c.label == "Ask agent";
     const TopButton b = add_top_button(row, c.label, agent ? "agent" : "",
@@ -691,7 +698,13 @@ void MainWindow::run_pending_drag() {
 void MainWindow::play_pending_input() {
   const double now = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
   for (const InputStep& step : pending_input_->take_due(now)) window_.inject_input(step);
-  if (pending_input_->done()) report_panel_rects();  // scripted checks read where the panels ended up
+  if (pending_input_->done()) {
+    report_panel_rects();  // scripted checks read where the panels ended up
+    if (schematic_tab_) {  // M8: and what the Schematic tab shows (CI capture)
+      std::printf("hefesto: schematic tab %s\n", schematic_view_->status_line().c_str());
+      std::fflush(stdout);
+    }
+  }
   // Keep frames coming through the waits (a hold's timer, a popover's frame).
   window_.request_redraw();
 }

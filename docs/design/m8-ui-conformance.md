@@ -41,6 +41,13 @@ Round 6 (branch `m8-round6-shell`, 2026-11-26):
 - The view models build without Raven and Vulkan (`src/shell/desktop/schematic_models`, target `hefesto_shell_schematic_models`, tests `hefesto_shell_schematic_tests` in builds with `HEFESTO_BUILD_DESKTOP=OFF`), so the linux-tsan CI job runs them under ThreadSanitizer.
 - CI desktop legs: a "Capture the Schematic tab" step (the product app opens `tests/data/schem/devlib/tb/ihp_style_tb.sch` and an `--input` click on the Schematic tab; artifact `schematic-captures-<leg>`) and a `cmake --install` check of the install tree.
 
+Round 6 capture review (2026-11-26). The first captures (integration branch `m8-round6`, CI run 45912671571, artifacts `schematic-captures-linux-x64-gcc-latest`, `-linux-x64-clang-latest`, `-macos-arm64-latest`) showed the Layout view, not the Schematic tab, although the step passed:
+
+- the top bar's "Netlist" button was counted as always shown, which pushed the view tabs (the last group to give way, `top_bar_hidden_groups`) out of a 1280 px bar: no tab could be clicked. Fixed: "Netlist" gives way with the deferred actions (Simulate, Ask agent), before the view tabs, so the bar at 1280 px is the one of the M10 3D capture (tabs at x 252–548);
+- the step clicked window point 455,24 (the 3D/Waveforms boundary), not the Schematic segment (x 320–405): it now clicks 362,24;
+- nothing checked that the tab was shown. After an `--input` script the app now prints `hefesto: schematic tab <breadcrumb>, <n> instances, <k> pending` when the Schematic tab is shown (`SchematicView::status_line`), and the Linux step fails unless it reads `ihp_style_tb.sch` with at least one instance and no pending symbol;
+- the macOS runner's screen is 1024 px wide (the capture is 1024 × 642), too narrow for the view tabs at any position: the macOS capture cannot show the Schematic tab until a second way to reach it exists (a Window-menu item or a key; open item), and that leg stays non-gating.
+
 ## Board review (DESIGN + SHELL, task 13.1)
 
 Reviewed on 2026-11-24 against the M8 scope (D13, D15; `schematic-editing` "Desktop and touch interaction"; Q-SCHEM-24). The board predates the M8/M9 split: it draws one testbench session with simulation results. What it shows, and what M8 needs from it:
