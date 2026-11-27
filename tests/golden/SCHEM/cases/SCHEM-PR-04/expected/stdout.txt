@@ -10,4 +10,3 @@ R7 @#0:pinnumber -> [1]
 R7 @#1:name -> [M]
 R7 @@P -> [net1]
 no instance: {@name %undef}
-

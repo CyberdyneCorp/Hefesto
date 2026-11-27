@@ -194,33 +194,24 @@ std::optional<std::string> declared_name(const ExtractContext& ctx, const NodeRe
   return substrate_name(declared, ctx.variable);
 }
 
-// The substrate node's name (extMakeNodeNumPrint with extSubsName).
-SubstrateName substrate_naming(const ExtractContext& ctx, const Basic& b) {
+// The substrate node's name (extMakeNodeNumPrint with extSubsName). An
+// abstract view has no substrate node designation (glob_subsnode is NULL),
+// but extMakeNodeNumPrint still names its node at -infinity with
+// extSubsName: that node is named without the `substrate` record.
+SubstrateName substrate_naming(const ExtractContext& ctx, const Basic& b, std::optional<std::size_t> abstract_node) {
   SubstrateName out;
-  out.node = b.substrate;
   if (b.substrate) {
     const NodeRegion& node = b.nodes[*b.substrate];
+    out.node = b.substrate;
     out.name = declared_name(ctx, node).value_or(generated_name(node, *ctx.technology));
+  } else if (abstract_node) {
+    if (std::optional<std::string> name = declared_name(ctx, b.nodes[*abstract_node])) {
+      out.node = abstract_node;
+      out.name = std::move(*name);
+      out.record = false;
+    }
   }
   return out;
-}
-
-// An abstract view has no substrate node designation (glob_subsnode is
-// NULL), but extMakeNodeNumPrint still names its node at -infinity with
-// extSubsName. write_node_records() names only the designated node that
-// way, so the name is given to the node as an unlisted name label.
-void name_abstract_substrate(const ExtractContext& ctx, Basic& b, std::size_t index) {
-  NodeRegion& node = b.nodes[index];
-  const std::optional<std::string> name = declared_name(ctx, node);
-  if (!name || name_label(node) != nullptr) {
-    return;
-  }
-  LabelRegion label;
-  label.text = *name;
-  label.position = node.reference;
-  label.type = node.type;
-  label.rect = db::Rect{node.reference.x, node.reference.y, node.reference.x, node.reference.y};
-  node.labels.push_back(std::move(label));
 }
 
 // extFindNodes, the label pass and the duplicate-label check.
@@ -235,12 +226,11 @@ diag::Status find_nodes(ExtractContext& ctx, const db::CellDef& cell, Basic& b, 
   b.abstract = has_property(cell, "LEFview");
   attach_labels(cell, b.finder, b.nodes, *ctx.style, *ctx.technology, LabelPassOptions{}, ctx.compat);
   const std::optional<std::size_t> d = b.finder.substrate_region();
-  if (d && b.abstract) {
-    name_abstract_substrate(ctx, b, node_index(b.nodes.size(), *d - b.finder.first_region()));
-  } else if (d) {
-    b.substrate = node_index(b.nodes.size(), *d - b.finder.first_region());
+  std::optional<std::size_t> abstract_node;
+  if (d) {
+    (b.abstract ? abstract_node : b.substrate) = node_index(b.nodes.size(), *d - b.finder.first_region());
   }
-  b.substrate_name = substrate_naming(ctx, b);
+  b.substrate_name = substrate_naming(ctx, b, abstract_node);
   if (ctx.options.warn_dup && !b.abstract) {
     for (const NodeFeedback& f : duplicate_label_feedback(cell, b.nodes, *ctx.technology, b.substrate_name)) {
       result.feedback.push_back(CellFeedback{f.area, f.text, f.medium});
@@ -533,7 +523,7 @@ diag::Outcome<CellResult> extract_cell(ExtractContext& ctx, db::CellDef& cell, E
   }
   result.cancelled = !basic.value() || cancelled(ctx);
   if (!result.cancelled && is_top && ctx.options.length) {
-    if (diag::Status s = path_lengths(ctx, ctx.length, writer); !s.ok()) {
+    if (diag::Status s = path_lengths(ctx, cell, ctx.length, writer); !s.ok()) {
       return s.error();
     }
   }

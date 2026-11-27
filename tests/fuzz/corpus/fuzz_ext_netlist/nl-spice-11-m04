@@ -1,0 +1,15 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+parameters rppd r= w=w l=l s=sub
+parameters mimcapm c= s=sub
+node "ra" 0 1 0 0 metal1 0 0 0 0 0 0
+node "rb" 0 1 0 10 metal1 0 0 0 0 0 0
+node "rc" 0 1 0 20 metal1 0 0 0 0 0 0
+node "ct" 0 1 0 30 metal1 0 0 0 0 0 0
+node "cb" 0 1 0 40 metal1 0 0 0 0 0 0
+device devres rppd 0 0 10 2 10 2 "GND!" "rb" 0 0 "ra" 2 0 "rc" 2 0
+device devcap mimcapm 10 0 20 10 10 10 "GND!" "ct" 0 0 "cb" 0 0

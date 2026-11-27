@@ -5,9 +5,8 @@
 // capability extresist-output "Overlay file grammar and order", "Naming of
 // network nodes"; extresist-command "Lumped resistance file"): the scale
 // line, the net blocks, the node names and the device records with
-// Q-NETLIST-39 per mode. The FastHenry and geometry writers need the
-// network's widths, heights and contact geometry, which the RESNET
-// network contract does not carry yet; they answer CORE-NOTIMPL-008.
+// Q-NETLIST-39 per mode, and the geometry centerlines (the FastHenry
+// writer is in fasthenry.cpp).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResPrint.c (ResPrintExtRes,
 // ResPrintExtNode, ResPrintExtDev) and resis/ResRex.c (ResWriteExtFile,
@@ -22,7 +21,6 @@
 #include <map>
 #include <string>
 
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/extresist/output/output.hpp"
 
 namespace hefesto::extresist {
@@ -74,22 +72,31 @@ bool two_terminal(extract::DeviceClass c) {
          c == extract::DeviceClass::devcaprev;
 }
 
+// The layout record the overlay prints (the input record's values when
+// the device was never matched to a layout device).
+LayoutRecord record_of(const InputDevice& d) {
+  return d.layout.value_or(LayoutRecord{d.location, d.length, d.width, 0, 0});
+}
+
 // The geometry pair (or, with magic-compat OFF, a resistor's or
 // capacitor's leading fields; Q-NETLIST-39).
 std::string geometry_fields(const InputDevice& d, extract::DeviceClass c, bool magic_compat) {
-  std::string out;
+  const LayoutRecord r = record_of(d);
   switch (c) {
     case extract::DeviceClass::fet:
+      if (!d.layout && d.leading.size() >= 2) {
+        return " " + d.leading[0] + " " + d.leading[1];
+      }
+      return " " + std::to_string(static_cast<std::int32_t>(r.area)) + " " +
+             std::to_string(static_cast<std::int32_t>(r.perimeter));
     case extract::DeviceClass::mosfet:
     case extract::DeviceClass::asymmetric:
     case extract::DeviceClass::bjt:
-      if (c == extract::DeviceClass::fet && d.leading.size() >= 2) {
-        return " " + d.leading[0] + " " + d.leading[1];
-      }
-      return " " + std::to_string(d.length) + " " + std::to_string(d.width);
+      return " " + std::to_string(r.length) + " " + std::to_string(r.width);
     default:
       break;
   }
+  std::string out;
   if (!magic_compat && two_terminal(c)) {
     for (const std::string& f : d.leading) {
       out += " " + f;
@@ -98,12 +105,8 @@ std::string geometry_fields(const InputDevice& d, extract::DeviceClass c, bool m
   return out;
 }
 
-std::string term_name(const InputModel& input, const std::vector<std::string>& names, std::size_t slot,
-                      const std::optional<std::size_t>& net) {
-  if (slot < names.size() && !names[slot].empty()) {
-    return names[slot];
-  }
-  return net ? input.nodes[*net].name : std::string{};
+std::string net_name(const InputModel& input, const std::optional<std::size_t>& net) {
+  return net && *net < input.nodes.size() ? input.nodes[*net].name : std::string{};
 }
 
 }  // namespace
@@ -118,97 +121,117 @@ std::string lump_line(std::string_view net, std::int32_t ohms) {
   return "R " + std::string{net} + " " + std::to_string(ohms) + "\n";
 }
 
-// names: [gate, source, drain, subs] renamed nets (empty: unchanged).
-std::string format_device(const InputModel& input, const InputDevice& device, const std::vector<std::string>& names,
-                          std::string_view default_substrate, const compat::CompatSettings& compat) {
+std::string format_device(const InputModel& input, const InputDevice& device, std::string_view default_substrate,
+                          const compat::CompatSettings& compat) {
   const extract::DeviceClass c = device.style_class.value_or(extract::DeviceClass::mosfet);
+  const LayoutRecord r = record_of(device);
   std::string out = c == extract::DeviceClass::fet ? "" : "device ";
   out += std::string{kClasses.at(static_cast<std::size_t>(c))} + " " + device.model + " " +
-         std::to_string(device.location.x) + " " + std::to_string(device.location.y) + " " +
-         std::to_string(device.location.x + 1) + " " + std::to_string(device.location.y + 1) + " ";
+         std::to_string(r.location.x) + " " + std::to_string(r.location.y) + " " + std::to_string(r.location.x + 1) +
+         " " + std::to_string(r.location.y + 1) + " ";
   out += geometry_fields(device, c, compat.magic_compat);
-  const std::string subs = term_name(input, names, 3, device.subs);
+  const std::string subs = net_name(input, device.subs);
   out += " " + q(!subs.empty() ? subs : (!default_substrate.empty() ? std::string{default_substrate} : "None"));
   if (device.gate) {
-    out += " " + q(term_name(input, names, 0, device.gate)) + " " + std::to_string(device.length * 2) + " " +
-           attr(device.gate_attr);
+    out += " " + q(net_name(input, device.gate)) + " " + std::to_string(r.length * 2) + " " + attr(device.gate_attr);
   }
   if (device.source) {
-    out += " " + q(term_name(input, names, 1, device.source)) + " " + std::to_string(device.width) + " " +
-           attr(device.source_attr);
+    out += " " + q(net_name(input, device.source)) + " " + std::to_string(r.width) + " " + attr(device.source_attr);
   }
   // Two-terminal devices (exts_deviceSDCount 1) write no drain.
   if (device.sd_count > 1 && device.drain) {
-    out += " " + q(term_name(input, names, 2, device.drain)) + " " + std::to_string(device.width) + " " +
-           attr(device.drain_attr);
+    out += " " + q(net_name(input, device.drain)) + " " + std::to_string(r.width) + " " + attr(device.drain_attr);
   }
   return out + "\n";
 }
 
-bool name_nodes(std::string_view net, Network& network, const std::vector<TerminalNode>& terminals) {
-  const std::string base = trimmed(net);
-  std::size_t k = 0;
-  for (const TerminalNode& t : terminals) {
-    if (t.node < network.nodes.size() && network.nodes[t.node].name.empty()) {
-      network.nodes[t.node].name = base + ".t" + std::to_string(k++);
-    }
-  }
-  k = 0;
-  for (NetNode& n : network.nodes) {
-    if (n.name.empty()) {
-      n.name = base + ".n" + std::to_string(k++);
-    }
-  }
-  for (const NetNode& n : network.nodes) {
-    if (n.name == net) {
-      return false;
-    }
-  }
-  return true;
+namespace {
+
+// ResPrintExtNode's killnode decision: no node keeps the net's exact name.
+bool kills(std::string_view net, const Network& network) {
+  return std::none_of(network.nodes.begin(), network.nodes.end(),
+                      [&](const NetNode& n) { return n.named && n.name == net; });
 }
 
-std::string net_block(std::string_view net, const Network& network, bool kill, double node_cap,
-                      const extract::ExtStyle& style) {
-  const double cap_scale = static_cast<double>(static_cast<std::int32_t>(style.cscale));
-  const double resist_scale = static_cast<double>(static_cast<std::int32_t>(style.rscale));
-  std::string out = kill ? "killnode " + q(net) + "\n" : std::string{};
-  for (const NetNode& n : network.nodes) {
-    const double cap = n.name == net ? n.cap - node_cap : n.cap;
-    out += "rnode " + q(n.name) + " 0 " + printf_g(cap / cap_scale) + " " + std::to_string(n.location.x) + " " +
-           std::to_string(n.location.y) + " 0\n";
+// The node that has the net's own capacitance subtracted: the one named
+// as the net, else (with the orphan patch) the first node.
+std::size_t kept_node(std::string_view net, const Network& network, bool kill, bool patch) {
+  if (kill) {
+    return kNoNode;
+  }
+  for (std::size_t i = 0; i < network.nodes.size(); ++i) {
+    if (network.nodes[i].named && network.nodes[i].name == net) {
+      return i;
+    }
+  }
+  return patch && !network.nodes.empty() ? 0 : kNoNode;
+}
+
+// `%g` of the float snodecap / exts_capScale.
+std::string rnode_line(const NetNode& n, float cap, float cap_scale) {
+  return "rnode " + q(n.name) + " 0 " + printf_g(static_cast<double>(cap / cap_scale)) + " " +
+         std::to_string(n.location.x) + " " + std::to_string(n.location.y) + " 0\n";
+}
+
+// ResPrintExtNode's orphan patch.
+std::string orphan_patch(const InputNode& node, const Network& network, std::vector<std::string>& messages) {
+  if (network.nodes.empty()) {
+    messages.push_back("Error:  Orphaned node \"" + node.name + "\" not output.");
+    return {};
+  }
+  messages.push_back("Warning:  Orphaned node \"" + node.name + "\" arbitrarily attached to \"" +
+                     network.nodes.front().name + "\"");
+  return "resist " + q(node.name) + " " + q(network.nodes.front().name) + " 0.0\n";
+}
+
+}  // namespace
+
+std::string net_block(const InputNode& node, Network& network, bool dont_kill, const extract::ExtStyle& style,
+                      std::vector<std::string>& messages) {
+  const auto cap_scale = static_cast<float>(static_cast<std::int32_t>(style.cscale));
+  const auto resist_scale = static_cast<float>(static_cast<std::int32_t>(style.rscale));
+  const bool unnamed_net = kills(node.name, network);
+  const bool patch = unnamed_net && dont_kill;
+  const bool kill = unnamed_net && !dont_kill;
+  std::string out = kill ? "killnode " + q(node.name) + "\n" : std::string{};
+  const std::size_t keep = kept_node(node.name, network, kill, patch);
+  const std::string base = trimmed(node.name);
+  int k = 0;
+  for (std::size_t i = 0; i < network.nodes.size(); ++i) {
+    NetNode& n = network.nodes[i];
+    if (!n.named) {
+      n.name = base + ".n" + std::to_string(k++);
+      n.named = true;
+    }
+    const auto cap = static_cast<float>(n.cap);
+    out += rnode_line(n, i == keep ? cap - static_cast<float>(node.node_cap) : cap, cap_scale);
+  }
+  if (patch) {
+    out += orphan_patch(node, network, messages);
   }
   for (const NetResistor& r : network.resistors) {
     if (r.a < network.nodes.size() && r.b < network.nodes.size()) {
+      const float value = static_cast<float>(r.resistance) / resist_scale;
       out += "resist " + q(network.nodes[r.a].name) + " " + q(network.nodes[r.b].name) + " " +
-             printf_g(r.resistance / resist_scale) + "\n";
+             printf_g(static_cast<double>(value)) + "\n";
     }
   }
   return out;
 }
 
-diag::Outcome<std::string> write_res_ext(const InputModel& input, std::vector<OutputNet>& nets,
+diag::Outcome<std::string> write_res_ext(const InputModel& input, const std::vector<OutputNet>& nets,
                                          const extract::ExtStyle& style, const compat::CompatSettings& compat) {
   std::string out = res_ext_scale(style);
-  // device index -> renamed [gate, source, drain, subs]
-  std::map<std::size_t, std::vector<std::string>> renamed;
-  for (OutputNet& on : nets) {
-    const InputNode& node = input.nodes.at(on.net);
-    const bool kill = name_nodes(node.name, on.network, on.terminals);
-    out += net_block(node.name, on.network, kill, node.node_cap, style);
-    for (const TerminalNode& t : on.terminals) {
-      std::vector<std::string>& names = renamed[t.device];
-      names.resize(4);
-      names[static_cast<std::size_t>(t.terminal)] = on.network.nodes.at(t.node).name;
-    }
+  for (const OutputNet& on : nets) {
+    out += on.block;
   }
   for (std::size_t i = input.devices.size(); i-- > 0;) {
-    const auto found = renamed.find(i);
-    if (found == renamed.end()) {
+    const InputDevice& d = input.devices[i];
+    if (!d.touched) {
       continue;
     }
-    const InputDevice& d = input.devices[i];
     const extract::DevicePattern* line = style_line(&style, d.model);
-    out += format_device(input, d, found->second, line != nullptr ? line->substrate_node : std::string_view{}, compat);
+    out += format_device(input, d, line != nullptr ? line->substrate_node : std::string_view{}, compat);
   }
   return out;
 }
@@ -221,19 +244,16 @@ std::string write_res_lump(const InputModel& input, const std::vector<OutputNet>
   return out;
 }
 
-diag::Outcome<std::string> write_fasthenry(const InputModel& /*input*/, const std::vector<OutputNet>& /*nets*/,
-                                           double /*frequency*/, const compat::CompatSettings& /*compat*/) {
-  return cmd::m7_not_implemented_diagnostic("extresist fasthenry");
-}
-
-std::vector<GeometryElement> geometry_elements(const Network& net, std::int32_t& next_id) {
+std::vector<GeometryElement> geometry_elements(const Network& net, std::int32_t& next_id,
+                                               const tech::Technology* technology) {
   std::vector<GeometryElement> out;
   const auto end_name = [&](const NetNode& n) {
     return n.name.empty() ? std::to_string(next_id++) : n.name;
   };
   for (const NetResistor& r : net.resistors) {
-    if (r.a >= net.nodes.size() || r.b >= net.nodes.size()) {
-      continue;
+    if (r.a >= net.nodes.size() || r.b >= net.nodes.size() ||
+        (technology != nullptr && technology->is_contact(r.type))) {
+      continue;  // vias are ignored
     }
     const NetNode& a = net.nodes[r.a];
     const NetNode& b = net.nodes[r.b];

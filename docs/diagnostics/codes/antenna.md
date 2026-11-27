@@ -17,10 +17,9 @@ The antenna keywords of the `extract` section are parsed by the one
 extract-section reader and report `EXTRACT-STYLE-*` codes
 ([extract.md](extract.md)).
 
-The M7 scaffold (tasks.md 3.2, 3.3) declared no code. While M7 is in
-progress, a command option or function the scaffold declared before its
-workstream implemented it fails with the core code `CORE-NOTIMPL-008`
-([../codes.md](../codes.md)); INTEGRATION retires it at M7 exit.
+The M7 scaffold (tasks.md 3.2, 3.3) declared no code. Every option and function the M7 scaffold declared is implemented; its stub
+code `CORE-NOTIMPL-008` is retired (M7 round 5, tasks.md 19.5;
+[../codes.md](../codes.md)).
 
 ## CHECK
 

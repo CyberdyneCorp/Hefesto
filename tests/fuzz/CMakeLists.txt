@@ -52,6 +52,10 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_sim_frames       # simulation worker frames and WorkerEngine (simulation-engine-embedding; m9 design D9, D20)
   fuzz_sim_raw          # raw result files, binary and ASCII (simulation-analyses-and-results; m9 design D12, D20)
   fuzz_sim_deck         # raw decks and their includes (simulation-netlist-preparation; m9 design D11, D20)
+  fuzz_extract_section  # the technology `extract` section under every style (extract-tech-section; m7 design D22)
+  fuzz_ext_netlist      # `.ext` files flattened and written as SPICE and .sim (netlist-spice-*, netlist-sim; m7 design D22)
+  fuzz_res_ext_reader   # extresist's `.ext` input model and the `.res.ext` overlay read (extresist-command; m7 design D22)
+  fuzz_extract_layout   # decoded layouts extracted, netlisted and run through extresist (extract-*; m7 design D22)
 )
 
 if(HEFESTO_BUILD_FUZZ)
@@ -114,3 +118,9 @@ foreach(target IN ITEMS fuzz_cifoutput_section fuzz_cifinput_section fuzz_lef_se
     target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
   endif()
 endforeach()
+
+# fuzz_extract_section reads the pinned PDK technologies as bases, as the
+# mask and lef section targets do (m7 design D22).
+if(TARGET fuzz_extract_section)
+  target_include_directories(fuzz_extract_section PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
+endif()

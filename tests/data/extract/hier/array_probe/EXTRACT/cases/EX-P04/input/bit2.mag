@@ -1,0 +1,8 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 12 12
+<< labels >>
+rlabel metal1 6 6 6 6 0 m
+<< end >>

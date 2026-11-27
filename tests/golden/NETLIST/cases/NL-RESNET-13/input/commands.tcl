@@ -1,4 +1,4 @@
-# NL-RESNET-13: a fanout net with three gate loads; mindelay 100 ps
+# NL-RESNET-13: a fanout net with three gate loads; mindelay 100 ps (re-authored: a labelled GND! square gives the substrate net a record, Q-NETLIST-63)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

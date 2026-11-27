@@ -18,6 +18,7 @@
 #include <fstream>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -115,7 +116,17 @@ class HierCase {
 
   /// The technology of case `id` with the cells read from `cells_dir`.
   HierCase(std::string_view id, bool magic_compat, std::string cells_dir)
-      : dir_(case_root(id) + "input/"), cells_dir_(std::move(cells_dir)) {
+      : HierCase(InputDir{case_root(id) + "input/"}, magic_compat, std::move(cells_dir)) {}
+
+  /// A case outside tests/golden (a capture-only probe): its technology
+  /// and cells both read from `input.path`.
+  struct InputDir {
+    std::string path;
+  };
+  HierCase(const InputDir& input, bool magic_compat) : HierCase(input, magic_compat, input.path) {}
+
+  HierCase(const InputDir& input, bool magic_compat, std::string cells_dir)
+      : dir_(input.path), cells_dir_(std::move(cells_dir)) {
     platform::MemoryFileSystem fs;
     diag::CollectingSink sink;
     auto loaded = tech::load_technology_text(read_file(dir_ + "exttest.tech"), "/t/exttest.tech", fs,
@@ -132,6 +143,10 @@ class HierCase {
   [[nodiscard]] const compat::CompatSettings& compat() const { return compat_; }
   extract::ExtractOptions options;
   const mask::Progress* progress = nullptr;  // ExtractContext::progress of run()
+  /// A use's `box` line becomes its child's bounding box, as Magic reads
+  /// it (false: the child's own paint, which Magic uses only when the
+  /// timestamps disagree).
+  bool use_boxes = true;
 
   /// The cell `name` read from input/<name>.mag with its subcells.
   db::CellDef& cell(const std::string& name) {
@@ -219,10 +234,17 @@ class HierCase {
     std::string id;
     db::Transform transform;
     db::ArrayInfo array;
+    std::optional<db::Rect> box;
   };
 
   void place(db::CellDef& parent, const PendingUse& u) {
     db::CellDef& child = cell(u.cell);
+    // Magic keeps the first use's box line as the child's bounding box when
+    // the use and child timestamps agree (DBio.c:2545-2568; the cases all
+    // write 100), and extArrayFunc sizes its areas from it (EX-P04).
+    if (u.box && use_boxes && boxed_.insert(u.cell).second) {
+      child.set_bboxes(*u.box, *u.box);
+    }
     db::PlaceOptions o;
     o.id = u.id;
     o.transform = u.transform;
@@ -256,10 +278,12 @@ class HierCase {
         if (use) {
           place(def, *use);
         }
-        use = PendingUse{w[1], w[2], {}, {}};
+        use = PendingUse{w[1], w[2], {}, {}, std::nullopt};
       } else if (w[0] == "array" && use) {
         use->array = {std::stoi(w[1]), std::stoi(w[2]), std::stoi(w[4]), std::stoi(w[5]), std::stoi(w[3]),
                       std::stoi(w[6])};
+      } else if (w[0] == "box" && use && w.size() == 5) {
+        use->box = db::Rect{std::stoi(w[1]), std::stoi(w[2]), std::stoi(w[3]), std::stoi(w[4])};
       } else if (w[0] == "transform" && use) {
         use->transform = {std::stoi(w[1]), std::stoi(w[2]), std::stoi(w[3]),
                           std::stoi(w[4]), std::stoi(w[5]), std::stoi(w[6])};
@@ -286,6 +310,7 @@ class HierCase {
   std::shared_ptr<const extract::ExtStyle> style_;
   compat::CompatSettings compat_;
   db::CellLibrary lib_;
+  std::set<std::string> boxed_;
 };
 
 }  // namespace hefesto::test::exthier

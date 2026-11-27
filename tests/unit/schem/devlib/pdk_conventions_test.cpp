@@ -11,10 +11,8 @@
 // netlist() with that interpreter's Tcl bridge. Each netlist is compared,
 // with the netlist xschem wrote in CI (expected/), after the `schem-paths`
 // mask (the PDK root written as /pdk): the element lines (every non-blank
-// line) SHALL be equal, and the whole text SHALL be equal but for one known
-// code-block gap (only_the_tcleval_block_gap), checked exactly so the
-// test fails when the gap closes or changes. The tests skip when the xschem
-// data sets are not fetched (scripts/fetch_pdk.py).
+// line) SHALL be equal, and so SHALL the whole text. The tests skip when
+// the xschem data sets are not fetched (scripts/fetch_pdk.py).
 //
 // Owner: DEVLIB.
 
@@ -81,23 +79,6 @@ std::vector<std::string> element_lines(const std::string& text) {
   return out;
 }
 
-/// Known gap (reported to NETLIST/SYMLIB, task 7.6). A code block whose
-/// format is `tcleval( @value )` evaluates to its value followed by the
-/// blank before `)`. xschem ends that block with LF and no blank, Hefesto
-/// with the blank and no LF, which shows as one blank line fewer when another
-/// code block follows, and as ` **** end user architecture code` when the
-/// block is the last one. True when `actual` is `expected` with exactly that
-/// difference at its first place.
-bool only_the_tcleval_block_gap(const std::string& expected, const std::string& actual) {
-  constexpr std::string_view kEnd = "\n\n**** end user architecture code";
-  if (const std::size_t at = expected.find("\n\n\n\n"); at != std::string::npos) {
-    if (expected.substr(0, at) + expected.substr(at + 1) == actual) return true;
-  }
-  const std::size_t at = expected.find(kEnd);
-  return at != std::string::npos &&
-         expected.substr(0, at) + "\n " + expected.substr(at + 2) == actual;
-}
-
 void check_run(const std::string& case_id, const Run& run, const Path& root) {
   const Path top = root / run.schematic;
   const auto input =
@@ -109,8 +90,9 @@ void check_run(const std::string& case_id, const Run& run, const Path& root) {
   INFO(case_id << " " << run.output << "\n--- xschem\n" << expected << "--- hefesto\n" << actual);
   CHECK_FALSE(result.failed);
   CHECK(element_lines(actual) == element_lines(expected));
-  // The whole text matches but for the one known code-block gap.
-  CHECK((actual == expected || only_the_tcleval_block_gap(expected, actual)));
+  // The whole text matches: the tcleval code-block gap of rounds 2-5 is
+  // closed (the LF after each tcleval line, M8 round 5).
+  CHECK(actual == expected);
 }
 
 void check_case(const std::string& case_id) {

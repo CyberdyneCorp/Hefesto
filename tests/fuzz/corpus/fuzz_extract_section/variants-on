@@ -1,0 +1,7 @@
+style a variants (x),(y),(z)
+    lambda 1
+    areacap metal1 10
+style b
+    lambda 0.5
+    units microns
+    perimc metal1 space 20

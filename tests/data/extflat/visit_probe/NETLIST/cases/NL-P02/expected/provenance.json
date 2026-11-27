@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "case": "NL-P02",
+  "area": "NETLIST",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:4d0458958d5d4f8d086d922e8fd1dffe6effcb8cd193ad9d3fca993f084c0617",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-26T16:41:23Z",
+  "outputs": {
+    "collected/top.default.nodes": "47874a779b32d668babb1b6daca600402bfb2792580b0c30d003b10f5ee345cc",
+    "collected/top.default.sim": "04394450d8bf49e50c53eb0d248ac538ecf027cf9276f1bad24017b6f538368d",
+    "collected/top.none.nodes": "47874a779b32d668babb1b6daca600402bfb2792580b0c30d003b10f5ee345cc",
+    "collected/top.none.sim": "04394450d8bf49e50c53eb0d248ac538ecf027cf9276f1bad24017b6f538368d",
+    "collected/top.resistor.nodes": "591ff66c91b22a5287c1a0e93f43c51aaa311c36762eddb42fab9923e3b2e4c2",
+    "collected/top.resistor.sim": "a46c5e3ca4919c7e13978a52324b5759da891db0e9f41e77d4fc54d8ccd4ef04",
+    "collected/top.voltage.nodes": "591ff66c91b22a5287c1a0e93f43c51aaa311c36762eddb42fab9923e3b2e4c2",
+    "collected/top.voltage.sim": "1cdb1ff9995c193ecf551ffff0ce2e0972501c6997eede33beee95537cec166f",
+    "stderr.txt": "3135c8cfb74ae1eca8d7c389374f5d0340f070b1d82dd70b3179cddce3e2052f",
+    "stdout.txt": "51988757f468539d015a3ab4a7ae2dc349234947aeeff32c0ab3da5cec5b3fa0"
+  }
+}

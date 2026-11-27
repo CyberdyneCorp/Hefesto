@@ -64,7 +64,7 @@ import tomllib
 from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes, compare_collected
-from goldenlib import collect
+from goldenlib import collect, schem_driver
 from goldenlib.case import RUN_SOURCES, Case, CaseError, image_variant, load_case, run_output
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
@@ -90,7 +90,10 @@ def collect_outputs(case: Case, work: Path, result: RunResult,
     outputs = {}
     for out in case.outputs:
         if out.source in RUN_SOURCES:
-            outputs[out.name] = run_output(out.source, result.stdout, result.stderr, result.returncode)
+            data = run_output(out.source, result.stdout, result.stderr, result.returncode)
+            if schem_driver.applies(case.tool, out.source):  # Q-SCHEM-46: xschem's driver text
+                data = schem_driver.filter_driver_text(data, out.source)
+            outputs[out.name] = data
             continue
         data = read_output(work, out.source)
         if data is None:
@@ -125,6 +128,7 @@ def provenance(case: Case, pins: dict, runner_name: str, result: RunResult, outp
         "command": result.command,
         "environment": ENVIRONMENT,
         "captured_at": captured_at(),
+        **({"stream_filter": "schem-driver (goldenlib/schem_driver.py, Q-SCHEM-46)"} if case.tool == "xschem" else {}),
         "outputs": {name: hashlib.sha256(data).hexdigest() for name, data in sorted(outputs.items())},
     }
 

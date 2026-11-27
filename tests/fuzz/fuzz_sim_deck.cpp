@@ -78,8 +78,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     if (!deck.ok()) {
       continue;
     }
-    for (const std::string& line : deck.value().lines) {
-      if (line.size() > 65535 || (!allow && lower_equal(line, ".control"))) {
+    const std::vector<std::string>& lines = deck.value().lines;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
+      // Line 0 is the deck's title, which ngspice never parses: a title
+      // reading `.control` starts no control section.
+      if (lines[i].size() > 65535 || (!allow && i > 0 && lower_equal(lines[i], ".control"))) {
         __builtin_trap();
       }
     }

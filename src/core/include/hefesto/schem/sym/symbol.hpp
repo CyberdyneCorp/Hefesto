@@ -80,7 +80,7 @@ struct Symbol {
 /// The integer value of a `sim_pinnumber` text, read as C `atoi` reads it:
 /// leading blanks (C isspace) skipped, an optional sign, then the decimal
 /// digits; 0 when there are none. A value outside the signed 32-bit range is
-/// clamped to -2147483648 or 2147483647 (proposed Q-SCHEM-34).
+/// clamped to -2147483648 or 2147483647 (Q-SCHEM-34, approved 2026-11-25).
 [[nodiscard]] long long sim_pinnumber_value(std::string_view text) noexcept;
 
 }  // namespace hefesto::schem

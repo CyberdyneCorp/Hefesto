@@ -1,3 +1,0 @@
-== SC_Test
-
-== SC_Test: exit 0

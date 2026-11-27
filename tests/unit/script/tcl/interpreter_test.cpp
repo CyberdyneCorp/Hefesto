@@ -33,6 +33,18 @@ using hefesto::test::SandboxedProject;
 #define PER_PROJECT "[cap:hefesto-scripting][req:One interpreter per open project]"
 #define EMBEDDED "[cap:hefesto-scripting][req:Embedded sandboxed Tcl on all platforms]"
 
+// ---- thread state ----------------------------------------------------------------
+
+// Regression (M8 round 6): a worker thread that may run a Tcl generator
+// releases Tcl's thread data when it ends; in a process that never created
+// an interpreter, Tcl_FinalizeThread read a null thread-data key and crashed.
+// ctest runs each test case in its own process, so Tcl is not initialized here.
+TEST_CASE("releasing Tcl thread data before any interpreter exists does nothing", EMBEDDED) {
+  std::thread worker([] { script::release_thread_tcl_state(); });
+  worker.join();
+  SUCCEED("no crash");
+}
+
 // ---- values and native commands ----------------------------------------------------
 
 TEST_CASE("results keep their Tcl types: numbers, strings and lists", BINDING) {

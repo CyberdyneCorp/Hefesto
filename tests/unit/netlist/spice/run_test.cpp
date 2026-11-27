@@ -171,6 +171,29 @@ TEST_CASE("render leaves the session's settings untouched", "[cap:netlist-spice-
   CHECK(s.result("ext2spice format") == "cdl");
 }
 
+// Regression (security review M7-S4, both modes): render() read through the
+// local file system, so a sandboxed session's files were never reached.
+TEST_CASE("render reads through the file system it is given", "[cap:netlist-spice-options][req:Command options]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", compat ? "on" : "off").ok());
+    REQUIRE(s.services.files()
+                .write_atomic(hefesto::platform::Path{"/w/m7s4.ext"},
+                              "scale 1000 1000 5\nresistclasses 1000 5000 100\n"
+                              "node \"a\" 0 2 0 0 metal1 0 0 0 0 0 0\n")
+                .ok());
+    const auto in_session = spice::render(s.state, s.services.files(), "/w/m7s4", spice::SpiceSettings{});
+    INFO((in_session.ok() ? std::string{} : in_session.error().code + " " + in_session.error().text));
+    REQUIRE(in_session.ok());
+    CHECK(in_session.value().find("m7s4") != std::string::npos);
+    // The local file system has no /w/m7s4.ext.
+    const auto local = spice::render(s.state, "/w/m7s4", spice::SpiceSettings{});
+    REQUIRE_FALSE(local.ok());
+    CHECK(local.error().code == "EXTFLAT-READ-001");
+  }
+}
+
 TEST_CASE("Rendering a value never changes the caller's flags", "[cap:netlist-spice-options][req:Command options]") {
   // render()'s writer step: the settings are a value and the name flags a
   // copy, so the same input renders the same text twice.
@@ -323,4 +346,38 @@ TEST_CASE("ext2sim reads with the -p left by ext2spice without a cell (magic-com
   CHECK_FALSE(s.run("ext2spice -p /w").ok());
   REQUIRE(s.run("ext2sim inv").ok());
   CHECK(s.exists("inv.sim"));
+}
+
+// Q-NETLIST-59 (compat): EFReadFile leaves `Cannot read extract file
+// <cell>.ext` as the Tcl result and ext2spice returns OK in Magic
+// (NL-SPICE-01); with magic-compat OFF the run fails with EXTFLAT-READ-001.
+// Flat and hierarchical runs alike; no netlist is written.
+TEST_CASE("ext2spice of a missing .ext returns the message and succeeds with magic-compat ON",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  for (const char* hierarchy : {"off", "on"}) {
+    INFO("hierarchy " << hierarchy);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", "on").ok());
+    REQUIRE(s.run(std::string{"ext2spice hierarchy "} + hierarchy).ok());
+    const auto r = s.run("ext2spice -p /w nosuch");
+    REQUIRE(r.ok());
+    CHECK(r.value.to_string() == "Cannot read extract file nosuch.ext\n");
+    CHECK_FALSE(s.exists("nosuch.spice"));
+  }
+}
+
+TEST_CASE("ext2spice of a missing .ext fails with EXTFLAT-READ-001 with magic-compat OFF",
+          "[cap:netlist-spice-options][req:Run arguments and output file]") {
+  for (const char* hierarchy : {"off", "on"}) {
+    INFO("hierarchy " << hierarchy);
+    ExtSession s;
+    REQUIRE(hefesto::settings::set(s.project, "magic-compat", "off").ok());
+    REQUIRE(s.run(std::string{"ext2spice hierarchy "} + hierarchy).ok());
+    const auto r = s.run("ext2spice -p /w nosuch");
+    REQUIRE_FALSE(r.ok());
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == "EXTFLAT-READ-001");
+    CHECK(r.diagnostics.back().text == "Cannot read extract file nosuch.ext");
+    CHECK_FALSE(s.exists("nosuch.spice"));
+  }
 }

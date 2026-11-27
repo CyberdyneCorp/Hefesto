@@ -33,7 +33,7 @@ Open questions are in `docs/decisions/open-questions/SCHEM.md` (Q-SCHEM-n).
 ### Requirement: Schematic circuit source
 A simulation testbench SHALL accept the source `schematic <file>` in addition to the sources of capability `simulation-netlist-preparation` (Requirement "Circuit sources"). With this source, the schematic is the complete testbench, as in xschem: its netlist (capability `schematic-netlisting`, `hier` mode, not LVS mode) SHALL be the deck. Hefesto SHALL treat it like a raw deck, apply Requirement "Control block translation", resolve file references, and validate it. The deck SHALL be generated in memory (capability `schematic-netlisting`, Requirement "In-process netlisting"). The `sim dut` command SHALL accept `schematic <file>` (capability `simulation-command`); `schematic simulate` (capability `schematic-command`) SHALL be the shortcut. See Q-SCHEM-17 for the corresponding change to capability `simulation-netlist-preparation`.
 
-Until the embedded engine exists (M9), the deck SHALL be built in memory and handed to `simulation-netlist-preparation` validation through a validator that M9 provides (none before it). A testbench that fails to netlist (an error of capability `schematic-netlisting`, Requirement "Errors and warnings") SHALL build no deck (`SCHEM-SIM-004`).
+Until the embedded engine exists (M9), the deck SHALL be built in memory and handed to `simulation-netlist-preparation` validation through a validator that M9 provides (none before it). A testbench that fails to netlist (an error of capability `schematic-netlisting`, Requirement "Errors and warnings") SHALL build no deck (`SCHEM-SIM-004`). Proposed Q-SCHEM-53 (recommendation, both modes; awaiting the user): a run whose only errors come from the net driver check of that requirement (`undriven node`, and `open net` or `shorted output node` made errors by `erc_open_net_is_error` or `erc_shorted_output_is_error`) SHALL still build the deck, and those findings SHALL be reported as warnings of the deck build; `schematic netlist`, `schematic check` and `hefesto-cli --netlist` still fail (exit status 10). Until it is decided, the first sentence applies to every error.
 
 Compatibility: native
 
@@ -48,6 +48,11 @@ Compatibility: native
 - **GIVEN** IHP `sg13g2_tests/dc_lv_nmos.sch` open with the sg13g2 PDK active
 - **WHEN** the user runs `schematic simulate`
 - **THEN** a job SHALL run in the embedded engine with the schematic's netlist as its deck, and its DC sweep vectors SHALL be available in the waveform viewer
+
+#### Scenario: Undriven node does not block the deck
+- **GIVEN** the gf180mcu testbench `tests/test_nfet_03v3.sch`, whose netlist run fails only with the `undriven node` errors of `B` and `G` (its gate and bulk are driven by sources in its code block)
+- **WHEN** `schematic deck` builds its deck, with `xschem-compat` ON or OFF
+- **THEN** the deck SHALL be built from the netlist text and the two findings SHALL be reported as warnings (proposed Q-SCHEM-53)
 
 ### Requirement: Testbench code blocks
 Testbench text SHALL come from `netlist_commands` instances (for example `code.sym` and `code_shown.sym`, whose `value` attribute is copied), placed in the netlist as defined by capability `schematic-netlisting` (`place=header`, middle, `place=end`, `only_toplevel`). Typical content that Hefesto SHALL support: `.include`, `.lib <file> <section>`, `.param`, `.option`, `.temp`, `.save`, analysis lines, and `.control` ... `.endc` blocks. `.include` and `.lib` paths SHALL be resolved:

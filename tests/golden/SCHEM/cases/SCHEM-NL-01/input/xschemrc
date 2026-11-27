@@ -11,7 +11,8 @@
 # - The case's input folder is appended to the library path, so Hefesto-authored symbols resolve.
 # - input/case.xschemrc, when the case has one, is sourced next (a case-specific setting).
 # - xschem_execute_scripts is turned on last, so tcleval values are evaluated in every capture.
-# - Netlists are written to <work>/out.
+# - Netlists are written to <work>/out, which the case driver creates (input/run.sh, or the first line
+#   of input/case.tcl): a mkdir here would reach outside the Hefesto replay sandbox.
 
 set hefesto_case_input [file dirname [file normalize [info script]]]
 if {[info exists env(PDK)] && $env(PDK) ne {}} {
@@ -24,5 +25,4 @@ if {[file exists $hefesto_case_input/case.xschemrc]} {
   source $hefesto_case_input/case.xschemrc
 }
 set netlist_dir [file join [file dirname $hefesto_case_input] out]
-file mkdir $netlist_dir
 set xschem_execute_scripts yes

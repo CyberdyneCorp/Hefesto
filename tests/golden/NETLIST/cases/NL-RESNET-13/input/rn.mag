@@ -6,6 +6,7 @@ rect 0 0 300 4
 rect 80 4 84 30
 rect 160 4 164 30
 rect 240 4 244 30
+rect -20 -20 -16 -16
 << m1c >>
 rect 78 30 86 38
 rect 158 30 166 38
@@ -33,4 +34,5 @@ rlabel metal1 0 0 0 4 0 in
 port 1 nsew
 rlabel metal1 300 0 300 4 0 far
 port 2 nsew
+rlabel metal1 -20 -20 -16 -16 0 GND!
 << end >>

@@ -1,5 +1,8 @@
 file mkdir out
+if 1 {
 schematic pdk sky130A
 schematic open input/inv_1.sch
 schematic netlist out/inv_1.spice -lvs -lvsignore
 schematic close -discard
+list
+}

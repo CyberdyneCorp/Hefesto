@@ -68,6 +68,31 @@ The second spec-team reviewer checked the record against the specs on `main` @ `
 
 Q-SCHEM-20's `Resolution:` said the line breaker "resets the column counter as xschem does", program-state wording. The second reviewer proposed a behavioural wording with the same meaning; the maintainer approved it on 2026-11-20 and it is applied in `SCHEM.md` and in `docs/decisions/m8-decision-table.md`: "replicate — when wrapping long lines, a quote stays open across lines and the field written after a `+` does not count toward the new line's length, as xschem does, in both modes; only where long lines wrap changes. Golden case SCHEM-NL-12."
 
+## Round-6 review (2026-11-26)
+
+M8 round 6, spec team (workstream DECIDE). Two parts: the wording edits the round-5 GOLDEN workstream made to `schematic-netlisting` from the captures (commit `5d4f6c1e`, task 3.6/round-5 replay), checked for fidelity against xschem's source at the pinned commit (read through single-file web fetches, nothing saved), and a paraphrase check of the texts this round adds.
+
+### Round-5 GOLDEN wording edits
+
+| ID | Where | Round-5 edit | Check against xschem | Result |
+|---|---|---|---|---|
+| PR-13 | "expr evaluation", errors rule and scenario "Parameter left symbolic" | the single quotes of `expr('...')` are kept when the expression fails | consistent with the capture of SCHEM-NL-03; the evaluator removes only the marker and its `)` | **kept** |
+| PR-14 | "Line breaking", quote rule | a blank right after 130 characters wraps ("130 characters or longer", counted up to the blank, the blank not counted) | xschem wraps at a blank, outside quotes, once the count including that blank passes 130, and restarts the count after the blank; the two statements are the same | **kept**, no change |
+| PR-15 | "Element line post-processing", `tcleval(` lines | the line's LF is appended after the Tcl result | black-box only (captures SCHEM-NL-07, NL-08); the rule describes output, no program structure | **kept** |
+| PR-16 | "Element line post-processing", "Save lines" | a width marker may directly follow `(` (`spice_probe_vdiff.sym`) | xschem's trigger is broader: any `?`, optional `-`, then a digit anywhere in a `.save`/`.print` line, and each marker is removed with the spaces on both sides of it | **amended**: the paragraph now states the exact trigger and removal (behaviour, no program structure); the captured outputs do not change |
+| PR-17 | "Subcircuit body", port-less `*.PININFO` | with no port, the `*.PININFO` line is an empty line | black-box only (capture SCHEM-NL-10, `not-lvs.spice`/`dc_logic_not-lvs.spice`); output description | **kept** |
+
+### Texts added in round 6
+
+| ID | Where | Candidate | Decision |
+|---|---|---|---|
+| PR-18 | `schematic-netlisting` "Errors and warnings", "Report order of the driver check" | the order key (h = 5381, h × 33 + c mod 2³², key = h mod 31627) | **kept** for the reason recorded for "Device models" (row in "Reviewed and kept"): it defines an observable order as arithmetic, with no code structure or identifiers; ties are stated as first-named order |
+| PR-19 | `schematic-netlisting` "Net driver check" | pin counts per name by `dir`; three ordered cases | **kept**: stated as counts of user-visible `dir` values and message texts; no table, entry or counter names; an unreachable fourth case of xschem is not described |
+| PR-20 | `schematic-command` `xschem` table (`get instances`, `getprop` index addressing, `selected_set` formats, `search` keys, `setprop -fast`) | result formats and special keys | **kept**: command syntax, special keys users type and result texts; the formats are `%g` output notation, as elsewhere |
+| PR-21 | `schematic-symbols-and-libraries` "Library search path", "Default value"; "Symbol generators", "Arguments" | xschem's built-in default and its shell hand-off | **kept**: folder names users see and the effect of the hand-off; no build or C names (the `Evidence:` lines of Q-SCHEM-52 and -54 describe the source places in words) |
+
+Mechanical sweep of the six specs after the round-6 edits (backticked identifiers, `awk`, counter/buffer/pointer/variable/hash and similar words): no further finding. No `Resolution:` line and no captured expected text changed.
+
 ## Effect on decisions
 
 No `Resolution:` line changed in meaning; Q-SCHEM-20's was reworded with the maintainer's approval (2026-11-20). No expected text of a scenario changed. The rewrites keep the rules that decide output bytes; the golden cases SCHEM-NL-01..23 pin the behaviour independently of the wording (design R2).
@@ -78,3 +103,4 @@ No `Resolution:` line changed in meaning; Q-SCHEM-20's was reworded with the mai
 |---|---|---|---|
 | Spec team, first reviewer (findings and rewrites) | spec-team agent session of the M8 gates (branch `m8-gates`) | 2026-11-17 | done |
 | Spec team, second reviewer | second spec-team agent session (branch `m8-paraphrase-review-2`), assigned by the maintainer | 2026-11-20 | done with 5 additional findings (PR-8 to PR-12) |
+| Spec team, round-6 review (PR-13 to PR-21) | spec-team agent session of M8 round 6 (branch `m8-round6-decide`) | 2026-11-26 | done: one amendment (PR-16); a second spec-team signature of the round-6 part is open |

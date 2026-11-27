@@ -1,4 +1,5 @@
 file mkdir out
+if 1 {
 # SCHEM-PR-02: place res.sym twice, copy R1, place x1[3:0] and copy it, in an empty schematic.
 proc names {} {
   set out {}
@@ -22,3 +23,5 @@ xschem select instance {x1[3:0]}
 xschem copy
 xschem paste 200 200
 puts "after copying x1\[3:0\]: [names]"
+list
+}

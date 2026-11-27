@@ -105,6 +105,7 @@ struct Run {
   extresist::DeviceAnnotations devices;
   double node_cap = 0.0;
   bool magic_compat = true;
+  const extract::ExtStyle* style = nullptr;  // env().style when null
 };
 
 inline extresist::Network build(const db::CellDef& src, const Run& run) {
@@ -123,7 +124,7 @@ inline extresist::Network build(const db::CellDef& src, const Run& run) {
   input.ports = run.ports;
   input.node_cap = run.node_cap;
   input.magic_compat = run.magic_compat;
-  auto net = extresist::build_network(geometry.value(), e.style, run.devices, input);
+  auto net = extresist::build_network(geometry.value(), run.style != nullptr ? *run.style : e.style, run.devices, input);
   REQUIRE(net.ok());
   for (const std::string& m : net.value().messages) {
     UNSCOPED_INFO("message: " << m);

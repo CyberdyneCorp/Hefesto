@@ -51,11 +51,11 @@ OWNER = {"EX": "the EXTRACT workstreams through EXTCMD's driver (m7-extraction t
          "NL-CHK": "SIM (m7-extraction task 12.4)",
          "NL-RES": "RESCMD (m7-extraction task 14) with EXTCMD's extract all and RESNET's network",
          "NL-RESNET": "RESNET (m7-extraction task 13) with RESCMD's command (task 14)",
-         "MISC-ANT": "ANTENNA (m7-extraction task 15)"}
+         "MISC-ANT": "ANTENNA (m7-extraction task 15)",
+         "LEFDEF": "EXTCMD's extract all feeding M6's def write (m7-extraction task 17.6)"}
 PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
-         **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS},
-         "LEFDEF-336": "extract all then def write on LEFDEF-317's layout (task 17.6)"}
+         **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS}}
 EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier milestones (task 17.5)
 CATALOGUE_TOTAL = 155  # design D21
 
@@ -81,11 +81,26 @@ REPLAYED: set[str] = {
     # and 13 have no expected/ (Magic crashes, Q-NETLIST-63); NL-RES-01..08 wait for their capture.
     *extract_cases.HIER_IDS,
     *(f"NL-RESNET-{n:02d}" for n in (1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 14, 15)),
+    # R5 EXTCMD (tasks 9.5, 17.1, 17.6): EX-064..070 through the run driver (EX-068 with ExtLength.c's
+    # flood), LEFDEF-336's extract all feeding def write.
+    *(f"EX-{n:03d}" for n in range(64, 71)), "LEFDEF-336",
+    # R5 RES: NL-RESNET-05, 10 and 13 re-authored (Q-NETLIST-63) and captured; NL-RES-01..08 through
+    # ResFixUpConnections, the FastHenry/geometry runs and ResSortByGate (tasks 14.1-14.4). NL-RES-02 and 03
+    # keep the heap-ordered terminal names of Magic's later runs (DECIDED, Q-NETLIST-69).
+    *(f"NL-RESNET-{n:02d}" for n in (5, 10, 13)),
+    *(f"NL-RES-{n:02d}" for n in range(1, 9)),
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
-DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS}
+DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS,
+                                   "NL-RES-02": ["Q-NETLIST-69"], "NL-RES-03": ["Q-NETLIST-69"]}
+
+RES_HEAP_ORDER = (
+    "ResSortByGate orders a net's devices by node address; Hefesto uses the reverse first-mention order ("
+    "Q-NETLIST-69, fix), which matches Magic's first run after extract all on the output net, but Magic's"
+    " later runs in the same session (and the GND net's first warning) follow heap addresses, so the .t<k"
+    "> terminal numbers of two devices on the same gate net swap")
 
 # Replayed cases whose remaining difference is an approved both-modes fix (design D21): written to the block
 # with their decisions and only the differing outputs, without a deferral.
@@ -94,6 +109,8 @@ DECIDED: dict[str, tuple[list[str], str]] = {
                "extract do unique reverts the temporary _uqN labels of every extracted cell, the top cell included, "
                "and restores its modified flag, so the saved ex keeps vdd! and net1 and its timestamp (Q-EXTRACT-6, "
                "fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"),
+    "NL-RES-02": (["stderr.txt", "collected/wire.all.res.ext", "collected/wire.force.res.ext"], RES_HEAP_ORDER),
+    "NL-RES-03": (["collected/wire.res.ext"], RES_HEAP_ORDER),
 }
 
 # Cases whose expected/ is hand-derived instead of captured, with the approved decision that allows it
@@ -103,7 +120,7 @@ HAND_DERIVED: dict[str, str] = {netlist_cases.CHK_ID: netlist_cases.CHK_HAND_DER
 
 def tcl_cases() -> list[tclcase.TclCase]:
     return [*extract_cases.cases(), *netlist_cases.cases(), *resnet_cases.cases(), *rescmd_cases.cases(),
-            *antenna_cases.cases()]
+            *antenna_cases.cases(), extract_cases.lefdef_336_case()]
 
 
 def authored_ids() -> list[str]:

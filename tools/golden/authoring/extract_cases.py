@@ -90,6 +90,7 @@ class Use:
     dx: int = 0
     dy: int = 0
     array: tuple[int, int, int, int, int, int] | None = None
+    transform: tuple[int, int, int, int] | None = None  # (a, b, d, e) of ``transform a b dx d e dy``
 
 
 @dataclass
@@ -110,22 +111,40 @@ def cell_bbox(cell: Cell, cells: dict[str, Cell]) -> tuple[int, int, int, int]:
     return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
 
 
+def _transformed(use: Use, box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """``box`` (child coordinates) through the use's transform, without its translation."""
+    a, b, d, e = use.transform or (1, 0, 0, 1)
+    xs = [a * x + b * y for x in (box[0], box[2]) for y in (box[1], box[3])]
+    ys = [d * x + e * y for x in (box[0], box[2]) for y in (box[1], box[3])]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
 def use_bbox(use: Use, cells: dict[str, Cell]) -> tuple[int, int, int, int]:
-    x1, y1, x2, y2 = cell_bbox(cells[use.cell], cells)
+    x1, y1, x2, y2 = _transformed(use, cell_bbox(cells[use.cell], cells))
     xlo, xhi, xsep, ylo, yhi, ysep = use.array or (0, 0, 0, 0, 0, 0)
-    xs, ys = (xhi - xlo) * xsep, (yhi - ylo) * ysep
+    a, b, d, e = use.transform or (1, 0, 0, 1)
+    sx, sy = (xhi - xlo) * xsep, (yhi - ylo) * ysep  # the array extent in child coordinates
+    xs, ys = a * sx + b * sy, d * sx + e * sy
     return (x1 + use.dx + min(0, xs), y1 + use.dy + min(0, ys), x2 + use.dx + max(0, xs), y2 + use.dy + max(0, ys))
 
 
-def _use_lines(use: Use, cells: dict[str, Cell]) -> list[str]:
+def _use_lines(use: Use, cells: dict[str, Cell], child_boxes: bool = False) -> list[str]:
+    """A ``use`` block. Its ``box`` line is the parent-coordinate box of the whole use, as the R1-R4
+    cases were written, unless the use is rotated or mirrored or ``child_boxes`` is set: then it is the
+    child's own bounding box, which is what Magic's .mag files hold. Magic trusts that line as the
+    child's bounding box when the use and child timestamps agree (DBio.c:2545-2568), so it shapes the
+    array pass (EX-P04)."""
     out = [f"use {use.cell} {use.uid}"]
     if use.array:
         out.append("array " + " ".join(str(v) for v in use.array))
-    box = " ".join(str(v) for v in use_bbox(use, cells))
-    return out + ["timestamp 100", f"transform 1 0 {use.dx} 0 1 {use.dy}", f"box {box}"]
+    child = child_boxes or use.transform is not None
+    box = " ".join(str(v) for v in (cell_bbox(cells[use.cell], cells) if child else use_bbox(use, cells)))
+    a, b, d, e = use.transform or (1, 0, 0, 1)
+    return out + ["timestamp 100", f"transform {a} {b} {use.dx} {d} {e} {use.dy}", f"box {box}"]
 
 
-def mag(cell: Cell, tech_name: str = "exttest", cells: dict[str, Cell] | None = None) -> str:
+def mag(cell: Cell, tech_name: str = "exttest", cells: dict[str, Cell] | None = None,
+        child_boxes: bool = False) -> str:
     """The .mag text: paint grouped by layer in first-use order, the uses, then labels and properties."""
     groups: dict[str, list[str]] = {}
     for item in cell.paint:
@@ -136,7 +155,7 @@ def mag(cell: Cell, tech_name: str = "exttest", cells: dict[str, Cell] | None = 
     for layer, rows in groups.items():
         out += [f"<< {layer} >>", *rows]
     for use in cell.uses:
-        out += _use_lines(use, cells or {})
+        out += _use_lines(use, cells or {}, child_boxes)
     if cell.labels:
         out.append("<< labels >>")
         for label in cell.labels:
@@ -162,6 +181,7 @@ class Run:
     cmds: tuple[str, ...] = ()                        # extract options before this run
     after: tuple[str, ...] = ()                       # raw Tcl after the run (saves, queries)
     cell: str = ""                                    # the cell this run loads and extracts ("" for the root)
+    command: str = "extract all"                      # the run's extraction command
 
 
 @dataclass
@@ -180,11 +200,12 @@ class ExSpec:
     extra_files: dict[str, str] = field(default_factory=dict)
     extra_outputs: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    ext_outputs: list[str] | None = None              # the .ext files left (default: one per root and run)
 
 
 def run_lines(root: str, run: Run) -> list[str]:
     body = [p(*run.cmds)] if run.cmds else []
-    body.append(p("extract all"))
+    body.append(p(run.command))
     if run.tag:
         body.append(f"file rename -force input/{root}.ext input/{root}.{run.tag}.ext")
     return body + list(run.after)
@@ -217,12 +238,14 @@ def body(spec: ExSpec) -> str:
 
 def ext_files(spec: ExSpec) -> list[str]:
     """The .ext files the runs leave in the work directory (collected as ``collected/<path>``)."""
+    if spec.ext_outputs is not None:
+        return list(spec.ext_outputs)
     outs = []
     for root in roots(spec):
         for r in spec.runs:
             cell = r.cell or root
             outs.append(f"input/{cell}.{r.tag}.ext" if r.tag else f"input/{cell}.ext")
-    return outs
+    return list(dict.fromkeys(outs))
 
 
 def to_case(spec: ExSpec) -> TclCase:
@@ -697,6 +720,146 @@ def hier_specs() -> list[ExSpec]:
     ]
 
 
+# --- EX-064..070: the command options and the use records (task 17.1) -------------------------
+
+CMD = "extract-commands"
+FMT = "extract-file-format"
+# extTimestampMisMatch reads the .ext file's timestamp line, never its modification time, so the time is
+# set to 0 after a run and read back after the next: 0 means the file was not rewritten.
+MTIME_ZERO = "foreach f {{{files}}} {{ file mtime input/$f.ext 0 }}"
+MTIME_SHOW = "puts \"{what}: [lmap f {{{files}}} {{ list $f [expr {{[file mtime input/$f.ext] != 0}}] }}]\""
+
+
+def length_cells() -> dict[str, Cell]:
+    """EX-068: ex, a straight metal1 wire with the driver d at its left end and the receiver r at its
+    right end; exl, a metal1 ring whose lower side goes up through a via to metal2 and back down, with
+    the driver d at its left end, a second driver d2 on its right side, a receiver r on its top side and
+    the receiver c1/r in a subcell wire that overlaps its lower right end."""
+    straight = Cell([("metal1", 0, 0, 100, 4)], [lab("metal1", 0, 2, "d"), lab("metal1", 100, 2, "r")])
+    ring = Cell([("metal1", 0, 0, 20, 4), ("metal2", 16, 0, 60, 4), ("metal1", 56, 0, 80, 4),
+                 ("metal1", 0, 4, 4, 30), ("metal1", 0, 26, 80, 30), ("metal1", 76, 4, 80, 26),
+                 ("via", 16, 0, 20, 4), ("via", 56, 0, 60, 4)],
+                [lab("metal1", 0, 2, "d"), lab("metal1", 78, 15, "d2"), lab("metal1", 40, 28, "r")],
+                uses=[Use("rleaf", "c1", 76, 0)])
+    rleaf = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 8, 2, "r")])
+    return {"ex": straight, "exl": ring, "rleaf": rleaf}
+
+
+def use_record_cells() -> dict[str, Cell]:
+    """EX-070: an asymmetric leaf placed rotated, mirrored and arrayed with a rotation, a 2x2 array
+    whose x indices run downwards, and a 2x2 array flipped in y."""
+    leaf = Cell([("metal1", 0, 0, 10, 4), ("metal1", 0, 4, 2, 8)], [lab("metal1", 8, 2, "a")])
+    uses = [Use("leaf", "r90", 40, 0, transform=(0, -1, 1, 0)),
+            Use("leaf", "mx", 70, 0, transform=(-1, 0, 0, 1)),
+            Use("leaf", "r180", 100, 20, (0, 2, 12, 0, 0, 0), transform=(-1, 0, 0, -1)),
+            Use("leaf", "rev", 140, 0, (1, 0, 14, 0, 1, 10), transform=(1, 0, 0, 1)),
+            Use("leaf", "fy", 180, 30, (0, 1, 12, 0, 1, 12), transform=(1, 0, 0, -1))]
+    return {"ex": Cell([("metal1", 0, 40, 10, 44)], [lab("metal1", 5, 42, "top")], uses=uses), "leaf": leaf}
+
+
+def command_specs() -> list[ExSpec]:
+    """EX-064..070 (tasks 9.x, 17.1)."""
+    leaf = Cell([("metal1", 0, 0, 10, 4)], [lab("metal1", 2, 2, "a")])
+    inc = Cell([("metal1", 0, 10, 10, 14)], [lab("metal1", 5, 12, "t")], uses=[Use("leaf", "c1")])
+    inv = Cell([("metal1", 0, 10, 10, 14)], [lab("metal1", 5, 12, "y")], uses=[Use("leaf", "l1")])
+    one = Cell([("metal1", 0, 20, 10, 24)], [lab("metal1", 5, 22, "t")], uses=[Use("myinv", "c1")])
+    wires = Cell([("metal1", 0, 0, 10, 2), ("metal1", 0, 8, 10, 10)],
+                 [lab("metal1", 5, 1, "w1"), lab("metal1", 5, 9, "w2")])
+    files = "ex leaf"
+    zero = MTIME_ZERO.format(files=files)
+    edit = ("load leaf", "box 20 0 24 4", "paint metal1", "load ex", "box 0 0 1 1")
+    return [
+        ExSpec("EX-064", CMD, ["Incremental extraction"],
+               "extract (incremental) twice without edits, then after painting into the child leaf: which .ext "
+               "files each run rewrites (their modification time is set to 0 after a run and read back after "
+               "the next)", {"ex": inc, "leaf": leaf},
+               runs=[Run("", command="extract", after=(zero,)),
+                     Run("", command="extract",
+                         after=(MTIME_SHOW.format(what="unchanged run rewrote", files=files), zero, *edit)),
+                     Run("", command="extract", after=(MTIME_SHOW.format(what="run after the edit rewrote",
+                                                                          files=files),))],
+               ext_outputs=["input/ex.ext", "input/leaf.ext"]),
+        ExSpec("EX-065", CMD, ["Extract all, cell, parents and showparents"],
+               "extract cell myinv with instance c1 of myinv selected (myinv holds an instance of leaf): "
+               "myinv.ext is written and no file for the child", {"ex": one, "myinv": inv, "leaf": leaf},
+               runs=[Run("", cmds=("select cell c1",), command="extract cell myinv")], ext_outputs=["myinv.ext"]),
+        ExSpec("EX-066", CMD, ["Output path and file location"],
+               "extract path ext/ with no directory ext: the directory is created and the file written in it",
+               {"ex": metal1_rect()}, setup=("extract path ext/", "extract path"), ext_outputs=["ext/ex.ext"]),
+        ExSpec("EX-067", CMD, ["Option defaults", "Extraction options"],
+               "extract do with no arguments after the technology load: the option listing; then extract all",
+               {"ex": metal1_rect()}, setup=("extract do",)),
+        ExSpec("EX-068", CMD, ["Path length extraction"],
+               "extract do length, drivers d d2 nosuch and receivers r c1/r: a straight metal1 wire (ex), then a "
+               "metal1 ring through a metal2 bridge with a receiver in a subcell (exl): the distance records "
+               "and the missing drivers' messages", length_cells(), rules="",
+               setup=("extract do length", "extract length driver d d2 nosuch", "extract length receiver r c1/r"),
+               roots=["ex", "exl"], ext_outputs=["input/ex.ext", "input/exl.ext", "input/rleaf.ext"]),
+        ExSpec("EX-069", CMD, ["Style, halo and step size"],
+               "sidewall metal1 space space metal1 40, sidehalo 4, extract no fringehalo; two wires 6 apart: no cap "
+               "with the style's halo, the cap after extract halo 8, none again after extract style exttest "
+               "reloads the style", {"ex": wires}, rules=SIDEWALL + "\nsidehalo 4",
+               setup=("extract no fringehalo", "extract halo"),
+               runs=[Run("default"), Run("halo8", cmds=("extract halo 8", "extract halo")),
+                     Run("style", cmds=("extract style exttest", "extract no fringehalo", "extract halo"))]),
+        ExSpec("EX-070", FMT, ["Use records", "Record grammar"],
+               "a leaf placed rotated 90, mirrored, as a rotated 1x3 array, as a 2x2 array whose x indices run "
+               "downwards and as a 2x2 array flipped in y: the use records", use_record_cells()),
+    ]
+
+
+# --- EX-P04: capture-only probe of the array pass's area conditions (task 8.5 follow-up) -----------
+
+ARRAY_PROBE_DIR = HERE.parents[2] / "tests" / "data" / "extract" / "hier" / "array_probe"
+
+
+def array_probe_case() -> TclCase:
+    """EX-P04: EX-053's arrays and EX-047's 1-D array x, each written twice: with the box lines of the
+    authored cases (the whole use's box in parent coordinates; arr, sub) and with the child's own
+    bounding box, as Magic writes it (arrfix, subfix). Magic keeps a use's box line as the child's
+    bounding box when the timestamps agree (DBio.c:2545-2568), and extArrayFunc (ExtArray.c:242-330)
+    sizes its interaction areas from that box, so the two forms show whether the R4 difference comes
+    from the area conditions or from the box line."""
+    hier = {s.id: s for s in (*hier_device_specs(), *hier_specs())}
+    a53, a47 = hier["EX-053"], hier["EX-047"]
+    files: dict[str, str | bytes] = {"exttest.tech": tech(a47.rules)}
+    cells53 = {"arr": a53.cells["ex"], "arrfix": a53.cells["ex"], "bit": a53.cells["bit"], "bit2": a53.cells["bit2"]}
+    cells47 = {"sub": a47.cells["ex"], "subfix": a47.cells["ex"], "sc": a47.cells["sc"]}
+    for cells in (cells53, cells47):
+        files.update({f"{n}.mag": mag(c, cells=cells, child_boxes=n.endswith("fix")) for n, c in cells.items()})
+    script = ["tech load input/exttest -noprompt", "drc off"]
+    for name in ("arr", "arrfix", "sub", "subfix"):
+        script += [f"load {name}", "box 0 0 1 1", p("extract all")]
+    return TclCase("EX-P04", HIER, ["Array interactions"],
+                   "EX-053's arrays and EX-047's array x with parent-coordinate and child-coordinate use boxes "
+                   "(task 8.5 follow-up probe): the array merges", lines(*script), files=files,
+                   collect=COLLECT, driver="extract_cases.py --array-probe", golden_area="EXTRACT",
+                   notes=["Capture-only (outside tests/golden, so replay.py never runs it); the Hefesto side is "
+                          "tests/unit/extract/hier/captured_test.cpp.",
+                          "Capture: gh workflow run golden-capture.yml -f mode=capture "
+                          "-f cases=tests/data/extract/hier/array_probe/EXTRACT/cases/EX-P04"])
+
+
+# --- LEFDEF-336: Hefesto's extractor feeding the DEF writer (task 17.6, Open Question 9 (a)) -------
+
+LEFDEF_317 = HERE.parents[2] / "tests" / "golden" / "LEFDEF" / "cases" / "LEFDEF-317" / "input"
+
+
+def lefdef_336_case() -> TclCase:
+    """LEFDEF-336: LEFDEF-317's layout and technology, ``extract all`` (no .ext input), then ``def write``."""
+    files: dict[str, str | bytes] = {n: (LEFDEF_317 / n).read_text(encoding="utf-8") for n in ("lefdef.tech", "top.mag")}
+    body = lines(p("drc off"), p("tech load input/lefdef.tech -noprompt"), p("snap internal"), p("load top"),
+                 "box 0 0 1 1", p("extract all"), p("def write"))
+    return TclCase("LEFDEF-336", "def-write", ["Net classification"],
+                   "LEFDEF-317's layout (vdd! without a port, port A, labeled internal clkint) extracted by extract "
+                   "all, then def write: SPECIALNETS / NETS membership and counts from the tool's own .ext",
+                   body, files=files, outputs=["top.def"], output_comparators={"top.def": "def-text"},
+                   stream_comparator="lef-text", stream_masks=["completed-percent", "magic-undo-note"],
+                   driver=DRIVER, collect=COLLECT, prelude=True,
+                   notes=["m7-extraction task 17.6 (Open Question 9 (a)): the inputs are LEFDEF-317's without its "
+                          "Magic-written top.ext; input/top.ext is written by the run and collected."])
+
+
 # --- EX-P03: capture-only probe of two device types abutting in one device region --------------
 
 PROBE_DIR = HERE.parents[2] / "tests" / "data" / "extract" / "device" / "abut_probe"
@@ -745,7 +908,7 @@ def probe_case() -> TclCase:
 
 def specs() -> list[ExSpec]:
     return [*file_format_specs(), *capacitance_specs(), *resistance_specs(), *node_specs(), *device_specs(),
-            *substrate_specs(), *tech_section_specs(), *hier_device_specs(), *hier_specs()]
+            *substrate_specs(), *tech_section_specs(), *hier_device_specs(), *hier_specs(), *command_specs()]
 
 
 def cases() -> list[TclCase]:
@@ -754,12 +917,16 @@ def cases() -> list[TclCase]:
 
 FLAT_IDS = [f"EX-{n:03d}" for n in [*range(1, 43), 44, 45, 46, 48, *range(57, 64)]]
 HIER_IDS = [f"EX-{n:03d}" for n in [43, 47, *range(49, 57)]]
-LATER = {f"EX-{n:03d}": "needs the command options (task 17.1, R3-R4)" for n in range(64, 71)}
+COMMAND_IDS = [f"EX-{n:03d}" for n in range(64, 71)]
+LATER: dict[str, str] = {}
+PROBES = {"--probe": (probe_case, PROBE_DIR), "--array-probe": (array_probe_case, ARRAY_PROBE_DIR)}
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] != ["--probe"]:
-        sys.exit("usage: extract_cases.py --probe   (writes EX-P03 under tests/data/extract/device/abut_probe)")
+    if len(sys.argv) != 2 or sys.argv[1] not in PROBES:
+        sys.exit("usage: extract_cases.py --probe | --array-probe   (EX-P03 under tests/data/extract/device/"
+                 "abut_probe, EX-P04 under tests/data/extract/hier/array_probe)")
     import tclcase  # noqa: E402
 
-    print(tclcase.write(probe_case(), PROBE_DIR))
+    make, where = PROBES[sys.argv[1]]
+    print(tclcase.write(make(), where))

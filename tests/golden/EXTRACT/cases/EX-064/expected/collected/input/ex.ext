@@ -1,0 +1,8 @@
+timestamp 1795694778
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use leaf c1 1 0 0 0 1 0
+node "t" 0 0 0 10 m1

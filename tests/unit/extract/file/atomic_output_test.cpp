@@ -103,6 +103,61 @@ TEST_CASE("The target follows ExtLocalPath, then the cell's file, then the cell 
   beside.value().abandon();
 }
 
+// Proposed Q-EXTRACT-44 (compat).
+TEST_CASE("An extract path with a trailing slash is joined as Magic's sprintf joins it with magic-compat ON",
+          "[cap:extract-commands][req:Output path and file location]") {
+  // ExtFileOpen: sprintf(namebuf, "%s/%s", ExtLocalPath, def->cd_name), so
+  // `extract path ext/` names ext//inv.ext (EX-066 prints that name).
+  Memory m;
+  REQUIRE(m.files.create_directories("/out").ok());
+  extract::OutputLocation where;
+  where.local_path = "/out/";
+  auto out = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(out.ok());
+  CHECK(out.value().target() == "/out//inv.ext");
+  out.value().abandon();
+}
+
+TEST_CASE("An extract path with a trailing slash is joined with one separator with magic-compat OFF",
+          "[cap:extract-commands][req:Output path and file location]") {
+  Memory m;
+  REQUIRE(m.files.create_directories("/out").ok());
+  extract::OutputLocation where;
+  where.local_path = "/out/";
+  where.magic_compat = false;
+  auto out = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(out.ok());
+  CHECK(out.value().target() == "/out/inv.ext");
+  out.value().abandon();
+  where.local_path = "/out";  // without the slash both modes agree
+  auto plain = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(plain.ok());
+  CHECK(plain.value().target() == "/out/inv.ext");
+  plain.value().abandon();
+}
+
+TEST_CASE("A search-path entry `.` is the current directory (it expands to an empty name)",
+          "[cap:extract-commands][req:Output path and file location]") {
+  // PaOpen tries an entry that expands to nothing as the current directory
+  // (utils/path.c nextName). AtomicOutput skipped it, so the next entry won.
+  Memory m;
+  REQUIRE(m.files.create_directories("/cwd").ok());
+  REQUIRE(m.files.create_directories("/lib").ok());
+  m.paths.path = {".", "/lib"};
+  extract::OutputLocation where;
+  where.current_directory = "/cwd";
+  auto out = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(out.ok());
+  CHECK(out.value().target() == "/cwd/inv.ext");
+  out.value().abandon();
+
+  m.paths.path = {"./", "/lib"};  // `./` strips to the same empty name
+  auto slash = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(slash.ok());
+  CHECK(slash.value().target() == "/cwd/inv.ext");
+  slash.value().abandon();
+}
+
 /// A scratch directory below the working directory (never /tmp).
 struct LocalDir {
   fs::path root = fs::current_path() / ("extract_file_test_" + std::to_string(::getpid()) + "_" + std::to_string(next()));

@@ -240,3 +240,51 @@ TEST_CASE("the netlist action: command, Interrupt card and result", "[cap:schema
   action.finish(bad, messages);  // not running: ignored
   CHECK(messages.count(MessageSeverity::error) == 1);
 }
+
+TEST_CASE("the top bar's Netlist button runs the same netlist action as the netlist bar",
+          "[cap:schematic-command][req:Subcommand table]") {
+  NetlistAction action;
+  MessagesPanel messages;
+
+  const NetlistButtonView none = netlist_button(action, false);
+  CHECK(none.label == "Netlist");
+  CHECK_FALSE(none.enabled);
+  CHECK(none.tooltip.find("no schematic open") != std::string::npos);
+  CHECK(netlist_button(action, true).enabled);
+
+  // No document: nothing runs, a message says why.
+  std::vector<std::string> issued;
+  const auto sink = [&issued](const std::string& line) { issued.push_back(line); };
+  CHECK_FALSE(run_netlist(action, false, "inv.sch", sink, messages));
+  CHECK(issued.empty());
+  REQUIRE(messages.messages().size() == 1);
+  CHECK(messages.messages().back().text == "netlist: no schematic open");
+
+  // The sink runs the line; the view's observer finishes the action with the result.
+  const auto observed = [&](const std::string& line) {
+    issued.push_back(line);
+    CHECK_FALSE(netlist_button(action, true).enabled);  // disabled while it runs
+    CommandOutcome ok;
+    ok.output = "R1 a b 1k\n.end\n";
+    action.finish(ok, messages);
+  };
+  CHECK(run_netlist(action, true, "inv.sch", observed, messages));
+  CHECK(issued == std::vector<std::string>{"schematic netlist -hier"});
+  CHECK(action.state() == NetlistAction::State::done);
+  CHECK(action.status() == "Netlist ready (2 lines)");
+
+  // A line that never reached the dispatcher ends the run as failed.
+  CHECK(run_netlist(action, true, "inv.sch", sink, messages));
+  CHECK(action.state() == NetlistAction::State::failed);
+  CHECK(action.status() == "Netlist failed: the netlist command did not run");
+  CHECK(netlist_button(action, true).enabled);
+
+  // One run at a time: a second start while running issues nothing.
+  const auto nested = [&](const std::string& line) {
+    issued.push_back(line);
+    CHECK_FALSE(run_netlist(action, true, "inv.sch", sink, messages));
+  };
+  issued.clear();
+  CHECK(run_netlist(action, true, "inv.sch", nested, messages));
+  CHECK(issued.size() == 1);
+}

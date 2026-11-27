@@ -42,6 +42,10 @@ enum class Sink : std::uint8_t { file, block, nested, discard };
 constexpr std::size_t kVersionUnset = 0;
 constexpr std::size_t kVersion10 = 1;
 
+// The range of a rotation or flip: xschem stores them as 16-bit integers.
+constexpr int kMinOrientation = -32768;
+constexpr int kMaxOrientation = 32767;
+
 // The instance a `[` inside a block may define in place: the `C` record
 // directly before it.
 struct PendingInstance {
@@ -254,6 +258,18 @@ class Reader {
     return layer;
   }
 
+  // A rotation or flip of a `T` or `C` record: an integer field that also
+  // fits xschem's 16-bit storage. A value outside -32768..32767 (or one that
+  // does not fit 32 bits) reads as a missing field, in both modes ("Record
+  // grammar", Q-SCHEM-34 approved 2026-11-25).
+  std::optional<int> read_orientation() {
+    const auto value = lex_.read_int();
+    if (!value || *value < kMinOrientation || *value > kMaxOrientation) {
+      return std::nullopt;
+    }
+    return value;
+  }
+
   // A `v` record sets the frame's file version; inside a block it is
   // otherwise ignored for the symbol ("Embedded symbols").
   void read_version() {
@@ -386,7 +402,7 @@ class Reader {
     std::array<double, 2> scale{};
     std::optional<int> rotation;
     std::optional<int> flip;
-    const bool ok = read_numbers(origin) && (rotation = lex_.read_int()) && (flip = lex_.read_int()) &&
+    const bool ok = read_numbers(origin) && (rotation = read_orientation()) && (flip = read_orientation()) &&
                     read_numbers(scale);
     if (!ok) {
       missing("TEXT");
@@ -426,7 +442,7 @@ class Reader {
     std::array<double, 2> origin{};
     std::optional<int> rotation;
     std::optional<int> flip;
-    if (!(read_numbers(origin) && (rotation = lex_.read_int()) && (flip = lex_.read_int()))) {
+    if (!(read_numbers(origin) && (rotation = read_orientation()) && (flip = read_orientation()))) {
       missing("INSTANCE");
       return;
     }

@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-PR-02: place res.sym twice, copy R1, place x1[3:0] and copy it, in an empty schematic.
 proc names {} {
   set out {}

@@ -163,6 +163,9 @@ class MainWindow {
   };
   TopButton add_top_button(ui::Box& row, std::string_view label, std::string_view icon, paint::ButtonStyle style,
                            std::string_view tooltip, std::function<void()> click);
+  /// The top bar's Netlist button, driven by SchematicView::netlist_button_view.
+  TopButton add_netlist_button(ui::Box& row);
+  void refresh_netlist_button();
   /// Hides top-bar groups that do not fit the window's width (on resize).
   void fit_top_bar();
   void build_center();
@@ -404,6 +407,7 @@ class MainWindow {
   std::unique_ptr<View3dView> view3d_;
   bool view3d_tab_ = false;
   ui::Painted* view_tabs_widget_ = nullptr;  // the segmented editor-view tabs (owned by painted_)
+  ui::Painted* netlist_button_ = nullptr;    // the top bar's Netlist (owned by painted_)
   void show_view3d_tab(bool on);
   /// A click at `x` on the editor-view tabs: Layout shows the canvas, 3D shows the 3D view or runs render3d.
   void click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d);

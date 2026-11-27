@@ -1,0 +1,15 @@
+scale 1 1 1
+killnode "d1"
+rnode "d1.t0" 0 2500 10 5 0
+rnode "d1.n0" 0 1500 0 20 0
+resist "d1.n0" "d1.t0" 1500
+rnode "d2.t0" 0 2000 55 10 0
+rnode "d2" 0 -2000 50 0 0
+resist "d2" "d2.t0" 500
+killnode "d3"
+rnode "d3.t0" 0 1000 80 5 0
+rnode "d3.n0" 0 1000 90 0 0
+resist "d3.n0" "d3.t0" 1000
+device mosfet nfet 50 10 51 11  5 15 "GND!" "active_50_10#" 10 0 "d2.t0" 15 0 "d2.t0" 15 100,30
+device mosfet nfet 10 0 11 1  10 10 "GND!" "active_10_n4#" 20 0 "d1.t0" 10 200,60 "active_20_0#" 10 100,40
+device mosfet nfet 70 0 71 1  10 10 "GND!" "active_70_n4#" 20 0 "d2" 10 100,30 "d3.t0" 10 100,40

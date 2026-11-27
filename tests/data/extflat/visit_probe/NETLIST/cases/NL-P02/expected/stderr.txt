@@ -1,0 +1,4 @@
+Warning:  Ports "A" and "B" are electrically shorted.
+Warning:  Ports "C" and "D" are electrically shorted.
+Warning:  Ports "A" and "B" are electrically shorted.
+Warning:  Ports "C" and "D" are electrically shorted.

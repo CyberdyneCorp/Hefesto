@@ -20,6 +20,10 @@ release notices.
 - **3D view upside down in tilted views.** The isometric, front and side
   views showed the stack from below (wells on top, metals at the
   bottom); every tilted view now looks from above.
+- **`antennacheck debug` belongs to its session.** The debug flag was
+  shared by every session of the process, so one session's
+  `antennacheck debug` printed diagnostics in another session's next
+  run; it is now armed per session.
 
 ### Added
 
@@ -168,6 +172,32 @@ release notices.
   breadcrumb, messages and netlist bar with Interrupt; pan, zoom and
   click-to-select; net highlights drawn in their colours. Symbols are
   resolved off the UI thread and shown as placeholders until ready.
+- **Schematic tab: Netlist button, system clipboard, rebindable keys.**
+  The top bar's Netlist button shows the Schematic tab and runs the
+  netlist. Copy and Paste (Command-C/V on macOS, Ctrl-C/V elsewhere)
+  go through the system clipboard; clipboard text above 16 MiB is
+  refused, and clipboard text is echoed in the Console as its first line
+  and size. `macro schematic KEY "TEXT"` lines of the key-binding sheet
+  now reach the table the canvas reads, also with magic-compat on, where
+  Magic ignores them (provisional until the key decisions Q-SCHEM-66 and
+  -67 are approved). `R` and `F` rotate and flip around the pointer; a
+  binding of the Copy or Paste chord overrides the clipboard. The
+  Netlist button is disabled with no schematic open and while a netlist
+  runs.
+- **Schematic scripts.** `schematic rotate` and `flip` without a pivot
+  turn around the origin with xschem-compat on (xschem's pointer in a
+  run without the editor), around the selection's centre with it off.
+  `schematic select ... -remove` and `select connected -stopjunction`
+  work. `xschem translate` raises "instance not found" for an instance
+  that does not exist (`-1` still substitutes with no instance). A
+  refused `schematic save` no longer changes the document's embedded
+  symbols.
+  The view tabs stay in a 1280 px top bar (the Netlist button gives
+  way first), and the CI desktop legs capture the Schematic tab and
+  fail unless it is shown.
+- **Embedded symbols on save.** `schematic save` writes the block of
+  each `embed=true` symbol the file does not embed yet, taken from the
+  symbol library.
 
 ### Changed
 
@@ -203,6 +233,14 @@ release notices.
 
 ### Fixed
 
+- **Out-of-range numbers in schematic files (Q-SCHEM-34 to -37, both
+  `xschem-compat` modes).** A record whose rotation or flip is outside
+  16 bits is skipped; zero or negative bus counts are syntax errors and
+  a stepped range with equal ends gives one element; `%` by zero gives
+  `nan`; a `Bus tap` short is reported only when the tap's name differs
+  from its pin's, naming the tap first. Nested instances whose symbol
+  is a file next to the schematic are no longer dropped on open,
+  reload or descend.
 - **`schematic label` with a quote or backslash** in the name is escaped
   and reads back unchanged; so are the net labels a netlist run stores.
 - **Schematic scripts cannot close or move the standard channels**
@@ -221,17 +259,24 @@ release notices.
 - **`extresist`** builds and reduces each net's resistor network and
   writes `.res.ext` and `.res.lump`; **`antennacheck`** checks gate
   antenna ratios against the style's rules.
+- **`extract length`** writes Magic's `distance` records (ExtLength.c's
+  flood); **`extresist geometry`, `fasthenry` and `box`** run, with
+  ResFixUpConnections' terminal renaming and devices in subcells.
+  `ext2sim` follows the short mode `ext2spice short` sets, as Magic.
+
+### Fixed
+
+- `extresist` no longer reads past a short `substrate` or parent `connect`
+  record, and a parent `use` far from the origin no longer overflows;
+  layout devices add their gate and S/D capacitance to the Elmore delay.
 
 ### Changed
 
 - **`extract`, `ext`, `ext2spice`, `exttospice`, `ext2sim`, `exttosim`,
   `extresist` and `antennacheck` are registered commands.** They take
   Magic's option tables and print Magic's help and invalid-option
-  messages. Until extraction and the netlisters land, each option answers
-  `CORE-NOTIMPL-008` ("not implemented yet: extract all"), so a script's
-  `extract all` now fails with that message instead of "unknown command".
-  `ext2spice scale [on|off]` keeps working as before; other `ext2spice`
-  options answer `CORE-NOTIMPL-008` instead of `UI-CLIENT-002`.
+  messages. Every option is now implemented, and the scaffold code
+  `CORE-NOTIMPL-008` is retired (never reused).
 
 ## Unreleased (M6: LEF/DEF and OASIS, complete)
 

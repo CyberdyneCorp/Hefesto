@@ -5,8 +5,8 @@
 // netlist, extresist and antenna code areas exist; `extract`/`ext`,
 // `ext2spice`/`exttospice`, `ext2sim`/`exttosim`, `extresist` and
 // `antennacheck` are registered with Magic's full option tables, option
-// lookup and invalid-option messages; every option not implemented yet
-// fails with CORE-NOTIMPL-008; the area-contract stubs and the EditorState
+// lookup and invalid-option messages; CORE-NOTIMPL-008 is retired (kept in
+// the table, never reused; tasks.md 19.5); the area-contract stubs and the EditorState
 // members answer their documented values. Owners replace these
 // [m7-scaffold] tests with [cap:][req:] ones as the stubs go away.
 
@@ -21,7 +21,6 @@
 #include "hefesto/antenna/antenna.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/editor/extract_hook.hpp"
@@ -121,12 +120,12 @@ void check_no_cell(const cmd::CommandResult& result) {
 
 // --- tasks.md 3.2/3.3: code areas and CORE-NOTIMPL-008 ----------------------
 
-TEST_CASE("CORE-NOTIMPL-008 and the M7 code areas are declared", "[m7-scaffold]") {
+// Task 19.5: the stub code is retired once no M7 option answers it (kept, never reused).
+TEST_CASE("CORE-NOTIMPL-008 is retired and the M7 code areas are declared", "[m7-scaffold]") {
   const auto code = diag::find_code(kNotImplemented);
   REQUIRE(code.has_value());
   CHECK(code->severity == diag::Severity::error);
-  CHECK(diag::codes::kExtractNotImplemented == kNotImplemented);
-  CHECK(cmd::m7_not_implemented_diagnostic("x").code == kNotImplemented);
+  CHECK(code->summary.starts_with("Retired in M7, never reused."));
   const std::array<std::pair<std::string_view, std::string_view>, 5> areas{{
       {"extract", "EXTRACT"},
       {"extflat", "EXTFLAT"},
