@@ -60,6 +60,8 @@ namespace hefesto::script {
 /// evaluate in it and delete it. A thread other than the process's main
 /// thread that does so calls this once its interpreters are deleted and
 /// before it ends; Tcl frees that data only for the threads it creates.
+/// Does nothing on a thread that never created an interpreter, so a worker
+/// may call it unconditionally.
 void release_thread_tcl_state() noexcept;
 
 }  // namespace hefesto::script

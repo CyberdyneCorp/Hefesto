@@ -121,6 +121,11 @@ std::string locale_encoding() {
 // Tcl's process-wide initialization, once: the executable name (none), the
 // system encoding of the locale, the encoding search path under the
 // embedded root, and the sandbox's filesystem layer.
+// Whether the calling thread created a Tcl interpreter, so that Tcl may hold
+// per-thread data for it. Tcl_FinalizeThread on a thread that never touched
+// Tcl reads storage that was never set up and can crash.
+thread_local bool t_thread_used_tcl = false;
+
 void initialize_process() {
   static std::once_flag once;
   std::call_once(once, [] {
@@ -588,6 +593,7 @@ class TclInterpreter final : public Interpreter {
 
 std::unique_ptr<Interpreter> create_project_interpreter(editor::EditorState& editor, const SandboxPolicy& policy) {
   initialize_process();
+  t_thread_used_tcl = true;
   return std::make_unique<TclInterpreter>(policy, &editor.script.events, &editor.script.progress);
 }
 
@@ -597,6 +603,8 @@ ScriptLocation current_script_location(const Interpreter& interpreter) {
 }
 
 void release_thread_tcl_state() noexcept {
+  if (!t_thread_used_tcl) return;
+  t_thread_used_tcl = false;
   Tcl_FinalizeThread();
 }
 
