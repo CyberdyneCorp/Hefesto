@@ -103,7 +103,8 @@ TEST_CASE("The target follows ExtLocalPath, then the cell's file, then the cell 
   beside.value().abandon();
 }
 
-TEST_CASE("An extract path with a trailing slash is joined as Magic's sprintf joins it",
+// Proposed Q-EXTRACT-44 (compat).
+TEST_CASE("An extract path with a trailing slash is joined as Magic's sprintf joins it with magic-compat ON",
           "[cap:extract-commands][req:Output path and file location]") {
   // ExtFileOpen: sprintf(namebuf, "%s/%s", ExtLocalPath, def->cd_name), so
   // `extract path ext/` names ext//inv.ext (EX-066 prints that name).
@@ -115,6 +116,24 @@ TEST_CASE("An extract path with a trailing slash is joined as Magic's sprintf jo
   REQUIRE(out.ok());
   CHECK(out.value().target() == "/out//inv.ext");
   out.value().abandon();
+}
+
+TEST_CASE("An extract path with a trailing slash is joined with one separator with magic-compat OFF",
+          "[cap:extract-commands][req:Output path and file location]") {
+  Memory m;
+  REQUIRE(m.files.create_directories("/out").ok());
+  extract::OutputLocation where;
+  where.local_path = "/out/";
+  where.magic_compat = false;
+  auto out = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(out.ok());
+  CHECK(out.value().target() == "/out/inv.ext");
+  out.value().abandon();
+  where.local_path = "/out";  // without the slash both modes agree
+  auto plain = extract::AtomicOutput::open(m.ctx, m.cell, ".ext", where);
+  REQUIRE(plain.ok());
+  CHECK(plain.value().target() == "/out/inv.ext");
+  plain.value().abandon();
 }
 
 TEST_CASE("A search-path entry `.` is the current directory (it expands to an empty name)",

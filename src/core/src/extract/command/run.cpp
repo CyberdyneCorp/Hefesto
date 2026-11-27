@@ -237,6 +237,7 @@ OutputLocation location_of(const editor::EditorState& editor, const RunRequest& 
   OutputLocation where;
   where.local_path = editor.extract.options.path;
   where.current_directory = request.current_directory.value_or(std::string{});
+  where.magic_compat = compat_of(editor).magic_compat;
   return where;
 }
 

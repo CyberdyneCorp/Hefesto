@@ -123,8 +123,9 @@ std::string base_name(cell::LookupContext& ctx, const db::CellDef& cell, const O
         return join(current_dir(where), cell.name());
       }
     }
-    // sprintf("%s/%s"): `extract path ext/` gives ext//<cell> (EX-066).
-    return dir + "/" + cell.name();
+    // sprintf("%s/%s"): `extract path ext/` gives ext//<cell> (EX-066)
+    // with magic-compat ON; one separator with it OFF (proposed Q-EXTRACT-44).
+    return where.magic_compat ? dir + "/" + cell.name() : join(dir, cell.name());
   }
   const fs::path file = cell.file_path();
   if (!file.empty()) {
