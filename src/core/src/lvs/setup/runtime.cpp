@@ -216,6 +216,9 @@ diag::Outcome<Resolved> Runtime::resolve_pair(std::string_view a, std::string_vi
       return top.error();
     }
     const Netlist* netlist = netlist_of(*top.value().circuit, top.value().cell);
+    if (netlist == nullptr) {  // a top cell outside every loaded file
+      return message(kNoCircuit);
+    }
     return in_netlist(*netlist, first ? b : a);
   }
   const auto na = parse_integer(a);

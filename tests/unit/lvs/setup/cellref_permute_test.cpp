@@ -99,6 +99,14 @@ TEST_CASE("Circuit keywords need assigned circuits", "[cap:lvs-setup-file][req:C
   CHECK(logged_error(state, "Error setup.tcl:1 (ignoring), No circuit has been declared for comparison"));
 }
 
+TEST_CASE("A circuit whose top is outside its loaded files is not declared", "[cap:lvs-setup-file][req:Cell reference syntax]") {
+  Pair pair;
+  pair.two.db.files.clear();  // a top cell set without a loaded file
+  const auto state = pair.ok("property {-circuit2 nfet}\nproperty -circuit2\n");
+  CHECK(logged_error(state, "Error setup.tcl:1 (ignoring), No circuit has been declared for comparison"));
+  CHECK(state.errors == 1);
+}
+
 TEST_CASE("permute default declares source/drain and resistor ends", "[cap:lvs-setup-file][req:permute command]") {
   Pair pair(".subckt top a b g\nM1 a g b b nfet\nR1 a b 1k\nC1 a b 1p\nL1 a b 1n\n.ends\n");
   pair.ok("permute\n");
