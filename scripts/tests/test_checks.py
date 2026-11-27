@@ -367,9 +367,39 @@ class CompareGoldenOutputsTest(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("missing: SCHEM/NL-04/out.spice", text)
             # Other areas stay strict.
+            write(root, "nomisc/SCHEM/NL-04/out.spice", "a\n")
+            write(root, "nomisc/SCHEM/NL-01/out.spice", "b\n")
+            code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "ref"), str(root / "nomisc")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: MISC/c1/out.txt", text)
+            # The reference must run every case: a case only a leg ran fails.
             code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "plain"), str(root / "ref")])
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 1)
+            self.assertIn("unexpected: SCHEM/NL-04/out.spice", text)
+
+    def test_must_run_legs_and_reference_hold_the_skippable_cases(self):
+        # Regression (M8 round 6 review): a leg that restores the xschem sets, or the reference, silently
+        # lacking the PDK cases passed the check as "not run".
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "ref/SCHEM/NL-04/out.spice", "a\n")
+            write(root, "ref/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "plain/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "xleg/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "bare/SCHEM/NL-01/out.spice", "b\n")
+            skip = ["--may-skip", "SCHEM/NL-04", "--must-run", "xleg"]
+            code, text = run_quiet(golden.main, [*skip, str(root / "ref"), str(root / "plain"), str(root / "xleg")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: SCHEM/NL-04/out.spice", text)
             self.assertIn("not run on plain: SCHEM/NL-04", text)
+            self.assertNotIn("not run on xleg", text)
+            write(root, "xleg/SCHEM/NL-04/out.spice", "a\n")
+            code, _ = run_quiet(golden.main, [*skip, str(root / "ref"), str(root / "plain"), str(root / "xleg")])
+            self.assertEqual(code, 0)
+            # A reference whose inputs were not restored fails even when no leg ran the cases either.
+            code, text = run_quiet(golden.main, [*skip, str(root / "bare"), str(root / "plain")])
+            self.assertEqual(code, 1)
+            self.assertIn("no case matching --may-skip in the reference outputs", text)
 
     def test_reports_areas_and_fails_on_a_required_area_without_cases(self):
         with tempfile.TemporaryDirectory() as tmp:

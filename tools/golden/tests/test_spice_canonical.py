@@ -50,7 +50,15 @@ class ParsingTest(unittest.TestCase):
         self.assertEqual(normalize_value("'int((1 + 1)/2) * wn/1 * 0.29'"), "'int((1+1)/2)*wn/1*0.29'")
         self.assertEqual(normalize_value("{W * 2}"), "{w*2}")
         self.assertEqual(normalize_value('"a b"'), '"a b"')
-        self.assertEqual(normalize_value("x'a b'y z"), "x'ab'y z")
+        self.assertEqual(normalize_value("x'a + b'y z"), "x'a+b'y z")
+
+    def test_blanks_between_words_of_a_quoted_value_stay(self):
+        # Regression (M8 round 6 review): every blank inside quotes was dropped, so a quoted path
+        # 'my file.lib' compared equal to 'myfile.lib'.
+        self.assertEqual(normalize_value("'my file.lib'"), "'my file.lib'")
+        self.assertNotEqual(normalize_value("'my file.lib'"), normalize_value("'myfile.lib'"))
+        self.assertEqual(normalize_value("{a b}"), "{a b}")
+        self.assertEqual(normalize_value("{ w * 2 }"), "{ w*2 }")
 
     def test_quoted_expression_spacing_compares_equal(self):
         expected = "M1 d g s b nfet ad='int((1+1)/2)*wn/1*0.29' w={wn * 2}\n.end\n"

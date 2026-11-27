@@ -1249,12 +1249,14 @@ PENDING: dict[str, str] = {
                    "the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', "
                    "x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a "
                    "190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' "
-                   "lines; spice-canonical ignores blanks inside quoted expressions (design D10); also "
+                   "lines; spice-canonical ignores blanks next to operators in quoted expressions (design D10); also "
                    + GENERATOR_REASON,
     "SCHEM-NL-23": GENERATOR_REASON,
-    "SCHEM-RT-05": "expected to pass after CORE merges (m8-round6-core): block.sch places Hefesto-drawn symbols "
-                   "and the capture embeds them, but origin/main does not yet write an embed=true instance whose "
-                   "symbol is not embedded in the file from the symbol cache (embed.sch line 33: '[' expected)",
+    "SCHEM-RT-05": "the embedded block of block.sch (a schematic used as a symbol) differs from xschem's in "
+                   "content, not only order: xschem writes the pin labels as '%<name>' texts and layer-7 arrows, "
+                   "drops the '@lab' texts and pin polygons of the placed ipin/opin symbols, and keeps two blanks "
+                   "before '}' in the pin boxes; Hefesto writes the block as built (spec issue for DECIDE in "
+                   "round 7, then CORE)",
     "SCHEM-PR-01": "'xschem get_tok <s> <key> <n>' (a third argument: 1 keeps the quotes of a value, 2 strips "
                    "them) raises 'wrong number of arguments': the schematic-command spec lists two arguments "
                    "(proposed Q-SCHEM-62, awaiting the user)",

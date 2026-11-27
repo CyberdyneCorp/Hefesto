@@ -911,10 +911,19 @@ jobs:
           # The M4 areas must stay in the comparison (m4-scripting task 13.6), and MASK
           # once its expected outputs exist (m5-mask-gds-cif task 15.4), and LEFDEF and OASIS
           # (m6-lef-def-oasis task 17.4).
-          # The SCHEM cases with xschem PDK inputs run only on the legs that restore the xschem sets
-          # (matrix `xschem`, the reference leg among them); the other legs skip them as whole cases.
+          # The SCHEM cases with xschem PDK inputs ([reference] xschem_sets in case.toml) run only on the legs
+          # that restore the xschem sets (matrix `xschem`); the other legs skip them as whole cases. The
+          # reference and the other `xschem` legs must run them (--must-run; keep the list in step with the matrix).
+          skip=()
+          for toml in tests/golden/SCHEM/cases/*/case.toml; do
+            if grep -q '^xschem_sets *=' "$toml"; then
+              skip+=(--may-skip "SCHEM/$(basename "$(dirname "$toml")")")
+            fi
+          done
           python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP --require-area MASK \
-            --require-area LEFDEF --require-area OASIS --may-skip 'SCHEM/*' \
+            --require-area LEFDEF --require-area OASIS "${skip[@]}" \
+            --must-run golden-linux-x64-gcc-11 --must-run golden-linux-arm64-gcc \
+            --must-run golden-macos-arm64-xcode-oldest \
             "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
