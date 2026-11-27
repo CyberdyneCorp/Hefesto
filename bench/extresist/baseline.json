@@ -1,0 +1,4 @@
+{
+  "comment": "Hefesto's callgrind instructions of `extresist all` (op minus base, bench/extresist/extresist_bench.py with the default 1000-cell DEF block of bench/lefdef/defgen.py) on the x86_64 runner, GCC 14 Release with -g -fno-omit-frame-pointer. Gated at the baseline + 2 % by bench/lefdef/baseline_gate.py; Magic's count is information (m7-extraction design D23, Open Question 5 (a)). Until a baseline is recorded the workload is reported as \"no baseline\" and passes. Entry: {\"instructions\": N, \"run\": <Performance run id>, \"commit\": <sha>}.",
+  "workloads": {}
+}
