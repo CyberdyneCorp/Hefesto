@@ -314,6 +314,18 @@ TEST_CASE("styles are looked up by exact name", "[cap:router-maze][req:Style def
   CHECK(route::find_style(styles, "IROUTER") == nullptr);
 }
 
+TEST_CASE("regression: of two styles with the same name the last one is found",
+          "[cap:router-maze][req:Style defaults and lookup]") {
+  // Magic's mzTechStyle prepends and MZFindStyle walks from the head, so the
+  // later block wins (Q-LEGACY-107). find_style used to return the first.
+  diag::CollectingSink sink;
+  std::shared_ptr<const hefesto::tech::Technology> tech;
+  const auto styles = read("style irouter\nlayer m1 64 32\nstyle irouter\nlayer m2 32 64", sink, tech);
+  REQUIRE(styles.styles.size() == 2);
+  CHECK(route::find_style(styles, "irouter") == &styles.styles[1]);
+  CHECK(route::find_style(styles, "irouter")->layers.at(0).route.type == type_named(*tech, "metal2"));
+}
+
 TEST_CASE("a technology without an mzrouter section has no style", "[cap:router-maze][req:Style defaults and lookup]") {
   diag::CollectingSink sink;
   const auto tech = load_text(tech_text(""), sink);

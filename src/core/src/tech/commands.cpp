@@ -470,7 +470,7 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     // scale_layout ran LefTechScale; magic-compat OFF refills from the rescaled rules.
     lef::refill_layer_table(ed, ed.drc.compat_settings());
     // CmdScaleGrid's MZAfterTech + IRAfterTech, after DRCTechScale (M10 plot/route D4).
-    route::refresh_session_styles(ed, ctx.sink());
+    route::refresh_session_styles(ed, ctx.sink(), route::StyleRescale{a, b});
     const mask::RescaleStep step = mask::rescale_output_styles(
         ed.mask.output_styles, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b), ed.drc.compat_settings());
     for (const diag::Diagnostic& d : step.messages) {

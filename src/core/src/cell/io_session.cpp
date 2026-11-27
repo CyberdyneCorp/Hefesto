@@ -107,7 +107,7 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
     (void)tech::scale_layout(ed, n, d);
     lef::refill_layer_table(ed, ed.drc.compat_settings());
     // and dbReadOpen's MZAfterTech + IRAfterTech (M10 plot/route design D4).
-    route::refresh_session_styles(ed, io.sink);
+    route::refresh_session_styles(ed, io.sink, route::StyleRescale{d, n});
     return true;
   };
   io.load_technology = [this](std::string_view name) { return discover_technology(name); };

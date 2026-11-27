@@ -173,7 +173,8 @@ struct MazeStyles {
 void derive_after_load(MazeStyles& styles, const tech::Technology& tech, const drc::RuleSet* rules,
                        const lef::LayerTable& lef_layers, bool magic_compat, diag::DiagnosticSink& sink);
 
-/// The style named `name`, or nullptr.
+/// The style named `name` (of several with that name, the last in the
+/// file, as Magic's MZFindStyle), or nullptr.
 [[nodiscard]] const MazeStyle* find_style(const MazeStyles& styles, std::string_view name);
 
 }  // namespace hefesto::route

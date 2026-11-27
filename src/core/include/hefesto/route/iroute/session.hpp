@@ -11,12 +11,19 @@
 // refresh_session_styles is Magic's MZAfterTech + IRAfterTech: the session
 // calls it after every technology load (tech::load_session_technology) and
 // after every rescale that runs DRCTechScale (`scalegrid`, a finer-grid
-// `.mag` read), so tech/ never learns about the router's state.
+// `.mag` read, and a CIF or GDS read that redefines the grid), so tech/
+// never learns about the router's state. Magic frees each style's explicit
+// `spacing` list after the first MZAfterTech, so with magic-compat ON a
+// rescale derives the spacings from the DRC rules alone. With it OFF the
+// explicit `spacing` and `width` values follow the grid as the DRC
+// distances do (multiplied by d/n and rounded up) and are applied again
+// (Q-LEGACY-106).
 //
 // Owner: IROUTE (refresh_session_styles calls MZTECH's derive_after_load).
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 
 #include "hefesto/diag/sink.hpp"
@@ -46,7 +53,18 @@ struct IrouteSession {
   void reset_from(MazeStyles derived);
 };
 
-/// MZAfterTech + IRAfterTech for `editor` (see the file comment).
+/// A rescale as DRCTechScale(n, d) applies it: distances become value * d / n.
+struct StyleRescale {
+  std::int64_t n = 1;
+  std::int64_t d = 1;
+};
+
+/// MZAfterTech + IRAfterTech for `editor` after a technology load (see the
+/// file comment): the technology's written styles, derived once.
 void refresh_session_styles(editor::EditorState& editor, diag::DiagnosticSink& sink);
+
+/// MZAfterTech + IRAfterTech for `editor` after the rescale `scale`, once
+/// the DRC rules and the LEF table are rescaled (see the file comment).
+void refresh_session_styles(editor::EditorState& editor, diag::DiagnosticSink& sink, StyleRescale scale);
 
 }  // namespace hefesto::route
