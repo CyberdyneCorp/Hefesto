@@ -243,7 +243,7 @@ M8 exit table (round 7, INTEGRATION, 2026-11-27; branch `m8-round7` = DECIDE + C
 
 | Item | Result | Evidence | Holds | Owner of what is open |
 |---|---|---|---|---|
-| Golden suite as CI runs it | SCHEM locally: 12 pass, 0 fail, 17 skip (xschem PDK sets not fetched locally), 13 deviation | local replay (macOS, -Werror macos-debug `hefesto-cli`); CI: see the round's PR | yes | — |
+| Golden suite as CI runs it | SCHEM locally: 12 pass, 0 fail, 17 skip (xschem PDK sets not fetched locally), 13 deviation | local replay (macOS, -Werror macos-debug `hefesto-cli`); CI on PR #139: run 46077454603 passed every test leg after the "CI netlist check" fixture fix (8a1d866d); its `cross-platform determinism` job found SCHEM-PR-05 `stdout.txt` differing between Linux and macOS (`abs_sym_path` of `//lib//./x.sym`), fixed in 7ba4b807 | yes | — |
 | Golden suite at the exit (`replay.py --milestone M8`) | SCHEM locally: 12 pass, 4 fail (NL-14 stdout, PR-04, RT-05, SIM-03), 17 skip, 9 deviation; NL-05, NL-21, NL-23 need the PDK sets (CI) and stay `PENDING` | local replay | no | rows below |
 | SCHEM-NL-09, NL-10 | CORE's net driver check fails the run (exit 10, Q-SCHEM-53 (a)); only `stderr.txt` differs, covered by Q-SCHEM-60; the `REPLAYED_OPEN` rows are dropped | `driver_check_test.cpp`, `pdk_conventions_test.cpp` (gf180 scenario) | yes (CI PDK legs confirm) | — |
 | SCHEM-PR-02 | replays: `schematic new` of an untitled document in a session with no search path takes the working folder's, and a folder with no `xschemrc` gives the system devices library (Q-SCHEM-52 (a)) | `session_environment_test.cpp` "Default search path without an xschemrc" (both modes), "Default search path of an untitled document" | yes | — |
