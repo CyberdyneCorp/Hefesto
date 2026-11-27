@@ -434,6 +434,7 @@ Develops against the NETLIST cases captured in task 2.5. Needs EXTTECH tasks 4.3
 ## 16. SHELL: desktop (R4; Open Question 7)
 
 - [ ] 16.1 Enable the top bar's "Extract" button: run `extract all` on the active window's root with the progress panel and cancel, enabled only when the technology has an extract style, with a tooltip otherwise (design D19). Record the states in `docs/design/m7-ui-conformance.md`. Verify the shell view-model tests (complexity 8–12 per function) and a screenshot of each state.
+  R6 (branch `m7-round6-core`, 2026-11-27): built. The button is live in its M1 slot (`src/shell/desktop/include/hefesto/shell/extract_button.hpp`, `src/shell/desktop/src/m7_window.cpp`): enabled with an extract style and a root, disabled with a tooltip naming what is missing, a click runs `extract all` as a typed line; `extract`/`extract all` run through `MaskSession::write_host` (EXTCMD's `run_tree`, a 6-line change) so the M5 host gives the running header, Interrupt card and cancel. Tests: `tests/unit/shell/m7_extract_button_test.cpp` (functions at most 3), `tests/unit/extract/command/host_test.cpp`. Captures (CI run 46045080575, CI run 46051112560): enabled, disabled-with-tooltip and the click are done; running and cancelled are not captured (the extraction ends before the 2 s card), see `docs/design/m7-ui-conformance.md`. Left open for those two screenshots.
 
 ## 17. GOLDEN: EXTRACT, NETLIST, MISC-ANT, PDK and deferred cases (R1–R5; Open Questions 4 and 9)
 

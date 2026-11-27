@@ -17,24 +17,26 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 The scaffold (R1) registered the five commands with their option tables (`tests/unit/core/m7_scaffold_test.cpp`); every run path answers `CORE-NOTIMPL-008` until EXTCMD, SPICE, SIM, RESCMD and ANTENNA land it. No shell code changed in R1, so every row is **todo**.
 
+Round 6 (task 16.1, branch `m7-round6-core`, 2026-11-27): the button is live (`extract_button.hpp` view model, `m7_window.cpp` wiring; `tests/unit/shell/m7_extract_button_test.cpp`), and `extract` / `extract all` run through `MaskSession::write_host` when the desktop sets it (`tests/unit/extract/command/host_test.cpp`: the host runs it, its Interrupt keeps the previous `.ext`). The CI step "Capture the Extract button" (ci.yml, desktop legs) runs the product app at 1920 × 1000 in a directory holding EX-026's `exttest.tech`; after its `--input` script the app prints `hefesto: extract button enabled|disabled: <tooltip>` and the button's place. Captures: CI run 46045080575 and CI run 46051112560, artifact `extract-captures-linux-x64-gcc-latest` (Linux x64 GCC under Xvfb; the macOS leg is not gating). At 1280 px the deferred actions (Netlist, Extract, Simulate, Ask agent) give way first, as in M1, so the captures use 1920 px.
+
 Missing from every board: nothing. The button is the M1 top-bar button, and the progress and cancel reuse the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
 
 ## Top bar (M1 board, top bar)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| "Extract" button enabled when the technology has an extract style (`EditorState::extract.current` not null) | the M1 painted button; its enabled state follows the session style | todo (SHELL, R4): the style is null until EXTTECH lands the builder (task 4.6) |
-| "Extract" button disabled, with a tooltip, when the technology has no extract style | the M1 disabled state (45 % opacity); the tooltip names the missing style instead of M7 | todo (SHELL, R4) |
-| Clicking "Extract" runs `extract all` on the root of the active window, echoed and logged as a typed command | the main window runs the line through the Dispatcher | todo (SHELL, R4); blocked on EXTCMD's run driver (`extract::run`) |
-| The button is hidden at narrow widths in the M1 order (`top_bar_hidden_groups`) | unchanged | todo: check in the R4 capture that enabling it does not change the order |
+| "Extract" button enabled when the technology has an extract style (`EditorState::extract.current` not null) | the M1 slot, painted by `add_extract_button` from `extract_button_view` (style, active window root, no job running); tooltip `Extract <root>: extract all (style <style>)` | done (Linux): `extract-enabled` of CI run 46045080575 shows Extract enabled (secondary, full opacity) between Netlist and Simulate with exttest and `ex` loaded; the app printed `hefesto: extract button enabled: Extract ex: extract all (style exttest)` |
+| "Extract" button disabled, with a tooltip, when the technology has no extract style | the M1 disabled state (45 % opacity); tooltip `Extract: technology <tech> has no extract style (no extract section); load a technology with one` (also disabled, with its reason, without a root or while a job runs) | done (Linux): `extract-disabled` of CI run 46045080575 (built-in `minimum` technology, pointer resting on the button) shows the disabled button and that tooltip |
+| Clicking "Extract" runs `extract all` on the root of the active window, echoed and logged as a typed command | the click runs `extract all` through `run_typed_line` (Console echo, history, session log); a click on the disabled button does nothing | done (Linux): `extract-cancelled` of CI run 46051112560 (an `--input` click on the button) shows the console with `Extracting big into big.ext:` and `Processing big`, the status `● ok`, and the button focused; `big.ext` was written |
+| The button is hidden at narrow widths in the M1 order (`top_bar_hidden_groups`) | unchanged: the button stays in the deferred-actions group (`top_groups_[0]`), so it gives way first | partial: the 1920 px captures show it; no narrow-width capture yet (the M8 round-6 1280 px capture shows the whole deferred group hidden, the same group) |
 
 ## Progress and cancel (M5 hosts)
 
 | Element | Implemented as | Status / gap |
 |---|---|---|
-| A long `extract all` shows the console's running header and, after 2 s, the canvas Interrupt card | `extract::run` reports through `mask::Progress` (D5 "Commands and progress"), tested at cell boundaries and in the per-tile loops Magic guards with SigInterruptPending | todo (SHELL, R4); blocked on EXTCMD |
-| Cancel leaves every previous `.ext` file unchanged and no temporary file (Q-EXTRACT-27) | `extract::AtomicOutput` (D12) | todo; blocked on EXTNODE and EXTCMD |
-| Errors and warnings go to the console and to feedback, as for DRC | the M3 feedback path | todo (SHELL, R4) |
+| A long `extract all` shows the console's running header and, after 2 s, the canvas Interrupt card | `extract all` runs through `MaskSession::write_host` (the M5 `MaskJobHost::run_job`), whose card reads "Writing <root>.ext · N s"; `extract::run` reports through `mask::Progress` at cell boundaries and checks cancel in the per-tile loops | partial: host route unit-tested (`host_test.cpp`); not captured: in `extract-running` of CI run 46051112560 a 400 × 400 nfet grid extracts in under about 2 s on the runner, so the frame `--capture-running` took is the Interrupt card of the 8 s `load big` script ("Running a script · 8 s"), not of the extraction. Next step: a larger or hierarchical layout, or a `--capture-running` that waits for a mask job |
+| Cancel leaves every previous `.ext` file unchanged and no temporary file (Q-EXTRACT-27) | the card's Interrupt (or Ctrl-C) sets the job's cancel flag; `extract::AtomicOutput` (D12) abandons the open file | partial: unit-tested through the host (`host_test.cpp` "an Interrupt from the host keeps the previous .ext"; `run_test.cpp`); not captured: in CI run 46051112560 the Ctrl-C injected 3 s after the click came after the run had ended, so `big.ext` was rewritten (`timestamp 100`) |
+| Errors and warnings go to the console and to feedback, as for DRC | the command's diagnostics reach the Console and status line as any typed command; `finish_run` adds the feedback areas | partial: `extract-cancelled` of CI run 46051112560 shows the run's informative lines (EXTRACT-CMD-002, EXTRACT-NODE-002) and the EXTRACT-STYLE-018 warning in the Console's Diagnostics tab; no run with feedback captured |
 
 ## Console-only commands
 
