@@ -138,6 +138,13 @@ release notices.
   tolerances and series/parallel reconciliation. Written under the netgen
   clean room; the `lvs` command still answers CORE-NOTIMPL-009 until the
   hierarchy, report and setup layers land.
+- **`lvs` on two netlist files.** `lvs <name1> <name2> [<setup> [<log>]]
+  [-list] [-json] [-blackbox] [-noflatten=...]` compares two SPICE or CDL
+  netlists hierarchically (compare queue, flattening, pin matching), writes
+  `comp.out` in netgen's two-column layout and `comp.json`, returns the
+  `-list` result and runs headless in `hefesto-cli`. Setup files are found
+  in the active PDK's `libs.tech/netgen/` by bare PDK name. `lvs -layout`
+  and `.sch` netlists still answer CORE-NOTIMPL-009.
 - **Simulation decks and results (library).** Deck preparation for SPICE and
   raw sources (testbench composition, include inlining, `.control`
   sanitisation, deck limits), raw-file read and write, CSV export and

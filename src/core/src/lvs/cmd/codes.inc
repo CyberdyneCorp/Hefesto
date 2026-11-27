@@ -9,3 +9,14 @@
 // and describe the codes in its LVSCMD section.
 //
 // Owner: LVSCMD (openspec/changes/m9-lvs-simulation/design.md D3).
+HEFESTO_LVS_CODE("LVS-CMD-001", info, "Console output of the `lvs` command (netgen's messages: reading, logging, `LVS Done.`, ...).")
+HEFESTO_LVS_CODE("LVS-CMD-002", error, "`lvs` usage error: wrong number of names, an unknown option, or a `-noflatten` list that cannot be read.")
+HEFESTO_LVS_CODE("LVS-CMD-003", error, "A netlist of the `lvs` command cannot be found or read; the run ends as an input error.")
+HEFESTO_LVS_CODE("LVS-CMD-004", error, "`Both cells are in the same netlist:  Cannot compare!`")
+HEFESTO_LVS_CODE("LVS-CMD-005", error, "`Cannot find cell <cell> in file <file>`")
+HEFESTO_LVS_CODE("LVS-CMD-006", error, "The setup file could not be read or evaluated; the run ends as an input error.")
+HEFESTO_LVS_CODE("LVS-CMD-007", error, "The log file or the JSON file of the `lvs` command could not be written.")
+HEFESTO_LVS_CODE("LVS-CMD-008", error, "An LVS run is already in progress for this document.")
+HEFESTO_LVS_CODE("LVS-CMD-009", warning, "The setup file does not exist; the comparison uses the default settings.")
+HEFESTO_LVS_CODE("LVS-CMD-011", error, "The result object has no layout counterpart in this run (`no layout counterpart`).")
+HEFESTO_LVS_CODE("LVS-CMD-010", error, "A `-noflatten` entry is longer than 4096 bytes, or the list has more than 65536 entries (crafted-input limit, both netgen-compat modes).")

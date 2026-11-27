@@ -6,4 +6,6 @@
 # Owner: LVSCMD (openspec/changes/m9-lvs-simulation/design.md D3). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/commands.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/lvs_command.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/view_model.cpp)
