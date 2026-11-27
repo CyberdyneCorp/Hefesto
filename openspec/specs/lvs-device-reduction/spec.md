@@ -60,6 +60,7 @@ A parallel pass SHALL combine devices of the same class that have identical pin 
 - "open" mode is on (the default; `property parallel open`)
 - the cell is not a top cell
 - the net is connected to exactly one pin in the whole cell (a no-connect)
+- the net is not a port of the cell (a port counts as a connection, so a port's net is never a no-connect)
 
 Such a net SHALL be treated as a no-connect net of the cell. Treating every no-connect as one net can combine devices whose open pins are unrelated (see Q-LVS-26).
 
@@ -86,6 +87,11 @@ Compatibility: exact
 - **GIVEN** source/drain are permutable and `M1 a g b x nfet`, `M2 b g a x nfet`
 - **WHEN** a parallel pass runs
 - **THEN** M1 and M2 SHALL be combined
+
+#### Scenario: Port net is not a no-connect
+- **GIVEN** non-top cell `cell` with port `P`, devices `M1 y a vss P nfet` and `M2 y a vss n1 nfet`, where `P` and `n1` each reach exactly one device pin, and "open" mode on
+- **WHEN** a parallel pass runs
+- **THEN** M1 and M2 SHALL NOT be combined, because `P` is a port and only `n1` is a no-connect
 
 ### Requirement: Series combination
 A series pass SHALL find each net n that meets all of these conditions:
@@ -138,6 +144,8 @@ During pre-match of a cell pair, the engine SHALL look at each device class of c
 
 For each such device, if a property `value` or `length` is zero, the device SHALL be removed and its two terminal nets merged. "Zero" means the string `0`, the integer 0, or the double 0.0.
 
+**Surviving net.** When exactly one of the two terminal nets is a port of the cell, the merged net SHALL be that port's net (its name and port position stay). When neither is a port, the merged net SHALL be the net of the device's first terminal (pin 0). The case where both nets are ports, and whether a current source merges its nets at all, are not yet specified (`docs/decisions/m9-decision-table.md` R3-7).
+
 When the cell is not the top of the compare queue and the class is not a current source, and the device connects two ports, the engine SHALL first print `Warning: zero-valued device connects port <p> to another port;  pin matching may be affected.`
 
 Each removal SHALL print `Removing zero-valued device <class> from cell <c> (<f>) makes a better match`, where `<class>` is the device class name, not the instance name.
@@ -148,6 +156,16 @@ Compatibility: exact
 - **GIVEN** the schematic has `R1 a b 0` and the layout has nets a and b as one net
 - **WHEN** the cells are pre-matched
 - **THEN** R1 SHALL be removed, a and b SHALL be merged, and the device counts SHALL then agree
+
+#### Scenario: Port net survives the removal
+- **GIVEN** non-top cell `c` with port `OUT`, a resistor count that differs from the other circuit, and `R1 n1 OUT 0` where `n1` is not a port
+- **WHEN** the cells are pre-matched
+- **THEN** R1 SHALL be removed and the merged net SHALL be the port `OUT`
+
+#### Scenario: First terminal's net survives between internal nets
+- **GIVEN** the same cell with `R2 n2 n3 0`, where neither `n2` nor `n3` is a port
+- **WHEN** the cells are pre-matched
+- **THEN** R2 SHALL be removed and the merged net SHALL be `n2`
 
 ### Requirement: Merged-device counts in the summary
 In the subcircuit summary, each class entry SHALL show the number of devices after reduction (C). It SHALL also show the total multiplicity before reduction (M), which is the sum over property records of their integer `M` value, counting a record with no `M` as 1. When M = C the entry SHALL read `<class> (<C>)`; otherwise it SHALL read `<class> (<M>-><C>)`.

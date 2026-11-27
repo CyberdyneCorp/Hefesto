@@ -48,6 +48,8 @@ Compatibility: behavioral
 ### Requirement: Hierarchical node names
 Within a cell reached through use path `u1/u2/.../uk/` (instance ids as printed by the database, including array subscripts such as `u[1,2]`; the top-level cell contributes no prefix), the local node name SHALL be the extractor's node name for the connected region of that cell (the region's preferred label text if labeled, otherwise the generated name of the form used by the extractor, e.g. `<cellname>_<x>_<y>#`; see capability `extract-nodes-and-labels`), and the candidate is `path + localname`. With aliases on, each distinct `path + label` of the region is reported as `alias: %s` (or appended to the script result). After the search, if globals are on and the best name ends in `!`, the path prefix is stripped (text after the last `/`) and the trailing `!` is removed.
 
+Note: simulation probes (capability `simulation-ui-and-crossprobe`, Requirement "Probing a layout net") use these names, the naming of plain `getnode`, and never the positional names of Requirement "Fast node names" (decision of 2026-11-27, Q-SIM-24).
+
 Compatibility: exact
 (Magic ref: sim/SimExtract.c:723-846, sim/SimSelect.c:129-182, sim/SimDBstuff.c:780-800)
 

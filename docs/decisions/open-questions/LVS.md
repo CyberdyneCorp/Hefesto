@@ -26,11 +26,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-3: Case-insensitive matching versus hashing; high bytes
 - Kind: bug
+- Status: approved 2026-11-07 (X-2 tier 1); rewording amendment approved 2026-11-27 (user decision, OI-3 of `docs/decisions/m9-paraphrase-review.md`; `docs/decisions/m9-decision-table.md` R3-4; same decided behaviour)
 - Magic behavior: case-insensitive equality folds `[{<` and `]}>` into one bracket pair, but finding a cell by name folds only letter case. So `a[1]` and `a<1>` compare equal, yet a lookup by one of the two names does not find a cell named by the other. On platforms where `char` is signed, a name containing a byte ≥ 0x80 is folded by reading outside netgen's fold tables (undefined behaviour: wrong matches or a crash).
 - Evidence: base/objlist.c:193-258, base/hash.c:116-152
 - Options: replicate | fix (fold brackets in the hash too; index by unsigned byte)
 - Recommendation: fix (tier 1 for the out-of-bounds index). Folding brackets in the hash changes only lookups that netgen fails. Golden cases NG-NAME-02 and NG-NAME-03 measure the effect.
-- Resolution: fix — index the fold tables by unsigned byte (out-of-bounds read on signed-char platforms) and fold brackets in the case-insensitive hash too, as the entry recommends (X-2 tier 1, 2026-11-07).
+- Resolution: fix — names with bytes ≥ 0x80 are folded without out-of-range reads, and finding a cell by name folds brackets as name equality does (X-2 tier 1, 2026-11-07; reworded 2026-11-27, OI-3).
 
 ### Q-LVS-4: Hash collisions and pseudo-random labels
 - Kind: ambiguity
@@ -43,11 +44,12 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-5: `permute forget <cell>` leaves a dangling pair list
 - Kind: bug
+- Status: approved 2026-11-07 (X-2 tier 1); rewording amendment approved 2026-11-27 (user decision, OI-3 of `docs/decisions/m9-paraphrase-review.md`; `docs/decisions/m9-decision-table.md` R3-4; same decided behaviour)
 - Magic behavior: after `permute forget <cell>` forgets all permutations of a cell, a later use of that cell's permutations reads released memory (use after free: wrong results or a crash).
 - Evidence: base/netcmp.c:6996-7004
 - Options: fix (clear the list)
 - Recommendation: fix (tier 1).
-- Resolution: fix — clear the pair list when `permute forget` frees it (use-after-free) (X-2 tier 1, 2026-11-07).
+- Resolution: fix — after `permute forget`, the cell has no permutations and no released memory is used (X-2 tier 1, 2026-11-07; reworded 2026-11-27, OI-3).
 
 ### Q-LVS-6: `property add` single-word and `{key tol}` parsing
 - Kind: quirk
@@ -207,19 +209,21 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 
 ### Q-LVS-23: Pin matching writes to freed memory
 - Kind: bug
+- Status: approved 2026-11-07 (X-2 tier 1); rewording amendment approved 2026-11-27 (user decision, OI-3 of `docs/decisions/m9-paraphrase-review.md`; `docs/decisions/m9-decision-table.md` R3-4; same decided behaviour)
 - Magic behavior: after the ports are paired, netgen's check for port connection errors writes to memory it has already released (use after free).
 - Evidence: base/netcmp.c:8144, base/netcmp.c:8409
 - Options: fix
 - Recommendation: fix (tier 1). It has no effect on printed output.
-- Resolution: fix — no write to the freed net-correspondence array (use-after-free); printed output is unchanged (X-2 tier 1, 2026-11-07).
+- Resolution: fix — the check for port connection errors uses no released memory; printed output is unchanged (X-2 tier 1, 2026-11-07; reworded 2026-11-27, OI-3).
 
 ### Q-LVS-24: Placeholder test uses logical instead of bitwise AND
 - Kind: bug
+- Status: approved 2026-11-07 (X-2 tier 2 as amended by D-2, D-5); rewording amendment approved 2026-11-27 (user decision, OI-3 of `docs/decisions/m9-paraphrase-review.md`; `docs/decisions/m9-decision-table.md` R3-4; same decided behaviour)
 - Magic behavior: the size-1-array pin-name equivalence is meant for placeholder cells. netgen applies it whenever circuit 2's cell has *any* of its cell attributes set (`lvs-netlist-input` "Netlist database model"), not only when it is a placeholder, so the relaxation applies far more often than intended.
 - Evidence: base/netcmp.c:7935
 - Options: replicate | fix (test the placeholder flag)
 - Recommendation: replicate behind the `netgen-compat` setting, because it changes pin pairing results. Measure with golden case NG-PIN-06.
-- Resolution: compat — the logical-AND placeholder test, behind `netgen-compat` (it changes pin pairing); with `netgen-compat` OFF, only the placeholder flag enables the size-1-array pin-name equivalence (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07, 2026-11-07).
+- Resolution: compat — the relaxation applies whenever circuit 2's cell has any attribute set, behind `netgen-compat`; with `netgen-compat` OFF, only to placeholder cells (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07; reworded 2026-11-27, OI-3).
 
 ### Q-LVS-25: Orphan-net summary printed with missing arguments
 - Kind: bug

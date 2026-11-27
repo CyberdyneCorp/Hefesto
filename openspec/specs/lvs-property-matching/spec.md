@@ -160,8 +160,9 @@ When both devices of a pair have property records and either has more than one, 
 - add-type values are multiplied by the multiplier
 - par-type values are divided by it
 - a property that is both critical and add-type or par-type in that direction SHALL be treated as critical only, and SHALL NOT be folded
+- a record that has no add-type or par-type numeric value in that direction to absorb the multiplier SHALL keep its `M` (or `S`) unchanged, so a multiplier difference stays a difference
 
-It SHALL then collapse consecutive records that have equal critical values:
+It SHALL then collapse two consecutive records when every property of interest that was not folded matches under Requirement "Tolerance rules" (a missing value takes its default, and an expression never matches), not only the critical values:
 - add-type values are summed
 - par-type values are combined as x·y/(x+y)
 - the absorbed records are removed
@@ -198,6 +199,16 @@ Compatibility: exact
 - **GIVEN** layout has 4 parallel records {W=0.5} and schematic has {W=0.5, M=4}
 - **WHEN** compared
 - **THEN** the layout SHALL reduce to {W=0.5, M=4} and match without a property error
+
+#### Scenario: Multiplier kept without an additive property
+- **GIVEN** `property res parallel {value critical}` with no add-type or par-type property, and a record {value=1k, M=2}
+- **WHEN** the record is folded with comb
+- **THEN** it SHALL stay {value=1k, M=2}
+
+#### Scenario: Collapse needs every unfolded value to match
+- **GIVEN** `property nfet parallel {w add} {l critical}` with `nf` also a property of interest, and consecutive records {W=1, L=0.15, nf=1} and {W=1, L=0.15, nf=2}
+- **WHEN** they are folded and collapsed
+- **THEN** they SHALL NOT collapse, because `nf` differs
 
 ### Requirement: Property error results
 When any matched pair fails its property check, the comparison result SHALL become "unique with property errors" (verify `unique` = −3), or "port and property errors" (−4) when port errors also exist. In `lvs`, the cell pair SHALL be added to the list of cells with property errors. The final report SHALL end with:

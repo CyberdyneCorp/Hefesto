@@ -365,6 +365,8 @@ Hefesto SHALL ship a built-in set of OSDI compact models, compiled from Verilog-
 
 Hefesto SHALL NOT compile Verilog-A at run time on any platform.
 
+**Static registration.** Each built-in module SHALL be linked into the engine library and registered in the engine's static OSDI table, on every platform. Because every OpenVAF module exports the same OSDI symbol names (`OSDI_DESCRIPTORS`, `OSDI_NUM_DESCRIPTORS`, `OSDI_VERSION_MAJOR`, `OSDI_VERSION_MINOR`, `OSDI_DESCRIPTOR_SIZE`), the build SHALL rename each module's symbols with a prefix generated from the module name, and the table SHALL map the module's basename to its prefixed symbols. A built-in module SHALL NOT be loaded from a `.osdi` file at run time (Q-SIM-2, amendment of 2026-11-27).
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/osdi/osdiregistry.c:339-451, src/frontend/commands.c:288-293) (See Q-SIM-2, Q-SIM-8, Q-SIMADV-5.)
@@ -378,6 +380,11 @@ Compatibility: native
 - **GIVEN** a desktop host whose PDK directory holds a `psp103_nqs.osdi` built with OSDI 0.3
 - **WHEN** an sg13g2 deck is simulated
 - **THEN** the built-in module SHALL be used and the host file SHALL be ignored
+
+#### Scenario: Statically registered modules with per-module symbol prefixes
+- **GIVEN** an engine built with the built-in modules `psp103` and `psp103_nqs`
+- **WHEN** its static OSDI table and exported symbols are listed
+- **THEN** each module SHALL appear once under its basename with its own prefixed OSDI symbols, no two modules SHALL share a symbol name, and `pre_osdi psp103_nqs.osdi` SHALL resolve to the built-in module without opening a file
 
 ### Requirement: Cross-platform result consistency
 For the same deck, corner and Hefesto version:

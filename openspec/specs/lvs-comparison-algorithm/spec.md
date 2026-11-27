@@ -35,7 +35,7 @@ For each compared cell, after device reduction, the engine SHALL build a biparti
 
 The vertices of both circuits SHALL be partitioned together: one class can hold vertices of both circuits, and the circuit of every vertex is known. The vertex order SHALL be: devices of circuit 1, then devices of circuit 2, each in instance order; nets of circuit 1, then nets of circuit 2, each in increasing net number.
 
-If circuit 1 or circuit 2 has no devices, the comparison SHALL stop with `Circuit <c> contains no devices.` If it has no nets, it SHALL stop with `Circuit <c> contains no nets.`
+If circuit 1 or circuit 2 has no devices, the comparison SHALL stop with `Circuit <c> contains no devices.` If it has no nets, it SHALL stop with `Circuit <c> contains no nets.` `<c>` SHALL be the name of that circuit's cell, not the circuit number.
 Compatibility: behavioral
 (netgen ref: base/netcmp.c:2406-2612, base/netcmp.c:3905-3976)
 
@@ -43,6 +43,11 @@ Compatibility: behavioral
 - **GIVEN** cell `inv` with ports A, Y, VDD, VSS and a port `NC` connected to nothing
 - **WHEN** its graph is built
 - **THEN** it SHALL have 4 net vertices
+
+#### Scenario: Empty circuit named by its cell
+- **GIVEN** a pair whose circuit 2 is cell `empty_lay`, which has no instances
+- **WHEN** the comparison starts
+- **THEN** it SHALL stop with `Circuit empty_lay contains no devices.`
 
 ### Requirement: Class identity and pin labels
 Every cell SHALL have a class identity. By default it is a 64-bit hash of its name, case-folded when matching is case-insensitive. `equate classes` can make two identities equal (capability `lvs-setup-file`).
@@ -171,7 +176,7 @@ Compatibility: exact
 - With no option, `nodes`, or `all`: print the net mismatch report.
 - With no option, `elements`, or `all`: print the device mismatch report.
 - `equivalent` and `unique` SHALL return 0.
-- Every other option SHALL print `Netlists do not match.` and `Port matching may fail to disambiguate symmetries.`
+- Every other option, that is `only` and `properties`, SHALL print `Netlists do not match.` and `Port matching may fail to disambiguate symmetries.`; no option, `nodes`, `elements` and `all` SHALL NOT print these two lines.
 
 **Port errors (−2).**
 - `equivalent` SHALL return 1.
@@ -196,6 +201,11 @@ Compatibility: exact
 - **GIVEN** a unique match with no property errors
 - **WHEN** `verify only` runs
 - **THEN** the log SHALL receive `Circuits match uniquely.` and then a line containing only `.`
+
+#### Scenario: Mismatch text only for only and properties
+- **GIVEN** a pair whose verification result is −1
+- **WHEN** `verify all` runs and then `verify only` runs
+- **THEN** `verify all` SHALL print the net and device mismatch reports without `Netlists do not match.`, and `verify only` SHALL print `Netlists do not match.` and `Port matching may fail to disambiguate symmetries.`
 
 ### Requirement: Forced equivalences
 `equate nodes <n1> <n2>` and `equate elements <e1> <e2>` SHALL force a net pair or a device pair to correspond. The two-name form refers to the current circuits; the four-name form takes `<valid_cellname> <name>` for each side.
@@ -245,7 +255,7 @@ Compatibility: native
 ### Requirement: Reset and stepping commands
 These commands SHALL step through a comparison by hand:
 - `iterate` SHALL perform one refinement round.
-- `restart` SHALL merge all classes back into one device class and one net class, and redo the initial partition. It SHALL require an existing partition (`Need to initialize data structures first!`).
+- `restart` SHALL merge all classes back into one device class and one net class, and redo the initial partition. It SHALL also forget the remembered property outcome and which pairs passed their property check, so the next verification checks every one-to-one device class again. It SHALL require an existing partition (`Need to initialize data structures first!`).
 - `exhaustive [on|off]` SHALL set or report exhaustive mode, printing `Exhaustive subdivision ENABLED.` or `Exhaustive subdivision DISABLED.`
 - `symmetries` SHALL list symmetric classes.
 - `symmetry` SHALL print `Symmetry breaking method has been deprecated.`
@@ -257,6 +267,11 @@ Compatibility: behavioral
 #### Scenario: Queue empty at top
 - **WHEN** the top-level pair is being compared
 - **THEN** `print queue` SHALL return an empty result
+
+#### Scenario: restart forgets property results
+- **GIVEN** a converged pair whose only nfet pair passed its property check
+- **WHEN** `restart` runs, the circuits converge again and `verify unique` runs
+- **THEN** the nfet pair SHALL be property-checked again
 
 ### Requirement: Single-threaded comparison per pair
 Each cell pair SHALL be compared on one thread. The comparison state SHALL hold no process-global data, so that two pairs could be compared concurrently without sharing state. The report, the list result and the JSON file of a run SHALL be identical whatever the number of threads available to the process and on every supported platform.

@@ -56,6 +56,8 @@ A job SHALL pass through these states in this order: `queued` → `preparing` (n
 
 A job in `running` MAY move to `paused` and back. A job that fails in `preparing` SHALL never reach the engine. A job SHALL be `completed` only if every analysis in it produced a plot and ngspice reported no error-stream line that starts with `Error`. An error-stream line starting with `Warning` SHALL be kept in the job log and SHALL NOT fail the job.
 
+**Job log limit.** A job SHALL keep at most 64 MiB of log text in memory. The limit SHALL be a setting that can be lowered and never raised above twice the default. A line that would pass the limit SHALL NOT be kept; the job SHALL count such lines and report the count with the job. A dropped line SHALL still count for the job's outcome: an error-stream line starting with `Error` fails the job and appears in its diagnostic even when it is not kept in the log (Q-SIM-25, amendment of 2026-11-27).
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7)
@@ -74,6 +76,11 @@ Compatibility: native
 - **GIVEN** a deck whose transient analysis ends with `Error: Timestep too small`
 - **WHEN** the job ends
 - **THEN** its state SHALL be `failed`, its diagnostic SHALL include that line, and any data computed before the error SHALL be kept as a partial result
+
+#### Scenario: Job log capped in memory
+- **GIVEN** a run whose output stream produces more than 64 MiB of text, followed by one error-stream line starting with `Error`
+- **WHEN** the run ends
+- **THEN** the job log SHALL hold at most 64 MiB of text, the job SHALL report the number of lines that were not kept, and the job SHALL be `failed` with the `Error` line in its diagnostic
 
 ### Requirement: Progress reporting
 Hefesto SHALL derive the progress of a job from the status strings delivered by ngspice:
@@ -145,7 +152,7 @@ A testbench SHALL select saved vectors with one of these modes:
 | `all+currents` | no `.save` line, plus `.options savecurrents` | as `all`, plus device terminal currents |
 | `list` | `.save` with the user's list | as listed |
 
-The default mode SHALL be `default`. Each job SHALL have a result memory budget `B`: by default 512 MiB on iPadOS and 4 GiB on Linux and macOS, configurable. The size estimate is `points × Σ(8 × (2 if complex else 1))` over all saved vectors. When the estimate passes `B` while data streams in, the job SHALL be cancelled with the diagnostic `result memory budget exceeded (<estimate> > <B>)`, and its partial result SHALL be kept.
+The default mode SHALL be `default`. Each job SHALL have a result memory budget `B`: by default 512 MiB on iPadOS and 4 GiB on Linux and macOS, configurable. The desktop default stays 4 GiB until Q-SIM-25 decides it (decision of 2026-11-27). The size estimate is `points × Σ(8 × (2 if complex else 1))` over all saved vectors. When the estimate passes `B` while data streams in, the job SHALL be cancelled with the diagnostic `result memory budget exceeded (<estimate> > <B>)`, and its partial result SHALL be kept.
 
 Compatibility: native
 
@@ -155,6 +162,11 @@ Compatibility: native
 - **GIVEN** an iPad job saving 1000 real vectors, with the default budget of 512 MiB
 - **WHEN** the streamed point count passes 67 109 (1000 × 8 B × 67 109 > 536 870 912 B)
 - **THEN** the job SHALL be cancelled with `result memory budget exceeded`
+
+#### Scenario: Default result budget
+- **GIVEN** a new job on Linux or macOS with no budget setting
+- **WHEN** its result budget is read
+- **THEN** it SHALL be 4 GiB (4 294 967 296 bytes), and on iPadOS 512 MiB
 
 ### Requirement: Result storage
 Each job that reaches a final state SHALL be stored in the project, in folder `simulations/<testbench>/<job-id>/`, with these files. A run-set point job is stored instead in `simulations/<testbench>/<run set id>/p<index>/`, and its `result.raw` is kept only as the retention setting of capability `simulation-sweeps`, Requirement "Run set storage", allows:

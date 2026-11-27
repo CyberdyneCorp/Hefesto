@@ -419,7 +419,8 @@ Each cap has its own diagnostic and ends the run as `error` (LVS) or `failed` (s
 | Deck include depth | 32 | `sim/deck` |
 | IPC frame | 64 MiB (vectors chunked) | `sim/engine`, `src/simd` |
 | Worker start-up / heartbeat / timeout | 10 s / 2 s / 10 s | `sim/engine` |
-| Result memory per job | 4 GiB desktop, 512 MiB iPad (Q-SIM-16) | `sim/result` |
+| Result memory per job | 4 GiB desktop, 512 MiB iPad (Q-SIM-16; desktop value kept until Q-SIM-25 decides it, approved 2026-11-27) | `sim/result` |
+| Job log kept in memory | 64 MiB of text; later lines dropped and counted (Q-SIM-25 amendment, approved 2026-11-27) | `sim/engine` |
 | Points per run set | 100 000 | `sim/runset` |
 | Monte Carlo samples | 100 000 | `sim/runset` |
 | Raw import | 4 GiB and within the result budget | `sim/result` |
@@ -818,6 +819,13 @@ Branch `m9-round2-simcore`. Team: neither LVS team (the simulation specs come fr
   - A comment line longer than the delivery limit is cut, not continued with `+` (ngspice would join the continuation to the previous card).
 - SIMRES: raw import charges each variable's `Vector` object and its name and type against the result budget, not only its values (a header of many variables and 0 points passed the check before). Measurements accept a descending scale (`value_at`, `avg`, `rms` work on the range between the first and the last x; `cross` keeps the sweep order), and `measure_extreme` returns `min` and `max` with the first x where they occur.
 - LVSALG: the symmetry-resolution stages poll the cancel token per class and per reference vertex, and stage (b)/(c) sizes its `used` marks by the class, not by the number of nets. Stage (a) stays quadratic in the size of a class whose properties differ, because property matching with a tolerance is not an equivalence relation and cannot be grouped by a key; the device-count limit and the cancel token bound it.
+
+### As landed (DECIDE, M9 R3)
+
+Branch `m9-round3-decide`, LVS spec team (Q-LVS-30; it read netgen behaviour through pinned raw web fetches at `93dcda14`, nothing saved; no xschem source). Records only; no code under `src/` changed.
+- **Decisions of 2026-11-27** (`docs/decisions/m9-decision-table.md` "Round 3 decisions"): R3-1 probes use plain `getnode` naming; R3-2 an out-of-range array element fails with `SIM-PROBE-003`; R3-3 static OSDI registration through generated per-module symbol prefixes (NGBUILD task 5.2); R3-4 the OI-3 rewordings of Q-LVS-3, -5, -23, -24; R3-5 the 64 MiB job log cap (row added to D18; making it a lowerable setting is left to SIMENG); R3-6 the 4 GiB desktop result budget until Q-SIM-25. Each has scenarios under existing requirement headings ("Round 3 spec changes" in the table).
+- **Spec-silent choices of the LVS implementation team.** Those that agree with netgen (or where netgen's behaviour could not be established) are now spec text with scenarios in `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching` and `lvs-netlist-input`. Eleven differ from netgen and are item R3-7 for the user (not approved): re-checking a failed property pair, the `_tag` markers of a parallel merge (OI-2), the record a recordless device brings to a series merge, the `(<flag>)` value (OI-4), the network dump, the type-mismatch line, the within-tolerance sort order, the zero-valued removal with two port nets and for current sources, the `V`/`I`/`E` default models, the `<kind>` word and the missing-include message. Until the user decides, the specs say "not yet specified" there and the code stays as landed.
+- **Beta flow, schematic step (task 20.2).** `tests/e2e/beta/<pdk>/beta_inv_sch.tcl` and `beta_tb_sch.tcl` draw `beta_inv.sch` and `beta_tb.sch` with the `schematic` command and the PDK's xschem symbols, save them and netlist them; `run_beta.py --step schematic` checks the devices and nets of both netlists; CTest `e2e.beta.<pdk>.schematic` skips (77) without the PDK's xschem set.
 
 ## Risks / Trade-offs
 
