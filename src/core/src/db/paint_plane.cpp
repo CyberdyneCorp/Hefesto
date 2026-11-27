@@ -22,6 +22,9 @@ namespace {
 
 enum : unsigned { kMrgTop = 0x01U, kMrgLeft = 0x02U, kMrgRight = 0x04U, kMrgBottom = 0x08U };
 
+// kCountSteps: the merge walks add to the plane's stitch steps (a
+// step-bounded paint, TilePlane::counts_steps); off, they cost nothing extra.
+template <bool kCountSteps>
 class Painter {
  public:
   Painter(TilePlane& plane, const Rect& area, const ResultRow& row) : plane_(plane), area_(area), row_(row) {}
@@ -38,6 +41,17 @@ class Painter {
 
  private:
   enum class Step { next, paint_done, clip_done };
+
+  void count_step() noexcept {
+    if constexpr (kCountSteps) {
+      plane_.add_stitch_steps(1);
+    }
+  }
+  Tile* split_x(Tile* tile, Coord x) { return plane_.template split_x_counted<kCountSteps>(tile, x); }
+  Tile* split_y(Tile* tile, Coord y) { return plane_.template split_y_counted<kCountSteps>(tile, y); }
+  void join_x(Tile* keep, Tile* gone) { plane_.template join_x_counted<kCountSteps>(keep, gone); }
+  void join_y(Tile* keep, Tile* gone) { plane_.template join_y_counted<kCountSteps>(keep, gone); }
+  Tile* join_y_cheap(Tile* a, Tile* b) { return plane_.template join_y_cheap<kCountSteps>(a, b); }
 
   [[nodiscard]] Body result_of(Body old) const noexcept {
     if (!is_split(old)) {
@@ -113,7 +127,7 @@ class Painter {
       if (is_split(tile->body)) {
         nm_clip_y(tile, area_.y1, 1);
       } else {
-        Tile* newtile = plane_.split_y(tile, area_.y1);
+        Tile* newtile = split_y(tile, area_.y1);
         newtile->body = tile->body;
       }
       flags_ &= ~kMrgTop;
@@ -127,7 +141,7 @@ class Painter {
         nm_clip_y(tile, area_.y0, 0);
       } else {
         Tile* lower = tile;
-        tile = plane_.split_y(tile, area_.y0);
+        tile = split_y(tile, area_.y0);
         tile->body = lower->body;
       }
       flags_ &= ~kMrgBottom;
@@ -139,11 +153,11 @@ class Painter {
   void merge_outside_vertically(Tile* outside) {
     Tile* tp = outside->rt;
     if (can_merge_y(outside, tp)) {
-      plane_.join_y(outside, tp);
+      join_y(outside, tp);
     }
     tp = outside->lb;
     if (can_merge_y(outside, tp)) {
-      plane_.join_y(outside, tp);
+      join_y(outside, tp);
     }
   }
 
@@ -152,7 +166,7 @@ class Painter {
       if (is_split(tile->body)) {
         nm_clip_right(tile);
       } else {
-        Tile* newtile = plane_.split_x(tile, area_.x1);
+        Tile* newtile = split_x(tile, area_.x1);
         newtile->body = tile->body;
         merge_outside_vertically(newtile);
       }
@@ -200,7 +214,7 @@ class Painter {
         }
       } else {
         Tile* outside = tile;
-        tile = plane_.split_x(tile, area_.x0);
+        tile = split_x(tile, area_.x0);
         tile->body = outside->body;
         merge_outside_vertically(outside);
       }
@@ -228,10 +242,10 @@ class Painter {
     }
     tile->body = new_;
     if ((flags_ & kMrgTop) != 0 && can_merge_y(tile, tile->rt)) {
-      tile = plane_.join_y_cheap(tile, tile->rt);
+      tile = join_y_cheap(tile, tile->rt);
     }
     if ((flags_ & kMrgBottom) != 0 && can_merge_y(tile, tile->lb)) {
-      tile = plane_.join_y_cheap(tile, tile->lb);
+      tile = join_y_cheap(tile, tile->lb);
     }
     return tile;
   }
@@ -240,7 +254,7 @@ class Painter {
   bool needs_side_merge(const Tile* tile) {
     if ((flags_ & kMrgLeft) != 0) {
       for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
-        plane_.add_stitch_steps(1);
+        count_step();
         if (tp->body == new_) {
           return true;
         }
@@ -249,7 +263,7 @@ class Painter {
     }
     if ((flags_ & kMrgRight) != 0) {
       for (const Tile* tp = tile->tr; top(tp) > bottom(tile); tp = tp->lb) {
-        plane_.add_stitch_steps(1);
+        count_step();
         if (tp->body == new_) {
           return true;
         }
@@ -263,7 +277,7 @@ class Painter {
   Coord left_split_point(const Tile* tile, Coord ysplit) {
     const Tile* last = nullptr;
     for (const Tile* tp = tile->bl; bottom(tp) < top(tile); tp = tp->rt) {
-      plane_.add_stitch_steps(1);
+      count_step();
       if (tp->body == new_) {
         last = tp;
       }
@@ -286,7 +300,7 @@ class Painter {
     }
     do {
       tp = tp->lb;
-      plane_.add_stitch_steps(1);
+      count_step();
     } while (tp->body != new_ && top(tp) > ysplit);
     flags_ &= ~kMrgRight;
     return std::max(ysplit, top(tp));
@@ -295,13 +309,13 @@ class Painter {
   // Joins `tile` with the single neighbor `tp` of type new_ beside it.
   void merge_side(Tile* tile, Tile* tp) {
     if (top(tp) > top(tile)) {
-      Tile* upper = plane_.split_y(tp, top(tile));
+      Tile* upper = split_y(tp, top(tile));
       upper->body = new_;
     }
     if (bottom(tp) < bottom(tile)) {
-      tp = plane_.split_y(tp, bottom(tile));
+      tp = split_y(tp, bottom(tile));
     }
-    plane_.join_x(tile, tp);
+    join_x(tile, tp);
   }
 
   Tile* paint_merge(Tile* tile) {
@@ -314,7 +328,7 @@ class Painter {
     }
     if (ysplit > bottom(tile)) {
       flags_ &= ~kMrgBottom;
-      Tile* tp = plane_.split_y(tile, ysplit);
+      Tile* tp = split_y(tile, ysplit);
       tp->body = tile->body;
       tile = tp;
     }
@@ -326,10 +340,10 @@ class Painter {
       merge_side(tile, tile->tr);
     }
     if ((flags_ & kMrgTop) != 0 && can_merge_y(tile->rt, tile)) {
-      tile = plane_.join_y_cheap(tile, tile->rt);
+      tile = join_y_cheap(tile, tile->rt);
     }
     if ((flags_ & kMrgBottom) != 0 && can_merge_y(tile->lb, tile)) {
-      tile = plane_.join_y_cheap(tile, tile->lb);
+      tile = join_y_cheap(tile, tile->lb);
     }
     return tile;
   }
@@ -348,7 +362,11 @@ void paint_plane(TilePlane& plane, const Rect& area, const ResultRow& row) {
   if (area.x1 <= area.x0 || area.y1 <= area.y0) {
     return;
   }
-  Painter(plane, area, row).run();
+  if (plane.counts_steps()) {
+    Painter<true>(plane, area, row).run();
+  } else {
+    Painter<false>(plane, area, row).run();
+  }
 }
 
 }  // namespace hefesto::db::detail

@@ -75,7 +75,8 @@ TilePlane::TilePlane() {
   set_hint(tile);
 }
 
-Tile* TilePlane::split_x(Tile* tile, Coord x) {
+template <bool kCount>
+Tile* TilePlane::split_x_counted(Tile* tile, Coord x) {
   Tile* nt = alloc();
   nt->body = 0;
   nt->x = x;
@@ -87,27 +88,28 @@ Tile* TilePlane::split_x(Tile* tile, Coord x) {
   Tile* tp = nullptr;
   for (tp = tile->tr; tp->bl == tile; tp = tp->lb) {  // right edge
     tp->bl = nt;
-    ++stitch_steps_;
+    step<kCount>();
   }
   tile->tr = nt;
   for (tp = tile->rt; left(tp) >= x; tp = tp->bl) {  // top edge
     tp->lb = nt;
-    ++stitch_steps_;
+    step<kCount>();
   }
   tile->rt = tp;
   for (tp = tile->lb; right(tp) <= x; tp = tp->tr) {  // bottom edge
-    ++stitch_steps_;
+    step<kCount>();
   }
   nt->lb = tp;
   while (tp->rt == tile) {
     tp->rt = nt;
     tp = tp->tr;
-    ++stitch_steps_;
+    step<kCount>();
   }
   return nt;
 }
 
-Tile* TilePlane::split_y(Tile* tile, Coord y) {
+template <bool kCount>
+Tile* TilePlane::split_y_counted(Tile* tile, Coord y) {
   Tile* nt = alloc();
   nt->body = 0;
   nt->x = tile->x;
@@ -119,47 +121,48 @@ Tile* TilePlane::split_y(Tile* tile, Coord y) {
   Tile* tp = nullptr;
   for (tp = tile->rt; tp->lb == tile; tp = tp->bl) {  // top edge
     tp->lb = nt;
-    ++stitch_steps_;
+    step<kCount>();
   }
   tile->rt = nt;
   for (tp = tile->tr; bottom(tp) >= y; tp = tp->lb) {  // right edge
     tp->bl = nt;
-    ++stitch_steps_;
+    step<kCount>();
   }
   tile->tr = tp;
   for (tp = tile->bl; top(tp) <= y; tp = tp->rt) {  // left edge
-    ++stitch_steps_;
+    step<kCount>();
   }
   nt->bl = tp;
   while (tp->tr == tile) {
     tp->tr = nt;
     tp = tp->rt;
-    ++stitch_steps_;
+    step<kCount>();
   }
   return nt;
 }
 
-void TilePlane::join_x(Tile* keep, Tile* gone) {
+template <bool kCount>
+void TilePlane::join_x_counted(Tile* keep, Tile* gone) {
   Tile* tp = nullptr;
   for (tp = gone->rt; tp->lb == gone; tp = tp->bl) {
     tp->lb = keep;
-    ++stitch_steps_;
+    step<kCount>();
   }
   for (tp = gone->lb; tp->rt == gone; tp = tp->tr) {
     tp->rt = keep;
-    ++stitch_steps_;
+    step<kCount>();
   }
   if (left(keep) < left(gone)) {
     for (tp = gone->tr; tp->bl == gone; tp = tp->lb) {
       tp->bl = keep;
-      ++stitch_steps_;
+      step<kCount>();
     }
     keep->tr = gone->tr;
     keep->rt = gone->rt;
   } else {
     for (tp = gone->bl; tp->tr == gone; tp = tp->rt) {
       tp->tr = keep;
-      ++stitch_steps_;
+      step<kCount>();
     }
     keep->bl = gone->bl;
     keep->lb = gone->lb;
@@ -171,27 +174,28 @@ void TilePlane::join_x(Tile* keep, Tile* gone) {
   free_later(gone);
 }
 
-void TilePlane::join_y(Tile* keep, Tile* gone) {
+template <bool kCount>
+void TilePlane::join_y_counted(Tile* keep, Tile* gone) {
   Tile* tp = nullptr;
   for (tp = gone->tr; tp->bl == gone; tp = tp->lb) {
     tp->bl = keep;
-    ++stitch_steps_;
+    step<kCount>();
   }
   for (tp = gone->bl; tp->tr == gone; tp = tp->rt) {
     tp->tr = keep;
-    ++stitch_steps_;
+    step<kCount>();
   }
   if (bottom(keep) < bottom(gone)) {
     for (tp = gone->rt; tp->lb == gone; tp = tp->bl) {
       tp->lb = keep;
-      ++stitch_steps_;
+      step<kCount>();
     }
     keep->rt = gone->rt;
     keep->tr = gone->tr;
   } else {
     for (tp = gone->lb; tp->rt == gone; tp = tp->tr) {
       tp->rt = keep;
-      ++stitch_steps_;
+      step<kCount>();
     }
     keep->lb = gone->lb;
     keep->bl = gone->bl;
@@ -201,6 +205,22 @@ void TilePlane::join_y(Tile* keep, Tile* gone) {
     set_hint(keep);
   }
   free_later(gone);
+}
+
+Tile* TilePlane::split_x(Tile* tile, Coord x) {
+  return counting_ ? split_x_counted<true>(tile, x) : split_x_counted<false>(tile, x);
+}
+
+Tile* TilePlane::split_y(Tile* tile, Coord y) {
+  return counting_ ? split_y_counted<true>(tile, y) : split_y_counted<false>(tile, y);
+}
+
+void TilePlane::join_x(Tile* keep, Tile* gone) {
+  counting_ ? join_x_counted<true>(keep, gone) : join_x_counted<false>(keep, gone);
+}
+
+void TilePlane::join_y(Tile* keep, Tile* gone) {
+  counting_ ? join_y_counted<true>(keep, gone) : join_y_counted<false>(keep, gone);
 }
 
 namespace {
@@ -236,19 +256,67 @@ class SideCursor {
 
 }  // namespace
 
-Tile* TilePlane::join_y_cheap(Tile* a, Tile* b) {
-  SideCursor side_a(a);
-  SideCursor side_b(b);
-  while (side_a.next()) {
-    stitch_steps_ += 2;
-    if (!side_b.next()) {
-      join_y(a, b);
-      return a;
+namespace {
+
+// True when TiJoinY freeing `t` re-stitches at most kFew tiles along its
+// sides. Almost every merge of a paint is one of these; walking only `t`'s
+// sides, with no cursor state, keeps them as cheap as a plain TiJoinY.
+bool few_side_neighbours(const Tile* t) noexcept {
+  constexpr int kFew = 8;
+  int n = 0;
+  for (const Tile* tp = t->tr; tp->bl == t; tp = tp->lb) {
+    if (++n > kFew) {
+      return false;
     }
   }
-  join_y(b, a);
+  for (const Tile* tp = t->bl; tp->tr == t; tp = tp->rt) {
+    if (++n > kFew) {
+      return false;
+    }
+  }
+  return true;
+}
+
+}  // namespace
+
+template <bool kCount>
+Tile* TilePlane::join_y_cheap(Tile* a, Tile* b) {
+  if (few_side_neighbours(b)) {
+    join_y_counted<kCount>(a, b);  // TiJoinY's own order, at a bounded cost
+    return a;
+  }
+  SideCursor side_a(a);
+  SideCursor side_b(b);
+  std::uint64_t walked = 0;
+  bool free_b = false;  // b runs out of side neighbours first
+  while (side_a.next()) {
+    ++walked;
+    if (!side_b.next()) {
+      free_b = true;
+      break;
+    }
+  }
+  if constexpr (kCount) {
+    stitch_steps_ += 2 * walked;
+  }
+  if (free_b) {
+    join_y_counted<kCount>(a, b);
+    return a;
+  }
+  join_y_counted<kCount>(b, a);
   return b;
 }
+
+template Tile* TilePlane::split_x_counted<false>(Tile*, Coord);
+template Tile* TilePlane::split_x_counted<true>(Tile*, Coord);
+template Tile* TilePlane::split_y_counted<false>(Tile*, Coord);
+template Tile* TilePlane::split_y_counted<true>(Tile*, Coord);
+template void TilePlane::join_x_counted<false>(Tile*, Tile*);
+template void TilePlane::join_x_counted<true>(Tile*, Tile*);
+template void TilePlane::join_y_counted<false>(Tile*, Tile*);
+template void TilePlane::join_y_counted<true>(Tile*, Tile*);
+template Tile* TilePlane::join_y_cheap<false>(Tile*, Tile*);
+template Tile* TilePlane::join_y_cheap<true>(Tile*, Tile*);
 
 void TilePlane::for_each_tile(util::FunctionRef<void(const Tile*)> visit) const {
   const Rect all = whole_plane();
