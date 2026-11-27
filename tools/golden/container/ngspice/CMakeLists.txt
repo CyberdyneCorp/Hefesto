@@ -32,6 +32,10 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 endif()
 
 option(HEFESTO_NGSPICE_EXECUTABLE "Also build the ngspice executable (golden capture image)" OFF)
+# Task 5.2: a directory of built-in OSDI modules written by tools/osdi_static.py
+# compile (<module>.o with renamed exports, <module>.symbols, <module>.json).
+# Empty: no OSDI module is built in.
+set(HEFESTO_NGSPICE_OSDI_DIR "" CACHE PATH "Built-in OSDI modules (tools/osdi_static.py compile output)")
 
 include(FetchContent)
 include(GNUInstallDirs)
@@ -126,7 +130,7 @@ include("${_ng_dir}/cmake/CodeModels.cmake")
 ngspice_code_models("${_ng_pin}")  # sets NGSPICE_CM_SOURCES and NGSPICE_CM_FUNCTIONS
 
 # The registries: code models (generated from the model list) and OSDI modules
-# (none yet; task 5.2 adds the IHP modules).
+# (task 5.2: the modules of HEFESTO_NGSPICE_OSDI_DIR).
 include("${_ng_dir}/cmake/Registries.cmake")
 ngspice_write_registries("${_ng_bin}")
 
@@ -168,8 +172,30 @@ foreach(_variant IN LISTS _ng_variants)
   list(APPEND _ng_groups_${_variant} ngspice_${_variant}_cm ngspice_${_variant}_glue)
 endforeach()
 
+# Built-in OSDI modules (task 5.2): one static archive of the relocated module
+# objects. Their renamed exports (hefesto_osdi_*) are not exported from the
+# library: --exclude-libs on ELF, -unexported_symbol on Mach-O.
+set(_ng_osdi_json "")
+if(HEFESTO_NGSPICE_OSDI_DIR)
+  file(GLOB _ng_osdi_objects "${HEFESTO_NGSPICE_OSDI_DIR}/*.o")
+  file(GLOB _ng_osdi_json "${HEFESTO_NGSPICE_OSDI_DIR}/*.json")
+  if(NOT _ng_osdi_objects)
+    message(FATAL_ERROR "ngspice: HEFESTO_NGSPICE_OSDI_DIR holds no module object")
+  endif()
+  add_library(ngspice_osdi_models STATIC ${_ng_osdi_objects})
+  set_target_properties(ngspice_osdi_models PROPERTIES LINKER_LANGUAGE C)
+endif()
+
 function(_ngspice_link target)
   target_link_libraries(${target} PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+  if(TARGET ngspice_osdi_models)
+    target_link_libraries(${target} PRIVATE ngspice_osdi_models)
+    if(APPLE)
+      target_link_options(${target} PRIVATE "LINKER:-unexported_symbol,_hefesto_osdi_*")
+    else()
+      target_link_options(${target} PRIVATE "LINKER:--exclude-libs,libngspice_osdi_models.a")
+    endif()
+  endif()
   if(NOT APPLE)
     target_link_libraries(${target} PRIVATE m)
   endif()
@@ -218,10 +244,14 @@ set(_ng_manifest "${_ng_bin}/ngspice-manifest.json")
 set(_ng_tool_args --pin "${_ng_dir}/pin.json" --series "${_ng_dir}/patches/series"
                   --sources-cmake "${_ng_dir}/cmake/sources.cmake" --src "${NGSPICE_SRC}"
                   --code-models "${_ng_bin}/code_models.txt")
+set(_ng_manifest_args "")
+if(HEFESTO_NGSPICE_OSDI_DIR)
+  set(_ng_manifest_args --osdi-dir "${HEFESTO_NGSPICE_OSDI_DIR}")
+endif()
 add_custom_command(OUTPUT "${_ng_manifest}"
-  COMMAND Python3::Interpreter -I "${_ng_tool}" manifest ${_ng_tool_args} --out "${_ng_manifest}"
+  COMMAND Python3::Interpreter -I "${_ng_tool}" manifest ${_ng_tool_args} ${_ng_manifest_args} --out "${_ng_manifest}"
   DEPENDS "${_ng_tool}" "${_ng_dir}/pin.json" "${_ng_dir}/patches/series" "${_ng_dir}/cmake/sources.cmake"
-          "${_ng_bin}/code_models.txt"
+          "${_ng_bin}/code_models.txt" ${_ng_osdi_json}
   COMMENT "ngspice: writing ngspice-manifest.json" VERBATIM)
 add_custom_target(ngspice_hefesto_manifest ALL DEPENDS "${_ng_manifest}")
 install(FILES "${_ng_manifest}" DESTINATION ${CMAKE_INSTALL_DATADIR}/ngspice)

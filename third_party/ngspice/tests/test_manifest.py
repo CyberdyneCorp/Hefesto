@@ -134,6 +134,19 @@ class CheckManifestTest(unittest.TestCase):
         m["version"] = "47"
         self.assertTrue(nm.check_manifest(m))
 
+    def test_built_in_osdi_modules_name_their_licence(self):
+        """cap:simulation-engine-embedding req:OSDI compact models (task 5.2): each compiled-in module is listed
+        from its <module>.json, with a licence."""
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "cap_cmomi.json").write_text(json.dumps({"module": "cap_cmomi", "license": "Apache-2.0"}))
+            (d / "mystery.json").write_text(json.dumps({"module": "mystery", "license": "unknown"}))
+            m = good_manifest()
+            m["osdi_modules"] = nm.osdi_modules(d)
+        self.assertEqual([x["module"] for x in m["osdi_modules"]], ["cap_cmomi", "mystery"])
+        self.assertEqual(nm.check_manifest(m), ["OSDI module mystery has no licence"])
+        self.assertEqual(nm.osdi_modules(None), [])
+
 
 class CodeModelExclusionTest(unittest.TestCase):
     """d_process starts external processes: it is excluded from the build, the feature table and the manifest."""
