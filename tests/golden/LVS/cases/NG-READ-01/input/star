@@ -1,0 +1,4 @@
+* star
+.subckt st a b
+R1 a b 1k
+.ends

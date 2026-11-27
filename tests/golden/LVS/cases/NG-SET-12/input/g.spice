@@ -1,0 +1,9 @@
+* globals
+.subckt inv A Y
+M1 Y A VDD1 VDD1 pmos
+M2 Y A VSS VSS nmos
+.ends
+.subckt top a y
+X1 a y inv
+R1 a VDD2 1k
+.ends

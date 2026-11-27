@@ -1,0 +1,6 @@
+* c
+.subckt top a b
+X1 a b cdev v=-1
+.ends
+.subckt cdev p n
+.ends

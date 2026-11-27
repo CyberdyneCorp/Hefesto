@@ -1,0 +1,4 @@
+.subckt top%x a%d b"q
+R1 a%d b"q 1k
+R2 a%d n%s 1k
+.ends

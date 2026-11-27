@@ -1,0 +1,6 @@
+.subckt sub a y
+R1 a y 1k
+.ends
+.subckt top a y
+X1 a y sub
+.ends

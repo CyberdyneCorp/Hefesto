@@ -1,0 +1,7 @@
+* swapped pins
+.subckt top a b c
+R1 a b 1k
+X1 a c rpl
+.ends
+.subckt rpl 1 2
+.ends

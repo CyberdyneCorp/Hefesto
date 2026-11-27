@@ -1,0 +1,8 @@
+* XY_inverter
+.subckt XY_inv A Y VDD VSS
+M1 Y A VSS VSS nmos W=1u L=0.15u
+M2 Y A VDD VDD pmos W=2u L=0.15u
+.ends
+.subckt top A Y VDD VSS
+X1 A Y VDD VSS XY_inv
+.ends

@@ -1,0 +1,4 @@
+* b
+.subckt top NÉT1 b
+R1 NÉT1 b 1k
+.ends

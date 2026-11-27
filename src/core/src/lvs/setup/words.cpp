@@ -56,35 +56,42 @@ cmd::CommandResult wrong_args(std::string_view usage) {
   return command_error("wrong # args: should be \"" + std::string{usage} + "\"");
 }
 
-std::optional<std::int64_t> parse_integer(std::string_view text) noexcept {
-  std::size_t i = 0;
+namespace {
+
+std::size_t skip_blanks(std::string_view text, std::size_t i) noexcept {
   while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) {
     ++i;
   }
-  bool negative = false;
-  if (i < text.size() && (text[i] == '+' || text[i] == '-')) {
-    negative = text[i] == '-';
-    ++i;
-  }
-  const std::size_t digits = i;
-  std::int64_t value = 0;
+  return i;
+}
+
+/// The digits from `i` as a value; nullopt on overflow. `i` moves past them.
+std::optional<std::int64_t> digits(std::string_view text, std::size_t& i) noexcept {
   constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max() / 10;
+  std::int64_t value = 0;
   for (; i < text.size() && text[i] >= '0' && text[i] <= '9'; ++i) {
     if (value > kMax) {
       return std::nullopt;
     }
     value = value * 10 + (text[i] - '0');
   }
-  if (i == digits) {
-    return std::nullopt;
-  }
-  while (i < text.size() && (text[i] == ' ' || text[i] == '\t')) {
+  return value;
+}
+
+}  // namespace
+
+std::optional<std::int64_t> parse_integer(std::string_view text) noexcept {
+  std::size_t i = skip_blanks(text, 0);
+  const bool negative = i < text.size() && text[i] == '-';
+  if (i < text.size() && (text[i] == '+' || text[i] == '-')) {
     ++i;
   }
-  if (i != text.size()) {
+  const std::size_t first = i;
+  const auto value = digits(text, i);
+  if (!value || i == first || skip_blanks(text, i) != text.size()) {
     return std::nullopt;
   }
-  return negative ? -value : value;
+  return negative ? -*value : *value;
 }
 
 std::optional<double> parse_real(std::string_view text) noexcept {
@@ -147,41 +154,42 @@ bool match_class(std::string_view pattern, std::size_t& p, char c, bool& matched
 
 }  // namespace
 
+namespace {
+
+/// Where the pattern continues when its element at `p` (not `*`) matches
+/// `c`; nullopt when it does not.
+std::optional<std::size_t> step(std::string_view pattern, std::size_t p, char c) {
+  const char pc = pattern[p];
+  if (pc == '[') {
+    std::size_t q = p + 1;
+    bool matched = false;
+    return match_class(pattern, q, c, matched) && matched ? std::optional{q} : std::nullopt;
+  }
+  if (pc == '\\' && p + 1 < pattern.size()) {
+    return pattern[p + 1] == c ? std::optional{p + 2} : std::nullopt;
+  }
+  return pc == '?' || pc == c ? std::optional{p + 1} : std::nullopt;
+}
+
+}  // namespace
+
 bool glob_match(std::string_view pattern, std::string_view text) noexcept {
-  // Iterative matcher with one backtrack point for the last `*`.
+  // Iterative matcher with one backtrack point, the last `*`.
   std::size_t p = 0;
   std::size_t t = 0;
   std::size_t star = std::string_view::npos;
   std::size_t resume = 0;
   while (t < text.size()) {
-    bool step = false;
-    if (p < pattern.size()) {
-      const char pc = pattern[p];
-      if (pc == '*') {
-        star = p++;
-        resume = t;
-        continue;
-      }
-      if (pc == '[') {
-        std::size_t q = p + 1;
-        bool matched = false;
-        if (match_class(pattern, q, text[t], matched) && matched) {
-          p = q;
-          ++t;
-          continue;
-        }
-      } else if (pc == '\\' && p + 1 < pattern.size()) {
-        step = pattern[p + 1] == text[t];
-        if (step) {
-          p += 2;
-          ++t;
-          continue;
-        }
-      } else if (pc == '?' || pc == text[t]) {
-        ++p;
-        ++t;
-        continue;
-      }
+    if (p < pattern.size() && pattern[p] == '*') {
+      star = p++;
+      resume = t;
+      continue;
+    }
+    const auto next = p < pattern.size() ? step(pattern, p, text[t]) : std::nullopt;
+    if (next) {
+      p = *next;
+      ++t;
+      continue;
     }
     if (star == std::string_view::npos) {
       return false;

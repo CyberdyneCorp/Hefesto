@@ -1,0 +1,7 @@
+* 2x2
+.subckt top a b
+R1 a m 1k
+R2 m b 1k
+R3 a n 1k
+R4 n b 1k
+.ends

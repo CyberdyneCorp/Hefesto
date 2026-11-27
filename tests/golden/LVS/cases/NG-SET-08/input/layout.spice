@@ -1,0 +1,7 @@
+* chain
+.subckt top a b
+X1 a m r1 w=1 l=2
+X2 m b r1 w=1 l=3
+.ends
+.subckt r1 p n
+.ends

@@ -1,0 +1,5 @@
+.subckt top a b
+R1 a n1 1k
+R2 n1 b 2k
+R3 n1 b 1k
+.ends

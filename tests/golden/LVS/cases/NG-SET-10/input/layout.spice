@@ -1,0 +1,12 @@
+* layout with fill
+.subckt fill_2 VPWR VGND
+.ends
+.subckt decap a b
+C1 a b 1p
+.ends
+.subckt top a y vdd vss
+R1 a y 1k
+X1 vdd vss fill_2
+X2 vdd vss fill_2
+X3 vss vss decap
+.ends

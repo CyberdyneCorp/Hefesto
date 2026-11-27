@@ -1,0 +1,12 @@
+* four parallel inverters
+.subckt top A Y VDD VSS
+X0 A Y VDD VSS inv
+X1 A Y VDD VSS inv
+X2 A Y VDD VSS inv
+X3 A Y VDD VSS inv
+.ends
+* inverter
+.subckt inv A Y VDD VSS
+M1 Y A VSS VSS nmos W=1u L=0.15u
+M2 Y A VDD VDD pmos W=2u L=0.15u
+.ends

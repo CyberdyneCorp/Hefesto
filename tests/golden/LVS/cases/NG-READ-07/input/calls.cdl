@@ -1,0 +1,14 @@
+* calls
+.SUBCKT inv A Y
+R1 A Y 1k
+.ENDS
+.SUBCKT top a b c
+X1 a b / inv
+Xinv_1 a b inv
+X2 a b c undef
+X3 a b c inv
+X4 a inv
+.ENDS
+.SUBCKT self a
+X1 a self
+.ENDS

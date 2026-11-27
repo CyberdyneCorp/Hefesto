@@ -1,0 +1,4 @@
+* a
+.subckt a1 p q
+R1 p q 1k
+.ends

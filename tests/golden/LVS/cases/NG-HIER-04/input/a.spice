@@ -1,0 +1,10 @@
+* two-input NAND
+.subckt nand2 A B Y VDD VSS
+M1 Y A n1 VSS nmos W=1u L=0.15u
+M2 n1 B VSS VSS nmos W=1u L=0.15u
+M3 Y A VDD VDD pmos W=1u L=0.15u
+M4 Y A VDD VDD pmos W=1u L=0.15u
+.ends
+.subckt top A B Y VDD VSS
+X1 A B Y VDD VSS nand2
+.ends

@@ -203,8 +203,13 @@ TEST_CASE("A resistor-modelled placeholder takes resistor permutation", "[cap:lv
 TEST_CASE("global changes matching nets in the hierarchy", "[cap:lvs-setup-file][req:global and convert commands]") {
   Pair pair(".subckt inv A Y\nM1 Y A VDD1 VDD1 pfet\nM2 Y A VSS VSS nfet\n.ends\n"
             ".subckt top a y\nX1 a y inv\nR1 a VDD2 1k\n.ends\n");
-  const auto state = pair.ok("puts [global {top 0} VDD*]\n");
+  const auto state = pair.ok(
+      "puts [global {top 0} VDD*]\n"
+      "puts \"top1 [global {top 1} {V?D[2-9]} nomatch]\"\n"
+      "puts \"inv1 [global {inv 1} {\\VS?}]\"\n");
   CHECK(logged(state, "2"));
+  CHECK(logged(state, "top1 1"));  // VDD2 only
+  CHECK(logged(state, "inv1 1"));  // VSS: `\\V` is a literal V
   CHECK(pair.cell(1, "inv").net(pair.cell(1, "inv").find_net("VDD1")).global);
   CHECK_FALSE(pair.cell(2, "inv").net(pair.cell(2, "inv").find_net("VDD1")).global);
 }

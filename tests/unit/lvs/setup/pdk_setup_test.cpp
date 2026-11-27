@@ -66,6 +66,8 @@ void evaluate_pdk_setup(const PdkCase& pdk, bool compat) {
   }
   CHECK(state.value().evaluated);
   CHECK(state.value().errors == 0);
+  // The file's commands ran: its property and permute declarations were recorded.
+  CHECK(state.value().properties.size() + state.value().permutes.size() > 0);
 }
 
 }  // namespace

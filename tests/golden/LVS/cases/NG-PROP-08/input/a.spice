@@ -1,0 +1,6 @@
+* a
+.subckt top a b
+X1 a b cdev v='nosuch*2'
+.ends
+.subckt cdev p n
+.ends

@@ -1,0 +1,18 @@
+* every card
+.subckt top a b c d
+M1 a b c d nmos W=1u L=0.15u
+Q1 a b c npn
+D1 a b dio
+C1 a b 10pF
+C2 a b cmim 1p
+R1 a b 1k
+R2 a b 1meg
+R3 a b 2kohms
+R4 a b 3x
+R5 a b $[rpoly] 1k
+L1 a b 1n
+T1 a b c d z0=50
+V1 a b 1
+I1 a b 1m
+E1 a b c d 2
+.ends

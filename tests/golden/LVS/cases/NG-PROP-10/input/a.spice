@@ -1,0 +1,7 @@
+* a
+.subckt top a b
+X1 a b r1 w=1
+X2 a b r1
+.ends
+.subckt r1 p n w=1
+.ends

@@ -1,0 +1,11 @@
+* includes
+.include inc.spice
+.include /work/input/inc2.spice
+.global VDD
+*.GLOBAL VSS
+.param wp=1u
+.subckt top a y
+M1 y a VDD VDD nmos W='2*wp' L=0.15u
+X1 a y sub
+.ends
+.global GND
