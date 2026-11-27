@@ -65,6 +65,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: run in the sandboxed Tcl like `tcleval` | ignore | re-implement the checks natively
 - Recommendation: run in the sandbox; the procedures only compute and print.
 - Resolution: platform — symbol `drc` procedures run in the sandboxed embedded Tcl interpreter on every platform (X-3, 2026-11-07).
+- Deferral (recorded at the M8 round-6 review fix, 2026-11-27): the procedures run from the interactive symbol check, which M8 does not have; it comes with a later milestone and runs them in the sandbox as resolved. Until then Hefesto keeps the `drc` attribute and writes it back unchanged, and evaluates it nowhere (netlisting, load, `schematic` commands); `schematic-symbols-and-libraries` "Symbol attributes", row `drc`. This is the decided behaviour deferred, not a new behaviour under the standing rule.
 
 ### Q-SCHEM-7: [platform] Tcl dependence of PDK symbols
 - Kind: platform
@@ -577,4 +578,5 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: `src/core/src/ui/macro_commands.cpp` (`kSchematicClient`), tests in `tests/unit/shell/schematic_bindings_test.cpp`; task 13.2 round-6 note.
 - Options: (a) the core `macro` command accepts the client `schematic`, both modes, so the key-binding sheet's `macro schematic KEY "TEXT"` lines and scripts edit the editor's key table; unbound keys keep the xschem-style defaults (as implemented) | (b) the shell applies `macro schematic` lines itself and the core rejects the client (the round-5 behaviour; scripts cannot rebind schematic keys)
 - Recommendation: (a): one key-binding path for layout and schematic, scriptable and covered by the key-binding sheet test.
-- Spec effect: `schematic-editing` "Desktop and touch interaction" (key bindings).
+- Magic difference (option (a), both modes): in Magic 8.3.694 `macro schematic w "wire"` silently does nothing (`schematic` names no client, so its "silently do nothing" rule applies; windows/windCmdAM.c:1080-1093, 1174-1176); with option (a) Hefesto binds the key with `magic-compat` ON as well. Implemented provisionally; option (b) restores Magic's no-op in the core. Tests: `tests/unit/ui/macro_test.cpp` "the schematic client selects the schematic editor's key table in both modes".
+- Spec effect: `schematic-editing` "Desktop and touch interaction" (key bindings, cites this row); `ui-command-dispatch` "macro and imacro commands" (the `schematic` table, scenario "Schematic editor key table").

@@ -149,8 +149,22 @@ release notices.
   The top bar's Netlist button shows the Schematic tab and runs the
   netlist. Copy and Paste (Command-C/V on macOS, Ctrl-C/V elsewhere)
   go through the system clipboard; clipboard text above 16 MiB is
-  refused. `macro schematic KEY "TEXT"` lines of the key-binding sheet
-  now reach the table the canvas reads.
+  refused, and clipboard text is echoed in the Console as its first line
+  and size. `macro schematic KEY "TEXT"` lines of the key-binding sheet
+  now reach the table the canvas reads, also with magic-compat on, where
+  Magic ignores them (provisional until the key decisions Q-SCHEM-66 and
+  -67 are approved). `R` and `F` rotate and flip around the pointer; a
+  binding of the Copy or Paste chord overrides the clipboard. The
+  Netlist button is disabled with no schematic open and while a netlist
+  runs.
+- **Schematic scripts.** `schematic rotate` and `flip` without a pivot
+  turn around the origin with xschem-compat on (xschem's pointer in a
+  run without the editor), around the selection's centre with it off.
+  `schematic select ... -remove` and `select connected -stopjunction`
+  work. `xschem translate` raises "instance not found" for an instance
+  that does not exist (`-1` still substitutes with no instance). A
+  refused `schematic save` no longer changes the document's embedded
+  symbols.
   The view tabs stay in a 1280 px top bar (the Netlist button gives
   way first), and the CI desktop legs capture the Schematic tab and
   fail unless it is shown.

@@ -432,7 +432,7 @@ reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* 
 [SCHEM-RT-05]
 deferred = "M8"
 outputs = ["embed.sch", "2-embed.sch", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "expected to pass after CORE merges (m8-round6-core): block.sch places Hefesto-drawn symbols and the capture embeds them, but origin/main does not yet write an embed=true instance whose symbol is not embedded in the file from the symbol cache (embed.sch line 33: '[' expected)"
+reason = "the embedded block of block.sch (a schematic used as a symbol) differs from xschem's in content, not only order: xschem writes the pin labels as '%<name>' texts and layer-7 arrows, drops the '@lab' texts and pin polygons of the placed ipin/opin symbols, and keeps two blanks before '}' in the pin boxes; Hefesto writes the block as built (spec issue for DECIDE in round 7, then CORE)"
 
 [SCHEM-RT-06]
 deferred = "M8"
@@ -528,7 +528,7 @@ reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* 
 [SCHEM-NL-21]
 deferred = "M8"
 outputs = ["top-flat.spice", "gain_stage-flat.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "flat mode (CORE, netlister): Hefesto prefixes the tokens of quoted parameter expressions and the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines; spice-canonical ignores blanks inside quoted expressions (design D10); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
+reason = "flat mode (CORE, netlister): Hefesto prefixes the tokens of quoted parameter expressions and the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines; spice-canonical ignores blanks next to operators in quoted expressions (design D10); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
 
 [SCHEM-NL-22]
 deferred = "M8"

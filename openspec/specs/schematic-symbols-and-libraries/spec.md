@@ -60,7 +60,7 @@ A symbol's netlisting rules SHALL be its symbol property: the `K` record, or the
 | `spice_ignore`, `lvs_ignore`, `spectre_ignore`, `verilog_ignore`, `vhdl_ignore`, `tedax_ignore` | `true` or `open`: the symbol is left out of that netlist; `short`: all its pins are shorted together |
 | `highlight` | true: nets attached to the symbol are highlighted with it |
 | `hide` | true: draw only the bounding box |
-| `drc` | Script called by xschem's interactive symbol check, informative (see Q-SCHEM-6): Hefesto SHALL keep the attribute and write it back unchanged, and SHALL NOT evaluate it, in netlisting, on load or in any `schematic` command (no symbol check runs it in M8) |
+| `drc` | Script called by xschem's interactive symbol check. Q-SCHEM-6 (approved): the procedure runs in the sandboxed Tcl interpreter when the symbol check runs it; the symbol check is deferred to a later milestone (deferral note on Q-SCHEM-6), so in M8 Hefesto SHALL keep the attribute and write it back unchanged, and SHALL NOT evaluate it in netlisting, on load or in any `schematic` command |
 
 Compatibility: exact
 
