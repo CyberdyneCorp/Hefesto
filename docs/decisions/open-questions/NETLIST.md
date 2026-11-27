@@ -665,15 +665,18 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Magic behavior: the driver choice sums the W/L of parallel devices in an `int` (totWL), so devices below W/L 1 drive nothing, and a group that runs to the end of the device list drives from its last-but-one device.
 - Evidence: resis/ResRex.c (ResCheckSimpleNode/ResSortByGate's driver loop)
 - As implemented (round R5): magic-compat ON as Magic; OFF sums in float and uses the last device. Tests: `tests/unit/extresist/command/run_test.cpp` "narrow devices drive nothing with magic-compat ON" / "... drive their net with magic-compat OFF", "a parallel group at the end of the list drives from its last-but-one device with magic-compat ON".
+- R5 fix pass (review), both modes: Magic's float-to-int conversion of a W/L at or beyond 2^31 is undefined behaviour; the int sum saturates (`cutoff_test.cpp` "a W/L sum beyond the int range saturates"). The driver is chosen from the list as ResProcessNode sorted it once; Hefesto sorted it a second time, which with devSortFunc (not a strict weak order) can move substrate entries and change the driver (`cutoff_test.cpp` "the driver is chosen from the list as sorted once").
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Spec: `extresist-command` "Net selection and first cutoff" (rule and a scenario per mode, R5 fix pass).
 
 ### Q-NETLIST-72: The second cutoff reads the previous net's delay
 - Kind: compat
 - Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
-- Magic behavior: with simplification and the lump file both off, no delay is computed, and the second cutoff reads the `rg_Tdi` the previous net left.
-- Evidence: resis/ResRex.c (ResExtractNet's second cutoff), resis/ResSimple.c
-- As implemented (round R5): magic-compat ON keeps the last delay per session; OFF applies no delay cutoff to such a net. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads the session's last delay with magic-compat ON" / "... applies no delay test without a delay with magic-compat OFF".
+- Magic behavior: with simplification and the lump file both off, no delay is computed, and the second cutoff reads `rg_Tdi` as it stands. ResInit (called by CmdExtResis for every option, ResRex.c:236, :323) resets it to 0 at the start of every `extresist` command, and nothing sets it during such a run, so the delay test reads 0 and withholds every net with C > 0 when mindelay > 0.
+- Evidence: resis/ResRex.c (ResInit, CmdExtResis, ResExtractNet's second cutoff), resis/ResSimple.c:965-1020
+- As implemented (round R5, corrected in the R5 fix pass): magic-compat ON reads the delay the run's last simplified net left, 0 at the start of every run (it was kept for the session, so a later run read an earlier run's delay); OFF applies no delay cutoff to such a net. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads ResInit's zero delay with magic-compat ON" / "... applies no delay test without a delay with magic-compat OFF" (a simplified run, then a run with simplification off).
+- Spec: `extresist-command` "Second cutoff after extraction" (sentence and a scenario per mode, R5 fix pass).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 
@@ -685,6 +688,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - As implemented (round R5): magic-compat ON takes the last; OFF the first. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (height per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Spec: `extresist-output` "FastHenry geometry file" (sentence and a scenario per mode, R5 fix pass).
 
 ### Q-NETLIST-74: ResAlignNodes skips the last resistor
 - Kind: compat
@@ -694,6 +698,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - As implemented (round R5): magic-compat ON as Magic; OFF aligns every resistor. Tests: `tests/unit/extresist/output/fasthenry_test.cpp` (node alignment per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Spec: `extresist-output` "Geometry centerlines" (sentence and a scenario per mode, R5 fix pass; "FastHenry geometry file" refers to it).
 
 ### Q-NETLIST-75: A failed `extresist box` leaves every option off
 - Kind: compat
@@ -703,12 +708,15 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - As implemented (round R5): magic-compat ON as Magic; OFF keeps the settings. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (box failure per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Spec: `extresist-command` "Command options" (sentence and a scenario per mode, R5 fix pass).
 
 ### Q-NETLIST-76: Devices in subcells are painted in the subcell's own coordinates
 - Kind: compat
 - Status: proposed (raised in M7 round R5 by RESNET, 2026-11-26; implemented per the standing rule)
 - Magic behavior: resMakeDevFunc paints the devices found by DBTreeSrTiles without the search's transform, so a device in a moved or rotated subcell lands at the wrong place.
 - Evidence: resis/ResMain.c (DBTreeSrTiles, resMakeDevFunc)
-- As implemented (round R5): magic-compat ON paints untransformed; OFF transforms to the root. The descent stops past 64 hierarchy levels in both modes (a crafted-input limit under the standing rule of 2026-11-25). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "... at its place with magic-compat OFF".
+- As implemented (round R5): magic-compat ON paints untransformed; OFF transforms to the root. The descent stops past 64 hierarchy levels in both modes (a crafted-input limit under the standing rule of 2026-11-25, approved). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "... at its place with magic-compat OFF", "the subcell device search stops 64 uses down" (both modes).
+- R5 fix pass (review), both modes: the search visited every element of an array use, and an index range ending at INT32_MAX overflowed the loop (undefined behaviour, then a hang); it now visits only the elements DBArrayOverlap gives for the search area, y outer, as dbCellSrFunc does. Test: `build_test.cpp` "the subcell device search visits only the array elements under the device".
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Spec: `extresist-network` "Net geometry collection" (the stale "not painted" sentence replaced; a scenario per mode and one for the array search, R5 fix pass).

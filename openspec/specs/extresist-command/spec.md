@@ -41,6 +41,8 @@ Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any
 - turn on "all"
 - turn off `.res.ext`, `.res.lump` and simplification
 
+`box <type>` that finds no net under the box returns at once: with `magic-compat` ON every on/off setting then reads off, as Magic's RES_BOX returns without restoring ResOptionsFlags; with it OFF the settings are restored (proposed Q-NETLIST-75).
+
 A frequency argument that does not parse prints `Cannot parse frequency value.  Assuming default`. The frequency default intended by the source (10 MHz) is never stored (Q-NETLIST-21).
 Compatibility: behavioral
 (Magic ref: resis/ResRex.c:266-700, resis/ResRex.c:371-390, resis/ResRex.c:572-588, resis/ResRex.c:202-262, resis/resis.h:506-518, doc/html/extresist.html)
@@ -73,6 +75,16 @@ Compatibility: behavioral
 - **GIVEN** `magic-compat` ON
 - **WHEN** `extresist debug maybe` is issued
 - **THEN** debug output is turned on, as in Magic (Q-NETLIST-66)
+
+#### Scenario: Failed box with magic-compat ON
+- **GIVEN** `magic-compat` ON, simplification and `.res.ext` output on, and no net under the box
+- **WHEN** `extresist box metal1` runs
+- **THEN** simplification and `.res.ext` output read off afterwards (proposed Q-NETLIST-75)
+
+#### Scenario: Failed box with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same settings
+- **WHEN** `extresist box metal1` runs
+- **THEN** both settings are still on (proposed Q-NETLIST-75)
 
 #### Scenario: Any word for debug with magic-compat OFF
 - **GIVEN** `magic-compat` OFF
@@ -164,6 +176,8 @@ The driver location SHALL be chosen as follows:
 3. If there is still no driver, use the first drive point, else the first sink point.
 4. If there is still no driver, skip the net. A forced net reports an error.
 
+Step 1 walks the device list once, in the order ResSortByGate left it; the list is not sorted again. With `magic-compat` ON the W/L of a group is summed as Magic's `int totWL` (each step truncated toward zero, so a group whose W/L stays below 1 drives nothing), and the driver of a group that runs to the end of the list is its last-but-one device (Magic's `t1`); with it OFF the sum is a float and the driver is the group's last device (proposed Q-NETLIST-71). The int sum saturates at the int range in both settings (a crafted W/L beyond 2^31 is undefined behaviour in Magic).
+
 The devices of a net are ordered as ResSortByGate orders them: entries on a source or drain first, grouped by gate net and then by the other source or drain net, entries on a gate last. Magic compares net addresses; Hefesto compares the reverse of the order in which the nets were first mentioned (a net mentioned later compares lower), and sorts as glibc's merge sort does with Magic's comparator, so the order is the same on every platform. Magic's comparator puts a gate entry after every entry, another gate entry included, so a run of gate entries comes out in reverse list order. This holds in both `magic-compat` settings (Q-NETLIST-69, resolution: fix, approved 2026-11-25).
 
 The net SHALL be processed when any of the following holds:
@@ -188,6 +202,21 @@ Compatibility: exact
 - **WHEN** ResSortByGate orders the net's devices, in either `magic-compat` setting
 - **THEN** the nfet at x 400 is numbered first (`out.t2`) and the nfet at x 200 next (`out.t3`) (Q-NETLIST-69)
 
+#### Scenario: Narrow parallel devices with magic-compat ON
+- **GIVEN** `magic-compat` ON and net `out` driven only by two parallel nfets of W/L 0.25
+- **WHEN** the driver is chosen
+- **THEN** the devices drive nothing (the int sum is 0) and, with no drive or sink point, the net is skipped (proposed Q-NETLIST-71)
+
+#### Scenario: Narrow parallel devices with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same net
+- **WHEN** the driver is chosen
+- **THEN** the group's last device drives the net (proposed Q-NETLIST-71)
+
+#### Scenario: W/L beyond the int range
+- **GIVEN** two parallel devices of W 2^31-1 and L 1 on a net, in either `magic-compat` setting
+- **WHEN** the driver is chosen
+- **THEN** the sum saturates and the group drives the net: its last-but-one device with `magic-compat` ON, its last device with it OFF
+
 
 ### Requirement: Second cutoff after extraction
 After the network is built and simplified (see capability `extresist-network`), a net SHALL be withheld from output, unless it is in the force list, in either of these cases:
@@ -195,13 +224,25 @@ After the network is built and simplified (see capability `extresist-network`), 
 - `mindelay > 0`, `C > 0`, Tdi was computed, and the largest Elmore delay `Tdi < mindelay`.
 
 Withheld nets still count as extracted but not as output.
+
+Tdi is computed only when the run simplifies or writes the lump file. Otherwise, with `magic-compat` ON the cutoff reads Magic's `rg_Tdi` as it stands: ResInit resets it to 0 at the start of every `extresist` command and nothing sets it during such a run, so the delay test reads 0 and withholds every net with `C > 0` when mindelay > 0; with it OFF no delay test applies to the net (proposed Q-NETLIST-72).
 Compatibility: exact
-(Magic ref: resis/ResRex.c:2093-2180, resis/ResRex.c:1270-1300)
+(Magic ref: resis/ResRex.c:2093-2180, resis/ResRex.c:1270-1300, resis/ResRex.c:202-240, resis/ResSimple.c:965-1020)
 
 #### Scenario: Short network withheld
 - **GIVEN** rthresh 10000 and a network whose maxres is 8000 mΩ
 - **WHEN** output is decided
 - **THEN** nothing is written for the net, unless it is forced
+
+#### Scenario: No delay computed with magic-compat ON
+- **GIVEN** `magic-compat` ON, mindelay > 0, a run with simplification on that computed a delay above mindelay, then `extresist simplify off` and another run
+- **WHEN** the second run decides output for a net with `C > 0`
+- **THEN** the delay test reads 0 (ResInit's reset), not the first run's delay, and the net is withheld (proposed Q-NETLIST-72)
+
+#### Scenario: No delay computed with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same runs
+- **WHEN** the second run decides output for the net
+- **THEN** no delay test applies and the net is written (proposed Q-NETLIST-72)
 
 ### Requirement: Lumped resistance file
 With `lumped on`, each processed net that was extracted without error SHALL append `R <net> <r>` to `<cell>.res.lump`. When mindelay > 0, `r = (int)((Tdi / C_total) / 1000)`, or 0 if the capacitance is 0. Otherwise `r = (int)(maxres / 1000)`. In both cases r is in Ω.

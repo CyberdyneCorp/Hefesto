@@ -144,7 +144,7 @@ Compatibility: behavioral
 
 ### Requirement: Output path and file location
 
-`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
+`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. With `magic-compat` ON the path and the cell name are joined as Magic's `sprintf("%s/%s")` joins them, so a path with a trailing slash gives `<path>/<cellname>.ext` with a doubled slash (`ext//top.ext`), which the `Extracting <cell> into <file>:` message shows; with it OFF they are joined with one separator (proposed Q-EXTRACT-44). If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
 
 On desktop hosts (macOS, Linux) this SHALL be exactly Magic's behaviour. On iPadOS and any other sandboxed host (X-4) the current directory SHALL be the project folder, the session working directory granted to the sandbox; relative paths resolve against it, directories SHALL be created through the file-coordination service with no POSIX mode, and a path outside the granted roots SHALL fail as unwritable, with the same `Cannot open output file` outcome. Messages are Magic's text on every host (Q-EXTRACT-11, resolution: platform).
 
@@ -157,6 +157,16 @@ Compatibility: behavioral
 - **GIVEN** `extract path ext/` and no `ext/` directory
 - **WHEN** a cell `top` is extracted
 - **THEN** the directory `ext/` is created and `ext/top.ext` is written
+
+#### Scenario: Trailing slash in the path with magic-compat ON
+- **GIVEN** `magic-compat` ON and `extract path ext/`
+- **WHEN** a cell `top` is extracted
+- **THEN** the file is named `ext//top.ext`, as in Magic (proposed Q-EXTRACT-44)
+
+#### Scenario: Trailing slash in the path with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and `extract path ext/`
+- **WHEN** a cell `top` is extracted
+- **THEN** the file is named `ext/top.ext` (proposed Q-EXTRACT-44)
 
 #### Scenario: Path outside the sandbox
 - **GIVEN** a sandboxed host and `extract path /tmp/ext` outside the granted roots

@@ -409,3 +409,13 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Options: fix (as implemented) | replicate (not possible for uninitialised values)
 - Recommendation: fix.
 - Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and scenario "Driver label on space", applied in round R5); the row ID is cited there on approval.
+
+### Q-EXTRACT-44: `extract path` with a trailing slash names `<dir>//<cell>.ext`
+- Kind: compat
+- Status: proposed (raised in the M7 round R5 fix pass from a review finding, 2026-11-27; implemented per the standing rule)
+- Magic behavior: ExtFileOpen joins ExtLocalPath and the cell name with `sprintf("%s/%s")`, so `extract path ext/` writes `ext//<cell>.ext`, and the `Extracting <cell> into ext//<cell>.ext:` message shows the doubled slash (capture EX-066). The file is the same; only the printed name differs.
+- Evidence: extract/ExtCell.c:193, :200; golden case EX-066
+- As implemented (R5 fix pass): magic-compat ON joins as Magic (`AtomicOutput` and so `extract` and `extresist`); OFF joins with one separator. Tests: `tests/unit/extract/file/atomic_output_test.cpp` "An extract path with a trailing slash is joined as Magic's sprintf joins it with magic-compat ON" / "... with one separator with magic-compat OFF".
+- Options: compat (as implemented) | replicate (both modes print `//`)
+- Recommendation: compat. ON keeps EX-066 byte-exact; OFF prints the path a user expects.
+- Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode).

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3654 scenarios, 1058 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3670 scenarios, 1059 open questions.
 
 ## Hefesto product (native)
 
@@ -126,12 +126,12 @@ Open questions: [134](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 
 ## Circuit extraction (EXTRACT)
 
-Open questions: [43](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
+Open questions: [44](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`extract-capacitance`](../openspec/specs/extract-capacitance/spec.md) | 13 | 21 | Defines the exact numeric models the extractor uses to compute parasitic capacitance within one flattened area of layout: node capacitance to substrate (area, perimeter and corner … |
-| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 24 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
+| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 26 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
 | [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 29 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
 | [`extract-file-format`](../openspec/specs/extract-file-format/spec.md) | 7 | 7 | Defines the `.ext` file written by the extractor for each cell: the complete grammar of every record the extractor writes, the exact number formatting, the order of records, and an… |
 | [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 16 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
@@ -149,9 +149,9 @@ Open questions: [76](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 | [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 17 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 31 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
-| [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 18 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
-| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 33 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
-| [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 10 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
+| [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 25 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
+| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 36 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
+| [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 14 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 4 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
 | [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 22 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 23 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |

@@ -40,7 +40,7 @@ For a selected net, the extractor SHALL build a private copy of the geometry as 
 
    A contact point holds at most four tiles (LAYERS_PER_CONTACT); a fifth match is ignored in both `magic-compat` settings (Magic writes past its array: undefined behaviour, fixed by the standing rule).
 
-As landed (M7 R4): the contact points of step 3 are found with ExtFindRegions over the scratch cell exactly as Magic runs it, including its region marker: the marker is the head of the contact list, which is null until the first contact is found, so a region that starts on a non-contact tile before then is not expanded. This fixes the order of the contact list (each tile's contact list is that order reversed), which decides the order in which contact nodes are made. The devices of step 2 are found and painted from the net's own cell (a device in a subcell is not painted; tasks.md 13.1).
+As landed (M7 R4): the contact points of step 3 are found with ExtFindRegions over the scratch cell exactly as Magic runs it, including its region marker: the marker is the head of the contact list, which is null until the first contact is found, so a region that starts on a non-contact tile before then is not expanded. This fixes the order of the contact list (each tile's contact list is that order reversed), which decides the order in which contact nodes are made. The devices of step 2 are found in the net's own cell and its subcells, as DBTreeSrTiles searches them: for each use that touches the search area, only the array elements whose images overlap it (DBArrayOverlap), y outer and x inner, in both `magic-compat` settings. With `magic-compat` ON a device tile found in a subcell is painted at the subcell's own coordinates, as Magic's resMakeDevFunc paints it without the search's transform, so a device in a moved or rotated subcell lands at the wrong place; with it OFF it is transformed to the root and painted where it sits (proposed Q-NETLIST-76). In both settings the search descends at most 64 uses (a crafted-input limit, approved 2026-11-25 under the standing rule); a device deeper down is not found and is reported with `No device of type <t> found at location <x>, <y>`.
 
 Compatibility: behavioral
 
@@ -50,6 +50,21 @@ Compatibility: behavioral
 - **GIVEN** `extresist skip poly` and a net that continues from metal1 through a contact onto poly
 - **WHEN** the geometry is collected
 - **THEN** the poly portion is not part of the copied net
+
+#### Scenario: Device in a moved subcell with magic-compat ON
+- **GIVEN** `magic-compat` ON and a net whose nfet is in a subcell placed at (10, 0), its own coordinates [0,10]^2
+- **WHEN** the geometry is collected
+- **THEN** the nfet is painted at [0,10]^2, over the net's own diffusion, and the driver point (10, 0) finds no device, as in Magic (proposed Q-NETLIST-76)
+
+#### Scenario: Device in a moved subcell with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same net
+- **WHEN** the geometry is collected
+- **THEN** the nfet is painted at [10,20]x[0,10] and the network is the flat layout's (proposed Q-NETLIST-76)
+
+#### Scenario: Device search in a large array
+- **GIVEN** a device record at a point between two elements of an array use of 10^6 elements whose indices end at 2^31-1, in either `magic-compat` setting
+- **WHEN** the geometry is collected
+- **THEN** no element is searched, and `No device of type nfet found at location <x>, <y>` is reported at once
 
 ### Requirement: Tile fracturing
 After contacts are dissolved, each plane SHALL be re-tiled by the concave-corner fracture defined below. At each concave corner, the split runs in the direction with less same-type material.
