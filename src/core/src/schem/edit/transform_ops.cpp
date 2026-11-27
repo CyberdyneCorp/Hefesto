@@ -212,6 +212,15 @@ Point selection_centre(EditContext& ec) {
   return snap_point({(r.min.x + r.max.x) / 2.0, (r.min.y + r.max.y) / 2.0}, ec.session().edit.snap.snap);
 }
 
+// The pivot of a `rotate` or `flip` that names none and is not -inplace
+// ("Rotate and flip"): a run without the editor has no pointer, and xschem
+// then uses its last snapped pointer position, the origin; with
+// xschem-compat OFF, the centre of the selection (the desktop editor names
+// the pointer position).
+Point default_pivot(EditContext& ec) {
+  return ec.ctx().project().compat.xschem_compat ? Point{0.0, 0.0} : selection_centre(ec);
+}
+
 // `rotate`, `flip` and `flipv`: `steps` of `kind` (flipv is a flip and two
 // rotation steps).
 cmd::CommandResult turn_body(EditContext& ec, std::span<const std::string> args, std::string_view option,
@@ -224,7 +233,7 @@ cmd::CommandResult turn_body(EditContext& ec, std::span<const std::string> args,
   if ((positional.size() != 0 && positional.size() != 2) || (!positional.empty() && !xy)) return usage(option);
   if (ec.selection().empty()) return cmd::CommandResult::success();
   const bool in_place = parsed.value().has(0);
-  const Point pivot = xy ? Point{(*xy)[0], (*xy)[1]} : selection_centre(ec);
+  const Point pivot = xy ? Point{(*xy)[0], (*xy)[1]} : default_pivot(ec);
   for (const ObjectRef& ref : ec.selection()) {
     const Point p = in_place ? anchor(ec.doc(), ref) : pivot;
     for (const Motion::Kind kind : steps) apply(Motion{kind, {}, p}, ec.doc(), ref);

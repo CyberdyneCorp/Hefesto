@@ -355,3 +355,29 @@ TEST_CASE("save writes an embedded symbol that places an instance as built", kEm
     CHECK(block.find("B 7 97.5 -2.5 102.5 2.5 {name=P dir=inout}\n") != std::string::npos);
   }
 }
+
+// Regression (M8 round 6 review): save embedded the blocks into the open
+// document before the save could fail, so a save refused because the file
+// changed on disk had already replaced the embedded symbol that places
+// `b.sym` by its flattened copy (no `C` record), with no undo step.
+TEST_CASE("a refused save leaves the embedded symbols unchanged", kEmbedded) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/b.sym", kBSymbol);
+    s.folder().write("w/top.sch", kNestedTop);
+    run(s, {"open", s.folder().str("w/top.sch")});
+    s.folder().write("w/top.sch", kNestedTop + "L 4 0 0 1 1 {}\n");  // changed by someone else
+    const cmd::CommandResult refused = s.schematic({"save"});
+    REQUIRE_FALSE(refused.ok());
+    REQUIRE(active(s).embedded.size() == 1);
+    const schem::Document& a = active(s).embedded[0].symbol;
+    REQUIRE(a.instances.size() == 1);
+    CHECK(a.instances[0].symbol == "b.sym");
+    CHECK(a.lines.size() == 1);
+    // With -force the save goes through and writes the block as built.
+    run(s, {"save", "-force"});
+    CHECK(s.folder().read("w/top.sch").find("L 4 100 0 100 5 {}\n") != std::string::npos);
+  }
+}

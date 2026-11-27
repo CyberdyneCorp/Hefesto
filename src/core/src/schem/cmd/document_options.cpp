@@ -241,9 +241,14 @@ cmd::CommandResult option_save(cmd::CommandContext& ctx, Session& session, std::
   if (destination.empty()) return usage("save");
   SaveOptions options;
   options.overwrite_changed_file = parsed.value().has(0);
-  embed_symbols(ctx, session, document);
-  const auto saved = save_document(ctx.services().files, document, destination, options);
+  // The blocks are embedded into a copy: a refused or failed save leaves
+  // the document as it was (an embedded symbol that places instances is
+  // written flattened, without its `C` records).
+  Document out = document;
+  embed_symbols(ctx, session, out);
+  const auto saved = save_document(ctx.services().files, out, destination, options);
   if (!saved) return fail(saved.error());
+  document = std::move(out);
   session.symbols.forget(destination);
   return cmd::CommandResult::success(destination.generic_string());
 }
