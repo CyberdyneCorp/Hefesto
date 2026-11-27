@@ -174,7 +174,7 @@ def sg13g2_op(path):
 
 def osdi_dynamic(path):
     e = Engine(path)
-    e.command("osdi /nonexistent/psp103_nqs.osdi")
+    e.command("osdi /nonexistent/not_built_in.osdi")
     return e, {}
 
 
