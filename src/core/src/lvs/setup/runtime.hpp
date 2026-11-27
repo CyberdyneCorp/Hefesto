@@ -174,6 +174,8 @@ void apply_property_default(Runtime& runtime);
 
 /// The property of interest `key` of `cell`, or nullptr.
 [[nodiscard]] PropertyDef* find_definition(Cell& cell, std::string_view key) noexcept;
+/// Removes the properties of interest `keys`; a missing one is reported.
+void delete_keys(Runtime& runtime, Cell& cell, std::span<const std::string> keys);
 /// `No property <k> found for device <c>`.
 void report_missing_property(Runtime& runtime, const Cell& cell, std::string_view key);
 /// `property <c> series|serial|parallel ...`.

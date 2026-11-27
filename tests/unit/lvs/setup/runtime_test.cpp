@@ -129,6 +129,9 @@ TEST_CASE("An empty setup name applies the trivial default setup", "[cap:lvs-set
   const auto state = lvs::evaluate_setup(lvs::Source{"", std::nullopt}, ctx);
   REQUIRE(state.ok());
   CHECK(logged(state.value(), "No setup file specified.  Using trivial default setup."));
+  // property default deletes as/ad/ps/pd and reports the missing ones (capture of NG-SET-02).
+  CHECK(logged(state.value(), "No property as found for device nfet"));
+  CHECK(logged(state.value(), "No property pd found for device pfet"));
   CHECK(state.value().log.front().text.empty());
   CHECK_FALSE(state.value().evaluated);
   CHECK(pair.cell(1, "nfet").permutes.size() == 1);
@@ -142,7 +145,7 @@ TEST_CASE("Missing setup files: nosetup continues, others end the command", "[ca
   ctx.files = &files;
   const auto none = lvs::evaluate_setup(lvs::Source{"/nonexistent/dir/nosetup", std::nullopt}, ctx);
   REQUIRE(none.ok());
-  CHECK(logged(none.value(), "No setup file specified.  Continuing without a setup."));
+  CHECK(logged_error(none.value(), "No setup file specified.  Continuing without a setup."));
   CHECK(pair.cell(1, "nfet").permutes.empty());
   const auto missing = lvs::evaluate_setup(lvs::Source{"/nonexistent/dir/foo.tcl", std::nullopt}, ctx);
   REQUIRE_FALSE(missing.ok());

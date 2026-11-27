@@ -291,7 +291,10 @@ diag::Outcome<std::optional<std::string>> load(const Source& setup, SetupContext
   const platform::Path path{setup.name};
   if (context.files == nullptr || !context.files->exists(path)) {
     if (setup.name.find("nosetup") != std::string::npos) {
-      runtime.print("No setup file specified.  Continuing without a setup.");
+      // stderr, between blank lines (capture of NG-SET-02).
+      runtime.print_error("");
+      runtime.print_error("No setup file specified.  Continuing without a setup.");
+      runtime.print_error("");
       return std::optional<std::string>{};
     }
     return diag::make(setup_codes::kMissingFile, "Error:  Setup file " + setup.name + " does not exist.");

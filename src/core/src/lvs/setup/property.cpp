@@ -194,13 +194,7 @@ cmd::CommandResult remove(Runtime& runtime, const Resolved& cells, std::span<con
       cell.properties.clear();
       continue;
     }
-    for (const auto& key : keys) {
-      const auto removed = std::erase_if(
-          cell.properties, [&key](const PropertyDef& def) { return names_equal(def.key, key, true); });
-      if (removed == 0) {
-        report_missing_property(runtime, cell, key);
-      }
-    }
+    delete_keys(runtime, cell, keys);
   }
   return cmd::CommandResult::success();
 }
@@ -356,6 +350,16 @@ PropertyDef* find_definition(Cell& cell, std::string_view key) noexcept {
   return nullptr;
 }
 
+void delete_keys(Runtime& runtime, Cell& cell, std::span<const std::string> keys) {
+  for (const auto& key : keys) {
+    const auto removed =
+        std::erase_if(cell.properties, [&key](const PropertyDef& def) { return names_equal(def.key, key, true); });
+    if (removed == 0) {
+      report_missing_property(runtime, cell, key);
+    }
+  }
+}
+
 void report_missing_property(Runtime& runtime, const Cell& cell, std::string_view key) {
   runtime.print("No property " + std::string{key} + " found for device " + cell.name);
 }
@@ -387,10 +391,10 @@ void apply_property_default(Runtime& runtime) {
       const DeviceClass c = cell.device_class;
       if (is_transistor(c)) {
         apply(cell, kTransistor);
-        std::erase_if(cell.properties, [](const PropertyDef& def) {
-          return names_equal(def.key, "as", true) || names_equal(def.key, "ad", true) ||
-                 names_equal(def.key, "ps", true) || names_equal(def.key, "pd", true);
-        });
+        // Deleted as `property <c> delete as ad ps pd` deletes them: a missing
+        // key prints its message (captures of NG-SET-01, NG-SET-02).
+        static const std::array<std::string, 4> kDiffusion{"as", "ad", "ps", "pd"};
+        delete_keys(runtime, cell, kDiffusion);
       } else if (is_resistor(c) || is_capacitor(c) || c == DeviceClass::inductor) {
         apply(cell, is_resistor(c) ? std::span<const Rule>{kResistor}
                     : is_capacitor(c) ? std::span<const Rule>{kCapacitor}
