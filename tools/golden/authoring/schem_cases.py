@@ -1332,7 +1332,7 @@ def deviation_block(all_specs: list[Spec]) -> str:
 # Cases whose file outputs and exit status match the capture (M8 round 5, tasks 8.4-8.6 and 10.1;
 # SCHEM-SIM-01's deck in round 6; SCHEM-PR-01 and the xschem sides of NL-22 and RT-06 in round 7).
 REPLAYED: frozenset[str] = frozenset({
-    "SCHEM-CMD-01", "SCHEM-LVS-01",
+    "SCHEM-CMD-01", "SCHEM-CMD-02", "SCHEM-LVS-01",
     "SCHEM-NL-01", "SCHEM-NL-02", "SCHEM-NL-03", "SCHEM-NL-04", "SCHEM-NL-06", "SCHEM-NL-07", "SCHEM-NL-08",
     "SCHEM-NL-09", "SCHEM-NL-10", "SCHEM-NL-11", "SCHEM-NL-12", "SCHEM-NL-13", "SCHEM-NL-14", "SCHEM-NL-15",
     "SCHEM-NL-16", "SCHEM-NL-17", "SCHEM-NL-18", "SCHEM-NL-19", "SCHEM-NL-20", "SCHEM-NL-22",

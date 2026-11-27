@@ -557,11 +557,6 @@ deferred = "M9"
 outputs = ["layout.spice", "lvs.out", "stdout.txt", "stderr.txt"]
 reason = "schematic-driven LVS (lvs.out, the match result and the cross-probe map) needs the lvs-* capabilities, which m8-schematic design D13 places in M9 (Q-SCHEM-39, approved 2026-11-22); the captures are kept; M8 checks inv_1.spice (deferred_outputs); stdout.txt holds netgen's comparison report"
 
-[SCHEM-CMD-02]
-deferred = "M8"
-outputs = ["div.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
-
 # --- end SCHEM ---
 
 # --- LEFDEF (approved fixes, m6-lef-def-oasis task 15.7) ---
