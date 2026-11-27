@@ -97,6 +97,15 @@ bool is_driver_code(std::string_view code) noexcept {
   return code == net_codes::kUndrivenNode || code == net_codes::kOpenNet || code == net_codes::kShortedOutput;
 }
 
+/// The pins of one instance by their `dir`; a label's pin counts nothing.
+void count_pins(const Level& level, const Placed& p, NameCounts& names) {
+  const auto& nets = level.naming.pin_nets[p.index];
+  const bool label = p.type == "label";
+  for (std::size_t k = 0; k < nets.size() && k < p.order.size(); ++k) {
+    names.pin(nets[k], label ? std::string_view{} : std::string_view{p.symbol->pins[p.order[k]].direction});
+  }
+}
+
 /// The names of `level` in the order it gives them (labels and ports,
 /// wires, other pins), each with the pins that carry it; the name that lost
 /// a short carries none.
@@ -108,12 +117,7 @@ NameCounts level_names(const Level& level) {
   }
   for (const std::string& net : level.naming.wire_nets) names.name(net);
   for (const Placed& p : level.instances) {
-    if (p.ignored) continue;
-    const auto& nets = level.naming.pin_nets[p.index];
-    const bool label = p.type == "label";  // labels count nothing
-    for (std::size_t k = 0; k < nets.size() && k < p.order.size(); ++k) {
-      names.pin(nets[k], label ? std::string_view{} : std::string_view{p.symbol->pins[p.order[k]].direction});
-    }
+    if (!p.ignored) count_pins(level, p, names);
   }
   for (const NetShort& lost : level.naming.shorts) names.name(lost.incoming);
   return names;
@@ -141,8 +145,13 @@ BitCounts bit_counts(const NameCounts& names, const std::unordered_set<std::stri
 
 }  // namespace
 
+/// A new level of the report; the level's shorts go after the last
+/// separator.
 void NetlistRun::open_report_level(const Level& level) {
   result_.report.push_back(DriverReportLevel{level.document->path, {}, {}});
+  for (const diag::Diagnostic& d : level.naming.diagnostics) {
+    if (d.code == net_codes::kShort) result_.report_shorts.push_back("Error: " + d.text);
+  }
 }
 
 void NetlistRun::report_line(std::string line) {

@@ -215,9 +215,6 @@ std::size_t NetlistRun::width_of(const std::string& name) {
 /// warning for instances whose pins all touch nothing.
 void NetlistRun::record_naming(const Level& level) {
   for (const diag::Diagnostic& d : level.naming.diagnostics) {
-    if (d.code == net_codes::kShort) {
-      result_.report_shorts.push_back("Error: " + d.text);
-    }
     result_.diagnostics.push_back(d);
   }
   result_.failed = result_.failed || level.naming.failed();
