@@ -16,6 +16,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
@@ -113,6 +114,12 @@ class Outputs(unittest.TestCase):
         self.assertEqual(len(failures), 2)
         self.assertIn("hefesto wrote no output", failures[0])
         self.assertIn("cell count 442 (Hefesto) vs 441 (Magic)", failures[1])
+
+    def test_a_failed_magic_run_fails_the_extract_bench(self):
+        def crash(tool, *_args):
+            raise RuntimeError(f"{tool} exited 139:\n")
+        with mock.patch.object(bench, "measure", side_effect=crash), self.assertRaises(RuntimeError):
+            bench.measure_row(bench.BENCH, "magic", bench.Workload("extract", "", "", "top.ext"), None, Path("."))
 
 
 class Gate(unittest.TestCase):

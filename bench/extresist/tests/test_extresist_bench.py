@@ -10,10 +10,13 @@ Run with: python3 -m unittest discover -s bench/extresist/tests
 """
 
 import argparse
+import contextlib
+import io
 import importlib.util
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
@@ -63,6 +66,21 @@ class Extresist(unittest.TestCase):
             (variant / "libs.ref" / "sky130_fd_sc_hd" / "mag").mkdir(parents=True)
             with self.assertRaisesRegex(FileNotFoundError, "sky130-lef"):
                 extresist.prepare(work, argparse.Namespace(components=10, pdk_root=str(pdk)))
+
+    def test_a_failed_magic_run_is_information(self):
+        """Regression: Magic's crash in the timing step stopped Hefesto's timing too (run 46058621323)."""
+        def measure(tool, *_args):
+            if tool == "magic":
+                raise RuntimeError("docker exited 139:\nSegmentation fault")
+            return bench.Timing(tool=tool, base_s=[1.0], op_s=[3.0], count="411", output_size=5, devices=2)
+        args = argparse.Namespace(workload="all", magic=None, magic_image="hefesto-golden:ci")
+        with mock.patch.object(bench, "measure", side_effect=measure), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            results, failures = bench.run(extresist.BENCH, args, Path("."))
+        self.assertEqual(failures, [])
+        self.assertEqual(results["extresist"]["hefesto_s"], 2.0)
+        self.assertNotIn("magic_s", results["extresist"])
+        self.assertIn("magic failed", out.getvalue())
 
 
 if __name__ == "__main__":

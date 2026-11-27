@@ -121,6 +121,7 @@ class Bench:
     prepare: Callable[[Path, argparse.Namespace], None]           # raises FileNotFoundError or ValueError
     workloads: Callable[[Path, argparse.Namespace], dict[str, Workload]]
     add_arguments: Callable[[argparse.ArgumentParser], None] = lambda parser: None
+    magic_gates: bool = True  # False: Magic is information, and a failed Magic run is reported, not a failure
 
 
 def block_workloads(mag_dir: Path) -> dict[str, Workload]:
@@ -267,14 +268,31 @@ def emit(bench: Bench, args: argparse.Namespace) -> int:
     return 0
 
 
+def measure_row(bench: Bench, tool: str, workload: Workload, args: argparse.Namespace, work: Path) -> dict | None:
+    """The tool's result row, or None when Magic, information only for this bench, failed (e.g. crashed)."""
+    try:
+        return result_row(measure(tool, workload, args, work))
+    except RuntimeError as error:
+        if tool != "magic" or bench.magic_gates:
+            raise
+        reason = str(error).splitlines()[0]
+        print(f"{bench.name}: {workload.name}: magic failed, no Magic timing (information): {reason}", flush=True)
+        return None
+
+
 def run(bench: Bench, args: argparse.Namespace, work: Path) -> tuple[dict[str, dict], list[str]]:
-    tools = list(TOOLS) if (args.magic or args.magic_image) else ["hefesto"]
+    requested = list(TOOLS) if (args.magic or args.magic_image) else ["hefesto"]
     results: dict[str, dict] = {}
     failures: list[str] = []
     for workload in selected(bench, args, work):
         row: dict = {}
-        for tool in tools:
-            for key, value in result_row(measure(tool, workload, args, work)).items():
+        tools = []
+        for tool in requested:
+            measured = measure_row(bench, tool, workload, args, work)
+            if measured is None:
+                continue
+            tools.append(tool)
+            for key, value in measured.items():
                 row[f"{tool}_{key}"] = value
         results[workload.name] = row
         failures += row_failures(workload.name, row, tools)

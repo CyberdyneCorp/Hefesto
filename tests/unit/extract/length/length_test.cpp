@@ -209,6 +209,7 @@ TEST_CASE("Path length: Q-EXTRACT-42: a receiver touching two yanked tiles is li
   CHECK(records[0].receiver == "r");
 }
 
+// Q-EXTRACT-43 (fix, both modes): this case, the 64-bit sum and the heap flood below.
 TEST_CASE("Path length: a driver label on space writes no record (Magic prints stale values)",
           "[cap:extract-commands][req:Path length extraction]") {
   for (const bool compat : {true, false}) {

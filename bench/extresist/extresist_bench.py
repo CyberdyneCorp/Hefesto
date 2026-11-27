@@ -19,7 +19,9 @@ technology, the DEF read, `extract all` and the box; the op script adds
 `extresist all`. perf.yml's extresist-bench job runs both under callgrind;
 bench/lefdef/baseline_gate.py gates Hefesto's count at its baseline
 (bench/extresist/baseline.json) + 2 % and reports Magic's count (extresist has
-no spec target, Open Question 5 (a)).
+no spec target, Open Question 5 (a)). A failed Magic run (Magic 8.3.694
+crashes in ResScrunchNet on this block, the null case Q-NETLIST-47 skips) is
+reported and leaves Magic's columns out; it is not a failure.
 
   python3 bench/extresist/extresist_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \\
       --magic-image hefesto-golden:ci --json extresist-bench.json
@@ -89,7 +91,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                         help="cells of the DEF block (the baseline is recorded for the default)")
 
 
-BENCH = EXTRACT_BENCH.Bench("extresist_bench", ("extresist",), prepare, workloads, add_arguments)
+BENCH = EXTRACT_BENCH.Bench("extresist_bench", ("extresist",), prepare, workloads, add_arguments, magic_gates=False)
 
 
 def main(argv: list[str]) -> int:
