@@ -244,6 +244,10 @@ struct EditorState {
   // RESCMD / RESNET: the `extresist` options and the path-resistance heap
   // (extresist/command/session.hpp).
   extresist::ResistSession extresist;
+  // ANTENNA: `antennacheck debug` armed for this session's next run
+  // (Magic's efAntennaDebug; antenna/antenna.cpp clears it when a run
+  // reaches its end).
+  bool antenna_debug = false;
 
   // ---- M8 (openspec/changes/m8-schematic/design.md D4) ----
 

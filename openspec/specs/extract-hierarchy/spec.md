@@ -100,12 +100,22 @@ Compatibility: exact (values and name pairs); behavioral (record order, see Q-EX
 
 When `adjust` is on, for each interaction the cumulative area SHALL be re-extracted within C (nodes, labels, and coupling when `coupling` is on); for each cumulative node whose name is a hierarchical node, its capacitance and per-class area and perimeter SHALL be added to that node; then for each subtree (parent included) and each of its nodes that maps (by its reference point) to a cumulative node with a name in the table, the subtree node's values SHALL be subtracted. Thus the adjustment equals (value of the merged geometry) − (sum of values of the separately extracted pieces), restricted to C and summed over all interactions.
 
-When a later interaction unifies two hierarchical nodes that both hold adjustments, Magic keeps only the values of the node that survives the unification (the other node's are dropped). With `magic-compat` ON Hefesto does the same; with it OFF the two nodes' values are added (as-landed in M7 round 4; Q-row proposed, pending).
+When a later interaction unifies two hierarchical nodes that both hold adjustments, the result depends on the `magic-compat` setting (Q-EXTRACT-40, resolution: compat, approved 2026-11-25): with it ON, as in Magic, only the values of the node that survives the unification SHALL be kept and the other node's capacitance and per-class area and perimeter are dropped; with it OFF the freed node's values SHALL be added to the survivor's, so the merge record carries the sum of both adjustments.
 
 #### Scenario: Unifying two adjusted nodes
 - **GIVEN** hierarchical nodes `a` (C −10) and `b` (C −5, class area −4, perimeter −2), `a` with at least as many names as `b`
 - **WHEN** `a` and `b` are unified
-- **THEN** the node keeps C −10 and 0 0 with magic-compat ON, and has C −15 and −4 −2 with it OFF
+- **THEN** the node keeps C −10 and 0 0 with magic-compat ON, and has C −15 and −4 −2 with it OFF (Q-EXTRACT-40)
+
+#### Scenario: Unifying two adjusted nodes in a later step square with magic-compat ON
+- **GIVEN** `magic-compat` ON and the layout of `tests/data/extract/hier/unify/`, where a later step square unifies `c1/b` and `p2` after both received adjustments
+- **WHEN** the parent is extracted
+- **THEN** the record is `merge "c1/b" "p2" -820 …`, the survivor's adjustment only (Q-EXTRACT-40)
+
+#### Scenario: Unifying two adjusted nodes in a later step square with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same layout
+- **WHEN** the parent is extracted
+- **THEN** the record is `merge "c1/b" "p2" -1220 …`, the sum of both adjustments (Q-EXTRACT-40)
 
 (Magic ref: extract/ExtSubtree.c:514-580, extract/ExtSubtree.c:582-612, extract/ExtHier.c:1014-1180)
 

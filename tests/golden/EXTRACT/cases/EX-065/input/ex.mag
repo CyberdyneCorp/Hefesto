@@ -1,0 +1,12 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 20 10 24
+use myinv c1
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 14
+<< labels >>
+rlabel metal1 5 22 5 22 0 t
+<< end >>

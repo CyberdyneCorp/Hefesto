@@ -1,0 +1,10 @@
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+port "A" 1 50 90 150 100 m1
+node "gnd" 2 20 0 0 m1 0 0 0 0 2000 420 0 0 0 0 0 0
+node "A" 1 10 50 90 m1 0 0 0 0 1000 220 0 0 0 0 0 0
+node "vpwr" 2 20 0 190 m1 0 0 0 0 2000 420 0 0 0 0 0 0

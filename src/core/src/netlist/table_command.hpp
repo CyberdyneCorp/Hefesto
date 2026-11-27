@@ -5,7 +5,8 @@
 // antennacheck (openspec/changes/m7-extraction/design.md D4): the
 // first-word rule (netlist/first_word.hpp), `help` printing each table
 // entry as `    <entry>` (Magic's usage loop), the run path, and
-// CORE-NOTIMPL-008 for every option the scaffold has not landed.
+// CMD-INTERNAL-001 for an option no handler takes (unreachable: every
+// option is handled; CORE-NOTIMPL-008 is retired, tasks.md 19.5).
 //
 // Owner: INTEGRATION.
 
@@ -30,7 +31,7 @@ struct TableCommand {
   /// The run path, with the run arguments.
   std::function<cmd::CommandResult(cmd::CommandContext&, std::vector<std::string>)> run;
   /// The options already implemented: called with the option index; returns
-  /// nullopt for an option it does not handle (CORE-NOTIMPL-008). May be
+  /// nullopt for an option it does not handle (CMD-INTERNAL-001). May be
   /// empty.
   std::function<std::optional<cmd::CommandResult>(cmd::CommandContext&, const cmd::Invocation&, std::size_t)> option;
 };

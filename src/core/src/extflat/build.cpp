@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstdlib>
+#include <string>
 
 #include "hier_name.hpp"
 #include "text.hpp"
@@ -612,13 +613,33 @@ Device* place_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view
   return &def.devices.back();
 }
 
+bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
+                       std::span<const std::string> args, std::uint32_t term0);
+
+// Q-NETLIST-31 and Q-NETLIST-60 with magic-compat OFF: a shorted-port
+// device's own terminal-0 node, as efBuildDevNode would create it, named
+// `dummy#<n>` (numbered per cell from 0) and kept out of `def.names`, so
+// no record's name reaches it.
+std::uint32_t anonymous_short_node(ReadState& st, Def& def) {
+  GraphNode node;
+  node.pa.resize(st.classes());
+  const std::uint32_t id = def.graph.add_node(std::move(node));
+  const std::uint32_t name = def.graph.add_name("dummy#" + std::to_string(def.short_nodes++), id);
+  def.graph.name(name).anonymous = true;
+  def.graph.link_head(id, name);
+  return id;
+}
+
 // The zero-valued resistor or voltage source between two shorted ports
 // (efBuildEquiv and efBuildMerge with `short resistor`/`short voltage`).
+// Terminal 0 is the cell's shared node `dummy` with magic-compat ON, as in
+// Magic, and a node of its own with it OFF (Q-NETLIST-31).
 void build_short_device(ReadState& st, Def& def, std::string_view name1, std::string_view name2) {
   const std::array<std::string, 10> argv{"0.0", "dummy", "0", "0", std::string{name1}, "0", "0",
                                          std::string{name2}, "0", "0"};
   const std::uint8_t cls = st.options.shorts == ReadOptions::PortShorts::resistor ? kRes : kVsource;
-  (void)build_device(st, def, cls, "None", db::Rect{}, argv);
+  const std::uint32_t term0 = st.magic_compat() ? kNil : anonymous_short_node(st, def);
+  (void)build_device_impl(st, def, cls, "None", db::Rect{}, argv, term0);
 }
 
 bool shorts_on(const ReadState& st) noexcept {
@@ -826,8 +847,12 @@ void build_use(ReadState& st, Def& def, std::string_view def_name, std::string_v
   entry.value = static_cast<std::uint32_t>(def.uses.size() - 1);
 }
 
-bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
-                  std::span<const std::string> args) {
+namespace {
+
+// efBuildDevice; `term0`, when set, is terminal 0's node instead of the
+// one its name designates.
+bool build_device_impl(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
+                       std::span<const std::string> args, std::uint32_t term0) {
   DevScratch t;
   std::size_t termstart = parse_params(st, type, args, terminal_start(cls, type != "None"), t);
   if (termstart > args.size()) {
@@ -853,7 +878,7 @@ bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view ty
   for (std::size_t n = 0; n < terminals; ++n) {
     const std::string& attrs = args[termstart + 3 * n + 2];
     DevTerm term;
-    term.node = build_dev_node(st, def, args[termstart + 3 * n], false);
+    term.node = (n == 0 && term0 != kNil) ? term0 : build_dev_node(st, def, args[termstart + 3 * n], false);
     term.length = c_atoi(args[termstart + 3 * n + 1]);
     if (attrs != "0") {
       term.attrs = attrs;
@@ -861,6 +886,13 @@ bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view ty
     def.devices[index].terms[n] = std::move(term);
   }
   return true;
+}
+
+}  // namespace
+
+bool build_device(ReadState& st, Def& def, std::uint8_t cls, std::string_view type, const db::Rect& r,
+                  std::span<const std::string> args) {
+  return build_device_impl(st, def, cls, type, r, args, kNil);
 }
 
 void build_short(ReadState& st, Def& def, std::span<const std::string> args) {

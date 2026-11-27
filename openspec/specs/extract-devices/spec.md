@@ -11,6 +11,8 @@ Terminology: the *device type* is a tile type with at least one device record; t
 ### Requirement: Device regions
 
 Device regions SHALL be the connected components of device-type paint under the device connectivity (types declared in the same device line connect; see `extract-tech-section`). Each region SHALL have: a representative tile (the first tile visited), a reference point computed like a node's (lowest plane, minimum left x, then minimum bottom y; see `extract-nodes-and-labels`), a reference plane, and an area equal to the summed area of its tiles on its lowest plane (split tiles: area/2 by integer division). Regions SHALL be processed and written in region-list order: the reverse of discovery order (planes in increasing order, tiles in plane enumeration order; see Q-EXTRACT-5).
+
+When one device line lists several gate types, so that touching tiles of different types form one region, the result depends on the `magic-compat` setting (Q-EXTRACT-41, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the region is one device whose record is selected from the representative tile's type and whose tiles are those of the representative tile's gate node, so the other type's half is not a device; with it OFF the device connectivity SHALL be split per type, so each type's tiles form their own region and device. With it OFF a multi-type gate line (for example sky130's `nfet,scnfet`) therefore gives one device per type wherever two of its types touch.
 Compatibility: exact
 
 (Magic ref: extract/ExtBasic.c:241-250, extract/ExtBasic.c:4976-5050)
@@ -68,10 +70,11 @@ Compatibility: exact
 - **WHEN** the cell is extracted
 - **THEN** the record uses model `nfet_hv`; an nfet without `thkox` uses model `nfet`
 
-#### Scenario: Two device types touching in one device region (as landed, M7 round 4; Q-row proposed)
+#### Scenario: Two device types touching in one device region (Q-EXTRACT-41, resolution: compat, approved 2026-11-25)
 - **GIVEN** `device mosfet cmos nfet,pfet ndiff,pdiff None GND!` (so the device connectivity joins nfet and pfet), then `device mosfet nmos nfet ndiff None GND!` and `device mosfet pmos pfet pdiff None VDD!`, and an nfet (0,0)-(2,4) under a pfet (0,4)-(2,8), each between its own diffusion and with its own gate poly
 - **WHEN** the cell is extracted
-- **THEN** with magic-compat ON one device is written, `device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" ...`, from the type and node of the region's representative tile (the pfet), and the nfet is not a device (as Magic, EX-P03); with magic-compat OFF each device type is its own device (`nmos` with `g1`, `s1`, `d1` and `pmos` with `g2`, `s2`, `d2`)
+- **THEN** with magic-compat ON one device is written, `device mosfet pmos 0 0 1 1 2 4 "VDD!" "g2" ...`, from the type and node of the region's representative tile (the pfet), and the nfet is not a device (as Magic, EX-P03)
+- **AND** with magic-compat OFF each device type is its own device (`nmos` with `g1`, `s1`, `d1` and `pmos` with `g2`, `s2`, `d2`)
 
 ### Requirement: Terminals off the device plane
 
@@ -254,7 +257,9 @@ See Q-EXTRACT-15 for zero width or area.
 
 ### Requirement: Model selection by parameter ranges
 
-After dimensions are computed, the selected record SHALL be checked against its parameter ranges (min ≤ max): `a`/`a0` against L·W, `aN` against terminal N's area, `p`/`p0` against 2(L+W), `pN` against terminal N's perimeter, `l`/`l0` against L, `lN` against terminal N's length, any `w*` against W. If any check fails, the next record in list order SHALL be tried if it has the same class, terminal count, terminal masks, substrate types and identifier types; the first passing record SHALL be used; if the list ends or an incompatible record is reached, the original record SHALL be used with `Device parameters do not match any extraction model.`
+After dimensions are computed, the selected record SHALL be checked against its parameter ranges (min ≤ max): `a`/`a0` against L·W, `aN` against terminal N's area, `p`/`p0` against 2(L+W), `pN` against terminal N's perimeter, `l`/`l0` against L, `lN` against terminal N's length, any `w*` against W. If any check fails, the next record in list order SHALL be tried if it has the same class, terminal count, terminal masks, substrate types and identifier types; the first passing record SHALL be used; if the list ends or an incompatible record is reached, the message `Device parameters do not match any extraction model.` SHALL be printed and the record used depends on the `magic-compat` setting (Q-EXTRACT-35, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the last record tried (`newdevptr = devptr`); with it OFF the original record.
+
+A range with only a lower limit (such as `l>=5`, which leaves the maximum at −1) depends on the `magic-compat` setting (Q-EXTRACT-34, resolution: compat, approved 2026-11-25): with it ON, as in Magic, a range whose minimum exceeds its maximum is skipped, so a lower limit alone never rejects a record; with it OFF the lower limit SHALL be checked and the maximum is unbounded.
 Compatibility: exact
 
 (Magic ref: extract/ExtBasic.c:2060-2200)
@@ -263,6 +268,26 @@ Compatibility: exact
 - **GIVEN** records declared `device mosfet nshort nfet ndiff None GND! l<5` then `device mosfet nlong nfet ndiff None GND! l>=5` (so `nlong` is tried first)
 - **WHEN** a gate of length 2 is extracted
 - **THEN** `nlong` fails its range and `nshort` is used
+
+#### Scenario: A lower limit alone with magic-compat ON (EX-037)
+- **GIVEN** `magic-compat` ON, `device mosfet nshort nfet ndiff None GND!` then `device mosfet nlong nfet ndiff None GND! l>=5`, and gates of length 2 and 8
+- **WHEN** the cell is extracted
+- **THEN** both gates are written as `nlong`, as Magic writes EX-037 (Q-EXTRACT-34)
+
+#### Scenario: A lower limit alone with magic-compat OFF (EX-037)
+- **GIVEN** `magic-compat` OFF and the same records and gates
+- **WHEN** the cell is extracted
+- **THEN** the gate of length 2 is `nshort` and the gate of length 8 is `nlong` (Q-EXTRACT-34)
+
+#### Scenario: No record passes with magic-compat ON
+- **GIVEN** `magic-compat` ON and three compatible records `m1 l<2`, `m2 l<3`, `m3 l<4` tried in that order, and a gate of length 10
+- **WHEN** the cell is extracted
+- **THEN** `Device parameters do not match any extraction model.` is printed and the device uses `m3`, the last record tried (Q-EXTRACT-35)
+
+#### Scenario: No record passes with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same records and gate
+- **WHEN** the cell is extracted
+- **THEN** the message is printed and the device uses `m1`, the starting record (Q-EXTRACT-35)
 
 ### Requirement: Terminal output and ordering
 
@@ -293,6 +318,8 @@ Compatibility: exact
 When the cell has a property `device`, all node resistances and capacitances SHALL be zeroed and coupling records suppressed. If the value starts with `primitive `, `parameters :<cellname> <rest>` SHALL be written and, after the nodes, the line `primitive`. Otherwise the value SHALL be parsed as `CLASS MODEL LLX LLY URX URY [D1 D2] REST...`: CLASS by prefix lookup in the class-name table, coordinates as integers multiplied by units-per-lambda (truncated to int), URX/URY incremented by 1 when not greater than LLX/LLY; D1 D2 present for classes fet (area·upl², perimeter·upl), mosfet/asymmetric/bjt (width·upl, length·upl), and devres/devcap/devcaprev with model ≠ `None` (as width/area·upl^k, length/perimeter·upl); the line `device <class> <model> <llx> <lly> <urx> <ury>` (or `fet ...`) plus ` D1 D2` and the remaining tokens verbatim SHALL replace normal device output. Parse errors SHALL report `Extract error:  "device" property has unknown device type: <t>` or `Extract error:  "device <class>" property syntax error` and normal device output SHALL be used.
 Compatibility: exact
 
+The line written from a property that is not `primitive` depends on the `magic-compat` setting (Q-EXTRACT-39, resolution: compat, approved 2026-11-25): with it ON, as in Magic, it ends without a newline, so the `.ext` of such a cell ends without one and in a hierarchical cell the next record is joined onto the same line; with it OFF it SHALL end with a newline.
+
 D1 and D2 SHALL be written in the property's own token order, in both `magic-compat` settings (Q-EXTRACT-16, resolution: replicate): Magic's code reads them as width then length for mosfet, asymmetric, bjt and modelled resistor, and as area then perimeter for fet and modelled capacitor/caprev, and there is no reordering to the `L W` order of normal device records. Lengths, widths and perimeters SHALL be scaled by units-per-lambda (upl) and areas by upl², each truncated to int. After scaling, URX SHALL be incremented when URX ≤ LLX, and URY when URY ≤ LLY.
 
 (Magic ref: extract/ExtBasic.c:353-556, extract/ExtBasic.c:1716-1745)
@@ -301,6 +328,16 @@ D1 and D2 SHALL be written in the property's own token order, in both `magic-com
 - **GIVEN** a cell `cap1` with property `device` = `primitive m=1`
 - **WHEN** it is extracted
 - **THEN** its `.ext` contains `parameters :cap1 m=1` and a `primitive` line, and every node record has R 0 and C 0
+
+#### Scenario: A non-primitive device property line with magic-compat ON (EX-042)
+- **GIVEN** `magic-compat` ON and a cell `dev2` with property `device` = `mosfet nfet 0 0 2 2 3 5 VSS`
+- **WHEN** it is extracted
+- **THEN** the `device` line written from the property has no newline, so the `.ext` ends without one, as Magic writes EX-042 (Q-EXTRACT-39)
+
+#### Scenario: A non-primitive device property line with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same cell
+- **WHEN** it is extracted
+- **THEN** the `device` line ends with a newline (Q-EXTRACT-39)
 
 #### Scenario: Property dimensions kept in token order
 - **GIVEN** units-per-lambda 1.5 and a cell with property `device` = `mosfet nfet 0 0 2 2 3 5 VSS`

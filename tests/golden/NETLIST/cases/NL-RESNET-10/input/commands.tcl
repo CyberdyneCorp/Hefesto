@@ -1,4 +1,4 @@
-# NL-RESNET-10: diffusion next to transistors: one edge, two edges, a device on top and bottom
+# NL-RESNET-10: diffusion next to transistors: one edge, two edges, a device on top and bottom (re-authored: a labelled GND! square gives the substrate net a record, Q-NETLIST-63)
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

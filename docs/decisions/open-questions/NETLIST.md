@@ -541,98 +541,182 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 
 ### Q-NETLIST-59: A missing `.ext` file in ext2spice and ext2sim
 - Kind: quirk
-- Status: pending user decision (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for both tools per the standing rule: ext2spice in R3, ext2sim in the R3 fix pass)
+- Status: approved 2026-11-25 (proposed in M7 round R3 by NETLIST, 2026-11-24; implemented for both tools per the standing rule: ext2spice in R3, ext2sim in the R3 fix pass; approved with the recommended option)
 - Magic behavior: EFReadFile sets `Cannot read extract file <cell>.ext` (with a newline) as the Tcl result and the command returns OK.
 - Evidence: extflat/EFread.c:207-216; NL-SPICE-01
 - As implemented (round R3 and its fix pass): with magic-compat ON both tools return the text as the command's result and succeed (NL-SPICE-01 replays); with it OFF they fail with EXTFLAT-READ-001. Tests: `tests/unit/core/m7_scaffold_test.cpp` (the three magic-compat ON ext2spice reads); `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim with a missing .ext file and magic-compat ON returns the message", "ext2sim with a missing .ext file and magic-compat OFF fails".
 - Options: compat (ON: the text is the result and the command succeeds; OFF: EXTFLAT-READ-001) | replicate
 - Recommendation: compat, for both tools.
+- Resolution: compat, for both tools — with `magic-compat` ON a missing root `.ext` gives the result `Cannot read extract file <cell>.ext` and the command succeeds, as Magic (NL-SPICE-01 replays); with it OFF the run fails with EXTFLAT-READ-001. Spec: `netlist-spice-options` "Run arguments and output file" and `netlist-sim` "Command options and defaults" (a scenario per mode each). Tests: `tests/unit/core/m7_scaffold_test.cpp`, `tests/unit/netlist/sim/sim_command_test.cpp` (one per mode). Approved 2026-11-25.
 
 ### Q-NETLIST-60: The name of a shorted-port device's anonymous terminal-0 node (Q-NETLIST-31 with magic-compat OFF)
 - Kind: compat-neutral
-- Status: pending user decision (raised in M7 round R3 by NETLIST, 2026-11-24)
+- Status: approved 2026-11-25 (raised in M7 round R3 by NETLIST, 2026-11-24; approved with the recommended option)
 - Magic behavior: n/a. With magic-compat ON Magic's `dummy` path is used (implemented; NL-FLAT-06 and NL-HIER-06 replay). Q-NETLIST-31's OFF branch gives each shorted-port device its own anonymous terminal-0 node, and the spec does not say what name a resistor-tee midpoint prints for it.
 - Evidence: Q-NETLIST-31; `netlist-spice-devices`; `openspec/changes/m7-extraction/tasks.md` 11.5
 - Options: a generated name the reader can never produce, `dummy#<n>` numbered per cell | another scheme
 - Recommendation: `dummy#<n>` numbered per cell, with one spec sentence. Q-NETLIST-31's OFF branch stays unimplemented until this is decided.
+- Resolution: `dummy#<n>` numbered per cell — with `magic-compat` OFF a shorted-port device's anonymous terminal-0 node is named `dummy#<n>`, numbered from 0 per cell in the order the cell's shorted-port devices are read (a flat netlist prefixes the instance path); with it ON Magic's shared `dummy` is kept. This specifies Q-NETLIST-31's OFF branch, which m7-round5-netlist implements with a test per mode. Spec: `netlist-spice-devices` "Resistor lines" (one sentence and a scenario per mode). Approved 2026-11-25.
 
 ### Q-NETLIST-61: The `-p` search path holds for one run (ext2spice and ext2sim)
 - Kind: compat-neutral, with one compat edge
-- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule)
+- Status: approved 2026-11-25 (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: EFArgs stores `-p` in the global EFSearchPath (EFargs.c:200), and EFDone frees it at the end of every run ("EFSearchPath does not persist beyond the command that set it", EFdef.c:179-184), so the path holds for the run that names it, in both tools. One exception: when `ext2spice` names no cell and no window is open it prints `Point to a window or specify a cell name.` and returns without EFDone (ext2spice.c:861-865), so that run's path stays set for the next run of either tool; `ext2sim` calls EFDone on the same path (ext2sim.c:548-552). `ext2spice default` and `ext2sim default` free it (ext2spice.c:803-807, ext2sim.c:502-506).
 - Evidence: as cited; Hefesto `src/core/src/netlist/spice/run.cpp`, `src/core/src/netlist/sim/run.cpp`, `netlist::take_search_path` (`hefesto/netlist/session.hpp`)
 - As implemented (R3 fix pass): in both modes and both tools `-p` holds for its run only (before, `ext2spice` kept it for later runs in both modes and `ext2sim` used it once). With magic-compat ON an `ext2spice` run that names no cell leaves its path in `NetlistSession::search_path` for the next run of either tool, which consumes it; with it OFF that path is dropped. Both `default` options clear it. Tests: `tests/unit/netlist/spice/run_test.cpp` "ext2spice -p holds for one run", "ext2spice -p of a run without a cell is left for the next run with magic-compat ON", "ext2spice -p of a run without a cell is dropped with magic-compat OFF", "ext2sim reads with the -p left by ext2spice without a cell (magic-compat ON)"; `tests/unit/netlist/sim/sim_command_test.cpp` "ext2sim -p holds for one run", "ext2sim -p of a run without a cell is dropped", "ext2sim reads with the -p an ext2spice run without a cell left".
 - Options: compat (as implemented) | compat-neutral without the edge (the no-cell path drops `-p` in both modes) | keep `-p` for later runs in both tools (a session setting, as `ext2spice` did)
 - Recommendation: compat. The rule matches Magic in both modes; only the no-cell leftover differs by mode.
+- Resolution: compat — in both tools `-p` holds for the run that names it, as Magic's EFDone frees it; with `magic-compat` ON the path of an `ext2spice` run that names no cell (no window) is left for the next run of either tool, with it OFF it is dropped; both `default` options clear it. Spec: `netlist-spice-options` "Run arguments and output file" and `netlist-sim` "Command options and defaults" (scenarios per mode). Tests: as listed under As implemented. Approved 2026-11-25.
 
 ### Q-NETLIST-62: A cap on `.ext` port numbers
 - Kind: bug (hardening)
-- Status: pending user decision (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule: crashes and undefined behaviour are fixed in both modes)
+- Status: approved 2026-11-25 (raised in the M7 R3 fix pass, 2026-11-24, from the review of PR #100; implemented per the standing rule: crashes and undefined behaviour are fixed in both modes; approved with the recommended option)
 - Magic behavior: efBuildPortNode stores a `port` record's number as given, and ext2spice's topVisit sizes its port array by the highest one (`portmax + 1`) and numbers the implicit ports past it (`++portmax`), so `port a 1000000000 ...` allocates gigabytes and `port a 2147483647 ...` overflows a signed int (undefined behaviour).
 - Evidence: extflat/EFbuild.c (efBuildPortNode); ext2spice/ext2spice.c:1649-1685 (topVisit: EFGetPortMax, `portmax++`, the `portmax + 1` array); Hefesto `src/core/src/extflat/reader.cpp` (`FileReader::port`), `src/core/src/netlist/spice/flat_writer.cpp` (`PortSorter`), `hier_writer.cpp` (`call_ports`)
 - As implemented (R3 fix pass), both modes: a `port` record whose number is above `ReadLimits::max_port_index` (2^20) fails the read with EXTFLAT-READ-009 `<file>, line <n>: port number <n> is larger than 1048576`; negative numbers are kept (they mean "no index"). The SPICE writers keep their port slots in a map, so the list is as long as the ports, not as the highest number. Tests: `tests/unit/extflat/hardening_test.cpp` "a port number past the cap fails the read with EXTFLAT-READ-009"; `tests/unit/netlist/spice/run_test.cpp` "Sparse port numbers keep their order; a number past the cap fails the read"; fuzz seeds `hostile-port-number-m00`, `-m04`.
 - Options: fix (the cap, as implemented) | no cap, sparse lists only (the implicit numbering then needs 64-bit indices)
 - Recommendation: fix. Real `.ext` files number ports from 0 up to the port count; 2^20 is far above any cell.
+- Resolution: fix — in both modes a `port` record whose number is above `ReadLimits::max_port_index` (2^20 = 1048576) fails the read with EXTFLAT-READ-009; negative numbers are kept, and the SPICE writers keep sparse port lists. A crafted-input resource limit, approved under the standing rule of 2026-11-25. Spec: `ext-flattening-read` "Use, port, cap, resist, attr and connect records". Tests: `tests/unit/extflat/hardening_test.cpp`, `tests/unit/netlist/spice/run_test.cpp`; fuzz seeds `hostile-port-number-m00`, `-m04` (`fuzz_ext_reader`) and `hostile-port-number` (`fuzz_ext_netlist`). Approved 2026-11-25.
 
 ### Q-NETLIST-63: Magic's `extresist` crashes on nets with nfets
 - Kind: bug
-- Status: pending user decision (proposed in M7 round R4 by RESNET, 2026-11-25; the crash is not located yet)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESNET, 2026-11-25; approved with the recommended option; located in round R5 by m7-round5-res)
 - Magic behavior: `extresist all` on exttest.tech with `device mosfet nfet nfet ndiff,ndc pwell,space GND! 2 5` exits with a segmentation fault (exit 139) when a net touches an nfet (NL-RESNET-05, 10 and 13).
 - Evidence: golden-capture runs 45555921742 and 45555935130. Likely places: resis/ResRex.c ResFixUpConnections, resis/ResSimple.c ResCalculateChildCapacitance (`exts_device[t]`).
 - As implemented (round R4): Hefesto builds and reduces these nets (no crash); the three cases are authored without expected/.
+- Located (round R5, m7-round5-res): ResReadDevice (resis/ResReadExt.c:819-820, :725) adds the device to the device list of its substrate terminal's node without checking that the node exists. The device lines of NL-RESNET-05, 10 and 13 name the global `GND!`, which has no `node` record in those layouts, so `extresist` dereferences NULL. Hefesto creates the net (no node record) in both modes. NL-RESNET-05, 10 and 13 are re-authored with a labelled metal1 square named `GND!` (a node record that is never extracted) and captured twice (runs 45816834270, 45816842269).
 - Options: fix (both modes, the standing rule) | re-author the cases so Magic does not crash
 - Recommendation: once the crash is located, fix it in both modes and re-capture after re-authoring if needed. Spec on approval: `extresist-network` or `extresist-command`, depending on where it is.
+- Resolution: fix — in both modes a `device` record whose substrate terminal names a net with no node record creates that net (it has no node record), and the run continues; Magic dereferences a null node (resis/ResReadExt.c:819-820). Spec: `extresist-command` "Input model" (sentence and scenario "Substrate terminal on a net with no node record"). Test: `tests/unit/extresist/command/run_test.cpp` "a substrate terminal on a net with no node record does not stop the run" (both modes; m7-round5-res). NL-RESNET-05, 10 and 13 are re-authored so that Magic does not crash and are replayed. Approved 2026-11-25; located 2026-11-26.
 
 ### Q-NETLIST-64: Undefined behaviour in Magic's resistance network construction
 - Kind: bug
-- Status: pending user confirmation (fixed in both modes in M7 round R4 by RESNET under the standing rule)
+- Status: approved 2026-11-25 (fixed in both modes in M7 round R4 by RESNET under the standing rule; approved with the recommended option)
 - Magic behavior: (a) ResDoContacts reads CIFGetContactSize's unset `viawidth` when the output style has no cut for the type, and dereferences a null CIFCurStyle when there is none; (b) ResFindNewContactTiles writes past `cp_tile[4]`; (c) ResPreProcessDevices uses an uninitialised `pNum` for a contact device type with no device residue; (d) the int conversion of NaN from `sqrt(perimeter^2 - area)`; (e) ResNewTermDevice writes `rd_terminals[2+n]` past `rd_nterms`; (f) `exts_deviceSDTypes[i]` is read past the array.
 - Evidence: resis/ResMakeRes.c:856-900, cif/CIFtech.c:2327-2382 (a); resis/ResMain.c:589-700 (b); resis/ResUtils.c:887-940 (c), 1060-1075 (d); resis/ResJunct.c:51-110 (e); resis/ResBasic.c, ResUtils.c (f)
 - As implemented (round R4), both modes: (a) such a contact has no resistance; (b) capped at 4; (c) the type's home plane; (d) 0; (e) ignored; (f) an empty mask. Tests: (a) in `tests/unit/extresist/network/` (one per mode; stated in `extresist-network`); (b), (c), (d) and (f) added in the R4 fix pass in `tests/unit/extresist/network/build_test.cpp` ("a contact is recorded on at most four tiles", "a contact device type with no device residue uses its home plane", "a device whose area exceeds its quarter perimeter squared has width 0", "an S/D class past the device's list has no types"). (e) has no test: it is reached only when a tile type has two device records with different S/D class counts, which the test technology does not have.
 - Options: fix (as implemented) | replicate (not possible for undefined behaviour)
 - Recommendation: fix.
+- Resolution: fix — in both modes, (a) to (f) as implemented in round R4. Spec: `extresist-network` "Contact resistors" ((a), and a paragraph for (b) to (f)). Tests: as listed; (e) has none (no input reaches it with the test technology). Approved 2026-11-25.
 
 ### Q-NETLIST-65: A negative `extresist threshold|minresist|mindelay` is stored
 - Kind: compat
-- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: a negative value prints the usage line, and the value is stored anyway.
 - Evidence: resis/ResRex.c:357-405
 - As implemented (round R4): magic-compat ON stores it; OFF keeps the previous value. Tests: `tests/unit/extresist/command/options_test.cpp`.
 - Options: compat (as implemented) | replicate | fix
 - Recommendation: compat.
+- Resolution: compat — a negative `threshold`, `minresist` or `mindelay` prints the usage line; with `magic-compat` ON the value is stored, as Magic, and with it OFF the previous value is kept. Spec: `extresist-command` "Command options" (cited; scenario "Negative threshold" per mode). Tests: `tests/unit/extresist/command/options_test.cpp`. Approved 2026-11-25.
 
 ### Q-NETLIST-66: `extresist debug` and `stats` take any word
 - Kind: compat
-- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: no value is checked for `debug` and `stats`, so any word turns them on.
 - Evidence: resis/ResRex.c:330-346, 438-470
 - As implemented (round R4): magic-compat ON copies this; OFF rejects the word with `Value must be either "on" or "off".` Tests: `tests/unit/extresist/command/options_test.cpp`.
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON any word turns `extresist debug` and `stats` on, as Magic; with it OFF a word other than `on`/`off` prints `Value must be either "on" or "off".` and changes nothing. Spec: `extresist-command` "Command options" (a scenario per mode). Tests: `tests/unit/extresist/command/options_test.cpp`. Approved 2026-11-25.
 
 ### Q-NETLIST-67: `extresist cell` runs on the box cell
 - Kind: compat
-- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: ToolGetBox replaces the selected cell with the cell under the box, so `extresist cell <name>` extracts the box cell.
 - Evidence: resis/ResRex.c:686-694, 731
 - As implemented (round R4): magic-compat ON runs on the box cell; OFF on the named cell. Tests: `tests/unit/extresist/command/run_test.cpp`.
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON `extresist cell` runs on the cell under the box, as Magic; with it OFF on the selected cell. Spec: `extresist-command` "Run flow" (a scenario per mode). Tests: `tests/unit/extresist/command/run_test.cpp`. Approved 2026-11-25.
 
 ### Q-NETLIST-68: Crashes and undefined behaviour in the `.ext` read of `extresist`
 - Kind: bug
-- Status: pending user confirmation (fixed in both modes in M7 round R4 by RESCMD under the standing rule)
+- Status: approved 2026-11-25 (fixed in both modes in M7 round R4 by RESCMD under the standing rule; approved with the recommended option)
 - Magic behavior: a negative node R converts INFINITY to int; a device terminal on a net with no record dereferences NULL; a device whose model has no device line dereferences NULL.
 - Evidence: resis/ResReadExt.c:528-529, 790-792, 799-815, 832
 - As implemented (round R4), both modes: R is infinity; the net is created with no node record; the device has no type. Tests: `tests/unit/extresist/output/input_test.cpp` ((a) "node resistance and capacitance scaling", (b) "device records: terminals and W/L", (c) "a device whose model has no device line has no type", added in the R4 fix pass).
 - Options: fix (as implemented)
 - Recommendation: fix.
+- Resolution: fix — in both modes a negative node R is infinite, a device terminal on a net with no record creates the net with no node record, and a device whose model has no device line has no type. Spec: `extresist-command` "Input model" (cited; `extresist-output` reads the same model). Tests: `tests/unit/extresist/output/input_test.cpp`. Approved 2026-11-25.
 
 ### Q-NETLIST-69: ResSortByGate orders by node address
 - Kind: bug (determinism)
-- Status: pending user decision (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule)
+- Status: approved 2026-11-25 (proposed in M7 round R4 by RESCMD, 2026-11-25; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: ResSortByGate's qsort compares node addresses, so the order of a node's devices can differ between runs and platforms.
 - Evidence: resis/ResRex.c:1891-1940
 - As implemented (round R4), both modes: the order in which the nets are first mentioned, with a stable sort. Tests: `tests/unit/extresist/command/cutoff_test.cpp` (added in the R4 fix pass: ties keep their order, gate entries last).
 - Options: fix (as implemented) | replicate (not reproducible)
 - Recommendation: fix.
+- Resolution: fix — in both modes ResSortByGate's order compares the order in which the nets were first mentioned, with a stable sort, so it is the same on every platform. Spec: `extresist-command` "Net selection and first cutoff". Tests: `tests/unit/extresist/command/cutoff_test.cpp`. Approved 2026-11-25.
+- As implemented (round R5, m7-round5-res; amendment proposed for approval, decision stays fix in both modes): the comparison uses the reverse of the first-mention order (a net mentioned later compares lower), and the sort is glibc's merge sort with Magic's devSortFunc. The comparator part is not address dependent and copies Magic: it puts a gate entry after every entry, another gate entry included, so runs of gate entries come out reversed, which NL-RES-01's `out.t2`/`out.t3` need. The reverse order matches Magic's captures of NL-RES-01, 05 and 06, where the forward order matched only 03. Magic's real order follows heap addresses and no deterministic rule reproduces every capture, so NL-RES-02 and 03 carry a DECIDED deviation under this row (`deviations.toml`). Spec amended: `extresist-command` "Net selection and first cutoff" (the sentence and scenario "Gate entries in reverse list order"). Test: `cutoff_test.cpp` sort_by_gate (expects {0,3,1,4,2,5}; the old stable sort gives {1,4,3,0,5,2}).
+
+### Q-NETLIST-70: `ext2sim` follows the short mode set by `ext2spice short`
+- Kind: compat-neutral
+- Status: proposed (raised in M7 round R5 by NETLIST as "Q-NETLIST-63"; renumbered at the R5 merge, where Q-NETLIST-63 was taken)
+- Magic behavior: the short mode lives in EFOutputFlags, which both netlisters share, so `ext2sim` reads with the mode `ext2spice short` set, and `ext2sim default` clears it. A resistor short writes `r A B 0.000000`, a voltage short `N dummy A B 0 0 0 0`.
+- Evidence: extflat/EFbuild.c (efBuildEquiv); ext2sim/ext2sim.c:495; capture-only probe NL-P02 (`tests/data/extflat/visit_probe`, golden-capture run 45861111906)
+- As implemented (round R5), both modes: as Magic; with magic-compat OFF the voltage short's node is `dummy#<n>` (Q-NETLIST-60). Hefesto's ext2sim merged shorted ports before. Tests: `tests/unit/netlist/sim/short_ports_test.cpp`.
+- Options: replicate in both modes (as implemented) | compat (OFF: ext2sim keeps its own short mode)
+- Recommendation: replicate. It is the documented shared option state, and the probe pins Magic's text.
+
+### Q-NETLIST-71: The `extresist` driver of a parallel device group
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: the driver choice sums the W/L of parallel devices in an `int` (totWL), so devices below W/L 1 drive nothing, and a group that runs to the end of the device list drives from its last-but-one device.
+- Evidence: resis/ResRex.c (ResCheckSimpleNode/ResSortByGate's driver loop)
+- As implemented (round R5): magic-compat ON as Magic; OFF sums in float and uses the last device. Tests: `tests/unit/extresist/command/run_test.cpp` "narrow devices drive nothing with magic-compat ON" / "... drive their net with magic-compat OFF", "a parallel group at the end of the list drives from its last-but-one device with magic-compat ON".
+- R5 fix pass (review), both modes: Magic's float-to-int conversion of a W/L at or beyond 2^31 is undefined behaviour; the int sum saturates (`cutoff_test.cpp` "a W/L sum beyond the int range saturates"). The driver is chosen from the list as ResProcessNode sorted it once; Hefesto sorted it a second time, which with devSortFunc (not a strict weak order) can move substrate entries and change the driver (`cutoff_test.cpp` "the driver is chosen from the list as sorted once").
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+- Spec: `extresist-command` "Net selection and first cutoff" (rule and a scenario per mode, R5 fix pass).
+
+### Q-NETLIST-72: The second cutoff reads the previous net's delay
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: with simplification and the lump file both off, no delay is computed, and the second cutoff reads `rg_Tdi` as it stands. ResInit (called by CmdExtResis for every option, ResRex.c:236, :323) resets it to 0 at the start of every `extresist` command, and nothing sets it during such a run, so the delay test reads 0 and withholds every net with C > 0 when mindelay > 0.
+- Evidence: resis/ResRex.c (ResInit, CmdExtResis, ResExtractNet's second cutoff), resis/ResSimple.c:965-1020
+- As implemented (round R5, corrected in the R5 fix pass): magic-compat ON reads the delay the run's last simplified net left, 0 at the start of every run (it was kept for the session, so a later run read an earlier run's delay); OFF applies no delay cutoff to such a net. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads ResInit's zero delay with magic-compat ON" / "... applies no delay test without a delay with magic-compat OFF" (a simplified run, then a run with simplification off).
+- Spec: `extresist-command` "Second cutoff after extraction" (sentence and a scenario per mode, R5 fix pass).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-73: The FastHenry height of a node
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: the node's height is taken from its last non-contact resistor, although the comment says the first.
+- Evidence: resis/ResPrint.c (ResPrintFHNodes)
+- As implemented (round R5): magic-compat ON takes the last; OFF the first. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (height per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+- Spec: `extresist-output` "FastHenry geometry file" (sentence and a scenario per mode, R5 fix pass).
+
+### Q-NETLIST-74: ResAlignNodes skips the last resistor
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: ResAlignNodes' loop stops before the last resistor, so that resistor is never aligned.
+- Evidence: resis/ResPrint.c (ResAlignNodes)
+- As implemented (round R5): magic-compat ON as Magic; OFF aligns every resistor. Tests: `tests/unit/extresist/output/fasthenry_test.cpp` (node alignment per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+- Spec: `extresist-output` "Geometry centerlines" (sentence and a scenario per mode, R5 fix pass; "FastHenry geometry file" refers to it).
+
+### Q-NETLIST-75: A failed `extresist box` leaves every option off
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: RES_BOX returns on a failure without restoring ResOptionsFlags, so every on/off setting reads off afterwards.
+- Evidence: resis/ResRex.c (CmdExtResis, RES_BOX)
+- As implemented (round R5): magic-compat ON as Magic; OFF keeps the settings. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (box failure per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+- Spec: `extresist-command` "Command options" (sentence and a scenario per mode, R5 fix pass).
+
+### Q-NETLIST-76: Devices in subcells are painted in the subcell's own coordinates
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESNET, 2026-11-26; implemented per the standing rule)
+- Magic behavior: resMakeDevFunc paints the devices found by DBTreeSrTiles without the search's transform, so a device in a moved or rotated subcell lands at the wrong place.
+- Evidence: resis/ResMain.c (DBTreeSrTiles, resMakeDevFunc)
+- As implemented (round R5): magic-compat ON paints untransformed; OFF transforms to the root. The descent stops past 64 hierarchy levels in both modes (a crafted-input limit under the standing rule of 2026-11-25, approved). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "... at its place with magic-compat OFF", "the subcell device search stops 64 uses down" (both modes).
+- R5 fix pass (review), both modes: the search visited every element of an array use, and an index range ending at INT32_MAX overflowed the loop (undefined behaviour, then a hang); it now visits only the elements DBArrayOverlap gives for the search area, y outer, as dbCellSrFunc does. Test: `build_test.cpp` "the subcell device search visits only the array elements under the device".
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+- Spec: `extresist-network` "Net geometry collection" (the stale "not painted" sentence replaced; a scenario per mode and one for the array search, R5 fix pass).

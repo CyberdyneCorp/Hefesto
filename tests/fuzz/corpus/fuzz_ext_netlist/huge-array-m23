@@ -1,0 +1,4 @@
+#use leaf u[0:100000:1][0:100000:1] 1 0 0 0 1 0
+@@ leaf
+node "n" 1 1 0 0 metal1
+cap "n" "n" 1

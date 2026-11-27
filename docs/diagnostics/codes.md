@@ -102,7 +102,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CORE-NOTIMPL-005` | error | Retired in M5, never reused. Was: an M5 command option or function declared by the M5 scaffold before its workstream landed it. |
 | `CORE-NOTIMPL-006` | error | Retired in M6, never reused. Was: an M6 command option or function declared by the M6 scaffold before its workstream landed it. |
 | `CORE-NOTIMPL-007` | error | Not implemented yet: an M8 schematic function declared by the M8 scaffold before its workstream landed it (retired at M8 exit). |
-| `CORE-NOTIMPL-008` | error | Not implemented yet: an M7 extraction or netlisting command option or function declared by the M7 scaffold before its workstream landed it (retired at M7 exit). |
+| `CORE-NOTIMPL-008` | error | Retired in M7, never reused. Was: an M7 extraction or netlisting command option or function declared by the M7 scaffold before its workstream landed it. |
 | `CORE-NOTIMPL-009` | error | Not implemented yet: an M9 LVS or simulation command or function declared by the M9 scaffold before its workstream landed it (retired at M9 exit). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |

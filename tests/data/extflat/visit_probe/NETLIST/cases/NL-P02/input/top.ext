@@ -1,0 +1,16 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "A" 0 0 0 1 1 metal1
+port "B" 1 10 0 11 1 metal1
+port "C" 2 20 0 21 1 metal1
+port "D" 3 30 0 31 1 metal1
+node "A" 0 2 0 0 metal1 0 0 0 0 0 0
+node "B" 0 2 10 0 metal1 0 0 0 0 0 0
+node "C" 0 2 20 0 metal1 0 0 0 0 0 0
+node "D" 0 2 30 0 metal1 0 0 0 0 0 0
+equiv "A" "B"
+equiv "C" "D"

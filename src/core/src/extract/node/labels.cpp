@@ -221,7 +221,7 @@ void write_one_node(ExtWriter& writer, const NodeRegionList& nodes, std::size_t 
   const std::int64_t r = i < options.resistance.size() ? options.resistance[i] : 0;
   const std::vector<std::int64_t> pairs = pairs_of(node);
   const std::string type = short_type(technology, node.type);
-  if (options.substrate.node == i) {
+  if (options.substrate.node == i && options.substrate.record) {
     writer.substrate(name, r, node.reference, type, pairs);
   } else {
     double c = i < options.capacitance.size() ? options.capacitance[i] : node.substrate_cap / options.cscale;

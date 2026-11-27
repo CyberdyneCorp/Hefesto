@@ -1,0 +1,20 @@
+scale 100 1000 1
+parameters nmos l=l w=w a1=as p1=ps
+node "g" 1 2 0 0 poly
+node "s" 1 2 1 0 ndiff
+node "d" 1 2 2 0 ndiff
+attr "g" 0 0 0 0 poly "G$"
+device mosfet nmos 0 0 1 1 2 4 "GND!" "g" 4 0 "s" 2 "S$",4,6 "d" 2 0
+device mosfet nmos 0 0 1 1 2 4 "GND!" "g" 4 0 "s" 2 0 "d" 2 0
+device resistor None 0 0 1 1 25.5 "g" 0 0 "s" 0 0 "d" 0 0
+device capacitor None 0 0 1 1 12 "s" 0 0 "d" 0 0
+device diode dn 0 0 1 1 a=4 "s" 0 0 "d" 0 0
+device bjt npn 0 0 1 1 2 2 "d" "g" 0 0 "s" 0 0
+device subckt sub1 0 0 1 1 "s" 0 0
+device rsubckt rs 0 0 1 1 2 3 "g" "s" 0 0 "d" 0 0
+device vsource v1 0 0 1 1 "s" 0 0 "d" 0 0
+fet nfet 0 0 1 1 8 12 "GND!" "g" 4 0 "s" 2 0 "d" 2 0
+resist "s" "d" 1e30
+resist "s" "d" -5
+cap "s" "d" 1e39
+killnode "d"

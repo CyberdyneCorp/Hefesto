@@ -58,10 +58,6 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // 5.2): a function the M8 scaffold declared before its workstream
 // implemented it (schem/not_implemented.hpp). Retired at M8 exit.
 inline constexpr std::string_view kSchemNotImplemented = "CORE-NOTIMPL-007";
-// Scaffold stubs of the M7 areas (openspec/changes/m7-extraction/design.md
-// D4, tasks.md 3.3): a command option or function the M7 scaffold declared
-// before its workstream implemented it (cmd/m7_stubs.hpp). Retired at M7 exit.
-inline constexpr std::string_view kExtractNotImplemented = "CORE-NOTIMPL-008";
 // Scaffold stubs of the M9 areas lvs and sim
 // (openspec/changes/m9-lvs-simulation/design.md D24, tasks.md 4.2): a command
 // or function the M9 scaffold declared before its workstream implemented it
@@ -75,7 +71,9 @@ inline constexpr std::string_view kM9NotImplemented = "CORE-NOTIMPL-009";
 // command into its own (M7-3)), CMD-PARSE-001..003
 // (M4: command lines are Tcl, the M0 command-script reader is removed),
 // CORE-NOTIMPL-005 (M5: every scaffold stub is implemented), CORE-NOTIMPL-006
-// (M6: every scaffold stub is implemented; cmd/stubs.* removed).
+// (M6: every scaffold stub is implemented; cmd/stubs.* removed), CORE-NOTIMPL-008
+// (M7: every extraction and netlisting option is implemented; cmd/m7_stubs.*
+// removed, tasks.md 19.5).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the

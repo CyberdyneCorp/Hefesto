@@ -1,0 +1,8 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+node "n" 0 0 0 0 m1
+substrate "VSUB" 0 0 -1073741817 -1073741817 space

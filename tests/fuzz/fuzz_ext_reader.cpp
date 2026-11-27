@@ -17,9 +17,12 @@
 //
 // Resource caps: extflat::ReadLimits (file 1 GiB, logical line 16 MiB,
 // 1 Mi cells, depth 1000, 4 Mi instances, 16 Mi flat names, 16 Mi merge
-// elements; use cycles fail; M6-S8). Reaching 4 Mi instances takes seconds,
-// so this target lowers the instance, name and merge caps to 2^18, 2^20
-// and 2^20 (and further with bit 2): a time-out is then a real hang.
+// elements; use cycles fail; M6-S8). Flattening is linear in the instances,
+// but under ASan a 100001-element array of a two-node leaf took over 10 s
+// (CI run 45871540469, seed regress-timeout-bcf9c071...), so this target
+// lowers the instance, name and merge caps to 2^14, 2^16 and 2^18 (and
+// further with bit 2): a time-out is then a real hang. These are harness
+// caps, recorded in docs/decisions/m7-decision-table.md.
 //
 // Owner: INTEGRATION (tests/fuzz/, design D2), written by the FUZZSEC
 // workstream.
@@ -75,9 +78,9 @@ extflat::ReadOptions options_for(std::uint8_t mode) {
   options.timestamps = (mode & kTimestamps) != 0;
   options.search_path = {"/w"};
   options.tech_name = "lefdef";
-  options.limits.max_instances = std::uint64_t{1} << 18U;
-  options.limits.max_flat_names = std::uint64_t{1} << 20U;
-  options.limits.max_connections = std::uint64_t{1} << 20U;
+  options.limits.max_instances = std::uint64_t{1} << 14U;
+  options.limits.max_flat_names = std::uint64_t{1} << 16U;
+  options.limits.max_connections = std::uint64_t{1} << 18U;
   if ((mode & kSmallLimits) != 0) {
     options.limits.max_depth = 8;
     options.limits.max_instances = 4096;

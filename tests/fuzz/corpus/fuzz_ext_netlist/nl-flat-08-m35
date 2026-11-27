@@ -1,0 +1,27 @@
+5timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf u[0:1:10][0:2:20] 1 0 0 0 1 0
+node "a" 0 1 0 50 metal1 0 0 0 0 0 0
+node "b" 0 1 10 50 metal1 0 0 0 0 0 0
+merge "u[0:1,0:0]/out" "u[1:2,1:1]/in" 0
+merge "u[0,0]/in" "a" 0
+cap "u[0,0]/out" "a" 2.5
+resist "a" "b" 100
+attr a 0 50 0 50 metal1 "cap=10f"
+device mosfet nfet 40 0 42 4 2 4 "GND!" "a" 8 0 "b" 4 0 "a" 4 0
+@@ leaf
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "in" 0 0 0 1 1 metal1
+port "out" 1 4 0 5 1 metal1
+node "in" 0 1 0 0 metal1 0 0 0 0 0 0
+node "out" 0 1 4 0 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 4 2 4 "GND!" "in" 8 0 "out" 4 0 "out" 4 0
