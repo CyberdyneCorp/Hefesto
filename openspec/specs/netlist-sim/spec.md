@@ -19,7 +19,7 @@ The command SHALL take an optional first word, matched case-insensitively with u
 | `merge none\|conservative\|aggressive` | Parallel-device merging (Q-NETLIST-14) | none |
 | `extresist on\|off` | Read `.res.ext` overlays | off |
 
-`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
+`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. `ext2sim` SHALL read with the short mode that `ext2spice short` set in the session, in both `magic-compat` settings, as Magic's shared EFOutputFlags do; `ext2sim default` clears it. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
 
 | Flag | Effect |
 |---|---|
@@ -87,6 +87,12 @@ Compatibility: behavioral
 - **GIVEN** `magic-compat` ON, no layout window, `/w/inv.ext` and no `inv.ext` in the current directory
 - **WHEN** `ext2spice -p /w` runs, then `ext2sim inv`
 - **THEN** `ext2sim` reads `/w/inv.ext`; with `magic-compat` OFF it cannot read `inv.ext` (Q-NETLIST-61)
+
+#### Scenario: ext2sim honours the ext2spice short mode
+- **GIVEN** `ext2spice short resistor` has run in the session
+- **WHEN** `ext2sim` reads a cell whose two ports are shorted
+- **THEN** it writes the short device `r A B 0.000000` instead of merging the ports, in both `magic-compat` settings
+- **AND** after `ext2sim default` the ports are merged again
 
 #### Scenario: Extresist file naming
 - **GIVEN** `ext2sim extresist on`
