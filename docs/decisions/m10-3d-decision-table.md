@@ -113,7 +113,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | platform, no change | 1 (Q-MISC-75) |
 | platform (product, desktop tab) | 2 (Q-MISC-84, 85; approved 2026-11-24; amended 2026-11-25 and 2026-11-26) |
 
-Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22, Q-MISC-84 and 85 since 2026-11-24 (with amendments of 2026-11-25 and 2026-11-26), Q-MISC-86 since 2026-11-25 and Q-MISC-87 to 89 since 2026-11-26. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions", and the round-5 and round-6 items without a Q row (A3-A9, B1-B17, B21, and the review-fix items C1-C3) in "Round 5 and 6 decisions"; they add no row here.
+Every row has a `Resolution:` line: Q-MISC-70 to 79 since 2026-11-13 and 2026-11-21 (Q-MISC-74 with its 2026-11-21 amendment), Q-MISC-80 to 83 since 2026-11-22, Q-MISC-84 and 85 since 2026-11-24 (with amendments of 2026-11-25 and 2026-11-26), Q-MISC-86 since 2026-11-25 and Q-MISC-87 to 89 since 2026-11-26. Round-3 items without a Q row (R2, R3, M1, M2, W1-W4, N3) are listed in "Round 3 decisions", and the round-5 and round-6 items without a Q row (A3-A9, B1-B17, B21, and the review-fix items C1-C5) in "Round 5 and 6 decisions"; they add no row here.
 
 ## Notable changes to the entries' original recommendations
 
@@ -284,8 +284,10 @@ Set A: the items the round-3 review fix pass (PR #91) and round 4 (PR #102) left
 | B20 | generation errors of a 3D mask-layer build | approved 2026-11-26; compat: ON reported once per build to the console, not as feedback; OFF not reported; CORE implements | Q-MISC-89 (new) |
 | B21 | Release frame-rate bench built with only the bench target, desktop ON configured | approved 2026-11-26; accepted | MISC.md, without a Q row |
 | C1 | limits of the mask-layer net overlay | approved 2026-11-25 (standing crafted-input rule); 65,536 prisms, 2^24 interval visits, 2^20 faces, a status note when cut; both modes | MISC.md, without a Q row |
-| C2 | the desktop tab's repeated full build with identical errors | proposed (round-6 review fix); not printed again for the same `BuildKey` | MISC.md, without a Q row; Q-MISC-89 "As built" |
-| C3 | a message repeated by the pieces of one regenerated area | proposed (round-6 review fix); counted once | MISC.md, without a Q row; Q-MISC-89 "As built" |
+| C2 | the desktop tab's repeated full build with identical errors | approved 2026-11-27 (round-6 review fix); not printed again for the same `BuildKey` | MISC.md, without a Q row; Q-MISC-89 "As built" |
+| C3 | a message repeated by the pieces of one regenerated area | approved 2026-11-27 (round-6 review fix); counted once | MISC.md, without a Q row; Q-MISC-89 "As built" |
+| C4 | hefesto-cli capture mode prints 3D generation errors with magic-compat ON | approved 2026-11-27; part of Q-MISC-89's compat behaviour; a golden case that produces errors records a deviation | MISC.md, without a Q row; Q-MISC-89 |
+| C5 | ownership exceptions of PR #133 | approved 2026-11-27; signed off as listed in the PR body | MISC.md, without a Q row |
 
 Workstreams of round 6 (design.md "Round 5 and 6 decisions"; tasks.md section 17): DECIDE (`m10-3d-round6-decide`), CORE (`m10-3d-round6-core`), RENDER (`m10-3d-round6-render`) and SHELL (`m10-3d-round6-shell`).
 
