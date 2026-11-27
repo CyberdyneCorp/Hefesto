@@ -419,6 +419,10 @@ class MainWindow {
   std::unique_ptr<SchematicView> schematic_view_;
   bool schematic_tab_ = false;
   void show_schematic_tab(bool on);
+  // M8 round 7: `tab ?layout|schematic|3d?` shows an editor view without its
+  // segment (the view tabs give way in a narrow top bar).
+  void register_tab_command();
+  [[nodiscard]] cmd::CommandResult tab_command(const std::vector<std::string>& args);
   bool pdk_visible_ = false;
   std::unique_ptr<ColorPanel> color_;
   bool color_visible_ = false;  // a color window is open

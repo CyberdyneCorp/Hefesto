@@ -175,10 +175,10 @@ TEST_CASE("macro lists a table, flat or reversed, filtered or help",
   CHECK(ghost.ok());  // Magic returns the table names as an ok Tcl result (golden UI-G-049)
 }
 
-// The `schematic` client (provisional on proposed Q-SCHEM-67, option (a)):
-// the schematic editor's key table, in both modes. Magic has no such client,
-// so `macro schematic w "wire"` does nothing there (its "silently do
-// nothing" rule); with magic-compat ON this is a reported Magic difference.
+// The `schematic` client (Q-SCHEM-67 (a), approved 2026-11-27): the
+// schematic editor's key table, in both modes. Magic 8.3.694 has no such
+// client, so `macro schematic w "wire"` does nothing there (its "silently do
+// nothing" rule); with magic-compat ON this is a recorded Magic difference.
 TEST_CASE("the schematic client selects the schematic editor's key table in both modes",
           "[cap:ui-command-dispatch][req:macro and imacro commands]") {
   for (const bool on : {true, false}) {

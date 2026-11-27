@@ -166,6 +166,32 @@ TEST_CASE("the key-binding sheet rebinds the schematic table", "[cap:ui-tools-an
   CHECK(map.reset_commands().empty());
 }
 
+// Regression (M8 round 7, round-6 CARRY): the sheet's Reset table button
+// (key_bindings_view.cpp) issues reset_table_commands, which restored the
+// core's startup bindings only: for the `schematic` table it deleted every
+// binding instead of restoring the xschem-style defaults.
+TEST_CASE("the key-binding sheet's Reset table restores the schematic defaults",
+          "[cap:ui-tools-and-input][req:Default key bindings]") {
+  MacroSession session;
+  SchematicKeyMap& map = session.map;
+  REQUIRE(session.run(R"(macro schematic K "schematic hilight clear all")"));
+  REQUIRE(session.run(R"(macro schematic n "schematic netlist -flat")"));
+  REQUIRE(session.run(R"(macro schematic w "")"));
+
+  const auto reset = reset_table_commands(map.tables(), kSchematicTable);
+  CHECK(reset == map.reset_commands());
+  for (const std::string& line : reset) CHECK(session.run(line));
+  for (const DefaultBinding& binding : schematic_default_bindings()) {
+    INFO(binding.key);
+    const auto bound = map.lookup(key(binding.key));
+    REQUIRE(bound.has_value());
+    CHECK((bound->action == binding.text || bound->line == binding.text));
+  }
+  CHECK(line_of(map, "n") == "schematic netlist");
+  CHECK_FALSE(map.lookup(key("K")).has_value());
+  CHECK(reset_table_commands(map.tables(), kSchematicTable).empty());
+}
+
 TEST_CASE("the core macro command's schematic client sets, lists and clears the canvas bindings",
           "[cap:ui-command-dispatch][req:macro and imacro commands]") {
   MacroSession session;

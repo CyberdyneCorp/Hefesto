@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -180,5 +181,19 @@ class SchematicViewport {
   schem::Point centre_;
   double zoom_ = 1.0;
 };
+
+/// Canvas texts follow the zoom (M8 round 7: they kept one size, so they
+/// overlapped once a fit zoomed out). A text is kTextUnitHeight schematic
+/// units tall per unit of its record's y scale (a scale of 0 or below counts
+/// as kDefaultTextScale): a Hefesto display choice, the exact xschem font
+/// metrics are not established (clean room).
+inline constexpr double kTextUnitHeight = 50.0;
+inline constexpr double kDefaultTextScale = 0.4;
+inline constexpr double kMinTextPx = 4.0;   // smaller texts are not drawn
+inline constexpr double kMaxTextPx = 96.0;  // larger ones are capped
+
+/// The pixel size of a text of y scale `scale` at `zoom` (pixels per
+/// schematic unit), at most kMaxTextPx; nullopt below kMinTextPx (not drawn).
+[[nodiscard]] std::optional<float> scene_text_px(double scale, double zoom) noexcept;
 
 }  // namespace hefesto::shell

@@ -301,7 +301,8 @@ void SchematicView::refresh() {
 
 std::string SchematicView::status_line() const {
   return breadcrumb_.text() + ", " + std::to_string(scene_.instances.size()) + " instances, " +
-         std::to_string(resolver_.pending_count()) + " pending";
+         std::to_string(resolver_.pending_count()) + " pending, canvas " +
+         std::to_string(std::lround(viewport_.width())) + " x " + std::to_string(std::lround(viewport_.height()));
 }
 
 void SchematicView::show_nothing() {
@@ -592,8 +593,10 @@ void SchematicView::paint_items(ui::Painter& p, const ThemeTokens& t) const {
   for (const ScenePolygon& poly : scene_.polygons) painter.polygon(poly);
   for (const SceneArc& arc : scene_.arcs) painter.arc(arc);
   for (const SceneText& text : scene_.texts) {
+    const std::optional<float> size = scene_text_px(text.size, viewport_.zoom());  // follows the zoom
+    if (!size) continue;
     const auto [x, y] = painter.at(text.origin);
-    p.text(TextRole::meta, x, y, text.text, t.text_secondary);
+    p.text_px(TextRole::meta, *size, x, y, text.text, t.text_secondary);
   }
 }
 

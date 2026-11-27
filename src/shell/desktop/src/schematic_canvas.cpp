@@ -252,4 +252,11 @@ void SchematicViewport::fit(const SceneBox& box) noexcept {
   zoom_ = std::clamp(std::min(width_ * usable / w, height_ * usable / h), kMinZoom, kMaxZoom);
 }
 
+std::optional<float> scene_text_px(double scale, double zoom) noexcept {
+  const double units = (scale > 0.0 ? scale : kDefaultTextScale) * kTextUnitHeight;
+  const double px = units * zoom;
+  if (!(px >= kMinTextPx)) return std::nullopt;  // also NaN
+  return static_cast<float>(std::min(px, kMaxTextPx));
+}
+
 }  // namespace hefesto::shell

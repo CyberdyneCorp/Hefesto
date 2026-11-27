@@ -49,7 +49,9 @@ namespace hefesto::shell {
                                                        const ::hefesto::ui::MacroTables& target, std::string_view table);
 
 /// Reset table: the commands that restore `table` to its startup bindings
-/// (ui::install_defaults into a fresh session).
+/// (ui::install_defaults into a fresh session; for the `schematic` table the
+/// xschem-style defaults of schematic_bindings.hpp, as SchematicKeyMap::
+/// reset_commands).
 [[nodiscard]] std::vector<std::string> reset_table_commands(const ::hefesto::ui::MacroTables& current, std::string_view table);
 
 /// Load file…: what a key-binding file would change, as commands over every

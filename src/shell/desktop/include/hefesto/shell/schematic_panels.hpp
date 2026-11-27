@@ -267,4 +267,22 @@ bool run_netlist(NetlistAction& action, bool has_document, std::string label,
 /// is the editor's ordinary Interrupt; false.
 bool interrupt_schematic(NetlistAction& action, editor::EditorState& editor);
 
+/// The editor-view tabs of the top bar that can be shown (Waveforms arrives
+/// in M9).
+enum class EditorTab : std::uint8_t { layout, schematic, view3d };
+
+/// The window's `tab` command (M8 round 7): `tab` reports the tab shown,
+/// `tab layout|schematic|3d` shows one, like a click on its segment. A
+/// second way to the Schematic tab than the view tabs, which give way in a
+/// narrow top bar (the 1024 px macOS CI screen), and one a script, `--run`
+/// or the key-binding sheet can issue.
+struct TabRequest {
+  bool ok = false;
+  std::optional<EditorTab> show;  // nullopt with ok: report the tab shown
+};
+inline constexpr std::string_view kTabCommandUsage = "tab ?layout|schematic|3d?";
+[[nodiscard]] TabRequest parse_tab_command(const std::vector<std::string>& args);
+/// The word of `tab` that names `tab` ("layout", "schematic", "3d").
+[[nodiscard]] std::string_view editor_tab_name(EditorTab tab) noexcept;
+
 }  // namespace hefesto::shell

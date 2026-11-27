@@ -78,7 +78,8 @@ class SchematicView final : public cmd::CommandObserver {
   void set_on_netlist_change(std::function<void()> changed) { netlist_changed_ = std::move(changed); }
   /// What the view shows, for scripted checks after an --input script
   /// (main_window.cpp prints it): the breadcrumb, the instances drawn and
-  /// the symbols still pending, "ihp_style_tb.sch, 5 instances, 0 pending".
+  /// the symbols still pending and the canvas size in pixels,
+  /// "ihp_style_tb.sch, 5 instances, 0 pending, canvas 980 x 520".
   [[nodiscard]] std::string status_line() const;
 
   /// cmd::CommandObserver: the results of `schematic` commands.

@@ -288,3 +288,22 @@ TEST_CASE("the top bar's Netlist button runs the same netlist action as the netl
   CHECK(run_netlist(action, true, "inv.sch", nested, messages));
   CHECK(issued.size() == 1);
 }
+
+// M8 round 7: the `tab` command, a second way to the Schematic tab (the view
+// tabs give way in a narrow top bar, so the 1024 px macOS CI screen could
+// not reach it).
+TEST_CASE("the tab command names the editor view to show", "[cap:schematic-editing][req:Desktop and touch interaction]") {
+  const TabRequest query = parse_tab_command({});
+  CHECK(query.ok);
+  CHECK_FALSE(query.show.has_value());
+  for (const EditorTab tab : {EditorTab::layout, EditorTab::schematic, EditorTab::view3d}) {
+    const TabRequest r = parse_tab_command({std::string(editor_tab_name(tab))});
+    CHECK(r.ok);
+    REQUIRE(r.show.has_value());
+    CHECK(*r.show == tab);
+  }
+  CHECK(editor_tab_name(EditorTab::view3d) == "3d");
+  CHECK_FALSE(parse_tab_command({"waveforms"}).ok);  // arrives in M9
+  CHECK_FALSE(parse_tab_command({"Schematic"}).ok);
+  CHECK_FALSE(parse_tab_command({"schematic", "extra"}).ok);
+}
