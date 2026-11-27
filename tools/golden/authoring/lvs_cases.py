@@ -203,7 +203,10 @@ def set_cases() -> list[Case]:
               # are left out: netgen 1.5.327 exited 139 on them (runs 46050777576, 46054592794).
               "setup.tcl": inline_setup("ignore class \"-circuit1 fill_2\"", "ignore shorted \"-circuit1 decap\"",
                                         "ignore shorted \"-circuit2 decap\"", "ignore decap")},
-             lvs_outputs=True),
+             lvs_outputs=True,
+             capture_blocked="netgen 1.5.327 exits 139 (segmentation fault) on this case's ignore commands in three "
+                             "captures (runs 46050777576, 46054592794, 46058187767); Hefesto's ignore is covered by "
+                             "tests/unit/lvs/setup/commands_test.cpp until the LVS spec team narrows the input"),
         Case("NG-SET-11", cap, ["model command"],
              "model x resistor on 2- and 3-port cells, a wrong port count, model x copy and the model blackbox "
              "query; the model results and the errors.",

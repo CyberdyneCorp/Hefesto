@@ -12,6 +12,7 @@ requirements = ["ignore command"]
 tool = "netgen"
 description = "ignore class on fill cells and ignore shorted on a decap tied to one net; the device counts."
 provenance = "hefesto"
+capture_blocked = "netgen 1.5.327 exits 139 (segmentation fault) on this case's ignore commands in three captures (runs 46050777576, 46054592794, 46058187767); Hefesto's ignore is covered by tests/unit/lvs/setup/commands_test.cpp until the LVS spec team narrows the input"
 
 [reference]
 script = "input/run.tcl"
