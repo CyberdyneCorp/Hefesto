@@ -163,7 +163,9 @@ def run_openvaf(args, capture: Path) -> list[Path]:
     env[ENV_CAPTURE], env[ENV_REAL] = str(capture / "objects"), real
     (capture / "objects").mkdir()
     source = args.source.resolve()
-    run([str(args.openvaf), *args.openvaf_arg, source.name, "-o", str(capture / f"{args.module}.osdi")],
+    # OpenVAF runs in the source's directory (its `include` paths are relative).
+    openvaf = str(args.openvaf.resolve()) if os.sep in str(args.openvaf) else str(args.openvaf)
+    run([openvaf, *args.openvaf_arg, source.name, "-o", str(capture / f"{args.module}.osdi")],
         cwd=source.parent, env=env)
     objects = sorted((capture / "objects").iterdir())
     if not objects:
