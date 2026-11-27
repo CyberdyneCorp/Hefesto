@@ -84,11 +84,23 @@ REPLAYED: set[str] = {
     # R5 EXTCMD (tasks 9.5, 17.1, 17.6): EX-064..070 through the run driver (EX-068 with ExtLength.c's
     # flood), LEFDEF-336's extract all feeding def write.
     *(f"EX-{n:03d}" for n in range(64, 71)), "LEFDEF-336",
+    # R5 RES: NL-RESNET-05, 10 and 13 re-authored (Q-NETLIST-63) and captured; NL-RES-01..08 through
+    # ResFixUpConnections, the FastHenry/geometry runs and ResSortByGate (tasks 14.1-14.4). NL-RES-02 and 03
+    # keep the heap-ordered terminal names of Magic's later runs (DECIDED, Q-NETLIST-69).
+    *(f"NL-RESNET-{n:02d}" for n in (5, 10, 13)),
+    *(f"NL-RES-{n:02d}" for n in range(1, 9)),
 }
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
-DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS}
+DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS,
+                                   "NL-RES-02": ["Q-NETLIST-69"], "NL-RES-03": ["Q-NETLIST-69"]}
+
+RES_HEAP_ORDER = (
+    "ResSortByGate orders a net's devices by node address; Hefesto uses the reverse first-mention order ("
+    "Q-NETLIST-69, fix), which matches Magic's first run after extract all on the output net, but Magic's"
+    " later runs in the same session (and the GND net's first warning) follow heap addresses, so the .t<k"
+    "> terminal numbers of two devices on the same gate net swap")
 
 # Replayed cases whose remaining difference is an approved both-modes fix (design D21): written to the block
 # with their decisions and only the differing outputs, without a deferral.
@@ -97,6 +109,8 @@ DECIDED: dict[str, tuple[list[str], str]] = {
                "extract do unique reverts the temporary _uqN labels of every extracted cell, the top cell included, "
                "and restores its modified flag, so the saved ex keeps vdd! and net1 and its timestamp (Q-EXTRACT-6, "
                "fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"),
+    "NL-RES-02": (["stderr.txt", "collected/wire.all.res.ext", "collected/wire.force.res.ext"], RES_HEAP_ORDER),
+    "NL-RES-03": (["collected/wire.res.ext"], RES_HEAP_ORDER),
 }
 
 # Cases whose expected/ is hand-derived instead of captured, with the approved decision that allows it
