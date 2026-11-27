@@ -1,0 +1,38 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Reading netlist file input/a.spice for input/a.spice top
+Reading netlist file input/b.spice for input/b.spice top
+
+Reading setup file input/setup.tcl
+
+Device nmos already has property named "AS"
+Device nmos already has property named "AS"
+Device nmos already has property named "AD"
+Device nmos already has property named "AD"
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 1 device instances.
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 1 device instances.
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+
+Circuit 1 contains 1 devices, Circuit 2 contains 1 devices.
+Circuit 1 contains 4 nets,    Circuit 2 contains 4 nets.
+
+
+Final result: 
+Circuits match uniquely.
+Property errors were found.
+
+The following cells had property errors:
+ top
+
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

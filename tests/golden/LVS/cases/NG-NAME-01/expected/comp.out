@@ -1,0 +1,23 @@
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+r (1)                                      |r (1)                                      
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Resolving symmetries by property value.
+Resolving symmetries by pin name.
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+Vdd                                        |VDD                                        
+d[3]                                       |D<3>                                       
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

@@ -1,0 +1,2 @@
+Unable to equate nodes input/a.spice Y and input/b.spice Y.
+Unable to equate elements input/a.spice nmos:1 and input/b.spice nmos:1.

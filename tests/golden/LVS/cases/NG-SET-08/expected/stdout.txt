@@ -1,0 +1,52 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Reading netlist file input/layout.spice for input/layout.spice top
+Call to undefined subcircuit r1
+Creating placeholder cell definition.
+Reading netlist file input/schem.spice for input/schem.spice top
+Call to undefined subcircuit r1
+Creating placeholder cell definition.
+
+Reading setup file input/setup.tcl
+
+1
+1
+Warning:  There were errors reading the setup file
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'r1'
+Circuit r1 contains 0 device instances.
+Circuit contains 0 nets, and 2 disconnected pins.
+Contents of circuit 2:  Circuit: 'r1'
+Circuit r1 contains 0 device instances.
+Circuit contains 0 nets, and 2 disconnected pins.
+
+Circuit r1 contains no devices.
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 2 device instances.
+  Class: r1                    instances:   2
+Circuit contains 3 nets.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 1 device instances.
+  Class: r1                    instances:   1
+Circuit contains 2 nets.
+
+Flattened mismatched instances and attempting compare again.
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 1 nets, and 2 disconnected pins.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 0 nets, and 2 disconnected pins.
+
+Circuit top contains no devices.
+
+Final result: 
+Verify:  cell input/schem.spice has no elements and/or nodes.  Not checked.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

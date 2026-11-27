@@ -1,0 +1,128 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Reading netlist file input/a.spice for input/a.spice top
+Reading netlist file input/b.spice for input/b.spice top
+
+No setup file specified.  Using trivial default setup.
+
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'nand2'
+Circuit nand2 contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+Contents of circuit 2:  Circuit: 'nand2'
+Circuit nand2 contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+
+Circuit was modified by parallel/series device merging.
+New circuit summary:
+
+Contents of circuit 1:  Circuit: 'nand2'
+Circuit nand2 contains 3 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+Contents of circuit 2:  Circuit: 'nand2'
+Circuit nand2 contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+
+Circuit 1 contains 3 devices, Circuit 2 contains 4 devices. *** MISMATCH ***
+Circuit 1 contains 6 nets,    Circuit 2 contains 6 nets.
+
+  Flattening non-matched subcircuits nand2 nand2
+
+Flattening instances of nand2 in file input/a.spice
+Flattening instances of nand2 in file input/b.spice
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 3 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+
+Circuit 1 contains 3 devices, Circuit 2 contains 4 devices. *** MISMATCH ***
+Circuit 1 contains 6 nets,    Circuit 2 contains 6 nets.
+
+
+Final result: 
+Top level cell failed pin matching.
+
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 
+(2) code 1: invalid command name "reset"
+Will not flatten these subcells: nand2
+Will not flatten instances of nand2 in file input/a.spice
+Will not flatten instances of nand2 in file input/b.spice
+
+No setup file specified.  Using trivial default setup.
+
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 3 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+
+Circuit 1 contains 3 devices, Circuit 2 contains 4 devices. *** MISMATCH ***
+Circuit 1 contains 6 nets,    Circuit 2 contains 6 nets.
+
+
+Final result: 
+Top level cell failed pin matching.
+
+Logging to file "comp.out" disabled
+LVS Done.
+(3) code 0: 

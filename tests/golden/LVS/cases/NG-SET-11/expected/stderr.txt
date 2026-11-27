@@ -1,0 +1,6 @@
+Cell top (0) disconnected node: a
+Cell top (0) disconnected node: b
+Cell top (0) disconnected node: c
+Cell top (1) disconnected node: a
+Cell top (1) disconnected node: b
+Cell top (1) disconnected node: c

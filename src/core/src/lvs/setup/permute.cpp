@@ -61,8 +61,9 @@ void permute_pins(Runtime& runtime, const Target& target, std::string_view p1, s
   for (const std::string_view pin : {p1, p2}) {
     if (!port_position(cell, pin)) {
       runtime.print("No such pin " + std::string{pin} + " in model " + cell.name);
-      runtime.print("Unable to permute model " + cell.name + " pins " + std::string{p1} + ", " + std::string{p2} +
-                    ".");
+      // stderr, as the capture of NG-SET-04 shows.
+      runtime.print_error("Unable to permute model " + cell.name + " pins " + std::string{p1} + ", " +
+                          std::string{p2} + ".");
       return;
     }
   }
@@ -112,7 +113,7 @@ cmd::CommandResult pins(Runtime& runtime, std::span<const std::string> args) {
   auto resolved = runtime.resolve(args[0]);
   if (!resolved) {
     runtime.print("No such model " + args[0]);
-    runtime.print("Unable to permute model " + args[0] + " pins " + args[1] + ", " + args[2] + ".");
+    runtime.print_error("Unable to permute model " + args[0] + " pins " + args[1] + ", " + args[2] + ".");
     return cmd::CommandResult::success();
   }
   for (const auto& target : resolved.value().targets) {

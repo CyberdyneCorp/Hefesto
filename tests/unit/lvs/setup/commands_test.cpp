@@ -314,6 +314,7 @@ TEST_CASE("cells list -all -circuit1 lists cells and primitives", "[cap:lvs-setu
   CHECK(logged(state, "inv layout.spice"));
   CHECK(logged(state, "4"));
   CHECK(logged(state, "VSS"));
+  CHECK(logged(state, "Cell inv contains 4 ports."));
   CHECK(logged(state, "nfet 1"));
   CHECK(logged(state, "Cell inv (subcircuit): 4 ports, 4 nets (0 global), 2 instances"));
   CHECK(state.errors == 1);

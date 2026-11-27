@@ -26,6 +26,9 @@ constexpr std::string_view kNotInFile = "Cell is not in file!";
 constexpr std::string_view kNoSuchFile = "No such file number!";
 constexpr std::string_view kNoCircuit = "No circuit has been declared for comparison";
 constexpr std::string_view kWildcardAlone = "Wildcards must be used with a valid cellname";
+// The list forms with a file number (capture of NG-SET-03): an unknown cell
+// or an unknown number.
+constexpr std::string_view kNoCellOrFile = "No such cell or bad file number!";
 
 diag::Diagnostic message(std::string_view text) {
   return diag::make(setup_codes::kCommandError, std::string{text});
@@ -225,8 +228,8 @@ diag::Outcome<Resolved> Runtime::resolve_pair(std::string_view a, std::string_vi
   const auto nb = parse_integer(b);
   if (na || nb) {
     const Netlist* netlist = netlist_by_number(static_cast<FileNumber>(na ? *na : *nb));
-    if (netlist == nullptr) {
-      return message(kNoSuchFile);
+    if (netlist == nullptr || !netlist->circuit->db.find_cell(na ? b : a, netlist->local)) {
+      return message(kNoCellOrFile);
     }
     return in_netlist(*netlist, na ? b : a);
   }

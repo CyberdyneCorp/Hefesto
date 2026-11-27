@@ -27,32 +27,20 @@ enum TypeWord : std::size_t { kInteger, kDouble, kValue, kString, kExpression };
 
 constexpr std::string_view kUsage = "property default|parallel|series|topology|<valid_cellname> [option] ...";
 
-/// The option words after the cell (exact words: a property key such as `m`
-/// is never taken for `merge`).
+/// The option words after the cell, in the order netgen 1.5.327 lists them
+/// in its `bad option` message (capture of NG-SET-06), matched by unique
+/// prefix.
 enum class Option : std::uint8_t { add, remove, tolerance, merge, associate, series, parallel, derive };
 
+constexpr std::array<std::string_view, 11> kOptionWords{"add",    "create", "remove",   "delete",    "tolerance", "merge",
+                                                        "serial", "series", "parallel", "associate", "derive"};
+constexpr std::array<Option, 11> kOptionOf{Option::add,    Option::add,    Option::remove,   Option::remove,
+                                           Option::tolerance, Option::merge, Option::series, Option::series,
+                                           Option::parallel,  Option::associate, Option::derive};
+
 std::optional<Option> option_word(std::string_view word) {
-  struct Entry {
-    std::string_view word;
-    Option option;
-  };
-  static constexpr std::array<Entry, 11> kOptions{{{"add", Option::add},
-                                                   {"create", Option::add},
-                                                   {"remove", Option::remove},
-                                                   {"delete", Option::remove},
-                                                   {"tolerance", Option::tolerance},
-                                                   {"merge", Option::merge},
-                                                   {"associate", Option::associate},
-                                                   {"series", Option::series},
-                                                   {"serial", Option::series},
-                                                   {"parallel", Option::parallel},
-                                                   {"derive", Option::derive}}};
-  for (const auto& entry : kOptions) {
-    if (entry.word == word) {
-      return entry.option;
-    }
-  }
-  return std::nullopt;
+  const auto index = match_keyword(word, kOptionWords);
+  return index ? std::optional{kOptionOf.at(*index)} : std::nullopt;
 }
 
 std::string_view type_name(PropertyType type) noexcept {
@@ -188,8 +176,10 @@ cmd::CommandResult add(Runtime& runtime, const Resolved& cells, std::span<const 
 cmd::Value list_of(const Cell& cell) {
   cmd::Value::List out;
   for (const auto& def : cell.properties) {
+    // Integer tolerances print as integers, all others as Tcl doubles
+    // (`{w string 0.0}`, `{model string 3.0}`; capture of NG-SET-06).
     cmd::Value tolerance = def.tolerance;
-    if (def.type != PropertyType::real && def.type != PropertyType::value) {
+    if (def.type == PropertyType::integer) {
       tolerance = static_cast<std::int64_t>(def.tolerance);
     }
     out.emplace_back(cmd::Value::List{def.key, std::string{type_name(def.type)}, tolerance});
@@ -318,12 +308,24 @@ cmd::CommandResult derive(Runtime& runtime, const Resolved& cells, std::span<con
   return cmd::CommandResult::success();
 }
 
+/// A third word that is no option: `add` is assumed, and the failed option
+/// match stays as the result (`bad option "<w>": must be add, ...`), as the
+/// capture of NG-SET-06 shows.
+cmd::CommandResult implied_add(Runtime& runtime, const Resolved& cells, const std::string& word,
+                               std::span<const std::string> specs) {
+  auto result = add(runtime, cells, specs);
+  if (result.ok()) {
+    result.value = bad_option("option", word, kOptionWords);
+  }
+  return result;
+}
+
 cmd::CommandResult cell_option(Runtime& runtime, const Resolved& cells, const Words& words) {
   const auto option = option_word(words[1]);
   const std::span<const std::string> rest{words.begin() + (option ? 2 : 1), words.end()};
   switch (option.value_or(Option::add)) {
     case Option::add:
-      return add(runtime, cells, rest);
+      return option ? add(runtime, cells, rest) : implied_add(runtime, cells, words[1], rest);
     case Option::remove:
       return remove(runtime, cells, rest);
     case Option::tolerance:

@@ -198,10 +198,10 @@ def set_cases() -> list[Case]:
                               "X3 vss vss decap\n.ends\n",
               "schem.spice": "* schematic\n.subckt decap a b\nC1 a b 1p\n.ends\n"
                              ".subckt top a y vdd vss\nR1 a y 1k\n.ends\n",
-              # `ignore <unknown keyword>` is left out: netgen 1.5.327 uses an uninitialised option index
-              # there (Q-LVS-22) and the capture crashed (exit 139, run 46050777576).
-              "setup.tcl": inline_setup("ignore class \"-circuit1 fill_2\"", "ignore shorted {* decap}",
-                                        "ignore decap")},
+              # `ignore <unknown keyword>` (Q-LVS-22's uninitialised option index) and `ignore shorted {* decap}`
+              # are left out: netgen 1.5.327 exited 139 on them (runs 46050777576, 46054592794).
+              "setup.tcl": inline_setup("ignore class \"-circuit1 fill_2\"", "ignore shorted \"-circuit1 decap\"",
+                                        "ignore shorted \"-circuit2 decap\"", "ignore decap")},
              lvs_outputs=True),
         Case("NG-SET-11", cap, ["model command"],
              "model x resistor on 2- and 3-port cells, a wrong port count, model x copy and the model blackbox "

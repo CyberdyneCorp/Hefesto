@@ -1,0 +1,6 @@
+
+No setup file specified.  Continuing without a setup.
+
+
+Error:  Setup file input/foo.tcl does not exist.
+

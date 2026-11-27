@@ -1,0 +1,138 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Generating JSON file result
+Reading netlist file input/a.spice for input/a.spice inv
+Reading netlist file input/b.spice for input/b.spice inv
+
+No setup file specified.  Using trivial default setup.
+
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 2 devices.
+Circuit 1 contains 4 nets,    Circuit 2 contains 4 nets.
+
+
+Final result: 
+Circuits match uniquely.
+.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 
+(2) code 1: invalid command name "reset"
+Generating JSON file result
+
+No setup file specified.  Using trivial default setup.
+
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+Comparison output logged to file comp
+Logging to file "comp" enabled
+
+Contents of circuit 1:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 2 devices.
+Circuit 1 contains 4 nets,    Circuit 2 contains 4 nets.
+
+
+Final result: 
+Circuits match uniquely.
+.
+Logging to file "comp" disabled
+LVS Done.
+(3) code 0: 
+Generating list result
+
+No setup file specified.  Using trivial default setup.
+
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device pmos
+No property ad found for device pmos
+No property ps found for device pmos
+No property pd found for device pmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+No property as found for device nmos
+No property ad found for device nmos
+No property ps found for device nmos
+No property pd found for device nmos
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 2 devices.
+Circuit 1 contains 4 nets,    Circuit 2 contains 4 nets.
+
+
+Final result: 
+Circuits match uniquely.
+.
+Logging to file "comp.out" disabled
+LVS Done.
+(4) code 0: {name {inv inv} devices {{{nmos 1} {pmos 1}} {{nmos 1} {pmos 1}}} nets {4 4} badnets {} badelements {} pins {{Y A VSS VDD} {Y A VSS VDD}}}

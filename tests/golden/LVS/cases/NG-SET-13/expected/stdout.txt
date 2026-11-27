@@ -1,0 +1,39 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Reading netlist file input/layout.spice for input/layout.spice inv
+Reading netlist file input/schem.spice for input/schem.spice inv
+
+Reading setup file input/setup.tcl
+
+41 41
+30 30
+50 30
+Column width cannot be zero or less
+
+0 0
+pmos input/layout.spice inv nmos
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'inv'
+Circuit inv contains 2 device instances.
+  Class: pmos                  instances:   1
+  Class: nmos                  instances:   1
+Circuit contains 4 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 2 devices.
+Circuit 1 contains 4 nets,    Circuit 2 contains 4 nets.
+
+
+Final result: 
+Circuits match uniquely.
+.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

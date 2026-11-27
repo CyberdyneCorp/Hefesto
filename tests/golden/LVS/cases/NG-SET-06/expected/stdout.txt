@@ -1,0 +1,14 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Call to undefined subcircuit cdev
+Creating placeholder cell definition.
+(1) code 0: 0
+(2) code 0: 
+(3) code 0: bad option "nf integer": must be add, create, remove, delete, tolerance, merge, serial, series, parallel, associate, or derive
+(4) code 0: 
+(5) code 0: 
+(6) code 0: 
+Device cdev already has property named "w"
+(7) code 0: 
+(8) code 0: {nf integer 0} {w string 0.0} {m integer 1} {w2 double 0.02} {model string 3.0}

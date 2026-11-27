@@ -1,0 +1,31 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Expected to find instance pin block but got "sub"
+Expected to find end of instance but got "u"
+Creating placeholder cell definition for module :.
+Warning:  Ignoring subcircuit with no pin names at "a"
+Behavioral keyword 'specify' found in source.
+Module 'top' is not structural verilog, making black-box.
+(1) code 0: 0
+(2) code 1: wrong # args: should be "nodes ?element? ?cell file?"
+Circuit: 'top'
+a[1]               port                  Net #: 4
+a[0]               port                  Net #: 2
+b                  port                  Net #: 1
+y                  port                  Net #: 3
+n[0]               node                  Net #: 1
+n[1]               node                  Net #: 5
+u0/d[1]            pin 1                 Net #: 2
+u0/d[0]            pin 2                 Net #: 1
+u0/q               pin 3                 Net #: 3
+g[0][0]/(no pins)  pin 1                 Net #: -1
+u/d[1]             pin 1                 Net #: 4
+u/d[0]             pin 2                 Net #: 2
+u/q                pin 3                 Net #: 5
+(3) code 0: 
+d[1]
+d[0]
+q
+Cell sub contains 3 ports.
+(4) code 0: 

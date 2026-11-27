@@ -1,0 +1,14 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+(2) code 0: 1
+Warning:  A case-insensitive file has been read and so the	verilog file must be treated case-insensitive to match.
+(3) code 0: 2
+(4) code 0: 3
+Warning:  A case-sensitive file has been read and so the SPICE netlist must be treated case-sensitive to match.
+(5) code 0: 5
+(6) code 0: 7
+ReadNetlist: don't know type of file 'input/hash'
+(7) code 1: -1
+(8) code 1: -1

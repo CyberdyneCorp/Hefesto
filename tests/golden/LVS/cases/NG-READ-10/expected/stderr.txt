@@ -1,0 +1,3 @@
+line number 13 = '    sub u (.d(a), .q(n[1]));'
+Warning:  Cell : has no pins
+line number 13 = '    sub u (.d(a), .q(n[1]));'

@@ -1,0 +1,35 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Generating JSON file result
+Reading netlist file input/a.spice for input/a.spice top%x
+Reading netlist file input/b.spice for input/b.spice top%x
+
+No setup file specified.  Using trivial default setup.
+
+No property w found for device r
+No property l found for device r
+No property w found for device r
+No property l found for device r
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'top%x'
+Circuit top%x contains 2 device instances.
+  Class: r                     instances:   2
+Circuit contains 3 nets.
+Contents of circuit 2:  Circuit: 'top%x'
+Circuit top%x contains 1 device instances.
+  Class: r                     instances:   1
+Circuit contains 2 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 1 devices. *** MISMATCH ***
+Circuit 1 contains 3 nets,    Circuit 2 contains 2 nets. *** MISMATCH ***
+
+
+Final result: 
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

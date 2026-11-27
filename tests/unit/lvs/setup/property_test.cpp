@@ -70,8 +70,8 @@ TEST_CASE("property add with types and tolerances", "[cap:lvs-setup-file][req:pr
   CHECK(property(pair.cell(1, "nfet"), "nf") == nullptr);
   CHECK(logged(state, "Device nfet already has property named \"nf\""));
   CHECK(logged(state, "{L double 0.01} {W double 0.01} {M integer 0} {nf integer 0} "
-                      "{w2 double 0.02} {mult integer 0} {model string 3} {area double 0.05} {f value 0.01} "
-                      "{e expression 0}"));
+                      "{w2 double 0.02} {mult integer 0} {model string 3.0} {area double 0.05} {f value 0.01} "
+                      "{e expression 0.0}"));
 }
 
 namespace {
@@ -104,6 +104,17 @@ TEST_CASE("property add single-word rule and bad tolerance (Q-LVS-6, netgen-comp
 TEST_CASE("property add single-word rule and bad tolerance (Q-LVS-6, netgen-compat OFF)",
           "[cap:lvs-setup-file][req:property add and type declarations]") {
   single_word_and_bad_tolerance(false);
+}
+
+TEST_CASE("A third word that is no option adds and keeps the bad-option result",
+          "[cap:lvs-setup-file][req:property add and type declarations]") {
+  Pair pair;
+  const auto state = pair.ok("puts [property {nfet 0} {zz integer}]\nputs [property {nfet 0} mer]\n");
+  CHECK(logged(state, "bad option \"zz integer\": must be add, create, remove, delete, tolerance, merge, serial, "
+                      "series, parallel, associate, or derive"));
+  CHECK(property(pair.cell(1, "nfet"), "zz")->type == lvs::PropertyType::integer);
+  CHECK(property(pair.cell(1, "nfet"), "mer") == nullptr);  // a unique prefix of `merge` is that option
+  CHECK(state.errors == 0);
 }
 
 TEST_CASE("property remove, delete all, tolerance and associate", "[cap:lvs-setup-file][req:property remove, tolerance and associate]") {

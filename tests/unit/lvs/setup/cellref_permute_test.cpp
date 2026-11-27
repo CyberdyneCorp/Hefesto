@@ -78,9 +78,9 @@ TEST_CASE("Bad cell references raise the netgen messages", "[cap:lvs-setup-file]
       "property *\n"
       "property 9\n");
   CHECK(logged_error(state, "Error setup.tcl:1 (ignoring), No such cell!"));
-  CHECK(logged_error(state, "Error setup.tcl:2 (ignoring), No such cellname!"));
+  CHECK(logged_error(state, "Error setup.tcl:2 (ignoring), No such cell or bad file number!"));
   CHECK(logged_error(state, "Error setup.tcl:3 (ignoring), No such cellname!"));
-  CHECK(logged_error(state, "Error setup.tcl:4 (ignoring), No such file number!"));
+  CHECK(logged_error(state, "Error setup.tcl:4 (ignoring), No such cell or bad file number!"));
   CHECK(logged_error(state, "Error setup.tcl:5 (ignoring), Wildcards must be used with a valid cellname"));
   CHECK(logged_error(state, "Error setup.tcl:6 (ignoring), No such file number!"));
 }
@@ -88,8 +88,9 @@ TEST_CASE("Bad cell references raise the netgen messages", "[cap:lvs-setup-file]
 TEST_CASE("A cell present only in the other netlist is not in the file", "[cap:lvs-setup-file][req:Cell reference syntax]") {
   Pair pair(setup_test::kInverter,
             ".subckt inv A Y VDD VSS\nM1 Y A VSS VSS nfet W=1 L=0.15\nX1 A Y extra\n.ends\n.subckt extra a b\n.ends\n");
-  const auto state = pair.ok("property {extra 0}\n");
+  const auto state = pair.ok("property {extra layout.spice}\nproperty {extra 0}\n");
   CHECK(logged_error(state, "Error setup.tcl:1 (ignoring), Cell is not in file!"));
+  CHECK(logged_error(state, "Error setup.tcl:2 (ignoring), No such cell or bad file number!"));
 }
 
 TEST_CASE("Circuit keywords need assigned circuits", "[cap:lvs-setup-file][req:Cell reference syntax]") {
@@ -132,9 +133,9 @@ TEST_CASE("permute reports a missing pin and a missing model", "[cap:lvs-setup-f
   Pair pair;
   const auto state = pair.ok("permute pins {nfet 0} drain nosuch\npermute nosuch 1 2\n");
   CHECK(logged(state, "No such pin nosuch in model nfet"));
-  CHECK(logged(state, "Unable to permute model nfet pins drain, nosuch."));
+  CHECK(logged_error(state, "Unable to permute model nfet pins drain, nosuch."));
   CHECK(logged(state, "No such model nosuch"));
-  CHECK(logged(state, "Unable to permute model nosuch pins 1, 2."));
+  CHECK(logged_error(state, "Unable to permute model nosuch pins 1, 2."));
   CHECK(pair.cell(1, "nfet").permutes.empty());
 }
 

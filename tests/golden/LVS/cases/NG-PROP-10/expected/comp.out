@@ -1,0 +1,34 @@
+
+Cell r1 (0) disconnected node: p
+Cell r1 (0) disconnected node: n
+Cell r1 (1) disconnected node: p
+Cell r1 (1) disconnected node: n
+
+Subcircuit pins:
+Circuit 1: r1                              |Circuit 2: r1                              
+-------------------------------------------|-------------------------------------------
+p                                          |p                                          
+n                                          |n                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes r1 and r1 are equivalent.
+
+Flattening instances of r1 in cell top (0) makes a better match
+Flattening instances of r1 in cell top (1) makes a better match
+Making another compare attempt.
+
+Cell top (0) disconnected node: a
+Cell top (0) disconnected node: b
+Cell top (1) disconnected node: a
+Cell top (1) disconnected node: b
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Verify:  cell input/b.spice has no elements and/or nodes.  Not checked.

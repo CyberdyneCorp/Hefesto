@@ -1,0 +1,31 @@
+
+
+Subcircuit pins:
+Circuit 1: adc                             |Circuit 2: adc                             
+-------------------------------------------|-------------------------------------------
+in                                         |in                                         
+out                                        |out                                        
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes adc and adc are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+adc (1)                                    |adc (1)                                    
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

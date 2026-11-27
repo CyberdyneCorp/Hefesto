@@ -1,0 +1,7 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+(2) code 0: 0
+(3) code 1: File is already loaded as a different file number.
+(4) code 0: 0

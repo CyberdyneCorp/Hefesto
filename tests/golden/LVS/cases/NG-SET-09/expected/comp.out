@@ -1,0 +1,60 @@
+
+Subcircuit summary:
+Circuit 1: XY_inv                          |Circuit 2: inv                             
+-------------------------------------------|-------------------------------------------
+r (1)                                      |r (1)                                      
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: XY_inv                          |Circuit 2: inv                             
+-------------------------------------------|-------------------------------------------
+A                                          |A                                          
+Y                                          |Y                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes XY_inv and inv are equivalent.
+
+Cell blk (0) disconnected node: p
+Cell blk (0) disconnected node: q
+Cell blk2 (1) disconnected node: x
+Cell blk2 (1) disconnected node: y
+
+Subcircuit pins:
+Circuit 1: blk                             |Circuit 2: blk2                            
+-------------------------------------------|-------------------------------------------
+(no matching pin)                          |x                                          
+(no matching pin)                          |x                                          
+(no matching pin)                          |y                                          
+(no matching pin)                          |y                                          
+p                                          |(no matching pin)                          
+q                                          |(no matching pin)                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes blk and blk2 are equivalent.
+
+Flattening instances of blk2 in cell top (1) makes a better match
+Making another compare attempt.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+XY_inv (1)                                 |inv (1)                                    
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+y                                          |y                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

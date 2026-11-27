@@ -190,9 +190,11 @@ cmd::CommandResult ports_command(Runtime& runtime, const Words& words) {
     return command_error(target.error().text);
   }
   std::vector<std::string> names;
-  for (const auto& port : target.value().get().ports) {
+  const Cell& cell = target.value().get();
+  for (const auto& port : cell.ports) {
     names.push_back(port.name);
   }
+  names.push_back("Cell " + cell.name + " contains " + std::to_string(cell.ports.size()) + " ports.");
   return print_lines(runtime, names);
 }
 
