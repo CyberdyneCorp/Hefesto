@@ -151,6 +151,9 @@ release notices.
   go through the system clipboard; clipboard text above 16 MiB is
   refused. `macro schematic KEY "TEXT"` lines of the key-binding sheet
   now reach the table the canvas reads.
+  The view tabs stay in a 1280 px top bar (the Netlist button gives
+  way first), and the CI desktop legs capture the Schematic tab and
+  fail unless it is shown.
 - **Embedded symbols on save.** `schematic save` writes the block of
   each `embed=true` symbol the file does not embed yet, taken from the
   symbol library.

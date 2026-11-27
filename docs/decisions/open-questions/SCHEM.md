@@ -560,3 +560,21 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Options: (a) accept the optional third argument with the captured behaviour, both modes | (b) leave it unsupported and record SCHEM-PR-01 as a deviation
 - Recommendation: (a).
 - Spec effect: `schematic-command` xschem table (`get_tok` row).
+
+### Q-SCHEM-66: Copy and Paste keys of the desktop Schematic tab
+- Kind: platform
+- Status: proposed (drafted 2026-11-26 by the M8 round-6 SHELL workstream, recorded at the round-6 integration; numbers 63 to 65 are not used; awaiting the user)
+- xschem behavior: not established (clean room: not read from xschem's source; no capture covers the desktop keys).
+- Evidence: `src/shell/desktop/src/schematic_clipboard.hpp`, tests in `tests/unit/shell/schematic_clipboard_test.cpp`; task 13.2 round-6 note; `docs/design/m8-ui-conformance.md` row "Copy and Paste with the system clipboard".
+- Options: (a) Command-C / Command-V on macOS; off macOS Ctrl-C / Ctrl-V, where Ctrl-C interrupts a running netlist and copies otherwise; both modes (as implemented) | (b) Ctrl-C / Ctrl-V on every platform, Ctrl-C always copies and the netlist is interrupted only from the Interrupt card | (c) a separate interrupt key (Escape) and Ctrl-C always copies
+- Recommendation: (a): each platform's own clipboard keys, and the terminal habit of Ctrl-C as interrupt kept while a run is going.
+- Spec effect: `schematic-editing` "Desktop and touch interaction" (clipboard keys).
+
+### Q-SCHEM-67: `schematic` client of the core `macro` command
+- Kind: platform
+- Status: proposed (drafted 2026-11-26 by the M8 round-6 SHELL workstream, recorded at the round-6 integration; awaiting the user)
+- xschem behavior: not applicable (Magic's `macro` has no `schematic` client; xschem binds keys in its Tcl GUI).
+- Evidence: `src/core/src/ui/macro_commands.cpp` (`kSchematicClient`), tests in `tests/unit/shell/schematic_bindings_test.cpp`; task 13.2 round-6 note.
+- Options: (a) the core `macro` command accepts the client `schematic`, both modes, so the key-binding sheet's `macro schematic KEY "TEXT"` lines and scripts edit the editor's key table; unbound keys keep the xschem-style defaults (as implemented) | (b) the shell applies `macro schematic` lines itself and the core rejects the client (the round-5 behaviour; scripts cannot rebind schematic keys)
+- Recommendation: (a): one key-binding path for layout and schematic, scriptable and covered by the key-binding sheet test.
+- Spec effect: `schematic-editing` "Desktop and touch interaction" (key bindings).
