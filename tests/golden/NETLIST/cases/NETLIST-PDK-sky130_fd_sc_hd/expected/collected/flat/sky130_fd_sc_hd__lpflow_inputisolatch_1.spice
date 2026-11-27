@@ -1,0 +1,18 @@
+* NGSPICE file created from sky130_fd_sc_hd__lpflow_inputisolatch_1.ext - technology: sky130A
+
+X0 a_381_369# D VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.09575 pd=0.965 as=0.1664 ps=1.8 w=0.64 l=0.15
+X1 a_575_47# a_27_47# a_476_47# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0486 pd=0.63 as=0.0621 ps=0.705 w=0.36 l=0.15
+X2 a_476_47# a_27_47# a_381_369# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.0567 pd=0.69 as=0.09575 ps=0.965 w=0.42 l=0.15
+X3 a_476_47# a_193_47# a_381_47# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0621 pd=0.705 as=0.066 ps=0.745 w=0.36 l=0.15
+X4 VGND a_629_21# a_575_47# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0936 pd=1.24 as=0.0486 ps=0.63 w=0.36 l=0.15
+X5 Q a_476_47# VGND VNB sky130_fd_pr__nfet_01v8 ad=0.169 pd=1.82 as=0.08775 ps=0.92 w=0.65 l=0.15
+X6 a_193_47# a_27_47# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.143 pd=1.62 as=0.07425 ps=0.82 w=0.55 l=0.15
+X7 a_193_47# a_27_47# VGND VNB sky130_fd_pr__nfet_01v8 ad=0.1092 pd=1.36 as=0.0567 ps=0.69 w=0.42 l=0.15
+X8 VPWR a_629_21# a_560_413# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.1134 pd=1.38 as=0.07245 ps=0.765 w=0.42 l=0.15
+X9 VGND a_476_47# a_629_21# VNB sky130_fd_pr__nfet_01v8 ad=0.08775 pd=0.92 as=0.169 ps=1.82 w=0.65 l=0.15
+X10 Q a_476_47# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.26 pd=2.52 as=0.135 ps=1.27 w=1 l=0.15
+X11 VPWR a_476_47# a_629_21# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.135 pd=1.27 as=0.26 ps=2.52 w=1 l=0.15
+X12 a_381_47# D VGND VNB sky130_fd_pr__nfet_01v8 ad=0.066 pd=0.745 as=0.1092 ps=1.36 w=0.42 l=0.15
+X13 VPWR SLEEP_B a_27_47# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.07425 pd=0.82 as=0.143 ps=1.62 w=0.55 l=0.15
+X14 a_560_413# a_193_47# a_476_47# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.07245 pd=0.765 as=0.0567 ps=0.69 w=0.42 l=0.15
+X15 VGND SLEEP_B a_27_47# VNB sky130_fd_pr__nfet_01v8 ad=0.0567 pd=0.69 as=0.1092 ps=1.36 w=0.42 l=0.15

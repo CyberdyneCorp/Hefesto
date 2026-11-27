@@ -1,0 +1,34 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1 D RN CLKN Q VDD VNW VPW VSS
+X0 a_1228_476# a_448_472# a_1024_476# VNW pfet_05v0 ad=0.2432p pd=1.4u as=0.1976p ps=1.28u w=0.76u l=0.5u
+X1 a_1228_476# RN VDD VNW pfet_05v0 ad=0.3344p pd=2.4u as=0.3936p ps=1.88u w=0.76u l=0.5u
+X2 a_1356_112# a_1024_476# VDD VNW pfet_05v0 ad=0.17927p pd=1.215u as=0.2222p ps=1.89u w=0.505u l=0.5u
+X3 a_1024_476# a_448_472# a_820_476# VPW nfet_05v0 ad=0.1209p pd=1.01u as=0.1014p ps=0.91u w=0.39u l=0.6u
+X4 VDD a_2682_301# a_2563_527# VNW pfet_05v0 ad=0.28255p pd=1.68u as=0.15022p ps=1.1u w=0.505u l=0.5u
+X5 a_2682_301# RN VDD VNW pfet_05v0 ad=0.376p pd=1.74u as=0.28255p ps=1.68u w=0.94u l=0.5u
+X6 a_1304_156# a_36_124# a_1024_476# VPW nfet_05v0 ad=50.7f pd=0.65u as=0.1209p ps=1.01u w=0.39u l=0.6u
+X7 Q a_2682_301# VSS VPW nfet_05v0 ad=0.3498p pd=2.47u as=0.3498p ps=2.47u w=0.795u l=0.6u
+X8 VDD a_1356_112# a_1228_476# VNW pfet_05v0 ad=0.3936p pd=1.88u as=0.2432p ps=1.4u w=0.76u l=0.5u
+X9 a_2563_527# a_448_472# a_2268_156# VPW nfet_05v0 ad=0.1014p pd=0.91u as=0.20985p ps=1.475u w=0.39u l=0.6u
+X10 VDD CLKN a_36_124# VNW pfet_05v0 ad=0.2249p pd=1.385u as=0.3806p ps=2.61u w=0.865u l=0.5u
+X11 a_448_472# a_36_124# VDD VNW pfet_05v0 ad=0.3806p pd=2.61u as=0.2249p ps=1.385u w=0.865u l=0.5u
+X12 a_2563_527# a_36_124# a_2268_156# VNW pfet_05v0 ad=0.15022p pd=1.1u as=0.1578p ps=1.13u w=0.505u l=0.5u
+X13 a_820_476# D VSS VPW nfet_05v0 ad=0.1014p pd=0.91u as=0.1716p ps=1.66u w=0.39u l=0.6u
+X14 a_448_472# a_36_124# VSS VPW nfet_05v0 ad=0.1782p pd=1.69u as=0.1053p ps=0.925u w=0.405u l=0.6u
+X15 Q a_2682_301# VDD VNW pfet_05v0 ad=0.517p pd=3.23u as=0.517p ps=3.23u w=1.175u l=0.5u
+X16 VSS RN a_1476_156# VPW nfet_05v0 ad=0.216p pd=1.51u as=46.8f ps=0.63u w=0.39u l=0.6u
+X17 a_2682_301# a_2268_156# a_3030_156# VPW nfet_05v0 ad=0.176p pd=1.68u as=0.1385p ps=1.1u w=0.4u l=0.6u
+X18 a_820_476# D VDD VNW pfet_05v0 ad=0.1976p pd=1.28u as=0.3344p ps=2.4u w=0.76u l=0.5u
+X19 a_3030_156# RN VSS VPW nfet_05v0 ad=0.1385p pd=1.1u as=0.1014p ps=0.91u w=0.39u l=0.6u
+X20 a_2268_156# a_36_124# a_1356_112# VPW nfet_05v0 ad=0.20985p pd=1.475u as=0.2079p ps=1.465u w=0.39u l=0.6u
+X21 a_2268_156# a_448_472# a_1356_112# VNW pfet_05v0 ad=0.1578p pd=1.13u as=0.17927p ps=1.215u w=0.505u l=0.5u
+X22 a_1476_156# a_1356_112# a_1304_156# VPW nfet_05v0 ad=46.8f pd=0.63u as=50.7f ps=0.65u w=0.39u l=0.6u
+X23 a_1024_476# a_36_124# a_820_476# VNW pfet_05v0 ad=0.1976p pd=1.28u as=0.1976p ps=1.28u w=0.76u l=0.5u
+X24 a_1356_112# a_1024_476# VSS VPW nfet_05v0 ad=0.2079p pd=1.465u as=0.216p ps=1.51u w=0.39u l=0.6u
+X25 VDD a_2268_156# a_2682_301# VNW pfet_05v0 ad=0.4136p pd=2.76u as=0.376p ps=1.74u w=0.94u l=0.5u
+X26 VSS a_2682_301# a_2563_527# VPW nfet_05v0 ad=0.1014p pd=0.91u as=0.1014p ps=0.91u w=0.39u l=0.6u
+X27 VSS CLKN a_36_124# VPW nfet_05v0 ad=0.1053p pd=0.925u as=0.1782p ps=1.69u w=0.405u l=0.6u
+C0 VNW VPW 6.06432f
+.ends
+

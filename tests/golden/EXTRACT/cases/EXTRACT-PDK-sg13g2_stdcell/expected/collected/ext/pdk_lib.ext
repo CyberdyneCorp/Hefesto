@@ -1,0 +1,175 @@
+timestamp 0
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+use sg13g2_a21o_1 sg13g2_a21o_1_0 1 0 0 0 1 0
+use sg13g2_a21o_2 sg13g2_a21o_2_0 1 0 0 0 1 40000
+use sg13g2_a21oi_1 sg13g2_a21oi_1_0 1 0 0 0 1 80000
+use sg13g2_a21oi_2 sg13g2_a21oi_2_0 1 0 0 0 1 120000
+use sg13g2_a221oi_1 sg13g2_a221oi_1_0 1 0 0 0 1 160000
+use sg13g2_a22oi_1 sg13g2_a22oi_1_0 1 0 0 0 1 200000
+use sg13g2_and2_1 sg13g2_and2_1_0 1 0 0 0 1 240000
+use sg13g2_and2_2 sg13g2_and2_2_0 1 0 0 0 1 280000
+use sg13g2_and3_1 sg13g2_and3_1_0 1 0 0 0 1 320000
+use sg13g2_and3_2 sg13g2_and3_2_0 1 0 0 0 1 360000
+use sg13g2_and4_1 sg13g2_and4_1_0 1 0 0 0 1 400000
+use sg13g2_and4_2 sg13g2_and4_2_0 1 0 0 0 1 440000
+use sg13g2_antennanp sg13g2_antennanp_0 1 0 0 0 1 480000
+use sg13g2_buf_1 sg13g2_buf_1_0 1 0 0 0 1 520000
+use sg13g2_buf_16 sg13g2_buf_16_0 1 0 0 0 1 560000
+use sg13g2_buf_2 sg13g2_buf_2_0 1 0 0 0 1 600000
+use sg13g2_buf_4 sg13g2_buf_4_0 1 0 0 0 1 640000
+use sg13g2_buf_8 sg13g2_buf_8_0 1 0 0 0 1 680000
+use sg13g2_decap_4 sg13g2_decap_4_0 1 0 0 0 1 720000
+use sg13g2_decap_8 sg13g2_decap_8_0 1 0 0 0 1 760000
+use sg13g2_dfrbp_1 sg13g2_dfrbp_1_0 1 0 0 0 1 800000
+use sg13g2_dfrbp_2 sg13g2_dfrbp_2_0 1 0 0 0 1 840000
+use sg13g2_dfrbpq_1 sg13g2_dfrbpq_1_0 1 0 0 0 1 880000
+use sg13g2_dfrbpq_2 sg13g2_dfrbpq_2_0 1 0 0 0 1 920000
+use sg13g2_dlhq_1 sg13g2_dlhq_1_0 1 0 0 0 1 960000
+use sg13g2_dlhr_1 sg13g2_dlhr_1_0 1 0 0 0 1 1000000
+use sg13g2_dlhrq_1 sg13g2_dlhrq_1_0 1 0 0 0 1 1040000
+use sg13g2_dllr_1 sg13g2_dllr_1_0 1 0 0 0 1 1080000
+use sg13g2_dllrq_1 sg13g2_dllrq_1_0 1 0 0 0 1 1120000
+use sg13g2_dlygate4sd1_1 sg13g2_dlygate4sd1_1_0 1 0 0 0 1 1160000
+use sg13g2_dlygate4sd2_1 sg13g2_dlygate4sd2_1_0 1 0 0 0 1 1200000
+use sg13g2_dlygate4sd3_1 sg13g2_dlygate4sd3_1_0 1 0 0 0 1 1240000
+use sg13g2_ebufn_2 sg13g2_ebufn_2_0 1 0 0 0 1 1280000
+use sg13g2_ebufn_4 sg13g2_ebufn_4_0 1 0 0 0 1 1320000
+use sg13g2_ebufn_8 sg13g2_ebufn_8_0 1 0 0 0 1 1360000
+use sg13g2_einvn_2 sg13g2_einvn_2_0 1 0 0 0 1 1400000
+use sg13g2_einvn_4 sg13g2_einvn_4_0 1 0 0 0 1 1440000
+use sg13g2_einvn_8 sg13g2_einvn_8_0 1 0 0 0 1 1480000
+use sg13g2_fill_1 sg13g2_fill_1_0 1 0 0 0 1 1520000
+use sg13g2_fill_2 sg13g2_fill_2_0 1 0 0 0 1 1560000
+use sg13g2_fill_4 sg13g2_fill_4_0 1 0 0 0 1 1600000
+use sg13g2_fill_8 sg13g2_fill_8_0 1 0 0 0 1 1640000
+use sg13g2_inv_1 sg13g2_inv_1_0 1 0 0 0 1 1680000
+use sg13g2_inv_16 sg13g2_inv_16_0 1 0 0 0 1 1720000
+use sg13g2_inv_2 sg13g2_inv_2_0 1 0 0 0 1 1760000
+use sg13g2_inv_4 sg13g2_inv_4_0 1 0 0 0 1 1800000
+use sg13g2_inv_8 sg13g2_inv_8_0 1 0 0 0 1 1840000
+use sg13g2_lgcp_1 sg13g2_lgcp_1_0 1 0 0 0 1 1880000
+use sg13g2_mux2_1 sg13g2_mux2_1_0 1 0 0 0 1 1920000
+use sg13g2_mux2_2 sg13g2_mux2_2_0 1 0 0 0 1 1960000
+use sg13g2_mux4_1 sg13g2_mux4_1_0 1 0 0 0 1 2000000
+use sg13g2_nand2_1 sg13g2_nand2_1_0 1 0 0 0 1 2040000
+use sg13g2_nand2_2 sg13g2_nand2_2_0 1 0 0 0 1 2080000
+use sg13g2_nand2b_1 sg13g2_nand2b_1_0 1 0 0 0 1 2120000
+use sg13g2_nand2b_2 sg13g2_nand2b_2_0 1 0 0 0 1 2160000
+use sg13g2_nand3_1 sg13g2_nand3_1_0 1 0 0 0 1 2200000
+use sg13g2_nand3b_1 sg13g2_nand3b_1_0 1 0 0 0 1 2240000
+use sg13g2_nand4_1 sg13g2_nand4_1_0 1 0 0 0 1 2280000
+use sg13g2_nor2_1 sg13g2_nor2_1_0 1 0 0 0 1 2320000
+use sg13g2_nor2_2 sg13g2_nor2_2_0 1 0 0 0 1 2360000
+use sg13g2_nor2b_1 sg13g2_nor2b_1_0 1 0 0 0 1 2400000
+use sg13g2_nor2b_2 sg13g2_nor2b_2_0 1 0 0 0 1 2440000
+use sg13g2_nor3_1 sg13g2_nor3_1_0 1 0 0 0 1 2480000
+use sg13g2_nor3_2 sg13g2_nor3_2_0 1 0 0 0 1 2520000
+use sg13g2_nor4_1 sg13g2_nor4_1_0 1 0 0 0 1 2560000
+use sg13g2_nor4_2 sg13g2_nor4_2_0 1 0 0 0 1 2600000
+use sg13g2_o21ai_1 sg13g2_o21ai_1_0 1 0 0 0 1 2640000
+use sg13g2_or2_1 sg13g2_or2_1_0 1 0 0 0 1 2680000
+use sg13g2_or2_2 sg13g2_or2_2_0 1 0 0 0 1 2720000
+use sg13g2_or3_1 sg13g2_or3_1_0 1 0 0 0 1 2760000
+use sg13g2_or3_2 sg13g2_or3_2_0 1 0 0 0 1 2800000
+use sg13g2_or4_1 sg13g2_or4_1_0 1 0 0 0 1 2840000
+use sg13g2_or4_2 sg13g2_or4_2_0 1 0 0 0 1 2880000
+use sg13g2_sdfbbp_1 sg13g2_sdfbbp_1_0 1 0 0 0 1 2920000
+use sg13g2_sdfrbp_1 sg13g2_sdfrbp_1_0 1 0 0 0 1 2960000
+use sg13g2_sdfrbp_2 sg13g2_sdfrbp_2_0 1 0 0 0 1 3000000
+use sg13g2_sdfrbpq_1 sg13g2_sdfrbpq_1_0 1 0 0 0 1 3040000
+use sg13g2_sdfrbpq_2 sg13g2_sdfrbpq_2_0 1 0 0 0 1 3080000
+use sg13g2_sighold sg13g2_sighold_0 1 0 0 0 1 3120000
+use sg13g2_slgcp_1 sg13g2_slgcp_1_0 1 0 0 0 1 3160000
+use sg13g2_tiehi sg13g2_tiehi_0 1 0 0 0 1 3200000
+use sg13g2_tielo sg13g2_tielo_0 1 0 0 0 1 3240000
+use sg13g2_xnor2_1 sg13g2_xnor2_1_0 1 0 0 0 1 3280000
+use sg13g2_xor2_1 sg13g2_xor2_1_0 1 0 0 0 1 3320000
+substrate "sub!" 0 0 -1073741817 -1073741817 space 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+merge "sg13g2_xor2_1_0/VSS" "sg13g2_xnor2_1_0/VSS" 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+merge "sg13g2_xnor2_1_0/VSS" "sg13g2_tielo_0/VSS"
+merge "sg13g2_tielo_0/VSS" "sg13g2_tiehi_0/VSS"
+merge "sg13g2_tiehi_0/VSS" "sg13g2_slgcp_1_0/VSS"
+merge "sg13g2_slgcp_1_0/VSS" "sg13g2_sighold_0/VSS"
+merge "sg13g2_sighold_0/VSS" "sg13g2_sdfrbpq_2_0/VSS"
+merge "sg13g2_sdfrbpq_2_0/VSS" "sg13g2_sdfrbpq_1_0/VSS"
+merge "sg13g2_sdfrbpq_1_0/VSS" "sg13g2_sdfrbp_2_0/VSS"
+merge "sg13g2_sdfrbp_2_0/VSS" "sg13g2_sdfrbp_1_0/VSS"
+merge "sg13g2_sdfrbp_1_0/VSS" "sg13g2_sdfbbp_1_0/VSS"
+merge "sg13g2_sdfbbp_1_0/VSS" "sg13g2_or4_2_0/VSS"
+merge "sg13g2_or4_2_0/VSS" "sg13g2_or4_1_0/VSS"
+merge "sg13g2_or4_1_0/VSS" "sg13g2_or3_2_0/VSS"
+merge "sg13g2_or3_2_0/VSS" "sg13g2_or3_1_0/VSS"
+merge "sg13g2_or3_1_0/VSS" "sg13g2_or2_2_0/VSS"
+merge "sg13g2_or2_2_0/VSS" "sg13g2_or2_1_0/VSS"
+merge "sg13g2_or2_1_0/VSS" "sg13g2_o21ai_1_0/VSS"
+merge "sg13g2_o21ai_1_0/VSS" "sg13g2_nor4_2_0/VSS"
+merge "sg13g2_nor4_2_0/VSS" "sg13g2_nor4_1_0/VSS"
+merge "sg13g2_nor4_1_0/VSS" "sg13g2_nor3_2_0/VSS"
+merge "sg13g2_nor3_2_0/VSS" "sg13g2_nor3_1_0/VSS"
+merge "sg13g2_nor3_1_0/VSS" "sg13g2_nor2b_2_0/VSS"
+merge "sg13g2_nor2b_2_0/VSS" "sg13g2_nor2b_1_0/VSS"
+merge "sg13g2_nor2b_1_0/VSS" "sg13g2_nor2_2_0/VSS"
+merge "sg13g2_nor2_2_0/VSS" "sg13g2_nor2_1_0/VSS"
+merge "sg13g2_nor2_1_0/VSS" "sg13g2_nand4_1_0/VSS"
+merge "sg13g2_nand4_1_0/VSS" "sg13g2_nand3b_1_0/VSS"
+merge "sg13g2_nand3b_1_0/VSS" "sg13g2_nand3_1_0/VSS"
+merge "sg13g2_nand3_1_0/VSS" "sg13g2_nand2b_2_0/VSS"
+merge "sg13g2_nand2b_2_0/VSS" "sg13g2_nand2b_1_0/VSS"
+merge "sg13g2_nand2b_1_0/VSS" "sg13g2_nand2_2_0/VSS"
+merge "sg13g2_nand2_2_0/VSS" "sg13g2_nand2_1_0/VSS"
+merge "sg13g2_nand2_1_0/VSS" "sg13g2_mux4_1_0/VSS"
+merge "sg13g2_mux4_1_0/VSS" "sg13g2_mux2_2_0/VSS"
+merge "sg13g2_mux2_2_0/VSS" "sg13g2_mux2_1_0/VSS"
+merge "sg13g2_mux2_1_0/VSS" "sg13g2_lgcp_1_0/VSS"
+merge "sg13g2_lgcp_1_0/VSS" "sg13g2_inv_8_0/VSS"
+merge "sg13g2_inv_8_0/VSS" "sg13g2_inv_4_0/VSS"
+merge "sg13g2_inv_4_0/VSS" "sg13g2_inv_2_0/VSS"
+merge "sg13g2_inv_2_0/VSS" "sg13g2_inv_16_0/VSS"
+merge "sg13g2_inv_16_0/VSS" "sg13g2_inv_1_0/VSS"
+merge "sg13g2_inv_1_0/VSS" "sg13g2_fill_8_0/VSS"
+merge "sg13g2_fill_8_0/VSS" "sg13g2_fill_4_0/VSS"
+merge "sg13g2_fill_4_0/VSS" "sg13g2_fill_2_0/VSS"
+merge "sg13g2_fill_2_0/VSS" "sg13g2_fill_1_0/VSS"
+merge "sg13g2_fill_1_0/VSS" "sg13g2_einvn_8_0/VSS"
+merge "sg13g2_einvn_8_0/VSS" "sg13g2_einvn_4_0/VSS"
+merge "sg13g2_einvn_4_0/VSS" "sg13g2_einvn_2_0/VSS"
+merge "sg13g2_einvn_2_0/VSS" "sg13g2_ebufn_8_0/VSS"
+merge "sg13g2_ebufn_8_0/VSS" "sg13g2_ebufn_4_0/VSS"
+merge "sg13g2_ebufn_4_0/VSS" "sg13g2_ebufn_2_0/VSS"
+merge "sg13g2_ebufn_2_0/VSS" "sg13g2_dlygate4sd3_1_0/VSS"
+merge "sg13g2_dlygate4sd3_1_0/VSS" "sg13g2_dlygate4sd2_1_0/VSS"
+merge "sg13g2_dlygate4sd2_1_0/VSS" "sg13g2_dlygate4sd1_1_0/VSS"
+merge "sg13g2_dlygate4sd1_1_0/VSS" "sg13g2_dllrq_1_0/VSS"
+merge "sg13g2_dllrq_1_0/VSS" "sg13g2_dllr_1_0/VSS"
+merge "sg13g2_dllr_1_0/VSS" "sg13g2_dlhrq_1_0/VSS"
+merge "sg13g2_dlhrq_1_0/VSS" "sg13g2_dlhr_1_0/VSS"
+merge "sg13g2_dlhr_1_0/VSS" "sg13g2_dlhq_1_0/VSS"
+merge "sg13g2_dlhq_1_0/VSS" "sg13g2_dfrbpq_2_0/VSS"
+merge "sg13g2_dfrbpq_2_0/VSS" "sg13g2_dfrbpq_1_0/VSS"
+merge "sg13g2_dfrbpq_1_0/VSS" "sg13g2_dfrbp_2_0/VSS"
+merge "sg13g2_dfrbp_2_0/VSS" "sg13g2_dfrbp_1_0/VSS"
+merge "sg13g2_dfrbp_1_0/VSS" "sg13g2_decap_8_0/VSS"
+merge "sg13g2_decap_8_0/VSS" "sg13g2_decap_4_0/VSS"
+merge "sg13g2_decap_4_0/VSS" "sg13g2_buf_8_0/VSS"
+merge "sg13g2_buf_8_0/VSS" "sg13g2_buf_4_0/VSS"
+merge "sg13g2_buf_4_0/VSS" "sg13g2_buf_2_0/VSS"
+merge "sg13g2_buf_2_0/VSS" "sg13g2_buf_16_0/VSS"
+merge "sg13g2_buf_16_0/VSS" "sg13g2_buf_1_0/VSS"
+merge "sg13g2_buf_1_0/VSS" "sg13g2_antennanp_0/VSS"
+merge "sg13g2_antennanp_0/VSS" "sg13g2_and4_2_0/VSS"
+merge "sg13g2_and4_2_0/VSS" "sg13g2_and4_1_0/VSS"
+merge "sg13g2_and4_1_0/VSS" "sg13g2_and3_2_0/VSS"
+merge "sg13g2_and3_2_0/VSS" "sg13g2_and3_1_0/VSS"
+merge "sg13g2_and3_1_0/VSS" "sg13g2_and2_2_0/VSS"
+merge "sg13g2_and2_2_0/VSS" "sg13g2_and2_1_0/VSS"
+merge "sg13g2_and2_1_0/VSS" "sg13g2_a22oi_1_0/VSS"
+merge "sg13g2_a22oi_1_0/VSS" "sg13g2_a221oi_1_0/VSS"
+merge "sg13g2_a221oi_1_0/VSS" "sg13g2_a21oi_2_0/VSS"
+merge "sg13g2_a21oi_2_0/VSS" "sg13g2_a21oi_1_0/VSS"
+merge "sg13g2_a21oi_1_0/VSS" "sg13g2_a21o_2_0/VSS"
+merge "sg13g2_a21o_2_0/VSS" "sg13g2_a21o_1_0/VSS"
+merge "sg13g2_a21o_1_0/VSS" "sub!"

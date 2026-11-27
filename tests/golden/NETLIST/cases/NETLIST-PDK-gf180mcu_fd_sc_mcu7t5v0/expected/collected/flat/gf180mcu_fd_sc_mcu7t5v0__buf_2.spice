@@ -1,0 +1,8 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__buf_2.ext - technology: gf180mcuD
+
+X0 Z a_36_68# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.4941p ps=2.03u w=1.22u l=0.5u
+X1 VSS I a_36_68# VPW nfet_05v0 ad=0.2911p pd=1.53u as=0.3608p ps=2.52u w=0.82u l=0.6u
+X2 Z a_36_68# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2911p ps=1.53u w=0.82u l=0.6u
+X3 VDD I a_36_68# VNW pfet_05v0 ad=0.4941p pd=2.03u as=0.5368p ps=3.32u w=1.22u l=0.5u
+X4 VSS a_36_68# Z VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X5 VDD a_36_68# Z VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.3782p ps=1.84u w=1.22u l=0.5u

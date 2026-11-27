@@ -1,0 +1,8 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__clkinv_3.ext - technology: gf180mcuD
+
+X0 ZN I VDD VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X1 ZN I VSS VPW nfet_05v0 ad=0.1248p pd=1u as=0.2112p ps=1.84u w=0.48u l=0.6u
+X2 VDD I ZN VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X3 ZN I VSS VPW nfet_05v0 ad=0.2112p pd=1.84u as=0.1248p ps=1u w=0.48u l=0.6u
+X4 ZN I VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.5368p ps=3.32u w=1.22u l=0.5u
+X5 VSS I ZN VPW nfet_05v0 ad=0.1248p pd=1u as=0.1248p ps=1u w=0.48u l=0.6u

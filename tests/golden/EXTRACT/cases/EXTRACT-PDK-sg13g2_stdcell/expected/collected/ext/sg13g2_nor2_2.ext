@@ -1,0 +1,37 @@
+timestamp 1683987124
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "Y" 4 356 444 418 544 m1
+port "B" 6 354 306 430 368 m1
+port "A" 2 150 306 226 368 m1
+port "VDD" 3 0 712 576 800 m1
+port "VSS" 5 0 -44 576 44 m1
+node "Y" 3 499.708 356 444 m1 0 0 0 0 37240 2018 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "a_52_412#" 2 64.5471 52 412 pdif 0 0 0 0 38560 1744 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "B" 0 150.874 354 306 m1 0 0 0 0 4712 276 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 165.74 150 306 m1 0 0 0 0 4712 276 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 1 150.646 0 712 m1 0 0 0 0 61088 1728 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 2 0 0 -44 m1 0 0 0 0 74452 2242 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "B" "a_52_412#" 23.7894
+cap "B" "Y" 174.594
+cap "A" "B" 53.2646
+cap "a_52_412#" "Y" 318.333
+cap "A" "a_52_412#" 66.0359
+cap "VDD" "B" 103.51
+cap "VDD" "a_52_412#" 431.806
+cap "A" "Y" 61.4476
+cap "VDD" "Y" 19.0989
+cap "A" "VDD" 122.912
+device msubckt sg13_lv_nmos 430 118 431 119 l=26 w=148 "VSS" "B" 52 0 "Y" 148 5624,224 "VSS" 148 10064,432
+device msubckt sg13_lv_nmos 328 118 329 119 l=26 w=148 "VSS" "B" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 226 118 227 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 124 118 125 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 10064,432 "Y" 148 5624,224
+device msubckt sg13_lv_pmos 430 412 431 413 l=26 w=224 "VDD" "B" 52 0 "Y" 224 8512,300 "a_52_412#" 224 15232,584
+device msubckt sg13_lv_pmos 328 412 329 413 l=26 w=224 "VDD" "B" 52 0 "a_52_412#" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 226 412 227 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "a_52_412#" 224 8512,300
+device msubckt sg13_lv_pmos 124 412 125 413 l=26 w=224 "VDD" "A" 52 0 "a_52_412#" 224 16128,592 "VDD" 224 8512,300

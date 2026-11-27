@@ -1,0 +1,21 @@
+timestamp 1676386529
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "Y" 2 171 122 217 635 m1
+port "A" 3 62 304 125 370 m1
+port "VDD" 5 0 712 288 800 m1
+port "VSS" 4 0 -44 288 44 m1
+node "Y" 1 220.446 171 122 m1 0 0 0 0 23598 1118 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 178.861 62 304 m1 0 0 0 0 4158 258 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 1 139.979 0 712 m1 0 0 0 0 39124 1282 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 1 0 0 -44 m1 0 0 0 0 35640 1148 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "A" "VDD" 110.758
+cap "A" "Y" 74.4953
+cap "Y" "VDD" 180.107
+device msubckt sg13_lv_nmos 130 118 131 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 10064,432 "Y" 148 10064,432
+device msubckt sg13_lv_pmos 130 415 131 416 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 15232,584 "Y" 224 15232,584

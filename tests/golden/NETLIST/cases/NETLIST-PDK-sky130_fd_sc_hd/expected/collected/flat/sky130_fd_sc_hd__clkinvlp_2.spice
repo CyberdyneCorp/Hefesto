@@ -1,0 +1,6 @@
+* NGSPICE file created from sky130_fd_sc_hd__clkinvlp_2.ext - technology: sky130A
+
+X0 Y A a_150_67# VNB sky130_fd_pr__nfet_01v8 ad=0.15675 pd=1.67 as=0.066 ps=0.79 w=0.55 l=0.15
+X1 VPWR A Y VPB sky130_fd_pr__pfet_01v8_hvt ad=0.39 pd=2.78 as=0.14 ps=1.28 w=1 l=0.25
+X2 a_150_67# A VGND VNB sky130_fd_pr__nfet_01v8 ad=0.066 pd=0.79 as=0.15675 ps=1.67 w=0.55 l=0.15
+X3 Y A VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.14 pd=1.28 as=0.265 ps=2.53 w=1 l=0.25

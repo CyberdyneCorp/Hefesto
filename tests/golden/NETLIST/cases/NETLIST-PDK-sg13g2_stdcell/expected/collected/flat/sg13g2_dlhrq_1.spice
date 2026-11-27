@@ -1,0 +1,22 @@
+* NGSPICE file created from sg13g2_dlhrq_1.ext - technology: ihp-sg13g2
+
+X0 a_689_103# a_264_468# a_614_436# VDD sg13_lv_pmos ad=0.1897p pd=1.42u as=0.1375p ps=1.275u w=1u l=0.13u
+X1 a_815_103# a_264_468# a_689_103# VSS sg13_lv_nmos ad=47.25f pd=0.645u as=0.15175p ps=1.14u w=0.42u l=0.13u
+X2 a_1095_118# a_689_103# a_860_67# VSS sg13_lv_nmos ad=88.8f pd=0.98u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X3 a_860_67# a_689_103# VDD VDD sg13_lv_pmos ad=0.19p pd=1.38u as=0.20165p ps=1.615u w=1u l=0.13u
+X4 a_805_552# a_409_103# a_689_103# VDD sg13_lv_pmos ad=0.11025p pd=0.945u as=0.1897p ps=1.42u w=0.42u l=0.13u
+X5 VDD RESET_B a_860_67# VDD sg13_lv_pmos ad=0.2038p pd=1.5u as=0.19p ps=1.38u w=1u l=0.13u
+X6 VSS RESET_B a_1095_118# VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=88.8f ps=0.98u w=0.74u l=0.13u
+X7 Q a_860_67# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X8 VDD a_264_468# a_409_103# VDD sg13_lv_pmos ad=0.2015p pd=1.415u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X9 VSS D a_45_156# VSS sg13_lv_nmos ad=0.14875p pd=1.16u as=0.3025p ps=2.2u w=0.55u l=0.13u
+X10 VDD D a_45_156# VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X11 VDD a_860_67# a_805_552# VDD sg13_lv_pmos ad=0.20165p pd=1.615u as=0.11025p ps=0.945u w=0.42u l=0.13u
+X12 Q a_860_67# VDD VDD sg13_lv_pmos ad=0.4368p pd=3.02u as=0.2038p ps=1.5u w=1.12u l=0.13u
+X13 a_264_468# GATE VDD VDD sg13_lv_pmos ad=0.46837p pd=3u as=0.1596p ps=1.22u w=0.84u l=0.13u
+X14 a_614_436# a_45_156# VDD VDD sg13_lv_pmos ad=0.1375p pd=1.275u as=0.2015p ps=1.415u w=1u l=0.13u
+X15 VSS a_860_67# a_815_103# VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=47.25f ps=0.645u w=0.42u l=0.13u
+X16 a_264_468# GATE VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.14875p ps=1.16u w=0.74u l=0.13u
+X17 a_689_103# a_409_103# a_611_103# VSS sg13_lv_nmos ad=0.15175p pd=1.14u as=83.2f ps=0.9u w=0.64u l=0.13u
+X18 VSS a_264_468# a_409_103# VSS sg13_lv_nmos ad=0.1393p pd=1.155u as=0.3458p ps=2.7u w=0.74u l=0.13u
+X19 a_611_103# a_45_156# VSS VSS sg13_lv_nmos ad=83.2f pd=0.9u as=0.1393p ps=1.155u w=0.64u l=0.13u

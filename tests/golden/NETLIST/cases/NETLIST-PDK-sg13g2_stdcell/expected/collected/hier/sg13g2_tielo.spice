@@ -1,0 +1,9 @@
+* NGSPICE file created from sg13g2_tielo.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_tielo L_LO VDD VSS
+X0 L_LO a_223_58# VSS VSS sg13_lv_nmos ad=0.2992p pd=2.44u as=0.60422p ps=3.6u w=0.88u l=0.13u
+X1 VDD a_59_418# a_59_418# VDD sg13_lv_pmos ad=0.62572p pd=3.785u as=0.102p ps=1.28u w=0.3u l=0.13u
+X2 a_223_58# a_59_195# VDD VDD sg13_lv_pmos ad=0.3553p pd=2.77u as=0.62572p ps=3.785u w=1.045u l=0.13u
+X3 VSS a_59_418# a_59_195# VSS sg13_lv_nmos ad=0.60422p pd=3.6u as=0.1309p ps=1.45u w=0.385u l=0.13u
+.ends
+

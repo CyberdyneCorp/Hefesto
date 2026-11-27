@@ -1,0 +1,26 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__or3_4.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__or3_4 A1 A2 A3 Z VDD VNW VPW VSS
+X0 VSS a_244_68# Z VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X1 Z a_244_68# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X2 a_244_68# A1 VSS VPW nfet_05v0 ad=0.1729p pd=1.185u as=0.1729p ps=1.185u w=0.665u l=0.6u
+X3 VDD A3 a_1120_472# VNW pfet_05v0 ad=0.549p pd=2.12u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X4 Z a_244_68# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.26375p ps=1.52u w=0.82u l=0.6u
+X5 Z a_244_68# VDD VNW pfet_05v0 ad=0.3477p pd=1.79u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X6 a_244_68# A3 VSS VPW nfet_05v0 ad=0.1729p pd=1.185u as=0.2926p ps=2.21u w=0.665u l=0.6u
+X7 a_458_472# A2 a_244_472# VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3477p ps=1.79u w=1.22u l=0.5u
+X8 a_244_472# A3 VDD VNW pfet_05v0 ad=0.3477p pd=1.79u as=0.5368p ps=3.32u w=1.22u l=0.5u
+X9 a_1120_472# A2 a_906_472# VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3477p ps=1.79u w=1.22u l=0.5u
+X10 VDD a_244_68# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3477p ps=1.79u w=1.22u l=0.5u
+X11 VSS A3 a_244_68# VPW nfet_05v0 ad=0.26375p pd=1.52u as=0.1729p ps=1.185u w=0.665u l=0.6u
+X12 a_906_472# A1 a_244_68# VNW pfet_05v0 ad=0.3477p pd=1.79u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X13 Z a_244_68# VDD VNW pfet_05v0 ad=0.3477p pd=1.79u as=0.549p ps=2.12u w=1.22u l=0.5u
+X14 a_244_68# A1 a_458_472# VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X15 VDD a_244_68# Z VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.3477p ps=1.79u w=1.22u l=0.5u
+X16 VSS A1 a_244_68# VPW nfet_05v0 ad=0.1729p pd=1.185u as=0.1729p ps=1.185u w=0.665u l=0.6u
+X17 VSS a_244_68# Z VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X18 VSS A2 a_244_68# VPW nfet_05v0 ad=0.1729p pd=1.185u as=0.1729p ps=1.185u w=0.665u l=0.6u
+X19 a_244_68# A2 VSS VPW nfet_05v0 ad=0.1729p pd=1.185u as=0.1729p ps=1.185u w=0.665u l=0.6u
+C0 VNW VPW 4.09634f
+.ends
+

@@ -1,0 +1,15 @@
+magic
+tech exttest
+timestamp 100
+<< pwell >>
+rect 0 0 20 20
+<< psd >>
+rect 20 5 24 9
+<< metal1 >>
+rect 30 0 40 4
+<< metal2 >>
+rect 30 0 40 4
+<< labels >>
+rlabel metal1 32 2 32 2 0 a
+rlabel metal2 38 2 38 2 0 b
+<< end >>

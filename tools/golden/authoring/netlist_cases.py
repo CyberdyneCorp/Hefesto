@@ -830,16 +830,47 @@ def write_extcheck(golden: Path) -> Path:
     return root
 
 
+# --- Rows added by the requirement audit (task 17.2) ---------------------------------------------
+
+def audit_specs() -> list[NlSpec]:
+    """NL-FLAT-19 and NL-FLAT-20: requirements Magic shows that no case covered."""
+    top = ext(use("child", "c1", 0, 0), nd("p", 1, 0, 20), mos("nfet", 0, "GND!", "p", "p", "c1/x"),
+              scale="1000 1000 5").replace("style nltest", "style nosuch").replace("version 8.3", "version 7.9")
+    child = ext(nd("x", 2, 0, 0, "metal1", ((20, 18), (0, 0), (40, 24))), mos("nfet", 10, "GND!", "x", "x", "x")
+                ).replace("resistclasses 1000 5000 100", "resistclasses 1000 5000 200")
+    args_top = ext(nd("a", 0.3, 0, 0), nd("b", 0.8, 0, 10),
+                   nd("g", 1, 0, 20, "metal1", ((0, 0), (20, 24), (100, 40))), 'cap "a" "b" 0.6',
+                   'fet nfet 0 0 2 4 8 12 "GND!" "g" 4 "ext:l=L","ext:w=W" "a" 6 0 "b" 6 0')
+    leaf = ext(nd("y", 1, 0, 0), mos("nfet", 0, "GND!", "y", "y", "y"))
+    top2 = ext(use("leaf", "u1", 0, 40), nd("q", 1, 0, 0), mos("nfet", 0, "GND!", "q", "q", "u1/y"))
+    script = (Script().run("ext2spice", "top", args="-c 0.5", tag="c05").run("ext2spice", "top", args="-C", tag="cinf")
+              .run("ext2sim", "top", args="-R -s L=4 -S input/syms", tag="syms")
+              .opts("ext2spice -T nltest top")
+              .run("ext2spice", "top2", args="-p input:input/sub"))
+    return [
+        nl("NL-FLAT-19", READ, ["Technology, style, version and resistance classes"],
+           "top with style nosuch and version 7.9, using child whose resistclasses differ (1000 5000 200 against "
+           "1000 5000 100); ext2spice cthresh 0: the unknown-style and version warnings, the class mismatch, and the "
+           "zero area/perimeter values", {"top.ext": top, "child.ext": child},
+           Script().opts("ext2spice cthresh 0").run("ext2spice", "top")),
+        nl("NL-FLAT-20", HIER, ["Common netlister arguments"],
+           "ext2spice -c 0.5 and -C (thresholds per run), ext2sim -R with -s L=4 and a -S file holding W=7 and a "
+           "line without '=', ext2spice -T (unrecognized), then ext2spice -p input:input/sub on top2, whose leaf is "
+           "only under input/sub (last: Magic keeps the -p path for later runs)",
+           {"top.ext": args_top, "top2.ext": top2, "sub/leaf.ext": leaf, "syms": "W=7\nbad\n"}, script),
+    ]
+
+
 def specs() -> list[NlSpec]:
     return [*flat_read_specs(), *flat_hier_specs(), *names_specs(), *spice_option_specs(), *spice_device_specs(),
-            *hier_specs(), *sim_specs()]
+            *hier_specs(), *sim_specs(), *audit_specs()]
 
 
 def cases() -> list[TclCase]:
     return [to_case(s) for s in specs()]
 
 
-ROW_IDS = ([f"NL-FLAT-{n:02d}" for n in range(1, 19)] + [f"NL-SPICE-{n:02d}" for n in range(1, 15)]
+ROW_IDS = ([f"NL-FLAT-{n:02d}" for n in range(1, 21)] + [f"NL-SPICE-{n:02d}" for n in range(1, 15)]
            + [f"NL-HIER-{n:02d}" for n in range(1, 7)] + [f"NL-SIM-{n:02d}" for n in range(1, 6)] + ["NL-CHK-01"])
 # NL-RES (rescmd_cases.py) and NL-RESNET (resnet_cases.py) are authored since M7 R4.
 LATER: dict[str, str] = {}

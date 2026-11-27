@@ -1,0 +1,9 @@
+* NGSPICE file created from sg13g2_sighold.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_sighold SH VDD VSS
+X0 SH a_31_187# VSS VSS sg13_lv_nmos ad=0.102p pd=1.28u as=0.9327p ps=3.95u w=0.3u l=0.7u
+X1 VSS SH a_31_187# VSS sg13_lv_nmos ad=0.9327p pd=3.95u as=0.102p ps=1.28u w=0.3u l=0.13u
+X2 SH a_31_187# VDD VDD sg13_lv_pmos ad=0.102p pd=1.28u as=1.27972p ps=4.355u w=0.3u l=0.7u
+X3 VDD SH a_31_187# VDD sg13_lv_pmos ad=1.27972p pd=4.355u as=0.153p ps=1.58u w=0.45u l=0.13u
+.ends
+
