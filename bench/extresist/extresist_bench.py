@@ -10,7 +10,7 @@ One workload, run through bench/extract/extract_bench.py's harness:
              `extract all`.
 
 The block is generated from ``sky130_fd_sc_hd.lef`` (the sky130-lef data set)
-with --components cells (default 1000, a fifth of lefdef-bench's block, so that
+with --components cells (default 500, a tenth of lefdef-bench's block, so that
 both tools finish under callgrind in the job's time). Only the technology LEF
 is read: the DEF components then load the library's .mag layouts (Magic's
 DefReadComponents falls back to DBCellRead; `addpath mag`), so the cells have
@@ -37,7 +37,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-COMPONENTS = 1000
+COMPONENTS = 500
 
 
 def _load(name: str, path: Path):

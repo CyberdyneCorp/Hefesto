@@ -1538,16 +1538,23 @@ jobs:
           retention-days: 90
 
   # m7-extraction design D23, tasks 18.1 and 18.2 (Open Question 5 decided (a)): `extract all`, flat `ext2spice lvs`,
-  # `ext2spice hierarchy on` and `ext2sim` on the gds-bench block (bench/extract/extract_bench.py) under callgrind for
-  # Hefesto (GCC 14 Release, debug info, frame pointers) and Magic 8.3.694 (reference image); extract_gate.py fails
-  # when Hefesto's instructions of a workload (op minus base) exceed Magic's or, once recorded in
-  # bench/extract/baseline.json, that baseline + 2 %. Each run gets its own copy of the inputs (the runs write .ext
-  # files beside the cells). Selected on pull requests by its own path filter. Results: the job summary and the
-  # artifact "extract-bench" (the callgrind files, from which `extract_gate.py --record` records the baselines).
+  # `ext2spice hierarchy on` and `ext2sim` on the gds-bench block (bench/extract/extract_bench.py), one job per
+  # workload, under callgrind for Hefesto (GCC 14 Release, debug info, frame pointers) and Magic 8.3.694 (reference
+  # image), the two tools' base and op runs side by side (four processes on the runner's four CPUs); extract_gate.py
+  # fails when Hefesto's instructions (op minus base) exceed Magic's or, once recorded in bench/extract/baseline.json,
+  # that baseline + 2 %. Each run gets its own copy of the inputs (the runs write .ext files beside the cells).
+  # Selected on pull requests by its own path filter. Results: the job summary and the artifact
+  # "extract-bench-<workload>" (the callgrind files, from which `extract_gate.py --record` records the baselines).
   extract-bench:
-    name: Extraction and netlisting instruction gate vs Magic (callgrind)
+    name: Extraction instruction gate vs Magic (${{ matrix.workload }}, callgrind)
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        workload: [extract, spice-flat, spice-hier, sim]
+    env:
+      WORKLOAD: ${{ matrix.workload }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -1570,7 +1577,7 @@ jobs:
             fi
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
-          echo "::notice::extract-bench: $run"
+          echo "::notice::extract-bench ($WORKLOAD): $run"
 
       - uses: actions/setup-python@v5
         if: steps.select.outputs.run == 'true'
@@ -1622,66 +1629,56 @@ jobs:
         if: steps.select.outputs.run == 'true'
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
-      - name: Scripts of the four workloads
+      - name: Scripts of the workload
         if: steps.select.outputs.run == 'true'
         run: |
-          python3 bench/extract/extract_bench.py --emit profile
+          python3 bench/extract/extract_bench.py --emit profile --workload "$WORKLOAD"
           mkdir -p extract-bench
           {
-            echo "## Extraction and netlisting performance"
+            echo "## Extraction and netlisting performance ($WORKLOAD)"
             echo
             echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: callgrind, base and op scripts (Hefesto GCC build)
+      - name: callgrind, base and op scripts (Hefesto GCC build and Magic, side by side)
         if: steps.select.outputs.run == 'true'
         shell: bash
         run: |
           cli="$PWD/build/linux-release/src/cli/hefesto-cli"
           out="$PWD/extract-bench"
           pids=()
-          for workload in extract spice-flat spice-hier sim; do
-            for kind in base op; do
-              cp -r profile "run.hefesto.$workload.$kind"
-              (cd "run.hefesto.$workload.$kind" && valgrind --tool=callgrind \
-                --callgrind-out-file="$out/callgrind.hefesto.$workload.$kind" \
-                "$cli" --no-log --magic -dnull -noconsole "$workload-hefesto-$kind.tcl" \
-                > "$out/hefesto.$workload.$kind.log" 2>&1) &
-              pids+=("$!")
-            done
+          for kind in base op; do
+            cp -r profile "run.hefesto.$kind"
+            (cd "run.hefesto.$kind" && valgrind --tool=callgrind \
+              --callgrind-out-file="$out/callgrind.hefesto.$WORKLOAD.$kind" \
+              "$cli" --no-log --magic -dnull -noconsole "$WORKLOAD-hefesto-$kind.tcl" \
+              > "$out/hefesto.$WORKLOAD.$kind.log" 2>&1) &
+            pids+=("$!")
           done
-          status=0
-          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
-          exit "$status"
-
-      - name: callgrind, base and op scripts (Magic)
-        if: steps.select.outputs.run == 'true'
-        shell: bash
-        run: |
           # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
-          docker run --rm -v "$PWD/profile:/work:ro" -v "$PWD/extract-bench:/out" hefesto-golden:ci bash -c '
+          docker run --rm -e WORKLOAD -v "$PWD/profile:/work:ro" -v "$out:/out" hefesto-golden:ci bash -c '
               { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
                 > /dev/null 2>&1 || exit 1
               run() {
-                dir="/tmp/cg.$1.$2"
+                dir="/tmp/cg.$1"
                 mkdir -p "$dir"
-                cp -r /work "/tmp/run.$1.$2"
-                cd "/tmp/run.$1.$2" || return 1
+                cp -r /work "/tmp/run.$1"
+                cd "/tmp/run.$1" || return 1
                 valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="$dir/out.%p" \
-                  magic -dnull -noconsole "$1-magic-$2.tcl" > "/out/magic.$1.$2.log" 2>&1 || return 1
-                cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.$1.$2"
+                  magic -dnull -noconsole "$WORKLOAD-magic-$1.tcl" > "/out/magic.$WORKLOAD.$1.log" 2>&1 || return 1
+                cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.$WORKLOAD.$1"
               }
-              pids=()
-              for workload in extract spice-flat spice-hier sim; do
-                for kind in base op; do
-                  run "$workload" "$kind" &
-                  pids+=("$!")
-                done
-              done
+              run base & base=$!
+              run op & op=$!
               status=0
-              for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+              wait $base || status=1
+              wait $op || status=1
               chmod -R a+rwX /out
-              exit $status'
+              exit $status' &
+          pids+=("$!")
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
 
       - name: Instructions by function (information)
         if: steps.select.outputs.run == 'true'
@@ -1689,17 +1686,13 @@ jobs:
         continue-on-error: true
         run: |
           cd extract-bench
-          for workload in extract spice-flat spice-hier sim; do
-            python3 ../bench/drc/callgrind_pass_diff.py "callgrind.hefesto.$workload.base" \
-              "callgrind.hefesto.$workload.op" --top 30 > "functions-hefesto-$workload.txt"
-          done
-          docker run --rm -v "$PWD:/out" -v "$PWD/../bench/drc:/bench:ro" -w /out hefesto-golden:ci bash -c '
+          python3 ../bench/drc/callgrind_pass_diff.py "callgrind.hefesto.$WORKLOAD.base" \
+            "callgrind.hefesto.$WORKLOAD.op" --top 30 > "functions-hefesto-$WORKLOAD.txt"
+          docker run --rm -e WORKLOAD -v "$PWD:/out" -v "$PWD/../bench/drc:/bench:ro" -w /out hefesto-golden:ci bash -c '
               { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
                 > /dev/null 2>&1
-              for workload in extract spice-flat spice-hier sim; do
-                python3 /bench/callgrind_pass_diff.py "callgrind.magic.$workload.base" "callgrind.magic.$workload.op" \
-                  --top 30 > "functions-magic-$workload.txt"
-              done
+              python3 /bench/callgrind_pass_diff.py "callgrind.magic.$WORKLOAD.base" "callgrind.magic.$WORKLOAD.op" \
+                --top 30 > "functions-magic-$WORKLOAD.txt"
               chmod a+rw functions-magic-*.txt'
 
       - name: Instruction gate (Magic's count, then the baseline + 2 %)
@@ -1707,7 +1700,8 @@ jobs:
         shell: bash
         run: |
           status=0
-          python3 bench/extract/extract_gate.py extract-bench | tee extract-bench/gate.txt || status=$?
+          python3 bench/extract/extract_gate.py extract-bench --workload "$WORKLOAD" | tee extract-bench/gate.txt \
+            || status=$?
           {
             echo "## Extraction instruction gate (op minus base, callgrind)"
             echo
@@ -1731,8 +1725,9 @@ jobs:
         run: |
           status=0
           python3 bench/extract/extract_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
-            --magic-image hefesto-golden:ci --repeat 1 --json extract-bench/extract-bench.json \
-            --outputs extract-bench/outputs | tee extract-bench/timing.txt || status=$?
+            --magic-image hefesto-golden:ci --workload "$WORKLOAD" --repeat 1 \
+            --json extract-bench/extract-bench.json --outputs extract-bench/outputs \
+            | tee extract-bench/timing.txt || status=$?
           {
             echo
             echo "## Extraction wall time, op minus base (information)"
@@ -1745,18 +1740,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always() && steps.select.outputs.run == 'true'
         with:
-          name: extract-bench
+          name: extract-bench-${{ matrix.workload }}
           path: extract-bench
           if-no-files-found: ignore
           retention-days: 90
 
   # m7-extraction design D23, tasks 18.1 and 18.2: `extresist all` on the placed-and-routed sky130 DEF block of
-  # bench/lefdef/defgen.py (1000 cells; the .mag layouts, after `def read` and `extract all`), gated at its own
+  # bench/lefdef/defgen.py (500 cells; the .mag layouts, after `def read` and `extract all`), gated at its own
   # baseline (bench/extresist/baseline.json) + 2 % by bench/lefdef/baseline_gate.py; Magic's count is information.
+  # Hefesto's and Magic's base and op runs run side by side under callgrind.
   extresist-bench:
     name: extresist instruction gate (callgrind; Magic for information)
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v5
         with:
@@ -1848,7 +1844,7 @@ jobs:
             echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: callgrind, base and op scripts (Hefesto GCC build)
+      - name: callgrind, base and op scripts (Hefesto GCC build and Magic, side by side)
         if: steps.select.outputs.run == 'true'
         shell: bash
         run: |
@@ -1863,16 +1859,8 @@ jobs:
               > "$out/hefesto.extresist.$kind.log" 2>&1) &
             pids+=("$!")
           done
-          status=0
-          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
-          exit "$status"
-
-      - name: callgrind, base and op scripts (Magic, for information)
-        if: steps.select.outputs.run == 'true'
-        shell: bash
-        continue-on-error: true
-        run: |
-          docker run --rm -v "$PWD/profile:/work:ro" -v "$PWD/extresist-bench:/out" hefesto-golden:ci bash -c '
+          # Magic's count is information: its failure does not fail the step.
+          docker run --rm -v "$PWD/profile:/work:ro" -v "$out:/out" hefesto-golden:ci bash -c '
               { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
                 > /dev/null 2>&1 || exit 1
               run() {
@@ -1886,11 +1874,14 @@ jobs:
               }
               run base & base=$!
               run op & op=$!
-              status=0
-              wait $base || status=1
-              wait $op || status=1
-              chmod -R a+rwX /out
-              exit $status'
+              wait $base
+              wait $op
+              chmod -R a+rwX /out' &
+          magic=$!
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          wait "$magic" || echo "::warning::Magic's extresist profile failed (information only)"
+          exit "$status"
 
       - name: Instructions by function (information)
         if: steps.select.outputs.run == 'true'
