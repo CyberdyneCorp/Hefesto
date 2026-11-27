@@ -170,29 +170,37 @@ def owner(case_id: str) -> str:
     return OWNER["EX" if case_id.startswith("EX-") else case_id.rsplit("-", 1)[0]]
 
 
+def deferral_reason(case_id: str) -> str:
+    """Why an authored case is still deferred: the round and task that added it, and its owner."""
+    when = "captured in R1 (m7-extraction tasks 2.5, 2.6)"
+    if case_id in HAND_DERIVED:
+        when = "expected/ hand-derived (design R7 option (a), M7-9)"
+    elif case_id.startswith(("NL-RES-", "NL-RESNET-")):
+        when = "authored in R4 (m7-extraction task 17.3), expected/ not captured yet"
+    elif "-PDK-" in case_id:
+        when = "authored in R6 (m7-extraction task 17.4)"
+    elif case_id in AUDIT_ROWS:
+        when = "added by the requirement audit in R6 (m7-extraction task 17.2)"
+    return f"{when}; replays once {owner(case_id)} lands"
+
+
+def _entry(case_id: str) -> str | None:
+    """The block entry of one authored case: its approved deviation, its deferral, or None once it replays."""
+    if case_id in DECIDED:
+        outputs, why = DECIDED[case_id]
+        outs = ", ".join(f'"{name}"' for name in outputs)
+        return (f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\n'
+                f'outputs = [{outs}]\nreason = "{why}"\n')
+    if case_id in REPLAYED:
+        return None
+    outs = ", ".join(f'"{name}"' for name in output_names(case_id))
+    decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
+    return (f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\noutputs = [{outs}]\n'
+            f'reason = "{deferral_reason(case_id)}"\n')
+
+
 def deviation_block() -> str:
-    entries = []
-    for case_id in authored_ids():
-        if case_id in DECIDED:
-            outputs, why = DECIDED[case_id]
-            outs = ", ".join(f'"{name}"' for name in outputs)
-            entries.append(f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\n'
-                           f'outputs = [{outs}]\nreason = "{why}"\n')
-            continue
-        if case_id in REPLAYED:
-            continue
-        outs = ", ".join(f'"{name}"' for name in output_names(case_id))
-        reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
-        if case_id in AUDIT_ROWS:
-            reason = f"added by the requirement audit in R6 (m7-extraction task 17.2); replays once {owner(case_id)} lands"
-        if "-PDK-" in case_id:
-            reason = f"authored in R6 (m7-extraction task 17.4); replays once {owner(case_id)} lands"
-        if case_id.startswith(("NL-RES-", "NL-RESNET-")):
-            reason = f"authored in R4 (m7-extraction task 17.3), expected/ not captured yet; replays once {owner(case_id)} lands"
-        if case_id in HAND_DERIVED:
-            reason = f"expected/ hand-derived (design R7 option (a), M7-9); replays once {owner(case_id)} lands"
-        decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
-        entries.append(f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\noutputs = [{outs}]\nreason = "{reason}"\n')
+    entries = [entry for entry in map(_entry, authored_ids()) if entry]
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
 
 

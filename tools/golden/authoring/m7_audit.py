@@ -120,23 +120,34 @@ def _normal(text: str) -> str:
     return re.sub(r"\(.*?\)", "", text).strip().rstrip(".").lower()
 
 
+def _column_rows():
+    """(case id, its capability, the requirement names of its CASES.md column) of every catalogue row."""
+    for area in CATALOGUES:
+        for line in (GOLDEN / area / "CASES.md").read_text(encoding="utf-8").splitlines():
+            match = ROW.match(line)
+            if match:
+                case_id, row_cap, column = match.groups()
+                yield case_id, row_cap, [item for item in map(_normal, column.split(";")) if item]
+
+
+def _matches(item: str, row_cap: str, by_name: dict[str, list[tuple[str, str]]]) -> list[tuple[str, str]]:
+    """The requirements a column item names: exact heading, else a heading it is a prefix of; the row's
+    capability first, else the first capability that has it."""
+    hits = by_name.get(item) or [k for name, keys in by_name.items() if name.startswith(item) for k in keys]
+    same = [k for k in hits if k[0] == row_cap]
+    return same or hits[:1]
+
+
 def column_cases(reqs) -> dict[tuple[str, str], set[str]]:
     """Cases whose CASES.md "requirement(s) covered" column names a requirement (a prefix of the heading counts)."""
     by_name: dict[str, list[tuple[str, str]]] = {}
     for cap, name, _ in reqs:
         by_name.setdefault(name.lower(), []).append((cap, name))
     out: dict[tuple[str, str], set[str]] = {}
-    for area in CATALOGUES:
-        for line in (GOLDEN / area / "CASES.md").read_text(encoding="utf-8").splitlines():
-            match = ROW.match(line)
-            if not match:
-                continue
-            case_id, row_cap, column = match.groups()
-            for item in filter(None, (_normal(i) for i in column.split(";"))):
-                hits = by_name.get(item) or [k for n, ks in by_name.items() if n.startswith(item) for k in ks]
-                same = [k for k in hits if k[0] == row_cap]
-                for key in same or hits[:1]:
-                    out.setdefault(key, set()).add(case_id)
+    for case_id, row_cap, items in _column_rows():
+        for item in items:
+            for key in _matches(item, row_cap, by_name):
+                out.setdefault(key, set()).add(case_id)
     return out
 
 
@@ -144,21 +155,24 @@ def _case_id(source: str) -> str:
     return Path(source).parent.name
 
 
+def audit_row(cap: str, name: str, classes, sources: list[str], column: set[str]) -> list[str]:
+    """One table row: capability, requirement, class, cases, unit-test files, and the unit-only reason."""
+    cases = {_case_id(s) for s in sources if s.startswith("tests/golden/")} | column | set(ASSIGNED.get((cap, name), ()))
+    units = sorted({s.split(":", 1)[0] for s in sources if not s.startswith("tests/golden/")})
+    note = "" if cases else UNIT_ONLY.get((cap, name), "")
+    return [cap, name, ", ".join(classes), ", ".join(sorted(cases)) or "-", ", ".join(units) or "-", note]
+
+
 def audit_rows(reqs=None, tagged=None) -> dict[str, list[list[str]]]:
-    """Per catalogue, one row per requirement: capability, requirement, class, cases, unit tests, note."""
+    """Per catalogue, one row per requirement (audit_row)."""
     reqs = requirements() if reqs is None else reqs
     tagged = tagged_tests() if tagged is None else tagged
     columns = column_cases(reqs)
-    tables: dict[str, list[list[str]]] = {area: [] for area in CATALOGUES}
     area_of = {cap: area for area, caps in CATALOGUES.items() for cap in caps}
+    tables: dict[str, list[list[str]]] = {area: [] for area in CATALOGUES}
     for cap, name, classes in reqs:
-        sources = tagged.get((cap, name), [])
-        cases = {_case_id(s) for s in sources if s.startswith("tests/golden/")}
-        cases |= columns.get((cap, name), set()) | set(ASSIGNED.get((cap, name), ()))
-        units = sorted({s.split(":", 1)[0] for s in sources if not s.startswith("tests/golden/")})
-        note = UNIT_ONLY.get((cap, name), "") if not cases else ""
-        tables[area_of[cap]].append([cap, name, ", ".join(classes), ", ".join(sorted(cases)) or "-",
-                                     ", ".join(units) or "-", note])
+        row = audit_row(cap, name, classes, tagged.get((cap, name), []), columns.get((cap, name), set()))
+        tables[area_of[cap]].append(row)
     return tables
 
 
