@@ -93,6 +93,7 @@ SymbolCache::SymbolCache(FlattenLimits limits, std::chrono::milliseconds generat
 void SymbolCache::clear() noexcept {
   symbols_.clear();
   stamps_.clear();
+  embedded_built_.clear();
   embedded_.clear();
   generated_.clear();
   warned_.clear();
@@ -101,6 +102,9 @@ void SymbolCache::clear() noexcept {
 
 void SymbolCache::forget(const platform::Path& file) {
   symbols_.erase(file);
+  for (const auto& [key, symbol] : embedded_) {
+    if (key.first == file) embedded_built_.erase(&symbol);
+  }
   std::erase_if(embedded_, [&](const auto& entry) { return entry.first.first == file; });
   std::erase_if(generated_, [&](const auto& entry) { return entry.first.first == file; });
   // A schematic used as a symbol holds copies of the graphics it places.
@@ -125,7 +129,9 @@ std::size_t SymbolCache::forget_changed(platform::FileSystem& fs) {
 }
 
 const Symbol& SymbolCache::resolve(const Reference& reference, const Document& from, const ResolveContext& context) {
-  if (const Symbol* inline_symbol = embedded(reference, from)) return *inline_symbol;
+  if (const Symbol* inline_symbol = embedded(reference, from)) {
+    return embedded_as_built(*inline_symbol, reference, from, context);
+  }
   if (is_generator_reference(reference.text)) return generated(reference, from, context);
   const platform::Path file = locate(reference, from, context);
   return file.empty() ? placeholder_ : load(file, reference.text, context);
@@ -301,6 +307,24 @@ void SymbolCache::warn_flattened(const FlattenReport& report, const std::string&
               diag::make("SCHEM-LIB-009", "Symbol " + reference + ": more than " + limit +
                                               " when flattened; the rest is not loaded"));
   }
+}
+
+// An embedded block that places instances is drawn with their graphics, as
+// it is saved (the block as read keeps its `C` records).
+const Symbol& SymbolCache::embedded_as_built(const Symbol& block, const Reference& reference, const Document& from,
+                                             const ResolveContext& context) {
+  if (block.document.instances.empty()) return block;
+  if (const auto it = embedded_built_.find(&block); it != embedded_built_.end()) return it->second;
+  Document source = block.document;  // its instances resolve from `from`, its blocks first
+  source.path = from.path;
+  source.embedded = from.embedded;
+  SchematicLoad nested(*this, context);
+  FlattenReport report;
+  Symbol built = schematic_symbol(reference.text, {}, source, std::ref(nested), &block, &report, limits_);
+  warn_flattened(report, reference.text, reference.text, context);
+  built.document.path.clear();
+  built.embedded = true;
+  return embedded_built_.emplace(&block, std::move(built)).first->second;
 }
 
 std::optional<Document> SymbolCache::block_document(const Reference& reference, const Document& from,

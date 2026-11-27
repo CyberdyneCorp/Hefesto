@@ -49,7 +49,11 @@ struct NetlistBench {
     schem::ReadOptions read;
     read.xschem_compat = xschem_compat;
     auto document = schem::load_document(files, top, read);
-    if (!document) return schem::NetlistResult{{}, {}, true, {}};
+    if (!document) {
+      schem::NetlistResult failed;
+      failed.failed = true;
+      return failed;
+    }
     schem::SymbolCache symbols;
     const schem::TclBridge bridge = tcl.bridge();
     const schem::NetlistEnvironment environment{symbols, rc.search_path, files, &bridge, pdk_root, 4};

@@ -17,4 +17,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/line_break.cpp
   ${CMAKE_CURRENT_LIST_DIR}/level.cpp
   ${CMAKE_CURRENT_LIST_DIR}/definitions.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/flat.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/flat.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/driver_check.cpp)
