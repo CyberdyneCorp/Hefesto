@@ -599,6 +599,11 @@ Compatibility: exact
 - **WHEN** Tdi is computed
 - **THEN** Tdi(A) = 2e6 zs
 
+#### Scenario: Gate load of a layout device
+- **GIVEN** a gate of a device on the net that lies on a network node
+- **WHEN** Cdown is computed, in either `magic-compat` setting
+- **THEN** that node's Cdown includes L·W·gateCap + 2·W·sdCap of the device record Magic keeps first for the device tile's type (for a split tile, its left type unless that type has no record); the gate load is never 0 for a record with nonzero `exts_deviceGateCap` or `exts_deviceSDCap`
+
 #### Scenario: Chain pruned bottom-up
 - **GIVEN** origin → A (1000 mΩ) → B (1000 mΩ), A and B each with 1 aF, neither a port, and mindelay 5000 zs
 - **WHEN** pruning runs

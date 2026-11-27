@@ -164,7 +164,7 @@ The driver location SHALL be chosen as follows:
 3. If there is still no driver, use the first drive point, else the first sink point.
 4. If there is still no driver, skip the net. A forced net reports an error.
 
-The devices of a net are ordered as ResSortByGate orders them: entries on a source or drain first, grouped by gate net and then by the other source or drain net, entries on a gate last. Magic compares net addresses; Hefesto compares the order in which the nets were first mentioned, with a stable sort, so the order is the same on every platform, in both `magic-compat` settings (Q-NETLIST-69, resolution: fix, approved 2026-11-25).
+The devices of a net are ordered as ResSortByGate orders them: entries on a source or drain first, grouped by gate net and then by the other source or drain net, entries on a gate last. Magic compares net addresses; Hefesto compares the reverse of the order in which the nets were first mentioned (a net mentioned later compares lower), and sorts as glibc's merge sort does with Magic's comparator, so the order is the same on every platform. Magic's comparator puts a gate entry after every entry, another gate entry included, so a run of gate entries comes out in reverse list order. This holds in both `magic-compat` settings (Q-NETLIST-69, resolution: fix, approved 2026-11-25).
 
 The net SHALL be processed when any of the following holds:
 - "all" is on.
@@ -182,6 +182,12 @@ Compatibility: exact
 - **GIVEN** the same thresholds and a net with R = 20000 and C = 100000
 - **WHEN** it is evaluated
 - **THEN** R·C = 2e9, so the net is processed
+
+#### Scenario: Gate entries in reverse list order
+- **GIVEN** net `out` with two gate entries, the nfet at x 200 then the nfet at x 400 in list order
+- **WHEN** ResSortByGate orders the net's devices, in either `magic-compat` setting
+- **THEN** the nfet at x 400 is numbered first (`out.t2`) and the nfet at x 200 next (`out.t3`) (Q-NETLIST-69)
+
 
 ### Requirement: Second cutoff after extraction
 After the network is built and simplified (see capability `extresist-network`), a net SHALL be withheld from output, unless it is in the force list, in either of these cases:

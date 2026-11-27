@@ -499,7 +499,7 @@ CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& 
 // it simplifies or writes the lump file; otherwise Magic reads the value
 // the last net that computed it left (magic-compat ON, kept in the
 // session), and Hefesto applies no delay cutoff (OFF; proposed Q-row
-// R5-RES-2).
+// Q-NETLIST-72).
 std::optional<double> Runner::run_tdi(const Network& network) const {
   if (options_.simplify || options_.lumped) {
     editor_.extresist.last_tdi = network.tdi;

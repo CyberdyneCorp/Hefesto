@@ -192,6 +192,8 @@ The flood SHALL be Magic's, tile for tile, in both `magic-compat` settings, so `
 - Then, for a contact type, the tile at the same lower-left point on each other plane the contact connects to is entered at the same point and distance when its client is still unset (`CLIENTDEFAULT`) and its type connects. For any type with connections on other planes, those planes are searched over the tile's area expanded by 1 for unmarked connecting tiles, each entered at the current point when it overlaps the tile and otherwise at the midpoint of the clipped boundary.
 - Marks are kept until every start tile under the driver label has been flooded, and cleared only then, so a tile is reached by the first path that arrives and only first-arrival paths reach the receiver and set min and max.
 - Distances are integer arithmetic.
+
+Distances are summed in 64 bits and the flood keeps no recursion depth, in both `magic-compat` settings (a fix: Magic's 32-bit sums overflow and its recursion can exhaust the stack). With `magic-compat` ON a receiver label is listed once for each yanked tile whose area, grown by one unit at the top and right, it touches, and each listing gets its own `distance` record, as in Magic; with it OFF each receiver label is listed once. A driver label on space gets no `distance` record in either mode, where Magic prints the previous pair's values or uninitialised ones. A driver name that matches no label prints `Can't find terminal "<name>"` (EXTRACT-LEN-001) and gets no record. A driver label on a tile's outer corner starts no net, as in Magic (the connect search's corner rule).
 Compatibility: exact
 
 (Magic ref: extract/ExtLength.c:147-310, extract/ExtLength.c:640-1040, extract/ExtCell.c:542-544)
@@ -200,6 +202,21 @@ Compatibility: exact
 - **GIVEN** a single metal1 wire (0,0)-(100,4) with driver label `d` at the left end and receiver label `r` at the right end, `extract length driver d`, `extract length receiver r`
 - **WHEN** the root cell is extracted with option `length` on
 - **THEN** a record `distance d r <min> <max>` with min ≈ max ≈ 100 is written (verify against Magic)
+
+#### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat ON)
+- **GIVEN** a receiver label that touches two yanked tiles of the driver's net (each tile grown by one unit at the top and right), and `magic-compat` ON
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** two identical `distance` records are written for that driver and receiver
+
+#### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat OFF)
+- **GIVEN** the same layout with `magic-compat` OFF
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** one `distance` record is written for that driver and receiver
+
+#### Scenario: Driver label on space
+- **GIVEN** a driver label whose rectangle lies on space, in either `magic-compat` setting
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** no `distance` record is written for that driver label
 
 ### Requirement: Progress and summary messages
 

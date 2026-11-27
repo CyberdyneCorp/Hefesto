@@ -648,3 +648,67 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: fix (as implemented) | replicate (not reproducible)
 - Recommendation: fix.
 - Resolution: fix — in both modes ResSortByGate's order compares the order in which the nets were first mentioned, with a stable sort, so it is the same on every platform. Spec: `extresist-command` "Net selection and first cutoff". Tests: `tests/unit/extresist/command/cutoff_test.cpp`. Approved 2026-11-25.
+- As implemented (round R5, m7-round5-res; amendment proposed for approval, decision stays fix in both modes): the comparison uses the reverse of the first-mention order (a net mentioned later compares lower), and the sort is glibc's merge sort with Magic's devSortFunc. The comparator part is not address dependent and copies Magic: it puts a gate entry after every entry, another gate entry included, so runs of gate entries come out reversed, which NL-RES-01's `out.t2`/`out.t3` need. The reverse order matches Magic's captures of NL-RES-01, 05 and 06, where the forward order matched only 03. Magic's real order follows heap addresses and no deterministic rule reproduces every capture, so NL-RES-02 and 03 carry a DECIDED deviation under this row (`deviations.toml`). Spec amended: `extresist-command` "Net selection and first cutoff" (the sentence and scenario "Gate entries in reverse list order"). Test: `cutoff_test.cpp` sort_by_gate (expects {0,3,1,4,2,5}; the old stable sort gives {1,4,3,0,5,2}).
+
+### Q-NETLIST-70: `ext2sim` follows the short mode set by `ext2spice short`
+- Kind: compat-neutral
+- Status: proposed (raised in M7 round R5 by NETLIST as "Q-NETLIST-63"; renumbered at the R5 merge, where Q-NETLIST-63 was taken)
+- Magic behavior: the short mode lives in EFOutputFlags, which both netlisters share, so `ext2sim` reads with the mode `ext2spice short` set, and `ext2sim default` clears it. A resistor short writes `r A B 0.000000`, a voltage short `N dummy A B 0 0 0 0`.
+- Evidence: extflat/EFbuild.c (efBuildEquiv); ext2sim/ext2sim.c:495; capture-only probe NL-P02 (`tests/data/extflat/visit_probe`, golden-capture run 45861111906)
+- As implemented (round R5), both modes: as Magic; with magic-compat OFF the voltage short's node is `dummy#<n>` (Q-NETLIST-60). Hefesto's ext2sim merged shorted ports before. Tests: `tests/unit/netlist/sim/short_ports_test.cpp`.
+- Options: replicate in both modes (as implemented) | compat (OFF: ext2sim keeps its own short mode)
+- Recommendation: replicate. It is the documented shared option state, and the probe pins Magic's text.
+
+### Q-NETLIST-71: The `extresist` driver of a parallel device group
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: the driver choice sums the W/L of parallel devices in an `int` (totWL), so devices below W/L 1 drive nothing, and a group that runs to the end of the device list drives from its last-but-one device.
+- Evidence: resis/ResRex.c (ResCheckSimpleNode/ResSortByGate's driver loop)
+- As implemented (round R5): magic-compat ON as Magic; OFF sums in float and uses the last device. Tests: `tests/unit/extresist/command/run_test.cpp` "narrow devices drive nothing with magic-compat ON" / "... drive their net with magic-compat OFF", "a parallel group at the end of the list drives from its last-but-one device with magic-compat ON".
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-72: The second cutoff reads the previous net's delay
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: with simplification and the lump file both off, no delay is computed, and the second cutoff reads the `rg_Tdi` the previous net left.
+- Evidence: resis/ResRex.c (ResExtractNet's second cutoff), resis/ResSimple.c
+- As implemented (round R5): magic-compat ON keeps the last delay per session; OFF applies no delay cutoff to such a net. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads the session's last delay with magic-compat ON" / "... applies no delay test without a delay with magic-compat OFF".
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-73: The FastHenry height of a node
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: the node's height is taken from its last non-contact resistor, although the comment says the first.
+- Evidence: resis/ResPrint.c (ResPrintFHNodes)
+- As implemented (round R5): magic-compat ON takes the last; OFF the first. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (height per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-74: ResAlignNodes skips the last resistor
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: ResAlignNodes' loop stops before the last resistor, so that resistor is never aligned.
+- Evidence: resis/ResPrint.c (ResAlignNodes)
+- As implemented (round R5): magic-compat ON as Magic; OFF aligns every resistor. Tests: `tests/unit/extresist/output/fasthenry_test.cpp` (node alignment per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-75: A failed `extresist box` leaves every option off
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Magic behavior: RES_BOX returns on a failure without restoring ResOptionsFlags, so every on/off setting reads off afterwards.
+- Evidence: resis/ResRex.c (CmdExtResis, RES_BOX)
+- As implemented (round R5): magic-compat ON as Magic; OFF keeps the settings. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (box failure per mode).
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.
+
+### Q-NETLIST-76: Devices in subcells are painted in the subcell's own coordinates
+- Kind: compat
+- Status: proposed (raised in M7 round R5 by RESNET, 2026-11-26; implemented per the standing rule)
+- Magic behavior: resMakeDevFunc paints the devices found by DBTreeSrTiles without the search's transform, so a device in a moved or rotated subcell lands at the wrong place.
+- Evidence: resis/ResMain.c (DBTreeSrTiles, resMakeDevFunc)
+- As implemented (round R5): magic-compat ON paints untransformed; OFF transforms to the root. The descent stops past 64 hierarchy levels in both modes (a crafted-input limit under the standing rule of 2026-11-25). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "... at its place with magic-compat OFF".
+- Options: compat (as implemented) | replicate
+- Recommendation: compat.

@@ -202,17 +202,24 @@ release notices.
 - **`extresist`** builds and reduces each net's resistor network and
   writes `.res.ext` and `.res.lump`; **`antennacheck`** checks gate
   antenna ratios against the style's rules.
+- **`extract length`** writes Magic's `distance` records (ExtLength.c's
+  flood); **`extresist geometry`, `fasthenry` and `box`** run, with
+  ResFixUpConnections' terminal renaming and devices in subcells.
+  `ext2sim` follows the short mode `ext2spice short` sets, as Magic.
+
+### Fixed
+
+- `extresist` no longer reads past a short `substrate` or parent `connect`
+  record, and a parent `use` far from the origin no longer overflows;
+  layout devices add their gate and S/D capacitance to the Elmore delay.
 
 ### Changed
 
 - **`extract`, `ext`, `ext2spice`, `exttospice`, `ext2sim`, `exttosim`,
   `extresist` and `antennacheck` are registered commands.** They take
   Magic's option tables and print Magic's help and invalid-option
-  messages. Until extraction and the netlisters land, each option answers
-  `CORE-NOTIMPL-008` ("not implemented yet: extract all"), so a script's
-  `extract all` now fails with that message instead of "unknown command".
-  `ext2spice scale [on|off]` keeps working as before; other `ext2spice`
-  options answer `CORE-NOTIMPL-008` instead of `UI-CLIENT-002`.
+  messages. Every option is now implemented, and the scaffold code
+  `CORE-NOTIMPL-008` is retired (never reused).
 
 ## Unreleased (M6: LEF/DEF and OASIS, complete)
 

@@ -55,7 +55,7 @@ struct Driver {
 /// below 1 drives nothing) and the driver of a parallel group that runs to
 /// the end of the list is its last-but-one device (ResProcessNode's t1);
 /// with it OFF the sums are floats and the driver is the group's last
-/// device (proposed Q-row R5-RES-1).
+/// device (proposed Q-NETLIST-71).
 [[nodiscard]] std::optional<Driver> choose_driver(const InputModel& input, std::size_t net, bool magic_compat = true);
 
 /// The first cutoff (processThis): `all`, the resistance and delay test,

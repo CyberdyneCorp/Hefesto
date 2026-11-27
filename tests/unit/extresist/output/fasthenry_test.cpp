@@ -116,7 +116,7 @@ extresist::Network ew_net(tech::TileType t) {
 
 }  // namespace
 
-// Standing rule (proposed Q-row R5-RES-5, compat): ResAlignNodes' loop
+// Standing rule (proposed Q-NETLIST-74, compat): ResAlignNodes' loop
 // stops before the last resistor of the list.
 TEST_CASE("node alignment skips the last resistor with magic-compat ON",
           "[cap:extresist-output][req:FastHenry geometry file]") {

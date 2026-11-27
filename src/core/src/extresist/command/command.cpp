@@ -96,7 +96,7 @@ std::string fixed2(double value) {
 // RES_BOX's failure return leaves ResOptionsFlags at ResOpt_DoSubstrate |
 // ResOpt_Signal | ResOpt_Box: every on/off setting reads off afterwards
 // (magic-compat ON; with it OFF the settings are kept; proposed Q-row
-// R5-RES-6).
+// Q-NETLIST-75).
 void box_failed(ResistOptions& options, bool magic_compat) {
   if (!magic_compat) {
     return;

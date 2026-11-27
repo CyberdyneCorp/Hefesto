@@ -7,7 +7,9 @@ M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open 
 
 **Status as of 2026-11-23.** The user approved the R2 follow-ups M7-14 to M7-18 with their recommended options: Q-NETLIST-54 (compat), Q-EXTRACT-30 (fix, confirmed), Q-NETLIST-55 to 58 (compat-neutral) and the plan item M7-18 (section "Entries approved 2026-11-23").
 
-**Status as of 2026-11-26.** The user approved on 2026-11-25 every row raised in rounds R3 and R4, each with its recommended option: Q-EXTRACT-31 to 35 and 38 to 41 (compat; Q-EXTRACT-41 as implemented, OFF one device per type), Q-EXTRACT-36 (fix, both modes), Q-NETLIST-59, 61, 65, 66, 67 (compat), Q-NETLIST-60 (`dummy#<n>` per cell), Q-NETLIST-62, 64, 68, 69 and Q-MISC-92, 93 (fix, both modes) and Q-NETLIST-63 (fix in both modes; located in round R5: ResReadDevice's substrate node with no record); Q-EXTRACT-37 stays withdrawn. The user also approved a standing rule: a new crafted-input resource limit in both modes is approved with its recommended value, recorded here and reported. Section "Entries approved 2026-11-25" lists them, with the limits and the spec edits (applied 2026-11-26 in round R5). No row is pending.
+**Status as of 2026-11-26.** The user approved on 2026-11-25 every row raised in rounds R3 and R4, each with its recommended option: Q-EXTRACT-31 to 35 and 38 to 41 (compat; Q-EXTRACT-41 as implemented, OFF one device per type), Q-EXTRACT-36 (fix, both modes), Q-NETLIST-59, 61, 65, 66, 67 (compat), Q-NETLIST-60 (`dummy#<n>` per cell), Q-NETLIST-62, 64, 68, 69 and Q-MISC-92, 93 (fix, both modes) and Q-NETLIST-63 (fix in both modes; located in round R5: ResReadDevice's substrate node with no record); Q-EXTRACT-37 stays withdrawn. The user also approved a standing rule: a new crafted-input resource limit in both modes is approved with its recommended value, recorded here and reported. Section "Entries approved 2026-11-25" lists them, with the limits and the spec edits (applied 2026-11-26 in round R5).
+
+**Status as of 2026-11-26 (R5 integration).** Round R5 raised nine rows and one amendment, all pending: Q-EXTRACT-42 (compat), Q-EXTRACT-43 (fix), Q-NETLIST-70 (compat-neutral), Q-NETLIST-71 to 76 (compat) and the Q-NETLIST-69 amendment (section "Entries proposed in round R5"). Each is implemented with its recommended option.
 
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
@@ -279,6 +281,8 @@ The user approved on 2026-11-25, as a standing rule: **a new resource limit on c
 | `fuzz_ext_netlist` input size and flattening | 64 KiB per input; `ReadLimits` with 4096 instances, 64 Ki nodes, depth 16 | `tests/fuzz/fuzz_ext_netlist.cpp` | the read fails with the reader's own EXTFLAT-READ code (harness only) | R5 (task 19.2) |
 | `fuzz_res_ext_reader` input size | 64 KiB per input | `tests/fuzz/fuzz_res_ext_reader.cpp` | input ignored (harness only) | R5 (task 19.2) |
 | `fuzz_extract_layout` layout size | at most 64 rectangles and 8 labels per cell, coordinates within -128..159 lambda | `tests/fuzz/fuzz_extract_layout.cpp` | the decoder stops (harness only) | R5 (task 19.2) |
+| extresist subcell device paint depth (Q-NETLIST-76) | 64 hierarchy levels | `extresist/network/prepare.cpp` `tree_tiles` | deeper uses are not painted (product, both modes) | R5 (m7-round5-res) |
+| extresist reader field counts (M7-S1) | a `substrate` record needs 7 fields, a parent `connect` 8; a parent `use` with a non-Manhattan 2x2 is ignored and its transform is applied in 64 bits, saturated | `extresist/output/input.cpp` | `<file>, line <n>: Not enough tokens for <keyword> line` (product, both modes) | R5 integration |
 | `fuzz_ext_reader` flattening (lowered) | `ReadLimits` of 2^14 instances, 2^16 flat names and 2^18 merge elements (were 2^18, 2^20, 2^20): a 100001-element array of a two-node leaf, inside the old caps, flattened linearly but took over 10 s under ASan (CI run 45871540469) | `tests/fuzz/fuzz_ext_reader.cpp` | the read fails with the reader's own EXTFLAT-READ code (harness only); seed `regress-timeout-bcf9c071…` | R5 (task 19.2) |
 
 The fuzz harness caps are harness parameters, not product limits: they bound what one fuzz input can build so that a timeout is a real hang (design D22), and change nothing a user sees. They are recorded here so that every cap added in M7 is listed in one place.
@@ -292,7 +296,7 @@ The fuzz harness caps are harness parameters, not product limits: they bound wha
 | Q-EXTRACT-33 | Corner coupling and fringe-halo shield pieces follow Q-EXTRACT-17's quirk | **compat** | Q-EXTRACT-17's rule for corners and for the shield pieces' coupling fraction | extract-capacitance "Corner fringe coupling" (scenario per mode), "Fringe-halo sideoverlap" | EXTCAP (R3) |
 | Q-EXTRACT-34 | A parameter range with only a lower limit is never checked | **compat** | ON: skipped (EX-037 both `nlong`); OFF: the lower limit applies | extract-devices "Model selection by parameter ranges" (scenario per mode) | EXTDEV (R3) |
 | Q-EXTRACT-35 | Range matching falls back to the last record tried | **compat** | ON: last record tried; OFF: the starting record | extract-devices "Model selection by parameter ranges" (scenario per mode) | EXTDEV (R3) |
-| Q-EXTRACT-36 | Crashes, hangs and undefined behaviour in the node, capacitance and device passes (nine cases) | **fix** (both modes) | (a)-(i) as implemented; m7-round5-extract adds regression tests for (f), (h), (i) where an input reaches them | none | EXTNODE, EXTCAP, EXTDEV (R3); tests for (a)-(e), (g) in the R3 fix pass |
+| Q-EXTRACT-36 | Crashes, hangs and undefined behaviour in the node, capacitance and device passes (nine cases) | **fix** (both modes) | (a)-(i) as implemented; round R5 adds the (f) test (`find_match` called directly); (h) and (i) have no reachable input | none | EXTNODE, EXTCAP, EXTDEV (R3); tests for (a)-(e), (g) in the R3 fix pass, (f) in R5 |
 | Q-EXTRACT-37 | The shorted-ports warning truncates the cell's port labels | withdrawn | none needed: Magic restores the cut names (ExtBasic.c:846-847) | none | EXTNODE, EXTCAP (R3) |
 | Q-NETLIST-59 | A missing `.ext` file is the command's result and the command succeeds | **compat** (both tools) | ON: the text is the result and the command succeeds; OFF: EXTFLAT-READ-001 | netlist-spice-options, netlist-sim (scenario per mode) | NETLIST (R3 ext2spice, R3 fix pass ext2sim) |
 | Q-NETLIST-60 | The name of a shorted-port device's anonymous terminal-0 node under Q-NETLIST-31 OFF | compat-neutral | `dummy#<n>` numbered from 0 per cell; completes Q-NETLIST-31's OFF branch | netlist-spice-devices "Resistor lines" (sentence, scenario per mode) | m7-round5-netlist (R5) |
@@ -313,7 +317,7 @@ The fuzz harness caps are harness parameters, not product limits: they bound wha
 | Q-NETLIST-66 | `extresist debug` and `stats` take any word | **compat** | ON: any word turns them on; OFF: `Value must be either "on" or "off".` | extresist-command "Command options" (scenario per mode) | RESCMD (R4) |
 | Q-NETLIST-67 | `extresist cell` runs on the box cell | **compat** | ON: box cell; OFF: selected cell | extresist-command "Run flow" (scenario per mode) | RESCMD (R4) |
 | Q-NETLIST-68 | Crashes in the `.ext` read of `extresist` (three cases) | **fix** (both modes) | as implemented | extresist-command "Input model" | RESCMD (R4) |
-| Q-NETLIST-69 | ResSortByGate orders by node address | **fix** (both modes; determinism) | first-mention order, stable sort | extresist-command "Net selection and first cutoff" | RESCMD (R4) |
+| Q-NETLIST-69 | ResSortByGate orders by node address | **fix** (both modes; determinism) | first-mention order, stable sort; amended in R5 (proposed): reverse first-mention order with glibc's merge sort and Magic's comparator; NL-RES-02/03 DECIDED | extresist-command "Net selection and first cutoff" (sentence and scenario amended in R5) | RESCMD (R4, R5) |
 | Q-MISC-92 | `antennacheck <cell>` with no layout window crashes | **fix** (both modes) | `Point to a window or specify a cell name.` | antenna-check "Antenna check command" | ANTENNA (R4) |
 | Q-MISC-93 | antennacheck devices with no style device line or no terminals | **fix** (both modes) | the device is skipped | antenna-check "Antenna check command" | ANTENNA (R4) |
 
@@ -335,6 +339,25 @@ Applied 2026-11-26 (round R5), after the approval:
 - **Q-NETLIST-64 to 69, Q-MISC-92, 93:** the as-landed text in `extresist-network`, `extresist-command` and `antenna-check` now cites each row; `extresist-command` gains a scenario per mode for Q-NETLIST-66 and Q-NETLIST-67.
 - **Q-NETLIST-63:** `extresist-command` "Input model" gains the substrate-terminal sentence and the scenario "Substrate terminal on a net with no node record" (both modes).
 - Q-EXTRACT-36 and Q-EXTRACT-37 need no spec change.
+
+## Entries proposed in round R5 (2026-11-26)
+
+Raised by the R5 workstreams (EXTCMD, NETLIST, RESCMD, RESNET) for Magic behaviours no row covered, each implemented per the standing rule (ON copies Magic, OFF does the intended thing; crashes and undefined behaviour fixed in both modes) with a test per mode. NETLIST raised its row as "Q-NETLIST-63", which was taken; RESCMD's rows were numbered R5-RES-1..7 on the branch. Both were renumbered at the R5 merge (branch `m7-round5`). **All are pending the user's decision**; the recommended option is the one implemented.
+
+| ID | Question | Kind (recommended) | As implemented | Spec | Raised by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-42 | A receiver label touching two yanked tiles gets two `distance` records | **compat** | ON: one record per touched tile; OFF: one per label | extract-commands "Path length extraction" (scenario per mode) | EXTCMD (R5) |
+| Q-EXTRACT-43 | A driver label on space prints a stale or uninitialised `distance`; int sums; recursive flood | **fix** (both modes) | no record; 64-bit sums; heap flood | extract-commands "Path length extraction" (scenario) | EXTCMD (R5) |
+| Q-NETLIST-69 (amendment) | ResSortByGate's deterministic order | **fix** (both modes) | reverse first-mention order, glibc merge sort with devSortFunc; NL-RES-02/03 DECIDED | extresist-command "Net selection and first cutoff" | RESCMD (R5) |
+| Q-NETLIST-70 | `ext2sim` follows the short mode set by `ext2spice short` | **compat-neutral** (replicate) | both modes as Magic (OFF names the voltage-short node `dummy#<n>`) | none (netlist-sim behaviour unchanged in text) | NETLIST (R5) |
+| Q-NETLIST-71 | Driver of a parallel device group (int totWL; last-but-one device) | **compat** | ON: as Magic; OFF: float sum, last device | none yet | RESCMD (R5; was R5-RES-1) |
+| Q-NETLIST-72 | The second cutoff reads the previous net's delay | **compat** | ON: session's last delay; OFF: no delay cutoff | none yet | RESCMD (R5; was R5-RES-2) |
+| Q-NETLIST-73 | FastHenry node height from the last non-contact resistor | **compat** | ON: last; OFF: first | none yet | RESCMD (R5; was R5-RES-3) |
+| Q-NETLIST-74 | ResAlignNodes skips the last resistor | **compat** | ON: skipped; OFF: aligned | none yet | RESCMD (R5; was R5-RES-5) |
+| Q-NETLIST-75 | A failed `extresist box` leaves every option off | **compat** | ON: as Magic; OFF: settings kept | none yet | RESCMD (R5; was R5-RES-6) |
+| Q-NETLIST-76 | Devices in subcells painted in the subcell's coordinates | **compat** | ON: untransformed; OFF: root transform; 64-level depth cap both modes | none yet | RESNET (R5; was R5-RES-7) |
+
+Bug fixed with no row (R5, both modes): layout devices now carry their record's gate and S/D capacitance into the Elmore delay (it used 0), which changes Tdi and so the mindelay cutoff and pruning; `extresist-network` "Elmore delay and pruning" gains the scenario "Gate load of a layout device".
 
 ## Notable changes to the entries' original recommendations
 
