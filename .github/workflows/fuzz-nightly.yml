@@ -59,7 +59,7 @@ jobs:
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the OpenSSL headers for libcurl
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-fuzz

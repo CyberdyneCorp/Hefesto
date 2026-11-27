@@ -301,7 +301,7 @@ jobs:
       - name: Install CMake, Ninja and the OpenSSL headers for libcurl
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
 
       - name: Cache keys of the reference data
         id: keys
@@ -403,7 +403,7 @@ jobs:
       - name: Install CMake, Ninja, the OpenSSL headers, perf and valgrind
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends libssl-dev valgrind linux-tools-common \
             "linux-tools-$(uname -r)" || sudo apt-get install -y --no-install-recommends linux-tools-azure
           sudo sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0
@@ -586,7 +586,7 @@ jobs:
       - name: Install CMake, Ninja and the OpenSSL headers for libcurl
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
 
       - name: Cache keys of the reference data
         id: keys
@@ -651,7 +651,7 @@ jobs:
       - name: Install CMake, Ninja, the OpenSSL headers and valgrind
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
 
       - name: Unit tests of the bench scripts
         run: python3 -m unittest discover -s bench/gds/tests -v
@@ -839,7 +839,7 @@ jobs:
       - name: Install CMake, Ninja and the OpenSSL headers for libcurl
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
 
       - name: List the shard's cases
         run: python3 scripts/gds_rt_shards.py --cases "${{ matrix.shard }}" > cases.txt
@@ -964,7 +964,7 @@ jobs:
       - name: Install CMake, Ninja, the OpenSSL headers and valgrind
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
 
       - name: Unit tests of the bench scripts
         run: python3 -m unittest discover -s bench/lefdef/tests -v
@@ -1138,7 +1138,7 @@ jobs:
       - name: Install CMake, Ninja, the OpenSSL headers and valgrind
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
 
       - name: Unit tests of the bench scripts
         run: python3 -m unittest discover -s bench/lefdef/tests -v
@@ -1289,7 +1289,7 @@ jobs:
       - name: Install CMake, Ninja, the OpenSSL headers, the Vulkan loader and Mesa lavapipe
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends libssl-dev libvulkan-dev mesa-vulkan-drivers libx11-dev
 
       - name: Unit tests of the gate script
@@ -1440,7 +1440,7 @@ jobs:
         if: steps.select.outputs.run == 'true'
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends libssl-dev
 
       - name: Unit tests of the driver and the hierarchy generator
