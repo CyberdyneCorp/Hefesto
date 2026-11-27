@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "case": "NG-PDK-02",
+  "area": "LVS",
+  "tool": "netgen",
+  "tool_repo": "https://github.com/RTimothyEdwards/netgen",
+  "tool_version": "1.5.327",
+  "tool_commit": "93dcda14d36349d0b0ca63168d3cbbab20fe2ece",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:cb3188d200c2a4fce2e3e3b460bd1bb7f7458d186c7ca215dc91e3efb8568439",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "netgen",
+    "-batch",
+    "source",
+    "input/run.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-27T22:39:24Z",
+  "outputs": {
+    "comp.json": "0cb5d90211d7cdbfdd0c673676eb23b993b26a040423dd9317d5128011f12b17",
+    "comp.out": "b45e93e5ef8b8226d6289a7b3174a134082e72e0d725abc80b1b389dba5934e9",
+    "exitcode.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "4b9b4d829c5d303e6dc7c47127cb878ea3d5e69a18bd90421fac79f6052ab763"
+  }
+}

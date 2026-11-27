@@ -1,0 +1,51 @@
+
+Circuit 1 cell rppd and Circuit 2 cell rppd are black boxes.
+Warning: Equate pins:  cell rppd is a placeholder, treated as a black box.
+Warning: Equate pins:  cell rppd is a placeholder, treated as a black box.
+
+Subcircuit pins:
+Circuit 1: rppd                            |Circuit 2: rppd                            
+-------------------------------------------|-------------------------------------------
+1                                          |1                                          
+2                                          |2                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes rppd and rppd are equivalent.
+
+Circuit 1 cell cap_cmim and Circuit 2 cell cap_cmim are black boxes.
+Warning: Equate pins:  cell cap_cmim is a placeholder, treated as a black box.
+Warning: Equate pins:  cell cap_cmim is a placeholder, treated as a black box.
+
+Subcircuit pins:
+Circuit 1: cap_cmim                        |Circuit 2: cap_cmim                        
+-------------------------------------------|-------------------------------------------
+1                                          |1                                          
+2                                          |2                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes cap_cmim and cap_cmim are equivalent.
+
+Class rc (0):  Merged 1 parallel devices.
+Class rc (0):  Merged 1 series devices.
+Subcircuit summary:
+Circuit 1: rc                              |Circuit 2: rc                              
+-------------------------------------------|-------------------------------------------
+rppd (2->1)                                |rppd (1)                                   
+cap_cmim (2->1)                            |cap_cmim (2->1)                            
+Number of devices: 2                       |Number of devices: 2                       
+Number of nets: 3                          |Number of nets: 3                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: rc                              |Circuit 2: rc                              
+-------------------------------------------|-------------------------------------------
+b                                          |b                                          
+a                                          |a                                          
+c                                          |c                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes rc and rc are equivalent.
+
+Final result: Circuits match uniquely.
+.
