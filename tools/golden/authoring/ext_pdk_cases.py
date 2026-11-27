@@ -53,7 +53,7 @@ ROW_PITCH = 20000  # units between two rows of the wrapper: far more than any st
 RUN_TIMEOUT_S = 1800
 BUDGET_BYTES = 15 * 1000 * 1000  # design D21: the six PDK cases, uncompressed
 
-EXT_COLLECT = (Collect("*.ext", "ext-cap", ("ext-timestamp",)),)
+EXT_COLLECT = (Collect("*.ext", "ext-cap", ("ext-timestamp", "ext-devres-uninit-width")),)  # Q-EXTRACT-36 (h)
 NETLIST_COLLECT = (Collect("*.spice", "spice-cap"), Collect("*.sim", "sim-cap"), Collect("*.al", "bytes"),
                    Collect("*.nodes", "bytes"))
 

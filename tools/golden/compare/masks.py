@@ -362,6 +362,17 @@ def mask_extcheck_memory(data: bytes) -> bytes:
     return _EXTCHECK_MEMORY.sub(rb"\1<masked>", data)
 
 
+# Q-EXTRACT-36 (h): Magic's resistor branch writes an uninitialised width when no boundary estimate exists
+# (extract/ExtBasic.c:2988-3060), so the width of such a `device devres` record differs between two Magic
+# runs (sky130_fd_sc_hd__probec_p_8: -1123705434, then -1406616154). A width of nine or more digits is
+# masked; Hefesto writes 0 there, which stays visible.
+_EXT_DEVRES_WIDTH = re.compile(rb"^(device devres \S+(?: -?\d+){5}) -?\d{9,}(?= )", re.MULTILINE)
+
+
+def mask_ext_devres_uninit_width(data: bytes) -> bytes:
+    return _EXT_DEVRES_WIDTH.sub(rb"\1 <uninitialised>", data)
+
+
 # The external-command roles' programs (goldenlib/external_command.py ROLES).
 _PROG_NAME = re.compile(rb"^(?:\S*/)?(?:hefesto-)?extcheck(?=[:\s]|$)", re.MULTILINE)
 
@@ -396,6 +407,7 @@ _NAMED: dict[str, Mask] = {
     "ext-times": mask_ext_times,
     "extcheck-memory": mask_extcheck_memory,
     "prog-name": mask_prog_name,
+    "ext-devres-uninit-width": mask_ext_devres_uninit_width,
 }
 
 

@@ -57,4 +57,4 @@ masks = ["magic-stamp-note", "completed-percent", "ext-times", "magic-tech-secti
 [[collect]]
 pattern = "*.ext"
 comparator = "ext-cap"
-masks = ["ext-timestamp"]
+masks = ["ext-timestamp", "ext-devres-uninit-width"]

@@ -91,6 +91,16 @@ class MaskTest(unittest.TestCase):
         self.assertTrue(compare_bytes(a, b, "bytes", ["mag-timestamp"]).equal)
         self.assertEqual(apply_masks(b"xtimestamp 5\n", ["ext-timestamp"]), b"xtimestamp 5\n")
 
+    def test_ext_devres_uninit_width(self):
+        # Two Magic captures of sky130_fd_sc_hd__probec_p_8 (Q-EXTRACT-36 (h)): the uninitialised width differs.
+        line = b'device devres sky130_fd_pr__res_generic_m5 872 -91 873 -90 240 %s "m5_872_n91#" 0 0 "VGND" 140\n'
+        a, b = line % b"-1123705434", line % b"-1406616154"
+        self.assertFalse(compare_bytes(a, b, "ext-cap", ["ext-timestamp"]).equal)
+        self.assertTrue(compare_bytes(a, b, "ext-cap", ["ext-timestamp", "ext-devres-uninit-width"]).equal)
+        # Hefesto's 0 and an ordinary width stay compared.
+        self.assertFalse(compare_bytes(a, line % b"0", "ext-cap", ["ext-devres-uninit-width"]).equal)
+        self.assertEqual(apply_masks(line % b"12", ["ext-devres-uninit-width"]), line % b"12")
+
     def test_regex_mask(self):
         a, b = b"* Created 2020-01-01\nR1 a b 1k\n", b"* Created 2026-11-07\nR1 a b 1k\n"
         self.assertTrue(compare_bytes(a, b, "bytes", [r"regex:\d{4}-\d{2}-\d{2}"]).equal)
