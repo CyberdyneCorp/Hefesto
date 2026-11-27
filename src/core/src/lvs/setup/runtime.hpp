@@ -94,6 +94,9 @@ class Runtime {
   [[nodiscard]] diag::Outcome<Resolved> resolve_pair(std::string_view a, std::string_view b) const;
   [[nodiscard]] diag::Outcome<Target> circuit_top(std::string_view keyword) const;
   [[nodiscard]] diag::Outcome<Resolved> in_netlist(const Netlist& netlist, std::string_view cell) const;
+  [[nodiscard]] diag::Outcome<Resolved> in_circuit(std::string_view keyword, std::string_view cell) const;
+  [[nodiscard]] diag::Outcome<Resolved> in_numbered(FileNumber number, std::string_view cell) const;
+  [[nodiscard]] diag::Outcome<Resolved> in_named_file(std::string_view a, std::string_view b) const;
   [[nodiscard]] Resolved everywhere(std::string_view cell) const;
   [[nodiscard]] const Netlist* netlist_by_number(FileNumber number) const;
   [[nodiscard]] const Netlist* netlist_by_file_name(std::string_view name) const;

@@ -213,26 +213,38 @@ diag::Outcome<Resolved> Runtime::resolve_pair(std::string_view a, std::string_vi
     return all;
   }
   if (is_circuit_keyword(a) || is_circuit_keyword(b)) {
-    const bool first = is_circuit_keyword(a);
-    auto top = circuit_top(first ? a : b);
-    if (!top) {
-      return top.error();
-    }
-    const Netlist* netlist = netlist_of(*top.value().circuit, top.value().cell);
-    if (netlist == nullptr) {  // a top cell outside every loaded file
-      return message(kNoCircuit);
-    }
-    return in_netlist(*netlist, first ? b : a);
+    return is_circuit_keyword(a) ? in_circuit(a, b) : in_circuit(b, a);
   }
   const auto na = parse_integer(a);
   const auto nb = parse_integer(b);
   if (na || nb) {
-    const Netlist* netlist = netlist_by_number(static_cast<FileNumber>(na ? *na : *nb));
-    if (netlist == nullptr || !netlist->circuit->db.find_cell(na ? b : a, netlist->local)) {
-      return message(kNoCellOrFile);
-    }
-    return in_netlist(*netlist, na ? b : a);
+    return na ? in_numbered(static_cast<FileNumber>(*na), b) : in_numbered(static_cast<FileNumber>(*nb), a);
   }
+  return in_named_file(a, b);
+}
+
+diag::Outcome<Resolved> Runtime::in_circuit(std::string_view keyword, std::string_view cell) const {
+  auto top = circuit_top(keyword);
+  if (!top) {
+    return top.error();
+  }
+  const Netlist* netlist = netlist_of(*top.value().circuit, top.value().cell);
+  if (netlist == nullptr) {  // a top cell outside every loaded file
+    return message(kNoCircuit);
+  }
+  return in_netlist(*netlist, cell);
+}
+
+diag::Outcome<Resolved> Runtime::in_numbered(FileNumber number, std::string_view cell) const {
+  const Netlist* netlist = netlist_by_number(number);
+  if (netlist == nullptr || !netlist->circuit->db.find_cell(cell, netlist->local)) {
+    return message(kNoCellOrFile);
+  }
+  return in_netlist(*netlist, cell);
+}
+
+diag::Outcome<Resolved> Runtime::in_named_file(std::string_view a, std::string_view b) const {
+  // A loaded file's name first, then a top cell's name, names the file.
   const Netlist* by_a = netlist_by_file_name(a);
   const Netlist* by_b = by_a != nullptr ? nullptr : netlist_by_file_name(b);
   if (by_a == nullptr && by_b == nullptr) {
