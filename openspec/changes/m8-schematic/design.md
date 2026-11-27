@@ -64,6 +64,7 @@ The core area is `schem`, diagnostic prefix `SCHEM-`, code document `docs/diagno
 | Schematic circuit source and deck building | `schem/sim/` | SIMINT | impl |
 | System symbol library | `assets/schematic/xschem_library/devices/` (under `${XSCHEM_SHAREDIR}` = `<CAD_ROOT>/assets/schematic`, where the PDK `xschemrc` files look) | DEVLIB | impl |
 | Desktop screen | `src/shell/desktop/src/schematic_*.cpp` | SHELL | impl |
+| `schematic` client of the core `macro` command (the schematic editor's key table, Q-SCHEM-67) | `src/core/src/ui/macro_commands.cpp`, its test `tests/unit/ui/macro_test.cpp` (the schematic-client cases; the layout clients stay with their M1/M4 owners) | SHELL | impl |
 | Specs, `SCHEM.md`, interface table, capture-fixed texts | `openspec/specs/schematic-*`, `docs/decisions/` | SPEC | spec |
 | Inventory script, PDK data sets | `scripts/schem_inventory.py`, `scripts/fetch_pdk.py` | PDK | either (reads only Apache-2.0 PDK trees) |
 | Golden inputs and capture | `tests/golden/SCHEM/`, `tools/golden/` | GOLDEN | impl (inputs) |
@@ -110,7 +111,7 @@ A pipeline of pure stages over one hierarchy run: connectivity (exact binary64 g
 
 ### D10. Flat netlists and the canonical SPICE comparator (Q-SCHEM-15)
 
-`tools/golden/compare/spice_canonical.py` parses a SPICE netlist into devices (name, ordered nodes, model, parameters), with subcircuit expansion where definitions exist, names compared case-insensitively, node names canonicalised by connectivity (two netlists match when a node bijection maps one device set onto the other with equal models and parameter values), and reports the first difference. SCHEM-NL-21 uses it; byte comparison is never used for flat output. The comparator is Hefesto code written from SPICE semantics, not from xschem. Parameter values compare as numbers when they are numbers, else as lower-case text in which a blank inside a `'...'` or `{...}` expression is dropped when it is next to an operator or bracket (`+-*/%^()<>=!&|?:,`), since SPICE reads `'int((1 + 1)/2) * wn'` and `'int((1+1)/2)*wn'` the same; a blank between two other characters stays, so a quoted path `'my file.lib'` never equals `'myfile.lib'`, and a `"..."` string keeps every blank (recorded at the M8 round-6 review fix, 2026-11-27; `tools/golden/tests/test_spice_canonical.py`).
+`tools/golden/compare/spice_canonical.py` parses a SPICE netlist into devices (name, ordered nodes, model, parameters), with subcircuit expansion where definitions exist, names compared case-insensitively, node names canonicalised by connectivity (two netlists match when a node bijection maps one device set onto the other with equal models and parameter values), and reports the first difference. SCHEM-NL-21 uses it; byte comparison is never used for flat output. The comparator is Hefesto code written from SPICE semantics, not from xschem. Parameter values compare as numbers when they are numbers, else as lower-case text in which a blank inside a `'...'` or `{...}` expression is dropped when it is next to an operator or bracket (`+-*/%^()<>=!&|?:,`), since SPICE reads `'int((1 + 1)/2) * wn'` and `'int((1+1)/2)*wn'` the same; a blank between two other characters stays, so a quoted path `'my file.lib'` never equals `'myfile.lib'`, and a `"..."` string keeps every blank (recorded at the M8 round-6 review fix, 2026-11-27; `tools/golden/tests/test_spice_canonical.py`). **Round 7 DECIDE (2026-11-27): kept as is.** xschem's flat netlister removes every space inside each `'...'` or `{...}` span (not tabs, not in `"..."`); the comparator does not copy that, because the only blanks it would add to the rule are those between two operands, which SPICE does not read as one token, and dropping them would equate different file names. Every blank of the SCHEM-NL-21 captures is next to an operator or bracket, so the narrower rule compares them equal. The remaining SCHEM-NL-21 differences are netlister rules, now specified in `schematic-netlisting` "Flat netlist" (paragraph "Fields of a substituted device line": no path prefix on model names or on tokens inside parameter values).
 
 ### D11. Editing core (EDIT; `schematic-editing`)
 
@@ -280,6 +281,15 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-42 / M8-D8 (approved 2026-11-23) | clarification: flat byte count = text + LF + `kFlatLineOverhead` (40) per kept line | D9, D10 |
 | Q-SCHEM-10 / M8-D9 (recorded 2026-11-23) | system library at `assets/schematic/xschem_library/devices/` | D3, D8 |
 | Q-SCHEM-45 / M8-D10 (approved 2026-11-23) | platform: `CAD_ROOT` defaults to the install root in `hefesto-cli` and the desktop app | D8, D15 |
+| Q-SCHEM-52 (approved 2026-11-27) | platform (a): without an `xschemrc` that sets it, `XSCHEM_LIBRARY_PATH` is `${XSCHEM_SHAREDIR}/xschem_library/devices` only; both modes | D7, D8 |
+| Q-SCHEM-53 (approved 2026-11-27) | other (a): driver-check-only errors still build the simulation deck (findings as warnings); `schematic netlist`/`check`/`hefesto-cli --netlist` still exit 10; both modes | D9, D13 |
+| Q-SCHEM-54 (approved 2026-11-27) | platform (a): generator arguments split at `(`, `)`, `,`, spaces and tabs, no shell processing; only Tcl generators in the sandbox; both modes | D7, D14 |
+| Q-SCHEM-60 (approved 2026-11-27) | other (a): SCHEM golden `stderr.txt` is an approved deviation (Hefesto's coded diagnostics); files, exit status and `puts` results compared | D16, D21 |
+| Q-SCHEM-61 (approved 2026-11-27) | other (a): `xschem netlist` returns xschem's value (`1` after an error) without raising with `xschem-compat` ON; OFF raises; exit status stays 10 | D12, D16 |
+| Q-SCHEM-62 (approved 2026-11-27) | other (a): `xschem get_tok` third argument (`1` keeps quotes, `2` strips them); both modes | D12 |
+| Q-SCHEM-66 (approved 2026-11-27) | platform (a): Command-C/V on macOS, Ctrl-C/V elsewhere with Ctrl-C interrupting a running netlist; rebindable; both modes | D15 |
+| Q-SCHEM-67 (approved 2026-11-27) | platform (a): core `macro` accepts the client `schematic` (the schematic key table) in both modes; a recorded Magic difference with `magic-compat` ON | D3, D15 |
+| Q-SCHEM-68 (proposed 2026-11-27, awaiting the user) | other (a) recommended: property text view, template view and global-property/header dialogs move past M8; the field view and "apply to all selected" stay M8 | D11, D15, D21 |
 
 ## As-landed scaffold contracts
 

@@ -210,6 +210,10 @@ Each object SHALL have an editable property string (capability `schematic-file-f
 
 Editing the global properties (`K`, `S`, ... records) and the header text SHALL be possible.
 
+**Field view** (specified in M8 round 7 for task 9.2; both modes of `xschem-compat`). The field view of the selected instance (or wire) SHALL show one row per attribute of its property string, in the order the attributes appear in it, each row holding the key and the decoded value (quotes removed, escapes resolved, as `schematic getprop instance <name> <key>` returns it); an attribute given twice shows once, with the value that `getprop` returns. Changing a row's value SHALL run `schematic setprop instance <name> <key> <value>` (`setprop wire <n> ...` for a wire), and clearing it SHALL run the same command without `<value>`, which removes the attribute; each change is one command line in the command log and one undo step. Changing the `name` row renames the instance, made unique as `setprop` makes it. A row added with a new key SHALL run `setprop` with that key, which appends the attribute. With "apply to all selected" chosen, the change SHALL run `schematic setprop selection <key> [<value>]` instead (one undo step for all). The field view SHALL be refreshed after every command that changes the document.
+
+**Scope in M8.** The field view, "apply to all selected" and the `schematic setprop schematic` command are M8. The whole-string text view of the property string with the symbol's `template` shown beside it, and the desktop dialogs for the global properties and the header text, are proposed to move past M8 (proposed Q-SCHEM-68, awaiting the user); until then they are reached through `schematic getprop`/`setprop` in the command bar.
+
 Compatibility: behavioral
 
 (xschem ref: editprop.c:236-260, xschem.tcl:7553-7700)
@@ -218,6 +222,11 @@ Compatibility: behavioral
 - **GIVEN** resistors `R1` and `R2` both selected
 - **WHEN** the user sets `value=10k` for all selected
 - **THEN** both property strings SHALL have `value=10k` and keep their other attributes
+
+#### Scenario: Field view edits through setprop
+- **GIVEN** the instance `R1` with the property string `name=R1 value=1k footprint="0603 smd"` shown in the field view on desktop, with `xschem-compat` ON or OFF
+- **WHEN** the user changes the `value` row to `2k`, then clears the `footprint` row
+- **THEN** the field view SHALL first show the rows `name` `R1`, `value` `1k`, `footprint` `0603 smd`; the command lines `schematic setprop instance R1 value 2k` and `schematic setprop instance R1 footprint` SHALL be run and logged; the property string SHALL be `name=R1 value=2k`; and two undo steps SHALL be recorded
 
 ### Requirement: Graphics and text
 The editor SHALL draw lines, boxes, polygons (ended by placing the last point on the first, or by a double click / double tap), arcs and circles on the current layer (default 4, as in xschem; changed by the layer chooser or `schematic layer`, and used by `schematic line`/`box`/`arc`/`polygon` when `-layer` is not given), and texts with size, rotation, alignment and the text attributes of capability `schematic-file-format`. Symbol documents SHALL add pins as boxes on layer 5 with `name` and `dir`. Images and graphs embedded as boxes SHALL be preserved and drawn (graphs: capability `schematic-simulation-integration`).
@@ -305,6 +314,8 @@ The user SHALL be able to:
 
 When descending into a vector instance (`x1[3:0]`), the user SHALL choose which element; elements are numbered 1 from the left, negative numbers count from the right, and an invalid number SHALL select element 1. Descending SHALL be limited to 40 levels. If the parent has unsaved changes, Hefesto SHALL keep them in memory (the parent stays open) instead of asking to save. A schematic reached by descending SHALL be editable; edits SHALL apply to the file and therefore to every instance of it.
 
+The schematic descended into SHALL be the one capability `schematic-netlisting` resolves for the instance (Requirement "Schematic resolution"), in both modes of `xschem-compat`: the instance's `schematic` attribute with its `@` tokens substituted from the instance's attributes, then `@symname` replaced, a `tcleval(...)` value evaluated, and the result resolved as a symbol reference; otherwise the symbol's `schematic` attribute; otherwise the symbol's file with `.sch` in place of its extension. The netlist and the editor SHALL therefore always open the same schematic for an instance. A `schematic` value that resolves to no file SHALL be handled as rule 4 of that requirement (the symbol's own schematic), so descending and netlisting agree (specified in M8 round 7 for task 9.2).
+
 Compatibility: behavioral
 
 (xschem ref: actions.c:2639-2880, actions.c:2882-2990, xschem.h:200)
@@ -313,6 +324,11 @@ Compatibility: behavioral
 - **GIVEN** an instance named `xinv[3:0]`
 - **WHEN** the user descends and chooses element −1
 - **THEN** the hierarchy path SHALL end in `.xinv[0].`
+
+#### Scenario: Descend follows the substituted schematic attribute
+- **GIVEN** the symbol `amp.sym` (whose own schematic is `amp.sch`) and its instance `x1` with `flavor=lvt schematic=amp_@flavor.sch`, the files `amp.sch` and `amp_lvt.sch` next to `amp.sym`, with `xschem-compat` ON or OFF
+- **WHEN** the user selects `x1` and descends
+- **THEN** the document descended into SHALL be `amp_lvt.sch`, the schematic the netlist writes as the definition of `x1`'s subcircuit
 
 ### Requirement: Hierarchy path
 Each displayed schematic SHALL have a hierarchy path: `.` for the top, and on each descent the parent path followed by the chosen element of the instance name and a `.`. For example `.x1.xinv[2].`. While another document is active the path reads as `.`; reading the path SHALL NOT discard the descents, so activating the descended document again shows its path again (only descending or ascending from another document starts a new path). The path SHALL be used for `@path` (without the leading `.`), for highlight propagation and for simulation cross-probing (capability `schematic-simulation-integration`).
@@ -329,6 +345,8 @@ Compatibility: exact
 ### Requirement: Net highlighting
 The user SHALL be able to highlight the nets of selected wires, labels or pins, highlight a net by name, highlight instances, and clear one or all highlights. Each new highlight SHALL take the next colour in a cycle when the "increment highlight colour" setting is on (default on). Highlights SHALL propagate through the hierarchy: descending into an instance SHALL highlight the child nets connected to highlighted parent nets through the instance's pins, and highlights made in a child SHALL be shown on the connected parent nets when ascending. Global nets SHALL be highlighted at every level. Highlights SHALL NOT be saved in the file.
 
+**Vector instances** (specified in M8 round 7 for task 9.2; both modes of `xschem-compat`). An element of a vector instance connects to each pin the names that capability `schematic-netlisting` gives it (Requirement "Element line post-processing", paragraph "Vector elements": with pin width w, k names on the pin's parent net and the element at position i of the instance's expanded name list, counting from 1 at the leftmost name, the names at positions ((l + w·(i−1)) mod k) + 1 for l = 0..w−1). Highlight propagation through an element SHALL use exactly these names: descending into element i highlights a child net when one of the names connected to its pin through element i is highlighted; ascending from element i highlights, on the parent, those names (each bit of a parent bus separately), and no name connected only through other elements.
+
 Compatibility: behavioral
 
 (xschem ref: hilight.c:1466-1700, hilight.c:1974-2100, xschem.tcl:11967)
@@ -337,6 +355,11 @@ Compatibility: behavioral
 - **GIVEN** net `IN` highlighted at top level, connected to pin `A` of instance `x1`
 - **WHEN** the user descends into `x1`
 - **THEN** the child net `A` SHALL be highlighted in the same colour
+
+#### Scenario: Highlight of a vector element shown on the parent bit
+- **GIVEN** the vector instance `xinv[3:0]` of `inv.sym` (pins `A` and `Y`, width 1) with `A` on the parent bus `in[3:0]` and `Y` on `out[3:0]`, with `xschem-compat` ON or OFF
+- **WHEN** the user descends into element 2 (path `.xinv[2].`), highlights the child net `Y`, and ascends
+- **THEN** on the parent only the bit `out[2]` SHALL be highlighted, not `out[3]`, `out[1]` or `out[0]` and not the whole bus `out[3:0]`
 
 ### Requirement: Undo and redo
 Every command that changes a document SHALL be one undo step; a compound gesture (for example a move with inserted wires) SHALL be one step. Undo and redo SHALL restore the full document state including properties, object order and the modified flag. Hefesto SHALL keep at least 80 undo steps per document (xschem's limit), up to 200, as long as the document states they hold take at most 512 MiB (`kUndoMaxBytes`); past that the oldest steps SHALL be dropped, and the newest step SHALL always be kept (Hefesto's bound, both modes; consecutive steps share the document state between them, so a history of n steps holds n + 1 states; Q-SCHEM-47, approved by the user 2026-11-25). Netlisting, highlighting, selection and view changes SHALL NOT create undo steps.
@@ -370,9 +393,9 @@ The gesture set and the palette are both offered. The gestures are provisional u
 
 On desktop, the `R` and `F` keys SHALL name the snapped pointer position (the view's centre before the pointer came over the canvas) as the pivot of `schematic rotate` and `schematic flip` (Requirement "Rotate and flip").
 
-**Copy and Paste keys** (proposed Q-SCHEM-66, recommendation (a), as implemented; awaiting the user). Copy and Paste with the system clipboard (Requirement "Clipboard") SHALL be Command-C and Command-V on macOS, where Ctrl-C stays the interrupt of a running netlist; on Linux they SHALL be Ctrl-C and Ctrl-V, where Ctrl-C interrupts while a netlist runs and copies otherwise, in both modes. A binding of these chords in the key table comes first, so they are rebindable; Ctrl-C while it interrupts is not.
+**Copy and Paste keys** (Q-SCHEM-66 option (a), approved by the user on 2026-11-27; both modes of `xschem-compat`). Copy and Paste with the system clipboard (Requirement "Clipboard") SHALL be Command-C and Command-V on macOS, where Ctrl-C stays the interrupt of a running netlist; off macOS (Linux, Windows) they SHALL be Ctrl-C and Ctrl-V, where Ctrl-C interrupts the netlist run while one is going and copies otherwise. A binding of these chords in the key table comes first, so they are rebindable; Ctrl-C while it interrupts is not.
 
-**Key table** (proposed Q-SCHEM-67, recommendation (a), as implemented; awaiting the user). The desktop bindings SHALL be the `schematic` table of the core `macro` command (capability `ui-command-dispatch`, Requirement "macro and imacro commands"), in both modes: `macro schematic <key> "<text>"` lines of the key-binding sheet, of startup files and of scripts SHALL bind a key of the schematic canvas to a command line or to an editor action (`wire`, `move`, `copy`, `properties`, `place`, `descend`); keys the table does not bind keep the defaults above, and a binding a startup file made SHALL be kept.
+**Key table** (Q-SCHEM-67 option (a), approved by the user on 2026-11-27). The desktop bindings SHALL be the `schematic` table of the core `macro` command (capability `ui-command-dispatch`, Requirement "macro and imacro commands"), in both modes of `xschem-compat` and of `magic-compat`: `macro schematic <key> "<text>"` lines of the key-binding sheet, of startup files and of scripts SHALL bind a key of the schematic canvas to a command line or to an editor action (`wire`, `move`, `copy`, `properties`, `place`, `descend`); keys the table does not bind keep the defaults above, and a binding a startup file made SHALL be kept. Magic 8.3.694 ignores `macro schematic ...` (it has no such client), so with `magic-compat` ON this is a recorded Magic difference. The key-binding sheet's Reset of the `schematic` table SHALL restore these defaults.
 
 Compatibility: native
 
@@ -386,12 +409,22 @@ Compatibility: native
 #### Scenario: Copy and Paste keys
 - **GIVEN** a selection in a schematic on desktop
 - **WHEN** the user presses Command-C on macOS, or Ctrl-C on Linux with no netlist running
-- **THEN** `schematic clipboard copy` SHALL run and its text SHALL be placed on the system clipboard; Ctrl-C on Linux while a netlist runs SHALL interrupt it instead (proposed Q-SCHEM-66)
+- **THEN** `schematic clipboard copy` SHALL run and its text SHALL be placed on the system clipboard; Ctrl-C on Linux while a netlist runs SHALL interrupt it instead (Q-SCHEM-66)
 
 #### Scenario: Rebind a key through the schematic table
 - **GIVEN** the Schematic tab on desktop
 - **WHEN** `macro schematic z "schematic zoom_full"` is executed, then `z` is pressed on the canvas
-- **THEN** `schematic zoom_full` SHALL be run (proposed Q-SCHEM-67)
+- **THEN** `schematic zoom_full` SHALL be run, with `magic-compat` ON or OFF (Q-SCHEM-67)
+
+#### Scenario: Ctrl-C on macOS during a netlist run
+- **GIVEN** a netlist run going in the Schematic tab on macOS, with a selection in the schematic
+- **WHEN** the user presses Ctrl-C, and after the run has stopped presses Command-C
+- **THEN** Ctrl-C SHALL interrupt the run and SHALL NOT copy, and Command-C SHALL run `schematic clipboard copy` (Q-SCHEM-66)
+
+#### Scenario: Reset of the schematic key table
+- **GIVEN** `macro schematic w "schematic zoom_full"` executed in the Schematic tab on desktop
+- **WHEN** the key-binding sheet's Reset is used for the `schematic` table, then `w` is pressed on the canvas
+- **THEN** the wire tool SHALL start, as the default binding of `w` does (Q-SCHEM-67)
 
 #### Scenario: Rotate on iPad
 - **GIVEN** an instance selected on iPad with no keyboard
