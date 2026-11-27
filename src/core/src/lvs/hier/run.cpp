@@ -372,8 +372,8 @@ void final_result(RunState& state, Comparison& top, int top_unique) {
   } else {
     write_verdict(state, top, title);
   }
-  const auto list = [&state](const std::string& title, const std::vector<std::string>& names) {
-    std::string body = "\n" + title + "\n ";
+  const auto list = [&state](const std::string& heading, const std::vector<std::string>& names) {
+    std::string body = "\n" + heading + "\n ";
     for (std::size_t i = 0; i < names.size(); ++i) {
       body += (i == 0 ? "" : "\n ") + names[i];
     }
