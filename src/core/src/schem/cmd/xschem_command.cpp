@@ -656,7 +656,10 @@ cmd::CommandResult abs_sym_path(Session& session, const cmd::Invocation& inv) {
   if (inv.args.size() != 1) return fail(kUsage, "wrong # args: should be \"abs_sym_path reference\"");
   const ResolvedReference found =
       resolve_reference(inv.args[0], reference_folder(session), session.search_path, session_files(session));
-  cmd::CommandResult result = done(found.file.is_absolute() ? found.file.generic_string() : inv.args[0]);
+  // An absolute reference is returned as written: the path library's
+  // `generic_string` folds `//` on some platforms and not on others.
+  const bool as_written = found.via == ResolvedVia::absolute || !found.file.is_absolute();
+  cmd::CommandResult result = done(as_written ? inv.args[0] : found.file.generic_string());
   if (found.via == ResolvedVia::relative || found.via == ResolvedVia::document_folder) {
     result.diagnostics.push_back(diag::make("SCHEM-LIB-001", "Relative symbol reference " + inv.args[0] +
                                                                  " resolved against the schematic folder " +

@@ -220,6 +220,20 @@ TEST_CASE("abs_sym_path and rel_sym_path resolve against the active schematic", 
   }
 }
 
+// Regression (round-7 cross-platform determinism, SCHEM-PR-05 stdout): an
+// absolute reference is returned as written. libstdc++ folded `//lib//./x.sym`
+// to `/lib/./x.sym` where libc++ kept it, so Linux and macOS printed different
+// paths; xschem prints the reference unchanged.
+TEST_CASE("abs_sym_path returns an absolute reference as written", kReferences) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    CHECK(caught(s, "abs_sym_path //lib//./x.sym") == "0 //lib//./x.sym");
+    CHECK(caught(s, "abs_sym_path /lib/x.sym") == "0 /lib/x.sym");
+  }
+}
+
 // Regression (review of PR #88), both modes: with an unsaved document the
 // procedures resolved `./x.sym` and the fallback against the folder Hefesto
 // was started in. An unsaved document has no folder, so a reference that
