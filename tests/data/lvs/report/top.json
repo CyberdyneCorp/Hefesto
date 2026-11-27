@@ -1,0 +1,72 @@
+[
+  {
+   "name": [
+      "inv",
+      "inv"
+   ],
+   "devices": [
+       [
+         ["pfet", 1],
+         ["nfet", 1 ]
+       ], [
+         ["pfet", 1 ],
+         ["nfet", 1 ]
+       ]
+   ],
+   "nets": [
+    4,
+    4
+   ],
+   "badnets": [
+   ],
+   "badelements": [
+   ],
+   "pins": [
+      [
+        "A",
+        "Y",
+        "VDD",
+        "VSS"
+      ], [
+        "A",
+        "Y",
+        "VDD",
+        "VSS"
+      ]
+   ]
+  },
+  {
+   "name": [
+      "top",
+      "top"
+   ],
+   "devices": [
+       [
+         ["inv", 2 ]
+       ], [
+         ["inv", 2 ]
+       ]
+   ],
+   "nets": [
+    5,
+    5
+   ],
+   "badnets": [
+   ],
+   "badelements": [
+   ],
+   "pins": [
+      [
+        "A",
+        "Y",
+        "VDD",
+        "VSS"
+      ], [
+        "A",
+        "Y",
+        "VDD",
+        "VSS"
+      ]
+   ]
+  }
+]
