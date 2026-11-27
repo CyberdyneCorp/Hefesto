@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <exception>
+#include <vector>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
@@ -28,9 +29,12 @@ namespace hefesto::shell {
 namespace {
 
 constexpr float kRowHeight = 36.0F;
-constexpr float kScrollBarRoom = 8.0F;
-constexpr float kRowButtonWidth = 44.0F;
 constexpr float kControlHeight = 28.0F;
+constexpr int kSeparateWidth = 960;
+constexpr int kSeparateHeight = 640;
+constexpr std::string_view kViewportTooltip =
+    "3D view: drag orbits; Option-drag, right-drag or two-finger scroll pans; wheel or pinch zooms; click picks; "
+    "keys run the 3D window's bindings (L/l level, arrows scroll, Z/z zoom, space defaults)";
 
 Rgba rgb_of(const std::array<float, 3>& c) {
   return Rgba{c[0], c[1], c[2], 1.0F};
@@ -99,6 +103,7 @@ View3dView::View3dView(ScreenContext& ctx, std::mutex& queue_mutex, std::functio
 }
 
 View3dView::~View3dView() {
+  close_separate_window();  // its viewport wraps the target's images
   if (ctx_.editor().view3d.display == this) ctx_.editor().view3d.display = nullptr;
   ctx_.editor().windows.remove_observer(*this);
   worker_.reset();  // cancels and joins: no callback runs after this
@@ -115,18 +120,11 @@ void View3dView::build_stage() {
   stage_paint_->set_hit_testable(false);
   stage_paint_->set_role(ui::Role::text);  // the header chip; the gizmo is decoration
   viewport_->set_accessible_name("3D view");
-  viewport_->set_tooltip(
-      "3D view: drag orbits; Option-drag, right-drag or two-finger scroll pans; wheel or pinch zooms; click picks; "
-      "keys run the 3D window's bindings (L/l level, arrows scroll, Z/z zoom, space defaults)");
+  viewport_->set_tooltip(kViewportTooltip);
   stage_.add(*viewport_);
   stage_.add(*stage_paint_);
   stage_.set_accessible_name("3D view");
-  viewport_->on_resize([this](int width, int height) {
-    pixels_ = {width, height};
-    if (target_) target_->resize(width, height);
-    dirty_ = true;
-  });
-  viewport_->on_input([this](const CanvasInput& input) { return handle_input(input); });
+  connect_viewport(*viewport_, false);
   build_toolbar();
   stage_.add(toolbar_);
   toolbar_.place_bottom_left(kView3dToolbarMargin, kView3dToolbarMargin);  // floats over the view, as the board
@@ -148,7 +146,7 @@ void View3dView::build_side() {
   // The layer stack scrolls (sky130A has 349 rows); View and Inspect stay
   // shown below it, as the board pins projection and presets to the bottom.
   side_.set_spacing(6.0F);
-  side_.set_padding(0.0F, 0.0F, kScrollBarRoom, 0.0F);  // the rows end before the scroll bar
+  side_.set_padding(0.0F, 0.0F, kView3dScrollBarRoom, 0.0F);  // the rows end before the scroll bar
   build_layer_section(side_);
   side_scroll_.add(side_);
   side_column_.add(side_scroll_, 1.0F);
@@ -179,7 +177,7 @@ View3dControlState View3dView::control_state() const {
   s.mask_mode = w != nullptr && w->mode == view3d::Mode::mask_layer;
   s.cut_box = w != nullptr && w->cut_box.has_value();
   s.perspective = options_.perspective;
-  s.span_connected_layers = options_.span_connected_layers;
+  s.span_connected_layers = w != nullptr && w->span_connected_layers;
   s.frame_time = options_.show_frame_time;
   s.picked = picking_.picked().has_value();
   s.net_isolated = picking_.net_isolated();
@@ -188,6 +186,8 @@ View3dControlState View3dView::control_state() const {
   s.substrate_available = true;
   s.export_available = export_registered() && ctx_.editor().file_picker != nullptr;
   s.visibility_editable = w != nullptr && visibility_editable(*w);
+  s.separate_window = separate_window_ != nullptr;
+  s.separate_window_available = true;
   return s;
 }
 
@@ -288,8 +288,8 @@ void View3dView::build_inspect_section(ui::Box& box) {
   box.add(net);
   ui::Box& span = boxes_.emplace_back(ui::Box::horizontal());
   add_button(span, View3dControl::span_connected_layers, [this] {
-    options_.span_connected_layers = !options_.span_connected_layers;
-    sync_pending_ = true;  // a full build with the J1 option
+    // The window's J1 flag (export3d reads it too); the build key follows it.
+    if (toggle_span_connected_layers(ctx_.editor().view3d, path())) sync_pending_ = true;
     repaint();
   });
   box.add(span);
@@ -305,9 +305,8 @@ void View3dView::build_inspect_section(ui::Box& box) {
               dirty_ = true;
               repaint();
             }});
-  ui::Box& tools = boxes_.emplace_back(ui::Box::horizontal());
-  add_button(tools, View3dControl::close_view, [this] { run(close_command(path())); });
-  box.add(tools);
+  add_pair(box, "Window", {View3dControl::separate_window, [this] { toggle_separate_window(); }},
+           {View3dControl::close_view, [this] { run(close_command(path())); }});
 }
 
 void View3dView::build_section_panel(ui::Box& box) {
@@ -414,7 +413,7 @@ View3dView::Row& View3dView::row_widgets(std::size_t index) {
   while (rows_widgets_.size() <= index) {
     const std::size_t i = rows_widgets_.size();
     auto row = std::make_unique<Row>();
-    row->box.set_spacing(2.0F);
+    row->box.set_spacing(kView3dRowSpacing);
     row->label = make_painted(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens&) {
       paint_row(p, w, h, i, false, false);
     });
@@ -427,7 +426,7 @@ View3dView::Row& View3dView::row_widgets(std::size_t index) {
                                               bool foc) {
         paint::button(p, wd, ht, label(), "", paint::ButtonStyle::ghost, paint::WidgetState{hov, foc, true, false}, t);
       });
-      w->set_size(kRowButtonWidth, kRowHeight);
+      w->set_size(kView3dRowButtonWidth, kRowHeight);
       w->set_role(ui::Role::button);
       w->set_tooltip(tooltip);
       w->on_click([click](float, float) { click(); });
@@ -493,6 +492,8 @@ std::string View3dView::route_typed(const std::string& line) const {
 
 void View3dView::refresh() {
   highlight_dirty_ = true;
+  // The net overlay's search runs again only when the selection changed.
+  net_overlay_.selection_maybe_changed(ctx_.editor().selection);
   dirty_ = true;
 }
 
@@ -510,6 +511,7 @@ void View3dView::on_window_changed(view::WindowId id, view::Change change) {
   if (layout == nullptr) return;
   const std::optional<ChangeAreas> areas = change_areas(*layout, key_.cell);
   if (!areas) return;
+  net_overlay_.invalidate();  // the rendered cell changed, and its nets may have
   if (areas->all) {
     have_key_ = false;  // a full build on the next frame
   } else {
@@ -550,6 +552,7 @@ void View3dView::on_frame() {
     if (open_changed_) open_changed_(open);
   }
   fit_toolbar();
+  if (separate_close_requested_) close_separate_window();
   if (!open) return;
   if (sync_pending_) sync();
   apply_default_camera();
@@ -557,6 +560,7 @@ void View3dView::on_frame() {
 }
 
 void View3dView::reset_window_state() {
+  close_separate_window();
   worker_->cancel();
   model_.reset();
   drawn_stack_.reset();
@@ -564,6 +568,10 @@ void View3dView::reset_window_state() {
   have_key_ = false;
   picking_.reset();
   highlight_ = nullptr;
+  net_overlay_.reset();
+  overlay_storage_.clear();
+  overlay_converted_ = 0;
+  overlay_truncated_ = false;
   pick_caption_.clear();
   rows_.clear();
   ghost_.clear();
@@ -589,7 +597,7 @@ void View3dView::sync() {
   // layers of the current output style (MASKSRC, task 10.2).
   diag::CollectingSink stack_diagnostics;
   view3d::WindowBuild wb = view3d::window_build(ctx_.editor(), *w, magic_compat(), stack_diagnostics);
-  const BuildKey key = build_key(wb.inputs, options_.span_connected_layers);
+  const BuildKey key = build_key(wb.inputs, w->span_connected_layers);
   if (!have_key_ || !(key == key_)) {
     // A `render` statement whose style does not resolve, once per build (decision J2).
     for (const diag::Diagnostic& d : stack_diagnostics.take()) ctx_.core.dispatcher().report(d);
@@ -626,23 +634,29 @@ void View3dView::start_build(const BuildKey& key, view3d::BuildInputs inputs) {
     const std::lock_guard lock(shared_->mutex);
     shared_->progress = 0.0;
   }
-  view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), options_.span_connected_layers);
+  view3d::BuildInputs in = build_inputs(ctx_.editor(), std::move(inputs), key.span_connected_layers);
   in.build_id = ++build_id_;
+  build_errors_.attach(in, key);
   worker_->build(std::move(in));
 }
 
 void View3dView::take_model(const view3d::MeshHandle& model) {
-  if (worker_->idle() && held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
+  const bool idle = worker_->idle();
+  if (idle && held_tech_.size() > 1) held_tech_.erase(held_tech_.begin(), held_tech_.end() - 1);
+  // The build's mask generation errors, once (Q-MISC-89; ON only, CORE).
+  const std::vector<diag::Diagnostic> errors = build_errors_.deliver(model.get(), build_id_, idle);
   if (!model || !build_stack_ || !window_open()) return;
   // A model of an earlier build (one finishing as a new one started, posted
   // before or after start_build): its stack, mode, units or style differ
   // from build_stack_'s, even with as many layers; the next one replaces it.
   if (!model_is_current(*model, build_id_)) return;
+  for (const diag::Diagnostic& d : errors) ctx_.core.dispatcher().report(d);
   model_ = model;
   drawn_stack_ = build_stack_;
   drawable_ = pending_drawable_;
   ghost_.drawn(*drawn_stack_, options_);
   picking_.model_changed();  // the isolated net follows the new ordinals
+  net_overlay_.invalidate();  // searched against the new model (its units and z range)
   update_section(false);
   highlight_dirty_ = true;
   dirty_ = true;
@@ -679,6 +693,7 @@ void View3dView::rebuild_rows(const view3d::WindowState& window, const view3d::L
 
 void View3dView::update_row(Row& row, const View3dLayerRow& r, bool editable) {
   row.label->set_accessible_name(row_accessible_name(r));
+  row.label->set_tooltip(row_tooltip(r));  // the full name and range the row may ellipsize
   row.hide->set_accessible_name((r.visible ? "Hide " : "Show ") + r.name);
   row.isolate->set_accessible_name("Isolate " + r.name);
   row.alpha->set_accessible_name(alpha_button_name(r));
@@ -749,7 +764,8 @@ bool View3dView::ensure_renderer() {
 void View3dView::draw_frame() {
   const view3d::WindowState* w = window();
   const view3d::LayerStack* stack = drawn_stack_ ? drawn_stack_.get() : build_stack_.get();
-  if (!active_ || w == nullptr || stack == nullptr || pixels_.first <= 0 || !ensure_renderer()) return;
+  const bool shown = active_ || separate_window_ != nullptr;
+  if (!shown || w == nullptr || stack == nullptr || pixels_.first <= 0 || !ensure_renderer()) return;
   if (model_ && model_ != uploaded_) {
     renderer_->upload(*model_);
     uploaded_ = model_;
@@ -760,6 +776,7 @@ void View3dView::draw_frame() {
     highlight_ = picking_.highlight(uploaded_.get(), ctx_.editor());
     highlight_dirty_ = false;
   }
+  update_net_overlay(*w);
   const display::StyleSet* styles = ctx_.editor().styles ? &*ctx_.editor().styles : nullptr;
   const std::vector<bool> hidden = view3d::hidden_layers(ctx_.editor(), *stack, *w, magic_compat());
   render::DrawParams params =
@@ -769,6 +786,8 @@ void View3dView::draw_frame() {
     params.substrate = view3d::substrate_slab(*uploaded_, *uploaded_stack_);
   }
   if (section_line_) params.section_plane = section_clip_plane(segment_in_mesh(*section_line_, mesh_units()));
+  params.net_overlay = overlay_storage_;
+  params.overlay_origin = overlay_origin_;
   const auto start = std::chrono::steady_clock::now();
   try {
     renderer_->draw(w->view, params, *target_);
@@ -777,8 +796,8 @@ void View3dView::draw_frame() {
     return;
   }
   timer_.add(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
-  const render::ShownImage shown = target_->shown();
-  viewport_->show_vulkan_image(shown.view, shown.width, shown.height);
+  const render::ShownImage image = target_->shown();
+  shown_viewport().show_vulkan_image(image.view, image.width, image.height);
   dirty_ = false;
   stage_paint_->invalidate();
   if (status_paint_) status_paint_->invalidate();
@@ -788,7 +807,7 @@ void View3dView::draw_frame() {
 
 bool View3dView::handle_input(const CanvasInput& input) {
   if (!window_open()) return false;
-  const ui::Rect r = viewport_->rect();
+  const ui::Rect r = shown_viewport().rect();
   const int w = static_cast<int>(r.width);
   const int h = static_cast<int>(r.height);
   switch (input.kind) {
@@ -819,12 +838,12 @@ bool View3dView::handle_pointer(const CanvasInput& input) {
   const auto x = static_cast<float>(input.x);
   const auto y = static_cast<float>(input.y);
   if (input.kind == InputKind::pointer_down) {
-    viewport_->focus();
+    shown_viewport().focus();
     pointer_.press(x, y, input.button, input.modifiers);
     return true;
   }
   if (input.kind == InputKind::pointer_move) {
-    const ui::Rect r = viewport_->rect();
+    const ui::Rect r = shown_viewport().rect();
     if (auto g = pointer_.move(x, y, static_cast<int>(r.width), static_cast<int>(r.height))) apply_gesture(*g);
     return pointer_.pressed();
   }
@@ -839,7 +858,20 @@ void View3dView::apply_gesture(const view3d::Gesture& gesture) {
   if (!w) return;
   view3d::apply(w->view, gesture);  // as the matching `view`/`scroll`/`zoom` would
   dirty_ = true;
-  viewport_->invalidate();
+  shown_viewport().invalidate();
+}
+
+// Mask-layer mode: the selected layout nets over the mask geometry (10.4),
+// searched again only when the cache is stale (NetOverlayCache) and
+// converted to the renderer's prisms once per search.
+void View3dView::update_net_overlay(const view3d::WindowState& window) {
+  const view3d::NetOverlay& overlay = net_overlay_.overlay(uploaded_.get(), ctx_.editor(), window, magic_compat());
+  if (net_overlay_.computations() == overlay_converted_) return;
+  overlay_converted_ = net_overlay_.computations();
+  overlay_storage_ = overlay_prisms<render::OverlayPrism>(overlay);
+  overlay_origin_ = {overlay.origin_x, overlay.origin_y};
+  overlay_truncated_ = overlay.truncated;
+  if (status_paint_) status_paint_->invalidate();
 }
 
 void View3dView::pick_at(float x, float y) {
@@ -847,7 +879,7 @@ void View3dView::pick_at(float x, float y) {
   // the next frame has other ordinals.
   const view3d::LayerStack* stack = uploaded_stack_.get();
   if (!renderer_ || stack == nullptr) return;
-  const float ratio = pixel_ratio_ ? pixel_ratio_() : 1.0F;
+  const float ratio = shown_ratio();
   const view3d::PickId id = renderer_->read_pick(static_cast<int>(x * ratio), static_cast<int>(y * ratio));
   update_pick_scope(stack);
   const std::optional<std::string> caption = picking_.click(uploaded_.get(), id, ctx_.editor(), *stack);
@@ -895,6 +927,12 @@ void View3dView::paint_stage(ui::Painter& p, float w, float h) {
   }
   const View3dHeader header = view3d_header(*win);
   stage_paint_->set_accessible_name(header.title + ", " + header.subtitle);
+  if (separate_window_) {
+    // Two short lines: one line was cut off by the side panel at 1280 px.
+    p.text_centered_y(TextRole::body, 24.0F, h / 2.0F - 12.0F, "Shown in a separate window.", t.text_secondary);
+    p.text_centered_y(TextRole::body, 24.0F, h / 2.0F + 12.0F, "Close it, or turn off Detach view, to bring it back.",
+                      t.text_secondary);
+  }
   p.fill(8.0F, 8.0F, std::max(p.text_width(TextRole::cell_subtitle, header.subtitle),
                               p.text_width(TextRole::cell_title, header.title)) + 20.0F,
          42.0F, 6.0F, alpha_of(t.surface0, 0.85F));
@@ -922,6 +960,7 @@ std::string View3dView::status_line() const {
   status.building = !worker_->idle();
   status.have_model = model_ != nullptr;
   status.rectangles = model_ ? rectangle_count(*model_) : 0;
+  status.overlay_truncated = overlay_truncated_ || (renderer_ && renderer_->overlay_truncated());
   std::string line = mesh_status_text(status);
   if (options_.show_frame_time) line += " · frame " + timer_.text();
   return line;
@@ -966,10 +1005,18 @@ void View3dView::paint_row(ui::Painter& p, float w, float h, std::size_t index, 
   const Rgba swatch = index < row_colors_.size() ? row_colors_[index] : Rgba{1.0F, 1.0F, 1.0F, 1.0F};
   const Rgba text = row.visible ? t.text_primary : t.text_tertiary;
   p.fill(2.0F, (h - 12.0F) / 2.0F, 12.0F, 12.0F, 2.0F, alpha_of(swatch, row.visible ? row.alpha : 0.25F));
+  // Long names and ranges end in "…" before the row's buttons (the full
+  // text is the row's tooltip and screen-reader name).
+  const float room = std::max(0.0F, w - kView3dRowTextX - 4.0F);
+  const auto measure = [&p](TextRole role) {
+    return TextMeasure{[&p, role](std::string_view s) { return p.text_width(role, s); }};
+  };
   p.push_clip(0.0F, 0.0F, w, h);
-  p.text_centered_y(TextRole::body, 22.0F, row.range_um.empty() ? h / 2.0F : h * 0.32F, row.name, text);
+  p.text_centered_y(TextRole::body, kView3dRowTextX, row.range_um.empty() ? h / 2.0F : h * 0.32F,
+                    ellipsize(row.name, room, measure(TextRole::body)), text);
   if (!row.range_um.empty()) {
-    p.text_centered_y(TextRole::mono_small, 22.0F, h * 0.74F, row.range_um + " \u00b5m", t.text_secondary);
+    p.text_centered_y(TextRole::mono_small, kView3dRowTextX, h * 0.74F,
+                      ellipsize(row.range_um + " \u00b5m", room, measure(TextRole::mono_small)), t.text_secondary);
   }
   p.pop_clip();
 }
@@ -1045,7 +1092,7 @@ void View3dView::update_section(bool report) {
 bool View3dView::section_click(float x, float y) {
   const view3d::WindowState* w = window();
   if (!section_line_ || w == nullptr) return false;
-  const float ratio = pixel_ratio_ ? pixel_ratio_() : 1.0F;
+  const float ratio = shown_ratio();
   const render::DrawParams params = draw_params(FrameInputs{w, nullptr, nullptr, nullptr, &options_});
   const std::optional<db::Point> ground =
       view3d::ground_point(w->view, params.projection, pixels_.first, pixels_.second, x * ratio, y * ratio);
@@ -1069,13 +1116,98 @@ bool View3dView::export_registered() const {
 }
 
 void View3dView::export_model() {
+  std::vector<ui::MenuItem> items;
+  items.reserve(kView3dExportFormats.size());
+  for (const View3dExportFormat format : kView3dExportFormats) items.push_back({export_format_label(format)});
+  export_menu_.set_items("Export 3D model", items, [this](std::size_t index) {
+    if (index < kView3dExportFormats.size()) export_as(kView3dExportFormats[index]);
+  });
+  const ui::Painted* button = control_widget(View3dControl::export_model);
+  // Without a window to open the menu in, the default format (glTF).
+  if (button == nullptr || !export_menu_.open_below(*button)) export_as(View3dExportFormat::gltf);
+}
+
+void View3dView::export_as(View3dExportFormat format) {
   const view3d::WindowState* w = window();
   platform::FilePicker* picker = ctx_.editor().file_picker;
   if (w == nullptr || picker == nullptr) return;
-  const std::optional<platform::Path> file = picker->pick(export_request(*w));
+  const std::optional<platform::Path> file = picker->pick(export_request(*w, format));
   if (!file) return;
   const bool on_window = ctx_.core.registry().find("export3d", view3d::kWind3dClient) != nullptr;
-  run(export_command(path(), file->string(), on_window));
+  run(export_command(path(), file->string(), on_window, format));
+}
+
+ui::Painted* View3dView::control_widget(View3dControl id) const {
+  for (const Control& c : controls_) {
+    if (c.id == id) return c.widget.get();
+  }
+  return nullptr;
+}
+
+// --- separate window (round 6) -------------------------------------------------------
+
+void View3dView::connect_viewport(ui::Viewport& viewport, bool separate) {
+  viewport.on_resize([this, separate](int width, int height) {
+    // Only the viewport that shows the frames sizes the target.
+    if (separate != (separate_window_ != nullptr)) return;
+    pixels_ = {width, height};
+    if (target_) target_->resize(width, height);
+    dirty_ = true;
+  });
+  viewport.on_input([this, separate](const CanvasInput& input) {
+    // Only the viewport that shows the frames takes input (the tab's blank
+    // stage while "Detach view" is on takes none).
+    if (!viewport_takes_input(separate, separate_window_ != nullptr)) return false;
+    return handle_input(input);
+  });
+}
+
+ui::Viewport& View3dView::shown_viewport() const {
+  return separate_viewport_ ? *separate_viewport_ : *viewport_;
+}
+
+float View3dView::shown_ratio() const {
+  if (separate_window_) return separate_window_->scale();
+  return pixel_ratio_ ? pixel_ratio_() : 1.0F;
+}
+
+void View3dView::toggle_separate_window() {
+  if (separate_window_) {
+    close_separate_window();
+  } else {
+    open_separate_window();
+  }
+}
+
+void View3dView::open_separate_window() {
+  const view3d::WindowState* w = window();
+  if (w == nullptr || separate_window_) return;
+  separate_viewport_ = ui::Viewport::create();
+  separate_viewport_->set_accessible_name("3D view");
+  separate_viewport_->set_tooltip(kViewportTooltip);
+  separate_window_ = std::make_unique<ui::Window>(view3d_header(*w).title, kSeparateWidth, kSeparateHeight);
+  separate_window_->set_min_size(320, 240);
+  separate_window_->set_clear_color(ctx_.tokens().canvas);
+  separate_window_->on_close_request([this] { separate_close_requested_ = true; });
+  connect_viewport(*separate_viewport_, true);
+  separate_window_->set_content(*separate_viewport_);
+  viewport_->show_vulkan_image(0, 0, 0);  // the tab shows a note meanwhile
+  separate_viewport_->focus();
+  dirty_ = true;
+  repaint();
+}
+
+void View3dView::close_separate_window() {
+  separate_close_requested_ = false;
+  if (!separate_window_) return;
+  separate_viewport_->show_vulkan_image(0, 0, 0);
+  separate_window_->destroy();  // returns once Raven no longer renders it
+  separate_window_.reset();
+  separate_viewport_.reset();
+  pixels_ = viewport_->pixel_size();
+  if (target_ && pixels_.first > 0 && pixels_.second > 0) target_->resize(pixels_.first, pixels_.second);
+  dirty_ = true;
+  if (!controls_.empty()) repaint();
 }
 
 }  // namespace hefesto::shell

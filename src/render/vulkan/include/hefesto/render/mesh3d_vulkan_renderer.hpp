@@ -34,6 +34,14 @@
 // - Transparency: layers with alpha < 1 (DrawParams) are drawn after the
 //   opaque ones, chunks sorted back to front, depth-tested without depth
 //   writes, blended, and write no pick id.
+// - Coplanar faces: each drawn layer is drawn with a depth bias toward the
+//   viewer that grows with its ordinal in stack order and with the face's
+//   depth slope (coplanar_bias), so the later layer wins at every pixel of
+//   faces at the same height, in colour and pick (task 17.5).
+// - Net overlay (DrawParams::net_overlay): drawn last in the colour pass of
+//   the frame (the multisampled one at level >= 1), without depth test or
+//   writes and without a pick id; its pipelines are built on the first
+//   frame that has one.
 // - read_pick: one pixel of the pick image of the last frame.
 //
 // The public interface names no Vulkan type. Owner: RENDER3D.
@@ -64,6 +72,16 @@ class VulkanMesh3dRenderer final : public Mesh3dRenderer {
   [[nodiscard]] std::uint64_t chunk_uploads() const noexcept;
   /// Whether level >= 1 draws multisampled on this device.
   [[nodiscard]] bool multisampling() const noexcept;
+  /// Whether a frame with a net overlay (DrawParams::net_overlay) built the
+  /// overlay's pipelines; a renderer that never drew one has none.
+  [[nodiscard]] bool overlay_ready() const noexcept;
+  /// How many times the net overlay's faces were computed (overlay_faces):
+  /// once per change of DrawParams::net_overlay, its origin or the layer
+  /// entries before it, not once per frame.
+  [[nodiscard]] std::uint64_t overlay_face_builds() const noexcept;
+  /// Whether the last net overlay drawn was cut at the overlay limits
+  /// (OverlayFaces::truncated).
+  [[nodiscard]] bool overlay_truncated() const noexcept;
 
  private:
   struct Impl;

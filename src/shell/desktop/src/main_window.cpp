@@ -1054,6 +1054,7 @@ void MainWindow::build_tool_rail(ui::Box& middle) {
   rail.set_accessible_name("Tools");
   middle.add(rail);
   auto rail_edge = make_separator(ctx_, true);
+  rail_edge->set_accessible_hidden(true);  // a line, not an unnamed button for screen readers
   middle.add(*rail_edge);
   painted_.push_back(std::move(rail_edge));
 }

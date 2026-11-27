@@ -24,13 +24,18 @@
 // - net_highlight: the instances of the net through `connect` (flat or
 //   hierarchical search); isolate_others gives the rest, for "Isolate
 //   selected net".
+// - net_overlay (task 10.4, P2): the layout net as prisms in the mesh's
+//   units, drawn over the mask-layer geometry (design D10: "the
+//   layout-layer net tiles are drawn as an overlay over the mask geometry;
+//   mapping nets onto generated mask layers is not attempted").
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3); INSPECT fills in
 // src/core/src/view3d/pick/ (design D3, tasks 9.3-9.5) and extended this
-// header in round 3 (additions only).
+// header in round 3 (additions only); CORE added net_overlay in round 6.
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -57,6 +62,8 @@ class Selection;
 }
 
 namespace hefesto::view3d {
+
+struct WindowState;
 
 /// What a pick id stands for.
 struct PickTarget {
@@ -154,5 +161,69 @@ struct NetOptions {
 /// "Isolate selected net": every instance of `mesh` not in `keep`, to hide
 /// or dim.
 [[nodiscard]] HighlightSet isolate_others(const MeshModel& mesh, const HighlightSet& keep);
+
+/// One box of the layout-net overlay (task 10.4), Vulkan-free plain data:
+/// the front end copies it field by field into the renderer's overlay type
+/// (render::OverlayPrism).
+/// - x0, y0, x1, y1: the tile's rectangle in MESH units (root coordinates
+///   times MeshModel::units_per_root: mask units in mask-layer mode, the
+///   space the chunk origins are in), RELATIVE to NetOverlay::origin_x and
+///   origin_y (doubles), as a chunk's instances are to Chunk::origin: a
+///   prism's absolute x is origin_x + x0. float32 then holds every offset
+///   of a net within +-2^24 mesh units of its origin exactly, wherever the
+///   net lies on a large die.
+/// - z_bottom, z_top: draw heights as MeshModel::layer_heights holds them
+///   (unscaled by s_z; a layer of draw height (h, t) is drawn from h to
+///   h + t): the drawn stack's full range, the lowest h and the highest
+///   h + t of the mesh's layers with a positive thickness (of every layer
+///   when none has one). Every prism of one overlay has the same z range,
+///   so the net shows over every mask layer it lies under.
+struct NetOverlayPrism {
+  float x0 = 0.0F;
+  float y0 = 0.0F;
+  float x1 = 0.0F;
+  float y1 = 0.0F;
+  float z_bottom = 0.0F;
+  float z_top = 0.0F;
+
+  friend bool operator==(const NetOverlayPrism&, const NetOverlayPrism&) = default;
+};
+
+/// The overlay of one net: its tiles (on their types' home planes, so a
+/// contact appears once), merged as the paint of each type is (maximal
+/// horizontal strips), clipped to the window's cut box when it has one.
+/// A split tile is drawn as its bounding box. At most kMaxNetOverlayPrisms
+/// prisms: a larger net (a block's power net selected in 2D) is cut there
+/// and `truncated` is set, so the front end can say so (the standing
+/// crafted-input limit rule of 2026-11-25, recommended value).
+inline constexpr std::size_t kMaxNetOverlayPrisms = 65536;
+struct NetOverlay {
+  std::vector<NetOverlayPrism> prisms;
+  std::vector<tech::TileType> types;  // parallel to `prisms`: the layout type of each
+  double origin_x = 0.0;  // mesh units: the prisms' x and y are relative to this point
+  double origin_y = 0.0;
+  bool truncated = false;  // the net had more than kMaxNetOverlayPrisms prisms
+
+  [[nodiscard]] bool empty() const noexcept { return prisms.empty(); }
+};
+
+/// The overlay of the net of `seed` (as net_highlight: flat or
+/// hierarchical search, options.magic_compat) for the mesh of `window`.
+/// Empty when the seed cannot start a search (no tile type, no source
+/// tile, or a flat search from a subcell) or is not in the window's
+/// rendered cell. Used in mask-layer mode, where the layout-layer
+/// instances are not drawn; it works in either mode (options.stack is not
+/// read).
+[[nodiscard]] NetOverlay net_overlay(const MeshModel& mesh, const editor::EditorState& editor,
+                                     const WindowState& window, const PickTarget& seed, const NetOptions& options);
+
+/// The overlay of every net the 2D selection's paint lies on (the union of
+/// the nets of its tiles): the selection must be rooted in the window's
+/// rendered cell, otherwise (and with nothing selected) the overlay is
+/// empty. Picking in mask-layer mode resolves no layout tile, so this is
+/// the mask-layer entry point.
+[[nodiscard]] NetOverlay net_overlay(const MeshModel& mesh, const editor::EditorState& editor,
+                                     const WindowState& window, const select::Selection& selection,
+                                     const NetOptions& options);
 
 }  // namespace hefesto::view3d

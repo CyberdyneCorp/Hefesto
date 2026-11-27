@@ -27,7 +27,10 @@ enum class Variant : std::uint8_t {
   pick,              // target pass at level >= 1: pick and depth only
   msaa_opaque,       // multisampled color pass: color, depth writes
   msaa_transparent,  // multisampled color pass: blended color, no depth writes
+  overlay,           // target pass: blended color, no pick, no depth test or writes (rect and side only)
+  msaa_overlay,      // multisampled color pass: the same
 };
+/// The table's variants; the overlay's are built apart, on first use.
 inline constexpr std::size_t kVariantCount = 5;
 
 inline constexpr VkSampleCountFlagBits kMsaaSamples = VK_SAMPLE_COUNT_4_BIT;
@@ -94,6 +97,14 @@ class Pipelines {
   /// Builds the clipped variants on the first frame with a section plane,
   /// so a view that never clips pays neither their creation nor a discard.
   void ensure_clipped();
+  /// The net overlay's pipeline of `kind` (rect or side) for the target
+  /// pass or (`msaa`) the multisampled pass, unclipped or clipped;
+  /// VK_NULL_HANDLE until ensure_overlay(clipped) made it (and for `msaa`
+  /// without 4x MSAA).
+  [[nodiscard]] VkPipeline overlay(Kind kind, bool msaa, bool clipped) const noexcept;
+  /// Builds the overlay's pipelines of one clip state on the first frame
+  /// that needs them, so a view without an overlay pays nothing.
+  void ensure_overlay(bool clipped);
   [[nodiscard]] VkPipelineLayout layout() const noexcept { return layout_; }
   [[nodiscard]] VkDescriptorSetLayout set_layout() const noexcept { return set_layout_; }
   /// The multisampled color pass: 4x color and depth, resolved into the
@@ -106,6 +117,7 @@ class Pipelines {
   void create(VkRenderPass target_pass);
   void create_table(bool clipped, Table& out);
   void destroy_table(Table& table) noexcept;
+  void destroy_overlay() noexcept;
   void destroy() noexcept;
 
   VkPhysicalDevice physical_ = VK_NULL_HANDLE;
@@ -120,6 +132,7 @@ class Pipelines {
   Table pipelines_{};
   Table clipped_{};
   bool have_clipped_ = false;
+  std::array<std::array<std::array<VkPipeline, 2>, 2>, 2> overlay_{};  // [clipped][msaa][rect, side]
 };
 
 /// The multisampled color and depth images of one size (transient).

@@ -193,6 +193,7 @@ std::string face_log(const Scene& scene, const ViewState& view, const display::S
 void FaceLogDisplay::redraw(const editor::EditorState& editor, const WindowState& window) {
   const bool compat = editor.drc.compat_settings().magic_compat;
   BuildContext ctx;
+  ctx.sink = errors_;  // the mask generation errors, with magic-compat ON (Q-MISC-89)
   const Scene scene = build_scene(editor, window, compat, ctx);
   const display::StyleSet* styles = editor.styles ? &*editor.styles : nullptr;
   static_cast<void>(files_.write_atomic(path_, face_log(scene, window.view, styles)));

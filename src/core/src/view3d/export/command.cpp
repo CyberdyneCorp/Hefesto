@@ -274,6 +274,7 @@ cmd::CommandResult export3d_cmd(cmd::CommandContext& ctx, const cmd::Invocation&
     return cmd::CommandResult::failure(diag::make(kNoWindow, "export3d: no 3D window is open"));
   }
   BuildContext build;
+  build.sink = &ctx.sink();  // mask-layer generation errors, magic-compat ON (R5 item 20)
   const bool magic_compat = ctx.project().compat.magic_compat;
   const Scene scene = build_scene(state, *state.view3d.window, magic_compat, build);
   if (!scene.mesh) {

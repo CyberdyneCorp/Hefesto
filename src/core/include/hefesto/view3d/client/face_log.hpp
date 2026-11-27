@@ -29,6 +29,7 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/view3d/client/scene.hpp"
@@ -44,10 +45,14 @@ namespace hefesto::view3d {
 /// A WindowDisplay that rewrites the face log on every redraw (so the file
 /// holds the last frame, as the shim's does) and forwards each call to
 /// `next` (may be null). Write errors are ignored: the log is a test aid.
+/// Each redraw is a build: with magic-compat ON a mask-layer build reports
+/// its generation errors to `errors` (Q-MISC-89; hefesto-cli passes a sink
+/// that reports through its dispatcher, the console); null reports none.
 class FaceLogDisplay final : public WindowDisplay {
  public:
-  FaceLogDisplay(platform::FileSystem& files, platform::Path path, WindowDisplay* next = nullptr)
-      : files_(files), path_(std::move(path)), next_(next) {}
+  FaceLogDisplay(platform::FileSystem& files, platform::Path path, WindowDisplay* next = nullptr,
+                 diag::DiagnosticSink* errors = nullptr)
+      : files_(files), path_(std::move(path)), next_(next), errors_(errors) {}
 
   void redraw(const editor::EditorState& editor, const WindowState& window) override;
   void closed(const WindowState& window) override;
@@ -56,6 +61,7 @@ class FaceLogDisplay final : public WindowDisplay {
   platform::FileSystem& files_;
   platform::Path path_;
   WindowDisplay* next_;
+  diag::DiagnosticSink* errors_;
 };
 
 }  // namespace hefesto::view3d

@@ -274,6 +274,7 @@ void LeftPanel::toggle_expansion(std::size_t index) {
 
 InspectorPanel::InspectorPanel(ScreenContext& ctx) : ctx_(ctx) {
   edge_ = make_separator(ctx_, true);
+  edge_->set_accessible_hidden(true);  // a line, not an unnamed button for screen readers
   body_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
     paint::fill_rect(p, w, h, t.surface1);
     paint::inspector(p, w, h, view_, nearby_, t);

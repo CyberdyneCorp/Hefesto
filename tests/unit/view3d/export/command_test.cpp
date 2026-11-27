@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "../client/client_fixture.hpp"
+#include "../client/via_fixture.hpp"
 #include "export_fixture.hpp"
 #include "hefesto/view3d/export/command.hpp"
 
@@ -319,5 +320,30 @@ TEST_CASE("`export3d -all` in mask-layer mode: temporary layers are exported wit
     CHECK((all.node("HALO") != nullptr) == compat);
     const ParsedGltf visible(file(s, "/t/visible.glb"));
     CHECK((visible.node("HALO") != nullptr) == compat);
+  }
+}
+
+// R5 item 17 (approved 2026-11-26): the J1 option is window state, so a
+// spanned window exports spanned (the heights of MeshModel::layer_heights).
+TEST_CASE("Export of a spanned view keeps the span", "[cap:hefesto-3d-visualization][req:3D export]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    view3d::test::ViaSession s(compat);
+    typed_ok(s, "export3d /t/plain.glb");
+    REQUIRE(view3d::set_span_connected_layers(s.editor.view3d, "", true));
+    typed_ok(s, "export3d /t/span.glb");
+    const ParsedGltf plain(file(s, "/t/plain.glb"));
+    const ParsedGltf span(file(s, "/t/span.glb"));
+    REQUIRE(span.validation == cgltf_result_success);
+    // The via's own height line: 0.4 thick; spanned: the 0.2 gap from the
+    // top of metal1 to the bottom of metal2 (metal1 is 0.3 thick in both).
+    const double m1 = plain.thickness("metal1");
+    CHECK(span.thickness("metal1") == Approx(m1));
+    CHECK(plain.thickness("via") == Approx(m1 * 4.0 / 3.0));
+    CHECK(span.thickness("via") == Approx(m1 * 2.0 / 3.0));
+    // The spanned via sits on metal1's top.
+    const cgltf_accessor* via = span.positions("via");
+    const cgltf_accessor* metal1 = span.positions("metal1");
+    CHECK(static_cast<double>(via->min[1]) == Approx(static_cast<double>(metal1->max[1])));
   }
 }

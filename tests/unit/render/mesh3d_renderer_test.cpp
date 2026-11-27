@@ -24,6 +24,7 @@
 #include <utility>
 #include <cstdlib>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -393,6 +394,16 @@ float depth_of(const view3d::ViewState& v, double x, double y, double z) {
   return static_cast<float>(0.5 * (1.0 - cz));
 }
 
+/// Whether `depth` is that of a face of `layer` whose unbiased depth is
+/// `expected`, when every layer of the stack is drawn, flat on to the view
+/// (no slope): the coplanar bias (task 17.5) moves it toward the viewer by
+/// at most kCoplanarBiasConstant * (layer + 1) units of depth resolution
+/// (2^-23 below 1).
+bool layer_depth(float depth, float expected, view3d::LayerId layer) {
+  const float bias = -render::coplanar_bias(std::size_t{layer} + 1U)[0] * 0x1p-23F;
+  return depth <= expected + 1e-6F && depth >= expected - 1e-6F - bias;
+}
+
 /// The model z of the face at a layer's h + t end, the one the top view
 /// shows (z = -(h + t) * s_z).
 double far_end_z(const view3d::ViewState& v, float h, float t) {
@@ -497,7 +508,7 @@ TEST_CASE("3D renderer top view shows metal1 in front of poly where they overlap
       CHECK(ref->kind == render::PickKind::rect);
       CHECK(layer_of(s.mesh, *ref) == kMetal);
       // The face shown is metal1's at h + t (1.5), the nearest.
-      CHECK(std::abs(r.depth[pixel(r, px, py)] - depth_of(v, 50, 30, far_end_z(v, 1.0F, 0.5F))) < 1e-6F);
+      CHECK(layer_depth(r.depth[pixel(r, px, py)], depth_of(v, 50, 30, far_end_z(v, 1.0F, 0.5F)), kMetal));
       const auto [qx, qy] = project(v, 50, 50, 0);  // poly alone
       CHECK(picked_layer(s, r.pick[pixel(r, qx, qy)]) == kPoly);
     }
@@ -534,7 +545,7 @@ TEST_CASE("3D renderer draws the face of each rectangle toward the viewer, from 
         CHECK(layer_of(s.mesh, *ref) == kMetal);
         if (kind == view3d::Projection::orthographic) {
           const double z = below ? -1.0 * static_cast<double>(v.scale_z) : far_end_z(v, 1.0F, 0.5F);
-          CHECK(std::abs(r.depth[pixel(r, mx, my)] - depth_of(v, 70, 30, z)) < 1e-6F);
+          CHECK(layer_depth(r.depth[pixel(r, mx, my)], depth_of(v, 70, 30, z), kMetal));
         }
       }
     }
@@ -569,7 +580,7 @@ TEST_CASE("3D renderer draws split tiles as triangles with their own h and t",
   REQUIRE(ref.has_value());
   CHECK(ref->kind == render::PickKind::triangle);
   CHECK(layer_of(s.mesh, *ref) == kPoly);
-  CHECK(std::abs(rt.depth[pixel(rt, px, py)] - depth_of(top, 85, 10, far_end_z(top, 0.0F, 0.2F))) < 1e-6F);
+  CHECK(layer_depth(rt.depth[pixel(rt, px, py)], depth_of(top, 85, 10, far_end_z(top, 0.0F, 0.2F)), kPoly));
 }
 
 TEST_CASE("3D renderer draws a split tile's triangle at its own type's height with magic-compat OFF (Q-MISC-79)",
@@ -587,7 +598,7 @@ TEST_CASE("3D renderer draws a split tile's triangle at its own type's height wi
   CHECK(layer_of(s.mesh, *ref) == kPoly);
   // The face shown lies at poly's h + t (0.5), nearer than ndiff's h + t
   // (0.2) where magic-compat ON draws it.
-  CHECK(std::abs(rt.depth[pixel(rt, px, py)] - depth_of(top, 85, 10, far_end_z(top, 0.3F, 0.2F))) < 1e-6F);
+  CHECK(layer_depth(rt.depth[pixel(rt, px, py)], depth_of(top, 85, 10, far_end_z(top, 0.3F, 0.2F)), kPoly));
   CHECK(rt.depth[pixel(rt, px, py)] + 1e-4F < depth_of(top, 85, 10, far_end_z(top, 0.0F, 0.2F)));
 }
 
@@ -1425,4 +1436,440 @@ TEST_CASE("no substrate slab unless DrawParams::substrate is set",
     stray += r.pick[i] == view3d::kNoPick && r.depth[i] != 1.0F ? 1 : 0;
   }
   CHECK(stray == 0);
+}
+
+// --- coplanar layers (task 17.5) ---------------------------------------------------
+
+namespace {
+
+/// Mask-layer mode at mask-unit scale: the output style's scale factor
+/// (mask units per internal unit); the desktop tab frames that mode at
+/// s_z = kBoardScaleZ (1) times f.
+constexpr float kMaskFactor = 10.0F;
+
+/// ndiff and metal1 overlapping at mask-unit scale (about 1e5 units), both
+/// drawn at the same h and t (h = t = 0: mask layers without `render`), in
+/// stack order ndiff then metal1 (`metal_later`) or metal1 then ndiff.
+Scene coplanar_scene(bool metal_later, float h, float t, bool magic_compat) {
+  Scene s;
+  const auto ndiff = view3d::test::layer("ndiff", s.tech.ndiff, h, t, kGreen);
+  const auto metal = view3d::test::layer("metal1", s.tech.metal1, h, t, kBlue);
+  std::vector<view3d::StackLayer> layers =
+      metal_later ? std::vector<view3d::StackLayer>{ndiff, metal} : std::vector<view3d::StackLayer>{metal, ndiff};
+  std::vector<view3d::DrawHeight> heights(hefesto::tech::kMaxTileTypes);
+  for (const auto& l : layers) heights[*l.type] = view3d::DrawHeight{l.height, l.thickness};
+  s.stack = view3d::LayerStack{std::move(layers), std::move(heights), magic_compat, 0.01};
+  db::CellDef cell("coplanar", s.tech.tech->plane_count());
+  view3d::test::paint(cell, s.tech, Rect{0, 0, 90000, 60000}, s.tech.ndiff);
+  view3d::test::paint(cell, s.tech, Rect{30000, 20000, 120000, 80000}, s.tech.metal1);
+  finish(s, cell, Rect{-1000, -1000, 121000, 81000}, false);
+  return s;
+}
+
+/// The mask-layer camera of the desktop tab: Magic's default view of the
+/// cell (internal units, rescaled by f), the preset's angles turned by
+/// `turn` degrees around z, framed at s_z = f.
+view3d::ViewState mask_view(const Scene& s, view3d::Preset preset, float turn, float top) {
+  const auto internal = [](db::Coord c) { return static_cast<db::Coord>(static_cast<float>(c) / kMaskFactor); };
+  view3d::ViewState v = view3d::default_view(
+      Rect{internal(s.bbox.x0), internal(s.bbox.y0), internal(s.bbox.x1), internal(s.bbox.y1)},
+      view3d::Mode::mask_layer, kMaskFactor);
+  const view3d::Angles a = view3d::preset(preset);
+  v.view_x = a.x;
+  v.view_y = a.y;
+  v.view_z = a.z + turn;
+  v.scale_z = kMaskFactor;
+  const view3d::Extent3 box{static_cast<double>(s.bbox.x0), static_cast<double>(s.bbox.y0),
+                            static_cast<double>(s.bbox.x1), static_cast<double>(s.bbox.y1),
+                            0.0, static_cast<double>(top)};
+  return view3d::frame_view(v, box, kWidth, kHeight);
+}
+
+/// Over a grid inside the overlap (x 30000..90000, y 20000..60000), the
+/// samples whose pick id or colour is not the `later` layer's top face.
+int coplanar_losses(const Scene& s, const display::StyleSet& styles, const render::TargetReadback& r,
+                    const view3d::ViewState& v, view3d::LayerId later, float top) {
+  const auto rgb = render::lit_color(render::layer_paints(s.stack, &styles)[later].rgb, board(v, {0, 0, 1}));
+  int losses = 0;
+  for (int i = 0; i <= 12; ++i) {
+    for (int j = 0; j <= 8; ++j) {
+      const double x = 33000.0 + (54000.0 * i / 12.0);
+      const double y = 23000.0 + (34000.0 * j / 8.0);
+      const auto [px, py] = project(v, x, y, -static_cast<double>(top) * static_cast<double>(v.scale_z));
+      if (px < 1 || py < 1 || px + 1 >= r.width || py + 1 >= r.height) continue;
+      const auto ref = render::decode_pick(s.mesh, r.pick[pixel(r, px, py)]);
+      const bool won = ref.has_value() && ref->kind == render::PickKind::rect && layer_of(s.mesh, *ref) == later &&
+                       near_rgb(rgb_of(r.color[pixel(r, px, py)]), rgb, 2);
+      losses += won ? 0 : 1;
+    }
+  }
+  return losses;
+}
+
+}  // namespace
+
+TEST_CASE("coplanar layers: the later layer in stack order wins in colour and pick, magic-compat ON and OFF",
+          "[cap:view-3d][req:Viewing transform and shading]") {
+  // Regression (task 17.5, both modes): two layers drawn at the same h and
+  // t (mask layers without `render` are all at h = t = 0; with magic-compat
+  // ON mask-layer heights are µm against mask-unit x and y) z-fought:
+  // LESS_OR_EQUAL kept the later layer only where the two faces'
+  // interpolated depths came out bit-equal, so in tilted views the earlier
+  // layer showed through in speckles that moved with the camera, in the
+  // colour and the pick image alike. The later layer in stack order now
+  // wins everywhere (Q-MISC-77's rule), in the isometric preset and after
+  // small orbits, levels 0 and 1.
+  Fixture f;
+  for (const bool magic_compat : {true, false}) {
+    for (const bool metal_later : {true, false}) {
+      for (const auto& [h, t] : {std::pair{0.0F, 0.0F}, std::pair{0.5F, 0.2F}}) {
+        const Scene s = coplanar_scene(metal_later, h, t, magic_compat);
+        for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+          for (const float turn : {0.0F, 0.5F, 1.0F, 2.0F, 7.0F, 23.0F}) {
+            for (const int level : {0, 1}) {
+              INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", metal later " << metal_later << ", h " << h
+                                   << ", t " << t << ", preset " << static_cast<int>(preset) << ", turn " << turn
+                                   << ", level " << level);
+              const view3d::ViewState v = mask_view(s, preset, turn, h + t);
+              const render::TargetReadback r = f.draw(s, v, f.params(s.stack, level));
+              CHECK(coplanar_losses(s, f.styles, r, v, view3d::LayerId{1}, h + t) == 0);
+              // The same frame again: the same winner at every pixel.
+              const render::TargetReadback again = f.draw(s, v, f.params(s.stack, level));
+              CHECK(again.pick == r.pick);
+              CHECK(again.color == r.color);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// --- net overlay (task 10.4) -------------------------------------------------------
+
+namespace {
+
+/// The colour (display values, 0..255) of `under` with the net overlay's
+/// top face (intensity 1) blended over it at kOverlayAlpha, in linear light.
+std::array<int, 3> overlay_over(const std::array<int, 3>& under) {
+  std::array<int, 3> out{};
+  for (std::size_t i = 0; i < 3; ++i) {
+    const float lin = (render::kOverlayAlpha * render::srgb_to_linear(render::kOverlayColor[i])) +
+                      ((1.0F - render::kOverlayAlpha) * render::srgb_to_linear(static_cast<float>(under[i]) / 255.0F));
+    out[i] = static_cast<int>(std::lround(render::linear_to_srgb(lin) * 255.0F));
+  }
+  return out;
+}
+
+bool near_int(const std::array<int, 3>& a, const std::array<int, 3>& b, int tolerance) {
+  for (std::size_t i = 0; i < 3; ++i) {
+    if (std::abs(a[i] - b[i]) > tolerance) return false;
+  }
+  return true;
+}
+
+/// basic_scene in the top view with the ndiff's prism as the net overlay:
+/// blended over ndiff alone and over metal1 above the ndiff (still picked).
+void check_ndiff_overlay(const Scene& s, const view3d::ViewState& v, const render::TargetReadback& plain,
+                         const render::TargetReadback& r) {
+  for (const auto& [x, y] : {std::pair{5.0, 5.0}, std::pair{20.0, 30.0}}) {
+    const auto [px, py] = project(v, x, y, 0);
+    INFO("pixel (" << px << ", " << py << ")");
+    const auto expected = overlay_over(rgb_of(plain.color[pixel(plain, px, py)]));
+    CHECK(near_int(rgb_of(r.color[pixel(r, px, py)]), expected, 2));
+  }
+  const auto [mx, my] = project(v, 20, 30, 0);
+  CHECK(picked_layer(s, r.pick[pixel(r, mx, my)]) == kMetal);
+}
+
+/// Poly, metal1 off the net and the background: unchanged by the overlay.
+void check_off_net_unchanged(const view3d::ViewState& v, const render::TargetReadback& plain,
+                             const render::TargetReadback& r) {
+  for (const auto& [x, y] : {std::pair{50.0, 50.0}, std::pair{70.0, 30.0}, std::pair{35.0, 50.0}}) {
+    const auto [px, py] = project(v, x, y, 0);
+    CHECK(r.color[pixel(r, px, py)] == plain.color[pixel(plain, px, py)]);
+  }
+}
+
+}  // namespace
+
+TEST_CASE("Net highlighted over mask-layer geometry: blended over every layer, the pick image unchanged",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Task 10.4 (design D10): the net overlay is drawn after the opaque and
+  // ghost passes over the mask geometry, even where a higher layer covers
+  // the net (here metal1 over the ndiff prism), semi-opaque, and writes no
+  // pick id. The same frame with magic-compat ON and OFF.
+  Fixture f;
+  const std::vector<render::OverlayPrism> net{{0.0F, 0.0F, 30.0F, 60.0F, 0.0F, 0.2F}};  // the ndiff
+  std::vector<render::TargetReadback> by_mode;
+  for (const bool magic_compat : {true, false}) {
+    const Scene s = basic_scene(magic_compat);
+    for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+      const view3d::ViewState v = view_of(s, preset);
+      for (const int level : {0, 1}) {
+        INFO("magic-compat " << (magic_compat ? "ON" : "OFF") << ", preset " << static_cast<int>(preset)
+                             << ", level " << level);
+        render::DrawParams p = f.params(s.stack, level);
+        const render::TargetReadback plain = f.draw(s, v, p);
+        p.net_overlay = net;
+        const render::TargetReadback r = f.draw(s, v, p);
+        CHECK(r.pick == plain.pick);
+        CHECK(r.depth == plain.depth);
+        if (preset != view3d::Preset::top) {
+          CHECK(r.color != plain.color);
+          continue;
+        }
+        if (level == 0) by_mode.push_back(r);
+        check_ndiff_overlay(s, v, plain, r);
+        check_off_net_unchanged(v, plain, r);
+      }
+    }
+  }
+  REQUIRE(by_mode.size() == 2);
+  CHECK(by_mode[0].color == by_mode[1].color);
+  CHECK(f.renderer.overlay_ready());
+}
+
+TEST_CASE("net overlay is clipped by the section plane",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  const std::vector<render::OverlayPrism> net{{10.0F, 20.0F, 80.0F, 40.0F, 1.0F, 1.5F}};  // metal1
+  for (const int level : {0, 1}) {
+    INFO("level " << level);
+    render::DrawParams p = f.params(s.stack, level);
+    p.section_plane = plane_x(35.0, true);
+    const render::TargetReadback plain = f.draw(s, v, p);
+    p.net_overlay = net;
+    const render::TargetReadback r = f.draw(s, v, p);
+    CHECK(r.pick == plain.pick);
+    const auto [lx, ly] = project(v, 20, 30, 0);  // removed: the background, no overlay
+    CHECK(r.color[pixel(r, lx, ly)] == plain.color[pixel(plain, lx, ly)]);
+    const auto [rx, ry] = project(v, 70, 30, 0);  // kept: blended over metal1
+    CHECK(near_int(rgb_of(r.color[pixel(r, rx, ry)]), overlay_over(rgb_of(plain.color[pixel(plain, rx, ry)])), 2));
+  }
+}
+
+TEST_CASE("no net overlay: nothing drawn and no overlay pipeline built",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  render::DrawParams p = f.params(s.stack, 1);
+  const render::TargetReadback plain = f.draw(s, v, p);
+  CHECK_FALSE(f.renderer.overlay_ready());
+  // A prism with a non-finite field is skipped: still nothing to draw.
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  const std::vector<render::OverlayPrism> broken{{0.0F, 0.0F, nan, 60.0F, 0.0F, 0.2F}};
+  p.net_overlay = broken;
+  const render::TargetReadback r = f.draw(s, v, p);
+  CHECK_FALSE(f.renderer.overlay_ready());
+  CHECK((r.color == plain.color && r.pick == plain.pick));
+}
+
+namespace {
+
+double tops_area(const render::OverlayFaces& faces) {
+  double a = 0.0;
+  for (const auto& t : faces.tops) a += static_cast<double>(t.x1 - t.x0) * static_cast<double>(t.y1 - t.y0);
+  return a;
+}
+
+/// Pairs of top rectangles that overlap (share interior).
+int overlapping_tops(const render::OverlayFaces& faces) {
+  int n = 0;
+  for (std::size_t i = 0; i < faces.tops.size(); ++i) {
+    for (std::size_t j = i + 1; j < faces.tops.size(); ++j) {
+      const auto& a = faces.tops[i];
+      const auto& b = faces.tops[j];
+      n += a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1 ? 1 : 0;
+    }
+  }
+  return n;
+}
+
+double sides_length(const render::OverlayFaces& faces) {
+  double len = 0.0;
+  for (const auto& e : faces.sides) len += std::hypot(static_cast<double>(e.x1 - e.x0), static_cast<double>(e.y1 - e.y0));
+  return len;
+}
+
+}  // namespace
+
+TEST_CASE("net overlay faces: the union of each z range, its boundary sides only",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // CORE's overlay of a net is the merged strips of every layer it lies on,
+  // all over the same z range: abutting strips and a metal strip over a
+  // poly strip must not blend twice or leave a seam where they meet.
+  const std::vector<render::OverlayPrism> net{{0.0F, 0.0F, 10.0F, 4.0F, 0.0F, 2.0F},   // a strip
+                                              {0.0F, 4.0F, 4.0F, 10.0F, 0.0F, 2.0F},   // abutting above it
+                                              {2.0F, 2.0F, 8.0F, 6.0F, 2.0F, 0.0F}};  // overlapping both, z swapped
+  const render::OverlayFaces faces = render::overlay_faces(net);
+  // The union: 40 + 24 + the part of the third outside them (4 x 2) = 72, perimeter 10+4+6+2+... = 40.
+  CHECK(tops_area(faces) == 72.0);
+  CHECK(sides_length(faces) == 40.0);
+  CHECK(overlapping_tops(faces) == 0);
+  CHECK(std::all_of(faces.tops.begin(), faces.tops.end(),
+                    [](const render::OverlayPrism& t) { return t.z_bottom == 0.0F && t.z_top == 2.0F; }));
+}
+
+TEST_CASE("net overlay faces: one union per z range, empty and non-finite prisms left out",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  const float inf = std::numeric_limits<float>::infinity();
+  const std::vector<render::OverlayPrism> mixed{{0.0F, 0.0F, 10.0F, 4.0F, 0.0F, 2.0F},
+                                                {0.0F, 0.0F, 10.0F, 4.0F, 3.0F, 4.0F},
+                                                {5.0F, 5.0F, 5.0F, 9.0F, 0.0F, 2.0F},
+                                                {0.0F, 0.0F, inf, 4.0F, 0.0F, 2.0F}};
+  const render::OverlayFaces two = render::overlay_faces(mixed);
+  CHECK(two.tops.size() == 2);
+  CHECK(tops_area(two) == 80.0);
+  CHECK(sides_length(two) == 56.0);
+}
+
+TEST_CASE("net overlay blends once where its prisms overlap or abut",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  Fixture f;
+  const Scene s = basic_scene();
+  const std::vector<render::OverlayPrism> whole{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  const std::vector<render::OverlayPrism> pieces{{10.0F, 20.0F, 45.0F, 40.0F, 0.0F, 1.5F},
+                                                 {45.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F},
+                                                 {30.0F, 25.0F, 60.0F, 35.0F, 0.0F, 1.5F}};
+  for (const view3d::Preset preset : {view3d::Preset::top, view3d::Preset::isometric}) {
+    const view3d::ViewState v = view_of(s, preset);
+    for (const int level : {0, 1}) {
+      INFO("preset " << static_cast<int>(preset) << ", level " << level);
+      render::DrawParams p = f.params(s.stack, level);
+      p.net_overlay = whole;
+      const render::TargetReadback one = f.draw(s, v, p);
+      p.net_overlay = pieces;
+      const render::TargetReadback many = f.draw(s, v, p);
+      int differing = 0;
+      for (std::size_t i = 0; i < one.color.size(); ++i) {
+        const auto a = rgb_of(one.color[i]);
+        differing += near_int(a, rgb_of(many.color[i]), 1) ? 0 : 1;
+      }
+      CHECK(differing == 0);
+    }
+  }
+}
+
+namespace {
+
+/// `n` disjoint unit prisms in a row, one unit apart.
+std::vector<render::OverlayPrism> prism_row(int n) {
+  std::vector<render::OverlayPrism> row;
+  for (int i = 0; i < n; ++i) {
+    const auto x = static_cast<float>(2 * i);
+    row.push_back({x, 0.0F, x + 1.0F, 1.0F, 0.0F, 1.0F});
+  }
+  return row;
+}
+
+/// `n` horizontal and `n` vertical strips `pitch` apart over [0, n * pitch]:
+/// their union's column decomposition has about n * n top rectangles.
+std::vector<render::OverlayPrism> strip_grid(int n, float pitch, float width) {
+  std::vector<render::OverlayPrism> g;
+  const float extent = static_cast<float>(n) * pitch;
+  for (int i = 0; i < n; ++i) {
+    const float at = static_cast<float>(i) * pitch;
+    g.push_back({0.0F, at, extent, at + width, 0.0F, 1.5F});
+    g.push_back({at, 0.0F, at + width, extent, 0.0F, 1.5F});
+  }
+  return g;
+}
+
+}  // namespace
+
+TEST_CASE("net overlay faces of a large net: a sweep over the edges, bounded by the overlay limits",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: every x slab scanned every prism, so a net of N prisms
+  // cost N * 2N per call (65,536 disjoint prisms: about 8.6e9 steps, run on
+  // every frame), and nothing bounded the prisms read or the faces emitted
+  // (standing crafted-input limit rule of 2026-11-25).
+  const auto limit = static_cast<int>(render::kMaxOverlayPrisms);
+  const render::OverlayFaces row = render::overlay_faces(prism_row(limit));
+  CHECK(row.tops.size() == render::kMaxOverlayPrisms);
+  CHECK(row.sides.size() == 4U * render::kMaxOverlayPrisms);
+  CHECK_FALSE(row.truncated);
+  // Past the prism limit: the first kMaxOverlayPrisms are drawn.
+  const render::OverlayFaces cut = render::overlay_faces(prism_row(limit + 10));
+  CHECK(cut.tops.size() == render::kMaxOverlayPrisms);
+  CHECK(cut.truncated);
+  // A crafted grid whose union has about 1e9 pieces: cut at the limits.
+  const render::OverlayFaces grid = render::overlay_faces(strip_grid(32768, 4.0F, 1.0F));
+  CHECK(grid.truncated);
+  CHECK(grid.tops.size() + grid.sides.size() <= render::kMaxOverlayFaces);
+  CHECK_FALSE(grid.tops.empty());
+}
+
+TEST_CASE("a net overlay with more than 65,535 top faces is drawn",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: the 16-bit limit on the side faces' layer entry was checked
+  // against the number of top faces, so such an overlay drew nothing. It
+  // takes one layer entry per z range.
+  // Strips 0.2 wide with 0.05 gaps: wide enough to cover pixels in the top view.
+  const std::vector<render::OverlayPrism> grid = strip_grid(300, 0.25F, 0.2F);
+  const render::OverlayFaces faces = render::overlay_faces(grid);
+  REQUIRE(faces.tops.size() > 0xFFFFU);
+  REQUIRE_FALSE(faces.truncated);
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  render::DrawParams p = f.params(s.stack, 0);
+  const render::TargetReadback plain = f.draw(s, v, p);
+  p.net_overlay = grid;
+  const render::TargetReadback r = f.draw(s, v, p);
+  CHECK(r.color != plain.color);
+  CHECK(r.pick == plain.pick);
+  CHECK(f.renderer.overlay_ready());
+}
+
+TEST_CASE("net overlay faces are computed once per overlay, not per frame",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // Regression: overlay_faces ran in every frame's prepare, each frame of
+  // an orbit drag included.
+  Fixture f;
+  const Scene s = basic_scene();
+  render::DrawParams p = f.params(s.stack, 0);
+  const std::vector<render::OverlayPrism> net{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  p.net_overlay = net;
+  view3d::ViewState v = view_of(s, view3d::Preset::isometric);
+  const render::TargetReadback first = f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  for (int i = 0; i < 3; ++i) {
+    v.view_z += 5.0F;  // an orbit: new frames, the same overlay
+    (void)f.draw(s, v, p);
+  }
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  // The same prisms in another vector are the same overlay.
+  const std::vector<render::OverlayPrism> copy = net;
+  p.net_overlay = copy;
+  (void)f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 1);
+  // A new overlay is computed again.
+  const std::vector<render::OverlayPrism> other{{0.0F, 0.0F, 30.0F, 60.0F, 0.0F, 1.5F}};
+  p.net_overlay = other;
+  (void)f.draw(s, v, p);
+  CHECK(f.renderer.overlay_face_builds() == 2);
+  CHECK_FALSE(first.color.empty());
+}
+
+TEST_CASE("net overlay prisms relative to DrawParams::overlay_origin draw as the absolute ones",
+          "[cap:hefesto-3d-visualization][req:Interactive 3D inspection]") {
+  // The overlay's coordinates are offsets from a double origin (as a
+  // chunk's), so a net far out on a large die keeps its precision.
+  Fixture f;
+  const Scene s = basic_scene();
+  const view3d::ViewState v = view_of(s, view3d::Preset::top);
+  render::DrawParams p = f.params(s.stack, 0);
+  const std::vector<render::OverlayPrism> absolute{{10.0F, 20.0F, 80.0F, 40.0F, 0.0F, 1.5F}};
+  p.net_overlay = absolute;
+  const render::TargetReadback a = f.draw(s, v, p);
+  const std::vector<render::OverlayPrism> relative{{0.0F, 0.0F, 70.0F, 20.0F, 0.0F, 1.5F}};
+  p.net_overlay = relative;
+  p.overlay_origin = {10.0, 20.0};
+  const render::TargetReadback b = f.draw(s, v, p);
+  CHECK(a.color == b.color);
+  CHECK(f.renderer.overlay_face_builds() == 2);
 }

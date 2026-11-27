@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -140,7 +141,28 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
 
   // P2 actions (task 11.5).
   void toggle_section();
+  /// "Export glTF…": the format menu under the button (round 6), then
+  /// export_as.
   void export_model();
+  /// The save dialog for `format` and `export3d <file> -format …`.
+  void export_as(View3dExportFormat format);
+  /// The painted widget of control `id` (nullptr when it is not built).
+  [[nodiscard]] ui::Painted* control_widget(View3dControl id) const;
+
+  // "Open in separate window" (round 6): the 3D view in a Raven window of
+  // its own, a second texture-mode viewport showing the same target; the
+  // tab's viewport shows nothing meanwhile. Closing that window (or the
+  // toggle, or closing the 3D window) returns the view to the tab.
+  void toggle_separate_window();
+  void open_separate_window();
+  void close_separate_window();
+  /// The viewport that shows the frames: the separate window's while it is
+  /// open, else the tab's.
+  [[nodiscard]] ui::Viewport& shown_viewport() const;
+  /// Logical-to-pixel scale of the window that shows the frames.
+  [[nodiscard]] float shown_ratio() const;
+  /// Wires a viewport's size and input to this view.
+  void connect_viewport(ui::Viewport& viewport, bool separate);
   [[nodiscard]] bool export_registered() const;
   /// Recomputes the cross-section of the drawn model along section_line_
   /// (hidden layers left out); `report` sends its diagnostics to the console.
@@ -173,6 +195,7 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   bool handle_input(const CanvasInput& input);
   bool handle_pointer(const CanvasInput& input);
   void apply_gesture(const view3d::Gesture& gesture);
+  void update_net_overlay(const view3d::WindowState& window);
   void pick_at(float x, float y);
   /// Points the resolver at `stack` (the drawn model's), the rendered cell and the compat flag.
   void update_pick_scope(const view3d::LayerStack* stack);
@@ -215,6 +238,9 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   std::unique_ptr<render::VulkanOffscreenTarget> target_;
   std::unique_ptr<render::VulkanMesh3dRenderer> renderer_;
   std::string renderer_error_;
+  // Mask generation errors of each build (Q-MISC-89); declared before the
+  // worker so that it outlives every build writing to it.
+  BuildErrorRelay build_errors_;
   std::unique_ptr<view3d::MeshWorker> worker_;
   std::shared_ptr<Shared> shared_;
   // Technologies a build may still read (kept alive until the worker is idle).
@@ -244,6 +270,14 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   PickResolver resolver_;
   View3dPicking picking_{resolver_};
   const view3d::HighlightSet* highlight_ = nullptr;
+  // Task 10.4: the layout-net overlay in mask-layer mode (mask_net_overlay)
+  // against the uploaded model, searched again only when stale, and its
+  // prisms in the renderer's type (kept alive for DrawParams::net_overlay).
+  NetOverlayCache net_overlay_;
+  std::vector<render::OverlayPrism> overlay_storage_;
+  std::array<double, 2> overlay_origin_{0.0, 0.0};
+  std::uint64_t overlay_converted_ = 0;  // the NetOverlayCache::computations() overlay_storage_ holds
+  bool overlay_truncated_ = false;
   std::string pick_caption_;
   std::optional<view3d::Segment> section_line_;  // the cut line while the cross-section is on
   std::optional<db::Point> section_first_;       // the first of two clicks
@@ -252,6 +286,10 @@ class View3dView final : public view3d::WindowDisplay, public view::ViewObserver
   PointerTracker pointer_;
   FrameTimer timer_;
   std::pair<int, int> pixels_{0, 0};
+  ui::PopupMenu export_menu_;
+  std::unique_ptr<ui::Window> separate_window_;
+  std::unique_ptr<ui::Viewport> separate_viewport_;
+  bool separate_close_requested_ = false;  // set in the window's close callback, acted on in on_frame
 };
 
 }  // namespace hefesto::shell

@@ -525,6 +525,8 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Options: keep (R2 as approved: ON Magic's lighting, OFF directional; top-down on opening) | platform (the desktop tab renders the board look in both modes and opens on the isometric preset; Magic's lighting is not used by the desktop tab)
 - Recommendation: platform, in both modes. view-3d "Viewing transform and shading" is `Compatibility: informative`, no command returns a pixel, and the GL face log (MISC-3D-13..16) logs geometry only, so the look of the desktop tab is a product decision, not a compat one; the board is the approved look.
 - Resolution: platform, in both modes (user decision V1, 2026-11-24, recommended option) — the desktop 3D tab renders with the approved board look regardless of magic-compat: the background is the desktop theme's canvas token (`ThemeTokens::canvas`, dark in both themes); faces get flat per-face directional shading evaluated on each face's own outward normal in the displayed scene, so top faces are lighter and side faces darker and edges read; colours are the display style's colour, saturated, never washed to white (no lit channel exceeds the style colour by more than the top-face factor); on opening, the tab shows the isometric preset from above, framed to the cell, with an x/y/z axis gizmo and the presets Isometric, Top, Front and Side. Magic's GL-state lighting (normal (0, 0, 1), positional light at (50, 50, 50), ambient 0.6) is no longer used by the desktop tab; RENDER may keep it only where a headless test needs it (nothing in the golden face log depends on lighting). Magic's pixels stay informative. The window's `ViewState` still reports what the user sees: the tab applies the isometric view by running the same `view`/`zoom`/`scroll` commands a preset runs, so `view` prints the isometric angles; `defaults`, a fresh `specialopen wind3d` from a script or hefesto-cli and the golden MISC-3D cases keep Magic's top-down default view (view-3d "Default view" unchanged). As landed (round-4 FIX): the tab applies the isometric camera only to a window on `render3d`'s toolkit path `.render.magic`, which is how the 3D tab and Options > 3D Display open it; a window on any other path keeps the top-down view. Amends R2 (approved 2026-11-22, "Round-3 decisions without a Q row") for the desktop tab. Approved 2026-11-24.
+- Amended 2026-11-25: the user approved the round-4 choices that were outside this Resolution (items A4, A5 and A6 of "Round-5 decisions without a Q row"): the opening z scale is s_z = 1 in layout-layer mode and s_z = f in mask-layer mode (`kBoardScaleZ`; see the 2026-11-26 amendment for mask-layer mode with magic-compat ON); the renderer draws the displayed scene, the model mirrored in z, with CAMERA's matrix, so tz moves along the displayed height, while Magic's `view`, `scroll` and `zoom` outputs, the window's view state and the GL face log are unchanged; the isometric opening applies to any window the desktop opens with `render3d` (toolkit path `.render.magic`), and `specialopen wind3d`, scripts and hefesto-cli keep the top-down default.
+- Amended 2026-11-26: in the desktop tab only, in mask-layer mode with magic-compat ON, the board z scale the tab sets is additionally multiplied by 1 / (µm per internal unit), because Q-MISC-72 keeps the `render` heights as stored while x and y are in mask units, which drew sky130A's mask-layer stack almost flat; with magic-compat OFF it stays `kBoardScaleZ` × f. Magic's own s_z values (the window state Magic's commands set, `defaults`, the golden cases, scripts and hefesto-cli windows) are untouched (item B1 of "Round-6 decisions without a Q row").
 
 ### Q-MISC-85: wells, implants and other non-conducting area layers hide the devices in the 3D view
 - Kind: platform (product)
@@ -534,6 +536,45 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Options: keep (every layer opaque by default) | platform (non-conducting area layers ghosted by default in the desktop tab, per-row override)
 - Recommendation: platform, in both modes (a Hefesto view default outside Magic's state; `see` and every command output unchanged).
 - Resolution: platform, in both modes (user decision V2, 2026-11-24, recommended option) — in the desktop 3D tab a stack layer whose class is non-conducting area is ghosted by default: drawn with alpha 0.2 (the transparency control's 20 % step) in the transparency pass, with no depth write and no pick id, so the devices under it show and a click picks them. Layer-class rule (the board's reading): a layer of the layout-layer stack is ghosted by default when its tile type is not a contact type and lies on a plane that holds no residue of any contact type of the technology (the `contact` section; a stacked contact counts with its full residue set); every other layer (diffusions, poly, local interconnect, metals, MiM caps, contacts and vias) is opaque. For sky130A this ghosts the dwell plane (dnwell, isosubstrate, photodiode), the well plane (nwell, pwell, rpw, obswell, pbase, nbase) and the comment plane; its block plane stays opaque because it holds `ubm`, a residue of the `pi2` contact. For gf180mcuD it ghosts the dwell, well, poly and comment planes (its `poly` plane holds only the fill type `fillpoly`, which no contact touches; poly itself is on the active plane). The user changes a layer with the row's transparency control (100 / 50 / 20 %); a value the user set is kept for the window across rebuilds and outside Magic's state, so `see` and the visibility sets are unaffected. In phase 1 the tab draws the layout-layer stack in both window modes (mask-layer mode scales x and y by f), so mask-layer mode ghosts the same layers; a mask-layer stack (phase 2) has no planes and ghosts nothing by default. The board's synthetic substrate slab is not built (deferred). Approved 2026-11-24.
+- Amended 2026-11-25: the user approved the round-4 readings of the class rule (items A7, A8 and A9 of "Round-5 decisions without a Q row"): in phase 1, mask-layer mode ghosted the layout layers of the layout-layer stack the tab then drew (historic: superseded by the 2026-11-26 amendment); gf180mcuD's `poly` plane, which holds only `fillpoly`, is ghosted by the class rule; a technology with no contact type ghosts nothing.
+- Amended 2026-11-26: mask-layer mode ghosts nothing (the tab draws the mask-layer stack, which has no planes; item B2); the deferred substrate slab is built and on by default in the desktop tab, with magic-compat ON and OFF (items B3, B7, B16: thickness 0.2 of the drawn stack's height, colour #2A2F37, not pickable, never exported, none for a flat stack) ("Round-6 decisions without a Q row").
+
+### Q-MISC-86: `setpoint x y <window>` naming the 3D window makes it current for script commands
+- Kind: quirk
+- Status: approved 2026-11-25 (item A1; found in the PR #86 review, implemented in the round-3 review fix pass, PR #91, under the standing rule)
+- Magic behavior: `setpoint x y <window ID|name>` calls `TxSetPoint` with the named window, which makes it the current window, so the commands a script runs next are dispatched to that window's client; naming the 3D window's toolkit path sends later layout commands to the 3D client, where `box` and `load` fail (the trigger Q-MISC-82 describes for a command on the 3D window's path). Magic also accepts a numeric window ID there.
+- Evidence: windows/windCmdSZ.c:214-289 (windSetpointCmd; `TxSetPoint(x, y, wid)` at :286; usage `[x y [window ID|name]]`), textio/txCommands.c:1491-1540 (TxTclDispatch dispatches with the current window ID); tests `tests/unit/view3d/client/routing_test.cpp` "setpoint naming a window switches where script commands go with magic-compat ON" and "setpoint naming the 3D window leaves script commands in the layout window with magic-compat OFF", `tests/unit/ui/tools_test.cpp` "setpoint forces the point and pushbutton clicks there", "setpoint into a color window sends the next commands to the color client"
+- Options: replicate | compat (ON route as Magic; OFF never route to the 3D window)
+- Recommendation: compat (standing rule; the command results differ, as for Q-MISC-82).
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON, `setpoint x y <window>` naming the open 3D window's toolkit path makes it current, so the layout commands a script runs next go to the 3D window, as Magic's `TxSetPoint` does (windCmdSZ.c:286); naming any other window (a layout window's path or ID, a color window) makes that window current and sends them back; `setpoint` without a window argument keeps the current window. With it OFF `setpoint` never routes script commands to the 3D window. This is the `setpoint` trigger of Q-MISC-82's routing (same route, `Session::script_target_3d`); Q-MISC-82 keeps the toolkit-path trigger. Known gap (item A2): a numeric window ID naming the 3D window is not supported (Hefesto's 3D window has no layout-window ID; such an ID names no window and the route goes back to the layout window), in both modes. Already implemented (round-3 review fix pass, PR #91; `ui/tool_commands.cpp`) and tested per mode (view-3d "3D view commands", scenario "setpoint names the window script commands go to"). Approved 2026-11-25.
+
+### Q-MISC-87: without a cut box, the 3D mask layers are generated over the cell's bounding box
+- Kind: quirk
+- Status: approved 2026-11-26 (item B18; found by MASKSRC in M10 round 5, already implemented and tested per mode)
+- Magic behavior: W3DCIFredisplay generates the CIF planes over the cut box or, without one, over the cell's bounding box: it grows only the search area by the style's interaction radius (`scx.scx_area`) and passes the ungrown rectangle to CIFGen as the clip, so a layer grown past the cell's edge (a well around a device at the edge) is cut at the bounding box.
+- Evidence: graphics/W3Dmain.c:1744-1745 (clipRect = cut box or `cd_bbox`; GEO_EXPAND into the search area only), :1757 (CIFGen with clipRect); test `tests/unit/view3d/client/mask_source_test.cpp` "without a cut box magic-compat ON clips the mask layers to the cell's bounding box" and "without a cut box magic-compat OFF generates the bounding box grown by the halo"
+- Options: replicate | compat (ON the cell bounding box; OFF the bounding box grown by the interaction radius)
+- Recommendation: compat (standing rule; the drawn and exported geometry differs at the cell edge).
+- Resolution: compat (X-2 tier 2) — without a cut box, the 3D view's mask layers are generated over the cell's bounding box with `magic-compat` ON, as Magic (W3Dmain.c:1744), so a layer grown past the cell's edge is cut there; with it OFF over the bounding box grown by the output style's interaction radius, so nothing is cut at the edge. With a cut box both modes generate over the cut box; a cut box outside the cell gives an empty model. Already implemented (round 5, `view3d::MaskSource`) and tested per mode (view-3d "Rendered geometry", scenario "Grown mask layer at the cell edge"). Approved 2026-11-26.
+
+### Q-MISC-88: the 3D view draws temporary (`templayer`) mask layers
+- Kind: quirk
+- Status: approved 2026-11-26 (item B19; found by MASKSRC in M10 round 5, already implemented and tested per mode)
+- Magic behavior: W3DCIFredisplay draws every CIF layer of the current output style whose visibility bit is set, with no test for `CIF_TEMP`, so the temporary layers a style defines with `templayer` (intermediate results, not masks) are drawn like mask layers.
+- Evidence: graphics/W3Dmain.c:1767-1774 (the loop over `cs_nLayers`, no `CIF_TEMP` test); tests `tests/unit/view3d/client/mask_source_test.cpp` "temporary layers are drawn with magic-compat ON, as Magic, and left out OFF" and `tests/unit/view3d/export/command_test.cpp` "`export3d -all` in mask-layer mode: temporary layers are exported with magic-compat ON only"
+- Options: replicate | compat (ON drawn; OFF left out)
+- Recommendation: compat (standing rule).
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON the 3D view draws temporary mask layers, as Magic draws every CIF layer (W3Dmain.c:1767); with it OFF they are left out of the view and of `export3d`, also with `-all`. Already implemented (round 5) and tested per mode (view-3d "Rendered geometry", scenarios "Temporary mask layer drawn with magic-compat ON" and "Temporary mask layer left out with magic-compat OFF"; hefesto-3d-visualization "3D export", scenarios "Temporary layers with -all, magic-compat ON" and "... OFF"). Approved 2026-11-26.
+
+### Q-MISC-89: mask generation errors during a 3D mask-layer build
+- Kind: quirk
+- Status: approved 2026-11-26 (item B20; found by MASKSRC in M10 round 5; CORE implements the magic-compat ON report in round 6)
+- Magic behavior: W3DCIFredisplay sets `CIFErrorDef` to the rendered cell before CIFGen, so every generation error found while the 3D window redraws is added as feedback to that cell (CIFError, DBWFeedbackAdd), again on every redraw, so the same errors pile up as duplicate feedback areas.
+- Evidence: graphics/W3Dmain.c:1749 (CIFErrorDef = cellDef), cif/CIFmain.c:409-432 (CIFError adds feedback when CIFErrorDef is set); `src/core/src/view3d/mesh/planes.cpp` (`report_errors = false` as built in round 5)
+- Options: replicate (feedback on every redraw) | compat (ON report the errors once per build to the console; OFF not reported)
+- Recommendation: compat. Copying feedback on every redraw duplicates feedback entries without bound, which no user wants, and feedback from a view would mix with `cif` feedback; the errors themselves are Magic's output, so ON reports them once per build.
+- Resolution: compat (X-2 tier 2) — with `magic-compat` ON the generation errors of a 3D mask-layer build (a full build or an incremental rebuild) are reported once per build to the console, with the generator's messages, and are not added as feedback; with it OFF they are not reported (as built in round 5). Magic adds them as feedback on every redraw. CORE implements the ON report in round 6 (view-3d "Rendered geometry", scenarios "Mask generation errors reported once per build with magic-compat ON" and "Mask generation errors not reported with magic-compat OFF"). Approved 2026-11-26.
+- As built (round 6 review fix of PR #133): an incremental rebuild reports the errors of the areas it regenerates (scenario "Mask generation errors of an incremental rebuild reported with magic-compat ON"); the same message from the pieces of one regenerated area counts once (items C2, C3 below, proposed); hefesto-cli's 3D face log (HEFESTO_GL_CAPTURE) reports through the dispatcher, as the desktop tab does.
 
 ### Round-2 decisions without a Q row (approved 2026-11-21)
 
@@ -581,6 +622,103 @@ Items left open by M10 round 2 (PR #81) that no Magic quirk entry covers, or tha
 - **N3: only solid and stippled styles drawn.**
   - Status: approved 2026-11-22 (RENDER3D round 2; MISC-3D-15).
   - Resolution: replicate, in both modes — only display styles whose fill is solid or stippled are drawn (W3Dmain.c:406, :439), by the renderer and in the `HEFESTO_GL_CAPTURE` face log alike, so an outline or cross style (sky130A's contact cross) draws nothing (view-3d "Rendered geometry"; MISC-3D-15).
+
+### Round-5 decisions without a Q row (approved 2026-11-25)
+
+Items left for the user by the round-3 review fix pass (PR #91) and by round 4 (PR #102), approved with the recommended option on 2026-11-25. Each is listed in `docs/decisions/m10-3d-decision-table.md` "Round 5 and 6 decisions". The items with a Q entry are A1 and A2 (Q-MISC-86); A4 to A9 are also recorded as the 2026-11-25 amendments of Q-MISC-84 and Q-MISC-85.
+
+- **A3: ownership exceptions of PR #91.**
+  - Status: approved 2026-11-25.
+  - Resolution: signed off — the round-3 ownership exceptions listed in PR #91 ("Ownership exceptions for sign-off (complete list for round 3)") and in `openspec/changes/m10-3d-view/design.md` "As-landed: round 3 integration": CORE `cmd/dispatcher`, SCRIPT `script/binding/dispatch.cpp`, UI `ui/bindings`; SHELL's `main_window.*`, `screen_paint.*`, `menu_bar_model.*`, one line of `tests/unit/shell/m4_menu_bar_test.cpp` and the rewrite of `tests/unit/render/mesh3d_target_test.cpp`; GOLDEN's `tools/golden/container/Containerfile`; WIND3D's `src/cli/app.cpp`; the README image; INSPECT's rewrite of `render/mesh3d_pick.hpp`; SHELL's removal of `mesh3d_spike.*`, its shaders, `src/generated/mesh3d_spv.hpp`, the `compile_shaders.py` entry and the `src/render/vulkan/CMakeLists.txt` line; the integration edit to `src/render/vulkan/src/mesh3d_shading.cpp`; the review fix pass's UI `src/core/src/ui/tool_commands.cpp` and SHELL `src/shell/desktop/src/input_router.cpp`. No behaviour changes.
+- **A4: the opening z scale of the desktop tab.**
+  - Status: approved 2026-11-25 (round 4, SHELL's choice; amended for mask-layer mode with magic-compat ON by B1).
+  - Resolution: platform, in both modes — the isometric opening sets s_z = `kBoardScaleZ` = 1 in layout-layer mode and s_z = f in mask-layer mode, so layer heights are in proportion to x and y instead of Magic's 25× exaggeration; `zoom` reports it, the presets keep the current s_z and `defaults` restores Magic's values (view-3d "Default view"; Q-MISC-84 amendment).
+- **A5: the z mirror of the displayed scene.**
+  - Status: approved 2026-11-25 (round 4, RENDER).
+  - Resolution: platform, in both modes — the renderer applies CAMERA's matrix to the model mirrored in z (a height h displayed at z = +h·s_z), so the projection and the depth test put the viewer above the cell and tilted views show the higher layers up; tz moves along the displayed height. Magic's `view`, `scroll` and `zoom` outputs, the window's view state and the GL face log are unchanged (view-3d "Viewing transform and shading").
+- **A6: the isometric opening applies to any window the desktop opens with `render3d`.**
+  - Status: approved 2026-11-25 (round-4 FIX of PR #102).
+  - Resolution: platform, in both modes — a window on `render3d`'s toolkit path `.render.magic` (the 3D tab, Options > 3D Display, or `render3d` typed in the desktop) opens on the framed isometric preset; `specialopen wind3d` (on any path, by a script or the user), scripts and hefesto-cli keep Magic's top-down default (view-3d "Default view").
+- **A7: mask-layer ghosting of layout layers in phase 1.**
+  - Status: approved 2026-11-25 (round 4; historic, superseded by B2 on 2026-11-26).
+  - Resolution: platform, in both modes — while the phase-1 tab drew the layout-layer stack in mask-layer mode, it ghosted the same layout layers there. Since round 5 the tab draws the mask-layer stack in mask-layer mode and B2 applies.
+- **A8: gf180mcuD's `poly` plane is ghosted by the class rule.**
+  - Status: approved 2026-11-25 (round 4, SHELL).
+  - Resolution: platform, in both modes — gf180mcuD's `poly` plane holds only `fillpoly`, which no contact touches, so the class rule ghosts it (gf180's `poly` type is on the active plane and stays opaque) (hefesto-3d-visualization "Interactive 3D inspection", Ghosted layers).
+- **A9: a technology with no contact types ghosts nothing.**
+  - Status: approved 2026-11-25 (round 4, SHELL).
+  - Resolution: platform, in both modes — when the technology defines no contact type, no layer is ghosted by default (otherwise every layer of a contact-free technology would be ghosted) (hefesto-3d-visualization "Interactive 3D inspection", Ghosted layers).
+
+### Round-6 decisions without a Q row (approved 2026-11-26)
+
+Items reported to the user by M10 round 5 (PR #122) as standing-rule or SHELL/SECTION/EXPORT/MASKSRC choices, approved with the recommended option on 2026-11-26. Each is listed in `docs/decisions/m10-3d-decision-table.md` "Round 5 and 6 decisions". The items with a Q entry are B18 (Q-MISC-87), B19 (Q-MISC-88) and B20 (Q-MISC-89). The standing user rule of 2026-11-25 for crafted-input resource limits (both modes, the recommended value; see Q-MODEL-38) also applies to the 3D code.
+
+- **B1: mask-layer board view in proportion with magic-compat ON.**
+  - Status: approved 2026-11-26 (SHELL implements in round 6; amends A4 and Q-MISC-84).
+  - Resolution: platform, desktop tab only — in mask-layer mode with magic-compat ON the board z scale the tab sets (the opening isometric `zoom`) is `kBoardScaleZ` × f × 1 / (µm per internal unit), because Q-MISC-72 keeps the `render` heights as stored (µm numbers) while x and y are in mask units, and f alone drew sky130A's stack almost flat; with magic-compat OFF it stays `kBoardScaleZ` × f (heights already in internal units). Magic's own s_z values (`defaults`, the window state Magic's commands set, the golden cases, scripts and hefesto-cli windows) are untouched; `zoom` reports the value the tab set (view-3d "Viewing transform and shading", scenarios "Mask-layer board view in proportion with magic-compat ON" and "Mask-layer board view with magic-compat OFF").
+- **B2: mask-layer mode ghosts nothing.**
+  - Status: approved 2026-11-26 (replaces A7).
+  - Resolution: platform, in both modes — the mask-layer stack has no planes, so no mask layer is ghosted by default (hefesto-3d-visualization "Interactive 3D inspection", scenario "Wells ghosted in mask-layer mode").
+- **B3: substrate slab on by default.**
+  - Status: approved 2026-11-26 (the item Q-MISC-85 deferred; built in round 5).
+  - Resolution: platform, in both modes — the desktop tab's "Substrate" toggle is on by default; windows opened by scripts or hefesto-cli draw no slab (hefesto-3d-visualization "Interactive 3D inspection", scenario "Substrate slab under the stack").
+- **B4: the cross-section clips the side away from the isometric viewer.**
+  - Status: approved 2026-11-26 (round 5 SHELL).
+  - Resolution: in both modes — the clipping plane of a cross-section keeps y ≥ c for a horizontal cut line y = c and x ≥ c for a vertical one x = c, the side away from the isometric viewer, so the cut face is seen from the default view (hefesto-3d-visualization "Interactive 3D inspection", scenario "Clipping plane hides one side").
+- **B5: toggle state in the screen-reader name.**
+  - Status: approved 2026-11-26 (interim, until Raven exposes a checked state for painted widgets).
+  - Resolution: platform, in both modes — the 3D tab's toggles append ", on" or ", off" to their screen-reader name; replaced by Raven's checked state when it exists (upstream item).
+- **B6: the A–A′ section panel sits in the side panel under Inspect.**
+  - Status: approved 2026-11-26 (round 5 SHELL; differs from the board's right aside).
+  - Resolution: platform — the section panel is pinned in the side panel below Inspect, not in a right aside (`docs/design/m10-3d-ui-conformance.md`).
+- **B7: substrate slab parameters.**
+  - Status: approved 2026-11-26 (round 5 SECTION).
+  - Resolution: platform, in both modes — thickness 0.2 of the drawn stack's height (`kSubstrateFraction`), colour #2A2F37 (`kSubstrateColor`), top at the lowest drawn bottom, not pickable, never exported, not in the face log or visibility sets, none for an empty mesh or a flat stack.
+- **B8: a split-tile triangle in a cross-section takes its own layer's height.**
+  - Status: approved 2026-11-26 (round 5 SECTION).
+  - Resolution: in both modes — a cross-section reports a split-tile triangle at its own layer's µm height; Magic's window draws it with the left type's height with magic-compat ON (Q-MISC-79), but a section is µm output, as Q-MISC-72's extensions (hefesto-3d-visualization "Interactive 3D inspection", Cross-sections).
+- **B9: a cut line on a tile edge.**
+  - Status: approved 2026-11-26 (round 5 SECTION).
+  - Resolution: replicate Magic's tile convention, in both modes — a cut line along a tile edge takes the material above it (horizontal line) or to its right (vertical line), as a tile owns its bottom and left edges.
+- **B10: per-layer STL file names.**
+  - Status: approved 2026-11-26 (round 5 EXPORT).
+  - Resolution: native — `<stem>_<layer>.stl` in the given file's directory; characters other than letters, digits and `_-.+` become `_`; names equal ignoring case get `_2`, `_3`, … before `.stl` (hefesto-3d-visualization "3D export").
+- **B11: a `.gltf` export writes `<stem>.bin` beside it when there is geometry.**
+  - Status: approved 2026-11-26 (round 5 EXPORT, as amended by the PR #122 review).
+  - Resolution: native — the buffer goes to `<stem>.bin` (URI percent-encoded) when there is geometry; an export with no layer writes the JSON only, with no buffer and no `.bin`.
+- **B12: `export3d` without a 3D window.**
+  - Status: approved 2026-11-26 (round 5 EXPORT).
+  - Resolution: native — fails with `VIEW3D-EXPORT-001` and writes nothing; there is no fallback to the edit cell.
+- **B13: glTF axes and units.**
+  - Status: approved 2026-11-26 (round 5 EXPORT).
+  - Resolution: native — +Y up (layout x, height, −layout y); values in µm; `asset.extras` holds `{"hefesto":{"units":"um","zscale":k}}`, k = 1 without `-zscale`.
+- **B14: a type in two display styles, and styles that are not drawn.**
+  - Status: approved 2026-11-26 (round 5 EXPORT).
+  - Resolution: native, in both modes — a type in two display styles is exported once, as its last drawn entry (the style that wins on coplanar faces, Q-MISC-77); entries whose style is neither solid nor stippled are not exported (N3).
+- **B15: per-layer STL writes only layers with geometry.**
+  - Status: approved 2026-11-26 (round 5 EXPORT).
+  - Resolution: native — one file per exported layer that has geometry; the command's result is the list of files written.
+- **B16: the substrate slab is never exported.**
+  - Status: approved 2026-11-26 (round 5 EXPORT and SECTION).
+  - Resolution: native — the slab is not part of the model and is never in an exported file.
+- **B17: "Span connected layers" in the core window state.**
+  - Status: approved 2026-11-26 (CORE and SHELL implement in round 6).
+  - Resolution: native, in both modes — J1's "Span connected layers" option moves from the desktop's view options into `view3d::WindowState`, so `export3d` (and any front end) builds a spanned view spanned; the desktop toggle edits the window's flag (hefesto-3d-visualization "3D export", scenario "Export of a spanned view keeps the span").
+- **B21: the Release frame-rate bench.**
+  - Status: approved 2026-11-26 (round 5 MASKSRC/RENDER).
+  - Resolution: accepted — a Release frame-rate run may build only the bench target with the desktop ON configured; the numbers are recorded in `docs/design/m10-3d-ui-conformance.md` "Performance" with an idle-machine note.
+
+Items of the round-6 review fix pass (PR #133). C1 falls under the standing user rule of 2026-11-25 (crafted-input resource limits in both modes, the recommended value); C2 and C3 are proposed and reported to the user.
+
+- **C1: limits of the mask-layer net overlay.**
+  - Status: approved 2026-11-25 (standing rule for crafted-input limits; round-6 review fix).
+  - Resolution: in both modes — `view3d::net_overlay` returns at most 65,536 prisms (`kMaxNetOverlayPrisms`), the renderer reads at most 65,536 prisms and spends at most 2^24 interval visits and 2^20 faces on the overlay's faces; when a limit cuts the overlay the desktop's mesh status adds "net overlay cut at 65,536 boxes" (hefesto-3d-visualization "Interactive 3D inspection", scenario "Net overlay of a very large net").
+- **C2: the desktop tab does not repeat identical errors of a repeated full build.**
+  - Status: proposed (round-6 review fix; recommendation: approve).
+  - Resolution (proposed): with magic-compat ON, a full build of the same inputs (`BuildKey`) as the last full build the tab reported, with identical errors, prints nothing; this removes the duplicate print of the tab's double build on opening. A full build of other inputs, and every incremental rebuild, report as usual.
+- **C3: a message repeated by the pieces of one regenerated area counts once.**
+  - Status: proposed (round-6 review fix; recommendation: approve).
+  - Resolution (proposed): an incremental rebuild that regenerates an area in several pieces reports each distinct message as often as the one piece that has it most, so a region the pieces split is reported once, as a full build reports it.
 
 ## Scope
 
