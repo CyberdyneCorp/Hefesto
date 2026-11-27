@@ -88,12 +88,19 @@ Hierarchical net copy (used by net selection and net highlighting):
 
 When several distinct nets lie under the start area only one is copied. The destination is not cleared first (successive calls accumulate).
 
-(Magic ref: database/DBconnect.c:700-1227, database/DBcellsrch.c:547-700)
+Every hierarchical search (steps 1 and 4, and the tree searches of tiles, labels, cells and definitions that other tools use) SHALL try only the elements of an array use whose images may overlap the searched area, found arithmetically from the array's pitch and the child's bounding box (DBArrayOverlap), never by walking every element of the array: a search over part of a 1000 × 1000 array costs the elements it touches. The elements found and the order they are visited in (ascending y, then x) are unchanged, in both `magic-compat` settings.
+
+(Magic ref: database/DBconnect.c:700-1227, database/DBcellsrch.c:547-700, database/DBcellbox.c DBArrayOverlap)
 
 #### Scenario: Net through a subcell
 - **GIVEN** parent with `metal1 (0,0)-(10,2)` and an instance of a child whose `metal1 (10,0)-(20,2)` abuts it in parent coordinates
 - **WHEN** the net is selected starting at `(1,1)` in the parent
 - **THEN** the selection SHALL contain `metal1 (0,0)-(20,2)`
+
+#### Scenario: A search over part of a large array tries only the elements under it
+- **GIVEN** a parent with a 1000 × 1000 array of a child holding `metal1 (0,0)-(10,10)`, pitch 20 in x and y, and a parent `metal1` wire `(0,4)-(395,6)` across the first 20 elements of row 0
+- **WHEN** the net is selected starting on the wire, in either `magic-compat` setting
+- **THEN** the net SHALL hold the wire and the metal of elements `[0,0]` to `[0,19]` only, and the search SHALL finish without visiting the other elements of the array
 
 #### Scenario: Port equivalence in hierarchy
 - **GIVEN** child `pad` with port labels `VDD` index 1 on `metal1 (0,0)-(5,5)` and on `metal1 (50,0)-(55,5)`, unconnected by paint

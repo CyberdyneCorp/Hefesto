@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -108,17 +109,31 @@ std::optional<diag::Diagnostic> open_regular(const Path& path, std::ifstream& in
     return io_error(codes::kPlatformRead, "cannot read", path, ec);
   }
   // An ifstream opens a directory without error and reads nothing from it.
+  if (fs::is_directory(status)) {
+    return io_error(codes::kPlatformRead, "not a regular file", path, std::make_error_code(std::errc::is_a_directory));
+  }
   if (!fs::is_regular_file(status)) {
     return io_error(codes::kPlatformRead, "not a regular file", path);
   }
+  errno = 0;
   in.open(path, std::ios::binary);
   if (!in) {
-    return io_error(codes::kPlatformRead, "cannot read", path);
+    const int err = errno;  // the failed open(2)'s reason (Permission denied)
+    return io_error(codes::kPlatformRead, "cannot read", path,
+                    err != 0 ? std::error_code{err, std::generic_category()} : std::error_code{});
   }
   return std::nullopt;
 }
 
 }  // namespace
+
+std::string os_error_text(const diag::Diagnostic& error) {
+  if (error.code == codes::kPlatformNotFound) {
+    return std::make_error_code(std::errc::no_such_file_or_directory).message();
+  }
+  const std::size_t at = error.text.rfind("': ");
+  return at == std::string::npos ? std::string{} : error.text.substr(at + 3);
+}
 
 diag::Outcome<std::string> FileSystem::read_at_most(const Path& path, std::size_t max_bytes) {
   auto text = read(path);
