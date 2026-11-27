@@ -365,6 +365,23 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Recommendation: compat (standing rule: the name of the file written is observable). With `magic-compat` ON the whole path is tested, as Magic; with it OFF only the file name after the last `/`.
 - Resolution: compat — with `magic-compat` ON the extension test looks at the whole path, as Magic; with it OFF only at the file name after the last `/` (branch point `plot::io::with_default_extension`; approved 2026-11-25).
 
+### Q-MISC-56: Size limit of the `color` and `dstyle` files of the plot section
+- Kind: bug
+- Status: approved 2026-11-26 (raised 2026-11-26 by the M10 plot/route round 0 review; approved under the user's standing approval of crafted-input resource limits in both modes, with the recommended value)
+- Magic behavior: `PlotLoadColormap` and `PlotLoadStyles` read the file named by a `color` or `dstyle` line of `style pnm` line by line at every technology load, whatever its size, although at most 128 colours and one line per display style are used. Hefesto's loader read the whole file into memory first, so a technology file naming a multi-gigabyte file made every load allocate all of it.
+- Evidence: plot/plotPNM.c:1360-1400, :1456-1507; src/core/src/plot/tech/pnm_lines.cpp `PnmHandler::find_file`
+- Options: (a) read at most 1 MiB (`FileSystem::read_at_most`); a larger file is a format error | (b) stream the file line by line as Magic
+- Recommendation: (a), both modes: 128 colour lines of 256 bytes are about 32 KiB, so no real file comes near the limit.
+- Resolution: fix in both modes — `color` and `dstyle` files are read with `read_at_most` up to 1 MiB (`plot::detail::kMaxPlotFileBytes`); a larger file reports Magic's format error for its kind and disables PNM plotting for the technology (approved 2026-11-26 under the standing approval for input limits).
+
+### Q-MISC-57: PNM `default` colours come from the 7bit display class
+- Kind: platform
+- Status: pending user decision (raised 2026-11-26 by the M10 plot/route round 0 review)
+- Magic behavior: `default` and `draw <type>` in `style pnm` take their colours from the display style table the running display loaded (`GrStyleTable`), so a Magic session with a graphics display can write other PNM colours than a headless (`-dnull`, `7bit`) one. The golden captures run headless.
+- Evidence: plot/plotPNM.c:1150-1165, :1261-1279, graphics/grMain.c:215-216
+- Options: (a) always the `7bit` class of the technology's style type, computed at technology load (`.`, then the technology's directory, then the bundled `mos.7bit.dstyle` and `mos.7bit.std.cmap`) | (b) the session's display style set, recomputed when it changes
+- Recommendation: (a). The `Technology` is read before any display style set is installed and is shared by sessions; (a) gives the colours of the captured headless Magic on every platform and display, as plot-output's byte-identity needs. This is what round 0 implements and what plot-output "Platform mechanism of plot output" states; not cited from the spec while pending.
+
 ## view-3d
 
 ### Q-MISC-70: 3D view clips subcell tiles in the wrong coordinate system

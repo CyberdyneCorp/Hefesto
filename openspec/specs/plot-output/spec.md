@@ -306,19 +306,24 @@ Compatibility: behavioral
 ### Requirement: Platform mechanism of plot output
 
 Magic locates `magicps.pro` and display-style and colour-map files on its system library path and spools raster plots through an external command in a temporary directory (see Q-MISC-44). Hefesto SHALL embed the PostScript prologue text of Magic 8.3.694 byte-for-byte; a PostScript plot SHALL always contain the embedded prologue, and a `magicps.pro` file on disk is not read. The PNM colours come from two sources, as in Magic:
-- **`default` and `draw <type>`** blend the colours of the display styles that draw each type, from the display style table and colour map the session loaded for its display (Magic's `GrStyleTable` and colour map, loaded by `styletype`). A headless session uses the `7bit` display class for this, as Magic's null display does (`mos.7bit.dstyle` and `mos.7bit.std.cmap` for the `mos` style type). When the session has no display style set loaded (a headless session without display files, or iPadOS with no Magic installation), the plot loads the `7bit` files of the technology's style type from the display search path, then from Hefesto's bundled resources.
-- **`color` and `dstyle` lines** load a plot-only colour map and style table (default names `<style type>.7bit.mraster.cmap` and `<style type>.7bit.mraster_dstyle`), used by `draw <type> <style>` and discarded at the end of the section. They SHALL search the current directory, then the technology's directory, then the bundled resources.
+- **`default` and `draw <type>`** blend the colours of the display styles that draw each type. Magic takes them from the display style table and colour map its display loaded (`GrStyleTable`), so a Magic session with a graphics display can give other PNM colours than a headless one. Hefesto computes them when the technology is loaded, from the `7bit` display class of the technology's style type, the class Magic's null display uses (`mos.7bit.dstyle` and `mos.7bit.std.cmap` for the `mos` style type), whatever display the session has: the two files are searched in the current directory, then in the technology file's directory, then among Hefesto's bundled resources. Hefesto's PNM colours are therefore those of a headless Magic run (`-dnull`) on every platform and display.
+- **`color` and `dstyle` lines** load a plot-only colour map and style table (default names `<style type>.7bit.mraster.cmap` and `<style type>.7bit.mraster_dstyle`), used by `draw <type> <style>` and discarded at the end of the section. They SHALL search the current directory, then the technology file's directory, then the bundled resources. Magic searches the current directory, then its system library path (`SysLibPath`), which Hefesto does not have; the technology's directory takes its place. A `color` or `dstyle` file larger than 1 MiB is a format error (`Format error in colormap file`, `Format error in display style file`) and is not read past that size, in both `magic-compat` settings (Q-MISC-56); Magic reads any size, but uses at most 128 colours and one line per display style.
 
 Hefesto SHALL bundle, unmodified and with Magic's notice, `mos.7bit.mraster.cmap` and `mos.7bit.mraster_dstyle` (for `color` and `dstyle` lines without a file name) and `mos.7bit.dstyle` and `mos.7bit.std.cmap` (for the `default` colours when no display style set is loaded), unless Hefesto's display assets already carry the last two. Hefesto SHALL NOT start a process to print a plot on any platform.
 
 Compatibility: informative
 
-(Magic ref: plot/plotPS.c:1221-1232, plot/plotPNM.c:1033-1060, plot/plotPNM.c:1150-1165, plot/plotPNM.c:1261-1279, plot/plotPNM.c:1305-1318, plot/plotPNM.c:1360-1400, plot/plotPNM.c:1456-1507, dbwind/DBWdisplay.c:1750-1765, graphics/grMain.c:215-216, plot/plotVers.c:1474-1483) (See Q-MISC-44.)
+(Magic ref: plot/plotPS.c:1221-1232, plot/plotPNM.c:1033-1060, plot/plotPNM.c:1150-1165, plot/plotPNM.c:1261-1279, plot/plotPNM.c:1305-1318, plot/plotPNM.c:1360-1400, plot/plotPNM.c:1456-1507, dbwind/DBWdisplay.c:1750-1765, graphics/grMain.c:215-216, plot/plotVers.c:1474-1483) (See Q-MISC-44, Q-MISC-56.)
 
 #### Scenario: Prologue embedded
 - **GIVEN** no `magicps.pro` file on disk
 - **WHEN** Hefesto writes a PostScript plot
 - **THEN** the output contains the standard prologue rather than `postscript_prolog_is_missing`
+
+#### Scenario: Oversized colour map file
+- **GIVEN** a `style pnm` with `color big.cmap`, where `big.cmap` is a 2 MiB file of comment lines
+- **WHEN** the technology is loaded, with `magic-compat` ON or OFF
+- **THEN** `Format error in colormap file` is reported, PNM plotting is disabled for the technology, and no more than 1 MiB and one byte of the file is read
 
 #### Scenario: Default PNM colours on an iPad
 - **GIVEN** the sky130A technology, whose `style pnm` has `default` and no `color` or `dstyle` line, on iPadOS with no Magic installation and no display style set loaded

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2036 requirements, 3661 scenarios, 1049 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3666 scenarios, 1053 open questions.
 
 ## Hefesto product (native)
 
@@ -307,19 +307,19 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [57](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [59](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 25 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
 | [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
-| [`plot-output`](../openspec/specs/plot-output/spec.md) | 17 | 33 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `parameters` and `help`; Magic's `versatec`, `gremlin` and `pixels` are… |
+| [`plot-output`](../openspec/specs/plot-output/spec.md) | 17 | 34 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `parameters` and `help`; Magic's `versatec`, `gremlin` and `pixels` are… |
 | [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 46 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 
-Open questions: [74](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
+Open questions: [76](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -329,7 +329,7 @@ Open questions: [74](decisions/open-questions/LEGACY.md) · Golden cases: [CASES
 | [`plow`](../openspec/specs/plow/spec.md) | 27 | 33 | Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, and the complete edg… |
 | [`router-channel`](../openspec/specs/router-channel/spec.md) | 37 | 50 | Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, … |
 | [`router-gate-array`](../openspec/specs/router-gate-array/spec.md) | 11 | 13 | Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initializa… |
-| [`router-maze`](../openspec/specs/router-maze/spec.md) | 23 | 46 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
+| [`router-maze`](../openspec/specs/router-maze/spec.md) | 23 | 50 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
 | [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 13 | 22 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
 | [`router-net2ir`](../openspec/specs/router-net2ir/spec.md) | 3 | 4 | Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) pl… |
 | [`scheme-interpreter`](../openspec/specs/scheme-interpreter/spec.md) | 3 | 3 | Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: cu… |

@@ -533,6 +533,22 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Recommendation: replicate; estimates steer the search order.
 - Resolution: replicate — straight-shot estimators follow the corner-neighbour chains only, as Magic, in both modes; estimates steer the search order (approved 2026-11-25).
 
+### Q-LEGACY-106: Explicit router spacings are dropped after a rescale
+- Kind: quirk
+- Status: pending user decision (raised 2026-11-26 by the M10 plot/route round 0 review; implemented per the standing rule: magic-compat ON copies Magic, OFF does the intended thing)
+- Magic behavior: `MZAfterTech` applies each style's explicit `spacing` statements and then frees the list. It runs at every technology load and again after every rescale (`scalegrid`, a `.mag` read on a finer grid, a CIF or GDS read that redefines the grid), so after a rescale the explicit spacings are gone and every spacing comes from the rescaled DRC rules. The explicit values are never scaled: at a technology load on a non-1:1 grid they are applied in tech-file units.
+- Evidence: mzrouter/mzTech.c:235-302 (ListDeallocC at :298-300), commands/CmdRS.c:335-351, database/DBio.c:795-812, cif/CIFrdutils.c:240-290, utils/tech.c:814-848
+- Options: replicate | compat (ON drops them after a rescale; OFF rescales the explicit `spacing` and `width` values as DRC distances, rounded up, and applies them again) | fix (both modes as OFF)
+- Recommendation: compat (standing rule: `iroute spacings` prints the values and the route depends on them). Implemented in round 0's fix pass: `route::refresh_session_styles(editor, sink, StyleRescale)` (branch point), tests in `tests/unit/route/iroute/session_test.cpp`; requirement router-maze "Width and spacing derivation from DRC" states both modes. Not cited from the spec while pending, so it does not block M10's readiness check.
+
+### Q-LEGACY-107: Two maze styles with the same name
+- Kind: quirk
+- Status: pending user confirmation (raised 2026-11-26 by the M10 plot/route round 0 review; implemented as Magic in both modes, standing rule for a lookup with no defect)
+- Magic behavior: `mzTechStyle` prepends each new style to `mzStyles` and `MZFindStyle` searches from the head, so with two `style irouter` blocks `IRAfterTech` copies the last one in the file. The earlier block is still parsed (its messages are printed) but never used.
+- Evidence: mzrouter/mzTech.c:415-428, mzrouter/mzMain.c:410-430, irouter/irMain.c:136-160
+- Options: replicate (the last style of a name wins) | fix (the first wins, or a redefinition is reported)
+- Recommendation: replicate in both modes; a later redefinition overriding an earlier one is also the natural reading of a technology file. Implemented in `route::find_style` (searched from the back); test in `tests/unit/route/tech/reader_test.cpp`.
+
 ### Q-LEGACY-97: Plowed subcells use a truncated "unset move" sentinel
 - Kind: bug
 - Magic behavior: A use's plow move starts as the 64-bit client sentinel `-(2^62 - 4)`. When a cell edge is processed, the move is compared after truncation to `int`, which on 64-bit hosts yields 4, so a cell moves only if its required move exceeds 4 the first time. The "find cells" rule (paint pushing or dragging cells) and the cell rule never queue a use whose move is still the sentinel, so paint never pushes a cell that has not already been moved by the plow itself. Write-back skips uses whose move is the sentinel or 0.

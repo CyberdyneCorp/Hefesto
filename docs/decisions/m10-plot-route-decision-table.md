@@ -126,6 +126,10 @@ The **Kind** column is the kind of the recommendation, as X-2 (`docs/decisions/c
 | Q-LEGACY-48 | Maze search memory is unbounded | **platform** | (a) `router.max-search-memory` (1 GiB desktop, 256 MiB iPadOS), ending as an interrupt. | approved 2026-11-25: platform (a) |
 | Q-LEGACY-49 | The maze helper routes a net with fewer than two pins | **fix** | The net stays in the unrouted list with a console note; Magic's helper stops with an unset-variable error. `mazeroute` itself is unchanged. | approved 2026-11-25: fix |
 | Q-LEGACY-54 | The maze helper's parameter window cannot open | **other** | (a) Not provided: Magic's `genmazeparams` never opens (undefined variable, a widget Tk lacks); parameters stay on `iroute` subcommands. (b) A new working parameter panel. | approved 2026-11-25: other (a) |
+| Q-MISC-56 | `color`/`dstyle` files of the plot section are read whole | **fix** | Read at most 1 MiB (`read_at_most`); a larger file is Magic's format error for its kind. Raised by the round 0 review. | approved 2026-11-26: fix (standing approval for input limits) |
+| Q-MISC-57 | PNM `default` colours come from the running display in Magic | **platform** | (a) Always the `7bit` class of the technology's style type, computed at technology load (the headless Magic colours on every display). Raised by the round 0 review; implemented as (a). | pending user decision |
+| Q-LEGACY-106 | Explicit router spacings are dropped after a rescale | **compat** | ON: dropped after `scalegrid`, a finer-grid `.mag` read or a grid-redefining CIF/GDS read, as Magic. OFF: the explicit `spacing` and `width` values rescaled as DRC distances (rounded up) and applied again. Raised by the round 0 review; implemented as recommended. | pending user decision |
+| Q-LEGACY-107 | Two maze styles with the same name | **replicate** | The last style of a name in the file is used, in both modes (Magic prepends styles and searches from the head). Raised by the round 0 review; implemented as recommended. | pending user confirmation |
 
 ## Planning questions raised by this plan
 
@@ -148,6 +152,8 @@ The **Kind** column is the kind of the recommendation, as X-2 (`docs/decisions/c
 | other | 1 | LEGACY-54 |
 
 Total: 43 entries (19 blocking, Q-MISC-45, Q-MISC-47 and 22 new), plus D-37, D-38, six judgement items and three planning questions.
+
+Raised by the round 0 fix pass on 2026-11-26 and not in the counts above: MISC-56 (fix, approved), MISC-57 (platform, pending), LEGACY-106 (compat, pending), LEGACY-107 (replicate, pending).
 
 ## Spec changes the recommendations imply
 
@@ -204,6 +210,16 @@ Amendments to the deltas before the sync:
 | `router-maze-iroute` | ADDED "Route timeout" | States the narrower scope: only the leak is fixed; `-timeout` keeps Magic's syntax, messages and wall-clock meaning, and no other work budget is added. | Q-LEGACY-41 |
 | `router-maze-iroute` | ADDED "iroute behaviour with magic-compat off" | The Q-LEGACY-44 point names `script::source_line_prefix` and the ON failure; new scenarios "Saved spacings with magic-compat on", "Already routed with magic-compat off/on" and "Sourcing a saved file with magic-compat off"; existing ones renamed "Suffixed coordinates in both settings" and "Saved spacings after scalegrid with magic-compat off". | Q-LEGACY-42, -43, -44, -45 |
 | `plot-output`, `router-maze`, `router-maze-iroute` | the MODIFIED and ADDED requirements with Magic traces | Trace line numbers corrected (section "Magic traces checked"). | task 1.3 |
+
+Fix pass of round 0 (2026-11-26), from the adversarial review of PR #131, edited in the living specs directly (the deltas are already synced):
+
+| Capability | Requirement | Edit | Row |
+|---|---|---|---|
+| `router-maze` | "Style defaults and lookup" | The last style of a name is found; scenario "Two styles with the same name". | Q-LEGACY-107 (pending, not cited) |
+| `router-maze` | "Width and spacing derivation from DRC" | The four rescale paths; explicit spacings dropped after a rescale with ON, rescaled and re-applied with OFF; scenarios "Rescale follows the DRC rules" and "Explicit spacing after a rescale with magic-compat on/off". | Q-LEGACY-106 (pending, not cited) |
+| `router-maze` | "Maze router behaviour with magic-compat off" | New point "Explicit values after a rescale". | Q-LEGACY-106 |
+| `router-maze-iroute` | "iroute availability and dispatch" | The session copy is also re-initialised after a rescale. | — |
+| `plot-output` | "Platform mechanism of plot output" | As landed: `default`/`draw <type>` always use the `7bit` class (not the session's display set); `color`/`dstyle` search `.`, the technology's directory (Magic: `SysLibPath`), then the bundled copies; 1 MiB file limit; scenario "Oversized colour map file". | Q-MISC-56, Q-MISC-57 (pending, not cited) |
 
 Q-LEGACY-47's approved scope (`iroute wizard penalty` and the technology `search` statement) is the draft's, so "Maze search safety and limits" needed no edit.
 

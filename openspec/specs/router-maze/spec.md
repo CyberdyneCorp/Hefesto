@@ -71,15 +71,20 @@ Compatibility: exact
 - **THEN** `route layer must be declared before used in contact.` is reported, and m2contact is neither a route contact nor attached to metal1
 
 ### Requirement: Style defaults and lookup
-Each style SHALL start with: penalty 1024.0, window rate 500, window width 10000, bloom delta cost 1, bounds increment AUTOMATIC, estimate on, expand endpoints on, top-level hints only off, max walk length (penetration) AUTOMATIC, no bounds hint, verbosity 1, bloom limit 0 (unlimited). Styles are looked up by exact name; the interactive router uses a private copy of style `irouter`, the gate-array router a copy of `garouter`. Changing the copy (via `iroute` subcommands) does not alter the technology style.
+Each style SHALL start with: penalty 1024.0, window rate 500, window width 10000, bloom delta cost 1, bounds increment AUTOMATIC, estimate on, expand endpoints on, top-level hints only off, max walk length (penetration) AUTOMATIC, no bounds hint, verbosity 1, bloom limit 0 (unlimited). Styles are looked up by exact name; of several styles with the same name, the last one in the file is found (Magic prepends each new style to its list and searches from the head), in both `magic-compat` settings; the interactive router uses a private copy of style `irouter`, the gate-array router a copy of `garouter`. Changing the copy (via `iroute` subcommands) does not alter the technology style.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:517-562, mzrouter/mzInternal.h:60-120, mzrouter/mzMain.c:272-440, irouter/irMain.c:120-160)
+(Magic ref: mzrouter/mzTech.c:517-562, mzrouter/mzTech.c:415-428, mzrouter/mzInternal.h:60-120, mzrouter/mzMain.c:272-440, irouter/irMain.c:120-160)
 
 #### Scenario: Default window width
 - **GIVEN** a style with no `search` line
 - **WHEN** its parameters are inspected
 - **THEN** rate is 500, width is 10000 and penalty is 1024.0
+
+#### Scenario: Two styles with the same name
+- **GIVEN** an mzrouter section with two `style irouter` blocks, the first with route layer metal1 only and the second with route layer metal2 only
+- **WHEN** the technology is loaded and `iroute layers` is run, with `magic-compat` ON or OFF
+- **THEN** the interactive router's only route layer is metal2
 
 ### Requirement: Width and spacing derivation from DRC
 After the technology (including DRC) is loaded or the grid rescaled, the engine SHALL recompute, for every route type t of every style:
@@ -88,15 +93,32 @@ After the technology (including DRC) is loaded or the grid rescaled, the engine 
 3. Explicit `spacing` statements for real types override.
 4. `spacing(t, SUBCELL)` = max over all types of `spacing(t,·)`; then explicit SUBCELL spacings override.
 
+The grid is rescaled by `scalegrid`, by a `.mag` read on a finer grid and by a CIF or GDS read that redefines the grid; each runs the derivation again after the DRC rules are rescaled. With `magic-compat` ON the explicit `spacing` statements (steps 3 and 4) take effect at the technology load only: Magic frees them after the first derivation, so after a rescale every spacing comes from the DRC rules and the SUBCELL maximum. With `magic-compat` OFF the explicit `spacing` values, and the `width` statements of requirement "Maze router behaviour with magic-compat off", are rescaled as the DRC distances are (multiplied by the rescale factor and rounded up; -1 and 0 are kept) and applied again.
+
 Spacing semantics: -1 = no restriction; 0 = may not overlap; s > 0 = must be at least s away.
 
 Compatibility: exact
-(Magic ref: mzrouter/mzTech.c:235-302, mzrouter/mzTech.c:1393-1409, drc/DRCtech.c:4620-4722)
+(Magic ref: mzrouter/mzTech.c:235-302, mzrouter/mzTech.c:1393-1409, drc/DRCtech.c:4620-4722, commands/CmdRS.c:335-351, database/DBio.c:795-812, cif/CIFrdutils.c:240-290)
 
 #### Scenario: Width from DRC
 - **GIVEN** a DRC rule `width allMetal2 3` and route layer metal2
 - **WHEN** derivation runs
 - **THEN** the metal2 route width and length are 3
+
+#### Scenario: Rescale follows the DRC rules
+- **GIVEN** a technology whose DRC gives metal1 width 3, with `irouter` route layer metal1, at a 1:1 grid
+- **WHEN** `scalegrid 1 2` is run, or a `.mag` file with `magscale 1 2` is loaded, or a CIF read redefines the grid by 2
+- **THEN** the `irouter` metal1 route width is 6
+
+#### Scenario: Explicit spacing after a rescale with magic-compat on
+- **GIVEN** `magic-compat` ON, a DRC metal2 spacing of 4 and the statement `spacing metal2 metal2 5` in the `irouter` style
+- **WHEN** the technology is loaded and then `scalegrid 1 2` is run
+- **THEN** the metal2-to-metal2 spacing is 5 after the load and 8 (the rescaled DRC value) after `scalegrid`
+
+#### Scenario: Explicit spacing after a rescale with magic-compat off
+- **GIVEN** `magic-compat` OFF and the same technology
+- **WHEN** the technology is loaded and then `scalegrid 1 2` is run
+- **THEN** the metal2-to-metal2 spacing is 5 after the load and 10 after `scalegrid`
 
 ### Requirement: Derived search quantities
 Before each route the engine SHALL compute:
@@ -613,6 +635,7 @@ With `magic-compat` OFF, the maze router SHALL differ from Magic in exactly thes
 - **Explicit width (Q-LEGACY-33).** A `width` statement's width and length replace the DRC-derived width and length of that route type (as explicit `spacing` statements replace derived spacings).
 - **Initial left-right contact (Q-LEGACY-85).** An initial path through a contact at the start point in the left-right direction is offered when `tile.xtop − p.x > length(C) − width(C)`, the test the up-down direction and the in-search contact extension use.
 - **Upward extension (Q-LEGACY-87).** In the upward extension, a free next blockage tile does not override a closer stop point; the end point is the nearest of the pruned candidates, as in the other three directions.
+- **Explicit values after a rescale.** After a rescale the explicit `spacing` values and the `width` statements are rescaled as the DRC distances are and applied again, where Magic drops the explicit spacings (requirement "Width and spacing derivation from DRC"; the decision is pending user confirmation, `openspec/changes/m10-plot-route/design.md` "Differences from Area contracts and D4").
 - **Contact same-node exemption (Q-LEGACY-89).** When blocked material is painted into a contact route type over same-node area, the exemption tests the layer-plane tile, so it applies only where the layer plane itself is same-node.
 
 Routes found with `magic-compat` OFF are still deterministic and identical on every platform.
