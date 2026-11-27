@@ -21,6 +21,7 @@
 #include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "hefesto/script/interp.hpp"
+#include "hefesto/shell/view_models.hpp"
 #include "hefesto/ui/state.hpp"
 #include "screen_paint.hpp"
 #include "side_panels.hpp"
@@ -666,11 +667,14 @@ void SchematicView::paint_library_rows(ui::Painter& p, float w, const ThemeToken
     p.text_centered_y(TextRole::small, kPadX, kRowHeight / 2.0F, "No symbols", t.text_tertiary);
     return;
   }
+  const TextMeasure body = [&p](std::string_view text) { return p.text_width(TextRole::body, text); };
   for (std::size_t i = 0; i < rows.size(); ++i) {
     const float y = static_cast<float>(i) * kRowHeight;
-    p.text_centered_y(TextRole::body, kPadX, y + kRowHeight / 2.0F, rows[i].name, t.text_primary);
     const std::string& folder = library_.folders()[rows[i].folder].label;
     const float fw = p.text_width(TextRole::meta, folder);
+    // A long name is shortened in the middle so it never runs under the folder (round 7 capture review).
+    const std::string name = ellipsize_middle(rows[i].name, std::max(0.0F, w - 3.0F * kPadX - fw), body);
+    p.text_centered_y(TextRole::body, kPadX, y + kRowHeight / 2.0F, name, t.text_primary);
     p.text_centered_y(TextRole::meta, w - kPadX - fw, y + kRowHeight / 2.0F, folder, t.text_tertiary);
   }
 }
