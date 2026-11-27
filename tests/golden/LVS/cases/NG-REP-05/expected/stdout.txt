@@ -1,0 +1,16 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 
+Logging to file "x.log" enabled
+(2) code 0: 
+hello
+(3) code 0: 
+(4) code 0: 
+(5) code 0: 
+Logging to file "x.log" disabled
+(6) code 0: 
+after
+(7) code 0: 
+(8) code 1: bad option "bogus": must be start, end, reset, suspend, resume, file, echo, or put
+(9) code 0: x.log

@@ -1,0 +1,6 @@
+.subckt buf A Y1 Y2
+R1 A Y1 1k
+.ends
+.subckt top a y
+X1 a y y buf
+.ends

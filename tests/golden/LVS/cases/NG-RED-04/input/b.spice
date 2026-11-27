@@ -1,0 +1,4 @@
+* one
+.subckt top a b
+R1 a b 1k
+.ends

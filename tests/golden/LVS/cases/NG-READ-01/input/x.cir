@@ -1,0 +1,4 @@
+* x
+.subckt xc a b
+R1 a b 1k
+.ends

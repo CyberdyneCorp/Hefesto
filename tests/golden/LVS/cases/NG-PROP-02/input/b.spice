@@ -1,0 +1,6 @@
+* b
+.subckt top a b
+X1 a b cdev nf=3 model=ABCxx
+.ends
+.subckt cdev p n
+.ends

@@ -108,15 +108,9 @@ TEST_CASE("detect_format detects a SPICE source", "[cap:lvs-netlist-input][req:F
   CHECK(lvs::detect_format(spice(".subckt a x\n.ends\n")).value() == lvs::Format::spice);
 }
 
-TEST_CASE("scaffold evaluate_setup reports CORE-NOTIMPL-009", "[cap:lvs-setup-file][req:Setup file evaluation]") {
-  lvs::Circuit first;
-  lvs::Circuit second;
-  lvs::SetupContext context{&first, &second, {}, {}};
-  CHECK(is_not_implemented(lvs::evaluate_setup(lvs::Source{"setup.tcl", std::string{"permute default\n"}}, context)));
-}
-
-// reduce, compare_pair and the property checks left the scaffold in M9 R2:
-// their requirement tests are in tests/unit/lvs/{reduce,cmp,prop}/.
+// reduce, compare_pair and the property checks left the scaffold in M9 R2,
+// evaluate_setup in M9 R3: their requirement tests are in
+// tests/unit/lvs/{reduce,cmp,prop,setup}/.
 
 TEST_CASE("scaffold run_lvs reports CORE-NOTIMPL-009", "[cap:lvs-hierarchy][req:lvs per-pair flow]") {
   NoProgress progress;

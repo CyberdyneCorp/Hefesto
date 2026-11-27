@@ -1,0 +1,5 @@
+* resistor and capacitor
+.subckt rc a b c
+XR1 a b rppd w=0.5e-6 l=2e-6
+XC1 b c cap_cmim w=2e-6 l=2e-6 m=2
+.ends

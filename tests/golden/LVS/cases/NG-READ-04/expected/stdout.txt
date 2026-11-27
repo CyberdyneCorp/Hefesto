@@ -1,0 +1,24 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+a
+b
+Cell pa contains 2 ports.
+(2) code 0: 
+(3) code 0: {w string 0.0} {l string 0.0}
+(no pins)
+Cell noport contains 1 ports.
+(4) code 0: 
+c
+d
+Cell inner contains 2 ports.
+(5) code 0: 
+Hash table: 7 of 1000 bins used; 7 cells total (1.00 per bin)
+Cell: pa (instanced 0 times)
+Cell: noport (instanced 0 times)
+Cell: inner (instanced 1 times)
+Cell: outer (instanced 0 times)
+Cell: input/sub.spice (instanced 0 times)
+Cell: last (instanced 0 times)
+(6) code 0: 

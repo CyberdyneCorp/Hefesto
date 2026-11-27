@@ -1,0 +1,25 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Creating placeholder cell definition for module inv.
+(1) code 0: 0
+Warning:  A case-sensitive file has been read and so the SPICE netlist must be treated case-sensitive to match.
+Verilog placeholder inv replaced by SPICE definition
+
+Subcircuit pins:
+Circuit 1: _PLACEHOLDER_                   |Circuit 2: inv                             
+-------------------------------------------|-------------------------------------------
+Y                                          |Y                                          
+A                                          |A                                          
+---------------------------------------------------------------------------------------
+(2) code 0: 0
+Y
+A
+Cell inv contains 2 ports.
+(3) code 0: 
+Circuit: 'top'
+a     port                               Net #: 2
+y     port                               Net #: 1
+u1/Y  pin 1                              Net #: 1
+u1/A  pin 2                              Net #: 2
+(4) code 0: 

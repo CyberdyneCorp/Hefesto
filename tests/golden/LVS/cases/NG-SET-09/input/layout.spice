@@ -1,0 +1,10 @@
+* layout
+.subckt XY_inv A Y
+R1 A Y 1k
+.ends
+.subckt blk p q
+.ends
+.subckt top a y
+X1 a y XY_inv
+X2 a y blk
+.ends

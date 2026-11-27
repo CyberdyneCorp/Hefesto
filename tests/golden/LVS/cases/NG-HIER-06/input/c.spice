@@ -1,0 +1,6 @@
+.subckt adc in out
+R1 in out 1k
+.ends
+.subckt top a b
+X1 a b adc
+.ends

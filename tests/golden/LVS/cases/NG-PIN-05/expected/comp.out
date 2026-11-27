@@ -1,0 +1,54 @@
+
+Subcircuit summary:
+Circuit 1: sub                             |Circuit 2: sub                             
+-------------------------------------------|-------------------------------------------
+r (2)                                      |r (2)                                      
+Number of devices: 2                       |Number of devices: 2                       
+Number of nets: 3                          |Number of nets: 3                          
+---------------------------------------------------------------------------------------
+Resolving symmetries by property value.
+Resolving symmetries by pin name.
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: sub                             |Circuit 2: sub                             
+-------------------------------------------|-------------------------------------------
+Y                                          |Y                                          
+A                                          |A                                          
+B                                          |B                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes sub and sub are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+sub (1)                                    |sub (1)                                    
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2 **Mismatch**             |Number of nets: 3 **Mismatch**             
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Net: a                                     |Net: a                                     
+  sub/A = 1                                |  sub/A = 1                                
+  sub/B = 1                                |                                           
+                                           |                                           
+(no matching net)                          |Net: b                                     
+                                           |  sub/B = 1                                
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+y                                          |y                                          
+(no pin, node is a)                        |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists for top and top altered to match.
+Device classes top and top are equivalent.
+
+Final result: Top level cell failed pin matching.

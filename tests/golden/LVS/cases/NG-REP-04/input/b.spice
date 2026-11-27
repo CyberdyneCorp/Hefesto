@@ -1,0 +1,3 @@
+.subckt top a%%d b"q
+R1 a%%d b"q 1k
+.ends

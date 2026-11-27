@@ -1,0 +1,5 @@
+* included
+.subckt sub a y
+R1 a y 1k
+R2 a GND 1k
+.ends

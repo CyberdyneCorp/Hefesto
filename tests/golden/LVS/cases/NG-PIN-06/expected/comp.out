@@ -1,0 +1,41 @@
+
+Subcircuit summary:
+Circuit 1: sub                             |Circuit 2: sub                             
+-------------------------------------------|-------------------------------------------
+r (1)                                      |r (1)                                      
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Resolving symmetries by property value.
+Resolving symmetries by pin name.
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: sub                             |Circuit 2: sub                             
+-------------------------------------------|-------------------------------------------
+a[0]                                       |a **Mismatch**                             
+y                                          |y                                          
+---------------------------------------------------------------------------------------
+Cell pin lists for sub and sub altered to match.
+Device classes sub and sub are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+sub (1)                                    |sub (1)                                    
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+y                                          |y                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

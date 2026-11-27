@@ -1,0 +1,4 @@
+.subckt top A Y EN
+R1 A Y 1k
+R2 A EN 2k
+.ends

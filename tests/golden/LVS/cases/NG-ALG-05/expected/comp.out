@@ -1,0 +1,24 @@
+
+Subcircuit summary:
+Circuit 1: nand2                           |Circuit 2: nand2                           
+-------------------------------------------|-------------------------------------------
+nmos (2)                                   |nmos (2)                                   
+pmos (2)                                   |pmos (2)                                   
+Number of devices: 4                       |Number of devices: 4                       
+Number of nets: 6                          |Number of nets: 6                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: nand2                           |Circuit 2: nand2                           
+-------------------------------------------|-------------------------------------------
+VDD                                        |VDD                                        
+B                                          |Q **Mismatch**                             
+A                                          |P **Mismatch**                             
+Y                                          |Y                                          
+VSS                                        |VSS                                        
+---------------------------------------------------------------------------------------
+Cell pin lists for nand2 and nand2 altered to match.
+Device classes nand2 and nand2 are equivalent.
+
+Final result: Top level cell failed pin matching.

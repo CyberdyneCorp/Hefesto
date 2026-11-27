@@ -1,0 +1,7 @@
+* schematic
+.subckt decap a b
+C1 a b 1p
+.ends
+.subckt top a y vdd vss
+R1 a y 1k
+.ends

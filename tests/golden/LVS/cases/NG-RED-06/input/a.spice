@@ -1,0 +1,4 @@
+* merged
+.subckt top a c
+R2 a c 1k
+.ends

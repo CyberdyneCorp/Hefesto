@@ -1,0 +1,4 @@
+* dev
+.subckt top d g s b
+M1 d g s b nmos W=1.05u L=0.15u
+.ends

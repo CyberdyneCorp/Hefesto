@@ -1,0 +1,13 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+No property w found for device r
+No property l found for device r
+No property area found for device c
+(2) code 0: 
+(3) code 0: {W double 0.01} {L double 0.01} {M integer 0}
+(4) code 0: {value double 0.01}
+(5) code 0: {value double 0.01}
+(6) code 0: 1
+(7) code 0: 1

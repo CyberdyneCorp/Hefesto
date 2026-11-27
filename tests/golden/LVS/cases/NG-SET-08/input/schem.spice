@@ -1,0 +1,6 @@
+* single
+.subckt top a b
+X1 a b r1 w=1 l=5
+.ends
+.subckt r1 p n
+.ends

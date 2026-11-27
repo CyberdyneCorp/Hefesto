@@ -1,0 +1,10 @@
+timestamp 0
+version 8.3
+tech hefesto
+style default
+scale 1000 1 10
+resistclasses 1000
+node "Y" 0 0 0 0 ndiff 0 0
+node "A" 0 0 0 0 poly 0 0
+node "VSS" 0 0 0 0 ndiff 0 0
+device mosfet nmos 0 0 1 1 30 10 "VSS" "A" 4 0 "Y" 4 0 "VSS" 4 0

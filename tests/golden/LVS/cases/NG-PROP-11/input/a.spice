@@ -1,0 +1,6 @@
+* a
+.subckt top a b
+X1 a b cap_mim w=2 l=3
+.ends
+.subckt cap_mim p n
+.ends

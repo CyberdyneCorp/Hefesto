@@ -1,0 +1,35 @@
+
+Cell r1 (0) disconnected node: p
+Cell r1 (0) disconnected node: n
+Cell r1 (1) disconnected node: p
+Cell r1 (1) disconnected node: n
+
+Subcircuit pins:
+Circuit 1: r1                              |Circuit 2: r1                              
+-------------------------------------------|-------------------------------------------
+p                                          |p                                          
+n                                          |n                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes r1 and r1 are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+r1 (2->1)                                  |r1 (2->1)                                  
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

@@ -1,0 +1,7 @@
+* resistor and capacitor segments
+.subckt rc a b c
+XR1 a m rppd w=0.5e-6 l=1e-6
+XR2 m b rppd w=0.5e-6 l=1e-6
+XC1 b c cap_cmim w=2e-6 l=2e-6
+XC2 b c cap_cmim w=2e-6 l=2e-6
+.ends

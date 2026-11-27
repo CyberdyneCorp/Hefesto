@@ -1,0 +1,5 @@
+* library
+.subckt cellA a b
+R1 a b 1k
+.ends
+R9 x y 1k

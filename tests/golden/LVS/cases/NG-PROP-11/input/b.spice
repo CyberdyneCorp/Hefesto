@@ -1,0 +1,6 @@
+* b
+.subckt top a b
+X1 a b cap_mim area=6
+.ends
+.subckt cap_mim p n
+.ends

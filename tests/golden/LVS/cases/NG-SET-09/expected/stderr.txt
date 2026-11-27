@@ -1,0 +1,6 @@
+Error input/setup.tcl:3 (ignoring), 0
+Error input/setup.tcl:4 (ignoring), 0
+Error input/setup.tcl:5 (ignoring), Pin lists are different length, cannot match pins!
+Error input/setup.tcl:6 (ignoring), List length does not match  number of pins in cell.
+Error input/setup.tcl:7 (ignoring), All list items must have one or two entries.
+Error input/setup.tcl:8 (ignoring), All list items must have the same number of entries.

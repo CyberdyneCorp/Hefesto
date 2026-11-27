@@ -1,0 +1,8 @@
+* swapped
+.subckt cell d g s b
+M1 d g s b nmos W=1u L=0.15u
+M2 s g d b nmos W=1u L=0.15u
+.ends
+.subckt top d g s b
+X1 d g s b cell
+.ends

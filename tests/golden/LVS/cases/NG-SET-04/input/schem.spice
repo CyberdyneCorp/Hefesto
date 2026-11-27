@@ -1,0 +1,7 @@
+* reference
+.subckt top a b c
+R1 b a 1k
+X1 c a rpl
+.ends
+.subckt rpl 1 2
+.ends

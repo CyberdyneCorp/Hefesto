@@ -1,0 +1,52 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+(2) code 0: 1
+
+
+Contents of circuit 1:  Circuit: 'nand2'
+Circuit nand2 contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+Contents of circuit 2:  Circuit: 'nand2'
+Circuit nand2 contains 4 device instances.
+  Class: pmos                  instances:   2
+  Class: nmos                  instances:   2
+Circuit contains 6 nets.
+
+Circuit 1 contains 4 devices, Circuit 2 contains 4 devices.
+Circuit 1 contains 6 nets,    Circuit 2 contains 6 nets.
+
+Subcircuit summary:
+Circuit 1: nand2                           |Circuit 2: nand2                           
+-------------------------------------------|-------------------------------------------
+nmos (2)                                   |nmos (2)                                   
+pmos (2)                                   |pmos (2)                                   
+Number of devices: 4                       |Number of devices: 4                       
+Number of nets: 6                          |Number of nets: 6                          
+---------------------------------------------------------------------------------------
+(3) code 0: 
+Please iterate again.
+(4) code 0: 
+Please iterate again.
+(5) code 0: 
+No fractures made: we're done.
+(6) code 0: 
+(7) code 0: 
+(8) code 0: 0
+(9) code 0: 0
+Subcircuit summary:
+Circuit 1: nand2                           |Circuit 2: nand2                           
+-------------------------------------------|-------------------------------------------
+Number of devices: 4                       |Number of devices: 4                       
+Number of nets: 6                          |Number of nets: 6                          
+---------------------------------------------------------------------------------------
+(10) code 0: 
+(11) code 0: 
+(12) code 0: 1
+(13) code 0: 1
+Circuits match uniquely.
+.
+(14) code 0: 

@@ -1,0 +1,4 @@
+* user
+.subckt top a b
+X1 a b cellA
+.ends

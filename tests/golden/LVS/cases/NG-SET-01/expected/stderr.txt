@@ -1,0 +1,2 @@
+Error input/setup.tcl:3 (ignoring), extra characters after close-quote
+Error input/setup.tcl:8 (ignoring), No such cell!

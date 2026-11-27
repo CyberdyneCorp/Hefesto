@@ -1,0 +1,42 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Call to undefined subcircuit rp2
+Creating placeholder cell definition.
+Call to undefined subcircuit rp3
+Creating placeholder cell definition.
+Call to undefined subcircuit blk
+Creating placeholder cell definition.
+(1) code 0: 0
+Call to undefined subcircuit rp2
+Creating placeholder cell definition.
+Call to undefined subcircuit rp3
+Creating placeholder cell definition.
+(2) code 0: 1
+Flattening unmatched subcell rp2 in circuit top (0)(1 instance)
+Flattening unmatched subcell rp3 in circuit top (0)(1 instance)
+Flattening unmatched subcell blk in circuit top (0)(1 instance)
+Flattening unmatched subcell rp2 in circuit top (1)(1 instance)
+Flattening unmatched subcell rp3 in circuit top (1)(1 instance)
+
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 0 nets, and 3 disconnected pins.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 0 nets, and 3 disconnected pins.
+
+Circuit top contains no devices.
+(3) code 0: 
+(4) code 0: 
+(5) code 0: resistor
+(6) code 0: 
+(7) code 0: resistor
+(8) code 1: Wrong number of ports for device
+(9) code 1: Circuits have not been queued for comparison.
+(10) code 0: subcircuit
+(11) code 0: 0
+(12) code 0: 
+(13) code 0: 1
+(14) code 0: subcircuit

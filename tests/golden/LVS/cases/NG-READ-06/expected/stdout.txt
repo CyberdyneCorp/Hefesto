@@ -1,0 +1,85 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+(2) code 0: vcvs r dio vsrc {$[rpoly]} isrc top t l nmos c cmim npn input/cards.spice 3x
+Circuit: 'top'
+a                 port                   Net #: 1
+b                 port                   Net #: 2
+c                 port                   Net #: 3
+d                 port                   Net #: 4
+nmos:1/drain      pin 1                  Net #: 1
+nmos:1/gate       pin 2                  Net #: 2
+nmos:1/source     pin 3                  Net #: 3
+nmos:1/bulk       pin 4                  Net #: 4
+properties        properties            
+npn:1/collector   pin 1                  Net #: 1
+npn:1/base        pin 2                  Net #: 2
+npn:1/emitter     pin 3                  Net #: 3
+dio:1/anode       pin 1                  Net #: 1
+dio:1/cathode     pin 2                  Net #: 2
+c:1/top           pin 1                  Net #: 1
+c:1/bottom        pin 2                  Net #: 2
+properties        properties            
+cmim:2/top        pin 1                  Net #: 1
+cmim:2/bottom     pin 2                  Net #: 2
+properties        properties            
+r:1/end_a         pin 1                  Net #: 1
+r:1/end_b         pin 2                  Net #: 2
+properties        properties            
+r:2/end_a         pin 1                  Net #: 1
+r:2/end_b         pin 2                  Net #: 2
+properties        properties            
+r:3/end_a         pin 1                  Net #: 1
+r:3/end_b         pin 2                  Net #: 2
+properties        properties            
+3x:4/end_a        pin 1                  Net #: 1
+3x:4/end_b        pin 2                  Net #: 2
+$[rpoly]:5/end_a  pin 1                  Net #: 1
+$[rpoly]:5/end_b  pin 2                  Net #: 2
+properties        properties            
+l:1/end_a         pin 1                  Net #: 1
+l:1/end_b         pin 2                  Net #: 2
+properties        properties            
+t:1/node1         pin 1                  Net #: 1
+t:1/node2         pin 2                  Net #: 2
+t:1/node3         pin 3                  Net #: 3
+t:1/node4         pin 4                  Net #: 4
+t:1/pos           pin 1                  Net #: 1
+t:1/neg           pin 2                  Net #: 2
+properties        properties            
+t:1/pos           pin 1                  Net #: 1
+t:1/neg           pin 2                  Net #: 2
+t:1/pos           pin 1                  Net #: 1
+t:1/neg           pin 2                  Net #: 2
+t:1/ctrlp         pin 3                  Net #: 3
+t:1/ctrln         pin 4                  Net #: 4
+(3) code 0: 
+drain
+gate
+source
+bulk
+Cell nmos contains 4 ports.
+(4) code 0: 
+(5) code 0: {W double 0.01} {L double 0.01} {M integer 0}
+(6) code 0: {value double 0.01}
+(7) code 0: {value double 0.01}
+(8) code 1: No such cell or bad file number!
+
+Circuit: 'top'
+Circuit top contains 15 device instances.
+  Class: vcvs                  instances:   1
+  Class: r                     instances:   3
+  Class: dio                   instances:   1
+  Class: vsrc                  instances:   1
+  Class: $[rpoly]              instances:   1
+  Class: isrc                  instances:   1
+  Class: t                     instances:   1
+  Class: l                     instances:   1
+  Class: nmos                  instances:   1
+  Class: c                     instances:   1
+  Class: cmim                  instances:   1
+  Class: npn                   instances:   1
+  Class: 3x                    instances:   1
+Circuit contains 4 nets.
+(9) code 0: 
