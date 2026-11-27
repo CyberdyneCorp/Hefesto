@@ -1,0 +1,9 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf u1 1 0 0 0 1 40
+node "q" 0 1 0 0 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 4 2 4 "GND!" "q" 8 0 "q" 4 0 "u1/y" 4 0

@@ -16,6 +16,7 @@ entries go when they replay (task 17.5).
     python3 tools/golden/authoring/m7_cases.py --deviations    # rewrite the M7 block of deviations.toml
     python3 tools/golden/authoring/m7_cases.py --dispatch      # the golden-capture.yml capture command
     python3 tools/golden/authoring/m7_cases.py --exit-check    # task 17.7 / design D25: fails while work is left
+    python3 tools/golden/authoring/m7_cases.py --audit         # task 17.2: the requirement audit tables of CASES.md
 
 Until a case is captured and its workstream replays it, ``deviations.toml`` lists it as
 ``deferred = "M7"`` in the block between ``BEGIN`` and ``END``, with every output (a deferred entry may
@@ -36,6 +37,7 @@ import antenna_cases  # noqa: E402
 import casegen  # noqa: E402
 import ext_pdk_cases  # noqa: E402
 import extract_cases  # noqa: E402
+import m7_audit  # noqa: E402
 import netlist_cases  # noqa: E402
 import rescmd_cases  # noqa: E402
 import resnet_cases  # noqa: E402
@@ -60,7 +62,7 @@ PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
          **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS}}
 EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier milestones (task 17.5)
-CATALOGUE_TOTAL = 155  # design D21
+CATALOGUE_TOTAL = 160  # design D21 (155) and the five rows of the requirement audit (task 17.2)
 
 # Case IDs whose replay passes; each leaves the generated deferral block.
 REPLAYED: set[str] = {
@@ -100,10 +102,11 @@ DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_
                                    "NL-RES-02": ["Q-NETLIST-69"], "NL-RES-03": ["Q-NETLIST-69"]}
 
 RES_HEAP_ORDER = (
-    "ResSortByGate orders a net's devices by node address; Hefesto uses the reverse first-mention order ("
-    "Q-NETLIST-69, fix), which matches Magic's first run after extract all on the output net, but Magic's"
-    " later runs in the same session (and the GND net's first warning) follow heap addresses, so the .t<k"
-    "> terminal numbers of two devices on the same gate net swap")
+    "ResSortByGate orders a net's devices by node address; Hefesto uses the reverse first-mention order with "
+    "Magic's devSortFunc in a stable merge sort (Q-NETLIST-69, fix in both modes; amendment approved 2026-11-27),"
+    " which matches Magic's first run after extract all on the output net, but Magic's later runs in the same "
+    "session (and the GND net's first warning) follow heap addresses, so the .t<k> terminal numbers of two "
+    "devices on the same gate net swap")
 
 # Replayed cases whose remaining difference is an approved both-modes fix (design D21): written to the block
 # with their decisions and only the differing outputs, without a deferral.
@@ -212,12 +215,14 @@ def m7_deferrals() -> list[str]:
 
 def exit_check() -> int:
     """Design D25: every catalogue row authored, no M7 deferral left (the approved deviations of
-    task 17.7 carry decisions, not deferrals). A hand-derived case is listed with its decision and
-    does not count as work left."""
+    task 17.7 carry decisions, not deferrals). A hand-derived case and each approved deviation are
+    listed with their decisions and do not count as work left."""
     rows, missing, deferred = catalogue_rows(), not_authored(), m7_deferrals()
     print(f"M7 catalogue: {len(rows)} cases (design D21: {CATALOGUE_TOTAL})")
     for case_id, reason in HAND_DERIVED.items():
         print(f"hand-derived: {case_id} ({', '.join(DECISIONS.get(case_id, []))}): {reason}")
+    for case_id, (outputs, _) in DECIDED.items():
+        print(f"deviation: {case_id} ({', '.join(DECISIONS[case_id])}): {', '.join(outputs)}")
     for row, reason in missing.items():
         print(f"not authored: {row}: {reason}")
     for case_id in deferred:
@@ -225,6 +230,16 @@ def exit_check() -> int:
     ok = len(rows) == CATALOGUE_TOTAL and not missing and not deferred
     print("exit check: " + ("clean" if ok else "work left"))
     return 0 if ok else 1
+
+
+def write_audit() -> int:
+    """Task 17.2: the audit table of each catalogue; fails while a requirement has no case and no reason."""
+    tables = m7_audit.audit_rows()
+    for path in m7_audit.write_tables(tables):
+        print(path.relative_to(casegen.REPO))
+    left = m7_audit.gaps(tables)
+    print("\n".join(f"no case: {row}" for row in left) or "every requirement has a case or a unit-only reason")
+    return 1 if left else 0
 
 
 def write_all() -> None:
@@ -242,6 +257,7 @@ def main(argv: list[str]) -> int:
     action.add_argument("--dispatch", action="store_true", help="print the golden-capture.yml dispatch")
     action.add_argument("--dispatch-uncaptured", action="store_true", help="the dispatch for cases without expected/")
     action.add_argument("--exit-check", action="store_true", help="fail while an M7 row or deferral is left")
+    action.add_argument("--audit", action="store_true", help="rewrite the requirement audit tables (task 17.2)")
     args = parser.parse_args(argv)
     if args.list:
         print("\n".join(authored_ids()))
@@ -253,6 +269,8 @@ def main(argv: list[str]) -> int:
         print(dispatch_command(args.dispatch_uncaptured))
     elif args.exit_check:
         return exit_check()
+    elif args.audit:
+        return write_audit()
     else:
         write_all()
     return 0
