@@ -283,19 +283,26 @@ values and errors in scripts").
 - `SCHEM-CMD-002`: `Usage: schematic <syntax>` with the option's line of
   `schematic help` (missing or extra arguments, an unknown or incomplete
   flag, two of `-hier`/`-top`/`-flat`, a `-buschar` that is not two
-  characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`.
+  characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`,
+  and `xschem get_tok: bad argument "<n>"` for a third argument that is not
+  an integer (Q-SCHEM-62).
 - `SCHEM-CMD-003`: `schematic: no schematic is open`, for every option
   except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk`, `help`
   and `clipboard` (but `clipboard copy` needs a document).
 - `SCHEM-CMD-004`: `schematic: unsaved changes`, from `close` without
-  `-discard` and `open -window current` over a modified document.
+  `-discard` and `open -window current` over a modified document, and from
+  `xschem clear` without `force` over a modified document with
+  `xschem-compat` OFF ("clear without force").
 - `SCHEM-CMD-005`: the netlist run of `netlist` or `check` reported errors;
   the message is the list of error texts, one per line (the diagnostics
   themselves are reported first). `netlist <file> -force` writes the file
   before raising.
 - `SCHEM-CMD-006`: `schematic: no instance "<name>"` (also `no symbol`,
-  `no wire`, `no box <n> on layer <l>`), and the `xschem descend` /
-  `change_sch_path` errors for a missing instance or vector element.
+  `no wire`, `no box <n> on layer <l>`), `xschem getprop: instance not
+  found:<inst>` (a missing name or an index past the last instance),
+  `xschem getprop rect: no such box`, `xschem translate: instance not found`,
+  and the `xschem descend` / `change_sch_path` errors for a missing instance
+  or vector element.
 - `SCHEM-CMD-007`: `schematic: PDK <name> has no xschem data (<file>)`, from
   `schematic pdk <name>` when `<PDK root>/<name>/libs.tech/xschem/xschemrc`
   does not exist or no PDK store is known.
@@ -303,7 +310,8 @@ values and errors in scripts").
   `'get <key>'` and `'set <var>'` (capability schematic-command
   "xschem compatibility command").
 - `SCHEM-CMD-009`: `xschem set netlist_type: only spice is supported`.
-- `SCHEM-CMD-010`: `xschem command 'place_symbol' needs the editor`.
+- `SCHEM-CMD-010`: `xschem command '<cmd>' needs the editor`, from
+  `place_symbol`, `paste` without a point and `saveas` without a file.
 - `SCHEM-CMD-011`: `schematic: the netlist run was interrupted; no file is
   written`, from `netlist` and `check` when the front end's Interrupt
   (Ctrl-C, the Interrupt card) was pending before the run or was made during
@@ -359,7 +367,7 @@ fails when the two disagree.
 | `SCHEM-CMD-007` | error | The PDK named by `schematic pdk` has no xschem data (`libs.tech/xschem/xschemrc`). |
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
-| `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-CMD-010` | error | `xschem place_symbol`, `paste` without a point or `saveas` without a file needs the interactive editor. |
 | `SCHEM-CMD-011` | error | `schematic netlist` or `check` was interrupted; no file is written. |
 | `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
 | `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |

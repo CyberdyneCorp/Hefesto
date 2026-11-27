@@ -25,6 +25,10 @@
 #include "hefesto/schem/lib/symbol_cache.hpp"
 #include "hefesto/schem/net/bus.hpp"
 
+namespace hefesto::cmd {
+struct ScriptSession;
+}
+
 namespace hefesto::schem {
 
 /// Identifies an open document for the session's lifetime (never reused).
@@ -60,6 +64,10 @@ struct Session {
   // for the undo recorder); nullptr until the first one.
   const compat::CompatSettings* compat = nullptr;
   platform::FileSystem* files = nullptr;
+  // CMD: the script session of the last `schematic` command, whose exit
+  // status a failed `xschem netlist` sets to 10 with xschem-compat ON
+  // (Q-SCHEM-61); nullptr until the first one.
+  cmd::ScriptSession* script = nullptr;
 
   // EDIT: selection, snap, per-document undo history, hierarchy and
   // highlights (schem/edit/edit_state.hpp); never saved.
