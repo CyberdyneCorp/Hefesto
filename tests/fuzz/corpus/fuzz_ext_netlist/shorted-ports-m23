@@ -1,0 +1,18 @@
+#port "A" 0 0 0 1 1 metal1
+port "B" 1 9 0 10 1 metal1
+port "C" 2 20 0 21 1 metal1
+port "D" 3 30 0 31 1 metal1
+node "A" 10 2 0 0 metal1
+node "B" 10 2 9 0 metal1
+node "C" 10 2 20 0 metal1
+node "D" 10 2 30 0 metal1
+equiv "A" "B"
+equiv "C" "D"
+use sub s0 1 0 0 0 1 0
+merge "s0/X" "A" 3
+@@ sub
+port "X" 0 0 0 1 1 metal1
+port "Y" 1 5 0 6 1 metal1
+node "X" 5 1 0 0 metal1
+node "Y" 5 1 5 0 metal1
+equiv "X" "Y"

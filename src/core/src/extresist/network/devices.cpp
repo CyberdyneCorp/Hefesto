@@ -249,6 +249,18 @@ void Builder::add_device_plumbing(const DevTile& dev) {
   d.terms.assign(static_cast<std::size_t>(dev.record->terminal_count + 2), kNil);
   d.inside = area(tile);
   d.devtype = loctype;
+  // ResCalculateChildCapacitance's exts_device[t]: t is the tile's type (a
+  // split tile's left side unless it has no device record), and the record
+  // is the first one Magic keeps for t. A type without one adds no load
+  // (Magic dereferences NULL there; it cannot happen for a device tile).
+  tech::TileType captype = ty.left;
+  if (ty.split && records(captype).empty()) {
+    captype = ty.right;
+  }
+  if (const std::vector<const extract::DevicePattern*> recs = records(captype); !recs.empty()) {
+    d.gate_cap = recs.front()->area_cap;
+    d.sd_cap = recs.front()->perimeter_cap;
+  }
   g.devices.push_back(std::move(d));
   const Id device = static_cast<Id>(g.devices.size() - 1);
   const Id first = add_field(tile);

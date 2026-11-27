@@ -1,0 +1,68 @@
+&timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "long_port_name_number_00" 0 0 0 1 1 metal1
+port "long_port_name_number_01" 1 2 0 3 1 metal1
+port "long_port_name_number_02" 2 4 0 5 1 metal1
+port "long_port_name_number_03" 3 6 0 7 1 metal1
+port "long_port_name_number_04" 4 8 0 9 1 metal1
+port "long_port_name_number_05" 5 10 0 11 1 metal1
+port "long_port_name_number_06" 6 12 0 13 1 metal1
+port "long_port_name_number_07" 7 14 0 15 1 metal1
+port "long_port_name_number_08" 8 16 0 17 1 metal1
+port "long_port_name_number_09" 9 18 0 19 1 metal1
+port "long_port_name_number_10" 10 20 0 21 1 metal1
+port "long_port_name_number_11" 11 22 0 23 1 metal1
+port "long_port_name_number_12" 12 24 0 25 1 metal1
+port "long_port_name_number_13" 13 26 0 27 1 metal1
+port "long_port_name_number_14" 14 28 0 29 1 metal1
+port "long_port_name_number_15" 15 30 0 31 1 metal1
+port "long_port_name_number_16" 16 32 0 33 1 metal1
+port "long_port_name_number_17" 17 34 0 35 1 metal1
+port "long_port_name_number_18" 18 36 0 37 1 metal1
+port "long_port_name_number_19" 19 38 0 39 1 metal1
+port "long_port_name_number_20" 20 40 0 41 1 metal1
+port "long_port_name_number_21" 21 42 0 43 1 metal1
+port "long_port_name_number_22" 22 44 0 45 1 metal1
+port "long_port_name_number_23" 23 46 0 47 1 metal1
+port "long_port_name_number_24" 24 48 0 49 1 metal1
+port "long_port_name_number_25" 25 50 0 51 1 metal1
+port "long_port_name_number_26" 26 52 0 53 1 metal1
+port "long_port_name_number_27" 27 54 0 55 1 metal1
+port "long_port_name_number_28" 28 56 0 57 1 metal1
+port "long_port_name_number_29" 29 58 0 59 1 metal1
+parameters :7seg p=1
+node "long_port_name_number_00" 0 0 0 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_01" 0 0 2 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_02" 0 0 4 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_03" 0 0 6 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_04" 0 0 8 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_05" 0 0 10 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_06" 0 0 12 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_07" 0 0 14 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_08" 0 0 16 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_09" 0 0 18 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_10" 0 0 20 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_11" 0 0 22 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_12" 0 0 24 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_13" 0 0 26 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_14" 0 0 28 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_15" 0 0 30 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_16" 0 0 32 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_17" 0 0 34 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_18" 0 0 36 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_19" 0 0 38 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_20" 0 0 40 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_21" 0 0 42 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_22" 0 0 44 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_23" 0 0 46 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_24" 0 0 48 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_25" 0 0 50 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_26" 0 0 52 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_27" 0 0 54 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_28" 0 0 56 0 metal1 0 0 0 0 0 0
+node "long_port_name_number_29" 0 0 58 0 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 4 2 4 "GND!" "long_port_name_number_00" 8 0 "long_port_name_number_01" 4 0 "long_port_name_number_02" 4 0

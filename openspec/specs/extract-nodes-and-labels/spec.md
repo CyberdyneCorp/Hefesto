@@ -17,7 +17,7 @@ Compatibility: exact
 2. Contacts: a contact type on plane p connects to the material at the same location on every other plane the contact occupies, when that material's type connects to the contact type.
 3. Cross-plane overlap: a non-contact type t whose connectivity includes types on other planes (e.g., a well that connects to substrate diffusion) connects to every connecting tile on those planes that overlaps or touches the tile area expanded by 1 internal unit on all sides.
 
-Only active (electrical) types SHALL form nodes (space and non-electrical types never do, see `extract-tech-section`). Every active-type tile SHALL belong to exactly one node. Disjoint pieces SHALL be distinct nodes even if they carry the same label (see Requirement: Duplicate label warning).
+Only active (electrical) types SHALL form nodes (space and non-electrical types never do, see `extract-tech-section`). Every active-type tile SHALL belong to exactly one node, with one exception that depends on the `magic-compat` setting (Q-EXTRACT-31, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the second side of a two-sided split tile is never a region seed once its first side belongs to a region (DBSrPaintClient checks the tile's single client before visiting either side), so a second side that nothing else connects to is in no node and is missing from the `.ext`; with it OFF a region SHALL start at any side still unvisited, so every active-type tile side belongs to exactly one node. Disjoint pieces SHALL be distinct nodes even if they carry the same label (see Requirement: Duplicate label warning).
 
 (Magic ref: extract/ExtBasic.c:5443-5915, extract/ExtNghbors.c:74-438)
 
@@ -25,6 +25,16 @@ Only active (electrical) types SHALL form nodes (space and non-electrical types 
 - **GIVEN** a tech whose connect section connects `pwell` (plane well) with `psd` (plane active), a pwell rectangle (0,0)-(20,20) and a psd rectangle (20,5)-(24,9) that only abuts the well boundary
 - **WHEN** the cell is extracted
 - **THEN** the pwell and the psd are one node, because the 1-unit expanded search area of the pwell tile touches the psd
+
+#### Scenario: Second side of a split tile with magic-compat ON
+- **GIVEN** `magic-compat` ON and one split tile with poly on its south-west side and ndiff on its north-east side, and nothing else
+- **WHEN** the cell is extracted
+- **THEN** only the poly side is a node, as Magic writes for probe EX-P02, and the ndiff side is in no node (Q-EXTRACT-31)
+
+#### Scenario: Second side of a split tile with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same split tile
+- **WHEN** the cell is extracted
+- **THEN** the poly side and the ndiff side are two nodes (Q-EXTRACT-31)
 
 #### Scenario: Same label, unconnected
 - **GIVEN** two metal1 rectangles that do not touch, both labeled `n1`

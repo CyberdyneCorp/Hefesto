@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -405,4 +406,36 @@ TEST_CASE("short resistor builds a zero-ohm None resistor between shorted ports"
   CHECK(terminal_nodes(n.value().devices[0]) == Strings{"dummy", "A", "B"});
   CHECK(node_named(n.value(), "A") != nullptr);
   CHECK(node_named(n.value(), "B") != nullptr);
+}
+
+// Q-NETLIST-31 (compat) and Q-NETLIST-60: terminal 0 of every short device
+// in a cell is the shared node `dummy` with magic-compat ON; with it OFF
+// each device has a node of its own, `dummy#<n>` numbered per cell, that no
+// record's name reaches (a user net `dummy` stays apart).
+TEST_CASE("short devices share dummy with magic-compat ON and get dummy#<n> with it OFF",
+          "[cap:ext-flattening-read][req:Equivalence, merge and kill records]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    ExtFixture f;
+    f.file("top", "port A 0 0 0 1 1 m1\nport B 1 5 0 6 1 m1\nport C 2 10 0 11 1 m1\nport D 3 15 0 16 1 m1\n"
+                  "equiv A B\nequiv C D\nnode dummy 0 0 20 0 m1\n");
+    auto options = ExtFixture::netlister_options();
+    options.subcircuits = true;
+    options.magic_compat = compat;
+    options.shorts = extflat::ReadOptions::PortShorts::resistor;
+    extflat::FlattenOptions fo;
+    fo.subcircuits = extflat::FlattenOptions::Subcircuits::root_cleared;
+    const auto n = f.flat("top", ExtFixture::netlister_flags(), fo, options);
+    REQUIRE(n.ok());
+    REQUIRE(n.value().devices.size() == 2);
+    // The devices come in def_devs hash order.
+    std::vector<Strings> terms{terminal_nodes(n.value().devices[0]), terminal_nodes(n.value().devices[1])};
+    std::sort(terms.begin(), terms.end(), [](const Strings& a, const Strings& b) { return a[1] < b[1]; });
+    if (compat) {
+      CHECK(terms == std::vector<Strings>{{"dummy", "A", "B"}, {"dummy", "C", "D"}});
+    } else {
+      CHECK(terms == std::vector<Strings>{{"dummy#0", "A", "B"}, {"dummy#1", "C", "D"}});
+      CHECK(node_named(n.value(), "dummy") != nullptr);
+    }
+  }
 }

@@ -307,5 +307,12 @@ struct BuildInput {
 /// the final scrunch (Q-NETLIST-26, Q-NETLIST-47).
 [[nodiscard]] diag::Status reduce(Network& network, const Tolerances& tolerances, HeapState& heap,
                                   const compat::CompatSettings& compat);
+/// Added in M7 R5: ResMergeNodes(keep, gone) then ResDoneWithNode(keep) on
+/// a reduced network, as ResFixUpConnections merges the two S/D nodes of a
+/// symmetric layout device (extresist-output "Naming of network nodes").
+/// Node indices change (the done-list order is rebuilt); device indices,
+/// input_devices and the measured values do not. Indices out of range or
+/// equal are ignored.
+void merge_nodes(Network& network, std::size_t keep, std::size_t gone, const compat::CompatSettings& compat);
 
 }  // namespace hefesto::extresist

@@ -1,0 +1,11 @@
+style d
+    lambda 1
+    sidehalo 10
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    overlap metal2 metal1 20
+    sideoverlap metal2 space metal1 6
+    sideoverlap metal2 space metal1 6
+    defaultsideoverlap metal2 metal2 metal1 metal1 5

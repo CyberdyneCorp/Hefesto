@@ -87,6 +87,10 @@ struct NameEntry {
   std::uint32_t next = kNil;
   std::int32_t port = -1;     // efnn_port
   std::uint32_t redirect = kNil;  // efBuildEquiv points the hash entries of a merged-away name here
+  /// The name of a shorted-port device's own terminal-0 node (Q-NETLIST-31
+  /// and Q-NETLIST-60, magic-compat OFF): printed, but kept out of every
+  /// table a record's name is looked up in.
+  bool anonymous = false;
 };
 
 class NodeGraph {

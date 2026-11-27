@@ -168,11 +168,13 @@ CommandResult merge(const OptionCall& c) {
 // EXTTOSIM_DEFAULT: the thresholds and the output flags (EFOutputFlags = 0).
 // EFScale and -T are not session state in Hefesto: each run takes its own
 // (design D15, as landed); a left-over -p path (Q-NETLIST-61) is cleared.
+// EFOutputFlags = 0 also clears the short mode `ext2spice short` set.
 CommandResult reset(editor::EditorState& editor, SimSettings& settings) {
   settings.cthresh = 2.0;
   settings.rthresh = 10;
   editor.netlist.search_path.clear();
   editor.netlist.names = extflat::NameFlags{false, false, false, false, false};
+  editor.netlist.spice.shorts = spice::ShortMode::none;
   return CommandResult::success();
 }
 

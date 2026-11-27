@@ -40,7 +40,7 @@ For a selected net, the extractor SHALL build a private copy of the geometry as 
 
    A contact point holds at most four tiles (LAYERS_PER_CONTACT); a fifth match is ignored in both `magic-compat` settings (Magic writes past its array: undefined behaviour, fixed by the standing rule).
 
-As landed (M7 R4): the contact points of step 3 are found with ExtFindRegions over the scratch cell exactly as Magic runs it, including its region marker: the marker is the head of the contact list, which is null until the first contact is found, so a region that starts on a non-contact tile before then is not expanded. This fixes the order of the contact list (each tile's contact list is that order reversed), which decides the order in which contact nodes are made. The devices of step 2 are found and painted from the net's own cell (a device in a subcell is not painted; tasks.md 13.1).
+As landed (M7 R4): the contact points of step 3 are found with ExtFindRegions over the scratch cell exactly as Magic runs it, including its region marker: the marker is the head of the contact list, which is null until the first contact is found, so a region that starts on a non-contact tile before then is not expanded. This fixes the order of the contact list (each tile's contact list is that order reversed), which decides the order in which contact nodes are made. The devices of step 2 are found in the net's own cell and its subcells, as DBTreeSrTiles searches them: for each use that touches the search area, only the array elements whose images overlap it (DBArrayOverlap), y outer and x inner, in both `magic-compat` settings. With `magic-compat` ON a device tile found in a subcell is painted at the subcell's own coordinates, as Magic's resMakeDevFunc paints it without the search's transform, so a device in a moved or rotated subcell lands at the wrong place; with it OFF it is transformed to the root and painted where it sits (proposed Q-NETLIST-76). In both settings the search descends at most 64 uses (a crafted-input limit, approved 2026-11-25 under the standing rule); a device deeper down is not found and is reported with `No device of type <t> found at location <x>, <y>`.
 
 Compatibility: behavioral
 
@@ -50,6 +50,21 @@ Compatibility: behavioral
 - **GIVEN** `extresist skip poly` and a net that continues from metal1 through a contact onto poly
 - **WHEN** the geometry is collected
 - **THEN** the poly portion is not part of the copied net
+
+#### Scenario: Device in a moved subcell with magic-compat ON
+- **GIVEN** `magic-compat` ON and a net whose nfet is in a subcell placed at (10, 0), its own coordinates [0,10]^2
+- **WHEN** the geometry is collected
+- **THEN** the nfet is painted at [0,10]^2, over the net's own diffusion, and the driver point (10, 0) finds no device, as in Magic (proposed Q-NETLIST-76)
+
+#### Scenario: Device in a moved subcell with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same net
+- **WHEN** the geometry is collected
+- **THEN** the nfet is painted at [10,20]x[0,10] and the network is the flat layout's (proposed Q-NETLIST-76)
+
+#### Scenario: Device search in a large array
+- **GIVEN** a device record at a point between two elements of an array use of 10^6 elements whose indices end at 2^31-1, in either `magic-compat` setting
+- **WHEN** the geometry is collected
+- **THEN** no element is searched, and `No device of type nfet found at location <x>, <y>` is reported at once
 
 ### Requirement: Tile fracturing
 After contacts are dissolved, each plane SHALL be re-tiled by the concave-corner fracture defined below. At each concave corner, the split runs in the direction with less same-type material.
@@ -396,7 +411,7 @@ dist(p, b) along axis: if b has a contact rectangle C: (C.lo > p ? C.lo - p : C.
 ### Requirement: Contact resistors
 When the first of a contact point's tiles is processed, the contact point SHALL be turned into nodes and resistors as follows, for contact type t.
 
-**No resistance.** If the via resistance of t is 0, or the CIF via size is 0, or the CIF output style has no cut for t (Magic then reads an unset cut size, and with no output style dereferences a null style: undefined behaviour, fixed in both `magic-compat` settings by the standing rule), create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
+**No resistance.** If the via resistance of t is 0, or the CIF via size is 0, or the CIF output style has no cut for t (Magic then reads an unset cut size, and with no output style dereferences a null style: undefined behaviour, fixed in both `magic-compat` settings; Q-NETLIST-64 (a), resolution: fix, approved 2026-11-25), create one contact-kind node at the contact center. It joins all of the contact's plane tiles, with one breakpoint per tile that carries the contact rectangle. No resistor is made.
 
 **Via count.** Otherwise, let `c` be the CIF scale factor, `minside` the CIF cut size plus twice the border, `via` the cut size and `spacing` the cut separation.
 - If `width·c < minside` or `height·c < minside`, then `nx = ny = 1`. A once-per-session warning `Warning: <type> at <x> <y> smaller than extract section allows` is printed.
@@ -409,7 +424,9 @@ When the first of a contact point's tiles is processed, the contact point SHALL 
 
 Compatibility: exact
 
-(Magic ref: resis/ResMakeRes.c:856-1011, cif/CIFtech.c:2306-2365)
+The other undefined behaviour of Magic's network construction SHALL be fixed in both `magic-compat` settings (Q-NETLIST-64 (b)-(f), resolution: fix, approved 2026-11-25): a contact is recorded on at most four tiles (Magic writes past `cp_tile[4]`); a contact device type with no device residue uses the type's home plane (Magic reads an uninitialised plane number); a device whose area exceeds its quarter perimeter squared has width 0 (Magic converts a NaN square root to int); a terminal past the device's terminal count is ignored; and an S/D class past the device's list has no types (Magic reads past `exts_deviceSDTypes`).
+
+(Magic ref: resis/ResMakeRes.c:856-1011, cif/CIFtech.c:2306-2365, resis/ResMain.c:589-700, resis/ResUtils.c:887-940, resis/ResUtils.c:1060-1075, resis/ResJunct.c:51-110)
 
 #### Scenario: Two-via contact
 - **GIVEN** a via resistance of 10000 mΩ, CIF scale factor 10, cut size 20, border 10 and separation 20 (so minside = 40), and an 8×4 contact spanning two planes
@@ -596,6 +613,11 @@ Compatibility: exact
 - **GIVEN** origin → A through 1000 mΩ, A with 2000 aF, and no devices
 - **WHEN** Tdi is computed
 - **THEN** Tdi(A) = 2e6 zs
+
+#### Scenario: Gate load of a layout device
+- **GIVEN** a gate of a device on the net that lies on a network node
+- **WHEN** Cdown is computed, in either `magic-compat` setting
+- **THEN** that node's Cdown includes L·W·gateCap + 2·W·sdCap of the device record Magic keeps first for the device tile's type (for a split tile, its left type unless that type has no record); the gate load is never 0 for a record with nonzero `exts_deviceGateCap` or `exts_deviceSDCap`
 
 #### Scenario: Chain pruned bottom-up
 - **GIVEN** origin → A (1000 mΩ) → B (1000 mΩ), A and B each with 1 aF, neither a port, and mindelay 5000 zs

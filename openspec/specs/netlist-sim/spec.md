@@ -19,7 +19,7 @@ The command SHALL take an optional first word, matched case-insensitively with u
 | `merge none\|conservative\|aggressive` | Parallel-device merging (Q-NETLIST-14) | none |
 | `extresist on\|off` | Read `.res.ext` overlays | off |
 
-`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
+`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. `ext2sim` SHALL read with the short mode that `ext2spice short` set in the session, in both `magic-compat` settings, as Magic's shared EFOutputFlags do; `ext2sim default` clears it. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
 
 | Flag | Effect |
 |---|---|
@@ -38,7 +38,7 @@ The command SHALL take an optional first word, matched case-insensitively with u
 
 The default file names SHALL be `<cell>.sim`, `<cell>.al` and `<cell>.nodes`. With extresist on they SHALL be `<cell>.ext.sim`, `<cell>.ext.al` and `<cell>.ext.nodes`.
 
-The `-p` search path SHALL apply to the run that names it only, in both settings (Magic's EFDone frees it after every run, also when no cell is named); a path left by an `ext2spice` run that named no cell (capability `netlist-spice-options`) SHALL be used by the next run that gives no `-p`. When the root `.ext` file cannot be read, the behaviour depends on the `magic-compat` setting: with it ON the text `Cannot read extract file <cell>.ext` is the command's result and the command succeeds, as Magic's EFReadFile sets it; with it OFF the run fails with that message (EXTFLAT-READ-001). No file is written in either case.
+The `-p` search path SHALL apply to the run that names it only, in both settings (Q-NETLIST-61, resolution: compat, approved 2026-11-25; Magic's EFDone frees it after every run, also when no cell is named); a path left by an `ext2spice` run that named no cell (capability `netlist-spice-options`) SHALL be used by the next run that gives no `-p`. When the root `.ext` file cannot be read, the behaviour depends on the `magic-compat` setting (Q-NETLIST-59, resolution: compat, approved 2026-11-25, the same rule as `ext2spice`'s): with it ON the text `Cannot read extract file <cell>.ext` is the command's result and the command succeeds, as Magic's EFReadFile sets it; with it OFF the run fails with that message (EXTFLAT-READ-001). No file is written in either case.
 
 A run SHALL write `<cell>.al` only when alias is on and `<cell>.nodes` only when labels is on, and SHALL never write to or close a file that an earlier run opened, in both `magic-compat` settings (Q-NETLIST-52, resolution: fix). Magic closes the two files at the end of a run but keeps their handles, so a run after `alias off` or `labels off` writes through a freed handle and closes it again (a double free). The names given with `-o`, `-a` and `-l` SHALL apply to that run only, in both settings: Magic keeps pointers to the run's argument words, which later runs read after they are freed (the rule of Q-NETLIST-42 for `ext2spice -o`).
 
@@ -72,6 +72,27 @@ Compatibility: behavioral
 - **GIVEN** the session's default settings and `magic-compat` ON
 - **WHEN** `ext2sim -B -f su inv` runs, then `ext2sim inv`
 - **THEN** both runs write an SU file without attributes, and `-B` and format SU stay set for later runs
+
+#### Scenario: A missing .ext file with magic-compat ON
+- **GIVEN** `magic-compat` ON and no `nosuch.ext`
+- **WHEN** `ext2sim nosuch` runs
+- **THEN** the command succeeds with the result `Cannot read extract file nosuch.ext` and writes no file (Q-NETLIST-59)
+
+#### Scenario: A missing .ext file with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and no `nosuch.ext`
+- **WHEN** `ext2sim nosuch` runs
+- **THEN** the command fails with EXTFLAT-READ-001 and writes no file (Q-NETLIST-59)
+
+#### Scenario: The search path left by ext2spice with magic-compat ON
+- **GIVEN** `magic-compat` ON, no layout window, `/w/inv.ext` and no `inv.ext` in the current directory
+- **WHEN** `ext2spice -p /w` runs, then `ext2sim inv`
+- **THEN** `ext2sim` reads `/w/inv.ext`; with `magic-compat` OFF it cannot read `inv.ext` (Q-NETLIST-61)
+
+#### Scenario: ext2sim honours the ext2spice short mode
+- **GIVEN** `ext2spice short resistor` has run in the session
+- **WHEN** `ext2sim` reads a cell whose two ports are shorted
+- **THEN** it writes the short device `r A B 0.000000` instead of merging the ports, in both `magic-compat` settings
+- **AND** after `ext2sim default` the ports are merged again
 
 #### Scenario: Extresist file naming
 - **GIVEN** `ext2sim extresist on`

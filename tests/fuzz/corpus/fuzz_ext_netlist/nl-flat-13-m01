@@ -1,0 +1,14 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "n1" 0 1 0 0 metal1 0 0 0 0 0 0
+node "n2" 0 1 0 10 metal1 0 0 0 0 0 0
+node "a" 0 1 0 20 metal1 0 0 0 0 0 0
+cap "n2" "a" 5
+device mosfet nfet 0 0 2 4 2 4 "GND!" "a" 8 0 "n1" 4 0 "a" 4 0
+device mosfet nfet 10 0 12 4 2 4 "GND!" "a" 8 0 "a" 4 0 "a" 4 0
+killnode "n1"
+killnode "n2"

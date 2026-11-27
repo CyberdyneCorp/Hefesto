@@ -10,6 +10,8 @@
 
 #include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 
 #include "../command/resist_fixture.hpp"
@@ -146,6 +148,54 @@ TEST_CASE("connections from a parent become drive points", "[cap:extresist-comma
   CHECK(a.drive_points.front().rect == db::Rect{5, 5, 7, 7});
   CHECK(a.status.force);
   CHECK(a.status.drive_located);
+}
+
+// Regression (M7-S1, both modes): a parent `connect` with seven fields was
+// read at field 7, past the token vector (UBSan in the fuzz job).
+TEST_CASE("a parent connect with fewer than eight fields is ignored", "[cap:extresist-command][req:Input model]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    std::vector<std::string> messages;
+    const std::string parent = "use top t0 1 0 0 0 1 0\nconnect 0 0 1 1 metal1 t0/w\n";
+    const auto m = read_model(s, "node \"w\" 1 1 0 0 metal1\n", compat, {{"chip", parent}}, &messages);
+    REQUIRE(m.ok());
+    CHECK(m.value().nodes[0].drive_points.empty());
+    CHECK(has(messages, "chip.ext, line 2: Not enough tokens for connect line"));
+  }
+}
+
+// Regression (M7-S1, both modes): a `substrate` record with fewer than seven
+// fields was read past the token vector.
+TEST_CASE("a substrate record with fewer than seven fields is ignored", "[cap:extresist-command][req:Input model]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    std::vector<std::string> messages;
+    const auto m = read_model(s, "substrate \"s\" 0 0\n", compat, {}, &messages);
+    REQUIRE(m.ok());
+    CHECK(m.value().nodes.empty());
+    CHECK(has(messages, "top.ext, line 1: Not enough tokens for substrate line"));
+  }
+}
+
+// Regression (M7-S1, both modes): a parent `use` far from the origin overflowed
+// int32 in db::invert and db::apply; a non-Manhattan 2x2 is ignored.
+TEST_CASE("a parent use transform saturates and a non-Manhattan one is ignored", "[cap:extresist-command][req:Input model]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(compat);
+    const std::string parent =
+        "use top t0 1 0 2000000000 0 1 0\n"
+        "connect -2000000000 0 -1999999999 1 poly \"p\" \"t0/a\"\n"
+        "use top t1 2000000000 0 2000000000 0 1 0\n"
+        "connect 0 0 1 1 poly \"p\" \"t1/a\"\n";
+    const auto m = read_model(s, "node \"a\" 0 0 0 0 poly\n", compat, {{"chip", parent}});
+    REQUIRE(m.ok());
+    const extresist::InputNode& a = m.value().nodes[0];
+    REQUIRE(a.drive_points.size() == 1);
+    CHECK(a.drive_points.front().rect.x0 == std::numeric_limits<std::int32_t>::min());
+  }
 }
 
 // Regression (Q-NETLIST-68 (c), both modes): Magic dereferences NULL for a

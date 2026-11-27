@@ -12,6 +12,19 @@
 #     <cell>.ext.sim (.al, .nodes) with extresist on (ext2sim.c).
 # Option words (the first word an option name) only change the modelled state.
 
+# Tcl 8.5 (the macOS runners' /usr/bin/tclsh) has no lmap, which EX-064's script uses; Magic's
+# and Hefesto's Tcl (8.6) do.
+if {[info commands lmap] eq ""} {
+    proc lmap {var list body} {
+        upvar 1 $var item
+        set result {}
+        foreach item $list {
+            lappend result [uplevel 1 $body]
+        }
+        return $result
+    }
+}
+
 namespace eval fake {
     variable cell ""
     variable spice [dict create format spice3]

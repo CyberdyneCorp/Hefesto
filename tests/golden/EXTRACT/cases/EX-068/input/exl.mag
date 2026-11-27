@@ -1,0 +1,23 @@
+magic
+tech exttest
+timestamp 100
+<< metal1 >>
+rect 0 0 20 4
+rect 56 0 80 4
+rect 0 4 4 30
+rect 0 26 80 30
+rect 76 4 80 26
+<< metal2 >>
+rect 16 0 60 4
+<< via >>
+rect 16 0 20 4
+rect 56 0 60 4
+use rleaf c1
+timestamp 100
+transform 1 0 76 0 1 0
+box 76 0 86 4
+<< labels >>
+rlabel metal1 0 2 0 2 0 d
+rlabel metal1 78 15 78 15 0 d2
+rlabel metal1 40 28 40 28 0 r
+<< end >>

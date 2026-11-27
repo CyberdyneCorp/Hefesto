@@ -12,8 +12,8 @@
 // State (tasks.md 11.1-11.5, 11.7): every option is implemented; the run
 // and render() read and flatten through extflat::parse_common_args, read
 // and flatten (EXTFLAT, tasks.md 10.x) and write flat output with
-// write_flat (writer.hpp). Hierarchical output (`hierarchy on`, task 11.6)
-// answers CORE-NOTIMPL-008.
+// write_flat (writer.hpp); hierarchical output (`hierarchy on`, task 11.6)
+// with write_hier (hier_writer.cpp).
 //
 // Owner: INTEGRATION (this header and the registration); SPICE (the
 // implementation).
@@ -29,6 +29,7 @@
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/netlist/spice/settings.hpp"
+#include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::editor {
 struct EditorState;
@@ -49,6 +50,12 @@ struct SpiceRun {
 /// no file is written and EditorState::netlist is not changed.
 [[nodiscard]] diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view cell,
                                                 const SpiceSettings& settings);
+
+/// render() reading through `files`, the session's file system (M9 passes
+/// it so a sandboxed host keeps its project-root scoping; security review
+/// M7-S4). The overload above reads the local file system.
+[[nodiscard]] diag::Outcome<std::string> render(editor::EditorState& editor, platform::FileSystem& files,
+                                                std::string_view cell, const SpiceSettings& settings);
 
 /// cmdExtToSpcOption, in Magic's order: [run], default, format, rthresh,
 /// cthresh, merge, extresist, resistor, scale, short, subcircuits,

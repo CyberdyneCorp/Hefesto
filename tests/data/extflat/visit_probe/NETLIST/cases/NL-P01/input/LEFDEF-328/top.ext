@@ -1,0 +1,9 @@
+timestamp 100
+version 8.3
+tech lefdef
+style lefdef
+scale 1000 1000 1
+resistclasses 1000 500 100 50 30 20
+use pad pad_0 1 0 0 0 1 0
+port "P" 1 5 5 15 15 m1
+node "P" 0 0 5 5 m1 0 0 0 0 0 0 0 0 0 0 0 0

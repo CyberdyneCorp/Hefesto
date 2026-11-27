@@ -137,6 +137,9 @@ struct Def {
   /// hash-table order (requested size 32).
   util::MagicHashTable<std::uint32_t> dev_table{32};
   std::vector<Device> devices;
+  /// The anonymous terminal-0 nodes of shorted-port devices made so far
+  /// (magic-compat OFF; named `dummy#<n>` from 0, Q-NETLIST-60).
+  std::uint32_t short_nodes = 0;
 
   /// The devices in def_devs iteration order.
   template <typename F>

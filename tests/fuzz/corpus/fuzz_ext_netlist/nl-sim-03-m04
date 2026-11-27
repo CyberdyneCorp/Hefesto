@@ -1,0 +1,11 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "x" 0 0 0 0 ndiff 30 16 0 0 0 0
+node "a" 0 0 0 10 ndiff 40 26 0 0 0 0
+node "g" 0 0 0 20 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 8 2 8 "GND!" "g" 16 "ext:aps" "a" 8 0 "x" 8 0
+device mosfet nfet 10 0 12 8 2 8 "GND!" "g" 16 0 "a" 8 0 "x" 8 0

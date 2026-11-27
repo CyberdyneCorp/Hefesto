@@ -3,7 +3,8 @@
 //
 // ResExtractNet's preparation of the copied net (capability
 // extresist-network "Net geometry collection" steps 2-5): the device areas
-// painted from the source cell (resMakeDevFunc, resExpandDevFunc,
+// painted from the source cell or its subcells (DBTreeSrTiles with
+// resMakeDevFunc and resExpandDevFunc,
 // ResCalcPerimOverlap), the upper contact layers shaved (ResShaveContacts),
 // the contact points found (ExtFindRegions with ResFirst and ResEach over
 // ResConnectWithSD), the contacts dissolved (ResDissolveContacts) and every
@@ -21,6 +22,7 @@
 // Owner: RESNET (openspec/changes/m7-extraction design D3).
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -30,6 +32,8 @@
 #include <vector>
 
 #include "extresist/network/builder.hpp"
+#include "hefesto/db/array_overlap.hpp"
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/plane.hpp"
 
@@ -75,6 +79,64 @@ std::pair<db::Coord, db::Coord> side_range(const db::Rect& r, db::Side side) {
 
 namespace {
 
+// DBTreeSrTiles over `cell` and its subcells: each plane's tiles of
+// `mask` under `root_area` (root coordinates), then the array elements of
+// every use that overlap it (DBArrayOverlap, y outer, as dbCellSrFunc);
+// `visit(plane, tile, to_root)` returns false to stop. Returns false when
+// stopped.
+constexpr int kMaxDepth = 64;  // a crafted hierarchy cannot recurse forever
+
+template <typename Visit>
+bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& area,
+               const db::Rect& root_area, const tech::TypeMask& mask, Visit&& visit, int depth);
+
+template <typename Visit>
+bool tree_tiles(const db::CellDef& cell, const db::Transform& to_root, const db::Rect& root_area,
+                const tech::TypeMask& mask, Visit&& visit, int depth = 0) {
+  const db::Rect area = db::apply(db::invert(to_root), root_area);
+  for (std::size_t p = 0; p < cell.plane_count(); ++p) {
+    const db::Plane& plane = cell.plane(static_cast<tech::PlaneId>(p));
+    bool go = true;
+    plane.enumerate(area, mask, [&](const db::TileView& v) {
+      go = visit(plane, v, to_root);
+      return go;
+    });
+    if (!go) {
+      return false;
+    }
+  }
+  if (depth >= kMaxDepth) {
+    return true;
+  }
+  for (const auto& use : cell.uses()) {
+    if (use->def != nullptr && db::touch(use->bbox, area) &&
+        !use_tiles(*use, to_root, area, root_area, mask, visit, depth + 1)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// tree_tiles over the array elements of `use` whose images overlap `area`
+// (the parent's coordinates). The indices are 64-bit so that a range
+// ending at INT32_MAX ends the loop.
+template <typename Visit>
+bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& area,
+               const db::Rect& root_area, const tech::TypeMask& mask, Visit&& visit, int depth) {
+  const db::ElementRange r = db::array_overlap(use, area);
+  for (std::int64_t y = r.ylo; y <= r.yhi; ++y) {
+    for (std::int64_t x = r.xlo; x <= r.xhi; ++x) {
+      const db::Transform element =
+          db::element_transform(use, static_cast<std::int32_t>(x), static_cast<std::int32_t>(y));
+      const db::Transform child = db::compose(to_root, element);
+      if (!tree_tiles(*use.def, child, root_area, mask, visit, depth)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 struct DeviceCopy {
   Builder& b;
   const db::CellDef& src;
@@ -89,9 +151,10 @@ struct DeviceCopy {
     return recs.empty() ? nullptr : recs.front();
   }
 
-  /// resMakeDevFunc on one tile side: false to keep searching.
-  bool make(const db::TileView& v, DevTile& dev) const {
-    db::Rect area = v.area;
+  /// resMakeDevFunc on one tile side: false to keep searching. The area is
+  /// in root coordinates (GeoTransRect before the split-tile adjustment).
+  bool make(const db::TileView& v, const db::Transform& to_root, DevTile& dev) const {
+    db::Rect area = db::apply(to_root, v.area);
     tech::TileType ttype = v.type;
     if (v.split && !b.style_.device_types.test(v.left_type) && b.style_.device_types.test(v.right_type)) {
       db::Coord hh = area.y1 - area.y0;
@@ -118,20 +181,14 @@ struct DeviceCopy {
     return true;
   }
 
+  /// The device under `at`, in the source cell or any of its subcells
+  /// (DBTreeSrTiles with resMakeDevFunc).
   bool find(db::Point at, DevTile& dev) const {
     const db::Rect unit{at.x, at.y, at.x + 1, at.y + 1};
-    const tech::TypeMask mask = all_but_space();
-    for (std::size_t p = 0; p < src.plane_count(); ++p) {
-      bool found = false;
-      src.plane(static_cast<tech::PlaneId>(p)).enumerate(unit, mask, [&](const db::TileView& v) {
-        found = make(v, dev);
-        return !found;
-      });
-      if (found) {
-        return true;
-      }
-    }
-    return false;
+    return !tree_tiles(src, db::kIdentity, unit, all_but_space(),
+                       [&](const db::Plane&, const db::TileView& v, const db::Transform& to_root) {
+                         return !make(v, to_root, dev);
+                       });
   }
 
   [[nodiscard]] bool part_of(tech::TileType t, tech::TileType device) const {
@@ -160,35 +217,38 @@ struct DeviceCopy {
     dev.overlap += overlap;
   }
 
-  void paint(const db::TileView& tp, bool right_side, const DevTile& dev) const {
+  /// resExpandDevFunc's paint of one device tile. With magic-compat ON the
+  /// tile is painted at its own cell's coordinates, as Magic's TiToRect
+  /// without the search context's transform does (a device in a moved or
+  /// rotated subcell lands at the wrong place); with it OFF it is
+  /// transformed to the root (proposed Q-NETLIST-76).
+  void paint(const db::TileView& tp, bool right_side, const db::Transform& to_root, const DevTile& dev) const {
     const auto plane = b.tech_.home_plane(dev.type);
     if (!plane) {
       return;
     }
     const db::PaintRow row = db::paint_row(b.tech_, *plane, dev.type);
     db::Plane& dst = b.def.plane(*plane);
+    const bool moved = !b.input.magic_compat;
+    const db::Rect area = moved ? db::apply(to_root, tp.area) : tp.area;
     if (tp.split) {
-      (void)dst.paint_triangle(tp.area, tp.diagonal, right_side, row, b.input.magic_compat, nullptr,
+      const db::TriangleSide side =
+          moved ? db::transform_triangle(to_root, tp.diagonal, right_side) : db::TriangleSide{tp.diagonal, right_side};
+      (void)dst.paint_triangle(area, side.diagonal, side.right_side, row, b.input.magic_compat, nullptr,
                                db::PaintMerge::none);
     } else {
-      (void)dst.paint(tp.area, row, db::PaintMerge::none);
+      (void)dst.paint(area, row, db::PaintMerge::none);
     }
   }
 
-  /// resExpandDevFunc from the first tile of the device type in its area.
+  /// resExpandDevFunc from the first tile of the device type in its area,
+  /// in the source cell or a subcell.
   void expand(DevTile& dev) const {
-    for (std::size_t p = 0; p < src.plane_count(); ++p) {
-      const db::Plane& plane = src.plane(static_cast<tech::PlaneId>(p));
-      std::optional<db::TileView> first;
-      plane.enumerate(dev.area, tech::TypeMask::of(dev.type), [&](const db::TileView& v) {
-        first = v;
-        return false;
-      });
-      if (first) {
-        flood(plane, *first, dev);
-        return;
-      }
-    }
+    (void)tree_tiles(src, db::kIdentity, dev.area, tech::TypeMask::of(dev.type),
+                     [&](const db::Plane& plane, const db::TileView& v, const db::Transform& to_root) {
+                       flood(plane, v, to_root, dev);
+                       return false;
+                     });
   }
 
   /// The device side of a split tile and its hypotenuse-adjacent sides
@@ -222,13 +282,13 @@ struct DeviceCopy {
     }
   }
 
-  void flood(const db::Plane& plane, const db::TileView& start, DevTile& dev) const {
+  void flood(const db::Plane& plane, const db::TileView& start, const db::Transform& to_root, DevTile& dev) const {
     Flood f{{start.tile}, {start}, {}};
     while (!f.stack.empty()) {
       const db::TileView tp = f.stack.back();
       f.stack.pop_back();
       const auto [ignore, right_side] = split_sides(tp, dev.type);
-      paint(tp, right_side, dev);
+      paint(tp, right_side, to_root, dev);
       perim_overlap(plane, tp, dev);
       for (const auto& [side, edge] : {std::pair{db::Side::top, kTopEdge}, std::pair{db::Side::bottom, kBottomEdge},
                                       std::pair{db::Side::right, kRightEdge}, std::pair{db::Side::left, kLeftEdge}}) {

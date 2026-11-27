@@ -81,21 +81,23 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-92: `antennacheck <cell>` with no layout window
 - Kind: bug
-- Status: pending user confirmation (fixed in both modes in M7 round R4 by ANTENNA under the standing rule)
+- Status: approved 2026-11-25 (fixed in both modes in M7 round R4 by ANTENNA under the standing rule; approved with the recommended option)
 - Magic behavior: CmdAntennaCheck dereferences the NULL window (`editUse = (CellUse *)w->w_surfaceID`) when a cell is named and no layout window exists: a crash.
 - Evidence: extflat/EFantenna.c:216-221
 - As implemented (round R4), both modes: Hefesto prints `Point to a window or specify a cell name.` Tests: `tests/unit/antenna/run_test.cpp`.
 - Options: fix (as implemented)
 - Recommendation: fix. Spec on approval: `antenna-check` "Antenna check command".
+- Resolution: fix — in both modes `antennacheck <cell>` with no layout window prints `Point to a window or specify a cell name.` and checks nothing (Magic dereferences the missing window). Spec: `antenna-check` "Antenna check command". Tests: `tests/unit/antenna/run_test.cpp`. Approved 2026-11-25.
 
 ### Q-MISC-93: antennacheck devices with no style device line or no terminals
 - Kind: bug
-- Status: pending user confirmation (fixed in both modes in M7 round R4 by ANTENNA under the standing rule)
+- Status: approved 2026-11-25 (fixed in both modes in M7 round R4 by ANTENNA under the standing rule; approved with the recommended option)
 - Magic behavior: a device whose model names no style device line makes extGetDevType return -1, then DBPlane(-1) is read; a device with no terminals reads `dev_terms[0]`.
 - Evidence: extflat/EFantenna.c:251-255, 410, 427-430
 - As implemented (round R4), both modes: the device is skipped. Tests: `tests/unit/antenna/run_test.cpp` "a device whose model has no style device line is skipped" (added in the R4 fix pass; without the guard it aborts under libc++ hardening). The no-terminal guard has no test: Hefesto's `.ext` reader gives every fet, mosfet and asymmetric device at least one terminal (the record needs 11 tokens and whole terminal triples), so no input reaches it; it stays as a defensive check.
 - Options: fix (as implemented)
 - Recommendation: fix.
+- Resolution: fix — in both modes a device whose model names no style device line, or that has no terminal, is skipped. Spec: `antenna-check` "Antenna check command". Test: `tests/unit/antenna/run_test.cpp` "a device whose model has no style device line is skipped". Approved 2026-11-25.
 
 
 ## mask-hints

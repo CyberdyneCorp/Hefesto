@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "ext_fixture.hpp"
+#include "hefesto/extflat/names.hpp"
 #include "hier_name.hpp"
 #include "text.hpp"
 
@@ -59,6 +60,16 @@ TEST_CASE("the preference order of names", "[cap:ext-flattening-names][req:Name 
   // Regression: an empty leaf is read as ending in NUL, not before the name.
   CHECK(best("a/", "a/b#"));
   CHECK(best("", "x"));            // shorter
+}
+
+// The public form of EFHNBest that hier_writer.cpp's subcktVisit uses on
+// names written with `/`: the same order as detail::prefer_name.
+TEST_CASE("extflat::prefer_name is EFHNBest on written names", "[cap:ext-flattening-names][req:Name preference order]") {
+  CHECK(extflat::prefer_name("Q", "P"));
+  CHECK_FALSE(extflat::prefer_name("P", "Q"));
+  CHECK(extflat::prefer_name("a", "b#"));
+  CHECK(extflat::prefer_name("bb", "x/a"));
+  CHECK_FALSE(extflat::prefer_name("x/a", "bb"));
 }
 
 TEST_CASE("only names listed in globalNets are global", "[cap:ext-flattening-names][req:Global and ground detection]") {
