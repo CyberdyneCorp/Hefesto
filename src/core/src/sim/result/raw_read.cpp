@@ -198,7 +198,7 @@ class RawReader {
   // --- variables and data ---
 
   diag::Status read_variables(Plot& plot, std::uint64_t count) {
-    plot.vectors.reserve(static_cast<std::size_t>(count));  // charged by over_budget
+    plot.vectors.reserve(count);  // charged by over_budget
     for (std::uint64_t i = 0; i < count; ++i) {
       const auto line = next_line();
       const std::vector<std::string> tokens = line ? words(*line) : std::vector<std::string>{};
