@@ -55,7 +55,8 @@ bool has(const std::string& text, const std::string& line) { return text.find(li
 }  // namespace
 
 // Regression (both modes): ext2sim ignored `ext2spice short`, so the ports
-// merged; Magic's efBuildEquiv reads the shared EFOutputFlags.
+// merged; Magic's efBuildEquiv reads the shared EFOutputFlags (Q-NETLIST-70,
+// replicate: one shared short mode, cleared by `ext2sim default`).
 TEST_CASE("ext2sim builds the short devices ext2spice short asks for; ext2sim default clears it",
           "[cap:netlist-sim][req:Command options and defaults]") {
   for (const bool compat : {true, false}) {

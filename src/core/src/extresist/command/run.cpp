@@ -501,7 +501,7 @@ CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& 
 // rg_Tdi as the second cutoff reads it. ResDoSimplify sets it only when
 // it simplifies or writes the lump file; otherwise Magic reads the value
 // ResInit reset it to at the start of the command, 0 (magic-compat ON), and
-// Hefesto applies no delay cutoff (OFF; proposed Q-NETLIST-72).
+// Hefesto applies no delay cutoff (OFF; Q-NETLIST-72).
 std::optional<double> Runner::run_tdi(const Network& network) {
   if (options_.simplify || options_.lumped) {
     last_tdi_ = network.tdi;

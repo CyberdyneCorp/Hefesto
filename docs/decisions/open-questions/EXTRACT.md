@@ -392,30 +392,33 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-42: A receiver label touching two yanked tiles gets two `distance` records
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by EXTCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by EXTCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: extLengthYank lists a receiver label once for each yanked tile whose area, grown by one unit at the top and right, it touches, so a label on the shared corner of two tiles is listed twice and extLength writes two identical `distance` records for it.
 - Evidence: extract/ExtLength.c:448-450
 - As implemented (round R5): magic-compat ON lists the label once per touched tile, as Magic; OFF lists each receiver label once. Test: `tests/unit/extract/length/length_test.cpp` "a receiver touching two yanked tiles is listed twice with magic-compat ON, once OFF".
 - Options: compat (as implemented) | replicate
 - Recommendation: compat. A duplicated record carries no information; ON keeps Magic's output.
-- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and a scenario per mode, applied in round R5); the row ID is cited there on approval.
+- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and a scenario per mode, applied in round R5); the row ID is cited there since round R6.
+- Resolution: compat — with `magic-compat` ON a receiver label is listed once for each yanked tile it touches (each tile grown by one unit at the top and right), so a label on the shared corner of two tiles gets two identical `distance` records, as Magic; with it OFF each receiver label is listed once and gets one record. Spec: `extract-commands` "Path length extraction" (sentence and the scenarios "Receiver on the shared corner of two yanked tiles" per mode, citing the row). Tests: `tests/unit/extract/length/length_test.cpp` "Q-EXTRACT-42: a receiver touching two yanked tiles is listed twice with magic-compat ON" / "... is listed once with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-EXTRACT-43: `extract length` prints a stale or uninitialised `distance` for a driver label on space
 - Kind: bug
-- Status: proposed (fixed in both modes in M7 round R5 by EXTCMD under the standing rule: undefined behaviour)
+- Status: approved 2026-11-27 (fixed in both modes in M7 round R5 by EXTCMD under the standing rule: undefined behaviour; approved with the recommended option)
 - Magic behavior: extPathPairDistance returns without setting min and max for a driver label on space, and extLength still prints `distance` with the previous pair's values, or uninitialised ones for the first pair. The same pass sums distances in `int` (overflow on long nets) and floods by recursion (the stack can overflow on a large net).
 - Evidence: extract/ExtLength.c:302-304, 639-640, 640-1040
 - As implemented (round R5), both modes: a driver label on space gets no record; distances are summed in 64 bits; the flood keeps its frames on the heap. Test: `tests/unit/extract/length/length_test.cpp` "a driver label on space writes no record".
 - Options: fix (as implemented) | replicate (not possible for uninitialised values)
 - Recommendation: fix.
-- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and scenario "Driver label on space", applied in round R5); the row ID is cited there on approval.
+- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and scenario "Driver label on space", applied in round R5); the row ID is cited there since round R6.
+- Resolution: fix — in both modes a driver label on space gets no `distance` record (Magic prints the previous pair's values or uninitialised ones), distances are summed in 64 bits, and the flood keeps its frames on the heap instead of recursing. Spec: `extract-commands` "Path length extraction" (the sentence and the scenarios "Driver label on space", "Path length beyond the 32-bit range" and "A net of many tiles floods without recursion", citing the row). Tests: `tests/unit/extract/length/length_test.cpp` "a driver label on space writes no record (Magic prints stale values)", "distances add in 64 bits (Magic's int sum overflows)", "a net of 60000 tiles floods without recursion" (each in both modes or mode-independent). Approved 2026-11-27.
 
 ### Q-EXTRACT-44: `extract path` with a trailing slash names `<dir>//<cell>.ext`
 - Kind: compat
-- Status: proposed (raised in the M7 round R5 fix pass from a review finding, 2026-11-27; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in the M7 round R5 fix pass from a review finding, 2026-11-27; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: ExtFileOpen joins ExtLocalPath and the cell name with `sprintf("%s/%s")`, so `extract path ext/` writes `ext//<cell>.ext`, and the `Extracting <cell> into ext//<cell>.ext:` message shows the doubled slash (capture EX-066). The file is the same; only the printed name differs.
 - Evidence: extract/ExtCell.c:193, :200; golden case EX-066
 - As implemented (R5 fix pass): magic-compat ON joins as Magic (`AtomicOutput` and so `extract` and `extresist`); OFF joins with one separator. Tests: `tests/unit/extract/file/atomic_output_test.cpp` "An extract path with a trailing slash is joined as Magic's sprintf joins it with magic-compat ON" / "... with one separator with magic-compat OFF".
 - Options: compat (as implemented) | replicate (both modes print `//`)
 - Recommendation: compat. ON keeps EX-066 byte-exact; OFF prints the path a user expects.
 - Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode).
+- Resolution: compat — with `magic-compat` ON the `.ext` path joins the extract path and the cell name as Magic's `sprintf("%s/%s")` does, so `extract path ext/` names `ext//<cell>.ext` (EX-066 byte-exact); with it OFF the join uses one separator, `ext/<cell>.ext`. The file written is the same. Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extract/file/atomic_output_test.cpp` (one per mode). Approved 2026-11-27.

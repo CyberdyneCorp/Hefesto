@@ -83,7 +83,7 @@ struct YankedPath {
 /// into a new scratch cell, and the receiver labels of `lists` touching its
 /// tiles, last found first. With magic-compat ON a receiver is listed once
 /// per yanked tile whose area (grown by one unit at the top and right) it
-/// touches, as in Magic; OFF lists each label once (proposed Q-EXTRACT-42).
+/// touches, as in Magic; OFF lists each label once (Q-EXTRACT-42).
 [[nodiscard]] YankedPath yank_path(const db::CellDef& root, const tech::Technology& technology,
                                    const std::vector<PathLabel>& drivers, const LengthLists& lists,
                                    bool magic_compat);
@@ -97,7 +97,7 @@ struct YankedPath {
 /// names of the drivers whose labels are not found (in that order). A
 /// driver label on space gets no record: Magic prints the previous pair's
 /// values, or uninitialised ones for the first pair (a fix in both modes,
-/// proposed Q-EXTRACT-43).
+/// Q-EXTRACT-43).
 struct PathLengthResult {
   std::vector<PathRecord> records;
   std::vector<std::string> missing;
