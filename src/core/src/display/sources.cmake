@@ -13,3 +13,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/scene.cpp
   ${CMAKE_CURRENT_LIST_DIR}/scene_splice.cpp
   ${CMAKE_CURRENT_LIST_DIR}/styles.cpp)
+
+# M10 plot/route (openspec/changes/m10-plot-route/design.md D3): view export
+# to SVG and PNG, owned by EXPORT.
+include("${CMAKE_CURRENT_LIST_DIR}/export/sources.cmake")

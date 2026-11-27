@@ -38,6 +38,7 @@ constexpr std::array kTable = {
     CodeInfo{"CORE-NOTIMPL-007", error, "Not implemented yet: an M8 schematic function declared by the M8 scaffold before its workstream landed it (retired at M8 exit)."},
     CodeInfo{"CORE-NOTIMPL-008", error, "Retired in M7, never reused. Was: an M7 extraction or netlisting command option or function declared by the M7 scaffold before its workstream landed it."},
     CodeInfo{"CORE-NOTIMPL-009", error, "Not implemented yet: an M9 LVS or simulation command or function declared by the M9 scaffold before its workstream landed it (retired at M9 exit)."},
+    CodeInfo{"CORE-NOTIMPL-010", error, "Not implemented yet: an M10 plotting or maze-routing command or function declared by the M10 plot/route scaffold before its workstream landed it (retired at M10 exit)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -66,8 +67,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 34>& areas() noexcept {
-  static const std::array<CodeArea, 34> table = {
+const std::array<CodeArea, 36>& areas() noexcept {
+  static const std::array<CodeArea, 36> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -110,6 +111,9 @@ const std::array<CodeArea, 34>& areas() noexcept {
       // M9 areas (openspec/changes/m9-lvs-simulation/design.md D3).
       CodeArea{"lvs", "LVS", "docs/diagnostics/codes/lvs.md", area_codes::lvs()},
       CodeArea{"sim", "SIM", "docs/diagnostics/codes/sim.md", area_codes::sim()},
+      // M10 plot/route areas (openspec/changes/m10-plot-route/design.md D3).
+      CodeArea{"plot", "PLOT", "docs/diagnostics/codes/plot.md", area_codes::plot()},
+      CodeArea{"route", "ROUTE", "docs/diagnostics/codes/route.md", area_codes::route()},
   };
   return table;
 }

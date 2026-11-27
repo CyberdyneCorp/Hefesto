@@ -1,0 +1,14 @@
+"top" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Non coordinate: x
+Nonnumeric coordinate: y
+Incomplete coordinates.
+No timeout value given.
+Noninteger timeout value: x
+Missing label.
+Missing label.
+Missing layer list.
+No active route layers in start list!
+No active route layers in destination list!
+Can not use box for dest:  No Box.
+Incomplete coordinates.

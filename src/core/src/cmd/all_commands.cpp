@@ -24,6 +24,9 @@
 #include "hefesto/oasis/command/command.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
+#include "hefesto/plot/cmd/commands.hpp"
+#include "hefesto/route/diag/commands.hpp"
+#include "hefesto/route/iroute/commands.hpp"
 #include "hefesto/schem/cmd/commands.hpp"
 #include "hefesto/script/binding/commands.hpp"
 #include "hefesto/script/pdk/commands.hpp"
@@ -87,6 +90,11 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = view3d::register_export3d_command(registry) && ok;
   // M9 (openspec/changes/m9-lvs-simulation design.md "Area contracts" LVSCMD).
   ok = lvs::register_lvs_commands(registry) && ok;
+  // M10 plot/route (openspec/changes/m10-plot-route/design.md D3): `plot`,
+  // `iroute`, `*iroute`, `*mzroute`.
+  ok = plot::register_plot_command(registry) && ok;
+  ok = route::register_iroute_commands(registry) && ok;
+  ok = route::register_route_diag_commands(registry) && ok;
   return ok;
 }
 

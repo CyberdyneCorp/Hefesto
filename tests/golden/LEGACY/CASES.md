@@ -48,17 +48,30 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless (
 | LEG-MZ-07 | router-maze | start inside `fence` paint, dest outside | stdout result | Blockage model (fence parity) |
 | LEG-MZ-08 | router-maze | `iroute wizard window 0`, `wizard penalty 1.3`, `wizard bloomLimit 5`, then route 04 | stdout, `.mag` | Windowed bloom search; Search, verbosity, version and wizard parameters |
 | LEG-MZ-09 | router-maze-iroute | `iroute layers`, `iroute layers * hCost`, `iroute contacts m2contact cost 99`, `iroute spacings`, `iroute spacings CLEAR` | stdout | Layer and contact parameter tables; Spacings subcommand |
-| LEG-MZ-10 | router-maze-iroute | `iroute route -foo`; `-slabel nosuch`; start already connected to dest | stderr; Tcl result | iroute route options; Route results |
+| LEG-MZ-10 | router-maze-iroute | `iroute route -foo`; `-slabel nosuch`; start already connected to dest (Magic exits 139 in the third probe) | stderr; Tcl result; exit status | iroute route options; Route results |
 | LEG-MZ-11 | router-maze-iroute | modify params, `saveParameters`, reload tech, `source` file, `iroute layers` | stdout | saveParameters file format |
 | LEG-MZ-12 | router-maze | `route` estimation off (`iroute wizard estimate no`) vs on for 04 | `.mag` | Cost estimation |
 | LEG-MZ-13 | router-maze | scmos; empty cell; `iroute route` between two metal1 labels 200 apart horizontally, then `*mzroute dumpEstimates` over the area | estimate dump text; resulting `.mag` paint | Cost estimation; Path to paint conversion |
 | LEG-MZ-14 | router-maze | scmos; opaque unexpanded subcell between start and destination (estimation on vs off via `iroute search`/`iroute estimate`) | routed paint; `iroute` statistics (blooms, points processed) | Cost estimation; Windowed bloom search |
-| LEG-MZ-15 | router-maze | scmos; destination metal1 box inside a larger same-net metal1 area (expand endpoints on); `iroute route` | routed paint end point | Destination areas; Walk extension |
+| LEG-MZ-15 | router-maze | scmos; destination metal1 box inside a larger same-net metal1 area (expand endpoints on); `iroute route` (Magic exits 139 in the route) | routed paint end point when written; exit status | Destination areas; Walk extension |
 | LEG-MZ-16 | router-maze | scmos; start on m2contact terminal; route to metal2 label | routed paint (initial contact use) | Initial paths; Contact extension (Q-LEGACY-85) |
 | LEG-MZ-17 | router-maze | scmos; route that must jog upward past a narrow gap; compare to mirrored downward case | routed paint (asymmetry) | Interesting points (Q-LEGACY-87) |
 | LEG-MZ-18 | router-maze | scmos; two equal-cost alternative routes (symmetric obstacle) | routed paint (tie choice) | Heap ordering; Windowed bloom search |
 | LEG-MZ-19 | router-maze | scmos; magnet hint paint parallel to the route and rotate paint over part of it | routed paint; final cost from `iroute verbosity 2` | Segment cost model; Hint, fence and rotate layers |
 | LEG-MZ-20 | router-maze | scmos; `iroute` with window width 1000 and bloom limit 5 | stdout result code / partial route | Windowed bloom search |
+| LEG-MZ-21 | router-maze-iroute | `iroute help`, `iroute help route`, `iroute version`, `iroute verbosity`, `verbosity 0` then `verbosity 2`, bad verbosity values, `iroute foo`, `iroute s` | stdout, stderr | iroute availability and dispatch; iroute help; Search, verbosity, version and wizard parameters |
+| LEG-MZ-22 | router-maze-iroute | `iroute wizard`, each wizard parameter set and shown, non-numeric and unknown values | stdout, stderr | Search, verbosity, version and wizard parameters |
+| LEG-MZ-23 | router-maze-iroute | `iroute search`, `search rate 100`, `search width x`, unknown parameter, too many arguments | stdout, stderr | Search, verbosity, version and wizard parameters |
+| LEG-MZ-24 | router-maze-iroute | route option errors: `-dRect` (non coordinate, nonnumeric, incomplete), `-timeout` missing and non-integer, missing label and layer list, no active layers, `-spoint 1um 1um` | stderr | iroute route options (Q-LEGACY-45, ON) |
+| LEG-MZ-25 | router-maze-iroute | Tcl results of success, an enclosed destination, an enclosed start and an already-routed pair | Tcl results, stdout, stderr, `.mag` | Route results (Q-LEGACY-42, ON) |
+| LEG-MZ-26 | router-maze-iroute | routes with `-sPoint`/`-dRect`, `-dSelection`, `-dBox` | `.mag`, stdout | Route context and endpoints |
+| LEG-MZ-27 | router-maze-iroute | sky130A: `iroute`, `iroute layers` | stderr | Derived irouter style (missing style on a PDK, Q-LEGACY-37, ON) |
+| LEG-MZ-28 | router-maze-iroute | two unconnected nodes at the start point, batch run with stdin at end of file, under `timeout -s KILL 120` | stdout, `.mag` (collected when written), exit status (137 when killed) | Route context and endpoints (Q-LEGACY-40 verify; "hang" is one of the outcomes) |
+| LEG-MZ-29 | router-maze-iroute | start label on both sides of a fence, then paint and `undo` | `.mag`, stdout | Route context and endpoints; Route results (Q-LEGACY-38, documented deviation: Magic's undo stays off) |
+| LEG-MZ-30 | router-maze-iroute | `scalegrid 1 2`, a changed spacing, `saveParameters` | file | saveParameters file format; Spacings subcommand (Q-LEGACY-43, ON) |
+| LEG-MZ-31 | router-maze-iroute | `*mzroute help`, `*mzroute parms`, `*iroute help`, `*iroute parms` | stdout (informative) | Interactive router diagnostics |
+| LEG-MZ-32 | router-maze | a technology with an explicit `spacing m1 m2 5`; `iroute spacings metal1` before and after `scalegrid 1 2` | stdout | Width and spacing derivation from DRC (Q-LEGACY-106, ON: Magic drops the explicit spacing after a rescale) |
+| LEG-MZ-33 | router-maze | a technology with two `style irouter` blocks of different metal1 costs; `iroute layers` | stdout | Style defaults and lookup (Q-LEGACY-107: the last block is used) |
 | LEG-PL-01 | plow | metal1 (10,0)-(13,20), box (5,0)-(20,20); `plow right` | `.mag` | Box plow initial edges; Plow search rules |
 | LEG-PL-02 | plow | two metal1 boxes separated by 2 (< rule 3); plow left box right by 7 | `.mag` | Plow search rules; Plowing limitations |
 | LEG-PL-03 | plow | transistor (poly over diff) with metal contacts; plow through gate in all 4 directions | `.mag` ×4 | plowing technology section; Plow search rules (fixed, covered, drag, contacts) |
@@ -108,3 +121,10 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless (
 | LEG-SIM-05 | irsim-interface | `getnode abort vdd!` then getnode on vdd net | stdout | Abort names |
 | LEG-SIM-06 | irsim-interface | unlabelled node in subcell (generated `#` names) vs labelled alias | stdout | Node name preference order |
 | LEG-SIM-07 | irsim-interface | `getnode bogus`, `getnode alias`, `getnode globals` | stdout/stderr | getnode command forms |
+
+## Authoring status
+
+Case directories under `cases/` hold the inputs; `expected/` comes from the CI capture (golden-capture.yml).
+Generated by `tools/golden/authoring/legacy_cases.py` (M10, 33; openspec/changes/m10-plot-route design D19, task 2.5): LEG-MZ-01..33. scmos comes from Magic's `scmos.tech.in` as an `[[external]]` generated input; LEG-MZ-02 loads a small Hefesto-authored technology with the `mzrouter` grammar errors, LEG-MZ-32 and -33 (added by the round 0 review) two variants of it with an explicit `spacing` statement and with two `style irouter` blocks, and LEG-MZ-27 runs on sky130A. Routed cells are saved and compared as `.mag` files (timestamp masked). LEG-MZ-28 runs under `timeout -s KILL 120` and records its exit status (`exit.txt`; 137 is the outcome "hang" of Q-LEGACY-40) and collects `routed.mag` only when the route ends; LEG-MZ-11 `source`s the `saveParameters` file in Magic's Tcl build (Q-LEGACY-44). `legacy_cases.py --deviations` writes their deferral block of `deviations.toml` (INTEGRATION applies it); LEG-MZ-29 keeps Q-LEGACY-38 after it replays.
+
+Not authored: the LEG-CH, LEG-GA, LEG-N2I, LEG-PL, LEG-WR, LEG-NL and LEG-SIM cases (later milestones).

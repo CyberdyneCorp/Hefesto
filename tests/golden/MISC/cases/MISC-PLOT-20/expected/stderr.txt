@@ -1,0 +1,18 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+input/plotbad.tech: line 78: section plot:
+	Must declare a plot style before anything else.
+input/plotbad.tech: line 79: section plot:
+	"style" lines must have exactly two arguments
+input/plotbad.tech: line 80: section plot:
+	Plot style "nosuch" doesn't exist.  Ignoring.
+input/plotbad.tech: line 84: section plot:
+	"ps" lines must have either 9, 5, or 3 arguments.
+input/plotbad.tech: line 85: section plot:
+	2nd field must be an integer
+input/plotbad.tech: line 86: section plot:
+	3rd field must be an integer or "S", "X", or "B".

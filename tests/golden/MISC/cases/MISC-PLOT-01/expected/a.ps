@@ -1,0 +1,122 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 72 72 540 540
+%%DocumentNeededResources: font /Helvetica font /HelveticaBold
+%%EndComments
+%%BeginProlog
+%
+%  PostScript prolog for output from magic plot
+%  Version: 1.0
+%  written by Tim Edwards 4/05/00  JHU Applied Physics Laboratory
+%
+%%BeginResource: procset MAGICproc 1.0 1
+% supporting definitions
+
+/MAGICsave save def
+
+/bop { 1 setlinecap 0 setlinejoin 6 setmiterlimit 0 setgray } def
+/ninit { /nChars matrix currentmatrix dup 0 get 0 eq {1} {0}
+   ifelse get abs 72 8.5 mul mul 64 div ceiling cvi def } def
+/minit { 1 1 dtransform abs dup 1 exch div /onePix exch def
+   dup /resY exch def 1 exch div /iresY exch def
+   abs dup /resX exch def 1 exch div /iresX exch def
+   /bX 64 iresX mul def /bY 64 iresY mul def
+   /pattFont StipplePattern definefont pop
+   /patterns /pattFont findfont [iresX 64 mul 0 0 iresY 64 mul 0 0] makefont def
+   /ca nChars 1 add string def
+   } def
+/StipplePattern 45 dict def
+StipplePattern begin
+ /FontType 3 def
+ /FontMatrix [1 0 0 1 0 0] def
+ /FontBBox [0 0 1 1] def
+ /Encoding 256 array def
+ /PattName (P000) def
+ /tmpStr 3 string def
+ /NoPatt {<00>} def
+ 0 1 255 { Encoding exch /NoPatt put } for
+ /BuildChar {
+   1 0 0 0 1 1 setcachedevice exch begin Encoding exch get load
+   64 64 true [64 0 0 64 0 0] 5 -1 roll imagemask end } def
+end  
+/dp { StipplePattern begin 
+   dup 10 tmpStr cvrs /num exch def 
+   PattName 1 num putinterval 
+   PattName 0 num length 1 add getinterval cvn 
+   dup Encoding exch 4 -1 roll exch put exch store end } def
+/sf { findfont exch scalefont setfont } bind def
+/sp { patterns setfont 2 setlinewidth } def
+/lb { gsave translate 0 0 moveto /just exch def gsave dup true charpath
+	flattenpath pathbbox grestore exch 4 -1 roll exch sub 3 1 roll sub
+	just 4 and 0 gt {just 8 and 0 eq {0.5 mul} if}{pop 0} ifelse exch
+	just 1 and 0 gt {just 2 and 0 eq {0.5 mul} if}{pop 0} ifelse exch
+	rmoveto show grestore } def
+/sl { 0 1 nChars { exch dup 3 1 roll ca 3 1 roll put } for pop } def
+/sc { setcmykcolor } bind def
+/l1 { onePix setlinewidth } def
+/l2 { onePix 2 mul setlinewidth } def
+/l3 { onePix 3 mul setlinewidth } def
+/ml { moveto lineto stroke } bind def
+/vl { moveto 0 exch rlineto stroke } bind def
+/hl { moveto 0 rlineto stroke } bind def
+/mr { rectstroke } bind def
+/ms { rectfill } bind def
+/mx { 4 copy rectstroke 4 -1 roll 4 -1 roll 4 copy moveto rlineto stroke
+   3 -1 roll dup neg 4 1 roll add moveto rlineto stroke } bind def
+/pl { gsave translate /d exch def 0 d neg moveto 0 d lineto stroke
+   d neg 0 moveto d 0 lineto stroke grestore } bind def
+/bx { x resX mul cvi 63 not and dup iresX mul exch
+   w resX mul sub abs 63 add cvi 64 idiv /w exch def
+   y resY mul cvi 63 not and dup iresY mul exch
+   h resY mul sub abs 63 add cvi 64 idiv /h exch def
+   /ch ca 0 w getinterval def
+   moveto h { ch gsave show grestore 0 bY rmoveto } repeat grestore } def
+/fb {/h exch def /w exch def /y exch def /x exch def gsave newpath
+   x y moveto w y lineto w h lineto x h lineto closepath clip bx } def
+/tb {1 sub 3 1 roll gsave newpath moveto {lineto} repeat closepath clip pathbbox
+   /h exch def /w exch def /y exch def /x exch def bx } def
+/f1 { 0.256 /Helvetica sf } def
+/f2 { 0.256 /HelveticaBold sf } def
+/f3 { 0.171 /Helvetica sf } def
+/col14 {0.000 0.000 0.000 1.000 sc} bind def
+/col13 {0.373 0.875 0.247 0.000 sc} bind def
+/col12 {0.749 0.498 0.000 0.000 sc} bind def
+/col10 {0.000 0.000 0.000 1.000 sc} bind def
+/col9 {0.875 0.184 0.875 0.000 sc} bind def
+{<181818181818181830303030303030306060606060606060c0c0c0c0c0c0c0c08181818181818181030303030303030306060606060606060c0c0c0c0c0c0c0c>} 7 dp
+{<ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff>} 5 dp
+{<c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0000000000000000000000000000000000c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c00000000000000000000000000000000>} 1 dp
+%%EndResource
+%%EndProlog
+
+%%Page: 1 1
+/pgsave save def bop
+% 0 0 offsets
+ninit
+72 72 translate
+46.800 46.800 scale
+minit
+0 0 10 10 gsave rectclip
+l2
+sp
+
+col13
+col9
+1 sl
+col12
+5 sl
+col10
+l1
+10 0 0 hl
+10 0 0 vl
+10 0 10 hl
+0 0 10 10 ms
+10 10 0 vl
+col13
+7 sl
+col14
+grestore
+pgsave restore showpage
+
+%%Trailer
+MAGICsave restore
+%%EOF

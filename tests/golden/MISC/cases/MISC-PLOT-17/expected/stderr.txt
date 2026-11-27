@@ -1,0 +1,18 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+"top" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Wrong number of arguments:
+    plot postscript file [layers]    generate PostScript file for what's
+                                     underneath the box
+Too many arguments:
+    plot pnm file [width [layers]]   generate PNM file for what's
+		                     underneath the box
+Width should be an integer number of pixels
+PNM module given negative pixel width; cannot plot
+"ps_cellid" isn't a valid plot parameter.
+"nosuch" isn't a valid plot parameter.

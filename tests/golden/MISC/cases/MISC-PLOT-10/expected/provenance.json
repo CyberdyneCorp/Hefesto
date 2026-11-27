@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "case": "MISC-PLOT-10",
+  "area": "MISC",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:50663e4b5cde0ff8cf3944246b4405d1e11e247b26c11c7fab3f499db432e378",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-26T12:06:33Z",
+  "outputs": {
+    "split.pnm": "f9b88c0bb694ae7fe77561f4dd9c8d5433e6caa045f64423b24b39ca326e233d",
+    "split.ps": "66da103fd7f953c9ea2f032495019af7df7180f93723c6653e9fef9852750b05",
+    "stderr.txt": "d1735b71e4788ef080b72e8636b4bf678f6a0f96c5e5b71a80d20355b3f34073",
+    "stdout.txt": "a812ab4cc4eaba722a0d73b44721723f739f1989a37e59fae5735eef575f07ed"
+  }
+}

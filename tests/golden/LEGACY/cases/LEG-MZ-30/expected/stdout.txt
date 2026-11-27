@@ -1,0 +1,29 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Cell top read from path input
+2 Magic internal units = 1 Lambda
+0 {}
+	 metal1=10
+0 {}
+metal1:  space=0 checkpaint=0 checksubcell=0 error_p=0 error_s=0 error_ps=0 magnet=0 fence=0 rotate=0 pwell=0 nwell=0 capwell=0 highvoltnwell=0 highvoltpwell=0 polysilicon=0 electrode=0 capacitor=0 wellcapacitor=0 ndiffusion=0 pdiffusion=0 highvoltndiffusion=0 highvoltpdiffusion=0 metal1=10 metal2=0 metal3=0 ntransistor=0 ptransistor=0 entransistor=0 eptransistor=0 doublentransistor=0 doubleptransistor=0 highvoltntransistor=0 highvoltptransistor=0 collector=0 emitter=0 pbase=0 bccdiffusion=0 nbccdiffusion=0 polycontact=6 ndcontact=6 pdcontact=6 highvoltndcontact=6 highvoltpdcontact=6 capcontact=6 electrodecontact=6 collectorcontact=6 emittercontact=6 pbasecontact=6 nbccdiffcontact=6 m2contact=6 m3contact=0 psubstratepcontact=6 nsubstratencontact=6 psubstratepdiff=0 nsubstratendiff=0 highvoltpsubcontact=6 highvoltnsubcontact=6 highvoltpsubdiff=0 highvoltnsubdiff=0 nplusdoping=0 pplusdoping=0 genericcontact=6 substrateopen=0 pdiffusionstop=0 pad=0 glass=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 (null)=0 SUBCELL=6 
+
+0 {}
+0 {}

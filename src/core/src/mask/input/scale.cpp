@@ -6,7 +6,8 @@
 // the internal-grid subdivision it may make, the four-edge conversion of
 // cifPaintCurrentFunc, CIFInputRescale with CIFScalePlanes (and
 // calmaInputRescale's saved planes), and the read-unit subdivision of
-// CIFParsePoint.
+// CIFParsePoint. A grid subdivision also refreshes the maze-router styles
+// (route::refresh_session_styles, Magic's MZAfterTech + IRAfterTech).
 //
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) cif/CIFrdutils.c
 // (CIFScaleCoord, CIFParsePoint), cif/CIFrdcl.c (CIFScalePlanes,
@@ -25,7 +26,9 @@
 #include <limits>
 
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/lef/tech/lifecycle.hpp"
+#include "hefesto/route/iroute/session.hpp"
 #include "hefesto/tech/commands.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "mask/input/engine_state.hpp"
@@ -79,6 +82,10 @@ void ReadEngine::subdivide_grid(std::int64_t den) {
   drc::rescale_rules(editor_, 1, d32);
   (void)tech::scale_layout(editor_, den, 1);
   lef::refill_layer_table(editor_, compat_);
+  // and MZAfterTech + IRAfterTech (CIFrdutils.c), after DRCTechScale and the LEF refill.
+  diag::NullSink quiet;
+  route::refresh_session_styles(editor_, state_->options.sink != nullptr ? *state_->options.sink : quiet,
+                                route::StyleRescale{1, den});
   editor_.grid = tech::reduce(tech::GridScale{editor_.grid.internal * den, editor_.grid.lambda});
   state_->evaluation_valid = false;
 }

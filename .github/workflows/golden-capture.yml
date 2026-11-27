@@ -345,6 +345,22 @@ jobs:
             echo "image=hefesto-golden-gl:ci" >> "$GITHUB_OUTPUT"
           fi
 
+      # The magic-cairo variant (Magic built --with-cairo, Tk wrapper on -d XR under Xvfb) for MISC-PLOT-12
+      # and -13 (m10-plot-route design D19, Q-MISC-52 (a)). Built only when a selected case asks for it; it
+      # shares every layer but its own with hefesto-golden:ci. The image goes to capture.py through
+      # $HEFESTO_GOLDEN_CAIRO_IMAGE; unset, capture.py skips the magic-cairo cases with a note.
+      - name: Build the magic-cairo image variant
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          manifests=()
+          for c in "${cases[@]}"; do manifests+=("$c/case.toml"); done
+          if [ "${#manifests[@]}" -gt 0 ] && grep -qsx 'image = "magic-cairo"' "${manifests[@]}"; then
+            docker build -f tools/golden/container/Containerfile --build-arg WITH_CAIRO=1 \
+              -t hefesto-golden-cairo:ci tools/golden
+            echo "HEFESTO_GOLDEN_CAIRO_IMAGE=hefesto-golden-cairo:ci" >> "$GITHUB_ENV"
+          fi
+
       # m8-schematic task 3.1: the image's awk is GNU Awk (the SCHEM captures depend on it).
       - name: Report the image's awk
         run: docker run --rm hefesto-golden:ci awk --version | head -n 1

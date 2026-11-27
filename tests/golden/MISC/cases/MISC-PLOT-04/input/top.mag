@@ -1,0 +1,8 @@
+magic
+tech plottest
+timestamp 0
+<< polycontact >>
+rect 0 0 8 8
+<< metal1 >>
+rect 8 0 30 8
+<< end >>

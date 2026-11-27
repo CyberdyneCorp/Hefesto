@@ -1,0 +1,10 @@
+magic
+tech plottest
+timestamp 0
+<< metal1 >>
+rect 0 0 40 40
+<< polysilicon >>
+rect 20 20 60 60
+<< metal2 >>
+rect 70 0 100 40
+<< end >>

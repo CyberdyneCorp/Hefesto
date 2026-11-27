@@ -1,0 +1,11 @@
+style irouter
+layer m2 32 64 256 1
+layer m1 64 32 256 1
+layer poly 128 128 512 1
+contact via metal1 metal2 1024
+contact pcontact metal1 poly 2056
+notactive poly pcontact
+style garouter
+layer m2 32 64 256 1
+layer m1 64 32 256 1
+contact via metal1 metal2 1024

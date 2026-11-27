@@ -1,0 +1,60 @@
+tech
+    format 35
+    mzdup
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly
+    metal1  metal1,m1
+    metal1  m2contact,m2c
+    metal2  metal2,m2
+    metal2  metal2b,m2b
+end
+
+contact
+    m2c metal1 metal2
+end
+
+styles
+    styletype mos
+    poly 1
+    m1 20
+    m2 21
+    m2b 21
+    m2c 20 21 32
+end
+
+compose
+end
+
+connect
+    m1,m2c  m1,m2c
+    m2,m2c  m2,m2c
+end
+
+mzrouter
+    style irouter
+    layer   m1   64  32  256  1
+    layer   m2   32  64  256  1
+    contact m2c  metal1  metal2  1024
+    style irouter
+    layer   m1   7   9   256  1
+    layer   m2   32  64  256  1
+    contact m2c  metal1  metal2  1024
+end
+
+drc
+    width m1 3 "metal1 width < 3"
+    width m2 3 "metal2 width < 3"
+    spacing m1 m1 3 touching_ok "metal1 spacing < 3"
+    spacing m2 m2 4 touching_ok "metal2 spacing < 4"
+end
+
+extract
+end

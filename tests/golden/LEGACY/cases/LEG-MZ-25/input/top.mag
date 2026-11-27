@@ -1,0 +1,28 @@
+magic
+tech scmos
+timestamp 0
+<< metal1 >>
+rect 0 0 4 4
+rect 100 0 104 4
+rect 200 0 204 4
+rect 194 -6 210 -4
+rect 194 8 210 10
+rect 194 -4 196 8
+rect 208 -4 210 8
+rect 300 0 304 4
+rect 294 -6 310 -4
+rect 294 8 310 10
+rect 294 -4 296 8
+rect 308 -4 310 8
+rect 4 0 20 4
+rect 20 0 24 4
+<< metal2 >>
+rect 190 -10 214 14
+rect 290 -10 314 14
+<< labels >>
+rlabel metal1 0 0 4 4 0 A
+rlabel metal1 100 0 104 4 0 B
+rlabel metal1 200 0 204 4 0 C
+rlabel metal1 300 0 304 4 0 D
+rlabel metal1 20 0 24 4 0 E
+<< end >>

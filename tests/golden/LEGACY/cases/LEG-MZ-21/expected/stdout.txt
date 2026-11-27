@@ -1,0 +1,66 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+
+iroute - route from cursor to box
+
+iroute contacts - set route-contact parameters
+iroute help - summarize iroute subcommands
+iroute layers - set route-layer parameters
+iroute route - connect point to node(s)
+iroute saveParameters - write out all irouter parameters
+	(can be read back with :source)
+iroute search - set parameters controlling the internal search for routes
+iroute spacings - set minimum spacing between route-type and arbitrary type
+iroute verbosity - control the amount of messages printed
+iroute version - identify irouter version
+iroute wizard - set miscellaneous parameters
+
+iroute help <subcmd> - print usage info for subcommand.
+
+0 {}
+
+iroute route - connect point to node(s)
+
+usage:
+iroute route [options]
+	-sLayers layers = layers route may start on.
+	-sCursor = start route at cursor (DEFAULT)
+	-sLabel name = start route at label of given name
+	-sPoint x y = start route at given coordinates
+	-dLayers layers = layers route may end on.
+	-dBox = route to box (DEFAULT)
+	-dLabel name = route to label of given name
+	-dRect xbot ybot xtop ytop =  route to rectangle of given coordinates
+	-dSelection = route to selection
+0 {}
+	Irouter version 1.0
+0 {}
+	1 (Brief messages)
+0 {}
+0 {}
+0 {}
+0 {}
+	2 (Lots of statistics)
+0 {}
+0 {}
+0 {}
+0 {}
+0 {}
