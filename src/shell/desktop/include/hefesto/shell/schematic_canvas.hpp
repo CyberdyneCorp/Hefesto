@@ -194,6 +194,6 @@ inline constexpr double kMaxTextPx = 96.0;  // larger ones are capped
 
 /// The pixel size of a text of y scale `scale` at `zoom` (pixels per
 /// schematic unit), at most kMaxTextPx; nullopt below kMinTextPx (not drawn).
-[[nodiscard]] std::optional<float> scene_text_px(double scale, double zoom) noexcept;
+[[nodiscard]] std::optional<double> scene_text_px(double scale, double zoom) noexcept;
 
 }  // namespace hefesto::shell

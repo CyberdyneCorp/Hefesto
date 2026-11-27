@@ -593,10 +593,10 @@ void SchematicView::paint_items(ui::Painter& p, const ThemeTokens& t) const {
   for (const ScenePolygon& poly : scene_.polygons) painter.polygon(poly);
   for (const SceneArc& arc : scene_.arcs) painter.arc(arc);
   for (const SceneText& text : scene_.texts) {
-    const std::optional<float> size = scene_text_px(text.size, viewport_.zoom());  // follows the zoom
+    const std::optional<double> size = scene_text_px(text.size, viewport_.zoom());  // follows the zoom
     if (!size) continue;
     const auto [x, y] = painter.at(text.origin);
-    p.text_px(TextRole::meta, *size, x, y, text.text, t.text_secondary);
+    p.text_px(TextRole::meta, static_cast<float>(*size), x, y, text.text, t.text_secondary);
   }
 }
 
