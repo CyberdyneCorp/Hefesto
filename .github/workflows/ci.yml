@@ -777,6 +777,80 @@ jobs:
           path: schematic-captures/
           if-no-files-found: ignore
 
+      # m7-extraction task 16.1 (design D19): the top bar's Extract button, for the rows of
+      # docs/design/m7-ui-conformance.md. Four runs of the product app at 1920 x 1000 (narrower bars hide the
+      # deferred actions, Extract among them), in a work directory holding EX-026's exttest technology:
+      #   enabled    exttest and EX-026's cell `ex`; the app prints the button's state and place after --input;
+      #   disabled   the built-in technology (no extract style), the pointer resting on the button at the
+      #              place the first run printed, so its tooltip shows;
+      #   running    a 160 x 160 grid of EX-026's nfet (big.mag) and `extract all`, captured in the frame the
+      #              Interrupt card first shows (--capture-running);
+      #   cancelled  the same with Ctrl-C injected once the card shows; the previous big.ext must survive
+      #              (Q-EXTRACT-27).
+      # Linux under Xvfb; macOS (1024 px runner screen) not gating.
+      - name: Capture the Extract button
+        if: matrix.desktop || matrix.moltenvk
+        continue-on-error: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$PWD/extract-captures"
+          work="$RUNNER_TEMP/extract-work"
+          app="$PWD/build/${{ matrix.preset }}/src/shell/desktop/hefesto"
+          name="${{ matrix.name }}"
+          mkdir -p "$out" "$work"
+          cp tests/golden/EXTRACT/cases/EX-026/input/exttest.tech tests/golden/EXTRACT/cases/EX-026/input/ex.mag "$work/"
+          python3 - "$work/big.mag" <<'PY'
+          import sys
+          rows = {"nfet": [], "ndiff": [], "poly": []}
+          for i in range(160):
+              for j in range(160):
+                  x, y = 12 * i, 12 * j
+                  rows["nfet"].append(f"rect {x} {y} {x + 2} {y + 4}")
+                  rows["ndiff"] += [f"rect {x - 3} {y} {x} {y + 4}", f"rect {x + 2} {y} {x + 5} {y + 4}"]
+                  rows["poly"] += [f"rect {x} {y - 2} {x + 2} {y}", f"rect {x} {y + 4} {x + 2} {y + 6}"]
+          with open(sys.argv[1], "w") as f:
+              f.write("magic\ntech exttest\ntimestamp 100\n")
+              for layer, rects in rows.items():
+                  f.write(f"<< {layer} >>\n" + "\n".join(rects) + "\n")
+              f.write("<< end >>\n")
+          PY
+          run_app() {  # STATE ARGS...: runs the app in the work directory, its output kept as extract-STATE-NAME.log
+            local state="$1"
+            shift
+            local args=(--width 1920 --height 1000 --capture "$out/extract-$state-$name.ppm" --no-vsync "$@")
+            if [ "$RUNNER_OS" = "Linux" ]; then
+              (cd "$work" && RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}") \
+                | tee "$out/extract-$state-$name.log"
+            else
+              (cd "$work" && "$app" "${args[@]}") | tee "$out/extract-$state-$name.log"
+            fi
+          }
+          setup="addpath $work; tech load $work/exttest -noprompt"
+          run_app enabled --run "$setup; load ex" --input "wait 500" --capture-frames 60
+          grep -q "^hefesto: extract button enabled: Extract ex: extract all (style exttest)" "$out/extract-enabled-$name.log"
+          read -r bx by bw bh < <(sed -n 's/^hefesto: extract button at //p' "$out/extract-enabled-$name.log" | head -1)
+          run_app disabled --input "wait 500; move $((bx + bw / 2)),$((by + bh / 2)); wait 2500" --capture-frames 60
+          grep -q "^hefesto: extract button disabled: Extract: technology .* has no extract style" \
+            "$out/extract-disabled-$name.log"
+          run_app running --run "$setup; load big; extract all" --capture-running --capture-frames 60
+          test -s "$work/big.ext"
+          printf 'timestamp 1\nprevious\n' > "$work/big.ext"
+          run_app cancelled --run "$setup; load big; extract all" --input "wait 3000; key ctrl+c; wait 1000" \
+            --capture-frames 60
+          echo "big.ext after the cancelled run: $(head -c 200 "$work/big.ext" | head -2 | tr '\n' ' ')" \
+            | tee -a "$out/extract-cancelled-$name.log"
+          test -s "$out/extract-enabled-$name.ppm" && test -s "$out/extract-disabled-$name.ppm"
+          test -s "$out/extract-running-$name.ppm" && test -s "$out/extract-cancelled-$name.ppm"
+
+      - name: Upload the Extract button captures
+        if: always() && (matrix.desktop || matrix.moltenvk)
+        uses: actions/upload-artifact@v4
+        with:
+          name: extract-captures-${{ matrix.name }}
+          path: extract-captures/
+          if-no-files-found: ignore
+
       # m8-schematic task 13.2 (M8-D10): the install tree of the desktop build: hefesto and hefesto-cli in
       # <prefix>/bin, the fonts and icons in <prefix>/share/hefesto/assets, the schematic system library in
       # <prefix>/assets/schematic (the install root of <prefix>/bin).
