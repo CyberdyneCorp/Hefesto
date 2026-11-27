@@ -6,6 +6,7 @@
 
 #include "hefesto/shell/schematic_clipboard.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include "hefesto/shell/manager_views.hpp"
@@ -23,6 +24,13 @@ bool is_copy(const cmd::Invocation& invocation) {
 }
 
 }  // namespace
+
+std::string clipboard_echo(const std::string& command, const std::string& text) {
+  if (!command.starts_with("schematic clipboard")) return text;
+  const std::size_t end = std::min(text.find('\n'), kClipboardEchoBytes);
+  if (end >= text.size()) return text;
+  return text.substr(0, end) + " … (" + std::to_string(text.size()) + " bytes)";
+}
 
 std::string SchematicClipboardLink::copy_command() {
   copy_pending_ = true;

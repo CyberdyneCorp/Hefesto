@@ -14,6 +14,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/render/scene.hpp"
 #include "hefesto/shell/open_files.hpp"
+#include "hefesto/shell/schematic_clipboard.hpp"
 #include "hefesto/ui/tools.hpp"
 
 namespace hefesto::shell {
@@ -308,14 +309,7 @@ void MainWindow::build_top_bar() {
   // Schematic tab and runs the same netlist action as the netlist bar. It
   // gives way with the deferred actions, before the view tabs: counted as
   // always shown, it pushed the tabs out of a 1280 px bar.
-  const TopButton netlist = add_top_button(
-      row, "Netlist", "", paint::ButtonStyle::secondary,
-      "Netlist the active schematic (schematic netlist -hier); shows the Schematic tab", [this] {
-        show_schematic_tab(true);
-        schematic_view_->start_netlist();
-      });
-  top_items_width_ -= netlist.width;
-  --top_item_count_;
+  const TopButton netlist = add_netlist_button(row);
   deferred.width += netlist.width;
   deferred.widgets.push_back(netlist.widget);
   for (const DeferredControl& c : deferred_actions()) {
@@ -366,6 +360,42 @@ MainWindow::TopButton MainWindow::add_top_button(ui::Box& row, std::string_view 
   }
   painted_.push_back(std::move(button));
   return placed;
+}
+
+// The top bar's Netlist button: its enabled state and tooltip are the
+// schematic view's netlist_button view model (no schematic open, or a run
+// going on: disabled), read when it paints and on each refresh.
+MainWindow::TopButton MainWindow::add_netlist_button(ui::Box& row) {
+  static constexpr std::string_view kLabel = "Netlist";
+  auto button = make_interactive(
+      ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov, bool foc) {
+        const bool enabled = schematic_view_->netlist_button_view().enabled;
+        paint::button(p, w, h, kLabel, "", paint::ButtonStyle::secondary,
+                      paint::WidgetState{hov && enabled, foc, enabled, false}, t);
+      });
+  const float width = paint::button_width(ctx_.runtime, kLabel, false);
+  button->set_size(width, static_cast<float>(kButtonHeight));
+  button->set_role(ui::Role::button);
+  button->set_accessible_name(kLabel);
+  button->on_click([this](float, float) {
+    if (!schematic_view_->netlist_button_view().enabled) return;
+    show_schematic_tab(true);
+    schematic_view_->start_netlist();
+  });
+  row.add_centered(*button);
+  netlist_button_ = button.get();
+  painted_.push_back(std::move(button));
+  schematic_view_->set_on_netlist_change([this] { refresh_netlist_button(); });
+  refresh_netlist_button();
+  return TopButton{netlist_button_, width};
+}
+
+void MainWindow::refresh_netlist_button() {
+  if (netlist_button_ == nullptr) return;
+  const NetlistButtonView view = schematic_view_->netlist_button_view();
+  netlist_button_->set_enabled(view.enabled);
+  netlist_button_->set_tooltip(view.tooltip);
+  netlist_button_->invalidate();
 }
 
 void MainWindow::fit_top_bar() {
@@ -735,8 +765,11 @@ const ui::Window* MainWindow::utility_window(std::string_view name) const {
   return nullptr;
 }
 
-void MainWindow::append_console(const std::string& command, const std::string& result) {
-  for (const std::string& line : console_lines(command, result)) console_.add_item(line);
+void MainWindow::append_console(const std::string& line, const std::string& output) {
+  // M8: a schematic clipboard text (up to 16 MiB) is echoed shortened.
+  const std::string command = clipboard_echo(line, line);
+  const std::string result = clipboard_echo(line, output);
+  for (const std::string& row : console_lines(command, result)) console_.add_item(row);
   console_.scroll_to_end();
   if (!tcl_console_) return;
   // M4: GUI commands echo in the Tcl console's transcript.
@@ -902,6 +935,7 @@ void MainWindow::show_schematic_tab(bool on) {
 
 void MainWindow::refresh_all() {
   if (schematic_tab_) schematic_view_->refresh();  // M8: after each command
+  refresh_netlist_button();
   sync_styles();
   view3d_->refresh();
   const view::LayoutWindow* win = ctx_.editor().windows.current();

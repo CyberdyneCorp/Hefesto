@@ -111,7 +111,29 @@ TEST_CASE("a system clipboard text above the paste limit runs nothing", "[cap:sc
   clipboard.contents.push_back('x');
   const ClipboardPaste refused = link.paste_commands(schem::Point{0, 0});
   CHECK(refused.lines.empty());
-  CHECK(refused.message.find("too large") != std::string::npos);
+  CHECK(refused.message == "Paste: the clipboard text is too large (16777217 bytes, limit 16777216)");
+}
+
+// Regression (M8 round 6 review): the Console echoed a paste's `schematic
+// clipboard set <text>` and a Copy's result whole, one Console row per line,
+// so a 16 MiB clipboard of short lines made millions of rows.
+TEST_CASE("the Console echoes clipboard text shortened", "[cap:schematic-editing][req:Clipboard]") {
+  FakeClipboard clipboard;
+  const SchematicClipboardLink link{clipboard};
+  std::string text;
+  for (int i = 0; i < 1000; ++i) text += "N 0 0 10 0 {}\n";
+  clipboard.contents = text;
+  const std::string set = link.paste_commands(schem::Point{0, 0}).lines.at(0);
+  const std::string echoed = clipboard_echo(set, set);
+  CHECK(echoed.find('\n') == std::string::npos);
+  CHECK(echoed.size() < kClipboardEchoBytes + 32);
+  CHECK(echoed.ends_with("(" + std::to_string(set.size()) + " bytes)"));
+  CHECK(clipboard_echo("schematic clipboard copy", text) == "N 0 0 10 0 {} … (14000 bytes)");
+  CHECK(clipboard_echo("schematic clipboard copy", "") == "");
+  // Other lines and short texts are echoed as they are.
+  CHECK(clipboard_echo("schematic netlist", text) == text);
+  CHECK(clipboard_echo("schematic paste 0 0", "x\ny") == "x\ny");
+  CHECK(clipboard_echo("schematic clipboard copy", "one line") == "one line");
 }
 
 TEST_CASE("Copy and Paste through the system clipboard copy an instance between schematics",

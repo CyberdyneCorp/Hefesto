@@ -6,6 +6,8 @@
 #include "hefesto/shell/schematic_input.hpp"
 
 #include <cmath>
+#include <optional>
+#include <string>
 
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/manager_views.hpp"
@@ -30,6 +32,20 @@ bool clipboard_chord(const CanvasInput& input, bool macos, int letter) {
 
 bool pans(const CanvasInput& input) {
   return input.button == PointerButton::middle || (input.modifiers & kModAlt) != 0;
+}
+
+constexpr double kPivotSnap = 10.0;  // xschem's default snap, as Place and Paste
+
+// "Rotate and flip": in the editor the pivot is the snapped pointer
+// position, so the default `R` and `F` lines name it (a script's
+// `schematic rotate` without a pivot uses the origin with xschem-compat ON).
+// Before the pointer came over the canvas, the view's centre (as Paste).
+std::string with_pointer_pivot(const std::string& line, schem::Point at) {
+  if (line != "schematic rotate" && line != "schematic flip") return line;
+  const auto snapped = [](double v) {
+    return std::to_string(std::llround(v / kPivotSnap) * static_cast<long long>(kPivotSnap));
+  };
+  return line + " " + snapped(at.x) + " " + snapped(at.y);
 }
 
 }  // namespace
@@ -101,17 +117,24 @@ SchematicInputResult SchematicCanvasInput::wheel(const CanvasInput& input, Schem
   return consumed(true);
 }
 
+// A binding of the `schematic` table comes before the Copy and Paste chords,
+// so a user can rebind them; Ctrl-C while it interrupts (always on macOS,
+// during a netlist run elsewhere) is not rebindable.
 SchematicInputResult SchematicCanvasInput::key(const CanvasInput& input, const SchematicViewport& viewport) {
-  if (SchematicInputResult clip = clipboard_key(input, viewport); clip.consumed) return clip;
   const auto event = key_event_for(input.native_key, input.modifiers);
-  if (!event) return {};
-  if (ui::is_interrupt_key(*event)) {
-    SchematicInputResult r = consumed();
-    r.interrupt = true;
-    return r;
+  const bool interrupt = event && ui::is_interrupt_key(*event);
+  if (event && !(interrupt && (macos_ || running_))) {
+    if (const auto action = keys_.lookup(*event, macos_)) {
+      SchematicInputResult r = bound(*action);
+      r.line = with_pointer_pivot(r.line, pointer_ ? viewport.to_schematic(*pointer_) : viewport.centre());
+      return r;
+    }
   }
-  const auto action = keys_.lookup(*event, macos_);
-  return action ? bound(*action) : SchematicInputResult{};
+  if (SchematicInputResult clip = clipboard_key(input, viewport); clip.consumed) return clip;
+  if (!interrupt) return {};
+  SchematicInputResult r = consumed();
+  r.interrupt = true;
+  return r;
 }
 
 SchematicInputResult SchematicCanvasInput::clipboard_key(const CanvasInput& input,

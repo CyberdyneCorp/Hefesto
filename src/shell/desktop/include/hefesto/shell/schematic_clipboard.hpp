@@ -50,6 +50,17 @@ class ClipboardHost {
 /// message before any command runs.
 inline constexpr std::size_t kMaxClipboardBytes = std::size_t{16} * 1024U * 1024U;
 
+/// The most bytes of a clipboard text the Console echoes.
+inline constexpr std::size_t kClipboardEchoBytes = 200;
+
+/// The Console's echo of `text`, the line or the result of command line
+/// `command`: for a `schematic clipboard ...` line (a paste's `set`, a
+/// Copy's result) a text of more than one line or kClipboardEchoBytes is
+/// shortened to its first line (at most kClipboardEchoBytes) and its size,
+/// "C {res.sym} 0 0 0 0 {name=R1} … (5321 bytes)", so a large clipboard
+/// does not become one Console row per line; any other text as is.
+[[nodiscard]] std::string clipboard_echo(const std::string& command, const std::string& text);
+
 /// What a paste runs, or why it runs nothing.
 struct ClipboardPaste {
   std::vector<std::string> lines;  // `schematic clipboard set ...`, `schematic paste x y`

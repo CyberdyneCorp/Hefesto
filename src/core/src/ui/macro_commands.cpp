@@ -59,7 +59,10 @@ struct MacroRequest {
 // it, and the Schematic tab reads its keys from it (src/shell/desktop
 // schematic_bindings.hpp installs the xschem-style defaults). Magic has no
 // such client; Hefesto has the module in every build, so the name selects
-// the table in both modes.
+// the table in both modes. Provisional on proposed Q-SCHEM-67 (option (a));
+// with magic-compat ON it is a Magic difference: Magic's `macro schematic
+// w "wire"` silently does nothing (ui-command-dispatch "macro and imacro
+// commands").
 constexpr std::string_view kSchematicClient = "schematic";
 
 std::optional<std::string> named_table(const editor::EditorState& editor, const std::string& word) {

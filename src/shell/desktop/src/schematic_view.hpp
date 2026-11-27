@@ -34,9 +34,11 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/cmd/dispatcher.hpp"
@@ -69,6 +71,11 @@ class SchematicView final : public cmd::CommandObserver {
   /// The netlist action (run_netlist): the netlist bar's button, the `n`
   /// binding and the top bar's "Netlist" button (main_window.cpp).
   void start_netlist();
+  /// The top bar's "Netlist" button (netlist_button): enabled while a
+  /// schematic is open and no run is going on, with the matching tooltip.
+  [[nodiscard]] NetlistButtonView netlist_button_view() const;
+  /// Called when a netlist run starts or ends (the top bar's button repaints).
+  void set_on_netlist_change(std::function<void()> changed) { netlist_changed_ = std::move(changed); }
   /// What the view shows, for scripted checks after an --input script
   /// (main_window.cpp prints it): the breadcrumb, the instances drawn and
   /// the symbols still pending, "ihp_style_tb.sch, 5 instances, 0 pending".
@@ -177,6 +184,7 @@ class SchematicView final : public cmd::CommandObserver {
   bool has_document_ = false;
   bool session_stale_ = true;  // a command ran: read the highlights, path and properties again
   bool refreshing_ = false;
+  std::function<void()> netlist_changed_;
 };
 
 }  // namespace hefesto::shell

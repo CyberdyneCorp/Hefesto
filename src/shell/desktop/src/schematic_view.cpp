@@ -466,18 +466,24 @@ void SchematicView::run(const std::string& line) {
   if (ctx_.run) ctx_.run(line);
 }
 
+NetlistButtonView SchematicView::netlist_button_view() const {
+  return netlist_button(netlist_, !ctx_.editor().schem.documents.empty());
+}
+
 void SchematicView::start_netlist() {
   if (!refreshing_ && session_stale_) refresh();  // the top bar's button: the document may be new
   const std::string label = breadcrumb_.crumbs().front().label;
   (void)run_netlist(netlist_, has_document_, label,
                     [this](const std::string& line) {
                       netlist_bar_->invalidate();
+                      if (netlist_changed_) netlist_changed_();  // running: the top bar's button is disabled
                       tick_netlist();
                       if (ctx_.run) ctx_.run(line);
                     },
                     messages_);
   netlist_bar_->invalidate();
   messages_view_->invalidate();
+  if (netlist_changed_) netlist_changed_();
 }
 
 // While the netlist runs, the frames its script progress pumps repaint the

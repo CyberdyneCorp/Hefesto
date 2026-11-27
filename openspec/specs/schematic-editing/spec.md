@@ -261,6 +261,8 @@ The commands are `schematic clipboard copy`, `schematic clipboard [set <text>]`,
 
 An embedded symbol of the inserted objects SHALL NOT change the instances the document already has: when an instance of the document already uses the same symbol reference (from a library file or its own embedded block), the inserted block SHALL NOT be added and the inserted instances SHALL resolve that reference as the document's existing instances do, in both modes (Q-SCHEM-51 option (a), approved by the user 2026-11-25).
 
+**System clipboard size limit** (crafted-input resource limit, approved under the user's standing rule of 2026-11-25, both modes): the desktop front end's Paste SHALL refuse system clipboard text larger than 16 MiB (16,777,216 bytes): it SHALL run no command and SHALL show the message `Paste: the clipboard text is too large (<n> bytes, limit 16777216)`. xschem has no such bound. The console SHALL echo a clipboard command line (`schematic clipboard set <text>`, and a Copy's result) shortened to its first line and its size in bytes, not the whole text.
+
 Compatibility: behavioral
 
 (xschem ref: save.c:6038-6120, paste.c:1-478)
@@ -279,6 +281,16 @@ Compatibility: behavioral
 - **GIVEN** a schematic with an instance of the library `res.sym`, and a clipboard holding an instance of `res.sym` with its embedded block
 - **WHEN** `schematic paste 0 0` is executed
 - **THEN** the document SHALL get no embedded block for `res.sym`, and every instance of `res.sym`, the existing one included, SHALL resolve to the library file (Q-SCHEM-51)
+
+#### Scenario: System clipboard text above the size limit
+- **GIVEN** the system clipboard holds 16,777,217 bytes of text
+- **WHEN** the user pastes into a schematic on desktop
+- **THEN** no command SHALL run, the document SHALL be unchanged, and the message `Paste: the clipboard text is too large (16777217 bytes, limit 16777216)` SHALL be shown, in both modes
+
+#### Scenario: Large clipboard text in the Console
+- **GIVEN** the system clipboard holds 1,000 lines of schematic records
+- **WHEN** the user pastes them on desktop
+- **THEN** the Console SHALL show the `schematic clipboard set` line as its first line followed by its size in bytes, not one row per record
 
 #### Scenario: Merge a file
 - **GIVEN** `part.sch` holding a wire and an instance `R1`, and a schematic that already has `R1`
@@ -356,9 +368,30 @@ On Linux and macOS with a mouse and keyboard, Hefesto SHALL offer xschem's defau
 
 The gesture set and the palette are both offered. The gestures are provisional until a usability test of wire drawing with a finger and with Apple Pencil, which SHALL run before the iPad scope freezes for M14; it does not gate M8 desktop work. Desktop bindings SHALL stay xschem-style by default and rebindable (Q-SCHEM-24, `Resolution: platform`).
 
+On desktop, the `R` and `F` keys SHALL name the snapped pointer position (the view's centre before the pointer came over the canvas) as the pivot of `schematic rotate` and `schematic flip` (Requirement "Rotate and flip").
+
+**Copy and Paste keys** (proposed Q-SCHEM-66, recommendation (a), as implemented; awaiting the user). Copy and Paste with the system clipboard (Requirement "Clipboard") SHALL be Command-C and Command-V on macOS, where Ctrl-C stays the interrupt of a running netlist; on Linux they SHALL be Ctrl-C and Ctrl-V, where Ctrl-C interrupts while a netlist runs and copies otherwise, in both modes. A binding of these chords in the key table comes first, so they are rebindable; Ctrl-C while it interrupts is not.
+
+**Key table** (proposed Q-SCHEM-67, recommendation (a), as implemented; awaiting the user). The desktop bindings SHALL be the `schematic` table of the core `macro` command (capability `ui-command-dispatch`, Requirement "macro and imacro commands"), in both modes: `macro schematic <key> "<text>"` lines of the key-binding sheet, of startup files and of scripts SHALL bind a key of the schematic canvas to a command line or to an editor action (`wire`, `move`, `copy`, `properties`, `place`, `descend`); keys the table does not bind keep the defaults above, and a binding a startup file made SHALL be kept.
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-5; xschem ref: keys.help)
+
+#### Scenario: Rotate key names the pointer as pivot
+- **GIVEN** a schematic on desktop with the pointer over the canvas at schematic position (123, -47)
+- **WHEN** the user presses `R`
+- **THEN** the command line `schematic rotate 120 -50` SHALL be run
+
+#### Scenario: Copy and Paste keys
+- **GIVEN** a selection in a schematic on desktop
+- **WHEN** the user presses Command-C on macOS, or Ctrl-C on Linux with no netlist running
+- **THEN** `schematic clipboard copy` SHALL run and its text SHALL be placed on the system clipboard; Ctrl-C on Linux while a netlist runs SHALL interrupt it instead (proposed Q-SCHEM-66)
+
+#### Scenario: Rebind a key through the schematic table
+- **GIVEN** the Schematic tab on desktop
+- **WHEN** `macro schematic z "schematic zoom_full"` is executed, then `z` is pressed on the canvas
+- **THEN** `schematic zoom_full` SHALL be run (proposed Q-SCHEM-67)
 
 #### Scenario: Rotate on iPad
 - **GIVEN** an instance selected on iPad with no keyboard
