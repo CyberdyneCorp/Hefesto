@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3718 scenarios, 1071 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3766 scenarios, 1075 open questions.
 
 ## Hefesto product (native)
 
@@ -27,10 +27,10 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
 | [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 5 | 8 | Implements decision X-1 (as amended on 2026-11-06). Hefesto reproduces Magic's ordering wherever that ordering is a deterministic function of the input: Magic's canonical tile deco… |
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
-| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 5 | 9 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
+| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 6 | 12 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 6 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-product-operations`](../openspec/specs/hefesto-product-operations/spec.md) | 5 | 5 | Defines how Hefesto runs as a shipped product (decision P-22): - opt-in crash reporting and usage telemetry that never collect design data - signed desktop updates with stable and … |
-| [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
+| [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 5 | 6 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 6 | 12 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 5 | 11 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
 | [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 5 | 7 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
@@ -300,26 +300,26 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 | [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 34 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
 | [`readspice`](../openspec/specs/readspice/spec.md) | 5 | 11 | Specifies the `readspice <netlist>` command. It is defined by `readspice.tcl` and loaded at startup when present. The command annotates already-loaded layout cells with the port or… |
 | [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 54 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
-| [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 10 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
+| [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 11 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
 | [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 14 | 29 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
 | [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 16 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
 | [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 22 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [61](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [63](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 25 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
 | [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
-| [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
+| [`plot-output`](../openspec/specs/plot-output/spec.md) | 17 | 34 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `parameters` and `help`; Magic's `versatec`, `gremlin` and `pixels` are… |
 | [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 54 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 
-Open questions: [74](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
+Open questions: [76](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -329,8 +329,8 @@ Open questions: [74](decisions/open-questions/LEGACY.md) · Golden cases: [CASES
 | [`plow`](../openspec/specs/plow/spec.md) | 27 | 33 | Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, and the complete edg… |
 | [`router-channel`](../openspec/specs/router-channel/spec.md) | 37 | 50 | Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, … |
 | [`router-gate-array`](../openspec/specs/router-gate-array/spec.md) | 11 | 13 | Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initializa… |
-| [`router-maze`](../openspec/specs/router-maze/spec.md) | 20 | 34 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
-| [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 10 | 12 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
+| [`router-maze`](../openspec/specs/router-maze/spec.md) | 23 | 50 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
+| [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 13 | 22 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
 | [`router-net2ir`](../openspec/specs/router-net2ir/spec.md) | 3 | 4 | Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) pl… |
 | [`scheme-interpreter`](../openspec/specs/scheme-interpreter/spec.md) | 3 | 3 | Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: cu… |
 | [`wiring-tool`](../openspec/specs/wiring-tool/spec.md) | 8 | 12 | Defines Magic's wiring interface: the `wiring` technology section (contact definitions used for layer switches), the `wire` command and all its subcommands (type selection, legs, c… |

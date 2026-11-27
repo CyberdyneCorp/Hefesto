@@ -1,0 +1,11 @@
+magic
+tech scmos
+timestamp 0
+<< m2contact >>
+rect 0 0 4 4
+<< metal2 >>
+rect 100 0 104 4
+<< labels >>
+rlabel m2contact 0 0 4 4 0 A
+rlabel metal2 100 0 104 4 0 B
+<< end >>

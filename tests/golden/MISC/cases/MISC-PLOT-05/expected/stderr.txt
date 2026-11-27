@@ -1,0 +1,29 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+"top" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+ShowCellNames can only be "true" or "false".
+PS_cellIdSize must be an integer greater than zero.
+PS_cellNameSize must be an integer greater than zero.
+PS_labelSize must be an integer greater than zero.
+PS_boundary can only be "true" or "false".
+PS_Width must be an integer greater than zero.
+PS_Height must be an integer greater than zero.
+PS_Margin must be an integer greater than or equal to zero.
+pnmmaxmem must be an integer greater than zero.
+pnmdownsample must be an integer zero or larger.
+pnmbackground must be an integer 0-255.
+pnmbackground must be an integer 0-255.
+DotsPerInch must be an integer greater than zero.
+nosuch is not a supported plot type.  Plot types are:
+	versatec_color
+	versatec_bw
+	hprtl
+	hpgl2
+SwathHeight must be an integer greater than zero.
+Width must be an integer greater than zero.
+pnmplotRTL can only be "true" or "false".

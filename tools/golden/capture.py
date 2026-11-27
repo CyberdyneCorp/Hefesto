@@ -48,6 +48,8 @@ $HEFESTO_GOLDEN_IMAGE, else "hefesto-golden:local" (see README.md).
 A case whose case.toml sets ``[reference] image = "magic-gl"`` (the MISC-3D-* cases of
 m10-3d-view design D13) runs in the image of --gl-image ($HEFESTO_GOLDEN_GL_IMAGE), the
 Containerfile built with WITH_OPENGL=1; without it the case is skipped with a note, not failed.
+Likewise a case with ``[reference] image = "magic-cairo"`` (MISC-PLOT-12 and -13 of m10-plot-route
+design D19) runs in the image of --cairo-image ($HEFESTO_GOLDEN_CAIRO_IMAGE), built with WITH_CAIRO=1.
 Exit status: 0 ok, 1 a case failed (or differs under --verify), 2 usage error.
 """
 from __future__ import annotations
@@ -198,7 +200,16 @@ def case_image(case: Case, args: argparse.Namespace) -> str | None:
     else --image."""
     if image_variant(case) == "magic-gl":
         return args.gl_image or None
+    if image_variant(case) == "magic-cairo":
+        return getattr(args, "cairo_image", "") or None
     return args.image
+
+
+def missing_image_hint(variant: str | None) -> str:
+    """The option that names the image of ``variant`` (the skip note of a case whose image is absent)."""
+    if variant == "magic-cairo":
+        return "--cairo-image or $HEFESTO_GOLDEN_CAIRO_IMAGE"
+    return "--gl-image or $HEFESTO_GOLDEN_GL_IMAGE"
 
 
 def make_runner(args: argparse.Namespace, pins: dict, image: str | None = None):
@@ -221,7 +232,7 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
         return True
     image = case_image(case, args)
     if image is None:
-        print(f"{case.id}: skipped, needs the {image_variant(case)} image (--gl-image or $HEFESTO_GOLDEN_GL_IMAGE)")
+        print(f"{case.id}: skipped, needs the {image_variant(case)} image ({missing_image_hint(image_variant(case))})")
         return True
     runner = make_runner(args, pins, image)
     result, outputs = run_reference(case, runner, getattr(args, "raw", None))
@@ -278,6 +289,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--image", default=os.environ.get("HEFESTO_GOLDEN_IMAGE", DEFAULT_IMAGE))
     parser.add_argument("--gl-image", default=os.environ.get("HEFESTO_GOLDEN_GL_IMAGE", ""),
                         help="image of the magic-gl variant (cases with [reference] image = \"magic-gl\")")
+    parser.add_argument("--cairo-image", default=os.environ.get("HEFESTO_GOLDEN_CAIRO_IMAGE", ""),
+                        help="image of the magic-cairo variant (cases with [reference] image = \"magic-cairo\")")
     parser.add_argument("--engine", default="docker", help="container engine (docker or podman)")
     parser.add_argument("--magic-src", type=Path, help="local Magic checkout for --runner local")
     mode = parser.add_mutually_exclusive_group()

@@ -9,6 +9,7 @@
   - specify a new detailed router capability
   - let the agent draw routes with paint commands, checked by DRC
 - Recommendation: start with a constraint-aware maze router plus agent-driven paint, and spec a dedicated analog router if the benchmark shows it is needed.
+- Note (2026-11-26, M10 plot/route round 0): M10 provides the engine seam this question builds on (`router-maze` "Maze router engine interface", `router-maze-iroute` "Derived irouter style"; `openspec/changes/m10-plot-route/design.md` D23). Those requirements do not cite this entry, so it does not block M10's readiness check; it stays open for M11.
 
 ### Q-AGENT-2: Representation of PDK rules in the agent context
 - Kind: ambiguity

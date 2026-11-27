@@ -1,0 +1,4 @@
+"top" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+"top2" has a zero timestamp; it should be written out
+    to establish a correct timestamp.

@@ -1,0 +1,16 @@
+layer m1 1 1
+style
+style irouter extra
+style irouter
+layer
+layer nosuch 1 1
+layer m1 x 1
+contact via metal1
+contact via metal1 nosuch 1
+spacing m1 nosuch 3
+spacing m1 m2 x
+search rate -1
+search penalty 99999999999
+width m1 -3
+length m1 x
+notactive nosuch

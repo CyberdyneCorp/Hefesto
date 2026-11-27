@@ -1,0 +1,6 @@
+style irouter
+layer m1 1 1
+search 1 1 1e30
+search 1 1 nan
+spacing m1 SUB 3 m1 NIL
+width m1 4 5

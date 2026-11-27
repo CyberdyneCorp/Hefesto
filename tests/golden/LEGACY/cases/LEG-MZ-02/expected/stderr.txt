@@ -1,0 +1,18 @@
+input/mzbad.tech: line 42: section mzrouter:
+	Missing style line.
+input/mzbad.tech: line 46: section mzrouter:
+	Attempt to define two route layers on same plane:  metal2b and metal2
+input/mzbad.tech: line 47: section mzrouter:
+	Malformed "contact" line, should be:  contact layer layer1 layer2 cost
+input/mzbad.tech: line 49: section mzrouter:
+	hCost must be > 0
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2,
+Section "cifoutput" was missing from input/mzbad.tech.
+Section "cifinput" was missing from input/mzbad.tech.
+Need irouter style in mzrouter section of technology file to use irouter.
+Need irouter style in mzrouter section of technology file to use irouter.

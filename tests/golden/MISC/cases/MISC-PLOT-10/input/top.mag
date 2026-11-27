@@ -1,0 +1,9 @@
+magic
+tech plottest
+timestamp 0
+<< metal1 >>
+tri 0 0 20 20 ne
+<< polysilicon >>
+tri 30 0 50 20 sw
+rect 50 0 60 20
+<< end >>

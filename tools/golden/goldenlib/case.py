@@ -33,7 +33,8 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     display = "xvfb"                 # optional: run under a virtual X server (GUI cases, Tk)
     image = "magic-gl"               # optional: the image variant to run in (pins.toml image_variants;
                                      # magic-gl: Magic with OpenGL, the MISC-3D-* cases of m10-3d-view
-                                     # D13; needs tool magic and display "xvfb")
+                                     # D13; magic-cairo: Magic with Cairo on -d XR, MISC-PLOT-12/13 of
+                                     # m10-plot-route D19; needs tool magic and display "xvfb")
     gl_capture = true                # optional (image magic-gl only): preload the polygon-recording
                                      # shim (tools/golden/gl_capture/, m10-3d-view D13 task 12.4) into
                                      # Magic; it writes the file named by [env] HEFESTO_GL_CAPTURE
@@ -197,7 +198,7 @@ def _check_paths(case: Case) -> None:
 
 ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 DISPLAYS = ("xvfb",)
-IMAGE_VARIANTS = ("magic-gl",)  # pins.toml [image_variants]
+IMAGE_VARIANTS = ("magic-gl", "magic-cairo")  # pins.toml [image_variants] (magic-cairo: m10-plot-route D19)
 
 
 def _parse_env(data: dict, where: str) -> dict:

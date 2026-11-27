@@ -1,0 +1,62 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+       7 
+0 {}
+      55 
+0 {}
+  penalty=2.500000
+0 {}
+0 {}
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+layer          active    width   length    hCost    vCost  jogCost hintCost overCost 
+-----          ------    -----   ------    -----    -----  ------- -------- -------- 
+metal2            YES        3        3       32       64      256        1        1 
+metal1            YES        3        3       64       32      256        1        1 
+polysilicon        NO        2        2      128      128      512        1        1 
+0 {}
+1 {invalid command name ":iroute"}
+layer          active    width   length    hCost    vCost  jogCost hintCost overCost 
+-----          ------    -----   ------    -----    -----  ------- -------- -------- 
+metal2            YES        3        3       32       64      256        1        1 
+metal1            YES        3        3       64       32      256        1        1 
+polysilicon        NO        2        2      128      128      512        1        1 
+0 {}
+contact        active    width   length     cost 
+-------        ------    -----   ------     ---- 
+m2contact         YES        4        4     1024 
+polycontact        NO        4        4     2056 
+0 {}
+  bloom=1 
+  bloomLimit=       0 
+  boundsIncrement=AUTOMATIC
+  estimate=     YES 
+  expandEndpoints=     YES 
+  penalty=1024.000000
+  penetration=AUTOMATIC
+  window=COMMAND
+0 {}
