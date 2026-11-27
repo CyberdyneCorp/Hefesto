@@ -181,23 +181,32 @@ TEST_CASE("Path length: an unreached receiver keeps Magic's INFINITY and MINFINI
         extract::PathDistance{db::kInfinity, db::kMinusInfinity});
 }
 
-TEST_CASE("Path length: a receiver touching two yanked tiles is listed twice with magic-compat ON, once OFF",
+// Q-EXTRACT-42 (compat): extLengthYank lists a receiver label once per
+// yanked tile whose area, grown by one at the top and right, it touches.
+std::vector<extract::PathRecord> corner_receiver_records(bool magic_compat) {
+  LengthCase c;
+  db::CellDef& ex = c.cell("ex");
+  c.paint(ex, "metal1", {0, 0, 10, 4});
+  c.paint(ex, "metal1", {0, 4, 4, 10});
+  c.label(ex, "metal1", {0, 2}, "d");
+  c.label(ex, "metal1", {4, 4}, "r");  // on the corner of both tiles
+  return lengths(ex, c.tech(), lists({"d"}, {"r"}), magic_compat).records;
+}
+
+TEST_CASE("Path length: Q-EXTRACT-42: a receiver touching two yanked tiles is listed twice with magic-compat ON",
           "[cap:extract-commands][req:Path length extraction]") {
-  for (const bool compat : {true, false}) {
-    LengthCase c;
-    db::CellDef& ex = c.cell("ex");
-    c.paint(ex, "metal1", {0, 0, 10, 4});
-    c.paint(ex, "metal1", {0, 4, 4, 10});
-    c.label(ex, "metal1", {0, 2}, "d");
-    c.label(ex, "metal1", {4, 4}, "r");  // on the corner of both tiles
-    const auto result = lengths(ex, c.tech(), lists({"d"}, {"r"}), compat);
-    INFO("magic-compat " << compat);
-    REQUIRE(result.records.size() == (compat ? 2U : 1U));
-    for (const auto& r : result.records) {
-      CHECK(r.receiver == "r");
-      CHECK(r.distance == result.records[0].distance);
-    }
-  }
+  const auto records = corner_receiver_records(true);
+  REQUIRE(records.size() == 2U);
+  CHECK(records[0].receiver == "r");
+  CHECK(records[1].receiver == "r");
+  CHECK(records[0].distance == records[1].distance);
+}
+
+TEST_CASE("Path length: Q-EXTRACT-42: a receiver touching two yanked tiles is listed once with magic-compat OFF",
+          "[cap:extract-commands][req:Path length extraction]") {
+  const auto records = corner_receiver_records(false);
+  REQUIRE(records.size() == 1U);
+  CHECK(records[0].receiver == "r");
 }
 
 TEST_CASE("Path length: a driver label on space writes no record (Magic prints stale values)",
