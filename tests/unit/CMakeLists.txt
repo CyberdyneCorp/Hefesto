@@ -41,7 +41,10 @@
 #   lvs/ sim/  SCAFFOLD (M9 shared tests); each subdirectory is owned by its
 #            workstream (openspec/changes/m9-lvs-simulation design.md D3)
 #            (always)
-#   render/  VIEWER                         (desktop builds, if present)
+#   plot/ route/  SCAFFOLD (M10 plot/route shared tests); each subdirectory
+#            is owned by its workstream (openspec/changes/m10-plot-route
+#            design.md D3)                  (always)
+#   render/  VIEWER                        (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
 # Each M1 area directory builds one executable hefesto_<area>_tests from every
@@ -101,7 +104,7 @@ endfunction()
 
 foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints
                       script pcell tools gui mask gds cif lef def oasis extflat extract schem view3d
-                      netlist extresist antenna lvs sim)
+                      netlist extresist antenna lvs sim plot route)
   add_subdirectory(${_area})
 endforeach()
 

@@ -234,38 +234,48 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-41: PostScript drops rectangles that start left of / below the area
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Outline/cross rectangles (`mr`, `mx`) are emitted only if their lower-left corner is inside the plotted area, contrary to the comment ("Depend on PostScript to do the clipping"); cell outlines straddling the area's left/bottom edge disappear.
 - Evidence: plot/plotPS.c:405-420
 - Options: replicate | fix (emit when any part overlaps)
 - Recommendation: replicate for golden compatibility, offer fix.
+- Resolution: compat — with `magic-compat` ON an `X`/`B` rectangle or cell outline is written only when its lower-left corner lies inside the plotted area, as Magic; with it OFF it is written when any part overlaps and `rectclip` trims it (J5; branch point `plot::ps::emit_outline_rect`; approved 2026-11-25).
 
 ### Q-MISC-42: PostScript label/cell text not escaped
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Text is written inside `( )` verbatim; parentheses or backslashes in labels or cell names produce invalid PostScript.
 - Evidence: plot/plotPS.c:995-997, plot/plotPS.c:1040-1055
 - Options: replicate | fix (escape `(`, `)`, `\`)
 - Recommendation: fix — only affects otherwise-broken files.
+- Resolution: fix — `(`, `)` and `\` in label texts, cell names and instance ids are escaped with `\`, in both modes, so the file is valid PostScript; MISC-PLOT-03 is a documented deviation (X-2 tier 1; approved 2026-11-25).
 
 ### Q-MISC-43: Label margin estimate mixes relative and absolute coordinates
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: The anchor is relative to the area origin but is compared with absolute area bounds, so margins are only correct when the area's lower-left corner is (0,0).
 - Evidence: plot/plotPS.c:873-878
 - Options: replicate | fix
 - Recommendation: replicate (BoundingBox and scale depend on it).
+- Resolution: compat — with `magic-compat` ON the label margins use Magic's mixed relative and absolute coordinates (the BoundingBox and scale match the goldens); with it OFF all four overhangs use coordinates relative to the area origin (J5; branch point `plot::ps::label_overhang`; approved 2026-11-25).
 
 ### Q-MISC-44: Printer spooling, temp files and library-path resources
 - Kind: platform
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: Raster plots are written to `/tmp` (parameter `directory`) via mkstemp and printed with `system("lp -d <printer> <file>")`; `magicps.pro` and style/colour files are found on the system library path.
 - Evidence: plot/plotVers.c:95-110, plot/plotVers.c:1220-1235, plot/plotVers.c:1475-1485, plot/plotPS.c:1180-1192
 - Options: platform alternative (embed resources; share sheet / print API instead of spooling)
 - Recommendation: embed prologue byte-exact; no process spawning on iPadOS.
+- Resolution: platform — `magicps.pro` is embedded byte for byte; `mos.7bit.dstyle`, `mos.7bit.std.cmap` (unless the display assets already carry them), `mos.7bit.mraster.cmap` and `mos.7bit.mraster_dstyle` are bundled unmodified with Magic's notice; no plot is ever spooled and no process is started on any platform (approved 2026-11-25).
 
 ### Q-MISC-45: colorversatec stipple byte swap uses wrong index
 - Kind: bug
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: On little-endian hosts the replicated stipple words are byte-swapped from `vs_stipple[i]` instead of `[j+i]`, corrupting patterns given with fewer than 16 words.
 - Evidence: plot/plotVers.c:470-476
 - Options: replicate | fix
 - Recommendation: fix (legacy device, informative).
+- Resolution: n/a — under Q-MISC-51 (a) Hefesto parses no `colorversatec` stipples, so the byte swap does not exist in Hefesto (approved 2026-11-25).
 
 ### Q-MISC-46: PNM plots ignore labels and cell outlines
 - Kind: doc-mismatch
@@ -277,75 +287,102 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-47: PNM downsampling message computes required memory oddly
 - Kind: quirk
+- Status: approved 2026-11-25 (m10-plot-route decision table, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: The reported "Required for non-downsampled image" divides by 4^(original downsample) after adding 1023 inside an int cast of a float expression.
 - Evidence: plot/plotPNM.c:675-685
 - Options: replicate (informative message)
 - Recommendation: message text is informative; do not replicate exactly.
+- Resolution: replicate — the downsampling message prints Magic's numbers, computed in 64-bit so they match wherever Magic does not overflow; the console comparison needs no mask (approved 2026-11-25).
 
 ### Q-MISC-48: A plotted area of zero width or height divides by zero
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `plot postscript` computes the scale as min((W − 2M)/X, (H − 2M)/Y). A box of zero width or height in the root cell, or an empty root cell with a degenerate bounding box, makes a divisor 0. The scale becomes infinite or NaN, and the later float-to-int conversions (the BoundingBox width `trunc(X·s)` and the label margins) are undefined behaviour; the header written is meaningless. `plot pnm` on the same area reports "Empty region, no plot" because it uses the bounding box of the painted tiles, so only PostScript is affected.
 - Evidence: plot/plotPS.c:1165-1192 (scale and margin recomputation), plot/plotPNM.c:672-676 (the PNM empty-region check)
 - Options: replicate (not possible: the result is undefined) | fix (refuse the plot with a diagnostic and write no file)
 - Recommendation: fix in both modes (X-2 tier 1: undefined behaviour). When X or Y is 0, `plot postscript` reports `PLOT-PS-001` "Nothing to plot: the plotted area has zero width or height." and writes no file. No golden case; a unit test per mode covers it.
+- Resolution: fix — when the plotted area has zero width or height, `plot postscript` reports `PLOT-PS-001` "Nothing to plot: the plotted area has zero width or height." and writes no file, in both modes (X-2 tier 1; approved 2026-11-25).
 
 ### Q-MISC-49: PNM memory arithmetic overflows and can hang
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: three defects in the PNM strip logic. (1) `pnmmaxmem` is an `int` in KB and is multiplied by 1024 in `int`, which overflows above 2 097 151 (undefined behaviour). (2) The strip height `tile_ysize = maxmem·1024 / (3·tile_xsize)` ignores the antialiasing halo; when it is at most 2·scale_over_2 the strip step `tile_ydelta` is zero or negative and the strip loop never ends. (3) The forced-downsampling loop shifts by `ds·2` with no upper bound, which is undefined for very large images.
 - Evidence: plot/plotPNM.c:685-699 (forced downsampling), :705-729 (strip size and step), :686 and :705 (`PlotPNMmaxmem*1024`)
 - Options: replicate (not possible: overflow and hang) | fix
 - Recommendation: fix in both modes (X-2 tier 1). The arithmetic is 64-bit; `pnmmaxmem` accepts 1..4 194 304 KB (4 GiB) and reports "pnmmaxmem must be an integer 1-4194304." otherwise; the strip height is at least 2·scale_over_2 + 1 rows, letting a strip exceed `pnmmaxmem` by at most that halo when needed (the strips are Magic's whenever Magic's step is positive, so every golden case is unchanged); downsampling stops at 2^15, and a plot that still does not fit reports `PLOT-PNM-002` and writes no file. Design D18 caps the output at 65 535 pixels per side.
+- Resolution: fix — 64-bit memory arithmetic, `pnmmaxmem` limited to 1..4 194 304 KB, a strip of at least 2·scale_over_2 + 1 rows, forced downsampling capped at 2^15 (`PLOT-PNM-002`) and at most 65 535 pixels per side (`PLOT-PNM-003`), in both modes (X-2 tier 1; approved 2026-11-25).
 
 ### Q-MISC-50: Malformed `plot` style lines
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: (1) a bare `map` line in `style pnm` reads `argv[1]` without checking `argc` (NULL dereference). (2) `style postscript` parses its numeric fields with `sscanf` without checking the result, so a garbage index or colour component is silently accepted with an indeterminate value. (3) A layer style that names a colour or pattern index never defined is not checked; the PostScript file then calls an undefined `colN` or pattern and fails when rendered. (4) A `draw` line with more than three fields and an unknown pnm keyword are silently ignored. (5) Repeating `color` or `dstyle` leaks the earlier table (not observable).
 - Evidence: plot/plotPNM.c:1231 (bare `map`), :1132-1255 (keyword prefixes, `draw` handles argc == 3 only), plot/plotPS.c:240-323 (unchecked `sscanf`, list prepends)
 - Options: replicate | fix (report and ignore the line; report undefined references at plot time)
 - Recommendation: fix (1)–(3) in both modes (X-2 tier 1: crash, indeterminate values, invalid PostScript). A bare `map` reports `"map" lines need at least one type` at technology load and is ignored; a non-numeric index or colour component reports `"ps" line field "<f>" is not an integer` and the line is ignored; a layer style naming an undefined colour or pattern is reported once per plot (`PLOT-PS-002`) and skipped, so the file stays valid PostScript. Replicate (4) in both modes (silently ignored, as Magic; scmos and the three PDKs load with no new message). (5) needs no decision.
+- Resolution: fix — (1) a bare `map`, (2) non-integer `style postscript` fields and (3) references to undefined colours or patterns are reported and ignored, in both modes; (4) long `draw` lines and unknown pnm keywords stay silently ignored as Magic, the replicate part of the recommendation (X-2 tier 1; approved 2026-11-25).
 
 ### Q-MISC-51: Plot devices and parameters Hefesto offers
 - Kind: platform
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `plot/plotInt.h:28` defines `VERSATEC` unconditionally, and `plotCmd.c`, `plotMain.c`, `plotPNM.c` and `plotVers.c` all include that header, so the default Magic 8.3.694 build has the PostScript, PNM and Versatec devices: `plot versatec [scale [layers]]` rasterises the area and prints it by running the `spoolcommand` (default `lp -d %s %s`) on a temporary file in `directory`; `plot pnm` sends its output to an HP RTL/HPGL2 plotter when `pnmplotRTL` is true; `plot parameters` lists and sets the HP/Versatec parameters (`cellidfont`, `cellnamefont`, `labelfont`, `directory`, `dotsperinch`, `printer`, `spoolcommand`, `swathheight`, `width`, `plottype`) and `pnmplotRTL`, printed as the `pnmplotRTL` line of the PNM group and the "HP/Versatec plotting parameters are:" group; and the `versatec` and `colorversatec` tech lines are parsed. `svg` is added when Magic is built with Cairo and the Tcl wrapper (`HAVE_LIBCAIRO && MAGIC_WRAPPER`). Only `gremlin` (`GREMLIN`) and `pixels` (`LLNL`) are compiled out; their tech lines are accepted and ignored. The comments that say every device except PostScript and PNM is removed (`plotMain.c:50-53`, `plot/Makefile.in:19-22`) are stale. The living `plot-output` spec describes this correctly.
 - Evidence: plot/plotInt.h:28, plot/plotCmd.c:42 and :70-125, :250-268, :300-330 (`versatec` and the RTL width), plot/plotMain.c:306-320 (listing), :359-372 and :401-413 (parameter table), :511-600 (setters), plot/plotPNM.c:81, :139, :590, :745, :895-954 (RTL path), plot/plotVers.c:51 and :1063-1490, plot/plotGremln.c:131-217, plot/plotPixels.c:149-183
 - Options: (a) Hefesto deviates (platform): options `postscript`, `pnm`, `svg`, `parameters`, `help`; no `plot versatec`, no HP RTL output, no HP/Versatec parameters (unknown names); the `versatec` and `colorversatec` tech lines accepted and ignored | (b) surface parity without a device: the option list and the HP/Versatec parameters are as Magic (listed, set, checked and stored), and `plot versatec`, or `plot pnm` with `pnmplotRTL` true, reports `PLOT-DEV-001` "Raster printer output is not supported; use plot postscript or plot pnm." and writes nothing | (c) implement Versatec and HP RTL rasterisation to a file, and spool through a subprocess on the desktop only
 - Recommendation: (a), in both modes, as a documented platform deviation. Raster printers and HP plotters are obsolete; spooling means starting a process, which Hefesto does on no platform (Q-MISC-44); and (a) keeps no settings that do nothing. The cost is three golden deviations, each a masked part of the Magic output: MISC-PLOT-05 (the `pnmplotRTL` line, the HP/Versatec group and the sets of those parameters), MISC-PLOT-13 (the `versatec` lines of the help list) and MISC-PLOT-17 (the same listing lines printed after `plot parameters nosuch 1`). `plot versatec` is not run in any capture, since it would try to spool through `lp`. (b) avoids the three deviations at the price of eleven stored parameters with no effect; (c) is out of proportion for obsolete devices. The `plot-output` requirements "Plot command and plotted region", "Plot parameters" and "Raster printer and legacy plot devices" change accordingly (m10-plot-route deltas, worded as Hefesto deviations).
+- Resolution: platform — option (a): Hefesto offers `postscript`, `pnm`, `svg`, `parameters` and `help` only; no `plot versatec`, HP RTL output or HP/Versatec parameters, and the `versatec` and `colorversatec` tech lines are accepted and ignored, as a documented deviation in both modes with masked parts of MISC-PLOT-05, -13 and -17 (approved 2026-11-25).
 
 ### Q-MISC-52: SVG content and its golden reference
 - Kind: platform
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `plot svg` redraws the window into a Cairo SVG 1.2 surface of the window's screen area, so the file is whatever Cairo emits for Magic's display drawing (stipple patterns, outlines, labels as glyph paths). It needs the `-d XR` display; the golden capture image builds Magic `--with-cairo=no` and runs `-dnull`, so MISC-PLOT-12 cannot be captured there. Hefesto has no Cairo (P-3), and its headless sessions have a window too (`view::kNullScreen`, 512 × 484 pixels).
 - Evidence: graphics/grTCairo1.c:354-404, plot/plotCmd.c:270-287; tools/golden/container/Containerfile:99-105
 - Options: (a) Hefesto writes its own SVG from the display scene (the layers, stipples, outlines, labels and cell outlines the window draws) at the window's pixel size; a `magic-cairo` capture variant (Magic built with Cairo under Xvfb, `-d XR`) captures MISC-PLOT-12 and `plot help`, and MISC-PLOT-12 is compared only on the file name, `width`, `height` and well-formedness | (b) as (a) without the Cairo variant; MISC-PLOT-12 becomes a Hefesto-only case | (c) imitate Cairo's output element by element
 - Recommendation: (a). The drawing inside Magic's SVG is a display rendering (informative), so only the observable contract (name, size, an SVG 1.2 document) is compared. MISC-PLOT-12 sets the layout window's drawing area to 512 × 484 pixels in both tools (Hefesto's headless default; in Magic the Tk geometry of the layout window, applied and checked before `plot svg`), and `svg_shape` compares `width` and `height` as numbers after removing the unit, because Cairo's SVG surface writes them in points (`512pt`) while Hefesto writes plain pixels. The variant follows the `magic-gl` precedent (m10-3d-view design D13) and also captures the `plot help` listing (Q-MISC-51; its `versatec` lines are a documented deviation under Q-MISC-51 (a)).
 - `magic-compat` ON deviation: Magic without Cairo or the Tcl wrapper treats `svg` as an invalid option, and Magic with Cairo but another display (for example `-dnull`) reports `Must be running in mode "-d XR" (CAIRO) to get SVG output.` and writes nothing. Hefesto writes the SVG with every display and in headless sessions, with `magic-compat` ON as well. This is a platform decision (P-3: no Cairo display exists in Hefesto to require), recorded as an ON-mode deviation in the `plot-output` "SVG plot" requirement; no golden case runs `plot svg` outside the Cairo variant.
+- Resolution: platform — option (a): Hefesto writes its own SVG from the scene (`hefesto-rendering` "View export to SVG and PNG"); a `magic-cairo` capture variant captures MISC-PLOT-12 and -13, MISC-PLOT-12 compared on the file name, well-formedness and the numeric `width` and `height` with both windows at 512 × 484; `plot svg` working with `magic-compat` ON on every display is a documented ON-mode deviation (J3; approved 2026-11-25).
 
 ### Q-MISC-53: Interrupted and failed plots leave partial files
 - Kind: bug
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: both writers open the output file first and write as they go. An interrupt during `plot pnm` prints " *** interrupted ***" and leaves a truncated image; write errors are not checked, so a full disk leaves a truncated PostScript or PNM file and no message.
 - Evidence: plot/plotPNM.c:819-877 (open, strips, interrupt), plot/plotPS.c:1126-1334 (no write checks)
 - Options: replicate | fix (write to a temporary file in the same directory and rename on success)
 - Recommendation: fix in both modes (X-2 tier 1: a truncated file that looks like a plot is corrupt output). On interrupt or write error the temporary file is removed and an existing file of that name is left unchanged; the interrupt message is Magic's; a write error reports `PLOT-IO-001`. Golden cases do not interrupt plots.
+- Resolution: fix — every plot is written to a temporary file in the target directory and renamed on success; on interrupt or write error the temporary file is removed and an existing file of that name is unchanged, in both modes (`PLOT-IO-001` for a write error; X-2 tier 1; approved 2026-11-25).
 
 ### Q-MISC-54: Byte-identical PostScript and PNM on every platform
 - Kind: platform
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: the PostScript header prints single-precision values with `%.3f`; the PNM antialiasing builds a 2 049-entry Lanczos table from `double sin()` cast to `float` and accumulates in `float`. libm implementations (glibc, Apple) can differ in the last bit of `sin`, and FMA contraction changes float sums, so the bytes may differ between platforms.
 - Evidence: plot/plotPS.c:1240-1262, plot/plotPNM.c:62, :90, :244-266, :984-995
 - Options: (a) embed the Lanczos table as constants generated once from glibc in the capture image and checked by a unit test; compile the plot sources with `-ffp-contract=off`; format floats from the `float` value with a correctly rounded formatter | (b) compute at run time and accept per-platform differences with a tolerance
 - Recommendation: (a). `plot-output` marks both formats exact, and `hefesto-output-determinism` requires byte identity on Linux x86_64, Linux aarch64 and macOS arm64.
+- Resolution: platform — option (a): a committed Lanczos table generated in the capture image and checked by a unit test, the plot sources compiled with `-ffp-contract=off`, and correctly rounded float formatting (approved 2026-11-25).
 
 ### Q-MISC-55: `.pnm` is appended only when the whole path has no dot
 - Kind: quirk
-- Status: pending user decision (raised 2026-11-24 by the m10-plot-route plan)
+- Status: approved 2026-11-25 (raised 2026-11-24 by the m10-plot-route plan, `docs/decisions/m10-plot-route-decision-table.md`; approved by the user with the recommended option)
 - Magic behavior: `plot pnm` tests the whole path for a `.`, so `plot pnm ./out` and `plot pnm dir.v2/out` write a file named `out` with no extension, while `plot pnm out` writes `out.pnm`. `plot svg` has the same rule.
 - Evidence: plot/plotPNM.c:819-821, graphics/grTCairo1.c:363-368
 - Options: replicate | compat (ON tests the whole path; OFF tests the last path component only)
 - Recommendation: compat (standing rule: the name of the file written is observable). With `magic-compat` ON the whole path is tested, as Magic; with it OFF only the file name after the last `/`.
+- Resolution: compat — with `magic-compat` ON the extension test looks at the whole path, as Magic; with it OFF only at the file name after the last `/` (branch point `plot::io::with_default_extension`; approved 2026-11-25).
+
+### Q-MISC-56: Size limit of the `color` and `dstyle` files of the plot section
+- Kind: bug
+- Status: approved 2026-11-26 (raised 2026-11-26 by the M10 plot/route round 0 review; approved under the user's standing approval of crafted-input resource limits in both modes, with the recommended value)
+- Magic behavior: `PlotLoadColormap` and `PlotLoadStyles` read the file named by a `color` or `dstyle` line of `style pnm` line by line at every technology load, whatever its size, although at most 128 colours and one line per display style are used. Hefesto's loader read the whole file into memory first, so a technology file naming a multi-gigabyte file made every load allocate all of it.
+- Evidence: plot/plotPNM.c:1360-1400, :1456-1507; src/core/src/plot/tech/pnm_lines.cpp `PnmHandler::find_file`
+- Options: (a) read at most 1 MiB (`FileSystem::read_at_most`); a larger file is a format error | (b) stream the file line by line as Magic
+- Recommendation: (a), both modes: 128 colour lines of 256 bytes are about 32 KiB, so no real file comes near the limit.
+- Resolution: fix in both modes — `color` and `dstyle` files are read with `read_at_most` up to 1 MiB (`plot::detail::kMaxPlotFileBytes`); a larger file reports Magic's format error for its kind and disables PNM plotting for the technology (approved 2026-11-26 under the standing approval for input limits).
+
+### Q-MISC-57: PNM `default` colours come from the 7bit display class
+- Kind: platform
+- Status: pending user decision (raised 2026-11-26 by the M10 plot/route round 0 review)
+- Magic behavior: `default` and `draw <type>` in `style pnm` take their colours from the display style table the running display loaded (`GrStyleTable`), so a Magic session with a graphics display can write other PNM colours than a headless (`-dnull`, `7bit`) one. The golden captures run headless.
+- Evidence: plot/plotPNM.c:1150-1165, :1261-1279, graphics/grMain.c:215-216
+- Options: (a) always the `7bit` class of the technology's style type, computed at technology load (`.`, then the technology's directory, then the bundled `mos.7bit.dstyle` and `mos.7bit.std.cmap`) | (b) the session's display style set, recomputed when it changes
+- Recommendation: (a). The `Technology` is read before any display style set is installed and is shared by sessions; (a) gives the colours of the captured headless Magic on every platform and display, as plot-output's byte-identity needs. This is what round 0 implements and what plot-output "Platform mechanism of plot output" states; not cited from the spec while pending.
 
 ## view-3d
 

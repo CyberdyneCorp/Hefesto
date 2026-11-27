@@ -1,0 +1,1 @@
+"foo" isn't a valid plot option.

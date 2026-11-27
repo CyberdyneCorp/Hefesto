@@ -1,0 +1,82 @@
+# plottest.tech -- the test technology of the MISC-PLOT cases (tests/golden/MISC/CASES.md,
+# openspec/changes/m10-plot-route design D19, task 2.4).
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+# The PDKs have only `style pnm`, so the PostScript cases use this minimal Hefesto-authored technology
+# with both a `style postscript` and a `style pnm` block. Planes well, active, metal1, metal2; two
+# contacts (pc: poly/metal1, m2c: metal1/metal2); display styles from Magic's `mos` set (the -dnull
+# display loads mos.7bit.dstyle). The authoring script (m10_cases.py) copies this file into each case's
+# input/ and replaces the plot section (between the `plot` and `end` lines) where a case needs another.
+tech
+    format 35
+    plottest
+end
+
+version
+    version 1
+    description "Hefesto MISC-PLOT test technology"
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    well    nwell,nw
+    active  polysilicon,poly
+    active  ndiffusion,ndiff
+    active  polycontact,pc
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal1  m2contact,m2c
+end
+
+contact
+    pc   poly   metal1
+    m2c  metal1 metal2
+end
+
+styles
+    styletype mos
+    nwell  12
+    poly   1
+    ndiff  2
+    pc     26
+    pc     32
+    m1     20
+    m2     21
+    m2c    20
+    m2c    21
+    m2c    32
+end
+
+compose
+end
+
+connect
+    poly,pc  poly,pc
+    m1,pc,m2c  m1,pc,m2c
+    m2,m2c   m2,m2c
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end
+
+plot
+    style pnm
+	draw m1 metal2
+	draw poly
+	map m2 m1 poly
+end

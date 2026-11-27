@@ -52,6 +52,9 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_sim_frames       # simulation worker frames and WorkerEngine (simulation-engine-embedding; m9 design D9, D20)
   fuzz_sim_raw          # raw result files, binary and ASCII (simulation-analyses-and-results; m9 design D12, D20)
   fuzz_sim_deck         # raw decks and their includes (simulation-netlist-preparation; m9 design D11, D20)
+  fuzz_plot_section     # the technology `plot` section (plot-output; m10-plot-route design D20)
+  fuzz_pnm_cmap_dstyle  # PNM colour-map and display-style files (plot-output; m10-plot-route design D20)
+  fuzz_mzrouter_section # the technology `mzrouter` section (router-maze; m10-plot-route design D20)
   fuzz_extract_section  # the technology `extract` section under every style (extract-tech-section; m7 design D22)
   fuzz_ext_netlist      # `.ext` files flattened and written as SPICE and .sim (netlist-spice-*, netlist-sim; m7 design D22)
   fuzz_res_ext_reader   # extresist's `.ext` input model and the `.res.ext` overlay read (extresist-command; m7 design D22)
@@ -109,6 +112,12 @@ if(TARGET fuzz_drc_section)
   target_include_directories(fuzz_drc_section PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
   target_compile_definitions(fuzz_drc_section PRIVATE
     HEFESTO_SCMOS_TECH="${CMAKE_BINARY_DIR}/tests/unit/tech/magic-tech/scmos.tech")
+endif()
+
+# fuzz_pnm_cmap_dstyle reads the private PNM file parsers
+# (src/core/src/plot/tech/reader.hpp, namespace hefesto::plot::detail).
+if(TARGET fuzz_pnm_cmap_dstyle)
+  target_include_directories(fuzz_pnm_cmap_dstyle PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")
 endif()
 
 # The cifoutput, cifinput and lef section targets also read the pinned PDK

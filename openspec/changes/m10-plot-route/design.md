@@ -1,6 +1,6 @@
 # Design: M10 plotting and maze routing (plot-output, router-maze, router-maze-iroute)
 
-> Drafted 2026-11-24 against origin/main 54fbc6d4. **No decision this design cites is approved yet.** Every choice is drafted as the recommended option of `docs/decisions/m10-plot-route-decision-table.md`. If the user picks another option, the D-numbers listed in "Decisions this design depends on" are revised before gate G0 passes.
+> Drafted 2026-11-24 against origin/main 54fbc6d4. **Every decision this design cites was approved on 2026-11-25 with the recommended option** of `docs/decisions/m10-plot-route-decision-table.md` (section "Decisions this design depends on"), so no D-number needed revising; gate G0 passed on 2026-11-26 (tasks section 1).
 
 ## Context
 
@@ -23,7 +23,7 @@ What is particular to this change:
 5. **One display-dependent format.** Magic writes SVG only through Cairo. Hefesto has no Cairo (P-3) and writes SVG itself from the scene model the renderer draws (D10).
 
 Magic's code in this area (read-only, fc5daa9e; nothing under `plot/`, `irouter/`, `mzrouter/` or `tcltk/mazeroute.tcl` changed after it):
-- `plot/` (about 6 300 lines): `plotCmd.c`, `plotMain.c`, `plotPS.c`, `plotPNM.c`, and the Versatec and HP RTL code of `plotVers.c` and `plotHP.c`, which the default build compiles (`plotInt.h:28` defines `VERSATEC` unconditionally); only `plotGremln.c` (`GREMLIN`) and `plotPixels.c` (`LLNL`) are compiled out. Hefesto ports neither Versatec nor HP RTL output, a platform deviation the user decides (Q-MISC-51).
+- `plot/` (about 6 300 lines): `plotCmd.c`, `plotMain.c`, `plotPS.c`, `plotPNM.c`, and the Versatec and HP RTL code of `plotVers.c` and `plotHP.c`, which the default build compiles (`plotInt.h:28` defines `VERSATEC` unconditionally); only `plotGremln.c` (`GREMLIN`) and `plotPixels.c` (`LLNL`) are compiled out. Hefesto ports neither Versatec nor HP RTL output, a platform deviation the user approved on 2026-11-25 (Q-MISC-51 (a)).
 - `mzrouter/` (about 12 000 lines) and `irouter/` (about 4 000 lines).
 - `magic/magicps.pro` (72 lines, the PostScript prologue), and in `scmos/` the `mos.7bit.mraster*` plot colour files and the `mos.7bit.dstyle` and `mos.7bit.std.cmap` display files that a `-dnull` run loads.
 - `tcltk/mazeroute.tcl` (675 lines, `mazeroute` and the maze helper window).
@@ -282,7 +282,7 @@ Why not ship per-PDK overlays (option (c)): they would have to follow PDK releas
 
 - `mazeroute <netfile>` replaces the `TOOLS-MAZE-001` stub with Magic's behaviour: the `.net` fallback, the header line skipped, nets separated by blank lines, terminals routed as a chain with `iroute route -dlabel <previous> -slabel <current> -timeout 3` through the command layer, so the console and the Tcl results are as Magic's (Q-SCRIPT-30 replicate). `routenet`'s acceptance of "success", "best before interrupt" and "already routed" is kept for the maze helper.
 - **Golden replays.** SCRIPT-AUX-02 replays `mazeroute` as Magic runs it, with `-timeout 3`: on its small layout every route ends long before 3 s in both tools, so the wall clock does not decide the result. If a runner ever reached the deadline, the case would be re-captured with `iroute wizard bloomLimit N` before `mazeroute` in both tools; no Hefesto-only setting exists for this.
-- **Maze helper window** (J6 (a)): a desktop panel reached from Options > Maze Router with Magic's lists (unrouted and routed nets), route, rip up, verify, and save and load of failed nets, driving the same commands. Its view model is headless and tested. Two choices depart from Magic's script and are pending user decision: a net with fewer than two pins stays in the unrouted list with a console note (Q-LEGACY-49; Magic's helper stops with an unset-variable error or reuses the previous net's result), and there is no parameter window (Q-LEGACY-54; Magic's `genmazeparams` reads an undefined variable and uses a widget Tk does not have, so it never opens). Both are in the `scripting-auxiliary-tools` delta of "Netlist maze-routing script". Not on iPadOS (the netlist workflow is desktop-only, `hefesto-ipad-feature-scope`).
+- **Maze helper window** (J6 (a)): a desktop panel reached from Options > Maze Router with Magic's lists (unrouted and routed nets), route, rip up, verify, and save and load of failed nets, driving the same commands. Its view model is headless and tested. Two choices depart from Magic's script, both approved on 2026-11-25: a net with fewer than two pins stays in the unrouted list with a console note (Q-LEGACY-49; Magic's helper stops with an unset-variable error or reuses the previous net's result), and there is no parameter window (Q-LEGACY-54; Magic's `genmazeparams` reads an undefined variable and uses a widget Tk does not have, so it never opens). Both are in the `scripting-auxiliary-tools` delta of "Netlist maze-routing script". Not on iPadOS (the netlist workflow is desktop-only, `hefesto-ipad-feature-scope`).
 
 ### D16. Threading
 
@@ -329,7 +329,7 @@ Caps are settings in `settings::ProjectSettings` where a user could reasonably n
 
 The PostScript cases use a minimal Hefesto-authored test technology (`tools/golden/authoring/plottest.tech`) with `plot` styles, as the PDKs have only PNM. Documented deviations, each with its reason and decision in `deviations.toml`:
 - MISC-PLOT-03 includes a label with `(` (Q-MISC-42): Hefesto escapes it, in both modes.
-- MISC-PLOT-05, MISC-PLOT-13 and MISC-PLOT-17 (Q-MISC-51 (a)): masked parts only. In MISC-PLOT-05, the `pnmplotRTL` line, the "HP/Versatec plotting parameters are:" group and the output of the commands that set those parameters; in MISC-PLOT-13, the `versatec` lines of the help list; in MISC-PLOT-17, the same listing lines printed after `plot parameters nosuch 1`. Every other line of the three cases is compared. If the user picks Q-MISC-51 (b), the three masks go away.
+- MISC-PLOT-05, MISC-PLOT-13 and MISC-PLOT-17 (Q-MISC-51 (a)): masked parts only. In MISC-PLOT-05, the `pnmplotRTL` line, the "HP/Versatec plotting parameters are:" group and the output of the commands that set those parameters; in MISC-PLOT-13, the `versatec` lines of the help list; in MISC-PLOT-17, the same listing lines printed after `plot parameters nosuch 1`. Every other line of the three cases is compared. Q-MISC-51 (a) was approved on 2026-11-25, so the three masks stay; (b) would have removed them.
 
 **Route (`tests/golden/LEGACY/CASES.md`).** LEG-MZ-01..20 as listed, plus:
 
@@ -387,7 +387,7 @@ M11's typed `route` tool (`agent-architecture`, `agent-schematic-driven-layout`)
 - the interface of D4 with no globals, a structured result and a deterministic bound (the style's `bloomLimit`, with Magic's stop rule);
 - the derived style, so the request has a style on the three PDKs;
 - the engine reentrant per session (D16).
-M10 does not decide Q-AGENT-1 (analog routing). If M11 adds constraints (per-net width, shielding, symmetry), they go in `RouteRequest` as optional fields and in new spacing and cost rules behind a `magic-compat` OFF default; the Magic-compatible search stays the base.
+M10 does not decide Q-AGENT-1 (analog routing). The `router-maze` requirement "Maze router engine interface" and the `router-maze-iroute` requirement "Derived irouter style" are written for this seam; their Q-AGENT-1 citations were left out of the specs synced at G0 so that the open M11 question does not count against M10 in `check_milestone_readiness`, and this note and the Q-AGENT-1 entry are the trace. M10 proceeds with Q-AGENT-1 open, pending the user's confirmation (round 0 report). If M11 adds constraints (per-net width, shielding, symmetry), they go in `RouteRequest` as optional fields and in new spacing and cost rules behind a `magic-compat` OFF default; the Magic-compatible search stays the base.
 
 ### D24. Exit list
 
@@ -431,10 +431,50 @@ M10 does not decide Q-AGENT-1 (analog routing). If M11 adds constraints (per-net
 ### MAZETOOL: `hefesto/tools/`
 `register_tool_commands` gains `mazeroute`; `route_net_file(std::istream&, CommandRunner&) -> MazeRouteSummary`.
 
+## As-landed scaffold contracts
+
+The scaffold (tasks.md 3.1, branch `m10-plot-route-round0-scaffold` from main at 6e48a02f, base commit "Scaffold the plot and route areas") landed the areas, headers and stubs below. The headers are the contract; this section records where they are, who fills them in, and where they differ from "Area contracts" and D4. Include paths are under `src/core/include/hefesto/`, sources under `src/core/src/`.
+
+### Files and owners
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `plot/{sources.cmake,codes.cpp,not_implemented.cpp}`, `plot/not_implemented.hpp` | area sources, the code table assembled from `plot/<sub>/codes.inc`, `plot::not_implemented` (CORE-NOTIMPL-010) | SCAFFOLD |
+| `route/{sources.cmake,codes.cpp,not_implemented.cpp}`, `route/not_implemented.hpp` | the same for `route` | SCAFFOLD |
+| `plot/<sub>/{sources.cmake,codes.inc}` for `tech`, `params`, `cmd`, `io`, `ps`, `pnm`; `route/<sub>/…` for `tech`, `maze`, `iroute`, `diag` | one directory per workstream, codes `PLOT-TECH`, `-PARAM`, `-CMD`, `-IO`, `-PS`, `-PNM`; `ROUTE-TECH`, `-MZ`, `-IROUTE`, `-DIAG` | as D3 |
+| `plot/tech/plot_tech.hpp` | `PsPattern`, `PsColor`, `PsStyle` (`kPsCross`, `kPsBorder`, `kPsSolid`), `Rgb`, `PnmPaint`, `PlotTech`, `StyleSource`, `read_plot_section` | PLOTTECH |
+| `plot/params/params.hpp` | `Params` (the 14 parameters with Magic's defaults; `print`, `set`) | PLOTCMD |
+| `plot/cmd/commands.hpp` | `Format`, `PlotRequest`, `Region`, `PlotContext`, `resolve_region`, `register_plot_command` | PLOTCMD (`svg`: EXPORT) |
+| `plot/io/atomic_file.hpp` | `AtomicFile` (`stream`, `commit`, cleanup in the destructor), `open_atomic`, `with_default_extension` | PLOTCMD |
+| `plot/ps/postscript.hpp` | `write_postscript`, `escape_ps_text` | PS |
+| `plot/pnm/pnm.hpp` | `PnmInfo`, `write_pnm` | PNM |
+| `display/export/export.hpp`, `src/display/export/{sources.cmake,export.cpp}` (included from `display/sources.cmake`) | `ExportOptions`, `export_svg`, `export_png` | EXPORT |
+| `route/tech/styles.hpp` | `RouteType`, `RouteLayer`, `RouteContact`, `Penalty`, `MazeStyle` (Magic's `mzSetParmDefaults` values), `MazeStyles`, `read_mzrouter_section`, `derive_after_load`, `find_style` | MZTECH |
+| `route/maze/types.hpp`, `route/maze/route.hpp` | `StartTerm`, `DestArea`, `LayoutView`, `RunControls`, `RouteRequest`, `ResultCode`, `Orientation`, `PathPoint`, `PaintRect`, `PaintList`, `Cost`, `EndReason`, `SearchStats`, `RouteResult`; `route::maze::route` | MZ |
+| `route/iroute/session.hpp` | `IrouteSession` (`styles`, `irouter`, `wizard_window`, `derived_notice_shown`, `reset_from`), `refresh_session_styles` | IROUTE (calls MZTECH's `derive_after_load`) |
+| `route/iroute/commands.hpp` | `register_iroute_commands`, `save_parameters` | IROUTE |
+| `route/diag/commands.hpp` | `register_route_diag_commands` (`*iroute`, `*mzroute`) | IROUTE |
+| `tests/unit/plot/`, `tests/unit/route/` and their subdirectories | one executable per directory once it has a `*_test.cpp`; `scaffold_test.cpp` holds the `[m10-plot-route-scaffold]` tests | SCAFFOLD; owners replace them with `[cap:][req:]` tests |
+| `tests/fuzz/fuzz_plot_section.cpp`, `fuzz_pnm_cmap_dstyle.cpp`, `fuzz_mzrouter_section.cpp`, `section_lines.hpp`, their seed corpora | the three D20 section targets, registered in `tests/fuzz/CMakeLists.txt` | PLOTTECH (first two), MZTECH (`fuzz_mzrouter_section`) |
+| `docs/diagnostics/codes/{plot,route}.md` | one section per workstream (PLOTTECH, PLOTCMD, PS, PNM, EXPORT; MZTECH, MZ, IROUTE) and the generated table (no code yet) | SCAFFOLD (sections: their workstreams) |
+
+The stubs answer: `read_plot_section` an empty `PlotTech` with `has_section` set when the section exists; `read_mzrouter_section` no style; `derive_after_load` nothing; `Params::print` nothing; `escape_ps_text` and `with_default_extension` their input unchanged; `route::maze::route` `ResultCode::failure` with one CORE-NOTIMPL-010 message; every other function, and the `plot`, `iroute`, `*iroute` and `*mzroute` commands, CORE-NOTIMPL-010 with nothing written. `find_style`, `IrouteSession::reset_from`, `refresh_session_styles`, the `Params` defaults and `AtomicFile`'s cleanup are final.
+
+### Differences from "Area contracts" and D4
+
+- **Technology.** `Technology::plot()` and `Technology::maze_styles()` return the parsed sections (empty values when absent); `Technology::Data` holds them as `shared_ptr<const …>`, so `tech locked`/`unlocked`/`revert` keep them. The loader reads them in its publish step (`tech/loader.cpp` `read_plot_and_route`), after the types and contacts are final, from the last occurrence of each section (a repeated section is read again from its start). Their tech-load messages therefore come after every other line message of the file and before the `cifoutput`/`cifinput`/`drc`/`lef` messages that `tech::load_session_technology` reports later; in Magic the `mzrouter` messages come between `cifinput` and `drc`. This ordering difference only shows in a file with errors in both kinds of section.
+- **Readers.** `read_plot_section(const RawSection*, const Technology&, const StyleSource&, DiagnosticSink&)` and `read_mzrouter_section(const RawSection*, const Technology&, DiagnosticSink&)`: the section is a pointer (nullptr when the file has none), the technology is the type table and the messages go to a `diag::DiagnosticSink` (the contract's `TypeTable`, `StyleResolver` and `TechDiagnostics` do not exist in the code base). `StyleSource` carries the session style set (nullptr headless), the file system and the `color`/`dstyle` search directories; the loader passes the file system and the directories (`.`, then the technology file's directory) and never a session set, because the `Technology` is read before any display style set is installed and is shared by every session: the PNM `default` and `draw <type>` colours are always those of the `7bit` display class, as a headless Magic run's (plot-output "Platform mechanism of plot output"; Q-MISC-57, pending user confirmation). `StyleSource::session` stays for the unit tests. `color` and `dstyle` files are read with `FileSystem::read_at_most`, at most 1 MiB (Q-MISC-56).
+- **Derived router styles.** `derive_after_load(MazeStyles&, const Technology&, const drc::RuleSet*, const lef::LayerTable&, bool magic_compat, DiagnosticSink&)` takes the technology (for type and plane tables) and a nullable rule set. Its result depends on the session's DRC rules, LEF table and grid, which the immutable `Technology` does not hold, so the derived styles live in the session (`IrouteSession::styles`), not in `Technology` as D4 says. `route::refresh_session_styles(EditorState&, sink)` (Magic's `MZAfterTech` + `IRAfterTech`) copies `Technology::maze_styles()`, derives and re-copies `irouter`; it is called from `tech::install_technology` (`tech/commands.cpp`, after the DRC rules, the LEF table and the extraction style are installed). Its rescale overload, `refresh_session_styles(EditorState&, sink, StyleRescale{n, d})`, is called from `scalegrid` after `DRCTechScale` and the LEF refill (`tech/commands.cpp`, Magic's `CmdScaleGrid`), from the finer-grid `.mag` read's rescale (`cell/io_session.cpp`, Magic's `dbReadOpen`) and from a CIF or GDS read that redefines the grid (`mask/input/scale.cpp` `ReadEngine::subdivide_grid`, Magic's `CIFScaleCoord`, both grid-redefining paths). Magic also calls `MZAfterTech` from `MZInit` at start-up, before any technology but `minimum` is loaded, which has no Hefesto counterpart. After a rescale, magic-compat ON drops the explicit `spacing` values, because Magic frees them after the first `MZAfterTech`; OFF carries the session's explicit `spacing` and `width` values over, scaled by d/n and rounded up as DRC distances are (Q-LEGACY-106).
+- **IrouteSession.** The verbosity is the `irouter` copy's `verbosity` (Magic's `irMazeParms`), not a separate field; `wizard_window` is `std::optional<int>` (nullopt = Magic's `irRouteWid = -1`).
+- **Plot command.** `write_pnm` takes the pixel width as an extra `int width` (the `plot pnm` argument, default 1000 in `PlotRequest::pnm_width`). `PlotContext` holds `magic_compat`, a cancel flag (`const std::atomic<bool>*`) and a progress callback; the layout read view is the `Region`'s root cell. `Region` holds the root cell, the area, the type mask and the label and subcell flags.
+- **Export.** `export_svg`/`export_png` return `diag::Status` (the code base's `Outcome<Done>`; there is no `Outcome<void>`). `display/export/` has no `codes.inc`: the `DISPLAY-EXPORT-*` codes go into `display/codes.cpp` when EXPORT adds them. The `-ffp-contract=off` flag of D20 is already PUBLIC on `hefesto_core` (`src/core/CMakeLists.txt`, M3), so the plot, route and export sources and `display/font.cpp` need no per-directory flag (Q-MISC-54).
+- **Commands.** `register_plot_command`, `register_iroute_commands` and `register_route_diag_commands` take a `cmd::CommandRegistry&` and return `bool` (false on a duplicate), as the other areas'; `cmd::register_all_commands` calls them after the M9 commands. The `help` strings of all four commands were already in `ui/magic_help.cpp`. `tests/golden/deviations.toml` UI-G-005 no longer names them.
+- **Edits outside the new areas.** `src/core/CMakeLists.txt` (`HEFESTO_CORE_AREAS`), `diag/codes.cpp` (area array size 36, `CORE-NOTIMPL-010`), `diag/area_codes.hpp`, `diag/codes.hpp` (`kPlotRouteNotImplemented`), `cmd/all_commands.cpp`, `editor/editor_state.hpp` (`EditorState::plot`, `EditorState::iroute`), `tech/technology.hpp`, `tech/technology_data.hpp`, `tech/technology.cpp`, `tech/loader.cpp`, `tech/commands.cpp`, `cell/io_session.cpp` and `mask/input/scale.cpp` (the hook calls above), `display/sources.cmake`, `tests/unit/CMakeLists.txt`, `tests/fuzz/CMakeLists.txt`, `tests/golden/deviations.toml` (UI-G-005 reason) and `docs/diagnostics/codes.md`.
+
 ## Risks / Trade-offs
 
 - **R1. The maze engine is large and order-sensitive.** About 10 000 lines must reproduce Magic's visit order. Mitigation: goldens first (G1-ROUTE); LEG-MZ-13 (`dumpEstimates`) and the `iroute verbosity 2` statistics pin intermediate state, not only final paint; the port follows Magic's file structure so reviewers can compare function by function.
-- **R2. Compat branches inside the search.** Four OFF behaviours (Q-LEGACY-33, -85, -87, -89) double some test effort. Mitigation: one branch point each (D5); if the user prefers replicate (J5 (b)), they disappear without other changes.
+- **R2. Compat branches inside the search.** Four OFF behaviours (Q-LEGACY-33, -85, -87, -89) double some test effort. Mitigation: one branch point each (D5); the user approved compat (J5 (a)) on 2026-11-25; replicate (J5 (b)) would have removed them without other changes.
 - **R3. PNM bytes across platforms.** Mitigation: the committed Lanczos table, `-ffp-contract=off` and the three-platform golden runs (Q-MISC-54). If a platform still differs, the case gets an approved deviation, never a silent tolerance.
 - **R4. The derived style routes poorly on some PDK.** Its costs come from scmos. Mitigation: it is OFF-only and overridable by any `irouter` style in the technology or a user's technology overlay; the `route-bench` sky130A workload and M11's benchmark measure it; costs can be tuned without a spec change because the requirement fixes the rule, and a change of values would be a spec delta in M11.
 - **R5. The Cairo variant is brittle.** Magic under Xvfb with Cairo may crash at random, as the OpenGL variant did with `.magic3d`. Mitigation: only two cases use it; if it cannot be stabilised, MISC-PLOT-12 and -13 become Hefesto-only cases with a recorded decision (Q-MISC-52 (b)).
@@ -446,21 +486,24 @@ No user data changes. Technologies with `plot` or `mzrouter` sections, which loa
 
 ## Open Questions
 
-None is decided. Each one's recommended option is (a).
+All three were decided on 2026-11-25 with the recommended option (a).
 
 1. **How spec changes are recorded.**
    - (a) *Recommended:* as this change's `specs/` deltas, synced into the living specs at G0, then `skip_specs: true` (M9's approach).
    - (b) Edit the living specs directly after approval (the M7 and M8 approach).
+   - **Decision (approved 2026-11-25):** (a). The deltas were synced at G0 on 2026-11-26 and `skip_specs: true` is set.
 2. **When this change starts relative to the 3D view.**
    - (a) *Recommended:* R0 now; R1 as soon as G0 passes, in parallel with the 3D view's rounds. The two changes share no module but do share files (the capture image and workflow, `m10_cases.py` and MISC `CASES.md`, the core area and registration lists, `EditorState`, `menu_bar_model.cpp`, `perf.yml`, `THIRD_PARTY_NOTICES.md`); D1 lists them with their merge protocol (additive edits, one commit each, the later change brought up to date with the earlier).
    - (b) After the 3D view's P2 exit.
+   - **Decision (approved 2026-11-25):** (a), under D1's merge protocol.
 3. **Desktop scope.**
    - (a) *Recommended:* the export dialog and the maze helper panel, with DESIGN boards first (D17).
    - (b) Console only in M10; both UIs in M13 with the Desktop 1.0 polish.
+   - **Decision (approved 2026-11-25):** (a), the desktop UI in M10.
 
 ## Decisions this design depends on
 
-| Decision (all pending) | Recommended option | Design sections it shapes |
+| Decision (approved 2026-11-25) | Approved option (the recommended one) | Design sections it shapes |
 |---|---|---|
 | J1: D-37, D-38 view export ownership | `hefesto-rendering` owns SVG and PNG export; PNG from a CPU scan-converter (D-37 (c), a new option); delivered here | D3, D4, D10, D17 |
 | J2: Q-LEGACY-37 default `irouter` style | (b) derived from the `lef` section, `magic-compat` OFF only | D5, D13, D23 |
@@ -473,9 +516,9 @@ None is decided. Each one's recommended option is (a).
 | Q-MISC-44 platform | embed the prologue, bundle the mraster files and the `7bit` display files, no spooling | D2, D6, D8 |
 | Q-MISC-54 cross-platform bytes | committed Lanczos table, `-ffp-contract=off` | D8, D9, D20 |
 | Q-MISC-55, Q-LEGACY-42, -43, -45 | compat | D5, D9, D12 |
-| Q-LEGACY-38, -39, -40, -41, -47, -48 | fix (Q-LEGACY-40 verify) | D6, D11, D12, D14, D18 |
+| Q-LEGACY-38, -39, -40, -41, -47, -48 | fix (Q-LEGACY-40 a conditional verify rule; Q-LEGACY-41 the timeout leak only; Q-LEGACY-47 `wizard penalty` and the `search` statement; Q-LEGACY-48 platform (a)) | D6, D11, D12, D14, D18 |
 | Q-LEGACY-49, Q-LEGACY-54 | fix; (a) no parameter window | D15 |
-| Q-LEGACY-44 | verify | D5, D19 |
+| Q-LEGACY-44 | verify, a conditional rule (compat if Magic fails on the leading `:`, otherwise accepted in both modes) | D5, D19 |
 | Q-LEGACY-6, -32, -86, -88, -91, -92, -94, -95, -96, -46; Q-MISC-47 | replicate | D9, D11, D12 |
 | Q-LEGACY-31, -93; Q-MISC-45 | fix; remove; follows Q-MISC-51 (n/a under (a)) | D6, D11 |
 | Open Questions 1–3 | (a) | D1, D17 |

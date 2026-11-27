@@ -1,0 +1,40 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 26 12:15:07 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Cell top read from path input
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  104.000 x 4.000   ( 0.000,  10.000), ( 104.000,  14.000)  416.000   
+lambda:      104 x 4       (     0,  10   ), (   104,  14   )  416       
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  40.000 x 50.000  ( 30.000, -20.000), ( 70.000,  30.000)  2000.000  
+lambda:       40 x 50      (    30, -20   ), (    70,  30   )  2000      
+	2 (Lots of statistics)
+0 {}
+Initial Cost Estimate:   3104
+  Blms:27(27)  Wndw:104(99%)  Pts:216(515)  Blkgen: 3x289605(280/icst)
+PATH #1  cst:3154, overrun: 2%
+  Blms:27(27)  Wndw:0(100%)  Pts:223(533)  Blkgen: 3x289605(280/icst)
+Done Routing.
+0 {Route success}
+0 {}

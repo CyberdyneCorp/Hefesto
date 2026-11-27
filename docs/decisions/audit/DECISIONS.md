@@ -388,9 +388,10 @@ Entries are ordered by priority, then by milestone.
 
 - **Affects:** `reliability-visualization` (M10), `plot-output`, `hefesto-rendering`. Source: G5 cross-group 3.
 - **Question:** `reliability-visualization` exports PNG "through `plot-output`", but `plot-output` has no PNG format. Who provides it?
-- **Options:** (a) a native PNG export from an offscreen render, in `hefesto-rendering`; (b) a native PNG format in `plot-output`.
-- **Recommendation:** (a), shared with D-38.
+- **Options:** (a) a native PNG export from an offscreen render, in `hefesto-rendering`; (b) a native PNG format in `plot-output`; (c) added by the m10-plot-route plan: (a)'s owner, but the PNG is drawn from the scene model by a CPU scan-converter (integer arithmetic, encoded with the zlib already in the build), so it works headless and on iPadOS without a GPU and its bytes do not depend on the GPU or driver.
+- **Recommendation:** (a), shared with D-38; the m10-plot-route plan recommends (c) (`docs/decisions/m10-plot-route-decision-table.md`, J1).
 - **Priority:** blocks M10.
+- **Status:** resolved (approved 2026-11-25): option (c) — `hefesto-rendering` owns PNG export of a view through the requirement "View export to SVG and PNG", drawn from the scene model by a CPU scan-converter, delivered in `openspec/changes/m10-plot-route` (`display/export/`); `reliability-visualization` "Touch and platform parity" now exports its heat maps through it (J1).
 
 ### D-38: Owner of SVG and vector export
 
@@ -399,6 +400,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** `hefesto-rendering` | a new native requirement in `plot-output`.
 - **Recommendation:** `hefesto-rendering`, which owns raster and vector export of a view.
 - **Priority:** blocks M10.
+- **Status:** resolved (approved 2026-11-25): `hefesto-rendering` owns SVG export through the requirement "View export to SVG and PNG"; `plot svg` in `plot-output` calls it, and Hefesto writes its own SVG from the scene (Q-MISC-52 (a); J1, J3).
 
 ### D-39: IR-drop solver and the wording of P-21 (Q-RELIABILITY-9)
 

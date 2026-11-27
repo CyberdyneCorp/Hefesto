@@ -76,5 +76,8 @@ namespace hefesto::diag::area_codes {
 // M9 areas (openspec/changes/m9-lvs-simulation/design.md D3).
 [[nodiscard]] std::span<const CodeInfo> lvs() noexcept;
 [[nodiscard]] std::span<const CodeInfo> sim() noexcept;
+// M10 plot/route areas (openspec/changes/m10-plot-route/design.md D3).
+[[nodiscard]] std::span<const CodeInfo> plot() noexcept;
+[[nodiscard]] std::span<const CodeInfo> route() noexcept;
 
 }  // namespace hefesto::diag::area_codes

@@ -26,6 +26,7 @@
 # KLayout runs in batch mode (`klayout -b`, QT_QPA_PLATFORM=offscreen) and gdstk from
 # $HEFESTO_GDSTK_PYTHON (m6-lef-def-oasis design D18).
 # --build-arg WITH_OPENGL=1 builds the magic-gl variant of the MISC-3D-* cases (last step below).
+# --build-arg WITH_CAIRO=1 builds the magic-cairo variant of MISC-PLOT-12 and -13 (after it).
 
 ARG BASE_IMAGE=docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 FROM ${BASE_IMAGE}
@@ -235,11 +236,51 @@ RUN set -eux; \
       grep -c '^poly ' /tmp/gl.log; rm -f /tmp/gl.log; \
     fi
 
+# Plot files Magic reads from its system library path (openspec/changes/m10-plot-route task 2.1, Q-MISC-44):
+# `plot postscript` copies magicps.pro from SysLibPath (". $CAD_ROOT/magic/sys ...", utils/paths.h) and
+# writes `postscript_prolog_is_missing` without it; `plot pnm` reads the mos.7bit.* display styles and
+# colour maps (the -dnull display loads the 7bit/std pair, the pnm `color`/`dstyle` lines the mraster
+# pair). Magic's `make install` puts them in ${PREFIX}/lib/magic/sys (magic/Makefile, scmos/Makefile);
+# the build fails here if one is missing.
+RUN set -eux; \
+    for f in magicps.pro mos.7bit.dstyle mos.7bit.std.cmap mos.7bit.mraster_dstyle mos.7bit.mraster.cmap; do \
+      test -s "${PREFIX}/lib/magic/sys/${f}"; \
+    done; \
+    grep -q '%%BeginResource' "${PREFIX}/lib/magic/sys/magicps.pro"
+
+# The magic-cairo variant (openspec/changes/m10-plot-route design D19, Q-MISC-52 (a)): the same Magic
+# commit and configure line built again with Cairo, for MISC-PLOT-12 (`plot svg`) and MISC-PLOT-13 (the
+# `plot help` list, which names `svg` only in a Cairo Tcl build); they run Magic's Tk wrapper on
+# `magic -d XR -noconsole` under xvfb-run (case.toml `[reference] image = "magic-cairo"`).
+#   docker build -f tools/golden/container/Containerfile --build-arg WITH_CAIRO=1 \
+#       -t hefesto-golden-cairo:local tools/golden
+# Declared after every other step (the magic-gl one included), so it shares their layers. libcairo2-dev
+# is in the base package list. configure silently drops Cairo when it is not found, so the build checks
+# that -DCAIRO and -DHAVE_LIBCAIRO reached defs.mak and that the smoke run writes an SVG file.
+ARG WITH_CAIRO=0
+COPY container/magic_cairo_smoke.tcl /opt/src/
+RUN set -eux; \
+    if [ "${WITH_CAIRO}" = "1" ]; then \
+      fetch_commit /opt/src/magic-cairo "${MAGIC_REPO}" "${MAGIC_COMMIT}"; \
+      cd /opt/src/magic-cairo; \
+      ./configure --prefix="${PREFIX}" --with-tcl=/usr/lib/tcl8.6 --with-tk=/usr/lib/tk8.6 \
+          --with-opengl=no --with-cairo; \
+      grep -q -- '-DCAIRO' defs.mak; \
+      grep -q -- '-DHAVE_LIBCAIRO' defs.mak; \
+      make -j"$(nproc)"; make install; \
+      cd /tmp; \
+      timeout -s KILL 300 xvfb-run -a -s "-screen 0 1280x1024x24" \
+          "${PREFIX}/bin/magic" -d XR -noconsole -norc /opt/src/magic_cairo_smoke.tcl | tee /tmp/smoke.txt; \
+      grep -qx 'magic-cairo-smoke 1' /tmp/smoke.txt; rm -f /tmp/smoke.txt; \
+      grep -q '<svg' /tmp/magic_cairo_smoke.svg; rm -f /tmp/magic_cairo_smoke.svg; \
+    fi
+
 LABEL org.opencontainers.image.title="hefesto-golden" \
       org.opencontainers.image.description="Pinned headless Magic/netgen/ngspice/xschem/KLayout/gdstk for Hefesto golden capture" \
       org.opencontainers.image.licenses="Apache-2.0" \
       io.hefesto.magic.commit="${MAGIC_COMMIT}" \
       io.hefesto.magic.opengl="${WITH_OPENGL}" \
+      io.hefesto.magic.cairo="${WITH_CAIRO}" \
       io.hefesto.netgen.commit="${NETGEN_COMMIT}" \
       io.hefesto.ngspice.commit="${NGSPICE_COMMIT}" \
       io.hefesto.ngspice.version="${NGSPICE_VERSION}" \

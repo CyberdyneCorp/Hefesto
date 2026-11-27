@@ -61,6 +61,7 @@ TIMEOUT_PREFIX = ["timeout", "-s", "KILL"]  # coreutils in the capture image
 TECH_EXTERNALS = {"scmos": {"source": "scmos", "to": "scmos.tech"}}
 STDIN = ['stdin = "input/commands.tcl"']
 GL_IMAGE = ['image = "magic-gl"']  # goldenlib/case.py IMAGE_VARIANTS (m10-3d-view design D13)
+CAIRO_IMAGE = ['image = "magic-cairo"']  # the Cairo build on -d XR (m10-plot-route design D19, Q-MISC-52)
 
 
 @dataclass
@@ -85,6 +86,7 @@ class TclCase:
     gui: bool = False                                  # Tk wrapper under Xvfb
     gl: bool = False                                   # Tk wrapper on OpenGL (-d OGL) in the magic-gl image
     gl_capture: bool = False                           # gl cases: Magic runs with the polygon-recording shim
+    cairo: bool = False                                # Tk wrapper on Cairo (-d XR) in the magic-cairo image
     timeout: int | None = None                         # seconds; the case is killed (Q-SCRIPT-3)
     run_timeout: int | None = None                     # seconds per run ([reference]/[hefesto] timeout_s)
     magic_args: list[str] = field(default_factory=list)  # extra Magic options before the script
@@ -118,7 +120,7 @@ HEFESTO_SCRIPT = "hefesto.tcl"
 
 
 def magic_options(case: TclCase, script_name: str = "commands.tcl") -> list[str]:
-    display = ["-d", "OGL"] if case.gl else ["-d", "X11"] if case.gui else ["-dnull"]
+    display = ["-d", "OGL"] if case.gl else ["-d", "XR"] if case.cairo else ["-d", "X11"] if case.gui else ["-dnull"]
     rc = ["-rcfile", RC_FILE.format(v=case.pdk)] if case.pdk and case.rc else ["-norc"]
     script = [] if case.stdin else [f"input/{script_name}"]
     return [*display, "-noconsole", *rc, *case.magic_args, *script, *case.script_args]
@@ -191,7 +193,8 @@ def case_toml(case: TclCase) -> str:
              *(["gds_rt = true"] if case.gds_rt else []),
              *([f"capture_blocked = {_toml_str(case.capture_blocked)}"] if case.capture_blocked else []), "",
              "[reference]", 'script = "input/commands.tcl"', f"argv = {_toml_list(reference_argv(case))}",
-             *(['display = "xvfb"'] if case.gui or case.gl else []), *(GL_IMAGE if case.gl else []),
+             *(['display = "xvfb"'] if case.gui or case.gl or case.cairo else []), *(GL_IMAGE if case.gl else []),
+             *(CAIRO_IMAGE if case.cairo else []),
              *(["gl_capture = true"] if case.gl_capture else []),
              *(STDIN if case.stdin else []),
              *(["allow_nonzero_exit = true"] if case.timeout or case.allow_nonzero_exit else []),
