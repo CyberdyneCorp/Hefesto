@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-PR-01: xschem get_tok / subst_tok on property strings. One line per call: the call, then the
 # result between brackets.
 proc show {args} {

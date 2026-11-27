@@ -249,8 +249,11 @@ platform::Path SymbolCache::locate(const Reference& reference, const Document& f
 std::optional<Document> SymbolCache::read(const platform::Path& file, const std::string& reference,
                                           const ResolveContext& context) {
   auto bytes = context.fs.read(file);
-  const ReadOptions options{is_schematic_file(file) ? FileKind::schematic : FileKind::symbol, context.xschem_compat,
-                            context.warnings, file.generic_string()};
+  ReadOptions options{is_schematic_file(file) ? FileKind::schematic : FileKind::symbol, context.xschem_compat,
+                      context.warnings, file.generic_string()};
+  // A nested block defines its instance's symbol only when that symbol is
+  // not found as a file, resolved from the file's own folder.
+  options.symbol_file_exists = symbol_file_finder(file.parent_path(), context.search_path, context.fs);
   auto document = bytes.ok() ? read_document(bytes.value(), options) : diag::Outcome<Document>{bytes.error()};
   if (!document.ok()) {
     warn_once(context, "read|" + file.generic_string(),
@@ -281,18 +284,44 @@ const Symbol& SymbolCache::load_schematic(const platform::Path& file, const std:
   SchematicLoad nested(*this, context);
   FlattenReport report;
   Symbol symbol = schematic_symbol(reference, file, document, std::ref(nested), order_from, &report, limits_);
+  warn_flattened(report, file.generic_string(), reference, context);
+  return symbols_.insert_or_assign(file, std::move(symbol)).first->second;
+}
+
+void SymbolCache::warn_flattened(const FlattenReport& report, const std::string& file, const std::string& reference,
+                                 const ResolveContext& context) {
   if (report.depth_reached) {
-    warn_once(context, "depth|" + file.generic_string(),
+    warn_once(context, "depth|" + file,
               diag::make("SCHEM-LIB-005", "Symbol recursively instantiating symbol: max depth reached, skipping"));
   }
   if (report.size_reached || report.bytes_reached) {
     const std::string limit = report.size_reached ? std::to_string(limits_.max_records) + " records"
                                                   : std::to_string(limits_.max_bytes) + " bytes";
-    warn_once(context, "size|" + file.generic_string(),
+    warn_once(context, "size|" + file,
               diag::make("SCHEM-LIB-009", "Symbol " + reference + ": more than " + limit +
                                               " when flattened; the rest is not loaded"));
   }
-  return symbols_.insert_or_assign(file, std::move(symbol)).first->second;
+}
+
+std::optional<Document> SymbolCache::block_document(const Reference& reference, const Document& from,
+                                                    const ResolveContext& context) {
+  const Symbol& symbol = resolve(reference, from, context);
+  if (symbol.placeholder) return std::nullopt;
+  if (symbol.document.instances.empty()) return symbol.document;
+  Document source = symbol.document;
+  if (symbol.file.empty()) {  // embedded: its instances resolve from `from`, its blocks first
+    source.path = from.path;
+    source.embedded = from.embedded;
+  } else {
+    source.path = symbol.file;
+  }
+  SchematicLoad nested(*this, context);
+  FlattenReport report;
+  Symbol built = schematic_symbol(reference.text, {}, source, std::ref(nested), &symbol, &report, limits_);
+  const std::string key = symbol.file.empty() ? reference.text : symbol.file.generic_string();
+  warn_flattened(report, key, reference.text, context);
+  built.document.path.clear();
+  return std::move(built.document);
 }
 
 }  // namespace hefesto::schem

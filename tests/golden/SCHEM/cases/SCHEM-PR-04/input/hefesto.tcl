@@ -1,4 +1,5 @@
 file mkdir out
+if 1 {
 # SCHEM-PR-04: xschem translate on chosen instances; the instance is addressed by its index.
 xschem load input/pr04.sch
 proc index_of {name} {
@@ -25,3 +26,5 @@ foreach {name text} {
   R7 {@@P}
 } { show $name $text }
 puts "no instance: [list [xschem translate -1 {@name %undef}]]"
+list
+}

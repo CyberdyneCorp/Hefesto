@@ -497,6 +497,9 @@ jobs:
             cxx: g++-14
             preset: ci-linux-desktop
             desktop: true
+            # The golden reference leg (GOLDEN_REFERENCE_LEG) restores the xschem sets too, so the SCHEM cases
+            # with PDK inputs write outputs here as on the other xschem legs (cross-platform determinism).
+            xschem: true
           - name: linux-x64-clang-latest
             os: ubuntu-24.04
             cc: clang-18
@@ -737,6 +740,58 @@ jobs:
             build/${{ matrix.preset }}/tests/unit/shell/view3d-tab-*.ppm
           if-no-files-found: ignore
 
+      # m8-schematic task 13.2: the Schematic tab of the product app, for the rows of
+      # docs/design/m8-ui-conformance.md. The app opens a test bench of the system library
+      # (tests/data/schem/devlib/tb/ihp_style_tb.sch: its symbols resolve from the assets/schematic copy next
+      # to the executable) and the --input script clicks the Schematic segment of the top bar's view tabs
+      # (window point 362,24 at 1280 x 800: the tabs span x 252-548, Schematic is 320-405 after Layout), then
+      # waits for the symbol worker. After the script the app prints "hefesto: schematic tab <breadcrumb>,
+      # <n> instances, <k> pending" when the tab is shown; the step fails without that line (Linux, under
+      # Xvfb). macOS runs on the runner's window server, whose 1024 px screen leaves no room for the view
+      # tabs: not gating there.
+      - name: Capture the Schematic tab
+        if: matrix.desktop || matrix.moltenvk
+        continue-on-error: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: |
+          mkdir -p schematic-captures
+          capture="schematic-captures/schematic-tab-${{ matrix.name }}.ppm"
+          log="schematic-captures/schematic-tab-${{ matrix.name }}.log"
+          app="build/${{ matrix.preset }}/src/shell/desktop/hefesto"
+          args=(--width 1280 --height 800 --run "schematic open tests/data/schem/devlib/tb/ihp_style_tb.sch"
+                --input "wait 500; down 362,24; up 362,24; wait 3000"
+                --capture "$capture" --capture-frames 60 --no-vsync)
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}" | tee "$log"
+          else
+            "$app" "${args[@]}" | tee "$log"
+          fi
+          test -s "$capture"
+          grep -q "^hefesto: schematic tab ihp_style_tb.sch, [1-9][0-9]* instances, 0 pending" "$log"
+
+      - name: Upload the Schematic tab capture
+        if: always() && (matrix.desktop || matrix.moltenvk)
+        uses: actions/upload-artifact@v4
+        with:
+          name: schematic-captures-${{ matrix.name }}
+          path: schematic-captures/
+          if-no-files-found: ignore
+
+      # m8-schematic task 13.2 (M8-D10): the install tree of the desktop build: hefesto and hefesto-cli in
+      # <prefix>/bin, the fonts and icons in <prefix>/share/hefesto/assets, the schematic system library in
+      # <prefix>/assets/schematic (the install root of <prefix>/bin).
+      - name: Check the desktop install tree
+        if: matrix.desktop || matrix.moltenvk
+        shell: bash
+        run: |
+          prefix="$RUNNER_TEMP/hefesto-install"
+          cmake --install "build/${{ matrix.preset }}" --prefix "$prefix"
+          test -x "$prefix/bin/hefesto"
+          test -x "$prefix/bin/hefesto-cli"
+          test -f "$prefix/share/hefesto/assets/fonts/Inter-Regular.ttf"
+          test -d "$prefix/share/hefesto/assets/icons"
+          test -f "$prefix/assets/schematic/xschem_library/devices/res.sym"
+
       # hefesto-architecture "Platform-independent core": the core builds for iPadOS without UI (design D5).
       - name: Configure iPadOS (core only)
         if: matrix.ipados
@@ -856,8 +911,19 @@ jobs:
           # The M4 areas must stay in the comparison (m4-scripting task 13.6), and MASK
           # once its expected outputs exist (m5-mask-gds-cif task 15.4), and LEFDEF and OASIS
           # (m6-lef-def-oasis task 17.4), and EXTRACT and NETLIST (m7-extraction task 19.4).
+          # The SCHEM cases with xschem PDK inputs ([reference] xschem_sets in case.toml) run only on the legs
+          # that restore the xschem sets (matrix `xschem`); the other legs skip them as whole cases. The
+          # reference and the other `xschem` legs must run them (--must-run; keep the list in step with the matrix).
+          skip=()
+          for toml in tests/golden/SCHEM/cases/*/case.toml; do
+            if grep -q '^xschem_sets *=' "$toml"; then
+              skip+=(--may-skip "SCHEM/$(basename "$(dirname "$toml")")")
+            fi
+          done
           python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP --require-area MASK \
-            --require-area LEFDEF --require-area OASIS --require-area EXTRACT --require-area NETLIST \
+            --require-area LEFDEF --require-area OASIS --require-area EXTRACT --require-area NETLIST "${skip[@]}" \
+            --must-run golden-linux-x64-gcc-11 --must-run golden-linux-arm64-gcc \
+            --must-run golden-macos-arm64-xcode-oldest \
             "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 

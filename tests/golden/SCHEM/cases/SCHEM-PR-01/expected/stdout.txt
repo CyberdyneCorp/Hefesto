@@ -406,4 +406,3 @@ xschem subst_tok {a=1;b=2} b 3 -> [a=1;b=3]
 xschem subst_tok {name=x1
 value=1} value 2 -> [name=x1
 value=2]
-

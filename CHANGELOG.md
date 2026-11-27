@@ -149,6 +149,32 @@ release notices.
   breadcrumb, messages and netlist bar with Interrupt; pan, zoom and
   click-to-select; net highlights drawn in their colours. Symbols are
   resolved off the UI thread and shown as placeholders until ready.
+- **Schematic tab: Netlist button, system clipboard, rebindable keys.**
+  The top bar's Netlist button shows the Schematic tab and runs the
+  netlist. Copy and Paste (Command-C/V on macOS, Ctrl-C/V elsewhere)
+  go through the system clipboard; clipboard text above 16 MiB is
+  refused, and clipboard text is echoed in the Console as its first line
+  and size. `macro schematic KEY "TEXT"` lines of the key-binding sheet
+  now reach the table the canvas reads, also with magic-compat on, where
+  Magic ignores them (provisional until the key decisions Q-SCHEM-66 and
+  -67 are approved). `R` and `F` rotate and flip around the pointer; a
+  binding of the Copy or Paste chord overrides the clipboard. The
+  Netlist button is disabled with no schematic open and while a netlist
+  runs.
+- **Schematic scripts.** `schematic rotate` and `flip` without a pivot
+  turn around the origin with xschem-compat on (xschem's pointer in a
+  run without the editor), around the selection's centre with it off.
+  `schematic select ... -remove` and `select connected -stopjunction`
+  work. `xschem translate` raises "instance not found" for an instance
+  that does not exist (`-1` still substitutes with no instance). A
+  refused `schematic save` no longer changes the document's embedded
+  symbols.
+  The view tabs stay in a 1280 px top bar (the Netlist button gives
+  way first), and the CI desktop legs capture the Schematic tab and
+  fail unless it is shown.
+- **Embedded symbols on save.** `schematic save` writes the block of
+  each `embed=true` symbol the file does not embed yet, taken from the
+  symbol library.
 
 ### Changed
 
@@ -184,6 +210,14 @@ release notices.
 
 ### Fixed
 
+- **Out-of-range numbers in schematic files (Q-SCHEM-34 to -37, both
+  `xschem-compat` modes).** A record whose rotation or flip is outside
+  16 bits is skipped; zero or negative bus counts are syntax errors and
+  a stepped range with equal ends gives one element; `%` by zero gives
+  `nan`; a `Bus tap` short is reported only when the tap's name differs
+  from its pin's, naming the tap first. Nested instances whose symbol
+  is a file next to the schematic are no longer dropped on open,
+  reload or descend.
 - **`schematic label` with a quote or backslash** in the name is escaped
   and reads back unchanged; so are the net labels a netlist run stores.
 - **Schematic scripts cannot close or move the standard channels**

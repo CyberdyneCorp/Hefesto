@@ -261,3 +261,123 @@ TEST_CASE("computed wire labels keep quotes and backslashes", kTable) {
     CHECK(schem::get_token(active(s).wires[0].props, "lab") == name);
   }
 }
+
+// ---- embedded symbols on open and save (tasks.md 7.1, 7.2) -------------------------
+
+namespace {
+
+constexpr const char* kEmbedded = "[cap:schematic-file-format][req:Embedded symbols]";
+
+// `a.sym` embedded with a nested block for `b.sym` inside it.
+const std::string kNestedTop = std::string{kHeader} +
+                               "C {a.sym} 0 0 0 0 {name=x1}\n[\nv {xschem version=3.4.8RC file_version=1.3}\n"
+                               "K {type=a}\nC {b.sym} 100 0 0 0 {}\n[\nL 4 0 0 10 0 {}\n]\nL 4 0 0 0 10 {}\n]\n";
+
+const std::string kBSymbol = std::string{"v {xschem version=3.4.8RC file_version=1.3}\nK {type=b}\n"} +
+                             "L 4 0 0 0 5 {}\nB 5 -2.5 -2.5 2.5 2.5 {name=P dir=inout}\n";
+
+}  // namespace
+
+// Regression (tasks.md 7.1/7.2 open item): `schematic open` read the file
+// without ReadOptions::symbol_file_exists, so the nested block of `b.sym`
+// was merged although `b.sym` is a file next to the schematic.
+TEST_CASE("open keeps the instance of a nested block whose symbol is a file", kEmbedded) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/b.sym", kBSymbol);
+    s.folder().write("w/top.sch", kNestedTop);
+    run(s, {"open", s.folder().str("w/top.sch")});
+    REQUIRE(active(s).embedded.size() == 1);
+    const schem::Document& a = active(s).embedded[0].symbol;
+    REQUIRE(a.instances.size() == 1);
+    CHECK(a.instances[0].symbol == "b.sym");
+    CHECK(a.lines.size() == 1);
+    // Without the file, the nested block defines b.sym in place.
+    std::filesystem::remove(s.folder().path() / "w/b.sym");
+    run(s, {"reload"});
+    CHECK(active(s).embedded[0].symbol.instances.empty());
+    CHECK(active(s).embedded[0].symbol.lines.size() == 2);
+  }
+}
+
+// Regression (tasks.md 7.1 open item, SCHEM-RT-05 writer side): an
+// `embed=true` instance whose symbol the file does not embed was saved
+// without a block.
+TEST_CASE("save writes the block of an embed=true symbol from the symbol library", kEmbedded) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/r.sym", symbol_text("1k"));
+    s.folder().write("w/top.sch", std::string{kHeader} + "C {r.sym} 0 0 0 0 {name=R1}\n"
+                                                         "C {r.sym} 0 100 0 0 {name=R2 embed=true}\n"
+                                                         "C {r.sym} 0 200 0 0 {name=R3 embed=true}\n");
+    run(s, {"open", s.folder().str("w/top.sch")});
+    run(s, {"save", s.folder().str("w/out.sch")});
+    const std::string text = s.folder().read("w/out.sch");
+    const std::string block = "C {r.sym} 0 100 0 0 {name=R2 embed=true}\n[\nv {xschem version=";
+    const std::size_t at = text.find(block);
+    REQUIRE(at != std::string::npos);
+    CHECK(text.find("K {type=resistor\nformat=\"@name @pinlist @value\"") != std::string::npos);
+    CHECK(text.find("B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}\nB 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}\n]\n") !=
+          std::string::npos);
+    CHECK(text.find("C {r.sym} 0 200 0 0 {name=R3 embed=true}\n") != std::string::npos);
+    CHECK(text.find("embed=true}\n[", at + block.size()) == std::string::npos);  // one block only
+    // Read back, the instances use the embedded copy.
+    run(s, {"open", s.folder().str("w/out.sch")});
+    REQUIRE(active(s).embedded.size() == 1);
+    CHECK(active(s).embedded[0].reference == "r.sym");
+  }
+}
+
+// Regression (tasks.md 7.1 open item): the instance kept in an embedded
+// symbol (its symbol is a file) was dropped from the saved block; the block
+// is written from the symbol as built, the instance's graphics placed in it
+// and its pin box on layer 7, with no `C` record.
+TEST_CASE("save writes an embedded symbol that places an instance as built", kEmbedded) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/b.sym", kBSymbol);
+    s.folder().write("w/top.sch", kNestedTop);
+    run(s, {"open", s.folder().str("w/top.sch")});
+    run(s, {"save", s.folder().str("w/out.sch")});
+    const std::string text = s.folder().read("w/out.sch");
+    const std::size_t open = text.find("[\n");
+    REQUIRE(open != std::string::npos);
+    const std::string block = text.substr(open, text.find("]\n", open) - open);
+    CHECK(block.find("C {") == std::string::npos);
+    CHECK(block.find("L 4 0 0 0 10 {}\n") != std::string::npos);
+    CHECK(block.find("L 4 100 0 100 5 {}\n") != std::string::npos);
+    CHECK(block.find("B 7 97.5 -2.5 102.5 2.5 {name=P dir=inout}\n") != std::string::npos);
+  }
+}
+
+// Regression (M8 round 6 review): save embedded the blocks into the open
+// document before the save could fail, so a save refused because the file
+// changed on disk had already replaced the embedded symbol that places
+// `b.sym` by its flattened copy (no `C` record), with no undo step.
+TEST_CASE("a refused save leaves the embedded symbols unchanged", kEmbedded) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/b.sym", kBSymbol);
+    s.folder().write("w/top.sch", kNestedTop);
+    run(s, {"open", s.folder().str("w/top.sch")});
+    s.folder().write("w/top.sch", kNestedTop + "L 4 0 0 1 1 {}\n");  // changed by someone else
+    const cmd::CommandResult refused = s.schematic({"save"});
+    REQUIRE_FALSE(refused.ok());
+    REQUIRE(active(s).embedded.size() == 1);
+    const schem::Document& a = active(s).embedded[0].symbol;
+    REQUIRE(a.instances.size() == 1);
+    CHECK(a.instances[0].symbol == "b.sym");
+    CHECK(a.lines.size() == 1);
+    // With -force the save goes through and writes the block as built.
+    run(s, {"save", "-force"});
+    CHECK(s.folder().read("w/top.sch").find("L 4 100 0 100 5 {}\n") != std::string::npos);
+  }
+}

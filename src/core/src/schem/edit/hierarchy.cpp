@@ -134,6 +134,7 @@ diag::Outcome<DocumentId> open_child(EditContext& ec, const platform::Path& file
   ReadOptions options;
   options.xschem_compat = ec.ctx().project().compat.xschem_compat;
   options.warnings = &ec.ctx().sink();
+  options.symbol_file_exists = symbol_file_finder(file.parent_path(), session.search_path, ec.ctx().services().files);
   auto loaded = load_document(ec.ctx().services().files, file, options);
   if (!loaded) return diag::make(kNoSchematic, "schematic: cannot open " + file.generic_string());
   const DocumentId id = session.next_id++;

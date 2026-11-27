@@ -110,6 +110,13 @@ std::pair<StatusKind, std::string> message_line(const Message& m) {
   return {kind, std::string{shape} + (m.code.empty() ? std::string{} : m.code + "  ") + m.text};
 }
 
+// The system clipboard through Raven.
+class RavenClipboard final : public ClipboardHost {
+ public:
+  void set_text(const std::string& text) override { ui::set_clipboard_text(text); }
+  [[nodiscard]] std::string text() override { return ui::clipboard_text(); }
+};
+
 std::vector<std::string> words_of(const std::string& line) {
   auto words = pcell::split_tcl_list(line);
   return words ? std::move(words.value()) : std::vector<std::string>{};
@@ -134,7 +141,10 @@ SchematicView::SchematicView(ScreenContext& ctx)
             ui::post_task([alive, this] {
               if (!alive.expired()) symbols_ready();
             });
-          }}) {
+          }}),
+      clipboard_host_(std::make_unique<RavenClipboard>()),
+      clipboard_(*clipboard_host_) {
+  input_.keys().attach(ctx_.editor().macros);  // the core's `macro schematic ...` edits them
   const char* cad_root = std::getenv("CAD_ROOT");
   install_root_ = desktop_install_root(ctx_.core.files(), platform_posix::executable_dir(),
                                        cad_root != nullptr ? std::optional<std::string>{cad_root} : std::nullopt);
@@ -211,7 +221,7 @@ void SchematicView::build_centre() {
   input_viewport_->set_tooltip(
       "Schematic canvas: click selects; wheel or pinch zooms, two-finger scroll, Option-drag or middle-drag pans; "
       "keys run the schematic bindings (w wire, m move, c copy, R rotate, F flip, e descend, Ctrl+e ascend, "
-      "q properties, k highlight, u undo, U redo, Insert place, n netlist)");
+      "q properties, k highlight, u undo, U redo, Insert place, n netlist); Copy and Paste use the system clipboard");
   input_viewport_->on_input([this](const CanvasInput& input) { return canvas_input(input); });
   stage_.add(*input_viewport_);
   stage_.add(*canvas_);
@@ -287,6 +297,11 @@ void SchematicView::refresh() {
   }
   refreshing_ = false;
   invalidate_all();
+}
+
+std::string SchematicView::status_line() const {
+  return breadcrumb_.text() + ", " + std::to_string(scene_.instances.size()) + " instances, " +
+         std::to_string(resolver_.pending_count()) + " pending";
 }
 
 void SchematicView::show_nothing() {
@@ -387,6 +402,7 @@ void SchematicView::on_command(const cmd::Invocation& invocation, const cmd::Com
   if (invocation.origin == cmd::Origin::internal) return;  // the view's own reads
   session_stale_ = true;
   if (invocation.name != "schematic") return;
+  (void)clipboard_.copied(invocation, result);  // Copy: the text to the system clipboard too
   note_symbol_changes(invocation, result);
   const CommandOutcome outcome = outcome_of(result);
   const bool netlist = !invocation.args.empty() && invocation.args.front() == "netlist";
@@ -420,6 +436,7 @@ void SchematicView::invalidate_all() {
 
 bool SchematicView::canvas_input(const CanvasInput& input) {
   if (!has_document_) return false;
+  input_.set_running(netlist_.state() == NetlistAction::State::running);
   const SchematicInputResult result = input_.handle(input, viewport_, scene_);
   apply(result);
   return result.consumed;
@@ -428,6 +445,8 @@ bool SchematicView::canvas_input(const CanvasInput& input) {
 void SchematicView::apply(const SchematicInputResult& result) {
   if (result.repaint) canvas_->invalidate();
   if (result.interrupt) interrupt();
+  if (result.copy) copy_selection();
+  if (result.paste_at) paste(*result.paste_at);
   if (!result.prompt.empty() && ctx_.prompt) ctx_.prompt(result.prompt);
   if (result.action == "place") search_->focus();
   const bool selects = result.line.starts_with("schematic select instance");
@@ -447,21 +466,24 @@ void SchematicView::run(const std::string& line) {
   if (ctx_.run) ctx_.run(line);
 }
 
+NetlistButtonView SchematicView::netlist_button_view() const {
+  return netlist_button(netlist_, !ctx_.editor().schem.documents.empty());
+}
+
 void SchematicView::start_netlist() {
-  if (!has_document_) return;
-  const auto line = netlist_.start(NetlistRequest{}, breadcrumb_.crumbs().front().label, NetlistAction::Clock::now());
-  if (!line) return;
-  netlist_bar_->invalidate();
-  tick_netlist();
-  if (ctx_.run) ctx_.run(*line);  // the observer finishes the action with the result
-  if (netlist_.state() == NetlistAction::State::running) {
-    CommandOutcome failed;
-    failed.status = OutcomeStatus::failed;
-    failed.message = "the netlist command did not run";
-    netlist_.finish(failed, messages_);
-  }
+  if (!refreshing_ && session_stale_) refresh();  // the top bar's button: the document may be new
+  const std::string label = breadcrumb_.crumbs().front().label;
+  (void)run_netlist(netlist_, has_document_, label,
+                    [this](const std::string& line) {
+                      netlist_bar_->invalidate();
+                      if (netlist_changed_) netlist_changed_();  // running: the top bar's button is disabled
+                      tick_netlist();
+                      if (ctx_.run) ctx_.run(line);
+                    },
+                    messages_);
   netlist_bar_->invalidate();
   messages_view_->invalidate();
+  if (netlist_changed_) netlist_changed_();
 }
 
 // While the netlist runs, the frames its script progress pumps repaint the
@@ -472,6 +494,24 @@ void SchematicView::tick_netlist() {
     netlist_bar_->invalidate();
     if (netlist_.state() == NetlistAction::State::running) tick_netlist();
   });
+}
+
+void SchematicView::copy_selection() {
+  run(clipboard_.copy_command());  // the observer hands the result to the system clipboard
+  clipboard_.end_copy();
+}
+
+void SchematicView::paste(schem::Point at) {
+  const ClipboardPaste request = clipboard_.paste_commands(at);
+  if (request.lines.empty()) {
+    CommandOutcome none;
+    none.status = OutcomeStatus::failed;
+    none.message = request.message;
+    messages_.add(none);
+    messages_view_->invalidate();
+    return;
+  }
+  for (const std::string& line : request.lines) run(line);
 }
 
 void SchematicView::interrupt() {

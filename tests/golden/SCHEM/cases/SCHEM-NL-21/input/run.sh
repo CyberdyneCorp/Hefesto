@@ -11,6 +11,13 @@ run() {
   echo "== $label: exit $rc"
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
+# The PDK's symbol generators, executable, first on the library path (input/case.xschemrc).
+mkdir -p /work/gen/sky130A/libs.tech/xschem/sky130_tests /work/gen/bin
+cp /pdk/sky130A/libs.tech/xschem/sky130_tests/tier.tcl /work/gen/sky130A/libs.tech/xschem/sky130_tests/tier.tcl && chmod 755 /work/gen/sky130A/libs.tech/xschem/sky130_tests/tier.tcl
+cp /pdk/sky130A/libs.tech/xschem/sky130_tests/res.tcl /work/gen/sky130A/libs.tech/xschem/sky130_tests/res.tcl && chmod 755 /work/gen/sky130A/libs.tech/xschem/sky130_tests/res.tcl
+ln -sf "$(command -v tclsh || command -v tclsh8.6)" /work/gen/bin/tclsh
+PATH=/work/gen/bin:$PATH; export PATH
+HEFESTO_CAPTURE_GENERATORS=/work/gen/sky130A/libs.tech/xschem; export HEFESTO_CAPTURE_GENERATORS
 run top-flat xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out -f /pdk/sky130A/libs.tech/xschem/sky130_tests/top.sch
 if [ -f out/top.spice ]; then mv out/top.spice out/top-flat.spice; else echo "== top-flat: no out/top.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run gain_stage-flat xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out -f /pdk/sky130A/libs.tech/xschem/sky130_tests/gain_stage.sch

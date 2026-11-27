@@ -91,12 +91,42 @@ class Netlist:
 
 
 def normalize_value(value: str) -> str:
-    """A field value as compared: a number to 12 significant digits, else lower-case text."""
+    """A field value as compared: a number to 12 significant digits, else lower-case text in which the
+    blanks next to an operator or bracket inside a ``'...'`` or ``{...}`` expression are dropped (SPICE
+    reads an expression the same with or without them: ``'int((1 + 1)/2) * wn'`` is ``'int((1+1)/2)*wn'``;
+    design D10). A blank between two other characters stays, so ``'my file.lib'`` is not
+    ``'myfile.lib'``; a ``"..."`` string keeps every blank."""
     low = value.lower()
     match = _NUMBER.match(low)
     if match:
         return format(float(match.group(1)) * _SCALE[match.group(2)], ".12g")
-    return low
+    return _squeeze_expressions(low)
+
+
+_OPERATORS = frozenset("+-*/%^()<>=!&|?:,")
+
+
+def _next_non_blank(text: str, start: int) -> str:
+    for char in text[start:]:
+        if not char.isspace():
+            return char
+    return ""
+
+
+def _squeeze_expressions(text: str) -> str:
+    """``text`` without the whitespace next to an operator inside its ``'...'`` and ``{...}`` expressions."""
+    out, closer = [], None
+    for index, char in enumerate(text):
+        if closer is None and char in "'{":
+            closer = "'" if char == "'" else "}"
+        elif char == closer:
+            closer = None
+        elif closer is not None and char.isspace():
+            before = out[-1] if out else ""
+            if before in _OPERATORS or before.isspace() or _next_non_blank(text, index) in _OPERATORS:
+                continue
+        out.append(char)
+    return "".join(out)
 
 
 def split_fields(line: str) -> list[str]:

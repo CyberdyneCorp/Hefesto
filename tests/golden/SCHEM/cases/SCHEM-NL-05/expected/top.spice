@@ -5018,9 +5018,11 @@ x1 STARTUP net2 VCC VSS not W_N=0.5 L_N=1 W_P=1 L_P=1
 ** sym_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_generators.sym
 ** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_generators.sch
 .subckt test_generators
-R1 net2 net1 1k
-C1 net3 net5 1p
-C2 net4 net6 1p
+R1 VDD VSS 1k
+C1 net1 VSS 1p
+C2 VDD VSS 1p
+R2 VDD net1 100
+* shorted: R3  VDD <--> VDD 0.1
 .ends
 
 

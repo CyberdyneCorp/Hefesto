@@ -15,10 +15,13 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
+#include <set>
 #include <string>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/file/save.hpp"
 #include "hefesto/schem/lib/reference.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
@@ -81,11 +84,45 @@ platform::Path document_folder(Session& session) {
   return absolute_path(".");
 }
 
-ReadOptions read_options(cmd::CommandContext& ctx) {
+// How `file` is read: a nested embedded block defines its instance's symbol
+// only when the symbol is not found as a file from the file's folder through
+// the session's search path (schematic-file-format "Embedded symbols").
+ReadOptions read_options(cmd::CommandContext& ctx, const Session& session, const platform::Path& file) {
   ReadOptions options;
   options.xschem_compat = ctx.project().compat.xschem_compat;
   options.warnings = &ctx.sink();
+  options.symbol_file_exists = symbol_file_finder(file.parent_path(), session.search_path, ctx.services().files);
   return options;
+}
+
+bool embedded_instance(const InstanceRecord& instance) {
+  const auto embed = get_token(instance.props, "embed");
+  return embed && is_true(*embed);
+}
+
+// Before saving ("Embedded symbols", on writing): the symbol of each
+// `embed=true` instance that the document does not embed yet is taken from
+// the symbol cache, and an embedded symbol that still places instances is
+// replaced by the symbol as built, so the writer finds every block it must
+// write and none of them holds a `C` record. A missing symbol is not
+// embedded.
+void embed_symbols(cmd::CommandContext& ctx, Session& session, Document& document) {
+  const ResolveContext context{session.search_path, ctx.services().files, &ctx.sink(),
+                               ctx.project().compat.xschem_compat};
+  std::set<std::string> seen;
+  for (const InstanceRecord& instance : document.instances) {
+    if (!embedded_instance(instance) || !seen.insert(instance.symbol).second) continue;
+    const auto held = std::find_if(document.embedded.begin(), document.embedded.end(),
+                                   [&](const EmbeddedSymbol& e) { return e.reference == instance.symbol; });
+    if (held != document.embedded.end() && held->symbol.instances.empty()) continue;
+    std::optional<Document> block = session.symbols.block_document(Reference{instance.symbol}, document, context);
+    if (!block) continue;
+    if (held != document.embedded.end()) {
+      held->symbol = std::move(*block);
+    } else {
+      document.embedded.push_back(EmbeddedSymbol{instance.symbol, std::move(*block)});
+    }
+  }
 }
 
 cmd::Value path_list(const SearchPath& path) {
@@ -173,7 +210,7 @@ cmd::CommandResult option_open(cmd::CommandContext& ctx, Session& session, std::
   const OpenDocument* active = active_document(session);
   const bool replace = window == 2 && active != nullptr;
   if (replace && active->document.modified) return fail(kUnsaved, "schematic: unsaved changes");
-  auto loaded = load_document(ctx.services().files, path, read_options(ctx));
+  auto loaded = load_document(ctx.services().files, path, read_options(ctx, session, path));
   if (!loaded) return fail(loaded.error());
   (void)evaluate_xschemrc(ctx, session, path.parent_path());
   if (replace) session.documents.pop_back();
@@ -204,8 +241,14 @@ cmd::CommandResult option_save(cmd::CommandContext& ctx, Session& session, std::
   if (destination.empty()) return usage("save");
   SaveOptions options;
   options.overwrite_changed_file = parsed.value().has(0);
-  const auto saved = save_document(ctx.services().files, document, destination, options);
+  // The blocks are embedded into a copy: a refused or failed save leaves
+  // the document as it was (an embedded symbol that places instances is
+  // written flattened, without its `C` records).
+  Document out = document;
+  embed_symbols(ctx, session, out);
+  const auto saved = save_document(ctx.services().files, out, destination, options);
   if (!saved) return fail(saved.error());
+  document = std::move(out);
   session.symbols.forget(destination);
   return cmd::CommandResult::success(destination.generic_string());
 }
@@ -227,7 +270,7 @@ cmd::CommandResult option_reload(cmd::CommandContext& ctx, Session& session, std
   OpenDocument& active = *active_document(session);
   if (active.document.path.empty()) return fail(kNoObject, "schematic: the document has no file to reload");
   platform::FileSystem& fs = ctx.services().files;
-  auto loaded = load_document(fs, active.document.path, read_options(ctx));
+  auto loaded = load_document(fs, active.document.path, read_options(ctx, session, active.document.path));
   if (!loaded) return fail(loaded.error());
   active.document = std::move(loaded).value();
   // Nothing that refers to the old content survives: selection, highlights,

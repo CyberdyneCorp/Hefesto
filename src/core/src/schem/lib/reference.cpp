@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <iterator>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace hefesto::schem {
@@ -152,6 +153,16 @@ std::string shortest_reference(const platform::Path& file, const platform::Path&
     return normal.filename().generic_string();
   }
   return normal.generic_string();
+}
+
+std::function<bool(std::string_view reference)> symbol_file_finder(platform::Path folder,
+                                                                    const SearchPath& search_path,
+                                                                    platform::FileSystem& fs) {
+  return [folder = std::move(folder), &search_path, &fs](std::string_view reference) {
+    if (is_web_reference(reference)) return false;
+    const platform::Path file = resolve_reference(reference, folder, search_path, fs).file;
+    return file.is_absolute() && fs.exists(file);
+  };
 }
 
 }  // namespace hefesto::schem

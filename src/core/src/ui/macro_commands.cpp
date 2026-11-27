@@ -7,6 +7,7 @@
 // (Magic ref: windows/windCmdAM.c:997-1384, tcltk/tools.tcl:297-313)
 
 #include <optional>
+#include <string_view>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
@@ -52,7 +53,22 @@ struct MacroRequest {
 // A client of an optional module Hefesto does not have yet (`netlist`)
 // is not registered, as in a Magic build without the module, so
 // its name is no table: `macro netlist ...` silently does nothing.
+// The `schematic` client is the desktop schematic editor's key table
+// (schematic-editing "Desktop and touch interaction", M8 task 13.2): the
+// key-binding sheet's `macro schematic KEY "TEXT"` lines and scripts edit
+// it, and the Schematic tab reads its keys from it (src/shell/desktop
+// schematic_bindings.hpp installs the xschem-style defaults). Magic has no
+// such client; Hefesto has the module in every build, so the name selects
+// the table in both modes. Provisional on proposed Q-SCHEM-67 (option (a));
+// with magic-compat ON it is a Magic difference: Magic's `macro schematic
+// w "wire"` silently does nothing (ui-command-dispatch "macro and imacro
+// commands").
+constexpr std::string_view kSchematicClient = "schematic";
+
 std::optional<std::string> named_table(const editor::EditorState& editor, const std::string& word) {
+  if (word == kSchematicClient) {
+    return word;
+  }
   if (const ClientInfo* client = find_client_exact(word); client != nullptr && client_available(*client)) {
     return client->id == ClientId::layout ? macro_table_for(editor, "layout") : word;
   }

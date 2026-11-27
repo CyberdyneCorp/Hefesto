@@ -1,0 +1,5 @@
+# Capture side only (input/run.sh exports HEFESTO_CAPTURE_GENERATORS): the executable copy of the
+# PDK's symbol generators first on the library path.
+if {[info exists env(HEFESTO_CAPTURE_GENERATORS)]} {
+  set XSCHEM_LIBRARY_PATH $env(HEFESTO_CAPTURE_GENERATORS):$XSCHEM_LIBRARY_PATH
+}

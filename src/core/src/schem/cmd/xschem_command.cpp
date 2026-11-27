@@ -218,15 +218,18 @@ class Xschem {
   }
 
   // `xschem translate <inst> <text>`: the text substituted for the instance
-  // at index `inst` ("Text substitution tokens"); an index that names no
-  // instance gives the text unchanged, as xschem does.
+  // `<inst>` ("Text substitution tokens"), addressed as for getprop; `-1`
+  // substitutes with no instance, which gives the text unchanged; any other
+  // instance that does not exist raises "instance not found", in both modes
+  // (schematic-command "Translate with and without an instance").
   cmd::CommandResult translate(Args args) {
     if (args.size() != 2) return wrong_args("translate");
     const Document* doc = document();
     if (doc == nullptr) return no_document();
-    const auto index = parse_int(args[0]);
-    if (!index || *index < 0 || static_cast<std::size_t>(*index) >= doc->instances.size()) return done(args[1]);
-    const auto i = static_cast<std::size_t>(*index);
+    if (args[0] == "-1") return done(args[1]);
+    const auto index = instance_index(*doc, args[0]);
+    if (!index) return fail(kNoObject, "xschem translate: instance not found");
+    const std::size_t i = *index;
     diag::CollectingSink warnings;
     const SymbolLookup lookup = symbol_lookup(*doc);
     TextTokenContext context;

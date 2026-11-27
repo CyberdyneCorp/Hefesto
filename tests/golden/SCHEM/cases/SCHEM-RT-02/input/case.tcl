@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-RT-02: load and save every .sch and .sym of the three PDK xschem trees; save the saved file
 # again and list the files whose second save differs from the first (design D16: listed, not failed),
 # and, in changed.txt, the files whose first save differs from the PDK file.

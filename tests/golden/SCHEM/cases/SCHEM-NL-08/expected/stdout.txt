@@ -1,6 +1,0 @@
-== dc_hbt_13g2
-
-== dc_hbt_13g2: exit 0
-== ac_mim_cap
-
-== ac_mim_cap: exit 0

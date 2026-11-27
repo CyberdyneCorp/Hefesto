@@ -84,8 +84,8 @@ Rules:
 - A `#` record SHALL be skipped to the end of its line.
 - **Integer fields.** An integer field is an optional sign followed by decimal digits; reading stops at the first other character (so `4.5` as a layer reads `4`, and `.5` starts the next field). A field with no digits is a missing field (Requirement "Malformed input").
 - **Rotation and flip values.** The rotation and flip of `T` and `C` records SHALL be stored as read and written back as read, also outside 0..3 and 0..1; Requirement "Orientation transform" says how such values are used. xschem keeps them as 16-bit integers.
-- **Out-of-range integers (proposed Q-SCHEM-34, recommendation `fix`, awaiting the user).** C's reading of an integer that does not fit its field is undefined, so xschem has no result to match. A layer, polygon count, rotation or flip whose value does not fit a signed 32-bit integer, and a rotation or flip outside -32768..32767, SHALL make the record skipped as a missing field, in both modes; a layer that fits but is outside 0..21 is an invalid layer (Requirement "Layers").
-- **Polygon count.** A count of 0 SHALL give a polygon with no points, kept and written back as `P <layer> 0 {...}`. A negative count SHALL make the record skipped as a missing field (xschem allocates from the negative count, which is undefined; part of proposed Q-SCHEM-34). No storage SHALL be reserved from the count before the points are read: the points are read one pair at a time, and a record with fewer pairs than its count is skipped (Requirement "Line, box, arc and polygon records").
+- **Out-of-range integers (Q-SCHEM-34, `Resolution: fix`, approved by the user 2026-11-25).** C's reading of an integer that does not fit its field is undefined, so xschem has no result to match. A layer, polygon count, rotation or flip whose value does not fit a signed 32-bit integer, and a rotation or flip outside -32768..32767, SHALL make the record skipped as a missing field, in both modes; a layer that fits but is outside 0..21 is an invalid layer (Requirement "Layers").
+- **Polygon count.** A count of 0 SHALL give a polygon with no points, kept and written back as `P <layer> 0 {...}`. A negative count SHALL make the record skipped as a missing field (xschem allocates from the negative count, which is undefined; Q-SCHEM-34, `Resolution: fix`, both modes). No storage SHALL be reserved from the count before the points are read: the points are read one pair at a time, and a record with fewer pairs than its count is skipped (Requirement "Line, box, arc and polygon records").
 
 Compatibility: exact
 
@@ -104,12 +104,17 @@ Compatibility: exact
 #### Scenario: Polygon counts
 - **GIVEN** the records `P 4 0 {}`, `P 4 -1 {}` and `P 4 2 0 0 1 1 {}`
 - **WHEN** the file is read and written
-- **THEN** `P 4 0 {}` and `P 4 2 0 0 1 1 {}` SHALL be written back, and `P 4 -1 {}` SHALL be skipped with the warning `missing fields for POLYGON object`
+- **THEN** `P 4 0 {}` and `P 4 2 0 0 1 1 {}` SHALL be written back, and `P 4 -1 {}` SHALL be skipped with the warning `missing fields for POLYGON object`, with `xschem-compat` ON or OFF (Q-SCHEM-34)
 
 #### Scenario: Integer that does not fit
 - **GIVEN** the records `L 99999999999 0 0 1 1 {}`, `C {res.sym} 0 0 40000 0 {name=R1}` and `N 0 0 1 0 {}`, with `xschem-compat` ON or OFF
 - **WHEN** the file is read
-- **THEN** the line and the instance SHALL be skipped with a warning, and the wire SHALL be loaded
+- **THEN** the line and the instance SHALL be skipped with a warning, and the wire SHALL be loaded (Q-SCHEM-34)
+
+#### Scenario: Rotation and flip at the 16-bit bounds
+- **GIVEN** the records `C {res.sym} 0 0 32767 -32768 {name=R1}`, `C {res.sym} 10 0 0 -32769 {name=R2}` and `T {x} 0 0 -32769 0 0.4 0.4 {}`, with `xschem-compat` ON or OFF
+- **WHEN** the file is read and written
+- **THEN** `R1` SHALL be kept and written back with rotation `32767` and flip `-32768`, and the `R2` instance and the text SHALL be skipped with a warning (Q-SCHEM-34)
 
 ### Requirement: Brace strings
 Every text field and property field SHALL be a brace string. Reading SHALL work as follows:

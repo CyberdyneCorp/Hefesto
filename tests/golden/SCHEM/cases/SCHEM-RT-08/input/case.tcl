@@ -1,3 +1,4 @@
+file mkdir /work/out
 xschem load /work/input/a.sch
 xschem saveas /work/out/a.sch schematic
 xschem load /work/out/a.sch

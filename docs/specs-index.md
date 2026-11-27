@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3670 scenarios, 1059 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3706 scenarios, 1067 open questions.
 
 ## Hefesto product (native)
 
@@ -34,7 +34,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 6 | 12 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 5 | 11 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
 | [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 5 | 7 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
-| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 6 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
+| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 8 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
 
 ## Technology files (TECH)
 
@@ -207,16 +207,16 @@ Open questions: [6](decisions/open-questions/AGENT.md) · Golden cases: [CASES.m
 
 ## Schematic capture (xschem-compatible) (SCHEM)
 
-Open questions: [51](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
+Open questions: [59](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`schematic-command`](../openspec/specs/schematic-command/spec.md) | 6 | 14 | Defines the `schematic` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, key bindings, … |
-| [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 31 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
-| [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 50 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
-| [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 69 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
-| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 21 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
-| [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 56 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
+| [`schematic-command`](../openspec/specs/schematic-command/spec.md) | 6 | 26 | Defines the `schematic` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, key bindings, … |
+| [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 39 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
+| [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 51 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
+| [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 76 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
+| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 22 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
+| [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 60 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
 
 ## Tapeout readiness (TAPEOUT)
 
@@ -285,7 +285,7 @@ Open questions: [44](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | [`app-startup`](../openspec/specs/app-startup/spec.md) | 13 | 23 | Defines how the application starts and ends: - command-line options and file arguments - installation-root and search-path resolution - the order of startup files - default technol… |
 | [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 24 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
 | [`ui-color-window`](../openspec/specs/ui-color-window/spec.md) | 6 | 10 | Defines the `color` window client. It edits one entry of the session color map interactively, using RGB and HSV bars, and loads or saves color-map files. The file format is in `dis… |
-| [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 35 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
+| [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 36 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 10 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |
 | [`ui-tools-and-input`](../openspec/specs/ui-tools-and-input/spec.md) | 8 | 13 | Defines pointer tools and the default input bindings: - the tool registry and the `tool` command - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl … |
 | [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 24 | 33 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |

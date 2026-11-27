@@ -175,6 +175,31 @@ TEST_CASE("macro lists a table, flat or reversed, filtered or help",
   CHECK(ghost.ok());  // Magic returns the table names as an ok Tcl result (golden UI-G-049)
 }
 
+// The `schematic` client (provisional on proposed Q-SCHEM-67, option (a)):
+// the schematic editor's key table, in both modes. Magic has no such client,
+// so `macro schematic w "wire"` does nothing there (its "silently do
+// nothing" rule); with magic-compat ON this is a reported Magic difference.
+TEST_CASE("the schematic client selects the schematic editor's key table in both modes",
+          "[cap:ui-command-dispatch][req:macro and imacro commands]") {
+  for (const bool on : {true, false}) {
+    INFO("magic-compat " << on);
+    UiSession s;
+    s.project.compat.magic_compat = on;
+    REQUIRE(s.run(R"(macro schematic w "schematic wire")").ok());
+    const ui::Macro* w = s.editor.macros.find("schematic", key("w"));
+    REQUIRE(w != nullptr);
+    CHECK(w->text == "schematic wire");
+    CHECK(UiSession::printed(s.run("macro schematic w")) == R"(Macro 'w' contains "schematic wire")");
+    REQUIRE(s.run(R"(macro schematic w "")").ok());
+    const ui::Macro* cleared = s.editor.macros.find("schematic", key("w"));
+    CHECK((cleared == nullptr || cleared->text.empty()));
+    // Another unregistered client still fails quietly.
+    const auto quiet = s.run(R"(macro mywind3d L "level up")");
+    CHECK(quiet.ok());
+    CHECK_FALSE(s.editor.macros.has_table("mywind3d"));
+  }
+}
+
 TEST_CASE("client-qualified, unavailable-client and copied tables",
           "[cap:ui-command-dispatch][req:macro and imacro commands][golden:UI-G-013][golden:UI-G-014]") {
   UiSession s;
