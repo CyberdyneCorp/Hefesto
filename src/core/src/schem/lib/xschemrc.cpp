@@ -111,6 +111,13 @@ class XschemrcRun {
   // evaluate `tcleval` values keeps Tcl's own `puts` (the capturing one
   // refers to this run) and no GUI stubs.
   void prepare() {
+    // Q-SCHEM-52 (approved 2026-11-27, both modes): before any file runs the
+    // search path is the system library; a file that sets it replaces it.
+    const auto sharedir = input_.variables.find("XSCHEM_SHAREDIR");
+    if (sharedir != input_.variables.end() && !sharedir->second.empty() &&
+        input_.variables.count("XSCHEM_LIBRARY_PATH") == 0) {
+      interp_.set_var("XSCHEM_LIBRARY_PATH", cmd::Value{default_xschem_library_path(sharedir->second)});
+    }
     for (const auto& [name, value] : input_.variables) interp_.set_var(name, cmd::Value{value});
     (void)interp_.evaluate(
         "namespace eval ::hefesto::schem {}\n"

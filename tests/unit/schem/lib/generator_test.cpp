@@ -414,3 +414,32 @@ TEST_CASE("M8-D7: an absolute-path generator outside the search path runs in the
     stdfs::remove_all(root);
   }
 }
+
+// Q-SCHEM-54 (approved 2026-11-27, both modes): no shell processing of the
+// argument text; argv is the text split at `(`, `)`, `,`, spaces and tabs,
+// each word as written (backslashes kept), `@` tokens not substituted.
+TEST_CASE("Generator arguments are not substituted", kGenerators) {
+  constexpr std::string_view kTier = R"tcl(
+puts {v {xschem version=3.4.8RC file_version=1.2}}
+puts "K {type=label}"
+puts "T {argc=$argc first=[string map {\\ BS} [lindex $argv 0]] len=[string length [lindex $argv 0]]} 0 0 0 0 0.2 0.2 {}"
+)tcl";
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Library library;
+    REQUIRE(library.fs.write_atomic("/lib/tier.tcl", kTier).ok());
+    library.top.instances.push_back(schem::InstanceRecord{});
+    library.top.instances.back().symbol = "tier.tcl(@lab\\)";
+    library.top.instances.back().props = "name=l1 lab=A";
+    diag::CollectingSink sink;
+    schem::SymbolCache cache;
+    const schem::Symbol& symbol =
+        cache.resolve({"tier.tcl(@lab\\)"}, library.top, {library.path, library.fs, &sink, compat});
+    REQUIRE_FALSE(symbol.placeholder);
+    REQUIRE(symbol.document.texts.size() == 1);
+    CHECK(symbol.document.texts[0].text == "argc=1 first=@labBS len=5");
+  }
+  CHECK(schem::parse_generator("tier.tcl(@lab\\)") == schem::GeneratorCall{"tier.tcl", {"@lab\\"}});
+  CHECK(schem::parse_generator("res.tcl(1\t2,\t3)") == schem::GeneratorCall{"res.tcl", {"1", "2", "3"}});
+  CHECK(schem::parse_generator("res.tcl('a b')") == schem::GeneratorCall{"res.tcl", {"'a", "b'"}});
+}

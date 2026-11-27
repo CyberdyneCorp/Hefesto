@@ -13,6 +13,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -122,6 +123,49 @@ TEST_CASE("a testbench that does not netlist builds no deck", SOURCE) {
   const auto deck = schem::build_deck(s.schem(), s.schem().documents.back().document);
   REQUIRE_FALSE(deck.ok());
   CHECK(deck.error().code == "SCHEM-SIM-004");
+}
+
+// Q-SCHEM-53 (approved 2026-11-27, both modes): a testbench whose netlist
+// run fails only by the net driver check (an undriven gate, driven in
+// SPICE by a source of its code block) still gives its deck, with the
+// findings as warnings.
+TEST_CASE("Undriven node does not block the deck", SOURCE) {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    hefesto::test::TempFolder folder;
+    hefesto::test::sim::copy_devices(folder.path(), {"lab_pin.sym", "gnd.sym", "code.sym"});
+    folder.write("nfet.sym", std::string{kHeader} +
+                                 "K {type=nmos format=\"@name @pinlist nfet\" template=\"name=M1\"}\n"
+                                 "B 5 17.5 -32.5 22.5 -27.5 {name=D dir=inout}\n"
+                                 "B 5 -22.5 -2.5 -17.5 2.5 {name=G dir=in}\n"
+                                 "B 5 17.5 27.5 22.5 32.5 {name=S dir=inout}\n");
+    folder.write("tb.sch", std::string{kHeader} +
+                               "C {nfet.sym} 100 100 0 0 {name=M1}\n"
+                               "C {lab_pin.sym} 80 100 0 0 {name=l1 lab=G}\n"
+                               "C {lab_pin.sym} 120 70 0 0 {name=l2 lab=D}\n"
+                               "C {gnd.sym} 120 130 0 0 {name=l3 lab=0}\n"
+                               "C {code.sym} 300 0 0 0 {name=s1 only_toplevel=false value=\"vg G 0 1\"}\n");
+    dl::NetlistBench bench(dl::folder_input(folder.path()), {folder.path()});
+    auto document = schem::load_document(bench.files, folder.path() / "tb.sch", schem::ReadOptions{});
+    REQUIRE(document.ok());
+    schem::SymbolCache symbols;
+    const schem::TclBridge bridge = bench.tcl.bridge();
+    const schem::NetlistEnvironment environment{symbols, bench.rc.search_path, bench.files, &bridge, {}, 4};
+    hefesto::compat::CompatSettings settings;
+    settings.xschem_compat = compat;
+    const auto netlisted = schem::netlist(environment, document.value(), schem::NetlistOptions{}, settings);
+    REQUIRE(netlisted.failed);  // `schematic netlist` still fails (exit status 10)
+    CHECK(netlisted.driver_check_only);
+    const auto deck = schem::build_deck(environment, document.value(), schem::DeckOptions{}, settings);
+    REQUIRE(deck.ok());
+    CHECK(deck.value().text.find("\nM1 D G 0 nfet\n") != std::string::npos);
+    CHECK(deck.value().text.find("\nvg G 0 1\n") != std::string::npos);
+    const auto& d = deck.value().diagnostics;
+    const auto undriven = std::find_if(d.begin(), d.end(), [](const auto& w) { return w.code == "SCHEM-NET-019"; });
+    REQUIRE(undriven != d.end());
+    CHECK(undriven->text == "undriven node: G");
+    CHECK(std::none_of(d.begin(), d.end(), [](const auto& w) { return w.severity == hefesto::diag::Severity::error; }));
+  }
 }
 
 TEST_CASE("Raw file write captured", CONTROL) {

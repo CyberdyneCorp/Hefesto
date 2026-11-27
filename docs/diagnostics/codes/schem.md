@@ -227,6 +227,19 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   check (`NetlistEnvironment::interrupted`, polled once per schematic level
   placed) fired; the run returns no text and no computed labels. `schematic
   netlist` and `check` report it as SCHEM-CMD-011.
+- `SCHEM-NET-019` (error): `undriven node: <net>`: the net driver check
+  ("Errors and warnings", both modes) found a net with no `out` and no
+  `inout` pin; the netlist is written and the run fails (exit status 10),
+  but a simulation deck is still built when the driver check is the run's
+  only error (Q-SCHEM-53, approved 2026-11-27; `NetlistResult::
+  driver_check_only`). xschem prints `Error: undriven node: <net>`.
+- `SCHEM-NET-020` (warning, an error when the `xschemrc` sets
+  `erc_open_net_is_error` true): `open net: <net>`, a net with exactly one
+  pin. With xschem-compat ON it is shown only in the report of a failed
+  run (`driver_report_text`), as xschem's `Warning: open net: <net>`.
+- `SCHEM-NET-021` (warning, an error when the `xschemrc` sets
+  `erc_shorted_output_is_error` true): `shorted output node: <net>`, a net
+  with two or more `out` pins; shown as SCHEM-NET-020 is.
 
 ## EDIT
 
@@ -407,6 +420,9 @@ fails when the two disagree.
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
 | `SCHEM-NET-018` | error | The netlist run was interrupted (the environment's `interrupted` callback returned true); no netlist text is returned. |
+| `SCHEM-NET-019` | error | Net driver check: a net has no `out` and no `inout` pin (`Error: undriven node: <net>`); the netlist is written and the run fails, but a simulation deck is still built (Q-SCHEM-53). |
+| `SCHEM-NET-020` | warning | Net driver check: a net carries exactly one pin (`Warning: open net: <net>`); an error when the xschemrc sets `erc_open_net_is_error`. |
+| `SCHEM-NET-021` | warning | Net driver check: a net carries two or more `out` pins (`Warning: shorted output node: <net>`); an error when the xschemrc sets `erc_shorted_output_is_error`. |
 | `SCHEM-SIM-001` | error | A `.control` line of a schematic-source deck names a command that is not allowed in simulation decks (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, or one named only at run time). |
 | `SCHEM-SIM-002` | warning | A `.include` or `.lib` path of a schematic-source deck names no file in the netlist folder, the schematic's folder or the PDK store; it is kept as written. |
 | `SCHEM-SIM-003` | warning | A launcher's `xschem` command (or `simulate`) is not supported or not available until M9; it was skipped and the rest of the launcher ran. |

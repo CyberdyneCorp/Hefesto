@@ -72,12 +72,54 @@ struct ComputedLabel {
   friend bool operator==(const ComputedLabel&, const ComputedLabel&) = default;
 };
 
+/// One level of the report xschem prints on stderr when a run fails
+/// ("Errors and warnings", paragraph "Report text on stderr"): the absolute
+/// path of the level's schematic, the pin-mismatch errors found for it
+/// (printed before its separator line) and its messages in xschem's text
+/// (`Error: undriven node: B`, `Warning: open net: D`, `Warning: Symbol:
+/// <symbol>: no type attribute set`, ...), in report order.
+struct DriverReportLevel {
+  platform::Path schematic;
+  std::vector<std::string> before;
+  std::vector<std::string> lines;
+
+  friend bool operator==(const DriverReportLevel&, const DriverReportLevel&) = default;
+};
+
 struct NetlistResult {
   std::string text;  // the whole netlist, LF line ends
+  /// With xschem-compat ON a net driver finding that is only a warning
+  /// (`open net`, `shorted output node`) is not listed here: xschem shows it
+  /// only in the report of a failed run (`report`). Every other finding,
+  /// and with xschem-compat OFF every finding, is.
   std::vector<diag::Diagnostic> diagnostics;
   bool failed = false;  // an error of "Errors and warnings"
   std::vector<ComputedLabel> labels;
+  /// The run failed and every error it found is a finding of the net driver
+  /// check (SCHEM-NET-019, or SCHEM-NET-020/021 made errors by the xschemrc):
+  /// a simulation deck is still built from `text` (Q-SCHEM-53, approved
+  /// 2026-11-27), while `schematic netlist` and `check` still fail.
+  bool driver_check_only = false;
+  /// The levels of the stderr report, in the order their definitions are
+  /// written (the top level first).
+  std::vector<DriverReportLevel> report;
+  /// The short errors printed after the last separator line
+  /// (`Error: Net shorted: A - B`).
+  std::vector<std::string> report_shorts;
 };
+
+/// The report xschem prints on stderr after a failed run, in the layout of
+/// "Errors and warnings" paragraph "Report text on stderr" (each level's
+/// pin-mismatch errors, its separator `-----------<schematic>` and its
+/// lines; then the top level's separator again and the short errors), each
+/// line ending in LF; empty when the run has no level. The headless netlist
+/// command prints it with xschem-compat ON when `result.failed`.
+[[nodiscard]] std::string driver_report_text(const NetlistResult& result);
+
+/// The key xschem orders the findings of one level by with xschem-compat ON
+/// ("Report order of the driver check"): h = 5381, h = 33 h + c (mod 2^32)
+/// for each byte, key = h mod 31627.
+[[nodiscard]] std::uint32_t driver_report_key(std::string_view name) noexcept;
 
 /// Deepest subcircuit nesting "Flat netlist" expands (Q-SCHEM-42, user
 /// decision M8-D1 of 2026-11-22; both modes): an instance below it is kept
@@ -132,6 +174,12 @@ struct NetlistEnvironment {
   /// Polled once per placed schematic level; when it returns true the run
   /// stops, returns no text and fails with SCHEM-NET-018. Empty: never.
   std::function<bool()> interrupted{};
+  /// The `xschemrc` variables `erc_open_net_is_error` and
+  /// `erc_shorted_output_is_error` ("Net driver check"): a true value makes
+  /// that warning fail the run. The globals of the same names in `tcl`'s
+  /// interpreter, when it is set, count too.
+  bool erc_open_net_is_error = false;
+  bool erc_shorted_output_is_error = false;
 };
 
 /// Netlists `top` in memory ("In-process netlisting"): never writes a file,

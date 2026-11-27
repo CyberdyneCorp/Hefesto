@@ -89,11 +89,33 @@ struct DeviceLine {
   }
 };
 
+/// The fields of a device line, a quoted expression being one field: `'`,
+/// `{` and `}` open a quote when none is open and close it otherwise, as the
+/// quote rule of "Line breaking" reads them, so the blanks inside
+/// `ad='int((nf+1)/2) * W/nf * 0.18u'` do not split it (SCHEM-NL-21).
+std::vector<std::string> device_fields(std::string_view line) {
+  std::vector<std::string> fields;
+  std::size_t i = 0;
+  while (i < line.size()) {
+    while (i < line.size() && detail::is_blank(line[i])) {
+      ++i;
+    }
+    const std::size_t start = i;
+    bool quoted = false;
+    while (i < line.size() && (quoted || !detail::is_blank(line[i]))) {
+      quoted = (line[i] == '\'' || line[i] == '{' || line[i] == '}') ? !quoted : quoted;
+      ++i;
+    }
+    if (i > start) {
+      fields.emplace_back(line.substr(start, i - start));
+    }
+  }
+  return fields;
+}
+
 DeviceLine parse_device(std::string_view line) {
   DeviceLine device;
-  for (const std::string_view field : split_fields(line)) {
-    device.fields.emplace_back(field);
-  }
+  device.fields = device_fields(line);
   device.positional = static_cast<std::size_t>(
       std::count_if(device.fields.begin() + 1, device.fields.end(), [](const std::string& f) { return !is_parameter(f); }));
   device.nodes = std::min(node_count(device.fields.front().front(), device.positional), device.positional);

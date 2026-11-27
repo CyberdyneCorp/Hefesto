@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/schem/lib/reference.hpp"
 #include "hefesto/schem/lib/search_path.hpp"
 #include "reference_data.hpp"
 
@@ -321,4 +322,53 @@ TEST_CASE("Unknown command in an xschemrc", kRc) {
     CHECK(result.variables.count("LATER") == 0);
     CHECK(result.search_path.directories() == std::vector<platform::Path>{(dir.path() / "a").generic_string()});
   }
+}
+
+// Q-SCHEM-52 (approved 2026-11-27; no mode switch: both modes of
+// xschem-compat give the same path): before any xschemrc runs, the search
+// path is the system library.
+namespace {
+
+constexpr const char* kSearchPath = "[cap:schematic-symbols-and-libraries][req:Library search path]";
+
+struct PlainFolder {
+  TempDir dir;
+  schem::XschemrcInput input;
+
+  PlainFolder() {
+    dir.write("share/xschem_library/devices/res.sym", "v {xschem version=3.4.8RC file_version=1.3}\nK {type=resistor}\n");
+    dir.mkdir("w/s");
+    dir.mkdir("w/lib");
+    input.document_folder = dir.path() / "w" / "s";
+    input.variables = {{"XSCHEM_SHAREDIR", (dir.path() / "share").generic_string()},
+                       {"USER_CONF_DIR", (dir.path() / "w" / "s" / ".xschem").generic_string()}};
+  }
+
+  [[nodiscard]] platform::Path under(std::string_view relative) const { return dir.path() / relative; }
+};
+
+}  // namespace
+
+TEST_CASE("Default search path without an xschemrc", kSearchPath) {
+  PlainFolder plain;
+  platform::LocalFileSystem files;
+  const auto result = schem::SearchPath::from_xschemrc(files, plain.input);
+  CHECK(result.diagnostics.empty());
+  CHECK(result.search_path.directories() == std::vector<platform::Path>{plain.under("share/xschem_library/devices")});
+  CHECK(schem::default_xschem_library_path(plain.under("share")) ==
+        plain.under("share/xschem_library/devices").generic_string());
+  const auto found = schem::resolve_reference("res.sym", plain.input.document_folder, result.search_path, files);
+  CHECK(found.file == plain.under("share/xschem_library/devices/res.sym"));
+}
+
+TEST_CASE("xschemrc replaces the default search path", kSearchPath) {
+  PlainFolder plain;
+  platform::LocalFileSystem files;
+  const std::string lib = plain.under("w/lib").generic_string();
+  plain.dir.write("w/s/xschemrc", "set XSCHEM_LIBRARY_PATH " + lib + "\n");
+  CHECK(schem::SearchPath::from_xschemrc(files, plain.input).search_path.directories() ==
+        std::vector<platform::Path>{lib});
+  plain.dir.write("w/s/xschemrc", "append XSCHEM_LIBRARY_PATH :" + lib + "\n");
+  CHECK(schem::SearchPath::from_xschemrc(files, plain.input).search_path.directories() ==
+        std::vector<platform::Path>{plain.under("share/xschem_library/devices"), lib});
 }

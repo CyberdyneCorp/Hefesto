@@ -581,6 +581,28 @@ TEST_CASE("flat netlist: globals, 0, undefined subcircuits, nesting and quoted v
                                          ".GLOBAL VDD", ".end"});
 }
 
+// SCHEM-NL-21 (M8 round 7): a quoted expression with blanks is one field, so
+// neither its words nor the model name after it are taken for nodes and
+// prefixed with the instance path (`ad='int((1 x6_+ x6_1)/2) ...'`,
+// `x6_sky130_fd_pr__nfet_01v8`).
+TEST_CASE("flat netlist: a quoted expression with blanks is one field", "[cap:schematic-netlisting][req:Flat netlist]") {
+  const std::vector<schem::ProcessedLine> lines{
+      {"**.subckt top", false},
+      {"x6 A Z VCC VSS passgate_1 W_N=0.42 L_N=0.35", false},
+      {"**.ends", false},
+      {".subckt passgate_1 A Z VCCBPIN VSSBPIN  W_N=1 L_N=0.2", false},
+      {"XM1 Z GN A VSSBPIN sky130_fd_pr__nfet_01v8 L=L_N W=W_N nf=1 ad='int((1 + 1)/2) * W_N / 1 * 0.29' "
+       "pd={2 * W_N} m=1",
+       false},
+      {".ends", false},
+      {".end", false}};
+  const auto flat = schem::flatten_netlist(lines).lines;
+  REQUIRE(flat.size() == 4);
+  CHECK(flat[1].text ==
+        "XM1_x6 Z x6_GN A VSS sky130_fd_pr__nfet_01v8 L=0.35 W=0.42 nf=1 ad='int((1 + 1)/2) * W_N / 1 * 0.29' "
+        "pd={2 * W_N} m=1");
+}
+
 TEST_CASE("flat netlist: a subcircuit that places itself stops at kMaxFlatDepth",
           "[cap:schematic-netlisting][req:Flat netlist]") {
   const std::vector<schem::ProcessedLine> lines{{"**.subckt top", false}, {"x1 a loop", false}, {"**.ends", false},

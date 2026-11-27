@@ -30,5 +30,8 @@ inline constexpr std::string_view kAllPinsUnconnected = "SCHEM-NET-015";
 inline constexpr std::string_view kOverlapping = "SCHEM-NET-016";
 inline constexpr std::string_view kFlatStopped = "SCHEM-NET-017";
 inline constexpr std::string_view kInterrupted = "SCHEM-NET-018";
+inline constexpr std::string_view kUndrivenNode = "SCHEM-NET-019";
+inline constexpr std::string_view kOpenNet = "SCHEM-NET-020";
+inline constexpr std::string_view kShortedOutput = "SCHEM-NET-021";
 
 }  // namespace hefesto::schem::net_codes

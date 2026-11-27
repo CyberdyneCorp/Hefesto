@@ -12,6 +12,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -94,6 +95,11 @@ class TclBridge {
   /// reported to the run's sink, naming the owner; the evaluation stops
   /// after `run.each` or what is left of `run.total` (SCHEM-TCL-003).
   [[nodiscard]] std::string evaluate(std::string_view value, const TclContext& context) const;
+
+  /// The value of the global variable `name` (an `xschemrc` setting such as
+  /// `erc_open_net_is_error`), read without evaluating anything; nullopt
+  /// when it is not set or there is no interpreter.
+  [[nodiscard]] std::optional<std::string> global_variable(std::string_view name) const;
 
  private:
   [[nodiscard]] std::string run_script(const std::string& script) const;

@@ -485,10 +485,10 @@ void NetlistRun::check_pins(const Symbol& symbol, const Level& level) {
     return a.first == b.first && (a.second.empty() || a.second == b.second);
   };
   if (!std::equal(pins.begin(), pins.end(), ports.begin(), ports.end(), same)) {
-    error(diag::make(net_codes::kPinMismatch, "pins of symbol " + symbol.file.generic_string() +
-                                                  " and ports of schematic " +
-                                                  level.document->path.generic_string() +
-                                                  " differ in names or directions"));
+    std::string text = "pins of symbol " + symbol.file.generic_string() + " and ports of schematic " +
+                       level.document->path.generic_string() + " differ in names or directions";
+    report_before("Error: " + text);
+    error(diag::make(net_codes::kPinMismatch, std::move(text)));
   }
 }
 

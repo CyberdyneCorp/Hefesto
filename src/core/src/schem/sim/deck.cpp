@@ -102,7 +102,12 @@ std::string resolve_line(std::string_view line, Deck& deck, platform::FileSystem
 
 diag::Outcome<Deck> finish_deck(NetlistResult netlisted, platform::FileSystem& fs, const Document& testbench,
                                 const DeckOptions& options) {
-  if (netlisted.failed) {
+  // Q-SCHEM-53 (approved 2026-11-27, both modes): a run that failed only by
+  // the net driver check still gives the deck; its findings are warnings of
+  // the deck build.
+  if (netlisted.failed && netlisted.driver_check_only) {
+    for (diag::Diagnostic& d : netlisted.diagnostics) d.severity = diag::Severity::warning;
+  } else if (netlisted.failed) {
     std::string why = "the testbench netlist failed";
     for (const diag::Diagnostic& d : netlisted.diagnostics) {
       if (d.severity == diag::Severity::error) {
