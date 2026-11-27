@@ -34,3 +34,4 @@ HEFESTO_SIM_CODE("SIM-ENGINE-035", error, "Job not in the state the command need
 HEFESTO_SIM_CODE("SIM-ENGINE-036", error, "Run-set point job id already in use.")
 HEFESTO_SIM_CODE("SIM-ENGINE-037", error, "The run produced no plot, so the job failed.")
 HEFESTO_SIM_CODE("SIM-ENGINE-038", error, "Job id is not a single safe path component.")
+HEFESTO_SIM_CODE("SIM-ENGINE-039", error, "Job limit setting of zero or above twice its default refused; the default is used.")

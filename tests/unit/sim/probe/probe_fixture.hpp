@@ -88,6 +88,7 @@ style probetest
     areacap metal2 1
     areacap poly 1
     areacap ndiff 1
+    device mosfet nfet nfet ndiff space GND!
 end
 )";
 

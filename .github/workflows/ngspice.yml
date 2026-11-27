@@ -14,8 +14,9 @@
 #   - the one-line top-level integration (HEFESTO_BUILD_NGSPICE=ON) on Linux x86_64, with the
 #     engine boundary check (scripts/check_engine_boundary.py) run on a build tree that holds
 #     libngspice-hefesto (ci.yml's legs build with HEFESTO_BUILD_NGSPICE=OFF);
-#   - (task 5.2) OpenVAF-reloaded built from source on macOS arm64 and Linux arm64, and the IHP
-#     OSDI modules compiled with it and checked for OSDI 0.4 (job `openvaf`).
+#   - (task 5.2) OpenVAF-reloaded built from source on macOS arm64 and Linux arm64, the six IHP
+#     sg13g2 OSDI modules compiled and registered statically (tools/osdi_static.py), and the
+#     library built with them and tested (job `openvaf`).
 
 name: ngspice
 
@@ -151,23 +152,27 @@ jobs:
       - name: Check the simulation engine boundary (release rules, library present)
         run: python3 scripts/check_engine_boundary.py --build-dir build/ci-linux
 
-  # Task 5.2 (R1 attempt): OpenVAF-reloaded built from source where no upstream binary exists
-  # (macOS arm64, Linux arm64; the release offers linux_x64 and win_x64 only), at the pin of
-  # tools/golden/pins.toml [tools.openvaf], cached by commit and runner. It compiles the IHP
-  # sg13g2 Verilog-A modules the static OSDI registry needs (PSP103, cap_cmomi, cap_cmomf) from
-  # IHP-Open-PDK at the ihp-ngspice pin (scripts/fetch_pdk.py IHP_PIN) and checks that each .osdi
-  # declares OSDI 0.4. OpenVAF is a GPL-3.0 build-time tool: it is never linked or shipped.
-  # Registering the modules statically in libngspice-hefesto is not done yet (tasks.md 5.2).
+  # Task 5.2: OpenVAF-reloaded built from source where no upstream binary exists (macOS arm64,
+  # Linux arm64; the release offers linux_x64 and win_x64 only), at the pin of
+  # tools/golden/pins.toml [tools.openvaf], cached by commit and runner. tools/osdi_static.py
+  # compiles the six IHP sg13g2 modules of simulation-engine-embedding "OSDI compact models"
+  # (psp103, psp103_nqs, r3_cmc, mosvar, cap_cmomi, cap_cmomf) from IHP-Open-PDK at the ihp-ngspice
+  # pin (scripts/fetch_pdk.py IHP_PIN) as the PDK's openvaf-compile-va.sh does (-D__NGSPICE__,
+  # generic CPU), keeps the objects OpenVAF links, renames each module's OSDI exports with the
+  # prefix hefesto_osdi_<module>_ and merges them into one object per module. libngspice-hefesto
+  # is then built with them (HEFESTO_NGSPICE_OSDI_DIR) and tested: "Version mismatch avoided", an
+  # sg13g2 `op` deck with dynamic OSDI loading off, the manifest and the export check. OpenVAF is a
+  # GPL-3.0 build-time tool: it is never linked or shipped.
   openvaf:
-    name: OpenVAF from source and IHP OSDI modules (${{ matrix.name }})
+    name: OpenVAF, built-in IHP OSDI modules (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 150
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: macos-arm64, os: macos-15 }
-          - { name: linux-arm64, os: ubuntu-24.04-arm }
+          - { name: macos-arm64, os: macos-15, lib: libngspice-hefesto.dylib }
+          - { name: linux-arm64, os: ubuntu-24.04-arm, lib: libngspice-hefesto.so }
     env:
       OPENVAF_REPO: https://github.com/arpadbuermen/OpenVAF
       OPENVAF_COMMIT: 44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7
@@ -175,6 +180,11 @@ jobs:
       IHP_COMMIT: 5e6d592e4002946a4616f798c357f0f3c06cf3b6
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Pins agree with tools/golden/pins.toml and scripts/fetch_pdk.py
         run: |
           grep -q "upstream_commit = \"${OPENVAF_COMMIT}\"" tools/golden/pins.toml
@@ -184,77 +194,98 @@ jobs:
         with:
           path: .cache/openvaf/bin
           key: openvaf-${{ matrix.name }}-${{ env.OPENVAF_COMMIT }}-llvm18
+      # LLVM 18 builds OpenVAF and provides llvm-objcopy and llvm-nm for the symbol renaming.
       - name: Install LLVM 18
-        if: steps.openvaf-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then
             brew install llvm@18
             prefix="$(brew --prefix llvm@18)"
+            echo "OSDI_LD=/usr/bin/ld" >> "$GITHUB_ENV"
           else
             sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
             sudo apt-get install -y --no-install-recommends llvm-18 llvm-18-dev libclang-18-dev clang-18 lld-18 \
               libzstd-dev zlib1g-dev
             prefix=/usr/lib/llvm-18
+            echo "OSDI_LD=$(command -v ld)" >> "$GITHUB_ENV"
           fi
           echo "LLVM_SYS_181_PREFIX=${prefix}" >> "$GITHUB_ENV"
-          echo "${prefix}/bin" >> "$GITHUB_PATH"
+          echo "LLVM_BIN=${prefix}/bin" >> "$GITHUB_ENV"
       - name: Build OpenVAF-reloaded
         if: steps.openvaf-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          export PATH="${LLVM_BIN}:$PATH"
           git init -q "$RUNNER_TEMP/openvaf"
           cd "$RUNNER_TEMP/openvaf"
           git fetch -q --depth 1 "$OPENVAF_REPO" "$OPENVAF_COMMIT"
           git checkout -q FETCH_HEAD
           rustup show active-toolchain || rustup default stable
           cargo build --release --features llvm18
-          ls target/release
           mkdir -p "$GITHUB_WORKSPACE/.cache/openvaf/bin"
           install -m 0755 target/release/openvaf-r "$GITHUB_WORKSPACE/.cache/openvaf/bin/openvaf-r"
       - name: OpenVAF version
         run: .cache/openvaf/bin/openvaf-r --version | head -n 1
-      - name: Fetch the IHP Verilog-A sources at the pin
+      - name: Fetch the IHP Verilog-A sources and ngspice models at the pin
         shell: bash
         run: |
           git init -q "$RUNNER_TEMP/ihp"
           cd "$RUNNER_TEMP/ihp"
           git remote add origin "$IHP_REPO"
           git config core.sparseCheckout true
-          echo "ihp-sg13g2/libs.tech/verilog-a/" > .git/info/sparse-checkout
+          printf '%s\n' "ihp-sg13g2/libs.tech/verilog-a/" "ihp-sg13g2/libs.tech/ngspice/models/" > .git/info/sparse-checkout
           git fetch -q --depth 1 --filter=blob:none origin "$IHP_COMMIT"
           git checkout -q FETCH_HEAD
           find ihp-sg13g2/libs.tech/verilog-a -name '*.va' | sort
-      - name: Compile PSP103, cap_cmomi and cap_cmomf to OSDI
+      - name: Compile the six sg13g2 modules and relocate their OSDI exports
         shell: bash
         run: |
           va="$RUNNER_TEMP/ihp/ihp-sg13g2/libs.tech/verilog-a"
-          out="$PWD/build/osdi"
-          mkdir -p "$out"
-          for module in psp103 psp103_nqs cap_cmomi cap_cmomf; do
+          for module in psp103 psp103_nqs r3_cmc mosvar cap_cmomi cap_cmomf; do
             src="$(find "$va" -name "${module}.va" | head -n 1)"
             if [ -z "$src" ]; then echo "::error::no ${module}.va in the IHP tree"; exit 1; fi
-            (cd "$(dirname "$src")" && "$GITHUB_WORKSPACE/.cache/openvaf/bin/openvaf-r" "$(basename "$src")" \
-              -o "$out/${module}.osdi")
+            python3 third_party/ngspice/tools/osdi_static.py compile --openvaf .cache/openvaf/bin/openvaf-r \
+              --openvaf-arg=-D__NGSPICE__ --openvaf-arg=--target_cpu --openvaf-arg=generic \
+              --source "$src" --module "$module" --out-dir build/osdi \
+              --objcopy "$LLVM_BIN/llvm-objcopy" --nm "$LLVM_BIN/llvm-nm" --ld "$OSDI_LD" \
+              --compiler-id "OpenVAF-reloaded ${OPENVAF_COMMIT}"
+            echo "${module}: $(tr '\n' ' ' < "build/osdi/${module}.symbols")"
           done
-          ls -l "$out"
-      - name: Each module declares OSDI 0.4
+          ls -l build/osdi
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps/ngspice
+          key: ngspice-src-${{ matrix.name }}-${{ hashFiles('third_party/ngspice/pin.json', 'third_party/ngspice/patches/**') }}
+      - name: Build libngspice-hefesto with the built-in modules
         run: |
-          python3 - <<'PY'
-          import ctypes, pathlib, sys
-          bad = []
-          for path in sorted(pathlib.Path("build/osdi").glob("*.osdi")):
-              lib = ctypes.CDLL(str(path.resolve()))
-              major = ctypes.c_uint32.in_dll(lib, "OSDI_VERSION_MAJOR").value
-              minor = ctypes.c_uint32.in_dll(lib, "OSDI_VERSION_MINOR").value
-              count = ctypes.c_uint32.in_dll(lib, "OSDI_NUM_DESCRIPTORS").value
-              print(f"{path.name}: OSDI {major}.{minor}, {count} descriptor(s)")
-              if (major, minor) != (0, 4) or count < 1:
-                  bad.append(path.name)
-          sys.exit(1 if bad else 0)
-          PY
+          cmake -S third_party/ngspice -B build/ngspice -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DHEFESTO_NGSPICE_OSDI_DIR="$PWD/build/osdi" -DFETCHCONTENT_BASE_DIR="$PWD/.cache/deps/ngspice"
+          cmake --build build/ngspice -j4
+      - name: Version mismatch avoided, sg13g2 op deck and the other patch tests
+        env:
+          HEFESTO_NGSPICE_LIB: ${{ github.workspace }}/build/ngspice/${{ matrix.lib }}
+          HEFESTO_NGSPICE_OSDI_BUILTIN: "1"
+          HEFESTO_IHP_MODELS: ${{ runner.temp }}/ihp/ihp-sg13g2/libs.tech/ngspice
+        run: python3 -m unittest discover -s third_party/ngspice/tests -v
+      - name: Manifest lists the built-in modules
+        run: |
+          python3 third_party/ngspice/tools/ngspice_manifest.py check --manifest build/ngspice/ngspice-manifest.json
+          python3 -c "import json; m = json.load(open('build/ngspice/ngspice-manifest.json')); mods = [x['module'] for x in m['osdi_modules']]; print(mods); assert len(mods) == 6"
+      - name: Exported symbols are the ngspice API only
+        shell: bash
+        run: |
+          lib="build/ngspice/${{ matrix.lib }}"
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            syms="$(nm -gU "$lib" | awk '{print $3}' | sed 's/^_//')"
+          else
+            syms="$(nm -D --defined-only "$lib" | awk '$2 ~ /[TDBRVW]/ {print $3}')"
+          fi
+          bad="$(grep -Ev '^(ngSpice_|ngGet_|ngCM_|_init$|_fini$)' <<< "$syms" || true)"
+          if [ -n "$bad" ]; then echo "unexpected exports:"; echo "$bad"; exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
           name: ihp-osdi-${{ matrix.name }}
-          path: build/osdi/*.osdi
+          path: |
+            build/osdi/*
+            build/ngspice/ngspice-manifest.json
           retention-days: 14

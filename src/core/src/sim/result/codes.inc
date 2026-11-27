@@ -21,3 +21,5 @@ HEFESTO_SIM_CODE("SIM-RESULT-007", error, "No crossing of the level for the meas
 HEFESTO_SIM_CODE("SIM-RESULT-008", error, "Unknown waveform measurement.")
 HEFESTO_SIM_CODE("SIM-RESULT-009", error, "A result file cannot be read or written.")
 HEFESTO_SIM_CODE("SIM-RESULT-010", error, "Invalid analysis parameter.")
+// M9 R3 (Q-SIM-16, approved 2026-11-27): the streaming result budget.
+HEFESTO_SIM_CODE("SIM-RESULT-011", error, "Result memory budget exceeded: the job failed and keeps its partial result.")

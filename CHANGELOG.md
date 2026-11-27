@@ -151,6 +151,18 @@ release notices.
   waveform measurements. Worker state events are bounded by count, and worker
   handshakes and deck loads run off the polling thread. The worker ABI is
   version 2 (streamed data points).
+- **Sweeps, corners and Monte Carlo (library).** Run sets with sweep, DOE,
+  corner and Monte Carlo dimensions, point decks, the bundled corner tables
+  of sky130, gf180mcu and IHP sg13g2, pass/fail and the corner matrix,
+  Monte Carlo seeds and early stopping, run-set storage and results in point
+  order; the same results with one worker or several. The `sim` options come
+  with the `sim` command.
+- **Built-in IHP compact models.** The six sg13g2 OSDI modules (PSP103,
+  `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf`) are compiled into the engine
+  library, so a stale `.osdi` on the host is never loaded.
+- **Simulation result budget.** A job whose result passes its memory budget
+  (4 GiB on desktop, lowerable) now fails with SIM-RESULT-011 and keeps its
+  partial result; the in-memory job log (64 MiB) can be lowered too.
 
 ## Unreleased (M8: schematic capture, in progress)
 

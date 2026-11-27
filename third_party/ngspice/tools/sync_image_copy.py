@@ -21,7 +21,8 @@ from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[1]
 COPY = SOURCE.parents[1] / "tools" / "golden" / "container" / "ngspice"
-FILES = ("CMakeLists.txt", "pin.json", "cmake/*", "src/*", "patches/*", "tools/ngspice_manifest.py")
+FILES = ("CMakeLists.txt", "pin.json", "cmake/*", "src/*", "patches/*", "tools/ngspice_manifest.py",
+         "tools/osdi_static.py")
 
 
 def wanted() -> dict[str, Path]:
