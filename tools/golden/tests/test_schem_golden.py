@@ -180,7 +180,7 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertEqual(rt01, [])
 
     def test_simulation_and_lvs_results_deferred_to_m9(self):
-        for case_id in ("SCHEM-SIM-02", "SCHEM-LVS-01"):
+        for case_id in ("SCHEM-LVS-01",):
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
                 self.assertIn('deferred = "M9"', entry)
@@ -190,7 +190,11 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertIn('outputs = ["layout.spice", "lvs.out", "stdout.txt", "stderr.txt"]', lvs)
         with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
             before = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
+            sim02 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-SIM-02"))
         self.assertIn('deferred_outputs = { "inv_1.spice" = "M8" }', before)
+        self.assertIn('deferred = "M9"', sim02)
+        # SCHEM-SIM-02's texts with no simulation loaded replay since round 7 (CI run 46044902742).
+        self.assertEqual(schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-SIM-02")), [])
 
     def test_replayed_deck_of_a_later_case_has_no_entry(self):
         # SCHEM-SIM-01 captures only the deck, which replays; its simulation results stay M9's (LATER).

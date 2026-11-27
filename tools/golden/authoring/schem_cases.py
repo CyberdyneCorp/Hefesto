@@ -1338,7 +1338,7 @@ REPLAYED: frozenset[str] = frozenset({
     "SCHEM-NL-16", "SCHEM-NL-17", "SCHEM-NL-18", "SCHEM-NL-19", "SCHEM-NL-20", "SCHEM-NL-22",
     "SCHEM-PR-01", "SCHEM-PR-03",
     "SCHEM-RT-01", "SCHEM-RT-02", "SCHEM-RT-03", "SCHEM-RT-04", "SCHEM-RT-06", "SCHEM-RT-07", "SCHEM-RT-08",
-    "SCHEM-SIM-01",
+    "SCHEM-SIM-01", "SCHEM-SIM-02",
 })
 
 
