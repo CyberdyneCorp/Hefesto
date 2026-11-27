@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <stdexcept>
@@ -71,15 +72,20 @@ TEST_CASE("a report names the line of the command a loop body calls", PROGRESS) 
   SandboxedProject p;
   Reports reports;
   reports.install(p);
-  p.interp->define_command("noop", [](const hefesto::cmd::Invocation&) {
-    return hefesto::cmd::CommandResult::success();
+  // The loop runs until a report names the body's line (3), or 2 s pass:
+  // on a loaded runner every report of a fixed 200 ms loop could land on
+  // the condition's line (2) instead.
+  const auto body_report = [&reports] {
+    return std::any_of(reports.all.begin(), reports.all.end(),
+                       [](const auto& r) { return !r.done && r.location.line == 3; });
+  };
+  p.interp->define_command("seen", [&body_report](const hefesto::cmd::Invocation&) {
+    return hefesto::cmd::CommandResult::success(hefesto::cmd::Value{body_report() ? 1 : 0});
   });
   const auto file = p.project.write(
-      "calls.tcl", "set t [clock milliseconds]\nwhile {[clock milliseconds] - $t < 200} {\n  noop\n}\n");
+      "calls.tcl", "set t [clock milliseconds]\nwhile {[clock milliseconds] - $t < 2000} {\n  if {[seen]} break\n}\n");
   REQUIRE(p.interp->source(file).ok());
-  bool body_line = false;
-  for (const auto& r : reports.all) body_line = body_line || (!r.done && r.location.line == 3);
-  CHECK(body_line);
+  CHECK(body_report());
 }
 
 TEST_CASE("typed text reports its line and origin; a short evaluation reports nothing", PROGRESS) {

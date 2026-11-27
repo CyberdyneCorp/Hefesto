@@ -140,7 +140,7 @@ jobs:
       - name: Install CMake, Ninja and the OpenSSL headers
         run: |
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - name: Configure and build libngspice-hefesto only
         env:
           CC: gcc
@@ -192,7 +192,7 @@ jobs:
             brew install llvm@18
             prefix="$(brew --prefix llvm@18)"
           else
-            sudo apt-get update
+            sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
             sudo apt-get install -y --no-install-recommends llvm-18 llvm-18-dev libclang-18-dev clang-18 lld-18 \
               libzstd-dev zlib1g-dev
             prefix=/usr/lib/llvm-18

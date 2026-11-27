@@ -291,7 +291,7 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ""
           CMAKE_CXX_COMPILER_LAUNCHER: ""
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
           cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
           cmake --build --preset linux-release --target hefesto-cli
@@ -435,7 +435,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CMake, Ninja and the OpenSSL headers
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
           python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - uses: actions/cache@v4
         with:
@@ -546,12 +546,12 @@ jobs:
       # The pinned libcurl (src/platform_net, hefesto-licensing D-13) links the system OpenSSL 3.
       - name: Install the OpenSSL headers for libcurl
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
 
       - name: Install Vulkan, X11 and Wayland development packages
         if: matrix.desktop
         run: |
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libvulkan-dev vulkan-tools mesa-vulkan-drivers glslang-tools glslc spirv-tools \
             libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
@@ -849,7 +849,7 @@ jobs:
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the Vulkan loader, headers and Mesa lavapipe
         run: |
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libvulkan-dev mesa-vulkan-drivers vulkan-tools libx11-dev libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
@@ -944,7 +944,7 @@ jobs:
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the OpenSSL headers for libcurl
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-asan
@@ -978,7 +978,7 @@ jobs:
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the OpenSSL headers for libcurl and the desktop shell's Vulkan and X11 packages
         run: |
-          sudo apt-get update
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update
           sudo apt-get install -y --no-install-recommends libssl-dev \
             libvulkan-dev glslang-tools glslc spirv-tools \
             libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
@@ -1024,7 +1024,7 @@ jobs:
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the OpenSSL headers for libcurl
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-fuzz
@@ -1091,7 +1091,7 @@ jobs:
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
       - name: Install the OpenSSL headers for libcurl
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-release-ngspice

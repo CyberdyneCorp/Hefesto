@@ -71,7 +71,7 @@ jobs:
 
       - name: Install the OpenSSL headers for libcurl
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+        run: sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
 
       - uses: actions/cache@v4
         with:
