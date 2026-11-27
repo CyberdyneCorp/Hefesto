@@ -24,7 +24,7 @@ bool has_l(lvs::Cell& cell) {
 
 }  // namespace
 
-TEST_CASE("-circuit1 names circuit 1's cell only", "[cap:lvs-setup-file][req:Cell reference syntax]") {
+TEST_CASE("A -circuit1 reference names circuit 1's cell only", "[cap:lvs-setup-file][req:Cell reference syntax]") {
   Pair pair;
   pair.ok("property \"-circuit1 nfet\" tolerance {W 0.02}\n");
   CHECK(property(pair.cell(1, "nfet"), "W")->tolerance == 0.02);
