@@ -16,6 +16,7 @@
 
 #include "ext_fixture.hpp"
 #include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/diag/codes.hpp"
 #include "hefesto/extflat/args.hpp"
 #include "hefesto/extflat/names.hpp"
 #include "hier_name.hpp"
@@ -35,9 +36,12 @@ hefesto::diag::Outcome<extflat::CommonArgs> parse(const Strings& args, const ext
 // A tool that takes -o and -T, reading -S files from `files`.
 extflat::ArgOptions all_flags(const std::map<std::string, std::string>& files = {}) {
   extflat::ArgOptions options{true, true, {}};
-  options.read_file = [files](const std::string& path) -> std::optional<std::string> {
+  options.read_file = [files](const std::string& path) -> hefesto::diag::Outcome<std::string> {
     const auto it = files.find(path);
-    return it == files.end() ? std::nullopt : std::optional<std::string>{it->second};
+    if (it == files.end()) {
+      return hefesto::diag::make(hefesto::diag::codes::kPlatformNotFound, "no such file '" + path + "'");
+    }
+    return it->second;
   };
   return options;
 }

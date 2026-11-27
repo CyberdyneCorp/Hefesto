@@ -54,3 +54,7 @@ if(_have_simd AND HEFESTO_BUILD_NGSPICE)
     target_link_libraries(hefesto_platform_tests PRIVATE hefesto_simd_devhost)
   endif()
 endif()
+
+# LocalFileSystem read errors with the OS reason (m7-extraction task 10.6):
+# core only, so it builds without the worker and simd targets.
+hefesto_add_unit_test(hefesto_platform_fs_tests SOURCES file_system_test.cpp LIBS hefesto::core)

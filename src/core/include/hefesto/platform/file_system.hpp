@@ -28,7 +28,11 @@ class FileSystem {
   FileSystem& operator=(const FileSystem&) = delete;
   virtual ~FileSystem() = default;
 
-  /// Whole-file read, in binary mode.
+  /// Whole-file read, in binary mode. A missing file fails with
+  /// PLATFORM-IO-004 (`no such file '<path>'`); any other failure with
+  /// PLATFORM-IO-001, whose text ends in `: <strerror text>` when the OS
+  /// gave a reason (`: Permission denied`, `: Is a directory`; see
+  /// os_error_text()).
   [[nodiscard]] virtual diag::Outcome<std::string> read(const Path& path) = 0;
   /// The first `max_bytes` bytes of the file (all of it when it is
   /// shorter), with the errors of read(). Bounds the memory a read of a file
@@ -57,7 +61,15 @@ class FileSystem {
   [[nodiscard]] virtual std::optional<std::filesystem::file_time_type> modified_time(const Path& path);
 };
 
-/// The portable default: std::filesystem and <fstream>.
+/// The OS error text of a failed read, as perror prints it: "No such file
+/// or directory" for PLATFORM-IO-004, otherwise the `: <strerror text>`
+/// suffix of the message (the text after its last `': `), empty when the
+/// error carries none.
+[[nodiscard]] std::string os_error_text(const diag::Diagnostic& error);
+
+/// The portable default: std::filesystem and <fstream>. A read error
+/// carries the OS reason: errno of the failed open, `Is a directory` for a
+/// directory (an ifstream would open it and read nothing).
 class LocalFileSystem final : public FileSystem {
  public:
   diag::Outcome<std::string> read(const Path& path) override;

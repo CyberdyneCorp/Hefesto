@@ -117,19 +117,25 @@ void ArgParser::add_symbol_arg(const std::string& text) {
 }
 
 // efSymAddFile: each line as a `-s` argument, a rejected one followed by
-// its line number. A file that cannot be opened is reported (perror) and
-// the parse goes on.
+// its line number. A file that cannot be opened is reported (perror: the
+// OS reason, e.g. `Permission denied`) and the parse goes on.
 void ArgParser::add_symbol_file(const std::string& name) {
   out_.symbol_file = name;
-  const auto text = options_.read_file ? options_.read_file(name) : std::nullopt;
-  if (!text) {
+  if (!options_.read_file) {
     warn(name + ": No such file or directory");
     return;
   }
+  const diag::Outcome<std::string> text = options_.read_file(name);
+  if (!text.ok()) {
+    const std::string reason = platform::os_error_text(text.error());
+    warn(name + ": " + (reason.empty() ? std::string{"No such file or directory"} : reason));
+    return;
+  }
+  const std::string& body = text.value();
   std::size_t start = 0;
-  for (int line = 1; start < text->size(); ++line) {
-    const std::size_t end = std::min(text->find('\n', start), text->size());
-    if (const auto rejected = add_symbol(out_.symbols, std::string_view{*text}.substr(start, end - start))) {
+  for (int line = 1; start < body.size(); ++line) {
+    const std::size_t end = std::min(body.find('\n', start), body.size());
+    if (const auto rejected = add_symbol(out_.symbols, std::string_view{body}.substr(start, end - start))) {
       warn(*rejected);
       warn("Error at line " + std::to_string(line) + " of " + name);
     }
@@ -268,11 +274,8 @@ std::string_view common_args_usage() noexcept {
   return kUsage;
 }
 
-std::function<std::optional<std::string>(const std::string& path)> file_reader(platform::FileSystem& fs) {
-  return [&fs](const std::string& path) -> std::optional<std::string> {
-    auto text = fs.read(platform::Path{path});
-    return text.ok() ? std::optional<std::string>{std::move(text).value()} : std::nullopt;
-  };
+FileRead file_reader(platform::FileSystem& fs) {
+  return [&fs](const std::string& path) { return fs.read(platform::Path{path}); };
 }
 
 std::optional<std::string> add_symbol(SymbolTable& symbols, std::string_view assignment) {
