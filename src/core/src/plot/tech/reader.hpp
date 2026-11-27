@@ -84,6 +84,11 @@ struct DstyleParse {
 [[nodiscard]] DstyleParse parse_pnm_dstyles(std::string_view text, std::span<const Rgb> colormap,
                                             std::span<const Rgb> display_colors, std::size_t max_styles);
 
+/// The largest `color` or `dstyle` file read (Q-MISC-56, both modes): only
+/// 128 colour lines or one line per display style are used, so a larger
+/// file is a format error and is never read past this size.
+inline constexpr std::size_t kMaxPlotFileBytes = std::size_t{1} << 20U;
+
 /// The bundled copy of `name` (assets/plot/: Magic's scmos display and
 /// colour files, unmodified, embedded at build time), or nullopt.
 [[nodiscard]] std::optional<std::string_view> bundled_file(std::string_view name) noexcept;

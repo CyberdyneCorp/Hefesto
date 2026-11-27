@@ -12,6 +12,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -360,6 +362,52 @@ TEST_CASE("a bare map line is reported and ignored in both modes", "[cap:plot-ou
   }
 }
 
+TEST_CASE("regression: map and draw skip types outside the user types", "[cap:plot-output][req:PNM style lines]") {
+  // Magic's `map` checks only i >= 0 for a source type and reads
+  // PaintStyles (DBNumUserLayers entries) out of bounds for a stacked
+  // contact; Hefesto skips such types in both modes, as targets too.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    // The test technology with pc and m2c stackable (a stacked pc+m2c type).
+    const auto with_stacking = [&](const std::string& lines) {
+      std::string text{kBase};
+      const std::string contacts = "    m2c  metal1 metal2\nend\n";
+      const auto at = text.find(contacts);
+      REQUIRE(at != std::string::npos);
+      text.insert(at + contacts.size() - 4, "    stackable pc m2c\n");
+      text += "plot\n style pnm\n" + lines + "end\n";
+      diag::CollectingSink sink;
+      tech::LoadOptions options;
+      options.magic_compat = compat;
+      platform::MemoryFileSystem fs;
+      auto loaded = tech::load_technology_text(text, "/t/plottest.tech", fs, options, sink);
+      REQUIRE(loaded.ok());
+      return Loaded{loaded.value(), sink.take()};
+    };
+    const Loaded base = with_stacking("");
+    std::string stacked;
+    for (std::size_t t = base.tech->user_type_end(); t < base.tech->type_count() && stacked.empty(); ++t) {
+      stacked = std::string{base.tech->type_name(static_cast<tech::TileType>(t))};
+    }
+    REQUIRE_FALSE(stacked.empty());
+    const auto found = base.tech->find_type(stacked);
+    REQUIRE(found.ok());
+    REQUIRE(*found.id >= base.tech->user_type_end());
+    const Loaded l = with_stacking(" draw poly\n draw metal1\n map metal1 " + stacked + "\n map " + stacked +
+                                   " poly\n draw " + stacked + "\n draw " + stacked + " blue_style\n");
+    const display::StyleSet set = session_styles(*l.tech);
+    plot::StyleSource source;
+    source.session = &set;
+    std::vector<diag::Diagnostic> messages;
+    const plot::PlotTech p = reread(*l.tech, source, &messages);
+    CHECK(texts(messages) == std::vector<std::string>{"Unknown magic layer \"" + stacked + "\" for PNM plot."});
+    CHECK(p.pnm_paint.size() == l.tech->user_type_end());
+    // metal1 is as `draw metal1` left it: the stacked source added nothing.
+    CHECK(p.pnm_paint[type(*l.tech, "metal1")] == plot::PnmPaint{4, plot::Rgb{0, 255, 0}});
+    CHECK(p.pnm_paint[type(*l.tech, "poly")] == plot::PnmPaint{3, plot::Rgb{128, 0, 0}});
+  }
+}
+
 TEST_CASE("plot colour map and dstyle files", "[cap:plot-output][req:PNM style lines]") {
   platform::MemoryFileSystem fs;
   REQUIRE(fs.write_atomic("/t/my.cmap", "# comment\n10 20 30\n\n40 50 60\n").ok());
@@ -402,6 +450,82 @@ TEST_CASE("PNM file errors disable PNM plotting", "[cap:plot-output][req:PNM sty
                                                     "Format error in display style file",
                                                     "PNM plot: Could not open display style file"});
   CHECK(p.init_failed);
+}
+
+namespace {
+
+/// A MemoryFileSystem that records the largest read it served and fails
+/// the test on a whole-file read.
+class BoundedReads final : public platform::FileSystem {
+ public:
+  platform::MemoryFileSystem files;
+  std::size_t largest = 0;
+
+  hefesto::diag::Outcome<std::string> read(const platform::Path& path) override {
+    FAIL_CHECK("whole-file read of " << path.string());
+    return files.read(path);
+  }
+  hefesto::diag::Outcome<std::string> read_at_most(const platform::Path& path, std::size_t max_bytes) override {
+    auto text = files.read_at_most(path, max_bytes);
+    if (text.ok()) {
+      largest = std::max(largest, text.value().size());
+    }
+    return text;
+  }
+  hefesto::diag::Status write_atomic(const platform::Path& path, std::string_view data) override {
+    return files.write_atomic(path, data);
+  }
+  hefesto::diag::Status append(const platform::Path& path, std::string_view data) override {
+    return files.append(path, data);
+  }
+  bool exists(const platform::Path& path) override { return files.exists(path); }
+  hefesto::diag::Outcome<std::uint64_t> size(const platform::Path& path) override { return files.size(path); }
+  hefesto::diag::Outcome<std::vector<platform::Path>> list(const platform::Path& directory) override {
+    return files.list(directory);
+  }
+  hefesto::diag::Status create_directories(const platform::Path& directory) override {
+    return files.create_directories(directory);
+  }
+  hefesto::diag::Status rename(const platform::Path& from, const platform::Path& to) override {
+    return files.rename(from, to);
+  }
+  hefesto::diag::Status remove(const platform::Path& path) override { return files.remove(path); }
+};
+
+}  // namespace
+
+TEST_CASE("regression: oversized colour map and dstyle files are format errors",
+          "[cap:plot-output][req:Platform mechanism of plot output]") {
+  // Q-MISC-56, both modes: the loader read the whole file named by a
+  // `color` or `dstyle` line at every technology load.
+  const std::string comments(2 * plot::detail::kMaxPlotFileBytes, '#');
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    const Loaded l = load("plot\n style pnm\n color big.cmap\n dstyle big.dstyle\nend\n", compat);
+    BoundedReads fs;
+    REQUIRE(fs.files.write_atomic("/t/big.cmap", comments + "\n1 2 3\n").ok());
+    REQUIRE(fs.files.write_atomic("/t/big.dstyle", comments + "\n").ok());
+    plot::StyleSource source;
+    source.files = &fs;
+    source.search_dirs = {"/t"};
+    std::vector<diag::Diagnostic> messages;
+    const plot::PlotTech p = reread(*l.tech, source, &messages);
+    CHECK(texts(messages) ==
+          std::vector<std::string>{"Format error in colormap file", "Format error in display style file"});
+    CHECK(p.init_failed);
+    CHECK(fs.largest == plot::detail::kMaxPlotFileBytes + 1);
+
+    // A file at the limit is read in full.
+    std::string at_limit(plot::detail::kMaxPlotFileBytes - 6, '#');
+    at_limit += "\n1 2 3";
+    REQUIRE(at_limit.size() == plot::detail::kMaxPlotFileBytes);
+    REQUIRE(fs.files.write_atomic("/t/edge.cmap", at_limit).ok());
+    const Loaded edge = load("plot\n style pnm\n color edge.cmap\nend\n", compat);
+    std::vector<diag::Diagnostic> edge_messages;
+    const plot::PlotTech q = reread(*edge.tech, source, &edge_messages);
+    CHECK(edge_messages.empty());
+    CHECK_FALSE(q.init_failed);
+  }
 }
 
 TEST_CASE("colour map files hold at most 128 colours", "[cap:plot-output][req:PNM style lines]") {

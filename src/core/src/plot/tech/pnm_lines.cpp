@@ -7,7 +7,9 @@
 // dstyle, default, draw, map; any other line is ignored. Fixed in both
 // modes: a bare `map` line is reported and ignored (Q-MISC-50 (1)); type
 // numbers outside the user types and colour indices outside the colour
-// maps are never used to index a table (Magic reads out of bounds there).
+// maps are never used to index a table (Magic reads out of bounds there);
+// a `color` or `dstyle` file larger than kMaxPlotFileBytes is a format
+// error and is read no further (Q-MISC-56).
 //
 // Ported from Magic VLSI 8.3.694 plot/plotPNM.c (PlotPNMTechInit,
 // PlotPNMTechLine, PlotPNMSetDefaults, PlotPNMTechFinal, PNMColorBlend,
@@ -191,12 +193,13 @@ void PnmHandler::map(std::span<const std::string> tokens) {
 
 std::optional<std::string> PnmHandler::find_file(const std::string& name) const {
   if (source_.files != nullptr) {
+    // One byte more than the limit tells an oversized file from one at it.
     if (is_direct_path(name)) {
-      auto text = source_.files->read(name);
+      auto text = source_.files->read_at_most(name, kMaxPlotFileBytes + 1);
       return text.ok() ? std::optional{std::move(text).value()} : std::nullopt;
     }
     for (const platform::Path& dir : source_.search_dirs) {
-      auto text = source_.files->read(dir / name);
+      auto text = source_.files->read_at_most(dir / name, kMaxPlotFileBytes + 1);
       if (text.ok()) {
         return std::move(text).value();
       }
@@ -221,7 +224,7 @@ void PnmHandler::load_colormap(std::span<const std::string> tokens) {
     init_failed_ = true;
     return;
   }
-  ColormapParse parsed = parse_pnm_colormap(*text);
+  ColormapParse parsed = text->size() > kMaxPlotFileBytes ? ColormapParse{{}, false} : parse_pnm_colormap(*text);
   colormap_ = std::move(parsed.colors);
   if (!parsed.ok) {
     init_failed_ = true;
@@ -239,7 +242,9 @@ void PnmHandler::load_dstyles(std::span<const std::string> tokens) {
     return;
   }
   const DisplayStyles& styles = display();
-  DstyleParse parsed = parse_pnm_dstyles(*text, colormap_, styles.colors, styles.layout_count);
+  DstyleParse parsed = text->size() > kMaxPlotFileBytes
+                           ? DstyleParse{{}, false}
+                           : parse_pnm_dstyles(*text, colormap_, styles.colors, styles.layout_count);
   dstyles_ = std::move(parsed.styles);
   if (!parsed.ok) {
     init_failed_ = true;
