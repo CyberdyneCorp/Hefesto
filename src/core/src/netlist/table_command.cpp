@@ -13,7 +13,8 @@
 #include "netlist/table_command.hpp"
 
 #include "db/command_util.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
+#include "hefesto/diag/codes.hpp"
+#include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/netlist/first_word.hpp"
 
 namespace hefesto::netlist::detail {
@@ -61,7 +62,10 @@ cmd::CommandResult dispatch(cmd::CommandContext& ctx, const cmd::Invocation& inv
       return std::move(*handled);
     }
   }
-  return cmd::m7_not_implemented(invocation.name + " " + option_name(command.table[first.index]));
+  // Unreachable: every table command handles each of its option indices
+  // (tasks.md 19.5 replaced the scaffold's CORE-NOTIMPL-008 here).
+  return cu::fail(diag::make(diag::codes::kCmdInternal,
+                             invocation.name + " " + option_name(command.table[first.index]) + ": option has no handler"));
 }
 
 }  // namespace hefesto::netlist::detail

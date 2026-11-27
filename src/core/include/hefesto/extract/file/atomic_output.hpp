@@ -45,6 +45,11 @@ struct OutputLocation {
   /// The directory relative names resolve against (Magic's current
   /// directory); empty = the process's current directory.
   std::string current_directory;
+  /// Added in M7 R5 (proposed Q-EXTRACT-44): with magic-compat ON the
+  /// local path and the cell name are joined as Magic's sprintf("%s/%s")
+  /// joins them (`extract path ext/` gives `ext//<cell>`); with it OFF they
+  /// are joined with one separator.
+  bool magic_compat = true;
 };
 
 class AtomicOutput {

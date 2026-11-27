@@ -73,7 +73,7 @@ Compatibility: exact
 
 ### Requirement: Extraction options
 
-`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
+`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. Any other word after `unique` SHALL print `Usage:  extract do unique [notopports]`; what follows depends on the `magic-compat` setting (Q-EXTRACT-38, resolution: compat, approved 2026-11-25): with it ON, as in Magic, the table index of `unique` (DOUNIQUE = 11 = 0xb) is then applied as an option bit mask, so `do` sets and `no` clears adjust, capacitance and lumped resistance; with it OFF nothing else changes. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
 Compatibility: behavioral
 
 See Q-EXTRACT-14.
@@ -89,6 +89,16 @@ See Q-EXTRACT-14.
 - **GIVEN** the command `extract do corners 0.8`
 - **WHEN** it is executed
 - **THEN** corner extraction is on with factor 0.8
+
+#### Scenario: A bad word after unique with magic-compat ON
+- **GIVEN** `magic-compat` ON and the default options
+- **WHEN** the user runs `extract no unique foo`
+- **THEN** `Usage:  extract do unique [notopports]` is printed and adjust, capacitance and lumped resistance are off (Q-EXTRACT-38)
+
+#### Scenario: A bad word after unique with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the default options
+- **WHEN** the user runs `extract no unique foo`
+- **THEN** the usage line is printed and every option keeps its value (Q-EXTRACT-38)
 
 ### Requirement: Option defaults
 
@@ -134,7 +144,7 @@ Compatibility: behavioral
 
 ### Requirement: Output path and file location
 
-`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
+`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. With `magic-compat` ON the path and the cell name are joined as Magic's `sprintf("%s/%s")` joins them, so a path with a trailing slash gives `<path>/<cellname>.ext` with a doubled slash (`ext//top.ext`), which the `Extracting <cell> into <file>:` message shows; with it OFF they are joined with one separator (proposed Q-EXTRACT-44). If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
 
 On desktop hosts (macOS, Linux) this SHALL be exactly Magic's behaviour. On iPadOS and any other sandboxed host (X-4) the current directory SHALL be the project folder, the session working directory granted to the sandbox; relative paths resolve against it, directories SHALL be created through the file-coordination service with no POSIX mode, and a path outside the granted roots SHALL fail as unwritable, with the same `Cannot open output file` outcome. Messages are Magic's text on every host (Q-EXTRACT-11, resolution: platform).
 
@@ -147,6 +157,16 @@ Compatibility: behavioral
 - **GIVEN** `extract path ext/` and no `ext/` directory
 - **WHEN** a cell `top` is extracted
 - **THEN** the directory `ext/` is created and `ext/top.ext` is written
+
+#### Scenario: Trailing slash in the path with magic-compat ON
+- **GIVEN** `magic-compat` ON and `extract path ext/`
+- **WHEN** a cell `top` is extracted
+- **THEN** the file is named `ext//top.ext`, as in Magic (proposed Q-EXTRACT-44)
+
+#### Scenario: Trailing slash in the path with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and `extract path ext/`
+- **WHEN** a cell `top` is extracted
+- **THEN** the file is named `ext/top.ext` (proposed Q-EXTRACT-44)
 
 #### Scenario: Path outside the sandbox
 - **GIVEN** a sandboxed host and `extract path /tmp/ext` outside the granted roots
@@ -182,6 +202,8 @@ The flood SHALL be Magic's, tile for tile, in both `magic-compat` settings, so `
 - Then, for a contact type, the tile at the same lower-left point on each other plane the contact connects to is entered at the same point and distance when its client is still unset (`CLIENTDEFAULT`) and its type connects. For any type with connections on other planes, those planes are searched over the tile's area expanded by 1 for unmarked connecting tiles, each entered at the current point when it overlaps the tile and otherwise at the midpoint of the clipped boundary.
 - Marks are kept until every start tile under the driver label has been flooded, and cleared only then, so a tile is reached by the first path that arrives and only first-arrival paths reach the receiver and set min and max.
 - Distances are integer arithmetic.
+
+Distances are summed in 64 bits and the flood keeps no recursion depth, in both `magic-compat` settings (a fix: Magic's 32-bit sums overflow and its recursion can exhaust the stack). With `magic-compat` ON a receiver label is listed once for each yanked tile whose area, grown by one unit at the top and right, it touches, and each listing gets its own `distance` record, as in Magic; with it OFF each receiver label is listed once. A driver label on space gets no `distance` record in either mode, where Magic prints the previous pair's values or uninitialised ones. A driver name that matches no label prints `Can't find terminal "<name>"` (EXTRACT-LEN-001) and gets no record. A driver label on a tile's outer corner starts no net, as in Magic (the connect search's corner rule).
 Compatibility: exact
 
 (Magic ref: extract/ExtLength.c:147-310, extract/ExtLength.c:640-1040, extract/ExtCell.c:542-544)
@@ -190,6 +212,21 @@ Compatibility: exact
 - **GIVEN** a single metal1 wire (0,0)-(100,4) with driver label `d` at the left end and receiver label `r` at the right end, `extract length driver d`, `extract length receiver r`
 - **WHEN** the root cell is extracted with option `length` on
 - **THEN** a record `distance d r <min> <max>` with min ≈ max ≈ 100 is written (verify against Magic)
+
+#### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat ON)
+- **GIVEN** a receiver label that touches two yanked tiles of the driver's net (each tile grown by one unit at the top and right), and `magic-compat` ON
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** two identical `distance` records are written for that driver and receiver
+
+#### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat OFF)
+- **GIVEN** the same layout with `magic-compat` OFF
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** one `distance` record is written for that driver and receiver
+
+#### Scenario: Driver label on space
+- **GIVEN** a driver label whose rectangle lies on space, in either `magic-compat` setting
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** no `distance` record is written for that driver label
 
 ### Requirement: Progress and summary messages
 

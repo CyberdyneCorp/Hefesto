@@ -1,0 +1,14 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "rb" 0 4 0 0 metal1 0 0 0 0 0 0
+node "ra" 0 1 0 10 metal1 0 0 0 0 0 0
+node "rc" 0 1 0 20 metal1 0 0 0 0 0 0
+node "sub1" 0 1 0 30 metal1 0 0 0 0 0 0
+device devres None 0 0 1 1 25.5 "rb" 0 0 "ra" 0 0 "rc" 0 0
+device devres rppd 10 0 20 2 10 2 "None" "rb" 0 0 "ra" 2 0 "rc" 2 0
+device rsubckt rres 20 0 30 2 "rb" 0 0 "ra" 0 0 "rc" 0 0
+device rsubckt rres 30 0 40 2 "sub1" "rb" 0 0 "ra" 0 0 "rc" 0 0

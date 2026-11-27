@@ -10,9 +10,12 @@
 
 #include <algorithm>
 #include <array>
+#include <iterator>
 #include <set>
 #include <string>
+#include <vector>
 
+#include "hefesto/schem/edit/wires.hpp"
 #include "hefesto/schem/file/properties.hpp"
 #include "hefesto/schem/sym/types.hpp"
 #include "internal.hpp"
@@ -128,7 +131,69 @@ void select_connected(EditContext& ec) {
   }
 }
 
-cmd::CommandResult select_word(EditContext& ec, std::size_t what, std::span<const std::string> rest) {
+// The ends of the selected wires and the pins of the selected instances
+// that are not junctions: where `select connected -stopjunction` goes on.
+std::vector<Point> open_ends(EditContext& ec, const std::vector<Point>& junctions) {
+  std::vector<Point> ends;
+  const auto keep = [&](Point p) {
+    if (std::find(junctions.begin(), junctions.end(), p) == junctions.end()) ends.push_back(p);
+  };
+  for (const ObjectRef& ref : ec.selection()) {
+    if (ref.kind == ObjectKind::wire) {
+      keep(ec.doc().wires[ref.index].p1);
+      keep(ec.doc().wires[ref.index].p2);
+    }
+    if (ref.kind == ObjectKind::instance) {
+      const InstanceRecord& instance = ec.doc().instances[ref.index];
+      for (const Point p : pin_points(instance, ec.symbol(instance))) keep(p);
+    }
+  }
+  return ends;
+}
+
+// "Select connected" with -stopjunction: from the selected objects, the
+// wires that touch them end to end, wire after wire, up to the junctions
+// (junction_points: three or more wire ends, or an end on another wire's
+// interior), which it does not cross.
+void select_connected_to_junction(EditContext& ec) {
+  const std::vector<Point> junctions = junction_points(ec.doc());
+  std::vector<Point> ends = open_ends(ec, junctions);
+  while (!ends.empty()) {
+    const Point at = ends.back();
+    ends.pop_back();
+    for (std::size_t i = 0; i < ec.doc().wires.size(); ++i) {
+      const WireRecord& w = ec.doc().wires[i];
+      if ((!(w.p1 == at) && !(w.p2 == at)) || !ec.selection().insert({ObjectKind::wire, i}).second) continue;
+      const Point other = w.p1 == at ? w.p2 : w.p1;
+      if (std::find(junctions.begin(), junctions.end(), other) == junctions.end()) ends.push_back(other);
+    }
+  }
+}
+
+// The options of `select`: `-remove` (any form but `clear`) and
+// `-stopjunction` (`connected` only).
+struct SelectOptions {
+  bool remove = false;
+  bool stop_junction = false;
+  std::vector<std::string> words;  // the arguments without the options
+};
+
+SelectOptions select_options(std::span<const std::string> args) {
+  SelectOptions options;
+  for (const std::string& word : args) {
+    if (word == "-remove") {
+      options.remove = true;
+    } else if (word == "-stopjunction") {
+      options.stop_junction = true;
+    } else {
+      options.words.push_back(word);
+    }
+  }
+  return options;
+}
+
+cmd::CommandResult select_word(EditContext& ec, std::size_t what, std::span<const std::string> rest,
+                               bool stop_junction) {
   switch (what) {
     case kInstance:
       return select_names(ec, rest);
@@ -143,16 +208,38 @@ cmd::CommandResult select_word(EditContext& ec, std::size_t what, std::span<cons
   }
   if (!rest.empty()) return usage("select");
   if (what == kAll) select_all(ec);
-  if (what == kConnected) select_connected(ec);
+  if (what == kConnected && stop_junction) select_connected_to_junction(ec);
+  if (what == kConnected && !stop_junction) select_connected(ec);
   if (what == kClear) ec.selection().clear();
   return cmd::CommandResult::success();
+}
+
+// `-remove`: the objects the same command would select are taken out of the
+// selection. Each form picks into an empty selection, but `connected`,
+// which starts from the selection (so its starting objects go too).
+cmd::CommandResult remove_word(EditContext& ec, std::size_t what, std::span<const std::string> rest,
+                               bool stop_junction) {
+  const Selection before = ec.selection();
+  if (what != kConnected) ec.selection().clear();
+  cmd::CommandResult result = select_word(ec, what, rest, stop_junction);
+  Selection kept;
+  if (result.ok()) {
+    std::set_difference(before.begin(), before.end(), ec.selection().begin(), ec.selection().end(),
+                        std::inserter(kept, kept.end()));
+  }
+  ec.selection() = result.ok() ? std::move(kept) : before;
+  return result;
 }
 
 cmd::CommandResult select_body(EditContext& ec, std::span<const std::string> args) {
   if (args.empty()) return usage("select");
   const auto what = cmdimpl::match_keyword(args[0], kSelectWhat);
   if (!what) return fail(what.error());
-  cmd::CommandResult result = select_word(ec, what.value(), args.subspan(1));
+  const SelectOptions options = select_options(args.subspan(1));
+  const bool bad_remove = options.remove && what.value() == kClear;
+  if (bad_remove || (options.stop_junction && what.value() != kConnected)) return usage("select");
+  const auto run = options.remove ? remove_word : select_word;
+  cmd::CommandResult result = run(ec, what.value(), options.words, options.stop_junction);
   if (!result.ok()) return result;
   return cmd::CommandResult::success(selection_value(ec.doc(), ec.selection()));
 }

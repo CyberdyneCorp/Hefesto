@@ -128,6 +128,12 @@ inline bool has(const std::vector<std::string>& lines, std::string_view text) {
   return std::find(lines.begin(), lines.end(), text) != lines.end();
 }
 
+/// Whether a printed message starts with `text` (the statistics are one
+/// multi-line message).
+inline bool has_prefix(const std::vector<std::string>& lines, std::string_view text) {
+  return std::any_of(lines.begin(), lines.end(), [&](const std::string& l) { return l.starts_with(text); });
+}
+
 /// The read of `text` as `<cell>.ext` (and `parents` by name) with the
 /// session's technology and style.
 inline diag::Outcome<extresist::InputModel> read_model(const Session& s, const std::string& text,

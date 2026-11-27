@@ -13,7 +13,7 @@
 // For each cell: ResReadExt (extresist/output/input.cpp), the nets in
 // reverse order of first mention, the first cutoff, RESNET's network
 // (yank_net, build_network, reduce), the second cutoff, and the
-// `.res.ext` and `.res.lump` files, each written through
+// `.res.ext`, `.res.lump` and `.fh` files, each written through
 // extract::AtomicOutput (Q-EXTRACT-27): a run cancelled through
 // mask::Progress, or a failed write, leaves the previous files and no
 // temporary file.
@@ -23,9 +23,10 @@
 // point), build_network with the drive and sink points in ResNodeTable's
 // hash order, then reduce, which sets maxres, the Elmore delay and
 // rg_nodecap; the label sink points build_network adds stay in the input
-// model for the later nets, as in Magic's node table. Terminal nodes are
-// not renamed yet (tasks.md 14.3). `geometry` and `fasthenry` answer
-// CORE-NOTIMPL-008 (tasks.md 14.4).
+// model for the later nets, as in Magic's node table. An output net's
+// device terminals are renamed onto its network nodes
+// (fix_up_connections), and its overlay block is written then, with the
+// messages Magic prints at that point.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) resis/ResRex.c (CmdExtResis's run
 // path, resSubcircuitFunc, ExtResisForDef, ResCheckExtNodes,
@@ -44,10 +45,10 @@
 #include <vector>
 
 #include "extresist/command/options.hpp"
-#include "hefesto/cmd/m7_stubs.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extract/file/atomic_output.hpp"
+#include "hefesto/lef/write/number.hpp"
 #include "hefesto/extresist/command/command.hpp"
 #include "hefesto/extresist/command/cutoff.hpp"
 #include "hefesto/mask/gen/progress.hpp"
@@ -113,6 +114,8 @@ struct CellRun {
   InputModel input;
   std::vector<OutputNet> nets;
   std::string lump;
+  std::string fasthenry;  // the `.fh` text so far
+  FastHenryIds ids;       // nidx and eidx (Q-NETLIST-40)
   int total = 0;
   int extracted = 0;
   int output = 0;
@@ -137,10 +140,17 @@ class Runner {
   std::optional<Network> network_of(CellRun& cell, std::size_t net, const Driver& driver);
   BuildInput build_input(const CellRun& cell, const InputNode& node, db::Point start, const Driver& driver);
   void print(std::vector<std::string>& messages) const;
+  [[nodiscard]] bool geometry_output(CellRun& cell, Network& network);
+  void fasthenry_output(CellRun& cell, Network& network);
+  [[nodiscard]] std::string external_ports(CellRun& cell, const Network& network);
+  void renumber_ports(db::CellDef& def, const std::string& name);
+  [[nodiscard]] std::optional<double> run_tdi(const Network& network);
   CommandResult write_outputs(db::CellDef& def, CellRun& cell);
+  CommandResult write_fasthenry(db::CellDef& def, CellRun& cell);
   CommandResult commit(db::CellDef& def, std::string_view suffix, const std::string& text,
                        const std::optional<std::string>& local_path);
   void statistics(const CellRun& cell) const;
+  [[nodiscard]] const mask::OutputStyle* cif_style() const { return editor_.mask.output_styles.current_style(); }
 
   editor::EditorState& editor_;
   const ResistRun& request_;
@@ -149,6 +159,10 @@ class Runner {
   Console console_;
   ResistOptions& options_;
   std::set<std::string> processed_;
+  std::uint32_t port_index_ = 0;  // ResPortIndex
+  // rg_Tdi as the last net that computed it left it; 0 at the start of
+  // every run, as ResInit resets it on every extresist command.
+  double last_tdi_ = 0.0;
 };
 
 // ExtFileOpen for reading: `extract path`, the cell's directory, then the name.
@@ -233,9 +247,17 @@ CommandResult Runner::process_cell(db::CellDef& def) {
     console_.message(input.error().text);
     return CommandResult::success();  // ExtResisForDef returns; the run goes on
   }
+  if (request_.fasthenry && !has_ports(def)) {
+    return CommandResult::success();  // ExtResisForDef: FastHenry runs on subcircuits only
+  }
   CellRun cell;
   cell.def = &def;
   cell.input = std::move(input).value();
+  if (request_.fasthenry) {
+    console_.report("Writing FastHenry-format geometry file \"" + def.name() + ".fh\"");
+    cell.fasthenry = fasthenry_reference(def.name(), def.bbox(), lef::output_scale(cif_style()));
+    port_index_ = 0;
+  }
   for (const std::size_t net : cell.input.net_order()) {
     if (progress_ != nullptr && progress_->cancelled()) {
       // Q-EXTRACT-27: nothing is written; the previous files stay.
@@ -250,12 +272,15 @@ CommandResult Runner::process_cell(db::CellDef& def) {
 
 // ResProcessNode.
 CommandResult Runner::process_net(CellRun& cell, std::size_t net) {
-  const InputNode& node = cell.input.nodes[net];
+  InputNode& node = cell.input.nodes[net];
   if (net_skip(node, options_, options_.all) != NetSkip::none) {
     return CommandResult::success();
   }
   ++cell.total;
-  const std::optional<Driver> driver = choose_driver(cell.input, net);
+  // ResSortByGate sorts the node's device list in place: the network's
+  // devices and the fix-up walk it in this order.
+  node.devices = sort_by_gate(cell.input, node.devices);
+  const std::optional<Driver> driver = choose_driver(cell.input, net, request_.magic_compat);
   if (!driver) {
     if (node.status.force) {
       console_.message("Node " + node.name + " has force label but no drive point or driving device");
@@ -377,6 +402,7 @@ BuildInput Runner::build_input(const CellRun& cell, const InputNode& node, db::P
   }
   in.node_cap = node.cap;
   in.small_contact_warned = &editor_.extresist.small_contact_warned;
+  in.geometry = request_.geometry;  // ResDoneWithNode returns at once (ResOpt_Geometry)
   in.magic_compat = request_.magic_compat;
   return in;
 }
@@ -438,8 +464,7 @@ CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& 
     }
     return CommandResult::success();
   }
-  const std::optional<double> tdi = network->tdi == -1 ? std::nullopt : std::optional<double>{network->tdi};
-  const Extracted measured{network->max_resistance, tdi};
+  const Extracted measured{network->max_resistance, run_tdi(*network)};
   InputNode lumped = node;
   lumped.cap = network->node_cap;  // ResWriteLumpFile reads rg_nodecap after ResDoSimplify
   if (options_.lumped) {
@@ -452,17 +477,139 @@ CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& 
   if (held) {
     return CommandResult::success();
   }
+  OutputNet out{net, std::move(*network), {}, lumped_ohms(lumped, measured, options_)};
+  if (options_.extout) {
+    // ResWriteExtFile: ResFixUpConnections, then ResPrintExtNode and
+    // ResPrintExtRes (the fix-up may add input nets: `node` is stale after it).
+    const compat::CompatSettings compat{request_.magic_compat};
+    std::vector<std::string> messages;
+    const bool dont_kill = fix_up_connections(cell.input, net, out.network, compat, messages);
+    out.block = net_block(cell.input.nodes[net], out.network, dont_kill, *editor_.extract.current, messages);
+    print(messages);
+  }
+  if (request_.fasthenry) {
+    fasthenry_output(cell, out.network);
+  }
+  if (request_.geometry && !geometry_output(cell, out.network)) {
+    return CommandResult::success();  // ResWriteExtFile returns 0: not counted as output
+  }
   ++cell.output;
-  cell.nets.push_back(OutputNet{net, std::move(*network), {}, lumped_ohms(lumped, measured, options_)});
+  cell.nets.push_back(std::move(out));
   return CommandResult::success();
+}
+
+// rg_Tdi as the second cutoff reads it. ResDoSimplify sets it only when
+// it simplifies or writes the lump file; otherwise Magic reads the value
+// ResInit reset it to at the start of the command, 0 (magic-compat ON), and
+// Hefesto applies no delay cutoff (OFF; proposed Q-NETLIST-72).
+std::optional<double> Runner::run_tdi(const Network& network) {
+  if (options_.simplify || options_.lumped) {
+    last_tdi_ = network.tdi;
+  } else if (!request_.magic_compat) {
+    return std::nullopt;
+  }
+  return last_tdi_ == -1 ? std::nullopt : std::optional<double>{last_tdi_};
+}
+
+// ResPrintFHNodes' `.external` line: the first two named nodes, each port
+// label of the same name taking the next port index (ResPortIndex); the
+// cell is marked modified when an index changes.
+std::string Runner::external_ports(CellRun& cell, const Network& network) {
+  std::string out = "\n* List of externally-connected ports\n.external";
+  int np = 0;
+  for (const NetNode& n : network.nodes) {
+    if (!n.named) {
+      continue;
+    }
+    if (np >= 2) {
+      out += np == 2 ? "\n* Warning! external nodes not recorded:" : "";
+      out += " N" + n.name;
+      ++np;
+      continue;
+    }
+    out += " N" + n.name;
+    ++np;
+    renumber_ports(*cell.def, n.name);
+  }
+  return out + "\n\n";
+}
+
+// Each port label named `name` takes the next ResPortIndex.
+void Runner::renumber_ports(db::CellDef& def, const std::string& name) {
+  for (db::Label& label : def.labels()) {
+    if (!label.is_port() || label.text != name) {
+      continue;
+    }
+    if (label.port_index != port_index_) {
+      label.port_index = port_index_;
+      console_.report("Port " + label.text + " reassigned index " + std::to_string(port_index_));
+      db::mark_modified(def);
+    }
+    ++port_index_;
+  }
+}
+
+// ResWriteExtFile's FastHenry part: ResAlignNodes, ResPrintFHNodes (the
+// named nets become REDUNDANT) and ResPrintFHRects.
+void Runner::fasthenry_output(CellRun& cell, Network& network) {
+  std::vector<std::string> messages;
+  if (!network.resistors.empty()) {
+    align_nodes(network, request_.magic_compat, messages);
+  }
+  print(messages);
+  cell.ids.next_net(request_.magic_compat);
+  const GeometryContext ctx{editor_.technology.get(), editor_.extract.current.get(), cif_style(),
+                            request_.magic_compat};
+  std::vector<std::int32_t> ids;
+  cell.fasthenry += fasthenry_nodes(network, ctx, cell.ids, ids);
+  for (const NetNode& n : network.nodes) {
+    if (const std::optional<std::size_t> i = n.named ? cell.input.find(n.name) : std::nullopt) {
+      cell.input.nodes[*i].status.redundant = true;
+    }
+  }
+  cell.fasthenry += external_ports(cell, network);
+  cell.fasthenry += fasthenry_segments(network, ctx, cell.ids, ids);
+}
+
+// ResWriteExtFile's geometry part: ResAlignNodes and ResCreateCenterlines
+// (temporary line elements in the cell, style yellow1; an element of the
+// same name is replaced). Without a layout window nothing is drawn and the
+// net is not output.
+bool Runner::geometry_output(CellRun& cell, Network& network) {
+  std::vector<std::string> messages;
+  if (!network.resistors.empty()) {
+    align_nodes(network, request_.magic_compat, messages);
+  }
+  print(messages);
+  if (editor_.windows.size() == 0) {
+    console_.message("Put the cursor in a layout window.");
+    return false;
+  }
+  cell.ids.next_net(request_.magic_compat);
+  std::vector<db::Element>& elements = cell.def->elements();
+  for (const GeometryElement& g : geometry_elements(network, cell.ids.node, editor_.technology.get())) {
+    db::Element e;
+    e.kind = db::Element::Kind::line;
+    e.name = g.name;
+    e.styles = {"yellow1"};
+    e.area = db::Rect{g.from.x, g.from.y, g.to.x, g.to.y};
+    e.persistent = false;
+    std::erase_if(elements, [&](const db::Element& old) { return old.name == e.name; });
+    elements.push_back(std::move(e));
+  }
+  return true;
 }
 
 CommandResult Runner::commit(db::CellDef& def, std::string_view suffix, const std::string& text,
                              const std::optional<std::string>& local_path) {
   diag::CollectingSink sink;
-  const cell::LookupContext ctx{fs_, editor_.search_paths, editor_.path_variables, sink};
+  // PaOpen(name, "w", suffix, ".", NULL): the current directory only, never
+  // the cell search path, so `<cell><suffix>` lands next to the run (NL-RES-03).
+  const cell::SearchPaths current_only;
+  const cell::LookupContext ctx{fs_, current_only, editor_.path_variables, sink};
   extract::OutputLocation where;
-  where.local_path = local_path;
+  where.local_path = local_path.value_or(".");
+  where.magic_compat = request_.magic_compat;
   auto out = extract::AtomicOutput::open(ctx, def, suffix, where);
   if (!out.ok()) {
     console_.message("Couldn't open output file");
@@ -493,8 +640,27 @@ CommandResult Runner::write_outputs(db::CellDef& def, CellRun& cell) {
       return r;
     }
   }
+  if (request_.fasthenry) {
+    if (CommandResult r = write_fasthenry(def, cell); !r.ok()) {
+      return r;
+    }
+  }
   statistics(cell);
   return CommandResult::success();
+}
+
+// The `.fh` file: the nets so far, then the frequency, the port order and
+// the end.
+CommandResult Runner::write_fasthenry(db::CellDef& def, CellRun& cell) {
+  std::vector<std::pair<std::uint32_t, std::string>> ports;
+  for (const db::Label& label : def.labels()) {
+    if (label.is_port()) {
+      ports.emplace_back(label.port_index, label.text);
+    }
+  }
+  // Q-NETLIST-21: 10 MHz when no frequency was ever given.
+  cell.fasthenry += fasthenry_trailer(options_.fasthenry_frequency.value_or(10e6), ports);
+  return commit(def, ".fh", cell.fasthenry, std::string{"."});
 }
 
 void Runner::statistics(const CellRun& cell) const {
@@ -554,9 +720,6 @@ CommandResult run(editor::EditorState& editor, const ResistRun& request, const m
   if (root == nullptr) {
     console.message("Couldn't find def corresponding to box");
     return CommandResult::success();
-  }
-  if (request.geometry || request.fasthenry) {
-    return cmd::m7_not_implemented(request.geometry ? "extresist geometry" : "extresist fasthenry");
   }
   if (!editor.technology || !editor.extract.current) {
     console.message("No extraction style: extresist cannot run.");

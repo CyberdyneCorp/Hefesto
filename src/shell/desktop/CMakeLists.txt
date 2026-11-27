@@ -101,10 +101,13 @@ target_sources(hefesto_shell_desktop PRIVATE
 # editor's view models (canvas, symbol library browser, properties,
 # hierarchy breadcrumb, net highlighting, netlist action, messages, the
 # xschem-style key bindings, canvas input, symbol resolution off the UI
-# thread) and the desktop install root (M8-D10).
+# thread, the system clipboard link) and the desktop install root (M8-D10).
+# Without the desktop build, schematic_models/ builds the same view models
+# without Raven and Vulkan for their tests.
 target_sources(hefesto_shell_desktop PRIVATE
   src/schematic_bindings.cpp
   src/schematic_canvas.cpp
+  src/schematic_clipboard.cpp
   src/schematic_input.cpp
   src/schematic_library.cpp
   src/schematic_panels.cpp

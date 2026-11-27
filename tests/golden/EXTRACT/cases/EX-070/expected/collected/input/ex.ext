@@ -1,0 +1,12 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+use leaf fy[0:1:12][0:1:12] 1 0 180 0 -1 30
+use leaf rev[1:0:14][0:1:10] 1 0 140 0 1 0
+use leaf r180[0:2:12][0:0:0] -1 0 100 0 -1 20
+use leaf mx -1 0 70 0 1 0
+use leaf r90 0 -1 40 1 0 0
+node "top" 0 0 0 40 m1

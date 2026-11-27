@@ -28,6 +28,7 @@ namespace {
 [[maybe_unused]] extresist::NetNode net_node(db::Point at, std::string name, double cap) {
   extresist::NetNode n;
   n.location = at;
+  n.named = !name.empty();
   n.name = std::move(name);
   n.cap = cap;
   return n;
@@ -61,51 +62,147 @@ TEST_CASE("the overlay scale line", "[cap:extresist-output][req:Overlay file gra
   CHECK(extresist::res_ext_scale(style) == "scale 1000 1 5\n");
 }
 
+extresist::InputNode input_node(const std::string& name, double node_cap = 0.0) {
+  extresist::InputNode n;
+  n.name = name;
+  n.node_cap = node_cap;
+  return n;
+}
+
 TEST_CASE("a simple overlay block", "[cap:extresist-output][req:Overlay file grammar and order]") {
   Session s;
-  const extresist::Network net = two_node_net("a.t0", "a.n0");
-  CHECK(extresist::net_block("a", net, true, 0.0, style_of(s)) ==
+  std::vector<std::string> messages;
+  extresist::Network net = two_node_net("a.t0", "a.n0");
+  CHECK(extresist::net_block(input_node("a"), net, false, style_of(s), messages) ==
         "killnode \"a\"\n"
         "rnode \"a.t0\" 0 1000 0 0 0\n"
         "rnode \"a.n0\" 0 500 50 0 0\n"
         "resist \"a.t0\" \"a.n0\" 2000\n");
   // The node that keeps the net's name: its node capacitance is subtracted,
   // and the net is not killed.
-  const extresist::Network kept = two_node_net("a", "a.n0");
-  CHECK(extresist::net_block("a", kept, false, 400.0, style_of(s)) ==
+  extresist::Network kept = two_node_net("a", "a.n0");
+  CHECK(extresist::net_block(input_node("a", 400.0), kept, false, style_of(s), messages) ==
         "rnode \"a\" 0 600 0 0 0\nrnode \"a.n0\" 0 500 50 0 0\nresist \"a\" \"a.n0\" 2000\n");
+  CHECK(messages.empty());
 }
 
 TEST_CASE("a global net's nodes are named without the trailing bang",
           "[cap:extresist-output][req:Naming of network nodes]") {
+  Session s;
+  std::vector<std::string> messages;
   extresist::Network net = two_node_net("", "");
-  CHECK(extresist::name_nodes("vdd!", net, {}));
+  const std::string block = extresist::net_block(input_node("vdd!"), net, false, style_of(s), messages);
+  CHECK(block.starts_with("killnode \"vdd!\"\n"));
   CHECK(net.nodes[0].name == "vdd.n0");
   CHECK(net.nodes[1].name == "vdd.n1");
 }
 
-TEST_CASE("terminal nodes are named first and a node with the net's name keeps it",
+// ResPrintExtNode's orphan patch: a DONTKILL net no node keeps is attached
+// to the first node with a zero resistor, and the first node has the net's
+// own capacitance subtracted.
+TEST_CASE("a net with a missing terminal is patched to its first node",
           "[cap:extresist-output][req:Naming of network nodes]") {
+  Session s;
+  std::vector<std::string> messages;
+  extresist::Network net = two_node_net("GND.t0", "");
+  CHECK(extresist::net_block(input_node("GND!", 400.0), net, true, style_of(s), messages) ==
+        "rnode \"GND.t0\" 0 600 0 0 0\nrnode \"GND.n0\" 0 500 50 0 0\n"
+        "resist \"GND!\" \"GND.t0\" 0.0\nresist \"GND.t0\" \"GND.n0\" 2000\n");
+  REQUIRE(messages.size() == 1);
+  CHECK(messages[0] == "Warning:  Orphaned node \"GND!\" arbitrarily attached to \"GND.t0\"");
+}
+
+namespace {
+
+// Two nfets with their gates on "out", each matched to a layout device
+// whose gate lands on a network node.
+struct FixupCase {
+  Session s;
+  extresist::InputModel model;
   extresist::Network net;
-  net.nodes = {net_node(db::Point{0, 0}, "", 0), net_node(db::Point{1, 0}, "", 0),
-               net_node(db::Point{2, 0}, "out", 0)};
-  const std::vector<extresist::TerminalNode> terminals{{0, extresist::Terminal::source, 1},
-                                                       {1, extresist::Terminal::drain, 2}};
-  CHECK_FALSE(extresist::name_nodes("out", net, terminals));  // "out" stays: not killed
-  CHECK(net.nodes[1].name == "out.t0");
-  CHECK(net.nodes[2].name == "out");  // named already: the counter does not advance
-  CHECK(net.nodes[0].name == "out.n0");
+  std::size_t out = 0;
+
+  FixupCase() {
+    auto m = read_model(s,
+                        "node \"in\" 0 0 0 0 poly\nnode \"out\" 0 0 0 0 ndiff\nnode \"x\" 0 0 0 0 ndiff\n"
+                        "device mosfet nfet 10 20 11 21 2 8 \"GND\" \"out\" 2 0 \"in\" 8 0 \"x\" 8 0\n"
+                        "device mosfet nfet 30 20 31 21 2 8 \"GND\" \"out\" 2 0 \"x\" 8 0 \"in\" 8 0\n");
+    REQUIRE(m.ok());
+    model = std::move(m).value();
+    out = *model.find("out");
+    net.nodes = {net_node(db::Point{0, 0}, "", 0), net_node(db::Point{10, 0}, "", 0),
+                 net_node(db::Point{30, 0}, "", 0)};
+    net.devices.resize(2);
+    for (std::size_t i = 0; i < 2; ++i) {
+      net.devices[i].terminals = {i + 1, extresist::kNoNode};
+      net.devices[i].inside = db::Rect{10 + 20 * static_cast<db::Coord>(i), 20, 12 + 20 * static_cast<db::Coord>(i), 25};
+      net.devices[i].length = 1;
+      net.devices[i].width = 5;
+    }
+    // The net's device list (newest first): the second device, then the first.
+    net.input_devices = {1, 0};
+  }
+};
+
+}  // namespace
+
+// Regression (tasks.md 14.3, NL-RES-01): the terminal nodes are named
+// `<net'>.t<k>` by ResFixUpConnections in the net's device order, the
+// device records follow them, and the remaining nodes are `.n<k>`.
+TEST_CASE("device terminals are renamed onto their network nodes",
+          "[cap:extresist-output][req:Naming of network nodes]") {
+  FixupCase c;
+  std::vector<std::string> messages;
+  CHECK_FALSE(extresist::fix_up_connections(c.model, c.out, c.net, hefesto::compat::CompatSettings{true}, messages));
+  CHECK(messages.empty());
+  CHECK(c.net.nodes[2].name == "out.t0");  // the second device comes first in the net's list
+  CHECK(c.net.nodes[1].name == "out.t1");
+  CHECK_FALSE(c.net.nodes[0].named);
+  const extresist::InputDevice& first = c.model.devices[0];
+  CHECK(c.model.nodes[*first.gate].name == "out.t1");
+  CHECK(first.touched);
+  REQUIRE(first.layout.has_value());
+  CHECK(first.layout->location == db::Point{10, 20});
+  std::vector<std::string> block_messages;
+  (void)extresist::net_block(c.model.nodes[c.out], c.net, false, style_of(c.s), block_messages);
+  CHECK(c.net.nodes[0].name == "out.n0");
+  // The overlay's device record prints the layout device's corner and L W.
+  CHECK(extresist::format_device(c.model, first, "GND", hefesto::compat::CompatSettings{true}) ==
+        "device mosfet nfet 10 20 11 21  1 5 \"GND\" \"out.t1\" 2 0 \"in\" 5 0 \"x\" 5 0\n");
+}
+
+// A node that already has a name keeps it, and the counter steps back.
+TEST_CASE("a named terminal node keeps its name and the counter steps back",
+          "[cap:extresist-output][req:Naming of network nodes]") {
+  FixupCase c;
+  c.net.nodes[2].name = "out";
+  c.net.nodes[2].named = true;
+  std::vector<std::string> messages;
+  CHECK_FALSE(extresist::fix_up_connections(c.model, c.out, c.net, hefesto::compat::CompatSettings{true}, messages));
+  CHECK(c.net.nodes[2].name == "out");
+  CHECK(c.net.nodes[1].name == "out.t0");
+  CHECK(c.model.nodes[*c.model.devices[1].gate].name == "out");
+}
+
+TEST_CASE("a terminal with no layout node is reported and keeps the net",
+          "[cap:extresist-output][req:Naming of network nodes]") {
+  FixupCase c;
+  c.net.devices[0].terminals[0] = extresist::kNoNode;
+  std::vector<std::string> messages;
+  CHECK(extresist::fix_up_connections(c.model, c.out, c.net, hefesto::compat::CompatSettings{true}, messages));
+  REQUIRE(messages.size() == 1);
+  CHECK(messages[0] == "Missing gate connection of device at (10 20) on net out");
 }
 
 TEST_CASE("a MOSFET device record", "[cap:extresist-output][req:Overlay file grammar and order]") {
   Session s;
-  const auto m = read_model(s,
-                            "node \"in\" 0 0 0 0 poly\nnode \"out\" 0 0 0 0 ndiff\nnode \"x\" 0 0 0 0 ndiff\n"
-                            "device mosfet nfet 10 20 11 21 2 8 \"GND\" \"in\" 2 0 \"out\" 8 0 \"x\" 8 0\n");
+  auto m = read_model(s,
+                      "node \"in\" 0 0 0 0 poly\nnode \"out\" 0 0 0 0 ndiff\nnode \"x\" 0 0 0 0 ndiff\n"
+                      "device mosfet nfet 10 20 11 21 2 8 \"GND\" \"in\" 2 0 \"out\" 8 0 \"x\" 8 0\n");
   REQUIRE(m.ok());
   const extresist::InputDevice& d = m.value().devices[0];
-  CHECK(extresist::format_device(m.value(), d, {"", "out.t0", "", ""}, "GND", hefesto::compat::CompatSettings{true}) ==
-        "device mosfet nfet 10 20 11 21  2 8 \"GND\" \"in\" 4 0 \"out.t0\" 8 0 \"x\" 8 0\n");
+  CHECK(extresist::format_device(m.value(), d, "GND", hefesto::compat::CompatSettings{true}) ==
+        "device mosfet nfet 10 20 11 21  2 8 \"GND\" \"in\" 4 0 \"out\" 8 0 \"x\" 8 0\n");
 }
 
 namespace {
@@ -135,35 +232,32 @@ extresist::InputModel resistor_model() {
 // Q-NETLIST-39 (compat): ON, as Magic, no value or L W fields.
 TEST_CASE("a resistor device record with magic-compat ON", "[cap:extresist-output][req:Overlay file grammar and order]") {
   const extresist::InputModel m = resistor_model();
-  CHECK(extresist::format_device(m, m.devices[0], {"a.t0", "", "", ""}, "", hefesto::compat::CompatSettings{true}) ==
-        "device devres rpoly 3 4 4 5  \"None\" \"a.t0\" 20 0 \"b\" 2 0\n");
+  CHECK(extresist::format_device(m, m.devices[0], "", hefesto::compat::CompatSettings{true}) ==
+        "device devres rpoly 3 4 4 5  \"None\" \"a\" 20 0 \"b\" 2 0\n");
 }
 
 TEST_CASE("a resistor device record with magic-compat OFF", "[cap:extresist-output][req:Overlay file grammar and order]") {
   const extresist::InputModel m = resistor_model();
-  CHECK(extresist::format_device(m, m.devices[0], {"a.t0", "", "", ""}, "", hefesto::compat::CompatSettings{false}) ==
-        "device devres rpoly 3 4 4 5  10 2 \"None\" \"a.t0\" 20 0 \"b\" 2 0\n");
+  CHECK(extresist::format_device(m, m.devices[0], "", hefesto::compat::CompatSettings{false}) ==
+        "device devres rpoly 3 4 4 5  10 2 \"None\" \"a\" 20 0 \"b\" 2 0\n");
 }
 
-TEST_CASE("the overlay: scale line, net blocks, then the renamed devices",
+TEST_CASE("the overlay: scale line, net blocks, then the touched devices",
           "[cap:extresist-output][req:Overlay file grammar and order]") {
-  Session s;
-  const auto m = read_model(s,
-                            "node \"in\" 0 0 0 0 poly\nnode \"out\" 0 0 0 0 ndiff\nnode \"x\" 0 0 0 0 ndiff\n"
-                            "device mosfet nfet 10 20 11 21 2 8 \"GND\" \"in\" 2 0 \"out\" 8 0 \"x\" 8 0\n"
-                            "device mosfet nfet 30 20 31 21 2 8 \"GND\" \"in\" 2 0 \"x\" 8 0 \"x\" 8 0\n");
-  REQUIRE(m.ok());
+  FixupCase c;
+  std::vector<std::string> messages;
+  (void)extresist::fix_up_connections(c.model, c.out, c.net, hefesto::compat::CompatSettings{true}, messages);
   std::vector<extresist::OutputNet> nets(1);
-  nets[0].net = *m.value().find("out");
-  nets[0].network = two_node_net("", "");
-  nets[0].terminals = {extresist::TerminalNode{0, extresist::Terminal::source, 0}};
-  const auto text = extresist::write_res_ext(m.value(), nets, style_of(s), hefesto::compat::CompatSettings{true});
+  nets[0].net = c.out;
+  nets[0].block = extresist::net_block(c.model.nodes[c.out], c.net, false, style_of(c.s), messages);
+  nets[0].network = c.net;
+  const auto text = extresist::write_res_ext(c.model, nets, style_of(c.s), hefesto::compat::CompatSettings{true});
   REQUIRE(text.ok());
-  CHECK(text.value() == extresist::res_ext_scale(style_of(s)) +
-                            "killnode \"out\"\nrnode \"out.t0\" 0 1000 0 0 0\nrnode \"out.n0\" 0 500 50 0 0\n"
-                            "resist \"out.t0\" \"out.n0\" 2000\n"
-                            "device mosfet nfet 10 20 11 21  2 8 \"GND\" \"in\" 4 0 \"out.t0\" 8 0 \"x\" 8 0\n");
-  CHECK(extresist::write_res_lump(m.value(), nets) == "R out 0\n");
+  // Reverse read order (ResRDevList): the second device first.
+  CHECK(text.value() == extresist::res_ext_scale(style_of(c.s)) + nets[0].block +
+                            "device mosfet nfet 30 20 31 21  1 5 \"GND\" \"out.t0\" 2 0 \"x\" 5 0 \"in\" 5 0\n"
+                            "device mosfet nfet 10 20 11 21  1 5 \"GND\" \"out.t1\" 2 0 \"in\" 5 0 \"x\" 5 0\n");
+  CHECK(extresist::write_res_lump(c.model, nets) == "R out 0\n");
 }
 
 namespace {
@@ -175,10 +269,12 @@ std::vector<extflat::FlatResist> overlay_resistors(bool magic_compat) {
                           "timestamp 0\nversion 8.3\ntech restest\nscale 1 1 1\nnode \"a\" 0 0 0 0 poly\n")
               .ok());
   extresist::Network net = two_node_net("", "");
-  (void)extresist::name_nodes("a", net, {});
   hefesto::extract::ExtStyle style;
+  extresist::InputNode a;
+  a.name = "a";
+  std::vector<std::string> messages;
   REQUIRE(fs.write_atomic(platform::Path{"/w/top.res.ext"},
-                          "scale 1 1 1\n" + extresist::net_block("a", net, true, 0.0, style))
+                          "scale 1 1 1\n" + extresist::net_block(a, net, false, style, messages))
               .ok());
   diag::CollectingSink sink;
   hefesto::cell::SearchPaths paths;

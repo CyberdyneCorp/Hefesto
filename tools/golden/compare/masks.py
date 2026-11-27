@@ -76,7 +76,19 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     (openspec/changes/m8-schematic design D16, Q-SCHEM-13: they name files on the netlisting host). A path
     inside a PDK tree (``.../<pdk>/libs.tech/...`` or ``.../<pdk>/libs.ref/...`` with ``<pdk>`` one of
     ``sky130A``, ``gf180mcuD``, ``ihp-sg13g2``) becomes ``$PDK_ROOT/<pdk>/...``; a path under the work
-    directory ``/work/`` becomes relative to it; the rest of the line is kept.
+    directory ``/work/`` becomes relative to it; a path of the system symbol library (``.../xschem_library/...``:
+    xschem's ``/opt/ref/share/xschem``, Hefesto's ``<CAD_ROOT>/assets/schematic``, Q-SCHEM-45) becomes
+    ``$XSCHEM_SHAREDIR/xschem_library/...``; the rest of the line is kept.
+``schem-user-conf``
+    The user configuration folder in a SCHEM netlist (a PDK symbol's ``pre_osdi $USER_CONF_DIR/...`` line):
+    an absolute path ending in ``/.xschem`` (xschem's ``~/.xschem`` of the capture user, Hefesto's
+    ``<document folder>/.xschem``) becomes ``$USER_CONF_DIR``.
+``schem-hefesto-driver``
+    hefesto-cli's own text in the streams of a SCHEM replay (the Hefesto side of Q-SCHEM-46): the start-up
+    line ``info: APP-TECH-002: Using technology "<name>", version <v>`` and the note ``info: SCHEM-LIB-007:
+    xschem_execute_scripts yes in <rc file> ignored: ...`` on the capture setting of the harness or PDK rc
+    and the lines an ``xschemrc`` prints while it is read (``info: SCHEM-LIB-008: xschemrc: <line>``, the
+    lines the capture drops on the xschem side) are dropped.
 ``schem-version``
     The ``version=<v>`` value of a ``v {xschem version=<v> ...}`` record (the first record of a ``.sch`` or
     ``.sym`` file, Q-SCHEM-1): the value becomes ``<masked>``. For a file written by another xschem version
@@ -268,6 +280,9 @@ def mask_magic_tech_menu_order(data: bytes) -> bytes:
 _SCHEM_PATH_LINE = re.compile(rb"^(\*\* s(?:ch|ym)_path: )(\S[^\n]*?)(\r?)$", re.MULTILINE)
 _SCHEM_PDK_PATH = re.compile(rb"^.*?/((?:sky130A|gf180mcuD|ihp-sg13g2)/libs\.(?:tech|ref)/.*)$")
 _SCHEM_WORK = b"/work/"
+# The system symbol library: xschem's /opt/ref/share/xschem/xschem_library/... in the capture image, Hefesto's
+# <CAD_ROOT>/assets/schematic/xschem_library/... (Q-SCHEM-10, -45) in the replay.
+_SCHEM_SYSTEM_PATH = re.compile(rb"^/.*?/(xschem_library/.*)$")
 
 
 def _schem_relative(path: bytes) -> bytes:
@@ -276,6 +291,9 @@ def _schem_relative(path: bytes) -> bytes:
         return b"$PDK_ROOT/" + pdk.group(1)
     if path.startswith(_SCHEM_WORK):
         return path[len(_SCHEM_WORK):]
+    system = _SCHEM_SYSTEM_PATH.match(path)
+    if system:
+        return b"$XSCHEM_SHAREDIR/" + system.group(1)
     return path
 
 
@@ -285,6 +303,29 @@ def mask_schem_paths(data: bytes) -> bytes:
 
 # Q-SCHEM-1: the writer's version string in the version record.
 _SCHEM_VERSION = re.compile(rb"^(v \{xschem version=)[^\s}]+", re.MULTILINE)
+
+
+# The user configuration folder in a netlist (a PDK symbol's `pre_osdi $USER_CONF_DIR/...` line): xschem's
+# ~/.xschem of the capture user, Hefesto's <document folder>/.xschem.
+_SCHEM_USER_CONF = re.compile(rb"(?<![^\s'\"=])/[^\s'\"]*?/\.xschem(?=/)")
+
+
+def mask_schem_user_conf(data: bytes) -> bytes:
+    return _SCHEM_USER_CONF.sub(b"$USER_CONF_DIR", data)
+
+
+# The Hefesto side of Q-SCHEM-46: hefesto-cli's own text around a SCHEM replay. Its start-up line (Magic's
+# "Using technology" banner), the note on the harness rc's `set xschem_execute_scripts yes` (a capture setting
+# that Hefesto ignores: Q-SCHEM-11's sandbox always runs tcleval values) and the lines an xschemrc prints while
+# it is read (SCHEM-LIB-008), which the capture drops on the xschem side (goldenlib/schem_driver.py).
+_SCHEM_HEFESTO_DRIVER = re.compile(
+    rb'^info: APP-TECH-002: Using technology "[^"\n]*", version [^\n]*\n'
+    rb"|^info: SCHEM-LIB-007: xschem_execute_scripts yes in \S*xschemrc ignored: [^\n]*\n"
+    rb"|^info: SCHEM-LIB-008: xschemrc: [^\n]*\n", re.MULTILINE)
+
+
+def mask_schem_hefesto_driver(data: bytes) -> bytes:
+    return _SCHEM_HEFESTO_DRIVER.sub(b"", data)
 
 
 def mask_schem_version(data: bytes) -> bytes:
@@ -350,6 +391,8 @@ _NAMED: dict[str, Mask] = {
     "magic-tech-menu-order": mask_magic_tech_menu_order,
     "schem-paths": mask_schem_paths,
     "schem-version": mask_schem_version,
+    "schem-user-conf": mask_schem_user_conf,
+    "schem-hefesto-driver": mask_schem_hefesto_driver,
     "ext-times": mask_ext_times,
     "extcheck-memory": mask_extcheck_memory,
     "prog-name": mask_prog_name,

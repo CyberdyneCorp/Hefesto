@@ -16,6 +16,7 @@
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/schem/lib/symbol_cache.hpp"
+#include "hefesto/script/tcl/tcl_interpreter.hpp"
 
 namespace hefesto::shell {
 
@@ -200,7 +201,12 @@ bool SchematicSymbolResolver::start_job(const schem::Document& document, const s
   if (worker_->thread.joinable()) worker_->thread.join();  // a finished job: returns at once
   SymbolRequest request{resolution_source(document), search_path, context_.xschem_compat, std::move(missing)};
   Worker* worker = worker_.get();
-  worker_->thread = std::thread([worker, request = std::move(request), job = generation_] { worker->run(request, job); });
+  worker_->thread = std::thread([worker, request = std::move(request), job = generation_] {
+    worker->run(request, job);
+    // A Tcl generator may have run on this thread; Tcl frees per-thread data
+    // only for threads it created itself.
+    script::release_thread_tcl_state();
+  });
   return true;
 }
 

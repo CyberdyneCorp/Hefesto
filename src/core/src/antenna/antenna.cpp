@@ -6,9 +6,10 @@
 // D17): Magic's option table, the first-word rule (Q-MISC-91, compat, as
 // Q-NETLIST-13), `help`, `debug` (armed for the next run) and the run.
 //
-// `debug` is a process-wide flag, as Magic's efAntennaDebug: it is set by
-// `antennacheck debug` and cleared when a run reaches its end (an early
-// return, such as a missing plane order, leaves it armed).
+// `debug` is Magic's efAntennaDebug, kept per session
+// (`EditorState::antenna_debug`): it is set by `antennacheck debug` and
+// cleared when a run reaches its end (an early return, such as a missing
+// plane order, leaves it armed).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) extflat/EFantenna.c CmdAntennaCheck
 // (cmdAntennaCheckOption, the lookup and the usage loop), Copyright (C)
@@ -20,7 +21,6 @@
 #include "hefesto/antenna/antenna.hpp"
 
 #include <array>
-#include <atomic>
 #include <utility>
 
 #include "db/command_util.hpp"
@@ -41,9 +41,6 @@ constexpr std::array<std::string_view, 3> kOptions{
 constexpr std::size_t kDebug = 1;
 constexpr std::size_t kHelp = 2;
 
-// efAntennaDebug.
-std::atomic<bool> g_debug{false};
-
 cmd::CommandResult run_command(cmd::CommandContext& ctx, std::vector<std::string> args) {
   auto session = db::cmdutil::session(ctx);
   if (!session) {
@@ -51,22 +48,27 @@ cmd::CommandResult run_command(cmd::CommandContext& ctx, std::vector<std::string
   }
   AntennaOptions options;
   options.args = std::move(args);
-  options.debug = g_debug.load();
+  editor::EditorState& editor = *session.value().editor;
+  options.debug = editor.antenna_debug;
   options.magic_compat = session.value().magic_compat;
   options.files = &ctx.services().files;
   options.emit = [&ctx](diag::Diagnostic d) { ctx.emit(d); };
-  const view::LayoutWindow* w = session.value().editor->windows.current();
+  const view::LayoutWindow* w = editor.windows.current();
   db::CellDef* root = w != nullptr ? w->root() : nullptr;
-  options.finished = [] { g_debug.store(false); };  // cleared at the end of the run
-  return check(*session.value().editor, root, options);
+  options.finished = [&editor] { editor.antenna_debug = false; };  // cleared at the end of the run
+  return check(editor, root, options);
 }
 
-std::optional<cmd::CommandResult> option(cmd::CommandContext& /*ctx*/, const cmd::Invocation& /*invocation*/,
+std::optional<cmd::CommandResult> option(cmd::CommandContext& ctx, const cmd::Invocation& /*invocation*/,
                                          std::size_t index) {
   if (index != kDebug) {
     return std::nullopt;
   }
-  g_debug.store(true);
+  auto session = db::cmdutil::session(ctx);
+  if (!session) {
+    return db::cmdutil::fail(session.error());
+  }
+  session.value().editor->antenna_debug = true;
   return cmd::CommandResult::success();
 }
 

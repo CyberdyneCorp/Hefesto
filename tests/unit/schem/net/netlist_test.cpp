@@ -288,6 +288,53 @@ TEST_CASE("net_name of a bus net and of an automatic net", "[cap:schematic-netli
   }
 }
 
+// Q-SCHEM-35 (approved 2026-11-25): a zero count is a syntax error and the
+// name is used unchanged, the same in both modes (here a top-level port of
+// a subcircuit netlist, whose names are bus-expanded with a warning).
+TEST_CASE("Zero and negative counts are syntax errors: the netlist run in both modes",
+          "[cap:schematic-netlisting][req:Bus and vector notation]") {
+  MemoryProject p;
+  p.put("t.sch", std::string{kHeader} +
+                     "C {iopin.sym} 0 20 0 0 {name=p1 lab=a*0}\nC {res.sym} 0 50 0 0 {name=R1 value=1}\n"
+                     "C {lab_pin.sym} 0 80 0 0 {name=l2 lab=0}\n");
+  schem::NetlistOptions options;
+  options.top_is_subckt = true;
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const auto r = p.netlist("t.sch", options, on);
+    INFO(r.text);
+    CHECK(r.text.find(".subckt t a*0\n") != std::string::npos);
+    CHECK(r.text.find("\nR1 a*0 0 1\n") != std::string::npos);
+    REQUIRE(has_code(r, hefesto::schem::net_codes::kBusSyntax));
+    for (const auto& d : r.diagnostics) {
+      if (d.code == hefesto::schem::net_codes::kBusSyntax) CHECK(d.text == "syntax error in a*0");
+    }
+  }
+}
+
+// Q-SCHEM-37 (approved 2026-11-25), the same in both modes: a tap whose
+// pin 0 label matches the computed tap name is not a short; one whose label
+// differs is reported once, computed name first.
+TEST_CASE("Tap side already named: one short in both modes", "[cap:schematic-netlisting][req:Bus taps]") {
+  MemoryProject p;
+  p.put("t.sch", std::string{kHeader} +
+                     "N 110 -10 150 -10 {}\nC {lab_pin.sym} 150 -10 0 0 {name=l1 lab=DATA[3]}\n"
+                     "N 210 -10 250 -10 {}\nC {lab_pin.sym} 250 -10 0 0 {name=l2 lab=X}\n"
+                     "N 0 0 300 0 {}\nC {lab_pin.sym} 0 0 0 0 {name=l3 lab=DATA[3:0]}\n"
+                     "C {bus_tap.sym} 100 0 0 0 {name=l4 lab=[3]}\nC {bus_tap.sym} 200 0 0 0 {name=l5 lab=[2]}\n");
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const auto r = p.netlist("t.sch", {}, on);
+    CHECK(r.text.find("* tap: DATA[3:0] --> DATA[3]\n") != std::string::npos);
+    CHECK(r.text.find("* tap: DATA[3:0] --> X\n") != std::string::npos);
+    REQUIRE(count_code(r, hefesto::schem::net_codes::kShort) == 1);
+    for (const auto& d : r.diagnostics) {
+      if (d.code == hefesto::schem::net_codes::kShort) CHECK(d.text == "Bus tap shorted: DATA[2] - X");
+    }
+    CHECK(r.failed);
+  }
+}
+
 TEST_CASE("SCHEM-NL-20 netlists", "[cap:schematic-netlisting][req:Top-level port order]") {
   schem::NetlistOptions options;
   options.top_is_subckt = true;

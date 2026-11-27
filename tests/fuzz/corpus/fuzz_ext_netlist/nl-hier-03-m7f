@@ -1,0 +1,61 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use sram s1 1 0 0 0 1 0
+use prim p1 1 0 20 0 1 0
+use wire w1 1 0 40 0 1 0
+use inv i1 1 0 60 0 1 0
+node "n" 0 1 0 80 metal1 0 0 0 0 0 0
+merge "s1/A" "n" 0
+merge "w1/w" "n" 0
+merge "i1/in" "n" 0
+@@ inv
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "in" 0 -2 4 -1 5 poly
+port "out" 1 4 4 5 5 metal1
+node "in" 0 0.4 -2 4 poly 0 0 24 20 0 0
+node "out" 0 5 4 4 metal1 40 26 0 0 40 28
+node "vdd!" 0 1.2 0 20 metal1 40 26 0 0 80 48
+node "gnd!" 0 1.2 0 -10 metal1 20 18 0 0 80 48
+device mosfet pfet 0 10 2 18 2 8 "vdd!" "in" 16 0 "vdd!" 8 0 "out" 8 0
+device mosfet nfet 0 0 2 4 2 4 "gnd!" "in" 8 0 "gnd!" 4 0 "out" 4 0
+@@ prim
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+parameters :prim m=1
+port "p" 0 0 0 1 1 metal1
+node "p" 0 0 0 0 metal1 0 0 0 0 0 0
+primitive
+@@ sram
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+abstract
+port "A" 0 0 0 1 1 metal1
+port "D" 1 4 0 5 1 metal1
+node "A" 0 1 0 0 metal1 0 0 0 0 0 0
+node "D" 0 1 4 0 metal1 0 0 0 0 0 0
+@@ wire
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "w" 0 0 0 1 1 metal1
+node "w" 0 1 0 0 metal1 0 0 0 0 0 0

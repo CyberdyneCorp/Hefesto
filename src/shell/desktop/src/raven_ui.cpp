@@ -1683,6 +1683,15 @@ void post_task(std::function<void()> task) {
   Rtask_post(&run_posted, new std::function<void()>(std::move(task)));
 }
 
+std::string clipboard_text() {
+  const char* text = Rclipboard_get_text();
+  return text != nullptr ? std::string{text} : std::string{};
+}
+
+void set_clipboard_text(const std::string& text) {
+  Rclipboard_set_text(text.c_str());
+}
+
 struct Table::Callbacks {
   std::function<std::string(int, int)> text;
   std::function<void(int)> select;

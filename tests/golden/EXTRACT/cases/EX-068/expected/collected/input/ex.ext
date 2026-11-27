@@ -1,0 +1,9 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses
+node "d" 0 0 0 0 m1
+equiv "d" "r"
+distance d r 100 100

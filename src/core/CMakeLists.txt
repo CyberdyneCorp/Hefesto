@@ -21,7 +21,6 @@ add_library(hefesto_core STATIC
   src/cmd/dispatcher.cpp
   src/cmd/host_access.cpp
   src/cmd/keywords.cpp
-  src/cmd/m7_stubs.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/quit_policy.cpp
@@ -48,6 +47,7 @@ add_library(hefesto_core STATIC
   src/platform/task_executor.cpp
   src/platform/worker_host.cpp
   src/settings/project_settings.cpp
+  src/util/cr_atan.cpp
   src/util/libc_random.cpp
   src/util/record_order.cpp)
 add_library(hefesto::core ALIAS hefesto_core)

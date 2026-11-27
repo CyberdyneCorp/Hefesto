@@ -14,8 +14,7 @@
 // capacitance, the `device` property, `parameters`, `abstract`, the node,
 // coupling and device records) and writes the header and `use` records.
 // The subtree and array passes are EXTHIER's (extract_subtree, one marked
-// call site); interactions() is EXTHIER's and still reports
-// CORE-NOTIMPL-008.
+// call site); interactions() is EXTHIER's (hier_stubs.cpp).
 //
 // Owner: INTEGRATION (this header); EXTCMD (extract_cell, tasks.md 8.1);
 // EXTHIER (interactions and the subtree passes).

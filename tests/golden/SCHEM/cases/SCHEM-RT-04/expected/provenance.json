@@ -9,8 +9,23 @@
   "runner": "container",
   "reference_captured": true,
   "image": "hefesto-golden:ci",
-  "image_id": "sha256:654a9cdfea67af319691be72488f9f1e76621f4f773c37af876f381b80f8d274",
+  "image_id": "sha256:3eb01ec52eb71265587fe1eb0cf6f768176cc391edd556fe34f1971d47413b9e",
   "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
   "command": [
     "xschem",
     "-q",
@@ -25,12 +40,13 @@
     "TZ": "UTC",
     "LC_ALL": "C"
   },
-  "captured_at": "2026-11-18T04:41:26Z",
+  "captured_at": "2026-11-26T11:53:39Z",
+  "stream_filter": "schem-driver (goldenlib/schem_driver.py, Q-SCHEM-46)",
   "outputs": {
     "2-old.sym": "a9639acbf504ecccc4daf163d1e5ee56ab82464b90f81b40dc1b6c8ae51f721c",
     "exitcode.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
     "old.sym": "a9639acbf504ecccc4daf163d1e5ee56ab82464b90f81b40dc1b6c8ae51f721c",
-    "stderr.txt": "ed70a7c8161991342f9a8528390a564a5aa135f90e36f3114a91b82b6533a483",
-    "stdout.txt": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   }
 }

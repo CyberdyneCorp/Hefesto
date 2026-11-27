@@ -30,6 +30,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/schem/file/read_write.hpp"
 #include "hefesto/schem/file/save.hpp"
+#include "hefesto/schem/lib/reference.hpp"
 #include "hefesto/schem/sym/instance.hpp"
 #include "internal.hpp"
 
@@ -178,7 +179,11 @@ cmd::CommandResult paste_body(EditContext& ec, std::span<const std::string> args
 cmd::CommandResult merge_body(EditContext& ec, std::span<const std::string> args) {
   const auto xy = args.size() == 3 ? numbers(args, 1, 2) : std::optional{std::vector<double>{0.0, 0.0}};
   if ((args.size() != 1 && args.size() != 3) || !xy) return usage("merge");
-  auto merged = load_document(ec.ctx().services().files, cmdimpl::absolute_path(args[0]), read_options(ec));
+  const platform::Path file = cmdimpl::absolute_path(args[0]);
+  ReadOptions options = read_options(ec);
+  options.symbol_file_exists =
+      symbol_file_finder(file.parent_path(), ec.session().search_path, ec.ctx().services().files);
+  auto merged = load_document(ec.ctx().services().files, file, options);
   if (!merged) return fail(merged.error());
   return insert_objects(ec, merged.value(), {(*xy)[0], (*xy)[1]});
 }

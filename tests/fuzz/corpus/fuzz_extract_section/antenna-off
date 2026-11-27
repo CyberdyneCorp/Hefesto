@@ -1,0 +1,12 @@
+Zstyle ant
+    lambda 1
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    planeorder metal2 3
+    antenna metal1 surface 400
+    antenna metal2 sidewall 400 none
+    antenna poly surface 200 10 2
+    model partial cumulative
+    tiedown ndiff,pdiff
+    device mosfet nfet nfet ndiff pwell VSUB

@@ -1,6 +1,0 @@
-== passgate
-
-== passgate: exit 0
-== gain_stage
-
-== gain_stage: exit 0

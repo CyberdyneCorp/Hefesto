@@ -44,6 +44,11 @@ struct NameFlags {
 [[nodiscard]] std::string name_to_sim(std::span<const std::string> components, NameFlags& flags,
                                       const compat::CompatSettings& compat);
 
+/// EFHNBest on two hierarchical names written with `/` between their
+/// components: true when `a` is preferred to `b` (capability
+/// ext-flattening-names "Name preference order"). Both are non-empty.
+[[nodiscard]] bool prefer_name(std::string_view a, std::string_view b);
+
 /// No conversion flag at all (EFOutputFlags & EF_TRIM_MASK == 0).
 [[nodiscard]] constexpr NameFlags no_name_flags() noexcept {
   return NameFlags{false, false, false, false, false};

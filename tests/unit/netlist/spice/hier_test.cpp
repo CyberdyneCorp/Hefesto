@@ -286,3 +286,22 @@ TEST_CASE("render with the lvs preset writes the hierarchical netlist and change
   CHECK(c.state.netlist.names == names);
   CHECK_FALSE(c.services.files().exists(hefesto::platform::Path{"topnp.spice"}));
 }
+
+// subcktVisit (ext2spice.c:1600-1720): when a port slot is already held, a
+// name of the next entry's chain that claims it replaces the holder only if
+// EFHNBest prefers it. Regression (both modes): the first holder was kept.
+TEST_CASE("Two names on one port slot: the call lists the one EFHNBest prefers",
+          "[cap:netlist-spice-hierarchy][req:Subcircuit calls in hierarchical mode]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    HierCase c{"NL-HIER-01", compat};
+    c.ext("pair.ext", "tech nltest\nstyle nltest\nscale 1000 1000 5\nresistclasses 1000 5000 100\n"
+          "port \"P\" 0 0 0 1 1 metal1\nport \"Q\" 0 10 0 11 1 metal1\n"
+          "node \"P\" 0 2 0 0 metal1 0 0 0 0 0 0\nnode \"Q\" 0 2 10 0 metal1 0 0 0 0 0 0\n"
+          "device mosfet nfet 0 0 2 4 2 4 \"GND!\" \"P\" 8 0 \"Q\" 4 0 \"P\" 4 0\n");
+    c.ext("top.ext", "tech nltest\nstyle nltest\nscale 1000 1000 5\nresistclasses 1000 5000 100\n"
+          "use pair u1 1 0 0 0 1 0\n");
+    const std::string text = c.netlist("ext2spice -p /w top", "top.spice");
+    CHECK(text.find("Xu1 u1/Q pair\n") != std::string::npos);
+  }
+}

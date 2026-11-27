@@ -58,7 +58,7 @@ std::string table_label(std::string_view table) {
 }
 
 std::string octal(int value) {
-  char buf[8];
+  char buf[16];  // "%03o" of an unsigned is at most 11 digits
   std::snprintf(buf, sizeof buf, "%03o", static_cast<unsigned>(value));
   return buf;
 }

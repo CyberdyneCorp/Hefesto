@@ -113,21 +113,44 @@ class TilePlane {
   Tile* split_y(Tile* tile, Coord y);  // TiSplitY: returns the new top tile
   void join_x(Tile* keep, Tile* gone);  // TiJoinX (+ delayed free)
   void join_y(Tile* keep, Tile* gone);  // TiJoinY (+ delayed free)
+  /// The same, counting stitch steps or not as `kCount` says rather than
+  /// as counts_steps() does: the rectangle painter picks the variant once
+  /// per paint instead of once per split or join.
+  template <bool kCount>
+  Tile* split_x_counted(Tile* tile, Coord x);
+  template <bool kCount>
+  Tile* split_y_counted(Tile* tile, Coord y);
+  template <bool kCount>
+  void join_x_counted(Tile* keep, Tile* gone);
+  template <bool kCount>
+  void join_y_counted(Tile* keep, Tile* gone);
   /// TiJoinY of `a` and `b` (in either order) that keeps whichever has
   /// more tiles along its left and right sides, and returns it. The merged
   /// tile is the same either way; only its address differs. TiJoinY
   /// re-stitches every side neighbour of the tile it frees, so painting a
   /// column of strips that merge one by one into the tile above them cost
   /// the square of the column (security.md M5-S10); this costs twice the
-  /// smaller side count.
+  /// smaller side count. A `b` with few side neighbours is freed as
+  /// TiJoinY would free it, without comparing the two. `kCount` as for
+  /// join_y_counted.
+  template <bool kCount>
   Tile* join_y_cheap(Tile* a, Tile* b);
 
   /// The neighbours the splits, joins and paint merges have re-stitched or
-  /// stepped over so far (never reset). A paint's work grows with the tiles
-  /// along the edges it cuts, not with the tiles it paints; non-Manhattan
-  /// read paints are bounded by it (NMBudget::steps).
+  /// stepped over while counting (never reset). A paint's work grows with
+  /// the tiles along the edges it cuts, not with the tiles it paints;
+  /// non-Manhattan read paints are bounded by it (NMBudget::steps).
   [[nodiscard]] std::uint64_t stitch_steps() const noexcept { return stitch_steps_; }
-  void add_stitch_steps(std::uint64_t n) noexcept { stitch_steps_ += n; }
+  void add_stitch_steps(std::uint64_t n) noexcept {
+    if (counting_) {
+      stitch_steps_ += n;
+    }
+  }
+  /// Counting is on only while a step-bounded paint runs (StepCounting):
+  /// the count costs an instruction per neighbour, which every other paint
+  /// (a whole GDS or OASIS read) would pay for nothing.
+  [[nodiscard]] bool counts_steps() const noexcept { return counting_; }
+  void set_counts_steps(bool on) noexcept { counting_ = on; }
 
   /// Releases the tiles freed during the operation.
   void end_operation();
@@ -161,6 +184,13 @@ class TilePlane {
  private:
   Tile* alloc();
   void free_later(Tile* t) { pending_.push_back(t); }
+  // One step of a split or join loop, counted only by the kCount variant.
+  template <bool kCount>
+  void step() noexcept {
+    if constexpr (kCount) {
+      ++stitch_steps_;
+    }
+  }
 
   std::deque<Tile> storage_;
   std::vector<Tile*> free_;
@@ -174,6 +204,25 @@ class TilePlane {
   std::uint64_t stitch_steps_ = 0;
   std::vector<SplitEdit>* split_log_ = nullptr;
   bool may_have_split_ = false;
+  bool counting_ = false;
+};
+
+/// Turns the stitch-step count of `plane` on for its lifetime (restoring
+/// the previous state after), around a step-bounded paint.
+class StepCounting {
+ public:
+  explicit StepCounting(TilePlane& plane) noexcept : plane_(plane), was_(plane.counts_steps()) {
+    plane_.set_counts_steps(true);
+  }
+  ~StepCounting() { plane_.set_counts_steps(was_); }
+  StepCounting(const StepCounting&) = delete;
+  StepCounting& operator=(const StepCounting&) = delete;
+  StepCounting(StepCounting&&) = delete;
+  StepCounting& operator=(StepCounting&&) = delete;
+
+ private:
+  TilePlane& plane_;
+  const bool was_;
 };
 
 /// The view of internal tile `t` as the plane reports it: `dinfo` is 0,

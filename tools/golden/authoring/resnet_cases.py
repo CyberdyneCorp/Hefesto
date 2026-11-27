@@ -96,11 +96,20 @@ def body(spec: ResnetSpec) -> str:
     return lines(*parts)
 
 
-# The nets with nfets make Magic's extresist exit with SIGSEGV (139) in both captures (runs 45555921742,
-# 45555935130); proposed Q-NETLIST-63. capture.py skips them until the crash is located.
-CAPTURE_BLOCKED = {case_id: "Magic's extresist exits 139 (SIGSEGV) on this net with an nfet in golden-capture runs "
-                            "45555921742 and 45555935130; proposed Q-NETLIST-63"
-                   for case_id in ("NL-RESNET-05", "NL-RESNET-10", "NL-RESNET-13")}
+# Q-NETLIST-63: the nfets' substrate terminal is the global "GND!" of the device line, which has no node
+# record when no layout carries that name; Magic's ResReadDevice then calls ResNodeAddDevice with a null
+# node (resis/ResReadExt.c:819-820, :725) and exits with SIGSEGV (golden-capture runs 45555921742 and
+# 45555935130). The cases with nfets (NL-RESNET-05, 10 and 13) carry a labelled metal1 square "GND!" away
+# from the nets, so that the substrate net has a node record; it has no driver, so it is counted and never
+# extracted.
+GND_LABEL = Label("metal1", (-20, -20, -16, -16), "GND!", None)
+GND_PAINT = ("metal1", -20, -20, -16, -16)
+CAPTURE_BLOCKED: dict[str, str] = {}
+
+
+def with_substrate_record(cell: Cell) -> Cell:
+    """The cell plus the labelled "GND!" square that gives the nfets' substrate net a node record."""
+    return Cell([*cell.paint, GND_PAINT], [*cell.labels, GND_LABEL])
 
 
 def to_case(spec: ResnetSpec) -> TclCase:
@@ -167,6 +176,7 @@ def specs() -> list[ResnetSpec]:
                    wire("ndiff", 130, 44, 138, 54), wire("nfet", 138, 44, 146, 54), wire("ndiff", 146, 44, 154, 54),
                    wire("poly", 138, 54, 146, 58)],
                   [port("metal1", 0, 0, 0, 4, "in", 1), port("metal1", 200, 0, 200, 4, "far", 2)])
+    fanout = with_substrate_record(fanout)
     skip = nets(net([wire("metal1", 0, 0, 50, 6), wire("m1c", 50, 0, 56, 6), wire("poly", 56, 0, 150, 6)],
                     [("metal1", 0, 0, 0, 6), ("poly", 150, 0, 150, 6)], "s"))
     ells = nets(
@@ -188,6 +198,7 @@ def specs() -> list[ResnetSpec]:
                  wire("nfet", 50, 10, 60, 20), wire("poly", 50, 20, 60, 24)],
                 [port("ndiff", 0, 20, 10, 20, "d1", 1), port("ndiff", 50, 0, 50, 10, "d2", 2),
                  port("ndiff", 90, 0, 90, 10, "d3", 3)])
+    diff = with_substrate_record(diff)
     reductions = nets(
         net([wire("metal1", 0, 0, 100, 10), wire("metal1", 90, 10, 100, 100)],
             [("metal1", 0, 5, 0, 5), ("metal1", 95, 100, 95, 100)], "l"),
@@ -208,6 +219,7 @@ def specs() -> list[ResnetSpec]:
                                                              wire("ndiff", x + 6, 44, x + 14, 54),
                                                              wire("poly", x - 2, 54, x + 6, 58))]],
                    [port("metal1", 0, 0, 0, 4, "in", 1), port("metal1", 300, 0, 300, 4, "far", 2)])
+    fanout2 = with_substrate_record(fanout2)
     # NL-RESNET-14: a comb of short teeth of distinct widths (distinct sub-tolerance values, Q-NETLIST-26)
     # and a port-to-port short; 12 teeth make a list of 10 or more resistors.
     comb_paint = [wire("metal1", 0, 0, 400, 30)]
@@ -246,7 +258,8 @@ def specs() -> list[ResnetSpec]:
         ResnetSpec("NL-RESNET-03", r("cr"), "metal1-metal2 vias of 4x4, 8x4, 12x12 and an undersized 2x2", vias),
         ResnetSpec("NL-RESNET-04", r("simp"), "a staircase of short segments (minres 1000) and a port-to-port "
                    "short segment", chain),
-        ResnetSpec("NL-RESNET-05", r("el"), "a branching net with two gate loads; mindelay 1 ps with debug output",
+        ResnetSpec("NL-RESNET-05", r("el"), "a branching net with two gate loads; mindelay 1 ps with debug output "
+                   "(re-authored: a labelled GND! square gives the substrate net a record, Q-NETLIST-63)",
                    fanout, options=("extresist threshold 0", "extresist mindelay 1", "extresist debug on")),
         ResnetSpec("NL-RESNET-06", r("col"), "extresist skip poly on a metal1-m1c-poly net", skip,
                    options=("extresist threshold 0", "extresist mindelay 0", "extresist skip poly")),
@@ -258,12 +271,14 @@ def specs() -> list[ResnetSpec]:
         ResnetSpec("NL-RESNET-09", r("tr"), "a 7x3 tile with ports at (0,1) and (7,2); a [0,4]x[0,100] "
                    "north-south tile", tiles),
         ResnetSpec("NL-RESNET-10", r("nd", "dev", "st"), "diffusion next to transistors: one edge, two edges, a "
-                   "device on top and bottom", diff),
+                   "device on top and bottom (re-authored: a labelled GND! square gives the substrate net a record, "
+                   "Q-NETLIST-63)", diff),
         ResnetSpec("NL-RESNET-11", r("red", "mg"), "the L-wire of the scenario; parallel straps; a ring "
                    "forming a triangle", reductions),
         ResnetSpec("NL-RESNET-12", r("path"), "a ring with two equal-weight paths, extracted twice in one "
                    "session (Q-NETLIST-46)", ring, runs=2),
-        ResnetSpec("NL-RESNET-13", r("el"), "a fanout net with three gate loads; mindelay 100 ps", fanout2,
+        ResnetSpec("NL-RESNET-13", r("el"), "a fanout net with three gate loads; mindelay 100 ps (re-authored: a "
+                   "labelled GND! square gives the substrate net a record, Q-NETLIST-63)", fanout2,
                    options=("extresist threshold 0", "extresist mindelay 100")),
         ResnetSpec("NL-RESNET-14", r("simp", "fin"), "a comb of 12 sub-tolerance teeth of distinct values and "
                    "a port-to-port short (re-authored: one outcome, Q-NETLIST-26)", comb),
