@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// HeightView over the extract-tech-section reader (openspec/changes/
-// m10-3d-view/design.md D5): the height tables of detail::read_style_tables
-// (style_reader.cpp), the one reader StyleView also reads, and
-// ExtTechScale's rescale of h and t (task 3.2).
+// HeightView as a view of ExtStyle (openspec/changes/m7-extraction/
+// design.md D7, D20, tasks.md 4.7; M10's openspec/changes/m10-3d-view/
+// design.md D5): from_section reads the style with the one reader
+// (style_reader.cpp), reporting the height subset, and converts it with
+// ExtStyle's micron conversion; rescaled() is ExtStyle::rescale, the one
+// grid-rescale path.
 //
-// Owner: TECH (design D3).
+// Owner: EXTTECH (M7 design D7); M10's TECH wrote the first height subset.
 
 #include "hefesto/extract/tech/height_view.hpp"
 
@@ -14,7 +16,9 @@
 #include <optional>
 #include <utility>
 
+#include "hefesto/extract/tech/style.hpp"
 #include "hefesto/mask/style/style.hpp"
+#include "rule_context.hpp"
 #include "style_reader.hpp"
 
 namespace hefesto::extract {
@@ -32,9 +36,8 @@ HeightView read(const tech::RawSection& section, const tech::Technology& tech, d
   detail::ReadOptions options;
   options.style = style;
   options.report = detail::Subset::heights;
-  options.microns_per_lambda = dscale;
   std::optional<detail::StyleTables> tables = detail::read_style_tables(section, tech, sink, options);
-  return tables ? HeightView{std::move(tables->heights)} : HeightView{};
+  return tables ? HeightView::from_style(detail::micron_convert(tables->style, dscale)) : HeightView{};
 }
 
 }  // namespace
@@ -72,19 +75,38 @@ HeightView HeightView::from_technology(const tech::Technology& tech, diag::Diagn
   return from_section(*it, tech, sink);
 }
 
+HeightView HeightView::from_style(const ExtStyle& style) {
+  StyleHeights out;
+  out.style = style.name;
+  out.plane_order = style.plane_order;
+  out.plane_ordering = style.plane_ordering;
+  out.units_microns = style.units_microns;
+  out.units_per_lambda = style.units_per_lambda;
+  out.distance_scale = style.distance_scale;
+  for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
+    const bool from_line = style.height_lines.test(static_cast<tech::TileType>(t));
+    out.heights[t] = TypeHeight{style.heights[t].height, style.heights[t].thickness,
+                                from_line ? HeightSource::height_line : HeightSource::defaulted};
+  }
+  return HeightView{std::move(out)};
+}
+
+// ExtStyle::rescale on the view's heights and units-per-lambda.
 HeightView HeightView::rescaled(std::int32_t scale_n, std::int32_t scale_d) const {
-  if (!current_ || scale_n <= 0 || scale_d <= 0 || scale_n == scale_d) {
+  if (!current_) {
     return *this;
   }
+  ExtStyle style;
+  style.units_per_lambda = current_->units_per_lambda;
+  for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
+    style.heights[t] = TypeHeightThickness{current_->heights[t].height, current_->heights[t].thickness};
+  }
+  style = style.rescale(scale_n, scale_d, compat::CompatSettings{});
   StyleHeights out = *current_;
-  const auto n = static_cast<float>(scale_n);
-  const auto d = static_cast<float>(scale_d);
-  out.units_per_lambda = out.units_per_lambda * n / d;
-  for (TypeHeight& th : out.heights) {
-    th.height *= d;
-    th.height /= n;
-    th.thickness *= d;
-    th.thickness /= n;
+  out.units_per_lambda = style.units_per_lambda;
+  for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
+    out.heights[t].height = style.heights[t].height;
+    out.heights[t].thickness = style.heights[t].thickness;
   }
   return HeightView{std::move(out)};
 }

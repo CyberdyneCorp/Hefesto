@@ -116,7 +116,8 @@ class WriteRun {
         units_(options.units.value_or(kDefaultUnits)),
         style_(editor.mask.output_styles.current_style()),
         scale_(lef::output_scale(style_) * static_cast<float>(units_)),
-        extract_style_(extract::StyleView::from_technology(tech_, quiet_)),
+        // ExtCurStyle (defWrite.c:816, 2538): the session's current extract style.
+        extract_style_(extract::StyleView::from_style(editor.extract.current)),
         map_(wd::info_order(editor.lefdef.layers, editor.lefdef.vias), tech_),
         layers_(editor.lefdef.layers),
         vias_(editor.lefdef.vias),
@@ -296,7 +297,6 @@ class WriteRun {
   std::int32_t units_;
   const mask::OutputStyle* style_;
   float scale_;
-  diag::NullSink quiet_;
   extract::StyleView extract_style_;
   wd::LayerMap map_;
   lef::LayerTable layers_;

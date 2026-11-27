@@ -76,8 +76,8 @@ class WriteRun {
       : editor_(editor),
         options_(options),
         compat_(session_compat(editor)),
-        style_(editor.technology != nullptr ? extract::StyleView::from_technology(*editor.technology, quiet_)
-                                            : extract::StyleView{}) {}
+        // ExtCurStyle (lefWrite.c:1268): the session's current extract style.
+        style_(extract::StyleView::from_style(editor.extract.current)) {}
 
   // The units a header-less write formats with: the session's with
   // magic-compat ON, recomputed with it OFF (Q-LEFDEF-34).
@@ -164,7 +164,6 @@ class WriteRun {
   editor::EditorState& editor_;
   const LefWriteOptions& options_;
   bool compat_;
-  diag::NullSink quiet_;
   extract::StyleView style_;
   std::vector<diag::Diagnostic> body_;
   bool wrote_macro_ = false;

@@ -153,6 +153,7 @@ void convert_caps(CapRules& caps, float dscale) {
 // doConvert (`units microns`): microns to lambda with dscale.
 void convert_units(ExtStyle& s, float dscale) {
   const float dsq = dscale * dscale;
+  s.distance_scale = dscale;
   for (DevicePattern& d : s.devices) {
     convert_device(d, dscale, s.magic_compat);
   }
@@ -200,7 +201,7 @@ void normalize(ExtStyle& s, diag::DiagnosticSink* sink) {
   }
 }
 
-ExtStyle convert(const ExtStyle& in, const mask::OutputStyle* style, diag::DiagnosticSink* sink) {
+ExtStyle convert(const ExtStyle& in, float dscale, diag::DiagnosticSink* sink) {
   ExtStyle out = in;
   if (out.converted) {
     return out;
@@ -211,7 +212,7 @@ ExtStyle convert(const ExtStyle& in, const mask::OutputStyle* style, diag::Diagn
     return out;
   }
   if (out.units_microns) {
-    convert_units(out, HeightView::microns_per_lambda(style));
+    convert_units(out, dscale);
   }
   normalize(out, sink);
   return out;
@@ -339,11 +340,15 @@ void scale_lengths(ExtStyle& s, std::int32_t n, std::int32_t d, bool magic_compa
 }  // namespace
 
 ExtStyle ExtStyle::micron_convert(const mask::OutputStyle* style) const {
-  return convert(*this, style, nullptr);
+  return convert(*this, HeightView::microns_per_lambda(style), nullptr);
 }
 
 ExtStyle ExtStyle::micron_convert(const mask::OutputStyle* style, diag::DiagnosticSink& sink) const {
-  return convert(*this, style, &sink);
+  return convert(*this, HeightView::microns_per_lambda(style), &sink);
+}
+
+ExtStyle detail::micron_convert(const ExtStyle& style, float dscale) {
+  return convert(style, dscale, nullptr);
 }
 
 ExtStyle ExtStyle::rescale(std::int32_t n, std::int32_t d, const compat::CompatSettings& compat) const {

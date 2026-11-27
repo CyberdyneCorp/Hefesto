@@ -159,4 +159,8 @@ void finalize_style(ExtStyle& style, const tech::Technology& tech);
 /// CapRules' lists from CapTables (the reader's form).
 void derive_rule_lists(ExtStyle& style, const tech::Technology& tech);
 
+/// ExtStyle::micron_convert with an explicit dscale (µm per lambda), for
+/// the views that take one (HeightView::from_section).
+[[nodiscard]] ExtStyle micron_convert(const ExtStyle& style, float dscale);
+
 }  // namespace hefesto::extract::detail

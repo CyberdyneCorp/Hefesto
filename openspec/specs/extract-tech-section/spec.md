@@ -76,6 +76,12 @@ Every type mentioned in the first type argument of `areacap, connect, contact, d
 - **THEN** the error `Malformed line for keyword perimc.  Correct usage:` is reported
 - **AND** no perimeter capacitance is recorded
 
+#### Scenario: Ambiguous prefix
+- **GIVEN** an extract style containing the line `side 10` (a prefix of `sidehalo`, `sideoverlap` and `sidewall`)
+- **WHEN** the tech file is loaded
+- **THEN** `Illegal keyword.  Legal keywords are:` is reported, followed by the keywords in the table's order
+- **AND** the side halo stays 0
+
 ### Requirement: Extraction styles and variants
 
 The section SHALL be partitioned into styles by `style` lines. `style NAME` SHALL declare style NAME. `style BASE variants V1,V2,...` (third token beginning with `variant`) SHALL declare one style per variant, named by concatenating BASE and the variant text (`BASE` + `Vi`, an empty variant giving `BASE`); the first variant is that line's default. Style names SHALL be kept in declaration order. Styles SHALL be looked up by prefix match of the style name against previously declared names when deciding whether a `style` line re-declares an existing style.
@@ -96,6 +102,13 @@ Selecting another style (`extract style NAME`, see `extract-commands`) SHALL re-
 - **GIVEN** the current style is `ngspice(si)` and the style body contains `variants (si)` followed by `areacap m1 25` and then `variants (),(orig)` followed by `areacap m1 30`
 - **WHEN** the style is loaded
 - **THEN** the area capacitance of `m1` is 25
+
+#### Scenario: A style's line errors are reported when it is selected
+- **GIVEN** styles `a` and `b`, where style `b` contains `cscale x` and `perimc metal1 space 20 extra`
+- **WHEN** the tech file is loaded
+- **THEN** only the malformed `perimc` line is reported (argument counts are checked on every line of the section)
+- **WHEN** `extract style b` is run, and again later
+- **THEN** each time `Cannot parse cap scale value "x"` and the malformed `perimc` line are reported, as the section is re-read for `b`
 
 ### Requirement: Style defaults
 
