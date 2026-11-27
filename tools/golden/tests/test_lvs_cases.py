@@ -72,6 +72,12 @@ class LvsCasesTest(unittest.TestCase):
                 self.assertEqual(loaded.tool, "netgen")
                 self.assertEqual(loaded.area, "LVS")
 
+    def test_every_case_is_deferred_until_the_lvs_command_replays_it(self):
+        self.assertFalse(lvs_cases.write_deferrals(CASES, check=True), "run tools/golden/authoring/lvs_cases.py")
+        block = lvs_cases.deferral_block(CASES)
+        for case in CASES:
+            self.assertIn(f"[{case.id}]", block)
+
     def test_scripts_print_every_command_result(self):
         for case in CASES:
             script = lvs_cases.run_script(case)

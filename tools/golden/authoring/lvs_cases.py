@@ -16,8 +16,9 @@ Each case is ``tests/golden/LVS/cases/<ID>/`` with ``case.toml`` and ``input/``:
   returned Tcl values are captured on stdout and a Tcl error never stops the script;
 * the outputs are stdout, stderr and the exit status (``bytes``), plus ``comp.out`` and, with ``-json``,
   ``comp.json`` (``lvs-canonical``, lvs-reports "Canonical golden comparison") for cases that run ``lvs``;
-* ``[hefesto]`` runs the same script through ``hefesto-cli`` once the ``lvs`` command exists
-  (``requires_commands``; LVSCMD, task 12), so replay skips the cases until then.
+* ``[hefesto]`` runs the same script through ``hefesto-cli``. Until the ``lvs`` command and a netgen script
+  driver exist (LVSCMD, task 12) every case is deferred to M9 in ``tests/golden/deviations.toml`` (the
+  block between the ``LVS deferrals`` markers, rewritten by this driver).
 
 Run ``python3 tools/golden/authoring/lvs_cases.py`` to (re)write every case; ``--check`` only reports
 cases whose files differ. ``expected/`` is never touched.
@@ -851,10 +852,53 @@ def write(cases: list[Case], check: bool = False, root: Path = CASES) -> list[st
     return stale
 
 
+DEVIATIONS = REPO / "tests" / "golden" / "deviations.toml"
+DEFERRAL_BEGIN = "# --- LVS deferrals (m9-lvs-simulation task 3.5; tools/golden/authoring/lvs_cases.py) ---\n"
+DEFERRAL_END = "# --- END LVS deferrals ---\n"
+DEFERRAL_REASON = ("captured from netgen 1.5.327 (m9-lvs-simulation design D19); hefesto-cli has no netgen "
+                   "script driver yet and its lvs command answers CORE-NOTIMPL-009 until LVSCMD (task 12) lands "
+                   "with LVSHIER and LVSREP: the owning workstream drops this deferral when the case replays")
+
+
+def output_names(case: Case) -> list[str]:
+    names = ["stdout.txt", "stderr.txt", "exitcode.txt"]
+    names += ["comp.out"] if case.lvs_outputs else []
+    names += ["comp.json"] if case.json else []
+    names += [n for n in case.extra_outputs if n not in names]
+    return names
+
+
+def deferral_block(cases: list[Case]) -> str:
+    """The deviations.toml entries that defer every LVS case to M9 until the lvs command replays it."""
+    lines = [DEFERRAL_BEGIN]
+    for case in cases:
+        lines.append(f"\n[{case.id}]\ndeferred = \"M9\"\noutputs = {_qlist(output_names(case))}\n"
+                     f"reason = {_q(DEFERRAL_REASON)}\n")
+    lines.append("\n" + DEFERRAL_END)
+    return "".join(lines)
+
+
+def write_deferrals(cases: list[Case], check: bool = False, path: Path = DEVIATIONS) -> bool:
+    """Replaces (or appends) the LVS block of deviations.toml; True when it changed (or would)."""
+    text = path.read_text(encoding="utf-8")
+    block = deferral_block(sorted(cases, key=lambda c: c.id))
+    if DEFERRAL_BEGIN in text:
+        start = text.index(DEFERRAL_BEGIN)
+        end = text.index(DEFERRAL_END, start) + len(DEFERRAL_END)
+        new = text[:start] + block + text[end:]
+    else:
+        new = text.rstrip("\n") + "\n\n" + block
+    if new != text and not check:
+        path.write_text(new, encoding="utf-8")
+    return new != text
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="report stale cases, write nothing")
     args = parser.parse_args(argv)
+    if write_deferrals(all_cases(), check=args.check):
+        print(DEVIATIONS)
     stale = write(all_cases(), check=args.check)
     for path in stale:
         print(path)
