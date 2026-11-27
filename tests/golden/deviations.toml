@@ -766,6 +766,36 @@ decisions = ["Q-EXTRACT-6"]
 outputs = ["ex.dounique.mag"]
 reason = "extract do unique reverts the temporary _uqN labels of every extracted cell, the top cell included, and restores its modified flag, so the saved ex keeps vdd! and net1 and its timestamp (Q-EXTRACT-6, fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"
 
+[EXTRACT-PDK-gf180mcu_fd_sc_mcu7t5v0]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands"
+
+[EXTRACT-PDK-sg13g2_stdcell]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands"
+
+[EXTRACT-PDK-sky130_fd_sc_hd]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands"
+
+[NETLIST-PDK-gf180mcu_fd_sc_mcu7t5v0]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once SPICE and SIM on the PDK standard cells (m7-extraction task 17.4) lands"
+
+[NETLIST-PDK-sg13g2_stdcell]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once SPICE and SIM on the PDK standard cells (m7-extraction task 17.4) lands"
+
+[NETLIST-PDK-sky130_fd_sc_hd]
+deferred = "M7"
+outputs = ["stdout.txt", "stderr.txt", "collected/*"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once SPICE and SIM on the PDK standard cells (m7-extraction task 17.4) lands"
+
 [NL-RES-02]
 decisions = ["Q-NETLIST-69"]
 outputs = ["stderr.txt", "collected/wire.all.res.ext", "collected/wire.force.res.ext"]

@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import antenna_cases  # noqa: E402
 import casegen  # noqa: E402
+import ext_pdk_cases  # noqa: E402
 import extract_cases  # noqa: E402
 import netlist_cases  # noqa: E402
 import rescmd_cases  # noqa: E402
@@ -52,7 +53,9 @@ OWNER = {"EX": "the EXTRACT workstreams through EXTCMD's driver (m7-extraction t
          "NL-RES": "RESCMD (m7-extraction task 14) with EXTCMD's extract all and RESNET's network",
          "NL-RESNET": "RESNET (m7-extraction task 13) with RESCMD's command (task 14)",
          "MISC-ANT": "ANTENNA (m7-extraction task 15)",
-         "LEFDEF": "EXTCMD's extract all feeding M6's def write (m7-extraction task 17.6)"}
+         "LEFDEF": "EXTCMD's extract all feeding M6's def write (m7-extraction task 17.6)",
+         "EXTRACT-PDK": "the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4)",
+         "NETLIST-PDK": "SPICE and SIM on the PDK standard cells (m7-extraction task 17.4)"}
 PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
          **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS}}
@@ -120,7 +123,7 @@ HAND_DERIVED: dict[str, str] = {netlist_cases.CHK_ID: netlist_cases.CHK_HAND_DER
 
 def tcl_cases() -> list[tclcase.TclCase]:
     return [*extract_cases.cases(), *netlist_cases.cases(), *resnet_cases.cases(), *rescmd_cases.cases(),
-            *antenna_cases.cases(), extract_cases.lefdef_336_case()]
+            *antenna_cases.cases(), extract_cases.lefdef_336_case(), *ext_pdk_cases.cases()]
 
 
 def authored_ids() -> list[str]:
@@ -172,6 +175,8 @@ def deviation_block() -> str:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
         reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
+        if "-PDK-" in case_id:
+            reason = f"authored in R6 (m7-extraction task 17.4); replays once {owner(case_id)} lands"
         if case_id.startswith(("NL-RES-", "NL-RESNET-")):
             reason = f"authored in R4 (m7-extraction task 17.3), expected/ not captured yet; replays once {owner(case_id)} lands"
         if case_id in HAND_DERIVED:

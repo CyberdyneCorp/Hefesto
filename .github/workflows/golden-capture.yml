@@ -198,6 +198,14 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
+      # EXTRACT-PDK-sg13g2_stdcell reads sg13g2_stdcell.gds of the ihp-gds-sc set (m7-extraction task 17.4);
+      # ci.yml saves the set under the same key.
+      - name: Restore ihp-gds-sc
+        id: ihp_gds_sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
+          key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
       # The LEF sets (m6-lef-def-oasis task 1.4), only with FETCH_LEF_SETS.
       - name: Restore sky130-lef
         id: sky130_lef
@@ -315,6 +323,21 @@ jobs:
           [ "$FETCH_M9_SETS" != "true" ] || m9_sets=(gf180mcu-netgen ihp-netgen sky130-ngspice gf180mcu-ngspice ihp-ngspice)
           python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-xschem gf180mcu-xschem ihp-xschem "${lef_sets[@]}" \
             "${m9_sets[@]}" --cli build/linux-release/src/cli/hefesto-cli
+
+      # A restored set only has its digest verified; on a miss the step builds hefesto-cli for the install.
+      - name: Fetch or verify ihp-gds-sc
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          if [ "${{ steps.ihp_gds_sc.outputs.cache-hit }}" != "true" ] && [ ! -x build/linux-release/src/cli/hefesto-cli ]; then
+            sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+            python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+            cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+            cmake --build --preset linux-release --target hefesto-cli
+          fi
+          python3 scripts/fetch_pdk.py ihp-gds-sc --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Save sky130
         if: steps.sky130.outputs.cache-hit != 'true'
