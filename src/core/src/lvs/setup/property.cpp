@@ -178,11 +178,12 @@ cmd::Value list_of(const Cell& cell) {
   for (const auto& def : cell.properties) {
     // Integer tolerances print as integers, all others as Tcl doubles
     // (`{w string 0.0}`, `{model string 3.0}`; capture of NG-SET-06).
-    cmd::Value tolerance = def.tolerance;
-    if (def.type == PropertyType::integer) {
-      tolerance = static_cast<std::int64_t>(def.tolerance);
-    }
-    out.emplace_back(cmd::Value::List{def.key, std::string{type_name(def.type)}, tolerance});
+    // One construction, no reassignment: GCC 13's -Wmaybe-uninitialized
+    // misreads a reassigned variant in optimized builds.
+    const bool integer = def.type == PropertyType::integer;
+    out.emplace_back(cmd::Value::List{def.key, std::string{type_name(def.type)},
+                                      integer ? cmd::Value{static_cast<std::int64_t>(def.tolerance)}
+                                              : cmd::Value{def.tolerance}});
   }
   return out;
 }
