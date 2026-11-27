@@ -72,8 +72,31 @@ Verilog, `.sim` and `.ext` readers (tasks.md 6.3) still fail with
 
 ## LVSSETUP
 
-Codes of setup-file evaluation (`lvs/setup/`; capability lvs-setup-file).
-None yet.
+Codes of setup-file evaluation (`lvs/setup/`; capability lvs-setup-file,
+`evaluate_setup` in `hefesto/lvs/setup/setup.hpp`).
+
+- `LVS-SETUP-001` (warning) is one failed setup-file command. netgen's line
+  `Error <setupfile>:<line> (ignoring), <message>` goes to the setup log's
+  stderr; evaluation goes on, and `Warning:  There were errors reading the
+  setup file` follows at the end. `<line>` is the last line read for a
+  command that spans lines.
+- `LVS-SETUP-002` and `-003` are the setup-file name errors of "Setup file
+  evaluation" (missing, unreadable); a missing name that contains `nosetup`
+  is no error.
+- `LVS-SETUP-004` ends evaluation when the step budget (Tcl commands counted
+  by the interpreter, default 50 million) or the wall-time backstop (default
+  60 s, for a compiled loop such as `while {1} {}` that runs no command) is
+  exhausted; `-005` ends it when the run is cancelled (polled before each
+  command, inside every setup command and from the interpreter's progress
+  hook). Both apply in the two `netgen-compat` modes ("Setup evaluation is
+  bounded and cancellable").
+- `LVS-SETUP-006` is the Tcl error a setup command raises (`No such cell!`,
+  `Cells to equate are in the same netlist.`, ...); evaluate_setup reports it
+  as `-001`.
+- `LVS-SETUP-007` refuses a setup file larger than 16 MiB, a crafted-input
+  limit in both modes.
+- `LVS-SETUP-008` refuses a context without both circuits or with a step or
+  time budget of zero or above twice its default.
 
 ## LVSALG
 
@@ -167,4 +190,12 @@ fails when the two disagree.
 | `LVS-READ-024` | error | A path cannot be read: no file service was given, or a `~user` prefix cannot be expanded on this platform (Q-LVS-14). |
 | `LVS-READ-025` | error | One read performs more than 65536 `.INCLUDE` reads, or its includes hold more than 64 times the logical-line limit in bytes (an include tree that multiplies, below the depth limit); the read stops. |
 | `LVS-REDUCE-001` | warning | A permutable pair of a class names a pin the class does not have (`Class <c> does not have pin <p>.`); no permutation of that class is applied. |
+| `LVS-SETUP-001` | warning | A setup-file command failed (`Error <setupfile>:<line> (ignoring), <message>`); evaluation continues with the next command, and `Warning:  There were errors reading the setup file` follows at the end. |
+| `LVS-SETUP-002` | error | The setup file does not exist and its name does not contain `nosetup` (`Error:  Setup file <f> does not exist.`); the `lvs` command ends. |
+| `LVS-SETUP-003` | error | The setup file exists but cannot be read (`Error:  Cannot read the setup file <f>`). |
+| `LVS-SETUP-004` | error | Setup evaluation ran out of its step budget (default 50 million Tcl commands) or its wall-time backstop (default 60 s, for compiled loops that run no command); evaluation stops and the run is an error. |
+| `LVS-SETUP-005` | warning | The run was cancelled during setup evaluation; evaluation stops and the run is cancelled. |
+| `LVS-SETUP-006` | error | A setup command raised an error (the netgen message, e.g. `No such cell!`); inside a setup file it is reported as LVS-SETUP-001. |
+| `LVS-SETUP-007` | error | The setup file is larger than the setup-file limit (16 MiB, a crafted-input limit in both modes); nothing is evaluated. |
+| `LVS-SETUP-008` | error | The setup context is incomplete (a circuit is missing), or its step or time budget is zero or above twice the default. |
 <!-- END DIAGNOSTIC CODES -->

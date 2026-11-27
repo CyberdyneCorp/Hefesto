@@ -95,3 +95,16 @@ Hefesto runs each case through `hefesto-cli` with the same inputs.
 | NG-PDK-02 | lvs-hierarchy | gf180mcuD setup, standard-cell block with fill/decap cells | full comp.out | ignore command; Compare queue construction |
 | NG-PDK-03 | lvs-hierarchy | `ihp-sg13g2_setup.tcl` (Q-LVS-31), resistor/capacitor PCells with series/parallel segments | full comp.out | Series/parallel network reconciliation |
 | NG-CMD-01 | lvs-command | Hefesto only: `lvs -layout inv inv.spice sky130A` vs netgen on the `ext2spice lvs` file | equality of result and canonical comp.out | Layout netlist from extraction |
+
+## As authored (M9 R3, task 3.5)
+
+Written by the LVS implementation team (branch `m9-round3-lvsinput`) from the specs only, with `tools/golden/authoring/lvs_cases.py`; rerun it after editing a case. Each case is `cases/<ID>/` with `case.toml` (tool `netgen`, `provenance`, requirement tags of its capability) and `input/`:
+- `input/run.tcl` is what the capture runs (`netgen -batch source input/run.tcl` in `/work`): each command is wrapped in `catch` and prints `[<n>] code <c>: <value>`, so returned values are on stdout and an error never stops the script; it ends with `exit 0`.
+- Outputs: stdout, stderr and the exit status (`bytes`), plus `comp.out` and, with `-json`, `comp.json` (`lvs-canonical`) when the case runs `lvs`; NG-REP-01 and NG-REP-05 also keep the log files they write.
+- Replay runs the same script through `hefesto-cli` once the `lvs` command exists (`requires_commands = ["lvs"]`).
+
+Differences from the table above:
+- NG-PROP-11 is tagged `lvs-setup-file` ("property topology and derive" is a heading of that capability).
+- Requirement names of other capabilities were dropped from NG-ALG-01..03 (Final result, Device mismatch report, Net mismatch report), NG-SET-04 (Permutable pins in matching) and NG-SET-13 (Two-column layout): a case carries one capability.
+- NG-PDK-01 compares a hand-written netlist in the shape of an `ext2spice lvs` netlist (not one extracted by Magic) with a schematic-style netlist; NG-PDK-02 and -03 use small hand-written blocks with the PDK device names. Their setup file is staged unmodified from the pinned data set (`sky130-xschem`, `gf180mcu-netgen`, `ihp-netgen`).
+- Capture-blocked: NG-PDK-02 and -03 until `tools/golden/goldenlib/external.py` accepts the `gf180mcu-netgen` and `ihp-netgen` sets; NG-CMD-01 until the capture can produce Magic's `ext2spice lvs` netlist of the inv layout before netgen runs.
