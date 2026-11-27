@@ -1,6 +1,8 @@
 file mkdir out
 if 1 {
-schematic open input/bad.sch
-schematic save out/bad.sch
+xschem load input/bad.sch
+puts "wires [xschem get wires]"
+puts "instances [xschem get instances]"
+xschem saveas out/bad.sch schematic
 list
 }

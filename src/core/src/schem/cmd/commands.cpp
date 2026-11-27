@@ -60,6 +60,7 @@ cmd::CommandResult schematic(cmd::CommandContext& ctx, const cmd::Invocation& in
   Session& session = editor.value()->schem;
   session.compat = &ctx.project().compat;
   session.files = &ctx.services().files;
+  session.script = &ctx.session();
   if (inv.args.empty()) return option_help(ctx, session, {});
   const std::vector<std::string_view> names = option_names();
   const auto index = match_keyword(inv.args.front(), names);

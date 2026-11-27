@@ -41,13 +41,18 @@ namespace {
 using namespace cmdimpl;
 using Args = std::span<const std::string>;
 
-constexpr std::array<std::string_view, 36> kSubcommands{
-    "annotate_op", "change_sch_path", "descend",   "expandlabel",    "get",          "get_tok",
-    "getprop",     "go_back",         "hilight_instname", "hilight_netname", "instance_list", "load",
-    "load_new_window", "logic_set",   "netlist",   "place_symbol",   "raw",          "raw_clear",
-    "raw_read",    "rebuild_connectivity", "redraw", "reset_caches", "save",         "search",
-    "select",      "selected_set",    "set",       "setprop",        "simulate",     "subst_tok",
-    "translate",   "unhilight_all",   "unselect_all", "update_all_sym_bboxes", "version", "zoom_full"};
+constexpr std::array<std::string_view, 41> kSubcommands{
+    "annotate_op", "change_sch_path", "clear",     "copy",           "descend",      "expandlabel",
+    "get",         "get_tok",         "getprop",   "go_back",        "hilight_instname", "hilight_netname",
+    "instance",    "instance_list",   "load",      "load_new_window", "logic_set",   "netlist",
+    "paste",       "place_symbol",    "raw",       "raw_clear",      "raw_read",     "rebuild_connectivity",
+    "redraw",      "reset_caches",    "save",      "saveas",         "search",       "select",
+    "selected_set", "set",            "setprop",   "simulate",       "subst_tok",    "translate",
+    "unhilight_all", "unselect_all",  "update_all_sym_bboxes", "version", "zoom_full"};
+
+// The process exit status of a run whose `xschem netlist` reported failure,
+// as xschem's (Q-SCHEM-61; schematic-command "Headless use").
+constexpr int kNetlistFailedStatus = 10;
 
 // `xschem set` variables that only change xschem's drawing or GUI state.
 constexpr std::array<std::string_view, 9> kGuiVariables{"cadgrid",   "cadsnap",           "draw_window",
@@ -60,6 +65,14 @@ cmd::CommandResult unsupported(std::string_view what) {
 
 cmd::CommandResult wrong_args(std::string_view sub) {
   return fail(kUsage, "xschem " + std::string{sub} + ": wrong number of arguments");
+}
+
+cmd::CommandResult bad_argument(std::string_view sub, std::string_view word) {
+  return fail(kUsage, "xschem " + std::string{sub} + ": bad argument \"" + std::string{word} + "\"");
+}
+
+cmd::CommandResult needs_editor(std::string_view sub) {
+  return fail(kXschemNeedsEditor, "xschem command '" + std::string{sub} + "' needs the editor");
 }
 
 cmd::CommandResult done(cmd::Value value = {}) {
@@ -99,6 +112,11 @@ std::optional<long long> parse_int(std::string_view text) {
   const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
   if (ec != std::errc{} || end != text.data() + text.size()) return std::nullopt;
   return value;
+}
+
+// Whether `text` addresses an instance by index: decimal digits only.
+bool all_digits(std::string_view text) {
+  return !text.empty() && std::all_of(text.begin(), text.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
 
 // Element `n` of the instance name `name` (1 the leftmost, -1 the
@@ -151,17 +169,21 @@ class Xschem {
   static const std::map<std::string_view, Method>& handlers() {
     static const std::map<std::string_view, Method> table{
         {"annotate_op", &Xschem::m9},         {"change_sch_path", &Xschem::change_sch_path},
+        {"clear", &Xschem::clear},            {"copy", &Xschem::copy},
         {"descend", &Xschem::descend},        {"expandlabel", &Xschem::expandlabel},
         {"get", &Xschem::get},                {"get_tok", &Xschem::get_tok},
         {"getprop", &Xschem::getprop},        {"go_back", &Xschem::go_back},
         {"hilight_instname", &Xschem::hilight_instname}, {"hilight_netname", &Xschem::hilight_netname},
-        {"instance_list", &Xschem::instance_list}, {"load", &Xschem::load},
+        {"instance", &Xschem::instance},      {"instance_list", &Xschem::instance_list},
+        {"load", &Xschem::load},
         {"load_new_window", &Xschem::load_new_window}, {"logic_set", &Xschem::nothing},
-        {"netlist", &Xschem::netlist},        {"place_symbol", &Xschem::place_symbol},
+        {"netlist", &Xschem::netlist},        {"paste", &Xschem::paste},
+        {"place_symbol", &Xschem::place_symbol},
         {"raw", &Xschem::raw},                {"raw_clear", &Xschem::m9},
         {"raw_read", &Xschem::m9},            {"rebuild_connectivity", &Xschem::rebuild_connectivity},
         {"redraw", &Xschem::nothing},         {"reset_caches", &Xschem::reset_caches},
-        {"save", &Xschem::save},              {"search", &Xschem::search},
+        {"save", &Xschem::save},              {"saveas", &Xschem::saveas},
+        {"search", &Xschem::search},
         {"select", &Xschem::select},          {"selected_set", &Xschem::selected_set},
         {"set", &Xschem::set},                {"setprop", &Xschem::setprop},
         {"simulate", &Xschem::m9},            {"subst_tok", &Xschem::subst_tok},
@@ -188,9 +210,7 @@ class Xschem {
   // ---- no-ops, M9 and the editor -------------------------------------------
   cmd::CommandResult nothing(Args /*args*/) { return done(); }
   cmd::CommandResult m9(Args /*args*/) { return fail(not_implemented("xschem simulation results (M9)")); }
-  cmd::CommandResult place_symbol(Args /*args*/) {
-    return fail(kXschemNeedsEditor, "xschem command 'place_symbol' needs the editor");
-  }
+  cmd::CommandResult place_symbol(Args /*args*/) { return needs_editor("place_symbol"); }
   cmd::CommandResult version(Args args) { return args.empty() ? done(std::string{kWriterVersion}) : wrong_args("version"); }
 
   cmd::CommandResult raw(Args args) {
@@ -207,9 +227,18 @@ class Xschem {
                      std::move(warnings));
   }
 
+  // `xschem get_tok <s> <key> [<n>]` (Q-SCHEM-62 (a)): `<n>` 1 returns the
+  // value as stored (a quoted value keeps its quotes), any other integer
+  // the decoded value, as without `<n>`; both modes.
   cmd::CommandResult get_tok(Args args) {
-    if (args.size() != 2) return wrong_args("get_tok");
-    return done(get_token(args[0], args[1]).value_or(std::string{}));
+    if (args.size() < 2 || args.size() > 3) return wrong_args("get_tok");
+    ValueForm form = ValueForm::decoded;
+    if (args.size() == 3) {
+      const auto n = parse_int(args[2]);
+      if (!n) return bad_argument("get_tok", args[2]);
+      if (*n == 1) form = ValueForm::raw;
+    }
+    return done(get_token(args[0], args[1], form).value_or(std::string{}));
   }
 
   cmd::CommandResult subst_tok(Args args) {
@@ -269,16 +298,29 @@ class Xschem {
     if (key == "current_win_path") return done(".drw");
     if (key == "version") return done(std::string{kWriterVersion});
     if (key == "sch_path") return schematic({"hierarchy", "path"});
-    if (key == "current_name" || key == "schname" || key == "netlist_dir") return get_document_key(key);
+    static constexpr std::array<std::string_view, 5> kDocumentKeys{"current_name", "schname", "netlist_dir",
+                                                                   "instances", "wires"};
+    if (std::find(kDocumentKeys.begin(), kDocumentKeys.end(), key) != kDocumentKeys.end()) {
+      return get_document_key(key);
+    }
     return unsupported("get " + key);
   }
 
+  // The keys read from the active document. A document never saved is
+  // named `untitled.sch` (`untitled.sym`), as `xschem clear` names it.
   cmd::CommandResult get_document_key(const std::string& key) {
     const Document* doc = document();
     if (doc == nullptr) return no_document();
-    if (key == "current_name") return done(doc->path.filename().generic_string());
+    if (key == "instances") return done(static_cast<std::int64_t>(doc->instances.size()));
+    if (key == "wires") return done(static_cast<std::int64_t>(doc->wires.size()));
+    if (key == "current_name") return done(current_name(*doc));
     if (key == "schname") return done(doc->path.generic_string());
     return done(netlist_dir().generic_string());
+  }
+
+  static std::string current_name(const Document& doc) {
+    if (!doc.path.empty()) return doc.path.filename().generic_string();
+    return doc.kind == FileKind::symbol ? "untitled.sym" : "untitled.sch";
   }
 
   platform::Path netlist_dir() {
@@ -317,12 +359,13 @@ class Xschem {
     return wrong_args("getprop");
   }
 
-  // The instance by name, else by index when the text is a number (xschem
-  // accepts both).
-  std::optional<std::size_t> instance_index(const Document& doc, const std::string& inst) {
-    if (const auto found = find_instance(doc, inst)) return found;
+  // `<inst>` of the xschem table: an index (from 0, in file order) when it
+  // is all decimal digits, otherwise an instance name, so an instance named
+  // `3` is reached only by its index ("Instance addressed by index").
+  static std::optional<std::size_t> instance_index(const Document& doc, const std::string& inst) {
+    if (!all_digits(inst)) return find_instance(doc, inst);
     const auto n = parse_int(inst);
-    if (n && *n >= 0 && static_cast<std::size_t>(*n) < doc.instances.size()) return static_cast<std::size_t>(*n);
+    if (n && static_cast<std::size_t>(*n) < doc.instances.size()) return static_cast<std::size_t>(*n);
     return std::nullopt;
   }
 
@@ -330,7 +373,7 @@ class Xschem {
     const Document* doc = document();
     if (doc == nullptr) return no_document();
     const auto index = instance_index(*doc, args[0]);
-    if (!index) return fail(kNoObject, "schematic: no instance \"" + args[0] + "\"");
+    if (!index) return fail(kNoObject, "xschem getprop: instance not found:" + args[0]);
     const auto key = args.size() > 1 ? std::optional<std::string>{args[1]} : std::nullopt;
     return done(property_value(doc->instances[*index].props, key));
   }
@@ -346,7 +389,7 @@ class Xschem {
       const auto key = args.size() > 2 ? std::optional<std::string>{args[2]} : std::nullopt;
       return done(property_value(box.props, key));
     }
-    return fail(kNoObject, "schematic: no box " + args[1] + " on layer " + args[0]);
+    return fail(kNoObject, "xschem getprop rect: no such box");
   }
 
   cmd::CommandResult setprop(Args args) {
@@ -376,14 +419,98 @@ class Xschem {
     return saved.ok() ? done() : saved;
   }
 
+  // `xschem netlist` (Q-SCHEM-61 (a)). With xschem-compat ON it returns
+  // xschem's value, 0 on success and 1 after a run that reports failure,
+  // without raising: the file is written anyway (as xschem writes it) and
+  // the run's exit status becomes 10. With xschem-compat OFF a failure
+  // raises, as `schematic netlist` does. An interrupted run raises in both.
   cmd::CommandResult netlist(Args args) {
     if (!args.empty()) return wrong_args("netlist");
     const Document* doc = document();
     if (doc == nullptr) return no_document();
     const std::string name = state_.netlist_name.empty() ? doc->path.stem().generic_string() + ".spice"
                                                          : std::exchange(state_.netlist_name, std::string{});
-    const cmd::CommandResult result = schematic({"netlist", (netlist_dir() / name).generic_string()});
-    return done(result.ok() ? 0 : 1);  // xschem returns 1 for a failed netlist, 0 for success
+    const bool compat = session_compat(session_);
+    std::vector<std::string> command{"netlist", (netlist_dir() / name).generic_string()};
+    if (compat) command.emplace_back("-force");
+    cmd::CommandResult result = schematic(std::move(command));
+    if (result.ok()) return done(0);
+    if (!compat || interrupted(result)) return result;
+    if (session_.script != nullptr && session_.script->exit_status == 0) {
+      session_.script->exit_status = kNetlistFailedStatus;
+    }
+    return done(1);
+  }
+
+  static bool interrupted(const cmd::CommandResult& result) {
+    return std::any_of(result.diagnostics.begin(), result.diagnostics.end(),
+                       [](const diag::Diagnostic& d) { return d.code == kNetlistInterrupted; });
+  }
+
+  // `xschem saveas <file> [schematic|symbol]`: `schematic save <file>`
+  // without asking; the kind word is accepted (the file's extension gives
+  // the kind written). 1 when the file is written, 0 otherwise.
+  cmd::CommandResult saveas(Args args) {
+    if (args.empty()) return needs_editor("saveas");
+    if (args.size() > 2) return wrong_args("saveas");
+    if (document() == nullptr) return no_document();
+    return done(schematic({"save", args[0], "-force"}).ok() ? 1 : 0);
+  }
+
+  // `xschem clear [force] [schematic|symbol]`: the active document becomes
+  // a new empty unsaved one. Without `force` a modified document is saved
+  // first with xschem-compat ON (as xschem does in a run without its GUI;
+  // one never saved is dropped), and refused with xschem-compat OFF
+  // ("clear without force"; Hefesto has no prompt in a script run).
+  cmd::CommandResult clear(Args args) {
+    const bool force = !args.empty() && args[0] == "force";
+    const Args rest = args.subspan(force ? 1 : 0);
+    if (rest.size() > 1) return wrong_args("clear");
+    const std::string kind = !rest.empty() && rest[0] == "symbol" ? "symbol" : "schematic";
+    if (document() != nullptr) {
+      cmd::CommandResult closed = force ? done() : save_before_clear();
+      if (closed.ok()) closed = schematic({"close", "-discard"});
+      if (!closed.ok()) return closed;
+    }
+    const cmd::CommandResult created = schematic({"new", kind});
+    return created.ok() ? done() : created;
+  }
+
+  // "clear without force": a modified active document is saved first with
+  // xschem-compat ON (one never saved is dropped), refused with it OFF.
+  cmd::CommandResult save_before_clear() {
+    const Document& doc = *document();
+    if (!doc.modified) return done();
+    if (!session_compat(session_)) return fail(kUnsaved, "schematic: unsaved changes");
+    return doc.path.empty() ? done() : schematic({"save"});
+  }
+
+  // `xschem instance <sym> <x> <y> <rot> <flip> [<props>]`: `schematic place`.
+  cmd::CommandResult instance(Args args) {
+    if (args.size() < 5 || args.size() > 6) return wrong_args("instance");
+    std::vector<std::string> command{"place", args[0], args[1], args[2], "-rot", args[3], "-flip", args[4]};
+    if (args.size() == 6) {
+      command.emplace_back("-props");
+      command.push_back(args[5]);
+    }
+    const cmd::CommandResult placed = schematic(std::move(command));
+    return placed.ok() ? done() : placed;
+  }
+
+  // `xschem copy`: the selection to the clipboard (`schematic clipboard copy`).
+  cmd::CommandResult copy(Args args) {
+    if (!args.empty()) return wrong_args("copy");
+    const cmd::CommandResult copied = schematic({"clipboard", "copy"});
+    return copied.ok() ? done() : copied;
+  }
+
+  // `xschem paste <x> <y>`: `schematic paste`; without a point it places
+  // interactively, which needs the editor.
+  cmd::CommandResult paste(Args args) {
+    if (args.empty()) return needs_editor("paste");
+    if (args.size() != 2) return wrong_args("paste");
+    const cmd::CommandResult pasted = schematic({"paste", args[0], args[1]});
+    return pasted.ok() ? done() : pasted;
   }
 
   cmd::CommandResult go_back(Args args) { return args.empty() ? schematic({"ascend"}) : wrong_args("go_back"); }
