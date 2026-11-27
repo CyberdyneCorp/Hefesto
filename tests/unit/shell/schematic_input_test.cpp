@@ -179,6 +179,8 @@ TEST_CASE("keys on the schematic canvas run the xschem-style bindings",
   CHECK(f.send(key('Z')).line == "schematic zoom_full");
 }
 
+// Q-SCHEM-66 (a), approved 2026-11-27: Command-C/V on macOS; Ctrl-C/V
+// elsewhere, Ctrl-C interrupting while a netlist runs; both modes.
 TEST_CASE("Copy and Paste on the schematic canvas use the platform's chord",
           "[cap:schematic-editing][req:Clipboard]") {
   SECTION("Linux: Ctrl-C copies unless a netlist runs, Ctrl-V pastes at the pointer") {
@@ -254,7 +256,9 @@ TEST_CASE("R and F on the canvas name the snapped pointer position as the pivot"
 
 // Regression (M8 round 6 review): the Copy and Paste chords were checked
 // before the `schematic` table, so a binding of Control_c, Control_v or (on
-// macOS) Meta_c, Meta_v was ignored although the keys are rebindable (D15).
+// macOS) Meta_c, Meta_v was ignored although the keys are rebindable (D15,
+// Q-SCHEM-66 (a), approved 2026-11-27). The interrupt while a netlist runs
+// stays Ctrl-C.
 TEST_CASE("a binding of the Copy and Paste chords comes before the clipboard",
           "[cap:schematic-editing][req:Desktop and touch interaction]") {
   SECTION("Linux") {

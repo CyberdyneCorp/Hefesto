@@ -743,31 +743,43 @@ jobs:
       # m8-schematic task 13.2: the Schematic tab of the product app, for the rows of
       # docs/design/m8-ui-conformance.md. The app opens a test bench of the system library
       # (tests/data/schem/devlib/tb/ihp_style_tb.sch: its symbols resolve from the assets/schematic copy next
-      # to the executable) and the --input script clicks the Schematic segment of the top bar's view tabs
-      # (window point 362,24 at 1280 x 800: the tabs span x 252-548, Schematic is 320-405 after Layout), then
-      # waits for the symbol worker. After the script the app prints "hefesto: schematic tab <breadcrumb>,
-      # <n> instances, <k> pending" when the tab is shown; the step fails without that line (Linux, under
-      # Xvfb). macOS runs on the runner's window server, whose 1024 px screen leaves no room for the view
-      # tabs: not gating there.
+      # to the executable). On Linux the --input script clicks the Schematic segment of the top bar's view
+      # tabs (window point 362,24 at 1280 x 800: the tabs span x 252-548, Schematic is 320-405 after Layout).
+      # The macOS runner's 1024 px screen leaves no room for the view tabs, so there the `tab schematic`
+      # command shows it (M8 round 7). After the script the app prints "hefesto: schematic tab <breadcrumb>,
+      # <n> instances, <k> pending, canvas <w> x <h>" when the tab is shown, and one "hefesto: panel ..." line
+      # per layout dock still shown. The step fails without the tab line, when a layout dock stays shown
+      # around the Schematic tab, or when the canvas is under 400 x 250 px (round 6: about 200 x 145), on
+      # every desktop leg (macOS gating since round 7: CI run 46044640125, canvas 469 x 338).
       - name: Capture the Schematic tab
         if: matrix.desktop || matrix.moltenvk
-        continue-on-error: ${{ runner.os == 'macOS' }}
         shell: bash
         run: |
           mkdir -p schematic-captures
           capture="schematic-captures/schematic-tab-${{ matrix.name }}.ppm"
           log="schematic-captures/schematic-tab-${{ matrix.name }}.log"
           app="build/${{ matrix.preset }}/src/shell/desktop/hefesto"
-          args=(--width 1280 --height 800 --run "schematic open tests/data/schem/devlib/tb/ihp_style_tb.sch"
-                --input "wait 500; down 362,24; up 362,24; wait 3000"
-                --capture "$capture" --capture-frames 60 --no-vsync)
+          open="schematic open tests/data/schem/devlib/tb/ihp_style_tb.sch"
           if [ "$RUNNER_OS" = "Linux" ]; then
+            args=(--width 1280 --height 800 --run "$open"
+                  --input "wait 500; down 362,24; up 362,24; wait 3000"
+                  --capture "$capture" --capture-frames 60 --no-vsync)
             RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}" | tee "$log"
           else
+            args=(--width 1280 --height 800 --run "$open; tab schematic"
+                  --input "wait 500; wait 3000"
+                  --capture "$capture" --capture-frames 60 --no-vsync)
             "$app" "${args[@]}" | tee "$log"
           fi
           test -s "$capture"
           grep -q "^hefesto: schematic tab ihp_style_tb.sch, [1-9][0-9]* instances, 0 pending" "$log"
+          if grep "^hefesto: panel " "$log"; then
+            echo "layout docks stay shown around the Schematic tab"; exit 1
+          fi
+          size=$(sed -n 's/^hefesto: schematic tab .*, canvas \([0-9]*\) x \([0-9]*\)$/\1 \2/p' "$log")
+          read -r width height <<< "$size"
+          echo "schematic canvas ${width:-?} x ${height:-?} px"
+          [ "${width:-0}" -ge 400 ] && [ "${height:-0}" -ge 250 ]
 
       - name: Upload the Schematic tab capture
         if: always() && (matrix.desktop || matrix.moltenvk)

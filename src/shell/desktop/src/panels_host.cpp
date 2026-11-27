@@ -231,6 +231,9 @@ void MainWindow::apply_panel_flags(const std::vector<std::string>& args) {
 // --- arranging ---------------------------------------------------------------------------------
 
 MainWindow::FrameState MainWindow::frame_state(const std::string& id) const {
+  // M8 round 7: the Schematic tab has its own panels (library, messages,
+  // properties); the layout docks give it the window while it is shown.
+  if (schematic_tab_) return FrameState::hidden;
   if (id == "layers") {
     // While the DRC browser is shown in the same dock it takes the Layers' place.
     if (drc_visible_ && same_dock("drc", "layers")) return FrameState::hidden;
