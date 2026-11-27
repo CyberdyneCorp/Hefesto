@@ -13,6 +13,8 @@ M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open 
 
 **Status as of 2026-11-27.** The user approved on 2026-11-27 every row raised in round R5, each with its recommended option: Q-EXTRACT-42 (compat), Q-EXTRACT-43 (fix, both modes), Q-EXTRACT-44 (compat), the Q-NETLIST-69 amendment (fix, both modes: reverse first-mention order, glibc merge sort with devSortFunc), Q-NETLIST-70 (replicate: proposed as compat-neutral; `ext2sim` uses the short mode `ext2spice short` set and `ext2sim default` clears it) and Q-NETLIST-71 to 76 (compat, as implemented in round R5). The R5 crafted-input limits (Q-NETLIST-76's 64-level depth cap, M7-S1's field counts and the R5 fuzz harness caps) stand approved under the standing rule of 2026-11-25. The open-questions entries carry `Status: approved 2026-11-27` and a `Resolution:` line, and the specs cite the plain row IDs (section "Entries approved 2026-11-27"; recorded in round R6, branch `m7-round6-decide-perf`). Q-NETLIST-58 keeps its kind; task 10.6 (round R6, workstream CORE) replaces its fixed text with the OS error text.
 
+**Status as of 2026-11-27 (R6 integration).** Round R6 raised three rows, all pending a user decision and each implemented with its recommended option (section "Entries proposed in round R6"): Q-EXTRACT-45 (`lef write`/`def write` use the selected extract style; recommended replicate), Q-EXTRACT-46 (the non-electrical types accumulate over style selections; recommended compat; implemented since R2 without a row) and Q-NETLIST-77 (an empty line before the common usage text; recommended compat-neutral). Q-NETLIST-58's accepted difference is closed by task 10.6, and Q-EXTRACT-36 carries a note that a real PDK cell (sky130 `probec_p_8`) reaches its case (h). No new crafted-input resource limit was added in R6.
+
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
@@ -374,6 +376,18 @@ Applied 2026-11-27 (round R6), after the approval:
 - **Q-NETLIST-70:** `netlist-sim` "Command options and defaults" cites the row (resolution: replicate); the scenario "ext2sim honours the ext2spice short mode" cites it and "ext2sim default clears the shared short mode" is new.
 - **Q-NETLIST-71, 72, 75:** `extresist-command`; **Q-NETLIST-73, 74:** `extresist-output`; **Q-NETLIST-76:** `extresist-network`: "(proposed Q-...)" becomes the plain row ID.
 - Q-NETLIST-69's amended text in `extresist-command` already cites the row and needs no change.
+
+## Entries proposed in round R6
+
+Raised in M7 round R6 (TECH, GOLDEN through NL-FLAT-20, and the R6 integration) for Magic behaviours no row covered, each implemented per the standing rule with a test; none is approved yet.
+
+| ID | Question | Kind (recommended) | As implemented | Spec | Raised by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-45 | `lef write` and `def write` use the selected extract style | **replicate** (recommended) | both modes: the writers' StyleView comes from `EditorState::extract.current` (`ExtCurStyle`) | lef-write "Macro source geometry and layer masks", def-write "BLOCKAGES section" (scenarios) | TECH (R6) |
+| Q-EXTRACT-46 | The non-electrical types accumulate over the style selections since the tech load | **compat** (recommended) | ON: `allExtractTypes` accumulates as Magic; OFF: each style's own mentions | extract-tech-section "Non-electrical types" (to cite the row when decided) | R6 integration (implemented since R2) |
+| Q-NETLIST-77 | An empty line before the common usage text when the tool's parser rejects a flag | **compat-neutral** (recommended) | both modes: `\n` then the usage text, as EFargs.c:290 (NL-FLAT-20 replays) | ext-flattening-hierarchy "Common netlister arguments" (sentence and scenario) | GOLDEN (R6, NL-FLAT-20) |
+
+Tests: Q-EXTRACT-45 `tests/unit/lef/write/style_select_test.cpp`, `tests/unit/def/write/style_select_test.cpp` (both modes); Q-EXTRACT-46 `tests/unit/extract/tech/ext_style_rules_test.cpp` (ON and OFF); Q-NETLIST-77 `tests/unit/extflat/args_names_test.cpp` (mode-independent parse).
 
 ## Notable changes to the entries' original recommendations
 

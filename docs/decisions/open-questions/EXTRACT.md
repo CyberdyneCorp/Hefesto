@@ -340,6 +340,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Options: fix (as implemented) | replicate (not possible for undefined behaviour)
 - Recommendation: fix. Real layouts never reach (a), (c) or (d); (b) and (e)-(i) change no captured case.
 - Resolution: fix — in both modes, (a) to (i) as implemented in round R3. Tests exist for (a), (b), (c), (d), (e) and (g); round R5 (m7-round5-extract) adds (f): `tests/unit/extract/device/abut_probe_test.cpp` "Q-EXTRACT-36 (f): a record outside the tile type's list ends the match search after one turn" calls `device_detail::find_match` directly with EX-P03's pmos record and hangs without the bound. (h) and (i) have no test: (h) Hefesto's L and W are fields of a per-device record that start at 0, so there is no carried state to catch; (i) `r_value` is internal to `device_params.cpp`, and through a layout every device region has a Manhattan boundary on its own plane, so the perimeter is never 0 (the guard stays). No spec change: real layouts never reach these inputs. Approved 2026-11-25.
+- Note (round R6 integration, 2026-11-27): the recommendation's "real layouts never reach" does not hold for (h): the EXTRACT-PDK capture shows `sky130_fd_sc_hd__probec_p_8`, whose `res_generic_m5` devices get the value -1123705434 from Magic (an uninitialised W) where Hefesto writes 0. The decision (fix, both modes) is unchanged. Once EXTRACT-PDK-sky130_fd_sc_hd and NETLIST-PDK-sky130_fd_sc_hd replay otherwise, they carry a deviation under this row for `collected/ext/sky130_fd_sc_hd__probec_p_8.ext` and the resistor `w` of that cell's netlists (task 17.7).
 
 ### Q-EXTRACT-37: The shorted-ports warning truncates the cell's port labels
 - Kind: compat-neutral
@@ -422,3 +423,23 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Recommendation: compat. ON keeps EX-066 byte-exact; OFF prints the path a user expects.
 - Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode).
 - Resolution: compat — with `magic-compat` ON the `.ext` path joins the extract path and the cell name as Magic's `sprintf("%s/%s")` does, so `extract path ext/` names `ext//<cell>.ext` (EX-066 byte-exact); with it OFF the join uses one separator, `ext/<cell>.ext`. The file written is the same. Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extract/file/atomic_output_test.cpp` (one per mode). Approved 2026-11-27.
+
+### Q-EXTRACT-45: `lef write` and `def write` use the selected extract style
+- Kind: replicate (both modes as Magic)
+- Status: proposed 2026-11-27 (raised in M7 round R6 by TECH; implemented in both modes per the standing rule; needs a user decision)
+- Magic behavior: lefWrite and defWrite read `ExtCurStyle`, so after `extract style X` the LEF macro geometry masks (G and D) and the DEF BLOCKAGES active types follow style X, not the technology's first style.
+- Evidence: lef/lefWrite.c:1268; lef/defWrite.c:816, :2538
+- As implemented (round R6, branch `m7-round6-tech`): both modes build the writers' StyleView from `EditorState::extract.current` (`lef/write/write.cpp`, `def/write/write.cpp`); before R6 they used the first style of the technology. Tests: `tests/unit/lef/write/style_select_test.cpp` "lef write takes G and D from the selected extraction style" (fails with the old first-style source); `tests/unit/def/write/style_select_test.cpp` "def write takes the active types from the selected extraction style" (both modes).
+- Options: replicate (as implemented: the selected style in both modes) | keep the first style
+- Recommendation: replicate. The selected style is what a user expects and what Magic writes; the output is unchanged for a technology with one extract style.
+- Spec: `lef-write` "Macro source geometry and layer masks" and `def-write` "BLOCKAGES section" (scenarios added in R6).
+
+### Q-EXTRACT-46: The non-electrical types accumulate over the style selections since the tech load
+- Kind: compat
+- Status: proposed 2026-11-27 (implemented since round R2 per the standing rule without a row; recorded in round R6 integration; needs a user decision)
+- Magic behavior: `allExtractTypes` is cleared only when a technology loads (ExtTechInit) and grows with every style ExtLoadStyle reads, so a type an earlier selected style mentioned stays electrical (and keeps its place in the "treated as non-electrical" list) in a later style that does not mention it.
+- Evidence: extract/ExtTech.c ExtTechInit, ExtLoadStyle, ExtTechFinal (:3556-3620)
+- As implemented: magic-compat ON accumulates the mentions of every selection since the tech load, as Magic; OFF uses only the selected style's own mentions (`src/core/src/extract/tech/style_table.cpp` `select_entry`). This reaches `extract`, `lef write` G/D and `def write` BLOCKAGES (Q-EXTRACT-45). Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "with magic-compat ON the mentions of earlier selections accumulate, as allExtractTypes does" (ON and OFF); `tests/unit/def/write/style_select_test.cpp` (ON keeps the accumulated types after switching back).
+- Options: compat (as implemented) | replicate (accumulate in both modes)
+- Recommendation: compat. The accumulation depends on the order of earlier selections, which a user cannot see; ON keeps Magic's output.
+- Spec: `extract-tech-section` "Non-electrical types" (the per-mode sentence to add when decided).

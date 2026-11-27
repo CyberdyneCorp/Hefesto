@@ -439,7 +439,7 @@ With Open Question 7 (a):
   | SCRIPT-API-16, SCRIPT-API-20 | 2 | existing cases | their deferred outputs |
   | LEFDEF-336 (Open Question 9 (a)) | 1 | LEFDEF-317's layout: `extract all`, then `def write` | the DEF file |
 
-  The total is 155 cases. GOLDEN also audits the catalogues against the 204 exact and behavioural requirements. Each requirement whose behaviour Magic shows gets a case or a pinned unit test. Missing rows are added as EX-071 on and NL-<family>-<n+1> (task 17.2).
+  The total is 155 cases as planned, 160 after the requirement audit of R6 (task 17.2 added EX-071, EX-072, EX-073, NL-FLAT-19 and NL-FLAT-20; `CATALOGUE_TOTAL` in `m7_cases.py`). `NETLIST-PDK-<lib>` stages the captured `expected/collected/ext` of the matching `EXTRACT-PDK-<lib>` through a `golden` external (`goldenlib/external.py`), so EXTRACT-PDK is captured first and NETLIST-PDK after it. GOLDEN also audits the catalogues against the 204 exact and behavioural requirements. Each requirement whose behaviour Magic shows gets a case or a pinned unit test. Missing rows are added as EX-071 on and NL-<family>-<n+1> (task 17.2).
 - **The flat EX subset (captured in R1, task 2.6).** The 53 EX rows whose layout has no subcell and that need no command driver beyond `extract all` on one cell: EX-001..042, EX-044..046, EX-048 and EX-057..063. The other 17 (EX-043, EX-047, EX-049..056, EX-064..070) need hierarchy or the command options and are authored and captured from R2 on (task 17.1). All EX cases replay from R3, through EXTCMD's driver.
 - **Size budget.** The PDK cases add 759 × (one `.ext`, two SPICE files) plus one `.sim` per library. A standard cell's `.ext` is a few kB and each netlist about 1 kB, so the estimate is 10–15 MB, against about 46 MB in `tests/golden` today. `expected/` is committed uncompressed, so diffs stay reviewable. The budget is 15 MB for the six PDK cases; if a capture exceeds it, GOLDEN raises an open item (a smaller cell set, or gzip-compressed expected files with a decompressing comparator) before committing.
 - **Authoring.**
@@ -526,7 +526,7 @@ Each finding is fixed with a regression test or recorded as an accepted limit. A
 
 Exit list (R6):
 - every capability's `check_requirement_coverage.py --capability <cap>` reports 100 % of exact and behavioural requirements tagged, and the three informative ones are documented;
-- `m7_cases.py --exit-check` reports the 155 cases (LEFDEF-336 included) passing, or deviating with an approved decision;
+- `m7_cases.py --exit-check` reports the 160 cases (LEFDEF-336 and the five audit rows of task 17.2 included) passing, or deviating with an approved decision;
 - the determinism job requires EXTRACT and NETLIST and is identical on every leg;
 - every fuzz target replays its seeds on every leg and runs 60 s without a crash;
 - the security findings are fixed or accepted, with every cap decided;

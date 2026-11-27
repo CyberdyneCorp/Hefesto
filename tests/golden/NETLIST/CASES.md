@@ -85,7 +85,7 @@ Every exact and behavioral requirement of the catalogue's capabilities, with the
 | Capability | Requirement | Class | Golden cases | Unit tests | Note |
 |---|---|---|---|---|---|
 | ext-flattening-hierarchy | Container iteration order | exact | NL-FLAT-10, NL-FLAT-11 | tests/unit/extflat/flatten_test.cpp |  |
-| ext-flattening-hierarchy | Common netlister arguments | behavioral | NL-FLAT-16, NL-FLAT-18, NL-FLAT-20 | tests/unit/extflat/args_names_test.cpp |  |
+| ext-flattening-hierarchy | Common netlister arguments | behavioral | NL-FLAT-16, NL-FLAT-18, NL-FLAT-20 | tests/unit/extflat/args_names_test.cpp, tests/unit/extflat/symbol_file_error_test.cpp |  |
 | ext-flattening-hierarchy | Flat node construction | exact | NL-FLAT-02, NL-FLAT-08, NL-FLAT-11 | tests/unit/extflat/flatten_test.cpp, tests/unit/extflat/netlist_flatten_test.cpp, tests/unit/extflat/smoke_test.cpp |  |
 | ext-flattening-hierarchy | Node merge semantics | exact | NL-FLAT-06, NL-FLAT-07, NL-FLAT-17 | tests/unit/extflat/flatten_test.cpp, tests/unit/extflat/smoke_test.cpp |  |
 | ext-flattening-hierarchy | Kills | exact | NL-FLAT-13 | tests/unit/extflat/flatten_test.cpp, tests/unit/extflat/netlist_flatten_test.cpp |  |

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2036 requirements, 3780 scenarios, 1075 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3790 scenarios, 1078 open questions.
 
 ## Hefesto product (native)
 
@@ -67,7 +67,7 @@ Open questions: [38](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`layout-connectivity`](../openspec/specs/layout-connectivity/spec.md) | 5 | 9 | Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, a… |
+| [`layout-connectivity`](../openspec/specs/layout-connectivity/spec.md) | 5 | 10 | Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, a… |
 | [`layout-geometry-model`](../openspec/specs/layout-geometry-model/spec.md) | 9 | 21 | Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their pre… |
 | [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 22 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
 | [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
@@ -119,41 +119,41 @@ Open questions: [134](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 70 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
-| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 55 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 56 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
 | [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 50 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
 | [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 21 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
-| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 74 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
+| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 75 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
 
 ## Circuit extraction (EXTRACT)
 
-Open questions: [44](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
+Open questions: [46](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`extract-capacitance`](../openspec/specs/extract-capacitance/spec.md) | 13 | 21 | Defines the exact numeric models the extractor uses to compute parasitic capacitance within one flattened area of layout: node capacitance to substrate (area, perimeter and corner … |
-| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 26 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
+| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 28 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
 | [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 29 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
 | [`extract-file-format`](../openspec/specs/extract-file-format/spec.md) | 7 | 7 | Defines the `.ext` file written by the extractor for each cell: the complete grammar of every record the extractor writes, the exact number formatting, the order of records, and an… |
 | [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 16 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
 | [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 20 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
 | [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 8 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
 | [`extract-substrate`](../openspec/specs/extract-substrate/spec.md) | 8 | 9 | Defines how the extractor represents the substrate: the global substrate node of each cell, isolated substrate regions (e.g., p-wells inside deep n-wells), substrate shielding type… |
-| [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 34 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
+| [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 36 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
 
 ## Netlists and extresist (NETLIST)
 
-Open questions: [76](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+Open questions: [77](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 17 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
+| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 19 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 31 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 25 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 36 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 14 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 4 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
-| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 22 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 23 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 23 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 12 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
 | [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 31 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |

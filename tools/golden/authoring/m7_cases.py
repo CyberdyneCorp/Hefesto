@@ -95,9 +95,9 @@ REPLAYED: set[str] = {
     # keep the heap-ordered terminal names of Magic's later runs (DECIDED, Q-NETLIST-69).
     *(f"NL-RESNET-{n:02d}" for n in (5, 10, 13)),
     *(f"NL-RES-{n:02d}" for n in range(1, 9)),
-    # R6 GOLDEN (task 17.2): the audit rows captured in golden-capture run 46042135280. NL-FLAT-20 waits for
-    # EXTFLAT: Magic's EFArgs prints an empty line before the common usage when the tool's parser rejects a flag.
-    *extract_cases.AUDIT_IDS, "NL-FLAT-19",
+    # R6 GOLDEN (task 17.2): the audit rows captured in golden-capture run 46042135280. NL-FLAT-20 with the
+    # empty line EFArgs prints before the common usage when the tool's parser rejects a flag (R6 integration).
+    *extract_cases.AUDIT_IDS, "NL-FLAT-19", "NL-FLAT-20",
 }
 AUDIT_ROWS = (*extract_cases.AUDIT_IDS, "NL-FLAT-19", "NL-FLAT-20")  # task 17.2
 

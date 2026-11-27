@@ -150,7 +150,9 @@ bool ArgParser::extra_flag() {
   }
   const auto next = extra_(args_, i_);
   if (!next || *next <= i_) {
-    error_ = usage_error("");
+    // EFArgs writes an empty line between a flag the tool's parser rejects
+    // and the usage text (TxError("\n"), EFargs.c:288-291; Q-NETLIST-77).
+    error_ = diag::make(detail::codes::kBadArgument, "\n" + std::string{kUsage});
     return false;
   }
   i_ = *next - 1;

@@ -102,8 +102,8 @@ Every exact and behavioral requirement of the catalogue's capabilities, with the
 | extract-capacitance | Coupling to the substrate node | exact | EX-016 | tests/unit/extract/cap/coupling_output_test.cpp |  |
 | extract-capacitance | Coupling record output | exact, behavioral | EX-004, EX-005, EX-006, EX-015 | tests/unit/extract/cap/coupling_output_test.cpp |  |
 | extract-commands | Command syntax and option matching | behavioral, informative | EX-071 | tests/unit/core/m7_scaffold_test.cpp, tests/unit/extract/command/options_test.cpp |  |
-| extract-commands | Incremental extraction | behavioral | EX-064 | tests/unit/extract/command/run_test.cpp, tests/unit/extract/file/atomic_output_test.cpp |  |
-| extract-commands | Extract all, cell, parents and showparents | behavioral | EX-065 | tests/unit/extract/command/run_test.cpp |  |
+| extract-commands | Incremental extraction | behavioral | EX-064 | tests/unit/extract/command/host_test.cpp, tests/unit/extract/command/run_test.cpp, tests/unit/extract/file/atomic_output_test.cpp |  |
+| extract-commands | Extract all, cell, parents and showparents | behavioral | EX-065 | tests/unit/extract/command/host_test.cpp, tests/unit/extract/command/run_test.cpp |  |
 | extract-commands | Cell properties affecting extraction | exact | EX-042, EX-048 | tests/unit/extract/command/run_test.cpp, tests/unit/extract/hier/extract_cell_flat_test.cpp |  |
 | extract-commands | Extraction options | behavioral | EX-067 | tests/unit/extract/command/options_test.cpp |  |
 | extract-commands | Option defaults | exact | EX-067 | tests/unit/extract/command/options_test.cpp |  |
@@ -172,9 +172,9 @@ Every exact and behavioral requirement of the catalogue's capabilities, with the
 | extract-substrate | Device substrate terminals | exact | EX-045 | tests/unit/extract/device/substrate_test.cpp |  |
 | extract-substrate | Subcell substrate connections | exact | EX-047 | tests/unit/extract/hier/captured_test.cpp, tests/unit/extract/hier/subcell_test.cpp |  |
 | extract-substrate | Substrate coupling relocation | exact | EX-016 | tests/unit/extract/device/substrate_test.cpp |  |
-| extract-tech-section | Extract section line grammar and keyword matching | exact | EX-062 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/height_view_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
-| extract-tech-section | Extraction styles and variants | exact | EX-057 | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
-| extract-tech-section | Style defaults | exact | EX-001, EX-067 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
+| extract-tech-section | Extract section line grammar and keyword matching | exact | EX-062 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/height_view_test.cpp, tests/unit/extract/tech/keyword_table_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
+| extract-tech-section | Extraction styles and variants | exact | EX-057 | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp, tests/unit/extract/tech/keyword_table_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
+| extract-tech-section | Style defaults | exact | EX-001, EX-067 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/keyword_table_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
 | extract-tech-section | Units, lambda, cscale and rscale | exact | EX-002, EX-017, EX-058, EX-062 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/height_view_test.cpp |  |
 | extract-tech-section | Step size and side halo parsing | exact | EX-006, EX-055, EX-069 | tests/unit/extract/tech/ext_style_rules_test.cpp |  |
 | extract-tech-section | Plane ordering | exact | EX-061 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/height_view_test.cpp |  |
@@ -188,11 +188,11 @@ Every exact and behavioral requirement of the catalogue's capabilities, with the
 | extract-tech-section | Substrate declaration | exact | EX-016, EX-045, EX-046 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
 | extract-tech-section | Device declaration parsing | exact | EX-027, EX-035 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
 | extract-tech-section | Contact residues and coupling table completion | exact | EX-072 | tests/unit/extract/tech/ext_style_rules_test.cpp |  |
-| extract-tech-section | Non-electrical types | exact, informative | EX-001 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
+| extract-tech-section | Non-electrical types | exact, informative | EX-001 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/pdk_session_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
 | extract-tech-section | Layer height and thickness defaults | behavioral | - | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp | heights and thicknesses are not written to the .ext file and no extract command prints them (3-D view and other consumers read them); pinned in the HeightView tests |
 | extract-tech-section | Antenna keywords parse-level reference | exact | MISC-ANT-01, MISC-ANT-02, MISC-ANT-03, MISC-ANT-04, MISC-ANT-05, MISC-ANT-06, MISC-ANT-07, MISC-ANT-08, MISC-ANT-09 | tests/unit/extract/tech/ext_style_rules_test.cpp, tests/unit/extract/tech/style_view_test.cpp |  |
 | extract-tech-section | Micron conversion | exact | EX-058 | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp |  |
-| extract-tech-section | Scaling to internal units | exact | EX-059 | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp |  |
+| extract-tech-section | Scaling to internal units | exact | EX-059 | tests/unit/extract/tech/ext_style_scale_test.cpp, tests/unit/extract/tech/height_view_test.cpp, tests/unit/extract/tech/keyword_table_test.cpp |  |
 | extract-tech-section | Fringe model default chosen from tech format | exact | EX-060 | tests/unit/extract/tech/ext_style_rules_test.cpp |  |
 
 <!-- END requirement audit -->
