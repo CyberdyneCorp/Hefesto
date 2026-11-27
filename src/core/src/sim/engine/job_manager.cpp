@@ -74,7 +74,8 @@ std::optional<diag::Diagnostic> check_limit(std::string_view name, T value, T fa
 std::uint64_t result_cost(const std::vector<Vector>& vectors) {
   std::uint64_t cost = 0;
   for (const Vector& v : vectors) {
-    cost += static_cast<std::uint64_t>(v.real.size()) * (v.complex ? 16U : 8U);
+    const std::uint64_t points = v.real.size();
+    cost += points * (v.complex ? 16U : 8U);
   }
   return cost;
 }

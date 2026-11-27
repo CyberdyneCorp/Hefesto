@@ -61,7 +61,7 @@ diag::Status check_dimension_kinds(const std::vector<Dimension>& dims) {
   std::size_t corners = 0;
   std::size_t mcs = 0;
   for (std::size_t i = 0; i < dims.size(); ++i) {
-    corners += dims[i].kind == Dimension::Kind::corner ? 1 : 0;
+    corners += dims[i].kind == Dimension::Kind::corner ? 1U : 0U;
     if (dims[i].kind == Dimension::Kind::monte_carlo) {
       ++mcs;
       if (i + 1 != dims.size()) {

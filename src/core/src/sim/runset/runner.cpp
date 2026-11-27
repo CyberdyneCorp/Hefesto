@@ -83,7 +83,7 @@ diag::Status RunSetRunner::start() {
 std::size_t RunSetRunner::outstanding() const {
   std::size_t n = 0;
   for (const PointRecord& r : run_set_.records) {
-    n += outstanding_state(r.state) ? 1 : 0;
+    n += outstanding_state(r.state) ? 1U : 0U;
   }
   return n;
 }
@@ -113,7 +113,7 @@ std::size_t RunSetRunner::submit_more() {
     auto id = deck.ok() ? jobs_.submit(std::move(deck.value()), JobOptions{run_set_.context.testbench, corner, rec.job, p.seed})
                         : diag::Outcome<JobId>{deck.error()};
     rec.state = id.ok() ? std::optional{JobState::queued} : std::optional{JobState::failed};
-    submitted += id.ok() ? 1 : 0;
+    submitted += id.ok() ? 1U : 0U;
   }
   return submitted;
 }
@@ -221,7 +221,7 @@ diag::Status RunSetRunner::cancel() {
 std::size_t RunSetRunner::done() const {
   std::size_t n = 0;
   for (const PointRecord& r : run_set_.records) {
-    n += is_final(r.state) ? 1 : 0;
+    n += is_final(r.state) ? 1U : 0U;
   }
   return n;
 }

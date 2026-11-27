@@ -88,7 +88,7 @@ std::optional<std::string> without_seed(const std::vector<std::string>& tokens) 
     if (i > 0 && is_seed_option(tokens[i])) {
       removed = true;
       const bool split = lower_token(tokens[i]) == "seed";  // `seed = 12`
-      i += split && i + 2 < tokens.size() && tokens[i + 1] == "=" ? 2 : 0;
+      i += split && i + 2 < tokens.size() && tokens[i + 1] == "=" ? 2U : 0U;
       continue;
     }
     kept.push_back(tokens[i]);
@@ -288,7 +288,7 @@ std::optional<std::size_t> early_stop(const std::vector<SampleOutcome>& samples,
     }
     if (!(exclude_failed && s.failed)) {
       ++counted;
-      passes += s.pass ? 1 : 0;
+      passes += s.pass ? 1U : 0U;
     }
     if ((i + 1) % kCheckpoint == 0) {
       const auto hw = wilson_half_width(passes, counted);
