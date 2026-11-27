@@ -10,11 +10,14 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <vector>
 
 #include "hefesto/lvs/hier/run.hpp"
 
@@ -38,6 +41,24 @@ struct Session {
   // a netlist file), for cross-probing.
   std::shared_ptr<const netlist::NameMap> names1;
   std::shared_ptr<const netlist::NameMap> names2;
+
+  // LVSCMD (M9 R3): the input files of the last run per document with
+  // their modification times, so that the status chip turns `LVS stale`
+  // when one changes ("LVS status chip").
+  struct InputStamp {
+    std::string path;
+    std::optional<std::filesystem::file_time_type> modified;
+
+    friend bool operator==(const InputStamp&, const InputStamp&) = default;
+  };
+  std::map<std::string, std::vector<InputStamp>, std::less<>> inputs;
+  /// LVSCMD (M9 R3): documents whose layout changed after their last run;
+  /// the layout edit hook adds the document (an INTEGRATION open item), a
+  /// new run removes it.
+  std::set<std::string, std::less<>> changed;
+  /// LVSCMD (M9 R3): the exit status of the last run for the headless tool
+  /// ("Headless LVS": 0 clean, 1 other completed comparison, 2 input error).
+  std::optional<int> headless_status;
 };
 
 }  // namespace hefesto::lvs

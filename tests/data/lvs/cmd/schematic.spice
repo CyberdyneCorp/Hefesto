@@ -1,0 +1,10 @@
+* Hefesto-authored LVS input (lvs-command "Headless LVS"): the schematic side,
+* with the inverter ports in another order.
+.subckt inv A Y VSS VDD
+M2 Y A VSS VSS nfet W=1 L=0.15
+M1 Y A VDD VDD pfet W=2 L=0.15
+.ends
+.subckt buf IN OUT VDD VSS
+Xinv2 n1 OUT VSS VDD inv
+Xinv1 IN n1 VSS VDD inv
+.ends
