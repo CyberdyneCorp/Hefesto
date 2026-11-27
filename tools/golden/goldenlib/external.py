@@ -31,7 +31,9 @@ names a directory is copied whole.
            are used: ``sky130`` (the default), ``gf180mcu`` or ``ihp``.
 ``scmos``  ``$HEFESTO_SCMOS_TECH``, else ``<repo>/.cache/golden/scmos.tech``, generated
            on first use from ``build/ref/magic`` (``scripts/fetch_pdk.py magic-ref``)
-           with ``tests/data/tech/generate_scmos.cmake`` (needs cmake and a C++ compiler).
+           with ``tests/data/tech/generate_scmos.cmake`` (needs cmake and a C++ compiler);
+           generated in a scratch directory and renamed into place, so parallel cases never
+           copy a partial file).
 ``magic-sys`` ``<magic>/<path>`` of the pinned Magic checkout (``$HEFESTO_MAGIC_SRC`` or
            ``build/ref/magic``), e.g. ``graphics/FreeSans.pt3``: a file Magic installs in
            ``$CAD_ROOT/magic/sys`` (outline fonts). ``replay.py`` always sets ``CAD_ROOT``
@@ -50,6 +52,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -160,18 +163,27 @@ def _resolve_pdk(ext: External) -> Path:
 
 
 def _generate_scmos(target: Path) -> None:
+    """Generate ``target`` in a private scratch directory beside it, then rename it into place.
+
+    ctest runs the golden cases in parallel, and on a cold cache every scmos case generates the
+    file at once. generate_scmos.cmake truncates and rewrites its output, so generating in place
+    let a concurrent case copy a half-written (or empty) scmos.tech. The rename is atomic: a
+    reader sees no file or a complete one, and concurrent generators publish identical bytes."""
     magic = REPO / "build" / "ref" / "magic"
     if not (magic / "scmos" / "scmos.tech.in").is_file():
         raise ExternalUnavailable(f"{magic}/scmos not found (run scripts/fetch_pdk.py magic-ref)")
     target.parent.mkdir(parents=True, exist_ok=True)
-    argv = ["cmake", f"-DMAGIC={magic}", f"-DOUT={target.parent}", f"-DCXX={os.environ.get('CXX', 'c++')}",
-            "-P", str(REPO / "tests" / "data" / "tech" / "generate_scmos.cmake")]
-    try:
-        subprocess.run(argv, check=False, capture_output=True, timeout=GENERATE_TIMEOUT_S)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        raise ExternalUnavailable(f"cannot generate scmos.tech: {error}") from error
-    if not target.is_file() or target.stat().st_size == 0:
-        raise ExternalUnavailable("scmos.tech generation produced no file")
+    with tempfile.TemporaryDirectory(prefix=f".{target.name}-", dir=target.parent) as scratch:
+        produced = Path(scratch) / target.name
+        argv = ["cmake", f"-DMAGIC={magic}", f"-DOUT={scratch}", f"-DCXX={os.environ.get('CXX', 'c++')}",
+                "-P", str(REPO / "tests" / "data" / "tech" / "generate_scmos.cmake")]
+        try:
+            subprocess.run(argv, check=False, capture_output=True, timeout=GENERATE_TIMEOUT_S)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise ExternalUnavailable(f"cannot generate scmos.tech: {error}") from error
+        if not produced.is_file() or produced.stat().st_size == 0:
+            raise ExternalUnavailable("scmos.tech generation produced no file")
+        os.replace(produced, target)
 
 
 def _resolve_scmos() -> Path:

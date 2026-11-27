@@ -149,6 +149,43 @@ class ExternalTest(unittest.TestCase):
             self.assertIn("external input unavailable", report.detail)
 
 
+class ScmosGenerationTest(unittest.TestCase):
+    """Regression: on a cold .cache/golden every scmos case of a parallel ctest run generated
+    scmos.tech in place, and a concurrent case copied the half-written file (CI: CELL-PR-01's
+    tech load stopped at "section plot:", CELL-PR-03 read its cells with no technology)."""
+
+    TECH = "tech\n" + "x" * 4096 + "\nend\n"
+
+    def test_generation_never_exposes_a_partial_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / "build" / "ref" / "magic" / "scmos").mkdir(parents=True)
+            (repo / "build" / "ref" / "magic" / "scmos" / "scmos.tech.in").write_text("in", encoding="utf-8")
+            target = repo / ".cache" / "golden" / "scmos.tech"
+            outs = []
+
+            def generate(argv, **_kwargs):  # generate_scmos.cmake: truncate, then write in pieces
+                out = Path(next(arg for arg in argv if arg.startswith("-DOUT="))[len("-DOUT="):])
+                outs.append(out)
+                (out / "scmos.tech").write_text(self.TECH[:100], encoding="utf-8")
+                if target.exists():  # what a concurrent case would copy now
+                    self.assertEqual(target.read_text(encoding="utf-8"), self.TECH, "a partial scmos.tech is visible")
+                (out / "scmos.tech").write_text(self.TECH, encoding="utf-8")
+                return mock.Mock(returncode=0)
+
+            with mock.patch.object(external, "REPO", repo), mock.patch.object(external.subprocess, "run", generate):
+                staged = repo / "input"
+                staged.mkdir()
+                external.stage([external.External("scmos", "scmos.tech")], staged)
+                external._generate_scmos(target)  # a second, concurrent generator of the same cache
+            self.assertEqual(len(outs), 2)
+            self.assertNotEqual(outs[0], outs[1])
+            self.assertNotIn(target.parent, outs)
+            self.assertEqual((staged / "scmos.tech").read_text(encoding="utf-8"), self.TECH)
+            self.assertEqual(target.read_text(encoding="utf-8"), self.TECH)
+            self.assertEqual(sorted(target.parent.iterdir()), [target])  # scratch directories removed
+
+
 class ContainerRunnerTest(unittest.TestCase):
     def test_tool_runs_as_the_owner_of_the_work_directory(self):
         # Regression: as root, Magic reported every input cell "is not writeable" (owner is
