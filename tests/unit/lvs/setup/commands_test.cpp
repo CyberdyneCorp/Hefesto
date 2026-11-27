@@ -45,10 +45,13 @@ TEST_CASE("equate classes errors", "[cap:lvs-setup-file][req:equate classes]") {
       "puts [equate classes {nosuch 0} {inv 1}]\n"
       "equate classes {XY_inv 0} {nfet 0}\n"
       "equate classes {nfet 0}\n");
+  // As netgen 1.5.327 does (capture of NG-SET-09, run 46050777576): the message goes to stdout and the
+  // command fails with the result 0.
   CHECK(logged(state, "Cell to equate does not exist."));
-  CHECK(logged(state, "0"));
-  CHECK(logged_error(state, "Error setup.tcl:2 (ignoring), Cells to equate are in the same netlist."));
-  CHECK(state.errors == 2);
+  CHECK(logged_error(state, "Error setup.tcl:1 (ignoring), 0"));
+  CHECK(logged(state, "Cells to equate are in the same netlist."));
+  CHECK(logged_error(state, "Error setup.tcl:2 (ignoring), 0"));
+  CHECK(state.errors == 3);
 }
 
 TEST_CASE("equate classes with a wildcard is recorded for the queue", "[cap:lvs-setup-file][req:equate classes]") {

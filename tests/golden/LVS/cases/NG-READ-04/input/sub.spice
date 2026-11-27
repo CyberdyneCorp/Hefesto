@@ -1,7 +1,7 @@
 * subcircuits
-.ends
 .subckt pa a b PARAMS: w=1 l=2
 R1 a b 1k
+.ends
 .ends
 .subckt noport
 R1 x y 1k

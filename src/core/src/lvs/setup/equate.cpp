@@ -85,14 +85,15 @@ cmd::CommandResult classes(Runtime& runtime, std::span<const std::string> args, 
   auto b = runtime.resolve(args[1]);
   if (!a || !b) {
     runtime.print("Cell to equate does not exist.");
-    return cmd::CommandResult::success(0);
+    return command_error("0");  // the message is printed; the Tcl error's result is 0
   }
   const bool wildcard = a.value().wildcard || b.value().wildcard;
   if (!wildcard) {
     const Target& ta = a.value().targets.front();
     const Target& tb = b.value().targets.front();
     if (ta.circuit == tb.circuit && ta.number == tb.number) {
-      return command_error("Cells to equate are in the same netlist.");
+      runtime.print("Cells to equate are in the same netlist.");
+      return command_error("0");
     }
     declare(runtime, record(ta, tb, false), unique);
     return cmd::CommandResult::success(1);

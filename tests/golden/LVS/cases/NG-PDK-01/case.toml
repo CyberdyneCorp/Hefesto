@@ -30,7 +30,7 @@ to = "sky130A_setup.tcl"
 name = "stdout.txt"
 source = "stdout"
 comparator = "bytes"
-masks = []
+masks = ['regex:compiled on [^\n]*']
 
 [[outputs]]
 name = "stderr.txt"

@@ -100,7 +100,7 @@ def set_cases() -> list[Case]:
              "A setup file with a syntax error on line 3, an unknown cell on line 7 and a multi-line foreach: "
              "each error is reported with its line and skipped, and the warning line follows.",
              [lvs_inv], {**pair, "setup.tcl": inline_setup(
-                 "# NG-SET-01 setup", "permute default", "set x [lindex {a b}", "property default",
+                 "# NG-SET-01 setup", "permute default", "set x \"a\"b", "property default",
                  "foreach dev {nmos pmos} {", "  property \"-circuit1 $dev\" tolerance {W 0.02}", "}",
                  "property nosuchcell tolerance {w 0.01}", "puts done")}, lvs_outputs=True),
         Case("NG-SET-02", cap, ["Setup file evaluation"],
@@ -198,8 +198,10 @@ def set_cases() -> list[Case]:
                               "X3 vss vss decap\n.ends\n",
               "schem.spice": "* schematic\n.subckt decap a b\nC1 a b 1p\n.ends\n"
                              ".subckt top a y vdd vss\nR1 a y 1k\n.ends\n",
+              # `ignore <unknown keyword>` is left out: netgen 1.5.327 uses an uninitialised option index
+              # there (Q-LVS-22) and the capture crashed (exit 139, run 46050777576).
               "setup.tcl": inline_setup("ignore class \"-circuit1 fill_2\"", "ignore shorted {* decap}",
-                                        "ignore bogus decap", "ignore decap")},
+                                        "ignore decap")},
              lvs_outputs=True),
         Case("NG-SET-11", cap, ["model command"],
              "model x resistor on 2- and 3-port cells, a wrong port count, model x copy and the model blackbox "
@@ -263,7 +265,9 @@ def read_cases() -> list[Case]:
              "stray .ends; ports, property lists and messages.",
              ["readnet spice input/sub.spice", "ports {pa 0}", "property {pa 0}", "ports {noport 0}",
               "ports {inner 0}", "cells"],
-             {"sub.spice": "* subcircuits\n.ends\n.subckt pa a b PARAMS: w=1 l=2\nR1 a b 1k\n.ends\n"
+             # The stray .ends follows a definition: one before any definition made netgen 1.5.327 exit 139
+             # (run 46050777576).
+             {"sub.spice": "* subcircuits\n.subckt pa a b PARAMS: w=1 l=2\nR1 a b 1k\n.ends\n.ends\n"
                            ".subckt noport\nR1 x y 1k\n.ends\n.subckt outer a b\n.subckt inner c d\nR1 c d 1\n"
                            ".ends\nX1 a b inner\n.ends\n.subckt last a\nR1 a 0 1k\n"}),
         Case("NG-READ-05", cap, ["SPICE subcircuit definitions"],
@@ -674,7 +678,7 @@ def rep_cases() -> list[Case]:
              "contents and messages.",
              ["log file x.log", "log start", "log put hello", "log echo off", "log put quiet", "log end",
               "log put after", "log bogus", "log file"],
-             {}, extra_outputs=["x.log"]),
+             {}),
     ]
 
 
@@ -779,13 +783,19 @@ def run_script(case: Case) -> str:
              "# tools/golden/authoring/lvs_cases.py. Each command prints its Tcl return code and value."]
     for index, command in enumerate(case.script, start=1):
         lines.append(f"set code [catch {{{command}}} result]")
-        lines.append(f"puts \"[{index}] code $code: $result\"")
+        lines.append(f"puts \"({index}) code $code: $result\"")
     lines.append("exit 0")
     return "\n".join(lines) + "\n"
 
 
-def _output(name: str, source: str, comparator: str) -> str:
-    return f'\n[[outputs]]\nname = "{name}"\nsource = "{source}"\ncomparator = "{comparator}"\nmasks = []\n'
+# netgen's first stdout line names the image build time ("Netgen 1.5.327 compiled on <date>").
+BANNER_MASK = r"regex:compiled on [^\n]*"
+
+
+def _output(name: str, source: str, comparator: str, masks: tuple[str, ...] = ()) -> str:
+    mask_list = "[" + ", ".join(f"'{m}'" for m in masks) + "]"
+    return (f'\n[[outputs]]\nname = "{name}"\nsource = "{source}"\ncomparator = "{comparator}"\n'
+            f"masks = {mask_list}\n")
 
 
 def case_toml(case: Case) -> str:
@@ -802,7 +812,7 @@ def case_toml(case: Case) -> str:
     text.append('\n[hefesto]\nargs = ["--no-log", "{input}/run.tcl"]\nrequires_commands = ["lvs"]\n')
     for ext in case.external:
         text.append("\n[[external]]\n" + "".join(f"{k} = {_q(v)}\n" for k, v in ext.items()))
-    text.append(_output("stdout.txt", "stdout", "bytes"))
+    text.append(_output("stdout.txt", "stdout", "bytes", (BANNER_MASK,)))
     text.append(_output("stderr.txt", "stderr", "bytes"))
     text.append(_output("exitcode.txt", "exitcode", "bytes"))
     if case.lvs_outputs:

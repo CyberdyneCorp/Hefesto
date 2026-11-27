@@ -122,7 +122,7 @@ cmd::CommandResult pin_lists(Runtime& runtime, std::span<const std::string> args
   auto b = runtime.resolve(args[2]);
   if (!a || !b) {
     runtime.print("Cell to equate does not exist.");
-    return cmd::CommandResult::success(0);
+    return command_error("0");
   }
   const Target& ta = a.value().targets.front();
   const Target& tb = b.value().targets.front();
