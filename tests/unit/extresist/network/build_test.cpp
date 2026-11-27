@@ -10,8 +10,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "extresist/network/builder.hpp"
@@ -517,4 +521,100 @@ TEST_CASE("a device in a subcell is painted in its own coordinates with magic-co
           "[cap:extresist-network][req:Device annotation]") {
   const auto net = subcell_device_net(true);
   CHECK(net.failed);
+}
+
+namespace {
+
+bool has_message(const extresist::Network& net, const std::string& text) {
+  return std::find(net.messages.begin(), net.messages.end(), text) != net.messages.end();
+}
+
+extresist::NetDevice nfet_at(db::Point p) {
+  extresist::NetDevice dev;
+  dev.model = "nfet";
+  dev.location = p;
+  dev.type = env().type("nfet");
+  return dev;
+}
+
+// The device-driver layout of "a device driver starts at its S/D edge"
+// with the nfet in a subcell placed at (10, 0), the outermost cell of
+// `chain` (the last), and the given device records. `column`, when given,
+// is also placed at (100, 1000) as a column of 10^6 elements 1000 apart
+// whose indices end at INT32_MAX, away from the net.
+extresist::Network hier_device_net(const std::vector<std::unique_ptr<db::CellDef>>& chain,
+                                   std::vector<extresist::NetDevice> devices, bool magic_compat,
+                                   db::CellDef* column = nullptr) {
+  auto src = cell({Box{"ndiff", {0, 0, 10, 10}}, Box{"ndiff", {20, 0, 30, 10}}, Box{"poly", {10, -5, 20, 0}},
+                   Box{"poly", {10, 10, 20, 15}}});
+  db::PlaceOptions place;
+  place.transform = db::translation(10, 0);
+  REQUIRE(db::place(*src, *chain.back(), place).ok());
+  if (column != nullptr) {
+    db::PlaceOptions array;
+    array.transform = db::translation(100, 1000);
+    array.array = db::ArrayInfo{0, 0, INT32_MAX - 999999, INT32_MAX, 0, 1000};
+    REQUIRE(db::place(*src, *column, array).ok());
+  }
+  db::recompute_bbox(*src);
+  Run run;
+  run.start = {2, 5};
+  run.type = "ndiff";
+  run.driver = extresist::NetDriver{{10, 0}, env().type("nfet"), false};
+  run.magic_compat = magic_compat;
+  run.devices.devices = std::move(devices);
+  return build(*src, run);
+}
+
+// A chain of `levels` cells, each holding one use of the previous; the
+// first holds the nfet at [0,10]^2.
+std::vector<std::unique_ptr<db::CellDef>> nested_cells(int levels) {
+  std::vector<std::unique_ptr<db::CellDef>> chain;
+  chain.push_back(std::make_unique<db::CellDef>("level0", env().technology->plane_count()));
+  REQUIRE(db::paint(*chain.back(), *env().technology, db::Rect{0, 0, 10, 10}, env().type("nfet")).ok());
+  db::recompute_bbox(*chain.back());
+  for (int i = 1; i < levels; ++i) {
+    chain.push_back(std::make_unique<db::CellDef>("level" + std::to_string(i), env().technology->plane_count()));
+    REQUIRE(db::place(*chain.back(), *chain[chain.size() - 2], db::PlaceOptions{}).ok());
+    db::recompute_bbox(*chain.back());
+  }
+  return chain;
+}
+
+}  // namespace
+
+// Regression (M7 R5 review): resMakeDevFunc's hierarchical search visited
+// every element of an array use, and an index range ending at INT32_MAX
+// overflowed the loop (undefined behaviour, then a hang). Like dbCellSrFunc
+// it visits only the elements DBArrayOverlap gives for the search area:
+// here a column of 10^6 nfet elements 1000 apart whose indices end at
+// INT32_MAX, and a device record at (105, 1500), between two elements,
+// reported missing at once.
+TEST_CASE("the subcell device search visits only the array elements under the device",
+          "[cap:extresist-network][req:Device annotation]") {
+  const auto chain = nested_cells(1);
+  const auto column = nested_cells(1);
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    const auto net = hier_device_net(chain, {nfet_at({10, 0}), nfet_at({105, 1500})}, compat, column.back().get());
+    CHECK(has_message(net, "No device of type nfet found at location 105, 1500"));
+    CHECK_FALSE(has_message(net, "No device of type nfet found at location 10, 0"));
+    if (!compat) {
+      REQUIRE_FALSE(net.failed);
+      REQUIRE(net.devices.size() == 1);
+      CHECK(net.devices[0].inside == db::Rect{10, 0, 20, 10});
+    }
+  }
+}
+
+// Standing rule (crafted-input limit, approved 2026-11-25): the subcell
+// device search descends at most 64 uses, so a device 65 uses down is not
+// found; one 64 uses down is.
+TEST_CASE("the subcell device search stops 64 uses down", "[cap:extresist-network][req:Device annotation]") {
+  const std::string missing = "No device of type nfet found at location 10, 0";
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    CHECK_FALSE(has_message(hier_device_net(nested_cells(64), {nfet_at({10, 0})}, compat), missing));
+    CHECK(has_message(hier_device_net(nested_cells(65), {nfet_at({10, 0})}, compat), missing));
+  }
 }

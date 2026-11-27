@@ -175,22 +175,7 @@ TEST_CASE("a failed extresist box keeps the settings with magic-compat OFF",
 
 namespace {
 
-// A metal1 wire under net "a", driven from its port, with simplification
-// off, a 1 ps delay cutoff, no resistance cutoff and every net processed:
-// ResDoSimplify computes no Tdi, and the session's value is preset to 1 zs.
-std::vector<std::string> stale_tdi_run(bool magic_compat) {
-  Session s(magic_compat, true, resist_tech());
-  REQUIRE(db::paint(*s.top, *s.editor.technology, db::Rect{0, 0, 100, 4}, s.type("metal1")).ok());
-  REQUIRE(s.files()
-              .write_atomic("top.ext",
-                            "timestamp 0\nversion 8.3\ntech restest\nstyle restest\nscale 1 1 1\n"
-                            "node \"a\" 20 30000 0 0 metal1\nport \"a\" 0 0 0 1 4 metal1\n")
-              .ok());
-  s.editor.extresist.last_tdi = 1.0;
-  REQUIRE(s.run("extresist simplify off").ok());
-  REQUIRE(s.run("extresist threshold 0").ok());
-  REQUIRE(s.run("extresist mindelay 1").ok());
-  REQUIRE(s.run("extresist all").ok());
+std::vector<std::string> taken(Session& s) {
   std::vector<std::string> printed = s.take();
   for (const std::string& line : printed) {
     UNSCOPED_INFO(line);
@@ -198,18 +183,44 @@ std::vector<std::string> stale_tdi_run(bool magic_compat) {
   return printed;
 }
 
+// A metal1 wire under net "a" with a port at each end, driven from the
+// first, with a 1e-6 ps delay cutoff, no resistance cutoff and every net
+// processed: a first run with simplification on computes a Tdi (about
+// 3.7e7 zs) above the cutoff and writes the net; the second run, with
+// simplification off, computes none. Returns the second run's output.
+std::vector<std::string> second_tdi_run(bool magic_compat) {
+  Session s(magic_compat, true, resist_tech());
+  REQUIRE(db::paint(*s.top, *s.editor.technology, db::Rect{0, 0, 100, 4}, s.type("metal1")).ok());
+  REQUIRE(s.files()
+              .write_atomic("top.ext",
+                            "timestamp 0\nversion 8.3\ntech restest\nstyle restest\nscale 1 1 1\n"
+                            "node \"a\" 20 30000 0 0 metal1\nport \"a\" 0 0 0 1 4 metal1\nport \"a\" 1 99 0 100 4 metal1\n")
+              .ok());
+  REQUIRE(s.run("extresist simplify on").ok());
+  REQUIRE(s.run("extresist threshold 0").ok());
+  REQUIRE(s.run("extresist mindelay 0.000001").ok());
+  REQUIRE(s.run("extresist all").ok());
+  const std::vector<std::string> first = taken(s);
+  REQUIRE(has_prefix(first, "Total Nets: 1\nNets extracted: 1 (1.000000)\nNets output: 1 "));
+  REQUIRE(s.run("extresist simplify off").ok());
+  REQUIRE(s.run("extresist all").ok());
+  return taken(s);
+}
+
 }  // namespace
 
 // Standing rule (proposed Q-NETLIST-72, compat): without simplification
-// or a lump file ResDoSimplify leaves rg_Tdi as the last net that computed
-// it set it, and the second cutoff reads that value; with magic-compat OFF
-// no delay cutoff applies to such a net.
-TEST_CASE("the second cutoff reads the session's last delay with magic-compat ON",
+// or a lump file no Tdi is computed, and the second cutoff reads rg_Tdi as
+// ResInit left it at the start of the command, 0, so the net is withheld
+// although the previous run computed a delay above the cutoff (regression,
+// R5 review: the delay was kept for the session). With magic-compat OFF no
+// delay cutoff applies to such a net.
+TEST_CASE("the second cutoff reads ResInit's zero delay with magic-compat ON",
           "[cap:extresist-command][req:Second cutoff after extraction]") {
-  CHECK(has_prefix(stale_tdi_run(true), "Total Nets: 1\nNets extracted: 1 (1.000000)\nNets output: 0 "));
+  CHECK(has_prefix(second_tdi_run(true), "Total Nets: 1\nNets extracted: 1 (1.000000)\nNets output: 0 "));
 }
 
 TEST_CASE("the second cutoff applies no delay test without a delay with magic-compat OFF",
           "[cap:extresist-command][req:Second cutoff after extraction]") {
-  CHECK(has_prefix(stale_tdi_run(false), "Total Nets: 1\nNets extracted: 1 (1.000000)\nNets output: 1 "));
+  CHECK(has_prefix(second_tdi_run(false),"Total Nets: 1\nNets extracted: 1 (1.000000)\nNets output: 1 "));
 }

@@ -13,6 +13,7 @@
 #include "hefesto/extresist/command/cutoff.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -73,10 +74,24 @@ std::optional<Driver> point_driver(const InputNode& node) {
   return Driver{db::Point{p->rect.x0, p->rect.y0}, p->type, true};
 }
 
+// Magic's assignment of a float W/L to its int totWL, saturated: an
+// out-of-range float-to-int conversion is undefined behaviour, and a
+// crafted `.ext` file can give W/L or a sum of them beyond 2^31 (NaN gives
+// 0).
+double int_wl(float wl) {
+  if (std::isnan(wl)) {
+    return 0.0;
+  }
+  constexpr double kLo = std::numeric_limits<std::int32_t>::min();
+  constexpr double kHi = std::numeric_limits<std::int32_t>::max();
+  return std::trunc(std::clamp(static_cast<double>(wl), kLo, kHi));
+}
+
 // One group of consecutive parallel devices from sorted[i]: its summed W/L
-// and the device Magic takes as the driver (t1).
+// and the device Magic takes as the driver (t1). The sum is a double so
+// that Magic's int totWL is held exactly.
 struct Group {
-  float wl = 0.0F;
+  double wl = 0.0;
   const InputDevice* driver = nullptr;
   std::size_t last = 0;  // index of the group's last entry in `sorted`
 };
@@ -88,10 +103,7 @@ struct Group {
 // sum is a float and the driver is the group's last device.
 Group parallel_group(const InputModel& input, const std::vector<NodeDevice>& sorted, std::size_t i, bool magic_compat) {
   const InputDevice* first = &input.devices[sorted[i].device];
-  Group g{first->wl, first, i};
-  if (magic_compat) {
-    g.wl = static_cast<float>(static_cast<std::int32_t>(first->wl));
-  }
+  Group g{magic_compat ? int_wl(first->wl) : static_cast<double>(first->wl), first, i};
   const InputDevice* t1 = first;
   while (g.last + 1 < sorted.size()) {
     t1 = &input.devices[sorted[g.last].device];
@@ -99,7 +111,9 @@ Group parallel_group(const InputModel& input, const std::vector<NodeDevice>& sor
     if (!parallel(*t1, t2)) {
       break;
     }
-    g.wl = magic_compat ? static_cast<float>(static_cast<std::int32_t>(g.wl + t2.wl)) : g.wl + t2.wl;
+    // `totWL += rs_wl` adds in float, then converts back to int.
+    const float sum = static_cast<float>(g.wl) + t2.wl;
+    g.wl = magic_compat ? int_wl(sum) : static_cast<double>(sum);
     ++g.last;
   }
   g.driver = magic_compat ? t1 : &input.devices[sorted[g.last].device];
@@ -109,7 +123,7 @@ Group parallel_group(const InputModel& input, const std::vector<NodeDevice>& sor
 // The device with the largest summed W/L among the leading non-gate entries.
 std::optional<Driver> device_driver(const InputModel& input, const std::vector<NodeDevice>& sorted, bool magic_compat) {
   std::optional<Driver> best;
-  float max_wl = 0.0F;
+  double max_wl = 0.0;
   for (std::size_t i = 0; i < sorted.size(); ++i) {
     if (!driver_class(input.devices[sorted[i].device]) || sorted[i].terminal == Terminal::subs) {
       continue;
@@ -218,7 +232,9 @@ std::vector<NodeDevice> sort_by_gate(const InputModel& input, const std::vector<
 
 std::optional<Driver> choose_driver(const InputModel& input, std::size_t net, bool magic_compat) {
   const InputNode& node = input.nodes.at(net);
-  std::optional<Driver> driver = device_driver(input, sort_by_gate(input, node.devices), magic_compat);
+  // The list is already in ResSortByGate order: sorting it again with
+  // devSortFunc, which is not a strict weak order, can move entries.
+  std::optional<Driver> driver = device_driver(input, node.devices, magic_compat);
   if (node.status.drive_located) {
     if (std::optional<Driver> located = point_driver(node)) {
       driver = located;

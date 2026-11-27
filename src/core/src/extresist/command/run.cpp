@@ -144,7 +144,7 @@ class Runner {
   void fasthenry_output(CellRun& cell, Network& network);
   [[nodiscard]] std::string external_ports(CellRun& cell, const Network& network);
   void renumber_ports(db::CellDef& def, const std::string& name);
-  [[nodiscard]] std::optional<double> run_tdi(const Network& network) const;
+  [[nodiscard]] std::optional<double> run_tdi(const Network& network);
   CommandResult write_outputs(db::CellDef& def, CellRun& cell);
   CommandResult write_fasthenry(db::CellDef& def, CellRun& cell);
   CommandResult commit(db::CellDef& def, std::string_view suffix, const std::string& text,
@@ -160,6 +160,9 @@ class Runner {
   ResistOptions& options_;
   std::set<std::string> processed_;
   std::uint32_t port_index_ = 0;  // ResPortIndex
+  // rg_Tdi as the last net that computed it left it; 0 at the start of
+  // every run, as ResInit resets it on every extresist command.
+  double last_tdi_ = 0.0;
 };
 
 // ExtFileOpen for reading: `extract path`, the cell's directory, then the name.
@@ -497,17 +500,15 @@ CommandResult Runner::extract_net(CellRun& cell, std::size_t net, const Driver& 
 
 // rg_Tdi as the second cutoff reads it. ResDoSimplify sets it only when
 // it simplifies or writes the lump file; otherwise Magic reads the value
-// the last net that computed it left (magic-compat ON, kept in the
-// session), and Hefesto applies no delay cutoff (OFF; proposed Q-row
-// Q-NETLIST-72).
-std::optional<double> Runner::run_tdi(const Network& network) const {
+// ResInit reset it to at the start of the command, 0 (magic-compat ON), and
+// Hefesto applies no delay cutoff (OFF; proposed Q-NETLIST-72).
+std::optional<double> Runner::run_tdi(const Network& network) {
   if (options_.simplify || options_.lumped) {
-    editor_.extresist.last_tdi = network.tdi;
+    last_tdi_ = network.tdi;
   } else if (!request_.magic_compat) {
     return std::nullopt;
   }
-  const double tdi = editor_.extresist.last_tdi;
-  return tdi == -1 ? std::nullopt : std::optional<double>{tdi};
+  return last_tdi_ == -1 ? std::nullopt : std::optional<double>{last_tdi_};
 }
 
 // ResPrintFHNodes' `.external` line: the first two named nodes, each port
@@ -608,6 +609,7 @@ CommandResult Runner::commit(db::CellDef& def, std::string_view suffix, const st
   const cell::LookupContext ctx{fs_, current_only, editor_.path_variables, sink};
   extract::OutputLocation where;
   where.local_path = local_path.value_or(".");
+  where.magic_compat = request_.magic_compat;
   auto out = extract::AtomicOutput::open(ctx, def, suffix, where);
   if (!out.ok()) {
     console_.message("Couldn't open output file");

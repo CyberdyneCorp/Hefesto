@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdint>
 #include <vector>
 
 #include "hefesto/extresist/command/cutoff.hpp"
@@ -61,4 +62,61 @@ TEST_CASE("sort_by_gate groups by gate net, then the other S/D net, gate entries
   // and 2 reversed (devSortFunc says a gate entry is greater than another).
   CHECK(order(sorted) == std::vector<std::size_t>{0, 3, 1, 4, 2, 5});
   CHECK(sorted[1].terminal == Terminal::drain);
+}
+
+namespace {
+
+// A driving MOSFET at (x, 0) with the given W/L.
+extresist::InputDevice driver_fet(std::size_t gate, std::size_t source, std::size_t drain, float wl, std::int32_t x) {
+  extresist::InputDevice d = fet(gate, source, drain);
+  d.style_class = hefesto::extract::DeviceClass::mosfet;
+  d.wl = wl;
+  d.location = hefesto::db::Point{x, 0};
+  return d;
+}
+
+}  // namespace
+
+// Regression (M7 R5 review; crashes and UB are fixed in both modes):
+// Magic's int totWL takes a float W/L read from the `.ext` file, and a W/L
+// at or beyond 2^31 made the conversion undefined. It saturates now, so two
+// parallel devices of W 2^31-1, L 1 still drive their net.
+TEST_CASE("a W/L sum beyond the int range saturates", "[cap:extresist-command][req:Net selection and first cutoff]") {
+  using extresist::Terminal;
+  constexpr float kWide = 2147483647.0F;  // W 2^31-1 over L 1, as the reader computes it
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    extresist::InputModel m;
+    m.nodes.resize(3);  // net 0 is the driven net
+    m.devices = {driver_fet(1, 0, 2, kWide, 10), driver_fet(1, 2, 0, kWide, 20)};
+    m.nodes[0].devices = {{0, Terminal::source}, {1, Terminal::drain}};
+    const auto driver = extresist::choose_driver(m, 0, compat);
+    REQUIRE(driver.has_value());
+    // ON: the group runs to the end of the list, so the last-but-one device.
+    CHECK(driver->location == hefesto::db::Point{compat ? 10 : 20, 0});
+  }
+}
+
+// Regression (M7 R5 review): ResProcessNode sorts the device list once, and
+// the driver is chosen from that order. devSortFunc is not a strict weak
+// order, so sorting the sorted list again moves the substrate entry and the
+// driver changes (device 0 instead of device 2 here).
+TEST_CASE("the driver is chosen from the list as sorted once",
+          "[cap:extresist-command][req:Net selection and first cutoff]") {
+  using extresist::Terminal;
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    extresist::InputModel m;
+    m.nodes.resize(6);  // net 0 is the driven net
+    m.devices = {driver_fet(2, 0, 4, 3.0F, 10), driver_fet(1, 0, 4, 2.0F, 20), driver_fet(2, 3, 0, 3.0F, 30)};
+    m.devices[0].subs = 0;
+    const std::vector<extresist::NodeDevice> listed = {
+        {1, Terminal::source}, {2, Terminal::drain}, {0, Terminal::subs}, {0, Terminal::source}};
+    m.nodes[0].devices = extresist::sort_by_gate(m, listed);
+    REQUIRE(order(m.nodes[0].devices) == std::vector<std::size_t>{2, 0, 0, 1});
+    REQUIRE(order(extresist::sort_by_gate(m, m.nodes[0].devices)) == std::vector<std::size_t>{0, 2, 0, 1});
+    const auto driver = extresist::choose_driver(m, 0, compat);
+    REQUIRE(driver.has_value());
+    CHECK(driver->location == hefesto::db::Point{30, 0});
+  }
 }

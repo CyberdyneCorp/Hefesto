@@ -47,12 +47,14 @@ struct Driver {
 /// mentioned later first), the gate entries last in reverse list order.
 [[nodiscard]] std::vector<NodeDevice> sort_by_gate(const InputModel& input, const std::vector<NodeDevice>& devices);
 
-/// The driver of net `net`: the largest summed W/L of consecutive parallel
+/// The driver of net `net`, whose device list must already be in
+/// sort_by_gate order (ResProcessNode sorts once; the list is not sorted
+/// again here): the largest summed W/L of consecutive parallel
 /// FET/BJT devices on a source or drain, overridden by the first drive (or
 /// sink) point of a drive-located net, else the first drive or sink point;
 /// nullopt when there is none. With magic-compat ON the W/L sums are
 /// Magic's int totWL (truncated at each step, so a group whose W/L stays
-/// below 1 drives nothing) and the driver of a parallel group that runs to
+/// below 1 drives nothing; saturated at the int range in both modes) and the driver of a parallel group that runs to
 /// the end of the list is its last-but-one device (ResProcessNode's t1);
 /// with it OFF the sums are floats and the driver is the group's last
 /// device (proposed Q-NETLIST-71).

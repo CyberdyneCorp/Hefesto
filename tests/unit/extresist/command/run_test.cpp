@@ -12,6 +12,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <atomic>
+#include <optional>
 
 #include "hefesto/mask/gen/progress.hpp"
 #include "resist_fixture.hpp"
@@ -30,6 +31,12 @@ extresist::ResistRun request(Session& s) {
   r.files = &s.files();
   r.emit = [&s](diag::Diagnostic d) { s.printed.emit(d); };
   return r;
+}
+
+// choose_driver on net `net` after ResSortByGate, as ResProcessNode calls it.
+std::optional<extresist::Driver> driver_of(extresist::InputModel m, std::size_t net, bool magic_compat = true) {
+  m.nodes[net].devices = extresist::sort_by_gate(m, m.nodes[net].devices);
+  return extresist::choose_driver(m, net, magic_compat);
 }
 
 bool temporary_left(Session& s) {
@@ -198,7 +205,7 @@ TEST_CASE("the driver is the widest group of parallel devices", "[cap:extresist-
   REQUIRE(m.ok());
   const auto out = m.value().find("out");
   REQUIRE(out.has_value());
-  const auto driver = extresist::choose_driver(m.value(), *out);
+  const auto driver = driver_of(m.value(), *out);
   REQUIRE(driver.has_value());
   CHECK_FALSE(driver->drive_only);
   CHECK((driver->location == db::Point{10, 0} || driver->location == db::Point{20, 0}));
@@ -223,7 +230,7 @@ TEST_CASE("narrow devices drive nothing with magic-compat ON",
   Session s;
   const auto m = read_model(s, kNarrow);
   REQUIRE(m.ok());
-  CHECK_FALSE(extresist::choose_driver(m.value(), *m.value().find("out"), true).has_value());
+  CHECK_FALSE(driver_of(m.value(), *m.value().find("out"), true).has_value());
 }
 
 TEST_CASE("narrow devices drive their net with magic-compat OFF",
@@ -231,7 +238,7 @@ TEST_CASE("narrow devices drive their net with magic-compat OFF",
   Session s(false);
   const auto m = read_model(s, kNarrow);
   REQUIRE(m.ok());
-  const auto driver = extresist::choose_driver(m.value(), *m.value().find("out"), false);
+  const auto driver = driver_of(m.value(), *m.value().find("out"), false);
   REQUIRE(driver.has_value());
   // The group's last device in the net's list (newest first: the first record).
   CHECK(driver->location == db::Point{10, 0});
@@ -247,8 +254,8 @@ TEST_CASE("a parallel group at the end of the list drives from its last-but-one 
                             "device mosfet nfet 20 0 21 1 2 4 \"GND\" \"g\" 2 0 \"out\" 4 0 \"x\" 4 0\n");
   REQUIRE(m.ok());
   const std::size_t out = *m.value().find("out");
-  const auto on = extresist::choose_driver(m.value(), out, true);
-  const auto off = extresist::choose_driver(m.value(), out, false);
+  const auto on = driver_of(m.value(), out, true);
+  const auto off = driver_of(m.value(), out, false);
   REQUIRE(on.has_value());
   REQUIRE(off.has_value());
   CHECK(on->location == db::Point{20, 0});   // t1 of the last step: the list's first entry
@@ -317,12 +324,12 @@ TEST_CASE("a drive-located net is driven from its drive point", "[cap:extresist-
                             "port \"out\" 0 7 8 9 10 ndiff\n"
                             "device mosfet nfet 10 0 11 1 2 4 \"GND\" \"g\" 4 0 \"out\" 4 0 \"x\" 4 0\n");
   REQUIRE(m.ok());
-  const auto driver = extresist::choose_driver(m.value(), *m.value().find("out"));
+  const auto driver = driver_of(m.value(), *m.value().find("out"));
   REQUIRE(driver.has_value());
   CHECK(driver->location == db::Point{7, 8});
   CHECK(driver->drive_only);
   // A net with no device and no point has no driver.
-  CHECK_FALSE(extresist::choose_driver(m.value(), *m.value().find("lonely")).has_value());
+  CHECK_FALSE(driver_of(m.value(), *m.value().find("lonely")).has_value());
 }
 
 // --- the second cutoff and the lump file ----------------------------------

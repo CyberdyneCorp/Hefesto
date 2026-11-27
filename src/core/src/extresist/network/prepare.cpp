@@ -22,6 +22,7 @@
 // Owner: RESNET (openspec/changes/m7-extraction design D3).
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -31,6 +32,7 @@
 #include <vector>
 
 #include "extresist/network/builder.hpp"
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/plane.hpp"
@@ -78,14 +80,15 @@ std::pair<db::Coord, db::Coord> side_range(const db::Rect& r, db::Side side) {
 namespace {
 
 // DBTreeSrTiles over `cell` and its subcells: each plane's tiles of
-// `mask` under `root_area` (root coordinates), then every array element of
-// every use that overlaps it; `visit(plane, tile, to_root)` returns false
-// to stop. Returns false when stopped.
+// `mask` under `root_area` (root coordinates), then the array elements of
+// every use that overlap it (DBArrayOverlap, y outer, as dbCellSrFunc);
+// `visit(plane, tile, to_root)` returns false to stop. Returns false when
+// stopped.
 constexpr int kMaxDepth = 64;  // a crafted hierarchy cannot recurse forever
 
 template <typename Visit>
-bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& root_area,
-               const tech::TypeMask& mask, Visit&& visit, int depth);
+bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& area,
+               const db::Rect& root_area, const tech::TypeMask& mask, Visit&& visit, int depth);
 
 template <typename Visit>
 bool tree_tiles(const db::CellDef& cell, const db::Transform& to_root, const db::Rect& root_area,
@@ -107,21 +110,25 @@ bool tree_tiles(const db::CellDef& cell, const db::Transform& to_root, const db:
   }
   for (const auto& use : cell.uses()) {
     if (use->def != nullptr && db::touch(use->bbox, area) &&
-        !use_tiles(*use, to_root, root_area, mask, visit, depth + 1)) {
+        !use_tiles(*use, to_root, area, root_area, mask, visit, depth + 1)) {
       return false;
     }
   }
   return true;
 }
 
-// tree_tiles over every array element of `use`.
+// tree_tiles over the array elements of `use` whose images overlap `area`
+// (the parent's coordinates). The indices are 64-bit so that a range
+// ending at INT32_MAX ends the loop.
 template <typename Visit>
-bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& root_area,
-               const tech::TypeMask& mask, Visit&& visit, int depth) {
-  const db::ArrayInfo& a = use.array;
-  for (std::int32_t x = std::min(a.xlo, a.xhi); x <= std::max(a.xlo, a.xhi); ++x) {
-    for (std::int32_t y = std::min(a.ylo, a.yhi); y <= std::max(a.ylo, a.yhi); ++y) {
-      const db::Transform child = db::compose(to_root, db::element_transform(use, x, y));
+bool use_tiles(const db::CellUse& use, const db::Transform& to_root, const db::Rect& area,
+               const db::Rect& root_area, const tech::TypeMask& mask, Visit&& visit, int depth) {
+  const db::ElementRange r = db::array_overlap(use, area);
+  for (std::int64_t y = r.ylo; y <= r.yhi; ++y) {
+    for (std::int64_t x = r.xlo; x <= r.xhi; ++x) {
+      const db::Transform element =
+          db::element_transform(use, static_cast<std::int32_t>(x), static_cast<std::int32_t>(y));
+      const db::Transform child = db::compose(to_root, element);
       if (!tree_tiles(*use.def, child, root_area, mask, visit, depth)) {
         return false;
       }
