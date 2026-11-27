@@ -276,7 +276,10 @@ cmd::CommandResult option_netlist(cmd::CommandContext& ctx, Session& session, st
   if (run.interrupted) return interrupted();
   const NetlistResult& result = run.result;
   const bool to_file = !parsed.value().positional.empty();
-  if (to_file && (!result.failed || parsed.value().has(kForce))) {
+  // A run that fails only on the net driver check still writes its file, as
+  // xschem does (schematic-netlisting "Net driver check", Q-SCHEM-53).
+  const bool write = !result.failed || result.driver_check_only || parsed.value().has(kForce);
+  if (to_file && write) {
     const auto written = ctx.services().files.write_atomic(absolute_path(parsed.value().positional.front()), result.text);
     if (!written) return fail(written.error());
   }

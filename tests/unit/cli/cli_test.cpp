@@ -663,6 +663,13 @@ constexpr const char* kLabelSymbol =
     "K {type=label format=\"*.alias @lab\" template=\"name=l1 lab=xxx\"}\n"
     "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=inout}\n";
 
+// A two-pin device with `dir=inout` pins 100 units apart, so it drives a net.
+constexpr const char* kDeviceSymbol =
+    "v {xschem version=3.4.8RC file_version=1.3}\n"
+    "K {type=resistor format=\"@name @pinlist 1k\" template=\"name=R1\"}\n"
+    "B 5 -2.5 -2.5 2.5 2.5 {name=P dir=inout}\n"
+    "B 5 97.5 -2.5 102.5 2.5 {name=M dir=inout}\n";
+
 // One wire with a label at each end, named `left` and `right`.
 std::string two_labels(const std::string& left, const std::string& right) {
   return "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
@@ -693,7 +700,9 @@ TEST_CASE("netlist option parsing", HEADLESS_TAGS) {
 TEST_CASE("CI netlist check", HEADLESS_TAGS) {
   ScratchDir dir;
   write_file(dir.path() / "lbl.sym", kLabelSymbol);
-  write_file(dir.path() / "inv.sch", two_labels("A", "A"));
+  write_file(dir.path() / "dev.sym", kDeviceSymbol);
+  // The device on the wire drives net A, so the net driver check passes.
+  write_file(dir.path() / "inv.sch", two_labels("A", "A") + "C {dev.sym} 0 0 0 0 {name=R1}\n");
   const std::string out = (dir.path() / "inv.spice").string();
   const std::string sch = (dir.path() / "inv.sch").string();
   // The files must lie in the sandbox's granted folders: here the project.
@@ -718,6 +727,20 @@ TEST_CASE("netlist option: exits 10 on a failed netlist run and 1 on other error
   CHECK(shorted.err.find("shorted") != std::string::npos);
   const std::string missing = (dir.path() / "missing.sch").string();
   CHECK(run_cli({"--no-log", project, "--netlist", missing}).status == cli::kExitFailure);
+}
+
+// schematic-netlisting "Net driver check": a run that fails only on the check
+// exits 10 and still writes the netlist file.
+TEST_CASE("netlist option: an undriven net exits 10 and still writes the file", HEADLESS_TAGS) {
+  ScratchDir dir;
+  write_file(dir.path() / "lbl.sym", kLabelSymbol);
+  write_file(dir.path() / "open.sch", two_labels("A", "A"));
+  const std::string out = (dir.path() / "open.spice").string();
+  const std::string project = "--project=" + dir.str();
+  const Run r = run_cli({"--no-log", project, "--netlist", (dir.path() / "open.sch").string(), "-o", out});
+  CHECK(r.status == cli::kExitNetlistFailed);
+  CHECK(r.err.find("undriven node") != std::string::npos);
+  CHECK(read_file(out).find(".end") != std::string::npos);
 }
 
 // ---- M8-D10: the default CAD_ROOT is the install root ----------------------
