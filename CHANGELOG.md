@@ -145,6 +145,13 @@ release notices.
   `-list` result and runs headless in `hefesto-cli`. Setup files are found
   in the active PDK's `libs.tech/netgen/` by bare PDK name. `lvs -layout`
   and `.sch` netlists still answer CORE-NOTIMPL-009.
+- **netgen setup files.** The setup file named in `lvs` (for example the
+  PDK's `sky130A_setup.tcl`) runs in a fresh sandboxed Tcl interpreter with
+  netgen's `permute`, `property`, `equate`, `ignore`, `model`, `global`,
+  `flatten` and `format` commands, bounded in steps and time; a missing
+  setup file ends `lvs`, a `nosetup` name compares without one, and
+  `hefesto-cli` exits 1 when the netlists do not match and 2 on an input
+  error.
 - **Simulation decks and results (library).** Deck preparation for SPICE and
   raw sources (testbench composition, include inlining, `.control`
   sanitisation, deck limits), raw-file read and write, CSV export and

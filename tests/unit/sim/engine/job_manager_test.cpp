@@ -989,6 +989,16 @@ TEST_CASE("Job limit settings can be lowered but not raised past twice the defau
   }
 }
 
+TEST_CASE("A new job manager has the default result budget of 4 GiB",
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  // Scenario "Default result budget" (R3-6): Linux and macOS, no setting.
+  FakeHost host;
+  sim::JobManager jobs(options(host));
+  CHECK_FALSE(jobs.limits_diagnostic().has_value());
+  CHECK(jobs.result_budget() == std::uint64_t{4294967296});
+  CHECK(sim::kDesktopResultBudget == std::uint64_t{4294967296});
+}
+
 TEST_CASE("A run whose streamed data passes the result budget fails and keeps its partial result",
           "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
   // Regression (task 13.3 open item): the budget was only enforced by the

@@ -187,7 +187,7 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 | M6 | LEF/DEF and OASIS (complete) | |
 | M7 | Extraction and netlisting (in progress) | |
 | M8 | Schematic capture (in progress) | |
-| M9 | LVS and simulation, including advanced analog (in progress) | Desktop Beta |
+| M9 | LVS and simulation, including advanced analog (in progress; `lvs` compares SPICE netlist files with netgen setup files, headless) | Desktop Beta |
 | M10–M12 | 3D (in progress), plotting and routing (in progress), EM/IR, digital flow, AI agent, legacy tools | |
 | M13 | Tapeout readiness, plugins, operations | Desktop 1.0 |
 | M14 | iPad app | iPad 1.0 |
