@@ -61,6 +61,7 @@ OWNER = {"EX": "the EXTRACT workstreams through EXTCMD's driver (m7-extraction t
 PDK_LIBS = ("sky130_fd_sc_hd", "gf180mcu_fd_sc_mcu7t5v0", "sg13g2_stdcell")
 LATER = {**extract_cases.LATER, **netlist_cases.LATER,
          **{f"{area}-PDK-{lib}": "PDK standard cells (task 17.4, R5)" for area in ("EXTRACT", "NETLIST") for lib in PDK_LIBS}}
+SMOKE_PREFIX = "NETLIST-SMOKE-"  # the capture smoke cases of task 2.3 (m7_smoke_cases.py), outside the catalogue
 EXISTING = ("SCRIPT-API-16", "SCRIPT-API-20")  # deferred to M7 by earlier milestones (task 17.5)
 CATALOGUE_TOTAL = 160  # design D21 (155) and the five rows of the requirement audit (task 17.2)
 
@@ -94,7 +95,11 @@ REPLAYED: set[str] = {
     # keep the heap-ordered terminal names of Magic's later runs (DECIDED, Q-NETLIST-69).
     *(f"NL-RESNET-{n:02d}" for n in (5, 10, 13)),
     *(f"NL-RES-{n:02d}" for n in range(1, 9)),
+    # R6 GOLDEN (task 17.2): the audit rows captured in golden-capture run 46042135280. NL-FLAT-20 waits for
+    # EXTFLAT: Magic's EFArgs prints an empty line before the common usage when the tool's parser rejects a flag.
+    *extract_cases.AUDIT_IDS, "NL-FLAT-19",
 }
+AUDIT_ROWS = (*extract_cases.AUDIT_IDS, "NL-FLAT-19", "NL-FLAT-20")  # task 17.2
 
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
@@ -178,6 +183,8 @@ def deviation_block() -> str:
             continue
         outs = ", ".join(f'"{name}"' for name in output_names(case_id))
         reason = f"captured in R1 (m7-extraction tasks 2.5, 2.6); replays once {owner(case_id)} lands"
+        if case_id in AUDIT_ROWS:
+            reason = f"added by the requirement audit in R6 (m7-extraction task 17.2); replays once {owner(case_id)} lands"
         if "-PDK-" in case_id:
             reason = f"authored in R6 (m7-extraction task 17.4); replays once {owner(case_id)} lands"
         if case_id.startswith(("NL-RES-", "NL-RESNET-")):
@@ -223,6 +230,9 @@ def exit_check() -> int:
         print(f"hand-derived: {case_id} ({', '.join(DECISIONS.get(case_id, []))}): {reason}")
     for case_id, (outputs, _) in DECIDED.items():
         print(f"deviation: {case_id} ({', '.join(DECISIONS[case_id])}): {', '.join(outputs)}")
+    for case_id, dev in sorted(deviations.load(casegen.GOLDEN).items()):
+        if case_id.startswith(SMOKE_PREFIX) and dev.decisions and not dev.deferred:
+            print(f"deviation: {case_id} ({', '.join(dev.decisions)}): {', '.join(dev.outputs)} (smoke case)")
     for row, reason in missing.items():
         print(f"not authored: {row}: {reason}")
     for case_id in deferred:

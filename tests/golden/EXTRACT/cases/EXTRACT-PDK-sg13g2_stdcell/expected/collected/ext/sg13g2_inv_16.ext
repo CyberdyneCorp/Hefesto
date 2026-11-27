@@ -1,0 +1,51 @@
+timestamp 1676386783
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "Y" 5 219 380 627 464 m1
+port "A" 4 1605 298 1749 374 m1
+port "VDD" 3 0 712 1824 800 m1
+port "VSS" 2 0 -44 1824 44 m1
+node "Y" 9 1882.1 219 380 m1 0 0 0 0 287876 9960 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 1342.18 1605 298 m1 0 0 0 0 11552 456 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 6 349.085 0 712 m1 0 0 0 0 261346 7694 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 6 0 0 -44 m1 0 0 0 0 249640 7252 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "A" "VDD" 1087.67
+cap "A" "Y" 839.113
+cap "Y" "VDD" 2282.88
+device msubckt sg13_lv_nmos 1659 118 1660 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 10064,432
+device msubckt sg13_lv_nmos 1557 118 1558 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 1455 118 1456 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 1353 118 1354 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 1251 118 1252 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 1149 118 1150 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 1047 118 1048 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 945 118 946 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 843 118 844 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 741 118 742 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 639 118 640 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 537 118 538 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 435 118 436 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 333 118 334 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 5624,224 "Y" 148 5624,224
+device msubckt sg13_lv_nmos 231 118 232 119 l=26 w=148 "VSS" "A" 52 0 "Y" 148 5624,224 "VSS" 148 5624,224
+device msubckt sg13_lv_nmos 129 118 130 119 l=26 w=148 "VSS" "A" 52 0 "VSS" 148 10064,432 "Y" 148 5624,224
+device msubckt sg13_lv_pmos 1659 412 1660 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 17472,604
+device msubckt sg13_lv_pmos 1557 412 1558 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 1455 412 1456 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 1353 412 1354 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 1251 412 1252 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 1149 412 1150 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 1047 412 1048 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 945 412 946 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 843 412 844 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 741 412 742 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 639 412 640 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 537 412 538 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 435 412 436 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 333 412 334 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8512,300 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 231 412 232 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 8512,300
+device msubckt sg13_lv_pmos 129 412 130 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 15232,584 "Y" 224 8512,300

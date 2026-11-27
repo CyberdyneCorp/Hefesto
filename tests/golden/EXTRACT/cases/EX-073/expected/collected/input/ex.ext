@@ -1,0 +1,10 @@
+timestamp 100
+version 8.3
+tech exttest
+style exttest
+scale 1 1 1
+resistclasses 1000
+node "b" 0 0 30 0 m2 0 0
+node "a" 0 0 30 0 m1 0 0
+node "active_20_5#" 1000 0 20 5 psd 16 16
+node "well_0_0#" 1000 0 0 0 pw 400 80

@@ -1,0 +1,17 @@
+timestamp 1680006889
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters dpantenna w=w l=l
+parameters dantenna w=w l=l
+port "A" 1 76 226 126 482 m1
+port "VDD" 2 0 712 288 800 m1
+port "VSS" 3 0 -44 288 44 m1
+node "A" 1 225.74 76 226 m1 0 0 0 0 38852 1252 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 0 85.4312 0 712 m1 0 0 0 0 25344 752 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 0 0 0 -44 m1 0 0 0 0 25344 752 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "A" "VDD" 68.2127
+device dsubckt dantenna 70 98 71 99 w=156 l=156 "A" 0 0 "VSS" 0 0
+device csubckt dpantenna 43 412 44 413 w=210 l=268 "None" "A" 0 0 "VDD" 0 185856,1736
