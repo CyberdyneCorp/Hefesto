@@ -40,6 +40,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -65,6 +66,37 @@ enum class Lighting : std::uint8_t {
 /// The board lighting's ambient term: the factor of a face turned away from
 /// the light (a bottom face; a side face away from it).
 inline constexpr float kBoardAmbient = 0.55F;
+
+/// The net overlay's colour (DrawParams::overlay_color by default): the
+/// board's highlight accent #FF8A3D, display values.
+inline constexpr std::array<float, 3> kOverlayColor{1.0F, 138.0F / 255.0F, 61.0F / 255.0F};
+
+/// The net overlay's opacity: semi-opaque, blended over what the frame drew.
+inline constexpr float kOverlayAlpha = 0.6F;
+
+/// The coplanar tie-break (task 17.5, Q-MISC-77). Two faces at the same
+/// height but with different vertices (two layers, two chunks) do not get
+/// bit-equal depths: the rasterizer snaps each vertex to its sub-pixel grid,
+/// so each face's depth plane is off by up to its depth slope times the
+/// snap (measured: up to 1.3e-5 in a tilted mask-unit view, about 200 units
+/// in the last place), and LESS_OR_EQUAL alone let the earlier layer show
+/// through. Every face of the n-th drawn layer in stack order (n from 1; the
+/// substrate slab 0) is therefore drawn with Vulkan's depth bias toward the
+/// viewer: n * kCoplanarBiasSlope times the face's depth slope per pixel
+/// plus n * kCoplanarBiasConstant units of depth resolution. The bias
+/// scales with the slope, as the error does, so a later layer wins at every
+/// pixel and orbit angle, in the colour and the pick image alike; faces of
+/// different heights keep their physical order unless their separation is
+/// below about n * kCoplanarBiasSlope pixels' worth of depth.
+inline constexpr float kCoplanarBiasSlope = 1.0F / 16.0F;
+inline constexpr float kCoplanarBiasConstant = 2.0F;
+
+/// The depth bias factors (constant, slope) of the n-th drawn layer: both
+/// negative (toward the viewer); zero for ordinal 0.
+[[nodiscard]] constexpr std::array<float, 2> coplanar_bias(std::size_t ordinal) noexcept {
+  const auto n = static_cast<float>(ordinal);
+  return {-n * kCoplanarBiasConstant, -n * kCoplanarBiasSlope};
+}
 
 /// The paint of every layer of `stack`. Without a style set every layer is
 /// drawable and white.

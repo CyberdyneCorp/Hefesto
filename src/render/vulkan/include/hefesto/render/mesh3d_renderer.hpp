@@ -21,6 +21,10 @@
 // demand only. Round 5 (SECTION): an optional vertical clipping plane for
 // cross-sections (DrawParams::section_plane) and the board's substrate
 // slab (DrawParams::substrate), both off unless the caller sets them.
+// Round 6: on coplanar faces the later layer in stack order wins at every
+// pixel (a per-layer, slope-scaled depth bias, coplanar_bias, task 17.5), and an
+// optional net overlay (DrawParams::net_overlay, task 10.4) is drawn over
+// the mask geometry.
 //
 // Owner: SCAFFOLD (this header, M10 task 2.3, interface only); RENDER3D
 // implements it in src/render/vulkan/src/mesh3d_*.cpp (design D3, section 5):
@@ -30,9 +34,11 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "hefesto/display/styles.hpp"
@@ -81,6 +87,53 @@ struct SectionPlane {
   friend bool operator==(const SectionPlane&, const SectionPlane&) = default;
 };
 
+/// One prism of the net overlay (task 10.4, design D10: a layout net drawn
+/// over mask-layer geometry; view3d::NetOverlayPrism has the same fields).
+/// x and y are in the mesh's units, as the instances of the uploaded
+/// MeshModel (DrawParams::xy_scale applies to them as to the mesh),
+/// relative to DrawParams::overlay_origin (as a chunk's instances are to
+/// its origin, so float32 keeps a net's precision far out on a large die);
+/// z_bottom and z_top are stack draw heights, as h and h + t of a layer
+/// (LayerStack::draw_height): the renderer scales them by s_z and mirrors z
+/// as for the layers. Corners in either order; z_top below z_bottom is
+/// swapped; a prism with a non-finite field is skipped.
+struct OverlayPrism {
+  float x0, y0, x1, y1;
+  float z_bottom, z_top;
+
+  friend bool operator==(const OverlayPrism&, const OverlayPrism&) = default;
+};
+
+/// The faces the renderer draws for DrawParams::net_overlay: for each z
+/// range (prisms with equal z_bottom and z_top), the union of its prisms'
+/// rectangles as disjoint top rectangles (`tops`, corners ordered) and the
+/// side faces on the union's boundary only (`sides`, the outside on the
+/// right of (x0, y0) -> (x1, y1)), so prisms that overlap or abut (the
+/// merged strips of a net on several layers) blend once where they are
+/// seen, with no seam on a shared edge. Prisms with a non-finite field or
+/// an empty rectangle are left out. Vulkan-free (tests, other backends).
+/// The work grows with the slabs of distinct x times the prisms crossing
+/// each, not with all prisms per slab, and is bounded (the standing
+/// crafted-input limit rule of 2026-11-25): the first kMaxOverlayPrisms
+/// prisms are read, at most kMaxOverlayWork interval visits are spent and
+/// kMaxOverlayFaces faces (tops and sides) emitted; `truncated` is set
+/// when a limit cut the overlay.
+inline constexpr std::size_t kMaxOverlayPrisms = 65536;
+inline constexpr std::size_t kMaxOverlayWork = std::size_t{1} << 24U;
+inline constexpr std::size_t kMaxOverlayFaces = std::size_t{1} << 20U;
+struct OverlayFaces {
+  struct Side {
+    float x0, y0, x1, y1;
+    float z_bottom, z_top;
+
+    friend bool operator==(const Side&, const Side&) = default;
+  };
+  std::vector<OverlayPrism> tops;
+  std::vector<Side> sides;
+  bool truncated = false;
+};
+[[nodiscard]] OverlayFaces overlay_faces(std::span<const OverlayPrism> prisms);
+
 /// Everything a frame needs besides the view state and the mesh.
 /// Layers past the end of `hidden` are visible, past the end of `alpha`
 /// opaque. A layer with alpha < 1 is drawn in the transparency pass (after
@@ -115,6 +168,22 @@ struct DrawParams {
   /// the layers, never dimmed by a highlight. Unset (the default, script
   /// and hefesto-cli windows): no slab. Only the desktop tab sets it.
   std::optional<view3d::SubstrateSlab> substrate;
+  /// The net overlay (task 10.4): prisms drawn after the opaque and ghost
+  /// passes over everything the frame drew (no depth test, no depth
+  /// write), in `overlay_color` with board shading per face, blended at
+  /// kOverlayAlpha; no pick id (a click picks the mask geometry under it);
+  /// clipped by `section_plane`; never dimmed by `highlight`. The caller
+  /// keeps the prisms alive for the draw call. Empty (the default): nothing
+  /// drawn and no overlay pipeline created. Drawn as overlay_faces(): the
+  /// union of the prisms of each z range blends once where it is seen (back
+  /// faces culled); prisms of different z ranges that overlap on the screen
+  /// blend once each. The renderer computes the faces once per change of
+  /// the prisms (or of the layer entries before them), not per frame.
+  std::span<const OverlayPrism> net_overlay;
+  /// The point (mesh units, x and y) the overlay's prisms are relative to.
+  std::array<double, 2> overlay_origin{0.0, 0.0};
+  /// The overlay's colour, display (sRGB-encoded) values 0..1.
+  std::array<float, 3> overlay_color = kOverlayColor;
 };
 
 class Mesh3dRenderer {

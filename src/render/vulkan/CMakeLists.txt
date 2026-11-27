@@ -12,6 +12,7 @@ add_library(hefesto_render_vk STATIC
   src/canvas_index.cpp
   src/headless.cpp
   src/layout_scene.cpp
+  src/mesh3d_overlay.cpp
   src/mesh3d_pipelines.cpp
   src/mesh3d_renderer.cpp
   src/mesh3d_shading.cpp

@@ -56,6 +56,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/lock.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/mask/gen/generate.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/view3d/mesh/mesh_model.hpp"
@@ -78,6 +79,14 @@ struct BuildContext {
   const tech::Technology* technology = nullptr;     // the contacts' residues, for span_connected_layers
   std::optional<db::Point> centre;                  // progressive order; the clip area's centre when unset
   db::DatabaseLock* lock = nullptr;                 // held shared while the database is read; may be null
+  /// Mask-layer builds with magic-compat ON (MaskSource::generation's
+  /// compat): the generation errors, reported once per build (Q-MISC-89,
+  /// approved 2026-11-26): a full build reports those of the whole source
+  /// area, an incremental rebuild (rebuild_mask_chunks) those of the areas
+  /// it regenerates; never as feedback. Null or OFF: nothing reported.
+  /// Called on the build's thread: a worker's host passes a thread-safe
+  /// sink.
+  diag::DiagnosticSink* sink = nullptr;
 };
 
 /// The layout-layer mesh of `cell` (the rendered cell) over `clip`.

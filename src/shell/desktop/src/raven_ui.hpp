@@ -510,6 +510,10 @@ class PopupMenu {
   /// (logical units; Raven keeps it inside the window).
   void open(const Window& window, float x, float y);
   [[nodiscard]] std::size_t size() const noexcept;
+  /// Opens the menu under `anchor` (its left edge, below its bottom), in
+  /// the window that shows it (M10 3D view: the Export menu). False when the
+  /// menu is empty or the anchor is in no window.
+  bool open_below(const Widget& anchor);
 
  private:
   struct State;

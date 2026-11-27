@@ -26,7 +26,9 @@
 #include <cstdint>
 #include <functional>
 #include <utility>
+#include <vector>
 
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/mask/ops/evaluate.hpp"
 #include "internal.hpp"
 
@@ -87,11 +89,47 @@ void unite_into(mask::LayerPlanes& into, mask::LayerPlanes& from) {
   }
 }
 
-// generate_flat over each of `areas` (internal units), united.
+// The generation errors of one build over several areas (Q-MISC-89: once
+// per build). A region that the areas split reports the same message in
+// each piece, so a diagnostic is reported as often as the one area that
+// has it most often.
+class BuildErrors {
+ public:
+  void add_area(const std::vector<diag::Diagnostic>& area) {
+    Counts here;
+    for (const diag::Diagnostic& d : area) ++count_of(here, d);
+    for (const auto& [d, n] : here) {
+      std::size_t& kept = count_of(merged_, d);
+      kept = std::max(kept, n);
+    }
+  }
+
+  void emit(diag::DiagnosticSink& sink) const {
+    for (const auto& [d, n] : merged_) {
+      for (std::size_t i = 0; i < n; ++i) sink.emit(d);
+    }
+  }
+
+ private:
+  using Counts = std::vector<std::pair<diag::Diagnostic, std::size_t>>;
+
+  static std::size_t& count_of(Counts& counts, const diag::Diagnostic& d) {
+    const auto it = std::find_if(counts.begin(), counts.end(), [&d](const auto& c) { return c.first == d; });
+    return it != counts.end() ? it->second : counts.emplace_back(d, 0U).second;
+  }
+
+  Counts merged_;  // distinct diagnostics (few: the text names no area), in first-seen order
+};
+
+// generate_flat over each of `areas` (internal units), united. The
+// generation errors go to `gen.sink` when it is set and the build is not
+// cancelled (BuildErrors; never as feedback: gen.problems is not read).
 bool generate_areas(const db::CellDef& cell, const MaskSource& source, std::span<const db::Rect> areas,
                     mask::GenerationContext& gen, mask::LayerPlanes& out) {
+  diag::DiagnosticSink* const report = gen.sink;
   mask::GenerateOptions options;
-  options.report_errors = false;  // the 3D view adds no feedback (reported, round 5)
+  options.report_errors = report != nullptr;
+  BuildErrors errors;
   for (const db::Rect& area : areas) {
     if (gen.cancelled()) {
       return false;
@@ -99,19 +137,32 @@ bool generate_areas(const db::CellDef& cell, const MaskSource& source, std::span
     if (area.is_null()) {
       continue;
     }
+    diag::CollectingSink area_errors;
+    gen.sink = report != nullptr ? &area_errors : nullptr;
     mask::LayerPlanes fresh = mask::generate_flat(source.generation, cell, area, *source.style, gen, options);
+    errors.add_area(area_errors.take());
     unite_into(out, fresh);
   }
-  return !gen.cancelled();
+  gen.sink = report;
+  if (gen.cancelled()) {
+    return false;
+  }
+  if (report != nullptr) {
+    errors.emit(*report);
+  }
+  return true;
 }
 
 // The generation of `areas` under ctx.lock held shared when it is set
 // (generate_flat reads the database while it flattens the cell), then the
-// flat layers of `stack`. False when cancelled.
+// flat layers of `stack`. The generation errors go to `report` (null: not
+// reported). False when cancelled.
 bool generate_snapshot(const LayerStack& stack, const db::CellDef& cell, const MaskSource& source,
-                       std::span<const db::Rect> areas, const BuildContext& ctx, FlatLayout& out) {
+                       std::span<const db::Rect> areas, const BuildContext& ctx, diag::DiagnosticSink* report,
+                       FlatLayout& out) {
   mask::GenerationContext gen;
   gen.progress = &ctx.progress;
+  gen.sink = report;
   mask::LayerPlanes planes;
   bool done = false;
   if (ctx.lock == nullptr) {
@@ -170,8 +221,12 @@ std::optional<MeshModel> build_mask(const LayerStack& stack, const db::CellDef& 
     return std::nullopt;
   }
   const std::array<db::Rect, 1> areas{source.area};
+  // R5 item 20 (approved 2026-11-26): with magic-compat ON the errors of a
+  // full build are reported once, to the build's sink (W3DCIFredisplay adds
+  // them as feedback on every redraw); OFF reports none.
+  diag::DiagnosticSink* report = source.generation.compat.magic_compat ? ctx.sink : nullptr;
   const FlattenFn generate = [&](std::span<const db::Rect> /*mask_areas*/, FlatLayout& out) {
-    return generate_snapshot(stack, cell, source, areas, ctx, out);
+    return generate_snapshot(stack, cell, source, areas, ctx, report, out);
   };
   std::optional<MeshModel> model = build_flat(stack, generate, clip, ctx, max_tiles);
   if (model) {
@@ -188,13 +243,17 @@ std::optional<MeshModel> rebuild_mask(const MeshModel& previous, const LayerStac
   }
   const std::int32_t f = scale_of(*source.style);
   const std::int64_t halo = mask::generation_radius(*source.style, source.generation.compat);
+  // Q-MISC-89: an incremental rebuild is a build too: with magic-compat ON
+  // it reports the errors of the areas it regenerates (the dirty areas
+  // grown by the generation radius), once.
+  diag::DiagnosticSink* report = source.generation.compat.magic_compat ? ctx.sink : nullptr;
   const FlattenFn generate = [&](std::span<const db::Rect> mask_areas, FlatLayout& out) {
     std::vector<db::Rect> areas;
     areas.reserve(mask_areas.size());
     for (const db::Rect& a : mask_areas) {
       areas.push_back(internal_area(a, f, source.area));
     }
-    return generate_snapshot(stack, cell, source, areas, ctx, out);
+    return generate_snapshot(stack, cell, source, areas, ctx, report, out);
   };
   return rebuild_flat(previous, stack, generate, mask_dirty(dirty, f, halo), ctx, max_tiles);
 }

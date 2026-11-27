@@ -93,8 +93,9 @@ struct WindowBuild {
   std::shared_ptr<const LayerStack> stack;  // layout_stack or mask_stack
   /// The rendered cell (null when it is gone), the clip area and, in
   /// mask-layer mode, the mask source (MeshWorker builds the mask layers),
-  /// the technology and the clip centre. The host sets `lock`, the J1
-  /// option and the chunk size.
+  /// the technology, the window's J1 option (WindowState::
+  /// span_connected_layers) and the clip centre. The host sets `lock`, the
+  /// chunk size and, for the mask-layer generation errors, `sink`.
   BuildInputs inputs;
   std::vector<bool> hidden;  // hidden_layers
 };
@@ -109,7 +110,9 @@ struct WindowBuild {
                                        bool magic_compat, diag::DiagnosticSink& sink);
 
 /// The scene of `window`: window_build, built now on the calling thread
-/// with ctx's progress and cancellation (build_once).
+/// with ctx's progress, cancellation and sink (build_once; with
+/// magic-compat ON a mask-layer build reports its generation errors to
+/// ctx.sink once).
 [[nodiscard]] Scene build_scene(const editor::EditorState& editor, const WindowState& window, bool magic_compat,
                                 BuildContext& ctx);
 

@@ -53,13 +53,16 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/render/mesh3d_renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
+#include "hefesto/shell/view_models.hpp"
 #include "hefesto/tech/types.hpp"
 #include "hefesto/ui/macros.hpp"
 #include "hefesto/view3d/camera/view_state.hpp"
@@ -185,7 +188,6 @@ using IsWindowCommand = std::function<bool(std::string_view word)>;
 
 struct View3dOptions {
   bool perspective = false;            // the Orthographic / Perspective toggle (D7)
-  bool span_connected_layers = false;  // J1 "Span connected layers"
   bool show_frame_time = false;        // the frame-time readout (task 13.2)
   std::vector<float> alpha;            // per stack entry; empty = opaque
   /// The user's per-row transparency, by layer name: it overrides the
@@ -301,9 +303,21 @@ struct CameraFrame {
 /// mask units (x and y times f), so the heights keep their proportion to
 /// the widths in both modes.
 [[nodiscard]] float board_scale_z(const view3d::WindowState& window) noexcept;
+/// The board z scale of `window` drawing `stack` (task 17.2, approved
+/// 2026-11-26): board_scale_z(window), and in mask-layer mode with
+/// magic-compat ON (the stack's flag) additionally divided by the stack's µm
+/// per internal unit (LayerStack::microns_per_unit). With it ON the
+/// mask-layer heights are the `render` values as stored (µm, Q-MISC-72)
+/// while x and y are in mask units, so this draws the stack in the same
+/// proportion as with it OFF, where the heights are already converted. A
+/// µm per unit that is zero, negative or not finite (or a result that is
+/// not finite) keeps board_scale_z(window). Desktop tab only: Magic's s_z
+/// (`defaults`, script windows) is untouched; the tab sets it with `zoom`.
+[[nodiscard]] float board_scale_z(const view3d::WindowState& window, const view3d::LayerStack& stack) noexcept;
 
 /// The desktop tab's opening camera (Q-MISC-84): the isometric preset
-/// framed to the drawn layers at board_scale_z when the desktop opened the
+/// framed to the drawn layers at board_scale_z (of the window and the
+/// frame's stack) when the desktop opened the
 /// window (desktop_opened) and the frame is ready; nothing otherwise (a
 /// window opened elsewhere keeps the top-down default view).
 [[nodiscard]] std::vector<std::string> default_camera_commands(const CameraFrame& frame);
@@ -364,6 +378,14 @@ struct BuildKey {
 /// of its mode, the clip area of Q-MISC-70 or mask_clip, the mask source).
 [[nodiscard]] BuildKey build_key(const view3d::BuildInputs& window_inputs, bool span_connected_layers);
 
+/// The "Span connected layers" toggle (J1; task 17.3, decision B17,
+/// approved 2026-11-26): flips the open window's
+/// view3d::WindowState::span_connected_layers on `path`
+/// (view3d::set_span_connected_layers), so `export3d` and every build of
+/// the window read it; the tab's build key follows it (a full build).
+/// Returns the new value, or nullopt when no window is open on `path`.
+[[nodiscard]] std::optional<bool> toggle_span_connected_layers(view3d::Session& session, std::string_view path);
+
 /// Whether a model the worker delivered is of the last build the view
 /// started (BuildInputs::build_id); an older one is ignored.
 [[nodiscard]] bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept;
@@ -375,6 +397,54 @@ struct BuildKey {
 [[nodiscard]] view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInputs window_inputs,
                                                bool span_connected_layers);
 
+/// The tab's sinks for the mask generation errors of its builds
+/// (Q-MISC-89, view-3d "Rendered geometry"): View3dView::start_build
+/// attaches one CollectingSink per build (BuildInputs::sink, written on the
+/// build thread) and take_model asks deliver() what to report for each
+/// model the worker delivers (CORE reports only with magic-compat ON).
+class BuildErrorRelay {
+ public:
+  /// Gives `in`, a build of `key` tagged with its BuildInputs::build_id, a
+  /// sink of its own; it stays valid while that build or a later one
+  /// runs.
+  void attach(view3d::BuildInputs& in, const BuildKey& key);
+  /// The errors to report for `model` (null: none), delivered while
+  /// `current` is the last build started; `worker_idle`: no build runs,
+  /// so the sinks of earlier builds are dropped unread. A model of an
+  /// earlier build reports nothing. The first model of a build reports its
+  /// full build's errors, unless they equal the errors of the last full
+  /// build reported for the same key (the tab builds twice on opening);
+  /// each later model of the build (an incremental rebuild) reports what
+  /// that rebuild found.
+  [[nodiscard]] std::vector<diag::Diagnostic> deliver(const view3d::MeshModel* model, std::uint64_t current,
+                                                      bool worker_idle);
+  [[nodiscard]] std::size_t size() const noexcept { return sinks_.size(); }
+
+ private:
+  struct Entry {
+    std::uint64_t build_id = 0;
+    BuildKey key;
+    std::unique_ptr<diag::CollectingSink> sink;
+    bool delivered = false;  // its full build's errors were taken
+  };
+  struct Reported {
+    BuildKey key;
+    std::vector<diag::Diagnostic> errors;
+  };
+
+  std::vector<Entry> sinks_;
+  std::optional<Reported> last_full_;
+};
+
+/// Whether a viewport of the tab takes input: the one that shows the
+/// frames, the separate window's while it is open (`separate_open`),
+/// otherwise the tab's. The other (the tab's blank stage while "Detach
+/// view" is on) takes none: its clicks would read the pick image at the
+/// separate window's pixel and could change the 2D selection.
+[[nodiscard]] constexpr bool viewport_takes_input(bool separate_viewport, bool separate_open) noexcept {
+  return separate_viewport == separate_open;
+}
+
 /// The change areas of a layout window for the 3D view (in root
 /// coordinates): nullopt when the window does not show `rendered` as its
 /// root or owes no redisplay; `all` when the whole window is to be redrawn.
@@ -385,12 +455,15 @@ struct ChangeAreas {
 [[nodiscard]] std::optional<ChangeAreas> change_areas(const view::LayoutWindow& window, const db::CellDef* rendered);
 
 /// The toolbar's mesh status: "Building mesh · 42 %" while a build runs,
-/// "Mesh ready · 1,248 rectangles" after, "No mesh" before the first.
+/// "Mesh ready · 1,248 rectangles" after, "No mesh" before the first;
+/// " · net overlay cut at 65,536 boxes" is added when the net overlay was
+/// cut at its limit (view3d::kMaxNetOverlayPrisms, or the renderer's).
 struct MeshStatus {
   bool building = false;
   double progress = 0.0;
   std::size_t rectangles = 0;
   bool have_model = false;
+  bool overlay_truncated = false;
 };
 [[nodiscard]] std::string mesh_status_text(const MeshStatus& status);
 [[nodiscard]] std::size_t rectangle_count(const view3d::MeshModel& mesh) noexcept;
@@ -518,6 +591,67 @@ class View3dPicking {
   view3d::HighlightSet shown_;
 };
 
+/// The layout-net overlay of a frame (task 10.4; design D10;
+/// hefesto-3d-visualization "Net highlighted over mask-layer geometry"):
+/// in mask-layer mode the nets of the 2D selection's paint
+/// (view3d::net_overlay of the selection, hierarchical search, the session's
+/// compat flag), against `mesh`, the model the renderer draws (its pick ids
+/// and units); empty in layout-layer mode, which keeps the instance
+/// highlight, and without a mesh.
+[[nodiscard]] view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                                  const view3d::WindowState& window, bool magic_compat);
+
+/// A fingerprint of the 2D selection's paint (its root and every selected
+/// tile on its home plane): equal for the same selection, so the tab
+/// recomputes the net overlay only when the selection changed, not after
+/// every command.
+[[nodiscard]] std::uint64_t selection_fingerprint(const select::Selection& selection);
+
+/// When the tab's net overlay (mask_net_overlay) is computed: once, then
+/// again only after invalidate() (a new model drawn, a layout change of
+/// the rendered cell) or when the 2D selection changed
+/// (selection_maybe_changed after a command). A net search over a block's
+/// power net is not repeated on every refresh.
+class NetOverlayCache {
+ public:
+  void invalidate() noexcept { dirty_ = true; }
+  /// Marks the overlay stale when the selection differs from the one it
+  /// was computed for.
+  void selection_maybe_changed(const select::Selection& selection);
+  /// The overlay of `mesh` (recomputed if stale).
+  const view3d::NetOverlay& overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                    const view3d::WindowState& window, bool magic_compat);
+  /// How many times the overlay was computed.
+  [[nodiscard]] std::uint64_t computations() const noexcept { return computations_; }
+  void reset();
+
+ private:
+  bool dirty_ = true;
+  std::uint64_t fingerprint_ = 0;
+  std::uint64_t computations_ = 0;
+  view3d::NetOverlay overlay_;
+};
+
+/// The overlay's prisms in the renderer's type (render::OverlayPrism, the
+/// same fields), copied field by field; relative to the overlay's origin
+/// (view3d::NetOverlay::origin_x, origin_y: DrawParams::overlay_origin).
+template <typename Prism>
+[[nodiscard]] std::vector<Prism> overlay_prisms(const view3d::NetOverlay& overlay) {
+  std::vector<Prism> out;
+  out.reserve(overlay.prisms.size());
+  for (const view3d::NetOverlayPrism& p : overlay.prisms) {
+    Prism q{};
+    q.x0 = p.x0;
+    q.y0 = p.y0;
+    q.x1 = p.x1;
+    q.y1 = p.y1;
+    q.z_bottom = p.z_bottom;
+    q.z_top = p.z_top;
+    out.push_back(q);
+  }
+  return out;
+}
+
 /// "metal1 · picked" (the layer name of the target's stack entry).
 [[nodiscard]] std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack);
 
@@ -562,8 +696,9 @@ enum class View3dControl : std::uint8_t {
   level_down,
   level_up,
   cut_box,
+  separate_window,  // round 6: the tab menu's "Open in separate window"
 };
-inline constexpr std::size_t kView3dControlCount = 19;
+inline constexpr std::size_t kView3dControlCount = 20;
 
 /// What the controls read: the window, the view options and the picking state.
 struct View3dControlState {
@@ -580,6 +715,8 @@ struct View3dControlState {
   bool substrate_available = false;  // the renderer takes a substrate slab
   bool export_available = false;     // `export3d` is a registered command
   bool visibility_editable = true;
+  bool separate_window = false;            // the view is shown in its own window
+  bool separate_window_available = false;  // the host can open a second window
 };
 
 /// One control as shown and as a screen reader reads it.
@@ -619,6 +756,25 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// `spacing` apart (the board's two-column camera grid).
 [[nodiscard]] float grid_cell_width(float width, int columns, float spacing) noexcept;
 
+/// A layer row: its three buttons (Hide, Solo, transparency), the room
+/// left for the scroll bar, and where the row's text starts (after the swatch).
+inline constexpr float kView3dRowButtonWidth = 44.0F;
+inline constexpr float kView3dRowSpacing = 2.0F;
+inline constexpr float kView3dScrollBarRoom = 8.0F;
+inline constexpr float kView3dRowTextX = 22.0F;
+/// The width a row's name and µm range have before the row's buttons (the
+/// side panel's width is fixed, so it is the same at 1280 x 800 and up).
+[[nodiscard]] constexpr float row_text_width() noexcept {
+  return side_content_width() - kView3dScrollBarRoom - 3.0F * (kView3dRowButtonWidth + kView3dRowSpacing) -
+         kView3dRowTextX - 4.0F;
+}
+/// The painted row cuts its name and range to row_text_width() with
+/// shell::ellipsize (view_models.hpp); the row's tooltip and screen-reader
+/// name keep the full text (row_tooltip, row_accessible_name).
+/// A row's tooltip: "mrdlcontact, 6.63–7.26 µm" (the full name and range,
+/// which the painted row may ellipsize).
+[[nodiscard]] std::string row_tooltip(const View3dLayerRow& row);
+
 /// A flow layout: items of `widths` left to right, `spacing` apart, starting
 /// a new row when the next item would pass `available`. Returns the row of
 /// each item; an item wider than `available` takes a row of its own.
@@ -635,6 +791,25 @@ inline constexpr float kView3dToolbarSpacing = 8.0F;
 /// of the 3D window's table (`on_window_table`), else as a plain command;
 /// the file is quoted as one Tcl word.
 [[nodiscard]] std::string export_command(std::string_view path, std::string_view file, bool on_window_table);
+
+/// The formats the Export button's menu offers (round 6): `export3d`'s
+/// `-format gltf|glb|stl`, and STL as one merged file (`-merged`) or one
+/// file per layer (export3d's default for STL).
+enum class View3dExportFormat : std::uint8_t { gltf, glb, stl_per_layer, stl_merged };
+inline constexpr std::array<View3dExportFormat, 4> kView3dExportFormats{
+    View3dExportFormat::gltf, View3dExportFormat::glb, View3dExportFormat::stl_per_layer,
+    View3dExportFormat::stl_merged};
+/// The menu item of `format`: "glTF (.gltf)…", "glTF binary (.glb)…",
+/// "STL, one file per layer…", "STL, merged into one file…".
+[[nodiscard]] std::string export_format_label(View3dExportFormat format);
+/// The save dialog for `format`: its one filter and "<cell>.<ext>" proposed.
+[[nodiscard]] platform::FilePickerRequest export_request(const view3d::WindowState& window,
+                                                         View3dExportFormat format);
+/// `export3d <file> -format <gltf|glb|stl> [-merged]` (the format is given,
+/// so a file named with another extension is still written in the chosen
+/// format), on the window's path as export_command.
+[[nodiscard]] std::string export_command(std::string_view path, std::string_view file, bool on_window_table,
+                                         View3dExportFormat format);
 
 // --- cross-section (task 11.5; design D10) ----------------------------------------
 

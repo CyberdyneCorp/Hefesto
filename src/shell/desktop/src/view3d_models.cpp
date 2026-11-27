@@ -9,13 +9,17 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <utility>
 
+#include "hefesto/db/plane.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/binding/tags.hpp"
+#include "hefesto/select/selection.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/view/window.hpp"
@@ -326,9 +330,25 @@ float board_scale_z(const view3d::WindowState& window) noexcept {
   return window.mode == view3d::Mode::mask_layer ? kBoardScaleZ * window.applied_factor : kBoardScaleZ;
 }
 
+float board_scale_z(const view3d::WindowState& window, const view3d::LayerStack& stack) noexcept {
+  const float base = board_scale_z(window);
+  if (window.mode != view3d::Mode::mask_layer || stack.mode() != view3d::Mode::mask_layer || !stack.magic_compat()) {
+    return base;
+  }
+  // Heights as stored (µm) under x and y in mask units: divide by µm per
+  // internal unit, as magic-compat OFF converts the heights themselves.
+  const double microns = stack.microns_per_unit();
+  if (!std::isfinite(microns) || microns <= 0.0) return base;
+  const double scaled = static_cast<double>(base) / microns;
+  if (!std::isfinite(scaled) || scaled <= 0.0 || scaled > static_cast<double>(std::numeric_limits<float>::max())) {
+    return base;
+  }
+  return static_cast<float>(scaled);
+}
+
 std::vector<std::string> default_camera_commands(const CameraFrame& frame) {
   if (!frame_ready(frame) || !desktop_opened(*frame.window)) return {};
-  return preset_camera_commands(frame, view3d::Preset::isometric, board_scale_z(*frame.window));
+  return preset_camera_commands(frame, view3d::Preset::isometric, board_scale_z(*frame.window, *frame.stack));
 }
 
 std::array<AxisArrow, 3> axis_gizmo(const view3d::ViewState& view) {
@@ -379,7 +399,6 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
     key.clip = in.clip.area;
     key.clipped = in.clip.cut_box;
   }
-  key.span_connected_layers = span_connected_layers;
   key.technology = in.technology;
   // A new output style (even with the same layers) is a new mask source: a full build.
   key.mask_style = in.mask ? std::shared_ptr<const void>{in.mask->style} : nullptr;
@@ -389,7 +408,17 @@ BuildKey build_key(const view3d::BuildInputs& in, bool span_connected_layers) {
     key.magic_compat = in.stack->magic_compat();
     key.microns_per_unit = in.stack->microns_per_unit();
   }
+  // A mask-layer build ignores the J1 option: toggling it there needs no
+  // new build (nor a new report of the generation errors).
+  key.span_connected_layers = span_connected_layers && key.mode == view3d::Mode::layout_layer;
   return key;
+}
+
+std::optional<bool> toggle_span_connected_layers(view3d::Session& session, std::string_view path) {
+  if (!session.window || session.window->toolkit_path != path) return std::nullopt;
+  const bool on = !session.window->span_connected_layers;
+  if (!view3d::set_span_connected_layers(session, path, on)) return std::nullopt;
+  return on;
 }
 
 bool model_is_current(const view3d::MeshModel& model, std::uint64_t build_id) noexcept {
@@ -402,6 +431,32 @@ view3d::BuildInputs build_inputs(editor::EditorState& editor, view3d::BuildInput
   in.span_connected_layers = span_connected_layers;
   in.lock = &editor.database_lock;
   return in;
+}
+
+void BuildErrorRelay::attach(view3d::BuildInputs& in, const BuildKey& key) {
+  Entry& e = sinks_.emplace_back();
+  e.build_id = in.build_id;
+  e.key = key;
+  e.sink = std::make_unique<diag::CollectingSink>();
+  in.sink = e.sink.get();
+}
+
+std::vector<diag::Diagnostic> BuildErrorRelay::deliver(const view3d::MeshModel* model, std::uint64_t current,
+                                                       bool worker_idle) {
+  if (worker_idle) {
+    std::erase_if(sinks_, [current](const Entry& e) { return e.build_id < current; });
+  }
+  if (model == nullptr || !model_is_current(*model, current)) return {};
+  const auto it =
+      std::find_if(sinks_.begin(), sinks_.end(), [current](const Entry& e) { return e.build_id == current; });
+  if (it == sinks_.end()) return {};
+  std::vector<diag::Diagnostic> errors = it->sink->take();
+  if (it->delivered) return errors;  // an incremental rebuild's
+  it->delivered = true;
+  const bool repeat = last_full_ && last_full_->key == it->key && last_full_->errors == errors;
+  last_full_ = Reported{it->key, errors};
+  if (repeat) errors.clear();
+  return errors;
 }
 
 std::optional<ChangeAreas> change_areas(const view::LayoutWindow& window, const db::CellDef* rendered) {
@@ -423,7 +478,10 @@ std::string mesh_status_text(const MeshStatus& status) {
     return "Building mesh · " + std::to_string(percent) + " %";
   }
   if (!status.have_model) return "No mesh";
-  return "Mesh ready · " + grouped(status.rectangles) + (status.rectangles == 1 ? " rectangle" : " rectangles");
+  std::string text =
+      "Mesh ready · " + grouped(status.rectangles) + (status.rectangles == 1 ? " rectangle" : " rectangles");
+  if (status.overlay_truncated) text += " · net overlay cut at " + grouped(view3d::kMaxNetOverlayPrisms) + " boxes";
+  return text;
 }
 
 std::size_t rectangle_count(const view3d::MeshModel& mesh) noexcept {
@@ -537,6 +595,58 @@ view3d::HighlightSet PickResolver::net(const view3d::MeshModel& mesh, const edit
                                view3d::NetOptions{view3d::NetScope::hierarchical, scope_.magic_compat, scope_.stack});
 }
 
+view3d::NetOverlay mask_net_overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                    const view3d::WindowState& window, bool magic_compat) {
+  if (mesh == nullptr || window.mode != view3d::Mode::mask_layer || mesh->mode != view3d::Mode::mask_layer) return {};
+  return view3d::net_overlay(*mesh, editor, window, editor.selection,
+                             view3d::NetOptions{view3d::NetScope::hierarchical, magic_compat, nullptr});
+}
+
+std::uint64_t selection_fingerprint(const select::Selection& selection) {
+  // FNV-1a over the root's address and each selected tile.
+  std::uint64_t h = 1469598103934665603ULL;
+  const auto mix = [&h](std::uint64_t v) {
+    h ^= v;
+    h *= 1099511628211ULL;
+  };
+  mix(reinterpret_cast<std::uintptr_t>(selection.root()));
+  const db::CellDef* def = selection.def();
+  if (def == nullptr) return h;
+  tech::TypeMask types = tech::TypeMask::all();
+  types.clear_type(tech::kSpace);
+  for (std::size_t p = tech::kFirstUserPlane; p < def->plane_count(); ++p) {
+    (void)def->plane(static_cast<tech::PlaneId>(p)).enumerate(db::whole_plane(), types, [&](const db::TileView& t) {
+      mix(p);
+      mix(static_cast<std::uint64_t>(t.type));
+      for (const db::Coord c : {t.area.x0, t.area.y0, t.area.x1, t.area.y1}) {
+        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(c)));
+      }
+      return true;
+    });
+  }
+  return h;
+}
+
+void NetOverlayCache::selection_maybe_changed(const select::Selection& selection) {
+  if (!dirty_ && selection_fingerprint(selection) != fingerprint_) dirty_ = true;
+}
+
+const view3d::NetOverlay& NetOverlayCache::overlay(const view3d::MeshModel* mesh, const editor::EditorState& editor,
+                                                   const view3d::WindowState& window, bool magic_compat) {
+  if (dirty_) {
+    overlay_ = mask_net_overlay(mesh, editor, window, magic_compat);
+    fingerprint_ = selection_fingerprint(editor.selection);
+    dirty_ = false;
+    ++computations_;
+  }
+  return overlay_;
+}
+
+void NetOverlayCache::reset() {
+  overlay_ = {};
+  dirty_ = true;
+}
+
 std::string pick_caption(const view3d::PickTarget& target, const view3d::LayerStack& stack) {
   const std::string name = target.layer < stack.size() ? stack.layers()[target.layer].name : std::string{"layer"};
   std::string caption = name + " · picked";
@@ -648,7 +758,8 @@ std::optional<View3dControlView> panel_control(View3dControl control, const View
                     "section in microns");
     case View3dControl::export_model:
       return plain("Export glTF…", s.window_open && s.export_available,
-                   "Export the 3D model: export3d <file> (.gltf, .glb or .stl)");
+                   "Export the 3D model as glTF, GLB or STL (one file per layer or merged): export3d <file> -format "
+                   "gltf|glb|stl [-merged]");
     case View3dControl::orthographic:
       return toggle("Orthographic", !s.perspective, true, "Orthographic projection (Magic's)");
     case View3dControl::perspective:
@@ -670,6 +781,12 @@ std::optional<View3dControlView> panel_control(View3dControl control, const View
     case View3dControl::frame_time:
       return toggle("Frame time", s.frame_time, true, "Show the 3D frame's draw time and frame rate");
     case View3dControl::close_view: return plain("Close 3D view", s.window_open, "Close the 3D window: closewindow");
+    case View3dControl::separate_window:
+      // "Detach view": "Separate window" was cut off in its grid cell at 1280 px.
+      return toggle("Detach view", s.separate_window, s.window_open && s.separate_window_available,
+                    s.separate_window_available
+                        ? "Open the 3D view in a separate window; closing that window returns it to the tab"
+                        : "Open in separate window: not available on this system");
     case View3dControl::show_all_layers:
       return plain("Show all layers", s.window_open && s.visibility_editable, "Show every layer: see *");
     default: return std::nullopt;
@@ -714,6 +831,10 @@ std::string level_text(int level) {
 }
 
 // --- layout ------------------------------------------------------------------------
+
+std::string row_tooltip(const View3dLayerRow& row) {
+  return row.range_um.empty() ? row.name : row.name + ", " + row.range_um + " \u00b5m";
+}
 
 float grid_cell_width(float width, int columns, float spacing) noexcept {
   if (columns <= 0) return width;
@@ -762,6 +883,49 @@ platform::FilePickerRequest export_request(const view3d::WindowState& window) {
 
 std::string export_command(std::string_view path, std::string_view file, bool on_window_table) {
   const std::string command = "export3d " + script::quote_list_element(file);
+  return on_window_table ? window_command(path, command) : command;
+}
+
+namespace {
+
+struct ExportFormatInfo {
+  const char* label;
+  const char* filter;
+  const char* extension;
+  const char* options;
+};
+
+ExportFormatInfo export_info(View3dExportFormat format) {
+  switch (format) {
+    case View3dExportFormat::glb:
+      return {"glTF binary (.glb)\u2026", "glTF binary", "glb", " -format glb"};
+    case View3dExportFormat::stl_per_layer:
+      return {"STL, one file per layer\u2026", "STL", "stl", " -format stl"};
+    case View3dExportFormat::stl_merged:
+      return {"STL, merged into one file\u2026", "STL", "stl", " -format stl -merged"};
+    case View3dExportFormat::gltf:
+      break;
+  }
+  return {"glTF (.gltf)\u2026", "glTF", "gltf", " -format gltf"};
+}
+
+}  // namespace
+
+std::string export_format_label(View3dExportFormat format) {
+  return export_info(format).label;
+}
+
+platform::FilePickerRequest export_request(const view3d::WindowState& window, View3dExportFormat format) {
+  const ExportFormatInfo info = export_info(format);
+  platform::FilePickerRequest request = export_request(window);
+  request.initial_file = (window.cell.empty() ? std::string{"model"} : window.cell) + "." + info.extension;
+  request.file_types = {{info.filter, std::string{"*."} + info.extension}};
+  return request;
+}
+
+std::string export_command(std::string_view path, std::string_view file, bool on_window_table,
+                           View3dExportFormat format) {
+  const std::string command = "export3d " + script::quote_list_element(file) + export_info(format).options;
   return on_window_table ? window_command(path, command) : command;
 }
 

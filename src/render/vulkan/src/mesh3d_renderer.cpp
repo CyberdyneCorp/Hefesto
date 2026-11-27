@@ -13,8 +13,10 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -203,13 +205,51 @@ struct SlabDraw {
   std::array<GpuSide, 4> sides{};
 };
 
+/// The net overlay's draw (DrawParams::net_overlay): the counts of the
+/// cached rectangles and side faces (OverlayCache) in the overlay buffer,
+/// one layer entry per z range after the stack's (and the slab's).
+struct OverlayDraw {
+  FramePush push{};
+  std::size_t rects = 0;
+  std::size_t sides = 0;
+
+  [[nodiscard]] bool empty() const noexcept { return rects == 0; }
+};
+
+/// overlay_faces() of the last overlay drawn, as GPU rectangles and side
+/// faces relative to the first top's corner (`origin`, mesh units), kept
+/// until the prisms, their origin or the first layer entry change: the face
+/// pass runs once per overlay, not per frame (an orbit drag draws many).
+struct OverlayCache {
+  std::vector<OverlayPrism> input;
+  std::array<double, 2> input_origin{0.0, 0.0};
+  std::uint32_t base = 0;  // the first overlay layer entry
+  bool valid = false;
+  std::array<double, 2> origin{0.0, 0.0};
+  std::vector<std::array<float, 2>> ranges;  // h and t of the layer entries base, base + 1, ...
+  std::vector<GpuRect> rects;
+  std::vector<GpuSide> sides;
+  bool written = false;    // the overlay buffer holds rects and sides
+  bool truncated = false;  // OverlayFaces::truncated
+  std::uint64_t builds = 0;
+
+  [[nodiscard]] bool holds(std::span<const OverlayPrism> prisms, const std::array<double, 2>& at,
+                           std::uint32_t first) const {
+    // Bitwise, so a prism with a NaN field (skipped when drawn) still matches itself.
+    const auto same = [](const OverlayPrism& a, const OverlayPrism& b) { return std::memcmp(&a, &b, sizeof a) == 0; };
+    return valid && base == first && input_origin == at && std::ranges::equal(input, prisms, same);
+  }
+};
+
 struct Frame {
   std::vector<LayerDraw> layers;
+  std::vector<std::size_t> ordinal;  // per layer: its coplanar_bias ordinal
   std::vector<GpuLayer> gpu_layers;
   std::vector<FramePush> push;         // per chunk
   std::vector<std::size_t> back_to_front;  // chunk indices, farthest first
   std::array<float, 4> clear{};
   SlabDraw slab;
+  OverlayDraw overlay;  // empty: no overlay
   bool clipped = false;  // a section plane is set: the clipped pipelines
   bool any_transparent = false;
   int width = 0;
@@ -242,16 +282,24 @@ view3d::DrawHeight layer_height(const DrawParams& p, const std::vector<view3d::D
   return p.stack != nullptr ? p.stack->draw_height(static_cast<view3d::LayerId>(i)) : view3d::DrawHeight{};
 }
 
+/// Every layer's draw, colour, heights and coplanar ordinal: the n-th drawn
+/// layer in stack order (n from 1) is drawn with coplanar_bias(n), so on
+/// faces at the same height the later layer wins at every pixel (task 17.5,
+/// Q-MISC-77); the slab is drawn with no bias.
 void prepare_layers(const DrawParams& p, const std::vector<view3d::DrawHeight>& model_heights, std::size_t count,
                     Frame& f) {
   std::vector<LayerPaint> paints =
       p.stack != nullptr ? layer_paints(*p.stack, p.styles) : std::vector<LayerPaint>{};
   paints.resize(count);
   f.layers.assign(count, LayerDraw::skip);
+  f.ordinal.assign(count, 0U);
   f.gpu_layers.assign(std::max<std::size_t>(count, 1U), GpuLayer{});
+  std::size_t drawn = 0;
   for (std::size_t i = 0; i < count; ++i) {
     f.layers[i] = classify(p, i, paints[i]);
     f.any_transparent = f.any_transparent || f.layers[i] == LayerDraw::transparent;
+    drawn += f.layers[i] != LayerDraw::skip ? 1U : 0U;
+    f.ordinal[i] = drawn;
     const view3d::DrawHeight z = layer_height(p, model_heights, i);
     const float alpha = std::clamp(layer_alpha(p, i), 0.0F, 1.0F);
     f.gpu_layers[i] = GpuLayer{{paints[i].rgb[0], paints[i].rgb[1], paints[i].rgb[2], alpha},
@@ -302,6 +350,17 @@ bool usable_slab(const DrawParams& p, std::size_t layer_count) {
          layer_count < 0xFFFFU;  // the side faces pack the layer in 16 bits
 }
 
+/// The overlay's draw heights of a z range: GpuLayer::zinfo's h and t.
+std::array<float, 2> overlay_ht(float z_bottom, float z_top) {
+  return {z_bottom, z_top - z_bottom};
+}
+
+std::array<float, 3> overlay_rgb(const DrawParams& p) {
+  std::array<float, 3> c = p.overlay_color;
+  for (float& v : c) v = std::isfinite(v) ? std::clamp(v, 0.0F, 1.0F) : 0.0F;
+  return c;
+}
+
 std::array<float, 4> clear_color(const DrawParams& p) {
   std::array<float, 3> bg = p.background.value_or(background_color(p.styles));
   for (float& c : bg) c = std::isfinite(c) ? std::clamp(c, 0.0F, 1.0F) : 0.0F;
@@ -324,6 +383,8 @@ struct VulkanMesh3dRenderer::Impl {
   vk::Buffer layer_buffer;
   vk::Buffer highlight_buffer;
   vk::Buffer slab_buffer;  // the substrate slab's rectangle, then its four sides
+  vk::Buffer overlay_buffer;  // the net overlay's rectangles, then its side faces (grown, kept)
+  OverlayCache overlay_cache;
 
   std::vector<GpuChunk> chunks;  // model order
   std::vector<std::uint32_t> bases;  // pick base of each chunk
@@ -372,6 +433,7 @@ struct VulkanMesh3dRenderer::Impl {
     vk::destroy_buffer(device, layer_buffer);
     vk::destroy_buffer(device, highlight_buffer);
     vk::destroy_buffer(device, slab_buffer);
+    vk::destroy_buffer(device, overlay_buffer);
     if (pool != VK_NULL_HANDLE) vkDestroyDescriptorPool(device, pool, nullptr);
     pool = VK_NULL_HANDLE;
   }
@@ -481,7 +543,21 @@ struct VulkanMesh3dRenderer::Impl {
 
   // --- frame ---
 
-  Frame prepare(const view3d::ViewState& view, const DrawParams& p) const {
+  /// The push constants of a draw whose model is offset by (ox, oy).
+  static FramePush push_for(const view3d::ViewState& view, const DrawParams& p, const view3d::Matrix4& m, double ox,
+                            double oy, const std::array<std::uint32_t, 4>& params) {
+    const Mat cm = chunk_matrix(m, ox, oy, xy_scale_of(p));
+    FramePush push{};
+    for (std::size_t k = 0; k < 16; ++k) push.mvp[k] = static_cast<float>(cm[k]);
+    const std::array<float, 3> light = board_light(view.view_z);
+    push.light = {light[0], light[1], light[2], kBoardAmbient};
+    push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
+    push.params = params;
+    push.clip = clip_of(plane_of(p), ox, oy);
+    return push;
+  }
+
+  Frame prepare(const view3d::ViewState& view, const DrawParams& p) {
     Frame f;
     f.width = owner->width();
     f.height = owner->height();
@@ -490,22 +566,15 @@ struct VulkanMesh3dRenderer::Impl {
     f.clear = clear_color(p);
     const view3d::Matrix4 m = view3d::matrix(view, f.width, f.height, p.projection);
     const std::uint32_t lighting = static_cast<std::uint32_t>(p.lighting);
-    const std::array<float, 3> light = board_light(view.view_z);
     const std::uint32_t highlight = p.highlight != nullptr && !p.highlight->empty() ? 1U : 0U;
     const double scale = xy_scale_of(p);
-    const std::optional<SectionPlane> plane = plane_of(p);
-    f.clipped = plane.has_value();
+    f.clipped = plane_of(p).has_value();
     std::vector<double> depth(chunks.size());
     f.push.resize(chunks.size());
     for (std::size_t i = 0; i < chunks.size(); ++i) {
       const GpuChunk& c = chunks[i];
       const Mat cm = chunk_matrix(m, c.origin_x, c.origin_y, scale);
-      FramePush& push = f.push[i];
-      for (std::size_t k = 0; k < 16; ++k) push.mvp[k] = static_cast<float>(cm[k]);
-      push.light = {light[0], light[1], light[2], kBoardAmbient};
-      push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
-      push.params = {bases[i], lighting, highlight, 0U};
-      push.clip = clip_of(plane, c.origin_x, c.origin_y);
+      f.push[i] = push_for(view, p, m, c.origin_x, c.origin_y, {bases[i], lighting, highlight, 0U});
       const double cx = (static_cast<double>(c.area.x0) + static_cast<double>(c.area.x1)) / 2.0 - c.origin_x;
       const double cy = (static_cast<double>(c.area.y0) + static_cast<double>(c.area.y1)) / 2.0 - c.origin_y;
       depth[i] = depth_at(cm, cx, cy);
@@ -515,6 +584,7 @@ struct VulkanMesh3dRenderer::Impl {
     std::stable_sort(f.back_to_front.begin(), f.back_to_front.end(),
                      [&](std::size_t a, std::size_t b) { return depth[a] > depth[b]; });
     prepare_slab(view, p, m, f);
+    prepare_overlay(view, p, m, f);
     return f;
   }
 
@@ -531,16 +601,83 @@ struct VulkanMesh3dRenderer::Impl {
     f.gpu_layers.resize(static_cast<std::size_t>(d.layer) + 1U);
     f.gpu_layers[d.layer] = GpuLayer{{slab.color[0], slab.color[1], slab.color[2], 1.0F},
                                      {slab.height, slab.thickness, 0.0F, 0.0F}};
-    const double ox = slab.area.x0;
-    const double oy = slab.area.y0;
-    const Mat cm = chunk_matrix(m, ox, oy, xy_scale_of(p));
-    for (std::size_t k = 0; k < 16; ++k) d.push.mvp[k] = static_cast<float>(cm[k]);
-    const std::array<float, 3> light = board_light(view.view_z);
-    d.push.light = {light[0], light[1], light[2], kBoardAmbient};
-    d.push.zscale = {view.scale_z, 0.0F, 0.0F, 0.0F};
-    d.push.params = {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U};
-    d.push.clip = clip_of(plane_of(p), ox, oy);
+    d.push = push_for(view, p, m, slab.area.x0, slab.area.y0, {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U});
     slab_geometry(slab, d.layer, d);
+  }
+
+  /// The net overlay (DrawParams::net_overlay): the cached faces of the
+  /// prisms (update_overlay_cache), one layer entry per z range after the
+  /// stack's and the slab's, in the overlay colour at kOverlayAlpha, pick
+  /// base 0 (never dimmed; its pipelines write no pick id).
+  void prepare_overlay(const view3d::ViewState& view, const DrawParams& p, const view3d::Matrix4& m, Frame& f) {
+    if (p.net_overlay.empty()) {
+      overlay_cache.valid = false;  // no overlay now: nothing cached is shown
+      overlay_cache.truncated = false;
+      return;
+    }
+    const OverlayCache& c = update_overlay_cache(p, static_cast<std::uint32_t>(f.gpu_layers.size()));
+    if (c.rects.empty()) {
+      return;
+    }
+    const std::array<float, 3> rgb = overlay_rgb(p);
+    for (const std::array<float, 2>& ht : c.ranges) {
+      f.gpu_layers.push_back(GpuLayer{{rgb[0], rgb[1], rgb[2], kOverlayAlpha}, {ht[0], ht[1], 0.0F, 0.0F}});
+    }
+    f.overlay.rects = c.rects.size();
+    f.overlay.sides = c.sides.size();
+    f.overlay.push =
+        push_for(view, p, m, c.origin[0], c.origin[1], {0U, static_cast<std::uint32_t>(p.lighting), 0U, 0U});
+  }
+
+  /// The cache of DrawParams::net_overlay with its layer entries from
+  /// `base`: rebuilt only when the prisms, their origin or `base` changed.
+  /// Left empty when the overlay's z ranges would take layer entries past
+  /// what a side face can name (16 bits).
+  const OverlayCache& update_overlay_cache(const DrawParams& p, std::uint32_t base) {
+    OverlayCache& c = overlay_cache;
+    if (c.holds(p.net_overlay, p.overlay_origin, base)) {
+      return c;
+    }
+    const std::uint64_t builds = c.builds + 1U;
+    c = OverlayCache{};
+    c.input.assign(p.net_overlay.begin(), p.net_overlay.end());
+    c.input_origin = p.overlay_origin;
+    c.base = base;
+    c.valid = true;
+    c.builds = builds;
+    const OverlayFaces faces = overlay_faces(p.net_overlay);
+    c.truncated = faces.truncated;
+    std::map<std::array<float, 2>, std::uint32_t> layers;  // z range -> its layer entry
+    for (const OverlayPrism& t : faces.tops) layers.emplace(overlay_ht(t.z_bottom, t.z_top), 0U);
+    if (faces.tops.empty() || std::size_t{base} + layers.size() >= 0xFFFFU) {
+      return c;  // nothing to draw (or more layer entries than side faces can name)
+    }
+    for (auto& [ht, entry] : layers) {
+      entry = base + static_cast<std::uint32_t>(c.ranges.size());
+      c.ranges.push_back(ht);
+    }
+    fill_overlay_cache(faces, layers, c);
+    return c;
+  }
+
+  /// The faces relative to the first top's corner, which becomes the cache's origin.
+  static void fill_overlay_cache(const OverlayFaces& faces, const std::map<std::array<float, 2>, std::uint32_t>& layers,
+                                 OverlayCache& c) {
+    const auto ox = static_cast<double>(faces.tops.front().x0);
+    const auto oy = static_cast<double>(faces.tops.front().y0);
+    c.origin = {c.input_origin[0] + ox, c.input_origin[1] + oy};
+    const auto rel = [](float v, double origin) { return static_cast<float>(static_cast<double>(v) - origin); };
+    const auto layer_of = [&layers](float z_bottom, float z_top) { return layers.at(overlay_ht(z_bottom, z_top)); };
+    c.rects.reserve(faces.tops.size());
+    for (const OverlayPrism& t : faces.tops) {
+      c.rects.push_back(
+          GpuRect{rel(t.x0, ox), rel(t.y0, oy), rel(t.x1, ox), rel(t.y1, oy), layer_of(t.z_bottom, t.z_top), 0U});
+    }
+    c.sides.reserve(faces.sides.size());
+    for (const OverlayFaces::Side& e : faces.sides) {
+      c.sides.push_back(GpuSide{rel(e.x0, ox), rel(e.y0, oy), rel(e.x1, ox), rel(e.y1, oy),
+                                layer_of(e.z_bottom, e.z_top), 0.0F, 0.0F, 0U});
+    }
   }
 
   void write_frame_buffers(const Frame& f, const DrawParams& p) {
@@ -560,6 +697,25 @@ struct VulkanMesh3dRenderer::Impl {
     write_at(device, layer_buffer, 0, f.gpu_layers);
     write_at(device, highlight_buffer, 0, bits);
     write_slab(f.slab);
+    write_overlay(f.overlay);
+  }
+
+  /// Writes the cached overlay to its buffer once per cache rebuild.
+  void write_overlay(const OverlayDraw& overlay) {
+    OverlayCache& c = overlay_cache;
+    if (overlay.empty() || c.written) {
+      return;
+    }
+    const VkDeviceSize sides_at = align16(c.rects.size() * sizeof(GpuRect));
+    const VkDeviceSize bytes = sides_at + (c.sides.size() * sizeof(GpuSide));
+    if (overlay_buffer.buffer == VK_NULL_HANDLE || overlay_buffer.size < bytes) {
+      vk::destroy_buffer(device, overlay_buffer);
+      overlay_buffer = vk::create_buffer(physical, device, std::bit_ceil(bytes), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                         kHostMemory);
+    }
+    write_at(device, overlay_buffer, 0, c.rects);
+    write_at(device, overlay_buffer, sides_at, c.sides);
+    c.written = true;
   }
 
   static constexpr VkDeviceSize kSlabSidesOffset = (sizeof(GpuRect) + 15U) & ~VkDeviceSize{15U};
@@ -582,6 +738,7 @@ struct VulkanMesh3dRenderer::Impl {
     const Frame& f;
     VkCommandBuffer cmd;
     VkPipeline bound = VK_NULL_HANDLE;
+    std::size_t bias = 0;  // the coplanar_bias ordinal last set
 
     void begin(int width, int height) const {
       const VkViewport viewport{0.0F, 0.0F, static_cast<float>(width), static_cast<float>(height), 0.0F, 1.0F};
@@ -589,6 +746,17 @@ struct VulkanMesh3dRenderer::Impl {
       vkCmdSetViewport(cmd, 0, 1, &viewport);
       vkCmdSetScissor(cmd, 0, 1, &scissor);
       vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r.pipelines.layout(), 0, 1, &r.set, 0, nullptr);
+      vkCmdSetDepthBias(cmd, 0.0F, 0.0F, 0.0F);
+    }
+
+    /// The depth bias of the layer with coplanar ordinal `ordinal` (0: none).
+    void set_bias(std::size_t ordinal) {
+      if (ordinal == bias) {
+        return;
+      }
+      const std::array<float, 2> b = coplanar_bias(ordinal);
+      vkCmdSetDepthBias(cmd, b[0], 0.0F, b[1]);
+      bias = ordinal;
     }
 
     void bind(Kind kind, Variant variant) {
@@ -605,6 +773,7 @@ struct VulkanMesh3dRenderer::Impl {
       if (!f.slab.active) {
         return;
       }
+      set_bias(0);
       vkCmdPushConstants(cmd, r.pipelines.layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FramePush), &f.slab.push);
       for (const auto& [kind, offset, count] :
            {std::tuple{Kind::rect, VkDeviceSize{0}, 1U}, std::tuple{Kind::side, kSlabSidesOffset, 4U}}) {
@@ -636,9 +805,32 @@ struct VulkanMesh3dRenderer::Impl {
         if (f.layers[layer] != LayerDraw::opaque) {
           continue;
         }
+        set_bias(f.ordinal[layer]);
         for (const Kind kind : kKinds) {
           for (std::size_t chunk = 0; chunk < r.chunks.size(); ++chunk) draw(chunk, layer, kind, variant);
         }
+      }
+    }
+
+    /// The net overlay, last: over everything drawn (no depth test), no
+    /// pick id. `msaa`: the multisampled pass's pipeline.
+    void overlay(bool msaa) {
+      if (f.overlay.empty()) {
+        return;
+      }
+      vkCmdPushConstants(cmd, r.pipelines.layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(FramePush),
+                         &f.overlay.push);
+      const VkDeviceSize sides_at = align16(f.overlay.rects * sizeof(GpuRect));
+      for (const auto& [kind, offset, count] : {std::tuple{Kind::rect, VkDeviceSize{0}, f.overlay.rects},
+                                                std::tuple{Kind::side, sides_at, f.overlay.sides}}) {
+        if (count == 0) {
+          continue;
+        }
+        const VkPipeline pipeline = r.pipelines.overlay(kind, msaa, f.clipped);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        bound = pipeline;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &r.overlay_buffer.buffer, &offset);
+        vkCmdDraw(cmd, mesh3d::vertices_per_instance(kind), static_cast<std::uint32_t>(count), 0, 0);
       }
     }
 
@@ -652,6 +844,7 @@ struct VulkanMesh3dRenderer::Impl {
           if (f.layers[layer] != LayerDraw::transparent) {
             continue;
           }
+          set_bias(f.ordinal[layer]);
           for (const Kind kind : kKinds) draw(chunk, layer, kind, variant);
         }
       }
@@ -690,6 +883,7 @@ struct VulkanMesh3dRenderer::Impl {
     rec.begin(back.width, back.height);
     rec.opaque(Variant::msaa_opaque);
     rec.transparent(Variant::msaa_transparent);
+    rec.overlay(true);
     vkCmdEndRenderPass(cmd);
     return fb;
   }
@@ -698,6 +892,9 @@ struct VulkanMesh3dRenderer::Impl {
     const Frame f = prepare(view, p);
     if (f.clipped) {
       pipelines.ensure_clipped();
+    }
+    if (!f.overlay.empty()) {
+      pipelines.ensure_overlay(f.clipped);
     }
     write_frame_buffers(f, p);
     const bool msaa = p.level >= 1 && pipelines.msaa();
@@ -709,6 +906,7 @@ struct VulkanMesh3dRenderer::Impl {
     } else {
       rec.opaque(Variant::opaque);
       rec.transparent(Variant::transparent);
+      rec.overlay(false);
     }
     VkFramebuffer fb = VK_NULL_HANDLE;
     const auto after = [&](VkCommandBuffer cmd) { fb = record_msaa(cmd, f); };
@@ -751,6 +949,19 @@ std::uint64_t VulkanMesh3dRenderer::chunk_uploads() const noexcept {
 
 bool VulkanMesh3dRenderer::multisampling() const noexcept {
   return impl_->pipelines.msaa();
+}
+
+std::uint64_t VulkanMesh3dRenderer::overlay_face_builds() const noexcept {
+  return impl_->overlay_cache.builds;
+}
+
+bool VulkanMesh3dRenderer::overlay_truncated() const noexcept {
+  return impl_->overlay_cache.valid && impl_->overlay_cache.truncated;
+}
+
+bool VulkanMesh3dRenderer::overlay_ready() const noexcept {
+  return impl_->pipelines.overlay(mesh3d::Kind::rect, false, false) != VK_NULL_HANDLE ||
+         impl_->pipelines.overlay(mesh3d::Kind::rect, false, true) != VK_NULL_HANDLE;
 }
 
 }  // namespace hefesto::render
