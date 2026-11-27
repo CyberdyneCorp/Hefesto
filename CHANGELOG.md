@@ -160,6 +160,14 @@ release notices.
 - **Tcl symbol generators** run in a sandboxed interpreter (10 s and
   256 MiB per run, 60 s in total until the symbols are reloaded);
   generators that run external programs are not run (`SCHEM-LIB-011`).
+- **Net driver check (M8 round 7).** Netlisting reports undriven nodes
+  (`SCHEM-NET-019`, an error: exit status 10), open nets (`SCHEM-NET-020`)
+  and shorted outputs (`SCHEM-NET-021`); simulation decks are still built.
+  A document with no `xschemrc` uses the system devices library as its
+  search path. New `xschem` subcommands: `clear`, `instance`, `copy`,
+  `paste`, `saveas`, `get instances|wires`; `get_tok` takes a third
+  argument. The Schematic tab hides the layout docks, scales texts with the
+  zoom, and gains the `tab` window command and a schematic Reset table.
 - **Schematic editing (M8 EDIT).** `schematic place`, `wire`, `label`,
   `line`/`box`/`arc`/`polygon`/`text`, `select`, `delete`, `move`,
   `copy`, `rotate`, `flip`, `align`, `setprop`, `replace`, `symbol`,
