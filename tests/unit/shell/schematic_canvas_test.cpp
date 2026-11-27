@@ -188,7 +188,7 @@ TEST_CASE("canvas texts scale with the zoom and the fit",
   view.set_size(800, 600);
   SceneBox box;
   box.add(Point{0, 0});
-  box.add(Point{4000, 3000});
+  box.add(Point{2000, 1500});
   view.fit(box);
   const auto fitted = scene_text_px(0.4, view.zoom());
   REQUIRE(fitted.has_value());
