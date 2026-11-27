@@ -1,0 +1,14 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__oai211_1.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__oai211_1 A1 A2 B C ZN VDD VNW VPW VSS
+X0 a_692_68# B a_36_68# VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X1 ZN A2 a_36_68# VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.3608p ps=2.52u w=0.82u l=0.6u
+X2 a_244_472# A2 VDD VNW pfet_05v0 ad=0.3172p pd=1.74u as=0.5978p ps=3.42u w=1.22u l=0.5u
+X3 VDD B ZN VNW pfet_05v0 ad=0.2561p pd=1.505u as=0.4016p ps=1.94u w=0.985u l=0.5u
+X4 ZN A1 a_244_472# VNW pfet_05v0 ad=0.4016p pd=1.94u as=0.3172p ps=1.74u w=1.22u l=0.5u
+X5 ZN C VDD VNW pfet_05v0 ad=0.44325p pd=2.87u as=0.2561p ps=1.505u w=0.985u l=0.5u
+X6 VSS C a_692_68# VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X7 a_36_68# A1 ZN VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+C0 VNW VPW 2.00777f
+.ends
+

@@ -1,0 +1,9 @@
+* NGSPICE file created from sg13g2_tiehi.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_tiehi L_HI VDD VSS
+X0 L_HI a_222_366# VDD VDD sg13_lv_pmos ad=0.3927p pd=2.99u as=0.76727p ps=3.885u w=1.155u l=0.13u
+X1 VDD a_23_195# a_23_429# VDD sg13_lv_pmos ad=0.76727p pd=3.885u as=0.2442p ps=2.06u w=0.66u l=0.13u
+X2 a_222_366# a_23_429# VSS VSS sg13_lv_nmos ad=0.27427p pd=2.28u as=0.49637p ps=3.565u w=0.795u l=0.13u
+X3 VSS a_23_195# a_23_195# VSS sg13_lv_nmos ad=0.49637p pd=3.565u as=0.111p ps=1.34u w=0.3u l=0.13u
+.ends
+

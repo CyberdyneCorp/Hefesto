@@ -1,0 +1,27 @@
+* NGSPICE file created from sg13g2_slgcp_1.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_slgcp_1 GCLK SCE GATE CLK VSS VDD
+X0 a_136_468# SCE VDD VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X1 a_136_156# GATE a_136_468# VDD sg13_lv_pmos ad=0.2856p pd=2.36u as=0.1596p ps=1.22u w=0.84u l=0.13u
+X2 a_750_88# a_574_118# VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.16905p ps=1.5u w=1.12u l=0.13u
+X3 a_776_536# a_326_82# a_574_118# VDD sg13_lv_pmos ad=44.1f pd=0.63u as=0.17837p ps=1.405u w=0.42u l=0.13u
+X4 a_1273_447# a_750_88# a_1222_138# VSS sg13_lv_nmos ad=0.2176p pd=1.96u as=59.2f ps=0.825u w=0.64u l=0.13u
+X5 a_574_118# a_352_118# a_136_156# VDD sg13_lv_pmos ad=0.17837p pd=1.405u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X6 VDD a_750_88# a_776_536# VDD sg13_lv_pmos ad=0.16905p pd=1.5u as=44.1f ps=0.63u w=0.42u l=0.13u
+X7 VDD CLK a_326_82# VDD sg13_lv_pmos ad=1.49205p pd=9.995u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X8 VSS CLK a_326_82# VSS sg13_lv_nmos ad=0.1371p pd=1.12u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X9 a_136_156# SCE VSS VSS sg13_lv_nmos ad=0.1045p pd=0.93u as=0.187p ps=1.78u w=0.55u l=0.13u
+X10 GCLK a_1273_447# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.2664p ps=2.2u w=0.74u l=0.13u
+X11 a_1273_447# CLK VDD VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=1.49205p ps=9.995u w=0.84u l=0.13u
+X12 VSS GATE a_136_156# VSS sg13_lv_nmos ad=1.44615p pd=9.78u as=0.1045p ps=0.93u w=0.55u l=0.13u
+X13 VDD a_750_88# a_1273_447# VDD sg13_lv_pmos ad=0.1946p pd=1.5u as=0.1596p ps=1.22u w=0.84u l=0.13u
+X14 a_352_118# a_326_82# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=1.44615p ps=9.78u w=0.74u l=0.13u
+X15 a_352_118# a_326_82# VDD VDD sg13_lv_pmos ad=0.2856p pd=2.36u as=0.3948p ps=2.98u w=0.84u l=0.13u
+X16 GCLK a_1273_447# VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.1946p ps=1.5u w=1.12u l=0.13u
+X17 a_574_118# a_326_82# a_136_156# VSS sg13_lv_nmos ad=0.1418p pd=1.12u as=0.231p ps=1.94u w=0.55u l=0.13u
+X18 a_714_124# a_352_118# a_574_118# VSS sg13_lv_nmos ad=37.8f pd=0.6u as=0.1418p ps=1.12u w=0.42u l=0.13u
+X19 VSS a_750_88# a_714_124# VSS sg13_lv_nmos ad=0.1544p pd=1.3u as=37.8f ps=0.6u w=0.42u l=0.13u
+X20 a_1222_138# CLK VSS VSS sg13_lv_nmos ad=59.2f pd=0.825u as=0.1371p ps=1.12u w=0.64u l=0.13u
+X21 a_750_88# a_574_118# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1544p ps=1.3u w=0.74u l=0.13u
+.ends
+

@@ -1,0 +1,13 @@
+* NGSPICE file created from sg13g2_dlygate4sd1_1.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_dlygate4sd1_1 X VDD VSS A
+X0 a_294_118# a_38_118# VDD VDD sg13_lv_pmos ad=0.37p pd=2.74u as=0.2931p ps=1.65u w=1u l=0.13u
+X1 VSS a_294_118# a_426_182# VSS sg13_lv_nmos ad=0.1405p pd=1.15u as=0.2373p ps=1.97u w=0.42u l=0.13u
+X2 VDD A a_38_118# VDD sg13_lv_pmos ad=0.2931p pd=1.65u as=0.1428p ps=1.52u w=0.42u l=0.13u
+X3 a_294_118# a_38_118# VSS VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=0.1428p ps=1.1u w=0.42u l=0.13u
+X4 VDD a_294_118# a_426_182# VDD sg13_lv_pmos ad=0.2245p pd=1.53u as=0.565p ps=3.13u w=1u l=0.13u
+X5 X a_426_182# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1405p ps=1.15u w=0.74u l=0.13u
+X6 X a_426_182# VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.2245p ps=1.53u w=1.12u l=0.13u
+X7 VSS A a_38_118# VSS sg13_lv_nmos ad=0.1428p pd=1.1u as=0.1428p ps=1.52u w=0.42u l=0.13u
+.ends
+

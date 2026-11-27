@@ -1,0 +1,4 @@
+* NGSPICE file created from sky130_fd_sc_hd__conb_1.ext - technology: sky130A
+
+X0 VPWR HI sky130_fd_pr__res_generic_po w=0.48 l=0.5
+X1 LO VGND sky130_fd_pr__res_generic_po w=0.48 l=0.5

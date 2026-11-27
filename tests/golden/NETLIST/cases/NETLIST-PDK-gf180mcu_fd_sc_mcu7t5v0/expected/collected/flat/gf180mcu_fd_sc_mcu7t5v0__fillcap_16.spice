@@ -1,0 +1,10 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__fillcap_16.ext - technology: gf180mcuD
+
+X0 VDD a_572_375# a_484_472# VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.5368p ps=3.32u w=1.22u l=1u
+X1 a_572_375# a_484_472# VSS VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.3608p ps=2.52u w=0.82u l=1u
+X2 a_124_375# a_36_472# VSS VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.3608p ps=2.52u w=0.82u l=1u
+X3 a_1468_375# a_1380_472# VSS VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.3608p ps=2.52u w=0.82u l=1u
+X4 VDD a_1020_375# a_932_472# VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.5368p ps=3.32u w=1.22u l=1u
+X5 VDD a_1468_375# a_1380_472# VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.5368p ps=3.32u w=1.22u l=1u
+X6 VDD a_124_375# a_36_472# VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.5368p ps=3.32u w=1.22u l=1u
+X7 a_1020_375# a_932_472# VSS VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.3608p ps=2.52u w=0.82u l=1u

@@ -1,0 +1,25 @@
+* NGSPICE file created from sg13g2_ebufn_4.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_ebufn_4 A VDD VSS TE_B Z
+X0 a_508_114# a_52_114# Z VSS sg13_lv_nmos ad=0.1443p pd=1.13u as=0.1443p ps=1.13u w=0.74u l=0.13u
+X1 a_500_414# a_52_114# Z VDD sg13_lv_pmos ad=0.2184p pd=1.51u as=0.2184p ps=1.51u w=1.12u l=0.13u
+X2 VDD A a_52_114# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.3808p ps=2.92u w=1.12u l=0.13u
+X3 a_251_114# TE_B VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.14615p ps=1.135u w=0.74u l=0.13u
+X4 VSS a_251_114# a_508_114# VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X5 a_251_114# TE_B VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X6 a_508_114# a_251_114# VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X7 Z a_52_114# a_508_114# VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1443p ps=1.13u w=0.74u l=0.13u
+X8 VSS a_251_114# a_508_114# VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X9 VDD TE_B a_500_414# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.4256p ps=3u w=1.12u l=0.13u
+X10 a_508_114# a_52_114# Z VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X11 a_500_414# TE_B VDD VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X12 a_508_114# a_251_114# VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X13 VDD TE_B a_500_414# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X14 Z a_52_114# a_500_414# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2184p ps=1.51u w=1.12u l=0.13u
+X15 Z a_52_114# a_508_114# VSS sg13_lv_nmos ad=0.1443p pd=1.13u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X16 a_500_414# TE_B VDD VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X17 a_500_414# a_52_114# Z VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X18 Z a_52_114# a_500_414# VDD sg13_lv_pmos ad=0.2184p pd=1.51u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X19 VSS A a_52_114# VSS sg13_lv_nmos ad=0.14615p pd=1.135u as=0.2516p ps=2.16u w=0.74u l=0.13u
+.ends
+

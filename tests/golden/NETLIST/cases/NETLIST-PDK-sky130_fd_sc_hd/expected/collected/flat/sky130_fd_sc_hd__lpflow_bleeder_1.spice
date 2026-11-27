@@ -1,0 +1,7 @@
+* NGSPICE file created from sky130_fd_sc_hd__lpflow_bleeder_1.ext - technology: sky130A
+
+X0 a_147_105# SHORT VGND VNB sky130_fd_pr__special_nfet_01v8 ad=0.0378 pd=0.57 as=0.0936 ps=1.24 w=0.36 l=0.15
+X1 VPWR SHORT a_363_105# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0936 pd=1.24 as=0.0378 ps=0.57 w=0.36 l=0.15
+X2 a_363_105# SHORT a_291_105# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0378 pd=0.57 as=0.0378 ps=0.57 w=0.36 l=0.15
+X3 a_291_105# SHORT a_219_105# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0378 pd=0.57 as=0.0378 ps=0.57 w=0.36 l=0.15
+X4 a_219_105# SHORT a_147_105# VNB sky130_fd_pr__special_nfet_01v8 ad=0.0378 pd=0.57 as=0.0378 ps=0.57 w=0.36 l=0.15

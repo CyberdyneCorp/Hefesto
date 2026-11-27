@@ -1,0 +1,7 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__antenna.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__antenna I VDD VNW VPW VSS
+D0 VPW I diode_nd2ps_06v0 pj=1.86u area=0.2052p
+D1 I VNW diode_pd2nw_06v0 pj=1.86u area=0.2052p
+.ends
+

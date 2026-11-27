@@ -1,0 +1,10 @@
+* NGSPICE file created from sky130_fd_sc_hd__clkdlybuf4s50_1.ext - technology: sky130A
+
+X0 a_283_47# a_27_47# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.2173 pd=2.17 as=0.1701 ps=1.36 w=0.82 l=0.5
+X1 VPWR A a_27_47# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.1701 pd=1.36 as=0.27 ps=2.54 w=1 l=0.15
+X2 VPWR a_283_47# a_390_47# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.15575 pd=1.325 as=0.2173 ps=2.17 w=0.82 l=0.5
+X3 VGND a_283_47# a_390_47# VNB sky130_fd_pr__nfet_01v8 ad=0.097 pd=0.975 as=0.17225 ps=1.83 w=0.65 l=0.5
+X4 X a_390_47# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.355 pd=2.71 as=0.15575 ps=1.325 w=1 l=0.15
+X5 VGND A a_27_47# VNB sky130_fd_pr__nfet_01v8 ad=0.10435 pd=1.01 as=0.1134 ps=1.38 w=0.42 l=0.15
+X6 a_283_47# a_27_47# VGND VNB sky130_fd_pr__nfet_01v8 ad=0.169 pd=1.82 as=0.10435 ps=1.01 w=0.65 l=0.5
+X7 X a_390_47# VGND VNB sky130_fd_pr__nfet_01v8 ad=0.1491 pd=1.55 as=0.097 ps=0.975 w=0.42 l=0.15

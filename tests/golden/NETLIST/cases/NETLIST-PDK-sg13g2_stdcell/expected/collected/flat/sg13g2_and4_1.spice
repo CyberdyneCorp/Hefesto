@@ -1,0 +1,12 @@
+* NGSPICE file created from sg13g2_and4_1.ext - technology: ihp-sg13g2
+
+X0 VDD D a_81_118# VDD sg13_lv_pmos ad=0.2044p pd=1.53u as=0.1848p ps=1.28u w=0.84u l=0.13u
+X1 a_175_118# A a_81_118# VSS sg13_lv_nmos ad=0.1216p pd=1.02u as=0.2176p ps=1.96u w=0.64u l=0.13u
+X2 a_277_118# B a_175_118# VSS sg13_lv_nmos ad=0.1216p pd=1.02u as=0.1216p ps=1.02u w=0.64u l=0.13u
+X3 a_379_118# C a_277_118# VSS sg13_lv_nmos ad=0.1408p pd=1.08u as=0.1216p ps=1.02u w=0.64u l=0.13u
+X4 VSS D a_379_118# VSS sg13_lv_nmos ad=0.1447p pd=1.15u as=0.1408p ps=1.08u w=0.64u l=0.13u
+X5 X a_81_118# VSS VSS sg13_lv_nmos ad=0.3552p pd=2.44u as=0.1447p ps=1.15u w=0.74u l=0.13u
+X6 X a_81_118# VDD VDD sg13_lv_pmos ad=0.5376p pd=3.2u as=0.2044p ps=1.53u w=1.12u l=0.13u
+X7 a_81_118# A VDD VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X8 VDD B a_81_118# VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=0.1596p ps=1.22u w=0.84u l=0.13u
+X9 a_81_118# C VDD VDD sg13_lv_pmos ad=0.1848p pd=1.28u as=0.1596p ps=1.22u w=0.84u l=0.13u

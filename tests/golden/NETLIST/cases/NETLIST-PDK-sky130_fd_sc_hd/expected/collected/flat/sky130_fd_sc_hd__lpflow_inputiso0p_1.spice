@@ -1,0 +1,10 @@
+* NGSPICE file created from sky130_fd_sc_hd__lpflow_inputiso0p_1.ext - technology: sky130A
+
+X0 VPWR A a_207_413# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.2279 pd=1.74 as=0.0609 ps=0.71 w=0.42 l=0.15
+X1 X a_207_413# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.26 pd=2.52 as=0.2279 ps=1.74 w=1 l=0.15
+X2 a_297_47# a_27_413# a_207_413# VNB sky130_fd_pr__nfet_01v8 ad=0.0504 pd=0.66 as=0.1092 ps=1.36 w=0.42 l=0.15
+X3 X a_207_413# VGND VNB sky130_fd_pr__nfet_01v8 ad=0.169 pd=1.82 as=0.1013 ps=0.99 w=0.65 l=0.15
+X4 a_207_413# a_27_413# VPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.0609 pd=0.71 as=0.0714 ps=0.76 w=0.42 l=0.15
+X5 VPWR SLEEP a_27_413# VPB sky130_fd_pr__pfet_01v8_hvt ad=0.0714 pd=0.76 as=0.1092 ps=1.36 w=0.42 l=0.15
+X6 VGND A a_297_47# VNB sky130_fd_pr__nfet_01v8 ad=0.1013 pd=0.99 as=0.0504 ps=0.66 w=0.42 l=0.15
+X7 a_27_413# SLEEP VGND VNB sky130_fd_pr__nfet_01v8 ad=0.1092 pd=1.36 as=0.1092 ps=1.36 w=0.42 l=0.15
