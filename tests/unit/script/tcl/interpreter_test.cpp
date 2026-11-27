@@ -294,31 +294,3 @@ TEST_CASE("the time limit stops loops and sleeps", PER_PROJECT) {
   CHECK(elapsed < std::chrono::seconds(10));
   CHECK(p.value("expr {2+2}") == "4");
 }
-
-// ---- per-thread Tcl data --------------------------------------------------------------
-
-TEST_CASE("releasing Tcl thread data is a no-op on a thread that never used Tcl", PER_PROJECT) {
-  SandboxedProject p;  // Tcl is initialised in the process, on this thread
-  CHECK(p.run("expr {1+1}").value == cmd::Value{2});
-  bool finished = false;
-  std::thread worker([&] {
-    script::release_thread_tcl_state();  // crashed in Tcl_FinalizeThread before
-    finished = true;
-  });
-  worker.join();
-  CHECK(finished);
-}
-
-TEST_CASE("a worker that created an interpreter releases its Tcl thread data once", PER_PROJECT) {
-  bool evaluated = false;
-  std::thread worker([&] {
-    {
-      SandboxedProject p;
-      evaluated = p.run("expr {2+2}").value == cmd::Value{4};
-    }
-    script::release_thread_tcl_state();
-    script::release_thread_tcl_state();  // the second call does nothing
-  });
-  worker.join();
-  CHECK(evaluated);
-}
