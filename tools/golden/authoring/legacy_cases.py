@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Write the maze-router golden cases LEG-MZ-01..31 (tests/golden/LEGACY/CASES.md).
+"""Write the maze-router golden cases LEG-MZ-01..33 (tests/golden/LEGACY/CASES.md).
 
 openspec/changes/m10-plot-route design D19 and task 2.5. Each case is a :class:`tclcase.TclCase` run on
 Magic's batch display (``magic -dnull -noconsole``) and replayed by hefesto-cli with the same script. The
 technology is scmos, built from Magic's ``scmos/scmos.tech.in`` as an ``[[external]]`` generated input
 (``source = "scmos"``, as the existing cases do), except LEG-MZ-02 (a small Hefesto-authored technology
-whose ``mzrouter`` section holds the grammar errors) and LEG-MZ-27 (sky130A, which has no ``irouter``
-style: Q-LEGACY-37, the ON case). Coordinates are scmos internal units (lambda).
+whose ``mzrouter`` section holds the grammar errors), LEG-MZ-27 (sky130A, which has no ``irouter``
+style: Q-LEGACY-37, the ON case) and LEG-MZ-32, -33 (small technologies with an explicit ``spacing``
+statement and with two ``style irouter`` blocks: Q-LEGACY-106 and -107, raised by the round 0 review). Coordinates are scmos internal units (lambda).
 
 The routing cases load the cell ``top`` (input/top.mag) and route between labels or points with
 ``iroute route``; each probe prints the command's Tcl result (``Route success`` and the like), and the routed
@@ -181,6 +182,33 @@ extract
 end
 """
 
+
+def mz_tech(name: str, mzrouter: str) -> str:
+    """MZBAD_TECH's technology named ``name`` with ``mzrouter`` as its mzrouter section body."""
+    head, rest = MZBAD_TECH.split("mzrouter\n", 1)
+    tail = rest.split("end\n", 1)[1]
+    return head.replace("    mzbad\n", f"    {name}\n", 1) + "mzrouter\n" + mzrouter + "end\n" + tail
+
+
+# LEG-MZ-32 (Q-LEGACY-106): an explicit metal1-to-metal2 spacing the DRC section does not give.
+MZSPACE_TECH = mz_tech("mzspace", """\
+    style irouter
+    layer   m1   64  32  256  1
+    layer   m2   32  64  256  1
+    contact m2c  metal1  metal2  1024
+    spacing m1   m2  5
+""")
+# LEG-MZ-33 (Q-LEGACY-107): two `style irouter` blocks with different metal1 costs.
+MZDUP_TECH = mz_tech("mzdup", """\
+    style irouter
+    layer   m1   64  32  256  1
+    layer   m2   32  64  256  1
+    contact m2c  metal1  metal2  1024
+    style irouter
+    layer   m1   7   9   256  1
+    layer   m2   32  64  256  1
+    contact m2c  metal1  metal2  1024
+""")
 
 def route(start: str, dest: str, *options: str) -> str:
     """``iroute route`` from label ``start`` to label ``dest`` (the probe prints the Tcl result)."""
@@ -377,8 +405,26 @@ def context_specs() -> list[TclCase]:
     ]
 
 
+def review_specs() -> list[TclCase]:
+    """LEG-MZ-32, -33: explicit spacings after scalegrid, two styles of one name (round 0 review)."""
+    return [
+        case("LEG-MZ-32", MAZE, ["Width and spacing derivation from DRC"],
+             "an explicit `spacing m1 m2 5`; iroute spacings metal1 before and after scalegrid 1 2 (Q-LEGACY-106: "
+             "Magic drops the explicit spacing after the rescale, the ON case)",
+             lines("tech load input/mzspace -noprompt",
+                   p("iroute spacings metal1", "scalegrid 1 2", "iroute spacings metal1")),
+             tech=None, extra_files={"mzspace.tech": MZSPACE_TECH}),
+        case("LEG-MZ-33", MAZE, ["Style defaults and lookup"],
+             "two `style irouter` blocks with different metal1 costs; iroute layers (Q-LEGACY-107: the last "
+             "block is the one used)",
+             lines("tech load input/mzdup -noprompt", p("iroute layers")),
+             tech=None, extra_files={"mzdup.tech": MZDUP_TECH}),
+    ]
+
+
 def specs() -> list[TclCase]:
-    found = {s.id: s for s in [*parameter_specs(), *search_specs(), *command_specs(), *context_specs()]}
+    found = {s.id: s for s in [*parameter_specs(), *search_specs(), *command_specs(), *context_specs(),
+                               *review_specs()]}
     return [found[cid] for cid in sorted(found)]
 
 

@@ -1160,4 +1160,14 @@ deferred = "M10"
 outputs = ["stdout.txt", "stderr.txt"]
 reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for iroute until MZTECH, MZ and IROUTE land (tasks 9-11): the owning workstream drops this deferral when the case replays"
 
+[LEG-MZ-32]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for iroute until MZTECH, MZ and IROUTE land (tasks 9-11): the owning workstream drops this deferral when the case replays"
+
+[LEG-MZ-33]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "captured from Magic 8.3.694 (m10-plot-route design D19); hefesto-cli answers CORE-NOTIMPL-010 for iroute until MZTECH, MZ and IROUTE land (tasks 9-11): the owning workstream drops this deferral when the case replays"
+
 # --- END M10 maze-router deferrals ---

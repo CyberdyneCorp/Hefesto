@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""The maze-router cases LEG-MZ-01..31 (openspec/changes/m10-plot-route design D19, task 2.5).
+"""The maze-router cases LEG-MZ-01..33 (openspec/changes/m10-plot-route design D19, task 2.5).
 
 cap:hefesto-testing-strategy req:Golden compatibility suite
 """
@@ -22,6 +22,9 @@ from compare import COMPARATORS  # noqa: E402
 from goldenlib.case import load_case  # noqa: E402
 
 SPECS = legacy_cases.specs()
+# The review cases on their own technologies (Q-LEGACY-106, -107): file name and the statement they test.
+OWN_TECH = {"LEG-MZ-32": ("mzspace.tech", "    spacing m1   m2  5\n"),
+            "LEG-MZ-33": ("mzdup.tech", "    style irouter\n    layer   m1   7   9")}
 CASES_DIR = REPO / "tests" / "golden" / "LEGACY" / "cases"
 
 
@@ -42,7 +45,7 @@ def rows() -> dict[str, str]:
 
 class LegacyCaseSpecTest(unittest.TestCase):
     def test_every_row_is_authored_with_its_capability(self):
-        ids = [f"LEG-MZ-{n:02d}" for n in range(1, 32)]
+        ids = [f"LEG-MZ-{n:02d}" for n in range(1, 34)]
         self.assertEqual([s.id for s in SPECS], ids)
         table = rows()
         self.assertEqual(sorted(table), ids)
@@ -81,6 +84,11 @@ class LegacyCaseSpecTest(unittest.TestCase):
                 elif spec.id == "LEG-MZ-02":
                     self.assertIn("mzbad.tech", spec.files)
                     self.assertIn("mzrouter\n    layer   m1", spec.files["mzbad.tech"])
+                elif spec.id in OWN_TECH:
+                    name, statement = OWN_TECH[spec.id]
+                    self.assertEqual(sources, set())
+                    self.assertIn(f"tech load input/{name.removesuffix('.tech')} -noprompt", spec.body)
+                    self.assertIn(statement, spec.files[name])
                 else:
                     self.assertEqual(sources, {"scmos"})
 
@@ -105,7 +113,7 @@ class LegacyCaseSpecTest(unittest.TestCase):
 class LegacyDeviationBlockTest(unittest.TestCase):
     def test_every_case_is_deferred(self):
         block = legacy_cases.deviation_block()
-        self.assertEqual(block.count('deferred = "M10"'), 31)
+        self.assertEqual(block.count('deferred = "M10"'), 33)
         self.assertIn('decisions = ["Q-LEGACY-38"]', block)
 
     def test_replayed_decision_case_keeps_its_decision(self):
