@@ -196,6 +196,15 @@ std::string tap_name(std::string_view bus, std::string_view lab) {
   return std::string{lab};
 }
 
+/// The SCHEM-NET-001 text of a short. A `Bus tap` short names the tap name
+/// computed from `lab` first, then the name pin 0 kept ("Bus taps",
+/// scenario "Tap side already named", Q-SCHEM-37 approved 2026-11-25);
+/// the other shorts name the kept name first.
+std::string short_text(const NetShort& s) {
+  const bool tap = s.tag == "Bus tap";
+  return s.tag + " shorted: " + (tap ? s.incoming : s.existing) + " - " + (tap ? s.existing : s.incoming);
+}
+
 bool is_automatic(std::string_view name) noexcept {
   return !name.empty() && name.front() == '#';
 }
@@ -425,8 +434,7 @@ class Namer {
       }
     }
     for (NetShort& s : shorts_) {
-      out.diagnostics.push_back(
-          diag::make(net_codes::kShort, s.tag + " shorted: " + s.existing + " - " + s.incoming));
+      out.diagnostics.push_back(diag::make(net_codes::kShort, short_text(s)));
     }
     out.shorts = std::move(shorts_);
     return out;

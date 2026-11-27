@@ -253,6 +253,11 @@ void set_container_role(const Widget& widget, Role role);
 /// callback posts through it.
 void post_task(std::function<void()> task);
 
+/// The system clipboard's text (Rclipboard_get_text; empty when it holds
+/// none) and a new text for it (Rclipboard_set_text). UI thread only.
+[[nodiscard]] std::string clipboard_text();
+void set_clipboard_text(const std::string& text);
+
 /// Raven's Table in virtual mode (hefesto-app-ux "Desktop platform
 /// integration through Raven", Tables): it stores no rows and asks for the
 /// text of the cells it draws, so 200,000 rows cost no widget each. Sortable

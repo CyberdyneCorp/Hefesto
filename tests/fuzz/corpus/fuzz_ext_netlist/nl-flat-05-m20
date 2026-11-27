@@ -1,0 +1,12 @@
+ timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+parameters nfet l=l w=w a1=as p1=ps x=xpos*0.5 l1=lt+2
+node "s" 0 0 0 0 ndiff 30 22 0 0 0 0
+node "d" 0 0 4 0 ndiff 20 18 0 0 0 0
+node "g" 0 0 2 6 metal1 0 0 0 0 0 0
+device mosfet nfet 10 0 12 4 2 4 l1=4 foo=1 "GND!" "g" 8 0 "s" 4 0 "d" 4 0
+device mosfet nfet 20 0 22 8 2 8 "GND!" "g" 16 0 "s" 8 0 "d" 8 0

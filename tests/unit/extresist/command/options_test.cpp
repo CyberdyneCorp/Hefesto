@@ -27,7 +27,7 @@ TEST_CASE("extresist threshold, minresist and mindelay set and query", "[cap:ext
   CHECK(extresist::min_delay_zs(s.editor.extresist.options) == 2.5e9);
 }
 
-// Magic stores the negative value after the usage line.
+// Q-NETLIST-65 (compat): Magic stores the negative value after the usage line.
 TEST_CASE("a negative threshold with magic-compat ON is stored", "[cap:extresist-command][req:Command options]") {
   Session s;
   REQUIRE(s.run("extresist threshold -5").ok());
@@ -63,7 +63,8 @@ TEST_CASE("extresist on/off settings", "[cap:extresist-command][req:Command opti
   CHECK(s.editor.extresist.options.blackbox);
 }
 
-// Magic checks no value for debug and stats: any other word turns them on.
+// Q-NETLIST-66 (compat): Magic checks no value for debug and stats: any
+// other word turns them on.
 TEST_CASE("extresist debug and stats with magic-compat ON take any word", "[cap:extresist-command][req:Command options]") {
   Session s;
   REQUIRE(s.run("extresist debug maybe").ok());

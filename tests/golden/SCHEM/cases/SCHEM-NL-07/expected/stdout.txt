@@ -1,9 +1,0 @@
-== dc_lv_nmos
-
-== dc_lv_nmos: exit 0
-== dc_res_temp
-
-== dc_res_temp: exit 0
-== tran_cap_cmomi
-
-== tran_cap_cmomi: exit 0

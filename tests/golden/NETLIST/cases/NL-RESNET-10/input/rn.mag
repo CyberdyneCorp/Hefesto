@@ -18,6 +18,8 @@ rect 10 -4 20 0
 rect 70 10 80 16
 rect 70 -4 80 0
 rect 50 20 60 24
+<< metal1 >>
+rect -20 -20 -16 -16
 << labels >>
 rlabel ndiff 0 20 10 20 0 d1
 port 1 nsew
@@ -25,4 +27,5 @@ rlabel ndiff 50 0 50 10 0 d2
 port 2 nsew
 rlabel ndiff 90 0 90 10 0 d3
 port 3 nsew
+rlabel metal1 -20 -20 -16 -16 0 GND!
 << end >>

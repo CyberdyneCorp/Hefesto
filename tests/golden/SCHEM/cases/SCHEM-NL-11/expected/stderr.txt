@@ -1,8 +1,3 @@
-== nl11
-Created /tmp/.xschem dir with template xschemrc
-Using run time directory XSCHEM_SHAREDIR = /opt/ref/share/xschem
-Sourcing /opt/ref/share/xschem/xschemrc init file
-Sourcing /work/input/xschemrc init file
 -----------/work/input/nl11.sch
 Warning: open net: #net10
 Warning: open net: #net11

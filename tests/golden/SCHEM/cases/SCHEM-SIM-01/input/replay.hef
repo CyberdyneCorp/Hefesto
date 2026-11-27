@@ -1,7 +1,10 @@
 file mkdir out
+if 1 {
 set status 0
 schematic pdk ihp-sg13g2
 schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_lv_nmos.sch
 if {[catch {schematic netlist out/dc_lv_nmos.spice -force}]} {set status 10}
 schematic close -discard
 quit $status
+list
+}

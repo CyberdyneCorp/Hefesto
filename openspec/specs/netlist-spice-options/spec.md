@@ -91,7 +91,9 @@ An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell
 
 The flags `-M`, `-m`, `-f`, `-B`, `-d` and `-J` set Magic globals; how long they hold depends on the `magic-compat` setting (Q-NETLIST-54, resolution: compat, the same rule as `ext2sim`'s in capability `netlist-sim`): with it ON (the default) they SHALL change the session's settings, so they hold for later runs, as in Magic; with it OFF they SHALL apply to the run that names them and leave the session's settings unchanged. `-F` and `-o` SHALL apply to one run only in both settings.
 
-The `.ext` search path `-p` of capability `ext-flattening-hierarchy` SHALL apply to the run that names it only, in both settings, as Magic's EFDone frees it at the end of every run. One exception follows Magic: with `magic-compat` ON, a run that names no cell when no window is open fails with `Point to a window or specify a cell name.` and returns before EFDone, so its `-p` path SHALL be used by the next run of `ext2spice` or `ext2sim` that gives no `-p` of its own; with it OFF that path SHALL be dropped. `default` SHALL clear such a path. EFArgs' `-t` SHALL be applied to the name-conversion flags before the `.ext` read, as EFArgs sets them while parsing, so with `magic-compat` ON a `-t` holds even when the read fails.
+The `.ext` search path `-p` of capability `ext-flattening-hierarchy` SHALL apply to the run that names it only, in both settings, as Magic's EFDone frees it at the end of every run (Q-NETLIST-61, resolution: compat, approved 2026-11-25). One exception follows Magic: with `magic-compat` ON, a run that names no cell when no window is open fails with `Point to a window or specify a cell name.` and returns before EFDone, so its `-p` path SHALL be used by the next run of `ext2spice` or `ext2sim` that gives no `-p` of its own; with it OFF that path SHALL be dropped. `default` SHALL clear such a path. EFArgs' `-t` SHALL be applied to the name-conversion flags before the `.ext` read, as EFArgs sets them while parsing, so with `magic-compat` ON a `-t` holds even when the read fails.
+
+When the root `.ext` file cannot be read, the behaviour depends on the `magic-compat` setting (Q-NETLIST-59, resolution: compat, approved 2026-11-25, the same rule as `ext2sim`'s in capability `netlist-sim`): with it ON the text `Cannot read extract file <cell>.ext` SHALL be the command's result and the command SHALL succeed, as Magic's EFReadFile sets it as the Tcl result and returns OK; with it OFF the run SHALL fail with that message (EXTFLAT-READ-001). No netlist file is written in either case.
 
 On completion, the informative message `exttospice finished.` SHALL be printed.
 Compatibility: behavioral
@@ -101,6 +103,26 @@ Compatibility: behavioral
 - **GIVEN** `/w/inv.ext` and no `inv.ext` in the current directory
 - **WHEN** `ext2spice -p /w inv` runs, then `ext2spice inv`
 - **THEN** the first run writes `inv.spice` and the second cannot read `inv.ext`
+
+#### Scenario: The search path of a run without a cell with magic-compat ON
+- **GIVEN** `magic-compat` ON, no layout window, `/w/inv.ext` and no `inv.ext` in the current directory
+- **WHEN** `ext2spice -p /w` runs, then `ext2spice inv`
+- **THEN** the first run prints `Point to a window or specify a cell name.` and the second reads `/w/inv.ext` (Q-NETLIST-61)
+
+#### Scenario: The search path of a run without a cell with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, no layout window, `/w/inv.ext` and no `inv.ext` in the current directory
+- **WHEN** `ext2spice -p /w` runs, then `ext2spice inv`
+- **THEN** the second run cannot read `inv.ext` (Q-NETLIST-61)
+
+#### Scenario: A missing .ext file with magic-compat ON
+- **GIVEN** `magic-compat` ON and no `nosuch.ext`
+- **WHEN** `ext2spice nosuch` runs
+- **THEN** the command succeeds with the result `Cannot read extract file nosuch.ext` and writes no file (Q-NETLIST-59)
+
+#### Scenario: A missing .ext file with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and no `nosuch.ext`
+- **WHEN** `ext2spice nosuch` runs
+- **THEN** the command fails with EXTFLAT-READ-001 and writes no file (Q-NETLIST-59)
 
 #### Scenario: A failed read keeps -t with magic-compat ON
 - **GIVEN** `magic-compat` ON and no `nosuch.ext`

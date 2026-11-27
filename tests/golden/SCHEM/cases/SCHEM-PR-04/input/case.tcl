@@ -1,3 +1,4 @@
+file mkdir /work/out
 # SCHEM-PR-04: xschem translate on chosen instances; the instance is addressed by its index.
 xschem load /work/input/pr04.sch
 proc index_of {name} {

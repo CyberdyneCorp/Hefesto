@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2025 requirements, 3630 scenarios, 1053 open questions.
+**Totals:** 169 capabilities, 2025 requirements, 3718 scenarios, 1071 open questions.
 
 ## Hefesto product (native)
 
@@ -34,7 +34,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 6 | 12 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 5 | 11 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
 | [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 5 | 7 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
-| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 6 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
+| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 8 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
 
 ## Technology files (TECH)
 
@@ -126,37 +126,37 @@ Open questions: [134](decisions/open-questions/LEFDEF.md) · Golden cases: [CASE
 
 ## Circuit extraction (EXTRACT)
 
-Open questions: [41](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
+Open questions: [44](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`extract-capacitance`](../openspec/specs/extract-capacitance/spec.md) | 13 | 19 | Defines the exact numeric models the extractor uses to compute parasitic capacitance within one flattened area of layout: node capacitance to substrate (area, perimeter and corner … |
-| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 19 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
-| [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 23 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
+| [`extract-capacitance`](../openspec/specs/extract-capacitance/spec.md) | 13 | 21 | Defines the exact numeric models the extractor uses to compute parasitic capacitance within one flattened area of layout: node capacitance to substrate (area, perimeter and corner … |
+| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 26 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the sta… |
+| [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 29 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
 | [`extract-file-format`](../openspec/specs/extract-file-format/spec.md) | 7 | 7 | Defines the `.ext` file written by the extractor for each cell: the complete grammar of every record the extractor writes, the exact number formatting, the order of records, and an… |
-| [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 14 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
-| [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 18 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
-| [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 6 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
+| [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 16 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
+| [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 20 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
+| [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 8 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
 | [`extract-substrate`](../openspec/specs/extract-substrate/spec.md) | 8 | 9 | Defines how the extractor represents the substrate: the global substrate node of each cell, isolated substrate regions (e.g., p-wells inside deep n-wells), substrate shielding type… |
 | [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 34 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
 
 ## Netlists and extresist (NETLIST)
 
-Open questions: [69](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+Open questions: [76](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 17 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 31 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
-| [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 12 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
-| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 32 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
-| [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 10 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
+| [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 25 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
+| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 36 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
+| [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 14 | This capability defines the outputs of the `extresist` command (capability `extresist-command`): - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numer… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 4 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
-| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 18 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
-| [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 21 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 22 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 23 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 12 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
-| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 27 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 31 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
 
 ## LVS (netgen-compatible) (LVS)
 
@@ -207,16 +207,16 @@ Open questions: [6](decisions/open-questions/AGENT.md) · Golden cases: [CASES.m
 
 ## Schematic capture (xschem-compatible) (SCHEM)
 
-Open questions: [51](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
+Open questions: [59](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`schematic-command`](../openspec/specs/schematic-command/spec.md) | 6 | 14 | Defines the `schematic` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, key bindings, … |
-| [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 31 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
-| [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 50 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
-| [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 69 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
-| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 21 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
-| [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 56 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
+| [`schematic-command`](../openspec/specs/schematic-command/spec.md) | 6 | 26 | Defines the `schematic` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, key bindings, … |
+| [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 39 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
+| [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 51 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
+| [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 76 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
+| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 22 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
+| [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 60 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
 
 ## Tapeout readiness (TAPEOUT)
 
@@ -285,7 +285,7 @@ Open questions: [44](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | [`app-startup`](../openspec/specs/app-startup/spec.md) | 13 | 23 | Defines how the application starts and ends: - command-line options and file arguments - installation-root and search-path resolution - the order of startup files - default technol… |
 | [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 24 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
 | [`ui-color-window`](../openspec/specs/ui-color-window/spec.md) | 6 | 10 | Defines the `color` window client. It edits one entry of the session color map interactively, using RGB and HSV bars, and loads or saves color-map files. The file format is in `dis… |
-| [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 35 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
+| [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 36 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 10 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |
 | [`ui-tools-and-input`](../openspec/specs/ui-tools-and-input/spec.md) | 8 | 13 | Defines pointer tools and the default input bindings: - the tool registry and the `tool` command - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl … |
 | [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 24 | 33 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |

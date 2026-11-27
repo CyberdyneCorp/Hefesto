@@ -13,8 +13,7 @@ area = "NETLIST"
 capability = "extresist-network"
 requirements = ["Elmore delay and pruning"]
 tool = "magic"
-description = "a fanout net with three gate loads; mindelay 100 ps"
-capture_blocked = "Magic's extresist exits 139 (SIGSEGV) on this net with an nfet in golden-capture runs 45555921742 and 45555935130; proposed Q-NETLIST-63"
+description = "a fanout net with three gate loads; mindelay 100 ps (re-authored: a labelled GND! square gives the substrate net a record, Q-NETLIST-63)"
 
 [reference]
 script = "input/commands.tcl"

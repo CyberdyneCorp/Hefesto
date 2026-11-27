@@ -425,3 +425,55 @@ TEST_CASE("embedded symbols of unsaved and edited documents are not shared", kCa
   saved.embedded[0].symbol.boxes[0].props = "name=E";
   CHECK(cache.resolve({"res.sym"}, saved, {path, fs}).pins[0].name == "E");
 }
+
+// Regression (tasks.md 7.1/7.2 open item): the cache read symbol files
+// without ReadOptions::symbol_file_exists, so a nested block inside an
+// embedded block was merged although its symbol is a file found from the
+// folder of the file read (schematic-file-format "Embedded symbols").
+TEST_CASE("the cache keeps a nested instance whose symbol is a file next to the file read", kCache) {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    platform::MemoryFileSystem fs;
+    touch(fs, "/w/sub/b.sym", "v {xschem version=3.4.8RC file_version=1.3}\nK {type=b}\n");
+    touch(fs, "/w/sub/s.sch",
+          "v {xschem version=3.4.8RC file_version=1.3}\nK {type=subcircuit}\nC {a.sym} 0 0 0 0 {}\n[\n"
+          "K {type=a}\nC {./b.sym} 100 0 0 0 {}\n[\nL 4 0 0 10 0 {}\n]\nL 4 0 0 0 10 {}\n]\n");
+    const auto path = schem::SearchPath::parse("/w/sub", kNoEnv, fs);
+    schem::Document top;
+    top.path = "/w/top.sch";
+    schem::SymbolCache cache;
+    const schem::Symbol& s = cache.resolve({"s.sch"}, top, schem::ResolveContext{path, fs, nullptr, compat});
+    REQUIRE_FALSE(s.placeholder);
+    REQUIRE(s.document.lines.size() == 1);  // the nested block's line is not merged
+    CHECK(s.document.lines[0].p2 == schem::Point{0, 10});
+  }
+}
+
+// tasks.md 7.1 (SCHEM-RT-05 writer side): the document an embedded block
+// is written from holds no instance; a kept instance is drawn into it.
+TEST_CASE("block_document draws the instances an embedded symbol places", kCache) {
+  platform::MemoryFileSystem fs;
+  touch(fs, "/w/b.sym",
+        "v {xschem version=3.4.8RC file_version=1.3}\nK {type=b}\nL 4 0 0 0 5 {}\nB 5 -1 -1 1 1 {name=P}\n");
+  const schem::SearchPath path;
+  schem::Document top;
+  top.path = "/w/top.sch";
+  schem::Document a;
+  a.kind = schem::FileKind::symbol;
+  a.globals.k = "type=a";
+  a.boxes.push_back({5, {-2.5, -2.5}, {2.5, 2.5}, "name=A"});
+  a.instances.push_back({"b.sym", {100, 0}, 0, 0, ""});
+  top.embedded.push_back({"a.sym", a});
+  schem::SymbolCache cache;
+  const auto block = cache.block_document({"a.sym"}, top, {path, fs});
+  REQUIRE(block);
+  CHECK(block->instances.empty());
+  CHECK(block->globals.k == "type=a");
+  REQUIRE(block->lines.size() == 1);
+  CHECK(block->lines[0].p1 == schem::Point{100, 0});
+  CHECK(block->lines[0].p2 == schem::Point{100, 5});
+  REQUIRE(block->boxes.size() == 2);
+  CHECK(block->boxes[0].layer == 7);  // b.sym's pin, nested
+  CHECK(block->boxes[1].layer == 5);  // a.sym's own pin
+  CHECK_FALSE(cache.block_document({"missing.sym"}, top, {path, fs}));
+}

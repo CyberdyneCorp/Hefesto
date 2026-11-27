@@ -151,6 +151,47 @@ TEST_CASE("select connected takes the wires and labels of the net", kSelection) 
   CHECK(run(s, {"select", "connected"}) == "{wire 0} {wire 1} {instance p1}");
 }
 
+// Regression (M8 round 6 review): the subcommand table listed `-remove` and
+// `select connected -stopjunction`, but `select` rejected both words.
+TEST_CASE("Select connected stops at a junction", kSelection) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    new_schematic(s);
+    run(s, {"wire", "0", "0", "50", "0"});
+    run(s, {"wire", "50", "0", "100", "0"});
+    run(s, {"wire", "50", "0", "50", "50"});
+    run(s, {"wire", "-50", "0", "0", "0"});  // W4 continues W1 end to end, no junction
+    run(s, {"select", "wire", "0"});
+    CHECK(run(s, {"select", "connected", "-stopjunction"}) == "{wire 0} {wire 3}");
+    run(s, {"select", "clear"});
+    run(s, {"select", "wire", "0"});
+    CHECK(run(s, {"select", "connected"}) == "{wire 0} {wire 1} {wire 2} {wire 3}");
+    CHECK_FALSE(s.schematic({"select", "all", "-stopjunction"}).ok());
+  }
+}
+
+TEST_CASE("Remove one object from the selection", kSelection) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    new_schematic(s);
+    run(s, {"place", "res.sym", "0", "0"});
+    run(s, {"place", "res.sym", "100", "0"});
+    run(s, {"wire", "0", "200", "50", "200"});
+    run(s, {"select", "all"});
+    CHECK(run(s, {"select", "instance", "R1", "-remove"}) == "{wire 0} {instance R2}");
+    CHECK(run(s, {"select", "area", "-10", "190", "60", "210", "-remove"}) == "{instance R2}");
+    CHECK(run(s, {"select", "instance", "R1", "-remove"}) == "{instance R2}");  // not selected: no change
+    // A failing form leaves the selection as it was.
+    CHECK_FALSE(s.schematic({"select", "instance", "R9", "-remove"}).ok());
+    CHECK(run(s, {"selection"}) == "{instance R2}");
+    CHECK_FALSE(s.schematic({"select", "clear", "-remove"}).ok());
+  }
+}
+
 // ---- Wires -------------------------------------------------------------------------
 
 TEST_CASE("Manhattan wire", kWires) {
@@ -286,6 +327,27 @@ TEST_CASE("Rotate wire around pivot", kRotate) {
   run(s, {"rotate", "0", "0"});
   CHECK(active(s).wires[0].p1 == schem::Point{0, 0});
   CHECK(active(s).wires[0].p2 == schem::Point{0, 10});
+}
+
+// Regression (M8 round 6 review): a `rotate` or `flip` with no pivot always
+// turned around the selection's centre; with xschem-compat ON a run without
+// the editor uses the origin, as xschem's last snapped pointer position.
+TEST_CASE("Script rotation without a pivot", kRotate) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    new_schematic(s);
+    run(s, {"wire", "100", "100", "120", "100"});
+    run(s, {"select", "wire", "0"});
+    run(s, {"rotate"});
+    CHECK(active(s).wires[0].p1 == (on ? schem::Point{-100, 100} : schem::Point{110, 90}));
+    CHECK(active(s).wires[0].p2 == (on ? schem::Point{-100, 120} : schem::Point{110, 110}));
+    run(s, {"undo"});
+    run(s, {"flip"});
+    CHECK(active(s).wires[0].p1 == (on ? schem::Point{-100, 100} : schem::Point{120, 100}));
+    CHECK(active(s).wires[0].p2 == (on ? schem::Point{-120, 100} : schem::Point{100, 100}));
+  }
 }
 
 TEST_CASE("rotation and flip of instances follow the orientation transform", kRotate) {

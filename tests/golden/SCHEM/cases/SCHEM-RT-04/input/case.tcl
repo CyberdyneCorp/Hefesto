@@ -1,3 +1,4 @@
+file mkdir /work/out
 xschem load /work/input/old.sym
 xschem saveas /work/out/old.sym symbol
 xschem load /work/out/old.sym

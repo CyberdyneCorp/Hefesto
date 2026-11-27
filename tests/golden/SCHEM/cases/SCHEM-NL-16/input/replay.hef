@@ -1,6 +1,9 @@
 file mkdir out
+if 1 {
 set status 0
 schematic open input/nl16.sch
 if {[catch {schematic netlist out/nl16.spice -force}]} {set status 10}
 schematic close -discard
 quit $status
+list
+}

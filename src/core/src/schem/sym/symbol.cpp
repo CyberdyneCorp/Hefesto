@@ -80,7 +80,7 @@ long long sim_pinnumber_value(std::string_view text) noexcept {
   if (at == text.size()) return 0;
   const bool negative = text[at] == '-';
   if (text[at] == '-' || text[at] == '+') ++at;
-  // Clamped to the signed 32-bit range (proposed Q-SCHEM-34): the
+  // Clamped to the signed 32-bit range (Q-SCHEM-34, approved 2026-11-25): the
   // magnitude stops growing once it passes the range.
   constexpr long long kLimit = static_cast<long long>(std::numeric_limits<std::int32_t>::max()) + 1;
   long long value = 0;

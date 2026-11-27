@@ -162,7 +162,7 @@ Compatibility: exact
 
 In the fringe-halo model, for each (sub-)segment and its gap area G (walk sub-area up to the selected far tile or the full halo), on each target plane, for each tile U of target type b ≠ space overlapping G: let R = U ∩ G, `len` = extent of R along the edge, `dnear`, `dfar` = distances from the edge line to R's near and far sides (dnear clamped to ≥ 0). With `mc = m(a,b)` and `ms = m(a,0)`: `cfrac = F_mc(dfar) − F_mc(dnear)` and `sfrac = F_ms(dfar) − F_ms(dnear)`. For each sideoverlap rule of edge (a|o) for U's plane whose targets contain b: compute shield fractions by visiting the shield planes of (a,b) as for overlap shielding, where each shielding piece P ⊂ R with distances `dn`, `df` and length `lp` adds `(F_mc(df) − F_mc(dn))·lp/len` to `coupfrac` and `(F_ms'(df) − F_ms'(dn))·lp/len` to `subfrac_rule` (here ms' = m(a',0) with a' the boundary's stored inside type, see below); if node(U) ≠ node(inside): coupling gains `cap_rule · (cfrac − coupfrac) · len` and `subfrac += subfrac_rule`. Then if `planeorder(edge plane) > planeorder(U plane)`, node(inside) SHALL lose `perimc(a, space) · (sfrac − subfrac) · len`, with |value| < 0.001 set to 0. The coupling entry SHALL be updated when nodes differ and both exist.
 
-The shielded substrate fraction depends on the `magic-compat` setting (Q-EXTRACT-17, resolution: compat): with it ON (the default), as above and as in Magic, `subfrac` sums `subfrac_rule` over every matching rule, only when the nodes differ, and a' is the unreduced inside type (a contact is not reduced to its residue); with it OFF, `subfrac` is computed once per tile U, whatever the number of matching rules or the node identity, and a' is the residue of the inside type. The modes differ for duplicate rules on one (a, b) pair and for contact edges.
+The shielded substrate fraction depends on the `magic-compat` setting (Q-EXTRACT-17, resolution: compat): with it ON (the default), as above and as in Magic, `subfrac` sums `subfrac_rule` over every matching rule, only when the nodes differ, and a' is the unreduced inside type (a contact is not reduced to its residue); with it OFF, `subfrac` is computed once per tile U, whatever the number of matching rules or the node identity, and a' is the residue of the inside type. The coupling fraction of a shielding piece follows the same rule (Q-EXTRACT-33, resolution: compat, approved 2026-11-25): with `magic-compat` ON, as in Magic (ExtCouple.c:740), it uses m(a', b) with a' the unreduced inside type; with it OFF, m(a, b) of the residue. The modes differ for duplicate rules on one (a, b) pair and for contact edges.
 Compatibility: exact
 
 (Magic ref: extract/ExtCouple.c:1420-1649, extract/ExtCouple.c:1530-1580, extract/ExtCouple.c:672-828, extract/ExtCouple.c:688)
@@ -181,6 +181,8 @@ Compatibility: exact
 ### Requirement: Corner fringe coupling
 
 When options `corners` and the fringe-halo model apply and edge (a|o) has sideoverlap rules, each horizontal boundary SHALL have its two endpoints classified with respect to the boundary's inside node (convex: the inside-continuation tile and the diagonal tile are both space; concave: both belong to the inside node and the boundary's outside tile is space; split tiles disable). The quadrant SHALL be the h×h square at the corner: for convex corners diagonally outward, for concave corners on the outside of the boundary on the segment side. For each target tile U (type b ≠ space) on the edge's target planes overlapping the quadrant, with R = U ∩ quadrant non-empty, and each matching rule with `mc = m(a,b) > 0`: `cfrac = Fx·Fy` with `Fx = 0.6366(atan(mc·dxfar) − atan(mc·dxnear))` and `Fy` likewise (distances from the corner, near distances clamped ≥ 0), minus the same product summed over shielding pieces (clamped ≥ 0); if nodes differ the corner cap gains `cap_rule · (k/mc) · cfrac` and the shielded substrate fraction is accumulated. If `planeorder(edge plane) > planeorder(U plane)` and `ms = m(a,0) > 0`, node(inside) SHALL lose `sign · perimc(a,0) · (k/ms) · max(0, Fx·Fy|ms − subfrac)` (sign = +1 convex, −1 concave), |value| < 0.001 set to 0. A non-zero corner cap times sign SHALL be added to the pair coupling when nodes differ.
+
+The shielded fractions follow Q-EXTRACT-17's resolution (Q-EXTRACT-33, resolution: compat, approved 2026-11-25): with `magic-compat` ON, as in Magic's extCornerOverlap and extSubtractCornerOverlap, they are summed per matching rule, only between different nodes, with the unreduced inside type; with it OFF they are counted once per target tile, with the residue of the inside type.
 Compatibility: exact
 
 (Magic ref: extract/ExtCouple.c:1838-2447)
@@ -189,6 +191,16 @@ Compatibility: exact
 - **GIVEN** `extract do corners`, fringe-halo model, and a metal2 rectangle over a metal1 plate covering all four corner quadrants
 - **WHEN** the cell is extracted
 - **THEN** the metal2–metal1 coupling exceeds the no-corners value by four convex corner terms
+
+#### Scenario: Duplicate rules at a corner with magic-compat ON
+- **GIVEN** `magic-compat` ON, `extract do corners`, the fringe-halo model, two `sideoverlap` rules for the same edge and target type, and a shield plane partly covering a convex corner quadrant over a target tile of another node
+- **WHEN** the cell is extracted
+- **THEN** the corner's shielded substrate fraction is the sum of both rules' fractions, as in Magic (Q-EXTRACT-33)
+
+#### Scenario: Duplicate rules at a corner with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same layout and rules
+- **WHEN** the cell is extracted
+- **THEN** the corner's shielded substrate fraction is counted once, as for a single rule (Q-EXTRACT-33)
 
 ### Requirement: Coupling to the substrate node
 

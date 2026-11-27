@@ -3,4 +3,3 @@ after second place: R1 R2
 after copying R1: R1 R2 R3
 after placing x1[3:0]: R1 R2 R3 {x1[3:0]}
 after copying x1[3:0]: R1 R2 R3 {x1[3:0]} {x2[3:0]}
-

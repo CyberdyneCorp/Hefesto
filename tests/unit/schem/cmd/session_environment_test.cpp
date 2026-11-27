@@ -152,8 +152,18 @@ TEST_CASE("xschem translate substitutes the tokens of a text for an instance", k
   CHECK(caught(s, "xschem translate 0 @symname") == "0 res");
   CHECK(caught(s, "xschem translate 0 @symname_ext") == "0 res.sym");
   CHECK(caught(s, "xschem translate 0 @#1:name") == "0 M");
-  // An index that names no instance gives the text unchanged (SCHEM-PR-04).
+  // `-1` substitutes with no instance: the text unchanged (SCHEM-PR-04).
   CHECK(caught(s, "xschem translate -1 {@name %undef}") == "0 {@name %undef}");
+  // An instance by name, as getprop addresses it.
+  CHECK(caught(s, "xschem translate X1 @value") == "0 1");
+  // Regression (M8 round 6 review): any other instance that does not exist
+  // gave the text unchanged; it raises "instance not found" (both modes).
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    s.project().compat.xschem_compat = on;
+    CHECK(caught(s, "xschem translate 999 {@name}") == "1 {xschem translate: instance not found}");
+    CHECK(caught(s, "xschem translate R9 {@name}") == "1 {xschem translate: instance not found}");
+  }
   CHECK(caught(s, "xschem translate 0") == "1 {xschem translate: wrong number of arguments}");
 }
 

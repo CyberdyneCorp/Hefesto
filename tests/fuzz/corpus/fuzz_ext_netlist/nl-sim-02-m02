@@ -1,0 +1,19 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+node "b" 0 1 0 0 metal1 0 0 0 0 0 0
+node "e" 0 1 0 10 metal1 0 0 0 0 0 0
+node "c" 0 1 0 20 ndiff 40 26 0 0 0 0
+node "ra" 0 1 0 30 metal1 0 0 0 0 0 0
+node "rb" 0 1 0 40 metal1 0 0 0 0 0 0
+node "ct" 0 1 0 50 metal1 0 0 0 0 0 0
+node "cb" 0 1 0 60 metal1 0 0 0 0 0 0
+node "k" 0 1 0 70 metal1 0 0 0 0 0 0
+device bjt npn 0 0 4 4 4 4 "c" "b" 16 0 "e" 16 0 "c" 16 0
+device diode dn 10 0 14 5 "k" 0 0 "GND!" 0 0
+device devres None 20 0 21 1 25.5 "rb" 0 0 "ra" 0 0 "rb" 0 0
+device devcap None 30 0 31 1 12.5 "ct" 0 0 "cb" 0 0
+device subckt sbx 40 0 44 4 "ra" 0 0 "ct" 0 0

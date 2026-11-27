@@ -163,7 +163,7 @@ A `devres` device SHALL be written as follows. Terminal 0 is the resistor body; 
   - Then parameters, then ` M=%g` if m ≠ 1.
 - **Unnamed value parameters**: an `r` or `c` parameter with an empty name SHALL be written as ` SI(value)` right after the terminals. The value is the device resistance for `r` and the capacitance for `c`, except that for `c` in flat mode it depends on the `magic-compat` setting (Q-NETLIST-4, resolution: compat): with it ON (the default) flat mode writes the resistance, as in Magic; with it OFF it writes the capacitance, as hierarchical mode does.
 
-Without a tee, `dscale = 1`. Half of the body node's capacitance SHALL then be moved to each end node, and the body node's capacitance set to 0. For a shorted-port resistor (capability `ext-flattening-read`, Q-NETLIST-31) terminal 0 is the node `dummy` with `magic-compat` ON and an anonymous node per device with it OFF: in tee mode it is the midpoint of the two halves, so with ON every shorted-port pair of a cell is joined through `dummy`; in pi mode its capacitance moves to the ports. With `resistor tee on`, two lines SHALL be written with `dscale = 2`: `R<n>A <t0> <t1> …` and `R<n>B <t0> <t2> …`. The `rsubckt` class follows Requirement "Subcircuit-class device lines".
+Without a tee, `dscale = 1`. Half of the body node's capacitance SHALL then be moved to each end node, and the body node's capacitance set to 0. For a shorted-port resistor (capability `ext-flattening-read`, Q-NETLIST-31) terminal 0 is the node `dummy` with `magic-compat` ON and an anonymous node per device with it OFF: in tee mode it is the midpoint of the two halves, so with ON every shorted-port pair of a cell is joined through `dummy`; in pi mode its capacitance moves to the ports. With `magic-compat` OFF that anonymous node SHALL be named `dummy#<n>`, numbered from 0 per cell in the order the cell's shorted-port devices are read, a name the `.ext` reader can never produce because `#` ends a generated name only after a real one (Q-NETLIST-60, resolution: approved 2026-11-25; this completes Q-NETLIST-31's OFF branch); a flat netlist prefixes it with the instance path, as any node name. With `resistor tee on`, two lines SHALL be written with `dscale = 2`: `R<n>A <t0> <t1> …` and `R<n>B <t0> <t2> …`. The `rsubckt` class follows Requirement "Subcircuit-class device lines".
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:2521-2582, ext2spice/ext2spice.c:3104-3126, ext2spice/ext2spice.c:3887-3935, ext2spice/ext2hier.c:513-588)
 
@@ -176,6 +176,16 @@ Compatibility: exact
 - **GIVEN** `resistor tee on` and a modeled `rpoly` resistor with body `m`, ends `a` and `b`, W=2 and L=10, in scale mode
 - **WHEN** it is written
 - **THEN** the lines are `R0A m a rpoly w=2 l=5` and `R0B m b rpoly w=2 l=5`
+
+#### Scenario: Shorted-port resistors in tee mode with magic-compat ON
+- **GIVEN** `magic-compat` ON, `resistor tee on`, and one cell with two shorted-port resistors `R1` (ports `a`, `a`) and `R2` (ports `b`, `b`)
+- **WHEN** the cell is written
+- **THEN** all four half-resistor lines use `dummy` as terminal 0, so `a` and `b` are joined through `dummy` (Q-NETLIST-31)
+
+#### Scenario: Shorted-port resistors in tee mode with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same cell
+- **WHEN** the cell is written
+- **THEN** `R1`'s halves use `dummy#0` and `R2`'s use `dummy#1` as terminal 0, so `a` and `b` stay separate (Q-NETLIST-31, Q-NETLIST-60)
 
 ### Requirement: Capacitor, diode, BJT and voltage source lines
 These classes SHALL be written as follows:

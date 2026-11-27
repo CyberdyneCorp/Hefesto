@@ -1,3 +1,0 @@
-== test_inv
-
-== test_inv: exit 0

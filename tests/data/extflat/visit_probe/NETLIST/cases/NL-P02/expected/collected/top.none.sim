@@ -1,0 +1,5 @@
+| units: 1 tech: nltest format: MIT
+C B0 4.0
+= B A
+C D0 4.0
+= D C

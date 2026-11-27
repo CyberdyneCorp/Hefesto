@@ -1,0 +1,24 @@
+1timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use leaf u3 1 0 0 0 1 0
+use leaf u1 1 0 20 0 1 0
+use leaf u2 1 0 40 0 1 0
+use leaf ua 1 0 60 0 1 0
+use leaf b10 1 0 80 0 1 0
+node "top_n" 0 1 0 40 metal1 0 0 0 0 0 0
+@@ leaf
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+port "in" 0 0 0 1 1 metal1
+port "out" 1 4 0 5 1 metal1
+node "in" 0 1 0 0 metal1 0 0 0 0 0 0
+node "out" 0 1 4 0 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 4 2 4 "GND!" "in" 8 0 "out" 4 0 "out" 4 0

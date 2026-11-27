@@ -121,10 +121,15 @@ std::string locale_encoding() {
 // Tcl's process-wide initialization, once: the executable name (none), the
 // system encoding of the locale, the encoding search path under the
 // embedded root, and the sandbox's filesystem layer.
+// Set once Tcl's process-wide state exists: before that, Tcl_FinalizeThread
+// dereferences a thread-data key Tcl has not created yet.
+std::atomic<bool> tcl_process_initialized{false};
+
 void initialize_process() {
   static std::once_flag once;
   std::call_once(once, [] {
     Tcl_FindExecutable(nullptr);
+    tcl_process_initialized.store(true, std::memory_order_release);
     if (const std::string encoding = locale_encoding(); !encoding.empty()) {
       static_cast<void>(Tcl_SetSystemEncoding(nullptr, encoding.c_str()));
     }
@@ -597,6 +602,7 @@ ScriptLocation current_script_location(const Interpreter& interpreter) {
 }
 
 void release_thread_tcl_state() noexcept {
+  if (!tcl_process_initialized.load(std::memory_order_acquire)) return;  // no Tcl data on any thread yet
   Tcl_FinalizeThread();
 }
 

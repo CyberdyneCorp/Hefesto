@@ -1,0 +1,5 @@
+use leaf u[0:63:1][0:63:1] 1 0 0 0 1 0
+merge "u[0:63,0:63]/n" "u[0:63,0:63]/m"
+@@ leaf
+node "n" 1 1 0 0 metal1
+node "m" 1 1 1 0 metal1

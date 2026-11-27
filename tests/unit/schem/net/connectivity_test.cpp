@@ -318,6 +318,21 @@ TEST_CASE("bus taps: a named tap side is kept and the conflict reported", "[cap:
   CHECK(n.shorts[0].tag == "Bus tap");
 }
 
+// Regression (Q-SCHEM-37, approved 2026-11-25): the short named the kept
+// pin 0 name first (`X - DATA[2]`); it names the computed tap name first.
+TEST_CASE("Tap side already named", "[cap:schematic-netlisting][req:Bus taps]") {
+  schem::SchematicNets s;
+  s.wires = {wire(0, 0, 300, 0), wire(100, -20, 150, -20), wire(200, -20, 250, -20)};
+  s.instances = {label("x3", {150, -20}, "DATA[3]"), label("x", {250, -20}, "X"), label("b", {0, 0}, "DATA[3:0]"),
+                 tap("t3", {100, 0}, "[3]"), tap("t2", {200, 0}, "[2]")};
+  const auto n = schem::name_nets(s);
+  CHECK(n.pin_nets[3][0] == "DATA[3]");
+  CHECK(n.pin_nets[4][0] == "X");
+  REQUIRE(n.shorts.size() == 1);
+  REQUIRE(n.diagnostics.size() == 1);
+  CHECK(n.diagnostics[0].text == "Bus tap shorted: DATA[2] - X");
+}
+
 TEST_CASE("bus taps: chains of taps and tap loops end", "[cap:schematic-netlisting][req:Bus taps]") {
   schem::SchematicNets s;
   // t1's tap side is t2's bus side; t2's tap side is t1's bus side.

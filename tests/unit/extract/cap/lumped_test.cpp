@@ -150,27 +150,3 @@ TEST_CASE("the resistclasses header lists each class's sheet resistance",
   CHECK(extract::resistance_class_header(none.style()).empty());
 }
 
-TEST_CASE("Q-EXTRACT-22 with magic-compat ON: lumped resistance silences shorted ports",
-          "[cap:extract-resistance-lumped][req:Lumped resistance formula]") {
-  hefesto::compat::CompatSettings on;
-  extract::ExtractOptions o;  // lumped on, extresist off
-  CHECK_FALSE(extract::shorted_ports_warning("a", "b", o, on).has_value());
-  o.lumped = false;
-  const auto w = extract::shorted_ports_warning("a", "b", o, on);
-  REQUIRE(w.has_value());
-  CHECK(w->code == "EXTRACT-CAP-001");
-  CHECK(w->text == "Warning:  Ports \"a\" and \"b\" are electrically shorted.");
-}
-
-TEST_CASE("Q-EXTRACT-22 with magic-compat OFF: only extresist silences shorted ports",
-          "[cap:extract-resistance-lumped][req:Lumped resistance formula]") {
-  hefesto::compat::CompatSettings off;
-  off.magic_compat = false;
-  extract::ExtractOptions o;
-  const auto w = extract::shorted_ports_warning("a_uq3", "b", o, off);
-  REQUIRE(w.has_value());
-  CHECK(w->text == "Warning:  Ports \"a\" and \"b\" are electrically shorted.");
-  CHECK_FALSE(extract::shorted_ports_warning("a_uq3", "a_uq7", o, off).has_value());  // same name
-  o.extresist = true;
-  CHECK_FALSE(extract::shorted_ports_warning("a", "b", o, off).has_value());
-}

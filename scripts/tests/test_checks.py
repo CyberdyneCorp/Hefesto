@@ -343,6 +343,64 @@ class CompareGoldenOutputsTest(unittest.TestCase):
             self.assertIn("unexpected: MISC/c1/extra.txt", text)
             self.assertIn("missing: MISC/c1/out.txt", text)
 
+    def test_may_skip_allows_whole_cases_a_leg_did_not_run(self):
+        # Regression (M8 round 6): the SCHEM cases with xschem PDK inputs run only on the legs
+        # that restore the xschem sets, so the other legs lacked them and the check failed.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "ref/SCHEM/NL-04/out.spice", "a\n")
+            write(root, "ref/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "ref/MISC/c1/out.txt", "c\n")
+            write(root, "plain/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "plain/MISC/c1/out.txt", "c\n")
+            write(root, "partial/SCHEM/NL-04/stderr.txt", "x\n")
+            write(root, "partial/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "partial/MISC/c1/out.txt", "c\n")
+            code, text = run_quiet(golden.main, [str(root / "ref"), str(root / "plain")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: SCHEM/NL-04/out.spice", text)
+            code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "ref"), str(root / "plain")])
+            self.assertEqual(code, 0)
+            self.assertIn("not run on plain: SCHEM/NL-04", text)
+            # A case both trees hold is still compared file by file.
+            code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "ref"), str(root / "partial")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: SCHEM/NL-04/out.spice", text)
+            # Other areas stay strict.
+            write(root, "nomisc/SCHEM/NL-04/out.spice", "a\n")
+            write(root, "nomisc/SCHEM/NL-01/out.spice", "b\n")
+            code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "ref"), str(root / "nomisc")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: MISC/c1/out.txt", text)
+            # The reference must run every case: a case only a leg ran fails.
+            code, text = run_quiet(golden.main, ["--may-skip", "SCHEM/*", str(root / "plain"), str(root / "ref")])
+            self.assertEqual(code, 1)
+            self.assertIn("unexpected: SCHEM/NL-04/out.spice", text)
+
+    def test_must_run_legs_and_reference_hold_the_skippable_cases(self):
+        # Regression (M8 round 6 review): a leg that restores the xschem sets, or the reference, silently
+        # lacking the PDK cases passed the check as "not run".
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "ref/SCHEM/NL-04/out.spice", "a\n")
+            write(root, "ref/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "plain/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "xleg/SCHEM/NL-01/out.spice", "b\n")
+            write(root, "bare/SCHEM/NL-01/out.spice", "b\n")
+            skip = ["--may-skip", "SCHEM/NL-04", "--must-run", "xleg"]
+            code, text = run_quiet(golden.main, [*skip, str(root / "ref"), str(root / "plain"), str(root / "xleg")])
+            self.assertEqual(code, 1)
+            self.assertIn("missing: SCHEM/NL-04/out.spice", text)
+            self.assertIn("not run on plain: SCHEM/NL-04", text)
+            self.assertNotIn("not run on xleg", text)
+            write(root, "xleg/SCHEM/NL-04/out.spice", "a\n")
+            code, _ = run_quiet(golden.main, [*skip, str(root / "ref"), str(root / "plain"), str(root / "xleg")])
+            self.assertEqual(code, 0)
+            # A reference whose inputs were not restored fails even when no leg ran the cases either.
+            code, text = run_quiet(golden.main, [*skip, str(root / "bare"), str(root / "plain")])
+            self.assertEqual(code, 1)
+            self.assertIn("no case matching --may-skip in the reference outputs", text)
+
     def test_reports_areas_and_fails_on_a_required_area_without_cases(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

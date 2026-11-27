@@ -1,0 +1,12 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 100
+substrate "VSUB" 0 0 -1073741817 -1073741817 space 0 0 0 0 0 0
+node "a" 0 1 0 0 metal1 0 0 0 0 0 0
+node "b" 0 1 0 10 metal1 0 0 0 0 0 0
+cap "a" "VSUB" 3
+cap "a" "b" 4
+device mosfet nfet 0 0 2 4 2 4 "VSUB" "a" 8 0 "b" 4 0 "a" 4 0

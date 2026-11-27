@@ -461,6 +461,11 @@ cmd::CommandResult run_session(editor::EditorState& editor, const std::vector<st
 diag::Outcome<std::string> render(editor::EditorState& editor, std::string_view cell,
                                   const SpiceSettings& settings) {
   platform::LocalFileSystem fs;
+  return render(editor, fs, cell, settings);
+}
+
+diag::Outcome<std::string> render(editor::EditorState& editor, platform::FileSystem& fs, std::string_view cell,
+                                  const SpiceSettings& settings) {
   diag::CollectingSink sink;
   const compat::CompatSettings compat = session_compat(editor);
   // A fresh copy of the name flags: render never changes the session.

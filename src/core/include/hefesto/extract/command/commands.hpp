@@ -9,8 +9,7 @@
 // invalid-option message, the window check and `extract help`. Called by
 // cmd::register_all_commands.
 //
-// Scaffold state (tasks.md 3.3): every option but `help` fails with
-// CORE-NOTIMPL-008 ("not implemented yet: extract <option>").
+// Every option is implemented; none reports CORE-NOTIMPL-008 any more.
 //
 // Owner: INTEGRATION (the registration and dispatcher); EXTCMD (the option
 // parsers, design D3, D4).

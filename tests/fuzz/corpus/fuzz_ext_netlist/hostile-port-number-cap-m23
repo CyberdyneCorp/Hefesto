@@ -1,0 +1,2 @@
+#port "a" 1048577 0 0 1 1 metal1
+node "a" 0 0 0 0 metal1

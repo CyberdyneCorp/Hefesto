@@ -1,3 +1,0 @@
-== adder_16bit
-
-== adder_16bit: exit 0

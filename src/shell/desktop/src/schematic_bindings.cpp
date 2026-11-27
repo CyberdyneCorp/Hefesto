@@ -10,8 +10,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "hefesto/diag/diagnostic.hpp"
-#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/shell/key_bindings_sheet.hpp"
 
 namespace hefesto::shell {
@@ -20,10 +18,6 @@ namespace {
 
 bool is_action(std::string_view text) {
   return std::find(kSchematicActions.begin(), kSchematicActions.end(), text) != kSchematicActions.end();
-}
-
-void report(std::vector<diag::Diagnostic>* diagnostics, std::string text) {
-  if (diagnostics != nullptr) diagnostics->push_back(diag::make("UI-MACRO-001", std::move(text)));
 }
 
 }  // namespace
@@ -56,11 +50,21 @@ void install_schematic_defaults(ui::MacroTables& tables) {
 }
 
 SchematicKeyMap::SchematicKeyMap() {
-  install_schematic_defaults(tables_);
+  install_schematic_defaults(own_);
+}
+
+void SchematicKeyMap::attach(ui::MacroTables& tables) {
+  for (const DefaultBinding& b : schematic_default_bindings()) {
+    auto key = ui::parse_key_name(b.key);
+    if (key && tables.find(kSchematicTable, key.value()) == nullptr) {
+      tables.define(kSchematicTable, key.value(), std::string{b.text}, std::string{b.help}, false);
+    }
+  }
+  tables_ = &tables;
 }
 
 std::optional<BoundAction> SchematicKeyMap::lookup(const ui::Key& key) const {
-  const ui::Macro* macro = tables_.find(kSchematicTable, key);
+  const ui::Macro* macro = tables_->find(kSchematicTable, key);
   if (macro == nullptr || macro->text.empty()) return std::nullopt;
   if (is_action(macro->text)) return BoundAction{macro->text, {}};
   return BoundAction{{}, macro->text};
@@ -71,33 +75,10 @@ std::optional<BoundAction> SchematicKeyMap::lookup(const ui::KeyEvent& event, bo
   return key ? lookup(*key) : std::nullopt;
 }
 
-bool SchematicKeyMap::apply(std::string_view line, std::vector<diag::Diagnostic>* diagnostics) {
-  auto parsed = pcell::split_tcl_list(line);
-  std::vector<std::string> words = parsed ? std::move(parsed.value()) : std::vector<std::string>{};
-  const bool command = !words.empty() && (words[0] == "macro" || words[0] == "imacro");
-  if (!command || (words.size() != 4 && words.size() != 5) || words[1] != kSchematicTable) {
-    report(diagnostics, "not a schematic key binding: " + std::string{line});
-    return false;
-  }
-  auto key = ui::parse_key_name(words[2]);
-  if (!key) {
-    report(diagnostics, key.error().text);
-    return false;
-  }
-  if (words[3].empty()) {
-    (void)tables_.erase(kSchematicTable, key.value());
-    return true;
-  }
-  std::optional<std::string> help;
-  if (words.size() == 5) help = words[4];
-  tables_.define(kSchematicTable, key.value(), std::move(words[3]), std::move(help), words[0] == "imacro");
-  return true;
-}
-
 std::vector<std::string> SchematicKeyMap::reset_commands() const {
   ui::MacroTables defaults;
   install_schematic_defaults(defaults);
-  return binding_changes(tables_, defaults, kSchematicTable);
+  return binding_changes(*tables_, defaults, kSchematicTable);
 }
 
 }  // namespace hefesto::shell
