@@ -49,6 +49,7 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_schem_bus        # bus and vector notation, net naming (schematic-netlisting; m8 design D19)
   fuzz_schem_expr       # expr evaluation and format substitution (schematic-netlisting; m8 design D19)
   fuzz_lvs_spice        # LVS SPICE/CDL netlists and includes (lvs-netlist-input; m9 design D20)
+  fuzz_lvs_setup        # LVS setup files through the sandbox (lvs-setup-file; m9 design D7, D20)
   fuzz_sim_frames       # simulation worker frames and WorkerEngine (simulation-engine-embedding; m9 design D9, D20)
   fuzz_sim_raw          # raw result files, binary and ASCII (simulation-analyses-and-results; m9 design D12, D20)
   fuzz_sim_deck         # raw decks and their includes (simulation-netlist-preparation; m9 design D11, D20)
