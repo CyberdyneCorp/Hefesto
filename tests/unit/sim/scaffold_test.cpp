@@ -159,24 +159,8 @@ TEST_CASE("scaffold overlay feed reports CORE-NOTIMPL-009",
   CHECK(is_not_implemented(feed.currents(sim::Job{}, 0.0)));
 }
 
-TEST_CASE("scaffold run-set point generation reports CORE-NOTIMPL-009",
-          "[cap:simulation-sweeps][req:Sweep point generation]") {
-  sim::RunSetSpec spec;
-  spec.sweeps.push_back(sim::SweepVariable{"w", {1.0, 2.0}});
-  CHECK(is_not_implemented(sim::RunSet::generate(spec)));
-}
-
-TEST_CASE("scaffold run-set execution reports CORE-NOTIMPL-009", "[cap:simulation-sweeps][req:Run set execution]") {
-  sim::RunSet run_set;
-  sim::JobManager jobs;
-  CHECK(is_not_implemented(sim::execute(run_set, jobs)));
-}
-
-TEST_CASE("scaffold sample_seed reports CORE-NOTIMPL-009", "[cap:simulation-monte-carlo][req:Sample seeds]") {
-  // Regression: the stub answered 1 for every sample, so every Monte Carlo sample got the same seed.
-  CHECK(is_not_implemented(sim::sample_seed(7, 0)));
-  CHECK(is_not_implemented(sim::sample_seed(7, 3)));
-}
+// The run-set stubs were replaced by their requirement tests in M9 R3
+// (tests/unit/sim/runset/).
 
 TEST_CASE("scaffold measurement evaluation reports CORE-NOTIMPL-009",
           "[cap:simulation-measurements-and-statistics][req:Measurement definitions]") {
