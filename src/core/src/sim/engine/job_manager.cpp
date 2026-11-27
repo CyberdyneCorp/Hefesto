@@ -10,13 +10,16 @@
 #include "hefesto/sim/engine/job_manager.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <ctime>
 #include <deque>
 #include <map>
 #include <mutex>
 #include <string_view>
+#include <thread>
 #include <utility>
 
+#include "hefesto/sim/result/progress.hpp"
 #include "sim/engine/job_manager_events.hpp"
 
 namespace hefesto::sim {
@@ -61,21 +64,39 @@ diag::Diagnostic first_line(diag::Diagnostic d) {
 }  // namespace
 
 struct JobManager::Impl {
+  // What a loader thread hands back; written by the loader before it posts
+  // `started`, read by the owning thread after joining it.
+  struct Loader {
+    std::thread thread;
+    std::atomic<bool> cancel{false};
+    std::unique_ptr<Engine> made;                 // a new engine from the factory
+    std::optional<diag::Diagnostic> unavailable;  // the factory failed
+    std::optional<diag::Diagnostic> error;        // load or run failed
+    bool ran = false;                             // run() was called and succeeded
+  };
+
   struct Slot {
     std::unique_ptr<Engine> engine;
-    std::uint64_t generation = 0;  // of `engine`; 0 = none
+    std::uint64_t generation = 0;  // of the job's connection; 0 = none
     std::uint64_t engine_number = 0;
     std::optional<std::size_t> job;
     bool saw_running = false;
     bool cancel_requested = false;
-    bool halted = false;  // the engine reported `paused` and was not resumed since
+    bool halted = false;                 // the engine reported `paused` and was not resumed since
+    std::unique_ptr<Loader> loader;      // set while the job loads
+    std::vector<EngineState> deferred;   // state events that arrived while it loaded
+    bool failed_while_loading = false;   // a deferred `failed`: later events of the dead engine are dropped
   };
+
+  /// Deferred states kept per loading job before they are coalesced.
+  static constexpr std::size_t kMaxDeferredStates = 64;
 
   JobManagerOptions options;
   std::uint32_t workers = 1;
   std::optional<diag::Diagnostic> pool_diagnostic;
-  std::deque<JobRecord> records;  // stable addresses for record()
-  std::deque<PreparedDeck> decks;   // by record index; released once loaded
+  std::deque<JobRecord> records;         // stable addresses for record()
+  std::deque<PreparedDeck> decks;        // by record index; released once handed to the loader
+  std::deque<ProgressTracker> trackers;  // by record index
   std::map<JobId, std::size_t, std::less<>> index;
   std::deque<std::size_t> queue;
   std::vector<Slot> slots;
@@ -97,9 +118,17 @@ struct JobManager::Impl {
   }
 
   ~Impl() {
-    // Engines first: their reader threads may still post events.
+    // Loaders first (they use the engines), then the engines: their reader
+    // threads may still post events.
+    for (Slot& slot : slots) {
+      if (slot.loader) {
+        slot.loader->cancel = true;
+        slot.loader->thread.join();
+      }
+    }
     for (Slot& slot : slots) {
       slot.engine.reset();
+      slot.loader.reset();
     }
   }
 
@@ -113,14 +142,19 @@ struct JobManager::Impl {
   }
 
   [[nodiscard]] diag::Outcome<JobId> make_id(const JobOptions& opts) const {
-    if (opts.run_set_point) {
-      if (index.contains(*opts.run_set_point)) {
-        return diag::make("SIM-ENGINE-036", "job " + *opts.run_set_point + " already exists");
-      }
-      return *opts.run_set_point;
+    JobId id = opts.run_set_point.value_or(timestamp(now()) + "-" + opts.testbench + "-" + opts.corner);
+    // M9 R2 review: the id becomes a folder name of the result store (with
+    // room for a collision suffix).
+    if (!is_safe_job_id(id) || !is_safe_job_id(id + "-99999")) {
+      return diag::make("SIM-ENGINE-038", "job id '" + id + "' is not a single safe path component");
     }
-    const JobId base = timestamp(now()) + "-" + opts.testbench + "-" + opts.corner;
-    JobId id = base;
+    if (opts.run_set_point) {
+      if (index.contains(id)) {
+        return diag::make("SIM-ENGINE-036", "job " + id + " already exists");
+      }
+      return id;
+    }
+    const JobId base = id;
     for (std::size_t n = 2; index.contains(id); ++n) {
       id = base + "-" + std::to_string(n);
     }
@@ -147,29 +181,14 @@ struct JobManager::Impl {
     return std::nullopt;
   }
 
-  // --- starting jobs ---
-
-  bool ensure_engine(std::size_t s, JobRecord& rec) {
-    Slot& slot = slots[s];
-    if (slot.engine) {
-      return true;
-    }
-    diag::Outcome<std::unique_ptr<Engine>> made =
-        options.make_engine ? options.make_engine()
-                            : diag::Outcome<std::unique_ptr<Engine>>{diag::make("SIM-ENGINE-031", "no engine host")};
-    if (!made.ok() || made.value() == nullptr) {
-      const std::string reason = made.ok() ? std::string{"the engine host returned no engine"} : made.error().text;
-      rec.diagnostics.push_back(diag::make("SIM-ENGINE-031", "simulation engine unavailable: " + reason));
-      set_state(rec, JobState::failed);
-      return false;
-    }
-    slot.engine = std::move(made.value());
-    slot.engine_number = ++engines;
-    return true;
+  [[nodiscard]] std::size_t loading() const noexcept {
+    return static_cast<std::size_t>(
+        std::count_if(slots.begin(), slots.end(), [](const Slot& slot) { return slot.loader != nullptr; }));
   }
 
-  void connect(std::size_t s) {
-    const std::uint64_t generation = slots[s].generation;
+  // --- starting jobs ---
+
+  EngineCallbacks callbacks_for(std::size_t s, std::uint64_t generation) {
     EventQueue* queue_ptr = &events;
     EngineCallbacks callbacks;
     callbacks.on_output = [queue_ptr, s, generation](std::string_view line) {
@@ -181,41 +200,184 @@ struct JobManager::Impl {
     callbacks.on_state = [queue_ptr, s, generation](EngineState state) {
       queue_ptr->post(EngineEvent{s, generation, EngineEvent::Kind::state, {}, state});
     };
-    slots[s].engine->set_callbacks(std::move(callbacks));
+    callbacks.on_progress = [queue_ptr, s, generation](std::string_view status, double point) {
+      EngineEvent event{s, generation, EngineEvent::Kind::progress, std::string{status}, EngineState::idle};
+      event.point = point;
+      queue_ptr->post(std::move(event));
+    };
+    callbacks.on_data = [queue_ptr, s, generation](std::string_view vector, double value) {
+      if (vector == "time") {  // the transient scale ("Progress reporting")
+        EngineEvent event{s, generation, EngineEvent::Kind::scale, {}, EngineState::idle};
+        event.point = value;
+        queue_ptr->post(std::move(event));
+      }
+    };
+    return callbacks;
+  }
+
+  /// The loader thread: the factory (when the slot has no engine), the
+  /// callbacks, load and run; then `started`. It touches only `loader`,
+  /// `engine` and the event queue.
+  /// The factory on the loader thread; nullptr (and `loader.unavailable`) on failure.
+  Engine* make_engine(Loader& loader) const {
+    diag::Outcome<std::unique_ptr<Engine>> made = options.make_engine();
+    if (made.ok() && made.value() != nullptr) {
+      loader.made = std::move(made.value());
+      return loader.made.get();
+    }
+    loader.unavailable = made.ok() ? diag::make("SIM-ENGINE-031", "the engine host returned no engine") : made.error();
+    return nullptr;
+  }
+
+  void load_job(Loader& loader, Engine* engine, EngineCallbacks callbacks, std::size_t s, std::uint64_t generation,
+                const std::vector<std::string>& lines, const LoadOptions& load_options) {
+    if (engine == nullptr) {
+      engine = make_engine(loader);
+    }
+    if (engine != nullptr) {
+      engine->set_callbacks(std::move(callbacks));
+      diag::Status status = loader.cancel ? diag::Status{diag::Done{}} : engine->load(lines, load_options);
+      if (status.ok() && !loader.cancel) {
+        status = engine->run();
+        loader.ran = status.ok();
+      }
+      if (!status.ok()) {
+        loader.error = status.error();
+      }
+    }
+    events.post(EngineEvent{s, generation, EngineEvent::Kind::started, {}, EngineState::idle});
   }
 
   void start(std::size_t s, std::size_t job) {
     JobRecord& rec = records[job];
-    if (!ensure_engine(s, rec)) {
+    Slot& slot = slots[s];
+    if (!options.make_engine && !slot.engine) {
+      rec.diagnostics.push_back(diag::make("SIM-ENGINE-031", "simulation engine unavailable: no engine host"));
+      set_state(rec, JobState::failed);
       decks[job] = PreparedDeck{};
       return;
     }
-    Slot& slot = slots[s];
     slot.job = job;
     slot.saw_running = false;
     slot.cancel_requested = false;
     slot.halted = false;
+    slot.deferred.clear();
+    slot.failed_while_loading = false;
     slot.generation = ++generations;  // per job: late events of the last job are dropped
     rec.engine = slot.engine_number;
-    connect(s);
     set_state(rec, JobState::preparing);
+    trackers[job] = ProgressTracker{analyses_of(decks[job].lines)};
     set_state(rec, JobState::loading);
-    const std::vector<std::string> lines = std::move(decks[job].lines);
+    LoadOptions load_options{std::move(decks[job].descriptor.init_commands), rec.options.seed};
+    std::vector<std::string> lines = std::move(decks[job].lines);
     decks[job] = PreparedDeck{};
-    diag::Status status = slot.engine->load(lines);
-    if (status.ok()) {
-      status = slot.engine->run();
+    slot.loader = std::make_unique<Loader>();
+    slot.loader->thread =
+        std::thread([this, loader = slot.loader.get(), engine = slot.engine.get(),
+                     callbacks = callbacks_for(s, slot.generation), s, generation = slot.generation,
+                     lines = std::move(lines), load_options = std::move(load_options)]() mutable {
+          load_job(*loader, engine, std::move(callbacks), s, generation, lines, load_options);
+        });
+  }
+
+  /// The loader of slot `s` ended: keep its engine, then end the job or
+  /// apply the states held back during the load.
+  void on_started(std::size_t s) {
+    Slot& slot = slots[s];
+    const std::unique_ptr<Loader> loader = std::move(slot.loader);
+    loader->thread.join();
+    if (loader->made) {
+      slot.engine = std::move(loader->made);
+      slot.engine_number = ++engines;
     }
-    if (!status.ok()) {
-      start_failed(s, job, status.error());
+    const std::size_t job = *slot.job;
+    JobRecord& rec = records[job];
+    rec.engine = slot.engine_number;
+    const std::vector<EngineState> deferred = std::exchange(slot.deferred, {});
+    if (loader->unavailable) {
+      end_unstarted(s, rec, "simulation engine unavailable: " + loader->unavailable->text);
+      return;
+    }
+    if (loader->error) {
+      start_failed(s, job, std::move(*loader->error), deferred);
+      return;
+    }
+    if (slot.cancel_requested && !loader->ran) {
+      end_unstarted(s, rec, {});
+      return;
+    }
+    if (slot.cancel_requested && !cancel_run(s)) {
+      return;  // the cancel faulted the engine
+    }
+    replay(s, deferred);
+  }
+
+  /// The job ends before its run started: `cancelled` after cancel, else
+  /// `failed` with `reason` (SIM-ENGINE-031). The worker is free again.
+  void end_unstarted(std::size_t s, JobRecord& rec, const std::string& reason) {
+    if (slots[s].cancel_requested) {
+      set_state(rec, JobState::cancelled);
+    } else {
+      rec.diagnostics.push_back(diag::make("SIM-ENGINE-031", reason));
+      set_state(rec, JobState::failed);
+    }
+    slots[s].job.reset();
+  }
+
+  /// A cancel that arrived while the job loaded, after its run started.
+  bool cancel_run(std::size_t s) {
+    diag::Status status = slots[s].engine->cancel();
+    if (!status.ok() && is_fault(status.error())) {
+      fault(s, status.error());
+      return false;
+    }
+    return true;  // the run's end (or the halt) ends the job as cancelled
+  }
+
+  /// Applies held-back state events in order until one ends the job.
+  void replay(std::size_t s, const std::vector<EngineState>& deferred) {
+    const std::uint64_t generation = slots[s].generation;
+    for (const EngineState state : deferred) {
+      if (!slots[s].job || slots[s].generation != generation) {
+        return;
+      }
+      on_state(s, state);
     }
   }
 
-  /// A load or run call failed. The job's queued lines (and any fault the
-  /// engine reported first) are applied before the job ends, so its
-  /// diagnostic carries them and none reach the worker's next job.
-  void start_failed(std::size_t s, std::size_t job, diag::Diagnostic error) {
-    apply_events();
+  /// Keeps a state event of a loading job, coalescing a flood: at most
+  /// kMaxDeferredStates, then `running` (when one was) and the last state,
+  /// or `failed`.
+  static void defer(Slot& slot, EngineState state) {
+    if (slot.failed_while_loading) {
+      return;  // the engine is dead: the fault is applied after `started`
+    }
+    slot.failed_while_loading = state == EngineState::failed;
+    slot.deferred.push_back(state);
+    if (slot.deferred.size() <= kMaxDeferredStates) {
+      return;
+    }
+    const auto has = [&slot](EngineState wanted) {
+      return std::find(slot.deferred.begin(), slot.deferred.end(), wanted) != slot.deferred.end();
+    };
+    std::vector<EngineState> kept;
+    if (has(EngineState::failed)) {
+      kept.push_back(EngineState::failed);
+    } else {
+      if (has(EngineState::running)) {
+        kept.push_back(EngineState::running);
+      }
+      if (state != EngineState::running) {
+        kept.push_back(state);
+      }
+    }
+    slot.deferred = std::move(kept);
+  }
+
+  /// A load or run call failed: the states of the load (a fault among
+  /// them ends the job as a fault), then the refusal or the fault.
+  void start_failed(std::size_t s, std::size_t job, diag::Diagnostic error, const std::vector<EngineState>& deferred) {
+    replay(s, deferred);
     if (slots[s].job != job) {
       return;  // a fault event ended it
     }
@@ -224,9 +386,13 @@ struct JobManager::Impl {
       return;
     }
     JobRecord& rec = records[job];
-    rec.diagnostics.push_back(first_line(std::move(error)));
-    append_error_lines(rec, false);
-    set_state(rec, JobState::failed);
+    if (slots[s].cancel_requested) {
+      set_state(rec, JobState::cancelled);
+    } else {
+      rec.diagnostics.push_back(first_line(std::move(error)));
+      append_error_lines(rec, false);
+      set_state(rec, JobState::failed);
+    }
     slots[s].job.reset();  // the engine refused the deck but is healthy: reused
   }
 
@@ -293,6 +459,9 @@ struct JobManager::Impl {
     }
     rec.vectors = std::move(vectors.value());
     set_state(rec, outcome(rec, slot.cancel_requested));
+    if (rec.job.state == JobState::completed) {
+      rec.progress = 1.0;
+    }
     slot.job.reset();  // a healthy engine is reused
   }
 
@@ -345,6 +514,18 @@ struct JobManager::Impl {
     }
   }
 
+  void on_progress(Slot& slot, const EngineEvent& event) {
+    const std::size_t job = *slot.job;
+    ProgressTracker& tracker = trackers[job];
+    if (event.kind == EngineEvent::Kind::scale) {
+      tracker.scale(event.point);
+    } else {
+      tracker.status(event.line, event.point);
+      records[job].status = event.line;
+    }
+    records[job].progress = tracker.progress();
+  }
+
   void on_state(std::size_t s, EngineState state) {
     Slot& slot = slots[s];
     JobRecord& rec = records[*slot.job];
@@ -374,6 +555,14 @@ struct JobManager::Impl {
     }
   }
 
+  void apply_state(std::size_t s, EngineState state) {
+    if (slots[s].loader) {
+      defer(slots[s], state);  // the loader owns the engine until `started`
+    } else {
+      on_state(s, state);
+    }
+  }
+
   void apply(EngineEvent event) {
     if (event.slot >= slots.size() || slots[event.slot].generation != event.generation) {
       return;  // an event of a discarded engine
@@ -385,15 +574,24 @@ struct JobManager::Impl {
       }
       return;
     }
+    if (slot.failed_while_loading && event.kind != EngineEvent::Kind::started) {
+      return;  // a late event of an engine that failed while the job loaded
+    }
     switch (event.kind) {
-      case EngineEvent::Kind::state: on_state(event.slot, event.state); break;
+      case EngineEvent::Kind::started: on_started(event.slot); break;
+      case EngineEvent::Kind::state: apply_state(event.slot, event.state); break;
       case EngineEvent::Kind::dropped: on_dropped(slot, event); break;
+      case EngineEvent::Kind::progress:
+      case EngineEvent::Kind::scale: on_progress(slot, event); break;
       default: on_output(slot, std::move(event.line), event.kind == EngineEvent::Kind::error); break;
     }
   }
 
   std::size_t apply_events() {
     std::vector<EngineEvent> batch = events.take();
+    if (options.on_events_taken) {
+      options.on_events_taken();
+    }
     for (EngineEvent& event : batch) {
       apply(std::move(event));
     }
@@ -429,25 +627,32 @@ struct JobManager::Impl {
     return status;
   }
 
+  diag::Status cancel_queued(std::size_t job) {
+    std::erase(queue, job);
+    decks[job] = PreparedDeck{};
+    set_state(records[job], JobState::cancelled);
+    return diag::Done{};
+  }
+
   diag::Status cancel(const JobId& id) {
     const auto job = find(id);
     if (!job.ok()) {
       return job.error();
     }
-    JobRecord& rec = records[job.value()];
-    if (rec.job.state == JobState::queued) {
-      std::erase(queue, job.value());
-      decks[job.value()] = PreparedDeck{};
-      set_state(rec, JobState::cancelled);
-      return diag::Done{};
+    if (records[job.value()].job.state == JobState::queued) {
+      return cancel_queued(job.value());
     }
     const auto s = slot_of(job.value());
     if (!s) {
       return diag::make("SIM-ENGINE-035", "job " + id + " is not running");
     }
     Slot& slot = slots[*s];
-    const bool halted = slot.halted;  // paused: the adapter sends no new event
     slot.cancel_requested = true;
+    if (slot.loader) {
+      slot.loader->cancel = true;  // never waits for the load
+      return diag::Done{};
+    }
+    const bool halted = slot.halted;  // paused: the adapter sends no new event
     diag::Status status = slot.engine->cancel();
     if (!status.ok()) {
       if (is_fault(status.error())) {
@@ -485,20 +690,27 @@ diag::Outcome<JobId> JobManager::submit(PreparedDeck deck, JobOptions options) {
   const std::size_t n = impl_->records.size();
   impl_->records.push_back(std::move(rec));
   impl_->decks.push_back(std::move(deck));
+  impl_->trackers.emplace_back();
   impl_->index.emplace(id.value(), n);
   impl_->queue.push_back(n);
   return id;
 }
 
+std::size_t JobManager::poll_for(std::chrono::milliseconds timeout) {
+  impl_->events.wait(timeout);
+  return poll();
+}
+
 std::size_t JobManager::poll() {
   std::size_t total = 0;
-  for (;;) {
+  for (std::size_t pass = 0; pass < kMaxPollPasses; ++pass) {
     const std::size_t n = impl_->apply_events() + impl_->start_jobs();
     if (n == 0) {
-      return total;
+      break;
     }
     total += n;
   }
+  return total;
 }
 
 diag::Status JobManager::cancel(const JobId& id) {
@@ -541,6 +753,14 @@ std::size_t JobManager::peak_active() const noexcept {
 
 std::uint64_t JobManager::engines_started() const noexcept {
   return impl_->engines;
+}
+
+std::size_t JobManager::loading() const noexcept {
+  return impl_->loading();
+}
+
+std::size_t JobManager::peak_queued_events() const {
+  return impl_->events.peak();
 }
 
 }  // namespace hefesto::sim

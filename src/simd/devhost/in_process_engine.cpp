@@ -6,6 +6,7 @@
 #include "devhost/in_process_engine.hpp"
 
 #include <mutex>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -33,7 +34,7 @@ class InProcessEngine final : public sim::Engine {
   }
 
   bool create() {
-    const hefesto_engine_callbacks callbacks{this, on_output, on_progress, on_state};
+    const hefesto_engine_callbacks callbacks{this, on_output, on_progress, on_state, on_data};
     engine_ = api_.create(&callbacks);
     return engine_ != nullptr;
   }
@@ -43,7 +44,9 @@ class InProcessEngine final : public sim::Engine {
     callbacks_ = std::move(callbacks);
   }
 
-  diag::Status load(const std::vector<std::string>& deck) override {
+  // The worker's sequence: clear a loaded job, the initialisation commands,
+  // `setseed <seed>`, then the deck.
+  diag::Status load(const std::vector<std::string>& deck, const sim::LoadOptions& options) override {
     std::vector<const char*> lines;
     lines.reserve(deck.size());
     for (const std::string& line : deck) {
@@ -52,9 +55,15 @@ class InProcessEngine final : public sim::Engine {
     if (loaded_) {
       api_.clear(engine_);
     }
-    const int seed = api_.command(engine_, "setseed 1");
     loaded_ = true;
-    return seed != HEFESTO_ENGINE_OK ? status(seed) : status(api_.load(engine_, lines.data(), lines.size()));
+    std::vector<std::string> commands = options.init_commands;
+    commands.push_back("setseed " + std::to_string(options.seed));
+    for (const std::string& command : commands) {
+      if (const int rc = api_.command(engine_, command.c_str()); rc != HEFESTO_ENGINE_OK) {
+        return status(rc);
+      }
+    }
+    return status(api_.load(engine_, lines.data(), lines.size()));
   }
   diag::Status run() override { return status(api_.run(engine_)); }
   diag::Status pause() override { return status(api_.pause(engine_)); }
@@ -109,6 +118,15 @@ class InProcessEngine final : public sim::Engine {
     with_callbacks(user, [&](const sim::EngineCallbacks& c) {
       if (c.on_progress) {
         c.on_progress(std::string_view{status, size}, point);
+      }
+    });
+  }
+  static void on_data(void* user, const hefesto_engine_value* values, std::size_t count) {
+    with_callbacks(user, [&](const sim::EngineCallbacks& c) {
+      if (c.on_data) {
+        for (std::size_t i = 0; i < count; ++i) {
+          c.on_data(values[i].name != nullptr ? values[i].name : "", values[i].value);
+        }
       }
     });
   }

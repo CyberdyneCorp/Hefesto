@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2036 requirements, 3766 scenarios, 1075 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3780 scenarios, 1075 open questions.
 
 ## Hefesto product (native)
 
@@ -168,7 +168,7 @@ Open questions: [36](decisions/open-questions/LVS.md) · Golden cases: [CASES.md
 | [`lvs-comparison-algorithm`](../openspec/specs/lvs-comparison-algorithm/spec.md) | 14 | 15 | Defines how two flat views of a cell pair (circuit 1 and circuit 2) are compared for graph isomorphism. It covers: - the bipartite device/net graph - the initial partition - iterat… |
 | [`lvs-device-reduction`](../openspec/specs/lvs-device-reduction/spec.md) | 9 | 11 | Defines how devices are reduced before and during LVS comparison: - combining parallel devices into one device with several property records - combining series devices into one dev… |
 | [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 10 | 13 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
-| [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 16 | 26 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
+| [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 16 | 30 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
 | [`lvs-property-matching`](../openspec/specs/lvs-property-matching/spec.md) | 10 | 13 | Defines how the properties of matched devices are compared: - which properties are compared (properties of interest) - value types and promotion between them - tolerance rules for … |
 | [`lvs-reports`](../openspec/specs/lvs-reports/spec.md) | 12 | 13 | Defines the outputs of LVS: - which messages go to the comparison log (`comp.out`) and which go only to the console - the two-column side-by-side layout - the exact text of each re… |
 | [`lvs-setup-file`](../openspec/specs/lvs-setup-file/spec.md) | 17 | 18 | Defines the LVS setup file and the commands that PDK setup files use to configure a comparison. Examples of such files are `sky130A_setup.tcl`, `gf180mcuD_setup.tcl` and `ihp-sg13g… |
@@ -179,13 +179,13 @@ Open questions: [28](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 13 | 20 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
+| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 13 | 22 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
 | [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 8 | 14 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
 | [`simulation-corners`](../openspec/specs/simulation-corners/spec.md) | 9 | 11 | Defines corner analysis in Hefesto (decision P-19): - the corner definitions and corner sets held by each PDK's simulation model descriptor in the PDK store - the bundled corner ta… |
-| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 17 | 42 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
+| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 17 | 45 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
 | [`simulation-measurements-and-statistics`](../openspec/specs/simulation-measurements-and-statistics/spec.md) | 13 | 19 | Defines how Hefesto turns simulation results into numbers and verdicts, and how it summarises many runs (decision P-19): - named measurements on stored vectors, extending the wavef… |
-| [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 12 | 19 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
-| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 16 | 27 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 12 | 20 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
+| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 16 | 31 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
 | [`simulation-optimization-hooks`](../openspec/specs/simulation-optimization-hooks/spec.md) | 7 | 8 | Defines an optional evaluation interface through which optimisation loops drive simulation (decision P-19). The main client is the AI agent (decision P-10): its sizing and post-lay… |
 | [`simulation-sweeps`](../openspec/specs/simulation-sweeps/spec.md) | 11 | 19 | Defines how Hefesto runs one testbench many times with different values (decision P-19): - run sets, the batch object shared by sweeps, corners (capability `simulation-corners`) an… |
 | [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 14 | 17 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |

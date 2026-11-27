@@ -47,13 +47,31 @@ inline constexpr std::uint64_t kMaxDevicesPerRun = 50'000'000;
 /// Property types of lvs-property-matching.
 enum class PropertyType : std::uint8_t { string, integer, real, value, expression };
 
+/// The merge rules of a property of interest (lvs-device-reduction
+/// "Combination flags"): a bit set. "add" and "par" exclude each other
+/// within one direction; the legacy critical bits come from the deprecated
+/// `property <c> merge` forms. Added in M9 R2 (LVSRED, LVSPROP).
+namespace merge_rule {
+inline constexpr std::uint16_t kParallelAdd = 1U << 0U;
+inline constexpr std::uint16_t kParallelPar = 1U << 1U;
+inline constexpr std::uint16_t kParallelCritical = 1U << 2U;
+inline constexpr std::uint16_t kSeriesAdd = 1U << 3U;
+inline constexpr std::uint16_t kSeriesPar = 1U << 4U;
+inline constexpr std::uint16_t kSeriesCritical = 1U << 5U;
+inline constexpr std::uint16_t kLegacyParallelCritical = 1U << 6U;
+inline constexpr std::uint16_t kLegacySeriesCritical = 1U << 7U;
+}  // namespace merge_rule
+
 /// One property of interest of a cell: its key, type, tolerance and default
-/// as written (e.g. "1").
+/// as written (e.g. "1"); M9 R2 adds the merge rules and the pin of
+/// `property <c> associate {key pin}` (empty: none).
 struct PropertyDef {
   std::string key;
   PropertyType type = PropertyType::string;
   double tolerance = 0.0;
   std::string default_value;
+  std::uint16_t merge = 0;  // merge_rule bits
+  std::string pin{};
 
   friend bool operator==(const PropertyDef&, const PropertyDef&) = default;
 };
@@ -83,11 +101,23 @@ struct Port {
   bool proxy = false;
 };
 
+/// How the pins of a parallel-merged device were connected (lvs-property-
+/// matching "When properties are checked"), per pin: not merged on a
+/// single-connection net, merged from separate no-connect nets, or merged
+/// from one net that the merge left with this pin only.
+enum class OpenPin : std::uint8_t { none, no_connects, tied_together };
+
 struct Instance {
   CellId cell = 0;   // the class: a cell of the same database
   std::string name;  // e.g. "sky130_fd_pr__nfet_01v8:1", "/inv_1"
   std::vector<NetId> connections;  // one per port of `cell`, in port order
   std::vector<PropertyRecord> properties;
+  /// M9 R2 (LVSRED): the names of the instances reduction combined into
+  /// this one, in instance order ("Reduction preserves pin order and names").
+  std::vector<std::string> merged{};
+  /// M9 R2 (LVSRED): one entry per pin once a parallel merge touched the
+  /// device; empty otherwise.
+  std::vector<OpenPin> open_pins{};
 };
 
 struct PinPair {

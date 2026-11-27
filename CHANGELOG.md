@@ -121,6 +121,29 @@ release notices.
   registries, portable seeding, deterministic initialisation) behind the
   `HEFESTO_BUILD_NGSPICE` option (default OFF). The golden capture image
   uses the same ngspice (`47-hefesto1`) and adds OpenVAF-reloaded.
+- **Statistical `.param` drawn once per load.** Patch 0005 backports the
+  upstream ngspice change after release 47: a top-level `.param` with
+  `agauss` and similar functions is drawn once per circuit load (one draw per
+  die), not at every reference. Engine and capture image are now
+  `47-hefesto2`.
+- **Simulation reference runs** (`golden-capture.yml` mode `sim-refruns`):
+  `.param` precedence per PDK, sky130 `ng_nomodcheck` and the descriptor
+  loads, gf180mcu `hs` against `hsa`.
+- **Desktop Beta layout cell.** `beta_inv` is drawn with its own transistors
+  for sky130, gf180mcu and IHP, DRC-clean with each PDK's Magic tech file and
+  written to GDS (ctest `e2e.beta.<pdk>.layout`).
+- **LVS comparison engine (library).** Netlist comparison with seeded
+  iterative refinement, symmetry resolution, `verify` and stepping; parallel
+  and series device reduction with permutable pins; property matching with
+  tolerances and series/parallel reconciliation. Written under the netgen
+  clean room; the `lvs` command still answers CORE-NOTIMPL-009 until the
+  hierarchy, report and setup layers land.
+- **Simulation decks and results (library).** Deck preparation for SPICE and
+  raw sources (testbench composition, include inlining, `.control`
+  sanitisation, deck limits), raw-file read and write, CSV export and
+  waveform measurements. Worker state events are bounded by count, and worker
+  handshakes and deck loads run off the polling thread. The worker ABI is
+  version 2 (streamed data points).
 
 ## Unreleased (M8: schematic capture, in progress)
 

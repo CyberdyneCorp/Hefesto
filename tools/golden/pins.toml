@@ -51,7 +51,7 @@ commit = "93dcda14d36349d0b0ca63168d3cbbab20fe2ece"
 # tarball.
 [tools.ngspice]
 repo = "https://git.code.sf.net/p/ngspice/ngspice"
-version = "47-hefesto1"
+version = "47-hefesto2"
 tag = "ngspice-47"
 commit = "a80f6e3e95d51534905b1f23410a951802666656"
 archive_url = "https://downloads.sourceforge.net/project/ngspice/ng-spice-rework/47/ngspice-47.tar.gz"

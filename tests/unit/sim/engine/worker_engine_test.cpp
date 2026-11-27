@@ -494,3 +494,35 @@ TEST_CASE("Backlog lines reach on_output before any later line",
   std::lock_guard lock{mutex};
   CHECK(lines == std::vector<std::string>{"note 1", "note 2", "live"});
 }
+
+// M9 R2: Engine::load takes LoadOptions; the worker client used to send
+// `setseed 1` and no initialisation commands whatever the job asked for.
+TEST_CASE("load sends the job's initialisation commands and seed in the first load frame",
+          "[cap:simulation-engine-embedding][req:Deterministic engine initialisation]") {
+  FakeHost host{healthy};
+  const auto engine = start(host);
+  const sim::LoadOptions options{{"set ngbehavior=hsa", "set skywaterpdk"}, 1234};
+  REQUIRE(engine->load({"* job", "R1 a 0 1k"}, options).ok());
+  const std::vector<frames::Message> received = host.channel_->received();
+  REQUIRE(received.size() == 1);
+  const auto& load = std::get<frames::Load>(received[0]);
+  CHECK(load.seed == 1234);
+  CHECK(load.init_commands == std::vector<std::string>{"set ngbehavior=hsa", "set skywaterpdk"});
+  CHECK(load.lines == std::vector<std::string>{"* job", "R1 a 0 1k"});
+}
+
+TEST_CASE("streamed data frames reach on_data", "[cap:simulation-engine-embedding][req:Callback contract]") {
+  FakeHost host{healthy};
+  const auto engine = start(host);
+  std::mutex mutex;
+  std::vector<std::pair<std::string, double>> seen;
+  sim::EngineCallbacks callbacks;
+  callbacks.on_data = [&](std::string_view vector, double value) {
+    std::lock_guard lock{mutex};
+    seen.emplace_back(std::string{vector}, value);
+  };
+  engine->set_callbacks(std::move(callbacks));
+  host.channel_->emit(frames::Data{{{"time", 1e-9}, {"v(out)", 0.5}}});
+  std::lock_guard lock{mutex};
+  CHECK(seen == std::vector<std::pair<std::string, double>>{{"time", 1e-9}, {"v(out)", 0.5}});
+}

@@ -1,0 +1,15 @@
+* SPDX-License-Identifier: Apache-2.0
+* Copyright 2026 The Hefesto Authors
+* Hefesto-authored reference deck (openspec/changes/m9-lvs-simulation task 3.3; D-26, Q-SIM-8).
+* Loads section @SECTION@ of the IHP sg13g2 corner library @LIB@ with the OSDI modules of the
+* run's .spiceinit, and solves a trivial operating point: the load must succeed.
+.lib "@IHP@/ihp-sg13g2/libs.tech/ngspice/models/@LIB@" @SECTION@
+V1 a 0 1
+R1 a 0 1k
+.control
+set numdgt=12
+op
+let va = v(a)
+echo "HREF loaded=$&va"
+.endc
+.end

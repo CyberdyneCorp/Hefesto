@@ -241,12 +241,12 @@ Every PDK entry in the PDK store (capability `hefesto-files-and-pdks`) that supp
 - the ngspice initialisation commands
 - the OSDI modules required
 
-Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The full corner tables, the additional section variables and the rule that emits a model line only when its file is used are owned by capability `simulation-corners`, Requirement "Bundled corner tables"; where the two differ, that requirement wins. The remaining files and section names are to be verified against open_pdks (Q-SIM-8):
+Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The full corner tables, the additional section variables and the rule that emits a model line only when its file is used are owned by capability `simulation-corners`, Requirement "Bundled corner tables"; where the two differ, that requirement wins. The files, section names, init commands and OSDI modules below were verified against the pinned PDK sets by the task 3.3 reference run (Q-SIM-8, D-26, D-27; golden-capture run 45859754101): sky130 on `combined` needs no `ng_nomodcheck`, and gf180mcu uses `hs`, as the PDK's own `.spiceinit` sets, because `hsa` changes nothing on the PDK device test:
 
 | PDK | Model lines | Process sections | Init commands | OSDI |
 |---|---|---|---|---|
-| sky130A/B | `.lib sky130.lib.spice <proc>`, model root `libs.tech/combined` | `tt ff ss sf fs` | `set ngbehavior=hsa`, `set ng_nomodcheck` | none |
-| gf180mcuC/D | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hsa` | none |
+| sky130A/B | `.lib sky130.lib.spice <proc>`, model root `libs.tech/combined` | `tt ff ss sf fs` | `set ngbehavior=hsa` | none |
+| gf180mcuC/D | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hs` | none |
 | sg13g2 | `.lib cornerMOSlv.lib <mos>`, `.lib cornerMOShv.lib <moshv>`, `.lib cornerHBT.lib <hbt>`, `.lib cornerRES.lib <res>`, `.lib cornerCAP.lib <cap>` | mos: `mos_tt mos_ff mos_ss mos_sf mos_fs`; others from the PDK | `set ngbehavior=hsa` | `psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf` |
 
 A user MAY add or edit descriptors. On Linux and macOS, a descriptor MAY be generated from a PDK's `libs.tech/ngspice` directory found by the PDK store's search rules.
@@ -259,6 +259,13 @@ Compatibility: native
 - **GIVEN** sky130A installed with its bundled descriptor
 - **WHEN** a testbench is created with no corner selected
 - **THEN** the deck SHALL contain `.lib "<store>/sky130A/libs.tech/combined/sky130.lib.spice" tt` and `.temp 27`
+
+#### Scenario: Bundled init commands
+- **GIVEN** the bundled descriptors
+- **WHEN** a job is prepared for each PDK
+- **THEN** the sky130A init commands SHALL be `set ngbehavior=hsa` only, with no `set ng_nomodcheck`
+- **AND** the gf180mcuC init commands SHALL be `set ngbehavior=hs`
+- **AND** the sg13g2 descriptor SHALL require the OSDI modules `psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi` and `cap_cmomf`
 
 ### Requirement: Model library resolution
 Hefesto SHALL resolve every file reference in a deck to an absolute path before passing the deck to ngspice. This covers `.lib` and `.include` lines in model templates, in imported netlists and in raw decks, applied recursively to included files. ngspice SHALL never need to search for a file or expand an environment variable. A reference `f` found in a file whose directory is `d` resolves as follows; the first rule that applies wins:
@@ -335,6 +342,10 @@ Before passing a deck to ngspice, Hefesto SHALL check it and reject it with a sp
 
 Other `.control` sections in imported netlists and raw decks SHALL be removed, with the warning `Removed .control section (lines <a>-<b>)`, unless the testbench setting `allowControl` is on. `allowControl` defaults to off. Even when it is on, the forbidden commands above remain rejected.
 
+A deck line that holds a newline, a carriage return or a NUL character (from a testbench field, a raw deck or an included file) SHALL be rejected with `line <n> of the deck holds a newline, carriage return or NUL character` before sanitisation, so that every line checked is a line ngspice parses. The first line of a deck is its title, which ngspice never parses: it SHALL be neither inlined nor sanitised.
+
+Until model library resolution inlines library files (Requirement "Model library resolution"), a `.lib <file> <section>` line SHALL name a file below the PDK store, or the deck SHALL be rejected with `.lib file <path> is outside the PDK store (<file>:<line>)`; a relative file SHALL be made absolute against the directory of the file that holds the line. While this holds, a deck with a `.lib` line is exempt from the undefined-subcircuit check for every call (a deviation from the exemption above, which covers only names defined inside PDK libraries, because those names are not known before the library is read).
+
 For a deck from a `schematic` source, `.control` sections SHALL be kept. They SHALL first be translated as defined by capability `schematic-simulation-integration`, Requirement "Control block translation", which maps `write` and `wrdata` to job-result capture and removes `quit` and `exit`. This validation SHALL run after that translation, so translated `write`, `wrdata`, `quit` and `exit` lines are not rejected. Every other forbidden command SHALL still be rejected.
 
 Compatibility: native
@@ -369,13 +380,18 @@ Compatibility: native
 - **THEN** the job SHALL be rejected with `Deck has no analysis`
 
 ### Requirement: Deck delivery
-The engine adapter SHALL pass the final deck with `ngSpice_Circ`. The deck is an array of lines without line terminators: the first is the title line, the last non-null entry is `.end`, and a null pointer ends the array. Lines SHALL be UTF-8. Lines longer than 65 535 bytes SHALL be split with `+` continuation lines at a space boundary. If XSPICE file-reading code models are used, `ngCM_Input_Path` SHALL be set to the project folder before loading.
+The engine adapter SHALL pass the final deck with `ngSpice_Circ`. The deck is an array of lines without line terminators: the first is the title line, the last non-null entry is `.end`, and a null pointer ends the array. Lines SHALL be UTF-8. Lines longer than 65 535 bytes SHALL be split with `+` continuation lines at a space boundary, except the title line and comment lines, which SHALL be cut at 65 535 bytes (ngspice joins a `+` line to the previous card). If XSPICE file-reading code models are used, `ngCM_Input_Path` SHALL be set to the project folder before loading.
 
 The exact deck text, its SHA-256 hash, the PDK descriptor identity and the corner SHALL be recorded with the job result (capability `simulation-analyses-and-results`). Re-running a stored job SHALL re-send the identical deck.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/include/ngspice/sharedspice.h:118-140, src/include/ngspice/sharedspice.h:445-455)
+
+#### Scenario: Line break inside a testbench field
+- **GIVEN** a testbench whose save list holds `v(out)` followed by a newline and a `.control` section
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL fail with `line <n> of the deck holds a newline, carriage return or NUL character`
 
 #### Scenario: Re-run is identical
 - **GIVEN** a stored job with deck hash `h`
@@ -397,9 +413,10 @@ Compatibility: native
 ### Requirement: Deck limits
 Deck preparation SHALL enforce these limits:
 - a prepared deck of at most 256 MiB;
-- include depth 32.
+- include depth 32, the top file (a raw deck, or the DUT file of a `netlist` source) being level 1;
+- at most 65 536 include reads per deck.
 
-Each limit SHALL be a setting that can be lowered. Exceeding one SHALL stop preparation with a diagnostic that names the limit and the file, before anything reaches the engine.
+Each limit SHALL be a setting that can be lowered, or raised up to twice its default; a setting of zero or above twice its default SHALL be refused with a diagnostic. Exceeding a limit SHALL stop preparation with a diagnostic that names the limit and the file, before anything reaches the engine.
 
 Compatibility: native
 
@@ -409,3 +426,13 @@ Compatibility: native
 - **GIVEN** a raw deck whose `.include` files include each other
 - **WHEN** it is submitted
 - **THEN** preparation SHALL fail with the include-depth diagnostic, and no job SHALL be started in the engine
+
+#### Scenario: Includes that fan out
+- **GIVEN** 21 files, each of the first 20 including the next one twice, and a raw deck including the first
+- **WHEN** it is submitted with the default limits
+- **THEN** preparation SHALL fail with `include count limit 65536 exceeded by <path> (<file>:<line>)` before the deck size limit is reached
+
+#### Scenario: Raising a limit
+- **WHEN** the include depth setting is 64
+- **THEN** decks SHALL be prepared with an include depth of up to 64
+- **AND** a setting of 65 SHALL be refused with `include depth limit 65 is zero or above twice its default 32`

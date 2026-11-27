@@ -115,30 +115,8 @@ TEST_CASE("scaffold evaluate_setup reports CORE-NOTIMPL-009", "[cap:lvs-setup-fi
   CHECK(is_not_implemented(lvs::evaluate_setup(lvs::Source{"setup.tcl", std::string{"permute default\n"}}, context)));
 }
 
-TEST_CASE("scaffold reduce reports CORE-NOTIMPL-009", "[cap:lvs-device-reduction][req:Reduction schedule]") {
-  lvs::Cell cell{"inv"};
-  const auto summary = lvs::reduce(cell, {});
-  CHECK(summary.parallel_merged == 0);
-  CHECK(summary.series_merged == 0);
-  CHECK(summary.zero_valued_removed == 0);
-  CHECK(is_not_implemented(summary.diagnostics));
-}
-
-TEST_CASE("scaffold compare_pair reports CORE-NOTIMPL-009",
-          "[cap:lvs-comparison-algorithm][req:Iterative refinement]") {
-  const auto result = lvs::compare_pair(lvs::Cell{"a"}, lvs::Cell{"b"}, {}, {});
-  CHECK(result.cell1 == "a");
-  CHECK(result.cell2 == "b");
-  CHECK(result.status == lvs::PairStatus::mismatch);
-  CHECK(is_not_implemented(result.diagnostics));
-}
-
-TEST_CASE("scaffold check_properties reports CORE-NOTIMPL-009",
-          "[cap:lvs-property-matching][req:When properties are checked]") {
-  const auto result = lvs::check_properties({}, {});
-  CHECK(result.errors.empty());
-  CHECK(is_not_implemented(result.diagnostics));
-}
+// reduce, compare_pair and the property checks left the scaffold in M9 R2:
+// their requirement tests are in tests/unit/lvs/{reduce,cmp,prop}/.
 
 TEST_CASE("scaffold run_lvs reports CORE-NOTIMPL-009", "[cap:lvs-hierarchy][req:lvs per-pair flow]") {
   NoProgress progress;

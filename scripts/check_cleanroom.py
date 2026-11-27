@@ -71,8 +71,9 @@ XSCHEM = CleanRoomTool(
 )
 NETGEN = CleanRoomTool(
     "net" + "gen",
-    # netgen base/netgen.c, lines 1-2, fetched by the LVS spec team at the git tag 1.5.327 (commit 8df5f0d9...),
-    # which is not the spec pin 93dcda14 of tools/golden/pins.toml; to be re-checked at 93dcda14 by the spec team.
+    # netgen base/netgen.c, lines 1-2, fetched by the LVS spec team at the git tag 1.5.327 (commit 8df5f0d9...)
+    # and re-checked by the LVS spec team at the spec pin 93dcda14 of tools/golden/pins.toml (2026-11-26, one
+    # web fetch of the pinned raw file): both lines are identical at the two commits.
     (re.compile(r'"' + "NET" + r'GEN",\s+a\s+netlist-specification\s+tool', re.IGNORECASE),
      re.compile(r"copyright\s*\(c\)\s*[0-9 ,\-]*massimo\s+a\.?\s+" + "sivil" + "otti", re.IGNORECASE)),
     "tests/golden/LVS",

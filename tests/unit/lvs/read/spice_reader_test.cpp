@@ -650,7 +650,7 @@ TEST_CASE("devices per run", "[cap:lvs-netlist-input][req:Input limits]") {
   const auto read = r.read("X3 a b c\n", "two.spice");
   REQUIRE_FALSE(read.ok());
   CHECK(read.error().code == hefesto::lvs::net_codes::kDeviceLimit);
-  CHECK(read.error().text == "the devices-per-run limit of 2 is exceeded in two.spice line 1");
+  CHECK(read.error().text == "the device limit of 2 per netlist database is exceeded in two.spice line 1");
 }
 
 TEST_CASE("limits can be lowered but not raised past twice the default", "[cap:lvs-netlist-input][req:Input limits]") {

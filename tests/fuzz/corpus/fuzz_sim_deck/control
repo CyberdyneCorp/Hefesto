@@ -1,0 +1,9 @@
+* rc
+R1 a 0 1k
+V1 a 0 1
+.control
+run
+print v(a)
+.endc
+.tran 1n 10n
+.end

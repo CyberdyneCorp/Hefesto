@@ -86,15 +86,98 @@ manager and the pool, task 5.5).
 - `SIM-ENGINE-037` `the run produced no plot`: the run ended without `Error`
   lines but left no result vectors, so the job fails ("Job lifecycle").
 
+M9 R2: no new SIMENG code. A worker that floods state frames is bounded by
+coalescing, not by a diagnostic: past `kMaxQueuedStateEvents` (4096) state
+events between two polls, a connection's later states collapse into
+`running` and its last state (or `failed`), so the job ends as the full
+sequence would end it. A job cancelled while it loads ends `cancelled`
+without a diagnostic; the factory's failure on the loader thread is still
+`SIM-ENGINE-031`.
+
+M9 R2 fix pass:
+- `SIM-ENGINE-038` `job id '<id>' is not a single safe path component`: a
+  job id (from the testbench and corner, or a run-set point id) names the
+  job's folder in the result store, so it must be 1 to 255 bytes, not `.`
+  or `..`, with no `/`, backslash, `:` or control character.
+- `poll()` applies at most 4 batches of events (`kMaxPollPasses`) and
+  returns, so a worker that keeps sending cannot hold the owning thread.
+
 ## SIMDECK
 
 Codes of deck preparation (`sim/deck/`; capability
-simulation-netlist-preparation). None yet.
+simulation-netlist-preparation). M9 R2 (task 13.1): the `spice` and `raw`
+sources.
+
+- `SIM-DECK-001` `File not found: <path> (<file>:<line>)`: an `.include`
+  that does not resolve (relative paths against the including file's
+  directory, the deck's against the testbench folder), or one that names no
+  file.
+- `SIM-DECK-002` `include depth limit <n> exceeded by <path> (<file>:<line>)`
+  ("Deck limits": 32 by default, set by `DeckLimits`); an include loop
+  ends here. The top file is the first level: the raw deck, or the DUT file
+  of a `spice` source (M9 R2 fix pass; before, a raw deck was level 0).
+- `SIM-DECK-003` `prepared deck larger than the limit of <n> bytes in <file>`
+  ("Deck limits": 256 MiB by default).
+- `SIM-DECK-004` `Control command '<cmd>' is not allowed in simulation decks`
+  (Q-SIM-9): `shell`, `cd`, `codemodel`, `osdi`, `pre_osdi`, `load`,
+  `source`, `write`, `wrdata` or `quit` in a `.control` section, also in an
+  included file and also with `allowControl` on.
+- `SIM-DECK-005` (warning) `Removed .control section (lines <a>-<b>)`.
+- `SIM-DECK-006`: a `.subckt` without its `.ends`, or an `.ends` without its
+  `.subckt`.
+- `SIM-DECK-007` `undefined subcircuit '<name>' called at line <n>`; not
+  checked in a deck with `.lib` lines (a deviation: the spec exempts only
+  the names PDK libraries define, which are not known before task 13.2).
+- `SIM-DECK-008` `Deck has no analysis`; `SIM-DECK-009` `Deck does not end
+  with .end` ("Raw decks").
+- `SIM-DECK-010` `Source <name>: <reason>` ("Stimulus definitions": a
+  decreasing PWL, a negative PULSE tr, tf or pw, a missing node, a name not
+  starting with V or I, a name used twice, a wrong value count).
+- `SIM-DECK-011` `Unknown DUT port <name>`; `SIM-DECK-012` (warning) `Port
+  <port> left unconnected` ("Testbench composition").
+- `SIM-DECK-013`: the DUT file does not define the testbench's subcircuit,
+  or the deck context has no file system.
+
+M9 R2 fix pass (review of PR #132):
+- `SIM-DECK-014` `include count limit <n> exceeded by <path> (<file>:<line>)`:
+  more than 65 536 include reads in one deck (`DeckLimits::max_includes`;
+  the standing rule on crafted-input limits, as `LVS-READ-025`).
+- `SIM-DECK-015` `line <n> of the deck holds a newline, carriage return or
+  NUL character`: checked on the whole deck before sanitisation, so no
+  testbench string can carry lines past Q-SIM-9.
+- `SIM-DECK-016` `.lib file <path> is outside the PDK store (<file>:<line>)`:
+  until task 13.2 inlines and sanitises library files, a `.lib <file>
+  <section>` must name a file below `DeckContext::pdk_store`. A relative
+  file is made absolute against the directory of the file that holds it.
+- `SIM-DECK-017` `<limit> limit <n> is zero or above twice its default <d>`:
+  a deck limit may be lowered, or raised up to twice its default (D18).
 
 ## SIMRES
 
 Codes of result storage, raw files, CSV export and waveform measurements
-(`sim/result/`; capability simulation-analyses-and-results). None yet.
+(`sim/result/`; capability simulation-analyses-and-results). M9 R2 (task
+13.3).
+
+- `SIM-RESULT-001` `<file>:<line>: expected "<token>"`: a malformed raw file
+  ("Raw file import").
+- `SIM-RESULT-002` `<file>: binary data ends after point <k> of <n>`.
+- `SIM-RESULT-003`: a raw file above the import limit (4 GiB), or one whose
+  declared plots would take more than the result budget once loaded; refused
+  before anything is allocated for them (design D18, Q-SIM-25). The budget
+  counts each variable's vector object and its name and type as well as its
+  values (M9 R2 fix pass): `<file>: <v> variables of <p> points exceed ...`
+  or `<file>: the names of <k> variables exceed ...`.
+- `SIM-RESULT-004`: a plot without vectors, or with vectors of different
+  lengths, cannot be written as raw or CSV.
+- `SIM-RESULT-005`: no such vector in the plot.
+- `SIM-RESULT-006`: invalid measurement arguments (`value_at` outside the
+  scale, an empty range, a missing argument).
+- `SIM-RESULT-007` `no crossing of <level> (<dir>, k=<k>)`.
+- `SIM-RESULT-008`: an unknown measurement function.
+- `SIM-RESULT-009`: a result file cannot be read or written (or the store
+  has no file system, or the job id is not one path component).
+- `SIM-RESULT-010` `<analysis>: <parameter> ...`: an invalid analysis
+  ("Supported analyses"), e.g. `ac: fstart must be > 0 for dec sweep`.
 
 ## SIMPROBE
 
@@ -141,6 +224,23 @@ fails when the two disagree.
 <!-- BEGIN DIAGNOSTIC CODES (generated by `hefesto-cli --diagnostic-codes=sim`) -->
 | Code | Default severity | Meaning |
 |---|---|---|
+| `SIM-DECK-001` | error | A file the deck includes cannot be read. |
+| `SIM-DECK-002` | error | Deck include depth limit exceeded. |
+| `SIM-DECK-003` | error | Prepared deck size limit exceeded. |
+| `SIM-DECK-004` | error | A forbidden command in a .control section of a simulation deck. |
+| `SIM-DECK-005` | warning | A .control section was removed from the deck. |
+| `SIM-DECK-006` | error | A .subckt without its .ends, or an .ends without its .subckt. |
+| `SIM-DECK-007` | error | An instance calls an undefined subcircuit. |
+| `SIM-DECK-008` | error | Deck has no analysis. |
+| `SIM-DECK-009` | error | Raw deck does not end with .end. |
+| `SIM-DECK-010` | error | Invalid stimulus source. |
+| `SIM-DECK-011` | error | Unknown DUT port in a binding. |
+| `SIM-DECK-012` | warning | A DUT port was left unconnected. |
+| `SIM-DECK-013` | error | The DUT netlist or the deck context is missing. |
+| `SIM-DECK-014` | error | Deck include count limit exceeded. |
+| `SIM-DECK-015` | error | A deck line holds a newline, carriage return or NUL character. |
+| `SIM-DECK-016` | error | A .lib file outside the PDK store (until model library resolution). |
+| `SIM-DECK-017` | error | A deck limit setting is zero or above twice its default. |
 | `SIM-ENGINE-001` | error | No worker host or engine plugin is available on this platform; simulation is unavailable. |
 | `SIM-ENGINE-002` | error | Simulation engine terminated: the worker did not complete its version handshake in time. |
 | `SIM-ENGINE-003` | error | Simulation engine terminated: the worker speaks another protocol version. |
@@ -162,8 +262,19 @@ fails when the two disagree.
 | `SIM-ENGINE-035` | error | Job not in the state the command needs. |
 | `SIM-ENGINE-036` | error | Run-set point job id already in use. |
 | `SIM-ENGINE-037` | error | The run produced no plot, so the job failed. |
+| `SIM-ENGINE-038` | error | Job id is not a single safe path component. |
 | `SIM-PROBE-001` | error | Net is not in the netlist of this run. |
 | `SIM-PROBE-002` | error | Node naming needs a root cell, a technology and an extraction style. |
 | `SIM-PROBE-003` | error | Instance of the probe's use path not found. |
 | `SIM-PROBE-004` | error | No paint at the probe point. |
+| `SIM-RESULT-001` | error | Malformed raw file: a line does not hold the expected token. |
+| `SIM-RESULT-002` | error | Truncated raw file: the binary data ends before the declared points. |
+| `SIM-RESULT-003` | error | Raw import above the import limit or the result budget. |
+| `SIM-RESULT-004` | error | A plot cannot be written: no vectors, or vectors of different lengths. |
+| `SIM-RESULT-005` | error | No such vector in the plot. |
+| `SIM-RESULT-006` | error | Invalid waveform measurement arguments. |
+| `SIM-RESULT-007` | error | No crossing of the level for the measurement. |
+| `SIM-RESULT-008` | error | Unknown waveform measurement. |
+| `SIM-RESULT-009` | error | A result file cannot be read or written. |
+| `SIM-RESULT-010` | error | Invalid analysis parameter. |
 <!-- END DIAGNOSTIC CODES -->

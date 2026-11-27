@@ -1,0 +1,7 @@
+* t
+X1 a b
++ c sub w=1u
+.subckt sub a b c
+.ends
+.dc V1 0 1 0.1
+.end

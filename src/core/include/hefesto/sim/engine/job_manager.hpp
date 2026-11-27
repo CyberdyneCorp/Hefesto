@@ -41,11 +41,29 @@
 // refusal and its error lines, the engine is kept), and SIM-ENGINE-010 or
 // 011 on pause or resume (returned to the caller; the job is unchanged).
 //
-// Threading: poll() runs the factory (the worker's handshake) and
-// Engine::load synchronously, so a slow worker start or deck load holds
-// the owning thread, which must therefore not be the UI thread; cancel()
-// of a job that is loading waits for the load (design.md, SIMENG as
-// landed).
+// Threading (M9 R2): a job's start runs on a loader thread of its worker
+// slot: the factory when the slot has no engine (the worker's handshake,
+// up to 10 s), set_callbacks, Engine::load with the job's LoadOptions (the
+// deck descriptor's initialisation commands and JobOptions::seed) and
+// Engine::run. poll() never waits for it: it keeps applying events and
+// starting jobs on other workers. The loader posts a `started` event when
+// it ends; poll() then joins it, keeps the new engine, and applies the
+// engine's state events of the load, which it held back meanwhile (a fault
+// among them replaces the engine as above). While a job loads, pause and
+// resume are refused (SIM-ENGINE-035) and cancel() returns at once: the
+// loader skips the run when it has not started it, else the run is
+// cancelled when the loader ends; either way the job ends `cancelled`.
+// The factory may be called from several loader threads at once. The
+// destructor waits for loads in progress.
+//
+// Bounds (M9 R2): the event queue holds at most 65536 line events and
+// kMaxQueuedStateEvents state events between two polls; a worker that
+// floods state frames has its later states coalesced (see
+// job_manager_events.hpp), and progress events are superseded by later
+// ones, so no worker can grow the queue without bound. Since the M9 R2 fix
+// pass one poll() applies at most kMaxPollPasses batches, so no worker can
+// hold the owning thread in poll() either; job ids must be one safe path
+// component (SIM-ENGINE-038).
 //
 // Owner: SIMENG.
 
@@ -74,6 +92,8 @@ struct JobOptions {
   std::string corner;
   /// The run-set point id `<run set id>-p<index>`; nullopt for a single job.
   std::optional<JobId> run_set_point;
+  /// Added in M9 R2: the seed the engine gets before the deck (`setseed`).
+  std::uint32_t seed = 1;
 };
 
 /// Added in M9 R1: starts one engine (a worker on desktop). Called when a
@@ -90,6 +110,10 @@ struct JobManagerOptions {
   PoolInputs pool;
   /// The clock of the job ids (local time); empty: the system clock.
   std::function<std::chrono::system_clock::time_point()> now;
+  /// Added in the M9 R2 fix pass, for tests: called on the owning thread
+  /// after poll() takes each batch of events (a stand-in for a worker that
+  /// sends while the batch is applied).
+  std::function<void()> on_events_taken;
 };
 
 /// Added in M9 R1: one job-log line and its stream (log.txt writes error
@@ -104,6 +128,15 @@ struct LogLine {
 /// counted in JobRecord::log_dropped instead.
 inline constexpr std::size_t kMaxJobLogBytes = std::size_t{64} << 20;
 
+/// Added in M9 R2: state events queued between two polls before a
+/// connection's later states are coalesced.
+inline constexpr std::size_t kMaxQueuedStateEvents = 4096;
+
+/// Added in M9 R2 (fix pass): event batches one poll() applies at most.
+/// A worker that keeps sending frames cannot hold the owning thread in
+/// poll(): what arrives after the last batch waits for the next poll.
+inline constexpr std::size_t kMaxPollPasses = 4;
+
 /// Added in M9 R1: what the manager keeps of one job.
 struct JobRecord {
   Job job;
@@ -116,6 +149,8 @@ struct JobRecord {
   std::vector<diag::Diagnostic> diagnostics;   // set when the job failed
   std::vector<Vector> vectors;                 // the final (or partial) vectors
   std::uint64_t engine = 0;                    // which engine ran it (1 = the first engine started)
+  double progress = 0.0;                       // M9 R2: "Progress reporting", 0..1
+  std::string status;                          // M9 R2: the last status string of the engine
 };
 
 class JobManager {
@@ -134,8 +169,14 @@ class JobManager {
 
   /// Added in M9 R1: applies the queued engine events and starts queued
   /// jobs on free workers. Returns the number of events applied plus jobs
-  /// started (0: nothing happened).
+  /// started (0: nothing happened). Since the M9 R2 fix pass it takes at
+  /// most kMaxPollPasses batches of events, so it returns while a worker
+  /// is still sending.
   std::size_t poll();
+
+  /// Added in M9 R2: waits up to `timeout` for an engine event or the end
+  /// of a load, then polls.
+  std::size_t poll_for(std::chrono::milliseconds timeout);
 
   /// Added in M9 R1: a queued job is cancelled at once; a running or paused
   /// one is cancelled in its engine and becomes `cancelled` when the engine
@@ -158,6 +199,10 @@ class JobManager {
   [[nodiscard]] std::size_t peak_active() const noexcept;
   /// Added in M9 R1: engines started by the factory so far.
   [[nodiscard]] std::uint64_t engines_started() const noexcept;
+  /// Added in M9 R2: jobs whose loader thread has not ended yet.
+  [[nodiscard]] std::size_t loading() const noexcept;
+  /// Added in M9 R2: the most events the queue held at once so far.
+  [[nodiscard]] std::size_t peak_queued_events() const;
 
  private:
   struct Impl;

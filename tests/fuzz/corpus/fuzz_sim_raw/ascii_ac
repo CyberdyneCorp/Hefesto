@@ -1,0 +1,14 @@
+Title: hefesto testbench tb corner tt
+Date: Thu Nov  5 14:30:00 2026
+Command: hefesto-0.0.1 ngspice-47-hefesto1
+Plotname: ac1
+Flags: complex
+No. Variables: 2
+No. Points: 1
+Variables:
+	0	frequency	frequency
+	1	v(out)	voltage
+Values:
+ 0	1.0e+03,0.0e+00
+	-1.0e+00,0.0e+00
+

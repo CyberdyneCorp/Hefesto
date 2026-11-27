@@ -15,7 +15,9 @@
 # every deck that uses agauss/aunif/sgauss/trnoise/trrandom with a given seed,
 # relative to stock ngspice-47, on purpose: stock draws differ between C
 # libraries and between processes. Decks without random functions are not
-# affected.
+# affected. 0005 changes how often a statistical `.param` is drawn (once per
+# circuit load instead of at every reference), as upstream ngspice does after
+# release 47.
 
 # 0001 Static OSDI registry.
 # Requirement "OSDI compact models" and "No runtime loading of executable
@@ -62,3 +64,19 @@
 #   ft_find_analysis) and crashed; if_option() now treats any variable as a
 #   plain front-end variable while there is no simulator.
 0004-deterministic-initialisation.patch
+
+# 0005 Statistical .param drawn once per circuit load.
+# simulation-monte-carlo "Statistical functions in ngspice (informative)",
+# decision F1 (a) of docs/decisions/m9-decision-table.md (approved by the user
+# 2026-11-25): backport of upstream commit
+# 940bb50fab46de3c2618508735f1db208064d3be (after ngspice-47, in master
+# 7aa47164). ngspice-47 turns every .param with agauss/gauss/aunif/unif/
+# limit into a .func, re-drawn at each reference (inpcom.c:8226-8238), so the
+# sky130 one-draw-per-die process variation became per device. With the patch
+# a top-level .param that can be evaluated at top level is drawn once per
+# circuit load, a .param inside a .subckt once per instance, and only the rest
+# becomes a .func; `set stat_param_as_func` restores the old behaviour. The
+# upstream code is unchanged (hunks offset by -10 lines). License: BSD-3-Clause
+# (ngspice's Modified BSD licence, as src/frontend/inpcom.c). Checked by
+# tests/test_engine.py test_stat_param_drawn_once_per_load.
+0005-stat-param-once-per-load.patch

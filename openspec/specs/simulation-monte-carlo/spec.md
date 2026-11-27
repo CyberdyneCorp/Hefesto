@@ -26,7 +26,7 @@ The specification SHALL record how ngspice evaluates statistical functions, for 
   - `limit(nom, abs)` = `nom + abs` if `r > 0`, else `nom − abs`
 - **Generator.** Draws come from a combined Tausworthe/LCG generator whose eight state words are seeded from the C library `rand()` after `srand(seed)`. The normal draw uses the polar Box–Muller method and keeps one of the two values per pass.
 - **Seeding.** `setseed <n>` and `.option seed=<n>` reseed immediately. `set rndseed=<n>` only sets a variable, which numparam's statistical functions do not read. The shared-library initialisation seeds the generator from the process id.
-- **When values are drawn.** A top-level `.param` with a statistical function is drawn once per circuit load, so every reference shares one value (global process variation). A `.param` inside a `.subckt` is drawn once per subcircuit instance (device mismatch). Statistical functions in `B` source lines are replaced by one value each after subcircuit expansion. The variable `stat_param_as_func` restores the behaviour of ngspice 29 to 47, in which such parameters become functions re-evaluated at every reference. This draw-once behaviour is upstream development after ngspice-47 (master `7aa47164`); the pinned release ngspice-47 still re-evaluates such a parameter at every reference and has no `stat_param_as_func` (re-check of 2026-11-22, `docs/decisions/m9-decision-table.md` "Trace re-check against ngspice-47").
+- **When values are drawn.** A top-level `.param` with a statistical function is drawn once per circuit load, so every reference shares one value (global process variation). A `.param` inside a `.subckt` is drawn once per subcircuit instance (device mismatch). Statistical functions in `B` source lines are replaced by one value each after subcircuit expansion. The variable `stat_param_as_func` restores the behaviour of ngspice 29 to 47, in which such parameters become functions re-evaluated at every reference. This draw-once behaviour is upstream development after ngspice-47 (master `7aa47164`); stock ngspice-47 still re-evaluates such a parameter at every reference and has no `stat_param_as_func` (re-check of 2026-11-22, `docs/decisions/m9-decision-table.md` "Trace re-check against ngspice-47"). Hefesto carries the upstream change as patch `0005-stat-param-once-per-load.patch`, in the engine (version `47-hefesto2`) and in the capture image's reference build, so both draw a top-level statistical `.param` once per circuit load (finding F1, approved by the user 2026-11-25).
 - **Re-drawing.** `reset` and `mc_source` reload the circuit from the stored deck, so every statistical function is drawn again from the current generator state.
 
 Compatibility: informative
@@ -37,6 +37,11 @@ Compatibility: informative
 - **GIVEN** the deck line `.param p = 'agauss(1.0, 0.1, 0)'`
 - **WHEN** the circuit is loaded
 - **THEN** `p` SHALL be exactly 1.0, whatever the seed
+
+#### Scenario: Top-level statistical parameter drawn once per load
+- **GIVEN** the deck lines `.param p = 'agauss(1.0, 0.1, 1)'`, `B1 n1 0 V = p` and `B2 n2 0 V = p`, run in Hefesto's engine with patch 0005
+- **WHEN** the circuit is loaded and an operating point is computed
+- **THEN** `v(n1)` and `v(n2)` SHALL be equal; after `reset` both SHALL again be equal to each other, with a value drawn anew from the generator state
 
 ### Requirement: Monte Carlo modes
 A Monte Carlo run SHALL use one of three modes:
