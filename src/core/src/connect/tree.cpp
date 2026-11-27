@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
 
@@ -38,16 +39,19 @@ Walk make_walk(const Descend& descend, bool magic_compat) {
 }
 
 /// Calls `f(x, y, element_transform)` for every array element of `use` whose
-/// bounding box overlaps `area` (parent coordinates). Stops when f returns
-/// false; returns false then.
+/// bounding box overlaps `area` (parent coordinates), in ascending y then x.
+/// Only the elements DBArrayOverlap finds under the area are tried (as
+/// DBTreeSrTiles does), so a search over part of a large array costs the
+/// elements it touches, not the whole array. Stops when f returns false;
+/// returns false then.
 template <typename F>
 bool for_each_element(const db::CellUse& use, const db::Rect& area, F&& f) {
   if (use.def == nullptr || !db::overlap(use.bbox, area)) {
     return true;
   }
-  const db::ArrayInfo& a = use.array;
-  for (std::int32_t y = std::min(a.ylo, a.yhi); y <= std::max(a.ylo, a.yhi); ++y) {
-    for (std::int32_t x = std::min(a.xlo, a.xhi); x <= std::max(a.xlo, a.xhi); ++x) {
+  const db::ElementRange r = db::array_overlap(use, area);
+  for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
+    for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
       const db::Transform et = db::element_transform(use, x, y);
       if (db::overlap(db::apply(et, use.def->bbox()), area) && !f(x, y, et)) {
         return false;

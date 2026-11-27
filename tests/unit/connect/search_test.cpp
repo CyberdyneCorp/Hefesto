@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <set>
 #include <string>
 #include <tuple>
@@ -460,4 +461,55 @@ TEST_CASE("regression: a hierarchical search ends when the net copy fractures a 
   REQUIRE(connect::search_hierarchical(def, *mt.tech, start_at(mt, {200, 181}), {}, net).ok());
   CHECK(net.tiles < 1000);
   CHECK(net.triangle);
+}
+
+TEST_CASE("regression: tree searches over part of a large array try only the elements under the area",
+          "[cap:layout-connectivity][req:Hierarchical connectivity]") {
+  // A 1000 x 1000 array (10^6 elements). The tree searches tried every
+  // element of an array use touching the area, so each queued area of a
+  // hierarchical search cost 10^6 element transforms and a net crossing a
+  // row of the array did not finish. DBTreeSrTiles prunes with
+  // DBArrayOverlap; so do they now, in both modes.
+  HEFESTO_SELECT_MT(mt);
+  db::CellLibrary lib;
+  db::CellDef& top = *lib.create("top", mt.tech->plane_count()).value();
+  db::CellDef& leaf = *lib.create("leaf", mt.tech->plane_count()).value();
+  paint(leaf, mt, {0, 0, 10, 10}, mt.m1);
+  db::recompute_bbox(leaf);
+  db::PlaceOptions o;
+  o.id = "a";
+  o.array = db::ArrayInfo{0, 999, 0, 999, 20, 20};
+  REQUIRE(db::place(top, leaf, o).ok());
+  paint(top, mt, {0, 4, 395, 6}, mt.m1);  // a wire across the first 20 elements of row 0
+  db::recompute_bbox(top);
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const auto begin = std::chrono::steady_clock::now();
+    int visits = 0;
+    std::set<std::string> elements;
+    for (int i = 0; i < 200; ++i) {
+      const db::Coord c = 20 * (i * 37 % 1000);
+      (void)connect::search_tree_tiles(top, Rect{c + 2, c + 2, c + 3, c + 3}, tech::TypeMask::of(mt.m1), {}, on,
+                                       [&](const connect::TreeTile& t) {
+                                         ++visits;
+                                         elements.insert(*t.path);
+                                         return true;
+                                       });
+    }
+    CHECK(visits == 200);
+    CHECK(elements.size() == 200);
+    CHECK(elements.count("a[370,370]") == 1);
+    Net net(*mt.tech);
+    REQUIRE(connect::search_hierarchical(top, *mt.tech, start_at(mt, {1, 5}), compat(on), net).ok());
+    std::set<std::string> net_elements(net.paths.begin(), net.paths.end());
+    net_elements.erase("");
+    std::set<std::string> row;
+    for (int x = 0; x < 20; ++x) {
+      row.insert("a[0," + std::to_string(x) + "]");  // a[y,x]
+    }
+    CHECK(net_elements == row);
+    const auto elapsed = std::chrono::steady_clock::now() - begin;
+    // Pruned: milliseconds. Unpruned: about 2 x 10^8 element transforms.
+    CHECK(elapsed < std::chrono::seconds(3));
+  }
 }
