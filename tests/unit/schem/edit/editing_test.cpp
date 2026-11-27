@@ -523,8 +523,10 @@ TEST_CASE("Make symbol", kLabels) {
   run(s, {"label", "-80", "0", "A"});
   run(s, {"label", "-80", "20", "B"});
   run(s, {"label", "80", "0", "C"});
-  const std::string netlist = run(s, {"netlist"});
-  CHECK(netlist.find("x1 A B C amp") != std::string::npos);
+  // A, B and amp.sch's OUT are undriven: the net driver check fails the run
+  // (Q-SCHEM-53 (a)), and the forced netlist is still written.
+  CHECK_FALSE(s.schematic({"netlist", s.folder().str("top.spice"), "-force"}).ok());
+  CHECK(s.folder().read("top.spice").find("x1 A B C amp") != std::string::npos);
 }
 
 TEST_CASE("make schematic from symbol and symbol pins from schematic ports", kLabels) {

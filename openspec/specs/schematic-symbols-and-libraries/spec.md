@@ -487,6 +487,11 @@ Compatibility: behavioral
 - **WHEN** the instance is resolved, with `xschem-compat` ON or OFF
 - **THEN** the search path SHALL be the system library folder `<install root>/assets/schematic/xschem_library/devices` and the symbol SHALL be the system library's `res.sym`, and no warning `Symbol not found` SHALL be reported (Q-SCHEM-52)
 
+#### Scenario: Default search path of an untitled document
+- **GIVEN** a session with no search path yet, no active PDK, and a working folder with no `xschemrc`
+- **WHEN** an untitled schematic is created (`schematic new schematic`, or `xschem clear`), with `xschem-compat` ON or OFF
+- **THEN** the search path SHALL be that of the working folder, here the system library folder alone, and `res.sym` SHALL resolve to the system library's `res.sym` (Q-SCHEM-52); a session that already has a search path SHALL keep it
+
 #### Scenario: xschemrc replaces the default search path
 - **GIVEN** an `xschemrc` in the document's folder that runs `set XSCHEM_LIBRARY_PATH /w/lib`, where `/w/lib` exists
 - **WHEN** the search path is built

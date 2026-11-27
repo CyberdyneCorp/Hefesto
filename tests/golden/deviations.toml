@@ -439,11 +439,6 @@ decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
 reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
-[SCHEM-PR-02]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "xschem clear, instance, copy, paste and get instances are implemented (M8 round 7, CMD), but the empty untitled.sch that 'xschem clear force schematic' makes has no library search path ('Symbol not found: res.sym'): the default search path of a document without an xschemrc (Q-SCHEM-52 (a), approved 2026-11-27: the system devices library) is not implemented yet; with that path the five name lists equal the capture (local check, round 7)"
-
 [SCHEM-PR-04]
 deferred = "M8"
 outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
@@ -451,10 +446,8 @@ reason = "xschem translate gives '@@P' (the net of pin P) as empty where xschem 
 
 [SCHEM-PR-05]
 decisions = ["Q-SCHEM-30"]
-deferred = "M8"
-deferred_outputs = { "exitcode.txt" = "M8" }
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "./ and ../ references and the search-path element . resolve against the containing schematic's folder, with warning SCHEM-LIB-001 (./x.sym -> /work/input/sub/x.sym, ../x.sym -> /work/input/x.sym, no 'Symbol not found'); xschem resolves them against its start folder /work; its hefesto.tcl reads XSCHEM_LIBRARY_PATH, which the project interpreter does not define after reading the case's xschemrc (\"can't read XSCHEM_LIBRARY_PATH: no such variable\"; round 8, after DECIDE's round-7 spec); the approved deviation Q-SCHEM-30 then covers stdout.txt and stderr.txt"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "./ and ../ references and the search-path element . resolve against the containing schematic's folder, with warning SCHEM-LIB-001 (./x.sym -> /work/input/sub/x.sym, ../x.sym -> /work/input/x.sym, no 'Symbol not found'); xschem resolves them against its start folder /work"
 
 [SCHEM-NL-02]
 decisions = ["Q-SCHEM-60"]
@@ -478,17 +471,13 @@ reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* 
 
 [SCHEM-NL-09]
 decisions = ["Q-SCHEM-60"]
-deferred = "M8"
-deferred_outputs = { "exitcode.txt" = "M8" }
-outputs = ["stderr.txt", "exitcode.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests; xschem exits 10 after its net driver check ('Error: undriven node', a net with only input pins; schematic-netlisting 'Errors and warnings', Q-SCHEM-53 (a), approved 2026-11-27), which CORE implements in schem/net on branch m8-round7-core (M8 round 7); the netlist is equal and the CMD exit path (schematic netlist/check, hefesto-cli --netlist: status 10) is in place"
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-10]
 decisions = ["Q-SCHEM-60"]
-deferred = "M8"
-deferred_outputs = { "exitcode.txt" = "M8" }
-outputs = ["stderr.txt", "exitcode.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests; xschem exits 10 after its net driver check ('Error: undriven node', a net with only input pins; schematic-netlisting 'Errors and warnings', Q-SCHEM-53 (a), approved 2026-11-27), which CORE implements in schem/net on branch m8-round7-core (M8 round 7); the netlist is equal and the CMD exit path (schematic netlist/check, hefesto-cli --netlist: status 10) is in place"
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-11]
 decisions = ["Q-SCHEM-60"]
@@ -530,7 +519,7 @@ reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* 
 [SCHEM-NL-21]
 deferred = "M8"
 outputs = ["top-flat.spice", "gain_stage-flat.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "flat mode (CORE, netlister): Hefesto prefixes the tokens of quoted parameter expressions and the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines; spice-canonical ignores blanks next to operators in quoted expressions (design D10); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
+reason = "flat mode (CORE, netlister): since round 7 a quoted expression is one field and its tokens and the model name get no instance-path prefix, and the exit status matches; gain_stage-flat.spice still differs where xschem drops a blank before a closing quote (nrd='0.29 / WN ' against '0.29/WN'), which spice-canonical keeps (design D10, kept unchanged in round 7), and top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines (round 8); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
 
 [SCHEM-NL-22]
 decisions = ["Q-SCHEM-60"]
@@ -545,7 +534,7 @@ reason = "the PDK generators run in both captures, but Hefesto gives res.tcl(@va
 [SCHEM-SIM-03]
 deferred = "M8"
 outputs = ["tb.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "'xschem netlist' now returns 1 and writes tb.spice (Q-SCHEM-61 (a), round 7), but 'xschem descend' returns the path '.x1.' where xschem returns 1 and 'xschem resolved_net' is not implemented (DECIDE writes the specs in round 7, implementation round 8)"
+reason = "'xschem netlist' now returns 1 and writes tb.spice (Q-SCHEM-61 (a), round 7), but 'xschem descend' returns the path '.x1.' where xschem returns 1 and 'xschem resolved_net' is not implemented (specified in round 7: schematic-command rows 'xschem descend' and 'xschem resolved_net'; implementation round 8)"
 
 [SCHEM-LVS-01]
 deferred = "M9"

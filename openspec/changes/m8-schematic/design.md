@@ -65,6 +65,7 @@ The core area is `schem`, diagnostic prefix `SCHEM-`, code document `docs/diagno
 | System symbol library | `assets/schematic/xschem_library/devices/` (under `${XSCHEM_SHAREDIR}` = `<CAD_ROOT>/assets/schematic`, where the PDK `xschemrc` files look) | DEVLIB | impl |
 | Desktop screen | `src/shell/desktop/src/schematic_*.cpp` | SHELL | impl |
 | `schematic` client of the core `macro` command (the schematic editor's key table, Q-SCHEM-67) | `src/core/src/ui/macro_commands.cpp`, its test `tests/unit/ui/macro_test.cpp` (the schematic-client cases; the layout clients stay with their M1/M4 owners) | SHELL | impl |
+| Schematic-tab frame state and the `tab` window command (round 7: layout docks hidden while the Schematic tab is shown) | `src/shell/desktop/src/panels_host.cpp` (`MainWindow::frame_state`, the schematic-tab branch), `src/shell/desktop/src/main_window.cpp`/`.hpp` (`show_schematic_tab`, `register_tab_command`, `tab_command`); the rest of these files stay with their owners | SHELL | impl |
 | Specs, `SCHEM.md`, interface table, capture-fixed texts | `openspec/specs/schematic-*`, `docs/decisions/` | SPEC | spec |
 | Inventory script, PDK data sets | `scripts/schem_inventory.py`, `scripts/fetch_pdk.py` | PDK | either (reads only Apache-2.0 PDK trees) |
 | Golden inputs and capture | `tests/golden/SCHEM/`, `tools/golden/` | GOLDEN | impl (inputs) |
@@ -199,9 +200,9 @@ M8 exit table (round 6, GOLDEN, 2026-11-26; branch `m8-round6-golden` on origin/
 |---|---|---|---|---|
 | Golden suite as CI runs it (`replay.py`, deviations honoured) | SCHEM: 15 pass, 0 fail, 1 skip, 25 deviation | local replay of the 41 SCHEM cases; ci.yml run 45865084980 (99c1d1c1): `golden: 1030 pass, 0 fail, 0 skip, 147 deviation` on `linux-x64-gcc-11` (job 140065890228), `linux-arm64-gcc` (140065890326) and `macos-arm64-xcode-oldest` (140065890487) | yes | — |
 | Golden suite at the exit (`replay.py --milestone M8`) | SCHEM: 15 pass, 23 fail, 1 skip (SCHEM-LVS-01: `sky130A.tech` not fetched locally), 2 deviation (SCHEM-PR-05 by Q-SCHEM-30, SCHEM-SIM-02 deferred to M9) | local replay; the failing outputs are the `deferred = "M8"` entries of the SCHEM block of `tests/golden/deviations.toml` | no | see the blocker rows |
-| Blocker: diagnostics text in `stderr.txt` (NL-02, 03, 06, 09, 10, 11, 12, 13, 14, 16, 18, 20, 22, RT-02, RT-06) | Hefesto's coded `SCHEM-*` warnings against xschem's ERC and loader lines | proposed Q-SCHEM-60 | no | the user (decision), then GOLDEN or CORE |
-| Blocker: `xschem netlist` result after a failed run (NL-22 stdout, SIM-03) | xschem returns `1` and goes on, Hefesto raises | proposed Q-SCHEM-61 | no | the user, then DECIDE and CMD |
-| Blocker: `xschem get_tok` third argument (PR-01) | Hefesto raises `wrong number of arguments` | proposed Q-SCHEM-62 | no | the user, then DECIDE and CMD |
+| Blocker: diagnostics text in `stderr.txt` (NL-02, 03, 06, 09, 10, 11, 12, 13, 14, 16, 18, 20, 22, RT-02, RT-06) | Hefesto's coded `SCHEM-*` warnings against xschem's ERC and loader lines | proposed Q-SCHEM-60 (approved 2026-11-27 (a); see the round-7 tables) | no | the user (decision), then GOLDEN or CORE |
+| Blocker: `xschem netlist` result after a failed run (NL-22 stdout, SIM-03) | xschem returns `1` and goes on, Hefesto raises | proposed Q-SCHEM-61 (approved 2026-11-27 (a); see the round-7 tables) | no | the user, then DECIDE and CMD |
+| Blocker: `xschem get_tok` third argument (PR-01) | Hefesto raises `wrong number of arguments` | proposed Q-SCHEM-62 (approved 2026-11-27 (a); see the round-7 tables) | no | the user, then DECIDE and CMD |
 | Blocker: `xschem get wires/instances`, `clear`, `instance`, `copy`, `paste` (PR-02, PR-04, RT-06 stdout) and the undriven-node check (NL-09, NL-10 exit status) | not in the specs on main | DECIDE rows of round 6 | no | DECIDE (round 6), CORE (round 7) |
 | Blocker: symbol generators (NL-05, NL-21, NL-23) | R3 of `test_generators.sch` gets R2's generated symbol; generator stderr dropped | `schem_cases.PENDING` | no | CORE |
 | Blocker: netlister (NL-05, NL-21) | NL-05: one empty line in a subcircuit's `user architecture code` block where xschem writes two, none before the closing marker after the last `device_model`; NL-21: flat mode prefixes the tokens of quoted expressions and the model name with the instance path, and `top-flat.spice` differs from xschem's | `schem_cases.PENDING` | no | CORE (NETLIST) |
@@ -214,7 +215,7 @@ M8 exit table (round 6, GOLDEN, 2026-11-26; branch `m8-round6-golden` on origin/
 | Security sign-off (D14) | signed off 2026-11-25 (row above) | CI runs 45549311734, 45613328729 | yes | — |
 | `check_cleanroom.py` | `check_cleanroom: clean` | local, 2026-11-26 | yes | — |
 | `openspec validate --all --strict` | 179 passed, 0 failed | local, 2026-11-26 | yes | — |
-| `check_milestone_readiness.py --milestone M8` | (updated 2026-11-27) 5 blocking: proposed Q-SCHEM-52, 53, 54, 66, 67; Q-SCHEM-34..37 are resolved | local, branch `m8-round6` after the review fix (66 and 67 are now cited by `schematic-editing`) | no | the user |
+| `check_milestone_readiness.py --milestone M8` | (updated 2026-11-27) 5 blocking: proposed Q-SCHEM-52, 53, 54, 66, 67; Q-SCHEM-34..37 are resolved (round-7 integration: all five approved 2026-11-27; 1 blocking, proposed Q-SCHEM-68) | local, branch `m8-round6` after the review fix (66 and 67 are now cited by `schematic-editing`) | no | the user |
 | Gate G1 (outside reviewer of `cleanroom.md`, second spec signature) | signatures of 2026-11-20 recorded in tasks 1.1 and 1.2 | `tasks.md` | recorded | the user |
 
 M8 exit table (round 7, CMD/GOLDEN, 2026-11-27; branch `m8-round7-cmd-golden` on origin/main a46823b8, before the round's DECIDE and CORE branches merge; task 14.3). Rows not listed keep their round-6 result (coverage, three-platform identity, both-mode tests, security sign-off):
@@ -237,6 +238,24 @@ M8 exit table (round 7, CMD/GOLDEN, 2026-11-27; branch `m8-round7-cmd-golden` on
 | `check_requirement_coverage.py --capability schematic-command` | 1/1 covered | local, 2026-11-27 | yes | — |
 | `check_milestone_readiness.py --milestone M8` | 5 blocking (Q-SCHEM-52, 53, 54, 66, 67 unresolved in `SCHEM.md` until DECIDE's round-7 branch records the approvals of 2026-11-27) | local, 2026-11-27 | no | DECIDE |
 | Gate G1 (outside reviewer of `cleanroom.md`, second spec signature) | signatures of 2026-11-20 recorded in tasks 1.1 and 1.2 | `tasks.md` | recorded | the user |
+
+M8 exit table (round 7, INTEGRATION, 2026-11-27; branch `m8-round7` = DECIDE + CORE + CMD-GOLDEN + SHELL on origin/main a46823b8, plus the Q-SCHEM-52 no-`xschemrc` path in `schem/cmd/document_options.cpp`). Rows not listed keep their round-7 CMD/GOLDEN result:
+
+| Item | Result | Evidence | Holds | Owner of what is open |
+|---|---|---|---|---|
+| Golden suite as CI runs it | SCHEM locally: 12 pass, 0 fail, 17 skip (xschem PDK sets not fetched locally), 13 deviation | local replay (macOS, -Werror macos-debug `hefesto-cli`); CI: see the round's PR | yes | — |
+| Golden suite at the exit (`replay.py --milestone M8`) | SCHEM locally: 12 pass, 4 fail (NL-14 stdout, PR-04, RT-05, SIM-03), 17 skip, 9 deviation; NL-05, NL-21, NL-23 need the PDK sets (CI) and stay `PENDING` | local replay | no | rows below |
+| SCHEM-NL-09, NL-10 | CORE's net driver check fails the run (exit 10, Q-SCHEM-53 (a)); only `stderr.txt` differs, covered by Q-SCHEM-60; the `REPLAYED_OPEN` rows are dropped | `driver_check_test.cpp`, `pdk_conventions_test.cpp` (gf180 scenario) | yes (CI PDK legs confirm) | — |
+| SCHEM-PR-02 | replays: `schematic new` of an untitled document in a session with no search path takes the working folder's, and a folder with no `xschemrc` gives the system devices library (Q-SCHEM-52 (a)) | `session_environment_test.cpp` "Default search path without an xschemrc" (both modes), "Default search path of an untitled document" | yes | — |
+| SCHEM-PR-05 | replays: `XSCHEM_LIBRARY_PATH` is defined in the project interpreter (the Q-SCHEM-52 default, then the case's `xschemrc`); `stdout.txt`/`stderr.txt` stay the Q-SCHEM-30 decided deviation. The spec's "Script sets the search path" (a script that sets the variable changes the session path) is not implemented | `schem_cases.REPLAYED`, `DECIDED` | yes (replay); spec scenario open (round 8) | CMD |
+| SCHEM-PR-04 | `@@P` empty (no per-pin net source in the `xschem` command) | `schem_cases.PENDING` | no | EDIT/CMD (round 8) |
+| SCHEM-NL-14 | `has_included_subcircuit` message stream (stdout in xschem) | `REPLAYED_OPEN` | no | DECIDE (stream ruling), round 8 |
+| SCHEM-RT-05, SIM-03 | specified by DECIDE in round 7; implementation round 8 | `schem_cases.PENDING` | no | CORE, CMD/SIMINT |
+| SCHEM-NL-05, NL-21, NL-23 | NL-21: quoted expressions are one field, model names unprefixed, exit status matches; the remaining gain_stage-flat.spice blank and top-flat.spice structure are round 8. NL-05: two LF rules the spec does not state. NL-23: the capture shows xschem substituting `@` tokens into generator arguments, against Q-SCHEM-54's premise | `schem_cases.PENDING`; CORE notes on tasks 7.1, 8.4, 8.5 | no | DECIDE (spec issues), then CORE |
+| `check_milestone_readiness.py --milestone M8` | 1 blocking: proposed Q-SCHEM-68 | local, 2026-11-27 | no | the user |
+| `openspec validate --all --strict`, `check_cleanroom.py` | 179 passed; clean | local, 2026-11-27 | yes | — |
+| Coverage (`schematic-command`, `schematic-symbols-and-libraries`) | 1/1, 17/17 | `check_requirement_coverage.py` | yes | — |
+| Gate G1 | open as far as the round knows | tasks 1.1, 1.2 | no | the user |
 
 ## Area contracts
 
@@ -323,7 +342,7 @@ The scaffold (tasks.md 5.1–5.3, branch `m8-r1-scaffold`) landed the area, head
 | `schem/{sources.cmake,codes.cpp}` | area sources; the code table assembled from `schem/<sub>/codes.inc` (topics `SCHEM-FILE`, `-SYM`, `-LIB`, `-TCL`, `-NET`, `-EDIT`, `-CMD`, `-SIM`) | SCAFFOLD |
 | `schem/<sub>/{sources.cmake,codes.inc}` for `file sym lib tcl net edit cmd sim` | one source list and code fragment per subdirectory (no codes yet) | the D3 owner |
 | `schem/not_implemented.hpp`, `src/schem/not_implemented.cpp` | `not_implemented(what) -> diag::Diagnostic` (`CORE-NOTIMPL-007`, constant `diag::codes::kSchemNotImplemented`) | SCAFFOLD (removed at M8 exit) |
-| `schem/session.hpp` | `DocumentId`, `OpenDocument {id, document}`, `Session {documents, next_id, symbols, search_path, xschemrc}`; `EditorState::schem` | SCAFFOLD (members: EDIT `documents`/`next_id`, SYMLIB the rest) |
+| `schem/session.hpp` | `DocumentId`, `OpenDocument {id, document}`, `Session {documents, next_id, symbols, search_path, xschemrc}`; `EditorState::schem` | SCAFFOLD (members: EDIT `documents`/`next_id`, CMD `script` (round 7, Q-SCHEM-61: the script session whose exit status a failed `xschem netlist` sets), SYMLIB the rest) |
 | `schem/file/document.hpp` | `FileKind`, `kLayerCount`, `Point`, `LineRecord` (= `BoxRecord`), `ArcRecord`, `PolygonRecord`, `TextRecord`, `WireRecord`, `InstanceRecord`, `GlobalProperties {k,g,v,s,f,e}`, `Document`, `EmbeddedSymbol {reference, symbol}` | FORMAT |
 | `schem/file/read_write.hpp`, `src/schem/file/read_write.cpp` | `kWriterVersion` (`3.4.8RC`), `ReadOptions {kind, xschem_compat, warnings}`, `read_document`, `write_document` | FORMAT |
 | `schem/file/properties.hpp`, `src/schem/file/properties.cpp` | `Property {key, raw_value, has_value}`, `PropertyList`, `ValueForm {decoded, raw}`, `parse_properties`, `get_token`, `set_token` | FORMAT |

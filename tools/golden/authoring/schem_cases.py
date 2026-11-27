@@ -1221,15 +1221,8 @@ M8_REASON = "hefesto-cli has no schematic reader, netlister or schematic/xschem 
 # Q-SCHEM-46 (approved 2026-11-25, option (b)): the capture drops xschem's driver text from stdout.txt and
 # stderr.txt (goldenlib/schem_driver.py), so a replayed case compares its streams like any other output.
 
-UNDRIVEN_REASON = ("xschem exits 10 after its net driver check ('Error: undriven node', a net with only input "
-                   "pins; schematic-netlisting 'Errors and warnings', Q-SCHEM-53 (a), approved 2026-11-27), which "
-                   "CORE implements in schem/net on branch m8-round7-core (M8 round 7); the netlist is equal and "
-                   "the CMD exit path (schematic netlist/check, hefesto-cli --netlist: status 10) is in place")
-
 # Replayed cases whose other outputs still differ: case id -> (milestone, outputs, reason).
 REPLAYED_OPEN: dict[str, tuple[str, list[str], str]] = {
-    "SCHEM-NL-09": ("M8", ["exitcode.txt"], UNDRIVEN_REASON),
-    "SCHEM-NL-10": ("M8", ["exitcode.txt"], UNDRIVEN_REASON),
     "SCHEM-NL-14": ("M8", ["stdout.txt"],
                     "xschem prints 'has_included_subcircuit: error opening file ...' on stdout, a diagnostic "
                     "Hefesto writes on stderr (SCHEM-NET-*); Q-SCHEM-60 covers stderr.txt only (spec issue for "
@@ -1249,11 +1242,12 @@ PENDING: dict[str, str] = {
                    "(test_carry_lookahead) is written with one empty line between the 'user architecture code' "
                    "markers where xschem writes two, and the top's last device_model block lacks xschem's empty "
                    "line before '**** end user architecture code' (CORE, netlister); " + DIAG_REASON,
-    "SCHEM-NL-21": "flat mode (CORE, netlister): Hefesto prefixes the tokens of quoted parameter expressions and "
-                   "the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', "
-                   "x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a "
-                   "190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' "
-                   "lines; spice-canonical ignores blanks next to operators in quoted expressions (design D10); also "
+    "SCHEM-NL-21": "flat mode (CORE, netlister): since round 7 a quoted expression is one field and its tokens "
+                   "and the model name get no instance-path prefix, and the exit status matches; "
+                   "gain_stage-flat.spice still differs where xschem drops a blank before a closing quote "
+                   "(nrd='0.29 / WN ' against '0.29/WN'), which spice-canonical keeps (design D10, kept unchanged "
+                   "in round 7), and top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase "
+                   "netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines (round 8); also "
                    + GENERATOR_REASON,
     "SCHEM-NL-23": GENERATOR_REASON,
     "SCHEM-RT-05": "the embedded block of block.sch (a schematic used as a symbol) differs from xschem's in "
@@ -1261,22 +1255,14 @@ PENDING: dict[str, str] = {
                    "drops the '@lab' texts and pin polygons of the placed ipin/opin symbols, and keeps two blanks "
                    "before '}' in the pin boxes; Hefesto writes the block as built (spec issue for DECIDE in "
                    "round 7, then CORE)",
-    "SCHEM-PR-02": "xschem clear, instance, copy, paste and get instances are implemented (M8 round 7, CMD), but "
-                   "the empty untitled.sch that 'xschem clear force schematic' makes has no library search path "
-                   "('Symbol not found: res.sym'): the default search path of a document without an xschemrc "
-                   "(Q-SCHEM-52 (a), approved 2026-11-27: the system devices library) is not implemented yet; with "
-                   "that path the five name lists equal the capture (local check, round 7)",
     "SCHEM-PR-04": "xschem translate gives '@@P' (the net of pin P) as empty where xschem gives 'net1': the "
                    "translate context of the xschem command has no per-pin net source (the 'schematic net' option "
                    "is not implemented; EDIT's connectivity is not reachable from CMD); every other line matches "
                    "(M8 round 7)",
-    "SCHEM-PR-05": "its hefesto.tcl reads XSCHEM_LIBRARY_PATH, which the project interpreter does not define after "
-                   "reading the case's xschemrc (\"can't read XSCHEM_LIBRARY_PATH: no such variable\"; round 8, "
-                   "after DECIDE's round-7 spec); the approved deviation Q-SCHEM-30 then covers stdout.txt and "
-                   "stderr.txt",
     "SCHEM-SIM-03": "'xschem netlist' now returns 1 and writes tb.spice (Q-SCHEM-61 (a), round 7), but "
                     "'xschem descend' returns the path '.x1.' where xschem returns 1 and 'xschem resolved_net' is "
-                    "not implemented (DECIDE writes the specs in round 7, implementation round 8)",
+                    "not implemented (specified in round 7: schematic-command rows 'xschem descend' and "
+                    "'xschem resolved_net'; implementation round 8)",
 }
 
 
@@ -1330,13 +1316,15 @@ def deviation_block(all_specs: list[Spec]) -> str:
 
 
 # Cases whose file outputs and exit status match the capture (M8 round 5, tasks 8.4-8.6 and 10.1;
-# SCHEM-SIM-01's deck in round 6; SCHEM-PR-01 and the xschem sides of NL-22 and RT-06 in round 7).
+# SCHEM-SIM-01's deck in round 6; SCHEM-PR-01 and the xschem sides of NL-22 and RT-06 in round 7;
+# SCHEM-PR-02 and SCHEM-PR-05 at the round-7 integration, with the Q-SCHEM-52 default search path;
+# PR-05 keeps its Q-SCHEM-30 decision for stdout.txt and stderr.txt).
 REPLAYED: frozenset[str] = frozenset({
     "SCHEM-CMD-01", "SCHEM-CMD-02", "SCHEM-LVS-01",
     "SCHEM-NL-01", "SCHEM-NL-02", "SCHEM-NL-03", "SCHEM-NL-04", "SCHEM-NL-06", "SCHEM-NL-07", "SCHEM-NL-08",
     "SCHEM-NL-09", "SCHEM-NL-10", "SCHEM-NL-11", "SCHEM-NL-12", "SCHEM-NL-13", "SCHEM-NL-14", "SCHEM-NL-15",
     "SCHEM-NL-16", "SCHEM-NL-17", "SCHEM-NL-18", "SCHEM-NL-19", "SCHEM-NL-20", "SCHEM-NL-22",
-    "SCHEM-PR-01", "SCHEM-PR-03",
+    "SCHEM-PR-01", "SCHEM-PR-02", "SCHEM-PR-03", "SCHEM-PR-05",
     "SCHEM-RT-01", "SCHEM-RT-02", "SCHEM-RT-03", "SCHEM-RT-04", "SCHEM-RT-06", "SCHEM-RT-07", "SCHEM-RT-08",
     "SCHEM-SIM-01", "SCHEM-SIM-02",
 })

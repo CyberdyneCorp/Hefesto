@@ -168,7 +168,8 @@ class AuthoredCasesTest(unittest.TestCase):
 
     def test_decided_deviation_outlives_replay(self):
         spec = next(s for s in self.specs if s.id == "SCHEM-PR-05")
-        self.assertIn('deferred = "M8"', schem_cases.deviation_entry(spec))
+        with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
+            self.assertIn('deferred = "M8"', schem_cases.deviation_entry(spec))
         with mock.patch.object(schem_cases, "REPLAYED", frozenset({"SCHEM-PR-05", "SCHEM-RT-01"})):
             entry = schem_cases.deviation_entry(spec)
             rt01 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-RT-01"))
@@ -203,11 +204,14 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertEqual(schem_cases.deviation_entry(sim01), [])
 
     def test_replayed_cases_keep_their_open_outputs(self):
-        # NL-09: stderr.txt is decided (Q-SCHEM-60), exitcode.txt deferred by name so it is due at the exit.
+        # NL-14: stderr.txt is decided (Q-SCHEM-60), stdout.txt deferred by name so it is due at the exit.
+        nl14 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-14"))
+        self.assertIn('decisions = ["Q-SCHEM-60"]', nl14)
+        self.assertIn('deferred_outputs = { "stdout.txt" = "M8" }', nl14)
+        # NL-09 matches but for its decided stderr.txt since the net driver check (round 7).
         nl09 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-09"))
-        self.assertIn('decisions = ["Q-SCHEM-60"]', nl09)
-        self.assertIn('deferred_outputs = { "exitcode.txt" = "M8" }', nl09)
-        self.assertIn('outputs = ["stderr.txt", "exitcode.txt"]', nl09)
+        self.assertIn('outputs = ["stderr.txt"]', nl09)
+        self.assertFalse(any(line.startswith("deferred") for line in nl09))
         for case_id in schem_cases.REPLAYED:
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))

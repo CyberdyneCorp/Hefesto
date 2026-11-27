@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 
+#include "../sim/sim_support.hpp"
 #include "cmd_fixture.hpp"
 #include "hefesto/schem/file/read_write.hpp"
 
@@ -28,6 +29,7 @@ constexpr const char* kXschem = "[cap:schematic-command][req:xschem compatibilit
 
 void open_two_instances(SchemSession& s) {
   s.folder().write("w/top.sch", hefesto::test::kTwoInstances);
+  hefesto::test::sim::copy_devices(s.folder().path() / "w", {"res.sym"});
   REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
 }
 

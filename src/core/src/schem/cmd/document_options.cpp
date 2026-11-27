@@ -188,8 +188,14 @@ diag::Status evaluate_xschemrc(cmd::CommandContext& ctx, Session& session, const
     const std::string where = input.rc_file.empty() ? std::string{"no PDK store"} : input.rc_file.generic_string();
     return diag::make(kNoPdkData, "schematic: PDK " + *pdk + " has no xschem data (" + where + ")");
   }
-  auto files = existing_files(fs, std::move(input), document_folder);
-  if (!files) return diag::Done{};
+  auto files = existing_files(fs, input, document_folder);
+  if (!files) {
+    // Q-SCHEM-52 (approved 2026-11-27, both modes): with no xschemrc the
+    // search path is the system devices library alone.
+    if (sharedir(ctx).empty()) return diag::Done{};
+    input.rc_file.clear();
+    files = std::move(input);
+  }
   publish_xschemrc(ctx, session, SearchPath::from_xschemrc(fs, *files));
   return diag::Done{};
 }
@@ -227,6 +233,10 @@ cmd::CommandResult option_new(cmd::CommandContext& ctx, Session& session, std::s
   if (args.size() == 2) {
     document.path = absolute_path(args[1]);
     (void)evaluate_xschemrc(ctx, session, document.path.parent_path());
+  } else if (!session.xschemrc) {
+    // An untitled document of a session that has no search path yet gets
+    // the one of the working folder (Q-SCHEM-52 when it has no xschemrc).
+    (void)evaluate_xschemrc(ctx, session, absolute_path("."));
   }
   return cmd::CommandResult::success(std::int64_t{add_document(session, std::move(document))});
 }
