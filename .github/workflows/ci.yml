@@ -749,10 +749,10 @@ jobs:
       # command shows it (M8 round 7). After the script the app prints "hefesto: schematic tab <breadcrumb>,
       # <n> instances, <k> pending, canvas <w> x <h>" when the tab is shown, and one "hefesto: panel ..." line
       # per layout dock still shown. The step fails without the tab line, when a layout dock stays shown
-      # around the Schematic tab, or when the canvas is under 400 x 250 px (round 6: about 200 x 145).
+      # around the Schematic tab, or when the canvas is under 400 x 250 px (round 6: about 200 x 145), on
+      # every desktop leg (macOS gating since round 7: CI run 46044640125, canvas 469 x 338).
       - name: Capture the Schematic tab
         if: matrix.desktop || matrix.moltenvk
-        continue-on-error: ${{ runner.os == 'macOS' }}
         shell: bash
         run: |
           mkdir -p schematic-captures
