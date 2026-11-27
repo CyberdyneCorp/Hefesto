@@ -182,3 +182,69 @@ TEST_CASE("Naming errors are diagnostics", "[cap:irsim-interface][req:Hierarchic
   no_tech.naming.technology = nullptr;
   CHECK(sim::node_name(no_tech).error().code == "SIM-PROBE-002");
 }
+
+// --- M9 R3: decisions approved 2026-11-27 (round-1 items) ---
+
+TEST_CASE("A layout probe of a node with only a transistor terminal gets getnode's normal name",
+          "[cap:simulation-ui-and-crossprobe][req:Probing a layout net]") {
+  // Layout probes use getnode's normal naming (SimUseCoords off), not the
+  // positional `@=<terminal><x>,<y>` names of `getnode fast`
+  // (sim/SimExtract.c SimTxtorLabel): an unlabelled poly node that only
+  // gates a transistor keeps the extractor's region name in both modes.
+  Layout l;
+  db::CellDef& top = l.cell("top");
+  l.paint(top, "ndiff", {0, 4, 10, 6});
+  l.paint(top, "nfet", {4, 4, 6, 6});
+  l.paint(top, "poly", {4, 0, 6, 4});
+  l.paint(top, "poly", {4, 6, 6, 10});
+  for (const bool compat : {true, false}) {
+    sim::LayoutSelection s = l.select(top, {}, {5, 1});
+    s.naming.magic_compat = compat;
+    const std::string name = l.name(s);
+    CHECK_FALSE(name.starts_with("@="));
+    CHECK(name.starts_with("active_"));
+    CHECK(name.ends_with("#"));
+  }
+  // A label on that node names it, as getnode does.
+  l.label(top, "gate_in", "poly", {5, 1, 5, 1});
+  CHECK(l.name(l.select(top, {}, {5, 1})) == "gate_in");
+}
+
+TEST_CASE("An array element outside the array range gives SIM-PROBE-003 in both modes",
+          "[cap:simulation-ui-and-crossprobe][req:Probing a layout net]") {
+  Layout l;
+  db::CellDef& bit = l.cell("bit");
+  l.paint(bit, "metal1", {0, 0, 10, 2});
+  db::CellDef& top = l.cell("top");
+  db::ArrayInfo row;
+  row.xlo = 0;
+  row.xhi = 3;
+  row.xsep = 20;
+  Layout::place(top, bit, "b", db::kIdentity, row);
+  db::ArrayInfo grid;  // 2-D, declared high to low in x
+  grid.xlo = 2;
+  grid.xhi = 0;
+  grid.ylo = 0;
+  grid.yhi = 1;
+  grid.xsep = 20;
+  grid.ysep = 20;
+  Layout::place(top, bit, "g", db::translation(0, 100), grid);
+  for (const bool compat : {true, false}) {
+    for (const std::string element : {"b[4]", "b[-1]", "b[99999999999]", "g[2,0]", "g[0,3]", "g[-1,1]", "b[1,]x"}) {
+      INFO(element << " magic-compat " << compat);
+      sim::LayoutSelection s = l.select(top, {element}, {5, 1});
+      s.naming.magic_compat = compat;
+      const auto named = sim::node_name(s);
+      REQUIRE_FALSE(named.ok());
+      CHECK(named.error().code == "SIM-PROBE-003");
+      CHECK(named.error().text == "no instance " + element + " in cell top");
+    }
+    // The ends of each range are inside it.
+    sim::LayoutSelection first = l.select(top, {"b[0]"}, {5, 1});
+    first.naming.magic_compat = compat;
+    CHECK(sim::node_name(first).ok());
+    sim::LayoutSelection last = l.select(top, {"g[1,0]"}, {5, 1});
+    last.naming.magic_compat = compat;
+    CHECK(sim::node_name(last).ok());
+  }
+}

@@ -13,6 +13,7 @@
 //   spawn             start /bin/sh                       (Worker confinement)
 //   stderr <text>     an error-stream line during load    (Callback contract)
 //   points <n>        points per vector (default 8)
+//   stream-ms <ms>    wait <ms> between the streamed points (default 0)
 //   crash             abort() in run                      (Crash containment)
 //   exit              the controlled-exit path in run     (Controlled exit)
 //   stop              SIGSTOP itself in run               (Stuck worker)
@@ -24,6 +25,10 @@
 // reports `paused`; pause with no analysis running is refused with
 // "no analysis is running"; cancel with none running succeeds and reports
 // nothing; resume restarts a held analysis.
+//
+// M9 R3 (round-2 open item): every run streams its points through the ABI-2
+// on_data callback, scale first (`time`, then `v(out)`), as the ngspice
+// adapter forwards SendData; hefesto-simd decimates them.
 //
 // The results depend on the deck, on the generator seeded by `setseed`, and
 // on the circuits and plots left over from earlier jobs, so a worker that
@@ -64,6 +69,7 @@ struct hefesto_engine {
   int plots = 0;
   std::vector<std::string> deck;
   std::size_t points = 8;
+  int stream_ms = 0;
   std::vector<double> time;
   std::vector<double> out;
   std::thread runner;
@@ -157,6 +163,8 @@ void load_directive(hefesto_engine* e, std::string_view directive) {
     say(e, "spawn: " + try_spawn());
   } else if (word == "stderr") {
     say(e, arg, true);
+  } else if (word == "stream-ms") {
+    e->stream_ms = std::atoi(arg.c_str());
   } else if (word == "points") {
     e->points = static_cast<std::size_t>(std::atol(arg.c_str()));
   }
@@ -194,6 +202,20 @@ void compute(hefesto_engine* e) {
   }
 }
 
+// ABI 2: each computed point through on_data, scale first.
+void stream(hefesto_engine* e) {
+  if (e->callbacks.on_data == nullptr) {
+    return;
+  }
+  for (std::size_t i = 0; i < e->points; ++i) {
+    const hefesto_engine_value values[] = {{"time", e->time[i]}, {"v(out)", e->out[i]}};  // NOLINT
+    e->callbacks.on_data(e->callbacks.user, values, 2);
+    if (e->stream_ms > 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(e->stream_ms));
+    }
+  }
+}
+
 // The analysis thread: like ngspice's bg_run, the state callbacks come from
 // it. A held run waits for a halt and then reports `paused`.
 void analysis(hefesto_engine* e, bool hold) {
@@ -202,6 +224,7 @@ void analysis(hefesto_engine* e, bool hold) {
     e->callbacks.on_progress(e->callbacks.user, "tran", 4, 50.0);
   }
   compute(e);
+  stream(e);
   bool halted = false;
   {
     std::unique_lock lock{e->mutex};
@@ -270,6 +293,7 @@ int api_load(hefesto_engine* e, const char* const* lines, std::size_t count) {
   join(e);
   e->deck.assign(lines, lines + count);  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
   e->points = 8;
+  e->stream_ms = 0;
   ++e->circuits;
   for (const std::string& line : e->deck) {
     if (std::string_view{line}.starts_with(kDirective)) {

@@ -464,3 +464,90 @@ TEST_CASE("PDK initialisation commands and the job seed precede the deck in the 
   CHECK(second < seed);
   CHECK(seed < loaded);
 }
+
+// Round-2 open item (M9 R3): the stand-in adapter calls the ABI-2 on_data
+// callback, so hefesto-simd's SendData forwarding and decimation are tested
+// without ngspice.
+TEST_CASE("Streamed points reach on_data through the worker, scale first and decimated",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  const TempDir job{"simd-data"};
+  hefesto::cli::PosixWorkerHost host;
+  std::mutex mutex;  // declared before the engine, whose reader thread calls the callbacks
+  std::vector<std::pair<std::string, double>> data;
+  std::vector<sim::EngineState> states;
+  auto engine = hefesto::test::start_worker(host, fake(job));
+  REQUIRE(engine.ok());
+  sim::EngineCallbacks callbacks;
+  callbacks.on_data = [&](std::string_view vector, double value) {
+    const std::lock_guard lock{mutex};
+    data.emplace_back(std::string{vector}, value);
+  };
+  callbacks.on_state = [&](sim::EngineState s) {
+    const std::lock_guard lock{mutex};
+    states.push_back(s);
+  };
+  engine.value()->set_callbacks(std::move(callbacks));
+  // 40 points, 25 ms apart: hefesto-simd keeps at most one point per 10 ms.
+  REQUIRE(engine.value()->load({"* streamed", "* fake: points 40", "* fake: stream-ms 25"}).ok());
+  REQUIRE(engine.value()->run().ok());
+  const auto deadline = std::chrono::steady_clock::now() + 20s;
+  for (;;) {
+    {
+      const std::lock_guard lock{mutex};
+      if (std::find(states.begin(), states.end(), sim::EngineState::loaded) != states.end() ||
+          std::chrono::steady_clock::now() > deadline) {
+        break;
+      }
+    }
+    std::this_thread::sleep_for(10ms);
+  }
+  const auto vectors = engine.value()->vectors();
+  REQUIRE(vectors.ok());
+  const std::lock_guard lock{mutex};
+  REQUIRE(data.size() >= 4);
+  CHECK(data.size() % 2 == 0);
+  CHECK(data.size() <= 80);
+  CHECK(data[0] == std::pair<std::string, double>{"time", 0.0});  // the first point, scale first
+  CHECK(data[1].first == "v(out)");
+  CHECK(data[1].second == vectors.value()[1].real[0]);
+  for (std::size_t i = 0; i + 1 < data.size(); i += 2) {
+    CHECK(data[i].first == "time");
+  }
+}
+
+TEST_CASE("A burst of streamed points is decimated to one per interval",
+          "[cap:simulation-engine-embedding][req:Callback contract]") {
+  const TempDir job{"simd-burst"};
+  hefesto::cli::PosixWorkerHost host;
+  std::mutex mutex;
+  std::size_t values = 0;
+  bool ended = false;
+  auto engine = hefesto::test::start_worker(host, fake(job));
+  REQUIRE(engine.ok());
+  sim::EngineCallbacks callbacks;
+  callbacks.on_data = [&](std::string_view, double) {
+    const std::lock_guard lock{mutex};
+    ++values;
+  };
+  callbacks.on_state = [&](sim::EngineState s) {
+    const std::lock_guard lock{mutex};
+    ended = ended || s == sim::EngineState::loaded;
+  };
+  engine.value()->set_callbacks(std::move(callbacks));
+  REQUIRE(engine.value()->load({"* burst", "* fake: points 5000"}).ok());
+  REQUIRE(engine.value()->run().ok());
+  const auto deadline = std::chrono::steady_clock::now() + 20s;
+  for (;;) {
+    {
+      const std::lock_guard lock{mutex};
+      if (ended || std::chrono::steady_clock::now() > deadline) {
+        break;
+      }
+    }
+    std::this_thread::sleep_for(10ms);
+  }
+  const std::lock_guard lock{mutex};
+  CHECK(ended);
+  CHECK(values >= 2);        // at least the first point arrives
+  CHECK(values < 2 * 5000);  // 5000 points in a burst are not all forwarded
+}

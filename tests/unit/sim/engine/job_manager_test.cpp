@@ -123,7 +123,7 @@ class FakeEngine final : public sim::Engine {
       ++host_.runs;
     }
     callbacks_.on_state(sim::EngineState::running);
-    running_ = script_ == "* hold" || script_ == "* slow-run" || script_ == "* progress";
+    running_ = script_ == "* hold" || script_ == "* slow-run" || script_ == "* progress" || script_ == "* stream";
     if (script_ == "* slow-run") {
       host_.wait_gate();  // the run started; the loader has not returned yet
     }
@@ -167,6 +167,20 @@ class FakeEngine final : public sim::Engine {
         if (i == 50000 && script_ == "* flood-fail") {
           callbacks_.on_state(sim::EngineState::failed);
         }
+      }
+      callbacks_.on_state(sim::EngineState::loaded);
+    } else if (script_ == "* stream") {
+      // M9 R3: 500 points of time and v(out) (1000 values, 8000 bytes), then
+      // the analysis keeps running until it is cancelled.
+      for (int i = 0; i < 500; ++i) {
+        callbacks_.on_data("time", 1e-12 * i);
+        callbacks_.on_data("v(out)", 0.5);
+      }
+    } else if (script_ == "* big") {
+      callbacks_.on_state(sim::EngineState::loaded);  // 2000 real points: 16000 bytes
+    } else if (script_ == "* log") {
+      for (int i = 0; i < 10; ++i) {
+        callbacks_.on_output(std::string(100, static_cast<char>('a' + i)));
       }
       callbacks_.on_state(sim::EngineState::loaded);
     } else if (script_ == "* progress") {
@@ -221,6 +235,9 @@ class FakeEngine final : public sim::Engine {
     }
     if (script_ == "* noplot") {
       return std::vector<sim::Vector>{};
+    }
+    if (script_ == "* big") {
+      return std::vector<sim::Vector>{sim::Vector{"v(out)", "voltage", false, std::vector<double>(2000, 1.0), {}}};
     }
     return std::vector<sim::Vector>{sim::Vector{"v(out)", "voltage", false, {1.0, 2.0}, {}}};
   }
@@ -920,4 +937,118 @@ TEST_CASE("Two analyses: op completed and tran at 50 percent is 0.75",
   CHECK(rec->status == "tran");
   REQUIRE(jobs.cancel(id.value()).ok());
   settle(jobs);
+}
+
+// --- M9 R3: the job log cap and the result budget (Q-SIM-25, Q-SIM-16; approved 2026-11-27) ---
+
+TEST_CASE("The job log keeps lines up to its cap and counts the dropped ones",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]") {
+  for (const auto& [cap, kept] : {std::pair<std::size_t, std::size_t>{300, 3}, {299, 2}}) {
+    FakeHost host;
+    sim::JobManagerOptions o = options(host);
+    o.max_log_bytes = cap;  // at the cap (3 lines of 100 bytes) and one byte under it
+    sim::JobManager jobs(std::move(o));
+    CHECK_FALSE(jobs.limits_diagnostic().has_value());
+    const sim::JobId id = submit(jobs, "* log");
+    settle(jobs);
+    const sim::JobRecord* rec = jobs.record(id);
+    REQUIRE(rec != nullptr);
+    CHECK(rec->job.state == sim::JobState::completed);
+    CHECK(rec->log.size() == kept);
+    CHECK(rec->log_bytes == kept * 100);
+    CHECK(rec->log_dropped == 10 - kept);
+  }
+}
+
+TEST_CASE("Job limit settings can be lowered but not raised past twice the default",
+          "[cap:simulation-analyses-and-results][req:Job lifecycle]"
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  FakeHost host;
+  SECTION("twice the defaults are accepted") {
+    sim::JobManagerOptions o = options(host);
+    o.max_log_bytes = 2 * sim::kMaxJobLogBytes;
+    o.result_budget = 2 * sim::kDesktopResultBudget;
+    sim::JobManager jobs(std::move(o));
+    CHECK_FALSE(jobs.limits_diagnostic().has_value());
+    CHECK(jobs.max_log_bytes() == 2 * sim::kMaxJobLogBytes);
+    CHECK(jobs.result_budget() == 2 * sim::kDesktopResultBudget);
+  }
+  SECTION("above twice the default or zero is refused and the default is used") {
+    sim::JobManagerOptions o = options(host);
+    o.max_log_bytes = 2 * sim::kMaxJobLogBytes + 1;
+    sim::JobManager raised(std::move(o));
+    REQUIRE(raised.limits_diagnostic().has_value());
+    CHECK(raised.limits_diagnostic()->code == "SIM-ENGINE-039");
+    CHECK(raised.max_log_bytes() == sim::kMaxJobLogBytes);
+    sim::JobManagerOptions z = options(host);
+    z.result_budget = 0;
+    sim::JobManager zero(std::move(z));
+    REQUIRE(zero.limits_diagnostic().has_value());
+    CHECK(zero.limits_diagnostic()->text.find("result budget 0 is refused") != std::string::npos);
+    CHECK(zero.result_budget() == sim::kDesktopResultBudget);
+  }
+}
+
+TEST_CASE("A run whose streamed data passes the result budget fails and keeps its partial result",
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  // Regression (task 13.3 open item): the budget was only enforced by the
+  // worker client as a fault after the final vectors; a streaming run went on.
+  FakeHost host;
+  sim::JobManagerOptions o = options(host);
+  o.result_budget = 4000;  // the run streams 1000 values: 8000 bytes
+  sim::JobManager jobs(std::move(o));
+  const sim::JobId id = submit(jobs, "* stream");
+  settle(jobs);
+  const sim::JobRecord* rec = jobs.record(id);
+  REQUIRE(rec != nullptr);
+  CHECK(rec->job.state == sim::JobState::failed);
+  CHECK(has_code(*rec, "SIM-RESULT-011", "result memory budget exceeded (8000 > 4000)"));
+  CHECK(rec->budget_exceeded == 8000);
+  CHECK(rec->partial);
+  CHECK_FALSE(rec->vectors.empty());
+  CHECK(host.cancels == 1);
+  CHECK(jobs.engines_started() == 1);
+  // The engine is healthy: the next job reuses it.
+  const sim::JobId next = submit(jobs, "* ok");
+  settle(jobs);
+  CHECK(jobs.state(next) == sim::JobState::completed);
+  CHECK(jobs.engines_started() == 1);
+}
+
+TEST_CASE("A streaming run within the result budget keeps running",
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  FakeHost host;
+  sim::JobManagerOptions o = options(host);
+  o.result_budget = 8000;  // exactly the streamed estimate: not exceeded
+  sim::JobManager jobs(std::move(o));
+  const sim::JobId id = submit(jobs, "* stream");
+  settle(jobs);
+  CHECK(jobs.state(id) == sim::JobState::running);
+  REQUIRE(jobs.cancel(id).ok());
+  settle(jobs);
+  const sim::JobRecord* rec = jobs.record(id);
+  REQUIRE(rec != nullptr);
+  CHECK(rec->job.state == sim::JobState::cancelled);
+  CHECK(rec->partial);
+  CHECK(rec->budget_exceeded == 0);
+}
+
+TEST_CASE("Final vectors above the result budget fail the job with the budget diagnostic",
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  for (const auto& [budget, state] : {std::pair<std::uint64_t, sim::JobState>{16000, sim::JobState::completed},
+                                      {15999, sim::JobState::failed}}) {
+    FakeHost host;
+    sim::JobManagerOptions o = options(host);
+    o.result_budget = budget;
+    sim::JobManager jobs(std::move(o));
+    const sim::JobId id = submit(jobs, "* big");
+    settle(jobs);
+    const sim::JobRecord* rec = jobs.record(id);
+    REQUIRE(rec != nullptr);
+    CHECK(rec->job.state == state);
+    CHECK(rec->partial == (state == sim::JobState::failed));
+    CHECK(has_code(*rec, "SIM-RESULT-011", "result memory budget exceeded (16000 > 15999)") ==
+          (state == sim::JobState::failed));
+    CHECK(rec->vectors.size() == 1);
+  }
 }
