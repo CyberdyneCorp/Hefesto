@@ -697,9 +697,8 @@ PDK_SETUPS = {
     "NG-PDK-03": ("ihp-netgen", "ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl", "ihp-sg13g2_setup.tcl"),
 }
 
-# goldenlib/external.py does not list the M9 netgen sets yet (an open item for GOLDEN): those cases are
-# blocked until it does.
-EXTERNAL_SETS = ("sky130-xschem",)
+# The data sets goldenlib/external.py PDK_SETS lists; a case on another set is capture-blocked.
+EXTERNAL_SETS = ("sky130-xschem", "gf180mcu-netgen", "ihp-netgen")
 
 
 def pdk_cases() -> list[Case]:

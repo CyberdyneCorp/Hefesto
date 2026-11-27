@@ -17,6 +17,6 @@ HEFESTO_LVS_CODE("LVS-CMD-005", error, "`Cannot find cell <cell> in file <file>`
 HEFESTO_LVS_CODE("LVS-CMD-006", error, "The setup file could not be read or evaluated; the run ends as an input error.")
 HEFESTO_LVS_CODE("LVS-CMD-007", error, "The log file or the JSON file of the `lvs` command could not be written.")
 HEFESTO_LVS_CODE("LVS-CMD-008", error, "An LVS run is already in progress for this document.")
-HEFESTO_LVS_CODE("LVS-CMD-009", warning, "The setup file does not exist; the comparison uses the default settings.")
+HEFESTO_LVS_CODE("LVS-CMD-009", warning, "Retired (M9 R3): a setup file that does not exist ends the run with LVS-SETUP-002 (lvs-setup-file \"Setup file evaluation\").")
 HEFESTO_LVS_CODE("LVS-CMD-011", error, "The result object has no layout counterpart in this run (`no layout counterpart`).")
 HEFESTO_LVS_CODE("LVS-CMD-010", error, "A `-noflatten` entry is longer than 4096 bytes, or the list has more than 65536 entries (crafted-input limit, both netgen-compat modes).")

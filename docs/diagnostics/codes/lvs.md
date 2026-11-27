@@ -207,7 +207,7 @@ fails when the two disagree.
 | `LVS-CMD-006` | error | The setup file could not be read or evaluated; the run ends as an input error. |
 | `LVS-CMD-007` | error | The log file or the JSON file of the `lvs` command could not be written. |
 | `LVS-CMD-008` | error | An LVS run is already in progress for this document. |
-| `LVS-CMD-009` | warning | The setup file does not exist; the comparison uses the default settings. |
+| `LVS-CMD-009` | warning | Retired (M9 R3): a setup file that does not exist ends the run with LVS-SETUP-002 (lvs-setup-file "Setup file evaluation"). |
 | `LVS-CMD-010` | error | A `-noflatten` entry is longer than 4096 bytes, or the list has more than 65536 entries (crafted-input limit, both netgen-compat modes). |
 | `LVS-CMD-011` | error | The result object has no layout counterpart in this run (`no layout counterpart`). |
 | `LVS-CMP-001` | error | A compared circuit has no devices or no nets (`Circuit <c> contains no devices.`, `... no nets.`); the comparison stops. |

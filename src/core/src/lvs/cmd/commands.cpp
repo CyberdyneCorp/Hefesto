@@ -24,6 +24,8 @@
 #include "hefesto/lvs/not_implemented.hpp"
 #include "hefesto/lvs/read/reader.hpp"
 #include "hefesto/lvs/report/report.hpp"
+#include "hefesto/lvs/setup/codes.hpp"
+#include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::lvs {
 
@@ -135,31 +137,35 @@ diag::Status LvsCommand::read_circuits(const LvsArguments& args, LvsJob& job) {
 }
 
 diag::Status LvsCommand::evaluate(const LvsArguments& args, LvsJob& job) {
+  // A name that resolves nowhere goes to evaluate_setup as given: it ends the
+  // run with LVS-SETUP-002, or continues without a setup when the name
+  // contains `nosetup` (lvs-setup-file "Setup file evaluation").
   const auto path = resolve_setup(files_, args.setup, active_pdk(), ctx_.services().pdks.roots());
-  if (!path) {
-    ctx_.emit(diag::make(cmd_codes::kNoSetup,
-                         "Setup file " + args.setup + " not found; comparing with the default settings."));
-    return diag::Done{};
-  }
-  auto text = files_.read(*path);
-  if (!text) {
-    return diag::make(cmd_codes::kSetup, "Cannot read setup file " + path->string() + ": " + text.error().text);
-  }
+  const std::string name = path ? path->string() : args.setup;
   SetupContext context;
   context.first = &job.first;
   context.second = &job.second;
+  context.files = &files_;
+  context.netgen_compat = job.options.netgen_compat;
+  context.seed = job.options.seed;
   context.sandbox.read_only_roots = ctx_.services().pdks.roots();
+  const platform::Path document{job.document};
+  if (document.has_parent_path()) {
+    context.sandbox.read_only_roots.push_back(document.parent_path());
+  }
   context.cancel.flag = session().cancel.get();
-  auto setup = evaluate_setup(Source{path->string(), std::move(text).value()}, context);
+  auto setup = evaluate_setup(Source{name, std::nullopt}, context);
   if (!setup) {
-    auto error = setup.error();
-    return error.code == diag::codes::kM9NotImplemented
-               ? error
-               : diag::make(cmd_codes::kSetup, "Setup file " + path->string() + ": " + error.text);
+    return setup.error();
   }
   job.setup = std::move(setup).value();
+  for (const auto& message : job.setup.log) {
+    say(message.text);
+  }
   apply_setup(job.setup, job.options);
-  stamps_.push_back(stamp_input(files_, *path));
+  if (path) {
+    stamps_.push_back(stamp_input(files_, *path));
+  }
   return diag::Done{};
 }
 
@@ -231,7 +237,8 @@ cmd::CommandResult LvsCommand::run(const cmd::Invocation& invocation) {
     return status ? evaluate(args, job) : status;
   }();
   if (!input) {
-    session().headless_status = 2;
+    // A cancelled setup evaluation is a cancelled run, not an input error.
+    session().headless_status = input.error().code == setup_codes::kCancelled ? 1 : 2;
     return fail(input.error());
   }
   if (!logging_off(args.log)) {

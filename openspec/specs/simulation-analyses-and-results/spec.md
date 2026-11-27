@@ -152,7 +152,7 @@ A testbench SHALL select saved vectors with one of these modes:
 | `all+currents` | no `.save` line, plus `.options savecurrents` | as `all`, plus device terminal currents |
 | `list` | `.save` with the user's list | as listed |
 
-The default mode SHALL be `default`. Each job SHALL have a result memory budget `B`: by default 512 MiB on iPadOS and 4 GiB on Linux and macOS, configurable. The desktop default stays 4 GiB until Q-SIM-25 decides it (decision of 2026-11-27). The size estimate is `points × Σ(8 × (2 if complex else 1))` over all saved vectors. When the estimate passes `B` while data streams in, the job SHALL be cancelled with the diagnostic `result memory budget exceeded (<estimate> > <B>)`, and its partial result SHALL be kept.
+The default mode SHALL be `default`. Each job SHALL have a result memory budget `B`: by default 512 MiB on iPadOS and 4 GiB on Linux and macOS, configurable. The desktop default stays 4 GiB until Q-SIM-25 decides it (decision of 2026-11-27). The size estimate is `points × Σ(8 × (2 if complex else 1))` over all saved vectors. When the estimate passes `B` while data streams in, the run SHALL be stopped and the job SHALL end `failed` (every resource cap ends a simulation as `failed`, design D18) with the diagnostic `result memory budget exceeded (<estimate> > <B>)`; its partial result SHALL be kept and marked `partial`.
 
 Compatibility: native
 
@@ -161,7 +161,7 @@ Compatibility: native
 #### Scenario: Budget exceeded on iPad
 - **GIVEN** an iPad job saving 1000 real vectors, with the default budget of 512 MiB
 - **WHEN** the streamed point count passes 67 109 (1000 × 8 B × 67 109 > 536 870 912 B)
-- **THEN** the job SHALL be cancelled with `result memory budget exceeded`
+- **THEN** the run SHALL be stopped, and the job SHALL end `failed` with `result memory budget exceeded` and keep its partial result marked `partial`
 
 #### Scenario: Default result budget
 - **GIVEN** a new job on Linux or macOS with no budget setting

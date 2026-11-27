@@ -76,8 +76,8 @@ struct NetlistName {
 /// Maps the setup file's state onto the run options. The setup commands
 /// that write into the databases (permute, property, model, ...) need
 /// nothing here; the hierarchy inputs (equate classes, flatten prohibit,
-/// model blackbox, property topology and parallel mode) are read from the
-/// typed SetupState once LVSSETUP lands it (an INTEGRATION open item).
+/// model blackbox, property topology and parallel mode, format widths) come
+/// from the typed SetupState.
 void apply_setup(const SetupState& setup, RunOptions& options);
 
 /// `<k>/<n> <cell1> vs <cell2>` (k 1-based; "Execution model").

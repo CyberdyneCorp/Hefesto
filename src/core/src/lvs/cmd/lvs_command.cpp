@@ -172,10 +172,16 @@ diag::Outcome<std::vector<std::string>> parse_noflatten(std::string_view value, 
   return entries;
 }
 
-void apply_setup(const SetupState& /*setup*/, RunOptions& /*options*/) {
-  // The scaffold's SetupState keeps each command's words untyped; LVSSETUP
-  // (task 7, workstream lvsinput) replaces them with typed entries. Until
-  // then the setup commands act through the databases only.
+void apply_setup(const SetupState& setup, RunOptions& options) {
+  options.equated_classes.insert(options.equated_classes.end(), setup.equated_classes.begin(),
+                                 setup.equated_classes.end());
+  for (const auto& cell : setup.no_flatten) {
+    (cell.circuit == 1 ? options.prohibited1 : options.prohibited2).push_back(cell.cell);
+  }
+  options.blackbox = options.blackbox || setup.auto_blackbox;
+  options.strict_topology = setup.strict_topology;
+  options.parallel_open = setup.parallel_open;
+  options.widths = ColumnWidths{setup.column_left, setup.column_right};
 }
 
 std::string progress_text(std::string_view cell1, std::string_view cell2, std::size_t index, std::size_t count) {

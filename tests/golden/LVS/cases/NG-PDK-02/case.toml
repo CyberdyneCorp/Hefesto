@@ -12,7 +12,6 @@ requirements = ["Compare queue construction", "Black boxes and flattening prohib
 tool = "netgen"
 description = "gf180mcuD standard-cell block with fill and decap cells. Setup file gf180mcuD_setup.tcl, unmodified from the pinned PDK data set gf180mcu-netgen (Q-LVS-31); full comp.out and JSON."
 provenance = ["hefesto", "pdk:gf180mcu-netgen:gf180mcuD/libs.tech/netgen/gf180mcuD_setup.tcl"]
-capture_blocked = "tools/golden/goldenlib/external.py PDK_SETS lacks the gf180mcu-netgen data set (open item for GOLDEN)"
 
 [reference]
 script = "input/run.tcl"
@@ -20,6 +19,12 @@ script = "input/run.tcl"
 [hefesto]
 args = ["--no-log", "{input}/run.tcl"]
 requires_commands = ["lvs"]
+
+[[external]]
+source = "pdk"
+set = "gf180mcu-netgen"
+path = "gf180mcuD/libs.tech/netgen/gf180mcuD_setup.tcl"
+to = "gf180mcuD_setup.tcl"
 
 [[outputs]]
 name = "stdout.txt"

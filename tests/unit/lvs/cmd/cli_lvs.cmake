@@ -10,7 +10,7 @@
 
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
-file(COPY "${DATA}/layout.spice" "${DATA}/schematic.spice" DESTINATION "${WORK}")
+file(COPY "${DATA}/layout.spice" "${DATA}/schematic.spice" "${DATA}/setup.tcl" DESTINATION "${WORK}")
 
 execute_process(
   COMMAND "${CLI}" --no-log -c "lvs layout.spice schematic.spice setup.tcl comp.out -json; quit"

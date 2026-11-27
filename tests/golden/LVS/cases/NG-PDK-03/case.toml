@@ -12,7 +12,6 @@ requirements = ["lvs per-pair flow", "Final result"]
 tool = "netgen"
 description = "IHP sg13g2 resistor and capacitor segments in series and parallel. Setup file ihp-sg13g2_setup.tcl, unmodified from the pinned PDK data set ihp-netgen (Q-LVS-31); full comp.out and JSON."
 provenance = ["hefesto", "pdk:ihp-netgen:ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl"]
-capture_blocked = "tools/golden/goldenlib/external.py PDK_SETS lacks the ihp-netgen data set (open item for GOLDEN)"
 
 [reference]
 script = "input/run.tcl"
@@ -20,6 +19,12 @@ script = "input/run.tcl"
 [hefesto]
 args = ["--no-log", "{input}/run.tcl"]
 requires_commands = ["lvs"]
+
+[[external]]
+source = "pdk"
+set = "ihp-netgen"
+path = "ihp-sg13g2/libs.tech/netgen/ihp-sg13g2_setup.tcl"
+to = "ihp-sg13g2_setup.tcl"
 
 [[outputs]]
 name = "stdout.txt"

@@ -58,6 +58,9 @@ struct Console {
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
     dispatcher->add_sink(sink);
+    // `lvs` ends when the setup file does not exist (LVS-SETUP-002), so the
+    // default name `setup.tcl` exists in every fixture.
+    file("setup.tcl", "# test setup\n");
   }
 
   void file(const std::string& path, std::string_view text) { REQUIRE(services.files().write_atomic(path, text).ok()); }
@@ -167,7 +170,7 @@ TEST_CASE("netgen-style invocation", "[cap:lvs-command][req:lvs command syntax]"
   CHECK(contains(printed, "Comparison output logged to file comp.out\n"));
   CHECK(contains(printed, "Generating JSON file result\n"));
   CHECK(contains(printed, "LVS Done.\n"));
-  CHECK(console.emitted(lvs::cmd_codes::kNoSetup));  // no setup.tcl: default settings
+  CHECK(contains(printed, "Reading setup file setup.tcl\n"));
 }
 
 TEST_CASE("lvs -list returns the list result", "[cap:lvs-command][req:lvs command syntax]") {
@@ -217,6 +220,58 @@ TEST_CASE("A log name with nolog writes no log", "[cap:lvs-command][req:lvs comm
   REQUIRE(console.lvs({"a.spice", "b.spice", "setup.tcl", "nolog"}).ok());
   CHECK_FALSE(console.services.files().exists("nolog"));
   CHECK(contains(console.printed(), "Subcircuit summary:"));  // echo stays on
+}
+
+TEST_CASE("A setup file that does not exist ends the lvs command",
+          "[cap:lvs-setup-file][req:Setup file evaluation]") {
+  // Regression (M9 R3 integration): a missing setup file was a warning and
+  // the comparison ran with the default settings.
+  Console console;
+  console.file("a.spice", kInv);
+  console.file("b.spice", kInv);
+  const auto result = console.lvs({"a.spice", "b.spice", "missing.tcl"});
+  CHECK_FALSE(result.ok());
+  CHECK(has_code(result, "LVS-SETUP-002"));
+  CHECK_FALSE(console.services.files().exists("comp.out"));
+  REQUIRE(console.editor.lvs.headless_status);
+  CHECK(*console.editor.lvs.headless_status == 2);
+}
+
+TEST_CASE("A missing nosetup name continues without a setup", "[cap:lvs-setup-file][req:Setup file evaluation]") {
+  Console console;
+  console.file("a.spice", kInv);
+  console.file("b.spice", kInv);
+  REQUIRE(console.lvs({"a.spice", "b.spice", "nosetup"}).ok());
+  CHECK(contains(console.printed(), "No setup file specified.  Continuing without a setup.\n"));
+  CHECK(console.services.files().exists("comp.out"));
+}
+
+TEST_CASE("The setup file's settings reach the comparison", "[cap:lvs-command][req:lvs command syntax]") {
+  lvs::SetupState setup;
+  setup.equated_classes = {{"inv", "inv_x"}};
+  setup.no_flatten = {{1, "a"}, {2, "b"}};
+  setup.auto_blackbox = true;
+  setup.strict_topology = true;
+  setup.parallel_open = false;
+  setup.column_left = 30;
+  setup.column_right = 50;
+  lvs::RunOptions options;
+  lvs::apply_setup(setup, options);
+  CHECK(options.equated_classes == setup.equated_classes);
+  CHECK(options.prohibited1 == std::vector<std::string>{"a"});
+  CHECK(options.prohibited2 == std::vector<std::string>{"b"});
+  CHECK(options.blackbox);
+  CHECK(options.strict_topology);
+  CHECK_FALSE(options.parallel_open);
+  CHECK(options.widths.left == 30);
+  CHECK(options.widths.right == 50);
+
+  Console console;
+  console.file("a.spice", kInv);
+  console.file("b.spice", kInv);
+  console.file("widths.tcl", "format 30 50\n");
+  REQUIRE(console.lvs({"a.spice", "b.spice", "widths.tcl"}).ok());
+  CHECK(contains(console.printed(), "Reading setup file widths.tcl\n"));
 }
 
 // ------------------------------------------------------------ namespace
