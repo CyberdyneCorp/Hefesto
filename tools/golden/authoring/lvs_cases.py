@@ -668,11 +668,13 @@ def rep_cases() -> list[Case]:
         Case("NG-REP-03", cap, ["JSON file"], "The NG-PROP-01 inputs with -json; properties in JSON.",
              [lvs("input/a.spice top", "input/b.spice top", "", "-json")],
              {"a.spice": prop.format(w="1u"), "b.spice": prop.format(w="1.05u")}, lvs_outputs=True, json=True),
+        # Only `%%` reaches netgen's report: it writes names through printf (Q-LVS-12), so `%x` printed an
+        # address that changed between captures (runs 46054592794, 46056909523). Hefesto writes `%%` as it is.
         Case("NG-REP-04", cap, ["Two-column layout", "JSON file"],
-             "Net and cell names containing % and \" (Q-LVS-12, Q-LVS-13); comp.out and JSON validity.",
-             [lvs("input/a.spice top%x", "input/b.spice top%x", "", "-json")],
-             {"a.spice": ".subckt top%x a%d b\"q\nR1 a%d b\"q 1k\nR2 a%d n%s 1k\n.ends\n",
-              "b.spice": ".subckt top%x a%d b\"q\nR1 a%d b\"q 1k\n.ends\n"}, lvs_outputs=True, json=True),
+             "Net names containing %% and \" (Q-LVS-12, Q-LVS-13); comp.out and JSON validity.",
+             [lvs("input/a.spice top", "input/b.spice top", "", "-json")],
+             {"a.spice": ".subckt top a%%d b\"q\nR1 a%%d b\"q 1k\nR2 a%%d n%%s 1k\n.ends\n",
+              "b.spice": ".subckt top a%%d b\"q\nR1 a%%d b\"q 1k\n.ends\n"}, lvs_outputs=True, json=True),
         Case("NG-REP-05", cap, ["Log and console routing"],
              "log file x.log; log start; log put hello; log echo off; log end; and the error cases; the file "
              "contents and messages.",

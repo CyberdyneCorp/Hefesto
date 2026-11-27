@@ -10,7 +10,7 @@ area = "LVS"
 capability = "lvs-reports"
 requirements = ["Two-column layout", "JSON file"]
 tool = "netgen"
-description = "Net and cell names containing % and \" (Q-LVS-12, Q-LVS-13); comp.out and JSON validity."
+description = "Net names containing %% and \" (Q-LVS-12, Q-LVS-13); comp.out and JSON validity."
 provenance = "hefesto"
 
 [reference]
