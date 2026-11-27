@@ -69,6 +69,10 @@ class SchematicView final : public cmd::CommandObserver {
   /// The netlist action (run_netlist): the netlist bar's button, the `n`
   /// binding and the top bar's "Netlist" button (main_window.cpp).
   void start_netlist();
+  /// What the view shows, for scripted checks after an --input script
+  /// (main_window.cpp prints it): the breadcrumb, the instances drawn and
+  /// the symbols still pending, "ihp_style_tb.sch, 5 instances, 0 pending".
+  [[nodiscard]] std::string status_line() const;
 
   /// cmd::CommandObserver: the results of `schematic` commands.
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) override;

@@ -299,6 +299,11 @@ void SchematicView::refresh() {
   invalidate_all();
 }
 
+std::string SchematicView::status_line() const {
+  return breadcrumb_.text() + ", " + std::to_string(scene_.instances.size()) + " instances, " +
+         std::to_string(resolver_.pending_count()) + " pending";
+}
+
 void SchematicView::show_nothing() {
   has_document_ = false;
   shown_id_ = 0;

@@ -744,9 +744,11 @@ jobs:
       # docs/design/m8-ui-conformance.md. The app opens a test bench of the system library
       # (tests/data/schem/devlib/tb/ihp_style_tb.sch: its symbols resolve from the assets/schematic copy next
       # to the executable) and the --input script clicks the Schematic segment of the top bar's view tabs
-      # (window point 455,24 at 1280 x 800: the tabs start at x 330, Schematic follows Layout), then waits for
-      # the symbol worker. Linux under Xvfb; macOS on the runner's window server (not gating until a capture
-      # has been seen there).
+      # (window point 362,24 at 1280 x 800: the tabs span x 252-548, Schematic is 320-405 after Layout), then
+      # waits for the symbol worker. After the script the app prints "hefesto: schematic tab <breadcrumb>,
+      # <n> instances, <k> pending" when the tab is shown; the step fails without that line (Linux, under
+      # Xvfb). macOS runs on the runner's window server, whose 1024 px screen leaves no room for the view
+      # tabs: not gating there.
       - name: Capture the Schematic tab
         if: matrix.desktop || matrix.moltenvk
         continue-on-error: ${{ runner.os == 'macOS' }}
@@ -754,16 +756,18 @@ jobs:
         run: |
           mkdir -p schematic-captures
           capture="schematic-captures/schematic-tab-${{ matrix.name }}.ppm"
+          log="schematic-captures/schematic-tab-${{ matrix.name }}.log"
           app="build/${{ matrix.preset }}/src/shell/desktop/hefesto"
           args=(--width 1280 --height 800 --run "schematic open tests/data/schem/devlib/tb/ihp_style_tb.sch"
-                --input "wait 500; down 455,24; up 455,24; wait 2000"
+                --input "wait 500; down 362,24; up 362,24; wait 3000"
                 --capture "$capture" --capture-frames 60 --no-vsync)
           if [ "$RUNNER_OS" = "Linux" ]; then
-            RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}"
+            RAVEN_WINDOW_SYSTEM=x11 xvfb-run -a -s "-screen 0 1920x1080x24" "$app" "${args[@]}" | tee "$log"
           else
-            "$app" "${args[@]}"
+            "$app" "${args[@]}" | tee "$log"
           fi
           test -s "$capture"
+          grep -q "^hefesto: schematic tab ihp_style_tb.sch, [1-9][0-9]* instances, 0 pending" "$log"
 
       - name: Upload the Schematic tab capture
         if: always() && (matrix.desktop || matrix.moltenvk)
