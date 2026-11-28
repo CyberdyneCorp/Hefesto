@@ -97,32 +97,44 @@ std::vector<std::string> describe(const Cell& cell) {
           std::to_string(globals) + " global), " + std::to_string(cell.instances.size()) + " instances"};
 }
 
-std::vector<std::string> cell_lines(const NetlistDb& db, const Cell& cell, std::string_view name) {
+/// One line per instance of `cell`, as `line` writes it.
+template <typename Line>
+std::vector<std::string> instance_lines(const Cell& cell, Line line) {
   std::vector<std::string> lines;
+  lines.reserve(cell.instances.size());
+  for (const auto& instance : cell.instances) {
+    lines.push_back(line(instance));
+  }
+  return lines;
+}
+
+/// The sorted names of the primitive classes `cell` instantiates.
+std::vector<std::string> leaf_lines(const NetlistDb& db, const Cell& cell) {
+  std::set<std::string> leaves;
+  for (const auto& instance : cell.instances) {
+    if (is_primitive(db.cells.at(instance.cell).device_class)) {
+      leaves.insert(db.cells.at(instance.cell).name);
+    }
+  }
+  return {leaves.begin(), leaves.end()};
+}
+
+std::vector<std::string> cell_lines(const NetlistDb& db, const Cell& cell, std::string_view name) {
   if (name == "nodes") {
+    std::vector<std::string> lines;
     for (const auto& net : cell.nets) {
       lines.push_back(net.name);
     }
-  } else if (name == "elements" || name == "instances") {
-    for (const auto& instance : cell.instances) {
-      lines.push_back(instance.name);
-    }
-  } else if (name == "contents") {
-    for (const auto& instance : cell.instances) {
-      lines.push_back(instance.name + " " + db.cells.at(instance.cell).name);
-    }
-  } else if (name == "leaves") {
-    std::set<std::string> leaves;
-    for (const auto& instance : cell.instances) {
-      if (is_primitive(db.cells.at(instance.cell).device_class)) {
-        leaves.insert(db.cells.at(instance.cell).name);
-      }
-    }
-    lines.assign(leaves.begin(), leaves.end());
-  } else {
-    lines = describe(cell);
+    return lines;
   }
-  return lines;
+  if (name == "elements" || name == "instances") {
+    return instance_lines(cell, [](const Instance& instance) { return instance.name; });
+  }
+  if (name == "contents") {
+    return instance_lines(
+        cell, [&db](const Instance& instance) { return instance.name + " " + db.cells.at(instance.cell).name; });
+  }
+  return name == "leaves" ? leaf_lines(db, cell) : describe(cell);
 }
 
 }  // namespace

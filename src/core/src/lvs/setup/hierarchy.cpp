@@ -48,40 +48,48 @@ std::uint64_t make_global(Cell& cell, std::span<const std::string> patterns) {
   return changed;
 }
 
+/// The global nets of `cell` become local nets with new ports; returns
+/// their names.
+std::vector<std::string> globals_to_ports(Cell& cell) {
+  std::vector<std::string> names;
+  for (NetId net = 1; net <= cell.nets.size(); ++net) {
+    if (!cell.net(net).global) {
+      continue;
+    }
+    cell.net(net).global = false;
+    cell.ports.push_back(Port{cell.net(net).name, net, false});
+    names.push_back(cell.net(net).name);
+  }
+  return names;
+}
+
+/// Connects the new pins `names` of every instance of `id` in `parent` to
+/// the parent's global net of that name (created when missing).
+void connect_new_pins(Cell& parent, CellId id, const std::vector<std::string>& names) {
+  for (auto& instance : parent.instances) {
+    if (instance.cell != id) {
+      continue;
+    }
+    for (const auto& name : names) {
+      NetId net = parent.find_net(name);
+      if (net == kNoNet) {
+        net = parent.add_net(name, true);
+      }
+      instance.connections.push_back(net);
+    }
+  }
+}
+
 /// `convert`: the global nets of `id` become local nets with new ports, and
 /// every instance of `id` connects the new pins to its parent's global net.
 void convert_cell(NetlistDb& db, CellId id) {
-  std::vector<std::string> names;
-  {
-    Cell& cell = db.cells.at(id);
-    for (NetId net = 1; net <= cell.nets.size(); ++net) {
-      if (!cell.net(net).global) {
-        continue;
-      }
-      cell.net(net).global = false;
-      cell.ports.push_back(Port{cell.net(net).name, net, false});
-      names.push_back(cell.net(net).name);
-    }
-  }
+  const auto names = globals_to_ports(db.cells.at(id));
   if (names.empty()) {
     return;
   }
   for (CellId p = 0; p < db.cells.size(); ++p) {
-    if (p == id) {
-      continue;
-    }
-    Cell& parent = db.cells.at(p);
-    for (auto& instance : parent.instances) {
-      if (instance.cell != id) {
-        continue;
-      }
-      for (const auto& name : names) {
-        NetId net = parent.find_net(name);
-        if (net == kNoNet) {
-          net = parent.add_net(name, true);
-        }
-        instance.connections.push_back(net);
-      }
+    if (p != id) {
+      connect_new_pins(db.cells.at(p), id, names);
     }
   }
 }
@@ -133,8 +141,13 @@ cmd::CommandResult flatten_class(Runtime& runtime, const Resolved& cells) {
     NetlistDb& db = target.circuit->db;
     const FileNumber file = target.get().file;
     for (CellId p = 0; p < db.cells.size(); ++p) {
-      if (db.cells.at(p).file == file) {
-        flatten_where(db, p, [&target](const Instance& i) { return i.cell == target.cell; });
+      if (db.cells.at(p).file != file) {
+        continue;
+      }
+      const auto stop = [&db, p]() { return db.cells.at(p).instances.size() > kMaxDevicesPerRun; };
+      flatten_where(db, p, [&](const Instance& i) { return !stop() && i.cell == target.cell; });
+      if (stop()) {
+        return command_error("Flattening stopped: cell " + db.cells.at(p).name + " exceeds the device limit");
       }
     }
   }
@@ -173,15 +186,16 @@ bool flattenable(Runtime& runtime, const Target& klass) {
   });
 }
 
-void flatten_instance(NetlistDb& db, CellId parent_id, std::size_t index) {
-  Cell& parent = db.cells.at(parent_id);
-  Instance instance = std::move(parent.instances.at(index));
-  parent.instances.erase(parent.instances.begin() + static_cast<std::ptrdiff_t>(index));
-  const Cell& sub = db.cells.at(instance.cell);
+namespace {
+
+/// The parent net of each net of `sub` for `instance`: the connected net of
+/// a port, the parent's global net of that name, or a new net
+/// `<instance>/<net>`.
+std::vector<NetId> sub_net_map(Cell& parent, const Cell& sub, const Instance& instance) {
   std::vector<NetId> map(sub.nets.size() + 1, kNoNet);
-  for (std::size_t k = 0; k < sub.ports.size(); ++k) {
+  for (std::size_t k = 0; k < sub.ports.size() && k < instance.connections.size(); ++k) {
     const NetId net = sub.ports[k].net;
-    if (net != kNoNet && k < instance.connections.size() && map[net] == kNoNet) {
+    if (net != kNoNet && map[net] == kNoNet) {
       map[net] = instance.connections[k];
     }
   }
@@ -197,6 +211,17 @@ void flatten_instance(NetlistDb& db, CellId parent_id, std::size_t index) {
       map[net] = parent.add_net(instance.name + "/" + source.name);
     }
   }
+  return map;
+}
+
+}  // namespace
+
+void flatten_instance(NetlistDb& db, CellId parent_id, std::size_t index) {
+  Cell& parent = db.cells.at(parent_id);
+  Instance instance = std::move(parent.instances.at(index));
+  parent.instances.erase(parent.instances.begin() + static_cast<std::ptrdiff_t>(index));
+  const Cell& sub = db.cells.at(instance.cell);
+  const auto map = sub_net_map(parent, sub, instance);
   for (const auto& child : sub.instances) {
     Instance copy = child;
     copy.name = instance.name + "/" + child.name;

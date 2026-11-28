@@ -10,6 +10,7 @@
 // Owner: LVSHIER.
 
 #include <algorithm>
+#include <cstdint>
 #include <numeric>
 
 #include "hefesto/lvs/hier/hierarchy.hpp"
@@ -89,13 +90,25 @@ std::string evaluate_value(const std::string& value, const ParameterScope& scope
   return resolved.type == PropertyType::value ? format_g(resolved.number, 17) : value;
 }
 
+/// Whether flattening every instance of `klass` (id `klass_id`) in `parent`
+/// would leave more than `limit` instances in `parent`
+/// (crafted-input limit, both netgen-compat modes).
+bool too_large(const Cell& parent, const Cell& klass, CellId klass_id, std::uint64_t limit) {
+  const auto count = static_cast<std::uint64_t>(std::count_if(
+      parent.instances.begin(), parent.instances.end(), [klass_id](const Instance& i) { return i.cell == klass_id; }));
+  const std::uint64_t kept = parent.instances.size() - count;
+  const std::uint64_t each = klass.instances.size();
+  return each != 0 && count > (limit - std::min(kept, limit)) / each;
+}
+
 class Flattener {
  public:
   Flattener(NetlistDb& db, CellId parent, CellId klass)
       : db_(db), parent_(db.cells[parent]), klass_(db.cells[klass]), klass_id_(klass) {}
 
   std::size_t run() {
-    if (&parent_ == &klass_ || klass_.flags.placeholder || !is_flattenable(klass_.device_class)) {
+    if (&parent_ == &klass_ || klass_.flags.placeholder || !is_flattenable(klass_.device_class) ||
+        too_large(parent_, klass_, klass_id_, kMaxDevicesPerRun)) {
       return 0;
     }
     std::vector<Instance> result;
@@ -155,21 +168,27 @@ class Flattener {
     const auto params = db_.parameters.find(klass_.file);
     scope.parameters = params == db_.parameters.end() ? nullptr : &params->second;
     for (const auto& child : klass_.instances) {
-      Instance copy = child;
-      copy.name = instance.name + "/" + child.name;
-      for (auto& name : copy.merged) {
-        name = instance.name + "/" + name;
-      }
-      for (auto& connection : copy.connections) {
-        connection = connection == kNoNet || connection >= map.size() ? kNoNet : map[connection];
-      }
-      for (auto& record : copy.properties) {
-        for (auto& property : record) {
-          property.value = evaluate_value(property.value, scope);
-        }
-      }
-      out.push_back(std::move(copy));
+      out.push_back(copy_child(instance, child, map, scope));
     }
+  }
+
+  /// The copy of the class's instance `child` inside `instance`.
+  static Instance copy_child(const Instance& instance, const Instance& child, const std::vector<NetId>& map,
+                             const ParameterScope& scope) {
+    Instance copy = child;
+    copy.name = instance.name + "/" + child.name;
+    for (auto& name : copy.merged) {
+      name = instance.name + "/" + name;
+    }
+    for (auto& connection : copy.connections) {
+      connection = connection == kNoNet || connection >= map.size() ? kNoNet : map[connection];
+    }
+    for (auto& record : copy.properties) {
+      for (auto& property : record) {
+        property.value = evaluate_value(property.value, scope);
+      }
+    }
+    return copy;
   }
 
   NetlistDb& db_;
@@ -182,6 +201,10 @@ class Flattener {
 
 std::size_t flatten_instances(NetlistDb& db, CellId parent, CellId klass) {
   return Flattener{db, parent, klass}.run();
+}
+
+bool flatten_exceeds_limit(const NetlistDb& db, CellId parent, CellId klass, std::uint64_t limit) {
+  return parent != klass && too_large(db.cells[parent], db.cells[klass], klass, std::min(limit, kMaxDevicesPerRun));
 }
 
 std::size_t flatten_class(NetlistDb& db, CellId klass) {
@@ -278,37 +301,48 @@ std::vector<std::string> remove_duplicate_ports(NetlistDb& db, CellId cell) {
   return messages;
 }
 
-void convert_globals(NetlistDb& db, CellId cell) {
+namespace {
+
+/// The global nets of `c` stop being global; those that are no port yet get
+/// a new port at the end. Returns the names of the new ports.
+std::vector<std::string> globals_to_new_ports(Cell& c) {
   std::vector<std::string> added;
-  {
-    Cell& c = db.cells[cell];
-    for (std::size_t i = 0; i < c.nets.size(); ++i) {
-      Net& net = c.nets[i];
-      if (!net.global) {
-        continue;
-      }
-      net.global = false;
-      const auto id = static_cast<NetId>(i + 1);
-      if (std::any_of(c.ports.begin(), c.ports.end(), [id](const Port& port) { return port.net == id; })) {
-        continue;  // already a port: it only stops being global
-      }
-      c.ports.push_back(Port{net.name, id, false});
-      added.push_back(net.name);
+  for (std::size_t i = 0; i < c.nets.size(); ++i) {
+    Net& net = c.nets[i];
+    if (!net.global) {
+      continue;
     }
+    net.global = false;
+    const auto id = static_cast<NetId>(i + 1);
+    if (std::any_of(c.ports.begin(), c.ports.end(), [id](const Port& port) { return port.net == id; })) {
+      continue;  // already a port: it only stops being global
+    }
+    c.ports.push_back(Port{net.name, id, false});
+    added.push_back(net.name);
   }
+  return added;
+}
+
+}  // namespace
+
+void convert_globals(NetlistDb& db, CellId cell) {
+  const auto added = globals_to_new_ports(db.cells[cell]);
   if (added.empty()) {
     return;
   }
   for (CellId id = 0; id < db.cells.size(); ++id) {
+    if (id == cell) {
+      continue;
+    }
     Cell& parent = db.cells[id];
-    for (std::size_t k = 0; k < parent.instances.size(); ++k) {
-      if (parent.instances[k].cell != cell || id == cell) {
+    for (auto& instance : parent.instances) {
+      if (instance.cell != cell) {
         continue;
       }
       for (const auto& name : added) {
         const NetId net = parent.net_named(name);
         parent.net(net).global = true;
-        parent.instances[k].connections.push_back(net);
+        instance.connections.push_back(net);
       }
     }
   }

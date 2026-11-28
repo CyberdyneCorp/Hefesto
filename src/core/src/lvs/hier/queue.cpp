@@ -147,21 +147,27 @@ class QueueBuilder {
   std::optional<CellId> find_partner(const Cell& cell, bool first) const {
     const NetlistDb& other = first ? *in_.db2 : *in_.db1;
     const Cell& other_top = other.cells[first ? in_.top2 : in_.top1];
-    const bool fold = in_.identity.case_insensitive;
-    if (const auto* equated = in_.identity.equated; equated != nullptr) {
-      for (const auto& [name1, name2] : *equated) {
-        const auto& own_name = first ? name1 : name2;
-        const auto& other_name = first ? name2 : name1;
-        if (names_equal(own_name, base_name(cell.name), fold)) {
-          return usable(other, other.find_cell(other_name, other_top.file));
-        }
-      }
+    if (const auto* entry = equate_entry(cell, first)) {
+      return usable(other, other.find_cell(first ? entry->second : entry->first, other_top.file));
     }
     const auto candidate = usable(other, other.find_cell(base_name(cell.name), other_top.file));
     if (candidate && equated_elsewhere(other.cells[*candidate], cell, first)) {
       return std::nullopt;
     }
     return candidate;
+  }
+
+  /// The first `equate classes` pair that names `cell` on its side.
+  [[nodiscard]] const std::pair<std::string, std::string>* equate_entry(const Cell& cell, bool first) const {
+    if (in_.identity.equated == nullptr) {
+      return nullptr;
+    }
+    for (const auto& entry : *in_.identity.equated) {
+      if (names_equal(first ? entry.first : entry.second, base_name(cell.name), in_.identity.case_insensitive)) {
+        return &entry;
+      }
+    }
+    return nullptr;
   }
 
   static std::optional<CellId> usable(const NetlistDb& db, std::optional<CellId> id) {

@@ -17,10 +17,10 @@ inline constexpr std::string_view kUsage = "LVS-CMD-002";
 inline constexpr std::string_view kNetlist = "LVS-CMD-003";
 inline constexpr std::string_view kSameNetlist = "LVS-CMD-004";
 inline constexpr std::string_view kNoCell = "LVS-CMD-005";
-inline constexpr std::string_view kSetup = "LVS-CMD-006";
+inline constexpr std::string_view kSetup = "LVS-CMD-006";    // retired (M9 R3): LVS-SETUP-* instead
 inline constexpr std::string_view kWrite = "LVS-CMD-007";
 inline constexpr std::string_view kBusy = "LVS-CMD-008";
-inline constexpr std::string_view kNoSetup = "LVS-CMD-009";
+inline constexpr std::string_view kNoSetup = "LVS-CMD-009";  // retired (M9 R3): LVS-SETUP-002 instead
 inline constexpr std::string_view kNoFlattenLimit = "LVS-CMD-010";
 inline constexpr std::string_view kNoCounterpart = "LVS-CMD-011";
 

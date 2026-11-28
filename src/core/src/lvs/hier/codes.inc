@@ -14,3 +14,4 @@ HEFESTO_LVS_CODE("LVS-HIER-002", error, "A circuit of the run has no top cell to
 HEFESTO_LVS_CODE("LVS-HIER-003", error, "The hierarchy-depth setting is 0 or above 512 (twice the default).")
 HEFESTO_LVS_CODE("LVS-HIER-004", info, "The LVS run was cancelled; the pairs compared so far are kept.")
 HEFESTO_LVS_CODE("LVS-HIER-005", warning, "Flattening of unmatched or mismatched subcells of a pair stopped after as many rounds as the hierarchy-depth limit.")
+HEFESTO_LVS_CODE("LVS-HIER-006", error, "Flattening during the run would leave more than 50,000,000 device instances in one cell (kMaxDevicesPerRun, crafted-input limit, both netgen-compat modes); the run ends as an input error.")

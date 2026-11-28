@@ -74,6 +74,11 @@ struct RunOptions {
   std::string log_name = "comp.out";
   /// Fills PairReport::references; unset for netlist files.
   ReferenceResolver references;
+  /// Added in the M9 R3 fix pass: the device instances one cell may hold
+  /// after flattening during the run (crafted-input limit, both
+  /// netgen-compat modes; LVS-HIER-006). Lowerable only: a larger value
+  /// counts as kMaxDevicesPerRun.
+  std::uint64_t device_limit = kMaxDevicesPerRun;
 };
 
 /// Progress of a run, called on the run's worker thread.

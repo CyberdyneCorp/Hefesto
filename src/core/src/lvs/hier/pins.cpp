@@ -45,6 +45,17 @@ namespace {
 constexpr int kUnpaired = -1;
 constexpr int kNoPinOnNet = -2;  // the partner net has no port: `(no pin, node is <net2>)`
 
+/// Rebuilds `list` in `order`; a position past its end gets an empty value.
+template <typename List>
+void permute(List& list, const std::vector<std::size_t>& order) {
+  List result;
+  result.reserve(order.size());
+  for (const auto j : order) {
+    result.push_back(j < list.size() ? list[j] : typename List::value_type{});
+  }
+  list = std::move(result);
+}
+
 /// Device pins per net of `cell` (index NetId).
 std::vector<std::size_t> device_pins(const Cell& cell) {
   std::vector<std::size_t> pins(cell.nets.size() + 1, 0);
@@ -218,6 +229,8 @@ class PinMatcher {
   void unpaired_second(std::vector<std::size_t>& appended, std::vector<PinRow>& tail);
   void unpaired_first(std::vector<bool>& drop1);
   void reorder(const std::vector<std::size_t>& appended, const std::vector<bool>& drop1);
+  [[nodiscard]] std::vector<std::size_t> new_order(const std::vector<std::size_t>& appended,
+                                                   const std::vector<bool>& drop1);
   void port_connection_errors();
 
   NetlistDb& db1_;
@@ -274,7 +287,8 @@ void PinMatcher::unpaired_first(std::vector<bool>& drop1) {
   }
 }
 
-void PinMatcher::reorder(const std::vector<std::size_t>& appended, const std::vector<bool>& drop1) {
+std::vector<std::size_t> PinMatcher::new_order(const std::vector<std::size_t>& appended,
+                                               const std::vector<bool>& drop1) {
   // Circuit 2's new order: the partner of each kept circuit-1 port (a proxy
   // for one that has none), then the appended circuit-2 ports, each with a
   // proxy in circuit 1.
@@ -295,23 +309,20 @@ void PinMatcher::reorder(const std::vector<std::size_t>& appended, const std::ve
     add_proxy(db1_, c1_, db2_.cells[c2_].ports[j].name, kNoNet);
     order.push_back(j);
   }
+  return order;
+}
+
+void PinMatcher::reorder(const std::vector<std::size_t>& appended, const std::vector<bool>& drop1) {
+  const auto order = new_order(appended, drop1);
   remove_ports(db1_, c1_, drop1);
   // Apply `order` to circuit 2's ports and to the pins of its instances;
   // the circuit-2 ports it leaves out (emptied by flattening, or the proxy
   // of a port-less cell) are dropped.
-  const auto permute = [&order](auto& list) {
-    std::remove_reference_t<decltype(list)> result;
-    result.reserve(order.size());
-    for (const auto j : order) {
-      result.push_back(j < list.size() ? list[j] : typename std::remove_reference_t<decltype(list)>::value_type{});
-    }
-    list = std::move(result);
-  };
-  permute(db2_.cells[c2_].ports);
+  permute(db2_.cells[c2_].ports, order);
   for (auto& parent : db2_.cells) {
     for (auto& instance : parent.instances) {
       if (instance.cell == c2_) {
-        permute(instance.connections);
+        permute(instance.connections, order);
       }
     }
   }

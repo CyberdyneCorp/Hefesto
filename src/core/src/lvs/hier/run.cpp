@@ -98,6 +98,9 @@ class PairRun {
   void pins(const Comparison& comparison);
   void flatten_pair();
   void fill_references();
+  void add_reference(int circuit, ObjectReference::Kind kind, const std::string& name);
+  template <typename Fragment>
+  void add_fragment_references(const std::vector<MismatchClass<Fragment>>& classes, ObjectReference::Kind kind);
 
   RunState& state_;
   CellId c1_;
@@ -277,37 +280,55 @@ void PairRun::flatten_pair() {
     return;
   }
   state_.log("  Flattening non-matched subcircuits " + first().name + " " + second().name);
-  flatten_class(state_.db1, c1_);
-  flatten_class(state_.db2, c2_);
+  for (const bool one : {true, false}) {
+    const NetlistDb& db = state_.db(one);
+    for (CellId parent = 0; parent < db.cells.size() && !state_.halted(); ++parent) {
+      (void)flatten_bounded(state_, one, parent, one ? c1_ : c2_);
+    }
+  }
   report_.flattened = true;
 }
 
+void PairRun::add_reference(int circuit, ObjectReference::Kind kind, const std::string& name) {
+  if (auto ref = state_.options.references(circuit, kind, name)) {
+    report_.references.push_back(std::move(*ref));
+  }
+}
+
+template <typename Fragment>
+void PairRun::add_fragment_references(const std::vector<MismatchClass<Fragment>>& classes,
+                                      ObjectReference::Kind kind) {
+  for (const auto& cls : classes) {
+    for (const auto& f : cls.first) {
+      add_reference(1, kind, f.name);
+    }
+    for (const auto& f : cls.second) {
+      add_reference(2, kind, f.name);
+    }
+  }
+}
+
 void PairRun::fill_references() {
-  const auto& resolve = state_.options.references;
-  if (!resolve) {
+  if (!state_.options.references) {
     return;
   }
-  const auto add = [&](int circuit, ObjectReference::Kind kind, const std::string& name) {
-    if (auto ref = resolve(circuit, kind, name)) {
-      report_.references.push_back(std::move(*ref));
-    }
-  };
-  for (const auto& cls : report_.bad_nets) {
-    for (const auto& f : cls.first) add(1, ObjectReference::Kind::net, f.name);
-    for (const auto& f : cls.second) add(2, ObjectReference::Kind::net, f.name);
-  }
-  for (const auto& cls : report_.bad_elements) {
-    for (const auto& f : cls.first) add(1, ObjectReference::Kind::device, f.name);
-    for (const auto& f : cls.second) add(2, ObjectReference::Kind::device, f.name);
-  }
+  add_fragment_references(report_.bad_nets, ObjectReference::Kind::net);
+  add_fragment_references(report_.bad_elements, ObjectReference::Kind::device);
   if (report_.pins) {
-    for (const auto& pin : report_.pins->first) add(1, ObjectReference::Kind::pin, pin);
-    for (const auto& pin : report_.pins->second) add(2, ObjectReference::Kind::pin, pin);
+    for (const auto& pin : report_.pins->first) {
+      add_reference(1, ObjectReference::Kind::pin, pin);
+    }
+    for (const auto& pin : report_.pins->second) {
+      add_reference(2, ObjectReference::Kind::pin, pin);
+    }
   }
 }
 
 bool PairRun::run(std::optional<Comparison>& top_comparison, int& top_unique) {
   prepare_pair(state_, c1_, c2_, top_);
+  if (state_.halted()) {
+    return false;
+  }
   report_.cell1 = first().name;
   report_.cell2 = second().name;
   report_.file1 = first().file;
@@ -443,7 +464,7 @@ bool run_pairs(RunState& state, const std::vector<std::pair<CellId, CellId>>& qu
   for (std::size_t k = 0; k < queue.size(); ++k) {
     const auto [c1, c2] = queue[k];
     progress.pair_started(state.db1.cells[c1].name, state.db2.cells[c2].name, k, queue.size());
-    if (state.options.cancel.requested() || !PairRun{state, c1, c2, k + 1 == queue.size()}.run(top, top_unique)) {
+    if (state.halted() || !PairRun{state, c1, c2, k + 1 == queue.size()}.run(top, top_unique)) {
       return false;
     }
   }
@@ -501,6 +522,9 @@ LvsResult run_lvs(Circuit first, Circuit second, const SetupState& /*setup*/, co
     result.queue.emplace_back(first.db.cells[c1].name, second.db.cells[c2].name);
   }
   if (!hier_detail::run_pairs(state, queue, progress)) {
+    if (state.stop) {
+      return hier_detail::input_error(std::move(result), *state.stop);
+    }
     result.cancelled = true;
     result.diagnostics.push_back(diag::make(hier_codes::kCancelled, "LVS run cancelled."));
   }

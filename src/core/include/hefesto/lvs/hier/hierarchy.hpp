@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -67,9 +68,16 @@ struct QueueInput {
 /// `parent` by its contents (names `<i>/<name>`), connects the port nets,
 /// evaluates expression-valued properties with the instance's parameters
 /// and copies the global nets. Does nothing for the cell itself, a
-/// placeholder or a cell that is not a subcircuit. Returns the instances
-/// flattened.
+/// placeholder or a cell that is not a subcircuit, nor when
+/// flatten_exceeds_limit() holds. Returns the instances flattened.
 std::size_t flatten_instances(NetlistDb& db, CellId parent, CellId klass);
+
+/// Whether flattening the direct instances of `klass` in `parent` would
+/// leave more than `limit` (at most kMaxDevicesPerRun) instances in
+/// `parent` (crafted-input limit, both netgen-compat modes; the run flow
+/// ends with LVS-HIER-006).
+[[nodiscard]] bool flatten_exceeds_limit(const NetlistDb& db, CellId parent, CellId klass,
+                                         std::uint64_t limit = kMaxDevicesPerRun);
 
 /// Flattens the instances of `klass` in every cell of `db`; returns the
 /// instances flattened.

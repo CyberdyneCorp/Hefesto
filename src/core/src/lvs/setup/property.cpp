@@ -257,26 +257,31 @@ cmd::CommandResult topology(Runtime& runtime, const Words& words) {
   return cmd::CommandResult::success();
 }
 
+/// Adds the derived property to one property record of an instance when
+/// its width and length are numbers and it has none yet.
+void derive_record(PropertyRecord& record, std::string_view derived, std::string_view wkey, std::string_view lkey) {
+  const Property* w = find_property(record, wkey);
+  const Property* l = find_property(record, lkey);
+  if (w == nullptr || l == nullptr || find_property(record, derived) != nullptr) {
+    return;
+  }
+  const auto wv = parse_si_value(w->value);
+  const auto lv = parse_si_value(l->value);
+  if (!wv || !lv) {
+    return;
+  }
+  const double value = derived == "area" ? *wv * *lv : 2.0 * (*wv + *lv);
+  record.push_back(Property{std::string{derived}, format_g(value, 15)});
+}
+
 void derive_in(NetlistDb& db, CellId klass, std::string_view derived, std::string_view wkey, std::string_view lkey) {
-  const bool area = derived == "area";
   for (auto& cell : db.cells) {
     for (auto& instance : cell.instances) {
       if (instance.cell != klass) {
         continue;
       }
       for (auto& record : instance.properties) {
-        const Property* w = find_property(record, wkey);
-        const Property* l = find_property(record, lkey);
-        if (w == nullptr || l == nullptr || find_property(record, derived) != nullptr) {
-          continue;
-        }
-        const auto wv = parse_si_value(w->value);
-        const auto lv = parse_si_value(l->value);
-        if (!wv || !lv) {
-          continue;
-        }
-        const double value = area ? *wv * *lv : 2.0 * (*wv + *lv);
-        record.push_back(Property{std::string{derived}, format_g(value, 15)});
+        derive_record(record, derived, wkey, lkey);
       }
     }
   }
@@ -365,43 +370,61 @@ void report_missing_property(Runtime& runtime, const Cell& cell, std::string_vie
   runtime.print("No property " + std::string{key} + " found for device " + cell.name);
 }
 
-void apply_property_default(Runtime& runtime) {
-  using namespace merge_rule;
-  struct Rule {
-    std::string_view key;
-    std::uint16_t merge;
-  };
-  static constexpr std::array<Rule, 1> kTransistor{{{"w", kParallelAdd | kParallelCritical}}};
-  static constexpr std::array<Rule, 3> kResistor{{{"w", kParallelPar | kSeriesCritical},
-                                                  {"l", kSeriesAdd | kParallelCritical},
-                                                  {"value", kSeriesAdd | kParallelPar}}};
-  static constexpr std::array<Rule, 2> kCapacitor{
-      {{"area", kParallelAdd | kSeriesPar}, {"value", kParallelAdd | kSeriesPar}}};
-  static constexpr std::array<Rule, 1> kInductor{{{"value", kSeriesAdd | kParallelPar}}};
-  const auto apply = [&runtime](Cell& cell, std::span<const Rule> rules) {
-    for (const auto& rule : rules) {
-      if (PropertyDef* def = find_definition(cell, rule.key)) {
-        def->merge |= rule.merge;
-      } else {
-        report_missing_property(runtime, cell, rule.key);
-      }
+namespace {
+
+/// One merge rule of `property default`.
+struct DefaultRule {
+  std::string_view key;
+  std::uint16_t merge;
+};
+
+void apply_default_rules(Runtime& runtime, Cell& cell, std::span<const DefaultRule> rules) {
+  for (const auto& rule : rules) {
+    if (PropertyDef* def = find_definition(cell, rule.key)) {
+      def->merge |= rule.merge;
+    } else {
+      report_missing_property(runtime, cell, rule.key);
     }
-  };
+  }
+}
+
+/// The merge rules of a resistor, capacitor or inductor class.
+std::span<const DefaultRule> passive_rules(DeviceClass c) {
+  using namespace merge_rule;
+  static constexpr std::array<DefaultRule, 3> kResistor{{{"w", kParallelPar | kSeriesCritical},
+                                                         {"l", kSeriesAdd | kParallelCritical},
+                                                         {"value", kSeriesAdd | kParallelPar}}};
+  static constexpr std::array<DefaultRule, 2> kCapacitor{
+      {{"area", kParallelAdd | kSeriesPar}, {"value", kParallelAdd | kSeriesPar}}};
+  static constexpr std::array<DefaultRule, 1> kInductor{{{"value", kSeriesAdd | kParallelPar}}};
+  if (is_resistor(c)) {
+    return kResistor;
+  }
+  return is_capacitor(c) ? std::span<const DefaultRule>{kCapacitor} : std::span<const DefaultRule>{kInductor};
+}
+
+void apply_cell_default(Runtime& runtime, Cell& cell) {
+  using namespace merge_rule;
+  static constexpr std::array<DefaultRule, 1> kTransistor{{{"w", kParallelAdd | kParallelCritical}}};
+  const DeviceClass c = cell.device_class;
+  if (is_transistor(c)) {
+    apply_default_rules(runtime, cell, kTransistor);
+    // Deleted as `property <c> delete as ad ps pd` deletes them: a missing
+    // key prints its message (captures of NG-SET-01, NG-SET-02).
+    static const std::array<std::string, 4> kDiffusion{"as", "ad", "ps", "pd"};
+    delete_keys(runtime, cell, kDiffusion);
+  } else if (is_resistor(c) || is_capacitor(c) || c == DeviceClass::inductor) {
+    apply_default_rules(runtime, cell, passive_rules(c));
+    cell.flags.series_combinable = true;
+  }
+}
+
+}  // namespace
+
+void apply_property_default(Runtime& runtime) {
   for (Circuit* circuit : runtime.circuits()) {
     for (auto& cell : circuit->db.cells) {
-      const DeviceClass c = cell.device_class;
-      if (is_transistor(c)) {
-        apply(cell, kTransistor);
-        // Deleted as `property <c> delete as ad ps pd` deletes them: a missing
-        // key prints its message (captures of NG-SET-01, NG-SET-02).
-        static const std::array<std::string, 4> kDiffusion{"as", "ad", "ps", "pd"};
-        delete_keys(runtime, cell, kDiffusion);
-      } else if (is_resistor(c) || is_capacitor(c) || c == DeviceClass::inductor) {
-        apply(cell, is_resistor(c) ? std::span<const Rule>{kResistor}
-                    : is_capacitor(c) ? std::span<const Rule>{kCapacitor}
-                                      : std::span<const Rule>{kInductor});
-        cell.flags.series_combinable = true;
-      }
+      apply_cell_default(runtime, cell);
     }
   }
 }

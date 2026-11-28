@@ -272,6 +272,13 @@ TEST_CASE("The setup file's settings reach the comparison", "[cap:lvs-command][r
   console.file("widths.tcl", "format 30 50\n");
   REQUIRE(console.lvs({"a.spice", "b.spice", "widths.tcl"}).ok());
   CHECK(contains(console.printed(), "Reading setup file widths.tcl\n"));
+  // The widths reach comp.out (evaluate_setup -> apply_setup -> the report):
+  // the column bar after 30 + 2 characters, the line 30 + 2 + 50 + 3 long
+  // (the default 41 41 gives 43 and 87).
+  const auto log = console.read("comp.out");
+  CHECK(contains(log, "\n" + std::string(32, '-') + "|" + std::string(52, '-') + "\n"));
+  CHECK(contains(log, "\n" + std::string(85, '-') + "\n"));
+  CHECK_FALSE(contains(log, std::string(87, '-')));
 }
 
 // ------------------------------------------------------------ namespace
@@ -343,6 +350,29 @@ TEST_CASE("The -noflatten value is a list or a file", "[cap:lvs-command][req:Set
   CHECK_FALSE(lvs::parse_noflatten(many, files).ok());
 }
 
+TEST_CASE("A -noflatten file past the entry limit is refused while it is read",
+          "[cap:lvs-command][req:Setup file and input resolution]") {
+  // Regression (M9 R3 review): the whole file was split into entries before
+  // the 65536-entry limit was checked, so the work grew with the file.
+  platform::MemoryFileSystem files;
+  std::string lines;
+  for (int i = 0; i <= 65536; ++i) {
+    lines += "c" + std::to_string(i) + "\n";
+  }
+  // The line after the limit is not even parsed: its unbalanced brace would
+  // be a usage error (LVS-CMD-002) if the whole file were split first.
+  REQUIRE(files.write_atomic("many.txt", lines + "{unbalanced\n").ok());
+  const auto many = lvs::parse_noflatten("many.txt", files);
+  REQUIRE_FALSE(many.ok());
+  CHECK(many.error().code == lvs::cmd_codes::kNoFlattenLimit);
+  // Exactly 65536 entries are accepted.
+  lines.erase(lines.rfind("c65536\n"));
+  REQUIRE(files.write_atomic("max.txt", lines).ok());
+  const auto max = lvs::parse_noflatten("max.txt", files);
+  REQUIRE(max.ok());
+  CHECK(max.value().size() == 65536);
+}
+
 // ------------------------------------------------------------ execution
 
 TEST_CASE("Progress per pair and one run per document", "[cap:lvs-command][req:Execution model]") {
@@ -382,6 +412,67 @@ TEST_CASE("Cancelling a run", "[cap:lvs-command][req:Execution model]") {
   CHECK(lvs::status_chip(session, "a.spice", nullptr).text == "LVS cancelled");
 }
 
+TEST_CASE("A cancelled run does not stop the next lvs", "[cap:lvs-command][req:Execution model]") {
+  // Regression (M9 R3 review): the session's cancel flag stayed set after a
+  // cancelled run and stopped the next setup evaluation (LVS-SETUP
+  // cancelled, headless status 1).
+  Console console;
+  console.file("a.spice", kInv);
+  console.file("b.spice", kInv);
+  console.file("widths.tcl", "format 30 50\n");
+  lvs::LvsJob job;
+  job.document = "a.spice";
+  job.first = circuit(kTop, "a.spice", 0);
+  job.second = circuit(kTop, "b.spice", 1);
+  lvs::Session& session = console.editor.lvs;
+  job.on_progress = [&session](const std::string&) { (void)lvs::cancel_run(session, "a.spice"); };
+  platform::InlineExecutor tasks;
+  const auto cancelled = lvs::run_job(tasks, session, std::move(job), {});
+  REQUIRE(cancelled.ok());
+  REQUIRE(cancelled.value().cancelled);
+  const auto next = console.lvs({"a.spice", "b.spice", "widths.tcl"});
+  REQUIRE(next.ok());
+  REQUIRE(console.editor.lvs.headless_status);
+  CHECK(*console.editor.lvs.headless_status == 0);
+  CHECK(contains(console.read("comp.out"), "Final result: Circuits match uniquely."));
+}
+
+namespace {
+
+/// An executor that drops every task, as a pool does when it shuts down.
+class DroppingExecutor final : public platform::TaskExecutor {
+ public:
+  void submit(platform::Task task) override { (void)task; }
+  void wait_idle() override {}
+};
+
+}  // namespace
+
+TEST_CASE("A dropped run task fails the run and frees the document", "[cap:lvs-command][req:Execution model]") {
+  // Regression (M9 R3 review): a dropped task threw std::future_error out of
+  // run_job and left Session::running set, so every later run was refused.
+  DroppingExecutor tasks;
+  lvs::Session session;
+  lvs::LvsJob job;
+  job.document = "a.spice";
+  job.first = circuit(kTop, "a.spice", 0);
+  job.second = circuit(kTop, "b.spice", 1);
+  const auto result = lvs::run_job(tasks, session, std::move(job), {});
+  REQUIRE(result.ok());
+  CHECK(result.value().input_error);
+  CHECK_FALSE(session.running);
+  REQUIRE(session.headless_status);
+  CHECK(*session.headless_status == 2);
+  platform::InlineExecutor inline_tasks;
+  lvs::LvsJob again;
+  again.document = "a.spice";
+  again.first = circuit(kTop, "a.spice", 0);
+  again.second = circuit(kTop, "b.spice", 1);
+  const auto second = lvs::run_job(inline_tasks, session, std::move(again), {});
+  REQUIRE(second.ok());
+  CHECK(second.value().clean);
+}
+
 // ------------------------------------------------------------ headless
 
 TEST_CASE("Headless exit statuses", "[cap:lvs-command][req:Headless LVS]") {
@@ -399,6 +490,22 @@ TEST_CASE("Headless exit statuses", "[cap:lvs-command][req:Headless LVS]") {
   CHECK(*console.editor.lvs.headless_status == 2);
   REQUIRE(console.lvs({"a.spice", "b.spice"}).ok());
   CHECK(*console.editor.lvs.headless_status == 1);
+}
+
+TEST_CASE("Each lvs sets its own headless status", "[cap:lvs-command][req:Headless LVS]") {
+  // Regression (M9 R3 review): a usage error kept the status of the earlier
+  // run, so a mismatch (1) was reported instead of the input error (2).
+  Console console;
+  console.file("a.spice", kInv);
+  console.file("b.spice", ".subckt inv A Y VDD VSS\nM1 Y A VDD VDD pfet\n.ends\n");
+  REQUIRE(console.lvs({"a.spice", "b.spice"}).ok());
+  CHECK(*console.editor.lvs.headless_status == 1);
+  CHECK_FALSE(console.lvs({"a.spice"}).ok());  // usage error
+  REQUIRE(console.editor.lvs.headless_status);
+  CHECK(*console.editor.lvs.headless_status == 2);
+  console.file("c.spice", kInv);
+  REQUIRE(console.lvs({"a.spice", "c.spice"}).ok());
+  CHECK(*console.editor.lvs.headless_status == 0);
 }
 
 // ------------------------------------------------------------ browser and chip

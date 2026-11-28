@@ -17,5 +17,6 @@ inline constexpr std::string_view kNoTop = "LVS-HIER-002";
 inline constexpr std::string_view kBadDepthSetting = "LVS-HIER-003";
 inline constexpr std::string_view kCancelled = "LVS-HIER-004";
 inline constexpr std::string_view kFlattenRounds = "LVS-HIER-005";
+inline constexpr std::string_view kDeviceLimit = "LVS-HIER-006";
 
 }  // namespace hefesto::lvs::hier_codes

@@ -38,6 +38,7 @@ class LvsCommand {
   cmd::CommandResult run(const cmd::Invocation& invocation);
 
  private:
+  cmd::CommandResult start(const cmd::Invocation& invocation);
   void say(const std::string& line) { ctx_.emit(diag::make(cmd_codes::kOutput, line)); }
   void say_text(const std::string& text);
   [[nodiscard]] Session& session() { return ctx_.editor() != nullptr ? ctx_.editor()->lvs : local_session_; }
@@ -210,6 +211,22 @@ cmd::CommandResult LvsCommand::finish(const LvsArguments& args, const LvsResult&
 }
 
 cmd::CommandResult LvsCommand::run(const cmd::Invocation& invocation) {
+  // Each `lvs` starts from a clear state: the status of an earlier run does
+  // not outlive a later one, and the cancel flag of a cancelled run does not
+  // stop the next setup evaluation (the flag is the session's).
+  Session& state = session();
+  state.headless_status.reset();
+  if (!state.running) {
+    state.cancel->store(false);
+  }
+  auto result = start(invocation);
+  if (!result.ok() && !state.headless_status) {
+    state.headless_status = 2;  // a usage or input error ("Headless LVS")
+  }
+  return result;
+}
+
+cmd::CommandResult LvsCommand::start(const cmd::Invocation& invocation) {
   auto parsed = parse_lvs_arguments(invocation.args);
   if (!parsed) {
     return cmd::CommandResult::raised(parsed.error());

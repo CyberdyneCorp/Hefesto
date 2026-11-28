@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,6 +34,12 @@ struct RunState {
   /// the pairs continued as black boxes.
   std::vector<bool> prohibited1;
   std::vector<bool> prohibited2;
+  /// Set when a crafted-input limit ends the run (LVS-HIER-006); the run is
+  /// then an input error.
+  std::optional<diag::Diagnostic> stop;
+
+  /// True when the run ends now: cancelled, or stopped by a limit.
+  [[nodiscard]] bool halted() const { return stop.has_value() || options.cancel.requested(); }
 
   [[nodiscard]] NetlistDb& db(bool first) const { return first ? db1 : db2; }
   [[nodiscard]] std::vector<bool>& prohibited(bool first) { return first ? prohibited1 : prohibited2; }
@@ -51,6 +58,11 @@ struct RunState {
 /// Whether `klass` of circuit `first` may be flattened: a subcircuit that is
 /// not a placeholder and not prohibited.
 [[nodiscard]] bool may_flatten(const RunState& state, bool first, CellId klass);
+
+/// Flattens the direct instances of `klass` in `parent` of circuit
+/// `first`, unless that passes the device limit (flatten_exceeds_limit):
+/// then nothing changes, `state.stop` is set and the result is nullopt.
+std::optional<std::size_t> flatten_bounded(RunState& state, bool first, CellId parent, CellId klass);
 
 /// "Preparing a cell pair", steps 1 to 5 (duplicate and shorted pins,
 /// globals to ports, black boxes, unmatched subcells, pre-match).

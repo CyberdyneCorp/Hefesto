@@ -586,3 +586,46 @@ TEST_CASE("The depth limit can be lowered but not raised past 512", "[cap:lvs-hi
   options.hierarchy_depth = 512;
   CHECK_FALSE(run(chain(4), chain(4), options).input_error);
 }
+
+namespace {
+
+/// `levels` subcircuits, each holding two instances of the next: flattening
+/// the top doubles its instances per level (2^levels resistors in all).
+std::string doubling(std::size_t levels) {
+  std::string text = ".subckt c" + std::to_string(levels) + " a b\nR1 a b 1k\n.ends\n";
+  for (std::size_t k = levels; k-- > 0;) {
+    const std::string next = "c" + std::to_string(k + 1);
+    text += ".subckt c" + std::to_string(k) + " a b\nX1 a n " + next + "\nX2 n b " + next + "\n.ends\n";
+  }
+  return text;
+}
+
+}  // namespace
+
+TEST_CASE("Flattening a doubling hierarchy stops at the device limit",
+          "[cap:lvs-hierarchy][req:Hierarchy depth limit]") {
+  // Regression (M9 R3 review): flattening during the run had no device cap,
+  // so 30 doubling levels against a flat circuit grew to 2^30 devices.
+  CHECK(lvs::RunOptions{}.device_limit == lvs::kMaxDevicesPerRun);
+  for (const bool compat : {true, false}) {
+    lvs::RunOptions options;
+    options.netgen_compat = compat;
+    options.device_limit = 1000;  // lowered so that the test stays small
+    const auto result = run(doubling(30), ".subckt c0 a b\nR1 a b 1k\n.ends\n", options);
+    CHECK(result.input_error);
+    CHECK_FALSE(result.cancelled);
+    REQUIRE_FALSE(result.diagnostics.empty());
+    CHECK(result.diagnostics.back().code == lvs::hier_codes::kDeviceLimit);
+    CHECK(contains(result.diagnostics.back().text, "limit of 1000 devices"));
+  }
+}
+
+TEST_CASE("The flatten device limit cannot be raised", "[cap:lvs-hierarchy][req:Hierarchy depth limit]") {
+  auto c = circuit(doubling(2), "one.spice");
+  const auto top = cell_id(c, "c0");
+  const auto klass = cell_id(c, "c1");
+  CHECK(lvs::flatten_exceeds_limit(c.db, top, klass, 3));
+  CHECK_FALSE(lvs::flatten_exceeds_limit(c.db, top, klass, 4));
+  CHECK_FALSE(lvs::flatten_exceeds_limit(c.db, top, klass, lvs::kMaxDevicesPerRun * 2));
+  CHECK_FALSE(lvs::flatten_exceeds_limit(c.db, top, top, 0));  // the cell itself is never flattened
+}

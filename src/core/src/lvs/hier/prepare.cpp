@@ -10,6 +10,7 @@
 //
 // Owner: LVSHIER.
 
+#include <algorithm>
 #include <map>
 #include <optional>
 
@@ -47,16 +48,32 @@ std::optional<CellId> unmatched_class(const RunState& state, bool first, CellId 
 
 }  // namespace
 
+std::optional<std::size_t> flatten_bounded(RunState& state, bool first, CellId parent, CellId klass) {
+  NetlistDb& db = state.db(first);
+  const std::uint64_t limit = std::min(state.options.device_limit, kMaxDevicesPerRun);
+  if (flatten_exceeds_limit(db, parent, klass, limit)) {
+    state.stop = diag::make(hier_codes::kDeviceLimit, "Flattening " + db.cells[klass].name + " in " +
+                                                          db.cells[parent].name + " would exceed the limit of " +
+                                                          std::to_string(limit) + " devices in a cell.");
+    return std::nullopt;
+  }
+  return flatten_instances(db, parent, klass);
+}
+
 void flatten_unmatched(RunState& state, bool first, CellId cell) {
   NetlistDb& db = state.db(first);
   // Each class is flattened once per round; flattening exposes the next
   // level, so the rounds are bounded by the hierarchy depth.
   for (std::size_t round = 0; round <= state.options.hierarchy_depth * 4; ++round) {
-    const auto klass = unmatched_class(state, first, cell);
+    const auto klass = state.halted() ? std::nullopt : unmatched_class(state, first, cell);
     if (!klass) {
       return;
     }
-    const std::size_t n = flatten_instances(db, cell, *klass);
+    const auto flattened = flatten_bounded(state, first, cell, *klass);
+    if (!flattened) {
+      return;
+    }
+    const std::size_t n = *flattened;
     state.log("Flattening unmatched subcell " + db.cells[*klass].name + " in circuit " + db.cells[cell].name + " (" +
               std::to_string(db.cells[cell].file) + ")" + instances_text(n));
   }
@@ -216,7 +233,9 @@ class PreMatch {
   void flatten(bool first, CellId klass) {
     const CellId parent = first ? cell1_ : cell2_;
     NetlistDb& db = state_.db(first);
-    flatten_instances(db, parent, klass);
+    if (!flatten_bounded(state_, first, parent, klass)) {
+      return;
+    }
     state_.log("Flattening instances of " + db.cells[klass].name + " in cell " + db.cells[parent].name + " (" +
                std::to_string(db.cells[parent].file) + ") makes a better match");
   }
@@ -277,7 +296,7 @@ void prepare_pair(RunState& state, CellId cell1, CellId cell2, bool top) {
   flatten_unmatched(state, true, cell1);
   flatten_unmatched(state, false, cell2);
   for (std::size_t round = 0; round <= state.options.hierarchy_depth * 4; ++round) {
-    if (!prematch_round(state, cell1, cell2, top)) {
+    if (state.halted() || !prematch_round(state, cell1, cell2, top)) {
       return;
     }
     state.log("Making another compare attempt.");

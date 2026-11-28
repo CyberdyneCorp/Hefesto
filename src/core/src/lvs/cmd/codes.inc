@@ -14,7 +14,7 @@ HEFESTO_LVS_CODE("LVS-CMD-002", error, "`lvs` usage error: wrong number of names
 HEFESTO_LVS_CODE("LVS-CMD-003", error, "A netlist of the `lvs` command cannot be found or read; the run ends as an input error.")
 HEFESTO_LVS_CODE("LVS-CMD-004", error, "`Both cells are in the same netlist:  Cannot compare!`")
 HEFESTO_LVS_CODE("LVS-CMD-005", error, "`Cannot find cell <cell> in file <file>`")
-HEFESTO_LVS_CODE("LVS-CMD-006", error, "The setup file could not be read or evaluated; the run ends as an input error.")
+HEFESTO_LVS_CODE("LVS-CMD-006", error, "Retired (M9 R3): a setup file that cannot be read or evaluated ends the run with its LVS-SETUP-* code (input error, headless status 2).")
 HEFESTO_LVS_CODE("LVS-CMD-007", error, "The log file or the JSON file of the `lvs` command could not be written.")
 HEFESTO_LVS_CODE("LVS-CMD-008", error, "An LVS run is already in progress for this document.")
 HEFESTO_LVS_CODE("LVS-CMD-009", warning, "Retired (M9 R3): a setup file that does not exist ends the run with LVS-SETUP-002 (lvs-setup-file \"Setup file evaluation\").")
