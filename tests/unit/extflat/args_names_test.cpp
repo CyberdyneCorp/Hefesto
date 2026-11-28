@@ -12,6 +12,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include "ext_fixture.hpp"
@@ -36,12 +37,12 @@ hefesto::diag::Outcome<extflat::CommonArgs> parse(const Strings& args, const ext
 // A tool that takes -o and -T, reading -S files from `files`.
 extflat::ArgOptions all_flags(const std::map<std::string, std::string>& files = {}) {
   extflat::ArgOptions options{true, true, {}};
-  options.read_file = [files](const std::string& path) -> hefesto::diag::Outcome<std::string> {
+  options.read_file = [files](const std::string& path) -> hefesto::platform::StreamRead {
     const auto it = files.find(path);
     if (it == files.end()) {
-      return hefesto::diag::make(hefesto::diag::codes::kPlatformNotFound, "no such file '" + path + "'");
+      return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
     }
-    return it->second;
+    return {it->second, {}};
   };
   return options;
 }

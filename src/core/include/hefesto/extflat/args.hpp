@@ -30,10 +30,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/outcome.hpp"
-
-namespace hefesto::platform {
-class FileSystem;
-}
+#include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::extflat {
 
@@ -67,8 +64,9 @@ struct CommonArgs {
 /// `flag + 1`), or nullopt when the flag is not recognised either.
 using ExtraFlags = std::function<std::optional<std::size_t>(std::span<const std::string> args, std::size_t flag)>;
 
-/// Reads a whole file, or gives the read error (platform::FileSystem::read).
-using FileRead = std::function<diag::Outcome<std::string>(const std::string& path)>;
+/// Reads a whole file as fopen does, or gives the errno of the failed open
+/// (platform::FileSystem::read_stream).
+using FileRead = std::function<platform::StreamRead(const std::string& path)>;
 
 /// What a tool adds to EFArgs.
 struct ArgOptions {
@@ -78,9 +76,10 @@ struct ArgOptions {
   /// `-T techname`: the standalone build only (EFargs.c `#ifndef
   /// MAGIC_WRAPPER`); without it `-T` goes to `extra`.
   bool tech = false;
-  /// Reads a `-S` file whole; the read error when it cannot be opened,
-  /// printed as `<file>: <OS error text>` (Magic's perror; the text comes
-  /// from platform::os_error_text). Unset, no file can be opened.
+  /// Reads a `-S` file whole; when it cannot be opened, the errno is
+  /// printed as `<file>: <strerror text>` (Magic's perror). A directory
+  /// reads as empty, as fopen opens it and fgets reads nothing. Unset, no
+  /// file can be opened.
   FileRead read_file{};
 };
 

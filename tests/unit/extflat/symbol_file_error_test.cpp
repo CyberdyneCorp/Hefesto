@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// M7 round 6 (tasks.md 10.6): a `-S` symbol file that cannot be read is
-// reported with the operating system's reason, as Magic's perror does
-// (extflat/EFsym.c:104-108; Q-NETLIST-58). Owner: EXTFLAT.
+// M7 round 6 (tasks.md 10.6): a `-S` symbol file that fopen cannot open is
+// reported with the errno text, as Magic's perror does; a directory opens
+// and reads nothing (extflat/EFsym.c:104-118; Q-NETLIST-58). Owner: EXTFLAT.
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <filesystem>
-#include <map>
 #include <random>
 #include <span>
 #include <string>
@@ -27,18 +26,22 @@ using Strings = std::vector<std::string>;
 
 namespace {
 
-/// A file system whose reads fail as the local one does for each errno.
+/// A file system whose fopen fails with the errno each name stands for;
+/// "folder" is a directory, which fopen opens and reads nothing from.
 class FailingFileSystem final : public platform::FileSystem {
  public:
   diag::Outcome<std::string> read(const platform::Path& path) override {
+    return diag::make(diag::codes::kPlatformRead, "cannot read '" + path.generic_string() + "'");
+  }
+  platform::StreamRead read_stream(const platform::Path& path) override {
     const std::string p = path.generic_string();
-    if (p == "missing") {
-      return diag::make(diag::codes::kPlatformNotFound, "no such file '" + p + "'");
+    if (p == "folder") {
+      return {};
     }
-    const std::errc reason = p == "locked" ? std::errc::permission_denied : std::errc::is_a_directory;
-    const std::string what = p == "locked" ? "cannot read" : "not a regular file";
-    return diag::make(diag::codes::kPlatformRead,
-                      what + " '" + p + "': " + std::make_error_code(reason).message());
+    const std::errc reason = p == "locked"   ? std::errc::permission_denied
+                             : p == "a/file" ? std::errc::not_a_directory
+                                             : std::errc::no_such_file_or_directory;
+    return {{}, std::make_error_code(reason)};
   }
   diag::Status write_atomic(const platform::Path&, std::string_view) override { return diag::Done{}; }
   diag::Status append(const platform::Path&, std::string_view) override { return diag::Done{}; }
@@ -50,6 +53,25 @@ class FailingFileSystem final : public platform::FileSystem {
   diag::Status create_directories(const platform::Path&) override { return diag::Done{}; }
   diag::Status rename(const platform::Path&, const platform::Path&) override { return diag::Done{}; }
   diag::Status remove(const platform::Path&) override { return diag::Done{}; }
+};
+
+class ScratchDir {
+ public:
+  ScratchDir() {
+    std::random_device rd;
+    path_ = std::filesystem::temp_directory_path() / ("hefesto-syms-" + std::to_string(rd()));
+    std::filesystem::create_directories(path_);
+  }
+  ScratchDir(const ScratchDir&) = delete;
+  ScratchDir& operator=(const ScratchDir&) = delete;
+  ~ScratchDir() {
+    std::error_code ec;
+    std::filesystem::remove_all(path_, ec);
+  }
+  [[nodiscard]] const std::filesystem::path& path() const { return path_; }
+
+ private:
+  std::filesystem::path path_;
 };
 
 Strings symbol_file_messages(platform::FileSystem& fs, const std::string& file) {
@@ -73,17 +95,27 @@ TEST_CASE("an unreadable -S file is reported with the OS error text",
   CHECK(symbol_file_messages(fs, "missing") == Strings{"missing: No such file or directory"});
   CHECK(symbol_file_messages(fs, "locked") ==
         Strings{"locked: " + std::make_error_code(std::errc::permission_denied).message()});
-  CHECK(symbol_file_messages(fs, "folder") ==
-        Strings{"folder: " + std::make_error_code(std::errc::is_a_directory).message()});
+  CHECK(symbol_file_messages(fs, "a/file") ==
+        Strings{"a/file: " + std::make_error_code(std::errc::not_a_directory).message()});
+  CHECK(symbol_file_messages(fs, "folder").empty());
 }
 
-TEST_CASE("a -S directory read through the local file system says it is a directory",
+// Regression (review of PR #141): fopen opens a directory and fgets reads
+// nothing from it, so Magic prints nothing and adds no symbol; the earlier
+// fix printed `<dir>: Is a directory`. Compat-neutral (Q-NETLIST-58).
+TEST_CASE("a -S directory read through the local file system adds nothing and says nothing",
           "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
-  std::random_device rd;
-  const auto dir = std::filesystem::temp_directory_path() / ("hefesto-syms-" + std::to_string(rd()));
-  std::filesystem::create_directories(dir);
+  ScratchDir dir;
   platform::LocalFileSystem fs;
-  const Strings messages = symbol_file_messages(fs, dir.string());
-  std::filesystem::remove_all(dir);
-  CHECK(messages == Strings{dir.string() + ": " + std::make_error_code(std::errc::is_a_directory).message()});
+  CHECK(symbol_file_messages(fs, dir.path().string()).empty());
+}
+
+TEST_CASE("a -S path through a plain file is reported as not a directory",
+          "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+  ScratchDir dir;
+  platform::LocalFileSystem fs;
+  REQUIRE(fs.write_atomic(dir.path() / "plain", "x=1\n").ok());
+  const std::string through = (dir.path() / "plain" / "syms").string();
+  CHECK(symbol_file_messages(fs, through) ==
+        Strings{through + ": " + std::make_error_code(std::errc::not_a_directory).message()});
 }

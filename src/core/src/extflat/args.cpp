@@ -118,20 +118,20 @@ void ArgParser::add_symbol_arg(const std::string& text) {
 
 // efSymAddFile: each line as a `-s` argument, a rejected one followed by
 // its line number. A file that cannot be opened is reported (perror: the
-// OS reason, e.g. `Permission denied`) and the parse goes on.
+// errno text, e.g. `Permission denied`) and the parse goes on; a directory
+// opens and reads nothing, so it adds no symbols and prints nothing.
 void ArgParser::add_symbol_file(const std::string& name) {
   out_.symbol_file = name;
   if (!options_.read_file) {
     warn(name + ": No such file or directory");
     return;
   }
-  const diag::Outcome<std::string> text = options_.read_file(name);
-  if (!text.ok()) {
-    const std::string reason = platform::os_error_text(text.error());
-    warn(name + ": " + (reason.empty() ? std::string{"No such file or directory"} : reason));
+  const platform::StreamRead file = options_.read_file(name);
+  if (file.error) {
+    warn(name + ": " + file.error.message());
     return;
   }
-  const std::string& body = text.value();
+  const std::string& body = file.text;
   std::size_t start = 0;
   for (int line = 1; start < body.size(); ++line) {
     const std::size_t end = std::min(body.find('\n', start), body.size());
@@ -277,7 +277,7 @@ std::string_view common_args_usage() noexcept {
 }
 
 FileRead file_reader(platform::FileSystem& fs) {
-  return [&fs](const std::string& path) { return fs.read(platform::Path{path}); };
+  return [&fs](const std::string& path) { return fs.read_stream(platform::Path{path}); };
 }
 
 std::optional<std::string> add_symbol(SymbolTable& symbols, std::string_view assignment) {

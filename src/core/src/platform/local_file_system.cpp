@@ -127,12 +127,14 @@ std::optional<diag::Diagnostic> open_regular(const Path& path, std::ifstream& in
 
 }  // namespace
 
-std::string os_error_text(const diag::Diagnostic& error) {
-  if (error.code == codes::kPlatformNotFound) {
-    return std::make_error_code(std::errc::no_such_file_or_directory).message();
+StreamRead FileSystem::read_stream(const Path& path) {
+  auto text = read(path);
+  if (text.ok()) {
+    return StreamRead{std::move(text).value(), {}};
   }
-  const std::size_t at = error.text.rfind("': ");
-  return at == std::string::npos ? std::string{} : error.text.substr(at + 3);
+  const std::errc reason =
+      text.error().code == codes::kPlatformNotFound ? std::errc::no_such_file_or_directory : std::errc::io_error;
+  return StreamRead{{}, std::make_error_code(reason)};
 }
 
 diag::Outcome<std::string> FileSystem::read_at_most(const Path& path, std::size_t max_bytes) {
@@ -164,6 +166,30 @@ diag::Outcome<std::string> LocalFileSystem::read_at_most(const Path& path, std::
     return io_error(codes::kPlatformRead, "cannot read", path);
   }
   return text;
+}
+
+StreamRead LocalFileSystem::read_stream(const Path& path) {
+  std::error_code ec;
+  const fs::file_status status = fs::status(path, ec);
+  if (!ec && fs::exists(status) && !fs::is_regular_file(status)) {
+    return {};  // a directory, device or FIFO: nothing is read (see the header)
+  }
+  errno = 0;
+  const UniqueFile file{std::fopen(path.string().c_str(), "rb")};
+  if (!file) {
+    const int err = errno;  // ENOENT, ENOTDIR, EACCES, ... as perror reports it
+    return StreamRead{{}, std::error_code{err != 0 ? err : EIO, std::generic_category()}};
+  }
+  StreamRead out;
+  char chunk[1U << 14U];
+  std::size_t got = 0;
+  while ((got = std::fread(chunk, 1, sizeof chunk, file.get())) > 0) {
+    out.text.append(chunk, got);
+  }
+  if (std::ferror(file.get()) != 0) {
+    out.error = std::make_error_code(std::errc::io_error);
+  }
+  return out;
 }
 
 diag::Outcome<std::string> LocalFileSystem::read(const Path& path) {

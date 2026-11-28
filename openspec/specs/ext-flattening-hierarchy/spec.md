@@ -69,7 +69,7 @@ For `-t`, each character in `<chars>` turns on one conversion:
 
 A non-flag argument SHALL be taken as the root cell name. A later one replaces an earlier one, with a warning. The default thresholds are 2 fF and 10 Ω. Infinite means a capacitance of 1.0E38 and a resistance of 2^31 − 1. An unrecognized flag that the tool does not accept SHALL print the usage text and fail the command. `-T` SHALL be accepted only by the standalone programs (`hefesto-extcheck`); the embedded `ext2spice` and `ext2sim` pass it to their own flag parser, which answers `Unrecognized flag: -T`. `-o` is a flag of `ext2spice` and `ext2sim` only; `hefesto-extcheck` answers it with the usage text. `-h` SHALL first be passed to the tool's own flag parser (`ext2spice` prints its usage text, `ext2sim` prints `Unrecognized flag: -h` and its usage text) and then print the common usage text and fail. These rules for `-T`, `-o` and `-h` are Magic's and hold in both `magic-compat` settings (Q-NETLIST-55, Q-NETLIST-56, resolution: compat-neutral), as do the messages EFArgs prints while it parses (Q-NETLIST-57). When the tool's own flag parser rejects a flag, an empty line SHALL be printed before the common usage text; a tool with no flag parser of its own prints the usage text without it in both `magic-compat` settings (EFargs.c:288-291).
 
-The `-s` and `-S` symbols SHALL be collected in argument order into one table for the run; a rejected assignment (no `=`, a value that is not an integer, or a symbol already defined) is reported and skipped, and a rejected line of a `-S` file is followed by `Error at line <n> of <file>`. A `-S` file that cannot be opened is reported as `<file>: <the operating system's error text>` (Magic's perror: `No such file or directory`, `Permission denied`, `Is a directory`) and the parse goes on, in both `magic-compat` settings (Q-NETLIST-58, compat-neutral; the text comes through `platform::FileSystem::read`, m7-extraction task 10.6). The table, the run's capacitance threshold (after `-c`/`-C`) and the `gnd` name SHALL be passed to the flattening of every netlister, so `ext:l=`/`ext:w=` attributes naming a symbol resolve and efFlatSingleCap's unresolved-name messages follow the run's threshold.
+The `-s` and `-S` symbols SHALL be collected in argument order into one table for the run; a rejected assignment (no `=`, a value that is not an integer, or a symbol already defined) is reported and skipped, and a rejected line of a `-S` file is followed by `Error at line <n> of <file>`. A `-S` file that cannot be opened is reported as `<file>: <the operating system's error text>` (Magic's perror of the failed fopen: `No such file or directory`, `Permission denied`, `Not a directory`) and the parse goes on; a `-S` path that names a directory, or anything else that exists but is not a regular file, adds no symbols and prints nothing, as fopen opens a directory and fgets reads nothing from it. Both hold in both `magic-compat` settings (Q-NETLIST-58, compat-neutral; the errno comes through `platform::FileSystem::read_stream`, m7-extraction task 10.6). The table, the run's capacitance threshold (after `-c`/`-C`) and the `gnd` name SHALL be passed to the flattening of every netlister, so `ext:l=`/`ext:w=` attributes naming a symbol resolve and efFlatSingleCap's unresolved-name messages follow the run's threshold.
 Compatibility: behavioral
 (Magic ref: extflat/EFargs.c:46-58, extflat/EFargs.c:100-345, extflat/EFsym.c:80-170, extflat/EFtypes.h:308-310)
 
@@ -84,9 +84,14 @@ Compatibility: behavioral
 - **THEN** `Missing '=' in symbol assignment` and `Error at line 2 of syms` are printed and the flattening sees the symbols `L=4` and `W=7`
 
 #### Scenario: An unreadable -S file is reported with the OS error text
-- **GIVEN** `locked` is a file the user may not read and `folder` is a directory
-- **WHEN** `ext2spice -S locked top` runs, then `ext2spice -S folder top`
-- **THEN** `locked: Permission denied` and then `folder: Is a directory` are printed, and each run goes on with the root cell `top`
+- **GIVEN** `locked` is a file the user may not read and `plain` is a regular file
+- **WHEN** `ext2spice -S locked top` runs, then `ext2spice -S plain/syms top`
+- **THEN** `locked: Permission denied` and then `plain/syms: Not a directory` are printed, and each run goes on with the root cell `top`
+
+#### Scenario: A -S directory adds nothing and prints nothing
+- **GIVEN** `folder` is a directory
+- **WHEN** `ext2spice -S folder top` runs, with `magic-compat` on or off
+- **THEN** no message is printed, no symbol is added, and the run goes on with the root cell `top`
 
 #### Scenario: -h runs the tool's parser first
 - **WHEN** `ext2sim -h` runs

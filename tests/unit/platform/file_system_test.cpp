@@ -11,6 +11,7 @@
 #include <random>
 #include <string>
 #include <system_error>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "hefesto/diag/codes.hpp"
@@ -58,7 +59,6 @@ TEST_CASE("a local read of a directory ends in the OS text 'Is a directory'", FS
     CHECK(result.error().code == codes::kPlatformRead);
     CHECK(result.error().text == "not a regular file '" + dir.path().generic_string() + "': " +
                                      reason(std::errc::is_a_directory));
-    CHECK(platform::os_error_text(result.error()) == reason(std::errc::is_a_directory));
   }
 }
 
@@ -75,19 +75,39 @@ TEST_CASE("a local read of a file without read permission ends in the OS text", 
   REQUIRE_FALSE(result.ok());
   CHECK(result.error().code == codes::kPlatformRead);
   CHECK(result.error().text == "cannot read '" + file.generic_string() + "': " + reason(std::errc::permission_denied));
-  CHECK(platform::os_error_text(result.error()) == reason(std::errc::permission_denied));
+  const platform::StreamRead stream = local.read_stream(file);
+  CHECK(stream.error == std::make_error_code(std::errc::permission_denied));
+  CHECK(stream.text.empty());
 }
 
-TEST_CASE("a missing file keeps its message and gives the ENOENT text", FS_TAGS) {
+TEST_CASE("a stream read gives the text or the errno of the failed fopen", FS_TAGS) {
   ScratchDir dir;
   platform::LocalFileSystem local;
   platform::MemoryFileSystem memory;
   for (platform::FileSystem* fs : {static_cast<platform::FileSystem*>(&local), static_cast<platform::FileSystem*>(&memory)}) {
-    const auto result = fs->read(dir.path() / "nope");
-    REQUIRE_FALSE(result.ok());
-    CHECK(result.error().code == codes::kPlatformNotFound);
-    CHECK(result.error().text == "no such file '" + (dir.path() / "nope").generic_string() + "'");
-    CHECK(platform::os_error_text(result.error()) == reason(std::errc::no_such_file_or_directory));
+    REQUIRE(fs->write_atomic(dir.path() / "syms", "a=1\nb=2\n").ok());
+    const platform::StreamRead ok = fs->read_stream(dir.path() / "syms");
+    CHECK_FALSE(ok.error);
+    CHECK(ok.text == "a=1\nb=2\n");
+    const auto missing = fs->read_stream(dir.path() / "nope");
+    CHECK(missing.error == std::make_error_code(std::errc::no_such_file_or_directory));
+    CHECK(fs->read(dir.path() / "nope").error().text == "no such file '" + (dir.path() / "nope").generic_string() + "'");
+    // fopen opens a directory and reads nothing from it: no error.
+    const auto folder = fs->read_stream(dir.path());
+    CHECK_FALSE(folder.error);
+    CHECK(folder.text.empty());
   }
-  CHECK(platform::os_error_text(hefesto::diag::make(codes::kPlatformRead, "cannot read 'x'")).empty());
+  // A path through a plain file: fopen's ENOTDIR, not ENOENT.
+  const auto through = local.read_stream(dir.path() / "syms" / "x");
+  CHECK(through.error == std::make_error_code(std::errc::not_a_directory));
+}
+
+TEST_CASE("a stream read of a FIFO does not wait for a writer", FS_TAGS) {
+  ScratchDir dir;
+  const fs::path fifo = dir.path() / "pipe";
+  REQUIRE(::mkfifo(fifo.c_str(), 0600) == 0);
+  platform::LocalFileSystem local;
+  const auto read = local.read_stream(fifo);
+  CHECK_FALSE(read.error);
+  CHECK(read.text.empty());
 }

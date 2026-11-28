@@ -300,7 +300,8 @@ release notices.
   picking) visit only the elements under the search area instead of
   every element; a 10^6-element array no longer hangs.
 - An unreadable `-S` symbol file is reported with the OS reason
-  (`Permission denied`, `Is a directory`), as Magic does.
+  (`Permission denied`, `Not a directory`), as Magic does; a `-S`
+  directory adds no symbols and prints nothing, as in Magic.
 - `lef write` and `def write` use the selected extract style (`extract
   style`), as Magic, instead of the technology's first style.
 - A netlister flag the tool rejects (`ext2spice -T`) is followed by an
