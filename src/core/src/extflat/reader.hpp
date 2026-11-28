@@ -32,7 +32,10 @@ namespace hefesto::extflat::detail {
 
 /// efReadDef's search for `<name><suffix>`: the `-p` path, the loaded
 /// cell's directory, then the cell search path when no `-p` path was given.
+/// A candidate is a file whose size the file system reports (fopen of
+/// PaOpen; one query per candidate); the found file's size goes to `size`.
 [[nodiscard]] std::optional<std::string> find_ext_file(const ReadOptions& options, cell::LookupContext& ctx,
-                                                       std::string_view name, std::string_view suffix);
+                                                       std::string_view name, std::string_view suffix,
+                                                       std::uint64_t* size = nullptr);
 
 }  // namespace hefesto::extflat::detail

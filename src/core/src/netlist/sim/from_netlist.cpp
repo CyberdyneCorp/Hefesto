@@ -37,7 +37,10 @@ HierName split(const std::string& name) {
 std::string joined(const HierName& name) {
   std::string out;
   for (const std::string& part : name) {
-    out += (out.empty() ? "" : "/") + part;
+    if (!out.empty()) {
+      out += '/';
+    }
+    out += part;
   }
   return out;
 }
@@ -88,6 +91,7 @@ std::string attribute_text(const std::vector<std::string>& attributes) {
 
 std::vector<AreaPerim> area_perim(const std::vector<std::pair<std::int32_t, std::int32_t>>& pairs) {
   std::vector<AreaPerim> out;
+  out.reserve(pairs.size());
   for (const auto& [area, perim] : pairs) {
     out.push_back(AreaPerim{area, perim});
   }

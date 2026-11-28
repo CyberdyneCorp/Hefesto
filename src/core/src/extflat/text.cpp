@@ -6,6 +6,7 @@
 
 #include "text.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
@@ -244,26 +245,49 @@ std::optional<LineReader::OwnedLine> LineReader::next() {
 
 namespace {
 
+// The bytes efReadLine's token loop treats specially: white space, the
+// double quote and the backslash.
+constexpr std::array<bool, 256> kSpecial = [] {
+  std::array<bool, 256> t{};
+  for (const char c : std::string_view{" \t\n\v\f\r\"\\"}) {
+    t[static_cast<unsigned char>(c)] = true;
+  }
+  return t;
+}();
+
+// The end of the run of ordinary bytes from `get`.
+std::size_t ordinary_run(std::string_view line, std::size_t get) noexcept {
+  while (get < line.size() && !kSpecial[static_cast<unsigned char>(line[get])]) {
+    ++get;
+  }
+  return get;
+}
+
 // The characters of one token from `get` (efReadLine's inner loop),
 // written from `dst`; returns the end of the token. `get` is left on the
-// terminating character.
+// terminating character. Runs of ordinary bytes are copied at once.
 char* scan_token(std::string_view line, std::size_t& get, char* dst) {
   const std::size_t n = line.size();
   bool inquote = false;
-  for (; get < n; ++get) {
+  while (get < n) {
+    const std::size_t run = ordinary_run(line, get);
+    dst = std::copy(line.begin() + static_cast<std::ptrdiff_t>(get), line.begin() + static_cast<std::ptrdiff_t>(run), dst);
+    get = run;
+    if (get == n) {
+      break;
+    }
     const char c = line[get];
     if (c == '"') {
       inquote = !inquote;
-      continue;
-    }
-    if (!inquote && c_isspace(c)) {
-      break;
-    }
-    if (c == '\\' && get + 1 == n) {
+    } else if (c == '\\' && get + 1 == n) {
       ++get;  // a backslash at the end of the line is dropped
       break;
+    } else if (c != '\\' && !inquote) {
+      break;  // white space ends the token
+    } else {
+      *dst++ = c;  // a backslash, or white space inside quotes
     }
-    *dst++ = c;
+    ++get;
   }
   return dst;
 }

@@ -40,16 +40,29 @@ bool opens_directly(std::string_view file) noexcept {
   return file.starts_with("/") || file.starts_with("./") || file.starts_with("../");
 }
 
+// Whether `file` is a file the read can open, with its size in `size`
+// (the size the read checks against ReadLimits::max_file_bytes, asked once).
+bool probe(cell::LookupContext& ctx, const std::string& file, std::uint64_t* size) {
+  const auto s = ctx.fs.size(file);
+  if (!s.ok()) {
+    return false;
+  }
+  if (size != nullptr) {
+    *size = s.value();
+  }
+  return true;
+}
+
 // PaOpen without the library path: `file` itself when it is a path, else
 // the first `<dir>/<file>` of `path` that exists.
 std::optional<std::string> search(cell::LookupContext& ctx, const std::string& file,
-                                  const std::vector<std::string>& path) {
+                                  const std::vector<std::string>& path, std::uint64_t* size) {
   if (opens_directly(file)) {
-    return ctx.fs.exists(file) ? std::optional{file} : std::nullopt;
+    return probe(ctx, file, size) ? std::optional{file} : std::nullopt;
   }
   if (file.starts_with("~") || file.starts_with("$")) {
     const auto expanded = cell::expand_entry(file, ctx.vars);
-    return expanded && ctx.fs.exists(*expanded) ? expanded : std::nullopt;
+    return expanded && probe(ctx, *expanded, size) ? expanded : std::nullopt;
   }
   for (const std::string& entry : path) {
     const auto dir = cell::expand_entry(entry, ctx.vars);
@@ -57,7 +70,7 @@ std::optional<std::string> search(cell::LookupContext& ctx, const std::string& f
       continue;
     }
     std::string candidate = dir->empty() ? file : *dir + "/" + file;
-    if (ctx.fs.exists(candidate)) {
+    if (probe(ctx, candidate, size)) {
       return candidate;
     }
   }
@@ -460,9 +473,8 @@ std::vector<std::uint32_t> children_of(const Def& def) {
 // Reads one found file into `reader`; false (with the failure noted) when
 // it cannot be read.
 bool read_file(ReadState& st, cell::LookupContext& ctx, FileReader& reader, const std::string& path,
-               std::string_view name) {
-  const auto size = ctx.fs.size(path);
-  if (size.ok() && size.value() > st.options.limits.max_file_bytes) {
+               std::string_view name, std::uint64_t size) {
+  if (size > st.options.limits.max_file_bytes) {
     st.fail(codes::kLimit, path + ": file larger than " + std::to_string(st.options.limits.max_file_bytes) + " bytes");
     return false;
   }
@@ -480,10 +492,11 @@ bool read_file(ReadState& st, cell::LookupContext& ctx, FileReader& reader, cons
 // loop again), then the deferred equivs.
 void read_overlay(ReadState& st, cell::LookupContext& ctx, FileReader& reader, const Def& def) {
   if (st.options.resist_overlay && !st.fatal) {
-    if (const auto overlay = find_ext_file(st.options, ctx, def.name, ".res.ext")) {
+    std::uint64_t size = 0;
+    if (const auto overlay = find_ext_file(st.options, ctx, def.name, ".res.ext", &size)) {
       st.res_names.emplace();
       st.reading_overlay = true;
-      (void)read_file(st, ctx, reader, *overlay, def.name);
+      (void)read_file(st, ctx, reader, *overlay, def.name, size);
       st.reading_overlay = false;
     }
   }
@@ -497,13 +510,14 @@ DefRead read_def(ReadState& st, cell::LookupContext& ctx, std::uint32_t id, bool
   Def& def = st.defs.at(id);
   def.available = true;
   def.graph.set_compat_attrs(st.magic_compat());
-  const auto path = find_ext_file(st.options, ctx, def.name, ".ext");
+  std::uint64_t size = 0;
+  const auto path = find_ext_file(st.options, ctx, def.name, ".ext", &size);
   if (!path) {
     st.note_failure(cannot_read(def.name));
     return result;
   }
   FileReader reader{st, def, dosubckt, toplevel};
-  if (!read_file(st, ctx, reader, *path, def.name)) {
+  if (!read_file(st, ctx, reader, *path, def.name, size)) {
     return result;
   }
   result.found = true;
@@ -546,23 +560,23 @@ bool read_next_child(ReadState& st, cell::LookupContext& ctx, std::vector<Frame>
 // efReadDef's three places: the -p path, the loaded cell's directory, and
 // the cell search path when no -p path was given.
 std::optional<std::string> find_ext_file(const ReadOptions& options, cell::LookupContext& ctx, std::string_view name,
-                                         std::string_view suffix) {
+                                         std::string_view suffix, std::uint64_t* size) {
   const std::string file = std::string{name} + std::string{suffix};
   const auto& p = options.search_path;
   if (!p.empty()) {
-    if (auto found = search(ctx, file, p)) {
+    if (auto found = search(ctx, file, p, size)) {
       return found;
     }
   }
   if (options.cell_directory) {
     if (const auto dir = options.cell_directory(name)) {
-      if (auto found = search(ctx, file, {*dir})) {
+      if (auto found = search(ctx, file, {*dir}, size)) {
         return found;
       }
     }
   }
   if (p.empty()) {
-    return search(ctx, file, ctx.paths.path);
+    return search(ctx, file, ctx.paths.path, size);
   }
   return std::nullopt;
 }
