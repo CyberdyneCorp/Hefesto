@@ -20,7 +20,7 @@ namespace shell = hefesto::shell;
 
 #define CAPTURE_RUNNING_TAGS "[cap:hefesto-app-ux][req:Main window layout]"
 
-TEST_CASE("--capture-running arms only once the --input script starts", CAPTURE_RUNNING_TAGS) {
+TEST_CASE("capture-running arms only once the --input script starts", CAPTURE_RUNNING_TAGS) {
   shell::InputPlayer player(shell::parse_input_script("wait 500; down 10,10; up 10,10; wait 500").steps);
   // The --run script (load) runs before the first step: no capture yet.
   CHECK_FALSE(player.started());
@@ -33,7 +33,7 @@ TEST_CASE("--capture-running arms only once the --input script starts", CAPTURE_
   CHECK(shell::capture_running_armed(&player));
 }
 
-TEST_CASE("--capture-running without --input arms at once", CAPTURE_RUNNING_TAGS) {
+TEST_CASE("capture-running without an input script arms at once", CAPTURE_RUNNING_TAGS) {
   CHECK(shell::capture_running_armed(nullptr));
 }
 
