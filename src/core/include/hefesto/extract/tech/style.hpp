@@ -429,6 +429,13 @@ class ExtStyle {
   /// when already converted. The second form reports the zero-step reset.
   [[nodiscard]] ExtStyle micron_convert(const mask::OutputStyle* style) const;
   [[nodiscard]] ExtStyle micron_convert(const mask::OutputStyle* style, diag::DiagnosticSink& sink) const;
+  /// micron_convert() of a cifoutput style as installed on a grid of
+  /// `internal` units per `lambda`: the style is first taken back to the
+  /// lambda grid (ExtLoadStyle's CIFTechOutputScale(DBLambda[1],
+  /// DBLambda[0]); TechLoad converts with the cifoutput style as read,
+  /// before scaling it), so dscale is microns per lambda on any grid.
+  [[nodiscard]] ExtStyle micron_convert(const mask::OutputStyle* style, std::int64_t lambda, std::int64_t internal,
+                                        const compat::CompatSettings& compat, diag::DiagnosticSink& sink) const;
 
   friend bool operator==(const ExtStyle&, const ExtStyle&) = default;
 

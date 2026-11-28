@@ -228,3 +228,40 @@ TEST_CASE("extract options other than style and help need a window",
   CHECK(result.diagnostics.front().text == "Point to a window first");
   CHECK(s.run("extract style").ok());
 }
+
+namespace {
+
+// A technology whose extract style is in microns and whose cifoutput style
+// has 0.5 micron per lambda.
+std::string micron_tech() {
+  return "tech\n format 35\n microntech\nend\n"
+         "planes\n active,a\n metal1,m1\nend\n"
+         "types\n active ndiff,nd\n active poly,p\n active nfet\n metal1 metal1,m1\nend\n"
+         "contact\nend\nstyles\n styletype mos\nend\ncompose\nend\n"
+         "connect\n poly nfet\nend\n"
+         "cifoutput\nstyle lambda\n scalefactor 50\n layer M1 metal1\n calma 1 0\nend\n"
+         "cifinput\nend\ndrc\nend\n"
+         "extract\n style s\n units microns\n planeorder active 0\n planeorder metal1 1\n areacap metal1 40\nend\n";
+}
+
+}  // namespace
+
+// Both modes (a bug fix): ExtLoadStyle converts microns with the cifoutput
+// scale of the lambda grid (CIFTechOutputScale(DBLambda[1], DBLambda[0])
+// first), then scales to the grid; the installed cifoutput style is
+// already in half-lambda units after `scalegrid 1 2`.
+TEST_CASE("extract style after scalegrid 1 2 converts microns per lambda, then scales to the grid",
+          "[cap:extract-commands][req:Style, halo and step size]") {
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    Session s(on, true, "/w", micron_tech());
+    const auto m1 = s.editor.technology->find_type("metal1");
+    REQUIRE(m1.ok());
+    // 40 aF/um^2 at 0.5 um per lambda: 10 aF per lambda^2.
+    CHECK(s.editor.extract.current->caps.tables.area[*m1.id] == 10.0);
+    REQUIRE(s.run("scalegrid 1 2").ok());
+    CHECK(s.editor.extract.current->caps.tables.area[*m1.id] == 2.5);
+    REQUIRE(s.run("extract style s").ok());
+    CHECK(s.editor.extract.current->caps.tables.area[*m1.id] == 2.5);
+  }
+}

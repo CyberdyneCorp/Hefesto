@@ -298,7 +298,10 @@ void load_style(cmd::CommandContext& ctx, const cu::Session& s, const std::strin
   if (parsed == nullptr) {
     return;
   }
-  ExtStyle style = parsed->micron_convert(editor.mask.output_styles.current_style(), ctx.sink());
+  // ExtLoadStyle converts with the cifoutput scale of the lambda grid, then
+  // applies ExtTechScale(DBLambda[0], DBLambda[1]).
+  ExtStyle style = parsed->micron_convert(editor.mask.output_styles.current_style(), editor.grid.lambda,
+                                          editor.grid.internal, editor.drc.compat_settings(), ctx.sink());
   if (editor.grid.internal != editor.grid.lambda) {
     style = style.rescale(static_cast<std::int32_t>(editor.grid.lambda), static_cast<std::int32_t>(editor.grid.internal),
                           editor.drc.compat_settings());

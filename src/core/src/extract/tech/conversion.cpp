@@ -25,10 +25,12 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <utility>
 
 #include "hefesto/extract/tech/height_view.hpp"
 #include "hefesto/extract/tech/style.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "rule_context.hpp"
 
 namespace hefesto::extract {
@@ -345,6 +347,17 @@ ExtStyle ExtStyle::micron_convert(const mask::OutputStyle* style) const {
 
 ExtStyle ExtStyle::micron_convert(const mask::OutputStyle* style, diag::DiagnosticSink& sink) const {
   return convert(*this, HeightView::microns_per_lambda(style), &sink);
+}
+
+ExtStyle ExtStyle::micron_convert(const mask::OutputStyle* style, std::int64_t lambda, std::int64_t internal,
+                                  const compat::CompatSettings& compat, diag::DiagnosticSink& sink) const {
+  if (style == nullptr || lambda <= 0 || internal <= 0 || lambda == internal) {
+    return micron_convert(style, sink);
+  }
+  const std::shared_ptr<const mask::OutputStyle> unscaled =
+      style->rescale(detail::saturate_int32(static_cast<double>(internal)),
+                     detail::saturate_int32(static_cast<double>(lambda)), compat);
+  return micron_convert(unscaled.get(), sink);
 }
 
 ExtStyle detail::micron_convert(const ExtStyle& style, float dscale) {

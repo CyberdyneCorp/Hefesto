@@ -442,6 +442,11 @@ Then, for all units, with `magic-compat` ON parameter offsets and limits SHALL b
 - **WHEN** the style is loaded
 - **THEN** the area cap of metal1 is 40 × 0.005² = 0.001 aF/λ²
 
+#### Scenario: Micron conversion on a half-lambda grid
+- **GIVEN** `scalegrid 1 2` run before `tech load` (the order of sky130A.magicrc), `units microns`, a cifoutput style for which `dscale` = 0.5 µm/λ as read, and `areacap metal1 40`
+- **WHEN** the style is installed by the tech load, or selected again with `extract style`, while the grid is 2 internal units per lambda
+- **THEN** the conversion uses `dscale` = 0.5 (the cifoutput scale of the lambda grid, not that of the cifoutput style as rescaled to the half-lambda grid), and the area cap of metal1 is 40 × 0.5² = 10 aF/λ², then 2.5 aF per internal unit² after the scaling to internal units, in both `magic-compat` modes
+
 #### Scenario: Micron halo
 - **GIVEN** `units microns`, `dscale` = 0.005 and `sidehalo 2`
 - **WHEN** the style is loaded

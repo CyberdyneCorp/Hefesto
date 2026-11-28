@@ -9,14 +9,18 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 
 #include "ext_style_fixture.hpp"
+#include "hefesto/extract/tech/height_view.hpp"
 #include "reference_data.hpp"
 
 using namespace hefesto::test::ext;  // NOLINT(google-build-using-namespace): test fixture helpers
@@ -120,6 +124,37 @@ TEST_CASE("micron parameter limits: ON truncates per record of the shared list, 
   CHECK(e.params[0].minimum == 301 / 0.5);
   CHECK(e.params[0].maximum == 1250 / 0.5);
   CHECK(e.params[1].maximum == 2000 / 0.25);
+}
+
+TEST_CASE("micron conversion on a 1:2 grid uses the cifoutput scale of the lambda grid (the sky130 rc order)",
+          "[cap:extract-tech-section][req:Micron conversion]") {
+  // sky130A.magicrc runs `scalegrid 1 2` before `tech load`: the cifoutput
+  // style is installed scaled to half-lambda units, but TechLoad (and
+  // ExtLoadStyle) convert with the style as read, in microns per lambda.
+  const std::string body = " style s\n units microns\n" + kOrdered +
+                           " areacap metal1 40\n device msubcircuit n nfet ndiff pwell VSUBS w<0.42 w=w\n";
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    const Loaded l = load(body, on, kHalfMicronCif);
+    const std::optional<mask::OutputStyle> cif = mask::read_first_output_style(*l.tech);
+    REQUIRE(cif.has_value());
+    const std::shared_ptr<const mask::OutputStyle> installed = cif->rescale(1, 2, compat_mode(on));
+    REQUIRE(extract::HeightView::microns_per_lambda(installed.get()) == 0.25F);
+    diag::CollectingSink sink;
+    const extract::ExtStyle expected = parsed(l).micron_convert(&*cif);
+    const extract::ExtStyle got = parsed(l).micron_convert(installed.get(), 1, 2, compat_mode(on), sink);
+    CHECK(got == expected);
+    const tech::TileType m1 = type_of(*l.tech, "metal1");
+    CHECK(got.caps.tables.area[m1] == 40.0 * 0.25);
+    const extract::DevicePattern& d = only_record(got, type_of(*l.tech, "nfet"));
+    // w < 0.42: maximum 419 milli-microns, 838 milli-lambda; ON then / 1000.
+    const auto limit = std::find_if(d.params.begin(), d.params.end(),
+                                    [](const extract::DeviceParam& p) { return p.code == "w" && p.maximum >= 0; });
+    REQUIRE(limit != d.params.end());
+    CHECK(limit->maximum == (on ? 0.0 : 419 / 0.5));
+    // A 1:1 grid passes the style through unchanged.
+    CHECK(parsed(l).micron_convert(&*cif, 1, 1, compat_mode(on), sink) == expected);
+  }
 }
 
 TEST_CASE("noplaneordering skips the whole conversion: halo and limits stay in milli-units",
