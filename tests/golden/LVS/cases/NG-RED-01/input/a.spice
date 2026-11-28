@@ -1,0 +1,10 @@
+* fingers
+.subckt cell d g s b
+M0 d g s b nmos W=1u L=0.15u
+M1 d g s b nmos W=1u L=0.15u
+M2 d g s b nmos W=1u L=0.15u
+M3 d g s b nmos W=1u L=0.15u
+.ends
+.subckt top d g s b
+X1 d g s b cell
+.ends

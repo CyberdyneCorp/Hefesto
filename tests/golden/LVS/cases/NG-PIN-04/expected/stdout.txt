@@ -1,0 +1,26 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Reading netlist file input/a.v for input/a.v top
+Reading netlist file input/b.spice for input/b.spice top
+Warning:  A case-sensitive file has been read and so the SPICE netlist must be treated case-sensitive to match.
+
+No setup file specified.  Using trivial default setup.
+
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+
+Contents of circuit 1:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 0 nets.
+Contents of circuit 2:  Circuit: 'top'
+Circuit top contains 0 device instances.
+Circuit contains 0 nets, and 2 disconnected pins.
+
+Circuit top contains no devices.
+
+Final result: 
+Verify:  cell input/b.spice has no elements and/or nodes.  Not checked.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

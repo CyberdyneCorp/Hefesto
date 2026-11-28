@@ -40,10 +40,6 @@ namespace {
 
 constexpr std::string_view kNotImplemented = "CORE-NOTIMPL-009";
 
-bool is_not_implemented(const std::vector<diag::Diagnostic>& diagnostics) {
-  return diagnostics.size() == 1 && diagnostics.front().code == kNotImplemented;
-}
-
 template <typename T>
 bool is_not_implemented(const diag::Outcome<T>& outcome) {
   return !outcome.ok() && outcome.error().code == kNotImplemented;
@@ -52,12 +48,6 @@ bool is_not_implemented(const diag::Outcome<T>& outcome) {
 lvs::Source spice(std::string_view text) {
   return lvs::Source{"in.spice", std::string{text}};
 }
-
-class NoProgress final : public lvs::ProgressSink {
- public:
-  void pair_started(std::string_view /*cell1*/, std::string_view /*cell2*/, std::size_t /*index*/,
-                    std::size_t /*count*/) override {}
-};
 
 }  // namespace
 
@@ -108,59 +98,12 @@ TEST_CASE("detect_format detects a SPICE source", "[cap:lvs-netlist-input][req:F
   CHECK(lvs::detect_format(spice(".subckt a x\n.ends\n")).value() == lvs::Format::spice);
 }
 
-TEST_CASE("scaffold evaluate_setup reports CORE-NOTIMPL-009", "[cap:lvs-setup-file][req:Setup file evaluation]") {
-  lvs::Circuit first;
-  lvs::Circuit second;
-  lvs::SetupContext context{&first, &second, {}, {}};
-  CHECK(is_not_implemented(lvs::evaluate_setup(lvs::Source{"setup.tcl", std::string{"permute default\n"}}, context)));
-}
+// reduce, compare_pair and the property checks left the scaffold in M9 R2,
+// evaluate_setup in M9 R3: their requirement tests are in
+// tests/unit/lvs/{reduce,cmp,prop,setup}/.
 
-// reduce, compare_pair and the property checks left the scaffold in M9 R2:
-// their requirement tests are in tests/unit/lvs/{reduce,cmp,prop}/.
-
-TEST_CASE("scaffold run_lvs reports CORE-NOTIMPL-009", "[cap:lvs-hierarchy][req:lvs per-pair flow]") {
-  NoProgress progress;
-  lvs::RunOptions options;
-  options.netgen_compat = false;
-  const auto result = lvs::run_lvs({}, {}, {}, options, progress);
-  CHECK_FALSE(result.clean);
-  CHECK(result.pairs.empty());
-  CHECK_FALSE(result.netgen_compat);
-  CHECK(is_not_implemented(result.diagnostics));
-}
-
-TEST_CASE("scaffold comp.out writer reports CORE-NOTIMPL-009", "[cap:lvs-reports][req:Two-column layout]") {
-  CHECK(is_not_implemented(lvs::write_comp_out({})));
-}
-
-TEST_CASE("scaffold JSON writer reports CORE-NOTIMPL-009", "[cap:lvs-reports][req:JSON file]") {
-  CHECK(is_not_implemented(lvs::write_json({})));
-}
-
-TEST_CASE("scaffold list result reports CORE-NOTIMPL-009", "[cap:lvs-reports][req:Structured list result]") {
-  CHECK(is_not_implemented(lvs::to_list({})));
-}
-
-TEST_CASE("scaffold lvs command is registered and reports CORE-NOTIMPL-009",
-          "[cap:lvs-command][req:lvs command syntax]") {
-  hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
-  hefesto::settings::ProjectSettings project;
-  cmd::ScriptSession script{project};
-  cmd::CommandRegistry registry;
-  REQUIRE(lvs::register_lvs_commands(registry));
-  CHECK_FALSE(lvs::register_lvs_commands(registry));  // duplicate
-  REQUIRE(registry.find("lvs") != nullptr);
-
-  hefesto::editor::EditorState state;
-  cmd::Dispatcher dispatcher{registry, services.view(), project, script};
-  dispatcher.set_editor(&state);
-  cmd::Invocation invocation;
-  invocation.name = "lvs";
-  invocation.args = {"layout.spice", "schematic.spice"};
-  const auto result = dispatcher.execute(invocation);
-  CHECK_FALSE(result.ok());
-  CHECK(is_not_implemented(result.diagnostics));
-}
+// run_lvs, the report writers and the `lvs` command left the scaffold in
+// M9 R3: their requirement tests are in tests/unit/lvs/{hier,report,cmd}/.
 
 TEST_CASE("lvs usage names the layout-aware form", "[cap:lvs-command][req:Layout netlist from extraction]") {
   // Regression: the synopsis gave only the netgen form.
@@ -182,10 +125,4 @@ TEST_CASE("scaffold layout_circuit reports CORE-NOTIMPL-009",
           "[cap:lvs-command][req:Layout netlist from extraction]") {
   hefesto::editor::EditorState state;
   CHECK(is_not_implemented(lvs::layout_circuit(state, "inv", {})));
-}
-
-TEST_CASE("scaffold cross_probe reports CORE-NOTIMPL-009", "[cap:lvs-command][req:Cross-probing]") {
-  lvs::ObjectRef object;
-  object.name = "out";
-  CHECK(is_not_implemented(lvs::cross_probe({}, object)));
 }

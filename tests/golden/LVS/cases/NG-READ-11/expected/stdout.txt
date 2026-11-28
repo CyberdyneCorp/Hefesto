@@ -1,0 +1,40 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+Circuit: 'input/t.sim'
+a               node                     Net #: 2
+b               node                     Net #: 1
+c               node                     Net #: 3
+n@10,20/drain   pin 1                    Net #: 1
+n@10,20/gate    pin 2                    Net #: 2
+n@10,20/source  pin 3                    Net #: 3
+properties      properties              
+d               node                     Net #: 4
+p1/drain        pin 1                    Net #: 1
+p1/gate         pin 2                    Net #: 2
+p1/source       pin 3                    Net #: 4
+properties      properties              
+c1/top          pin 1                    Net #: 1
+c1/bottom       pin 2                    Net #: 3
+properties      properties              
+r1/end_a        pin 1                    Net #: 2
+r1/end_b        pin 2                    Net #: 3
+properties      properties              
+e1/top          pin 1                    Net #: 2
+e1/bottom_a     pin 2                    Net #: 1
+e1/bottom_b     pin 3                    Net #: 3
+b1/collector    pin 1                    Net #: 3
+b1/base         pin 2                    Net #: 2
+b1/emitter      pin 3                    Net #: 1
+(2) code 0: 
+Circuit: 'input/t.sim'
+Circuit input/t.sim contains 6 device instances.
+  Class: c                     instances:   1
+  Class: n                     instances:   1
+  Class: p                     instances:   1
+  Class: e                     instances:   1
+  Class: r                     instances:   1
+  Class: b                     instances:   1
+Circuit contains 4 nets.
+(3) code 0: 

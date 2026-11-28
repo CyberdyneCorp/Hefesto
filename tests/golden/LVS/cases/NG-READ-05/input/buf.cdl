@@ -1,0 +1,10 @@
+* buffers
+.SUBCKT buf A Y
+R1 A Y 1k
+.ENDS
+.SUBCKT buf A Y
+R1 A Y 2k
+.ENDS
+.SUBCKT buf A Y
+R1 A Y 3k
+.ENDS

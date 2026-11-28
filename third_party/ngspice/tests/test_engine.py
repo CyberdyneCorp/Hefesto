@@ -23,6 +23,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 LIB = os.environ.get("HEFESTO_NGSPICE_LIB", "")
 EXE = os.environ.get("HEFESTO_NGSPICE_EXE", "")
+OSDI_BUILTIN = os.environ.get("HEFESTO_NGSPICE_OSDI_BUILTIN", "")
+IHP_MODELS = os.environ.get("HEFESTO_IHP_MODELS", "")
 PIN = json.loads((HERE.parent / "pin.json").read_text(encoding="utf-8"))
 VERSION = f"{PIN['release']}-hefesto{PIN['hefesto_level']}"
 M32 = 0xFFFFFFFF
@@ -127,12 +129,35 @@ class EnginePatchTest(unittest.TestCase):
         With dynamic loading off, a module that is not built in fails with the
         spec's message, before any file is opened."""
         out = run("osdi_static_only")["output"]
-        self.assertIn("Error: OSDI model 'psp103_nqs' is not built into this app", out)
+        self.assertIn("Error: OSDI model 'not_built_in' is not built into this app", out)
 
     def test_osdi_dynamic_path_unchanged(self):
         """cap:simulation-engine-embedding req:OSDI compact models (patch 0001): the default keeps stock loading."""
         out = run("osdi_dynamic")["output"]
         self.assertTrue(any("No such file or directory" in line for line in out), out)
+
+
+@unittest.skipUnless(LIB and OSDI_BUILTIN, "HEFESTO_NGSPICE_LIB or HEFESTO_NGSPICE_OSDI_BUILTIN is not set")
+class BuiltinOsdiTest(unittest.TestCase):
+    """Task 5.2: a library built with HEFESTO_NGSPICE_OSDI_DIR (ngspice.yml job `openvaf`)."""
+
+    def test_version_mismatch_avoided(self):
+        """cap:simulation-engine-embedding req:OSDI compact models, scenario "Version mismatch avoided"."""
+        result = run("osdi_version_mismatch")
+        errors = [line for line in result["output"] if line.startswith("Error")]
+        self.assertEqual(errors, [], result["output"])
+        self.assertEqual(len(result["vectors"]["i(vd)"]), 1, result["output"])
+
+    @unittest.skipUnless(IHP_MODELS, "HEFESTO_IHP_MODELS is not set")
+    def test_sg13g2_op_deck(self):
+        """cap:simulation-engine-embedding req:OSDI compact models: an sg13g2 `op` deck on the built-in modules
+        with dynamic OSDI loading off."""
+        result = run("sg13g2_op")
+        errors = [line for line in result["output"] if line.startswith("Error")]
+        self.assertEqual(errors, [], result["output"])
+        out = result["vectors"]["out"]
+        self.assertEqual(len(out), 1, result["output"])
+        self.assertTrue(0.0 < out[0] < 1.2, out)
 
 
 @unittest.skipUnless(EXE, "HEFESTO_NGSPICE_EXE is not set")

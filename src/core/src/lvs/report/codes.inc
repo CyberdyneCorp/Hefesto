@@ -9,3 +9,4 @@
 // and describe the codes in its LVSREP section.
 //
 // Owner: LVSREP (openspec/changes/m9-lvs-simulation/design.md D3).
+HEFESTO_LVS_CODE("LVS-REPORT-001", error, "A `format` column width is not between 1 and 4096 (Q-LVS-16).")

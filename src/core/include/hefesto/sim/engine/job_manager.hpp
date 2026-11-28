@@ -65,6 +65,19 @@
 // hold the owning thread in poll() either; job ids must be one safe path
 // component (SIM-ENGINE-038).
 //
+// Limits (M9 R3; Q-SIM-25 and Q-SIM-16 as approved 2026-11-27, design D18):
+// JobManagerOptions::max_log_bytes (default kMaxJobLogBytes, 64 MiB) bounds
+// each job's in-memory log; later lines are counted in log_dropped.
+// JobManagerOptions::result_budget (default kDesktopResultBudget, 4 GiB until
+// Q-SIM-25 decides) bounds each job's result: when the streamed estimate
+// (values received through on_data x 8 bytes, a lower bound of the spec's
+// `points x sum(8 x (2 if complex else 1))`) passes it, the run is cancelled
+// in its engine; when the run ends, or when its final vectors cost more than
+// the budget, the job ends `failed` with SIM-RESULT-011 `result memory budget
+// exceeded (<estimate> > <B>)`, keeps its vectors and is marked `partial`.
+// Each setting can be lowered; zero or a value above twice its default is
+// refused with SIM-ENGINE-039 (limits_diagnostic()) and the default is used.
+//
 // Owner: SIMENG.
 
 #pragma once
@@ -84,6 +97,7 @@
 #include "hefesto/sim/engine/engine.hpp"
 #include "hefesto/sim/engine/job.hpp"
 #include "hefesto/sim/engine/pool.hpp"
+#include "hefesto/sim/result/result_store.hpp"
 
 namespace hefesto::sim {
 
@@ -101,6 +115,10 @@ struct JobOptions {
 /// a fault.
 using EngineFactory = std::function<diag::Outcome<std::unique_ptr<Engine>>()>;
 
+/// Added in M9 R1: the job log kept in memory per job; later lines are
+/// counted in JobRecord::log_dropped instead.
+inline constexpr std::size_t kMaxJobLogBytes = std::size_t{64} << 20;
+
 /// Added in M9 R1.
 struct JobManagerOptions {
   /// Empty: no engine host; every job fails with SIM-ENGINE-031.
@@ -114,6 +132,13 @@ struct JobManagerOptions {
   /// after poll() takes each batch of events (a stand-in for a worker that
   /// sends while the batch is applied).
   std::function<void()> on_events_taken;
+  /// Added in M9 R3: the in-memory job log per job, in bytes (Q-SIM-25,
+  /// approved 2026-11-27); lowerable, at most twice kMaxJobLogBytes.
+  std::size_t max_log_bytes = kMaxJobLogBytes;
+  /// Added in M9 R3: the result memory budget per job, in bytes (Q-SIM-16;
+  /// 4 GiB on desktop and 512 MiB on iPadOS until Q-SIM-25 decides);
+  /// lowerable, at most twice the platform's default.
+  std::uint64_t result_budget = kPlatformResultBudget;
 };
 
 /// Added in M9 R1: one job-log line and its stream (log.txt writes error
@@ -123,10 +148,6 @@ struct LogLine {
   std::string text;
   friend bool operator==(const LogLine&, const LogLine&) = default;
 };
-
-/// Added in M9 R1: the job log kept in memory per job; later lines are
-/// counted in JobRecord::log_dropped instead.
-inline constexpr std::size_t kMaxJobLogBytes = std::size_t{64} << 20;
 
 /// Added in M9 R2: state events queued between two polls before a
 /// connection's later states are coalesced.
@@ -151,6 +172,11 @@ struct JobRecord {
   std::uint64_t engine = 0;                    // which engine ran it (1 = the first engine started)
   double progress = 0.0;                       // M9 R2: "Progress reporting", 0..1
   std::string status;                          // M9 R2: the last status string of the engine
+  /// M9 R3: the vectors are those of a run that did not complete (job.json
+  /// `partial`): a cancelled job, or a failed one that kept vectors.
+  bool partial = false;
+  /// M9 R3: the result-size estimate when the budget was exceeded, else 0.
+  std::uint64_t budget_exceeded = 0;
 };
 
 class JobManager {
@@ -164,7 +190,9 @@ class JobManager {
   JobManager& operator=(const JobManager&) = delete;
 
   /// Queues `deck` and returns the job's id. The job starts on a later
-  /// poll().
+  /// poll(). M9 R3: a run-set point id whose job ended `failed` or
+  /// `cancelled` may be submitted again (resume, re-run point); the record
+  /// of the id is then the new job's.
   [[nodiscard]] diag::Outcome<JobId> submit(PreparedDeck deck, JobOptions options);
 
   /// Added in M9 R1: applies the queued engine events and starts queued
@@ -203,6 +231,12 @@ class JobManager {
   [[nodiscard]] std::size_t loading() const noexcept;
   /// Added in M9 R2: the most events the queue held at once so far.
   [[nodiscard]] std::size_t peak_queued_events() const;
+  /// Added in M9 R3: SIM-ENGINE-039 when a limit setting of the options was
+  /// refused (its default is used instead).
+  [[nodiscard]] const std::optional<diag::Diagnostic>& limits_diagnostic() const noexcept;
+  /// Added in M9 R3: the limits in use.
+  [[nodiscard]] std::size_t max_log_bytes() const noexcept;
+  [[nodiscard]] std::uint64_t result_budget() const noexcept;
 
  private:
   struct Impl;

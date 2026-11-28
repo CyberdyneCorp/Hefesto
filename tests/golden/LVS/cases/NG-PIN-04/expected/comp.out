@@ -1,0 +1,16 @@
+
+Cell top (1) disconnected node: A
+Cell top (1) disconnected node: VDD!
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+VDD                                        |VDD                                        
+(no matching pin)                          |A                                          
+(no matching pin)                          |A                                          
+\A                                         |(no matching pin)                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Verify:  cell input/b.spice has no elements and/or nodes.  Not checked.

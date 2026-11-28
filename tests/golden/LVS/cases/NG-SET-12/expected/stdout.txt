@@ -1,0 +1,24 @@
+Netgen 1.5.327 compiled on Fri Nov 27 19:10:16 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+(1) code 0: 0
+(2) code 0: 
+A
+Y
+Cell inv contains 2 ports.
+(3) code 0: 
+(4) code 0: 
+A
+Y
+Cell inv contains 2 ports.
+(5) code 0: 
+Circuit: 'top'
+a           port                         Net #: 1
+y           port                         Net #: 2
+inv:1/A     pin 1                        Net #: 1
+inv:1/Y     pin 2                        Net #: 2
+VDD2        node                         Net #: 3
+r:1/end_a   pin 1                        Net #: 1
+r:1/end_b   pin 2                        Net #: 3
+properties  properties                  
+(6) code 0: 

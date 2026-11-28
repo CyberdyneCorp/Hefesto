@@ -1,0 +1,10 @@
+* open drains
+.subckt cell g s b
+M1 d1 g s b nmos W=1u L=0.15u
+M2 d2 g s b nmos W=1u L=0.15u
+.ends
+.subckt top g s b
+X1 g s b cell
+M1 e1 g s b nmos W=1u L=0.15u
+M2 e2 g s b nmos W=1u L=0.15u
+.ends

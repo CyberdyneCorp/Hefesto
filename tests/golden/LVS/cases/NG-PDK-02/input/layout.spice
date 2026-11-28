@@ -1,0 +1,16 @@
+* standard-cell block with fill and decap
+.subckt inv A ZN VDD VSS VNW VPW
+XM1 ZN A VSS VPW nfet_03v3 L=0.28u W=0.82u
+XM2 ZN A VDD VNW pfet_03v3 L=0.28u W=1.22u
+.ends
+.subckt fill_2 VDD VSS VNW VPW
+.ends
+.subckt decap A VDD VSS VNW VPW
+XC1 VDD VSS cap_nmos_03v3 c_width=2u c_length=2u
+.ends
+.subckt block A ZN VDD VSS
+X1 A m VDD VSS VDD VSS inv
+X2 m ZN VDD VSS VDD VSS inv
+X3 VDD VSS VDD VSS fill_2
+X4 VDD VSS VDD VSS fill_2
+.ends

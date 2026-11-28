@@ -1,0 +1,116 @@
+* lexical structure
+.subckt top a b c
+R1 a
+* interleaved comment
++ b 1k
+R2 b \
+c 2k
+X1 a c res2 w='1 + 2'
+.control
+run
+.endc
+QQ0 a b
+QQ1 a b
+QQ2 a b
+QQ3 a b
+QQ4 a b
+QQ5 a b
+QQ6 a b
+QQ7 a b
+QQ8 a b
+QQ9 a b
+QQ10 a b
+QQ11 a b
+QQ12 a b
+QQ13 a b
+QQ14 a b
+QQ15 a b
+QQ16 a b
+QQ17 a b
+QQ18 a b
+QQ19 a b
+QQ20 a b
+QQ21 a b
+QQ22 a b
+QQ23 a b
+QQ24 a b
+QQ25 a b
+QQ26 a b
+QQ27 a b
+QQ28 a b
+QQ29 a b
+QQ30 a b
+QQ31 a b
+QQ32 a b
+QQ33 a b
+QQ34 a b
+QQ35 a b
+QQ36 a b
+QQ37 a b
+QQ38 a b
+QQ39 a b
+QQ40 a b
+QQ41 a b
+QQ42 a b
+QQ43 a b
+QQ44 a b
+QQ45 a b
+QQ46 a b
+QQ47 a b
+QQ48 a b
+QQ49 a b
+QQ50 a b
+QQ51 a b
+QQ52 a b
+QQ53 a b
+QQ54 a b
+QQ55 a b
+QQ56 a b
+QQ57 a b
+QQ58 a b
+QQ59 a b
+QQ60 a b
+QQ61 a b
+QQ62 a b
+QQ63 a b
+QQ64 a b
+QQ65 a b
+QQ66 a b
+QQ67 a b
+QQ68 a b
+QQ69 a b
+QQ70 a b
+QQ71 a b
+QQ72 a b
+QQ73 a b
+QQ74 a b
+QQ75 a b
+QQ76 a b
+QQ77 a b
+QQ78 a b
+QQ79 a b
+QQ80 a b
+QQ81 a b
+QQ82 a b
+QQ83 a b
+QQ84 a b
+QQ85 a b
+QQ86 a b
+QQ87 a b
+QQ88 a b
+QQ89 a b
+QQ90 a b
+QQ91 a b
+QQ92 a b
+QQ93 a b
+QQ94 a b
+QQ95 a b
+QQ96 a b
+QQ97 a b
+QQ98 a b
+QQ99 a b
+QQ100 a b
+QQ101 a b
+.ends
+.subckt res2 p n w=1
+.ends

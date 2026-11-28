@@ -1,0 +1,24 @@
+
+Subcircuit summary:
+C |C 
+--|--
+n |n 
+p |p 
+N |N 
+N |N 
+-----
+Netlists match uniquely.
+
+Subcircuit pins:
+C |C 
+--|--
+Y |Y 
+A |A 
+V |V 
+V |V 
+-----
+Cell pin lists are equivalent.
+Device classes inv and inv are equivalent.
+
+Final result: Circuits match uniquely.
+.

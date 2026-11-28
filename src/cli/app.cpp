@@ -327,7 +327,11 @@ class Session {
     cell::end_crash_session(editor_, services_.files());  // normal exit: drop this session's backup and lock
     // `quit N` sets the status (app-startup "quit command and exit
     // status"); a plain `quit` keeps the failure status of earlier commands.
-    const int status = script_session_.exit_status != 0 ? script_session_.exit_status : (ok ? kExitOk : kExitFailure);
+    // A headless `lvs` sets 1 (no match) or 2 (input error) (lvs-command
+    // "Headless LVS").
+    const auto lvs_status = editor_.lvs.headless_status;
+    const int fallback = lvs_status && *lvs_status != 0 ? *lvs_status : (ok ? kExitOk : kExitFailure);
+    const int status = script_session_.exit_status != 0 ? script_session_.exit_status : fallback;
     log(diag::Severity::info, "session end exit=" + std::to_string(status));
     return status;
   }

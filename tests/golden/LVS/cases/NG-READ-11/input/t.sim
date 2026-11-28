@@ -1,0 +1,7 @@
+| units: 100 tech: scmos
+n a b c 2 4 10 20
+p a b d 2 8
+c b c 5
+r a c 100
+e a b c 2 4
+b a b c

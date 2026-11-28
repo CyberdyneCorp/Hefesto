@@ -1,0 +1,32 @@
+Flattening unmatched subcell sub in circuit top (0)(1 instance)
+
+Class top (0):  Merged 1 series devices.
+Class top (1):  Merged 1 parallel devices.
+Class top (1):  Merged 1 series devices.
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+r (2->1)                                   |r (3->1)                                   
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Resolving symmetries by property value.
+Resolving symmetries by pin name.
+Netlists match uniquely with property errors.
+sub:1/r:1 vs. r:1:
+ value circuit1: 2000   circuit2: 4000   (delta=66.7%, cutoff=1%)
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+a                                          |a                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+Property errors were found.
+
+The following cells had property errors:
+ top

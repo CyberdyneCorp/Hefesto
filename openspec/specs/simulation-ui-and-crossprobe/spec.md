@@ -105,7 +105,7 @@ Compatibility: native
 
 ### Requirement: Probing a layout net
 Selecting a net in the layout and choosing "probe" SHALL resolve the net to a simulation vector and add it as a trace. Selection works as in `getnode` (capability `irsim-interface`); this and the naming rule below apply on every platform, including iPadOS, where the IRSIM interface itself is unavailable (capability `hefesto-ipad-feature-scope`). Resolution SHALL work as follows:
-1. Compute the selected node's hierarchical name relative to the root cell of the layout window, as specified by capability `irsim-interface`, Requirement "Hierarchical node names", including the handling of global names.
+1. Compute the selected node's hierarchical name relative to the root cell of the layout window, as specified by capability `irsim-interface`, Requirement "Hierarchical node names", including the handling of global names. This is the naming of plain `getnode`: the positional `@=` names of `getnode fast` (Requirement "Fast node names") SHALL NOT be used, in both `magic-compat` modes. Each element of the use path SHALL exist; an instance or array element that does not exist, including an array element outside the array's index range, SHALL fail the probe with `no instance <element> in cell <cell>` (`SIM-PROBE-003`), without clamping or wrapping the index.
 2. If the root cell is not the DUT cell of the selected job, fail with `Layout window shows <root>, but job simulated <dut>`.
 3. Find the job's net-name map entry (capability `simulation-netlist-preparation`, Requirement "Net name map") whose `layoutName` equals that name. If there is none, find the entry whose layout point lies on the selected node, following the node's connectivity through the extracted hierarchy. Names SHALL NOT be compared in any other way: the netlist name chosen by the netlister and the hierarchical node name can differ (a case-collision rename, a node named by a transistor terminal, a different preferred label), and both resolve the same node. The entry gives `simName`. If no entry is found, the probe fails with `Net <name> is not in the netlist of this run`.
 4. Find the vector whose name equals `simName` case-insensitively in the job's plot. If none, the probe fails with `Net <name> was not saved in this run`. Hefesto SHALL then offer to add `simName` to the testbench's saved vectors and run again.
@@ -128,9 +128,19 @@ Compatibility: native
 - **THEN** `Net inv_0/mid was not saved in this run` SHALL be shown, with the option to save it and run again
 
 #### Scenario: Netlist name differs from the node name
-- **GIVEN** DUT cell `top` with two distinct nets labelled `OUT` and `out`, so that the netlist renames the second one `out__c1` (Q-SIM-6), and an unlabelled node whose hierarchical name is a transistor-terminal name `@=...`
+- **GIVEN** DUT cell `top` with two distinct nets labelled `OUT` and `out`, so that the netlist renames the second one `out__c1` (Q-SIM-6), and an unlabelled node whose hierarchical name is the extractor's generated name `top_<x>_<y>#`, which differs from the netlist name of that node
 - **WHEN** the user probes the net labelled `out` and then the unlabelled node
 - **THEN** the first probe SHALL add the trace of the vector for `out__c1`, and the second SHALL add the trace of the vector for the netlist name of that node, both found through the net-name map
+
+#### Scenario: Probe uses the normal node name
+- **GIVEN** a completed job of DUT `inv`, a layout window rooted at `inv`, and an unlabelled node that is the drain of a transistor in `inv`
+- **WHEN** the user selects that node's paint and probes it
+- **THEN** the probe SHALL name the node with the extractor's generated name, as plain `getnode` prints it, and not with an `@=d<x>,<y>` or `@=s<x>,<y>` name, in both `magic-compat` modes
+
+#### Scenario: Array element outside the array
+- **GIVEN** a layout window rooted at `top`, which holds an array `u` of cell `inv` with elements `u[0]` to `u[3]`
+- **WHEN** a probe names the use path `u[5]/y`
+- **THEN** the probe SHALL fail with `SIM-PROBE-003` `no instance u[5] in cell top`, and no trace SHALL be added
 
 ### Requirement: Probing device currents
 Selecting a device in the layout and choosing "probe current" SHALL list the device's current vectors available in the job. ngspice names these `@<device path>[<param>]`, for example `@m.xdut.xm1[id]`, and they exist only when the job used mode `all+currents` or listed them explicitly. The device path SHALL be derived from the device's netlist instance name, through the net-name map's instance entries. When the PDK wraps devices in subcircuits, the path ends at the primitive inside the wrapper subcircuit. If no current vector exists, the probe SHALL fail with `No current saved for device <name>; enable "save currents" and run again`.

@@ -1,0 +1,51 @@
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+nmos (2)                                   |nmos (2)                                   
+pmos (2->1)                                |pmos (2) **Mismatch**                      
+Number of devices: 3 **Mismatch**          |Number of devices: 4 **Mismatch**          
+Number of nets: 6                          |Number of nets: 6                          
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Net: B                                     |Net: B                                     
+  nmos/gate = 1                            |  nmos/gate = 1                            
+                                           |  pmos/gate = 1                            
+                                           |                                           
+Net: Y                                     |Net: Y                                     
+  nmos/(drain|source) = 1                  |  nmos/(drain|source) = 1                  
+  pmos/(drain|source) = 1                  |  pmos/(drain|source) = 2                  
+                                           |                                           
+Net: VDD                                   |Net: VDD                                   
+  pmos/(drain|source) = 1                  |  pmos/(drain|source) = 2                  
+  pmos/bulk = 1                            |  pmos/bulk = 2                            
+---------------------------------------------------------------------------------------
+DEVICE mismatches: Class fragments follow (with node fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+(no matching instance)                     |Instance: nand2:1/pmos:4                   
+                                           |  (drain,source) = (4,3)                   
+                                           |  gate = 2                                 
+                                           |  bulk = 4                                 
+                                           |                                           
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+Y                                          |B **Mismatch**                             
+VDD                                        |Y **Mismatch**                             
+B                                          |VDD **Mismatch**                           
+A                                          |A                                          
+VSS                                        |VSS                                        
+---------------------------------------------------------------------------------------
+Cell pin lists for top and top altered to match.
+Device classes top and top are equivalent.
+
+Final result: Top level cell failed pin matching.

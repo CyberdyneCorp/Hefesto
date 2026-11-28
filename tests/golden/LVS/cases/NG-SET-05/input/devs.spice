@@ -1,0 +1,6 @@
+* devices
+.subckt top a b g
+M1 a g b b nmos W=1u L=0.15u AS=1p AD=1p PS=4u PD=4u
+R1 a b 1k
+C1 a b 1p
+.ends

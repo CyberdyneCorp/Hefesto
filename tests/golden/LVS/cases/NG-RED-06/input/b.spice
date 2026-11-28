@@ -1,0 +1,5 @@
+* zero
+.subckt top a c
+R1 a b 0
+R2 b c 1k
+.ends

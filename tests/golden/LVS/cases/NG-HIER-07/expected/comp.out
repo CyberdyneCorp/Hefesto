@@ -1,0 +1,61 @@
+
+Cell buf (1) disconnected node: Y2
+Warning: zero-valued device connects port Y2 to another port;  pin matching may be affected.
+Removing zero-valued device r from cell buf (0) makes a better match
+Making another compare attempt.
+
+Cell buf (1) disconnected node: Y2
+
+Subcircuit pins:
+Circuit 1: buf                             |Circuit 2: buf                             
+-------------------------------------------|-------------------------------------------
+A                                          |A                                          
+Y1                                         |Y1                                         
+Y2                                         |Y2                                         
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes buf and buf are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+buf (1)                                    |buf (1)                                    
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Net: y                                     |Net: y                                     
+  buf/(Y1|Y2) = 2                          |  buf/Y1 = 1                               
+                                           |  buf/Y2 = 1                               
+---------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------
+Net: a                                     |Net: a                                     
+  buf/A = 1                                |  buf/A = 1                                
+---------------------------------------------------------------------------------------
+DEVICE mismatches: Class fragments follow (with node fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Instance: buf:1                            |Instance: buf:1                            
+  A = 1                                    |  A = 1                                    
+  (Y1,Y2) = (2,2)                          |  Y1 = 2                                   
+                                           |  Y2 = 2                                   
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+y                                          |y                                          
+a                                          |a                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Netlists do not match.
+Port matching may fail to disambiguate symmetries.

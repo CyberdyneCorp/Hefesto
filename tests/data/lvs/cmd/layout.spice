@@ -1,0 +1,9 @@
+* Hefesto-authored LVS input (lvs-command "Headless LVS"): the layout side.
+.subckt inv A Y VDD VSS
+M1 Y A VDD VDD pfet W=2 L=0.15
+M2 Y A VSS VSS nfet W=1 L=0.15
+.ends
+.subckt buf IN OUT VDD VSS
+Xinv1 IN mid VDD VSS inv
+Xinv2 mid OUT VDD VSS inv
+.ends

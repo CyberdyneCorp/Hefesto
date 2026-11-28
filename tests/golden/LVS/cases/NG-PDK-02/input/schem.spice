@@ -1,0 +1,9 @@
+* block schematic
+.subckt inv A ZN VDD VSS VNW VPW
+XM1 ZN A VSS VPW nfet_03v3 L=0.28u W=0.82u
+XM2 ZN A VDD VNW pfet_03v3 L=0.28u W=1.22u
+.ends
+.subckt block A ZN VDD VSS
+X1 A m VDD VSS VDD VSS inv
+X2 m ZN VDD VSS VDD VSS inv
+.ends

@@ -270,11 +270,18 @@ def build_manifest(args) -> dict:
         "features": FEATURES,
         "code_models": {"libraries": pin["code_models"], "models": models,
                         "excluded": pin["code_models_excluded"]},
-        "osdi_modules": [],
+        "osdi_modules": osdi_modules(getattr(args, "osdi_dir", None)),
         "licenses": licences(args.src, scanned),
         "license_check": {"scanned_files": len(scanned), "gpl_files": gpl},
         "artifacts": ["libngspice-hefesto", "ngspice (capture image only)"],
     }
+
+
+def osdi_modules(directory: Path | None) -> list[dict]:
+    """The built-in OSDI modules (task 5.2): the <module>.json files tools/osdi_static.py writes."""
+    if directory is None:
+        return []
+    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(directory.glob("*.json"))]
 
 
 def tar_add(tar: tarfile.TarFile, name: str, data: bytes) -> None:
@@ -324,25 +331,51 @@ def per_file_errors(component: dict) -> list[str]:
     return errors
 
 
-def check_manifest(manifest: dict) -> list[str]:
-    errors = []
-    if not re.fullmatch(r"\d+(\.\d+)?-hefesto\d+", manifest.get("version", "")):
-        errors.append(f"version {manifest.get('version')!r} is not <release>-hefesto<n>")
+def version_errors(manifest: dict) -> list[str]:
+    if re.fullmatch(r"\d+(\.\d+)?-hefesto\d+", manifest.get("version", "")):
+        return []
+    return [f"version {manifest.get('version')!r} is not <release>-hefesto<n>"]
+
+
+def patch_errors(manifest: dict) -> list[str]:
     patches = [p["file"] for p in manifest.get("patches", [])]
-    if not any("portable-seeding" in p for p in patches):
-        errors.append("the portable-seeding patch is not listed")
-    names = [c["component"] for c in manifest.get("licenses", [])]
-    errors += [f"licence of {c} not listed" for c in REQUIRED_COMPONENTS if c not in names]
+    return [] if any("portable-seeding" in p for p in patches) else ["the portable-seeding patch is not listed"]
+
+
+def licence_errors(manifest: dict) -> list[str]:
+    components = manifest.get("licenses", [])
+    names = [c["component"] for c in components]
+    errors = [f"licence of {c} not listed" for c in REQUIRED_COMPONENTS if c not in names]
     errors += [f"{n} must not be listed" for n in names if n.lower().startswith(FORBIDDEN_COMPONENTS)]
-    errors += [f"no licence for {c['component']}" for c in manifest.get("licenses", []) if not c.get("license")]
-    for c in manifest.get("licenses", []):
+    errors += [f"no licence for {c['component']}" for c in components if not c.get("license")]
+    for c in components:
         if c["component"] in PER_FILE_COMPONENTS:
             errors += per_file_errors(c)
-    models = [m["model"] for m in manifest.get("code_models", {}).get("models", [])]
-    errors += [f"code model {m} must not be compiled in" for m in models if m.startswith(FORBIDDEN_CODE_MODELS)]
-    if manifest.get("license_check", {}).get("gpl_files"):
-        errors.append("GPL files compiled: " + ", ".join(manifest["license_check"]["gpl_files"]))
     return errors
+
+
+def code_model_errors(manifest: dict) -> list[str]:
+    models = [m["model"] for m in manifest.get("code_models", {}).get("models", [])]
+    return [f"code model {m} must not be compiled in" for m in models if m.startswith(FORBIDDEN_CODE_MODELS)]
+
+
+def osdi_errors(manifest: dict) -> list[str]:
+    """Each built-in OSDI module (task 5.2) names its licence."""
+    return [f"OSDI module {m.get('module')} has no licence" for m in manifest.get("osdi_modules", [])
+            if m.get("license", "unknown") == "unknown"]
+
+
+def gpl_errors(manifest: dict) -> list[str]:
+    gpl = manifest.get("license_check", {}).get("gpl_files")
+    return ["GPL files compiled: " + ", ".join(gpl)] if gpl else []
+
+
+CHECKS = (version_errors, patch_errors, licence_errors, code_model_errors, osdi_errors, gpl_errors)
+
+
+def check_manifest(manifest: dict) -> list[str]:
+    """Every check's errors, in order (each check is its own function: cognitive complexity)."""
+    return [e for check in CHECKS for e in check(manifest)]
 
 
 def parse_args(argv: list[str]):
@@ -354,6 +387,8 @@ def parse_args(argv: list[str]):
             p.add_argument(opt, type=Path, required=True)
         if name == "archive":
             p.add_argument("--wrapper", type=Path, required=True)
+        else:
+            p.add_argument("--osdi-dir", type=Path)
     sub.add_parser("check").add_argument("--manifest", type=Path, required=True)
     return ap.parse_args(argv)
 

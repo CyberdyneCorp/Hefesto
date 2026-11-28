@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
+#include <memory>
 #include <ctime>
 #include <deque>
 #include <map>
@@ -41,6 +43,10 @@ std::string timestamp(std::chrono::system_clock::time_point when) {
   return std::string(buffer, n);
 }
 
+bool rerunnable(JobState state) noexcept {
+  return state == JobState::failed || state == JobState::cancelled;
+}
+
 bool is_active(JobState state) noexcept {
   return state == JobState::loading || state == JobState::running || state == JobState::paused;
 }
@@ -50,6 +56,28 @@ bool is_active(JobState state) noexcept {
 // error of an Engine call is a fault.
 bool is_fault(const diag::Diagnostic& error) noexcept {
   return error.code != "SIM-ENGINE-009" && error.code != "SIM-ENGINE-010" && error.code != "SIM-ENGINE-011";
+}
+
+// M9 R3 (D18): a limit setting is refused at zero or above twice its default.
+template <typename T>
+std::optional<diag::Diagnostic> check_limit(std::string_view name, T value, T fallback) {
+  if (value != 0 && value <= fallback * 2) {
+    return std::nullopt;
+  }
+  return diag::make("SIM-ENGINE-039", std::string{name} + " " + std::to_string(value) +
+                                          " is refused: it must be between 1 and twice the default " +
+                                          std::to_string(fallback));
+}
+
+// What the final vectors cost against the result budget ("Saved vectors and
+// memory budget": 8 bytes per point, 16 when complex).
+std::uint64_t result_cost(const std::vector<Vector>& vectors) {
+  std::uint64_t cost = 0;
+  for (const Vector& v : vectors) {
+    const std::uint64_t points = v.real.size();
+    cost += points * (v.complex ? 16U : 8U);
+  }
+  return cost;
 }
 
 // The first line of a diagnostic: WorkerEngine appends the engine's last
@@ -86,6 +114,10 @@ struct JobManager::Impl {
     std::unique_ptr<Loader> loader;      // set while the job loads
     std::vector<EngineState> deferred;   // state events that arrived while it loaded
     bool failed_while_loading = false;   // a deferred `failed`: later events of the dead engine are dropped
+    /// M9 R3: values streamed through on_data by the job's run (the
+    /// callback counts them on the engine's thread).
+    std::shared_ptr<std::atomic<std::uint64_t>> streamed;
+    std::uint64_t over_budget = 0;       // the estimate that passed the budget; 0 = within it
   };
 
   /// Deferred states kept per loading job before they are coalesced.
@@ -94,6 +126,7 @@ struct JobManager::Impl {
   JobManagerOptions options;
   std::uint32_t workers = 1;
   std::optional<diag::Diagnostic> pool_diagnostic;
+  std::optional<diag::Diagnostic> limits_diagnostic;  // M9 R3: SIM-ENGINE-039
   std::deque<JobRecord> records;         // stable addresses for record()
   std::deque<PreparedDeck> decks;        // by record index; released once handed to the loader
   std::deque<ProgressTracker> trackers;  // by record index
@@ -115,6 +148,19 @@ struct JobManager::Impl {
       pool_diagnostic = size.error();
     }
     slots.resize(workers);
+    check_limits();
+  }
+
+  /// M9 R3: a refused limit setting falls back to its default.
+  void check_limits() {
+    if (auto refused = check_limit("job log limit", options.max_log_bytes, kMaxJobLogBytes)) {
+      options.max_log_bytes = kMaxJobLogBytes;
+      limits_diagnostic = std::move(refused);
+    }
+    if (auto refused = check_limit("result budget", options.result_budget, kPlatformResultBudget)) {
+      options.result_budget = kPlatformResultBudget;
+      limits_diagnostic = std::move(refused);
+    }
   }
 
   ~Impl() {
@@ -149,7 +195,10 @@ struct JobManager::Impl {
       return diag::make("SIM-ENGINE-038", "job id '" + id + "' is not a single safe path component");
     }
     if (opts.run_set_point) {
-      if (index.contains(id)) {
+      // M9 R3: a point that ended without a completed result may run again
+      // under its id ("Run set execution": resuming runs exactly those).
+      const auto it = index.find(id);
+      if (it != index.end() && !rerunnable(records[it->second].job.state)) {
         return diag::make("SIM-ENGINE-036", "job " + id + " already exists");
       }
       return id;
@@ -190,6 +239,7 @@ struct JobManager::Impl {
 
   EngineCallbacks callbacks_for(std::size_t s, std::uint64_t generation) {
     EventQueue* queue_ptr = &events;
+    std::shared_ptr<std::atomic<std::uint64_t>> streamed = slots[s].streamed;
     EngineCallbacks callbacks;
     callbacks.on_output = [queue_ptr, s, generation](std::string_view line) {
       queue_ptr->post(EngineEvent{s, generation, EngineEvent::Kind::output, std::string{line}, EngineState::idle});
@@ -205,7 +255,8 @@ struct JobManager::Impl {
       event.point = point;
       queue_ptr->post(std::move(event));
     };
-    callbacks.on_data = [queue_ptr, s, generation](std::string_view vector, double value) {
+    callbacks.on_data = [queue_ptr, s, generation, streamed](std::string_view vector, double value) {
+      streamed->fetch_add(1, std::memory_order_relaxed);
       if (vector == "time") {  // the transient scale ("Progress reporting")
         EngineEvent event{s, generation, EngineEvent::Kind::scale, {}, EngineState::idle};
         event.point = value;
@@ -263,6 +314,8 @@ struct JobManager::Impl {
     slot.halted = false;
     slot.deferred.clear();
     slot.failed_while_loading = false;
+    slot.streamed = std::make_shared<std::atomic<std::uint64_t>>(0);
+    slot.over_budget = 0;
     slot.generation = ++generations;  // per job: late events of the last job are dropped
     rec.engine = slot.engine_number;
     set_state(rec, JobState::preparing);
@@ -458,11 +511,48 @@ struct JobManager::Impl {
       return;
     }
     rec.vectors = std::move(vectors.value());
-    set_state(rec, outcome(rec, slot.cancel_requested));
+    if (slot.over_budget == 0 && result_cost(rec.vectors) > options.result_budget) {
+      slot.over_budget = result_cost(rec.vectors);
+    }
+    if (slot.over_budget != 0) {
+      exceed_budget(rec, slot.over_budget);
+    } else {
+      set_state(rec, outcome(rec, slot.cancel_requested));
+    }
+    rec.partial = rec.job.state != JobState::completed && !rec.vectors.empty();
     if (rec.job.state == JobState::completed) {
       rec.progress = 1.0;
     }
     slot.job.reset();  // a healthy engine is reused
+  }
+
+  /// "Saved vectors and memory budget": the job fails with its partial result.
+  void exceed_budget(JobRecord& rec, std::uint64_t estimate) {
+    rec.budget_exceeded = estimate;
+    rec.diagnostics.push_back(diag::make("SIM-RESULT-011", "result memory budget exceeded (" +
+                                                               std::to_string(estimate) + " > " +
+                                                               std::to_string(options.result_budget) + ")"));
+    set_state(rec, JobState::failed);
+  }
+
+  /// M9 R3: cancels a running job whose streamed values passed the budget;
+  /// its run's end fails it (finish). Returns the number of jobs cancelled.
+  std::size_t check_budgets() {
+    std::size_t cancelled = 0;
+    for (std::size_t s = 0; s < slots.size(); ++s) {
+      Slot& slot = slots[s];
+      if (!slot.job || slot.loader || slot.over_budget != 0 || !slot.streamed || !slot.engine) {
+        continue;
+      }
+      const std::uint64_t values = slot.streamed->load(std::memory_order_relaxed);
+      const std::uint64_t estimate = values > UINT64_MAX / 8 ? UINT64_MAX : values * 8;
+      if (estimate > options.result_budget) {
+        slot.over_budget = estimate;
+        (void)cancel_slot(s);  // a fault ends the job at once; the run's end otherwise
+        ++cancelled;
+      }
+    }
+    return cancelled;
   }
 
   /// "Job lifecycle": completed only with a plot and no `Error` line.
@@ -498,7 +588,7 @@ struct JobManager::Impl {
         rec.errors.erase(rec.errors.begin());
       }
     }
-    if (rec.log_bytes + line.size() > kMaxJobLogBytes) {
+    if (rec.log_bytes + line.size() > options.max_log_bytes) {
       ++rec.log_dropped;
       return;
     }
@@ -646,7 +736,12 @@ struct JobManager::Impl {
     if (!s) {
       return diag::make("SIM-ENGINE-035", "job " + id + " is not running");
     }
-    Slot& slot = slots[*s];
+    return cancel_slot(*s);
+  }
+
+  /// Cancels the job of slot `s` in its loader or its engine.
+  diag::Status cancel_slot(std::size_t s) {
+    Slot& slot = slots[s];
     slot.cancel_requested = true;
     if (slot.loader) {
       slot.loader->cancel = true;  // never waits for the load
@@ -656,14 +751,14 @@ struct JobManager::Impl {
     diag::Status status = slot.engine->cancel();
     if (!status.ok()) {
       if (is_fault(status.error())) {
-        fault(*s, status.error());
+        fault(s, status.error());
       } else {
         slot.cancel_requested = false;
       }
       return status;
     }
     if (halted) {
-      finish(*s);  // the partial vectors are those of the pause
+      finish(s);  // the partial vectors are those of the pause
     }
     return status;
   }
@@ -691,7 +786,7 @@ diag::Outcome<JobId> JobManager::submit(PreparedDeck deck, JobOptions options) {
   impl_->records.push_back(std::move(rec));
   impl_->decks.push_back(std::move(deck));
   impl_->trackers.emplace_back();
-  impl_->index.emplace(id.value(), n);
+  impl_->index.insert_or_assign(id.value(), n);  // a re-run point takes over its id
   impl_->queue.push_back(n);
   return id;
 }
@@ -704,7 +799,7 @@ std::size_t JobManager::poll_for(std::chrono::milliseconds timeout) {
 std::size_t JobManager::poll() {
   std::size_t total = 0;
   for (std::size_t pass = 0; pass < kMaxPollPasses; ++pass) {
-    const std::size_t n = impl_->apply_events() + impl_->start_jobs();
+    const std::size_t n = impl_->apply_events() + impl_->check_budgets() + impl_->start_jobs();
     if (n == 0) {
       break;
     }
@@ -761,6 +856,18 @@ std::size_t JobManager::loading() const noexcept {
 
 std::size_t JobManager::peak_queued_events() const {
   return impl_->events.peak();
+}
+
+const std::optional<diag::Diagnostic>& JobManager::limits_diagnostic() const noexcept {
+  return impl_->limits_diagnostic;
+}
+
+std::size_t JobManager::max_log_bytes() const noexcept {
+  return impl_->options.max_log_bytes;
+}
+
+std::uint64_t JobManager::result_budget() const noexcept {
+  return impl_->options.result_budget;
 }
 
 }  // namespace hefesto::sim

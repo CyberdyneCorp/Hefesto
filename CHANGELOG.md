@@ -138,12 +138,38 @@ release notices.
   tolerances and series/parallel reconciliation. Written under the netgen
   clean room; the `lvs` command still answers CORE-NOTIMPL-009 until the
   hierarchy, report and setup layers land.
+- **`lvs` on two netlist files.** `lvs <name1> <name2> [<setup> [<log>]]
+  [-list] [-json] [-blackbox] [-noflatten=...]` compares two SPICE or CDL
+  netlists hierarchically (compare queue, flattening, pin matching), writes
+  `comp.out` in netgen's two-column layout and `comp.json`, returns the
+  `-list` result and runs headless in `hefesto-cli`. Setup files are found
+  in the active PDK's `libs.tech/netgen/` by bare PDK name. `lvs -layout`
+  and `.sch` netlists still answer CORE-NOTIMPL-009.
+- **netgen setup files.** The setup file named in `lvs` (for example the
+  PDK's `sky130A_setup.tcl`) runs in a fresh sandboxed Tcl interpreter with
+  netgen's `permute`, `property`, `equate`, `ignore`, `model`, `global`,
+  `flatten` and `format` commands, bounded in steps and time; a missing
+  setup file ends `lvs`, a `nosetup` name compares without one, and
+  `hefesto-cli` exits 1 when the netlists do not match and 2 on an input
+  error.
 - **Simulation decks and results (library).** Deck preparation for SPICE and
   raw sources (testbench composition, include inlining, `.control`
   sanitisation, deck limits), raw-file read and write, CSV export and
   waveform measurements. Worker state events are bounded by count, and worker
   handshakes and deck loads run off the polling thread. The worker ABI is
   version 2 (streamed data points).
+- **Sweeps, corners and Monte Carlo (library).** Run sets with sweep, DOE,
+  corner and Monte Carlo dimensions, point decks, the bundled corner tables
+  of sky130, gf180mcu and IHP sg13g2, pass/fail and the corner matrix,
+  Monte Carlo seeds and early stopping, run-set storage and results in point
+  order; the same results with one worker or several. The `sim` options come
+  with the `sim` command.
+- **Built-in IHP compact models.** The six sg13g2 OSDI modules (PSP103,
+  `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf`) are compiled into the engine
+  library, so a stale `.osdi` on the host is never loaded.
+- **Simulation result budget.** A job whose result passes its memory budget
+  (4 GiB on desktop, lowerable) now fails with SIM-RESULT-011 and keeps its
+  partial result; the in-memory job log (64 MiB) can be lowered too.
 
 ## Unreleased (M8: schematic capture, in progress)
 

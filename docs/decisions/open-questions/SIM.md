@@ -15,11 +15,13 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-2: [platform] OSDI / Verilog-A models on iPadOS
 - Kind: platform
+- Status: approved 2026-11-07 (P-7, P-13, D-5); symbol-prefix amendment approved 2026-11-27 (user decision, recommended option; `docs/decisions/m9-decision-table.md` R3-3)
 - ngspice behavior: OSDI models are shared objects compiled by OpenVAF. ngspice loads them with `dlopen(path, RTLD_NOW|RTLD_LOCAL)` and looks up the generic symbols `OSDI_DESCRIPTORS`, `OSDI_NUM_DESCRIPTORS`, `OSDI_VERSION_MAJOR/MINOR` and `OSDI_DESCRIPTOR_SIZE`. It accepts OSDI 0.3 (original OpenVAF) and 0.4 (OpenVAF-reloaded; 0.5 is experimental). iPadOS App Store builds cannot load code the user supplies, OpenVAF (Rust + LLVM) cannot run on device, and every module exports the same symbol names, so several modules cannot be linked statically as they are.
 - Evidence: src/osdi/osdiregistry.c:31, src/osdi/osdiregistry.c:339-451, src/osdi/osdi.h:20-21
 - Options: (a) a Hefesto patch adding a static OSDI registry: compile each module at build time with symbol prefixing (for example `objcopy --prefix-symbols`, or an OpenVAF option if one exists) and register the descriptors through a table; (b) upstream such a static-registration API to ngspice; (c) no OSDI on iPad, which drops IHP sg13g2 support there.
 - Recommendation: (a) now, (b) in parallel. Decide the built-in module list (PSP 103.x, `r3_cmc`, `mosvar`, HICUM L2, and possibly BSIM-CMG and EKV) and check each model's license for redistribution in binary form.
 - Resolution: platform — a Hefesto patch adds a static OSDI registry: each module is compiled at build time with prefixed symbols and registered through a table; the same API is proposed upstream; the built-in module list is the one of `simulation-engine-embedding`, each model's license checked for binary redistribution (P-7, P-13, D-5, approved 2026-11-07, 2026-11-07).
+- Resolution (amendment, approved 2026-11-27): the prefixed symbols are generated per module at build time: each OpenVAF module's `OSDI_DESCRIPTORS`, `OSDI_NUM_DESCRIPTORS`, `OSDI_VERSION_MAJOR`, `OSDI_VERSION_MINOR` and `OSDI_DESCRIPTOR_SIZE` get a prefix derived from the module name, and the module is registered under its basename in the static table of patch `0001-static-osdi-registry.patch`, on every platform; a built-in module is never loaded from a `.osdi` file. `simulation-engine-embedding` "OSDI compact models", scenario "Statically registered modules with per-module symbol prefixes"; NGBUILD task 5.2. Approved by the user 2026-11-27.
 
 ### Q-SIM-3: [platform] XSPICE code models without dlopen
 - Kind: platform
@@ -144,12 +146,13 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-16: Default result memory budgets
 - Kind: ambiguity
-- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22)
+- Status: approved 2026-11-22 (recommendation in `docs/decisions/m9-decision-table.md`, approved by the user 2026-11-22); interim-value amendment approved 2026-11-27 (user decision, R3-6)
 - ngspice behavior: ngspice grows vectors without limit, and memory is reported only for information.
 - Evidence: src/sharedspice.c (usage reporting)
 - Options: 512 MiB on iPad and 4 GiB on desktop (current spec) | a fraction of physical memory.
 - Recommendation: define the budget relative to the iPad memory bound of capability `hefesto-performance` (3 GB in total, shared with layout and GPU). Revisit after profiling.
 - Resolution: platform — the default result budgets stay 512 MiB on iPadOS and 4 GiB on desktop; they are revisited after the `sim-bench` profiles. Approved by the user 2026-11-22.
+- Resolution (amendment, approved 2026-11-27): the desktop default stays 4 GiB until Q-SIM-25 decides it (see there); iPadOS stays 512 MiB. Approved by the user 2026-11-27.
 
 ### Q-SIM-17: Raw file header fields are not reproducible
 - Kind: quirk
@@ -235,7 +238,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 
 ### Q-SIM-24: Hierarchical node names for layout probes before M12
 - Kind: platform
-- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`); naming and array-element amendment approved 2026-11-27 (user decision, recommended option; R3-1, R3-2)
 - ngspice behavior: n/a. Background:
   - The `simulation-ui-and-crossprobe` requirement "Probing a layout net" names nets as `irsim-interface` "Hierarchical node names" does, which is Magic's `getnode` naming. `irsim-interface` is an M12 capability.
   - Magic's `SimGetNodeName` builds names with `strcpy` and `strcat` into the fixed buffers `static nodename[256]` and `buff[256]` (`sim/SimExtract.c:765-767`); a long hierarchical path or label overflows them. `SimTxtorLabel`'s `static name[30]` cannot overflow: it holds `@=%c%d,%d` with two 32-bit integers, at most 26 characters plus the terminator (`sim/SimExtract.c:357-366`).
@@ -247,10 +250,11 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
   - (c) A Hefesto-only naming rule for probes.
 - Recommendation: (a). Probing needs only the names. The command belongs with the rest of the IRSIM interface, which stays M12 (UI-CLIENT-002 is not retired).
 - Resolution: platform — option (a): the hierarchical node-naming function is brought forward into M9, tagged to `irsim-interface` "Hierarchical node names", with no length limit in both `magic-compat` modes (X-2 tier 1); the net name map gets a `layoutName` field computed with that function at each entry's layout point, and a layout probe looks up `layoutName` first and falls back to connectivity when the names differ; `getnode`, `rsim`, `startrsim` and `simcmd` stay in M12. Approved by the user 2026-11-22.
+- Resolution (amendment, approved 2026-11-27): the probe uses `getnode`'s normal naming (preferred label, else the extractor's generated name), never the positional `@=` names of `getnode fast`; a use-path array element outside the array's range fails with `SIM-PROBE-003` `no instance <element> in cell <cell>`; both in both `magic-compat` modes. `simulation-ui-and-crossprobe` "Probing a layout net", scenarios "Probe uses the normal node name" and "Array element outside the array". Approved by the user 2026-11-27.
 
 ### Q-SIM-25: Simulation input and transport limits
 - Kind: bug
-- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`)
+- Status: approved 2026-11-22 (proposed 2026-11-22 by the M9 plan; approved by the user 2026-11-22, `docs/decisions/m9-decision-table.md`); job-log cap and interim result budget amendment approved 2026-11-27 (user decision, recommended option; R3-5, R3-6)
 - ngspice behavior: ngspice bounds decks and results only by memory. The result budget of `simulation-analyses-and-results` (Q-SIM-16) covers vectors, but nothing bounds:
   - deck size;
   - include depth;
@@ -270,6 +274,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
   - (c) The values of (a) as fixed limits.
 - Recommendation: (a). The values are far above every PDK testbench and golden case. Hostile or runaway inputs fail with a message, and a stuck worker is detected and replaced.
 - Resolution: fix — option (a): configurable limits, each with its own diagnostic: prepared deck 256 MiB; include depth 32; IPC frame 64 MiB (vectors in chunks); worker start-up 10 s, then a heartbeat every 2 s with a 10 s timeout; 100 000 points per run set and 100 000 Monte Carlo samples; raw import 4 GiB and never more than the result budget once loaded. Approved by the user 2026-11-22.
+- Resolution (amendment, approved 2026-11-27): the job log kept in memory is capped at 64 MiB of text, a setting that can be lowered and never raised past twice the default (design D18); lines past the cap are dropped and counted (`simulation-analyses-and-results` "Job lifecycle", scenario "Job log capped in memory"; also under the user's standing rule for crafted-input limits in both modes). Interim value: the result budget is 4 GiB on desktop (512 MiB on iPadOS) until this entry decides it (`simulation-analyses-and-results` "Saved vectors and memory budget", scenario "Default result budget"). Approved by the user 2026-11-27.
 
 ### Q-SIM-26: When D-28 must be settled
 - Kind: platform

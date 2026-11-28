@@ -1,0 +1,8 @@
+.ENDS occurred outside of a subcircuit!
+line number 5 = '.ends'
+Missing .ENDS statement on subcircuit.
+line number 10 = '.subckt inner c d'
+.ENDS occurred outside of a subcircuit!
+line number 14 = '.ends'
+Missing .ENDS statement on subcircuit.
+line number 16 = 'R1 a 0 1k'

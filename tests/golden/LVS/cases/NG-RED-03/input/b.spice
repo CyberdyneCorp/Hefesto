@@ -1,0 +1,4 @@
+* single
+.subckt top a b
+R1 a b 3k
+.ends

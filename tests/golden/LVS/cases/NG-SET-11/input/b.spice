@@ -1,0 +1,9 @@
+* b
+.subckt top a b c
+X1 a b rp2
+X2 a b c rp3
+.ends
+.subckt rp2 1 2
+.ends
+.subckt rp3 1 2 3
+.ends

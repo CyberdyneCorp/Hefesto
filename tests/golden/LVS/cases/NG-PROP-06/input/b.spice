@@ -1,0 +1,4 @@
+* b
+.subckt top d g s b
+M1 s g d b nmos W=1u L=0.15u AS=2p AD=1p
+.ends

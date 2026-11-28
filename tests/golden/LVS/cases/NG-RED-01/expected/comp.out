@@ -1,0 +1,46 @@
+
+Class cell (0):  Merged 3 parallel devices.
+Subcircuit summary:
+Circuit 1: cell                            |Circuit 2: cell                            
+-------------------------------------------|-------------------------------------------
+nmos (4->1)                                |nmos (4->1)                                
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 4                          |Number of nets: 4                          
+---------------------------------------------------------------------------------------
+Resolving symmetries by property value.
+Resolving symmetries by pin name.
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: cell                            |Circuit 2: cell                            
+-------------------------------------------|-------------------------------------------
+g                                          |g                                          
+s                                          |s                                          
+d                                          |d                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes cell and cell are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+cell (1)                                   |cell (1)                                   
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 4                          |Number of nets: 4                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+d                                          |d                                          
+g                                          |g                                          
+s                                          |s                                          
+b                                          |b                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Circuits match uniquely.
+.

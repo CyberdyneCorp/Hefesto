@@ -1,0 +1,10 @@
+* schematic
+.subckt inv A Y
+R1 A Y 1k
+.ends
+.subckt blk2 x y
+.ends
+.subckt top a y
+X1 a y inv
+X2 y a blk2
+.ends

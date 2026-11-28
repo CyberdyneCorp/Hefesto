@@ -73,13 +73,18 @@ any form: Hefesto's LVS engine is a clean-room implementation (design D2, Q-LVS-
 | ↳ cppduals (in ngspice, used by HICUM) | as bundled by ngspice-47 | MPL-2.0 | `libngspice-hefesto` | ngspice `src/include/cppduals` |
 | ↳ sparse (in ngspice) | as bundled by ngspice-47 | MIT-style (unnamed) | `libngspice-hefesto` | ngspice `src/maths/sparse` |
 | ↳ XSPICE code models `analog`, `digital` (without `d_cosim` and `d_process`), `spice2poly`, `xtradev` (in ngspice) | as bundled by ngspice-47 | public domain | `libngspice-hefesto` | ngspice `src/xspice/icm` |
+| PSP 103.8.2 (`psp103`, `psp103_nqs`; JUNCAP 200.6.2), IHP OSDI module | IHP-Open-PDK `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/verilog-a/`), compiled with OpenVAF-reloaded `44cfee3b` (`-D__NGSPICE__ --target_cpu generic`) and registered statically (task 5.2) | LicenseRef-PSP103: copyright NXP Semiconductors, CEA-Leti, Delft University of Technology and Arizona State University; the source carries a copyright notice and no licence text (legal review, task 20.1) | `libngspice-hefesto` when built with `HEFESTO_NGSPICE_OSDI_DIR` | https://github.com/IHP-GmbH/IHP-Open-PDK |
+| R3_CMC (`r3_cmc`), IHP OSDI module | IHP-Open-PDK `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/verilog-a/`), compiled with OpenVAF-reloaded `44cfee3b` (`-D__NGSPICE__ --target_cpu generic`) and registered statically (task 5.2) | Apache-2.0 (IHP Open PDK Authors) AND ECL-2.0 (original R3_CMC, Si2 Compact Model Coalition) | `libngspice-hefesto` when built with `HEFESTO_NGSPICE_OSDI_DIR` | https://github.com/IHP-GmbH/IHP-Open-PDK |
+| MOSVAR 1.3.0 (`mosvar`), IHP OSDI module | IHP-Open-PDK `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/verilog-a/`), compiled with OpenVAF-reloaded `44cfee3b` (`-D__NGSPICE__ --target_cpu generic`) and registered statically (task 5.2) | LicenseRef-ASU-Si2-mosvar: Arizona State University, Freescale Semiconductor and Si2; redistribution with notices and acknowledgement, the code itself not sold (legal review, task 20.1) | `libngspice-hefesto` when built with `HEFESTO_NGSPICE_OSDI_DIR` | https://github.com/IHP-GmbH/IHP-Open-PDK |
+| `cap_cmomi`, `cap_cmomf`, IHP OSDI modules | IHP-Open-PDK `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/verilog-a/`), compiled with OpenVAF-reloaded `44cfee3b` (`-D__NGSPICE__ --target_cpu generic`) and registered statically (task 5.2) | Apache-2.0 (IHP PDK Authors) | `libngspice-hefesto` when built with `HEFESTO_NGSPICE_OSDI_DIR` | https://github.com/IHP-GmbH/IHP-Open-PDK |
 | OpenVAF-reloaded | 20260616, upstream commit `44cfee3bc0e4ec6f187f11de7a34e6c751b57aa7`, archive SHA-256 `bd4854a6e5b55f1c64a0b853d90216d1e3961d2f6d3ac572125597d28b867301` | GPL-3.0 | **not shipped** (build-time tool: golden capture image, and from task 5.2 the IHP OSDI modules) | https://github.com/arpadbuermen/OpenVAF |
 
 The source archive the LGPL and MPL terms require (every compiled file, all headers, the whole
 OSDI tree, cppduals, the patches and the CMake wrapper) is produced by the build target
 `ngspice_hefesto_source_archive`; `docs/building.md` "Replacing the ngspice library" says how to
-rebuild and replace the library. The compact models compiled into the library (task 5.2) get their
-rows here when they land.
+rebuild and replace the library. The compact models compiled into the library (task 5.2) are the
+six sg13g2 modules above; `ngspice-manifest.json` lists each with its source's SHA-256 and licence
+(`osdi_modules`), and the Verilog-A sources are part of the pinned IHP-Open-PDK data set.
 
 ## Components in M10
 

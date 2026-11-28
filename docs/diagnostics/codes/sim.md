@@ -102,6 +102,16 @@ M9 R2 fix pass:
 - `poll()` applies at most 4 batches of events (`kMaxPollPasses`) and
   returns, so a worker that keeps sending cannot hold the owning thread.
 
+M9 R3 (Q-SIM-25, approved 2026-11-27):
+- `SIM-ENGINE-039` `<limit> <value> is refused: it must be between 1 and
+  twice the default <default>`: `JobManagerOptions::max_log_bytes` (default
+  64 MiB, the in-memory job log; later lines are counted in `log_dropped`)
+  or `result_budget` (default 4 GiB) is zero or above twice its default
+  (design D18). The default is used and the diagnostic is
+  `JobManager::limits_diagnostic()`.
+- A run-set point id whose job ended `failed` or `cancelled` may be
+  submitted again (resuming a run set, "re-run point").
+
 ## SIMDECK
 
 Codes of deck preparation (`sim/deck/`; capability
@@ -178,6 +188,12 @@ Codes of result storage, raw files, CSV export and waveform measurements
   has no file system, or the job id is not one path component).
 - `SIM-RESULT-010` `<analysis>: <parameter> ...`: an invalid analysis
   ("Supported analyses"), e.g. `ac: fstart must be > 0 for dec sweep`.
+- `SIM-RESULT-011` `result memory budget exceeded (<estimate> > <B>)`
+  ("Saved vectors and memory budget", Q-SIM-16; M9 R3): the values a run
+  streamed (8 bytes each) or its final vectors (8 bytes a point, 16 when
+  complex) passed the job's result budget. A streaming run is cancelled in
+  its engine; the job ends `failed`, keeps its vectors and is marked
+  `partial`. The budget is 4 GiB on desktop until Q-SIM-25 decides it.
 
 ## SIMPROBE
 
@@ -202,8 +218,50 @@ yet.
 ## SIMADV
 
 Codes of run sets, sweeps, corners and Monte Carlo (`sim/runset/`;
-capabilities simulation-sweeps, simulation-corners, simulation-monte-carlo).
-None yet.
+capabilities simulation-sweeps, simulation-corners, simulation-monte-carlo;
+M9 R3).
+
+- `SIM-RUNSET-001` `Run set has <N> points; the limit is <L>`: the product
+  of the dimensions' levels (or one sweep's or DOE block's levels) is above
+  the point limit (100 000, lowerable); refused before any level or job is
+  made, so a crafted step of 1e-300 allocates nothing.
+- `SIM-RUNSET-002` `Run set has no points`.
+- `SIM-RUNSET-003` `Sweep <var>: <problem>`, e.g. `Sweep param:wn: dec
+  start must be > 0`.
+- `SIM-RUNSET-004`: an unknown sweep variable (`corner` is not one), two
+  dimensions of one variable, `temp` or `supply` swept with a corner set
+  (`Sweep supply conflicts with the corner supply`), a `source:` stimulus
+  that is not DC (`Sweep source:Vin: only dc stimuli can be swept; use a
+  parameter`), or a Monte Carlo dimension that is not innermost.
+- `SIM-RUNSET-005` `Parameter <name> is defined more than once at top
+  level` (Q-SIMADV-9).
+- `SIM-RUNSET-006`: an invalid DOE block, or a factor that is not
+  `<var>:<lo>:<hi>[:log][:<levels>]` (the `sim doe` usage line).
+- `SIM-RUNSET-007`: no bundled table for the PDK, an unknown corner or set,
+  `Duplicate corner <name> in corner set <set>`, or `Corner <name>: section
+  <word> not found in <file>`.
+- `SIM-RUNSET-008` `sim corners: <var> has no section <word>`.
+- `SIM-RUNSET-009` `<PDK> does not define Monte Carlo mode <mode>` or
+  `Monte Carlo mode <mode> is not defined at corner <c>` (Q-SIMADV-8 (a)).
+- `SIM-RUNSET-010` `sim mc: runs must be between 1 and <limit>`, the base
+  seed range, the stop target, or a statistical parameter's argument count.
+- `SIM-RUNSET-011` `<variable> is not supported in Monte Carlo runs`
+  (`stat_param_as_func`, `statlocal`).
+- `SIM-RUNSET-012` (warning) `Removed seed setting on line <n>; Monte Carlo
+  seeds are set by Hefesto`.
+- `SIM-RUNSET-013` (warning) `Testbench corner <name> overrides the PDK
+  corner`.
+- `SIM-RUNSET-014` (warning) `Monte Carlo mismatch: instance <name> has
+  mm_ok=0; it will not vary` (sg13g2).
+- `SIM-RUNSET-015`: a run-set limit setting (points, samples) of zero or
+  above twice its default.
+- `SIM-RUNSET-016`: `runset.json`, `base.spice` or `points.csv` cannot be
+  written.
+- `SIM-RUNSET-017` `Mismatch parameter <name> needs a layout or netlist
+  DUT`.
+- `SIM-RUNSET-018`: a run-set command in the wrong state (pause of a run set
+  that is not running, resume of one that is neither paused nor cancelled),
+  or a point index outside the run set.
 
 ## SIMMEAS
 
@@ -263,6 +321,7 @@ fails when the two disagree.
 | `SIM-ENGINE-036` | error | Run-set point job id already in use. |
 | `SIM-ENGINE-037` | error | The run produced no plot, so the job failed. |
 | `SIM-ENGINE-038` | error | Job id is not a single safe path component. |
+| `SIM-ENGINE-039` | error | Job limit setting of zero or above twice its default refused; the default is used. |
 | `SIM-PROBE-001` | error | Net is not in the netlist of this run. |
 | `SIM-PROBE-002` | error | Node naming needs a root cell, a technology and an extraction style. |
 | `SIM-PROBE-003` | error | Instance of the probe's use path not found. |
@@ -277,4 +336,23 @@ fails when the two disagree.
 | `SIM-RESULT-008` | error | Unknown waveform measurement. |
 | `SIM-RESULT-009` | error | A result file cannot be read or written. |
 | `SIM-RESULT-010` | error | Invalid analysis parameter. |
+| `SIM-RESULT-011` | error | Result memory budget exceeded: the job failed and keeps its partial result. |
+| `SIM-RUNSET-001` | error | Run set above the point (or level) limit refused before any job is created. |
+| `SIM-RUNSET-002` | error | Run set has no points. |
+| `SIM-RUNSET-003` | error | Invalid sweep definition (the dimension and the parameter are named). |
+| `SIM-RUNSET-004` | error | Invalid sweep variable, duplicate variable, or a variable the corner dimension sets. |
+| `SIM-RUNSET-005` | error | Swept parameter defined more than once at top level. |
+| `SIM-RUNSET-006` | error | Invalid design-of-experiments block. |
+| `SIM-RUNSET-007` | error | Corner table error: unknown corner or set, duplicate corner, or a section the library lacks. |
+| `SIM-RUNSET-008` | error | Unknown section word for a corner variable. |
+| `SIM-RUNSET-009` | error | Monte Carlo mode not defined by the PDK or at the corner. |
+| `SIM-RUNSET-010` | error | Invalid Monte Carlo settings: run count, base seed, stop target or statistical parameter. |
+| `SIM-RUNSET-011` | error | A Monte Carlo deck sets a variable Monte Carlo runs do not support. |
+| `SIM-RUNSET-012` | warning | Seed setting removed from a Monte Carlo deck. |
+| `SIM-RUNSET-013` | warning | Testbench corner overrides the PDK corner of the same name. |
+| `SIM-RUNSET-014` | warning | Monte Carlo mismatch: a PDK device instance has mm_ok=0 and will not vary. |
+| `SIM-RUNSET-015` | error | Run-set limit setting of zero or above twice its default refused. |
+| `SIM-RUNSET-016` | error | Run-set storage cannot be written. |
+| `SIM-RUNSET-017` | error | Mismatch statistical parameter needs a layout or netlist DUT. |
+| `SIM-RUNSET-018` | error | Run set or point not in the state the command needs. |
 <!-- END DIAGNOSTIC CODES -->

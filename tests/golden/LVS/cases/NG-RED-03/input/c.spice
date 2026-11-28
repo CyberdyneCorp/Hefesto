@@ -1,0 +1,6 @@
+* tapped
+.subckt top a b m1
+R1 a m1 1k
+R2 m1 m2 1k
+R3 m2 b 1k
+.ends

@@ -81,6 +81,7 @@ PDK_SETS = (
     "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc",
     "sky130-lef", "gf180mcu-lef", "ihp-lef",
     "sky130-xschem", "gf180mcu-xschem", "ihp-xschem",
+    "gf180mcu-netgen", "ihp-netgen",
 )
 
 

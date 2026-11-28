@@ -1,0 +1,9 @@
+* Hefesto-authored LVS input (lvs-command "Headless LVS"): a schematic side
+* that does not match layout.spice (the inverter's nfet is missing).
+.subckt inv A Y VSS VDD
+M1 Y A VDD VDD pfet W=2 L=0.15
+.ends
+.subckt buf IN OUT VDD VSS
+Xinv2 n1 OUT VSS VDD inv
+Xinv1 IN n1 VSS VDD inv
+.ends

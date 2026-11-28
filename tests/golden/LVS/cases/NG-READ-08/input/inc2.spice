@@ -1,0 +1,4 @@
+* included absolute
+.subckt sub2 a
+R1 a VSS 1k
+.ends

@@ -131,13 +131,50 @@ def codemodel(path):
 def osdi_static_only(path):
     e = Engine(path)
     e.command("set hefesto_osdi_static_only")
-    e.command("osdi /nonexistent/psp103_nqs.osdi")
+    e.command("osdi /nonexistent/not_built_in.osdi")
     return e, {}
+
+
+# Task 5.2: the modules sg13g2's .spiceinit loads, by basename.
+SG13G2_OSDI = ("psp103", "psp103_nqs", "r3_cmc", "mosvar", "cap_cmomi", "cap_cmomf")
+
+
+def osdi_version_mismatch(path):
+    """Scenario "Version mismatch avoided": the host's psp103.osdi (not a usable
+    library here, as one built with OSDI 0.3 would not be) is ignored, and the
+    built-in module runs the deck."""
+    import tempfile
+    from pathlib import Path
+    e = Engine(path)
+    with tempfile.TemporaryDirectory() as tmp:
+        stale = Path(tmp) / "psp103.osdi"
+        stale.write_bytes(b"OSDI 0.3 module built elsewhere\n")
+        e.command(f"osdi {stale}")
+    e.circuit(["* PSP103 built in", ".model mn psp103va type=1", "N1 d g 0 0 mn w=1e-6 l=1e-6",
+               "Vd d 0 1.0", "Vg g 0 1.0", ".op", ".end"])
+    e.command("run")
+    return e, {"i(vd)": e.vector("vd#branch")}
+
+
+def sg13g2_op(path):
+    """An sg13g2 inverter `op` deck with the PDK's model library and the built-in modules."""
+    import os
+    models = os.environ["HEFESTO_IHP_MODELS"]
+    e = Engine(path)
+    for command in ("set ngbehavior=hsa", "set ng_nomodcheck", "set hefesto_osdi_static_only"):
+        e.command(command)
+    for module in SG13G2_OSDI:
+        e.command(f"osdi /pdk/osdi/{module}.osdi")
+    e.circuit(["* sg13g2 inverter op", f".lib {models}/models/cornerMOSlv.lib mos_tt",
+               "XMN out in 0 0 sg13_lv_nmos w=1u l=0.13u", "XMP out in vdd vdd sg13_lv_pmos w=2u l=0.13u",
+               "Vdd vdd 0 1.2", "Vin in 0 0.6", ".op", ".end"])
+    e.command("run")
+    return e, {"out": e.vector("out")}
 
 
 def osdi_dynamic(path):
     e = Engine(path)
-    e.command("osdi /nonexistent/psp103_nqs.osdi")
+    e.command("osdi /nonexistent/not_built_in.osdi")
     return e, {}
 
 
@@ -148,7 +185,7 @@ def devices(path):
 
 
 SCENARIOS = {f.__name__: f for f in (seed, trnoise_twice, spiceinit, codemodel, osdi_static_only, osdi_dynamic,
-                                     devices, stat_param)}
+                                     devices, stat_param, osdi_version_mismatch, sg13g2_op)}
 
 
 def main(argv: list[str]) -> int:

@@ -1,0 +1,1 @@
+Error input/setup.tcl:16 (ignoring), Bad option, should be property parallel none|all|connected

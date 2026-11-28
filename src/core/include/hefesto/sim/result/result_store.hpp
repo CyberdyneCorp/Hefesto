@@ -12,6 +12,9 @@
 #pragma once
 
 #include <cstdint>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 #include <optional>
 #include <string>
 #include <vector>
@@ -25,6 +28,22 @@ namespace hefesto::sim {
 
 /// Result memory per job (design D18, Q-SIM-16): 4 GiB on desktop.
 inline constexpr std::uint64_t kDesktopResultBudget = std::uint64_t{4} << 30;
+/// Added in the M9 R3 fix pass: result memory per job on iPadOS (512 MiB;
+/// scenario "Default result budget", Q-SIM-16).
+inline constexpr std::uint64_t kIpadResultBudget = std::uint64_t{512} << 20;
+
+/// Added in the M9 R3 fix pass: the default result budget of a platform.
+[[nodiscard]] constexpr std::uint64_t default_result_budget(bool ipados) noexcept {
+  return ipados ? kIpadResultBudget : kDesktopResultBudget;
+}
+
+/// Added in the M9 R3 fix pass: the default result budget of this build
+/// (iPadOS builds define TARGET_OS_IOS through TargetConditionals.h).
+#if defined(__APPLE__) && TARGET_OS_IOS
+inline constexpr std::uint64_t kPlatformResultBudget = default_result_budget(true);
+#else
+inline constexpr std::uint64_t kPlatformResultBudget = default_result_budget(false);
+#endif
 
 /// One plot: the scale vector first, then the others.
 struct Plot {

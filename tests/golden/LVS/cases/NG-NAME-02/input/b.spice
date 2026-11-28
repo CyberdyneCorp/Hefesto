@@ -1,0 +1,6 @@
+* b
+.subckt leaf p q
+.ends
+.subckt top VDD a[1]
+Xu1 VDD a[1] leaf
+.ends

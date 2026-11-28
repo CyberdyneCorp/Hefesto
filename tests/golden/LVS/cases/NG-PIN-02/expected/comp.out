@@ -1,0 +1,49 @@
+
+Class top (0):  Merged 1 parallel devices.
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+r (2->1)                                   |r (2) **Mismatch**                         
+Number of devices: 1 **Mismatch**          |Number of devices: 2 **Mismatch**          
+Number of nets: 2 **Mismatch**             |Number of nets: 3 **Mismatch**             
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+(no matching net)                          |Net: A                                     
+                                           |  r/(end_a|end_b) = 2                      
+---------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------
+Net: A                                     |Net: EN                                    
+  r/(end_a|end_b) = 1                      |  r/(end_a|end_b) = 1                      
+                                           |                                           
+Net: Y                                     |Net: Y                                     
+  r/(end_a|end_b) = 1                      |  r/(end_a|end_b) = 1                      
+---------------------------------------------------------------------------------------
+DEVICE mismatches: Class fragments follow (with node fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Instance: r:1                              |Instance: r:1                              
+  (end_a,end_b) = (1,1)                    |  (end_a,end_b) = (2,1)                    
+                                           |                                           
+(no matching instance)                     |Instance: r:2                              
+                                           |  (end_a,end_b) = (2,1)                    
+                                           |                                           
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+Y                                          |EN **Mismatch**                            
+A                                          |Y **Mismatch**                             
+(no matching pin)                          |A                                          
+---------------------------------------------------------------------------------------
+Cell pin lists for top and top altered to match.
+Device classes top and top are equivalent.
+
+Final result: Top level cell failed pin matching.

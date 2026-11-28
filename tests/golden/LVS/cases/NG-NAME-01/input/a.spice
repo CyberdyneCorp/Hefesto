@@ -1,0 +1,4 @@
+* a
+.subckt top Vdd d[3]
+R1 Vdd d[3] 1k
+.ends

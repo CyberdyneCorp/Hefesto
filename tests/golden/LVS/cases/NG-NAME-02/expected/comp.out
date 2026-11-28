@@ -1,0 +1,32 @@
+
+Cell leaf (1) disconnected node: p
+Cell leaf (1) disconnected node: q
+
+Subcircuit pins:
+Circuit 1: leaf                            |Circuit 2: leaf                            
+-------------------------------------------|-------------------------------------------
+p                                          |p                                          
+q                                          |q                                          
+---------------------------------------------------------------------------------------
+Cell pin lists are equivalent.
+Device classes leaf and leaf are equivalent.
+
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+leaf (1)                                   |leaf (1)                                   
+Number of devices: 1                       |Number of devices: 1                       
+Number of nets: 2                          |Number of nets: 2                          
+---------------------------------------------------------------------------------------
+Netlists match uniquely.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+Vdd                                        |VDD **Mismatch**                           
+\a[1]                                      |a[1] **Mismatch**                          
+---------------------------------------------------------------------------------------
+Cell pin lists for top and top altered to match.
+Device classes top and top are equivalent.
+
+Final result: Top level cell failed pin matching.

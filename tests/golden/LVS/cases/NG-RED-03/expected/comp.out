@@ -1,0 +1,48 @@
+
+Class top (2):  Merged 1 series devices.
+Subcircuit summary:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+r (3->2)                                   |r (1) **Mismatch**                         
+Number of devices: 2 **Mismatch**          |Number of devices: 1 **Mismatch**          
+Number of nets: 3 **Mismatch**             |Number of nets: 2 **Mismatch**             
+---------------------------------------------------------------------------------------
+NET mismatches: Class fragments follow (with fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Net: m1                                    |(no matching net)                          
+  r/end_b = 1                              |                                           
+  r/end_a = 1                              |                                           
+---------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------
+Net: b                                     |Net: b                                     
+  r/end_b = 1                              |  r/end_b = 1                              
+                                           |                                           
+Net: a                                     |Net: a                                     
+  r/end_a = 1                              |  r/end_a = 1                              
+---------------------------------------------------------------------------------------
+DEVICE mismatches: Class fragments follow (with node fanout counts):
+Circuit 1: top                             |Circuit 2: top                             
+
+---------------------------------------------------------------------------------------
+Instance: r:1                              |Instance: r:1                              
+  end_a = 1                                |  end_a = 1                                
+  end_b = 2                                |  end_b = 1                                
+                                           |                                           
+Instance: r:2                              |(no matching instance)                     
+  end_a = 2                                |                                           
+  end_b = 1                                |                                           
+---------------------------------------------------------------------------------------
+Netlists do not match.
+Port matching may fail to disambiguate symmetries.
+
+Subcircuit pins:
+Circuit 1: top                             |Circuit 2: top                             
+-------------------------------------------|-------------------------------------------
+Cell pin lists are equivalent.
+Device classes top and top are equivalent.
+
+Final result: Netlists do not match.
+Port matching may fail to disambiguate symmetries.

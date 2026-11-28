@@ -1,0 +1,63 @@
+Netgen 1.5.327 compiled on Fri Nov 27 22:55:47 UTC 2026
+Warning: netgen command 'format' use fully-qualified name '::netgen::format'
+Warning: netgen command 'global' use fully-qualified name '::netgen::global'
+Generating JSON file result
+Reading netlist file input/layout.spice for input/layout.spice rc
+Call to undefined subcircuit rppd
+Creating placeholder cell definition.
+Call to undefined subcircuit cap_cmim
+Creating placeholder cell definition.
+Reading netlist file input/schem.spice for input/schem.spice rc
+Call to undefined subcircuit rppd
+Creating placeholder cell definition.
+Call to undefined subcircuit cap_cmim
+Creating placeholder cell definition.
+
+Reading setup file input/ihp-sg13g2_setup.tcl
+
+Model rppd pin 1 == 2
+No property b found for device rppd
+Model rppd pin 1 == 2
+No property b found for device rppd
+No property ic found for device cap_cmim
+No property ic found for device cap_cmim
+Comparison output logged to file comp.out
+Logging to file "comp.out" enabled
+Circuit rppd contains no devices.
+Circuit cap_cmim contains no devices.
+
+Contents of circuit 1:  Circuit: 'rc'
+Circuit rc contains 4 device instances.
+  Class: rppd                  instances:   2
+  Class: cap_cmim              instances:   2
+Circuit contains 4 nets.
+Contents of circuit 2:  Circuit: 'rc'
+Circuit rc contains 2 device instances.
+  Class: rppd                  instances:   1
+  Class: cap_cmim              instances:   1
+Circuit contains 3 nets.
+
+Circuit was modified by parallel/series device merging.
+New circuit summary:
+
+Contents of circuit 1:  Circuit: 'rc'
+Circuit rc contains 2 device instances.
+  Class: rppd                  instances:   1
+  Class: cap_cmim              instances:   1
+Circuit contains 3 nets.
+Contents of circuit 2:  Circuit: 'rc'
+Circuit rc contains 2 device instances.
+  Class: rppd                  instances:   1
+  Class: cap_cmim              instances:   1
+Circuit contains 3 nets.
+
+Circuit 1 contains 2 devices, Circuit 2 contains 2 devices.
+Circuit 1 contains 3 nets,    Circuit 2 contains 3 nets.
+
+
+Final result: 
+Circuits match uniquely.
+.
+Logging to file "comp.out" disabled
+LVS Done.
+(1) code 0: 

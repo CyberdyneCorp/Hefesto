@@ -158,7 +158,7 @@ The SPICE reader SHALL apply these lexical rules.
 
 **Card names.** Card names SHALL be matched case-insensitively. Element letters SHALL be matched case-insensitively.
 
-**Unknown cards.** An unrecognized card SHALL be skipped with `Ignoring line starting with token: <tok>`. After 100 such warnings, this message SHALL be printed once and no more SHALL follow: `Too many warnings. . . will not report any more.`
+**Unknown cards.** An unrecognized card SHALL be skipped with `Ignoring line starting with token: <tok>`. After 100 such warnings, this message SHALL be printed once and no more SHALL follow: `Too many warnings. . . will not report any more.` Warnings, this cap and the final summary below SHALL be counted per file: a file read through `.INCLUDE` has its own count, its own cap of 100 and its own summary, and its warnings do not count toward the including file's.
 
 **Binary input.** If a token has non-ASCII bytes and its length is less than 4 × their count, reading SHALL stop with `Input file "<f>" appears to be binary. . . bailing out`.
 
@@ -179,6 +179,11 @@ Compatibility: exact
 #### Scenario: CDL global comment
 - **WHEN** the line `*.GLOBAL VDD VSS` is read
 - **THEN** `VDD` and `VSS` SHALL become global nets, as for `.GLOBAL VDD VSS`
+
+#### Scenario: Warnings counted per file
+- **GIVEN** `top.spice` with 2 unknown cards and `.include "sub.spice"`, and `sub.spice` with 101 unknown cards
+- **WHEN** `top.spice` is read
+- **THEN** `sub.spice` SHALL report 100 warnings, `Too many warnings. . . will not report any more.` and `File sub.spice read with 101 warnings.`, and `top.spice` SHALL report its 2 warnings and `File top.spice read with 2 warnings.`
 
 ### Requirement: SPICE subcircuit definitions
 The reader SHALL handle subcircuit definitions as follows.
@@ -236,6 +241,7 @@ Each element card SHALL create an instance whose instance name is `<model>:<name
 **Models.**
 - A non-`=` token after the value SHALL be the model name. A CDL token `$[name]` SHALL also set the model.
 - A `C` card with no model SHALL use the built-in primitive capacitor `c`. An `R` card with no model SHALL use the built-in primitive resistor `r` (ports end_a end_b, `value` double tolerance 0.01).
+- An `L` card with no model SHALL use the model cell `l`, and a `T` card with no model the model cell `t` (the card letter in lower case), with the ports, class and properties of the table. The model of `V`, `I` and `E` cards and the `<kind>` word of the wrong-port-count message are not yet specified (`docs/decisions/m9-decision-table.md` R3-7).
 - An existing model cell with the wrong port count SHALL produce `Device "<model>" has wrong number of ports for a <kind>.` and the card SHALL be skipped as `Badly formed line in input.`
 
 **`.MODEL` cards.** `.MODEL name type` SHALL reclassify an existing model cell when the type (case-insensitive) is one of these:
@@ -265,6 +271,10 @@ Compatibility: exact
 - **WHEN** `R5 a b 1k` is read
 - **THEN** an instance `r:5` of primitive `r` SHALL be created, with property `value` = `1k`
 
+#### Scenario: Inductor without a model
+- **WHEN** `L1 a b 1n` is the first `L` card of a file
+- **THEN** model cell `l` SHALL be created with class inductor and ports end_a end_b, and the instance SHALL be named `l:1`
+
 ### Requirement: SPICE subcircuit calls and placeholders
 An `X` card SHALL be read as `X<name> n1 … nk cell [key=value …]`. The parsing rules are:
 - A token `/`, or a leading `/` on the cell token, SHALL be ignored (CDL syntax).
@@ -286,7 +296,7 @@ An `X` card SHALL be read as `X<name> n1 … nk cell [key=value …]`. The parsi
 - ports named `1` … `k` (or one proxy port if k = 0)
 - property of interest `M` (integer, tolerance 0, default 1)
 
-**Connection count.** A connection count different from the port count SHALL print `Parameter list mismatch in <inst>: ` followed by `Too many parameters in call!` or `Not enough parameters in call!`.
+**Connection count.** A connection count different from the port count SHALL print `Parameter list mismatch in <inst>: ` followed by `Too many parameters in call!` or `Not enough parameters in call!`, and count as a warning of the file. The instance SHALL still be created: connections past the last port SHALL be ignored, and ports past the last connection SHALL be connected to no net.
 
 **Pin names on calls.** At the end of the file, the pin names of instances whose class was a placeholder SHALL be rewritten to the class's final port names.
 Compatibility: exact
@@ -301,12 +311,17 @@ Compatibility: exact
 - **WHEN** `Xinv_1 a y inv` is read
 - **THEN** the instance SHALL be named `/inv_1`
 
+#### Scenario: Call with too few connections
+- **GIVEN** subcircuit `inv` with ports `a y vdd vss`
+- **WHEN** `X1 in out inv` is read
+- **THEN** `Parameter list mismatch in inv:1: Not enough parameters in call!` SHALL be printed, and instance `inv:1` SHALL be created with `a` on `in`, `y` on `out`, and `vdd` and `vss` connected to no net
+
 ### Requirement: Globals, includes and parameters
 **Globals.** `.GLOBAL n1 n2 …` (or `*.GLOBAL`) SHALL make each named net global:
 - If nets of that name already exist in the current cell, they SHALL be converted to global scope.
 - Otherwise a global SHALL be declared in the current cell. If there is no current cell, a file-level cell named after the file SHALL be opened first.
 
-**Includes.** `.INCLUDE file` SHALL read another file into the same netlist, with the same file number and the same black-box mode. Quote characters `'`, `"` and `` ` `` around the name SHALL be stripped. A relative path SHALL be resolved against the directory of the including file. `~/` and `~user/` prefixes SHALL be expanded on desktop platforms; see Q-LVS-14 for iPadOS.
+**Includes.** `.INCLUDE file` SHALL read another file into the same netlist, with the same file number and the same black-box mode. An include file that cannot be opened, or an `.INCLUDE` line without a file name, SHALL NOT stop the read: the line SHALL be skipped with a warning, and reading SHALL continue with the next line (the message text is not yet specified; `docs/decisions/m9-decision-table.md` R3-7). Quote characters `'`, `"` and `` ` `` around the name SHALL be stripped. A relative path SHALL be resolved against the directory of the including file. `~/` and `~user/` prefixes SHALL be expanded on desktop platforms; see Q-LVS-14 for iPadOS.
 
 **Parameters.** `.PARAM k=v …` SHALL record file-level parameters that are used to evaluate expressions in property values.
 
@@ -323,6 +338,11 @@ Compatibility: behavioral
 - **GIVEN** `/work/lvs/top.spice` contains `.include "cells/inv.spice"`
 - **WHEN** it is read
 - **THEN** `/work/lvs/cells/inv.spice` SHALL be read into the same file number
+
+#### Scenario: Missing include does not stop the read
+- **GIVEN** `top.spice` contains `.include "gone.spice"` followed by `.subckt inv a y` … `.ends`, and `gone.spice` does not exist
+- **WHEN** `top.spice` is read
+- **THEN** a warning SHALL be reported for the include line, and cell `inv` SHALL still be defined
 
 ### Requirement: SI value parsing
 A numeric string SHALL be parsed in four steps.

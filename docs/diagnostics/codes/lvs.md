@@ -72,8 +72,31 @@ Verilog, `.sim` and `.ext` readers (tasks.md 6.3) still fail with
 
 ## LVSSETUP
 
-Codes of setup-file evaluation (`lvs/setup/`; capability lvs-setup-file).
-None yet.
+Codes of setup-file evaluation (`lvs/setup/`; capability lvs-setup-file,
+`evaluate_setup` in `hefesto/lvs/setup/setup.hpp`).
+
+- `LVS-SETUP-001` (warning) is one failed setup-file command. netgen's line
+  `Error <setupfile>:<line> (ignoring), <message>` goes to the setup log's
+  stderr; evaluation goes on, and `Warning:  There were errors reading the
+  setup file` follows at the end. `<line>` is the last line read for a
+  command that spans lines.
+- `LVS-SETUP-002` and `-003` are the setup-file name errors of "Setup file
+  evaluation" (missing, unreadable); a missing name that contains `nosetup`
+  is no error.
+- `LVS-SETUP-004` ends evaluation when the step budget (Tcl commands counted
+  by the interpreter, default 50 million) or the wall-time backstop (default
+  60 s, for a compiled loop such as `while {1} {}` that runs no command) is
+  exhausted; `-005` ends it when the run is cancelled (polled before each
+  command, inside every setup command and from the interpreter's progress
+  hook). Both apply in the two `netgen-compat` modes ("Setup evaluation is
+  bounded and cancellable").
+- `LVS-SETUP-006` is the Tcl error a setup command raises (`No such cell!`,
+  `Cells to equate are in the same netlist.`, ...); evaluate_setup reports it
+  as `-001`.
+- `LVS-SETUP-007` refuses a setup file larger than 16 MiB, a crafted-input
+  limit in both modes.
+- `LVS-SETUP-008` refuses a context without both circuits or with a step or
+  time budget of zero or above twice its default.
 
 ## LVSALG
 
@@ -112,16 +135,70 @@ check that cannot compare carries the detail `property-check-failed`
 ## LVSHIER
 
 Codes of the compare queue and flattening (`lvs/hier/`; capability
-lvs-hierarchy). None yet.
+lvs-hierarchy). Constants: `hefesto/lvs/hier/codes.hpp`.
+
+- **Input errors** end the run before any pair is compared
+  (`LvsResult::input_error`, status `error`, headless exit 2): a hierarchy
+  deeper than the depth limit or a recursive one (`LVS-HIER-001`; Q-LVS-36,
+  design D18: default 256, both `netgen-compat` modes, the traversal is
+  iterative and the diagnostic names the deepest cell), a circuit with no
+  cell to compare (`-002`) and a depth setting of 0 or above 512 (`-003`).
+- `-004` (info) marks a cancelled run: the pairs compared so far are kept
+  and no final result is written.
+- `-005` (warning) is a guard: flattening the unmatched or mismatched
+  subcells of one pair stops after four times the depth limit in rounds.
+- `-006` (input error, headless exit 2): a flattening step of the run
+  would leave more than 50,000,000 device instances in one cell
+  (`kMaxDevicesPerRun`, the reader's device limit; `RunOptions::device_limit`
+  lowers it). A crafted netlist whose subcircuits each hold two instances of
+  the next would otherwise grow to 2^depth devices. Crafted-input limit
+  approved under the standing rule of 2026-11-25, both `netgen-compat`
+  modes; the setup `flatten` command stops at the same limit. Flattening also
+  polls the run's cancel flag once per round.
+- netgen's messages of the flow (`Flattening unmatched subcell ...`,
+  `Making another compare attempt.`, `Final result: ...`) are report text,
+  not codes: they are in `LvsResult::output` and `comp.out`.
 
 ## LVSREP
 
-Codes of the reports (`lvs/report/`; capability lvs-reports). None yet.
+Codes of the reports (`lvs/report/`; capability lvs-reports). Constants:
+`hefesto/lvs/report/codes.hpp`.
+
+- `LVS-REPORT-001`: a `format` width outside 1 to 4096 (Q-LVS-16: netgen
+  accepted any value and overflowed its right column). The run is an input
+  error.
 
 ## LVSCMD
 
 Codes of the `lvs` command, its sources and cross-probing (`lvs/cmd/`;
-capability lvs-command). None yet.
+capability lvs-command). Constants: `hefesto/lvs/cmd/codes.hpp`.
+
+- `LVS-CMD-001` (info) carries each console line of the command (the
+  console-only messages, and with logging on the final result, which netgen
+  echoes; with a log name containing `nolog` every line).
+- Usage and input errors fail the command; the session records the
+  headless exit status 2 for the input errors (`lvs::Session::headless_status`):
+  a usage error (`-002`), a netlist that cannot be read (`-003`, or the
+  reader's `LVS-READ-*` code), two names in one netlist (`-004`), a cell
+  missing from its file (`-005`), a setup file that cannot be read or
+  evaluated (its `LVS-SETUP-*` code) and the `-noflatten` limits (`-010`:
+  65536 entries of at most 4096 bytes, checked line by line while the file
+  is read, and a file or list of at most 65536 × 4097 bytes; crafted-input
+  limits approved under the standing rule of 2026-11-25, both
+  `netgen-compat` modes). Each `lvs` resets the status first, so a later
+  usage error is 2 even after a mismatch.
+- `-007`: `comp.out` or the JSON file cannot be written.
+- `-008`: a second run of a document while one is in progress.
+- `-006` and `-009` are retired (M9 R3): a setup file that cannot be read
+  or evaluated ends the run with its `LVS-SETUP-*` code, and one that does
+  not exist with `LVS-SETUP-002`.
+- A run whose task the executor drops (shutdown) or that throws ends as an
+  input error with `-003` (`LVS run failed: ...`), and the document is free
+  for the next run.
+- `-011`: `cross_probe` found no layout reference for the object (`no layout
+  counterpart`).
+- `lvs -layout` and a `.sch` netlist fail with `CORE-NOTIMPL-009` until the
+  layout source (M7 G3, MAPS) and the schematic source (M8 G4) land.
 
 ## Table
 
@@ -137,9 +214,26 @@ fails when the two disagree.
 <!-- BEGIN DIAGNOSTIC CODES (generated by `hefesto-cli --diagnostic-codes=lvs`) -->
 | Code | Default severity | Meaning |
 |---|---|---|
+| `LVS-CMD-001` | info | Console output of the `lvs` command (netgen's messages: reading, logging, `LVS Done.`, ...). |
+| `LVS-CMD-002` | error | `lvs` usage error: wrong number of names, an unknown option, or a `-noflatten` list that cannot be read. |
+| `LVS-CMD-003` | error | A netlist of the `lvs` command cannot be found or read; the run ends as an input error. |
+| `LVS-CMD-004` | error | `Both cells are in the same netlist:  Cannot compare!` |
+| `LVS-CMD-005` | error | `Cannot find cell <cell> in file <file>` |
+| `LVS-CMD-006` | error | Retired (M9 R3): a setup file that cannot be read or evaluated ends the run with its LVS-SETUP-* code (input error, headless status 2). |
+| `LVS-CMD-007` | error | The log file or the JSON file of the `lvs` command could not be written. |
+| `LVS-CMD-008` | error | An LVS run is already in progress for this document. |
+| `LVS-CMD-009` | warning | Retired (M9 R3): a setup file that does not exist ends the run with LVS-SETUP-002 (lvs-setup-file "Setup file evaluation"). |
+| `LVS-CMD-010` | error | A `-noflatten` entry is longer than 4096 bytes, or the list has more than 65536 entries (crafted-input limit, both netgen-compat modes). |
+| `LVS-CMD-011` | error | The result object has no layout counterpart in this run (`no layout counterpart`). |
 | `LVS-CMP-001` | error | A compared circuit has no devices or no nets (`Circuit <c> contains no devices.`, `... no nets.`); the comparison stops. |
 | `LVS-CMP-002` | warning | The comparison was cancelled between refinement rounds; the partition is kept, so reports can still be written, and the result is marked cancelled. |
 | `LVS-CMP-003` | warning | Refinement stopped at its round limit (twice the vertex count) without converging; the partition is kept (a Hefesto guard against a cycling partition). |
+| `LVS-HIER-001` | error | The hierarchy below a compared top cell is deeper than the hierarchy-depth limit (256 by default, Q-LVS-36) or recursive; the diagnostic names the deepest cell and the run ends as an input error. |
+| `LVS-HIER-002` | error | A circuit of the run has no top cell to compare (its netlist was not read, or the named cell does not exist). |
+| `LVS-HIER-003` | error | The hierarchy-depth setting is 0 or above 512 (twice the default). |
+| `LVS-HIER-004` | info | The LVS run was cancelled; the pairs compared so far are kept. |
+| `LVS-HIER-005` | warning | Flattening of unmatched or mismatched subcells of a pair stopped after as many rounds as the hierarchy-depth limit. |
+| `LVS-HIER-006` | error | Flattening during the run would leave more than 50,000,000 device instances in one cell (kMaxDevicesPerRun, crafted-input limit, both netgen-compat modes); the run ends as an input error. |
 | `LVS-NET-001` | error | A read would make its netlist database hold more devices than the device limit (default 50 million, Q-LVS-36; counted per netlist database, decision LVS-READ-025); the read stops and the run is an input error. |
 | `LVS-READ-001` | error | The netlist file does not exist (`ReadNetlist: unable to find file '<f>'`). |
 | `LVS-READ-002` | error | The netlist format cannot be detected from the suffix or the first character (`ReadNetlist: don't know type of file '<f>'`). |
@@ -167,4 +261,13 @@ fails when the two disagree.
 | `LVS-READ-024` | error | A path cannot be read: no file service was given, or a `~user` prefix cannot be expanded on this platform (Q-LVS-14). |
 | `LVS-READ-025` | error | One read performs more than 65536 `.INCLUDE` reads, or its includes hold more than 64 times the logical-line limit in bytes (an include tree that multiplies, below the depth limit); the read stops. |
 | `LVS-REDUCE-001` | warning | A permutable pair of a class names a pin the class does not have (`Class <c> does not have pin <p>.`); no permutation of that class is applied. |
+| `LVS-REPORT-001` | error | A `format` column width is not between 1 and 4096 (Q-LVS-16). |
+| `LVS-SETUP-001` | warning | A setup-file command failed (`Error <setupfile>:<line> (ignoring), <message>`); evaluation continues with the next command, and `Warning:  There were errors reading the setup file` follows at the end. |
+| `LVS-SETUP-002` | error | The setup file does not exist and its name does not contain `nosetup` (`Error:  Setup file <f> does not exist.`); the `lvs` command ends. |
+| `LVS-SETUP-003` | error | The setup file exists but cannot be read (`Error:  Cannot read the setup file <f>`). |
+| `LVS-SETUP-004` | error | Setup evaluation ran out of its step budget (default 50 million Tcl commands) or its wall-time backstop (default 60 s, for compiled loops that run no command); evaluation stops and the run is an error. |
+| `LVS-SETUP-005` | warning | The run was cancelled during setup evaluation; evaluation stops and the run is cancelled. |
+| `LVS-SETUP-006` | error | A setup command raised an error (the netgen message, e.g. `No such cell!`); inside a setup file it is reported as LVS-SETUP-001. |
+| `LVS-SETUP-007` | error | The setup file is larger than the setup-file limit (16 MiB, a crafted-input limit in both modes); nothing is evaluated. |
+| `LVS-SETUP-008` | error | The setup context is incomplete (a circuit is missing), or its step or time budget is zero or above twice the default. |
 <!-- END DIAGNOSTIC CODES -->
