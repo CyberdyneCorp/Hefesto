@@ -616,7 +616,7 @@ The system SHALL then build the following type sets from the tech `lef` section:
 
 If no extraction style exists, G and D are undefined in Magic; see Q-LEFDEF-40. Hefesto SHALL treat them as empty.
 
-The current extraction style is the one `extract style` last selected (after a tech load, the technology's first style), as Magic's writer reads ExtCurStyle.
+The current extraction style is the one `extract style` last selected (after a tech load, the technology's first style), as Magic's writer reads ExtCurStyle, in both `magic-compat` settings (Q-EXTRACT-45, resolution: replicate). With `magic-compat` on, the style's types include those earlier selected styles mentioned (Q-EXTRACT-46).
 
 Compatibility: exact
 

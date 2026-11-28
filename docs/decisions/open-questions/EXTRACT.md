@@ -426,20 +426,22 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-45: `lef write` and `def write` use the selected extract style
 - Kind: replicate (both modes as Magic)
-- Status: proposed 2026-11-27 (raised in M7 round R6 by TECH; implemented in both modes per the standing rule; needs a user decision)
+- Status: approved 2026-11-28 (raised in M7 round R6 by TECH, 2026-11-27; implemented in both modes per the standing rule; approved with the recommended option)
 - Magic behavior: lefWrite and defWrite read `ExtCurStyle`, so after `extract style X` the LEF macro geometry masks (G and D) and the DEF BLOCKAGES active types follow style X, not the technology's first style.
 - Evidence: lef/lefWrite.c:1268; lef/defWrite.c:816, :2538
 - As implemented (round R6, branch `m7-round6-tech`): both modes build the writers' StyleView from `EditorState::extract.current` (`lef/write/write.cpp`, `def/write/write.cpp`); before R6 they used the first style of the technology. Tests: `tests/unit/lef/write/style_select_test.cpp` "lef write takes G and D from the selected extraction style" (fails with the old first-style source); `tests/unit/def/write/style_select_test.cpp` "def write takes the active types from the selected extraction style" (both modes).
 - Options: replicate (as implemented: the selected style in both modes) | keep the first style
 - Recommendation: replicate. The selected style is what a user expects and what Magic writes; the output is unchanged for a technology with one extract style.
 - Spec: `lef-write` "Macro source geometry and layer masks" and `def-write` "BLOCKAGES section" (scenarios added in R6).
+- Resolution: replicate — in both modes `lef write` (macro geometry masks G and D) and `def write` (BLOCKAGES active types) use the selected extraction style (`EditorState::extract.current`, set by `extract style`), as Magic's `ExtCurStyle`; the output is unchanged for a technology with one extract style. Spec: `lef-write` "Macro source geometry and layer masks", `def-write` "BLOCKAGES section". Tests: `tests/unit/lef/write/style_select_test.cpp`, `tests/unit/def/write/style_select_test.cpp` (both modes). Approved 2026-11-28.
 
 ### Q-EXTRACT-46: The non-electrical types accumulate over the style selections since the tech load
 - Kind: compat
-- Status: proposed 2026-11-27 (implemented since round R2 per the standing rule without a row; recorded in round R6 integration; needs a user decision)
+- Status: approved 2026-11-28 (implemented since round R2 per the standing rule without a row; recorded in round R6 integration, 2026-11-27; approved with the recommended option)
 - Magic behavior: `allExtractTypes` is cleared only when a technology loads (ExtTechInit) and grows with every style ExtLoadStyle reads, so a type an earlier selected style mentioned stays electrical (and keeps its place in the "treated as non-electrical" list) in a later style that does not mention it.
 - Evidence: extract/ExtTech.c ExtTechInit, ExtLoadStyle, ExtTechFinal (:3556-3620)
 - As implemented: magic-compat ON accumulates the mentions of every selection since the tech load, as Magic; OFF uses only the selected style's own mentions (`src/core/src/extract/tech/style_table.cpp` `select_entry`). This reaches `extract`, `lef write` G/D and `def write` BLOCKAGES (Q-EXTRACT-45). Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "with magic-compat ON the mentions of earlier selections accumulate, as allExtractTypes does" (ON and OFF); `tests/unit/def/write/style_select_test.cpp` (ON keeps the accumulated types after switching back).
 - Options: compat (as implemented) | replicate (accumulate in both modes)
 - Recommendation: compat. The accumulation depends on the order of earlier selections, which a user cannot see; ON keeps Magic's output.
-- Spec: `extract-tech-section` "Non-electrical types": per-mode sentence and scenarios "Mentions of an earlier style accumulate with magic-compat on" and "Each style uses its own mentions with magic-compat off", added in the R6 fix pass (review of PR #141) citing the row as proposed.
+- Spec: `extract-tech-section` "Non-electrical types": per-mode sentence and scenarios "Mentions of an earlier style accumulate with magic-compat on" and "Each style uses its own mentions with magic-compat off", added in the R6 fix pass (review of PR #141).
+- Resolution: compat — with `magic-compat` ON the non-electrical types accumulate over every style selection since the technology load (Magic's `allExtractTypes`), so a type an earlier selected style mentioned stays electrical in a later style; with it OFF each style uses only its own mentions. This reaches `extract`, `lef write` G/D and `def write` BLOCKAGES (Q-EXTRACT-45). Spec: `extract-tech-section` "Non-electrical types" (one scenario per mode). Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` (ON and OFF), `tests/unit/def/write/style_select_test.cpp`. Approved 2026-11-28.

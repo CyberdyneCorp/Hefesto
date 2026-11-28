@@ -15,6 +15,8 @@ M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open 
 
 **Status as of 2026-11-27 (R6 integration).** Round R6 raised three rows, all pending a user decision and each implemented with its recommended option (section "Entries proposed in round R6"): Q-EXTRACT-45 (`lef write`/`def write` use the selected extract style; recommended replicate), Q-EXTRACT-46 (the non-electrical types accumulate over style selections; recommended compat; implemented since R2 without a row) and Q-NETLIST-77 (an empty line before the common usage text; recommended compat-neutral). Q-NETLIST-58's accepted difference is closed by task 10.6, and Q-EXTRACT-36 carries a note that a real PDK cell (sky130 `probec_p_8`) reaches its case (h). No new crafted-input resource limit was added in R6.
 
+**Status as of 2026-11-28.** The user approved on 2026-11-28 the three rows raised in round R6, each with its recommended option (the option implemented): Q-EXTRACT-45 (replicate: `lef write` and `def write` use the selected extract style in both modes), Q-EXTRACT-46 (compat: ON accumulates the non-electrical types over the style selections, OFF uses each style's own) and Q-NETLIST-77 (compat-neutral: the empty line before the common usage text). The user also kept the `-S` FIFO/device read-as-empty hang fix of the R6 fix pass in both modes (Q-NETLIST-58 note). The open-questions entries carry `Status: approved 2026-11-28` and a `Resolution:` line, and the specs cite the plain row IDs (section "Entries approved 2026-11-28"; recorded in round R7, branch `m7-round7-decide`). The standing rule of 2026-11-25 for crafted-input resource limits stands; limits added in round R7 are listed under it. One R6 plan question stays pending: the extresist-bench Magic count (section "Proposed in round R7").
+
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
@@ -289,6 +291,8 @@ The user approved on 2026-11-25, as a standing rule: **a new resource limit on c
 | extresist reader field counts (M7-S1) | a `substrate` record needs 7 fields, a parent `connect` 8; a parent `use` with a non-Manhattan 2x2 is ignored and its transform is applied in 64 bits, saturated | `extresist/output/input.cpp` | `<file>, line <n>: Not enough tokens for <keyword> line` (product, both modes) | R5 integration; approved 2026-11-25 (standing rule) |
 | `fuzz_ext_reader` flattening (lowered) | `ReadLimits` of 2^14 instances, 2^16 flat names and 2^18 merge elements (were 2^18, 2^20, 2^20): a 100001-element array of a two-node leaf, inside the old caps, flattened linearly but took over 10 s under ASan (CI run 45871540469) | `tests/fuzz/fuzz_ext_reader.cpp` | the read fails with the reader's own EXTFLAT-READ code (harness only); seed `regress-timeout-bcf9c071…` | R5 (task 19.2); approved 2026-11-25 (standing rule) |
 
+Round R7 (2026-11-28): the standing rule stands. Limits added by the R7 workstreams (CAP, EXTRACT, NETLIST, PERF) are appended to the table above by the R7 integration; none had been reported when the decisions were recorded (branch `m7-round7-decide`).
+
 The fuzz harness caps are harness parameters, not product limits: they bound what one fuzz input can build so that a timeout is a real hang (design D22), and change nothing a user sees. They are recorded here so that every cap added in M7 is listed in one place.
 
 ### Behaviour questions (raised in round R3)
@@ -377,17 +381,38 @@ Applied 2026-11-27 (round R6), after the approval:
 - **Q-NETLIST-71, 72, 75:** `extresist-command`; **Q-NETLIST-73, 74:** `extresist-output`; **Q-NETLIST-76:** `extresist-network`: "(proposed Q-...)" becomes the plain row ID.
 - Q-NETLIST-69's amended text in `extresist-command` already cites the row and needs no change.
 
-## Entries proposed in round R6
+## Entries approved 2026-11-28
 
-Raised in M7 round R6 (TECH, GOLDEN through NL-FLAT-20, and the R6 integration) for Magic behaviours no row covered, each implemented per the standing rule with a test; none is approved yet.
+Raised in M7 round R6 (TECH, GOLDEN through NL-FLAT-20, and the R6 integration) for Magic behaviours no row covered, each implemented per the standing rule with a test. Proposed 2026-11-27; **all three were approved by the user on 2026-11-28, each with its recommended option** (the option implemented), and recorded in round R7 (branch `m7-round7-decide`). The open-questions entries carry `Status: approved 2026-11-28` and a `Resolution:` line.
 
-| ID | Question | Kind (recommended) | As implemented | Spec | Raised by |
+| ID | Question | Kind (decided) | As implemented | Spec | Raised by |
 |---|---|---|---|---|---|
-| Q-EXTRACT-45 | `lef write` and `def write` use the selected extract style | **replicate** (recommended) | both modes: the writers' StyleView comes from `EditorState::extract.current` (`ExtCurStyle`) | lef-write "Macro source geometry and layer masks", def-write "BLOCKAGES section" (scenarios) | TECH (R6) |
-| Q-EXTRACT-46 | The non-electrical types accumulate over the style selections since the tech load | **compat** (recommended) | ON: `allExtractTypes` accumulates as Magic; OFF: each style's own mentions | extract-tech-section "Non-electrical types" (per-mode sentence and two scenarios, R6 fix pass) | R6 integration (implemented since R2) |
-| Q-NETLIST-77 | An empty line before the common usage text when the tool's parser rejects a flag | **compat-neutral** (recommended) | both modes: `\n` then the usage text, as EFargs.c:290 (NL-FLAT-20 replays) | ext-flattening-hierarchy "Common netlister arguments" (sentence and scenario) | GOLDEN (R6, NL-FLAT-20) |
+| Q-EXTRACT-45 | `lef write` and `def write` use the selected extract style | **replicate** | both modes: the writers' StyleView comes from `EditorState::extract.current` (`ExtCurStyle`) | lef-write "Macro source geometry and layer masks", def-write "BLOCKAGES section" (sentence and scenario each) | TECH (R6) |
+| Q-EXTRACT-46 | The non-electrical types accumulate over the style selections since the tech load | **compat** | ON: `allExtractTypes` accumulates as Magic; OFF: each style's own mentions | extract-tech-section "Non-electrical types" (per-mode sentence and two scenarios, R6 fix pass) | R6 integration (implemented since R2) |
+| Q-NETLIST-77 | An empty line before the common usage text when the tool's parser rejects a flag | **compat-neutral** | both modes: `\n` then the usage text, as EFargs.c:290 (NL-FLAT-20 replays) | ext-flattening-hierarchy "Common netlister arguments" (sentence and scenario) | GOLDEN (R6, NL-FLAT-20) |
 
-Tests: Q-EXTRACT-45 `tests/unit/lef/write/style_select_test.cpp`, `tests/unit/def/write/style_select_test.cpp` (both modes); Q-EXTRACT-46 `tests/unit/extract/tech/ext_style_rules_test.cpp` (ON and OFF); Q-NETLIST-77 `tests/unit/extflat/args_names_test.cpp` (mode-independent parse).
+Q-NETLIST-58 (note, 2026-11-28): the user kept the R6 fix pass's hang fix in both modes: a `-S` FIFO or device reads as empty instead of blocking in fopen. The row stays compat-neutral and approved (2026-11-23).
+
+### Tests per mode (checked in round R7)
+
+- Q-EXTRACT-45 (same in both modes): `tests/unit/lef/write/style_select_test.cpp` "lef write takes G and D from the selected extraction style" and `tests/unit/def/write/style_select_test.cpp` "def write takes the active types from the selected extraction style" each loop over magic-compat ON and OFF.
+- Q-EXTRACT-46 (differs per mode): `tests/unit/extract/tech/ext_style_rules_test.cpp` "with magic-compat ON the mentions of earlier selections accumulate, as allExtractTypes does" checks ON (the type stays active) and OFF (it does not); `def/write/style_select_test.cpp` checks the ON accumulation through `def write`.
+- Q-NETLIST-77 (same in both modes): `tests/unit/extflat/args_names_test.cpp`; the parse takes no compat setting. NL-FLAT-20 replays byte-exact.
+- Q-NETLIST-58 FIFO note (both modes): `tests/unit/platform/file_system_test.cpp` "a stream read of a FIFO does not wait for a writer"; the `-S` path goes through the same `read_stream`.
+
+### Spec changes the answers imply
+
+Applied 2026-11-28 (round R7), after the approval:
+- **Q-EXTRACT-46:** `extract-tech-section` "Non-electrical types": "(Q-EXTRACT-46, proposed 2026-11-27, ...)" becomes "(Q-EXTRACT-46, resolution: compat; Q-EXTRACT-45)".
+- **Q-EXTRACT-45:** `lef-write` "Macro source geometry and layer masks" and `def-write` "BLOCKAGES section" cite the row in a sentence (resolution: replicate, both modes; ON includes the Q-EXTRACT-46 accumulation); their R6 scenarios "The selected extraction style" and "The selected extraction style decides the active types" stand.
+- **Q-NETLIST-77:** `ext-flattening-hierarchy` "Common netlister arguments" cites the row (resolution: compat-neutral); the scenario "A flag the tool rejects is followed by an empty line" stands.
+- **Q-NETLIST-58 note:** `ext-flattening-hierarchy` "Common netlister arguments" says a `-S` FIFO or device reads as empty (a hang fix, both modes) and gains the scenario "A -S FIFO does not wait for a writer".
+
+## Proposed in round R7 (pending a user decision)
+
+| Item | Question | Recommended | Detail |
+|---|---|---|---|
+| M7-R7-1 (task 18.1) | extresist-bench has no Magic instruction count: Magic 8.3.694 segfaults in ResScrunchNet on the bench block (the Q-NETLIST-47 null case) | record "Magic count: not available (segfault, Q-NETLIST-47 null case)"; the D25 gate for extresist-bench stays at Hefesto's own baseline + 2 % | Not approved. Every other bench keeps its Magic-relative gate. |
 
 ## Notable changes to the entries' original recommendations
 

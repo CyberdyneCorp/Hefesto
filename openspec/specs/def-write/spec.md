@@ -821,6 +821,8 @@ The system SHALL build one blockage bucket per live layer-table record of class 
 - Bucket name: the canonical name for a route record, or the LEF name of the record's magic type for a via record.
 - Bucket mask: the record's magic type, plus its obstruction type if it has one. An obstruction type that is not electrically active SHALL also be added to the "non-electrical obstruction" set.
 
+The electrically active types are those of the current extraction style, the one `extract style` last selected (after a tech load, the technology's first style), as Magic's writer reads ExtCurStyle, in both `magic-compat` settings (Q-EXTRACT-45, resolution: replicate); with `magic-compat` on they include the types earlier selected styles mentioned (Q-EXTRACT-46).
+
 Geometry SHALL be collected in two passes:
 
 1. For every netlist node that is neither special nor a port (and not space-typed), run the connectivity search from the node's location over types connecting to its layer. For each tile reached, take the tile's type, or the residue on the visited plane for a stacked contact. Use the side's type for a split tile. If the type is non-space, prepend the tile's bounding rectangle to the first bucket whose mask contains the type.

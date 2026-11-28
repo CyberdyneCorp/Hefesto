@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2036 requirements, 3816 scenarios, 1079 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3817 scenarios, 1079 open questions.
 
 ## Hefesto product (native)
 
@@ -146,7 +146,7 @@ Open questions: [77](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 20 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
+| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 21 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 16 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 31 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 25 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
