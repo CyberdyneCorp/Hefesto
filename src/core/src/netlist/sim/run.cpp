@@ -47,6 +47,7 @@
 #include "hefesto/netlist/sim/writer.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "netlist/sim/sim_codes.hpp"
+#include "netlist/spice/style_units.hpp"
 
 namespace hefesto::netlist::sim {
 
@@ -281,10 +282,7 @@ extflat::ReadOptions read_options(const editor::EditorState& editor, const extfl
     options.units_per_lambda = editor.extract.current->units_per_lambda;  // ExtCurStyle (EFread.c:252-259)
   }
   // ExtCompareStyle: a `style` record naming a style of the technology.
-  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
-    const auto style = editor.extract.styles.select(name);
-    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
-  };
+  options.style_units = [&editor](std::string_view name) { return netlist::detail::style_units(editor, name); };
   options.search_path = args.search_path;
   options.tech_name = editor.technology ? editor.technology->name() : std::string{};
   options.global_nets = global_nets(editor);

@@ -108,7 +108,7 @@ Compatibility: exact
 - **THEN** the line is reported as unrecognized and ignored
 
 ### Requirement: Scale record
-A `scale <rscale> <cscale> <lscale>` record SHALL set the per-file multipliers. Every later `resist` value is multiplied by `rscale`, and every capacitance (`node`, `substrate`, `cap`, `merge`, `subcap`, `rnode`) by `cscale`. If `rscale` or `cscale` parses to 0 it SHALL be reset to 1. If `lscale` differs from the current extraction style's units-per-lambda `U`, the coordinate rescale factor `locScale = lscale / U` SHALL apply to later coordinates, as stated per record. `lscale` SHALL then be taken as `U`, or as 1 if it is 0. Unless coordinates are to be kept in database units, the definition's scale SHALL become `lscale`. The global output scale `S_out`, used by the netlisters for output lengths (`S_out / 100` µm per internal unit), SHALL work as follows:
+A `scale <rscale> <cscale> <lscale>` record SHALL set the per-file multipliers. Every later `resist` value is multiplied by `rscale`, and every capacitance (`node`, `substrate`, `cap`, `merge`, `subcap`, `rnode`) by `cscale`. If `rscale` or `cscale` parses to 0 it SHALL be reset to 1. If `lscale` differs from the current extraction style's units-per-lambda `U` (the style as it is in use: micron-converted and scaled to the grid, so `scalegrid 1 2` before the technology loads halves the `lambda` of the tech file; a `style` record naming another style of the technology takes that style's units, converted and scaled the same way), the coordinate rescale factor `locScale = lscale / U` SHALL apply to later coordinates, as stated per record. `lscale` SHALL then be taken as `U`, or as 1 if it is 0. Unless coordinates are to be kept in database units, the definition's scale SHALL become `lscale`. The global output scale `S_out`, used by the netlisters for output lengths (`S_out / 100` µm per internal unit), SHALL work as follows:
 - If it is still 0, it becomes `lscale`.
 - If a different nonzero value is seen in another file, it becomes 1.0 and the "scale changed" flag is set.
 
@@ -120,6 +120,11 @@ Compatibility: exact
 - **GIVEN** two files that both have `scale 1000 1000 5` and an extraction style with units-per-lambda 5
 - **WHEN** both are read
 - **THEN** `S_out = 5` and the scale-changed flag stays clear
+
+#### Scenario: Units of a grid-scaled style
+- **GIVEN** a style with `lambda 1`, `scalegrid 1 2` and a file with `style <that style>` and `scale 1000 1 0.5` (as the PDK standard cells are extracted)
+- **WHEN** it is read
+- **THEN** `U = 0.5`, `locScale = 1`, coordinates and area/perimeter values are kept and `S_out = 0.5`, in both `magic-compat` settings
 
 #### Scenario: Zero resistance scale
 - **GIVEN** `scale 0 1000 5`

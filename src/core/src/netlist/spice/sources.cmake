@@ -17,4 +17,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/options.cpp
   ${CMAKE_CURRENT_LIST_DIR}/run.cpp
   ${CMAKE_CURRENT_LIST_DIR}/spice_command.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/style_units.cpp
   ${CMAKE_CURRENT_LIST_DIR}/write_params.cpp)

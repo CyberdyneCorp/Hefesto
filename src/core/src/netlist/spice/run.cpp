@@ -23,6 +23,7 @@
 #include <strings.h>
 
 #include "netlist/spice/run_impl.hpp"
+#include "netlist/spice/style_units.hpp"
 
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/db/diag_codes.hpp"
@@ -228,10 +229,7 @@ void add_style_lookups(extflat::ReadOptions& options, const editor::EditorState&
       return std::nullopt;
     };
   }
-  options.style_units = [&editor](std::string_view name) -> std::optional<float> {
-    const auto style = editor.extract.styles.select(name);
-    return style ? std::optional<float>{style->units_per_lambda} : std::nullopt;
-  };
+  options.style_units = [&editor](std::string_view name) { return netlist::detail::style_units(editor, name); };
 }
 
 }  // namespace
