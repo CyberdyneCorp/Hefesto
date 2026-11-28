@@ -245,8 +245,9 @@ std::optional<LineReader::OwnedLine> LineReader::next() {
 namespace {
 
 // The characters of one token from `get` (efReadLine's inner loop),
-// appended to `storage`; `get` is left on the terminating character.
-void scan_token(std::string_view line, std::size_t& get, std::string& storage) {
+// written from `dst`; returns the end of the token. `get` is left on the
+// terminating character.
+char* scan_token(std::string_view line, std::size_t& get, char* dst) {
   const std::size_t n = line.size();
   bool inquote = false;
   for (; get < n; ++get) {
@@ -262,16 +263,22 @@ void scan_token(std::string_view line, std::size_t& get, std::string& storage) {
       ++get;  // a backslash at the end of the line is dropped
       break;
     }
-    storage.push_back(c);
+    *dst++ = c;
   }
+  return dst;
 }
 
 }  // namespace
 
 void tokenize_into(std::string_view line, std::string& storage, std::vector<std::string_view>& out) {
-  storage.clear();
-  storage.reserve(line.size());  // tokens never outgrow the line: the views stay valid
+  // Tokens never outgrow the line, so the buffer is sized once and the
+  // views into it stay valid; it keeps its largest size between lines.
+  if (storage.size() < line.size()) {
+    storage.resize(line.size());
+  }
   out.clear();
+  char* const base = storage.data();
+  char* dst = base;
   std::size_t get = 0;
   const std::size_t n = line.size();
   while (get < n) {
@@ -279,15 +286,15 @@ void tokenize_into(std::string_view line, std::string& storage, std::vector<std:
       ++get;
     }
     const std::size_t start = get;
-    const std::size_t first = storage.size();
-    scan_token(line, get, storage);
+    char* const first = dst;
+    dst = scan_token(line, get, dst);
     if (get == start) {
       break;
     }
     if (get < n) {
       ++get;  // the terminating character
     }
-    out.emplace_back(storage.data() + first, storage.size() - first);
+    out.emplace_back(first, static_cast<std::size_t>(dst - first));
   }
 }
 

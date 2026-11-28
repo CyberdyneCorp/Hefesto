@@ -10,6 +10,7 @@
 //
 // Owner: SIM (design D3).
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 
@@ -21,6 +22,7 @@ namespace {
 
 HierName split(const std::string& name) {
   HierName parts;
+  parts.reserve(static_cast<std::size_t>(std::count(name.begin(), name.end(), '/')) + 1);
   std::size_t start = 0;
   while (true) {
     const std::size_t slash = name.find('/', start);

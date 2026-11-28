@@ -130,7 +130,7 @@ class LineReader {
 /// tokens, double quotes group (and are removed), a backslash is copied
 /// (and dropped at the end of the line). The token count is not capped
 /// here; the reader rejects lines over 128 tokens. The characters go to
-/// `storage` and `out` receives views of them (both are cleared first).
+/// `storage` (resized to at least the line's length) and `out` (cleared) receives views of them.
 void tokenize_into(std::string_view line, std::string& storage, std::vector<std::string_view>& out);
 /// tokenize_into with owned tokens.
 [[nodiscard]] std::vector<std::string> tokenize(std::string_view line);
