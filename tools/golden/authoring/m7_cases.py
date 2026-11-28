@@ -17,6 +17,7 @@ entries go when they replay (task 17.5).
     python3 tools/golden/authoring/m7_cases.py --dispatch      # the golden-capture.yml capture command
     python3 tools/golden/authoring/m7_cases.py --exit-check    # task 17.7 / design D25: fails while work is left
     python3 tools/golden/authoring/m7_cases.py --audit         # task 17.2: the requirement audit tables of CASES.md
+    python3 tools/golden/authoring/m7_cases.py --pdk-report replay.json  # task 17.4: PDK failing cells by record kind
 
 Until a case is captured and its workstream replays it, ``deviations.toml`` lists it as
 ``deferred = "M7"`` in the block between ``BEGIN`` and ``END``, with every output (a deferred entry may
@@ -38,6 +39,7 @@ import casegen  # noqa: E402
 import ext_pdk_cases  # noqa: E402
 import extract_cases  # noqa: E402
 import m7_audit  # noqa: E402
+import m7_pdk_report  # noqa: E402
 import netlist_cases  # noqa: E402
 import rescmd_cases  # noqa: E402
 import resnet_cases  # noqa: E402
@@ -104,7 +106,8 @@ AUDIT_ROWS = (*extract_cases.AUDIT_IDS, "NL-FLAT-19", "NL-FLAT-20")  # task 17.2
 # The decisions a deferred case already carries (design D21: a case whose expected output holds a Magic
 # behaviour that an approved fix changes names the decision).
 DECISIONS: dict[str, list[str]] = {"EX-024": ["Q-EXTRACT-6"], netlist_cases.CHK_ID: netlist_cases.CHK_DECISIONS,
-                                   "NL-RES-02": ["Q-NETLIST-69"], "NL-RES-03": ["Q-NETLIST-69"]}
+                                   "NL-RES-02": ["Q-NETLIST-69"], "NL-RES-03": ["Q-NETLIST-69"],
+                                   "EXTRACT-PDK-sky130_fd_sc_hd": ["Q-EXTRACT-36"]}
 
 RES_HEAP_ORDER = (
     "ResSortByGate orders a net's devices by node address; Hefesto uses the reverse first-mention order with "
@@ -122,6 +125,20 @@ DECIDED: dict[str, tuple[list[str], str]] = {
                "fix); Magic reverts only the cells whose substrate plane it replaced and saves net1_uq0 and vdd!_uq0"),
     "NL-RES-02": (["stderr.txt", "collected/wire.all.res.ext", "collected/wire.force.res.ext"], RES_HEAP_ORDER),
     "NL-RES-03": (["collected/wire.res.ext"], RES_HEAP_ORDER),
+}
+
+PROBEC_UNINIT_WIDTH = (
+    "sky130_fd_sc_hd__probec_p_8: Magic's resistor branch writes an uninitialised width for the two "
+    "res_generic_m5 devices that have no boundary estimate (extract/ExtBasic.c:2988-3060; -1123705434 in the "
+    "capture, -1406616154 in another run); Hefesto writes 0 (Q-EXTRACT-36 (h), fix in both modes). The "
+    "ext-devres-uninit-width mask hides Magic's value, so Hefesto's 0 differs in that file only. The NETLIST-PDK "
+    "case reads Magic's captured .ext, so its netlists need no deviation")
+
+# Deferred cases that already carry an approved deviation for some outputs (task 17.7). Until the case enters
+# REPLAYED the entry keeps the deferral for every other output (``deferred_outputs``), so at the M7 exit
+# (``replay.py --milestone M7``) only the decided outputs stay covered; once replayed it is a plain decided entry.
+DECIDED_ONCE_REPLAYED: dict[str, tuple[list[str], str]] = {
+    "EXTRACT-PDK-sky130_fd_sc_hd": (["collected/ext/sky130_fd_sc_hd__probec_p_8.ext"], PROBEC_UNINIT_WIDTH),
 }
 
 # Cases whose expected/ is hand-derived instead of captured, with the approved decision that allows it
@@ -184,18 +201,35 @@ def deferral_reason(case_id: str) -> str:
     return f"{when}; replays once {owner(case_id)} lands"
 
 
+def _outputs_line(names: list[str]) -> str:
+    return "outputs = [" + ", ".join(f'"{name}"' for name in names) + "]\n"
+
+
+def _decided_entry(case_id: str, outputs: list[str], why: str) -> str:
+    return (f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\n'
+            f'{_outputs_line(outputs)}reason = "{why}"\n')
+
+
+def _deferred_decided_entry(case_id: str, outputs: list[str], why: str) -> str:
+    """A deferred case with decided outputs: the deferral covers the rest until the M7 exit."""
+    rest = output_names(case_id)
+    table = ", ".join(f'"{name}" = "{MILESTONE}"' for name in rest)
+    return (f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\ndeferred = "{MILESTONE}"\n'
+            f'deferred_outputs = {{ {table} }}\n{_outputs_line(rest + outputs)}'
+            f'reason = "{deferral_reason(case_id)}. Approved deviation: {why}"\n')
+
+
 def _entry(case_id: str) -> str | None:
     """The block entry of one authored case: its approved deviation, its deferral, or None once it replays."""
     if case_id in DECIDED:
-        outputs, why = DECIDED[case_id]
-        outs = ", ".join(f'"{name}"' for name in outputs)
-        return (f'[{case_id}]\ndecisions = {casegen._toml_list(DECISIONS[case_id])}\n'
-                f'outputs = [{outs}]\nreason = "{why}"\n')
+        return _decided_entry(case_id, *DECIDED[case_id])
+    if case_id in DECIDED_ONCE_REPLAYED:
+        builder = _decided_entry if case_id in REPLAYED else _deferred_decided_entry
+        return builder(case_id, *DECIDED_ONCE_REPLAYED[case_id])
     if case_id in REPLAYED:
         return None
-    outs = ", ".join(f'"{name}"' for name in output_names(case_id))
     decisions = f"decisions = {casegen._toml_list(DECISIONS[case_id])}\n" if case_id in DECISIONS else ""
-    return (f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\noutputs = [{outs}]\n'
+    return (f'[{case_id}]\n{decisions}deferred = "{MILESTONE}"\n{_outputs_line(output_names(case_id))}'
             f'reason = "{deferral_reason(case_id)}"\n')
 
 
@@ -238,6 +272,9 @@ def exit_check() -> int:
         print(f"hand-derived: {case_id} ({', '.join(DECISIONS.get(case_id, []))}): {reason}")
     for case_id, (outputs, _) in DECIDED.items():
         print(f"deviation: {case_id} ({', '.join(DECISIONS[case_id])}): {', '.join(outputs)}")
+    for case_id, (outputs, _) in DECIDED_ONCE_REPLAYED.items():
+        state = "" if case_id in REPLAYED else " (case still deferred)"
+        print(f"deviation: {case_id} ({', '.join(DECISIONS[case_id])}): {', '.join(outputs)}{state}")
     for case_id, dev in sorted(deviations.load(casegen.GOLDEN).items()):
         if case_id.startswith(SMOKE_PREFIX) and dev.decisions and not dev.deferred:
             print(f"deviation: {case_id} ({', '.join(dev.decisions)}): {', '.join(dev.outputs)} (smoke case)")
@@ -276,6 +313,8 @@ def main(argv: list[str]) -> int:
     action.add_argument("--dispatch-uncaptured", action="store_true", help="the dispatch for cases without expected/")
     action.add_argument("--exit-check", action="store_true", help="fail while an M7 row or deferral is left")
     action.add_argument("--audit", action="store_true", help="rewrite the requirement audit tables (task 17.2)")
+    action.add_argument("--pdk-report", type=Path, metavar="JSON",
+                        help="the PDK cases' failing cells by first differing record kind, from replay.py --json")
     args = parser.parse_args(argv)
     if args.list:
         print("\n".join(authored_ids()))
@@ -289,6 +328,8 @@ def main(argv: list[str]) -> int:
         return exit_check()
     elif args.audit:
         return write_audit()
+    elif args.pdk_report:
+        sys.stdout.write(m7_pdk_report.report(args.pdk_report))
     else:
         write_all()
     return 0

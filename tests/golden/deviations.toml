@@ -763,9 +763,11 @@ outputs = ["stdout.txt", "stderr.txt", "collected/*"]
 reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands"
 
 [EXTRACT-PDK-sky130_fd_sc_hd]
+decisions = ["Q-EXTRACT-36"]
 deferred = "M7"
-outputs = ["stdout.txt", "stderr.txt", "collected/*"]
-reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands"
+deferred_outputs = { "stdout.txt" = "M7", "stderr.txt" = "M7", "collected/*" = "M7" }
+outputs = ["stdout.txt", "stderr.txt", "collected/*", "collected/ext/sky130_fd_sc_hd__probec_p_8.ext"]
+reason = "authored in R6 (m7-extraction task 17.4); replays once the EXTRACT workstreams on the PDK standard cells (m7-extraction task 17.4) lands. Approved deviation: sky130_fd_sc_hd__probec_p_8: Magic's resistor branch writes an uninitialised width for the two res_generic_m5 devices that have no boundary estimate (extract/ExtBasic.c:2988-3060; -1123705434 in the capture, -1406616154 in another run); Hefesto writes 0 (Q-EXTRACT-36 (h), fix in both modes). The ext-devres-uninit-width mask hides Magic's value, so Hefesto's 0 differs in that file only. The NETLIST-PDK case reads Magic's captured .ext, so its netlists need no deviation"
 
 [NETLIST-PDK-gf180mcu_fd_sc_mcu7t5v0]
 deferred = "M7"

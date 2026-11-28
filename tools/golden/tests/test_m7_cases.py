@@ -295,9 +295,52 @@ class WrittenCaseTest(unittest.TestCase):
         known = deviations.load(REPO / "tests" / "golden")
         for case_id in m7_cases.authored_ids():
             if case_id not in m7_cases.REPLAYED and case_id not in m7_cases.DECIDED:
+                decided = m7_cases.DECIDED_ONCE_REPLAYED.get(case_id, ([], ""))[0]
                 with self.subTest(case=case_id):
                     self.assertEqual(known[case_id].deferred, "M7")
-                    self.assertEqual(list(known[case_id].outputs), m7_cases.output_names(case_id))
+                    self.assertEqual(list(known[case_id].outputs), m7_cases.output_names(case_id) + decided)
+
+    def test_probec_deviation_outlives_the_deferral(self):
+        """Task 17.7: Q-EXTRACT-36 (h) covers only probec_p_8's .ext at the M7 exit; the deferral the rest."""
+        case_id = "EXTRACT-PDK-sky130_fd_sc_hd"
+        probec = "collected/ext/sky130_fd_sc_hd__probec_p_8.ext"
+        dev = deviations.load(REPO / "tests" / "golden")[case_id]
+        self.assertEqual(dev.decisions, ("Q-EXTRACT-36",))
+        self.assertTrue(dev.covers("collected/ext/sky130_fd_sc_hd__a21o_1.ext"))
+        at_exit = dev.at_milestone("M7")
+        self.assertEqual(at_exit.outputs, (probec,))
+        self.assertEqual(at_exit.deferred, "")
+        self.assertFalse(at_exit.covers("collected/ext/sky130_fd_sc_hd__a21o_1.ext"))
+        case = load_case(m7_cases.case_dir(case_id))
+        self.assertIn("ext-devres-uninit-width", case.collect[0].masks)
+
+    def test_a_replayed_pending_case_becomes_a_plain_decided_entry(self):
+        case_id = "EXTRACT-PDK-sky130_fd_sc_hd"
+        saved = set(m7_cases.REPLAYED)
+        try:
+            m7_cases.REPLAYED.add(case_id)
+            dev = deviations.parse(m7_cases._entry(case_id))[case_id]
+        finally:
+            m7_cases.REPLAYED.clear()
+            m7_cases.REPLAYED.update(saved)
+        self.assertEqual(dev.deferred, "")
+        self.assertEqual(dev.outputs, ("collected/ext/sky130_fd_sc_hd__probec_p_8.ext",))
+
+    def test_exit_check_counts_160_and_lists_only_approved_deviations(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            m7_cases.exit_check()
+        text = out.getvalue()
+        self.assertIn("M7 catalogue: 160 cases (design D21: 160)", text)
+        listed = re.findall(r"^deviation: (\S+) \(([^)]*)\)", text, re.MULTILINE)
+        self.assertTrue(listed)
+        approved = (REPO / "docs" / "decisions").rglob("*.md")
+        headings = {m for p in approved for m in re.findall(r"^### (Q-[A-Z]+-\d+):", p.read_text(encoding="utf-8"),
+                                                              re.MULTILINE)}
+        for case_id, decisions in listed:
+            for decision in decisions.split(", "):
+                with self.subTest(case=case_id, decision=decision):
+                    self.assertIn(decision, headings)
 
     def test_dispatch_names_every_case(self):
         cases = m7_cases.dispatch_command().split('cases="', 1)[1].rstrip('"').split()
