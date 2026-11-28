@@ -603,6 +603,24 @@ TEST_CASE("flat netlist: a quoted expression with blanks is one field", "[cap:sc
         "pd={2 * W_N} m=1");
 }
 
+// "Fields of a substituted device line": a `"..."` value is quoted too, so
+// `file="a b.lib"` is one field and `b.lib"` is not taken for a node (the
+// split used to treat only `'`, `{` and `}` as quotes). Both modes: the flat
+// netlister has no xschem-compat switch.
+TEST_CASE("flat netlist: a double-quoted value with blanks is one field",
+          "[cap:schematic-netlisting][req:Flat netlist]") {
+  const std::vector<schem::ProcessedLine> lines{{"**.subckt top", false},
+                                                {"x1 A B cell", false},
+                                                {"**.ends", false},
+                                                {".subckt cell P Q", false},
+                                                {"XU1 P N file=\"a b.lib\" it=\"x's\" model_u", false},
+                                                {".ends", false},
+                                                {".end", false}};
+  const auto flat = schem::flatten_netlist(lines).lines;
+  REQUIRE(flat.size() == 4);
+  CHECK(flat[1].text == "XU1_x1 A x1_N file=\"a b.lib\" it=\"x's\" model_u");
+}
+
 TEST_CASE("flat netlist: a subcircuit that places itself stops at kMaxFlatDepth",
           "[cap:schematic-netlisting][req:Flat netlist]") {
   const std::vector<schem::ProcessedLine> lines{{"**.subckt top", false}, {"x1 a loop", false}, {"**.ends", false},

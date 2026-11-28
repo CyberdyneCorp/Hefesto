@@ -77,6 +77,7 @@ struct Project {
   Path folder{"/p"};
   bool open_net_is_error = false;
   bool shorted_output_is_error = false;
+  std::uint64_t bus_budget = schem::kMaxBusTotalBytes;
   const schem::TclBridge* tcl = nullptr;
 
   Project() {
@@ -104,6 +105,7 @@ struct Project {
     schem::NetlistEnvironment environment{symbols, search, fs, tcl, {}, 4};
     environment.erc_open_net_is_error = open_net_is_error;
     environment.erc_shorted_output_is_error = shorted_output_is_error;
+    environment.bus_budget = bus_budget;
     hefesto::compat::CompatSettings compat;
     compat.xschem_compat = xschem_compat;
     return schem::netlist(environment, document.value(), schem::NetlistOptions{}, compat);
@@ -141,7 +143,9 @@ TEST_CASE("Undriven gate and open drain: the report of a failed run, xschem-comp
   CHECK(r.driver_check_only);
   CHECK(r.text.find("\nM1 D G S B nfet\n") != std::string::npos);  // the netlist is still written
   CHECK(texts_of(r, codes::kUndrivenNode) == std::vector<std::string>{"undriven node: B", "undriven node: G"});
-  CHECK(texts_of(r, codes::kOpenNet).empty());  // ON: a warning is in the report only
+  // ON: the warnings of a failed run are also given as coded warnings (the
+  // report text has no stderr channel yet); before the fix they were lost.
+  CHECK(texts_of(r, codes::kOpenNet) == std::vector<std::string>{"open net: D", "open net: S"});
   CHECK(schem::driver_report_text(r) ==
         "-----------/p/tb.sch\nError: undriven node: B\nWarning: open net: D\nError: undriven node: G\n"
         "Warning: open net: S\n-----------/p/tb.sch\n");
@@ -345,4 +349,39 @@ TEST_CASE("the report lists each subcircuit level after the top", DRIVER) {
   CHECK(schem::driver_report_text(r) ==
         "-----------/p/top.sch\nWarning: open net: N\n-----------/p/cell.sch\nError: undriven node: Q\n"
         "-----------/p/top.sch\n");
+}
+
+TEST_CASE("the bits of global bus labels take from the driver check's budget", DRIVER) {
+  // A global label `A[1:0]` ("A[1],A[0]": 9 bytes) and a plain label
+  // `X[1:0]` (9 bytes) with a budget of 20 bytes: the global label's bits
+  // (9) and the two names (9 + 9) do not all fit, so `X[1:0]` is checked as
+  // written. Before the fix the global label's bits were expanded outside
+  // any budget and `X[1:0]` still gave X[1] and X[0].
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Project p;
+    p.bus_budget = 20;
+    p.put("t.sch", std::string{kHeader} + "C {vdd.sym} 0 0 0 0 {name=l1 lab=A[1:0]}\n" + label("l2", "X[1:0]", 200, 0));
+    const auto r = p.netlist("t.sch", compat);
+    CHECK(texts_of(r, codes::kUndrivenNode) == std::vector<std::string>{"undriven node: X[1:0]"});
+  }
+}
+
+TEST_CASE("many wide global bus labels stay within the driver check's budget", DRIVER) {
+  // Each label would give 1,048,576 names (about 10 MB). With a 64-byte
+  // budget none is expanded, so every label stays global and nothing is
+  // reported. A bound check beside the regression test above: before the
+  // fix each label was expanded outside any budget (about 160 MB here).
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Project p;
+    p.bus_budget = 64;
+    std::string tb{kHeader};
+    for (int i = 0; i < 16; ++i) {
+      const std::string name(1, static_cast<char>('a' + i));
+      tb += "C {vdd.sym} " + std::to_string(100 * i) + " 0 0 0 {name=g" + name + " lab=" + name + "[1048575:0]}\n";
+    }
+    p.put("t.sch", tb);
+    CHECK_FALSE(has_driver_finding(p.netlist("t.sch", compat)));
+  }
 }

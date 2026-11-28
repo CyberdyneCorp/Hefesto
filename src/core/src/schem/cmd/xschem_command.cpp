@@ -67,10 +67,6 @@ cmd::CommandResult wrong_args(std::string_view sub) {
   return fail(kUsage, "xschem " + std::string{sub} + ": wrong number of arguments");
 }
 
-cmd::CommandResult bad_argument(std::string_view sub, std::string_view word) {
-  return fail(kUsage, "xschem " + std::string{sub} + ": bad argument \"" + std::string{word} + "\"");
-}
-
 cmd::CommandResult needs_editor(std::string_view sub) {
   return fail(kXschemNeedsEditor, "xschem command '" + std::string{sub} + "' needs the editor");
 }
@@ -228,17 +224,13 @@ class Xschem {
   }
 
   // `xschem get_tok <s> <key> [<n>]` (Q-SCHEM-62 (a)): `<n>` 1 returns the
-  // value as stored (a quoted value keeps its quotes), any other integer
-  // the decoded value, as without `<n>`; both modes.
+  // value as stored (a quoted value keeps its quotes); any other third
+  // argument, an integer or not, acts as 0, the decoded value, as without
+  // `<n>`; both modes.
   cmd::CommandResult get_tok(Args args) {
     if (args.size() < 2 || args.size() > 3) return wrong_args("get_tok");
-    ValueForm form = ValueForm::decoded;
-    if (args.size() == 3) {
-      const auto n = parse_int(args[2]);
-      if (!n) return bad_argument("get_tok", args[2]);
-      if (*n == 1) form = ValueForm::raw;
-    }
-    return done(get_token(args[0], args[1], form).value_or(std::string{}));
+    const bool as_written = args.size() == 3 && parse_int(args[2]) == 1;
+    return done(get_token(args[0], args[1], as_written ? ValueForm::raw : ValueForm::decoded).value_or(std::string{}));
   }
 
   cmd::CommandResult subst_tok(Args args) {
@@ -448,8 +440,9 @@ class Xschem {
   }
 
   // `xschem saveas <file> [schematic|symbol]`: `schematic save <file>`
-  // without asking; the kind word is accepted (the file's extension gives
-  // the kind written). 1 when the file is written, 0 otherwise.
+  // without asking; the kind word is accepted and changes nothing (the
+  // document is written as the kind it is, whatever the word or the
+  // extension). 1 when the file is written, 0 otherwise.
   cmd::CommandResult saveas(Args args) {
     if (args.empty()) return needs_editor("saveas");
     if (args.size() > 2) return wrong_args("saveas");

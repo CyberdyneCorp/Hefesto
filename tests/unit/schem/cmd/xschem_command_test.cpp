@@ -177,6 +177,22 @@ TEST_CASE("clear without force drops a modified document that was never saved", 
   CHECK(s.tcl("xschem get instances").value.to_string() == "0");
 }
 
+// Scenario "saveas with the symbol word": the kind word changes nothing, the
+// document is written as the kind it is (spec row "xschem saveas").
+TEST_CASE("saveas with the symbol word", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << (on ? "ON" : "OFF"));
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/a.sch", hefesto::test::kTwoInstances);
+    REQUIRE(s.schematic({"open", s.folder().str("w/a.sch")}).ok());
+    CHECK(caught(s, "xschem saveas " + s.folder().str("w/s.sch") + " schematic") == "0 1");
+    CHECK(caught(s, "xschem saveas " + s.folder().str("w/y.sch") + " symbol") == "0 1");
+    CHECK(s.schem().documents.back().document.kind == schem::FileKind::schematic);
+    CHECK(s.folder().read("w/y.sch") == s.folder().read("w/s.sch"));
+  }
+}
+
 TEST_CASE("Counts and saveas after a malformed file", kXschem) {
   // The SCHEM-RT-06 file: one wire and one instance load.
   SchemSession s;
@@ -215,7 +231,11 @@ TEST_CASE("xschem get_tok keeps or strips the quotes of a value", kXschem) {
     CHECK(s.tcl("xschem get_tok " + props + " m 1").value.to_string() == "1");
     CHECK(s.tcl("xschem get_tok " + props + " m 2").value.to_string() == "1");
     CHECK(s.tcl("xschem get_tok {k} k 1").value.to_string().empty());
-    CHECK(caught(s, "xschem get_tok " + props + " m x") == "1 {xschem get_tok: bad argument \"x\"}");
+    // Any other third argument acts as 0 (spec row "xschem get_tok"); it
+    // used to raise `bad argument` for a word that is not an integer.
+    CHECK(caught(s, "xschem get_tok " + props + " device x") == "0 {tantalium capacitor}");
+    CHECK(caught(s, "xschem get_tok " + props + " device 7") == "0 {tantalium capacitor}");
+    CHECK(caught(s, "xschem get_tok " + props + " device 0") == "0 {tantalium capacitor}");
     CHECK(caught(s, "xschem get_tok " + props + " m 1 2") == "1 {xschem get_tok: wrong number of arguments}");
   }
 }

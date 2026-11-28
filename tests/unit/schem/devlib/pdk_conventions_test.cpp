@@ -142,7 +142,8 @@ TEST_CASE("Undriven gate and open drain of a gf180 testbench", "[cap:schematic-n
       const std::string report = dl::replace_all(schem::driver_report_text(result), root->generic_string(), "/pdk");
       CHECK(report == dl::read_text(kCases / "SCHEM-NL-09" / "expected" / "stderr.txt"));
       CHECK(report == dl::read_text(kCases / "SCHEM-NL-10" / "expected" / "stderr.txt"));
-      CHECK(findings == std::vector<std::string>{"undriven node: B", "undriven node: G"});
+      // The warnings of the failed ON run follow its errors as coded warnings.
+      CHECK(findings == std::vector<std::string>{"undriven node: B", "undriven node: G", "open net: D", "open net: S"});
     } else {
       CHECK(findings == std::vector<std::string>{"undriven node: B", "open net: D", "undriven node: G", "open net: S"});
     }

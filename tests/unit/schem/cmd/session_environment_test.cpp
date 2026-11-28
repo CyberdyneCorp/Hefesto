@@ -342,6 +342,21 @@ TEST_CASE("Default search path without an xschemrc", kSearchPath) {
   }
 }
 
+// Scenario "Script reads the default search path" (Q-SCHEM-52): with no
+// xschemrc the project interpreter still gets XSCHEM_LIBRARY_PATH, the
+// system devices library, so a script that reads it raises nothing.
+TEST_CASE("Script reads the default search path", kSearchPath) {
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    const std::filesystem::path devices = install_devices(s);
+    std::filesystem::create_directories(s.folder().path() / "w/s");
+    REQUIRE(s.schematic({"new", "schematic", s.folder().str("w/s/div.sch")}).ok());
+    CHECK(caught(s, "set XSCHEM_LIBRARY_PATH") == "0 " + devices.generic_string());
+  }
+}
+
 // `xschem clear` makes an untitled document: a session with no search path
 // yet takes the working folder's (the system library when it has no
 // xschemrc), as SCHEM-PR-02 needs.

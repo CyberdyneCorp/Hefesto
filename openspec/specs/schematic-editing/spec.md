@@ -397,6 +397,8 @@ On desktop, the `R` and `F` keys SHALL name the snapped pointer position (the vi
 
 **Key table** (Q-SCHEM-67 option (a), approved by the user on 2026-11-27). The desktop bindings SHALL be the `schematic` table of the core `macro` command (capability `ui-command-dispatch`, Requirement "macro and imacro commands"), in both modes of `xschem-compat` and of `magic-compat`: `macro schematic <key> "<text>"` lines of the key-binding sheet, of startup files and of scripts SHALL bind a key of the schematic canvas to a command line or to an editor action (`wire`, `move`, `copy`, `properties`, `place`, `descend`); keys the table does not bind keep the defaults above, and a binding a startup file made SHALL be kept. Magic 8.3.694 ignores `macro schematic ...` (it has no such client), so with `magic-compat` ON this is a recorded Magic difference. The key-binding sheet's Reset of the `schematic` table SHALL restore these defaults.
 
+**Schematic tab on desktop** (M8 round 7; Hefesto behaviour, no xschem counterpart; both modes). While the Schematic tab is shown, the layout docks SHALL be hidden, so the schematic view takes the window between the top bar and the status bar; they SHALL come back with the Layout tab. Texts on the schematic canvas SHALL be drawn at their size scaled by the view's zoom, so they grow and shrink with the drawing; a text too small to read at the current zoom MAY be left out. The window command `tab ?layout|schematic|3d?` SHALL show the Layout, Schematic or 3D view as a click on its tab in the top bar does (also when a narrow top bar hides the tabs), and with no argument SHALL return the name of the view shown; `tab 3d` SHALL raise an error when the 3D view is not open. After an `--input` script, the desktop application SHALL print, while the Schematic tab is shown, one line `hefesto: schematic tab <breadcrumb>, <n> instances, <k> pending, canvas <w> x <h>` on stderr: the breadcrumb, the number of instances drawn, the number of symbols still being resolved, and the canvas size in pixels (used by the CI capture step; informative otherwise).
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-5; xschem ref: keys.help)
@@ -425,6 +427,11 @@ Compatibility: native
 - **GIVEN** `macro schematic w "schematic zoom_full"` executed in the Schematic tab on desktop
 - **WHEN** the key-binding sheet's Reset is used for the `schematic` table, then `w` is pressed on the canvas
 - **THEN** the wire tool SHALL start, as the default binding of `w` does (Q-SCHEM-67)
+
+#### Scenario: Show the Schematic tab by command
+- **GIVEN** the desktop application with a schematic open and the Layout tab shown
+- **WHEN** the command `tab schematic` runs, and then `tab` with no argument
+- **THEN** the Schematic tab SHALL be shown with the layout docks hidden, and `tab` SHALL return `schematic`
 
 #### Scenario: Rotate on iPad
 - **GIVEN** an instance selected on iPad with no keyboard

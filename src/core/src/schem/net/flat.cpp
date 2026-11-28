@@ -89,10 +89,26 @@ struct DeviceLine {
   }
 };
 
-/// The fields of a device line, a quoted expression being one field: `'`,
-/// `{` and `}` open a quote when none is open and close it otherwise, as the
-/// quote rule of "Line breaking" reads them, so the blanks inside
-/// `ad='int((nf+1)/2) * W/nf * 0.18u'` do not split it (SCHEM-NL-21).
+/// The quote open after `c`, given the quote `open` before it (0: none):
+/// `'`, `{` and `}` open a quote when none is open and close it otherwise,
+/// as the quote rule of "Line breaking" reads them; `"` opens a string that
+/// only the next `"` closes, the other quote characters being plain inside.
+char next_quote(char open, char c) {
+  if (open == '"') {
+    return c == '"' ? 0 : open;
+  }
+  if (c == '"') {
+    return open == 0 ? '"' : open;
+  }
+  if (c == '\'' || c == '{' || c == '}') {
+    return open == 0 ? c : 0;
+  }
+  return open;
+}
+
+/// The fields of a device line, a quoted value being one field, so the
+/// blanks inside `ad='int((nf+1)/2) * W/nf * 0.18u'` or `x="a b"` do not
+/// split it (SCHEM-NL-21, "Fields of a substituted device line").
 std::vector<std::string> device_fields(std::string_view line) {
   std::vector<std::string> fields;
   std::size_t i = 0;
@@ -101,9 +117,9 @@ std::vector<std::string> device_fields(std::string_view line) {
       ++i;
     }
     const std::size_t start = i;
-    bool quoted = false;
-    while (i < line.size() && (quoted || !detail::is_blank(line[i]))) {
-      quoted = (line[i] == '\'' || line[i] == '{' || line[i] == '}') ? !quoted : quoted;
+    char open = 0;
+    while (i < line.size() && (open != 0 || !detail::is_blank(line[i]))) {
+      open = next_quote(open, line[i]);
       ++i;
     }
     if (i > start) {

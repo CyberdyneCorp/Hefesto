@@ -12,6 +12,7 @@
 #include <array>
 #include <cctype>
 #include <cstdlib>
+#include <iterator>
 #include <unordered_map>
 
 #include "hefesto/schem/file/properties.hpp"
@@ -163,8 +164,10 @@ void NetlistRun::report_before(std::string line) {
 }
 
 /// The names a `global` label of `level` gives (the name `0` included,
-/// which is never declared), and the run's declared global names.
-std::unordered_set<std::string> NetlistRun::level_globals(const Level& level) const {
+/// which is never declared), and the run's declared global names. The bits
+/// are taken from the driver check's budget, so a level of many wide global
+/// labels stays within it (round-7 limit under the standing rule).
+std::unordered_set<std::string> NetlistRun::level_globals(const Level& level) {
   std::unordered_set<std::string> names{globals_seen_.begin(), globals_seen_.end()};
   for (const Placed& p : level.instances) {
     if (p.ignored || p.type != "label") continue;
@@ -172,7 +175,7 @@ std::unordered_set<std::string> NetlistRun::level_globals(const Level& level) co
     if (!global) global = p.symprops.get("global", ValueForm::decoded);
     if (!global || !(is_true(*global) || *global == "ground")) continue;
     for (const std::string& net : level.naming.pin_nets[p.index]) {
-      for (std::string& bit : expand_bus(net)) names.insert(std::move(bit));
+      for (std::string& bit : expand_bus(net, &driver_budget_)) names.insert(std::move(bit));
     }
   }
   return names;
@@ -203,7 +206,8 @@ void NetlistRun::driver_check(const Level& level) {
 }
 
 /// One finding: its xschem text in the report, and a diagnostic (with
-/// xschem-compat ON a finding that stays a warning is in the report only).
+/// xschem-compat ON a finding that stays a warning is kept back and given
+/// only when the run fails, as xschem prints its report only then).
 void NetlistRun::driver_finding(const std::string& net, int kind) {
   static constexpr std::array<std::string_view, 3> kCodes{net_codes::kUndrivenNode, net_codes::kOpenNet,
                                                            net_codes::kShortedOutput};
@@ -213,11 +217,10 @@ void NetlistRun::driver_finding(const std::string& net, int kind) {
                         (kind == kShortedOutput && shorted_output_is_error_);
   std::string text = std::string{kTexts[index]} + net;
   report_line((kind == kUndriven ? "Error: " : "Warning: ") + text);
-  if (!is_error && compat_) return;
   diag::Diagnostic diagnostic = diag::make(kCodes[index], std::move(text));
   diagnostic.severity = is_error ? diag::Severity::error : diag::Severity::warning;
   result_.failed = result_.failed || is_error;
-  result_.diagnostics.push_back(std::move(diagnostic));
+  (!is_error && compat_ ? held_driver_warnings_ : result_.diagnostics).push_back(std::move(diagnostic));
 }
 
 /// The xschemrc settings, read once per run.
@@ -226,8 +229,13 @@ void NetlistRun::init_driver_check() {
   shorted_output_is_error_ = erc_setting(env_, "erc_shorted_output_is_error", env_.erc_shorted_output_is_error);
 }
 
-/// Q-SCHEM-53: whether every error of a failed run is a driver finding.
+/// Q-SCHEM-53: whether every error of a failed run is a driver finding; and
+/// with xschem-compat ON the held-back warnings of a failed run.
 void NetlistRun::finish_driver_check() {
+  if (result_.failed) {
+    std::move(held_driver_warnings_.begin(), held_driver_warnings_.end(), std::back_inserter(result_.diagnostics));
+  }
+  held_driver_warnings_.clear();
   result_.driver_check_only =
       result_.failed && std::all_of(result_.diagnostics.begin(), result_.diagnostics.end(), [](const auto& d) {
         return d.severity != diag::Severity::error || is_driver_code(d.code);
