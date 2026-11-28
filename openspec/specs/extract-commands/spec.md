@@ -144,7 +144,7 @@ Compatibility: behavioral
 
 ### Requirement: Output path and file location
 
-`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. With `magic-compat` ON the path and the cell name are joined as Magic's `sprintf("%s/%s")` joins them, so a path with a trailing slash gives `<path>/<cellname>.ext` with a doubled slash (`ext//top.ext`), which the `Extracting <cell> into <file>:` message shows; with it OFF they are joined with one separator (proposed Q-EXTRACT-44). If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
+`extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. With `magic-compat` ON the path and the cell name are joined as Magic's `sprintf("%s/%s")` joins them, so a path with a trailing slash gives `<path>/<cellname>.ext` with a doubled slash (`ext//top.ext`), which the `Extracting <cell> into <file>:` message shows; with it OFF they are joined with one separator (Q-EXTRACT-44). If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
 
 On desktop hosts (macOS, Linux) this SHALL be exactly Magic's behaviour. On iPadOS and any other sandboxed host (X-4) the current directory SHALL be the project folder, the session working directory granted to the sandbox; relative paths resolve against it, directories SHALL be created through the file-coordination service with no POSIX mode, and a path outside the granted roots SHALL fail as unwritable, with the same `Cannot open output file` outcome. Messages are Magic's text on every host (Q-EXTRACT-11, resolution: platform).
 
@@ -161,12 +161,12 @@ Compatibility: behavioral
 #### Scenario: Trailing slash in the path with magic-compat ON
 - **GIVEN** `magic-compat` ON and `extract path ext/`
 - **WHEN** a cell `top` is extracted
-- **THEN** the file is named `ext//top.ext`, as in Magic (proposed Q-EXTRACT-44)
+- **THEN** the file is named `ext//top.ext`, as in Magic (Q-EXTRACT-44)
 
 #### Scenario: Trailing slash in the path with magic-compat OFF
 - **GIVEN** `magic-compat` OFF and `extract path ext/`
 - **WHEN** a cell `top` is extracted
-- **THEN** the file is named `ext/top.ext` (proposed Q-EXTRACT-44)
+- **THEN** the file is named `ext/top.ext` (Q-EXTRACT-44)
 
 #### Scenario: Path outside the sandbox
 - **GIVEN** a sandboxed host and `extract path /tmp/ext` outside the granted roots
@@ -203,7 +203,7 @@ The flood SHALL be Magic's, tile for tile, in both `magic-compat` settings, so `
 - Marks are kept until every start tile under the driver label has been flooded, and cleared only then, so a tile is reached by the first path that arrives and only first-arrival paths reach the receiver and set min and max.
 - Distances are integer arithmetic.
 
-Distances are summed in 64 bits and the flood keeps no recursion depth, in both `magic-compat` settings (a fix: Magic's 32-bit sums overflow and its recursion can exhaust the stack). With `magic-compat` ON a receiver label is listed once for each yanked tile whose area, grown by one unit at the top and right, it touches, and each listing gets its own `distance` record, as in Magic; with it OFF each receiver label is listed once. A driver label on space gets no `distance` record in either mode, where Magic prints the previous pair's values or uninitialised ones. A driver name that matches no label prints `Can't find terminal "<name>"` (EXTRACT-LEN-001) and gets no record. A driver label on a tile's outer corner starts no net, as in Magic (the connect search's corner rule).
+Distances are summed in 64 bits and the flood keeps no recursion depth, in both `magic-compat` settings (Q-EXTRACT-43, resolution: fix; Magic's 32-bit sums overflow and its recursion can exhaust the stack). With `magic-compat` ON a receiver label is listed once for each yanked tile whose area, grown by one unit at the top and right, it touches, and each listing gets its own `distance` record, as in Magic; with it OFF each receiver label is listed once (Q-EXTRACT-42, resolution: compat). A driver label on space gets no `distance` record in either mode, where Magic prints the previous pair's values or uninitialised ones (Q-EXTRACT-43). A driver name that matches no label prints `Can't find terminal "<name>"` (EXTRACT-LEN-001) and gets no record. A driver label on a tile's outer corner starts no net, as in Magic (the connect search's corner rule).
 Compatibility: exact
 
 (Magic ref: extract/ExtLength.c:147-310, extract/ExtLength.c:640-1040, extract/ExtCell.c:542-544)
@@ -216,17 +216,27 @@ Compatibility: exact
 #### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat ON)
 - **GIVEN** a receiver label that touches two yanked tiles of the driver's net (each tile grown by one unit at the top and right), and `magic-compat` ON
 - **WHEN** the root cell is extracted with option `length` on
-- **THEN** two identical `distance` records are written for that driver and receiver
+- **THEN** two identical `distance` records are written for that driver and receiver, as in Magic (Q-EXTRACT-42)
 
 #### Scenario: Receiver on the shared corner of two yanked tiles (magic-compat OFF)
 - **GIVEN** the same layout with `magic-compat` OFF
 - **WHEN** the root cell is extracted with option `length` on
-- **THEN** one `distance` record is written for that driver and receiver
+- **THEN** one `distance` record is written for that driver and receiver (Q-EXTRACT-42)
 
 #### Scenario: Driver label on space
 - **GIVEN** a driver label whose rectangle lies on space, in either `magic-compat` setting
 - **WHEN** the root cell is extracted with option `length` on
-- **THEN** no `distance` record is written for that driver label
+- **THEN** no `distance` record is written for that driver label, where Magic prints stale or uninitialised values (Q-EXTRACT-43)
+
+#### Scenario: Path length beyond the 32-bit range
+- **GIVEN** a metal1 net from driver `d` at (-10^9, 2) along a 2·10^9-long wire, up 92 and back along a second 2·10^9-long wire to receiver `r` at (-10^9, 98), in either `magic-compat` setting
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** the record is `distance d r 4000000092 4000000092`, summed in 64 bits (Q-EXTRACT-43)
+
+#### Scenario: A net of many tiles floods without recursion
+- **GIVEN** a metal1 staircase of 60000 tiles, one per row, with driver `d` at the bottom and receiver `r` at the top, in either `magic-compat` setting
+- **WHEN** the root cell is extracted with option `length` on
+- **THEN** the flood completes and one `distance` record is written (with `magic-compat` OFF), with no stack exhaustion (Q-EXTRACT-43)
 
 ### Requirement: Progress and summary messages
 

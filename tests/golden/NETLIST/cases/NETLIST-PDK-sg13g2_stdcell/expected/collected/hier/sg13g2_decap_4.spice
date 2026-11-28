@@ -1,0 +1,7 @@
+* NGSPICE file created from sg13g2_decap_4.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_decap_4 VDD VSS
+X0 VDD VSS VDD VDD sg13_lv_pmos ad=0.34p pd=2.68u as=2.4331p ps=11.58u w=1u l=1u
+X1 VSS VDD VSS VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=1.84612p ps=9.32u w=0.42u l=1u
+.ends
+

@@ -10,7 +10,8 @@
 
 # M7 EXTTECH completes the reader (openspec/changes/m7-extraction/design.md
 # D7): one file per keyword group, the final pass, the conversions and the
-# style table.
+# style table; style_reader.cpp dispatches through the keyword table, and
+# StyleView and HeightView are views of ExtStyle (tasks.md 4.1, 4.7).
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/antenna_rules.cpp

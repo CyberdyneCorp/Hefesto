@@ -1,0 +1,11 @@
+* NGSPICE file created from sg13g2_o21ai_1.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_o21ai_1 VSS VDD Y B1 A2 A1
+X0 VSS A1 a_22_110# VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.2516p ps=2.16u w=0.74u l=0.15u
+X1 a_120_432# A1 VDD VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.3808p ps=2.92u w=1.12u l=0.15u
+X2 a_22_110# A2 VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.15u
+X3 Y B1 a_22_110# VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1406p ps=1.12u w=0.74u l=0.15u
+X4 Y A2 a_120_432# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.15u
+X5 VDD B1 Y VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.2128p ps=1.5u w=1.12u l=0.15u
+.ends
+

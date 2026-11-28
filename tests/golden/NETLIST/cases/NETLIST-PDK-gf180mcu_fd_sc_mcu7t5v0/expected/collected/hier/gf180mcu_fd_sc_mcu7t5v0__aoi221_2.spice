@@ -1,0 +1,26 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__aoi221_2.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__aoi221_2 A1 A2 B1 B2 C ZN VDD VNW VPW VSS
+X0 a_56_492# A2 ZN VNW pfet_05v0 ad=0.2912p pd=1.64u as=0.2912p ps=1.64u w=1.12u l=0.5u
+X1 a_512_68# B2 VSS VPW nfet_05v0 ad=0.16445p pd=1.175u as=0.21805p ps=1.455u w=0.715u l=0.6u
+X2 ZN C VSS VPW nfet_05v0 ad=0.23355p pd=1.43u as=0.6525p ps=2.695u w=0.575u l=0.6u
+X3 a_244_492# B2 VDD VNW pfet_05v0 ad=0.7056p pd=2.38u as=0.5664p ps=2.24u w=1.12u l=0.5u
+X4 a_948_68# B1 ZN VPW nfet_05v0 ad=0.10725p pd=1.015u as=0.1859p ps=1.235u w=0.715u l=0.6u
+X5 VSS B2 a_948_68# VPW nfet_05v0 ad=0.6525p pd=2.695u as=0.10725p ps=1.015u w=0.715u l=0.6u
+X6 a_56_492# C a_244_492# VNW pfet_05v0 ad=0.3108p pd=1.675u as=0.7056p ps=2.38u w=1.12u l=0.5u
+X7 VSS C ZN VPW nfet_05v0 ad=0.21805p pd=1.455u as=0.1782p ps=1.69u w=0.405u l=0.6u
+X8 VDD B1 a_244_492# VNW pfet_05v0 ad=0.5664p pd=2.24u as=0.3024p ps=1.66u w=1.12u l=0.5u
+X9 a_2267_68# A2 VSS VPW nfet_05v0 ad=85.8f pd=0.955u as=0.1859p ps=1.235u w=0.715u l=0.6u
+X10 a_1875_68# A1 ZN VPW nfet_05v0 ad=85.8f pd=0.955u as=0.23355p ps=1.43u w=0.715u l=0.6u
+X11 VSS A2 a_1875_68# VPW nfet_05v0 ad=0.1859p pd=1.235u as=85.8f ps=0.955u w=0.715u l=0.6u
+X12 ZN A1 a_2267_68# VPW nfet_05v0 ad=0.3146p pd=2.31u as=85.8f ps=0.955u w=0.715u l=0.6u
+X13 a_244_492# B1 VDD VNW pfet_05v0 ad=0.3024p pd=1.66u as=0.5664p ps=2.24u w=1.12u l=0.5u
+X14 ZN B1 a_512_68# VPW nfet_05v0 ad=0.1859p pd=1.235u as=0.16445p ps=1.175u w=0.715u l=0.6u
+X15 a_244_492# C a_56_492# VNW pfet_05v0 ad=0.2912p pd=1.64u as=0.4928p ps=3.12u w=1.12u l=0.5u
+X16 ZN A2 a_56_492# VNW pfet_05v0 ad=0.2912p pd=1.64u as=0.2912p ps=1.64u w=1.12u l=0.5u
+X17 VDD B2 a_244_492# VNW pfet_05v0 ad=0.5664p pd=2.24u as=0.2912p ps=1.64u w=1.12u l=0.5u
+X18 ZN A1 a_56_492# VNW pfet_05v0 ad=0.2912p pd=1.64u as=0.3108p ps=1.675u w=1.12u l=0.5u
+X19 a_56_492# A1 ZN VNW pfet_05v0 ad=0.4928p pd=3.12u as=0.2912p ps=1.64u w=1.12u l=0.5u
+C0 VNW VPW 4.27039f
+.ends
+

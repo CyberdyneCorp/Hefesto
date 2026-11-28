@@ -14,9 +14,13 @@
 // divides h and t by dscale with `units microns` (ExtTech.c:3796-3966);
 // after `noplaneordering` none of the three runs, as in Magic
 // (ExtTech.c:3801-3802).
-// Every other keyword stays skipped silently, so a full PDK extract section
-// loads with no diagnostic M7's reader would not also give. M7 re-sources
-// the view from its full reader; the interface stays.
+// M7 re-sources the view from ExtStyle (openspec/changes/m7-extraction/
+// design.md D7, D20, tasks.md 4.7); the interface stays. from_section()
+// reads the style with the full reader and converts it with
+// ExtStyle's micron conversion; from_style() is the view of a parsed
+// style, so HeightView::from_style(*EditorState::extract.current) gives the
+// session's current style in internal units; rescaled() goes through
+// ExtStyle::rescale, the one grid-rescale path.
 //
 // Messages: a HeightView read reports only the height subset's messages
 // (EXTRACT-STYLE-003..006) of the selected style, to the sink it is given;
@@ -33,8 +37,9 @@
 // hefesto::extract, `from_section` / `from_technology`, as StyleView); see
 // design.md "As-landed scaffold contracts".
 //
-// Owner: SCAFFOLD (this header, M10 task 2.3); TECH fills in the
-// implementation in src/core/src/extract/tech/ (design D3, tasks 3.1, 3.2).
+// Owner: SCAFFOLD (this header, M10 task 2.3); TECH filled in the
+// implementation in src/core/src/extract/tech/ (design D3, tasks 3.1, 3.2);
+// EXTTECH re-sourced it (M7 design D7).
 
 #pragma once
 
@@ -55,6 +60,8 @@ class OutputStyle;
 }
 
 namespace hefesto::extract {
+
+class ExtStyle;
 
 /// Where a type's height and thickness come from.
 enum class HeightSource : std::uint8_t {
@@ -121,6 +128,10 @@ class HeightView {
                                                float microns_per_lambda);
   /// The technology's last `extract` section, or no style without one.
   [[nodiscard]] static HeightView from_technology(const tech::Technology& tech, diag::DiagnosticSink& sink);
+  /// The view of a parsed style in its current units (after
+  /// micron_convert() and rescale(), for EditorState::extract.current:
+  /// internal units); distance_scale is the dscale micron_convert() used.
+  [[nodiscard]] static HeightView from_style(const ExtStyle& style);
 
   /// CIFGetOutputScale(1000) of `style` at the unscaled grid: 10 * scale
   /// factor / (expander * 1000) in `float`; 1.0 without a style.

@@ -10,23 +10,26 @@
 // diffusion set D from it (lef-write "Macro source geometry and layer
 // masks", ExtTech.c:514-562), DEF write the active types of BLOCKAGES
 // (defWrite.c:816, 2538). With no extraction style every query answers
-// std::nullopt, which the writers treat as empty sets (Q-LEFDEF-40). M7
-// re-sources the view from its full reader; the interface stays.
+// std::nullopt, which the writers treat as empty sets (Q-LEFDEF-40).
 //
-// The reader (src/core/src/extract/tech/) parses the style selection,
-// `variants`, `device` (class and types), `fet`, `tiedown`, `substrate` and
-// `resist ... None`, and records the types every other line mentions,
-// which decide the active types ("Non-electrical types"). Every other
-// keyword is skipped silently (design D10). Magic prints the section's
-// messages when the technology loads; this reader reports only malformed
-// `style`, `variants`, `device`, `fet`, `tiedown` and `substrate` lines of
-// the selected style, to the sink it is given.
+// M7 re-sources the view from ExtStyle (openspec/changes/m7-extraction/
+// design.md D7, D20, tasks.md 4.7); the interface stays. from_style() is
+// the view of a parsed style: `lef write` and `def write` take it from the
+// session's current style (EditorState::extract.current, Magic's
+// ExtCurStyle, lefWrite.c:1268, defWrite.c:816, 2538), so `extract style`
+// changes what they read. from_section() runs the one reader
+// (src/core/src/extract/tech/) on a raw section; it reports only
+// malformed `style`, `variants`, `device`, `fet`, `tiedown` and
+// `substrate` lines of the selected style (Magic prints the section's
+// messages when the technology loads).
 //
 // Owner: INTEGRATION (this header, created by the M6 scaffold); EXTSUB
-// fills in the implementation in src/core/src/extract/tech/ (design D2).
+// filled in the implementation in src/core/src/extract/tech/ (M6 design
+// D2); EXTTECH re-sourced it (M7 design D7).
 
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -37,6 +40,8 @@
 #include "hefesto/tech/types.hpp"
 
 namespace hefesto::extract {
+
+class ExtStyle;
 
 /// The type sets of one extraction style.
 struct StyleTypes {
@@ -67,6 +72,16 @@ class StyleView {
   /// The technology's last `extract` section (a repeated section replaces
   /// the styles of the earlier one), or no style without one.
   [[nodiscard]] static StyleView from_technology(const tech::Technology& tech, diag::DiagnosticSink& sink);
+  /// The view of a parsed style (a StyleTable selection, or the session's
+  /// current style): gate_types() is ExtGetGateTypesMask, diff_types() the
+  /// tie-down types, active_types() the active types after the
+  /// non-electrical ones are removed, substrate_types() the `substrate`
+  /// line's types.
+  [[nodiscard]] static StyleView from_style(const ExtStyle& style);
+  /// from_style(*style), or no style when `style` is null.
+  [[nodiscard]] static StyleView from_style(const std::shared_ptr<const ExtStyle>& style) {
+    return style ? from_style(*style) : StyleView{};
+  }
 
   [[nodiscard]] bool has_style() const noexcept { return current_.has_value(); }
   /// The style's name, when there is one.

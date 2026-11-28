@@ -1,0 +1,8 @@
+timestamp 0
+version 8.3
+tech nltest
+style nltest
+scale 1000 1000 5
+resistclasses 1000 5000 200
+node "x" 0 2 0 0 metal1 20 18 0 0 40 24
+device mosfet nfet 10 0 12 4 2 4 "GND!" "x" 8 0 "x" 4 0 "x" 4 0

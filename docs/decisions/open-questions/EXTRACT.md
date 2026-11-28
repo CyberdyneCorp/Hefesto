@@ -340,6 +340,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Options: fix (as implemented) | replicate (not possible for undefined behaviour)
 - Recommendation: fix. Real layouts never reach (a), (c) or (d); (b) and (e)-(i) change no captured case.
 - Resolution: fix — in both modes, (a) to (i) as implemented in round R3. Tests exist for (a), (b), (c), (d), (e) and (g); round R5 (m7-round5-extract) adds (f): `tests/unit/extract/device/abut_probe_test.cpp` "Q-EXTRACT-36 (f): a record outside the tile type's list ends the match search after one turn" calls `device_detail::find_match` directly with EX-P03's pmos record and hangs without the bound. (h) and (i) have no test: (h) Hefesto's L and W are fields of a per-device record that start at 0, so there is no carried state to catch; (i) `r_value` is internal to `device_params.cpp`, and through a layout every device region has a Manhattan boundary on its own plane, so the perimeter is never 0 (the guard stays). No spec change: real layouts never reach these inputs. Approved 2026-11-25.
+- Note (round R6 integration, 2026-11-27): the recommendation's "real layouts never reach" does not hold for (h): the EXTRACT-PDK capture shows `sky130_fd_sc_hd__probec_p_8`, whose `res_generic_m5` devices get the value -1123705434 from Magic (an uninitialised W) where Hefesto writes 0. The decision (fix, both modes) is unchanged. Once EXTRACT-PDK-sky130_fd_sc_hd and NETLIST-PDK-sky130_fd_sc_hd replay otherwise, they carry a deviation under this row for `collected/ext/sky130_fd_sc_hd__probec_p_8.ext` and the resistor `w` of that cell's netlists (task 17.7). Magic's value differs between captures (-1406616154 in the golden-capture verify of PR #141), so EXTRACT-PDK masks a `device devres` width outside the plausible range 0..999999, that is a negative value or seven or more digits (`ext-devres-uninit-width`, `tools/golden/compare/masks.py`; widened from nine or more digits in the R6 fix pass); Hefesto's 0 stays visible. A garbage value inside that range cannot be told from a real width by the record's text and stays compared, a residual flake risk for a Magic-versus-Magic verify.
 
 ### Q-EXTRACT-37: The shorted-ports warning truncates the cell's port labels
 - Kind: compat-neutral
@@ -392,30 +393,53 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 
 ### Q-EXTRACT-42: A receiver label touching two yanked tiles gets two `distance` records
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by EXTCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by EXTCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: extLengthYank lists a receiver label once for each yanked tile whose area, grown by one unit at the top and right, it touches, so a label on the shared corner of two tiles is listed twice and extLength writes two identical `distance` records for it.
 - Evidence: extract/ExtLength.c:448-450
 - As implemented (round R5): magic-compat ON lists the label once per touched tile, as Magic; OFF lists each receiver label once. Test: `tests/unit/extract/length/length_test.cpp` "a receiver touching two yanked tiles is listed twice with magic-compat ON, once OFF".
 - Options: compat (as implemented) | replicate
 - Recommendation: compat. A duplicated record carries no information; ON keeps Magic's output.
-- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and a scenario per mode, applied in round R5); the row ID is cited there on approval.
+- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and a scenario per mode, applied in round R5); the row ID is cited there since round R6.
+- Resolution: compat — with `magic-compat` ON a receiver label is listed once for each yanked tile it touches (each tile grown by one unit at the top and right), so a label on the shared corner of two tiles gets two identical `distance` records, as Magic; with it OFF each receiver label is listed once and gets one record. Spec: `extract-commands` "Path length extraction" (sentence and the scenarios "Receiver on the shared corner of two yanked tiles" per mode, citing the row). Tests: `tests/unit/extract/length/length_test.cpp` "Q-EXTRACT-42: a receiver touching two yanked tiles is listed twice with magic-compat ON" / "... is listed once with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-EXTRACT-43: `extract length` prints a stale or uninitialised `distance` for a driver label on space
 - Kind: bug
-- Status: proposed (fixed in both modes in M7 round R5 by EXTCMD under the standing rule: undefined behaviour)
+- Status: approved 2026-11-27 (fixed in both modes in M7 round R5 by EXTCMD under the standing rule: undefined behaviour; approved with the recommended option)
 - Magic behavior: extPathPairDistance returns without setting min and max for a driver label on space, and extLength still prints `distance` with the previous pair's values, or uninitialised ones for the first pair. The same pass sums distances in `int` (overflow on long nets) and floods by recursion (the stack can overflow on a large net).
 - Evidence: extract/ExtLength.c:302-304, 639-640, 640-1040
 - As implemented (round R5), both modes: a driver label on space gets no record; distances are summed in 64 bits; the flood keeps its frames on the heap. Test: `tests/unit/extract/length/length_test.cpp` "a driver label on space writes no record".
 - Options: fix (as implemented) | replicate (not possible for uninitialised values)
 - Recommendation: fix.
-- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and scenario "Driver label on space", applied in round R5); the row ID is cited there on approval.
+- Spec: `extract-commands` "Path length extraction" states the behaviour (sentence and scenario "Driver label on space", applied in round R5); the row ID is cited there since round R6.
+- Resolution: fix — in both modes a driver label on space gets no `distance` record (Magic prints the previous pair's values or uninitialised ones), distances are summed in 64 bits, and the flood keeps its frames on the heap instead of recursing. Spec: `extract-commands` "Path length extraction" (the sentence and the scenarios "Driver label on space", "Path length beyond the 32-bit range" and "A net of many tiles floods without recursion", citing the row). Tests: `tests/unit/extract/length/length_test.cpp` "a driver label on space writes no record (Magic prints stale values)", "distances add in 64 bits (Magic's int sum overflows)", "a net of 60000 tiles floods without recursion" (each in both modes or mode-independent). Approved 2026-11-27.
 
 ### Q-EXTRACT-44: `extract path` with a trailing slash names `<dir>//<cell>.ext`
 - Kind: compat
-- Status: proposed (raised in the M7 round R5 fix pass from a review finding, 2026-11-27; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in the M7 round R5 fix pass from a review finding, 2026-11-27; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: ExtFileOpen joins ExtLocalPath and the cell name with `sprintf("%s/%s")`, so `extract path ext/` writes `ext//<cell>.ext`, and the `Extracting <cell> into ext//<cell>.ext:` message shows the doubled slash (capture EX-066). The file is the same; only the printed name differs.
 - Evidence: extract/ExtCell.c:193, :200; golden case EX-066
 - As implemented (R5 fix pass): magic-compat ON joins as Magic (`AtomicOutput` and so `extract` and `extresist`); OFF joins with one separator. Tests: `tests/unit/extract/file/atomic_output_test.cpp` "An extract path with a trailing slash is joined as Magic's sprintf joins it with magic-compat ON" / "... with one separator with magic-compat OFF".
 - Options: compat (as implemented) | replicate (both modes print `//`)
 - Recommendation: compat. ON keeps EX-066 byte-exact; OFF prints the path a user expects.
 - Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode).
+- Resolution: compat — with `magic-compat` ON the `.ext` path joins the extract path and the cell name as Magic's `sprintf("%s/%s")` does, so `extract path ext/` names `ext//<cell>.ext` (EX-066 byte-exact); with it OFF the join uses one separator, `ext/<cell>.ext`. The file written is the same. Spec: `extract-commands` "Output path and file location" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extract/file/atomic_output_test.cpp` (one per mode). Approved 2026-11-27.
+
+### Q-EXTRACT-45: `lef write` and `def write` use the selected extract style
+- Kind: replicate (both modes as Magic)
+- Status: proposed 2026-11-27 (raised in M7 round R6 by TECH; implemented in both modes per the standing rule; needs a user decision)
+- Magic behavior: lefWrite and defWrite read `ExtCurStyle`, so after `extract style X` the LEF macro geometry masks (G and D) and the DEF BLOCKAGES active types follow style X, not the technology's first style.
+- Evidence: lef/lefWrite.c:1268; lef/defWrite.c:816, :2538
+- As implemented (round R6, branch `m7-round6-tech`): both modes build the writers' StyleView from `EditorState::extract.current` (`lef/write/write.cpp`, `def/write/write.cpp`); before R6 they used the first style of the technology. Tests: `tests/unit/lef/write/style_select_test.cpp` "lef write takes G and D from the selected extraction style" (fails with the old first-style source); `tests/unit/def/write/style_select_test.cpp` "def write takes the active types from the selected extraction style" (both modes).
+- Options: replicate (as implemented: the selected style in both modes) | keep the first style
+- Recommendation: replicate. The selected style is what a user expects and what Magic writes; the output is unchanged for a technology with one extract style.
+- Spec: `lef-write` "Macro source geometry and layer masks" and `def-write` "BLOCKAGES section" (scenarios added in R6).
+
+### Q-EXTRACT-46: The non-electrical types accumulate over the style selections since the tech load
+- Kind: compat
+- Status: proposed 2026-11-27 (implemented since round R2 per the standing rule without a row; recorded in round R6 integration; needs a user decision)
+- Magic behavior: `allExtractTypes` is cleared only when a technology loads (ExtTechInit) and grows with every style ExtLoadStyle reads, so a type an earlier selected style mentioned stays electrical (and keeps its place in the "treated as non-electrical" list) in a later style that does not mention it.
+- Evidence: extract/ExtTech.c ExtTechInit, ExtLoadStyle, ExtTechFinal (:3556-3620)
+- As implemented: magic-compat ON accumulates the mentions of every selection since the tech load, as Magic; OFF uses only the selected style's own mentions (`src/core/src/extract/tech/style_table.cpp` `select_entry`). This reaches `extract`, `lef write` G/D and `def write` BLOCKAGES (Q-EXTRACT-45). Tests: `tests/unit/extract/tech/ext_style_rules_test.cpp` "with magic-compat ON the mentions of earlier selections accumulate, as allExtractTypes does" (ON and OFF); `tests/unit/def/write/style_select_test.cpp` (ON keeps the accumulated types after switching back).
+- Options: compat (as implemented) | replicate (accumulate in both modes)
+- Recommendation: compat. The accumulation depends on the order of earlier selections, which a user cannot see; ON keeps Magic's output.
+- Spec: `extract-tech-section` "Non-electrical types": per-mode sentence and scenarios "Mentions of an earlier style accumulate with magic-compat on" and "Each style uses its own mentions with magic-compat off", added in the R6 fix pass (review of PR #141) citing the row as proposed.

@@ -1,0 +1,798 @@
+
+Magic 8.3 revision 694 - Compiled on Fri Nov 27 17:36:55 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 5.0
+Library name: sg13g2_stdcell
+Reading "sg13g2_a21o_1".
+Reading "sg13g2_a21o_2".
+Reading "sg13g2_a21oi_1".
+Reading "sg13g2_a21oi_2".
+Reading "sg13g2_a221oi_1".
+Reading "sg13g2_a22oi_1".
+Reading "sg13g2_and2_1".
+Reading "sg13g2_and2_2".
+Reading "sg13g2_and3_1".
+Reading "sg13g2_and3_2".
+Reading "sg13g2_and4_1".
+Reading "sg13g2_and4_2".
+Reading "sg13g2_antennanp".
+Reading "sg13g2_buf_1".
+Reading "sg13g2_buf_16".
+Reading "sg13g2_buf_2".
+Reading "sg13g2_buf_4".
+Reading "sg13g2_buf_8".
+Reading "sg13g2_decap_4".
+Reading "sg13g2_decap_8".
+Reading "sg13g2_dfrbp_1".
+Reading "sg13g2_dfrbp_2".
+Reading "sg13g2_dfrbpq_1".
+Reading "sg13g2_dfrbpq_2".
+Reading "sg13g2_dlhq_1".
+Reading "sg13g2_dlhr_1".
+Reading "sg13g2_dlhrq_1".
+Reading "sg13g2_dllr_1".
+Reading "sg13g2_dllrq_1".
+Reading "sg13g2_dlygate4sd1_1".
+Reading "sg13g2_dlygate4sd2_1".
+Reading "sg13g2_dlygate4sd3_1".
+Reading "sg13g2_ebufn_2".
+Reading "sg13g2_ebufn_4".
+Reading "sg13g2_ebufn_8".
+Reading "sg13g2_einvn_2".
+Reading "sg13g2_einvn_4".
+Reading "sg13g2_einvn_8".
+Reading "sg13g2_fill_1".
+Reading "sg13g2_fill_2".
+Reading "sg13g2_fill_4".
+Reading "sg13g2_fill_8".
+Reading "sg13g2_inv_1".
+Reading "sg13g2_inv_16".
+Reading "sg13g2_inv_2".
+Reading "sg13g2_inv_4".
+Reading "sg13g2_inv_8".
+Reading "sg13g2_lgcp_1".
+Reading "sg13g2_mux2_1".
+Reading "sg13g2_mux2_2".
+Reading "sg13g2_mux4_1".
+Reading "sg13g2_nand2_1".
+Reading "sg13g2_nand2_2".
+Reading "sg13g2_nand2b_1".
+Reading "sg13g2_nand2b_2".
+Reading "sg13g2_nand3_1".
+Reading "sg13g2_nand3b_1".
+Reading "sg13g2_nand4_1".
+Reading "sg13g2_nor2_1".
+Reading "sg13g2_nor2_2".
+Reading "sg13g2_nor2b_1".
+Reading "sg13g2_nor2b_2".
+Reading "sg13g2_nor3_1".
+Reading "sg13g2_nor3_2".
+Reading "sg13g2_nor4_1".
+Reading "sg13g2_nor4_2".
+Reading "sg13g2_o21ai_1".
+Reading "sg13g2_or2_1".
+Reading "sg13g2_or2_2".
+Reading "sg13g2_or3_1".
+Reading "sg13g2_or3_2".
+Reading "sg13g2_or4_1".
+Reading "sg13g2_or4_2".
+Reading "sg13g2_sdfbbp_1".
+Reading "sg13g2_sdfrbp_1".
+Reading "sg13g2_sdfrbp_2".
+Reading "sg13g2_sdfrbpq_1".
+Reading "sg13g2_sdfrbpq_2".
+Reading "sg13g2_sighold".
+Reading "sg13g2_slgcp_1".
+Reading "sg13g2_tiehi".
+Reading "sg13g2_tielo".
+Reading "sg13g2_xnor2_1".
+Reading "sg13g2_xor2_1".
+0 {}
+pdk cells 84
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  200.000), ( 0.000,  200.000)
+lambda:     0.00 x 0.00    (  0.00,  20000.00), (  0.00,  20000.00)
+internal:      0 x 0       (     0,  40000), (     0,  40000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  400.000), ( 0.000,  400.000)
+lambda:     0.00 x 0.00    (  0.00,  40000.00), (  0.00,  40000.00)
+internal:      0 x 0       (     0,  80000), (     0,  80000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  600.000), ( 0.000,  600.000)
+lambda:     0.00 x 0.00    (  0.00,  60000.00), (  0.00,  60000.00)
+internal:      0 x 0       (     0,  120000), (     0,  120000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  800.000), ( 0.000,  800.000)
+lambda:     0.00 x 0.00    (  0.00,  80000.00), (  0.00,  80000.00)
+internal:      0 x 0       (     0,  160000), (     0,  160000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1000.000), ( 0.000,  1000.000)
+lambda:     0.00 x 0.00    (  0.00,  100000.00), (  0.00,  100000.00)
+internal:      0 x 0       (     0,  200000), (     0,  200000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1200.000), ( 0.000,  1200.000)
+lambda:     0.00 x 0.00    (  0.00,  120000.00), (  0.00,  120000.00)
+internal:      0 x 0       (     0,  240000), (     0,  240000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1400.000), ( 0.000,  1400.000)
+lambda:     0.00 x 0.00    (  0.00,  140000.00), (  0.00,  140000.00)
+internal:      0 x 0       (     0,  280000), (     0,  280000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1600.000), ( 0.000,  1600.000)
+lambda:     0.00 x 0.00    (  0.00,  160000.00), (  0.00,  160000.00)
+internal:      0 x 0       (     0,  320000), (     0,  320000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1800.000), ( 0.000,  1800.000)
+lambda:     0.00 x 0.00    (  0.00,  180000.00), (  0.00,  180000.00)
+internal:      0 x 0       (     0,  360000), (     0,  360000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2000.000), ( 0.000,  2000.000)
+lambda:     0.00 x 0.00    (  0.00,  200000.00), (  0.00,  200000.00)
+internal:      0 x 0       (     0,  400000), (     0,  400000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2200.000), ( 0.000,  2200.000)
+lambda:     0.00 x 0.00    (  0.00,  220000.00), (  0.00,  220000.00)
+internal:      0 x 0       (     0,  440000), (     0,  440000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2400.000), ( 0.000,  2400.000)
+lambda:     0.00 x 0.00    (  0.00,  240000.00), (  0.00,  240000.00)
+internal:      0 x 0       (     0,  480000), (     0,  480000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2600.000), ( 0.000,  2600.000)
+lambda:     0.00 x 0.00    (  0.00,  260000.00), (  0.00,  260000.00)
+internal:      0 x 0       (     0,  520000), (     0,  520000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2800.000), ( 0.000,  2800.000)
+lambda:     0.00 x 0.00    (  0.00,  280000.00), (  0.00,  280000.00)
+internal:      0 x 0       (     0,  560000), (     0,  560000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3000.000), ( 0.000,  3000.000)
+lambda:     0.00 x 0.00    (  0.00,  300000.00), (  0.00,  300000.00)
+internal:      0 x 0       (     0,  600000), (     0,  600000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3200.000), ( 0.000,  3200.000)
+lambda:     0.00 x 0.00    (  0.00,  320000.00), (  0.00,  320000.00)
+internal:      0 x 0       (     0,  640000), (     0,  640000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3400.000), ( 0.000,  3400.000)
+lambda:     0.00 x 0.00    (  0.00,  340000.00), (  0.00,  340000.00)
+internal:      0 x 0       (     0,  680000), (     0,  680000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3600.000), ( 0.000,  3600.000)
+lambda:     0.00 x 0.00    (  0.00,  360000.00), (  0.00,  360000.00)
+internal:      0 x 0       (     0,  720000), (     0,  720000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3800.000), ( 0.000,  3800.000)
+lambda:     0.00 x 0.00    (  0.00,  380000.00), (  0.00,  380000.00)
+internal:      0 x 0       (     0,  760000), (     0,  760000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4000.000), ( 0.000,  4000.000)
+lambda:     0.00 x 0.00    (  0.00,  400000.00), (  0.00,  400000.00)
+internal:      0 x 0       (     0,  800000), (     0,  800000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4200.000), ( 0.000,  4200.000)
+lambda:     0.00 x 0.00    (  0.00,  420000.00), (  0.00,  420000.00)
+internal:      0 x 0       (     0,  840000), (     0,  840000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4400.000), ( 0.000,  4400.000)
+lambda:     0.00 x 0.00    (  0.00,  440000.00), (  0.00,  440000.00)
+internal:      0 x 0       (     0,  880000), (     0,  880000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4600.000), ( 0.000,  4600.000)
+lambda:     0.00 x 0.00    (  0.00,  460000.00), (  0.00,  460000.00)
+internal:      0 x 0       (     0,  920000), (     0,  920000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4800.000), ( 0.000,  4800.000)
+lambda:     0.00 x 0.00    (  0.00,  480000.00), (  0.00,  480000.00)
+internal:      0 x 0       (     0,  960000), (     0,  960000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5000.000), ( 0.000,  5000.000)
+lambda:     0.00 x 0.00    (  0.00,  500000.00), (  0.00,  500000.00)
+internal:      0 x 0       (     0,  1000000), (     0,  1000000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5200.000), ( 0.000,  5200.000)
+lambda:     0.00 x 0.00    (  0.00,  520000.00), (  0.00,  520000.00)
+internal:      0 x 0       (     0,  1040000), (     0,  1040000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5400.000), ( 0.000,  5400.000)
+lambda:     0.00 x 0.00    (  0.00,  540000.00), (  0.00,  540000.00)
+internal:      0 x 0       (     0,  1080000), (     0,  1080000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5600.000), ( 0.000,  5600.000)
+lambda:     0.00 x 0.00    (  0.00,  560000.00), (  0.00,  560000.00)
+internal:      0 x 0       (     0,  1120000), (     0,  1120000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5800.000), ( 0.000,  5800.000)
+lambda:     0.00 x 0.00    (  0.00,  580000.00), (  0.00,  580000.00)
+internal:      0 x 0       (     0,  1160000), (     0,  1160000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6000.000), ( 0.000,  6000.000)
+lambda:     0.00 x 0.00    (  0.00,  600000.00), (  0.00,  600000.00)
+internal:      0 x 0       (     0,  1200000), (     0,  1200000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6200.000), ( 0.000,  6200.000)
+lambda:     0.00 x 0.00    (  0.00,  620000.00), (  0.00,  620000.00)
+internal:      0 x 0       (     0,  1240000), (     0,  1240000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6400.000), ( 0.000,  6400.000)
+lambda:     0.00 x 0.00    (  0.00,  640000.00), (  0.00,  640000.00)
+internal:      0 x 0       (     0,  1280000), (     0,  1280000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6600.000), ( 0.000,  6600.000)
+lambda:     0.00 x 0.00    (  0.00,  660000.00), (  0.00,  660000.00)
+internal:      0 x 0       (     0,  1320000), (     0,  1320000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6800.000), ( 0.000,  6800.000)
+lambda:     0.00 x 0.00    (  0.00,  680000.00), (  0.00,  680000.00)
+internal:      0 x 0       (     0,  1360000), (     0,  1360000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7000.000), ( 0.000,  7000.000)
+lambda:     0.00 x 0.00    (  0.00,  700000.00), (  0.00,  700000.00)
+internal:      0 x 0       (     0,  1400000), (     0,  1400000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7200.000), ( 0.000,  7200.000)
+lambda:     0.00 x 0.00    (  0.00,  720000.00), (  0.00,  720000.00)
+internal:      0 x 0       (     0,  1440000), (     0,  1440000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7400.000), ( 0.000,  7400.000)
+lambda:     0.00 x 0.00    (  0.00,  740000.00), (  0.00,  740000.00)
+internal:      0 x 0       (     0,  1480000), (     0,  1480000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7600.000), ( 0.000,  7600.000)
+lambda:     0.00 x 0.00    (  0.00,  760000.00), (  0.00,  760000.00)
+internal:      0 x 0       (     0,  1520000), (     0,  1520000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7800.000), ( 0.000,  7800.000)
+lambda:     0.00 x 0.00    (  0.00,  780000.00), (  0.00,  780000.00)
+internal:      0 x 0       (     0,  1560000), (     0,  1560000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8000.000), ( 0.000,  8000.000)
+lambda:     0.00 x 0.00    (  0.00,  800000.00), (  0.00,  800000.00)
+internal:      0 x 0       (     0,  1600000), (     0,  1600000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8200.000), ( 0.000,  8200.000)
+lambda:     0.00 x 0.00    (  0.00,  820000.00), (  0.00,  820000.00)
+internal:      0 x 0       (     0,  1640000), (     0,  1640000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8400.000), ( 0.000,  8400.000)
+lambda:     0.00 x 0.00    (  0.00,  840000.00), (  0.00,  840000.00)
+internal:      0 x 0       (     0,  1680000), (     0,  1680000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8600.000), ( 0.000,  8600.000)
+lambda:     0.00 x 0.00    (  0.00,  860000.00), (  0.00,  860000.00)
+internal:      0 x 0       (     0,  1720000), (     0,  1720000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8800.000), ( 0.000,  8800.000)
+lambda:     0.00 x 0.00    (  0.00,  880000.00), (  0.00,  880000.00)
+internal:      0 x 0       (     0,  1760000), (     0,  1760000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9000.000), ( 0.000,  9000.000)
+lambda:     0.00 x 0.00    (  0.00,  900000.00), (  0.00,  900000.00)
+internal:      0 x 0       (     0,  1800000), (     0,  1800000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9200.000), ( 0.000,  9200.000)
+lambda:     0.00 x 0.00    (  0.00,  920000.00), (  0.00,  920000.00)
+internal:      0 x 0       (     0,  1840000), (     0,  1840000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9400.000), ( 0.000,  9400.000)
+lambda:     0.00 x 0.00    (  0.00,  940000.00), (  0.00,  940000.00)
+internal:      0 x 0       (     0,  1880000), (     0,  1880000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9600.000), ( 0.000,  9600.000)
+lambda:     0.00 x 0.00    (  0.00,  960000.00), (  0.00,  960000.00)
+internal:      0 x 0       (     0,  1920000), (     0,  1920000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9800.000), ( 0.000,  9800.000)
+lambda:     0.00 x 0.00    (  0.00,  980000.00), (  0.00,  980000.00)
+internal:      0 x 0       (     0,  1960000), (     0,  1960000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10000.000), ( 0.000,  10000.000)
+lambda:     0.00 x 0.00    (  0.00,  1000000.00), (  0.00,  1000000.00)
+internal:      0 x 0       (     0,  2000000), (     0,  2000000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10200.000), ( 0.000,  10200.000)
+lambda:     0.00 x 0.00    (  0.00,  1020000.00), (  0.00,  1020000.00)
+internal:      0 x 0       (     0,  2040000), (     0,  2040000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10400.000), ( 0.000,  10400.000)
+lambda:     0.00 x 0.00    (  0.00,  1040000.00), (  0.00,  1040000.00)
+internal:      0 x 0       (     0,  2080000), (     0,  2080000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10600.000), ( 0.000,  10600.000)
+lambda:     0.00 x 0.00    (  0.00,  1060000.00), (  0.00,  1060000.00)
+internal:      0 x 0       (     0,  2120000), (     0,  2120000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10800.000), ( 0.000,  10800.000)
+lambda:     0.00 x 0.00    (  0.00,  1080000.00), (  0.00,  1080000.00)
+internal:      0 x 0       (     0,  2160000), (     0,  2160000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11000.000), ( 0.000,  11000.000)
+lambda:     0.00 x 0.00    (  0.00,  1100000.00), (  0.00,  1100000.00)
+internal:      0 x 0       (     0,  2200000), (     0,  2200000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11200.000), ( 0.000,  11200.000)
+lambda:     0.00 x 0.00    (  0.00,  1120000.00), (  0.00,  1120000.00)
+internal:      0 x 0       (     0,  2240000), (     0,  2240000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11400.000), ( 0.000,  11400.000)
+lambda:     0.00 x 0.00    (  0.00,  1140000.00), (  0.00,  1140000.00)
+internal:      0 x 0       (     0,  2280000), (     0,  2280000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11600.000), ( 0.000,  11600.000)
+lambda:     0.00 x 0.00    (  0.00,  1160000.00), (  0.00,  1160000.00)
+internal:      0 x 0       (     0,  2320000), (     0,  2320000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11800.000), ( 0.000,  11800.000)
+lambda:     0.00 x 0.00    (  0.00,  1180000.00), (  0.00,  1180000.00)
+internal:      0 x 0       (     0,  2360000), (     0,  2360000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12000.000), ( 0.000,  12000.000)
+lambda:     0.00 x 0.00    (  0.00,  1200000.00), (  0.00,  1200000.00)
+internal:      0 x 0       (     0,  2400000), (     0,  2400000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12200.000), ( 0.000,  12200.000)
+lambda:     0.00 x 0.00    (  0.00,  1220000.00), (  0.00,  1220000.00)
+internal:      0 x 0       (     0,  2440000), (     0,  2440000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12400.000), ( 0.000,  12400.000)
+lambda:     0.00 x 0.00    (  0.00,  1240000.00), (  0.00,  1240000.00)
+internal:      0 x 0       (     0,  2480000), (     0,  2480000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12600.000), ( 0.000,  12600.000)
+lambda:     0.00 x 0.00    (  0.00,  1260000.00), (  0.00,  1260000.00)
+internal:      0 x 0       (     0,  2520000), (     0,  2520000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12800.000), ( 0.000,  12800.000)
+lambda:     0.00 x 0.00    (  0.00,  1280000.00), (  0.00,  1280000.00)
+internal:      0 x 0       (     0,  2560000), (     0,  2560000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13000.000), ( 0.000,  13000.000)
+lambda:     0.00 x 0.00    (  0.00,  1300000.00), (  0.00,  1300000.00)
+internal:      0 x 0       (     0,  2600000), (     0,  2600000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13200.000), ( 0.000,  13200.000)
+lambda:     0.00 x 0.00    (  0.00,  1320000.00), (  0.00,  1320000.00)
+internal:      0 x 0       (     0,  2640000), (     0,  2640000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13400.000), ( 0.000,  13400.000)
+lambda:     0.00 x 0.00    (  0.00,  1340000.00), (  0.00,  1340000.00)
+internal:      0 x 0       (     0,  2680000), (     0,  2680000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13600.000), ( 0.000,  13600.000)
+lambda:     0.00 x 0.00    (  0.00,  1360000.00), (  0.00,  1360000.00)
+internal:      0 x 0       (     0,  2720000), (     0,  2720000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13800.000), ( 0.000,  13800.000)
+lambda:     0.00 x 0.00    (  0.00,  1380000.00), (  0.00,  1380000.00)
+internal:      0 x 0       (     0,  2760000), (     0,  2760000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14000.000), ( 0.000,  14000.000)
+lambda:     0.00 x 0.00    (  0.00,  1400000.00), (  0.00,  1400000.00)
+internal:      0 x 0       (     0,  2800000), (     0,  2800000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14200.000), ( 0.000,  14200.000)
+lambda:     0.00 x 0.00    (  0.00,  1420000.00), (  0.00,  1420000.00)
+internal:      0 x 0       (     0,  2840000), (     0,  2840000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14400.000), ( 0.000,  14400.000)
+lambda:     0.00 x 0.00    (  0.00,  1440000.00), (  0.00,  1440000.00)
+internal:      0 x 0       (     0,  2880000), (     0,  2880000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14600.000), ( 0.000,  14600.000)
+lambda:     0.00 x 0.00    (  0.00,  1460000.00), (  0.00,  1460000.00)
+internal:      0 x 0       (     0,  2920000), (     0,  2920000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14800.000), ( 0.000,  14800.000)
+lambda:     0.00 x 0.00    (  0.00,  1480000.00), (  0.00,  1480000.00)
+internal:      0 x 0       (     0,  2960000), (     0,  2960000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15000.000), ( 0.000,  15000.000)
+lambda:     0.00 x 0.00    (  0.00,  1500000.00), (  0.00,  1500000.00)
+internal:      0 x 0       (     0,  3000000), (     0,  3000000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15200.000), ( 0.000,  15200.000)
+lambda:     0.00 x 0.00    (  0.00,  1520000.00), (  0.00,  1520000.00)
+internal:      0 x 0       (     0,  3040000), (     0,  3040000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15400.000), ( 0.000,  15400.000)
+lambda:     0.00 x 0.00    (  0.00,  1540000.00), (  0.00,  1540000.00)
+internal:      0 x 0       (     0,  3080000), (     0,  3080000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15600.000), ( 0.000,  15600.000)
+lambda:     0.00 x 0.00    (  0.00,  1560000.00), (  0.00,  1560000.00)
+internal:      0 x 0       (     0,  3120000), (     0,  3120000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15800.000), ( 0.000,  15800.000)
+lambda:     0.00 x 0.00    (  0.00,  1580000.00), (  0.00,  1580000.00)
+internal:      0 x 0       (     0,  3160000), (     0,  3160000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  16000.000), ( 0.000,  16000.000)
+lambda:     0.00 x 0.00    (  0.00,  1600000.00), (  0.00,  1600000.00)
+internal:      0 x 0       (     0,  3200000), (     0,  3200000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  16200.000), ( 0.000,  16200.000)
+lambda:     0.00 x 0.00    (  0.00,  1620000.00), (  0.00,  1620000.00)
+internal:      0 x 0       (     0,  3240000), (     0,  3240000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  16400.000), ( 0.000,  16400.000)
+lambda:     0.00 x 0.00    (  0.00,  1640000.00), (  0.00,  1640000.00)
+internal:      0 x 0       (     0,  3280000), (     0,  3280000)
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  16600.000), ( 0.000,  16600.000)
+lambda:     0.00 x 0.00    (  0.00,  1660000.00), (  0.00,  1660000.00)
+internal:      0 x 0       (     0,  3320000), (     0,  3320000)
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.010 x 0.010   ( 0.000,  0.000), ( 0.010,  0.010)  0.000     
+lambda:     1.00 x 1.00    (  0.00,  0.00 ), (  1.00,  1.00 )  1.00      
+internal:      2 x 2       (     0,  0    ), (     2,  2    )  4         
+0 {}
+0 {}
+Extracting sg13g2_a21o_1 into ext/sg13g2_a21o_1.ext:
+Processing sg13g2_a21o_1
+Extracting sg13g2_a21o_2 into ext/sg13g2_a21o_2.ext:
+Processing sg13g2_a21o_2
+Extracting sg13g2_a21oi_1 into ext/sg13g2_a21oi_1.ext:
+Processing sg13g2_a21oi_1
+Extracting sg13g2_a21oi_2 into ext/sg13g2_a21oi_2.ext:
+Processing sg13g2_a21oi_2
+Extracting sg13g2_a221oi_1 into ext/sg13g2_a221oi_1.ext:
+Processing sg13g2_a221oi_1
+Extracting sg13g2_a22oi_1 into ext/sg13g2_a22oi_1.ext:
+Processing sg13g2_a22oi_1
+Extracting sg13g2_and2_1 into ext/sg13g2_and2_1.ext:
+Processing sg13g2_and2_1
+Extracting sg13g2_and2_2 into ext/sg13g2_and2_2.ext:
+Processing sg13g2_and2_2
+Extracting sg13g2_and3_1 into ext/sg13g2_and3_1.ext:
+Processing sg13g2_and3_1
+Extracting sg13g2_and3_2 into ext/sg13g2_and3_2.ext:
+Processing sg13g2_and3_2
+Extracting sg13g2_and4_1 into ext/sg13g2_and4_1.ext:
+Processing sg13g2_and4_1
+Extracting sg13g2_and4_2 into ext/sg13g2_and4_2.ext:
+Processing sg13g2_and4_2
+Extracting sg13g2_antennanp into ext/sg13g2_antennanp.ext:
+Processing sg13g2_antennanp
+Extracting sg13g2_buf_1 into ext/sg13g2_buf_1.ext:
+Processing sg13g2_buf_1
+Extracting sg13g2_buf_16 into ext/sg13g2_buf_16.ext:
+Processing sg13g2_buf_16
+Extracting sg13g2_buf_2 into ext/sg13g2_buf_2.ext:
+Processing sg13g2_buf_2
+Extracting sg13g2_buf_4 into ext/sg13g2_buf_4.ext:
+Processing sg13g2_buf_4
+Extracting sg13g2_buf_8 into ext/sg13g2_buf_8.ext:
+Processing sg13g2_buf_8
+Extracting sg13g2_decap_4 into ext/sg13g2_decap_4.ext:
+Processing sg13g2_decap_4
+sg13g2_decap_4: 2 warnings
+Extracting sg13g2_decap_8 into ext/sg13g2_decap_8.ext:
+Processing sg13g2_decap_8
+sg13g2_decap_8: 4 warnings
+Extracting sg13g2_dfrbp_1 into ext/sg13g2_dfrbp_1.ext:
+Processing sg13g2_dfrbp_1
+Extracting sg13g2_dfrbp_2 into ext/sg13g2_dfrbp_2.ext:
+Processing sg13g2_dfrbp_2
+Extracting sg13g2_dfrbpq_1 into ext/sg13g2_dfrbpq_1.ext:
+Processing sg13g2_dfrbpq_1
+Extracting sg13g2_dfrbpq_2 into ext/sg13g2_dfrbpq_2.ext:
+Processing sg13g2_dfrbpq_2
+Extracting sg13g2_dlhq_1 into ext/sg13g2_dlhq_1.ext:
+Processing sg13g2_dlhq_1
+Extracting sg13g2_dlhr_1 into ext/sg13g2_dlhr_1.ext:
+Processing sg13g2_dlhr_1
+Extracting sg13g2_dlhrq_1 into ext/sg13g2_dlhrq_1.ext:
+Processing sg13g2_dlhrq_1
+Extracting sg13g2_dllr_1 into ext/sg13g2_dllr_1.ext:
+Processing sg13g2_dllr_1
+Extracting sg13g2_dllrq_1 into ext/sg13g2_dllrq_1.ext:
+Processing sg13g2_dllrq_1
+Extracting sg13g2_dlygate4sd1_1 into ext/sg13g2_dlygate4sd1_1.ext:
+Processing sg13g2_dlygate4sd1_1
+Extracting sg13g2_dlygate4sd2_1 into ext/sg13g2_dlygate4sd2_1.ext:
+Processing sg13g2_dlygate4sd2_1
+Extracting sg13g2_dlygate4sd3_1 into ext/sg13g2_dlygate4sd3_1.ext:
+Processing sg13g2_dlygate4sd3_1
+Extracting sg13g2_ebufn_2 into ext/sg13g2_ebufn_2.ext:
+Processing sg13g2_ebufn_2
+Extracting sg13g2_ebufn_4 into ext/sg13g2_ebufn_4.ext:
+Processing sg13g2_ebufn_4
+Extracting sg13g2_ebufn_8 into ext/sg13g2_ebufn_8.ext:
+Processing sg13g2_ebufn_8
+Extracting sg13g2_einvn_2 into ext/sg13g2_einvn_2.ext:
+Processing sg13g2_einvn_2
+Extracting sg13g2_einvn_4 into ext/sg13g2_einvn_4.ext:
+Processing sg13g2_einvn_4
+Extracting sg13g2_einvn_8 into ext/sg13g2_einvn_8.ext:
+Processing sg13g2_einvn_8
+Extracting sg13g2_fill_1 into ext/sg13g2_fill_1.ext:
+Processing sg13g2_fill_1
+Extracting sg13g2_fill_2 into ext/sg13g2_fill_2.ext:
+Processing sg13g2_fill_2
+Extracting sg13g2_fill_4 into ext/sg13g2_fill_4.ext:
+Processing sg13g2_fill_4
+Extracting sg13g2_fill_8 into ext/sg13g2_fill_8.ext:
+Processing sg13g2_fill_8
+Extracting sg13g2_inv_1 into ext/sg13g2_inv_1.ext:
+Processing sg13g2_inv_1
+Extracting sg13g2_inv_16 into ext/sg13g2_inv_16.ext:
+Processing sg13g2_inv_16
+Extracting sg13g2_inv_2 into ext/sg13g2_inv_2.ext:
+Processing sg13g2_inv_2
+Extracting sg13g2_inv_4 into ext/sg13g2_inv_4.ext:
+Processing sg13g2_inv_4
+Extracting sg13g2_inv_8 into ext/sg13g2_inv_8.ext:
+Processing sg13g2_inv_8
+Extracting sg13g2_lgcp_1 into ext/sg13g2_lgcp_1.ext:
+Processing sg13g2_lgcp_1
+Extracting sg13g2_mux2_1 into ext/sg13g2_mux2_1.ext:
+Processing sg13g2_mux2_1
+Extracting sg13g2_mux2_2 into ext/sg13g2_mux2_2.ext:
+Processing sg13g2_mux2_2
+Extracting sg13g2_mux4_1 into ext/sg13g2_mux4_1.ext:
+Processing sg13g2_mux4_1
+Extracting sg13g2_nand2_1 into ext/sg13g2_nand2_1.ext:
+Processing sg13g2_nand2_1
+Extracting sg13g2_nand2_2 into ext/sg13g2_nand2_2.ext:
+Processing sg13g2_nand2_2
+Extracting sg13g2_nand2b_1 into ext/sg13g2_nand2b_1.ext:
+Processing sg13g2_nand2b_1
+Extracting sg13g2_nand2b_2 into ext/sg13g2_nand2b_2.ext:
+Processing sg13g2_nand2b_2
+Extracting sg13g2_nand3_1 into ext/sg13g2_nand3_1.ext:
+Processing sg13g2_nand3_1
+Extracting sg13g2_nand3b_1 into ext/sg13g2_nand3b_1.ext:
+Processing sg13g2_nand3b_1
+Extracting sg13g2_nand4_1 into ext/sg13g2_nand4_1.ext:
+Processing sg13g2_nand4_1
+Extracting sg13g2_nor2_1 into ext/sg13g2_nor2_1.ext:
+Processing sg13g2_nor2_1
+Extracting sg13g2_nor2_2 into ext/sg13g2_nor2_2.ext:
+Processing sg13g2_nor2_2
+Extracting sg13g2_nor2b_1 into ext/sg13g2_nor2b_1.ext:
+Processing sg13g2_nor2b_1
+Extracting sg13g2_nor2b_2 into ext/sg13g2_nor2b_2.ext:
+Processing sg13g2_nor2b_2
+Extracting sg13g2_nor3_1 into ext/sg13g2_nor3_1.ext:
+Processing sg13g2_nor3_1
+Extracting sg13g2_nor3_2 into ext/sg13g2_nor3_2.ext:
+Processing sg13g2_nor3_2
+Extracting sg13g2_nor4_1 into ext/sg13g2_nor4_1.ext:
+Processing sg13g2_nor4_1
+Extracting sg13g2_nor4_2 into ext/sg13g2_nor4_2.ext:
+Processing sg13g2_nor4_2
+Extracting sg13g2_o21ai_1 into ext/sg13g2_o21ai_1.ext:
+Processing sg13g2_o21ai_1
+Extracting sg13g2_or2_1 into ext/sg13g2_or2_1.ext:
+Processing sg13g2_or2_1
+Extracting sg13g2_or2_2 into ext/sg13g2_or2_2.ext:
+Processing sg13g2_or2_2
+Extracting sg13g2_or3_1 into ext/sg13g2_or3_1.ext:
+Processing sg13g2_or3_1
+Extracting sg13g2_or3_2 into ext/sg13g2_or3_2.ext:
+Processing sg13g2_or3_2
+Extracting sg13g2_or4_1 into ext/sg13g2_or4_1.ext:
+Processing sg13g2_or4_1
+Extracting sg13g2_or4_2 into ext/sg13g2_or4_2.ext:
+Processing sg13g2_or4_2
+Extracting sg13g2_sdfbbp_1 into ext/sg13g2_sdfbbp_1.ext:
+Processing sg13g2_sdfbbp_1
+Extracting sg13g2_sdfrbp_1 into ext/sg13g2_sdfrbp_1.ext:
+Processing sg13g2_sdfrbp_1
+Extracting sg13g2_sdfrbp_2 into ext/sg13g2_sdfrbp_2.ext:
+Processing sg13g2_sdfrbp_2
+Extracting sg13g2_sdfrbpq_1 into ext/sg13g2_sdfrbpq_1.ext:
+Processing sg13g2_sdfrbpq_1
+Extracting sg13g2_sdfrbpq_2 into ext/sg13g2_sdfrbpq_2.ext:
+Processing sg13g2_sdfrbpq_2
+Extracting sg13g2_sighold into ext/sg13g2_sighold.ext:
+Processing sg13g2_sighold
+Extracting sg13g2_slgcp_1 into ext/sg13g2_slgcp_1.ext:
+Processing sg13g2_slgcp_1
+Extracting sg13g2_tiehi into ext/sg13g2_tiehi.ext:
+Processing sg13g2_tiehi
+Extracting sg13g2_tielo into ext/sg13g2_tielo.ext:
+Processing sg13g2_tielo
+Extracting sg13g2_xnor2_1 into ext/sg13g2_xnor2_1.ext:
+Processing sg13g2_xnor2_1
+Extracting sg13g2_xor2_1 into ext/sg13g2_xor2_1.ext:
+Processing sg13g2_xor2_1
+Extracting pdk_lib into ext/pdk_lib.ext:
+Processing pdk_lib
+0 {}
+pdk ext-files 85

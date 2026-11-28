@@ -12,10 +12,12 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <system_error>
 #include <vector>
 
 #include "ext_fixture.hpp"
 #include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/diag/codes.hpp"
 #include "hefesto/extflat/args.hpp"
 #include "hefesto/extflat/names.hpp"
 #include "hier_name.hpp"
@@ -35,9 +37,12 @@ hefesto::diag::Outcome<extflat::CommonArgs> parse(const Strings& args, const ext
 // A tool that takes -o and -T, reading -S files from `files`.
 extflat::ArgOptions all_flags(const std::map<std::string, std::string>& files = {}) {
   extflat::ArgOptions options{true, true, {}};
-  options.read_file = [files](const std::string& path) -> std::optional<std::string> {
+  options.read_file = [files](const std::string& path) -> hefesto::platform::StreamRead {
     const auto it = files.find(path);
-    return it == files.end() ? std::nullopt : std::optional<std::string>{it->second};
+    if (it == files.end()) {
+      return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
+    }
+    return {it->second, {}};
   };
   return options;
 }
@@ -141,6 +146,23 @@ TEST_CASE("an unknown flag prints the usage text and fails; a tool flag is accep
   const auto ok = parse({"-d", "top"}, extra);
   REQUIRE(ok.ok());
   CHECK(ok.value().cell == std::optional<std::string>{"top"});
+}
+
+// Regression (Q-NETLIST-77, compat-neutral: the same text in both modes;
+// the parse takes no compat setting): EFArgs writes an empty line before
+// the usage text when the tool's own parser rejects a flag (ext2spice -T;
+// EFargs.c:288-291), and none for a tool without a parser.
+TEST_CASE("Q-NETLIST-77: a flag the tool's parser rejects is followed by an empty line, then the usage text",
+          "[cap:ext-flattening-hierarchy][req:Common netlister arguments]") {
+  const extflat::ExtraFlags rejects_all = [](std::span<const std::string>, std::size_t) -> std::optional<std::size_t> {
+    return std::nullopt;
+  };
+  const auto rejected = parse({"-T", "top"}, rejects_all);
+  REQUIRE_FALSE(rejected.ok());
+  CHECK(rejected.error().text == "\n" + std::string{extflat::common_args_usage()});
+  const auto no_parser = parse({"-T", "top"});
+  REQUIRE_FALSE(no_parser.ok());
+  CHECK(no_parser.error().text == extflat::common_args_usage());
 }
 
 // Regression (Q-NETLIST-42, fix in both modes): `-o` names the output of

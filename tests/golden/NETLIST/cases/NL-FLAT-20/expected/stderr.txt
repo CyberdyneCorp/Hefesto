@@ -1,0 +1,9 @@
+Missing '=' in symbol assignment
+Error at line 2 of input/syms
+Unrecognized flag: -T
+Usage: ext2spice [-B] [-o spicefile] [-M|-m] [-J flat|hier]
+[-f spice2|spice3|hspice|ngspice|cdl] [-M] [-m] [file]
+
+Standard arguments: [-R] [-C] [-r rthresh] [-c cthresh] [-v]
+[-p searchpath] [-s sym=value] [-S symfile] [-t trimchars]
+[rootfile]

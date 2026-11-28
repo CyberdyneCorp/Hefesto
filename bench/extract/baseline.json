@@ -1,0 +1,4 @@
+{
+  "comment": "Hefesto's callgrind instructions per extraction workload (op minus base, bench/extract/extract_bench.py on the gds-bench all-cells block) on the x86_64 runner, GCC 14 Release with -g -fno-omit-frame-pointer. bench/extract/extract_gate.py gates each workload at or below Magic's count until its baseline is recorded here, then at the baseline + 2 % (m7-extraction design D23, Open Question 5 (a)). A workload is recorded only when it is at or below Magic's count (extract_gate.py --record). Entry: {\"instructions\": N, \"magic\": <Magic's count>, \"run\": <Performance run id>, \"commit\": <sha>}.",
+  "workloads": {}
+}

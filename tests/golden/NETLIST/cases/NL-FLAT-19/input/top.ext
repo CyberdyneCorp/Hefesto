@@ -1,0 +1,9 @@
+timestamp 0
+version 7.9
+tech nltest
+style nosuch
+scale 1000 1000 5
+resistclasses 1000 5000 100
+use child c1 1 0 0 0 1 0
+node "p" 0 1 0 20 metal1 0 0 0 0 0 0
+device mosfet nfet 0 0 2 4 2 4 "GND!" "p" 8 0 "p" 4 0 "c1/x" 4 0

@@ -111,4 +111,12 @@ bool search_tree_defs(const db::CellDef& root, const db::Rect& area, const Desce
 [[nodiscard]] std::string child_path(const std::string& parent_path, const db::CellUse& use, std::int32_t x,
                                      std::int32_t y);
 
+namespace detail {
+/// The number of array elements the tree searches have tried (element
+/// transforms computed) on this thread since the last reset. Tests read it
+/// to check that a search over part of an array tries only the elements
+/// DBArrayOverlap finds under the area.
+[[nodiscard]] std::uint64_t& elements_tried() noexcept;
+}  // namespace detail
+
 }  // namespace hefesto::connect

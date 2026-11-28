@@ -1,0 +1,37 @@
+timestamp 1685187249
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "Y" 2 264 278 312 472 m1
+port "A" 4 358 346 410 464 m1
+port "B" 6 164 287 220 380 m1
+port "VDD" 3 0 712 576 800 m1
+port "VSS" 5 0 -44 576 44 m1
+node "a_57_115#" 2 450.18 57 115 ndif 0 0 0 0 33969 1588 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "Y" 2 38.4997 264 278 m1 0 0 0 0 38928 1788 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 151.714 358 346 m1 0 0 0 0 7336 388 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "B" 0 169.233 164 287 m1 0 0 0 0 5208 298 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 2 205.766 0 712 m1 0 0 0 0 87504 2744 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 1 0 0 -44 m1 0 0 0 0 57292 1582 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "A" "B" 35.9326
+cap "Y" "B" 133.152
+cap "A" "VDD" 143.745
+cap "A" "a_57_115#" 25.032
+cap "Y" "VDD" 467.627
+cap "VDD" "B" 124.375
+cap "Y" "a_57_115#" 204.946
+cap "a_57_115#" "B" 75.0155
+cap "A" "Y" 302.663
+cap "a_57_115#" "VDD" 29.3551
+device msubckt sg13_lv_nmos 440 115 441 116 l=26 w=144 "VSS" "A" 52 0 "Y" 144 5472,220 "a_57_115#" 144 9792,424
+device msubckt sg13_lv_nmos 338 115 339 116 l=26 w=144 "VSS" "A" 52 0 "a_57_115#" 144 5616,222 "Y" 144 5472,220
+device msubckt sg13_lv_nmos 234 115 235 116 l=26 w=144 "VSS" "B" 52 0 "VSS" 144 5472,220 "a_57_115#" 144 5616,222
+device msubckt sg13_lv_nmos 132 115 133 116 l=26 w=144 "VSS" "B" 52 0 "a_57_115#" 144 10800,438 "VSS" 144 5472,220
+device msubckt sg13_lv_pmos 440 412 441 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 15680,588
+device msubckt sg13_lv_pmos 338 412 339 413 l=26 w=224 "VDD" "A" 52 0 "VDD" 224 8736,302 "Y" 224 8512,300
+device msubckt sg13_lv_pmos 234 412 235 413 l=26 w=224 "VDD" "B" 52 0 "Y" 224 8512,300 "VDD" 224 8736,302
+device msubckt sg13_lv_pmos 132 412 133 413 l=26 w=224 "VDD" "B" 52 0 "VDD" 224 16128,592 "Y" 224 8512,300

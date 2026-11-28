@@ -273,14 +273,14 @@ struct GeometryContext {
 /// a node twice prints `Warning: contention over node Y position` (X).
 /// Diagonal resistors are skipped. With magic-compat ON the last resistor
 /// of the list is skipped too, as Magic's loop stops before it; with it OFF
-/// every resistor is aligned (proposed Q-NETLIST-74).
+/// every resistor is aligned (Q-NETLIST-74).
 void align_nodes(Network& net, bool magic_compat, std::vector<std::string>& messages);
 
 /// Added in M7 R5: one net's node list of the FastHenry file
 /// (ResPrintFHNodes up to `.external`): `N<name>` (or `N<id>` from
 /// `ids.node` for an unnamed node) with x, y and z in microns, z the
 /// height of the node's last non-contact resistor's type (with
-/// magic-compat OFF its first: proposed Q-NETLIST-73), or 0.1 times its
+/// magic-compat OFF its first: Q-NETLIST-73), or 0.1 times its
 /// plane order when the type has no height; a node that touches only
 /// contacts takes the contact's upper residue's height (Q-NETLIST-27) and
 /// a node with no resistor height 0. A node on a contact with more than

@@ -1,0 +1,3 @@
+* NGSPICE file created from sky130_fd_sc_hd__diode_2.ext - technology: sky130A
+
+X0 VNB DIODE sky130_fd_pr__diode_pw2nd_05v5 perim=2.64e+06 area=4.347e+11

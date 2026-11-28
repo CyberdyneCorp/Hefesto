@@ -1,0 +1,7 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__fill_64.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__fill_64 VDD VNW VPW VSS
+C0 VSS VPW 2.7578f
+C1 VNW VPW 11.4064f
+.ends
+

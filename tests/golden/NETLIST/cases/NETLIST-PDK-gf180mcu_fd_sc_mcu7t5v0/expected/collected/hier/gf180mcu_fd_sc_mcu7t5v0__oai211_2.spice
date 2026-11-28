@@ -1,0 +1,22 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__oai211_2.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__oai211_2 A1 A2 B C ZN VDD VNW VPW VSS
+X0 a_1229_68# B a_36_68# VPW nfet_05v0 ad=0.1722p pd=1.24u as=0.21525p ps=1.345u w=0.82u l=0.6u
+X1 VDD B ZN VNW pfet_05v0 ad=0.4334p pd=2.85u as=0.2561p ps=1.505u w=0.985u l=0.5u
+X2 ZN A1 a_36_68# VPW nfet_05v0 ad=0.30965p pd=1.685u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X3 a_716_497# A1 ZN VNW pfet_05v0 ad=0.4599p pd=1.935u as=0.2847p ps=1.615u w=1.095u l=0.5u
+X4 a_36_68# B a_1657_68# VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.1312p ps=1.14u w=0.82u l=0.6u
+X5 ZN A2 a_36_68# VPW nfet_05v0 ad=0.31215p pd=1.685u as=0.3608p ps=2.52u w=0.82u l=0.6u
+X6 VDD A2 a_716_497# VNW pfet_05v0 ad=0.37905p pd=1.82u as=0.4599p ps=1.935u w=1.095u l=0.5u
+X7 a_36_68# A1 ZN VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.31215p ps=1.685u w=0.82u l=0.6u
+X8 a_244_497# A2 VDD VNW pfet_05v0 ad=0.4599p pd=1.935u as=0.4818p ps=3.07u w=1.095u l=0.5u
+X9 a_36_68# A2 ZN VPW nfet_05v0 ad=0.21525p pd=1.345u as=0.30965p ps=1.685u w=0.82u l=0.6u
+X10 a_1657_68# C VSS VPW nfet_05v0 ad=0.1312p pd=1.14u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X11 ZN B VDD VNW pfet_05v0 ad=0.2561p pd=1.505u as=0.37905p ps=1.82u w=0.985u l=0.5u
+X12 VDD C ZN VNW pfet_05v0 ad=0.2561p pd=1.505u as=0.2561p ps=1.505u w=0.985u l=0.5u
+X13 VSS C a_1229_68# VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.1722p ps=1.24u w=0.82u l=0.6u
+X14 ZN A1 a_244_497# VNW pfet_05v0 ad=0.2847p pd=1.615u as=0.4599p ps=1.935u w=1.095u l=0.5u
+X15 ZN C VDD VNW pfet_05v0 ad=0.2561p pd=1.505u as=0.2561p ps=1.505u w=0.985u l=0.5u
+C0 VNW VPW 3.34705f
+.ends
+

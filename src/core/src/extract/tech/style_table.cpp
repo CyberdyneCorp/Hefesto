@@ -3,15 +3,18 @@
 //
 // load_styles and StyleTable::select (capability extract-tech-section
 // "Extraction styles and variants", "Non-electrical types";
-// openspec/changes/m7-extraction/design.md D5, D7, tasks.md 4.6).
+// openspec/changes/m7-extraction/design.md D5, D7, tasks.md 4.1, 4.6).
 //
-// Every style of the section is read once, with its messages kept, by the
-// one reader (style_reader.cpp) in its full mode. Magic's allExtractTypes
-// is reset only when a technology loads and grows with every style
-// ExtLoadStyle reads, so with magic-compat ON a type an earlier selection
-// mentioned stays electrical in a later one; with magic-compat OFF each
-// style uses its own mentions (an unreported Magic behaviour; the standing
-// rule).
+// The table parses lazily, as ExtLoadStyle does: the tech load reads the
+// section for the first style only, and a style is read by the one reader
+// (style_reader.cpp) in its full mode the first time it is selected. The
+// parsed style and its messages are kept, so a later selection replays the
+// messages Magic prints when it re-reads the section. Magic's
+// allExtractTypes is reset only when a technology loads and grows with
+// every style ExtLoadStyle reads, so with magic-compat ON a type an earlier
+// selection mentioned stays electrical in a later one; with magic-compat
+// OFF each style uses its own mentions (an unreported Magic behaviour; the
+// standing rule).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) extract/ExtTech.c ExtTechInit,
 // ExtLoadStyle and ExtTechFinal (:3556-3620), Copyright (C) 1985, 1990
@@ -21,6 +24,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,52 +38,49 @@ namespace hefesto::extract {
 namespace detail {
 
 struct StyleEntry {
-  std::string name;
-  ExtStyle style;              // active before the non-electrical types are removed
-  tech::TypeMask mentioned;    // the style's allExtractTypes, connected types included
+  bool parsed = false;
+  ExtStyle style;            // active before the non-electrical types are removed
+  tech::TypeMask mentioned;  // the style's allExtractTypes, connected types included
   std::vector<diag::Diagnostic> messages;
 };
 
 struct StyleCache {
-  bool magic_compat = true;
-  tech::TileType first_user = tech::kFirstUserType;
+  compat::CompatSettings compat;
+  tech::Technology technology;  // a handle on the loaded technology's data
+  tech::RawSection section;     // the `extract` section the styles are read from
+  std::vector<std::string> names;
   std::vector<std::string> type_names;  // long names, index = tech::TileType (user types)
-  std::vector<StyleEntry> entries;
   std::mutex mutex;
-  tech::TypeMask accumulated;  // allExtractTypes since the tech load (magic-compat ON)
+  std::vector<StyleEntry> entries;  // index = names; guarded by mutex
+  tech::TypeMask accumulated;       // allExtractTypes since the tech load (magic-compat ON); guarded by mutex
 };
 
 }  // namespace detail
 
 namespace {
 
-detail::StyleEntry read_entry(const tech::RawSection& section, const tech::Technology& technology,
-                              std::optional<std::string_view> name, const compat::CompatSettings& compat) {
+// ExtLoadStyle's read of style `index` (the first one as the tech load
+// reads it: the first declared style, or "default").
+void parse_entry(detail::StyleCache& cache, std::size_t index) {
+  detail::StyleEntry& entry = cache.entries[index];
+  if (entry.parsed) {
+    return;
+  }
   diag::CollectingSink collect;
   detail::ReadOptions options;
-  options.style = name;
+  if (index > 0) {
+    options.style = cache.names[index];
+  }
   options.report = detail::Subset::all;
-  options.magic_compat = compat.magic_compat;
-  std::optional<detail::StyleTables> tables = detail::read_style_tables(section, technology, collect, options);
-  detail::StyleEntry entry;
+  options.magic_compat = cache.compat.magic_compat;
+  std::optional<detail::StyleTables> tables =
+      detail::read_style_tables(cache.section, cache.technology, collect, options);
   if (tables) {
-    entry.name = tables->style.name;
     entry.style = std::move(tables->style);
     entry.mentioned = tables->mentioned;
   }
   entry.messages = collect.take();
-  return entry;
-}
-
-// The user types `mentioned` leaves out (ExtTechFinal's non-electrical set).
-tech::TypeMask unhandled(const detail::StyleCache& cache, const tech::TypeMask& mentioned) {
-  tech::TypeMask out;
-  for (std::size_t t = cache.first_user; t < cache.type_names.size(); ++t) {
-    if (!mentioned.test(static_cast<tech::TileType>(t))) {
-      out.set(static_cast<tech::TileType>(t));
-    }
-  }
-  return out;
+  entry.parsed = true;
 }
 
 void report_unhandled(const detail::StyleCache& cache, const tech::TypeMask& types, diag::DiagnosticSink& sink) {
@@ -88,7 +89,7 @@ void report_unhandled(const detail::StyleCache& cache, const tech::TypeMask& typ
   }
   std::string text = "The following types are not handled by extraction and will be treated as non-electrical "
                      "types:\n    ";
-  for (std::size_t t = cache.first_user; t < cache.type_names.size(); ++t) {
+  for (std::size_t t = tech::kFirstUserType; t < cache.type_names.size(); ++t) {
     if (types.test(static_cast<tech::TileType>(t))) {
       text += cache.type_names[t] + " ";
     }
@@ -98,22 +99,23 @@ void report_unhandled(const detail::StyleCache& cache, const tech::TypeMask& typ
 
 std::shared_ptr<const ExtStyle> select_entry(detail::StyleCache& cache, std::string_view name,
                                              diag::DiagnosticSink* sink) {
-  const auto it = std::find_if(cache.entries.begin(), cache.entries.end(),
-                               [&](const detail::StyleEntry& e) { return e.name == name; });
-  if (it == cache.entries.end()) {
+  const auto it = std::find(cache.names.begin(), cache.names.end(), name);
+  if (it == cache.names.end()) {
     return nullptr;
   }
-  tech::TypeMask mentioned = it->mentioned;
-  if (cache.magic_compat) {
-    const std::scoped_lock lock{cache.mutex};
-    cache.accumulated |= it->mentioned;
+  const auto index = static_cast<std::size_t>(it - cache.names.begin());
+  const std::scoped_lock lock{cache.mutex};
+  parse_entry(cache, index);
+  const detail::StyleEntry& entry = cache.entries[index];
+  tech::TypeMask mentioned = entry.mentioned;
+  if (cache.compat.magic_compat) {
+    cache.accumulated |= entry.mentioned;
     mentioned = cache.accumulated;
   }
-  ExtStyle style = it->style;
-  style.non_electrical = unhandled(cache, mentioned);
-  style.active &= ~style.non_electrical;
+  ExtStyle style = entry.style;
+  detail::apply_non_electrical(style, mentioned, cache.type_names.size());
   if (sink != nullptr) {
-    for (const diag::Diagnostic& d : it->messages) {
+    for (const diag::Diagnostic& d : entry.messages) {
       sink->emit(d);
     }
     report_unhandled(cache, style.non_electrical, *sink);
@@ -134,25 +136,24 @@ std::shared_ptr<const ExtStyle> StyleTable::select(std::string_view name, diag::
 StyleTable load_styles(const tech::RawSection& section, const tech::Technology& technology,
                        diag::DiagnosticSink& sink, const compat::CompatSettings& compat) {
   auto cache = std::make_shared<detail::StyleCache>();
-  cache->magic_compat = compat.magic_compat;
+  cache->compat = compat;
+  cache->technology = technology;
+  cache->section = section;
   cache->type_names.resize(technology.user_type_end());
   for (std::size_t t = tech::kFirstUserType; t < technology.user_type_end(); ++t) {
     cache->type_names[t] = std::string{technology.type_name(static_cast<tech::TileType>(t))};
   }
-  std::vector<std::string> names = detail::declared_styles(section);
-  // The style the technology loads (the first declared, or "default").
-  cache->entries.push_back(read_entry(section, technology, std::nullopt, compat));
-  for (std::size_t i = 1; i < names.size(); ++i) {
-    cache->entries.push_back(read_entry(section, technology, names[i], compat));
+  cache->names = detail::declared_styles(section);
+  if (cache->names.empty()) {
+    cache->names.emplace_back("default");
   }
-  if (names.empty()) {
-    names.push_back(cache->entries.front().name);
-  }
-  StyleTable table{std::move(names)};
+  cache->entries.resize(cache->names.size());
+  StyleTable table{cache->names};
   table.cache_ = cache;
-  // The tech load reports the first style's messages and the
-  // non-electrical list (ExtTechFinal), with allExtractTypes starting empty.
-  (void)select_entry(*cache, table.names().front(), &sink);
+  // The tech load reads the first style and reports its messages and the
+  // non-electrical list (ExtTechFinal), with allExtractTypes starting
+  // empty; the other styles are read when selected.
+  (void)select_entry(*cache, cache->names.front(), &sink);
   return table;
 }
 

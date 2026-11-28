@@ -1,0 +1,22 @@
+* NGSPICE file created from sg13g2_dllrq_1.ext - technology: ihp-sg13g2
+
+X0 a_701_414# a_408_414# a_639_414# VDD sg13_lv_pmos ad=0.2308p pd=1.595u as=89.99999f ps=1.18u w=1u l=0.13u
+X1 a_1199_96# a_701_414# a_957_428# VSS sg13_lv_nmos ad=88.8f pd=0.98u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X2 VSS a_288_132# a_408_414# VSS sg13_lv_nmos ad=0.91952p pd=5.315u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X3 VSS RESET_B a_1199_96# VSS sg13_lv_nmos ad=0.1702p pd=1.2u as=88.8f ps=0.98u w=0.74u l=0.13u
+X4 a_701_414# a_288_132# a_737_96# VSS sg13_lv_nmos ad=0.1095p pd=1.02u as=83.2f ps=0.9u w=0.64u l=0.13u
+X5 a_639_414# a_80_170# VDD VDD sg13_lv_pmos ad=89.99999f pd=1.18u as=1.4504p ps=9.68u w=1u l=0.13u
+X6 a_737_96# a_80_170# VSS VSS sg13_lv_nmos ad=83.2f pd=0.9u as=0.91952p ps=5.315u w=0.64u l=0.13u
+X7 Q a_957_428# VSS VSS sg13_lv_nmos ad=0.2849p pd=2.25u as=0.1702p ps=1.2u w=0.74u l=0.13u
+X8 a_957_428# a_701_414# VDD VDD sg13_lv_pmos ad=0.19p pd=1.38u as=0.24367p ps=1.81u w=1u l=0.13u
+X9 VDD RESET_B a_957_428# VDD sg13_lv_pmos ad=0.2254p pd=1.53u as=0.19p ps=1.38u w=1u l=0.13u
+X10 a_917_96# a_408_414# a_701_414# VSS sg13_lv_nmos ad=49.34999f pd=0.655u as=0.1095p ps=1.02u w=0.42u l=0.13u
+X11 Q a_957_428# VDD VDD sg13_lv_pmos ad=0.56p pd=3.24u as=0.2254p ps=1.53u w=1.12u l=0.13u
+X12 VSS a_957_428# a_917_96# VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=49.34999f ps=0.655u w=0.42u l=0.13u
+X13 VSS D a_80_170# VSS sg13_lv_nmos ad=0.91952p pd=5.315u as=0.187p ps=1.78u w=0.55u l=0.13u
+X14 a_846_530# a_288_132# a_701_414# VDD sg13_lv_pmos ad=0.11655p pd=0.975u as=0.2308p ps=1.595u w=0.42u l=0.13u
+X15 a_288_132# GATE_N VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.91952p ps=5.315u w=0.74u l=0.13u
+X16 VDD D a_80_170# VDD sg13_lv_pmos ad=0.1596p pd=1.22u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X17 a_288_132# GATE_N VDD VDD sg13_lv_pmos ad=0.2856p pd=2.36u as=0.1596p ps=1.22u w=0.84u l=0.13u
+X18 VDD a_957_428# a_846_530# VDD sg13_lv_pmos ad=0.24367p pd=1.81u as=0.11655p ps=0.975u w=0.42u l=0.13u
+X19 VDD a_288_132# a_408_414# VDD sg13_lv_pmos ad=1.4504p pd=9.68u as=0.3822p ps=2.59u w=0.84u l=0.13u

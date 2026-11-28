@@ -89,7 +89,7 @@ TEST_CASE("a contact-only FastHenry node takes the contact's upper layer height"
   }
 }
 
-// Standing rule (proposed Q-NETLIST-73, compat): Magic's loop keeps the
+// Standing rule (Q-NETLIST-73, compat, approved 2026-11-27): Magic's loop keeps the
 // height of the node's last non-contact resistor (metal1, 0.1) although its
 // comment says the first (poly, plane order 0); OFF takes the first.
 TEST_CASE("a FastHenry node's height per mode", "[cap:extresist-output][req:FastHenry geometry file]") {
@@ -154,7 +154,7 @@ TEST_CASE("extresist box prints the resistors of the net under the box", "[cap:e
   CHECK(resistor);
 }
 
-// Standing rule (proposed Q-NETLIST-75, compat): RES_BOX returns on a
+// Standing rule (Q-NETLIST-75, compat, approved 2026-11-27): RES_BOX returns on a
 // failed net without restoring ResOptionsFlags, so every on/off setting
 // reads off afterwards; with magic-compat OFF the settings are kept.
 TEST_CASE("a failed extresist box clears the settings with magic-compat ON",
@@ -209,7 +209,7 @@ std::vector<std::string> second_tdi_run(bool magic_compat) {
 
 }  // namespace
 
-// Standing rule (proposed Q-NETLIST-72, compat): without simplification
+// Standing rule (Q-NETLIST-72, compat, approved 2026-11-27): without simplification
 // or a lump file no Tdi is computed, and the second cutoff reads rg_Tdi as
 // ResInit left it at the start of the command, 0, so the net is withheld
 // although the previous run computed a delay above the cutoff (regression,

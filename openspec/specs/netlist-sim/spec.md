@@ -19,7 +19,7 @@ The command SHALL take an optional first word, matched case-insensitively with u
 | `merge none\|conservative\|aggressive` | Parallel-device merging (Q-NETLIST-14) | none |
 | `extresist on\|off` | Read `.res.ext` overlays | off |
 
-`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. `ext2sim` SHALL read with the short mode that `ext2spice short` set in the session, in both `magic-compat` settings, as Magic's shared EFOutputFlags do; `ext2sim default` clears it. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
+`default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. `ext2sim` SHALL read with the short mode that `ext2spice short` set in the session, in both `magic-compat` settings, as Magic's shared EFOutputFlags do; `ext2sim default` clears it (Q-NETLIST-70, resolution: replicate; with `magic-compat` OFF a voltage short's node is `dummy#<n>`, Q-NETLIST-60). Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
 
 | Flag | Effect |
 |---|---|
@@ -91,8 +91,12 @@ Compatibility: behavioral
 #### Scenario: ext2sim honours the ext2spice short mode
 - **GIVEN** `ext2spice short resistor` has run in the session
 - **WHEN** `ext2sim` reads a cell whose two ports are shorted
-- **THEN** it writes the short device `r A B 0.000000` instead of merging the ports, in both `magic-compat` settings
-- **AND** after `ext2sim default` the ports are merged again
+- **THEN** it writes the short device `r A B 0.000000` instead of merging the ports, in both `magic-compat` settings (Q-NETLIST-70)
+
+#### Scenario: ext2sim default clears the shared short mode
+- **GIVEN** `ext2spice short resistor` has run in the session and `ext2sim` writes `r A B 0.000000` for a cell whose two ports are shorted
+- **WHEN** `ext2sim default` runs and then `ext2sim` reads the same cell
+- **THEN** the ports are merged again (`= B A`), in both `magic-compat` settings (Q-NETLIST-70)
 
 #### Scenario: Extresist file naming
 - **GIVEN** `ext2sim extresist on`

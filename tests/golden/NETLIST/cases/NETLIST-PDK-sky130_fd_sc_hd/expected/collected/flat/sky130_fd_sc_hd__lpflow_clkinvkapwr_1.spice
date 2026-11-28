@@ -1,0 +1,5 @@
+* NGSPICE file created from sky130_fd_sc_hd__lpflow_clkinvkapwr_1.ext - technology: sky130A
+
+X0 Y A KAPWR VPB sky130_fd_pr__pfet_01v8_hvt ad=0.1134 pd=1.11 as=0.2184 ps=2.2 w=0.84 l=0.15
+X1 VGND A Y VNB sky130_fd_pr__nfet_01v8 ad=0.1197 pd=1.41 as=0.1092 ps=1.36 w=0.42 l=0.15
+X2 KAPWR A Y VPB sky130_fd_pr__pfet_01v8_hvt ad=0.2352 pd=2.24 as=0.1134 ps=1.11 w=0.84 l=0.15

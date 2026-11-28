@@ -76,6 +76,12 @@ Every type mentioned in the first type argument of `areacap, connect, contact, d
 - **THEN** the error `Malformed line for keyword perimc.  Correct usage:` is reported
 - **AND** no perimeter capacitance is recorded
 
+#### Scenario: Ambiguous prefix
+- **GIVEN** an extract style containing the line `side 10` (a prefix of `sidehalo`, `sideoverlap` and `sidewall`)
+- **WHEN** the tech file is loaded
+- **THEN** `Illegal keyword.  Legal keywords are:` is reported, followed by the keywords in the table's order
+- **AND** the side halo stays 0
+
 ### Requirement: Extraction styles and variants
 
 The section SHALL be partitioned into styles by `style` lines. `style NAME` SHALL declare style NAME. `style BASE variants V1,V2,...` (third token beginning with `variant`) SHALL declare one style per variant, named by concatenating BASE and the variant text (`BASE` + `Vi`, an empty variant giving `BASE`); the first variant is that line's default. Style names SHALL be kept in declaration order. Styles SHALL be looked up by prefix match of the style name against previously declared names when deciding whether a `style` line re-declares an existing style.
@@ -96,6 +102,13 @@ Selecting another style (`extract style NAME`, see `extract-commands`) SHALL re-
 - **GIVEN** the current style is `ngspice(si)` and the style body contains `variants (si)` followed by `areacap m1 25` and then `variants (),(orig)` followed by `areacap m1 30`
 - **WHEN** the style is loaded
 - **THEN** the area capacitance of `m1` is 25
+
+#### Scenario: A style's line errors are reported when it is selected
+- **GIVEN** styles `a` and `b`, where style `b` contains `cscale x` and `perimc metal1 space 20 extra`
+- **WHEN** the tech file is loaded
+- **THEN** only the malformed `perimc` line is reported (argument counts are checked on every line of the section)
+- **WHEN** `extract style b` is run, and again later
+- **THEN** each time `Cannot parse cap scale value "x"` and the malformed `perimc` line are reported, as the section is re-read for `b`
 
 ### Requirement: Style defaults
 
@@ -363,14 +376,25 @@ For every pair (s,t) with non-empty overlap shield planes, every shield type r S
 ### Requirement: Non-electrical types
 
 At the end of the extract section, every user type that is not mentioned in any extract line (Requirement: Extract section line grammar) and does not connect (in the global connect table) to any type other than itself SHALL be removed from the active types, and the message `The following types are not handled by extraction and will be treated as non-electrical types:` followed by the type names SHALL be printed once.
+With `magic-compat` on, the mentions SHALL accumulate over every style read since the technology loaded (Magic's `allExtractTypes`, cleared only by ExtTechInit), so a type an earlier read style mentions stays active in a later selected style that does not mention it; with `magic-compat` off, each style SHALL use only its own mentions. The set reaches extraction, `lef write` and `def write` (Q-EXTRACT-46, proposed 2026-11-27, implemented with its recommended option; Q-EXTRACT-45).
 Compatibility: exact (set of active types); informative (message text)
 
-(Magic ref: extract/ExtTech.c:3588-3620)
+(Magic ref: extract/ExtTech.c:3588-3620, ExtTechInit, ExtLoadStyle)
 
 #### Scenario: Unmentioned marker layer
 - **GIVEN** a type `comment` that appears in no extract line and connects to nothing
 - **WHEN** the technology is loaded
 - **THEN** `comment` is listed as non-electrical and never forms a node
+
+#### Scenario: Mentions of an earlier style accumulate with magic-compat on
+- **GIVEN** style `a` mentions `comment` in an `areacap` line, style `b` does not, and `a` was read when the technology loaded
+- **WHEN** `extract style b` is selected with `magic-compat` on
+- **THEN** `comment` stays an active type of `b`
+
+#### Scenario: Each style uses its own mentions with magic-compat off
+- **GIVEN** the same styles `a` and `b`
+- **WHEN** `extract style b` is selected with `magic-compat` off
+- **THEN** `comment` is not an active type of `b` and is listed in `b`'s "treated as non-electrical" message
 
 ### Requirement: Layer height and thickness defaults
 

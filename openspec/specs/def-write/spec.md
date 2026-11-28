@@ -846,6 +846,12 @@ Compatibility: exact
 - **GIVEN** no obstruction paint and no floating nets
 - **THEN** no BLOCKAGES section SHALL be written
 
+#### Scenario: The selected extraction style decides the active types
+
+- **GIVEN** the obsm1 rectangle above, an extract style `lefdef` that does not mention `obsm1` and a style `active` that does
+- **WHEN** the user runs `extract style active` and then `def write`
+- **THEN** `obsm1` SHALL be electrically active (the active types are those of the current extraction style, the one `extract style` last selected, as Magic's writer reads ExtCurStyle) and no BLOCKAGES section SHALL be written
+
 ### Requirement: Table enumeration order
 
 Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be the iteration order of a Magic string hash table as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes (see Q-LEFDEF-116). Under decision X-1 these orders depend only on names and insertion history, and the output SHALL be byte-identical to Magic's. This capability adds:

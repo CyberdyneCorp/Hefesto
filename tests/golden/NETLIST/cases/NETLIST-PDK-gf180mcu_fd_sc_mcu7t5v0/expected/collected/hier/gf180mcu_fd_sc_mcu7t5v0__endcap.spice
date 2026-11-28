@@ -1,0 +1,5 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__endcap.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__endcap VDD VSS
+.ends
+

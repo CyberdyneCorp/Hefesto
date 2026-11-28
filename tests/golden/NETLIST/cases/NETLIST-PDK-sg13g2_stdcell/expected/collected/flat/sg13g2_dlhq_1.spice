@@ -1,0 +1,20 @@
+* NGSPICE file created from sg13g2_dlhq_1.ext - technology: ihp-sg13g2
+
+X0 a_713_93# a_600_157# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.84042p ps=5.545u w=0.74u l=0.13u
+X1 a_626_193# a_600_157# a_552_193# VSS sg13_lv_nmos ad=0.12815p pd=1.175u as=50.4f ps=0.66u w=0.42u l=0.13u
+X2 a_626_193# a_600_157# a_257_436# VDD sg13_lv_pmos ad=0.1847p pd=1.41u as=0.41365p ps=3.11u w=1u l=0.13u
+X3 a_279_129# a_713_93# a_626_193# VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.12815p ps=1.175u w=0.74u l=0.13u
+X4 VDD a_145_468# a_257_436# VDD sg13_lv_pmos ad=0.89207p pd=5.955u as=0.34p ps=2.68u w=1u l=0.13u
+X5 VSS a_145_468# a_279_129# VSS sg13_lv_nmos ad=0.20065p pd=1.505u as=0.23375p ps=2.16u w=0.74u l=0.13u
+X6 VDD a_626_193# a_423_370# VDD sg13_lv_pmos ad=0.89207p pd=5.955u as=0.3808p ps=2.92u w=1.12u l=0.13u
+X7 a_145_468# D VSS VSS sg13_lv_nmos ad=0.187p pd=1.78u as=0.187p ps=1.78u w=0.55u l=0.13u
+X8 a_713_93# a_600_157# VDD VDD sg13_lv_pmos ad=0.2856p pd=2.36u as=0.89207p ps=5.955u w=0.84u l=0.13u
+X9 a_145_468# D VDD VDD sg13_lv_pmos ad=0.2856p pd=2.36u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X10 a_449_436# a_423_370# VDD VDD sg13_lv_pmos ad=0.1428p pd=1.52u as=0.89207p ps=5.955u w=0.42u l=0.13u
+X11 VSS GATE a_600_157# VSS sg13_lv_nmos ad=0.84042p pd=5.545u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X12 VSS a_626_193# a_423_370# VSS sg13_lv_nmos ad=0.84042p pd=5.545u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X13 VDD GATE a_600_157# VDD sg13_lv_pmos ad=0.203p pd=1.5u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X14 a_449_436# a_713_93# a_626_193# VDD sg13_lv_pmos ad=0.1899p pd=1.81u as=0.1847p ps=1.41u w=0.42u l=0.13u
+X15 a_552_193# a_423_370# VSS VSS sg13_lv_nmos ad=50.4f pd=0.66u as=0.20065p ps=1.505u w=0.42u l=0.13u
+X16 Q a_423_370# VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.203p ps=1.5u w=1.12u l=0.13u
+X17 Q a_423_370# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.84042p ps=5.545u w=0.74u l=0.13u

@@ -369,6 +369,11 @@ class ExtStyle {
   std::vector<std::int32_t> plane_order;  // index = tech::PlaneId, -1 = none
   bool plane_ordering = true;             // false after `noplaneordering`
   std::array<TypeHeightThickness, tech::kMaxTileTypes> heights{};
+  /// The types whose height and thickness both come from a `height` line
+  /// (HeightView's HeightSource::height_line); the others were defaulted.
+  tech::TypeMask height_lines;
+  /// The dscale micron_convert() divided lengths by (1 with lambda units).
+  float distance_scale = 1.0F;
 
   // Connectivity overrides (exts_nodeConn, exts_deviceConn, exts_resistConn),
   // index = tech::TileType.

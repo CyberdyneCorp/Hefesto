@@ -114,6 +114,12 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/schematic_symbols.cpp
   src/schematic_view.cpp)
 
+# M7 (openspec/changes/m7-extraction task 16.1, SHELL): the top bar's Extract
+# button (view model, and its wiring in the main window).
+target_sources(hefesto_shell_desktop PRIVATE
+  src/extract_button.cpp
+  src/m7_window.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root

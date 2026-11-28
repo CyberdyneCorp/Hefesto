@@ -1,0 +1,65 @@
+timestamp 1414366507
+version 8.3
+tech sky130A
+style ngspice()
+scale 1000 1 500000
+resistclasses 4400000 2200000 950000 3050000 120000 197000 114000 191000 120000 197000 114000 191000 48200 319800 2000000 48200 48200 12800 125 125 47 47 29 5
+parameters sky130_fd_pr__special_nfet_01v8 l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sky130_fd_pr__nfet_01v8 l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sky130_fd_pr__special_pfet_01v8_hvt l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sky130_fd_pr__pfet_01v8_hvt l=l w=w a1=as p1=ps a2=ad p2=pd
+port "VGND" 3 0 -48 644 48 m1
+port "VGND" 3 30 -17 64 17 m1
+port "X" 7 306 85 340 119 li
+port "VPWR" 6 0 496 644 592 m1
+port "VPWR" 6 30 527 64 561 m1
+port "A" 1 582 221 616 255 li
+port "SLEEP" 2 122 221 156 255 li
+port "VPB" 5 30 527 64 561 nw
+port "VNB" 4 30 -17 64 17 pw
+node "VGND" 2387 409.119 30 -17 m1 0 0 0 0 0 0 0 0 25298 1374 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 47424 2496 61824 1480 0 0 0 0 0 0 0 0 0 0
+node "X" 1798 14.2957 306 85 li 0 0 0 0 0 0 0 0 14040 736 10800 508 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 32664 1404 0 0 0 0 0 0 0 0 0 0 0 0
+node "VPWR" 1854 292.814 30 527 m1 0 0 0 0 0 0 0 0 0 0 15168 780 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 34896 1876 61824 1480 0 0 0 0 0 0 0 0 0 0
+node "a_27_297#" 3360 35.2945 27 297 pdif 0 0 0 0 0 0 0 0 0 0 32400 1524 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 43433 1888 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 868 151.121 582 221 li 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 16842 1118 0 0 10344 570 0 0 0 0 0 0 0 0 0 0 0 0
+node "a_251_21#" 2192 153.293 251 21 p 0 0 0 0 0 0 0 0 4368 272 4368 272 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 38700 2256 0 0 18786 1136 0 0 0 0 0 0 0 0 0 0 0 0
+node "SLEEP" 1512 121.393 122 221 li 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 33684 2104 0 0 3696 260 0 0 0 0 0 0 0 0 0 0 0 0
+node "VPB" 2131 693.36 30 527 nw 0 0 0 0 231120 2082 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VNB" 0 0 30 -17 pw 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "VPB" "VGND" 8.77331
+cap "VPB" "A" 94.6859
+cap "a_251_21#" "VPWR" 73.7125
+cap "SLEEP" "VGND" 32.6876
+cap "X" "VGND" 290.719
+cap "X" "A" 1.40101
+cap "a_27_297#" "VPWR" 331.015
+cap "a_27_297#" "a_251_21#" 119.661
+cap "VPB" "VPWR" 81.7109
+cap "VPB" "a_251_21#" 85.3092
+cap "VPB" "a_27_297#" 18.9551
+cap "SLEEP" "VPWR" 37.8613
+cap "a_251_21#" "SLEEP" 45.6231
+cap "X" "VPWR" 8.84637
+cap "X" "a_251_21#" 88.0377
+cap "VGND" "A" 50.2017
+cap "a_27_297#" "SLEEP" 75.9704
+cap "a_27_297#" "X" 160.95
+cap "VPB" "SLEEP" 48.6989
+cap "VPB" "X" 4.70323
+cap "X" "SLEEP" 67.404
+cap "VGND" "VPWR" 64.7476
+cap "VPWR" "A" 39.0889
+cap "a_251_21#" "VGND" 136.891
+cap "a_251_21#" "A" 87.1862
+cap "a_27_297#" "VGND" 18.8199
+cap "a_27_297#" "A" 2.94561
+device msubckt sky130_fd_pr__nfet_01v8 523 93 524 94 l=30 w=84 "VNB" "A" 60 0 "a_251_21#" 84 4368,272 "VGND" 84 4368,272
+device msubckt sky130_fd_pr__nfet_01v8 335 47 336 48 l=30 w=130 "VNB" "a_251_21#" 60 0 "X" 130 3510,184 "VGND" 130 6760,364
+device msubckt sky130_fd_pr__nfet_01v8 251 47 252 48 l=30 w=130 "VNB" "a_251_21#" 60 0 "VGND" 130 3510,184 "X" 130 3510,184
+device msubckt sky130_fd_pr__nfet_01v8 167 47 168 48 l=30 w=130 "VNB" "SLEEP" 60 0 "X" 130 3510,184 "VGND" 130 3510,184
+device msubckt sky130_fd_pr__nfet_01v8 83 47 84 48 l=30 w=130 "VNB" "SLEEP" 60 0 "VGND" 130 7150,370 "X" 130 3510,184
+device msubckt sky130_fd_pr__pfet_01v8_hvt 523 413 524 414 l=30 w=84 "VPB" "A" 60 0 "a_251_21#" 84 4368,272 "VPWR" 84 4368,272
+device msubckt sky130_fd_pr__pfet_01v8_hvt 335 297 336 298 l=30 w=200 "VPB" "a_251_21#" 60 0 "X" 200 5400,254 "a_27_297#" 200 10400,504
+device msubckt sky130_fd_pr__pfet_01v8_hvt 251 297 252 298 l=30 w=200 "VPB" "a_251_21#" 60 0 "a_27_297#" 200 5400,254 "X" 200 5400,254
+device msubckt sky130_fd_pr__pfet_01v8_hvt 167 297 168 298 l=30 w=200 "VPB" "SLEEP" 60 0 "VPWR" 200 5400,254 "a_27_297#" 200 5400,254
+device msubckt sky130_fd_pr__pfet_01v8_hvt 83 297 84 298 l=30 w=200 "VPB" "SLEEP" 60 0 "a_27_297#" 200 11200,512 "VPWR" 200 5400,254
