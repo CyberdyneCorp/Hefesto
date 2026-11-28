@@ -62,7 +62,7 @@ namespace {
 hefesto::cmd::CommandResult run_panel_line(hefesto::test::SchemSession& s, const std::string& line,
                                      hefesto::cmd::Origin origin = hefesto::cmd::Origin::gui) {
   const auto words = hefesto::pcell::split_tcl_list(line);
-  REQUIRE(words.has_value());
+  REQUIRE(words.ok());
   REQUIRE(!words.value().empty());
   REQUIRE(words.value().front() == "schematic");
   return s.schematic({words.value().begin() + 1, words.value().end()}, origin);
