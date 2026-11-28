@@ -30,10 +30,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/outcome.hpp"
-
-namespace hefesto::platform {
-class FileSystem;
-}
+#include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::extflat {
 
@@ -67,6 +64,10 @@ struct CommonArgs {
 /// `flag + 1`), or nullopt when the flag is not recognised either.
 using ExtraFlags = std::function<std::optional<std::size_t>(std::span<const std::string> args, std::size_t flag)>;
 
+/// Reads a whole file as fopen does, or gives the errno of the failed open
+/// (platform::FileSystem::read_stream).
+using FileRead = std::function<platform::StreamRead(const std::string& path)>;
+
 /// What a tool adds to EFArgs.
 struct ArgOptions {
   /// `-o file` is a flag of the tool (spcParseArgs, simParseArgs); without
@@ -75,14 +76,15 @@ struct ArgOptions {
   /// `-T techname`: the standalone build only (EFargs.c `#ifndef
   /// MAGIC_WRAPPER`); without it `-T` goes to `extra`.
   bool tech = false;
-  /// Reads a `-S` file whole; nullopt when it cannot be opened. Unset, no
+  /// Reads a `-S` file whole; when it cannot be opened, the errno is
+  /// printed as `<file>: <strerror text>` (Magic's perror). A directory
+  /// reads as empty, as fopen opens it and fgets reads nothing. Unset, no
   /// file can be opened.
-  std::function<std::optional<std::string>(const std::string& path)> read_file{};
+  FileRead read_file{};
 };
 
 /// An ArgOptions::read_file over `fs` (which must outlive the parse).
-[[nodiscard]] std::function<std::optional<std::string>(const std::string& path)> file_reader(
-    platform::FileSystem& fs);
+[[nodiscard]] FileRead file_reader(platform::FileSystem& fs);
 
 /// EFArgs over the words after the command name. Fails with the usage text
 /// (EXTFLAT-READ-015) for an unknown flag, a flag without its value, or

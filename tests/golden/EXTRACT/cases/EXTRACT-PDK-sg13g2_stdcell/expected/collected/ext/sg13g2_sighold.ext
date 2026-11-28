@@ -1,0 +1,22 @@
+timestamp 1680010552
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "SH" 2 361 191 409 482 m1
+port "VDD" 3 0 712 480 800 m1
+port "VSS" 4 0 -44 480 44 m1
+node "a_31_187#" 1 296.344 31 187 ndif 0 0 0 0 21974 1010 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "SH" 1 178.816 361 191 m1 0 0 0 0 26656 1166 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 0 121.948 0 712 m1 0 0 0 0 63378 1292 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 1 0 0 -44 m1 0 0 0 0 58815 1266 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "a_31_187#" "VDD" 142.131
+cap "a_31_187#" "SH" 403.907
+cap "SH" "VDD" 133.352
+device msubckt sg13_lv_nmos 201 187 202 188 l=140 w=60 "VSS" "a_31_187#" 280 0 "VSS" 60 37308,790 "SH" 60 4080,256
+device msubckt sg13_lv_nmos 99 187 100 188 l=26 w=60 "VSS" "SH" 52 0 "a_31_187#" 60 4080,256 "VSS" 60 37308,790
+device msubckt sg13_lv_pmos 201 426 202 427 l=140 w=60 "VDD" "a_31_187#" 280 0 "VDD" 60 51189,871 "SH" 60 4080,256
+device msubckt sg13_lv_pmos 99 426 100 427 l=26 w=90 "VDD" "SH" 52 0 "a_31_187#" 90 6120,316 "VDD" 90 51189,871

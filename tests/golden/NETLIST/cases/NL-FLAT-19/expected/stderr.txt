@@ -1,0 +1,5 @@
+input/top.ext, line 2: Cell was extracted using version 7.9 of the extractor.
+input/top.ext, line 2:    It should be re-extracted.
+Warning:  .ext file style nosuch is not known in this technology!
+input/child.ext, line 6: Resistance class values don't match:
+input/child.ext, line 6: Re-extract the entire tree with the same technology file

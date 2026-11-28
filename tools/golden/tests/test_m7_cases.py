@@ -92,14 +92,15 @@ class CatalogueTest(unittest.TestCase):
     def test_r1_rows_are_authored(self):
         ids = [c.id for c in m7_cases.tcl_cases()]
         self.assertEqual(sorted(i for i in ids if i.startswith("EX-")),
-                         sorted(extract_cases.FLAT_IDS + extract_cases.HIER_IDS + extract_cases.COMMAND_IDS))
+                         sorted(extract_cases.FLAT_IDS + extract_cases.HIER_IDS + extract_cases.COMMAND_IDS
+                                + extract_cases.AUDIT_IDS))
         self.assertEqual(len(extract_cases.FLAT_IDS), 53)
         r1 = [i for i in ids if i.startswith("NL-") and not i.startswith("NL-RES")]
         self.assertEqual(sorted(r1 + [netlist_cases.CHK_ID]), sorted(netlist_cases.ROW_IDS))
         self.assertEqual(sum(i.startswith("NL-RES-") for i in ids), 8)
         self.assertEqual(sum(i.startswith("NL-RESNET-") for i in ids), 15)
         self.assertEqual(sum(i.startswith("MISC-ANT-") for i in ids), 9)
-        self.assertEqual(len(netlist_cases.ROW_IDS), 44)
+        self.assertEqual(len(netlist_cases.ROW_IDS), 46)  # 44 of task 2.5, NL-FLAT-19 and -20 of task 17.2
 
     def test_catalogue_counts_155_and_not_authored_names_the_rest(self):
         rows = m7_cases.catalogue_rows()
@@ -182,7 +183,8 @@ class CaseSpecTest(unittest.TestCase):
                 self.assertEqual(comparators["*.sim"], "sim-cap")
                 self.assertTrue(comparators["*.spice"].startswith("spice-cap"))
         with_caps = sorted(s.id for s in netlist_cases.specs() if netlist_cases.has_couplings(s))
-        self.assertEqual(with_caps, ["NL-FLAT-08", "NL-FLAT-13", "NL-FLAT-14", "NL-HIER-02", "NL-HIER-06"])
+        self.assertEqual(with_caps, ["NL-FLAT-08", "NL-FLAT-13", "NL-FLAT-14", "NL-FLAT-20", "NL-HIER-02",
+                                     "NL-HIER-06"])
         hier06 = next(c for c in CASES if c.id == "NL-HIER-06")
         self.assertEqual(hier06.collect[0].comparator, "spice-cap:VSUB,c2/VSUB")
 
@@ -202,9 +204,10 @@ class CaseSpecTest(unittest.TestCase):
         self.assertLess(body.index("load exb"), body.index("probe {extract unique #}"))
 
     def test_extract_options_follow_the_box(self):
-        """extract needs a window or the box for every option but style and help (CmdE.c:1170-1180)."""
+        """extract needs a window or the box for every option but style and help (CmdE.c:1170-1180).
+        EX-071 runs extract all before any box on purpose (the "Point to a window first" error)."""
         for case in CASES:
-            if case.area != "EXTRACT":
+            if case.area != "EXTRACT" or case.id == "EX-071":
                 continue
             seen_box = False
             for line in case.body.splitlines():
@@ -236,7 +239,8 @@ class CaseSpecTest(unittest.TestCase):
                     words = [line.split(" ", 1)[0] for line in text.splitlines()]
                     self.assertEqual(words[:6], ["timestamp", "version", "tech", "style", "scale", "resistclasses"])
                     self.assertTrue(set(words) <= READER_RECORDS, set(words) - READER_RECORDS)
-                    self.assertIn("tech nltest\nstyle nltest\n", text)
+                    if case.id != "NL-FLAT-19":  # its unknown style is the point of the case
+                        self.assertIn("tech nltest\nstyle nltest\n", text)
 
     def test_no_vsource_record(self):
         """EFread.c:313-340 leaves the token count uninitialised for class vsource (undefined behaviour)."""

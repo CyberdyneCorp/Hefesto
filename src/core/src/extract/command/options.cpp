@@ -413,9 +413,16 @@ RunRequest request_for(cmd::CommandContext& ctx, const cu::Session& s, RunMode m
   return r;
 }
 
-// EXTALL and bare `extract` (ExtAll, ExtIncremental).
+// EXTALL and bare `extract` (ExtAll, ExtIncremental). The desktop's host
+// (MaskSession::write_host, design D19) runs it with progress and
+// Interrupt; without one (CLI, tests) it runs inline.
 CommandResult run_tree(cmd::CommandContext& ctx, const cu::Session& s, RunMode mode) {
-  return run(*s.editor, request_for(ctx, s, mode, root_cell(s)), nullptr);
+  const RunRequest request = request_for(ctx, s, mode, root_cell(s));
+  const mask::ProgressHost& host = s.editor->mask.write_host;
+  if (!host) {
+    return run(*s.editor, request, nullptr);
+  }
+  return host(request.root + ".ext", [&](const mask::Progress* progress) { return run(*s.editor, request, progress); });
 }
 
 // EXTCELL, EXTPARENTS, EXTSHOWPARENTS: the selected cell.

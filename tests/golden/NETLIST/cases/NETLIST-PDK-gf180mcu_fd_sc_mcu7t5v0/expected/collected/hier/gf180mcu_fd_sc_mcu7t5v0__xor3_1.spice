@@ -1,0 +1,26 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__xor3_1.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__xor3_1 A1 A2 A3 Z VDD VNW VPW VSS
+X0 a_952_93# A1 a_728_93# VPW nfet_05v0 ad=57.59999f pd=0.68u as=93.59999f ps=0.88u w=0.36u l=0.6u
+X1 a_728_93# A1 a_718_524# VNW pfet_05v0 ad=0.1469p pd=1.085u as=0.16102p ps=1.135u w=0.565u l=0.5u
+X2 a_1524_472# a_728_93# a_1336_472# VNW pfet_05v0 ad=90.4f pd=0.885u as=0.2486p ps=2.01u w=0.565u l=0.5u
+X3 a_244_524# A2 a_56_524# VNW pfet_05v0 ad=93.59999f pd=0.88u as=0.1584p ps=1.6u w=0.36u l=0.5u
+X4 a_718_524# a_56_524# VDD VNW pfet_05v0 ad=0.16102p pd=1.135u as=0.194p ps=1.415u w=0.565u l=0.5u
+X5 a_718_524# A2 a_728_93# VNW pfet_05v0 ad=0.2486p pd=2.01u as=0.1469p ps=1.085u w=0.565u l=0.5u
+X6 VSS A1 a_56_524# VPW nfet_05v0 ad=0.126p pd=1.06u as=93.59999f ps=0.88u w=0.36u l=0.6u
+X7 a_1336_472# a_728_93# VSS VPW nfet_05v0 ad=93.59999f pd=0.88u as=0.1584p ps=1.6u w=0.36u l=0.6u
+X8 VDD A1 a_244_524# VNW pfet_05v0 ad=0.194p pd=1.415u as=93.59999f ps=0.88u w=0.36u l=0.5u
+X9 a_56_524# A2 VSS VPW nfet_05v0 ad=93.59999f pd=0.88u as=0.1584p ps=1.6u w=0.36u l=0.6u
+X10 VSS A3 a_1336_472# VPW nfet_05v0 ad=0.218p pd=1.52u as=93.59999f ps=0.88u w=0.36u l=0.6u
+X11 a_2215_68# A3 Z VPW nfet_05v0 ad=0.1312p pd=1.14u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X12 VSS a_728_93# a_2215_68# VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.1312p ps=1.14u w=0.82u l=0.6u
+X13 Z a_1336_472# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.218p ps=1.52u w=0.82u l=0.6u
+X14 Z A3 a_1936_472# VNW pfet_05v0 ad=0.3172p pd=1.74u as=0.3172p ps=1.74u w=1.22u l=0.5u
+X15 a_728_93# a_56_524# VSS VPW nfet_05v0 ad=93.59999f pd=0.88u as=0.126p ps=1.06u w=0.36u l=0.6u
+X16 a_1936_472# a_728_93# Z VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.3172p ps=1.74u w=1.22u l=0.5u
+X17 VSS A2 a_952_93# VPW nfet_05v0 ad=0.1584p pd=1.6u as=57.59999f ps=0.68u w=0.36u l=0.6u
+X18 VDD A3 a_1524_472# VNW pfet_05v0 ad=0.35315p pd=1.96u as=90.4f ps=0.885u w=0.565u l=0.5u
+X19 a_1936_472# a_1336_472# VDD VNW pfet_05v0 ad=0.3172p pd=1.74u as=0.35315p ps=1.96u w=1.22u l=0.5u
+C0 VNW VPW 4.27039f
+.ends
+

@@ -1,0 +1,24 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__dlyb_4.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__dlyb_4 I Z VDD VNW VPW VSS
+X0 a_523_68# a_47_68# VSS VPW nfet_05v0 ad=43.2f pd=0.6u as=93.59999f ps=0.88u w=0.36u l=0.6u
+X1 a_671_644# a_47_68# a_523_68# VPW nfet_05v0 ad=0.369p pd=2.77u as=43.2f ps=0.6u w=0.36u l=0.6u
+X2 VSS a_895_68# Z VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X3 Z a_895_68# VDD VNW pfet_05v0 ad=0.3172p pd=1.74u as=0.4705p ps=2.52u w=1.22u l=0.5u
+X4 a_503_644# a_47_68# VDD VNW pfet_05v0 ad=61.19999f pd=0.7u as=0.1116p ps=0.98u w=0.36u l=0.5u
+X5 VDD a_671_644# a_1127_622# VNW pfet_05v0 ad=0.4705p pd=2.52u as=61.19999f ps=0.7u w=0.36u l=0.5u
+X6 VDD a_895_68# Z VNW pfet_05v0 ad=0.3172p pd=1.74u as=0.3172p ps=1.74u w=1.22u l=0.5u
+X7 Z a_895_68# VDD VNW pfet_05v0 ad=0.4087p pd=1.89u as=0.3172p ps=1.74u w=1.22u l=0.5u
+X8 VSS a_895_68# Z VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X9 Z a_895_68# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.2132p ps=1.34u w=0.82u l=0.6u
+X10 VDD I a_47_68# VNW pfet_05v0 ad=0.1116p pd=0.98u as=0.3852p ps=2.86u w=0.36u l=0.5u
+X11 VDD a_895_68# Z VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.4087p ps=1.89u w=1.22u l=0.5u
+X12 Z a_895_68# VSS VPW nfet_05v0 ad=0.2132p pd=1.34u as=0.28262p ps=1.87u w=0.82u l=0.6u
+X13 a_1147_68# a_671_644# a_895_68# VPW nfet_05v0 ad=43.8f pd=0.605u as=0.3705p ps=2.77u w=0.365u l=0.6u
+X14 a_1127_622# a_671_644# a_895_68# VNW pfet_05v0 ad=61.19999f pd=0.7u as=0.3456p ps=2.64u w=0.36u l=0.5u
+X15 VSS a_671_644# a_1147_68# VPW nfet_05v0 ad=0.28262p pd=1.87u as=43.8f ps=0.605u w=0.365u l=0.6u
+X16 a_671_644# a_47_68# a_503_644# VNW pfet_05v0 ad=0.3852p pd=2.86u as=61.19999f ps=0.7u w=0.36u l=0.5u
+X17 VSS I a_47_68# VPW nfet_05v0 ad=93.59999f pd=0.88u as=0.333p ps=2.57u w=0.36u l=0.6u
+C0 VNW VPW 4.09634f
+.ends
+

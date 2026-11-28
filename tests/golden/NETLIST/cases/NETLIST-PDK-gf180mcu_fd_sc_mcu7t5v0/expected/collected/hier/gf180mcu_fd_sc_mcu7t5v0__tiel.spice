@@ -1,0 +1,7 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__tiel.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__tiel ZN VDD VNW VPW VSS
+X0 ZN a_124_24# VSS VPW nfet_05v0 ad=0.3608p pd=2.52u as=0.3608p ps=2.52u w=0.82u l=0.6u
+X1 a_124_24# a_124_24# VDD VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.5368p ps=3.32u w=1.22u l=0.5u
+.ends
+

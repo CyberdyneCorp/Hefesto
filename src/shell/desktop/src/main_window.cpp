@@ -315,9 +315,12 @@ void MainWindow::build_top_bar() {
   deferred.widgets.push_back(netlist.widget);
   for (const DeferredControl& c : deferred_actions()) {
     const bool agent = c.label == "Ask agent";
-    const TopButton b = add_top_button(row, c.label, agent ? "agent" : "",
-                                       agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary, c.tooltip,
-                                       nullptr);
+    // M7 (task 16.1): Extract is live, in its M1 slot and hiding group.
+    const TopButton b = c.label == "Extract"
+                            ? add_extract_button(row, c.label)
+                            : add_top_button(row, c.label, agent ? "agent" : "",
+                                             agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary,
+                                             c.tooltip, nullptr);
     deferred.width += b.width;
     deferred.widgets.push_back(b.widget);
   }
@@ -736,6 +739,7 @@ void MainWindow::play_pending_input() {
       std::printf("hefesto: schematic tab %s\n", schematic_view_->status_line().c_str());
       std::fflush(stdout);
     }
+    report_extract_button();  // M7: the Extract button's state and place (CI capture)
   }
   // Keep frames coming through the waits (a hold's timer, a popover's frame).
   window_.request_redraw();
@@ -970,6 +974,7 @@ cmd::CommandResult MainWindow::tab_command(const std::vector<std::string>& args)
 void MainWindow::refresh_all() {
   if (schematic_tab_) schematic_view_->refresh();  // M8: after each command
   refresh_netlist_button();
+  refresh_extract_button();  // M7: tech load, style change, a new root
   sync_styles();
   view3d_->refresh();
   const view::LayoutWindow* win = ctx_.editor().windows.current();

@@ -1,0 +1,49 @@
+* NGSPICE file created from sg13g2_sdfrbpq_2.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_sdfrbpq_2 D Q RESET_B VDD VSS SCE CLK SCD
+X0 a_1641_505# a_1284_432# VDD VDD sg13_lv_pmos ad=54.6f pd=0.68u as=0.1563p ps=1.22u w=0.42u l=0.13u
+X1 a_496_118# D a_382_118# VSS sg13_lv_nmos ad=0.3367p pd=1.65u as=0.1628p ps=1.18u w=0.74u l=0.13u
+X2 a_2771_331# RESET_B VDD VDD sg13_lv_pmos ad=79.8f pd=0.8u as=1.6452p ps=10.48u w=0.42u l=0.13u
+X3 Q a_2771_331# VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X4 a_382_118# D a_285_412# VDD sg13_lv_pmos ad=0.2225p pd=1.445u as=0.3325p ps=1.665u w=1u l=0.13u
+X5 a_1573_127# a_1795_458# a_1258_337# VSS sg13_lv_nmos ad=0.2163p pd=1.87u as=81f ps=0.81u w=0.42u l=0.13u
+X6 VSS a_2771_331# a_2449_191# VSS sg13_lv_nmos ad=79.8f pd=0.8u as=0.1428p ps=1.52u w=0.42u l=0.13u
+X7 a_998_114# a_810_118# VDD VDD sg13_lv_pmos ad=79.8f pd=0.8u as=0.1428p ps=1.52u w=0.42u l=0.13u
+X8 VDD a_1693_371# a_1795_458# VDD sg13_lv_pmos ad=1.6452p pd=10.48u as=0.3864p ps=2.93u w=1.12u l=0.13u
+X9 VSS a_2771_331# Q VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X10 a_1284_432# a_1258_337# VDD VDD sg13_lv_pmos ad=0.34p pd=2.68u as=0.36237p ps=2.605u w=1u l=0.13u
+X11 a_2962_114# RESET_B VSS VSS sg13_lv_nmos ad=37.8f pd=0.6u as=79.8f ps=0.8u w=0.42u l=0.13u
+X12 VDD RESET_B a_998_114# VDD sg13_lv_pmos ad=0.36237p pd=2.605u as=79.8f ps=0.8u w=0.42u l=0.13u
+X13 a_1284_432# a_1258_337# VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=0.1626p ps=1.415u w=0.74u l=0.13u
+X14 VSS RESET_B a_1092_114# VSS sg13_lv_nmos ad=0.1626p pd=1.415u as=60.89999f ps=0.71u w=0.42u l=0.13u
+X15 a_1573_127# a_1284_432# a_1510_127# VSS sg13_lv_nmos ad=0.1596p pd=1.6u as=38.85f ps=0.605u w=0.42u l=0.13u
+X16 a_2543_191# a_1693_371# a_1284_432# VDD sg13_lv_pmos ad=0.19115p pd=1.565u as=0.34p ps=2.68u w=1u l=0.13u
+X17 VDD a_2771_331# a_2732_429# VDD sg13_lv_pmos ad=1.6452p pd=10.48u as=52.5f ps=0.67u w=0.42u l=0.13u
+X18 a_1092_114# a_810_118# a_998_114# VSS sg13_lv_nmos ad=60.89999f pd=0.71u as=0.1428p ps=1.52u w=0.42u l=0.13u
+X19 a_559_412# SCD a_382_118# VDD sg13_lv_pmos ad=0.2975p pd=1.595u as=0.2225p ps=1.445u w=1u l=0.13u
+X20 VDD SCE a_59_156# VDD sg13_lv_pmos ad=0.253p pd=1.53u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X21 a_2543_191# a_1693_371# a_2449_191# VSS sg13_lv_nmos ad=0.12665p pd=1.145u as=0.1428p ps=1.52u w=0.42u l=0.13u
+X22 VSS SCE a_59_156# VSS sg13_lv_nmos ad=0.18945p pd=1.27u as=0.187p ps=1.78u w=0.55u l=0.13u
+X23 a_810_118# a_382_118# VSS VSS sg13_lv_nmos ad=0.4033p pd=2.57u as=0.148p ps=1.14u w=0.74u l=0.13u
+X24 a_1258_337# a_1693_371# a_1641_505# VDD sg13_lv_pmos ad=79.8f pd=0.8u as=54.6f ps=0.68u w=0.42u l=0.13u
+X25 a_1693_371# CLK VDD VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=1.6452p ps=10.48u w=1.12u l=0.13u
+X26 a_1284_432# a_1795_458# a_2543_191# VSS sg13_lv_nmos ad=0.3473p pd=2.71u as=0.12665p ps=1.145u w=0.74u l=0.13u
+X27 a_810_118# a_382_118# VDD VDD sg13_lv_pmos ad=0.6048p pd=3.32u as=0.2198p ps=1.52u w=1.12u l=0.13u
+X28 a_998_114# a_1795_458# a_1258_337# VDD sg13_lv_pmos ad=0.1428p pd=1.52u as=79.8f ps=0.8u w=0.42u l=0.13u
+X29 a_285_118# SCE VSS VSS sg13_lv_nmos ad=0.13135p pd=1.095u as=0.18945p ps=1.27u w=0.74u l=0.13u
+X30 a_1693_371# CLK VSS VSS sg13_lv_nmos ad=0.2516p pd=2.16u as=3.02965p ps=19.515u w=0.74u l=0.13u
+X31 a_285_412# SCE VDD VDD sg13_lv_pmos ad=0.3325p pd=1.665u as=0.253p ps=1.53u w=1u l=0.13u
+X32 VDD a_2543_191# a_2771_331# VDD sg13_lv_pmos ad=0.2034p pd=1.53u as=79.8f ps=0.8u w=0.42u l=0.13u
+X33 VSS a_1693_371# a_1795_458# VSS sg13_lv_nmos ad=3.02965p pd=19.515u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X34 Q a_2771_331# VDD VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2034p ps=1.53u w=1.12u l=0.13u
+X35 VSS a_59_156# a_496_118# VSS sg13_lv_nmos ad=0.148p pd=1.14u as=0.3367p ps=1.65u w=0.74u l=0.13u
+X36 VDD RESET_B a_1258_337# VDD sg13_lv_pmos ad=0.1563p pd=1.22u as=0.147p ps=1.54u w=0.42u l=0.13u
+X37 a_382_118# SCD a_285_118# VSS sg13_lv_nmos ad=0.1628p pd=1.18u as=0.13135p ps=1.095u w=0.74u l=0.13u
+X38 VDD a_2771_331# Q VDD sg13_lv_pmos ad=0.3808p pd=2.92u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X39 VDD a_59_156# a_559_412# VDD sg13_lv_pmos ad=0.2198p pd=1.52u as=0.2975p ps=1.595u w=1u l=0.13u
+X40 a_1510_127# RESET_B VSS VSS sg13_lv_nmos ad=38.85f pd=0.605u as=0.1701p ps=1.65u w=0.42u l=0.13u
+X41 a_2771_331# a_2543_191# a_2962_114# VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=37.8f ps=0.6u w=0.42u l=0.13u
+X42 a_2732_429# a_1795_458# a_2543_191# VDD sg13_lv_pmos ad=52.5f pd=0.67u as=0.19115p ps=1.565u w=0.42u l=0.13u
+X43 a_1258_337# a_1693_371# a_998_114# VSS sg13_lv_nmos ad=81f pd=0.81u as=0.1296p ps=1.52u w=0.42u l=0.13u
+.ends
+

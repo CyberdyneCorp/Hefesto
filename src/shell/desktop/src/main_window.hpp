@@ -75,6 +75,7 @@
 #include "console_panel.hpp"
 #include "hefesto/shell/console_session.hpp"
 #include "hefesto/shell/mask_job_host.hpp"
+#include "hefesto/shell/extract_button.hpp"
 #include "hefesto/shell/file_picker_host.hpp"
 #include "hefesto/shell/tcl_console.hpp"
 #include "manager_panels.hpp"
@@ -166,6 +167,12 @@ class MainWindow {
   /// The top bar's Netlist button, driven by SchematicView::netlist_button_view.
   TopButton add_netlist_button(ui::Box& row);
   void refresh_netlist_button();
+  /// M7 (task 16.1, m7_window.cpp): the top bar's Extract button, driven by
+  /// extract_button_view; a click runs `extract all` as a typed line.
+  TopButton add_extract_button(ui::Box& row, std::string_view label);
+  void refresh_extract_button();
+  void report_extract_button() const;
+  [[nodiscard]] ExtractButtonView extract_button() const;
   /// Hides top-bar groups that do not fit the window's width (on resize).
   void fit_top_bar();
   void build_center();
@@ -408,6 +415,7 @@ class MainWindow {
   bool view3d_tab_ = false;
   ui::Painted* view_tabs_widget_ = nullptr;  // the segmented editor-view tabs (owned by painted_)
   ui::Painted* netlist_button_ = nullptr;    // the top bar's Netlist (owned by painted_)
+  ui::Painted* extract_button_ = nullptr;    // M7: the top bar's Extract (owned by painted_)
   void show_view3d_tab(bool on);
   /// A click at `x` on the editor-view tabs: Layout shows the canvas, 3D shows the 3D view or runs render3d.
   void click_view_tab(float x, const std::vector<std::string_view>& tabs, std::size_t tab_3d);

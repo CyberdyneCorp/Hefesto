@@ -532,12 +532,14 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 ### Q-NETLIST-58: The message for a `-S` symbol file that cannot be read
 - Kind: compat-neutral
 - Status: approved 2026-11-23 (user decision M7-17; accepted difference, kept for now)
-- Magic behavior: efSymAddFile calls `perror(name)` when `fopen` fails, so the message is `<file>: <the OS error text>` (`No such file or directory`, `Permission denied`, `Is a directory`, ...), and the parse goes on.
+- Magic behavior: efSymAddFile calls `perror(name)` when `fopen` fails, so the message is `<file>: <the OS error text>` (`No such file or directory`, `Permission denied`, `Not a directory`, ...), and the parse goes on. On a directory `fopen(name, "r")` succeeds (Linux/glibc and macOS) and `fgets` returns NULL at once, so Magic prints nothing and adds no symbol (EFsym.c:104-118).
 - Evidence: extflat/EFsym.c:104-108; Hefesto `src/core/src/extflat/args.cpp` (`ArgParser::add_symbol_file`), `platform::FileSystem::read`
 - As implemented (round R2): Hefesto prints `<file>: No such file or directory` for any file it cannot read, because the read goes through `platform::FileSystem::read`, whose failure does not carry the OS error text.
 - Options: accept the difference now and pass the real error text through `FileSystem::read` later | change `FileSystem` now
 - Recommendation: accept now; the missing-file case, the only one the golden cases use, matches Magic.
 - Resolution: compat-neutral, accepted difference — in both modes an unreadable `-S` file is reported as `<file>: No such file or directory` and the parse goes on; Magic prints the OS error text, which differs for a file that exists but cannot be read (permissions, a directory). Passing the real error text through `FileSystem::read` is a later improvement (`openspec/changes/m7-extraction/tasks.md` 10.6). Spec: `ext-flattening-hierarchy` "Common netlister arguments". Test: `tests/unit/extflat/args_names_test.cpp` "EFArgs -S reads a symbol file in argument order" (`nope: No such file or directory`). Approved 2026-11-23.
+- Note (round R6, 2026-11-27): task 10.6 (workstream CORE, M7 round R6) passes the OS error text through `platform::FileSystem`, so an unreadable `-S` file is reported as `<file>: <the OS perror text>` as in Magic, replacing the fixed `No such file or directory`. The row keeps its kind (compat-neutral): the text is then Magic's in both modes, and the accepted difference closes when 10.6 lands. Landed in round R6 (merged in `m7-round6`): `platform::LocalFileSystem` passes errno to the I/O error and `platform::os_error_text` gives the perror text; tests `tests/unit/extflat/symbol_file_error_test.cpp` (ENOENT, EACCES, EISDIR) and `tests/unit/platform/file_system_test.cpp`; spec `ext-flattening-hierarchy` scenario "An unreadable -S file is reported with the OS error text". The difference is closed in both modes.
+- Correction (round R6 fix pass, 2026-11-27, review of PR #141): the first landing printed `<dir>: Is a directory` for a directory, which Magic never prints (fopen opens a directory; fgets reads nothing), and read the reason back out of the diagnostic text. Now `platform::FileSystem::read_stream` returns the failed fopen's errno as a `std::error_code` and reads a directory (or any other existing non-regular file) as empty; `-S` prints `<file>: <errno text>` only when the open fails (ENOENT, EACCES, ENOTDIR), and nothing for a directory, in both modes. `platform::os_error_text` is removed. Tests: `tests/unit/extflat/symbol_file_error_test.cpp` ("a -S directory read through the local file system adds nothing and says nothing", "a -S path through a plain file is reported as not a directory"), `tests/unit/platform/file_system_test.cpp` (stream reads). A FIFO or device reads as empty instead of blocking in fopen (Magic waits for a FIFO's writer): a hang fix, both modes.
 
 ### Q-NETLIST-59: A missing `.ext` file in ext2spice and ext2sim
 - Kind: quirk
@@ -648,20 +650,22 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: fix (as implemented) | replicate (not reproducible)
 - Recommendation: fix.
 - Resolution: fix — in both modes ResSortByGate's order compares the order in which the nets were first mentioned, with a stable sort, so it is the same on every platform. Spec: `extresist-command` "Net selection and first cutoff". Tests: `tests/unit/extresist/command/cutoff_test.cpp`. Approved 2026-11-25.
-- As implemented (round R5, m7-round5-res; amendment proposed for approval, decision stays fix in both modes): the comparison uses the reverse of the first-mention order (a net mentioned later compares lower), and the sort is glibc's merge sort with Magic's devSortFunc. The comparator part is not address dependent and copies Magic: it puts a gate entry after every entry, another gate entry included, so runs of gate entries come out reversed, which NL-RES-01's `out.t2`/`out.t3` need. The reverse order matches Magic's captures of NL-RES-01, 05 and 06, where the forward order matched only 03. Magic's real order follows heap addresses and no deterministic rule reproduces every capture, so NL-RES-02 and 03 carry a DECIDED deviation under this row (`deviations.toml`). Spec amended: `extresist-command` "Net selection and first cutoff" (the sentence and scenario "Gate entries in reverse list order"). Test: `cutoff_test.cpp` sort_by_gate (expects {0,3,1,4,2,5}; the old stable sort gives {1,4,3,0,5,2}).
+- As implemented (round R5, m7-round5-res; amendment approved 2026-11-27 with the recommended option, decision stays fix in both modes): the comparison uses the reverse of the first-mention order (a net mentioned later compares lower), and the sort is glibc's merge sort with Magic's devSortFunc. The comparator part is not address dependent and copies Magic: it puts a gate entry after every entry, another gate entry included, so runs of gate entries come out reversed, which NL-RES-01's `out.t2`/`out.t3` need. The reverse order matches Magic's captures of NL-RES-01, 05 and 06, where the forward order matched only 03. Magic's real order follows heap addresses and no deterministic rule reproduces every capture, so NL-RES-02 and 03 carry a DECIDED deviation under this row (`deviations.toml`). Spec amended: `extresist-command` "Net selection and first cutoff" (the sentence and scenario "Gate entries in reverse list order"). Test: `cutoff_test.cpp` sort_by_gate (expects {0,3,1,4,2,5}; the old stable sort gives {1,4,3,0,5,2}).
+- Resolution (amendment, approved 2026-11-27): fix, both modes — ResSortByGate's order compares the reverse of the order in which the nets were first mentioned (a net mentioned later compares lower) and sorts with glibc's merge sort and Magic's devSortFunc, so runs of gate entries come out reversed as in Magic; the order is the same on every platform. NL-RES-02 and NL-RES-03 keep their DECIDED deviation under this row. Spec: `extresist-command` "Net selection and first cutoff" (sentence and scenario "Gate entries in reverse list order"). Test: `tests/unit/extresist/command/cutoff_test.cpp` "sort_by_gate groups by gate net, then the other S/D net, gate entries last". Approved 2026-11-27.
 
 ### Q-NETLIST-70: `ext2sim` follows the short mode set by `ext2spice short`
 - Kind: compat-neutral
-- Status: proposed (raised in M7 round R5 by NETLIST as "Q-NETLIST-63"; renumbered at the R5 merge, where Q-NETLIST-63 was taken)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by NETLIST as "Q-NETLIST-63", renumbered at the R5 merge, where Q-NETLIST-63 was taken; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: the short mode lives in EFOutputFlags, which both netlisters share, so `ext2sim` reads with the mode `ext2spice short` set, and `ext2sim default` clears it. A resistor short writes `r A B 0.000000`, a voltage short `N dummy A B 0 0 0 0`.
 - Evidence: extflat/EFbuild.c (efBuildEquiv); ext2sim/ext2sim.c:495; capture-only probe NL-P02 (`tests/data/extflat/visit_probe`, golden-capture run 45861111906)
 - As implemented (round R5), both modes: as Magic; with magic-compat OFF the voltage short's node is `dummy#<n>` (Q-NETLIST-60). Hefesto's ext2sim merged shorted ports before. Tests: `tests/unit/netlist/sim/short_ports_test.cpp`.
 - Options: replicate in both modes (as implemented) | compat (OFF: ext2sim keeps its own short mode)
 - Recommendation: replicate. It is the documented shared option state, and the probe pins Magic's text.
+- Resolution: replicate (both modes; proposed as compat-neutral, recorded as replicate) — `ext2sim` reads with the short mode that `ext2spice short` set in the session, as Magic's shared EFOutputFlags do, and `ext2sim default` clears it; a resistor short writes `r A B 0.000000`, a voltage short `N dummy A B 0 0 0 0` (with `magic-compat` OFF the node is `dummy#<n>`, Q-NETLIST-60). Spec: `netlist-sim` "Command options and defaults" (sentence citing the row; scenarios "ext2sim honours the ext2spice short mode" and "ext2sim default clears the shared short mode"). Tests: `tests/unit/netlist/sim/short_ports_test.cpp` "ext2sim builds the short devices ext2spice short asks for; ext2sim default clears it" (both modes), "ext2sim writes the shared short node dummy with magic-compat ON", "ext2sim writes each short device's own node dummy#<n> with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-NETLIST-71: The `extresist` driver of a parallel device group
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: the driver choice sums the W/L of parallel devices in an `int` (totWL), so devices below W/L 1 drive nothing, and a group that runs to the end of the device list drives from its last-but-one device.
 - Evidence: resis/ResRex.c (ResCheckSimpleNode/ResSortByGate's driver loop)
 - As implemented (round R5): magic-compat ON as Magic; OFF sums in float and uses the last device. Tests: `tests/unit/extresist/command/run_test.cpp` "narrow devices drive nothing with magic-compat ON" / "... drive their net with magic-compat OFF", "a parallel group at the end of the list drives from its last-but-one device with magic-compat ON".
@@ -669,50 +673,55 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 - Spec: `extresist-command` "Net selection and first cutoff" (rule and a scenario per mode, R5 fix pass).
+- Resolution: compat — with `magic-compat` ON the W/L of a parallel group is summed as Magic's `int totWL` (so devices below W/L 1 drive nothing) and a group that runs to the end of the device list drives from its last-but-one device; with it OFF the sum is in floating point and the group's last device drives. The int sum saturates in both modes, and the driver is chosen from the list as ResSortByGate sorted it once. Spec: `extresist-command` "Net selection and first cutoff" (rule and a scenario per mode, citing the row). Tests: `tests/unit/extresist/command/run_test.cpp` "narrow devices drive nothing with magic-compat ON" / "narrow devices drive their net with magic-compat OFF", "a parallel group at the end of the list drives from its last-but-one device with magic-compat ON" (checks both modes); `cutoff_test.cpp` "a W/L sum beyond the int range saturates", "the driver is chosen from the list as sorted once". Approved 2026-11-27.
 
 ### Q-NETLIST-72: The second cutoff reads the previous net's delay
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: with simplification and the lump file both off, no delay is computed, and the second cutoff reads `rg_Tdi` as it stands. ResInit (called by CmdExtResis for every option, ResRex.c:236, :323) resets it to 0 at the start of every `extresist` command, and nothing sets it during such a run, so the delay test reads 0 and withholds every net with C > 0 when mindelay > 0.
 - Evidence: resis/ResRex.c (ResInit, CmdExtResis, ResExtractNet's second cutoff), resis/ResSimple.c:965-1020
 - As implemented (round R5, corrected in the R5 fix pass): magic-compat ON reads the delay the run's last simplified net left, 0 at the start of every run (it was kept for the session, so a later run read an earlier run's delay); OFF applies no delay cutoff to such a net. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads ResInit's zero delay with magic-compat ON" / "... applies no delay test without a delay with magic-compat OFF" (a simplified run, then a run with simplification off).
 - Spec: `extresist-command` "Second cutoff after extraction" (sentence and a scenario per mode, R5 fix pass).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
+- Resolution: compat — with `magic-compat` ON a net whose run neither simplifies nor writes the lump file is tested against the delay the run's last simplified net left, 0 (ResInit) at the start of every `extresist` command; with it OFF no delay cutoff applies to such a net. Spec: `extresist-command` "Second cutoff after extraction" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "the second cutoff reads ResInit's zero delay with magic-compat ON" / "the second cutoff applies no delay test without a delay with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-NETLIST-73: The FastHenry height of a node
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: the node's height is taken from its last non-contact resistor, although the comment says the first.
 - Evidence: resis/ResPrint.c (ResPrintFHNodes)
 - As implemented (round R5): magic-compat ON takes the last; OFF the first. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (height per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 - Spec: `extresist-output` "FastHenry geometry file" (sentence and a scenario per mode, R5 fix pass).
+- Resolution: compat — with `magic-compat` ON a FastHenry node's height is taken from its last non-contact resistor, as Magic; with it OFF from the first, as Magic's comment says. Spec: `extresist-output` "FastHenry geometry file" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "a FastHenry node's height per mode". Approved 2026-11-27.
 
 ### Q-NETLIST-74: ResAlignNodes skips the last resistor
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: ResAlignNodes' loop stops before the last resistor, so that resistor is never aligned.
 - Evidence: resis/ResPrint.c (ResAlignNodes)
 - As implemented (round R5): magic-compat ON as Magic; OFF aligns every resistor. Tests: `tests/unit/extresist/output/fasthenry_test.cpp` (node alignment per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 - Spec: `extresist-output` "Geometry centerlines" (sentence and a scenario per mode, R5 fix pass; "FastHenry geometry file" refers to it).
+- Resolution: compat — with `magic-compat` ON ResAlignNodes skips the last resistor, as Magic; with it OFF every resistor is aligned. Spec: `extresist-output` "Geometry centerlines" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extresist/output/fasthenry_test.cpp` "node alignment skips the last resistor with magic-compat ON" / "node alignment moves the ends of every resistor with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-NETLIST-75: A failed `extresist box` leaves every option off
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESCMD, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: RES_BOX returns on a failure without restoring ResOptionsFlags, so every on/off setting reads off afterwards.
 - Evidence: resis/ResRex.c (CmdExtResis, RES_BOX)
 - As implemented (round R5): magic-compat ON as Magic; OFF keeps the settings. Tests: `tests/unit/extresist/output/geometry_run_test.cpp` (box failure per mode).
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 - Spec: `extresist-command` "Command options" (sentence and a scenario per mode, R5 fix pass).
+- Resolution: compat — with `magic-compat` ON an `extresist box` that finds no net leaves every on/off setting off, as Magic's RES_BOX; with it OFF the settings are restored. Spec: `extresist-command` "Command options" (sentence and a scenario per mode, citing the row). Tests: `tests/unit/extresist/output/geometry_run_test.cpp` "a failed extresist box clears the settings with magic-compat ON" / "a failed extresist box keeps the settings with magic-compat OFF". Approved 2026-11-27.
 
 ### Q-NETLIST-76: Devices in subcells are painted in the subcell's own coordinates
 - Kind: compat
-- Status: proposed (raised in M7 round R5 by RESNET, 2026-11-26; implemented per the standing rule)
+- Status: approved 2026-11-27 (proposed in M7 round R5 by RESNET, 2026-11-26; implemented per the standing rule; approved with the recommended option)
 - Magic behavior: resMakeDevFunc paints the devices found by DBTreeSrTiles without the search's transform, so a device in a moved or rotated subcell lands at the wrong place.
 - Evidence: resis/ResMain.c (DBTreeSrTiles, resMakeDevFunc)
 - As implemented (round R5): magic-compat ON paints untransformed; OFF transforms to the root. The descent stops past 64 hierarchy levels in both modes (a crafted-input limit under the standing rule of 2026-11-25, approved). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "... at its place with magic-compat OFF", "the subcell device search stops 64 uses down" (both modes).
@@ -720,3 +729,14 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Options: compat (as implemented) | replicate
 - Recommendation: compat.
 - Spec: `extresist-network` "Net geometry collection" (the stale "not painted" sentence replaced; a scenario per mode and one for the array search, R5 fix pass).
+- Resolution: compat — with `magic-compat` ON devices found in subcells are painted in the subcell's own coordinates, as Magic's resMakeDevFunc; with it OFF they are transformed to the root. In both modes the subcell device search stops 64 hierarchy levels down (a crafted-input limit, approved under the standing rule of 2026-11-25) and visits only the array elements DBArrayOverlap gives for the search area. Spec: `extresist-network` "Net geometry collection" (a scenario per mode and one for the array search, citing the row). Tests: `tests/unit/extresist/network/build_test.cpp` "a device in a subcell is painted in its own coordinates with magic-compat ON" / "a device in a subcell is painted at its place with magic-compat OFF", "the subcell device search stops 64 uses down", "the subcell device search visits only the array elements under the device". Approved 2026-11-27.
+
+### Q-NETLIST-77: An empty line before the common usage text when the tool's parser rejects a flag
+- Kind: compat-neutral
+- Status: proposed 2026-11-27 (found by golden case NL-FLAT-20 in M7 round R6; implemented in both modes in the R6 integration per the standing rule; needs a user decision)
+- Magic behavior: when a netlister's own flag parser rejects a flag (`ext2spice -T`), EFArgs prints `\n` with TxError and then the common usage text (`Standard arguments: ...`); for a tool without a parser it goes to the usage text directly. The command still returns TCL_OK.
+- Evidence: extflat/EFargs.c:284-291; golden case NL-FLAT-20 (`expected/stderr.txt`)
+- As implemented (round R6 integration): in both modes the usage diagnostic starts with an empty line when the tool's parser rejected the flag (`src/core/src/extflat/args.cpp` `ArgParser::extra_flag`). Test: `tests/unit/extflat/args_names_test.cpp` "Q-NETLIST-77: a flag the tool's parser rejects is followed by an empty line, then the usage text" (the parse takes no compat setting).
+- Options: compat-neutral (as implemented: Magic's text in both modes) | omit the empty line with magic-compat OFF
+- Recommendation: compat-neutral. It is message text only; NL-FLAT-20 replays byte-exact.
+- Spec: `ext-flattening-hierarchy` "Common netlister arguments" (sentence and scenario "A flag the tool rejects is followed by an empty line").

@@ -51,6 +51,16 @@ diag::Outcome<std::string> MemoryFileSystem::read(const Path& path) {
   return it->second;
 }
 
+StreamRead MemoryFileSystem::read_stream(const Path& path) {
+  {
+    const std::scoped_lock lock{mutex_};
+    if (is_directory_locked(normal(path))) {
+      return {};  // fopen opens a directory; nothing is read from it
+    }
+  }
+  return FileSystem::read_stream(path);
+}
+
 diag::Status MemoryFileSystem::write_atomic(const Path& path, std::string_view data) {
   const std::scoped_lock lock{mutex_};
   files_[normal(path)] = std::string{data};

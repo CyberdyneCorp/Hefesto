@@ -1,0 +1,27 @@
+timestamp 1676385511
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "X" 2 263 414 316 589 m1
+port "A" 1 57 386 136 452 m1
+port "VDD" 3 0 712 384 800 m1
+port "VSS" 4 0 -44 384 44 m1
+node "X" 1 198.643 263 414 m1 0 0 0 0 28052 1212 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "a_40_152#" 2 261.593 40 152 ndif 0 0 0 0 30165 1540 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 99.4292 57 386 m1 0 0 0 0 5214 290 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 1 121.42 0 712 m1 0 0 0 0 40760 1212 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 1 0 0 -44 m1 0 0 0 0 42292 1284 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "X" "VDD" 91.8819
+cap "a_40_152#" "VDD" 218.301
+cap "A" "VDD" 81.6013
+cap "X" "a_40_152#" 252.986
+cap "X" "A" 1.42749
+cap "a_40_152#" "A" 243.476
+device msubckt sg13_lv_nmos 218 114 219 115 l=26 w=148 "VSS" "a_40_152#" 52 0 "VSS" 148 5950,232 "X" 148 11544,452
+device msubckt sg13_lv_nmos 108 152 109 153 l=26 w=110 "VSS" "A" 52 0 "a_40_152#" 110 7480,356 "VSS" 110 5950,232
+device msubckt sg13_lv_pmos 218 412 219 413 l=26 w=224 "VDD" "a_40_152#" 52 0 "VDD" 224 8456,308 "X" 224 16800,598
+device msubckt sg13_lv_pmos 108 468 109 469 l=26 w=168 "VDD" "A" 52 0 "a_40_152#" 168 11424,472 "VDD" 168 8456,308

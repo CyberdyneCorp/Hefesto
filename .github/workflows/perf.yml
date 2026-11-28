@@ -128,6 +128,18 @@ on:
       - src/core/src/schem/**
       - bench/schem/**
       - scripts/gen_schem_hierarchy.py
+      - src/core/include/hefesto/extract/**
+      - src/core/src/extract/**
+      - src/core/include/hefesto/extflat/**
+      - src/core/src/extflat/**
+      - src/core/include/hefesto/netlist/**
+      - src/core/src/netlist/**
+      - src/core/include/hefesto/extresist/**
+      - src/core/src/extresist/**
+      - src/core/include/hefesto/antenna/**
+      - src/core/src/antenna/**
+      - bench/extract/**
+      - bench/extresist/**
       - .github/workflows/perf.yml
   pull_request:
     paths:
@@ -171,6 +183,18 @@ on:
       - src/core/src/schem/**
       - bench/schem/**
       - scripts/gen_schem_hierarchy.py
+      - src/core/include/hefesto/extract/**
+      - src/core/src/extract/**
+      - src/core/include/hefesto/extflat/**
+      - src/core/src/extflat/**
+      - src/core/include/hefesto/netlist/**
+      - src/core/src/netlist/**
+      - src/core/include/hefesto/extresist/**
+      - src/core/src/extresist/**
+      - src/core/include/hefesto/antenna/**
+      - src/core/src/antenna/**
+      - bench/extract/**
+      - bench/extresist/**
       - .github/workflows/perf.yml
   schedule:
     - cron: "41 3 * * 2"
@@ -1510,5 +1534,406 @@ jobs:
         with:
           name: schem-bench
           path: schem-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # m7-extraction design D23, tasks 18.1 and 18.2 (Open Question 5 decided (a)): `extract all`, flat `ext2spice lvs`,
+  # `ext2spice hierarchy on` and `ext2sim` on the gds-bench block (bench/extract/extract_bench.py), one job per
+  # workload, under callgrind for Hefesto (GCC 14 Release, debug info, frame pointers) and Magic 8.3.694 (reference
+  # image), the two tools' base and op runs side by side (four processes on the runner's four CPUs); extract_gate.py
+  # fails when Hefesto's instructions (op minus base) exceed Magic's or, once recorded in bench/extract/baseline.json,
+  # that baseline + 2 %. Each run gets its own copy of the inputs (the runs write .ext files beside the cells).
+  # Selected on pull requests by its own path filter. Results: the job summary and the artifact
+  # "extract-bench-<workload>" (the callgrind files, from which `extract_gate.py --record` records the baselines).
+  extract-bench:
+    name: Extraction instruction gate vs Magic (${{ matrix.workload }}, callgrind)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        workload: [extract, spice-flat, spice-hier, sim]
+    env:
+      WORKLOAD: ${{ matrix.workload }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select
+        id: select
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=true
+          if [ "$EVENT" = "pull_request" ]; then
+            run=false
+            if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq \
+              '^(src/core/(include/hefesto|src)/(extract|extflat|netlist|extresist|antenna)/|bench/(extract|extresist)/|bench/drc/drc_bench\.py|bench/gds/gds_gate\.py|\.github/workflows/perf\.yml)'; then
+              run=true
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "::notice::extract-bench ($WORKLOAD): $run"
+
+      - uses: actions/setup-python@v5
+        if: steps.select.outputs.run == 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers and valgrind
+        if: steps.select.outputs.run == 'true'
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+
+      - name: Unit tests of the bench scripts
+        if: steps.select.outputs.run == 'true'
+        run: python3 -m unittest discover -s bench/extract/tests -v
+
+      - name: Cache keys of the reference data
+        if: steps.select.outputs.run == 'true'
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        if: steps.select.outputs.run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
+        if: steps.select.outputs.run == 'true'
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify sky130
+        if: steps.select.outputs.run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        if: steps.select.outputs.run == 'true'
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Scripts of the workload
+        if: steps.select.outputs.run == 'true'
+        run: |
+          python3 bench/extract/extract_bench.py --emit profile --workload "$WORKLOAD"
+          mkdir -p extract-bench
+          {
+            echo "## Extraction and netlisting performance ($WORKLOAD)"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, base and op scripts (Hefesto GCC build and Magic, side by side)
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          cli="$PWD/build/linux-release/src/cli/hefesto-cli"
+          out="$PWD/extract-bench"
+          pids=()
+          for kind in base op; do
+            cp -r profile "run.hefesto.$kind"
+            (cd "run.hefesto.$kind" && valgrind --tool=callgrind \
+              --callgrind-out-file="$out/callgrind.hefesto.$WORKLOAD.$kind" \
+              "$cli" --no-log --magic -dnull -noconsole "$WORKLOAD-hefesto-$kind.tcl" \
+              > "$out/hefesto.$WORKLOAD.$kind.log" 2>&1) &
+            pids+=("$!")
+          done
+          # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
+          docker run --rm -e WORKLOAD -v "$PWD/profile:/work:ro" -v "$out:/out" hefesto-golden:ci bash -c '
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1 || exit 1
+              run() {
+                dir="/tmp/cg.$1"
+                mkdir -p "$dir"
+                cp -r /work "/tmp/run.$1"
+                cd "/tmp/run.$1" || return 1
+                valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="$dir/out.%p" \
+                  magic -dnull -noconsole "$WORKLOAD-magic-$1.tcl" > "/out/magic.$WORKLOAD.$1.log" 2>&1 || return 1
+                cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.$WORKLOAD.$1"
+              }
+              run base & base=$!
+              run op & op=$!
+              status=0
+              wait $base || status=1
+              wait $op || status=1
+              chmod -R a+rwX /out
+              exit $status' &
+          pids+=("$!")
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
+
+      - name: Instructions by function (information)
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd extract-bench
+          python3 ../bench/drc/callgrind_pass_diff.py "callgrind.hefesto.$WORKLOAD.base" \
+            "callgrind.hefesto.$WORKLOAD.op" --top 30 > "functions-hefesto-$WORKLOAD.txt"
+          docker run --rm -e WORKLOAD -v "$PWD:/out" -v "$PWD/../bench/drc:/bench:ro" -w /out hefesto-golden:ci bash -c '
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1
+              python3 /bench/callgrind_pass_diff.py "callgrind.magic.$WORKLOAD.base" "callgrind.magic.$WORKLOAD.op" \
+                --top 30 > "functions-magic-$WORKLOAD.txt"
+              chmod a+rw functions-magic-*.txt'
+
+      - name: Instruction gate (Magic's count, then the baseline + 2 %)
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          status=0
+          python3 bench/extract/extract_gate.py extract-bench --workload "$WORKLOAD" | tee extract-bench/gate.txt \
+            || status=$?
+          {
+            echo "## Extraction instruction gate (op minus base, callgrind)"
+            echo
+            cat extract-bench/gate.txt
+            for f in extract-bench/functions-*.txt; do
+              [ -s "$f" ] || continue
+              echo
+              echo "<details><summary>$(basename "$f" .txt)</summary>"
+              echo
+              echo '```'
+              head -32 "$f"
+              echo '```'
+              echo "</details>"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Wall time against Magic (same runner, information)
+        if: always() && steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          status=0
+          python3 bench/extract/extract_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --magic-image hefesto-golden:ci --workload "$WORKLOAD" --repeat 1 \
+            --json extract-bench/extract-bench.json --outputs extract-bench/outputs \
+            | tee extract-bench/timing.txt || status=$?
+          {
+            echo
+            echo "## Extraction wall time, op minus base (information)"
+            echo '```'
+            cat extract-bench/timing.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.select.outputs.run == 'true'
+        with:
+          name: extract-bench-${{ matrix.workload }}
+          path: extract-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # m7-extraction design D23, tasks 18.1 and 18.2: `extresist all` on the placed-and-routed sky130 DEF block of
+  # bench/lefdef/defgen.py (500 cells; the .mag layouts, after `def read` and `extract all`), gated at its own
+  # baseline (bench/extresist/baseline.json) + 2 % by bench/lefdef/baseline_gate.py; Magic's count is information.
+  # Hefesto's and Magic's base and op runs run side by side under callgrind.
+  extresist-bench:
+    name: extresist instruction gate (callgrind; Magic for information)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select
+        id: select
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run=true
+          if [ "$EVENT" = "pull_request" ]; then
+            run=false
+            if git diff --name-only "$BASE_SHA...$HEAD_SHA" | grep -Eq \
+              '^(src/core/(include/hefesto|src)/(extract|extflat|netlist|extresist|antenna)/|bench/(extract|extresist)/|bench/lefdef/(defgen|lefdef_bench|baseline_gate)\.py|\.github/workflows/perf\.yml)'; then
+              run=true
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "::notice::extresist-bench: $run"
+
+      - uses: actions/setup-python@v5
+        if: steps.select.outputs.run == 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers and valgrind
+        if: steps.select.outputs.run == 'true'
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.* && sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+
+      - name: Unit tests of the bench scripts
+        if: steps.select.outputs.run == 'true'
+        run: python3 -m unittest discover -s bench/extresist/tests -v
+
+      - name: Cache keys of the reference data
+        if: steps.select.outputs.run == 'true'
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        if: steps.select.outputs.run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Restore sky130-lef
+        if: steps.select.outputs.run == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+      - uses: actions/cache/restore@v4
+        if: steps.select.outputs.run == 'true'
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
+        if: steps.select.outputs.run == 'true'
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify sky130 and sky130-lef
+        if: steps.select.outputs.run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 sky130-lef --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        if: steps.select.outputs.run == 'true'
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Scripts of the workload
+        if: steps.select.outputs.run == 'true'
+        run: |
+          python3 bench/extresist/extresist_bench.py --emit profile
+          mkdir -p extresist-bench
+          {
+            echo "## extresist performance"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, base and op scripts (Hefesto GCC build and Magic, side by side)
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          cli="$PWD/build/linux-release/src/cli/hefesto-cli"
+          out="$PWD/extresist-bench"
+          pids=()
+          for kind in base op; do
+            cp -r profile "run.hefesto.$kind"
+            (cd "run.hefesto.$kind" && valgrind --tool=callgrind \
+              --callgrind-out-file="$out/callgrind.hefesto.extresist.$kind" \
+              "$cli" --no-log --magic -dnull -noconsole "extresist-hefesto-$kind.tcl" \
+              > "$out/hefesto.extresist.$kind.log" 2>&1) &
+            pids+=("$!")
+          done
+          # Magic's count is information: its failure does not fail the step.
+          docker run --rm -v "$PWD/profile:/work:ro" -v "$out:/out" hefesto-golden:ci bash -c '
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1 || exit 1
+              run() {
+                dir="/tmp/cg.$1"
+                mkdir -p "$dir"
+                cp -r /work "/tmp/run.$1"
+                cd "/tmp/run.$1" || return 1
+                valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="$dir/out.%p" \
+                  magic -dnull -noconsole "extresist-magic-$1.tcl" > "/out/magic.extresist.$1.log" 2>&1 || return 1
+                cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.extresist.$1"
+              }
+              run base & base=$!
+              run op & op=$!
+              wait $base
+              wait $op
+              chmod -R a+rwX /out' &
+          magic=$!
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          wait "$magic" || echo "::warning::Magic's extresist profile failed (information only)"
+          exit "$status"
+
+      - name: Instructions by function (information)
+        if: steps.select.outputs.run == 'true'
+        continue-on-error: true
+        run: |
+          cd extresist-bench
+          python3 ../bench/drc/callgrind_pass_diff.py callgrind.hefesto.extresist.base \
+            callgrind.hefesto.extresist.op --top 30 > functions-hefesto-extresist.txt
+
+      - name: Instruction gate (the baseline + 2 %)
+        if: steps.select.outputs.run == 'true'
+        shell: bash
+        run: |
+          status=0
+          python3 bench/lefdef/baseline_gate.py extresist-bench --baseline bench/extresist/baseline.json \
+            --tool hefesto --reference magic --workload extresist | tee extresist-bench/gate.txt || status=$?
+          {
+            echo "## extresist instruction gate (op minus base, callgrind)"
+            echo
+            cat extresist-bench/gate.txt
+            if [ -s extresist-bench/functions-hefesto-extresist.txt ]; then
+              echo
+              echo "<details><summary>functions-hefesto-extresist</summary>"
+              echo
+              echo '```'
+              head -32 extresist-bench/functions-hefesto-extresist.txt
+              echo '```'
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Wall time against Magic (same runner, information)
+        if: always() && steps.select.outputs.run == 'true'
+        shell: bash
+        continue-on-error: true
+        run: |
+          python3 bench/extresist/extresist_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --magic-image hefesto-golden:ci --repeat 1 --json extresist-bench/extresist-bench.json \
+            --outputs extresist-bench/outputs | tee extresist-bench/timing.txt
+          {
+            echo
+            echo "## extresist wall time, op minus base (information)"
+            echo '```'
+            cat extresist-bench/timing.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.select.outputs.run == 'true'
+        with:
+          name: extresist-bench
+          path: extresist-bench
           if-no-files-found: ignore
           retention-days: 90

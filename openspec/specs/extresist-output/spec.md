@@ -120,7 +120,7 @@ With `fasthenry`, the file `<cell>.fh` SHALL be written. All lengths are multipl
 
 2. **Per net.**
    - An empty line, then `* List of nodes in network`.
-   - One line per node: `N<name or id> x=%1.2f y=%1.2f z=%1.2f`. Unnamed nodes get ids from a counter starting at 1 whose scope depends on the `magic-compat` setting (Q-NETLIST-40, resolution: compat): with it ON (the default) it restarts for each net, as in Magic; with it OFF it runs across the whole `.fh` file, so every node name is unique. z is the layer height times o, or 0.1 × the plane order when the height is 0. The layer is that of the node's last non-contact resistor with `magic-compat` ON, as Magic's loop leaves it although its comment says the first; with it OFF it is the first (proposed Q-NETLIST-73). For a node that touches only contact resistors Magic uses an unassigned height (Q-NETLIST-27).
+   - One line per node: `N<name or id> x=%1.2f y=%1.2f z=%1.2f`. Unnamed nodes get ids from a counter starting at 1 whose scope depends on the `magic-compat` setting (Q-NETLIST-40, resolution: compat): with it ON (the default) it restarts for each net, as in Magic; with it OFF it runs across the whole `.fh` file, so every node name is unique. z is the layer height times o, or 0.1 × the plane order when the height is 0. The layer is that of the node's last non-contact resistor with `magic-compat` ON, as Magic's loop leaves it although its comment says the first; with it OFF it is the first (Q-NETLIST-73). For a node that touches only contact resistors Magic uses an unassigned height (Q-NETLIST-27).
    - Multi-via contacts add per-via nodes `N<n>_<i>_<j>` and an `.equiv` line.
    - An empty line, `* List of externally-connected ports`, and then `.external` followed by the first two named nodes. Further named nodes go on a line `* Warning! external nodes not recorded:`. Then two newlines.
    - `* Segments connecting nodes in network`, then `E<k> N<a> N<b> w=%1.2f h=%1.2f` per resistor. Contact resistors use the CIF via width/100; others use rr_width × o and thickness × o, with thickness 0.05 when the thickness is 0. Multi-via contacts produce one segment per via. k is a counter starting at 1, per net with `magic-compat` ON and per file with it OFF (Q-NETLIST-40). The geometry output uses the same counters.
@@ -151,15 +151,15 @@ Compatibility: exact
 #### Scenario: Node height with magic-compat ON
 - **GIVEN** `magic-compat` ON and named node `a` with a poly resistor and then a metal1 resistor
 - **WHEN** the node line is written
-- **THEN** z is metal1's height, `Na x=0.00 y=0.00 z=0.10` (proposed Q-NETLIST-73)
+- **THEN** z is metal1's height, `Na x=0.00 y=0.00 z=0.10` (Q-NETLIST-73)
 
 #### Scenario: Node height with magic-compat OFF
 - **GIVEN** `magic-compat` OFF and the same node
 - **WHEN** the node line is written
-- **THEN** z is poly's, `Na x=0.00 y=0.00 z=0.00` (proposed Q-NETLIST-73)
+- **THEN** z is poly's, `Na x=0.00 y=0.00 z=0.00` (Q-NETLIST-73)
 
 ### Requirement: Geometry centerlines
-With `geometry`, no file SHALL be written. For each non-contact resistor of each processed net, a line element SHALL be added to the layout window from the first node's location to the second node's location. It is named `N<n1>_<n2>`, where unnamed nodes take sequential ids (a new id at every visit of an unnamed node, as Magic assigns them), and drawn in the first yellow style. The element's ends are the corners of the canonical rectangle of the two node locations. The node coordinates are first aligned to the resistor centerline: y for east-west resistors, x for north-south resistors, skipping diagonal ones. With `magic-compat` ON the last resistor of the network's list is not aligned, as Magic's ResAlignNodes loop stops before it; with it OFF every resistor is (proposed Q-NETLIST-74). Without a layout window, nothing SHALL be drawn.
+With `geometry`, no file SHALL be written. For each non-contact resistor of each processed net, a line element SHALL be added to the layout window from the first node's location to the second node's location. It is named `N<n1>_<n2>`, where unnamed nodes take sequential ids (a new id at every visit of an unnamed node, as Magic assigns them), and drawn in the first yellow style. The element's ends are the corners of the canonical rectangle of the two node locations. The node coordinates are first aligned to the resistor centerline: y for east-west resistors, x for north-south resistors, skipping diagonal ones. With `magic-compat` ON the last resistor of the network's list is not aligned, as Magic's ResAlignNodes loop stops before it; with it OFF every resistor is (Q-NETLIST-74). Without a layout window, nothing SHALL be drawn.
 Compatibility: behavioral
 (Magic ref: resis/ResPrint.c:757-814, resis/ResRex.c:2034-2091)
 
@@ -171,9 +171,9 @@ Compatibility: behavioral
 #### Scenario: Last resistor not aligned with magic-compat ON
 - **GIVEN** `magic-compat` ON and a network whose only resistor is east-west with centerline y = 2, between nodes at (0,0) and (100,2)
 - **WHEN** the nodes are aligned
-- **THEN** the node at (0,0) stays there (proposed Q-NETLIST-74)
+- **THEN** the node at (0,0) stays there (Q-NETLIST-74)
 
 #### Scenario: Last resistor aligned with magic-compat OFF
 - **GIVEN** `magic-compat` OFF and the same network
 - **WHEN** the nodes are aligned
-- **THEN** the nodes are at (0,2) and (100,2) (proposed Q-NETLIST-74)
+- **THEN** the nodes are at (0,2) and (100,2) (Q-NETLIST-74)

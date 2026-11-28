@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The extraction-style subset of the `extract` section reader (see
-// style_reader.hpp).
-// Owner: EXTSUB (openspec/changes/archive/2026-11-22-m6-lef-def-oasis/design.md D10); the
-// height subset (`lambda`, `units`, `planeorder`, `noplaneordering`,
-// `height`, finish_heights): TECH (openspec/changes/m10-3d-view/design.md D5).
-// The full read (Subset::all, load_styles) and the keyword handlers it
-// calls from the switch of apply() (rule_context.hpp): EXTTECH
-// (openspec/changes/m7-extraction/design.md D7).
+// The `extract` section reader (see style_reader.hpp): ExtTechLine's
+// keyword table as a dispatch table (design D7: keyword, argument range,
+// usage, when the line applies, handler), the style selection of
+// ExtLoadStyle and the end-of-style pass. The handlers of the rule
+// keywords live in one file per group (rule_context.hpp).
+//
+// Ported from Magic 8.3.694 (fc5daa9e) extract/ExtTech.c keyTable,
+// ExtTechLine and extTechFinalStyle, Copyright (C) 1985, 1990 Regents of
+// the University of California (see THIRD_PARTY_NOTICES.md).
+//
+// Owner: EXTTECH (openspec/changes/m7-extraction/design.md D7), on the
+// pass M6's EXTSUB and M10's TECH (`lambda`, `units`, `planeorder`,
+// `noplaneordering`, `height`, finish_heights) wrote.
 
 #include "style_reader.hpp"
 
@@ -19,6 +24,7 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/extract/tech/height_view.hpp"
 #include "rule_context.hpp"
 
 namespace hefesto::extract::detail {
@@ -40,52 +46,29 @@ enum class Key : std::uint8_t {
   step, style, substrate, units, variants,
 };
 
+class StyleReader;
+using Handler = void (*)(StyleReader&, const Tokens&);
+
+// When ExtTechLine applies a keyword's line.
+enum class Scope : std::uint8_t {
+  always,    // every line of the section (`style`)
+  loading,   // in the selected style, also while a `variants` line suspends it (`variants`)
+  selected,  // in the selected style, unless a `variants` line suspends it (every other keyword)
+};
+
+// One entry of the dispatch table (design D7): keyTable's name, argument
+// range and usage, when the line applies, and its handler.
 struct Keyword {
   std::string_view name;
   Key key;
   std::size_t min_args;
   std::size_t max_args;
   std::string_view usage;
+  Scope scope;
+  Handler handler;
 };
 
-// keyTable of ExtTech.c, in its order.
-constexpr std::array<Keyword, 34> kKeywords{{
-    {"areacap", Key::areacap, 3, 3, "types capacitance"},
-    {"connect", Key::connect, 3, 3, "types1 types1"},
-    {"contact", Key::contact, 3, 6, "type resistance"},
-    {"cscale", Key::cscale, 2, 2, "capacitance-scalefactor"},
-    {"defaultareacap", Key::defaultareacap, 4, 6, "types plane capacitance"},
-    {"defaultoverlap", Key::defaultoverlap, 6, 6, "types plane otertypes otherplane capacitance"},
-    {"defaultperimeter", Key::defaultperimeter, 4, 6, "types plane capacitance"},
-    {"defaultsideoverlap", Key::defaultsideoverlap, 6, 6, "types plane othertypes otherplane capacitance"},
-    {"defaultsidewall", Key::defaultsidewall, 4, 5, "types plane capacitance [offset]"},
-    {"device", Key::device, 4, 10, "dev-type dev-name types options..."},
-    {"devresist", Key::devresist, 4, 4, "type region ohms-per-square"},
-    {"disconnect", Key::disconnect, 3, 3, "types1 types1"},
-    {"fet", Key::fet, 8, 9,
-     "types terminal-types min-#-terminals name [subs-types] subs-node gscap gate-chan-cap"},
-    {"fetresist", Key::fetresist, 4, 4, "type region ohms-per-square"},
-    {"fringeshieldhalo", Key::fringeshieldhalo, 2, 2, "distance"},
-    {"height", Key::height, 4, 4, "type height-above-subtrate thickness"},
-    {"antenna", Key::antenna, 4, 6, "type [calc-type] [antenna-ratio-proportional] antenna-ratio-const"},
-    {"model", Key::model, 2, 3, "partial-cumulative [area-sidewall]"},
-    {"tiedown", Key::tiedown, 2, 2, "types"},
-    {"lambda", Key::lambda, 2, 2, "units-per-lambda"},
-    {"overlap", Key::overlap, 4, 5, "toptypes bottomtypes capacitance [shieldtypes]"},
-    {"perimc", Key::perimc, 4, 4, "intypes outtypes capacitance"},
-    {"planeorder", Key::planeorder, 3, 3, "plane index"},
-    {"noplaneordering", Key::noplaneordering, 1, 1, "(no arguments needed)"},
-    {"resist", Key::resist, 3, 4, "types resistance"},
-    {"rscale", Key::rscale, 2, 2, "resistance-scalefactor"},
-    {"sidehalo", Key::sidehalo, 2, 2, "distance"},
-    {"sideoverlap", Key::sideoverlap, 5, 6, "intypes outtypes ovtypes capacitance [shieldtypes]"},
-    {"sidewall", Key::sidewall, 6, 7, "intypes outtypes neartypes fartypes capacitance [offset]"},
-    {"step", Key::step, 2, 2, "size"},
-    {"style", Key::style, 2, 4, "stylename"},
-    {"substrate", Key::substrate, 3, 5, "types plane [subs-node]"},
-    {"units", Key::units, 2, 2, "lambda|microns"},
-    {"variants", Key::variants, 2, 2, "style,..."},
-}};
+constexpr std::size_t kKeywordCount = 34;
 
 enum class Dev : std::uint8_t { mosfet, bjt, cap, caprev, res, diode, pdiode, ndiode, subckt, rsubckt, msubckt,
                                csubckt, dsubckt, veriloga };
@@ -111,7 +94,8 @@ constexpr char ascii_lower(char c) noexcept {
   return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
 }
 
-// LookupStruct over a table of lower-case names.
+// LookupStruct over a table of lower-case names: an exact match wins, a
+// unique prefix matches, an ambiguous prefix matches nothing.
 template <typename T, std::size_t N>
 const T* lookup(const std::array<T, N>& table, std::string_view word) {
   const T* match = nullptr;
@@ -171,12 +155,10 @@ class StyleReader {
  public:
   StyleReader(const tech::Technology& tech, diag::DiagnosticSink& sink, const ReadOptions& options)
       : tech_(tech), sink_(sink), target_(options.style), report_(options.report),
-        dscale_(options.microns_per_lambda),
         ctx_{tech_, style_, mentioned_, types1_, heights_.plane_order, seen_plane_order_,
              [this](std::string_view code, std::string text, Print print) {
                report(code, std::move(text), Subset::all, print);
              }} {
-    types_.active = all_but_space_and_drc();
     heights_.plane_order.assign(tech.plane_count(), kNoPlaneOrder);
     init_style(style_, tech, options.magic_compat);
   }
@@ -186,15 +168,14 @@ class StyleReader {
   void line(const tech::RawLine& line);
   [[nodiscard]] std::optional<StyleTables> finish();
 
+  /// The keyword `word` names (LookupStruct), nullptr when unknown or
+  /// ambiguous.
+  [[nodiscard]] static const Keyword* find(std::string_view word) { return lookup(keywords(), word); }
+
  private:
-  // EXTTECH's handler for the line, in the full read only.
-  template <typename Handler>
-  void rule(Handler handler, const Tokens& t) {
-    if (report_ == Subset::all) {
-      handler(ctx_, t);
-    }
-  }
-  void finish_style();
+  [[nodiscard]] static const std::array<Keyword, kKeywordCount>& keywords();
+  [[nodiscard]] static std::string keyword_list();
+  [[nodiscard]] bool applies(Scope scope) const noexcept;
 
   // exts_planeOrderStatus.
   enum class Order : std::uint8_t { needed, seen, not_needed };
@@ -207,13 +188,12 @@ class StyleReader {
   void mark_height_sources();
   void check_plane_order();
   void default_heights();
-  void convert_heights();
-  [[nodiscard]] static tech::TypeMask all_but_space_and_drc();
+  void mention_connected();
+  void finish_style();
   void style_line(const Tokens& t);
   void first_style(const Tokens& t);
   void wanted_style(const Tokens& t);
   void variants(const Tokens& t);
-  void apply(const Keyword& kw, const Tokens& t);
   [[nodiscard]] bool noisy(Key key) const noexcept;
   void mention_first(Key key, const Tokens& t);
   void mention_rest(Key key, const Tokens& t);
@@ -221,7 +201,6 @@ class StyleReader {
   void device(const Tokens& t);
   void device_mentions(Dev dev, Tokens t);
   void subcircuit_mentions(Tokens t);
-  void resist(const Tokens& t);
   void substrate(const Tokens& t);
   [[nodiscard]] tech::TypeMask parse(std::string_view text, bool report);
   void mention(const Tokens& t, std::size_t index);
@@ -233,27 +212,88 @@ class StyleReader {
   diag::DiagnosticSink& sink_;
   std::optional<std::string_view> target_;
   Subset report_;
-  float dscale_;
   const tech::RawLine* where_ = nullptr;
   Status status_ = Status::not_loaded;
   bool started_ = false;  // ExtCurStyle != NULL
   bool seen_plane_order_ = false;
   Order order_ = Order::needed;
-  tech::TypeMask mentioned_;  // allExtractTypes
-  tech::TypeMask types1_;     // the first switch's types1
+  std::string name_;             // the style's name
+  tech::TypeMask mentioned_;     // allExtractTypes
+  tech::TypeMask types1_;        // the first switch's types1
   tech::TypeMask height_lines_;  // types a valid `height` line set
-  StyleTypes types_;
-  StyleHeights heights_;
-  ExtStyle style_;   // the full read's style
+  StyleHeights heights_;         // the height subset until finish_style
+  ExtStyle style_;
   RuleContext ctx_;  // what the handlers see
 };
 
-tech::TypeMask StyleReader::all_but_space_and_drc() {
-  tech::TypeMask mask;
-  for (tech::TileType t = tech::kMagnet; t < tech::kMaxTileTypes; ++t) {
-    mask.set(t);
+// keyTable of ExtTech.c, in its order, with each keyword's handler (design
+// D7). A line runs its handler after the first switch has read its types
+// (mention_first, mention_rest).
+const std::array<Keyword, kKeywordCount>& StyleReader::keywords() {
+  using T = const Tokens&;
+  using R = StyleReader&;
+  constexpr Scope sel = Scope::selected;
+  static constexpr std::array<Keyword, kKeywordCount> kTable{{
+      {"areacap", Key::areacap, 3, 3, "types capacitance", sel, [](R r, T t) { areacap_rule(r.ctx_, t); }},
+      {"connect", Key::connect, 3, 3, "types1 types1", sel, [](R r, T t) { connect_rule(r.ctx_, t, true); }},
+      {"contact", Key::contact, 3, 6, "type resistance", sel, [](R r, T t) { contact_rule(r.ctx_, t); }},
+      {"cscale", Key::cscale, 2, 2, "capacitance-scalefactor", sel, [](R r, T t) { cscale_rule(r.ctx_, t); }},
+      {"defaultareacap", Key::defaultareacap, 4, 6, "types plane capacitance", sel,
+       [](R r, T t) { default_areacap_rule(r.ctx_, t); }},
+      {"defaultoverlap", Key::defaultoverlap, 6, 6, "types plane otertypes otherplane capacitance", sel,
+       [](R r, T t) { default_overlap_rule(r.ctx_, t); }},
+      {"defaultperimeter", Key::defaultperimeter, 4, 6, "types plane capacitance", sel,
+       [](R r, T t) { default_perimeter_rule(r.ctx_, t); }},
+      {"defaultsideoverlap", Key::defaultsideoverlap, 6, 6, "types plane othertypes otherplane capacitance", sel,
+       [](R r, T t) { default_sideoverlap_rule(r.ctx_, t); }},
+      {"defaultsidewall", Key::defaultsidewall, 4, 5, "types plane capacitance [offset]", sel,
+       [](R r, T t) { default_sidewall_rule(r.ctx_, t); }},
+      {"device", Key::device, 4, 10, "dev-type dev-name types options...", sel, [](R r, T t) { r.device(t); }},
+      {"devresist", Key::devresist, 4, 4, "type region ohms-per-square", sel,
+       [](R r, T t) { devresist_rule(r.ctx_, t); }},
+      {"disconnect", Key::disconnect, 3, 3, "types1 types1", sel, [](R r, T t) { connect_rule(r.ctx_, t, false); }},
+      {"fet", Key::fet, 8, 9,
+       "types terminal-types min-#-terminals name [subs-types] subs-node gscap gate-chan-cap", sel,
+       [](R r, T t) { fet_rule(r.ctx_, t); }},
+      {"fetresist", Key::fetresist, 4, 4, "type region ohms-per-square", sel,
+       [](R r, T t) { devresist_rule(r.ctx_, t); }},
+      // Deprecated: read and ignored.
+      {"fringeshieldhalo", Key::fringeshieldhalo, 2, 2, "distance", sel, [](R, T) {}},
+      {"height", Key::height, 4, 4, "type height-above-subtrate thickness", sel, [](R r, T t) { r.height(t); }},
+      {"antenna", Key::antenna, 4, 6, "type [calc-type] [antenna-ratio-proportional] antenna-ratio-const", sel,
+       [](R r, T t) { antenna_rule(r.ctx_, t); }},
+      {"model", Key::model, 2, 3, "partial-cumulative [area-sidewall]", sel, [](R r, T t) { model_rule(r.ctx_, t); }},
+      {"tiedown", Key::tiedown, 2, 2, "types", sel, [](R r, T t) { tiedown_rule(r.ctx_, t); }},
+      {"lambda", Key::lambda, 2, 2, "units-per-lambda", sel,
+       [](R r, T t) { r.heights_.units_per_lambda = static_cast<float>(std::atof(t[1].c_str())); }},
+      {"overlap", Key::overlap, 4, 5, "toptypes bottomtypes capacitance [shieldtypes]", sel,
+       [](R r, T t) { overlap_rule(r.ctx_, t); }},
+      {"perimc", Key::perimc, 4, 4, "intypes outtypes capacitance", sel, [](R r, T t) { perimc_rule(r.ctx_, t); }},
+      {"planeorder", Key::planeorder, 3, 3, "plane index", sel, [](R r, T t) { r.plane_order(t); }},
+      {"noplaneordering", Key::noplaneordering, 1, 1, "(no arguments needed)", sel,
+       [](R r, T) { r.no_plane_order(); }},
+      {"resist", Key::resist, 3, 4, "types resistance", sel, [](R r, T t) { resist_rule(r.ctx_, t); }},
+      {"rscale", Key::rscale, 2, 2, "resistance-scalefactor", sel, [](R r, T t) { rscale_rule(r.ctx_, t); }},
+      {"sidehalo", Key::sidehalo, 2, 2, "distance", sel, [](R r, T t) { sidehalo_rule(r.ctx_, t); }},
+      {"sideoverlap", Key::sideoverlap, 5, 6, "intypes outtypes ovtypes capacitance [shieldtypes]", sel,
+       [](R r, T t) { sideoverlap_rule(r.ctx_, t); }},
+      {"sidewall", Key::sidewall, 6, 7, "intypes outtypes neartypes fartypes capacitance [offset]", sel,
+       [](R r, T t) { sidewall_rule(r.ctx_, t); }},
+      {"step", Key::step, 2, 2, "size", sel, [](R r, T t) { (void)step_rule(r.ctx_, t); }},
+      {"style", Key::style, 2, 4, "stylename", Scope::always, [](R r, T t) { r.style_line(t); }},
+      {"substrate", Key::substrate, 3, 5, "types plane [subs-node]", sel, [](R r, T t) { r.substrate(t); }},
+      {"units", Key::units, 2, 2, "lambda|microns", sel, [](R r, T t) { r.units(t); }},
+      {"variants", Key::variants, 2, 2, "style,...", Scope::loading, [](R r, T t) { r.variants(t); }},
+  }};
+  return kTable;
+}
+
+std::string StyleReader::keyword_list() {
+  std::string text;
+  for (const Keyword& k : keywords()) {
+    text += " " + std::string{k.name};
   }
-  return mask;
+  return text;
 }
 
 // A view reports its own subset; the full read reports everything, a
@@ -297,21 +337,30 @@ void StyleReader::mention(const Tokens& t, std::size_t index) {
   }
 }
 
+bool StyleReader::applies(Scope scope) const noexcept {
+  const bool in_style = started_ && (status_ == Status::pending || status_ == Status::suspended);
+  switch (scope) {
+    case Scope::always:
+      return true;
+    case Scope::loading:
+      return in_style;
+    case Scope::selected:
+      return in_style && status_ == Status::pending;
+  }
+  return false;
+}
+
 void StyleReader::line(const tech::RawLine& raw) {
   where_ = &raw;
   const Tokens& t = raw.tokens;
   if (t.empty()) {
     return;
   }
-  const Keyword* kw = lookup(kKeywords, t[0]);
+  const Keyword* kw = find(t[0]);
   if (kw == nullptr) {
     // Reported for every line of the section, whatever its style, by the
     // full read only (the technology load).
-    std::string text = "Illegal keyword.  Legal keywords are:\n\t";
-    for (const Keyword& k : kKeywords) {
-      text += " " + std::string{k.name};
-    }
-    report(kIllegalKeyword, std::move(text), Subset::all);
+    report(kIllegalKeyword, "Illegal keyword.  Legal keywords are:\n\t" + keyword_list(), Subset::all);
     return;
   }
   const bool bad_count = t.size() < kw->min_args || (t.size() > kw->max_args && kw->key != Key::device);
@@ -322,28 +371,23 @@ void StyleReader::line(const tech::RawLine& raw) {
            Subset::all);
     return;
   }
-  if (kw->key == Key::style) {
-    style_line(t);
+  if (!applies(kw->scope)) {
     return;
   }
-  if (!started_ || (status_ != Status::pending && status_ != Status::suspended)) {
-    return;
+  if (kw->scope == Scope::selected) {
+    mention_first(kw->key, t);
+    mention_rest(kw->key, t);
   }
-  if (kw->key == Key::variants) {
-    variants(t);
-  }
-  if (status_ == Status::pending) {
-    apply(*kw, t);
-  }
+  kw->handler(*this, t);
 }
 
 // The first `style` line selects the style loaded with the technology.
 void StyleReader::first_style(const Tokens& t) {
   if (t.size() == 2) {
-    types_.style = t[1];
+    name_ = t[1];
   } else {
     const auto list = variant_list(t[3]);
-    types_.style = t[1] + (list.empty() ? std::string{} : list.front());
+    name_ = t[1] + (list.empty() ? std::string{} : list.front());
   }
   status_ = Status::pending;
 }
@@ -372,7 +416,7 @@ void StyleReader::style_line(const Tokens& t) {
   if (t.size() != 2 && (t.size() != 4 || t[2].compare(0, 7, "variant") != 0)) {
     // Magic reports it for every style; the types subset for its own.
     if (status_ == Status::pending || report_ == Subset::all) {
-      malformed(*lookup(kKeywords, "style"));
+      malformed(*find("style"));
     }
     return;
   }
@@ -383,14 +427,14 @@ void StyleReader::style_line(const Tokens& t) {
   } else if (status_ == Status::not_loaded && !target_ && first) {
     first_style(t);
   } else if (status_ == Status::not_loaded && target_) {
-    types_.style = std::string{*target_};
+    name_ = std::string{*target_};
     wanted_style(t);
   }
 }
 
 void StyleReader::variants(const Tokens& t) {
   for (const std::string& v : variants_line(t[1])) {
-    if ((!v.empty() && v.front() == '*') || ends_with(types_.style, v)) {
+    if ((!v.empty() && v.front() == '*') || ends_with(name_, v)) {
       status_ = Status::pending;
       return;
     }
@@ -494,110 +538,6 @@ void StyleReader::mention_defaults(Key key, const Tokens& t) {
   }
 }
 
-void StyleReader::apply(const Keyword& kw, const Tokens& t) {
-  mention_first(kw.key, t);
-  mention_rest(kw.key, t);
-  switch (kw.key) {
-    case Key::device:
-      device(t);
-      break;
-    case Key::fet:
-      types_.gate |= types1_;
-      rule(fet_rule, t);
-      break;
-    case Key::tiedown:
-      types_.diff |= types1_;
-      rule(tiedown_rule, t);
-      break;
-    case Key::substrate:
-      substrate(t);
-      rule(substrate_rule, t);
-      break;
-    case Key::resist:
-      resist(t);
-      rule(resist_rule, t);
-      break;
-    case Key::contact:
-      rule(contact_rule, t);
-      break;
-    case Key::devresist:
-    case Key::fetresist:
-      rule(devresist_rule, t);
-      break;
-    case Key::areacap:
-      rule(areacap_rule, t);
-      break;
-    case Key::perimc:
-      rule(perimc_rule, t);
-      break;
-    case Key::overlap:
-      rule(overlap_rule, t);
-      break;
-    case Key::sidewall:
-      rule(sidewall_rule, t);
-      break;
-    case Key::sideoverlap:
-      rule(sideoverlap_rule, t);
-      break;
-    case Key::defaultareacap:
-      rule(default_areacap_rule, t);
-      break;
-    case Key::defaultperimeter:
-      rule(default_perimeter_rule, t);
-      break;
-    case Key::defaultsidewall:
-      rule(default_sidewall_rule, t);
-      break;
-    case Key::defaultoverlap:
-      rule(default_overlap_rule, t);
-      break;
-    case Key::defaultsideoverlap:
-      rule(default_sideoverlap_rule, t);
-      break;
-    case Key::antenna:
-      rule(antenna_rule, t);
-      break;
-    case Key::model:
-      rule(model_rule, t);
-      break;
-    case Key::connect:
-      rule([](RuleContext& c, const Tokens& w) { connect_rule(c, w, true); }, t);
-      break;
-    case Key::disconnect:
-      rule([](RuleContext& c, const Tokens& w) { connect_rule(c, w, false); }, t);
-      break;
-    case Key::cscale:
-      rule(cscale_rule, t);
-      break;
-    case Key::rscale:
-      rule(rscale_rule, t);
-      break;
-    case Key::step:
-      rule([](RuleContext& c, const Tokens& w) { (void)step_rule(c, w); }, t);
-      break;
-    case Key::sidehalo:
-      rule(sidehalo_rule, t);
-      break;
-    case Key::planeorder:
-      plane_order(t);
-      break;
-    case Key::noplaneordering:
-      no_plane_order();
-      break;
-    case Key::height:
-      height(t);
-      break;
-    case Key::units:
-      units(t);
-      break;
-    case Key::lambda:
-      heights_.units_per_lambda = static_cast<float>(std::atof(t[1].c_str()));
-      break;
-    default:
-      break;
-  }
-}
-
 // HEIGHT (ExtTech.c:2967-2989): numeric height and thickness for every
 // real type of the first argument.
 void StyleReader::height(const Tokens& t) {
@@ -658,12 +598,12 @@ void StyleReader::no_plane_order() {
   }
 }
 
-// extTechFinalStyle's plane-order check, defaults and micron conversion of
-// heights (ExtTech.c:3801-3966). With `noplaneordering` Magic returns
-// before all three (ExtTech.c:3801-3802): a type without a `height` line
-// keeps h = t = 0 and `units microns` values stay unconverted.
+// extTechFinalStyle's plane-order check and height defaults
+// (ExtTech.c:3801-3961). With `noplaneordering` Magic returns before both
+// (ExtTech.c:3801-3802): a type without a `height` line keeps h = t = 0.
+// The micron conversion of h and t is ExtStyle's (conversion.cpp).
 void StyleReader::finish_heights() {
-  heights_.style = types_.style;
+  heights_.style = name_;
   heights_.plane_ordering = order_ != Order::not_needed;
   if (order_ == Order::not_needed) {
     mark_height_sources();
@@ -671,9 +611,6 @@ void StyleReader::finish_heights() {
   }
   check_plane_order();
   default_heights();
-  if (heights_.units_microns) {
-    convert_heights();
-  }
 }
 
 // The orders of the technology planes must be a permutation of 0..k;
@@ -740,31 +677,11 @@ void StyleReader::default_heights() {
   }
 }
 
-// doConvert: h and t are in microns; divide by dscale (ExtTech.c:3963-3965).
-void StyleReader::convert_heights() {
-  heights_.distance_scale = dscale_;
-  for (TypeHeight& th : heights_.heights) {
-    th.thickness /= dscale_;
-    th.height /= dscale_;
-  }
-}
-
-void StyleReader::resist(const Tokens& t) {
-  if (str_is_int(t[2]) || t[2] != "None") {
-    return;
-  }
-  for (tech::TileType ty = tech::kFirstUserType; ty < tech::kMaxTileTypes; ++ty) {
-    if (types1_.test(ty)) {
-      types_.active.clear_type(ty);
-    }
-  }
-}
-
 void StyleReader::substrate(const Tokens& t) {
   if (t.back().starts_with("-")) {
     mention(Tokens{t.back().substr(1)}, 0);
   }
-  types_.substrate = types1_;
+  substrate_rule(ctx_, t);
 }
 
 // The device line after its class (ExtTechLine DEVICE).
@@ -779,14 +696,11 @@ void StyleReader::device(const Tokens& t) {
     return;
   }
   if (t.size() - 1 < dc->min_args) {
-    malformed(*lookup(kKeywords, "device"));
+    malformed(*find("device"));
     return;
   }
   device_mentions(dc->dev, t);
-  if (dc->dev == Dev::mosfet || dc->dev == Dev::msubckt) {
-    types_.gate |= types1_;
-  }
-  rule([dc](RuleContext& c, const Tokens& w) { device_rule(c, w, dc->name); }, t);
+  device_rule(ctx_, t, dc->name);
 }
 
 // A `k=name` parameter argument: an `=` not preceded by `<` or `>`.
@@ -894,17 +808,8 @@ void StyleReader::device_mentions(Dev dev, Tokens t) {
   }
 }
 
-std::optional<StyleTables> StyleReader::finish() {
-  if (!started_) {
-    if (target_ && *target_ != "default") {
-      return std::nullopt;
-    }
-    types_.style = "default";
-  } else if (target_ && status_ == Status::not_loaded) {
-    return std::nullopt;
-  }
-  // ExtTechFinal: a type connected to another is electrical; the user
-  // types mentioned nowhere are not.
+// ExtTechFinal: a type connected to another is electrical.
+void StyleReader::mention_connected() {
   const auto end = static_cast<tech::TileType>(tech_.user_type_end());
   for (tech::TileType t = tech::kFirstUserType; t < end; ++t) {
     tech::TypeMask others = tech_.connects_to(t);
@@ -913,36 +818,38 @@ std::optional<StyleTables> StyleReader::finish() {
       mentioned_.set(t);
     }
   }
-  for (tech::TileType t = tech::kFirstUserType; t < end; ++t) {
-    if (!mentioned_.test(t)) {
-      types_.active.clear_type(t);
-    }
-  }
-  // The device records exist for real types only (TT_TECHDEPBASE ..
-  // DBNumTypes).
-  tech::TypeMask real;
-  for (tech::TileType t = tech::kFirstUserType; t < tech_.type_count(); ++t) {
-    real.set(t);
-  }
-  types_.gate &= real;
-  finish_heights();
-  if (report_ == Subset::all) {
-    finish_style();
-  }
-  return StyleTables{std::move(types_), std::move(heights_), std::move(style_), mentioned_};
 }
 
-// The full read's style: M10's plane and height tables, then the parse
-// half of extTechFinalStyle (finalize.cpp). Heights stay in the style's
-// units (the full read runs with dscale 1); micron_convert() converts.
+std::optional<StyleTables> StyleReader::finish() {
+  if (!started_) {
+    if (target_ && *target_ != "default") {
+      return std::nullopt;
+    }
+    name_ = "default";
+  } else if (target_ && status_ == Status::not_loaded) {
+    return std::nullopt;
+  }
+  mention_connected();
+  finish_heights();
+  finish_style();
+  return StyleTables{std::move(style_), mentioned_};
+}
+
+// The style: the plane and height tables, then the parse half of
+// extTechFinalStyle (finalize.cpp). Heights stay in the style's units;
+// micron_convert() converts.
 void StyleReader::finish_style() {
-  style_.name = types_.style;
+  style_.name = name_;
   style_.units_microns = heights_.units_microns;
   style_.units_per_lambda = heights_.units_per_lambda;
   style_.plane_ordering = heights_.plane_ordering;
   style_.plane_order = heights_.plane_order;
   for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
-    style_.heights[t] = TypeHeightThickness{heights_.heights[t].height, heights_.heights[t].thickness};
+    const TypeHeight& th = heights_.heights[t];
+    style_.heights[t] = TypeHeightThickness{th.height, th.thickness};
+    if (th.source == HeightSource::height_line) {
+      style_.height_lines.set(static_cast<tech::TileType>(t));
+    }
   }
   finalize_style(style_, tech_);
 }
@@ -956,7 +863,8 @@ std::vector<std::string> declared_styles(const tech::RawSection& section) {
   };
   for (const tech::RawLine& line : section.lines) {
     const Tokens& t = line.tokens;
-    if (t.empty() || lookup(kKeywords, t[0]) == nullptr || lookup(kKeywords, t[0])->key != Key::style) {
+    const Keyword* kw = t.empty() ? nullptr : StyleReader::find(t[0]);
+    if (kw == nullptr || kw->key != Key::style) {
       continue;
     }
     const bool plain = t.size() == 2;
@@ -991,15 +899,15 @@ std::optional<StyleTables> read_style_tables(const tech::RawSection& section, co
   return reader.finish();
 }
 
-std::optional<StyleTypes> read_style(const tech::RawSection& section, const tech::Technology& tech,
-                                     diag::DiagnosticSink& sink, const std::optional<std::string_view>& style) {
-  ReadOptions options;
-  options.style = style;
-  std::optional<StyleTables> tables = read_style_tables(section, tech, sink, options);
-  if (!tables) {
-    return std::nullopt;
+void apply_non_electrical(ExtStyle& style, const tech::TypeMask& mentioned, std::size_t user_type_end) {
+  tech::TypeMask unhandled;
+  for (std::size_t t = tech::kFirstUserType; t < user_type_end; ++t) {
+    if (!mentioned.test(static_cast<tech::TileType>(t))) {
+      unhandled.set(static_cast<tech::TileType>(t));
+    }
   }
-  return std::move(tables->types);
+  style.non_electrical = unhandled;
+  style.active &= ~unhandled;
 }
 
 }  // namespace hefesto::extract::detail

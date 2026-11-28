@@ -221,7 +221,7 @@ const char* const kNarrow =
 
 }  // namespace
 
-// Standing rule (proposed Q-NETLIST-71, compat): Magic sums W/L in its
+// Standing rule (Q-NETLIST-71, compat, approved 2026-11-27): Magic sums W/L in its
 // int totWL, so a group of devices below W/L 1 drives nothing (NL-RES-02:
 // the active_* nets are never extracted), and the driver of a group that
 // runs to the end of the list is its last-but-one device.
