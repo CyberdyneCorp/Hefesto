@@ -7,11 +7,16 @@
 
 It is **data-compatible with [Magic VLSI](https://github.com/RTimothyEdwards/magic)**. Hefesto reads and writes the same files as Magic, and produces the same DRC results, GDS and netlists. So the open PDKs, sky130, gf180mcu and IHP sg13g2, work unchanged.
 
-> **Status: M0 (foundations) merged, Raven go/no-go final (GO); M1 (core model, formats, 2D viewer) complete; M2 (interactive editing and design system) complete; M3 (design rule checking) complete; M4 (scripting and PDK integration, Desktop Alpha) complete, awaiting the user's Desktop Alpha sign-off.**
-> - **Specs:** 169 capabilities and 2,036 requirements. Milestones M0 to M4 pass the readiness gate; M3 requirement coverage is 69 of 69 and M4's 57 of 57 (`mazeroute`'s requirement is deferred to M10).
-> - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (all 441 sky130 standard cells round-trip byte-identical), keeps crash backups and file locks like Magic, loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2; with progress, update checks and offline packs) and starts up like Magic. M2 adds Magic's editing command set (box, paint, erase, select, move, copy, stretch, arrays, hierarchy, labels, ports, properties), layout undo/redo, connectivity selection, the wiring tool, command dispatch with macros, key bindings and tools, highlights and feedback, and the color window. M3 adds Magic's DRC: the technology `drc` section compiled for every style, the edge-based check kernel with Magic's rule semantics (including Euclidean distances and mask-hint exceptions), hierarchical and array interaction checks, the background checker on a worker thread under the database's shared lock, and the `drc` command set; the sky130 and gf180mcu standard cells give Magic's error sets exactly. `hefesto-cli` runs all of it (`--interactive` runs the background checker at Magic's `%`/`]` prompt); the desktop app is an editor over Raven and the Vulkan canvas, with a live DRC status chip and a DRC results browser. M4 adds an embedded, sandboxed Tcl with Magic's `magic::` commands and tag callbacks, so the sky130A, gf180mcuD and ihp-sg13g2 startup files and device scripts run unchanged after the user's consent; PCell generation through the PDKs' generators and dialogs, with native C++ MOSFET generators that produce the same cells as the Tcl ones; `readspice`; and the cell, library and technology managers. Golden cases captured from Magic: 496; 433 match and 63 differ only where a documented decision or a later milestone's feature says so ([`tests/golden/deviations.toml`](tests/golden/deviations.toml)). Build instructions: [`docs/building.md`](docs/building.md).
-> - **Raven go/no-go:** GO, final for M2 (2026-11-10), on the Apple M3 Pro measurements and the Linux CI job; the reference M1 frame-rate run, Linux live input and Orca are M4 confirmation checks. See [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md).
-> - **Screenshots:** [the running app at M3](#screenshots-running-app-m3) (DRC on sky130) and [at M2](#screenshots-running-app-m2) (desktop editor on sky130), followed by the [design mockups](#screenshots-design-mockups) of screens later milestones build.
+> **Status: M0 to M6 complete (M5 and M6 archived); M7 (extraction), M8 (schematic capture), M9 (LVS and simulation) and M10 (3D view, plotting and routing) in progress. The Desktop Alpha (M4) awaits the user's sign-off.**
+> - **Specs:** 169 capabilities in [`openspec/specs/`](openspec/specs/); every milestone's readiness and requirement coverage are checked in CI ([`docs/roadmap.md`](docs/roadmap.md) has the per-milestone status).
+> - **Layout, DRC and scripting (M1 to M4):** Magic technology files, the corner-stitched database, `.mag` read and write (all 441 sky130 standard cells round-trip byte-identical), Magic's editing command set with undo, connectivity and the wiring tool, Magic's DRC with the background checker, an embedded sandboxed Tcl that runs the sky130A, gf180mcuD and ihp-sg13g2 startup and device scripts unchanged, PCells (Tcl and native C++ generators) and the cell, library and technology managers.
+> - **Interchange (M5, M6):** mask generation with every cifoutput/cifinput operator, GDS and CIF read and write, LEF/DEF and OASIS; every golden case matches Magic or carries an approved deviation.
+> - **Extraction (M7):** `extract` (nodes, capacitance, lumped resistance, devices, substrate, hierarchy), `ext2spice`, `ext2sim`, `extcheck`, `extresist` and antenna checking, with the top bar's Extract button. Still open: PDK standard-cell capacitance matching and extraction speed.
+> - **Schematic capture (M8):** xschem-compatible schematics and symbols, PDK symbol libraries and Tcl generators, SPICE and LVS netlists, the `schematic`/`xschem` commands and the desktop Schematic tab.
+> - **LVS and simulation (M9):** embedded ngspice in a worker process, deck preparation, results and measurements, layout probing, and the LVS reader, comparison, reduction and property-matching engines; the `lvs` command and the Beta flow are in progress.
+> - **3D (M10):** the 3D tab with layout-layer and mask-layer modes, picking and net highlighting, cross-sections and glTF/STL export (phases 1 and 2 of 3; phase 3 adds the parasitic and current-density overlays).
+> - **Raven go/no-go:** GO (2026-11-10). See [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md). Build instructions: [`docs/building.md`](docs/building.md).
+> - **Screenshots:** the running app [at M8](#screenshots-running-app-m8) (Schematic tab), [at M4](#screenshots-running-app-m4) (PCells, managers, Tcl console), [at M3](#screenshots-running-app-m3) (DRC) and [at M2](#screenshots-running-app-m2) (editor), then the [design mockups](#screenshots-design-mockups); the 3D tab is under [3D inspection](#3d-inspection).
 
 ## Features
 
@@ -68,6 +73,36 @@ mindmap
       Headless CLI
       Plugins and scripting
 ```
+
+## Screenshots (running app, M8)
+
+Captured by CI on macOS from the desktop app (`hefesto --input ... --capture FILE`, step "Capture the Schematic tab").
+
+### Schematic tab
+
+An xschem-compatible testbench (`tests/data/schem/devlib/tb/ihp_style_tb.sch`) open in the Schematic tab: the system symbol library with search, the canvas, the properties panel and the Netlist button, which netlists the open schematic through the same path as `schematic netlist`.
+
+![Schematic tab](docs/images/app/m8-schematic-tab.png)
+
+## Screenshots (running app, M4)
+
+Captures of the desktop app on sky130A (commands in [`docs/design/m4-ui-conformance.md`](docs/design/m4-ui-conformance.md)).
+
+### PCell dialog
+
+Place device runs the PDK's own Tcl generator for `sky130_fd_pr__nfet_01v8`, with its parameters in the PCell dialog.
+
+![PCell dialog](docs/images/app/m4-pcell-dialog.png)
+
+### Cell and technology managers
+
+`cellmanager create; techmanager create` on `sky130_fd_sc_hd__inv_1`.
+
+![Cell and technology managers](docs/images/app/m4-managers-cells.png)
+
+### Tcl console
+
+![Tcl console](docs/images/app/m4-console.png)
 
 ## Screenshots (running app, M3)
 
