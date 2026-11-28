@@ -15,6 +15,11 @@
 
 namespace hefesto::connect {
 
+std::uint64_t& detail::elements_tried() noexcept {
+  thread_local std::uint64_t count = 0;
+  return count;
+}
+
 namespace {
 
 /// What every recursive search carries.
@@ -50,8 +55,10 @@ bool for_each_element(const db::CellUse& use, const db::Rect& area, F&& f) {
     return true;
   }
   const db::ElementRange r = db::array_overlap(use, area);
+  std::uint64_t& tried = detail::elements_tried();
   for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
     for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
+      ++tried;
       const db::Transform et = db::element_transform(use, x, y);
       if (db::overlap(db::apply(et, use.def->bbox()), area) && !f(x, y, et)) {
         return false;

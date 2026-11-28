@@ -10,11 +10,13 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "../select/select_fixture.hpp"
 #include "hefesto/connect/search.hpp"
 #include "hefesto/connect/tree.hpp"
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/use_index.hpp"
@@ -482,9 +484,13 @@ TEST_CASE("regression: tree searches over part of a large array try only the ele
   REQUIRE(db::place(top, leaf, o).ok());
   paint(top, mt, {0, 4, 395, 6}, mt.m1);  // a wire across the first 20 elements of row 0
   db::recompute_bbox(top);
+  // DBArrayOverlap of a point inside element [370,370] is that element alone.
+  const db::Rect inside{20 * 370 + 2, 20 * 370 + 2, 20 * 370 + 3, 20 * 370 + 3};
+  CHECK(db::array_overlap(*std::as_const(top).uses().front(), inside) == db::ElementRange{370, 370, 370, 370});
   for (const bool on : {true, false}) {
     CAPTURE(on);
     const auto begin = std::chrono::steady_clock::now();
+    connect::detail::elements_tried() = 0;
     int visits = 0;
     std::set<std::string> elements;
     for (int i = 0; i < 200; ++i) {
@@ -498,6 +504,9 @@ TEST_CASE("regression: tree searches over part of a large array try only the ele
     }
     CHECK(visits == 200);
     CHECK(elements.size() == 200);
+    // Pruned: a handful of elements per point search; unpruned: 10^6 each.
+    CHECK(connect::detail::elements_tried() <= 4 * 200);
+    connect::detail::elements_tried() = 0;
     CHECK(elements.count("a[370,370]") == 1);
     Net net(*mt.tech);
     REQUIRE(connect::search_hierarchical(top, *mt.tech, start_at(mt, {1, 5}), compat(on), net).ok());
@@ -508,8 +517,11 @@ TEST_CASE("regression: tree searches over part of a large array try only the ele
       row.insert("a[0," + std::to_string(x) + "]");  // a[y,x]
     }
     CHECK(net_elements == row);
+    // The net search queues areas along one row of 20 elements.
+    CHECK(connect::detail::elements_tried() < 10000);
+    // A backstop only (the counts above decide): pruned, milliseconds;
+    // unpruned, about 2 x 10^8 element transforms.
     const auto elapsed = std::chrono::steady_clock::now() - begin;
-    // Pruned: milliseconds. Unpruned: about 2 x 10^8 element transforms.
-    CHECK(elapsed < std::chrono::seconds(3));
+    CHECK(elapsed < std::chrono::seconds(30));
   }
 }
