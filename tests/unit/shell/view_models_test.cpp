@@ -206,7 +206,9 @@ TEST_CASE("top bar shows cell, PDK, version and magic-compat", "[cap:hefesto-app
 TEST_CASE("later-milestone controls are present, disabled and labelled", "[cap:hefesto-app-ux][req:Main window layout]") {
   REQUIRE(deferred_view_tabs().size() == 3);
   REQUIRE(deferred_actions().size() == 3);
-  for (const DeferredControl& c : deferred_actions()) CHECK(c.tooltip.find("arrives in M") != std::string_view::npos);
+  for (const DeferredControl& c : deferred_actions()) {
+    if (c.label != "Extract") CHECK(c.tooltip.find("arrives in M") != std::string_view::npos);  // M7: live
+  }
   const auto& tools = tool_rail();
   REQUIRE(tools.size() == 8);
   CHECK(tools.front().label == "Box tool");

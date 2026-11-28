@@ -795,11 +795,12 @@ jobs:
       #   enabled    exttest and EX-026's cell `ex`; the app prints the button's state and place after --input;
       #   disabled   the built-in technology (no extract style), the pointer resting on the button at the
       #              place the first run printed, so its tooltip shows;
-      #   running    a 400 x 400 grid of EX-026's nfet (big.mag); the --input script clicks the button at the
-      #              place the first run printed, and the capture is taken in the frame the Interrupt card
-      #              first shows (--capture-running);
-      #   cancelled  the same click, then Ctrl-C 3 s later while the run goes on; the log records whether the
-      #              previous big.ext survived (Q-EXTRACT-27).
+      #   running    a 900 x 900 grid of EX-026's nfet (big.mag; 400 x 400 extracted in under 2 s, CI run
+      #              46051112560); the --input script clicks the button at the place the first run printed,
+      #              and the capture is taken in the frame the extraction's Interrupt card first shows
+      #              (--capture-running arms once the --input script starts, so the `load big` card is skipped);
+      #   cancelled  the same click, then Ctrl-C 2.5 s later (past the 2 s card delay) while the run goes on;
+      #              the log records whether the previous big.ext survived (Q-EXTRACT-27).
       # Linux under Xvfb; macOS (1024 px runner screen) not gating.
       - name: Capture the Extract button
         if: matrix.desktop || matrix.moltenvk
@@ -816,8 +817,8 @@ jobs:
           python3 - "$work/big.mag" <<'PY'
           import sys
           rows = {"nfet": [], "ndiff": [], "poly": []}
-          for i in range(400):
-              for j in range(400):
+          for i in range(900):
+              for j in range(900):
                   x, y = 12 * i, 12 * j
                   rows["nfet"].append(f"rect {x} {y} {x + 2} {y + 4}")
                   rows["ndiff"] += [f"rect {x - 3} {y} {x} {y + 4}", f"rect {x + 2} {y} {x + 5} {y + 4}"]
@@ -853,7 +854,7 @@ jobs:
           echo "running: ${SECONDS} s; big.ext $(test -s "$work/big.ext" && echo written || echo missing)" \
             | tee -a "$out/extract-running-$name.log"
           printf 'timestamp 1\nprevious\n' > "$work/big.ext"
-          run_app cancelled --run "$setup; load big" --input "wait 500; $click; wait 3000; key ctrl+c; wait 1000" \
+          run_app cancelled --run "$setup; load big" --input "wait 500; $click; wait 2500; key ctrl+c; wait 1000" \
             --capture-frames 60
           echo "big.ext after the cancelled run: $(head -c 200 "$work/big.ext" | head -2 | tr '\n' ' ')" \
             | tee -a "$out/extract-cancelled-$name.log"

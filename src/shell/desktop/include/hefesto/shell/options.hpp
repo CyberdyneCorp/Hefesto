@@ -51,7 +51,9 @@ struct ShellOptions {
   int capture_frames = 30;
   /// --capture-running: the capture is taken in the frame a running script
   /// draws when its Interrupt card first shows (board M4-Script-Consent
-  /// tile 7), instead of after `capture_frames` frames.
+  /// tile 7), instead of after `capture_frames` frames. With --input it arms
+  /// once that script starts, so a card of the --run script (a long load)
+  /// is skipped (capture_running_armed, input_script.hpp).
   bool capture_running = false;
   /// > 0: smoke-test mode. Opens the main window through Raven, renders this
   /// many frames, prints the window system and exits (CI runs it under X11

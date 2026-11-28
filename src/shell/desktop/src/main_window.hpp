@@ -125,6 +125,9 @@ class MainWindow {
   /// script draws with its Interrupt card shown.
   void capture_when_card_shows(std::string path) { card_capture_ = std::move(path); }
   [[nodiscard]] bool card_captured() const noexcept { return card_captured_; }
+  [[nodiscard]] bool card_capture_armed() const noexcept {
+    return !card_capture_.empty() && capture_running_armed(pending_input_ ? &*pending_input_ : nullptr);
+  }
   /// --input: steps or waits are left to play (a capture waits for them).
   [[nodiscard]] bool input_pending() const noexcept { return pending_input_ && !pending_input_->done(); }
   [[nodiscard]] std::string window_system() const { return window_.window_system(); }

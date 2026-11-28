@@ -415,7 +415,7 @@ const std::vector<DeferredControl>& deferred_view_tabs() {
 
 const std::vector<DeferredControl>& deferred_actions() {
   static const std::vector<DeferredControl> actions = {
-      {"Extract", "Extraction: arrives in M7"},
+      {"Extract", ""},  // M7: live; extract_button_view gives its tooltip (m7_window.cpp)
       {"Simulate", "Simulation: arrives in M9"},
       {"Ask agent", "AI agent: arrives in M11"},
   };

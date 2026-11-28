@@ -73,11 +73,19 @@ class InputPlayer {
   [[nodiscard]] std::vector<InputStep> take_due(double now_ms);
   /// Every step ran and the last wait elapsed (seen by a take_due call).
   [[nodiscard]] bool done() const noexcept { return next_ >= steps_.size() && !resume_at_; }
+  /// A take_due call has played the first step (a wait counts): the script started.
+  [[nodiscard]] bool started() const noexcept { return next_ > 0; }
 
  private:
   std::vector<InputStep> steps_;
   std::size_t next_ = 0;
   std::optional<double> resume_at_;
 };
+
+/// --capture-running arms once the --input script started, so a card the
+/// --run script shows (a long load) is skipped; without --input, at once.
+[[nodiscard]] inline bool capture_running_armed(const InputPlayer* input) noexcept {
+  return input == nullptr || input->started();
+}
 
 }  // namespace hefesto::shell

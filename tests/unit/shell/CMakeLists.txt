@@ -79,7 +79,8 @@ target_sources(hefesto_shell_tests PRIVATE
   schematic_symbols_test.cpp)
 # M7 top bar's Extract button (openspec/changes/m7-extraction task 16.1, SHELL).
 target_sources(hefesto_shell_tests PRIVATE
-  m7_extract_button_test.cpp)
+  m7_extract_button_test.cpp
+  m7_capture_running_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")

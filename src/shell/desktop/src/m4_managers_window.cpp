@@ -257,7 +257,7 @@ void MainWindow::pump_script_frame() {
   console_panel_->refresh();
   show_script_progress();
   ui::pump_frame();
-  if (!card_capture_.empty() && console_panel_->card_shown()) {
+  if (card_capture_armed() && console_panel_->card_shown()) {
     card_captured_ = capture(card_capture_);
     card_capture_.clear();
   }
