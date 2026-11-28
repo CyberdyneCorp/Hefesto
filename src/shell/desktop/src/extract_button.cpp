@@ -19,6 +19,9 @@ ExtractButtonView disabled(std::string tooltip) {
 }  // namespace
 
 ExtractButtonView extract_button_view(const ExtractButtonInput& input) {
+  if (input.technology.empty()) {
+    return disabled("Extract: no technology loaded; load a technology with an extract section");
+  }
   if (!input.style) {
     return disabled("Extract: technology " + input.technology +
                     " has no extract style (no extract section); load a technology with one");

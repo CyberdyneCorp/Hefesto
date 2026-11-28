@@ -53,6 +53,17 @@ TEST_CASE("Extract is disabled with a tooltip when the technology has no extract
   CHECK(shell::extract_button_status(view).rfind("hefesto: extract button disabled: ", 0) == 0);
 }
 
+// Regression (review of PR #141): the tooltip read "technology  has no
+// extract style" with an empty name when no technology was loaded.
+TEST_CASE("Extract is disabled with its own tooltip when no technology is loaded", EXTRACT_BUTTON_TAGS) {
+  shell::ExtractButtonInput in = ready();
+  in.technology.clear();
+  in.style.reset();
+  const shell::ExtractButtonView view = shell::extract_button_view(in);
+  CHECK(view == shell::ExtractButtonView{false, "Extract: no technology loaded; load a technology with an extract section"});
+  CHECK_FALSE(shell::extract_click_line(view).has_value());
+}
+
 TEST_CASE("Extract is disabled without a root and while a job runs", EXTRACT_BUTTON_TAGS) {
   shell::ExtractButtonInput no_root = ready();
   no_root.root.reset();
