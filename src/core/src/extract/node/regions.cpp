@@ -103,6 +103,38 @@ void set_node_num(NodeRegion& reg, bool& has_reference, const Item& it, tech::Ti
   }
 }
 
+/// The residue of a contact type on a plane (DBPlaneToResidue), memoised
+/// for one node pass: Technology::residue_on searches the contact's
+/// residues on every call, and the pass asks for every tile and edge.
+class ResidueCache {
+ public:
+  ResidueCache(const tech::Technology* technology, std::size_t plane_count)
+      : technology_(technology), planes_(plane_count) {}
+
+  [[nodiscard]] tech::TileType get(tech::TileType type, tech::PlaneId plane) {
+    if (technology_ == nullptr || !technology_->is_contact(type)) {
+      return type;
+    }
+    if (type >= tech::kMaxTileTypes || plane >= planes_) {
+      return technology_->residue_on(type, plane);
+    }
+    const std::size_t key = static_cast<std::size_t>(plane) * tech::kMaxTileTypes + type;
+    if (table_.empty()) {
+      table_.assign(planes_ * tech::kMaxTileTypes, kUnknown);
+    }
+    if (table_[key] == kUnknown) {
+      table_[key] = technology_->residue_on(type, plane);
+    }
+    return table_[key];
+  }
+
+ private:
+  static constexpr tech::TileType kUnknown = 0xFFFFU;  // no type code reaches it (kMaxTileTypes)
+  const tech::Technology* technology_;
+  std::size_t planes_;
+  std::vector<tech::TileType> table_;
+};
+
 /// GEOCLIP of an edge segment, then its length (0 for EDGENULL).
 std::int64_t segment_length(db::Rect r, const std::optional<db::Rect>& clip) {
   if (clip) {
@@ -368,9 +400,8 @@ class GenericSink final : public TileSink {
 /// extNodeAreaFunc's per-class area and perimeter.
 class NodeSink final : public TileSink {
  public:
-  NodeSink(NodeRegion& reg, const ExtStyle& style, const tech::Technology* technology,
-           const std::optional<db::Rect>& clip)
-      : reg_(reg), style_(style), technology_(technology), clip_(clip), area_(style.resist_classes.size()) {}
+  NodeSink(NodeRegion& reg, const ExtStyle& style, ResidueCache& residues, const std::optional<db::Rect>& clip)
+      : reg_(reg), style_(style), residues_(residues), clip_(clip), area_(style.resist_classes.size()) {}
 
   void tile(const Item& it, tech::TileType type) override {
     set_node_num(reg_, has_reference_, it, type);
@@ -399,10 +430,7 @@ class NodeSink final : public TileSink {
 
  private:
   [[nodiscard]] tech::TileType residue_of(tech::TileType type, tech::PlaneId plane) const {
-    if (technology_ != nullptr && technology_->is_contact(type)) {
-      return technology_->residue_on(type, plane);
-    }
-    return type;
+    return residues_.get(type, plane);
   }
 
   [[nodiscard]] std::int64_t tile_area(const db::TileView& v) const {
@@ -435,7 +463,7 @@ class NodeSink final : public TileSink {
 
   NodeRegion& reg_;
   const ExtStyle& style_;
-  const tech::Technology* technology_;
+  ResidueCache& residues_;
   const std::optional<db::Rect>& clip_;
   std::vector<ClassArea> area_;
   bool has_reference_ = false;
@@ -516,12 +544,12 @@ class NodePassRun {
  public:
   NodePassRun(RegionPass& pass, const db::CellDef& cell, const ExtStyle& style, const tech::Technology* technology,
               const NodePassOptions& options)
-      : pass_(pass), cell_(cell), style_(style), technology_(technology), options_(options) {}
+      : pass_(pass), cell_(cell), style_(style), options_(options), residues_(technology, cell.plane_count()) {}
 
   /// extNodeAreaFunc from `seeds` (one region).
   void flood_region(const std::vector<Item>& seeds) {
     found_.emplace_back();
-    NodeSink sink(found_.back(), style_, technology_, options_.clip);
+    NodeSink sink(found_.back(), style_, residues_, options_.clip);
     for (const Item& seed : seeds) {
       pass_.push(seed);
     }
@@ -577,8 +605,8 @@ class NodePassRun {
   RegionPass& pass_;
   const db::CellDef& cell_;
   const ExtStyle& style_;
-  const tech::Technology* technology_;
   const NodePassOptions& options_;
+  ResidueCache residues_;
   std::vector<NodeRegion> found_;
 };
 
