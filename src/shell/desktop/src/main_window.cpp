@@ -737,6 +737,7 @@ void MainWindow::play_pending_input() {
     report_panel_rects();  // scripted checks read where the panels ended up
     if (schematic_tab_) {  // M8: and what the Schematic tab shows (CI capture)
       std::printf("hefesto: schematic tab %s\n", schematic_view_->status_line().c_str());
+      std::printf("hefesto: schematic state %s\n", schematic_view_->state_line().c_str());
       std::fflush(stdout);
     }
     report_extract_button();  // M7: the Extract button's state and place (CI capture)

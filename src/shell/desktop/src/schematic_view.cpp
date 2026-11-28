@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <functional>
 #include <numbers>
@@ -109,6 +110,21 @@ std::pair<StatusKind, std::string> message_line(const Message& m) {
     shape = "▲ ";
   }
   return {kind, std::string{shape} + (m.code.empty() ? std::string{} : m.code + "  ") + m.text};
+}
+
+std::string_view netlist_state_name(NetlistAction::State state) {
+  switch (state) {
+    case NetlistAction::State::running: return "running";
+    case NetlistAction::State::done: return "done";
+    case NetlistAction::State::failed: return "failed";
+    case NetlistAction::State::idle: break;
+  }
+  return "idle";
+}
+
+// "252,76": a widget's top-left corner in window units (scripted clicks).
+std::string rect_origin(const ui::Rect& r) {
+  return std::to_string(std::lround(r.x)) + "," + std::to_string(std::lround(r.y));
 }
 
 // The system clipboard through Raven.
@@ -273,16 +289,48 @@ void SchematicView::build_properties() {
   });
   property_rows_->set_role(ui::Role::list);
   property_rows_->set_accessible_name("Properties");
-  property_rows_->set_tooltip("Click a property to edit it in the command bar (schematic setprop)");
+  property_rows_->set_tooltip("Click a property to edit it below (schematic setprop)");
   property_rows_->on_click(
       [this](float, float y) { edit_property(static_cast<std::size_t>(std::max(0.0F, y) / kRowHeight)); });
   property_rows_->set_size(-1.0F, 3.0F * kRowHeight);
   properties_scroll_.add(*property_rows_);
+  build_field_editor();
   properties_column_.add(*properties_title_);
   properties_column_.add(properties_scroll_, 1.0F);
+  properties_column_.add(field_box_);
   properties_panel_.set_child(properties_column_);
   properties_panel_.set_size(kPropertiesWidth, -1.0F);
   properties_panel_.set_accessible_name("Properties");
+}
+
+// The field editor ("Field view"): the key and value of the row clicked, or a
+// new key; Return in either field or Set runs the change's one setprop line.
+void SchematicView::build_field_editor() {
+  const auto input = [this](std::string_view placeholder) {
+    auto field = ui::TextInput::create(placeholder);
+    field->set_accessible_name(placeholder);
+    field->set_size(-1.0F, static_cast<float>(kInputHeight));
+    field->set_font(ctx_.runtime.font(TextRole::mono));
+    field->set_font_size(text_spec(TextRole::small).size_px);
+    field->on_commit([this](const std::string&) { commit_field(); });
+    return field;
+  };
+  field_key_ = input("Key");
+  field_value_ = input("Value");
+  field_value_->set_tooltip("Return sets the value; an empty value removes the attribute (schematic setprop)");
+  field_all_ = ui::CheckBox::create("Apply to all selected");
+  field_all_->set_tooltip("Set the attribute on every selected instance and wire (schematic setprop selection)");
+  field_all_->on_toggle([this](bool on) { field_all_selected_ = on; });
+  field_set_ = ui::Button::create("Set", true);
+  field_set_->set_accessible_name("Set the attribute");
+  field_set_->on_click([this] { commit_field(); });
+  field_box_.set_padding(kPadX, 8.0F, kPadX, 8.0F);
+  field_box_.add(*field_key_);
+  field_box_.add(*field_value_);
+  field_box_.add(*field_all_);
+  field_box_.add(*field_set_);
+  field_box_.set_accessible_name("Edit a property");
+  field_box_.set_visible(false);
 }
 
 // --- state --------------------------------------------------------------------------------
@@ -298,6 +346,20 @@ void SchematicView::refresh() {
   }
   refreshing_ = false;
   invalidate_all();
+}
+
+std::string SchematicView::state_line() const {
+  const std::string shown = properties_.title();
+  std::string line = shown.empty() ? std::string{"properties none"}
+                                   : "properties " + shown + " " + std::to_string(properties_.rows().size()) + " rows";
+  for (const PropertyRow& row : properties_.rows()) line += " " + row.key + "=" + row.value;
+  line += ", highlights " + std::to_string(highlight_.nets().size()) + " nets " +
+          std::to_string(highlight_.instances().size()) + " instances";
+  std::array<char, 32> zoom{};
+  (void)std::snprintf(zoom.data(), zoom.size(), "%.3g", viewport_.zoom());
+  line += std::string{", zoom "} + zoom.data() + (input_.user_view() ? " user view" : " fitted");
+  line += ", netlist " + std::string{netlist_state_name(netlist_.state())} + (card_seen_ ? ", card seen" : ", no card");
+  return line + ", canvas at " + rect_origin(input_viewport_->rect()) + ", rows at " + rect_origin(property_rows_->rect());
 }
 
 std::string SchematicView::status_line() const {
@@ -390,6 +452,7 @@ void SchematicView::read_session_state() {
     properties_.set_properties(props.value_or(std::string{}));
     property_rows_->set_size(-1.0F, static_cast<float>(properties_.rows().size() + 2) * kRowHeight);
   }
+  field_box_.set_visible(properties_.editable());
 }
 
 void SchematicView::symbols_ready() {
@@ -404,6 +467,7 @@ void SchematicView::on_command(const cmd::Invocation& invocation, const cmd::Com
   if (invocation.origin == cmd::Origin::internal) return;  // the view's own reads
   session_stale_ = true;
   if (invocation.name != "schematic") return;
+  follow_selection(invocation, result);
   (void)clipboard_.copied(invocation, result);  // Copy: the text to the system clipboard too
   note_symbol_changes(invocation, result);
   const CommandOutcome outcome = outcome_of(result);
@@ -425,6 +489,15 @@ void SchematicView::note_symbol_changes(const cmd::Invocation& invocation, const
   if (option == "reload") resolver_.forget_changed();
   const schem::Session& session = ctx_.editor().schem;
   if (option == "save" && !session.documents.empty()) resolver_.forget_file(session.documents.back().document.path);
+}
+
+// `schematic select instance <name>` from anywhere (a click, the command
+// bar, a script): the properties panel shows that instance.
+void SchematicView::follow_selection(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
+  const std::vector<std::string>& a = invocation.args;
+  if (!result.ok() || a.size() != 3 || a[0] != "select" || a[1] != "instance") return;
+  if (properties_.target() == PropertyTarget::instance && properties_.title() == a[2]) return;
+  properties_.show_instance(a[2]);
 }
 
 void SchematicView::invalidate_all() {
@@ -528,9 +601,53 @@ void SchematicView::place(std::size_t row) {
 }
 
 void SchematicView::edit_property(std::size_t row) {
-  if (row >= properties_.rows().size() || !ctx_.prompt) return;
+  if (!properties_.editable()) return;
+  if (row >= properties_.rows().size()) {  // under the rows: a new attribute
+    field_key_->set_text("");
+    field_value_->set_text("");
+    field_key_->focus();
+    return;
+  }
   const PropertyRow& property = properties_.rows()[row];
-  if (const auto line = properties_.set_command(property.key, property.value)) ctx_.prompt(*line);
+  field_key_->set_text(property.key);
+  field_value_->set_text(property.value);
+  field_value_->focus();
+}
+
+std::optional<std::size_t> SchematicView::instance_index(const std::string& name) const {
+  const schem::Session& session = ctx_.editor().schem;
+  if (session.documents.empty()) return std::nullopt;
+  const std::vector<schem::InstanceRecord>& instances = session.documents.back().document.instances;
+  for (std::size_t i = 0; i < instances.size(); ++i) {
+    if (schem::get_token(instances[i].props, "name") == name) return i;
+  }
+  return std::nullopt;
+}
+
+// One setprop line per change ("Field view"); a renamed instance is followed
+// to the unique name setprop gave it, by its place in the document.
+void SchematicView::commit_field() {
+  const std::string key = field_key_->text();
+  const std::string value = field_value_->text();
+  const auto line = properties_.field_command(key, value, field_all_selected_);
+  if (!line) {
+    CommandOutcome refused;
+    refused.status = OutcomeStatus::failed;
+    refused.message = "setprop: a key without blanks, '=' or quotes is needed";
+    messages_.add(refused);
+    messages_view_->invalidate();
+    return;
+  }
+  const auto renamed = properties_.renames(key, value, field_all_selected_) ? instance_index(properties_.title())
+                                                                            : std::nullopt;
+  run(*line);
+  const schem::Session& session = ctx_.editor().schem;
+  if (renamed && !session.documents.empty() && *renamed < session.documents.back().document.instances.size()) {
+    const std::string& props = session.documents.back().document.instances[*renamed].props;
+    properties_.follow_rename(schem::get_token(props, "name").value_or(std::string{}));
+  }
+  session_stale_ = true;
+  refresh();
 }
 
 void SchematicView::click_crumb(float x) {
@@ -632,6 +749,7 @@ void SchematicView::paint_netlist_bar(ui::Painter& p, float w, float h, const Th
   float interrupt_x0 = -1.0F;
   if (card) {
     const std::string label = netlist_.cancel_requested() ? "Stopping…" : card->action + " ⌃C";
+    card_seen_ = true;
     const float cw = paint::button_width(ctx_.runtime, label, false);
     interrupt_x0 = w - kPadX - cw;
     p.text_centered_y(TextRole::body_strong, x, h / 2.0F, card->title + "  " + card->detail, t.text_primary);
@@ -684,6 +802,9 @@ void SchematicView::paint_property_rows(ui::Painter& p, float w, float h, const 
   if (properties_.target() == PropertyTarget::none) {
     p.text_centered_y(TextRole::small, kPadX, kRowHeight / 2.0F, "Click an instance to see its properties",
                       t.text_tertiary);
+  } else if (properties_.editable()) {
+    const float y = static_cast<float>(rows.size()) * kRowHeight + kRowHeight / 2.0F;
+    p.text_centered_y(TextRole::small, kPadX, y, "+ Add attribute", t.accent_soft);
   }
   for (std::size_t i = 0; i < rows.size(); ++i) {
     const float y = static_cast<float>(i) * kRowHeight + kRowHeight / 2.0F;

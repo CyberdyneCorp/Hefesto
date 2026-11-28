@@ -7,12 +7,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "../schem/edit/edit_fixture.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/shell/schematic_panels.hpp"
 #include "hefesto/ui/state.hpp"
 
@@ -51,6 +54,123 @@ TEST_CASE("the properties panel reads with getprop and writes with setprop",
   CHECK_FALSE(panel.set_command("k", "v").has_value());  // the global records are edited as text
   panel.clear();
   CHECK(panel.target() == PropertyTarget::none);
+}
+
+namespace {
+
+// Runs a panel line ("schematic <option> ...") through the session's `schematic`.
+hefesto::cmd::CommandResult run_panel_line(hefesto::test::SchemSession& s, const std::string& line,
+                                     hefesto::cmd::Origin origin = hefesto::cmd::Origin::gui) {
+  const auto words = hefesto::pcell::split_tcl_list(line);
+  REQUIRE(words.has_value());
+  REQUIRE(!words.value().empty());
+  REQUIRE(words.value().front() == "schematic");
+  return s.schematic({words.value().begin() + 1, words.value().end()}, origin);
+}
+
+}  // namespace
+
+// schematic-editing "Property editing", paragraph "Field view" (M8 round 8).
+TEST_CASE("the field view shows one row per attribute and runs one setprop line per change",
+          "[cap:schematic-editing][req:Property editing]") {
+  PropertiesPanel panel;
+  CHECK_FALSE(panel.editable());
+  CHECK_FALSE(panel.field_command("value", "2k", false).has_value());  // nothing shown
+
+  panel.show_instance("R1");
+  CHECK(panel.editable());
+  // An attribute given twice shows once, at its first place, with the value
+  // getprop returns (the first one).
+  panel.set_properties("name=R1 value=1k m=2 value=3k");
+  REQUIRE(panel.rows().size() == 3);
+  CHECK(panel.rows()[1].key == "value");
+  CHECK(panel.rows()[1].value == "1k");
+  CHECK(panel.rows()[2].key == "m");
+
+  CHECK(panel.field_command("value", "2k", false) == "schematic setprop instance R1 value 2k");
+  CHECK(panel.field_command("value", "", false) == "schematic setprop instance R1 value");  // cleared: removed
+  CHECK(panel.field_command("footprint", "0603 smd", false) == "schematic setprop instance R1 footprint {0603 smd}");
+  // "Apply to all selected".
+  CHECK(panel.field_command("value", "10k", true) == "schematic setprop selection value 10k");
+  CHECK(panel.field_command("value", "", true) == "schematic setprop selection value");
+  // Keys the property string cannot hold.
+  for (const char* key : {"", "a b", "a=b", "a\"b", "a\\b"}) {
+    INFO(key);
+    CHECK_FALSE(panel.field_command(key, "1", false).has_value());
+  }
+
+  // The `name` row renames the instance shown; the panel follows its new name.
+  CHECK(panel.renames("name", "R7", false));
+  CHECK_FALSE(panel.renames("name", "R7", true));
+  CHECK_FALSE(panel.renames("name", "", false));
+  CHECK_FALSE(panel.renames("value", "R7", false));
+  panel.follow_rename("R7");
+  CHECK(panel.title() == "R7");
+  CHECK(panel.rows().empty());  // read again
+  CHECK(panel.load_command() == "schematic getprop instance R7");
+
+  panel.show_wire(4);
+  CHECK(panel.field_command("lab", "OUT", false) == "schematic setprop wire 4 lab OUT");
+  CHECK_FALSE(panel.renames("name", "x", false));
+  panel.show_schematic();  // the global records: past M8 (Q-SCHEM-68, approved 2026-11-28)
+  CHECK_FALSE(panel.editable());
+  CHECK_FALSE(panel.field_command("k", "v", false).has_value());
+}
+
+// Scenario "Field view edits through setprop": the panel's lines run through
+// the real `schematic` command, in both modes of xschem-compat.
+TEST_CASE("Field view edits through setprop", "[cap:schematic-editing][req:Property editing]") {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    hefesto::test::SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("r.sch",
+                     "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+                     "C {res.sym} 0 0 0 0 {name=R1 value=1k footprint=\"0603 smd\"}\n");
+    REQUIRE(s.schematic({"open", s.folder().str("r.sch")}).ok());
+
+    PropertiesPanel panel;
+    panel.show_instance("R1");
+    const auto read = [&] {
+      const auto load = panel.load_command();
+      REQUIRE(load.has_value());
+      const auto result = run_panel_line(s, *load, hefesto::cmd::Origin::internal);
+      REQUIRE(result.ok());
+      panel.set_properties(result.value.to_string());
+    };
+    const auto change = [&](const std::string& key, const std::string& value) {
+      const auto line = panel.field_command(key, value, false);
+      REQUIRE(line.has_value());
+      REQUIRE(run_panel_line(s, *line).ok());
+      read();  // refreshed after the command
+      return *line;
+    };
+
+    read();
+    REQUIRE(panel.rows().size() == 3);
+    CHECK(panel.rows()[0].key == "name");
+    CHECK(panel.rows()[0].value == "R1");
+    CHECK(panel.rows()[1].key == "value");
+    CHECK(panel.rows()[1].value == "1k");
+    CHECK(panel.rows()[2].key == "footprint");
+    CHECK(panel.rows()[2].value == "0603 smd");
+
+    CHECK(change("value", "2k") == "schematic setprop instance R1 value 2k");
+    CHECK(change("footprint", "") == "schematic setprop instance R1 footprint");
+    CHECK(hefesto::test::active(s).instances[0].props == "name=R1 value=2k");
+    REQUIRE(panel.rows().size() == 2);
+    CHECK(panel.rows()[1].value == "2k");
+
+    // Logged, one line per change.
+    const std::vector<std::string> history = s.log().history();
+    CHECK(std::count(history.begin(), history.end(), "schematic setprop instance R1 value 2k") == 1);
+    CHECK(std::count(history.begin(), history.end(), "schematic setprop instance R1 footprint") == 1);
+    // Two undo steps.
+    CHECK(hefesto::test::run(s, {"undo"}) == "1");
+    CHECK(hefesto::test::run(s, {"undo"}) == "1");
+    CHECK(hefesto::test::active(s).instances[0].props == "name=R1 value=1k footprint=\"0603 smd\"");
+    CHECK(hefesto::test::run(s, {"undo"}) == "0");
+  }
 }
 
 TEST_CASE("the hierarchy breadcrumb follows the hierarchy path", "[cap:schematic-editing][req:Hierarchy path]") {

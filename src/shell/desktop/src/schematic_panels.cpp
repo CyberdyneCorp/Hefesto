@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cctype>
 #include <charconv>
+#include <functional>
+#include <set>
 #include <system_error>
 #include <utility>
 
@@ -39,6 +41,15 @@ bool is_code(std::string_view word) {
   return std::all_of(word.begin(), word.end(), [](char c) {
     return std::isupper(static_cast<unsigned char>(c)) != 0 || std::isdigit(static_cast<unsigned char>(c)) != 0 ||
            c == '-';
+  });
+}
+
+// A key the field view writes: not empty, no blank, `=`, quote or
+// backslash (they would end or escape the key in the property string).
+bool is_field_key(std::string_view key) {
+  if (key.empty()) return false;
+  return std::none_of(key.begin(), key.end(), [](char c) {
+    return std::isspace(static_cast<unsigned char>(c)) != 0 || c == '=' || c == '"' || c == '\\';
   });
 }
 
@@ -125,9 +136,35 @@ std::optional<std::string> PropertiesPanel::load_command() const {
 
 void PropertiesPanel::set_properties(std::string_view property_string) {
   rows_.clear();
+  std::set<std::string, std::less<>> seen;
   for (const schem::Property& p : schem::parse_properties(property_string)) {
+    if (!seen.insert(p.key).second) continue;  // getprop returns the first one
     rows_.push_back(PropertyRow{p.key, schem::decode_value(p.raw_value), p.has_value});
   }
+}
+
+std::optional<std::string> PropertiesPanel::field_command(std::string_view key, std::string_view value,
+                                                          bool all_selected) const {
+  if (!editable() || !is_field_key(key)) return std::nullopt;
+  std::vector<std::string> words{"setprop"};
+  if (all_selected) {
+    words.emplace_back("selection");
+  } else {
+    for (std::string& word : target_words()) words.push_back(std::move(word));
+  }
+  words.emplace_back(key);
+  if (!value.empty()) words.emplace_back(value);
+  return schematic(std::move(words));
+}
+
+bool PropertiesPanel::renames(std::string_view key, std::string_view value, bool all_selected) const noexcept {
+  return target_ == PropertyTarget::instance && !all_selected && key == "name" && !value.empty();
+}
+
+void PropertiesPanel::follow_rename(std::string name) {
+  if (target_ != PropertyTarget::instance || name.empty()) return;
+  name_ = std::move(name);
+  rows_.clear();
 }
 
 std::optional<std::string> PropertiesPanel::set_command(std::string_view key, std::string_view value) const {

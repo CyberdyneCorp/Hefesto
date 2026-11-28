@@ -5,9 +5,13 @@
 // docs/design/mockups/Schematic.dc.html; openspec/changes/m8-schematic
 // design D15; docs/design/m8-ui-conformance.md):
 //
-// - the properties panel (schematic-editing "Property editing"): it reads
-//   the selected object's property string with `schematic getprop` and
-//   writes one attribute with `schematic setprop` (no value removes it);
+// - the properties panel (schematic-editing "Property editing", paragraph
+//   "Field view"): it reads the selected object's property string with
+//   `schematic getprop` and shows one row per attribute in property-string
+//   order (an attribute given twice once, with the first value, as getprop
+//   returns it); a changed row runs `schematic setprop instance|wire ...`, a
+//   cleared row the same without a value (removes it), a new key appends,
+//   and "apply to all selected" runs `schematic setprop selection ...`;
 // - the hierarchy breadcrumb ("Hierarchy navigation", "Hierarchy path"):
 //   the top schematic and one crumb per path element of
 //   `schematic hierarchy path`; `schematic descend <instance>` goes down and
@@ -75,9 +79,30 @@ class PropertiesPanel {
 
   /// The command that reads the target's property string; nullopt for none.
   [[nodiscard]] std::optional<std::string> load_command() const;
-  /// The result of load_command: the rows, in property-string order.
+  /// The result of load_command: the rows, in property-string order, one
+  /// per key (a repeated key keeps its first place and value: the value
+  /// `schematic getprop instance <name> <key>` returns).
   void set_properties(std::string_view property_string);
   [[nodiscard]] const std::vector<PropertyRow>& rows() const noexcept { return rows_; }
+  /// Whether the field view can edit the target (an instance or a wire).
+  [[nodiscard]] bool editable() const noexcept {
+    return target_ == PropertyTarget::instance || target_ == PropertyTarget::wire;
+  }
+
+  /// The field view's one command line for a change ("Field view"): `value`
+  /// set runs `setprop instance|wire <target> <key> <value>`, an empty
+  /// `value` (a cleared row) the same without a value, which removes the
+  /// attribute; a key with no row appends it. With `all_selected` the line is
+  /// `setprop selection <key> [<value>]`. nullopt when the target is not
+  /// editable, or the key is empty or holds a blank, `=` or a quote.
+  [[nodiscard]] std::optional<std::string> field_command(std::string_view key, std::string_view value,
+                                                         bool all_selected) const;
+  /// Whether field_command(key, value, all_selected) renames the instance
+  /// shown (its `name` row, with a value, not for the whole selection): the
+  /// view then follows the instance to its new, unique name.
+  [[nodiscard]] bool renames(std::string_view key, std::string_view value, bool all_selected) const noexcept;
+  /// The instance shown was renamed to `name` (its rows are read again).
+  void follow_rename(std::string name);
 
   /// The command that sets `key` to `value` on the target (an instance or a
   /// wire); nullopt for none or the schematic, and for an empty key.
