@@ -193,6 +193,11 @@ Compatibility: native
 - **WHEN** `hefesto-cli -T sky130A -c "load inv; lvs -layout inv inv.spice sky130A comp.out -json; quit"` runs on a clean design
 - **THEN** it SHALL exit 0 and write `comp.out` and `comp.json`
 
+#### Scenario: The last lvs sets the status
+- **GIVEN** a script whose first `lvs` ends in a mismatch and whose second `lvs` has a usage error
+- **WHEN** the script ends with a plain `quit`
+- **THEN** the tool SHALL exit 2: each `lvs` replaces the status of the one before
+
 ### Requirement: LVS status chip
 On desktop, the top bar's LVS chip SHALL show the state of the last LVS run of the active layout:
 

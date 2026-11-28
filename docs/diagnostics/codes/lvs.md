@@ -147,6 +147,14 @@ lvs-hierarchy). Constants: `hefesto/lvs/hier/codes.hpp`.
   and no final result is written.
 - `-005` (warning) is a guard: flattening the unmatched or mismatched
   subcells of one pair stops after four times the depth limit in rounds.
+- `-006` (input error, headless exit 2): a flattening step of the run
+  would leave more than 50,000,000 device instances in one cell
+  (`kMaxDevicesPerRun`, the reader's device limit; `RunOptions::device_limit`
+  lowers it). A crafted netlist whose subcircuits each hold two instances of
+  the next would otherwise grow to 2^depth devices. Crafted-input limit
+  approved under the standing rule of 2026-11-25, both `netgen-compat`
+  modes; the setup `flatten` command stops at the same limit. Flattening also
+  polls the run's cancel flag once per round.
 - netgen's messages of the flow (`Flattening unmatched subcell ...`,
   `Making another compare attempt.`, `Final result: ...`) are report text,
   not codes: they are in `LvsResult::output` and `comp.out`.
@@ -173,13 +181,20 @@ capability lvs-command). Constants: `hefesto/lvs/cmd/codes.hpp`.
   a usage error (`-002`), a netlist that cannot be read (`-003`, or the
   reader's `LVS-READ-*` code), two names in one netlist (`-004`), a cell
   missing from its file (`-005`), a setup file that cannot be read or
-  evaluated (`-006`) and the `-noflatten` limits (`-010`: 65536 entries of
-  at most 4096 bytes, crafted-input limits approved under the standing rule
-  of 2026-11-25, both `netgen-compat` modes).
+  evaluated (its `LVS-SETUP-*` code) and the `-noflatten` limits (`-010`:
+  65536 entries of at most 4096 bytes, checked line by line while the file
+  is read, and a file or list of at most 65536 × 4097 bytes; crafted-input
+  limits approved under the standing rule of 2026-11-25, both
+  `netgen-compat` modes). Each `lvs` resets the status first, so a later
+  usage error is 2 even after a mismatch.
 - `-007`: `comp.out` or the JSON file cannot be written.
 - `-008`: a second run of a document while one is in progress.
-- `-009` (warning): the setup file does not exist; the comparison runs with
-  the default settings.
+- `-006` and `-009` are retired (M9 R3): a setup file that cannot be read
+  or evaluated ends the run with its `LVS-SETUP-*` code, and one that does
+  not exist with `LVS-SETUP-002`.
+- A run whose task the executor drops (shutdown) or that throws ends as an
+  input error with `-003` (`LVS run failed: ...`), and the document is free
+  for the next run.
 - `-011`: `cross_probe` found no layout reference for the object (`no layout
   counterpart`).
 - `lvs -layout` and a `.sch` netlist fail with `CORE-NOTIMPL-009` until the
@@ -204,7 +219,7 @@ fails when the two disagree.
 | `LVS-CMD-003` | error | A netlist of the `lvs` command cannot be found or read; the run ends as an input error. |
 | `LVS-CMD-004` | error | `Both cells are in the same netlist:  Cannot compare!` |
 | `LVS-CMD-005` | error | `Cannot find cell <cell> in file <file>` |
-| `LVS-CMD-006` | error | The setup file could not be read or evaluated; the run ends as an input error. |
+| `LVS-CMD-006` | error | Retired (M9 R3): a setup file that cannot be read or evaluated ends the run with its LVS-SETUP-* code (input error, headless status 2). |
 | `LVS-CMD-007` | error | The log file or the JSON file of the `lvs` command could not be written. |
 | `LVS-CMD-008` | error | An LVS run is already in progress for this document. |
 | `LVS-CMD-009` | warning | Retired (M9 R3): a setup file that does not exist ends the run with LVS-SETUP-002 (lvs-setup-file "Setup file evaluation"). |
@@ -218,6 +233,7 @@ fails when the two disagree.
 | `LVS-HIER-003` | error | The hierarchy-depth setting is 0 or above 512 (twice the default). |
 | `LVS-HIER-004` | info | The LVS run was cancelled; the pairs compared so far are kept. |
 | `LVS-HIER-005` | warning | Flattening of unmatched or mismatched subcells of a pair stopped after as many rounds as the hierarchy-depth limit. |
+| `LVS-HIER-006` | error | Flattening during the run would leave more than 50,000,000 device instances in one cell (kMaxDevicesPerRun, crafted-input limit, both netgen-compat modes); the run ends as an input error. |
 | `LVS-NET-001` | error | A read would make its netlist database hold more devices than the device limit (default 50 million, Q-LVS-36; counted per netlist database, decision LVS-READ-025); the read stops and the run is an input error. |
 | `LVS-READ-001` | error | The netlist file does not exist (`ReadNetlist: unable to find file '<f>'`). |
 | `LVS-READ-002` | error | The netlist format cannot be detected from the suffix or the first character (`ReadNetlist: don't know type of file '<f>'`). |

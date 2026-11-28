@@ -260,3 +260,8 @@ Compatibility: native
 - **GIVEN** a netlist in which subcircuit `a` instantiates `b` and `b` instantiates `a`
 - **WHEN** it is compared
 - **THEN** the run SHALL stop with the hierarchy-depth diagnostic, and the process SHALL keep running
+
+#### Scenario: Flattening stops at the device limit
+- **GIVEN** a netlist of 30 subcircuits, each holding two instances of the next, compared against a flat circuit
+- **WHEN** flattening during the run would leave more than 50 million device instances in one cell (the device limit of `lvs-netlist-input` "Input limits", Q-LVS-36, lowerable only)
+- **THEN** nothing more SHALL be flattened, the run SHALL stop with `LVS-HIER-006` and be classified as an input error, in both `netgen-compat` modes, and a cancel request SHALL be seen at the next flattening round

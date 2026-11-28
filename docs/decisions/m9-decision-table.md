@@ -123,7 +123,7 @@ Recorded by the LVS spec team on branch `m9-round3-decide`. The user approved ea
 
 ### R3-6: result budget 4 GiB until Q-SIM-25 decides it
 - Status: approved 2026-11-27 (user decision, recommended option)
-- Resolution: the default result memory budget per job stays 4 GiB on Linux and macOS (512 MiB on iPadOS, unchanged) until a later Q-SIM-25 decision changes it; `worker::Limits::max_result_bytes` and `kDesktopResultBudget` keep 4 GiB. `simulation-analyses-and-results` "Saved vectors and memory budget" gains scenario "Default result budget"; `SIM.md` Q-SIM-25 and Q-SIM-16 note the interim value.
+- Resolution: the default result memory budget per job stays 4 GiB on Linux and macOS (512 MiB on iPadOS, unchanged) until a later Q-SIM-25 decision changes it; `worker::Limits::max_result_bytes` and `kDesktopResultBudget` keep 4 GiB. `simulation-analyses-and-results` "Saved vectors and memory budget" gains scenario "Default result budget"; `SIM.md` Q-SIM-25 and Q-SIM-16 note the interim value. Fix pass: the iPadOS half is implemented as `kIpadResultBudget` (512 MiB); `JobManagerOptions::result_budget` defaults to the platform's value (`kPlatformResultBudget`, chosen with `TARGET_OS_IOS`) and its 2x ceiling follows it.
 
 ### R3-7: LVS implementation choices that differ from netgen (new, for the user)
 - Status: awaiting the user (raised 2026-11-27 by the LVS spec team; not approved)
@@ -156,6 +156,7 @@ Recorded by the LVS spec team on branch `m9-round3-decide`. The user approved ea
   - `lvs -noflatten`: at most 65 536 entries of at most 4096 bytes each, fixed (`LVS-CMD-010`). `flatten` during setup reuses the 50-million device limit (Q-LVS-36).
   - Simulation run sets: the level count of one sweep or DOE block is refused before allocation once it passes the 100 000-point limit (`SIM-RUNSET-001`; the crafted case was a `lin` step of 1e-300); the run-set point and Monte Carlo sample limits (100 000) are settings refused at zero or above twice the default (`SIM-RUNSET-015`).
   - Job log cap and result budget settings (R3-5, R3-6): refused at zero or above twice the default (`SIM-ENGINE-039`).
+  - Fix pass (review of PR #140): flattening during the `lvs` flow (unmatched subcells, pre-match, mismatched pairs) stops when one cell would hold more than 50 million device instances (`LVS-HIER-006`, input error; `RunOptions::device_limit`, lowerable only), reusing the Q-LVS-36 device limit; a netlist whose subcircuits each hold two instances of the next would otherwise reach 2^depth devices. The setup `flatten <class>` form stops at the same limit, as `flatten` of a cell's contents already did. The `-noflatten` file is read at most 65 536 × 4097 bytes and its entry limit is checked line by line.
 
 ### R3-9: netgen behaviours no Q-row covers, implemented under the standing rule (round 3)
 - Status: implemented 2026-11-27 under the standing rule (a Magic/netgen behaviour no Q-row covers is implemented and reported); for the user to confirm

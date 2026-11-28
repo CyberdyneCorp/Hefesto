@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 2036 requirements, 3797 scenarios, 1075 open questions.
+**Totals:** 169 capabilities, 2036 requirements, 3799 scenarios, 1075 open questions.
 
 ## Hefesto product (native)
 
@@ -164,10 +164,10 @@ Open questions: [36](decisions/open-questions/LVS.md) · Golden cases: [CASES.md
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`lvs-command`](../openspec/specs/lvs-command/spec.md) | 9 | 13 | Defines Hefesto's LVS entry points: - the netgen-compatible `lvs` command and its arguments - the lower-level netgen command set exposed to scripts - obtaining the layout netlist f… |
+| [`lvs-command`](../openspec/specs/lvs-command/spec.md) | 9 | 14 | Defines Hefesto's LVS entry points: - the netgen-compatible `lvs` command and its arguments - the lower-level netgen command set exposed to scripts - obtaining the layout netlist f… |
 | [`lvs-comparison-algorithm`](../openspec/specs/lvs-comparison-algorithm/spec.md) | 14 | 18 | Defines how two flat views of a cell pair (circuit 1 and circuit 2) are compared for graph isomorphism. It covers: - the bipartite device/net graph - the initial partition - iterat… |
 | [`lvs-device-reduction`](../openspec/specs/lvs-device-reduction/spec.md) | 9 | 14 | Defines how devices are reduced before and during LVS comparison: - combining parallel devices into one device with several property records - combining series devices into one dev… |
-| [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 10 | 13 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
+| [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 10 | 14 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
 | [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 16 | 34 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
 | [`lvs-property-matching`](../openspec/specs/lvs-property-matching/spec.md) | 10 | 15 | Defines how the properties of matched devices are compared: - which properties are compared (properties of interest) - value types and promotion between them - tolerance rules for … |
 | [`lvs-reports`](../openspec/specs/lvs-reports/spec.md) | 12 | 13 | Defines the outputs of LVS: - which messages go to the comparison log (`comp.out`) and which go only to the console - the two-column side-by-side layout - the exact text of each re… |
