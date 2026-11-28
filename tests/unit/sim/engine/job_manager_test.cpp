@@ -999,6 +999,23 @@ TEST_CASE("A new job manager has the default result budget of 4 GiB",
   CHECK(sim::kDesktopResultBudget == std::uint64_t{4294967296});
 }
 
+TEST_CASE("The iPadOS default result budget is 512 MiB",
+          "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
+  // Scenario "Default result budget", iPadOS half (M9 R3 fix pass): the
+  // default and the 2x ceiling follow the platform.
+  CHECK(sim::default_result_budget(true) == std::uint64_t{536870912});
+  CHECK(sim::default_result_budget(false) == sim::kDesktopResultBudget);
+  // This test binary is a desktop build: the job manager uses the desktop
+  // default and refuses more than twice it.
+  CHECK(sim::kPlatformResultBudget == sim::kDesktopResultBudget);
+  FakeHost host;
+  sim::JobManagerOptions o = options(host);
+  o.result_budget = 2 * sim::kPlatformResultBudget + 1;
+  sim::JobManager jobs(std::move(o));
+  REQUIRE(jobs.limits_diagnostic().has_value());
+  CHECK(jobs.result_budget() == sim::kPlatformResultBudget);
+}
+
 TEST_CASE("A run whose streamed data passes the result budget fails and keeps its partial result",
           "[cap:simulation-analyses-and-results][req:Saved vectors and memory budget]") {
   // Regression (task 13.3 open item): the budget was only enforced by the

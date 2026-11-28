@@ -157,8 +157,8 @@ struct JobManager::Impl {
       options.max_log_bytes = kMaxJobLogBytes;
       limits_diagnostic = std::move(refused);
     }
-    if (auto refused = check_limit("result budget", options.result_budget, kDesktopResultBudget)) {
-      options.result_budget = kDesktopResultBudget;
+    if (auto refused = check_limit("result budget", options.result_budget, kPlatformResultBudget)) {
+      options.result_budget = kPlatformResultBudget;
       limits_diagnostic = std::move(refused);
     }
   }

@@ -136,9 +136,9 @@ struct JobManagerOptions {
   /// approved 2026-11-27); lowerable, at most twice kMaxJobLogBytes.
   std::size_t max_log_bytes = kMaxJobLogBytes;
   /// Added in M9 R3: the result memory budget per job, in bytes (Q-SIM-16;
-  /// 4 GiB on desktop until Q-SIM-25 decides); lowerable, at most twice the
-  /// default.
-  std::uint64_t result_budget = kDesktopResultBudget;
+  /// 4 GiB on desktop and 512 MiB on iPadOS until Q-SIM-25 decides);
+  /// lowerable, at most twice the platform's default.
+  std::uint64_t result_budget = kPlatformResultBudget;
 };
 
 /// Added in M9 R1: one job-log line and its stream (log.txt writes error
