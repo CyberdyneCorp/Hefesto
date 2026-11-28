@@ -261,17 +261,14 @@ diag::Status substrate_caps(NodeRegionList& nodes, const CapInputs& in) {
     n.substrate_cap = 0.0;
     n.classes.assign(ctx.style().resist_classes.size(), ClassArea{});
   }
+  // Each node's tiles in extNodeAreaFunc's visit order, so the
+  // floating-point sums are Magic's (flood_order.cpp).
   const NodeTileAccumulator acc(in, nodes.size());
-  tech::TypeMask material = tech::TypeMask::all();
-  material.clear_type(tech::kSpace);
-  for (std::size_t p = tech::kFirstUserPlane; p < ctx.plane_end(); ++p) {
-    const auto plane = static_cast<tech::PlaneId>(p);
-    ctx.plane(plane).enumerate(db::whole_plane(), material, [&](const db::TileView& t) {
-      if (const Node n = ctx.node(plane, t, t.right_side)) {
-        acc.add(NodeTile{plane, t, t.right_side}, nodes[*n], *n);
-      }
-      return true;
-    });
+  const std::vector<std::vector<NodeTile>> order = cap::flood_order(ctx, nodes.size());
+  for (std::size_t n = 0; n < order.size(); ++n) {
+    for (const NodeTile& t : order[n]) {
+      acc.add(t, nodes[n], n);
+    }
   }
   if (!cap::class_values_stored(ctx.compat(), ctx.options().lumped)) {
     for (NodeRegion& n : nodes) {

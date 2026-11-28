@@ -140,8 +140,8 @@ struct NodeTile {
 /// diagonal (int)sqrt(w*w + h*h), ExtPerim.c:105-117), the corner fringe to
 /// substrate (Q-EXTRACT-24) and the per-class area and perimeter. Calling
 /// add() for each tile in RegionFinder's visit order reproduces Magic's
-/// summation order (open item for EXTNODE); substrate_caps() calls it in
-/// plane and tile order.
+/// summation order; substrate_caps() replays that order itself
+/// (extract/cap/flood_order.cpp) over the finder's node slots.
 class NodeTileAccumulator {
  public:
   /// `node_count` bounds the default client-slot lookup (the corner test

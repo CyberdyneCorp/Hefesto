@@ -7,6 +7,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <initializer_list>
+
 #include "cap_fixture.hpp"
 
 namespace {
@@ -115,4 +117,69 @@ TEST_CASE("substrate_caps without a technology reports EXTRACT-CAP-002",
   const auto status = extract::substrate_caps(nodes, in);
   REQUIRE_FALSE(status.ok());
   CHECK(status.error().code == "EXTRACT-CAP-002");
+}
+
+namespace {
+
+// The sum of `terms` from 0, in order, as nreg_cap accumulates them.
+double running_sum(std::initializer_list<double> terms) {
+  double sum = 0.0;
+  for (const double t : terms) {
+    sum += t;
+  }
+  return sum;
+}
+
+// A Π of metal1: the bar T (0..35 x 10..20) and the legs L (0..10 x 0..10)
+// and R (20..35 x 0..10), one node.
+void paint_pi(Layout& l) {
+  l.paint("metal1", {0, 10, 35, 20});
+  l.paint("metal1", {0, 0, 10, 10});
+  l.paint("metal1", {20, 0, 35, 10});
+}
+
+}  // namespace
+
+TEST_CASE("node capacitance is summed in extNodeAreaFunc's flood order, not plane order",
+          "[cap:extract-capacitance][req:Area capacitance to substrate]") {
+  // The scan seeds the node at T; T's bottom side pushes L then R and the
+  // stack pops R first, so Magic adds T, R, L (each tile: its area, then
+  // its space-facing sides top, left, bottom, right). Plane order (T, L, R)
+  // rounds differently with these values. In the PDK cases this is the
+  // near-zero residue of a shielded node: sky130 a221o_1 a_109_297# is 0 in
+  // Magic's order and 1.86517e-14 in plane order.
+  Layout l(style(" areacap metal1 0.01\n perimc metal1 space 0.03\n"));
+  paint_pi(l);
+  const auto r = l.extract_all();
+  REQUIRE(r.nodes.size() == 1);
+  const auto& tables = l.style().caps.tables;
+  const double ca = tables.area[l.type("metal1")];
+  const double cp = tables.perimeter.at({l.type("metal1"), hefesto::tech::kSpace});
+  const double magic = running_sum({350 * ca, 35 * cp, 10 * cp, 10 * cp, 10 * cp,  // T
+                                    150 * ca, 10 * cp, 15 * cp, 10 * cp,           // R
+                                    100 * ca, 10 * cp, 10 * cp, 10 * cp});         // L
+  const double plane_order = running_sum({350 * ca, 35 * cp, 10 * cp, 10 * cp, 10 * cp,  // T
+                                          100 * ca, 10 * cp, 10 * cp, 10 * cp,           // L
+                                          150 * ca, 10 * cp, 15 * cp, 10 * cp});         // R
+  REQUIRE(magic != plane_order);  // the layout tells the two orders apart
+  CHECK(r.nodes[0].substrate_cap == magic);
+}
+
+TEST_CASE("every tile of a node is summed once, also with more than one seed",
+          "[cap:extract-capacitance][req:Area capacitance to substrate]") {
+  // The Π and a lone rectangle given to the same node (as the substrate
+  // node is, from all its tiles at once): the flood from the first seed
+  // does not reach the rectangle, a later seed does.
+  Layout l(style(" areacap metal1 1\n resist metal1 10\n"));
+  paint_pi(l);
+  l.paint("metal1", {50, 0, 54, 4});
+  auto nodes = l.find_nodes();
+  REQUIRE(nodes.size() == 2);
+  l.give_plane("metal1", 0);
+  nodes.pop_back();
+  l.options().lumped = true;
+  REQUIRE(extract::substrate_caps(nodes, l.inputs()).ok());
+  CHECK(nodes[0].substrate_cap == 350.0 + 150.0 + 100.0 + 16.0);
+  REQUIRE(nodes[0].classes.size() == 1);
+  CHECK(nodes[0].classes[0].area == 616);
 }

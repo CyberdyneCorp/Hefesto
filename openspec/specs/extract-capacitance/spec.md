@@ -27,7 +27,14 @@ Compatibility: exact
 Each tile of a node SHALL contribute `A · areacap(r)` where r is the tile type (residue on the tile's plane for contacts) and A is the tile area, clipped to the extraction clip area when one is in effect (hierarchical extraction); for a split (diagonal) tile A SHALL be the clipped rectangle area divided by 2 using integer division.
 Compatibility: exact
 
-(Magic ref: extract/ExtBasic.c:5560-5582)
+The contributions of a node (its tiles' area terms and the perimeter and corner terms of the next requirements) SHALL be added to the node's capacitance in the order Magic's node flood visits its tiles: the flood starts at the node's first tile in the scan (planes in order, tiles in area-enumeration order over the style's active types) and pops tiles from a stack, pushing each popped tile's unvisited connected neighbours along its top (right to left), left (bottom to top), bottom (left to right) and right (top to bottom) sides, then the images of a contact on its other planes and the connected tiles of its one-unit halo on the planes its type crosses; each tile adds its area term, then its diagonal, top, left, bottom and right side terms. Tiles the flood does not reach from that seed (the substrate node) SHALL be added once each, from further seeds in scan order. Floating-point sums depend on this order, so it decides the last digits of a node's capacitance, and whether the residue left when shielding cancels a node's capacitance prints as 0 or as a value near 1e-14.
+
+(Magic ref: extract/ExtBasic.c:5466-5872, extNodeAreaFunc's PUSHTILE order)
+
+#### Scenario: Flood order of the sum
+- **GIVEN** `areacap metal1 0.01`, `perimc metal1 space 0.03` and one metal1 node shaped like a Π: the bar (0,10)-(35,20) and the legs (0,0)-(10,10) and (20,0)-(35,10)
+- **WHEN** the cell is extracted
+- **THEN** the node capacitance is the running sum of the bar's terms, then the right leg's, then the left leg's (the order the flood pops them), which differs in its last bit from the sum in plane order (bar, left leg, right leg)
 
 #### Scenario: Rectangle area cap
 - **GIVEN** `areacap metal1 30`, `perimc metal1 space 20`, `cscale 1`, a 1:1 grid and a lone metal1 rectangle (0,0)-(10,4)

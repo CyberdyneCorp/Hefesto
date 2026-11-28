@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
@@ -154,6 +155,10 @@ struct CornerPair {
 /// EXTRACT-CAP-002: an entry point called without a cell, a style or a
 /// technology.
 [[nodiscard]] diag::Status missing_inputs(std::string_view what);
+
+/// The tiles of each node (indexed by node) in extNodeAreaFunc's visit
+/// order (flood_order.cpp); every tile with a node appears exactly once.
+[[nodiscard]] std::vector<std::vector<NodeTile>> flood_order(const Context& ctx, std::size_t node_count);
 
 /// The edge pass (extBasicCouple and its walks) of one plane.
 void couple_plane(const Context& ctx, tech::PlaneId plane, const Kinds& kinds);

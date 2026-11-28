@@ -11,6 +11,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/corners.cpp
   ${CMAKE_CURRENT_LIST_DIR}/coupling.cpp
   ${CMAKE_CURRENT_LIST_DIR}/edges.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/flood_order.cpp
   ${CMAKE_CURRENT_LIST_DIR}/lumped.cpp
   ${CMAKE_CURRENT_LIST_DIR}/node_caps.cpp
   ${CMAKE_CURRENT_LIST_DIR}/overlap.cpp
