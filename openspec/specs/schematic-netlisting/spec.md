@@ -304,7 +304,7 @@ Token values:
 
 | Token | Output |
 |---|---|
-| `@pinlist` | For each pin in pin order that does not have `spice_ignore` true, only the first pin of each distinct name: `?<w> <nets> `, where w is the pin's width (bus expansion of its name) and `<nets>` is the comma-separated expansion of the attached net |
+| `@pinlist` | For each pin in pin order that does not have `spice_ignore` true, only the first pin of each distinct name: `?<w> <nets> `, where w is the pin's width (bus expansion of its name) and `<nets>` is the comma-separated expansion of the attached net. For an instance whose `spice_sym_def` is set, the order and form of Requirement "Subcircuit definitions", paragraph "Included subcircuit pin order", apply |
 | `@@<pin>` | The same `?<w> <nets> ` for the first pin named `<pin>`, if it does not have `spice_ignore` true |
 | `@#<n>` or `@#<pin>` | The same for pin number n (0-based) or the named pin. A number below 0 or not below the pin count, or a name that is no pin, produces nothing (no text, no warning) |
 | `@#<n>:<attr>` | The pin attribute value (capability `schematic-symbols-and-libraries`, Requirement "Text substitution tokens"); `--UNDEF--` if the pin exists but has no such attribute; nothing if the pin does not exist (out-of-range number or unknown name); for `pinnumber` with an instance name ending in `:<k>` and a value containing `:`, the k-th `:`-separated item |
@@ -513,11 +513,11 @@ The hierarchical SPICE netlist of top schematic `T` (path `/abs/T.sch`) SHALL co
 3. Netlist options are applied (Requirement "Netlist options").
 4. The top line: `**.subckt T` (or `.subckt T` when the top is a subcircuit, Requirement "LVS netlist mode"; `.SUBCKT` with `uppercase_subckt`), followed by the port list (Requirement "Top-level port order"), then LF.
 5. The body of `T` (Requirement "Subcircuit body") at top level.
-6. If any `netlist_commands` instance has no `place` of `header` or `end`, or the `S` property is non-empty: `**** begin user architecture code`, those instances' texts in instance order, then the `S` property followed by LF, then `**** end user architecture code`.
+6. If any `netlist_commands` instance has no `place` of `header` or `end`, or the `S` property is non-empty: `**** begin user architecture code`, those instances' texts in instance order, then the `S` property followed by an LF, then `**** end user architecture code`. The LF SHALL be written also when the `S` property already ends in one, so such a property gives an empty line before the end marker (both modes of `xschem-compat`; clarified 2026-11-28 from SCHEM-NL-05 and checked against xschem).
 7. `**.ends` (`.ends` when the top is a subcircuit; `.ENDS` variants).
 8. In `hier` mode, the subcircuit definitions (Requirement "Subcircuit definitions").
 9. One `.GLOBAL <name>` line per global net.
-10. If any `netlist_commands` instance has `place=end`, or any `device_model` was collected: `**** begin user architecture code`, the `place=end` texts in instance order, the `device_model` texts (Requirement "Device models"), `**** end user architecture code`.
+10. If any `netlist_commands` instance has `place=end`, or any `device_model` was collected: `**** begin user architecture code`, the `place=end` texts in instance order, the `device_model` texts, each followed by an LF (Requirement "Device models"), `**** end user architecture code`.
 11. `.end`, unless the top is a subcircuit.
 
 All of this text then goes through Requirements "Element line post-processing" and "Line breaking". The `sch_path` and `sym_path` comment lines carry absolute paths on the netlisting host, as in xschem. A per-project setting "portable netlist paths" (capability `hefesto-settings`, default off) SHALL instead write each such path as `$PDK_ROOT/<path>` when the file is inside the active PDK root, and otherwise relative to the folder of the top schematic. The setting changes only these comment lines. Comparisons with xschem SHALL normalise these lines (Q-SCHEM-13, `Resolution: platform`).
@@ -583,8 +583,14 @@ Otherwise write:
    - LFs of the template: with `xschem-compat` ON they are kept, as xschem does, which puts parameters on lines without `+`; with `xschem-compat` OFF an LF followed by optional blanks (spaces and tabs) and `+` SHALL be kept, so a SPICE continuation line stays one, and every other LF SHALL be written as one space, so the header is valid SPICE. Both modes SHALL report a warning naming the symbol whose template contains an LF (Q-SCHEM-21, `Resolution: compat`, amended 2026-11-18). The text after a kept LF is a line of its own and goes through Requirement "Element line post-processing" like any other line (scenarios "Multi-line template, xschem-compat ON" and "Template continuation lines, xschem-compat OFF")
    - a LF
 5. the body of the schematic (Requirement "Subcircuit body"), unless `spice_stop` is true
-6. if the schematic's `S` property is non-empty: `**** begin user architecture code`, the property, `**** end user architecture code`
+6. if the schematic's `S` property is non-empty: `**** begin user architecture code`, the property as written followed by an LF (also when it already ends in one: `S {` LF `}` gives two empty lines between the markers; golden case SCHEM-NL-05, `test_carry_lookahead`), `**** end user architecture code`
 7. `.ends` and an empty line
+
+**Included subcircuit pin order** (both modes of `xschem-compat`: xschem's behaviour, which gives the instance line the port order the included subcircuit declares; standing rule, reported to the user 2026-11-28). For an instance line whose format has `@pinlist` and whose `spice_sym_def` (instance property first, else symbol property) is non-empty, the `.subckt` port order SHALL be looked up before `@pinlist` is written:
+1. The value, with `@` tokens substituted as in item 3, is the definition text. If it starts (after blanks and LFs) with `.include` in any letter case, the rest of it, with surrounding double quotes and LFs removed, is a file name resolved as a symbol reference (capability `schematic-symbols-and-libraries`, Requirement "Symbol references"), and the definition text is that file's content. A file larger than 268,435,456 bytes SHALL NOT be read and is handled as a file that cannot be opened (input limit, standing rule of 2026-11-25, recorded 2026-11-28).
+2. In the definition text every LF followed by `+` is replaced by a space; spaces around `=` are removed. The first line whose first word is `.subckt` (any letter case) and whose second word, lowercased, equals the symbol's cell name gives the ports: the words after the name up to, not including, the first word that contains `=` or `param:`, at most as many as the symbol has pin bits (bus pins expanded, `spice_ignore` pins not counted), lowercased.
+3. If every such port names a pin bit of the symbol (pin names bus-expanded and compared lowercased, `spice_ignore` pins excluded), `@pinlist` SHALL write, for each port in that order, `?1 <net> ` with the net of that pin bit. Otherwise `@pinlist` SHALL be written in the symbol's pin order as usual, with the warning `<cell>: symbol and .subckt pins do not match; symbol port order used`.
+4. When the file cannot be opened, or no matching `.subckt` line is found, `@pinlist` SHALL be written in the symbol's pin order and a warning SHALL name the file (or the cell). With `xschem-compat` ON the line that xschem prints SHALL also be printed on stdout, as xschem prints it: `has_included_subcircuit: error opening file <path>: <reason>` (with `<path>` the resolved file and `<reason>` Tcl's open error text, `couldn't open "<path>": no such file or directory`; golden case SCHEM-NL-14), or `has_included_subcircuit: <cell>: no matching .subckt found in spice_sym_def. Ignore`; Hefesto's coded warning stays on stderr (Q-SCHEM-60). With `xschem-compat` OFF only the coded warning SHALL be reported. None of these makes the run fail.
 
 Compatibility: exact
 
@@ -594,6 +600,16 @@ Compatibility: exact
 - **GIVEN** symbol `comp_ngspice.sym` with format `@name @pinlist @symname OFFSET=@OFFSET` and template `name=x1 OFFSET=0 AMPLITUDE=5`, pins PLUS, OUT, MINUS
 - **WHEN** its definition is written
 - **THEN** the header line SHALL be `.subckt comp_ngspice PLUS OUT MINUS  OFFSET=0 AMPLITUDE=5`, with two spaces before `OFFSET`
+
+#### Scenario: Included subcircuit gives the pin order
+- **GIVEN** symbol `opa.sym` with pins in order `INP`, `INN`, `OUT`, format `@name @pinlist @symname` and `spice_sym_def=".include opa.spice"`, where `opa.spice` holds `.SUBCKT opa out inn` LF `+ inp gain=1`, and instance `x1` with `INP` on `a`, `INN` on `b`, `OUT` on `y`, with `xschem-compat` ON or OFF
+- **WHEN** the instance line is written
+- **THEN** it SHALL be `x1 y b a opa`, in the port order of the `.subckt` line
+
+#### Scenario: Included subcircuit file missing
+- **GIVEN** golden case SCHEM-NL-14: `withdef.sym` with `spice_sym_def=".include x.spice"` and no `x.spice`
+- **WHEN** it is netlisted with `xschem-compat` ON
+- **THEN** the instance line SHALL use the symbol's pin order, stdout SHALL hold the line `has_included_subcircuit: error opening file <path>: couldn't open "<path>": no such file or directory` with `<path>` the resolved file, a coded warning SHALL name the file on stderr, and the run SHALL succeed; with `xschem-compat` OFF only the coded warning SHALL be reported and nothing SHALL be printed on stdout
 
 #### Scenario: Same cell name from two libraries
 - **GIVEN** a top schematic using `libA/inv.sym` and then `libB/inv.sym`, both `type=subcircuit`
@@ -664,7 +680,7 @@ Compatibility: exact
 - **THEN** after the `missing` definition the netlist SHALL continue with an empty line, `* expanding   symbol:  withdef.sym # of pins=2`, `** sym_path: <path>/withdef.sym`, `.include x.spice`, an empty line, `* expanding   symbol:  stopped.sym # of pins=2`, `** sym_path: <path>/stopped.sym`, `** sch_path: <path>/stopped.sch`, `.subckt stopped A B`, `.ends`, an empty line, `.end`; `ignored.sym` SHALL have no definition while its instance line `x4 N1 N2 ignored` is written
 
 ### Requirement: Device models
-The value of `device_model` of each netlisted instance (instance property first, else symbol property; `@` tokens substituted, else Tcl-evaluated) SHALL be collected once per key. The key SHALL be computed from the lowercased text: if it contains `.subckt` or `.model`, the two words after it concatenated; otherwise the first two words concatenated; or the whole lowercased text if fewer than two words exist. A later value with the same key SHALL replace the earlier one. Values SHALL be written in this order: compute h = 5381 and, for each byte c of the key, h = (h × 33 + c) mod 2³²; bucket = h mod 367; write buckets 0 to 366 in order, and within a bucket in order of first insertion.
+The value of `device_model` of each netlisted instance (instance property first, else symbol property; `@` tokens substituted, else Tcl-evaluated) SHALL be collected once per key. The key SHALL be computed from the lowercased text: if it contains `.subckt` or `.model`, the two words after it concatenated; otherwise the first two words concatenated; or the whole lowercased text if fewer than two words exist. A later value with the same key SHALL replace the earlier one. Each value SHALL be written followed by an LF; a value that already ends in an LF (a `tcleval` result, for example) keeps it, so it is followed by an empty line (both modes of `xschem-compat`; clarified 2026-11-28 from SCHEM-NL-05 and checked against xschem). Values SHALL be written in this order: compute h = 5381 and, for each byte c of the key, h = (h × 33 + c) mod 2³²; bucket = h mod 367; write buckets 0 to 366 in order, and within a bucket in order of first insertion.
 
 Compatibility: exact
 
@@ -674,6 +690,16 @@ Compatibility: exact
 - **GIVEN** two instances with `device_model=".model D1N4148 D(Is=2.52n)"`
 - **WHEN** the schematic is netlisted
 - **THEN** that `.model` line SHALL appear once, inside the final user-code block
+
+#### Scenario: Device model ending in LF
+- **GIVEN** an instance whose `device_model` value is `.model D1 D` followed by an LF (written `device_model=".model D1 D` LF `"`, as the value of a `tcleval` body that ends in an LF gives it), and a second instance with `device_model=".model D2 D"`, with `xschem-compat` ON or OFF
+- **WHEN** the schematic is netlisted
+- **THEN** in the final user-code block the `.model D1 D` line SHALL be followed by one empty line, and the `.model D2 D` line by none (golden cases SCHEM-NL-05: `diff_amp.sym`, `test_s_xfer.sch`)
+
+#### Scenario: S text ending in LF
+- **GIVEN** a subcircuit schematic whose `S` record is `S {` LF `}`, with `xschem-compat` ON or OFF
+- **WHEN** its definition is written
+- **THEN** two empty lines SHALL be written between `**** begin user architecture code` and `**** end user architecture code` (golden case SCHEM-NL-05)
 
 ### Requirement: LVS netlist mode
 With option `lvs_netlist`, the netlister SHALL:
@@ -764,7 +790,7 @@ Netlisting SHALL report, without stopping:
 
 A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. Except where this requirement gives an exact text, the message wording is informative.
 
-**Net driver check.** For each schematic level that a run netlists (the top level and each subcircuit schematic written), every net name of that level SHALL be checked, in both modes of `xschem-compat`, after the level's nets are named. Automatic names (`#net<N>`) and each bit of a bus are checked like other names; global net names (Requirement "Global nets") are not checked. For each name, the pins that carry it SHALL be counted by the `dir` value of the symbol pin: `in`, `out` and `inout` (exact, lower case). Pins of ordinary instances and of `ipin`, `opin` and `iopin` port instances count by the `dir` of their symbol pin (so a port whose pin is `dir=out` drives the net); labels (`lab_pin`, `lab_wire` and other `label` types) and pins with any other or no `dir` count nothing. A name that a short gave to no pin (the name that lost the short, Requirement "Net naming order") carries no pins. Then, taking the first case that applies:
+**Net driver check.** For each schematic level that a run netlists (the top level and each subcircuit schematic written), every net name of that level SHALL be checked, in both modes of `xschem-compat`, after the level's nets are named. Automatic names (`#net<N>`) and each bit of a bus are checked like other names; global net names (Requirement "Global nets") are not checked. For each name, the pins that carry it SHALL be counted by the `dir` value of the symbol pin: `in`, `out` and `inout` (exact, lower case). Pins of ordinary instances and of `ipin`, `opin` and `iopin` port instances count by the `dir` of their symbol pin (so a port whose pin is `dir=out` drives the net); labels (`lab_pin`, `lab_wire` and other `label` types) and pins with any other or no `dir` count nothing. A name that a short gave to no pin (the name that lost the short, Requirement "Net naming order") carries no pins. **Driver check budget** (Q-SCHEM-70, approved by the user on 2026-11-28 as a standing rule; both modes): the check SHALL expand the bits of its net names and of the global labels of each level against a budget of its own of 4,294,967,296 bytes (`NetlistEnvironment::bus_budget`), kept separate from the run's total of Requirement "Bus and vector notation" (Q-SCHEM-41), so the check never changes the netlist text; a name whose expansion would pass that budget SHALL be checked as written; one run therefore expands at most twice 4 GiB, once for its netlist text and once for the check. Then, taking the first case that applies:
 1. no `out` and no `inout` pin (whatever the number of `in` pins, none included): the error `Error: undriven node: <net>`; the run SHALL fail
 2. exactly one pin in total: the warning `Warning: open net: <net>`; it fails the run only when the `xschemrc` sets the Tcl variable `erc_open_net_is_error` to a true value
 3. two or more `out` pins: the warning `Warning: shorted output node: <net>`; it fails the run only when the `xschemrc` sets `erc_shorted_output_is_error` to a true value
@@ -773,7 +799,7 @@ A run whose only errors are findings of this check (case 1, or cases 2 and 3 mad
 
 **Report order of the driver check.** With `xschem-compat` ON, the names of one level SHALL be reported in xschem's order: ascending by a key computed from the name's bytes, where h starts at 5381 and, for each byte c of the name in turn, becomes (33 · h + c) modulo 2^32, and the key is h modulo 31627; names with equal keys in the order the level first gave them. With `xschem-compat` OFF, they SHALL be reported in byte order of the names (standing rule for xschem behaviour no Q-row covers: ON copies xschem, OFF gives the order a user can read; reported to the user 2026-11-26).
 
-**Report text on stderr (xschem-compat ON).** xschem collects these findings in its information window and prints it on stderr only when the run fails. With `xschem-compat` ON, the headless netlist command (`hefesto-cli --netlist`, `schematic netlist` in a script run without the editor) SHALL print the report on stderr only when the run fails, in this layout: for each level in the order its definition is written (the top level first, then each subcircuit schematic in the order of its `.subckt`), a separator line of eleven `-` characters directly followed by the absolute path of the level's schematic (`-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`), then that level's findings in the order above, together with the other messages of this requirement found while that level is netlisted (for example `Warning: Symbol: <symbol>: no type attribute set`); after the last level, the top level's separator line again, followed by the short errors (`Error: Net shorted: <a> - <b>`, Requirement "Net naming order"). Pin-mismatch errors between a symbol and its schematic come before the separator of the level that found them. With `xschem-compat` OFF, every finding SHALL be reported through Hefesto's diagnostics as it is found, whether or not the run fails, with no separator lines (standing rule; reported to the user 2026-11-26).
+**Report text on stderr (xschem-compat ON).** xschem collects these findings in its information window and prints it on stderr only when the run fails. With `xschem-compat` ON, the headless netlist command (`hefesto-cli --netlist`, `schematic netlist` in a script run without the editor) SHALL print the report on stderr only when the run fails, in this layout: for each level in the order its definition is written (the top level first, then each subcircuit schematic in the order of its `.subckt`), a separator line of eleven `-` characters directly followed by the absolute path of the level's schematic (`-----------/pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch`), then that level's findings in the order above, together with the other messages of this requirement found while that level is netlisted (for example `Warning: Symbol: <symbol>: no type attribute set`); after the last level, the top level's separator line again, followed by the short errors (`Error: Net shorted: <a> - <b>`, Requirement "Net naming order"). Pin-mismatch errors between a symbol and its schematic come before the separator of the level that found them. With `xschem-compat` OFF, every finding SHALL be reported through Hefesto's diagnostics as it is found, whether or not the run fails, with no separator lines (standing rule; reported to the user 2026-11-26). The report SHALL be printed as plain text lines, without Hefesto's `<severity>: <CODE>: ` prefix, once per run, after the run has ended (after the netlist file is written); it is printed by `hefesto-cli --netlist`, and by `schematic netlist` and `xschem netlist` (with Q-SCHEM-61's result `1`) in a run with no editor attached (capability `schematic-command`, paragraph "Editor attached"); with the editor attached the same findings are shown in the editor's diagnostics. Hefesto's coded diagnostics of the run are reported as well (Q-SCHEM-60).
 
 Compatibility: behavioral
 
@@ -813,6 +839,11 @@ Compatibility: behavioral
 - **GIVEN** a net `IN` carried by an `ipin` (symbol pin `dir=out`) and a gate pin `dir=in`, and a net `VDD` declared global and carried only by `dir=in` pins
 - **WHEN** the level is checked
 - **THEN** neither `IN` nor `VDD` SHALL be reported
+
+#### Scenario: Driver check past its own bus budget
+- **GIVEN** a level whose net names and global labels expand to more than 4,294,967,296 bytes for the driver check, with `xschem-compat` ON or OFF
+- **WHEN** it is netlisted
+- **THEN** the names past the check's budget SHALL be checked as written, the netlist text SHALL be the same as with an unbounded check, and the run's own bus expansion total (Q-SCHEM-41) SHALL NOT be used by the check (Q-SCHEM-70)
 
 #### Scenario: Two outputs on one net
 - **GIVEN** a net carried by the `dir=out` pins of two gates and one `dir=in` pin, with no `erc_shorted_output_is_error` setting

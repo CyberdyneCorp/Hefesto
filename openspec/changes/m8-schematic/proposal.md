@@ -37,6 +37,7 @@ What exists today (main at 30561192):
 - Fetching `http` symbol references (Q-SCHEM-9) and external-program symbol generators (Q-SCHEM-11).
 - The iPadOS schematic editor and its gestures (M14). M8 keeps the editing core and view models platform-free.
 - Reproducing xschem's flat netlist text (Q-SCHEM-15).
+- The whole-string property text view with the symbol's `template` beside it, and the desktop dialogs for global properties and header text (Q-SCHEM-68, approved 2026-11-28). M8 edits them through the field view and `schematic setprop schematic`.
 - A GPL symbol pack or any xschem file in the repository or packages.
 
 ## Capabilities
@@ -66,7 +67,7 @@ M8 also implements the `xschem-compat` parts of `hefesto-magic-compat-mode`, the
 | Needs | From |
 |---|---|
 | Decisions approved, specs aligned | done 2026-11-13 |
-| Later decisions (Q-SCHEM-30 to -67), specs aligned | done 2026-11-27 (last: Q-SCHEM-52 to -54, -60 to -62, -66, -67, approved 2026-11-27); Q-SCHEM-68 (property dialogs past M8) awaits the user |
+| Later decisions (Q-SCHEM-30 to -72), specs aligned | done 2026-11-28 (last: Q-SCHEM-68 to -72, approved 2026-11-28); Q-SCHEM-73 (instance tokens in generator arguments) and Q-SCHEM-74 (folder of the SCHEM-NL-14 message) await the user, neither cited by a spec |
 | Clean-room roles and paraphrase review | CLEANROOM (section 1), before any implementation task |
 | SCHEM golden cases captured (roadmap principle 2) | GOLDEN (section 3), before implementation |
 | Interface table and Tcl semantics in the specs | SPEC (section 4), before DEVLIB and the Tcl part of SYMLIB |

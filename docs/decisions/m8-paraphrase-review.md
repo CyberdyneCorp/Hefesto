@@ -93,6 +93,21 @@ M8 round 6, spec team (workstream DECIDE). Two parts: the wording edits the roun
 
 Mechanical sweep of the six specs after the round-6 edits (backticked identifiers, `awk`, counter/buffer/pointer/variable/hash and similar words): no further finding. No `Resolution:` line and no captured expected text changed.
 
+## Round-8 review (2026-11-28)
+
+M8 round 8, spec team (workstream DECIDE). Paraphrase check of the texts this round adds, which were checked against xschem's source at the pinned commit through single-file web fetches (nothing saved to disk).
+
+| ID | Where | Candidate | Decision |
+|---|---|---|---|
+| PR-22 | `schematic-netlisting` "Netlist file structure" items 6 and 10, "Subcircuit definitions" item 6, "Device models" | the LF written after the `S` text and after each `device_model` value | **kept**: an output rule (bytes written), no program structure |
+| PR-23 | `schematic-netlisting` "Subcircuit definitions", "Included subcircuit pin order" | the `.include` lookup, continuation joining, `.subckt` match, port words, truncation, match condition | **kept**: stated as steps on the user's text (keywords users write, the words of the `.subckt` line) and the resulting `@pinlist` form; no procedure, table or variable names; the two message texts are user-visible stdout lines |
+| PR-24 | `schematic-netlisting` "Errors and warnings", "Driver check budget" and the report paragraph | `NetlistEnvironment::bus_budget` | **kept**: a Hefesto identifier (the approved Q-SCHEM-70 limit), not an xschem one |
+| PR-25 | `schematic-symbols-and-libraries` "Symbol generators", "Standard error" | the child process's inherited stderr | **kept**: the observable effect only |
+| PR-26 | `schematic-command` "Editor attached", "clear without force", rows `paste`, `saveas`, `netlist` | the editor flag and quit status | **kept**: Hefesto behaviour (Q-SCHEM-71, -72), no xschem text |
+| PR-27 | `SCHEM.md` Q-SCHEM-73 and -74 `xschem behavior` and `Evidence:` lines | per-instance substitution of the symbol reference before lookup; the start-folder fallback of the `.include` name | **kept**: the source places are described in words (no function names in the spec text; the evidence line names the loader step, as for Q-SCHEM-52 and -54) |
+
+Mechanical sweep of the six specs after the round-8 edits (backticked identifiers, `awk`, counter/buffer/pointer/variable/hash and similar words): no further finding. No captured expected text changed; no `Resolution:` line changed in meaning.
+
 ## Effect on decisions
 
 No `Resolution:` line changed in meaning; Q-SCHEM-20's was reworded with the maintainer's approval (2026-11-20). No expected text of a scenario changed. The rewrites keep the rules that decide output bytes; the golden cases SCHEM-NL-01..23 pin the behaviour independently of the wording (design R2).
@@ -104,3 +119,4 @@ No `Resolution:` line changed in meaning; Q-SCHEM-20's was reworded with the mai
 | Spec team, first reviewer (findings and rewrites) | spec-team agent session of the M8 gates (branch `m8-gates`) | 2026-11-17 | done |
 | Spec team, second reviewer | second spec-team agent session (branch `m8-paraphrase-review-2`), assigned by the maintainer | 2026-11-20 | done with 5 additional findings (PR-8 to PR-12) |
 | Spec team, round-6 review (PR-13 to PR-21) | spec-team agent session of M8 round 6 (branch `m8-round6-decide`) | 2026-11-26 | done: one amendment (PR-16); a second spec-team signature of the round-6 part is open |
+| Spec team, round-8 review (PR-22 to PR-27) | spec-team agent session of M8 round 8 (branch `m8-round8-decide`) | 2026-11-28 | done: no amendment; a second spec-team signature of the round-8 part is open |

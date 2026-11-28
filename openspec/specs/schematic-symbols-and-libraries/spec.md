@@ -66,6 +66,11 @@ Compatibility: exact
 
 (xschem ref: actions.c:825-878, spice_netlist.c:183-268, spice_netlist.c:646-760)
 
+#### Scenario: drc attribute not evaluated in M8
+- **GIVEN** sky130 `sky130_fd_pr/nfet_01v8.sym`, whose `drc` attribute calls `sky130_fet_drc`, placed in a schematic, with `xschem-compat` ON or OFF and no `sky130_fet_drc` procedure defined
+- **WHEN** the schematic is loaded, netlisted (`schematic netlist`, `xschem netlist`, `hefesto-cli --netlist`) and saved
+- **THEN** the `drc` value SHALL NOT be evaluated (no Tcl error and no diagnostic about the missing procedure), the netlist SHALL be the same as for the symbol without the attribute, and the symbol's `drc` attribute SHALL be written back unchanged (Q-SCHEM-6, deferral of 2026-11-27)
+
 #### Scenario: sky130 nfet properties
 - **GIVEN** `sky130_fd_pr/nfet_01v8.sym` from `xschem_sky130`
 - **WHEN** it is loaded
@@ -942,6 +947,8 @@ Hefesto SHALL support generators only when the generator is a Tcl script, run in
 - The runs of one session's symbol cache SHALL share a total of 60 s (`kGeneratorTotalTimeLimit`) until the cache is cleared or the symbols are reloaded (Requirement "Symbol cache and reload"), which restores the full 60 s; each run gets at most 10 s or what is left, if less, and once it is spent no generator SHALL run: the reference is a missing symbol and the warning `SCHEM-LIB-012` (`Symbol <reference>: symbol generators ran for their total of 60000 ms; no further generator runs until the symbols are reloaded`) SHALL be reported once.
 - A failed run (Tcl error, a limit above) SHALL be reported once with `SCHEM-LIB-012` and kept as a missing symbol for that reference, so it is not run again until the symbols are reloaded or the generator file is reloaded.
 
+**Standard error** (standing rule for xschem behaviour no Q-row covers, reported to the user 2026-11-28). xschem runs a generator as a child process whose standard error is xschem's own, so what a generator writes there appears on xschem's stderr as written. With `xschem-compat` ON, the text a Tcl generator writes on its standard error (`puts stderr ...`) SHALL be copied to Hefesto's stderr as written, in the order written, without a diagnostic prefix. With `xschem-compat` OFF, each line of it SHALL be reported as a warning diagnostic naming the generator reference (`Symbol <reference>: generator stderr: <line>`). In both modes that text counts toward the run's bound of 268,435,456 bytes of output (paragraph "Limits"), and it never makes the run fail by itself. A generator run that fails also reports `SCHEM-LIB-012` as above.
+
 **Location** (approved by the user on 2026-11-23, Q-SCHEM-44, decision M8-D7; both modes). A Tcl generator named by an absolute path (`/opt/gen/res.tcl(1k)`) SHALL be run even when its folder is not on the search path. It runs in the same sandbox as every generator: it SHALL read only its own folder and the document's folder, SHALL write nothing and SHALL run no process, and the limits above apply.
 
 Compatibility: behavioral
@@ -962,6 +969,11 @@ Compatibility: behavioral
 - **GIVEN** the Tcl generator `gen.tcl` on the search path, which prints each word of `argv` on its own line into the symbol it writes, and an instance with reference `gen.tcl(a "b c",,d\e	f)` (a tab between `d\e` and `f`)
 - **WHEN** the reference is resolved, with `xschem-compat` ON or OFF
 - **THEN** `argv` SHALL hold the five words `a`, `"b`, `c"`, `d\e` and `f` in that order: the quotes and the backslash SHALL be kept as written, the empty word between the two commas SHALL be dropped, and no shell SHALL be run (Q-SCHEM-54)
+
+#### Scenario: Generator writes on stderr
+- **GIVEN** the Tcl generator `gen.tcl` on the search path, which runs `puts stderr "gen: making box"` and then prints a valid symbol, and an instance with reference `gen.tcl(1)`
+- **WHEN** the reference is resolved with `xschem-compat` ON
+- **THEN** the symbol SHALL be loaded and Hefesto's stderr SHALL hold the line `gen: making box` as written; with `xschem-compat` OFF a warning SHALL report `Symbol gen.tcl(1): generator stderr: gen: making box` and nothing SHALL be copied raw
 
 #### Scenario: Endless generators share the total time limit
 - **GIVEN** a schematic with 10,000 instances `loop.tcl(1)` to `loop.tcl(10000)` of a Tcl generator that never ends, with `xschem-compat` ON or OFF

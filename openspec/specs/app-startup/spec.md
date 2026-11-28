@@ -272,7 +272,7 @@ Compatibility: behavioral (location and process checks [platform])
   - the color client asks about an unsaved color map (capability `ui-color-window` "Unsaved color map protection")
   - the layout client counts the non-internal cells that are modified or whose child bounding boxes or timestamps changed and, when there are any, asks `N Magic cell(s) has/have been modified.` / `  Do you want to exit magic and lose it/them? ` with the answers `no` (default) and `yes`; `no` vetoes
 - A check whose question cannot be asked (no prompt host, a headless session, or a script session whose `tk_dialog` gives no integer) SHALL let the quit go ahead with `magic-compat` ON, as Magic's TxDialog -1 does, and SHALL veto it with `magic-compat` OFF (Q-SCRIPT-48).
-- On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS (default 0).
+- On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS. Without STATUS the exit status SHALL be 0, unless an earlier command of the session set the session's exit status: after an `xschem netlist` run that reported an error it is 10 (capability `schematic-command`, Requirement "xschem compatibility command"; Q-SCHEM-71, approved by the user on 2026-11-28), in both modes of `magic-compat` and `xschem-compat`. An explicit STATUS, 0 included, SHALL always be used as given.
 
 On iPadOS an app cannot end its own process. There `quit`, with or without `-noprompt` (for example a PDK startup file's `quit -noprompt` after a technology-name mismatch), SHALL abort loading or close the current project instead: Hefesto stops evaluating the script, discards the project's session (after the exit checks unless `-noprompt`), returns to the project browser and shows a diagnostic naming the script and line that called `quit` (decision D-36). The desktop behavior is unchanged.
 
@@ -293,6 +293,11 @@ Compatibility: behavioral
 #### Scenario: Quit with status
 - **WHEN** `quit 3 -noprompt` is executed with modified cells
 - **THEN** the process SHALL exit with status 3 without asking
+
+#### Scenario: Plain quit keeps a status set by the session
+- **GIVEN** a headless script session in which an `xschem netlist` run reported an error
+- **WHEN** the script runs `quit -noprompt` with no STATUS
+- **THEN** the process SHALL exit with status 10; with `quit 0 -noprompt` instead it SHALL exit with status 0 (Q-SCHEM-71)
 
 #### Scenario: Veto
 - **GIVEN** a modified cell

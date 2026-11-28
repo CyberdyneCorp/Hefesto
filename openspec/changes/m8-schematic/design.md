@@ -66,6 +66,9 @@ The core area is `schem`, diagnostic prefix `SCHEM-`, code document `docs/diagno
 | Desktop screen | `src/shell/desktop/src/schematic_*.cpp` | SHELL | impl |
 | `schematic` client of the core `macro` command (the schematic editor's key table, Q-SCHEM-67) | `src/core/src/ui/macro_commands.cpp`, its test `tests/unit/ui/macro_test.cpp` (the schematic-client cases; the layout clients stay with their M1/M4 owners) | SHELL | impl |
 | Schematic-tab frame state and the `tab` window command (round 7: layout docks hidden while the Schematic tab is shown) | `src/shell/desktop/src/panels_host.cpp` (`MainWindow::frame_state`, the schematic-tab branch), `src/shell/desktop/src/main_window.cpp`/`.hpp` (`show_schematic_tab`, `register_tab_command`, `tab_command`); the rest of these files stay with their owners | SHELL | impl |
+| Quit status kept after a failed `xschem netlist` (Q-SCHEM-71: `QuitRequest::status_given`), the editor-attached flag (Q-SCHEM-72) and the raw stderr channel of the net driver report (round 8) | `src/core/include/hefesto/cmd/context.hpp`, `src/core/include/hefesto/cmd/quit_policy.hpp`, `src/core/src/cmd/quit_policy.cpp`, `src/core/src/cmd/builtins.cpp` (only those parts; the rest of these files stays with its M4 owners) | CMD | impl |
+| Desktop wiring of the editor-attached flag (Q-SCHEM-72) | `src/shell/desktop/src/core_command_sink.cpp` (the flag only; the rest stays with its owner) | CMD | impl |
+| Net queries of the `xschem` command (`resolved_net`, per-pin nets of `@@P`; round 8, if created) | `src/core/src/schem/cmd/net_queries.cpp` | CMD | impl |
 | Specs, `SCHEM.md`, interface table, capture-fixed texts | `openspec/specs/schematic-*`, `docs/decisions/` | SPEC | spec |
 | Inventory script, PDK data sets | `scripts/schem_inventory.py`, `scripts/fetch_pdk.py` | PDK | either (reads only Apache-2.0 PDK trees) |
 | Golden inputs and capture | `tests/golden/SCHEM/`, `tools/golden/` | GOLDEN | impl (inputs) |
@@ -193,6 +196,7 @@ Same output on Linux x86_64, Linux aarch64 and macOS arm64: number parsing and p
 - The `hefesto-security` sign-off of D14 recorded. Exit table row (round 5, 2026-11-25): Security review of the schematic script paths (task 12.1, `hefesto-security` "Schematic script permission model"): **signed off 2026-11-25** after S8-04 was fixed (m8 round 5, PR #105) and `hefesto_schem_security_tests`, including the PDK testbench tests of the three PDKs, passed on the `linux-x64-gcc-11` leg of CI run 45549311734 (job 139004291978); S8-06 open (not blocking), S8-07/S8-08 accepted; see `docs/contributing/security.md` "Script review (task 12.1, 2026-11-24)". Re-recorded 2026-11-25 after the review of PR #120 fixed the remaining `stdin` hang: `hefesto_schem_security_tests` passed again on the `linux-x64-gcc-11` leg of CI run 45613328729 (job 139202701028). Owner: SECURITY.
 - `check_cleanroom.py` passes and every schematic pull request carries the clean-room checkbox.
 - `openspec validate --all --strict` passes.
+- Not M8 exit items (Q-SCHEM-68 option (a), approved by the user on 2026-11-28): the whole-string property text view with the symbol's `template` beside it and the desktop dialogs for the global properties and the header text; they come with the desktop editing work of a later milestone (with M14's iPad editing). Task 9.2 is complete without them once the field view, "apply to all selected" and the round-7 specified items are implemented.
 
 M8 exit table (round 6, GOLDEN, 2026-11-26; branch `m8-round6-golden` on origin/main 6e48a02f, before the round's DECIDE and CORE branches merge; task 14.3):
 
@@ -329,7 +333,12 @@ All three were decided by the user on 2026-11-13, each as option (a), the recomm
 | Q-SCHEM-62 (approved 2026-11-27) | other (a): `xschem get_tok` third argument (`1` keeps quotes, `2` strips them); both modes | D12 |
 | Q-SCHEM-66 (approved 2026-11-27) | platform (a): Command-C/V on macOS, Ctrl-C/V elsewhere with Ctrl-C interrupting a running netlist; rebindable; both modes | D15 |
 | Q-SCHEM-67 (approved 2026-11-27) | platform (a): core `macro` accepts the client `schematic` (the schematic key table) in both modes; a recorded Magic difference with `magic-compat` ON | D3, D15 |
-| Q-SCHEM-68 (proposed 2026-11-27, awaiting the user) | other (a) recommended: property text view, template view and global-property/header dialogs move past M8; the field view and "apply to all selected" stay M8 | D11, D15, D21 |
+| Q-SCHEM-68 (approved 2026-11-28) | other (a): property text view, template view and global-property/header dialogs move past M8 and out of the exit table; the field view and "apply to all selected" stay M8 | D11, D15, D21 |
+| Q-SCHEM-69 (approved 2026-11-28) | other (a): the kind word of `xschem saveas` changes nothing; the document is written as the kind it is; both modes | D12 |
+| Q-SCHEM-70 (approved 2026-11-28) | limit (a), standing rule: the net driver check has its own 4 GiB bus-expansion budget (`NetlistEnvironment::bus_budget`), separate from Q-SCHEM-41's; both modes | D9, D19 |
+| Q-SCHEM-71 (approved 2026-11-28) | other (a): a plain `quit` keeps exit status 10 after a failed `xschem netlist`; `quit <n>` uses n; both modes (`QuitRequest::status_given`) | D3, D12 |
+| Q-SCHEM-72 (approved 2026-11-28) | platform (a): `cmd::CommandContext` editor-attached flag set by the desktop shell; with it `xschem clear` asks as `schematic close`, `paste`/`saveas` without arguments go interactive; both modes | D3, D12, D15 |
+| Q-SCHEM-73, Q-SCHEM-74 (proposed 2026-11-28, awaiting the user) | other: (73) instance `@` tokens substituted into generator arguments, recommended (a) both modes; (74) the folder of the SCHEM-NL-14 `has_included_subcircuit` line, recommended (a) approved deviation as Q-SCHEM-30; neither cited by a spec | D7, D9, D16, D21 |
 
 ## As-landed scaffold contracts
 
