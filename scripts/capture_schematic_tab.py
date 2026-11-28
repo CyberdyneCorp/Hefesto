@@ -51,6 +51,7 @@ CANVAS_AT = re.compile(r"canvas at (?P<x>-?\d+),(?P<y>-?\d+)")
 ROWS_AT = re.compile(r"rows at (?P<x>-?\d+),(?P<y>-?\d+)")
 ZOOM = re.compile(r"zoom (?P<z>[0-9.e+-]+) (?P<mode>user view|fitted)")
 ROW_HEIGHT = 24  # schematic_view.cpp kRowHeight
+PARK = "move 26,700"  # the pointer rests on the empty foot of the tool rail: no canvas tooltip in the capture
 
 # A resistor whose value takes 4 s of Tcl when netlisted, so the netlist run
 # lasts past kLongRunning (2 s) and the netlist bar shows the Interrupt card.
@@ -130,7 +131,7 @@ def tab_run(app: App) -> tuple[Run, tuple[int, int, int, int] | None]:
     if app.linux:  # the Schematic segment of the view tabs at 1280 x 800 (x 320-405)
         run = app.run("tab", opened, "wait 500; down 362,24; up 362,24; wait 3000")
     else:
-        run = app.run("tab", f"{opened}; tab schematic", "wait 500; wait 3000")
+        run = app.run("tab", f"{opened}; tab schematic", f"{PARK}; wait 500; wait 3000")
     tab = TAB_LINE.search(run.output)
     run.check(tab is not None and tab.group("crumb") == "ihp_style_tb.sch" and int(tab.group("n")) > 0
               and tab.group("pending") == "0", "the Schematic tab shows ihp_style_tb.sch, all symbols resolved")
@@ -144,7 +145,7 @@ def tab_run(app: App) -> tuple[Run, tuple[int, int, int, int] | None]:
 def selection_run(app: App) -> Run:
     commands = (f"schematic open {TESTBENCH}; tab schematic; schematic netlist; schematic hilight net IN; "
                 "schematic hilight instance C1; schematic select instance R1")
-    run = app.run("selection", commands, "wait 500; wait 2000")
+    run = app.run("selection", commands, f"{PARK}; wait 500; wait 2000")
     state = run.state()
     run.check("properties R1 3 rows name=R1 value=10k m=1" in state, "the field view shows R1's three attributes")
     lit = re.search(r"highlights (\d+) nets (\d+) instances", state)
@@ -191,7 +192,7 @@ def netlist_run(app: App, canvas: tuple[int, int, int, int]) -> Run:
 
 
 def keys_run(app: App) -> Run:
-    return app.run("keys", "panel keys show", "wait 500; wait 1500")
+    return app.run("keys", "panel keys show", f"{PARK}; wait 500; wait 1500")
 
 
 def main() -> int:

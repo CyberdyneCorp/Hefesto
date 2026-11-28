@@ -364,6 +364,36 @@ TEST_CASE("the netlist action: command, Interrupt card and result", "[cap:schema
   CHECK(messages.count(MessageSeverity::error) == 1);
 }
 
+// Regression (round 8 capture review, CI run 46155486775): during a netlist
+// run the frames the desktop's progress handler drew never repainted the
+// netlist bar, so its Interrupt card was never shown however long the run.
+TEST_CASE("the frames drawn during a netlist run repaint the netlist bar",
+          "[cap:schematic-command][req:Subcommand table]") {
+  hefesto::script::ProgressReporting progress;
+  std::vector<std::string> calls;
+  progress.handler = [&calls](const hefesto::script::ScriptProgress& p) { calls.emplace_back(p.done ? "done" : "frame"); };
+  {
+    const NetlistProgressRepaint repaint(progress, [&calls] { calls.emplace_back("repaint"); });
+    progress.handler(hefesto::script::ScriptProgress{});
+    hefesto::script::ScriptProgress last;
+    last.done = true;
+    progress.handler(last);
+  }
+  CHECK(calls == std::vector<std::string>{"repaint", "frame", "done"});
+  // Restored after the run.
+  calls.clear();
+  progress.handler(hefesto::script::ScriptProgress{});
+  CHECK(calls == std::vector<std::string>{"frame"});
+
+  // No front end drawing frames: nothing is installed.
+  hefesto::script::ProgressReporting none;
+  {
+    const NetlistProgressRepaint repaint(none, [&calls] { calls.emplace_back("repaint"); });
+    CHECK_FALSE(static_cast<bool>(none.handler));
+  }
+  CHECK_FALSE(static_cast<bool>(none.handler));
+}
+
 TEST_CASE("the top bar's Netlist button runs the same netlist action as the netlist bar",
           "[cap:schematic-command][req:Subcommand table]") {
   NetlistAction action;

@@ -6,6 +6,7 @@
 #include "schematic_view.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <array>
 #include <cmath>
 #include <cstdio>
@@ -358,7 +359,9 @@ std::string SchematicView::state_line() const {
   std::array<char, 32> zoom{};
   (void)std::snprintf(zoom.data(), zoom.size(), "%.3g", viewport_.zoom());
   line += std::string{", zoom "} + zoom.data() + (input_.user_view() ? " user view" : " fitted");
-  line += ", netlist " + std::string{netlist_state_name(netlist_.state())} + (card_seen_ ? ", card seen" : ", no card");
+  const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(netlist_.duration()).count();
+  line += ", netlist " + std::string{netlist_state_name(netlist_.state())} + " in " + std::to_string(ms) + " ms" +
+          (card_seen_ ? ", card seen" : ", no card");
   return line + ", canvas at " + rect_origin(input_viewport_->rect()) + ", rows at " + rect_origin(property_rows_->rect());
 }
 
@@ -553,6 +556,9 @@ void SchematicView::start_netlist() {
                       netlist_bar_->invalidate();
                       if (netlist_changed_) netlist_changed_();  // running: the top bar's button is disabled
                       tick_netlist();
+                      // The frames drawn during the run's tcleval values repaint the bar (its card).
+                      const NetlistProgressRepaint repaint(ctx_.editor().script.progress,
+                                                           [this] { netlist_bar_->invalidate(); });
                       if (ctx_.run) ctx_.run(line);
                     },
                     messages_);

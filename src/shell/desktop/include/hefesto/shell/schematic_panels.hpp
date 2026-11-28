@@ -46,6 +46,7 @@
 #include <vector>
 
 #include "hefesto/cmd/command.hpp"
+#include "hefesto/script/progress.hpp"
 #include "hefesto/shell/command_sink.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 
@@ -254,15 +255,35 @@ class NetlistAction {
   [[nodiscard]] const std::string& status() const noexcept { return status_; }
   /// The text of a run without a file.
   [[nodiscard]] const std::string& text() const noexcept { return text_; }
+  /// How long the last finished run took.
+  [[nodiscard]] Clock::duration duration() const noexcept { return duration_; }
 
  private:
   State state_ = State::idle;
   NetlistRequest request_;
   std::string label_;
   Clock::time_point started_{};
+  Clock::duration duration_{};
   bool cancel_requested_ = false;
   std::string status_;
   std::string text_;
+};
+
+/// While a netlist run lasts, every script progress report (the frames the
+/// desktop's progress handler draws during the run's `tcleval` values) first
+/// runs `repaint`, so the netlist bar repaints and its Interrupt card shows
+/// after kLongRunning; the handler in place before is restored at the end.
+/// Without a handler (no front end draws frames) nothing is installed.
+class NetlistProgressRepaint {
+ public:
+  NetlistProgressRepaint(script::ProgressReporting& progress, std::function<void()> repaint);
+  ~NetlistProgressRepaint();
+  NetlistProgressRepaint(const NetlistProgressRepaint&) = delete;
+  NetlistProgressRepaint& operator=(const NetlistProgressRepaint&) = delete;
+
+ private:
+  script::ProgressReporting& progress_;
+  script::ProgressHandler saved_;
 };
 
 /// The top bar's "Netlist" button (board: next to Simulate; M8 task 13.2):

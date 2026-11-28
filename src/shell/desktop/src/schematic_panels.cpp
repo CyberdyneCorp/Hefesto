@@ -366,6 +366,7 @@ std::optional<std::string> NetlistAction::start(const NetlistRequest& request, s
 
 void NetlistAction::finish(const CommandOutcome& outcome, MessagesPanel& messages) {
   if (state_ != State::running) return;
+  duration_ = Clock::now() - started_;
   messages.add(outcome);
   if (!outcome.ok()) {
     state_ = State::failed;
@@ -385,6 +386,19 @@ bool NetlistAction::request_cancel() noexcept {
   if (state_ != State::running || cancel_requested_) return false;
   cancel_requested_ = true;
   return true;
+}
+
+NetlistProgressRepaint::NetlistProgressRepaint(script::ProgressReporting& progress, std::function<void()> repaint)
+    : progress_(progress), saved_(progress.handler) {
+  if (!saved_ || !repaint) return;
+  progress_.handler = [saved = saved_, repaint = std::move(repaint)](const script::ScriptProgress& report) {
+    if (!report.done) repaint();  // before the saved handler draws the frame
+    saved(report);
+  };
+}
+
+NetlistProgressRepaint::~NetlistProgressRepaint() {
+  progress_.handler = std::move(saved_);
 }
 
 NetlistButtonView netlist_button(const NetlistAction& action, bool has_document) {
