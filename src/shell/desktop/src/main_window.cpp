@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <utility>
 
+#include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -314,9 +315,12 @@ void MainWindow::build_top_bar() {
   deferred.widgets.push_back(netlist.widget);
   for (const DeferredControl& c : deferred_actions()) {
     const bool agent = c.label == "Ask agent";
-    const TopButton b = add_top_button(row, c.label, agent ? "agent" : "",
-                                       agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary, c.tooltip,
-                                       nullptr);
+    // M7 (task 16.1): Extract is live, in its M1 slot and hiding group.
+    const TopButton b = c.label == "Extract"
+                            ? add_extract_button(row, c.label)
+                            : add_top_button(row, c.label, agent ? "agent" : "",
+                                             agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary,
+                                             c.tooltip, nullptr);
     deferred.width += b.width;
     deferred.widgets.push_back(b.widget);
   }
@@ -566,6 +570,7 @@ void MainWindow::register_view_commands() {
     std::fprintf(stderr, "hefesto: a view command name is already registered\n");
   }
   register_panel_command();
+  register_tab_command();  // M8 round 7
 }
 
 void MainWindow::run_typed_line(const std::string& text) {
@@ -734,6 +739,7 @@ void MainWindow::play_pending_input() {
       std::printf("hefesto: schematic tab %s\n", schematic_view_->status_line().c_str());
       std::fflush(stdout);
     }
+    report_extract_button();  // M7: the Extract button's state and place (CI capture)
   }
   // Keep frames coming through the waits (a hold's timer, a popover's frame).
   window_.request_redraw();
@@ -919,12 +925,16 @@ void MainWindow::show_view3d_tab(bool on) {
   window_.request_redraw();
 }
 
-// M8 (task 13.2): the Schematic tab replaces the canvas (and the 3D view).
+// M8 (task 13.2): the Schematic tab replaces the canvas (and the 3D view);
+// the layout docks give it the window while it is shown (round 7,
+// frame_state).
 void MainWindow::show_schematic_tab(bool on) {
   if (on) show_view3d_tab(false);
+  const bool changed = schematic_tab_ != on;
   schematic_tab_ = on;
   schematic_view_->widget().set_visible(on);
   canvas_->widget().set_visible(!on && !view3d_tab_);
+  if (changed) arrange_middle();
   if (on) {
     schematic_view_->refresh();
     schematic_view_->focus();
@@ -933,9 +943,38 @@ void MainWindow::show_schematic_tab(bool on) {
   window_.request_redraw();
 }
 
+// M8 round 7: `tab ?layout|schematic|3d?` (parse_tab_command, schematic_panels.hpp).
+void MainWindow::register_tab_command() {
+  const auto added = ctx_.core.registry().add(
+      {"tab", std::string(kTabCommandUsage),
+       "Shows the Layout, Schematic or 3D editor view, as a click on its tab in the top bar does; with no "
+       "argument, names the view shown.",
+       [this](cmd::CommandContext&, const cmd::Invocation& inv) { return tab_command(inv.args); }});
+  if (added) std::fprintf(stderr, "hefesto: the tab command is already registered\n");
+}
+
+cmd::CommandResult MainWindow::tab_command(const std::vector<std::string>& args) {
+  const TabRequest request = parse_tab_command(args);
+  if (!request.ok) {
+    return cmd::CommandResult::failure(
+        diag::make(diag::codes::kCmdUsage, "usage: " + std::string(kTabCommandUsage)));
+  }
+  if (request.show == EditorTab::view3d && !view3d_->window_open()) {
+    return cmd::CommandResult::failure(
+        diag::make(diag::codes::kCmdUsage, "tab 3d: the 3D view is not open (render3d opens it)"));
+  }
+  if (request.show) {
+    show_schematic_tab(*request.show == EditorTab::schematic);
+    if (*request.show != EditorTab::schematic) show_view3d_tab(*request.show == EditorTab::view3d);
+  }
+  const EditorTab shown = schematic_tab_ ? EditorTab::schematic : (view3d_tab_ ? EditorTab::view3d : EditorTab::layout);
+  return cmd::CommandResult::success(std::string(editor_tab_name(shown)));
+}
+
 void MainWindow::refresh_all() {
   if (schematic_tab_) schematic_view_->refresh();  // M8: after each command
   refresh_netlist_button();
+  refresh_extract_button();  // M7: tech load, style change, a new root
   sync_styles();
   view3d_->refresh();
   const view::LayoutWindow* win = ctx_.editor().windows.current();

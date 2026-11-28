@@ -5,6 +5,11 @@
 // schematic-editing "Clipboard"; schematic-command `clipboard` and `paste`;
 // openspec/changes/m8-schematic design D15, task 13.2):
 //
+// The keys follow Q-SCHEM-66 (a), approved 2026-11-27, in both modes:
+// Command-C / Command-V on macOS; off macOS Ctrl-C / Ctrl-V, where Ctrl-C
+// interrupts a running netlist and copies otherwise; a binding of the chord
+// in the `schematic` key table comes first (rebindable, schematic_input.hpp).
+//
 // - Copy (Command-C on macOS, Ctrl-C elsewhere while no netlist runs) runs
 //   `schematic clipboard copy`; when that command returns the copied text,
 //   the text goes to the system clipboard too, so another Hefesto window or

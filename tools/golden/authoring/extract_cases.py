@@ -906,9 +906,43 @@ def probe_case() -> TclCase:
                           "-f cases=tests/data/extract/device/abut_probe/EXTRACT/cases/EX-P03"])
 
 
+# --- Rows added by the requirement audit (task 17.2) ---------------------------------------------
+
+def audit_specs() -> list[ExSpec]:
+    """Requirements Magic shows that no case covered: EX-071 "Command syntax and option matching"
+    (extract-commands: the window check before any cell, unknown and ambiguous options,
+    case-insensitive unique prefixes, the list/listall forms, CmdE.c:1146-1180), EX-072 "Contact
+    residues and coupling table completion" and EX-073 "Connectivity overrides" (extract-tech-section)."""
+    return [
+        ExSpec("EX-071", CMD, ["Command syntax and option matching"],
+               "before any cell: extract all (no window or box) and extract style (needs none); after load: "
+               "extract nosuch, extract s and extract st (ambiguous), extract STY, extract list style, extract "
+               "listall style, extract list path, extract path; then extract all",
+               {"ex": metal1_rect()},
+               pre=(p("extract all", "extract style"),),
+               setup=("extract nosuch", "extract s", "extract st", "extract STY", "extract list style",
+                      "extract listall style", "extract list path", "extract path")),
+        ExSpec("EX-072", "extract-tech-section", ["Contact residues and coupling table completion"],
+               "overlap metal2 metal1 20, sidewall metal1 space space metal1 40, sidehalo 4, extract no fringehalo; an "
+               "m1c contact a (0,0)-(4,4) and a metal1 wire c (6,0)-(10,4) under a metal2 plate b (0,0)-(10,10): the "
+               "contact takes its metal1 residue's overlap and sidewall couplings",
+               {"ex": Cell([("m1c", 0, 0, 4, 4), ("metal1", 6, 0, 10, 4), ("metal2", 0, 0, 10, 10)],
+                           [lab("m1c", 2, 2, "a"), lab("metal1", 8, 2, "c"), lab("metal2", 5, 8, "b")])},
+               rules="overlap metal2 metal1 20\nsidewall metal1 space space metal1 40\nsidehalo 4",
+               setup=("extract no fringehalo",)),
+        ExSpec("EX-073", "extract-tech-section", ["Connectivity overrides"],
+               "disconnect pwell psd and connect metal1 metal2 in the extract style; EX-025's pwell with an abutting psd "
+               "tap, and a metal1 wire a under a metal2 wire b with no contact: two well nodes, one metal node",
+               {"ex": Cell([("pwell", 0, 0, 20, 20), ("psd", 20, 5, 24, 9), ("metal1", 30, 0, 40, 4),
+                            ("metal2", 30, 0, 40, 4)], [lab("metal1", 32, 2, "a"), lab("metal2", 38, 2, "b")])},
+               rules="resist pwell,psd 1000\ndisconnect pwell psd\nconnect metal1 metal2"),
+    ]
+
+
 def specs() -> list[ExSpec]:
     return [*file_format_specs(), *capacitance_specs(), *resistance_specs(), *node_specs(), *device_specs(),
-            *substrate_specs(), *tech_section_specs(), *hier_device_specs(), *hier_specs(), *command_specs()]
+            *substrate_specs(), *tech_section_specs(), *hier_device_specs(), *hier_specs(), *command_specs(),
+            *audit_specs()]
 
 
 def cases() -> list[TclCase]:
@@ -918,6 +952,7 @@ def cases() -> list[TclCase]:
 FLAT_IDS = [f"EX-{n:03d}" for n in [*range(1, 43), 44, 45, 46, 48, *range(57, 64)]]
 HIER_IDS = [f"EX-{n:03d}" for n in [43, 47, *range(49, 57)]]
 COMMAND_IDS = [f"EX-{n:03d}" for n in range(64, 71)]
+AUDIT_IDS = ["EX-071", "EX-072", "EX-073"]  # task 17.2
 LATER: dict[str, str] = {}
 PROBES = {"--probe": (probe_case, PROBE_DIR), "--array-probe": (array_probe_case, ARRAY_PROBE_DIR)}
 

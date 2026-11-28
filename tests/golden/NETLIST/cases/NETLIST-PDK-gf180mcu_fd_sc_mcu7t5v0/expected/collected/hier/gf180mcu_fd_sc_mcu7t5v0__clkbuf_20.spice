@@ -1,0 +1,69 @@
+* NGSPICE file created from gf180mcu_fd_sc_mcu7t5v0__clkbuf_20.ext - technology: gf180mcuD
+
+.subckt gf180mcu_fd_sc_mcu7t5v0__clkbuf_20 I Z VDD VNW VPW VSS
+X0 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X1 VSS a_224_552# Z VPW nfet_05v0 ad=0.2068p pd=1.82u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X2 a_224_552# I VDD VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X3 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X4 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X5 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X6 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X7 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X8 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X9 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X10 a_224_552# I VDD VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.3608p ps=2.52u w=0.82u l=0.5u
+X11 a_224_552# I VSS VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X12 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X13 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X14 Z a_224_552# VDD VNW pfet_05v0 ad=0.4392p pd=1.94u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X15 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X16 VDD I a_224_552# VNW pfet_05v0 ad=0.367p pd=1.92u as=0.2952p ps=1.54u w=0.82u l=0.5u
+X17 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X18 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X19 VSS I a_224_552# VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X20 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X21 a_224_552# I VDD VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X22 VDD a_224_552# Z VNW pfet_05v0 ad=0.5368p pd=3.32u as=0.4392p ps=1.94u w=1.22u l=0.5u
+X23 a_224_552# I VSS VPW nfet_05v0 ad=0.1672p pd=1.64u as=98.8f ps=0.9u w=0.38u l=0.6u
+X24 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X25 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X26 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X27 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X28 VDD I a_224_552# VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X29 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X30 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X31 VSS I a_224_552# VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X32 a_224_552# I VDD VNW pfet_05v0 ad=0.2952p pd=1.54u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X33 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X34 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X35 VDD I a_224_552# VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X36 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.367p ps=1.92u w=1.22u l=0.5u
+X37 VSS I a_224_552# VPW nfet_05v0 ad=98.8f pd=0.9u as=0.1672p ps=1.64u w=0.38u l=0.6u
+X38 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X39 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X40 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X41 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X42 a_224_552# I VSS VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X43 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X44 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X45 VDD I a_224_552# VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X46 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X47 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.2914p ps=2.18u w=0.47u l=0.6u
+X48 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X49 VSS I a_224_552# VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X50 a_224_552# I VDD VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X51 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X52 Z a_224_552# VDD VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X53 a_224_552# I VSS VPW nfet_05v0 ad=98.8f pd=0.9u as=98.8f ps=0.9u w=0.38u l=0.6u
+X54 Z a_224_552# VSS VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+X55 VDD I a_224_552# VNW pfet_05v0 ad=0.2542p pd=1.44u as=0.2542p ps=1.44u w=0.82u l=0.5u
+X56 VDD a_224_552# Z VNW pfet_05v0 ad=0.3782p pd=1.84u as=0.3782p ps=1.84u w=1.22u l=0.5u
+X57 VSS a_224_552# Z VPW nfet_05v0 ad=0.1222p pd=0.99u as=0.1222p ps=0.99u w=0.47u l=0.6u
+C0 a_224_552# VNW 2.99986f
+C1 Z a_224_552# 5.87365f
+C2 I a_224_552# 2.48655f
+C3 VSS VPW 2.47398f
+C4 VNW VPW 11.0583f
+C5 a_224_552# VPW 3.66034f
+.ends
+

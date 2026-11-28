@@ -17,8 +17,9 @@
 // Copy and paste (schematic_clipboard.hpp): Command-C and Command-V on
 // macOS, where Ctrl-C stays the interrupt; Ctrl-C and Ctrl-V elsewhere,
 // where Ctrl-C is the interrupt while a netlist runs (set_running) and Copy
-// otherwise. A paste goes where the pointer last was over the canvas (the
-// view's centre before the pointer came in).
+// otherwise (Q-SCHEM-66 (a), approved 2026-11-27; both modes). A paste goes
+// where the pointer last was over the canvas (the view's centre before the
+// pointer came in).
 //
 // Raven-free and unit-tested in tests/unit/shell/schematic_input_test.cpp.
 // Owner: SHELL (openspec/changes/m8-schematic design D3, D15; task 13.2).

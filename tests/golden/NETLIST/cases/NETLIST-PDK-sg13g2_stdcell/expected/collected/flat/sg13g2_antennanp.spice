@@ -1,0 +1,4 @@
+* NGSPICE file created from sg13g2_antennanp.ext - technology: ihp-sg13g2
+
+X0 A VDD dpantenna l=1.34u w=1.05u
+X1 VSS A dantenna l=0.78u w=0.78u

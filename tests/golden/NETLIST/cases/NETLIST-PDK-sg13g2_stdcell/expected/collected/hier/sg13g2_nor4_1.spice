@@ -1,0 +1,13 @@
+* NGSPICE file created from sg13g2_nor4_1.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_nor4_1 VSS VDD B C Y A D
+X0 Y C VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X1 a_252_412# B a_150_412# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X2 VSS D Y VSS sg13_lv_nmos ad=0.23757p pd=2.16u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X3 a_354_412# C a_252_412# VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X4 Y D a_354_412# VDD sg13_lv_pmos ad=0.4368p pd=3.02u as=0.2128p ps=1.5u w=1.12u l=0.13u
+X5 Y A VSS VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.2516p ps=2.16u w=0.74u l=0.13u
+X6 VSS B Y VSS sg13_lv_nmos ad=0.1406p pd=1.12u as=0.1406p ps=1.12u w=0.74u l=0.13u
+X7 a_150_412# A VDD VDD sg13_lv_pmos ad=0.2128p pd=1.5u as=0.3808p ps=2.92u w=1.12u l=0.13u
+.ends
+

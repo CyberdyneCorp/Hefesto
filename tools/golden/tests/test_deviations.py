@@ -83,6 +83,17 @@ class ParseTest(unittest.TestCase):
         undeferred = deviations.parse(ENTRY)["X-1"]
         self.assertIs(undeferred.at_milestone("M4"), undeferred)
 
+    def test_decided_entry_defers_named_outputs_only(self):
+        # Q-SCHEM-60: stderr.txt is decided; exitcode.txt is deferred by name and must match at the exit.
+        dev = deviations.parse('[X-1]\ndecisions = ["Q-SCHEM-60"]\ndeferred = "M8"\n'
+                               'deferred_outputs = { "exitcode.txt" = "M8" }\n'
+                               'outputs = ["exitcode.txt", "stderr.txt"]\nreason = "r"\n')["X-1"]
+        self.assertEqual(deviations.classify(dev, ["exitcode.txt", "stderr.txt"])[0], "deviation")
+        at_m8 = dev.at_milestone("M8")
+        self.assertEqual((at_m8.deferred, at_m8.outputs, at_m8.deferred_outputs), ("", ("stderr.txt",), ()))
+        self.assertEqual(deviations.classify(at_m8, ["exitcode.txt", "stderr.txt"])[0], "fail")
+        self.assertEqual(deviations.classify(at_m8, ["stderr.txt"])[0], "deviation")
+
     def test_schem_lvs_01_checks_its_netlist_at_the_m8_exit(self):
         dev = deviations.load(GOLDEN_ROOT)["SCHEM-LVS-01"]
         self.assertEqual(dev.deferred, "M9")

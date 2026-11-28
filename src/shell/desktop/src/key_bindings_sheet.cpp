@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/shell/schematic_bindings.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/macro_file.hpp"
@@ -69,6 +70,9 @@ std::vector<std::string> binding_changes(const ui::MacroTables& current, const u
 std::vector<std::string> reset_table_commands(const ui::MacroTables& current, std::string_view table) {
   editor::EditorState fresh;
   ui::install_defaults(fresh);
+  // The schematic editor's table starts with the xschem-style defaults the
+  // Schematic tab installs (SchematicKeyMap::attach), not with the core's.
+  if (table == kSchematicTable) install_schematic_defaults(fresh.macros);
   return binding_changes(current, fresh.macros, table);
 }
 

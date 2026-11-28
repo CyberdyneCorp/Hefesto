@@ -104,6 +104,13 @@ std::string TclBridge::run_script(const std::string& script) const {
   return result.ok() ? result.value.to_string() : std::string{kTclFailure};
 }
 
+std::optional<std::string> TclBridge::global_variable(std::string_view name) const {
+  if (interpreter_ == nullptr) return std::nullopt;
+  const std::optional<cmd::Value> value = interpreter_->get_var("::" + std::string{name});
+  if (!value) return std::nullopt;
+  return value->to_string();
+}
+
 void TclBridge::report(diag::Diagnostic diagnostic) const {
   if (run_ != nullptr) report_tcleval(*run_, std::move(diagnostic));
 }

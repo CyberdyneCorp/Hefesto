@@ -116,7 +116,7 @@ class AuthoredCasesTest(unittest.TestCase):
 
     def test_one_case_per_cases_md_row(self):
         rows = re.findall(r"^\| (SCHEM-[A-Z]+-\d+) \|", CASES_MD.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(len(rows), 41)
+        self.assertEqual(len(rows), 42)
         self.assertEqual(sorted(s.id for s in self.specs), sorted(rows))
 
     def test_committed_cases_match_the_generator(self):
@@ -168,7 +168,8 @@ class AuthoredCasesTest(unittest.TestCase):
 
     def test_decided_deviation_outlives_replay(self):
         spec = next(s for s in self.specs if s.id == "SCHEM-PR-05")
-        self.assertIn('deferred = "M8"', schem_cases.deviation_entry(spec))
+        with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
+            self.assertIn('deferred = "M8"', schem_cases.deviation_entry(spec))
         with mock.patch.object(schem_cases, "REPLAYED", frozenset({"SCHEM-PR-05", "SCHEM-RT-01"})):
             entry = schem_cases.deviation_entry(spec)
             rt01 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-RT-01"))
@@ -180,7 +181,7 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertEqual(rt01, [])
 
     def test_simulation_and_lvs_results_deferred_to_m9(self):
-        for case_id in ("SCHEM-SIM-02", "SCHEM-LVS-01"):
+        for case_id in ("SCHEM-LVS-01",):
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
                 self.assertIn('deferred = "M9"', entry)
@@ -190,7 +191,11 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertIn('outputs = ["layout.spice", "lvs.out", "stdout.txt", "stderr.txt"]', lvs)
         with mock.patch.object(schem_cases, "REPLAYED", frozenset()):
             before = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-LVS-01"))
+            sim02 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-SIM-02"))
         self.assertIn('deferred_outputs = { "inv_1.spice" = "M8" }', before)
+        self.assertIn('deferred = "M9"', sim02)
+        # SCHEM-SIM-02's texts with no simulation loaded replay since round 7 (CI run 46044902742).
+        self.assertEqual(schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-SIM-02")), [])
 
     def test_replayed_deck_of_a_later_case_has_no_entry(self):
         # SCHEM-SIM-01 captures only the deck, which replays; its simulation results stay M9's (LATER).
@@ -199,8 +204,14 @@ class AuthoredCasesTest(unittest.TestCase):
         self.assertEqual(schem_cases.deviation_entry(sim01), [])
 
     def test_replayed_cases_keep_their_open_outputs(self):
+        # NL-14: stderr.txt is decided (Q-SCHEM-60), stdout.txt deferred by name so it is due at the exit.
+        nl14 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-14"))
+        self.assertIn('decisions = ["Q-SCHEM-60"]', nl14)
+        self.assertIn('deferred_outputs = { "stdout.txt" = "M8" }', nl14)
+        # NL-09 matches but for its decided stderr.txt since the net driver check (round 7).
         nl09 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-NL-09"))
-        self.assertIn('outputs = ["exitcode.txt", "stderr.txt"]', nl09)
+        self.assertIn('outputs = ["stderr.txt"]', nl09)
+        self.assertFalse(any(line.startswith("deferred") for line in nl09))
         for case_id in schem_cases.REPLAYED:
             with self.subTest(case=case_id):
                 entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
@@ -211,12 +222,15 @@ class AuthoredCasesTest(unittest.TestCase):
                 if open_outputs:
                     self.assertIn(f"outputs = {schem_cases._toml_list(open_outputs)}", entry)
 
-    def test_diagnostic_streams_cite_the_proposed_question(self):
-        for case_id in schem_cases.DIAG_ONLY:
+    def test_diagnostic_streams_are_the_approved_deviation(self):
+        # Q-SCHEM-60 (approved 2026-11-27, option (a)): stderr.txt is decided, never deferred.
+        for case_id in schem_cases.DIAG_CASES:
             with self.subTest(case=case_id):
                 self.assertIn(case_id, schem_cases.REPLAYED)
-                self.assertEqual(schem_cases.REPLAYED_OPEN[case_id][1], ["stderr.txt"])
-                self.assertIn("Q-SCHEM-60", schem_cases.REPLAYED_OPEN[case_id][2])
+                self.assertEqual(schem_cases.DECIDED[case_id][:2], (["Q-SCHEM-60"], ["stderr.txt"]))
+                self.assertNotIn("stderr.txt", schem_cases.REPLAYED_OPEN.get(case_id, ("", [], ""))[1])
+                entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
+                self.assertFalse(any(line.startswith("deferred_outputs") and "stderr" in line for line in entry))
 
     def test_hefesto_script_prints_only_what_the_case_writes(self):
         script = schem_cases.hefesto_script("puts x\nset a 1")

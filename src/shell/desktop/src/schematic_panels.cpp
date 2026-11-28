@@ -400,4 +400,22 @@ std::optional<InterruptCardView> NetlistAction::card(Clock::time_point now) cons
   return view;
 }
 
+TabRequest parse_tab_command(const std::vector<std::string>& args) {
+  if (args.empty()) return TabRequest{true, std::nullopt};
+  if (args.size() > 1) return {};
+  for (const EditorTab tab : {EditorTab::layout, EditorTab::schematic, EditorTab::view3d}) {
+    if (args[0] == editor_tab_name(tab)) return TabRequest{true, tab};
+  }
+  return {};
+}
+
+std::string_view editor_tab_name(EditorTab tab) noexcept {
+  switch (tab) {
+    case EditorTab::schematic: return "schematic";
+    case EditorTab::view3d: return "3d";
+    case EditorTab::layout: break;
+  }
+  return "layout";
+}
+
 }  // namespace hefesto::shell

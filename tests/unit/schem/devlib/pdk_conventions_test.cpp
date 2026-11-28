@@ -88,7 +88,9 @@ void check_run(const std::string& case_id, const Run& run, const Path& root) {
   const std::string actual = dl::replace_all(result.text, root.generic_string(), "/pdk");
   const std::string expected = dl::read_text(kCases / case_id / "expected" / run.output);
   INFO(case_id << " " << run.output << "\n--- xschem\n" << expected << "--- hefesto\n" << actual);
-  CHECK_FALSE(result.failed);
+  // A run may fail only by the net driver check (SCHEM-NL-09's
+  // test_nfet_03v3.sch: xschem exits 10 after writing the netlist).
+  CHECK((!result.failed || result.driver_check_only));
   CHECK(element_lines(actual) == element_lines(expected));
   // The whole text matches: the tcleval code-block gap of rounds 2-5 is
   // closed (the LF after each tcleval line, M8 round 5).
@@ -114,3 +116,36 @@ TEST_CASE("SCHEM-NL-08: IHP bipolar and MIM benches netlist with the system libr
 }
 
 TEST_CASE("SCHEM-NL-09: gf180mcu benches netlist with the system library", kConventions) { check_case("SCHEM-NL-09"); }
+
+// "Net driver check" (schematic-netlisting "Errors and warnings", M8 round
+// 7): the gf180 testbench's gate and bulk are driven only by the sources of
+// its code block, and its drain and source are open; with xschem-compat ON
+// the report of the failed run is xschem's stderr of SCHEM-NL-09 and
+// SCHEM-NL-10, and with OFF the same findings are Hefesto diagnostics.
+TEST_CASE("Undriven gate and open drain of a gf180 testbench", "[cap:schematic-netlisting][req:Errors and warnings]") {
+  const auto root = pdk_root("gf180mcuD");
+  if (!root) SKIP("gf180mcuD xschem data set not fetched (scripts/fetch_pdk.py)");
+  const Path top = *root / "gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch";
+  const auto input =
+      schem::pdk_xschemrc_input(*root, "gf180mcuD", dl::kSharedir, top.parent_path() / ".xschem", top.parent_path());
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    dl::NetlistBench bench(input, {*root});
+    const schem::NetlistResult result = bench.netlist(top, *root, compat);
+    CHECK(result.failed);
+    CHECK(result.driver_check_only);
+    std::vector<std::string> findings;
+    for (const auto& d : result.diagnostics) {
+      if (d.code == "SCHEM-NET-019" || d.code == "SCHEM-NET-020") findings.push_back(d.text);
+    }
+    if (compat) {
+      const std::string report = dl::replace_all(schem::driver_report_text(result), root->generic_string(), "/pdk");
+      CHECK(report == dl::read_text(kCases / "SCHEM-NL-09" / "expected" / "stderr.txt"));
+      CHECK(report == dl::read_text(kCases / "SCHEM-NL-10" / "expected" / "stderr.txt"));
+      // The warnings of the failed ON run follow its errors as coded warnings.
+      CHECK(findings == std::vector<std::string>{"undriven node: B", "undriven node: G", "open net: D", "open net: S"});
+    } else {
+      CHECK(findings == std::vector<std::string>{"undriven node: B", "open net: D", "undriven node: G", "open net: S"});
+    }
+  }
+}

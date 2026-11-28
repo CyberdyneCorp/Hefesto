@@ -116,6 +116,11 @@ class SymbolCache {
                                const ResolveContext& context);
   std::optional<Document> read(const platform::Path& file, const std::string& reference, const ResolveContext& context);
   const Symbol* embedded(const Reference& reference, const Document& from);
+  /// `block` (an embedded symbol of `from`) as built: the graphics of the
+  /// instances it places added ("Embedded symbols" of schematic-file-format);
+  /// `block` itself when it places none.
+  const Symbol& embedded_as_built(const Symbol& block, const Reference& reference, const Document& from,
+                                  const ResolveContext& context);
   const Symbol& generated(const Reference& reference, const Document& from, const ResolveContext& context);
   std::optional<std::string> run_generator(const std::string& reference, const platform::Path& script,
                                            std::vector<std::string> args, const platform::Path& folder,
@@ -142,6 +147,9 @@ class SymbolCache {
   // block content, so unsaved documents (empty path) and edited blocks never
   // share a symbol. Map nodes keep returned references valid.
   std::multimap<std::pair<platform::Path, std::string>, Symbol> embedded_;
+  // The embedded blocks that place instances, as built, by their entry of
+  // embedded_.
+  std::map<const Symbol*, Symbol> embedded_built_;
   // Generated symbols by (generator script, reference); a failed run is
   // kept as a placeholder, so a generator runs once per reference until
   // clear() or forget() of its script.

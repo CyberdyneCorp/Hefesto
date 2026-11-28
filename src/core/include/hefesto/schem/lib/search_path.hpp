@@ -102,6 +102,15 @@ struct XschemrcInput {
   std::chrono::milliseconds time_limit = kXschemrcTimeLimit;
 };
 
+/// The value `XSCHEM_LIBRARY_PATH` has before any `xschemrc` runs ("Library
+/// search path", paragraph "Default value"; Q-SCHEM-52, approved
+/// 2026-11-27, both modes): `<sharedir>/xschem_library/devices`, the system
+/// library, and nothing else. evaluate_xschemrc() sets it when its input
+/// gives XSCHEM_SHAREDIR and no XSCHEM_LIBRARY_PATH; a document whose folder
+/// has no `xschemrc` (and no PDK active) gets the search path of
+/// `SearchPath::from_xschemrc` with an empty `rc_file`, which is this value.
+[[nodiscard]] std::string default_xschem_library_path(const platform::Path& sharedir);
+
 /// The input for the active PDK `pdk` installed under `pdk_root`: its
 /// `<pdk_root>/<pdk>/libs.tech/xschem/xschemrc`, the variables XSCHEM_SHAREDIR,
 /// USER_CONF_DIR, PDK_ROOT and PDK, and env(PDK_ROOT), env(PDK), env(HOME)

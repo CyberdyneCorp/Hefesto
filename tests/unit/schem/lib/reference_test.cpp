@@ -477,3 +477,38 @@ TEST_CASE("block_document draws the instances an embedded symbol places", kCache
   CHECK(block->boxes[1].layer == 5);  // a.sym's own pin
   CHECK_FALSE(cache.block_document({"missing.sym"}, top, {path, fs}));
 }
+
+// tasks.md 7.1 open item (M8 round 7): an embedded symbol that places
+// instances was drawn from the block as read (without their graphics); only
+// saving built it. schematic-file-format "Embedded symbols": a `C` record of
+// a block adds its symbol's graphics to the embedded symbol.
+TEST_CASE("an embedded symbol that places instances is drawn with their graphics",
+          "[cap:schematic-file-format][req:Embedded symbols]") {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    platform::MemoryFileSystem fs;
+    touch(fs, "/w/b.sym",
+          "v {xschem version=3.4.8RC file_version=1.3}\nK {type=b}\nL 4 0 0 0 5 {}\nB 5 -1 -1 1 1 {name=P}\n");
+    const schem::SearchPath path;
+    schem::Document top;
+    top.path = "/w/top.sch";
+    schem::Document a;
+    a.kind = schem::FileKind::symbol;
+    a.globals.k = "type=a";
+    a.boxes.push_back({5, {-2.5, -2.5}, {2.5, 2.5}, "name=A"});
+    a.instances.push_back({"b.sym", {100, 0}, 0, 0, ""});
+    top.embedded.push_back({"a.sym", a});
+    schem::SymbolCache cache;
+    const schem::ResolveContext context{path, fs, nullptr, compat};
+    const schem::Symbol& symbol = cache.resolve({"a.sym"}, top, context);
+    REQUIRE_FALSE(symbol.placeholder);
+    CHECK(symbol.embedded);
+    CHECK(symbol.document.instances.empty());
+    REQUIRE(symbol.document.lines.size() == 1);
+    CHECK(symbol.document.lines[0].p1 == schem::Point{100, 0});
+    CHECK(symbol.document.lines[0].p2 == schem::Point{100, 5});
+    REQUIRE(symbol.pins.size() == 1);  // b.sym's pin is drawn on layer 7, not a pin
+    CHECK(symbol.pins[0].name == "A");
+    CHECK(&cache.resolve({"a.sym"}, top, context) == &symbol);
+  }
+}

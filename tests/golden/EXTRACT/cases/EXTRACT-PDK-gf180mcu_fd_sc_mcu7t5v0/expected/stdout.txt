@@ -1,0 +1,2104 @@
+
+Magic 8.3 revision 694 - Compiled on Fri Nov 27 17:36:55 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology gf180mcuD ...
+10 Magic internal units = 1 Lambda
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 10 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+pdk cells 229
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+Cell gf180mcu_fd_sc_mcu7t5v0__addf_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  1000.000), ( 0.000,  1000.000)
+lambda:     0.00 x 0.00    (  0.00,  20000.00), (  0.00,  20000.00)
+internal:      0 x 0       (     0,  200000), (     0,  200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__addf_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  2000.000), ( 0.000,  2000.000)
+lambda:     0.00 x 0.00    (  0.00,  40000.00), (  0.00,  40000.00)
+internal:      0 x 0       (     0,  400000), (     0,  400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__addf_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  3000.000), ( 0.000,  3000.000)
+lambda:     0.00 x 0.00    (  0.00,  60000.00), (  0.00,  60000.00)
+internal:      0 x 0       (     0,  600000), (     0,  600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__addh_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  4000.000), ( 0.000,  4000.000)
+lambda:     0.00 x 0.00    (  0.00,  80000.00), (  0.00,  80000.00)
+internal:      0 x 0       (     0,  800000), (     0,  800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__addh_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  5000.000), ( 0.000,  5000.000)
+lambda:     0.00 x 0.00    (  0.00,  100000.00), (  0.00,  100000.00)
+internal:      0 x 0       (     0,  1000000), (     0,  1000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__addh_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  6000.000), ( 0.000,  6000.000)
+lambda:     0.00 x 0.00    (  0.00,  120000.00), (  0.00,  120000.00)
+internal:      0 x 0       (     0,  1200000), (     0,  1200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  7000.000), ( 0.000,  7000.000)
+lambda:     0.00 x 0.00    (  0.00,  140000.00), (  0.00,  140000.00)
+internal:      0 x 0       (     0,  1400000), (     0,  1400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  8000.000), ( 0.000,  8000.000)
+lambda:     0.00 x 0.00    (  0.00,  160000.00), (  0.00,  160000.00)
+internal:      0 x 0       (     0,  1600000), (     0,  1600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  9000.000), ( 0.000,  9000.000)
+lambda:     0.00 x 0.00    (  0.00,  180000.00), (  0.00,  180000.00)
+internal:      0 x 0       (     0,  1800000), (     0,  1800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  10000.000), ( 0.000,  10000.000)
+lambda:     0.00 x 0.00    (  0.00,  200000.00), (  0.00,  200000.00)
+internal:      0 x 0       (     0,  2000000), (     0,  2000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  11000.000), ( 0.000,  11000.000)
+lambda:     0.00 x 0.00    (  0.00,  220000.00), (  0.00,  220000.00)
+internal:      0 x 0       (     0,  2200000), (     0,  2200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  12000.000), ( 0.000,  12000.000)
+lambda:     0.00 x 0.00    (  0.00,  240000.00), (  0.00,  240000.00)
+internal:      0 x 0       (     0,  2400000), (     0,  2400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and4_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  13000.000), ( 0.000,  13000.000)
+lambda:     0.00 x 0.00    (  0.00,  260000.00), (  0.00,  260000.00)
+internal:      0 x 0       (     0,  2600000), (     0,  2600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and4_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  14000.000), ( 0.000,  14000.000)
+lambda:     0.00 x 0.00    (  0.00,  280000.00), (  0.00,  280000.00)
+internal:      0 x 0       (     0,  2800000), (     0,  2800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__and4_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  15000.000), ( 0.000,  15000.000)
+lambda:     0.00 x 0.00    (  0.00,  300000.00), (  0.00,  300000.00)
+internal:      0 x 0       (     0,  3000000), (     0,  3000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__antenna read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  16000.000), ( 0.000,  16000.000)
+lambda:     0.00 x 0.00    (  0.00,  320000.00), (  0.00,  320000.00)
+internal:      0 x 0       (     0,  3200000), (     0,  3200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi211_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  17000.000), ( 0.000,  17000.000)
+lambda:     0.00 x 0.00    (  0.00,  340000.00), (  0.00,  340000.00)
+internal:      0 x 0       (     0,  3400000), (     0,  3400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi211_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  18000.000), ( 0.000,  18000.000)
+lambda:     0.00 x 0.00    (  0.00,  360000.00), (  0.00,  360000.00)
+internal:      0 x 0       (     0,  3600000), (     0,  3600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi211_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  19000.000), ( 0.000,  19000.000)
+lambda:     0.00 x 0.00    (  0.00,  380000.00), (  0.00,  380000.00)
+internal:      0 x 0       (     0,  3800000), (     0,  3800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi21_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  20000.000), ( 0.000,  20000.000)
+lambda:     0.00 x 0.00    (  0.00,  400000.00), (  0.00,  400000.00)
+internal:      0 x 0       (     0,  4000000), (     0,  4000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi21_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  21000.000), ( 0.000,  21000.000)
+lambda:     0.00 x 0.00    (  0.00,  420000.00), (  0.00,  420000.00)
+internal:      0 x 0       (     0,  4200000), (     0,  4200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi21_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  22000.000), ( 0.000,  22000.000)
+lambda:     0.00 x 0.00    (  0.00,  440000.00), (  0.00,  440000.00)
+internal:      0 x 0       (     0,  4400000), (     0,  4400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi221_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  23000.000), ( 0.000,  23000.000)
+lambda:     0.00 x 0.00    (  0.00,  460000.00), (  0.00,  460000.00)
+internal:      0 x 0       (     0,  4600000), (     0,  4600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi221_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  24000.000), ( 0.000,  24000.000)
+lambda:     0.00 x 0.00    (  0.00,  480000.00), (  0.00,  480000.00)
+internal:      0 x 0       (     0,  4800000), (     0,  4800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi221_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  25000.000), ( 0.000,  25000.000)
+lambda:     0.00 x 0.00    (  0.00,  500000.00), (  0.00,  500000.00)
+internal:      0 x 0       (     0,  5000000), (     0,  5000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi222_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  26000.000), ( 0.000,  26000.000)
+lambda:     0.00 x 0.00    (  0.00,  520000.00), (  0.00,  520000.00)
+internal:      0 x 0       (     0,  5200000), (     0,  5200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi222_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  27000.000), ( 0.000,  27000.000)
+lambda:     0.00 x 0.00    (  0.00,  540000.00), (  0.00,  540000.00)
+internal:      0 x 0       (     0,  5400000), (     0,  5400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi222_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  28000.000), ( 0.000,  28000.000)
+lambda:     0.00 x 0.00    (  0.00,  560000.00), (  0.00,  560000.00)
+internal:      0 x 0       (     0,  5600000), (     0,  5600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi22_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  29000.000), ( 0.000,  29000.000)
+lambda:     0.00 x 0.00    (  0.00,  580000.00), (  0.00,  580000.00)
+internal:      0 x 0       (     0,  5800000), (     0,  5800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi22_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  30000.000), ( 0.000,  30000.000)
+lambda:     0.00 x 0.00    (  0.00,  600000.00), (  0.00,  600000.00)
+internal:      0 x 0       (     0,  6000000), (     0,  6000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__aoi22_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  31000.000), ( 0.000,  31000.000)
+lambda:     0.00 x 0.00    (  0.00,  620000.00), (  0.00,  620000.00)
+internal:      0 x 0       (     0,  6200000), (     0,  6200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  32000.000), ( 0.000,  32000.000)
+lambda:     0.00 x 0.00    (  0.00,  640000.00), (  0.00,  640000.00)
+internal:      0 x 0       (     0,  6400000), (     0,  6400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  33000.000), ( 0.000,  33000.000)
+lambda:     0.00 x 0.00    (  0.00,  660000.00), (  0.00,  660000.00)
+internal:      0 x 0       (     0,  6600000), (     0,  6600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  34000.000), ( 0.000,  34000.000)
+lambda:     0.00 x 0.00    (  0.00,  680000.00), (  0.00,  680000.00)
+internal:      0 x 0       (     0,  6800000), (     0,  6800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  35000.000), ( 0.000,  35000.000)
+lambda:     0.00 x 0.00    (  0.00,  700000.00), (  0.00,  700000.00)
+internal:      0 x 0       (     0,  7000000), (     0,  7000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_20 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  36000.000), ( 0.000,  36000.000)
+lambda:     0.00 x 0.00    (  0.00,  720000.00), (  0.00,  720000.00)
+internal:      0 x 0       (     0,  7200000), (     0,  7200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  37000.000), ( 0.000,  37000.000)
+lambda:     0.00 x 0.00    (  0.00,  740000.00), (  0.00,  740000.00)
+internal:      0 x 0       (     0,  7400000), (     0,  7400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  38000.000), ( 0.000,  38000.000)
+lambda:     0.00 x 0.00    (  0.00,  760000.00), (  0.00,  760000.00)
+internal:      0 x 0       (     0,  7600000), (     0,  7600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__buf_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  39000.000), ( 0.000,  39000.000)
+lambda:     0.00 x 0.00    (  0.00,  780000.00), (  0.00,  780000.00)
+internal:      0 x 0       (     0,  7800000), (     0,  7800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  40000.000), ( 0.000,  40000.000)
+lambda:     0.00 x 0.00    (  0.00,  800000.00), (  0.00,  800000.00)
+internal:      0 x 0       (     0,  8000000), (     0,  8000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  41000.000), ( 0.000,  41000.000)
+lambda:     0.00 x 0.00    (  0.00,  820000.00), (  0.00,  820000.00)
+internal:      0 x 0       (     0,  8200000), (     0,  8200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  42000.000), ( 0.000,  42000.000)
+lambda:     0.00 x 0.00    (  0.00,  840000.00), (  0.00,  840000.00)
+internal:      0 x 0       (     0,  8400000), (     0,  8400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  43000.000), ( 0.000,  43000.000)
+lambda:     0.00 x 0.00    (  0.00,  860000.00), (  0.00,  860000.00)
+internal:      0 x 0       (     0,  8600000), (     0,  8600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  44000.000), ( 0.000,  44000.000)
+lambda:     0.00 x 0.00    (  0.00,  880000.00), (  0.00,  880000.00)
+internal:      0 x 0       (     0,  8800000), (     0,  8800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  45000.000), ( 0.000,  45000.000)
+lambda:     0.00 x 0.00    (  0.00,  900000.00), (  0.00,  900000.00)
+internal:      0 x 0       (     0,  9000000), (     0,  9000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__bufz_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  46000.000), ( 0.000,  46000.000)
+lambda:     0.00 x 0.00    (  0.00,  920000.00), (  0.00,  920000.00)
+internal:      0 x 0       (     0,  9200000), (     0,  9200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  47000.000), ( 0.000,  47000.000)
+lambda:     0.00 x 0.00    (  0.00,  940000.00), (  0.00,  940000.00)
+internal:      0 x 0       (     0,  9400000), (     0,  9400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  48000.000), ( 0.000,  48000.000)
+lambda:     0.00 x 0.00    (  0.00,  960000.00), (  0.00,  960000.00)
+internal:      0 x 0       (     0,  9600000), (     0,  9600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  49000.000), ( 0.000,  49000.000)
+lambda:     0.00 x 0.00    (  0.00,  980000.00), (  0.00,  980000.00)
+internal:      0 x 0       (     0,  9800000), (     0,  9800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  50000.000), ( 0.000,  50000.000)
+lambda:     0.00 x 0.00    (  0.00,  1000000.00), (  0.00,  1000000.00)
+internal:      0 x 0       (     0,  10000000), (     0,  10000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_20 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  51000.000), ( 0.000,  51000.000)
+lambda:     0.00 x 0.00    (  0.00,  1020000.00), (  0.00,  1020000.00)
+internal:      0 x 0       (     0,  10200000), (     0,  10200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  52000.000), ( 0.000,  52000.000)
+lambda:     0.00 x 0.00    (  0.00,  1040000.00), (  0.00,  1040000.00)
+internal:      0 x 0       (     0,  10400000), (     0,  10400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  53000.000), ( 0.000,  53000.000)
+lambda:     0.00 x 0.00    (  0.00,  1060000.00), (  0.00,  1060000.00)
+internal:      0 x 0       (     0,  10600000), (     0,  10600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkbuf_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  54000.000), ( 0.000,  54000.000)
+lambda:     0.00 x 0.00    (  0.00,  1080000.00), (  0.00,  1080000.00)
+internal:      0 x 0       (     0,  10800000), (     0,  10800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  55000.000), ( 0.000,  55000.000)
+lambda:     0.00 x 0.00    (  0.00,  1100000.00), (  0.00,  1100000.00)
+internal:      0 x 0       (     0,  11000000), (     0,  11000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  56000.000), ( 0.000,  56000.000)
+lambda:     0.00 x 0.00    (  0.00,  1120000.00), (  0.00,  1120000.00)
+internal:      0 x 0       (     0,  11200000), (     0,  11200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  57000.000), ( 0.000,  57000.000)
+lambda:     0.00 x 0.00    (  0.00,  1140000.00), (  0.00,  1140000.00)
+internal:      0 x 0       (     0,  11400000), (     0,  11400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  58000.000), ( 0.000,  58000.000)
+lambda:     0.00 x 0.00    (  0.00,  1160000.00), (  0.00,  1160000.00)
+internal:      0 x 0       (     0,  11600000), (     0,  11600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_20 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  59000.000), ( 0.000,  59000.000)
+lambda:     0.00 x 0.00    (  0.00,  1180000.00), (  0.00,  1180000.00)
+internal:      0 x 0       (     0,  11800000), (     0,  11800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  60000.000), ( 0.000,  60000.000)
+lambda:     0.00 x 0.00    (  0.00,  1200000.00), (  0.00,  1200000.00)
+internal:      0 x 0       (     0,  12000000), (     0,  12000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  61000.000), ( 0.000,  61000.000)
+lambda:     0.00 x 0.00    (  0.00,  1220000.00), (  0.00,  1220000.00)
+internal:      0 x 0       (     0,  12200000), (     0,  12200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__clkinv_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  62000.000), ( 0.000,  62000.000)
+lambda:     0.00 x 0.00    (  0.00,  1240000.00), (  0.00,  1240000.00)
+internal:      0 x 0       (     0,  12400000), (     0,  12400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  63000.000), ( 0.000,  63000.000)
+lambda:     0.00 x 0.00    (  0.00,  1260000.00), (  0.00,  1260000.00)
+internal:      0 x 0       (     0,  12600000), (     0,  12600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  64000.000), ( 0.000,  64000.000)
+lambda:     0.00 x 0.00    (  0.00,  1280000.00), (  0.00,  1280000.00)
+internal:      0 x 0       (     0,  12800000), (     0,  12800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  65000.000), ( 0.000,  65000.000)
+lambda:     0.00 x 0.00    (  0.00,  1300000.00), (  0.00,  1300000.00)
+internal:      0 x 0       (     0,  13000000), (     0,  13000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  66000.000), ( 0.000,  66000.000)
+lambda:     0.00 x 0.00    (  0.00,  1320000.00), (  0.00,  1320000.00)
+internal:      0 x 0       (     0,  13200000), (     0,  13200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  67000.000), ( 0.000,  67000.000)
+lambda:     0.00 x 0.00    (  0.00,  1340000.00), (  0.00,  1340000.00)
+internal:      0 x 0       (     0,  13400000), (     0,  13400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  68000.000), ( 0.000,  68000.000)
+lambda:     0.00 x 0.00    (  0.00,  1360000.00), (  0.00,  1360000.00)
+internal:      0 x 0       (     0,  13600000), (     0,  13600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  69000.000), ( 0.000,  69000.000)
+lambda:     0.00 x 0.00    (  0.00,  1380000.00), (  0.00,  1380000.00)
+internal:      0 x 0       (     0,  13800000), (     0,  13800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  70000.000), ( 0.000,  70000.000)
+lambda:     0.00 x 0.00    (  0.00,  1400000.00), (  0.00,  1400000.00)
+internal:      0 x 0       (     0,  14000000), (     0,  14000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  71000.000), ( 0.000,  71000.000)
+lambda:     0.00 x 0.00    (  0.00,  1420000.00), (  0.00,  1420000.00)
+internal:      0 x 0       (     0,  14200000), (     0,  14200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  72000.000), ( 0.000,  72000.000)
+lambda:     0.00 x 0.00    (  0.00,  1440000.00), (  0.00,  1440000.00)
+internal:      0 x 0       (     0,  14400000), (     0,  14400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  73000.000), ( 0.000,  73000.000)
+lambda:     0.00 x 0.00    (  0.00,  1460000.00), (  0.00,  1460000.00)
+internal:      0 x 0       (     0,  14600000), (     0,  14600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffnsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  74000.000), ( 0.000,  74000.000)
+lambda:     0.00 x 0.00    (  0.00,  1480000.00), (  0.00,  1480000.00)
+internal:      0 x 0       (     0,  14800000), (     0,  14800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  75000.000), ( 0.000,  75000.000)
+lambda:     0.00 x 0.00    (  0.00,  1500000.00), (  0.00,  1500000.00)
+internal:      0 x 0       (     0,  15000000), (     0,  15000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  76000.000), ( 0.000,  76000.000)
+lambda:     0.00 x 0.00    (  0.00,  1520000.00), (  0.00,  1520000.00)
+internal:      0 x 0       (     0,  15200000), (     0,  15200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  77000.000), ( 0.000,  77000.000)
+lambda:     0.00 x 0.00    (  0.00,  1540000.00), (  0.00,  1540000.00)
+internal:      0 x 0       (     0,  15400000), (     0,  15400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  78000.000), ( 0.000,  78000.000)
+lambda:     0.00 x 0.00    (  0.00,  1560000.00), (  0.00,  1560000.00)
+internal:      0 x 0       (     0,  15600000), (     0,  15600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  79000.000), ( 0.000,  79000.000)
+lambda:     0.00 x 0.00    (  0.00,  1580000.00), (  0.00,  1580000.00)
+internal:      0 x 0       (     0,  15800000), (     0,  15800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  80000.000), ( 0.000,  80000.000)
+lambda:     0.00 x 0.00    (  0.00,  1600000.00), (  0.00,  1600000.00)
+internal:      0 x 0       (     0,  16000000), (     0,  16000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  81000.000), ( 0.000,  81000.000)
+lambda:     0.00 x 0.00    (  0.00,  1620000.00), (  0.00,  1620000.00)
+internal:      0 x 0       (     0,  16200000), (     0,  16200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  82000.000), ( 0.000,  82000.000)
+lambda:     0.00 x 0.00    (  0.00,  1640000.00), (  0.00,  1640000.00)
+internal:      0 x 0       (     0,  16400000), (     0,  16400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffrsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  83000.000), ( 0.000,  83000.000)
+lambda:     0.00 x 0.00    (  0.00,  1660000.00), (  0.00,  1660000.00)
+internal:      0 x 0       (     0,  16600000), (     0,  16600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  84000.000), ( 0.000,  84000.000)
+lambda:     0.00 x 0.00    (  0.00,  1680000.00), (  0.00,  1680000.00)
+internal:      0 x 0       (     0,  16800000), (     0,  16800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  85000.000), ( 0.000,  85000.000)
+lambda:     0.00 x 0.00    (  0.00,  1700000.00), (  0.00,  1700000.00)
+internal:      0 x 0       (     0,  17000000), (     0,  17000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dffsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  86000.000), ( 0.000,  86000.000)
+lambda:     0.00 x 0.00    (  0.00,  1720000.00), (  0.00,  1720000.00)
+internal:      0 x 0       (     0,  17200000), (     0,  17200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlya_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  87000.000), ( 0.000,  87000.000)
+lambda:     0.00 x 0.00    (  0.00,  1740000.00), (  0.00,  1740000.00)
+internal:      0 x 0       (     0,  17400000), (     0,  17400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlya_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  88000.000), ( 0.000,  88000.000)
+lambda:     0.00 x 0.00    (  0.00,  1760000.00), (  0.00,  1760000.00)
+internal:      0 x 0       (     0,  17600000), (     0,  17600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlya_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  89000.000), ( 0.000,  89000.000)
+lambda:     0.00 x 0.00    (  0.00,  1780000.00), (  0.00,  1780000.00)
+internal:      0 x 0       (     0,  17800000), (     0,  17800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyb_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  90000.000), ( 0.000,  90000.000)
+lambda:     0.00 x 0.00    (  0.00,  1800000.00), (  0.00,  1800000.00)
+internal:      0 x 0       (     0,  18000000), (     0,  18000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyb_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  91000.000), ( 0.000,  91000.000)
+lambda:     0.00 x 0.00    (  0.00,  1820000.00), (  0.00,  1820000.00)
+internal:      0 x 0       (     0,  18200000), (     0,  18200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyb_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  92000.000), ( 0.000,  92000.000)
+lambda:     0.00 x 0.00    (  0.00,  1840000.00), (  0.00,  1840000.00)
+internal:      0 x 0       (     0,  18400000), (     0,  18400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyc_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  93000.000), ( 0.000,  93000.000)
+lambda:     0.00 x 0.00    (  0.00,  1860000.00), (  0.00,  1860000.00)
+internal:      0 x 0       (     0,  18600000), (     0,  18600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyc_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  94000.000), ( 0.000,  94000.000)
+lambda:     0.00 x 0.00    (  0.00,  1880000.00), (  0.00,  1880000.00)
+internal:      0 x 0       (     0,  18800000), (     0,  18800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyc_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  95000.000), ( 0.000,  95000.000)
+lambda:     0.00 x 0.00    (  0.00,  1900000.00), (  0.00,  1900000.00)
+internal:      0 x 0       (     0,  19000000), (     0,  19000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyd_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  96000.000), ( 0.000,  96000.000)
+lambda:     0.00 x 0.00    (  0.00,  1920000.00), (  0.00,  1920000.00)
+internal:      0 x 0       (     0,  19200000), (     0,  19200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyd_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  97000.000), ( 0.000,  97000.000)
+lambda:     0.00 x 0.00    (  0.00,  1940000.00), (  0.00,  1940000.00)
+internal:      0 x 0       (     0,  19400000), (     0,  19400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__dlyd_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  98000.000), ( 0.000,  98000.000)
+lambda:     0.00 x 0.00    (  0.00,  1960000.00), (  0.00,  1960000.00)
+internal:      0 x 0       (     0,  19600000), (     0,  19600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__endcap read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  99000.000), ( 0.000,  99000.000)
+lambda:     0.00 x 0.00    (  0.00,  1980000.00), (  0.00,  1980000.00)
+internal:      0 x 0       (     0,  19800000), (     0,  19800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_1 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  100000.000), ( 0.000,  100000.000)
+lambda:     0.00 x 0.00    (  0.00,  2000000.00), (  0.00,  2000000.00)
+internal:      0 x 0       (     0,  20000000), (     0,  20000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_16 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  101000.000), ( 0.000,  101000.000)
+lambda:     0.00 x 0.00    (  0.00,  2020000.00), (  0.00,  2020000.00)
+internal:      0 x 0       (     0,  20200000), (     0,  20200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_2 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  102000.000), ( 0.000,  102000.000)
+lambda:     0.00 x 0.00    (  0.00,  2040000.00), (  0.00,  2040000.00)
+internal:      0 x 0       (     0,  20400000), (     0,  20400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_32 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_32 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  103000.000), ( 0.000,  103000.000)
+lambda:     0.00 x 0.00    (  0.00,  2060000.00), (  0.00,  2060000.00)
+internal:      0 x 0       (     0,  20600000), (     0,  20600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_4 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  104000.000), ( 0.000,  104000.000)
+lambda:     0.00 x 0.00    (  0.00,  2080000.00), (  0.00,  2080000.00)
+internal:      0 x 0       (     0,  20800000), (     0,  20800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_64 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_64 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  105000.000), ( 0.000,  105000.000)
+lambda:     0.00 x 0.00    (  0.00,  2100000.00), (  0.00,  2100000.00)
+internal:      0 x 0       (     0,  21000000), (     0,  21000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fill_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Scaled magic input cell gf180mcu_fd_sc_mcu7t5v0__fill_8 geometry by factor of 2
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  106000.000), ( 0.000,  106000.000)
+lambda:     0.00 x 0.00    (  0.00,  2120000.00), (  0.00,  2120000.00)
+internal:      0 x 0       (     0,  21200000), (     0,  21200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fillcap_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  107000.000), ( 0.000,  107000.000)
+lambda:     0.00 x 0.00    (  0.00,  2140000.00), (  0.00,  2140000.00)
+internal:      0 x 0       (     0,  21400000), (     0,  21400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fillcap_32 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  108000.000), ( 0.000,  108000.000)
+lambda:     0.00 x 0.00    (  0.00,  2160000.00), (  0.00,  2160000.00)
+internal:      0 x 0       (     0,  21600000), (     0,  21600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fillcap_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  109000.000), ( 0.000,  109000.000)
+lambda:     0.00 x 0.00    (  0.00,  2180000.00), (  0.00,  2180000.00)
+internal:      0 x 0       (     0,  21800000), (     0,  21800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fillcap_64 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  110000.000), ( 0.000,  110000.000)
+lambda:     0.00 x 0.00    (  0.00,  2200000.00), (  0.00,  2200000.00)
+internal:      0 x 0       (     0,  22000000), (     0,  22000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__fillcap_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  111000.000), ( 0.000,  111000.000)
+lambda:     0.00 x 0.00    (  0.00,  2220000.00), (  0.00,  2220000.00)
+internal:      0 x 0       (     0,  22200000), (     0,  22200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__filltie read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  112000.000), ( 0.000,  112000.000)
+lambda:     0.00 x 0.00    (  0.00,  2240000.00), (  0.00,  2240000.00)
+internal:      0 x 0       (     0,  22400000), (     0,  22400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__hold read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  113000.000), ( 0.000,  113000.000)
+lambda:     0.00 x 0.00    (  0.00,  2260000.00), (  0.00,  2260000.00)
+internal:      0 x 0       (     0,  22600000), (     0,  22600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtn_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  114000.000), ( 0.000,  114000.000)
+lambda:     0.00 x 0.00    (  0.00,  2280000.00), (  0.00,  2280000.00)
+internal:      0 x 0       (     0,  22800000), (     0,  22800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtn_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  115000.000), ( 0.000,  115000.000)
+lambda:     0.00 x 0.00    (  0.00,  2300000.00), (  0.00,  2300000.00)
+internal:      0 x 0       (     0,  23000000), (     0,  23000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtn_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  116000.000), ( 0.000,  116000.000)
+lambda:     0.00 x 0.00    (  0.00,  2320000.00), (  0.00,  2320000.00)
+internal:      0 x 0       (     0,  23200000), (     0,  23200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtp_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  117000.000), ( 0.000,  117000.000)
+lambda:     0.00 x 0.00    (  0.00,  2340000.00), (  0.00,  2340000.00)
+internal:      0 x 0       (     0,  23400000), (     0,  23400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtp_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  118000.000), ( 0.000,  118000.000)
+lambda:     0.00 x 0.00    (  0.00,  2360000.00), (  0.00,  2360000.00)
+internal:      0 x 0       (     0,  23600000), (     0,  23600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__icgtp_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  119000.000), ( 0.000,  119000.000)
+lambda:     0.00 x 0.00    (  0.00,  2380000.00), (  0.00,  2380000.00)
+internal:      0 x 0       (     0,  23800000), (     0,  23800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  120000.000), ( 0.000,  120000.000)
+lambda:     0.00 x 0.00    (  0.00,  2400000.00), (  0.00,  2400000.00)
+internal:      0 x 0       (     0,  24000000), (     0,  24000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  121000.000), ( 0.000,  121000.000)
+lambda:     0.00 x 0.00    (  0.00,  2420000.00), (  0.00,  2420000.00)
+internal:      0 x 0       (     0,  24200000), (     0,  24200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  122000.000), ( 0.000,  122000.000)
+lambda:     0.00 x 0.00    (  0.00,  2440000.00), (  0.00,  2440000.00)
+internal:      0 x 0       (     0,  24400000), (     0,  24400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  123000.000), ( 0.000,  123000.000)
+lambda:     0.00 x 0.00    (  0.00,  2460000.00), (  0.00,  2460000.00)
+internal:      0 x 0       (     0,  24600000), (     0,  24600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_20 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  124000.000), ( 0.000,  124000.000)
+lambda:     0.00 x 0.00    (  0.00,  2480000.00), (  0.00,  2480000.00)
+internal:      0 x 0       (     0,  24800000), (     0,  24800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  125000.000), ( 0.000,  125000.000)
+lambda:     0.00 x 0.00    (  0.00,  2500000.00), (  0.00,  2500000.00)
+internal:      0 x 0       (     0,  25000000), (     0,  25000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  126000.000), ( 0.000,  126000.000)
+lambda:     0.00 x 0.00    (  0.00,  2520000.00), (  0.00,  2520000.00)
+internal:      0 x 0       (     0,  25200000), (     0,  25200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  127000.000), ( 0.000,  127000.000)
+lambda:     0.00 x 0.00    (  0.00,  2540000.00), (  0.00,  2540000.00)
+internal:      0 x 0       (     0,  25400000), (     0,  25400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  128000.000), ( 0.000,  128000.000)
+lambda:     0.00 x 0.00    (  0.00,  2560000.00), (  0.00,  2560000.00)
+internal:      0 x 0       (     0,  25600000), (     0,  25600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_12 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  129000.000), ( 0.000,  129000.000)
+lambda:     0.00 x 0.00    (  0.00,  2580000.00), (  0.00,  2580000.00)
+internal:      0 x 0       (     0,  25800000), (     0,  25800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_16 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  130000.000), ( 0.000,  130000.000)
+lambda:     0.00 x 0.00    (  0.00,  2600000.00), (  0.00,  2600000.00)
+internal:      0 x 0       (     0,  26000000), (     0,  26000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  131000.000), ( 0.000,  131000.000)
+lambda:     0.00 x 0.00    (  0.00,  2620000.00), (  0.00,  2620000.00)
+internal:      0 x 0       (     0,  26200000), (     0,  26200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_3 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  132000.000), ( 0.000,  132000.000)
+lambda:     0.00 x 0.00    (  0.00,  2640000.00), (  0.00,  2640000.00)
+internal:      0 x 0       (     0,  26400000), (     0,  26400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  133000.000), ( 0.000,  133000.000)
+lambda:     0.00 x 0.00    (  0.00,  2660000.00), (  0.00,  2660000.00)
+internal:      0 x 0       (     0,  26600000), (     0,  26600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__invz_8 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  134000.000), ( 0.000,  134000.000)
+lambda:     0.00 x 0.00    (  0.00,  2680000.00), (  0.00,  2680000.00)
+internal:      0 x 0       (     0,  26800000), (     0,  26800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  135000.000), ( 0.000,  135000.000)
+lambda:     0.00 x 0.00    (  0.00,  2700000.00), (  0.00,  2700000.00)
+internal:      0 x 0       (     0,  27000000), (     0,  27000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  136000.000), ( 0.000,  136000.000)
+lambda:     0.00 x 0.00    (  0.00,  2720000.00), (  0.00,  2720000.00)
+internal:      0 x 0       (     0,  27200000), (     0,  27200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  137000.000), ( 0.000,  137000.000)
+lambda:     0.00 x 0.00    (  0.00,  2740000.00), (  0.00,  2740000.00)
+internal:      0 x 0       (     0,  27400000), (     0,  27400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  138000.000), ( 0.000,  138000.000)
+lambda:     0.00 x 0.00    (  0.00,  2760000.00), (  0.00,  2760000.00)
+internal:      0 x 0       (     0,  27600000), (     0,  27600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  139000.000), ( 0.000,  139000.000)
+lambda:     0.00 x 0.00    (  0.00,  2780000.00), (  0.00,  2780000.00)
+internal:      0 x 0       (     0,  27800000), (     0,  27800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  140000.000), ( 0.000,  140000.000)
+lambda:     0.00 x 0.00    (  0.00,  2800000.00), (  0.00,  2800000.00)
+internal:      0 x 0       (     0,  28000000), (     0,  28000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  141000.000), ( 0.000,  141000.000)
+lambda:     0.00 x 0.00    (  0.00,  2820000.00), (  0.00,  2820000.00)
+internal:      0 x 0       (     0,  28200000), (     0,  28200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  142000.000), ( 0.000,  142000.000)
+lambda:     0.00 x 0.00    (  0.00,  2840000.00), (  0.00,  2840000.00)
+internal:      0 x 0       (     0,  28400000), (     0,  28400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latrsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  143000.000), ( 0.000,  143000.000)
+lambda:     0.00 x 0.00    (  0.00,  2860000.00), (  0.00,  2860000.00)
+internal:      0 x 0       (     0,  28600000), (     0,  28600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  144000.000), ( 0.000,  144000.000)
+lambda:     0.00 x 0.00    (  0.00,  2880000.00), (  0.00,  2880000.00)
+internal:      0 x 0       (     0,  28800000), (     0,  28800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  145000.000), ( 0.000,  145000.000)
+lambda:     0.00 x 0.00    (  0.00,  2900000.00), (  0.00,  2900000.00)
+internal:      0 x 0       (     0,  29000000), (     0,  29000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__latsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  146000.000), ( 0.000,  146000.000)
+lambda:     0.00 x 0.00    (  0.00,  2920000.00), (  0.00,  2920000.00)
+internal:      0 x 0       (     0,  29200000), (     0,  29200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  147000.000), ( 0.000,  147000.000)
+lambda:     0.00 x 0.00    (  0.00,  2940000.00), (  0.00,  2940000.00)
+internal:      0 x 0       (     0,  29400000), (     0,  29400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  148000.000), ( 0.000,  148000.000)
+lambda:     0.00 x 0.00    (  0.00,  2960000.00), (  0.00,  2960000.00)
+internal:      0 x 0       (     0,  29600000), (     0,  29600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  149000.000), ( 0.000,  149000.000)
+lambda:     0.00 x 0.00    (  0.00,  2980000.00), (  0.00,  2980000.00)
+internal:      0 x 0       (     0,  29800000), (     0,  29800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux4_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  150000.000), ( 0.000,  150000.000)
+lambda:     0.00 x 0.00    (  0.00,  3000000.00), (  0.00,  3000000.00)
+internal:      0 x 0       (     0,  30000000), (     0,  30000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux4_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  151000.000), ( 0.000,  151000.000)
+lambda:     0.00 x 0.00    (  0.00,  3020000.00), (  0.00,  3020000.00)
+internal:      0 x 0       (     0,  30200000), (     0,  30200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__mux4_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  152000.000), ( 0.000,  152000.000)
+lambda:     0.00 x 0.00    (  0.00,  3040000.00), (  0.00,  3040000.00)
+internal:      0 x 0       (     0,  30400000), (     0,  30400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  153000.000), ( 0.000,  153000.000)
+lambda:     0.00 x 0.00    (  0.00,  3060000.00), (  0.00,  3060000.00)
+internal:      0 x 0       (     0,  30600000), (     0,  30600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  154000.000), ( 0.000,  154000.000)
+lambda:     0.00 x 0.00    (  0.00,  3080000.00), (  0.00,  3080000.00)
+internal:      0 x 0       (     0,  30800000), (     0,  30800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  155000.000), ( 0.000,  155000.000)
+lambda:     0.00 x 0.00    (  0.00,  3100000.00), (  0.00,  3100000.00)
+internal:      0 x 0       (     0,  31000000), (     0,  31000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  156000.000), ( 0.000,  156000.000)
+lambda:     0.00 x 0.00    (  0.00,  3120000.00), (  0.00,  3120000.00)
+internal:      0 x 0       (     0,  31200000), (     0,  31200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  157000.000), ( 0.000,  157000.000)
+lambda:     0.00 x 0.00    (  0.00,  3140000.00), (  0.00,  3140000.00)
+internal:      0 x 0       (     0,  31400000), (     0,  31400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  158000.000), ( 0.000,  158000.000)
+lambda:     0.00 x 0.00    (  0.00,  3160000.00), (  0.00,  3160000.00)
+internal:      0 x 0       (     0,  31600000), (     0,  31600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand4_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  159000.000), ( 0.000,  159000.000)
+lambda:     0.00 x 0.00    (  0.00,  3180000.00), (  0.00,  3180000.00)
+internal:      0 x 0       (     0,  31800000), (     0,  31800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand4_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  160000.000), ( 0.000,  160000.000)
+lambda:     0.00 x 0.00    (  0.00,  3200000.00), (  0.00,  3200000.00)
+internal:      0 x 0       (     0,  32000000), (     0,  32000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nand4_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  161000.000), ( 0.000,  161000.000)
+lambda:     0.00 x 0.00    (  0.00,  3220000.00), (  0.00,  3220000.00)
+internal:      0 x 0       (     0,  32200000), (     0,  32200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  162000.000), ( 0.000,  162000.000)
+lambda:     0.00 x 0.00    (  0.00,  3240000.00), (  0.00,  3240000.00)
+internal:      0 x 0       (     0,  32400000), (     0,  32400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  163000.000), ( 0.000,  163000.000)
+lambda:     0.00 x 0.00    (  0.00,  3260000.00), (  0.00,  3260000.00)
+internal:      0 x 0       (     0,  32600000), (     0,  32600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  164000.000), ( 0.000,  164000.000)
+lambda:     0.00 x 0.00    (  0.00,  3280000.00), (  0.00,  3280000.00)
+internal:      0 x 0       (     0,  32800000), (     0,  32800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  165000.000), ( 0.000,  165000.000)
+lambda:     0.00 x 0.00    (  0.00,  3300000.00), (  0.00,  3300000.00)
+internal:      0 x 0       (     0,  33000000), (     0,  33000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  166000.000), ( 0.000,  166000.000)
+lambda:     0.00 x 0.00    (  0.00,  3320000.00), (  0.00,  3320000.00)
+internal:      0 x 0       (     0,  33200000), (     0,  33200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  167000.000), ( 0.000,  167000.000)
+lambda:     0.00 x 0.00    (  0.00,  3340000.00), (  0.00,  3340000.00)
+internal:      0 x 0       (     0,  33400000), (     0,  33400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor4_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  168000.000), ( 0.000,  168000.000)
+lambda:     0.00 x 0.00    (  0.00,  3360000.00), (  0.00,  3360000.00)
+internal:      0 x 0       (     0,  33600000), (     0,  33600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor4_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  169000.000), ( 0.000,  169000.000)
+lambda:     0.00 x 0.00    (  0.00,  3380000.00), (  0.00,  3380000.00)
+internal:      0 x 0       (     0,  33800000), (     0,  33800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__nor4_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  170000.000), ( 0.000,  170000.000)
+lambda:     0.00 x 0.00    (  0.00,  3400000.00), (  0.00,  3400000.00)
+internal:      0 x 0       (     0,  34000000), (     0,  34000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai211_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  171000.000), ( 0.000,  171000.000)
+lambda:     0.00 x 0.00    (  0.00,  3420000.00), (  0.00,  3420000.00)
+internal:      0 x 0       (     0,  34200000), (     0,  34200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai211_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  172000.000), ( 0.000,  172000.000)
+lambda:     0.00 x 0.00    (  0.00,  3440000.00), (  0.00,  3440000.00)
+internal:      0 x 0       (     0,  34400000), (     0,  34400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai211_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  173000.000), ( 0.000,  173000.000)
+lambda:     0.00 x 0.00    (  0.00,  3460000.00), (  0.00,  3460000.00)
+internal:      0 x 0       (     0,  34600000), (     0,  34600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai21_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  174000.000), ( 0.000,  174000.000)
+lambda:     0.00 x 0.00    (  0.00,  3480000.00), (  0.00,  3480000.00)
+internal:      0 x 0       (     0,  34800000), (     0,  34800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai21_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  175000.000), ( 0.000,  175000.000)
+lambda:     0.00 x 0.00    (  0.00,  3500000.00), (  0.00,  3500000.00)
+internal:      0 x 0       (     0,  35000000), (     0,  35000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai21_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  176000.000), ( 0.000,  176000.000)
+lambda:     0.00 x 0.00    (  0.00,  3520000.00), (  0.00,  3520000.00)
+internal:      0 x 0       (     0,  35200000), (     0,  35200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai221_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  177000.000), ( 0.000,  177000.000)
+lambda:     0.00 x 0.00    (  0.00,  3540000.00), (  0.00,  3540000.00)
+internal:      0 x 0       (     0,  35400000), (     0,  35400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai221_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  178000.000), ( 0.000,  178000.000)
+lambda:     0.00 x 0.00    (  0.00,  3560000.00), (  0.00,  3560000.00)
+internal:      0 x 0       (     0,  35600000), (     0,  35600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai221_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  179000.000), ( 0.000,  179000.000)
+lambda:     0.00 x 0.00    (  0.00,  3580000.00), (  0.00,  3580000.00)
+internal:      0 x 0       (     0,  35800000), (     0,  35800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai222_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  180000.000), ( 0.000,  180000.000)
+lambda:     0.00 x 0.00    (  0.00,  3600000.00), (  0.00,  3600000.00)
+internal:      0 x 0       (     0,  36000000), (     0,  36000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai222_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  181000.000), ( 0.000,  181000.000)
+lambda:     0.00 x 0.00    (  0.00,  3620000.00), (  0.00,  3620000.00)
+internal:      0 x 0       (     0,  36200000), (     0,  36200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai222_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  182000.000), ( 0.000,  182000.000)
+lambda:     0.00 x 0.00    (  0.00,  3640000.00), (  0.00,  3640000.00)
+internal:      0 x 0       (     0,  36400000), (     0,  36400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai22_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  183000.000), ( 0.000,  183000.000)
+lambda:     0.00 x 0.00    (  0.00,  3660000.00), (  0.00,  3660000.00)
+internal:      0 x 0       (     0,  36600000), (     0,  36600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai22_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  184000.000), ( 0.000,  184000.000)
+lambda:     0.00 x 0.00    (  0.00,  3680000.00), (  0.00,  3680000.00)
+internal:      0 x 0       (     0,  36800000), (     0,  36800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai22_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  185000.000), ( 0.000,  185000.000)
+lambda:     0.00 x 0.00    (  0.00,  3700000.00), (  0.00,  3700000.00)
+internal:      0 x 0       (     0,  37000000), (     0,  37000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai31_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  186000.000), ( 0.000,  186000.000)
+lambda:     0.00 x 0.00    (  0.00,  3720000.00), (  0.00,  3720000.00)
+internal:      0 x 0       (     0,  37200000), (     0,  37200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai31_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  187000.000), ( 0.000,  187000.000)
+lambda:     0.00 x 0.00    (  0.00,  3740000.00), (  0.00,  3740000.00)
+internal:      0 x 0       (     0,  37400000), (     0,  37400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai31_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  188000.000), ( 0.000,  188000.000)
+lambda:     0.00 x 0.00    (  0.00,  3760000.00), (  0.00,  3760000.00)
+internal:      0 x 0       (     0,  37600000), (     0,  37600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai32_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  189000.000), ( 0.000,  189000.000)
+lambda:     0.00 x 0.00    (  0.00,  3780000.00), (  0.00,  3780000.00)
+internal:      0 x 0       (     0,  37800000), (     0,  37800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai32_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  190000.000), ( 0.000,  190000.000)
+lambda:     0.00 x 0.00    (  0.00,  3800000.00), (  0.00,  3800000.00)
+internal:      0 x 0       (     0,  38000000), (     0,  38000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai32_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  191000.000), ( 0.000,  191000.000)
+lambda:     0.00 x 0.00    (  0.00,  3820000.00), (  0.00,  3820000.00)
+internal:      0 x 0       (     0,  38200000), (     0,  38200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai33_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  192000.000), ( 0.000,  192000.000)
+lambda:     0.00 x 0.00    (  0.00,  3840000.00), (  0.00,  3840000.00)
+internal:      0 x 0       (     0,  38400000), (     0,  38400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai33_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  193000.000), ( 0.000,  193000.000)
+lambda:     0.00 x 0.00    (  0.00,  3860000.00), (  0.00,  3860000.00)
+internal:      0 x 0       (     0,  38600000), (     0,  38600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__oai33_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  194000.000), ( 0.000,  194000.000)
+lambda:     0.00 x 0.00    (  0.00,  3880000.00), (  0.00,  3880000.00)
+internal:      0 x 0       (     0,  38800000), (     0,  38800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  195000.000), ( 0.000,  195000.000)
+lambda:     0.00 x 0.00    (  0.00,  3900000.00), (  0.00,  3900000.00)
+internal:      0 x 0       (     0,  39000000), (     0,  39000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  196000.000), ( 0.000,  196000.000)
+lambda:     0.00 x 0.00    (  0.00,  3920000.00), (  0.00,  3920000.00)
+internal:      0 x 0       (     0,  39200000), (     0,  39200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  197000.000), ( 0.000,  197000.000)
+lambda:     0.00 x 0.00    (  0.00,  3940000.00), (  0.00,  3940000.00)
+internal:      0 x 0       (     0,  39400000), (     0,  39400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  198000.000), ( 0.000,  198000.000)
+lambda:     0.00 x 0.00    (  0.00,  3960000.00), (  0.00,  3960000.00)
+internal:      0 x 0       (     0,  39600000), (     0,  39600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  199000.000), ( 0.000,  199000.000)
+lambda:     0.00 x 0.00    (  0.00,  3980000.00), (  0.00,  3980000.00)
+internal:      0 x 0       (     0,  39800000), (     0,  39800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  200000.000), ( 0.000,  200000.000)
+lambda:     0.00 x 0.00    (  0.00,  4000000.00), (  0.00,  4000000.00)
+internal:      0 x 0       (     0,  40000000), (     0,  40000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or4_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  201000.000), ( 0.000,  201000.000)
+lambda:     0.00 x 0.00    (  0.00,  4020000.00), (  0.00,  4020000.00)
+internal:      0 x 0       (     0,  40200000), (     0,  40200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or4_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  202000.000), ( 0.000,  202000.000)
+lambda:     0.00 x 0.00    (  0.00,  4040000.00), (  0.00,  4040000.00)
+internal:      0 x 0       (     0,  40400000), (     0,  40400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__or4_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  203000.000), ( 0.000,  203000.000)
+lambda:     0.00 x 0.00    (  0.00,  4060000.00), (  0.00,  4060000.00)
+internal:      0 x 0       (     0,  40600000), (     0,  40600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  204000.000), ( 0.000,  204000.000)
+lambda:     0.00 x 0.00    (  0.00,  4080000.00), (  0.00,  4080000.00)
+internal:      0 x 0       (     0,  40800000), (     0,  40800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  205000.000), ( 0.000,  205000.000)
+lambda:     0.00 x 0.00    (  0.00,  4100000.00), (  0.00,  4100000.00)
+internal:      0 x 0       (     0,  41000000), (     0,  41000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  206000.000), ( 0.000,  206000.000)
+lambda:     0.00 x 0.00    (  0.00,  4120000.00), (  0.00,  4120000.00)
+internal:      0 x 0       (     0,  41200000), (     0,  41200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  207000.000), ( 0.000,  207000.000)
+lambda:     0.00 x 0.00    (  0.00,  4140000.00), (  0.00,  4140000.00)
+internal:      0 x 0       (     0,  41400000), (     0,  41400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  208000.000), ( 0.000,  208000.000)
+lambda:     0.00 x 0.00    (  0.00,  4160000.00), (  0.00,  4160000.00)
+internal:      0 x 0       (     0,  41600000), (     0,  41600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  209000.000), ( 0.000,  209000.000)
+lambda:     0.00 x 0.00    (  0.00,  4180000.00), (  0.00,  4180000.00)
+internal:      0 x 0       (     0,  41800000), (     0,  41800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  210000.000), ( 0.000,  210000.000)
+lambda:     0.00 x 0.00    (  0.00,  4200000.00), (  0.00,  4200000.00)
+internal:      0 x 0       (     0,  42000000), (     0,  42000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  211000.000), ( 0.000,  211000.000)
+lambda:     0.00 x 0.00    (  0.00,  4220000.00), (  0.00,  4220000.00)
+internal:      0 x 0       (     0,  42200000), (     0,  42200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  212000.000), ( 0.000,  212000.000)
+lambda:     0.00 x 0.00    (  0.00,  4240000.00), (  0.00,  4240000.00)
+internal:      0 x 0       (     0,  42400000), (     0,  42400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffsnq_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  213000.000), ( 0.000,  213000.000)
+lambda:     0.00 x 0.00    (  0.00,  4260000.00), (  0.00,  4260000.00)
+internal:      0 x 0       (     0,  42600000), (     0,  42600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffsnq_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  214000.000), ( 0.000,  214000.000)
+lambda:     0.00 x 0.00    (  0.00,  4280000.00), (  0.00,  4280000.00)
+internal:      0 x 0       (     0,  42800000), (     0,  42800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__sdffsnq_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  215000.000), ( 0.000,  215000.000)
+lambda:     0.00 x 0.00    (  0.00,  4300000.00), (  0.00,  4300000.00)
+internal:      0 x 0       (     0,  43000000), (     0,  43000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__tieh read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  216000.000), ( 0.000,  216000.000)
+lambda:     0.00 x 0.00    (  0.00,  4320000.00), (  0.00,  4320000.00)
+internal:      0 x 0       (     0,  43200000), (     0,  43200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__tiel read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  217000.000), ( 0.000,  217000.000)
+lambda:     0.00 x 0.00    (  0.00,  4340000.00), (  0.00,  4340000.00)
+internal:      0 x 0       (     0,  43400000), (     0,  43400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  218000.000), ( 0.000,  218000.000)
+lambda:     0.00 x 0.00    (  0.00,  4360000.00), (  0.00,  4360000.00)
+internal:      0 x 0       (     0,  43600000), (     0,  43600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  219000.000), ( 0.000,  219000.000)
+lambda:     0.00 x 0.00    (  0.00,  4380000.00), (  0.00,  4380000.00)
+internal:      0 x 0       (     0,  43800000), (     0,  43800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  220000.000), ( 0.000,  220000.000)
+lambda:     0.00 x 0.00    (  0.00,  4400000.00), (  0.00,  4400000.00)
+internal:      0 x 0       (     0,  44000000), (     0,  44000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  221000.000), ( 0.000,  221000.000)
+lambda:     0.00 x 0.00    (  0.00,  4420000.00), (  0.00,  4420000.00)
+internal:      0 x 0       (     0,  44200000), (     0,  44200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  222000.000), ( 0.000,  222000.000)
+lambda:     0.00 x 0.00    (  0.00,  4440000.00), (  0.00,  4440000.00)
+internal:      0 x 0       (     0,  44400000), (     0,  44400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xnor3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  223000.000), ( 0.000,  223000.000)
+lambda:     0.00 x 0.00    (  0.00,  4460000.00), (  0.00,  4460000.00)
+internal:      0 x 0       (     0,  44600000), (     0,  44600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  224000.000), ( 0.000,  224000.000)
+lambda:     0.00 x 0.00    (  0.00,  4480000.00), (  0.00,  4480000.00)
+internal:      0 x 0       (     0,  44800000), (     0,  44800000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor2_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  225000.000), ( 0.000,  225000.000)
+lambda:     0.00 x 0.00    (  0.00,  4500000.00), (  0.00,  4500000.00)
+internal:      0 x 0       (     0,  45000000), (     0,  45000000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor2_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  226000.000), ( 0.000,  226000.000)
+lambda:     0.00 x 0.00    (  0.00,  4520000.00), (  0.00,  4520000.00)
+internal:      0 x 0       (     0,  45200000), (     0,  45200000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor3_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  227000.000), ( 0.000,  227000.000)
+lambda:     0.00 x 0.00    (  0.00,  4540000.00), (  0.00,  4540000.00)
+internal:      0 x 0       (     0,  45400000), (     0,  45400000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor3_2 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  228000.000), ( 0.000,  228000.000)
+lambda:     0.00 x 0.00    (  0.00,  4560000.00), (  0.00,  4560000.00)
+internal:      0 x 0       (     0,  45600000), (     0,  45600000)
+Cell gf180mcu_fd_sc_mcu7t5v0__xor3_4 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.050 x 0.050   ( 0.000,  0.000), ( 0.050,  0.050)  0.002     
+lambda:     1.00 x 1.00    (  0.00,  0.00 ), (  1.00,  1.00 )  1.00      
+internal:     10 x 10      (     0,  0    ), (    10,  10   )  100       
+0 {}
+0 {}
+Extracting gf180mcu_fd_sc_mcu7t5v0__addf_1 into ext/gf180mcu_fd_sc_mcu7t5v0__addf_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addf_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__addf_2 into ext/gf180mcu_fd_sc_mcu7t5v0__addf_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addf_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__addf_4 into ext/gf180mcu_fd_sc_mcu7t5v0__addf_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addf_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__addh_1 into ext/gf180mcu_fd_sc_mcu7t5v0__addh_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addh_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__addh_2 into ext/gf180mcu_fd_sc_mcu7t5v0__addh_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addh_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__addh_4 into ext/gf180mcu_fd_sc_mcu7t5v0__addh_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__addh_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__and2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__and2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__and2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__and2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__and2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__and2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__and3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__and3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__and3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__and3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__and3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__and3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and3_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__and4_1 into ext/gf180mcu_fd_sc_mcu7t5v0__and4_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and4_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__and4_2 into ext/gf180mcu_fd_sc_mcu7t5v0__and4_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and4_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__and4_4 into ext/gf180mcu_fd_sc_mcu7t5v0__and4_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__and4_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__antenna into ext/gf180mcu_fd_sc_mcu7t5v0__antenna.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__antenna
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi211_1 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi211_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi211_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi211_2 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi211_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi211_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi211_4 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi211_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi211_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi21_1 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi21_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi21_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi21_2 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi21_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi21_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi21_4 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi21_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi21_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi221_1 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi221_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi221_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi221_2 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi221_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi221_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi221_4 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi221_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi221_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi222_1 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi222_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi222_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi222_2 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi222_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi222_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi222_4 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi222_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi222_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi22_1 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi22_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi22_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi22_2 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi22_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi22_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__aoi22_4 into ext/gf180mcu_fd_sc_mcu7t5v0__aoi22_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__aoi22_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_1 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_12 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_16 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_2 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_20 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_20.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_20
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_3 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_4 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__buf_8 into ext/gf180mcu_fd_sc_mcu7t5v0__buf_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__buf_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_1 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_12 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_16 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_2 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_3 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_4 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__bufz_8 into ext/gf180mcu_fd_sc_mcu7t5v0__bufz_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__bufz_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_1 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_12 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_16 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_2 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_20 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_20.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_20
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_3 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_4 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkbuf_8 into ext/gf180mcu_fd_sc_mcu7t5v0__clkbuf_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkbuf_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_1 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_12 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_16 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_2 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_20 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_20.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_20
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_3 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_4 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__clkinv_8 into ext/gf180mcu_fd_sc_mcu7t5v0__clkinv_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__clkinv_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnrsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffnsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffnsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffnsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffrsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffrsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffrsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dffsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dffsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dffsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dffsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dffsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlya_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dlya_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlya_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlya_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dlya_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlya_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlya_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dlya_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlya_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyb_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyb_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyb_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyb_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyb_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyb_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyb_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyb_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyb_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyc_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyc_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyc_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyc_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyc_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyc_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyc_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyc_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyc_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyd_1 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyd_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyd_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyd_2 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyd_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyd_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__dlyd_4 into ext/gf180mcu_fd_sc_mcu7t5v0__dlyd_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__dlyd_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__endcap into ext/gf180mcu_fd_sc_mcu7t5v0__endcap.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__endcap
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_1 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_16 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_2 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_32 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_32.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_32
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_4 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_64 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_64.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_64
+Extracting gf180mcu_fd_sc_mcu7t5v0__fill_8 into ext/gf180mcu_fd_sc_mcu7t5v0__fill_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fill_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__fillcap_16 into ext/gf180mcu_fd_sc_mcu7t5v0__fillcap_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fillcap_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__fillcap_32 into ext/gf180mcu_fd_sc_mcu7t5v0__fillcap_32.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fillcap_32
+Extracting gf180mcu_fd_sc_mcu7t5v0__fillcap_4 into ext/gf180mcu_fd_sc_mcu7t5v0__fillcap_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fillcap_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__fillcap_64 into ext/gf180mcu_fd_sc_mcu7t5v0__fillcap_64.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fillcap_64
+Extracting gf180mcu_fd_sc_mcu7t5v0__fillcap_8 into ext/gf180mcu_fd_sc_mcu7t5v0__fillcap_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__fillcap_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__filltie into ext/gf180mcu_fd_sc_mcu7t5v0__filltie.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__filltie
+Extracting gf180mcu_fd_sc_mcu7t5v0__hold into ext/gf180mcu_fd_sc_mcu7t5v0__hold.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__hold
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtn_1 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtn_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtn_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtn_2 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtn_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtn_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtn_4 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtn_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtn_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtp_1 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtp_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtp_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtp_2 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtp_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtp_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__icgtp_4 into ext/gf180mcu_fd_sc_mcu7t5v0__icgtp_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__icgtp_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_1 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_12 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_16 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_2 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_20 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_20.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_20
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_3 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_4 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__inv_8 into ext/gf180mcu_fd_sc_mcu7t5v0__inv_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__inv_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_1 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_12 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_12.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_12
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_16 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_16.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_16
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_2 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_3 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_3.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_3
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_4 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__invz_8 into ext/gf180mcu_fd_sc_mcu7t5v0__invz_8.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__invz_8
+Extracting gf180mcu_fd_sc_mcu7t5v0__latq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__latq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__latq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__latq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__latq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__latq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__latrnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__latrnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__latrnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__latrsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__latrsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__latrsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__latrsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latrsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__latsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__latsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__latsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__latsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__latsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__latsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__latsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__mux2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__mux2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__mux2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux4_1 into ext/gf180mcu_fd_sc_mcu7t5v0__mux4_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux4_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux4_2 into ext/gf180mcu_fd_sc_mcu7t5v0__mux4_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux4_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__mux4_4 into ext/gf180mcu_fd_sc_mcu7t5v0__mux4_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__mux4_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nand2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nand2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nand2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nand3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nand3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nand3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand3_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand4_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nand4_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand4_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand4_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nand4_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand4_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nand4_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nand4_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nand4_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nor2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nor2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nor2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nor3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nor3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nor3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor3_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor4_1 into ext/gf180mcu_fd_sc_mcu7t5v0__nor4_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor4_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor4_2 into ext/gf180mcu_fd_sc_mcu7t5v0__nor4_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor4_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__nor4_4 into ext/gf180mcu_fd_sc_mcu7t5v0__nor4_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__nor4_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai211_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai211_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai211_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai211_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai211_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai211_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai211_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai211_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai211_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai21_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai21_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai21_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai21_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai21_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai21_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai21_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai21_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai21_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai221_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai221_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai221_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai221_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai221_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai221_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai221_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai221_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai221_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai222_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai222_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai222_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai222_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai222_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai222_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai222_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai222_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai222_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai22_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai22_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai22_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai22_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai22_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai22_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai22_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai22_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai22_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai31_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai31_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai31_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai31_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai31_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai31_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai31_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai31_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai31_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai32_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai32_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai32_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai32_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai32_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai32_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai32_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai32_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai32_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai33_1 into ext/gf180mcu_fd_sc_mcu7t5v0__oai33_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai33_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai33_2 into ext/gf180mcu_fd_sc_mcu7t5v0__oai33_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai33_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__oai33_4 into ext/gf180mcu_fd_sc_mcu7t5v0__oai33_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__oai33_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__or2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__or2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__or2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__or2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__or2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__or2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__or3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__or3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__or3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__or3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__or3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__or3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or3_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__or4_1 into ext/gf180mcu_fd_sc_mcu7t5v0__or4_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or4_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__or4_2 into ext/gf180mcu_fd_sc_mcu7t5v0__or4_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or4_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__or4_4 into ext/gf180mcu_fd_sc_mcu7t5v0__or4_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__or4_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffrsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffsnq_1 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffsnq_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffsnq_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffsnq_2 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffsnq_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffsnq_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__sdffsnq_4 into ext/gf180mcu_fd_sc_mcu7t5v0__sdffsnq_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__sdffsnq_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__tieh into ext/gf180mcu_fd_sc_mcu7t5v0__tieh.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__tieh
+Extracting gf180mcu_fd_sc_mcu7t5v0__tiel into ext/gf180mcu_fd_sc_mcu7t5v0__tiel.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__tiel
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__xnor3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__xnor3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xnor3_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor2_1 into ext/gf180mcu_fd_sc_mcu7t5v0__xor2_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor2_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor2_2 into ext/gf180mcu_fd_sc_mcu7t5v0__xor2_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor2_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor2_4 into ext/gf180mcu_fd_sc_mcu7t5v0__xor2_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor2_4
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor3_1 into ext/gf180mcu_fd_sc_mcu7t5v0__xor3_1.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor3_1
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor3_2 into ext/gf180mcu_fd_sc_mcu7t5v0__xor3_2.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor3_2
+Extracting gf180mcu_fd_sc_mcu7t5v0__xor3_4 into ext/gf180mcu_fd_sc_mcu7t5v0__xor3_4.ext:
+Processing gf180mcu_fd_sc_mcu7t5v0__xor3_4
+Extracting pdk_lib into ext/pdk_lib.ext:
+Processing pdk_lib
+0 {}
+pdk ext-files 230

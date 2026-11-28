@@ -1,0 +1,5 @@
+* NGSPICE file created from sg13g2_fill_2.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_fill_2 VDD VSS
+.ends
+

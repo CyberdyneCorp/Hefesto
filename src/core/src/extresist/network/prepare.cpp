@@ -221,7 +221,7 @@ struct DeviceCopy {
   /// tile is painted at its own cell's coordinates, as Magic's TiToRect
   /// without the search context's transform does (a device in a moved or
   /// rotated subcell lands at the wrong place); with it OFF it is
-  /// transformed to the root (proposed Q-NETLIST-76).
+  /// transformed to the root (Q-NETLIST-76).
   void paint(const db::TileView& tp, bool right_side, const db::Transform& to_root, const DevTile& dev) const {
     const auto plane = b.tech_.home_plane(dev.type);
     if (!plane) {

@@ -1,0 +1,4 @@
+Please name the cell before extracting.
+"nosuch" isn't a valid extract option.  Type "extract help" for a list of valid options.
+"s" isn't a valid extract option.  Type "extract help" for a list of valid options.
+"st" isn't a valid extract option.  Type "extract help" for a list of valid options.

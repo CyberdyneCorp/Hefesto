@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 #include "hefesto/diag/outcome.hpp"
@@ -21,6 +22,16 @@ namespace hefesto::platform {
 
 using Path = std::filesystem::path;
 
+/// A file as C's fopen(path, "r") and a read loop see it: the text, or the
+/// errno of the failed open in `error` (std::generic_category, so
+/// error.message() is the text perror prints). Callers that copy Magic's
+/// fopen/perror pairs (efSymAddFile) use it instead of reading the reason
+/// back out of a diagnostic.
+struct StreamRead {
+  std::string text;
+  std::error_code error;
+};
+
 class FileSystem {
  public:
   FileSystem() = default;
@@ -28,7 +39,10 @@ class FileSystem {
   FileSystem& operator=(const FileSystem&) = delete;
   virtual ~FileSystem() = default;
 
-  /// Whole-file read, in binary mode.
+  /// Whole-file read, in binary mode. A missing file fails with
+  /// PLATFORM-IO-004 (`no such file '<path>'`); any other failure with
+  /// PLATFORM-IO-001, whose text ends in `: <strerror text>` when the OS
+  /// gave a reason (`: Permission denied`, `: Is a directory`).
   [[nodiscard]] virtual diag::Outcome<std::string> read(const Path& path) = 0;
   /// The first `max_bytes` bytes of the file (all of it when it is
   /// shorter), with the errors of read(). Bounds the memory a read of a file
@@ -55,13 +69,23 @@ class FileSystem {
   /// it was read; nullopt when unknown (no such file, or a file system that
   /// keeps no times: the default).
   [[nodiscard]] virtual std::optional<std::filesystem::file_time_type> modified_time(const Path& path);
+  /// The file as fopen(path, "r") reads it. Anything that exists but is not
+  /// a regular file (a directory, a device, a FIFO) reads as empty with no
+  /// error: fopen opens a directory and fgets reads nothing from it, and a
+  /// FIFO or an endless device is not waited on. The default maps read():
+  /// PLATFORM-IO-004 to ENOENT, any other failure to EIO.
+  [[nodiscard]] virtual StreamRead read_stream(const Path& path);
 };
 
-/// The portable default: std::filesystem and <fstream>.
+/// The portable default: std::filesystem and <fstream>. A read error
+/// carries the OS reason: errno of the failed open, `Is a directory` for a
+/// directory (an ifstream would open it and read nothing). read_stream()
+/// reports the failed fopen's errno itself (ENOTDIR, EACCES, ...).
 class LocalFileSystem final : public FileSystem {
  public:
   diag::Outcome<std::string> read(const Path& path) override;
   diag::Outcome<std::string> read_at_most(const Path& path, std::size_t max_bytes) override;
+  StreamRead read_stream(const Path& path) override;
   diag::Status write_atomic(const Path& path, std::string_view data) override;
   diag::Status append(const Path& path, std::string_view data) override;
   bool exists(const Path& path) override;
@@ -78,6 +102,7 @@ class LocalFileSystem final : public FileSystem {
 class MemoryFileSystem final : public FileSystem {
  public:
   diag::Outcome<std::string> read(const Path& path) override;
+  StreamRead read_stream(const Path& path) override;
   diag::Status write_atomic(const Path& path, std::string_view data) override;
   diag::Status append(const Path& path, std::string_view data) override;
   bool exists(const Path& path) override;

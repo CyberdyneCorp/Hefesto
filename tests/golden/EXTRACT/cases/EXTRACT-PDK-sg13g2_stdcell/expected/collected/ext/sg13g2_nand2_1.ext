@@ -1,0 +1,31 @@
+timestamp 1676560849
+version 8.3
+tech ihp-sg13g2
+style ngspice()
+scale 1000 1 0.5
+resistclasses 3000000 67000 110 88 88 88 88 18 11 7000 260000 1360000
+parameters sg13_lv_nmos l=l w=w a1=as p1=ps a2=ad p2=pd
+parameters sg13_lv_pmos l=l w=w a1=as p1=ps a2=ad p2=pd
+port "Y" 2 166 273 218 632 m1
+port "A" 4 254 294 320 380 m1
+port "B" 6 66 294 124 380 m1
+port "VDD" 3 0 712 384 800 m1
+port "VSS" 5 0 -44 384 44 m1
+node "a_154_118#" 0 9.54134 154 118 ndif 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "Y" 1 151.113 166 273 m1 0 0 0 0 30190 1324 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "A" 0 112.655 254 294 m1 0 0 0 0 5676 304 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "B" 0 178.197 66 294 m1 0 0 0 0 4988 288 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+node "VDD" 2 187.998 0 712 m1 0 0 0 0 64576 2128 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+substrate "VSS" 1 0 0 -44 m1 0 0 0 0 44764 1366 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+cap "A" "B" 35.7899
+cap "Y" "B" 99.5886
+cap "A" "VDD" 139.586
+cap "Y" "VDD" 367.042
+cap "VDD" "B" 137.854
+cap "Y" "a_154_118#" 14.7762
+cap "A" "Y" 188.709
+cap "a_154_118#" "VDD" 0.168476
+device msubckt sg13_lv_nmos 230 118 231 119 l=26 w=148 "VSS" "A" 52 0 "a_154_118#" 148 5624,224 "Y" 148 10064,432
+device msubckt sg13_lv_nmos 128 118 129 119 l=26 w=148 "VSS" "B" 52 0 "VSS" 148 10064,432 "a_154_118#" 148 5624,224
+device msubckt sg13_lv_pmos 230 412 231 413 l=26 w=224 "VDD" "A" 52 0 "Y" 224 8512,300 "VDD" 224 15232,584
+device msubckt sg13_lv_pmos 128 412 129 413 l=26 w=224 "VDD" "B" 52 0 "VDD" 224 15232,584 "Y" 224 8512,300

@@ -44,6 +44,8 @@ names a directory is copied whole.
 ``golden`` ``tests/golden/<path>``: a committed file several cases share, e.g.
            ``OASIS/captured/OASIS-020/sky130_fd_sc_hd.oas`` (a captured input written by KLayout,
            m6-lef-def-oasis design D19), staged instead of copied into each case's ``input/``.
+           A directory is copied whole: NETLIST-PDK-<lib> stages EXTRACT-PDK-<lib>'s captured
+           ``expected/collected/ext`` (m7-extraction design D21, task 17.4).
 """
 from __future__ import annotations
 
@@ -224,7 +226,7 @@ def resolve(ext: External) -> Path:
 
 def _resolve_golden(ext: External) -> Path:
     path = GOLDEN_ROOT / ext.path
-    if not path.is_file():
+    if not (path.is_file() or path.is_dir()):
         raise ExternalUnavailable(f"{path} not found (a captured input not synced yet)")
     return path
 

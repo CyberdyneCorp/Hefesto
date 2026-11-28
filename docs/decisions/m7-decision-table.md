@@ -11,6 +11,10 @@ M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open 
 
 **Status as of 2026-11-26 (R5 integration).** Round R5 raised ten rows and one amendment, all pending: Q-EXTRACT-42 (compat), Q-EXTRACT-43 (fix), Q-EXTRACT-44 (compat, R5 fix pass), Q-NETLIST-70 (compat-neutral), Q-NETLIST-71 to 76 (compat) and the Q-NETLIST-69 amendment (section "Entries proposed in round R5"). Each is implemented with its recommended option.
 
+**Status as of 2026-11-27.** The user approved on 2026-11-27 every row raised in round R5, each with its recommended option: Q-EXTRACT-42 (compat), Q-EXTRACT-43 (fix, both modes), Q-EXTRACT-44 (compat), the Q-NETLIST-69 amendment (fix, both modes: reverse first-mention order, glibc merge sort with devSortFunc), Q-NETLIST-70 (replicate: proposed as compat-neutral; `ext2sim` uses the short mode `ext2spice short` set and `ext2sim default` clears it) and Q-NETLIST-71 to 76 (compat, as implemented in round R5). The R5 crafted-input limits (Q-NETLIST-76's 64-level depth cap, M7-S1's field counts and the R5 fuzz harness caps) stand approved under the standing rule of 2026-11-25. The open-questions entries carry `Status: approved 2026-11-27` and a `Resolution:` line, and the specs cite the plain row IDs (section "Entries approved 2026-11-27"; recorded in round R6, branch `m7-round6-decide-perf`). Q-NETLIST-58 keeps its kind; task 10.6 (round R6, workstream CORE) replaces its fixed text with the OS error text.
+
+**Status as of 2026-11-27 (R6 integration).** Round R6 raised three rows, all pending a user decision and each implemented with its recommended option (section "Entries proposed in round R6"): Q-EXTRACT-45 (`lef write`/`def write` use the selected extract style; recommended replicate), Q-EXTRACT-46 (the non-electrical types accumulate over style selections; recommended compat; implemented since R2 without a row) and Q-NETLIST-77 (an empty line before the common usage text; recommended compat-neutral). Q-NETLIST-58's accepted difference is closed by task 10.6, and Q-EXTRACT-36 carries a note that a real PDK cell (sky130 `probec_p_8`) reaches its case (h). No new crafted-input resource limit was added in R6.
+
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
@@ -251,7 +255,7 @@ Raised by the R2 workstreams and the R2 review for Magic behaviours no row cover
 | Q-NETLIST-55 (M7-16) | `-h` runs the tool's own flag parser before the common usage text | **compat-neutral** | both modes as Magic: the tool's parser first (`ext2spice` usage; `ext2sim` `Unrecognized flag: -h` and usage), then the common usage text, and the command fails | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT, SPICE, SIM (R2) |
 | Q-NETLIST-56 (M7-16) | `-o` only for `ext2spice`/`ext2sim`, `-T` only for the standalone program | **compat-neutral** | both modes as Magic: `hefesto-extcheck -o` is a usage error; `ext2spice`/`ext2sim -T` is `Unrecognized flag: -T` | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT, SIM (R2) |
 | Q-NETLIST-57 (M7-16) | EFArgs prints its own messages while parsing | **compat-neutral** | both modes as Magic: second root cell, missing flag value, watched nodes, symbol and symbol-file messages printed before the run | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT (R2) |
-| Q-NETLIST-58 (M7-17) | An unreadable `-S` file is reported with the OS error text in Magic | **compat-neutral** (accepted difference) | both modes: `<file>: No such file or directory` for any unreadable file, the parse goes on; the OS text through `FileSystem::read` is a later improvement (tasks.md 10.6) | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT (R2) |
+| Q-NETLIST-58 (M7-17) | An unreadable `-S` file is reported with the OS error text in Magic | **compat-neutral** (accepted difference) | both modes: `<file>: <errno text>` when fopen fails (ENOENT, EACCES, ENOTDIR), nothing for a directory, the parse goes on (R6 task 10.6 through `FileSystem::read_stream`) | ext-flattening-hierarchy "Common netlister arguments" | EXTFLAT (R2) |
 
 ### Plan items
 
@@ -317,7 +321,7 @@ The fuzz harness caps are harness parameters, not product limits: they bound wha
 | Q-NETLIST-66 | `extresist debug` and `stats` take any word | **compat** | ON: any word turns them on; OFF: `Value must be either "on" or "off".` | extresist-command "Command options" (scenario per mode) | RESCMD (R4) |
 | Q-NETLIST-67 | `extresist cell` runs on the box cell | **compat** | ON: box cell; OFF: selected cell | extresist-command "Run flow" (scenario per mode) | RESCMD (R4) |
 | Q-NETLIST-68 | Crashes in the `.ext` read of `extresist` (three cases) | **fix** (both modes) | as implemented | extresist-command "Input model" | RESCMD (R4) |
-| Q-NETLIST-69 | ResSortByGate orders by node address | **fix** (both modes; determinism) | first-mention order, stable sort; amended in R5 (proposed): reverse first-mention order with glibc's merge sort and Magic's comparator; NL-RES-02/03 DECIDED | extresist-command "Net selection and first cutoff" (sentence and scenario amended in R5) | RESCMD (R4, R5) |
+| Q-NETLIST-69 | ResSortByGate orders by node address | **fix** (both modes; determinism) | first-mention order, stable sort; amended in R5 (approved 2026-11-27): reverse first-mention order with glibc's merge sort and Magic's comparator; NL-RES-02/03 DECIDED | extresist-command "Net selection and first cutoff" (sentence and scenario amended in R5) | RESCMD (R4, R5) |
 | Q-MISC-92 | `antennacheck <cell>` with no layout window crashes | **fix** (both modes) | `Point to a window or specify a cell name.` | antenna-check "Antenna check command" | ANTENNA (R4) |
 | Q-MISC-93 | antennacheck devices with no style device line or no terminals | **fix** (both modes) | the device is skipped | antenna-check "Antenna check command" | ANTENNA (R4) |
 
@@ -340,16 +344,16 @@ Applied 2026-11-26 (round R5), after the approval:
 - **Q-NETLIST-63:** `extresist-command` "Input model" gains the substrate-terminal sentence and the scenario "Substrate terminal on a net with no node record" (both modes).
 - Q-EXTRACT-36 and Q-EXTRACT-37 need no spec change.
 
-## Entries proposed in round R5 (2026-11-26)
+## Entries approved 2026-11-27
 
-Raised by the R5 workstreams (EXTCMD, NETLIST, RESCMD, RESNET) for Magic behaviours no row covered, each implemented per the standing rule (ON copies Magic, OFF does the intended thing; crashes and undefined behaviour fixed in both modes) with a test per mode. NETLIST raised its row as "Q-NETLIST-63", which was taken; RESCMD's rows were numbered R5-RES-1..7 on the branch. Both were renumbered at the R5 merge (branch `m7-round5`). **All are pending the user's decision**; the recommended option is the one implemented.
+Raised by the R5 workstreams (EXTCMD, NETLIST, RESCMD, RESNET) for Magic behaviours no row covered, each implemented per the standing rule (ON copies Magic, OFF does the intended thing; crashes and undefined behaviour fixed in both modes) with a test per mode. NETLIST raised its row as "Q-NETLIST-63", which was taken; RESCMD's rows were numbered R5-RES-1..7 on the branch. Both were renumbered at the R5 merge (branch `m7-round5`). Proposed in round R5 (2026-11-26); **all were approved by the user on 2026-11-27, each with its recommended option** (the option implemented), and recorded in round R6 (branch `m7-round6-decide-perf`). The open-questions entries carry `Status: approved 2026-11-27` and a `Resolution:` line.
 
-| ID | Question | Kind (recommended) | As implemented | Spec | Raised by |
+| ID | Question | Kind (decided) | As implemented | Spec | Raised by |
 |---|---|---|---|---|---|
 | Q-EXTRACT-42 | A receiver label touching two yanked tiles gets two `distance` records | **compat** | ON: one record per touched tile; OFF: one per label | extract-commands "Path length extraction" (scenario per mode) | EXTCMD (R5) |
 | Q-EXTRACT-43 | A driver label on space prints a stale or uninitialised `distance`; int sums; recursive flood | **fix** (both modes) | no record; 64-bit sums; heap flood | extract-commands "Path length extraction" (scenario) | EXTCMD (R5) |
 | Q-NETLIST-69 (amendment) | ResSortByGate's deterministic order | **fix** (both modes) | reverse first-mention order, glibc merge sort with devSortFunc; NL-RES-02/03 DECIDED | extresist-command "Net selection and first cutoff" | RESCMD (R5) |
-| Q-NETLIST-70 | `ext2sim` follows the short mode set by `ext2spice short` | **compat-neutral** (replicate) | both modes as Magic (OFF names the voltage-short node `dummy#<n>`) | netlist-sim "Command options and defaults" (scenario "ext2sim honours the ext2spice short mode", no row cited while proposed) | NETLIST (R5) |
+| Q-NETLIST-70 | `ext2sim` follows the short mode set by `ext2spice short` | **replicate** (proposed as compat-neutral) | both modes as Magic; `ext2sim default` clears the shared mode (OFF names the voltage-short node `dummy#<n>`, Q-NETLIST-60) | netlist-sim "Command options and defaults" (sentence cites the row; scenarios "ext2sim honours the ext2spice short mode" and "ext2sim default clears the shared short mode") | NETLIST (R5) |
 | Q-NETLIST-71 | Driver of a parallel device group (int totWL; last-but-one device) | **compat** | ON: as Magic; OFF: float sum, last device; the int sum saturates in both modes (R5 fix pass) | extresist-command "Net selection and first cutoff" (scenarios per mode) | RESCMD (R5; was R5-RES-1) |
 | Q-NETLIST-72 | The second cutoff reads the previous net's delay | **compat** | ON: the delay the last net of the same run computed, 0 (ResInit) at the start of every command, so 0 when the run neither simplifies nor writes the lump file; OFF: no delay cutoff | extresist-command "Second cutoff after extraction" (scenarios per mode) | RESCMD (R5; was R5-RES-2) |
 | Q-NETLIST-73 | FastHenry node height from the last non-contact resistor | **compat** | ON: last; OFF: first | extresist-output "FastHenry geometry file" (scenarios per mode) | RESCMD (R5; was R5-RES-3) |
@@ -359,6 +363,31 @@ Raised by the R5 workstreams (EXTCMD, NETLIST, RESCMD, RESNET) for Magic behavio
 | Q-EXTRACT-44 | `extract path` with a trailing slash names `<dir>//<cell>.ext` | **compat** | ON: `%s/%s` as Magic (EX-066 prints `ext//<cell>`); OFF: one separator | extract-commands "Output path and file location" (scenario per mode) | R5 fix pass (review finding) |
 
 Bug fixed with no row (R5, both modes): layout devices now carry their record's gate and S/D capacitance into the Elmore delay (it used 0), which changes Tdi and so the mindelay cutoff and pruning; `extresist-network` "Elmore delay and pruning" gains the scenario "Gate load of a layout device".
+
+### Tests per mode (checked in round R6)
+
+Every row whose behaviour differs between the modes has a test per mode: Q-EXTRACT-42 `tests/unit/extract/length/length_test.cpp` (split in R6 into an ON and an OFF test case), Q-EXTRACT-44 `tests/unit/extract/file/atomic_output_test.cpp`, Q-NETLIST-71 `tests/unit/extresist/command/run_test.cpp`, Q-NETLIST-72, 73, 75 `tests/unit/extresist/output/geometry_run_test.cpp`, Q-NETLIST-74 `fasthenry_test.cpp`, Q-NETLIST-76 `tests/unit/extresist/network/build_test.cpp`. The both-modes rows are tested in both modes or mode-independently: Q-EXTRACT-43 (`length_test.cpp`: driver on space, 64-bit sum, 60000-tile flood), Q-NETLIST-69 (`cutoff_test.cpp` sort_by_gate), Q-NETLIST-70 (`tests/unit/netlist/sim/short_ports_test.cpp`: the shared mode and its clearing by `ext2sim default`, in both modes).
+
+### Spec changes the answers imply
+
+Applied 2026-11-27 (round R6), after the approval:
+- **Q-EXTRACT-42, 43:** `extract-commands` "Path length extraction" cites both rows in its sentences and scenarios; Q-EXTRACT-43 gains the scenarios "Path length beyond the 32-bit range" and "A net of many tiles floods without recursion".
+- **Q-EXTRACT-44:** `extract-commands` "Output path and file location" cites the plain row ID.
+- **Q-NETLIST-70:** `netlist-sim` "Command options and defaults" cites the row (resolution: replicate); the scenario "ext2sim honours the ext2spice short mode" cites it and "ext2sim default clears the shared short mode" is new.
+- **Q-NETLIST-71, 72, 75:** `extresist-command`; **Q-NETLIST-73, 74:** `extresist-output`; **Q-NETLIST-76:** `extresist-network`: "(proposed Q-...)" becomes the plain row ID.
+- Q-NETLIST-69's amended text in `extresist-command` already cites the row and needs no change.
+
+## Entries proposed in round R6
+
+Raised in M7 round R6 (TECH, GOLDEN through NL-FLAT-20, and the R6 integration) for Magic behaviours no row covered, each implemented per the standing rule with a test; none is approved yet.
+
+| ID | Question | Kind (recommended) | As implemented | Spec | Raised by |
+|---|---|---|---|---|---|
+| Q-EXTRACT-45 | `lef write` and `def write` use the selected extract style | **replicate** (recommended) | both modes: the writers' StyleView comes from `EditorState::extract.current` (`ExtCurStyle`) | lef-write "Macro source geometry and layer masks", def-write "BLOCKAGES section" (scenarios) | TECH (R6) |
+| Q-EXTRACT-46 | The non-electrical types accumulate over the style selections since the tech load | **compat** (recommended) | ON: `allExtractTypes` accumulates as Magic; OFF: each style's own mentions | extract-tech-section "Non-electrical types" (per-mode sentence and two scenarios, R6 fix pass) | R6 integration (implemented since R2) |
+| Q-NETLIST-77 | An empty line before the common usage text when the tool's parser rejects a flag | **compat-neutral** (recommended) | both modes: `\n` then the usage text, as EFargs.c:290 (NL-FLAT-20 replays) | ext-flattening-hierarchy "Common netlister arguments" (sentence and scenario) | GOLDEN (R6, NL-FLAT-20) |
+
+Tests: Q-EXTRACT-45 `tests/unit/lef/write/style_select_test.cpp`, `tests/unit/def/write/style_select_test.cpp` (both modes); Q-EXTRACT-46 `tests/unit/extract/tech/ext_style_rules_test.cpp` (ON and OFF); Q-NETLIST-77 `tests/unit/extflat/args_names_test.cpp` (mode-independent parse).
 
 ## Notable changes to the entries' original recommendations
 

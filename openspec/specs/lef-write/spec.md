@@ -616,6 +616,8 @@ The system SHALL then build the following type sets from the tech `lef` section:
 
 If no extraction style exists, G and D are undefined in Magic; see Q-LEFDEF-40. Hefesto SHALL treat them as empty.
 
+The current extraction style is the one `extract style` last selected (after a tech load, the technology's first style), as Magic's writer reads ExtCurStyle.
+
 Compatibility: exact
 
 (Magic ref: lef/lefWrite.c:1176-1288, extract/ExtTech.c:514-562)
@@ -629,6 +631,12 @@ Compatibility: exact
 - **GIVEN** a masterslice record `nwell` mapped to type `nwell`
 - **WHEN** the user runs `lef write -nomaster`
 - **THEN** no geometry on LEF layer `nwell` SHALL be written, unless a port label sits on type `nwell`
+
+#### Scenario: The selected extraction style
+- **GIVEN** an extract section with style `lefw` (a `device mosfet` line whose gate type is `nfet`) and style `other` (no `device` line), and an input pin whose net reaches `nfet`
+- **WHEN** the user runs `extract style other` and then `lef write`
+- **THEN** G SHALL be empty and the pin SHALL have no `ANTENNAGATEAREA` line
+- **AND** after `extract style lefw`, `lef write` SHALL write the pin's `ANTENNAGATEAREA` line again
 
 ### Requirement: Macro boundary determination
 

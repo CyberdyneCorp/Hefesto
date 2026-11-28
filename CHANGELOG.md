@@ -186,6 +186,14 @@ release notices.
 - **Tcl symbol generators** run in a sandboxed interpreter (10 s and
   256 MiB per run, 60 s in total until the symbols are reloaded);
   generators that run external programs are not run (`SCHEM-LIB-011`).
+- **Net driver check (M8 round 7).** Netlisting reports undriven nodes
+  (`SCHEM-NET-019`, an error: exit status 10), open nets (`SCHEM-NET-020`)
+  and shorted outputs (`SCHEM-NET-021`); simulation decks are still built.
+  A document with no `xschemrc` uses the system devices library as its
+  search path. New `xschem` subcommands: `clear`, `instance`, `copy`,
+  `paste`, `saveas`, `get instances|wires`; `get_tok` takes a third
+  argument. The Schematic tab hides the layout docks, scales texts with the
+  zoom, and gains the `tab` window command and a schematic Reset table.
 - **Schematic editing (M8 EDIT).** `schematic place`, `wire`, `label`,
   `line`/`box`/`arc`/`polygon`/`text`, `select`, `delete`, `move`,
   `copy`, `rotate`, `flip`, `align`, `setprop`, `replace`, `symbol`,
@@ -307,12 +315,31 @@ release notices.
   flood); **`extresist geometry`, `fasthenry` and `box`** run, with
   ResFixUpConnections' terminal renaming and devices in subcells.
   `ext2sim` follows the short mode `ext2spice short` sets, as Magic.
+- **Extract button.** The desktop top bar's Extract button runs `extract
+  all` on the active window's root, echoed in the console like a typed
+  command, with the progress card and Interrupt; it is disabled with a
+  tooltip when the technology has no extract style.
+- **Extraction benches.** `perf.yml` runs `extract-bench` (`extract all`,
+  flat and hierarchical `ext2spice`, `ext2sim`; gated at Magic's callgrind
+  count) and `extresist-bench` (`extresist all` on a 500-cell sky130 DEF
+  block; gated at its baseline + 2 %).
 
 ### Fixed
 
 - `extresist` no longer reads past a short `substrate` or parent `connect`
   record, and a parent `use` far from the origin no longer overflows;
   layout devices add their gate and S/D capacitance to the Elmore delay.
+- Hierarchical layout searches over a large array use (`extract length`,
+  `extresist`, `def write` nets, `lef write` pins, the 3D view's net
+  picking) visit only the elements under the search area instead of
+  every element; a 10^6-element array no longer hangs.
+- An unreadable `-S` symbol file is reported with the OS reason
+  (`Permission denied`, `Not a directory`), as Magic does; a `-S`
+  directory adds no symbols and prints nothing, as in Magic.
+- `lef write` and `def write` use the selected extract style (`extract
+  style`), as Magic, instead of the technology's first style.
+- A netlister flag the tool rejects (`ext2spice -T`) is followed by an
+  empty line before the common usage text, as Magic.
 
 ### Changed
 

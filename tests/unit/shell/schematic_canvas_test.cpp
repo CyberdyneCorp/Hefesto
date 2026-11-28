@@ -164,3 +164,33 @@ TEST_CASE("the viewport pans, zooms about a point and fits",
   unsized.fit(box);  // no size: unchanged
   CHECK(unsized.zoom() == Approx(1.0));
 }
+
+// Regression (M8 round 7, CI capture review of round 6): canvas texts kept
+// one pixel size whatever the zoom, so a fitted test bench drew its labels
+// over each other. Their size now follows the zoom.
+TEST_CASE("canvas texts scale with the zoom and the fit",
+          "[cap:schematic-editing][req:Desktop and touch interaction]") {
+  const auto at_one = scene_text_px(0.4, 1.0);
+  REQUIRE(at_one.has_value());
+  CHECK(*at_one == Approx(0.4 * kTextUnitHeight));
+  const auto zoomed_out = scene_text_px(0.4, 0.5);
+  REQUIRE(zoomed_out.has_value());
+  CHECK(*zoomed_out == Approx(*at_one / 2.0));
+  // The record's scale counts; a scale of 0 is the default text scale.
+  CHECK(*scene_text_px(0.2, 1.0) == Approx(*at_one / 2.0));
+  CHECK(*scene_text_px(0.0, 1.0) == Approx(*at_one));
+  // Too small to read: not drawn; very large: capped.
+  CHECK_FALSE(scene_text_px(0.4, SchematicViewport::kMinZoom).has_value());
+  CHECK(*scene_text_px(0.4, SchematicViewport::kMaxZoom) == Approx(kMaxTextPx));
+
+  // A fit of a large drawing into a small canvas shrinks the texts with it.
+  SchematicViewport view;
+  view.set_size(800, 600);
+  SceneBox box;
+  box.add(Point{0, 0});
+  box.add(Point{2000, 1500});
+  view.fit(box);
+  const auto fitted = scene_text_px(0.4, view.zoom());
+  REQUIRE(fitted.has_value());
+  CHECK(*fitted < *at_one);
+}

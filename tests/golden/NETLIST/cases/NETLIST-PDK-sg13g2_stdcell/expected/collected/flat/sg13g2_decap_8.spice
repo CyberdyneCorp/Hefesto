@@ -1,0 +1,6 @@
+* NGSPICE file created from sg13g2_decap_8.ext - technology: ihp-sg13g2
+
+X0 VDD VSS VDD VDD sg13_lv_pmos ad=0.34p pd=2.68u as=4.13118p ps=17.18u w=1u l=1u
+X1 VSS VDD VSS VSS sg13_lv_nmos ad=0.1428p pd=1.52u as=3.1269p ps=15.58u w=0.42u l=1u
+X2 VDD VSS VDD VDD sg13_lv_pmos ad=0.19p pd=1.38u as=0 ps=0 w=1u l=1u
+X3 VSS VDD VSS VSS sg13_lv_nmos ad=79.8f pd=0.8u as=0 ps=0 w=0.42u l=1u

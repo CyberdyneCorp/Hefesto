@@ -139,6 +139,10 @@ xschem-compatible schematic with PDK symbols, a testbench code block, ngspice wa
 
 ![Schematic and waveforms](docs/images/ui/schematic.png)
 
+The Schematic tab as built in M8 (CI capture, Linux, round 7): the symbol library, the testbench drawn at the fit, the netlist bar and the messages panel; the layout docks are hidden while the tab is shown. Waveforms and operating points arrive in M9.
+
+![Schematic tab, M8 round 7 capture](docs/images/ui/schematic-tab-linux.png)
+
 ### 3D inspection
 The 3D tab (M10, macOS capture): `sky130_fd_sc_hd__dfxtp_1` built from the mask layers of the tech file's output style (Magic's `render` heights) and seen isometrically from above, on the app's dark theme, with flat shading in the layers' own colors (top faces lighter than sides) and a substrate slab under the stack; the stack is drawn in proportion with magic-compat on or off. The floating toolbar switches between mask and layout layers (in layout layers, wells, implants and other non-conducting layers are ghosted so the devices show through), steps the level and sets the cut box; the side panel has the layer stack (micron ranges, hide, solo, transparency), the Orthographic/Perspective and Isometric/Top/Front/Side views, net isolation (in mask-layer mode the nets selected in 2D are drawn over the mask geometry), span connected layers, a cross-section A-A' along the box, and Detach view, which moves the 3D view into its own window. Models export to glTF, GLB and STL (per layer or merged). Magic's own 3D commands and their text output are unchanged. A current-density overlay from simulation arrives in phase 3.
 

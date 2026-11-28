@@ -1,0 +1,9 @@
+* NGSPICE file created from sg13g2_buf_1.ext - technology: ihp-sg13g2
+
+.subckt sg13g2_buf_1 A X VDD VSS
+X0 X a_40_152# VSS VSS sg13_lv_nmos ad=0.2886p pd=2.26u as=0.14875p ps=1.16u w=0.74u l=0.13u
+X1 X a_40_152# VDD VDD sg13_lv_pmos ad=0.42p pd=2.99u as=0.2114p ps=1.54u w=1.12u l=0.13u
+X2 VDD A a_40_152# VDD sg13_lv_pmos ad=0.2114p pd=1.54u as=0.2856p ps=2.36u w=0.84u l=0.13u
+X3 VSS A a_40_152# VSS sg13_lv_nmos ad=0.14875p pd=1.16u as=0.187p ps=1.78u w=0.55u l=0.13u
+.ends
+
