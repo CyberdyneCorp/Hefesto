@@ -638,12 +638,14 @@ void SchematicView::commit_field() {
     messages_view_->invalidate();
     return;
   }
-  const auto renamed = properties_.renames(key, value, field_all_selected_) ? instance_index(properties_.title())
-                                                                            : std::nullopt;
+  constexpr std::size_t kNone = static_cast<std::size_t>(-1);
+  const std::size_t renamed = properties_.renames(key, value, field_all_selected_)
+                                  ? instance_index(properties_.title()).value_or(kNone)
+                                  : kNone;
   run(*line);
   const schem::Session& session = ctx_.editor().schem;
-  if (renamed && !session.documents.empty() && *renamed < session.documents.back().document.instances.size()) {
-    const std::string& props = session.documents.back().document.instances[*renamed].props;
+  if (renamed != kNone && !session.documents.empty() && renamed < session.documents.back().document.instances.size()) {
+    const std::string& props = session.documents.back().document.instances[renamed].props;
     properties_.follow_rename(schem::get_token(props, "name").value_or(std::string{}));
   }
   session_stale_ = true;

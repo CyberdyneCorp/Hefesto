@@ -157,7 +157,10 @@ TEST_CASE("Field view edits through setprop", "[cap:schematic-editing][req:Prope
 
     CHECK(change("value", "2k") == "schematic setprop instance R1 value 2k");
     CHECK(change("footprint", "") == "schematic setprop instance R1 footprint");
-    CHECK(hefesto::test::active(s).instances[0].props == "name=R1 value=2k");
+    // schematic-file-format "Property strings", setting rule 5: removing the
+    // last attribute keeps the separator before it (the scenario text omits
+    // that blank: reported to the spec team).
+    CHECK(hefesto::test::active(s).instances[0].props == "name=R1 value=2k ");
     REQUIRE(panel.rows().size() == 2);
     CHECK(panel.rows()[1].value == "2k");
 
