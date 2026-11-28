@@ -425,9 +425,9 @@ reason = "cellname list allcells sorts inv before inv_1 (the total natural order
 # M8 checks SCHEM-LVS-01's inv_1.spice (Q-SCHEM-39).
 
 [SCHEM-RT-02]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-RT-05]
 deferred = "M8"
@@ -435,120 +435,106 @@ outputs = ["embed.sch", "2-embed.sch", "stdout.txt", "stderr.txt", "exitcode.txt
 reason = "the embedded block of block.sch (a schematic used as a symbol) differs from xschem's in content, not only order: xschem writes the pin labels as '%<name>' texts and layer-7 arrows, drops the '@lab' texts and pin polygons of the placed ipin/opin symbols, and keeps two blanks before '}' in the pin boxes; Hefesto writes the block as built (spec issue for DECIDE in round 7, then CORE)"
 
 [SCHEM-RT-06]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt"]
-reason = "stdout.txt holds the case's 'xschem get wires' and 'xschem get instances' results, subcommands the schematic-command spec does not list yet (DECIDE writes the rows in M8 round 6, CORE implements them in round 7); its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
-
-[SCHEM-PR-01]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "'xschem get_tok <s> <key> <n>' (a third argument: 1 keeps the quotes of a value, 2 strips them) raises 'wrong number of arguments': the schematic-command spec lists two arguments (proposed Q-SCHEM-62, awaiting the user)"
-
-[SCHEM-PR-02]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "needs xschem get instances, clear, instance, copy and paste, which the schematic-command spec does not list yet (DECIDE writes the rows in M8 round 6, CORE implements them in round 7)"
+decisions = ["Q-SCHEM-60"]
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-PR-04]
 deferred = "M8"
 outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "needs xschem get instances, which the schematic-command spec does not list yet (DECIDE writes the row in M8 round 6, CORE implements it in round 7)"
+reason = "xschem translate gives '@@P' (the net of pin P) as empty where xschem gives 'net1': the translate context of the xschem command has no per-pin net source (the 'schematic net' option is not implemented; EDIT's connectivity is not reachable from CMD); every other line matches (M8 round 7)"
 
 [SCHEM-PR-05]
 decisions = ["Q-SCHEM-30"]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "./ and ../ references and the search-path element . resolve against the containing schematic's folder, with warning SCHEM-LIB-001 (./x.sym -> /work/input/sub/x.sym, ../x.sym -> /work/input/x.sym, no 'Symbol not found'); xschem resolves them against its start folder /work; its hefesto.tcl reads XSCHEM_LIBRARY_PATH, which the project interpreter does not define after reading the case's xschemrc (\"can't read XSCHEM_LIBRARY_PATH: no such variable\"; CORE item e of M8 round 6); the approved deviation Q-SCHEM-30 then covers stdout.txt and stderr.txt"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "./ and ../ references and the search-path element . resolve against the containing schematic's folder, with warning SCHEM-LIB-001 (./x.sym -> /work/input/sub/x.sym, ../x.sym -> /work/input/x.sym, no 'Symbol not found'); xschem resolves them against its start folder /work"
 
 [SCHEM-NL-02]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-03]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-05]
 deferred = "M8"
 outputs = ["top.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "top.spice: the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators); an only_toplevel code block inside a subcircuit (test_carry_lookahead) is written with one empty line between the 'user architecture code' markers where xschem writes two, and the top's last device_model block lacks xschem's empty line before '**** end user architecture code' (CORE, netlister); its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "top.spice: the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators); an only_toplevel code block inside a subcircuit (test_carry_lookahead) is written with one empty line between the 'user architecture code' markers where xschem writes two, and the top's last device_model block lacks xschem's empty line before '**** end user architecture code' (CORE, netlister); its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-06]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-09]
-deferred = "M8"
-outputs = ["exitcode.txt", "stderr.txt"]
-reason = "xschem exits 10 after its 'Error: undriven node' check (a net with only input pins), which the schematic-netlisting spec does not define yet (DECIDE writes the row in M8 round 6, CORE implements it in round 7); the netlist is equal; its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+decisions = ["Q-SCHEM-60"]
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-10]
-deferred = "M8"
-outputs = ["exitcode.txt", "stderr.txt"]
-reason = "xschem exits 10 after its 'Error: undriven node' check (a net with only input pins), which the schematic-netlisting spec does not define yet (DECIDE writes the row in M8 round 6, CORE implements it in round 7); the netlist is equal; its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+decisions = ["Q-SCHEM-60"]
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-11]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-12]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-13]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-14]
+decisions = ["Q-SCHEM-60"]
 deferred = "M8"
+deferred_outputs = { "stdout.txt" = "M8" }
 outputs = ["stdout.txt", "stderr.txt"]
-reason = "xschem prints 'has_included_subcircuit: error opening file ...' on stdout; its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests; xschem prints 'has_included_subcircuit: error opening file ...' on stdout, a diagnostic Hefesto writes on stderr (SCHEM-NET-*); Q-SCHEM-60 covers stderr.txt only (spec issue for DECIDE: which stream that message belongs to)"
 
 [SCHEM-NL-16]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-18]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-20]
-deferred = "M8"
+decisions = ["Q-SCHEM-60"]
 outputs = ["stderr.txt"]
-reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-21]
 deferred = "M8"
 outputs = ["top-flat.spice", "gain_stage-flat.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "flat mode (CORE, netlister): Hefesto prefixes the tokens of quoted parameter expressions and the model name with the instance path (ad='int((1 x6_+ x6_1)/2) ...', x6_sky130_fd_pr__nfet_01v8), and its top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines; spice-canonical ignores blanks next to operators in quoted expressions (design D10); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
+reason = "flat mode (CORE, netlister): since round 7 a quoted expression is one field and its tokens and the model name get no instance-path prefix, and the exit status matches; gain_stage-flat.spice still differs where xschem drops a blank before a closing quote (nrd='0.29 / WN ' against '0.29/WN'), which spice-canonical keeps (design D10, kept unchanged in round 7), and top-flat.spice (18069 lines) differs from xschem's, a 190-line uppercase netlist of the MIPS hierarchy made of '* NOCONN' and '*--------BEGIN_' lines (round 8); also the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
 
 [SCHEM-NL-22]
-deferred = "M8"
-outputs = ["stdout.txt", "stderr.txt"]
-reason = "stdout.txt holds the result of 'xschem netlist' after a run that reports an error ('netlist 1'), where Hefesto raises the error (proposed Q-SCHEM-61, awaiting the user); its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings, xschem's ERC and loader lines): how SCHEM cases compare stderr.txt is proposed Q-SCHEM-60 (awaiting the user)"
+decisions = ["Q-SCHEM-60"]
+outputs = ["stderr.txt"]
+reason = "its diagnostics differ in text from xschem's (Hefesto's coded SCHEM-* warnings against xschem's ERC and loader lines): approved deviation Q-SCHEM-60 for stderr.txt; the files, the exit status and stdout.txt stay compared, and the message texts are covered by the 'Errors and warnings' and 'Malformed input' unit tests"
 
 [SCHEM-NL-23]
 deferred = "M8"
 outputs = ["test_generators.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
 reason = "the PDK generators run in both captures, but Hefesto gives res.tcl(@value) of R3 (value=0.1) the symbol generated for R2 (value=100), so R3 is netlisted as a resistor where xschem writes the shorted label ('* shorted: R3  VDD <--> VDD 0.1', C2 on VDD), and it drops what a generator writes on stderr ('tier node=VDD', 'res value=|100|'), which xschem passes through (CORE, symbol generators)"
 
-[SCHEM-SIM-02]
-deferred = "M9"
-outputs = ["stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "operating-point annotation (annotate_op, @spice_get_* values) needs the embedded simulator and the sky130 models (M9); the captured texts with no simulation loaded are kept"
-
 [SCHEM-SIM-03]
 deferred = "M8"
 outputs = ["tb.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
-reason = "'xschem netlist' raises on the pin mismatch of stage.sym and stage.sch where xschem writes tb.spice and goes on (proposed Q-SCHEM-61); 'xschem descend' returns the path '.x1.' where xschem returns 1; 'xschem resolved_net' is not in the schematic-command spec (SIMINT, DECIDE)"
+reason = "'xschem netlist' now returns 1 and writes tb.spice (Q-SCHEM-61 (a), round 7), but 'xschem descend' returns the path '.x1.' where xschem returns 1 and 'xschem resolved_net' is not implemented (specified in round 7: schematic-command rows 'xschem descend' and 'xschem resolved_net'; implementation round 8)"
 
 [SCHEM-LVS-01]
 deferred = "M9"

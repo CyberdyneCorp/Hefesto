@@ -220,6 +220,20 @@ TEST_CASE("abs_sym_path and rel_sym_path resolve against the active schematic", 
   }
 }
 
+// Regression (round-7 cross-platform determinism, SCHEM-PR-05 stdout): an
+// absolute reference is returned as written. libstdc++ folded `//lib//./x.sym`
+// to `/lib/./x.sym` where libc++ kept it, so Linux and macOS printed different
+// paths; xschem prints the reference unchanged.
+TEST_CASE("abs_sym_path returns an absolute reference as written", kReferences) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    CHECK(caught(s, "abs_sym_path //lib//./x.sym") == "0 //lib//./x.sym");
+    CHECK(caught(s, "abs_sym_path /lib/x.sym") == "0 /lib/x.sym");
+  }
+}
+
 // Regression (review of PR #88), both modes: with an unsaved document the
 // procedures resolved `./x.sym` and the fallback against the folder Hefesto
 // was started in. An unsaved document has no folder, so a reference that
@@ -287,4 +301,70 @@ TEST_CASE("SCHEM-PR-03 netlisted through schematic netlist", kPinOrder) {
     return text.str();
   }();
   CHECK(replace_all(s.folder().read("out/pr03.spice"), input, "/work/input") == expected);
+}
+
+// ---- Q-SCHEM-52: the default search path without an xschemrc ------------------
+
+namespace {
+
+constexpr const char* kSearchPath = "[cap:schematic-symbols-and-libraries][req:Library search path]";
+
+// A system library holding res.sym under the session folder, which stands
+// for the installation root (CAD_ROOT); returns its devices folder.
+std::filesystem::path install_devices(SchemSession& s) {
+  const std::filesystem::path devices = s.folder().path() / "assets/schematic/xschem_library/devices";
+  std::filesystem::create_directories(devices);
+  std::filesystem::copy_file(
+      std::filesystem::path{HEFESTO_SOURCE_DIR} / "assets/schematic/xschem_library/devices/res.sym",
+      devices / "res.sym");
+  s.editor().script.sandbox.environment["CAD_ROOT"] = s.folder().str();
+  return devices;
+}
+
+}  // namespace
+
+// Regression (M8 round-7 integration): a document in a folder with no
+// xschemrc kept the session's earlier (empty) search path, so `res.sym` was
+// not found; Q-SCHEM-52 (a) makes it the system devices library.
+TEST_CASE("Default search path without an xschemrc", kSearchPath) {
+  for (const bool on : {true, false}) {
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    const std::filesystem::path devices = install_devices(s);
+    std::filesystem::create_directories(s.folder().path() / "w/s");
+    REQUIRE(s.schematic({"new", "schematic", s.folder().str("w/s/div.sch")}).ok());
+    const auto listed = s.schematic({"path", "list"});
+    REQUIRE(listed.ok());
+    CHECK(listed.value.to_string() == devices.generic_string());
+    const auto resolved = s.schematic({"resolve", "res.sym"});
+    REQUIRE(resolved.ok());
+    CHECK(resolved.value.to_string() == (devices / "res.sym").generic_string());
+  }
+}
+
+// Scenario "Script reads the default search path" (Q-SCHEM-52): with no
+// xschemrc the project interpreter still gets XSCHEM_LIBRARY_PATH, the
+// system devices library, so a script that reads it raises nothing.
+TEST_CASE("Script reads the default search path", kSearchPath) {
+  for (const bool on : {true, false}) {
+    CAPTURE(on);
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    const std::filesystem::path devices = install_devices(s);
+    std::filesystem::create_directories(s.folder().path() / "w/s");
+    REQUIRE(s.schematic({"new", "schematic", s.folder().str("w/s/div.sch")}).ok());
+    CHECK(caught(s, "set XSCHEM_LIBRARY_PATH") == "0 " + devices.generic_string());
+  }
+}
+
+// `xschem clear` makes an untitled document: a session with no search path
+// yet takes the working folder's (the system library when it has no
+// xschemrc), as SCHEM-PR-02 needs.
+TEST_CASE("Default search path of an untitled document", kSearchPath) {
+  SchemSession s;
+  const std::filesystem::path devices = install_devices(s);
+  REQUIRE(s.schematic({"new", "schematic"}).ok());
+  const auto resolved = s.schematic({"resolve", "res.sym"});
+  REQUIRE(resolved.ok());
+  CHECK(resolved.value.to_string() == (devices / "res.sym").generic_string());
 }

@@ -113,6 +113,10 @@ SearchPath SearchPath::prepended(const SearchPath& front) const {
   return SearchPath{std::move(directories), std::move(aliases)};
 }
 
+std::string default_xschem_library_path(const platform::Path& sharedir) {
+  return (sharedir / "xschem_library" / "devices").generic_string();
+}
+
 XschemrcInput pdk_xschemrc_input(const platform::Path& pdk_root, std::string_view pdk, const platform::Path& sharedir,
                                  const platform::Path& user_conf_dir, const platform::Path& document_folder) {
   XschemrcInput input;

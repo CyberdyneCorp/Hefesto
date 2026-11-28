@@ -167,7 +167,9 @@ void NetlistRun::connect(Level& level) {
     nets.instances.push_back(net_instance(level, p));
   }
   level.naming = name_nets(nets);
+  open_report_level(level);
   record_naming(level);
+  driver_check(level);
 }
 
 /// One instance as the connectivity sees it: its naming `lab`, `global`,
@@ -262,11 +264,15 @@ void NetlistRun::check_instance(const Level& level, const Placed& instance) {
     return;
   }
   if (instance.type.empty() && untyped_warned_.insert(instance.symbol).second) {
-    warn(diag::make(net_codes::kNoType, "Symbol: " + instance.record->symbol + ": no type attribute set"));
+    std::string text = "Symbol: " + instance.record->symbol + ": no type attribute set";
+    report_line("Warning: " + text);
+    warn(diag::make(net_codes::kNoType, std::move(text)));
   }
   if (!instance.instance.defines("name") && !instance.templ.defines("name") && !needs_no_name(instance.type)) {
-    warn(diag::make(net_codes::kNoName, "instance: " + std::to_string(instance.index) + " (" +
-                                            instance.record->symbol + "): no name attribute set"));
+    std::string text =
+        "instance: " + std::to_string(instance.index) + " (" + instance.record->symbol + "): no name attribute set";
+    report_line("Warning: " + text);
+    warn(diag::make(net_codes::kNoName, std::move(text)));
   }
   for (std::size_t j = 0; j < instance.index; ++j) {
     const InstanceRecord& other = level.document->instances[j];

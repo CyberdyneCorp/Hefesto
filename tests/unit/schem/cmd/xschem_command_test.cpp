@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 
+#include "../sim/sim_support.hpp"
 #include "cmd_fixture.hpp"
 #include "hefesto/schem/file/read_write.hpp"
 
@@ -28,6 +29,7 @@ constexpr const char* kXschem = "[cap:schematic-command][req:xschem compatibilit
 
 void open_two_instances(SchemSession& s) {
   s.folder().write("w/top.sch", hefesto::test::kTwoInstances);
+  hefesto::test::sim::copy_devices(s.folder().path() / "w", {"res.sym"});
   REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
 }
 
@@ -62,7 +64,228 @@ TEST_CASE("Instance property from Tcl", kXschem) {
   open_two_instances(s);
   CHECK(s.tcl("xschem getprop instance M1 w").value.to_string() == "1.0u");
   CHECK(s.tcl("xschem getprop instance 1 model").value.to_string() == "nch");  // by index, as xschem
-  CHECK(caught(s, "xschem getprop instance M9 w") == "1 {schematic: no instance \"M9\"}");
+  CHECK(caught(s, "xschem getprop instance M9 w") == "1 {xschem getprop: instance not found:M9}");
+}
+
+// Regression (round 7): a digits-only `<inst>` was looked up as a name
+// first, so `getprop instance 3` read the instance named `3`, and a missing
+// instance raised `schematic: no instance "<inst>"`.
+TEST_CASE("Instance addressed by index", kXschem) {
+  SchemSession s;
+  s.folder().write("w/top.sch", "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+                                "C {res.sym} 0 0 0 0 {name=R7 value=4.7k}\n"
+                                "C {res.sym} 100 0 0 0 {name=3 value=1}\n"
+                                "C {nmos4.sym} 200 0 0 0 {name=M1}\n");
+  REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
+  CHECK(s.tcl("xschem getprop instance 1 name").value.to_string() == "3");
+  CHECK(caught(s, "xschem getprop instance 3 name") == "1 {xschem getprop: instance not found:3}");
+  CHECK(caught(s, "xschem getprop instance R9 name") == "1 {xschem getprop: instance not found:R9}");
+  CHECK(s.tcl("xschem getprop instance R7 value").value.to_string() == "4.7k");
+  CHECK(caught(s, "xschem getprop rect 4 0 name") == "1 {xschem getprop rect: no such box}");
+}
+
+namespace {
+
+// A resistor symbol whose template names instances R1, R2, ... in `w/lib`.
+void write_res_library(SchemSession& s) {
+  s.folder().write("w/lib/res.sym", "v {xschem version=3.4.8RC file_version=1.3}\n"
+                                    "K {type=resistor\nformat=\"@name @pinlist @value\"\n"
+                                    "template=\"name=R1 value=1k\"}\n"
+                                    "B 5 -2.5 -32.5 2.5 -27.5 {name=P dir=inout}\n"
+                                    "B 5 -2.5 27.5 2.5 32.5 {name=M dir=inout}\n");
+  REQUIRE(s.schematic({"path", "set", s.folder().str("w/lib")}).ok());
+}
+
+std::string instance_names(SchemSession& s) {
+  return s.tcl("set out {}; for {set i 0} {$i < [xschem get instances]} {incr i} "
+               "{ lappend out [xschem getprop instance $i name] }; set out")
+      .value.to_string();
+}
+
+}  // namespace
+
+TEST_CASE("Place, copy and paste from Tcl", kXschem) {
+  SchemSession s;
+  write_res_library(s);
+  REQUIRE(caught(s, "xschem clear force schematic") == "0 {}");
+  CHECK(s.tcl("xschem get current_name").value.to_string() == "untitled.sch");
+  CHECK(caught(s, "xschem instance res.sym 0 0 0 0") == "0 {}");
+  CHECK(instance_names(s) == "R1");
+  CHECK(caught(s, "xschem instance res.sym 100 0 0 0") == "0 {}");
+  CHECK(instance_names(s) == "R1 R2");
+  CHECK(caught(s, "xschem unselect_all; xschem select instance R1; xschem copy; xschem paste 200 0") == "0 {}");
+  CHECK(instance_names(s) == "R1 R2 R3");
+  CHECK(caught(s, "xschem instance res.sym 0 200 0 0 {name=x1[3:0] value=1k}") == "0 {}");
+  CHECK(instance_names(s) == "R1 R2 R3 {x1[3:0]}");
+  CHECK(caught(s, "xschem unselect_all; xschem select instance {x1[3:0]}; xschem copy; xschem paste 200 200") ==
+        "0 {}");
+  CHECK(instance_names(s) == "R1 R2 R3 {x1[3:0]} {x2[3:0]}");
+  CHECK(s.tcl("xschem getprop instance 4 value").value.to_string() == "1k");
+  // Without a point, paste and saveas need the editor; wrong counts are usage errors.
+  CHECK(caught(s, "xschem paste") == "1 {xschem command 'paste' needs the editor}");
+  CHECK(caught(s, "xschem saveas") == "1 {xschem command 'saveas' needs the editor}");
+  CHECK(caught(s, "xschem instance res.sym 0 0") == "1 {xschem instance: wrong number of arguments}");
+  CHECK(caught(s, "xschem copy x") == "1 {xschem copy: wrong number of arguments}");
+  CHECK(caught(s, "xschem clear force schematic x") == "1 {xschem clear: wrong number of arguments}");
+}
+
+TEST_CASE("xschem clear force symbol makes an empty untitled symbol at the top", kXschem) {
+  SchemSession s;
+  open_two_instances(s);
+  s.schem().documents.back().document.modified = true;
+  REQUIRE(caught(s, "xschem clear force symbol") == "0 {}");
+  CHECK(s.schem().documents.size() == 1);
+  const schem::Document& doc = s.schem().documents.back().document;
+  CHECK(doc.kind == schem::FileKind::symbol);
+  CHECK(doc.instances.empty());
+  CHECK(doc.path.empty());
+  CHECK_FALSE(doc.modified);
+  CHECK(s.tcl("xschem get current_name").value.to_string() == "untitled.sym");
+  CHECK(s.tcl("xschem get instances").value.to_string() == "0");
+  CHECK(s.folder().read("w/top.sch") == hefesto::test::kTwoInstances);  // force: never saved
+}
+
+// Scenario "clear without force in a headless run", one case per mode.
+TEST_CASE("clear without force in a headless run", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << (on ? "ON" : "OFF"));
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/a.sch", hefesto::test::kTwoInstances);
+    REQUIRE(s.schematic({"open", s.folder().str("w/a.sch")}).ok());
+    REQUIRE(caught(s, "xschem setprop instance R1 value 2k").starts_with("0 "));
+    if (on) {
+      CHECK(caught(s, "xschem clear") == "0 {}");
+      CHECK(s.folder().read("w/a.sch").find("name=R1 value=2k") != std::string::npos);
+      CHECK(s.tcl("xschem get current_name").value.to_string() == "untitled.sch");
+      CHECK(s.tcl("xschem get instances").value.to_string() == "0");
+    } else {
+      CHECK(caught(s, "xschem clear") == "1 {schematic: unsaved changes}");
+      CHECK(s.folder().read("w/a.sch") == hefesto::test::kTwoInstances);
+      CHECK(s.tcl("xschem get current_name").value.to_string() == "a.sch");
+      CHECK(s.tcl("xschem getprop instance R1 value").value.to_string() == "2k");
+    }
+  }
+}
+
+TEST_CASE("clear without force drops a modified document that was never saved", kXschem) {
+  SchemSession s;
+  write_res_library(s);
+  REQUIRE(caught(s, "xschem clear force; xschem instance res.sym 0 0 0 0") == "0 {}");
+  REQUIRE(s.schem().documents.back().document.modified);
+  CHECK(caught(s, "xschem clear") == "0 {}");
+  CHECK(s.tcl("xschem get instances").value.to_string() == "0");
+}
+
+// Scenario "saveas with the symbol word": the kind word changes nothing, the
+// document is written as the kind it is (spec row "xschem saveas").
+TEST_CASE("saveas with the symbol word", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << (on ? "ON" : "OFF"));
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    s.folder().write("w/a.sch", hefesto::test::kTwoInstances);
+    REQUIRE(s.schematic({"open", s.folder().str("w/a.sch")}).ok());
+    CHECK(caught(s, "xschem saveas " + s.folder().str("w/s.sch") + " schematic") == "0 1");
+    CHECK(caught(s, "xschem saveas " + s.folder().str("w/y.sch") + " symbol") == "0 1");
+    CHECK(s.schem().documents.back().document.kind == schem::FileKind::schematic);
+    CHECK(s.folder().read("w/y.sch") == s.folder().read("w/s.sch"));
+  }
+}
+
+TEST_CASE("Counts and saveas after a malformed file", kXschem) {
+  // The SCHEM-RT-06 file: one wire and one instance load.
+  SchemSession s;
+  s.folder().write("w/bad.sch", "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nF {}\nE {}\n"
+                                "Z 1 2 {a\nb} 3\n# a comment record\nN 0 0 10\nN 0 10 20 10 {}\n"
+                                "L 30 0 0 10 10 {}\nL 4 0 0 10 10 {}\n"
+                                "C {res.sym} 0 100 0 0 {name=R1 value=1k}\nN 0 0 10 0 {lab=A\n");
+  REQUIRE(caught(s, "xschem load " + s.folder().str("w/bad.sch")) == "0 1");
+  std::filesystem::create_directories(s.folder().path() / "w/out");
+  CHECK(s.tcl("xschem get wires").value.to_string() == "1");
+  CHECK(s.tcl("xschem get instances").value.to_string() == "1");
+  CHECK(caught(s, "xschem saveas " + s.folder().str("w/out/bad.sch") + " schematic") == "0 1");
+  CHECK(s.folder().read("w/out/bad.sch") == schem::write_document(s.schem().documents.back().document));
+  CHECK(s.tcl("xschem get current_name").value.to_string() == "bad.sch");
+  CHECK(s.tcl("xschem get schname").value.to_string() == s.folder().str("w/out/bad.sch"));
+  // A file that cannot be written gives 0 and raises nothing.
+  const hefesto::test::TempFolder outside;
+  CHECK(caught(s, "xschem saveas " + outside.str("bad.sch")) == "0 0");
+  CHECK_FALSE(std::filesystem::exists(outside.path() / "bad.sch"));
+}
+
+// Q-SCHEM-62 (a): the third argument of get_tok, both modes.
+TEST_CASE("xschem get_tok keeps or strips the quotes of a value", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << (on ? "ON" : "OFF"));
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    // p = name=C4 m=1 device="tantalium capacitor" drc="f {@name\}"
+    REQUIRE(s.tcl(R"(set p "name=C4 m=1 device=\"tantalium capacitor\" drc=\"f {@name\\}\"")").ok());
+    const std::string props = "$p";
+    CHECK(s.tcl("xschem get_tok " + props + " device").value.to_string() == "tantalium capacitor");
+    CHECK(s.tcl("xschem get_tok " + props + " device 1").value.to_string() == "\"tantalium capacitor\"");
+    CHECK(s.tcl("xschem get_tok " + props + " device 2").value.to_string() == "tantalium capacitor");
+    CHECK(s.tcl("xschem get_tok " + props + " drc 1").value.to_string() == "\"f {@name\\}\"");
+    CHECK(s.tcl("xschem get_tok " + props + " drc 2").value.to_string() == "f {@name}");
+    CHECK(s.tcl("xschem get_tok " + props + " m 1").value.to_string() == "1");
+    CHECK(s.tcl("xschem get_tok " + props + " m 2").value.to_string() == "1");
+    CHECK(s.tcl("xschem get_tok {k} k 1").value.to_string().empty());
+    // Any other third argument acts as 0 (spec row "xschem get_tok"); it
+    // used to raise `bad argument` for a word that is not an integer.
+    CHECK(caught(s, "xschem get_tok " + props + " device x") == "0 {tantalium capacitor}");
+    CHECK(caught(s, "xschem get_tok " + props + " device 7") == "0 {tantalium capacitor}");
+    CHECK(caught(s, "xschem get_tok " + props + " device 0") == "0 {tantalium capacitor}");
+    CHECK(caught(s, "xschem get_tok " + props + " m 1 2") == "1 {xschem get_tok: wrong number of arguments}");
+  }
+}
+
+namespace {
+
+// Two labels name one wire A and B: the netlist run reports the short and fails.
+void open_shorted(SchemSession& s) {
+  s.folder().write("w/lbl.sym", "v {xschem version=3.4.8RC file_version=1.3}\n"
+                                "K {type=label format=\"*.alias @lab\" template=\"name=l1 lab=xxx\"}\n"
+                                "B 5 -2.5 -2.5 2.5 2.5 {name=p dir=inout}\n");
+  s.folder().write("w/top.sch", "v {xschem version=3.4.8RC file_version=1.3}\nG {}\nK {}\nV {}\nS {}\nE {}\n"
+                                "N 0 0 100 0 {}\n"
+                                "C {lbl.sym} 0 0 0 0 {name=l1 lab=A}\n"
+                                "C {lbl.sym} 100 0 0 0 {name=l2 lab=B}\n");
+  REQUIRE(s.schematic({"open", s.folder().str("w/top.sch")}).ok());
+}
+
+}  // namespace
+
+// Q-SCHEM-61 (a), one case per mode: with xschem-compat ON a failed run
+// returns 1, still writes the file and makes the exit status 10; OFF raises.
+TEST_CASE("xschem netlist after a run that reports an error", kXschem) {
+  for (const bool on : {true, false}) {
+    INFO("xschem-compat " << (on ? "ON" : "OFF"));
+    SchemSession s;
+    s.project().compat.xschem_compat = on;
+    open_shorted(s);
+    const std::string result = caught(s, "xschem netlist");
+    if (on) {
+      CHECK(result == "0 1");
+      CHECK(s.folder().read("w/top.spice").find(".end") != std::string::npos);
+      CHECK(s.script().exit_status == 10);
+      CHECK_FALSE(s.script().quit_requested);  // the script goes on
+    } else {
+      CHECK(result.starts_with("1 "));
+      CHECK(result.find("shorted: A - B") != std::string::npos);
+      CHECK_FALSE(std::filesystem::exists(s.folder().path() / "w/top.spice"));
+      CHECK(s.script().exit_status == 0);
+    }
+    // `schematic netlist` raises in both modes.
+    CHECK(caught(s, "schematic netlist").starts_with("1 "));
+  }
+}
+
+TEST_CASE("xschem netlist after a clean run returns 0 and keeps the exit status", kXschem) {
+  SchemSession s;
+  open_two_instances(s);
+  CHECK(caught(s, "xschem netlist") == "0 0");
+  CHECK(s.script().exit_status == 0);
 }
 
 TEST_CASE("Unsupported subcommand", kXschem) {

@@ -32,7 +32,7 @@ bool is_blank(char c) noexcept {
 }
 
 bool is_separator(char c) noexcept {
-  return c == '(' || c == ')' || c == ',' || c == ' ';
+  return c == '(' || c == ')' || c == ',' || c == ' ' || c == '\t';
 }
 
 std::string_view trim_trailing_blanks(std::string_view text) noexcept {

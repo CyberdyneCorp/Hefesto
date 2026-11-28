@@ -1,9 +1,7 @@
 file mkdir out
 if 1 {
-set status 0
-schematic open input/nl11.sch
-if {[catch {schematic netlist}]} {set status 10}
-schematic save out/nl11-saved.sch
-quit $status
+xschem load input/nl11.sch
+puts "netlist [xschem netlist]"
+xschem saveas out/nl11-saved.sch schematic
 list
 }

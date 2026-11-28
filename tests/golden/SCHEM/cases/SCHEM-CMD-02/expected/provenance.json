@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "case": "SCHEM-CMD-02",
+  "area": "SCHEM",
+  "tool": "xschem",
+  "tool_repo": "https://github.com/StefanSchippers/xschem",
+  "tool_version": null,
+  "tool_commit": "4142e6d6f1eb5cd0e271bb183f14202af374ce27",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:3577edd9b9c5775c8ea39194dd489dacde2daadc2c954c6c69d4e88dc1c581f8",
+  "image_repo_digests": [],
+  "image_manifest": {
+    "schema": 1,
+    "glibc": {
+      "ldd_version": "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41",
+      "gnu_libc_version": "2.41",
+      "getconf": "glibc 2.41"
+    },
+    "magic": {
+      "commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+    },
+    "extcheck": {
+      "build": "unavailable",
+      "reason": "tcl-tree: link failed: 152 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit ;tcl-free: link failed: 147 undefined symbols, e.g. CIFCurStyle CIFGetContactSize CIFReadTechFinal CIFReadTechInit CIFReadTechLine CIFReadTechStyleInit CIFTechFinal CIFTechInit "
+    }
+  },
+  "command": [
+    "xschem",
+    "-q",
+    "-x",
+    "-r",
+    "--rcfile",
+    "/work/input/xschemrc",
+    "--script",
+    "/work/input/case.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-27T17:20:06Z",
+  "stream_filter": "schem-driver (goldenlib/schem_driver.py, Q-SCHEM-46)",
+  "outputs": {
+    "div.spice": "ae5d2cf36f43e6d024a4e79796a2b7383be059f4d0786637fb8a47acde4e5190",
+    "exitcode.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "1ad82910808f02b5ea01dd66ed1d5b312c60f81675639f66964cc98c6564b91a"
+  }
+}

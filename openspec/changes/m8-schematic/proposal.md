@@ -66,6 +66,7 @@ M8 also implements the `xschem-compat` parts of `hefesto-magic-compat-mode`, the
 | Needs | From |
 |---|---|
 | Decisions approved, specs aligned | done 2026-11-13 |
+| Later decisions (Q-SCHEM-30 to -67), specs aligned | done 2026-11-27 (last: Q-SCHEM-52 to -54, -60 to -62, -66, -67, approved 2026-11-27); Q-SCHEM-68 (property dialogs past M8) awaits the user |
 | Clean-room roles and paraphrase review | CLEANROOM (section 1), before any implementation task |
 | SCHEM golden cases captured (roadmap principle 2) | GOLDEN (section 3), before implementation |
 | Interface table and Tcl semantics in the specs | SPEC (section 4), before DEVLIB and the Tcl part of SYMLIB |

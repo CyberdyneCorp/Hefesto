@@ -279,7 +279,7 @@ Compatibility: behavioral (key-name strings exact; host keysym mapping [platform
 Selecting the table:
 - An optional first word that exactly names a client or a registered tool SHALL select that table. Otherwise the table is chosen by the window the command came from (for layout, the current tool). With no window, the `layout` current-tool table is used.
 - If the first remaining word is not a valid key but the word after it is, the command SHALL silently do nothing. This lets bindings for clients that are not compiled in fail quietly.
-- The word `schematic` SHALL select the key table of the desktop schematic editor (capability `schematic-editing`, Requirement "Desktop and touch interaction"), in both modes. Magic has no such client, so in Magic `macro schematic w "wire"` silently does nothing; this is a Magic difference with `magic-compat` ON, provisional until the decision cited by that requirement is approved.
+- The word `schematic` SHALL select the key table of the desktop schematic editor (capability `schematic-editing`, Requirement "Desktop and touch interaction"), in both modes. Magic has no such client, so in Magic `macro schematic w "wire"` silently does nothing; this is a recorded Magic difference with `magic-compat` ON (Q-SCHEM-67 option (a), approved by the user on 2026-11-27).
 
 Listing:
 - With no key, all entries SHALL be listed. `imacro` lists only interactive macros. `help` shows help text in place of the macro text when help exists. `search TEXT` keeps only entries whose shown text contains TEXT.
@@ -315,7 +315,7 @@ Compatibility: behavioral
 #### Scenario: Schematic editor key table
 - **GIVEN** `magic-compat` ON or OFF
 - **WHEN** `macro schematic w "schematic wire"` is executed
-- **THEN** the `schematic` table SHALL bind `w` to `schematic wire`, `macro schematic w` SHALL print `Macro 'w' contains "schematic wire"`, and the layout tables SHALL be unchanged
+- **THEN** the `schematic` table SHALL bind `w` to `schematic wire`, `macro schematic w` SHALL print `Macro 'w' contains "schematic wire"`, and the layout tables SHALL be unchanged (Q-SCHEM-67; with `magic-compat` ON this differs from Magic 8.3.694, which ignores the line)
 
 ### Requirement: Script files and source
 `source FILE` SHALL be the `source` command of the scripting interpreter (capability `scripting-api`), as in Magic's Tcl build. Informative: Magic's non-Tcl build registers its own `source` command, which opens FILE through the path `.` and then the system library path, executes it as a command stream, and reports `Couldn't read from FILE.` if the file cannot be opened.

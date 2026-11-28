@@ -227,6 +227,19 @@ schematic-netlisting; design D9). Owner: NETLIST. The constants are in
   check (`NetlistEnvironment::interrupted`, polled once per schematic level
   placed) fired; the run returns no text and no computed labels. `schematic
   netlist` and `check` report it as SCHEM-CMD-011.
+- `SCHEM-NET-019` (error): `undriven node: <net>`: the net driver check
+  ("Errors and warnings", both modes) found a net with no `out` and no
+  `inout` pin; the netlist is written and the run fails (exit status 10),
+  but a simulation deck is still built when the driver check is the run's
+  only error (Q-SCHEM-53, approved 2026-11-27; `NetlistResult::
+  driver_check_only`). xschem prints `Error: undriven node: <net>`.
+- `SCHEM-NET-020` (warning, an error when the `xschemrc` sets
+  `erc_open_net_is_error` true): `open net: <net>`, a net with exactly one
+  pin. With xschem-compat ON it is shown only in the report of a failed
+  run (`driver_report_text`), as xschem's `Warning: open net: <net>`.
+- `SCHEM-NET-021` (warning, an error when the `xschemrc` sets
+  `erc_shorted_output_is_error` true): `shorted output node: <net>`, a net
+  with two or more `out` pins; shown as SCHEM-NET-020 is.
 
 ## EDIT
 
@@ -283,19 +296,26 @@ values and errors in scripts").
 - `SCHEM-CMD-002`: `Usage: schematic <syntax>` with the option's line of
   `schematic help` (missing or extra arguments, an unknown or incomplete
   flag, two of `-hier`/`-top`/`-flat`, a `-buschar` that is not two
-  characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`.
+  characters); for `xschem`, `xschem <subcommand>: wrong number of arguments`,
+  and `xschem get_tok: bad argument "<n>"` for a third argument that is not
+  an integer (Q-SCHEM-62).
 - `SCHEM-CMD-003`: `schematic: no schematic is open`, for every option
   except `open`, `new`, `reload_symbols`, `path`, `resolve`, `pdk`, `help`
   and `clipboard` (but `clipboard copy` needs a document).
 - `SCHEM-CMD-004`: `schematic: unsaved changes`, from `close` without
-  `-discard` and `open -window current` over a modified document.
+  `-discard` and `open -window current` over a modified document, and from
+  `xschem clear` without `force` over a modified document with
+  `xschem-compat` OFF ("clear without force").
 - `SCHEM-CMD-005`: the netlist run of `netlist` or `check` reported errors;
   the message is the list of error texts, one per line (the diagnostics
   themselves are reported first). `netlist <file> -force` writes the file
   before raising.
 - `SCHEM-CMD-006`: `schematic: no instance "<name>"` (also `no symbol`,
-  `no wire`, `no box <n> on layer <l>`), and the `xschem descend` /
-  `change_sch_path` errors for a missing instance or vector element.
+  `no wire`, `no box <n> on layer <l>`), `xschem getprop: instance not
+  found:<inst>` (a missing name or an index past the last instance),
+  `xschem getprop rect: no such box`, `xschem translate: instance not found`,
+  and the `xschem descend` / `change_sch_path` errors for a missing instance
+  or vector element.
 - `SCHEM-CMD-007`: `schematic: PDK <name> has no xschem data (<file>)`, from
   `schematic pdk <name>` when `<PDK root>/<name>/libs.tech/xschem/xschemrc`
   does not exist or no PDK store is known.
@@ -303,7 +323,8 @@ values and errors in scripts").
   `'get <key>'` and `'set <var>'` (capability schematic-command
   "xschem compatibility command").
 - `SCHEM-CMD-009`: `xschem set netlist_type: only spice is supported`.
-- `SCHEM-CMD-010`: `xschem command 'place_symbol' needs the editor`.
+- `SCHEM-CMD-010`: `xschem command '<cmd>' needs the editor`, from
+  `place_symbol`, `paste` without a point and `saveas` without a file.
 - `SCHEM-CMD-011`: `schematic: the netlist run was interrupted; no file is
   written`, from `netlist` and `check` when the front end's Interrupt
   (Ctrl-C, the Interrupt card) was pending before the run or was made during
@@ -359,7 +380,7 @@ fails when the two disagree.
 | `SCHEM-CMD-007` | error | The PDK named by `schematic pdk` has no xschem data (`libs.tech/xschem/xschemrc`). |
 | `SCHEM-CMD-008` | error | `xschem`: unsupported subcommand, `get` key or `set` variable. |
 | `SCHEM-CMD-009` | error | `xschem set netlist_type`: only `spice` is supported. |
-| `SCHEM-CMD-010` | error | `xschem place_symbol` needs the interactive editor. |
+| `SCHEM-CMD-010` | error | `xschem place_symbol`, `paste` without a point or `saveas` without a file needs the interactive editor. |
 | `SCHEM-CMD-011` | error | `schematic netlist` or `check` was interrupted; no file is written. |
 | `SCHEM-EDIT-001` | error | The active document is in the PDK store or the system library and is read-only; save it in a user folder to edit it. |
 | `SCHEM-EDIT-002` | error | The instance cannot be descended into: its symbol is not a `subcircuit` or `primitive`. |
@@ -407,6 +428,9 @@ fails when the two disagree.
 | `SCHEM-NET-016` | warning | Two identical instances of one symbol overlap. |
 | `SCHEM-NET-017` | warning | The flat netlist stopped at the depth limit of 64 levels or after 268435456 bytes of output (Q-SCHEM-42); what was written so far is kept and the run does not fail. |
 | `SCHEM-NET-018` | error | The netlist run was interrupted (the environment's `interrupted` callback returned true); no netlist text is returned. |
+| `SCHEM-NET-019` | error | Net driver check: a net has no `out` and no `inout` pin (`Error: undriven node: <net>`); the netlist is written and the run fails, but a simulation deck is still built (Q-SCHEM-53). |
+| `SCHEM-NET-020` | warning | Net driver check: a net carries exactly one pin (`Warning: open net: <net>`); an error when the xschemrc sets `erc_open_net_is_error`. |
+| `SCHEM-NET-021` | warning | Net driver check: a net carries two or more `out` pins (`Warning: shorted output node: <net>`); an error when the xschemrc sets `erc_shorted_output_is_error`. |
 | `SCHEM-SIM-001` | error | A `.control` line of a schematic-source deck names a command that is not allowed in simulation decks (`shell`, `cd`, `load`, `source`, `codemodel`, `osdi`, `pre_osdi`, or one named only at run time). |
 | `SCHEM-SIM-002` | warning | A `.include` or `.lib` path of a schematic-source deck names no file in the netlist folder, the schematic's folder or the PDK store; it is kept as written. |
 | `SCHEM-SIM-003` | warning | A launcher's `xschem` command (or `simulate`) is not supported or not available until M9; it was skipped and the rest of the launcher ran. |

@@ -118,6 +118,7 @@ class SchemSession {
   schem::Session& schem() { return editor_.schem; }
   cmd::CommandLog& log() { return log_; }
   settings::ProjectSettings& project() { return project_; }
+  cmd::ScriptSession& script() { return session_; }
 
  private:
   TempFolder folder_;

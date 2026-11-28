@@ -449,9 +449,14 @@ The search path SHALL be an ordered list of folders built from the value of `XSC
 - the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
-**Default value** (proposed Q-SCHEM-52, recommendation below; awaiting the user). xschem gives `XSCHEM_LIBRARY_PATH` a built-in value before it evaluates any `xschemrc`: the user library `~/.xschem/xschem_library`, then the system library `${XSCHEM_SHAREDIR}/xschem_library/devices`, then eleven example folders of its documentation (`examples`, `ngspice`, `ngspice_verilog_cosim`, `logic`, `xschem_simulator`, `generators`, `inst_sch_select`, `binto7seg`, `pcb`, `rom8k`, `analyses`); an `xschemrc` that sets the variable replaces it (the three PDK files do), and one that does not leaves it. So a document in a folder without an `xschemrc`, with no PDK active, finds the `devices` symbols. Recommendation (both modes): before the `xschemrc` files are evaluated, Hefesto SHALL set `XSCHEM_LIBRARY_PATH` to `${XSCHEM_SHAREDIR}/xschem_library/devices`, the system library (Requirement "System library"), and nothing else: the user library would be `<document folder>/.xschem/xschem_library` under the synthetic `env(HOME)` of Q-SCHEM-38, and Hefesto ships no documentation example folders (both would be dropped as missing folders anyway). The search path setting of capability `hefesto-settings` is still prepended.
+**Default value** (Q-SCHEM-52 option (a), approved by the user on 2026-11-27; both modes of `xschem-compat`). xschem gives `XSCHEM_LIBRARY_PATH` a built-in value before it evaluates any `xschemrc`: the user library `~/.xschem/xschem_library`, then the system library `${XSCHEM_SHAREDIR}/xschem_library/devices`, then eleven example folders of its documentation (`examples`, `ngspice`, `ngspice_verilog_cosim`, `logic`, `xschem_simulator`, `generators`, `inst_sch_select`, `binto7seg`, `pcb`, `rom8k`, `analyses`); an `xschemrc` that sets the variable replaces it (the three PDK files do), and one that does not leaves it. So a document in a folder without an `xschemrc`, with no PDK active, finds the `devices` symbols. Before the `xschemrc` files are evaluated, Hefesto SHALL set `XSCHEM_LIBRARY_PATH` to `${XSCHEM_SHAREDIR}/xschem_library/devices`, the system library folder (Requirement "System library"), and to nothing else, in both modes: the user library would be `<document folder>/.xschem/xschem_library` under the synthetic `env(HOME)` of Q-SCHEM-38, and Hefesto ships no documentation example folders (both would be dropped as missing folders anyway). An `xschemrc` that sets the variable SHALL replace this value; one that appends to it, or does not touch it, SHALL keep it. The search path setting of capability `hefesto-settings` is still prepended.
 
 Hefesto SHALL build `XSCHEM_LIBRARY_PATH` from the active PDK's `xschemrc` (Requirement "xschemrc as data"), and SHALL also accept a search path set in Hefesto settings (capability `hefesto-settings`) that is prepended to it.
+
+**Seen by scripts** (golden case SCHEM-PR-05; specified in M8 round 7; both modes of `xschem-compat`). In xschem the `xschemrc` files and the user's scripts run in one Tcl interpreter, so a script reads `$XSCHEM_LIBRARY_PATH`. Hefesto evaluates the `xschemrc` files in their own sandboxed interpreter, so the project interpreter (capability `hefesto-scripting`) SHALL get the global Tcl variables `XSCHEM_LIBRARY_PATH` and `XSCHEM_SHAREDIR`:
+- `XSCHEM_LIBRARY_PATH` SHALL hold the text the search path of the active document is built from: the value the `xschemrc` evaluation left, or, when no `xschemrc` sets it, the default value of Q-SCHEM-52 (`${XSCHEM_SHAREDIR}/xschem_library/devices`, with `XSCHEM_SHAREDIR` expanded). It is the raw text, before the rules above: missing folders, `| <alias>` parts, `.` and duplicates are kept, and the path of capability `hefesto-settings` is not part of it (SCHEM-PR-05 prints `/work/input/libA:/work/input/missing:/work/input/libB | lib:.:<share>/xschem_library`). `XSCHEM_SHAREDIR` SHALL hold the system library's share folder (Requirement "System library").
+- Both SHALL be set before the first script command runs, and `XSCHEM_LIBRARY_PATH` SHALL be set again whenever the active document changes (`schematic open`, `xschem load`, a descend or ascend into another folder, the activation of another document) or the search path is changed by `schematic path set`/`prepend` (the variable then holds the new list joined with `:`).
+- A script that sets `XSCHEM_LIBRARY_PATH` SHALL change the search path of the session as an `xschemrc` that sets it would, from the next symbol lookup on (`abs_sym_path`, placing or loading a document); symbols already loaded keep their files until `schematic reload_symbols` (Requirement "Symbol cache and reload"). A script that sets `XSCHEM_SHAREDIR` changes nothing but the variable.
 
 Compatibility: behavioral
 
@@ -480,12 +485,32 @@ Compatibility: behavioral
 #### Scenario: Default search path without an xschemrc
 - **GIVEN** no active PDK, the new schematic `/w/s/div.sch` in a folder with no `xschemrc`, and an instance `res.sym`
 - **WHEN** the instance is resolved, with `xschem-compat` ON or OFF
-- **THEN** the search path SHALL be the system library folder `<install root>/assets/schematic/xschem_library/devices` and the symbol SHALL be the system library's `res.sym` (proposed Q-SCHEM-52)
+- **THEN** the search path SHALL be the system library folder `<install root>/assets/schematic/xschem_library/devices` and the symbol SHALL be the system library's `res.sym`, and no warning `Symbol not found` SHALL be reported (Q-SCHEM-52)
+
+#### Scenario: Default search path of an untitled document
+- **GIVEN** a session with no search path yet, no active PDK, and a working folder with no `xschemrc`
+- **WHEN** an untitled schematic is created (`schematic new schematic`, or `xschem clear`), with `xschem-compat` ON or OFF
+- **THEN** the search path SHALL be that of the working folder, here the system library folder alone, and `res.sym` SHALL resolve to the system library's `res.sym` (Q-SCHEM-52); a session that already has a search path SHALL keep it
 
 #### Scenario: xschemrc replaces the default search path
 - **GIVEN** an `xschemrc` in the document's folder that runs `set XSCHEM_LIBRARY_PATH /w/lib`, where `/w/lib` exists
 - **WHEN** the search path is built
-- **THEN** it SHALL be `/w/lib` only; an `xschemrc` that runs `append XSCHEM_LIBRARY_PATH :/w/lib` instead SHALL give the system library folder followed by `/w/lib` (proposed Q-SCHEM-52)
+- **THEN** it SHALL be `/w/lib` only; an `xschemrc` that runs `append XSCHEM_LIBRARY_PATH :/w/lib` instead SHALL give the system library folder followed by `/w/lib` (Q-SCHEM-52)
+
+#### Scenario: Script reads the default search path
+- **GIVEN** no active PDK, the schematic `/w/s/div.sch` in a folder with no `xschemrc`, opened by a project script, with `xschem-compat` ON or OFF
+- **WHEN** the script runs `puts $XSCHEM_LIBRARY_PATH`
+- **THEN** it SHALL print the system library folder `<install root>/assets/schematic/xschem_library/devices` (Q-SCHEM-52), and no `can't read "XSCHEM_LIBRARY_PATH"` error SHALL be raised
+
+#### Scenario: Script reads the xschemrc value
+- **GIVEN** the inputs of golden case SCHEM-PR-05, whose `xschemrc` sets `XSCHEM_LIBRARY_PATH` to `/work/input/libA:/work/input/missing:/work/input/libB | lib:.:${XSCHEM_SHAREDIR}/xschem_library`
+- **WHEN** the case script loads `sub/top.sch` and runs `puts "XSCHEM_LIBRARY_PATH: $XSCHEM_LIBRARY_PATH"`
+- **THEN** it SHALL print that text with `${XSCHEM_SHAREDIR}` expanded and the missing folder, the alias and `.` kept
+
+#### Scenario: Script sets the search path
+- **GIVEN** a project script, the folder `/w/lib` holding `x.sym`, and an open schematic whose search path does not hold `/w/lib`
+- **WHEN** the script runs `append XSCHEM_LIBRARY_PATH :/w/lib` and then `abs_sym_path x.sym`
+- **THEN** the result SHALL be `/w/lib/x.sym`
 
 #### Scenario: Dot element is the schematic folder
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
@@ -829,11 +854,26 @@ If a symbol reference names a `.sch` file, the schematic SHALL be loaded as a sy
 - its graphics are the symbol graphics
 - its wires are drawn as lines on layer 1
 - the instances inside it are drawn transformed by their orientation (Requirement "Orientation transform" of capability `schematic-file-format`), recursively, to at most 40 levels (below)
-- the pins of the outer symbol are generated from its `ipin`, `opin` and `iopin` instances (by symbol type), at their positions, named by their `lab`: each generated pin is a layer-5 box of 5×5 units centred on the pin instance's origin, with the property string `name=<lab> dir=<d> ` (`d` is `in` for `ipin`, `out` for `opin`, `inout` for `iopin`; note the trailing space) followed by the pin instance's other attributes (all but `name` and `lab`); an empty `lab` gives `name=` with no name. Only pin instances at the schematic's own level make pins; pin instances inside nested instances are drawn only
+- the pins of the outer symbol are generated from its `ipin`, `opin` and `iopin` instances (by symbol type), at their positions, named by their `lab`: each generated pin is a layer-5 box of 5×5 units centred on the pin instance's origin, with the property string `name=<lab> dir=<d> ` (`d` is `in` for `ipin`, `out` for `opin`, `inout` for `iopin`; note the trailing space) followed by the pin instance's other attributes (all but `name` and `lab`, written as paragraph "Other attributes of a generated pin" below says); an empty `lab` gives `name=` with no name. Only pin instances at the schematic's own level make pins; pin instances inside nested instances are drawn only
 - layer-5 boxes drawn in the schematic itself (at its own level) SHALL be pins of the outer symbol too, after their own `B` record order; layer-5 boxes of nested instances are moved to layer 7 (Requirement "Pins")
 - floater texts (texts with a `name` or `floater` key) are dropped, at every level
 - graph boxes are dropped at every level: a box is a graph box when the value of its `flags` key contains the text `graph` anywhere (for example `flags=graph` or `flags=graph,unlocked`)
 - objects with `symbol_ignore=true` are dropped
+
+**Pin drawings** (golden case SCHEM-RT-05; both modes of `xschem-compat`, Q-SCHEM-2 `Resolution: replicate`, since they change only what is drawn and the layout of an embedded block). A pin instance at the schematic's own level (`ipin`, `opin` or `iopin` by symbol type) SHALL NOT add its own symbol's graphics (its lines, polygons and `@lab` text are dropped). Instead it SHALL add, one level deeper and transformed by the pin instance's placement (Requirement "Orientation transform" of capability `schematic-file-format`), this fixed drawing, in coordinates relative to the pin instance's origin:
+- `ipin`: the layer-7 lines (10,-2.5)-(12.5,0) and (10,2.5)-(12.5,0), then the text `@lab` at (3.75,-16.25), rotation 0, flip 0, size 0.2 × 0.2, empty property string
+- `opin`: the layer-7 lines (-12.5,-2.5)-(-10,0) and (-12.5,2.5)-(-10,0), then the text `@lab` at (-3.75,-16.25), rotation 0, flip 1, size 0.2 × 0.2
+- `iopin`: the layer-7 lines (-10,-2.5)-(-7.5,0), (-10,2.5)-(-7.5,0), (-12.5,0)-(-10,-2.5) and (-12.5,0)-(-10,2.5), then the text `@lab` at (-3.75,-16.25), rotation 0, flip 1, size 0.2 × 0.2
+
+The text is then translated as every text of a nested level (below), so `@lab` of a pin instance with `lab=IN` becomes `%IN`.
+
+**Texts of nested levels** (both modes, as above). A text of an instance drawn inside the symbol (level 1 or deeper; the pin drawings above included) SHALL be translated once when the symbol is built, scanning it from left to right:
+- characters outside tokens are copied; a token starts at `@` or `%` and ends before a blank, `@`, `%` or `\`; the character that ends it is copied, except that `@` and `%` start the next token; a `\` is kept (it is removed when the text is drawn)
+- `@<key>`: the value of `<key>` in the property string of the instance that placed the text is looked up; then, for each enclosing instance from the next level up to level 1, that value is looked up as a key in the enclosing instance's property string, and a non-empty value found there replaces it. A value found SHALL be written as `%` followed by the value (`@name` of `R1` gives `%R1`, `@value` with `value=1k` gives `%1k`): the `%` marks it for the final substitution with the outer instance's attributes when the symbol is drawn or netlisted. A `@<key>` with no value SHALL be removed. Symbol templates are not searched
+- `%<key>`: looked up the same way; with no value it SHALL be kept as `%<key>`
+- tokens that start with `@@` or `@#` SHALL be removed; `@spice_get_voltage` and `@spice_get_current` tokens are kept for back-annotation (Requirement "Text substitution tokens"); `@symname` SHALL be replaced by the cell name of the level, and `@path` by the hierarchy path of the nested instances, each name followed by `.`
+
+**Other attributes of a generated pin.** The attributes after `name=<lab> dir=<d> ` SHALL be the pin instance's property string with the assignments of `name` and `lab` (and of `spiceprefix` and `model`) removed, where each assignment, removed or kept, is followed by the character that ended it in the property string (a blank, or nothing at the end): so `name=p1 lab=IN` gives one blank, and the pin's property string is `name=IN dir=in  ` (two blanks before the end; golden case SCHEM-RT-05), while `name=p1 lab=IN sig_type=std_logic` gives `name=IN dir=in   sig_type=std_logic`. With `xschem-compat` ON, as xschem, a key is also removed when it is any substring of `lab` (`l`, `a`, `b`, `la`, `ab`), and the kept values lose their unescaped quotes and backslashes (`sig_type="a b"` is written `sig_type=a b`). With `xschem-compat` OFF only the keys `name`, `lab`, `spiceprefix` and `model` themselves are removed and kept assignments are written as they are in the property string, quotes and escapes included (standing rule for xschem behaviour no Q-row covers; reported to the user 2026-11-27).
 
 **Recursion.** The schematic loaded as the symbol is level 0; each instance whose symbol is itself loaded this way opens the next level. An instance that would open level 40 SHALL NOT be loaded: Hefesto SHALL report `Symbol recursively instantiating symbol: max depth reached, skipping` once and SHALL stop reading the symbol, keeping the records read before that instance (depth-first, in file order) and reading none after it at any level. A schematic that places itself is not detected as a cycle: it nests until level 40, as in xschem, so its copies are drawn 40 levels deep (round-1 spec issue Y5: confirmed, not reworded).
 
@@ -845,7 +885,7 @@ If a `.sym` with the same base name exists next to the `.sch`, its pin order SHA
 
 Compatibility: exact
 
-(xschem ref: save.c:5455-5600, save.c:4656-4705, xschem.h:200)
+(xschem ref: save.c:5455-5600, save.c:4656-4705, xschem.h:200, token.c translate2 and get_sym_template, systemlib/ipin_lcc_top.sym, systemlib/opin_lcc_top.sym, systemlib/iopin_lcc_top.sym)
 
 #### Scenario: Recursion limit
 - **GIVEN** a schematic `a.sch` holding one line `L 4 0 0 10 0 {}` and one instance of `a.sch` at (0,0) with r=0, f=0, and a schematic `top.sch` that places `a.sch`
@@ -867,6 +907,16 @@ Compatibility: exact
 - **WHEN** the symbol is built
 - **THEN** it SHALL have one pin, a layer-5 box from (37.5,17.5) to (42.5,22.5) whose property string begins with `name=IN dir=in ` and holds `sig_type=std_logic`, and no layer-2 box
 
+#### Scenario: Embedded schematic used as symbol
+- **GIVEN** the input `embed.sch` of golden case SCHEM-RT-05, whose instance `x3` of `block.sch` has `embed=true`, where `block.sch` places an `ipin` instance (`lab=IN`) at (0,0), an `opin` instance (`lab=OUT`) at (200,0), the resistor `R1` (`value=1k`, whose symbol has the texts `@name` and `@value`) and five wires, with `xschem-compat` ON or OFF
+- **WHEN** the schematic is saved
+- **THEN** the block after `x3` SHALL hold, after the five `L 1` lines and R1's two `L 4` lines, the lines `L 7 10 -2.5 12.5 0`, `L 7 10 2.5 12.5 0`, `L 7 187.5 -2.5 190 0` and `L 7 187.5 2.5 190 0`; the boxes `B 5 -2.5 -2.5 2.5 2.5 {name=IN dir=in  }` and `B 5 197.5 -2.5 202.5 2.5 {name=OUT dir=out  }` (two blanks before `}`); and the texts `T {%IN} 3.75 -16.25 0 0 0.2 0.2 {}`, `T {%OUT} 196.25 -16.25 0 1 0.2 0.2 {}`, `T {%R1} 110 -10 0 0 0.2 0.2 {}` and `T {%1k} 110 0 0 0 0.2 0.2 {}`, in that order, and no line, polygon or `@lab` text of the pin instances' own symbols
+
+#### Scenario: Other attributes of a generated pin, xschem-compat OFF
+- **GIVEN** a schematic `blk.sch` with an `ipin` instance whose property string is `name=p1 lab=IN a=1 sig_type="x y"`, placed as a symbol, with `xschem-compat` OFF
+- **WHEN** the symbol is built
+- **THEN** its pin's property string SHALL be `name=IN dir=in   a=1 sig_type="x y"`; with `xschem-compat` ON it SHALL be `name=IN dir=in    sig_type=x y` (`a` removed as a substring of `lab`, quotes removed)
+
 ### Requirement: Missing symbols
 An instance whose symbol cannot be found SHALL be drawn with a placeholder symbol that has no pins. The warning `Symbol not found: <reference>` SHALL be reported once per reference. The instance SHALL keep its reference and properties, SHALL be saved unchanged, and SHALL be netlisted as nothing (it has no `format`). A later change of the search path SHALL re-resolve it.
 
@@ -884,7 +934,7 @@ A symbol reference of the form `name(args)` (matching `^[^ \t()]+\([^()]*\)[ \t]
 
 Hefesto SHALL support generators only when the generator is a Tcl script, run in the sandboxed interpreter with `argv` set to the arguments and with `puts` to standard output captured as the symbol text.
 
-**Arguments.** The text between the parentheses is not substituted when the symbol is loaded: `@` tokens are passed as written (the sky130 example `sky130_tests/tier.tcl(@lab\)` runs `tier.tcl` with the argument text `@lab\`). A backslash is ordinary text for the generator pattern, so `\)` does not escape the closing parenthesis. xschem hands the program name and the argument text to a shell, which then splits and unescapes the text by its own rules. Proposed Q-SCHEM-54 (recommendation, both modes): Hefesto SHALL NOT apply any shell processing; `argv` SHALL be the argument text split at `(`, `)`, `,`, spaces and tabs, empty words dropped, each word kept as written, backslashes included (`tier.tcl(@lab\)` gives `argv` = `{@lab\}`). The symbol name used in netlists keeps its backslash too, and `@symname` of such an instance is the netlist name with the instance's tokens substituted (capability `schematic-netlisting`, Requirement "Format string substitution"). Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
+**Arguments.** The text between the parentheses is not substituted when the symbol is loaded: `@` tokens are passed as written (the sky130 example `sky130_tests/tier.tcl(@lab\)` runs `tier.tcl` with the argument text `@lab\`). A backslash is ordinary text for the generator pattern, so `\)` does not escape the closing parenthesis. xschem hands the program name and the argument text to a shell, which then splits and unescapes the text by its own rules. Hefesto runs only Tcl generators in its sandbox and never a shell (Q-SCHEM-54 option (a), approved by the user on 2026-11-27; both modes of `xschem-compat`): it SHALL NOT apply any shell processing; `argv` SHALL be the argument text split at `(`, `)`, `,`, spaces and tabs, empty words dropped, each word kept as written, backslashes included (`tier.tcl(@lab\)` gives `argv` = `{@lab\}`). The symbol name used in netlists keeps its backslash too, and `@symname` of such an instance is the netlist name with the instance's tokens substituted (capability `schematic-netlisting`, Requirement "Format string substitution"). Other generators SHALL be shown as missing symbols with the message `symbol generators that run external programs are not supported` (`SCHEM-LIB-011`). See Q-SCHEM-11.
 
 **Limits** (both modes of `xschem-compat`; xschem bounds none of them; approved by the user on 2026-11-23, Q-SCHEM-43, decisions M8-D5 and M8-D6). A generator is a script that a schematic names, so its run is bounded like an `xschemrc`:
 - A generator is a Tcl script when its file name ends in `.tcl` or its first line is a `#!` line naming `tclsh` or `wish`. A generator file larger than 268,435,456 bytes (256 MiB, `kMaxGeneratorScriptBytes`, the bound of a flattened symbol, Q-SCHEM-40), whatever its name, SHALL NOT be read (not even to check its first line) and SHALL NOT be run: the reference is a missing symbol and `SCHEM-LIB-012` (`Symbol <reference>: the generator <file> is larger than 268435456 bytes; it is neither read nor run`) SHALL be reported once (M8-D6).
@@ -906,7 +956,12 @@ Compatibility: behavioral
 #### Scenario: Generator arguments are not substituted
 - **GIVEN** the Tcl generator `tier.tcl` on the search path, which prints `argv` into a `T` record of the symbol it writes, and an instance with reference `tier.tcl(@lab\)` and `lab=A`
 - **WHEN** the reference is resolved, with `xschem-compat` ON or OFF
-- **THEN** the generator SHALL run once with `argv` = `{@lab\}` (proposed Q-SCHEM-54), not with `A`
+- **THEN** the generator SHALL run once with `argv` = `{@lab\}` (Q-SCHEM-54), not with `A`
+
+#### Scenario: Generator arguments split without a shell
+- **GIVEN** the Tcl generator `gen.tcl` on the search path, which prints each word of `argv` on its own line into the symbol it writes, and an instance with reference `gen.tcl(a "b c",,d\e	f)` (a tab between `d\e` and `f`)
+- **WHEN** the reference is resolved, with `xschem-compat` ON or OFF
+- **THEN** `argv` SHALL hold the five words `a`, `"b`, `c"`, `d\e` and `f` in that order: the quotes and the backslash SHALL be kept as written, the empty word between the two commas SHALL be dropped, and no shell SHALL be run (Q-SCHEM-54)
 
 #### Scenario: Endless generators share the total time limit
 - **GIVEN** a schematic with 10,000 instances `loop.tcl(1)` to `loop.tcl(10000)` of a Tcl generator that never ends, with `xschem-compat` ON or OFF

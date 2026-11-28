@@ -64,7 +64,8 @@ NetlistRun::NetlistRun(const NetlistEnvironment& environment, const Document& to
       compat_{xschem_compat},
       resolve_{environment.search_path, environment.fs, &resolve_warnings_, xschem_compat},
       bus_budget_{environment.bus_budget},
-      topschname_{topschname(top)} {
+      topschname_{topschname(top)},
+      driver_budget_{environment.bus_budget} {
   element_state_.bus_budget = &bus_budget_;
 }
 
@@ -254,6 +255,7 @@ NetlistResult NetlistRun::interrupted_result() {
 }
 
 NetlistResult NetlistRun::run() {
+  init_driver_check();
   Level top = place(top_, Parents{}, true);
   apply_options_instances(top);
   top_subckt_ = options_.lvs_netlist || options_.top_is_subckt;
@@ -316,6 +318,7 @@ NetlistResult NetlistRun::finish_text() {
     }
   }
   result_.text = break_lines(lines);
+  finish_driver_check();
   return std::move(result_);
 }
 

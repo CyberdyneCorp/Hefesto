@@ -166,6 +166,16 @@ class NetlistRun {
   void emit(std::string text, std::string prefix = {}, bool user_code = false);
   std::size_t width_of(const std::string& name);
 
+  // driver_check.cpp
+  void init_driver_check();
+  void open_report_level(const Level& level);
+  void report_line(std::string line);
+  void report_before(std::string line);
+  void driver_check(const Level& level);
+  void driver_finding(const std::string& net, int kind);
+  [[nodiscard]] std::unordered_set<std::string> level_globals(const Level& level);
+  void finish_driver_check();
+
   // definitions.cpp
   void add_used(const Level& level);
   void plan_definitions();
@@ -216,6 +226,17 @@ class NetlistRun {
   std::map<std::pair<const Symbol*, std::string>, std::string> symnames_;
   std::map<platform::Path, std::unique_ptr<Document>> documents_;
   std::string topschname_;
+
+  // "Net driver check": the xschemrc settings that make its warnings errors
+  bool open_net_is_error_ = false;
+  bool shorted_output_is_error_ = false;
+  // xschem-compat ON: the warnings given only if the run fails
+  std::vector<diag::Diagnostic> held_driver_warnings_;
+  // The bits the driver check expands (its names and the bits of its global
+  // labels), bounded like the run's own bus text (Q-SCHEM-41) but apart from
+  // it, so the check changes no netlist text: a second budget of
+  // `NetlistEnvironment::bus_budget` bytes (round-7 limit, standing rule).
+  BusBudget driver_budget_;
 };
 
 }  // namespace hefesto::schem::detail

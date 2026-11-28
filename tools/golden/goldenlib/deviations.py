@@ -36,7 +36,15 @@ one of ``outputs``. The other outputs keep ``deferred``::
     reason = "the LVS result needs the lvs-* capabilities of M9"
 
 ``replay.py --milestone M<n>`` checks the state at the exit of milestone n: an output whose
-milestone is n or earlier is no longer covered by its entry, so it must match.
+milestone is n or earlier is no longer covered by its entry, so it must match. An entry with
+``decisions`` keeps covering its outputs after its ``deferred`` milestone (the decision outlives
+the deferral), except the outputs ``deferred_outputs`` names: those are deferred, not decided::
+
+    [SCHEM-NL-09]
+    decisions = ["Q-SCHEM-60"]                         # stderr.txt: approved deviation
+    deferred = "M8"
+    deferred_outputs = { "exitcode.txt" = "M8" }       # must match at the M8 exit
+    outputs = ["exitcode.txt", "stderr.txt"]
 
 An output name may also be a pattern over the case's collected outputs (``[[collect]]``,
 goldenlib/collect.py), such as ``collected/*`` or ``collected/*.spice``: it covers every
@@ -91,7 +99,12 @@ class Deviation:
             return replace(self, outputs=outputs,
                            deferred_outputs=tuple(p for p in self.deferred_outputs if p[0] not in due)) \
                 if outputs else None
-        return replace(self, deferred="", deferred_outputs=())  # a decided deviation outlives its deferral
+        # A decided deviation outlives its deferral, except for the outputs it defers by name.
+        listed = {name for name, _ in self.deferred_outputs} & due
+        outputs = tuple(name for name in self.outputs if name not in listed)
+        return replace(self, outputs=outputs, deferred="",
+                       deferred_outputs=tuple(p for p in self.deferred_outputs if p[0] not in listed)) \
+            if outputs else None
 
     def basis(self) -> str:
         """The decisions and the deferral, e.g. ``Q-UI-12; deferred to M4``."""
