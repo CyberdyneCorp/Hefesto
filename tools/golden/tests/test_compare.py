@@ -100,6 +100,10 @@ class MaskTest(unittest.TestCase):
         # Hefesto's 0 and an ordinary width stay compared.
         self.assertFalse(compare_bytes(a, line % b"0", "ext-cap", ["ext-devres-uninit-width"]).equal)
         self.assertEqual(apply_masks(line % b"12", ["ext-devres-uninit-width"]), line % b"12")
+        self.assertEqual(apply_masks(line % b"999999", ["ext-devres-uninit-width"]), line % b"999999")
+        # Regression (review of PR #141): a short negative or a 7-digit garbage width is masked too.
+        for garbage in (b"-5", b"-1", b"1234567", b"2147483647"):
+            self.assertTrue(compare_bytes(a, line % garbage, "ext-cap", ["ext-devres-uninit-width"]).equal, garbage)
 
     def test_regex_mask(self):
         a, b = b"* Created 2020-01-01\nR1 a b 1k\n", b"* Created 2026-11-07\nR1 a b 1k\n"

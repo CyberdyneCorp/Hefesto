@@ -364,9 +364,11 @@ def mask_extcheck_memory(data: bytes) -> bytes:
 
 # Q-EXTRACT-36 (h): Magic's resistor branch writes an uninitialised width when no boundary estimate exists
 # (extract/ExtBasic.c:2988-3060), so the width of such a `device devres` record differs between two Magic
-# runs (sky130_fd_sc_hd__probec_p_8: -1123705434, then -1406616154). A width of nine or more digits is
-# masked; Hefesto writes 0 there, which stays visible.
-_EXT_DEVRES_WIDTH = re.compile(rb"^(device devres \S+(?: -?\d+){5}) -?\d{9,}(?= )", re.MULTILINE)
+# runs (sky130_fd_sc_hd__probec_p_8: -1123705434, then -1406616154). Any width outside the plausible range
+# 0..999999 (a negative value, or seven or more digits) is masked, so a short negative garbage value is masked
+# too; Hefesto writes 0 there, which stays visible. A garbage value that happens to fall inside the range is
+# not distinguishable from a real width by the record's text and stays compared.
+_EXT_DEVRES_WIDTH = re.compile(rb"^(device devres \S+(?: -?\d+){5}) (?:-\d+|\d{7,})(?= )", re.MULTILINE)
 
 
 def mask_ext_devres_uninit_width(data: bytes) -> bytes:
