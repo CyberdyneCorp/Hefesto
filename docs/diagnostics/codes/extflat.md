@@ -39,7 +39,9 @@ mismatches, subscript errors of `merge`, `cap` and `resist` names, bad
 `parameters` tokens, device records that do not parse, attributes of
 unknown nodes). `EXTFLAT-READ-004` is Magic's `Warning:  .ext file style
 <s> is not known in this technology!` (only when the caller lists the
-technology's styles), `EXTFLAT-READ-005` `Warning: use <id> appears more
+technology's styles; a known style gives the read its units per lambda as
+the style is in use, micron-converted and scaled to the grid, so no message
+follows from a `scale` record written under `scalegrid`), `EXTFLAT-READ-005` `Warning: use <id> appears more
 than once in def!`, `EXTFLAT-READ-006` the shorted-ports warning of an
 `equiv` (none when one name is the other made unique with `_uq`), and
 `EXTFLAT-READ-012` the two `Device ... overlaps ...` messages of a device

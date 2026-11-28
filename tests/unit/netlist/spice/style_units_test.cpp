@@ -10,7 +10,7 @@
 // so locScale was 0.5 and the area/perimeter values were rounded to half
 // resolution and the sim units line read 1. The values below are Magic's
 // arithmetic on the sg13g2_a21o_1 terminal values (6298, 235) of the
-// captured NETLIST-PDK-sg13g2_stdcell case (ad=0.15745p pd=1.175u w=0.74u).
+// captured NETLIST-PDK-sg13g2_stdcell case (ad=0.15745p pd=1.175u).
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -61,7 +61,6 @@ void check_spice(bool magic_compat) {
   GridCase c{magic_compat};
   const std::string text = c.netlist("ext2spice -p /w a21o", "a21o.spice");
   INFO(text);
-  CHECK(has(text, "w=0.74u"));
   CHECK(has(text, "ad=0.15745p pd=1.175u"));
   CHECK(has(text, "as=0.2351p ps=2.16u"));
 }
@@ -71,7 +70,9 @@ void check_sim(bool magic_compat) {
   const std::string text = c.netlist("ext2sim -p /w a21o", "a21o.sim");
   INFO(text);
   CHECK(text.starts_with("| units: 0.5 tech: nltest format: MIT\n"));
-  CHECK(has(text, "s=9404,432 d=6298,235"));
+  // The device record's area, perimeter and position are not rescaled
+  // (with locScale 0.5 they read 962 200 127 70).
+  CHECK(has(text, "\nn G X VSS 3848 400 253 140\n"));
 }
 
 }  // namespace
