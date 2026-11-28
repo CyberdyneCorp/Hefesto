@@ -180,6 +180,8 @@ class Flattener {
                     bool warn);
   [[nodiscard]] std::uint32_t lookup(const std::string& prefix, const std::string& name, const char* what);
   [[nodiscard]] std::uint32_t lookup_key(const std::string& key, const char* what);
+  /// prefix + separator + name (EFHNConcat) in key_, reused between lookups.
+  [[nodiscard]] const std::string& scratch_key(std::string_view prefix, std::string_view name, bool from_string);
   [[nodiscard]] std::uint32_t lookup_local(const std::string& prefix, const Def& def, std::uint32_t local,
                                            const char* what);
   void flat_single_cap(const HierContext& hc, const Conn& conn, const std::string& name1, const std::string& name2);
@@ -187,7 +189,7 @@ class Flattener {
   [[nodiscard]] FlatDevice device_out(const HierContext& hc, const Def& def, const Device& dev);
   [[nodiscard]] FlatTerminal terminal_out(const std::string& prefix, const Def& def, std::uint32_t local,
                                           std::int32_t length, const std::optional<std::string>& attrs);
-  [[nodiscard]] std::string local_key(const Def& def, std::uint32_t local) const;
+  [[nodiscard]] std::string_view local_key(const Def& def, std::uint32_t local) const;
   void report_split_global(std::string_view leaf, std::uint32_t glob, std::uint32_t flat);
   void report_names(std::uint32_t node);
   void name_globals(const GlobalTable& global);
@@ -208,6 +210,7 @@ class Flattener {
   std::vector<std::size_t> output_index_;  // flat node -> index in the visited list
   std::uint64_t instances_ = 0;
   std::uint64_t connections_ = 0;
+  std::string key_;  // scratch_key's buffer
 };
 
 bool Flattener::subckt(std::uint32_t def) const {
@@ -510,6 +513,19 @@ void Flattener::add_conns(const HierContext& hc, unsigned pass) {
   });
 }
 
+const std::string& Flattener::scratch_key(std::string_view prefix, std::string_view name, bool from_string) {
+  key_.assign(prefix);
+  if (!prefix.empty()) {
+    key_.push_back(kSep);
+  }
+  const std::size_t first = key_.size();
+  key_.append(name);
+  if (from_string) {
+    std::replace(key_.begin() + static_cast<std::ptrdiff_t>(first), key_.end(), '/', kSep);  // EFStrToHN
+  }
+  return key_;
+}
+
 std::uint32_t Flattener::lookup_key(const std::string& key, const char* what) {
   const auto it = table_.find(key);
   if (it == table_.end()) {
@@ -525,7 +541,7 @@ std::uint32_t Flattener::lookup_key(const std::string& key, const char* what) {
 // canonical name is in.
 std::uint32_t Flattener::lookup_local(const std::string& prefix, const Def& def, std::uint32_t local,
                                       const char* what) {
-  const std::string key = concat_names(prefix, local_key(def, local));
+  const std::string& key = scratch_key(prefix, local_key(def, local), false);
   const std::uint32_t head = local_head(def.graph, local);
   if (head == kNil || !def.graph.name(head).anonymous) {
     return lookup_key(key, what);
@@ -536,7 +552,7 @@ std::uint32_t Flattener::lookup_local(const std::string& prefix, const Def& def,
 
 // EFHNLook, with a message when the name is not flat and `what` is given.
 std::uint32_t Flattener::lookup(const std::string& prefix, const std::string& name, const char* what) {
-  return lookup_key(concat_names(prefix, name_from_string(name)), what);
+  return lookup_key(scratch_key(prefix, name, true), what);
 }
 
 // efAddOneConn: the deltas go to the first node, then the two merge.
@@ -677,9 +693,9 @@ void Flattener::flat_caps(const HierContext& hc, std::size_t depth, bool devicel
   });
 }
 
-std::string Flattener::local_key(const Def& def, std::uint32_t local) const {
+std::string_view Flattener::local_key(const Def& def, std::uint32_t local) const {
   const std::uint32_t head = local_head(def.graph, local);
-  return head == kNil ? std::string{} : def.graph.name(head).key;
+  return head == kNil ? std::string_view{} : std::string_view{def.graph.name(head).key};
 }
 
 // efnode_pa of a definition's own node (not the flat node).
@@ -710,16 +726,17 @@ bool Flattener::device_killed(const HierContext& hc, const Def& def, const Devic
 FlatTerminal Flattener::terminal_out(const std::string& prefix, const Def& def, std::uint32_t local,
                                      std::int32_t length, const std::optional<std::string>& attrs) {
   FlatTerminal t;
-  const std::string key = concat_names(prefix, local_key(def, local));
   const std::uint32_t node = lookup_local(prefix, def, local, nullptr);
   if (node != kNil) {
     t.node = name_to_string(flat_.name(flat_.node(node).head).key);
     t.node_index = output_index_[node];
   } else {
-    t.node = name_to_string(key);
+    t.node = name_to_string(scratch_key(prefix, local_key(def, local), false));
   }
   t.length = length;
-  t.local_node = def.name + "/" + local_key(def, local);
+  const std::string_view local_name = local_key(def, local);
+  t.local_node.reserve(def.name.size() + 1 + local_name.size());
+  t.local_node.append(def.name).append("/").append(local_name);
   t.local_area_perim = local_area_perim(def, local);
   if (attrs) {
     t.attribute_text = *attrs;
@@ -802,7 +819,7 @@ void Flattener::hier_devices(const HierContext& hc, std::vector<FlatDevice>& out
   def.for_each_device([&](const Device& dev) {
     bool killed = false;
     for (const DevTerm& term : dev.terms) {
-      const std::uint32_t node = lookup_key(local_key(def, term.node), nullptr);
+      const std::uint32_t node = lookup_key(scratch_key({}, local_key(def, term.node), false), nullptr);
       killed = killed || (node != kNil && (flat_.node(node).flags & kFlagKilled) != 0);
     }
     if (killed) {
