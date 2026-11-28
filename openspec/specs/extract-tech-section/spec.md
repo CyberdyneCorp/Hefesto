@@ -376,14 +376,25 @@ For every pair (s,t) with non-empty overlap shield planes, every shield type r S
 ### Requirement: Non-electrical types
 
 At the end of the extract section, every user type that is not mentioned in any extract line (Requirement: Extract section line grammar) and does not connect (in the global connect table) to any type other than itself SHALL be removed from the active types, and the message `The following types are not handled by extraction and will be treated as non-electrical types:` followed by the type names SHALL be printed once.
+With `magic-compat` on, the mentions SHALL accumulate over every style read since the technology loaded (Magic's `allExtractTypes`, cleared only by ExtTechInit), so a type an earlier read style mentions stays active in a later selected style that does not mention it; with `magic-compat` off, each style SHALL use only its own mentions. The set reaches extraction, `lef write` and `def write` (Q-EXTRACT-46, proposed 2026-11-27, implemented with its recommended option; Q-EXTRACT-45).
 Compatibility: exact (set of active types); informative (message text)
 
-(Magic ref: extract/ExtTech.c:3588-3620)
+(Magic ref: extract/ExtTech.c:3588-3620, ExtTechInit, ExtLoadStyle)
 
 #### Scenario: Unmentioned marker layer
 - **GIVEN** a type `comment` that appears in no extract line and connects to nothing
 - **WHEN** the technology is loaded
 - **THEN** `comment` is listed as non-electrical and never forms a node
+
+#### Scenario: Mentions of an earlier style accumulate with magic-compat on
+- **GIVEN** style `a` mentions `comment` in an `areacap` line, style `b` does not, and `a` was read when the technology loaded
+- **WHEN** `extract style b` is selected with `magic-compat` on
+- **THEN** `comment` stays an active type of `b`
+
+#### Scenario: Each style uses its own mentions with magic-compat off
+- **GIVEN** the same styles `a` and `b`
+- **WHEN** `extract style b` is selected with `magic-compat` off
+- **THEN** `comment` is not an active type of `b` and is listed in `b`'s "treated as non-electrical" message
 
 ### Requirement: Layer height and thickness defaults
 
